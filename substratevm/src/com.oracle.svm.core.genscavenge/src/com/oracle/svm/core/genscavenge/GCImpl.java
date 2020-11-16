@@ -473,14 +473,14 @@ public final class GCImpl implements GC {
     @SuppressWarnings("try")
     private void walkRuntimeCodeCache() {
         try (Timer wrm = timers.walkRuntimeCodeCache.open()) {
-            RuntimeCodeInfoMemory.singleton().walkRuntimeMethods(runtimeCodeCacheWalker);
+            RuntimeCodeInfoMemory.singleton().walkRuntimeMethodsDuringGC(runtimeCodeCacheWalker);
         }
     }
 
     @SuppressWarnings("try")
     private void cleanRuntimeCodeCache() {
         try (Timer wrm = timers.cleanRuntimeCodeCache.open()) {
-            RuntimeCodeInfoMemory.singleton().walkRuntimeMethods(runtimeCodeCacheCleaner);
+            RuntimeCodeInfoMemory.singleton().walkRuntimeMethodsDuringGC(runtimeCodeCacheCleaner);
         }
     }
 
@@ -749,18 +749,31 @@ public final class GCImpl implements GC {
         Log trace = Log.noopLog().string("[blackenDirtyImageHeapRoots:").newline();
         try (Timer timer = timers.blackenImageHeapRoots.open()) {
             ImageHeapInfo info = HeapImpl.getImageHeapInfo();
-            AlignedHeapChunk.AlignedHeader aligned = asImageHeapChunk(info.offsetOfFirstAlignedChunkWithRememberedSet);
-            while (aligned.isNonNull()) {
-                AlignedHeapChunk.walkDirtyObjects(aligned, greyToBlackObjectVisitor, true);
-                aligned = HeapChunk.getNext(aligned);
-            }
-            UnalignedHeapChunk.UnalignedHeader unaligned = asImageHeapChunk(info.offsetOfFirstUnalignedChunkWithRememberedSet);
-            while (unaligned.isNonNull()) {
-                UnalignedHeapChunk.walkDirtyObjects(unaligned, greyToBlackObjectVisitor, true);
-                unaligned = HeapChunk.getNext(unaligned);
+            blackenDirtyImageHeapChunkRoots(asImageHeapChunk(info.offsetOfFirstAlignedChunkWithRememberedSet),
+                            asImageHeapChunk(info.offsetOfFirstUnalignedChunkWithRememberedSet));
+
+            if (AuxiliaryImageHeap.isPresent()) {
+                ImageHeapInfo auxInfo = AuxiliaryImageHeap.singleton().getImageHeapInfo();
+                if (auxInfo != null) {
+                    blackenDirtyImageHeapChunkRoots(asImageHeapChunk(auxInfo.offsetOfFirstAlignedChunkWithRememberedSet),
+                                    asImageHeapChunk(auxInfo.offsetOfFirstUnalignedChunkWithRememberedSet));
+                }
             }
         }
         trace.string("]").newline();
+    }
+
+    private void blackenDirtyImageHeapChunkRoots(AlignedHeader firstAligned, UnalignedHeader firstUnaligned) {
+        AlignedHeader aligned = firstAligned;
+        while (aligned.isNonNull()) {
+            AlignedHeapChunk.walkDirtyObjects(aligned, greyToBlackObjectVisitor, true);
+            aligned = HeapChunk.getNext(aligned);
+        }
+        UnalignedHeader unaligned = firstUnaligned;
+        while (unaligned.isNonNull()) {
+            UnalignedHeapChunk.walkDirtyObjects(unaligned, greyToBlackObjectVisitor, true);
+            unaligned = HeapChunk.getNext(unaligned);
+        }
     }
 
     @SuppressWarnings("unchecked")

@@ -57,8 +57,6 @@ import org.graalvm.wasm.WasmInstance;
 import org.graalvm.wasm.WasmLanguage;
 import org.graalvm.wasm.WasmVoidResult;
 
-import static org.graalvm.wasm.WasmTracing.trace;
-
 @NodeInfo(language = "wasm", description = "The root node of all WebAssembly functions")
 public class WasmRootNode extends RootNode implements WasmNodeInterface {
 
@@ -106,6 +104,13 @@ public class WasmRootNode extends RootNode implements WasmNodeInterface {
     }
 
     public Object executeWithContext(VirtualFrame frame, WasmContext context) {
+        // The operand stack is represented as a long array,
+        // and is kept in a dedicated frame slot.
+        // The reason for this is that the operand stack cannot be passed
+        // as an argument to the loop-node's execute method,
+        // and must be restored at the beginning of the loop body.
+        long[] stack = new long[codeEntry.maxStackSize()];
+        frame.setObject(codeEntry.stackSlot(), stack);
 
         // WebAssembly structure dictates that a function's arguments are provided to the function
         // as local variables, followed by any additional local variables that the function
@@ -118,9 +123,7 @@ public class WasmRootNode extends RootNode implements WasmNodeInterface {
         // https://webassembly.github.io/spec/core/exec/instructions.html#function-calls
         initializeLocals(frame);
 
-        trace("%s EXECUTE", this);
-
-        body.execute(context, frame);
+        body.execute(context, frame, stack);
 
         switch (body.returnTypeId()) {
             case 0x00:
@@ -128,21 +131,21 @@ public class WasmRootNode extends RootNode implements WasmNodeInterface {
                 return WasmVoidResult.getInstance();
             }
             case WasmType.I32_TYPE: {
-                long returnValue = pop(frame, 0);
+                long returnValue = pop(stack, 0);
                 assert returnValue >>> 32 == 0;
                 return (int) returnValue;
             }
             case WasmType.I64_TYPE: {
-                long returnValue = pop(frame, 0);
+                long returnValue = pop(stack, 0);
                 return returnValue;
             }
             case WasmType.F32_TYPE: {
-                long returnValue = pop(frame, 0);
+                long returnValue = pop(stack, 0);
                 assert returnValue >>> 32 == 0;
                 return Float.intBitsToFloat((int) returnValue);
             }
             case WasmType.F64_TYPE: {
-                long returnValue = pop(frame, 0);
+                long returnValue = pop(stack, 0);
                 return Double.longBitsToDouble(returnValue);
             }
             default:
@@ -162,25 +165,21 @@ public class WasmRootNode extends RootNode implements WasmNodeInterface {
             switch (kind) {
                 case Int: {
                     int argument = (int) args[i];
-                    trace("argument: 0x%08X (%d) [i32]", argument, argument);
                     frame.setInt(slot, argument);
                     break;
                 }
                 case Long: {
                     long argument = (long) args[i];
-                    trace("argument: 0x%016X (%d) [i64]", argument, argument);
                     frame.setLong(slot, argument);
                     break;
                 }
                 case Float: {
                     float argument = (float) args[i];
-                    trace("argument: %f [f32]", argument);
                     frame.setFloat(slot, argument);
                     break;
                 }
                 case Double: {
                     double argument = (double) args[i];
-                    trace("argument: %f [f64]", argument);
                     frame.setDouble(slot, argument);
                     break;
                 }

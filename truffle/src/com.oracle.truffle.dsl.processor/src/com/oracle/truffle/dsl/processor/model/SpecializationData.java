@@ -148,7 +148,9 @@ public final class SpecializationData extends TemplateMethod {
     public boolean needsPushEncapsulatingNode() {
         for (CacheExpression cache : caches) {
             if (cache.isAlwaysInitialized() && cache.isRequiresBoundary() && cache.isCachedLibrary()) {
-                return true;
+                if (cache.getCachedLibrary().isPushEncapsulatingNode()) {
+                    return true;
+                }
             }
         }
         return false;
@@ -313,6 +315,11 @@ public final class SpecializationData extends TemplateMethod {
         if (transitive) {
             for (CacheExpression cache : getBoundCaches(expression, false)) {
                 if (cache.isAlwaysInitialized()) {
+                    if (cache.isWeakReferenceGet()) {
+                        // only cached values come from weak reference gets although
+                        // they are initialized every time
+                        continue;
+                    }
                     if (isDynamicParameterBound(cache.getDefaultExpression(), true)) {
                         return true;
                     }

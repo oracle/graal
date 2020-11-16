@@ -65,6 +65,7 @@ import com.oracle.truffle.llvm.runtime.CommonNodeFactory;
 import com.oracle.truffle.llvm.runtime.GetStackSpaceFactory;
 import com.oracle.truffle.llvm.runtime.LLVMContext;
 import com.oracle.truffle.llvm.runtime.LLVMFunctionCode.LazyToTruffleConverter;
+import com.oracle.truffle.llvm.runtime.LLVMLanguage;
 import com.oracle.truffle.llvm.runtime.NodeFactory;
 import com.oracle.truffle.llvm.runtime.datalayout.DataLayout;
 import com.oracle.truffle.llvm.runtime.debug.scope.LLVMSourceLocation;
@@ -135,7 +136,7 @@ public class LazyToTruffleConverterImpl implements LazyToTruffleConverter {
     }
 
     private RootCallTarget generateCallTarget() {
-        LLVMContext context = runtime.getContext();
+        LLVMContext context = LLVMLanguage.getContext();
         NodeFactory nodeFactory = runtime.getNodeFactory();
         OptionValues options = context.getEnv().getOptions();
 
@@ -153,12 +154,12 @@ public class LazyToTruffleConverterImpl implements LazyToTruffleConverter {
         }
 
         // parse the function block
-        parser.parse(diProcessor, source, runtime);
+        parser.parse(diProcessor, source, runtime, LLVMLanguage.getContext());
 
         // prepare the phis
         final Map<InstructionBlock, List<Phi>> phis = LLVMPhiManager.getPhis(method);
 
-        LLVMLivenessAnalysisResult liveness = LLVMLivenessAnalysis.computeLiveness(phis, method, runtime.getContext().lifetimeAnalysisStream());
+        LLVMLivenessAnalysisResult liveness = LLVMLivenessAnalysis.computeLiveness(phis, method, LLVMLanguage.getContext().lifetimeAnalysisStream());
 
         // setup the frameDescriptor
         FrameDescriptor frame = new FrameDescriptor();

@@ -43,6 +43,7 @@ import com.oracle.truffle.api.interop.UnsupportedMessageException;
 import com.oracle.truffle.api.source.Source;
 import com.oracle.truffle.llvm.runtime.except.LLVMLinkerException;
 import com.oracle.truffle.llvm.runtime.interop.nfi.LLVMNativeWrapper;
+import com.oracle.truffle.llvm.runtime.options.SulongEngineOption;
 import com.oracle.truffle.llvm.runtime.types.FunctionType;
 import com.oracle.truffle.llvm.runtime.types.PointerType;
 import com.oracle.truffle.llvm.runtime.types.PrimitiveType;
@@ -65,6 +66,7 @@ public final class NFIContextExtension implements ContextExtension {
     private final TruffleLanguage.Env env;
 
     public NFIContextExtension(Env env) {
+        assert env.getOptions().get(SulongEngineOption.ENABLE_NFI);
         this.env = env;
     }
 
@@ -121,14 +123,14 @@ public final class NFIContextExtension implements ContextExtension {
     }
 
     @TruffleBoundary
-    public Object createNativeWrapper(LLVMFunctionDescriptor descriptor) {
+    public Object createNativeWrapper(LLVMFunction function, LLVMFunctionCode code) {
         Object wrapper = null;
 
         try {
-            String signature = getNativeSignature(descriptor.getLLVMFunction().getType(), 0);
+            String signature = getNativeSignature(function.getType(), 0);
             Object createNativeWrapper = getNativeFunction("createNativeWrapper", String.format("(env, %s):object", signature));
             try {
-                wrapper = INTEROP.execute(createNativeWrapper, new LLVMNativeWrapper(descriptor));
+                wrapper = INTEROP.execute(createNativeWrapper, new LLVMNativeWrapper(function, code));
             } catch (InteropException ex) {
                 throw new AssertionError(ex);
             }

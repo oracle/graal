@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2019, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2019, 2020, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -45,6 +45,7 @@ import java.util.HashMap;
 import java.util.function.Consumer;
 
 import com.oracle.truffle.api.interop.ArityException;
+import com.oracle.truffle.api.interop.ExceptionType;
 import com.oracle.truffle.api.interop.InteropLibrary;
 import com.oracle.truffle.api.interop.InvalidArrayIndexException;
 import com.oracle.truffle.api.interop.TruffleObject;
@@ -55,7 +56,9 @@ import org.graalvm.polyglot.Context;
 import org.graalvm.polyglot.Source;
 import org.graalvm.polyglot.Value;
 import org.graalvm.polyglot.io.ByteSequence;
+import org.graalvm.wasm.ModuleLimits;
 import org.graalvm.wasm.WasmContext;
+import org.graalvm.wasm.api.ByteArrayBuffer;
 import org.graalvm.wasm.api.Dictionary;
 import org.graalvm.wasm.api.Executable;
 import org.graalvm.wasm.api.Global;
@@ -65,12 +68,15 @@ import org.graalvm.wasm.api.Memory;
 import org.graalvm.wasm.api.MemoryDescriptor;
 import org.graalvm.wasm.api.Module;
 import org.graalvm.wasm.api.ModuleExportDescriptor;
+import org.graalvm.wasm.api.ModuleImportDescriptor;
 import org.graalvm.wasm.api.ProxyGlobal;
+import org.graalvm.wasm.api.Sequence;
 import org.graalvm.wasm.api.Table;
 import org.graalvm.wasm.api.TableDescriptor;
 import org.graalvm.wasm.api.TableKind;
 import org.graalvm.wasm.api.WebAssembly;
 import org.graalvm.wasm.api.WebAssemblyInstantiatedSource;
+import org.graalvm.wasm.exception.WasmException;
 import org.graalvm.wasm.predefined.testutil.TestutilModule;
 import org.graalvm.wasm.utils.Assert;
 import org.junit.Test;
@@ -265,6 +271,17 @@ public class WasmJsApiSuite {
     }
 
     @Test
+    public void testInstantiateModuleTwice() throws IOException {
+        runTest(context -> {
+            WebAssembly wasm = new WebAssembly(context);
+            Module module = wasm.compile(binaryWithExports);
+            Object importObject = new Dictionary();
+            wasm.instantiate(module, importObject);
+            wasm.instantiate(module, importObject);
+        });
+    }
+
+    @Test
     public void testInstantiateWithUnicodeExport() throws IOException {
         runTest(context -> {
             final WebAssembly wasm = new WebAssembly(context);
@@ -277,6 +294,98 @@ public class WasmJsApiSuite {
                 throw new RuntimeException(e);
             }
         });
+    }
+
+    @Test
+    public void testExportOrder() throws IOException {
+        runTest(context -> {
+            final WebAssembly wasm = new WebAssembly(context);
+            final WebAssemblyInstantiatedSource instantiatedSource = wasm.instantiate(binaryWithMixedExports, null);
+            final Module module = instantiatedSource.module();
+            final Instance instance = instantiatedSource.instance();
+            final Sequence<ModuleExportDescriptor> moduleExports = module.exports();
+            final Object instanceMembers = instance.exports().getMembers(false);
+            String[] expected = new String[]{"f1", "g1", "t", "m", "g2", "f2"};
+            try {
+                final InteropLibrary lib = InteropLibrary.getUncached();
+                Assert.assertEquals("Must export all members.", 6L, lib.getArraySize(instanceMembers));
+                for (int i = 0; i < lib.getArraySize(instanceMembers); i++) {
+                    final Object instanceMember = lib.readArrayElement(instanceMembers, i);
+                    Assert.assertEquals("Module member " + i + " should correspond to the expected export.", expected[i], ((ModuleExportDescriptor) moduleExports.readArrayElement(i)).name());
+                    Assert.assertEquals("Instance member " + i + " should correspond to the expected export.", expected[i], lib.asString(instanceMember));
+                }
+            } catch (UnsupportedMessageException | InvalidArrayIndexException e) {
+                throw new RuntimeException(e);
+            }
+        });
+    }
+
+    @Test
+    public void testImportOrder() throws IOException {
+        runTest(context -> {
+            final WebAssembly wasm = new WebAssembly(context);
+            final Module module = wasm.compile(binaryWithMixedImports);
+            final Sequence<ModuleImportDescriptor> moduleImports = module.imports();
+            String[] expected = new String[]{"f1", "g1", "t", "m", "g2", "f2"};
+            try {
+                Assert.assertEquals("Must import all members.", 6L, moduleImports.getArraySize());
+                for (int i = 0; i < moduleImports.getArraySize(); i++) {
+                    Assert.assertEquals("Module member " + i + " should correspond to the expected import.", expected[i], ((ModuleImportDescriptor) moduleImports.readArrayElement(i)).name());
+                }
+            } catch (InvalidArrayIndexException e) {
+                throw new RuntimeException(e);
+            }
+        });
+    }
+
+    @Test
+    public void testModuleLimits() throws IOException {
+        runTest(context -> {
+            ModuleLimits limits = null;
+            context.readModule(binaryWithMixedExports, limits);
+
+            int noLimit = Integer.MAX_VALUE;
+            limits = new ModuleLimits(noLimit, noLimit, noLimit, noLimit, 6, noLimit, noLimit, noLimit, noLimit, noLimit, noLimit, noLimit, noLimit, noLimit);
+            context.readModule(binaryWithMixedExports, limits);
+
+            try {
+                limits = new ModuleLimits(noLimit, noLimit, noLimit, noLimit, 5, noLimit, noLimit, noLimit, noLimit, noLimit, noLimit, noLimit, noLimit, noLimit);
+                context.readModule(binaryWithMixedExports, limits);
+                Assert.fail("Should have failed - export count exceeds the limit");
+            } catch (WasmException ex) {
+                Assert.assertEquals("Parsing error expected", ExceptionType.PARSE_ERROR, ex.getExceptionType());
+            }
+        });
+    }
+
+    @Test
+    public void testCustomSections() throws IOException {
+        runTest(context -> {
+            final WebAssembly wasm = new WebAssembly(context);
+            final Module module = wasm.compile(binaryWithCustomSections);
+            try {
+                checkCustomSections(new byte[][]{}, module.customSections(""));
+                checkCustomSections(new byte[][]{}, module.customSections("zero"));
+                checkCustomSections(new byte[][]{{1, 3, 5}}, module.customSections("odd"));
+                checkCustomSections(new byte[][]{{2, 4}, {6}}, module.customSections("even"));
+            } catch (InvalidArrayIndexException ex) {
+                throw new RuntimeException(ex);
+            }
+        });
+    }
+
+    private static void checkCustomSections(byte[][] expected, Sequence<ByteArrayBuffer> actual) throws InvalidArrayIndexException {
+        Assert.assertEquals("Custom section count", expected.length, (int) actual.getArraySize());
+        for (int i = 0; i < expected.length; i++) {
+            checkCustomSection(expected[i], (ByteArrayBuffer) actual.readArrayElement(i));
+        }
+    }
+
+    private static void checkCustomSection(byte[] expected, ByteArrayBuffer actual) throws InvalidArrayIndexException {
+        Assert.assertEquals("Custom section length", expected.length, (int) actual.getArraySize());
+        for (int i = 0; i < expected.length; i++) {
+            Assert.assertEquals("Custom section data", expected[i], actual.readArrayElement(i));
+        }
     }
 
     private static void runTest(Consumer<WasmContext> testCase) throws IOException {
@@ -486,4 +595,48 @@ public class WasmJsApiSuite {
                     (byte) 0x00, (byte) 0x00, (byte) 0x0a, (byte) 0x06, (byte) 0x01, (byte) 0x04, (byte) 0x00, (byte) 0x41, (byte) 0x2a, (byte) 0x0b
     };
 
+    // Module with 3 custom sections: "even" (with data 2, 4),
+    // "odd" (with data 1, 3, 5) and "even" (with data 6)
+    private static final byte[] binaryWithCustomSections = new byte[]{
+                    (byte) 0x00, (byte) 0x61, (byte) 0x73, (byte) 0x6d, (byte) 0x01, (byte) 0x00, (byte) 0x00, (byte) 0x00, (byte) 0x00, (byte) 0x07, (byte) 0x04, (byte) 0x65, (byte) 0x76,
+                    (byte) 0x65, (byte) 0x6e, (byte) 0x02, (byte) 0x04, (byte) 0x00, (byte) 0x07, (byte) 0x03, (byte) 0x6f, (byte) 0x64, (byte) 0x64, (byte) 0x01, (byte) 0x03, (byte) 0x05,
+                    (byte) 0x00, (byte) 0x06, (byte) 0x04, (byte) 0x65, (byte) 0x76, (byte) 0x65, (byte) 0x6e, (byte) 0x06
+    };
+
+    // (module
+    // (func (export "f1"))
+    // (global (export "g1") i32 (i32.const 1))
+    // (table (export "t") 1 anyfunc)
+    // (memory (export "m") 1)
+    // (global (export "g2") f64 (f64.const 0))
+    // (func (export "f2"))
+    // )
+    private static final byte[] binaryWithMixedExports = new byte[]{
+                    (byte) 0x00, (byte) 0x61, (byte) 0x73, (byte) 0x6d, (byte) 0x01, (byte) 0x00, (byte) 0x00, (byte) 0x00, (byte) 0x01, (byte) 0x04, (byte) 0x01, (byte) 0x60, (byte) 0x00,
+                    (byte) 0x00, (byte) 0x03, (byte) 0x03, (byte) 0x02, (byte) 0x00, (byte) 0x00, (byte) 0x04, (byte) 0x04, (byte) 0x01, (byte) 0x70, (byte) 0x00, (byte) 0x01, (byte) 0x05,
+                    (byte) 0x03, (byte) 0x01, (byte) 0x00, (byte) 0x01, (byte) 0x06, (byte) 0x12, (byte) 0x02, (byte) 0x7f, (byte) 0x00, (byte) 0x41, (byte) 0x01, (byte) 0x0b, (byte) 0x7c,
+                    (byte) 0x00, (byte) 0x44, (byte) 0x00, (byte) 0x00, (byte) 0x00, (byte) 0x00, (byte) 0x00, (byte) 0x00, (byte) 0x00, (byte) 0x00, (byte) 0x0b, (byte) 0x07, (byte) 0x1d,
+                    (byte) 0x06, (byte) 0x02, (byte) 0x66, (byte) 0x31, (byte) 0x00, (byte) 0x00, (byte) 0x02, (byte) 0x67, (byte) 0x31, (byte) 0x03, (byte) 0x00, (byte) 0x01, (byte) 0x74,
+                    (byte) 0x01, (byte) 0x00, (byte) 0x01, (byte) 0x6d, (byte) 0x02, (byte) 0x00, (byte) 0x02, (byte) 0x67, (byte) 0x32, (byte) 0x03, (byte) 0x01, (byte) 0x02, (byte) 0x66,
+                    (byte) 0x32, (byte) 0x00, (byte) 0x01, (byte) 0x0a, (byte) 0x07, (byte) 0x02, (byte) 0x02, (byte) 0x00, (byte) 0x0b, (byte) 0x02, (byte) 0x00, (byte) 0x0b, (byte) 0x00,
+                    (byte) 0x0c, (byte) 0x04, (byte) 0x6e, (byte) 0x61, (byte) 0x6d, (byte) 0x65, (byte) 0x02, (byte) 0x05, (byte) 0x02, (byte) 0x00, (byte) 0x00, (byte) 0x01, (byte) 0x00,
+    };
+
+    // (module
+    // (func (import "aux" "f1"))
+    // (global (import "aux" "g1") i64)
+    // (table (import "aux" "t") 1 anyfunc)
+    // (memory (import "aux" "m") 1)
+    // (global (import "aux" "g2") f64)
+    // (func (import "aux" "f2"))
+    // )
+    private static final byte[] binaryWithMixedImports = new byte[]{
+                    (byte) 0x00, (byte) 0x61, (byte) 0x73, (byte) 0x6d, (byte) 0x01, (byte) 0x00, (byte) 0x00, (byte) 0x00, (byte) 0x01, (byte) 0x04, (byte) 0x01, (byte) 0x60, (byte) 0x00,
+                    (byte) 0x00, (byte) 0x02, (byte) 0x3a, (byte) 0x06, (byte) 0x03, (byte) 0x61, (byte) 0x75, (byte) 0x78, (byte) 0x02, (byte) 0x66, (byte) 0x31, (byte) 0x00, (byte) 0x00,
+                    (byte) 0x03, (byte) 0x61, (byte) 0x75, (byte) 0x78, (byte) 0x02, (byte) 0x67, (byte) 0x31, (byte) 0x03, (byte) 0x7e, (byte) 0x00, (byte) 0x03, (byte) 0x61, (byte) 0x75,
+                    (byte) 0x78, (byte) 0x01, (byte) 0x74, (byte) 0x01, (byte) 0x70, (byte) 0x00, (byte) 0x01, (byte) 0x03, (byte) 0x61, (byte) 0x75, (byte) 0x78, (byte) 0x01, (byte) 0x6d,
+                    (byte) 0x02, (byte) 0x00, (byte) 0x01, (byte) 0x03, (byte) 0x61, (byte) 0x75, (byte) 0x78, (byte) 0x02, (byte) 0x67, (byte) 0x32, (byte) 0x03, (byte) 0x7c, (byte) 0x00,
+                    (byte) 0x03, (byte) 0x61, (byte) 0x75, (byte) 0x78, (byte) 0x02, (byte) 0x66, (byte) 0x32, (byte) 0x00, (byte) 0x00, (byte) 0x00, (byte) 0x0c, (byte) 0x04, (byte) 0x6e,
+                    (byte) 0x61, (byte) 0x6d, (byte) 0x65, (byte) 0x02, (byte) 0x05, (byte) 0x02, (byte) 0x00, (byte) 0x00, (byte) 0x01, (byte) 0x00,
+    };
 }

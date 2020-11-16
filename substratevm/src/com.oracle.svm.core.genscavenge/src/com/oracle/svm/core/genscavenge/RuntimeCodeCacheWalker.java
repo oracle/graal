@@ -59,6 +59,10 @@ final class RuntimeCodeCacheWalker implements CodeInfoVisitor {
     @Override
     @DuplicatedInNativeCode
     public <T extends CodeInfo> boolean visitCode(T codeInfo) {
+        if (RuntimeCodeInfoAccess.areAllObjectsOnImageHeap(codeInfo)) {
+            return true;
+        }
+
         /*
          * Before this method is called, the GC already visited *all* CodeInfo objects that are
          * reachable from the stack as strong roots. This is is an essential prerequisite for the

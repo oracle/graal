@@ -54,6 +54,11 @@ public class SubstrateInstalledCodeImpl extends InstalledCode implements Substra
     }
 
     @Override
+    public ResolvedJavaMethod getMethod() {
+        return null;
+    }
+
+    @Override
     public void setAddress(long address, ResolvedJavaMethod method) {
         this.address = address;
         this.entryPoint = address;

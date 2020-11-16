@@ -70,8 +70,8 @@ public abstract class LLVMVAStart extends LLVMExpressionNode {
         return null;
     }
 
-    static Object createNativeVAListWrapper(LLVMNativePointer targetAddress, LLVMLanguage lang) {
-        return lang.getCapability(PlatformCapability.class).createNativeVAListWrapper(targetAddress);
+    Object createNativeVAListWrapper(LLVMNativePointer targetAddress, LLVMLanguage lang) {
+        return lang.getCapability(PlatformCapability.class).createNativeVAListWrapper(targetAddress, getRootNode());
     }
 
     @Specialization

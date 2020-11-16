@@ -193,7 +193,7 @@ final class InstrumentAccessor extends Accessor {
         public void onFirstExecution(RootNode rootNode, boolean validate) {
             assert !validate || validEngine(rootNode);
             InstrumentationHandler handler = getHandler(rootNode);
-            if (handler != null && !runtimeAccess().isOSRRootNode(rootNode)) {
+            if (handler != null) {
                 handler.onFirstExecution(rootNode);
             }
         }
@@ -201,7 +201,7 @@ final class InstrumentAccessor extends Accessor {
         @Override
         public void onLoad(RootNode rootNode) {
             InstrumentationHandler handler = getHandler(rootNode);
-            if (handler != null && !runtimeAccess().isOSRRootNode(rootNode)) {
+            if (handler != null) {
                 handler.onLoad(rootNode);
             }
         }
@@ -279,6 +279,11 @@ final class InstrumentAccessor extends Accessor {
         @Override
         public void patchInstrumentationHandler(Object instrumentationHandler, DispatchOutputStream out, DispatchOutputStream err, InputStream in) {
             ((InstrumentationHandler) instrumentationHandler).patch(out, err, in);
+        }
+
+        @Override
+        public void finalizeStoreInstrumentationHandler(Object instrumentationHandler) {
+            ((InstrumentationHandler) instrumentationHandler).finalizeStore();
         }
 
         @Override

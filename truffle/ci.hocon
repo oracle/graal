@@ -109,7 +109,7 @@ builds += [
   },
   ${linux-amd64} ${oraclejdk8}    ${truffleCommon} {
     run : [
-        ["mx", "build", "-c", "-A-Atruffle.dsl.GenerateSlowPathOnly=true"],
+        ["mx", "build", "-n", "-c", "-A-Atruffle.dsl.GenerateSlowPathOnly=true"],
         # only those tests excercise meaningfully implemented nodes
         # e.g. com.oracle.truffle.api.dsl.test uses nodes that intentionally produce
         # different results from fast/slow path specializations to test their activation

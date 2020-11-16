@@ -145,4 +145,13 @@ public interface TruffleCompilerListener {
      *            {@code bailout == false}.
      */
     void onFailure(CompilableTruffleAST compilable, String reason, boolean bailout, boolean permanentBailout);
+
+    /**
+     * Notifies this object when compilation of {@code compilable} is re-tried to diagnose a
+     * compilation problem.
+     *
+     * @param compilable the Truffle AST which is going to be re-compiled.
+     */
+    default void onCompilationRetry(CompilableTruffleAST compilable) {
+    }
 }

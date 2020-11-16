@@ -28,5 +28,5 @@ import com.oracle.svm.core.annotate.TargetClass;
 import com.oracle.svm.core.jdk.Package_jdk_internal_reflect;
 
 @TargetClass(classNameProvider = Package_jdk_internal_reflect.class, className = "FieldAccessor")
-final class Target_jdk_internal_reflect_FieldAccessor {
+public final class Target_jdk_internal_reflect_FieldAccessor {
 }

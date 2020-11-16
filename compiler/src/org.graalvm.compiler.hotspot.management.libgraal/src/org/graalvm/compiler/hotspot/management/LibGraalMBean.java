@@ -24,37 +24,25 @@
  */
 package org.graalvm.compiler.hotspot.management;
 
-import java.lang.management.ManagementFactory;
 import java.lang.reflect.Array;
 import java.util.ArrayList;
 import java.util.HashMap;
-import java.util.Hashtable;
 import java.util.Iterator;
 import java.util.LinkedHashMap;
-import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
-import java.util.Set;
 
 import javax.management.Attribute;
 import javax.management.AttributeList;
 import javax.management.AttributeNotFoundException;
 import javax.management.DynamicMBean;
-import javax.management.InstanceAlreadyExistsException;
-import javax.management.InstanceNotFoundException;
 import javax.management.InvalidAttributeValueException;
 import javax.management.MBeanAttributeInfo;
 import javax.management.MBeanException;
 import javax.management.MBeanInfo;
 import javax.management.MBeanOperationInfo;
 import javax.management.MBeanParameterInfo;
-import javax.management.MBeanRegistrationException;
-import javax.management.MBeanServer;
-import javax.management.MBeanServerFactory;
-import javax.management.MalformedObjectNameException;
-import javax.management.NotCompliantMBeanException;
-import javax.management.ObjectName;
 import javax.management.ReflectionException;
 import javax.management.openmbean.ArrayType;
 import javax.management.openmbean.CompositeData;
@@ -65,7 +53,6 @@ import javax.management.openmbean.OpenType;
 import javax.management.openmbean.SimpleType;
 
 import org.graalvm.compiler.debug.TTY;
-import org.graalvm.libgraal.LibGraal;
 import org.graalvm.libgraal.LibGraalScope;
 import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;
@@ -94,8 +81,6 @@ public class LibGraalMBean implements DynamicMBean {
         PRIMITIVE_TO_OPENTYPE.put(Double.class, SimpleType.DOUBLE);
         PRIMITIVE_TO_OPENTYPE.put(String.class, SimpleType.STRING);
     }
-
-    private static volatile Factory factory;
 
     private final long isolate;
     private final long handle;
@@ -372,44 +357,6 @@ public class LibGraalMBean implements DynamicMBean {
     }
 
     /**
-     * Returns a factory for registering the {@link LibGraalMBean} instances into
-     * {@link MBeanServer}. If the factory does not exist it is created and its registration thread
-     * is started.
-     */
-    static Factory getFactory() {
-        Factory res = factory;
-        if (res == null) {
-            synchronized (LibGraalMBean.class) {
-                res = factory;
-                if (res == null) {
-                    try {
-                        res = new Factory();
-                        res.start();
-                        factory = res;
-                    } catch (LinkageError e) {
-                        Throwable cause = findCause(e);
-                        throw sthrow(RuntimeException.class, cause);
-                    }
-                }
-            }
-        }
-        return res;
-    }
-
-    private static Throwable findCause(Throwable e) {
-        Throwable current = e;
-        while (current.getCause() != null) {
-            current = current.getCause();
-        }
-        return current;
-    }
-
-    @SuppressWarnings({"unchecked", "unused"})
-    private static <T extends Throwable> T sthrow(Class<T> exceptionClass, Throwable exception) throws T {
-        throw (T) exception;
-    }
-
-    /**
      * Parses {@link MBeanAttributeInfo} from iterator of MBean properties.
      *
      * @param attrName the current attribute name
@@ -589,188 +536,6 @@ public class LibGraalMBean implements DynamicMBean {
                 throw new IllegalStateException("Push back element already exists.");
             }
             pushBack = e;
-        }
-    }
-
-    /**
-     * A factory thread creating the {@link LibGraalMBean} instances for {@link DynamicMBean}s in
-     * libgraal heap and registering them to {@link MBeanServer}.
-     */
-    @Platforms(Platform.HOSTED_ONLY.class)
-    public static final class Factory extends Thread {
-
-        private static final String DOMAIN_GRAALVM_HOTSPOT = "org.graalvm.compiler.hotspot";
-        private static final String TYPE_LIBGRAAL = "Libgraal";
-        private static final String ATTR_TYPE = "type";
-        private static final int POLL_INTERVAL_MS = 2000;
-
-        private MBeanServer platformMBeanServer;
-        private volatile AggregatedMemoryPoolBean aggregatedMemoryPoolBean;
-
-        /**
-         * Set of isolates yet to be processed for MBean registrations.
-         */
-        private final Set<Long> pendingIsolates;
-
-        private Factory() {
-            super("Libgraal MBean Registration");
-            this.pendingIsolates = new LinkedHashSet<>();
-            this.setPriority(Thread.MIN_PRIORITY);
-            this.setDaemon(true);
-            LibGraal.registerNativeMethods(JMXToLibGraalCalls.class);
-        }
-
-        /**
-         * Main loop waiting for {@link DynamicMBean} creation in libgraal heap. When a new
-         * {@link DynamicMBean} is created in the libgraal heap this thread creates a new
-         * {@link LibGraalMBean} encapsulating the {@link DynamicMBean} and registers it to
-         * {@link MBeanServer}.
-         */
-        @Override
-        public void run() {
-            while (true) {
-                try {
-                    synchronized (this) {
-                        // Wait until there are deferred registrations to process
-                        while (pendingIsolates.isEmpty()) {
-                            wait();
-                        }
-                        try {
-                            poll();
-                        } catch (SecurityException | UnsatisfiedLinkError | NoClassDefFoundError | UnsupportedOperationException e) {
-                            // Without permission to find or create the MBeanServer,
-                            // we cannot process any Graal mbeans.
-                            // Various other errors can occur in the ManagementFactory (JDK-8076557)
-                            break;
-                        }
-                    }
-                    Thread.sleep(POLL_INTERVAL_MS);
-                } catch (InterruptedException e) {
-                    // Be verbose about unexpected interruption and then continue
-                    e.printStackTrace(TTY.out);
-                }
-            }
-        }
-
-        /**
-         * Called by {@code MBeanProxy} in libgraal heap to notify this factory of an isolate with
-         * {@link DynamicMBean}s that needs registration.
-         */
-        synchronized void signalRegistrationRequest(long isolate) {
-            pendingIsolates.add(isolate);
-            notify();
-        }
-
-        /**
-         * Called by {@code MBeanProxy} in libgraal heap when the isolate is closing to unregister
-         * its {@link DynamicMBean}s.
-         */
-        synchronized void unregister(long isolate, String[] objectIds) {
-            // Remove pending registration requests
-            pendingIsolates.remove(isolate);
-            MBeanServer mBeanServer = findMBeanServer();
-            if (mBeanServer == null) {
-                // Nothing registered yet.
-                return;
-            }
-            for (String objectId : objectIds) {
-                try {
-                    ObjectName objectName = new ObjectName(objectId);
-                    if (aggregatedMemoryPoolBean != null && isLibGraalMBean(objectName)) {
-                        aggregatedMemoryPoolBean.removeDelegate(objectName);
-                    }
-                    if (mBeanServer.isRegistered(objectName)) {
-                        mBeanServer.unregisterMBean(objectName);
-                    }
-                } catch (MalformedObjectNameException | MBeanRegistrationException | InstanceNotFoundException e) {
-                    e.printStackTrace(TTY.out);
-                }
-            }
-        }
-
-        /**
-         * In case of successful {@link MBeanServer} initialization creates {@link LibGraalMBean}s
-         * for pending libgraal {@link DynamicMBean}s and registers them.
-         *
-         * @return {@code true} if {@link LibGraalMBean}s were successfuly registered, {@code false}
-         *         when {@link MBeanServer} is not yet available and {@code poll} should be retried.
-         * @throws SecurityException can be thrown by {@link MBeanServer}
-         * @throws UnsatisfiedLinkError can be thrown by {@link MBeanServer}
-         * @throws NoClassDefFoundError can be thrown by {@link MBeanServer}
-         * @throws UnsupportedOperationException can be thrown by {@link MBeanServer}
-         */
-        private boolean poll() {
-            assert Thread.holdsLock(this);
-            MBeanServer mBeanServer = findMBeanServer();
-            if (mBeanServer != null) {
-                return process();
-            } else {
-                return false;
-            }
-        }
-
-        /**
-         * Returns a {@link MBeanServer} if it already exists.
-         */
-        private MBeanServer findMBeanServer() {
-            assert Thread.holdsLock(this);
-            if (platformMBeanServer == null) {
-                ArrayList<MBeanServer> servers = MBeanServerFactory.findMBeanServer(null);
-                if (!servers.isEmpty()) {
-                    platformMBeanServer = ManagementFactory.getPlatformMBeanServer();
-                }
-            }
-            return platformMBeanServer;
-        }
-
-        /**
-         * Creates {@link LibGraalMBean}s for pending libgraal {@link DynamicMBean}s and registers
-         * them {@link MBeanServer}.
-         *
-         * @return {@code true}
-         * @throws SecurityException can be thrown by {@link MBeanServer}
-         * @throws UnsatisfiedLinkError can be thrown by {@link MBeanServer}
-         * @throws NoClassDefFoundError can be thrown by {@link MBeanServer}
-         * @throws UnsupportedOperationException can be thrown by {@link MBeanServer}
-         */
-        private boolean process() {
-            for (Iterator<Long> iter = pendingIsolates.iterator(); iter.hasNext();) {
-                long isolate = iter.next();
-                iter.remove();
-                try (LibGraalScope scope = new LibGraalScope(isolate)) {
-                    long isolateThread = scope.getIsolateThreadAddress();
-                    long[] handles = JMXToLibGraalCalls.pollRegistrations(isolateThread);
-                    if (handles.length > 0) {
-                        for (long handle : handles) {
-                            LibGraalMBean bean = new LibGraalMBean(isolate, handle);
-                            String name = JMXToLibGraalCalls.getObjectName(isolateThread, handle);
-                            try {
-                                ObjectName objectName = new ObjectName(name);
-                                if (isLibGraalMBean(objectName)) {
-                                    if (aggregatedMemoryPoolBean == null) {
-                                        aggregatedMemoryPoolBean = new AggregatedMemoryPoolBean(bean, objectName);
-                                        platformMBeanServer.registerMBean(aggregatedMemoryPoolBean, aggregatedMemoryPoolBean.getObjectName());
-                                    } else {
-                                        aggregatedMemoryPoolBean.addDelegate(bean, objectName);
-                                    }
-                                }
-                                platformMBeanServer.registerMBean(bean, objectName);
-                            } catch (MalformedObjectNameException | InstanceAlreadyExistsException | MBeanRegistrationException | NotCompliantMBeanException e) {
-                                e.printStackTrace(TTY.out);
-                            }
-                        }
-                    }
-                }
-            }
-            return true;
-        }
-
-        /**
-         * Tests if the given object name represents a libgraal MBean.
-         */
-        private static boolean isLibGraalMBean(ObjectName objectName) {
-            Hashtable<String, String> props = objectName.getKeyPropertyList();
-            return DOMAIN_GRAALVM_HOTSPOT.equals(objectName.getDomain()) && TYPE_LIBGRAAL.equals(props.get(ATTR_TYPE));
         }
     }
 }

@@ -47,6 +47,7 @@ import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.Truffle;
 import com.oracle.truffle.api.TruffleLanguage.ContextReference;
+import com.oracle.truffle.api.frame.FrameSlotTypeException;
 import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.nodes.DirectCallNode;
 import com.oracle.truffle.api.nodes.ExplodeLoop;
@@ -56,7 +57,6 @@ import com.oracle.truffle.api.nodes.RepeatingNode;
 import org.graalvm.wasm.Assert;
 import org.graalvm.wasm.BinaryStreamParser;
 import org.graalvm.wasm.SymbolTable;
-import org.graalvm.wasm.WasmType;
 import org.graalvm.wasm.WasmCodeEntry;
 import org.graalvm.wasm.WasmContext;
 import org.graalvm.wasm.WasmFunction;
@@ -64,12 +64,12 @@ import org.graalvm.wasm.WasmFunctionInstance;
 import org.graalvm.wasm.WasmInstance;
 import org.graalvm.wasm.WasmLanguage;
 import org.graalvm.wasm.WasmTable;
-import org.graalvm.wasm.exception.WasmExecutionException;
-import org.graalvm.wasm.exception.WasmTrap;
+import org.graalvm.wasm.WasmType;
+import org.graalvm.wasm.exception.Failure;
+import org.graalvm.wasm.exception.WasmException;
 import org.graalvm.wasm.memory.WasmMemory;
 import org.graalvm.wasm.memory.WasmMemoryException;
 
-import static org.graalvm.wasm.WasmTracing.trace;
 import static org.graalvm.wasm.constants.Instructions.BLOCK;
 import static org.graalvm.wasm.constants.Instructions.BR;
 import static org.graalvm.wasm.constants.Instructions.BR_IF;
@@ -267,7 +267,6 @@ public final class WasmBlockNode extends WasmNode implements RepeatingNode {
 
     @CompilationFinal private final int startOffset;
     @CompilationFinal private final byte returnTypeId;
-    @CompilationFinal private final byte continuationTypeId;
     @CompilationFinal private final int initialStackPointer;
     @CompilationFinal private final int initialByteConstantOffset;
     @CompilationFinal private final int initialIntConstantOffset;
@@ -278,13 +277,11 @@ public final class WasmBlockNode extends WasmNode implements RepeatingNode {
     @CompilationFinal private ContextReference<WasmContext> rawContextReference;
     @Children private Node[] children;
 
-    public WasmBlockNode(WasmInstance wasmInstance, WasmCodeEntry codeEntry, int startOffset, byte returnTypeId, byte continuationTypeId, int initialStackPointer,
-                    int initialByteConstantOffset, int initialIntConstantOffset, int initialLongConstantOffset, int initialBranchTableOffset,
-                    int initialProfileOffset) {
+    public WasmBlockNode(WasmInstance wasmInstance, WasmCodeEntry codeEntry, int startOffset, byte returnTypeId, int initialStackPointer, int initialByteConstantOffset, int initialIntConstantOffset,
+                    int initialLongConstantOffset, int initialBranchTableOffset, int initialProfileOffset) {
         super(wasmInstance, codeEntry, -1);
         this.startOffset = startOffset;
         this.returnTypeId = returnTypeId;
-        this.continuationTypeId = continuationTypeId;
         this.initialStackPointer = initialStackPointer;
         this.initialByteConstantOffset = initialByteConstantOffset;
         this.initialIntConstantOffset = initialIntConstantOffset;
@@ -343,8 +340,29 @@ public final class WasmBlockNode extends WasmNode implements RepeatingNode {
     }
 
     @Override
+    public Object initialLoopStatus() {
+        return 0;
+    }
+
+    @Override
+    public boolean executeRepeating(VirtualFrame frame) {
+        throw WasmException.create(Failure.UNSPECIFIED_INTERNAL, this, "This method should never have been called.");
+    }
+
+    @Override
+    public Integer executeRepeatingWithValue(VirtualFrame frame) {
+        final long[] stack;
+        try {
+            stack = (long[]) frame.getObject(codeEntry().stackSlot());
+        } catch (FrameSlotTypeException e) {
+            throw WasmException.create(Failure.UNSPECIFIED_INTERNAL, this, "Invalid object type in the stack slot.");
+        }
+        return execute(contextReference().get(), frame, stack);
+    }
+
+    @Override
     @ExplodeLoop(kind = ExplodeLoop.LoopExplosionKind.FULL_EXPLODE_UNTIL_RETURN)
-    public int execute(WasmContext context, VirtualFrame frame) {
+    public int execute(WasmContext context, VirtualFrame frame, long[] stack) {
         int childrenOffset = 0;
         int byteConstantOffset = initialByteConstantOffset;
         int intConstantOffset = initialIntConstantOffset;
@@ -353,7 +371,6 @@ public final class WasmBlockNode extends WasmNode implements RepeatingNode {
         int stackPointer = initialStackPointer;
         int profileOffset = initialProfileOffset;
         int offset = startOffset;
-        trace("block/if/loop EXECUTE");
         try {
             while (offset < startOffset + byteLength()) {
                 byte byteOpcode = BinaryStreamParser.peek1(codeEntry().data(), offset);
@@ -362,26 +379,22 @@ public final class WasmBlockNode extends WasmNode implements RepeatingNode {
                 CompilerAsserts.partialEvaluationConstant(offset);
                 switch (opcode) {
                     case UNREACHABLE:
-                        trace("unreachable");
-                        throw WasmTrap.create(this, "unreachable");
+                        throw WasmException.create(Failure.UNSPECIFIED_TRAP, this, "unreachable");
                     case NOP:
-                        trace("noop");
                         break;
                     case BLOCK: {
                         WasmBlockNode block = (WasmBlockNode) children[childrenOffset];
 
                         // The unwind counter indicates how many levels up we need to branch from
                         // within the block.
-                        trace("block ENTER");
-                        int unwindCounter = block.execute(context, frame);
-                        trace("block EXIT, target = %d", unwindCounter);
+                        int unwindCounter = block.execute(context, frame, stack);
                         if (unwindCounter > 0) {
                             return unwindCounter - 1;
                         }
 
                         childrenOffset++;
                         offset += block.byteLength();
-                        stackPointer += block.returnTypeLength();
+                        stackPointer += block.returnLength();
                         byteConstantOffset += block.byteConstantLength();
                         intConstantOffset += block.intConstantLength();
                         longConstantOffset += block.longConstantLength();
@@ -405,9 +418,7 @@ public final class WasmBlockNode extends WasmNode implements RepeatingNode {
                         // - A value larger than 0 indicates that we need to branch to a level
                         // "shallower" than the current loop block
                         // (break out of the loop and even further).
-                        trace("loop ENTER");
-                        int unwindCounter = ((Integer) loopNode.execute(frame));
-                        trace("loop EXIT, target = %d", unwindCounter);
+                        int unwindCounter = (Integer) loopNode.execute(frame);
                         if (unwindCounter > 0) {
                             return unwindCounter - 1;
                         }
@@ -416,7 +427,7 @@ public final class WasmBlockNode extends WasmNode implements RepeatingNode {
 
                         childrenOffset++;
                         offset += loopBody.byteLength();
-                        stackPointer += loopBody.returnTypeLength();
+                        stackPointer += loopBody.returnLength();
                         byteConstantOffset += loopBody.byteConstantLength();
                         intConstantOffset += loopBody.intConstantLength();
                         longConstantOffset += loopBody.longConstantLength();
@@ -427,15 +438,13 @@ public final class WasmBlockNode extends WasmNode implements RepeatingNode {
                     case IF: {
                         WasmIfNode ifNode = (WasmIfNode) children[childrenOffset];
                         stackPointer--;
-                        trace("if ENTER");
-                        int unwindCounter = ifNode.execute(context, frame);
-                        trace("if EXIT, target = %d", unwindCounter);
+                        int unwindCounter = ifNode.execute(context, frame, stack);
                         if (unwindCounter > 0) {
                             return unwindCounter - 1;
                         }
                         childrenOffset++;
                         offset += ifNode.byteLength();
-                        stackPointer += ifNode.returnTypeLength();
+                        stackPointer += ifNode.returnLength();
                         byteConstantOffset += ifNode.byteConstantLength();
                         intConstantOffset += ifNode.intConstantLength();
                         longConstantOffset += ifNode.longConstantLength();
@@ -466,11 +475,9 @@ public final class WasmBlockNode extends WasmNode implements RepeatingNode {
                         intConstantOffset++;
                         // endregion
 
-                        trace("br, target = %d", unwindCounter);
-
                         // Populate the stack with the return values of the current block (the one
                         // we are escaping from).
-                        unwindStack(frame, stackPointer, continuationStackPointer, targetBlockReturnLength);
+                        unwindStack(stack, stackPointer, continuationStackPointer, targetBlockReturnLength);
 
                         return unwindCounter;
                     }
@@ -492,15 +499,13 @@ public final class WasmBlockNode extends WasmNode implements RepeatingNode {
                         intConstantOffset++;
                         // endregion
 
-                        boolean condition = codeEntry().profileCondition(profileOffset, popCondition(frame, stackPointer));
+                        boolean condition = codeEntry().profileCondition(profileOffset, popBoolean(stack, stackPointer));
                         ++profileOffset;
 
                         if (condition) {
-                            trace("br_if, target = %d", unwindCounter);
-
                             // Populate the stack with the return values of the current block (the
                             // one we are escaping from).
-                            unwindStack(frame, stackPointer, continuationStackPointer, targetBlockReturnLength);
+                            unwindStack(stack, stackPointer, continuationStackPointer, targetBlockReturnLength);
 
                             return unwindCounter;
                         }
@@ -508,7 +513,7 @@ public final class WasmBlockNode extends WasmNode implements RepeatingNode {
                     }
                     case BR_TABLE: {
                         stackPointer--;
-                        int index = popInt(frame, stackPointer);
+                        int index = popInt(stack, stackPointer);
                         int[] table = codeEntry().branchTable(branchTableOffset);
                         index = index < 0 || index >= (table.length - 1) / 2 ? (table.length - 1) / 2 - 1 : index;
                         // Technically, we should increment the branchTableOffset at this point,
@@ -520,16 +525,15 @@ public final class WasmBlockNode extends WasmNode implements RepeatingNode {
                             if (i == index) {
                                 int unwindCounter = table[1 + 2 * i];
                                 int continuationStackPointer = table[1 + 2 * i + 1];
-                                trace("br_table, target = %d", unwindCounter);
 
                                 // Populate the stack with the return values of the current block
                                 // (the one we are escaping from).
-                                unwindStack(frame, stackPointer, continuationStackPointer, returnTypeLength);
+                                unwindStack(stack, stackPointer, continuationStackPointer, returnTypeLength);
 
                                 return unwindCounter;
                             }
                         }
-                        throw WasmExecutionException.create(this, "Should not reach here");
+                        throw WasmException.create(Failure.UNSPECIFIED_INTERNAL, this, "Should not reach here");
                     }
                     case RETURN: {
                         // A return statement causes the termination of the current function, i.e.
@@ -543,8 +547,7 @@ public final class WasmBlockNode extends WasmNode implements RepeatingNode {
                         int rootBlockReturnLength = codeEntry().intConstant(intConstantOffset);
                         intConstantOffset++;
                         // endregion
-                        unwindStack(frame, stackPointer, 0, rootBlockReturnLength);
-                        trace("return");
+                        unwindStack(stack, stackPointer, 0, rootBlockReturnLength);
                         return unwindCounter;
                     }
                     case CALL: {
@@ -563,33 +566,31 @@ public final class WasmBlockNode extends WasmNode implements RepeatingNode {
                         DirectCallNode callNode = (DirectCallNode) children[childrenOffset];
                         childrenOffset++;
 
-                        Object[] args = createArgumentsForCall(frame, function.typeIndex(), numArgs, stackPointer);
+                        Object[] args = createArgumentsForCall(stack, function.typeIndex(), numArgs, stackPointer);
                         stackPointer -= args.length;
 
-                        trace("direct call to function %s (%d args)", function, args.length);
                         Object result = callNode.call(args);
-                        trace("return from direct call to function %s : %s", function, result);
                         // At the moment, WebAssembly functions may return up to one value.
                         // As per the WebAssembly specification,
                         // this restriction may be lifted in the future.
                         switch (returnType) {
                             case WasmType.I32_TYPE: {
-                                pushInt(frame, stackPointer, (int) result);
+                                pushInt(stack, stackPointer, (int) result);
                                 stackPointer++;
                                 break;
                             }
                             case WasmType.I64_TYPE: {
-                                push(frame, stackPointer, (long) result);
+                                push(stack, stackPointer, (long) result);
                                 stackPointer++;
                                 break;
                             }
                             case WasmType.F32_TYPE: {
-                                pushFloat(frame, stackPointer, (float) result);
+                                pushFloat(stack, stackPointer, (float) result);
                                 stackPointer++;
                                 break;
                             }
                             case WasmType.F64_TYPE: {
-                                pushDouble(frame, stackPointer, (double) result);
+                                pushDouble(stack, stackPointer, (double) result);
                                 stackPointer++;
                                 break;
                             }
@@ -598,7 +599,7 @@ public final class WasmBlockNode extends WasmNode implements RepeatingNode {
                                 break;
                             }
                             default: {
-                                throw WasmTrap.format(this, "Unknown return type: %d", returnType);
+                                throw WasmException.format(Failure.UNSPECIFIED_TRAP, this, "Unknown return type: %d", returnType);
                             }
                         }
 
@@ -610,15 +611,15 @@ public final class WasmBlockNode extends WasmNode implements RepeatingNode {
                         final SymbolTable symtab = instance().symbolTable();
                         final WasmTable table = instance().table();
                         final Object[] elements = table.elements();
-                        final int elementIndex = popInt(frame, stackPointer);
+                        final int elementIndex = popInt(stack, stackPointer);
                         if (elementIndex < 0 || elementIndex >= elements.length) {
-                            throw WasmTrap.format(this, "Element index '%d' out of table bounds.", elementIndex);
+                            throw WasmException.format(Failure.UNSPECIFIED_TRAP, this, "Element index '%d' out of table bounds.", elementIndex);
                         }
                         // Currently, table elements may only be functions.
                         // We can add a check here when this changes in the future.
                         final Object element = elements[elementIndex];
                         if (element == null) {
-                            throw WasmTrap.format(this, "Table element at index %d is uninitialized.", elementIndex);
+                            throw WasmException.format(Failure.UNSPECIFIED_TRAP, this, "Table element at index %d is uninitialized.", elementIndex);
                         }
                         final WasmFunction function;
                         final CallTarget target;
@@ -627,7 +628,7 @@ public final class WasmBlockNode extends WasmNode implements RepeatingNode {
                             function = functionInstance.function();
                             target = functionInstance.target();
                         } else {
-                            throw WasmTrap.format(this, "Unknown table element type: %s", element);
+                            throw WasmException.format(Failure.UNSPECIFIED_TRAP, this, "Unknown table element type: %s", element);
                         }
 
                         // Extract the function type index.
@@ -650,7 +651,7 @@ public final class WasmBlockNode extends WasmNode implements RepeatingNode {
                             // specification seems to allow multiple definitions
                             // of the same type.
                             // We should refine the check.
-                            throw WasmTrap.format(this, "Actual (type %d of function %s) and expected (type %d in module %s) types differ in the indirect call.",
+                            throw WasmException.format(Failure.UNSPECIFIED_TRAP, this, "Actual (type %d of function %s) and expected (type %d in module %s) types differ in the indirect call.",
                                             function.typeIndex(), function.name(), expectedFunctionTypeIndex, instance().name());
                         }
 
@@ -659,34 +660,32 @@ public final class WasmBlockNode extends WasmNode implements RepeatingNode {
                         childrenOffset++;
 
                         int numArgs = instance().symbolTable().functionTypeArgumentCount(expectedFunctionTypeIndex);
-                        Object[] args = createArgumentsForCall(frame, expectedFunctionTypeIndex, numArgs, stackPointer);
+                        Object[] args = createArgumentsForCall(stack, expectedFunctionTypeIndex, numArgs, stackPointer);
                         stackPointer -= args.length;
 
-                        trace("indirect call to function %s (%d args)", function, args.length);
                         final Object result = callNode.execute(target, args);
-                        trace("return from indirect_call to function %s : %s", function, result);
                         // At the moment, WebAssembly functions may return up to one value.
                         // As per the WebAssembly specification, this restriction may be lifted in
                         // the future.
                         int returnType = instance().symbolTable().functionTypeReturnType(expectedFunctionTypeIndex);
                         switch (returnType) {
                             case WasmType.I32_TYPE: {
-                                pushInt(frame, stackPointer, (int) result);
+                                pushInt(stack, stackPointer, (int) result);
                                 stackPointer++;
                                 break;
                             }
                             case WasmType.I64_TYPE: {
-                                push(frame, stackPointer, (long) result);
+                                push(stack, stackPointer, (long) result);
                                 stackPointer++;
                                 break;
                             }
                             case WasmType.F32_TYPE: {
-                                pushFloat(frame, stackPointer, (float) result);
+                                pushFloat(stack, stackPointer, (float) result);
                                 stackPointer++;
                                 break;
                             }
                             case WasmType.F64_TYPE: {
-                                pushDouble(frame, stackPointer, (double) result);
+                                pushDouble(stack, stackPointer, (double) result);
                                 stackPointer++;
                                 break;
                             }
@@ -695,7 +694,7 @@ public final class WasmBlockNode extends WasmNode implements RepeatingNode {
                                 break;
                             }
                             default: {
-                                throw WasmTrap.format(this, "Unknown return type: %d", returnType);
+                                throw WasmException.format(Failure.UNSPECIFIED_TRAP, this, "Unknown return type: %d", returnType);
                             }
                         }
 
@@ -703,20 +702,18 @@ public final class WasmBlockNode extends WasmNode implements RepeatingNode {
                     }
                     case DROP: {
                         stackPointer--;
-                        long x = pop(frame, stackPointer);
-                        trace("drop (raw long value = 0x%016X)", x);
+                        pop(stack, stackPointer);
                         break;
                     }
                     case SELECT: {
                         stackPointer--;
-                        int cond = popInt(frame, stackPointer);
+                        int cond = popInt(stack, stackPointer);
                         stackPointer--;
-                        long val2 = pop(frame, stackPointer);
+                        long val2 = pop(stack, stackPointer);
                         stackPointer--;
-                        long val1 = pop(frame, stackPointer);
-                        push(frame, stackPointer, cond != 0 ? val1 : val2);
+                        long val1 = pop(stack, stackPointer);
+                        push(stack, stackPointer, cond != 0 ? val1 : val2);
                         stackPointer++;
-                        trace("select 0x%08X ? 0x%08X : 0x%08X = 0x%08X", cond, val1, val2, cond != 0 ? val1 : val2);
                         break;
                     }
                     case LOCAL_GET: {
@@ -727,40 +724,8 @@ public final class WasmBlockNode extends WasmNode implements RepeatingNode {
                         byteConstantOffset += byteConstantDelta(offset);
                         offset += offsetDelta;
                         // endregion
-                        byte type = codeEntry().localType(index);
-                        switch (type) {
-                            case WasmType.I32_TYPE: {
-                                int value = getInt(frame, index);
-                                pushInt(frame, stackPointer, value);
-                                stackPointer++;
-                                trace("local.get %d, value = 0x%08X (%d) [i32]", index, value, value);
-                                break;
-                            }
-                            case WasmType.I64_TYPE: {
-                                long value = getLong(frame, index);
-                                push(frame, stackPointer, value);
-                                stackPointer++;
-                                trace("local.get %d, value = 0x%016X (%d) [i64]", index, value, value);
-                                break;
-                            }
-                            case WasmType.F32_TYPE: {
-                                float value = getFloat(frame, index);
-                                pushFloat(frame, stackPointer, value);
-                                stackPointer++;
-                                trace("local.get %d, value = %f [f32]", index, value);
-                                break;
-                            }
-                            case WasmType.F64_TYPE: {
-                                double value = getDouble(frame, index);
-                                pushDouble(frame, stackPointer, value);
-                                stackPointer++;
-                                trace("local.get %d, value = %f [f64]", index, value);
-                                break;
-                            }
-                            default: {
-                                throw WasmTrap.create(this, "Local variable cannot have the void type.");
-                            }
-                        }
+                        local_get(frame, stack, stackPointer, index);
+                        stackPointer++;
                         break;
                     }
                     case LOCAL_SET: {
@@ -771,40 +736,8 @@ public final class WasmBlockNode extends WasmNode implements RepeatingNode {
                         byteConstantOffset += byteConstantDelta(offset);
                         offset += offsetDelta;
                         // endregion
-                        byte type = codeEntry().localType(index);
-                        switch (type) {
-                            case WasmType.I32_TYPE: {
-                                stackPointer--;
-                                int value = popInt(frame, stackPointer);
-                                setInt(frame, index, value);
-                                trace("local.set %d, value = 0x%08X (%d) [i32]", index, value, value);
-                                break;
-                            }
-                            case WasmType.I64_TYPE: {
-                                stackPointer--;
-                                long value = pop(frame, stackPointer);
-                                setLong(frame, index, value);
-                                trace("local.set %d, value = 0x%016X (%d) [i64]", index, value, value);
-                                break;
-                            }
-                            case WasmType.F32_TYPE: {
-                                stackPointer--;
-                                float value = popAsFloat(frame, stackPointer);
-                                setFloat(frame, index, value);
-                                trace("local.set %d, value = %f [f32]", index, value);
-                                break;
-                            }
-                            case WasmType.F64_TYPE: {
-                                stackPointer--;
-                                double value = popAsDouble(frame, stackPointer);
-                                setDouble(frame, index, value);
-                                trace("local.set %d, value = %f [f64]", index, value);
-                                break;
-                            }
-                            default: {
-                                throw WasmTrap.create(this, "Local variable cannot have the void type.");
-                            }
-                        }
+                        stackPointer--;
+                        local_set(frame, stack, stackPointer, index);
                         break;
                     }
                     case LOCAL_TEE: {
@@ -815,48 +748,7 @@ public final class WasmBlockNode extends WasmNode implements RepeatingNode {
                         byteConstantOffset += byteConstantDelta(offset);
                         offset += offsetDelta;
                         // endregion
-                        byte type = codeEntry().localType(index);
-                        switch (type) {
-                            case WasmType.I32_TYPE: {
-                                stackPointer--;
-                                int value = popInt(frame, stackPointer);
-                                pushInt(frame, stackPointer, value);
-                                stackPointer++;
-                                setInt(frame, index, value);
-                                trace("local.tee %d, value = 0x%08X (%d) [i32]", index, value, value);
-                                break;
-                            }
-                            case WasmType.I64_TYPE: {
-                                stackPointer--;
-                                long value = pop(frame, stackPointer);
-                                push(frame, stackPointer, value);
-                                stackPointer++;
-                                setLong(frame, index, value);
-                                trace("local.tee %d, value = 0x%016X (%d) [i64]", index, value, value);
-                                break;
-                            }
-                            case WasmType.F32_TYPE: {
-                                stackPointer--;
-                                float value = popAsFloat(frame, stackPointer);
-                                pushFloat(frame, stackPointer, value);
-                                stackPointer++;
-                                setFloat(frame, index, value);
-                                trace("local.tee %d, value = %f [f32]", index, value);
-                                break;
-                            }
-                            case WasmType.F64_TYPE: {
-                                stackPointer--;
-                                double value = popAsDouble(frame, stackPointer);
-                                pushDouble(frame, stackPointer, value);
-                                stackPointer++;
-                                setDouble(frame, index, value);
-                                trace("local.tee %d, value = %f [f64]", index, value);
-                                break;
-                            }
-                            default: {
-                                throw WasmTrap.create(this, "Local variable cannot have the void type.");
-                            }
-                        }
+                        local_tee(frame, stack, stackPointer - 1, index);
                         break;
                     }
                     case GLOBAL_GET: {
@@ -867,45 +759,8 @@ public final class WasmBlockNode extends WasmNode implements RepeatingNode {
                         byteConstantOffset += byteConstantDelta(offset);
                         offset += offsetDelta;
                         // endregion
-
-                        byte type = instance().symbolTable().globalValueType(index);
-                        switch (type) {
-                            case WasmType.I32_TYPE: {
-                                int address = instance().globalAddress(index);
-                                int value = context.globals().loadAsInt(address);
-                                pushInt(frame, stackPointer, value);
-                                stackPointer++;
-                                trace("global.get %d, value = 0x%08X (%d) [i32]", index, value, value);
-                                break;
-                            }
-                            case WasmType.I64_TYPE: {
-                                int address = instance().globalAddress(index);
-                                long value = context.globals().loadAsLong(address);
-                                push(frame, stackPointer, value);
-                                stackPointer++;
-                                trace("global.get %d, value = 0x%016X (%d) [i64]", index, value, value);
-                                break;
-                            }
-                            case WasmType.F32_TYPE: {
-                                int address = instance().globalAddress(index);
-                                int value = context.globals().loadAsInt(address);
-                                pushInt(frame, stackPointer, value);
-                                stackPointer++;
-                                trace("global.get %d, value = %f [f32]", index, Float.intBitsToFloat(value));
-                                break;
-                            }
-                            case WasmType.F64_TYPE: {
-                                int address = instance().globalAddress(index);
-                                long value = context.globals().loadAsLong(address);
-                                push(frame, stackPointer, value);
-                                stackPointer++;
-                                trace("global.get %d, value = %f [f64]", index, Double.longBitsToDouble(value));
-                                break;
-                            }
-                            default: {
-                                throw WasmTrap.create(this, "Local variable cannot have the void type.");
-                            }
-                        }
+                        global_get(context, stack, stackPointer, index);
+                        stackPointer++;
                         break;
                     }
                     case GLOBAL_SET: {
@@ -916,48 +771,8 @@ public final class WasmBlockNode extends WasmNode implements RepeatingNode {
                         byteConstantOffset += byteConstantDelta(offset);
                         offset += offsetDelta;
                         // endregion
-
-                        byte type = instance().symbolTable().globalValueType(index);
-                        // For global.set, we don't need to make sure that the referenced global is
-                        // mutable.
-                        // This is taken care of by validation during wat to wasm compilation.
-                        switch (type) {
-                            case WasmType.I32_TYPE: {
-                                stackPointer--;
-                                int value = popInt(frame, stackPointer);
-                                int address = instance().globalAddress(index);
-                                context.globals().storeInt(address, value);
-                                trace("global.set %d, value = 0x%08X (%d) [i32]", index, value, value);
-                                break;
-                            }
-                            case WasmType.I64_TYPE: {
-                                stackPointer--;
-                                long value = pop(frame, stackPointer);
-                                int address = instance().globalAddress(index);
-                                context.globals().storeLong(address, value);
-                                trace("global.set %d, value = 0x%016X (%d) [i64]", index, value, value);
-                                break;
-                            }
-                            case WasmType.F32_TYPE: {
-                                stackPointer--;
-                                int value = popInt(frame, stackPointer);
-                                int address = instance().globalAddress(index);
-                                context.globals().storeFloatWithInt(address, value);
-                                trace("global.set %d, value = %f [f32]", index, Float.intBitsToFloat(value));
-                                break;
-                            }
-                            case WasmType.F64_TYPE: {
-                                stackPointer--;
-                                long value = pop(frame, stackPointer);
-                                int address = instance().globalAddress(index);
-                                context.globals().storeDoubleWithLong(address, value);
-                                trace("global.set %d, value = %f [f64]", index, Double.longBitsToDouble(value));
-                                break;
-                            }
-                            default: {
-                                throw WasmTrap.create(this, "Local variable cannot have the void type.");
-                            }
-                        }
+                        stackPointer--;
+                        global_set(context, stack, stackPointer, index);
                         break;
                     }
                     case I32_LOAD:
@@ -987,91 +802,7 @@ public final class WasmBlockNode extends WasmNode implements RepeatingNode {
                         offset += offsetDelta;
                         // endregion
 
-                        stackPointer--;
-                        int baseAddress = popInt(frame, stackPointer);
-                        int address = baseAddress + memOffset;
-                        WasmMemory memory = instance().memory();
-
-                        try {
-                            switch (opcode) {
-                                case I32_LOAD: {
-                                    int value = memory.load_i32(this, address);
-                                    pushInt(frame, stackPointer, value);
-                                    break;
-                                }
-                                case I64_LOAD: {
-                                    long value = memory.load_i64(this, address);
-                                    push(frame, stackPointer, value);
-                                    break;
-                                }
-                                case F32_LOAD: {
-                                    float value = memory.load_f32(this, address);
-                                    pushFloat(frame, stackPointer, value);
-                                    break;
-                                }
-                                case F64_LOAD: {
-                                    double value = memory.load_f64(this, address);
-                                    pushDouble(frame, stackPointer, value);
-                                    break;
-                                }
-                                case I32_LOAD8_S: {
-                                    int value = memory.load_i32_8s(this, address);
-                                    pushInt(frame, stackPointer, value);
-                                    break;
-                                }
-                                case I32_LOAD8_U: {
-                                    int value = memory.load_i32_8u(this, address);
-                                    pushInt(frame, stackPointer, value);
-                                    break;
-                                }
-                                case I32_LOAD16_S: {
-                                    int value = memory.load_i32_16s(this, address);
-                                    pushInt(frame, stackPointer, value);
-                                    break;
-                                }
-                                case I32_LOAD16_U: {
-                                    int value = memory.load_i32_16u(this, address);
-                                    pushInt(frame, stackPointer, value);
-                                    break;
-                                }
-                                case I64_LOAD8_S: {
-                                    long value = memory.load_i64_8s(this, address);
-                                    push(frame, stackPointer, value);
-                                    break;
-                                }
-                                case I64_LOAD8_U: {
-                                    long value = memory.load_i64_8u(this, address);
-                                    push(frame, stackPointer, value);
-                                    break;
-                                }
-                                case I64_LOAD16_S: {
-                                    long value = memory.load_i64_16s(this, address);
-                                    push(frame, stackPointer, value);
-                                    break;
-                                }
-                                case I64_LOAD16_U: {
-                                    long value = memory.load_i64_16u(this, address);
-                                    push(frame, stackPointer, value);
-                                    break;
-                                }
-                                case I64_LOAD32_S: {
-                                    long value = memory.load_i64_32s(this, address);
-                                    push(frame, stackPointer, value);
-                                    break;
-                                }
-                                case I64_LOAD32_U: {
-                                    long value = memory.load_i64_32u(this, address);
-                                    push(frame, stackPointer, value);
-                                    break;
-                                }
-                                default: {
-                                    throw WasmTrap.format(this, "Unknown load opcode: %d", opcode);
-                                }
-                            }
-                        } catch (WasmMemoryException e) {
-                            throw WasmTrap.create(this, "memory address out-of-bounds");
-                        }
-                        stackPointer++;
+                        load(stack, stackPointer - 1, opcode, memOffset);
                         break;
                     }
                     case I32_STORE:
@@ -1096,123 +827,31 @@ public final class WasmBlockNode extends WasmNode implements RepeatingNode {
                         offset += offsetDelta;
                         // endregion
 
-                        WasmMemory memory = instance().memory();
-
-                        try {
-                            switch (opcode) {
-                                case I32_STORE: {
-                                    stackPointer--;
-                                    int value = popInt(frame, stackPointer);
-                                    stackPointer--;
-                                    int baseAddress = popInt(frame, stackPointer);
-                                    int address = baseAddress + memOffset;
-                                    memory.store_i32(this, address, value);
-                                    break;
-                                }
-                                case I64_STORE: {
-                                    stackPointer--;
-                                    long value = pop(frame, stackPointer);
-                                    stackPointer--;
-                                    int baseAddress = popInt(frame, stackPointer);
-                                    int address = baseAddress + memOffset;
-                                    memory.store_i64(this, address, value);
-                                    break;
-                                }
-                                case F32_STORE: {
-                                    stackPointer--;
-                                    float value = popAsFloat(frame, stackPointer);
-                                    stackPointer--;
-                                    int baseAddress = popInt(frame, stackPointer);
-                                    int address = baseAddress + memOffset;
-                                    memory.store_f32(this, address, value);
-                                    break;
-                                }
-                                case F64_STORE: {
-                                    stackPointer--;
-                                    double value = popAsDouble(frame, stackPointer);
-                                    stackPointer--;
-                                    int baseAddress = popInt(frame, stackPointer);
-                                    int address = baseAddress + memOffset;
-                                    memory.store_f64(this, address, value);
-                                    break;
-                                }
-                                case I32_STORE_8: {
-                                    stackPointer--;
-                                    int value = popInt(frame, stackPointer);
-                                    stackPointer--;
-                                    int baseAddress = popInt(frame, stackPointer);
-                                    int address = baseAddress + memOffset;
-                                    memory.store_i32_8(this, address, (byte) value);
-                                    break;
-                                }
-                                case I32_STORE_16: {
-                                    stackPointer--;
-                                    int value = popInt(frame, stackPointer);
-                                    stackPointer--;
-                                    int baseAddress = popInt(frame, stackPointer);
-                                    int address = baseAddress + memOffset;
-                                    memory.store_i32_16(this, address, (short) value);
-                                    break;
-                                }
-                                case I64_STORE_8: {
-                                    stackPointer--;
-                                    long value = pop(frame, stackPointer);
-                                    stackPointer--;
-                                    int baseAddress = popInt(frame, stackPointer);
-                                    int address = baseAddress + memOffset;
-                                    memory.store_i64_8(this, address, (byte) value);
-                                    break;
-                                }
-                                case I64_STORE_16: {
-                                    stackPointer--;
-                                    long value = pop(frame, stackPointer);
-                                    stackPointer--;
-                                    int baseAddress = popInt(frame, stackPointer);
-                                    int address = baseAddress + memOffset;
-                                    memory.store_i64_16(this, address, (short) value);
-                                    break;
-                                }
-                                case I64_STORE_32: {
-                                    stackPointer--;
-                                    long value = pop(frame, stackPointer);
-                                    stackPointer--;
-                                    int baseAddress = popInt(frame, stackPointer);
-                                    int address = baseAddress + memOffset;
-                                    memory.store_i64_32(this, address, (int) value);
-                                    break;
-                                }
-                                default: {
-                                    throw WasmTrap.format(this, "Unknown store opcode: %d", opcode);
-                                }
-                            }
-                        } catch (WasmMemoryException e) {
-                            throw WasmTrap.create(this, "memory address out-of-bounds");
-                        }
+                        store(stack, stackPointer, opcode, memOffset);
+                        stackPointer -= 2;
 
                         break;
                     }
                     case MEMORY_SIZE: {
                         // Skip the 0x00 constant.
                         offset++;
-                        trace("memory_size");
                         int pageSize = instance().memory().pageSize();
-                        pushInt(frame, stackPointer, pageSize);
+                        pushInt(stack, stackPointer, pageSize);
                         stackPointer++;
                         break;
                     }
                     case MEMORY_GROW: {
                         // Skip the 0x00 constant.
                         offset++;
-                        trace("memory_grow");
                         stackPointer--;
-                        int extraSize = popInt(frame, stackPointer);
+                        int extraSize = popInt(stack, stackPointer);
                         final WasmMemory memory = instance().memory();
                         int pageSize = memory.pageSize();
                         if (memory.grow(extraSize)) {
-                            pushInt(frame, stackPointer, pageSize);
+                            pushInt(stack, stackPointer, pageSize);
                             stackPointer++;
                         } else {
-                            pushInt(frame, stackPointer, -1);
+                            pushInt(stack, stackPointer, -1);
                             stackPointer++;
                         }
                         break;
@@ -1225,9 +864,8 @@ public final class WasmBlockNode extends WasmNode implements RepeatingNode {
                         byteConstantOffset += byteConstantDelta(offset);
                         offset += offsetDelta;
                         // endregion
-                        pushInt(frame, stackPointer, value);
+                        pushInt(stack, stackPointer, value);
                         stackPointer++;
-                        trace("i32.const 0x%08X (%d)", value, value);
                         break;
                     }
                     case I64_CONST: {
@@ -1238,1221 +876,1945 @@ public final class WasmBlockNode extends WasmNode implements RepeatingNode {
                         byteConstantOffset += byteConstantDelta(offset);
                         offset += offsetDelta;
                         // endregion
-                        push(frame, stackPointer, value);
+                        push(stack, stackPointer, value);
                         stackPointer++;
-                        trace("i64.const 0x%016X (%d)", value, value);
                         break;
                     }
-                    case I32_EQZ: {
-                        stackPointer--;
-                        int x = popInt(frame, stackPointer);
-                        pushInt(frame, stackPointer, x == 0 ? 1 : 0);
-                        stackPointer++;
-                        trace("0x%08X == 0x%08X ? [i32]", x, 0);
+                    case I32_EQZ:
+                        i32_eqz(stack, stackPointer);
                         break;
-                    }
-                    case I32_EQ: {
+                    case I32_EQ:
+                        i32_eq(stack, stackPointer);
                         stackPointer--;
-                        int x = popInt(frame, stackPointer);
-                        stackPointer--;
-                        int y = popInt(frame, stackPointer);
-                        pushInt(frame, stackPointer, y == x ? 1 : 0);
-                        stackPointer++;
-                        trace("0x%08X == 0x%08X ? [i32]", y, x);
                         break;
-                    }
-                    case I32_NE: {
+                    case I32_NE:
+                        i32_ne(stack, stackPointer);
                         stackPointer--;
-                        int x = popInt(frame, stackPointer);
-                        stackPointer--;
-                        int y = popInt(frame, stackPointer);
-                        pushInt(frame, stackPointer, y != x ? 1 : 0);
-                        stackPointer++;
-                        trace("0x%08X != 0x%08X ? [i32]", y, x);
                         break;
-                    }
-                    case I32_LT_S: {
+                    case I32_LT_S:
+                        i32_lt_s(stack, stackPointer);
                         stackPointer--;
-                        int x = popInt(frame, stackPointer);
-                        stackPointer--;
-                        int y = popInt(frame, stackPointer);
-                        pushInt(frame, stackPointer, y < x ? 1 : 0);
-                        stackPointer++;
-                        trace("0x%08X < 0x%08X ? [i32]", y, x);
                         break;
-                    }
-                    case I32_LT_U: {
+                    case I32_LT_U:
+                        i32_lt_u(stack, stackPointer);
                         stackPointer--;
-                        int x = popInt(frame, stackPointer);
-                        stackPointer--;
-                        int y = popInt(frame, stackPointer);
-                        pushInt(frame, stackPointer, Integer.compareUnsigned(y, x) < 0 ? 1 : 0);
-                        stackPointer++;
-                        trace("0x%08X <u 0x%08X ? [i32]", y, x);
                         break;
-                    }
-                    case I32_GT_S: {
+                    case I32_GT_S:
+                        i32_gt_s(stack, stackPointer);
                         stackPointer--;
-                        int x = popInt(frame, stackPointer);
-                        stackPointer--;
-                        int y = popInt(frame, stackPointer);
-                        pushInt(frame, stackPointer, y > x ? 1 : 0);
-                        stackPointer++;
-                        trace("0x%08X > 0x%08X ? [i32]", y, x);
                         break;
-                    }
-                    case I32_GT_U: {
+                    case I32_GT_U:
+                        i32_gt_u(stack, stackPointer);
                         stackPointer--;
-                        int x = popInt(frame, stackPointer);
-                        stackPointer--;
-                        int y = popInt(frame, stackPointer);
-                        pushInt(frame, stackPointer, Integer.compareUnsigned(y, x) > 0 ? 1 : 0);
-                        stackPointer++;
-                        trace("0x%08X >u 0x%08X ? [i32]", y, x);
                         break;
-                    }
-                    case I32_LE_S: {
+                    case I32_LE_S:
+                        i32_le_s(stack, stackPointer);
                         stackPointer--;
-                        int x = popInt(frame, stackPointer);
-                        stackPointer--;
-                        int y = popInt(frame, stackPointer);
-                        pushInt(frame, stackPointer, y <= x ? 1 : 0);
-                        stackPointer++;
-                        trace("0x%08X <= 0x%08X ? [i32]", y, x);
                         break;
-                    }
-                    case I32_LE_U: {
-                        stackPointer--;
-                        int x = popInt(frame, stackPointer);
+                    case I32_LE_U:
+                        i32_le_u(stack, stackPointer);
                         stackPointer--;
-                        int y = popInt(frame, stackPointer);
-                        pushInt(frame, stackPointer, Integer.compareUnsigned(y, x) <= 0 ? 1 : 0);
-                        stackPointer++;
-                        trace("0x%08X <=u 0x%08X ? [i32]", y, x);
                         break;
-                    }
-                    case I32_GE_S: {
-                        stackPointer--;
-                        int x = popInt(frame, stackPointer);
+                    case I32_GE_S:
+                        i32_ge_s(stack, stackPointer);
                         stackPointer--;
-                        int y = popInt(frame, stackPointer);
-                        pushInt(frame, stackPointer, y >= x ? 1 : 0);
-                        stackPointer++;
-                        trace("0x%08X >= 0x%08X ? [i32]", y, x);
                         break;
-                    }
-                    case I32_GE_U: {
-                        stackPointer--;
-                        int x = popInt(frame, stackPointer);
+                    case I32_GE_U:
+                        i32_ge_u(stack, stackPointer);
                         stackPointer--;
-                        int y = popInt(frame, stackPointer);
-                        pushInt(frame, stackPointer, Integer.compareUnsigned(y, x) >= 0 ? 1 : 0);
-                        stackPointer++;
-                        trace("0x%08X >=u 0x%08X ? [i32]", y, x);
                         break;
-                    }
-                    case I64_EQZ: {
-                        stackPointer--;
-                        long x = pop(frame, stackPointer);
-                        pushInt(frame, stackPointer, x == 0 ? 1 : 0);
-                        stackPointer++;
-                        trace("0x%016X == 0x%016X ? [i64]", x, 0);
+                    case I64_EQZ:
+                        i64_eqz(stack, stackPointer);
                         break;
-                    }
-                    case I64_EQ: {
+                    case I64_EQ:
+                        i64_eq(stack, stackPointer);
                         stackPointer--;
-                        long x = pop(frame, stackPointer);
-                        stackPointer--;
-                        long y = pop(frame, stackPointer);
-                        pushInt(frame, stackPointer, y == x ? 1 : 0);
-                        stackPointer++;
-                        trace("0x%016X == 0x%016X ? [i64]", y, x);
                         break;
-                    }
-                    case I64_NE: {
+                    case I64_NE:
+                        i64_ne(stack, stackPointer);
                         stackPointer--;
-                        long x = pop(frame, stackPointer);
-                        stackPointer--;
-                        long y = pop(frame, stackPointer);
-                        pushInt(frame, stackPointer, y != x ? 1 : 0);
-                        stackPointer++;
-                        trace("0x%016X != 0x%016X ? [i64]", y, x);
                         break;
-                    }
-                    case I64_LT_S: {
+                    case I64_LT_S:
+                        i64_lt_s(stack, stackPointer);
                         stackPointer--;
-                        long x = pop(frame, stackPointer);
-                        stackPointer--;
-                        long y = pop(frame, stackPointer);
-                        pushInt(frame, stackPointer, y < x ? 1 : 0);
-                        stackPointer++;
-                        trace("0x%016X < 0x%016X ? [i64]", y, x);
                         break;
-                    }
-                    case I64_LT_U: {
+                    case I64_LT_U:
+                        i64_lt_u(stack, stackPointer);
                         stackPointer--;
-                        long x = pop(frame, stackPointer);
-                        stackPointer--;
-                        long y = pop(frame, stackPointer);
-                        pushInt(frame, stackPointer, Long.compareUnsigned(y, x) < 0 ? 1 : 0);
-                        stackPointer++;
-                        trace("0x%016X <u 0x%016X ? [i64]", y, x);
                         break;
-                    }
-                    case I64_GT_S: {
-                        stackPointer--;
-                        long x = pop(frame, stackPointer);
+                    case I64_GT_S:
+                        i64_gt_s(stack, stackPointer);
                         stackPointer--;
-                        long y = pop(frame, stackPointer);
-                        pushInt(frame, stackPointer, y > x ? 1 : 0);
-                        stackPointer++;
-                        trace("0x%016X > 0x%016X ? [i64]", y, x);
                         break;
-                    }
-                    case I64_GT_U: {
+                    case I64_GT_U:
+                        i64_gt_u(stack, stackPointer);
                         stackPointer--;
-                        long x = pop(frame, stackPointer);
-                        stackPointer--;
-                        long y = pop(frame, stackPointer);
-                        pushInt(frame, stackPointer, Long.compareUnsigned(y, x) > 0 ? 1 : 0);
-                        stackPointer++;
-                        trace("0x%016X >u 0x%016X ? [i64]", y, x);
                         break;
-                    }
-                    case I64_LE_S: {
+                    case I64_LE_S:
+                        i64_le_s(stack, stackPointer);
                         stackPointer--;
-                        long x = pop(frame, stackPointer);
-                        stackPointer--;
-                        long y = pop(frame, stackPointer);
-                        pushInt(frame, stackPointer, y <= x ? 1 : 0);
-                        stackPointer++;
-                        trace("0x%016X <= 0x%016X ? [i64]", y, x);
                         break;
-                    }
-                    case I64_LE_U: {
+                    case I64_LE_U:
+                        i64_le_u(stack, stackPointer);
                         stackPointer--;
-                        long x = pop(frame, stackPointer);
-                        stackPointer--;
-                        long y = pop(frame, stackPointer);
-                        pushInt(frame, stackPointer, Long.compareUnsigned(y, x) <= 0 ? 1 : 0);
-                        stackPointer++;
-                        trace("0x%016X <=u 0x%016X ? [i64]", y, x);
                         break;
-                    }
-                    case I64_GE_S: {
+                    case I64_GE_S:
+                        i64_ge_s(stack, stackPointer);
                         stackPointer--;
-                        long x = pop(frame, stackPointer);
-                        stackPointer--;
-                        long y = pop(frame, stackPointer);
-                        pushInt(frame, stackPointer, y >= x ? 1 : 0);
-                        stackPointer++;
-                        trace("0x%016X >= 0x%016X ? [i64]", y, x);
                         break;
-                    }
-                    case I64_GE_U: {
+                    case I64_GE_U:
+                        i64_ge_u(stack, stackPointer);
                         stackPointer--;
-                        long x = pop(frame, stackPointer);
-                        stackPointer--;
-                        long y = pop(frame, stackPointer);
-                        pushInt(frame, stackPointer, Long.compareUnsigned(y, x) >= 0 ? 1 : 0);
-                        stackPointer++;
-                        trace("0x%016X >=u 0x%016X ? [i64]", y, x);
                         break;
-                    }
-                    case F32_EQ: {
+                    case F32_EQ:
+                        f32_eq(stack, stackPointer);
                         stackPointer--;
-                        float x = popAsFloat(frame, stackPointer);
-                        stackPointer--;
-                        float y = popAsFloat(frame, stackPointer);
-                        pushInt(frame, stackPointer, y == x ? 1 : 0);
-                        stackPointer++;
-                        trace("%f == %f ? [f32]", y, x);
                         break;
-                    }
-                    case F32_NE: {
+                    case F32_NE:
+                        f32_ne(stack, stackPointer);
                         stackPointer--;
-                        float x = popAsFloat(frame, stackPointer);
-                        stackPointer--;
-                        float y = popAsFloat(frame, stackPointer);
-                        pushInt(frame, stackPointer, y != x ? 1 : 0);
-                        stackPointer++;
-                        trace("%f != %f ? [f32]", y, x);
                         break;
-                    }
-                    case F32_LT: {
+                    case F32_LT:
+                        f32_lt(stack, stackPointer);
                         stackPointer--;
-                        float x = popAsFloat(frame, stackPointer);
-                        stackPointer--;
-                        float y = popAsFloat(frame, stackPointer);
-                        pushInt(frame, stackPointer, y < x ? 1 : 0);
-                        stackPointer++;
-                        trace("%f < %f ? [f32]", y, x);
                         break;
-                    }
-                    case F32_GT: {
-                        stackPointer--;
-                        float x = popAsFloat(frame, stackPointer);
+                    case F32_GT:
+                        f32_gt(stack, stackPointer);
                         stackPointer--;
-                        float y = popAsFloat(frame, stackPointer);
-                        pushInt(frame, stackPointer, y > x ? 1 : 0);
-                        stackPointer++;
-                        trace("%f > %f ? [f32]", y, x);
                         break;
-                    }
-                    case F32_LE: {
-                        stackPointer--;
-                        float x = popAsFloat(frame, stackPointer);
+                    case F32_LE:
+                        f32_le(stack, stackPointer);
                         stackPointer--;
-                        float y = popAsFloat(frame, stackPointer);
-                        pushInt(frame, stackPointer, y <= x ? 1 : 0);
-                        stackPointer++;
-                        trace("%f <= %f ? [f32]", y, x);
                         break;
-                    }
-                    case F32_GE: {
-                        stackPointer--;
-                        float x = popAsFloat(frame, stackPointer);
+                    case F32_GE:
+                        f32_ge(stack, stackPointer);
                         stackPointer--;
-                        float y = popAsFloat(frame, stackPointer);
-                        pushInt(frame, stackPointer, y >= x ? 1 : 0);
-                        stackPointer++;
-                        trace("%f >= %f ? [f32]", y, x);
                         break;
-                    }
-                    case F64_EQ: {
-                        stackPointer--;
-                        double x = popAsDouble(frame, stackPointer);
+                    case F64_EQ:
+                        f64_eq(stack, stackPointer);
                         stackPointer--;
-                        double y = popAsDouble(frame, stackPointer);
-                        pushInt(frame, stackPointer, y == x ? 1 : 0);
-                        stackPointer++;
-                        trace("%f == %f ? [f64]", y, x);
                         break;
-                    }
-                    case F64_NE: {
+                    case F64_NE:
+                        f64_ne(stack, stackPointer);
                         stackPointer--;
-                        double x = popAsDouble(frame, stackPointer);
-                        stackPointer--;
-                        double y = popAsDouble(frame, stackPointer);
-                        pushInt(frame, stackPointer, y != x ? 1 : 0);
-                        stackPointer++;
-                        trace("%f != %f ? [f64]", y, x);
                         break;
-                    }
-                    case F64_LT: {
+                    case F64_LT:
+                        f64_lt(stack, stackPointer);
                         stackPointer--;
-                        double x = popAsDouble(frame, stackPointer);
-                        stackPointer--;
-                        double y = popAsDouble(frame, stackPointer);
-                        pushInt(frame, stackPointer, y < x ? 1 : 0);
-                        stackPointer++;
-                        trace("%f < %f ? [f64]", y, x);
                         break;
-                    }
-                    case F64_GT: {
+                    case F64_GT:
+                        f64_gt(stack, stackPointer);
                         stackPointer--;
-                        double x = popAsDouble(frame, stackPointer);
-                        stackPointer--;
-                        double y = popAsDouble(frame, stackPointer);
-                        pushInt(frame, stackPointer, y > x ? 1 : 0);
-                        stackPointer++;
-                        trace("%f > %f ? [f64]", y, x);
                         break;
-                    }
-                    case F64_LE: {
+                    case F64_LE:
+                        f64_le(stack, stackPointer);
                         stackPointer--;
-                        double x = popAsDouble(frame, stackPointer);
-                        stackPointer--;
-                        double y = popAsDouble(frame, stackPointer);
-                        pushInt(frame, stackPointer, y <= x ? 1 : 0);
-                        stackPointer++;
-                        trace("%f <= %f ? [f64]", y, x);
                         break;
-                    }
-                    case F64_GE: {
-                        stackPointer--;
-                        double x = popAsDouble(frame, stackPointer);
+                    case F64_GE:
+                        f64_ge(stack, stackPointer);
                         stackPointer--;
-                        double y = popAsDouble(frame, stackPointer);
-                        pushInt(frame, stackPointer, y >= x ? 1 : 0);
-                        stackPointer++;
-                        trace("%f >= %f ? [f64]", y, x);
                         break;
-                    }
-                    case I32_CLZ: {
-                        stackPointer--;
-                        int x = popInt(frame, stackPointer);
-                        int result = Integer.numberOfLeadingZeros(x);
-                        pushInt(frame, stackPointer, result);
-                        stackPointer++;
-                        trace("clz(0x%08X) = %d [i32]", x, result);
+                    case I32_CLZ:
+                        i32_clz(stack, stackPointer);
                         break;
-                    }
-                    case I32_CTZ: {
-                        stackPointer--;
-                        int x = popInt(frame, stackPointer);
-                        int result = Integer.numberOfTrailingZeros(x);
-                        pushInt(frame, stackPointer, result);
-                        stackPointer++;
-                        trace("ctz(0x%08X) = %d [i32]", x, result);
+                    case I32_CTZ:
+                        i32_ctz(stack, stackPointer);
                         break;
-                    }
-                    case I32_POPCNT: {
-                        stackPointer--;
-                        int x = popInt(frame, stackPointer);
-                        int result = Integer.bitCount(x);
-                        pushInt(frame, stackPointer, result);
-                        stackPointer++;
-                        trace("popcnt(0x%08X) = %d [i32]", x, result);
+                    case I32_POPCNT:
+                        i32_popcnt(stack, stackPointer);
                         break;
-                    }
-                    case I32_ADD: {
+                    case I32_ADD:
+                        i32_add(stack, stackPointer);
                         stackPointer--;
-                        int x = popInt(frame, stackPointer);
-                        stackPointer--;
-                        int y = popInt(frame, stackPointer);
-                        int result = y + x;
-                        pushInt(frame, stackPointer, result);
-                        stackPointer++;
-                        trace("push 0x%08X + 0x%08X = 0x%08X (%d) [i32]", y, x, result, result);
                         break;
-                    }
-                    case I32_SUB: {
+                    case I32_SUB:
+                        i32_sub(stack, stackPointer);
                         stackPointer--;
-                        int x = popInt(frame, stackPointer);
-                        stackPointer--;
-                        int y = popInt(frame, stackPointer);
-                        int result = y - x;
-                        pushInt(frame, stackPointer, result);
-                        stackPointer++;
-                        trace("push 0x%08X - 0x%08X = 0x%08X (%d) [i32]", y, x, result, result);
                         break;
-                    }
-                    case I32_MUL: {
+                    case I32_MUL:
+                        i32_mul(stack, stackPointer);
                         stackPointer--;
-                        int x = popInt(frame, stackPointer);
-                        stackPointer--;
-                        int y = popInt(frame, stackPointer);
-                        int result = y * x;
-                        pushInt(frame, stackPointer, result);
-                        stackPointer++;
-                        trace("push 0x%08X * 0x%08X = 0x%08X (%d) [i32]", y, x, result, result);
-                        break;
-                    }
-                    case I32_DIV_S: {
-                        stackPointer--;
-                        int x = popInt(frame, stackPointer);
-                        stackPointer--;
-                        int y = popInt(frame, stackPointer);
-                        int result;
-                        if (y == Integer.MIN_VALUE && x == -1) {
-                            throw WasmTrap.format(this, "integer overflow");
-                        } else {
-                            result = y / x;
-                        }
-                        pushInt(frame, stackPointer, result);
-                        stackPointer++;
-                        trace("push 0x%08X / 0x%08X = 0x%08X (%d) [i32]", y, x, result, result);
                         break;
-                    }
-                    case I32_DIV_U: {
+                    case I32_DIV_S:
+                        i32_div_s(stack, stackPointer);
                         stackPointer--;
-                        int x = popInt(frame, stackPointer);
-                        stackPointer--;
-                        int y = popInt(frame, stackPointer);
-                        int result = Integer.divideUnsigned(y, x);
-                        pushInt(frame, stackPointer, result);
-                        stackPointer++;
-                        trace("push 0x%08X /u 0x%08X = 0x%08X (%d) [i32]", y, x, result, result);
                         break;
-                    }
-                    case I32_REM_S: {
+                    case I32_DIV_U:
+                        i32_div_u(stack, stackPointer);
                         stackPointer--;
-                        int x = popInt(frame, stackPointer);
-                        stackPointer--;
-                        int y = popInt(frame, stackPointer);
-                        int result = y % x;
-                        pushInt(frame, stackPointer, result);
-                        stackPointer++;
-                        trace("push 0x%08X %% 0x%08X = 0x%08X (%d) [i32]", y, x, result, result);
                         break;
-                    }
-                    case I32_REM_U: {
-                        stackPointer--;
-                        int x = popInt(frame, stackPointer);
+                    case I32_REM_S:
+                        i32_rem_s(stack, stackPointer);
                         stackPointer--;
-                        int y = popInt(frame, stackPointer);
-                        int result = Integer.remainderUnsigned(y, x);
-                        pushInt(frame, stackPointer, result);
-                        stackPointer++;
-                        trace("push 0x%08X %%u 0x%08X = 0x%08X (%d) [i32]", y, x, result, result);
                         break;
-                    }
-                    case I32_AND: {
-                        stackPointer--;
-                        int x = popInt(frame, stackPointer);
+                    case I32_REM_U:
+                        i32_rem_u(stack, stackPointer);
                         stackPointer--;
-                        int y = popInt(frame, stackPointer);
-                        int result = y & x;
-                        pushInt(frame, stackPointer, result);
-                        stackPointer++;
-                        trace("push 0x%08X & 0x%08X = 0x%08X (%d) [i32]", y, x, result, result);
                         break;
-                    }
-                    case I32_OR: {
-                        stackPointer--;
-                        int x = popInt(frame, stackPointer);
+                    case I32_AND:
+                        i32_and(stack, stackPointer);
                         stackPointer--;
-                        int y = popInt(frame, stackPointer);
-                        int result = y | x;
-                        pushInt(frame, stackPointer, result);
-                        stackPointer++;
-                        trace("push 0x%08X | 0x%08X = 0x%08X (%d) [i32]", y, x, result, result);
                         break;
-                    }
-                    case I32_XOR: {
-                        stackPointer--;
-                        int x = popInt(frame, stackPointer);
+                    case I32_OR:
+                        i32_or(stack, stackPointer);
                         stackPointer--;
-                        int y = popInt(frame, stackPointer);
-                        int result = y ^ x;
-                        pushInt(frame, stackPointer, result);
-                        stackPointer++;
-                        trace("push 0x%08X ^ 0x%08X = 0x%08X (%d) [i32]", y, x, result, result);
                         break;
-                    }
-                    case I32_SHL: {
+                    case I32_XOR:
+                        i32_xor(stack, stackPointer);
                         stackPointer--;
-                        int x = popInt(frame, stackPointer);
-                        stackPointer--;
-                        int y = popInt(frame, stackPointer);
-                        int result = y << x;
-                        pushInt(frame, stackPointer, result);
-                        stackPointer++;
-                        trace("push 0x%08X << 0x%08X = 0x%08X (%d) [i32]", y, x, result, result);
                         break;
-                    }
-                    case I32_SHR_S: {
+                    case I32_SHL:
+                        i32_shl(stack, stackPointer);
                         stackPointer--;
-                        int x = popInt(frame, stackPointer);
-                        stackPointer--;
-                        int y = popInt(frame, stackPointer);
-                        int result = y >> x;
-                        pushInt(frame, stackPointer, result);
-                        stackPointer++;
-                        trace("push 0x%08X >> 0x%08X = 0x%08X (%d) [i32]", y, x, result, result);
                         break;
-                    }
-                    case I32_SHR_U: {
+                    case I32_SHR_S:
+                        i32_shr_s(stack, stackPointer);
                         stackPointer--;
-                        int x = popInt(frame, stackPointer);
-                        stackPointer--;
-                        int y = popInt(frame, stackPointer);
-                        int result = y >>> x;
-                        pushInt(frame, stackPointer, result);
-                        stackPointer++;
-                        trace("push 0x%08X >>> 0x%08X = 0x%08X (%d) [i32]", y, x, result, result);
                         break;
-                    }
-                    case I32_ROTL: {
+                    case I32_SHR_U:
+                        i32_shr_u(stack, stackPointer);
                         stackPointer--;
-                        int x = popInt(frame, stackPointer);
-                        stackPointer--;
-                        int y = popInt(frame, stackPointer);
-                        int result = Integer.rotateLeft(y, x);
-                        pushInt(frame, stackPointer, result);
-                        stackPointer++;
-                        trace("push 0x%08X rotl 0x%08X = 0x%08X (%d) [i32]", y, x, result, result);
                         break;
-                    }
-                    case I32_ROTR: {
+                    case I32_ROTL:
+                        i32_rotl(stack, stackPointer);
                         stackPointer--;
-                        int x = popInt(frame, stackPointer);
+                        break;
+                    case I32_ROTR:
+                        i32_rotr(stack, stackPointer);
                         stackPointer--;
-                        int y = popInt(frame, stackPointer);
-                        int result = Integer.rotateRight(y, x);
-                        pushInt(frame, stackPointer, result);
-                        stackPointer++;
-                        trace("push 0x%08X rotr 0x%08X = 0x%08X (%d) [i32]", y, x, result, result);
                         break;
-                    }
-                    case I64_CLZ: {
-                        stackPointer--;
-                        long x = pop(frame, stackPointer);
-                        long result = Long.numberOfLeadingZeros(x);
-                        push(frame, stackPointer, result);
-                        stackPointer++;
-                        trace("clz(0x%016X) = 0x%08X (%d) [i32]", x, result, result);
+                    case I64_CLZ:
+                        i64_clz(stack, stackPointer);
                         break;
-                    }
-                    case I64_CTZ: {
-                        stackPointer--;
-                        long x = pop(frame, stackPointer);
-                        long result = Long.numberOfTrailingZeros(x);
-                        push(frame, stackPointer, result);
-                        stackPointer++;
-                        trace("ctz(0x%016X) = 0x%08X (%d) [i32]", x, result, result);
+                    case I64_CTZ:
+                        i64_ctz(stack, stackPointer);
                         break;
-                    }
-                    case I64_POPCNT: {
-                        stackPointer--;
-                        long x = pop(frame, stackPointer);
-                        long result = Long.bitCount(x);
-                        push(frame, stackPointer, result);
-                        stackPointer++;
-                        trace("popcnt(0x%016X) = 0x%08X (%d) [i32]", x, result, result);
+                    case I64_POPCNT:
+                        i64_popcnt(stack, stackPointer);
                         break;
-                    }
-                    case I64_ADD: {
+                    case I64_ADD:
+                        i64_add(stack, stackPointer);
                         stackPointer--;
-                        long x = pop(frame, stackPointer);
-                        stackPointer--;
-                        long y = pop(frame, stackPointer);
-                        long result = y + x;
-                        push(frame, stackPointer, result);
-                        stackPointer++;
-                        trace("push 0x%016X + 0x%016X = 0x%016X (%d) [i64]", y, x, result, result);
                         break;
-                    }
-                    case I64_SUB: {
+                    case I64_SUB:
+                        i64_sub(stack, stackPointer);
                         stackPointer--;
-                        long x = pop(frame, stackPointer);
-                        stackPointer--;
-                        long y = pop(frame, stackPointer);
-                        long result = y - x;
-                        push(frame, stackPointer, result);
-                        stackPointer++;
-                        trace("push 0x%016X - 0x%016X = 0x%016X (%d) [i64]", y, x, result, result);
                         break;
-                    }
-                    case I64_MUL: {
+                    case I64_MUL:
+                        i64_mul(stack, stackPointer);
                         stackPointer--;
-                        long x = pop(frame, stackPointer);
-                        stackPointer--;
-                        long y = pop(frame, stackPointer);
-                        long result = y * x;
-                        push(frame, stackPointer, result);
-                        stackPointer++;
-                        trace("push 0x%016X * 0x%016X = 0x%016X (%d) [i64]", y, x, result, result);
-                        break;
-                    }
-                    case I64_DIV_S: {
-                        stackPointer--;
-                        long x = pop(frame, stackPointer);
-                        stackPointer--;
-                        long y = pop(frame, stackPointer);
-                        long result;
-                        if (x == -1 && y == Long.MIN_VALUE) {
-                            throw WasmTrap.format(this, "integer overflow");
-                        } else {
-                            result = y / x;
-                        }
-                        push(frame, stackPointer, result);
-                        stackPointer++;
-                        trace("push 0x%016X / 0x%016X = 0x%016X (%d) [i64]", y, x, result, result);
                         break;
-                    }
-                    case I64_DIV_U: {
+                    case I64_DIV_S:
+                        i64_div_s(stack, stackPointer);
                         stackPointer--;
-                        long x = pop(frame, stackPointer);
-                        stackPointer--;
-                        long y = pop(frame, stackPointer);
-                        long result = Long.divideUnsigned(y, x);
-                        push(frame, stackPointer, result);
-                        stackPointer++;
-                        trace("push 0x%016X /u 0x%016X = 0x%016X (%d) [i64]", y, x, result, result);
                         break;
-                    }
-                    case I64_REM_S: {
+                    case I64_DIV_U:
+                        i64_div_u(stack, stackPointer);
                         stackPointer--;
-                        long x = pop(frame, stackPointer);
-                        stackPointer--;
-                        long y = pop(frame, stackPointer);
-                        long result = y % x;
-                        push(frame, stackPointer, result);
-                        stackPointer++;
-                        trace("push 0x%016X %% 0x%016X = 0x%016X (%d) [i64]", y, x, result, result);
                         break;
-                    }
-                    case I64_REM_U: {
-                        stackPointer--;
-                        long x = pop(frame, stackPointer);
+                    case I64_REM_S:
+                        i64_rem_s(stack, stackPointer);
                         stackPointer--;
-                        long y = pop(frame, stackPointer);
-                        long result = Long.remainderUnsigned(y, x);
-                        push(frame, stackPointer, result);
-                        stackPointer++;
-                        trace("push 0x%016X %%u 0x%016X = 0x%016X (%d) [i64]", y, x, result, result);
                         break;
-                    }
-                    case I64_AND: {
-                        stackPointer--;
-                        long x = pop(frame, stackPointer);
+                    case I64_REM_U:
+                        i64_rem_u(stack, stackPointer);
                         stackPointer--;
-                        long y = pop(frame, stackPointer);
-                        long result = y & x;
-                        push(frame, stackPointer, result);
-                        stackPointer++;
-                        trace("push 0x%016X & 0x%016X = 0x%016X (%d) [i64]", y, x, result, result);
                         break;
-                    }
-                    case I64_OR: {
-                        stackPointer--;
-                        long x = pop(frame, stackPointer);
+                    case I64_AND:
+                        i64_and(stack, stackPointer);
                         stackPointer--;
-                        long y = pop(frame, stackPointer);
-                        long result = y | x;
-                        push(frame, stackPointer, result);
-                        stackPointer++;
-                        trace("push 0x%016X | 0x%016X = 0x%016X (%d) [i64]", y, x, result, result);
                         break;
-                    }
-                    case I64_XOR: {
-                        stackPointer--;
-                        long x = pop(frame, stackPointer);
+                    case I64_OR:
+                        i64_or(stack, stackPointer);
                         stackPointer--;
-                        long y = pop(frame, stackPointer);
-                        long result = y ^ x;
-                        push(frame, stackPointer, result);
-                        stackPointer++;
-                        trace("push 0x%016X ^ 0x%016X = 0x%016X (%d) [i64]", y, x, result, result);
                         break;
-                    }
-                    case I64_SHL: {
+                    case I64_XOR:
+                        i64_xor(stack, stackPointer);
                         stackPointer--;
-                        long x = pop(frame, stackPointer);
-                        stackPointer--;
-                        long y = pop(frame, stackPointer);
-                        long result = y << x;
-                        push(frame, stackPointer, result);
-                        stackPointer++;
-                        trace("push 0x%016X << 0x%016X = 0x%016X (%d) [i64]", y, x, result, result);
                         break;
-                    }
-                    case I64_SHR_S: {
+                    case I64_SHL:
+                        i64_shl(stack, stackPointer);
                         stackPointer--;
-                        long x = pop(frame, stackPointer);
-                        stackPointer--;
-                        long y = pop(frame, stackPointer);
-                        long result = y >> x;
-                        push(frame, stackPointer, result);
-                        stackPointer++;
-                        trace("push 0x%016X >> 0x%016X = 0x%016X (%d) [i64]", y, x, result, result);
                         break;
-                    }
-                    case I64_SHR_U: {
+                    case I64_SHR_S:
+                        i64_shr_s(stack, stackPointer);
                         stackPointer--;
-                        long x = pop(frame, stackPointer);
-                        stackPointer--;
-                        long y = pop(frame, stackPointer);
-                        long result = y >>> x;
-                        push(frame, stackPointer, result);
-                        stackPointer++;
-                        trace("push 0x%016X >>> 0x%016X = 0x%016X (%d) [i64]", y, x, result, result);
                         break;
-                    }
-                    case I64_ROTL: {
+                    case I64_SHR_U:
+                        i64_shr_u(stack, stackPointer);
                         stackPointer--;
-                        long x = pop(frame, stackPointer);
-                        stackPointer--;
-                        long y = pop(frame, stackPointer);
-                        long result = Long.rotateLeft(y, (int) x);
-                        push(frame, stackPointer, result);
-                        stackPointer++;
-                        trace("push 0x%016X rotl 0x%016X = 0x%016X (%d) [i64]", y, x, result, result);
                         break;
-                    }
-                    case I64_ROTR: {
+                    case I64_ROTL:
+                        i64_rotl(stack, stackPointer);
                         stackPointer--;
-                        long x = pop(frame, stackPointer);
+                        break;
+                    case I64_ROTR:
+                        i64_rotr(stack, stackPointer);
                         stackPointer--;
-                        long y = pop(frame, stackPointer);
-                        long result = Long.rotateRight(y, (int) x);
-                        push(frame, stackPointer, result);
-                        stackPointer++;
-                        trace("push 0x%016X rotr 0x%016X = 0x%016X (%d) [i64]", y, x, result, result);
                         break;
-                    }
                     case F32_CONST: {
                         // region Load int value
                         int value = BinaryStreamParser.peek4(codeEntry().data(), offset);
                         // endregion
                         offset += 4;
-                        pushInt(frame, stackPointer, value);
-                        stackPointer++;
-                        trace("f32.const %f", Float.intBitsToFloat(value));
-                        break;
-                    }
-                    case F32_ABS: {
-                        stackPointer--;
-                        float x = popAsFloat(frame, stackPointer);
-                        float result = Math.abs(x);
-                        pushFloat(frame, stackPointer, result);
-                        stackPointer++;
-                        trace("f32.abs(%f) = %f", x, result);
-                        break;
-                    }
-                    case F32_NEG: {
-                        stackPointer--;
-                        float x = popAsFloat(frame, stackPointer);
-                        float result = -x;
-                        pushFloat(frame, stackPointer, result);
-                        stackPointer++;
-                        trace("f32.neg(%f) = %f", x, result);
-                        break;
-                    }
-                    case F32_CEIL: {
-                        stackPointer--;
-                        float x = popAsFloat(frame, stackPointer);
-                        float result = (float) Math.ceil(x);
-                        pushFloat(frame, stackPointer, result);
-                        stackPointer++;
-                        trace("f32.ceil(%f) = %f", x, result);
-                        break;
-                    }
-                    case F32_FLOOR: {
-                        stackPointer--;
-                        float x = popAsFloat(frame, stackPointer);
-                        float result = (float) Math.floor(x);
-                        pushFloat(frame, stackPointer, result);
-                        stackPointer++;
-                        trace("f32.floor(%f) = %f", x, result);
-                        break;
-                    }
-                    case F32_TRUNC: {
-                        stackPointer--;
-                        float x = popAsFloat(frame, stackPointer);
-                        float result = (int) x;
-                        pushFloat(frame, stackPointer, result);
-                        stackPointer++;
-                        trace("f32.trunc(%f) = %f", x, result);
-                        break;
-                    }
-                    case F32_NEAREST: {
-                        stackPointer--;
-                        float x = popAsFloat(frame, stackPointer);
-                        float result = Math.round(x);
-                        pushFloat(frame, stackPointer, result);
-                        stackPointer++;
-                        trace("f32.nearest(%f) = %f", x, result);
-                        break;
-                    }
-                    case F32_SQRT: {
-                        stackPointer--;
-                        float x = popAsFloat(frame, stackPointer);
-                        float result = (float) Math.sqrt(x);
-                        pushFloat(frame, stackPointer, result);
-                        stackPointer++;
-                        trace("f32.sqrt(%f) = %f", x, result);
-                        break;
-                    }
-                    case F32_ADD: {
-                        stackPointer--;
-                        float x = popAsFloat(frame, stackPointer);
-                        stackPointer--;
-                        float y = popAsFloat(frame, stackPointer);
-                        float result = y + x;
-                        pushFloat(frame, stackPointer, result);
-                        trace("push %f + %f = %f [f32]", y, x, result);
+                        pushInt(stack, stackPointer, value);
                         stackPointer++;
                         break;
                     }
-                    case F32_SUB: {
-                        stackPointer--;
-                        float x = popAsFloat(frame, stackPointer);
-                        stackPointer--;
-                        float y = popAsFloat(frame, stackPointer);
-                        float result = y - x;
-                        pushFloat(frame, stackPointer, result);
-                        stackPointer++;
-                        trace("push %f - %f = %f [f32]", y, x, result);
+                    case F32_ABS:
+                        f32_abs(stack, stackPointer);
                         break;
-                    }
-                    case F32_MUL: {
-                        stackPointer--;
-                        float x = popAsFloat(frame, stackPointer);
-                        stackPointer--;
-                        float y = popAsFloat(frame, stackPointer);
-                        float result = y * x;
-                        pushFloat(frame, stackPointer, result);
-                        stackPointer++;
-                        trace("push %f * %f = %f [f32]", y, x, result);
+                    case F32_NEG:
+                        f32_neg(stack, stackPointer);
                         break;
-                    }
-                    case F32_DIV: {
-                        stackPointer--;
-                        float x = popAsFloat(frame, stackPointer);
-                        stackPointer--;
-                        float y = popAsFloat(frame, stackPointer);
-                        float result = y / x;
-                        pushFloat(frame, stackPointer, result);
-                        stackPointer++;
-                        trace("push %f / %f = %f [f32]", y, x, result);
+                    case F32_CEIL:
+                        f32_ceil(stack, stackPointer);
                         break;
-                    }
-                    case F32_MIN: {
-                        stackPointer--;
-                        float x = popAsFloat(frame, stackPointer);
-                        stackPointer--;
-                        float y = popAsFloat(frame, stackPointer);
-                        float result = Math.min(y, x);
-                        pushFloat(frame, stackPointer, result);
-                        stackPointer++;
-                        trace("push min(%f, %f) = %f [f32]", y, x, result);
+                    case F32_FLOOR:
+                        f32_floor(stack, stackPointer);
                         break;
-                    }
-                    case F32_MAX: {
-                        stackPointer--;
-                        float x = popAsFloat(frame, stackPointer);
-                        stackPointer--;
-                        float y = popAsFloat(frame, stackPointer);
-                        float result = Math.max(y, x);
-                        pushFloat(frame, stackPointer, result);
-                        stackPointer++;
-                        trace("push max(%f, %f) = %f [f32]", y, x, result);
+                    case F32_TRUNC:
+                        f32_trunc(stack, stackPointer);
                         break;
-                    }
-                    case F32_COPYSIGN: {
-                        stackPointer--;
-                        float x = popAsFloat(frame, stackPointer);
-                        stackPointer--;
-                        float y = popAsFloat(frame, stackPointer);
-                        float result = Math.copySign(y, x);
-                        pushFloat(frame, stackPointer, result);
-                        stackPointer++;
-                        trace("push copysign(%f, %f) = %f [f32]", y, x, result);
+                    case F32_NEAREST:
+                        f32_nearest(stack, stackPointer);
                         break;
-                    }
+                    case F32_SQRT:
+                        f32_sqrt(stack, stackPointer);
+                        break;
+                    case F32_ADD:
+                        f32_add(stack, stackPointer);
+                        stackPointer--;
+                        break;
+                    case F32_SUB:
+                        f32_sub(stack, stackPointer);
+                        stackPointer--;
+                        break;
+                    case F32_MUL:
+                        f32_mul(stack, stackPointer);
+                        stackPointer--;
+                        break;
+                    case F32_DIV:
+                        f32_div(stack, stackPointer);
+                        stackPointer--;
+                        break;
+                    case F32_MIN:
+                        f32_min(stack, stackPointer);
+                        stackPointer--;
+                        break;
+                    case F32_MAX:
+                        f32_max(stack, stackPointer);
+                        stackPointer--;
+                        break;
+                    case F32_COPYSIGN:
+                        f32_copysign(stack, stackPointer);
+                        stackPointer--;
+                        break;
                     case F64_CONST: {
                         // region Load long value
                         long value = BinaryStreamParser.peek8(codeEntry().data(), offset);
                         // endregion
                         offset += 8;
-                        push(frame, stackPointer, value);
+                        push(stack, stackPointer, value);
                         stackPointer++;
-                        trace("f64.const %f", Double.longBitsToDouble(value));
                         break;
                     }
-                    case F64_ABS: {
-                        stackPointer--;
-                        double x = popAsDouble(frame, stackPointer);
-                        double result = Math.abs(x);
-                        pushDouble(frame, stackPointer, result);
-                        stackPointer++;
-                        trace("f64.abs(%f) = %f", x, result);
+                    case F64_ABS:
+                        f64_abs(stack, stackPointer);
                         break;
-                    }
-                    case F64_NEG: {
-                        stackPointer--;
-                        double x = popAsDouble(frame, stackPointer);
-                        double result = -x;
-                        pushDouble(frame, stackPointer, -x);
-                        stackPointer++;
-                        trace("f64.neg(%f) = %f", x, result);
+                    case F64_NEG:
+                        f64_neg(stack, stackPointer);
                         break;
-                    }
-                    case F64_CEIL: {
-                        stackPointer--;
-                        double x = popAsDouble(frame, stackPointer);
-                        double result = Math.ceil(x);
-                        pushDouble(frame, stackPointer, result);
-                        stackPointer++;
-                        trace("f64.ceil(%f) = %f", x, result);
+                    case F64_CEIL:
+                        f64_ceil(stack, stackPointer);
                         break;
-                    }
-                    case F64_FLOOR: {
-                        stackPointer--;
-                        double x = popAsDouble(frame, stackPointer);
-                        double result = Math.floor(x);
-                        pushDouble(frame, stackPointer, result);
-                        stackPointer++;
-                        trace("f64.floor(%f) = %f", x, result);
+                    case F64_FLOOR:
+                        f64_floor(stack, stackPointer);
                         break;
-                    }
-                    case F64_TRUNC: {
-                        stackPointer--;
-                        double x = popAsDouble(frame, stackPointer);
-                        double result = (long) x;
-                        pushDouble(frame, stackPointer, result);
-                        stackPointer++;
-                        trace("f64.trunc(%f) = %f", x, result);
+                    case F64_TRUNC:
+                        f64_trunc(stack, stackPointer);
                         break;
-                    }
-                    case F64_NEAREST: {
-                        stackPointer--;
-                        double x = popAsDouble(frame, stackPointer);
-                        double result = Math.round(x);
-                        pushDouble(frame, stackPointer, result);
-                        stackPointer++;
-                        trace("f64.nearest(%f) = %f", x, result);
+                    case F64_NEAREST:
+                        f64_nearest(stack, stackPointer);
                         break;
-                    }
-                    case F64_SQRT: {
-                        stackPointer--;
-                        double x = popAsDouble(frame, stackPointer);
-                        double result = Math.sqrt(x);
-                        pushDouble(frame, stackPointer, result);
-                        stackPointer++;
-                        trace("f64.sqrt(%f) = %f", x, result);
+                    case F64_SQRT:
+                        f64_sqrt(stack, stackPointer);
                         break;
-                    }
-                    case F64_ADD: {
+                    case F64_ADD:
+                        f64_add(stack, stackPointer);
                         stackPointer--;
-                        double x = popAsDouble(frame, stackPointer);
-                        stackPointer--;
-                        double y = popAsDouble(frame, stackPointer);
-                        double result = y + x;
-                        pushDouble(frame, stackPointer, result);
-                        stackPointer++;
-                        trace("push %f + %f = %f [f64]", y, x, result);
                         break;
-                    }
-                    case F64_SUB: {
+                    case F64_SUB:
+                        f64_sub(stack, stackPointer);
                         stackPointer--;
-                        double x = popAsDouble(frame, stackPointer);
-                        stackPointer--;
-                        double y = popAsDouble(frame, stackPointer);
-                        double result = y - x;
-                        pushDouble(frame, stackPointer, result);
-                        stackPointer++;
-                        trace("push %f - %f = %f [f64]", y, x, result);
                         break;
-                    }
-                    case F64_MUL: {
+                    case F64_MUL:
+                        f64_mul(stack, stackPointer);
                         stackPointer--;
-                        double x = popAsDouble(frame, stackPointer);
-                        stackPointer--;
-                        double y = popAsDouble(frame, stackPointer);
-                        double result = y * x;
-                        pushDouble(frame, stackPointer, result);
-                        stackPointer++;
-                        trace("push %f * %f = %f [f64]", y, x, result);
                         break;
-                    }
-                    case F64_DIV: {
+                    case F64_DIV:
+                        f64_div(stack, stackPointer);
                         stackPointer--;
-                        double x = popAsDouble(frame, stackPointer);
-                        stackPointer--;
-                        double y = popAsDouble(frame, stackPointer);
-                        double result = y / x;
-                        pushDouble(frame, stackPointer, result);
-                        stackPointer++;
-                        trace("push %f / %f = %f [f64]", y, x, result);
                         break;
-                    }
-                    case F64_MIN: {
+                    case F64_MIN:
+                        f64_min(stack, stackPointer);
                         stackPointer--;
-                        double x = popAsDouble(frame, stackPointer);
-                        stackPointer--;
-                        double y = popAsDouble(frame, stackPointer);
-                        double result = Math.min(y, x);
-                        pushDouble(frame, stackPointer, result);
-                        stackPointer++;
-                        trace("push min(%f, %f) = %f [f64]", y, x, result);
                         break;
-                    }
-                    case F64_MAX: {
+                    case F64_MAX:
+                        f64_max(stack, stackPointer);
                         stackPointer--;
-                        double x = popAsDouble(frame, stackPointer);
-                        stackPointer--;
-                        double y = popAsDouble(frame, stackPointer);
-                        double result = Math.max(y, x);
-                        pushDouble(frame, stackPointer, result);
-                        stackPointer++;
-                        trace("push max(%f, %f) = %f [f64]", y, x, result);
                         break;
-                    }
-                    case F64_COPYSIGN: {
+                    case F64_COPYSIGN:
+                        f64_copysign(stack, stackPointer);
                         stackPointer--;
-                        double x = popAsDouble(frame, stackPointer);
-                        stackPointer--;
-                        double y = popAsDouble(frame, stackPointer);
-                        double result = Math.copySign(y, x);
-                        pushDouble(frame, stackPointer, result);
-                        stackPointer++;
-                        trace("push copysign(%f, %f) = %f [f64]", y, x, result);
                         break;
-                    }
-                    case I32_WRAP_I64: {
-                        stackPointer--;
-                        long x = pop(frame, stackPointer);
-                        int result = (int) (x & 0xFFFF_FFFFL);
-                        pushInt(frame, stackPointer, result);
-                        stackPointer++;
-                        trace("push wrap_i64(0x%016X) = 0x%08X (%d) [i32]", x, result, result);
+                    case I32_WRAP_I64:
+                        i32_wrap_i64(stack, stackPointer);
                         break;
-                    }
                     case I32_TRUNC_F32_S:
-                    case I32_TRUNC_F32_U: {
-                        stackPointer--;
-                        float x = popAsFloat(frame, stackPointer);
-                        int result = (int) x;
-                        pushInt(frame, stackPointer, result);
-                        stackPointer++;
-                        trace("push trunc_f32(%f) = 0x%08X (%d) [i32]", x, result, result);
+                        i32_trunc_f32_s(stack, stackPointer);
                         break;
-                    }
+                    case I32_TRUNC_F32_U:
+                        i32_trunc_f32_u(stack, stackPointer);
+                        break;
                     case I32_TRUNC_F64_S:
-                    case I32_TRUNC_F64_U: {
-                        stackPointer--;
-                        double x = popAsDouble(frame, stackPointer);
-                        int result = (int) x;
-                        pushInt(frame, stackPointer, result);
-                        stackPointer++;
-                        trace("push trunc_f64(%f) = 0x%08X (%d) [i32]", x, result, result);
+                        i32_trunc_f64_s(stack, stackPointer);
                         break;
-                    }
-                    case I64_EXTEND_I32_S: {
-                        stackPointer--;
-                        int x = popInt(frame, stackPointer);
-                        long result = x;
-                        push(frame, stackPointer, result);
-                        stackPointer++;
-                        trace("push extend_i32_s(0x%08X) = 0x%016X (%d) [i64]", x, result, result);
+                    case I32_TRUNC_F64_U:
+                        i32_trunc_f64_u(stack, stackPointer);
                         break;
-                    }
-                    case I64_EXTEND_I32_U: {
-                        stackPointer--;
-                        int x = popInt(frame, stackPointer);
-                        long result = x & 0xFFFF_FFFFL;
-                        push(frame, stackPointer, result);
-                        stackPointer++;
-                        trace("push extend_i32_u(0x%08X) = 0x%016X (%d) [i64]", x, result, result);
+                    case I64_EXTEND_I32_S:
+                        i64_extend_i32_s(stack, stackPointer);
                         break;
-                    }
+                    case I64_EXTEND_I32_U:
+                        i64_extend_i32_u(stack, stackPointer);
+                        break;
                     case I64_TRUNC_F32_S:
-                    case I64_TRUNC_F32_U: {
-                        stackPointer--;
-                        float x = popAsFloat(frame, stackPointer);
-                        long result = (long) x;
-                        push(frame, stackPointer, result);
-                        stackPointer++;
-                        trace("push trunc_f32(%f) = 0x%016X (%d) [i64]", x, result, result);
+                        i64_trunc_f32_s(stack, stackPointer);
                         break;
-                    }
+                    case I64_TRUNC_F32_U:
+                        i64_trunc_f32_u(stack, stackPointer);
+                        break;
                     case I64_TRUNC_F64_S:
-                    case I64_TRUNC_F64_U: {
-                        stackPointer--;
-                        double x = popAsDouble(frame, stackPointer);
-                        long result = (long) x;
-                        push(frame, stackPointer, result);
-                        stackPointer++;
-                        trace("push trunc_f64(%f) = 0x%016X (%d) [i64]", x, result, result);
+                        i64_trunc_f64_s(stack, stackPointer);
                         break;
-                    }
+                    case I64_TRUNC_F64_U:
+                        i64_trunc_f64_u(stack, stackPointer);
+                        break;
                     case F32_CONVERT_I32_S:
-                    case F32_CONVERT_I32_U: {
-                        stackPointer--;
-                        int x = popInt(frame, stackPointer);
-                        float result = x;
-                        pushFloat(frame, stackPointer, result);
-                        stackPointer++;
-                        trace("push convert_i32(0x%08X) = %f [f32]", x, result);
+                        f32_convert_i32_s(stack, stackPointer);
                         break;
-                    }
+                    case F32_CONVERT_I32_U:
+                        f32_convert_i32_u(stack, stackPointer);
+                        break;
                     case F32_CONVERT_I64_S:
-                    case F32_CONVERT_I64_U: {
-                        stackPointer--;
-                        long x = pop(frame, stackPointer);
-                        float result = x;
-                        pushFloat(frame, stackPointer, result);
-                        stackPointer++;
-                        trace("push convert_i64(0x%016X) = %f [f32]", x, result);
+                        f32_convert_i64_s(stack, stackPointer);
                         break;
-                    }
-                    case F32_DEMOTE_F64: {
-                        stackPointer--;
-                        double x = popAsDouble(frame, stackPointer);
-                        float result = (float) x;
-                        pushFloat(frame, stackPointer, result);
-                        stackPointer++;
-                        trace("push demote_f64(0x%016X) = %f [f32]", x, result);
+                    case F32_CONVERT_I64_U:
+                        f32_convert_i64_u(stack, stackPointer);
                         break;
-                    }
+                    case F32_DEMOTE_F64:
+                        f32_demote_f64(stack, stackPointer);
+                        break;
                     case F64_CONVERT_I32_S:
-                    case F64_CONVERT_I32_U: {
-                        stackPointer--;
-                        int x = popInt(frame, stackPointer);
-                        double result = x;
-                        pushDouble(frame, stackPointer, result);
-                        stackPointer++;
-                        trace("push convert_i32(0x%08X) = %f [f64]", x, result);
+                        f64_convert_i32_s(stack, stackPointer);
                         break;
-                    }
+                    case F64_CONVERT_I32_U:
+                        f64_convert_i32_u(stack, stackPointer);
+                        break;
                     case F64_CONVERT_I64_S:
-                    case F64_CONVERT_I64_U: {
-                        stackPointer--;
-                        long x = pop(frame, stackPointer);
-                        double result = x;
-                        pushDouble(frame, stackPointer, result);
-                        stackPointer++;
-                        trace("push convert_i64(0x%016X) = %f [f64]", x, result);
+                        f64_convert_i64_s(stack, stackPointer);
                         break;
-                    }
-                    case F64_PROMOTE_F32: {
-                        stackPointer--;
-                        float x = popAsFloat(frame, stackPointer);
-                        double result = x;
-                        pushDouble(frame, stackPointer, result);
-                        stackPointer++;
-                        trace("push promote_f32(0x%016X) = %f [f64]", x, result);
+                    case F64_CONVERT_I64_U:
+                        f64_convert_i64_u(stack, stackPointer);
                         break;
-                    }
-                    case I32_REINTERPRET_F32: {
+                    case F64_PROMOTE_F32:
+                        f64_promote_f32(stack, stackPointer);
+                        break;
+                    case I32_REINTERPRET_F32:
                         // As we don't store type information for the frame slots (everything is
                         // stored as raw bits in a long,
                         // and interpreted appropriately upon access), we don't need to do anything
                         // for these instructions.
-                        trace("push reinterpret_f32 [i32]");
                         break;
-                    }
-                    case I64_REINTERPRET_F64: {
+                    case I64_REINTERPRET_F64:
                         // As we don't store type information for the frame slots (everything is
                         // stored as raw bits in a long,
                         // and interpreted appropriately upon access), we don't need to do anything
                         // for these instructions.
-                        trace("push reinterpret_f64 [i64]");
                         break;
-                    }
-                    case F32_REINTERPRET_I32: {
+                    case F32_REINTERPRET_I32:
                         // As we don't store type information for the frame slots (everything is
                         // stored as raw bits in a long,
                         // and interpreted appropriately upon access), we don't need to do anything
                         // for these instructions.
-                        trace("push reinterpret_i32 [f32]");
                         break;
-                    }
-                    case F64_REINTERPRET_I64: {
+                    case F64_REINTERPRET_I64:
                         // As we don't store type information for the frame slots (everything is
                         // stored as raw bits in a long,
                         // and interpreted appropriately upon access), we don't need to do anything
                         // for these instructions.
-                        trace("push reinterpret_i64 [f64]");
                         break;
-                    }
                     default:
-                        Assert.fail(Assert.format("Unknown opcode: 0x%02X", opcode));
+                        Assert.fail(Assert.format("Unknown opcode: 0x%02X", opcode), Failure.UNSPECIFIED_MALFORMED);
                 }
             }
         } catch (ArithmeticException e) {
-            throw WasmTrap.format(this, translateErrorMessage(e.getMessage()));
+            throw WasmException.fromArithmeticException(this, e);
         }
         return -1;
     }
 
-    private static String translateErrorMessage(String message) {
-        switch (message) {
-            case "/ by zero":
-                return "integer divide by zero";
-            case "BigInteger divide by zero":
-                return "integer divide by zero";
-            default:
-                return message;
+    private void load(long[] stack, int stackPointer, int opcode, int memOffset) {
+        int baseAddress = popInt(stack, stackPointer);
+        int address = baseAddress + memOffset;
+        WasmMemory memory = instance().memory();
+
+        try {
+            switch (opcode) {
+                case I32_LOAD: {
+                    int value = memory.load_i32(this, address);
+                    pushInt(stack, stackPointer, value);
+                    break;
+                }
+                case I64_LOAD: {
+                    long value = memory.load_i64(this, address);
+                    push(stack, stackPointer, value);
+                    break;
+                }
+                case F32_LOAD: {
+                    float value = memory.load_f32(this, address);
+                    pushFloat(stack, stackPointer, value);
+                    break;
+                }
+                case F64_LOAD: {
+                    double value = memory.load_f64(this, address);
+                    pushDouble(stack, stackPointer, value);
+                    break;
+                }
+                case I32_LOAD8_S: {
+                    int value = memory.load_i32_8s(this, address);
+                    pushInt(stack, stackPointer, value);
+                    break;
+                }
+                case I32_LOAD8_U: {
+                    int value = memory.load_i32_8u(this, address);
+                    pushInt(stack, stackPointer, value);
+                    break;
+                }
+                case I32_LOAD16_S: {
+                    int value = memory.load_i32_16s(this, address);
+                    pushInt(stack, stackPointer, value);
+                    break;
+                }
+                case I32_LOAD16_U: {
+                    int value = memory.load_i32_16u(this, address);
+                    pushInt(stack, stackPointer, value);
+                    break;
+                }
+                case I64_LOAD8_S: {
+                    long value = memory.load_i64_8s(this, address);
+                    push(stack, stackPointer, value);
+                    break;
+                }
+                case I64_LOAD8_U: {
+                    long value = memory.load_i64_8u(this, address);
+                    push(stack, stackPointer, value);
+                    break;
+                }
+                case I64_LOAD16_S: {
+                    long value = memory.load_i64_16s(this, address);
+                    push(stack, stackPointer, value);
+                    break;
+                }
+                case I64_LOAD16_U: {
+                    long value = memory.load_i64_16u(this, address);
+                    push(stack, stackPointer, value);
+                    break;
+                }
+                case I64_LOAD32_S: {
+                    long value = memory.load_i64_32s(this, address);
+                    push(stack, stackPointer, value);
+                    break;
+                }
+                case I64_LOAD32_U: {
+                    long value = memory.load_i64_32u(this, address);
+                    push(stack, stackPointer, value);
+                    break;
+                }
+                default: {
+                    throw WasmException.format(Failure.UNSPECIFIED_TRAP, this, "Unknown load opcode: %d", opcode);
+                }
+            }
+        } catch (WasmMemoryException e) {
+            throw WasmException.create(Failure.UNSPECIFIED_TRAP, this, "memory address out-of-bounds");
         }
     }
 
-    private boolean popCondition(VirtualFrame frame, int stackPointer) {
-        int condition = popInt(frame, stackPointer);
+    private void store(long[] stack, int stackPointer, int opcode, int memOffset) {
+        WasmMemory memory = instance().memory();
+
+        try {
+            switch (opcode) {
+                case I32_STORE: {
+                    int value = popInt(stack, stackPointer - 1);
+                    int baseAddress = popInt(stack, stackPointer - 2);
+                    int address = baseAddress + memOffset;
+                    memory.store_i32(this, address, value);
+                    break;
+                }
+                case I64_STORE: {
+                    long value = pop(stack, stackPointer - 1);
+                    int baseAddress = popInt(stack, stackPointer - 2);
+                    int address = baseAddress + memOffset;
+                    memory.store_i64(this, address, value);
+                    break;
+                }
+                case F32_STORE: {
+                    float value = popAsFloat(stack, stackPointer - 1);
+                    int baseAddress = popInt(stack, stackPointer - 2);
+                    int address = baseAddress + memOffset;
+                    memory.store_f32(this, address, value);
+                    break;
+                }
+                case F64_STORE: {
+                    double value = popAsDouble(stack, stackPointer - 1);
+                    int baseAddress = popInt(stack, stackPointer - 2);
+                    int address = baseAddress + memOffset;
+                    memory.store_f64(this, address, value);
+                    break;
+                }
+                case I32_STORE_8: {
+                    int value = popInt(stack, stackPointer - 1);
+                    int baseAddress = popInt(stack, stackPointer - 2);
+                    int address = baseAddress + memOffset;
+                    memory.store_i32_8(this, address, (byte) value);
+                    break;
+                }
+                case I32_STORE_16: {
+                    int value = popInt(stack, stackPointer - 1);
+                    int baseAddress = popInt(stack, stackPointer - 2);
+                    int address = baseAddress + memOffset;
+                    memory.store_i32_16(this, address, (short) value);
+                    break;
+                }
+                case I64_STORE_8: {
+                    long value = pop(stack, stackPointer - 1);
+                    int baseAddress = popInt(stack, stackPointer - 2);
+                    int address = baseAddress + memOffset;
+                    memory.store_i64_8(this, address, (byte) value);
+                    break;
+                }
+                case I64_STORE_16: {
+                    long value = pop(stack, stackPointer - 1);
+                    int baseAddress = popInt(stack, stackPointer - 2);
+                    int address = baseAddress + memOffset;
+                    memory.store_i64_16(this, address, (short) value);
+                    break;
+                }
+                case I64_STORE_32: {
+                    long value = pop(stack, stackPointer - 1);
+                    int baseAddress = popInt(stack, stackPointer - 2);
+                    int address = baseAddress + memOffset;
+                    memory.store_i64_32(this, address, (int) value);
+                    break;
+                }
+                default: {
+                    throw WasmException.format(Failure.UNSPECIFIED_TRAP, this, "Unknown store opcode: %d", opcode);
+                }
+            }
+        } catch (WasmMemoryException e) {
+            throw WasmException.create(Failure.UNSPECIFIED_TRAP, this, "memory address out-of-bounds");
+        }
+    }
+
+    // Checkstyle: stop method name check
+
+    private void global_set(WasmContext context, long[] stack, int stackPointer, int index) {
+        byte type = instance().symbolTable().globalValueType(index);
+        // For global.set, we don't need to make sure that the referenced global is
+        // mutable.
+        // This is taken care of by validation during wat to wasm compilation.
+        switch (type) {
+            case WasmType.I32_TYPE: {
+                int value = popInt(stack, stackPointer);
+                int address = instance().globalAddress(index);
+                context.globals().storeInt(address, value);
+                break;
+            }
+            case WasmType.I64_TYPE: {
+                long value = pop(stack, stackPointer);
+                int address = instance().globalAddress(index);
+                context.globals().storeLong(address, value);
+                break;
+            }
+            case WasmType.F32_TYPE: {
+                int value = popInt(stack, stackPointer);
+                int address = instance().globalAddress(index);
+                context.globals().storeFloatWithInt(address, value);
+                break;
+            }
+            case WasmType.F64_TYPE: {
+                long value = pop(stack, stackPointer);
+                int address = instance().globalAddress(index);
+                context.globals().storeDoubleWithLong(address, value);
+                break;
+            }
+            default: {
+                throw WasmException.create(Failure.UNSPECIFIED_TRAP, this, "Local variable cannot have the void type.");
+            }
+        }
+    }
+
+    private void global_get(WasmContext context, long[] stack, int stackPointer, int index) {
+        byte type = instance().symbolTable().globalValueType(index);
+        switch (type) {
+            case WasmType.I32_TYPE: {
+                int address = instance().globalAddress(index);
+                int value = context.globals().loadAsInt(address);
+                pushInt(stack, stackPointer, value);
+                break;
+            }
+            case WasmType.I64_TYPE: {
+                int address = instance().globalAddress(index);
+                long value = context.globals().loadAsLong(address);
+                push(stack, stackPointer, value);
+                break;
+            }
+            case WasmType.F32_TYPE: {
+                int address = instance().globalAddress(index);
+                int value = context.globals().loadAsInt(address);
+                pushInt(stack, stackPointer, value);
+                break;
+            }
+            case WasmType.F64_TYPE: {
+                int address = instance().globalAddress(index);
+                long value = context.globals().loadAsLong(address);
+                push(stack, stackPointer, value);
+                break;
+            }
+            default: {
+                throw WasmException.create(Failure.UNSPECIFIED_TRAP, this, "Local variable cannot have the void type.");
+            }
+        }
+    }
+
+    private void local_tee(VirtualFrame frame, long[] stack, int stackPointer, int index) {
+        byte type = codeEntry().localType(index);
+        switch (type) {
+            case WasmType.I32_TYPE: {
+                int value = popInt(stack, stackPointer);
+                pushInt(stack, stackPointer, value);
+                setInt(frame, index, value);
+                break;
+            }
+            case WasmType.I64_TYPE: {
+                long value = pop(stack, stackPointer);
+                push(stack, stackPointer, value);
+                setLong(frame, index, value);
+                break;
+            }
+            case WasmType.F32_TYPE: {
+                float value = popAsFloat(stack, stackPointer);
+                pushFloat(stack, stackPointer, value);
+                setFloat(frame, index, value);
+                break;
+            }
+            case WasmType.F64_TYPE: {
+                double value = popAsDouble(stack, stackPointer);
+                pushDouble(stack, stackPointer, value);
+                setDouble(frame, index, value);
+                break;
+            }
+            default: {
+                throw WasmException.create(Failure.UNSPECIFIED_TRAP, this, "Local variable cannot have the void type.");
+            }
+        }
+    }
+
+    private void local_set(VirtualFrame frame, long[] stack, int stackPointer, int index) {
+        byte type = codeEntry().localType(index);
+        switch (type) {
+            case WasmType.I32_TYPE: {
+                int value = popInt(stack, stackPointer);
+                setInt(frame, index, value);
+                break;
+            }
+            case WasmType.I64_TYPE: {
+                long value = pop(stack, stackPointer);
+                setLong(frame, index, value);
+                break;
+            }
+            case WasmType.F32_TYPE: {
+                float value = popAsFloat(stack, stackPointer);
+                setFloat(frame, index, value);
+                break;
+            }
+            case WasmType.F64_TYPE: {
+                double value = popAsDouble(stack, stackPointer);
+                setDouble(frame, index, value);
+                break;
+            }
+            default: {
+                throw WasmException.create(Failure.UNSPECIFIED_TRAP, this, "Local variable cannot have the void type.");
+            }
+        }
+    }
+
+    private void local_get(VirtualFrame frame, long[] stack, int stackPointer, int index) {
+        byte type = codeEntry().localType(index);
+        switch (type) {
+            case WasmType.I32_TYPE: {
+                int value = getInt(frame, index);
+                pushInt(stack, stackPointer, value);
+                break;
+            }
+            case WasmType.I64_TYPE: {
+                long value = getLong(frame, index);
+                push(stack, stackPointer, value);
+                break;
+            }
+            case WasmType.F32_TYPE: {
+                float value = getFloat(frame, index);
+                pushFloat(stack, stackPointer, value);
+                break;
+            }
+            case WasmType.F64_TYPE: {
+                double value = getDouble(frame, index);
+                pushDouble(stack, stackPointer, value);
+                break;
+            }
+            default: {
+                throw WasmException.create(Failure.UNSPECIFIED_TRAP, this, "Local variable cannot have the void type.");
+            }
+        }
+    }
+
+    @SuppressWarnings("unused")
+    private void unary_op(int opcode, long[] stack, int stackPointer) {
+        switch (opcode) {
+            case I32_EQZ:
+                i32_eqz(stack, stackPointer);
+                break;
+            case I64_EQZ:
+                i64_eqz(stack, stackPointer);
+                break;
+            case I32_CLZ:
+                i32_clz(stack, stackPointer);
+                break;
+            case I32_CTZ:
+                i32_ctz(stack, stackPointer);
+                break;
+            case I32_POPCNT:
+                i32_popcnt(stack, stackPointer);
+                break;
+            case I64_CLZ:
+                i64_clz(stack, stackPointer);
+                break;
+            case I64_CTZ:
+                i64_ctz(stack, stackPointer);
+                break;
+            case I64_POPCNT:
+                i64_popcnt(stack, stackPointer);
+                break;
+            case F32_ABS:
+                f32_abs(stack, stackPointer);
+                break;
+            case F32_NEG:
+                f32_neg(stack, stackPointer);
+                break;
+            case F32_CEIL:
+                f32_ceil(stack, stackPointer);
+                break;
+            case F32_FLOOR:
+                f32_floor(stack, stackPointer);
+                break;
+            case F32_TRUNC:
+                f32_trunc(stack, stackPointer);
+                break;
+            case F32_NEAREST:
+                f32_nearest(stack, stackPointer);
+                break;
+            case F32_SQRT:
+                f32_sqrt(stack, stackPointer);
+                break;
+            case F64_ABS:
+                f64_abs(stack, stackPointer);
+                break;
+            case F64_NEG:
+                f64_neg(stack, stackPointer);
+                break;
+            case F64_CEIL:
+                f64_ceil(stack, stackPointer);
+                break;
+            case F64_FLOOR:
+                f64_floor(stack, stackPointer);
+                break;
+            case F64_TRUNC:
+                f64_trunc(stack, stackPointer);
+                break;
+            case F64_NEAREST:
+                f64_nearest(stack, stackPointer);
+                break;
+            case F64_SQRT:
+                f64_sqrt(stack, stackPointer);
+                break;
+            case I32_WRAP_I64:
+                i32_wrap_i64(stack, stackPointer);
+                break;
+            case I32_TRUNC_F32_S:
+                i32_trunc_f32_s(stack, stackPointer);
+                break;
+            case I32_TRUNC_F32_U:
+                i32_trunc_f32_u(stack, stackPointer);
+                break;
+            case I32_TRUNC_F64_S:
+                i32_trunc_f64_s(stack, stackPointer);
+                break;
+            case I32_TRUNC_F64_U:
+                i32_trunc_f64_u(stack, stackPointer);
+                break;
+            case I64_EXTEND_I32_S:
+                i64_extend_i32_s(stack, stackPointer);
+                break;
+            case I64_EXTEND_I32_U:
+                i64_extend_i32_u(stack, stackPointer);
+                break;
+            case I64_TRUNC_F32_S:
+                i64_trunc_f32_s(stack, stackPointer);
+                break;
+            case I64_TRUNC_F32_U:
+                i64_trunc_f32_u(stack, stackPointer);
+                break;
+            case I64_TRUNC_F64_S:
+                i64_trunc_f64_s(stack, stackPointer);
+                break;
+            case I64_TRUNC_F64_U:
+                i64_trunc_f64_u(stack, stackPointer);
+                break;
+            case F32_CONVERT_I32_S:
+                f32_convert_i32_s(stack, stackPointer);
+                break;
+            case F32_CONVERT_I32_U:
+                f32_convert_i32_u(stack, stackPointer);
+                break;
+            case F32_CONVERT_I64_S:
+                f32_convert_i64_s(stack, stackPointer);
+                break;
+            case F32_CONVERT_I64_U:
+                f32_convert_i64_u(stack, stackPointer);
+                break;
+            case F32_DEMOTE_F64:
+                f32_demote_f64(stack, stackPointer);
+                break;
+            case F64_CONVERT_I32_S:
+                f64_convert_i32_s(stack, stackPointer);
+                break;
+            case F64_CONVERT_I32_U:
+                f64_convert_i32_u(stack, stackPointer);
+                break;
+            case F64_CONVERT_I64_S:
+                f64_convert_i64_s(stack, stackPointer);
+                break;
+            case F64_CONVERT_I64_U:
+                f64_convert_i64_u(stack, stackPointer);
+                break;
+            case F64_PROMOTE_F32:
+                f64_promote_f32(stack, stackPointer);
+                break;
+            default:
+                Assert.fail(Assert.format("Unexpected opcode: 0x%02X", opcode), Failure.UNSPECIFIED_INTERNAL);
+        }
+    }
+
+    private void i32_eqz(long[] stack, int stackPointer) {
+        int x = popInt(stack, stackPointer - 1);
+        pushInt(stack, stackPointer - 1, x == 0 ? 1 : 0);
+    }
+
+    private void i64_eqz(long[] stack, int stackPointer) {
+        long x = pop(stack, stackPointer - 1);
+        pushInt(stack, stackPointer - 1, x == 0 ? 1 : 0);
+    }
+
+    @SuppressWarnings("unused")
+    private void binary_op(int opcode, long[] stack, int stackPointer) {
+        switch (opcode) {
+            case I32_EQ:
+                i32_eq(stack, stackPointer);
+                break;
+            case I32_NE:
+                i32_ne(stack, stackPointer);
+                break;
+            case I32_LT_S:
+                i32_lt_s(stack, stackPointer);
+                break;
+            case I32_LT_U:
+                i32_lt_u(stack, stackPointer);
+                break;
+            case I32_GT_S:
+                i32_gt_s(stack, stackPointer);
+                break;
+            case I32_GT_U:
+                i32_gt_u(stack, stackPointer);
+                break;
+            case I32_LE_S:
+                i32_le_s(stack, stackPointer);
+                break;
+            case I32_LE_U:
+                i32_le_u(stack, stackPointer);
+                break;
+            case I32_GE_S:
+                i32_ge_s(stack, stackPointer);
+                break;
+            case I32_GE_U:
+                i32_ge_u(stack, stackPointer);
+                break;
+            case I64_EQ:
+                i64_eq(stack, stackPointer);
+                break;
+            case I64_NE:
+                i64_ne(stack, stackPointer);
+                break;
+            case I64_LT_S:
+                i64_lt_s(stack, stackPointer);
+                break;
+            case I64_LT_U:
+                i64_lt_u(stack, stackPointer);
+                break;
+            case I64_GT_S:
+                i64_gt_s(stack, stackPointer);
+                break;
+            case I64_GT_U:
+                i64_gt_u(stack, stackPointer);
+                break;
+            case I64_LE_S:
+                i64_le_s(stack, stackPointer);
+                break;
+            case I64_LE_U:
+                i64_le_u(stack, stackPointer);
+                break;
+            case I64_GE_S:
+                i64_ge_s(stack, stackPointer);
+                break;
+            case I64_GE_U:
+                i64_ge_u(stack, stackPointer);
+                break;
+            case F32_EQ:
+                f32_eq(stack, stackPointer);
+                break;
+            case F32_NE:
+                f32_ne(stack, stackPointer);
+                break;
+            case F32_LT:
+                f32_lt(stack, stackPointer);
+                break;
+            case F32_GT:
+                f32_gt(stack, stackPointer);
+                break;
+            case F32_LE:
+                f32_le(stack, stackPointer);
+                break;
+            case F32_GE:
+                f32_ge(stack, stackPointer);
+                break;
+            case F64_EQ:
+                f64_eq(stack, stackPointer);
+                break;
+            case F64_NE:
+                f64_ne(stack, stackPointer);
+                break;
+            case F64_LT:
+                f64_lt(stack, stackPointer);
+                break;
+            case F64_GT:
+                f64_gt(stack, stackPointer);
+                break;
+            case F64_LE:
+                f64_le(stack, stackPointer);
+                break;
+            case F64_GE:
+                f64_ge(stack, stackPointer);
+                break;
+            case I32_ADD:
+                i32_add(stack, stackPointer);
+                break;
+            case I32_SUB:
+                i32_sub(stack, stackPointer);
+                break;
+            case I32_MUL:
+                i32_mul(stack, stackPointer);
+                break;
+            case I32_DIV_S:
+                i32_div_s(stack, stackPointer);
+                break;
+            case I32_DIV_U:
+                i32_div_u(stack, stackPointer);
+                break;
+            case I32_REM_S:
+                i32_rem_s(stack, stackPointer);
+                break;
+            case I32_REM_U:
+                i32_rem_u(stack, stackPointer);
+                break;
+            case I32_AND:
+                i32_and(stack, stackPointer);
+                break;
+            case I32_OR:
+                i32_or(stack, stackPointer);
+                break;
+            case I32_XOR:
+                i32_xor(stack, stackPointer);
+                break;
+            case I32_SHL:
+                i32_shl(stack, stackPointer);
+                break;
+            case I32_SHR_S:
+                i32_shr_s(stack, stackPointer);
+                break;
+            case I32_SHR_U:
+                i32_shr_u(stack, stackPointer);
+                break;
+            case I32_ROTL:
+                i32_rotl(stack, stackPointer);
+                break;
+            case I32_ROTR:
+                i32_rotr(stack, stackPointer);
+                break;
+            case I64_ADD:
+                i64_add(stack, stackPointer);
+                break;
+            case I64_SUB:
+                i64_sub(stack, stackPointer);
+                break;
+            case I64_MUL:
+                i64_mul(stack, stackPointer);
+                break;
+            case I64_DIV_S:
+                i64_div_s(stack, stackPointer);
+                break;
+            case I64_DIV_U:
+                i64_div_u(stack, stackPointer);
+                break;
+            case I64_REM_S:
+                i64_rem_s(stack, stackPointer);
+                break;
+            case I64_REM_U:
+                i64_rem_u(stack, stackPointer);
+                break;
+            case I64_AND:
+                i64_and(stack, stackPointer);
+                break;
+            case I64_OR:
+                i64_or(stack, stackPointer);
+                break;
+            case I64_XOR:
+                i64_xor(stack, stackPointer);
+                break;
+            case I64_SHL:
+                i64_shl(stack, stackPointer);
+                break;
+            case I64_SHR_S:
+                i64_shr_s(stack, stackPointer);
+                break;
+            case I64_SHR_U:
+                i64_shr_u(stack, stackPointer);
+                break;
+            case I64_ROTL:
+                i64_rotl(stack, stackPointer);
+                break;
+            case I64_ROTR:
+                i64_rotr(stack, stackPointer);
+                break;
+            case F32_ADD:
+                f32_add(stack, stackPointer);
+                break;
+            case F32_SUB:
+                f32_sub(stack, stackPointer);
+                break;
+            case F32_MUL:
+                f32_mul(stack, stackPointer);
+                break;
+            case F32_DIV:
+                f32_div(stack, stackPointer);
+                break;
+            case F32_MIN:
+                f32_min(stack, stackPointer);
+                break;
+            case F32_MAX:
+                f32_max(stack, stackPointer);
+                break;
+            case F32_COPYSIGN:
+                f32_copysign(stack, stackPointer);
+                break;
+            case F64_ADD:
+                f64_add(stack, stackPointer);
+                break;
+            case F64_SUB:
+                f64_sub(stack, stackPointer);
+                break;
+            case F64_MUL:
+                f64_mul(stack, stackPointer);
+                break;
+            case F64_DIV:
+                f64_div(stack, stackPointer);
+                break;
+            case F64_MIN:
+                f64_min(stack, stackPointer);
+                break;
+            case F64_MAX:
+                f64_max(stack, stackPointer);
+                break;
+            case F64_COPYSIGN:
+                f64_copysign(stack, stackPointer);
+                break;
+            default:
+                Assert.fail(Assert.format("Unexpected opcode: 0x%02X", opcode), Failure.UNSPECIFIED_INTERNAL);
+        }
+    }
+
+    private void i32_eq(long[] stack, int stackPointer) {
+        int x = popInt(stack, stackPointer - 1);
+        int y = popInt(stack, stackPointer - 2);
+        pushInt(stack, stackPointer - 2, y == x ? 1 : 0);
+    }
+
+    private void i32_ne(long[] stack, int stackPointer) {
+        int x = popInt(stack, stackPointer - 1);
+        int y = popInt(stack, stackPointer - 2);
+        pushInt(stack, stackPointer - 2, y != x ? 1 : 0);
+    }
+
+    private void i32_lt_s(long[] stack, int stackPointer) {
+        int x = popInt(stack, stackPointer - 1);
+        int y = popInt(stack, stackPointer - 2);
+        pushInt(stack, stackPointer - 2, y < x ? 1 : 0);
+    }
+
+    private void i32_lt_u(long[] stack, int stackPointer) {
+        int x = popInt(stack, stackPointer - 1);
+        int y = popInt(stack, stackPointer - 2);
+        pushInt(stack, stackPointer - 2, Integer.compareUnsigned(y, x) < 0 ? 1 : 0);
+    }
+
+    private void i32_gt_s(long[] stack, int stackPointer) {
+        int x = popInt(stack, stackPointer - 1);
+        int y = popInt(stack, stackPointer - 2);
+        pushInt(stack, stackPointer - 2, y > x ? 1 : 0);
+    }
+
+    private void i32_gt_u(long[] stack, int stackPointer) {
+        int x = popInt(stack, stackPointer - 1);
+        int y = popInt(stack, stackPointer - 2);
+        pushInt(stack, stackPointer - 2, Integer.compareUnsigned(y, x) > 0 ? 1 : 0);
+    }
+
+    private void i32_le_s(long[] stack, int stackPointer) {
+        int x = popInt(stack, stackPointer - 1);
+        int y = popInt(stack, stackPointer - 2);
+        pushInt(stack, stackPointer - 2, y <= x ? 1 : 0);
+    }
+
+    private void i32_le_u(long[] stack, int stackPointer) {
+        int x = popInt(stack, stackPointer - 1);
+        int y = popInt(stack, stackPointer - 2);
+        pushInt(stack, stackPointer - 2, Integer.compareUnsigned(y, x) <= 0 ? 1 : 0);
+    }
+
+    private void i32_ge_s(long[] stack, int stackPointer) {
+        int x = popInt(stack, stackPointer - 1);
+        int y = popInt(stack, stackPointer - 2);
+        pushInt(stack, stackPointer - 2, y >= x ? 1 : 0);
+    }
+
+    private void i32_ge_u(long[] stack, int stackPointer) {
+        int x = popInt(stack, stackPointer - 1);
+        int y = popInt(stack, stackPointer - 2);
+        pushInt(stack, stackPointer - 2, Integer.compareUnsigned(y, x) >= 0 ? 1 : 0);
+    }
+
+    private void i64_eq(long[] stack, int stackPointer) {
+        long x = pop(stack, stackPointer - 1);
+        long y = pop(stack, stackPointer - 2);
+        pushInt(stack, stackPointer - 2, y == x ? 1 : 0);
+    }
+
+    private void i64_ne(long[] stack, int stackPointer) {
+        long x = pop(stack, stackPointer - 1);
+        long y = pop(stack, stackPointer - 2);
+        pushInt(stack, stackPointer - 2, y != x ? 1 : 0);
+    }
+
+    private void i64_lt_s(long[] stack, int stackPointer) {
+        long x = pop(stack, stackPointer - 1);
+        long y = pop(stack, stackPointer - 2);
+        pushInt(stack, stackPointer - 2, y < x ? 1 : 0);
+    }
+
+    private void i64_lt_u(long[] stack, int stackPointer) {
+        long x = pop(stack, stackPointer - 1);
+        long y = pop(stack, stackPointer - 2);
+        pushInt(stack, stackPointer - 2, Long.compareUnsigned(y, x) < 0 ? 1 : 0);
+    }
+
+    private void i64_gt_s(long[] stack, int stackPointer) {
+        long x = pop(stack, stackPointer - 1);
+        long y = pop(stack, stackPointer - 2);
+        pushInt(stack, stackPointer - 2, y > x ? 1 : 0);
+    }
+
+    private void i64_gt_u(long[] stack, int stackPointer) {
+        long x = pop(stack, stackPointer - 1);
+        long y = pop(stack, stackPointer - 2);
+        pushInt(stack, stackPointer - 2, Long.compareUnsigned(y, x) > 0 ? 1 : 0);
+    }
+
+    private void i64_le_s(long[] stack, int stackPointer) {
+        long x = pop(stack, stackPointer - 1);
+        long y = pop(stack, stackPointer - 2);
+        pushInt(stack, stackPointer - 2, y <= x ? 1 : 0);
+    }
+
+    private void i64_le_u(long[] stack, int stackPointer) {
+        long x = pop(stack, stackPointer - 1);
+        long y = pop(stack, stackPointer - 2);
+        pushInt(stack, stackPointer - 2, Long.compareUnsigned(y, x) <= 0 ? 1 : 0);
+    }
+
+    private void i64_ge_s(long[] stack, int stackPointer) {
+        long x = pop(stack, stackPointer - 1);
+        long y = pop(stack, stackPointer - 2);
+        pushInt(stack, stackPointer - 2, y >= x ? 1 : 0);
+    }
+
+    private void i64_ge_u(long[] stack, int stackPointer) {
+        long x = pop(stack, stackPointer - 1);
+        long y = pop(stack, stackPointer - 2);
+        pushInt(stack, stackPointer - 2, Long.compareUnsigned(y, x) >= 0 ? 1 : 0);
+    }
+
+    private void f32_eq(long[] stack, int stackPointer) {
+        float x = popAsFloat(stack, stackPointer - 1);
+        float y = popAsFloat(stack, stackPointer - 2);
+        pushInt(stack, stackPointer - 2, y == x ? 1 : 0);
+    }
+
+    private void f32_ne(long[] stack, int stackPointer) {
+        float x = popAsFloat(stack, stackPointer - 1);
+        float y = popAsFloat(stack, stackPointer - 2);
+        pushInt(stack, stackPointer - 2, y != x ? 1 : 0);
+    }
+
+    private void f32_lt(long[] stack, int stackPointer) {
+        float x = popAsFloat(stack, stackPointer - 1);
+        float y = popAsFloat(stack, stackPointer - 2);
+        pushInt(stack, stackPointer - 2, y < x ? 1 : 0);
+    }
+
+    private void f32_gt(long[] stack, int stackPointer) {
+        float x = popAsFloat(stack, stackPointer - 1);
+        float y = popAsFloat(stack, stackPointer - 2);
+        pushInt(stack, stackPointer - 2, y > x ? 1 : 0);
+    }
+
+    private void f32_le(long[] stack, int stackPointer) {
+        float x = popAsFloat(stack, stackPointer - 1);
+        float y = popAsFloat(stack, stackPointer - 2);
+        pushInt(stack, stackPointer - 2, y <= x ? 1 : 0);
+    }
+
+    private void f32_ge(long[] stack, int stackPointer) {
+        float x = popAsFloat(stack, stackPointer - 1);
+        float y = popAsFloat(stack, stackPointer - 2);
+        pushInt(stack, stackPointer - 2, y >= x ? 1 : 0);
+    }
+
+    private void f64_eq(long[] stack, int stackPointer) {
+        double x = popAsDouble(stack, stackPointer - 1);
+        double y = popAsDouble(stack, stackPointer - 2);
+        pushInt(stack, stackPointer - 2, y == x ? 1 : 0);
+    }
+
+    private void f64_ne(long[] stack, int stackPointer) {
+        double x = popAsDouble(stack, stackPointer - 1);
+        double y = popAsDouble(stack, stackPointer - 2);
+        pushInt(stack, stackPointer - 2, y != x ? 1 : 0);
+    }
+
+    private void f64_lt(long[] stack, int stackPointer) {
+        double x = popAsDouble(stack, stackPointer - 1);
+        double y = popAsDouble(stack, stackPointer - 2);
+        pushInt(stack, stackPointer - 2, y < x ? 1 : 0);
+    }
+
+    private void f64_gt(long[] stack, int stackPointer) {
+        double x = popAsDouble(stack, stackPointer - 1);
+        double y = popAsDouble(stack, stackPointer - 2);
+        pushInt(stack, stackPointer - 2, y > x ? 1 : 0);
+    }
+
+    private void f64_le(long[] stack, int stackPointer) {
+        double x = popAsDouble(stack, stackPointer - 1);
+        double y = popAsDouble(stack, stackPointer - 2);
+        pushInt(stack, stackPointer - 2, y <= x ? 1 : 0);
+    }
+
+    private void f64_ge(long[] stack, int stackPointer) {
+        double x = popAsDouble(stack, stackPointer - 1);
+        double y = popAsDouble(stack, stackPointer - 2);
+        pushInt(stack, stackPointer - 2, y >= x ? 1 : 0);
+    }
+
+    private void i32_clz(long[] stack, int stackPointer) {
+        int x = popInt(stack, stackPointer - 1);
+        int result = Integer.numberOfLeadingZeros(x);
+        pushInt(stack, stackPointer - 1, result);
+    }
+
+    private void i32_ctz(long[] stack, int stackPointer) {
+        int x = popInt(stack, stackPointer - 1);
+        int result = Integer.numberOfTrailingZeros(x);
+        pushInt(stack, stackPointer - 1, result);
+    }
+
+    private void i32_popcnt(long[] stack, int stackPointer) {
+        int x = popInt(stack, stackPointer - 1);
+        int result = Integer.bitCount(x);
+        pushInt(stack, stackPointer - 1, result);
+    }
+
+    private void i32_add(long[] stack, int stackPointer) {
+        int x = popInt(stack, stackPointer - 1);
+        int y = popInt(stack, stackPointer - 2);
+        int result = y + x;
+        pushInt(stack, stackPointer - 2, result);
+    }
+
+    private void i32_sub(long[] stack, int stackPointer) {
+        int x = popInt(stack, stackPointer - 1);
+        int y = popInt(stack, stackPointer - 2);
+        int result = y - x;
+        pushInt(stack, stackPointer - 2, result);
+    }
+
+    private void i32_mul(long[] stack, int stackPointer) {
+        int x = popInt(stack, stackPointer - 1);
+        int y = popInt(stack, stackPointer - 2);
+        int result = y * x;
+        pushInt(stack, stackPointer - 2, result);
+    }
+
+    private void i32_div_s(long[] stack, int stackPointer) {
+        int x = popInt(stack, stackPointer - 1);
+        int y = popInt(stack, stackPointer - 2);
+        if (x == -1 && y == Integer.MIN_VALUE) {
+            throw WasmException.create(Failure.INT_OVERFLOW, this);
+        }
+        int result = y / x;
+        pushInt(stack, stackPointer - 2, result);
+    }
+
+    private void i32_div_u(long[] stack, int stackPointer) {
+        int x = popInt(stack, stackPointer - 1);
+        int y = popInt(stack, stackPointer - 2);
+        int result = Integer.divideUnsigned(y, x);
+        pushInt(stack, stackPointer - 2, result);
+    }
+
+    private void i32_rem_s(long[] stack, int stackPointer) {
+        int x = popInt(stack, stackPointer - 1);
+        int y = popInt(stack, stackPointer - 2);
+        int result = y % x;
+        pushInt(stack, stackPointer - 2, result);
+    }
+
+    private void i32_rem_u(long[] stack, int stackPointer) {
+        int x = popInt(stack, stackPointer - 1);
+        int y = popInt(stack, stackPointer - 2);
+        int result = Integer.remainderUnsigned(y, x);
+        pushInt(stack, stackPointer - 2, result);
+    }
+
+    private void i32_and(long[] stack, int stackPointer) {
+        int x = popInt(stack, stackPointer - 1);
+        int y = popInt(stack, stackPointer - 2);
+        int result = y & x;
+        pushInt(stack, stackPointer - 2, result);
+    }
+
+    private void i32_or(long[] stack, int stackPointer) {
+        int x = popInt(stack, stackPointer - 1);
+        int y = popInt(stack, stackPointer - 2);
+        int result = y | x;
+        pushInt(stack, stackPointer - 2, result);
+    }
+
+    private void i32_xor(long[] stack, int stackPointer) {
+        int x = popInt(stack, stackPointer - 1);
+        int y = popInt(stack, stackPointer - 2);
+        int result = y ^ x;
+        pushInt(stack, stackPointer - 2, result);
+    }
+
+    private void i32_shl(long[] stack, int stackPointer) {
+        int x = popInt(stack, stackPointer - 1);
+        int y = popInt(stack, stackPointer - 2);
+        int result = y << x;
+        pushInt(stack, stackPointer - 2, result);
+    }
+
+    private void i32_shr_s(long[] stack, int stackPointer) {
+        int x = popInt(stack, stackPointer - 1);
+        int y = popInt(stack, stackPointer - 2);
+        int result = y >> x;
+        pushInt(stack, stackPointer - 2, result);
+    }
+
+    private void i32_shr_u(long[] stack, int stackPointer) {
+        int x = popInt(stack, stackPointer - 1);
+        int y = popInt(stack, stackPointer - 2);
+        int result = y >>> x;
+        pushInt(stack, stackPointer - 2, result);
+    }
+
+    private void i32_rotl(long[] stack, int stackPointer) {
+        int x = popInt(stack, stackPointer - 1);
+        int y = popInt(stack, stackPointer - 2);
+        int result = Integer.rotateLeft(y, x);
+        pushInt(stack, stackPointer - 2, result);
+    }
+
+    private void i32_rotr(long[] stack, int stackPointer) {
+        int x = popInt(stack, stackPointer - 1);
+        int y = popInt(stack, stackPointer - 2);
+        int result = Integer.rotateRight(y, x);
+        pushInt(stack, stackPointer - 2, result);
+    }
+
+    private void i64_clz(long[] stack, int stackPointer) {
+        long x = pop(stack, stackPointer - 1);
+        long result = Long.numberOfLeadingZeros(x);
+        push(stack, stackPointer - 1, result);
+    }
+
+    private void i64_ctz(long[] stack, int stackPointer) {
+        long x = pop(stack, stackPointer - 1);
+        long result = Long.numberOfTrailingZeros(x);
+        push(stack, stackPointer - 1, result);
+    }
+
+    private void i64_popcnt(long[] stack, int stackPointer) {
+        long x = pop(stack, stackPointer - 1);
+        long result = Long.bitCount(x);
+        push(stack, stackPointer - 1, result);
+    }
+
+    private void i64_add(long[] stack, int stackPointer) {
+        long x = pop(stack, stackPointer - 1);
+        long y = pop(stack, stackPointer - 2);
+        long result = y + x;
+        push(stack, stackPointer - 2, result);
+    }
+
+    private void i64_sub(long[] stack, int stackPointer) {
+        long x = pop(stack, stackPointer - 1);
+        long y = pop(stack, stackPointer - 2);
+        long result = y - x;
+        push(stack, stackPointer - 2, result);
+    }
+
+    private void i64_mul(long[] stack, int stackPointer) {
+        long x = pop(stack, stackPointer - 1);
+        long y = pop(stack, stackPointer - 2);
+        long result = y * x;
+        push(stack, stackPointer - 2, result);
+    }
+
+    private void i64_div_s(long[] stack, int stackPointer) {
+        long x = pop(stack, stackPointer - 1);
+        long y = pop(stack, stackPointer - 2);
+        if (x == -1 && y == Long.MIN_VALUE) {
+            throw WasmException.create(Failure.INT_OVERFLOW, this);
+        }
+        final long result = y / x;
+        push(stack, stackPointer - 2, result);
+    }
+
+    private void i64_div_u(long[] stack, int stackPointer) {
+        long x = pop(stack, stackPointer - 1);
+        long y = pop(stack, stackPointer - 2);
+        long result = Long.divideUnsigned(y, x);
+        push(stack, stackPointer - 2, result);
+    }
+
+    private void i64_rem_s(long[] stack, int stackPointer) {
+        long x = pop(stack, stackPointer - 1);
+        long y = pop(stack, stackPointer - 2);
+        long result = y % x;
+        push(stack, stackPointer - 2, result);
+    }
+
+    private void i64_rem_u(long[] stack, int stackPointer) {
+        long x = pop(stack, stackPointer - 1);
+        long y = pop(stack, stackPointer - 2);
+        long result = Long.remainderUnsigned(y, x);
+        push(stack, stackPointer - 2, result);
+    }
+
+    private void i64_and(long[] stack, int stackPointer) {
+        long x = pop(stack, stackPointer - 1);
+        long y = pop(stack, stackPointer - 2);
+        long result = y & x;
+        push(stack, stackPointer - 2, result);
+    }
+
+    private void i64_or(long[] stack, int stackPointer) {
+        long x = pop(stack, stackPointer - 1);
+        long y = pop(stack, stackPointer - 2);
+        long result = y | x;
+        push(stack, stackPointer - 2, result);
+    }
+
+    private void i64_xor(long[] stack, int stackPointer) {
+        long x = pop(stack, stackPointer - 1);
+        long y = pop(stack, stackPointer - 2);
+        long result = y ^ x;
+        push(stack, stackPointer - 2, result);
+    }
+
+    private void i64_shl(long[] stack, int stackPointer) {
+        long x = pop(stack, stackPointer - 1);
+        long y = pop(stack, stackPointer - 2);
+        long result = y << x;
+        push(stack, stackPointer - 2, result);
+    }
+
+    private void i64_shr_s(long[] stack, int stackPointer) {
+        long x = pop(stack, stackPointer - 1);
+        long y = pop(stack, stackPointer - 2);
+        long result = y >> x;
+        push(stack, stackPointer - 2, result);
+    }
+
+    private void i64_shr_u(long[] stack, int stackPointer) {
+        long x = pop(stack, stackPointer - 1);
+        long y = pop(stack, stackPointer - 2);
+        long result = y >>> x;
+        push(stack, stackPointer - 2, result);
+    }
+
+    private void i64_rotl(long[] stack, int stackPointer) {
+        long x = pop(stack, stackPointer - 1);
+        long y = pop(stack, stackPointer - 2);
+        long result = Long.rotateLeft(y, (int) x);
+        push(stack, stackPointer - 2, result);
+    }
+
+    private void i64_rotr(long[] stack, int stackPointer) {
+        long x = pop(stack, stackPointer - 1);
+        long y = pop(stack, stackPointer - 2);
+        long result = Long.rotateRight(y, (int) x);
+        push(stack, stackPointer - 2, result);
+    }
+
+    private void f32_abs(long[] stack, int stackPointer) {
+        float x = popAsFloat(stack, stackPointer - 1);
+        float result = Math.abs(x);
+        pushFloat(stack, stackPointer - 1, result);
+    }
+
+    private void f32_neg(long[] stack, int stackPointer) {
+        float x = popAsFloat(stack, stackPointer - 1);
+        float result = -x;
+        pushFloat(stack, stackPointer - 1, result);
+    }
+
+    private void f32_ceil(long[] stack, int stackPointer) {
+        float x = popAsFloat(stack, stackPointer - 1);
+        float result = (float) Math.ceil(x);
+        pushFloat(stack, stackPointer - 1, result);
+    }
+
+    private void f32_floor(long[] stack, int stackPointer) {
+        float x = popAsFloat(stack, stackPointer - 1);
+        float result = (float) Math.floor(x);
+        pushFloat(stack, stackPointer - 1, result);
+    }
+
+    private void f32_trunc(long[] stack, int stackPointer) {
+        float x = popAsFloat(stack, stackPointer - 1);
+        float result = (float) (x < 0.0 ? Math.ceil(x) : Math.floor(x));
+        pushFloat(stack, stackPointer - 1, result);
+    }
+
+    private void f32_nearest(long[] stack, int stackPointer) {
+        float x = popAsFloat(stack, stackPointer - 1);
+        float result = (float) Math.rint(x);
+        pushFloat(stack, stackPointer - 1, result);
+    }
+
+    private void f32_sqrt(long[] stack, int stackPointer) {
+        float x = popAsFloat(stack, stackPointer - 1);
+        float result = (float) Math.sqrt(x);
+        pushFloat(stack, stackPointer - 1, result);
+    }
+
+    private void f32_add(long[] stack, int stackPointer) {
+        float x = popAsFloat(stack, stackPointer - 1);
+        float y = popAsFloat(stack, stackPointer - 2);
+        float result = y + x;
+        pushFloat(stack, stackPointer - 2, result);
+    }
+
+    private void f32_sub(long[] stack, int stackPointer) {
+        float x = popAsFloat(stack, stackPointer - 1);
+        float y = popAsFloat(stack, stackPointer - 2);
+        float result = y - x;
+        pushFloat(stack, stackPointer - 2, result);
+    }
+
+    private void f32_mul(long[] stack, int stackPointer) {
+        float x = popAsFloat(stack, stackPointer - 1);
+        float y = popAsFloat(stack, stackPointer - 2);
+        float result = y * x;
+        pushFloat(stack, stackPointer - 2, result);
+    }
+
+    private void f32_div(long[] stack, int stackPointer) {
+        float x = popAsFloat(stack, stackPointer - 1);
+        float y = popAsFloat(stack, stackPointer - 2);
+        float result = y / x;
+        pushFloat(stack, stackPointer - 2, result);
+    }
+
+    private void f32_min(long[] stack, int stackPointer) {
+        float x = popAsFloat(stack, stackPointer - 1);
+        float y = popAsFloat(stack, stackPointer - 2);
+        float result = Math.min(y, x);
+        pushFloat(stack, stackPointer - 2, result);
+    }
+
+    private void f32_max(long[] stack, int stackPointer) {
+        float x = popAsFloat(stack, stackPointer - 1);
+        float y = popAsFloat(stack, stackPointer - 2);
+        float result = Math.max(y, x);
+        pushFloat(stack, stackPointer - 2, result);
+    }
+
+    private void f32_copysign(long[] stack, int stackPointer) {
+        float x = popAsFloat(stack, stackPointer - 1);
+        float y = popAsFloat(stack, stackPointer - 2);
+        float result = Math.copySign(y, x);
+        pushFloat(stack, stackPointer - 2, result);
+    }
+
+    private void f64_abs(long[] stack, int stackPointer) {
+        double x = popAsDouble(stack, stackPointer - 1);
+        double result = Math.abs(x);
+        pushDouble(stack, stackPointer - 1, result);
+    }
+
+    private void f64_neg(long[] stack, int stackPointer) {
+        double x = popAsDouble(stack, stackPointer - 1);
+        double result = -x;
+        pushDouble(stack, stackPointer - 1, result);
+    }
+
+    private void f64_ceil(long[] stack, int stackPointer) {
+        double x = popAsDouble(stack, stackPointer - 1);
+        double result = Math.ceil(x);
+        pushDouble(stack, stackPointer - 1, result);
+    }
+
+    private void f64_floor(long[] stack, int stackPointer) {
+        double x = popAsDouble(stack, stackPointer - 1);
+        double result = Math.floor(x);
+        pushDouble(stack, stackPointer - 1, result);
+    }
+
+    private void f64_trunc(long[] stack, int stackPointer) {
+        double x = popAsDouble(stack, stackPointer - 1);
+        double result = x < 0.0 ? Math.ceil(x) : Math.floor(x);
+        pushDouble(stack, stackPointer - 1, result);
+    }
+
+    private void f64_nearest(long[] stack, int stackPointer) {
+        double x = popAsDouble(stack, stackPointer - 1);
+        double result = Math.rint(x);
+        pushDouble(stack, stackPointer - 1, result);
+    }
+
+    private void f64_sqrt(long[] stack, int stackPointer) {
+        double x = popAsDouble(stack, stackPointer - 1);
+        double result = Math.sqrt(x);
+        pushDouble(stack, stackPointer - 1, result);
+    }
+
+    private void f64_add(long[] stack, int stackPointer) {
+        double x = popAsDouble(stack, stackPointer - 1);
+        double y = popAsDouble(stack, stackPointer - 2);
+        double result = y + x;
+        pushDouble(stack, stackPointer - 2, result);
+    }
+
+    private void f64_sub(long[] stack, int stackPointer) {
+        double x = popAsDouble(stack, stackPointer - 1);
+        double y = popAsDouble(stack, stackPointer - 2);
+        double result = y - x;
+        pushDouble(stack, stackPointer - 2, result);
+    }
+
+    private void f64_mul(long[] stack, int stackPointer) {
+        double x = popAsDouble(stack, stackPointer - 1);
+        double y = popAsDouble(stack, stackPointer - 2);
+        double result = y * x;
+        pushDouble(stack, stackPointer - 2, result);
+    }
+
+    private void f64_div(long[] stack, int stackPointer) {
+        double x = popAsDouble(stack, stackPointer - 1);
+        double y = popAsDouble(stack, stackPointer - 2);
+        double result = y / x;
+        pushDouble(stack, stackPointer - 2, result);
+    }
+
+    private void f64_min(long[] stack, int stackPointer) {
+        double x = popAsDouble(stack, stackPointer - 1);
+        double y = popAsDouble(stack, stackPointer - 2);
+        double result = Math.min(y, x);
+        pushDouble(stack, stackPointer - 2, result);
+    }
+
+    private void f64_max(long[] stack, int stackPointer) {
+        double x = popAsDouble(stack, stackPointer - 1);
+        double y = popAsDouble(stack, stackPointer - 2);
+        double result = Math.max(y, x);
+        pushDouble(stack, stackPointer - 2, result);
+    }
+
+    private void f64_copysign(long[] stack, int stackPointer) {
+        double x = popAsDouble(stack, stackPointer - 1);
+        double y = popAsDouble(stack, stackPointer - 2);
+        double result = Math.copySign(y, x);
+        pushDouble(stack, stackPointer - 2, result);
+    }
+
+    private void i32_wrap_i64(long[] stack, int stackPointer) {
+        long x = pop(stack, stackPointer - 1);
+        int result = (int) (x & 0xFFFF_FFFFL);
+        pushInt(stack, stackPointer - 1, result);
+    }
+
+    private void i32_trunc_f32_u(long[] stack, int stackPointer) {
+        // TODO(mbovel): fix the i32_trunc_f32_u case.
+        i32_trunc_f32_s(stack, stackPointer);
+    }
+
+    private void i32_trunc_f32_s(long[] stack, int stackPointer) {
+        float x = popAsFloat(stack, stackPointer - 1);
+        int result = (int) x;
+        pushInt(stack, stackPointer - 1, result);
+    }
+
+    private void i32_trunc_f64_s(long[] stack, int stackPointer) {
+        i32_trunc_f64_u(stack, stackPointer);
+    }
+
+    private void i32_trunc_f64_u(long[] stack, int stackPointer) {
+        double x = popAsDouble(stack, stackPointer - 1);
+        int result = (int) x;
+        pushInt(stack, stackPointer - 1, result);
+    }
+
+    private void i64_extend_i32_s(long[] stack, int stackPointer) {
+        int x = popInt(stack, stackPointer - 1);
+        long result = x;
+        push(stack, stackPointer - 1, result);
+    }
+
+    private void i64_extend_i32_u(long[] stack, int stackPointer) {
+        int x = popInt(stack, stackPointer - 1);
+        long result = x & 0xFFFF_FFFFL;
+        push(stack, stackPointer - 1, result);
+    }
+
+    private void i64_trunc_f32_s(long[] stack, int stackPointer) {
+        float x = popAsFloat(stack, stackPointer - 1);
+        long result = (long) x;
+        push(stack, stackPointer - 1, result);
+    }
+
+    private void i64_trunc_f32_u(long[] stack, int stackPointer) {
+        // TODO(mbovel): fix this case.
+        i64_trunc_f32_s(stack, stackPointer);
+    }
+
+    private void i64_trunc_f64_s(long[] stack, int stackPointer) {
+        i64_trunc_f64_u(stack, stackPointer);
+    }
+
+    private void i64_trunc_f64_u(long[] stack, int stackPointer) {
+        double x = popAsDouble(stack, stackPointer - 1);
+        long result = (long) x;
+        push(stack, stackPointer - 1, result);
+    }
+
+    private void f32_convert_i32_s(long[] stack, int stackPointer) {
+        f32_convert_i32_u(stack, stackPointer);
+    }
+
+    private void f32_convert_i32_u(long[] stack, int stackPointer) {
+        int x = popInt(stack, stackPointer - 1);
+        float result = x;
+        pushFloat(stack, stackPointer - 1, result);
+    }
+
+    private void f32_convert_i64_s(long[] stack, int stackPointer) {
+        f32_convert_i64_u(stack, stackPointer);
+    }
+
+    private void f32_convert_i64_u(long[] stack, int stackPointer) {
+        long x = pop(stack, stackPointer - 1);
+        float result = x;
+        pushFloat(stack, stackPointer - 1, result);
+    }
+
+    private void f32_demote_f64(long[] stack, int stackPointer) {
+        double x = popAsDouble(stack, stackPointer - 1);
+        float result = (float) x;
+        pushFloat(stack, stackPointer - 1, result);
+    }
+
+    private void f64_convert_i32_s(long[] stack, int stackPointer) {
+        f64_convert_i32_u(stack, stackPointer);
+    }
+
+    private void f64_convert_i32_u(long[] stack, int stackPointer) {
+        int x = popInt(stack, stackPointer - 1);
+        double result = x;
+        pushDouble(stack, stackPointer - 1, result);
+    }
+
+    private void f64_convert_i64_s(long[] stack, int stackPointer) {
+        f64_convert_i64_u(stack, stackPointer);
+    }
+
+    private void f64_convert_i64_u(long[] stack, int stackPointer) {
+        long x = pop(stack, stackPointer - 1);
+        double result = x;
+        pushDouble(stack, stackPointer - 1, result);
+    }
+
+    private void f64_promote_f32(long[] stack, int stackPointer) {
+        float x = popAsFloat(stack, stackPointer - 1);
+        double result = x;
+        pushDouble(stack, stackPointer - 1, result);
+    }
+
+    // Checkstyle: resume method name check
+
+    private boolean popBoolean(long[] stack, int stackPointer) {
+        int condition = popInt(stack, stackPointer);
         return condition != 0;
     }
 
@@ -2464,7 +2826,7 @@ public final class WasmBlockNode extends WasmNode implements RepeatingNode {
     }
 
     @ExplodeLoop
-    private Object[] createArgumentsForCall(VirtualFrame frame, int functionTypeIndex, int numArgs, int stackPointerOffset) {
+    private Object[] createArgumentsForCall(long[] stack, int functionTypeIndex, int numArgs, int stackPointerOffset) {
         CompilerAsserts.partialEvaluationConstant(numArgs);
         Object[] args = new Object[numArgs];
         int stackPointer = stackPointerOffset;
@@ -2473,19 +2835,19 @@ public final class WasmBlockNode extends WasmNode implements RepeatingNode {
             byte type = instance().symbolTable().functionTypeArgumentTypeAt(functionTypeIndex, i);
             switch (type) {
                 case WasmType.I32_TYPE:
-                    args[i] = popInt(frame, stackPointer);
+                    args[i] = popInt(stack, stackPointer);
                     break;
                 case WasmType.I64_TYPE:
-                    args[i] = pop(frame, stackPointer);
+                    args[i] = pop(stack, stackPointer);
                     break;
                 case WasmType.F32_TYPE:
-                    args[i] = popAsFloat(frame, stackPointer);
+                    args[i] = popAsFloat(stack, stackPointer);
                     break;
                 case WasmType.F64_TYPE:
-                    args[i] = popAsDouble(frame, stackPointer);
+                    args[i] = popAsDouble(stack, stackPointer);
                     break;
                 default: {
-                    throw WasmTrap.format(this, "Unknown type: %d", type);
+                    throw WasmException.format(Failure.UNSPECIFIED_TRAP, this, "Unknown type: %d", type);
                 }
             }
         }
@@ -2493,40 +2855,21 @@ public final class WasmBlockNode extends WasmNode implements RepeatingNode {
     }
 
     @ExplodeLoop
-    private void unwindStack(VirtualFrame frame, int stackPointer, int continuationStackPointer, int returnLength) {
+    private void unwindStack(long[] stack, int stackPointer, int continuationStackPointer, int returnLength) {
         CompilerAsserts.partialEvaluationConstant(stackPointer);
         CompilerAsserts.partialEvaluationConstant(returnLength);
         for (int i = 0; i < returnLength; ++i) {
-            long value = pop(frame, stackPointer + i - 1);
-            push(frame, continuationStackPointer + i, value);
+            long value = pop(stack, stackPointer + i - 1);
+            push(stack, continuationStackPointer + i, value);
         }
         for (int i = continuationStackPointer + returnLength; i < stackPointer; ++i) {
-            pop(frame, i);
+            pop(stack, i);
         }
-    }
-
-    @Override
-    public Object initialLoopStatus() {
-        return 0;
-    }
-
-    @Override
-    public boolean executeRepeating(VirtualFrame frame) {
-        throw WasmExecutionException.create(this, "This method should never have been called.");
-    }
-
-    @Override
-    public Integer executeRepeatingWithValue(VirtualFrame frame) {
-        return execute(contextReference().get(), frame);
     }
 
     @Override
     public byte returnTypeId() {
         return returnTypeId;
-    }
-
-    public int continuationTypeLength() {
-        return typeLength(continuationTypeId);
     }
 
     private int unsignedIntConstant(int offset, int intConstantOffset) {
@@ -2538,7 +2881,7 @@ public final class WasmBlockNode extends WasmNode implements RepeatingNode {
             case NONE:
                 return BinaryStreamParser.peekUnsignedInt32(codeEntry().data(), offset);
             default:
-                throw WasmExecutionException.create(this, "Invalid StoreConstantsInPoolChoice");
+                throw WasmException.create(Failure.UNSPECIFIED_INTERNAL, this, "Invalid StoreConstantsInPoolChoice");
         }
     }
 
@@ -2556,7 +2899,7 @@ public final class WasmBlockNode extends WasmNode implements RepeatingNode {
             case NONE:
                 return BinaryStreamParser.peekSignedInt32(codeEntry().data(), offset);
             default:
-                throw WasmExecutionException.create(this, "Invalid StoreConstantsInPoolChoice");
+                throw WasmException.create(Failure.UNSPECIFIED_INTERNAL, this, "Invalid StoreConstantsInPoolChoice");
         }
     }
 
@@ -2574,7 +2917,7 @@ public final class WasmBlockNode extends WasmNode implements RepeatingNode {
             case NONE:
                 return BinaryStreamParser.peekSignedInt64(codeEntry().data(), offset);
             default:
-                throw WasmExecutionException.create(this, "Invalid StoreConstantsInPoolChoice");
+                throw WasmException.create(Failure.UNSPECIFIED_INTERNAL, this, "Invalid StoreConstantsInPoolChoice");
         }
     }
 
@@ -2587,7 +2930,7 @@ public final class WasmBlockNode extends WasmNode implements RepeatingNode {
             case NONE:
                 return peekLeb128Length(offset);
             default:
-                throw WasmExecutionException.create(this, "Invalid StoreConstantsInPoolChoice");
+                throw WasmException.create(Failure.UNSPECIFIED_INTERNAL, this, "Invalid StoreConstantsInPoolChoice");
         }
     }
 
@@ -2612,7 +2955,7 @@ public final class WasmBlockNode extends WasmNode implements RepeatingNode {
             case NONE:
                 return 0;
             default:
-                throw WasmExecutionException.create(this, "Invalid StoreConstantsInPoolChoice");
+                throw WasmException.create(Failure.UNSPECIFIED_INTERNAL, this, "Invalid StoreConstantsInPoolChoice");
         }
     }
 

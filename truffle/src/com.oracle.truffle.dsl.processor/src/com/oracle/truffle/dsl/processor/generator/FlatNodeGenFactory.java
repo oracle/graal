@@ -1415,7 +1415,7 @@ public class FlatNodeGenFactory {
             renameOriginalParameters(forType, method, frameState);
         }
 
-        boolean isExecutableInUncached = forType.getEvaluatedCount() != node.getExecutionCount();
+        boolean isExecutableInUncached = forType.getEvaluatedCount() != node.getExecutionCount() && !node.getChildren().isEmpty();
         if (!isExecutableInUncached) {
             method.getAnnotationMirrors().add(new CodeAnnotationMirror(types.CompilerDirectives_TruffleBoundary));
         }
@@ -3073,7 +3073,7 @@ public class FlatNodeGenFactory {
                 innerBuilder = extractInBoundaryMethod(builder, frameState, specialization);
 
                 for (NodeExecutionData execution : specialization.getNode().getChildExecutions()) {
-                    int index = forType.getVarArgsIndex(execution.getIndex());
+                    int index = forType.getVarArgsIndex(forType.getParameterIndex(execution.getIndex()));
                     if (index != -1) {
                         LocalVariable var = innerFrameState.getValue(execution);
                         innerFrameState.set(execution, var.accessWith(CodeTreeBuilder.singleString(var.getName())));
@@ -3161,7 +3161,7 @@ public class FlatNodeGenFactory {
                 boolean useDuplicateFlag = specialization.isGuardBindsCache() && !specialization.hasMultipleInstances();
                 String duplicateFoundName = specialization.getId() + "_duplicateFound_";
 
-                boolean pushBoundary = cachesRequireFastPathBoundary(specialization.getCaches());
+                boolean pushBoundary = specialization.needsPushEncapsulatingNode();
                 if (pushBoundary) {
                     builder.startBlock();
                     GeneratorUtils.pushEncapsulatingNode(builder, "this");
@@ -3391,15 +3391,6 @@ public class FlatNodeGenFactory {
         builder.end().end();
 
         return innerBuilder;
-    }
-
-    private static boolean cachesRequireFastPathBoundary(Collection<CacheExpression> caches) {
-        for (CacheExpression cache : caches) {
-            if (cache.isAlwaysInitialized() && cache.isRequiresBoundary()) {
-                return true;
-            }
-        }
-        return false;
     }
 
     private List<IfTriple> createAssumptionCheckTriples(FrameState frameState, SpecializationData specialization, NodeExecutionMode mode) {
@@ -4459,7 +4450,7 @@ public class FlatNodeGenFactory {
 
         CodeTree assertion = null; // overrule with assertion
         if (mode.isFastPath() || mode.isGuardFallback()) {
-            if (!specialization.isDynamicParameterBound(expression, true)) {
+            if (!specialization.isDynamicParameterBound(expression, true) && !guard.isWeakReferenceGuard()) {
                 assertion = CodeTreeBuilder.createBuilder().startAssert().tree(expressionCode).end().build();
                 expressionCode = null;
             }

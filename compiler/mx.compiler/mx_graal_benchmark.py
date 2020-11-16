@@ -132,10 +132,10 @@ def build_jvmci_vm_variants(raw_name, raw_config_name, extra_args, variants, inc
 _graal_variants = [
     ('g1gc', ['-XX:+UseG1GC'], 12),
     ('no-comp-oops', ['-XX:-UseCompressedOops'], 0),
-    ('no-splitting', ['-Dgraal.TruffleSplitting=false'], 0),
-    ('limit-truffle-inlining', ['-Dgraal.TruffleMaximumRecursiveInlining=2'], 0),
-    ('no-splitting-limit-truffle-inlining', ['-Dgraal.TruffleSplitting=false', '-Dgraal.TruffleMaximumRecursiveInlining=2'], 0),
-    ('la-inline', ['-Dgraal.TruffleLanguageAgnosticInlining=true'], 0),
+    ('no-splitting', ['-Dpolyglot.engine.Splitting=false'], 0),
+    ('limit-truffle-inlining', ['-Dpolyglot.engine.InliningRecursionDepth=2'], 0),
+    ('no-splitting-limit-truffle-inlining', ['-Dpolyglot.engine.Splitting=false', '-Dpolyglot.engine.InliningRecursionDepth=2'], 0),
+    ('la-inline', ['-Dpolyglot.engine.LanguageAgnosticInlining=true'], 0),
 ]
 build_jvmci_vm_variants('server', 'graal-core', ['-server', '-XX:+EnableJVMCI', '-Dgraal.CompilerConfiguration=community', '-Djvmci.Compiler=graal'], _graal_variants, suite=_suite, priority=15)
 

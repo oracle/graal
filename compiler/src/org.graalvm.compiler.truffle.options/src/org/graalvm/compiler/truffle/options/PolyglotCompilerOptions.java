@@ -382,13 +382,13 @@ public final class PolyglotCompilerOptions {
     @Option(help = "Enable automatic inlining of guest language call targets.", category = OptionCategory.EXPERT)
     public static final OptionKey<Boolean> Inlining = new OptionKey<>(true);
 
-    @Option(help = "Maximum number of inlined non-trivial AST nodes per compilation unit.", category = OptionCategory.EXPERT)
+    @Option(help = "Maximum number of inlined non-trivial AST nodes per compilation unit. Deprecated, use InliningExpansionBudget and InliningInliningBudget.", category = OptionCategory.EXPERT, deprecated = true)
     public static final OptionKey<Integer> InliningNodeBudget = new OptionKey<>(2250);
 
     @Option(help = "Maximum depth for recursive inlining.", category = OptionCategory.EXPERT)
     public static final OptionKey<Integer> InliningRecursionDepth = new OptionKey<>(2);
 
-    @Option(help = "Use language-agnostic inlining (overrides the TruffleFunctionInlining setting, option is experimental).", category = OptionCategory.EXPERT)
+    @Option(help = "Use language-agnostic inlining. Deprecated without replacement.", category = OptionCategory.EXPERT, deprecated = true)
     public static final OptionKey<Boolean> LanguageAgnosticInlining = new OptionKey<>(true);
 
     // Splitting

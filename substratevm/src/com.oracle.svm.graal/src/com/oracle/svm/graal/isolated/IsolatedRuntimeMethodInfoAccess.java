@@ -27,13 +27,10 @@ package com.oracle.svm.graal.isolated;
 import com.oracle.svm.core.annotate.Uninterruptible;
 import com.oracle.svm.core.c.NonmovableArray;
 import com.oracle.svm.core.c.NonmovableArrays;
-import com.oracle.svm.core.c.NonmovableObjectArray;
 import com.oracle.svm.core.code.CodeInfo;
 import com.oracle.svm.core.code.InstalledCodeObserverSupport;
 import com.oracle.svm.core.code.RuntimeCodeInfoAccess;
 import com.oracle.svm.core.code.RuntimeCodeInfoMemory;
-import com.oracle.svm.core.heap.Heap;
-import com.oracle.svm.core.util.VMError;
 
 final class IsolatedRuntimeMethodInfoAccess {
 
@@ -49,10 +46,6 @@ final class IsolatedRuntimeMethodInfoAccess {
         RuntimeCodeInfoAccess.forEachArray(info, UNTRACK_ACTION);
     }
 
-    public static void guaranteeAllObjectsInImageHeap(CodeInfo info) {
-        RuntimeCodeInfoAccess.forEachObjectArray(info, GUARANTEE_ALL_OBJECTS_IN_IMAGE_HEAP_ACTION);
-    }
-
     private static final RuntimeCodeInfoAccess.NonmovableArrayAction TRACK_ACTION = new RuntimeCodeInfoAccess.NonmovableArrayAction() {
         @Override
         @Uninterruptible(reason = "Called from uninterruptible code", mayBeInlined = true)
@@ -65,20 +58,6 @@ final class IsolatedRuntimeMethodInfoAccess {
         @Uninterruptible(reason = "Called from uninterruptible code", mayBeInlined = true)
         public void apply(NonmovableArray<?> array) {
             NonmovableArrays.untrackUnmanagedArray(array);
-        }
-    };
-    private static final RuntimeCodeInfoAccess.NonmovableArrayAction GUARANTEE_ALL_OBJECTS_IN_IMAGE_HEAP_ACTION = new RuntimeCodeInfoAccess.NonmovableArrayAction() {
-        @Override
-        @Uninterruptible(reason = "Called from uninterruptible code", mayBeInlined = true)
-        public void apply(NonmovableArray<?> arg) {
-            NonmovableObjectArray<?> array = (NonmovableObjectArray<?>) arg;
-            if (array.isNonNull()) {
-                int length = NonmovableArrays.lengthOf(array);
-                for (int i = 0; i < length; i++) {
-                    Object obj = NonmovableArrays.getObject(array, i);
-                    VMError.guarantee(obj == null || Heap.getHeap().isInImageHeap(obj));
-                }
-            }
         }
     };
 

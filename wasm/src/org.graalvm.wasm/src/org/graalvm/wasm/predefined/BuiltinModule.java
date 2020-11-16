@@ -40,9 +40,6 @@
  */
 package org.graalvm.wasm.predefined;
 
-import java.util.HashMap;
-import java.util.Map;
-
 import com.oracle.truffle.api.RootCallTarget;
 import com.oracle.truffle.api.Truffle;
 import com.oracle.truffle.api.nodes.RootNode;
@@ -53,12 +50,16 @@ import org.graalvm.wasm.WasmFunction;
 import org.graalvm.wasm.WasmInstance;
 import org.graalvm.wasm.WasmLanguage;
 import org.graalvm.wasm.WasmTable;
-import org.graalvm.wasm.exception.WasmValidationException;
+import org.graalvm.wasm.exception.Failure;
+import org.graalvm.wasm.exception.WasmException;
 import org.graalvm.wasm.memory.WasmMemory;
 import org.graalvm.wasm.predefined.emscripten.EmscriptenModule;
 import org.graalvm.wasm.predefined.spectest.SpectestModule;
 import org.graalvm.wasm.predefined.testutil.TestutilModule;
 import org.graalvm.wasm.predefined.wasi.WasiModule;
+
+import java.util.HashMap;
+import java.util.Map;
 
 public abstract class BuiltinModule {
     private static final Map<String, BuiltinModule> predefinedModules = new HashMap<>();
@@ -74,7 +75,7 @@ public abstract class BuiltinModule {
     public static WasmInstance createBuiltinInstance(WasmLanguage language, WasmContext context, String name, String predefinedModuleName) {
         final BuiltinModule builtinModule = predefinedModules.get(predefinedModuleName);
         if (builtinModule == null) {
-            throw new WasmValidationException("Unknown predefined module: " + predefinedModuleName);
+            throw WasmException.create(Failure.UNSPECIFIED_INVALID, "Unknown predefined module: " + predefinedModuleName);
         }
         return builtinModule.createInstance(language, context, name);
     }
@@ -110,7 +111,7 @@ public abstract class BuiltinModule {
     }
 
     protected int defineTable(WasmInstance instance, String tableName, int initSize, int maxSize, byte type) {
-        Assert.assertByteEqual(type, ReferenceTypes.FUNCREF, "Only function types are currently supported in tables.");
+        Assert.assertByteEqual(type, ReferenceTypes.FUNCREF, "Only function types are currently supported in tables.", Failure.UNSPECIFIED_MALFORMED);
         instance.symbolTable().allocateTable(initSize, maxSize);
         instance.symbolTable().exportTable(tableName);
         return 0;

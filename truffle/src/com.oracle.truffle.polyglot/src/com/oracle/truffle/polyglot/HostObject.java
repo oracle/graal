@@ -125,12 +125,19 @@ final class HostObject implements TruffleObject {
         return obj instanceof HostObject || obj instanceof HostException;
     }
 
-    static boolean isInstance(TruffleObject obj) {
-        return obj instanceof HostObject || obj instanceof HostException;
+    static boolean isHostObjectInstance(Object obj) {
+        return obj instanceof HostObject;
     }
 
-    HostObject withContext(PolyglotLanguageContext context) {
-        return new HostObject(this.obj, context, this.extraInfo);
+    static Object withContext(Object obj, PolyglotLanguageContext context) {
+        if (obj instanceof HostObject) {
+            HostObject hostObject = (HostObject) obj;
+            return new HostObject(hostObject.obj, context, hostObject.extraInfo);
+        } else if (obj instanceof HostException) {
+            return new HostException(((HostException) obj).getOriginal(), context.context);
+        } else {
+            throw CompilerDirectives.shouldNotReachHere("Parameter must be HostObject or HostException.");
+        }
     }
 
     static boolean isJavaInstance(Class<?> targetType, Object javaObject) {
@@ -197,7 +204,7 @@ final class HostObject implements TruffleObject {
     }
 
     @ExportLibrary(InteropLibrary.class)
-    final class KeysArray implements TruffleObject {
+    static final class KeysArray implements TruffleObject {
 
         @CompilationFinal(dimensions = 1) private final String[] keys;
 
@@ -274,6 +281,8 @@ final class HostObject implements TruffleObject {
             }
         } else if (isClass() && HostInteropReflect.CLASS_TO_STATIC.equals(name)) {
             return HostObject.forStaticClass(asClass(), languageContext);
+        } else if (HostInteropReflect.ADAPTER_SUPER_MEMBER.equals(name) && HostAdapterFactory.isAdapterInstance(this.obj)) {
+            return HostAdapterFactory.getSuperAdapter(this);
         }
         error.enter();
         throw UnknownIdentifierException.create(name);
@@ -456,7 +465,7 @@ final class HostObject implements TruffleObject {
                         @Shared("isArray") @Cached IsArrayNode isArray,
                         @Cached ArraySet arraySet,
                         @Shared("error") @Cached BranchProfile error) throws InvalidArrayIndexException, UnsupportedTypeException {
-            if (index > Integer.MAX_VALUE) {
+            if (index < 0 || Integer.MAX_VALUE < index) {
                 error.enter();
                 throw InvalidArrayIndexException.create(index);
             }
@@ -487,7 +496,7 @@ final class HostObject implements TruffleObject {
                         @Shared("isList") @Cached IsListNode isList,
                         @Shared("toHost") @Cached ToHostNode toHostNode,
                         @Shared("error") @Cached BranchProfile error) throws InvalidArrayIndexException, UnsupportedTypeException {
-            if (index > Integer.MAX_VALUE) {
+            if (index < 0 || Integer.MAX_VALUE < index) {
                 error.enter();
                 throw InvalidArrayIndexException.create(index);
             }
@@ -554,7 +563,7 @@ final class HostObject implements TruffleObject {
         static void doList(HostObject receiver, long index,
                         @Shared("isList") @Cached IsListNode isList,
                         @Shared("error") @Cached BranchProfile error) throws InvalidArrayIndexException {
-            if (index > Integer.MAX_VALUE) {
+            if (index < 0 || Integer.MAX_VALUE < index) {
                 error.enter();
                 throw InvalidArrayIndexException.create(index);
             }
@@ -594,7 +603,7 @@ final class HostObject implements TruffleObject {
                         @Shared("isArray") @Cached IsArrayNode isArray,
                         @Shared("toGuest") @Cached ToGuestValueNode toGuest,
                         @Shared("error") @Cached BranchProfile error) throws InvalidArrayIndexException {
-            if (index > Integer.MAX_VALUE) {
+            if (index < 0 || Integer.MAX_VALUE < index) {
                 error.enter();
                 throw InvalidArrayIndexException.create(index);
             }
@@ -616,7 +625,7 @@ final class HostObject implements TruffleObject {
                         @Shared("toGuest") @Cached ToGuestValueNode toGuest,
                         @Shared("error") @Cached BranchProfile error) throws InvalidArrayIndexException {
             try {
-                if (index > Integer.MAX_VALUE) {
+                if (index < 0 || Integer.MAX_VALUE < index) {
                     error.enter();
                     throw InvalidArrayIndexException.create(index);
                 }

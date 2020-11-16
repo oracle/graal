@@ -72,6 +72,7 @@ class AMD64ArrayIndexOfForeignCallsFeature implements GraalFeature {
 
 @Platforms(AMD64.class)
 class AMD64ArrayIndexOfForeignCalls {
+    // None of the following foreign calls kills any locations.
     private static final ForeignCallSignature[] ORIGINAL_FOREIGN_CALLS = {
                     AMD64ArrayIndexOf.STUB_INDEX_OF_TWO_CONSECUTIVE_BYTES,
                     AMD64ArrayIndexOf.STUB_INDEX_OF_TWO_CONSECUTIVE_CHARS,

@@ -33,6 +33,8 @@ import org.graalvm.compiler.nodes.StructuredGraph;
 import org.graalvm.compiler.nodes.StructuredGraph.ScheduleResult;
 import org.graalvm.compiler.nodes.cfg.ControlFlowGraph;
 import org.graalvm.compiler.nodes.spi.CoreProviders;
+import org.graalvm.compiler.nodes.spi.VirtualizableAllocation;
+import org.graalvm.compiler.nodes.virtual.VirtualInstanceNode;
 import org.graalvm.compiler.nodes.virtual.VirtualObjectNode;
 import org.graalvm.compiler.options.Option;
 import org.graalvm.compiler.options.OptionKey;
@@ -40,8 +42,36 @@ import org.graalvm.compiler.options.OptionType;
 import org.graalvm.compiler.options.OptionValues;
 import org.graalvm.compiler.phases.BasePhase;
 import org.graalvm.compiler.phases.common.CanonicalizerPhase;
+import org.graalvm.compiler.phases.graph.ReentrantBlockIterator;
 import org.graalvm.compiler.phases.schedule.SchedulePhase;
 
+/**
+ * Performs <a href="https://en.wikipedia.org/wiki/Escape_analysis">Partial Escape analysis</a> on a
+ * {@link StructuredGraph}. Partial Escape Analysis on individual branches allows Graal to determine
+ * whether an object is accessible (="escapes") outside the allocating method or thread. This
+ * information is used to perform scalar replacement of an object allocation. This allows the
+ * compiler to replace an allocation with its scalar field values which can then reside in
+ * registers. Enabling the removal of memory allocation, field accesses etc.
+ *
+ * PEA traverses a {@link StructuredGraph} in reverse post order ({@link ReentrantBlockIterator}),
+ * i.e., every basic block is visited as soon as all its predecessor blocks have been visited.
+ *
+ * PEA is built upon the machinery of {@link EffectsPhase} and {@link EffectsClosure}: during
+ * traversal it collects a list of {@link EffectList.Effect} that is applied in reverse post order
+ * on the graph after analysis. This is necessary, as virtualized allocations can be materialized at
+ * a later point in time of the traversal algorithm, which may causes a materialization at an early
+ * point in the IR.
+ *
+ * If PEA traversal encounters a {@link VirtualizableAllocation} it tries to virtualize it, i.e.,
+ * enqueue an effect that replaces the allocation with a {@link VirtualInstanceNode}. If the
+ * allocation stays virtual until the end of the traversal it can be completely scalar replaced, if
+ * it materializes at a later point in the CFG, the phase materializes the allocation as late as
+ * possible in the final program. This can often shift allocations inside less frequently executed
+ * branches.
+ *
+ * Details for the algorithm can be found in
+ * <a hre="http://ssw.jku.at/Teaching/PhDTheses/Stadler/Thesis_Stadler_14.pdf">this thesis</a>.
+ */
 public class PartialEscapePhase extends EffectsPhase<CoreProviders> {
 
     static class Options {

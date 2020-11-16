@@ -269,7 +269,9 @@ final class LegacyScopesBridge {
     }
 
     static Object legacyScopes2ScopeObject(NodeInterface node, Iterator<com.oracle.truffle.api.Scope> legacyScopes, Class<? extends TruffleLanguage<?>> language) {
-        assert legacyScopes.hasNext();
+        if (!legacyScopes.hasNext()) {
+            return new EmptyObject(language);
+        }
         CompilerAsserts.neverPartOfCompilation();
         ArrayList<com.oracle.truffle.api.Scope> scopesList = new ArrayList<>(5);
         if (node instanceof InstrumentableNode && ((InstrumentableNode) node).hasTag(StandardTags.RootTag.class)) {
@@ -296,6 +298,80 @@ final class LegacyScopesBridge {
             variables[i] = scopes[i].getVariables();
         }
         return new MergedScopes(scopes, variables, language);
+    }
+
+    @ExportLibrary(InteropLibrary.class)
+    static class EmptyObject implements TruffleObject {
+
+        private final Class<? extends TruffleLanguage<?>> language;
+
+        EmptyObject(Class<? extends TruffleLanguage<?>> language) {
+            this.language = language;
+        }
+
+        @ExportMessage
+        @SuppressWarnings("static-method")
+        boolean hasLanguage() {
+            return true;
+        }
+
+        @ExportMessage
+        Class<? extends TruffleLanguage<?>> getLanguage() {
+            return language;
+        }
+
+        @ExportMessage
+        @SuppressWarnings("static-method")
+        boolean isScope() {
+            return true;
+        }
+
+        @ExportMessage
+        @SuppressWarnings("static-method")
+        boolean hasMembers() {
+            return true;
+        }
+
+        @ExportMessage
+        @SuppressWarnings("static-method")
+        Object getMembers(@SuppressWarnings("unused") boolean includeInternal) {
+            return new EmptyKeys();
+        }
+
+        @ExportMessage
+        @SuppressWarnings("static-method")
+        final Object toDisplayString(@SuppressWarnings("unused") boolean allowSideEffects) {
+            return "empty";
+        }
+    }
+
+    @ExportLibrary(InteropLibrary.class)
+    static class EmptyKeys implements TruffleObject {
+
+        @ExportMessage
+        @SuppressWarnings("static-method")
+        boolean hasArrayElements() {
+            return true;
+        }
+
+        @ExportMessage
+        @SuppressWarnings("static-method")
+        long getArraySize() {
+            return 0;
+        }
+
+        @ExportMessage
+        @SuppressWarnings("static-method")
+        final boolean isArrayElementReadable(@SuppressWarnings("unused") long index) {
+            return false;
+        }
+
+        @ExportMessage
+        @SuppressWarnings("static-method")
+        Object readArrayElement(long index) throws InvalidArrayIndexException {
+            throw InvalidArrayIndexException.create(index);
+        }
+
     }
 
     @ExportLibrary(InteropLibrary.class)

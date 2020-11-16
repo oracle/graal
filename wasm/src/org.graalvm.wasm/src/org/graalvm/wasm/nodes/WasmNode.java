@@ -68,12 +68,13 @@ public abstract class WasmNode extends Node implements WasmNodeInterface {
      * Execute the current node within the given frame and return the branch target.
      *
      * @param frame The frame to use for execution.
+     * @param stack The operand stack that is used during execution.
      * @return The return value of this method indicates whether a branch is to be executed, in case
      *         of nested blocks. An offset with value -1 means no branch, whereas a return value n
      *         greater than or equal to 0 means that the execution engine has to branch n levels up
      *         the block execution stack.
      */
-    public abstract int execute(WasmContext context, VirtualFrame frame);
+    public abstract int execute(WasmContext context, VirtualFrame frame, long[] stack);
 
     public abstract byte returnTypeId();
 
@@ -82,18 +83,27 @@ public abstract class WasmNode extends Node implements WasmNodeInterface {
         this.byteLength = byteLength;
     }
 
-    protected static final int typeLength(int typeId) {
-        switch (typeId) {
+    /**
+     * Number of parameters that this block takes.
+     *
+     * As of WebAssembly 1.0, this is always 0. The multi-values feature merged in WebAssembly 1.1
+     * lifts this restriction.
+     *
+     * @return 0
+     */
+    @SuppressWarnings("unused")
+    public int inputLength() {
+        return 0;
+    }
+
+    public int returnLength() {
+        switch (returnTypeId()) {
             case 0x00:
             case 0x40:
                 return 0;
             default:
                 return 1;
         }
-    }
-
-    int returnTypeLength() {
-        return typeLength(returnTypeId());
     }
 
     @Override

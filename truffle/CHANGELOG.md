@@ -2,6 +2,8 @@
 
 This changelog summarizes major changes between Truffle versions relevant to languages implementors building upon the Truffle framework. The main focus is on APIs exported by Truffle.
 
+## Version 21.0.0
+
 ## Version 20.3.0
 * Added `RepeatingNode.initialLoopStatus` and `RepeatingNode.shouldContinue` to allow defining a custom loop continuation condition.
 * Added new specialization utility to print detailed statistics about specialization instances and execution count. See [Specialization Statistics Tutorial](https://github.com/oracle/graal/blob/master/truffle/docs/SpecializationHistogram.md) for details on how to use it.
@@ -29,7 +31,6 @@ This changelog summarizes major changes between Truffle versions relevant to lan
 * Added the [RootNode.isTrivial](https://www.graalvm.org/truffle/javadoc/com/oracle/truffle/api/nodes/RootNode.html#isTrivial) method, for specifying root nodes that are always more efficient to inline than not to.
 * Added [ByteArraySupport](https://www.graalvm.org/truffle/javadoc/com/oracle/truffle/api/memory/ByteArraySupport.html): a helper class providing safe multi-byte primitive type accesses from byte arrays.
 * Added a new base class for Truffle exceptions, see [AbstractTruffleException](https://www.graalvm.org/truffle/javadoc/com/oracle/truffle/api/exception/AbstractTruffleException.html). The original `TruffleException` has been deprecated. Added new interop messages for exception handling replacing the deprecated `TruffleException` methods.
-* Added a new base class for Truffle exceptions, see [AbstractTruffleException](https://www.graalvm.org/truffle/javadoc/com/oracle/truffle/api/exception/AbstractTruffleException.html). The original `TruffleException` has been deprecated.
 * Added new messages to `InteropLibrary` related to exception handling:
     * Added `getExceptionType(Object)` that allows to specify the type of an exception, e.g. PARSE_ERROR. 
     * Added `isExceptionIncompleteSource(Object)` allows to specify whether the parse error contained unclosed brackets.
@@ -47,6 +48,7 @@ This changelog summarizes major changes between Truffle versions relevant to lan
     * Consider making executable interop objects of the guest language implement `InteropLibrary.hasExecutableName(Object)` and `InteropLibrary.hasDeclaringMetaObject(Object)`.
     * Make exception printing in the guest language use `InteropLibrary.getExceptionMessage(Object)`, `InteropLibrary.getExceptionCause(Object)` and `InteropLibrary.getExceptionStackTrace(Object)` for foreign exceptions to print them in the style of the language.
     * Make all exports of `InteropLibrary.throwException(Object)` throw an instance of `AbstractTruffleException`. This contract will be enforced in future versions when `TruffleException` will be removed.
+    * Attention: Since [AbstractTruffleException](https://www.graalvm.org/truffle/javadoc/com/oracle/truffle/api/exception/AbstractTruffleException.html) is an abstract base class, not an interface, the exceptions the Truffle NFI throws do not extend UnsatisfiedLinkError anymore. This is an incompatible change for guest languages that relied on the exact exception class. The recommended fix is to catch AbstractTruffleException instead of UnsatisfiedLinkError.
 * Added [TruffleInstrument.Env.getEnteredContext](https://www.graalvm.org/truffle/javadoc/com/oracle/truffle/api/instrumentation/TruffleInstrument.Env.html#getEnteredContext--) returning the entered `TruffleContext`.
 * Added [DebuggerSession.setShowHostStackFrames](https://www.graalvm.org/truffle/javadoc/com/oracle/truffle/api/debug/DebuggerSession.html#setShowHostStackFrames-boolean-) and host `DebugStackFrame` and `DebugStackTraceElement`. This is useful for debugging of applications that use host interop.
 * All Truffle Graal runtime options (-Dgraal.) which were deprecated in GraalVM 20.1 are removed. The Truffle runtime options are no longer specified as Graal options (-Dgraal.). The Graal options must be replaced by corresponding engine options specified using [polyglot API](https://www.graalvm.org/truffle/javadoc/org/graalvm/polyglot/Engine.Builder.html#option-java.lang.String-java.lang.String-).
@@ -58,6 +60,9 @@ This changelog summarizes major changes between Truffle versions relevant to lan
 * Block node partial compilation is no longer eagerly triggered but only when the `--engine.MaximumGraalNodeCount` limit was reached once for a call target.
 * Lifted the restriction that the dynamic type of a `DynamicObject` needs to be an instance of `ObjectType`, allowing any non-null object. Deprecated `Shape.getObjectType()` that has been replaced by `Shape.getDynamicType()`.
 * Changed the default value of `--engine.MultiTier` from `false` to `true`. This should significantly improve the warmup time of Truffle interpreters. 
+* Added [TruffleLanguage.Env.createHostAdapterClass](https://www.graalvm.org/truffle/javadoc/com/oracle/truffle/api/TruffleLanguage.Env.html#createHostAdapterClass-java.lang.Class:A-) to allow extending a host class and/or interfaces with a guest object via a generated host adapter class (JVM only).
+* Deprecated the old truffle-node-count based inlining heuristic and related options (namely InliningNodeBudget and LanguageAgnosticInlining).
+* Added `@GenerateLibrary.pushEncapsulatingNode()` that allows to configure whether encapsulating nodes are pushed or popped.
 
 ## Version 20.2.0
 * Added new internal engine option `ShowInternalStackFrames` to show internal frames specific to the language implementation in stack traces.

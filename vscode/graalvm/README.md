@@ -17,6 +17,7 @@ The extension is Technology Preview.
   - [Additional Editor Features](#additional-editor-features)
 - [Extension Settings](#extension-settings)
 - [Requirements](#requirements)
+- [Feedback](#feedback)
 - [Privacy Policy](#privacy-policy)
 
 ## Features
@@ -246,6 +247,12 @@ This extension depends on the following extensions:
 * [Python](https://marketplace.visualstudio.com/items?itemName=ms-python.python) - Python language support.
 * [R](https://marketplace.visualstudio.com/items?itemName=Ikuyadeu.r) - Basic support for R language.
 * [Ruby](https://marketplace.visualstudio.com/items?itemName=rebornix.Ruby) - Ruby language support.
+
+## Feedback
+
+* [Request a feature](https://github.com/oracle/graal/issues/new?assignees=&labels=feature,vscode&template=0_feature_request.md&title=).
+* [File a bug](https://github.com/oracle/graal/issues/new?assignees=&labels=bug,agent&template=5_issues_other.md&title=).
+* [Discuss with us](https://github.com/oracle/graal/discussions).
 
 ## Privacy Policy
 

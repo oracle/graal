@@ -41,12 +41,12 @@
 package org.graalvm.wasm.predefined.testutil;
 
 import com.oracle.truffle.api.CompilerDirectives;
+import com.oracle.truffle.api.frame.VirtualFrame;
 import org.graalvm.wasm.Assert;
 import org.graalvm.wasm.WasmContext;
 import org.graalvm.wasm.WasmLanguage;
 import org.graalvm.wasm.WasmVoidResult;
-
-import com.oracle.truffle.api.frame.VirtualFrame;
+import org.graalvm.wasm.exception.Failure;
 import org.graalvm.wasm.memory.WasmMemory;
 import org.graalvm.wasm.predefined.WasmBuiltinRootNode;
 
@@ -83,7 +83,7 @@ public class SaveBinaryFileNode extends WasmBuiltinRootNode {
     @CompilerDirectives.TruffleBoundary
     private void saveFile(int filenamePtr, int dataPtr, int size) {
         final WasmContext context = contextReference().get();
-        Assert.assertIntLessOrEqual(context.memories().count(), 1, "Currently, dumping works with only 1 memory.");
+        Assert.assertIntLessOrEqual(context.memories().count(), 1, "Currently, dumping works with only 1 memory.", Failure.UNSPECIFIED_MALFORMED);
         final WasmMemory memory = context.memories().memory(0);
 
         // Read the file name.

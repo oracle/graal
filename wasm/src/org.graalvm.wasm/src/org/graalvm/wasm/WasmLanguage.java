@@ -43,11 +43,12 @@ package org.graalvm.wasm;
 import com.oracle.truffle.api.CallTarget;
 import com.oracle.truffle.api.Truffle;
 import com.oracle.truffle.api.TruffleLanguage;
-import org.graalvm.wasm.memory.UnsafeWasmMemory;
-import org.graalvm.wasm.memory.WasmMemory;
 import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.nodes.RootNode;
 import org.graalvm.options.OptionDescriptors;
+import org.graalvm.wasm.api.WebAssembly;
+import org.graalvm.wasm.memory.UnsafeWasmMemory;
+import org.graalvm.wasm.memory.WasmMemory;
 
 @TruffleLanguage.Registration(id = "wasm", name = "WebAssembly", defaultMimeType = "application/wasm", byteMimeTypes = "application/wasm", contextPolicy = TruffleLanguage.ContextPolicy.EXCLUSIVE, fileTypeDetectors = WasmFileDetector.class, //
                 interactive = false)
@@ -56,7 +57,11 @@ public final class WasmLanguage extends TruffleLanguage<WasmContext> {
 
     @Override
     protected WasmContext createContext(Env env) {
-        return new WasmContext(env, this);
+        WasmContext context = new WasmContext(env, this);
+        if (env.isPolyglotBindingsAccessAllowed()) {
+            env.exportSymbol("WebAssembly", new WebAssembly(context));
+        }
+        return context;
     }
 
     @Override
@@ -65,7 +70,7 @@ public final class WasmLanguage extends TruffleLanguage<WasmContext> {
         final String moduleName = isFirst ? "main" : request.getSource().getName();
         isFirst = false;
         final byte[] data = request.getSource().getBytes().toByteArray();
-        final WasmModule module = context.readModule(moduleName, data);
+        final WasmModule module = context.readModule(moduleName, data, null);
         final WasmInstance instance = context.readInstance(module);
         return Truffle.getRuntime().createCallTarget(new RootNode(this) {
             @Override

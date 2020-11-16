@@ -47,6 +47,8 @@ import java.util.concurrent.Semaphore;
 
 import org.junit.Test;
 
+import com.oracle.truffle.api.CompilerDirectives;
+import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.dsl.Cached;
 import com.oracle.truffle.api.dsl.Cached.Shared;
 import com.oracle.truffle.api.dsl.Fallback;
@@ -55,9 +57,13 @@ import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.dsl.UnsupportedSpecializationException;
 import com.oracle.truffle.api.dsl.test.WeakCachedTestFactory.ConsistentGuardAndSpecializationNodeGen;
 import com.oracle.truffle.api.dsl.test.WeakCachedTestFactory.TestNullWeakCacheNodeGen;
+import com.oracle.truffle.api.dsl.test.WeakCachedTestFactory.WeakCachedLibraryNodeGen;
 import com.oracle.truffle.api.dsl.test.WeakCachedTestFactory.WeakInlineCacheNodeGen;
 import com.oracle.truffle.api.dsl.test.WeakCachedTestFactory.WeakSharedCacheNodeGen;
 import com.oracle.truffle.api.dsl.test.WeakCachedTestFactory.WeakSimpleNodeGen;
+import com.oracle.truffle.api.interop.InteropLibrary;
+import com.oracle.truffle.api.interop.UnsupportedMessageException;
+import com.oracle.truffle.api.library.CachedLibrary;
 import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.api.test.GCUtils;
 import com.oracle.truffle.api.test.polyglot.AbstractPolyglotTest;
@@ -122,6 +128,55 @@ public class WeakCachedTest extends AbstractPolyglotTest {
                         @Cached(value = "arg", weak = true) String cachedArg) {
             assertNotNull(cachedArg);
             return arg;
+        }
+
+    }
+
+    @Test
+    public void testWeakCachedLibrary() {
+        WeakCachedLibraryNode node = adoptNode(WeakCachedLibraryNodeGen.create()).get();
+        Object o0 = new String("");
+        Object o1 = new String("");
+        Object o2 = new String("");
+        WeakReference<Object> ref0 = new WeakReference<>(o0);
+        WeakReference<Object> ref1 = new WeakReference<>(o1);
+        WeakReference<Object> ref2 = new WeakReference<>(o2);
+        node.execute(o0);
+        node.execute(o1);
+        o0 = null;
+        GCUtils.assertGc("Reference is not collected", ref0);
+
+        node.execute(o1);
+        node.execute(o2);
+        o1 = null;
+        o2 = null;
+        GCUtils.assertGc("Reference is not collected", ref1);
+        GCUtils.assertGc("Reference is not collected", ref2);
+
+        assertFails(() -> node.execute(new String("")), UnsupportedSpecializationException.class);
+    }
+
+    @GenerateUncached
+    abstract static class WeakCachedLibraryNode extends Node {
+
+        abstract Object execute(Object arg0);
+
+        @Specialization(guards = "cachedArg == arg", limit = "3")
+        Object s0(String arg,
+                        @Cached(value = "arg", weak = true) String cachedArg,
+                        @CachedLibrary("cachedArg") InteropLibrary library) {
+            assertNotNull(cachedArg);
+            try {
+                return library.asString(cachedArg);
+            } catch (UnsupportedMessageException e) {
+                throw CompilerDirectives.shouldNotReachHere(e);
+            }
+        }
+
+        @Specialization(replaces = "s0")
+        @TruffleBoundary
+        Object s0replace(String arg) {
+            throw new UnsupportedSpecializationException(this, new Node[0]);
         }
 
     }
@@ -205,6 +260,22 @@ public class WeakCachedTest extends AbstractPolyglotTest {
             return arg;
         }
 
+    }
+
+    /*
+     * This tests that the implicit library accepts guard on a weak reference is not causing
+     * multiple instances. See GR-27293.
+     */
+    abstract static class CachedLibraryWeakValueNode extends Node {
+
+        public abstract int execute(Object arg);
+
+        @Specialization
+        static int doBoxed(Object arg,
+                        @Cached(value = "arg", weak = true) Object cachedArg,
+                        @CachedLibrary("cachedArg") InteropLibrary argLib) {
+            return 42;
+        }
     }
 
     abstract static class ConsistentGuardAndSpecializationNode extends Node {

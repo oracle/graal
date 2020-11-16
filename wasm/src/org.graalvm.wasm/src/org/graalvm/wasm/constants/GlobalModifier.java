@@ -40,7 +40,8 @@
  */
 package org.graalvm.wasm.constants;
 
-import org.graalvm.wasm.exception.WasmValidationException;
+import org.graalvm.wasm.exception.Failure;
+import org.graalvm.wasm.exception.WasmException;
 
 public final class GlobalModifier {
     public static final int CONSTANT = 0x00;
@@ -53,7 +54,7 @@ public final class GlobalModifier {
             case MUTABLE:
                 return "var";
             default:
-                throw new WasmValidationException("Unknown modifier: 0x" + Integer.toHexString(modifier));
+                throw WasmException.create(Failure.UNSPECIFIED_INVALID, "Unknown modifier: 0x" + Integer.toHexString(modifier));
         }
     }
 

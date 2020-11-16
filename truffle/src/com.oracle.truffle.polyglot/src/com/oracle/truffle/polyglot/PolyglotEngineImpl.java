@@ -468,6 +468,11 @@ final class PolyglotEngineImpl extends AbstractPolyglotImpl.AbstractEngineImpl i
         this.engineOptionValues = engineOptions;
         this.logLevels = newLogConfig.logLevels;
         this.storeEngine = RUNTIME.isStoreEnabled(engineOptions);
+
+        if (storeEngine && boundEngine && singleContext.isValid()) {
+            singleContext.invalidate();
+        }
+
         INSTRUMENT.patchInstrumentationHandler(instrumentationHandler, newOut, newErr, newIn);
 
         Map<PolyglotLanguage, Map<String, String>> languagesOptions = new HashMap<>();
@@ -524,23 +529,6 @@ final class PolyglotEngineImpl extends AbstractPolyglotImpl.AbstractEngineImpl i
                 }
             }
         }
-    }
-
-    void uninitializeMultiContext() {
-        assert Thread.holdsLock(this.lock);
-
-        /*
-         * If we store an engine we force initialize multi context to avoid language to do any
-         * context related references in the AST, but after, at least for context bound engines we
-         * can restore the single context assumption.
-         */
-        if (storeEngine && boundEngine && !singleContext.isValid()) {
-            singleContext = Truffle.getRuntime().createAssumption("Single context after preinitialization.");
-        }
-
-        // much more things should be done here, like trying to use single context references
-        // for stored engines and then patch them later on.
-
     }
 
     void initializeMultiContext(PolyglotContextImpl existingContext) {
@@ -1211,9 +1199,11 @@ final class PolyglotEngineImpl extends AbstractPolyglotImpl.AbstractEngineImpl i
                 }
             }
         }
-        for (PolyglotLanguage language : idToLanguage.values()) {
-            for (PolyglotLanguageInstance instance : language.getInstancePool()) {
-                instance.listCachedSources(sources);
+        synchronized (lock) {
+            for (PolyglotLanguage language : idToLanguage.values()) {
+                for (PolyglotLanguageInstance instance : language.getInstancePool()) {
+                    instance.listCachedSources(sources);
+                }
             }
         }
         return sources;
@@ -1246,8 +1236,30 @@ final class PolyglotEngineImpl extends AbstractPolyglotImpl.AbstractEngineImpl i
     void preInitialize() {
         synchronized (this.lock) {
             this.preInitializedContext.set(PolyglotContextImpl.preInitialize(this));
-            this.uninitializeMultiContext();
         }
+    }
+
+    void finalizeStore() {
+        assert Thread.holdsLock(this.lock);
+
+        this.out = null;
+        this.err = null;
+        this.in = null;
+        this.logHandler = null;
+
+        INSTRUMENT.finalizeStoreInstrumentationHandler(instrumentationHandler);
+
+        /*
+         * If we store an engine we force initialize multi context to avoid language to do any
+         * context related references in the AST, but after, at least for context bound engines we
+         * can restore the single context assumption.
+         */
+        if (storeEngine && boundEngine && !singleContext.isValid()) {
+            singleContext = Truffle.getRuntime().createAssumption("Single context after preinitialization.");
+        }
+
+        // much more things should be done here, like trying to use single context references
+        // for stored engines and then patch them later on.
     }
 
     /**

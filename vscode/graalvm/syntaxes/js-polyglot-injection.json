@@ -48,7 +48,7 @@
     ],
     "repository": {
         "polyglot-call-r": {
-            "begin": "(?:((')R('))|((\")R(\")))\\s*(,)\\s*",
+            "begin": "(?:((')R('))|((\")R(\"))|((`)R(`)))\\s*(,)\\s*",
             "beginCaptures": {
                 "1": {
                     "name": "string.quoted.single.js"
@@ -69,6 +69,15 @@
                     "name": "punctuation.definition.string.end.js"
                 },
                 "7": {
+                    "name": "string.template.js"
+                },
+                "8": {
+                    "name": "punctuation.definition.string.template.begin.js"
+                },
+                "9": {
+                    "name": "punctuation.definition.string.template.end.js"
+                },
+                "10": {
                     "name": "punctuation.separator.comma.js"
                 }
             },
@@ -165,7 +174,7 @@
             ]
         },
         "polyglot-call-ruby": {
-            "begin": "(?:((')ruby('))|((\")ruby(\")))\\s*(,)\\s*",
+            "begin": "(?:((')ruby('))|((\")ruby(\"))|((`)ruby(`)))\\s*(,)\\s*",
             "beginCaptures": {
                 "1": {
                     "name": "string.quoted.single.js"
@@ -186,6 +195,15 @@
                     "name": "punctuation.definition.string.end.js"
                 },
                 "7": {
+                    "name": "string.template.js"
+                },
+                "8": {
+                    "name": "punctuation.definition.string.template.begin.js"
+                },
+                "9": {
+                    "name": "punctuation.definition.string.template.end.js"
+                },
+                "10": {
                     "name": "punctuation.separator.comma.js"
                 }
             },
@@ -282,7 +300,7 @@
             ]
         },
         "polyglot-call-python": {
-            "begin": "(?:((')python('))|((\")python(\")))\\s*(,)\\s*",
+            "begin": "(?:((')python('))|((\")python(\"))|((`)python(`)))\\s*(,)\\s*",
             "beginCaptures": {
                 "1": {
                     "name": "string.quoted.single.js"
@@ -303,6 +321,15 @@
                     "name": "punctuation.definition.string.end.js"
                 },
                 "7": {
+                    "name": "string.template.js"
+                },
+                "8": {
+                    "name": "punctuation.definition.string.template.begin.js"
+                },
+                "9": {
+                    "name": "punctuation.definition.string.template.end.js"
+                },
+                "10": {
                     "name": "punctuation.separator.comma.js"
                 }
             },
@@ -399,7 +426,7 @@
             ]
         },
         "polyglot-call-sl": {
-            "begin": "(?:((')sl('))|((\")sl(\")))\\s*(,)\\s*",
+            "begin": "(?:((')sl('))|((\")sl(\"))|((`)sl(`)))\\s*(,)\\s*",
             "beginCaptures": {
                 "1": {
                     "name": "string.quoted.single.js"
@@ -420,6 +447,15 @@
                     "name": "punctuation.definition.string.end.js"
                 },
                 "7": {
+                    "name": "string.template.js"
+                },
+                "8": {
+                    "name": "punctuation.definition.string.template.begin.js"
+                },
+                "9": {
+                    "name": "punctuation.definition.string.template.end.js"
+                },
+                "10": {
                     "name": "punctuation.separator.comma.js"
                 }
             },

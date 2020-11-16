@@ -1,10 +1,10 @@
 suite = {
-  "mxversion" : "5.273.0",
+  "mxversion" : "5.275.4",
   "name" : "compiler",
   "sourceinprojectwhitelist" : [],
 
   "groupId" : "org.graalvm.compiler",
-  "version" : "20.3.0",
+  "version" : "21.0.0",
   "release" : False,
   "url" : "http://www.graalvm.org/",
   "developer" : {

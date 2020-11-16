@@ -164,15 +164,14 @@ public final class ObjectHeaderImpl extends ObjectHeader {
 
     @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
     @Override
-    public void initializeHeaderOfNewObject(Pointer objectPointer, DynamicHub hub, HeapKind heapKind, boolean isArray) {
-        assert heapKind == HeapKind.Unmanaged || heapKind == HeapKind.ImageHeap;
-        // Headers in unmanaged memory or image heap don't need any GC-specific bits set
-        Word objectHeader = encodeAsObjectHeader(hub, false, false);
-        initializeHeaderOfNewObject(objectPointer, objectHeader, isArray);
+    public Word encodeAsUnmanagedObjectHeader(DynamicHub hub) {
+        // Headers in unmanaged memory don't need any GC-specific bits set
+        return encodeAsObjectHeader(hub, false, false);
     }
 
     @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
-    public static void initializeHeaderOfNewObject(Pointer objectPointer, Word encodedHub, boolean isArray) {
+    @Override
+    public void initializeHeaderOfNewObject(Pointer objectPointer, Word encodedHub, boolean isArray) {
         if (getReferenceSize() == Integer.BYTES) {
             objectPointer.writeInt(getHubOffset(), (int) encodedHub.rawValue(), LocationIdentity.INIT_LOCATION);
         } else {

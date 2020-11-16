@@ -40,19 +40,17 @@
  */
 package org.graalvm.wasm.predefined.wasi;
 
-import static org.graalvm.wasm.WasmTracing.trace;
-
-import java.util.function.Consumer;
-
+import com.oracle.truffle.api.CompilerDirectives;
+import com.oracle.truffle.api.frame.VirtualFrame;
 import org.graalvm.wasm.WasmContext;
 import org.graalvm.wasm.WasmInstance;
 import org.graalvm.wasm.WasmLanguage;
-import org.graalvm.wasm.exception.WasmTrap;
+import org.graalvm.wasm.exception.Failure;
+import org.graalvm.wasm.exception.WasmException;
 import org.graalvm.wasm.memory.WasmMemory;
 import org.graalvm.wasm.predefined.WasmBuiltinRootNode;
 
-import com.oracle.truffle.api.CompilerDirectives;
-import com.oracle.truffle.api.frame.VirtualFrame;
+import java.util.function.Consumer;
 
 public class WasiFdWriteNode extends WasmBuiltinRootNode {
 
@@ -64,9 +62,6 @@ public class WasiFdWriteNode extends WasmBuiltinRootNode {
     public Object executeWithContext(VirtualFrame frame, WasmContext context) {
         Object[] args = frame.getArguments();
         assert args.length == 4;
-        for (Object arg : args) {
-            trace("argument: %s", arg);
-        }
 
         int stream = (int) args[0];
         int iov = (int) args[1];
@@ -87,10 +82,8 @@ public class WasiFdWriteNode extends WasmBuiltinRootNode {
                 charPrinter = System.err::print;
                 break;
             default:
-                throw WasmTrap.create(this, "WasiFdWriteNode: invalid file stream");
+                throw WasmException.create(Failure.UNSPECIFIED_TRAP, this, "WasiFdWriteNode: invalid file stream");
         }
-
-        trace("WasiFdWriteNode EXECUTE");
 
         WasmMemory memory = instance.memory();
         int num = 0;

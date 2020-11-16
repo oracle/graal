@@ -42,13 +42,6 @@ import org.graalvm.nativeimage.Platforms;
 @Platforms(Platform.HOSTED_ONLY.class)
 public final class JMXToLibGraalCalls {
 
-    /**
-     * Used to synchronize libgraal isolates waiting for registration of the native methods in this
-     * class. The field is set to {@code true} from the libgraal native library when all natives in
-     * this class have been registered.
-     */
-    private static volatile boolean nativesRegistered;
-
     private JMXToLibGraalCalls() {
     }
 

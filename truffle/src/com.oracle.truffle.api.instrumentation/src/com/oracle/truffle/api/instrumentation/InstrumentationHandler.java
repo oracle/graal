@@ -450,6 +450,11 @@ final class InstrumentationHandler {
             this.sourceLoadedBindings.add(binding);
             lazyInitializeSourcesLoadedList();
             if (notifyLoaded) {
+                // Downgrade to read lock for notifications
+                Lock readLock = sourceLoadedBindingsLock.readLock();
+                readLock.lock(); // take a read lock
+                lock.unlock(); // release the write lock
+                lock = readLock; // replace the write lock with the read one for unlock
                 for (Source source : sourcesLoadedList) {
                     notifySourceBindingLoaded(binding, source);
                 }
@@ -478,6 +483,11 @@ final class InstrumentationHandler {
             this.sourceExecutedBindings.add(binding);
             lazyInitializeSourcesExecutedList();
             if (notifyLoaded) {
+                // Downgrade to read lock for notifications
+                Lock readLock = sourceExecutedBindingsLock.readLock();
+                readLock.lock(); // take a read lock
+                lock.unlock(); // release the write lock
+                lock = readLock; // replace the write lock with the read one for unlock
                 for (Source source : sourcesExecutedList) {
                     notifySourceExecutedBinding(binding, source);
                 }
@@ -1144,6 +1154,16 @@ final class InstrumentationHandler {
             trace("BEGIN: Visit root %s for %s%n", root.toString(), visitor);
         }
 
+        if (InstrumentAccessor.runtimeAccess().isOSRRootNode(root)) {
+            /*
+             * OSR Root nodes are always traversed by the parent root node. So walking OSR root
+             * nodes would be redundant work.
+             */
+            return;
+        }
+
+        visitor.rootBits = RootNodeBits.get(root);
+        visitor.setExecutedRootNodeBit = setExecutedRootNodeBit;
         visitor.preVisit(root, firstExecution);
         try {
             Lock lock = InstrumentAccessor.nodesAccess().getLock(node);
@@ -1155,7 +1175,6 @@ final class InstrumentationHandler {
                     if (TRACE) {
                         trace("BEGIN: Traverse root %s for %s%n", root.toString(), visitor);
                     }
-                    visitor.setExecutedRootNodeBit = setExecutedRootNodeBit;
                     if (forceRootBitComputation) {
                         visitor.computingRootNodeBits = RootNodeBits.isUninitialized(visitor.rootBits) ? RootNodeBits.getAll() : visitor.rootBits;
                     } else if (RootNodeBits.isUninitialized(visitor.rootBits)) {
@@ -1245,6 +1264,12 @@ final class InstrumentationHandler {
             }
         }
         return allocationReporter;
+    }
+
+    void finalizeStore() {
+        this.out = null;
+        this.err = null;
+        this.in = null;
     }
 
     void patch(DispatchOutputStream newOut, DispatchOutputStream newErr, InputStream newIn) {
@@ -1344,10 +1369,7 @@ final class InstrumentationHandler {
             return false;
         }
 
-        protected void preVisit(SourceSection rootSourceSection) {
-            if (rootSourceSection != null) {
-                // no-op, just to avoid build warning
-            }
+        protected void preVisit(@SuppressWarnings("unused") SourceSection rootSourceSection, @SuppressWarnings("unused") boolean executedRoot) {
         }
 
         protected void postVisitCleanup() {
@@ -1385,7 +1407,7 @@ final class InstrumentationHandler {
         }
 
         @Override
-        protected void preVisit(SourceSection rootSourceSection) {
+        protected void preVisit(SourceSection rootSourceSection, boolean executedRoot) {
             List<BindingLoadSourceSectionEvent> localSourceSectionLoadedList = threadLocalSourceSectionLoadedList.get();
             if (localSourceSectionLoadedList == null) {
                 localSourceSectionLoadedList = new ArrayList<>();
@@ -1476,7 +1498,7 @@ final class InstrumentationHandler {
         }
 
         @Override
-        protected void preVisit(SourceSection rootSourceSection) {
+        protected void preVisit(SourceSection rootSourceSection, boolean executedRoot) {
             Map<Source, Void> localNewSources = threadLocalNewSources.get();
             if (localNewSources == null) {
                 localNewSources = new LinkedHashMap<>();
@@ -1487,7 +1509,7 @@ final class InstrumentationHandler {
             }
             this.newSources = localNewSources;
 
-            if (rootSourceSection != null) {
+            if (rootSourceSection != null && (!performOnlyOnExecutedAST || executedRoot)) {
                 adoptSource(rootSourceSection.getSource());
             }
         }
@@ -1517,30 +1539,44 @@ final class InstrumentationHandler {
         @Override
         protected void postVisitNotifications() {
             if (updateGlobalSourceList) {
-                EventBinding.Source<?>[] bindingsToNofify = null;
-                List<Source> globalNewSources = null;
+                boolean haveNewSources = false;
                 Lock lock = bindingsLock.readLock();
                 lock.lock();
                 try {
                     if (!bindings.isEmpty()) {
-                        if (!dontNotifyBindings) {
-                            globalNewSources = new ArrayList<>();
-                            bindingsToNofify = bindings.getArray();
-                        }
-                        synchronized (sources) {
-                            for (Source src : newSources.keySet()) {
-                                if (!sources.containsKey(src)) {
-                                    sources.put(src, null);
-                                    sourcesList.add(src);
-                                    if (globalNewSources != null) {
-                                        globalNewSources.add(src);
-                                    }
-                                }
+                        for (Source src : newSources.keySet()) {
+                            if (!sources.containsKey(src)) {
+                                haveNewSources = true;
+                                // Will need to acquire write lock to add the new sources
+                                break;
                             }
                         }
                     }
                 } finally {
                     lock.unlock();
+                }
+                EventBinding.Source<?>[] bindingsToNofify = null;
+                List<Source> globalNewSources = null;
+                if (haveNewSources) {
+                    lock = bindingsLock.writeLock();
+                    lock.lock();
+                    try {
+                        if (!dontNotifyBindings) {
+                            globalNewSources = new ArrayList<>();
+                            bindingsToNofify = bindings.getArray();
+                        }
+                        for (Source src : newSources.keySet()) {
+                            if (!sources.containsKey(src)) {
+                                sources.put(src, null);
+                                sourcesList.add(src);
+                                if (globalNewSources != null) {
+                                    globalNewSources.add(src);
+                                }
+                            }
+                        }
+                    } finally {
+                        lock.unlock();
+                    }
                 }
                 if (globalNewSources != null) {
                     for (Source src : globalNewSources) {
@@ -2005,7 +2041,7 @@ final class InstrumentationHandler {
             this.materializeTags = (Set<Class<? extends Tag>>) (this.materializeLimitedTags == null ? this.providedTags : this.materializeLimitedTags);
 
             for (VisitOperation operation : operations) {
-                operation.preVisit(rootSourceSection);
+                operation.preVisit(rootSourceSection, setExecutedRootNodeBit || RootNodeBits.wasExecuted(rootBits));
             }
         }
 

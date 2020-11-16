@@ -209,7 +209,7 @@ public class FeatureImpl {
         }
 
         public boolean isReachable(AnalysisType type) {
-            return type.isReachable() || type.isInstantiated();
+            return type.isReachable();
         }
 
         public boolean isReachable(Field field) {

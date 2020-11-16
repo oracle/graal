@@ -87,6 +87,7 @@ import com.oracle.svm.core.jdk.PlatformNativeLibrarySupport;
 import com.oracle.svm.core.jdk.RuntimeSupport;
 import com.oracle.svm.core.log.Log;
 import com.oracle.svm.core.option.RuntimeOptionParser;
+import com.oracle.svm.core.os.MemoryProtectionKeyProvider;
 import com.oracle.svm.core.snippets.SnippetRuntime;
 import com.oracle.svm.core.snippets.SnippetRuntime.SubstrateForeignCallDescriptor;
 import com.oracle.svm.core.snippets.SubstrateForeignCallTarget;
@@ -163,7 +164,14 @@ public final class CEntryPointSnippets extends SubstrateTemplates implements Sni
 
     @Uninterruptible(reason = "Called by an uninterruptible method.", mayBeInlined = true)
     public static void setHeapBase(PointerBase heapBase) {
-        writeCurrentVMHeapBase(hasHeapBase() ? heapBase : WordFactory.nullPointer());
+        if (hasHeapBase()) {
+            writeCurrentVMHeapBase(heapBase);
+            if (MemoryProtectionKeyProvider.isAvailable()) {
+                MemoryProtectionKeyProvider.singleton().unlockCurrentIsolate();
+            }
+        } else {
+            writeCurrentVMHeapBase(WordFactory.nullPointer());
+        }
     }
 
     public interface IsolateCreationWatcher {

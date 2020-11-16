@@ -219,7 +219,6 @@ gcc-5.2.0/gcc/testsuite/g++.dg/ext/desig6.C
 gcc-5.2.0/gcc/testsuite/g++.dg/ext/fnname1.C
 gcc-5.2.0/gcc/testsuite/g++.dg/ext/fnname2.C
 gcc-5.2.0/gcc/testsuite/g++.dg/ext/fnname3.C
-gcc-5.2.0/gcc/testsuite/g++.dg/ext/gnu-inline-global-redecl.C
 gcc-5.2.0/gcc/testsuite/g++.dg/ext/has_nothrow_assign_odr.C
 gcc-5.2.0/gcc/testsuite/g++.dg/ext/has_nothrow_constructor_odr.C
 gcc-5.2.0/gcc/testsuite/g++.dg/ext/has_nothrow_copy-2.C

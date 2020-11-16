@@ -83,6 +83,11 @@ final class IsolatedTruffleCompilerEventForwarder implements TruffleCompilerList
         }
     }
 
+    @Override
+    public void onCompilationRetry(CompilableTruffleAST compilable) {
+        onCompilationRetry0(IsolatedCompileContext.get().getClient(), contextHandle);
+    }
+
     @CEntryPoint
     @CEntryPointOptions(include = CEntryPointOptions.NotIncludedAutomatically.class, publishAs = CEntryPointOptions.Publish.NotPublished)
     private static void onGraalTierFinished0(@SuppressWarnings("unused") ClientIsolateThread client,
@@ -114,6 +119,13 @@ final class IsolatedTruffleCompilerEventForwarder implements TruffleCompilerList
                     CCharPointer reason, boolean bailout, boolean permanentBailout) {
         IsolatedEventContext context = IsolatedCompileClient.get().unhand(contextHandle);
         context.listener.onFailure(context.compilable, CTypeConversion.toJavaString(reason), bailout, permanentBailout);
+    }
+
+    @CEntryPoint
+    @CEntryPointOptions(include = CEntryPointOptions.NotIncludedAutomatically.class, publishAs = CEntryPointOptions.Publish.NotPublished)
+    private static void onCompilationRetry0(@SuppressWarnings("unused") ClientIsolateThread client, ClientHandle<IsolatedEventContext> contextHandle) {
+        IsolatedEventContext context = IsolatedCompileClient.get().unhand(contextHandle);
+        context.listener.onCompilationRetry(context.compilable);
     }
 }
 

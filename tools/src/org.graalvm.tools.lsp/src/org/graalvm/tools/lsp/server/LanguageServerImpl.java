@@ -32,7 +32,6 @@ import java.net.Socket;
 import java.net.SocketAddress;
 import java.net.URI;
 import java.util.ArrayList;
-import java.util.Arrays;
 import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
@@ -47,7 +46,9 @@ import java.util.function.Supplier;
 import java.util.logging.Level;
 
 import org.graalvm.collections.Pair;
-
+import org.graalvm.tools.api.lsp.LSPServerAccessor;
+import org.graalvm.tools.lsp.exceptions.DiagnosticsNotification;
+import org.graalvm.tools.lsp.exceptions.UnknownLanguageException;
 import org.graalvm.tools.lsp.server.types.CodeAction;
 import org.graalvm.tools.lsp.server.types.CodeActionParams;
 import org.graalvm.tools.lsp.server.types.CodeLens;
@@ -75,12 +76,12 @@ import org.graalvm.tools.lsp.server.types.InitializeResult;
 import org.graalvm.tools.lsp.server.types.LanguageClient;
 import org.graalvm.tools.lsp.server.types.LanguageServer;
 import org.graalvm.tools.lsp.server.types.Location;
-import org.graalvm.tools.lsp.server.types.ShowMessageParams;
 import org.graalvm.tools.lsp.server.types.MessageType;
 import org.graalvm.tools.lsp.server.types.PublishDiagnosticsParams;
 import org.graalvm.tools.lsp.server.types.ReferenceParams;
 import org.graalvm.tools.lsp.server.types.RenameParams;
 import org.graalvm.tools.lsp.server.types.ServerCapabilities;
+import org.graalvm.tools.lsp.server.types.ShowMessageParams;
 import org.graalvm.tools.lsp.server.types.SignatureHelp;
 import org.graalvm.tools.lsp.server.types.SignatureHelpOptions;
 import org.graalvm.tools.lsp.server.types.SymbolInformation;
@@ -91,9 +92,8 @@ import org.graalvm.tools.lsp.server.types.TextEdit;
 import org.graalvm.tools.lsp.server.types.WorkspaceEdit;
 import org.graalvm.tools.lsp.server.types.WorkspaceFolder;
 import org.graalvm.tools.lsp.server.types.WorkspaceSymbolParams;
-import org.graalvm.tools.lsp.exceptions.DiagnosticsNotification;
-import org.graalvm.tools.lsp.exceptions.UnknownLanguageException;
 
+import com.oracle.truffle.api.source.Source;
 import com.oracle.truffle.tools.utils.json.JSONObject;
 
 /**
@@ -128,7 +128,7 @@ public final class LanguageServerImpl extends LanguageServer {
     }
 
     @Override
-    public CompletableFuture<InitializeResult> initialize(InitializeParams params) {
+    public CompletableFuture<InitializeResult> initialize(InitializeParams initializeParams) {
         // TODO: Read params.getCapabilities();
 
         ServerCapabilities capabilities = ServerCapabilities.create();
@@ -143,10 +143,28 @@ public final class LanguageServerImpl extends LanguageServer {
         capabilities.setSignatureHelpProvider(SignatureHelpOptions.create());
         capabilities.setHoverProvider(true);
         capabilities.setReferencesProvider(false);
-        capabilities.setExecuteCommandProvider(ExecuteCommandOptions.create(Arrays.asList(DRY_RUN, GET_COVERAGE)));
+        List<String> commands = new ArrayList<>(truffleAdapter.getExtensionCommandNames());
+        commands.add(DRY_RUN);
+        commands.add(GET_COVERAGE);
+        capabilities.setExecuteCommandProvider(ExecuteCommandOptions.create(commands));
+
+        truffleAdapter.initializeLSPServer(new LSPServerAccessor() {
+
+            public void sendCustomNotification(String method, Object params) {
+                client.sendCustomNotification(method, params);
+            }
+
+            public Map<URI, String> getOpenFileURI2LangId() {
+                return openedFileUri2LangId;
+            }
+
+            public Source getSource(URI uri) {
+                return truffleAdapter.getSource(uri);
+            }
+        });
 
         this.serverCapabilities = capabilities;
-        CompletableFuture.runAsync(() -> parseWorkspace(params.getWorkspaceFolders()));
+        CompletableFuture.runAsync(() -> parseWorkspace(initializeParams.getWorkspaceFolders()));
 
         return CompletableFuture.completedFuture(InitializeResult.create(capabilities));
     }
@@ -348,8 +366,13 @@ public final class LanguageServerImpl extends LanguageServer {
                 Future<Coverage> futureCoverage = truffleAdapter.getCoverage(URI.create(uri));
                 return CompletableFuture.supplyAsync(() -> waitForResultAndHandleExceptions(futureCoverage));
             default:
-                err.println("Unkown command: " + params.getCommand());
-                return CompletableFuture.completedFuture(new Object());
+                Future<?> extensionCommand = truffleAdapter.createExtensionCommand(params);
+                if (extensionCommand != null) {
+                    return CompletableFuture.supplyAsync(() -> waitForResultAndHandleExceptions(extensionCommand));
+                } else {
+                    err.println("Unkown command: " + params.getCommand());
+                    return CompletableFuture.completedFuture(new Object());
+                }
         }
     }
 

@@ -83,16 +83,15 @@ supportedGCCVersions = [
 # the LLVM versions supported by the current bitcode parser that bases on the textual format
 # sorted by priority in descending order (highest priority on top)
 supportedLLVMVersions = [
-    '3.2',
-    '3.3',
-    '3.8',
-    '3.9',
-    '4.0',
-    '5.0',
-    '6.0',
-    '7.0',
-    '8.0',
+    '10.0',
     '9.0',
+    '8.0',
+    '7.0',
+    '6.0',
+    '5.0',
+    '4.0',
+    '3.9',
+    '3.8',
 ]
 
 toolchainLLVMVersion = mx_sulong_llvm_config.VERSION
@@ -528,8 +527,7 @@ def extract_compiler_args(args, useDoubleDash=False):
     return compilerArgs, remainder
 
 def getCommonOptions(withAssertion, lib_args=None):
-    options = ['-Dgraal.TruffleCompilationExceptionsArePrinted=true',
-        '-Dgraal.ExitVMOnException=true']
+    options = []
 
     if lib_args is not None:
         options.append('-Dpolyglot.llvm.libraries=' + ':'.join(lib_args))

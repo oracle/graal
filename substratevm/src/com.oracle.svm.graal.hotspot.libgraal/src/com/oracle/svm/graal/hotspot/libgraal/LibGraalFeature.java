@@ -70,7 +70,10 @@ import org.graalvm.compiler.hotspot.HotSpotGraalManagementRegistration;
 import org.graalvm.compiler.hotspot.HotSpotGraalOptionValues;
 import org.graalvm.compiler.hotspot.HotSpotGraalRuntime;
 import org.graalvm.compiler.hotspot.HotSpotReplacementsImpl;
+import org.graalvm.compiler.hotspot.SnippetObjectConstant;
+import org.graalvm.compiler.hotspot.meta.HotSpotHostForeignCallsProvider;
 import org.graalvm.compiler.hotspot.meta.HotSpotProviders;
+import org.graalvm.compiler.hotspot.stubs.Stub;
 import org.graalvm.compiler.nodes.graphbuilderconf.GeneratedPluginFactory;
 import org.graalvm.compiler.nodes.graphbuilderconf.InvocationPlugins;
 import org.graalvm.compiler.nodes.graphbuilderconf.MethodSubstitutionPlugin;
@@ -117,6 +120,7 @@ import com.oracle.svm.core.annotate.RecomputeFieldValue;
 import com.oracle.svm.core.annotate.RecomputeFieldValue.Kind;
 import com.oracle.svm.core.annotate.Substitute;
 import com.oracle.svm.core.annotate.TargetClass;
+import com.oracle.svm.core.annotate.TargetElement;
 import com.oracle.svm.core.graal.meta.RuntimeConfiguration;
 import com.oracle.svm.core.graal.snippets.NodeLoweringProvider;
 import com.oracle.svm.core.jni.JNIRuntimeAccess;
@@ -138,9 +142,11 @@ import com.oracle.svm.reflect.hosted.ReflectionFeature;
 import com.oracle.svm.util.ReflectionUtil;
 
 import jdk.vm.ci.common.NativeImageReinitialize;
+import jdk.vm.ci.hotspot.HotSpotConstantReflectionProvider;
 import jdk.vm.ci.hotspot.HotSpotJVMCIBackendFactory;
 import jdk.vm.ci.hotspot.HotSpotJVMCIRuntime;
 import jdk.vm.ci.hotspot.HotSpotSignature;
+import jdk.vm.ci.meta.JavaConstant;
 import jdk.vm.ci.meta.JavaType;
 import jdk.vm.ci.meta.MetaAccessProvider;
 import jdk.vm.ci.meta.ResolvedJavaField;
@@ -471,9 +477,15 @@ public final class LibGraalFeature implements com.oracle.svm.core.graal.GraalFea
             throw VMError.shouldNotReachHere(ex);
         }
 
+        // Force construction of all stubs so the types are known.
+        HotSpotHostForeignCallsProvider foreignCalls = getReplacements().getProviders().getForeignCalls();
+        for (Stub stub : foreignCalls.getStubs()) {
+            foreignCalls.lookupForeignCall(stub.getLinkage().getDescriptor());
+        }
+
         hotSpotSubstrateReplacements.encode(impl.getBigBang().getOptions());
         if (!RuntimeAssertionsSupport.singleton().desiredAssertionStatus(SnippetParameterInfo.class)) {
-            // Clear that saved names if assertions aren't enabled
+            // Clear the saved names if assertions aren't enabled
             hotSpotSubstrateReplacements.clearSnippetParameterNames();
         }
         // Mark all the Node classes as allocated so they are available during graph decoding.
@@ -544,9 +556,6 @@ public final class LibGraalFeature implements com.oracle.svm.core.graal.GraalFea
         return true;
     }
 
-    static final Annotation[][] NO_PARAMETER_ANNOTATIONS = new Annotation[0][];
-    static final Annotation[] NO_ANNOTATIONS = new Annotation[0];
-
     static HotSpotReplacementsImpl getReplacements() {
         HotSpotGraalCompiler compiler = (HotSpotGraalCompiler) HotSpotJVMCIRuntime.runtime().getCompiler();
         HotSpotProviders originalProvider = compiler.getGraalRuntime().getHostProviders();
@@ -572,6 +581,36 @@ final class Target_jdk_vm_ci_hotspot_SharedLibraryJVMCIReflection {
 
     @Delete
     static native Annotation[] getMethodAnnotationsInternal(ResolvedJavaMethod javaMethod);
+}
+
+/**
+ * {@link HotSpotConstantReflectionProvider#forObject} can only be used to wrap compiler objects so
+ * interpose to return a {@link SnippetObjectConstant}.
+ */
+@TargetClass(className = "jdk.vm.ci.hotspot.HotSpotConstantReflectionProvider", onlyWith = LibGraalFeature.IsEnabled.class)
+final class Target_jdk_vm_ci_hotspot_HotSpotConstantReflectionProvider {
+
+    @Substitute
+    public JavaConstant forString(String value) {
+        return forObject(value);
+    }
+
+    @Substitute
+    @SuppressWarnings({"static-method", "unused"})
+    public JavaConstant forObject(Object value) {
+        return new SnippetObjectConstant(value);
+    }
+}
+
+@TargetClass(className = "jdk.vm.ci.hotspot.DirectHotSpotObjectConstantImpl", onlyWith = LibGraalFeature.IsEnabled.class)
+final class Target_jdk_vm_ci_hotspot_DirectHotSpotObjectConstantImpl {
+
+    @Substitute
+    @SuppressWarnings({"static-method", "unused"})
+    @TargetElement(name = TargetElement.CONSTRUCTOR_NAME)
+    void constructor(Object object, boolean compressed) {
+        throw new InternalError("DirectHotSpotObjectConstantImpl unsupported");
+    }
 }
 
 @TargetClass(className = "org.graalvm.compiler.hotspot.HotSpotGraalRuntime", onlyWith = LibGraalFeature.IsEnabled.class)
@@ -600,17 +639,20 @@ final class Target_org_graalvm_compiler_hotspot_HotSpotGraalRuntime {
 
     @Substitute
     private static void shutdownLibGraal(HotSpotGraalRuntime runtime) {
-        long offset = runtime.getVMConfig().jniEnvironmentOffset;
-        long javaThreadAddr = HotSpotJVMCIRuntime.runtime().getCurrentJavaThread();
-        JNI.JNIEnv env = (JNI.JNIEnv) WordFactory.unsigned(javaThreadAddr).add(WordFactory.unsigned(offset));
         try {
-            JNI.JClass libGraalIsolateClass = JNIUtil.findClass(env, JNIUtil.getJVMCIClassLoader(env),
-                            JNIUtil.getBinaryName("org.graalvm.libgraal.LibGraalIsolate"), true);
-            JNI.JMethodID unregisterMethod = JNIUtil.findMethod(env, libGraalIsolateClass, true, "unregister", "(J)V");
-            JNI.JValue args = StackValue.get(JNI.JValue.class);
-            args.setLong(IsolateUtil.getIsolateID());
-            env.getFunctions().getCallStaticVoidMethodA().call(env, libGraalIsolateClass, unregisterMethod, args);
-            JNIExceptionWrapper.wrapAndThrowPendingJNIException(env);
+            // Unregister this isolate if it was create as a peer
+            if (LibGraalEntryPoints.hasLibGraalIsolatePeer()) {
+                long offset = runtime.getVMConfig().jniEnvironmentOffset;
+                long javaThreadAddr = HotSpotJVMCIRuntime.runtime().getCurrentJavaThread();
+                JNI.JNIEnv env = (JNI.JNIEnv) WordFactory.unsigned(javaThreadAddr).add(WordFactory.unsigned(offset));
+                JNI.JClass libGraalIsolateClass = JNIUtil.findClass(env, JNIUtil.getJVMCIClassLoader(env),
+                                JNIUtil.getBinaryName("org.graalvm.libgraal.LibGraalIsolate"), true);
+                JNI.JMethodID unregisterMethod = JNIUtil.findMethod(env, libGraalIsolateClass, true, "unregister", "(J)V");
+                JNI.JValue args = StackValue.get(JNI.JValue.class);
+                args.setLong(IsolateUtil.getIsolateID());
+                env.getFunctions().getCallStaticVoidMethodA().call(env, libGraalIsolateClass, unregisterMethod, args);
+                JNIExceptionWrapper.wrapAndThrowPendingJNIException(env);
+            }
         } catch (Throwable t) {
             t.printStackTrace(TTY.out);
         } finally {

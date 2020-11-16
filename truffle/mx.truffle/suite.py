@@ -41,7 +41,7 @@
 suite = {
   "mxversion" : "5.265.8",
   "name" : "truffle",
-  "version" : "20.3.0",
+  "version" : "21.0.0",
   "release" : False,
   "groupId" : "org.graalvm.truffle",
   "sourceinprojectwhitelist" : [],
@@ -84,10 +84,10 @@ suite = {
 
     "LIBFFI_SOURCES" : {
       "resource" : True,
-      "version" : "3.2.1",
+      "version" : "3.3",
       # original: https://sourceware.org/pub/libffi/libffi-{version}.tar.gz
       "urls" : ["https://lafo.ssw.uni-linz.ac.at/pub/graal-external-deps/libffi-{version}.tar.gz"],
-      "sha1" : "280c265b789e041c02e5c97815793dfc283fb1e6",
+      "sha1" : "8df6cb570c8d6596a67d1c0773bf00650154f7aa",
     },
 
     "ANTLR4": {
@@ -104,6 +104,12 @@ suite = {
       "urls": ["https://lafo.ssw.uni-linz.ac.at/pub/graal-external-deps/antlr-4.7.2-complete.jar"],
       "sha1": "34fc363424d3b060b660f84974a82d6bdc7ebe0c",
     },
+
+    "TRUFFLE_ASM_7.2" : {
+      "sha1" : "03ab18f3f0409fbed479c3c1c2cccec0d1b483c1",
+      "urls": ["https://lafo.ssw.uni-linz.ac.at/pub/graal-external-deps/com.oracle.truffle.impl.asm-7.2.0.jar"],
+    },
+
   },
   "snippetsPattern" : ".*(Snippets|doc-files).*",
   "projects" : {
@@ -163,6 +169,7 @@ suite = {
         "sdk:GRAAL_SDK",
         "com.oracle.truffle.api.instrumentation",
         "com.oracle.truffle.api.exception",
+        "truffle:TRUFFLE_ASM_7.2",
       ],
       "annotationProcessors" : ["TRUFFLE_DSL_PROCESSOR"],
       "checkstyle" : "com.oracle.truffle.api",

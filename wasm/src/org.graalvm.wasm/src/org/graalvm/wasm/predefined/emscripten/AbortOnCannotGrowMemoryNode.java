@@ -40,8 +40,6 @@
  */
 package org.graalvm.wasm.predefined.emscripten;
 
-import static org.graalvm.wasm.WasmTracing.trace;
-
 import com.oracle.truffle.api.frame.VirtualFrame;
 import org.graalvm.wasm.WasmContext;
 import org.graalvm.wasm.WasmLanguage;
@@ -54,7 +52,6 @@ public class AbortOnCannotGrowMemoryNode extends AbortNode {
 
     @Override
     public Object executeWithContext(VirtualFrame frame, WasmContext context) {
-        trace("AbortOnCannotGrowMemoryNode EXECUTE");
         return super.execute(frame);
     }
 

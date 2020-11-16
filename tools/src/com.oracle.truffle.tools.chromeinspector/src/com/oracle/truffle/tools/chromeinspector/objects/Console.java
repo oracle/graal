@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2019, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2019, 2020, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -79,10 +79,12 @@ class Console extends AbstractInspectorObject {
     };
 
     private InspectorServerConnection connection;
+    private final UndefinedProvider undefinedProvider;
     private final Map<Object, Long> time = new ConcurrentHashMap<>();
 
-    Console(InspectorServerConnection connection) {
+    Console(InspectorServerConnection connection, UndefinedProvider undefinedProvider) {
         this.connection = connection;
+        this.undefinedProvider = undefinedProvider;
     }
 
     public static boolean isInstance(TruffleObject obj) {
@@ -189,7 +191,7 @@ class Console extends AbstractInspectorObject {
             case METHOD_ASSERT:
                 // Report assertion only when false
                 if (isTrue(arguments[0])) {
-                    return NullObject.INSTANCE;
+                    return undefinedProvider.get();
                 }
                 if (arguments.length > 1) {
                     arg = arguments[1];
@@ -209,7 +211,7 @@ class Console extends AbstractInspectorObject {
                 break;
             case METHOD_TIME:
                 time.put(arg, System.nanoTime());
-                return NullObject.INSTANCE;
+                return undefinedProvider.get();
             case METHOD_TIME_END:
                 long t2 = System.nanoTime();
                 Long t1 = time.remove(arg);
@@ -238,7 +240,7 @@ class Console extends AbstractInspectorObject {
             throw new InspectorStateException("The inspector is not connected.");
         }
         connection.consoleAPICall(type, arg);
-        return NullObject.INSTANCE;
+        return undefinedProvider.get();
     }
 
     private static boolean isTrue(Object obj) throws UnsupportedMessageException {

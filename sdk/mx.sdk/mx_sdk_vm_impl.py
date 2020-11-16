@@ -585,13 +585,14 @@ class BaseGraalVmLayoutDistribution(_with_metaclass(ABCMeta, mx.LayoutDistributi
             else:
                 _add(layout, "<jre_base>/lib/<arch>/server/vm.properties", "string:name=" + vm_name)
 
-            if _src_jdk_version == 8 and any(comp.jvmci_parent_jars for comp in registered_graalvm_components(stage1)):
-                _add(layout, '<jre_base>/lib/jvmci/parentClassLoader.classpath', 'dependency:{}'.format(GraalVmJvmciParentClasspath.project_name()))
-
-            # Add release file
-            _sorted_suites = sorted(mx.suites(), key=lambda s: s.name)
-            _metadata = self._get_metadata(_sorted_suites, join(exclude_base, 'release'))
-            _add(layout, "<jdk_base>/release", "string:{}".format(_metadata))
+            if _src_jdk_version == 8:
+                # Generate and add the 'release' file.
+                # On JDK9+ this is done in GraalVmJImageBuildTask because it depends on the result of jlink.
+                _sorted_suites = sorted(mx.suites(), key=lambda s: s.name)
+                _metadata = self._get_metadata(_sorted_suites, join(exclude_base, 'release'))
+                _add(layout, "<jdk_base>/release", "string:{}".format(_metadata))
+                if any(comp.jvmci_parent_jars for comp in registered_graalvm_components(stage1)):
+                    _add(layout, '<jre_base>/lib/jvmci/parentClassLoader.classpath', 'dependency:{}'.format(GraalVmJvmciParentClasspath.project_name()))
 
         # Add the rest of the GraalVM
 
@@ -1436,7 +1437,7 @@ class GraalVmJImage(mx.Project):
             logical_root = out_dir
             for root, _, files in os.walk(out_dir):
                 for name in files:
-                    yield join(root, name), join(relpath(root, logical_root), name)
+                    yield join(root, name), relpath(join(root, name), logical_root)
 
 
 class GraalVmJImageBuildTask(mx.ProjectBuildTask):
@@ -1448,6 +1449,13 @@ class GraalVmJImageBuildTask(mx.ProjectBuildTask):
             return not isinstance(dep, mx.Dependency) or (_include_sources(dep.qualifiedName()) and dep.isJARDistribution() and not dep.is_stripped())
         vendor_info = {'vendor-version': graalvm_vendor_version(get_final_graalvm_distribution())}
         mx_sdk.jlink_new_jdk(_src_jdk, self.subject.output_directory(), self.subject.deps, with_source=with_source, vendor_info=vendor_info)
+
+        release_file = join(self.subject.output_directory(), 'release')
+        _sorted_suites = sorted(mx.suites(), key=lambda s: s.name)
+        _metadata = BaseGraalVmLayoutDistribution._get_metadata(_sorted_suites, release_file)
+        with open(release_file, 'w') as f:
+            f.write(_metadata)
+
         with open(self._config_file(), 'w') as f:
             f.write('\n'.join(self._config()))
 

@@ -56,8 +56,11 @@ import java.util.Map;
 import java.util.Set;
 import java.util.function.BiFunction;
 
+import com.oracle.truffle.api.CompilerAsserts;
 import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
+import com.oracle.truffle.polyglot.HostAdapterFactory.AdapterResult;
+import com.oracle.truffle.polyglot.HostLanguage.HostContext;
 import com.oracle.truffle.polyglot.HostMethodDesc.OverloadedMethod;
 import com.oracle.truffle.polyglot.HostMethodDesc.SingleMethod;
 
@@ -68,26 +71,44 @@ final class HostClassDesc {
     }
 
     private final Class<?> type;
-    private volatile Object members;
+    private final HostClassCache cache;
+    private volatile Members members;
     private volatile JNIMembers jniMembers;
+    private volatile AdapterResult adapter;
     private final boolean allowsImplementation;
+    private final boolean allowedTargetType;
 
     HostClassDesc(HostClassCache cache, Class<?> type) {
-        this.members = cache;
         this.type = type;
-        if (type.isInterface()) {
-            this.allowsImplementation = cache.allowsImplementation(type);
-        } else {
-            this.allowsImplementation = false;
-        }
+        this.cache = cache;
+        this.allowsImplementation = HostInteropReflect.isExtensibleType(type) && cache.allowsImplementation(type);
+        this.allowedTargetType = allowsImplementation && HostInteropReflect.isAbstractType(type) && hasDefaultConstructor(type);
     }
 
     public boolean isAllowsImplementation() {
         return allowsImplementation;
     }
 
+    public boolean isAllowedTargetType() {
+        return allowedTargetType;
+    }
+
     public Class<?> getType() {
         return type;
+    }
+
+    private static boolean hasDefaultConstructor(Class<?> type) {
+        assert !type.isPrimitive();
+        if (type.isInterface()) {
+            return true;
+        } else {
+            for (Constructor<?> ctor : type.getConstructors()) {
+                if (ctor.getParameterCount() == 0) {
+                    return true;
+                }
+            }
+            return false;
+        }
     }
 
     private static class Members {
@@ -377,9 +398,9 @@ final class HostClassDesc {
                 if (method.isConstructor()) {
                     continue;
                 }
-                for (HostMethodDesc m : method.getOverloads()) {
+                for (SingleMethod m : method.getOverloads()) {
                     assert m.isMethod();
-                    jniMethods.put(HostInteropReflect.jniName((Method) ((SingleMethod) m).getReflectionMethod()), m);
+                    jniMethods.put(HostInteropReflect.jniName((Method) m.getReflectionMethod()), m);
                 }
             }
             return jniMethods;
@@ -387,17 +408,17 @@ final class HostClassDesc {
     }
 
     private Members getMembers() {
-        Object m = members;
-        if (!(m instanceof Members)) {
+        Members m = members;
+        if (m == null) {
             CompilerDirectives.transferToInterpreterAndInvalidate();
             synchronized (this) {
                 m = members;
-                if (!(m instanceof Members)) {
-                    members = m = new Members((HostClassCache) m, type);
+                if (m == null) {
+                    members = m = new Members(cache, type);
                 }
             }
         }
-        return (Members) m;
+        return m;
     }
 
     private JNIMembers getJNIMembers() {
@@ -496,6 +517,25 @@ final class HostClassDesc {
 
     public HostMethodDesc getFunctionalMethod() {
         return getMembers().functionalMethod;
+    }
+
+    public AdapterResult getAdapter(HostContext hostContext) {
+        AdapterResult result = adapter;
+        if (result == null) {
+            result = getOrSetAdapter(hostContext);
+        }
+        return result;
+    }
+
+    private AdapterResult getOrSetAdapter(HostContext hostContext) {
+        CompilerAsserts.neverPartOfCompilation();
+        synchronized (this) {
+            AdapterResult result = adapter;
+            if (result == null) {
+                adapter = result = HostAdapterFactory.makeAdapterClassFor(cache, type, hostContext.getClassloader());
+            }
+            return result;
+        }
     }
 
     @Override

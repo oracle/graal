@@ -439,11 +439,16 @@ public abstract class LIRGenerator implements LIRGeneratorTool {
     @Override
     public abstract Variable emitIntegerTestMove(Value leftVal, Value right, Value trueValue, Value falseValue);
 
+    /** Loads the target address for indirect {@linkplain #emitForeignCall foreign calls}. */
+    protected Value emitIndirectForeignCallAddress(@SuppressWarnings("unused") ForeignCallLinkage linkage) {
+        return null;
+    }
+
     /**
      * Emits the single call operation at the heart of generating LIR for a
-     * {@linkplain #emitForeignCall(ForeignCallLinkage, LIRFrameState, Value...) foreign call}.
+     * {@linkplain #emitForeignCall foreign call}.
      */
-    protected abstract void emitForeignCallOp(ForeignCallLinkage linkage, Value result, Value[] arguments, Value[] temps, LIRFrameState info);
+    protected abstract void emitForeignCallOp(ForeignCallLinkage linkage, Value targetAddress, Value result, Value[] arguments, Value[] temps, LIRFrameState info);
 
     @Override
     public Variable emitForeignCall(ForeignCallLinkage linkage, LIRFrameState frameState, Value... args) {
@@ -457,6 +462,8 @@ public abstract class LIRGenerator implements LIRGeneratorTool {
             }
         }
 
+        Value targetAddress = emitIndirectForeignCallAddress(linkage);
+
         // move the arguments into the correct location
         CallingConvention linkageCc = linkage.getOutgoingCallingConvention();
         res.getFrameMapBuilder().callsMethod(linkageCc);
@@ -468,8 +475,9 @@ public abstract class LIRGenerator implements LIRGeneratorTool {
             emitMove(loc, arg);
             argLocations[i] = loc;
         }
+
         res.setForeignCall(true);
-        emitForeignCallOp(linkage, linkageCc.getReturn(), argLocations, linkage.getTemporaries(), state);
+        emitForeignCallOp(linkage, targetAddress, linkageCc.getReturn(), argLocations, linkage.getTemporaries(), state);
 
         if (isLegal(linkageCc.getReturn())) {
             return emitMove(linkageCc.getReturn());

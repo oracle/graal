@@ -55,6 +55,7 @@ import com.oracle.svm.core.genscavenge.graal.nodes.FormatObjectNode;
 import com.oracle.svm.core.graal.meta.SubstrateForeignCallsProvider;
 import com.oracle.svm.core.graal.snippets.NodeLoweringProvider;
 import com.oracle.svm.core.graal.snippets.SubstrateAllocationSnippets;
+import com.oracle.svm.core.heap.Heap;
 import com.oracle.svm.core.hub.DynamicHub;
 import com.oracle.svm.core.hub.LayoutEncoding;
 import com.oracle.svm.core.snippets.SnippetRuntime;
@@ -106,7 +107,7 @@ final class GenScavengeAllocationSnippets extends SubstrateAllocationSnippets {
 
     @Override
     public void initializeObjectHeader(Word memory, Word objectHeader, Word prototypeMarkWord, boolean isArray) {
-        ObjectHeaderImpl.initializeHeaderOfNewObject(memory, objectHeader, isArray);
+        Heap.getHeap().getObjectHeader().initializeHeaderOfNewObject(memory, objectHeader, isArray);
     }
 
     @Override

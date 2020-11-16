@@ -41,7 +41,9 @@ import static org.graalvm.compiler.hotspot.replacements.HotSpotReplacementsUtil.
 import static org.graalvm.compiler.hotspot.replacements.HotSpotReplacementsUtil.OBJ_ARRAY_KLASS_ELEMENT_KLASS_LOCATION;
 import static org.graalvm.word.LocationIdentity.any;
 
+import java.util.Arrays;
 import java.util.EnumMap;
+import java.util.List;
 
 import org.graalvm.compiler.api.directives.GraalDirectives;
 import org.graalvm.compiler.core.common.CompressEncoding;
@@ -222,7 +224,6 @@ public abstract class DefaultHotSpotLoweringProvider extends DefaultJavaLowering
         this.runtime = runtime;
         this.registers = registers;
         this.constantReflection = constantReflection;
-
     }
 
     @Override
@@ -757,7 +758,23 @@ public abstract class DefaultHotSpotLoweringProvider extends DefaultJavaLowering
         assert descriptor != null;
 
         StructuredGraph graph = node.graph();
-        ForeignCallNode foreignCallNode = graph.add(new ForeignCallNode(descriptor, node.stamp(NodeView.DEFAULT), node.getArguments()));
+        List<ValueNode> arguments = node.getArguments();
+        if (node.getExceptionKind() == BytecodeExceptionKind.CLASS_CAST) {
+            assert arguments.size() == 2;
+            /*
+             * The foreign call expects the second argument to be the hub of the failing type check.
+             * But when creating the BytecodeExceptionNode for dynamic type checks, it is difficult
+             * to get the hub for the java.lang.Class instance in a VM-independent way. So we
+             * convert the Class to the hub at this late stage.
+             *
+             * Note that the hub is null for primitive types. The ClassCastExceptionStub handles the
+             * null value and uses a less verbose exception message in that case.
+             */
+            arguments = Arrays.asList(
+                            arguments.get(0),
+                            graph.addOrUniqueWithInputs(ClassGetHubNode.create(arguments.get(1), metaAccess, constantReflection)));
+        }
+        ForeignCallNode foreignCallNode = graph.add(new ForeignCallNode(descriptor, node.stamp(NodeView.DEFAULT), arguments));
         /*
          * The original BytecodeExceptionNode has a rethrowException FrameState which isn't suitable
          * for deopt because the exception to be thrown come from this call so it's not available in

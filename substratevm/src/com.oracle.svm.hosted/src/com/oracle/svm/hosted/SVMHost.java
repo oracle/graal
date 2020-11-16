@@ -85,6 +85,7 @@ import com.oracle.svm.core.heap.Target_java_lang_ref_Reference;
 import com.oracle.svm.core.hub.DynamicHub;
 import com.oracle.svm.core.hub.HubType;
 import com.oracle.svm.core.hub.ReferenceType;
+import com.oracle.svm.core.jdk.ClassLoaderSupport;
 import com.oracle.svm.core.option.SubstrateOptionsParser;
 import com.oracle.svm.core.util.HostedStringDeduplication;
 import com.oracle.svm.core.util.VMError;
@@ -262,6 +263,25 @@ public final class SVMHost implements HostVM {
 
         /* Decide when the type should be initialized. */
         classInitializationSupport.maybeInitializeHosted(analysisType);
+
+        /*
+         * For reachable classes, registering class's package in appropriate class loader.
+         */
+        Class<?> javaClass = analysisType.getJavaClass();
+        /**
+         * Due to using {@link NativeImageSystemClassLoader}, a class's ClassLoader during runtime
+         * may be different than the class used to load it during native-image generation.
+         */
+        ClassLoader runtimeClassLoader = ClassLoaderFeature.getRuntimeClassLoader(javaClass.getClassLoader());
+        if (runtimeClassLoader != null) {
+            Package packageValue = javaClass.getPackage();
+            if (packageValue != null) {
+                DynamicHub typeHub = typeToHub.get(analysisType);
+                String packageName = typeHub.getPackageName();
+                ClassLoaderSupport.registerPackage(runtimeClassLoader, packageName, packageValue);
+            }
+        }
+
         /* Compute the automatic substitutions. */
         automaticSubstitutions.computeSubstitutions(this, GraalAccess.getOriginalProviders().getMetaAccess().lookupJavaType(analysisType.getJavaClass()), options);
     }
@@ -404,7 +424,7 @@ public final class SVMHost implements HostVM {
 
     void notifyClassReachabilityListener(AnalysisUniverse universe, DuringAnalysisAccess access) {
         for (AnalysisType type : universe.getTypes()) {
-            if ((type.isReachable() || type.isInstantiated()) && !type.getReachabilityListenerNotified()) {
+            if (type.isReachable() && !type.getReachabilityListenerNotified()) {
                 type.setReachabilityListenerNotified(true);
 
                 for (BiConsumer<DuringAnalysisAccess, Class<?>> listener : classReachabilityListeners) {

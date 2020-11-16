@@ -1,3 +1,4 @@
+gcc-5.2.0/gcc/testsuite/g++.dg/ext/gnu-inline-global-redecl.C
 gcc-5.2.0/gcc/testsuite/ada/acats/tests/cd/cd300051.c
 gcc-5.2.0/gcc/testsuite/ada/acats/tests/cxb/cxb30040.c
 gcc-5.2.0/gcc/testsuite/ada/acats/tests/cxb/cxb30060.c

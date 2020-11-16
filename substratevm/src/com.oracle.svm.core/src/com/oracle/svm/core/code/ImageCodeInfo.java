@@ -53,6 +53,9 @@ public class ImageCodeInfo {
 
     @UnknownPrimitiveField private CodePointer codeStart;
     @UnknownPrimitiveField private UnsignedWord codeSize;
+    @UnknownPrimitiveField private UnsignedWord dataOffset;
+    @UnknownPrimitiveField private UnsignedWord dataSize;
+    @UnknownPrimitiveField private UnsignedWord codeAndDataMemorySize;
 
     private final Object[] objectFields;
     @UnknownObjectField(types = {byte[].class}) byte[] codeInfoIndex;
@@ -66,7 +69,7 @@ public class ImageCodeInfo {
 
     @Platforms(Platform.HOSTED_ONLY.class)
     ImageCodeInfo() {
-        NonmovableObjectArray<Object> objfields = NonmovableArrays.createObjectArray(CodeInfoImpl.OBJFIELDS_COUNT);
+        NonmovableObjectArray<Object> objfields = NonmovableArrays.createObjectArray(Object[].class, CodeInfoImpl.OBJFIELDS_COUNT);
         NonmovableArrays.setObject(objfields, CodeInfoImpl.NAME_OBJFIELD, CODE_INFO_NAME);
         // The image code info is never invalidated, so we consider it as always tethered.
         NonmovableArrays.setObject(objfields, CodeInfoImpl.TETHER_OBJFIELD, new CodeInfoTether(true));
@@ -85,6 +88,9 @@ public class ImageCodeInfo {
         info.setObjectFields(NonmovableArrays.fromImageHeap(objectFields));
         info.setCodeStart(codeStart);
         info.setCodeSize(codeSize);
+        info.setDataOffset(dataOffset);
+        info.setDataSize(dataSize);
+        info.setCodeAndDataMemorySize(codeAndDataMemorySize);
         info.setCodeInfoIndex(NonmovableArrays.fromImageHeap(codeInfoIndex));
         info.setCodeInfoEncodings(NonmovableArrays.fromImageHeap(codeInfoEncodings));
         info.setStackReferenceMapEncoding(NonmovableArrays.fromImageHeap(referenceMapEncoding));
@@ -122,6 +128,21 @@ public class ImageCodeInfo {
         }
 
         @Override
+        public UnsignedWord getDataOffset() {
+            return dataOffset;
+        }
+
+        @Override
+        public UnsignedWord getDataSize() {
+            return dataSize;
+        }
+
+        @Override
+        public UnsignedWord getCodeAndDataMemorySize() {
+            return codeAndDataMemorySize;
+        }
+
+        @Override
         public NonmovableArray<Byte> getStackReferenceMapEncoding() {
             return NonmovableArrays.fromImageHeap(referenceMapEncoding);
         }
@@ -134,6 +155,21 @@ public class ImageCodeInfo {
         @Override
         public void setCodeSize(UnsignedWord value) {
             codeSize = value;
+        }
+
+        @Override
+        public void setDataOffset(UnsignedWord value) {
+            dataOffset = value;
+        }
+
+        @Override
+        public void setDataSize(UnsignedWord value) {
+            dataSize = value;
+        }
+
+        @Override
+        public void setCodeAndDataMemorySize(UnsignedWord value) {
+            codeAndDataMemorySize = value;
         }
 
         @Override
@@ -303,6 +339,16 @@ public class ImageCodeInfo {
 
         @Override
         public Word getGCData() {
+            throw VMError.shouldNotReachHere("not supported for image code");
+        }
+
+        @Override
+        public void setAllObjectsAreInImageHeap(boolean value) {
+            throw VMError.shouldNotReachHere("not supported for image code");
+        }
+
+        @Override
+        public boolean getAllObjectsAreInImageHeap() {
             throw VMError.shouldNotReachHere("not supported for image code");
         }
 

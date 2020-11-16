@@ -72,6 +72,9 @@ import org.graalvm.word.WordFactory;
 
 import jdk.vm.ci.meta.ResolvedJavaType;
 
+/**
+ * Implementation of the write barriers for the G1 garbage collector.
+ */
 public abstract class G1WriteBarrierSnippets extends WriteBarrierSnippets implements Snippets {
 
     public static final LocationIdentity GC_LOG_LOCATION = NamedLocationIdentity.mutable("GC-Log");
@@ -81,6 +84,11 @@ public abstract class G1WriteBarrierSnippets extends WriteBarrierSnippets implem
     public static final LocationIdentity SATB_QUEUE_BUFFER_LOCATION = NamedLocationIdentity.mutable("GC-Queue-Buffer");
     public static final LocationIdentity CARD_QUEUE_INDEX_LOCATION = NamedLocationIdentity.mutable("GC-Card-Queue-Index");
     public static final LocationIdentity CARD_QUEUE_BUFFER_LOCATION = NamedLocationIdentity.mutable("GC-Card-Queue-Buffer");
+
+    protected static final LocationIdentity[] KILLED_PRE_WRITE_BARRIER_STUB_LOCATIONS = new LocationIdentity[]{SATB_QUEUE_INDEX_LOCATION, SATB_QUEUE_BUFFER_LOCATION, GC_LOG_LOCATION,
+                    GC_INDEX_LOCATION};
+    protected static final LocationIdentity[] KILLED_POST_WRITE_BARRIER_STUB_LOCATIONS = new LocationIdentity[]{CARD_QUEUE_INDEX_LOCATION, CARD_QUEUE_BUFFER_LOCATION, GC_LOG_LOCATION,
+                    GC_INDEX_LOCATION, GC_CARD_LOCATION};
 
     public static class Counters {
         Counters(SnippetCounter.Group.Factory factory) {
@@ -108,6 +116,23 @@ public abstract class G1WriteBarrierSnippets extends WriteBarrierSnippets implem
     @Snippet
     public void g1PreWriteBarrier(Address address, Object object, Object expectedObject, @ConstantParameter boolean doLoad, @ConstantParameter boolean nullCheck,
                     @ConstantParameter int traceStartCycle, @ConstantParameter Counters counters) {
+        satbBarrier(address, object, expectedObject, doLoad, nullCheck, traceStartCycle, counters, false);
+    }
+
+    @Snippet
+    public void g1ReferentReadBarrier(Address address, Object object, Object expectedObject, @ConstantParameter boolean isDynamicCheck, Word offset,
+                    @ConstantParameter int traceStartCycle, @ConstantParameter Counters counters) {
+        // If we can't rule out that a read might access the field Reference.referent, then we need
+        // to check both the accessed offset and the type of the accessed object dynamically. The
+        // line below only checks the offset as this is cheap. The called barrier snippet method
+        // does the instanceof check if necessary.
+        if (!isDynamicCheck || probability(NOT_FREQUENT_PROBABILITY, offset == WordFactory.unsigned(referentOffset()))) {
+            satbBarrier(address, object, expectedObject, false, false, traceStartCycle, counters, isDynamicCheck);
+        }
+    }
+
+    private void satbBarrier(Address address, Object object, Object expectedObject, boolean doLoad, boolean nullCheck,
+                    int traceStartCycle, Counters counters, boolean checkForReferenceType) {
         if (nullCheck) {
             NullCheckNode.nullCheck(address);
         }
@@ -120,7 +145,7 @@ public abstract class G1WriteBarrierSnippets extends WriteBarrierSnippets implem
         int gcCycle = 0;
         if (trace) {
             Pointer gcTotalCollectionsAddress = WordFactory.pointer(gcTotalCollectionsAddress());
-            gcCycle = (int) gcTotalCollectionsAddress.readLong(0);
+            gcCycle = (int) gcTotalCollectionsAddress.readLong(0, LocationIdentity.any());
             log(trace, "[%d] G1-Pre Thread %p Object %p\n", gcCycle, thread.rawValue(), Word.objectToTrackedPointer(object).rawValue());
             log(trace, "[%d] G1-Pre Thread %p Expected Object %p\n", gcCycle, thread.rawValue(), Word.objectToTrackedPointer(expectedObject).rawValue());
             log(trace, "[%d] G1-Pre Thread %p Field %p\n", gcCycle, thread.rawValue(), field.rawValue());
@@ -135,7 +160,7 @@ public abstract class G1WriteBarrierSnippets extends WriteBarrierSnippets implem
             // The load is always issued except the cases of CAS and referent field.
             Object previousObject;
             if (doLoad) {
-                previousObject = field.readObject(0, BarrierType.NONE);
+                previousObject = field.readObject(0, BarrierType.NONE, LocationIdentity.any());
                 if (trace) {
                     log(trace, "[%d] G1-Pre Thread %p Previous Object %p\n ", gcCycle, thread.rawValue(), Word.objectToTrackedPointer(previousObject).rawValue());
                     verifyOop(previousObject);
@@ -148,31 +173,28 @@ public abstract class G1WriteBarrierSnippets extends WriteBarrierSnippets implem
             // If the previous value is null the barrier should not be issued.
             if (probability(FREQUENT_PROBABILITY, previousObject != null)) {
                 counters.g1ExecutedPreWriteBarrierCounter.inc();
-                // If the thread-local SATB buffer is full issue a native call which will
-                // initialize a new one and add the entry.
-                Word indexAddress = thread.add(satbQueueIndexOffset());
-                Word indexValue = indexAddress.readWord(0, SATB_QUEUE_INDEX_LOCATION);
-                if (probability(FREQUENT_PROBABILITY, indexValue.notEqual(0))) {
-                    Word bufferAddress = thread.readWord(satbQueueBufferOffset(), SATB_QUEUE_BUFFER_LOCATION);
-                    Word nextIndex = indexValue.subtract(wordSize());
-                    Word logAddress = bufferAddress.add(nextIndex);
-                    // Log the object to be marked as well as update the SATB's buffer next index.
-                    Word previousOop = Word.objectToTrackedPointer(previousObject);
-                    logAddress.writeWord(0, previousOop, GC_LOG_LOCATION);
-                    indexAddress.writeWord(0, nextIndex, GC_INDEX_LOCATION);
-                } else {
-                    g1PreBarrierStub(previousObject);
+                // For referent read barriers it might be necessary to check the type of the
+                // accessed object. For normal pre-write barriers, this condition always folds to
+                // true.
+                if (!checkForReferenceType || probability(NOT_FREQUENT_PROBABILITY, InstanceOfNode.doInstanceof(referenceType(), object))) {
+                    // If the thread-local SATB buffer is full issue a native call which will
+                    // initialize a new one and add the entry.
+                    Word indexAddress = thread.add(satbQueueIndexOffset());
+                    Word indexValue = indexAddress.readWord(0, SATB_QUEUE_INDEX_LOCATION);
+                    if (probability(FREQUENT_PROBABILITY, indexValue.notEqual(0))) {
+                        Word bufferAddress = thread.readWord(satbQueueBufferOffset(), SATB_QUEUE_BUFFER_LOCATION);
+                        Word nextIndex = indexValue.subtract(wordSize());
+                        Word logAddress = bufferAddress.add(nextIndex);
+                        // Log the object to be marked as well as update the SATB's buffer next
+                        // index.
+                        Word previousOop = Word.objectToTrackedPointer(previousObject);
+                        logAddress.writeWord(0, previousOop, GC_LOG_LOCATION);
+                        indexAddress.writeWord(0, nextIndex, GC_INDEX_LOCATION);
+                    } else {
+                        g1PreBarrierStub(previousObject);
+                    }
                 }
             }
-        }
-    }
-
-    @Snippet
-    public void g1ReferentReadBarrier(Address address, Object object, Object expectedObject, @ConstantParameter boolean isDynamicCheck, Word offset,
-                    @ConstantParameter int traceStartCycle, @ConstantParameter Counters counters) {
-        if (!isDynamicCheck ||
-                        (offset == WordFactory.unsigned(referentOffset()) && InstanceOfNode.doInstanceof(referenceType(), object))) {
-            g1PreWriteBarrier(address, object, expectedObject, false, false, traceStartCycle, counters);
         }
     }
 
@@ -199,7 +221,7 @@ public abstract class G1WriteBarrierSnippets extends WriteBarrierSnippets implem
         int gcCycle = 0;
         if (trace) {
             Pointer gcTotalCollectionsAddress = WordFactory.pointer(gcTotalCollectionsAddress());
-            gcCycle = (int) gcTotalCollectionsAddress.readLong(0);
+            gcCycle = (int) gcTotalCollectionsAddress.readLong(0, LocationIdentity.any());
             log(trace, "[%d] G1-Post Thread: %p Object: %p\n", gcCycle, thread.rawValue(), Word.objectToTrackedPointer(object).rawValue());
             log(trace, "[%d] G1-Post Thread: %p Field: %p\n", gcCycle, thread.rawValue(), oop.rawValue());
         }
@@ -268,7 +290,7 @@ public abstract class G1WriteBarrierSnippets extends WriteBarrierSnippets implem
 
         for (int i = 0; i < length; i++) {
             Word arrElemPtr = start.add(i * scale);
-            Object previousObject = arrElemPtr.readObject(0, BarrierType.NONE);
+            Object previousObject = arrElemPtr.readObject(0, BarrierType.NONE, LocationIdentity.any());
             verifyOop(previousObject);
             if (probability(FREQUENT_PROBABILITY, previousObject != null)) {
                 if (probability(FREQUENT_PROBABILITY, indexValue != 0)) {
@@ -453,7 +475,7 @@ public abstract class G1WriteBarrierSnippets extends WriteBarrierSnippets implem
             args.addConst("traceStartCycle", traceStartCycle(barrier.graph()));
             args.addConst("counters", counters);
 
-            templates.template(barrier, args).instantiate(templates.getProviders().getMetaAccess(), barrier, SnippetTemplate.DEFAULT_REPLACER, args);
+            templates.template(barrier, args).instantiate(templates.getMetaAccess(), barrier, SnippetTemplate.DEFAULT_REPLACER, args);
         }
 
         public void lower(AbstractTemplates templates, SnippetInfo snippet, G1ReferentFieldReadBarrier barrier, LoweringTool tool) {
@@ -474,7 +496,7 @@ public abstract class G1WriteBarrierSnippets extends WriteBarrierSnippets implem
             args.addConst("traceStartCycle", traceStartCycle(barrier.graph()));
             args.addConst("counters", counters);
 
-            templates.template(barrier, args).instantiate(templates.getProviders().getMetaAccess(), barrier, SnippetTemplate.DEFAULT_REPLACER, args);
+            templates.template(barrier, args).instantiate(templates.getMetaAccess(), barrier, SnippetTemplate.DEFAULT_REPLACER, args);
         }
 
         public void lower(AbstractTemplates templates, SnippetInfo snippet, G1PostWriteBarrier barrier, LoweringTool tool) {
@@ -503,7 +525,7 @@ public abstract class G1WriteBarrierSnippets extends WriteBarrierSnippets implem
             args.addConst("traceStartCycle", traceStartCycle(barrier.graph()));
             args.addConst("counters", counters);
 
-            templates.template(barrier, args).instantiate(templates.getProviders().getMetaAccess(), barrier, SnippetTemplate.DEFAULT_REPLACER, args);
+            templates.template(barrier, args).instantiate(templates.getMetaAccess(), barrier, SnippetTemplate.DEFAULT_REPLACER, args);
         }
 
         public void lower(AbstractTemplates templates, SnippetInfo snippet, G1ArrayRangePreWriteBarrier barrier, LoweringTool tool) {
@@ -512,7 +534,7 @@ public abstract class G1WriteBarrierSnippets extends WriteBarrierSnippets implem
             args.add("length", barrier.getLength());
             args.addConst("elementStride", barrier.getElementStride());
 
-            templates.template(barrier, args).instantiate(templates.getProviders().getMetaAccess(), barrier, SnippetTemplate.DEFAULT_REPLACER, args);
+            templates.template(barrier, args).instantiate(templates.getMetaAccess(), barrier, SnippetTemplate.DEFAULT_REPLACER, args);
         }
 
         public void lower(AbstractTemplates templates, SnippetInfo snippet, G1ArrayRangePostWriteBarrier barrier, LoweringTool tool) {
@@ -521,7 +543,7 @@ public abstract class G1WriteBarrierSnippets extends WriteBarrierSnippets implem
             args.add("length", barrier.getLength());
             args.addConst("elementStride", barrier.getElementStride());
 
-            templates.template(barrier, args).instantiate(templates.getProviders().getMetaAccess(), barrier, SnippetTemplate.DEFAULT_REPLACER, args);
+            templates.template(barrier, args).instantiate(templates.getMetaAccess(), barrier, SnippetTemplate.DEFAULT_REPLACER, args);
         }
 
         private static int traceStartCycle(StructuredGraph graph) {

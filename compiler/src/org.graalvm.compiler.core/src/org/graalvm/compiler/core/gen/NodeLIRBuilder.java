@@ -799,7 +799,7 @@ public abstract class NodeLIRBuilder implements NodeLIRBuilderTool, LIRGeneratio
     }
 
     private boolean isValidImplicitLIRFrameState(ImplicitNullCheckNode implicitNullCheck) {
-        if (GraalServices.supportArbitraryImplicitException()) {
+        if (GraalServices.supportsArbitraryImplicitException()) {
             return true;
         }
         DeoptimizationReason deoptimizationReason = getLIRGeneratorTool().getMetaAccess().decodeDeoptReason(implicitNullCheck.getDeoptReasonAndAction());

@@ -220,11 +220,19 @@ public abstract class ValueNode extends org.graalvm.compiler.graph.Node implemen
         assert checkReplaceAtUsagesInvariants(other);
     }
 
+    @Override
+    protected void replaceAtAllUsages(Node other, Node toBeDeleted) {
+        super.replaceAtAllUsages(other, toBeDeleted);
+        assert checkReplaceAtUsagesInvariants(other);
+    }
+
     private boolean checkReplaceAtUsagesInvariants(Node other) {
         assert other == null || other instanceof ValueNode;
         if (this.hasUsages() && !this.stamp(NodeView.DEFAULT).isEmpty() && !(other instanceof PhiNode) && other != null) {
-            assert ((ValueNode) other).stamp(NodeView.DEFAULT).getClass() == stamp(NodeView.DEFAULT).getClass() : "stamp have to be of same class";
-            boolean morePrecise = ((ValueNode) other).stamp(NodeView.DEFAULT).join(stamp(NodeView.DEFAULT)).equals(((ValueNode) other).stamp(NodeView.DEFAULT));
+            Stamp thisStamp = stamp(NodeView.DEFAULT);
+            Stamp otherStamp = ((ValueNode) other).stamp(NodeView.DEFAULT);
+            assert thisStamp.isCompatible(otherStamp) : "stamp have to be compatible";
+            boolean morePrecise = otherStamp.join(thisStamp).equals(otherStamp);
             assert morePrecise : "stamp can only get more precise " + toString(Verbosity.All) + " " +
                             other.toString(Verbosity.All);
         }

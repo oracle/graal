@@ -41,11 +41,16 @@
 package org.graalvm.wasm.test;
 
 import com.oracle.truffle.api.Truffle;
+import junit.framework.AssertionFailedError;
 import org.graalvm.polyglot.Context;
 import org.graalvm.polyglot.PolyglotException;
 import org.graalvm.polyglot.Source;
 import org.graalvm.polyglot.Value;
-import org.graalvm.wasm.predefined.testutil.TestutilModule;
+import org.graalvm.wasm.GlobalRegistry;
+import org.graalvm.wasm.WasmContext;
+import org.graalvm.wasm.WasmFunctionInstance;
+import org.graalvm.wasm.WasmInstance;
+import org.graalvm.wasm.memory.WasmMemory;
 import org.graalvm.wasm.test.options.WasmTestOptions;
 import org.graalvm.wasm.utils.cases.WasmCase;
 import org.graalvm.wasm.utils.cases.WasmCaseData;
@@ -55,14 +60,12 @@ import java.io.BufferedReader;
 import java.io.ByteArrayOutputStream;
 import java.io.IOException;
 import java.io.InputStreamReader;
-import java.io.OutputStream;
 import java.io.PrintStream;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
-import java.util.function.BiConsumer;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
@@ -132,99 +135,98 @@ public abstract class WasmFileSuite extends AbstractWasmSuite {
         return inCI() || inWindows();
     }
 
-    private static Value findMain(Context context) {
-        for (String moduleName : context.getBindings("wasm").getMemberKeys()) {
-            final Value module = context.getBindings("wasm").getMember(moduleName);
-            if (module.hasMember("_start")) {
-                return module.getMember("_start");
-            }
-            if (module.hasMember("_main")) {
-                return module.getMember("_main");
+    private static Value findMain(WasmContext wasmContext) {
+        for (final WasmInstance instance : wasmContext.moduleInstances().values()) {
+            final WasmFunctionInstance function = instance.inferEntryPoint();
+            if (function != null) {
+                return Value.asValue(function);
             }
         }
-        return null;
+        throw new AssertionFailedError("No start function exported.");
     }
 
     private static void runInContext(WasmCase testCase, Context context, List<Source> sources, int iterations, String phaseIcon, String phaseLabel) {
-        boolean requiresZeroMemory = Boolean.parseBoolean(testCase.options().getProperty("zero-memory", "false"));
-
         final PrintStream oldOut = System.out;
         try {
+            // TODO(mbovel): Make WASI functions use Env#out() instead of System#out so that we
+            // don't need that hack.
+            final ByteArrayOutputStream capturedStream = new ByteArrayOutputStream();
+            final PrintStream capturedStdout = new PrintStream(capturedStream);
+            System.setOut(capturedStdout);
+
+            // Whereas the test needs memory to be reset between iterations.
+            final boolean requiresZeroMemory = Boolean.parseBoolean(testCase.options().getProperty("zero-memory", "false"));
+
             resetStatus(oldOut, PHASE_PARSE_ICON, "parsing");
-            final Value[] instances = new Value[sources.size()];
+
+            // This is needed so that we can call WasmContext.getCurrent().
+            context.enter();
 
             try {
-                for (int i = 0; i < instances.length; ++i) {
-                    instances[i] = context.eval(sources.get(i));
-                }
+                sources.forEach(context::eval);
             } catch (PolyglotException e) {
                 validateThrown(testCase.data(), WasmCaseData.ErrorType.Validation, e);
                 return;
             }
 
-            // The sequence of WebAssembly functions to execute.
-            // Run custom initialization.
-            // Execute the main function (exported as "_main").
-            // Then, optionally save memory and globals, and compare them.
-            // Execute a special function, which resets memory and globals to their default values.
-            Value mainFunction = findMain(context);
-            final Value testutil = context.getBindings("wasm").getMember("testutil");
-            Value resetMemories = testutil.getMember(TestutilModule.Names.RESET_MEMORIES);
-            Value reinitInstance = testutil.getMember(TestutilModule.Names.REINIT_INSTANCE);
-            Value saveContext = testutil.getMember(TestutilModule.Names.SAVE_CONTEXT);
-            Value compareContexts = testutil.getMember(TestutilModule.Names.COMPARE_CONTEXTS);
+            final WasmContext wasmContext = WasmContext.getCurrent();
+            final Value mainFunction = findMain(wasmContext);
 
             resetStatus(oldOut, phaseIcon, phaseLabel);
-            ByteArrayOutputStream capturedStdout;
-            Object firstIterationContextState = null;
+
+            final String argString = testCase.options().getProperty("argument");
+            final Integer arg = argString == null ? null : Integer.parseInt(argString);
+            ContextState firstIterationContextState = null;
 
             for (int i = 0; i != iterations; ++i) {
                 try {
-                    capturedStdout = new ByteArrayOutputStream();
-                    System.setOut(new PrintStream(capturedStdout));
-
-                    final String argString = testCase.options().getProperty("argument");
-
-                    // Execute benchmark.
-                    final Value result = argString == null ? mainFunction.execute() : mainFunction.execute(Integer.parseInt(argString));
-
-                    // Save context state, and check that it's consistent with the previous one.
-                    if (iterationNeedsStateCheck(i)) {
-                        Object contextState = saveContext.execute();
-                        if (firstIterationContextState == null) {
-                            firstIterationContextState = contextState;
-                        } else {
-                            compareContexts.execute(firstIterationContextState, contextState);
-                        }
-                    }
-
-                    // Reset context state.
-                    boolean reinitMemory = requiresZeroMemory || iterationNeedsStateCheck(i + 1);
-                    if (reinitMemory) {
-                        resetMemories.execute();
-                    }
-                    for (final Value instance : instances) {
-                        reinitInstance.execute(instance, reinitMemory);
-                    }
-
-                    validateResult(testCase.data().resultValidator(), result, capturedStdout);
+                    capturedStream.reset();
+                    final Value result = arg == null ? mainFunction.execute() : mainFunction.execute(arg);
+                    WasmCase.validateResult(testCase.data().resultValidator(), result, capturedStream);
                 } catch (PolyglotException e) {
-                    // We cannot label the tests with polyglot errors, because they might
-                    // semantically be return values of the test.
-                    if (testCase.data().expectedErrorTime() == WasmCaseData.ErrorType.Validation) {
+                    // If no exception is expected and the program returns with success exit status,
+                    // then we check stdout.
+                    if (e.isExit() && testCase.data().expectedErrorMessage() == null) {
+                        Assert.assertEquals("Program exited with non-zero return code.", e.getExitStatus(), 0);
+                        WasmCase.validateResult(testCase.data().resultValidator(), null, capturedStream);
+                    } else if (testCase.data().expectedErrorTime() == WasmCaseData.ErrorType.Validation) {
                         validateThrown(testCase.data(), WasmCaseData.ErrorType.Validation, e);
                         return;
+                    } else {
+                        validateThrown(testCase.data(), WasmCaseData.ErrorType.Runtime, e);
                     }
-                    validateThrown(testCase.data(), WasmCaseData.ErrorType.Runtime, e);
                 } catch (Throwable t) {
                     final RuntimeException e = new RuntimeException("Error during test phase '" + phaseLabel + "'", t);
                     e.setStackTrace(new StackTraceElement[0]);
                     throw e;
+                } finally {
+                    // Save context state, and check that it's consistent with the previous one.
+                    if (iterationNeedsStateCheck(i)) {
+                        final ContextState contextState = saveContext(wasmContext);
+                        if (firstIterationContextState == null) {
+                            firstIterationContextState = contextState;
+                        } else {
+                            assertContextEqual(firstIterationContextState, contextState);
+                        }
+                    }
+
+                    // Reset context state.
+                    final boolean reinitMemory = requiresZeroMemory || iterationNeedsStateCheck(i + 1);
+                    if (reinitMemory) {
+                        for (int j = 0; j < wasmContext.memories().count(); ++j) {
+                            wasmContext.memories().memory(j).clear();
+                        }
+                    }
+                    for (final WasmInstance instance : wasmContext.moduleInstances().values()) {
+                        if (!instance.isBuiltin()) {
+                            wasmContext.reinitInstance(instance, reinitMemory);
+                        }
+                    }
                 }
             }
         } finally {
-            System.setOut(oldOut);
             context.close(true);
+            System.setOut(oldOut);
         }
     }
 
@@ -263,6 +265,7 @@ public abstract class WasmFileSuite extends AbstractWasmSuite {
         try {
             Context.Builder contextBuilder = Context.newBuilder("wasm");
             contextBuilder.allowExperimentalOptions(true);
+            contextBuilder.option("engine.EncodedGraphCacheCapacity", "-1");
 
             if (WasmTestOptions.LOG_LEVEL != null && !WasmTestOptions.LOG_LEVEL.equals("")) {
                 contextBuilder.option("log.wasm.level", WasmTestOptions.LOG_LEVEL);
@@ -302,7 +305,6 @@ public abstract class WasmFileSuite extends AbstractWasmSuite {
             runInContext(testCase, context, sources, syncInlineIterations, PHASE_SYNC_INLINE_ICON, "sync,inl");
 
             // Run with normal, asynchronous compilation.
-            // Run 1000 + 1 times - the last time run with a surrogate stream, to collect output.
             int asyncIterations = Integer.parseInt(testCase.options().getProperty("async-iterations", String.valueOf(DEFAULT_ASYNC_ITERATIONS)));
             context = getAsyncCompiled(contextBuilder);
             runInContext(testCase, context, sources, asyncIterations, PHASE_ASYNC_ICON, "async,multi");
@@ -316,19 +318,11 @@ public abstract class WasmFileSuite extends AbstractWasmSuite {
         return "testutil:testutil";
     }
 
-    private static void validateResult(BiConsumer<Value, String> validator, Value result, OutputStream capturedStdout) {
-        if (validator != null) {
-            validator.accept(result, capturedStdout.toString());
-        } else {
-            Assert.fail("Test was not expected to return a value.");
-        }
-    }
-
     private static void validateThrown(WasmCaseData data, WasmCaseData.ErrorType phase, PolyglotException e) throws PolyglotException {
         if (data.expectedErrorMessage() == null || !data.expectedErrorMessage().equals(e.getMessage())) {
             throw e;
         }
-        Assert.assertEquals("Unexpected error phase (should not have been thrown during the running phase).", data.expectedErrorTime(), phase);
+        Assert.assertEquals("Unexpected error phase.", data.expectedErrorTime(), phase);
     }
 
     @Override
@@ -442,5 +436,57 @@ public abstract class WasmFileSuite extends AbstractWasmSuite {
 
     protected String suiteName() {
         return getClass().getSimpleName();
+    }
+
+    private static ContextState saveContext(WasmContext context) {
+        Assert.assertTrue("Currently, only 0 or 1 memories can be saved.", context.memories().count() <= 1);
+        final WasmMemory currentMemory = context.memories().count() == 1 ? context.memories().memory(0).duplicate() : null;
+        final GlobalRegistry globals = context.globals().duplicate();
+        return new ContextState(currentMemory, globals);
+    }
+
+    private static void assertContextEqual(ContextState expectedState, ContextState actualState) {
+        // Compare memories
+        final WasmMemory expectedMemory = expectedState.memory();
+        final WasmMemory actualMemory = actualState.memory();
+        if (expectedMemory == null) {
+            Assert.assertNull("Memory should be null", actualMemory);
+        } else {
+            Assert.assertNotNull("Memory should not be null", actualMemory);
+            Assert.assertEquals("Mismatch in memory lengths", expectedMemory.byteSize(), actualMemory.byteSize());
+            for (int ptr = 0; ptr < expectedMemory.byteSize(); ptr++) {
+                byte expectedByte = (byte) expectedMemory.load_i32_8s(null, ptr);
+                byte actualByte = (byte) actualMemory.load_i32_8s(null, ptr);
+                Assert.assertEquals("Memory mismatch", expectedByte, actualByte);
+            }
+        }
+
+        // Compare globals
+        final GlobalRegistry firstGlobals = expectedState.globals();
+        final GlobalRegistry lastGlobals = actualState.globals();
+        Assert.assertEquals("Mismatch in global counts.", firstGlobals.count(), lastGlobals.count());
+        for (int address = 0; address < firstGlobals.count(); address++) {
+            long first = firstGlobals.loadAsLong(address);
+            long last = lastGlobals.loadAsLong(address);
+            Assert.assertEquals("Mismatch in global at " + address + ". ", first, last);
+        }
+    }
+
+    private static final class ContextState {
+        private final WasmMemory memory;
+        private final GlobalRegistry globals;
+
+        private ContextState(WasmMemory memory, GlobalRegistry globals) {
+            this.memory = memory;
+            this.globals = globals;
+        }
+
+        public WasmMemory memory() {
+            return memory;
+        }
+
+        public GlobalRegistry globals() {
+            return globals;
+        }
     }
 }

@@ -214,6 +214,8 @@ public abstract class Accessor {
 
         public abstract void checkInteropType(Object result);
 
+        public abstract boolean isInteropType(Object result);
+
         public abstract boolean isExecutableObject(Object value);
 
         public abstract Object createDefaultNodeObject(Node node);
@@ -514,6 +516,8 @@ public abstract class Accessor {
         public abstract <T, G> Iterator<T> mergeHostGuestFrames(StackTraceElement[] hostStack, Iterator<G> guestFrames, boolean inHostLanguage, Function<StackTraceElement, T> hostFrameConvertor,
                         Function<G, T> guestFrameConvertor);
 
+        public abstract Object createHostAdapterClass(Object polyglotLanguageContext, Class<?>[] types, Object classOverrides);
+
         public abstract Iterable<com.oracle.truffle.api.Scope> findLibraryLocalScopesToLegacy(Node node, Frame frame);
 
         public abstract Iterable<com.oracle.truffle.api.Scope> topScopesToLegacy(Object scope);
@@ -527,6 +531,8 @@ public abstract class Accessor {
         public abstract Collection<? extends CallTarget> findCallTargets(Object polyglotEngine);
 
         public abstract void preinitializeContext(Object polyglotEngine);
+
+        public abstract void finalizeStore(Object polyglotEngine);
 
         public abstract Object getEngineLock(Object polyglotEngine);
     }
@@ -749,6 +755,8 @@ public abstract class Accessor {
         public abstract org.graalvm.polyglot.SourceSection createSourceSection(Object instrumentEnv, org.graalvm.polyglot.Source source, com.oracle.truffle.api.source.SourceSection ss);
 
         public abstract void patchInstrumentationHandler(Object instrumentationHandler, DispatchOutputStream out, DispatchOutputStream err, InputStream in);
+
+        public abstract void finalizeStoreInstrumentationHandler(Object instrumentationHandler);
 
         public abstract boolean isInputValueSlotIdentifier(Object identifier);
 

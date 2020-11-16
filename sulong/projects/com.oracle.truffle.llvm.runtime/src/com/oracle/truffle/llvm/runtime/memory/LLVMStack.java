@@ -359,6 +359,10 @@ public final class LLVMStack {
             this.alignment = alignment;
         }
 
+        public void setStackAccess(LLVMStackAccess stackAccess) {
+            this.stackAccess = stackAccess;
+        }
+
         protected final LLVMStackAccess ensureStackAccess() {
             if (stackAccess == null) {
                 CompilerDirectives.transferToInterpreterAndInvalidate();

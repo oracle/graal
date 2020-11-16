@@ -60,20 +60,23 @@ public class InteropTestBase {
         return Context.newBuilder().allowAllAccess(true).allowExperimentalOptions(true).option(SulongEngineOption.LIBRARY_PATH_NAME, lib).option(SulongEngineOption.CXX_INTEROP_NAME, "true");
     }
 
-    private static final Path testBase = Paths.get(TestOptions.TEST_SUITE_PATH, "interop");
+    protected static final Path testBase = Paths.get(TestOptions.TEST_SUITE_PATH, "interop");
     public static final String TEST_FILE_NAME = "O1." + NFIContextExtension.getNativeLibrarySuffix();
 
     protected static Object loadTestBitcodeInternal(String name) {
         File file = Paths.get(testBase.toString(), name + BaseSuiteHarness.TEST_DIR_EXT, TEST_FILE_NAME).toFile();
+        CallTarget target = getTestBitcodeCallTarget(file);
+        return target.call();
+    }
+
+    protected static CallTarget getTestBitcodeCallTarget(File file) {
         TruffleFile tf = runWithPolyglot.getTruffleTestEnv().getPublicTruffleFile(file.toURI());
-        Source source;
         try {
-            source = Source.newBuilder("llvm", tf).build();
+            Source source = Source.newBuilder("llvm", tf).build();
+            return runWithPolyglot.getTruffleTestEnv().parsePublic(source);
         } catch (IOException ex) {
             throw new AssertionError(ex);
         }
-        CallTarget target = runWithPolyglot.getTruffleTestEnv().parsePublic(source);
-        return target.call();
     }
 
     protected static Value loadTestBitcodeValue(String name) {

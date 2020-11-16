@@ -8,30 +8,14 @@
 import * as vscode from "vscode";
 import * as path from 'path';
 import * as fs from 'fs';
+import { getGVMHome } from "./graalVMConfiguration";
 
 export function random(low: number, high: number): number {
     return Math.floor(Math.random() * (high - low) + low);
 }
 
-export function getConf(key: string): vscode.WorkspaceConfiguration {
-	return vscode.workspace.getConfiguration(key);
-}
-
-export function getGVMConfig(gvmConfig?: vscode.WorkspaceConfiguration): vscode.WorkspaceConfiguration {
-	if (!gvmConfig) {
-		gvmConfig = getConf('graalvm');
-	}
-	return gvmConfig;
-}
-
-export function getGVMHome(gvmConfig?: vscode.WorkspaceConfiguration): string {
-	return getGVMConfig(gvmConfig).get('home') as string;
-}
-
 export function findExecutable(program: string, graalVMHome?: string): string | undefined {
-	if (!graalVMHome) {
-		graalVMHome = getGVMHome();
-	}
+	graalVMHome = graalVMHome || getGVMHome();
     if (graalVMHome) {
         let executablePath = path.join(graalVMHome, 'bin', program);
         if (process.platform === 'win32') {
@@ -46,6 +30,51 @@ export function findExecutable(program: string, graalVMHome?: string): string | 
         }
     }
     return undefined;
+}
+
+export async function ask(question: string, options: {option: string, fnc?: (() => any)}[], otherwise?: (() => any)): Promise<any> {
+	const select = await vscode.window.showInformationMessage(question, ...options.map(o => o.option));
+	if (!select) {
+		if (!otherwise) {
+			return;
+		} else {
+			return otherwise();
+		}
+	}
+	const opt = options.find(o => o.option === select);
+	if (opt && opt.fnc) {
+		return opt.fnc();
+	}
+	return;
+}
+
+const YES: string = 'Yes';
+const NO: string = 'No';
+export async function askYesNo(question: string, ifYes: (() => any) | undefined, ifNo?: (() => any), otherwise?: (() => any)): Promise<any> {
+	return ask(question, [{option: YES, fnc: ifYes}, {option: NO, fnc: ifNo}], otherwise);
+}
+
+const INSTALL: string = 'Install';
+async function askInstall(question: string, ifYes: (() => any) | undefined, otherwise?: (() => any)): Promise<any> {
+	return ask(question, [{option: INSTALL, fnc: ifYes}], otherwise);
+}
+
+export async function runInTerminal(command: string) {
+    let terminal: vscode.Terminal | undefined = vscode.window.activeTerminal;
+    if (!terminal) {
+        terminal = vscode.window.createTerminal();
+	}
+    terminal.show();
+	terminal.sendText(command);
+}
+
+export function checkRecommendedExtension(extensionName: string, display: string): boolean {
+	const extension =  vscode.extensions.getExtension(extensionName);
+	if (!extension) {
+		askInstall(`Do you want to install the recommended extensions for ${display}?`, 
+			() => runInTerminal(`code --install-extension ${extensionName}`));
+	}
+	return extension !== undefined;
 }
 
 export function isSymlinked(dirPath: string): Promise<boolean> {
@@ -168,7 +197,12 @@ export class MultiStepInput {
 						if (postProcess) {
 							input.enabled = false;
 							input.busy = true;
-							await postProcess(item);
+							try {
+								await postProcess(item);
+							} catch(e) {
+								reject(InputFlowAction.cancel);
+								vscode.window.showErrorMessage(e.message);
+							}
 							input.enabled = true;
 							input.busy = false;
 						}

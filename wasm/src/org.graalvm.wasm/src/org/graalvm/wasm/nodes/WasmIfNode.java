@@ -47,8 +47,6 @@ import org.graalvm.wasm.WasmCodeEntry;
 import org.graalvm.wasm.WasmContext;
 import org.graalvm.wasm.WasmInstance;
 
-import static org.graalvm.wasm.WasmTracing.trace;
-
 public final class WasmIfNode extends WasmNode {
 
     @CompilationFinal private final byte returnTypeId;
@@ -67,14 +65,12 @@ public final class WasmIfNode extends WasmNode {
     }
 
     @Override
-    public int execute(WasmContext context, VirtualFrame frame) {
+    public int execute(WasmContext context, VirtualFrame frame, long[] stack) {
         int stackPointer = initialStackPointer - 1;
-        if (condition.profile(popInt(frame, stackPointer) != 0)) {
-            trace("taking if branch");
-            return trueBranch.execute(context, frame);
+        if (condition.profile(popInt(stack, stackPointer) != 0)) {
+            return trueBranch.execute(context, frame, stack);
         } else if (falseBranch != null) {
-            trace("taking else branch");
-            return falseBranch.execute(context, frame);
+            return falseBranch.execute(context, frame, stack);
         } else {
             return -1;
         }

@@ -35,5 +35,6 @@ struct __graal_create_isolate_params_t {
     /* Fields introduced in version 3 */
     int            _reserved_1;                 /* Internal usage, do not use. */
     char         **_reserved_2;                 /* Internal usage, do not use. */
+    int            pkey;                        /* Isolate protection key. */
 };
 typedef struct __graal_create_isolate_params_t graal_create_isolate_params_t;

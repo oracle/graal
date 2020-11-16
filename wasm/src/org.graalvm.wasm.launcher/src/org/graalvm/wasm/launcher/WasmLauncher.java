@@ -73,6 +73,9 @@ public class WasmLauncher extends AbstractLanguageLauncher {
         final List<String> programArgumentsList = new ArrayList<>();
         argumentErrors = new ArrayList<>();
 
+        // Add the default arguments.
+        polyglotOptions.put("wasm.Builtins", "wasi_snapshot_preview1");
+
         while (argIterator.hasNext()) {
             final String argument = argIterator.next();
             if (argument.startsWith("-")) {

@@ -363,10 +363,8 @@ class UnitTestRun:
         self.args = args
         self.tags = tags
 
-    def run(self, suites, tasks, extraVMarguments=None):
+    def run(self, suites, tasks, extraVMarguments=None, extraUnitTestArguments=None):
         for suite in suites:
-            if suite == 'truffle' and mx.get_os() == 'windows':
-                continue  # necessary until Truffle is fully supported (GR-7941)
             with Task(self.name + ': hosted-product ' + suite, tasks, tags=self.tags) as t:
                 if mx_gate.Task.verbose:
                     extra_args = ['--verbose', '--enable-timing']
@@ -376,7 +374,7 @@ class UnitTestRun:
                     # If this is a coverage execution, we want maximal coverage
                     # and thus must not fail fast.
                     extra_args += ['--fail-fast']
-                if t: unittest(['--suite', suite] + extra_args + self.args + _remove_empty_entries(extraVMarguments))
+                if t: unittest(['--suite', suite] + extra_args + self.args + _remove_empty_entries(extraVMarguments) + _remove_empty_entries(extraUnitTestArguments))
 
 class BootstrapTest:
     def __init__(self, name, args, tags, suppress=None):
@@ -478,14 +476,14 @@ def jvmci_ci_version_gate_runner(tasks):
     with Task('JVMCI_CI_VersionSyncCheck', tasks, tags=[mx_gate.Tags.style]) as t:
         if t: verify_jvmci_ci_versions([])
 
-def compiler_gate_runner(suites, unit_test_runs, bootstrap_tests, tasks, extraVMarguments=None):
+def compiler_gate_runner(suites, unit_test_runs, bootstrap_tests, tasks, extraVMarguments=None, extraUnitTestArguments=None):
     if jdk.javaCompliance >= '9':
         with Task('JDK_java_base_test', tasks, tags=['javabasetest']) as t:
             if t: java_base_unittest(_remove_empty_entries(extraVMarguments) + [])
 
     # Run unit tests in hosted mode
     for r in unit_test_runs:
-        r.run(suites, tasks, ['-XX:-UseJVMCICompiler'] + _remove_empty_entries(extraVMarguments))
+        r.run(suites, tasks, ['-XX:-UseJVMCICompiler'] + _remove_empty_entries(extraVMarguments), extraUnitTestArguments=extraUnitTestArguments)
 
     # Run selected tests (initially those from GR-6581) under -Xcomp
     xcompTests = [
@@ -594,12 +592,12 @@ def compiler_gate_benchmark_runner(tasks, extraVMarguments=None, prefix=''):
                 fd, logFile = tempfile.mkstemp()
                 os.close(fd) # Don't leak file descriptors
                 try:
-                    _gate_dacapo('pmd', 1, _remove_empty_entries(extraVMarguments) + ['-Dgraal.LogFile=' + logFile, '-XX:+UseJVMCICompiler', '-Dgraal.LIRProfileMoves=true', '-Dgraal.GenericDynamicCounters=true', '-Dgraal.TimedDynamicCounters=1000', '-XX:JVMCICounterSize=10'])
+                    _gate_dacapo('pmd', 3, _remove_empty_entries(extraVMarguments) + ['-Dgraal.LogFile=' + logFile, '-XX:+UseJVMCICompiler', '-Dgraal.LIRProfileMoves=true', '-Dgraal.GenericDynamicCounters=true', '-Dgraal.TimedDynamicCounters=1000', '-XX:JVMCICounterSize=10'])
                     with open(logFile) as fp:
                         haystack = fp.read()
                         needle = 'MoveOperations (dynamic counters)'
                         if needle not in haystack:
-                            mx.abort('Expected to see "' + needle + '" in output:\n' + haystack)
+                            mx.abort('Expected to see "' + needle + '" in output of length ' + len(haystack) + ':\n' + haystack)
                 finally:
                     os.remove(logFile)
 
@@ -670,7 +668,7 @@ def _is_jaotc_supported():
     return exists(jdk.exe_path('jaotc'))
 
 def _graal_gate_runner(args, tasks):
-    compiler_gate_runner(['compiler', 'truffle'], graal_unit_test_runs, graal_bootstrap_tests, tasks, args.extra_vm_argument)
+    compiler_gate_runner(['compiler', 'truffle'], graal_unit_test_runs, graal_bootstrap_tests, tasks, args.extra_vm_argument, args.extra_unittest_argument)
     compiler_gate_benchmark_runner(tasks, args.extra_vm_argument)
     jvmci_ci_version_gate_runner(tasks)
     if _is_jaotc_supported():
@@ -692,6 +690,7 @@ class ShellEscapedStringAction(argparse.Action):
 
 mx_gate.add_gate_runner(_suite, _graal_gate_runner)
 mx_gate.add_gate_argument('--extra-vm-argument', action=ShellEscapedStringAction, help='add extra vm arguments to gate tasks if applicable')
+mx_gate.add_gate_argument('--extra-unittest-argument', action=ShellEscapedStringAction, help='add extra unit test arguments to gate tasks if applicable')
 
 def _unittest_vm_launcher(vmArgs, mainClass, mainClassArgs):
     run_vm(vmArgs + [mainClass] + mainClassArgs)
@@ -1226,11 +1225,13 @@ def _update_graaljdk(src_jdk, dst_jdk_dir=None, root_module_names=None, export_t
         graalvm_compiler_short_names = [c.short_name for c in mx_sdk_vm.graalvm_components() if isinstance(c, mx_sdk_vm.GraalVmJvmciComponent) and c.graal_compiler]
         jdk_suffix = '-'.join(graalvm_compiler_short_names)
         if root_module_names:
-            jdk_suffix = jdk_suffix + '-' + hashlib.sha1(_encode(','.join(root_module_names))).hexdigest()
+            jdk_suffix += '-' + hashlib.sha1(_encode(','.join(root_module_names))).hexdigest()
+        if mx.get_opts().strip_jars:
+            jdk_suffix += '-stripped'
         dst_jdk_dir = join(graaljdks_dir, 'jdk{}-{}'.format(src_jdk.javaCompliance, jdk_suffix))
         if dst_jdk_dir == src_jdk.home:
             # Avoid overwriting source JDK
-            dst_jdk_dir = dst_jdk_dir + '_new'
+            dst_jdk_dir += '_new'
     else:
         if dst_jdk_dir == src_jdk.home:
             mx.abort("Cannot overwrite source JDK: {}".format(src_jdk))

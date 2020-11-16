@@ -108,7 +108,13 @@ public class PolymorphicSignatureWrapperMethod implements ResolvedJavaMethod, Gr
         } else {
             invoke = kit.createInvokeWithExceptionAndUnwind(invokeTarget, CallTargetNode.InvokeKind.Virtual, kit.getFrameState(), kit.bci(), receiver, parameterArray);
         }
-        kit.createReturn(invoke, getSignature().getReturnKind());
+
+        JavaKind returnKind = getSignature().getReturnKind();
+        ValueNode retVal = invoke;
+        if (returnKind.isPrimitive() && returnKind != JavaKind.Void) {
+            retVal = kit.createUnboxing(invoke, returnKind, metaAccess);
+        }
+        kit.createReturn(retVal, returnKind);
 
         return kit.finalizeGraph();
     }

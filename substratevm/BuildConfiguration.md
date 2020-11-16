@@ -126,6 +126,14 @@ NativeImageArgs = --configurations-path /home/user/custom-image-configs \
                   -O1
 ```
 
+### Changing the Configuration Directory
+
+Native Image by default stores the configuration information in user's home directory -- `$HOME/.native-image/`.
+In order to change the output directory, set the environment variable `NATIVE_IMAGE_USER_HOME` to a different location. For example:
+```shell
+export NATIVE_IMAGE_USER_HOME= $HOME/.local/share/native-image
+```
+
 ## Memory Configuration for Native Image Build
 
 The native image build runs on the Java HotSpot VM and uses the memory management of the underlying platform.

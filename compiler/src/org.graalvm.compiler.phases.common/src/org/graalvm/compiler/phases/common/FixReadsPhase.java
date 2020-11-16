@@ -36,6 +36,7 @@ import org.graalvm.compiler.core.common.type.Stamp;
 import org.graalvm.compiler.core.common.type.StampFactory;
 import org.graalvm.compiler.debug.CounterKey;
 import org.graalvm.compiler.debug.DebugContext;
+import org.graalvm.compiler.graph.Graph;
 import org.graalvm.compiler.graph.Node;
 import org.graalvm.compiler.graph.NodeMap;
 import org.graalvm.compiler.graph.NodeStack;
@@ -48,6 +49,7 @@ import org.graalvm.compiler.nodes.BinaryOpLogicNode;
 import org.graalvm.compiler.nodes.ConstantNode;
 import org.graalvm.compiler.nodes.EndNode;
 import org.graalvm.compiler.nodes.IfNode;
+import org.graalvm.compiler.nodes.LogicConstantNode;
 import org.graalvm.compiler.nodes.LogicNode;
 import org.graalvm.compiler.nodes.MergeNode;
 import org.graalvm.compiler.nodes.NodeView;
@@ -76,6 +78,7 @@ import org.graalvm.compiler.nodes.util.GraphUtil;
 import org.graalvm.compiler.options.OptionValues;
 import org.graalvm.compiler.phases.BasePhase;
 import org.graalvm.compiler.phases.Phase;
+import org.graalvm.compiler.phases.common.util.EconomicSetNodeEventListener;
 import org.graalvm.compiler.phases.graph.ScheduledNodeIterator;
 import org.graalvm.compiler.phases.schedule.SchedulePhase;
 import org.graalvm.compiler.phases.schedule.SchedulePhase.SchedulingStrategy;
@@ -102,6 +105,7 @@ public class FixReadsPhase extends BasePhase<CoreProviders> {
 
     protected boolean replaceInputsWithConstants;
     protected Phase schedulePhase;
+    protected CanonicalizerPhase canonicalizerPhase;
 
     @Override
     public float codeSizeIncrease() {
@@ -463,12 +467,11 @@ public class FixReadsPhase extends BasePhase<CoreProviders> {
             TriState result = tryProveCondition(node.condition());
             if (result != TriState.UNKNOWN) {
                 boolean isTrue = (result == TriState.TRUE);
+                // Don't kill the other branch immediately, see
+                // `ConditionalEliminationPhase.processGuard`.
                 AbstractBeginNode survivingSuccessor = node.getSuccessor(isTrue);
+                node.setCondition(LogicConstantNode.forBoolean(isTrue, node.graph()));
                 survivingSuccessor.replaceAtUsages(null);
-                survivingSuccessor.replaceAtPredecessor(null);
-                node.replaceAtPredecessor(survivingSuccessor);
-                GraphUtil.killCFG(node);
-
                 counterIfsKilled.increment(debug);
             }
         }
@@ -602,23 +605,34 @@ public class FixReadsPhase extends BasePhase<CoreProviders> {
 
     }
 
-    public FixReadsPhase(boolean replaceInputsWithConstants, Phase schedulePhase) {
+    public FixReadsPhase(boolean replaceInputsWithConstants, Phase schedulePhase, CanonicalizerPhase canonicalizerPhase) {
         this.replaceInputsWithConstants = replaceInputsWithConstants;
         this.schedulePhase = schedulePhase;
+        this.canonicalizerPhase = canonicalizerPhase;
     }
 
     @Override
+    @SuppressWarnings("try")
     protected void run(StructuredGraph graph, CoreProviders context) {
+        assert graph.verify();
         schedulePhase.apply(graph);
         ScheduleResult schedule = graph.getLastSchedule();
         FixReadsClosure fixReadsClosure = new FixReadsClosure();
-        for (Block block : schedule.getCFG().getBlocks()) {
-            fixReadsClosure.processNodes(block, schedule);
-        }
-        if (GraalOptions.RawConditionalElimination.getValue(graph.getOptions())) {
-            schedule.getCFG().visitDominatorTree(createVisitor(graph, schedule, context), false);
+        EconomicSetNodeEventListener ec = new EconomicSetNodeEventListener();
+        try (Graph.NodeEventScope scope = graph.trackNodeEvents(ec)) {
+            for (Block block : schedule.getCFG().getBlocks()) {
+                fixReadsClosure.processNodes(block, schedule);
+            }
+            assert graph.verify();
+            if (GraalOptions.RawConditionalElimination.getValue(graph.getOptions())) {
+                schedule.getCFG().visitDominatorTree(createVisitor(graph, schedule, context), false);
+
+            }
         }
         graph.setAfterFixReadPhase(true);
+        if (!ec.getNodes().isEmpty()) {
+            canonicalizerPhase.applyIncremental(graph, context, ec.getNodes());
+        }
     }
 
     public static class RawCEPhase extends BasePhase<LowTierContext> {

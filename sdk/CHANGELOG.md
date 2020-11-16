@@ -2,6 +2,8 @@
 
 This changelog summarizes major changes between GraalVM SDK versions. The main focus is on APIs exported by GraalVM SDK.
 
+## Version 21.0.0
+
 ## Version 20.3.0
 * Added a `log.file` option that allows redirection of all language, instrument or engine logging to a file. The handler configured with the `Context.Builder.logHandler` method has precedence over the new option.
 * The option `-Dgraal.LogFile` is no longer inherited by the polyglot engine. Use the `log.file` option or configure a log handler instead.
@@ -15,6 +17,8 @@ This changelog summarizes major changes between GraalVM SDK versions. The main f
 * Added `Engine.getCachedSources()` to return the sources that were previously cached by the engine.
 * Added support a default `OptionType` for Java enums. `OptionType.defaultType(Class<?>)` is now always supported for `enum` classes.
 * Added `Context.interrupt(Duration)` to interrupt a polyglot Context execution. The interrupt is non-destructive meaning that the polyglot Context can still be used for further execution.
+* Added `Value.as(Class)` support for converting values to abstract host classes with a default constructor.
+* Added `HostAccess.Builder.allowAllClassImplementations` to allow converting values to abstract host classes using `Value.as` and host interop (true by default for `HostAccess.ALL`, false otherwise).
 
 ## Version 20.2.0
 * Added `-Dpolyglot.engine.AllowExperimentalOptions=true` to allow experimental options for all polyglot engines of a host VM. This system property is intended to be used for testing only and should not be enabled in production environments.

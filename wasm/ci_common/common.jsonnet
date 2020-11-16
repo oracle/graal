@@ -95,7 +95,7 @@ local graal_suite_root = root_ci.graal_suite_root;
 
   emsdk: {
     docker: {
-      "image": "phx.ocir.io/oraclelabs2/c_graal/buildslave:b_ol7_2",
+      "image": "phx.ocir.io/oraclelabs2/c_graal/buildslave:buildslave_ol7",
       "mount_modules": true
     },
     downloads+: {
@@ -105,10 +105,10 @@ local graal_suite_root = root_ci.graal_suite_root;
       EMCC_DIR: '$EMSDK_DIR/emscripten/master/'
     }
   },
-  
+
   ocamlbuild: {
     docker: {
-      "image": "phx.ocir.io/oraclelabs2/c_graal/buildslave:b_ol7_2",
+      "image": "phx.ocir.io/oraclelabs2/c_graal/buildslave:buildslave_ol7",
       "mount_modules": true
     },
     downloads+: {
@@ -134,7 +134,7 @@ local graal_suite_root = root_ci.graal_suite_root;
     setup+: [
       ['set-export', 'ROOT_DIR', ['pwd']],
       ['set-export', 'EM_CONFIG', '$ROOT_DIR/.emscripten-config'],
-      ['./generate_em_config', '$EM_CONFIG', '$EMSDK_DIR']
+      ['mx', 'emscripten-init', '$EM_CONFIG', '$EMSDK_DIR']
     ],
   },
 

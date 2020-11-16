@@ -86,17 +86,7 @@ public class CanonicalizerPhase extends BasePhase<CoreProviders> {
     private static final CounterKey COUNTER_GLOBAL_VALUE_NUMBERING_HITS = DebugContext.counter("GlobalValueNumberingHits");
 
     private final EnumSet<CanonicalizerFeature> features;
-    private final CustomCanonicalization customCanonicalization;
     private final CustomSimplification customSimplification;
-
-    public interface CustomCanonicalization {
-        /**
-         * @param node the node to be canonicalized
-         * @return the same node if no action should be taken, {@code null} if the node should be
-         *         deleted, or a new node that should replace the given node
-         */
-        Node canonicalize(Node node);
-    }
 
     public interface CustomSimplification {
         /**
@@ -107,45 +97,40 @@ public class CanonicalizerPhase extends BasePhase<CoreProviders> {
     }
 
     protected CanonicalizerPhase(EnumSet<CanonicalizerFeature> features) {
-        this(null, null, features);
+        this(null, features);
     }
 
     protected CanonicalizerPhase() {
-        this(null, null, EnumSet.allOf(CanonicalizerFeature.class));
+        this(null, EnumSet.allOf(CanonicalizerFeature.class));
     }
 
-    protected CanonicalizerPhase(CustomCanonicalization customCanonicalization, CustomSimplification customSimplification) {
-        this(customCanonicalization, customSimplification, EnumSet.allOf(CanonicalizerFeature.class));
+    protected CanonicalizerPhase(CustomSimplification customSimplification) {
+        this(customSimplification, EnumSet.allOf(CanonicalizerFeature.class));
     }
 
-    protected CanonicalizerPhase(CustomCanonicalization customCanonicalization, CustomSimplification customSimplification, EnumSet<CanonicalizerFeature> features) {
-        this.customCanonicalization = customCanonicalization;
+    protected CanonicalizerPhase(CustomSimplification customSimplification, EnumSet<CanonicalizerFeature> features) {
         this.customSimplification = customSimplification;
         this.features = features;
     }
 
-    public CanonicalizerPhase copyWithCustomCanonicalization(CustomCanonicalization newCanonicalization) {
-        return new CanonicalizerPhase(newCanonicalization, customSimplification, features);
-    }
-
     public CanonicalizerPhase copyWithCustomSimplification(CustomSimplification newSimplification) {
-        return new CanonicalizerPhase(customCanonicalization, newSimplification, features);
+        return new CanonicalizerPhase(newSimplification, features);
     }
 
     public CanonicalizerPhase copyWithoutGVN() {
         EnumSet<CanonicalizerFeature> newFeatures = EnumSet.copyOf(features);
         newFeatures.remove(GVN);
-        return new CanonicalizerPhase(customCanonicalization, customSimplification, newFeatures);
+        return new CanonicalizerPhase(customSimplification, newFeatures);
     }
 
     public CanonicalizerPhase copyWithoutSimplification() {
         EnumSet<CanonicalizerFeature> newFeatures = EnumSet.copyOf(features);
         newFeatures.remove(CFG_SIMPLIFICATION);
-        return new CanonicalizerPhase(customCanonicalization, customSimplification, newFeatures);
+        return new CanonicalizerPhase(customSimplification, newFeatures);
     }
 
     public static CanonicalizerPhase create() {
-        return new CanonicalizerPhase(null, null, EnumSet.allOf(CanonicalizerFeature.class));
+        return new CanonicalizerPhase(null, EnumSet.allOf(CanonicalizerFeature.class));
     }
 
     public static CanonicalizerPhase createWithoutReadCanonicalization() {
@@ -382,14 +367,9 @@ public class CanonicalizerPhase extends BasePhase<CoreProviders> {
                     COUNTER_CANONICALIZATION_CONSIDERED_NODES.increment(debug);
                     Node canonical = node;
                     try (AutoCloseable verify = getCanonicalizeableContractAssertion(node)) {
-                        if (customCanonicalization != null) {
-                            canonical = customCanonicalization.canonicalize(node);
-                        }
-                        if (canonical == node) {
-                            canonical = ((Canonicalizable) node).canonical(tool);
-                            if (canonical == node && nodeClass.isCommutative()) {
-                                canonical = ((BinaryCommutative<?>) node).maybeCommuteInputs();
-                            }
+                        canonical = ((Canonicalizable) node).canonical(tool);
+                        if (canonical == node && nodeClass.isCommutative()) {
+                            canonical = ((BinaryCommutative<?>) node).maybeCommuteInputs();
                         }
                     } catch (Throwable e) {
                         throw new GraalGraphError(e).addContext(node);

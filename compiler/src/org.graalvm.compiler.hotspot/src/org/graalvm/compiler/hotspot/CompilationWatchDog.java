@@ -308,7 +308,7 @@ class CompilationWatchDog implements Runnable, AutoCloseable {
                 int nonFatalIdenticalCompilationSnapshots = Options.NonFatalIdenticalCompilationSnapshots.getValue(options);
                 watchDog = new CompilationWatchDog(currentThread, startDelayMilliseconds, stackTraceIntervalMilliseconds, nonFatalIdenticalCompilationSnapshots);
                 WATCH_DOGS.set(watchDog);
-                GraalServiceThread thread = new GraalServiceThread(watchDog);
+                GraalServiceThread thread = new GraalServiceThread(CompilationWatchDog.class.getSimpleName(), watchDog);
                 thread.setName(thread.getId() + " " + watchDog.toString());
                 thread.setPriority(Thread.MAX_PRIORITY);
                 thread.setDaemon(true);

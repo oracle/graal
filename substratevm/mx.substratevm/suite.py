@@ -1,7 +1,7 @@
 suite = {
     "mxversion": "5.270.0",
     "name": "substratevm",
-    "version" : "20.3.0",
+    "version" : "21.0.0",
     "release" : False,
     "url" : "https://github.com/oracle/graal/tree/master/substratevm",
 
@@ -166,6 +166,16 @@ suite = {
                 "compiler:GRAAL_PROCESSOR",
             ],
             "workingSets": "SVM",
+        },
+
+        "com.oracle.svm.core.containers": {
+            "subDir": "src",
+            "sourceDirs": ["src"],
+            "dependencies": ["com.oracle.svm.core"],
+            "overlayTarget": "com.oracle.svm.core",
+            "javaCompliance": "8+",
+            "workingSets": "SVM",
+            "spotbugs": "false",
         },
 
         "com.oracle.svm.core.jdk8": {
@@ -621,6 +631,21 @@ suite = {
             "spotbugs": "false",
         },
 
+        "com.oracle.svm.methodhandles": {
+            "subDir": "src",
+            "sourceDirs": ["src"],
+            "dependencies": [
+                "com.oracle.svm.reflect",
+            ],
+            "checkstyle": "com.oracle.svm.core",
+            "workingSets": "SVM",
+            "annotationProcessors": [
+                "compiler:GRAAL_PROCESSOR",
+            ],
+            "javaCompliance": "8+",
+            "spotbugs": "false",
+        },
+
         "com.oracle.svm.tutorial" : {
             "subDir": "src",
             "sourceDirs" : ["src"],
@@ -927,6 +952,7 @@ suite = {
                 "com.oracle.svm.core.genscavenge",
                 "com.oracle.svm.jni",
                 "com.oracle.svm.reflect",
+                "com.oracle.svm.methodhandles"
             ],
             "overlaps" : [
                 "SVM_CORE", "SVM_HOSTED",

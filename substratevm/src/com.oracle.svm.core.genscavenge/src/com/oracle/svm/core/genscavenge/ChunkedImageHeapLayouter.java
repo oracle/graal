@@ -39,12 +39,14 @@ import com.oracle.svm.core.image.ImageHeapObject;
 
 public class ChunkedImageHeapLayouter extends AbstractImageHeapLayouter<ChunkedImageHeapPartition> {
     private final ImageHeapInfo heapInfo;
+    private final long startOffset;
     private final boolean compressedNullPadding;
     private final long hugeObjectThreshold;
     private ChunkedImageHeapAllocator allocator;
 
-    public ChunkedImageHeapLayouter(ImageHeapInfo heapInfo, boolean compressedNullPadding) {
+    public ChunkedImageHeapLayouter(ImageHeapInfo heapInfo, long startOffset, boolean compressedNullPadding) {
         this.heapInfo = heapInfo;
+        this.startOffset = startOffset;
         this.compressedNullPadding = compressedNullPadding;
         this.hugeObjectThreshold = HeapPolicy.getLargeArrayThreshold().rawValue();
     }
@@ -67,7 +69,7 @@ public class ChunkedImageHeapLayouter extends AbstractImageHeapLayouter<ChunkedI
     @Override
     protected ImageHeapLayoutInfo doLayout(ImageHeap imageHeap) {
         assert !compressedNullPadding || AlignedHeapChunk.getObjectsStartOffset().aboveThan(0) : "Expecting header to pad start so object offsets are strictly greater than 0";
-        allocator = new ChunkedImageHeapAllocator(imageHeap, 0);
+        allocator = new ChunkedImageHeapAllocator(imageHeap, startOffset);
         for (ChunkedImageHeapPartition partition : getPartitions()) {
             partition.layout(allocator);
         }
@@ -98,16 +100,14 @@ public class ChunkedImageHeapLayouter extends AbstractImageHeapLayouter<ChunkedI
                         getWritableReference().firstObject, getWritableReference().lastObject, getWritableHuge().firstObject, getWritableHuge().lastObject,
                         getReadOnlyHuge().firstObject, getReadOnlyHuge().lastObject, writableBegin, firstWritableUnalignedChunk, dynamicHubCount);
 
-        long writableEnd = getWritableHuge().getStartOffset() + getWritableHuge().getSize();
-        long writableSize = writableEnd - writableBegin;
-        long imageHeapSize = getReadOnlyHuge().getStartOffset() + getReadOnlyHuge().getSize();
-        return new ImageHeapLayoutInfo(writableBegin, writableSize, getReadOnlyRelocatable().getStartOffset(), getReadOnlyRelocatable().getSize(), imageHeapSize);
+        return createLayoutInfo(startOffset, writableBegin);
     }
 
     @Override
-    public void writeMetadata(ByteBuffer imageHeapBytes) {
-        ImageHeapChunkWriter writer = SubstrateUtil.HOSTED ? new HostedImageHeapChunkWriter(imageHeapBytes)
-                        : new RuntimeImageHeapChunkWriter(imageHeapBytes);
+    public void writeMetadata(ByteBuffer imageHeapBytes, long imageHeapOffsetInBuffer) {
+        long layoutToBufferOffsetAddend = imageHeapOffsetInBuffer - startOffset;
+        ImageHeapChunkWriter writer = SubstrateUtil.HOSTED ? new HostedImageHeapChunkWriter(imageHeapBytes, layoutToBufferOffsetAddend)
+                        : new RuntimeImageHeapChunkWriter(imageHeapBytes, layoutToBufferOffsetAddend);
         writeHeaders(writer, allocator.getAlignedChunks());
         writeHeaders(writer, allocator.getUnalignedChunks());
     }

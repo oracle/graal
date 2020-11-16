@@ -46,7 +46,7 @@ public final class LLVMBitcodeLibraryFunctions {
             if (function == null) {
                 throw new LLVMLinkerException("Function not found: " + name);
             }
-            LLVMFunctionDescriptor descriptor = context.createFunctionDescriptor(function);
+            LLVMFunctionDescriptor descriptor = context.createFunctionDescriptor(function, new LLVMFunctionCode(function));
             callNode = DirectCallNode.create(descriptor.getFunctionCode().getLLVMIRFunctionSlowPath());
         }
 

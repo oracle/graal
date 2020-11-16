@@ -48,9 +48,8 @@ specified in the `<configuration>` node of the plugin. When `mvn package` comple
 
 ## Maven Plugin Customization
 
-When using GraalVM Enterprise as the `JAVA_HOME` environment, the plugin builds a native image with Enterprise features enabled, e.g., an executable will automatically be built with [compressed references](https://medium.com/graalvm/isolates-and-compressed-references-more-flexible-and-efficient-memory-management-for-graalvm-a044cc50b67e) and other optimizations enabled.
-
-It is also possible to customize `native-image-maven-plugin` within a
+If you use Native Image Maven plugin, it will pick up all the configuration for your application stored below the  _META-INF/native-image/_ resource location, as described in [Native Image Build Configuration](BuildConfiguration.md).
+It is also possible to customize the plugin within a
 `<configuration>` node. The following configurations are available.
 
 1. Configuration parameter `<mainClass>`: if the execution fails with the `no main manifest attribute, in target/<name>.jar` error, the main class should be specified. By default the plugin consults several locations in the  `pom.xml` file in the following order to determine what the main class of the image should be:
@@ -69,4 +68,45 @@ It is also possible to customize `native-image-maven-plugin` within a
     </buildArgs>
     <skip>false</skip>
 </configuration>
+```
+
+If you use GraalVM Enterprise as the `JAVA_HOME` environment, the plugin builds a native image with Enterprise features enabled, e.g., an executable will automatically be built with [compressed references](https://medium.com/graalvm/isolates-and-compressed-references-more-flexible-and-efficient-memory-management-for-graalvm-a044cc50b67e) and other optimizations enabled.
+
+### Reusing configuration from a parent POM
+
+The `<buildArgs>` element can be combined between parent and children POM. Suppose the following parent POM definition:
+
+```xml
+<plugin>
+    <groupId>org.graalvm.nativeimage</groupId>
+    <artifactId>native-image-maven-plugin</artifactId>
+    <version>${graalvm.version}</version>
+    <configuration>
+        <imageName>${project.artifactId}</imageName>
+        <mainClass>${exec.mainClass}</mainClass>
+        <buildArgs>
+            <buildArg>--no-fallback<buildArg>
+        </buildArgs>
+    </configuration>
+</plugin>
+```
+
+Children projects have the ability to append `<buildArg>`s in the following way:
+
+```xml
+<plugin>
+    <groupId>org.graalvm.nativeimage</groupId>
+    <artifactId>native-image-maven-plugin</artifactId>
+    <configuration>
+        <buildArgs combine.children="append">
+            <buildArg>--verbose</buildArg>
+        </buildArgs>
+    </configuration>
+</plugin>
+```
+
+In this case, the arguments that will be passed to the `native-image` executable will be:
+
+```
+--no-fallback --verbose
 ```

@@ -31,10 +31,11 @@ import java.io.FileInputStream;
 import java.io.FileOutputStream;
 import java.io.InputStream;
 import java.io.PrintStream;
+import java.io.UnsupportedEncodingException;
 import java.util.Objects;
 
-import org.graalvm.nativeimage.hosted.Feature;
 import org.graalvm.nativeimage.ImageSingletons;
+import org.graalvm.nativeimage.hosted.Feature;
 
 import com.oracle.svm.core.annotate.AutomaticFeature;
 import com.oracle.svm.core.annotate.RecomputeFieldValue;
@@ -51,8 +52,19 @@ import com.oracle.svm.core.annotate.RecomputeFieldValue;
  */
 public final class SystemInOutErrSupport {
     private InputStream in = new BufferedInputStream(new FileInputStream(FileDescriptor.in));
-    private PrintStream out = new PrintStream(new BufferedOutputStream(new FileOutputStream(FileDescriptor.out), 128), true);
-    private PrintStream err = new PrintStream(new BufferedOutputStream(new FileOutputStream(FileDescriptor.err), 128), true);
+    private PrintStream out = newPrintStream(new FileOutputStream(FileDescriptor.out), System.getProperty("sun.stdout.encoding"));
+    private PrintStream err = newPrintStream(new FileOutputStream(FileDescriptor.err), System.getProperty("sun.stderr.encoding"));
+
+    /* Create `PrintStream` in the same way as `System.newPrintStream`. */
+    private static PrintStream newPrintStream(FileOutputStream fos, String enc) {
+        if (enc != null) {
+            try {
+                return new PrintStream(new BufferedOutputStream(fos, 128), true, enc);
+            } catch (UnsupportedEncodingException ignored) {
+            }
+        }
+        return new PrintStream(new BufferedOutputStream(fos, 128), true);
+    }
 
     public static void setIn(InputStream in) {
         ImageSingletons.lookup(SystemInOutErrSupport.class).in = Objects.requireNonNull(in);

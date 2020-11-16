@@ -1720,7 +1720,8 @@ public class ValueAPITest {
             try {
                 context2.getPolyglotBindings().putMember("foo", nonSharableObject);
                 fail();
-            } catch (IllegalArgumentException e) {
+            } catch (PolyglotException e) {
+                assertTrue(e.getMessage(), e.getMessage().contains("cannot be passed from one context to another"));
             }
             ProxyExecutable executable = new ProxyExecutable() {
                 public Object execute(Value... arguments) {
@@ -1732,7 +1733,8 @@ public class ValueAPITest {
             try {
                 context2.asValue(executable).execute(nonSharableObject);
                 fail();
-            } catch (IllegalArgumentException e) {
+            } catch (PolyglotException e) {
+                assertTrue(e.getMessage(), e.getMessage().contains("cannot be passed from one context to another"));
             }
             nonSharableObject.toString(); // does not fails
             assertTrue(nonSharableObject.equals(nonSharableObject));
@@ -2037,6 +2039,21 @@ public class ValueAPITest {
         BooleanAndDelegate o = new BooleanAndDelegate(new TestArray(new String[0]));
         Value v = context.asValue(o);
         ValueAssert.assertValue(v, Trait.ARRAY_ELEMENTS, Trait.BOOLEAN);
+    }
+
+    @Test
+    public void testBadNarrowingConversions() {
+        final long[] badIndices = {-1L << 32, -1L << 32 + 1, 1L << 32, 1L << 32 + 1, Long.MIN_VALUE, Long.MAX_VALUE};
+        for (long index : badIndices) {
+            Value list = context.asValue(new ArrayList<>(Arrays.asList(1, 2, 3)));
+            AbstractPolyglotTest.assertFails(() -> list.getArrayElement(index), ArrayIndexOutOfBoundsException.class);
+            AbstractPolyglotTest.assertFails(() -> list.setArrayElement(index, 42), ArrayIndexOutOfBoundsException.class);
+            AbstractPolyglotTest.assertFails(() -> list.removeArrayElement(index), ArrayIndexOutOfBoundsException.class);
+
+            Value array = context.asValue(new int[]{1, 2, 3});
+            AbstractPolyglotTest.assertFails(() -> array.getArrayElement(index), ArrayIndexOutOfBoundsException.class);
+            AbstractPolyglotTest.assertFails(() -> array.setArrayElement(index, 42), ArrayIndexOutOfBoundsException.class);
+        }
     }
 
 }

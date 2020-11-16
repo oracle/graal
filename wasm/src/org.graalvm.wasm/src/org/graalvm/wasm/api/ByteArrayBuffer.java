@@ -53,9 +53,16 @@ import static com.oracle.truffle.api.CompilerDirectives.transferToInterpreter;
 @ExportLibrary(InteropLibrary.class)
 public class ByteArrayBuffer implements TruffleObject {
     private final byte[] data;
+    private final int offset;
+    private final int length;
 
-    public ByteArrayBuffer(byte[] data) {
+    public ByteArrayBuffer(byte[] data, int offset, int length) {
+        assert offset >= 0;
+        assert length >= 0;
+        assert data.length >= offset + length;
         this.data = data;
+        this.offset = offset;
+        this.length = length;
     }
 
     @SuppressWarnings({"unused"})
@@ -66,8 +73,8 @@ public class ByteArrayBuffer implements TruffleObject {
 
     @SuppressWarnings({"unused"})
     @ExportMessage
-    long getArraySize() {
-        return data.length;
+    public long getArraySize() {
+        return length;
     }
 
     @SuppressWarnings({"unused"})
@@ -95,7 +102,7 @@ public class ByteArrayBuffer implements TruffleObject {
             transferToInterpreter();
             throw InvalidArrayIndexException.create(index);
         }
-        return data[(int) index];
+        return data[offset + (int) index];
     }
 
     @TruffleBoundary

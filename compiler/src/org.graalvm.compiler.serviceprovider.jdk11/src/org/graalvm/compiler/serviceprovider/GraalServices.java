@@ -493,8 +493,8 @@ public final class GraalServices {
     /**
      * Returns true if JVMCI supports arbitrary implicit exception dispatch.
      */
-    public static boolean supportArbitraryImplicitException() {
-        return implicitExceptionDispatchConstructor != null;
+    public static boolean supportsArbitraryImplicitException() {
+        return implicitExceptionDispatchConstructor != null && !"sparcv9".equals(Services.getSavedProperties().get("os.arch"));
     }
 
     /**

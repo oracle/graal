@@ -24,8 +24,6 @@
  */
 package com.oracle.svm.hosted.code;
 
-import static com.oracle.svm.core.util.VMError.shouldNotReachHere;
-
 import java.util.EnumMap;
 import java.util.function.Function;
 
@@ -45,6 +43,7 @@ import org.graalvm.nativeimage.ImageSingletons;
 
 import com.oracle.svm.core.FrameAccess;
 import com.oracle.svm.core.SubstrateOptions;
+import com.oracle.svm.core.code.ImageCodeInfo;
 import com.oracle.svm.core.config.ConfigurationValues;
 import com.oracle.svm.core.graal.GraalConfiguration;
 import com.oracle.svm.core.graal.code.SubstrateBackend;
@@ -70,6 +69,7 @@ import com.oracle.svm.hosted.c.info.StructFieldInfo;
 import com.oracle.svm.hosted.config.HybridLayout;
 import com.oracle.svm.hosted.meta.HostedMetaAccess;
 import com.oracle.svm.hosted.thread.VMThreadMTFeature;
+import com.oracle.svm.util.ReflectionUtil;
 
 import jdk.vm.ci.code.CodeCacheProvider;
 import jdk.vm.ci.code.RegisterConfig;
@@ -173,14 +173,9 @@ public abstract class SharedRuntimeConfigurationBuilder {
         HybridLayout<DynamicHub> hubLayout = new HybridLayout<>(DynamicHub.class, ConfigurationValues.getObjectLayout(), hMetaAccess);
         int vtableBaseOffset = hubLayout.getArrayBaseOffset();
         int vtableEntrySize = ConfigurationValues.getObjectLayout().sizeInBytes(hubLayout.getArrayElementStorageKind());
-        int instanceOfBitsOffset = hubLayout.getBitFieldOffset();
+        int instanceOfBitsOrTypeIDSlotsOffset = HybridLayout.getBitFieldOrTypeIDSlotsFieldOffset(ConfigurationValues.getObjectLayout());
 
-        int componentHubOffset;
-        try {
-            componentHubOffset = hMetaAccess.lookupJavaField(DynamicHub.class.getDeclaredField("componentHub")).getLocation();
-        } catch (NoSuchFieldException ex) {
-            throw shouldNotReachHere(ex);
-        }
+        int componentHubOffset = hMetaAccess.lookupJavaField(ReflectionUtil.lookupField(DynamicHub.class, "componentHub")).getLocation();
 
         int javaFrameAnchorLastSPOffset = findStructOffset(JavaFrameAnchor.class, "getLastJavaSP");
         int javaFrameAnchorLastIPOffset = findStructOffset(JavaFrameAnchor.class, "getLastJavaIP");
@@ -190,7 +185,10 @@ public abstract class SharedRuntimeConfigurationBuilder {
             vmThreadStatusOffset = ImageSingletons.lookup(VMThreadMTFeature.class).offsetOf(VMThreads.StatusSupport.statusTL);
         }
 
-        runtimeConfig.setLazyState(vtableBaseOffset, vtableEntrySize, instanceOfBitsOffset, componentHubOffset, javaFrameAnchorLastSPOffset, javaFrameAnchorLastIPOffset, vmThreadStatusOffset);
+        int imageCodeInfoCodeStartOffset = hMetaAccess.lookupJavaField(ReflectionUtil.lookupField(ImageCodeInfo.class, "codeStart")).getLocation();
+
+        runtimeConfig.setLazyState(vtableBaseOffset, vtableEntrySize, instanceOfBitsOrTypeIDSlotsOffset, componentHubOffset,
+                        javaFrameAnchorLastSPOffset, javaFrameAnchorLastIPOffset, vmThreadStatusOffset, imageCodeInfoCodeStartOffset);
     }
 
     private int findStructOffset(Class<?> clazz, String accessorName) {
