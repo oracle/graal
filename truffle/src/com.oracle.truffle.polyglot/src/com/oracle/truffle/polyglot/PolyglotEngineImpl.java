@@ -1547,8 +1547,10 @@ final class PolyglotEngineImpl extends AbstractPolyglotImpl.AbstractEngineImpl i
                     boolean allowHostClassLoading, boolean allowExperimentalOptions, Predicate<String> classFilter, Map<String, String> options,
                     Map<String, String[]> arguments, String[] onlyLanguages, FileSystem fileSystem, Object logHandlerOrStream, boolean allowCreateProcess, ProcessHandler processHandler,
                     EnvironmentAccess environmentAccess, Map<String, String> environment, ZoneId zone, Object limitsImpl, String currentWorkingDirectory, ClassLoader hostClassLoader) {
+        PolyglotContextImpl context;
+        boolean replayEvents;
+        boolean contextAddedToEngine;
         try {
-            PolyglotContextImpl context;
             synchronized (this.lock) {
                 checkState();
                 if (boundEngine && !contexts.isEmpty()) {
@@ -1627,8 +1629,8 @@ final class PolyglotEngineImpl extends AbstractPolyglotImpl.AbstractEngineImpl i
                             allowExperimentalOptions, classFilter, arguments, allowedLanguages, options, fs, internalFs, useHandler, allowCreateProcess, useProcessHandler,
                             environmentAccess, environment, zone, polyglotLimits, hostClassLoader);
             context = loadPreinitializedContext(config, hostAccess);
-            boolean replayEvents = false;
-            boolean contextAddedToEngine = false;
+            replayEvents = false;
+            contextAddedToEngine = false;
             if (context == null) {
                 synchronized (this.lock) {
                     checkState();
