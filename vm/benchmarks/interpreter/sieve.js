@@ -45,6 +45,11 @@ function run() {
     i++;
   }
 
-  return primes[number];
+  let count = 0;
+  for (let c = 2; c <= number; c++) {
+    if (primes[c] != 0) {
+      count++;
+    }
+  }
+  return count;
 }
-

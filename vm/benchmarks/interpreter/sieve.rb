@@ -21,29 +21,41 @@
 # or visit www.oracle.com if you need additional information or have any
 # questions.
 
-def run()
+# Note: `while` is used instead of `for`, as Ruby's `for` is syntatic sugar for
+# closures: `for i in 1..n; body; end` is the same as `(1..n).each { |i| body }`
+def run
+  i = 2
   number = 600000
+  primes = Array.new(number + 1, 0)
 
-  primes = Array.new(number + 1)
-
-  for i in 2..number
+  while i <= number
     primes[i] = i
+    i += 1
   end
 
   i = 2
-  while i * i <= number do
-    if primes[i] != 0 then
-      for j in 2..(number - 1)
-        if primes[i] * j > number then
+  while i * i <= number
+    if primes[i] != 0
+      j = 2
+      while j < number
+        if primes[i] * j > number
           break
-        else 
+        else
           primes[primes[i] * j] = 0
         end
+        j += 1
       end
     end
     i += 1
   end
 
-  return primes[number]
+  count = 0
+  c = 2
+  while c <= number
+    if primes[c] != 0
+      count += 1
+    end
+    c += 1
+  end
+  return count
 end
-
