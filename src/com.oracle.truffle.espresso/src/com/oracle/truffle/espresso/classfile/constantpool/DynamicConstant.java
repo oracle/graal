@@ -114,7 +114,9 @@ public interface DynamicConstant extends PoolConstant {
             StaticObject[] args = bsEntry.getStaticArguments(accessingKlass, pool);
 
             StaticObject fieldName = meta.toGuestString(specifier.getName(pool));
-            Klass fieldType = meta.resolveSymbolOrFail(Types.fromDescriptor(specifier.getDescriptor(pool)), accessingKlass.getDefiningClassLoader());
+            Klass fieldType = meta.resolveSymbolOrFail(Types.fromDescriptor(specifier.getDescriptor(pool)),
+                            accessingKlass.getDefiningClassLoader(),
+                            accessingKlass.protectionDomain());
 
             Object result = meta.java_lang_invoke_MethodHandleNatives_linkDynamicConstant.invokeDirect(
                             null,

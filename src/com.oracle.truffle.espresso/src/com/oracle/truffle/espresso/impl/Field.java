@@ -155,7 +155,9 @@ public final class Field extends Member<Type> implements FieldRef {
             synchronized (this) {
                 tk = typeKlassCache;
                 if (tk == null) {
-                    tk = getDeclaringKlass().getMeta().resolveSymbolOrFail(getType(), getDeclaringKlass().getDefiningClassLoader());
+                    tk = getDeclaringKlass().getMeta().resolveSymbolOrFail(getType(),
+                                    getDeclaringKlass().getDefiningClassLoader(),
+                                    getDeclaringKlass().protectionDomain());
                     typeKlassCache = tk;
                 }
             }

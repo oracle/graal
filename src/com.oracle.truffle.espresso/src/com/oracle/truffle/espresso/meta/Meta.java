@@ -236,6 +236,7 @@ public final class Meta implements ContextAccess {
 
         java_lang_ClassLoader = knownKlass(Type.java_lang_ClassLoader);
         java_lang_ClassLoader$NativeLibrary = knownKlass(Type.java_lang_ClassLoader$NativeLibrary);
+        java_lang_ClassLoader_checkPackageAccess = java_lang_ClassLoader.lookupDeclaredMethod(Name.checkPackageAccess, Signature.Class_PermissionDomain);
         java_lang_ClassLoader$NativeLibrary_getFromClass = java_lang_ClassLoader$NativeLibrary.lookupDeclaredMethod(Name.getFromClass, Signature.Class);
         java_lang_ClassLoader_findNative = java_lang_ClassLoader.lookupDeclaredMethod(Name.findNative, Signature._long_ClassLoader_String);
         java_lang_ClassLoader_getSystemClassLoader = java_lang_ClassLoader.lookupDeclaredMethod(Name.getSystemClassLoader, Signature.ClassLoader);
@@ -671,6 +672,7 @@ public final class Meta implements ContextAccess {
     public final Field java_lang_ClassLoader_unnamedModule;
     public final Field java_lang_ClassLoader_name;
     public final ObjectKlass java_lang_ClassLoader$NativeLibrary;
+    public final Method java_lang_ClassLoader_checkPackageAccess;
     public final Method java_lang_ClassLoader$NativeLibrary_getFromClass;
     public final Method java_lang_ClassLoader_findNative;
     public final Method java_lang_ClassLoader_getSystemClassLoader;
@@ -1188,13 +1190,14 @@ public final class Meta implements ContextAccess {
      *
      * @param type The symbolic type.
      * @param classLoader The class loader
+     * @param protectionDomain
      * @return The asked Klass.
      * @throws NoClassDefFoundError guest exception is no representation of type can be found.
      */
     @TruffleBoundary
-    public Klass loadKlassOrFail(Symbol<Type> type, @Host(ClassLoader.class) StaticObject classLoader) {
+    public Klass loadKlassOrFail(Symbol<Type> type, @Host(ClassLoader.class) StaticObject classLoader, StaticObject protectionDomain) {
         assert classLoader != null : "use StaticObject.NULL for BCL";
-        Klass k = loadKlassOrNull(type, classLoader);
+        Klass k = loadKlassOrNull(type, classLoader, protectionDomain);
         if (k == null) {
             throw throwException(java_lang_NoClassDefFoundError);
         }
@@ -1202,20 +1205,20 @@ public final class Meta implements ContextAccess {
     }
 
     /**
-     * Same as {@link #loadKlassOrFail(Symbol, StaticObject)}, except this method returns null
-     * instead of throwing if class is not found. Note that this mthod can still throw due to other
-     * errors (class file malformed, etc...)
+     * Same as {@link #loadKlassOrFail(Symbol, StaticObject, StaticObject)}, except this method
+     * returns null instead of throwing if class is not found. Note that this mthod can still throw
+     * due to other errors (class file malformed, etc...)
      *
-     * @see #loadKlassOrFail(Symbol, StaticObject)
+     * @see #loadKlassOrFail(Symbol, StaticObject, StaticObject)
      */
     @TruffleBoundary
-    public Klass loadKlassOrNull(Symbol<Type> type, @Host(ClassLoader.class) StaticObject classLoader) {
-        return getRegistries().loadKlass(type, classLoader);
+    public Klass loadKlassOrNull(Symbol<Type> type, @Host(ClassLoader.class) StaticObject classLoader, StaticObject protectionDomain) {
+        return getRegistries().loadKlass(type, classLoader, protectionDomain);
     }
 
     @TruffleBoundary
     private ObjectKlass loadKlassWithBootClassLoader(Symbol<Type> type) {
-        return (ObjectKlass) getRegistries().loadKlass(type, StaticObject.NULL);
+        return (ObjectKlass) getRegistries().loadKlass(type, StaticObject.NULL, StaticObject.NULL);
     }
 
     public Klass resolvePrimitive(Symbol<Type> type) {
@@ -1257,9 +1260,10 @@ public final class Meta implements ContextAccess {
      *
      * @param type The symbolic type
      * @param classLoader The class loader of the constant pool holder.
+     * @param protectionDomain
      * @return The asked Klass, or null if no representation can be found.
      */
-    public Klass resolveSymbolOrNull(Symbol<Type> type, @Host(ClassLoader.class) StaticObject classLoader) {
+    public Klass resolveSymbolOrNull(Symbol<Type> type, @Host(ClassLoader.class) StaticObject classLoader, StaticObject protectionDomain) {
         assert classLoader != null : "use StaticObject.NULL for BCL";
         // Resolution only resolves references. Bypass loading for primitives.
         Klass k = resolvePrimitive(type);
@@ -1267,23 +1271,23 @@ public final class Meta implements ContextAccess {
             return k;
         }
         if (Types.isArray(type)) {
-            Klass elemental = resolveSymbolOrNull(getTypes().getElementalType(type), classLoader);
+            Klass elemental = resolveSymbolOrNull(getTypes().getElementalType(type), classLoader, protectionDomain);
             if (elemental == null) {
                 return null;
             }
             return elemental.getArrayClass(Types.getArrayDimensions(type));
         }
-        return loadKlassOrNull(type, classLoader);
+        return loadKlassOrNull(type, classLoader, protectionDomain);
     }
 
     /**
-     * Same as {@link #resolveSymbolOrNull(Symbol, StaticObject)}, except this throws an exception
-     * of the given klass if the representation for the type can not be found.
+     * Same as {@link #resolveSymbolOrNull(Symbol, StaticObject, StaticObject)}, except this throws
+     * an exception of the given klass if the representation for the type can not be found.
      *
-     * @see #resolveSymbolOrNull(Symbol, StaticObject)
+     * @see #resolveSymbolOrNull(Symbol, StaticObject, StaticObject)
      */
-    public Klass resolveSymbolOrFail(Symbol<Type> type, @Host(ClassLoader.class) StaticObject classLoader, ObjectKlass exception) {
-        Klass k = resolveSymbolOrNull(type, classLoader);
+    public Klass resolveSymbolOrFail(Symbol<Type> type, @Host(ClassLoader.class) StaticObject classLoader, ObjectKlass exception, StaticObject protectionDomain) {
+        Klass k = resolveSymbolOrNull(type, classLoader, protectionDomain);
         if (k == null) {
             throw throwException(exception);
         }
@@ -1291,19 +1295,20 @@ public final class Meta implements ContextAccess {
     }
 
     /**
-     * Same as {@link #resolveSymbolOrFail(Symbol, StaticObject, ObjectKlass)}, but throws
-     * {@link NoClassDefFoundError} by default..
+     * Same as {@link #resolveSymbolOrFail(Symbol, StaticObject, ObjectKlass, StaticObject)}, but
+     * throws {@link NoClassDefFoundError} by default..
      */
-    public Klass resolveSymbolOrFail(Symbol<Type> type, @Host(ClassLoader.class) StaticObject classLoader) {
-        return resolveSymbolOrFail(type, classLoader, java_lang_NoClassDefFoundError);
+    public Klass resolveSymbolOrFail(Symbol<Type> type, @Host(ClassLoader.class) StaticObject classLoader, StaticObject protectionDomain) {
+        return resolveSymbolOrFail(type, classLoader, java_lang_NoClassDefFoundError, protectionDomain);
     }
 
     /**
-     * Resolves the symbol using {@link #resolveSymbolOrFail(Symbol, StaticObject)}, and applies
-     * access checking, possibly throwing {@link IllegalAccessError}.
+     * Resolves the symbol using {@link #resolveSymbolOrFail(Symbol, StaticObject, StaticObject)},
+     * and applies access checking, possibly throwing {@link IllegalAccessError}.
      */
     public Klass resolveSymbolAndAccessCheck(Symbol<Type> type, Klass accessingKlass) {
-        Klass klass = resolveSymbolOrFail(type, accessingKlass.getDefiningClassLoader(), java_lang_NoClassDefFoundError);
+        assert accessingKlass != null;
+        Klass klass = resolveSymbolOrFail(type, accessingKlass.getDefiningClassLoader(), java_lang_NoClassDefFoundError, accessingKlass.protectionDomain());
         if (!Klass.checkAccess(klass.getElementalType(), accessingKlass)) {
             throw Meta.throwException(java_lang_IllegalAccessError);
         }

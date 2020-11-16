@@ -210,6 +210,7 @@ public final class Symbol<T> extends ByteSequence {
         public static final Symbol<Name> packageEnabled = StaticSymbols.putName("packageEnabled");
 
         // j.l.Class
+        public static final Symbol<Name> checkPackageAccess = StaticSymbols.putName("checkPackageAccess");
         public static final Symbol<Name> getName = StaticSymbols.putName("getName");
         public static final Symbol<Name> getSimpleName = StaticSymbols.putName("getSimpleName");
         public static final Symbol<Name> getTypeName = StaticSymbols.putName("getTypeName");
@@ -742,6 +743,7 @@ public final class Symbol<T> extends ByteSequence {
         public static final Symbol<Signature> Object = StaticSymbols.putSignature(Type.java_lang_Object);
         public static final Symbol<Signature> String = StaticSymbols.putSignature(Type.java_lang_String);
         public static final Symbol<Signature> ClassLoader = StaticSymbols.putSignature(Type.java_lang_ClassLoader);
+        public static final Symbol<Signature> Class_PermissionDomain = StaticSymbols.putSignature(Type._void, Type.java_lang_Class, Type.java_security_ProtectionDomain);
 
         public static final Symbol<Signature> _void_Class = StaticSymbols.putSignature(Type._void, Type.java_lang_Class);
         public static final Symbol<Signature> Class_array = StaticSymbols.putSignature(Type.java_lang_Class_array);

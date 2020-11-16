@@ -399,7 +399,7 @@ public final class EspressoContext {
     }
 
     private void initializeKnownClass(Symbol<Type> type) {
-        Klass klass = getMeta().loadKlassOrFail(type, StaticObject.NULL);
+        Klass klass = getMeta().loadKlassOrFail(type, StaticObject.NULL, StaticObject.NULL);
         klass.safeInitialize();
     }
 
