@@ -37,6 +37,12 @@ import jdk.vm.ci.meta.DeoptimizationReason;
 import jdk.vm.ci.meta.ResolvedJavaMethod;
 import jdk.vm.ci.meta.SpeculationLog;
 
+/**
+ * Test to verify that overflowing loops are not detected as counted. This is done by using a
+ * speculation for the overflow which ensures a subsequent recompile will not detect a loop as
+ * counted.
+ *
+ */
 public class CountedLoopOverflowTest extends GraalCompilerTest {
     private final SpeculationLog speculationLog;
 

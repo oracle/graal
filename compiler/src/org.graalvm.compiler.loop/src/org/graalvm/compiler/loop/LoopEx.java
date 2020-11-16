@@ -249,7 +249,7 @@ public class LoopEx {
         }
         countedLoopChecked = true;
         LoopBeginNode loopBegin = loopBegin();
-        if (loopBegin.isDisableCounted()) {
+        if (loopBegin.countedLoopDisabled()) {
             return false;
         }
         FixedNode next = loopBegin.next();
@@ -363,7 +363,7 @@ public class LoopEx {
             }
             CountedLoopInfo cf = new CountedLoopInfo(this, iv, ifNode, limit, oneOff, negated ? ifNode.falseSuccessor() : ifNode.trueSuccessor(), unsigned);
             if (!CountedLoopInfo.canSpeculateThatCountedLoopNeverOverflows(loopBegin, cf)) {
-                loopBegin.setDisableCounted(true);
+                loopBegin.disableCounted();
                 return false;
             }
             counted = cf;

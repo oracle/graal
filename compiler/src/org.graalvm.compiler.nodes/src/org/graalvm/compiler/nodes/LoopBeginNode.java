@@ -56,8 +56,18 @@ public final class LoopBeginNode extends AbstractMergeNode implements IterableNo
     protected LoopType loopType;
     protected int unrollFactor;
     protected boolean osrLoop;
+    /**
+     * BCI used for speculations associated with this loop begin.
+     */
     protected int bci = -1;
+    /**
+     * Flag to indicate that this loop must not be detected as a counted loop.
+     */
     protected boolean disableCounted;
+    /**
+     * Flag indicating that this loop can never overflow based on some property not visible in the
+     * loop control computations.
+     */
     protected boolean canNeverOverflow;
 
     public enum LoopType {
@@ -83,20 +93,21 @@ public final class LoopBeginNode extends AbstractMergeNode implements IterableNo
         unrollFactor = 1;
     }
 
-    public boolean isCanNeverOverflow() {
+    public boolean canNeverOverflow() {
         return canNeverOverflow;
     }
 
-    public void setCanNeverOverflow(boolean canNeverOverflow) {
-        this.canNeverOverflow = canNeverOverflow;
+    public void setCanNeverOverflow() {
+        assert !canNeverOverflow;
+        this.canNeverOverflow = true;
     }
 
-    public boolean isDisableCounted() {
+    public boolean countedLoopDisabled() {
         return disableCounted;
     }
 
-    public void setDisableCounted(boolean disableCounted) {
-        this.disableCounted = disableCounted;
+    public void disableCounted() {
+        this.disableCounted = true;
     }
 
     public int getBci() {
