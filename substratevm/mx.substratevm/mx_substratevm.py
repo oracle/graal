@@ -405,17 +405,7 @@ def svm_gate_body(args, tasks):
 
         with Task('native unittests', tasks, tags=[GraalTags.test]) as t:
             if t:
-                with tempfile.NamedTemporaryFile(mode='w') as blacklist:
-                    if svm_java8():
-                        blacklist_args = []
-                    else:
-                        # Currently not working on Java > 8
-                        blacklist.write('com.oracle.svm.test.ServiceLoaderTest')
-                        blacklist.flush()
-                        blacklist_args = ['--blacklist', blacklist.name]
-
-                    # We need the -H:+EnableAllSecurityServices for com.oracle.svm.test.SecurityServiceTest
-                    native_unittest(['--build-args', _native_unittest_features, '-H:+EnableAllSecurityServices'] + blacklist_args)
+                native_unittests_task()
 
         with Task('Run Truffle NFI unittests with SVM image', tasks, tags=["svmjunit"]) as t:
             if t:
@@ -458,6 +448,20 @@ def svm_gate_body(args, tasks):
         if t:
             maven_plugin_install([])
             maven_plugin_test([])
+
+
+def native_unittests_task():
+    with tempfile.NamedTemporaryFile(mode='w') as blacklist:
+        if svm_java8():
+            blacklist_args = []
+        else:
+            # Currently not working on Java > 8
+            blacklist.write('com.oracle.svm.test.ServiceLoaderTest')
+            blacklist.flush()
+            blacklist_args = ['--blacklist', blacklist.name]
+
+        # We need the -H:+EnableAllSecurityServices for com.oracle.svm.test.SecurityServiceTest
+        native_unittest(['--build-args', _native_unittest_features, '-H:+EnableAllSecurityServices'] + blacklist_args)
 
 
 def javac_image_command(javac_path):
