@@ -198,7 +198,7 @@ strings emptyhello | grep com.oracle.svm.core.VM
 
 The expected output should match the following:
 ```shell
-com.oracle.svm.core.VM GraalVM 20.2.0 Java 11 EE
+com.oracle.svm.core.VM GraalVM <version> Java 11 EE
 ```
 
 **Note:**
@@ -214,14 +214,14 @@ Here is an example output:
 com.oracle.svm.core.VM.Target.LibC=com.oracle.svm.core.posix.linux.libc.GLibC
 com.oracle.svm.core.VM.Target.Platform=org.graalvm.nativeimage.Platform$LINUX_AMD64
 com.oracle.svm.core.VM.Target.StaticLibraries=liblibchelper.a|libnet.a|libffi.a|libextnet.a|libnio.a|libjava.a|libfdlibm.a|libzip.a|libjvm.a
-com.oracle.svm.core.VM=GraalVM 20.2.0 Java 11
+com.oracle.svm.core.VM=GraalVM <version> Java 11
 com.oracle.svm.core.VM.Target.Libraries=pthread|dl|z|rt
 com.oracle.svm.core.VM.Target.CCompiler=gcc|redhat|x86_64|10.2.1
 ```
 
 If the image was build with Oracle GraalVM Enterprise Edition the output would instead contain:
 ```shell
-com.oracle.svm.core.VM=GraalVM 20.2.0 Java 11 EE
+com.oracle.svm.core.VM=GraalVM <version> Java 11 EE
 ```
 
 ## Ahead-of-time Compilation Limitations
