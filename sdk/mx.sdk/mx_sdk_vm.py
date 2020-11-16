@@ -291,7 +291,10 @@ class GraalVmComponent(object):
         return "{} ({})".format(self.name, self.dir_name)
 
     def direct_dependencies(self):
-        return [graalvm_component_by_name(name) for name in self.dependency_names]
+        try:
+            return [graalvm_component_by_name(name) for name in self.dependency_names]
+        except Exception as e:
+            raise Exception("{} (required by {})".format(e, self.name))
 
 
 class GraalVmTruffleComponent(GraalVmComponent):
