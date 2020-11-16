@@ -40,13 +40,12 @@
  */
 package org.graalvm.wasm;
 
-import com.oracle.truffle.api.CompilerDirectives;
 import org.graalvm.wasm.exception.Failure;
 import org.graalvm.wasm.exception.WasmException;
 
 public final class WasmTable {
     private final int maxSize;
-    @CompilerDirectives.CompilationFinal(dimensions = 1) private Object[] elements;
+    private Object[] elements;
 
     public WasmTable(int initSize, int maxSize) {
         this.elements = new Object[initSize];
