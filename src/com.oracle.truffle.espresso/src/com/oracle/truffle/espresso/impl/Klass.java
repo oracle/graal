@@ -779,7 +779,7 @@ public abstract class Klass implements ModifiersProvider, ContextAccess, KlassRe
     }
 
     /**
-     * Permorms type checking for non-interface, non-array classes.
+     * Performs type checking for non-interface, non-array classes.
      * 
      * @param other the class whose type is to be checked against {@code this}
      * @return true if {@code other} is a subclass of {@code this}
@@ -790,7 +790,7 @@ public abstract class Klass implements ModifiersProvider, ContextAccess, KlassRe
     }
 
     /**
-     * Permorms type checking for interface classes.
+     * Performs type checking for interface classes.
      * 
      * @param other the class whose type is to be checked against {@code this}
      * @return true if {@code this} is a super interface of {@code other}
