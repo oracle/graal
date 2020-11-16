@@ -28,6 +28,8 @@ import static jdk.vm.ci.meta.DeoptimizationAction.InvalidateReprofile;
 import static jdk.vm.ci.meta.DeoptimizationReason.UnreachedCode;
 
 import java.lang.reflect.Method;
+import java.util.HashMap;
+import java.util.Map;
 
 import org.graalvm.compiler.nodes.CallTargetNode.InvokeKind;
 import org.graalvm.compiler.nodes.ConstantNode;
@@ -42,57 +44,42 @@ import com.oracle.svm.core.util.VMError;
 
 import jdk.vm.ci.meta.ResolvedJavaMethod;
 
-public class ExceptionSynthesizer {
+public final class ExceptionSynthesizer {
 
-    public static final Method throwClassNotFoundExceptionMethod;
-    public static final Method throwNoSuchFieldExceptionMethod;
-    public static final Method throwNoSuchMethodExceptionMethod;
-    public static final Method throwNoClassDefFoundErrorMethod;
-    public static final Method throwNoSuchFieldErrorMethod;
-    public static final Method throwNoSuchMethodErrorMethod;
-    public static final Method throwVerifyErrorMethod;
+    private static final Map<Class<? extends Throwable>, Method> exceptionMethods = new HashMap<>();
 
     static {
         try {
-            throwClassNotFoundExceptionMethod = ImplicitExceptions.class.getDeclaredMethod("throwClassNotFoundException", String.class);
-            throwNoSuchFieldExceptionMethod = ImplicitExceptions.class.getDeclaredMethod("throwNoSuchFieldException", String.class);
-            throwNoSuchMethodExceptionMethod = ImplicitExceptions.class.getDeclaredMethod("throwNoSuchMethodException", String.class);
-            throwNoClassDefFoundErrorMethod = ImplicitExceptions.class.getDeclaredMethod("throwNoClassDefFoundError", String.class);
-            throwNoSuchFieldErrorMethod = ImplicitExceptions.class.getDeclaredMethod("throwNoSuchFieldError", String.class);
-            throwNoSuchMethodErrorMethod = ImplicitExceptions.class.getDeclaredMethod("throwNoSuchMethodError", String.class);
-            throwVerifyErrorMethod = ImplicitExceptions.class.getDeclaredMethod("throwVerifyError");
+            // ReflectiveOperationException subclasses
+            exceptionMethods.put(ClassNotFoundException.class, ImplicitExceptions.class.getDeclaredMethod("throwClassNotFoundException", String.class));
+            exceptionMethods.put(NoSuchFieldException.class, ImplicitExceptions.class.getDeclaredMethod("throwNoSuchFieldException", String.class));
+            exceptionMethods.put(NoSuchMethodException.class, ImplicitExceptions.class.getDeclaredMethod("throwNoSuchMethodException", String.class));
+            // LinkageError subclasses
+            exceptionMethods.put(NoClassDefFoundError.class, ImplicitExceptions.class.getDeclaredMethod("throwNoClassDefFoundError", String.class));
+            exceptionMethods.put(NoSuchFieldError.class, ImplicitExceptions.class.getDeclaredMethod("throwNoSuchFieldError", String.class));
+            exceptionMethods.put(NoSuchMethodError.class, ImplicitExceptions.class.getDeclaredMethod("throwNoSuchMethodError", String.class));
+            exceptionMethods.put(VerifyError.class, ImplicitExceptions.class.getDeclaredMethod("throwVerifyError"));
         } catch (NoSuchMethodException ex) {
             throw VMError.shouldNotReachHere(ex);
         }
     }
 
-    public static void throwClassNotFoundException(GraphBuilderContext b, String targetClass) {
-        throwException(b, targetClass, throwClassNotFoundExceptionMethod);
+    private ExceptionSynthesizer() {
     }
 
-    public static void throwNoSuchFieldException(GraphBuilderContext b, String targetField) {
-        throwException(b, targetField, throwNoSuchFieldExceptionMethod);
+    public static Method throwExceptionMethod(Class<? extends Throwable> exceptionClass) {
+        Method method = exceptionMethods.get(exceptionClass);
+        VMError.guarantee(method != null, "Exception synthesizer method for class " + exceptionClass + " not found.");
+        return method;
     }
 
-    public static void throwNoSuchMethodException(GraphBuilderContext b, String targetMethod) {
-        throwException(b, targetMethod, throwNoSuchMethodExceptionMethod);
+    public static void throwException(GraphBuilderContext b, Class<? extends Throwable> exceptionClass, String message) {
+        throwException(b, throwExceptionMethod(exceptionClass), message);
     }
 
-    public static void throwNoClassDefFoundError(GraphBuilderContext b, String targetField) {
-        throwException(b, targetField, throwNoClassDefFoundErrorMethod);
-    }
-
-    public static void throwNoSuchFieldError(GraphBuilderContext b, String targetField) {
-        throwException(b, targetField, throwNoSuchFieldErrorMethod);
-    }
-
-    public static void throwNoSuchMethodError(GraphBuilderContext b, String targetMethod) {
-        throwException(b, targetMethod, throwNoSuchMethodErrorMethod);
-    }
-
-    public static void throwException(GraphBuilderContext b, String message, Method reportExceptionMethod) {
+    public static void throwException(GraphBuilderContext b, Method throwExceptionMethod, String message) {
         ValueNode messageNode = ConstantNode.forConstant(SubstrateObjectConstant.forObject(message), b.getMetaAccess(), b.getGraph());
-        ResolvedJavaMethod exceptionMethod = b.getMetaAccess().lookupJavaMethod(reportExceptionMethod);
+        ResolvedJavaMethod exceptionMethod = b.getMetaAccess().lookupJavaMethod(throwExceptionMethod);
         assert exceptionMethod.isStatic();
         Invoke invoke = b.handleReplacedInvoke(InvokeKind.Static, exceptionMethod, new ValueNode[]{messageNode}, false);
         if (invoke != null) {
@@ -108,6 +95,5 @@ public class ExceptionSynthesizer {
              */
             b.add(new DeoptimizeNode(InvalidateReprofile, UnreachedCode));
         }
-
     }
 }

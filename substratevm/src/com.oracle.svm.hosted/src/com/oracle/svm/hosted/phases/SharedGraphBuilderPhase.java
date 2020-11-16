@@ -211,7 +211,7 @@ public abstract class SharedGraphBuilderPhase extends GraphBuilderPhase.Instance
              * otherwise report the error during image building.
              */
             if (allowIncompleteClassPath) {
-                ExceptionSynthesizer.throwNoClassDefFoundError(this, type.toJavaName());
+                ExceptionSynthesizer.throwException(this, NoClassDefFoundError.class, type.toJavaName());
             } else {
                 reportUnresolvedElement("type", type.toJavaName());
             }
@@ -228,7 +228,7 @@ public abstract class SharedGraphBuilderPhase extends GraphBuilderPhase.Instance
                  * otherwise report the error during image building.
                  */
                 if (allowIncompleteClassPath) {
-                    ExceptionSynthesizer.throwNoSuchFieldError(this, field.format("%H.%n"));
+                    ExceptionSynthesizer.throwException(this, NoSuchFieldError.class, field.format("%H.%n"));
                 } else {
                     reportUnresolvedElement("field", field.format("%H.%n"));
                 }
@@ -246,7 +246,7 @@ public abstract class SharedGraphBuilderPhase extends GraphBuilderPhase.Instance
                  * otherwise report the error during image building.
                  */
                 if (allowIncompleteClassPath) {
-                    ExceptionSynthesizer.throwNoSuchMethodError(this, javaMethod.format("%H.%n(%P)"));
+                    ExceptionSynthesizer.throwException(this, NoSuchMethodError.class, javaMethod.format("%H.%n(%P)"));
                 } else {
                     reportUnresolvedElement("method", javaMethod.format("%H.%n(%P)"));
                 }
