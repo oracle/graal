@@ -27,7 +27,7 @@
  * NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED
  * OF THE POSSIBILITY OF SUCH DAMAGE.
  */
-package com.oracle.truffle.llvm.runtime.memory;
+package com.oracle.truffle.llvm.nativemode.runtime.memory;
 
 import java.lang.reflect.Field;
 import java.util.ArrayDeque;
@@ -35,6 +35,7 @@ import java.util.Arrays;
 import java.util.function.IntBinaryOperator;
 import java.util.function.LongBinaryOperator;
 
+import com.oracle.truffle.llvm.runtime.memory.LLVMHandleMemoryBase;
 import org.graalvm.collections.EconomicMap;
 
 import com.oracle.truffle.api.Assumption;

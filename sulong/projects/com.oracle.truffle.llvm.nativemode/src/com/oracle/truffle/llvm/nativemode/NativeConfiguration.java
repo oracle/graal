@@ -46,7 +46,7 @@ import com.oracle.truffle.llvm.runtime.config.Configuration;
 import com.oracle.truffle.llvm.runtime.config.LLVMCapability;
 import com.oracle.truffle.llvm.runtime.datalayout.DataLayout;
 import com.oracle.truffle.llvm.runtime.memory.LLVMMemory;
-import com.oracle.truffle.llvm.runtime.memory.LLVMNativeMemory;
+import com.oracle.truffle.llvm.nativemode.runtime.memory.LLVMNativeMemory;
 import com.oracle.truffle.llvm.runtime.memory.UnsafeArrayAccess;
 
 public class NativeConfiguration implements Configuration {
