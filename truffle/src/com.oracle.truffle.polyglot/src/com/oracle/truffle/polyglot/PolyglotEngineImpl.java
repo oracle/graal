@@ -1880,7 +1880,6 @@ final class PolyglotEngineImpl extends AbstractPolyglotImpl.AbstractEngineImpl i
             this.contextLocalLocations = newStableLocations = new StableLocalLocations(locationsCopy);
             stableLocations.assumption.invalidate("Context local added");
             newLocations = Arrays.copyOfRange(locationsCopy, stableLocations.locations.length, index);
-            stableLocations = this.contextLocalLocations;
         }
         for (PolyglotContextImpl context : aliveContexts) {
             synchronized (context) {
