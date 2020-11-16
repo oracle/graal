@@ -45,18 +45,16 @@ import com.oracle.truffle.llvm.runtime.except.LLVMParserException;
 
 public final class LoadNativeNode extends RootNode {
 
-    private final String sourceName;
     private final TruffleFile file;
     @CompilationFinal private ContextReference<LLVMContext> ctxRef;
 
-    private LoadNativeNode(String name, FrameDescriptor rootFrame, LLVMLanguage language, TruffleFile file) {
+    private LoadNativeNode(FrameDescriptor rootFrame, LLVMLanguage language, TruffleFile file) {
         super(language, rootFrame);
         this.file = file;
-        this.sourceName = name;
     }
 
-    public static LoadNativeNode create(String name, FrameDescriptor rootFrame, LLVMLanguage language, TruffleFile file) {
-        return new LoadNativeNode(name, rootFrame, language, file);
+    public static LoadNativeNode create(FrameDescriptor rootFrame, LLVMLanguage language, TruffleFile file) {
+        return new LoadNativeNode(rootFrame, language, file);
     }
 
     @Override

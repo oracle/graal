@@ -150,7 +150,7 @@ final class ParserDriver {
             if (file == null) {
                 return Truffle.getRuntime().createCallTarget(RootNode.createConstantNode(0));
             }
-            return createNativeLibraryCallTarget(source.getName(), file);
+            return createNativeLibraryCallTarget(file);
         }
         // ensures the library of the source is not native
         if (context.isInternalLibraryFile(result.getRuntime().getFile())) {
@@ -453,7 +453,7 @@ final class ParserDriver {
                 if (nativeFile == null) {
                     return null;
                 }
-                return createNativeLibraryCallTarget(libName, nativeFile);
+                return createNativeLibraryCallTarget(nativeFile);
             }
         }
 
@@ -512,15 +512,14 @@ final class ParserDriver {
     /**
      * Creates the call target of the load native module node, which initialise the native library.
      *
-     * @param name the name of the library
      * @return the call target for initialising the library.
      */
-    private CallTarget createNativeLibraryCallTarget(String name, TruffleFile file) {
+    private CallTarget createNativeLibraryCallTarget(TruffleFile file) {
         if (context.getEnv().getOptions().get(SulongEngineOption.PARSE_ONLY)) {
             return Truffle.getRuntime().createCallTarget(RootNode.createConstantNode(0));
         } else {
             // check if the functions should be resolved eagerly or lazyly.
-            LoadNativeNode loadNative = LoadNativeNode.create(name, new FrameDescriptor(), language, file);
+            LoadNativeNode loadNative = LoadNativeNode.create(new FrameDescriptor(), language, file);
             return Truffle.getRuntime().createCallTarget(loadNative);
         }
     }

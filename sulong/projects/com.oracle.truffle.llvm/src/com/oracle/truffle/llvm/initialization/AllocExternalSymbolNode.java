@@ -141,7 +141,8 @@ public abstract class AllocExternalSymbolNode extends LLVMNode {
         LLVMPointer allocateFromLocalScopeFallback(@SuppressWarnings("unused") LLVMLocalScope localScope,
                         @SuppressWarnings("unused") LLVMScope globalScope,
                         @SuppressWarnings("unused") LLVMIntrinsicProvider intrinsicProvider,
-                        @SuppressWarnings("unused") NFIContextExtension nfiContextExtension, LLVMContext context) {
+                        @SuppressWarnings("unused") NFIContextExtension nfiContextExtension,
+                        @SuppressWarnings("unused") LLVMContext context) {
             return null;
         }
 
@@ -212,7 +213,8 @@ public abstract class AllocExternalSymbolNode extends LLVMNode {
                 LLVMPointer allocateNativeGlobal(@SuppressWarnings("unused") LLVMLocalScope localScope,
                                 @SuppressWarnings("unused") LLVMScope globalScope,
                                 @SuppressWarnings("unused") LLVMIntrinsicProvider intrinsicProvider,
-                                NFIContextExtension nfiContextExtension, LLVMContext context) {
+                                NFIContextExtension nfiContextExtension,
+                                @SuppressWarnings("unused") LLVMContext context) {
                     NFIContextExtension.NativePointerIntoLibrary pointer = nfiContextExtension.getNativeHandle(symbol.getName());
                     if (pointer != null) {
                         return LLVMNativePointer.create(pointer.getAddress());
