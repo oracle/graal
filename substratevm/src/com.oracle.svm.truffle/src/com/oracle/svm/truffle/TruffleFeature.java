@@ -155,7 +155,6 @@ import com.oracle.truffle.api.object.DynamicObject;
 import com.oracle.truffle.api.object.Layout;
 import com.oracle.truffle.api.profiles.Profile;
 
-import jdk.vm.ci.code.Architecture;
 import jdk.vm.ci.meta.JavaConstant;
 import jdk.vm.ci.meta.JavaKind;
 import jdk.vm.ci.meta.MetaAccessProvider;

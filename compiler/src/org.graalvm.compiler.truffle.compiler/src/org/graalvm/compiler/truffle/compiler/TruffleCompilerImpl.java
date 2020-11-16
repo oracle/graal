@@ -185,7 +185,7 @@ public abstract class TruffleCompilerImpl implements TruffleCompilerBase {
     /**
      * Creates the partial evaluator used by this compiler.
      */
-    protected abstract PartialEvaluator createPartialEvaluator(TruffleCompilerConfiguration config);
+    protected abstract PartialEvaluator createPartialEvaluator(TruffleCompilerConfiguration configuration);
 
     public static final TimerKey PartialEvaluationTime = DebugContext.timer("PartialEvaluationTime").doc("Total time spent in the Truffle tier.");
     public static final TimerKey CompilationTime = DebugContext.timer("CompilationTime");
@@ -595,8 +595,8 @@ public abstract class TruffleCompilerImpl implements TruffleCompilerBase {
         CompilationResult result = null;
 
         try (DebugCloseable a = CompilationTime.start(debug);
-             DebugContext.Scope s = debug.scope("TruffleGraal.GraalCompiler", graph, config.lastTier().providers().getCodeCache());
-             DebugCloseable c = CompilationMemUse.start(debug)) {
+                        DebugContext.Scope s = debug.scope("TruffleGraal.GraalCompiler", graph, config.lastTier().providers().getCodeCache());
+                        DebugCloseable c = CompilationMemUse.start(debug)) {
             Suites selectedSuites = config.lastTier().suites();
             LIRSuites selectedLirSuites = config.lastTier().lirSuites();
             Providers selectedProviders = config.lastTier().providers();

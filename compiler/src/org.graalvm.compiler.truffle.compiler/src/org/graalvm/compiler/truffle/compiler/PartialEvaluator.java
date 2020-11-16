@@ -559,10 +559,11 @@ public abstract class PartialEvaluator {
 
     /**
      * Graph-builder configuration is shared between the first- and the second-tier compilations,
-     * because the encoded graphs for the partial evaluator are shared between these compilation tiers.
+     * because the encoded graphs for the partial evaluator are shared between these compilation
+     * tiers.
      */
-    protected GraphBuilderConfiguration createGraphBuilderConfig(GraphBuilderConfiguration config, boolean canDelayIntrinsification) {
-        GraphBuilderConfiguration newConfig = config.copy();
+    protected GraphBuilderConfiguration createGraphBuilderConfig(GraphBuilderConfiguration graphBuilderConfig, boolean canDelayIntrinsification) {
+        GraphBuilderConfiguration newConfig = graphBuilderConfig.copy();
         InvocationPlugins invocationPlugins = newConfig.getPlugins().getInvocationPlugins();
         registerGraphBuilderInvocationPlugins(invocationPlugins, canDelayIntrinsification);
         appendParsingNodePlugins(newConfig.getPlugins());
