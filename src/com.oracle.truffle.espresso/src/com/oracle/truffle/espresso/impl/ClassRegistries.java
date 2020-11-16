@@ -27,10 +27,10 @@ import static com.oracle.truffle.espresso.impl.LoadingConstraints.INVALID_LOADER
 
 import java.util.ArrayList;
 import java.util.Collections;
-import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
 import java.util.WeakHashMap;
+import java.util.concurrent.ConcurrentHashMap;
 
 import com.oracle.truffle.api.CompilerAsserts;
 import com.oracle.truffle.api.CompilerDirectives;
@@ -319,7 +319,8 @@ public final class ClassRegistries {
             if (domains == null) {
                 synchronized (this) {
                     if (domains == null) {
-                        domains = new HashSet<>();
+                        // We do not expect a lot of different protection domains
+                        domains = Collections.newSetFromMap(new ConcurrentHashMap<>(2));
                     }
                 }
             }
