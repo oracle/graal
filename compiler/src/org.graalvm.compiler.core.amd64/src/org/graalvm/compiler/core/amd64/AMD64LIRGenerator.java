@@ -266,12 +266,12 @@ public abstract class AMD64LIRGenerator extends LIRGenerator {
     }
 
     @Override
-    public Variable emitLogicCompareAndSwap(LIRKind accessKind, Value address, Value expectedValue, Value newValue, Value trueValue, Value falseValue) {
+    public Variable emitLogicCompareAndSwap(LIRKind accessKind, Value address, Value expectedValue, Value newValue, Value trueValue, Value falseValue, boolean useBarriers) {
         return LIRValueUtil.asVariable(emitCompareAndSwap(true, accessKind, address, expectedValue, newValue, trueValue, falseValue));
     }
 
     @Override
-    public Value emitValueCompareAndSwap(LIRKind accessKind, Value address, Value expectedValue, Value newValue) {
+    public Value emitValueCompareAndSwap(LIRKind accessKind, Value address, Value expectedValue, Value newValue, boolean useBarriers) {
         return emitCompareAndSwap(false, accessKind, address, expectedValue, newValue, null, null);
     }
 

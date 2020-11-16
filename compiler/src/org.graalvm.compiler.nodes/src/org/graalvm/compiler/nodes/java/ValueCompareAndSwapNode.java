@@ -27,6 +27,7 @@ package org.graalvm.compiler.nodes.java;
 import static org.graalvm.compiler.nodeinfo.NodeCycles.CYCLES_8;
 import static org.graalvm.compiler.nodeinfo.NodeSize.SIZE_8;
 
+import jdk.vm.ci.meta.Value;
 import org.graalvm.compiler.graph.NodeClass;
 import org.graalvm.compiler.lir.gen.LIRGeneratorTool;
 import org.graalvm.compiler.nodeinfo.NodeInfo;
@@ -57,6 +58,8 @@ public final class ValueCompareAndSwapNode extends AbstractCompareAndSwapNode {
         assert getNewValue().stamp(NodeView.DEFAULT).isCompatible(getExpectedValue().stamp(NodeView.DEFAULT));
         LIRGeneratorTool tool = gen.getLIRGeneratorTool();
         assert !this.canDeoptimize();
-        gen.setResult(this, tool.emitValueCompareAndSwap(tool.getLIRKind(getAccessStamp(NodeView.DEFAULT)), gen.operand(getAddress()), gen.operand(getExpectedValue()), gen.operand(getNewValue())));
+        Value result = tool.emitValueCompareAndSwap(tool.getLIRKind(getAccessStamp(NodeView.DEFAULT)),
+                        gen.operand(getAddress()), gen.operand(getExpectedValue()), gen.operand(getNewValue()), false);
+        gen.setResult(this, result);
     }
 }
