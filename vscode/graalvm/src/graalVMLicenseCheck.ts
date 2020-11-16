@@ -8,6 +8,7 @@
 import * as vscode from 'vscode';
 import * as path from 'path';
 import * as fs from 'fs';
+import * as crypto from 'crypto';
 import * as mustache from 'mustache';
 
 export class LicenseCheckPanel {
@@ -15,21 +16,28 @@ export class LicenseCheckPanel {
 	public static readonly viewType: string = 'graalVMLicenseCheck';
 
 	private static readonly webviewsFolder: string = 'webviews';
-	private static readonly userEmail: string = 'userEmail';
+	private static readonly userAcceptedLicenses: string = 'userAcceptedLicenses';
 
 	private readonly _panel: vscode.WebviewPanel;
 	private _disposables: vscode.Disposable[] = [];
-	private static accepted: string[] = [];
 
 	public static show(context: vscode.ExtensionContext, licenseLabel: string, license: string): Promise<boolean> {
-		if (this.accepted.includes(license)) {
+		const hash = crypto.createHash('sha256').update(license).digest('hex');
+		const userAcceptedLicenses = JSON.parse(context.globalState.get(LicenseCheckPanel.userAcceptedLicenses) || '{}');
+		if (userAcceptedLicenses.licenses && userAcceptedLicenses.licenses.includes(hash)) {
 			return Promise.resolve(true);
 		}
 		return new Promise<boolean>(resolve => {
-			const lcp = new LicenseCheckPanel(context, licenseLabel, license, (message: any) => {
+			const lcp = new LicenseCheckPanel(context.extensionPath, licenseLabel, license, userAcceptedLicenses.userEmail, (message: any) => {
 				if (message.command === 'accepted') {
-					context.globalState.update(LicenseCheckPanel.userEmail, message.email);
-					this.accepted.push(license);
+					if (message.email) {
+						if (!userAcceptedLicenses.licenses) {
+							userAcceptedLicenses.licenses = [];
+						}
+						userAcceptedLicenses.licenses.push(hash);
+						userAcceptedLicenses.userEmail = message.email;
+						context.globalState.update(LicenseCheckPanel.userAcceptedLicenses, JSON.stringify(userAcceptedLicenses));
+					}
 					lcp.dispose();
 					resolve(true);
 				} else {
@@ -40,8 +48,7 @@ export class LicenseCheckPanel {
 		});
 	}
 
-	private constructor(context: vscode.ExtensionContext, licenseLabel: string, license: string, messageHandler: (message: any) => any) {
-		const extensionPath = context.extensionPath;
+	private constructor(extensionPath: string, licenseLabel: string, license: string, userEmail: string, messageHandler: (message: any) => any) {
 		this._panel = vscode.window.createWebviewPanel(LicenseCheckPanel.viewType, licenseLabel,
 			{ viewColumn: vscode.ViewColumn.One, preserveFocus: true },
 			{
@@ -55,7 +62,7 @@ export class LicenseCheckPanel {
 		};
 
 		// Set the webview's html content
-		this.setHtml(extensionPath, license, context.globalState.get(LicenseCheckPanel.userEmail) || '');
+		this.setHtml(extensionPath, license, userEmail || '');
 
 		// Listen for when the panel is disposed
 		// This happens when the user closes the panel or when the panel is closed programatically
@@ -65,7 +72,7 @@ export class LicenseCheckPanel {
 		this._panel.onDidChangeViewState(
 			() => {
 				if (this._panel.visible) {
-					this.setHtml(extensionPath, license, context.globalState.get(LicenseCheckPanel.userEmail) || '');
+					this.setHtml(extensionPath, license, userEmail || '');
 				}
 			},
 			null,
