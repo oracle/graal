@@ -168,7 +168,8 @@ public abstract class ClangLikeBase extends Driver {
     }
 
     protected void getCompilerArgs(List<String> sulongArgs) {
-        sulongArgs.addAll(Arrays.asList("-flto=full", "-g", "-O1"));
+        // use -gdwarf-5 instead of -g to enable source file checksums
+        sulongArgs.addAll(Arrays.asList("-flto=full", "-gdwarf-5", "-O1"));
     }
 
     protected void getLinkerArgs(List<String> sulongArgs) {

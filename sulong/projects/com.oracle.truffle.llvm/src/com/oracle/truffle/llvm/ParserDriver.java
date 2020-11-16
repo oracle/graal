@@ -33,6 +33,7 @@ import com.oracle.truffle.api.CallTarget;
 import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.Truffle;
 import com.oracle.truffle.api.TruffleFile;
+import com.oracle.truffle.api.TruffleLanguage;
 import com.oracle.truffle.api.frame.FrameDescriptor;
 import com.oracle.truffle.api.nodes.RootNode;
 import com.oracle.truffle.api.source.Source;
@@ -64,6 +65,7 @@ import com.oracle.truffle.llvm.runtime.NodeFactory;
 import com.oracle.truffle.llvm.runtime.PlatformCapability;
 import com.oracle.truffle.llvm.runtime.datalayout.DataLayout;
 import com.oracle.truffle.llvm.runtime.debug.LLVMSourceContext;
+import com.oracle.truffle.llvm.runtime.debug.scope.LLVMSourceFileReference;
 import com.oracle.truffle.llvm.runtime.debug.value.LLVMDebugObjectBuilder;
 import com.oracle.truffle.llvm.runtime.except.LLVMLinkerException;
 import com.oracle.truffle.llvm.runtime.except.LLVMParserException;
@@ -80,6 +82,7 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.ListIterator;
 import java.util.concurrent.atomic.AtomicInteger;
+import java.util.stream.Collectors;
 
 /**
  * Drives a parsing request.
@@ -343,11 +346,22 @@ final class ParserDriver {
         NodeFactory nodeFactory = context.getLanguage().getActiveConfiguration().createNodeFactory(language, targetDataLayout);
         LLVMScope fileScope = new LLVMScope();
         int bitcodeID = nextFreeBitcodeID.getAndIncrement();
-        LLVMParserRuntime runtime = new LLVMParserRuntime(fileScope, nodeFactory, bitcodeID, file, source.getName());
+        LLVMParserRuntime runtime = new LLVMParserRuntime(fileScope, nodeFactory, bitcodeID, file, source.getName(), getSourceFilesWithChecksums(context.getEnv(), module));
         LLVMParser parser = new LLVMParser(source, runtime);
         LLVMParserResult result = parser.parse(module, targetDataLayout);
         createDebugInfo(module, new LLVMSymbolReadResolver(runtime, new FrameDescriptor(), GetStackSpaceFactory.createAllocaFactory(), targetDataLayout, false));
         return result;
+    }
+
+    private static List<LLVMSourceFileReference> getSourceFilesWithChecksums(TruffleLanguage.Env env, ModelModule module) {
+        if (SulongEngineOption.shouldVerifyCompileUnitChecksums(env)) {
+            List<LLVMSourceFileReference> sourceWithChecksum = module.getSourceFileReferences().stream().filter(f -> f.getChecksumKind() != LLVMSourceFileReference.ChecksumKind.CSK_None).collect(
+                            Collectors.toList());
+            if (!sourceWithChecksum.isEmpty()) {
+                return sourceWithChecksum;
+            }
+        }
+        return null;
     }
 
     private void createDebugInfo(ModelModule model, LLVMSymbolReadResolver symbolResolver) {

@@ -976,10 +976,9 @@ public final class LLVMContext {
 
             final String opt = env.getOptions().get(SulongEngineOption.LL_DEBUG_VERBOSE);
             if (SulongEngineOption.optionEnabled(opt)) {
-                if (!env.getOptions().get(SulongEngineOption.LL_DEBUG)) {
-                    throw new IllegalStateException("\'--llvm.llDebug.verbose\' requires \'--llvm.llDebug=true\'");
+                if (env.getOptions().get(SulongEngineOption.LL_DEBUG)) {
+                    llDebugVerboseStream = new TargetStream(env, opt);
                 }
-                llDebugVerboseStream = new TargetStream(env, opt);
             }
 
             llDebugVerboseStreamInitialized = true;
