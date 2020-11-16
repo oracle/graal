@@ -33,12 +33,11 @@ import java.lang.reflect.Modifier;
 
 import java.util.Arrays;
 
-import org.graalvm.compiler.debug.GraalError;
-
 import com.oracle.svm.core.SubstrateUtil;
 import com.oracle.svm.core.annotate.Alias;
 import com.oracle.svm.core.annotate.Substitute;
 import com.oracle.svm.core.annotate.TargetClass;
+import com.oracle.svm.reflect.target.Target_java_lang_reflect_AccessibleObject;
 
 @TargetClass(className = "java.lang.invoke.MethodHandle", onlyWith = MethodHandlesSupported.class)
 final class Target_java_lang_invoke_MethodHandle {
@@ -50,23 +49,41 @@ final class Target_java_lang_invoke_MethodHandle {
     native Target_java_lang_invoke_LambdaForm internalForm();
 
     @Substitute(polymorphicSignature = true)
-    private Object invokeBasic(Object... args) {
+    private Object invokeBasic(Object... args) throws Throwable {
         Target_java_lang_invoke_MemberName memberName = internalMemberName() != null ? internalMemberName() : internalForm().vmentry;
         if (memberName == null) { /* Interpretation mode */
             throw unsupportedFeature("Method handles requiring lambda form interpretation (e.g through a bindTo() call) are not supported. " +
                             "See https://github.com/oracle/graal/issues/2939.");
         }
 
-        try {
-            Method method = SubstrateUtil.cast(memberName.reflectAccess, Method.class);
-            if (Modifier.isStatic(method.getModifiers())) {
-                return method.invoke(null, args);
-            } else {
-                return method.invoke(args[0], Arrays.copyOfRange(args, 1, args.length));
-            }
-        } catch (Exception e) {
-            throw new GraalError(e);
+        /*
+         * The method handle may have been resolved at build time. If that is the case, the
+         * SVM-specific information needed to perform the invoke is not stored in the handle yet, so
+         * we perform the resolution again.
+         */
+        if (memberName.reflectAccess == null) {
+            Target_java_lang_invoke_MethodHandleNatives.resolve(memberName, null, false);
         }
+
+        Method method = SubstrateUtil.cast(memberName.reflectAccess, Method.class);
+        Target_java_lang_reflect_AccessibleObject methodAsAO = SubstrateUtil.cast(method, Target_java_lang_reflect_AccessibleObject.class);
+
+        /* Access control was already performed by the JDK code calling invokeBasic */
+        boolean oldOverride = methodAsAO.override;
+        methodAsAO.override = true;
+
+        Object result;
+        try {
+            if (Modifier.isStatic(method.getModifiers())) {
+                result = method.invoke(null, args);
+            } else {
+                result = method.invoke(args[0], Arrays.copyOfRange(args, 1, args.length));
+            }
+        } finally {
+            methodAsAO.override = oldOverride;
+        }
+
+        return result;
     }
 
     @SuppressWarnings("unused")
