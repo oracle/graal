@@ -45,7 +45,7 @@ public abstract class NativeContextExtension implements ContextExtension {
 
         private final Type type;
 
-        UnsupportedNativeTypeException(Type type) {
+        public UnsupportedNativeTypeException(Type type) {
             super("unsupported type " + type + " in native interop");
             this.type = type;
         }
@@ -92,6 +92,13 @@ public abstract class NativeContextExtension implements ContextExtension {
     public abstract Object getNativeFunction(String name, String signature);
 
     public abstract String getNativeSignature(FunctionType type, int skipArguments) throws UnsupportedNativeTypeException;
+
+    /**
+     * Allow subclasses to locate internal libraries.
+     */
+    protected TruffleFile locateInternalLibrary(LLVMContext context, String lib, Object reason) {
+        return LLVMContext.InternalLibraryLocator.INSTANCE.locateLibrary(context, lib, reason);
+    }
 
     public static String getNativeLibrarySuffix() {
         if (System.getProperty("os.name").toLowerCase().contains("mac")) {

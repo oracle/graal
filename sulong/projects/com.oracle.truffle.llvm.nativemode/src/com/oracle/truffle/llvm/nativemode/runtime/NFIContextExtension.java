@@ -27,11 +27,16 @@
  * NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED
  * OF THE POSSIBILITY OF SUCH DAMAGE.
  */
-package com.oracle.truffle.llvm.runtime;
+package com.oracle.truffle.llvm.nativemode.runtime;
 
 import java.util.ArrayList;
 import java.util.List;
 
+import com.oracle.truffle.llvm.runtime.LLVMContext;
+import com.oracle.truffle.llvm.runtime.LLVMFunction;
+import com.oracle.truffle.llvm.runtime.LLVMFunctionCode;
+import com.oracle.truffle.llvm.runtime.LibraryLocator;
+import com.oracle.truffle.llvm.runtime.NativeContextExtension;
 import org.graalvm.collections.EconomicMap;
 
 import com.oracle.truffle.api.CallTarget;
@@ -74,7 +79,7 @@ public final class NFIContextExtension extends NativeContextExtension {
     public void initialize(LLVMContext context) {
         assert !isInitialized();
         if (!internalLibrariesAdded) {
-            TruffleFile file = LLVMContext.InternalLibraryLocator.INSTANCE.locateLibrary(context, "libsulong-native." + getNativeLibrarySuffix(), "<default nfi library>");
+            TruffleFile file = locateInternalLibrary(context, "libsulong-native." + getNativeLibrarySuffix(), "<default nfi library>");
             Object lib = loadLibrary(file, context);
             if (lib instanceof CallTarget) {
                 libraryHandles.add(((CallTarget) lib).call());

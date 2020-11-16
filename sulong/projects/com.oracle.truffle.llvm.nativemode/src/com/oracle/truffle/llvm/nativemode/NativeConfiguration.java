@@ -31,6 +31,8 @@ package com.oracle.truffle.llvm.nativemode;
 
 import com.oracle.truffle.llvm.DefaultLoader;
 import com.oracle.truffle.llvm.nativemode.NativeConfigurationFactory.Key;
+import com.oracle.truffle.llvm.nativemode.runtime.NFIContextExtension;
+import com.oracle.truffle.llvm.nativemode.runtime.memory.LLVMNativeMemory;
 import com.oracle.truffle.llvm.parser.factories.BasicIntrinsicsProvider;
 import com.oracle.truffle.llvm.parser.factories.BasicNodeFactory;
 import com.oracle.truffle.llvm.parser.factories.BasicPlatformCapability;
@@ -39,7 +41,6 @@ import com.oracle.truffle.llvm.runtime.LLVMIntrinsicProvider;
 import com.oracle.truffle.llvm.runtime.LLVMLanguage;
 import com.oracle.truffle.llvm.runtime.LLVMLanguage.Loader;
 import com.oracle.truffle.llvm.runtime.NativeContextExtension;
-import com.oracle.truffle.llvm.runtime.NFIContextExtension;
 import com.oracle.truffle.llvm.runtime.NodeFactory;
 import com.oracle.truffle.llvm.runtime.PlatformCapability;
 import com.oracle.truffle.llvm.runtime.ToolchainConfig;
@@ -47,7 +48,6 @@ import com.oracle.truffle.llvm.runtime.config.Configuration;
 import com.oracle.truffle.llvm.runtime.config.LLVMCapability;
 import com.oracle.truffle.llvm.runtime.datalayout.DataLayout;
 import com.oracle.truffle.llvm.runtime.memory.LLVMMemory;
-import com.oracle.truffle.llvm.nativemode.runtime.memory.LLVMNativeMemory;
 import com.oracle.truffle.llvm.runtime.memory.UnsafeArrayAccess;
 
 public class NativeConfiguration implements Configuration {
