@@ -8,7 +8,8 @@ The major goal of creating GraalVM VS Code Extension was to enable a polyglot en
 #### Table of contents
 - [Features](#features)
 - [Installation and Setup](#graalvm-installation-and-setup)
-- [Java Development Support](#java-debugging)
+- [Java Development and Support](#java-development-and-support)
+- [Debug Adapter Protocol](#debug-adapter-protocol)
 - [JavaScript and Node.js Debugging](#javascript-and-nodejs-debugging)
 - [Python Debugging](#python-debugging)
 - [R Debugging](#r-debugging)
@@ -17,7 +18,6 @@ The major goal of creating GraalVM VS Code Extension was to enable a polyglot en
 - [Language Server Integration](#language-server-integration)
 - [R Language Server](#r-language-server)
 - [Ruby Language Server](#ruby-language-server)
-- [Debug Adapter Protocol](#debug-adapter-protocol)
 - [Additional Editor Features](#additional-editor-features)
 - [Extension Settings](#extension-settings)
 - [Extension Requirements](#extension-requirements)
@@ -133,10 +133,40 @@ To add more lunch configurations, navigate to Run > Add Configuration or open th
 
 ![Add Launch Configuration for Java](images/create_java_launch_configuration.png)
 
+## Debug Adapter Protocol
+
+When creating the Run/Debug Configurations in VS Code, Chrome DevTools Protocol is provisioned by default. However, GraalVM provides a built-in implementation of the [Debug Adapter Protocol (DAP)](https://www.graalvm.org/docs/tools/dap) and, with GraalVM Extention for VS Code, a user now can choose a protocol to use by setting the protocol attribute in the corresponding debug configuration to either `chromeDevTools` or `debugAdapter`.
+
+To open a debugger port serving Debug Adapter Protocol, you need to pass the `--dap` option to the command line launcher.
+Other available options to pass to GraalVM's Debug Adapter Protocol are:
+* `--dap.Suspend=false`: disable the execution suspension at first source line, enabled by default.
+* `--dap.WaitAttached`: do not execute any source code until debugger client is attached. The default is false.
+* `--dap=<[[host:]port]>`: start the debugger on a different port than default (`<host>:4711`).
+
+Then you need a DAP client to connect to the open DAP port.
+To connect to the open DAP port, the content of _launch.json_ for, for example, a Node.js application, should be:
+```json
+{
+    "version": "0.2.0",
+    "configurations": [
+        {
+            "type": "graalvm",
+            "request": "launch",
+            "name": "Launch Node App",
+            "outputCapture": "std",
+            "protocol": "debugAdapter",
+            "program": "${workspaceFolder}/App.js"
+        }
+    ]
+}
+```
+
+The advantage of using Debug Adapter Protocol over Chrome Dev Tools is that (1) it is 'native' to Visual Studio Code (VS Code), meaning it does not require any intermediate translatation, and (2) that it supports multithreading, which can be particually useful to debug, e.g., a Ruby application.
+
 ## JavaScript and Node.js Debugging
 
 To debug a JavaScript or Node.js application running on GraalVM, creating a launch configuration for the application is necessary.
-To do so, open the application project folder in VS Code (File > Open Folder), switch to the Debug view by clicking on the "bug" icon in the left side panel. The newly opened window will suggest to create a _launch.json_ file:
+To do so, open the application project folder in VS Code (File > Open Folder), switch to the Debug view by clicking on the "bug" icon in the left-hand side panel. The newly opened window will suggest to create a _launch.json_ file:
 
 If debugging is not yet configured (no `launch.json` has been created), select `GraalVM` from the list of available debug environmnets.
 
@@ -184,7 +214,7 @@ Alternatively, you can run your configuration through the Command Palette (_Ctrl
 ## Python Debugging
 
 To debug a Python application running on GraalVM, creating a launch configuration for the application is necessary.
-To do so, open the application project folder in VS Code (File > Open Folder), switch to the Debug view by clicking on the "bug" icon in the left side panel. The newly opened window will suggest to create a _launch.json_ file.
+To do so, open the application project folder in VS Code (File > Open Folder), switch to the Debug view by clicking on the "bug" icon in the left-hand side panel. The newly opened window will suggest to create a _launch.json_ file.
 If debugging is not yet configured (no `launch.json` has been created), select `GraalVM` from the list of available debug environmnets.
 Once the `launch.json` file is opened in the editor, one of the following techniques can be used to add a new configuration:
 * Use IntelliSense if your cursor is located inside the configurations array.
@@ -226,7 +256,7 @@ Alternatively, you can run your configuration through the Command Palette (_Ctrl
 ## R Debugging
 
 To debug an R application running on GraalVM, creating a launch configuration for the application is necessary.
-To do so, open the application project folder in VS Code (File > Open Folder), switch to the Debug view by clicking on the "bug" icon in the left side panel. The newly opened window will suggest to create a _launch.json_ file.
+To do so, open the application project folder in VS Code (File > Open Folder), switch to the Debug view by clicking on the "bug" icon in the left-hand side panel. The newly opened window will suggest to create a _launch.json_ file.
 If debugging is not yet configured (no `launch.json` has been created), select `GraalVM` from the list of available debug environmnets.
 Once the `launch.json` file is opened in the editor, one of the following techniques can be used to add a new configuration:
 * Use IntelliSense if your cursor is located inside the configurations array.
@@ -269,7 +299,7 @@ Alternatively, you can run your configuration through the Command Palette (_Ctrl
 ## Ruby Debugging
 
 To debug a Ruby application running on GraalVM, creating a launch configuration for the application is necessary.
-To do so, open the application project folder in VS Code (File > Open Folder), switch to the Debug view by clicking on the "bug" icon in the left side panel. The newly opened window will suggest to create a _launch.json_ file.
+To do so, open the application project folder in VS Code (File > Open Folder), switch to the Debug view by clicking on the "bug" icon in the left-hand side panel. The newly opened window will suggest to create a _launch.json_ file.
 If debugging is not yet configured (no `launch.json` has been created), select `GraalVM` from the list of available debug environmnets.
 Once the `launch.json` file is opened in the editor, one of the following techniques can be used to add a new configuration:
 * Use IntelliSense if your cursor is located inside the configurations array.
@@ -315,7 +345,7 @@ The `polyglot` launcher does not require the `--polyglot` option, it is enabled 
 For more information see the [GraalVM polyglot documentation](https://www.graalvm.org/reference-manual/polyglot-programming/).
 
 To debug a polyglot application on GraalVM in VS Code, creating a launch configuration for the application is necessary.
-To do so, open the application project folder in VS Code (File > Open Folder), switch to the Debug view by clicking on the "bug" icon in the left side panel. The newly opened window will suggest to create a _launch.json_ file.
+To do so, open the application project folder in VS Code (File > Open Folder), switch to the Debug view by clicking on the "bug" icon in the left-hand side panel. The newly opened window will suggest to create a _launch.json_ file.
 If debugging is not yet configured (no `launch.json` has been created), select `GraalVM` from the list of available debug environmnets.
 Once the `launch.json` file is opened in the editor, one of the following techniques can be used to add a new configuration:
 * Use IntelliSense if your cursor is located inside the configurations array.
@@ -404,37 +434,6 @@ Enabling this option, the GraalVM Ruby installation is checked for presence of t
 
 Once the `solargraph` gem is installed, the Ruby Language Server is automatically started and passed to the Language Server Protocol as delegate when necessary.
 
-## Debug Adapter Protocol
-
-When creating the Run/Debug Configurations in VS Code, Chrome DevTools Protocol is provisioned by default. However, GraalVM provides a built-in implementation of the [Debug Adapter Protocol (DAP)](https://www.graalvm.org/docs/tools/dap) and, with GraalVM Extention for VS Code, a user now can choose a protocol to use by setting the protocol attribute in the corresponding debug configuration to either `chromeDevTools` or `debugAdapter`.
-
-To open a debugger port serving Debug Adapter Protocol, you need to pass the `--dap` option to the command line launcher.
-Other available options to pass to GraalVM's Debug Adapter Protocol are:
-* `--dap.Suspend=false`: disable the execution suspension at first source line, enabled by default.
-* `--dap.WaitAttached`: do not execute any source code until debugger client is attached. The default is false.
-* `--dap=<[[host:]port]>`: start the debugger on a different port than default (`<host>:4711`).
-
-Then you need a DAP client to connect to the open DAP port.
-To connect to the open DAP port, the content of _launch.json_ for, for example, a Node.js application, should be:
-```json
-{
-    "version": "0.2.0",
-    "configurations": [
-        {
-            "type": "graalvm",
-            "request": "launch",
-            "name": "Launch Node App",
-            "outputCapture": "std",
-            "protocol": "debugAdapter",
-            "program": "${workspaceFolder}/App.js"
-        }
-    ]
-}
-```
-
-The advantage of using Debug Adapter Protocol over Chrome Dev Tools is that (1) it is 'native' to Visual Studio Code (VS Code), meaning it does not require any intermediate translatation, and (2) that it supports multithreading, which can be particually useful to debug, e.g., a Ruby application.
-
-
 ### Additional Editor Features
 
 Since an easy writing of [polyglot](https://www.graalvm.org/docs/reference-manual/polyglot) applications is one of the defining features of GraalVM, the code completion invoked inside JavaScript sources provides items for `Polyglot.eval(...)`, `Polyglot.evalFile(...)` and `Java.type(...)` calls.
@@ -462,7 +461,9 @@ For example, having an R code snippet called via the Polyglot API from inside a 
 
 This extension contributes the following settings:
 
-* __graalvm.home__ - The path to GraalVM installation.
+* __graalvm.home__ - The path to the GraalVM installation.
+* __graalvm.installations__ - All registered GraalVM installations.
+* __graalvm.systemDetect__ - Detect GraalVM's installation from the system environment variables.
 * __graalvm.languageServer.currentWorkDir__ - An absolute path to the working directory of GraalVM's Language Server Protocol.
 * __graalvm.languageServer.inProcessServer__ - Start GraalVM's Language Server Protocol within processes being run or debugged.
 * __graalvm.languageServer.delegateServers__ - A comma-separated list of `language@[host:]port` where other language servers run.
