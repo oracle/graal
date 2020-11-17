@@ -58,10 +58,15 @@ public class EspressoLauncher extends AbstractLanguageLauncher {
         private String currentKey;
         private String currentArgument;
 
+        private boolean skip = false;
+
         Arguments(List<String> arguments) {
             this.arguments = arguments;
         }
 
+        /**
+         * Returns the raw argument at the current position.
+         */
         String getArg() {
             assert index < arguments.size();
             String val = arguments.get(index);
@@ -69,6 +74,12 @@ public class EspressoLauncher extends AbstractLanguageLauncher {
             return val;
         }
 
+        /**
+         * Returns the key associated with the argument at the current position.
+         * <p>
+         * If the argument is of the form {@code --[option]=[value]} or {@code --[option] [value]},
+         * returns {@code --[option]}.
+         */
         String getKey() {
             if (currentKey == null) {
                 assert index < arguments.size();
@@ -87,11 +98,17 @@ public class EspressoLauncher extends AbstractLanguageLauncher {
             return currentKey;
         }
 
+        /**
+         * Returns the key associated with the argument at the current position.
+         * <p>
+         * If the argument is of the form {@code --[option]=[value]} or {@code --[option] [value]},
+         * returns {@code [value]}.
+         */
         String getValue(String err) {
             if (currentArgument == null) {
-                index++;
-                if (index < arguments.size()) {
-                    currentArgument = arguments.get(index);
+                if (index + 1 < arguments.size()) {
+                    currentArgument = arguments.get(index + 1);
+                    skip = true;
                 } else {
                     throw abort(err);
                 }
@@ -99,18 +116,32 @@ public class EspressoLauncher extends AbstractLanguageLauncher {
             return currentArgument;
         }
 
+        /**
+         * Advances the position, skipping over the value associated with an option if needed.
+         * 
+         * @return true if there are still arguments to process, false otherwise.
+         */
         boolean next() {
             index++;
+            if (skip) {
+                index++;
+            }
             currentKey = null;
             currentArgument = null;
+            skip = false;
             return index < arguments.size();
         }
 
         void pushLeftoversArgs() {
-            index += 1;
+            if (currentKey != null) {
+                // Arg in processing: start from the next one.
+                next();
+            }
             if (index < arguments.size()) {
                 mainClassArgs.addAll(arguments.subList(index, arguments.size()));
             }
+            // Finish processing args.
+            index = arguments.size();
         }
     }
 
@@ -381,6 +412,8 @@ public class EspressoLauncher extends AbstractLanguageLauncher {
         contextBuilder.allowCreateThread(true);
 
         try (Context context = contextBuilder.build()) {
+
+            // TODO: Ensure consistency between option "java.Version" and the given "java.JavaHome".
 
             // runVersionAction(versionAction, context.getEngine());
             if (versionAction != VersionAction.None) {

@@ -396,17 +396,6 @@ public final class EspressoContext {
         builder.javaHome(Engine.findHome());
         vmProperties = EspressoProperties.processOptions(getLanguage(), builder, getEnv().getOptions()).build();
         javaVersion = new JavaVersion(vmProperties.bootClassPathType().getJavaVersion());
-        verifyOptionsConsistency();
-    }
-
-    /**
-     * Version of the java home has been discovered. Ensure consistency with selected version from
-     * {@link EspressoOptions#Version}, and ensure that other set options are valid (ie: no module
-     * options when running Java 8).
-     */
-    private void verifyOptionsConsistency() {
-        javaVersion.checkVersion(EspressoOptions.Version.getValue(getEnv().getOptions()));
-        javaVersion.checkOptions(getEnv().getOptions());
     }
 
     private void initializeKnownClass(Symbol<Type> type) {

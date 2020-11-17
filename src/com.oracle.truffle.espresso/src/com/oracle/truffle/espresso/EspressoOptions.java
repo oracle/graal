@@ -205,7 +205,7 @@ public final class EspressoOptions {
         J8("8"),
         J11("11"),
         J17("17"),
-        LATEST(Integer.toString(JavaVersion.LATEST)),
+        LATEST(Integer.toString(JavaVersion.LATEST_SUPPORTED)),
         LAX("lax");
 
         private final String asString;
