@@ -27,6 +27,7 @@ package com.oracle.svm.hosted;
 import static jdk.vm.ci.meta.DeoptimizationAction.InvalidateReprofile;
 import static jdk.vm.ci.meta.DeoptimizationReason.UnreachedCode;
 
+import java.lang.reflect.GenericSignatureFormatError;
 import java.lang.reflect.Method;
 import java.util.Arrays;
 import java.util.HashMap;
@@ -55,17 +56,41 @@ public final class ExceptionSynthesizer {
     private static final Map<Key<Class<?>>, Method> exceptionMethods = new HashMap<>();
 
     static {
+        // ReflectiveOperationException subclasses
+        registerMethod(ClassNotFoundException.class, String.class);
+        registerMethod(NoSuchFieldException.class, String.class);
+        registerMethod(NoSuchMethodException.class, String.class);
+        // LinkageError subclasses
+        registerMethod(LinkageError.class, String.class);
+        registerMethod(ClassCircularityError.class, String.class);
+        registerMethod(IncompatibleClassChangeError.class, String.class);
+        registerMethod(NoSuchFieldError.class, String.class);
+        registerMethod(InstantiationError.class, String.class);
+        registerMethod(NoSuchMethodError.class, String.class);
+        registerMethod(IllegalAccessError.class, String.class);
+        registerMethod(AbstractMethodError.class, String.class);
+        registerMethod(BootstrapMethodError.class, String.class);
+        registerMethod(ClassFormatError.class, String.class);
+        registerMethod(GenericSignatureFormatError.class, String.class);
+        registerMethod(UnsupportedClassVersionError.class, String.class);
+        registerMethod(UnsatisfiedLinkError.class, String.class);
+        registerMethod(NoClassDefFoundError.class, String.class);
+        registerMethod(ExceptionInInitializerError.class, String.class);
+        registerMethod(VerifyError.class, String.class);
+        registerMethod(VerifyError.class);
+    }
+
+    private static void registerMethod(Class<?> exceptionClass) {
         try {
-            // ReflectiveOperationException subclasses
-            exceptionMethods.put(Key.from(ClassNotFoundException.class, String.class), ImplicitExceptions.class.getDeclaredMethod("throwClassNotFoundException", String.class));
-            exceptionMethods.put(Key.from(NoSuchFieldException.class, String.class), ImplicitExceptions.class.getDeclaredMethod("throwNoSuchFieldException", String.class));
-            exceptionMethods.put(Key.from(NoSuchMethodException.class, String.class), ImplicitExceptions.class.getDeclaredMethod("throwNoSuchMethodException", String.class));
-            // LinkageError subclasses
-            exceptionMethods.put(Key.from(NoClassDefFoundError.class, String.class), ImplicitExceptions.class.getDeclaredMethod("throwNoClassDefFoundError", String.class));
-            exceptionMethods.put(Key.from(NoSuchFieldError.class, String.class), ImplicitExceptions.class.getDeclaredMethod("throwNoSuchFieldError", String.class));
-            exceptionMethods.put(Key.from(NoSuchMethodError.class, String.class), ImplicitExceptions.class.getDeclaredMethod("throwNoSuchMethodError", String.class));
-            exceptionMethods.put(Key.from(VerifyError.class, String.class), ImplicitExceptions.class.getDeclaredMethod("throwVerifyError", String.class));
-            exceptionMethods.put(Key.from(VerifyError.class), ImplicitExceptions.class.getDeclaredMethod("throwVerifyError"));
+            exceptionMethods.put(Key.from(exceptionClass), ImplicitExceptions.class.getDeclaredMethod("throw" + exceptionClass.getName()));
+        } catch (NoSuchMethodException ex) {
+            throw VMError.shouldNotReachHere(ex);
+        }
+    }
+
+    private static void registerMethod(Class<?> exceptionClass, Class<?> paramterClass) {
+        try {
+            exceptionMethods.put(Key.from(exceptionClass, paramterClass), ImplicitExceptions.class.getDeclaredMethod("throw" + exceptionClass.getName(), paramterClass));
         } catch (NoSuchMethodException ex) {
             throw VMError.shouldNotReachHere(ex);
         }

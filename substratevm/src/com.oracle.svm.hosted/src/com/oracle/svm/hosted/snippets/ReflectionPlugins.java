@@ -180,7 +180,7 @@ public class ReflectionPlugins {
             try {
                 Field field = declared ? clazz.getDeclaredField(fieldName) : clazz.getField(fieldName);
                 return pushConstant(b, targetMethod, snippetReflection, analysis, hosted, field, target);
-            } catch (NoSuchFieldException | NoClassDefFoundError e) {
+            } catch (NoSuchFieldException | LinkageError e) {
                 return throwException(b, targetMethod, analysis, hosted, target, e.getClass(), e.getMessage());
             }
         }
@@ -201,7 +201,7 @@ public class ReflectionPlugins {
                 try {
                     Method method = declared ? clazz.getDeclaredMethod(methodName, paramTypes) : clazz.getMethod(methodName, paramTypes);
                     return pushConstant(b, targetMethod, snippetReflection, analysis, hosted, method, target);
-                } catch (NoSuchMethodException | NoClassDefFoundError e) {
+                } catch (NoSuchMethodException | LinkageError e) {
                     return throwException(b, targetMethod, analysis, hosted, target, e.getClass(), e.getMessage());
                 }
             }
@@ -223,7 +223,7 @@ public class ReflectionPlugins {
                 try {
                     Constructor<?> constructor = declared ? clazz.getDeclaredConstructor(paramTypes) : clazz.getConstructor(paramTypes);
                     return pushConstant(b, targetMethod, snippetReflection, analysis, hosted, constructor, target);
-                } catch (NoSuchMethodException | NoClassDefFoundError e) {
+                } catch (NoSuchMethodException | LinkageError e) {
                     return throwException(b, targetMethod, analysis, hosted, target, e.getClass(), e.getMessage());
                 }
             }
