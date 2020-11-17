@@ -161,7 +161,7 @@ default `node` implementation, the lightweight `js` command line tool -
 or your own application that decides to [embedd GraalVM scripting](Insight-Embedding.md)
 capabilities!
 
-### Trully Polyglot - Insight any Language
+### Truly Polyglot - Insight any Language
 
 The previous examples were written in JavaScript, but due to the polyglot
 nature of GraalVM, we can take the same instrument and use it 
@@ -276,7 +276,7 @@ making all the code work as one! The `count++` invocation becomes natural part o
 the application at all the places representing `ROOT` of application functions.
 **Insight** system gives you unlimited instrumentation power at no cost!
 
-### Trully Polyglot - Insight with Ruby
+### Truly Polyglot - Insight with Ruby
 
 Not only one can instrument any GraalVM language, but also the **Insight**
 scripts can be written in any GraalVM supported language. Take for example
@@ -328,7 +328,7 @@ Three is the result 3
 Write your **Insight** scripts in any language you wish! They'll be
 ultimatelly useful accross the whole GraalVM ecosystem.
 
-### Trully Polyglot - Insights with R
+### Truly Polyglot - Insights with R
 
 The same instrument can be written in the R language opening tracing and
 aspect based programing to our friendly statistical community. Just create
