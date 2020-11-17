@@ -50,7 +50,7 @@ public class DatagramChannelTest {
             try (DatagramChannel a = DatagramChannel.open(family)) {
                 try (DatagramChannel b = DatagramChannel.open(family)) {
 
-                    a.bind(new InetSocketAddress(0));
+                    a.bind(new InetSocketAddress("localhost", 0));
                     b.bind(new InetSocketAddress(0));
 
                     final InetSocketAddress bindAddress = (InetSocketAddress) a.getLocalAddress();
