@@ -2067,7 +2067,7 @@ public final class StaticObject implements TruffleObject {
         if (index >= 0 && index < length()) {
             // TODO(peterssen): Use different profiles for index-out-of-bounds and array-store
             // exceptions.
-            UNSAFE.putObject(fields, getObjectFieldIndex(index), arrayStoreExCheck(value, ((ArrayKlass) klass).getComponentType(), meta, bytecodeNode));
+            putObjectUnsafe(arrayStoreExCheck(value, ((ArrayKlass) klass).getComponentType(), meta, bytecodeNode), index);
         } else {
             if (bytecodeNode != null) {
                 bytecodeNode.enterImplicitExceptionProfile();
@@ -2076,7 +2076,11 @@ public final class StaticObject implements TruffleObject {
         }
     }
 
-    private static Object arrayStoreExCheck(StaticObject value, Klass componentType, Meta meta, BytecodeNode bytecodeNode) {
+    public void putObjectUnsafe(StaticObject value, int index) {
+        UNSAFE.putObject(fields, getObjectFieldIndex(index), value);
+    }
+
+    private static StaticObject arrayStoreExCheck(StaticObject value, Klass componentType, Meta meta, BytecodeNode bytecodeNode) {
         if (StaticObject.isNull(value) || instanceOf(value, componentType)) {
             return value;
         } else {

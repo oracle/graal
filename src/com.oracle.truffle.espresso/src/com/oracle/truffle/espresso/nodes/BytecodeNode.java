@@ -291,8 +291,9 @@ import com.oracle.truffle.espresso.meta.EspressoError;
 import com.oracle.truffle.espresso.meta.ExceptionHandler;
 import com.oracle.truffle.espresso.meta.JavaKind;
 import com.oracle.truffle.espresso.meta.Meta;
-import com.oracle.truffle.espresso.nodes.quick.CheckCastNodeGen;
-import com.oracle.truffle.espresso.nodes.quick.InstanceOfNodeGen;
+import com.oracle.truffle.espresso.nodes.helper.EspressoReferenceArrayStoreNode;
+import com.oracle.truffle.espresso.nodes.quick.CheckCastNode;
+import com.oracle.truffle.espresso.nodes.quick.InstanceOfNode;
 import com.oracle.truffle.espresso.nodes.quick.QuickNode;
 import com.oracle.truffle.espresso.nodes.quick.interop.ArrayLengthNodeGen;
 import com.oracle.truffle.espresso.nodes.quick.interop.ByteArrayLoadNodeGen;
@@ -352,6 +353,12 @@ public final class BytecodeNode extends EspressoMethodNode {
 
     @Children private QuickNode[] nodes = QuickNode.EMPTY_ARRAY;
     @Children private QuickNode[] sparseNodes = QuickNode.EMPTY_ARRAY;
+    /**
+     * Ideally, we would want one such node per AASTORE bytecode. Unfortunately, the AASTORE
+     * bytecode is a single byte long, so we cannot quicken it, and it is far too common to pay for
+     * spawning the sparse nodes array.
+     */
+    @Child private volatile EspressoReferenceArrayStoreNode refArrayStoreNode;
 
     @CompilationFinal(dimensions = 1) //
     private final FrameSlot[] locals;
@@ -1436,7 +1443,7 @@ public final class BytecodeNode extends EspressoMethodNode {
                 case Float:   getInterpreterToVM().setArrayFloat(popFloat(frame, top - 1), index, array, this);       break;
                 case Long:    getInterpreterToVM().setArrayLong(popLong(frame, top - 1), index, array, this);         break;
                 case Double:  getInterpreterToVM().setArrayDouble(popDouble(frame, top - 1), index, array, this);     break;
-                case Object:  getInterpreterToVM().setArrayObject(popObject(frame, top - 1), index, array, this);     break;
+                case Object:  referenceArrayStore(frame, top, index, array);     break;
                 default:
                     CompilerDirectives.transferToInterpreter();
                     throw EspressoError.shouldNotReachHere();
@@ -1450,6 +1457,18 @@ public final class BytecodeNode extends EspressoMethodNode {
             // The stack effect difference vs. original bytecode is always 0.
             quickenArrayStore(frame, top, curBCI, storeOpcode, kind);
         }
+    }
+
+    private void referenceArrayStore(VirtualFrame frame, int top, int index, StaticObject array) {
+        if (refArrayStoreNode == null) {
+            CompilerDirectives.transferToInterpreterAndInvalidate();
+            synchronized (this) {
+                if (refArrayStoreNode == null) {
+                    refArrayStoreNode = insert(new EspressoReferenceArrayStoreNode(getContext()));
+                }
+            }
+        }
+        refArrayStoreNode.arrayStore(popObject(frame, top - 1), index, array);
     }
 
     private int checkBackEdge(int curBCI, int targetBCI, int top, int opcode) {
@@ -1719,7 +1738,7 @@ public final class BytecodeNode extends EspressoMethodNode {
                 quick = nodes[bs.readCPI(curBCI)];
             } else {
                 Klass typeToCheck = resolveType(CHECKCAST, bs.readCPI(curBCI));
-                quick = injectQuick(curBCI, CheckCastNodeGen.create(typeToCheck, top, curBCI), QUICK);
+                quick = injectQuick(curBCI, new CheckCastNode(typeToCheck, top, curBCI), QUICK);
             }
         }
         return quick.execute(frame) - Bytecodes.stackEffectOf(opcode);
@@ -1739,7 +1758,7 @@ public final class BytecodeNode extends EspressoMethodNode {
                 quick = nodes[bs.readCPI(curBCI)];
             } else {
                 Klass typeToCheck = resolveType(opcode, bs.readCPI(curBCI));
-                quick = injectQuick(curBCI, InstanceOfNodeGen.create(typeToCheck, top, curBCI), QUICK);
+                quick = injectQuick(curBCI, new InstanceOfNode(typeToCheck, top, curBCI), QUICK);
             }
         }
         return quick.execute(frame) - Bytecodes.stackEffectOf(opcode);
