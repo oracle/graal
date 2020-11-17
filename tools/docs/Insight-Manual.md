@@ -284,10 +284,10 @@ Ruby and create `source-tracing.rb` (make sure GraalVM Ruby is installed via
 `gu install ruby`) file:
 
 ```ruby
-puts("Ruby: Insight version " + insight[:version] + " is launching")
+puts("Ruby: Insight version #{insight.version} is launching")
 
-insight.on("source", -> (env) { 
-  puts "Ruby: observed loading of " + env[:name]
+insight.on("source", -> (env) {
+  puts "Ruby: observed loading of #{env.name}"
 })
 puts("Ruby: Hooks are ready!")
 
@@ -295,12 +295,12 @@ config = Truffle::Interop.hash_keys_as_members({
   roots: true,
   rootNameFilter: "minusOne",
   sourceFilter: -> (src) {
-    return src[:name] == "agent-fib.js"
+    return src.name == "agent-fib.js"
   }
 })
 
 insight.on("enter", -> (ctx, frame) {
-    puts("minusOne " + frame[:n].to_s)
+    puts("minusOne #{frame.n}")
 }, config)
 ```
 
