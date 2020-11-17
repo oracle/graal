@@ -35,6 +35,8 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.Objects;
 import java.util.ServiceLoader;
+
+import com.oracle.truffle.llvm.runtime.except.LLVMPolyglotException;
 import org.graalvm.options.OptionDescriptor;
 import org.graalvm.options.OptionDescriptors;
 import org.graalvm.options.OptionValues;
@@ -73,13 +75,16 @@ public final class Configurations {
      * {@link ConfigurationFactory} that matches the given options.
      */
     public static Configuration createConfiguration(LLVMLanguage language, ContextExtension.Registry ctxExtRegistry, OptionValues options) {
+        if (factories.length == 0) {
+            throw new IllegalStateException("should not reach here: no configuration found");
+        }
         for (ConfigurationFactory<?> factory : factories) {
             Configuration ret = tryCreate(factory, language, ctxExtRegistry, options);
             if (ret != null) {
                 return ret;
             }
         }
-        throw new IllegalStateException("should not reach here: no configuration found");
+        throw new LLVMPolyglotException(null, "no viable configuration found");
     }
 
     /**
