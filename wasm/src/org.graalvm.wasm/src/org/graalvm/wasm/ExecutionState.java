@@ -116,14 +116,21 @@ public class ExecutionState {
             return -1;
         }
         Assert.assertIntGreater(blockStackSize, 0, "Cannot pop from the stack", Failure.EMPTY_STACK);
-        return stack.pop();
+        return stack.popBack();
     }
 
     public void popChecked(byte expectedType) {
-        if (!isReachable()) {
-            return;
+        if (isReachable()) {
+            assertTypesEqual(expectedType, pop());
         }
-        assertTypesEqual(expectedType, pop());
+    }
+
+    private void topChecked(byte expectedType) {
+        if (isReachable()) {
+            final int blockStackSize = stack.size() - getStackSize(0);
+            Assert.assertIntGreater(blockStackSize, 0, "Cannot pop from the stack", Failure.EMPTY_STACK);
+            assertTypesEqual(expectedType, stack.top());
+        }
     }
 
     private static void assertTypesEqual(byte expectedType, byte actualType) {
@@ -135,7 +142,7 @@ public class ExecutionState {
     public void unwindStack(int size) {
         Assert.assertIntLessOrEqual(size, stackSize(), Failure.INVALID_STACK_SHRINK_SIZE);
         while (stackSize() > size) {
-            stack.pop();
+            stack.popBack();
         }
     }
 
@@ -194,8 +201,7 @@ public class ExecutionState {
         } else {
             Assert.assertIntLessOrEqual(block.returnLength(), 1, "A block cannot return more than one value", Failure.MULTIPLE_RETURN_VALUES);
             if (block.returnLength() == 1) {
-                popChecked(block.returnTypeId());
-                push(block.returnTypeId());
+                topChecked(block.returnTypeId());
             }
         }
     }

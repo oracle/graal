@@ -64,12 +64,16 @@ public final class ByteArrayList {
         add(b);
     }
 
-    public byte pop() {
+    public byte popBack() {
         if (size() == 0) {
             throw new NoSuchElementException("Cannot pop from an empty ByteArrayList.");
         }
         size--;
         return array[size];
+    }
+
+    public byte top() {
+        return array[size - 1];
     }
 
     public void set(int index, byte b) {
