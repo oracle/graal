@@ -86,9 +86,9 @@
     i32.const 1
     i32.add)
   (func $run (type 1) (result i32)
-    i32.const 37
+    i32.const 31
     call $fibonacci
-    i32.const 24157817
+    i32.const 1346269
     i32.ne)
   (func $main (type 4) (param i32 i32) (result i32)
     call $run)
@@ -237,4 +237,4 @@
   (export "stackRestore" (func $stackRestore))
   (export "stackAlloc" (func $stackAlloc))
   (export "__data_end" (global 1))
-  (elem (;0;) (i32.const 1) func $__wasm_call_ctors))
+  (elem (;0;) (i32.const 1) $__wasm_call_ctors))

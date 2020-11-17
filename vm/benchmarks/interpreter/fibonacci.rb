@@ -32,8 +32,8 @@ def fibonacci(n)
 end
 
 def run
-  number = 37
-  answer = 24157817
+  number = 31
+  answer = 1346269
 
   fibo = fibonacci(number)
 
