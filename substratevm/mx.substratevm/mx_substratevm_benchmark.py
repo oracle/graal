@@ -398,7 +398,8 @@ _daCapo_iterations = {
 }
 
 _daCapo_exclude_lib = {
-    'h2'          : ['derbytools.jar', 'derbyclient.jar', 'derbynet.jar']  # multiple derby classes occurrences on the classpath can cause a security error
+    'h2'          : ['derbytools.jar', 'derbyclient.jar', 'derbynet.jar'],  # multiple derby classes occurrences on the classpath can cause a security error
+    'pmd'         : ['derbytools.jar', 'derbyclient.jar', 'derbynet.jar'],  # multiple derby classes occurrences on the classpath can cause a security error
 }
 
 class DaCapoNativeImageBenchmarkSuite(mx_java_benchmarks.DaCapoBenchmarkSuite, BaseDaCapoNativeImageBenchmarkSuite): #pylint: disable=too-many-ancestors

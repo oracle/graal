@@ -732,6 +732,7 @@ def register_graalvm_vms():
     for short_name, config_suffix in [('niee', 'ee'), ('ni', 'ce')]:
         if any(component.short_name == short_name for component in mx_sdk_vm_impl.registered_graalvm_components(stage1=False)):
             mx_benchmark.add_java_vm(NativeImageVM('native-image', 'default-' + config_suffix, None, None, 0, False, False, False), _suite, 10)
+            mx_benchmark.add_java_vm(NativeImageVM('native-image', 'gate-' + config_suffix, None, None, 0, False, False, True), _suite, 10)
             mx_benchmark.add_java_vm(NativeImageVM('native-image', 'llvm-' + config_suffix, None, None, 0, False, False, False, True), _suite, 10)
             break
 
