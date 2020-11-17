@@ -318,7 +318,8 @@ public class ReflectionPlugins {
 
     private static boolean throwException(GraphBuilderContext b, ResolvedJavaMethod reflectionMethod, boolean analysis, boolean hosted, String targetElement,
                     Class<? extends Throwable> exceptionClass, String originalMessage) {
-        Method exceptionMethod = ExceptionSynthesizer.throwExceptionMethod(exceptionClass);
+        /* Get the exception throwing method that has a message parameter. */
+        Method exceptionMethod = ExceptionSynthesizer.throwExceptionMethod(exceptionClass, String.class);
         Method intrinsic = getIntrinsic(analysis, hosted, b, exceptionMethod);
         if (intrinsic == null) {
             return false;

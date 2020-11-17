@@ -28,7 +28,9 @@ import static jdk.vm.ci.meta.DeoptimizationAction.InvalidateReprofile;
 import static jdk.vm.ci.meta.DeoptimizationReason.UnreachedCode;
 
 import java.lang.reflect.Method;
+import java.util.Arrays;
 import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
 
 import org.graalvm.compiler.nodes.CallTargetNode.InvokeKind;
@@ -46,19 +48,24 @@ import jdk.vm.ci.meta.ResolvedJavaMethod;
 
 public final class ExceptionSynthesizer {
 
-    private static final Map<Class<? extends Throwable>, Method> exceptionMethods = new HashMap<>();
+    /**
+     * Cache exception throwing methods. The key is a List<Class>: first element is the exception
+     * type, the next elements are the parameter types.
+     */
+    private static final Map<Key<Class<?>>, Method> exceptionMethods = new HashMap<>();
 
     static {
         try {
             // ReflectiveOperationException subclasses
-            exceptionMethods.put(ClassNotFoundException.class, ImplicitExceptions.class.getDeclaredMethod("throwClassNotFoundException", String.class));
-            exceptionMethods.put(NoSuchFieldException.class, ImplicitExceptions.class.getDeclaredMethod("throwNoSuchFieldException", String.class));
-            exceptionMethods.put(NoSuchMethodException.class, ImplicitExceptions.class.getDeclaredMethod("throwNoSuchMethodException", String.class));
+            exceptionMethods.put(Key.from(ClassNotFoundException.class, String.class), ImplicitExceptions.class.getDeclaredMethod("throwClassNotFoundException", String.class));
+            exceptionMethods.put(Key.from(NoSuchFieldException.class, String.class), ImplicitExceptions.class.getDeclaredMethod("throwNoSuchFieldException", String.class));
+            exceptionMethods.put(Key.from(NoSuchMethodException.class, String.class), ImplicitExceptions.class.getDeclaredMethod("throwNoSuchMethodException", String.class));
             // LinkageError subclasses
-            exceptionMethods.put(NoClassDefFoundError.class, ImplicitExceptions.class.getDeclaredMethod("throwNoClassDefFoundError", String.class));
-            exceptionMethods.put(NoSuchFieldError.class, ImplicitExceptions.class.getDeclaredMethod("throwNoSuchFieldError", String.class));
-            exceptionMethods.put(NoSuchMethodError.class, ImplicitExceptions.class.getDeclaredMethod("throwNoSuchMethodError", String.class));
-            exceptionMethods.put(VerifyError.class, ImplicitExceptions.class.getDeclaredMethod("throwVerifyError"));
+            exceptionMethods.put(Key.from(NoClassDefFoundError.class, String.class), ImplicitExceptions.class.getDeclaredMethod("throwNoClassDefFoundError", String.class));
+            exceptionMethods.put(Key.from(NoSuchFieldError.class, String.class), ImplicitExceptions.class.getDeclaredMethod("throwNoSuchFieldError", String.class));
+            exceptionMethods.put(Key.from(NoSuchMethodError.class, String.class), ImplicitExceptions.class.getDeclaredMethod("throwNoSuchMethodError", String.class));
+            exceptionMethods.put(Key.from(VerifyError.class, String.class), ImplicitExceptions.class.getDeclaredMethod("throwVerifyError", String.class));
+            exceptionMethods.put(Key.from(VerifyError.class), ImplicitExceptions.class.getDeclaredMethod("throwVerifyError"));
         } catch (NoSuchMethodException ex) {
             throw VMError.shouldNotReachHere(ex);
         }
@@ -67,14 +74,15 @@ public final class ExceptionSynthesizer {
     private ExceptionSynthesizer() {
     }
 
-    public static Method throwExceptionMethod(Class<? extends Throwable> exceptionClass) {
-        Method method = exceptionMethods.get(exceptionClass);
-        VMError.guarantee(method != null, "Exception synthesizer method for class " + exceptionClass + " not found.");
+    public static Method throwExceptionMethod(Class<?>... methodDescriptor) {
+        Method method = exceptionMethods.get(Key.from(methodDescriptor));
+        VMError.guarantee(method != null, "Exception synthesizer method " + Arrays.asList(methodDescriptor) + " not found.");
         return method;
     }
 
-    public static void throwException(GraphBuilderContext b, Class<? extends Throwable> exceptionClass, String message) {
-        throwException(b, throwExceptionMethod(exceptionClass), message);
+    public static void throwException(GraphBuilderContext b, Class<?> exceptionClass, String message) {
+        /* Get the exception throwing method that has a message parameter. */
+        throwException(b, throwExceptionMethod(exceptionClass, String.class), message);
     }
 
     public static void throwException(GraphBuilderContext b, Method throwExceptionMethod, String message) {
@@ -94,6 +102,36 @@ public final class ExceptionSynthesizer {
              * "throw ...".
              */
             b.add(new DeoptimizeNode(InvalidateReprofile, UnreachedCode));
+        }
+    }
+
+    static class Key<T> {
+        @SafeVarargs
+        static <V> Key<V> from(V... values) {
+            return new Key<V>(values);
+        }
+
+        private final List<T> elements;
+
+        private Key(T[] values) {
+            elements = Arrays.asList(values);
+        }
+
+        @Override
+        public boolean equals(Object o) {
+            if (this == o) {
+                return true;
+            }
+            if (o == null || getClass() != o.getClass()) {
+                return false;
+            }
+            Key<?> key = (Key<?>) o;
+            return elements.equals(key.elements);
+        }
+
+        @Override
+        public int hashCode() {
+            return elements.hashCode();
         }
     }
 }
