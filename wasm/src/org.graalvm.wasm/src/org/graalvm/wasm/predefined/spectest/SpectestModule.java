@@ -67,10 +67,9 @@ public class SpectestModule extends BuiltinModule {
         defineFunction(module, "print_f64", types(F64_TYPE), types(), new Print(language, module));
         defineFunction(module, "print_i32_f32", types(I32_TYPE, F32_TYPE), types(), new Print(language, module));
         defineFunction(module, "print_f64_f64", types(F64_TYPE, F64_TYPE), types(), new Print(language, module));
-        defineGlobal(module, "global_i32", I32_TYPE, (byte) GlobalModifier.MUTABLE, 0);
-        defineGlobal(module, "global_i64", I64_TYPE, (byte) GlobalModifier.MUTABLE, 0);
-        defineGlobal(module, "global_f32", F32_TYPE, (byte) GlobalModifier.MUTABLE, 0);
-        defineGlobal(module, "global_f64", F64_TYPE, (byte) GlobalModifier.MUTABLE, 0);
+        defineGlobal(module, "global_i32", I32_TYPE, (byte) GlobalModifier.CONSTANT, 0);
+        defineGlobal(module, "global_i64", I64_TYPE, (byte) GlobalModifier.CONSTANT, 0);
+        defineGlobal(module, "global_f64", F64_TYPE, (byte) GlobalModifier.CONSTANT, 0);
         defineTable(module, "table", 10, 20, ReferenceTypes.FUNCREF);
         defineMemory(module, "memory", 1, 2);
         return module;
