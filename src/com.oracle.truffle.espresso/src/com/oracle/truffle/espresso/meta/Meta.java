@@ -46,6 +46,10 @@ import com.oracle.truffle.espresso.runtime.EspressoException;
 import com.oracle.truffle.espresso.runtime.StaticObject;
 import com.oracle.truffle.espresso.substitutions.Host;
 import com.oracle.truffle.espresso.vm.InterpreterToVM;
+import com.oracle.truffle.espresso.vm.UnsafeAccess;
+import com.oracle.truffle.object.DebugCounter;
+
+import sun.misc.Unsafe;
 
 /**
  * Introspection API to access the guest world from the host. Provides seamless conversions from
@@ -163,6 +167,8 @@ public final class Meta implements ContextAccess {
         java_lang_String_hashCode = java_lang_String.lookupDeclaredMethod(Name.hashCode, Signature._int);
         java_lang_String_length = java_lang_String.lookupDeclaredMethod(Name.length, Signature._int);
         java_lang_String_toCharArray = java_lang_String.lookupDeclaredMethod(Name.toCharArray, Signature._char_array);
+        java_lang_String_charAt = java_lang_String.lookupDeclaredMethod(Name.charAt, Signature._char);
+        java_lang_String_indexOf = java_lang_String.lookupDeclaredMethod(Name.indexOf, Signature._int_int_int);
 
         java_lang_Throwable = knownKlass(Type.java_lang_Throwable);
         java_lang_Throwable_getStackTrace = java_lang_Throwable.lookupDeclaredMethod(Name.getStackTrace, Signature.StackTraceElement_array);
@@ -666,6 +672,8 @@ public final class Meta implements ContextAccess {
     public final Method java_lang_String_hashCode;
     public final Method java_lang_String_length;
     public final Method java_lang_String_toCharArray;
+    public final Method java_lang_String_charAt;
+    public final Method java_lang_String_indexOf;
 
     public final ObjectKlass java_lang_ClassLoader;
     public final Field java_lang_ClassLoader_parent;
@@ -1431,36 +1439,53 @@ public final class Meta implements ContextAccess {
 
     private static class HostJava {
 
-        private static final java.lang.reflect.Field String_value;
-        private static final java.lang.reflect.Field String_hash;
+        private static final DebugCounter NEW_STRING = DebugCounter.create("New String");
+        private static final DebugCounter GET_STRING_VALUE = DebugCounter.create("Get string value");
+
+        private static final boolean hostCompactString;
+        private static final Unsafe UNSAFE = UnsafeAccess.get();
+
+        private static final long String_value_offset;
+        private static final long String_hash_offset;
 
         static {
             try {
-                String_value = String.class.getDeclaredField("value");
-                String_value.setAccessible(true);
-                String_hash = String.class.getDeclaredField("hash");
-                String_hash.setAccessible(true);
+                String_value_offset = UNSAFE.objectFieldOffset(String.class.getDeclaredField("value"));
+                String_hash_offset = UNSAFE.objectFieldOffset(String.class.getDeclaredField("hash"));
+                hostCompactString = !System.getProperty("java.version").startsWith("1.");
             } catch (NoSuchFieldException e) {
                 throw EspressoError.shouldNotReachHere(e);
             }
         }
 
         private static char[] getStringValue(String s) {
-            char[] chars = new char[s.length()];
-            s.getChars(0, s.length(), chars, 0);
-            return chars;
-        }
-
-        private static int getStringHash(String s) {
-            try {
-                return (int) String_hash.get(s);
-            } catch (IllegalAccessException e) {
-                throw EspressoError.shouldNotReachHere(e);
+            GET_STRING_VALUE.inc();
+            if (hostCompactString) {
+                char[] chars = new char[s.length()];
+                s.getChars(0, s.length(), chars, 0);
+                return chars;
+            } else {
+                return (char[]) UNSAFE.getObject(s, String_value_offset);
             }
         }
 
+        private static int getStringHash(String s) {
+            return UNSAFE.getInt(s, String_hash_offset);
+        }
+
         private static String createString(final char[] value) {
-            return new String(value);
+            NEW_STRING.inc();
+            if (hostCompactString) {
+                return new String(value);
+            } else {
+                try {
+                    String str = (String) UNSAFE.allocateInstance(String.class);
+                    UNSAFE.putObject(str, String_value_offset, value);
+                    return str;
+                } catch (Throwable e) {
+                    throw EspressoError.shouldNotReachHere();
+                }
+            }
         }
     }
 
