@@ -118,8 +118,14 @@ public final class CallTree extends Graph {
     }
 
     public void updateTracingInfo(TruffleMetaAccessProvider inliningPlan) {
-        final int inlinedWithoutRoot = inlined - 1;
-        inliningPlan.setCallCount(inlinedWithoutRoot + frontierSize);
-        inliningPlan.setInlinedCallCount(inlinedWithoutRoot);
+        if (request.options.get(PolyglotCompilerOptions.TraceCompilation) || request.options.get(PolyglotCompilerOptions.CompilationStatistics) ||
+                        request.options.get(PolyglotCompilerOptions.CompilationStatisticDetails)) {
+            final int inlinedWithoutRoot = inlined - 1;
+            inliningPlan.setCallCount(inlinedWithoutRoot + frontierSize);
+            inliningPlan.setInlinedCallCount(inlinedWithoutRoot);
+        }
+        if (request.options.get(PolyglotCompilerOptions.CompilationStatistics) || request.options.get(PolyglotCompilerOptions.CompilationStatisticDetails)) {
+            root.collectInlinedTargets(inliningPlan);
+        }
     }
 }

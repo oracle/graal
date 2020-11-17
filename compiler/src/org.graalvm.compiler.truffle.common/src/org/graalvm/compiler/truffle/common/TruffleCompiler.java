@@ -83,7 +83,7 @@ public interface TruffleCompiler {
      *            compilation is cancelled
      * @param listener a listener receiving events about compilation success or failure
      */
-    void doCompile(TruffleDebugContext debug, TruffleCompilation compilation, Map<String, Object> options, TruffleInliningPlan inlining, TruffleCompilationTask task,
+    void doCompile(TruffleDebugContext debug, TruffleCompilation compilation, Map<String, Object> options, TruffleMetaAccessProvider inlining, TruffleCompilationTask task,
                     TruffleCompilerListener listener);
 
     /**

@@ -248,7 +248,7 @@ public interface TruffleCompilerRuntime {
      *
      * @return the requested plan or {@code null} a plan cannot be created in the calling context
      */
-    TruffleInliningPlan createInliningPlan(CompilableTruffleAST compilable, TruffleCompilationTask task);
+    TruffleMetaAccessProvider createInliningPlan();
 
     /**
      * Gets the {@link CompilableTruffleAST} represented by {@code constant}.

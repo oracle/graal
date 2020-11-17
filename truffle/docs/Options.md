@@ -64,10 +64,8 @@ Expert engine options:
   --engine.Inlining=<Boolean>                  Enable automatic inlining of guest language call targets.
   --engine.InliningExpansionBudget=<Integer>   The base expansion budget for language-agnostic inlining.
   --engine.InliningInliningBudget=<Integer>    The base inlining budget for language-agnostic inlining
-  --engine.InliningNodeBudget=<Integer>        Maximum number of inlined non-trivial AST nodes per compilation unit.
   --engine.InliningPolicy=<String>             Explicitly pick a inlining policy by name. Highest priority chosen by default.
   --engine.InliningRecursionDepth=<Integer>    Maximum depth for recursive inlining.
-  --engine.LanguageAgnosticInlining=<Boolean>  Use language-agnostic inlining (overrides the TruffleFunctionInlining setting, option is experimental).
   --engine.MinInvokeThreshold=<Integer>        Minimum number of calls before a call target is compiled
   --engine.Mode=<EngineMode>                   Configures the execution mode of the engine. Available modes are 'latency' and 'throughput'. The default value balances
                                                between the two.

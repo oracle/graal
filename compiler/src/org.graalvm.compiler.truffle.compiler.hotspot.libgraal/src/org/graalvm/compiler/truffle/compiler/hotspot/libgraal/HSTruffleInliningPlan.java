@@ -24,55 +24,41 @@
  */
 package org.graalvm.compiler.truffle.compiler.hotspot.libgraal;
 
+import static org.graalvm.compiler.truffle.common.hotspot.libgraal.TruffleFromLibGraal.Id.AddInlinedTarget;
 import static org.graalvm.compiler.truffle.common.hotspot.libgraal.TruffleFromLibGraal.Id.AddTargetToDequeue;
-import static org.graalvm.compiler.truffle.common.hotspot.libgraal.TruffleFromLibGraal.Id.CountCalls;
-import static org.graalvm.compiler.truffle.common.hotspot.libgraal.TruffleFromLibGraal.Id.CountInlinedCalls;
-import static org.graalvm.compiler.truffle.common.hotspot.libgraal.TruffleFromLibGraal.Id.DequeueTargets;
 import static org.graalvm.compiler.truffle.common.hotspot.libgraal.TruffleFromLibGraal.Id.FindCallNode;
-import static org.graalvm.compiler.truffle.common.hotspot.libgraal.TruffleFromLibGraal.Id.FindDecision;
 import static org.graalvm.compiler.truffle.common.hotspot.libgraal.TruffleFromLibGraal.Id.GetDescription;
 import static org.graalvm.compiler.truffle.common.hotspot.libgraal.TruffleFromLibGraal.Id.GetLanguage;
 import static org.graalvm.compiler.truffle.common.hotspot.libgraal.TruffleFromLibGraal.Id.GetLineNumber;
 import static org.graalvm.compiler.truffle.common.hotspot.libgraal.TruffleFromLibGraal.Id.GetNodeClassName;
 import static org.graalvm.compiler.truffle.common.hotspot.libgraal.TruffleFromLibGraal.Id.GetNodeId;
-import static org.graalvm.compiler.truffle.common.hotspot.libgraal.TruffleFromLibGraal.Id.GetNodeRewritingAssumption;
 import static org.graalvm.compiler.truffle.common.hotspot.libgraal.TruffleFromLibGraal.Id.GetOffsetEnd;
 import static org.graalvm.compiler.truffle.common.hotspot.libgraal.TruffleFromLibGraal.Id.GetOffsetStart;
 import static org.graalvm.compiler.truffle.common.hotspot.libgraal.TruffleFromLibGraal.Id.GetPosition;
-import static org.graalvm.compiler.truffle.common.hotspot.libgraal.TruffleFromLibGraal.Id.GetTargetName;
 import static org.graalvm.compiler.truffle.common.hotspot.libgraal.TruffleFromLibGraal.Id.GetURI;
-import static org.graalvm.compiler.truffle.common.hotspot.libgraal.TruffleFromLibGraal.Id.IsTargetStable;
 import static org.graalvm.compiler.truffle.common.hotspot.libgraal.TruffleFromLibGraal.Id.SetCallCount;
 import static org.graalvm.compiler.truffle.common.hotspot.libgraal.TruffleFromLibGraal.Id.SetInlinedCallCount;
-import static org.graalvm.compiler.truffle.common.hotspot.libgraal.TruffleFromLibGraal.Id.ShouldInline;
+import static org.graalvm.compiler.truffle.compiler.hotspot.libgraal.HSTruffleInliningPlanGen.callAddInlinedTarget;
 import static org.graalvm.compiler.truffle.compiler.hotspot.libgraal.HSTruffleInliningPlanGen.callAddTargetToDequeue;
-import static org.graalvm.compiler.truffle.compiler.hotspot.libgraal.HSTruffleInliningPlanGen.callCountCalls;
-import static org.graalvm.compiler.truffle.compiler.hotspot.libgraal.HSTruffleInliningPlanGen.callCountInlinedCalls;
-import static org.graalvm.compiler.truffle.compiler.hotspot.libgraal.HSTruffleInliningPlanGen.callDequeueTargets;
 import static org.graalvm.compiler.truffle.compiler.hotspot.libgraal.HSTruffleInliningPlanGen.callFindCallNode;
-import static org.graalvm.compiler.truffle.compiler.hotspot.libgraal.HSTruffleInliningPlanGen.callFindDecision;
 import static org.graalvm.compiler.truffle.compiler.hotspot.libgraal.HSTruffleInliningPlanGen.callGetDescription;
 import static org.graalvm.compiler.truffle.compiler.hotspot.libgraal.HSTruffleInliningPlanGen.callGetLanguage;
 import static org.graalvm.compiler.truffle.compiler.hotspot.libgraal.HSTruffleInliningPlanGen.callGetLineNumber;
 import static org.graalvm.compiler.truffle.compiler.hotspot.libgraal.HSTruffleInliningPlanGen.callGetNodeClassName;
 import static org.graalvm.compiler.truffle.compiler.hotspot.libgraal.HSTruffleInliningPlanGen.callGetNodeId;
-import static org.graalvm.compiler.truffle.compiler.hotspot.libgraal.HSTruffleInliningPlanGen.callGetNodeRewritingAssumption;
 import static org.graalvm.compiler.truffle.compiler.hotspot.libgraal.HSTruffleInliningPlanGen.callGetOffsetEnd;
 import static org.graalvm.compiler.truffle.compiler.hotspot.libgraal.HSTruffleInliningPlanGen.callGetOffsetStart;
 import static org.graalvm.compiler.truffle.compiler.hotspot.libgraal.HSTruffleInliningPlanGen.callGetPosition;
-import static org.graalvm.compiler.truffle.compiler.hotspot.libgraal.HSTruffleInliningPlanGen.callGetTargetName;
 import static org.graalvm.compiler.truffle.compiler.hotspot.libgraal.HSTruffleInliningPlanGen.callGetURI;
-import static org.graalvm.compiler.truffle.compiler.hotspot.libgraal.HSTruffleInliningPlanGen.callIsTargetStable;
 import static org.graalvm.compiler.truffle.compiler.hotspot.libgraal.HSTruffleInliningPlanGen.callSetCallCount;
 import static org.graalvm.compiler.truffle.compiler.hotspot.libgraal.HSTruffleInliningPlanGen.callSetInlinedCallCount;
-import static org.graalvm.compiler.truffle.compiler.hotspot.libgraal.HSTruffleInliningPlanGen.callShouldInline;
 import static org.graalvm.libgraal.jni.JNIUtil.createString;
 
 import java.net.URI;
 
 import org.graalvm.compiler.truffle.common.CompilableTruffleAST;
 import org.graalvm.compiler.truffle.common.TruffleCallNode;
-import org.graalvm.compiler.truffle.common.TruffleInliningPlan;
+import org.graalvm.compiler.truffle.common.TruffleMetaAccessProvider;
 import org.graalvm.compiler.truffle.common.TruffleSourceLanguagePosition;
 import org.graalvm.compiler.truffle.common.hotspot.libgraal.TruffleFromLibGraal;
 import org.graalvm.compiler.truffle.common.hotspot.libgraal.TruffleToLibGraal;
@@ -86,27 +72,15 @@ import org.graalvm.libgraal.jni.JNILibGraalScope;
 import jdk.vm.ci.meta.JavaConstant;
 
 /**
- * Proxy for a {@link TruffleInliningPlan} object in the HotSpot heap.
+ * Proxy for a {@link TruffleMetaAccessProvider} object in the HotSpot heap.
  */
-class HSTruffleInliningPlan extends HSObject implements TruffleInliningPlan {
+class HSTruffleInliningPlan extends HSObject implements TruffleMetaAccessProvider {
 
     final JNILibGraalScope<TruffleToLibGraal.Id> scope;
 
     HSTruffleInliningPlan(JNILibGraalScope<TruffleToLibGraal.Id> scope, JObject handle) {
         super(scope, handle);
         this.scope = scope;
-    }
-
-    @TruffleFromLibGraal(FindDecision)
-    @Override
-    public Decision findDecision(JavaConstant callNode) {
-        long callNodeHandle = LibGraal.translate(callNode);
-        JNIEnv env = scope.getEnv();
-        JObject res = callFindDecision(env, getHandle(), callNodeHandle);
-        if (res.isNull()) {
-            return null;
-        }
-        return new HSDecision(scope, res);
     }
 
     @TruffleFromLibGraal(FindCallNode)
@@ -141,13 +115,6 @@ class HSTruffleInliningPlan extends HSObject implements TruffleInliningPlan {
         callAddTargetToDequeue(env, getHandle(), hsCompilable);
     }
 
-    @TruffleFromLibGraal(DequeueTargets)
-    @Override
-    public void dequeueTargets() {
-        JNIEnv env = scope.getEnv();
-        callDequeueTargets(env, getHandle());
-    }
-
     @TruffleFromLibGraal(SetInlinedCallCount)
     @Override
     public void setInlinedCallCount(int count) {
@@ -160,53 +127,11 @@ class HSTruffleInliningPlan extends HSObject implements TruffleInliningPlan {
         callSetCallCount(scope.getEnv(), getHandle(), count);
     }
 
-    @TruffleFromLibGraal(CountCalls)
+    @TruffleFromLibGraal(AddInlinedTarget)
     @Override
-    public int countCalls() {
-        return callCountCalls(scope.getEnv(), getHandle());
-    }
-
-    @TruffleFromLibGraal(CountInlinedCalls)
-    @Override
-    public int countInlinedCalls() {
-        return callCountInlinedCalls(scope.getEnv(), getHandle());
-    }
-
-    /**
-     * Proxy for a {@code TruffleInliningPlan.Decision} object in the HotSpot heap.
-     */
-    private static final class HSDecision extends HSTruffleInliningPlan implements Decision {
-
-        HSDecision(JNILibGraalScope<TruffleToLibGraal.Id> scope, JObject handle) {
-            super(scope, handle);
-        }
-
-        @TruffleFromLibGraal(ShouldInline)
-        @Override
-        public boolean shouldInline() {
-            return callShouldInline(scope.getEnv(), getHandle());
-        }
-
-        @TruffleFromLibGraal(IsTargetStable)
-        @Override
-        public boolean isTargetStable() {
-            return callIsTargetStable(scope.getEnv(), getHandle());
-        }
-
-        @TruffleFromLibGraal(GetTargetName)
-        @Override
-        public String getTargetName() {
-            JNIEnv env = scope.getEnv();
-            JString res = callGetTargetName(env, getHandle());
-            return createString(env, res);
-        }
-
-        @TruffleFromLibGraal(GetNodeRewritingAssumption)
-        @Override
-        public JavaConstant getNodeRewritingAssumption() {
-            long javaConstantHandle = callGetNodeRewritingAssumption(scope.getEnv(), getHandle());
-            return LibGraal.unhand(JavaConstant.class, javaConstantHandle);
-        }
+    public void addInlinedTarget(CompilableTruffleAST target) {
+        JObject hsCompilable = ((HSCompilableTruffleAST) target).getHandle();
+        callAddInlinedTarget(scope.getEnv(), getHandle(), hsCompilable);
     }
 
     /**

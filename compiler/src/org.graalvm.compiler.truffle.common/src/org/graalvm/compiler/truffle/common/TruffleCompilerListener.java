@@ -113,7 +113,7 @@ public interface TruffleCompilerListener {
      *            method on {@code graph} after this method returns will result in an
      *            {@link IllegalStateException}.
      */
-    void onTruffleTierFinished(CompilableTruffleAST compilable, TruffleInliningPlan inliningPlan, GraphInfo graph);
+    void onTruffleTierFinished(CompilableTruffleAST compilable, TruffleMetaAccessProvider inliningPlan, GraphInfo graph);
 
     /**
      * Notifies this object when compilation of {@code compilable} succeeds.
@@ -129,7 +129,7 @@ public interface TruffleCompilerListener {
      *            {@link CompilationResultInfo} method on {@code compilationResultInfo} after this
      *            method returns will result in an {@link IllegalStateException}.
      */
-    void onSuccess(CompilableTruffleAST compilable, TruffleInliningPlan inliningPlan, GraphInfo graph, CompilationResultInfo compilationResultInfo);
+    void onSuccess(CompilableTruffleAST compilable, TruffleMetaAccessProvider inliningPlan, GraphInfo graph, CompilationResultInfo compilationResultInfo);
 
     /**
      * Notifies this object when compilation of {@code compilable} fails.

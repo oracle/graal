@@ -297,7 +297,6 @@ class SulongVm(CExecutionEnvironmentMixin, GuestVm):
     def launcher_args(self, args):
         launcher_args = [
             '--experimental-options',
-            '--engine.InliningNodeBudget=10000',
             '--engine.CompilationFailureAction=ExitVM',
             '--engine.TreatPerformanceWarningsAsErrors=call,instanceof,store',
         ]
