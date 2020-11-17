@@ -597,14 +597,15 @@ public abstract class TruffleCompilerImpl implements TruffleCompilerBase {
         try (DebugCloseable a = CompilationTime.start(debug);
                         DebugContext.Scope s = debug.scope("TruffleGraal.GraalCompiler", graph, config.lastTier().providers().getCodeCache());
                         DebugCloseable c = CompilationMemUse.start(debug)) {
-            Suites selectedSuites = config.lastTier().suites();
-            LIRSuites selectedLirSuites = config.lastTier().lirSuites();
-            Providers selectedProviders = config.lastTier().providers();
+            final TruffleTierConfiguration tier;
             if (task != null && task.isFirstTier()) {
-                selectedSuites = config.firstTier().suites();
-                selectedLirSuites = config.firstTier().lirSuites();
-                selectedProviders = config.firstTier().providers();
+                tier = config.firstTier();
+            } else {
+                tier = config.lastTier();
             }
+            Suites selectedSuites = tier.suites();
+            LIRSuites selectedLirSuites = tier.lirSuites();
+            Providers selectedProviders = tier.providers();
             CompilationResult compilationResult = createCompilationResult(name, graph.compilationId(), compilable);
             result = GraalCompiler.compileGraph(graph, graph.method(), selectedProviders, config.backend(), graphBuilderSuite, Optimizations, graph.getProfilingInfo(), selectedSuites,
                             selectedLirSuites, compilationResult, CompilationResultBuilderFactory.Default, false);

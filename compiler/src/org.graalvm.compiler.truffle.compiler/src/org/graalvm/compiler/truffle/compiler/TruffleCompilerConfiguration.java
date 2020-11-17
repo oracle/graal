@@ -39,6 +39,7 @@ public final class TruffleCompilerConfiguration {
 
     public TruffleCompilerConfiguration(TruffleCompilerRuntime runtime, GraphBuilderConfiguration.Plugins plugins, SnippetReflectionProvider provider, TruffleTierConfiguration firstTier,
                     TruffleTierConfiguration lastTier) {
+        assert firstTier.backend() == lastTier.backend() : "Tiers currently must use the same backend object.";
         this.runtime = runtime;
         this.plugins = plugins;
         this.provider = provider;
