@@ -237,4 +237,4 @@
   (export "stackRestore" (func $stackRestore))
   (export "stackAlloc" (func $stackAlloc))
   (export "__data_end" (global 1))
-  (elem (;0;) (i32.const 1) func $__wasm_call_ctors))
+  (elem (;0;) (i32.const 1) $__wasm_call_ctors))

@@ -685,8 +685,9 @@ class PolyBenchBenchmarkSuite(mx_benchmark.VmBenchmarkSuite):
     def createCommandLineArgs(self, benchmarks, bmSuiteArgs):
         if len(benchmarks) != 1:
             mx.abort("Can only specify one benchmark at a time.")
+        vmArgs = self.vmArgs(bmSuiteArgs)
         benchmark_path = os.path.join(_suite.dir, "benchmarks", benchmarks[0])
-        return ["--path=" + benchmark_path]
+        return ["--path=" + benchmark_path] + vmArgs
 
     def get_vm_registry(self):
         return _polybench_vm_registry
