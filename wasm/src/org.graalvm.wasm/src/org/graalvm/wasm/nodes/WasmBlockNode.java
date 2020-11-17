@@ -372,7 +372,7 @@ public final class WasmBlockNode extends WasmNode implements RepeatingNode {
         int stackPointer = initialStackPointer;
         int profileOffset = initialProfileOffset;
         int offset = startOffset;
-        final WasmOptions.ConstantsPolicy constPolicy = instance().storeConstantsPolicy();
+        final int constPolicy = instance().storeConstantsPolicy().ordinal();
         final byte[] data = codeEntry().data();
         final int blockByteLength = Math.min(data.length - startOffset, byteLength());
         try {
@@ -2877,90 +2877,85 @@ public final class WasmBlockNode extends WasmNode implements RepeatingNode {
         return returnTypeId;
     }
 
-    private int unsignedIntConstant(WasmOptions.ConstantsPolicy policy, byte[] data, int offset, int intConstantOffset) {
-        switch (policy) {
-            case ALL:
-                return codeEntry().intConstant(intConstantOffset);
-            case LARGE_ONLY:
-                return isLargeConstant(data, offset) ? codeEntry().intConstant(intConstantOffset) : data[offset];
-            case NONE:
-                return BinaryStreamParser.peekUnsignedInt32(data, offset);
-            default:
-                throw WasmException.create(Failure.UNSPECIFIED_INTERNAL, this, "Invalid StoreConstantsInPoolChoice");
+    private int unsignedIntConstant(int policy, byte[] data, int offset, int intConstantOffset) {
+        if (policy == WasmOptions.ConstantsPolicy.NONE.ordinal()) {
+            return BinaryStreamParser.peekUnsignedInt32(data, offset);
+        } else if (policy == WasmOptions.ConstantsPolicy.ALL.ordinal()) {
+            return codeEntry().intConstant(intConstantOffset);
+        } else if (policy == WasmOptions.ConstantsPolicy.LARGE_ONLY.ordinal()) {
+            return isLargeConstant(data, offset) ? codeEntry().intConstant(intConstantOffset) : data[offset];
+        } else {
+            throw WasmException.create(Failure.UNSPECIFIED_INTERNAL, this, "Invalid StoreConstantsInPoolChoice");
         }
     }
 
-    private int signedIntConstant(WasmOptions.ConstantsPolicy policy, byte[] data, int offset, int intConstantOffset) {
-        switch (policy) {
-            case ALL:
+    private int signedIntConstant(int policy, byte[] data, int offset, int intConstantOffset) {
+        if (policy == WasmOptions.ConstantsPolicy.NONE.ordinal()) {
+            return BinaryStreamParser.peekSignedInt32(data, offset);
+        } else if (policy == WasmOptions.ConstantsPolicy.ALL.ordinal()) {
+            return codeEntry().intConstant(intConstantOffset);
+        } else if (policy == WasmOptions.ConstantsPolicy.LARGE_ONLY.ordinal()) {
+            if (isLargeConstant(data, offset)) {
                 return codeEntry().intConstant(intConstantOffset);
-            case LARGE_ONLY:
-                if (isLargeConstant(data, offset)) {
-                    return codeEntry().intConstant(intConstantOffset);
-                } else {
-                    int result = data[offset];
-                    return (result & 0x40) == 0 ? result : result | 0xffff_ff80;
-                }
-            case NONE:
-                return BinaryStreamParser.peekSignedInt32(data, offset);
-            default:
-                throw WasmException.create(Failure.UNSPECIFIED_INTERNAL, this, "Invalid StoreConstantsInPoolChoice");
+            } else {
+                int result = data[offset];
+                return (result & 0x40) == 0 ? result : result | 0xffff_ff80;
+            }
+        } else {
+            throw WasmException.create(Failure.UNSPECIFIED_INTERNAL, this, "Invalid StoreConstantsInPoolChoice");
         }
     }
 
-    public long signedLongConstant(WasmOptions.ConstantsPolicy policy, byte[] data, int offset, int longConstantOffset) {
-        switch (policy) {
-            case ALL:
+    public long signedLongConstant(int policy, byte[] data, int offset, int longConstantOffset) {
+        if (policy == WasmOptions.ConstantsPolicy.NONE.ordinal()) {
+            return BinaryStreamParser.peekSignedInt64(data, offset);
+        } else if (policy == WasmOptions.ConstantsPolicy.ALL.ordinal()) {
+            return codeEntry().longConstant(longConstantOffset);
+        } else if (policy == WasmOptions.ConstantsPolicy.LARGE_ONLY.ordinal()) {
+            if (isLargeConstant(data, offset)) {
                 return codeEntry().longConstant(longConstantOffset);
-            case LARGE_ONLY:
-                if (isLargeConstant(data, offset)) {
-                    return codeEntry().longConstant(longConstantOffset);
-                } else {
-                    long result = data[offset];
-                    return (result & 0x40) == 0 ? result : result | 0xffff_ffff_ffff_ff80L;
-                }
-            case NONE:
-                return BinaryStreamParser.peekSignedInt64(data, offset);
-            default:
-                throw WasmException.create(Failure.UNSPECIFIED_INTERNAL, this, "Invalid StoreConstantsInPoolChoice");
+            } else {
+                long result = data[offset];
+                return (result & 0x40) == 0 ? result : result | 0xffff_ffff_ffff_ff80L;
+            }
+        } else {
+            throw WasmException.create(Failure.UNSPECIFIED_INTERNAL, this, "Invalid StoreConstantsInPoolChoice");
         }
     }
 
-    private int offsetDelta(WasmOptions.ConstantsPolicy policy, byte[] data, int offset, int byteConstantOffset) {
-        switch (policy) {
-            case ALL:
-                return codeEntry().byteConstant(byteConstantOffset);
-            case LARGE_ONLY:
-                return isLargeConstant(data, offset) ? codeEntry().byteConstant(byteConstantOffset) : 1;
-            case NONE:
-                return peekLeb128Length(data, offset);
-            default:
-                throw WasmException.create(Failure.UNSPECIFIED_INTERNAL, this, "Invalid StoreConstantsInPoolChoice");
+    private int offsetDelta(int policy, byte[] data, int offset, int byteConstantOffset) {
+        if (policy == WasmOptions.ConstantsPolicy.NONE.ordinal()) {
+            return peekLeb128Length(data, offset);
+        } else if (policy == WasmOptions.ConstantsPolicy.ALL.ordinal()) {
+            return codeEntry().byteConstant(byteConstantOffset);
+        } else if (policy == WasmOptions.ConstantsPolicy.LARGE_ONLY.ordinal()) {
+            return isLargeConstant(data, offset) ? codeEntry().byteConstant(byteConstantOffset) : 1;
+        } else {
+            throw WasmException.create(Failure.UNSPECIFIED_INTERNAL, this, "Invalid StoreConstantsInPoolChoice");
         }
     }
 
-    private int longConstantDelta(WasmOptions.ConstantsPolicy policy, byte[] data, int offset) {
+    private int longConstantDelta(int policy, byte[] data, int offset) {
         return constantDelta(policy, data, offset);
     }
 
-    private int intConstantDelta(WasmOptions.ConstantsPolicy policy, byte[] data, int offset) {
+    private int intConstantDelta(int policy, byte[] data, int offset) {
         return constantDelta(policy, data, offset);
     }
 
-    private int byteConstantDelta(WasmOptions.ConstantsPolicy policy, byte[] data, int offset) {
+    private int byteConstantDelta(int policy, byte[] data, int offset) {
         return constantDelta(policy, data, offset);
     }
 
-    private int constantDelta(WasmOptions.ConstantsPolicy policy, byte[] data, int offset) {
-        switch (policy) {
-            case ALL:
-                return 1;
-            case LARGE_ONLY:
-                return isLargeConstant(data, offset) ? 1 : 0;
-            case NONE:
-                return 0;
-            default:
-                throw WasmException.create(Failure.UNSPECIFIED_INTERNAL, this, "Invalid StoreConstantsInPoolChoice");
+    private int constantDelta(int policy, byte[] data, int offset) {
+        if (policy == WasmOptions.ConstantsPolicy.NONE.ordinal()) {
+            return 0;
+        } else if (policy == WasmOptions.ConstantsPolicy.ALL.ordinal()) {
+            return 1;
+        } else if (policy == WasmOptions.ConstantsPolicy.LARGE_ONLY.ordinal()) {
+            return isLargeConstant(data, offset) ? 1 : 0;
+        } else {
+            throw WasmException.create(Failure.UNSPECIFIED_INTERNAL, this, "Invalid StoreConstantsInPoolChoice");
         }
     }
 
