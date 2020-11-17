@@ -224,6 +224,11 @@ public final class ClassRegistries {
         }
     }
 
+    void removeUnloadeKlassConstraint(Klass klass) {
+        assert klass.isInstanceClass();
+        constraints.removeUnloadedKlassConstraint(klass);
+    }
+
     @TruffleBoundary
     public long getLoadedClassesCount() {
         long result = bootClassRegistry.classes.size();

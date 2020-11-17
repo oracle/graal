@@ -106,6 +106,18 @@ final class LoadingConstraints implements ContextAccess {
         }
     }
 
+    void removeUnloadedKlassConstraint(Klass klass) {
+        int loaderId = getLoaderID(klass.getDefiningClassLoader(), getMeta());
+        int klassId = getKlassID(klass);
+        ConstraintBucket bucket = lookup(klass.getType());
+        Constraint toRemove = bucket.lookupLoader(loaderId);
+        bucket.remove(toRemove);
+        toRemove = bucket.lookupKlass(klassId);
+        if (toRemove != null) {
+            bucket.remove(toRemove);
+        }
+    }
+
     void purge() {
         int[] alive = context.getRegistries().aliveLoaders();
         info.emptyBuckets = 0;

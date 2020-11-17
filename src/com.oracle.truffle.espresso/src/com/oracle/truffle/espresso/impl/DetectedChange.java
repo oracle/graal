@@ -32,6 +32,7 @@ import java.util.Set;
 
 final class DetectedChange {
 
+    private boolean classNameChanged;
     private final Map<Method, ParserMethod> changedMethodBodies = new HashMap<>();
     private final List<ParserMethod> addedMethods = new ArrayList<>();
     private final Set<Method> removedMethods = new HashSet<>();
@@ -58,5 +59,13 @@ final class DetectedChange {
 
     public void addRemovedMethods(List<Method> methods) {
         removedMethods.addAll(methods);
+    }
+
+    public void markNameChange() {
+        classNameChanged = true;
+    }
+
+    public boolean classNameChanged() {
+        return classNameChanged;
     }
 }

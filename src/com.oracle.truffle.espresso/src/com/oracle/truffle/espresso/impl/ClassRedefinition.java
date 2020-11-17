@@ -43,11 +43,15 @@ import com.oracle.truffle.espresso.jdwp.api.KlassRef;
 import com.oracle.truffle.espresso.runtime.Attribute;
 import com.oracle.truffle.espresso.runtime.EspressoContext;
 import com.oracle.truffle.espresso.runtime.EspressoException;
+import com.oracle.truffle.espresso.runtime.StaticObject;
+import com.oracle.truffle.espresso.vm.InterpreterToVM;
 
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.HashMap;
 import java.util.Iterator;
 import java.util.List;
+import java.util.Map;
 
 public final class ClassRedefinition {
 
@@ -74,7 +78,8 @@ public final class ClassRedefinition {
         REMOVE_METHOD,
         CLASS_MODIFIERS_CHANGE,
         CONSTANT_POOL_CHANGE,
-        INVALID
+        NEW_CLASS,
+        INVALID;
     }
 
     public static void begin() {
@@ -120,70 +125,93 @@ public final class ClassRedefinition {
         }
     }
 
-    public static List<ChangePacket> detectClassChanges(ClassInfo[] redefineInfos, EspressoContext context) {
-        List<ChangePacket> result = new ArrayList<>(redefineInfos.length);
-        for (ClassInfo redefineInfo : redefineInfos) {
-            KlassRef klass = redefineInfo.getKlass();
+    public static List<ChangePacket> detectClassChanges(ClassInfo[] classInfos, EspressoContext context) {
+        List<ChangePacket> result = new ArrayList<>(classInfos.length);
+        for (ClassInfo classInfo : classInfos) {
+            KlassRef klass = classInfo.getKlass();
             if (klass == null) {
-                // new anonymous inner class with unique synthetic name
-                // define the new class and pre-register it within the class registry
-                ClassRegistry registry = context.getRegistries().getClassRegistry(redefineInfo.getClassLoader());
-                ObjectKlass newKlass = registry.defineKlass(null, redefineInfo.getBytes());
-                redefineInfo.setKlass(newKlass);
+                // New anonymous inner class
+                result.add(new ChangePacket(classInfo, ClassChange.NEW_CLASS));
                 continue;
             }
-            byte[] bytes = redefineInfo.getBytes();
-            ParserKlass parserKlass = ClassfileParser.parse(new ClassfileStream(bytes, null), "L" + redefineInfo.getNewName() + ";", null, context);
+            byte[] bytes = classInfo.getBytes();
+            ParserKlass parserKlass = null;
+            ParserKlass newParserKlass = null;
             ClassChange classChange;
             DetectedChange detectedChange = new DetectedChange();
             if (klass instanceof ObjectKlass) {
-                ObjectKlass objectKlass = (ObjectKlass) klass;
-                classChange = detectClassChanges(parserKlass, objectKlass, detectedChange);
+                parserKlass = ClassfileParser.parse(new ClassfileStream(bytes, null), "L" + classInfo.getOriginalName() + ";", null, context);
+                if (classInfo.isPatched()) {
+                    byte[] patched = classInfo.getPatchedBytes();
+                    newParserKlass = parserKlass;
+                    // we detect changes against the patched bytecode
+                    parserKlass = ClassfileParser.parse(new ClassfileStream(patched, null), "L" + classInfo.getNewName() + ";", null, context);
+                } else {
+                    parserKlass = ClassfileParser.parse(new ClassfileStream(bytes, null), "L" + classInfo.getOriginalName() + ";", null, context);
+                }
+                classChange = detectClassChanges(parserKlass, (ObjectKlass) klass, detectedChange, newParserKlass);
             } else {
                 // array or primitive klass, should never happen
                 classChange = ClassChange.INVALID;
             }
-            result.add(new ChangePacket(redefineInfo, parserKlass, classChange, detectedChange));
+            result.add(new ChangePacket(classInfo, newParserKlass != null ? newParserKlass : parserKlass, classChange, detectedChange));
         }
         return result;
     }
 
-    public static int redefineClass(ChangePacket packet, Ids<Object> ids, List<ObjectKlass> refreshSubClasses) {
+    public static int redefineClass(ChangePacket packet, Ids<Object> ids, EspressoContext context, List<ObjectKlass> refreshSubClasses) {
         try {
             switch (packet.classChange) {
                 case METHOD_BODY_CHANGE:
                 case CONSTANT_POOL_CHANGE:
-                    return doRedefineClass(packet, ids, refreshSubClasses);
+                    return doRedefineClass(packet, ids, context, refreshSubClasses);
                 case ADD_METHOD:
                     if (isAddMethodSupported()) {
-                        return doRedefineClass(packet, ids, refreshSubClasses);
+                        return doRedefineClass(packet, ids, context, refreshSubClasses);
                     } else {
                         return ErrorCodes.ADD_METHOD_NOT_IMPLEMENTED;
                     }
                 case REMOVE_METHOD:
                     if (isRemoveMethodSupported()) {
-                        return doRedefineClass(packet, ids, refreshSubClasses);
+                        return doRedefineClass(packet, ids, context, refreshSubClasses);
                     } else {
                         return ErrorCodes.DELETE_METHOD_NOT_IMPLEMENTED;
                     }
                 case SCHEMA_CHANGE:
                     if (isArbitraryChangesSupported()) {
-                        return doRedefineClass(packet, ids, refreshSubClasses);
+                        return doRedefineClass(packet, ids, context, refreshSubClasses);
                     } else {
                         return ErrorCodes.SCHEMA_CHANGE_NOT_IMPLEMENTED;
                     }
                 case CLASS_MODIFIERS_CHANGE:
                     if (isArbitraryChangesSupported()) {
-                        return doRedefineClass(packet, ids, refreshSubClasses);
+                        return doRedefineClass(packet, ids, context, refreshSubClasses);
                     } else {
                         return ErrorCodes.CLASS_MODIFIERS_CHANGE_NOT_IMPLEMENTED;
                     }
                 case HIERARCHY_CHANGE:
                     if (isArbitraryChangesSupported()) {
-                        return doRedefineClass(packet, ids, refreshSubClasses);
+                        return doRedefineClass(packet, ids, context, refreshSubClasses);
                     } else {
                         return ErrorCodes.HIERARCHY_CHANGE_NOT_IMPLEMENTED;
                     }
+                case NEW_CLASS:
+                    ClassInfo classInfo = packet.info;
+                    Symbol<Symbol.Type> type = context.getTypes().fromClassGetName(classInfo.getOriginalName());
+                    ClassRegistry classRegistry = context.getRegistries().getClassRegistry(classInfo.getClassLoader());
+                    Klass loadedKlass = classRegistry.findLoadedKlass(type);
+                    long id = ids.getId(loadedKlass);
+                    packet.setReplacementID(id);
+                    if (loadedKlass != null) {
+                        // OK, we have to define the new klass instance and
+                        // inject it under the existing JDWP ID
+                        classRegistry.onInnerClassRemoved(type);
+                        ObjectKlass newKlass = classRegistry.defineKlass(type, classInfo.getBytes());
+                        if (id != -1) {
+                            ids.replaceObject(loadedKlass, newKlass);
+                        }
+                    }
+                    return 0;
                 default:
                     return 0;
             }
@@ -208,9 +236,11 @@ public final class ClassRedefinition {
 
     // detect all types of class changes, but return early when a change that require arbitrary
     // changes
-    private static ClassChange detectClassChanges(ParserKlass newParserKlass, ObjectKlass oldKlass, DetectedChange collectedChanges) {
+    private static ClassChange detectClassChanges(ParserKlass newParserKlass, ObjectKlass oldKlass, DetectedChange collectedChanges, ParserKlass finalParserKlass) {
         ClassChange result = ClassChange.NO_CHANGE;
         ParserKlass oldParserKlass = oldKlass.getLinkedKlass().getParserKlass();
+        boolean isPatched = finalParserKlass != null;
+
         // detect class-level changes
         if (newParserKlass.getFlags() != oldParserKlass.getFlags()) {
             if (isArbitraryChangesSupported()) {
@@ -261,8 +291,10 @@ public final class ClassRedefinition {
         }
 
         // detect method changes (including constructors)
+        ParserMethod[] newParserMethods = newParserKlass.getMethods();
         List<Method> oldMethods = new ArrayList<>(Arrays.asList(oldKlass.getDeclaredMethods()));
-        List<ParserMethod> newMethods = new ArrayList<>(Arrays.asList(newParserKlass.getMethods()));
+        List<ParserMethod> newMethods = new ArrayList<>(Arrays.asList(newParserMethods));
+        Map<Method, ParserMethod> bodyChanges = new HashMap<>();
 
         boolean constantPoolChanged = false;
         // check constant pool changes. If changed, we have to redefine all methods in the class
@@ -285,13 +317,21 @@ public final class ClassRedefinition {
                             if (constantPoolChanged) {
                                 if (isObsolete(oldParserMethod, newMethod, oldParserKlass.getConstantPool(), newParserKlass.getConstantPool())) {
                                     result = ClassChange.CONSTANT_POOL_CHANGE;
-                                    collectedChanges.addMethodBodyChange(oldMethod, newMethod);
+                                    if (isPatched) {
+                                        bodyChanges.put(oldMethod, newMethod);
+                                    } else {
+                                        collectedChanges.addMethodBodyChange(oldMethod, newMethod);
+                                    }
                                 }
                             }
                             break;
                         case METHOD_BODY_CHANGE:
                             result = change;
-                            collectedChanges.addMethodBodyChange(oldMethod, newMethod);
+                            if (isPatched) {
+                                bodyChanges.put(oldMethod, newMethod);
+                            } else {
+                                collectedChanges.addMethodBodyChange(oldMethod, newMethod);
+                            }
                             break;
                         default:
                             return change;
@@ -302,6 +342,21 @@ public final class ClassRedefinition {
                 }
             }
         }
+        if (isPatched) {
+            ParserMethod[] finalMethods = finalParserKlass.getMethods();
+            // lookup the final new method based on the index in the parser method array
+            for (Map.Entry<Method, ParserMethod> entry : bodyChanges.entrySet()) {
+                Method oldMethod = entry.getKey();
+                ParserMethod changed = entry.getValue();
+                for (int i = 0; i < newParserMethods.length; i++) {
+                    if (newParserMethods[i] == changed) {
+                        collectedChanges.addMethodBodyChange(oldMethod, finalMethods[i]);
+                        break;
+                    }
+                }
+            }
+        }
+
         collectedChanges.addNewMethods(newMethods);
         collectedChanges.addRemovedMethods(oldMethods);
 
@@ -310,6 +365,12 @@ public final class ClassRedefinition {
         } else if (!newMethods.isEmpty()) {
             result = ClassChange.ADD_METHOD;
         }
+
+        if (finalParserKlass != null && !finalParserKlass.getName().equals(oldParserKlass.getName())) {
+            collectedChanges.markNameChange();
+            result = ClassChange.REMOVE_METHOD;
+        }
+
         return result;
     }
 
@@ -482,8 +543,23 @@ public final class ClassRedefinition {
         return false;
     }
 
-    private static int doRedefineClass(ChangePacket packet, Ids<Object> ids, List<ObjectKlass> refreshSubClasses) {
+    private static int doRedefineClass(ChangePacket packet, Ids<Object> ids, EspressoContext context, List<ObjectKlass> refreshSubClasses) {
         ObjectKlass oldKlass = packet.info.getKlass();
+        ClassRegistry classRegistry = context.getRegistries().getClassRegistry(packet.info.getClassLoader());
+        if (packet.info.isRenamed()) {
+            // renaming a class is done by
+            // 1. Rename the 'name' and 'type' Symbols in the Klass
+            // 2. Update the loaded class cache in the associated ClassRegistry
+            // 3. Set the guest language java.lang.Class instance to null
+            // 4. update the JDWP refType ID for the klass instance
+            oldKlass.patchClassName(packet.info.getOriginalName());
+
+            Klass replacedKlass = classRegistry.onClassRenamed(oldKlass, packet.info.getOriginalName());
+
+            InterpreterToVM.setFieldObject(StaticObject.NULL, oldKlass.mirror(), context.getMeta().java_lang_Class_name);
+
+            packet.setReplacementID(ids.getId(replacedKlass));
+        }
         oldKlass.redefineClass(packet, refreshSubClasses, ids);
         return 0;
     }

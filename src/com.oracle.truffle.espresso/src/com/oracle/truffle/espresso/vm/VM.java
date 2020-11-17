@@ -57,6 +57,7 @@ import java.util.function.IntFunction;
 import java.util.function.Supplier;
 import java.util.logging.Level;
 
+import com.oracle.truffle.espresso.impl.ForceAnonClassLoading;
 import org.graalvm.options.OptionValues;
 
 import com.oracle.truffle.api.CompilerDirectives;
@@ -938,6 +939,11 @@ public final class VM extends NativeEnv implements ContextAccess {
         ByteBuffer buf = JniEnv.directByteBuffer(bufPtr, len, JavaKind.Byte);
         final byte[] bytes = new byte[len];
         buf.get(bytes);
+
+        // check for special forced anon inner class loading
+        if (ForceAnonClassLoading.isMarked(name, loader)) {
+            throw ForceAnonClassLoading.throwing(bytes);
+        }
 
         Symbol<Type> type = null;
         if (name != null) {

@@ -1928,7 +1928,7 @@ public final class BytecodeNode extends EspressoMethodNode {
                 if (resolved.isConstructor()) {
                     if (resolved.getDeclaringKlass().getName() != getConstantPool().methodAt(cpi).getHolderKlassName(getConstantPool())) {
                         CompilerDirectives.transferToInterpreter();
-                        throw Meta.throwException(getMeta().java_lang_NoSuchMethodError);
+                        throw Meta.throwExceptionWithMessage(getMeta().java_lang_NoSuchMethodError, getContext().getMeta().toGuestString(resolved.getDeclaringKlass().getNameAsString() + "." + resolved.getName() + resolved.getRawSignature()));
                     }
                 }
                 // Otherwise, if the resolved method is a class (static) method, the invokespecial

@@ -1254,6 +1254,11 @@ public final class ObjectKlass extends Klass {
         }
     }
 
+    public void patchClassName(String newName) {
+        type = getContext().getTypes().fromClassGetName(newName);
+        name = getContext().getNames().getOrCreate(newName);
+    }
+
     private static final class RedefinitionCache {
         final Assumption assumption;
         final RuntimeConstantPool pool;

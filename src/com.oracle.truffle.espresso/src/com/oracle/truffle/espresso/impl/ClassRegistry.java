@@ -325,4 +325,16 @@ public abstract class ClassRegistry implements ContextAccess {
         }
         return (ObjectKlass) klass;
     }
+
+    public Klass onClassRenamed(ObjectKlass oldKlass, String newName) {
+        Symbol<Symbol.Type> newType = context.getTypes().fromClassGetName(newName);
+        return classes.put(newType, oldKlass);
+    }
+
+    public void onInnerClassRemoved(Symbol<Symbol.Type> type) {
+        // "unload" the class by removing from classes
+        Klass removed = classes.remove(type);
+        // purge class loader constraint for this type
+        getRegistries().removeUnloadeKlassConstraint(removed);
+    }
 }

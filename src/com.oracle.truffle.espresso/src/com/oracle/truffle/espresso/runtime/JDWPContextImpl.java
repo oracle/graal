@@ -654,7 +654,7 @@ public final class JDWPContextImpl implements JDWPContext {
             List<ObjectKlass> refreshSubClasses = new ArrayList<>();
 
             // match anon inner classes with previous state
-            List<ObjectKlass> removedInnerClasses = new ArrayList<>(0);
+            List<ClassInfo> removedInnerClasses = new ArrayList<>(0);
             ClassInfo[] matchedInfos = InnerClassRedefiner.matchAnonymousInnerClasses(redefineInfos, context, removedInnerClasses);
 
             // detect all changes to all classes, throws if redefinition cannot be completed
@@ -667,8 +667,8 @@ public final class JDWPContextImpl implements JDWPContext {
             // begin redefine transaction
             ClassRedefinition.begin();
             for (ChangePacket packet : changePackets) {
-                JDWPLogger.log("Redefining class %s", JDWPLogger.LogLevel.REDEFINE, packet.parserKlass.getName());
-                int result = ClassRedefinition.redefineClass(packet, getIds(), refreshSubClasses);
+                JDWPLogger.log("Redefining class %s", JDWPLogger.LogLevel.REDEFINE, packet.info.getNewName());
+                int result = ClassRedefinition.redefineClass(packet, getIds(), context, refreshSubClasses);
                 if (result != 0) {
                     return result;
                 }
@@ -680,13 +680,14 @@ public final class JDWPContextImpl implements JDWPContext {
                 subKlass.onSuperKlassUpdate();
             }
 
-            // mark the removed classes "removed"
-            for (ObjectKlass removedInnerClass : removedInnerClasses) {
-                // mark the klass instance as removed
-                removedInnerClass.removedByRedefintion();
-
-                // remove from cache
-                InnerClassRedefiner.onInnerClassRemoved(removedInnerClass);
+            // update the JWDP IDs
+            for (ChangePacket changePacket : changePackets) {
+                if (changePacket.info.isRenamed()) {
+                    ObjectKlass klass = changePacket.info.getKlass();
+                    if (changePacket.id != -1) {
+                        ids.updateId(klass, changePacket.id);
+                    }
+                }
             }
 
             // tell the InnerClassRedefiner to commit the changes to cache
@@ -701,11 +702,11 @@ public final class JDWPContextImpl implements JDWPContext {
 
     private static class HierarchyComparator implements Comparator<ChangePacket> {
         public int compare(ChangePacket packet1, ChangePacket packet2) {
-            Klass k1 = (Klass) packet1.info.getKlass();
-            Klass k2 = (Klass) packet2.info.getKlass();
+            Klass k1 = packet1.info.getKlass();
+            Klass k2 = packet2.info.getKlass();
             // we need to do this check because isAssignableFrom is true in this case
             // and we would get an order that doesn't exist
-            if (k1.equals(k2)) {
+            if (k1 == null || k2 == null || k1.equals(k2)) {
                 return 0;
             }
             if (k1.isAssignableFrom(k2)) {

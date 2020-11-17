@@ -77,6 +77,24 @@ public final class Ids<T> {
     }
 
     /**
+     * Returns the unique ID representing the input object or -1 if it's not registered.
+     *
+     * @param object
+     * @return the ID of the object
+     */
+    public long getId(Object object) {
+        // lookup in cache
+        for (int i = 1; i < objects.length; i++) {
+            // really slow lookup path
+            if (objects[i].get() == object) {
+                JDWPLogger.log("ID cache hit for object: %s with ID: %d", JDWPLogger.LogLevel.IDS, object, i);
+                return i;
+            }
+        }
+        return -1;
+    }
+
+    /**
      * Returns the object that is stored under the input ID.
      *
      * @param id the ID assigned to a object by {@code getIdAsLong()}
@@ -117,5 +135,19 @@ public final class Ids<T> {
         int id = (int) getIdAsLong(original);
         objects[id] = new WeakReference<>(replacement);
         JDWPLogger.log("Replaced ID: %d", JDWPLogger.LogLevel.IDS, id);
+    }
+
+    public void updateId(KlassRef object, long id) {
+        // remove existing ID
+        removeId(object);
+        // then inject object under the new ID
+        objects[(int) id] = new WeakReference(object);
+    }
+
+    private void removeId(KlassRef klass) {
+        int id = (int) getId(klass);
+        if (id > 0) {
+            objects[id] = new WeakReference<>(null);
+        }
     }
 }

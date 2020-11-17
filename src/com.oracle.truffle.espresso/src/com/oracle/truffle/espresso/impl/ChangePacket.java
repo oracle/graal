@@ -28,11 +28,20 @@ public final class ChangePacket {
     public final ParserKlass parserKlass;
     public final ClassRedefinition.ClassChange classChange;
     public final DetectedChange detectedChange;
+    public long id;
 
     public ChangePacket(ClassInfo redefineInfo, ParserKlass parserKlass, ClassRedefinition.ClassChange classChange, DetectedChange detectedChange) {
         this.info = redefineInfo;
         this.parserKlass = parserKlass;
         this.classChange = classChange;
         this.detectedChange = detectedChange;
+    }
+
+    public ChangePacket(ClassInfo redefineInfo, ClassRedefinition.ClassChange classChange) {
+       this(redefineInfo, null, classChange, null);
+    }
+
+    public void setReplacementID(long id) {
+        this.id = id;
     }
 }

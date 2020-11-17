@@ -245,6 +245,7 @@ public final class Meta implements ContextAccess {
         HIDDEN_CLASS_LOADER_REGISTRY = java_lang_ClassLoader.lookupHiddenField(Name.HIDDEN_CLASS_LOADER_REGISTRY);
 
         java_lang_ClassLoader_getResourceAsStream = java_lang_ClassLoader.lookupMethod(Name.getResourceAsStream, Signature.InputStream_String);
+        java_lang_ClassLoader_loadClass = java_lang_ClassLoader.lookupMethod(Name.loadClass, Signature.Class_String);
         java_io_InputStream = knownKlass(Type.java_io_InputStream);
         java_io_InputStream_read = java_io_InputStream.lookupMethod(Name.read, Signature._int_byte_array_int_int);
         java_io_InputStream_close = java_io_InputStream.lookupMethod(Name.close, Signature._void);
@@ -418,6 +419,7 @@ public final class Meta implements ContextAccess {
         java_lang_AssertionStatusDirectives_deflt = java_lang_AssertionStatusDirectives.lookupField(Name.deflt, Type._boolean);
 
         java_lang_Class_classRedefinedCount = java_lang_Class.lookupField(Name.classRedefinedCount, Type._int);
+        java_lang_Class_name = java_lang_Class.lookupField(Name.name, Type.java_lang_String);
 
         // Classes and Members that differ from Java 8 to 11
 
@@ -611,6 +613,7 @@ public final class Meta implements ContextAccess {
     public final Method java_lang_Class_forName_String;
     public final Method java_lang_Class_forName_String_boolean_ClassLoader;
     public final Field java_lang_Class_classRedefinedCount;
+    public final Field java_lang_Class_name;
 
     // Primitives.
     public final PrimitiveKlass _boolean;
@@ -681,6 +684,7 @@ public final class Meta implements ContextAccess {
     public final Method java_lang_ClassLoader_getSystemClassLoader;
     public final Field HIDDEN_CLASS_LOADER_REGISTRY;
     public final Method java_lang_ClassLoader_getResourceAsStream;
+    public final Method java_lang_ClassLoader_loadClass;
 
     public final ObjectKlass jdk_internal_loader_ClassLoaders$PlatformClassLoader;
 
