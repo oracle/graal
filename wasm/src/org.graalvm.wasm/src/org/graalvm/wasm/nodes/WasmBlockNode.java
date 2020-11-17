@@ -63,6 +63,7 @@ import org.graalvm.wasm.WasmFunction;
 import org.graalvm.wasm.WasmFunctionInstance;
 import org.graalvm.wasm.WasmInstance;
 import org.graalvm.wasm.WasmLanguage;
+import org.graalvm.wasm.WasmOptions;
 import org.graalvm.wasm.WasmTable;
 import org.graalvm.wasm.WasmType;
 import org.graalvm.wasm.exception.Failure;
@@ -371,8 +372,10 @@ public final class WasmBlockNode extends WasmNode implements RepeatingNode {
         int stackPointer = initialStackPointer;
         int profileOffset = initialProfileOffset;
         int offset = startOffset;
+        final WasmOptions.ConstantsPolicy constantsPolicy = instance().storeConstantsPolicy();
         try {
-            while (offset < startOffset + byteLength()) {
+            final int blockByteLength = byteLength();
+            while (offset < startOffset + blockByteLength) {
                 byte byteOpcode = BinaryStreamParser.peek1(codeEntry().data(), offset);
                 int opcode = byteOpcode & 0xFF;
                 offset++;
@@ -458,8 +461,8 @@ public final class WasmBlockNode extends WasmNode implements RepeatingNode {
                         break;
                     case BR: {
                         // region Load LEB128 Unsigned32 -> unwindCounter
-                        int unwindCounter = unsignedIntConstant(offset, intConstantOffset);
-                        int offsetDelta = offsetDelta(offset, byteConstantOffset);
+                        int unwindCounter = unsignedIntConstant(constantsPolicy, offset, intConstantOffset);
+                        int offsetDelta = offsetDelta(constantsPolicy, offset, byteConstantOffset);
                         intConstantOffset += intConstantDelta(offset);
                         byteConstantOffset += byteConstantDelta(offset);
                         offset += offsetDelta;
@@ -484,8 +487,8 @@ public final class WasmBlockNode extends WasmNode implements RepeatingNode {
                     case BR_IF: {
                         stackPointer--;
                         // region Load LEB128 Unsigned32 -> unwindCounter
-                        int unwindCounter = unsignedIntConstant(offset, intConstantOffset);
-                        int offsetDelta = offsetDelta(offset, byteConstantOffset);
+                        int unwindCounter = unsignedIntConstant(constantsPolicy, offset, intConstantOffset);
+                        int offsetDelta = offsetDelta(constantsPolicy, offset, byteConstantOffset);
                         intConstantOffset += intConstantDelta(offset);
                         byteConstantOffset += byteConstantDelta(offset);
                         offset += offsetDelta;
@@ -552,8 +555,8 @@ public final class WasmBlockNode extends WasmNode implements RepeatingNode {
                     }
                     case CALL: {
                         // region Load LEB128 Unsigned32 -> functionIndex
-                        int functionIndex = unsignedIntConstant(offset, intConstantOffset);
-                        int offsetDelta = offsetDelta(offset, byteConstantOffset);
+                        int functionIndex = unsignedIntConstant(constantsPolicy, offset, intConstantOffset);
+                        int offsetDelta = offsetDelta(constantsPolicy, offset, byteConstantOffset);
                         intConstantOffset += intConstantDelta(offset);
                         byteConstantOffset += byteConstantDelta(offset);
                         offset += offsetDelta;
@@ -633,8 +636,8 @@ public final class WasmBlockNode extends WasmNode implements RepeatingNode {
 
                         // Extract the function type index.
                         // region Load LEB128 Unsigned32 -> expectedFunctionTypeIndex
-                        int expectedFunctionTypeIndex = unsignedIntConstant(offset, intConstantOffset);
-                        int offsetDelta = offsetDelta(offset, byteConstantOffset);
+                        int expectedFunctionTypeIndex = unsignedIntConstant(constantsPolicy, offset, intConstantOffset);
+                        int offsetDelta = offsetDelta(constantsPolicy, offset, byteConstantOffset);
                         intConstantOffset += intConstantDelta(offset);
                         byteConstantOffset += byteConstantDelta(offset);
                         offset += offsetDelta;
@@ -718,8 +721,8 @@ public final class WasmBlockNode extends WasmNode implements RepeatingNode {
                     }
                     case LOCAL_GET: {
                         // region Load LEB128 Unsigned32 -> index
-                        int index = unsignedIntConstant(offset, intConstantOffset);
-                        int offsetDelta = offsetDelta(offset, byteConstantOffset);
+                        int index = unsignedIntConstant(constantsPolicy, offset, intConstantOffset);
+                        int offsetDelta = offsetDelta(constantsPolicy, offset, byteConstantOffset);
                         intConstantOffset += intConstantDelta(offset);
                         byteConstantOffset += byteConstantDelta(offset);
                         offset += offsetDelta;
@@ -730,8 +733,8 @@ public final class WasmBlockNode extends WasmNode implements RepeatingNode {
                     }
                     case LOCAL_SET: {
                         // region Load LEB128 Unsigned32 -> index
-                        int index = unsignedIntConstant(offset, intConstantOffset);
-                        int offsetDelta = offsetDelta(offset, byteConstantOffset);
+                        int index = unsignedIntConstant(constantsPolicy, offset, intConstantOffset);
+                        int offsetDelta = offsetDelta(constantsPolicy, offset, byteConstantOffset);
                         intConstantOffset += intConstantDelta(offset);
                         byteConstantOffset += byteConstantDelta(offset);
                         offset += offsetDelta;
@@ -742,8 +745,8 @@ public final class WasmBlockNode extends WasmNode implements RepeatingNode {
                     }
                     case LOCAL_TEE: {
                         // region Load LEB128 Unsigned32 -> index
-                        int index = unsignedIntConstant(offset, intConstantOffset);
-                        int offsetDelta = offsetDelta(offset, byteConstantOffset);
+                        int index = unsignedIntConstant(constantsPolicy, offset, intConstantOffset);
+                        int offsetDelta = offsetDelta(constantsPolicy, offset, byteConstantOffset);
                         intConstantOffset += intConstantDelta(offset);
                         byteConstantOffset += byteConstantDelta(offset);
                         offset += offsetDelta;
@@ -753,8 +756,8 @@ public final class WasmBlockNode extends WasmNode implements RepeatingNode {
                     }
                     case GLOBAL_GET: {
                         // region Load LEB128 Unsigned32 -> index
-                        int index = unsignedIntConstant(offset, intConstantOffset);
-                        int offsetDelta = offsetDelta(offset, byteConstantOffset);
+                        int index = unsignedIntConstant(constantsPolicy, offset, intConstantOffset);
+                        int offsetDelta = offsetDelta(constantsPolicy, offset, byteConstantOffset);
                         intConstantOffset += intConstantDelta(offset);
                         byteConstantOffset += byteConstantDelta(offset);
                         offset += offsetDelta;
@@ -765,8 +768,8 @@ public final class WasmBlockNode extends WasmNode implements RepeatingNode {
                     }
                     case GLOBAL_SET: {
                         // region Load LEB128 Unsigned32 -> index
-                        int index = unsignedIntConstant(offset, intConstantOffset);
-                        int offsetDelta = offsetDelta(offset, byteConstantOffset);
+                        int index = unsignedIntConstant(constantsPolicy, offset, intConstantOffset);
+                        int offsetDelta = offsetDelta(constantsPolicy, offset, byteConstantOffset);
                         intConstantOffset += intConstantDelta(offset);
                         byteConstantOffset += byteConstantDelta(offset);
                         offset += offsetDelta;
@@ -790,13 +793,13 @@ public final class WasmBlockNode extends WasmNode implements RepeatingNode {
                     case I64_LOAD32_S:
                     case I64_LOAD32_U: {
                         /* The memAlign hint is not currently used or taken into account. */
-                        int memAlignOffsetDelta = offsetDelta(offset, byteConstantOffset);
+                        int memAlignOffsetDelta = offsetDelta(constantsPolicy, offset, byteConstantOffset);
                         byteConstantOffset += byteConstantDelta(offset);
                         offset += memAlignOffsetDelta;
 
                         // region Load LEB128 Unsigned32 -> memOffset
-                        int memOffset = unsignedIntConstant(offset, intConstantOffset);
-                        int offsetDelta = offsetDelta(offset, byteConstantOffset);
+                        int memOffset = unsignedIntConstant(constantsPolicy, offset, intConstantOffset);
+                        int offsetDelta = offsetDelta(constantsPolicy, offset, byteConstantOffset);
                         intConstantOffset += intConstantDelta(offset);
                         byteConstantOffset += byteConstantDelta(offset);
                         offset += offsetDelta;
@@ -815,13 +818,13 @@ public final class WasmBlockNode extends WasmNode implements RepeatingNode {
                     case I64_STORE_16:
                     case I64_STORE_32: {
                         /* The memAlign hint is not currently used or taken into account. */
-                        int memAlignOffsetDelta = offsetDelta(offset, byteConstantOffset);
+                        int memAlignOffsetDelta = offsetDelta(constantsPolicy, offset, byteConstantOffset);
                         byteConstantOffset += byteConstantDelta(offset);
                         offset += memAlignOffsetDelta;
 
                         // region Load LEB128 Unsigned32 -> memOffset
-                        int memOffset = unsignedIntConstant(offset, intConstantOffset);
-                        int offsetDelta = offsetDelta(offset, byteConstantOffset);
+                        int memOffset = unsignedIntConstant(constantsPolicy, offset, intConstantOffset);
+                        int offsetDelta = offsetDelta(constantsPolicy, offset, byteConstantOffset);
                         intConstantOffset += intConstantDelta(offset);
                         byteConstantOffset += byteConstantDelta(offset);
                         offset += offsetDelta;
@@ -858,8 +861,8 @@ public final class WasmBlockNode extends WasmNode implements RepeatingNode {
                     }
                     case I32_CONST: {
                         // region Load LEB128 Signed32 -> value
-                        int value = signedIntConstant(offset, intConstantOffset);
-                        int offsetDelta = offsetDelta(offset, byteConstantOffset);
+                        int value = signedIntConstant(constantsPolicy, offset, intConstantOffset);
+                        int offsetDelta = offsetDelta(constantsPolicy, offset, byteConstantOffset);
                         intConstantOffset += intConstantDelta(offset);
                         byteConstantOffset += byteConstantDelta(offset);
                         offset += offsetDelta;
@@ -870,8 +873,8 @@ public final class WasmBlockNode extends WasmNode implements RepeatingNode {
                     }
                     case I64_CONST: {
                         // region Load LEB128 Signed64 -> value
-                        long value = signedLongConstant(offset, longConstantOffset);
-                        int offsetDelta = offsetDelta(offset, byteConstantOffset);
+                        long value = signedLongConstant(constantsPolicy, offset, longConstantOffset);
+                        int offsetDelta = offsetDelta(constantsPolicy, offset, byteConstantOffset);
                         longConstantOffset += longConstantDelta(offset);
                         byteConstantOffset += byteConstantDelta(offset);
                         offset += offsetDelta;
@@ -2872,8 +2875,8 @@ public final class WasmBlockNode extends WasmNode implements RepeatingNode {
         return returnTypeId;
     }
 
-    private int unsignedIntConstant(int offset, int intConstantOffset) {
-        switch (instance().storeConstantsPolicy()) {
+    private int unsignedIntConstant(WasmOptions.ConstantsPolicy policy, int offset, int intConstantOffset) {
+        switch (policy) {
             case ALL:
                 return codeEntry().intConstant(intConstantOffset);
             case LARGE_ONLY:
@@ -2885,8 +2888,8 @@ public final class WasmBlockNode extends WasmNode implements RepeatingNode {
         }
     }
 
-    private int signedIntConstant(int offset, int intConstantOffset) {
-        switch (instance().storeConstantsPolicy()) {
+    private int signedIntConstant(WasmOptions.ConstantsPolicy policy, int offset, int intConstantOffset) {
+        switch (policy) {
             case ALL:
                 return codeEntry().intConstant(intConstantOffset);
             case LARGE_ONLY:
@@ -2903,8 +2906,8 @@ public final class WasmBlockNode extends WasmNode implements RepeatingNode {
         }
     }
 
-    public long signedLongConstant(int offset, int longConstantOffset) {
-        switch (instance().storeConstantsPolicy()) {
+    public long signedLongConstant(WasmOptions.ConstantsPolicy policy, int offset, int longConstantOffset) {
+        switch (policy) {
             case ALL:
                 return codeEntry().longConstant(longConstantOffset);
             case LARGE_ONLY:
@@ -2921,8 +2924,8 @@ public final class WasmBlockNode extends WasmNode implements RepeatingNode {
         }
     }
 
-    private int offsetDelta(int offset, int byteConstantOffset) {
-        switch (instance().storeConstantsPolicy()) {
+    private int offsetDelta(WasmOptions.ConstantsPolicy policy, int offset, int byteConstantOffset) {
+        switch (policy) {
             case ALL:
                 return codeEntry().byteConstant(byteConstantOffset);
             case LARGE_ONLY:

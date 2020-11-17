@@ -57,16 +57,16 @@ public class WasmOptions {
     @Option(help = "The stack size in kilobytes to use during async parsing, or zero to use defaults.", category = OptionCategory.USER, stability = OptionStability.STABLE)//
     public static final OptionKey<Integer> AsyncParsingStackSize = new OptionKey<>(0);
 
-    public enum StoreConstantsPolicyEnum {
+    public enum ConstantsPolicy {
         ALL,
         LARGE_ONLY,
         NONE
     }
 
-    public static OptionType<StoreConstantsPolicyEnum> StoreConstantsPolicyOptionType = new OptionType<>("StoreConstantsPolicy", StoreConstantsPolicyEnum::valueOf);
+    public static OptionType<ConstantsPolicy> StoreConstantsPolicyOptionType = new OptionType<>("StoreConstantsPolicy", ConstantsPolicy::valueOf);
 
     @Option(help = "Whenever to store the constants in a pool or not.", category = OptionCategory.EXPERT, stability = OptionStability.EXPERIMENTAL)//
-    public static final OptionKey<StoreConstantsPolicyEnum> StoreConstantsPolicy = new OptionKey<>(StoreConstantsPolicyEnum.NONE, StoreConstantsPolicyOptionType);
+    public static final OptionKey<ConstantsPolicy> StoreConstantsPolicy = new OptionKey<>(ConstantsPolicy.NONE, StoreConstantsPolicyOptionType);
 
     @Option(help = "Use sun.misc.Unsafe-based memory.", category = OptionCategory.EXPERT, stability = OptionStability.EXPERIMENTAL)//
     public static final OptionKey<Boolean> UseUnsafeMemory = new OptionKey<>(false);
