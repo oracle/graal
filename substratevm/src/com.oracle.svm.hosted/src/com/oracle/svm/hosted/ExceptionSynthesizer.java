@@ -53,7 +53,7 @@ public final class ExceptionSynthesizer {
      * Cache exception throwing methods. The key is a List<Class>: first element is the exception
      * type, the next elements are the parameter types.
      */
-    private static final Map<Key<Class<?>>, Method> exceptionMethods = new HashMap<>();
+    private static final Map<Key, Method> exceptionMethods = new HashMap<>();
 
     static {
         // ReflectiveOperationException subclasses
@@ -82,7 +82,7 @@ public final class ExceptionSynthesizer {
 
     private static void registerMethod(Class<?> exceptionClass) {
         try {
-            exceptionMethods.put(Key.from(exceptionClass), ImplicitExceptions.class.getDeclaredMethod("throw" + exceptionClass.getName()));
+            exceptionMethods.put(Key.from(exceptionClass), ImplicitExceptions.class.getDeclaredMethod("throw" + exceptionClass.getSimpleName()));
         } catch (NoSuchMethodException ex) {
             throw VMError.shouldNotReachHere(ex);
         }
@@ -90,7 +90,7 @@ public final class ExceptionSynthesizer {
 
     private static void registerMethod(Class<?> exceptionClass, Class<?> paramterClass) {
         try {
-            exceptionMethods.put(Key.from(exceptionClass, paramterClass), ImplicitExceptions.class.getDeclaredMethod("throw" + exceptionClass.getName(), paramterClass));
+            exceptionMethods.put(Key.from(exceptionClass, paramterClass), ImplicitExceptions.class.getDeclaredMethod("throw" + exceptionClass.getSimpleName(), paramterClass));
         } catch (NoSuchMethodException ex) {
             throw VMError.shouldNotReachHere(ex);
         }
@@ -130,15 +130,18 @@ public final class ExceptionSynthesizer {
         }
     }
 
-    static class Key<T> {
-        @SafeVarargs
-        static <V> Key<V> from(V... values) {
-            return new Key<V>(values);
+    /**
+     * The key describes an exception throwing method via a List<Class>: first element is the
+     * exception type, the next elements are the parameter types.
+     */
+    static final class Key {
+        static Key from(Class<?>... values) {
+            return new Key(values);
         }
 
-        private final List<T> elements;
+        private final List<Class<?>> elements;
 
-        private Key(T[] values) {
+        private Key(Class<?>[] values) {
             elements = Arrays.asList(values);
         }
 
@@ -150,7 +153,7 @@ public final class ExceptionSynthesizer {
             if (o == null || getClass() != o.getClass()) {
                 return false;
             }
-            Key<?> key = (Key<?>) o;
+            Key key = (Key) o;
             return elements.equals(key.elements);
         }
 
