@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2017, 2019, Oracle and/or its affiliates.
+ * Copyright (c) 2017, 2020, Oracle and/or its affiliates.
  *
  * All rights reserved.
  *
@@ -29,17 +29,22 @@
  */
 package com.oracle.truffle.llvm.parser.model;
 
+import com.oracle.truffle.llvm.parser.LLVMParserRuntime;
 import com.oracle.truffle.llvm.parser.ValueList;
 import com.oracle.truffle.llvm.parser.metadata.MDAttachment;
 import com.oracle.truffle.llvm.parser.metadata.MetadataAttachmentHolder;
+import com.oracle.truffle.llvm.parser.model.symbols.constants.Constant;
 import com.oracle.truffle.llvm.parser.model.visitors.SymbolVisitor;
+import com.oracle.truffle.llvm.runtime.GetStackSpaceFactory;
+import com.oracle.truffle.llvm.runtime.datalayout.DataLayout;
 import com.oracle.truffle.llvm.runtime.except.LLVMParserException;
+import com.oracle.truffle.llvm.runtime.nodes.api.LLVMExpressionNode;
 import com.oracle.truffle.llvm.runtime.types.Type;
 import com.oracle.truffle.llvm.runtime.types.VoidType;
 
 public final class SymbolTable extends ValueList<SymbolImpl, SymbolVisitor> {
 
-    private static final PlaceholderFactory<SymbolImpl, SymbolVisitor> PLACEHOLDER_FACTORY = () -> new SymbolImpl() {
+    private static final PlaceholderFactory<SymbolImpl, SymbolVisitor> PLACEHOLDER_FACTORY = () -> new Constant() {
 
         @Override
         public Type getType() {
@@ -59,6 +64,11 @@ public final class SymbolTable extends ValueList<SymbolImpl, SymbolVisitor> {
         @Override
         public String toString() {
             return "Forward Referenced Symbol";
+        }
+
+        @Override
+        public LLVMExpressionNode createNode(LLVMParserRuntime runtime, DataLayout dataLayout, GetStackSpaceFactory stackFactory) {
+            throw new LLVMParserException("Unresolved Forward Reference!");
         }
     };
 

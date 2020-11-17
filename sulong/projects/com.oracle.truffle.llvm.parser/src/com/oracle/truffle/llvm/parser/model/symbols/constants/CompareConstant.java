@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2016, 2018, Oracle and/or its affiliates.
+ * Copyright (c) 2016, 2020, Oracle and/or its affiliates.
  *
  * All rights reserved.
  *
@@ -29,20 +29,24 @@
  */
 package com.oracle.truffle.llvm.parser.model.symbols.constants;
 
+import com.oracle.truffle.llvm.parser.LLVMParserRuntime;
 import com.oracle.truffle.llvm.parser.model.SymbolImpl;
 import com.oracle.truffle.llvm.parser.model.SymbolTable;
 import com.oracle.truffle.llvm.parser.model.symbols.instructions.CompareInstruction;
 import com.oracle.truffle.llvm.parser.model.visitors.SymbolVisitor;
+import com.oracle.truffle.llvm.runtime.CommonNodeFactory;
 import com.oracle.truffle.llvm.runtime.CompareOperator;
+import com.oracle.truffle.llvm.runtime.GetStackSpaceFactory;
+import com.oracle.truffle.llvm.runtime.datalayout.DataLayout;
+import com.oracle.truffle.llvm.runtime.nodes.api.LLVMExpressionNode;
 import com.oracle.truffle.llvm.runtime.types.Type;
 
 public final class CompareConstant extends AbstractConstant {
 
     private final CompareOperator operator;
 
-    private SymbolImpl lhs;
-
-    private SymbolImpl rhs;
+    private Constant lhs;
+    private Constant rhs;
 
     private CompareConstant(Type type, CompareOperator operator) {
         super(type);
@@ -54,32 +58,25 @@ public final class CompareConstant extends AbstractConstant {
         visitor.visit(this);
     }
 
-    public SymbolImpl getLHS() {
-        return lhs;
-    }
-
-    public CompareOperator getOperator() {
-        return operator;
-    }
-
-    public SymbolImpl getRHS() {
-        return rhs;
-    }
-
     @Override
     public void replace(SymbolImpl original, SymbolImpl replacement) {
         if (lhs == original) {
-            lhs = replacement;
+            lhs = (Constant) replacement;
         }
         if (rhs == original) {
-            rhs = replacement;
+            rhs = (Constant) replacement;
         }
     }
 
     public static CompareConstant fromSymbols(SymbolTable symbols, Type type, int opcode, int lhs, int rhs) {
         final CompareConstant constant = new CompareConstant(type, CompareInstruction.decodeCompareOperator(opcode));
-        constant.lhs = symbols.getForwardReferenced(lhs, constant);
-        constant.rhs = symbols.getForwardReferenced(rhs, constant);
+        constant.lhs = (Constant) symbols.getForwardReferenced(lhs, constant);
+        constant.rhs = (Constant) symbols.getForwardReferenced(rhs, constant);
         return constant;
+    }
+
+    @Override
+    public LLVMExpressionNode createNode(LLVMParserRuntime runtime, DataLayout dataLayout, GetStackSpaceFactory stackFactory) {
+        return CommonNodeFactory.createComparison(operator, lhs.getType(), lhs.createNode(runtime, dataLayout, stackFactory), rhs.createNode(runtime, dataLayout, stackFactory));
     }
 }

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2016, 2018, Oracle and/or its affiliates.
+ * Copyright (c) 2016, 2020, Oracle and/or its affiliates.
  *
  * All rights reserved.
  *
@@ -31,7 +31,12 @@ package com.oracle.truffle.llvm.parser.model.symbols.constants.floatingpoint;
 
 import java.util.Arrays;
 
+import com.oracle.truffle.llvm.parser.LLVMParserRuntime;
 import com.oracle.truffle.llvm.parser.model.visitors.SymbolVisitor;
+import com.oracle.truffle.llvm.runtime.CommonNodeFactory;
+import com.oracle.truffle.llvm.runtime.GetStackSpaceFactory;
+import com.oracle.truffle.llvm.runtime.datalayout.DataLayout;
+import com.oracle.truffle.llvm.runtime.nodes.api.LLVMExpressionNode;
 import com.oracle.truffle.llvm.runtime.types.PrimitiveType;
 
 public final class X86FP80Constant extends FloatingPointConstant {
@@ -46,10 +51,6 @@ public final class X86FP80Constant extends FloatingPointConstant {
     @Override
     public void accept(SymbolVisitor visitor) {
         visitor.visit(this);
-    }
-
-    public byte[] getValue() {
-        return value;
     }
 
     @Override
@@ -68,5 +69,10 @@ public final class X86FP80Constant extends FloatingPointConstant {
             builder.append(String.format("%x%x", (aValue >>> BYTE_MSB_SHIFT) & HEX_MASK, aValue & HEX_MASK));
         }
         return builder.toString();
+    }
+
+    @Override
+    public LLVMExpressionNode createNode(LLVMParserRuntime runtime, DataLayout dataLayout, GetStackSpaceFactory stackFactory) {
+        return CommonNodeFactory.createSimpleConstantNoArray(value, getType());
     }
 }

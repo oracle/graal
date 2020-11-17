@@ -40,15 +40,16 @@ import com.oracle.truffle.llvm.parser.model.SymbolTable;
 import com.oracle.truffle.llvm.parser.model.ValueSymbol;
 import com.oracle.truffle.llvm.parser.model.enums.Linkage;
 import com.oracle.truffle.llvm.parser.model.enums.Visibility;
+import com.oracle.truffle.llvm.parser.model.symbols.constants.Constant;
 import com.oracle.truffle.llvm.runtime.debug.scope.LLVMSourceSymbol;
 import com.oracle.truffle.llvm.runtime.types.PointerType;
 import com.oracle.truffle.llvm.runtime.types.symbols.LLVMIdentifier;
 
-public abstract class GlobalValueSymbol extends GlobalSymbol implements ValueSymbol, MetadataAttachmentHolder {
+public abstract class GlobalValueSymbol extends GlobalSymbol implements Constant, ValueSymbol, MetadataAttachmentHolder {
 
     private final PointerType type;
 
-    private SymbolImpl value = null;
+    private Constant value = null;
 
     private final Visibility visibility;
 
@@ -60,7 +61,7 @@ public abstract class GlobalValueSymbol extends GlobalSymbol implements ValueSym
         super(LLVMIdentifier.UNKNOWN, linkage, index);
         this.type = type;
         this.visibility = visibility;
-        this.value = value > 0 ? symbolTable.getForwardReferenced(value - 1, this) : null;
+        this.value = value > 0 ? (Constant) symbolTable.getForwardReferenced(value - 1, this) : null;
         this.sourceSymbol = null;
     }
 
@@ -77,7 +78,7 @@ public abstract class GlobalValueSymbol extends GlobalSymbol implements ValueSym
         return type;
     }
 
-    public SymbolImpl getValue() {
+    public Constant getValue() {
         return value;
     }
 
@@ -114,7 +115,7 @@ public abstract class GlobalValueSymbol extends GlobalSymbol implements ValueSym
     @Override
     public void replace(SymbolImpl oldValue, SymbolImpl newValue) {
         if (value == oldValue) {
-            value = newValue;
+            value = (Constant) newValue;
         }
     }
 

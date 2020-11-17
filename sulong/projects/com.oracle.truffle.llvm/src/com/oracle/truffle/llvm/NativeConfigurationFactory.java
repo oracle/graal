@@ -41,7 +41,7 @@ import com.oracle.truffle.llvm.runtime.config.ConfigurationFactory;
 import com.oracle.truffle.llvm.runtime.options.SulongEngineOption;
 import org.graalvm.options.OptionValues;
 
-public final class NativeConfigurationFactory implements ConfigurationFactory<Key> {
+public class NativeConfigurationFactory implements ConfigurationFactory<Key> {
 
     public static final class Key {
 

@@ -786,7 +786,7 @@ public final class LLVMBitcodeInstructionVisitor implements SymbolVisitor {
             }
 
             if (offset != 0) {
-                final LLVMExpressionNode oneLiteralNode = nodeFactory.createLiteral(1, PrimitiveType.I32);
+                final LLVMExpressionNode oneLiteralNode = CommonNodeFactory.createLiteral(1, PrimitiveType.I32);
                 targetAddress = nodeFactory.createTypedElementPointer(offset, extract.getType(), targetAddress, oneLiteralNode);
             }
 
@@ -863,7 +863,7 @@ public final class LLVMBitcodeInstructionVisitor implements SymbolVisitor {
     @Override
     public void visit(LoadInstruction load) {
         LLVMExpressionNode source = resolveOptimized(load.getSource());
-        LLVMExpressionNode result = CommonNodeFactory.createLoad(load.getType(), source);
+        LLVMExpressionNode result = nodeFactory.createLoad(load.getType(), source);
 
         createFrameWrite(result, load);
     }
@@ -1100,16 +1100,16 @@ public final class LLVMBitcodeInstructionVisitor implements SymbolVisitor {
             // casts to smaller types in the factoryfacade won't work
             switch (llvmType.getPrimitiveKind()) {
                 case I8:
-                    cases[i] = nodeFactory.createLiteral((byte) zwitch.getCaseValue(i), llvmType);
+                    cases[i] = CommonNodeFactory.createLiteral((byte) zwitch.getCaseValue(i), llvmType);
                     break;
                 case I16:
-                    cases[i] = nodeFactory.createLiteral((short) zwitch.getCaseValue(i), llvmType);
+                    cases[i] = CommonNodeFactory.createLiteral((short) zwitch.getCaseValue(i), llvmType);
                     break;
                 case I32:
-                    cases[i] = nodeFactory.createLiteral((int) zwitch.getCaseValue(i), llvmType);
+                    cases[i] = CommonNodeFactory.createLiteral((int) zwitch.getCaseValue(i), llvmType);
                     break;
                 default:
-                    cases[i] = nodeFactory.createLiteral(zwitch.getCaseValue(i), llvmType);
+                    cases[i] = CommonNodeFactory.createLiteral(zwitch.getCaseValue(i), llvmType);
             }
         }
 

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2016, 2020, Oracle and/or its affiliates.
+ * Copyright (c) 2017, 2020, Oracle and/or its affiliates.
  *
  * All rights reserved.
  *
@@ -27,47 +27,33 @@
  * NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED
  * OF THE POSSIBILITY OF SUCH DAMAGE.
  */
-package com.oracle.truffle.llvm.parser.model.symbols.constants.floatingpoint;
+package com.oracle.truffle.llvm.runtime.nodes.memory.literal;
 
-import com.oracle.truffle.llvm.parser.LLVMParserRuntime;
-import com.oracle.truffle.llvm.parser.model.visitors.SymbolVisitor;
-import com.oracle.truffle.llvm.runtime.CommonNodeFactory;
-import com.oracle.truffle.llvm.runtime.GetStackSpaceFactory;
-import com.oracle.truffle.llvm.runtime.datalayout.DataLayout;
+import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
+import com.oracle.truffle.api.dsl.NodeChild;
+import com.oracle.truffle.api.dsl.Specialization;
+import com.oracle.truffle.api.nodes.ExplodeLoop;
 import com.oracle.truffle.llvm.runtime.nodes.api.LLVMExpressionNode;
-import com.oracle.truffle.llvm.runtime.types.PrimitiveType;
+import com.oracle.truffle.llvm.runtime.nodes.memory.store.LLVMI8StoreNode.LLVMI8OffsetStoreNode;
+import com.oracle.truffle.llvm.runtime.nodes.memory.store.LLVMI8StoreNodeGen.LLVMI8OffsetStoreNodeGen;
+import com.oracle.truffle.llvm.runtime.pointer.LLVMPointer;
 
-public final class DoubleConstant extends FloatingPointConstant {
+@NodeChild(value = "address", type = LLVMExpressionNode.class)
+public abstract class LLVMI8ArrayLiteralNode extends LLVMExpressionNode {
 
-    private final double value;
+    @CompilationFinal(dimensions = 1) private final byte[] values;
+    @Child private LLVMI8OffsetStoreNode write = LLVMI8OffsetStoreNodeGen.create();
 
-    DoubleConstant(double value) {
-        super(PrimitiveType.DOUBLE);
-        this.value = value;
+    public LLVMI8ArrayLiteralNode(byte[] values) {
+        this.values = values;
     }
 
-    @Override
-    public void accept(SymbolVisitor visitor) {
-        visitor.visit(this);
-    }
-
-    @Override
-    public String toString() {
-        return String.format("%.6f", value);
-    }
-
-    @Override
-    public String getStringValue() {
-        return String.valueOf(value);
-    }
-
-    @Override
-    public LLVMExpressionNode createNode(LLVMParserRuntime runtime, DataLayout dataLayout, GetStackSpaceFactory stackFactory) {
-        return CommonNodeFactory.createSimpleConstantNoArray(value, getType());
-    }
-
-    @Override
-    public void addToBuffer(Buffer buffer, LLVMParserRuntime runtime, DataLayout dataLayout, GetStackSpaceFactory stackFactory) {
-        buffer.getBuffer().putDouble(value);
+    @Specialization
+    @ExplodeLoop
+    protected LLVMPointer foreignWrite(LLVMPointer addr) {
+        for (int i = 0; i < values.length; i++) {
+            write.executeWithTarget(addr, i, values[i]);
+        }
+        return addr;
     }
 }

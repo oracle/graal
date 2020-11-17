@@ -67,7 +67,7 @@ public final class LLDBSupport {
         @Override
         public Object execute(VirtualFrame frame) {
             LLVMPointer offsetPointer = LLVMPointer.cast(frame.getArguments()[0]);
-            return loadNode.executeWithTarget(offsetPointer);
+            return loadNode.executeWithTargetGeneric(offsetPointer);
         }
     }
 

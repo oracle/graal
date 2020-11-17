@@ -27,47 +27,44 @@
  * NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED
  * OF THE POSSIBILITY OF SUCH DAMAGE.
  */
-package com.oracle.truffle.llvm.parser.model.symbols.constants.floatingpoint;
+package com.oracle.truffle.llvm.runtime.nodes.memory.store;
 
-import com.oracle.truffle.llvm.parser.LLVMParserRuntime;
-import com.oracle.truffle.llvm.parser.model.visitors.SymbolVisitor;
-import com.oracle.truffle.llvm.runtime.CommonNodeFactory;
-import com.oracle.truffle.llvm.runtime.GetStackSpaceFactory;
-import com.oracle.truffle.llvm.runtime.datalayout.DataLayout;
+import com.oracle.truffle.api.dsl.NodeChild;
+import com.oracle.truffle.api.dsl.Specialization;
+import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.llvm.runtime.nodes.api.LLVMExpressionNode;
-import com.oracle.truffle.llvm.runtime.types.PrimitiveType;
+import com.oracle.truffle.llvm.runtime.nodes.api.LLVMNode;
+import com.oracle.truffle.llvm.runtime.nodes.api.LLVMStoreNode;
+import com.oracle.truffle.llvm.runtime.nodes.memory.store.LLVMI64StoreNodeGen.LLVMI64OffsetStoreNodeGen;
+import com.oracle.truffle.llvm.runtime.pointer.LLVMPointer;
 
-public final class DoubleConstant extends FloatingPointConstant {
+@NodeChild(value = "target", type = LLVMExpressionNode.class)
+@NodeChild(value = "offset", type = LLVMExpressionNode.class)
+@NodeChild(value = "value", type = LLVMExpressionNode.class)
+public abstract class LLVMOffsetStoreNode extends LLVMNode {
 
-    private final double value;
+    public abstract void executeWithTarget(VirtualFrame frame, LLVMPointer receiver, long offset);
 
-    DoubleConstant(double value) {
-        super(PrimitiveType.DOUBLE);
-        this.value = value;
+    public abstract static class LLVMGenericOffsetStoreNode extends LLVMOffsetStoreNode {
+
+        @Child private LLVMStoreNode store;
+
+        protected LLVMGenericOffsetStoreNode(LLVMStoreNode store) {
+            this.store = store;
+        }
+
+        public static LLVMOffsetStoreNode create() {
+            return LLVMI64OffsetStoreNodeGen.create(null, null, null);
+        }
+
+        public static LLVMOffsetStoreNode create(LLVMExpressionNode value) {
+            return LLVMI64OffsetStoreNodeGen.create(null, null, value);
+        }
+
+        @Specialization
+        protected void doOp(LLVMPointer addr, long offset, Object value) {
+            store.executeWithTarget(addr.increment(offset), value);
+        }
     }
 
-    @Override
-    public void accept(SymbolVisitor visitor) {
-        visitor.visit(this);
-    }
-
-    @Override
-    public String toString() {
-        return String.format("%.6f", value);
-    }
-
-    @Override
-    public String getStringValue() {
-        return String.valueOf(value);
-    }
-
-    @Override
-    public LLVMExpressionNode createNode(LLVMParserRuntime runtime, DataLayout dataLayout, GetStackSpaceFactory stackFactory) {
-        return CommonNodeFactory.createSimpleConstantNoArray(value, getType());
-    }
-
-    @Override
-    public void addToBuffer(Buffer buffer, LLVMParserRuntime runtime, DataLayout dataLayout, GetStackSpaceFactory stackFactory) {
-        buffer.getBuffer().putDouble(value);
-    }
 }
