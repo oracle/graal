@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2019, Oracle and/or its affiliates.
+ * Copyright (c) 2019, 2020, Oracle and/or its affiliates.
  *
  * All rights reserved.
  *
@@ -58,6 +58,7 @@ public final class LLVMPThreadThreadIntrinsics {
     public abstract static class LLVMPThreadCreate extends LLVMBuiltin {
 
         @Specialization
+        @TruffleBoundary
         protected int doIntrinsic(LLVMPointer thread, LLVMPointer startRoutine, LLVMPointer arg,
                         @Cached("createStoreNode(I64)") LLVMStoreNode store,
                         @CachedContext(LLVMLanguage.class) LLVMContext context) {
@@ -78,8 +79,13 @@ public final class LLVMPThreadThreadIntrinsics {
         @Specialization
         protected int doIntrinsic(Object returnValue,
                         @CachedContext(LLVMLanguage.class) LLVMContext context) {
-            context.getpThreadContext().setThreadReturnValue(Thread.currentThread().getId(), returnValue);
+            setThreadReturnValue(returnValue, context);
             throw new PThreadExitException();
+        }
+
+        @TruffleBoundary
+        private static void setThreadReturnValue(Object returnValue, LLVMContext context) {
+            context.getpThreadContext().setThreadReturnValue(Thread.currentThread().getId(), returnValue);
         }
     }
 
@@ -87,25 +93,20 @@ public final class LLVMPThreadThreadIntrinsics {
     public abstract static class LLVMPThreadJoin extends LLVMBuiltin {
 
         @Specialization
+        @TruffleBoundary
         protected Object doIntrinsic(long threadId,
                         @CachedContext(LLVMLanguage.class) LLVMContext context) {
             final Thread thread = context.getpThreadContext().getThread(threadId);
             if (thread != null) {
-                joinThread(thread);
+                try {
+                    thread.join();
+                } catch (InterruptedException e) {
+                    CompilerDirectives.transferToInterpreter();
+                    throw new LLVMThreadException(this, "Failed to join thread", e);
+                }
             }
 
             return context.getpThreadContext().getThreadReturnValue(threadId);
-        }
-
-        @TruffleBoundary
-        private void joinThread(Thread thread) {
-            assert thread != null;
-            try {
-                thread.join();
-            } catch (InterruptedException e) {
-                CompilerDirectives.transferToInterpreter();
-                throw new LLVMThreadException(this, "Failed to join thread", e);
-            }
         }
     }
 
@@ -113,7 +114,12 @@ public final class LLVMPThreadThreadIntrinsics {
 
         @Specialization
         protected LLVMNativePointer doIntrinsic() {
-            return LLVMNativePointer.create(Thread.currentThread().getId());
+            return LLVMNativePointer.create(getThreadId());
+        }
+
+        @TruffleBoundary
+        private static long getThreadId() {
+            return Thread.currentThread().getId();
         }
     }
 }
