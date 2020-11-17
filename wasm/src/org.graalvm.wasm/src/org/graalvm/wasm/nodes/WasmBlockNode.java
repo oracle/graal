@@ -2959,11 +2959,11 @@ public final class WasmBlockNode extends WasmNode implements RepeatingNode {
         }
     }
 
-    public int peekLeb128Length(byte[] data, int offset) {
+    private static int peekLeb128Length(byte[] data, int offset) {
         return BinaryStreamParser.peekLeb128Length(data, offset);
     }
 
-    private boolean isLargeConstant(byte[] data, int offset) {
+    private static boolean isLargeConstant(byte[] data, int offset) {
         return (data[offset] & 0x80) != 0;
     }
 }
