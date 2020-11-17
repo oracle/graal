@@ -137,7 +137,7 @@ public abstract class TruffleCompilerImpl implements TruffleCompilerBase {
 
         this.config = config;
         this.codeInstallationTaskFactory = new TrufflePostCodeInstallationTaskFactory();
-        this.config.lastTier().backend().addCodeInstallationTask(codeInstallationTaskFactory);
+        this.config.backend().addCodeInstallationTask(codeInstallationTaskFactory);
 
         ResolvedJavaType[] skippedExceptionTypes = getSkippedExceptionTypes(this.config.runtime());
 
@@ -179,7 +179,7 @@ public abstract class TruffleCompilerImpl implements TruffleCompilerBase {
      * Gets the compiler backend used for Truffle compilation.
      */
     public Backend getBackend() {
-        return config.lastTier().backend();
+        return config.backend();
     }
 
     /**
@@ -606,7 +606,7 @@ public abstract class TruffleCompilerImpl implements TruffleCompilerBase {
                 selectedProviders = config.firstTier().providers();
             }
             CompilationResult compilationResult = createCompilationResult(name, graph.compilationId(), compilable);
-            result = GraalCompiler.compileGraph(graph, graph.method(), selectedProviders, config.lastTier().backend(), graphBuilderSuite, Optimizations, graph.getProfilingInfo(), selectedSuites,
+            result = GraalCompiler.compileGraph(graph, graph.method(), selectedProviders, config.backend(), graphBuilderSuite, Optimizations, graph.getProfilingInfo(), selectedSuites,
                             selectedLirSuites, compilationResult, CompilationResultBuilderFactory.Default, false);
         } catch (Throwable e) {
             throw debug.handle(e);
@@ -619,7 +619,7 @@ public abstract class TruffleCompilerImpl implements TruffleCompilerBase {
         try (DebugCloseable a = CodeInstallationTime.start(debug); DebugCloseable c = CodeInstallationMemUse.start(debug)) {
             InstalledCode installedCode = createInstalledCode(compilable);
             assert graph.getSpeculationLog() == result.getSpeculationLog();
-            config.lastTier().backend().createInstalledCode(debug, graph.method(), compilationRequest, result, installedCode, false);
+            config.backend().createInstalledCode(debug, graph.method(), compilationRequest, result, installedCode, false);
         } catch (Throwable e) {
             throw debug.handle(e);
         }

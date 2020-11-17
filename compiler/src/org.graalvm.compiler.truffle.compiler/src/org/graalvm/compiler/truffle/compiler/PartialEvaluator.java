@@ -162,7 +162,7 @@ public abstract class PartialEvaluator {
     public PartialEvaluator(TruffleCompilerConfiguration config, GraphBuilderConfiguration configForRoot, KnownTruffleTypes knownFields) {
         this.config = config;
         this.providers = config.lastTier().providers();
-        this.architecture = config.lastTier().backend().getTarget().arch;
+        this.architecture = config.architecture();
         this.canonicalizer = CanonicalizerPhase.create();
         this.snippetReflection = config.snippetReflection();
         this.knownTruffleTypes = knownFields;

@@ -204,7 +204,7 @@ public final class HotSpotTruffleCompilerImpl extends TruffleCompilerImpl implem
 
     @Override
     public PhaseSuite<HighTierContext> createGraphBuilderSuite() {
-        return config.lastTier().backend().getSuites().getDefaultGraphBuilderSuite().copy();
+        return config.backend().getSuites().getDefaultGraphBuilderSuite().copy();
     }
 
     /**
@@ -220,7 +220,7 @@ public final class HotSpotTruffleCompilerImpl extends TruffleCompilerImpl implem
                 // nothing to do
                 return;
             }
-            HotSpotCompilationIdentifier compilationId = (HotSpotCompilationIdentifier) config.lastTier().backend().getCompilationIdentifier(method);
+            HotSpotCompilationIdentifier compilationId = (HotSpotCompilationIdentifier) config.backend().getCompilationIdentifier(method);
             OptionValues options = runtime.getGraalOptions(OptionValues.class);
             try (DebugContext debug = DebugStubsAndSnippets.getValue(options)
                             ? hotspotGraalRuntime.openDebugContext(options, compilationId, method, getDebugHandlerFactories(), DebugContext.getDefaultLogStream())
@@ -278,7 +278,7 @@ public final class HotSpotTruffleCompilerImpl extends TruffleCompilerImpl implem
         StructuredGraph graph = new StructuredGraph.Builder(options, debug, AllowAssumptions.NO).method(javaMethod).compilationId(compilationId).build();
 
         final Providers lastTierProviders = config.lastTier().providers();
-        final Backend backend = config.lastTier().backend();
+        final Backend backend = config.backend();
         Plugins plugins = new Plugins(new InvocationPlugins());
         HotSpotCodeCacheProvider codeCache = (HotSpotCodeCacheProvider) lastTierProviders.getCodeCache();
         boolean infoPoints = codeCache.shouldDebugNonSafepoints();

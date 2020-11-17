@@ -26,6 +26,7 @@ package org.graalvm.compiler.truffle.compiler;
 
 import jdk.vm.ci.code.Architecture;
 import org.graalvm.compiler.api.replacements.SnippetReflectionProvider;
+import org.graalvm.compiler.core.target.Backend;
 import org.graalvm.compiler.nodes.graphbuilderconf.GraphBuilderConfiguration;
 import org.graalvm.compiler.truffle.common.TruffleCompilerRuntime;
 
@@ -69,7 +70,12 @@ public final class TruffleCompilerConfiguration {
         return new TruffleCompilerConfiguration(runtime, plugins, provider, tier, lastTier);
     }
 
+    public Backend backend() {
+        // Currently, the first tier and the last tier have the same backend object.
+        return lastTier().backend();
+    }
+
     public Architecture architecture() {
-        return lastTier().backend().getTarget().arch;
+        return backend().getTarget().arch;
     }
 }

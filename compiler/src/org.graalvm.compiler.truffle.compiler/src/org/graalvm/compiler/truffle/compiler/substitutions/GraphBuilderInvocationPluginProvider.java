@@ -30,7 +30,7 @@ import org.graalvm.compiler.phases.util.Providers;
 
 /**
  * Registers invocation plugins that are common across all Truffle compilation tiers.
- * 
+ *
  * These plugins are invoked when parsing graphs, that could then be cached both for first-tier and
  * for second-tier compilations.
  */
