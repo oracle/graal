@@ -153,7 +153,7 @@ public class IsolateAwareTruffleCompiler implements SubstrateTruffleCompiler {
             CompilerIsolateThread thread = IsolatedGraalUtils.createCompilationIsolate();
             isolate = Isolates.getIsolate(thread);
             if (sharedIsolate.compareAndSet(WordFactory.nullPointer(), isolate)) {
-                Runtime.getRuntime().addShutdownHook(new Thread(() -> sharedIsolateShutdown(sharedIsolate.get())));
+                Runtime.getRuntime().addShutdownHook(new Thread(this::sharedIsolateShutdown));
                 return thread; // (already attached)
             }
             Isolates.tearDownIsolate(thread); // lost the race
@@ -163,14 +163,16 @@ public class IsolateAwareTruffleCompiler implements SubstrateTruffleCompiler {
         return (CompilerIsolateThread) Isolates.attachCurrentThread(isolate);
     }
 
-    protected void sharedIsolateShutdown(Isolate isolate) {
+    private void sharedIsolateShutdown() {
+        Isolate isolate = sharedIsolate.get();
         CompilerIsolateThread context = (CompilerIsolateThread) Isolates.attachCurrentThread(isolate);
-        sharedIsolateShutdown0(context);
+        compilerIsolateThreadShutdown(context);
+        Isolates.detachThread(context);
     }
 
     @CEntryPoint
     @CEntryPointOptions(include = CEntryPointOptions.NotIncludedAutomatically.class, publishAs = CEntryPointOptions.Publish.NotPublished)
-    protected static void sharedIsolateShutdown0(@SuppressWarnings("unused") @CEntryPoint.IsolateThreadContext CompilerIsolateThread context) {
+    protected static void compilerIsolateThreadShutdown(@SuppressWarnings("unused") @CEntryPoint.IsolateThreadContext CompilerIsolateThread context) {
         VMRuntime.shutdown();
     }
 
