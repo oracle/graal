@@ -31,6 +31,7 @@ import java.util.Queue;
 import org.graalvm.collections.EconomicMap;
 import org.graalvm.collections.EconomicSet;
 import org.graalvm.collections.Equivalence;
+import org.graalvm.compiler.core.common.NumUtil;
 import org.graalvm.compiler.core.common.calc.Condition;
 import org.graalvm.compiler.core.common.cfg.Loop;
 import org.graalvm.compiler.core.common.type.IntegerStamp;
@@ -63,6 +64,7 @@ import org.graalvm.compiler.nodes.calc.BinaryArithmeticNode;
 import org.graalvm.compiler.nodes.calc.CompareNode;
 import org.graalvm.compiler.nodes.calc.LeftShiftNode;
 import org.graalvm.compiler.nodes.calc.MulNode;
+import org.graalvm.compiler.nodes.calc.NarrowNode;
 import org.graalvm.compiler.nodes.calc.NegateNode;
 import org.graalvm.compiler.nodes.calc.SignExtendNode;
 import org.graalvm.compiler.nodes.calc.SubNode;
@@ -456,6 +458,10 @@ public class LoopEx {
                     if (!isValidConvert && op instanceof ZeroExtendNode) {
                         ZeroExtendNode zeroExtendNode = (ZeroExtendNode) op;
                         isValidConvert = zeroExtendNode.isInputAlwaysPositive() || ((IntegerStamp) zeroExtendNode.stamp(NodeView.DEFAULT)).isPositive();
+                    }
+                    if (!isValidConvert && op instanceof NarrowNode) {
+                        NarrowNode narrow = (NarrowNode) op;
+                        isValidConvert = NumUtil.isSignedNbit(narrow.getResultBits(), ((IntegerStamp) narrow.getValue().stamp(NodeView.DEFAULT)).upMask());
                     }
 
                     if (isValidConvert) {
