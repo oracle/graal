@@ -50,7 +50,7 @@ public final class GuardedAnnotationAccess {
     public static <T extends Annotation> T getAnnotation(AnnotatedElement element, Class<T> annotationType) {
         try {
             return element.getAnnotation(annotationType);
-        } catch (ArrayStoreException | NoClassDefFoundError e) {
+        } catch (ArrayStoreException | LinkageError e) {
             /*
              * Returning null essentially means that the element doesn't declare the annotationType,
              * but we cannot know that since the annotation parsing failed. However, this allows us
@@ -64,7 +64,7 @@ public final class GuardedAnnotationAccess {
     public static Annotation[] getAnnotations(AnnotatedElement element) {
         try {
             return element.getAnnotations();
-        } catch (ArrayStoreException | NoClassDefFoundError e) {
+        } catch (ArrayStoreException | LinkageError e) {
             /*
              * Returning an empty array essentially means that the element doesn't declare any
              * annotations, but we know that it is not true since the reason the annotation parsing
@@ -79,7 +79,7 @@ public final class GuardedAnnotationAccess {
     public static <T extends Annotation> T getDeclaredAnnotation(AnnotatedElement element, Class<T> annotationType) {
         try {
             return element.getDeclaredAnnotation(annotationType);
-        } catch (ArrayStoreException | NoClassDefFoundError e) {
+        } catch (ArrayStoreException | LinkageError e) {
             /*
              * Returning null essentially means that the element doesn't declare the annotationType,
              * but we cannot know that since the annotation parsing failed. However, this allows us
@@ -93,7 +93,7 @@ public final class GuardedAnnotationAccess {
     public static Annotation[] getDeclaredAnnotations(AnnotatedElement element) {
         try {
             return element.getDeclaredAnnotations();
-        } catch (ArrayStoreException | NoClassDefFoundError e) {
+        } catch (ArrayStoreException | LinkageError e) {
             /*
              * Returning an empty array essentially means that the element doesn't declare any
              * annotations, but we know that it is not true since the reason the annotation parsing

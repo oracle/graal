@@ -709,7 +709,7 @@ public class AnnotationSubstitutionProcessor extends SubstitutionProcessor {
 
         } catch (NoSuchMethodException ex) {
             throw UserError.abort("Could not find target method: %s", annotatedMethod);
-        } catch (NoClassDefFoundError error) {
+        } catch (LinkageError error) {
             throw UserError.abort("Cannot find %s.%s, %s can not be loaded, due to %s not being available in the classpath. Are you missing a dependency in your classpath?",
                             originalClass.getName(), originalName, originalClass.getName(), error.getMessage());
         }

@@ -128,11 +128,11 @@ public abstract class SharedGraphBuilderPhase extends GraphBuilderPhase.Instance
             try {
                 super.maybeEagerlyResolve(cpi, bytecode);
             } catch (UnresolvedElementException e) {
-                if (e.getCause() instanceof NoClassDefFoundError || e.getCause() instanceof IllegalAccessError) {
+                if (e.getCause() instanceof LinkageError || e.getCause() instanceof IllegalAccessError) {
                     /*
-                     * Ignore NoClassDefFoundError if thrown from eager resolution attempt. This is
-                     * usually followed by a call to ConstantPool.lookupType() which should return
-                     * an UnresolvedJavaType which we know how to deal with.
+                     * Ignore LinkageError if thrown from eager resolution attempt. This is usually
+                     * followed by a call to ConstantPool.lookupType() which should return an
+                     * UnresolvedJavaType which we know how to deal with.
                      */
                 } else {
                     throw e;
@@ -144,12 +144,12 @@ public abstract class SharedGraphBuilderPhase extends GraphBuilderPhase.Instance
         protected JavaType maybeEagerlyResolve(JavaType type, ResolvedJavaType accessingClass) {
             try {
                 return super.maybeEagerlyResolve(type, accessingClass);
-            } catch (NoClassDefFoundError e) {
+            } catch (LinkageError e) {
                 /*
-                 * Type resolution fails if the type is missing. Just erase the type by returning
-                 * the Object type. This is the same handling as in WrappedConstantPool, which is
-                 * not triggering when parsing is done with the HotSpot universe instead of the
-                 * AnalysisUniverse.
+                 * Type resolution fails if the type is missing or has an incompatible change. Just
+                 * erase the type by returning the Object type. This is the same handling as in
+                 * WrappedConstantPool, which is not triggering when parsing is done with the
+                 * HotSpot universe instead of the AnalysisUniverse.
                  */
                 return getMetaAccess().lookupJavaType(Object.class);
             }
