@@ -33,42 +33,11 @@ import com.oracle.truffle.espresso.runtime.EspressoContext;
 import com.oracle.truffle.espresso.runtime.StaticObject;
 
 import java.util.ArrayList;
-import java.util.Arrays;
 import java.util.regex.Matcher;
 
-public final class ClassInfo {
-    private ObjectKlass thisKlass;
-    private byte[] bytes;
-    private byte[] patchedBytes;
-    private final StaticObject classLoader;
-    private final String originalName;
-    private String newName;
+public abstract class ClassInfo {
 
-    // below fields constitute the "fingerprint" of the class relevant for matching
-    private String classFingerprint;
-    private String methodFingerprint;
-    private String fieldFingerprint;
-    private String enclosingMethodFingerprint;
-
-    private final ArrayList<ClassInfo> innerClasses;
-    private ClassInfo outerClassInfo;
-    private int nextNewClass = 1;
-
-    private ClassInfo(ObjectKlass klass, String originalName, StaticObject classLoader, String classFingerprint, String methodFingerprint, String fieldFingerprint, String enclosingMethodFingerprint,
-                      ArrayList<ClassInfo> inners, byte[] bytes) {
-        this.thisKlass = klass;
-        this.originalName = originalName;
-        this.classLoader = classLoader;
-        this.classFingerprint = classFingerprint;
-        this.methodFingerprint = methodFingerprint;
-        this.fieldFingerprint = fieldFingerprint;
-        this.enclosingMethodFingerprint = enclosingMethodFingerprint;
-        this.innerClasses = inners;
-        this.bytes = bytes;
-    }
-
-    public static ClassInfo create(Klass klass, EspressoContext context) {
-
+    public static ImmutableClassInfo create(Klass klass, EspressoContext context) {
         StringBuilder hierarchy = new StringBuilder();
         StringBuilder methods = new StringBuilder();
         StringBuilder fields = new StringBuilder();
@@ -99,7 +68,7 @@ public final class ClassInfo {
             enclosing.append(nmt.getName(pool)).append(";").append(nmt.getDescriptor(pool));
         }
         // find all currently loaded direct inner classes and create class infos
-        ArrayList<ClassInfo> inners = new ArrayList<>(1);
+        ArrayList<ImmutableClassInfo> inners = new ArrayList<>(1);
 
         Klass[] loadedInnerClasses = InnerClassRedefiner.findLoadedInnerClasses(klass, context);
         for (Klass inner : loadedInnerClasses) {
@@ -109,20 +78,20 @@ public final class ClassInfo {
                 inners.add(InnerClassRedefiner.getGlobalClassInfo(inner, context));
             }
         }
-
-        return new ClassInfo((ObjectKlass) klass, name, klass.getDefiningClassLoader(), hierarchy.toString(), methods.toString(), fields.toString(), enclosing.toString(), inners, null);
+        return new ImmutableClassInfo((ObjectKlass) klass, name, klass.getDefiningClassLoader(), hierarchy.toString(), methods.toString(), fields.toString(), enclosing.toString(),
+                        inners.toArray(new ImmutableClassInfo[0]), null);
     }
 
-    public static ClassInfo create(RedefineInfo redefineInfo, EspressoContext context) {
+    public static HotSwapClassInfo create(RedefineInfo redefineInfo, EspressoContext context) {
         ObjectKlass klass = (ObjectKlass) redefineInfo.getKlass();
         return create(klass, klass.getNameAsString(), redefineInfo.getClassBytes(), klass.getDefiningClassLoader(), context);
     }
 
-    public static ClassInfo create(String name, byte[] bytes, StaticObject definingLoader, EspressoContext context) {
+    public static HotSwapClassInfo create(String name, byte[] bytes, StaticObject definingLoader, EspressoContext context) {
         return create(null, name, bytes, definingLoader, context);
     }
 
-    public static ClassInfo create(ObjectKlass klass, String name, byte[] bytes, StaticObject definingLoader, EspressoContext context) {
+    public static HotSwapClassInfo create(ObjectKlass klass, String name, byte[] bytes, StaticObject definingLoader, EspressoContext context) {
         ParserKlass parserKlass = ClassfileParser.parse(new ClassfileStream(bytes, null), "L" + name + ";", null, context);
 
         StringBuilder hierarchy = new StringBuilder();
@@ -154,122 +123,51 @@ public final class ClassInfo {
             enclosing.append(nmt.getName(pool)).append(";").append(nmt.getDescriptor(pool));
         }
 
-        return new ClassInfo(klass, name, definingLoader, hierarchy.toString(), methods.toString(), fields.toString(), enclosing.toString(), new ArrayList<>(1), bytes);
+        return new HotSwapClassInfo(klass, name, definingLoader, hierarchy.toString(), methods.toString(), fields.toString(), enclosing.toString(), new ArrayList<>(1), bytes);
     }
 
-    public static ClassInfo copyFrom(ClassInfo info) {
-        return new ClassInfo(info.getKlass(), info.getOriginalName(), info.getClassLoader(), info.classFingerprint, info.methodFingerprint, info.fieldFingerprint, info.enclosingMethodFingerprint, new ArrayList<>(1), info.getBytes());
-    }
-
-    public String getOriginalName() {
-        return originalName;
-    }
-
-    public StaticObject getClassLoader() {
-        return classLoader;
-    }
-
-    public void setKlass(ObjectKlass klass) {
-        thisKlass = klass;
-    }
-
-    public void rename(String name) {
-        this.newName = name;
-    }
-
-    void outerRenamed(String oldName, String newName) {
-        methodFingerprint = methodFingerprint != null ? methodFingerprint.replace(oldName, newName) : null;
-        fieldFingerprint = fieldFingerprint != null ? fieldFingerprint.replace(oldName, newName) : null;
-    }
-
-    public boolean isRenamed() {
-        return newName != null && !newName.equals(originalName);
-    }
-
-    public String getNewName() {
-        return newName != null ? newName : originalName;
-    }
-
-    public void addInnerClass(ClassInfo inner) {
-        innerClasses.add(inner);
-        inner.setOuterClass(this);
-    }
-
-    private void setOuterClass(ClassInfo classInfo) {
-        outerClassInfo = classInfo;
-    }
-
-    public ClassInfo getOuterClassInfo() {
-        return outerClassInfo;
-    }
-
-    public ClassInfo[] getInnerClasses() {
-        return innerClasses.toArray(new ClassInfo[innerClasses.size()]);
-    }
-
-    public ObjectKlass getKlass() {
-        return thisKlass;
-    }
-
-    public byte[] getBytes() {
-        return bytes;
-    }
-
-    public boolean knowsInnerClass(String innerName) {
-        for (ClassInfo innerClass : innerClasses) {
-            if (innerName.equals(innerClass.getOriginalName())) {
-                return true;
-            }
+    public static ImmutableClassInfo copyFrom(HotSwapClassInfo info) {
+        ArrayList<ImmutableClassInfo> inners = new ArrayList<>(info.getInnerClasses().length);
+        for (HotSwapClassInfo innerClass : info.getInnerClasses()) {
+            inners.add(copyFrom(innerClass));
         }
-        return false;
+        return new ImmutableClassInfo(info.getKlass(), info.getName(), info.getClassLoader(), info.getClassFingerprint(), info.getMethodFingerprint(), info.getFieldFingerprint(),
+                        info.getEnclosingMethodFingerprint(), inners.toArray(new ImmutableClassInfo[0]), info.getBytes());
     }
+
+    public abstract String getClassFingerprint();
+
+    public abstract String getMethodFingerprint();
+
+    public abstract String getFieldFingerprint();
+
+    public abstract String getEnclosingMethodFingerprint();
+
+    public abstract ClassInfo[] getInnerClasses();
+
+    public abstract String getName();
+
+    public abstract StaticObject getClassLoader();
+
+    public abstract ObjectKlass getKlass();
+
+    public abstract byte[] getBytes();
 
     public int match(ClassInfo other) {
-        if (!classFingerprint.equals(other.classFingerprint)) {
+        if (!getClassFingerprint().equals(other.getClassFingerprint())) {
             // always mark super hierachy changes as incompatible
             return 0;
         }
-        if (!fieldFingerprint.equals(other.fieldFingerprint)) {
+        if (!getFieldFingerprint().equals(other.getFieldFingerprint())) {
             // field changed not supported yet
             // Remove this restriction when supported
             return 0;
         }
         int score = 0;
-        score += methodFingerprint.equals(other.methodFingerprint) ? InnerClassRedefiner.METHOD_FINGERPRINT_EQUALS : 0;
-        score += enclosingMethodFingerprint.equals(other.enclosingMethodFingerprint) ? InnerClassRedefiner.ENCLOSING_METHOD_FINGERPRINT_EQUALS : 0;
-        score += fieldFingerprint.equals(other.fieldFingerprint) ? InnerClassRedefiner.FIELD_FINGERPRINT_EQUALS : 0;
-        score += innerClasses.size() == other.innerClasses.size() ? InnerClassRedefiner.NUMBER_INNER_CLASSES : 0;
+        score += getMethodFingerprint().equals(other.getMethodFingerprint()) ? InnerClassRedefiner.METHOD_FINGERPRINT_EQUALS : 0;
+        score += getEnclosingMethodFingerprint().equals(other.getEnclosingMethodFingerprint()) ? InnerClassRedefiner.ENCLOSING_METHOD_FINGERPRINT_EQUALS : 0;
+        score += getFieldFingerprint().equals(other.getFieldFingerprint()) ? InnerClassRedefiner.FIELD_FINGERPRINT_EQUALS : 0;
+        score += getInnerClasses().length == other.getInnerClasses().length ? InnerClassRedefiner.NUMBER_INNER_CLASSES : 0;
         return score;
-    }
-
-    public String addHotClassMarker() {
-        return getNewName() + InnerClassRedefiner.HOT_CLASS_MARKER + nextNewClass++;
-    }
-
-    public void patchBytes(byte[] patchedBytes) {
-        this.patchedBytes = patchedBytes;
-    }
-
-    public boolean isPatched() {
-        return patchedBytes != null && !Arrays.equals(patchedBytes, bytes);
-    }
-
-    public byte[] getPatchedBytes() {
-        return patchedBytes;
-    }
-
-    public void removeInner(ClassInfo removed) {
-        innerClasses.remove(removed);
-    }
-
-    public void commit(ClassInfo info) {
-        this.bytes = info.getBytes();
-        this.classFingerprint = info.classFingerprint;
-        this.methodFingerprint = info.methodFingerprint;
-        this.fieldFingerprint = info.fieldFingerprint;
-        this.enclosingMethodFingerprint = info.enclosingMethodFingerprint;
-        this.newName = null;
-        this.patchedBytes = null;
-        this.thisKlass = null;
     }
 }

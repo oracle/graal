@@ -24,20 +24,20 @@ package com.oracle.truffle.espresso.impl;
 
 public final class ChangePacket {
 
-    public final ClassInfo info;
+    public final HotSwapClassInfo info;
     public final ParserKlass parserKlass;
     public final ClassRedefinition.ClassChange classChange;
     public final DetectedChange detectedChange;
     public long id;
 
-    public ChangePacket(ClassInfo redefineInfo, ParserKlass parserKlass, ClassRedefinition.ClassChange classChange, DetectedChange detectedChange) {
+    public ChangePacket(HotSwapClassInfo redefineInfo, ParserKlass parserKlass, ClassRedefinition.ClassChange classChange, DetectedChange detectedChange) {
         this.info = redefineInfo;
         this.parserKlass = parserKlass;
         this.classChange = classChange;
         this.detectedChange = detectedChange;
     }
 
-    public ChangePacket(ClassInfo redefineInfo, ClassRedefinition.ClassChange classChange) {
+    public ChangePacket(HotSwapClassInfo redefineInfo, ClassRedefinition.ClassChange classChange) {
        this(redefineInfo, null, classChange, null);
     }
 

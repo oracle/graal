@@ -224,9 +224,9 @@ public final class ClassRegistries {
         }
     }
 
-    void removeUnloadeKlassConstraint(Klass klass) {
+    void removeUnloadeKlassConstraint(Klass klass, Symbol<Type> type) {
         assert klass.isInstanceClass();
-        constraints.removeUnloadedKlassConstraint(klass);
+        constraints.removeUnloadedKlassConstraint(klass, type);
     }
 
     @TruffleBoundary

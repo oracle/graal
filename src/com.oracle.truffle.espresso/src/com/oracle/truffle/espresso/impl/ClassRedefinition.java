@@ -125,36 +125,36 @@ public final class ClassRedefinition {
         }
     }
 
-    public static List<ChangePacket> detectClassChanges(ClassInfo[] classInfos, EspressoContext context) {
+    public static List<ChangePacket> detectClassChanges(HotSwapClassInfo[] classInfos, EspressoContext context) {
         List<ChangePacket> result = new ArrayList<>(classInfos.length);
-        for (ClassInfo classInfo : classInfos) {
-            KlassRef klass = classInfo.getKlass();
+        for (HotSwapClassInfo hotSwapInfo : classInfos) {
+            KlassRef klass = hotSwapInfo.getKlass();
             if (klass == null) {
                 // New anonymous inner class
-                result.add(new ChangePacket(classInfo, ClassChange.NEW_CLASS));
+                result.add(new ChangePacket(hotSwapInfo, ClassChange.NEW_CLASS));
                 continue;
             }
-            byte[] bytes = classInfo.getBytes();
+            byte[] bytes = hotSwapInfo.getBytes();
             ParserKlass parserKlass = null;
             ParserKlass newParserKlass = null;
             ClassChange classChange;
             DetectedChange detectedChange = new DetectedChange();
             if (klass instanceof ObjectKlass) {
-                parserKlass = ClassfileParser.parse(new ClassfileStream(bytes, null), "L" + classInfo.getOriginalName() + ";", null, context);
-                if (classInfo.isPatched()) {
-                    byte[] patched = classInfo.getPatchedBytes();
+                parserKlass = ClassfileParser.parse(new ClassfileStream(bytes, null), "L" + hotSwapInfo.getName() + ";", null, context);
+                if (hotSwapInfo.isPatched()) {
+                    byte[] patched = hotSwapInfo.getPatchedBytes();
                     newParserKlass = parserKlass;
                     // we detect changes against the patched bytecode
-                    parserKlass = ClassfileParser.parse(new ClassfileStream(patched, null), "L" + classInfo.getNewName() + ";", null, context);
+                    parserKlass = ClassfileParser.parse(new ClassfileStream(patched, null), "L" + hotSwapInfo.getNewName() + ";", null, context);
                 } else {
-                    parserKlass = ClassfileParser.parse(new ClassfileStream(bytes, null), "L" + classInfo.getOriginalName() + ";", null, context);
+                    parserKlass = ClassfileParser.parse(new ClassfileStream(bytes, null), "L" + hotSwapInfo.getName() + ";", null, context);
                 }
                 classChange = detectClassChanges(parserKlass, (ObjectKlass) klass, detectedChange, newParserKlass);
             } else {
                 // array or primitive klass, should never happen
                 classChange = ClassChange.INVALID;
             }
-            result.add(new ChangePacket(classInfo, newParserKlass != null ? newParserKlass : parserKlass, classChange, detectedChange));
+            result.add(new ChangePacket(hotSwapInfo, newParserKlass != null ? newParserKlass : parserKlass, classChange, detectedChange));
         }
         return result;
     }
@@ -197,7 +197,7 @@ public final class ClassRedefinition {
                     }
                 case NEW_CLASS:
                     ClassInfo classInfo = packet.info;
-                    Symbol<Symbol.Type> type = context.getTypes().fromClassGetName(classInfo.getOriginalName());
+                    Symbol<Symbol.Type> type = context.getTypes().fromClassGetName(classInfo.getName());
                     ClassRegistry classRegistry = context.getRegistries().getClassRegistry(classInfo.getClassLoader());
                     Klass loadedKlass = classRegistry.findLoadedKlass(type);
                     long id = ids.getId(loadedKlass);
@@ -218,6 +218,7 @@ public final class ClassRedefinition {
         } catch (EspressoException ex) {
             // TODO(Gregersen) - return appropriate error code based on the exception type
             // we get from parsing the class file
+            ex.printStackTrace();
             return ErrorCodes.INVALID_CLASS_FORMAT;
         }
     }
@@ -550,15 +551,23 @@ public final class ClassRedefinition {
             // renaming a class is done by
             // 1. Rename the 'name' and 'type' Symbols in the Klass
             // 2. Update the loaded class cache in the associated ClassRegistry
-            // 3. Set the guest language java.lang.Class instance to null
+            // 3. Set the guest language java.lang.Class#name field to null
             // 4. update the JDWP refType ID for the klass instance
-            oldKlass.patchClassName(packet.info.getOriginalName());
+            // 5. replace/record a classloader constraint for the new type and klass combination
 
-            Klass replacedKlass = classRegistry.onClassRenamed(oldKlass, packet.info.getOriginalName());
+            Symbol<Symbol.Type> type = context.getTypes().fromClassGetName(packet.info.getName());
+            Klass loadedKlass = classRegistry.findLoadedKlass(type);
+            packet.setReplacementID(ids.getId(loadedKlass));
+            if (loadedKlass != null) {
+                context.getRegistries().removeUnloadeKlassConstraint(loadedKlass, type);
+            }
+
+            oldKlass.patchClassName(packet.info.getName());
+            classRegistry.onClassRenamed(oldKlass, packet.info.getName());
 
             InterpreterToVM.setFieldObject(StaticObject.NULL, oldKlass.mirror(), context.getMeta().java_lang_Class_name);
 
-            packet.setReplacementID(ids.getId(replacedKlass));
+            context.getRegistries().recordConstraint(type, oldKlass, oldKlass.getDefiningClassLoader());
         }
         oldKlass.redefineClass(packet, refreshSubClasses, ids);
         return 0;

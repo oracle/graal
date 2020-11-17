@@ -44,6 +44,7 @@ import com.oracle.truffle.espresso.impl.ArrayKlass;
 import com.oracle.truffle.espresso.impl.ChangePacket;
 import com.oracle.truffle.espresso.impl.ClassInfo;
 import com.oracle.truffle.espresso.impl.ClassRedefinition;
+import com.oracle.truffle.espresso.impl.HotSwapClassInfo;
 import com.oracle.truffle.espresso.impl.InnerClassRedefiner;
 import com.oracle.truffle.espresso.impl.Klass;
 import com.oracle.truffle.espresso.impl.Method.MethodVersion;
@@ -655,7 +656,7 @@ public final class JDWPContextImpl implements JDWPContext {
 
             // match anon inner classes with previous state
             List<ClassInfo> removedInnerClasses = new ArrayList<>(0);
-            ClassInfo[] matchedInfos = InnerClassRedefiner.matchAnonymousInnerClasses(redefineInfos, context, removedInnerClasses);
+            HotSwapClassInfo[] matchedInfos = InnerClassRedefiner.matchAnonymousInnerClasses(redefineInfos, context, removedInnerClasses);
 
             // detect all changes to all classes, throws if redefinition cannot be completed
             // due to the nature of the changes
