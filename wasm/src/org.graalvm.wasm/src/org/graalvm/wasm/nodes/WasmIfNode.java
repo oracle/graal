@@ -65,12 +65,12 @@ public final class WasmIfNode extends WasmNode {
     }
 
     @Override
-    public int execute(WasmContext context, VirtualFrame frame, long[] stack) {
+    public int execute(WasmContext context, VirtualFrame frame, long[] locals, long[] stack) {
         int stackPointer = initialStackPointer - 1;
         if (condition.profile(popInt(stack, stackPointer) != 0)) {
-            return trueBranch.execute(context, frame, stack);
+            return trueBranch.execute(context, frame, locals, stack);
         } else if (falseBranch != null) {
-            return falseBranch.execute(context, frame, stack);
+            return falseBranch.execute(context, frame, locals, stack);
         } else {
             return -1;
         }

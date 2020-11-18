@@ -50,7 +50,6 @@ import org.graalvm.wasm.exception.Failure;
 public final class WasmCodeEntry {
     private final WasmFunction function;
     @CompilationFinal(dimensions = 1) private final byte[] data;
-    @CompilationFinal(dimensions = 1) private FrameSlot[] localSlots;
     @CompilationFinal(dimensions = 1) private byte[] localTypes;
     @CompilationFinal(dimensions = 1) private byte[] byteConstants;
     @CompilationFinal(dimensions = 1) private int[] intConstants;
@@ -58,12 +57,12 @@ public final class WasmCodeEntry {
     @CompilationFinal(dimensions = 2) private int[][] branchTables;
     @CompilationFinal(dimensions = 1) private int[] profileCounters;
     @CompilationFinal private FrameSlot stackSlot;
+    @CompilationFinal private FrameSlot localsSlot;
     @CompilationFinal private int maxStackSize;
 
     public WasmCodeEntry(WasmFunction function, byte[] data) {
         this.function = function;
         this.data = data;
-        this.localSlots = null;
         this.localTypes = null;
         this.byteConstants = null;
         this.intConstants = null;
@@ -79,37 +78,13 @@ public final class WasmCodeEntry {
         return data;
     }
 
-    public FrameSlot localSlot(int index) {
-        return localSlots[index];
-    }
 
     public void initLocalSlots(FrameDescriptor frameDescriptor) {
-        localSlots = new FrameSlot[localTypes.length];
-        for (int i = 0; i != localTypes.length; ++i) {
-            FrameSlot localSlot = frameDescriptor.addFrameSlot(i, frameSlotKind(localTypes[i]));
-            localSlots[i] = localSlot;
-        }
-    }
-
-    private static FrameSlotKind frameSlotKind(byte valueType) {
-        switch (valueType) {
-            case WasmType.I32_TYPE:
-                return FrameSlotKind.Int;
-            case WasmType.I64_TYPE:
-                return FrameSlotKind.Long;
-            case WasmType.F32_TYPE:
-                return FrameSlotKind.Float;
-            case WasmType.F64_TYPE:
-                return FrameSlotKind.Double;
-            default:
-                Assert.fail(String.format("Unknown value type: 0x%02X", valueType), Failure.UNSPECIFIED_MALFORMED);
-        }
-        return null;
+        this.localsSlot = frameDescriptor.addFrameSlot(1, FrameSlotKind.Object);
     }
 
     public void initStack(FrameDescriptor frameDescriptor, int maximumStackSize) {
-        int stackSlotIndex = localSlots.length;
-        this.stackSlot = frameDescriptor.addFrameSlot(stackSlotIndex, FrameSlotKind.Object);
+        this.stackSlot = frameDescriptor.addFrameSlot(0, FrameSlotKind.Object);
         this.maxStackSize = maximumStackSize;
     }
 
@@ -119,6 +94,10 @@ public final class WasmCodeEntry {
 
     public FrameSlot stackSlot() {
         return stackSlot;
+    }
+
+    public FrameSlot localsSlot() {
+        return localsSlot;
     }
 
     public void setLocalTypes(byte[] localTypes) {
