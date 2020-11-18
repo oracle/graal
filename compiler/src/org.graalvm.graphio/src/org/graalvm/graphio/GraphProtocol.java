@@ -853,8 +853,9 @@ abstract class GraphProtocol<Graph, Node, NodeClass, Edges, Block, ResolvedJavaM
             if (versionMajor > 7) {
                 writeShort(Character.MAX_VALUE);
                 writeInt(size);
-            } else
-                throw new IOException("Property count is too big.");
+            } else {
+                throw new IllegalArgumentException("Property count is too big. Properties can contain only " + (Character.MAX_VALUE - 1) + " in version < 8.");
+            }
         } else {
             writeShort((char) size);
         }
