@@ -1468,10 +1468,10 @@ public class BinaryParser extends BinaryStreamParser {
     }
 
     protected int readSignedInt32() {
-        int value = peekSignedInt32(data, offset);
-        byte length = peekLeb128Length(data, offset);
+        long valueAndLength = peekSignedInt32AndLength(data, offset);
+        int length = (int) ((valueAndLength >>> 32) & 0xffff_ffffL);
         offset += length;
-        return value;
+        return (int) (valueAndLength & 0xffff_ffffL);
     }
 
     private long readSignedInt64() {

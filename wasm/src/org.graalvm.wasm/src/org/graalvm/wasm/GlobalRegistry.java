@@ -166,8 +166,9 @@ public class GlobalRegistry {
             } catch (UnsupportedMessageException | UnknownIdentifierException | UnsupportedTypeException e) {
                 throw WasmException.format(Failure.UNSPECIFIED_TRAP, "Global does not have a value attribute: %s", global);
             }
+        } else {
+            globals[address] = value;
         }
-        globals[address] = value;
     }
 
     public void storeLong(int address, long value) {
@@ -178,8 +179,9 @@ public class GlobalRegistry {
             } catch (UnsupportedMessageException | UnknownIdentifierException | UnsupportedTypeException e) {
                 throw WasmException.format(Failure.UNSPECIFIED_TRAP, "Global does not have a value attribute: %s", global);
             }
+        } else {
+            globals[address] = value;
         }
-        globals[address] = value;
     }
 
     public void storeFloat(int address, float value) {
@@ -190,8 +192,9 @@ public class GlobalRegistry {
             } catch (UnsupportedMessageException | UnknownIdentifierException | UnsupportedTypeException e) {
                 throw WasmException.format(Failure.UNSPECIFIED_TRAP, "Global does not have a value attribute: %s", global);
             }
+        } else {
+            globals[address] = Float.floatToRawIntBits(value);
         }
-        globals[address] = Float.floatToRawIntBits(value);
     }
 
     public void storeFloatWithInt(int address, int value) {
@@ -202,8 +205,9 @@ public class GlobalRegistry {
             } catch (UnsupportedMessageException | UnknownIdentifierException | UnsupportedTypeException e) {
                 throw WasmException.format(Failure.UNSPECIFIED_TRAP, "Global does not have a value attribute: %s", global);
             }
+        } else {
+            globals[address] = value;
         }
-        globals[address] = value;
     }
 
     public void storeDouble(int address, double value) {
@@ -214,8 +218,9 @@ public class GlobalRegistry {
             } catch (UnsupportedMessageException | UnknownIdentifierException | UnsupportedTypeException e) {
                 throw WasmException.format(Failure.UNSPECIFIED_TRAP, "Global does not have a value attribute: %s", global);
             }
+        } else {
+            globals[address] = Double.doubleToRawLongBits(value);
         }
-        globals[address] = Double.doubleToRawLongBits(value);
     }
 
     public void storeDoubleWithLong(int address, long value) {
@@ -226,8 +231,9 @@ public class GlobalRegistry {
             } catch (UnsupportedMessageException | UnknownIdentifierException | UnsupportedTypeException e) {
                 throw WasmException.format(Failure.UNSPECIFIED_TRAP, "Global does not have a value attribute: %s", global);
             }
+        } else {
+            globals[address] = value;
         }
-        globals[address] = value;
     }
 
     public GlobalRegistry duplicate() {
