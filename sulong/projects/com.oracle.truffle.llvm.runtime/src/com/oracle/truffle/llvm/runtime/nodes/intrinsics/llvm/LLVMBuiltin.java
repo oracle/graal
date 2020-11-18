@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2017, 2019, Oracle and/or its affiliates.
+ * Copyright (c) 2017, 2020, Oracle and/or its affiliates.
  *
  * All rights reserved.
  *
@@ -30,32 +30,7 @@
 package com.oracle.truffle.llvm.runtime.nodes.intrinsics.llvm;
 
 import com.oracle.truffle.llvm.runtime.nodes.api.LLVMExpressionNode;
-import com.oracle.truffle.llvm.runtime.nodes.api.LLVMStoreNode;
-import com.oracle.truffle.llvm.runtime.nodes.memory.store.LLVMI16StoreNodeGen;
-import com.oracle.truffle.llvm.runtime.nodes.memory.store.LLVMI1StoreNodeGen;
-import com.oracle.truffle.llvm.runtime.nodes.memory.store.LLVMI32StoreNodeGen;
-import com.oracle.truffle.llvm.runtime.nodes.memory.store.LLVMI64StoreNodeGen;
-import com.oracle.truffle.llvm.runtime.nodes.memory.store.LLVMI8StoreNodeGen;
 
 public abstract class LLVMBuiltin extends LLVMExpressionNode {
 
-    protected static LLVMStoreNode createStoreI1() {
-        return LLVMI1StoreNodeGen.create(null, null);
-    }
-
-    protected static LLVMStoreNode createStoreI8() {
-        return LLVMI8StoreNodeGen.create(null, null);
-    }
-
-    protected static LLVMStoreNode createStoreI16() {
-        return LLVMI16StoreNodeGen.create(null, null);
-    }
-
-    protected static LLVMStoreNode createStoreI32() {
-        return LLVMI32StoreNodeGen.create(null, null);
-    }
-
-    protected static LLVMStoreNode createStoreI64() {
-        return LLVMI64StoreNodeGen.create(null, null);
-    }
 }

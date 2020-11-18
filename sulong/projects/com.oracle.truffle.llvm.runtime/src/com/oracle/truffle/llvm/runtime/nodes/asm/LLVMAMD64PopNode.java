@@ -91,7 +91,7 @@ public abstract class LLVMAMD64PopNode extends LLVMExpressionNode {
                         @Cached LLVMI64LoadNode load) {
             LLVMPointer stackPointer = stackAccess.executeGet(frame);
             try {
-                return load.executeWithTarget(stackPointer);
+                return load.executeWithTargetGeneric(stackPointer);
             } finally {
                 stackAccess.executeSet(frame, stackPointer.increment(LLVMExpressionNode.I64_SIZE_IN_BYTES));
             }

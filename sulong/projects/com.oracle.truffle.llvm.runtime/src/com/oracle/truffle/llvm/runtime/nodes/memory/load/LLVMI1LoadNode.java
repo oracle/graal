@@ -48,6 +48,8 @@ public abstract class LLVMI1LoadNode extends LLVMLoadNode {
         return LLVMI1LoadNodeGen.create((LLVMExpressionNode) null);
     }
 
+    public abstract boolean executeWithTarget(Object address);
+
     @Specialization(guards = "!isAutoDerefHandle(language, addr)")
     protected boolean doI1Native(LLVMNativePointer addr,
                     @CachedLanguage LLVMLanguage language) {

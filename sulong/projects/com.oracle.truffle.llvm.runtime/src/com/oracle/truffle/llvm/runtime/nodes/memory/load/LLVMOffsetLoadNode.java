@@ -27,9 +27,10 @@
  * NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED
  * OF THE POSSIBILITY OF SUCH DAMAGE.
  */
-package com.oracle.truffle.llvm.runtime.nodes.memory.store;
+package com.oracle.truffle.llvm.runtime.nodes.memory.load;
 
-import com.oracle.truffle.llvm.runtime.nodes.api.LLVMStoreNode;
+import com.oracle.truffle.llvm.runtime.nodes.api.LLVMNode;
 
-public abstract class LLVMStoreNodeCommon extends LLVMStoreNode {
+public abstract class LLVMOffsetLoadNode extends LLVMNode {
+
 }

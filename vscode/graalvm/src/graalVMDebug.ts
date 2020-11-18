@@ -149,7 +149,7 @@ export class GraalVMConfigurationProvider implements vscode.DebugConfigurationPr
 export class GraalVMDebugAdapterDescriptorFactory implements vscode.DebugAdapterDescriptorFactory {
 
 	createDebugAdapterDescriptor(session: vscode.DebugSession, executable: vscode.DebugAdapterExecutable | undefined): vscode.ProviderResult<vscode.DebugAdapterDescriptor> {
-		if (!session.configuration.protocol || session.configuration.protocol === 'debugAdapter') {
+		if (session.configuration.protocol === 'debugAdapter') {
 			if (session.configuration.request === 'attach') {
 				return new vscode.DebugAdapterServer(session.configuration.port, session.configuration.address);
 			} else if (session.configuration.request === 'launch') {
@@ -281,14 +281,18 @@ async function getLaunchInfo(config: vscode.DebugConfiguration | ILaunchRequestA
 	const programArgs = config.args || [];
 	let launchArgs = [];
 	if (!config.noDebug) {
-		if (!config.protocol || config.protocol === 'debugAdapter') {
-			launchArgs.push(`--dap=${port}`);
-		} else if (config.protocol === 'chromeDevTools') {
+		if (!config.protocol || config.protocol === 'chromeDevTools') {
 			if (path.basename(runtimeExecutable) === NODE) {
 				launchArgs.push(`--inspect-brk=${port}`);
 			} else {
 				launchArgs.push(`--inspect=${port}`);
 			}
+		} else if (config.protocol === 'debugAdapter') {
+			let idx = runtimeArgs.indexOf('--jvm');
+			if (idx < 0) {
+				launchArgs.push('--jvm');
+			}
+			launchArgs.push(`--dap=${port}`);
 		}
 	}
 	return Promise.resolve({exec: runtimeExecutable, args: runtimeArgs.concat(launchArgs, program ? [program] : [], programArgs), cwd: cwd, port: port});

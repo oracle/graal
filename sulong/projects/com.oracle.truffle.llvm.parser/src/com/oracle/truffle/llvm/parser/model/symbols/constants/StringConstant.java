@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2016, 2018, Oracle and/or its affiliates.
+ * Copyright (c) 2016, 2020, Oracle and/or its affiliates.
  *
  * All rights reserved.
  *
@@ -29,33 +29,27 @@
  */
 package com.oracle.truffle.llvm.parser.model.symbols.constants;
 
+import com.oracle.truffle.llvm.parser.LLVMParserRuntime;
 import com.oracle.truffle.llvm.parser.model.SymbolImpl;
 import com.oracle.truffle.llvm.parser.model.visitors.SymbolVisitor;
+import com.oracle.truffle.llvm.runtime.GetStackSpaceFactory;
+import com.oracle.truffle.llvm.runtime.datalayout.DataLayout;
+import com.oracle.truffle.llvm.runtime.nodes.api.LLVMExpressionNode;
 import com.oracle.truffle.llvm.runtime.types.ArrayType;
+import com.oracle.truffle.llvm.runtime.types.Type.TypeOverflowException;
 
 public final class StringConstant extends AbstractConstant {
 
-    private final String value;
+    private final byte[] value;
 
-    private final boolean isCString;
-
-    public StringConstant(ArrayType type, String value, boolean isCString) {
+    public StringConstant(ArrayType type, byte[] value) {
         super(type);
         this.value = value;
-        this.isCString = isCString;
     }
 
     @Override
     public void accept(SymbolVisitor visitor) {
         visitor.visit(this);
-    }
-
-    public String getString() {
-        return value;
-    }
-
-    public boolean isCString() {
-        return isCString;
     }
 
     @Override
@@ -68,8 +62,8 @@ public final class StringConstant extends AbstractConstant {
         StringBuilder sb = new StringBuilder();
 
         sb.append("c\"");
-        for (int i = 0; i < value.length(); i++) {
-            byte b = (byte) value.charAt(i);
+        for (int i = 0; i < value.length; i++) {
+            byte b = value[i];
             if (b < ' ' || b >= '~') {
                 sb.append(String.format("\\%02X", b));
             } else {
@@ -83,5 +77,15 @@ public final class StringConstant extends AbstractConstant {
 
     @Override
     public void replace(SymbolImpl oldValue, SymbolImpl newValue) {
+    }
+
+    @Override
+    public LLVMExpressionNode createNode(LLVMParserRuntime runtime, DataLayout dataLayout, GetStackSpaceFactory stackFactory) {
+        return runtime.getNodeFactory().createPrimitiveArrayLiteral(value, getType(), stackFactory);
+    }
+
+    @Override
+    public void addToBuffer(Buffer buffer, LLVMParserRuntime runtime, DataLayout dataLayout, GetStackSpaceFactory stackFactory) throws TypeOverflowException {
+        buffer.getBuffer().put(value);
     }
 }

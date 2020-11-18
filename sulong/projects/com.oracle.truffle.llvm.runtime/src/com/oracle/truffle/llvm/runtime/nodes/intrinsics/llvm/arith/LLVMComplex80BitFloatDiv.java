@@ -37,7 +37,7 @@ import com.oracle.truffle.api.nodes.UnexpectedResultException;
 import com.oracle.truffle.llvm.runtime.floating.LLVM80BitFloat;
 import com.oracle.truffle.llvm.runtime.nodes.api.LLVMExpressionNode;
 import com.oracle.truffle.llvm.runtime.nodes.memory.store.LLVM80BitFloatStoreNode;
-import com.oracle.truffle.llvm.runtime.nodes.memory.store.LLVM80BitFloatStoreNodeGen;
+import com.oracle.truffle.llvm.runtime.nodes.memory.store.LLVM80BitFloatStoreNode.LLVM80BitFloatOffsetStoreNode;
 import com.oracle.truffle.llvm.runtime.pointer.LLVMPointer;
 import com.oracle.truffle.llvm.runtime.types.PrimitiveType;
 import com.oracle.truffle.llvm.runtime.types.Type.TypeOverflowException;
@@ -50,7 +50,8 @@ public abstract class LLVMComplex80BitFloatDiv extends LLVMExpressionNode {
     @Child private LLVMExpressionNode dNode;
     @Child private LLVMExpressionNode alloc;
 
-    @Child private LLVM80BitFloatStoreNode store;
+    @Child private LLVM80BitFloatStoreNode storeReal = LLVM80BitFloatStoreNode.create();
+    @Child private LLVM80BitFloatOffsetStoreNode storeImag = LLVM80BitFloatOffsetStoreNode.create();
 
     public LLVMComplex80BitFloatDiv(LLVMExpressionNode alloc, LLVMExpressionNode a, LLVMExpressionNode b, LLVMExpressionNode c, LLVMExpressionNode d) {
         this.alloc = alloc;
@@ -58,8 +59,6 @@ public abstract class LLVMComplex80BitFloatDiv extends LLVMExpressionNode {
         this.bNode = b;
         this.cNode = c;
         this.dNode = d;
-
-        this.store = LLVM80BitFloatStoreNodeGen.create(null, null);
     }
 
     int getSizeInBytes() {
@@ -92,8 +91,8 @@ public abstract class LLVMComplex80BitFloatDiv extends LLVMExpressionNode {
             double zImag = (b * c - a * d) / denom;
 
             LLVMPointer allocatedMemory = alloc.executeLLVMPointer(frame);
-            store.executeWithTarget(allocatedMemory, LLVM80BitFloat.fromDouble(zReal));
-            store.executeWithTarget(allocatedMemory.increment(sizeInBytes), LLVM80BitFloat.fromDouble(zImag));
+            storeReal.executeWithTarget(allocatedMemory, LLVM80BitFloat.fromDouble(zReal));
+            storeImag.executeWithTarget(allocatedMemory, sizeInBytes, LLVM80BitFloat.fromDouble(zImag));
 
             return allocatedMemory;
         } catch (UnexpectedResultException | ClassCastException e) {

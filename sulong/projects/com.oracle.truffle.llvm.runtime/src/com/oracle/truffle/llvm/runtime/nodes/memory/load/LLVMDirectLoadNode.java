@@ -54,7 +54,7 @@ public abstract class LLVMDirectLoadNode {
     @NodeField(name = "bitWidth", type = int.class)
     public abstract static class LLVMIVarBitDirectLoadNode extends LLVMLoadNode {
 
-        protected abstract LLVMIVarBit executeManaged(LLVMManagedPointer addr);
+        public abstract LLVMIVarBit executeWithTarget(LLVMManagedPointer addr);
 
         public abstract int getBitWidth();
 
@@ -73,7 +73,7 @@ public abstract class LLVMDirectLoadNode {
                         @Cached LLVMDerefHandleGetReceiverNode getReceiver,
                         @CachedLanguage @SuppressWarnings("unused") LLVMLanguage language,
                         @Cached("createRecursive()") LLVMIVarBitDirectLoadNode load) {
-            return load.executeManaged(getReceiver.execute(addr));
+            return load.executeWithTarget(getReceiver.execute(addr));
         }
 
         @Specialization(limit = "3")
@@ -100,7 +100,7 @@ public abstract class LLVMDirectLoadNode {
             return LLVM80BitFloatDirectLoadNodeGen.create((LLVMExpressionNode) null);
         }
 
-        protected abstract LLVM80BitFloat executeManaged(LLVMManagedPointer addr);
+        public abstract LLVM80BitFloat executeWithTarget(LLVMManagedPointer addr);
 
         @Specialization(guards = "!isAutoDerefHandle(language, addr)")
         protected LLVM80BitFloat do80BitFloatNative(LLVMNativePointer addr,
@@ -113,7 +113,7 @@ public abstract class LLVMDirectLoadNode {
                         @Cached LLVMDerefHandleGetReceiverNode getReceiver,
                         @CachedLanguage @SuppressWarnings("unused") LLVMLanguage language,
                         @Cached LLVM80BitFloatDirectLoadNode load) {
-            return load.executeManaged(getReceiver.execute(addr));
+            return load.executeWithTarget(getReceiver.execute(addr));
         }
 
         @Specialization(limit = "3")
@@ -136,6 +136,8 @@ public abstract class LLVMDirectLoadNode {
         public static LLVMPointerDirectLoadNode create() {
             return LLVMPointerDirectLoadNodeGen.create((LLVMExpressionNode) null);
         }
+
+        public abstract LLVMPointer executeWithTarget(LLVMPointer addr);
 
         @Specialization(guards = "!isAutoDerefHandle(language, addr)")
         protected LLVMNativePointer doNativePointer(LLVMNativePointer addr,

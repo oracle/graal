@@ -71,6 +71,10 @@ import java.nio.charset.CodingErrorAction;
 import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
 
+import static org.graalvm.wasm.WasmType.F32_TYPE;
+import static org.graalvm.wasm.WasmType.F64_TYPE;
+import static org.graalvm.wasm.WasmType.I32_TYPE;
+import static org.graalvm.wasm.WasmType.I64_TYPE;
 import static org.graalvm.wasm.WasmUtil.unsignedInt32ToLong;
 
 /**
@@ -340,7 +344,7 @@ public class BinaryParser extends BinaryStreamParser {
         int expectedNumCodeEntries = module.numFunctions() - numImportedFunctions;
         int numCodeEntries = readVectorLength();
         if (expectedNumCodeEntries != numCodeEntries) {
-            throw WasmException.format(Failure.UNSPECIFIED_INVALID, null, "Unexpected number of code entries: %d (%d expected).", numCodeEntries, expectedNumCodeEntries);
+            throw WasmException.format(Failure.UNSPECIFIED_INVALID, "Unexpected number of code entries: %d (%d expected).", numCodeEntries, expectedNumCodeEntries);
         }
         for (int entryIndex = 0; entryIndex != numCodeEntries; ++entryIndex) {
             int codeEntrySize = readUnsignedInt32();
@@ -408,14 +412,8 @@ public class BinaryParser extends BinaryStreamParser {
         rootNode.codeEntry().initLocalSlots(rootNode.getFrameDescriptor());
 
         /* Initialize the Truffle-related components required for execution. */
-        if (state.byteConstants().length > 0) {
-            rootNode.codeEntry().setByteConstants(state.byteConstants());
-        }
         if (state.intConstants().length > 0) {
             rootNode.codeEntry().setIntConstants(state.intConstants());
-        }
-        if (state.longConstants().length > 0) {
-            rootNode.codeEntry().setLongConstants(state.longConstants());
         }
         if (state.branchTables().length > 0) {
             rootNode.codeEntry().setBranchTables(state.branchTables());
@@ -460,12 +458,10 @@ public class BinaryParser extends BinaryStreamParser {
         ArrayList<Node> children = new ArrayList<>();
         int startStackSize = state.stackSize();
         int startOffset = offset();
-        int startByteConstantOffset = state.byteConstantOffset();
         int startIntConstantOffset = state.intConstantOffset();
-        int startLongConstantOffset = state.longConstantOffset();
         int startBranchTableOffset = state.branchTableOffset();
         int startProfileCount = state.profileCount();
-        final WasmBlockNode currentBlock = new WasmBlockNode(instance, codeEntry, startOffset, returnTypeId, startStackSize, startByteConstantOffset, startIntConstantOffset, startLongConstantOffset,
+        final WasmBlockNode currentBlock = new WasmBlockNode(instance, codeEntry, startOffset, returnTypeId, startStackSize, startIntConstantOffset,
                         startBranchTableOffset, startProfileCount);
 
         state.startBlock(currentBlock, isLoopBody);
@@ -497,7 +493,7 @@ public class BinaryParser extends BinaryStreamParser {
                 }
                 case Instructions.IF: {
                     // Pop the condition.
-                    state.pop();
+                    state.popChecked(I32_TYPE);
                     // Store the reachability of the current block, to restore it later.
                     boolean reachable = state.isReachable();
                     WasmIfNode ifNode = readIf(instance, codeEntry, state);
@@ -512,36 +508,42 @@ public class BinaryParser extends BinaryStreamParser {
                     // operands are stored on the stack. Otherwise then the stack size must be
                     // adjusted to match the stack size at the continuation point.
                     if (state.isReachable()) {
-                        Assert.assertIntEqual(state.stackSize() - startStackSize, currentBlock.returnLength(), "Wrong number of values left on the stack at the end of block",
-                                        Failure.RETURN_SIZE_MISMATCH);
+                        final int actualReturnLength = state.stackSize() - state.getStackSize(0);
+                        Assert.assertIntEqual(actualReturnLength, currentBlock.returnLength(), "Wrong number of values on the stack on the end of the block", Failure.RETURN_SIZE_MISMATCH);
+                        if (currentBlock.returnLength() == 1) {
+                            state.popChecked(currentBlock.returnTypeId());
+                            state.push(currentBlock.returnTypeId());
+                        }
                     } else {
-                        state.setStackSize(state.getStackSize(0) + currentBlock.returnLength());
+                        state.unwindStack(state.getStackSize(0));
+                        if (currentBlock.returnLength() == 1) {
+                            state.push(currentBlock.returnTypeId());
+                        }
                     }
                     break;
                 case Instructions.BR: {
                     final int unwindLevel = readTargetOffset(state);
                     final int targetStackSize = state.getStackSize(unwindLevel);
                     state.useIntConstant(targetStackSize);
-                    final int continuationReturnLength = state.getContinuationLength(unwindLevel);
-                    state.useIntConstant(continuationReturnLength);
-                    state.assertStackSizeGreaterOrEqual(continuationReturnLength);
+                    state.useIntConstant(state.getContinuationLength(unwindLevel));
+                    state.checkContinuationType(unwindLevel);
                     // This instruction is stack-polymorphic.
                     state.setReachable(false);
                     break;
                 }
                 case Instructions.BR_IF: {
-                    state.pop(); // condition
+                    state.popChecked(I32_TYPE); // condition
                     final int unwindLevel = readTargetOffset(state);
                     final int targetStackSize = state.getStackSize(unwindLevel);
                     state.useIntConstant(targetStackSize);
                     final int continuationReturnLength = state.getContinuationLength(unwindLevel);
                     state.useIntConstant(continuationReturnLength);
-                    state.assertStackSizeGreaterOrEqual(continuationReturnLength);
+                    state.checkContinuationType(unwindLevel);
                     state.incrementProfileCount();
                     break;
                 }
                 case Instructions.BR_TABLE: {
-                    state.pop(); // index
+                    state.popChecked(I32_TYPE); // index
                     final int numLabels = readVectorLength();
                     // We need to save three tables here, to maintain the mapping target -> state
                     // mapping:
@@ -558,9 +560,9 @@ public class BinaryParser extends BinaryStreamParser {
                         branchTable[1 + 2 * i + 0] = unwindLevel;
                         branchTable[1 + 2 * i + 1] = state.getStackSize(unwindLevel);
                         final int targetContinuationLength = state.getContinuationLength(unwindLevel);
+                        state.checkContinuationType(unwindLevel);
                         if (continuationReturnLength == -1) {
                             continuationReturnLength = targetContinuationLength;
-                            state.assertStackSizeGreaterOrEqual(continuationReturnLength);
                         } else {
                             Assert.assertIntEqual(continuationReturnLength, targetContinuationLength,
                                             "All target blocks in br.table must have the same return type length.", Failure.TABLE_TARGET_MISMATCH);
@@ -575,8 +577,9 @@ public class BinaryParser extends BinaryStreamParser {
                 }
                 case Instructions.RETURN: {
                     // Pop the stack values used as the return values.
-                    for (int i = 0; i < codeEntry.function().returnTypeLength(); i++) {
-                        state.pop();
+                    Assert.assertIntLessOrEqual(codeEntry.function().returnTypeLength(), 1, Failure.MULTIPLE_RETURN_VALUES);
+                    if (codeEntry.function().returnTypeLength() == 1) {
+                        state.popChecked(codeEntry.function().returnType());
                     }
                     state.useIntConstant(state.depth());
                     state.useIntConstant(state.getRootBlockReturnLength());
@@ -585,10 +588,19 @@ public class BinaryParser extends BinaryStreamParser {
                     break;
                 }
                 case Instructions.CALL: {
-                    int functionIndex = readFunctionIndex(state);
-                    WasmFunction function = module.symbolTable().function(functionIndex);
-                    state.pop(function.numArguments());
-                    state.push(function.returnTypeLength());
+                    final int functionIndex = readFunctionIndex(state);
+
+                    // Pop arguments
+                    final WasmFunction function = module.symbolTable().function(functionIndex);
+                    for (int i = function.numArguments() - 1; i >= 0; --i) {
+                        state.popChecked(function.argumentTypeAt(i));
+                    }
+
+                    // Push return value
+                    Assert.assertIntLessOrEqual(function.returnTypeLength(), 1, Failure.MULTIPLE_RETURN_VALUES);
+                    if (function.returnTypeLength() == 1) {
+                        state.push(function.returnType());
+                    }
 
                     // We deliberately do not create the call node during parsing,
                     // because the call target is only created after the code entry is parsed.
@@ -606,14 +618,21 @@ public class BinaryParser extends BinaryStreamParser {
                 }
                 case Instructions.CALL_INDIRECT: {
                     int expectedFunctionTypeIndex = readTypeIndex(state);
-                    int numArguments = module.symbolTable().functionTypeArgumentCount(expectedFunctionTypeIndex);
-                    int returnLength = module.symbolTable().functionTypeReturnTypeLength(expectedFunctionTypeIndex);
 
-                    // Pop the function index to call, then pop the arguments and push the return
-                    // value.
-                    state.pop();
-                    state.pop(numArguments);
-                    state.push(returnLength);
+                    // Pop the function index to call
+                    state.popChecked(I32_TYPE);
+
+                    // Pop arguments
+                    for (int i = module.symbolTable().functionTypeArgumentCount(expectedFunctionTypeIndex) - 1; i >= 0; --i) {
+                        state.popChecked(module.symbolTable().functionTypeArgumentTypeAt(expectedFunctionTypeIndex, i));
+                    }
+                    // Push return value
+                    final int returnLength = module.symbolTable().functionTypeReturnTypeLength(expectedFunctionTypeIndex);
+                    Assert.assertIntLessOrEqual(returnLength, 1, Failure.MULTIPLE_RETURN_VALUES);
+                    if (returnLength == 1) {
+                        state.push(module.symbolTable().functionTypeReturnType(expectedFunctionTypeIndex));
+                    }
+
                     children.add(WasmIndirectCallNode.create());
                     Assert.assertIntEqual(read1(), CallIndirect.ZERO_TABLE, "CALL_INDIRECT: Instruction must end with 0x00", Failure.UNSPECIFIED_MALFORMED);
                     break;
@@ -622,128 +641,121 @@ public class BinaryParser extends BinaryStreamParser {
                     state.pop();
                     break;
                 case Instructions.SELECT:
-                    // Pop three values from the stack: the condition and the values to select
-                    // between.
-                    state.pop(3);
-                    state.push();
+                    state.popChecked(I32_TYPE); // condition
+                    final byte t = state.pop(); // first operand
+                    state.popChecked(t); // second operand
+                    state.push(t);
                     break;
                 case Instructions.LOCAL_GET: {
-                    int localIndex = readLocalIndex(state);
+                    final int localIndex = readLocalIndex(state);
                     // Assert localIndex exists.
                     Assert.assertIntLessOrEqual(localIndex, codeEntry.numLocals(), "Invalid local index for local.get", Failure.UNSPECIFIED_MALFORMED);
-                    state.push();
+                    state.push(codeEntry.localType(localIndex));
                     break;
                 }
                 case Instructions.LOCAL_SET: {
-                    int localIndex = readLocalIndex(state);
+                    final int localIndex = readLocalIndex(state);
                     // Assert localIndex exists.
                     Assert.assertIntLessOrEqual(localIndex, codeEntry.numLocals(), "Invalid local index for local.set", Failure.UNSPECIFIED_MALFORMED);
-                    state.pop();
+                    state.popChecked(codeEntry.localType(localIndex));
                     break;
                 }
                 case Instructions.LOCAL_TEE: {
-                    int localIndex = readLocalIndex(state);
+                    final int localIndex = readLocalIndex(state);
                     // Assert localIndex exists.
                     Assert.assertIntLessOrEqual(localIndex, codeEntry.numLocals(), "Invalid local index for local.tee", Failure.UNSPECIFIED_MALFORMED);
-                    state.pop();
-                    state.push();
+                    state.popChecked(codeEntry.localType(localIndex));
+                    state.push(codeEntry.localType(localIndex));
                     break;
                 }
                 case Instructions.GLOBAL_GET: {
-                    int index = readGlobalIndex(state);
+                    final int index = readGlobalIndex(state);
                     Assert.assertIntLessOrEqual(index, module.symbolTable().maxGlobalIndex(),
                                     "Invalid global index for global.get.", Failure.UNSPECIFIED_MALFORMED);
-                    state.push();
+                    state.push(module.symbolTable().globalValueType(index));
                     break;
                 }
                 case Instructions.GLOBAL_SET: {
-                    int index = readGlobalIndex(state);
+                    final int index = readGlobalIndex(state);
                     // Assert localIndex exists.
                     Assert.assertIntLessOrEqual(index, module.symbolTable().maxGlobalIndex(),
                                     "Invalid global index for global.set.", Failure.UNSPECIFIED_MALFORMED);
                     // Assert that the global is mutable.
                     Assert.assertTrue(module.symbolTable().globalMutability(index) == GlobalModifier.MUTABLE,
                                     "Immutable globals cannot be set: " + index, Failure.UNSPECIFIED_MALFORMED);
-                    state.pop();
+                    state.popChecked(module.symbolTable().globalValueType(index));
                     break;
                 }
-                case Instructions.I32_LOAD:
-                case Instructions.I64_LOAD:
                 case Instructions.F32_LOAD:
+                    load(state, F32_TYPE);
+                    break;
                 case Instructions.F64_LOAD:
+                    load(state, F64_TYPE);
+                    break;
+                case Instructions.I32_LOAD:
                 case Instructions.I32_LOAD8_S:
                 case Instructions.I32_LOAD8_U:
                 case Instructions.I32_LOAD16_S:
                 case Instructions.I32_LOAD16_U:
+                    load(state, I32_TYPE);
+                    break;
+                case Instructions.I64_LOAD:
                 case Instructions.I64_LOAD8_S:
                 case Instructions.I64_LOAD8_U:
                 case Instructions.I64_LOAD16_S:
                 case Instructions.I64_LOAD16_U:
                 case Instructions.I64_LOAD32_S:
-                case Instructions.I64_LOAD32_U: {
-                    // We don't store the `align` literal, as our implementation does not make use
-                    // of it, but we need to store its byte length, so that we can skip it
-                    // during execution.
-                    readUnsignedInt32(); // align
-                    readUnsignedInt32(state); // load offset
-                    state.pop();   // Base address.
-                    state.push();  // Loaded value.
+                case Instructions.I64_LOAD32_U:
+                    load(state, I64_TYPE);
                     break;
-                }
-                case Instructions.I32_STORE:
-                case Instructions.I64_STORE:
                 case Instructions.F32_STORE:
+                    store(state, F32_TYPE);
+                    break;
                 case Instructions.F64_STORE:
+                    store(state, F64_TYPE);
+                    break;
+                case Instructions.I32_STORE:
                 case Instructions.I32_STORE_8:
                 case Instructions.I32_STORE_16:
+                    store(state, I32_TYPE);
+                    break;
+                case Instructions.I64_STORE:
                 case Instructions.I64_STORE_8:
                 case Instructions.I64_STORE_16:
-                case Instructions.I64_STORE_32: {
-                    // We don't store the `align` literal, as our implementation does not make use
-                    // of it, but we need to store its byte length, so that we can skip it
-                    // during the execution.
-                    readUnsignedInt32(); // align
-                    readUnsignedInt32(state); // store offset
-                    state.pop();  // Value to store.
-                    state.pop();  // Base address.
+                case Instructions.I64_STORE_32:
+                    store(state, I64_TYPE);
                     break;
-                }
-                case Instructions.MEMORY_SIZE: {
+                case Instructions.MEMORY_SIZE:
                     // Skip the constant 0x00.
                     read1();
-                    state.push();
+                    state.push(I32_TYPE);
                     break;
-                }
                 case Instructions.MEMORY_GROW: {
                     // Skip the constant 0x00.
                     read1();
-                    state.pop();
-                    state.push();
+                    state.popChecked(I32_TYPE);
+                    state.push(I32_TYPE);
                     break;
                 }
-                case Instructions.I32_CONST: {
+                case Instructions.I32_CONST:
                     readSignedInt32(state);
-                    state.push();
+                    state.push(I32_TYPE);
                     break;
-                }
-                case Instructions.I64_CONST: {
+                case Instructions.I64_CONST:
                     readSignedInt64(state);
-                    state.push();
+                    state.push(I64_TYPE);
                     break;
-                }
-                case Instructions.F32_CONST: {
+                case Instructions.F32_CONST:
                     read4();
-                    state.push();
+                    state.push(F32_TYPE);
                     break;
-                }
-                case Instructions.F64_CONST: {
+                case Instructions.F64_CONST:
                     read8();
-                    state.push();
+                    state.push(F64_TYPE);
                     break;
-                }
                 case Instructions.I32_EQZ:
-                    state.pop();
-                    state.push();
+                    state.popChecked(I32_TYPE);
+                    state.push(I32_TYPE);
                     break;
                 case Instructions.I32_EQ:
                 case Instructions.I32_NE:
@@ -755,13 +767,13 @@ public class BinaryParser extends BinaryStreamParser {
                 case Instructions.I32_LE_U:
                 case Instructions.I32_GE_S:
                 case Instructions.I32_GE_U:
-                    state.pop();
-                    state.pop();
-                    state.push();
+                    state.popChecked(I32_TYPE);
+                    state.popChecked(I32_TYPE);
+                    state.push(I32_TYPE);
                     break;
                 case Instructions.I64_EQZ:
-                    state.pop();
-                    state.push();
+                    state.popChecked(I64_TYPE);
+                    state.push(I32_TYPE);
                     break;
                 case Instructions.I64_EQ:
                 case Instructions.I64_NE:
@@ -773,9 +785,9 @@ public class BinaryParser extends BinaryStreamParser {
                 case Instructions.I64_LE_U:
                 case Instructions.I64_GE_S:
                 case Instructions.I64_GE_U:
-                    state.pop();
-                    state.pop();
-                    state.push();
+                    state.popChecked(I64_TYPE);
+                    state.popChecked(I64_TYPE);
+                    state.push(I32_TYPE);
                     break;
                 case Instructions.F32_EQ:
                 case Instructions.F32_NE:
@@ -783,9 +795,9 @@ public class BinaryParser extends BinaryStreamParser {
                 case Instructions.F32_GT:
                 case Instructions.F32_LE:
                 case Instructions.F32_GE:
-                    state.pop();
-                    state.pop();
-                    state.push();
+                    state.popChecked(F32_TYPE);
+                    state.popChecked(F32_TYPE);
+                    state.push(I32_TYPE);
                     break;
                 case Instructions.F64_EQ:
                 case Instructions.F64_NE:
@@ -793,15 +805,15 @@ public class BinaryParser extends BinaryStreamParser {
                 case Instructions.F64_GT:
                 case Instructions.F64_LE:
                 case Instructions.F64_GE:
-                    state.pop();
-                    state.pop();
-                    state.push();
+                    state.popChecked(F64_TYPE);
+                    state.popChecked(F64_TYPE);
+                    state.push(I32_TYPE);
                     break;
                 case Instructions.I32_CLZ:
                 case Instructions.I32_CTZ:
                 case Instructions.I32_POPCNT:
-                    state.pop();
-                    state.push();
+                    state.popChecked(I32_TYPE);
+                    state.push(I32_TYPE);
                     break;
                 case Instructions.I32_ADD:
                 case Instructions.I32_SUB:
@@ -818,15 +830,15 @@ public class BinaryParser extends BinaryStreamParser {
                 case Instructions.I32_SHR_U:
                 case Instructions.I32_ROTL:
                 case Instructions.I32_ROTR:
-                    state.pop();
-                    state.pop();
-                    state.push();
+                    state.popChecked(I32_TYPE);
+                    state.popChecked(I32_TYPE);
+                    state.push(I32_TYPE);
                     break;
                 case Instructions.I64_CLZ:
                 case Instructions.I64_CTZ:
                 case Instructions.I64_POPCNT:
-                    state.pop();
-                    state.push();
+                    state.popChecked(I64_TYPE);
+                    state.push(I64_TYPE);
                     break;
                 case Instructions.I64_ADD:
                 case Instructions.I64_SUB:
@@ -843,9 +855,9 @@ public class BinaryParser extends BinaryStreamParser {
                 case Instructions.I64_SHR_U:
                 case Instructions.I64_ROTL:
                 case Instructions.I64_ROTR:
-                    state.pop();
-                    state.pop();
-                    state.push();
+                    state.popChecked(I64_TYPE);
+                    state.popChecked(I64_TYPE);
+                    state.push(I64_TYPE);
                     break;
                 case Instructions.F32_ABS:
                 case Instructions.F32_NEG:
@@ -854,8 +866,8 @@ public class BinaryParser extends BinaryStreamParser {
                 case Instructions.F32_TRUNC:
                 case Instructions.F32_NEAREST:
                 case Instructions.F32_SQRT:
-                    state.pop();
-                    state.push();
+                    state.popChecked(F32_TYPE);
+                    state.push(F32_TYPE);
                     break;
                 case Instructions.F32_ADD:
                 case Instructions.F32_SUB:
@@ -864,9 +876,9 @@ public class BinaryParser extends BinaryStreamParser {
                 case Instructions.F32_MIN:
                 case Instructions.F32_MAX:
                 case Instructions.F32_COPYSIGN:
-                    state.pop();
-                    state.pop();
-                    state.push();
+                    state.popChecked(F32_TYPE);
+                    state.popChecked(F32_TYPE);
+                    state.push(F32_TYPE);
                     break;
                 case Instructions.F64_ABS:
                 case Instructions.F64_NEG:
@@ -875,8 +887,8 @@ public class BinaryParser extends BinaryStreamParser {
                 case Instructions.F64_TRUNC:
                 case Instructions.F64_NEAREST:
                 case Instructions.F64_SQRT:
-                    state.pop();
-                    state.push();
+                    state.popChecked(F64_TYPE);
+                    state.push(F64_TYPE);
                     break;
                 case Instructions.F64_ADD:
                 case Instructions.F64_SUB:
@@ -885,37 +897,82 @@ public class BinaryParser extends BinaryStreamParser {
                 case Instructions.F64_MIN:
                 case Instructions.F64_MAX:
                 case Instructions.F64_COPYSIGN:
-                    state.pop();
-                    state.pop();
-                    state.push();
+                    state.popChecked(F64_TYPE);
+                    state.popChecked(F64_TYPE);
+                    state.push(F64_TYPE);
                     break;
                 case Instructions.I32_WRAP_I64:
+                    state.popChecked(I64_TYPE);
+                    state.push(I32_TYPE);
+                    break;
                 case Instructions.I32_TRUNC_F32_S:
                 case Instructions.I32_TRUNC_F32_U:
+                    state.popChecked(F32_TYPE);
+                    state.push(I32_TYPE);
+                    break;
                 case Instructions.I32_TRUNC_F64_S:
                 case Instructions.I32_TRUNC_F64_U:
+                    state.popChecked(F64_TYPE);
+                    state.push(I32_TYPE);
+                    break;
                 case Instructions.I64_EXTEND_I32_S:
                 case Instructions.I64_EXTEND_I32_U:
+                    state.popChecked(I32_TYPE);
+                    state.push(I64_TYPE);
+                    break;
                 case Instructions.I64_TRUNC_F32_S:
                 case Instructions.I64_TRUNC_F32_U:
+                    state.popChecked(F32_TYPE);
+                    state.push(I64_TYPE);
+                    break;
                 case Instructions.I64_TRUNC_F64_S:
                 case Instructions.I64_TRUNC_F64_U:
+                    state.popChecked(F64_TYPE);
+                    state.push(I64_TYPE);
+                    break;
                 case Instructions.F32_CONVERT_I32_S:
                 case Instructions.F32_CONVERT_I32_U:
+                    state.popChecked(I32_TYPE);
+                    state.push(F32_TYPE);
+                    break;
                 case Instructions.F32_CONVERT_I64_S:
                 case Instructions.F32_CONVERT_I64_U:
+                    state.popChecked(I64_TYPE);
+                    state.push(F32_TYPE);
+                    break;
                 case Instructions.F32_DEMOTE_F64:
+                    state.popChecked(F64_TYPE);
+                    state.push(F32_TYPE);
+                    break;
                 case Instructions.F64_CONVERT_I32_S:
                 case Instructions.F64_CONVERT_I32_U:
+                    state.popChecked(I32_TYPE);
+                    state.push(F64_TYPE);
+                    break;
                 case Instructions.F64_CONVERT_I64_S:
                 case Instructions.F64_CONVERT_I64_U:
+                    state.popChecked(I64_TYPE);
+                    state.push(F64_TYPE);
+                    break;
                 case Instructions.F64_PROMOTE_F32:
+                    state.popChecked(F32_TYPE);
+                    state.push(F64_TYPE);
+                    break;
                 case Instructions.I32_REINTERPRET_F32:
+                    state.popChecked(F32_TYPE);
+                    state.push(I32_TYPE);
+                    break;
                 case Instructions.I64_REINTERPRET_F64:
+                    state.popChecked(F64_TYPE);
+                    state.push(I64_TYPE);
+                    break;
                 case Instructions.F32_REINTERPRET_I32:
+                    state.popChecked(I32_TYPE);
+                    state.push(F32_TYPE);
+                    break;
                 case Instructions.F64_REINTERPRET_I64:
-                    state.pop();
-                    state.push();
+                    state.popChecked(I64_TYPE);
+                    state.push(F64_TYPE);
                     break;
                 default:
                     Assert.fail(Assert.format("Unknown opcode: 0x%02x", opcode), Failure.UNSPECIFIED_MALFORMED);
@@ -923,13 +980,32 @@ public class BinaryParser extends BinaryStreamParser {
             }
         } while (opcode != Instructions.END && opcode != Instructions.ELSE);
         currentBlock.initialize(toArray(children),
-                        offset() - startOffset, state.byteConstantOffset() - startByteConstantOffset,
-                        state.intConstantOffset() - startIntConstantOffset, state.longConstantOffset() - startLongConstantOffset,
+                        offset() - startOffset, state.intConstantOffset() - startIntConstantOffset,
                         state.branchTableOffset() - startBranchTableOffset, state.profileCount() - startProfileCount);
 
         state.endBlock();
 
         return currentBlock;
+    }
+
+    private void store(ExecutionState state, byte type) {
+        // We don't store the `align` literal, as our implementation does not make use
+        // of it, but we need to store its byte length, so that we can skip it
+        // during the execution.
+        readUnsignedInt32(); // align hint
+        readUnsignedInt32(state); // store offset
+        state.popChecked(type); // value to store
+        state.popChecked(I32_TYPE); // base address
+    }
+
+    private void load(ExecutionState state, byte type) {
+        // We don't store the `align` literal, as our implementation does not make use
+        // of it, but we need to store its byte length, so that we can skip it
+        // during execution.
+        readUnsignedInt32(); // align hint
+        readUnsignedInt32(state); // load offset
+        state.popChecked(I32_TYPE); // base address
+        state.push(type); // loaded value
     }
 
     static Node[] toArray(ArrayList<Node> list) {
@@ -950,7 +1026,7 @@ public class BinaryParser extends BinaryStreamParser {
         // interpretation.
         // Correct the stack pointer to the value it would have in case there were no branch
         // instructions.
-        state.setStackSize(returnTypeId != WasmType.VOID_TYPE ? initialStackPointer + 1 : initialStackPointer);
+        state.unwindStack(returnTypeId != WasmType.VOID_TYPE ? initialStackPointer + 1 : initialStackPointer);
 
         return Truffle.getRuntime().createLoopNode(loopBlock);
     }
@@ -969,7 +1045,7 @@ public class BinaryParser extends BinaryStreamParser {
         // interpretation.
         // Correct the stack pointer to the value it would have in case there were no branch
         // instructions.
-        state.setStackSize(stackSizeAfterCondition);
+        state.unwindStack(stackSizeAfterCondition);
 
         // Read false branch, if it exists.
         WasmNode falseBranchBlock = null;

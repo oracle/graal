@@ -61,6 +61,7 @@ import com.oracle.truffle.llvm.runtime.vector.LLVMI32Vector;
 import com.oracle.truffle.llvm.runtime.vector.LLVMI64Vector;
 import com.oracle.truffle.llvm.runtime.vector.LLVMI8Vector;
 import com.oracle.truffle.llvm.runtime.vector.LLVMPointerVector;
+import com.oracle.truffle.llvm.runtime.vector.LLVMVector;
 
 @NodeField(name = "vectorLength", type = int.class)
 public abstract class LLVMLoadVectorNode extends LLVMLoadNode {
@@ -73,7 +74,7 @@ public abstract class LLVMLoadVectorNode extends LLVMLoadNode {
             return LLVMLoadI1VectorNodeGen.create(null, getVectorLength());
         }
 
-        protected abstract LLVMI1Vector executeManaged(LLVMManagedPointer managed);
+        public abstract LLVMI1Vector executeWithTarget(LLVMManagedPointer managed);
 
         @Specialization(guards = "!isAutoDerefHandle(language, addr)")
         @ExplodeLoop
@@ -97,7 +98,7 @@ public abstract class LLVMLoadVectorNode extends LLVMLoadNode {
                         @Cached LLVMDerefHandleGetReceiverNode getReceiver,
                         @CachedLanguage @SuppressWarnings("unused") LLVMLanguage language,
                         @Cached("createRecursive()") LLVMLoadI1VectorNode load) {
-            return load.executeManaged(getReceiver.execute(addr));
+            return load.executeWithTarget(getReceiver.execute(addr));
         }
 
         @Specialization(limit = "3")
@@ -120,7 +121,7 @@ public abstract class LLVMLoadVectorNode extends LLVMLoadNode {
             return LLVMLoadI8VectorNodeGen.create(null, getVectorLength());
         }
 
-        protected abstract LLVMI8Vector executeManaged(LLVMManagedPointer managed);
+        public abstract LLVMI8Vector executeWithTarget(LLVMManagedPointer managed);
 
         @Specialization(guards = "!isAutoDerefHandle(language, addr)")
         @ExplodeLoop
@@ -141,7 +142,7 @@ public abstract class LLVMLoadVectorNode extends LLVMLoadNode {
                         @Cached LLVMDerefHandleGetReceiverNode getReceiver,
                         @CachedLanguage @SuppressWarnings("unused") LLVMLanguage language,
                         @Cached("createRecursive()") LLVMLoadI8VectorNode load) {
-            return load.executeManaged(getReceiver.execute(addr));
+            return load.executeWithTarget(getReceiver.execute(addr));
         }
 
         @Specialization(limit = "3")
@@ -164,7 +165,7 @@ public abstract class LLVMLoadVectorNode extends LLVMLoadNode {
             return LLVMLoadI16VectorNodeGen.create(null, getVectorLength());
         }
 
-        protected abstract LLVMI16Vector executeManaged(LLVMManagedPointer managed);
+        public abstract LLVMI16Vector executeWithTarget(LLVMManagedPointer managed);
 
         @Specialization(guards = "!isAutoDerefHandle(language, addr)")
         @ExplodeLoop
@@ -185,7 +186,7 @@ public abstract class LLVMLoadVectorNode extends LLVMLoadNode {
                         @Cached LLVMDerefHandleGetReceiverNode getReceiver,
                         @CachedLanguage @SuppressWarnings("unused") LLVMLanguage language,
                         @Cached("createRecursive()") LLVMLoadI16VectorNode load) {
-            return load.executeManaged(getReceiver.execute(addr));
+            return load.executeWithTarget(getReceiver.execute(addr));
         }
 
         @Specialization(limit = "3")
@@ -208,7 +209,7 @@ public abstract class LLVMLoadVectorNode extends LLVMLoadNode {
             return LLVMLoadI32VectorNodeGen.create(null, getVectorLength());
         }
 
-        protected abstract LLVMI32Vector executeManaged(LLVMManagedPointer managed);
+        public abstract LLVMI32Vector executeWithTarget(LLVMManagedPointer managed);
 
         @Specialization(guards = "!isAutoDerefHandle(language, addr)")
         @ExplodeLoop
@@ -229,7 +230,7 @@ public abstract class LLVMLoadVectorNode extends LLVMLoadNode {
                         @Cached LLVMDerefHandleGetReceiverNode getReceiver,
                         @CachedLanguage @SuppressWarnings("unused") LLVMLanguage language,
                         @Cached("createRecursive()") LLVMLoadI32VectorNode load) {
-            return load.executeManaged(getReceiver.execute(addr));
+            return load.executeWithTarget(getReceiver.execute(addr));
         }
 
         @Specialization(limit = "3")
@@ -252,7 +253,7 @@ public abstract class LLVMLoadVectorNode extends LLVMLoadNode {
             return LLVMLoadI64VectorNodeGen.create(null, getVectorLength());
         }
 
-        protected abstract Object executeManaged(LLVMManagedPointer managed);
+        public abstract LLVMVector executeWithTarget(LLVMManagedPointer managed);
 
         @Specialization(guards = "!isAutoDerefHandle(language, addr)")
         @ExplodeLoop
@@ -269,11 +270,11 @@ public abstract class LLVMLoadVectorNode extends LLVMLoadNode {
         }
 
         @Specialization(guards = "isAutoDerefHandle(language, addr)")
-        protected Object doI64VectorDerefHandle(LLVMNativePointer addr,
+        protected LLVMVector doI64VectorDerefHandle(LLVMNativePointer addr,
                         @Cached LLVMDerefHandleGetReceiverNode getReceiver,
                         @CachedLanguage @SuppressWarnings("unused") LLVMLanguage language,
                         @Cached("createRecursive()") LLVMLoadI64VectorNode load) {
-            return load.executeManaged(getReceiver.execute(addr));
+            return load.executeWithTarget(getReceiver.execute(addr));
         }
 
         @Specialization(limit = "3", rewriteOn = UnexpectedResultException.class)
@@ -316,7 +317,7 @@ public abstract class LLVMLoadVectorNode extends LLVMLoadNode {
 
         @Specialization(replaces = "doI64Vector")
         @ExplodeLoop
-        protected Object doPointerVector(LLVMManagedPointer addr,
+        protected LLVMPointerVector doPointerVector(LLVMManagedPointer addr,
                         @Cached("create(getVectorLength())") LLVMLoadPointerVectorNode load) {
             return load.executeWithTarget(addr);
         }
@@ -328,7 +329,7 @@ public abstract class LLVMLoadVectorNode extends LLVMLoadNode {
             return LLVMLoadPointerVectorNodeGen.create(null, length);
         }
 
-        protected abstract LLVMPointerVector executeManaged(LLVMManagedPointer managed);
+        public abstract LLVMPointerVector executeWithTarget(Object address);
 
         @Specialization(guards = "!isAutoDerefHandle(language, addr)")
         @ExplodeLoop
@@ -349,7 +350,7 @@ public abstract class LLVMLoadVectorNode extends LLVMLoadNode {
                         @Cached LLVMDerefHandleGetReceiverNode getReceiver,
                         @CachedLanguage @SuppressWarnings("unused") LLVMLanguage language,
                         @Cached("create(getVectorLength())") LLVMLoadPointerVectorNode load) {
-            return load.executeManaged(getReceiver.execute(addr));
+            return load.executeWithTarget(getReceiver.execute(addr));
         }
 
         @Specialization(limit = "3")
@@ -372,7 +373,7 @@ public abstract class LLVMLoadVectorNode extends LLVMLoadNode {
             return LLVMLoadFloatVectorNodeGen.create(null, getVectorLength());
         }
 
-        protected abstract LLVMFloatVector executeManaged(LLVMManagedPointer managed);
+        public abstract LLVMFloatVector executeWithTarget(LLVMManagedPointer managed);
 
         @Specialization(guards = "!isAutoDerefHandle(language, addr)")
         @ExplodeLoop
@@ -393,7 +394,7 @@ public abstract class LLVMLoadVectorNode extends LLVMLoadNode {
                         @Cached LLVMDerefHandleGetReceiverNode getReceiver,
                         @CachedLanguage @SuppressWarnings("unused") LLVMLanguage language,
                         @Cached("createRecursive()") LLVMLoadFloatVectorNode load) {
-            return load.executeManaged(getReceiver.execute(addr));
+            return load.executeWithTarget(getReceiver.execute(addr));
         }
 
         @Specialization(limit = "3")
@@ -416,7 +417,7 @@ public abstract class LLVMLoadVectorNode extends LLVMLoadNode {
             return LLVMLoadDoubleVectorNodeGen.create(null, getVectorLength());
         }
 
-        protected abstract LLVMDoubleVector executeManaged(LLVMManagedPointer managed);
+        public abstract LLVMDoubleVector executeWithTarget(LLVMManagedPointer managed);
 
         @Specialization(guards = "!isAutoDerefHandle(language, addr)")
         @ExplodeLoop
@@ -437,7 +438,7 @@ public abstract class LLVMLoadVectorNode extends LLVMLoadNode {
                         @Cached LLVMDerefHandleGetReceiverNode getReceiver,
                         @CachedLanguage @SuppressWarnings("unused") LLVMLanguage language,
                         @Cached("createRecursive()") LLVMLoadDoubleVectorNode load) {
-            return load.executeManaged(getReceiver.execute(addr));
+            return load.executeWithTarget(getReceiver.execute(addr));
         }
 
         @Specialization(limit = "3")

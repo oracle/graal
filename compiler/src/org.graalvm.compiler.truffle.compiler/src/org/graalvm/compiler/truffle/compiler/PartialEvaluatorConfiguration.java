@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2015, 2018, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2020, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -22,12 +22,26 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package org.graalvm.compiler.truffle.compiler.substitutions;
+package org.graalvm.compiler.truffle.compiler;
 
 import jdk.vm.ci.code.Architecture;
 import org.graalvm.compiler.nodes.graphbuilderconf.InvocationPlugins;
 import org.graalvm.compiler.phases.util.Providers;
+import org.graalvm.compiler.serviceprovider.GraalServices;
+import org.graalvm.compiler.truffle.compiler.substitutions.GraphDecoderInvocationPluginProvider;
 
-public interface TruffleInvocationPluginProvider {
-    void registerInvocationPlugins(Providers providers, Architecture architecture, InvocationPlugins plugins, boolean canDelayIntrinsification);
+public interface PartialEvaluatorConfiguration {
+    /**
+     * Name of this partial-evaluator configuration.
+     */
+    String name();
+
+    /**
+     * Register graph-decoding invocation plugins.
+     */
+    default void registerDecodingInvocationPlugins(InvocationPlugins plugins, boolean canDelayIntrinsification, Providers providers, Architecture arch) {
+        for (GraphDecoderInvocationPluginProvider p : GraalServices.load(GraphDecoderInvocationPluginProvider.class)) {
+            p.registerInvocationPlugins(providers, arch, name(), plugins, canDelayIntrinsification);
+        }
+    }
 }
