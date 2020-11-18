@@ -74,7 +74,7 @@ public class ExportSubclassTest extends AbstractLibraryTest {
     }
 
     @ExportLibrary(ExportSubclassLibrary.class)
-    static class BaseClass {
+    static class ExportSubclassBaseClass {
 
         // directly inherit to SubClass1 and SubClass2
         @ExportMessage
@@ -85,7 +85,7 @@ public class ExportSubclassTest extends AbstractLibraryTest {
         @ExportMessage
         static class M1 {
             @Specialization
-            static String doDefault(@SuppressWarnings("unused") BaseClass receiver) {
+            static String doDefault(@SuppressWarnings("unused") ExportSubclassBaseClass receiver) {
                 return "base_m1";
             }
         }
@@ -94,12 +94,12 @@ public class ExportSubclassTest extends AbstractLibraryTest {
 
     // subclass that re-exports
     @ExportLibrary(ExportSubclassLibrary.class)
-    static class SubClass1 extends BaseClass {
+    static class ExportSubclassSubClass1 extends ExportSubclassBaseClass {
 
         @ExportMessage
         static class M0 {
             @Specialization
-            static String doDefault(@SuppressWarnings("unused") SubClass1 receiver) {
+            static String doDefault(@SuppressWarnings("unused") ExportSubclassSubClass1 receiver) {
                 return "sub1_m0";
             }
         }
@@ -113,7 +113,7 @@ public class ExportSubclassTest extends AbstractLibraryTest {
     }
 
     // subclass that does not re-export
-    static class SubClass2 extends BaseClass {
+    static class ExportSubclassSubClass2 extends ExportSubclassBaseClass {
 
         @Override
         String m0() {
@@ -193,7 +193,7 @@ public class ExportSubclassTest extends AbstractLibraryTest {
     }
 
     @ExportLibrary(ExportSubclassLibrary.class)
-    static class SubClass3 extends BaseClass {
+    static class SubClass3 extends ExportSubclassBaseClass {
 
         @ExportMessage(library = ExportSubclassLibrary.class, name = "m0")
         @ExportMessage(library = ExportSubclassLibrary.class, name = "m1")
@@ -208,14 +208,14 @@ public class ExportSubclassTest extends AbstractLibraryTest {
         for (int i = 0; i < 4; i++) {
             ExportSubclassLibrary lib = createCachedDispatch(ExportSubclassLibrary.class, i);
 
-            assertEquals("base_m0", lib.m0(new BaseClass()));
-            assertEquals("sub1_m0", lib.m0(new SubClass1()));
-            assertEquals("sub2_m0", lib.m0(new SubClass2()));
+            assertEquals("base_m0", lib.m0(new ExportSubclassBaseClass()));
+            assertEquals("sub1_m0", lib.m0(new ExportSubclassSubClass1()));
+            assertEquals("sub2_m0", lib.m0(new ExportSubclassSubClass2()));
             assertEquals("sub3_m01", lib.m0(new SubClass3()));
 
-            assertEquals("base_m1", lib.m1(new BaseClass()));
-            assertEquals("sub1_m1", lib.m1(new SubClass1()));
-            assertEquals("base_m1", lib.m1(new SubClass2()));
+            assertEquals("base_m1", lib.m1(new ExportSubclassBaseClass()));
+            assertEquals("sub1_m1", lib.m1(new ExportSubclassSubClass1()));
+            assertEquals("base_m1", lib.m1(new ExportSubclassSubClass2()));
             assertEquals("sub3_m01", lib.m0(new SubClass3()));
         }
     }

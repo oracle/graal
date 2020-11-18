@@ -75,6 +75,7 @@ public final class ExportsLibrary extends Template {
     private Map<CacheExpression, String> sharedExpressions;
     private VariableElement delegationVariable;
     private DSLExpression transitionLimit;
+    private final List<TypeElement> declaringTypes = new ArrayList<>();
 
     public ExportsLibrary(ProcessorContext context, TypeElement templateType, AnnotationMirror annotation, ExportsData exports, LibraryData library, TypeMirror receiverType,
                     boolean explicitReceiver) {
@@ -239,6 +240,18 @@ public final class ExportsLibrary extends Template {
 
     public boolean isAllowTransition() {
         return transitionLimit != null;
+    }
+
+    public boolean isDeclaredInTemplate() {
+        return ElementUtils.elementEquals(getDeclaringType(), getTemplateType());
+    }
+
+    public List<TypeElement> getDeclaringTypes() {
+        return declaringTypes;
+    }
+
+    public TypeElement getDeclaringType() {
+        return declaringTypes.get(0);
     }
 
 }
