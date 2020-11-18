@@ -90,9 +90,11 @@ import org.graalvm.compiler.phases.util.Providers;
 import org.graalvm.compiler.serviceprovider.GraalServices;
 import org.graalvm.compiler.serviceprovider.IsolateUtil;
 import org.graalvm.compiler.truffle.common.TruffleCompilerRuntime;
+import org.graalvm.compiler.truffle.compiler.PartialEvaluatorConfiguration;
 import org.graalvm.compiler.truffle.compiler.TruffleCompilerBase;
 import org.graalvm.compiler.truffle.compiler.hotspot.TruffleCallBoundaryInstrumentationFactory;
-import org.graalvm.compiler.truffle.compiler.substitutions.TruffleInvocationPluginProvider;
+import org.graalvm.compiler.truffle.compiler.substitutions.GraphBuilderInvocationPluginProvider;
+import org.graalvm.compiler.truffle.compiler.substitutions.GraphDecoderInvocationPluginProvider;
 import org.graalvm.compiler.truffle.runtime.GraalTruffleRuntime;
 import org.graalvm.libgraal.LibGraal;
 import org.graalvm.libgraal.jni.JNI;
@@ -433,7 +435,9 @@ public final class LibGraalFeature implements com.oracle.svm.core.graal.GraalFea
         // Services that will not be loaded if native-image is run
         // with -XX:-UseJVMCICompiler.
         GraalServices.load(TruffleCallBoundaryInstrumentationFactory.class);
-        GraalServices.load(TruffleInvocationPluginProvider.class);
+        GraalServices.load(GraphBuilderInvocationPluginProvider.class);
+        GraalServices.load(GraphDecoderInvocationPluginProvider.class);
+        GraalServices.load(PartialEvaluatorConfiguration.class);
         GraalServices.load(HotSpotCodeCacheListener.class);
         GraalServices.load(HotSpotMBeanOperationProvider.class);
 

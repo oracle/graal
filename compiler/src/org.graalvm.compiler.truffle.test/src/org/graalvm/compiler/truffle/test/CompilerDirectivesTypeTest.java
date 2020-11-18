@@ -29,7 +29,7 @@ import org.graalvm.compiler.nodes.graphbuilderconf.InvocationPlugins;
 import org.graalvm.compiler.serviceprovider.GraalServices;
 import org.graalvm.compiler.truffle.compiler.substitutions.KnownTruffleTypes;
 import org.graalvm.compiler.truffle.compiler.substitutions.TruffleGraphBuilderPlugins;
-import org.graalvm.compiler.truffle.compiler.substitutions.TruffleInvocationPluginProvider;
+import org.graalvm.compiler.truffle.compiler.substitutions.GraphBuilderInvocationPluginProvider;
 import org.junit.Test;
 
 import com.oracle.truffle.api.CompilerDirectives;
@@ -86,7 +86,7 @@ public class CompilerDirectivesTypeTest extends GraalCompilerTest {
     @Override
     protected void registerInvocationPlugins(InvocationPlugins invocationPlugins) {
         TruffleGraphBuilderPlugins.registerInvocationPlugins(invocationPlugins, true, getProviders(), new KnownTruffleTypes(getMetaAccess()));
-        for (TruffleInvocationPluginProvider p : GraalServices.load(TruffleInvocationPluginProvider.class)) {
+        for (GraphBuilderInvocationPluginProvider p : GraalServices.load(GraphBuilderInvocationPluginProvider.class)) {
             p.registerInvocationPlugins(getProviders(), getBackend().getTarget().arch, invocationPlugins, true);
         }
         super.registerInvocationPlugins(invocationPlugins);
