@@ -107,11 +107,8 @@ public final class LLVMDebuggerScopeFactory {
         final LLVMDebuggerScopeEntries entries = new LLVMDebuggerScopeEntries();
         for (LLVMSymbol symbol : scope.values()) {
             if (symbol.isGlobalVariable()) {
-                final LLVMGlobal global = symbol.asGlobalVariable();
-                int id = global.getBitcodeID(false);
-                int index = global.getSymbolIndex(false);
-                AssumedValue<LLVMPointer>[] globals = context.findSymbolTable(id);
-                final Object value = CommonNodeFactory.toGenericDebuggerValue(global.getPointeeType(), globals[index].get(), dataLayout);
+                LLVMGlobal global = symbol.asGlobalVariable();
+                Object value = CommonNodeFactory.toGenericDebuggerValue(global.getPointeeType(), context.getSymbol(global), dataLayout);
                 entries.add(LLVMIdentifier.toGlobalIdentifier(global.getName()), value);
             }
         }
@@ -123,10 +120,7 @@ public final class LLVMDebuggerScopeFactory {
         final LLVMDebuggerScopeEntries entries = new LLVMDebuggerScopeEntries();
         for (LLVMGlobal global : irScope) {
             if (global.hasValidIndexAndID()) {
-                int id = global.getBitcodeID(false);
-                int index = global.getSymbolIndex(false);
-                AssumedValue<LLVMPointer>[] globals = context.findSymbolTable(id);
-                final Object value = CommonNodeFactory.toGenericDebuggerValue(new PointerType(global.getPointeeType()), globals[index].get(), dataLayout);
+                Object value = CommonNodeFactory.toGenericDebuggerValue(new PointerType(global.getPointeeType()), context.getSymbol(global), dataLayout);
                 entries.add(LLVMIdentifier.toGlobalIdentifier(global.getName()), value);
             }
         }

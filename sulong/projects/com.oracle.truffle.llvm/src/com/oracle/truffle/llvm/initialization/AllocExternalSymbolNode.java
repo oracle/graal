@@ -33,7 +33,6 @@ import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.dsl.Cached;
 import com.oracle.truffle.api.dsl.Fallback;
 import com.oracle.truffle.api.dsl.Specialization;
-import com.oracle.truffle.api.utilities.AssumedValue;
 import com.oracle.truffle.llvm.initialization.AllocExternalSymbolNode.AllocExistingLocalSymbolsNode.AllocExistingGlobalSymbolsNode;
 import com.oracle.truffle.llvm.initialization.AllocExternalSymbolNode.AllocExistingLocalSymbolsNode.AllocExistingGlobalSymbolsNode.AllocExternalFunctionNode;
 import com.oracle.truffle.llvm.initialization.AllocExternalSymbolNode.AllocExistingLocalSymbolsNode.AllocExistingGlobalSymbolsNode.AllocExternalGlobalNode;
@@ -48,7 +47,6 @@ import com.oracle.truffle.llvm.runtime.LLVMSymbol;
 import com.oracle.truffle.llvm.runtime.NativeContextExtension;
 import com.oracle.truffle.llvm.runtime.NodeFactory;
 import com.oracle.truffle.llvm.runtime.nodes.api.LLVMNode;
-import com.oracle.truffle.llvm.runtime.nodes.others.LLVMAccessSymbolNode;
 import com.oracle.truffle.llvm.runtime.pointer.LLVMManagedPointer;
 import com.oracle.truffle.llvm.runtime.pointer.LLVMNativePointer;
 import com.oracle.truffle.llvm.runtime.pointer.LLVMPointer;
@@ -104,9 +102,8 @@ public abstract class AllocExternalSymbolNode extends LLVMNode {
                         @SuppressWarnings("unused") LLVMIntrinsicProvider intrinsicProvider,
                         @SuppressWarnings("unused") NativeContextExtension nativeContextExtension,
                         LLVMContext context,
-                        @SuppressWarnings("unused") @Cached("localScope.get(symbol.getName())") LLVMSymbol cachedLocalSymbol,
-                        @Cached("create(cachedLocalSymbol)") LLVMAccessSymbolNode accessSymbol) {
-            LLVMPointer pointer = accessSymbol.execute();
+                        @Cached("localScope.get(symbol.getName())") LLVMSymbol cachedLocalSymbol) {
+            LLVMPointer pointer = context.getSymbol(cachedLocalSymbol);
             context.registerSymbol(symbol, pointer);
             return pointer;
         }
@@ -121,8 +118,7 @@ public abstract class AllocExternalSymbolNode extends LLVMNode {
             while (function.isAlias()) {
                 function = ((LLVMAlias) function).getTarget();
             }
-            AssumedValue<LLVMPointer>[] symbolTable = context.findSymbolTable(function.getBitcodeID(false));
-            LLVMPointer pointer = symbolTable[function.getSymbolIndex(false)].get();
+            LLVMPointer pointer = context.getSymbol(function);
             context.registerSymbol(symbol, pointer);
             return pointer;
         }
@@ -162,9 +158,8 @@ public abstract class AllocExternalSymbolNode extends LLVMNode {
                             @SuppressWarnings("unused") LLVMIntrinsicProvider intrinsicProvider,
                             @SuppressWarnings("unused") NativeContextExtension nativeContextExtension,
                             LLVMContext context,
-                            @SuppressWarnings("unused") @Cached("globalScope.get(symbol.getName())") LLVMSymbol cachedGlobalSymbol,
-                            @Cached("create(cachedGlobalSymbol)") LLVMAccessSymbolNode accessSymbol) {
-                LLVMPointer pointer = accessSymbol.execute();
+                            @Cached("globalScope.get(symbol.getName())") LLVMSymbol cachedGlobalSymbol) {
+                LLVMPointer pointer = context.getSymbol(cachedGlobalSymbol);
                 context.registerSymbol(symbol, pointer);
                 return pointer;
             }
@@ -181,8 +176,7 @@ public abstract class AllocExternalSymbolNode extends LLVMNode {
                 while (function.isAlias()) {
                     function = ((LLVMAlias) function).getTarget();
                 }
-                AssumedValue<LLVMPointer>[] symbolTable = context.findSymbolTable(function.getBitcodeID(false));
-                LLVMPointer pointer = symbolTable[function.getSymbolIndex(false)].get();
+                LLVMPointer pointer = context.getSymbol(function);
                 context.registerSymbol(symbol, pointer);
                 return pointer;
             }

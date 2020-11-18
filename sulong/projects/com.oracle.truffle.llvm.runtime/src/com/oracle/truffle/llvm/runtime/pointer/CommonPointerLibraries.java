@@ -181,7 +181,7 @@ abstract class CommonPointerLibraries {
                         @Cached(value = "arguments.length") int argCount,
                         @Cached(value = "method.getName()") String methodName,
                         @Cached(value = "getLLVMFunction(context, method, clazz, member)") LLVMFunction llvmFunction,
-                        @Cached(value = "create(llvmFunction)") LLVMAccessSymbolNode accessSymbolNode)
+                        @Cached(value = "new(llvmFunction)") LLVMAccessSymbolNode accessSymbolNode)
                         throws UnsupportedMessageException, ArityException, UnsupportedTypeException {
             Object[] newArguments = addSelfObject(receiver, arguments);
             return interop.execute(accessSymbolNode.execute(), newArguments);

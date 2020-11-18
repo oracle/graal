@@ -222,22 +222,16 @@ public abstract class LLVMToDebugValueNode extends LLVMNode implements LLVMDebug
     }
 
     @Specialization
-    protected LLVMDebugValue fromGlobal(LLVMDebugGlobalVariable value, @CachedContext(LLVMLanguage.class) LLVMContext context) {
+    protected LLVMDebugValue fromGlobal(LLVMDebugGlobalVariable value,
+                    @CachedContext(LLVMLanguage.class) LLVMContext context) {
         LLVMGlobal global = value.getDescriptor();
-        AssumedValue<LLVMPointer>[] globals = context.findSymbolTable(global.getBitcodeID(false));
-        int index = global.getSymbolIndex(false);
-        Object target = globals[index].get();
+        LLVMPointer target = context.getSymbol(global);
 
         if (LLVMManagedPointer.isInstance(target)) {
             final LLVMManagedPointer managedPointer = LLVMManagedPointer.cast(target);
             if (LLDBSupport.pointsToObjectAccess(LLVMManagedPointer.cast(target))) {
                 return new LLDBMemoryValue(managedPointer);
             }
-        } else if (!LLVMPointer.isInstance(target)) {
-            // a non-pointer was stored as a pointer in this global -- PLi: I'm not sure if this is
-            // possible anymore
-            // since we have removed AssumedValue<Object> being stored in a global
-            return executeWithTarget(target);
         }
         return new LLDBGlobalConstant(global);
     }

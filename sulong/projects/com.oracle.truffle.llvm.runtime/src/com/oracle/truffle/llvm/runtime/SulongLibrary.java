@@ -29,6 +29,10 @@
  */
 package com.oracle.truffle.llvm.runtime;
 
+import java.nio.file.Path;
+import java.nio.file.Paths;
+import java.util.Objects;
+
 import com.oracle.truffle.api.CallTarget;
 import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
@@ -52,15 +56,10 @@ import com.oracle.truffle.api.library.ExportMessage;
 import com.oracle.truffle.api.nodes.DirectCallNode;
 import com.oracle.truffle.api.nodes.IndirectCallNode;
 import com.oracle.truffle.api.nodes.RootNode;
-import com.oracle.truffle.api.utilities.AssumedValue;
+import com.oracle.truffle.llvm.runtime.except.LLVMLinkerException;
 import com.oracle.truffle.llvm.runtime.nodes.api.LLVMNode;
 import com.oracle.truffle.llvm.runtime.nodes.func.LLVMGlobalRootNode;
 import com.oracle.truffle.llvm.runtime.pointer.LLVMManagedPointer;
-import com.oracle.truffle.llvm.runtime.pointer.LLVMPointer;
-
-import java.nio.file.Path;
-import java.nio.file.Paths;
-import java.util.Objects;
 
 /**
  * Object that is returned when a bitcode library is parsed.
@@ -114,14 +113,18 @@ public final class SulongLibrary implements TruffleObject {
      *         the function cannot be found.
      */
     private LLVMFunctionDescriptor lookupFunctionDescriptor(String symbolName) {
-        LLVMFunction function = scope.getFunction(symbolName);
-        if (function == null) {
-            return null;
+        try {
+            LLVMFunction function = scope.getFunction(symbolName);
+            if (function != null) {
+                Object value = context.getSymbol(function);
+                if (value != null) {
+                    return (LLVMFunctionDescriptor) LLVMManagedPointer.cast(value).getObject();
+                }
+            }
+        } catch (LLVMLinkerException e) {
+            // fallthrough
         }
-        int index = function.getSymbolIndex(false);
-        AssumedValue<LLVMPointer>[] symbols = context.findSymbolTable(function.getBitcodeID(false));
-        LLVMPointer pointer = symbols[index].get();
-        return (LLVMFunctionDescriptor) LLVMManagedPointer.cast(pointer).getObject();
+        return null;
     }
 
     public String getName() {

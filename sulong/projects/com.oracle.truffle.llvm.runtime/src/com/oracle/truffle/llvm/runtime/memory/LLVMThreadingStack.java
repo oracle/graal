@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2016, 2019, Oracle and/or its affiliates.
+ * Copyright (c) 2016, 2020, Oracle and/or its affiliates.
  *
  * All rights reserved.
  *
@@ -33,6 +33,7 @@ import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
 
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
+import com.oracle.truffle.llvm.runtime.LLVMLanguage;
 
 /**
  * Holds the (lazily allocated) stacks of all threads that are active in one particular LLVMContext.
@@ -64,7 +65,7 @@ public final class LLVMThreadingStack {
 
     @TruffleBoundary
     private LLVMStack createNewStack() {
-        LLVMStack s = new LLVMStack(stackSize);
+        LLVMStack s = new LLVMStack(stackSize, LLVMLanguage.getContext());
         Object previous = threadMap.putIfAbsent(Thread.currentThread(), s);
         assert previous == null;
         return s;

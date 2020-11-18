@@ -29,11 +29,9 @@
  */
 package com.oracle.truffle.llvm.runtime.nodes.others;
 
-import com.oracle.truffle.api.CompilerAsserts;
-import com.oracle.truffle.api.CompilerDirectives;
+import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.dsl.CachedContext;
 import com.oracle.truffle.api.dsl.Specialization;
-import com.oracle.truffle.api.utilities.AssumedValue;
 import com.oracle.truffle.llvm.runtime.LLVMAlias;
 import com.oracle.truffle.llvm.runtime.LLVMContext;
 import com.oracle.truffle.llvm.runtime.LLVMLanguage;
@@ -47,6 +45,7 @@ public abstract class LLVMReplaceSymbolNode extends LLVMNode {
 
     public abstract void execute(LLVMPointer value, LLVMSymbol symbol);
 
+    @TruffleBoundary
     @Specialization(guards = {"symbol.isAlias()"})
     void doAlias(LLVMPointer value, LLVMSymbol symbol,
                     @CachedContext(LLVMLanguage.class) LLVMContext context) {
@@ -54,32 +53,17 @@ public abstract class LLVMReplaceSymbolNode extends LLVMNode {
         while (target.isAlias()) {
             target = ((LLVMAlias) target).getTarget();
         }
-        AssumedValue<LLVMPointer>[] symbols = context.findSymbolTable(target.getBitcodeID(false));
-        synchronized (symbols) {
-            CompilerAsserts.partialEvaluationConstant(target);
-            try {
-                int index = target.getSymbolIndex(false);
-                symbols[index].set(value);
-            } catch (LLVMIllegalSymbolIndexException e) {
-                CompilerDirectives.transferToInterpreter();
-                throw new LLVMLinkerException(this, "Function replacement is inconsistent.");
-            }
+        if (!context.setSymbol(target, value)) {
+            throw new LLVMLinkerException(this, "Function replacement is inconsistent.");
         }
     }
 
+    @TruffleBoundary
     @Specialization(guards = {"!symbol.isAlias()"})
     void doFallback(LLVMPointer value, LLVMSymbol symbol,
                     @CachedContext(LLVMLanguage.class) LLVMContext context) {
-        AssumedValue<LLVMPointer>[] symbols = context.findSymbolTable(symbol.getBitcodeID(false));
-        synchronized (symbols) {
-            CompilerAsserts.partialEvaluationConstant(symbol);
-            try {
-                int index = symbol.getSymbolIndex(false);
-                symbols[index].set(value);
-            } catch (Exception e) {
-                CompilerDirectives.transferToInterpreter();
-                throw new LLVMIllegalSymbolIndexException("Global replacement is inconsistent. Accessing the symbol with an invalid index.");
-            }
+        if (!context.setSymbol(symbol, value)) {
+            throw new LLVMIllegalSymbolIndexException("Global replacement is inconsistent. Accessing the symbol with an invalid index.");
         }
     }
 }
