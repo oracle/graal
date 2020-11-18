@@ -432,7 +432,7 @@ public class ReflectionDataBuilder implements RuntimeReflectionSupport {
 
         ReflectionDataAccessors(DuringSetupAccessImpl access) {
             reflectionDataMethod = ReflectionUtil.lookupMethod(Class.class, "reflectionData");
-            Class<?> originalReflectionDataClass = access.getImageClassLoader().findClassByName("java.lang.Class$ReflectionData");
+            Class<?> originalReflectionDataClass = access.getImageClassLoader().findClassOrFail("java.lang.Class$ReflectionData");
             declaredFieldsField = ReflectionUtil.lookupField(originalReflectionDataClass, "declaredFields");
             publicFieldsField = ReflectionUtil.lookupField(originalReflectionDataClass, "publicFields");
             declaredMethodsField = ReflectionUtil.lookupField(originalReflectionDataClass, "declaredMethods");

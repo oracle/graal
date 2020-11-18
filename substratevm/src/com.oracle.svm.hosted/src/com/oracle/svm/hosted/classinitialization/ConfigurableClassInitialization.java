@@ -223,7 +223,7 @@ public class ConfigurableClassInitialization implements ClassInitializationSuppo
     @Override
     public void initializeAtRunTime(String name, String reason) {
         UserError.guarantee(!configurationSealed, "The class initialization configuration can be changed only before the phase analysis.");
-        Class<?> clazz = loader.findClassByName(name, false);
+        Class<?> clazz = loader.findClass(name).get();
         if (clazz != null) {
             classInitializationConfiguration.insert(name, InitKind.RUN_TIME, reason, true);
             initializeAtRunTime(clazz, reason);
@@ -236,7 +236,7 @@ public class ConfigurableClassInitialization implements ClassInitializationSuppo
     public void initializeAtBuildTime(String name, String reason) {
         UserError.guarantee(!configurationSealed, "The class initialization configuration can be changed only before the phase analysis.");
 
-        Class<?> clazz = loader.findClassByName(name, false);
+        Class<?> clazz = loader.findClass(name).get();
         if (clazz != null) {
             classInitializationConfiguration.insert(name, InitKind.BUILD_TIME, reason, true);
             initializeAtBuildTime(clazz, reason);
@@ -248,7 +248,7 @@ public class ConfigurableClassInitialization implements ClassInitializationSuppo
     @Override
     public void rerunInitialization(String name, String reason) {
         UserError.guarantee(!configurationSealed, "The class initialization configuration can be changed only before the phase analysis.");
-        Class<?> clazz = loader.findClassByName(name, false);
+        Class<?> clazz = loader.findClass(name).get();
         if (clazz != null) {
             classInitializationConfiguration.insert(name, InitKind.RERUN, reason, true);
             rerunInitialization(clazz, reason);

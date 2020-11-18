@@ -35,6 +35,7 @@ import com.oracle.svm.core.annotate.AutomaticFeature;
 import com.oracle.svm.core.configure.ConfigurationFiles;
 import com.oracle.svm.core.configure.ProxyConfigurationParser;
 import com.oracle.svm.core.jdk.proxy.DynamicProxyRegistry;
+import com.oracle.svm.core.util.UserError;
 import com.oracle.svm.hosted.FallbackFeature;
 import com.oracle.svm.hosted.FeatureImpl.DuringSetupAccessImpl;
 import com.oracle.svm.hosted.ImageClassLoader;
@@ -63,12 +64,12 @@ public final class DynamicProxyFeature implements Feature {
             Class<?>[] interfaces = new Class<?>[interfaceNames.length];
             for (int i = 0; i < interfaceNames.length; i++) {
                 String className = interfaceNames[i];
-                Class<?> clazz = imageClassLoader.findClassByName(className, false);
+                Class<?> clazz = imageClassLoader.findClass(className).get();
                 if (clazz == null) {
-                    throw new RuntimeException("Class " + className + " not found");
+                    throw UserError.abort("Class " + className + " not found");
                 }
                 if (!clazz.isInterface()) {
-                    throw new RuntimeException("The class \"" + className + "\" is not an interface.");
+                    throw UserError.abort("The class \"" + className + "\" is not an interface.");
                 }
                 interfaces[i] = clazz;
             }

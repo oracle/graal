@@ -24,14 +24,6 @@
  */
 package com.oracle.svm.truffle.tck;
 
-import com.oracle.graal.pointsto.BigBang;
-import com.oracle.graal.pointsto.meta.AnalysisMethod;
-import com.oracle.graal.pointsto.meta.AnalysisType;
-import com.oracle.graal.pointsto.meta.AnalysisUniverse;
-import com.oracle.svm.core.configure.ConfigurationParser;
-import com.oracle.svm.core.util.json.JSONParser;
-import com.oracle.svm.core.util.json.JSONParserException;
-import com.oracle.svm.hosted.ImageClassLoader;
 import java.io.IOException;
 import java.io.Reader;
 import java.util.ArrayList;
@@ -42,11 +34,22 @@ import java.util.Map;
 import java.util.Objects;
 import java.util.Set;
 import java.util.function.Predicate;
+
+import org.graalvm.nativeimage.Platforms;
+
+import com.oracle.graal.pointsto.BigBang;
+import com.oracle.graal.pointsto.meta.AnalysisMethod;
+import com.oracle.graal.pointsto.meta.AnalysisType;
+import com.oracle.graal.pointsto.meta.AnalysisUniverse;
+import com.oracle.svm.core.configure.ConfigurationParser;
+import com.oracle.svm.core.util.json.JSONParser;
+import com.oracle.svm.core.util.json.JSONParserException;
+import com.oracle.svm.hosted.ImageClassLoader;
+
 import jdk.vm.ci.meta.MetaUtil;
 import jdk.vm.ci.meta.ResolvedJavaMethod;
 import jdk.vm.ci.meta.ResolvedJavaType;
 import jdk.vm.ci.meta.Signature;
-import org.graalvm.nativeimage.Platforms;
 
 final class WhiteListParser extends ConfigurationParser {
 
@@ -196,7 +199,7 @@ final class WhiteListParser extends ConfigurationParser {
         } else {
             useType = type;
         }
-        Class<?> clz = imageClassLoader.findClassByName(useType, false);
+        Class<?> clz = imageClassLoader.findClass(useType).get();
         verifySupportedOnActivePlatform(clz);
         return bigBang.forClass(clz);
     }

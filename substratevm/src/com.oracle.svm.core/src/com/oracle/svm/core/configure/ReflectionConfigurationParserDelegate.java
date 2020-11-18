@@ -26,8 +26,19 @@ package com.oracle.svm.core.configure;
 
 import java.util.List;
 
+import com.oracle.svm.core.TypeResult;
+
 public interface ReflectionConfigurationParserDelegate<T> {
-    T resolveType(String typeName);
+
+    /**
+     * @deprecated use {@link #resolveTypeResult(String)} instead.
+     */
+    @Deprecated
+    default T resolveType(String typeName) {
+        return resolveTypeResult(typeName).get();
+    }
+
+    TypeResult<T> resolveTypeResult(String typeName);
 
     void registerType(T type);
 
