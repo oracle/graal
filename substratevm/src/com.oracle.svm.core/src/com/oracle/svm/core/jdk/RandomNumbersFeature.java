@@ -40,5 +40,6 @@ public class RandomNumbersFeature implements Feature {
          * values properly. Otherwise the numbers generated will be fixed for each generated image.
          */
         ImageSingletons.lookup(RuntimeClassInitializationSupport.class).rerunInitialization(access.findClassByName("java.lang.Math$RandomNumberGeneratorHolder"), "for random number generator");
+        ImageSingletons.lookup(RuntimeClassInitializationSupport.class).rerunInitialization(access.findClassByName("java.lang.StrictMath$RandomNumberGeneratorHolder"), "for random number generator");
     }
 }
