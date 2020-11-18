@@ -62,6 +62,34 @@ export class GraalVMConfigurationProvider implements vscode.DebugConfigurationPr
 
 	resolveDebugConfiguration(_folder: vscode.WorkspaceFolder | undefined, config: vscode.DebugConfiguration, _token?: vscode.CancellationToken): vscode.ProviderResult<vscode.DebugConfiguration> {
 		return new Promise<vscode.DebugConfiguration>(resolve => {
+			if (!config.type && !config.request && !config.name && !config.runtimeExecutable) {
+				// if launch.json is missing or empty
+				const editor = vscode.window.activeTextEditor;
+				if (editor) {
+					switch (editor.document.languageId) {
+						case 'javascript':
+						case 'typescript':
+							config.runtimeExecutable = 'js';
+							break;
+						case 'python':
+							config.runtimeExecutable = 'graalpython';
+							break;
+						case 'r':
+							config.runtimeExecutable = 'Rscript';
+							break;
+						case 'ruby':
+							config.runtimeExecutable = 'ruby';
+							break;
+					}
+					if (config.runtimeExecutable) {
+						config.type = 'graalvm';
+						config.name = 'Launch';
+						config.request = 'launch';
+						config.program = '${file}';
+					}
+				}
+			}
+
 			if (config.request === 'launch' && config.name === 'Launch R Term') {
 				config.request = 'attach';
 				const conf = getConf('r');
