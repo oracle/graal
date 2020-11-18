@@ -114,7 +114,6 @@ graal_compiler_export_packages = [
     'jdk.internal.vm.ci/jdk.vm.ci.code.stack',
 ]
 GRAAL_COMPILER_FLAGS_MAP['11'].extend(add_exports_from_packages(graal_compiler_export_packages))
-GRAAL_COMPILER_FLAGS_MAP['8'].extend(add_exports_from_packages(graal_compiler_export_packages))
 
 graal_compiler_opens_packages = [
     'jdk.internal.vm.compiler/org.graalvm.compiler.debug',
