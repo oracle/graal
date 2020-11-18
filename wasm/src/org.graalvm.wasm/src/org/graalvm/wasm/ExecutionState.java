@@ -43,7 +43,6 @@ package org.graalvm.wasm;
 import org.graalvm.wasm.collection.BooleanArrayList;
 import org.graalvm.wasm.collection.ByteArrayList;
 import org.graalvm.wasm.collection.IntArrayList;
-import org.graalvm.wasm.collection.LongArrayList;
 import org.graalvm.wasm.exception.Failure;
 import org.graalvm.wasm.exception.WasmException;
 import org.graalvm.wasm.nodes.WasmBlockNode;

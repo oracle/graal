@@ -522,7 +522,7 @@ public class BinaryParser extends BinaryStreamParser {
                     }
                     break;
                 case Instructions.BR: {
-                    final int unwindLevel = readTargetOffset(state);
+                    final int unwindLevel = readTargetOffset();
                     final int targetStackSize = state.getStackSize(unwindLevel);
                     state.useIntConstant(targetStackSize);
                     state.useIntConstant(state.getContinuationLength(unwindLevel));
@@ -533,7 +533,7 @@ public class BinaryParser extends BinaryStreamParser {
                 }
                 case Instructions.BR_IF: {
                     state.popChecked(I32_TYPE); // condition
-                    final int unwindLevel = readTargetOffset(state);
+                    final int unwindLevel = readTargetOffset();
                     final int targetStackSize = state.getStackSize(unwindLevel);
                     state.useIntConstant(targetStackSize);
                     final int continuationReturnLength = state.getContinuationLength(unwindLevel);
@@ -588,7 +588,7 @@ public class BinaryParser extends BinaryStreamParser {
                     break;
                 }
                 case Instructions.CALL: {
-                    final int functionIndex = readFunctionIndex(state);
+                    final int functionIndex = readFunctionIndex();
 
                     // Pop arguments
                     final WasmFunction function = module.symbolTable().function(functionIndex);
@@ -617,7 +617,7 @@ public class BinaryParser extends BinaryStreamParser {
                     break;
                 }
                 case Instructions.CALL_INDIRECT: {
-                    int expectedFunctionTypeIndex = readTypeIndex(state);
+                    int expectedFunctionTypeIndex = readTypeIndex();
 
                     // Pop the function index to call
                     state.popChecked(I32_TYPE);
@@ -647,21 +647,21 @@ public class BinaryParser extends BinaryStreamParser {
                     state.push(t);
                     break;
                 case Instructions.LOCAL_GET: {
-                    final int localIndex = readLocalIndex(state);
+                    final int localIndex = readLocalIndex();
                     // Assert localIndex exists.
                     Assert.assertIntLessOrEqual(localIndex, codeEntry.numLocals(), "Invalid local index for local.get", Failure.UNSPECIFIED_MALFORMED);
                     state.push(codeEntry.localType(localIndex));
                     break;
                 }
                 case Instructions.LOCAL_SET: {
-                    final int localIndex = readLocalIndex(state);
+                    final int localIndex = readLocalIndex();
                     // Assert localIndex exists.
                     Assert.assertIntLessOrEqual(localIndex, codeEntry.numLocals(), "Invalid local index for local.set", Failure.UNSPECIFIED_MALFORMED);
                     state.popChecked(codeEntry.localType(localIndex));
                     break;
                 }
                 case Instructions.LOCAL_TEE: {
-                    final int localIndex = readLocalIndex(state);
+                    final int localIndex = readLocalIndex();
                     // Assert localIndex exists.
                     Assert.assertIntLessOrEqual(localIndex, codeEntry.numLocals(), "Invalid local index for local.tee", Failure.UNSPECIFIED_MALFORMED);
                     state.popChecked(codeEntry.localType(localIndex));
@@ -669,14 +669,14 @@ public class BinaryParser extends BinaryStreamParser {
                     break;
                 }
                 case Instructions.GLOBAL_GET: {
-                    final int index = readGlobalIndex(state);
+                    final int index = readGlobalIndex();
                     Assert.assertIntLessOrEqual(index, module.symbolTable().maxGlobalIndex(),
                                     "Invalid global index for global.get.", Failure.UNSPECIFIED_MALFORMED);
                     state.push(module.symbolTable().globalValueType(index));
                     break;
                 }
                 case Instructions.GLOBAL_SET: {
-                    final int index = readGlobalIndex(state);
+                    final int index = readGlobalIndex();
                     // Assert localIndex exists.
                     Assert.assertIntLessOrEqual(index, module.symbolTable().maxGlobalIndex(),
                                     "Invalid global index for global.set.", Failure.UNSPECIFIED_MALFORMED);
@@ -738,11 +738,11 @@ public class BinaryParser extends BinaryStreamParser {
                     break;
                 }
                 case Instructions.I32_CONST:
-                    readSignedInt32(state);
+                    readSignedInt32();
                     state.push(I32_TYPE);
                     break;
                 case Instructions.I64_CONST:
-                    readSignedInt64(state);
+                    readSignedInt64();
                     state.push(I64_TYPE);
                     break;
                 case Instructions.F32_CONST:
@@ -993,7 +993,7 @@ public class BinaryParser extends BinaryStreamParser {
         // of it, but we need to store its byte length, so that we can skip it
         // during the execution.
         readUnsignedInt32(); // align hint
-        readUnsignedInt32(state); // store offset
+        readUnsignedInt32(); // store offset
         state.popChecked(type); // value to store
         state.popChecked(I32_TYPE); // base address
     }
@@ -1003,7 +1003,7 @@ public class BinaryParser extends BinaryStreamParser {
         // of it, but we need to store its byte length, so that we can skip it
         // during execution.
         readUnsignedInt32(); // align hint
-        readUnsignedInt32(state); // load offset
+        readUnsignedInt32(); // load offset
         state.popChecked(I32_TYPE); // base address
         state.push(type); // loaded value
     }
@@ -1362,12 +1362,8 @@ public class BinaryParser extends BinaryStreamParser {
         return readUnsignedInt32();
     }
 
-    private int readTypeIndex(ExecutionState state) {
-        return readUnsignedInt32(state);
-    }
-
-    private int readFunctionIndex(ExecutionState state) {
-        return readUnsignedInt32(state);
+    private int readFunctionIndex() {
+        return readUnsignedInt32();
     }
 
     private int readTableIndex() {
@@ -1382,20 +1378,12 @@ public class BinaryParser extends BinaryStreamParser {
         return readUnsignedInt32();
     }
 
-    private int readGlobalIndex(ExecutionState state) {
-        return readUnsignedInt32(state);
-    }
-
-    private int readLocalIndex(ExecutionState state) {
-        return readUnsignedInt32(state);
+    private int readLocalIndex() {
+        return readUnsignedInt32();
     }
 
     private int readTargetOffset() {
-        return readUnsignedInt32(null);
-    }
-
-    private int readTargetOffset(ExecutionState state) {
-        return readUnsignedInt32(state);
+        return readUnsignedInt32();
     }
 
     private byte readExportType() {
@@ -1473,32 +1461,20 @@ public class BinaryParser extends BinaryStreamParser {
     }
 
     protected int readUnsignedInt32() {
-        return readUnsignedInt32(null);
-    }
-
-    protected int readSignedInt32() {
-        return readSignedInt32(null);
-    }
-
-    protected long readSignedInt64() {
-        return readSignedInt64(null);
-    }
-
-    protected int readUnsignedInt32(ExecutionState state) {
         int value = peekUnsignedInt32(data, offset, true);
         byte length = peekLeb128Length(data, offset);
         offset += length;
         return value;
     }
 
-    protected int readSignedInt32(ExecutionState state) {
+    protected int readSignedInt32() {
         int value = peekSignedInt32(data, offset);
         byte length = peekLeb128Length(data, offset);
         offset += length;
         return value;
     }
 
-    private long readSignedInt64(ExecutionState state) {
+    private long readSignedInt64() {
         long value = peekSignedInt64(data, offset);
         byte length = peekLeb128Length(data, offset);
         offset += length;

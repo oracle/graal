@@ -2761,19 +2761,19 @@ public final class WasmBlockNode extends WasmNode implements RepeatingNode {
         return returnTypeId;
     }
 
-    private int unsignedIntConstant(byte[] data, int offset) {
+    private static int unsignedIntConstant(byte[] data, int offset) {
         return BinaryStreamParser.peekUnsignedInt32(data, offset, false);
     }
 
-    private int signedIntConstant(byte[] data, int offset) {
+    private static int signedIntConstant(byte[] data, int offset) {
         return BinaryStreamParser.peekSignedInt32(data, offset);
     }
 
-    public long signedLongConstant(byte[] data, int offset) {
+    private static long signedLongConstant(byte[] data, int offset) {
         return BinaryStreamParser.peekSignedInt64(data, offset);
     }
 
-    private int offsetDelta(byte[] data, int offset) {
+    private static int offsetDelta(byte[] data, int offset) {
         return peekLeb128Length(data, offset);
     }
 
