@@ -41,8 +41,6 @@
 package org.graalvm.wasm.nodes;
 
 import com.oracle.truffle.api.CompilerDirectives;
-import com.oracle.truffle.api.frame.FrameSlotTypeException;
-import com.oracle.truffle.api.frame.VirtualFrame;
 import org.graalvm.wasm.WasmCodeEntry;
 
 public interface WasmNodeInterface {
