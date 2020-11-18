@@ -2027,7 +2027,7 @@ class LoopDetector implements Runnable {
         FixedNode afterMerge = merge.next();
         merge.setNext(null);
         EndNode preLoopEnd = graph.add(new EndNode());
-        LoopBeginNode loopBegin = graph.add(new LoopBeginNode());
+        LoopBeginNode loopBegin = graph.add(new LoopBeginNode(stateAfter.bci, merge.graph()));
 
         merge.setNext(preLoopEnd);
         /* Add the single non-loop predecessor of the loop header. */

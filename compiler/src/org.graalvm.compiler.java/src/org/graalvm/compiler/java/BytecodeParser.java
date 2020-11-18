@@ -3479,7 +3479,7 @@ public class BytecodeParser implements GraphBuilderContext {
     private LoopBeginNode appendLoopBegin(FixedWithNextNode fixedWithNext, int startBci) {
         try (DebugCloseable context = openNodeContext(frameState, startBci)) {
             EndNode preLoopEnd = graph.add(new EndNode());
-            LoopBeginNode loopBegin = graph.add(new LoopBeginNode());
+            LoopBeginNode loopBegin = graph.add(new LoopBeginNode(startBci, graph));
             if (disableLoopSafepoint()) {
                 loopBegin.disableSafepoint();
             }

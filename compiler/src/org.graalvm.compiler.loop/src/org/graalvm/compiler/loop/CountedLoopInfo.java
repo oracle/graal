@@ -32,9 +32,7 @@ import static org.graalvm.compiler.nodes.calc.BinaryArithmeticNode.sub;
 import org.graalvm.compiler.core.common.type.IntegerStamp;
 import org.graalvm.compiler.core.common.type.Stamp;
 import org.graalvm.compiler.core.common.util.UnsignedLong;
-import org.graalvm.compiler.debug.CounterKey;
 import org.graalvm.compiler.debug.DebugCloseable;
-import org.graalvm.compiler.debug.DebugContext;
 import org.graalvm.compiler.debug.GraalError;
 import org.graalvm.compiler.loop.InductionVariable.Direction;
 import org.graalvm.compiler.nodes.AbstractBeginNode;
@@ -52,11 +50,9 @@ import org.graalvm.compiler.nodes.extended.GuardingNode;
 import org.graalvm.compiler.nodes.util.IntegerHelper;
 import org.graalvm.compiler.nodes.util.SignedIntegerHelper;
 import org.graalvm.compiler.nodes.util.UnsignedIntegerHelper;
-import org.graalvm.compiler.serviceprovider.SpeculationReasonGroup;
 
 import jdk.vm.ci.meta.DeoptimizationAction;
 import jdk.vm.ci.meta.DeoptimizationReason;
-import jdk.vm.ci.meta.ResolvedJavaMethod;
 import jdk.vm.ci.meta.SpeculationLog;
 
 public class CountedLoopInfo {
@@ -399,10 +395,10 @@ public class CountedLoopInfo {
             SpeculationLog speculationLog = graph.getSpeculationLog();
             SpeculationLog.Speculation speculation = SpeculationLog.NO_SPECULATION;
             if (speculationLog != null) {
-                SpeculationLog.SpeculationReason speculationReason = LOOP_OVERFLOW_DEOPT.createSpeculationReason(graph.method(), iv.loop.loopBegin().stateAfter().bci);
+                SpeculationLog.SpeculationReason speculationReason = LoopBeginNode.LOOP_OVERFLOW_DEOPT.createSpeculationReason(graph.method(), iv.loop.loopBegin().stateAfter().bci);
                 if (speculationLog.maySpeculate(speculationReason)) {
                     speculation = speculationLog.speculate(speculationReason);
-                    overflowSpeculationTaken.increment(graph.getDebug());
+                    LoopBeginNode.overflowSpeculationTaken.increment(graph.getDebug());
                 } else {
                     GraalError.shouldNotReachHere("Must not create overflow guard for a loop where the speculation guard already failed, this can create deopt loops");
                 }
@@ -414,35 +410,6 @@ public class CountedLoopInfo {
             return overflowGuard;
         }
     }
-
-    public static final CounterKey overflowSpeculationTaken = DebugContext.counter("CountedLoops_OverflowSpeculation_Taken");
-    public static final CounterKey overflowSpeculationNotTaken = DebugContext.counter("CountedLoops_OverflowSpeculation_NotTaken");
-
-    public static boolean canSpeculateThatCountedLoopNeverOverflows(LoopBeginNode lb, CountedLoopInfo cf) {
-        if (lb.getOverflowGuard() != null || cf.counterNeverOverflows() || lb.canNeverOverflow()) {
-            return true;
-        }
-        StructuredGraph graph = lb.graph();
-        SpeculationLog speculationLog = graph.getSpeculationLog();
-        if (speculationLog != null) {
-            int bci = lb.getBci();
-            if (bci == -1) {
-                assert lb.stateAfter() != null : "If loop begin " + lb + " has no state it must have a bci set";
-                bci = lb.stateAfter().bci;
-            }
-            SpeculationLog.SpeculationReason speculationReason = LOOP_OVERFLOW_DEOPT.createSpeculationReason(graph.method(), bci);
-            if (speculationLog.maySpeculate(speculationReason)) {
-                overflowSpeculationTaken.increment(graph.getDebug());
-                return true;
-            }
-            overflowSpeculationNotTaken.increment(graph.getDebug());
-            return false;
-        }
-        // Be optimistic, if there is no speculation log
-        return true;
-    }
-
-    private static final SpeculationReasonGroup LOOP_OVERFLOW_DEOPT = new SpeculationReasonGroup("LoopOverflowDeopt", ResolvedJavaMethod.class, int.class);
 
     public IntegerStamp getStamp() {
         return (IntegerStamp) iv.valueNode().stamp(NodeView.DEFAULT);

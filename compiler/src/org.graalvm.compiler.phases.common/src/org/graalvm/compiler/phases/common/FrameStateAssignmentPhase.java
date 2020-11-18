@@ -76,9 +76,6 @@ public class FrameStateAssignmentPhase extends Phase {
                 StateSplit stateSplit = (StateSplit) node;
                 FrameState stateAfter = stateSplit.stateAfter();
                 if (stateAfter != null) {
-                    if (node instanceof LoopBeginNode) {
-                        ((LoopBeginNode) node).setBci(stateAfter.bci);
-                    }
                     if (stateAfter.bci == BytecodeFrame.INVALID_FRAMESTATE_BCI) {
                         currentState = null;
                     } else {
