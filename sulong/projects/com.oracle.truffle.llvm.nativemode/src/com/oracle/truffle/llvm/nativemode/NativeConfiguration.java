@@ -27,9 +27,12 @@
  * NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED
  * OF THE POSSIBILITY OF SUCH DAMAGE.
  */
-package com.oracle.truffle.llvm;
+package com.oracle.truffle.llvm.nativemode;
 
-import com.oracle.truffle.llvm.NativeConfigurationFactory.Key;
+import com.oracle.truffle.llvm.DefaultLoader;
+import com.oracle.truffle.llvm.nativemode.NativeConfigurationFactory.Key;
+import com.oracle.truffle.llvm.nativemode.runtime.NFIContextExtension;
+import com.oracle.truffle.llvm.nativemode.runtime.memory.LLVMNativeMemory;
 import com.oracle.truffle.llvm.parser.factories.BasicIntrinsicsProvider;
 import com.oracle.truffle.llvm.parser.factories.BasicNodeFactory;
 import com.oracle.truffle.llvm.parser.factories.BasicPlatformCapability;
@@ -37,7 +40,7 @@ import com.oracle.truffle.llvm.runtime.ContextExtension;
 import com.oracle.truffle.llvm.runtime.LLVMIntrinsicProvider;
 import com.oracle.truffle.llvm.runtime.LLVMLanguage;
 import com.oracle.truffle.llvm.runtime.LLVMLanguage.Loader;
-import com.oracle.truffle.llvm.runtime.NFIContextExtension;
+import com.oracle.truffle.llvm.runtime.NativeContextExtension;
 import com.oracle.truffle.llvm.runtime.NodeFactory;
 import com.oracle.truffle.llvm.runtime.PlatformCapability;
 import com.oracle.truffle.llvm.runtime.ToolchainConfig;
@@ -45,7 +48,6 @@ import com.oracle.truffle.llvm.runtime.config.Configuration;
 import com.oracle.truffle.llvm.runtime.config.LLVMCapability;
 import com.oracle.truffle.llvm.runtime.datalayout.DataLayout;
 import com.oracle.truffle.llvm.runtime.memory.LLVMMemory;
-import com.oracle.truffle.llvm.runtime.memory.LLVMNativeMemory;
 import com.oracle.truffle.llvm.runtime.memory.UnsafeArrayAccess;
 
 public class NativeConfiguration implements Configuration {
@@ -59,7 +61,7 @@ public class NativeConfiguration implements Configuration {
         intrinsicProvider = new BasicIntrinsicsProvider(language);
         platformCapability = BasicPlatformCapability.create(key.loadCxxLibraries);
         if (key.enableNFI) {
-            ctxExtRegistry.register(NFIContextExtension.class, NFIContextExtension::new);
+            ctxExtRegistry.register(NativeContextExtension.class, NFIContextExtension::new);
         }
     }
 

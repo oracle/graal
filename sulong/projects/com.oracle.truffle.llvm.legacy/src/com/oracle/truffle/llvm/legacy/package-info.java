@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2019, Oracle and/or its affiliates.
+ * Copyright (c) 2020, Oracle and/or its affiliates.
  *
  * All rights reserved.
  *
@@ -27,39 +27,7 @@
  * NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED
  * OF THE POSSIBILITY OF SUCH DAMAGE.
  */
-package com.oracle.truffle.llvm;
-
-import com.oracle.truffle.llvm.runtime.LLVMLanguage;
-import com.oracle.truffle.llvm.runtime.ToolchainConfig;
-
-final class NativeToolchainConfig implements ToolchainConfig {
-
-    private static final NativeToolchainConfig INSTANCE = new NativeToolchainConfig();
-
-    /**
-     * @deprecated "This method should not be called directly. Use
-     *             {@link LLVMLanguage#getCapability(Class)} instead."
-     */
-    @Deprecated
-    static NativeToolchainConfig getInstance() {
-        return INSTANCE;
-    }
-
-    private static final String TOOLCHAIN_ROOT_NAME = "llvm.toolchainRoot";
-    private static final String TOOLCHAIN_ROOT = System.getProperty(TOOLCHAIN_ROOT_NAME);
-
-    @Override
-    public String getToolchainRootOverride() {
-        return TOOLCHAIN_ROOT;
-    }
-
-    @Override
-    public String getToolchainSubdir() {
-        return "native";
-    }
-
-    @Override
-    public boolean enableCXX() {
-        return true;
-    }
-}
+/**
+ * TODO: remove as soon as the SULONG distribution is gone (GR-27478).
+ */
+package com.oracle.truffle.llvm.legacy;

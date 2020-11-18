@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2020, Oracle and/or its affiliates.
+ * Copyright (c) 2019, 2020, Oracle and/or its affiliates.
  *
  * All rights reserved.
  *
@@ -27,31 +27,39 @@
  * NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED
  * OF THE POSSIBILITY OF SUCH DAMAGE.
  */
-package com.oracle.truffle.llvm.runtime.nodes.intrinsics.handles;
+package com.oracle.truffle.llvm.nativemode;
 
-import com.oracle.truffle.api.dsl.Fallback;
-import com.oracle.truffle.api.dsl.NodeChild;
-import com.oracle.truffle.api.dsl.Specialization;
-import com.oracle.truffle.llvm.runtime.memory.LLVMHandleMemoryBase;
-import com.oracle.truffle.llvm.runtime.nodes.api.LLVMExpressionNode;
-import com.oracle.truffle.llvm.runtime.nodes.intrinsics.llvm.LLVMIntrinsic;
-import com.oracle.truffle.llvm.runtime.pointer.LLVMNativePointer;
+import com.oracle.truffle.llvm.runtime.LLVMLanguage;
+import com.oracle.truffle.llvm.runtime.ToolchainConfig;
 
-@NodeChild(type = LLVMExpressionNode.class)
-public abstract class GraalVMPointsToHandleSpace extends LLVMIntrinsic {
+final class NativeToolchainConfig implements ToolchainConfig {
 
-    @Specialization
-    protected boolean doLongCase(long a) {
-        return LLVMHandleMemoryBase.isHandleMemory(a);
+    private static final NativeToolchainConfig INSTANCE = new NativeToolchainConfig();
+
+    /**
+     * @deprecated "This method should not be called directly. Use
+     *             {@link LLVMLanguage#getCapability(Class)} instead."
+     */
+    @Deprecated
+    static NativeToolchainConfig getInstance() {
+        return INSTANCE;
     }
 
-    @Specialization
-    protected boolean doPointerCase(LLVMNativePointer a) {
-        return doLongCase(a.asNative());
+    private static final String TOOLCHAIN_ROOT_NAME = "llvm.toolchainRoot";
+    private static final String TOOLCHAIN_ROOT = System.getProperty(TOOLCHAIN_ROOT_NAME);
+
+    @Override
+    public String getToolchainRootOverride() {
+        return TOOLCHAIN_ROOT;
     }
 
-    @Fallback
-    protected boolean doGeneric(@SuppressWarnings("unused") Object object) {
-        return false;
+    @Override
+    public String getToolchainSubdir() {
+        return "native";
+    }
+
+    @Override
+    public boolean enableCXX() {
+        return true;
     }
 }

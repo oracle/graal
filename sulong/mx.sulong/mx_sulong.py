@@ -721,7 +721,7 @@ def llvm_extra_tool(args=None, out=None, **kwargs):
 
 def getClasspathOptions(extra_dists=None):
     """gets the classpath of the Sulong distributions"""
-    return mx.get_runtime_jvm_args(['SULONG', 'SULONG_LAUNCHER', 'TRUFFLE_NFI'] + (extra_dists or []))
+    return mx.get_runtime_jvm_args(['SULONG_CORE', 'SULONG_NATIVE', 'SULONG_LAUNCHER', 'TRUFFLE_NFI'] + (extra_dists or []))
 
 def ensureLLVMBinariesExist():
     """downloads the LLVM binaries if they have not been downloaded yet"""
@@ -1172,7 +1172,7 @@ mx_sdk_vm.register_graalvm_component(mx_sdk_vm.GraalVmLanguage(
     license_files=[],
     third_party_license_files=[],
     dependencies=['Truffle', 'Truffle NFI'],
-    truffle_jars=['sulong:SULONG', 'sulong:SULONG_API'],
+    truffle_jars=['sulong:SULONG_CORE', 'sulong:SULONG_NATIVE', 'sulong:SULONG_API'],
     support_distributions=[
         'sulong:SULONG_HOME',
         'sulong:SULONG_GRAALVM_DOCS',

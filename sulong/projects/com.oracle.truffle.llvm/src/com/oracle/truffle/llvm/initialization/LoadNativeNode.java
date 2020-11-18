@@ -40,7 +40,7 @@ import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.nodes.RootNode;
 import com.oracle.truffle.llvm.runtime.LLVMContext;
 import com.oracle.truffle.llvm.runtime.LLVMLanguage;
-import com.oracle.truffle.llvm.runtime.NFIContextExtension;
+import com.oracle.truffle.llvm.runtime.NativeContextExtension;
 import com.oracle.truffle.llvm.runtime.except.LLVMParserException;
 
 public final class LoadNativeNode extends RootNode {
@@ -80,10 +80,10 @@ public final class LoadNativeNode extends RootNode {
 
     @TruffleBoundary
     private void parseAndInitialiseNativeLib(LLVMContext context) {
-        NFIContextExtension nfiContextExtension = context.getContextExtensionOrNull(NFIContextExtension.class);
-        if (nfiContextExtension != null) {
-            CallTarget callTarget = nfiContextExtension.parseNativeLibrary(file, context);
-            nfiContextExtension.addLibraryHandles(callTarget.call());
+        NativeContextExtension nativeContextExtension = context.getContextExtensionOrNull(NativeContextExtension.class);
+        if (nativeContextExtension != null) {
+            CallTarget callTarget = nativeContextExtension.parseNativeLibrary(file, context);
+            nativeContextExtension.addLibraryHandles(callTarget.call());
         }
     }
 }

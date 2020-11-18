@@ -27,7 +27,7 @@
  * NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED
  * OF THE POSSIBILITY OF SUCH DAMAGE.
  */
-package com.oracle.truffle.llvm.runtime.memory;
+package com.oracle.truffle.llvm.nativemode.runtime.memory;
 
 import java.lang.reflect.Field;
 import java.util.ArrayDeque;
@@ -35,6 +35,7 @@ import java.util.Arrays;
 import java.util.function.IntBinaryOperator;
 import java.util.function.LongBinaryOperator;
 
+import com.oracle.truffle.llvm.runtime.memory.LLVMHandleMemoryBase;
 import org.graalvm.collections.EconomicMap;
 
 import com.oracle.truffle.api.Assumption;
@@ -51,17 +52,7 @@ import com.oracle.truffle.llvm.runtime.pointer.LLVMNativePointer;
 
 import sun.misc.Unsafe;
 
-public final class LLVMNativeMemory extends LLVMMemory {
-    private static final int HANDLE_OBJECT_SIZE_BITS = 30;
-    private static final long HANDLE_OBJECT_SIZE = 1L << HANDLE_OBJECT_SIZE_BITS; // 0.5 GB
-    private static final int HANDLE_OBJECT_ADDRESS_BITS = Integer.SIZE; // use int cast as mask
-    private static final long HANDLE_HEADER_MASK = -1L << (HANDLE_OBJECT_SIZE_BITS + HANDLE_OBJECT_ADDRESS_BITS);
-    private static final long HANDLE_OFFSET_MASK = HANDLE_OBJECT_SIZE - 1;
-
-    private static final long HANDLE_SPACE_START = 0x8000000000000000L;
-    private static final long HANDLE_SPACE_END = 0xC000000000000000L;
-    private static final long DEREF_HANDLE_SPACE_START = HANDLE_SPACE_END;
-    private static final long DEREF_HANDLE_SPACE_END = 0x0000000000000000L;
+public final class LLVMNativeMemory extends LLVMHandleMemoryBase {
 
     static {
         assert (DEREF_HANDLE_SPACE_START & HANDLE_HEADER_MASK) != (DEREF_HANDLE_SPACE_END & HANDLE_HEADER_MASK);
@@ -554,27 +545,6 @@ public final class LLVMNativeMemory extends LLVMMemory {
     @Override
     public void fullFence() {
         unsafe.fullFence();
-    }
-
-    /**
-     * A fast bit-check if the provided address is within the handle space.
-     */
-    public static boolean isHandleMemory(long address) {
-        return (address & HANDLE_SPACE_START) != 0;
-    }
-
-    /**
-     * A fast bit-check if the provided address is within the normal handle space.
-     */
-    public static boolean isCommonHandleMemory(long address) {
-        return ((address & HANDLE_HEADER_MASK) == HANDLE_SPACE_START);
-    }
-
-    /**
-     * A fast bit-check if the provided address is within the auto-deref handle space.
-     */
-    public static boolean isDerefHandleMemory(long address) {
-        return ((address & HANDLE_HEADER_MASK) == DEREF_HANDLE_SPACE_START);
     }
 
     @Override

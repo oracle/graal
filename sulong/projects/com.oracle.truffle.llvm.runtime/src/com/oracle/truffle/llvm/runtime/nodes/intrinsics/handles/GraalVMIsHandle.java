@@ -37,7 +37,7 @@ import com.oracle.truffle.api.dsl.NodeChild;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.llvm.runtime.LLVMContext;
 import com.oracle.truffle.llvm.runtime.LLVMLanguage;
-import com.oracle.truffle.llvm.runtime.memory.LLVMNativeMemory;
+import com.oracle.truffle.llvm.runtime.memory.LLVMHandleMemoryBase;
 import com.oracle.truffle.llvm.runtime.nodes.api.LLVMExpressionNode;
 import com.oracle.truffle.llvm.runtime.nodes.intrinsics.llvm.LLVMIntrinsic;
 import com.oracle.truffle.llvm.runtime.pointer.LLVMNativePointer;
@@ -49,9 +49,9 @@ public abstract class GraalVMIsHandle extends LLVMIntrinsic {
     protected boolean doLongCase(long address,
                     @CachedLanguage LLVMLanguage language,
                     @CachedContext(LLVMLanguage.class) ContextReference<LLVMContext> context) {
-        if (!language.getNoDerefHandleAssumption().isValid() && LLVMNativeMemory.isDerefHandleMemory(address)) {
+        if (!language.getNoDerefHandleAssumption().isValid() && LLVMHandleMemoryBase.isDerefHandleMemory(address)) {
             return context.get().getDerefHandleContainer().isHandle(address);
-        } else if (!language.getNoCommonHandleAssumption().isValid() && LLVMNativeMemory.isCommonHandleMemory(address)) {
+        } else if (!language.getNoCommonHandleAssumption().isValid() && LLVMHandleMemoryBase.isCommonHandleMemory(address)) {
             return context.get().getHandleContainer().isHandle(address);
         }
         return false;

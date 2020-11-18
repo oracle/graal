@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2019, Oracle and/or its affiliates.
+ * Copyright (c) 2019, 2020, Oracle and/or its affiliates.
  *
  * All rights reserved.
  *
@@ -36,7 +36,7 @@ import java.util.HashMap;
 import java.util.Map;
 import java.util.function.Function;
 
-import com.oracle.truffle.llvm.runtime.NFIContextExtension;
+import com.oracle.truffle.llvm.runtime.NativeContextExtension;
 import org.graalvm.polyglot.Context;
 import org.graalvm.polyglot.Source;
 import org.graalvm.polyglot.Value;
@@ -52,7 +52,7 @@ public class LoaderTest {
         return c -> new CaptureNativeOutput();
     }
 
-    private static final String SO_EXT = NFIContextExtension.getNativeLibrarySuffix();
+    private static final String SO_EXT = NativeContextExtension.getNativeLibrarySuffix();
 
     @Test
     public void test() throws IOException {

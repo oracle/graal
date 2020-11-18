@@ -286,6 +286,32 @@ suite = {
       "jacoco" : "include",
     },
 
+    "com.oracle.truffle.llvm.legacy" : {
+      # TODO: remove as soon as the SULONG distributions is removed
+      "subDir" : "projects",
+      "sourceDirs" : ["src"],
+      "dependencies" : [
+      ],
+      "checkstyle" : "com.oracle.truffle.llvm.runtime",
+      "javaCompliance" : "1.8+",
+      "workingSets" : "Truffle, LLVM",
+      "license" : "BSD-new",
+      "jacoco" : "include",
+    },
+
+    "com.oracle.truffle.llvm.nativemode" : {
+      "subDir" : "projects",
+      "sourceDirs" : ["src"],
+      "dependencies" : [
+        "SULONG_CORE"
+      ],
+      "checkstyle" : "com.oracle.truffle.llvm.runtime",
+      "javaCompliance" : "1.8+",
+      "workingSets" : "Truffle, LLVM",
+      "license" : "BSD-new",
+      "jacoco" : "include",
+    },
+
     "com.oracle.truffle.llvm.runtime" : {
       "subDir" : "projects",
       "sourceDirs" : ["src"],
@@ -325,7 +351,7 @@ suite = {
       "subDir" : "projects",
       "sourceDirs" : ["src"],
       "dependencies" : [
-        "com.oracle.truffle.llvm.parser.factories",
+        "com.oracle.truffle.llvm.parser",
         "SULONG_API",
        ],
       "checkstyle" : "com.oracle.truffle.llvm.runtime",
@@ -407,7 +433,8 @@ suite = {
         "JACOCO": "<jacoco>",
       },
       "buildDependencies" : [
-        "SULONG",
+        "SULONG_CORE",
+        "SULONG_NATIVE",
         "SULONG_LAUNCHER",
         "SULONG_TOOLCHAIN_LAUNCHERS",
         "SULONG_BOOTSTRAP_TOOLCHAIN",
@@ -1190,9 +1217,23 @@ suite = {
 
   "distributions" : {
     "SULONG" : {
+      # TODO: legacy distribution. remove as soon as everyone migrated to SULONG_NATIVE or SULONG_CORE (GR-27478).
+      "subDir" : "projects",
+      "dependencies" : [
+        "com.oracle.truffle.llvm.legacy",
+      ],
+      "distDependencies" : [
+        "SULONG_CORE",
+        "SULONG_NATIVE",
+      ],
+      "license" : "BSD-new",
+    },
+    "SULONG_CORE" : {
+      "description" : "Sulong core functionality (parser, execution engine, launcher)",
       "subDir" : "projects",
       "dependencies" : [
         "com.oracle.truffle.llvm",
+        "com.oracle.truffle.llvm.parser.factories",
       ],
       "distDependencies" : [
         "truffle:TRUFFLE_API",
@@ -1225,14 +1266,25 @@ suite = {
       ],
       "license" : "BSD-new",
     },
+    "SULONG_NATIVE" : {
+      "description" : "Sulong Native functionality (native memory support, native library support)",
+      "subDir" : "projects",
+      "dependencies" : [
+        "com.oracle.truffle.llvm.nativemode",
+      ],
+      "distDependencies" : [
+        "SULONG_CORE",
+      ],
+      "license" : "BSD-new",
+    },
     "SULONG_NFI" : {
+      "description" : "Sulong NFI backend",
       "subDir" : "projects",
       "dependencies" : [
         "com.oracle.truffle.llvm.nfi",
       ],
       "distDependencies" : [
         "truffle:TRUFFLE_NFI",
-        "SULONG",
       ],
       "license" : "BSD-new",
     },
@@ -1329,7 +1381,8 @@ suite = {
       "distDependencies" : [
         "truffle:TRUFFLE_API",
         "truffle:TRUFFLE_TCK",
-        "sulong:SULONG",
+        "sulong:SULONG_NATIVE",
+        "sulong:SULONG_CORE",
         "sulong:SULONG_NFI",
         "sulong:SULONG_LEGACY",
         "SULONG_TEST_NATIVE",
