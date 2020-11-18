@@ -1299,7 +1299,7 @@ suite = {
       "license" : "BSD-new",
     },
 
-    "SULONG_HOME" : {
+    "SULONG_NATIVE_HOME" : {
       "native" : True,
       "relpath" : False,
       "platformDependent" : True,
@@ -1314,20 +1314,38 @@ suite = {
           "dependency:com.oracle.truffle.llvm.libraries.graalvm.llvm/bin/*",
         ],
         "./native/lib/<lib:graalvm-llvm>": "link:<libv:graalvm-llvm.1>",
+        # for source compatibility
+        "./native/lib/<lib:polyglot-mock>": "link:<lib:graalvm-llvm>",
+      },
+      "license" : "BSD-new",
+    },
+
+    "SULONG_CORE_HOME" : {
+      "native" : True,
+      "relpath" : False,
+      "platformDependent" : True,
+      "layout" : {
         "./include/" : [
           "dependency:com.oracle.truffle.llvm.libraries.graalvm.llvm/include/*"
         ],
         # for source compatibility
         "./include/polyglot.h" : "link:graalvm/llvm/polyglot.h",
         "./include/llvm/api/toolchain.h" : "link:../../graalvm/llvm/toolchain-api.h",
-        "./native/lib/<lib:polyglot-mock>": "link:<lib:graalvm-llvm>",
       },
-      "dependencies" : [
-        "com.oracle.truffle.llvm.libraries.bitcode",
-        "com.oracle.truffle.llvm.libraries.native",
-        "com.oracle.truffle.llvm.libraries.graalvm.llvm",
-        "com.oracle.truffle.llvm.libraries.bitcode.libcxx",
-      ],
+      "license" : "BSD-new",
+    },
+
+    "SULONG_HOME" : {
+      "description" : "Only used as build dependency.",
+      "native" : True,
+      "relpath" : False,
+      "platformDependent" : True,
+      "layout" : {
+        "./" : [
+          "extracted-dependency:SULONG_NATIVE_HOME",
+          "extracted-dependency:SULONG_CORE_HOME",
+        ],
+      },
       "license" : "BSD-new",
     },
 
