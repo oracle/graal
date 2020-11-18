@@ -61,7 +61,7 @@ builds += [
       MAVEN_REPO_LOCAL : "$BUILD_DIR\.m2"
     }
     run: [
-      ${svm-cmd-gate} ["build,helloworld,svmjunit,maven"]
+      ${svm-cmd-gate} ["build,helloworld,test,svmjunit,maven"]
     ]
   }
 ]
