@@ -684,9 +684,6 @@ public class BinaryParser extends BinaryStreamParser {
                     // We don't store the `align` literal, as our implementation does not make use
                     // of it, but we need to store its byte length, so that we can skip it
                     // during execution.
-                    if (mustPoolLeb128()) {
-                        state.useByteConstant(peekLeb128Length(data, offset));
-                    }
                     readUnsignedInt32(); // align
                     readUnsignedInt32(state); // load offset
                     state.pop();   // Base address.
@@ -705,9 +702,6 @@ public class BinaryParser extends BinaryStreamParser {
                     // We don't store the `align` literal, as our implementation does not make use
                     // of it, but we need to store its byte length, so that we can skip it
                     // during the execution.
-                    if (mustPoolLeb128()) {
-                        state.useByteConstant(peekLeb128Length(data, offset));
-                    }
                     readUnsignedInt32(); // align
                     readUnsignedInt32(state); // store offset
                     state.pop();  // Value to store.
@@ -1234,7 +1228,7 @@ public class BinaryParser extends BinaryStreamParser {
 
     private void readFunctionType() {
         int paramsLength = readVectorLength();
-        int resultLength = peekUnsignedInt32(paramsLength);
+        int resultLength = peekUnsignedInt32(paramsLength, true);
         resultLength = (resultLength == 0x40) ? 0 : resultLength;
         if (moduleLimits != null) {
             moduleLimits.checkParamCount(paramsLength);
@@ -1415,12 +1409,8 @@ public class BinaryParser extends BinaryStreamParser {
     }
 
     protected int readUnsignedInt32(ExecutionState state) {
-        int value = peekUnsignedInt32(data, offset);
+        int value = peekUnsignedInt32(data, offset, true);
         byte length = peekLeb128Length(data, offset);
-        if (state != null && mustPoolLeb128()) {
-            state.useIntConstant(value);
-            state.useByteConstant(length);
-        }
         offset += length;
         return value;
     }
@@ -1428,10 +1418,6 @@ public class BinaryParser extends BinaryStreamParser {
     protected int readSignedInt32(ExecutionState state) {
         int value = peekSignedInt32(data, offset);
         byte length = peekLeb128Length(data, offset);
-        if (state != null && mustPoolLeb128()) {
-            state.useIntConstant(value);
-            state.useByteConstant(length);
-        }
         offset += length;
         return value;
     }
@@ -1439,16 +1425,8 @@ public class BinaryParser extends BinaryStreamParser {
     private long readSignedInt64(ExecutionState state) {
         long value = peekSignedInt64(data, offset);
         byte length = peekLeb128Length(data, offset);
-        if (state != null && mustPoolLeb128()) {
-            state.useLongConstant(value);
-            state.useByteConstant(length);
-        }
         offset += length;
         return value;
-    }
-
-    private boolean mustPoolLeb128() {
-        return mustPoolLeb128(data, offset, module.storeConstantsPolicy());
     }
 
     private boolean tryJumpToSection(int targetSectionId) {
