@@ -24,6 +24,7 @@
  */
 package com.oracle.svm.core.genscavenge;
 
+import org.graalvm.compiler.nodes.java.ArrayLengthNode;
 import org.graalvm.compiler.options.Option;
 import org.graalvm.compiler.word.Word;
 import org.graalvm.nativeimage.Platform;
@@ -160,7 +161,7 @@ final class GreyToBlackObjectVisitor implements ObjectVisitor {
                         log.string("  class: ").string(hub.getName());
                         Object entryAsObject = KnownIntrinsics.convertUnknownValue(objectEntry.toObject(), Object.class);
                         if (LayoutEncoding.isArray(entryAsObject)) {
-                            int length = KnownIntrinsics.readArrayLength(entryAsObject);
+                            int length = ArrayLengthNode.arrayLength(entryAsObject);
                             log.string("  length: ").signed(length);
                         }
                     } else {

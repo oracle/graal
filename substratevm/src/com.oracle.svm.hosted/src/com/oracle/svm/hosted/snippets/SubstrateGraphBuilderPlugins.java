@@ -732,13 +732,6 @@ public class SubstrateGraphBuilderPlugins {
                 return true;
             }
         });
-        r.register1("readArrayLength", Object.class, new InvocationPlugin() {
-            @Override
-            public boolean apply(GraphBuilderContext b, ResolvedJavaMethod targetMethod, Receiver receiver, ValueNode array) {
-                b.addPush(JavaKind.Int, new ArrayLengthNode(array));
-                return true;
-            }
-        });
         r.register1("readHub", Object.class, new InvocationPlugin() {
             @Override
             public boolean apply(GraphBuilderContext b, ResolvedJavaMethod targetMethod, Receiver receiver, ValueNode object) {

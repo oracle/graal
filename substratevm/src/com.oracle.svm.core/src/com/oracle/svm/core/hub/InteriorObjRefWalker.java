@@ -24,6 +24,7 @@
  */
 package com.oracle.svm.core.hub;
 
+import org.graalvm.compiler.nodes.java.ArrayLengthNode;
 import org.graalvm.compiler.word.Word;
 import org.graalvm.word.Pointer;
 import org.graalvm.word.UnsignedWord;
@@ -35,7 +36,6 @@ import com.oracle.svm.core.heap.InstanceReferenceMapDecoder;
 import com.oracle.svm.core.heap.ObjectHeader;
 import com.oracle.svm.core.heap.ObjectReferenceVisitor;
 import com.oracle.svm.core.heap.ReferenceAccess;
-import com.oracle.svm.core.snippets.KnownIntrinsics;
 
 /**
  * The vanilla walkObject and walkOffsetsFromPointer methods are not inlined, but there are
@@ -65,7 +65,7 @@ public class InteriorObjRefWalker {
 
         // Visit each Object reference in the array part of the Object.
         if (LayoutEncoding.isObjectArray(layoutEncoding)) {
-            int length = KnownIntrinsics.readArrayLength(obj);
+            int length = ArrayLengthNode.arrayLength(obj);
             for (int index = 0; index < length; index++) {
                 final UnsignedWord elementOffset = LayoutEncoding.getArrayElementOffset(layoutEncoding, index);
                 final Pointer elementPointer = objPointer.add(elementOffset);

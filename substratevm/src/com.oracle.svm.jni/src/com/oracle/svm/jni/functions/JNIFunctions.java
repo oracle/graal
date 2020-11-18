@@ -712,7 +712,7 @@ final class JNIFunctions {
     @CEntryPoint(exceptionHandler = JNIExceptionHandlerReturnMinusOne.class)
     @CEntryPointOptions(prologue = JNIEnvEnterReturnMinusOneOnFailurePrologue.class, publishAs = Publish.NotPublished, include = CEntryPointOptions.NotIncludedAutomatically.class)
     static int GetArrayLength(JNIEnvironment env, JNIObjectHandle harray) {
-        return KnownIntrinsics.readArrayLength(JNIObjectHandles.getObject(harray));
+        return Array.getLength(JNIObjectHandles.getObject(harray));
     }
 
     /*

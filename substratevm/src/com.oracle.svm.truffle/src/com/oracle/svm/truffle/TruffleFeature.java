@@ -71,6 +71,7 @@ import org.graalvm.compiler.nodes.graphbuilderconf.InlineInvokePlugin;
 import org.graalvm.compiler.nodes.graphbuilderconf.InvocationPlugin;
 import org.graalvm.compiler.nodes.graphbuilderconf.InvocationPlugins;
 import org.graalvm.compiler.nodes.graphbuilderconf.InvocationPlugins.Registration;
+import org.graalvm.compiler.nodes.java.ArrayLengthNode;
 import org.graalvm.compiler.nodes.spi.Replacements;
 import org.graalvm.compiler.options.Option;
 import org.graalvm.compiler.phases.util.Providers;
@@ -1059,7 +1060,7 @@ final class Target_com_oracle_truffle_polyglot_HostObject {
             CompilerDirectives.transferToInterpreterAndInvalidate();
             throw new IllegalStateException("should not reach here");
         }
-        return KnownIntrinsics.readArrayLength(array);
+        return ArrayLengthNode.arrayLength(array);
     }
 }
 

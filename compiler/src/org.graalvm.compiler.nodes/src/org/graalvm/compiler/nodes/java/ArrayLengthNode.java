@@ -28,6 +28,7 @@ import static org.graalvm.compiler.nodeinfo.NodeCycles.CYCLES_2;
 import static org.graalvm.compiler.nodeinfo.NodeSize.SIZE_1;
 
 import org.graalvm.compiler.core.common.type.StampFactory;
+import org.graalvm.compiler.graph.Node.NodeIntrinsicFactory;
 import org.graalvm.compiler.graph.NodeClass;
 import org.graalvm.compiler.graph.spi.Canonicalizable;
 import org.graalvm.compiler.graph.spi.CanonicalizerTool;
@@ -36,6 +37,8 @@ import org.graalvm.compiler.nodes.ConstantNode;
 import org.graalvm.compiler.nodes.DeoptimizeNode;
 import org.graalvm.compiler.nodes.FixedWithNextNode;
 import org.graalvm.compiler.nodes.ValueNode;
+import org.graalvm.compiler.nodes.extended.FixedValueAnchorNode;
+import org.graalvm.compiler.nodes.graphbuilderconf.GraphBuilderContext;
 import org.graalvm.compiler.nodes.spi.ArrayLengthProvider;
 import org.graalvm.compiler.nodes.spi.Lowerable;
 import org.graalvm.compiler.nodes.spi.Virtualizable;
@@ -46,11 +49,13 @@ import org.graalvm.compiler.nodes.virtual.VirtualArrayNode;
 import jdk.vm.ci.meta.ConstantReflectionProvider;
 import jdk.vm.ci.meta.DeoptimizationAction;
 import jdk.vm.ci.meta.DeoptimizationReason;
+import jdk.vm.ci.meta.JavaKind;
 
 /**
  * The {@code ArrayLength} instruction gets the length of an array.
  */
 @NodeInfo(cycles = CYCLES_2, size = SIZE_1)
+@NodeIntrinsicFactory
 public final class ArrayLengthNode extends FixedWithNextNode implements Canonicalizable.Unary<ValueNode>, Lowerable, Virtualizable {
 
     public static final NodeClass<ArrayLengthNode> TYPE = NodeClass.create(ArrayLengthNode.class);
@@ -104,6 +109,23 @@ public final class ArrayLengthNode extends FixedWithNextNode implements Canonica
         return GraphUtil.arrayLength(originalArray, ArrayLengthProvider.FindLengthMode.CANONICALIZE_READ, constantReflection);
     }
 
+    public static boolean intrinsify(GraphBuilderContext b, ValueNode array) {
+        /*
+         * Reading the length must not float above a check whether the object is actually an array.
+         * There is currently no good way to ask whether a stamp is really an array, and the
+         * lowering of ArrayLengthNode also skips Pi nodes. So we anchor the value here via a
+         * FixedValueAnchorNode. GR-27560 should optimize this.
+         */
+        ValueNode anchoredArray = b.add(new FixedValueAnchorNode(array));
+
+        b.addPush(JavaKind.Int, new ArrayLengthNode(anchoredArray));
+        return true;
+    }
+
+    /**
+     * Returns the length of the given array. It does not check if the provided object is an array,
+     * so the caller has to check that beforehand.
+     */
     @NodeIntrinsic
     public static native int arrayLength(Object array);
 

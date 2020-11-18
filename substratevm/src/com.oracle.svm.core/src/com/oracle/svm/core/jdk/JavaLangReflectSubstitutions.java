@@ -28,6 +28,7 @@ package com.oracle.svm.core.jdk;
 
 import java.lang.reflect.Array;
 
+import org.graalvm.compiler.nodes.java.ArrayLengthNode;
 import org.graalvm.compiler.word.BarrieredAccess;
 import org.graalvm.word.UnsignedWord;
 
@@ -36,7 +37,6 @@ import com.oracle.svm.core.annotate.TargetClass;
 import com.oracle.svm.core.config.ConfigurationValues;
 import com.oracle.svm.core.hub.DynamicHub;
 import com.oracle.svm.core.hub.LayoutEncoding;
-import com.oracle.svm.core.snippets.KnownIntrinsics;
 import com.oracle.svm.core.util.VMError;
 
 @TargetClass(java.lang.reflect.Array.class)
@@ -49,7 +49,7 @@ final class Target_java_lang_reflect_Array {
         } else if (!array.getClass().isArray()) {
             throw new IllegalArgumentException();
         }
-        return KnownIntrinsics.readArrayLength(array);
+        return ArrayLengthNode.arrayLength(array);
     }
 
     @Substitute
