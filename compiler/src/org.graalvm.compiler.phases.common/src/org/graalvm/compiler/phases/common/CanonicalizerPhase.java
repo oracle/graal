@@ -24,6 +24,7 @@
  */
 package org.graalvm.compiler.phases.common;
 
+import static org.graalvm.compiler.phases.common.CanonicalizerPhase.CanonicalizerFeature.ALLOW_FURTHER_CANONICALIZATIONS;
 import static org.graalvm.compiler.phases.common.CanonicalizerPhase.CanonicalizerFeature.CFG_SIMPLIFICATION;
 import static org.graalvm.compiler.phases.common.CanonicalizerPhase.CanonicalizerFeature.GVN;
 import static org.graalvm.compiler.phases.common.CanonicalizerPhase.CanonicalizerFeature.READ_CANONICALIZATION;
@@ -34,6 +35,7 @@ import org.graalvm.compiler.core.common.type.Stamp;
 import org.graalvm.compiler.debug.CounterKey;
 import org.graalvm.compiler.debug.DebugCloseable;
 import org.graalvm.compiler.debug.DebugContext;
+import org.graalvm.compiler.debug.GraalError;
 import org.graalvm.compiler.graph.GraalGraphError;
 import org.graalvm.compiler.graph.Graph;
 import org.graalvm.compiler.graph.Graph.Mark;
@@ -73,7 +75,8 @@ public class CanonicalizerPhase extends BasePhase<CoreProviders> {
     public enum CanonicalizerFeature {
         READ_CANONICALIZATION,
         CFG_SIMPLIFICATION,
-        GVN
+        GVN,
+        ALLOW_FURTHER_CANONICALIZATIONS
     }
 
     private static final int MAX_ITERATION_PER_NODE = 10;
@@ -126,6 +129,12 @@ public class CanonicalizerPhase extends BasePhase<CoreProviders> {
     public CanonicalizerPhase copyWithoutSimplification() {
         EnumSet<CanonicalizerFeature> newFeatures = EnumSet.copyOf(features);
         newFeatures.remove(CFG_SIMPLIFICATION);
+        return new CanonicalizerPhase(customSimplification, newFeatures);
+    }
+
+    public CanonicalizerPhase copyWithoutFurtherCanonicalizations() {
+        EnumSet<CanonicalizerFeature> newFeatures = EnumSet.copyOf(features);
+        newFeatures.remove(ALLOW_FURTHER_CANONICALIZATIONS);
         return new CanonicalizerPhase(customSimplification, newFeatures);
     }
 
@@ -231,6 +240,9 @@ public class CanonicalizerPhase extends BasePhase<CoreProviders> {
 
         @Override
         protected void run(StructuredGraph graph) {
+            if (graph.isAfterFinalCanonicalization()) {
+                GraalError.shouldNotReachHere("cannot run further canonicalizations after the final canonicalization");
+            }
             this.debug = graph.getDebug();
             boolean wholeGraph = newNodesMark == null || newNodesMark.isStart();
             if (initWorkingSet == null) {
@@ -245,6 +257,9 @@ public class CanonicalizerPhase extends BasePhase<CoreProviders> {
 
             tool = new Tool(graph.getAssumptions(), graph.getOptions());
             processWorkSet(graph);
+            if (!features.contains(ALLOW_FURTHER_CANONICALIZATIONS)) {
+                graph.setAfterFinalCanonicalization();
+            }
         }
 
         @SuppressWarnings("try")
