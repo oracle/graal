@@ -1688,7 +1688,7 @@ public abstract class AArch64Assembler extends Assembler {
      * @return true if valid arithmetic immediate, false otherwise.
      */
     protected static boolean isAimm(int imm) {
-        return NumUtil.isUnsignedNbit(12, imm) || NumUtil.isUnsignedNbit(12, imm >>> 12) && (imm & 0xfff) == 0;
+        return NumUtil.isUnsignedNbit(12, imm) || (NumUtil.isUnsignedNbit(12, imm >>> 12) && ((imm & 0xfff) == 0));
     }
 
     /* Logical (immediate) (5.4.2) */
