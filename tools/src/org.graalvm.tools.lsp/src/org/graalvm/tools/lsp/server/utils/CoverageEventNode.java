@@ -94,7 +94,7 @@ public final class CoverageEventNode extends ExecutionEventNode {
     private void putSection2Uri(MaterializedFrame frame) {
         CompilerAsserts.neverPartOfCompilation();
         URI sourceUri = instrumentedSection.getSource().getURI();
-        if (!sourceUri.getScheme().equals("file")) {
+        if (!"file".equals(sourceUri.getScheme())) {
             String name = instrumentedSection.getSource().getName();
             Path pathFromName = null;
             try {
