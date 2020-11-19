@@ -2763,7 +2763,7 @@ public final class WasmBlockNode extends WasmNode implements RepeatingNode {
     private static long signedIntConstantAndLength(byte[] data, int offset) {
         // This is an optimized version of the read which returns both the constant
         // and its length within one 64-bit value.
-        return BinaryStreamParser.peekSignedInt32AndLength(data, offset);
+        return BinaryStreamParser.rawPeekSignedInt32AndLength(data, offset);
     }
 
     private static long signedLongConstant(byte[] data, int offset) {

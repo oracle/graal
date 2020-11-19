@@ -58,6 +58,26 @@ public abstract class BinaryStreamParser {
     }
 
     @ExplodeLoop(kind = FULL_EXPLODE_UNTIL_RETURN)
+    public static long rawPeekSignedInt32AndLength(byte[] data, int initialOffset) {
+        int result = 0;
+        int shift = 0;
+        int currentOffset = initialOffset;
+        byte b = (byte) 0x80;
+        // We force the loop to be counted, so that it unrolls.
+        while (shift < 42 && (b & 0x80) != 0) {
+            b = rawPeek1(data, currentOffset);
+            currentOffset++;
+            result |= ((b & 0x7F) << shift);
+            shift += 7;
+        }
+
+        if ((shift < 32) && (b & 0x40) != 0) {
+            result |= (~0 << shift);
+        }
+        return (((long) (currentOffset - initialOffset)) << 32) | (((long) result) & 0xffff_ffffL);
+    }
+
+    @ExplodeLoop(kind = FULL_EXPLODE_UNTIL_RETURN)
     public static long peekSignedInt32AndLength(byte[] data, int initialOffset) {
         int result = 0;
         int shift = 0;
@@ -176,32 +196,32 @@ public abstract class BinaryStreamParser {
         return value;
     }
 
-    public static byte peek1(byte[] data, int offset) {
-        if (offset < 0 || offset >= data.length) {
-            throw WasmException.format(Failure.UNSPECIFIED_MALFORMED, "The binary is truncated at: %d", offset);
+    public static byte peek1(byte[] data, int initialOffset) {
+        if (initialOffset < 0 || initialOffset >= data.length) {
+            throw WasmException.format(Failure.UNSPECIFIED_MALFORMED, "The binary is truncated at: %d", initialOffset);
         }
-        return data[offset];
+        return data[initialOffset];
     }
 
-    public static byte rawPeek1(byte[] data, int offset) {
-        return data[offset];
+    public static byte rawPeek1(byte[] data, int initialOffset) {
+        return data[initialOffset];
     }
 
     @ExplodeLoop(kind = FULL_EXPLODE_UNTIL_RETURN)
-    public static int peek4(byte[] data, int offset) {
+    public static int peek4(byte[] data, int initialOffset) {
         int result = 0;
         for (int i = 0; i != 4; ++i) {
-            int x = peek1(data, offset + i) & 0xFF;
+            int x = peek1(data, initialOffset + i) & 0xFF;
             result |= x << 8 * i;
         }
         return result;
     }
 
     @ExplodeLoop(kind = FULL_EXPLODE_UNTIL_RETURN)
-    public static long peek8(byte[] data, int offset) {
+    public static long peek8(byte[] data, int initialOffset) {
         long result = 0;
         for (int i = 0; i != 8; ++i) {
-            long x = peek1(data, offset + i) & 0xFF;
+            long x = peek1(data, initialOffset + i) & 0xFF;
             result |= x << 8 * i;
         }
         return result;
