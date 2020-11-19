@@ -1432,6 +1432,7 @@ public final class RubyFlavorProcessor implements RegexFlavorProcessor {
             }
             int rangeStart = position;
             Optional<Integer> lowerBound;
+            boolean wasNestedCharClass = false;
             int ch = consumeChar();
             switch (ch) {
                 case ']':
@@ -1446,6 +1447,7 @@ public final class RubyFlavorProcessor implements RegexFlavorProcessor {
                     break;
                 case '[':
                     nestedCharClass();
+                    wasNestedCharClass = true;
                     lowerBound = Optional.empty();
                     break;
                 case '&':
@@ -1463,7 +1465,8 @@ public final class RubyFlavorProcessor implements RegexFlavorProcessor {
                 default:
                     lowerBound = Optional.of(ch);
             }
-            if (match("-")) {
+            // a hyphen following a nested char class is never interpreted as a range operator
+            if (!wasNestedCharClass && match("-")) {
                 if (atEnd()) {
                     throw syntaxError("unterminated character set");
                 }
@@ -1481,15 +1484,36 @@ public final class RubyFlavorProcessor implements RegexFlavorProcessor {
                         break;
                     case '[':
                         nestedCharClass();
+                        wasNestedCharClass = true;
                         upperBound = Optional.empty();
+                        break;
+                    case '&':
+                        if (match("&")) {
+                            if (lowerBound.isPresent()) {
+                                curCharClass.addCodePoint(lowerBound.get());
+                            }
+                            curCharClass.addCodePoint('-');
+                            CodePointSetAccumulator curCharClassBackup = curCharClass;
+                            curCharClass = acquireCodePointSetAccumulator();
+                            collectCharClass();
+                            curCharClassBackup.intersectWith(curCharClass.get());
+                            curCharClass = curCharClassBackup;
+                            break classBody;
+                        } else {
+                            upperBound = Optional.of(ch);
+                        }
                         break;
                     default:
                         upperBound = Optional.of(ch);
                 }
-                if (!lowerBound.isPresent() || !upperBound.isPresent() || upperBound.get() < lowerBound.get()) {
-                    throw syntaxError("bad character range " + inPattern.substring(rangeStart, position));
+                // if the right operand of a range operator was a nested char class, Ruby drops
+                // both the left operand and the range operator
+                if (!wasNestedCharClass) {
+                    if (!lowerBound.isPresent() || !upperBound.isPresent() || upperBound.get() < lowerBound.get()) {
+                        throw syntaxError("bad character range " + inPattern.substring(rangeStart, position));
+                    }
+                    curCharClass.addRange(lowerBound.get(), upperBound.get());
                 }
-                curCharClass.addRange(lowerBound.get(), upperBound.get());
             } else if (lowerBound.isPresent()) {
                 curCharClass.addCodePoint(lowerBound.get());
             }
@@ -1516,11 +1540,7 @@ public final class RubyFlavorProcessor implements RegexFlavorProcessor {
     private void nestedCharClass() {
         CodePointSetAccumulator curCharClassBackup = curCharClass;
         curCharClass = acquireCodePointSetAccumulator();
-        if (match(":")) {
-            if (!collectPosixCharClass()) {
-                collectCharClass();
-            }
-        } else {
+        if (!collectPosixCharClass()) {
             collectCharClass();
         }
         curCharClassBackup.addSet(curCharClass.get());
@@ -1530,6 +1550,9 @@ public final class RubyFlavorProcessor implements RegexFlavorProcessor {
 
     private boolean collectPosixCharClass() {
         int restorePosition = position;
+        if (!match(":")) {
+            return false;
+        }
         boolean negated = false;
         if (match("^")) {
             negated = true;
