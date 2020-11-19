@@ -30,7 +30,6 @@ import java.net.URL;
 import java.security.AccessControlContext;
 import java.security.AccessControlException;
 import java.security.CodeSource;
-import java.security.DomainCombiner;
 import java.security.Permission;
 import java.security.PermissionCollection;
 import java.security.Permissions;
@@ -41,6 +40,8 @@ import java.security.PrivilegedExceptionAction;
 import java.security.ProtectionDomain;
 import java.security.Provider;
 import java.security.SecureRandom;
+import java.util.ArrayDeque;
+import java.util.Deque;
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.atomic.AtomicReference;
@@ -99,7 +100,10 @@ final class Target_java_security_AccessController {
     @Substitute
     private static <T> T doPrivileged(PrivilegedAction<T> action, AccessControlContext context) throws Throwable {
         try {
-            return action.run();
+            AccessControllerUtil.accStack.get().push(context);
+            T result = action.run();
+            AccessControllerUtil.accStack.get().pop();
+            return result;
         } catch (Throwable ex) {
             throw AccessControllerUtil.wrapCheckedException(ex);
         }
@@ -108,7 +112,10 @@ final class Target_java_security_AccessController {
     @Substitute
     private static <T> T doPrivileged(PrivilegedAction<T> action, AccessControlContext context, Permission... perms) throws Throwable {
         try {
-            return action.run();
+            AccessControllerUtil.accStack.get().push(context);
+            T result = action.run();
+            AccessControllerUtil.accStack.get().pop();
+            return result;
         } catch (Throwable ex) {
             throw AccessControllerUtil.wrapCheckedException(ex);
         }
@@ -135,7 +142,10 @@ final class Target_java_security_AccessController {
     @Substitute
     private static <T> T doPrivilegedWithCombiner(PrivilegedExceptionAction<T> action, AccessControlContext context, Permission... perms) throws Throwable {
         try {
-            return action.run();
+            AccessControllerUtil.accStack.get().push(context);
+            T result = action.run();
+            AccessControllerUtil.accStack.get().pop();
+            return result;
         } catch (Throwable ex) {
             throw AccessControllerUtil.wrapCheckedException(ex);
         }
@@ -144,7 +154,10 @@ final class Target_java_security_AccessController {
     @Substitute
     private static <T> T doPrivileged(PrivilegedExceptionAction<T> action, AccessControlContext context) throws Throwable {
         try {
-            return action.run();
+            AccessControllerUtil.accStack.get().push(context);
+            T result = action.run();
+            AccessControllerUtil.accStack.get().pop();
+            return result;
         } catch (Throwable ex) {
             throw AccessControllerUtil.wrapCheckedException(ex);
         }
@@ -155,13 +168,17 @@ final class Target_java_security_AccessController {
     }
 
     @Substitute
-    private static AccessControlContext getContext() {
-        return AccessControllerUtil.NO_CONTEXT_SINGLETON;
+    private static AccessControlContext getStackAccessControlContext() {
+        if (AccessControllerUtil.accStack.get().isEmpty()) {
+            return AccessControllerUtil.NO_CONTEXT_SINGLETON;
+        } else {
+            return AccessControllerUtil.accStack.get().peek();
+        }
     }
 
     @Substitute
-    private static AccessControlContext createWrapper(DomainCombiner combiner, Class<?> caller, AccessControlContext parent, AccessControlContext context, Permission[] perms) {
-        return AccessControllerUtil.NO_CONTEXT_SINGLETON;
+    private static AccessControlContext getContext() {
+        return getStackAccessControlContext();
     }
 }
 
@@ -169,6 +186,7 @@ final class Target_java_security_AccessController {
 class AccessControllerUtil {
 
     static final AccessControlContext NO_CONTEXT_SINGLETON;
+    static final ThreadLocal<Deque<AccessControlContext>> accStack = ThreadLocal.withInitial(() -> new ArrayDeque<>());
 
     static {
         try {
