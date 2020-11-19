@@ -40,10 +40,6 @@
  */
 package org.graalvm.wasm.test;
 
-import java.io.IOException;
-import java.util.HashMap;
-import java.util.function.Consumer;
-
 import com.oracle.truffle.api.interop.ArityException;
 import com.oracle.truffle.api.interop.ExceptionType;
 import com.oracle.truffle.api.interop.InteropLibrary;
@@ -77,9 +73,16 @@ import org.graalvm.wasm.api.TableKind;
 import org.graalvm.wasm.api.WebAssembly;
 import org.graalvm.wasm.api.WebAssemblyInstantiatedSource;
 import org.graalvm.wasm.exception.WasmException;
+import org.graalvm.wasm.exception.WasmJsApiException;
 import org.graalvm.wasm.predefined.testutil.TestutilModule;
 import org.graalvm.wasm.utils.Assert;
 import org.junit.Test;
+
+import java.io.IOException;
+import java.util.HashMap;
+import java.util.function.Consumer;
+
+import static org.graalvm.wasm.utils.WasmBinaryTools.compileWat;
 
 public class WasmJsApiSuite {
     @Test
@@ -147,8 +150,8 @@ public class WasmJsApiSuite {
     public void testInstantiateWithImportMemory() throws IOException {
         runTest(context -> {
             final WebAssembly wasm = new WebAssembly(context);
-            final Memory memory = new Memory(new MemoryDescriptor(1, 4));
-            Dictionary importObject = Dictionary.create(new Object[]{
+            final Memory memory = Memory.create(new MemoryDescriptor(4, 8));
+            final Dictionary importObject = Dictionary.create(new Object[]{
                             "host", Dictionary.create(new Object[]{
                                             "defaultMemory", memory
                             }),
@@ -188,7 +191,7 @@ public class WasmJsApiSuite {
     public void testInstantiateWithImportTable() throws IOException {
         runTest(context -> {
             final WebAssembly wasm = new WebAssembly(context);
-            final Table table = new Table(new TableDescriptor(TableKind.anyfunc.name(), 1, 4));
+            final Table table = Table.create(new TableDescriptor(TableKind.anyfunc.name(), 4, 8));
             Dictionary importObject = Dictionary.create(new Object[]{
                             "host", Dictionary.create(new Object[]{
                                             "defaultTable", table
@@ -217,13 +220,7 @@ public class WasmJsApiSuite {
                 final Table table = (Table) instance.exports().readMember("defaultTable");
                 final Object result = InteropLibrary.getUncached().execute(table.get(0), 9);
                 Assert.assertEquals("Must be 81.", 81, result);
-            } catch (UnknownIdentifierException e) {
-                throw new RuntimeException(e);
-            } catch (UnsupportedTypeException e) {
-                throw new RuntimeException(e);
-            } catch (UnsupportedMessageException e) {
-                throw new RuntimeException(e);
-            } catch (ArityException e) {
+            } catch (UnknownIdentifierException | UnsupportedTypeException | UnsupportedMessageException | ArityException e) {
                 throw new RuntimeException(e);
             }
         });
@@ -321,6 +318,47 @@ public class WasmJsApiSuite {
     }
 
     @Test
+    public void testExportMemoryTwice() throws IOException, InterruptedException {
+        final byte[] exportMemoryTwice = compileWat("exportMemoryTwice", "(memory 1) (export \"a\" (memory 0)) (export \"b\" (memory 0))");
+        runTest(context -> {
+            final WebAssembly wasm = new WebAssembly(context);
+            final WebAssemblyInstantiatedSource instantiatedSource = wasm.instantiate(exportMemoryTwice, null);
+            final Instance instance = instantiatedSource.instance();
+            try {
+                final InteropLibrary lib = InteropLibrary.getUncached();
+                final Object exports = lib.readMember(instance, "exports");
+                final Object memoryABuffer = lib.execute(lib.readMember(lib.readMember(exports, "a"), "buffer"));
+                final Object memoryBBuffer = lib.execute(lib.readMember(lib.readMember(exports, "b"), "buffer"));
+                lib.writeArrayElement(memoryABuffer, 0, (byte) 42);
+                final byte readValue = lib.asByte(lib.readArrayElement(memoryBBuffer, 0));
+                Assert.assertEquals("Written value should correspond to read value", (byte) 42, readValue);
+            } catch (UnsupportedMessageException | UnknownIdentifierException | UnsupportedTypeException | ArityException | InvalidArrayIndexException e) {
+                throw new RuntimeException(e);
+            }
+        });
+    }
+
+    @Test
+    public void testExportTableTwice() throws IOException, InterruptedException {
+        final byte[] exportMemoryTwice = compileWat("exportTableTwice", "(module (table 1 funcref) (export \"a\" (table 0)) (export \"b\" (table 0)))");
+        runTest(context -> {
+            final WebAssembly wasm = new WebAssembly(context);
+            final WebAssemblyInstantiatedSource instantiatedSource = wasm.instantiate(exportMemoryTwice, null);
+            final Instance instance = instantiatedSource.instance();
+            final InteropLibrary lib = InteropLibrary.getUncached();
+            try {
+                final Object exports = lib.readMember(instance, "exports");
+                final Object f = new Executable(args -> 42);
+                lib.execute(lib.readMember(lib.readMember(exports, "a"), "set"), 0, f);
+                final Object readValue = lib.execute(lib.readMember(lib.readMember(exports, "b"), "get"), 0);
+                Assert.assertEquals("Written function should correspond ro read function", 42, lib.asInt(lib.execute(readValue)));
+            } catch (UnsupportedMessageException | UnknownIdentifierException | UnsupportedTypeException | ArityException e) {
+                throw new RuntimeException(e);
+            }
+        });
+    }
+
+    @Test
     public void testImportOrder() throws IOException {
         runTest(context -> {
             final WebAssembly wasm = new WebAssembly(context);
@@ -339,12 +377,12 @@ public class WasmJsApiSuite {
     }
 
     @Test
-    public void testModuleLimits() throws IOException {
+    public void testExportCountsLimit() throws IOException {
         runTest(context -> {
             ModuleLimits limits = null;
             context.readModule(binaryWithMixedExports, limits);
 
-            int noLimit = Integer.MAX_VALUE;
+            final int noLimit = Integer.MAX_VALUE;
             limits = new ModuleLimits(noLimit, noLimit, noLimit, noLimit, 6, noLimit, noLimit, noLimit, noLimit, noLimit, noLimit, noLimit, noLimit, noLimit);
             context.readModule(binaryWithMixedExports, limits);
 
@@ -354,6 +392,35 @@ public class WasmJsApiSuite {
                 Assert.fail("Should have failed - export count exceeds the limit");
             } catch (WasmException ex) {
                 Assert.assertEquals("Parsing error expected", ExceptionType.PARSE_ERROR, ex.getExceptionType());
+            }
+        });
+    }
+
+    @Test
+    public void testTableInstanceGrowLimit() throws IOException {
+        runTest(context -> {
+            final WebAssembly wasm = new WebAssembly(context);
+            final WebAssemblyInstantiatedSource instantiatedSource = wasm.instantiate(binaryWithMixedExports, null);
+            final Instance instance = instantiatedSource.instance();
+            final InteropLibrary lib = InteropLibrary.getUncached();
+
+            // We should be able to grow the table to 10,000,000.
+            try {
+                final Object exports = lib.readMember(instance, "exports");
+                lib.execute(lib.readMember(lib.readMember(exports, "t"), "grow"), 9999999);
+            } catch (UnsupportedMessageException | UnknownIdentifierException | UnsupportedTypeException | ArityException e) {
+                throw new RuntimeException(e);
+            }
+
+            // But growing to 10,000,001 should fail.
+            try {
+                final Object exports = lib.readMember(instance, "exports");
+                lib.execute(lib.readMember(lib.readMember(exports, "t"), "grow"), 1);
+                Assert.fail("Should have failed - export count exceeds the limit");
+            } catch (UnsupportedMessageException | UnknownIdentifierException | UnsupportedTypeException | ArityException e) {
+                throw new RuntimeException(e);
+            } catch (WasmJsApiException e) {
+                Assert.assertEquals("Range error expected", WasmJsApiException.Kind.RangeError, e.kind());
             }
         });
     }

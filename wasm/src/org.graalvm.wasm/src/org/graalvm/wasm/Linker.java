@@ -58,8 +58,12 @@ import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Objects;
 import java.util.function.BiConsumer;
 
+import static org.graalvm.wasm.Assert.assertTrue;
+import static org.graalvm.wasm.Assert.assertUnsignedIntGreaterOrEqual;
+import static org.graalvm.wasm.Assert.assertUnsignedIntLessOrEqual;
 import static org.graalvm.wasm.Linker.ResolutionDag.CallsiteSym;
 import static org.graalvm.wasm.Linker.ResolutionDag.CodeEntrySym;
 import static org.graalvm.wasm.Linker.ResolutionDag.ElemSym;
@@ -113,8 +117,13 @@ public class Linker {
             for (WasmInstance instance : instances.values()) {
                 if (instance.isNonLinked()) {
                     instance.setLinkInProgress();
-                    for (BiConsumer<WasmContext, WasmInstance> action : instance.module().linkActions()) {
-                        action.accept(context, instance);
+                    try {
+                        for (BiConsumer<WasmContext, WasmInstance> action : instance.module().linkActions()) {
+                            action.accept(context, instance);
+                        }
+                    } catch (Throwable e) {
+                        instance.setLinkCompleted();
+                        throw e;
                     }
                 }
             }
@@ -127,11 +136,14 @@ public class Linker {
             }
             for (WasmInstance instance : instances.values()) {
                 if (instance.isLinkInProgress()) {
-                    final WasmFunction start = instance.symbolTable().startFunction();
-                    if (start != null) {
-                        instance.target(start.index()).call(new Object[0]);
+                    try {
+                        final WasmFunction start = instance.symbolTable().startFunction();
+                        if (start != null) {
+                            instance.target(start.index()).call();
+                        }
+                    } finally {
+                        instance.setLinkCompleted();
                     }
-                    instance.setLinkCompleted();
                 }
             }
         }
@@ -139,8 +151,13 @@ public class Linker {
 
     private void linkTopologically() {
         final Resolver[] sortedResolutions = resolutionDag.toposort();
-        for (Resolver resolver : sortedResolutions) {
-            resolver.runActionOnce();
+        try {
+            for (final Resolver resolver : sortedResolutions) {
+                resolver.runActionOnce();
+            }
+        } finally {
+            // Clear resolutionDag so that it is empty for the next linking.
+            resolutionDag.clear();
         }
     }
 
@@ -176,14 +193,14 @@ public class Linker {
             final WasmInstance importedInstance = context.moduleInstances().get(importedModuleName);
 
             if (importedInstance == null) {
-                throw WasmException.create(Failure.UNSPECIFIED_UNLINKABLE, "Module '" + importedModuleName + "', referenced in the import of global variable '" +
+                throw WasmException.create(Failure.UNKNOWN_IMPORT, "Module '" + importedModuleName + "', referenced in the import of global variable '" +
                                 importedGlobalName + "' into module '" + instance.name() + "', does not exist.");
             }
 
             // Check that the imported global is resolved in the imported module.
             Integer exportedGlobalIndex = importedInstance.symbolTable().exportedGlobals().get(importedGlobalName);
             if (exportedGlobalIndex == null) {
-                throw WasmException.create(Failure.UNSPECIFIED_UNLINKABLE, "Global variable '" + importedGlobalName + "', imported into module '" + instance.name() +
+                throw WasmException.create(Failure.UNKNOWN_IMPORT, "Global variable '" + importedGlobalName + "', imported into module '" + instance.name() +
                                 "', was not exported in the module '" + importedModuleName + "'.");
             }
             int exportedValueType = importedInstance.symbolTable().globalValueType(exportedGlobalIndex);
@@ -235,34 +252,33 @@ public class Linker {
             final WasmInstance importedInstance = context.moduleInstances().get(function.importedModuleName());
             if (importedInstance == null) {
                 throw WasmException.create(
-                                Failure.UNSPECIFIED_UNLINKABLE,
+                                Failure.UNKNOWN_IMPORT,
                                 "The module '" + function.importedModuleName() + "', referenced by the import '" + function.importedFunctionName() + "' in the module '" + instance.name() +
                                                 "', does not exist.");
             }
             WasmFunction importedFunction;
             importedFunction = importedInstance.module().exportedFunctions().get(function.importedFunctionName());
             if (importedFunction == null) {
-                throw WasmException.create(Failure.UNSPECIFIED_UNLINKABLE, "The imported function '" + function.importedFunctionName() + "', referenced in the module '" + instance.name() +
+                throw WasmException.create(Failure.UNKNOWN_IMPORT, "The imported function '" + function.importedFunctionName() + "', referenced in the module '" + instance.name() +
                                 "', does not exist in the imported module '" + function.importedModuleName() + "'.");
             }
             final CallTarget target = importedInstance.target(importedFunction.index());
             instance.setTarget(function.index(), target);
         };
         final Sym[] dependencies = new Sym[]{new ExportFunctionSym(function.importDescriptor().moduleName, function.importDescriptor().memberName)};
-        resolutionDag.resolveLater(new ImportFunctionSym(instance.name(), function.importDescriptor()), dependencies, resolveAction);
+        resolutionDag.resolveLater(new ImportFunctionSym(instance.name(), function.importDescriptor(), function.index()), dependencies, resolveAction);
     }
 
     void resolveFunctionExport(WasmModule module, int functionIndex, String exportedFunctionName) {
         final ImportDescriptor importDescriptor = module.symbolTable().function(functionIndex).importDescriptor();
-        final Sym[] dependencies = (importDescriptor != null) ? new Sym[]{new ImportFunctionSym(module.name(), importDescriptor)} : ResolutionDag.NO_DEPENDENCIES;
+        final Sym[] dependencies = (importDescriptor != null) ? new Sym[]{new ImportFunctionSym(module.name(), importDescriptor, functionIndex)} : ResolutionDag.NO_DEPENDENCIES;
         resolutionDag.resolveLater(new ExportFunctionSym(module.name(), exportedFunctionName), dependencies, NO_RESOLVE_ACTION);
     }
 
     void resolveCallsite(WasmInstance instance, WasmBlockNode block, int controlTableOffset, WasmFunction function) {
-        final Runnable resolveAction = () -> {
-            block.resolveCallNode(controlTableOffset);
-        };
-        final Sym[] dependencies = new Sym[]{function.isImported() ? new ImportFunctionSym(instance.name(), function.importDescriptor()) : new CodeEntrySym(instance.name(), function.index())};
+        final Runnable resolveAction = () -> block.resolveCallNode(controlTableOffset);
+        final Sym[] dependencies = new Sym[]{
+                        function.isImported() ? new ImportFunctionSym(instance.name(), function.importDescriptor(), function.index()) : new CodeEntrySym(instance.name(), function.index())};
         resolutionDag.resolveLater(new CallsiteSym(instance.name(), block.startOfset(), controlTableOffset), dependencies, resolveAction);
     }
 
@@ -270,35 +286,32 @@ public class Linker {
         resolutionDag.resolveLater(new CodeEntrySym(module.name(), functionIndex), ResolutionDag.NO_DEPENDENCIES, NO_RESOLVE_ACTION);
     }
 
-    void resolveMemoryImport(WasmContext context, WasmInstance instance, ImportDescriptor importDescriptor, int initSize, int maxSize) {
-        String importedModuleName = importDescriptor.moduleName;
-        String importedMemoryName = importDescriptor.memberName;
+    void resolveMemoryImport(WasmContext context, WasmInstance instance, ImportDescriptor importDescriptor, int declaredMinSize, int declaredMaxSize) {
+        final String importedModuleName = importDescriptor.moduleName;
+        final String importedMemoryName = importDescriptor.memberName;
         final Runnable resolveAction = () -> {
             final WasmInstance importedInstance = context.moduleInstances().get(importedModuleName);
             if (importedInstance == null) {
-                throw WasmException.create(Failure.UNSPECIFIED_UNLINKABLE, String.format("The module '%s', referenced in the import of memory '%s' in module '%s', does not exist",
+                throw WasmException.create(Failure.UNKNOWN_IMPORT, String.format("The module '%s', referenced in the import of memory '%s' in module '%s', does not exist",
                                 importedModuleName, importedMemoryName, instance.name()));
             }
-            final String exportedMemoryName = importedInstance.symbolTable().exportedMemory();
-            if (exportedMemoryName == null) {
-                throw WasmException.create(Failure.UNSPECIFIED_UNLINKABLE,
+            final List<String> exportedMemory = importedInstance.symbolTable().exportedMemoryNames();
+            if (exportedMemory.size() == 0) {
+                throw WasmException.create(Failure.UNKNOWN_IMPORT,
                                 String.format("The imported module '%s' does not export any memories, so cannot resolve memory '%s' imported in module '%s'.",
                                                 importedModuleName, importedMemoryName, instance.name()));
             }
-            if (!exportedMemoryName.equals(importedMemoryName)) {
-                throw WasmException.create(Failure.UNSPECIFIED_UNLINKABLE, String.format("The imported module '%s' exports a memory '%s', but module '%s' imports a memory '%s'.",
-                                importedModuleName, exportedMemoryName, instance.name(), importedModuleName));
+            if (!exportedMemory.contains(importedMemoryName)) {
+                throw WasmException.create(Failure.UNKNOWN_IMPORT, String.format("The imported module '%s' exports a memory '%s', but module '%s' imports a memory '%s'.",
+                                importedModuleName, exportedMemory, instance.name(), importedModuleName));
             }
             final WasmMemory memory = importedInstance.memory();
-            if (memory.maxPageSize() >= 0 && (initSize > memory.maxPageSize() || maxSize > memory.maxPageSize())) {
-                // This requirement does not seem to be mentioned in the WebAssembly specification.
-                throw WasmException.create(Failure.UNSPECIFIED_UNLINKABLE,
-                                String.format("The memory '%s' in the imported module '%s' has maximum size %d, but module '%s' imports it with maximum size '%d'",
-                                                importedMemoryName, importedModuleName, memory.maxPageSize(), instance.name(), maxSize));
-            }
-            if (memory.pageSize() < initSize) {
-                memory.grow(initSize - memory.pageSize());
-            }
+            // Rules for limits matching:
+            // https://webassembly.github.io/spec/core/exec/modules.html#limits
+            // If no max size is declared, then declaredMaxSize value will be
+            // MAX_TABLE_DECLARATION_SIZE, so this condition will pass.
+            assertUnsignedIntLessOrEqual(declaredMinSize, memory.declaredMinSize(), Failure.INCOMPATIBLE_IMPORT_TYPE);
+            assertUnsignedIntGreaterOrEqual(declaredMaxSize, memory.declaredMaxSize(), Failure.INCOMPATIBLE_IMPORT_TYPE);
             instance.setMemory(memory);
         };
         resolutionDag.resolveLater(new ImportMemorySym(instance.name(), importDescriptor), new Sym[]{new ExportMemorySym(importedModuleName, importedMemoryName)}, resolveAction);
@@ -313,7 +326,7 @@ public class Linker {
     }
 
     void resolveDataSegment(WasmContext context, WasmInstance instance, int dataSegmentId, int offsetAddress, int offsetGlobalIndex, int byteLength, byte[] data) {
-        Assert.assertTrue(instance.symbolTable().memoryExists(), String.format("No memory declared or imported in the module '%s'", instance.name()), Failure.UNSPECIFIED_MALFORMED);
+        assertTrue(instance.symbolTable().memoryExists(), String.format("No memory declared or imported in the module '%s'", instance.name()), Failure.UNSPECIFIED_MALFORMED);
         final Runnable resolveAction = () -> {
             assert (offsetAddress != -1) ^ (offsetGlobalIndex != -1) : "Both an offset address and a offset global are specified for the data segment.";
             WasmMemory memory = instance.memory();
@@ -321,7 +334,7 @@ public class Linker {
             int baseAddress;
             if (offsetGlobalIndex != -1) {
                 final int offsetGlobalAddress = instance.globalAddress(offsetGlobalIndex);
-                Assert.assertTrue(offsetGlobalAddress != -1, "The global variable '" + offsetGlobalIndex + "' for the offset of the data segment " +
+                assertTrue(offsetGlobalAddress != -1, "The global variable '" + offsetGlobalIndex + "' for the offset of the data segment " +
                                 dataSegmentId + " in module '" + instance.name() + "' was not initialized.", Failure.UNSPECIFIED_MALFORMED);
                 baseAddress = context.globals().loadAsInt(offsetGlobalAddress);
             } else {
@@ -345,36 +358,31 @@ public class Linker {
         resolutionDag.resolveLater(new DataSym(instance.name(), dataSegmentId), dependencies.toArray(new Sym[dependencies.size()]), resolveAction);
     }
 
-    void resolveTableImport(WasmContext context, WasmInstance instance, ImportDescriptor importDescriptor, int initSize, int maxSize) {
+    void resolveTableImport(WasmContext context, WasmInstance instance, ImportDescriptor importDescriptor, int declaredMinSize, int declaredMaxSize) {
         final Runnable resolveAction = () -> {
             final WasmInstance importedInstance = context.moduleInstances().get(importDescriptor.moduleName);
             final String importedModuleName = importDescriptor.moduleName;
             if (importedInstance == null) {
-                throw WasmException.create(Failure.UNSPECIFIED_UNLINKABLE, String.format("Imported module '%s', referenced in module '%s', does not exist.", importedModuleName, instance.name()));
+                throw WasmException.create(Failure.UNKNOWN_IMPORT, String.format("Imported module '%s', referenced in module '%s', does not exist.", importedModuleName, instance.name()));
             } else {
                 final String importedTableName = importDescriptor.memberName;
-                final String exportedTableName = importedInstance.symbolTable().exportedTable();
-                if (exportedTableName == null) {
-                    throw WasmException.create(Failure.UNSPECIFIED_UNLINKABLE,
+                final List<String> exportedTableNames = importedInstance.symbolTable().exportedTableNames();
+                if (exportedTableNames.size() == 0) {
+                    throw WasmException.create(Failure.UNKNOWN_IMPORT,
                                     String.format("The imported module '%s' does not export any tables, so cannot resolve table '%s' imported in module '%s'.",
                                                     importedModuleName, importedTableName, instance.name()));
                 }
-                if (!exportedTableName.equals(importedTableName)) {
-                    throw WasmException.create(Failure.UNSPECIFIED_UNLINKABLE, String.format("The imported module '%s' exports a table '%s', but module '%s' imports a table '%s'.",
-                                    importedModuleName, exportedTableName, instance.name(), importedTableName));
+                if (!exportedTableNames.contains(importedTableName)) {
+                    throw WasmException.create(Failure.UNKNOWN_IMPORT, String.format("The imported module '%s' exports a table '%s', but module '%s' imports a table '%s'.",
+                                    importedModuleName, exportedTableNames, instance.name(), importedTableName));
                 }
                 final WasmTable table = importedInstance.table();
-                final int declaredMaxSize = table.maxSize();
-                if (declaredMaxSize >= 0 && (initSize > declaredMaxSize || maxSize > declaredMaxSize)) {
-                    // This requirement does not seem to be mentioned in the WebAssembly
-                    // specification.
-                    // It might be necessary to refine what maximum size means in the import-table
-                    // declaration (and in particular what it means that it's unlimited).
-                    throw WasmException.create(Failure.UNSPECIFIED_UNLINKABLE,
-                                    String.format("The table '%s' in the imported module '%s' has maximum size %d, but module '%s' imports it with maximum size '%d'",
-                                                    importedTableName, importedModuleName, declaredMaxSize, instance.name(), maxSize));
-                }
-                table.ensureSizeAtLeast(initSize);
+                // Rules for limits matching:
+                // https://webassembly.github.io/spec/core/exec/modules.html#limits
+                // If no max size is declared, then declaredMaxSize value will be
+                // MAX_TABLE_DECLARATION_SIZE, so this condition will pass.
+                assertUnsignedIntLessOrEqual(declaredMinSize, table.declaredMinSize(), Failure.INCOMPATIBLE_IMPORT_TYPE);
+                assertUnsignedIntGreaterOrEqual(declaredMaxSize, table.declaredMaxSize(), Failure.INCOMPATIBLE_IMPORT_TYPE);
                 instance.setTable(table);
             }
         };
@@ -389,16 +397,17 @@ public class Linker {
     }
 
     void resolveElemSegment(WasmContext context, WasmInstance instance, int elemSegmentId, int offsetAddress, int offsetGlobalIndex, int segmentLength, WasmFunction[] functions) {
-        Assert.assertTrue(instance.symbolTable().tableExists(), String.format("No table declared or imported in the module '%s'", instance.name()), Failure.UNSPECIFIED_MALFORMED);
+        assertTrue(instance.symbolTable().tableExists(), String.format("No table declared or imported in the module '%s'", instance.name()), Failure.UNSPECIFIED_MALFORMED);
         final Runnable resolveAction = () -> {
             assert (offsetAddress != -1) ^ (offsetGlobalIndex != -1) : "Both an offset address and a offset global are specified for the elem segment.";
             final WasmTable table = instance.table();
-            Assert.assertNotNull(table, String.format("No table declared or imported in the module '%s'", instance.name()), Failure.UNSPECIFIED_MALFORMED);
-            int baseAddress;
+            Assert.assertNotNull(table, String.format("No table declared or imported in the module '%s'", instance.name()), Failure.UNKNOWN_TABLE);
+            final int baseAddress;
             if (offsetGlobalIndex != -1) {
                 final int offsetGlobalAddress = instance.globalAddress(offsetGlobalIndex);
-                Assert.assertTrue(offsetGlobalAddress != -1, "The global variable '" + offsetGlobalIndex + "' for the offset of the elem segment " +
-                                elemSegmentId + " in module '" + instance.name() + "' was not initialized.", Failure.UNSPECIFIED_MALFORMED);
+                assertTrue(offsetGlobalAddress != -1,
+                                String.format("The global variable '%d' for the offset of the elem segment %d in module '%s' was not initialized.", offsetGlobalIndex, elemSegmentId, instance.name()),
+                                Failure.UNSPECIFIED_INTERNAL);
                 baseAddress = context.globals().loadAsInt(offsetGlobalAddress);
             } else {
                 baseAddress = offsetAddress;
@@ -419,7 +428,7 @@ public class Linker {
         }
         for (WasmFunction function : functions) {
             if (function.importDescriptor() != null) {
-                dependencies.add(new ImportFunctionSym(instance.name(), function.importDescriptor()));
+                dependencies.add(new ImportFunctionSym(instance.name(), function.importDescriptor(), function.index()));
             }
         }
         resolutionDag.resolveLater(new ElemSym(instance.name(), elemSegmentId), dependencies.toArray(new Sym[dependencies.size()]), resolveAction);
@@ -523,29 +532,37 @@ public class Linker {
         static class ImportFunctionSym extends Sym {
             final String moduleName;
             final ImportDescriptor importDescriptor;
+            // Disambiguates between multiple imports of the same module and name.
+            final int destinationIndex;
 
-            ImportFunctionSym(String moduleName, ImportDescriptor importDescriptor) {
-                this.moduleName = moduleName;
-                this.importDescriptor = importDescriptor;
+            ImportFunctionSym(String moduleName, ImportDescriptor importDescriptor, int destinationIndex) {
+                this.moduleName = Objects.requireNonNull(moduleName);
+                this.importDescriptor = Objects.requireNonNull(importDescriptor);
+                this.destinationIndex = destinationIndex;
             }
 
             @Override
             public String toString() {
-                return String.format("(import func %s from %s into %s)", importDescriptor.memberName, importDescriptor.moduleName, moduleName);
+                return String.format("(import func %s from %s into %s at %d)", importDescriptor.memberName, importDescriptor.moduleName, moduleName, destinationIndex);
+            }
+
+            @Override
+            public boolean equals(Object o) {
+                if (this == o) {
+                    return true;
+                }
+                if (o == null || getClass() != o.getClass()) {
+                    return false;
+                }
+                final ImportFunctionSym that = (ImportFunctionSym) o;
+                return destinationIndex == that.destinationIndex &&
+                                moduleName.equals(that.moduleName) &&
+                                importDescriptor.equals(that.importDescriptor);
             }
 
             @Override
             public int hashCode() {
-                return moduleName.hashCode() ^ importDescriptor.hashCode();
-            }
-
-            @Override
-            public boolean equals(Object object) {
-                if (!(object instanceof ImportFunctionSym)) {
-                    return false;
-                }
-                final ImportFunctionSym that = (ImportFunctionSym) object;
-                return this.moduleName.equals(that.moduleName) && this.importDescriptor.equals(that.importDescriptor);
+                return Objects.hash(moduleName, importDescriptor, destinationIndex);
             }
         }
 

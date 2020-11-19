@@ -40,10 +40,13 @@
  */
 package org.graalvm.wasm.api;
 
-import java.util.HashMap;
-import java.util.Map;
-import java.util.Objects;
-
+import com.oracle.truffle.api.CallTarget;
+import com.oracle.truffle.api.CompilerDirectives;
+import com.oracle.truffle.api.TruffleContext;
+import com.oracle.truffle.api.interop.InteropLibrary;
+import com.oracle.truffle.api.interop.InvalidArrayIndexException;
+import com.oracle.truffle.api.interop.UnknownIdentifierException;
+import com.oracle.truffle.api.interop.UnsupportedMessageException;
 import org.graalvm.collections.Pair;
 import org.graalvm.wasm.WasmContext;
 import org.graalvm.wasm.WasmFunction;
@@ -55,13 +58,8 @@ import org.graalvm.wasm.exception.WasmJsApiException;
 import org.graalvm.wasm.exception.WasmJsApiException.Kind;
 import org.graalvm.wasm.memory.WasmMemory;
 
-import com.oracle.truffle.api.CallTarget;
-import com.oracle.truffle.api.CompilerDirectives;
-import com.oracle.truffle.api.TruffleContext;
-import com.oracle.truffle.api.interop.InteropLibrary;
-import com.oracle.truffle.api.interop.InvalidArrayIndexException;
-import com.oracle.truffle.api.interop.UnknownIdentifierException;
-import com.oracle.truffle.api.interop.UnsupportedMessageException;
+import java.util.HashMap;
+import java.util.Map;
 
 public class Instance extends Dictionary {
     private final TruffleContext truffleContext;
@@ -268,10 +266,10 @@ public class Instance extends Dictionary {
                     final boolean mutable = instance.symbolTable().isGlobalMutable(index);
                     e.addMember(name, new ProxyGlobal(new GlobalDescriptor(valueType.name(), mutable), context.globals(), address));
                 }
-            } else if (Objects.equals(instance.module().exportedMemory(), name)) {
+            } else if (instance.module().exportedMemoryNames().contains(name)) {
                 final WasmMemory memory = instance.memory();
                 e.addMember(name, new Memory(memory));
-            } else if (Objects.equals(instance.module().exportedTable(), name)) {
+            } else if (instance.module().exportedTableNames().contains(name)) {
                 final WasmTable table = instance.table();
                 e.addMember(name, new Table(table));
             } else {

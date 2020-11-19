@@ -45,10 +45,8 @@ import com.oracle.truffle.api.interop.InteropException;
 import com.oracle.truffle.api.interop.InteropLibrary;
 import com.oracle.truffle.api.interop.UnsupportedMessageException;
 import org.graalvm.wasm.WasmContext;
-import org.graalvm.wasm.WasmTable;
 import org.graalvm.wasm.exception.WasmException;
 import org.graalvm.wasm.exception.WasmJsApiException;
-import org.graalvm.wasm.memory.UnsafeWasmMemory;
 
 public class WebAssembly extends Dictionary {
     private final WasmContext currentContext;
@@ -183,13 +181,13 @@ public class WebAssembly extends Dictionary {
     }
 
     private static Object createMemory(Object[] args) {
-        int[] limits = toSizeLimits(args);
-        return new Memory(new UnsafeWasmMemory(limits[0], limits[1]));
+        final int[] limits = toSizeLimits(args);
+        return Memory.create(limits[0], limits[1]);
     }
 
     private static Object createTable(Object[] args) {
-        int[] limits = toSizeLimits(args);
-        return new Table(new WasmTable(limits[0], limits[1]));
+        final int[] limits = toSizeLimits(args);
+        return Table.create(limits[0], limits[1]);
     }
 
     private static Object createGlobal(Object[] args) {

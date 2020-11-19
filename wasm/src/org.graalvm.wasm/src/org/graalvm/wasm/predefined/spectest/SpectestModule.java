@@ -58,13 +58,13 @@ public class SpectestModule extends BuiltinModule {
     @Override
     protected WasmInstance createInstance(WasmLanguage language, WasmContext context, String name) {
         WasmInstance module = new WasmInstance(new WasmModule(name, null));
-        defineFunction(module, "print", types(), types(), new Print(language, module));
-        defineFunction(module, "print_i32", types(I32_TYPE), types(), new Print(language, module));
-        defineFunction(module, "print_i64", types(I64_TYPE), types(), new Print(language, module));
-        defineFunction(module, "print_f32", types(F32_TYPE), types(), new Print(language, module));
-        defineFunction(module, "print_f64", types(F64_TYPE), types(), new Print(language, module));
-        defineFunction(module, "print_i32_f32", types(I32_TYPE, F32_TYPE), types(), new Print(language, module));
-        defineFunction(module, "print_f64_f64", types(F64_TYPE, F64_TYPE), types(), new Print(language, module));
+        defineFunction(module, "print", types(), types(), new PrintNode(language, module));
+        defineFunction(module, "print_i32", types(I32_TYPE), types(), new PrintNode(language, module));
+        defineFunction(module, "print_i64", types(I64_TYPE), types(), new PrintNode(language, module));
+        defineFunction(module, "print_f32", types(F32_TYPE), types(), new PrintNode(language, module));
+        defineFunction(module, "print_f64", types(F64_TYPE), types(), new PrintNode(language, module));
+        defineFunction(module, "print_i32_f32", types(I32_TYPE, F32_TYPE), types(), new PrintNode(language, module));
+        defineFunction(module, "print_f64_f64", types(F64_TYPE, F64_TYPE), types(), new PrintNode(language, module));
         defineGlobal(module, "global_i32", I32_TYPE, (byte) GlobalModifier.CONSTANT, 0);
         defineGlobal(module, "global_i64", I64_TYPE, (byte) GlobalModifier.CONSTANT, 0);
         defineGlobal(module, "global_f64", F64_TYPE, (byte) GlobalModifier.CONSTANT, 0);

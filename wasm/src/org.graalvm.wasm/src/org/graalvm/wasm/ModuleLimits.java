@@ -41,7 +41,10 @@
 package org.graalvm.wasm;
 
 import org.graalvm.wasm.exception.Failure;
-import org.graalvm.wasm.exception.WasmException;
+
+import static org.graalvm.wasm.Assert.assertUnsignedIntLessOrEqual;
+import static org.graalvm.wasm.constants.Sizes.MAX_MEMORY_INSTANCE_SIZE;
+import static org.graalvm.wasm.constants.Sizes.MAX_TABLE_INSTANCE_SIZE;
 
 /**
  * Limits on various aspects of a module.
@@ -59,105 +62,100 @@ public final class ModuleLimits {
     private final int paramCountLimit;
     private final int returnCountLimit;
     private final int localCountLimit;
-    private final int tableSizeLimit;
-    private final int memorySizeLimit;
+    private final int tableInstanceSizeLimit;
+    private final int memoryInstanceSizeLimit;
 
     public ModuleLimits(int moduleSizeLimit, int typeCountLimit, int functionCountLimit, int importCountLimit, int exportCountLimit, int globalCountLimit, int dataSegmentCountLimit,
-                    int elementSegmentCountLimit, int functionSizeLimit, int paramCountLimit, int returnCountLimit, int localCountLimit, int tableSizeLimit, int memorySizeLimit) {
-        this.moduleSizeLimit = moduleSizeLimit;
-        this.typeCountLimit = typeCountLimit;
-        this.functionCountLimit = functionCountLimit;
-        this.importCountLimit = importCountLimit;
-        this.exportCountLimit = exportCountLimit;
-        this.globalCountLimit = globalCountLimit;
-        this.dataSegmentCountLimit = dataSegmentCountLimit;
-        this.elementSegmentCountLimit = elementSegmentCountLimit;
-        this.functionSizeLimit = functionSizeLimit;
-        this.paramCountLimit = paramCountLimit;
-        this.returnCountLimit = returnCountLimit;
-        this.localCountLimit = localCountLimit;
-        this.tableSizeLimit = tableSizeLimit;
-        this.memorySizeLimit = memorySizeLimit;
+                    int elementSegmentCountLimit, int functionSizeLimit, int paramCountLimit, int returnCountLimit, int localCountLimit, int tableInstanceSizeLimit, int memoryInstanceSizeLimit) {
+        this.moduleSizeLimit = minUnsigned(moduleSizeLimit, Integer.MAX_VALUE);
+        this.typeCountLimit = minUnsigned(typeCountLimit, Integer.MAX_VALUE);
+        this.functionCountLimit = minUnsigned(functionCountLimit, Integer.MAX_VALUE);
+        this.importCountLimit = minUnsigned(importCountLimit, Integer.MAX_VALUE);
+        this.exportCountLimit = minUnsigned(exportCountLimit, Integer.MAX_VALUE);
+        this.globalCountLimit = minUnsigned(globalCountLimit, Integer.MAX_VALUE);
+        this.dataSegmentCountLimit = minUnsigned(dataSegmentCountLimit, Integer.MAX_VALUE);
+        this.elementSegmentCountLimit = minUnsigned(elementSegmentCountLimit, Integer.MAX_VALUE);
+        this.functionSizeLimit = minUnsigned(functionSizeLimit, Integer.MAX_VALUE);
+        this.paramCountLimit = minUnsigned(paramCountLimit, Integer.MAX_VALUE);
+        this.returnCountLimit = minUnsigned(returnCountLimit, Integer.MAX_VALUE);
+        this.localCountLimit = minUnsigned(localCountLimit, Integer.MAX_VALUE);
+        this.tableInstanceSizeLimit = minUnsigned(tableInstanceSizeLimit, MAX_TABLE_INSTANCE_SIZE);
+        this.memoryInstanceSizeLimit = minUnsigned(memoryInstanceSizeLimit, MAX_MEMORY_INSTANCE_SIZE);
     }
 
+    private static int minUnsigned(int a, int b) {
+        return Integer.compareUnsigned(a, b) < 0 ? a : b;
+    }
+
+    static ModuleLimits DEFAULTS = new ModuleLimits(
+                    Integer.MAX_VALUE,
+                    Integer.MAX_VALUE,
+                    Integer.MAX_VALUE,
+                    Integer.MAX_VALUE,
+                    Integer.MAX_VALUE,
+                    Integer.MAX_VALUE,
+                    Integer.MAX_VALUE,
+                    Integer.MAX_VALUE,
+                    Integer.MAX_VALUE,
+                    Integer.MAX_VALUE,
+                    Integer.MAX_VALUE,
+                    Integer.MAX_VALUE,
+                    MAX_TABLE_INSTANCE_SIZE,
+                    MAX_MEMORY_INSTANCE_SIZE);
+
     public void checkModuleSize(int size) {
-        if (size > moduleSizeLimit) {
-            throw WasmException.format(Failure.UNSPECIFIED_INVALID, "The size of the module (%d bytes) exceeds the limit (%d bytes).", size, moduleSizeLimit);
-        }
+        assertUnsignedIntLessOrEqual(size, moduleSizeLimit, Failure.MODULE_SIZE_LIMIT_EXCEEDED);
     }
 
     public void checkTypeCount(int count) {
-        if (count > typeCountLimit) {
-            throw WasmException.format(Failure.UNSPECIFIED_INVALID, "The number of types defined in the types section (%d) exceeds the limit (%d).", count, typeCountLimit);
-        }
+        assertUnsignedIntLessOrEqual(count, typeCountLimit, Failure.TYPE_COUNT_LIMIT_EXCEEDED);
     }
 
     public void checkFunctionCount(int count) {
-        if (count > functionCountLimit) {
-            throw WasmException.format(Failure.UNSPECIFIED_INVALID, "The number of functions defined in the module (%d) exceeds the limit (%d).", count, functionCountLimit);
-        }
+        assertUnsignedIntLessOrEqual(count, functionCountLimit, Failure.FUNCTION_COUNT_LIMIT_EXCEEDED);
     }
 
     public void checkImportCount(int count) {
-        if (count > importCountLimit) {
-            throw WasmException.format(Failure.UNSPECIFIED_INVALID, "The number of imports declared in the module (%d) exceeds the limit (%d).", count, importCountLimit);
-        }
+        assertUnsignedIntLessOrEqual(count, importCountLimit, Failure.IMPORT_COUNT_LIMIT_EXCEEDED);
     }
 
     public void checkExportCount(int count) {
-        if (count > exportCountLimit) {
-            throw WasmException.format(Failure.UNSPECIFIED_INVALID, "The number of exports declared in the module (%d) exceeds the limit (%d).", count, exportCountLimit);
-        }
+        assertUnsignedIntLessOrEqual(count, exportCountLimit, Failure.EXPORT_COUNT_LIMIT_EXCEEDED);
     }
 
     public void checkGlobalCount(int count) {
-        if (count > globalCountLimit) {
-            throw WasmException.format(Failure.UNSPECIFIED_INVALID, "The number of globals defined in the module (%d) exceeds the limit (%d).", count, globalCountLimit);
-        }
+        assertUnsignedIntLessOrEqual(count, globalCountLimit, Failure.GLOBAL_COUNT_LIMIT_EXCEEDED);
     }
 
     public void checkDataSegmentCount(int count) {
-        if (count > dataSegmentCountLimit) {
-            throw WasmException.format(Failure.UNSPECIFIED_INVALID, "The number of data segments defined in the module (%d) exceeds the limit (%d).", count, dataSegmentCountLimit);
-        }
+        assertUnsignedIntLessOrEqual(count, dataSegmentCountLimit, Failure.DATA_SEGMENT_COUNT_LIMIT_EXCEEDED);
     }
 
     public void checkElementSegmentCount(int count) {
-        if (count > elementSegmentCountLimit) {
-            throw WasmException.format(Failure.UNSPECIFIED_INVALID, "The number of table entries in the table initialization (%d) exceeds the limit (%d).", count, elementSegmentCountLimit);
-        }
+        assertUnsignedIntLessOrEqual(count, elementSegmentCountLimit, Failure.ELEMENT_SEGMENT_COUNT_LIMIT_EXCEEDED);
     }
 
     public void checkFunctionSize(int size) {
-        if (size > functionSizeLimit) {
-            throw WasmException.format(Failure.UNSPECIFIED_INVALID, "The size of the function body (%d) exceeds the limit (%d).", size, functionSizeLimit);
-        }
+        assertUnsignedIntLessOrEqual(size, functionSizeLimit, Failure.FUNCTION_SIZE_LIMIT_EXCEEDED);
     }
 
     public void checkParamCount(int count) {
-        if (count > paramCountLimit) {
-            throw WasmException.format(Failure.UNSPECIFIED_INVALID, "The number of parameters of the function (%d) exceeds the limit (%d).", count, paramCountLimit);
-        }
+        assertUnsignedIntLessOrEqual(count, paramCountLimit, Failure.PARAMETERS_COUNT_LIMIT_EXCEEDED);
     }
 
     public void checkReturnCount(int count) {
-        if (count > returnCountLimit) {
-            throw WasmException.format(Failure.UNSPECIFIED_INVALID, "The number of return values of the function (%d) exceeds the limit (%d).", count, returnCountLimit);
-        }
+        assertUnsignedIntLessOrEqual(count, returnCountLimit, Failure.RETURN_COUNT_LIMIT_EXCEEDED);
     }
 
     public void checkLocalCount(int count) {
-        if (count > localCountLimit) {
-            throw WasmException.format(Failure.UNSPECIFIED_INVALID, "The number of locals declared in the function (%d) exceeds the limit (%d).", count, localCountLimit);
-        }
+        assertUnsignedIntLessOrEqual(count, localCountLimit, Failure.TOO_MANY_LOCALS);
     }
 
-    public int getTableSizeLimit() {
-        return tableSizeLimit;
+    public int tableInstanceSizeLimit() {
+        return tableInstanceSizeLimit;
     }
 
-    public int getMemorySizeLimit() {
-        return memorySizeLimit;
+    public int memoryInstanceSizeLimit() {
+        return memoryInstanceSizeLimit;
     }
-
 }

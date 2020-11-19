@@ -41,14 +41,13 @@
 package org.graalvm.wasm;
 
 import com.oracle.truffle.api.CallTarget;
-import org.graalvm.wasm.exception.Failure;
-import org.graalvm.wasm.nodes.WasmIndirectCallNode;
-
 import com.oracle.truffle.api.dsl.Cached;
 import com.oracle.truffle.api.interop.InteropLibrary;
 import com.oracle.truffle.api.interop.TruffleObject;
 import com.oracle.truffle.api.library.ExportLibrary;
 import com.oracle.truffle.api.library.ExportMessage;
+import org.graalvm.wasm.exception.Failure;
+import org.graalvm.wasm.nodes.WasmIndirectCallNode;
 
 @ExportLibrary(InteropLibrary.class)
 public class WasmFunctionInstance implements TruffleObject {
@@ -72,6 +71,9 @@ public class WasmFunctionInstance implements TruffleObject {
     }
 
     public String name() {
+        if (function == null) {
+            return target.toString();
+        }
         return function.name();
     }
 

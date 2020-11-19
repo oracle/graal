@@ -49,39 +49,60 @@ import com.oracle.truffle.api.library.CachedLibrary;
 import com.oracle.truffle.api.library.ExportLibrary;
 import com.oracle.truffle.api.library.ExportMessage;
 import com.oracle.truffle.api.nodes.Node;
+import org.graalvm.wasm.constants.Sizes;
 
 import static com.oracle.truffle.api.CompilerDirectives.transferToInterpreter;
 import static java.lang.Math.toIntExact;
 
 @ExportLibrary(InteropLibrary.class)
 public abstract class WasmMemory implements TruffleObject {
-    static final int PAGE_SIZE = 1 << 16;
-    static final int LONG_SIZE = 8;
 
     public abstract void copy(Node node, int src, int dst, int n);
 
     /**
-     * The size of the memory, measured in number of pages.
+     * The current size of this memory instance (measured in number of {@link Sizes#MEMORY_PAGE_SIZE
+     * pages}).
      */
-    public abstract int pageSize();
+    public abstract int size();
 
     /**
-     * The size of the memory, measured in bytes.
+     * The current size of this memory instance (measured in bytes).
      */
     public abstract int byteSize();
 
-    public abstract boolean grow(int extraPageSize);
-
-    public boolean growToAddress(int address) {
-        final int requiredPageCount = address / PAGE_SIZE + 1;
-        final int extraPageCount = Math.max(0, requiredPageCount - pageSize());
-        return grow(extraPageCount);
-    }
+    /**
+     * The maximum practical size of this memory instance (measured in number of
+     * {@link Sizes#MEMORY_PAGE_SIZE pages}).
+     * <p>
+     * It is the minimum between {@link #declaredMaxSize the limit defined in the module binary},
+     * {@link Sizes#MAX_MEMORY_INSTANCE_SIZE the GraalWasm limit} and any additional limit (the JS
+     * API for example has lower limits).
+     * <p>
+     * This is different from {@link #declaredMaxSize()}, which can be higher.
+     */
+    public abstract int maxAllowedSize();
 
     /**
-     * The max size of the memory, measured in number of pages.
+     * The minimum size of this memory as declared in the binary (measured in number of
+     * {@link Sizes#MEMORY_PAGE_SIZE pages}).
+     * <p>
+     * This is a lower bound on this memory's size. This memory can only be imported with a lower or
+     * equal minimum size.
      */
-    public abstract int maxPageSize();
+    public abstract int declaredMinSize();
+
+    /**
+     * The maximum size of this memory as declared in the binary (measured in number of
+     * {@link Sizes#MEMORY_PAGE_SIZE pages}).
+     * <p>
+     * This is an upper bound on this memory's size. This memory can only be imported with a greater
+     * or equal maximum size.
+     * <p>
+     * This is different from {@link #maxAllowedSize()}, which can be lower.
+     */
+    public abstract int declaredMaxSize();
+
+    public abstract boolean grow(int extraPageSize);
 
     // Checkstyle: stop
     public abstract int load_i32(Node node, int address);

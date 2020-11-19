@@ -40,36 +40,82 @@
  */
 package org.graalvm.wasm;
 
+import org.graalvm.wasm.constants.Sizes;
 import org.graalvm.wasm.exception.Failure;
-import org.graalvm.wasm.exception.WasmException;
+
+import java.util.Arrays;
+
+import static java.lang.Integer.compareUnsigned;
+import static org.graalvm.wasm.Assert.assertUnsignedIntLessOrEqual;
+import static org.graalvm.wasm.constants.Sizes.MAX_TABLE_DECLARATION_SIZE;
+import static org.graalvm.wasm.constants.Sizes.MAX_TABLE_INSTANCE_SIZE;
 
 public final class WasmTable {
-    private final int maxSize;
+    private final int declaredMinSize;
+    private final int declaredMaxSize;
+    private final int maxAllowedSize;
     private Object[] elements;
 
-    public WasmTable(int initSize, int maxSize) {
-        this.elements = new Object[initSize];
-        this.maxSize = maxSize;
+    public WasmTable(int declaredMinSize, int declaredMaxSize, int initialSize, int maxAllowedSize) {
+        assert compareUnsigned(declaredMinSize, initialSize) <= 0;
+        assert compareUnsigned(initialSize, maxAllowedSize) <= 0;
+        assert compareUnsigned(maxAllowedSize, declaredMaxSize) <= 0;
+        assert compareUnsigned(maxAllowedSize, MAX_TABLE_INSTANCE_SIZE) <= 0;
+        assert compareUnsigned(declaredMaxSize, MAX_TABLE_DECLARATION_SIZE) <= 0;
+
+        this.declaredMinSize = declaredMinSize;
+        this.declaredMaxSize = declaredMaxSize;
+        this.maxAllowedSize = maxAllowedSize;
+        this.elements = new Object[declaredMinSize];
     }
 
     public void ensureSizeAtLeast(int targetSize) {
-        if (maxSize >= 0 && targetSize > maxSize) {
-            throw WasmException.create(Failure.UNSPECIFIED_INVALID, "Table cannot be resized to " + targetSize + ", " +
-                            "declared maximum size is " + maxSize);
-        }
-        if (elements.length < targetSize) {
-            Object[] newElements = new Object[targetSize];
-            System.arraycopy(elements, 0, newElements, 0, elements.length);
-            elements = newElements;
+        assertUnsignedIntLessOrEqual(targetSize, maxAllowedSize, Failure.TABLE_INSTANCE_SIZE_LIMIT_EXCEEDED);
+        if (size() < targetSize) {
+            elements = Arrays.copyOf(elements, targetSize);
         }
     }
 
+    /**
+     * The current size of this table instance.
+     */
     public int size() {
         return elements.length;
     }
 
-    public int maxSize() {
-        return maxSize;
+    /**
+     * The maximum practical size of this table instance.
+     * <p>
+     * It is the minimum between {@link #declaredMaxSize the limit defined in the module binary},
+     * {@link Sizes#MAX_TABLE_INSTANCE_SIZE the GraalWasm limit} and any additional limit (the JS
+     * API for example has lower limits).
+     * <p>
+     * This is different from {@link #declaredMaxSize()}, which can be higher.
+     */
+    public int maxAllowedSize() {
+        return maxAllowedSize;
+    }
+
+    /**
+     * The minimum size of this table as declared in the binary.
+     * <p>
+     * This is a lower bound on this table's size. This memory can only be imported with a lower or
+     * equal minimum size.
+     */
+    public int declaredMinSize() {
+        return declaredMinSize;
+    }
+
+    /**
+     * The maximum size of this table as declared in the binary.
+     * <p>
+     * This is an upper bound on this table's size. This table can only be imported with a greater
+     * or equal maximum size.
+     * <p>
+     * This is different from {@link #maxAllowedSize()}, which can be lower.
+     */
+    public int declaredMaxSize() {
+        return declaredMaxSize;
     }
 
     public Object[] elements() {
@@ -88,8 +134,13 @@ public final class WasmTable {
         elements[i] = function;
     }
 
-    @SuppressWarnings({"unused", "static-method"})
     public boolean grow(int delta) {
-        throw WasmException.create(Failure.UNSPECIFIED_INTERNAL, null, "Tables cannot be grown.");
+        final int targetSize = size() + delta;
+        if (compareUnsigned(delta, maxAllowedSize) <= 0 && compareUnsigned(targetSize, maxAllowedSize) <= 0) {
+            ensureSizeAtLeast(size() + delta);
+            return true;
+        } else {
+            return false;
+        }
     }
 }
