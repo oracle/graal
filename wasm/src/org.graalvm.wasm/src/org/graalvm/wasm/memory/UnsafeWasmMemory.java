@@ -50,13 +50,9 @@ import sun.misc.Unsafe;
 import java.lang.reflect.Field;
 
 public class UnsafeWasmMemory extends WasmMemory implements AutoCloseable {
-    private final Unsafe unsafe;
-    private long startAddress;
-    private int pageSize;
-    private final int maxPageSize;
-    private final ConditionProfile outOfBoundsAccesses = ConditionProfile.create();
+    public static final Unsafe unsafe;
 
-    public UnsafeWasmMemory(int initPageSize, int maxPageSize) {
+    static {
         try {
             Field f = Unsafe.class.getDeclaredField("theUnsafe");
             f.setAccessible(true);
@@ -64,6 +60,14 @@ public class UnsafeWasmMemory extends WasmMemory implements AutoCloseable {
         } catch (Exception e) {
             throw new RuntimeException(e);
         }
+    }
+
+    private long startAddress;
+    private int pageSize;
+    private final int maxPageSize;
+    private final ConditionProfile outOfBoundsAccesses = ConditionProfile.create();
+
+    public UnsafeWasmMemory(int initPageSize, int maxPageSize) {
         this.pageSize = initPageSize;
         this.maxPageSize = maxPageSize;
         long byteSize = byteSize();

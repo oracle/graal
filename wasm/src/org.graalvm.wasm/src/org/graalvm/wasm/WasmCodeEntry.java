@@ -50,9 +50,7 @@ public final class WasmCodeEntry {
     private final WasmFunction function;
     @CompilationFinal(dimensions = 1) private final byte[] data;
     @CompilationFinal(dimensions = 1) private byte[] localTypes;
-    @CompilationFinal(dimensions = 1) private byte[] byteConstants;
     @CompilationFinal(dimensions = 1) private int[] intConstants;
-    @CompilationFinal(dimensions = 1) private long[] longConstants;
     @CompilationFinal(dimensions = 2) private int[][] branchTables;
     @CompilationFinal(dimensions = 1) private int[] profileCounters;
     @CompilationFinal private FrameSlot stackSlot;
@@ -63,9 +61,7 @@ public final class WasmCodeEntry {
         this.function = function;
         this.data = data;
         this.localTypes = null;
-        this.byteConstants = null;
         this.intConstants = null;
-        this.longConstants = null;
         this.profileCounters = null;
     }
 
@@ -106,14 +102,7 @@ public final class WasmCodeEntry {
         return localTypes[index];
     }
 
-    public byte byteConstant(int index) {
-        return byteConstants[index];
-    }
-
-    public void setByteConstants(byte[] byteConstants) {
-        this.byteConstants = byteConstants;
-    }
-
+    @SuppressWarnings("unused")
     public int intConstant(int index) {
         return intConstants[index];
     }
@@ -122,12 +111,8 @@ public final class WasmCodeEntry {
         this.intConstants = intConstants;
     }
 
-    public long longConstant(int index) {
-        return longConstants[index];
-    }
-
-    public void setLongConstants(long[] longConstants) {
-        this.longConstants = longConstants;
+    public int[] intConstants() {
+        return intConstants;
     }
 
     public int[] branchTable(int index) {
@@ -140,7 +125,7 @@ public final class WasmCodeEntry {
 
     public void setProfileCount(int size) {
         if (size > 0) {
-            this.profileCounters = new int[size * 2];
+            this.profileCounters = new int[size];
         }
     }
 
@@ -153,11 +138,11 @@ public final class WasmCodeEntry {
     }
 
     /**
-     * A constant holding the maximum value an {@code int} can have, 2<sup>30</sup>-1. The sum of
+     * A constant holding the maximum value an {@code int} can have, 2<sup>15</sup>-1. The sum of
      * the true and false count must not overflow. This constant is used to check whether one of the
      * counts does not exceed the required maximum value.
      */
-    public static final int CONDITION_COUNT_MAX_VALUE = 0x3fffffff;
+    public static final int CONDITION_COUNT_MAX_VALUE = 0x3fff;
 
     /**
      * Same logic as in {@link com.oracle.truffle.api.profiles.ConditionProfile#profile}.
@@ -168,33 +153,36 @@ public final class WasmCodeEntry {
      */
     public boolean profileCondition(int index, boolean condition) {
         // locals required to guarantee no overflow in multi-threaded environments
-        int t = this.profileCounters[index * 2];
-        int f = this.profileCounters[index * 2 + 1];
+        int tf = this.profileCounters[index];
+        int t = tf >>> 16;
+        int f = tf & 0xffff;
         boolean val = condition;
         if (val) {
-            if (t == 0) {
-                CompilerDirectives.transferToInterpreterAndInvalidate();
-            }
-            if (f == 0) {
-                // Make this branch fold during PE
-                val = true;
-            }
-            if (CompilerDirectives.inInterpreter()) {
+            if (!CompilerDirectives.inInterpreter()) {
+                if (t == 0) {
+                    CompilerDirectives.transferToInterpreterAndInvalidate();
+                }
+                if (f == 0) {
+                    // Make this branch fold during PE
+                    val = true;
+                }
+            } else {
                 if (t < CONDITION_COUNT_MAX_VALUE) {
-                    ++this.profileCounters[index * 2];
+                    this.profileCounters[index] = ((t + 1) << 16) | f;
                 }
             }
         } else {
-            if (f == 0) {
-                CompilerDirectives.transferToInterpreterAndInvalidate();
-            }
-            if (t == 0) {
-                // Make this branch fold during PE
-                val = false;
-            }
-            if (CompilerDirectives.inInterpreter()) {
+            if (!CompilerDirectives.inInterpreter()) {
+                if (f == 0) {
+                    CompilerDirectives.transferToInterpreterAndInvalidate();
+                }
+                if (t == 0) {
+                    // Make this branch fold during PE
+                    val = false;
+                }
+            } else {
                 if (f < CONDITION_COUNT_MAX_VALUE) {
-                    ++this.profileCounters[index * 2 + 1];
+                    this.profileCounters[index] = (t << 16) | (f + 1);
                 }
             }
         }

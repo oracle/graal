@@ -42,6 +42,8 @@ package org.graalvm.wasm.nodes;
 
 import com.oracle.truffle.api.CompilerDirectives;
 import org.graalvm.wasm.WasmCodeEntry;
+import org.graalvm.wasm.memory.UnsafeWasmMemory;
+import sun.misc.Unsafe;
 
 public interface WasmNodeInterface {
     WasmCodeEntry codeEntry();
@@ -49,7 +51,8 @@ public interface WasmNodeInterface {
     /* Stack operations */
 
     default void push(long[] stack, int slot, long value) {
-        stack[slot] = value;
+        UnsafeWasmMemory.unsafe.putLong(stack, Unsafe.ARRAY_LONG_BASE_OFFSET + slot * Unsafe.ARRAY_LONG_INDEX_SCALE, value);
+        // stack[slot] = value;
     }
 
     default void pushInt(long[] stack, int slot, int value) {
@@ -65,7 +68,8 @@ public interface WasmNodeInterface {
     }
 
     default long pop(long[] stack, int slot) {
-        long result = stack[slot];
+        long result = UnsafeWasmMemory.unsafe.getLong(stack, Unsafe.ARRAY_LONG_BASE_OFFSET + slot * Unsafe.ARRAY_LONG_INDEX_SCALE);
+        // long result = stack[slot];
         if (CompilerDirectives.inCompiledCode()) {
             // Needed to avoid keeping track of popped slots in FrameStates.
             stack[slot] = 0L;
