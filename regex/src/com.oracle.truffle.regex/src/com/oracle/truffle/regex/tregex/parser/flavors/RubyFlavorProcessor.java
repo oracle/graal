@@ -1809,9 +1809,16 @@ public final class RubyFlavorProcessor implements RegexFlavorProcessor {
      * Parses a parenthesized comment, assuming that the '(#' prefix was already parsed.
      */
     private void parenComment() {
-        getMany(c -> c != ')');
-        if (!match(")")) {
-            throw syntaxError("missing ), unterminated comment");
+        while (true) {
+            if (atEnd()) {
+                throw syntaxError("missing ), unterminated comment");
+            }
+            int ch = consumeChar();
+            if (ch == '\\' && !atEnd()) {
+                advance();
+            } else if (ch == ')') {
+                break;
+            }
         }
     }
 
