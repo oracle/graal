@@ -43,7 +43,6 @@ package org.graalvm.wasm;
 import org.graalvm.wasm.collection.BooleanArrayList;
 import org.graalvm.wasm.collection.ByteArrayList;
 import org.graalvm.wasm.collection.IntArrayList;
-import org.graalvm.wasm.collection.LongArrayList;
 import org.graalvm.wasm.exception.Failure;
 import org.graalvm.wasm.exception.WasmException;
 import org.graalvm.wasm.nodes.WasmBlockNode;
@@ -52,9 +51,7 @@ import java.util.ArrayList;
 
 public class ExecutionState {
     private int profileCount;
-    private final ByteArrayList byteConstants;
     private final IntArrayList intConstants;
-    private final LongArrayList longConstants;
     private final ArrayList<int[]> branchTables;
     private final ByteArrayList stack;
 
@@ -87,9 +84,7 @@ public class ExecutionState {
         this.stack = new ByteArrayList();
         this.maxStackSize = 0;
         this.profileCount = 0;
-        this.byteConstants = new ByteArrayList();
         this.intConstants = new IntArrayList();
-        this.longConstants = new LongArrayList();
         this.ancestorsStackSizes = new IntArrayList();
         this.ancestorsIsLoop = new BooleanArrayList();
         this.ancestors = new ArrayList<>();
@@ -144,10 +139,6 @@ public class ExecutionState {
         while (stackSize() > size) {
             stack.popBack();
         }
-    }
-
-    public void useByteConstant(byte constant) {
-        byteConstants.add(constant);
     }
 
     public void useIntConstant(int constant) {
@@ -218,32 +209,12 @@ public class ExecutionState {
         return maxStackSize;
     }
 
-    public int byteConstantOffset() {
-        return byteConstants.size();
-    }
-
     public int intConstantOffset() {
         return intConstants.size();
     }
 
-    public byte[] byteConstants() {
-        return byteConstants.toArray();
-    }
-
     public int[] intConstants() {
         return intConstants.toArray();
-    }
-
-    public void useLongConstant(long literal) {
-        longConstants.add(literal);
-    }
-
-    public int longConstantOffset() {
-        return longConstants.size();
-    }
-
-    public long[] longConstants() {
-        return longConstants.toArray();
     }
 
     public void saveBranchTable(int[] branchTable) {

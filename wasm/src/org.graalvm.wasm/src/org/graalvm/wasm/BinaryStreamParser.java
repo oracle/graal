@@ -77,7 +77,7 @@ public abstract class BinaryStreamParser {
     }
 
     @ExplodeLoop(kind = FULL_EXPLODE_UNTIL_RETURN)
-    public static int peekUnsignedInt32(byte[] data, int initialOffset) {
+    public static int peekUnsignedInt32(byte[] data, int initialOffset, boolean checkValid) {
         int result = 0;
         int shift = 0;
         int offset = initialOffset;
@@ -90,7 +90,7 @@ public abstract class BinaryStreamParser {
             }
             shift += 7;
         } while (shift < 35);
-        if (shift == 35) {
+        if (checkValid && shift == 35) {
             Assert.fail("Unsigned LEB128 overflow", Failure.UNSPECIFIED_MALFORMED);
         }
 
@@ -98,7 +98,7 @@ public abstract class BinaryStreamParser {
     }
 
     @ExplodeLoop(kind = FULL_EXPLODE_UNTIL_RETURN)
-    protected int peekUnsignedInt32(int ahead) {
+    protected int peekUnsignedInt32(int ahead, boolean checkValid) {
         int result = 0;
         int shift = 0;
         int i = 0;
@@ -111,7 +111,7 @@ public abstract class BinaryStreamParser {
             shift += 7;
             i++;
         } while (shift < 35);
-        if (shift == 35) {
+        if (checkValid && shift == 35) {
             Assert.fail("Unsigned LEB128 overflow", Failure.UNSPECIFIED_MALFORMED);
         }
         return result;
@@ -288,19 +288,5 @@ public abstract class BinaryStreamParser {
         } while ((b & 0x80) != 0 && length < 12);
 
         return length;
-    }
-
-    public static boolean mustPoolLeb128(byte[] data, int offset, WasmOptions.ConstantsPolicy storeConstantsInPool) {
-        switch (storeConstantsInPool) {
-            case ALL:
-                return true;
-            case LARGE_ONLY:
-                return (data[offset] & 0x80) != 0;
-            case NONE:
-                return false;
-            default:
-                // TODO(mbovel): should be an internal error.
-                throw WasmException.create(Failure.UNSPECIFIED_MALFORMED, "Invalid StoreConstantsInPoolChoice");
-        }
     }
 }

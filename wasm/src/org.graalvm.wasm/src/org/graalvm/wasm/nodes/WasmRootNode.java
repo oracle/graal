@@ -105,7 +105,7 @@ public class WasmRootNode extends RootNode implements WasmNodeInterface {
 
     public Object executeWithContext(VirtualFrame frame, WasmContext context) {
         // The operand stack is represented as a long array,
-        // and is kept in a dedicated frame slot.
+        // and is kept in a dedicated frame slot.x
         // The reason for this is that the operand stack cannot be passed
         // as an argument to the loop-node's execute method,
         // and must be restored at the beginning of the loop body.
