@@ -269,5 +269,7 @@ public interface Frame {
      * @param slot the slot of the local variable
      * @since 21.0
      */
-    void clear(FrameSlot slot);
+    default void clear(FrameSlot slot) {
+        throw new UnsupportedOperationException();
+    }
 }

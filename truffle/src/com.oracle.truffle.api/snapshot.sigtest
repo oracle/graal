@@ -688,6 +688,7 @@ meth public abstract void setFloat(com.oracle.truffle.api.frame.FrameSlot,float)
 meth public abstract void setInt(com.oracle.truffle.api.frame.FrameSlot,int)
 meth public abstract void setLong(com.oracle.truffle.api.frame.FrameSlot,long)
 meth public abstract void setObject(com.oracle.truffle.api.frame.FrameSlot,java.lang.Object)
+meth public void clear(com.oracle.truffle.api.frame.FrameSlot)
 
 CLSS public final com.oracle.truffle.api.frame.FrameDescriptor
 cons public init()
