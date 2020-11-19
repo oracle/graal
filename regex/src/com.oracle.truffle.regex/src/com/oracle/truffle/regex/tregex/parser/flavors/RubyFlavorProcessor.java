@@ -1343,8 +1343,6 @@ public final class RubyFlavorProcessor implements RegexFlavorProcessor {
                 return '\t';
             case 'v':
                 return '\u000b';
-            case '\\':
-                return '\\';
             case 'c':
             case 'C': {
                 if (atEnd()) {
@@ -1380,7 +1378,19 @@ public final class RubyFlavorProcessor implements RegexFlavorProcessor {
             }
             case 'x': {
                 String code = getUpTo(2, RubyFlavorProcessor::isHexDigit);
-                return Integer.parseInt(code, 16);
+                int byteValue = Integer.parseInt(code, 16);
+                if (byteValue > 0x7F) {
+                    // This is a non-ASCII byte escape. The escaped character might be part of a
+                    // multibyte sequece. These sequences are encoding specific and supporting
+                    // them would mean having to include decoders for all of Ruby's encodings.
+                    // Fortunately, TruffleRuby decodes these for us and replaces them with
+                    // verbatim characters or other forms of escape. Therefore, this can be
+                    // trigerred by either:
+                    // *) TruffleRuby's ClassicRegexp#preprocess was not called on the input
+                    // *) TruffleRuby's ClassicRegexp#preprocess emitted a non-ASCII \\x escape
+                    bailOut("unsupported multibyte escape");
+                }
+                return byteValue;
             }
             case 'u': {
                 String code;
