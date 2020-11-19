@@ -28,11 +28,7 @@ import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.time.Duration;
-import java.util.Arrays;
-import java.util.Collections;
 import java.util.Optional;
-import java.util.Set;
-import java.util.TreeSet;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 import java.util.stream.Collectors;
@@ -43,9 +39,7 @@ import jdk.jfr.consumer.RecordingFile;
 final class CompilationTimeMetric implements Metric {
 
     private static final Logger LOG = Logger.getLogger(CompilationTimeMetric.class.getName());
-    private static final Set<String> TRUFFLE_COMPILATION_EVENTS = Collections.unmodifiableSet(new TreeSet<>(Arrays.asList(
-                    "org.graalvm.compiler.truffle.jfr.impl.CompilationEventImpl",
-                    "com.oracle.svm.enterprise.truffle.jfr.impl.CompilationEventImpl")));
+    private static final String TRUFFLE_COMPILATION_EVENT = "org.graalvm.compiler.truffle.Compilation";
 
     private Recording recording;
     private long cumulativeTime = 0L;
@@ -63,9 +57,7 @@ final class CompilationTimeMetric implements Metric {
         if (recording == null) {
             // First iteration, create a new Recording used for all iterations until reset.
             recording = new Recording();
-            for (String eventName : TRUFFLE_COMPILATION_EVENTS) {
-                recording.enable(eventName);
-            }
+            recording.enable(TRUFFLE_COMPILATION_EVENT);
             recording.setDumpOnExit(false);
             recording.start();
         }
@@ -126,7 +118,7 @@ final class CompilationTimeMetric implements Metric {
     private static long processRecordings(Path jfrFile) throws IOException {
         return RecordingFile.readAllEvents(jfrFile).stream()
                         .filter((event) -> {
-                            return TRUFFLE_COMPILATION_EVENTS.contains(event.getEventType().getName());
+                            return TRUFFLE_COMPILATION_EVENT.equals(event.getEventType().getName());
                         })
                         .map((event) -> event.getDuration())
                         .collect(Collectors.reducing(Duration.ofNanos(0), (a, b) -> a.plus(b)))

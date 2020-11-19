@@ -30,10 +30,12 @@ import jdk.jfr.Description;
 import jdk.jfr.DataAmount;
 import jdk.jfr.Label;
 import jdk.jfr.MemoryAddress;
+import jdk.jfr.Name;
 import jdk.jfr.StackTrace;
 import jdk.jfr.Unsigned;
 import org.graalvm.compiler.truffle.jfr.CompilationEvent;
 
+@Name("org.graalvm.compiler.truffle.Compilation")
 @Category("Truffle Compiler")
 @Label("Compilation")
 @Description("Truffe Compilation")
