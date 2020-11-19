@@ -60,9 +60,9 @@ The Download & Install GraalVM action prompts to:
 
 If you prefer GraalVM Community Edition, the installation wizzard will download the package from [Github](https://github.com/graalvm/graalvm-ce-builds/releases) in the background and display the progress.
 
-If you select GraalVM Enterprise Editon, you are prompted to accept the Oracle License Agreement and requested to enter your email address. This is required per session.
+If you select GraalVM Enterprise Editon, you are prompted to accept the Oracle Technology Network License Agreement and requested to enter your email address. Providing your email address is optional, but if you do not enter it, the GraalVM Enterprise Edition License will prompt everytime.
 
-![Accept Oracle License Agreement](images/otn_license_accept_view.png)
+![Accept Oracle License Agreement](images/otn_license_accept.png)
 
 The installation wizzard will download the package from [Oracle Software Downloads](https://www.oracle.com/downloads/graalvm-downloads.html) in the background and display the progress.
 
@@ -112,15 +112,13 @@ The "Download & Install GraalVM" action is a preferable way, as it eliminates th
 
 ## Java Development and Debugging
 
-To enable support for Java development with GraalVM in VS Code, you have to install [NetBeans Language Server Extension](http://100.107.237.88:8080/jenkins/job/vscode-java.lsp.server/), which produces the same code as Apache NetBeans Language Server. Reload will be requried.
+To enable support for Java development with GraalVM in VS Code, you have to install the [Apache NetBeans Language Server](https://marketplace.visualstudio.com/items?itemName=asf.apache-netbeans-java) extension. Reload will be required.
 
-Upon NetBeans Language Server Extension installation, the "Configure Java Runtime" window opens.
 To start developping or debugging Java applications, ensure GraalVM is used as your Java runtime in VS Code.
 If the current path is not pointing to the GraalVM folder, go to User Settings window and edit `netbeans.jdkhome` value in _settings.json_ file.
 This configuration is then used to launch the Java Language Server.
 
-Simultaneously the "Java Overview" window opens which gives you a possibility to create a project from scrach.
-The project you create or a Java project you open in VS Code will run in the GraalVM runtime.
+The project you create from scratch or a Java project you open in VS Code will run in the GraalVM runtime.
 
 ![Java Overview](images/java_overview_window.png)
 
@@ -130,40 +128,10 @@ The newly opened window will suggest to create a _launch.json_ file:
 
 ![Create Launch Configuration for Java](images/create_java_launch_configuration.png)
 
-Make sure to select the "Java +8" environment. To start debugging, press F5 or navigate to Run > Start Debugging.
+Make sure to select the "Java 8+" environment. To start debugging, press F5 or navigate to Run > Start Debugging.
 To add more lunch configurations, navigate to Run > Add Configuration or open the _.vscode/launch.json_ file and press the Add Configuration button in the right-hand corner:
 
 ![Add Launch Configuration for Java](images/create_java_launch_configuration.png)
-
-## Debug Adapter Protocol
-
-When creating the Run/Debug Configurations in VS Code, Chrome DevTools Protocol is provisioned by default. However, GraalVM provides a built-in implementation of the [Debug Adapter Protocol (DAP)](https://www.graalvm.org/docs/tools/dap) and, with GraalVM Extention for VS Code, a user now can choose a protocol to use by setting the protocol attribute in the corresponding debug configuration to either `chromeDevTools` or `debugAdapter`.
-
-To open a debugger port serving Debug Adapter Protocol, you need to pass the `--dap` option to the command line launcher.
-Other available options to pass to GraalVM's Debug Adapter Protocol are:
-* `--dap.Suspend=false`: disable the execution suspension at first source line, enabled by default.
-* `--dap.WaitAttached`: do not execute any source code until debugger client is attached. The default is false.
-* `--dap=<[[host:]port]>`: start the debugger on a different port than default (`<host>:4711`).
-
-Then you need a DAP client to connect to the open DAP port.
-To connect to the open DAP port, the content of _launch.json_ for, for example, a Node.js application, should be:
-```json
-{
-    "version": "0.2.0",
-    "configurations": [
-        {
-            "type": "graalvm",
-            "request": "launch",
-            "name": "Launch Node App",
-            "outputCapture": "std",
-            "protocol": "debugAdapter",
-            "program": "${workspaceFolder}/App.js"
-        }
-    ]
-}
-```
-
-The advantage of using Debug Adapter Protocol over Chrome Dev Tools is that (1) it is 'native' to Visual Studio Code (VS Code), meaning it does not require any intermediate translatation, and (2) that it supports multithreading, which can be particually useful to debug, e.g., a Ruby application.
 
 ## JavaScript and Node.js Debugging
 
@@ -380,6 +348,36 @@ For example, to connect to the Chrome Dev Tools protocol port, the content of th
 Alternatively, to pass the `--polyglot` option to any of the existing application lauchers, add the `runtimeArgs` attribute containing the `--polyglot` value to their respective debug configurations. Note that in some cases (polyglot application calls Java or R, or native launcher accesses languages installed with `gu` without [rebuilding images](https://www.graalvm.org/docs/reference-manual/install-components/#rebuilding-images)), passing also the `--jvm` option is necessary.
 
 ![Image Debug Configuration for Python](images/polyglot-debug-config.png)
+
+## Debug Adapter Protocol
+
+When creating the Run/Debug Configurations in VS Code, Chrome DevTools Protocol is provisioned by default. However, GraalVM provides a built-in implementation of the [Debug Adapter Protocol (DAP)](https://www.graalvm.org/docs/tools/dap) and, with GraalVM Extention for VS Code, a user now can choose a protocol to use by setting the protocol attribute in the corresponding debug configuration to either `chromeDevTools` or `debugAdapter`.
+
+To open a debugger port serving Debug Adapter Protocol, you need to pass the `--dap` option to the command line launcher.
+Other available options to pass to GraalVM's Debug Adapter Protocol are:
+* `--dap.Suspend=false`: disable the execution suspension at first source line, enabled by default.
+* `--dap.WaitAttached`: do not execute any source code until debugger client is attached. The default is false.
+* `--dap=<[[host:]port]>`: start the debugger on a different port than default (`<host>:4711`).
+
+Then you need a DAP client to connect to the open DAP port.
+To connect to the open DAP port, the content of _launch.json_ for, for example, a Node.js application, should be:
+```json
+{
+    "version": "0.2.0",
+    "configurations": [
+        {
+            "type": "graalvm",
+            "request": "launch",
+            "name": "Launch Node App",
+            "outputCapture": "std",
+            "protocol": "debugAdapter",
+            "program": "${workspaceFolder}/App.js"
+        }
+    ]
+}
+```
+
+The advantage of using Debug Adapter Protocol over Chrome Dev Tools is that (1) it is 'native' to Visual Studio Code (VS Code), meaning it does not require any intermediate translatation, and (2) that it supports multithreading, which can be particually useful to debug, e.g., a Ruby application.
 
 ## Language Server Protocol Integration
 
