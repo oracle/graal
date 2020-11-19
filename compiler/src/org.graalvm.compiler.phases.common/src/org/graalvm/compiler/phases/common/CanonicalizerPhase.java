@@ -24,8 +24,8 @@
  */
 package org.graalvm.compiler.phases.common;
 
-import static org.graalvm.compiler.phases.common.CanonicalizerPhase.CanonicalizerFeature.ALLOW_FURTHER_CANONICALIZATIONS;
 import static org.graalvm.compiler.phases.common.CanonicalizerPhase.CanonicalizerFeature.CFG_SIMPLIFICATION;
+import static org.graalvm.compiler.phases.common.CanonicalizerPhase.CanonicalizerFeature.FINAL_CANONICALIZATION;
 import static org.graalvm.compiler.phases.common.CanonicalizerPhase.CanonicalizerFeature.GVN;
 import static org.graalvm.compiler.phases.common.CanonicalizerPhase.CanonicalizerFeature.READ_CANONICALIZATION;
 
@@ -76,7 +76,17 @@ public class CanonicalizerPhase extends BasePhase<CoreProviders> {
         READ_CANONICALIZATION,
         CFG_SIMPLIFICATION,
         GVN,
-        ALLOW_FURTHER_CANONICALIZATIONS
+        FINAL_CANONICALIZATION(false);
+
+        final boolean defaultValue;
+
+        CanonicalizerFeature() {
+            this(true);
+        }
+
+        CanonicalizerFeature(boolean defaultValue) {
+            this.defaultValue = defaultValue;
+        }
     }
 
     private static final int MAX_ITERATION_PER_NODE = 10;
@@ -104,11 +114,11 @@ public class CanonicalizerPhase extends BasePhase<CoreProviders> {
     }
 
     protected CanonicalizerPhase() {
-        this(null, EnumSet.allOf(CanonicalizerFeature.class));
+        this(null, defaultFeatures());
     }
 
     protected CanonicalizerPhase(CustomSimplification customSimplification) {
-        this(customSimplification, EnumSet.allOf(CanonicalizerFeature.class));
+        this(customSimplification, defaultFeatures());
     }
 
     protected CanonicalizerPhase(CustomSimplification customSimplification, EnumSet<CanonicalizerFeature> features) {
@@ -134,24 +144,36 @@ public class CanonicalizerPhase extends BasePhase<CoreProviders> {
 
     public CanonicalizerPhase copyWithoutFurtherCanonicalizations() {
         EnumSet<CanonicalizerFeature> newFeatures = EnumSet.copyOf(features);
-        newFeatures.remove(ALLOW_FURTHER_CANONICALIZATIONS);
+        newFeatures.add(FINAL_CANONICALIZATION);
         return new CanonicalizerPhase(customSimplification, newFeatures);
     }
 
     public static CanonicalizerPhase create() {
-        return new CanonicalizerPhase(null, EnumSet.allOf(CanonicalizerFeature.class));
+        return new CanonicalizerPhase(null, defaultFeatures());
     }
 
     public static CanonicalizerPhase createWithoutReadCanonicalization() {
-        return new CanonicalizerPhase(EnumSet.complementOf(EnumSet.of(READ_CANONICALIZATION)));
+        return new CanonicalizerPhase(defaultFeaturesWithout(READ_CANONICALIZATION));
     }
 
     public static CanonicalizerPhase createWithoutGVN() {
-        return new CanonicalizerPhase(EnumSet.complementOf(EnumSet.of(GVN)));
+        return new CanonicalizerPhase(defaultFeaturesWithout(GVN));
     }
 
     public static CanonicalizerPhase createWithoutCFGSimplification() {
-        return new CanonicalizerPhase(EnumSet.complementOf(EnumSet.of(CFG_SIMPLIFICATION)));
+        return new CanonicalizerPhase(defaultFeaturesWithout(CFG_SIMPLIFICATION));
+    }
+
+    private static EnumSet<CanonicalizerFeature> defaultFeatures() {
+        EnumSet<CanonicalizerFeature> features = EnumSet.allOf(CanonicalizerFeature.class);
+        features.removeIf(f -> f.defaultValue == false);
+        return features;
+    }
+
+    private static EnumSet<CanonicalizerFeature> defaultFeaturesWithout(CanonicalizerFeature feature) {
+        EnumSet<CanonicalizerFeature> features = defaultFeatures();
+        features.remove(feature);
+        return features;
     }
 
     @Override
@@ -257,7 +279,7 @@ public class CanonicalizerPhase extends BasePhase<CoreProviders> {
 
             tool = new Tool(graph.getAssumptions(), graph.getOptions());
             processWorkSet(graph);
-            if (!features.contains(ALLOW_FURTHER_CANONICALIZATIONS)) {
+            if (features.contains(FINAL_CANONICALIZATION)) {
                 graph.setAfterFinalCanonicalization();
             }
         }

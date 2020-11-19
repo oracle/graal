@@ -156,7 +156,7 @@ public final class StructuredGraph extends Graph implements JavaMethodContext {
     public enum StageFlags {
         AFTER_FLOATING_READ_PHASE,
         AFTER_FIXED_READ_PHASE,
-        HAS_VALUE_PROXIES,
+        AFTER_VALUE_PROXY_REMOVAL,
         AFTER_EXPAND_LOGIC,
         AFTER_FINAL_CANONICALIZATION
     }
@@ -354,7 +354,7 @@ public final class StructuredGraph extends Graph implements JavaMethodContext {
     private final CompilationIdentifier compilationId;
     private final int entryBCI;
     private GuardsStage guardsStage = GuardsStage.FLOATING_GUARDS;
-    private EnumSet<StageFlags> stageFlags = EnumSet.of(StageFlags.HAS_VALUE_PROXIES);
+    private EnumSet<StageFlags> stageFlags = EnumSet.noneOf(StageFlags.class);
     private FrameStateVerification frameStateVerification;
 
     /**
@@ -967,11 +967,11 @@ public final class StructuredGraph extends Graph implements JavaMethodContext {
     }
 
     public boolean hasValueProxies() {
-        return stageFlags.contains(StageFlags.HAS_VALUE_PROXIES);
+        return !stageFlags.contains(StageFlags.AFTER_VALUE_PROXY_REMOVAL);
     }
 
-    public void unsetHasValueProxies() {
-        stageFlags.remove(StageFlags.HAS_VALUE_PROXIES);
+    public void setAfterValueProxyRemoval() {
+        stageFlags.add(StageFlags.AFTER_VALUE_PROXY_REMOVAL);
     }
 
     public boolean isAfterExpandLogic() {
