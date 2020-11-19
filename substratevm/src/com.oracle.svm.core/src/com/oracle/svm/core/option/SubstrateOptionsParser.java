@@ -358,7 +358,7 @@ public class SubstrateOptionsParser {
         OptionParseResult optionParseResult = SubstrateOptionsParser.parseOption(options, arg.substring(optionPrefix.length()), valuesMap, optionPrefix, booleanOptionFormat);
         if (optionParseResult.printFlags() || optionParseResult.printFlagsWithExtraHelp()) {
             SubstrateOptionsParser.printFlags(optionParseResult::matchesFlagsHosted, options, optionPrefix, out, optionParseResult.printFlagsWithExtraHelp());
-            throw new InterruptImageBuilding();
+            throw new InterruptImageBuilding("");
         }
         if (!optionParseResult.isValid()) {
             errors.add(optionParseResult.getError());
