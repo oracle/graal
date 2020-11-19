@@ -2380,7 +2380,7 @@ def mx_register_dynamic_suite_constituents(register_project, register_distributi
             assert get_final_graalvm_distribution().jimage_jars
             register_project(GraalVmJImage(
                 suite=_suite,
-                jimage_jars=list(get_final_graalvm_distribution().jimage_jars),
+                jimage_jars=sorted(get_final_graalvm_distribution().jimage_jars),
                 workingSets=None,
             ))
 
