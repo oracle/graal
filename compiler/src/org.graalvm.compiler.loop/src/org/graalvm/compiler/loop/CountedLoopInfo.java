@@ -307,15 +307,17 @@ public class CountedLoopInfo {
         if (iv.isConstantStride() && abs(iv.constantStride()) == 1) {
             return true;
         }
+        // @formatter:off
         /*
+         * Following comment reasons about the simplest possible loop form:
          *
-         * Following comment reasons about the simplest possible loop form: i=0;i<end;i+=stride
+         *              for(i = 0;i < end;i += stride)
          *
          * The problem is we want to create an overflow guard for the loop that can be hoisted
          * before the loop, i.e., the overflow guard must not have loop variant inputs else it must
-         * be scheduled inside the loop. This means we cannot refer explicitly to the iv's phi but
-         * must establish a relation between end, stride and max (max integer range for a given
-         * loop) that is sufficient for most cases.
+         * be scheduled inside the loop. This means we cannot refer explicitly to the induction
+         * variable's phi but must establish a relation between end, stride and max (max integer
+         * range for a given loop) that is sufficient for most cases.
          *
          * We know that a head counted loop with a stride > 1 may overflow if the stride is big
          * enough that end + stride will be > MAX, i.e. it overflows into negative value range.
@@ -326,19 +328,21 @@ public class CountedLoopInfo {
          *
          * A loop can overflow if the last checked value of the iv allows an overflow in the next
          * iteration: the value range for which an overflow can happen is [MAX-(stride-1),MAX] e.g.
-         **/
-        // MAX=10, stride = 3, overflow if number > 10
-        // end = MAX -> 10 -> 10 + 3 = 13 -> overflow //
-        // end = MAX-1 -> 9 -> 9 + 3 = 12 -> overflow //
-        // end = MAX-2 -> 8 -> 8 + 3 = 11 -> overflow //
-        // end = MAX-3 -> 7 -> 7 + 3 = 10 -> No overflow at MAX - stride
-        /*
          *
+         * MAX=10, stride = 3, overflow if number > 10
+         *  end = MAX -> 10 -> 10 + 3 = 13 -> overflow
+         *  end = MAX-1 -> 9 -> 9 + 3 = 12 -> overflow
+         *  end = MAX-2 -> 8 -> 8 + 3 = 11 -> overflow
+         *  end = MAX-3 -> 7 -> 7 + 3 = 10 -> No overflow at MAX - stride
          *
          * Note that this guard is pessimistic, i.e., it marks loops as potentially overflowing that
          * are actually not overflowing. Consider the following loop:
          *
-         * i=MAX-56; i < MAX, i+=8 (i in last loop body visit = MAX - 8, i after = MAX, no overflow)
+         * <pre>
+         *    for(i = MAX-56; i < MAX, i += 8)
+         * </pre>
+         *
+         *  where i in last loop body visit = MAX - 8, i after = MAX, no overflow
          *
          * which is wrongly detected as overflowing since "end" is element of [MAX-(stride-1),MAX]
          * which is [MAX-7,MAX] and end is MAX. We handle such cases with a speculation and disable
@@ -350,6 +354,7 @@ public class CountedLoopInfo {
          * loop if the deopt already failed, but we refrain from this for now for simplicity
          * reasons.
          */
+        // @formatter:on
         IntegerStamp endStamp = (IntegerStamp) end.stamp(NodeView.DEFAULT);
         ValueNode strideNode = iv.strideNode();
         IntegerStamp strideStamp = (IntegerStamp) strideNode.stamp(NodeView.DEFAULT);
@@ -400,7 +405,7 @@ public class CountedLoopInfo {
                     speculation = speculationLog.speculate(speculationReason);
                     LoopBeginNode.overflowSpeculationTaken.increment(graph.getDebug());
                 } else {
-                    GraalError.shouldNotReachHere("Must not create overflow guard for a loop where the speculation guard already failed, this can create deopt loops");
+                    GraalError.shouldNotReachHere("Must not create overflow guard for loop " + loop.loopBegin() + " where the speculation guard already failed, this can create deopt loops");
                 }
             }
 
