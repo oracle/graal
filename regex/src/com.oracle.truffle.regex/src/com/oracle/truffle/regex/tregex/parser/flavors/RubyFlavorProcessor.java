@@ -97,12 +97,6 @@ public final class RubyFlavorProcessor implements RegexFlavorProcessor {
     // This is the same as above but restricted to ASCII.
     private static final Map<String, CodePointSet> ASCII_POSIX_CHAR_CLASSES;
 
-    // Finally, these are the Unicode character properties (e.g. \p{Alpha}), which are just synonyms
-    // for POSIX character classes. Other Unicode character properties (e.g. general categories,
-    // scripts...)
-    // are implemented differently.
-    private static final Map<String, CodePointSet> POSIX_PROPERTIES;
-
     static {
         CodePointSet asciiRange = CodePointSet.create(0x00, 0x7F);
         CodePointSet nonAsciiRange = CodePointSet.create(0x80, Character.MAX_CODE_POINT);
@@ -157,22 +151,6 @@ public final class RubyFlavorProcessor implements RegexFlavorProcessor {
         for (Map.Entry<String, CodePointSet> entry : UNICODE_POSIX_CHAR_CLASSES.entrySet()) {
             ASCII_POSIX_CHAR_CLASSES.put(entry.getKey(), asciiRange.createIntersectionSingleRange(entry.getValue()));
         }
-
-        POSIX_PROPERTIES = new HashMap<>(14);
-        POSIX_PROPERTIES.put("Alnum", UNICODE_POSIX_CHAR_CLASSES.get("alnum"));
-        POSIX_PROPERTIES.put("Alpha", UNICODE_POSIX_CHAR_CLASSES.get("alpha"));
-        POSIX_PROPERTIES.put("Blank", UNICODE_POSIX_CHAR_CLASSES.get("blank"));
-        POSIX_PROPERTIES.put("Cntrl", UNICODE_POSIX_CHAR_CLASSES.get("cntrl"));
-        POSIX_PROPERTIES.put("Digit", UNICODE_POSIX_CHAR_CLASSES.get("digit"));
-        POSIX_PROPERTIES.put("Graph", UNICODE_POSIX_CHAR_CLASSES.get("graph"));
-        POSIX_PROPERTIES.put("Lower", UNICODE_POSIX_CHAR_CLASSES.get("lower"));
-        POSIX_PROPERTIES.put("Print", UNICODE_POSIX_CHAR_CLASSES.get("print"));
-        POSIX_PROPERTIES.put("Punct", UNICODE_POSIX_CHAR_CLASSES.get("punct"));
-        POSIX_PROPERTIES.put("Space", UNICODE_POSIX_CHAR_CLASSES.get("space"));
-        POSIX_PROPERTIES.put("Upper", UNICODE_POSIX_CHAR_CLASSES.get("upper"));
-        POSIX_PROPERTIES.put("XDigit", UNICODE_POSIX_CHAR_CLASSES.get("xdigit"));
-        POSIX_PROPERTIES.put("Word", UNICODE_POSIX_CHAR_CLASSES.get("word"));
-        POSIX_PROPERTIES.put("ASCII", UNICODE_POSIX_CHAR_CLASSES.get("ascii"));
     }
 
     // The behavior of the word-boundary assertions depends on the notion of a word character.
@@ -1046,16 +1024,16 @@ public final class RubyFlavorProcessor implements RegexFlavorProcessor {
                         propertySpec = propertySpec.substring(1);
                     }
                     CodePointSet property;
-                    if (POSIX_PROPERTIES.containsKey(propertySpec)) {
-                        property = POSIX_PROPERTIES.get(propertySpec);
-                    } else if (UnicodeProperties.isSupportedGeneralCategory(propertySpec)) {
-                        property = UnicodeProperties.getProperty("General_Category=" + propertySpec);
-                    } else if (UnicodeProperties.isSupportedScript(propertySpec)) {
-                        property = UnicodeProperties.getProperty("Script=" + propertySpec);
-                    } else if (!UnicodeProperties.isSupportedProperty(propertySpec)) {
-                        throw syntaxError(String.format("invalid character property name {%s}", propertySpec));
+                    if (UNICODE_POSIX_CHAR_CLASSES.containsKey(propertySpec.toLowerCase())) {
+                        property = UNICODE_POSIX_CHAR_CLASSES.get(propertySpec.toLowerCase());
+                    } else if (UnicodeProperties.isSupportedGeneralCategory(propertySpec, true)) {
+                        property = UnicodeProperties.getProperty("General_Category=" + propertySpec, true);
+                    } else if (UnicodeProperties.isSupportedScript(propertySpec, true)) {
+                        property = UnicodeProperties.getProperty("Script=" + propertySpec, true);
+                    } else if (UnicodeProperties.isSupportedProperty(propertySpec, true)) {
+                        property = UnicodeProperties.getProperty(propertySpec, true);
                     } else {
-                        property = UnicodeProperties.getProperty(propertySpec);
+                        throw syntaxError(String.format("invalid character property name {%s}", propertySpec));
                     }
                     if (negative) {
                         property = property.createInverse(Encodings.UTF_32);
