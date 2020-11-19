@@ -23,32 +23,6 @@
 
 package com.oracle.truffle.espresso.substitutions;
 
-import com.oracle.truffle.espresso.meta.Meta;
-import com.oracle.truffle.espresso.runtime.StaticObject;
-
 @EspressoSubstitutions
 public class Target_java_lang_String {
-    @Substitution(hasReceiver = true)
-    public static char charAt(@Host(String.class) StaticObject self, int at,
-                    // @GuestCall(target = "java_lang_String_charAt") DirectCallNode charAt,
-                    @InjectMeta Meta meta) {
-        if (meta.getJavaVersion().compactStringsEnabled()) {
-            // return (char) charAt.call(self, at);
-            return 0;
-        } else {
-            return Meta.toHostString(self).charAt(at);
-        }
-    }
-
-    @Substitution(hasReceiver = true)
-    public static int indexOf(@Host(String.class) StaticObject self, int ch, int from,
-                    // @GuestCall(target = "java_lang_String_indexOf") DirectCallNode indexOf,
-                    @InjectMeta Meta meta) {
-        if (meta.getJavaVersion().compactStringsEnabled()) {
-            // return (char) indexOf.call(self, ch, from);
-            return 0;
-        } else {
-            return Meta.toHostString(self).indexOf(ch, from);
-        }
-    }
 }

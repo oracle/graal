@@ -426,7 +426,7 @@ public abstract class ConstantPool {
                         if (classSpecifier.getKlass().getType() == Type.java_lang_Class) {
                             entries[i] = ClassConstant.preResolved(classSpecifier.getMirrorKlass());
                         } else {
-                            entries[i] = ClassConstant.withString(context.getNames().lookup(Meta.toHostString(patches[i])));
+                            entries[i] = ClassConstant.withString(context.getNames().lookup(context.getMeta().toHostString(patches[i])));
                         }
 
                         stream.readU2();

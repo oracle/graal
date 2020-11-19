@@ -173,10 +173,10 @@ public class Target_com_oracle_truffle_espresso_polyglot_Polyglot {
     @SuppressWarnings("deprecation")
     @Substitution
     public static @Host(Object.class) StaticObject eval(@Host(String.class) StaticObject language, @Host(String.class) StaticObject code, @InjectMeta Meta meta) {
-        String languageId = Meta.toHostString(language);
+        String languageId = meta.toHostString(language);
         validateLanguage(languageId, meta);
 
-        Source source = getSource(languageId, Meta.toHostString(code));
+        Source source = getSource(languageId, meta.toHostString(code));
         CallTarget callTarget;
         try {
             callTarget = meta.getContext().getEnv().parsePublic(source);
@@ -222,7 +222,7 @@ public class Target_com_oracle_truffle_espresso_polyglot_Polyglot {
             throw Meta.throwExceptionWithMessage(meta.java_lang_SecurityException,
                             "Polyglot bindings are not accessible for this language. Use --polyglot or allowPolyglotAccess when building the context.");
         }
-        String bindingName = Meta.toHostString(name);
+        String bindingName = meta.toHostString(name);
         if (value.isForeignObject()) {
             meta.getContext().getEnv().exportSymbol(bindingName, value.rawForeignObject());
         } else {

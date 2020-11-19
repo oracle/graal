@@ -22,8 +22,6 @@
  */
 package com.oracle.truffle.espresso.meta;
 
-import static com.oracle.truffle.espresso.meta.StringUtil.LATIN1;
-
 import java.util.logging.Level;
 
 import com.oracle.truffle.api.CompilerAsserts;
@@ -46,10 +44,6 @@ import com.oracle.truffle.espresso.runtime.EspressoException;
 import com.oracle.truffle.espresso.runtime.StaticObject;
 import com.oracle.truffle.espresso.substitutions.Host;
 import com.oracle.truffle.espresso.vm.InterpreterToVM;
-import com.oracle.truffle.espresso.vm.UnsafeAccess;
-import com.oracle.truffle.object.DebugCounter;
-
-import sun.misc.Unsafe;
 
 /**
  * Introspection API to access the guest world from the host. Provides seamless conversions from
@@ -59,10 +53,12 @@ public final class Meta implements ContextAccess {
 
     private final EspressoContext context;
     private final ExceptionDispatch dispatch;
+    private final StringConversion stringConversion;
 
     public Meta(EspressoContext context) {
         CompilerAsserts.neverPartOfCompilation();
         this.context = context;
+        this.stringConversion = StringConversion.select(context);
 
         // Give access to the partially-built Meta instance.
         context.setBootstrapMeta(this);
@@ -1323,57 +1319,33 @@ public final class Meta implements ContextAccess {
         return klass;
     }
 
-    @TruffleBoundary
-    public static String toHostString(StaticObject str) {
+    @SuppressWarnings("unused")
+    public static String toHostString(StaticObject str, int dummy) {
         if (StaticObject.isNull(str)) {
             return null;
         }
-        Meta meta = str.getKlass().getMeta();
-        if (meta.getJavaVersion().compactStringsEnabled()) {
-            StaticObject wrappedChars = (StaticObject) meta.java_lang_String_toCharArray.invokeDirect(str);
-            return HostJava.createString(wrappedChars.unwrap());
-        }
-        char[] value = ((StaticObject) meta.java_lang_String_value.get(str)).unwrap();
-        return HostJava.createString(value);
+        return str.getKlass().getMeta().toHostString(str);
     }
 
-    @TruffleBoundary
-    public StaticObject toGuestString(String hostString) {
-        if (hostString == null) {
-            return StaticObject.NULL;
+    public String toHostString(StaticObject str) {
+        if (StaticObject.isNull(str)) {
+            return null;
         }
-        final char[] value = HostJava.getStringValue(hostString);
-        final int hash = HostJava.getStringHash(hostString);
-        StaticObject guestString = java_lang_String.allocateInstance();
-        if (getJavaVersion().compactStringsEnabled()) {
-            // TODO(garcia): avoid expensive array copies
-            byte[] bytes = null;
-            byte coder = LATIN1;
-            if (java_lang_String.getStatics().getBooleanField(java_lang_String_COMPACT_STRINGS)) {
-                bytes = StringUtil.compress(value);
-            }
-            if (bytes == null) {
-                bytes = StringUtil.toBytes(value);
-                coder = StringUtil.UTF16;
-            }
-            java_lang_String_value.set(guestString, StaticObject.wrap(bytes, this));
-            java_lang_String_coder.set(guestString, coder);
-            java_lang_String_hash.set(guestString, hash);
-        } else {
-            java_lang_String_value.set(guestString, StaticObject.wrap(value, this));
-            java_lang_String_hash.set(guestString, hash);
-        }
-        // String.hashCode must be equivalent for host and guest.
-        assert hostString.hashCode() == (int) java_lang_String_hashCode.invokeDirect(guestString);
-        return guestString;
+        return stringConversion.toHost(str, this);
     }
 
-    @TruffleBoundary
     public StaticObject toGuestString(Symbol<?> hostString) {
         if (hostString == null) {
             return StaticObject.NULL;
         }
         return toGuestString(hostString.toString());
+    }
+
+    public StaticObject toGuestString(String hostString) {
+        if (hostString == null) {
+            return StaticObject.NULL;
+        }
+        return stringConversion.toGuest(hostString, this);
     }
 
     public static boolean isString(Object string) {
@@ -1434,62 +1406,6 @@ public final class Meta implements ContextAccess {
     public EspressoContext getContext() {
         return context;
     }
-
-    // region Low level host String access
-
-    private static class HostJava {
-
-        private static final DebugCounter NEW_STRING = DebugCounter.create("New String");
-        private static final DebugCounter GET_STRING_VALUE = DebugCounter.create("Get string value");
-
-        private static final boolean hostCompactString;
-        private static final Unsafe UNSAFE = UnsafeAccess.get();
-
-        private static final long String_value_offset;
-        private static final long String_hash_offset;
-
-        static {
-            try {
-                String_value_offset = UNSAFE.objectFieldOffset(String.class.getDeclaredField("value"));
-                String_hash_offset = UNSAFE.objectFieldOffset(String.class.getDeclaredField("hash"));
-                hostCompactString = !System.getProperty("java.version").startsWith("1.");
-            } catch (NoSuchFieldException e) {
-                throw EspressoError.shouldNotReachHere(e);
-            }
-        }
-
-        private static char[] getStringValue(String s) {
-            GET_STRING_VALUE.inc();
-            if (hostCompactString) {
-                char[] chars = new char[s.length()];
-                s.getChars(0, s.length(), chars, 0);
-                return chars;
-            } else {
-                return (char[]) UNSAFE.getObject(s, String_value_offset);
-            }
-        }
-
-        private static int getStringHash(String s) {
-            return UNSAFE.getInt(s, String_hash_offset);
-        }
-
-        private static String createString(final char[] value) {
-            NEW_STRING.inc();
-            if (hostCompactString) {
-                return new String(value);
-            } else {
-                try {
-                    String str = (String) UNSAFE.allocateInstance(String.class);
-                    UNSAFE.putObject(str, String_value_offset, value);
-                    return str;
-                } catch (Throwable e) {
-                    throw EspressoError.shouldNotReachHere();
-                }
-            }
-        }
-    }
-
-    // endregion
 
     // region Guest Unboxing
 

@@ -33,8 +33,9 @@ import sun.misc.Signal;
 public final class Target_sun_misc_Signal {
     @Substitution(nameProvider = SharedSignalAppend0.class)
     @TruffleBoundary
-    public static int findSignal(@Host(String.class) StaticObject name) {
-        return new Signal(Meta.toHostString(name)).getNumber();
+    public static int findSignal(@Host(String.class) StaticObject name,
+                    @InjectMeta Meta meta) {
+        return new Signal(meta.toHostString(name)).getNumber();
     }
 
     @SuppressWarnings("unused")
