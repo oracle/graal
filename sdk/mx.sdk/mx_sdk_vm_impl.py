@@ -2377,7 +2377,6 @@ def mx_register_dynamic_suite_constituents(register_project, register_distributi
             register_project(GraalVmJvmciParentClasspath(jvmci_parent_jars))
 
         if _src_jdk.javaCompliance >= '9':
-            assert get_final_graalvm_distribution().jimage_jars
             register_project(GraalVmJImage(
                 suite=_suite,
                 jimage_jars=list(get_final_graalvm_distribution().jimage_jars),
