@@ -67,8 +67,9 @@ public final class RubyFlags extends AbstractConstantKeysObject {
         }
     }
 
-    private static final String FLAGS = "imxadu";
-    private static final String BIT_FLAGS = "imxy";
+    private static final String FLAGS = "mixadu";
+    private static final String BIT_FLAGS = "mixy";
+    private static final String COMPILE_TIME_FLAGS = "mix";
     private static final String TYPE_FLAGS = "adu";
 
     public static final RubyFlags EMPTY_INSTANCE = new RubyFlags("");
@@ -165,9 +166,9 @@ public final class RubyFlags extends AbstractConstantKeysObject {
 
     @Override
     public String toString() {
-        StringBuilder out = new StringBuilder(FLAGS.length());
-        for (int i = 0; i < FLAGS.length(); i++) {
-            char flag = FLAGS.charAt(i);
+        StringBuilder out = new StringBuilder(COMPILE_TIME_FLAGS.length());
+        for (int i = 0; i < COMPILE_TIME_FLAGS.length(); i++) {
+            char flag = COMPILE_TIME_FLAGS.charAt(i);
             if (this.hasFlag(flag)) {
                 out.append(flag);
             }
