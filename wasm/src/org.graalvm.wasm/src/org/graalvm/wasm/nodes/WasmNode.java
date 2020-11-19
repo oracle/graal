@@ -48,7 +48,7 @@ import org.graalvm.wasm.WasmContext;
 import org.graalvm.wasm.WasmInstance;
 
 public abstract class WasmNode extends Node implements WasmNodeInterface {
-    // TODO: We should not cache the module in the nodes, only the symbol table.
+    // TODO: We should not cache the instance in the nodes, only the symbol table.
     private final WasmInstance wasmInstance;
     private final WasmCodeEntry codeEntry;
 
@@ -68,13 +68,14 @@ public abstract class WasmNode extends Node implements WasmNodeInterface {
      * Execute the current node within the given frame and return the branch target.
      *
      * @param frame The frame to use for execution.
+     * @param locals The local variable array that is used during execution.
      * @param stack The operand stack that is used during execution.
      * @return The return value of this method indicates whether a branch is to be executed, in case
      *         of nested blocks. An offset with value -1 means no branch, whereas a return value n
      *         greater than or equal to 0 means that the execution engine has to branch n levels up
      *         the block execution stack.
      */
-    public abstract int execute(WasmContext context, VirtualFrame frame, long[] stack);
+    public abstract int execute(WasmContext context, VirtualFrame frame, long[] locals, long[] stack);
 
     public abstract byte returnTypeId();
 

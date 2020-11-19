@@ -353,17 +353,19 @@ public final class WasmBlockNode extends WasmNode implements RepeatingNode {
     @Override
     public Integer executeRepeatingWithValue(VirtualFrame frame) {
         final long[] stack;
+        final long[] locals;
         try {
             stack = (long[]) frame.getObject(codeEntry().stackSlot());
+            locals = (long[]) frame.getObject(codeEntry().localsSlot());
         } catch (FrameSlotTypeException e) {
             throw WasmException.create(Failure.UNSPECIFIED_INTERNAL, this, "Invalid object type in the stack slot.");
         }
-        return execute(contextReference().get(), frame, stack);
+        return execute(contextReference().get(), frame, locals, stack);
     }
 
     @Override
     @ExplodeLoop(kind = ExplodeLoop.LoopExplosionKind.FULL_EXPLODE_UNTIL_RETURN)
-    public int execute(WasmContext context, VirtualFrame frame, long[] stack) {
+    public int execute(WasmContext context, VirtualFrame frame, long[] locals, long[] stack) {
         int childrenOffset = 0;
         int byteConstantOffset = initialByteConstantOffset;
         int intConstantOffset = initialIntConstantOffset;
@@ -375,6 +377,7 @@ public final class WasmBlockNode extends WasmNode implements RepeatingNode {
         final int constPolicy = instance().storeConstantsPolicy().ordinal();
         final byte[] data = codeEntry().data();
         final int blockByteLength = Math.min(data.length - startOffset, byteLength());
+        final WasmMemory memory = instance().memory();
         try {
             final int offsetLimit = startOffset + blockByteLength;
             while (offset < offsetLimit) {
@@ -392,7 +395,7 @@ public final class WasmBlockNode extends WasmNode implements RepeatingNode {
 
                         // The unwind counter indicates how many levels up we need to branch from
                         // within the block.
-                        int unwindCounter = block.execute(context, frame, stack);
+                        int unwindCounter = block.execute(context, frame, locals, stack);
                         if (unwindCounter > 0) {
                             return unwindCounter - 1;
                         }
@@ -443,7 +446,7 @@ public final class WasmBlockNode extends WasmNode implements RepeatingNode {
                     case IF: {
                         WasmIfNode ifNode = (WasmIfNode) children[childrenOffset];
                         stackPointer--;
-                        int unwindCounter = ifNode.execute(context, frame, stack);
+                        int unwindCounter = ifNode.execute(context, frame, locals, stack);
                         if (unwindCounter > 0) {
                             return unwindCounter - 1;
                         }
@@ -729,7 +732,7 @@ public final class WasmBlockNode extends WasmNode implements RepeatingNode {
                         byteConstantOffset += byteConstantDelta(constPolicy, data, offset);
                         offset += offsetDelta;
                         // endregion
-                        local_get(frame, stack, stackPointer, index);
+                        local_get(locals, stack, stackPointer, index);
                         stackPointer++;
                         break;
                     }
@@ -742,7 +745,7 @@ public final class WasmBlockNode extends WasmNode implements RepeatingNode {
                         offset += offsetDelta;
                         // endregion
                         stackPointer--;
-                        local_set(frame, stack, stackPointer, index);
+                        local_set(locals, stack, stackPointer, index);
                         break;
                     }
                     case LOCAL_TEE: {
@@ -753,7 +756,7 @@ public final class WasmBlockNode extends WasmNode implements RepeatingNode {
                         byteConstantOffset += byteConstantDelta(constPolicy, data, offset);
                         offset += offsetDelta;
                         // endregion
-                        local_tee(frame, stack, stackPointer - 1, index);
+                        local_tee(locals, stack, stackPointer - 1, index);
                         break;
                     }
                     case GLOBAL_GET: {
@@ -807,7 +810,7 @@ public final class WasmBlockNode extends WasmNode implements RepeatingNode {
                         offset += offsetDelta;
                         // endregion
 
-                        load(stack, stackPointer - 1, opcode, memOffset);
+                        load(memory, stack, stackPointer - 1, opcode, memOffset);
                         break;
                     }
                     case I32_STORE:
@@ -832,7 +835,7 @@ public final class WasmBlockNode extends WasmNode implements RepeatingNode {
                         offset += offsetDelta;
                         // endregion
 
-                        store(stack, stackPointer, opcode, memOffset);
+                        store(memory, stack, stackPointer, opcode, memOffset);
                         stackPointer -= 2;
 
                         break;
@@ -840,7 +843,7 @@ public final class WasmBlockNode extends WasmNode implements RepeatingNode {
                     case MEMORY_SIZE: {
                         // Skip the 0x00 constant.
                         offset++;
-                        int pageSize = instance().memory().pageSize();
+                        int pageSize = memory.pageSize();
                         pushInt(stack, stackPointer, pageSize);
                         stackPointer++;
                         break;
@@ -850,7 +853,6 @@ public final class WasmBlockNode extends WasmNode implements RepeatingNode {
                         offset++;
                         stackPointer--;
                         int extraSize = popInt(stack, stackPointer);
-                        final WasmMemory memory = instance().memory();
                         int pageSize = memory.pageSize();
                         if (memory.grow(extraSize)) {
                             pushInt(stack, stackPointer, pageSize);
@@ -1370,10 +1372,9 @@ public final class WasmBlockNode extends WasmNode implements RepeatingNode {
         return -1;
     }
 
-    private void load(long[] stack, int stackPointer, int opcode, int memOffset) {
+    private void load(WasmMemory memory, long[] stack, int stackPointer, int opcode, int memOffset) {
         int baseAddress = popInt(stack, stackPointer);
         int address = baseAddress + memOffset;
-        WasmMemory memory = instance().memory();
 
         try {
             switch (opcode) {
@@ -1456,9 +1457,7 @@ public final class WasmBlockNode extends WasmNode implements RepeatingNode {
         }
     }
 
-    private void store(long[] stack, int stackPointer, int opcode, int memOffset) {
-        WasmMemory memory = instance().memory();
-
+    private void store(WasmMemory memory, long[] stack, int stackPointer, int opcode, int memOffset) {
         try {
             switch (opcode) {
                 case I32_STORE: {
@@ -1604,95 +1603,24 @@ public final class WasmBlockNode extends WasmNode implements RepeatingNode {
         }
     }
 
-    private void local_tee(VirtualFrame frame, long[] stack, int stackPointer, int index) {
-        byte type = codeEntry().localType(index);
-        switch (type) {
-            case WasmType.I32_TYPE: {
-                int value = popInt(stack, stackPointer);
-                pushInt(stack, stackPointer, value);
-                setInt(frame, index, value);
-                break;
-            }
-            case WasmType.I64_TYPE: {
-                long value = pop(stack, stackPointer);
-                push(stack, stackPointer, value);
-                setLong(frame, index, value);
-                break;
-            }
-            case WasmType.F32_TYPE: {
-                float value = popAsFloat(stack, stackPointer);
-                pushFloat(stack, stackPointer, value);
-                setFloat(frame, index, value);
-                break;
-            }
-            case WasmType.F64_TYPE: {
-                double value = popAsDouble(stack, stackPointer);
-                pushDouble(stack, stackPointer, value);
-                setDouble(frame, index, value);
-                break;
-            }
-            default: {
-                throw WasmException.create(Failure.UNSPECIFIED_TRAP, this, "Local variable cannot have the void type.");
-            }
+    private void local_tee(long[] locals, long[] stack, int stackPointer, int index) {
+        final long value = pop(stack, stackPointer);
+        // In the interpreter, no need to push, as the value is still on the stack.
+        // In compiled code, the pop erases the value on the stack, so we push the value back.
+        if (CompilerDirectives.inCompiledCode()) {
+            push(stack, stackPointer, value);
         }
+        locals[index] = value;
     }
 
-    private void local_set(VirtualFrame frame, long[] stack, int stackPointer, int index) {
-        byte type = codeEntry().localType(index);
-        switch (type) {
-            case WasmType.I32_TYPE: {
-                int value = popInt(stack, stackPointer);
-                setInt(frame, index, value);
-                break;
-            }
-            case WasmType.I64_TYPE: {
-                long value = pop(stack, stackPointer);
-                setLong(frame, index, value);
-                break;
-            }
-            case WasmType.F32_TYPE: {
-                float value = popAsFloat(stack, stackPointer);
-                setFloat(frame, index, value);
-                break;
-            }
-            case WasmType.F64_TYPE: {
-                double value = popAsDouble(stack, stackPointer);
-                setDouble(frame, index, value);
-                break;
-            }
-            default: {
-                throw WasmException.create(Failure.UNSPECIFIED_TRAP, this, "Local variable cannot have the void type.");
-            }
-        }
+    private void local_set(long[] locals, long[] stack, int stackPointer, int index) {
+        final long value = pop(stack, stackPointer);
+        locals[index] = value;
     }
 
-    private void local_get(VirtualFrame frame, long[] stack, int stackPointer, int index) {
-        byte type = codeEntry().localType(index);
-        switch (type) {
-            case WasmType.I32_TYPE: {
-                int value = getInt(frame, index);
-                pushInt(stack, stackPointer, value);
-                break;
-            }
-            case WasmType.I64_TYPE: {
-                long value = getLong(frame, index);
-                push(stack, stackPointer, value);
-                break;
-            }
-            case WasmType.F32_TYPE: {
-                float value = getFloat(frame, index);
-                pushFloat(stack, stackPointer, value);
-                break;
-            }
-            case WasmType.F64_TYPE: {
-                double value = getDouble(frame, index);
-                pushDouble(stack, stackPointer, value);
-                break;
-            }
-            default: {
-                throw WasmException.create(Failure.UNSPECIFIED_TRAP, this, "Local variable cannot have the void type.");
-            }
-        }
+    private void local_get(long[] locals, long[] stack, int stackPointer, int index) {
+        long value = locals[index];
+        push(stack, stackPointer, value);
     }
 
     @SuppressWarnings("unused")
