@@ -30,12 +30,15 @@ import java.util.Collections;
 import java.util.List;
 import java.util.Set;
 import java.util.WeakHashMap;
+import java.util.concurrent.ConcurrentHashMap;
 
+import com.oracle.truffle.api.CompilerAsserts;
 import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.espresso.descriptors.Symbol;
 import com.oracle.truffle.espresso.descriptors.Symbol.Type;
 import com.oracle.truffle.espresso.descriptors.Types;
+import com.oracle.truffle.espresso.meta.Meta;
 import com.oracle.truffle.espresso.runtime.EspressoContext;
 import com.oracle.truffle.espresso.runtime.StaticObject;
 import com.oracle.truffle.espresso.substitutions.Host;
@@ -149,7 +152,7 @@ public final class ClassRegistries {
         ArrayList<Klass> klasses = new ArrayList<>();
         // look in boot class registry
         if (bootClassRegistry.classes.containsKey(type)) {
-            klasses.add(bootClassRegistry.classes.get(type));
+            klasses.add(bootClassRegistry.classes.get(type).klass());
             // if a type loaded by the boot loader, there can't
             // be any others, so return immediately
             return klasses.toArray(new Klass[0]);
@@ -159,7 +162,7 @@ public final class ClassRegistries {
             for (StaticObject classLoader : weakClassLoaderSet) {
                 ClassRegistry registry = getClassRegistry(classLoader);
                 if (registry != null && registry.classes != null && registry.classes.containsKey(type)) {
-                    klasses.add(registry.classes.get(type));
+                    klasses.add(registry.classes.get(type).klass());
                 }
             }
         }
@@ -168,12 +171,17 @@ public final class ClassRegistries {
 
     @TruffleBoundary
     public Klass[] getAllLoadedClasses() {
+        ArrayList<Klass> list = new ArrayList<>();
         // add classes from boot registry
-        ArrayList<Klass> list = new ArrayList<>(bootClassRegistry.classes.values());
+        for (RegistryEntry entry : bootClassRegistry.classes.values()) {
+            list.add(entry.klass());
+        }
         // add classes from all other registries
         synchronized (weakClassLoaderSet) {
             for (StaticObject classLoader : weakClassLoaderSet) {
-                list.addAll(getClassRegistry(classLoader).classes.values());
+                for (RegistryEntry entry : getClassRegistry(classLoader).classes.values()) {
+                    list.add(entry.klass());
+                }
             }
         }
         return list.toArray(Klass.EMPTY_ARRAY);
@@ -181,22 +189,24 @@ public final class ClassRegistries {
 
     /**
      * Do not call directly. Use
-     * {@link com.oracle.truffle.espresso.meta.Meta#loadKlassOrFail(Symbol, StaticObject)} or
-     * {@link com.oracle.truffle.espresso.meta.Meta#loadKlassOrNull(Symbol, StaticObject)}.
+     * {@link com.oracle.truffle.espresso.meta.Meta#loadKlassOrFail(Symbol, StaticObject, StaticObject)}
+     * or
+     * {@link com.oracle.truffle.espresso.meta.Meta#loadKlassOrNull(Symbol, StaticObject, StaticObject)}
+     * .
      */
     @TruffleBoundary
-    public Klass loadKlass(Symbol<Type> type, @Host(ClassLoader.class) StaticObject classLoader) {
+    public Klass loadKlass(Symbol<Type> type, @Host(ClassLoader.class) StaticObject classLoader, StaticObject protectionDomain) {
         assert classLoader != null : "use StaticObject.NULL for BCL";
 
         if (Types.isArray(type)) {
-            Klass elemental = loadKlass(context.getTypes().getElementalType(type), classLoader);
+            Klass elemental = loadKlass(context.getTypes().getElementalType(type), classLoader, protectionDomain);
             if (elemental == null) {
                 return null;
             }
             return elemental.getArrayClass(Types.getArrayDimensions(type));
         }
         ClassRegistry registry = getClassRegistry(classLoader);
-        return registry.loadKlass(type);
+        return registry.loadKlass(type, protectionDomain);
     }
 
     @TruffleBoundary
@@ -277,5 +287,44 @@ public final class ClassRegistries {
             loaders[i++] = INVALID_LOADER_ID;
         }
         return loaders;
+    }
+
+    static class RegistryEntry {
+        private final Klass klass;
+        private volatile Set<StaticObject> domains = null;
+
+        RegistryEntry(Klass k) {
+            this.klass = k;
+        }
+
+        public Klass klass() {
+            return klass;
+        }
+
+        void checkPackageAccess(Meta meta, StaticObject classLoader, StaticObject protectionDomain) {
+            CompilerAsserts.neverPartOfCompilation();
+            if (StaticObject.isNull(protectionDomain)) {
+                return;
+            }
+            Set<StaticObject> cachedDomains = getCachedDomains();
+            if (cachedDomains.contains(protectionDomain)) {
+                return;
+            }
+            // throws SecurityException if access is not allowed.
+            meta.java_lang_ClassLoader_checkPackageAccess.invokeDirect(classLoader, klass.mirror(), protectionDomain);
+            cachedDomains.add(protectionDomain);
+        }
+
+        private Set<StaticObject> getCachedDomains() {
+            if (domains == null) {
+                synchronized (this) {
+                    if (domains == null) {
+                        // We do not expect a lot of different protection domains
+                        domains = Collections.newSetFromMap(new ConcurrentHashMap<>(2));
+                    }
+                }
+            }
+            return domains;
+        }
     }
 }

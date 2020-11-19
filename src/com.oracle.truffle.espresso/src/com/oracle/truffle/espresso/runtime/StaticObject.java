@@ -1376,6 +1376,8 @@ public final class StaticObject implements TruffleObject {
             setModule(klass);
         }
         setHiddenField(klass.getMeta().HIDDEN_MIRROR_KLASS, klass);
+        // Will be overriden by JVM_DefineKlass if necessary.
+        setHiddenField(klass.getMeta().HIDDEN_PROTECTION_DOMAIN, StaticObject.NULL);
     }
 
     private void setModule(Klass klass) {
@@ -1623,7 +1625,8 @@ public final class StaticObject implements TruffleObject {
         assert !(value instanceof StaticObject) ||
                         (StaticObject.isNull((StaticObject) value)) ||
                         field.isHidden() ||
-                        getKlass().getMeta().resolveSymbolOrFail(field.getType(), getKlass().getDefiningClassLoader()) //
+                        getKlass().getMeta().resolveSymbolOrFail(field.getType(),
+                                        getKlass().getDefiningClassLoader(), getKlass().protectionDomain()) //
                                         .isAssignableFrom(((StaticObject) value).getKlass());
         if (field.isVolatile()) {
             setFieldVolatile(field, value);

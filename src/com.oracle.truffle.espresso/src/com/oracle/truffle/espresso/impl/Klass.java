@@ -1352,6 +1352,10 @@ public abstract class Klass implements ModifiersProvider, ContextAccess, KlassRe
         return false;
     }
 
+    public StaticObject protectionDomain() {
+        return (StaticObject) mirror().getHiddenField(getMeta().HIDDEN_PROTECTION_DOMAIN);
+    }
+
     /**
      * Returns an array containing the nest members of {@code this} as a nest host.
      */

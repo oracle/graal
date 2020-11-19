@@ -105,7 +105,7 @@ public final class Target_java_lang_Class {
                     @Host(String.class) StaticObject name,
                     boolean initialize,
                     @Host(ClassLoader.class) StaticObject loader,
-                    @SuppressWarnings("unused") @Host(Class.class) StaticObject caller,
+                    @Host(Class.class) StaticObject caller,
                     @InjectMeta Meta meta) {
 
         assert loader != null;
@@ -135,7 +135,8 @@ public final class Target_java_lang_Class {
             if (Types.isPrimitive(type)) {
                 klass = null;
             } else {
-                klass = meta.resolveSymbolOrNull(type, loader);
+                StaticObject protectionDomain = StaticObject.isNull(caller) ? StaticObject.NULL : caller.getMirrorKlass().protectionDomain();
+                klass = meta.resolveSymbolOrNull(type, loader, protectionDomain);
             }
 
             if (klass == null) {

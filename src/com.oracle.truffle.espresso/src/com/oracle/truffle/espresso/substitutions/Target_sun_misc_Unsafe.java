@@ -113,7 +113,7 @@ public final class Target_sun_misc_Unsafe {
 
         // TODO(garcia): Superclass must be a class, and non-final.
         ObjectKlass superKlass = superKlassType != null
-                        ? (ObjectKlass) context.getMeta().loadKlassOrFail(superKlassType, classLoader)
+                        ? (ObjectKlass) context.getMeta().loadKlassOrFail(superKlassType, classLoader, StaticObject.NULL)
                         : null;
 
         assert superKlass == null || !superKlass.isInterface();
@@ -130,7 +130,7 @@ public final class Target_sun_misc_Unsafe {
 
         // TODO(garcia): Superinterfaces must be interfaces.
         for (int i = 0; i < superInterfacesTypes.length; ++i) {
-            ObjectKlass interf = (ObjectKlass) context.getMeta().loadKlassOrFail(superInterfacesTypes[i], classLoader);
+            ObjectKlass interf = (ObjectKlass) context.getMeta().loadKlassOrFail(superInterfacesTypes[i], classLoader, StaticObject.NULL);
             superInterfaces[i] = interf;
             linkedInterfaces[i] = interf.getLinkedKlass();
         }
