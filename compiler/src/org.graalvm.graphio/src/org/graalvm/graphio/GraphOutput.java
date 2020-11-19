@@ -149,7 +149,7 @@ public final class GraphOutput<G, M> implements Closeable, WritableByteChannel {
      * @param <M> the type of the methods
      */
     public static final class Builder<G, N, M> {
-        private static final int DEFAULT_MAJOR_VERSION = 7;
+        private static final int DEFAULT_MAJOR_VERSION = 8;
         private static final int DEFAULT_MINOR_VERSION = 0;
 
         private final GraphStructure<G, N, ?, ?> structure;
