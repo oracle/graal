@@ -66,11 +66,22 @@ public class EspressoLauncher extends AbstractLanguageLauncher {
 
         /**
          * Returns the raw argument at the current position.
+         * <p>
+         * If the option given is not of the form {@code --[option]=[value]}, then the value
+         * returned by {@code getArg} is equal to the value returned by {@link #getKey()}. Else,
+         * unlike {@link #getKey()}, this method does not strip the option at the {@code "="}.
+         * <p>
+         * For example:
+         * <li>{@code -ea}:
+         * <p>
+         * both {@code getKey} and {@code getArg} returns "-ea".
+         * <li>{@code --module=path}:
+         * <p>
+         * {@code getKey} returns "--module", while {@code getArg} returns "--module=path".
          */
         String getArg() {
-            assert index < arguments.size();
             String val = arguments.get(index);
-            assert val.startsWith(currentKey);
+            assert val.startsWith(getKey());
             return val;
         }
 
@@ -82,7 +93,6 @@ public class EspressoLauncher extends AbstractLanguageLauncher {
          */
         String getKey() {
             if (currentKey == null) {
-                assert index < arguments.size();
                 String arg = arguments.get(index);
                 if (arg.startsWith("--")) {
                     int eqIdx = arg.indexOf('=');
@@ -99,18 +109,18 @@ public class EspressoLauncher extends AbstractLanguageLauncher {
         }
 
         /**
-         * Returns the key associated with the argument at the current position.
+         * Returns the value associated with the argument at the current position.
          * <p>
          * If the argument is of the form {@code --[option]=[value]} or {@code --[option] [value]},
          * returns {@code [value]}.
          */
-        String getValue(String err) {
+        String getValue(String arg, String type) {
             if (currentArgument == null) {
                 if (index + 1 < arguments.size()) {
                     currentArgument = arguments.get(index + 1);
                     skip = true;
                 } else {
-                    throw abort(err);
+                    throw abort("Error: " + arg + " requires " + type + " specification");
                 }
             }
             return currentArgument;
@@ -156,7 +166,7 @@ public class EspressoLauncher extends AbstractLanguageLauncher {
             switch (arg) {
                 case "-cp":
                 case "-classpath":
-                    classpath = args.getValue("Error: " + arg + " requires class path specification");
+                    classpath = args.getValue(arg, "class path");
                     break;
                 case "-p":
                 case "--module-path":
@@ -177,12 +187,12 @@ public class EspressoLauncher extends AbstractLanguageLauncher {
                 case "-m":
                 case "--module":
                     /* This arguments specifies in which module we find the main class. */
-                    mainClassName = args.getValue("Error: " + arg + " requires class path specification");
+                    mainClassName = args.getValue(arg, "module path");
                     espressoOptions.put("java.Module", mainClassName);
                     launchMode = LaunchMode.LM_MODULE;
                     break;
                 case "-jar":
-                    jarFileName = args.getValue("Error: " + arg + " requires jar file specification");
+                    jarFileName = args.getValue(arg, "jar file");
                     break;
                 case "-version":
                     versionAction = VersionAction.PrintAndExit;
@@ -308,7 +318,7 @@ public class EspressoLauncher extends AbstractLanguageLauncher {
     }
 
     private void parseNumberedOption(Arguments arguments, String property, String type) {
-        espressoOptions.merge(property, arguments.getValue("Error: " + arguments.getKey() + " requires " + type + " specification"), new BiFunction<String, String, String>() {
+        espressoOptions.merge(property, arguments.getValue(arguments.getKey(), type), new BiFunction<String, String, String>() {
             @Override
             public String apply(String a, String b) {
                 return a + File.pathSeparator + b;
@@ -317,7 +327,7 @@ public class EspressoLauncher extends AbstractLanguageLauncher {
     }
 
     private void parseSpecifiedOption(Arguments arguments, String property, String type) {
-        espressoOptions.put(property, arguments.getValue("Error: " + arguments.getKey() + " requires " + type + " specification"));
+        espressoOptions.put(property, arguments.getValue(arguments.getKey(), type));
     }
 
     private static String usage() {

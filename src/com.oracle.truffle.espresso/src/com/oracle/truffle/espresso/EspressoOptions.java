@@ -38,7 +38,6 @@ import org.graalvm.options.OptionType;
 
 import com.oracle.truffle.api.Option;
 import com.oracle.truffle.espresso.jdwp.api.JDWPOptions;
-import com.oracle.truffle.espresso.runtime.JavaVersion;
 
 @Option.Group(EspressoLanguage.ID)
 public final class EspressoOptions {
@@ -200,51 +199,6 @@ public final class EspressoOptions {
     @Option(help = "Sets the mode of the bytecode verifier.", //
                     category = OptionCategory.EXPERT, stability = OptionStability.STABLE) //
     public static final OptionKey<VerifyMode> Verify = new OptionKey<>(VerifyMode.REMOTE, VERIFY_MODE_OPTION_TYPE);
-
-    public enum VersionType {
-        J8("8"),
-        J11("11"),
-        J17("17"),
-        LATEST(Integer.toString(JavaVersion.LATEST_SUPPORTED)),
-        LAX("lax");
-
-        private final String asString;
-
-        VersionType(String asString) {
-            this.asString = asString;
-        }
-
-        public String asString() {
-            return asString;
-        }
-    }
-
-    private static final OptionType<VersionType> VERSION_OPTION_TYPE = new OptionType<>("Version",
-                    new Function<String, VersionType>() {
-                        @Override
-                        public VersionType apply(String s) {
-                            switch (s.toUpperCase()) {
-                                case "8":
-                                    return VersionType.J8;
-                                case "11":
-                                    return VersionType.J11;
-                                case "17":
-                                    return VersionType.J17;
-                                case "LATEST":
-                                    return VersionType.LATEST;
-                                case "LAX":
-                                    return VersionType.LAX;
-                                default:
-                                    throw new IllegalArgumentException("-Xverify: Mode can be '8', '11', '17', 'Latest' or 'Lax'.");
-                            }
-                        }
-                    });
-
-    @Option(help = "Sets the JVM to behave with a particular version in mind.\\n" +
-                    "Unless the version is specified to be 'Lax', Espresso will enforce that the given Java Home is of the required version, and fail if that is not the case.\\n" +
-                    "If the specified version is 'Lax', Espresso will infer the version needed by inspecting the given Java Home. This is the default.", //
-                    category = OptionCategory.USER, stability = OptionStability.STABLE) //
-    public static final OptionKey<VersionType> Version = new OptionKey<>(VersionType.LAX, VERSION_OPTION_TYPE);
 
     @Option(help = "Speculatively inline field accessors.", //
                     category = OptionCategory.EXPERT, stability = OptionStability.EXPERIMENTAL) //
