@@ -64,41 +64,38 @@ public class DwarfDebugInfo extends DebugInfoBase {
      * Define all the abbrev section codes we need for our DIEs.
      */
     @SuppressWarnings("unused") public static final int DW_ABBREV_CODE_null = 0;
-    // level 0 DIEs
+    /* Level 0 DIEs. */
     public static final int DW_ABBREV_CODE_builtin_unit = 1;
     public static final int DW_ABBREV_CODE_class_unit1 = 2;
     public static final int DW_ABBREV_CODE_class_unit2 = 3;
     public static final int DW_ABBREV_CODE_array_unit = 4;
-    // level 1 DIEs
+    /* Level 1 DIEs. */
     public static final int DW_ABBREV_CODE_primitive_type = 5;
     public static final int DW_ABBREV_CODE_void_type = 6;
     public static final int DW_ABBREV_CODE_object_header = 7;
     public static final int DW_ABBREV_CODE_class_layout = 8;
     public static final int DW_ABBREV_CODE_class_pointer = 9;
-    public static final int DW_ABBREV_CODE_class_typedef = 10;
-    public static final int DW_ABBREV_CODE_method_location = 11;
-    public static final int DW_ABBREV_CODE_static_field_location = 12;
-    public static final int DW_ABBREV_CODE_array_layout = 13;
-    public static final int DW_ABBREV_CODE_array_pointer = 14;
-    public static final int DW_ABBREV_CODE_array_typedef = 15;
-    public static final int DW_ABBREV_CODE_interface_layout = 16;
-    public static final int DW_ABBREV_CODE_interface_pointer = 17;
-    public static final int DW_ABBREV_CODE_interface_typedef = 18;
-    // level 2 DIEs
-    public static final int DW_ABBREV_CODE_method_declaration1 = 19;
-    public static final int DW_ABBREV_CODE_method_declaration2 = 20;
-    public static final int DW_ABBREV_CODE_field_declaration1 = 21;
-    public static final int DW_ABBREV_CODE_field_declaration2 = 22;
-    public static final int DW_ABBREV_CODE_field_declaration3 = 23;
-    public static final int DW_ABBREV_CODE_field_declaration4 = 24;
-    public static final int DW_ABBREV_CODE_header_field = 25;
-    public static final int DW_ABBREV_CODE_array_data_type = 26;
-    public static final int DW_ABBREV_CODE_super_reference = 27;
-    public static final int DW_ABBREV_CODE_interface_implementor = 28;
-    // level 3 DIEs
-    public static final int DW_ABBREV_CODE_method_parameter_declaration1 = 29;
-    public static final int DW_ABBREV_CODE_method_parameter_declaration2 = 30;
-    public static final int DW_ABBREV_CODE_method_parameter_declaration3 = 31;
+    public static final int DW_ABBREV_CODE_method_location = 10;
+    public static final int DW_ABBREV_CODE_static_field_location = 11;
+    public static final int DW_ABBREV_CODE_array_layout = 12;
+    public static final int DW_ABBREV_CODE_array_pointer = 13;
+    public static final int DW_ABBREV_CODE_interface_layout = 14;
+    public static final int DW_ABBREV_CODE_interface_pointer = 15;
+    /* Level 2 DIEs. */
+    public static final int DW_ABBREV_CODE_method_declaration1 = 16;
+    public static final int DW_ABBREV_CODE_method_declaration2 = 17;
+    public static final int DW_ABBREV_CODE_field_declaration1 = 18;
+    public static final int DW_ABBREV_CODE_field_declaration2 = 19;
+    public static final int DW_ABBREV_CODE_field_declaration3 = 20;
+    public static final int DW_ABBREV_CODE_field_declaration4 = 21;
+    public static final int DW_ABBREV_CODE_header_field = 22;
+    public static final int DW_ABBREV_CODE_array_data_type = 23;
+    public static final int DW_ABBREV_CODE_super_reference = 24;
+    public static final int DW_ABBREV_CODE_interface_implementor = 25;
+    /* Level 3 DIEs. */
+    public static final int DW_ABBREV_CODE_method_parameter_declaration1 = 26;
+    public static final int DW_ABBREV_CODE_method_parameter_declaration2 = 27;
+    public static final int DW_ABBREV_CODE_method_parameter_declaration3 = 28;
     /*
      * Define all the Dwarf tags we need for our DIEs.
      */
@@ -109,7 +106,6 @@ public class DwarfDebugInfo extends DebugInfoBase {
     public static final int DW_TAG_pointer_type = 0x0f;
     public static final int DW_TAG_compile_unit = 0x11;
     public static final int DW_TAG_structure_type = 0x13;
-    public static final int DW_TAG_typedef = 0x16;
     public static final int DW_TAG_union_type = 0x17;
     public static final int DW_TAG_inheritance = 0x1c;
     public static final int DW_TAG_base_type = 0x24;
@@ -134,9 +130,9 @@ public class DwarfDebugInfo extends DebugInfoBase {
     public static final int DW_AT_accessibility = 0x32;
     public static final int DW_AT_artificial = 0x34;
     public static final int DW_AT_data_member_location = 0x38;
-    // public static final int DW_AT_decl_column = 0x39;
+    @SuppressWarnings("unused") public static final int DW_AT_decl_column = 0x39;
     public static final int DW_AT_decl_file = 0x3a;
-    // public static final int DW_AT_decl_line = 0x3b;
+    @SuppressWarnings("unused") public static final int DW_AT_decl_line = 0x3b;
     public static final int DW_AT_declaration = 0x3c;
     public static final int DW_AT_encoding = 0x3e;
     public static final int DW_AT_external = 0x3f;
@@ -144,7 +140,8 @@ public class DwarfDebugInfo extends DebugInfoBase {
     @SuppressWarnings("unused") public static final int DW_AT_frame_base = 0x40;
     public static final int DW_AT_specification = 0x47;
     public static final int DW_AT_type = 0x49;
-    public static final int Dw_AT_object_pointer = 0x64;
+    public static final int DW_AT_data_location = 0x50;
+    public static final int DW_AT_object_pointer = 0x64;
 
     /*
      * Define all the Dwarf attribute forms we need for our DIEs.
@@ -233,14 +230,22 @@ public class DwarfDebugInfo extends DebugInfoBase {
      * Values used to build DWARF expressions and locations
      */
     public static final byte DW_OP_addr = 0x03;
+    @SuppressWarnings("unused") public static final byte DW_OP_deref = 0x06;
+    public static final byte DW_OP_dup = 0x12;
+    public static final byte DW_OP_and = 0x1a;
+    public static final byte DW_OP_not = 0x20;
+    public static final byte DW_OP_shl = 0x20;
     public static final byte DW_OP_plus = 0x22;
+    public static final byte DW_OP_bra = 0x28;
+    public static final byte DW_OP_eq = 0x29;
+    public static final byte DW_OP_lit0 = 0x30;
     public static final byte DW_OP_breg0 = 0x70;
     public static final byte DW_OP_push_object_address = (byte) 0x97;
 
-    // register constants for AArch64
+    /* Register constants for AArch64. */
     public static final byte rheapbase_aarch64 = (byte) 27;
     public static final byte rthread_aarch64 = (byte) 28;
-    // register constants for x86
+    /* Register constants for x86. */
     public static final byte rheapbase_x86 = (byte) 14;
     public static final byte rthread_x86 = (byte) 15;
 
@@ -370,11 +375,6 @@ public class DwarfDebugInfo extends DebugInfoBase {
          */
         private int layoutIndex;
         /**
-         * Index of the class entry's pointer type for the class_layout DIE in the debug_info
-         * section.
-         */
-        private int pointerIndex;
-        /**
          * Index into debug_line section for associated compilation unit.
          */
         private int lineIndex;
@@ -400,7 +400,6 @@ public class DwarfDebugInfo extends DebugInfoBase {
             this.cuIndex = -1;
             this.deoptCUIndex = -1;
             this.layoutIndex = -1;
-            this.pointerIndex = -1;
             this.lineIndex = -1;
             this.linePrologueSize = -1;
             this.lineSectionSize = -1;
@@ -458,6 +457,7 @@ public class DwarfDebugInfo extends DebugInfoBase {
         return typeProperties;
     }
 
+    @SuppressWarnings("unused")
     private DwarfClassProperties lookupClassProperties(String typeName) {
         DwarfTypeProperties classProperties = propertiesIndex.get(typeName);
         assert classProperties != null;
@@ -528,19 +528,6 @@ public class DwarfDebugInfo extends DebugInfoBase {
         return classProperties.layoutIndex;
     }
 
-    void setPointerIndex(ClassEntry classEntry, int idx) {
-        DwarfClassProperties classProperties = lookupClassProperties(classEntry);
-        assert classProperties.getTypeEntry() == classEntry;
-        assert classProperties.pointerIndex == -1 || classProperties.pointerIndex == idx;
-        classProperties.pointerIndex = idx;
-    }
-
-    int getPointerIndex(String typeName) {
-        DwarfClassProperties classProperties = lookupClassProperties(typeName);
-        assert classProperties.pointerIndex >= 0;
-        return classProperties.pointerIndex;
-    }
-
     void setLineIndex(ClassEntry classEntry, int idx) {
         DwarfClassProperties classProperties;
         classProperties = lookupClassProperties(classEntry);
@@ -553,7 +540,7 @@ public class DwarfDebugInfo extends DebugInfoBase {
         DwarfClassProperties classProperties;
         classProperties = lookupClassProperties(classEntry);
         assert classProperties.getTypeEntry() == classEntry;
-        // line index may be fetched without being set
+        /* line index may be fetched without being set */
         assert classProperties.lineIndex >= -1;
         return classProperties.lineIndex;
     }

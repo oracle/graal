@@ -111,6 +111,31 @@ public class ClassEntry extends StructureTypeEntry {
         }
     }
 
+    @Override
+    public DebugTypeKind typeKind() {
+        return DebugTypeKind.INSTANCE;
+    }
+
+    @Override
+    public void addDebugInfo(DebugInfoBase debugInfoBase, DebugTypeInfo debugTypeInfo, DebugContext debugContext) {
+        assert TypeEntry.canonicalize(debugTypeInfo.typeName()).equals(typeName);
+        DebugInstanceTypeInfo debugInstanceTypeInfo = (DebugInstanceTypeInfo) debugTypeInfo;
+        /* Add details of super and interface classes */
+        String superName = debugInstanceTypeInfo.superName();
+        if (superName != null) {
+            superName = TypeEntry.canonicalize(superName);
+        }
+        debugContext.log("typename %s adding super %s\n", typeName, superName);
+        if (superName != null) {
+            this.superClass = debugInfoBase.lookupClassEntry(superName);
+        }
+        debugInstanceTypeInfo.interfaces().forEach(interfaceName -> processInterface(interfaceName, debugInfoBase, debugContext));
+        /* Add details of fields and field types */
+        debugInstanceTypeInfo.fieldInfoProvider().forEach(debugFieldInfo -> this.processField(debugFieldInfo, debugInfoBase, debugContext));
+        /* Add details of methods and method types */
+        debugInstanceTypeInfo.methodInfoProvider().forEach(methodFieldInfo -> this.processMethod(methodFieldInfo, debugInfoBase, debugContext));
+    }
+
     public void indexPrimary(Range primary, List<DebugFrameSizeChange> frameSizeInfos, int frameSize) {
         if (primaryIndex.get(primary) == null) {
             PrimaryEntry primaryEntry = new PrimaryEntry(primary, frameSizeInfos, frameSize, this);
@@ -122,36 +147,32 @@ public class ClassEntry extends StructureTypeEntry {
                 /* deopt targets should all come after normal methods */
                 assert includesDeoptTarget == false;
             }
-            FileEntry fileEntry = primary.getFileEntry();
-            assert fileEntry != null;
-            indexFileEntry(fileEntry);
+            FileEntry primaryFileEntry = primary.getFileEntry();
+            assert primaryFileEntry != null;
+            indexLocalFileEntry(primaryFileEntry);
         }
     }
 
     public void indexSubRange(Range subrange) {
         Range primary = subrange.getPrimary();
-        /*
-         * the subrange should belong to a primary range
-         */
+        /* The subrange should belong to a primary range. */
         assert primary != null;
         PrimaryEntry primaryEntry = primaryIndex.get(primary);
-        /*
-         * we should already have seen the primary range
-         */
+        /* We should already have seen the primary range. */
         assert primaryEntry != null;
         assert primaryEntry.getClassEntry() == this;
         primaryEntry.addSubRange(subrange);
         FileEntry subFileEntry = subrange.getFileEntry();
         if (subFileEntry != null) {
-            indexFileEntry(subFileEntry);
+            indexLocalFileEntry(subFileEntry);
         }
     }
 
-    private void indexFileEntry(FileEntry fileEntry) {
-        if (localFilesIndex.get(fileEntry) == null) {
-            localFiles.add(fileEntry);
-            localFilesIndex.put(fileEntry, localFiles.size());
-            DirEntry dirEntry = fileEntry.getDirEntry();
+    private void indexLocalFileEntry(FileEntry localFileEntry) {
+        if (localFilesIndex.get(localFileEntry) == null) {
+            localFiles.add(localFileEntry);
+            localFilesIndex.put(localFileEntry, localFiles.size());
+            DirEntry dirEntry = localFileEntry.getDirEntry();
             if (dirEntry != null && localDirsIndex.get(dirEntry) == null) {
                 localDirs.add(dirEntry);
                 localDirsIndex.put(dirEntry, localDirs.size());
@@ -205,6 +226,7 @@ public class ClassEntry extends StructureTypeEntry {
         return primaryEntries;
     }
 
+    @SuppressWarnings("unused")
     public Object primaryIndexFor(Range primaryRange) {
         return primaryIndex.get(primaryRange);
     }
@@ -229,31 +251,6 @@ public class ClassEntry extends StructureTypeEntry {
             }
         }
         return "";
-    }
-
-    @Override
-    public DebugTypeKind typeKind() {
-        return DebugTypeKind.INSTANCE;
-    }
-
-    @Override
-    public void addDebugInfo(DebugInfoBase debugInfoBase, DebugTypeInfo debugTypeInfo, DebugContext debugContext) {
-        assert TypeEntry.canonicalize(debugTypeInfo.typeName()).equals(typeName);
-        DebugInstanceTypeInfo debugInstanceTypeInfo = (DebugInstanceTypeInfo) debugTypeInfo;
-        /* Add details of super and interface classes */
-        String superName = debugInstanceTypeInfo.superName();
-        if (superName != null) {
-            superName = TypeEntry.canonicalize(superName);
-        }
-        debugContext.log("typename %s adding super %s\n", typeName, superName);
-        if (superName != null) {
-            this.superClass = debugInfoBase.lookupClassEntry(superName);
-        }
-        debugInstanceTypeInfo.interfaces().forEach(interfaceName -> processInterface(interfaceName, debugInfoBase, debugContext));
-        /* Add details of fields and field types */
-        debugInstanceTypeInfo.fieldInfoProvider().forEach(debugFieldInfo -> this.processField(debugFieldInfo, debugInfoBase, debugContext));
-        /* Add details of methods and method types */
-        debugInstanceTypeInfo.methodInfoProvider().forEach(methodFieldInfo -> this.processMethod(methodFieldInfo, debugInfoBase, debugContext));
     }
 
     private void processInterface(String interfaceName, DebugInfoBase debugInfoBase, DebugContext debugContext) {
@@ -289,11 +286,11 @@ public class ClassEntry extends StructureTypeEntry {
         Path cachePath = debugMethodInfo.cachePath();
         // n.b. the method file may differ from the owning class file when the method is a
         // substitution
-        FileEntry fileEntry = debugInfoBase.ensureFileEntry(fileName, filePath, cachePath);
-        methods.add(new MethodEntry(fileEntry, methodName, this, resultType, paramTypeArray, paramNameArray, modifiers));
+        FileEntry methodFileEntry = debugInfoBase.ensureFileEntry(fileName, filePath, cachePath);
+        methods.add(new MethodEntry(methodFileEntry, methodName, this, resultType, paramTypeArray, paramNameArray, modifiers));
     }
 
-    private String formatParams(List<String> paramTypes, List<String> paramNames) {
+    private static String formatParams(List<String> paramTypes, List<String> paramNames) {
         if (paramNames.size() == 0) {
             return "";
         }
@@ -321,23 +318,27 @@ public class ClassEntry extends StructureTypeEntry {
         return superClass;
     }
 
-    public Range makePrimaryRange(String methodName, String symbolName, String paramSignature, String returnTypeName, StringTable stringTable, FileEntry fileEntry, int lo, int hi, int primaryLine,
+    public Range makePrimaryRange(String methodName, String symbolName, String paramSignature, String returnTypeName, StringTable stringTable, FileEntry primaryFileEntry, int lo,
+                    int hi, int primaryLine,
                     int modifiers, boolean isDeoptTarget) {
-        if (fileEntry == null) {
-            // search for a matching method to supply the file entry
-            // or failing that use the one from this class
+        FileEntry fileEntryToUse = primaryFileEntry;
+        if (fileEntryToUse == null) {
+            /*
+             * Search for a matching method to supply the file entry or failing that use the one
+             * from this class.
+             */
             for (MethodEntry methodEntry : methods) {
-                if (methodEntry.match(methodName, paramSignature, returnTypeName, isDeoptTarget)) {
+                if (methodEntry.match(methodName, paramSignature, returnTypeName)) {
                     // maybe the method's file entry
-                    fileEntry = methodEntry.getFileEntry();
+                    fileEntryToUse = methodEntry.getFileEntry();
                     break;
                 }
             }
-            if (fileEntry == null) {
-                // last chance is the class's file entry
-                fileEntry = this.fileEntry;
+            if (fileEntryToUse == null) {
+                /* last chance is the class's file entry */
+                fileEntryToUse = this.fileEntry;
             }
         }
-        return new Range(this.typeName, methodName, symbolName, paramSignature, returnTypeName, stringTable, fileEntry, lo, hi, primaryLine, modifiers, isDeoptTarget);
+        return new Range(this.typeName, methodName, symbolName, paramSignature, returnTypeName, stringTable, fileEntryToUse, lo, hi, primaryLine, modifiers, isDeoptTarget);
     }
 }

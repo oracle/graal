@@ -39,10 +39,6 @@ import org.graalvm.compiler.debug.DebugContext;
 
 import java.util.Map;
 
-import static com.oracle.objectfile.elf.dwarf.DwarfDebugInfo.DW_LINE_SECTION_NAME;
-import static com.oracle.objectfile.elf.dwarf.DwarfDebugInfo.DW_STR_SECTION_NAME;
-import static com.oracle.objectfile.elf.dwarf.DwarfDebugInfo.DW_VERSION_2;
-
 /**
  * Section generator for debug_line section.
  */
@@ -138,7 +134,7 @@ public class DwarfLineSectionImpl extends DwarfSectionImpl {
 
     @Override
     public String getSectionName() {
-        return DW_LINE_SECTION_NAME;
+        return DwarfDebugInfo.DW_LINE_SECTION_NAME;
     }
 
     @Override
@@ -321,7 +317,7 @@ public class DwarfLineSectionImpl extends DwarfSectionImpl {
         /*
          * 2 ubyte version is always 2.
          */
-        pos = putShort(DW_VERSION_2, buffer, pos);
+        pos = putShort(DwarfDebugInfo.DW_VERSION_2, buffer, pos);
         /*
          * 4 ubyte prologue length includes rest of header and dir + file table section.
          */
@@ -915,7 +911,7 @@ public class DwarfLineSectionImpl extends DwarfSectionImpl {
     /**
      * The debug_line section depends on debug_str section.
      */
-    private static final String TARGET_SECTION_NAME = DW_STR_SECTION_NAME;
+    private static final String TARGET_SECTION_NAME = DwarfDebugInfo.DW_STR_SECTION_NAME;
 
     @Override
     public String targetSectionName() {

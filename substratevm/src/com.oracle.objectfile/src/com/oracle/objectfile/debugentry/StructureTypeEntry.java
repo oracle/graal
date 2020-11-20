@@ -57,11 +57,11 @@ public abstract class StructureTypeEntry extends TypeEntry {
     protected void processField(DebugFieldInfo debugFieldInfo, DebugInfoBase debugInfoBase, DebugContext debugContext) {
         String fieldName = debugInfoBase.uniqueDebugString(debugFieldInfo.name());
         String valueTypeName = TypeEntry.canonicalize(debugFieldInfo.valueType());
-        int size = debugFieldInfo.size();
-        int offset = debugFieldInfo.offset();
-        int modifiers = debugFieldInfo.modifiers();
+        int fieldSize = debugFieldInfo.size();
+        int fieldoffset = debugFieldInfo.offset();
+        int fieldModifiers = debugFieldInfo.modifiers();
         debugContext.log("typename %s adding %s field %s type %s size %s at offset %d\n",
-                        typeName, memberModifiers(modifiers), fieldName, valueTypeName, size, offset);
+                        typeName, memberModifiers(fieldModifiers), fieldName, valueTypeName, fieldSize, fieldoffset);
         TypeEntry valueType = debugInfoBase.lookupTypeEntry(valueTypeName);
         String fileName = debugFieldInfo.fileName();
         Path filePath = debugFieldInfo.filePath();
@@ -69,7 +69,7 @@ public abstract class StructureTypeEntry extends TypeEntry {
         // n.b. the field file may differ from the owning class file when the field is a
         // substitution
         FileEntry fileEntry = debugInfoBase.ensureFileEntry(fileName, filePath, cachePath);
-        fields.add(new FieldEntry(fileEntry, fieldName, this, valueType, size, offset, modifiers));
+        fields.add(new FieldEntry(fileEntry, fieldName, this, valueType, fieldSize, fieldoffset, fieldModifiers));
     }
 
     String memberModifiers(int modifiers) {

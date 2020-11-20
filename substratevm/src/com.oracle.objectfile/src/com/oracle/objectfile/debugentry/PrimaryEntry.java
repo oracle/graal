@@ -28,7 +28,6 @@ package com.oracle.objectfile.debugentry;
 
 import com.oracle.objectfile.debuginfo.DebugInfoProvider.DebugFrameSizeChange;
 
-import java.util.HashMap;
 import java.util.LinkedList;
 import java.util.List;
 
@@ -48,10 +47,6 @@ public class PrimaryEntry {
      * A list of subranges associated with the primary range.
      */
     private List<Range> subranges;
-    /**
-     * A mapping from subranges to their associated file entry.
-     */
-    private HashMap<Range, FileEntry> subrangeIndex;
     /**
      * Details of of compiled method frame size changes.
      */

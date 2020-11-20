@@ -50,6 +50,7 @@ public class FileEntry {
     }
 
     public String getPathName() {
+        @SuppressWarnings("hiding")
         DirEntry dirEntry = getDirEntry();
         if (dirEntry == null) {
             return "";
@@ -59,7 +60,6 @@ public class FileEntry {
     }
 
     public String getFullName() {
-        DirEntry dirEntry = getDirEntry();
         if (dirEntry == null) {
             return fileName;
         } else {

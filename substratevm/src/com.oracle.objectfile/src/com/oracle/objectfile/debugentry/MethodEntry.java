@@ -68,11 +68,11 @@ public class MethodEntry extends MemberEntry {
     public String getParamName(int idx) {
         assert paramNames != null;
         assert idx < paramNames.length;
-        // n.b. param names may be null
+        /* N.b. param names may be null. */
         return paramNames[idx];
     }
 
-    public boolean match(String methodName, String paramSignature, String returnTypeName, boolean isDeoptTarget) {
+    public boolean match(String methodName, String paramSignature, String returnTypeName) {
         if (!methodName.equals(this.memberName)) {
             return false;
         }

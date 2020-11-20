@@ -763,7 +763,7 @@ def _debuginfotest(native_image, path, build_only, args):
     native_image(native_image_args)
 
     if mx.get_os() == 'linux' and not build_only:
-        mx.run(['gdb', '-x', join(parent, 'mx.substratevm/testhello.py'), join(path, 'hello.hello')])
+        mx.run([os.environ.get('GDB_BIN', 'gdb'), '-x', join(parent, 'mx.substratevm/testhello.py'), join(path, 'hello.hello')])
 
 
 def _javac_image(native_image, path, args=None):

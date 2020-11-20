@@ -42,9 +42,6 @@ import java.util.Map;
 import java.util.Set;
 import java.util.stream.Stream;
 
-import static com.oracle.objectfile.elf.dwarf.DwarfDebugInfo.HEAP_BEGIN_NAME;
-import static com.oracle.objectfile.elf.dwarf.DwarfDebugInfo.TEXT_SECTION_NAME;
-
 /**
  * A class from which all DWARF debug sections inherit providing common behaviours.
  */
@@ -207,7 +204,7 @@ public abstract class DwarfSectionImpl extends BasicProgbitsSectionImpl {
         /*
          * Mark address so it is relocated relative to the start of the text segment.
          */
-        markRelocationSite(pos, ObjectFile.RelocationKind.DIRECT_8, TEXT_SECTION_NAME, false, Long.valueOf(l));
+        markRelocationSite(pos, ObjectFile.RelocationKind.DIRECT_8, DwarfDebugInfo.TEXT_SECTION_NAME, false, Long.valueOf(l));
         pos = putLong(0, buffer, pos);
         return pos;
     }
@@ -217,7 +214,7 @@ public abstract class DwarfSectionImpl extends BasicProgbitsSectionImpl {
         /*
          * Mark address so it is relocated relative to the start of the heap.
          */
-        markRelocationSite(pos, ObjectFile.RelocationKind.DIRECT_8, HEAP_BEGIN_NAME, false, Long.valueOf(l));
+        markRelocationSite(pos, ObjectFile.RelocationKind.DIRECT_8, DwarfDebugInfo.HEAP_BEGIN_NAME, false, Long.valueOf(l));
         pos = putLong(0, buffer, pos);
         return pos;
     }
@@ -430,15 +427,15 @@ public abstract class DwarfSectionImpl extends BasicProgbitsSectionImpl {
 
         for (LayoutDecision.Kind targetKind : targetKinds) {
             if (targetKind == LayoutDecision.Kind.SIZE) {
-                // make our size depend on the target size so we compute sizes in order
+                /* Make our size depend on the target size so we compute sizes in order. */
                 LayoutDecision targetDecision = decisions.get(targetSection).getDecision(targetKind);
                 deps.add(BuildDependency.createOrGet(ourSize, targetDecision));
             } else if (targetKind == LayoutDecision.Kind.CONTENT) {
-                // make our content depend on the target content so we compute contents in order
+                /* Make our content depend on the target content so we compute contents in order. */
                 LayoutDecision targetDecision = decisions.get(targetSection).getDecision(targetKind);
                 deps.add(BuildDependency.createOrGet(ourContent, targetDecision));
             } else {
-                // make our size depend on the relevant target's property
+                /* Make our size depend on the relevant target's property. */
                 LayoutDecision targetDecision = decisions.get(targetSection).getDecision(targetKind);
                 deps.add(BuildDependency.createOrGet(ourSize, targetDecision));
             }
@@ -483,17 +480,6 @@ public abstract class DwarfSectionImpl extends BasicProgbitsSectionImpl {
 
     protected void setTypeIndex(TypeEntry typeEntry, int pos) {
         dwarfSections.setTypeIndex(typeEntry, pos);
-    }
-
-    protected int getPointerIndex(String typeName) {
-        if (!contentByteArrayCreated()) {
-            return 0;
-        }
-        return dwarfSections.getPointerIndex(typeName);
-    }
-
-    protected void setPointerIndex(ClassEntry classEntry, int pos) {
-        dwarfSections.setPointerIndex(classEntry, pos);
     }
 
     protected int getCUIndex(ClassEntry classEntry) {

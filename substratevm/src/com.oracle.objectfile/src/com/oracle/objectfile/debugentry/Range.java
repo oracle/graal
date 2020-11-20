@@ -40,10 +40,8 @@ public class Range {
     private String symbolName;
     private String paramSignature;
     private String returnTypeName;
-    private String methodNameWithParams;
     private String fullMethodName;
     private String fullMethodNameWithParams;
-    private String fullMethodNameWithParamsAndReturnType;
     private int lo;
     private int hi;
     private int line;
@@ -87,7 +85,6 @@ public class Range {
         this.returnTypeName = stringTable.uniqueString(returnTypeName);
         this.fullMethodName = stringTable.uniqueString(constructClassAndMethodName());
         this.fullMethodNameWithParams = stringTable.uniqueString(constructClassAndMethodNameWithParams());
-        this.fullMethodNameWithParamsAndReturnType = stringTable.uniqueString(constructClassAndMethodNameWithParamsAndReturnType());
         this.lo = lo;
         this.hi = hi;
         this.line = line;
@@ -140,10 +137,6 @@ public class Range {
         return fullMethodNameWithParams;
     }
 
-    public String getFullMethodNameWithParamsAndReturnType() {
-        return fullMethodNameWithParamsAndReturnType;
-    }
-
     public boolean isDeoptTarget() {
         return isDeoptTarget;
     }
@@ -177,10 +170,6 @@ public class Range {
 
     private String constructClassAndMethodNameWithParams() {
         return getExtendedMethodName(true, true, false);
-    }
-
-    private String constructClassAndMethodNameWithParamsAndReturnType() {
-        return getExtendedMethodName(true, true, true);
     }
 
     public String getMethodReturnTypeName() {

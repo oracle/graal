@@ -98,8 +98,6 @@ public abstract class TypeEntry {
     public abstract void addDebugInfo(DebugInfoBase debugInfoBase, DebugTypeInfo debugTypeInfo, DebugContext debugContext);
 
     public static String canonicalize(String typeName) {
-        // typeName = typeName.replace('$', '.');
-        typeName = typeName.replace(" ", "__");
-        return typeName;
+        return typeName.replace(" ", "__");
     }
 }

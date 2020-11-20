@@ -49,7 +49,7 @@ public class ArrayTypeEntry extends TypeEntry {
     public void addDebugInfo(DebugInfoBase debugInfoBase, DebugTypeInfo debugTypeInfo, DebugContext debugContext) {
         DebugArrayTypeInfo debugArrayTypeInfo = (DebugArrayTypeInfo) debugTypeInfo;
         String elementTypeName = TypeEntry.canonicalize(debugArrayTypeInfo.elementType());
-        elementType = debugInfoBase.lookupTypeEntry(elementTypeName);
+        this.elementType = debugInfoBase.lookupTypeEntry(elementTypeName);
         this.headerSize = debugArrayTypeInfo.headerSize();
         this.lengthOffset = debugArrayTypeInfo.lengthOffset();
         debugContext.log("typename %s element type %s header size %d length offset %d\n", typeName, elementTypeName, headerSize, lengthOffset);
