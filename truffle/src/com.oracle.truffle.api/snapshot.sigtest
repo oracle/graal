@@ -113,6 +113,25 @@ meth public static long multiplyHigh(long,long)
 meth public static long multiplyHighUnsigned(long,long)
 supr java.lang.Object
 
+CLSS public final com.oracle.truffle.api.HostCompilerDirectives
+cons public init()
+innr public abstract interface static !annotation BytecodeInterpreterSwitch
+innr public abstract interface static !annotation BytecodeInterpreterSwitchBoundary
+meth public static void consume(int)
+supr java.lang.Object
+
+CLSS public abstract interface static !annotation com.oracle.truffle.api.HostCompilerDirectives$BytecodeInterpreterSwitch
+ outer com.oracle.truffle.api.HostCompilerDirectives
+ anno 0 java.lang.annotation.Retention(java.lang.annotation.RetentionPolicy value=RUNTIME)
+ anno 0 java.lang.annotation.Target(java.lang.annotation.ElementType[] value=[METHOD, CONSTRUCTOR])
+intf java.lang.annotation.Annotation
+
+CLSS public abstract interface static !annotation com.oracle.truffle.api.HostCompilerDirectives$BytecodeInterpreterSwitchBoundary
+ outer com.oracle.truffle.api.HostCompilerDirectives
+ anno 0 java.lang.annotation.Retention(java.lang.annotation.RetentionPolicy value=RUNTIME)
+ anno 0 java.lang.annotation.Target(java.lang.annotation.ElementType[] value=[METHOD, CONSTRUCTOR])
+intf java.lang.annotation.Annotation
+
 CLSS public final com.oracle.truffle.api.InstrumentInfo
 meth public java.lang.String getId()
 meth public java.lang.String getName()
