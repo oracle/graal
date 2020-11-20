@@ -101,7 +101,7 @@ export async function selectActiveGraalVM(graalVMHome?: string, nonInteractive?:
     if (graalVMHome) {
         const graalVMVersion = await getGraalVMVersion(graalVMHome);
         if (graalVMVersion) {
-            configureGraalVMHome(graalVMHome, nonInteractive);
+            await configureGraalVMHome(graalVMHome, nonInteractive);
         }
     }
 }

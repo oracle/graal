@@ -21,8 +21,8 @@ const SELECT_EXISTING_GRAALVM: string = 'Select Existing GraalVM';
 const SELECT_ACTIVE_GRAALVM: string = 'Set Active GraalVM';
 
 export function activate(context: vscode.ExtensionContext) {
-	context.subscriptions.push(vscode.commands.registerCommand('extension.graalvm.selectGraalVMHome', (installation?: string | Installation, nonInteractive?: boolean) => {
-		selectActiveGraalVM(installation instanceof Installation ? installation.home : installation, nonInteractive);
+	context.subscriptions.push(vscode.commands.registerCommand('extension.graalvm.selectGraalVMHome', async (installation?: string | Installation, nonInteractive?: boolean) => {
+		await selectActiveGraalVM(installation instanceof Installation ? installation.home : installation, nonInteractive);
 	}));
 	context.subscriptions.push(vscode.commands.registerCommand('extension.graalvm.installGraalVM', () => {
 		installGraalVM(context);
