@@ -34,9 +34,10 @@ import java.util.Map;
 import org.graalvm.collections.EconomicMap;
 import org.graalvm.collections.EconomicSet;
 import org.graalvm.collections.Equivalence;
-import org.graalvm.compiler.core.common.type.PrimitiveStamp;
-import org.graalvm.compiler.core.common.type.StampFactory;
+import org.graalvm.compiler.core.common.type.IntegerStamp;
 import org.graalvm.compiler.debug.DebugContext;
+import org.graalvm.compiler.graph.Graph;
+import org.graalvm.compiler.graph.NodeBitMap;
 import org.graalvm.compiler.nodes.ConstantNode;
 import org.graalvm.compiler.nodes.FrameState;
 import org.graalvm.compiler.nodes.NodeView;
@@ -50,6 +51,7 @@ import org.graalvm.compiler.nodes.virtual.VirtualArrayNode;
 import org.graalvm.compiler.nodes.virtual.VirtualObjectNode;
 import org.graalvm.compiler.phases.BasePhase;
 import org.graalvm.compiler.phases.common.CanonicalizerPhase;
+import org.graalvm.compiler.phases.common.util.EconomicSetNodeEventListener;
 import org.graalvm.compiler.truffle.common.CompilableTruffleAST;
 import org.graalvm.compiler.truffle.common.TruffleCompilerRuntime;
 import org.graalvm.compiler.truffle.compiler.PerformanceInformationHandler;
@@ -107,9 +109,9 @@ public class FrameClearPhase extends BasePhase<CoreProviders> {
     private ValueNode zeroConstant;
 
     // Cached phis that have been proven can be illegals
-    private final EconomicSet<ValueNode> knownIllegals = EconomicSet.create();
+    private NodeBitMap knownIllegals;
     // Cached phis that have been proven not to be illegals
-    private final EconomicSet<ValueNode> knownSafe = EconomicSet.create();
+    private NodeBitMap knownSafe;
     // Cached tag nodes that have already reported a performance warning.
     private final EconomicSet<ValueNode> reported = EconomicSet.create();
 
@@ -145,14 +147,35 @@ public class FrameClearPhase extends BasePhase<CoreProviders> {
     }
 
     @Override
+    @SuppressWarnings("try")
     protected void run(StructuredGraph graph, CoreProviders context) {
-        doRun(graph, context);
+        EconomicSetNodeEventListener ec = new EconomicSetNodeEventListener();
+        try (Graph.NodeEventScope scope = graph.trackNodeEvents(ec)) {
+            init(graph);
+            doRun(graph, context);
+            clear();
+        }
+        if (!ec.getNodes().isEmpty()) {
+            // Get rid of newly unused nodes.
+            canonicalizer.apply(graph, context);
+        }
+    }
+
+    private void init(StructuredGraph graph) {
+        knownIllegals = graph.createNodeBitMap();
+        knownSafe = graph.createNodeBitMap();
+        nullConstant = ConstantNode.defaultForKind(JavaKind.Object, graph);
+        zeroConstant = ConstantNode.defaultForKind(JavaKind.Long, graph);
+    }
+
+    private void clear() {
+        knownIllegals = null;
+        knownSafe = null;
+        nullConstant = null;
+        zeroConstant = null;
     }
 
     private void doRun(StructuredGraph graph, CoreProviders context) {
-        nullConstant = ConstantNode.defaultForKind(JavaKind.Object, graph);
-        zeroConstant = ConstantNode.defaultForKind(JavaKind.Long, graph);
-
         for (FrameState fs : graph.getNodes(FrameState.TYPE)) {
             EconomicMap<VirtualObjectNode, EscapeObjectState> objectStates = getObjectStateMappings(fs);
             for (EscapeObjectState objectState : objectStates.getValues()) {
@@ -178,9 +201,6 @@ public class FrameClearPhase extends BasePhase<CoreProviders> {
                 }
             }
         }
-
-        // Get rid of newly unused nodes.
-        canonicalizer.apply(graph, context);
     }
 
     private void maybeClearFrameSlot(VirtualObjectState tagArrayVirtual, VirtualObjectState objectArrayVirtual, VirtualObjectState primitiveArrayVirtual, int i) {
@@ -191,8 +211,8 @@ public class FrameClearPhase extends BasePhase<CoreProviders> {
         }
         if (!tagNode.isJavaConstant()) {
             // frame slot can be of multiple kinds here
-            assert tagNode.stamp(NodeView.DEFAULT) instanceof PrimitiveStamp;
-            PrimitiveStamp tagStamp = (PrimitiveStamp) tagNode.stamp(NodeView.DEFAULT);
+            assert tagNode.stamp(NodeView.DEFAULT) instanceof IntegerStamp;
+            IntegerStamp tagStamp = (IntegerStamp) tagNode.stamp(NodeView.DEFAULT);
 
             boolean canBeIllegal;
             if (tagStamp.isUnrestricted()) {
@@ -232,23 +252,27 @@ public class FrameClearPhase extends BasePhase<CoreProviders> {
         }
     }
 
-    private boolean stampHasIllegal(PrimitiveStamp stamp) {
-        return !stamp.join(StampFactory.forInteger(stamp.getBits(), illegalTag, illegalTag)).isEmpty();
+    private boolean stampHasIllegal(IntegerStamp stamp) {
+        return stamp.contains(illegalTag);
     }
 
-    private boolean stampHasObject(PrimitiveStamp stamp) {
-        return !stamp.join(StampFactory.forInteger(stamp.getBits(), objectTag, objectTag)).isEmpty();
+    private boolean stampHasObject(IntegerStamp stamp) {
+        return stamp.contains(objectTag);
     }
 
-    private class UnbalancedIllegalExplorer {
-        private final EconomicSet<ValueNode> visited = EconomicSet.create();
+    private final class UnbalancedIllegalExplorer {
+        private final NodeBitMap visited;
+
+        private UnbalancedIllegalExplorer(Graph graph) {
+            visited = graph.createNodeBitMap();
+        }
 
         /*-
          * Note that this is not a complete exploration of the values: We are relying on the fact
          * that accesses to tags are only done through the provided methods of the
          * FrameWithoutBoxing class.
          *
-         * In particular, since these methods only ever puts constants in the tag slot, we will
+         * In particular, since these methods only ever put constants in the tag slot, we will
          * assume that a tag can either be:
          * - A constant
          * - A value with restricted stamp (Phi of constants, or ConditionalNode, for example)
@@ -266,8 +290,8 @@ public class FrameClearPhase extends BasePhase<CoreProviders> {
                 assert toProcess.getStackKind() == JavaKind.Int;
                 return toProcess.asJavaConstant().asInt() == illegalTag;
             } else if (!toProcess.stamp(NodeView.DEFAULT).isUnrestricted()) {
-                assert toProcess.stamp(NodeView.DEFAULT) instanceof PrimitiveStamp;
-                PrimitiveStamp stamp = (PrimitiveStamp) toProcess.stamp(NodeView.DEFAULT);
+                assert toProcess.stamp(NodeView.DEFAULT) instanceof IntegerStamp;
+                IntegerStamp stamp = (IntegerStamp) toProcess.stamp(NodeView.DEFAULT);
                 return stampHasIllegal(stamp);
             } else if (toProcess instanceof ValuePhiNode) {
                 if (knownIllegals.contains(toProcess)) {
@@ -276,14 +300,14 @@ public class FrameClearPhase extends BasePhase<CoreProviders> {
                 if (visited.contains(toProcess) || knownSafe.contains(toProcess)) {
                     return false;
                 }
-                visited.add(node);
+                visited.mark(node);
                 for (ValueNode value : ((ValuePhiNode) toProcess).values()) {
                     if (explore(value)) {
-                        knownIllegals.add(toProcess);
+                        knownIllegals.mark(toProcess);
                         return true;
                     }
                 }
-                knownSafe.add(toProcess);
+                knownSafe.mark(toProcess);
                 return false;
             } else {
                 /* tags 'should' only ever be constants or phi of tags. */
@@ -296,7 +320,7 @@ public class FrameClearPhase extends BasePhase<CoreProviders> {
      * Traverses phi graphs to find if phi can be both an illegal and something else.
      */
     private boolean unbalancedIllegal(ValueNode node) {
-        return new UnbalancedIllegalExplorer().explore(node);
+        return new UnbalancedIllegalExplorer(node.graph()).explore(node);
     }
 
     // Remaps virtual objects to their escaped states corresponding to the given frame state.
