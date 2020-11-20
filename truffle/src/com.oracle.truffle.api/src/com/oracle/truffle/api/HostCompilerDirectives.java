@@ -61,7 +61,7 @@ public final class HostCompilerDirectives {
      */
     @Retention(RetentionPolicy.RUNTIME)
     @Target({ElementType.METHOD, ElementType.CONSTRUCTOR})
-    public @interface TruffleInterpreter {
+    public @interface BytecodeInterpreterSwitch {
     }
 
     /**
@@ -72,7 +72,7 @@ public final class HostCompilerDirectives {
      */
     @Retention(RetentionPolicy.RUNTIME)
     @Target({ElementType.METHOD, ElementType.CONSTRUCTOR})
-    public @interface TruffleInterpreterBoundary {
+    public @interface BytecodeInterpreterSwitchBoundary {
     }
 
     /**

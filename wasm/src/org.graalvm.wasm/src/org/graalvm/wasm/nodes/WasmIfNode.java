@@ -41,7 +41,7 @@
 package org.graalvm.wasm.nodes;
 
 import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
-import com.oracle.truffle.api.HostCompilerDirectives.TruffleInterpreterBoundary;
+import com.oracle.truffle.api.HostCompilerDirectives.BytecodeInterpreterSwitchBoundary;
 import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.profiles.ConditionProfile;
 import org.graalvm.wasm.WasmCodeEntry;
@@ -65,7 +65,7 @@ public final class WasmIfNode extends WasmNode {
         this.falseBranch = falseBranch;
     }
 
-    @TruffleInterpreterBoundary
+    @BytecodeInterpreterSwitchBoundary
     @Override
     public int execute(WasmContext context, VirtualFrame frame, long[] locals, long[] stack) {
         int stackPointer = initialStackPointer - 1;

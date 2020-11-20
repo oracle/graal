@@ -46,8 +46,8 @@ import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.HostCompilerDirectives;
-import com.oracle.truffle.api.HostCompilerDirectives.TruffleInterpreter;
-import com.oracle.truffle.api.HostCompilerDirectives.TruffleInterpreterBoundary;
+import com.oracle.truffle.api.HostCompilerDirectives.BytecodeInterpreterSwitch;
+import com.oracle.truffle.api.HostCompilerDirectives.BytecodeInterpreterSwitchBoundary;
 import com.oracle.truffle.api.Truffle;
 import com.oracle.truffle.api.TruffleLanguage.ContextReference;
 import com.oracle.truffle.api.frame.FrameSlotTypeException;
@@ -340,8 +340,8 @@ public final class WasmBlockNode extends WasmNode implements RepeatingNode {
     }
 
     @Override
-    @TruffleInterpreter
-    @TruffleInterpreterBoundary
+    @BytecodeInterpreterSwitch
+    @BytecodeInterpreterSwitchBoundary
     @ExplodeLoop(kind = ExplodeLoop.LoopExplosionKind.FULL_EXPLODE_UNTIL_RETURN)
     public int execute(WasmContext context, VirtualFrame frame, long[] locals, long[] stack) {
         int childrenOffset = 0;
@@ -1329,7 +1329,7 @@ public final class WasmBlockNode extends WasmNode implements RepeatingNode {
         return -1;
     }
 
-    @TruffleInterpreterBoundary
+    @BytecodeInterpreterSwitchBoundary
     private int executeLoopNode(LoopNode loopNode, VirtualFrame frame) {
         int unwindCounter = (Integer) loopNode.execute(frame);
         // The unwind counter cannot be 0 at this point.
@@ -1337,13 +1337,13 @@ public final class WasmBlockNode extends WasmNode implements RepeatingNode {
         return unwindCounter;
     }
 
-    @TruffleInterpreterBoundary
+    @BytecodeInterpreterSwitchBoundary
     private Object executeDirectCall(int childrenOffset, Object[] args) {
         DirectCallNode callNode = (DirectCallNode) children[childrenOffset];
         return callNode.call(args);
     }
 
-    @TruffleInterpreterBoundary
+    @BytecodeInterpreterSwitchBoundary
     private Object executeIndirectCallNode(int childrenOffset, CallTarget target, Object[] args) {
         WasmIndirectCallNode callNode = (WasmIndirectCallNode) children[childrenOffset];
         return callNode.execute(target, args);
@@ -1357,7 +1357,7 @@ public final class WasmBlockNode extends WasmNode implements RepeatingNode {
         return (int) ((bits >>> 32) & 0xffff_ffffL);
     }
 
-    @TruffleInterpreterBoundary
+    @BytecodeInterpreterSwitchBoundary
     private RuntimeException createUnknownOpcodeError(int opcode, String s, Failure failure) {
         return Assert.fail(Assert.format(s, opcode), failure);
     }
@@ -2777,7 +2777,7 @@ public final class WasmBlockNode extends WasmNode implements RepeatingNode {
         return args;
     }
 
-    @TruffleInterpreterBoundary
+    @BytecodeInterpreterSwitchBoundary
     private WasmException formatException(String formatString, int type) {
         return WasmException.format(Failure.UNSPECIFIED_TRAP, this, formatString, type);
     }
