@@ -10,6 +10,9 @@ This changelog summarizes major changes between Truffle versions relevant to lan
     * `TruffleLanguage.isThreadAccessAllowed(Thread, boolean)`
     * `TruffleLanguage.initializeMultiThreading(Object)`
     * `TruffleLanguage.initializeThread(Object, Thread)`
+* Added `HostCompilerDirectives` for directives that guide the host compilations of Truffle interpreters.
+    * `HostCompilerDirectives.BytecodeInterpreterSwitch` - to denote methods that contain the instruction-dispatch switch in bytecode interpreters
+    * `HostCompilerDirectives.BytecodeInterpreterSwitchBoundary` - to denote methods that do not need to be inlined into the bytecode interpreter switch
 
 ## Version 20.3.0
 * Added `RepeatingNode.initialLoopStatus` and `RepeatingNode.shouldContinue` to allow defining a custom loop continuation condition.
