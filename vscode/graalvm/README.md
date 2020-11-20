@@ -9,12 +9,12 @@ The major goal of creating GraalVM VS Code Extension was to enable a polyglot en
 - [Features](#features)
 - [Installation and Setup](#graalvm-installation-and-setup)
 - [Java Development and Support](#java-development-and-support)
-- [Debug Adapter Protocol](#debug-adapter-protocol)
 - [JavaScript and Node.js Debugging](#javascript-and-nodejs-debugging)
 - [Python Debugging](#python-debugging)
 - [R Debugging](#r-debugging)
 - [Ruby Debugging](#ruby-debugging)
 - [Polyglot Applications Debugging](#polyglot-applications-debugging)
+- [Debug Adapter Protocol](#debug-adapter-protocol)
 - [Language Server Integration](#language-server-integration)
 - [R Language Server](#r-language-server)
 - [Ruby Language Server](#ruby-language-server)
@@ -30,7 +30,7 @@ You can now download and install any available GraalVM distribution right from t
 
 GraalVM Extension brings support for Java projects development and debugging in VS Code. This extension for VS Code also provides editing and debugging capabilities for JavaScript and Node.js, Python, R, and Ruby applications running on GraalVM by default.
 
-GraalVM VS Code Extension is a prerequisite for the [Micronaut support in VS Code](#), which brings many more possibilities for Java developers.
+GraalVM VS Code Extension is a prerequisite for the [Micronaut support in VS Code](../micronaut/README.md), which brings many more possibilities for Java developers.
 
 The future development of the extension should also enable generating native executables right from the VS Code console.
 The development team is actively working on further improvements and focus on GraalVM Extension providing high usability to developers.
