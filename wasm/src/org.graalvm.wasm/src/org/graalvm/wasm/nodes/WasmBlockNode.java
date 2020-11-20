@@ -69,10 +69,8 @@ import org.graalvm.wasm.WasmTable;
 import org.graalvm.wasm.WasmType;
 import org.graalvm.wasm.exception.Failure;
 import org.graalvm.wasm.exception.WasmException;
-import org.graalvm.wasm.memory.UnsafeWasmMemory;
 import org.graalvm.wasm.memory.WasmMemory;
 import org.graalvm.wasm.memory.WasmMemoryException;
-import sun.misc.Unsafe;
 
 import static org.graalvm.wasm.constants.Instructions.BLOCK;
 import static org.graalvm.wasm.constants.Instructions.BR;
@@ -354,9 +352,6 @@ public final class WasmBlockNode extends WasmNode implements RepeatingNode {
         final WasmCodeEntry codeEntry = codeEntry();
         final WasmMemory memory = instance().memory();
         final byte[] data = codeEntry.data();
-        if (data == null) {
-            throw WasmException.create(Failure.UNSPECIFIED_INTERNAL, this, "instruction buffer is null");
-        }
         final int[] intConstants = codeEntry.intConstants();
         final int blockByteLength = byteLength();
         final int offsetLimit = startOffset + blockByteLength;
@@ -1590,8 +1585,7 @@ public final class WasmBlockNode extends WasmNode implements RepeatingNode {
     }
 
     private void local_get(long[] locals, long[] stack, int stackPointer, int index) {
-        long value = UnsafeWasmMemory.unsafe.getLong(locals, Unsafe.ARRAY_LONG_BASE_OFFSET + index * Unsafe.ARRAY_LONG_INDEX_SCALE);
-        // long value = locals[index];
+        long value = locals[index];
         push(stack, stackPointer, value);
     }
 
