@@ -131,8 +131,8 @@ public abstract class ClassInfo {
         for (HotSwapClassInfo innerClass : info.getInnerClasses()) {
             inners.add(copyFrom(innerClass));
         }
-        return new ImmutableClassInfo(info.getKlass(), info.getName(), info.getClassLoader(), info.getClassFingerprint(), info.getMethodFingerprint(), info.getFieldFingerprint(),
-                        info.getEnclosingMethodFingerprint(), inners.toArray(new ImmutableClassInfo[0]), info.getBytes());
+        return new ImmutableClassInfo(info.getKlass(), info.getName(), info.getClassLoader(), info.finalClassFingerprint, info.finalMethodFingerprint, info.finalFieldFingerprint,
+                info.finalEnclosingMethodFingerprint, inners.toArray(new ImmutableClassInfo[0]), info.getBytes());
     }
 
     public abstract String getClassFingerprint();

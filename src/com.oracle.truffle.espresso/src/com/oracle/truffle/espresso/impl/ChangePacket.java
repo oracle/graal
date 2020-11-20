@@ -28,7 +28,6 @@ public final class ChangePacket {
     public final ParserKlass parserKlass;
     public final ClassRedefinition.ClassChange classChange;
     public final DetectedChange detectedChange;
-    public long id;
 
     public ChangePacket(HotSwapClassInfo redefineInfo, ParserKlass parserKlass, ClassRedefinition.ClassChange classChange, DetectedChange detectedChange) {
         this.info = redefineInfo;
@@ -39,9 +38,5 @@ public final class ChangePacket {
 
     public ChangePacket(HotSwapClassInfo redefineInfo, ClassRedefinition.ClassChange classChange) {
        this(redefineInfo, null, classChange, null);
-    }
-
-    public void setReplacementID(long id) {
-        this.id = id;
     }
 }

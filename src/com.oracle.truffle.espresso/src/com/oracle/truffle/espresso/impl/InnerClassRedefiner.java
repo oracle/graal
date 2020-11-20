@@ -69,17 +69,19 @@ public final class InnerClassRedefiner {
         // build inner/outer relationship from top-level to leaf class in order
         // each round below handles classes where the outer class was previously
         // handled
-        while (!unhandled.isEmpty()) {
+        int handledSize = 0;
+        int previousHandledSize = -1;
+        while (!unhandled.isEmpty() && handledSize > previousHandledSize) {
             Iterator<RedefineInfo> it = unhandled.iterator();
             while (it.hasNext()) {
                 RedefineInfo redefineInfo = it.next();
-                Klass klass = (Klass) redefineInfo.getKlass();
-                String klassName = klass != null ? klass.getNameAsString() : getClassNameFromBytes(redefineInfo.getClassBytes(), context);
+                String klassName = getClassNameFromBytes(redefineInfo.getClassBytes(), context);
                 Matcher matcher = ANON_INNER_CLASS_PATTERN.matcher(klassName);
                 if (matcher.matches()) {
                     // anonymous inner class or nested named
                     // inner class of an anonymous inner class
                     // get the outer classinfo if present
+                    String outerName = getOuterClassName(klassName);
                     HotSwapClassInfo info = handled.get(getOuterClassName(klassName));
                     if (info != null) {
                         HotSwapClassInfo classInfo = ClassInfo.create(klassName, redefineInfo.getClassBytes(), info.getClassLoader(), context);
@@ -91,10 +93,12 @@ public final class InnerClassRedefiner {
                     // pure named class
                     HotSwapClassInfo classInfo = ClassInfo.create(redefineInfo, context);
                     it.remove();
-                    hotswapState.put(klassName, classInfo);
                     handled.put(klassName, classInfo);
+                    hotswapState.put(klassName, classInfo);
                 }
             }
+            previousHandledSize = handledSize;
+            handledSize = handled.size();
         }
 
         // store renaming rules to be used for constant pool patching when class renaming happens
@@ -123,7 +127,7 @@ public final class InnerClassRedefiner {
 
     // method is only reachable from test code, because we pass in bytes
     // for new anonynous inner classes without a refTypeID
-    private static String getClassNameFromBytes(byte[] bytes, EspressoContext context) {
+    public static String getClassNameFromBytes(byte[] bytes, EspressoContext context) {
         try {
             // pass in the special test marked as the requested class name
             ClassfileParser.parse(new ClassfileStream(bytes, null), "!TEST!", null, context);
@@ -222,7 +226,6 @@ public final class InnerClassRedefiner {
         // based on the constant pool in the class bytes
         // by means of the defining class loader
         fetchMissingInnerClasses(hotSwapInfo, context);
-
         if (klass == null) {
             // non-mapped hotSwapInfo means it's a new inner class that didn't map
             // to any previous inner class
@@ -247,7 +250,7 @@ public final class InnerClassRedefiner {
             if (previousInnerClasses.length > 0 || newInnerClasses.length > 0) {
                 ArrayList<ImmutableClassInfo> removedClasses = new ArrayList<>(Arrays.asList(previousInnerClasses));
                 for (HotSwapClassInfo info : newInnerClasses) {
-                    ClassInfo bestMatch = null;
+                    ImmutableClassInfo bestMatch = null;
                     int maxScore = 0;
                     for (ImmutableClassInfo removedClass : removedClasses) {
                         int score = info.match(removedClass);
@@ -332,9 +335,18 @@ public final class InnerClassRedefiner {
     }
 
     public static void commit(HotSwapClassInfo[] infos) {
+        // first remove the previous info
+        for (HotSwapClassInfo info : infos) {
+            StaticObject classLoader = info.getClassLoader();
+            Map<String, ImmutableClassInfo> classLoaderMap = innerClassInfoMap.get(classLoader);
+            if (classLoaderMap != null) {
+                classLoaderMap.remove(info.getNewName());
+            }
+        }
+        Map<String, ImmutableClassInfo> classLoaderMap = null;
         for (HotSwapClassInfo hotSwapInfo : infos) {
             StaticObject classLoader = hotSwapInfo.getClassLoader();
-            Map<String, ImmutableClassInfo> classLoaderMap = innerClassInfoMap.get(classLoader);
+            classLoaderMap = innerClassInfoMap.get(classLoader);
             if (classLoaderMap == null) {
                 classLoaderMap = new HashMap<>(1);
                 innerClassInfoMap.put(classLoader, classLoaderMap);

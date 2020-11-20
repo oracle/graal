@@ -26,6 +26,9 @@ import com.oracle.truffle.espresso.jdwp.impl.JDWPLogger;
 
 import java.lang.ref.WeakReference;
 import java.util.Arrays;
+import java.util.HashMap;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
 
 /**
  * Class that keeps an ID representation of all entities when communicating with a debugger through
@@ -46,6 +49,10 @@ public final class Ids<T> {
      * implementing language.
      */
     private final T nullObject;
+
+    public static final Pattern ANON_INNER_CLASS_PATTERN = Pattern.compile(".*\\$\\d+.*");
+
+    private HashMap<String, Long> innerClassIDMap = new HashMap<>(16);
 
     @SuppressWarnings({"unchecked", "rawtypes"})
     public Ids(T nullObject) {
@@ -72,6 +79,17 @@ public final class Ids<T> {
                 return i;
             }
         }
+        // check the anonymous inner class map
+        if (object instanceof KlassRef) {
+            KlassRef klass = (KlassRef) object;
+            Long id = innerClassIDMap.get(klass.getNameAsString());
+            if (id != null) {
+                // inject new klass under existing ID
+                objects[((int) (long) id)] = new WeakReference<>(object);
+                return id;
+            }
+        }
+
         // cache miss, so generate a new ID
         return generateUniqueId(object);
     }
@@ -128,6 +146,13 @@ public final class Ids<T> {
         expandedArray[objects.length] = new WeakReference<>(object);
         objects = expandedArray;
         JDWPLogger.log("Generating new ID: %d for object: %s", JDWPLogger.LogLevel.IDS, id, object);
+        if (object instanceof KlassRef) {
+            KlassRef klass = (KlassRef) object;
+            Matcher matcher = ANON_INNER_CLASS_PATTERN.matcher(klass.getNameAsString());
+            if (matcher.matches()) {
+                innerClassIDMap.put(klass.getNameAsString(), id);
+            }
+        }
         return id;
     }
 
@@ -137,11 +162,14 @@ public final class Ids<T> {
         JDWPLogger.log("Replaced ID: %d", JDWPLogger.LogLevel.IDS, id);
     }
 
-    public void updateId(KlassRef object, long id) {
+    public void updateId(KlassRef klass) {
         // remove existing ID
-        removeId(object);
-        // then inject object under the new ID
-        objects[(int) id] = new WeakReference(object);
+        removeId(klass);
+        Long theId = innerClassIDMap.get(klass.getNameAsString());
+        if (theId != null) {
+            // then inject klass under the new ID
+            objects[(int) (long) theId] = new WeakReference(klass);
+        }
     }
 
     private void removeId(KlassRef klass) {

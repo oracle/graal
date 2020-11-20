@@ -1082,6 +1082,27 @@ public final class ObjectKlass extends Klass {
         }
         LinkedKlass linkedKlass = new LinkedKlass(parserKlass, getSuperKlass().getLinkedKlass(), interfaces);
 
+        // fields
+        if (!change.getOuterFields().isEmpty()) {
+            LinkedField[] instanceFields = linkedKlass.getInstanceFields();
+            for (Field outerField : change.getOuterFields()) {
+                CompilerDirectives.transferToInterpreterAndInvalidate();
+
+                // we know that the special field is always at the same index
+                for (int i = 0; i < fieldTable.length; i++) {
+                    Field oldField = fieldTable[i];
+                    if (outerField == oldField) {
+                        for (LinkedField instanceField : instanceFields) {
+                            if (instanceField.getName().equals(outerField.getName())) {
+                                // replace with new field
+                                fieldTable[i] = new Field(this, instanceField, false);
+                            }
+                        }
+                    }
+                }
+            }
+        }
+
         Method[][] itable = oldVersion.itable;
         Method[] vtable = oldVersion.vtable;
         ObjectKlass[] iKlassTable;

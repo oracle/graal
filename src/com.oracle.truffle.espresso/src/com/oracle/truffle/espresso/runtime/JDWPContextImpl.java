@@ -685,8 +685,8 @@ public final class JDWPContextImpl implements JDWPContext {
             for (ChangePacket changePacket : changePackets) {
                 if (changePacket.info.isRenamed()) {
                     ObjectKlass klass = changePacket.info.getKlass();
-                    if (changePacket.id != -1) {
-                        ids.updateId(klass, changePacket.id);
+                    if (klass != null) {
+                        ids.updateId(klass);
                     }
                 }
             }

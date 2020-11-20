@@ -44,6 +44,11 @@ public final class HotSwapClassInfo extends ClassInfo {
     private String fieldFingerprint;
     private String enclosingMethodFingerprint;
 
+    final String finalClassFingerprint;
+    final String finalMethodFingerprint;
+    final String finalFieldFingerprint;
+    final String finalEnclosingMethodFingerprint;
+
     private final ArrayList<HotSwapClassInfo> innerClasses;
     private HotSwapClassInfo outerClassInfo;
     private int nextNewClass = 1;
@@ -59,11 +64,20 @@ public final class HotSwapClassInfo extends ClassInfo {
         this.enclosingMethodFingerprint = enclosingMethodFingerprint;
         this.innerClasses = inners;
         this.bytes = bytes;
+
+        this.finalClassFingerprint = classFingerprint;
+        this.finalMethodFingerprint = methodFingerprint;
+        this.finalFieldFingerprint = fieldFingerprint;
+        this.finalEnclosingMethodFingerprint = enclosingMethodFingerprint;
     }
 
     @Override
     public ObjectKlass getKlass() {
         return thisKlass.get();
+    }
+
+    public void setKlass(ObjectKlass klass) {
+        thisKlass = new WeakReference<>(klass);
     }
 
     @Override
@@ -81,10 +95,6 @@ public final class HotSwapClassInfo extends ClassInfo {
 
     public boolean isRenamed() {
         return newName != null && !newName.equals(originalName);
-    }
-
-    public void setKlass(ObjectKlass klass) {
-        thisKlass = new WeakReference<>(klass);
     }
 
     public HotSwapClassInfo[] getInnerClasses() {
