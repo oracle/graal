@@ -85,6 +85,7 @@ import com.oracle.truffle.api.Truffle;
 import com.oracle.truffle.api.TruffleLanguage;
 import com.oracle.truffle.api.TruffleStackTrace;
 import com.oracle.truffle.api.TruffleStackTraceElement;
+import com.oracle.truffle.api.exception.AbstractTruffleException;
 import com.oracle.truffle.api.frame.Frame;
 import com.oracle.truffle.api.frame.FrameInstance;
 import com.oracle.truffle.api.frame.FrameInstanceVisitor;
@@ -120,7 +121,6 @@ import com.oracle.truffle.api.instrumentation.TruffleInstrument.Registration;
 import com.oracle.truffle.api.interop.InteropLibrary;
 import com.oracle.truffle.api.interop.NodeLibrary;
 import com.oracle.truffle.api.interop.UnknownIdentifierException;
-import com.oracle.truffle.api.exception.AbstractTruffleException;
 import com.oracle.truffle.api.interop.UnsupportedMessageException;
 import com.oracle.truffle.api.library.ExportLibrary;
 import com.oracle.truffle.api.nodes.DirectCallNode;
@@ -1164,67 +1164,76 @@ public class InstrumentationTest extends AbstractInstrumentationTest {
 
     @Test
     public void testOutputConsumer() throws IOException {
-        // print without instruments
-        String rout = run("PRINT(OUT, InitialToStdOut)");
-        Assert.assertEquals("InitialToStdOut", rout);
-        run("PRINT(ERR, InitialToStdErr)");
-        Assert.assertEquals("InitialToStdErr", err.toString());
-        err.reset();
+        try {
+            // print without instruments
+            String rout = run("PRINT(OUT, InitialToStdOut)");
+            Assert.assertEquals("InitialToStdOut", rout);
+            run("PRINT(ERR, InitialToStdErr)");
+            Assert.assertEquals("InitialToStdErr", err.toString());
+            err.reset();
 
-        // turn instruments on
-        assureEnabled(engine.getInstruments().get("testOutputConsumerArray"));
-        assureEnabled(engine.getInstruments().get("testOutputConsumerPiped"));
-        context.eval(lines("PRINT(OUT, OutputToStdOut)"));
-        context.eval(lines("PRINT(ERR, OutputToStdErr)"));
-        // test that the output goes eveywhere
-        Assert.assertEquals("OutputToStdOut", getOut());
-        Assert.assertEquals("OutputToStdOut", TestOutputConsumerArray.getOut());
-        Assert.assertEquals("OutputToStdErr", getErr());
-        Assert.assertEquals("OutputToStdErr", TestOutputConsumerArray.getErr());
-        CharBuffer buff = CharBuffer.allocate(100);
-        TestOutputConsumerPiped.fromOut.read(buff);
-        buff.flip();
-        Assert.assertEquals("OutputToStdOut", buff.toString());
-        buff.rewind();
-        TestOutputConsumerPiped.fromErr.read(buff);
-        buff.flip();
-        Assert.assertEquals("OutputToStdErr", buff.toString());
-        buff.rewind();
+            // turn instruments on
+            assureEnabled(engine.getInstruments().get("testOutputConsumerArray"));
+            assureEnabled(engine.getInstruments().get("testOutputConsumerPiped"));
+            context.eval(lines("PRINT(OUT, OutputToStdOut)"));
+            context.eval(lines("PRINT(ERR, OutputToStdErr)"));
+            // test that the output goes eveywhere
+            Assert.assertEquals("OutputToStdOut", getOut());
+            Assert.assertEquals("OutputToStdOut", TestOutputConsumerArray.getOut());
+            Assert.assertEquals("OutputToStdErr", getErr());
+            Assert.assertEquals("OutputToStdErr", TestOutputConsumerArray.getErr());
+            CharBuffer buff = CharBuffer.allocate(100);
+            TestOutputConsumerPiped.fromOut.read(buff);
+            buff.flip();
+            Assert.assertEquals("OutputToStdOut", buff.toString());
+            buff.rewind();
+            TestOutputConsumerPiped.fromErr.read(buff);
+            buff.flip();
+            Assert.assertEquals("OutputToStdErr", buff.toString());
+            buff.rewind();
 
-        // close piped err stream and test that print still works
-        TestOutputConsumerPiped.fromErr.close();
-        context.eval(lines("PRINT(OUT, MoreOutputToStdOut)"));
-        context.eval(lines("PRINT(ERR, MoreOutputToStdErr)"));
-        Assert.assertEquals("OutputToStdOutMoreOutputToStdOut", out.toString());
-        Assert.assertEquals("OutputToStdOutMoreOutputToStdOut", TestOutputConsumerArray.getOut());
-        String errorMsg = "java.lang.Exception: Output operation write(B[II) failed for java.io.PipedOutputStream";
-        Assert.assertTrue(err.toString(), err.toString().startsWith("OutputToStdErr" + errorMsg));
-        Assert.assertTrue(err.toString(), err.toString().endsWith("MoreOutputToStdErr"));
-        Assert.assertEquals("OutputToStdErrMoreOutputToStdErr", TestOutputConsumerArray.getErr());
-        buff.limit(buff.capacity());
-        TestOutputConsumerPiped.fromOut.read(buff);
-        buff.flip();
-        Assert.assertEquals("MoreOutputToStdOut", buff.toString());
-        out.reset();
-        err.reset();
+            // close piped err stream and test that print still works
+            TestOutputConsumerPiped.fromErr.close();
+            context.eval(lines("PRINT(OUT, MoreOutputToStdOut)"));
+            context.eval(lines("PRINT(ERR, MoreOutputToStdErr)"));
+            Assert.assertEquals("OutputToStdOutMoreOutputToStdOut", out.toString());
+            Assert.assertEquals("OutputToStdOutMoreOutputToStdOut", TestOutputConsumerArray.getOut());
+            String errorMsg = "java.lang.Exception: Output operation write(B[II) failed for java.io.PipedOutputStream";
+            Assert.assertTrue(err.toString(), err.toString().startsWith("OutputToStdErr" + errorMsg));
+            Assert.assertTrue(err.toString(), err.toString().endsWith("MoreOutputToStdErr"));
+            Assert.assertEquals("OutputToStdErrMoreOutputToStdErr", TestOutputConsumerArray.getErr());
+            buff.limit(buff.capacity());
+            TestOutputConsumerPiped.fromOut.read(buff);
+            buff.flip();
+            Assert.assertEquals("MoreOutputToStdOut", buff.toString());
+            out.reset();
+            err.reset();
 
-        // the I/O error is not printed again
-        context.eval(lines("PRINT(ERR, EvenMoreOutputToStdErr)"));
-        Assert.assertEquals("EvenMoreOutputToStdErr", err.toString());
-        Assert.assertEquals("OutputToStdErrMoreOutputToStdErrEvenMoreOutputToStdErr", TestOutputConsumerArray.getErr());
+            // the I/O error is not printed again
+            context.eval(lines("PRINT(ERR, EvenMoreOutputToStdErr)"));
+            Assert.assertEquals("EvenMoreOutputToStdErr", err.toString());
+            Assert.assertEquals("OutputToStdErrMoreOutputToStdErrEvenMoreOutputToStdErr", TestOutputConsumerArray.getErr());
 
-        // instruments disabled
-        teardown();
-        setup();
-        out.reset();
-        err.reset();
-        context.eval(lines("PRINT(OUT, FinalOutputToStdOut)"));
-        context.eval(lines("PRINT(ERR, FinalOutputToStdErr)"));
-        Assert.assertEquals("FinalOutputToStdOut", out.toString());
-        Assert.assertEquals("FinalOutputToStdErr", err.toString());
-        // nothing more printed to the disabled instrument
-        Assert.assertEquals("OutputToStdOutMoreOutputToStdOut", TestOutputConsumerArray.getOut());
-        Assert.assertEquals("OutputToStdErrMoreOutputToStdErrEvenMoreOutputToStdErr", TestOutputConsumerArray.getErr());
+            // instruments disabled
+            teardown();
+            setup();
+            out.reset();
+            err.reset();
+            context.eval(lines("PRINT(OUT, FinalOutputToStdOut)"));
+            context.eval(lines("PRINT(ERR, FinalOutputToStdErr)"));
+            Assert.assertEquals("FinalOutputToStdOut", out.toString());
+            Assert.assertEquals("FinalOutputToStdErr", err.toString());
+            // nothing more printed to the disabled instrument
+            Assert.assertEquals("OutputToStdOutMoreOutputToStdOut", TestOutputConsumerArray.getOut());
+            Assert.assertEquals("OutputToStdErrMoreOutputToStdErrEvenMoreOutputToStdErr", TestOutputConsumerArray.getErr());
+        } finally {
+            TestOutputConsumerPiped.out = new PipedOutputStream();
+            TestOutputConsumerPiped.fromOut = null;
+            TestOutputConsumerPiped.err = new PipedOutputStream();
+            TestOutputConsumerPiped.fromErr = null;
+            TestOutputConsumerArray.out = new ByteArrayOutputStream();
+            TestOutputConsumerArray.err = new ByteArrayOutputStream();
+        }
     }
 
     @Registration(id = "testOutputConsumerArray", services = Object.class)
