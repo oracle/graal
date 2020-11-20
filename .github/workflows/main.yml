@@ -4,9 +4,11 @@ on:
   push:
     paths-ignore:
       - '.travis.yml'
+      - '.github/workflows/quarkus.yml'
   pull_request:
     paths-ignore:
       - '.travis.yml'
+      - '.github/workflows/quarkus.yml'
   workflow_dispatch: []
 
 env:
