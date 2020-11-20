@@ -39,12 +39,14 @@ import com.oracle.truffle.api.dsl.NodeChild;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.library.CachedLibrary;
 import com.oracle.truffle.llvm.runtime.LLVMContext;
+import com.oracle.truffle.llvm.runtime.LLVMFunction;
 import com.oracle.truffle.llvm.runtime.LLVMFunctionDescriptor;
 import com.oracle.truffle.llvm.runtime.LLVMLanguage;
 import com.oracle.truffle.llvm.runtime.library.internal.LLVMAsForeignLibrary;
 import com.oracle.truffle.llvm.runtime.memory.LLVMHandleMemoryBase;
 import com.oracle.truffle.llvm.runtime.nodes.api.LLVMExpressionNode;
 import com.oracle.truffle.llvm.runtime.nodes.memory.load.LLVMDerefHandleGetReceiverNode;
+import com.oracle.truffle.llvm.runtime.nodes.others.LLVMAccessSymbolNode;
 import com.oracle.truffle.llvm.runtime.pointer.LLVMManagedPointer;
 import com.oracle.truffle.llvm.runtime.pointer.LLVMNativePointer;
 
@@ -120,5 +122,15 @@ public abstract class LLVMLookupDispatchTargetNode extends LLVMExpressionNode {
             return false;
         }
         return LLVMHandleMemoryBase.isDerefHandleMemory(addr);
+    }
+
+    public static LLVMExpressionNode createOptimized(LLVMExpressionNode function) {
+        if (function instanceof LLVMAccessSymbolNode) {
+            LLVMAccessSymbolNode node = (LLVMAccessSymbolNode) function;
+            if (node.getSymbol() instanceof LLVMFunction) {
+                return LLVMLookupDispatchTargetSymbolNodeGen.create((LLVMFunction) node.getSymbol());
+            }
+        }
+        return LLVMLookupDispatchTargetNodeGen.create(function);
     }
 }

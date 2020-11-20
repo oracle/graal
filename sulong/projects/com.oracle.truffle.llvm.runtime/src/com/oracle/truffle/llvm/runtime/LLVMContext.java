@@ -659,7 +659,7 @@ public final class LLVMContext {
      * This method is only intended to be used during initialization of a Sulong library.
      */
     @TruffleBoundary
-    public void initializeSymbol(LLVMSymbol symbol, LLVMPointer pointer) {
+    public void initializeSymbol(LLVMSymbol symbol, LLVMPointer value) {
         assert !symbol.isAlias();
         int bitcodeID = symbol.getBitcodeID(false);
         LLVMPointer[] symbols = symbolDynamicStorage[bitcodeID];
@@ -667,8 +667,11 @@ public final class LLVMContext {
         synchronized (symbols) {
             try {
                 int index = symbol.getSymbolIndex(false);
-                symbols[index] = pointer;
+                symbols[index] = value;
                 assumptions[index] = Truffle.getRuntime().createAssumption();
+                if (symbol instanceof LLVMFunction) {
+                    ((LLVMFunction) symbol).setValue(value);
+                }
             } catch (LLVMIllegalSymbolIndexException e) {
                 throw new LLVMLinkerException("Writing symbol into symbol table is inconsistent.");
             }
@@ -703,6 +706,9 @@ public final class LLVMContext {
                 symbols[index] = value;
                 assumptions[index].invalidate();
                 assumptions[index] = Truffle.getRuntime().createAssumption();
+                if (symbol instanceof LLVMFunction) {
+                    ((LLVMFunction) symbol).setValue(value);
+                }
                 return true;
             } catch (LLVMIllegalSymbolIndexException e) {
                 // fallthrough
