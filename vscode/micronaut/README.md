@@ -1,30 +1,89 @@
-# Micronaut Support for VS Code <!-- omit in toc -->
+# Micronaut Visual Studio Code Extension <!-- omit in toc -->
 
-A VS Code extension providing the basic support for developing applications based on the [Micronaut Framework](https://micronaut.io/).
-The extension is Technology Preview.
+The Micronaut extension for Visual Studio Code (VS Code) provides the basic support for developing applications based on the [Micronaut Framework](https://micronaut.io/). The extension is Technology Preview.
+
+Besides, it enables the [Micronaut Launch](https://micronaut.io/launch/) application that allows you to create Micronaut projects through an interface inside VS Code instead of using the console CLI.  
+
+In combination with the [GraalVM Extension](https://marketplace.visualstudio.com/items?itemName=oracle-labs-graalvm.graalvm), you can run Micronaut projects on GraalVM, and debug them with different debugging protocols, enabled with the extension, directly from the VS Code development environment.
+
+The Micronaut extension was also developed to helps developers get going by building native images right from the VS Code console.
 
 #### Table of contents  <!-- omit in toc -->
+- [Installation and Setup](#installation-and-setup)
 - [Features](#features)
   - [Micronaut VS Code Commands](#micronaut-vs-code-commands)
-- [Requirements](#requirements)
 - [Extension Settings](#extension-settings)
 - [Privacy Policy](#privacy-policy)
 
+## Installation and Setup
+
+Install the Micronaut extension from the VS Code consolde by clicking on the Extensions icon in the Activity Bars (or invoke it with _Ctrl+Shift+X_). Search for "Micronaut" and install the package. Reload will be required.
+
+Note: The Micronaut extension also requires the [GraalVM Extension](https://marketplace.visualstudio.com/items?itemName=oracle-labs-graalvm.graalvm) to function, which provides support for editing and debugging polyglot programs running on GraalVM. Please install it the same way.
+
+When installed, the Micronaut extension might check whether there is a registered GraalVM instance and eventually request to download it or point to a local installation (see [GraalVM  Installation and Setup in VS Code](../graalvm/README.md#graalvm-installation-and-setup)).
+
+Upon the installaiton, the Micronaut Tools Page window opens which provides you with shortcuts to create a new Micronaut project, or open an exisiting one; to build a native image of a Micronaut project; to acquaint you with available features and redirect to the documentation available.
+
+![Micronaut Tools Page](images/micronaut_tools_page.png)
+
 ## Features
 
-### Micronaut VS Code Commands
+The Micronaut extension provides:
+* Micronaut project creation wizard
+* Editing and debugging Micronaut projects capabilities
+* Micronaut platforms setup
+* Building Micronaut projects ahead-of-time into native images with GraalVM
+
+## Micronaut VS Code Commands
+
+To start going, invoke the Micronaut commands from the View > Command Palette (Command Palette can be also opened by pressing F1, or _Ctrl+Shift+P_ hot keys combination for Linux and _Command+Shift+P_ for macOS):
+
+![Micronaut VS Code Commands](images/micronaut-vs-code-commands.png)
 
 The following commands are available for Micronaut project development:
 
-  * `Micronaut: Show Micronaut Tools Page`: Show Micronaut Tools Page
-  * `Micronaut: Create Micronaut Project`: Create a Micronaut Project based on https://micronaut.io/launch
-  * `Micronaut: Build ...`: Build a Micronaut Project with the user selected goal/target
-  * `Micronaut: Build Native Image`: Build a native image of a Micronaut Project
+* `Micronaut: Show Micronaut Tools Page`: Show Micronaut Tools Page
+* `Micronaut: Create Micronaut Project`: Create a Micronaut project based on https://micronaut.io/launch
+* `Micronaut: Build ...`: Build a Micronaut project with the user selected goal/target
+* `Micronaut: Build Native Image`: Build a native image of a Micronaut project
 
-## Requirements
+## Create Micronaut Project
 
-This extension depends on the following extension:
-* [GraalVM](https://marketplace.visualstudio.com/items?itemName=oracle-labs-graalvm.graalvm) - Support for GraalVM.
+The Create Micronaut Project command in VS Code supports generating Micronaut applications, CLI applications, and other types of applications that a regular Micronaut Launch application does. The wizard prompts to:
+
+  * pick the application type
+  * pick the Micronaut version
+  * pick the Java version
+  * provide a project name
+  * provide a base package name
+  * pick the project language (Java, Kotlin, Groovy)
+  * pick the project features
+  ![Micronaut Project Features](images/micronaut-project-features_view.png)
+  * pick the build tool (Maven or Gradle)
+  * pick the test framework (JUnit, Spock, Kotlintest)
+
+Finally, you are asked to select the destination folder on your local disk and whether to open the created project in new editor or add to the current workspace.
+
+The GUI part of the Micronaut extension adds a new view to the Explorer activity, which shows Micronaut projects in the current workspace:
+![Micronaut Project Features](images/micronaut-project-features_view.png)
+
+## Generate Native Images of Micronaut Projects
+
+The Micronaut support for VS Code is integrated with GraalVM to get the most from the applications and provide you with rich Native Image capabilities.
+
+Having set up GraalVM as default runtime and debug environment in VS Code, switch to the built-in console and run:
+- uisng Gradle build tool:
+  ```shell
+  ./gradlew nativeImage
+- using Maven build tool:
+  ```shell
+  ./mvnw package -Dpackaging=native-image
+  ```
+
+Besides that, you can push a newly built native image to the Docker Registry from the VS Code console.
+
+For more details, continue reading to the [Micronaut documentation](https://guides.micronaut.io/micronaut-creating-first-graal-app/guide/index.html#creatingGraalImage).
 
 ## Extension Settings
 
@@ -34,4 +93,4 @@ This extension contributes the following settings:
 
 ## Privacy Policy
 
-Please read the [Oracle Privacy Policy](https://www.oracle.com/legal/privacy/privacy-policy.html) to learn more.
+Read the [Oracle Privacy Policy](https://www.oracle.com/legal/privacy/privacy-policy.html) to learn more.
