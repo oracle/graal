@@ -286,19 +286,6 @@ suite = {
       "jacoco" : "include",
     },
 
-    "com.oracle.truffle.llvm.legacy" : {
-      # TODO: remove as soon as the SULONG distributions is removed
-      "subDir" : "projects",
-      "sourceDirs" : ["src"],
-      "dependencies" : [
-      ],
-      "checkstyle" : "com.oracle.truffle.llvm.runtime",
-      "javaCompliance" : "1.8+",
-      "workingSets" : "Truffle, LLVM",
-      "license" : "BSD-new",
-      "jacoco" : "include",
-    },
-
     "com.oracle.truffle.llvm.nativemode" : {
       "subDir" : "projects",
       "sourceDirs" : ["src"],
@@ -1216,18 +1203,6 @@ suite = {
   },
 
   "distributions" : {
-    "SULONG" : {
-      # TODO: legacy distribution. remove as soon as everyone migrated to SULONG_NATIVE or SULONG_CORE (GR-27478).
-      "subDir" : "projects",
-      "dependencies" : [
-        "com.oracle.truffle.llvm.legacy",
-      ],
-      "distDependencies" : [
-        "SULONG_CORE",
-        "SULONG_NATIVE",
-      ],
-      "license" : "BSD-new",
-    },
     "SULONG_CORE" : {
       "description" : "Sulong core functionality (parser, execution engine, launcher)",
       "subDir" : "projects",
