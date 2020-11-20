@@ -353,6 +353,7 @@ public final class WasmBlockNode extends WasmNode implements RepeatingNode {
         final WasmMemory memory = instance().memory();
         final byte[] data = codeEntry.data();
         final int[] intConstants = codeEntry.intConstants();
+        final int[] profileCounters = codeEntry.profileCounters();
         final int blockByteLength = byteLength();
         final int offsetLimit = startOffset + blockByteLength;
         try {
@@ -475,7 +476,7 @@ public final class WasmBlockNode extends WasmNode implements RepeatingNode {
                         intConstantOffset++;
                         // endregion
 
-                        boolean condition = codeEntry.profileCondition(profileOffset, popBoolean(stack, stackPointer));
+                        boolean condition = codeEntry.profileCondition(profileCounters, profileOffset, popBoolean(stack, stackPointer));
                         ++profileOffset;
 
                         if (condition) {
