@@ -64,14 +64,8 @@ public class SnippetRuntime {
     private static final SubstrateForeignCallDescriptor ARITHMETIC_EXP = findForeignJdkCall(UnaryOperation.EXP.foreignCallSignature.getName(), Math.class, "exp", true, true, true);
     private static final SubstrateForeignCallDescriptor ARITHMETIC_POW = findForeignJdkCall(BinaryOperation.POW.foreignCallSignature.getName(), Math.class, "pow", true, true, true);
 
-    /*
-     * Object.clone() is intrinsified as a node at first, but can be lowered back to a call. Ensure
-     * it is seen as reachable.
-     */
-    private static final SubstrateForeignCallDescriptor OBJECT_CLONE = findForeignJdkCall(Object.class, "clone", false, false, false, LocationIdentity.any());
-
     private static final SubstrateForeignCallDescriptor[] FOREIGN_CALLS = new SubstrateForeignCallDescriptor[]{UNSUPPORTED_FEATURE, REGISTER_FINALIZER, ARITHMETIC_SIN, ARITHMETIC_COS, ARITHMETIC_TAN,
-                    ARITHMETIC_LOG, ARITHMETIC_LOG10, ARITHMETIC_EXP, ARITHMETIC_POW, OBJECT_CLONE};
+                    ARITHMETIC_LOG, ARITHMETIC_LOG10, ARITHMETIC_EXP, ARITHMETIC_POW};
 
     public static void registerForeignCalls(Providers providers, SubstrateForeignCallsProvider foreignCalls) {
         SubstrateAllocationSnippets.registerForeignCalls(providers, foreignCalls);
@@ -91,11 +85,6 @@ public class SnippetRuntime {
         boolean isUninterruptible = DirectAnnotationAccess.isAnnotationPresent(method, Uninterruptible.class);
         boolean isFullyUninterruptible = foreignCallTargetAnnotation.fullyUninterruptible();
         return findForeignCall(descriptorName, method, isReexecutable, isUninterruptible, isFullyUninterruptible, additionalKilledLocations);
-    }
-
-    private static SubstrateForeignCallDescriptor findForeignJdkCall(Class<?> declaringClass, String methodName, boolean isReexecutable, boolean isUninterruptible,
-                    boolean isFullyUninterruptible, LocationIdentity... additionalKilledLocations) {
-        return findForeignJdkCall(methodName, declaringClass, methodName, isReexecutable, isUninterruptible, isFullyUninterruptible, additionalKilledLocations);
     }
 
     private static SubstrateForeignCallDescriptor findForeignJdkCall(String descriptorName, Class<?> declaringClass, String methodName, boolean isReexecutable, boolean isUninterruptible,
