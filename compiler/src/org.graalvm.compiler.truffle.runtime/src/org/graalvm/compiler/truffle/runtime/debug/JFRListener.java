@@ -42,6 +42,16 @@ import org.graalvm.compiler.truffle.runtime.serviceprovider.TruffleRuntimeServic
 import org.graalvm.nativeimage.ImageInfo;
 
 import com.oracle.truffle.api.frame.Frame;
+import java.util.Arrays;
+import java.util.Collection;
+import java.util.Collections;
+import java.util.Set;
+import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.atomic.AtomicBoolean;
+import java.util.function.Predicate;
+import jdk.vm.ci.meta.ResolvedJavaMethod;
+import jdk.vm.ci.meta.ResolvedJavaType;
+import jdk.vm.ci.meta.UnresolvedJavaType;
 
 /**
  * Traces Truffle Compilations using Java Flight Recorder events.
@@ -78,6 +88,10 @@ public final class JFRListener extends AbstractGraalTruffleRuntimeListener {
         if (factory != null) {
             runtime.addListener(new JFRListener(runtime));
         }
+    }
+
+    public static Predicate<ResolvedJavaMethod> createInstrumentedMethodFilter() {
+        return factory != null ? new JFRInstrumentedMethodFilter(factory) : (m) -> false;
     }
 
     @Override
@@ -235,5 +249,85 @@ public final class JFRListener extends AbstractGraalTruffleRuntimeListener {
      */
     private static boolean isPermanentFailure(boolean bailout, boolean permanentBailout) {
         return !bailout || permanentBailout;
+    }
+
+    private static final class JFRInstrumentedMethodFilter implements Predicate<ResolvedJavaMethod> {
+
+        private final Collection<? extends InstrumentedMethodPattern> instrumentedMethodPatterns;
+        private final Set<ResolvedJavaMethod> cache;
+        private final AtomicBoolean active = new AtomicBoolean();
+        private volatile ResolvedJavaType resolvedJfrEventClass;
+
+        JFRInstrumentedMethodFilter(EventFactory factory) {
+            factory.addInitializationListener(() -> {
+                active.set(true);
+            });
+            active.compareAndSet(false, factory.isInitialized());
+            this.instrumentedMethodPatterns = Arrays.asList(
+                            new InstrumentedMethodPattern("begin", "()V"),      //
+                            new InstrumentedMethodPattern("commit", "()V"),     //
+                            new InstrumentedMethodPattern("end", "()V"),        //
+                            new InstrumentedMethodPattern("isEnabled", "()Z"),  //
+                            new InstrumentedMethodPattern("set", "(ILjava/lang/Object;)V"),  //
+                            new InstrumentedMethodPattern("shouldCommit", "()Z")  //
+            );
+            this.cache = Collections.newSetFromMap(new ConcurrentHashMap<ResolvedJavaMethod, Boolean>());
+        }
+
+        @Override
+        public boolean test(ResolvedJavaMethod method) {
+            // If JFR is not active return false
+            if (!active.get()) {
+                return false;
+            }
+            // Fast check, the JFR instrumented methods are marked as synthetic.
+            if (!method.isSynthetic() || method.isBridge() || method.isStatic()) {
+                return false;
+            }
+            if (cache.contains(method)) {
+                return true;
+            }
+            for (InstrumentedMethodPattern pattern : instrumentedMethodPatterns) {
+                if (pattern.isInstrumented(method)) {
+                    cache.add(method);
+                    return true;
+                }
+            }
+            return false;
+        }
+
+        ResolvedJavaType getJFREventClass(ResolvedJavaType accessingClass) {
+            if (resolvedJfrEventClass == null) {
+                try {
+                    resolvedJfrEventClass = UnresolvedJavaType.create("Ljdk/jfr/Event;").resolve(accessingClass);
+                } catch (LinkageError e) {
+                    // May happen when declaringClass is not accessible from accessingClass
+                }
+            }
+            return resolvedJfrEventClass;
+        }
+
+        private final class InstrumentedMethodPattern {
+
+            private final String name;
+            private final String signature;
+
+            private InstrumentedMethodPattern(String name, String signature) {
+                this.name = name;
+                this.signature = signature;
+            }
+
+            boolean isInstrumented(ResolvedJavaMethod method) {
+                if (!name.equals(method.getName())) {
+                    return false;
+                }
+                if (!signature.equals(method.getSignature().toMethodDescriptor())) {
+                    return false;
+                }
+                ResolvedJavaType methodOwner = method.getDeclaringClass();
+                ResolvedJavaType patternOwner = getJFREventClass(methodOwner);
+                return patternOwner != null && patternOwner.isAssignableFrom(methodOwner);
+            }
+        }
     }
 }

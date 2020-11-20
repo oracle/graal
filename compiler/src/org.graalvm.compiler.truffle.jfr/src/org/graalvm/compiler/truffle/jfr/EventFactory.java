@@ -26,6 +26,12 @@ package org.graalvm.compiler.truffle.jfr;
 
 public interface EventFactory {
 
+    boolean isInitialized();
+
+    void addInitializationListener(Runnable listener);
+
+    void removeInitializationListener(Runnable listener);
+
     CompilationEvent createCompilationEvent();
 
     DeoptimizationEvent createDeoptimizationEvent();
