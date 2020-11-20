@@ -22,14 +22,14 @@
 			"type": "node",
 			"request": "launch",
 			"name": "Run Debug Adapter",
-			"program": "${workspaceFolder}/src/graalVMDebug.ts",
+			"program": "${workspaceFolder}/src/graalVMDebugAdapter.ts",
 			"args": [
 				"--server=4711"
 			],
 			"outFiles": [
 				"${workspaceFolder}/dist/**/*.js"
 			],
-			"preLaunchTask": "npm: watch"
+			"preLaunchTask": "npm: compile"
 		}
 	]
 }
