@@ -107,10 +107,10 @@ polybench_benchmark_methods = ["_run"]
 
 
 # pylint: disable=line-too-long
-ce_components = ['cmp', 'cov', 'dap', 'gu', 'gvm', 'ins', 'insight', 'js', 'lg', 'lsp', 'nfi', 'njs', 'polynative', 'pro', 'rgx', 'sdk', 'llrc', 'llrn', 'llrl', 'slg', 'svm', 'svml', 'tfl', 'tflm', 'libpoly', 'poly', 'bpolyglot', 'vvm']
-ce_complete_components = ['cmp', 'cov', 'dap', 'gu', 'gvm', 'gwa', 'ins', 'insight', 'js', 'lg', 'llp', 'lsp', 'nfi', 'ni', 'nil', 'njs', 'polynative', 'pro', 'pyn', 'pynl', 'rby', 'rbyl', 'rgx', 'sdk', 'llrc', 'llrn', 'llrl', 'slg', 'svm', 'svml', 'tfl', 'tflm', 'libpoly', 'poly', 'bpolyglot', 'vvm']
-ce_python_components = ['cmp', 'cov', 'dap', 'dis', 'gu', 'gvm', 'ins', 'insight', 'js', 'lg', 'llp', 'lsp', 'nfi', 'ni', 'nil', 'njs', 'nju', 'nic', 'polynative', 'pyn', 'pynl', 'pro', 'rgx', 'sdk', 'llrc', 'llrn', 'llrl', 'slg', 'svm', 'svml', 'tfl', 'tflm', 'libpoly', 'poly', 'pbm', 'bpolyglot', 'bpolybench', 'vvm']
-ce_no_native_components = ['bgu', 'bjs', 'blli', 'bgraalvm-native-clang', 'bgraalvm-native-clang++', 'bgraalvm-native-ld', 'bgraalvm-native-binutil', 'bnative-image', 'bpolyglot', 'cmp', 'cov', 'dap', 'gu', 'gvm', 'ins', 'insight', 'js', 'lsp', 'nfi', 'ni', 'nil', 'njs', 'polynative', 'pro', 'rgx', 'sdk', 'llrc', 'llrn', 'llrl', 'slg', 'snative-image-agent', 'snative-image-diagnostics-agent', 'spolyglot', 'svm', 'svml', 'tfl', 'tflm', 'libpoly', 'poly', 'vvm']
+ce_components = ['cmp', 'cov', 'dap', 'gu', 'gvm', 'ins', 'insight', 'js', 'lg', 'lsp', 'nfi', 'njs', 'polynative', 'pro', 'rgx', 'sdk', 'llrc', 'llrn', 'llrl', 'svm', 'svml', 'tfl', 'tflm', 'libpoly', 'poly', 'bpolyglot', 'vvm']
+ce_complete_components = ['cmp', 'cov', 'dap', 'gu', 'gvm', 'gwa', 'ins', 'insight', 'js', 'lg', 'llp', 'lsp', 'nfi', 'ni', 'nil', 'njs', 'polynative', 'pro', 'pyn', 'pynl', 'rby', 'rbyl', 'rgx', 'sdk', 'llrc', 'llrn', 'llrl', 'svm', 'svml', 'tfl', 'tflm', 'libpoly', 'poly', 'bpolyglot', 'vvm']
+ce_python_components = ['cmp', 'cov', 'dap', 'dis', 'gu', 'gvm', 'ins', 'insight', 'js', 'lg', 'llp', 'lsp', 'nfi', 'ni', 'nil', 'njs', 'nju', 'nic', 'polynative', 'pyn', 'pynl', 'pro', 'rgx', 'sdk', 'llrc', 'llrn', 'llrl', 'svm', 'svml', 'tfl', 'tflm', 'libpoly', 'poly', 'pbm', 'bpolyglot', 'bpolybench', 'vvm']
+ce_no_native_components = ['bgu', 'bjs', 'blli', 'bgraalvm-native-clang', 'bgraalvm-native-clang++', 'bgraalvm-native-ld', 'bgraalvm-native-binutil', 'bnative-image', 'bpolyglot', 'cmp', 'cov', 'dap', 'gu', 'gvm', 'ins', 'insight', 'js', 'lsp', 'nfi', 'ni', 'nil', 'njs', 'polynative', 'pro', 'rgx', 'sdk', 'llrc', 'llrn', 'llrl', 'snative-image-agent', 'snative-image-diagnostics-agent', 'spolyglot', 'svm', 'svml', 'tfl', 'tflm', 'libpoly', 'poly', 'vvm']
 
 mx_sdk_vm.register_vm_config('ce', ['insight', 'cmp', 'cov', 'dap', 'gu', 'gvm', 'ins', 'js', 'lg', 'libpoly', 'lsp', 'nfi', 'njs', 'poly', 'bpolyglot', 'polynative', 'pro', 'rgx', 'sdk', 'svm', 'tfl', 'tflm', 'vvm'], _suite, env_file='ce-win')
 mx_sdk_vm.register_vm_config('ce', ce_components, _suite)
@@ -118,10 +118,10 @@ mx_sdk_vm.register_vm_config('ce', ce_complete_components, _suite, dist_name='ce
 mx_sdk_vm.register_vm_config('ce-python', ce_python_components, _suite)
 mx_sdk_vm.register_vm_config('ce-no_native', ce_no_native_components, _suite)
 mx_sdk_vm.register_vm_config('libgraal', ['bgu', 'cmp', 'dis', 'gu', 'gvm', 'lg', 'nfi', 'poly', 'polynative', 'sdk', 'svm', 'svml', 'tfl', 'tflm', 'bpolyglot'], _suite)
-mx_sdk_vm.register_vm_config('toolchain-only', ['sdk', 'tfl', 'tflm', 'nfi', 'cmp', 'svm', 'llp', 'llrc', 'llrn', 'llrl', 'slg', 'blli'], _suite)
+mx_sdk_vm.register_vm_config('toolchain-only', ['sdk', 'tfl', 'tflm', 'nfi', 'cmp', 'svm', 'llp', 'llrc', 'llrn'], _suite)
 mx_sdk_vm.register_vm_config('libgraal-bash', ['bgraalvm-native-clang', 'bgraalvm-native-clang++', 'bgraalvm-native-ld', 'bgraalvm-native-binutil', 'bgu', 'cmp', 'gu', 'gvm', 'lg', 'nfi', 'poly', 'polynative', 'sdk', 'svm', 'svml', 'tfl', 'tflm', 'bpolyglot'], _suite, env_file=False)
-mx_sdk_vm.register_vm_config('toolchain-only-bash', ['bgraalvm-native-clang', 'bgraalvm-native-clang++', 'bgraalvm-native-ld', 'bgraalvm-native-binutil', 'tfl', 'tflm', 'gu', 'svm', 'gvm', 'polynative', 'llp', 'nfi', 'svml', 'bgu', 'blli', 'sdk', 'llrc', 'llrn', 'llrl', 'slg', 'cmp'], _suite, env_file=False)
-mx_sdk_vm.register_vm_config('ce', ['bgraalvm-native-binutil', 'bgraalvm-native-clang', 'bgraalvm-native-clang++', 'bgraalvm-native-ld', 'bjs', 'blli', 'bnative-image', 'btruffleruby', 'bwasm', 'cmp', 'gwa', 'js', 'llp', 'nfi', 'ni', 'nil', 'pbm', 'rby', 'rbyl', 'rgx', 'sdk', 'llrc', 'llrn', 'llrl', 'slg', 'snative-image-agent', 'snative-image-diagnostics-agent', 'svm', 'tfl', 'tflm'], _suite, env_file='polybench-ce')
+mx_sdk_vm.register_vm_config('toolchain-only-bash', ['bgraalvm-native-clang', 'bgraalvm-native-clang++', 'bgraalvm-native-ld', 'bgraalvm-native-binutil', 'tfl', 'tflm', 'gu', 'svm', 'gvm', 'polynative', 'llp', 'nfi', 'svml', 'bgu', 'sdk', 'llrc', 'llrn', 'cmp'], _suite, env_file=False)
+mx_sdk_vm.register_vm_config('ce', ['bgraalvm-native-binutil', 'bgraalvm-native-clang', 'bgraalvm-native-clang++', 'bgraalvm-native-ld', 'bjs', 'blli', 'bnative-image', 'btruffleruby', 'bwasm', 'cmp', 'gwa', 'js', 'llp', 'nfi', 'ni', 'nil', 'pbm', 'rby', 'rbyl', 'rgx', 'sdk', 'llrc', 'llrn', 'llrl', 'snative-image-agent', 'snative-image-diagnostics-agent', 'svm', 'tfl', 'tflm'], _suite, env_file='polybench-ce')
 # pylint: enable=line-too-long
 
 if mx.get_os() == 'windows':

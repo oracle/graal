@@ -1218,19 +1218,6 @@ mx_sdk_vm.register_graalvm_component(mx_sdk_vm.GraalVmLanguage(
     installable=False,
 ))
 
-mx_sdk_vm.register_graalvm_component(mx_sdk_vm.GraalVmLanguage(
-    suite=_suite,
-    name='Sulong',
-    short_name='slg',
-    dir_name='llvm',
-    license_files=[],
-    third_party_license_files=[],
-    dependencies=['LLVM Runtime Core', 'LLVM Runtime Native', 'LLVM Runtime Launcher'],
-    truffle_jars=[],
-    support_distributions=[],
-    installable=False,
-))
-
 
 COPYRIGHT_HEADER_BSD = """\
 /*
