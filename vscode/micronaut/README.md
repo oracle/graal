@@ -12,7 +12,9 @@ The Micronaut extension was also developed to helps developers get going by buil
 - [Installation and Setup](#installation-and-setup)
 - [Features](#features)
   - [Micronaut VS Code Commands](#micronaut-vs-code-commands)
-- [Extension Settings](#extension-settings)
+  - [Extension Settings](#extension-settings)
+- [Create Micronaut Project](#create-micronaut-project)
+- [Generate Native Images of Micronaut Projects](#generate-native-images-of-micronaut-projects)
 - [Privacy Policy](#privacy-policy)
 
 ## Installation and Setup
@@ -35,7 +37,7 @@ The Micronaut extension provides:
 * Micronaut platforms setup
 * Building Micronaut projects ahead-of-time into native images with GraalVM
 
-## Micronaut VS Code Commands
+### Micronaut VS Code Commands
 
 To start going, invoke the Micronaut commands from the View > Command Palette (Command Palette can be also opened by pressing F1, or _Ctrl+Shift+P_ hot keys combination for Linux and _Command+Shift+P_ for macOS):
 
@@ -47,6 +49,12 @@ The following commands are available for Micronaut project development:
 * `Micronaut: Create Micronaut Project`: Create a Micronaut project based on https://micronaut.io/launch
 * `Micronaut: Build ...`: Build a Micronaut project with the user selected goal/target
 * `Micronaut: Build Native Image`: Build a native image of a Micronaut project
+
+### Extension Settings
+
+This extension contributes the following settings:
+* __micronaut.home__ - Optional path to Micronaut CLI installation.
+* __micronaut.showWelcomePage__ - Show Micronaut Tools page on extension activation.
 
 ## Create Micronaut Project
 
@@ -84,12 +92,6 @@ Having set up GraalVM as default runtime and debug environment in VS Code, switc
 Besides that, you can push a newly built native image to the Docker Registry from the VS Code console.
 
 For more details, continue reading to the [Micronaut documentation](https://guides.micronaut.io/micronaut-creating-first-graal-app/guide/index.html#creatingGraalImage).
-
-## Extension Settings
-
-This extension contributes the following settings:
-* __micronaut.home__ - Optional path to Micronaut CLI installation.
-* __micronaut.showWelcomePage__ - Show Micronaut Tools page on extension activation.
 
 ## Privacy Policy
 
