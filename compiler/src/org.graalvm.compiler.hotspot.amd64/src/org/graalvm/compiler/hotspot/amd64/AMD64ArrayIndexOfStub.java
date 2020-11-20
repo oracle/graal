@@ -31,6 +31,8 @@ import org.graalvm.compiler.hotspot.stubs.SnippetStub;
 import org.graalvm.compiler.options.OptionValues;
 import org.graalvm.compiler.replacements.amd64.AMD64ArrayIndexOfNode;
 
+import jdk.vm.ci.meta.JavaKind;
+
 public class AMD64ArrayIndexOfStub extends SnippetStub {
 
     public AMD64ArrayIndexOfStub(OptionValues options, HotSpotProviders providers, HotSpotForeignCallLinkage linkage) {
@@ -39,76 +41,76 @@ public class AMD64ArrayIndexOfStub extends SnippetStub {
 
     @Snippet
     private static int indexOfTwoConsecutiveBytes(byte[] array, int arrayLength, int fromIndex, int searchValue) {
-        return AMD64ArrayIndexOfNode.indexOf2ConsecutiveBytes(array, arrayLength, fromIndex, searchValue);
+        return AMD64ArrayIndexOfNode.optimizedArrayIndexOf(JavaKind.Byte, JavaKind.Byte, true, array, arrayLength, fromIndex, searchValue);
     }
 
     @Snippet
     private static int indexOfTwoConsecutiveChars(char[] array, int arrayLength, int fromIndex, int searchValue) {
-        return AMD64ArrayIndexOfNode.indexOf2ConsecutiveChars(array, arrayLength, fromIndex, searchValue);
+        return AMD64ArrayIndexOfNode.optimizedArrayIndexOf(JavaKind.Byte, JavaKind.Char, true, array, arrayLength, fromIndex, searchValue);
     }
 
     @Snippet
     private static int indexOfTwoConsecutiveCharsCompact(byte[] array, int arrayLength, int fromIndex, int searchValue) {
-        return AMD64ArrayIndexOfNode.indexOf2ConsecutiveChars(array, arrayLength, fromIndex, searchValue);
+        return AMD64ArrayIndexOfNode.optimizedArrayIndexOf(JavaKind.Char, JavaKind.Char, true, array, arrayLength, fromIndex, searchValue);
     }
 
     @Snippet
-    private static int indexOf1Byte(byte[] array, int arrayLength, int fromIndex, byte b) {
-        return AMD64ArrayIndexOfNode.indexOf(array, arrayLength, fromIndex, b);
+    private static int indexOf1Byte(byte[] array, int arrayLength, int fromIndex, byte v1) {
+        return AMD64ArrayIndexOfNode.optimizedArrayIndexOf(JavaKind.Byte, JavaKind.Byte, false, array, arrayLength, fromIndex, v1);
     }
 
     @Snippet
-    private static int indexOf2Bytes(byte[] array, int arrayLength, int fromIndex, byte b1, byte b2) {
-        return AMD64ArrayIndexOfNode.indexOf(array, arrayLength, fromIndex, b1, b2);
+    private static int indexOf2Bytes(byte[] array, int arrayLength, int fromIndex, byte v1, byte v2) {
+        return AMD64ArrayIndexOfNode.optimizedArrayIndexOf(JavaKind.Byte, JavaKind.Byte, false, array, arrayLength, fromIndex, v1, v2);
     }
 
     @Snippet
-    private static int indexOf3Bytes(byte[] array, int arrayLength, int fromIndex, byte b1, byte b2, byte b3) {
-        return AMD64ArrayIndexOfNode.indexOf(array, arrayLength, fromIndex, b1, b2, b3);
+    private static int indexOf3Bytes(byte[] array, int arrayLength, int fromIndex, byte v1, byte v2, byte v3) {
+        return AMD64ArrayIndexOfNode.optimizedArrayIndexOf(JavaKind.Byte, JavaKind.Byte, false, array, arrayLength, fromIndex, v1, v2, v3);
     }
 
     @Snippet
-    private static int indexOf4Bytes(byte[] array, int arrayLength, int fromIndex, byte b1, byte b2, byte b3, byte b4) {
-        return AMD64ArrayIndexOfNode.indexOf(array, arrayLength, fromIndex, b1, b2, b3, b4);
+    private static int indexOf4Bytes(byte[] array, int arrayLength, int fromIndex, byte v1, byte v2, byte v3, byte v4) {
+        return AMD64ArrayIndexOfNode.optimizedArrayIndexOf(JavaKind.Byte, JavaKind.Byte, false, array, arrayLength, fromIndex, v1, v2, v3, v4);
     }
 
     @Snippet
-    private static int indexOf1Char(char[] array, int arrayLength, int fromIndex, char c) {
-        return AMD64ArrayIndexOfNode.indexOf(array, arrayLength, fromIndex, c);
+    private static int indexOf1Char(char[] array, int arrayLength, int fromIndex, char v1) {
+        return AMD64ArrayIndexOfNode.optimizedArrayIndexOf(JavaKind.Char, JavaKind.Char, false, array, arrayLength, fromIndex, v1);
     }
 
     @Snippet
-    private static int indexOf2Chars(char[] array, int arrayLength, int fromIndex, char c1, char c2) {
-        return AMD64ArrayIndexOfNode.indexOf(array, arrayLength, fromIndex, c1, c2);
+    private static int indexOf2Chars(char[] array, int arrayLength, int fromIndex, char v1, char v2) {
+        return AMD64ArrayIndexOfNode.optimizedArrayIndexOf(JavaKind.Char, JavaKind.Char, false, array, arrayLength, fromIndex, v1, v2);
     }
 
     @Snippet
-    private static int indexOf3Chars(char[] array, int arrayLength, int fromIndex, char c1, char c2, char c3) {
-        return AMD64ArrayIndexOfNode.indexOf(array, arrayLength, fromIndex, c1, c2, c3);
+    private static int indexOf3Chars(char[] array, int arrayLength, int fromIndex, char v1, char v2, char v3) {
+        return AMD64ArrayIndexOfNode.optimizedArrayIndexOf(JavaKind.Char, JavaKind.Char, false, array, arrayLength, fromIndex, v1, v2, v3);
     }
 
     @Snippet
-    private static int indexOf4Chars(char[] array, int arrayLength, int fromIndex, char c1, char c2, char c3, char c4) {
-        return AMD64ArrayIndexOfNode.indexOf(array, arrayLength, fromIndex, c1, c2, c3, c4);
+    private static int indexOf4Chars(char[] array, int arrayLength, int fromIndex, char v1, char v2, char v3, char v4) {
+        return AMD64ArrayIndexOfNode.optimizedArrayIndexOf(JavaKind.Char, JavaKind.Char, false, array, arrayLength, fromIndex, v1, v2, v3, v4);
     }
 
     @Snippet
-    private static int indexOf1CharCompact(byte[] array, int arrayLength, int fromIndex, char c) {
-        return AMD64ArrayIndexOfNode.indexOf(array, arrayLength, fromIndex, c);
+    private static int indexOf1CharCompact(byte[] array, int arrayLength, int fromIndex, char v1) {
+        return AMD64ArrayIndexOfNode.optimizedArrayIndexOf(JavaKind.Byte, JavaKind.Char, false, array, arrayLength, fromIndex, v1);
     }
 
     @Snippet
-    private static int indexOf2CharsCompact(byte[] array, int arrayLength, int fromIndex, char c1, char c2) {
-        return AMD64ArrayIndexOfNode.indexOf(array, arrayLength, fromIndex, c1, c2);
+    private static int indexOf2CharsCompact(byte[] array, int arrayLength, int fromIndex, char v1, char v2) {
+        return AMD64ArrayIndexOfNode.optimizedArrayIndexOf(JavaKind.Byte, JavaKind.Char, false, array, arrayLength, fromIndex, v1, v2);
     }
 
     @Snippet
-    private static int indexOf3CharsCompact(byte[] array, int arrayLength, int fromIndex, char c1, char c2, char c3) {
-        return AMD64ArrayIndexOfNode.indexOf(array, arrayLength, fromIndex, c1, c2, c3);
+    private static int indexOf3CharsCompact(byte[] array, int arrayLength, int fromIndex, char v1, char v2, char v3) {
+        return AMD64ArrayIndexOfNode.optimizedArrayIndexOf(JavaKind.Byte, JavaKind.Char, false, array, arrayLength, fromIndex, v1, v2, v3);
     }
 
     @Snippet
-    private static int indexOf4CharsCompact(byte[] array, int arrayLength, int fromIndex, char c1, char c2, char c3, char c4) {
-        return AMD64ArrayIndexOfNode.indexOf(array, arrayLength, fromIndex, c1, c2, c3, c4);
+    private static int indexOf4CharsCompact(byte[] array, int arrayLength, int fromIndex, char v1, char v2, char v3, char v4) {
+        return AMD64ArrayIndexOfNode.optimizedArrayIndexOf(JavaKind.Byte, JavaKind.Char, false, array, arrayLength, fromIndex, v1, v2, v3, v4);
     }
 }
