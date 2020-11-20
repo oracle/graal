@@ -41,7 +41,7 @@
 package org.graalvm.wasm.nodes;
 
 import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
-import com.oracle.truffle.api.CompilerDirectives.TruffleInterpreterBoundary;
+import com.oracle.truffle.api.HostCompilerDirectives.TruffleInterpreterBoundary;
 import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.profiles.ConditionProfile;
 import org.graalvm.wasm.WasmCodeEntry;
@@ -52,12 +52,12 @@ public final class WasmIfNode extends WasmNode {
 
     @CompilationFinal private final byte returnTypeId;
     @CompilationFinal private final int initialStackPointer;
-    @Child private WasmNode trueBranch;
-    @Child private WasmNode falseBranch;
+    @Child private WasmBlockNode trueBranch;
+    @Child private WasmBlockNode falseBranch;
 
     private final ConditionProfile condition = ConditionProfile.createCountingProfile();
 
-    public WasmIfNode(WasmInstance wasmInstance, WasmCodeEntry codeEntry, WasmNode trueBranch, WasmNode falseBranch, int byteLength, byte returnTypeId, int initialStackPointer) {
+    public WasmIfNode(WasmInstance wasmInstance, WasmCodeEntry codeEntry, WasmBlockNode trueBranch, WasmBlockNode falseBranch, int byteLength, byte returnTypeId, int initialStackPointer) {
         super(wasmInstance, codeEntry, byteLength);
         this.returnTypeId = returnTypeId;
         this.initialStackPointer = initialStackPointer;

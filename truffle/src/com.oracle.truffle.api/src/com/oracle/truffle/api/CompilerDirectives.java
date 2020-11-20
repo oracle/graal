@@ -284,28 +284,6 @@ public final class CompilerDirectives {
     }
 
     /**
-     * Marks a method that is an implementation of a Truffle interpreter,
-     * and which should receive additional optimization budget.
-     *
-     * @since 21.0
-     */
-    @Retention(RetentionPolicy.RUNTIME)
-    @Target({ElementType.METHOD, ElementType.CONSTRUCTOR})
-    public @interface TruffleInterpreter {
-    }
-
-    /**
-     * Marks a method that is called from a Truffle interpreter,
-     * but is not called frequently and is not important for interpreter performance.
-     *
-     * @since 21.0
-     */
-    @Retention(RetentionPolicy.RUNTIME)
-    @Target({ElementType.METHOD, ElementType.CONSTRUCTOR})
-    public @interface TruffleInterpreterBoundary {
-    }
-
-    /**
      * Marks classes as value types. Reference comparisons (==) between instances of those classes
      * have undefined semantics and can either return true or false.
      *

@@ -1048,7 +1048,7 @@ public class BinaryParser extends BinaryStreamParser {
         state.unwindStack(stackSizeAfterCondition);
 
         // Read false branch, if it exists.
-        WasmNode falseBranchBlock = null;
+        WasmBlockNode falseBranchBlock = null;
         if (peek1(-1) == Instructions.ELSE) {
             falseBranchBlock = readBlockBody(instance, codeEntry, state, blockTypeId, false);
         } else if (blockTypeId != WasmType.VOID_TYPE) {

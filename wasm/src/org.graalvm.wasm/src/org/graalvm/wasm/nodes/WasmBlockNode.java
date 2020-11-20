@@ -45,8 +45,9 @@ import com.oracle.truffle.api.CompilerAsserts;
 import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
-import com.oracle.truffle.api.CompilerDirectives.TruffleInterpreter;
-import com.oracle.truffle.api.CompilerDirectives.TruffleInterpreterBoundary;
+import com.oracle.truffle.api.HostCompilerDirectives;
+import com.oracle.truffle.api.HostCompilerDirectives.TruffleInterpreter;
+import com.oracle.truffle.api.HostCompilerDirectives.TruffleInterpreterBoundary;
 import com.oracle.truffle.api.Truffle;
 import com.oracle.truffle.api.TruffleLanguage.ContextReference;
 import com.oracle.truffle.api.frame.FrameSlotTypeException;
@@ -354,6 +355,12 @@ public final class WasmBlockNode extends WasmNode implements RepeatingNode {
         final byte[] data = codeEntry.data();
         final int[] intConstants = codeEntry.intConstants();
         final int[] profileCounters = codeEntry.profileCounters();
+        HostCompilerDirectives.consume(memory.byteSize());
+        HostCompilerDirectives.consume(data.length);
+        HostCompilerDirectives.consume(intConstants.length);
+        HostCompilerDirectives.consume(profileCounters.length);
+        HostCompilerDirectives.consume(locals.length);
+        HostCompilerDirectives.consume(stack.length);
         final int blockByteLength = byteLength();
         final int offsetLimit = startOffset + blockByteLength;
         try {
@@ -401,12 +408,10 @@ public final class WasmBlockNode extends WasmNode implements RepeatingNode {
                         // - A value larger than 0 indicates that we need to branch to a level
                         // "shallower" than the current loop block
                         // (break out of the loop and even further).
-                        int unwindCounter = (Integer) loopNode.execute(frame);
+                        int unwindCounter = executeLoopNode(loopNode, frame);
                         if (unwindCounter > 0) {
                             return unwindCounter - 1;
                         }
-                        // The unwind counter cannot be 0 at this point.
-                        assert unwindCounter == -1 : "Unwind counter after loop exit: " + unwindCounter;
 
                         childrenOffset++;
                         offset += loopBody.byteLength();
@@ -539,13 +544,12 @@ public final class WasmBlockNode extends WasmNode implements RepeatingNode {
                         byte returnType = function.returnType();
                         int numArgs = function.numArguments();
 
-                        DirectCallNode callNode = (DirectCallNode) children[childrenOffset];
                         childrenOffset++;
 
                         Object[] args = createArgumentsForCall(stack, function.typeIndex(), numArgs, stackPointer);
                         stackPointer -= args.length;
 
-                        Object result = callNode.call(args);
+                        Object result = executeDirectCall(childrenOffset, args);
                         // At the moment, WebAssembly functions may return up to one value.
                         // As per the WebAssembly specification,
                         // this restriction may be lifted in the future.
@@ -631,14 +635,13 @@ public final class WasmBlockNode extends WasmNode implements RepeatingNode {
                         }
 
                         // Invoke the resolved function.
-                        WasmIndirectCallNode callNode = (WasmIndirectCallNode) children[childrenOffset];
                         childrenOffset++;
 
                         int numArgs = instance().symbolTable().functionTypeArgumentCount(expectedFunctionTypeIndex);
                         Object[] args = createArgumentsForCall(stack, expectedFunctionTypeIndex, numArgs, stackPointer);
                         stackPointer -= args.length;
 
-                        final Object result = callNode.execute(target, args);
+                        final Object result = executeIndirectCallNode(childrenOffset, target, args);
                         // At the moment, WebAssembly functions may return up to one value.
                         // As per the WebAssembly specification, this restriction may be lifted in
                         // the future.
@@ -1324,6 +1327,26 @@ public final class WasmBlockNode extends WasmNode implements RepeatingNode {
             throw WasmException.fromArithmeticException(this, e);
         }
         return -1;
+    }
+
+    @TruffleInterpreterBoundary
+    private int executeLoopNode(LoopNode loopNode, VirtualFrame frame) {
+        int unwindCounter = (Integer) loopNode.execute(frame);
+        // The unwind counter cannot be 0 at this point.
+        assert unwindCounter == -1 : "Unwind counter after loop exit: " + unwindCounter;
+        return unwindCounter;
+    }
+
+    @TruffleInterpreterBoundary
+    private Object executeDirectCall(int childrenOffset, Object[] args) {
+        DirectCallNode callNode = (DirectCallNode) children[childrenOffset];
+        return callNode.call(args);
+    }
+
+    @TruffleInterpreterBoundary
+    private Object executeIndirectCallNode(int childrenOffset, CallTarget target, Object[] args) {
+        WasmIndirectCallNode callNode = (WasmIndirectCallNode) children[childrenOffset];
+        return callNode.execute(target, args);
     }
 
     private long loBits(long bits) {
