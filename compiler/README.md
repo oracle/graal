@@ -165,7 +165,7 @@ Without leaving the `graal/vm` directory, you can now run libgraal as follows:
 
 ## Publications and Presentations
 
-For video tutorials, presentations and publications on the GraalVM compiiler visit the [Publications](../docs/Publications.md) page.
+For video tutorials, presentations and publications on the GraalVM compiler visit the [Publications](../docs/Publications.md) page.
 
 ## Building JVMCI JDK 8
 
