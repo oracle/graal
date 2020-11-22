@@ -31,7 +31,6 @@ import java.lang.reflect.GenericSignatureFormatError;
 import java.lang.reflect.Method;
 import java.util.Arrays;
 import java.util.HashMap;
-import java.util.List;
 import java.util.Map;
 
 import org.graalvm.compiler.nodes.CallTargetNode.InvokeKind;
@@ -50,8 +49,8 @@ import jdk.vm.ci.meta.ResolvedJavaMethod;
 public final class ExceptionSynthesizer {
 
     /**
-     * Cache exception throwing methods. The key is a List<Class>: first element is the exception
-     * type, the next elements are the parameter types.
+     * Cache exception throwing methods. The key is a Class[]: first element is the exception type,
+     * the next elements are the parameter types.
      */
     private static final Map<Key, Method> exceptionMethods = new HashMap<>();
 
@@ -101,7 +100,7 @@ public final class ExceptionSynthesizer {
 
     public static Method throwExceptionMethod(Class<?>... methodDescriptor) {
         Method method = exceptionMethods.get(Key.from(methodDescriptor));
-        VMError.guarantee(method != null, "Exception synthesizer method " + Arrays.asList(methodDescriptor) + " not found.");
+        VMError.guarantee(method != null, "Exception synthesizer method " + Arrays.toString(methodDescriptor) + " not found.");
         return method;
     }
 
@@ -131,18 +130,18 @@ public final class ExceptionSynthesizer {
     }
 
     /**
-     * The key describes an exception throwing method via a List<Class>: first element is the
-     * exception type, the next elements are the parameter types.
+     * The key describes an exception throwing method via a Class[]: first element is the exception
+     * type, the next elements are the parameter types.
      */
     static final class Key {
         static Key from(Class<?>... values) {
             return new Key(values);
         }
 
-        private final List<Class<?>> elements;
+        private final Class<?>[] elements;
 
         private Key(Class<?>[] values) {
-            elements = Arrays.asList(values);
+            elements = values;
         }
 
         @Override
@@ -154,12 +153,12 @@ public final class ExceptionSynthesizer {
                 return false;
             }
             Key key = (Key) o;
-            return elements.equals(key.elements);
+            return Arrays.equals(elements, key.elements);
         }
 
         @Override
         public int hashCode() {
-            return elements.hashCode();
+            return Arrays.hashCode(elements);
         }
     }
 }
