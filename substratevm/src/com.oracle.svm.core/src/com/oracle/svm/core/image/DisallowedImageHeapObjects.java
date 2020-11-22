@@ -30,6 +30,9 @@ import java.io.FileDescriptor;
 import java.lang.reflect.Field;
 import java.nio.Buffer;
 import java.nio.MappedByteBuffer;
+import java.util.Random;
+import java.util.SplittableRandom;
+import java.util.concurrent.ThreadLocalRandom;
 
 import com.oracle.svm.core.util.VMError;
 import com.oracle.svm.util.ReflectionUtil;
@@ -55,6 +58,13 @@ public final class DisallowedImageHeapObjects {
     }
 
     public static void check(Object obj, DisallowedObjectReporter reporter) {
+        /* Random/SplittableRandom can not be in the image heap. */
+        if (((obj instanceof Random) && !(obj instanceof ThreadLocalRandom)) || obj instanceof SplittableRandom) {
+            throw reporter.raise("Detected an instance of Random/SplittableRandom class in the image heap. " +
+                            "Instances created during image generation have cached seed values and don't behave as expected.",
+                            obj, "Try avoiding to initialize the class that caused initialization of the object.");
+        }
+
         /* Started Threads can not be in the image heap. */
         if (obj instanceof Thread) {
             final Thread asThread = (Thread) obj;
