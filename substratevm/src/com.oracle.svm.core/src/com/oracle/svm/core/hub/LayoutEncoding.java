@@ -26,6 +26,7 @@ package com.oracle.svm.core.hub;
 
 import org.graalvm.compiler.api.replacements.Fold;
 import org.graalvm.compiler.core.common.calc.UnsignedMath;
+import org.graalvm.compiler.nodes.java.ArrayLengthNode;
 import org.graalvm.compiler.word.Word;
 import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.nativeimage.Platform;
@@ -188,7 +189,7 @@ public class LayoutEncoding {
     public static UnsignedWord getSizeFromObject(Object obj) {
         int encoding = KnownIntrinsics.readHub(obj).getLayoutEncoding();
         if (isArray(encoding)) {
-            return getArraySize(encoding, KnownIntrinsics.readArrayLength(obj));
+            return getArraySize(encoding, ArrayLengthNode.arrayLength(obj));
         } else {
             return getInstanceSize(encoding);
         }

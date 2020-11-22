@@ -36,6 +36,7 @@ import org.graalvm.compiler.graph.Node.NodeIntrinsic;
 import org.graalvm.compiler.nodes.StructuredGraph;
 import org.graalvm.compiler.nodes.extended.ForeignCallNode;
 import org.graalvm.compiler.nodes.extended.ForeignCallWithExceptionNode;
+import org.graalvm.compiler.nodes.java.ArrayLengthNode;
 import org.graalvm.compiler.nodes.spi.LoweringTool;
 import org.graalvm.compiler.options.OptionValues;
 import org.graalvm.compiler.phases.util.Providers;
@@ -115,7 +116,7 @@ public final class ArraycopySnippets extends SubstrateTemplates implements Snipp
     }
 
     private static void boundsCheck(Object fromArray, int fromIndex, Object toArray, int toIndex, int length) {
-        if (fromIndex < 0 || toIndex < 0 || length < 0 || fromIndex > KnownIntrinsics.readArrayLength(fromArray) - length || toIndex > KnownIntrinsics.readArrayLength(toArray) - length) {
+        if (fromIndex < 0 || toIndex < 0 || length < 0 || fromIndex > ArrayLengthNode.arrayLength(fromArray) - length || toIndex > ArrayLengthNode.arrayLength(toArray) - length) {
             throw new ArrayIndexOutOfBoundsException();
         }
     }
