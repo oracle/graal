@@ -50,7 +50,7 @@ public final class Target_jdk_internal_misc_Unsafe_Reflection {
         throw VMError.unsupportedFeature("The offset of " + field + " is accessed without the field being first registered as unsafe accessed. " +
                         "Please register the field as unsafe accessed. You can do so with a reflection configuration that " +
                         "contains an entry for the field with the attribute \"allowUnsafeAccess\": true. Such a configuration " +
-                        "file can be generated for you. Read Configuration.md and Reflection.md for details.");
+                        "file can be generated for you. Read BuildConfiguration.md and Reflection.md for details.");
     }
 
     @Substitute

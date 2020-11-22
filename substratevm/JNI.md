@@ -3,7 +3,7 @@
 JNI is a native API that enables Java code to interact with native code and vice versa.
 This page gives an overview of the JNI implementation in Native Image.
 
-See also the [guide on assisted configuration of Java resources and other dynamic features](Configuration.md#assisted-configuration-of-native-image-builds).
+See also the [guide on assisted configuration of Java resources and other dynamic features](BuildConfiguration.md#assisted-configuration-of-native-image-builds).
 
 ## Integration
 JNI support is enabled by default and built into Native Image builds. Individual classes, methods, and fields that should be accessible via JNI must be specified during native image generation in a configuration file (read below).
