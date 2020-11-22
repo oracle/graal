@@ -35,6 +35,7 @@ public class DigestAuthenticationFeature implements Feature {
 
     @Override
     public void duringSetup(DuringSetupAccess access) {
-        ImageSingletons.lookup(RuntimeClassInitializationSupport.class).rerunInitialization(access.findClassByName("sun.net.www.protocol.http.DigestAuthentication$Parameters"), "for internal Random instance");
+        ImageSingletons.lookup(RuntimeClassInitializationSupport.class).rerunInitialization(access.findClassByName("sun.net.www.protocol.http.DigestAuthentication$Parameters"),
+                        "for internal Random instance");
     }
 }
