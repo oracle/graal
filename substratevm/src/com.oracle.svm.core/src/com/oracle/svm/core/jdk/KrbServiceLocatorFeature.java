@@ -31,10 +31,10 @@ import org.graalvm.nativeimage.impl.RuntimeClassInitializationSupport;
 import com.oracle.svm.core.annotate.AutomaticFeature;
 
 @AutomaticFeature
-public class DigestAuthenticationFeature implements Feature {
+public class KrbServiceLocatorFeature implements Feature {
 
     @Override
     public void duringSetup(DuringSetupAccess access) {
-        ImageSingletons.lookup(RuntimeClassInitializationSupport.class).rerunInitialization(access.findClassByName("sun.net.www.protocol.http.DigestAuthentication$Parameters"), "for internal Random instance");
+        ImageSingletons.lookup(RuntimeClassInitializationSupport.class).rerunInitialization(access.findClassByName("sun.security.krb5.KrbServiceLocator"), "for internal Random instance");
     }
 }
