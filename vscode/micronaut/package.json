@@ -78,7 +78,7 @@
 				},
 				{
 					"command": "extension.micronaut.buildNativeImage",
-					"when": "micronautProjectExists && graalVMHomeSet"
+					"when": "micronautProjectExists && javaHomeSet"
 				}
 			]
 		}

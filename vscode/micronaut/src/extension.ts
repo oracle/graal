@@ -6,7 +6,7 @@
  */
 
 import * as vscode from 'vscode';
-import { micronautProjectExists, getJavaHome, findExecutable } from "./utils";
+import { micronautProjectExists, getJavaHome } from "./utils";
 import { WelcomePanel } from './welcome';
 import { creatorInit, createProject } from './projectCreate';
 import { builderInit, build } from './projectBuild';
@@ -39,9 +39,6 @@ export function activate(context: vscode.ExtensionContext) {
 		const javaHome = getJavaHome();
 		if (javaHome) {
 			vscode.commands.executeCommand('setContext', 'javaHomeSet', true);
-			if (findExecutable('native-image', javaHome)) {
-				vscode.commands.executeCommand('setContext', 'graalVMHomeSet', true);
-			}
 		}
 	}
 }
