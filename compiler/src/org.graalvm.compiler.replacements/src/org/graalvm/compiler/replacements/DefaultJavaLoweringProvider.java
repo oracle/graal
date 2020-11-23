@@ -551,7 +551,12 @@ public abstract class DefaultJavaLoweringProvider implements LoweringProvider {
         graph.replaceFixed(loadIndexed, memoryRead);
     }
 
-    protected void lowerStoreIndexedNode(StoreIndexedNode storeIndexed, LoweringTool tool) {
+    public void lowerStoreIndexedNode(StoreIndexedNode storeIndexed, LoweringTool tool) {
+        int arrayBaseOffset = metaAccess.getArrayBaseOffset(storeIndexed.elementKind());
+        lowerStoreIndexedNode(storeIndexed, tool, arrayBaseOffset);
+    }
+
+    public void lowerStoreIndexedNode(StoreIndexedNode storeIndexed, LoweringTool tool, int arrayBaseOffset) {
         StructuredGraph graph = storeIndexed.graph();
 
         ValueNode value = storeIndexed.value();
@@ -586,7 +591,8 @@ public abstract class DefaultJavaLoweringProvider implements LoweringProvider {
             }
         }
         BarrierType barrierType = barrierSet.arrayStoreBarrierType(storageKind);
-        AddressNode address = createArrayIndexAddress(graph, array, storageKind, storeIndexed.index(), boundsCheck);
+        ValueNode positiveIndex = createPositiveIndex(graph, storeIndexed.index(), boundsCheck);
+        AddressNode address = createArrayAddress(graph, array, arrayBaseOffset, storageKind, positiveIndex);
         WriteNode memoryWrite = graph.add(new WriteNode(address, NamedLocationIdentity.getArrayLocation(storageKind), implicitStoreConvert(graph, storageKind, value),
                         barrierType));
         memoryWrite.setGuard(boundsCheck);
