@@ -30,6 +30,11 @@ export async function installGraalVM(context: vscode.ExtensionContext): Promise<
     try {
         const selected = await selectGraalVMRelease(context);
         if (selected) {
+            try {
+                fs.accessSync(selected.location, fs.constants.W_OK);
+            } catch (e) {
+                throw new Error(`Permission denied: no write access to ${selected.location}`);
+            }
             const downloadedFile = await dowloadGraalVMRelease(selected.url, selected.location);
             const targetDir = dirname(downloadedFile);
             const name = await extractGraalVM(downloadedFile, targetDir);
@@ -414,7 +419,6 @@ async function dowloadGraalVMRelease(releaseURL: string, storagePath: string | u
     }, (progress, token) => {
         return new Promise<string>((resolve, reject) => {
             if (storagePath) {
-                fs.mkdirSync(storagePath, {recursive: true});
                 const filePath: string = join(storagePath, base);
                 const file: fs.WriteStream = fs.createWriteStream(filePath);
                 const request = function (url: string) {

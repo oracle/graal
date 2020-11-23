@@ -1166,17 +1166,46 @@ _suite.toolchain = ToolchainConfig('native', 'SULONG_TOOLCHAIN_LAUNCHERS', 'SULO
 
 mx_sdk_vm.register_graalvm_component(mx_sdk_vm.GraalVmLanguage(
     suite=_suite,
-    name='Sulong',
-    short_name='slg',
+    name='LLVM Runtime Core',
+    short_name='llrc',
     dir_name='llvm',
     license_files=[],
     third_party_license_files=[],
-    dependencies=['Truffle', 'Truffle NFI'],
-    truffle_jars=['sulong:SULONG_CORE', 'sulong:SULONG_NATIVE', 'sulong:SULONG_API'],
+    dependencies=['Truffle'],
+    truffle_jars=['sulong:SULONG_CORE', 'sulong:SULONG_API'],
     support_distributions=[
-        'sulong:SULONG_HOME',
+        'sulong:SULONG_CORE_HOME',
         'sulong:SULONG_GRAALVM_DOCS',
     ],
+    installable=False,
+))
+
+mx_sdk_vm.register_graalvm_component(mx_sdk_vm.GraalVmLanguage(
+    suite=_suite,
+    name='LLVM Runtime Native',
+    short_name='llrn',
+    dir_name='llvm',
+    license_files=[],
+    third_party_license_files=[],
+    dependencies=['LLVM Runtime Core'],
+    truffle_jars=['sulong:SULONG_NATIVE'],
+    support_distributions=[
+        'sulong:SULONG_NATIVE_HOME',
+    ],
+    launcher_configs=_suite.toolchain.get_launcher_configs(),
+    installable=False,
+))
+
+mx_sdk_vm.register_graalvm_component(mx_sdk_vm.GraalVmLanguage(
+    suite=_suite,
+    name='LLVM Runtime Launcher',
+    short_name='llrl',
+    dir_name='llvm',
+    license_files=[],
+    third_party_license_files=[],
+    dependencies=[],
+    truffle_jars=[],
+    support_distributions=[],
     launcher_configs=[
         mx_sdk_vm.LanguageLauncherConfig(
             destination='bin/<exe:lli>',
@@ -1185,7 +1214,20 @@ mx_sdk_vm.register_graalvm_component(mx_sdk_vm.GraalVmLanguage(
             build_args=[],
             language='llvm',
         ),
-    ] + _suite.toolchain.get_launcher_configs(),
+    ],
+    installable=False,
+))
+
+mx_sdk_vm.register_graalvm_component(mx_sdk_vm.GraalVmLanguage(
+    suite=_suite,
+    name='Sulong',
+    short_name='slg',
+    dir_name='llvm',
+    license_files=[],
+    third_party_license_files=[],
+    dependencies=['LLVM Runtime Core', 'LLVM Runtime Native', 'LLVM Runtime Launcher'],
+    truffle_jars=[],
+    support_distributions=[],
     installable=False,
 ))
 

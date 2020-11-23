@@ -2379,7 +2379,7 @@ def mx_register_dynamic_suite_constituents(register_project, register_distributi
         if _src_jdk.javaCompliance >= '9':
             register_project(GraalVmJImage(
                 suite=_suite,
-                jimage_jars=list(get_final_graalvm_distribution().jimage_jars),
+                jimage_jars=sorted(get_final_graalvm_distribution().jimage_jars),
                 workingSets=None,
             ))
 

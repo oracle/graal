@@ -1556,6 +1556,7 @@ final class PolyglotEngineImpl extends AbstractPolyglotImpl.AbstractEngineImpl i
                     EnvironmentAccess environmentAccess, Map<String, String> environment, ZoneId zone, Object limitsImpl, String currentWorkingDirectory, ClassLoader hostClassLoader) {
         PolyglotContextImpl context;
         boolean replayEvents;
+        boolean contextAddedToEngine;
         try {
             synchronized (this.lock) {
                 checkState();
@@ -1631,11 +1632,13 @@ final class PolyglotEngineImpl extends AbstractPolyglotImpl.AbstractEngineImpl i
                             environmentAccess, environment, zone, polyglotLimits, hostClassLoader);
             context = loadPreinitializedContext(config, hostAccess);
             replayEvents = false;
+            contextAddedToEngine = false;
             if (context == null) {
                 synchronized (this.lock) {
                     checkState();
                     context = new PolyglotContextImpl(this, config);
                     addContext(context);
+                    contextAddedToEngine = true;
                 }
             } else if (context.engine == this) {
                 replayEvents = true;
@@ -1646,8 +1649,17 @@ final class PolyglotEngineImpl extends AbstractPolyglotImpl.AbstractEngineImpl i
         boolean hasContextBindings;
         try {
             if (!replayEvents) { // is new context
-                synchronized (context) {
-                    context.initializeContextLocals();
+                try {
+                    synchronized (context) {
+                        context.initializeContextLocals();
+                    }
+                } catch (Throwable t) {
+                    if (contextAddedToEngine) {
+                        synchronized (this.lock) {
+                            removeContext(context);
+                        }
+                    }
+                    throw t;
                 }
             }
             hasContextBindings = EngineAccessor.INSTRUMENT.hasContextBindings(this);
@@ -1887,7 +1899,6 @@ final class PolyglotEngineImpl extends AbstractPolyglotImpl.AbstractEngineImpl i
             this.contextLocalLocations = newStableLocations = new StableLocalLocations(locationsCopy);
             stableLocations.assumption.invalidate("Context local added");
             newLocations = Arrays.copyOfRange(locationsCopy, stableLocations.locations.length, index);
-            stableLocations = this.contextLocalLocations;
         }
         for (PolyglotContextImpl context : aliveContexts) {
             synchronized (context) {
