@@ -312,7 +312,13 @@ public final class HeapPolicy {
     }
 
     public static void maybeCollectOnAllocation() {
-        if (youngUsedBytes.get().aboveOrEqual(getMaximumYoungGenerationSize())) {
+        UnsignedWord maxYoungSize = getMaximumYoungGenerationSize();
+        maybeCollectOnAllocation(maxYoungSize);
+    }
+
+    @Uninterruptible(reason = "Avoid races with other threads that also try to trigger a GC")
+    private static void maybeCollectOnAllocation(UnsignedWord maxYoungSize) {
+        if (youngUsedBytes.get().aboveOrEqual(maxYoungSize)) {
             GCImpl.getGCImpl().collectWithoutAllocating(GenScavengeGCCause.OnAllocation);
         }
     }
