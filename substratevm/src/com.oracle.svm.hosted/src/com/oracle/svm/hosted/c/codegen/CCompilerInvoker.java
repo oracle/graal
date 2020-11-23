@@ -527,7 +527,7 @@ public abstract class CCompilerInvoker {
     private List<String> createCompilerCommand(Path compilerPath, List<String> options, Path target, Path... input) {
         List<String> command = new ArrayList<>();
         command.add(compilerPath.toString());
-        command.addAll(Arrays.asList(SubstrateOptions.CCompilerOption.getValue()));
+        command.addAll(SubstrateOptions.CCompilerOption.getValue().values());
         command.addAll(options);
 
         if (target != null) {

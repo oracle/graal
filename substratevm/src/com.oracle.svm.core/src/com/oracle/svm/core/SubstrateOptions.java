@@ -50,6 +50,7 @@ import com.oracle.svm.core.jdk.JavaNetSubstitutions;
 import com.oracle.svm.core.option.APIOption;
 import com.oracle.svm.core.option.APIOptionGroup;
 import com.oracle.svm.core.option.HostedOptionKey;
+import com.oracle.svm.core.option.LocatableMultiOptionValue;
 import com.oracle.svm.core.option.OptionUtils;
 import com.oracle.svm.core.option.RuntimeOptionKey;
 import com.oracle.svm.core.option.XOptions;
@@ -141,10 +142,10 @@ public class SubstrateOptions {
     public static final HostedOptionKey<Boolean> IncludeNodeSourcePositions = new HostedOptionKey<>(false);
 
     @Option(help = "Search path for C libraries passed to the linker (list of comma-separated directories)")//
-    public static final HostedOptionKey<String[]> CLibraryPath = new HostedOptionKey<>(null);
+    public static final HostedOptionKey<LocatableMultiOptionValue.Strings> CLibraryPath = new HostedOptionKey<>(new LocatableMultiOptionValue.Strings());
 
     @Option(help = "Path passed to the linker as the -rpath (list of comma-separated directories)")//
-    public static final HostedOptionKey<String[]> LinkerRPath = new HostedOptionKey<>(null);
+    public static final HostedOptionKey<LocatableMultiOptionValue.Strings> LinkerRPath = new HostedOptionKey<>(new LocatableMultiOptionValue.Strings());
 
     @Option(help = "String which would be appended to the linker call")//
     public static final HostedOptionKey<String> AdditionalLinkerOptions = new HostedOptionKey<>("");
@@ -239,9 +240,9 @@ public class SubstrateOptions {
     @APIOption(name = "enable-https", fixedValue = "https", customHelp = "enable https support in the generated image")//
     @APIOption(name = "enable-url-protocols")//
     @Option(help = "List of comma separated URL protocols to enable.")//
-    public static final HostedOptionKey<String[]> EnableURLProtocols = new HostedOptionKey<String[]>(null) {
+    public static final HostedOptionKey<LocatableMultiOptionValue.Strings> EnableURLProtocols = new HostedOptionKey<LocatableMultiOptionValue.Strings>(new LocatableMultiOptionValue.Strings()) {
         @Override
-        protected void onValueUpdate(EconomicMap<OptionKey<?>, Object> values, String[] oldValue, String[] newValue) {
+        protected void onValueUpdate(EconomicMap<OptionKey<?>, Object> values, LocatableMultiOptionValue.Strings oldValue, LocatableMultiOptionValue.Strings newValue) {
             for (String protocol : OptionUtils.flatten(",", newValue)) {
                 if (protocol.equals(JavaNetSubstitutions.HTTPS_PROTOCOL)) {
                     EnableAllSecurityServices.update(values, true);
@@ -338,7 +339,7 @@ public class SubstrateOptions {
     public static final HostedOptionKey<Boolean> AOTTrivialInline = new HostedOptionKey<>(true);
 
     @Option(help = "file:doc-files/NeverInlineHelp.txt", type = OptionType.Debug)//
-    public static final HostedOptionKey<String[]> NeverInline = new HostedOptionKey<>(null);
+    public static final HostedOptionKey<LocatableMultiOptionValue.Strings> NeverInline = new HostedOptionKey<>(new LocatableMultiOptionValue.Strings());
 
     @Option(help = "Maximum number of nodes in a method so that it is considered trivial.")//
     public static final HostedOptionKey<Integer> MaxNodesInTrivialMethod = new HostedOptionKey<>(20);
@@ -356,7 +357,7 @@ public class SubstrateOptions {
     public static final HostedOptionKey<Boolean> UseCalleeSavedRegisters = new HostedOptionKey<>(true);
 
     @Option(help = "Report error if <typename>[:<UsageKind>{,<UsageKind>}] is discovered during analysis (valid values for UsageKind: InHeap, Allocated, Reachable).", type = OptionType.Debug)//
-    public static final HostedOptionKey<String[]> ReportAnalysisForbiddenType = new HostedOptionKey<>(new String[0]);
+    public static final HostedOptionKey<LocatableMultiOptionValue.Strings> ReportAnalysisForbiddenType = new HostedOptionKey<>(new LocatableMultiOptionValue.Strings());
 
     @Option(help = "Backend used by the compiler", type = OptionType.User)//
     public static final HostedOptionKey<String> CompilerBackend = new HostedOptionKey<String>("lir") {
@@ -404,7 +405,7 @@ public class SubstrateOptions {
     public static final HostedOptionKey<String> CCompilerPath = new HostedOptionKey<>(null);
     @APIOption(name = "native-compiler-options")//
     @Option(help = "Provide custom C compiler option used for query code compilation.", type = OptionType.User)//
-    public static final HostedOptionKey<String[]> CCompilerOption = new HostedOptionKey<>(new String[0]);
+    public static final HostedOptionKey<LocatableMultiOptionValue.Strings> CCompilerOption = new HostedOptionKey<>(new LocatableMultiOptionValue.Strings());
 
     @Option(help = "Use strict checks when performing query code compilation.", type = OptionType.User)//
     public static final HostedOptionKey<Boolean> StrictQueryCodeCompilation = new HostedOptionKey<>(true);
@@ -457,8 +458,7 @@ public class SubstrateOptions {
     }
 
     @Option(help = "Search path for source files for Application or GraalVM classes (list of comma-separated directories or jar files)")//
-    public static final HostedOptionKey<String[]> DebugInfoSourceSearchPath = new HostedOptionKey<String[]>(null) {
-    };
+    public static final HostedOptionKey<LocatableMultiOptionValue.Strings> DebugInfoSourceSearchPath = new HostedOptionKey<>(new LocatableMultiOptionValue.Strings());
 
     @Option(help = "Directory under which to create source file cache for Application or GraalVM classes")//
     public static final HostedOptionKey<String> DebugInfoSourceCacheRoot = new HostedOptionKey<>("sources");

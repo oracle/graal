@@ -42,7 +42,6 @@ import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 import java.util.stream.Collectors;
 
-import com.oracle.svm.core.c.libc.LibCBase;
 import org.graalvm.compiler.debug.DebugContext;
 import org.graalvm.compiler.debug.Indent;
 import org.graalvm.nativeimage.ImageSingletons;
@@ -54,6 +53,7 @@ import com.oracle.svm.core.LinkerInvocation;
 import com.oracle.svm.core.OS;
 import com.oracle.svm.core.SubstrateOptions;
 import com.oracle.svm.core.SubstrateUtil;
+import com.oracle.svm.core.c.libc.LibCBase;
 import com.oracle.svm.core.option.OptionUtils;
 import com.oracle.svm.core.util.InterruptImageBuilding;
 import com.oracle.svm.core.util.UserError;
@@ -315,7 +315,7 @@ public abstract class NativeBootImageViaCC extends NativeBootImage {
             cmd.add("iphlpapi.lib");
             cmd.add("userenv.lib");
 
-            Collections.addAll(cmd, Options.NativeLinkerOption.getValue());
+            cmd.addAll(Options.NativeLinkerOption.getValue().values());
             return cmd;
         }
     }

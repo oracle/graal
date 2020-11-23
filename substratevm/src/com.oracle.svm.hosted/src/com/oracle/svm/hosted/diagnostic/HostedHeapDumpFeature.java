@@ -42,6 +42,7 @@ import com.oracle.graal.pointsto.reports.ReportUtils;
 import com.oracle.svm.core.SubstrateOptions;
 import com.oracle.svm.core.annotate.AutomaticFeature;
 import com.oracle.svm.core.option.HostedOptionKey;
+import com.oracle.svm.core.option.LocatableMultiOptionValue;
 import com.oracle.svm.core.option.OptionUtils;
 import com.oracle.svm.core.option.SubstrateOptionsParser;
 import com.oracle.svm.core.util.UserError;
@@ -53,7 +54,7 @@ public class HostedHeapDumpFeature implements Feature {
     static class Options {
         @Option(help = "Dump the heap at a specific time during image building." +
                         "The option accepts a list of comma separated phases, any of: after-analysis, before-compilation.")//
-        public static final HostedOptionKey<String[]> DumpHeap = new HostedOptionKey<>(null);
+        public static final HostedOptionKey<LocatableMultiOptionValue.Strings> DumpHeap = new HostedOptionKey<>(new LocatableMultiOptionValue.Strings());
     }
 
     enum Phases {
@@ -74,7 +75,7 @@ public class HostedHeapDumpFeature implements Feature {
     @Override
     public boolean isInConfiguration(IsInConfigurationAccess access) {
         if (Options.DumpHeap.getValue() != null) {
-            List<String> validPhases = Stream.of(Phases.values()).map(p -> p.getName()).collect(Collectors.toList());
+            List<String> validPhases = Stream.of(Phases.values()).map(Phases::getName).collect(Collectors.toList());
             List<String> values = OptionUtils.flatten(",", Options.DumpHeap.getValue());
             phases = new ArrayList<>();
             for (String value : values) {

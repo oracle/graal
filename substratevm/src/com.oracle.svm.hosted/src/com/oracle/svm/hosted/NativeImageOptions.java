@@ -40,6 +40,7 @@ import com.oracle.graal.pointsto.api.PointstoOptions;
 import com.oracle.graal.pointsto.util.CompletionExecutor;
 import com.oracle.svm.core.option.APIOption;
 import com.oracle.svm.core.option.HostedOptionKey;
+import com.oracle.svm.core.option.LocatableMultiOptionValue;
 import com.oracle.svm.core.util.UserError;
 
 public class NativeImageOptions {
@@ -55,7 +56,7 @@ public class NativeImageOptions {
                     "SHA, FMA. On AArch64, no features are enabled by default. Available features " +
                     "are: FP, ASIMD, EVTSTRM, AES, PMULL, SHA1, SHA2, CRC32, LSE, STXR_PREFETCH, " +
                     "A53MAC", type = User)//
-    public static final HostedOptionKey<String[]> CPUFeatures = new HostedOptionKey<>(null);
+    public static final HostedOptionKey<LocatableMultiOptionValue.Strings> CPUFeatures = new HostedOptionKey<>(new LocatableMultiOptionValue.Strings());
 
     @Option(help = "Overrides CPUFeatures and uses the native architecture, i.e., the architecture of a machine that builds an image. NativeArchitecture takes precedence over CPUFeatures", type = User)//
     public static final HostedOptionKey<Boolean> NativeArchitecture = new HostedOptionKey<>(false);

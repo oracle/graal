@@ -43,6 +43,7 @@ import com.oracle.svm.core.annotate.AutomaticFeature;
 import com.oracle.svm.core.graal.GraalFeature;
 import com.oracle.svm.core.option.APIOption;
 import com.oracle.svm.core.option.HostedOptionKey;
+import com.oracle.svm.core.option.LocatableMultiOptionValue;
 import com.oracle.svm.core.option.OptionUtils;
 import com.oracle.svm.core.util.UserError;
 import com.oracle.svm.core.util.VMError;
@@ -59,7 +60,7 @@ public class FeatureHandler {
     public static class Options {
         @APIOption(name = "features") //
         @Option(help = "A comma-separated list of fully qualified Feature implementation classes")//
-        public static final HostedOptionKey<String[]> Features = new HostedOptionKey<>(null);
+        public static final HostedOptionKey<LocatableMultiOptionValue.Strings> Features = new HostedOptionKey<>(new LocatableMultiOptionValue.Strings());
     }
 
     private final ArrayList<Feature> featureInstances = new ArrayList<>();

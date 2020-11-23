@@ -38,6 +38,7 @@ import org.graalvm.nativeimage.ImageInfo;
 import org.graalvm.nativeimage.ProcessProperties;
 
 import com.oracle.svm.core.option.HostedOptionKey;
+import com.oracle.svm.core.option.LocatableMultiOptionValue;
 import com.oracle.svm.core.option.RuntimeOptionKey;
 import com.oracle.svm.core.util.VMError;
 
@@ -56,38 +57,29 @@ import com.oracle.svm.core.util.VMError;
 public class FallbackExecutor {
     public static class Options {
         @Option(help = "Internal option used to specify system properties for FallbackExecutor.")//
-        public static final HostedOptionKey<String[]> FallbackExecutorSystemProperty = new HostedOptionKey<>(null);
+        public static final HostedOptionKey<LocatableMultiOptionValue.Strings> FallbackExecutorSystemProperty = new HostedOptionKey<>(new LocatableMultiOptionValue.Strings());
         @Option(help = "Internal option used to specify MainClass for FallbackExecutor.")//
         public static final HostedOptionKey<String> FallbackExecutorMainClass = new HostedOptionKey<>(null);
         @Option(help = "Internal option used to specify Classpath for FallbackExecutor.")//
         public static final HostedOptionKey<String> FallbackExecutorClasspath = new HostedOptionKey<>(null);
         @Option(help = "Internal option used to specify java arguments for FallbackExecutor.")//
-        public static final HostedOptionKey<String[]> FallbackExecutorJavaArg = new HostedOptionKey<>(null);
+        public static final HostedOptionKey<LocatableMultiOptionValue.Strings> FallbackExecutorJavaArg = new HostedOptionKey<>(new LocatableMultiOptionValue.Strings());
         @Option(help = "Internal option used to specify runtime java arguments for FallbackExecutor.")//
-        public static final RuntimeOptionKey<String[]> FallbackExecutorRuntimeJavaArg = new RuntimeOptionKey<>(new String[0]);
+        public static final RuntimeOptionKey<LocatableMultiOptionValue.Strings> FallbackExecutorRuntimeJavaArg = new RuntimeOptionKey<>(new LocatableMultiOptionValue.Strings());
     }
 
     public static void main(String[] args) {
         List<String> command = new ArrayList<>();
         Path javaExecutable = getJavaExecutable().toAbsolutePath().normalize();
         command.add(javaExecutable.toString());
-        String[] javaArgValues = Options.FallbackExecutorJavaArg.getValue();
-        if (javaArgValues != null) {
-            for (String arg : javaArgValues) {
-                command.add(arg);
-            }
+        for (String arg : Options.FallbackExecutorJavaArg.getValue().values()) {
+            command.add(arg);
         }
-        String[] properties = Options.FallbackExecutorSystemProperty.getValue();
-        if (properties != null) {
-            for (String p : properties) {
-                command.add(p);
-            }
+        for (String p : Options.FallbackExecutorSystemProperty.getValue().values()) {
+            command.add(p);
         }
-        String[] runtimeArgs = Options.FallbackExecutorRuntimeJavaArg.getValue();
-        if (runtimeArgs != null) {
-            for (String arg : runtimeArgs) {
-                command.addAll(Arrays.asList(arg.split("\\s+")));
-            }
+        for (String arg : Options.FallbackExecutorRuntimeJavaArg.getValue().values()) {
+            command.addAll(Arrays.asList(arg.split("\\s+")));
         }
         command.add("-D" + ImageInfo.PROPERTY_IMAGE_KIND_KEY + "=fallback-" + ImageInfo.PROPERTY_IMAGE_KIND_VALUE_EXECUTABLE);
         Path fallbackImageDir = Paths.get(ProcessProperties.getExecutableName()).getParent();
