@@ -217,12 +217,11 @@ public final class GCImpl implements GC {
         accounting.beforeCollection();
 
         try (Timer ct = timers.collection.open()) {
-            if (appliedPolicy.collectIncrementally()) {
-                scavenge(true);
-            }
             completeCollection = appliedPolicy.collectCompletely();
             if (completeCollection) {
                 scavenge(false);
+            } else if (appliedPolicy.collectIncrementally()) {
+                scavenge(true);
             }
         }
         CommittedMemoryProvider.get().afterGarbageCollection(completeCollection);
