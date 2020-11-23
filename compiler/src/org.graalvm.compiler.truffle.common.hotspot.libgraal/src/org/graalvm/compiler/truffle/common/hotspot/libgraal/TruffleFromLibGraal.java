@@ -103,6 +103,8 @@ public @interface TruffleFromLibGraal {
         IsTrivial(boolean.class, Object.class),
         IsTruffleBoundary(boolean.class, Object.class, long.class),
         IsSpecializationMethod(boolean.class, Object.class, long.class),
+        IsBytecodeInterpreterSwitch(boolean.class, Object.class, long.class),
+        IsBytecodeInterpreterSwitchBoundary(boolean.class, Object.class, long.class),
         IsValueType(boolean.class, Object.class, long.class),
         Log(void.class, Object.class, String.class, Object.class, String.class),
         OnCodeInstallation(void.class, Object.class, Object.class, long.class),
