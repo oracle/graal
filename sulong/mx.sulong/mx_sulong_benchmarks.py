@@ -309,6 +309,9 @@ class SulongVm(CExecutionEnvironmentMixin, GuestVm):
     def name(self):
         return "sulong"
 
+    def extraArgs(self):
+        return []
+
     def run(self, cwd, args):
         bench_file_and_args = args[-3:]
         launcher_args = self.launcher_args(args[:-3]) + bench_file_and_args
@@ -329,7 +332,8 @@ class SulongVm(CExecutionEnvironmentMixin, GuestVm):
             props, launcher_args = _filter_properties(launcher_args)
             sulongCmdLine = self.launcher_vm_args() + \
                             props + \
-                            ['-XX:-UseJVMCIClassLoader', "com.oracle.truffle.llvm.launcher.LLVMLauncher"]
+                            ['-XX:-UseJVMCIClassLoader', "com.oracle.truffle.llvm.launcher.LLVMLauncher"] + \
+                            self.extraArgs()
             result = self.host_vm().run(cwd, sulongCmdLine + launcher_args)
         return result
 
@@ -364,6 +368,12 @@ class SulongVm(CExecutionEnvironmentMixin, GuestVm):
     def hosting_registry(self):
         return java_vm_registry
 
+class SulongMultiContextVm(SulongVm):
+    def name(self):
+        return "sulong-multi"
+
+    def extraArgs(self):
+        return ["--multi-context-test-run"]
 
 _suite = mx.suite("sulong")
 
@@ -377,3 +387,4 @@ native_vm_registry.add_vm(ClangVm('O2', ['-O2']), _suite)
 native_vm_registry.add_vm(GccVm('O3', ['-O3']), _suite)
 native_vm_registry.add_vm(ClangVm('O3', ['-O3']), _suite)
 native_vm_registry.add_vm(SulongVm(), _suite, 10)
+native_vm_registry.add_vm(SulongMultiContextVm(), _suite, 10)
