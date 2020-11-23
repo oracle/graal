@@ -483,6 +483,10 @@ public final class PolyglotCompilerOptions {
             "On runtimes which doesn't support it the option has no effect.",
             category = OptionCategory.EXPERT)
     public static final OptionKey<Integer> EncodedGraphCachePurgeDelay = new OptionKey<>(10_000);
+    
+    @Option(help = "Enables the frame clearing mechanism. Uses of Frame.clear() will be processed to clear stale values in Truffle frames.",
+            category = OptionCategory.EXPERT)
+    public static final OptionKey<Boolean> FrameClear = new OptionKey<>(false);
 
     // Compilation queue
     @Option(help = "Use the priority of compilation jobs in the compilation queue.", category = OptionCategory.INTERNAL)
