@@ -599,7 +599,7 @@ public final class ClassRedefinition {
             if (loadedKlass != null) {
                 context.getRegistries().removeUnloadedKlassConstraint(loadedKlass, type);
             }
-
+            oldKlass.patchClassName(packet.info.getName());
             classRegistry.onClassRenamed(oldKlass, packet.info.getName());
 
             InterpreterToVM.setFieldObject(StaticObject.NULL, oldKlass.mirror(), context.getMeta().java_lang_Class_name);

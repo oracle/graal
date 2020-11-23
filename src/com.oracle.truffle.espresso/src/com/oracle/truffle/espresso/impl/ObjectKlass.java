@@ -1275,19 +1275,12 @@ public final class ObjectKlass extends Klass {
         }
     }
 
-    @Override
-    public Symbol<Name> getName() {
-        return getRedefineCache().name;
-    }
-
-    @Override
-    public Symbol<Type> getType() {
-        return getRedefineCache().type;
+    public void patchClassName(String newName) {
+        type = getContext().getTypes().fromClassGetName(newName);
+        name = getContext().getNames().getOrCreate(newName);
     }
 
     private static final class RedefinitionCache {
-        final Symbol<Symbol.Name> name;
-        final Symbol<Symbol.Type> type;
         final Assumption assumption;
         final RuntimeConstantPool pool;
         final LinkedKlass linkedKlass;
@@ -1300,8 +1293,6 @@ public final class ObjectKlass extends Klass {
         private final Method[] mirandaMethods;
 
         RedefinitionCache(RuntimeConstantPool pool, LinkedKlass linkedKlass, Method[] declaredMethods, Method[] mirandaMethods, Method[] vtable, Method[][] itable, ObjectKlass[] iKlassTable) {
-            this.name = linkedKlass.getName();
-            this.type = linkedKlass.getType();
             this.assumption = Truffle.getRuntime().createAssumption();
             this.pool = pool;
             this.linkedKlass = linkedKlass;
