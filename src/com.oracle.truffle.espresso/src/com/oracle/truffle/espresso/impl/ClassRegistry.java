@@ -208,7 +208,12 @@ public abstract class ClassRegistry implements ContextAccess {
     public abstract @Host(ClassLoader.class) StaticObject getClassLoader();
 
     public Klass[] getLoadedKlasses() {
-        return classes.values().toArray(Klass.EMPTY_ARRAY);
+        ClassRegistries.RegistryEntry[] values = classes.values().toArray(new ClassRegistries.RegistryEntry[0]);
+        Klass[] result = new Klass[values.length];
+        for (int i = 0; i < values.length; i++) {
+            result[i] = values[i].klass();
+        }
+        return result;
     }
 
     public Klass findLoadedKlass(Symbol<Type> type) {
@@ -341,13 +346,15 @@ public abstract class ClassRegistry implements ContextAccess {
 
     public void onClassRenamed(ObjectKlass oldKlass, String newName) {
         Symbol<Symbol.Type> newType = context.getTypes().fromClassGetName(newName);
-        classes.put(newType, oldKlass);
+        classes.put(newType, new ClassRegistries.RegistryEntry(oldKlass));
     }
 
     public void onInnerClassRemoved(Symbol<Symbol.Type> type) {
         // "unload" the class by removing from classes
-        Klass removed = classes.remove(type);
+        ClassRegistries.RegistryEntry removed = classes.remove(type);
         // purge class loader constraint for this type
-        getRegistries().removeUnloadeKlassConstraint(removed, type);
+        if (removed != null && removed.klass() != null) {
+            getRegistries().removeUnloadeKlassConstraint(removed.klass(), type);
+        }
     }
 }
