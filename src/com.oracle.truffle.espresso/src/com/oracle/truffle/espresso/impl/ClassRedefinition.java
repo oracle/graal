@@ -322,7 +322,7 @@ public final class ClassRedefinition {
                     switch (change) {
                         case NO_CHANGE:
                             if (isPatched) {
-                                checkForSpecialConstructor(collectedChanges, oldParserKlass, bodyChanges, newSpecialMethods, oldMethod, oldParserMethod, newMethod);
+                                checkForSpecialConstructor(collectedChanges, bodyChanges, newSpecialMethods, oldMethod, oldParserMethod, newMethod);
                                 break;
                             }
                             if (constantPoolChanged) {
@@ -339,7 +339,7 @@ public final class ClassRedefinition {
                         case METHOD_BODY_CHANGE:
                             result = change;
                             if (isPatched) {
-                                checkForSpecialConstructor(collectedChanges, oldParserKlass, bodyChanges, newSpecialMethods, oldMethod, oldParserMethod, newMethod);
+                                checkForSpecialConstructor(collectedChanges, bodyChanges, newSpecialMethods, oldMethod, oldParserMethod, newMethod);
                             } else {
                                 collectedChanges.addMethodBodyChange(oldMethod, newMethod);
                             }
@@ -397,7 +397,7 @@ public final class ClassRedefinition {
         return result;
     }
 
-    private static void checkForSpecialConstructor(DetectedChange collectedChanges, ParserKlass oldParserKlass, Map<Method, ParserMethod> bodyChanges, List<ParserMethod> newSpecialMethods,
+    private static void checkForSpecialConstructor(DetectedChange collectedChanges, Map<Method, ParserMethod> bodyChanges, List<ParserMethod> newSpecialMethods,
                     Method oldMethod, ParserMethod oldParserMethod, ParserMethod newMethod) {
         // mark constructors of nested anonymous inner classes
         // if they include an anonymous inner class type parameter
