@@ -159,8 +159,8 @@ public final class HotSwapClassInfo extends ClassInfo {
         return bytes;
     }
 
-    public void patchBytes(byte[] patchedBytes) {
-        this.patchedBytes = patchedBytes;
+    public void patchBytes(byte[] patchBytes) {
+        this.patchedBytes = patchBytes;
     }
 
     public boolean isPatched() {

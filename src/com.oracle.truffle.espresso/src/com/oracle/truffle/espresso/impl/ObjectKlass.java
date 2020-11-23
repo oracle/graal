@@ -132,8 +132,8 @@ public final class ObjectKlass extends Klass {
 
     private final StaticObject definingClassLoader;
 
-    public Attribute getAttribute(Symbol<Name> name) {
-        return getLinkedKlass().getAttribute(name);
+    public Attribute getAttribute(Symbol<Name> attrName) {
+        return getLinkedKlass().getAttribute(attrName);
     }
 
     public ObjectKlass(EspressoContext context, LinkedKlass linkedKlass, ObjectKlass superKlass, ObjectKlass[] superInterfaces, StaticObject classLoader) {
