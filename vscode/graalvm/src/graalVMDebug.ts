@@ -106,7 +106,7 @@ export class GraalVMConfigurationProvider implements vscode.DebugConfigurationPr
 					}, config.timeout | 3000);
 				}, 1000);
 			} else {
-				const gvmc = getGVMConfig()
+				const gvmc = getGVMConfig();
 				const inProcessServer = gvmc.get('languageServer.inProcessServer') as boolean;
 				const graalVMHome = getGVMHome(gvmc);
 				if (graalVMHome) {
