@@ -152,12 +152,12 @@ public class FrameClearPhase extends BasePhase<CoreProviders> {
         EconomicSetNodeEventListener ec = new EconomicSetNodeEventListener();
         try (Graph.NodeEventScope scope = graph.trackNodeEvents(ec)) {
             init(graph);
-            doRun(graph, context);
+            doRun(graph);
             clear();
         }
         if (!ec.getNodes().isEmpty()) {
             // Get rid of newly unused nodes.
-            canonicalizer.apply(graph, context);
+            canonicalizer.applyIncremental(graph, context, ec.getNodes());
         }
     }
 
@@ -175,7 +175,7 @@ public class FrameClearPhase extends BasePhase<CoreProviders> {
         zeroConstant = null;
     }
 
-    private void doRun(StructuredGraph graph, CoreProviders context) {
+    private void doRun(StructuredGraph graph) {
         for (FrameState fs : graph.getNodes(FrameState.TYPE)) {
             EconomicMap<VirtualObjectNode, EscapeObjectState> objectStates = getObjectStateMappings(fs);
             for (EscapeObjectState objectState : objectStates.getValues()) {
@@ -210,7 +210,11 @@ public class FrameClearPhase extends BasePhase<CoreProviders> {
             return;
         }
         if (!tagNode.isJavaConstant()) {
-            // frame slot can be of multiple kinds here
+            /*
+             * Tag non-constant: the frame slot can contain different kinds of values (object, int,
+             * ...). We examine the stamp of the tag to determine which ones, and in particular
+             * check if it can be illegal.
+             */
             assert tagNode.stamp(NodeView.DEFAULT) instanceof IntegerStamp;
             IntegerStamp tagStamp = (IntegerStamp) tagNode.stamp(NodeView.DEFAULT);
 
