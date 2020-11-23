@@ -67,8 +67,6 @@ import java.util.function.Supplier;
 import java.util.jar.Attributes;
 import java.util.jar.JarFile;
 import java.util.jar.Manifest;
-import java.util.regex.Matcher;
-import java.util.regex.Pattern;
 import java.util.stream.Collectors;
 
 import org.graalvm.compiler.options.OptionKey;
@@ -1310,12 +1308,67 @@ public class NativeImage {
         return exitStatus;
     }
 
-    private static String quoteFileArg(String arg) {
-        String resultArg = arg.replaceAll(Pattern.quote("\\"), Matcher.quoteReplacement("\\\\"));
-        if (resultArg.contains(" ")) {
-            resultArg = "\"" + resultArg + "\"";
+    /**
+     * If necessary, quotes and escapes the given {@code arg} into the format specified in the
+     * <a href=
+     * "https://docs.oracle.com/javase/9/tools/java.htm#JSWOR-GUID-4856361B-8BFD-4964-AE84-121F5F6CF111">Java
+     * Command-Line Argument Files</a> section of Java Platform, Standard Edition Tools Reference.
+     *
+     * @param arg the argument to quote
+     * @return the quoted {@code arg}, possibly the {@code arg} itself unchanged
+     */
+    public static String quoteFileArg(String arg) {
+        StringBuilder sb = null;
+        int flushed = 0;
+        for (int i = 0; i < arg.length(); i++) {
+            char ch = arg.charAt(i);
+            switch (ch) {
+                case '\\':
+                case '"':
+                    sb = flushUnquoted(sb, arg, flushed, i);
+                    flushed = i + 1;
+                    sb.append('\\');
+                    sb.append(ch);
+                    break;
+                case '#':
+                case '\'':
+                case '\t':
+                case '\f':
+                case ' ':
+                    sb = flushUnquoted(sb, arg, flushed, i);
+                    flushed = i + 1;
+                    sb.append(ch);
+                    break;
+                case '\n':
+                    sb = flushUnquoted(sb, arg, flushed, i);
+                    flushed = i + 1;
+                    sb.append("\\n");
+                    break;
+                case '\r':
+                    sb = flushUnquoted(sb, arg, flushed, i);
+                    flushed = i + 1;
+                    sb.append("\\r");
+                    break;
+                default:
+                    break;
+            }
         }
-        return resultArg;
+        if (sb != null) {
+            flushUnquoted(sb, arg, flushed, arg.length());
+            return sb.append('"').toString();
+        }
+        return arg;
+    }
+
+    private static StringBuilder flushUnquoted(StringBuilder sb, String arg, int start, int end) {
+        if (sb == null) {
+            return new StringBuilder(end + 3).append('"').append(arg, 0, end);
+        } else if (end > start) {
+            sb.ensureCapacity(sb.length() + end - start + 1);
+            return sb.append(arg, start, end);
+        } else {
+            return sb;
+        }
     }
 
     private static final Function<BuildConfiguration, NativeImage> defaultNativeImageProvider = config -> IS_AOT ? NativeImageServer.create(config) : new NativeImage(config);
