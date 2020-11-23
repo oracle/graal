@@ -165,6 +165,7 @@ public final class Meta implements ContextAccess {
         java_lang_String_toCharArray = java_lang_String.lookupDeclaredMethod(Name.toCharArray, Signature._char_array);
         java_lang_String_charAt = java_lang_String.lookupDeclaredMethod(Name.charAt, Signature._char);
         java_lang_String_indexOf = java_lang_String.lookupDeclaredMethod(Name.indexOf, Signature._int_int_int);
+        java_lang_String_init_char_array = java_lang_String.lookupDeclaredMethod(Name._init_, Signature._void_char_array);
 
         java_lang_Throwable = knownKlass(Type.java_lang_Throwable);
         java_lang_Throwable_getStackTrace = java_lang_Throwable.lookupDeclaredMethod(Name.getStackTrace, Signature.StackTraceElement_array);
@@ -670,6 +671,7 @@ public final class Meta implements ContextAccess {
     public final Method java_lang_String_toCharArray;
     public final Method java_lang_String_charAt;
     public final Method java_lang_String_indexOf;
+    public final Method java_lang_String_init_char_array;
 
     public final ObjectKlass java_lang_ClassLoader;
     public final Field java_lang_ClassLoader_parent;

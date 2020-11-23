@@ -23,8 +23,7 @@
 
 package com.oracle.truffle.espresso.meta;
 
-import static com.oracle.truffle.espresso.meta.StringUtil.LATIN1;
-
+import com.oracle.truffle.espresso.EspressoOptions;
 import com.oracle.truffle.espresso.runtime.EspressoContext;
 import com.oracle.truffle.espresso.runtime.JavaVersion;
 import com.oracle.truffle.espresso.runtime.StaticObject;
@@ -37,6 +36,11 @@ public abstract class StringConversion {
 
     private static final long String_value_offset;
     private static final long String_hash_offset;
+    private static final long String_coder_offset;
+
+    public abstract String toHost(StaticObject str, Meta meta);
+
+    public abstract StaticObject toGuest(String str, Meta meta);
 
     private StringConversion() {
     }
@@ -45,30 +49,37 @@ public abstract class StringConversion {
         try {
             String_value_offset = UNSAFE.objectFieldOffset(String.class.getDeclaredField("value"));
             String_hash_offset = UNSAFE.objectFieldOffset(String.class.getDeclaredField("hash"));
+            String_coder_offset = JavaVersion.hostUsesCompactStrings()
+                            ? UNSAFE.objectFieldOffset(String.class.getDeclaredField("coder"))
+                            : -1;
         } catch (NoSuchFieldException e) {
             throw EspressoError.shouldNotReachHere(e);
         }
     }
 
-    public static StringConversion select(EspressoContext context) {
+    static StringConversion select(EspressoContext context) {
         if (JavaVersion.hostUsesCompactStrings()) {
             if (context.getJavaVersion().compactStringsEnabled()) {
-                return StringConversion11Guest11Host.INSTANCE;
+                if (context.getEnv().getOptions().get(EspressoOptions.StringSharing)) {
+                    return CompactToCompact.INSTANCE;
+                } else {
+                    return CopyingCompactToCompact.INSTANCE;
+                }
             } else {
-                return StringConversion8Guest11Host.INSTANCE;
+                return CharGuestCompactHost.INSTANCE;
             }
         } else {
             if (context.getJavaVersion().compactStringsEnabled()) {
-                return StringConversion11Guest8Host.INSTANCE;
+                return CompactGuestCharHost.INSTANCE;
             } else {
-                return StringConversion8Guest8Host.INSTANCE;
+                if (context.getEnv().getOptions().get(EspressoOptions.StringSharing)) {
+                    return CharToChar.INSTANCE;
+                } else {
+                    return CopyingCharToChar.INSTANCE;
+                }
             }
         }
     }
-
-    public abstract String toHost(StaticObject str, Meta meta);
-
-    public abstract StaticObject toGuest(String str, Meta meta);
 
     private static String allocateHost() {
         try {
@@ -78,69 +89,132 @@ public abstract class StringConversion {
         }
     }
 
-    private static final class StringConversion8Guest8Host extends StringConversion {
-        private static final StringConversion INSTANCE = new StringConversion8Guest8Host();
+    private static char[] extractGuestChars8(Meta meta, StaticObject str) {
+        return str.getField(meta.java_lang_String_value).unwrap();
+    }
+
+    private static byte[] extractGuestBytes11(Meta meta, StaticObject str) {
+        return str.getField(meta.java_lang_String_value).unwrap();
+    }
+
+    private static int extractGuestHash(Meta meta, StaticObject str) {
+        return str.getIntField(meta.java_lang_String_hash);
+    }
+
+    private static byte extractGuestCoder(Meta meta, StaticObject str) {
+        return str.getByteField(meta.java_lang_String_coder);
+    }
+
+    private static char[] extractHostChars8(String str) {
+        return (char[]) UNSAFE.getObject(str, String_value_offset);
+    }
+
+    private static byte[] extractHostBytes11(String str) {
+        return (byte[]) UNSAFE.getObject(str, String_value_offset);
+    }
+
+    private static int extractHostHash(String str) {
+        return UNSAFE.getInt(str, String_hash_offset);
+    }
+
+    private static byte extractHostCoder(String str) {
+        return UNSAFE.getByte(str, String_coder_offset);
+    }
+
+    private static StaticObject produceGuestString8(Meta meta, char[] value, int hash) {
+        StaticObject guestString = meta.java_lang_String.allocateInstance();
+        meta.java_lang_String_hash.set(guestString, hash);
+        guestString.setFieldVolatile(meta.java_lang_String_value, StaticObject.wrap(value, meta));
+        return guestString;
+    }
+
+    private static StaticObject produceGuestString11(Meta meta, byte[] value, int hash, byte coder) {
+        StaticObject guestString = meta.java_lang_String.allocateInstance();
+        meta.java_lang_String_coder.set(guestString, coder);
+        meta.java_lang_String_hash.set(guestString, hash);
+        guestString.setFieldVolatile(meta.java_lang_String_value, StaticObject.wrap(value, meta));
+        return guestString;
+    }
+
+    private static String produceHostString8(char[] value, int hash) {
+        String res = allocateHost();
+        UNSAFE.putInt(res, String_hash_offset, hash);
+        UNSAFE.putObjectVolatile(res, String_value_offset, value);
+        return res;
+    }
+
+    private static String produceHostString11(byte[] value, int hash, byte coder) {
+        String res = allocateHost();
+        UNSAFE.putInt(res, String_hash_offset, hash);
+        UNSAFE.putByte(res, String_coder_offset, coder);
+        UNSAFE.putObjectVolatile(res, String_value_offset, value);
+        return res;
+    }
+
+    private static final class CharToChar extends StringConversion {
+
+        private static final StringConversion INSTANCE = new CharToChar();
 
         @Override
         public String toHost(StaticObject str, Meta meta) {
-            final char[] value = ((StaticObject) meta.java_lang_String_value.get(str)).unwrap();
-            String res = StringConversion.allocateHost();
-            UNSAFE.putObjectVolatile(res, String_value_offset, value);
-            return res;
+            return produceHostString8(extractGuestChars8(meta, str), extractGuestHash(meta, str));
         }
 
         @Override
         public StaticObject toGuest(String str, Meta meta) {
-            final char[] value = (char[]) UNSAFE.getObject(str, String_value_offset);
-            final int hash = UNSAFE.getInt(str, String_hash_offset);
-
-            StaticObject guestString = meta.java_lang_String.allocateInstance();
-            meta.java_lang_String_hash.set(guestString, hash);
-            guestString.setFieldVolatile(meta.java_lang_String_value, StaticObject.wrap(value, meta));
-            return guestString;
+            return produceGuestString8(meta, extractHostChars8(str), extractHostHash(str));
         }
+
     }
 
-    private static final class StringConversion11Guest11Host extends StringConversion {
-        private static final StringConversion INSTANCE = new StringConversion11Guest11Host();
+    private static final class CopyingCharToChar extends StringConversion {
 
-        private static final long String_coder_offset;
-
-        static {
-            try {
-                String_coder_offset = UNSAFE.objectFieldOffset(String.class.getDeclaredField("coder"));
-            } catch (NoSuchFieldException e) {
-                throw EspressoError.shouldNotReachHere(e);
-            }
-        }
+        private static final StringConversion INSTANCE = new CopyingCharToChar();
 
         @Override
         public String toHost(StaticObject str, Meta meta) {
-            final byte[] value = ((StaticObject) meta.java_lang_String_value.get(str)).unwrap();
-            final byte coder = str.getByteField(meta.java_lang_String_coder);
-
-            String res = StringConversion.allocateHost();
-            UNSAFE.putObjectVolatile(res, String_value_offset, value);
-            UNSAFE.putByteVolatile(res, String_coder_offset, coder);
-            return res;
+            return produceHostString8(extractGuestChars8(meta, str).clone(), extractGuestHash(meta, str));
         }
 
         @Override
         public StaticObject toGuest(String str, Meta meta) {
-            final byte[] value = (byte[]) UNSAFE.getObject(str, String_value_offset);
-            final int hash = UNSAFE.getInt(str, String_hash_offset);
-            final byte coder = UNSAFE.getByte(str, String_coder_offset);
+            return produceGuestString8(meta, extractHostChars8(str).clone(), extractHostHash(str));
+        }
 
-            StaticObject guestString = meta.java_lang_String.allocateInstance();
-            meta.java_lang_String_coder.set(guestString, coder);
-            meta.java_lang_String_hash.set(guestString, hash);
-            guestString.setFieldVolatile(meta.java_lang_String_value, StaticObject.wrap(value, meta));
-            return guestString;
+    }
+
+    private static final class CompactToCompact extends StringConversion {
+
+        private static final StringConversion INSTANCE = new CompactToCompact();
+
+        @Override
+        public String toHost(StaticObject str, Meta meta) {
+            return produceHostString11(extractGuestBytes11(meta, str), extractGuestHash(meta, str), extractGuestCoder(meta, str));
+        }
+
+        @Override
+        public StaticObject toGuest(String str, Meta meta) {
+            return produceGuestString11(meta, extractHostBytes11(str), extractHostHash(str), extractHostCoder(str));
         }
     }
 
-    private static final class StringConversion11Guest8Host extends StringConversion {
-        private static final StringConversion INSTANCE = new StringConversion11Guest8Host();
+    private static final class CopyingCompactToCompact extends StringConversion {
+
+        private static final StringConversion INSTANCE = new CopyingCompactToCompact();
+
+        @Override
+        public String toHost(StaticObject str, Meta meta) {
+            return produceHostString11(extractGuestBytes11(meta, str).clone(), extractGuestHash(meta, str), extractGuestCoder(meta, str));
+        }
+
+        @Override
+        public StaticObject toGuest(String str, Meta meta) {
+            return produceGuestString11(meta, extractHostBytes11(str).clone(), extractHostHash(str), extractHostCoder(str));
+        }
+    }
+
+    private static final class CompactGuestCharHost extends StringConversion {
+        private static final StringConversion INSTANCE = new CompactGuestCharHost();
 
         @Override
         public String toHost(StaticObject str, Meta meta) {
@@ -150,13 +224,14 @@ public abstract class StringConversion {
 
         @Override
         public StaticObject toGuest(String str, Meta meta) {
-            final char[] chars = new char[str.length()];
-            str.getChars(0, str.length(), chars, 0);
-            final int hash = UNSAFE.getInt(str, String_hash_offset);
-
-            StaticObject guestString = meta.java_lang_String.allocateInstance();
+            /*
+             * Should be equivalent to calling guest String.<init>(char[]). We are not calling it
+             * here, because itself tries to convert strings, leading to circular recursion and
+             * Stack overflows.
+             */
+            char[] chars = str.toCharArray();
             byte[] bytes = null;
-            byte coder = LATIN1;
+            byte coder = StringUtil.LATIN1;
             if (meta.java_lang_String.getStatics().getBooleanField(meta.java_lang_String_COMPACT_STRINGS)) {
                 bytes = StringUtil.compress(chars);
             }
@@ -164,32 +239,21 @@ public abstract class StringConversion {
                 bytes = StringUtil.toBytes(chars);
                 coder = StringUtil.UTF16;
             }
-            meta.java_lang_String_coder.set(guestString, coder);
-            meta.java_lang_String_hash.set(guestString, hash);
-            guestString.setFieldVolatile(meta.java_lang_String_value, StaticObject.wrap(bytes, meta));
-            return guestString;
+            return StringConversion.produceGuestString11(meta, bytes, StringConversion.extractHostHash(str), coder);
         }
     }
 
-    private static final class StringConversion8Guest11Host extends StringConversion {
-        private static final StringConversion INSTANCE = new StringConversion8Guest11Host();
+    private static final class CharGuestCompactHost extends StringConversion {
+        private static final StringConversion INSTANCE = new CharGuestCompactHost();
 
         @Override
         public String toHost(StaticObject str, Meta meta) {
-            final char[] value = ((StaticObject) meta.java_lang_String_value.get(str)).unwrap();
-            return new String(value);
+            return new String(StringConversion.extractGuestChars8(meta, str));
         }
 
         @Override
         public StaticObject toGuest(String str, Meta meta) {
-            final char[] chars = new char[str.length()];
-            str.getChars(0, str.length(), chars, 0);
-            final int hash = UNSAFE.getInt(str, String_hash_offset);
-
-            StaticObject guestString = meta.java_lang_String.allocateInstance();
-            meta.java_lang_String_hash.set(guestString, hash);
-            guestString.setFieldVolatile(meta.java_lang_String_value, StaticObject.wrap(chars, meta));
-            return guestString;
+            return produceGuestString8(meta, str.toCharArray(), StringConversion.extractHostHash(str));
         }
     }
 }
