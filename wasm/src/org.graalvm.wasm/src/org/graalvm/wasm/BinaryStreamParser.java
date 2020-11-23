@@ -74,7 +74,7 @@ public abstract class BinaryStreamParser {
         if ((shift < 32) && (b & 0x40) != 0) {
             result |= (~0 << shift);
         }
-        return (((long) (currentOffset - initialOffset)) << 32) | (((long) result) & 0xffff_ffffL);
+        return (((long) (currentOffset - initialOffset)) << 32) | (result & 0xffff_ffffL);
     }
 
     @ExplodeLoop(kind = FULL_EXPLODE_UNTIL_RETURN)
@@ -93,7 +93,7 @@ public abstract class BinaryStreamParser {
         if ((shift < 32) && (b & 0x40) != 0) {
             result |= (~0 << shift);
         }
-        return (((long) (currentOffset - initialOffset)) << 32) | (((long) result) & 0xffff_ffffL);
+        return (((long) (currentOffset - initialOffset)) << 32) | (result & 0xffff_ffffL);
     }
 
     @ExplodeLoop(kind = FULL_EXPLODE_UNTIL_RETURN)
@@ -111,7 +111,7 @@ public abstract class BinaryStreamParser {
             shift += 7;
         }
 
-        return (((long) (currentOffset - initialOffset)) << 32) | (((long) result) & 0xffff_ffffL);
+        return (((long) (currentOffset - initialOffset)) << 32) | (result & 0xffff_ffffL);
     }
 
     @ExplodeLoop(kind = FULL_EXPLODE_UNTIL_RETURN)

@@ -1330,7 +1330,7 @@ public final class WasmBlockNode extends WasmNode implements RepeatingNode {
     }
 
     @BytecodeInterpreterSwitchBoundary
-    private int executeLoopNode(LoopNode loopNode, VirtualFrame frame) {
+    private static int executeLoopNode(LoopNode loopNode, VirtualFrame frame) {
         int unwindCounter = (Integer) loopNode.execute(frame);
         // The unwind counter cannot be 0 at this point.
         assert unwindCounter == -1 : "Unwind counter after loop exit: " + unwindCounter;
@@ -1349,16 +1349,16 @@ public final class WasmBlockNode extends WasmNode implements RepeatingNode {
         return callNode.execute(target, args);
     }
 
-    private long loBits(long bits) {
+    private static long loBits(long bits) {
         return bits & 0xffff_ffffL;
     }
 
-    private int hiBits(long bits) {
+    private static int hiBits(long bits) {
         return (int) ((bits >>> 32) & 0xffff_ffffL);
     }
 
     @BytecodeInterpreterSwitchBoundary
-    private RuntimeException createUnknownOpcodeError(int opcode, String s, Failure failure) {
+    private static RuntimeException createUnknownOpcodeError(int opcode, String s, Failure failure) {
         return Assert.fail(Assert.format(s, opcode), failure);
     }
 

@@ -155,9 +155,9 @@ public final class WasmCodeEntry {
      * @param condition Condition value
      * @return {@code condition}
      */
-    public boolean profileCondition(int[] profileCounters, int index, boolean condition) {
+    public boolean profileCondition(int[] counters, int index, boolean condition) {
         // locals required to guarantee no overflow in multi-threaded environments
-        int tf = profileCounters[index];
+        int tf = counters[index];
         int t = tf >>> 16;
         int f = tf & 0xffff;
         boolean val = condition;
@@ -172,7 +172,7 @@ public final class WasmCodeEntry {
                 }
             } else {
                 if (t < CONDITION_COUNT_MAX_VALUE) {
-                    profileCounters[index] = ((t + 1) << 16) | f;
+                    counters[index] = ((t + 1) << 16) | f;
                 }
             }
         } else {
@@ -186,7 +186,7 @@ public final class WasmCodeEntry {
                 }
             } else {
                 if (f < CONDITION_COUNT_MAX_VALUE) {
-                    profileCounters[index] = (t << 16) | (f + 1);
+                    counters[index] = (t << 16) | (f + 1);
                 }
             }
         }
