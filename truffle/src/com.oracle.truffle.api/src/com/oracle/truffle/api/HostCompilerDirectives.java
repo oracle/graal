@@ -91,6 +91,26 @@ public final class HostCompilerDirectives {
      * Consume a value, making sure the compiler does not optimize away the computation of this
      * value, even if it is otherwise unused.
      *
+     * This method can be used to force expressions to be hoisted out of branches. For example, the
+     * following code hoists the read of a final field {@code value} in front of the loop:
+     *
+     * <code>
+     * HostCompilerDirectives.consume(this.value);
+     * while (i < ops.length) {
+     *   int op = ops[i++];
+     *   switch (op) {
+     *     case OP1:
+     *       // ...
+     *     case OP2:
+     *       // This field-read is replaced with the result of the earlier one.
+     *       result += this.value;
+     *       break;
+     *     case OP3:
+     *       // ...
+     *   }
+     * }
+     * </code>
+     *
      * @since 21.0
      */
     @SuppressWarnings("unused")
