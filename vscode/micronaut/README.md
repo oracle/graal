@@ -4,9 +4,9 @@ The Micronaut extension for Visual Studio Code (VS Code) provides the basic supp
 
 Besides, it enables the [Micronaut Launch](https://micronaut.io/launch/) application that allows you to create Micronaut projects through an interface inside VS Code instead of using the console CLI.  
 
-In combination with the [GraalVM Extension](https://marketplace.visualstudio.com/items?itemName=oracle-labs-graalvm.graalvm), you can run Micronaut projects on GraalVM, and debug them with different debugging protocols, enabled with the extension, directly from the VS Code development environment.
+In combination with the [GraalVM Extension](https://marketplace.visualstudio.com/items?itemName=oracle-labs-graalvm.graalvm), you can run Micronaut projects on GraalVM, and debug them directly from the VS Code development environment with different debugging protocols enabled with the extension.
 
-The Micronaut extension was also developed to helps developers get going by building native images right from the VS Code console.
+The Micronaut extension was also developed to help developers build native images right from the VS Code console.
 
 #### Table of contents  <!-- omit in toc -->
 - [Installation and Setup](#installation-and-setup)
@@ -19,9 +19,9 @@ The Micronaut extension was also developed to helps developers get going by buil
 
 ## Installation and Setup
 
-Install the Micronaut extension from the VS Code consolde by clicking on the Extensions icon in the Activity Bars (or invoke it with _Ctrl+Shift+X_). Search for "Micronaut" and install the package. Reload will be required.
+Install the Micronaut extension from the VS Code consolde by clicking on the Extensions icon in the Activity Bar (or invoke it with _Ctrl+Shift+X_). Search for "Micronaut" and install the package. Reload will be required.
 
-Note: The Micronaut extension also requires the [GraalVM Extension](https://marketplace.visualstudio.com/items?itemName=oracle-labs-graalvm.graalvm) to function, which provides support for editing and debugging polyglot programs running on GraalVM. Please install it the same way.
+Note: The Micronaut extension also requires the [GraalVM Extension](https://marketplace.visualstudio.com/items?itemName=oracle-labs-graalvm.graalvm), which provides support for editing and debugging polyglot programs running on GraalVM. Please install it the same way.
 
 When installed, the Micronaut extension might check whether there is a registered GraalVM instance and eventually request to download it or point to a local installation (see [GraalVM  Installation and Setup in VS Code](../graalvm/README.md#graalvm-installation-and-setup)).
 
@@ -45,7 +45,7 @@ To start going, invoke the Micronaut commands from the View > Command Palette (C
 
 The following commands are available for Micronaut project development:
 
-* `Micronaut: Show Micronaut Tools Page`: Show Micronaut Tools Page
+* `Micronaut: Show Micronaut Tools Page`: Show the Micronaut Tools Page
 * `Micronaut: Create Micronaut Project`: Create a Micronaut project based on https://micronaut.io/launch
 * `Micronaut: Build ...`: Build a Micronaut project with the user selected goal/target
 * `Micronaut: Build Native Image`: Build a native image of a Micronaut project
@@ -53,8 +53,8 @@ The following commands are available for Micronaut project development:
 ### Extension Settings
 
 This extension contributes the following settings:
-* __micronaut.home__ - Optional path to Micronaut CLI installation.
-* __micronaut.showWelcomePage__ - Show Micronaut Tools page on extension activation.
+* __micronaut.home__ - The optional path to the Micronaut CLI installation.
+* __micronaut.showWelcomePage__ - Show the Micronaut Tools Page on extension activation.
 
 ## Create Micronaut Project
 
@@ -84,6 +84,7 @@ Having set up GraalVM as default runtime and debug environment in VS Code, switc
 - uisng Gradle build tool:
   ```shell
   ./gradlew nativeImage
+  ```
 - using Maven build tool:
   ```shell
   ./mvnw package -Dpackaging=native-image
