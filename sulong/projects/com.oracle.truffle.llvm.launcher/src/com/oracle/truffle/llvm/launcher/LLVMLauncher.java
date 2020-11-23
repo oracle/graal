@@ -34,7 +34,6 @@ import java.io.IOException;
 import java.nio.file.Paths;
 import java.util.ArrayList;
 import java.util.Arrays;
-import java.util.HashMap;
 import java.util.List;
 import java.util.ListIterator;
 import java.util.Map;
@@ -44,7 +43,6 @@ import java.util.stream.Collectors;
 import org.graalvm.launcher.AbstractLanguageLauncher;
 import org.graalvm.options.OptionCategory;
 import org.graalvm.polyglot.Context;
-import org.graalvm.polyglot.Engine;
 import org.graalvm.polyglot.PolyglotException;
 import org.graalvm.polyglot.Source;
 import org.graalvm.polyglot.Value;
@@ -71,8 +69,6 @@ public class LLVMLauncher extends AbstractLanguageLauncher {
     private VersionAction versionAction = VersionAction.None;
     private ToolchainAPIFunction toolchainAPI = null;
     private String toolchainAPIArg = null;
-    private boolean multiContextTestRun;
-    private Map<String, String> multiContextEngineOptions;
 
     @Override
     protected void launch(Context.Builder contextBuilder) {
@@ -100,9 +96,6 @@ public class LLVMLauncher extends AbstractLanguageLauncher {
             // Ignore fall through
             switch (option) {
                 case "--": // --
-                    break;
-                case "--multi-context-test-run":
-                    multiContextTestRun = true;
                     break;
                 case "--show-version":
                     versionAction = VersionAction.PrintAndContinue;
@@ -195,21 +188,6 @@ public class LLVMLauncher extends AbstractLanguageLauncher {
         List<String> programArgumentsList = arguments.subList(iterator.nextIndex(), arguments.size());
         programArgs = programArgumentsList.toArray(new String[programArgumentsList.size()]);
 
-        if (multiContextTestRun) {
-            List<String> engineArgs = new ArrayList<>();
-            multiContextEngineOptions = new HashMap<>();
-            for (String arg : arguments) {
-                if ("--experimental-options".equals(arg)) {
-                    engineArgs.add(arg);
-                }
-                if (arg.startsWith("--engine.")) {
-                    engineArgs.add(arg);
-                    unrecognizedOptions.remove(arg);
-                }
-            }
-            parseUnrecognizedOptions(getLanguageId(), multiContextEngineOptions, engineArgs);
-        }
-
         return unrecognizedOptions;
     }
 
@@ -262,16 +240,6 @@ public class LLVMLauncher extends AbstractLanguageLauncher {
 
     protected int execute(Context.Builder contextBuilder) {
         contextBuilder.arguments(getLanguageId(), programArgs);
-        if (multiContextTestRun) {
-            contextBuilder.engine(Engine.newBuilder().allowExperimentalOptions(true).options(multiContextEngineOptions).build());
-            executeOnce(contextBuilder);
-            return executeOnce(contextBuilder);
-        } else {
-            return executeOnce(contextBuilder);
-        }
-    }
-
-    private int executeOnce(Context.Builder contextBuilder) {
         try (Context context = contextBuilder.build()) {
             runVersionAction(versionAction, context.getEngine());
             if (toolchainAPI != null) {

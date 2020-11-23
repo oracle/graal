@@ -53,6 +53,23 @@ class SulongBenchmarkRule(mx_benchmark.StdOutRule):
             replacement=replacement)
 
     def parseResults(self, text):
+    
+        # Prepending the summary lines by the run number
+        newText = ""
+        forkNum1 = 0
+        forkNum2 = 0
+        for line in text.splitlines():
+            if line.startswith("first"):
+                newText+="run " + str(forkNum1) + " " + line + "\n" 
+                forkNum1+=1
+            if line.startswith("last"):
+                newText+="run " + str(forkNum2) + " " + line + "\n" 
+                forkNum2+=1
+        
+        text = newText
+        
+        mx.log(text)
+            
         def _parse_results_gen():
             for d in super(SulongBenchmarkRule, self).parseResults(text):
                 line = d.pop('line')
@@ -61,7 +78,7 @@ class SulongBenchmarkRule(mx_benchmark.StdOutRule):
                     r['score'] = value.strip()
                     r['iteration'] = str(iteration)
                     yield r
-
+                    
         return (x for x in _parse_results_gen())
 
 
@@ -133,7 +150,9 @@ class SulongBenchmarkSuite(VmBenchmarkSuite):
 
     def rules(self, out, benchmarks, bmSuiteArgs):
         return [
-            SulongBenchmarkRule(r'^first [\d]+ warmup iterations (?P<benchmark>[\S]+):(?P<line>([ ,]+(?:\d+(?:\.\d+)?))+)', {
+            SulongBenchmarkRule(
+		r'^run (?P<run>[\d]+) first [\d]+ warmup iterations (?P<benchmark>[\S]+):(?P<line>([ ,]+(?:\d+(?:\.\d+)?))+)',
+		{
                 "benchmark": ("<benchmark>", str),
                 "metric.name": "warmup",
                 "metric.type": "numeric",
@@ -142,8 +161,11 @@ class SulongBenchmarkSuite(VmBenchmarkSuite):
                 "metric.better": "lower",
                 "metric.unit": "us",
                 "metric.iteration": ("<iteration>", int),
+                "metric.fork-number": ("<run>", int),
             }),
-            SulongBenchmarkRule(r'^last [\d]+ iterations (?P<benchmark>[\S]+):(?P<line>([ ,]+(?:\d+(?:\.\d+)?))+)', {
+            SulongBenchmarkRule(
+		r'^run (?P<run>[\d]+) last [\d]+ iterations (?P<benchmark>[\S]+):(?P<line>([ ,]+(?:\d+(?:\.\d+)?))+)',
+		{
                 "benchmark": ("<benchmark>", str),
                 "metric.name": "time",
                 "metric.type": "numeric",
@@ -152,6 +174,7 @@ class SulongBenchmarkSuite(VmBenchmarkSuite):
                 "metric.better": "lower",
                 "metric.unit": "us",
                 "metric.iteration": ("<iteration>", int),
+                "metric.fork-number": ("<run>", int),
             }),
             mx_benchmark.StdOutRule(r'^Pure-startup \(microseconds\) (?P<benchmark>[\S]+): (?P<score>\d+)', {
                 "benchmark": ("<benchmark>", str),
@@ -309,8 +332,8 @@ class SulongVm(CExecutionEnvironmentMixin, GuestVm):
     def name(self):
         return "sulong"
 
-    def extraArgs(self):
-        return []
+    def launcherClass(self):
+        return "com.oracle.truffle.llvm.launcher.LLVMLauncher"
 
     def run(self, cwd, args):
         bench_file_and_args = args[-3:]
@@ -332,8 +355,7 @@ class SulongVm(CExecutionEnvironmentMixin, GuestVm):
             props, launcher_args = _filter_properties(launcher_args)
             sulongCmdLine = self.launcher_vm_args() + \
                             props + \
-                            ['-XX:-UseJVMCIClassLoader', "com.oracle.truffle.llvm.launcher.LLVMLauncher"] + \
-                            self.extraArgs()
+                            ['-XX:-UseJVMCIClassLoader', self.launcherClass()]
             result = self.host_vm().run(cwd, sulongCmdLine + launcher_args)
         return result
 
@@ -372,8 +394,8 @@ class SulongMultiContextVm(SulongVm):
     def name(self):
         return "sulong-multi"
 
-    def extraArgs(self):
-        return ["--multi-context-test-run"]
+    def launcherClass(self):
+        return "com.oracle.truffle.llvm.launcher.LLVMMultiContextLauncher"
 
 _suite = mx.suite("sulong")
 
