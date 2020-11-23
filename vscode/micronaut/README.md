@@ -2,7 +2,8 @@
 
 The Micronaut extension for Visual Studio Code (VS Code) provides the basic support for developing applications based on the [Micronaut Framework](https://micronaut.io/). The extension is Technology Preview.
 
-Besides, it enables the [Micronaut Launch](https://micronaut.io/launch/) application that allows you to create Micronaut projects through an interface inside VS Code instead of using the console CLI.  
+Besides, it enables the [Micronaut Launch](https://micronaut.io/launch/) application that allows you to create Micronaut projects through an interface inside VS Code, in addition to using the console CLI.
+Optionally, if a user provides a path to the Micronaut CLI installation, the option to create a project using the `mn` executable is also provided.
 
 In combination with the [GraalVM Extension](https://marketplace.visualstudio.com/items?itemName=oracle-labs-graalvm.graalvm), you can run Micronaut projects on GraalVM, and debug them directly from the VS Code development environment with different debugging protocols enabled with the extension.
 
@@ -33,8 +34,8 @@ Upon the installaiton, the Micronaut Tools Page window opens which provides you 
 
 The Micronaut extension provides:
 * Micronaut project creation wizard
+* Micronaut CLI installation
 * Editing and debugging Micronaut projects capabilities
-* Micronaut platforms setup
 * Building Micronaut projects ahead-of-time into native images with GraalVM
 
 ### Micronaut VS Code Commands
@@ -80,15 +81,11 @@ The GUI part of the Micronaut extension adds a new view to the Explorer activity
 
 The Micronaut support for VS Code is integrated with GraalVM to get the most from the applications and provide you with rich Native Image capabilities.
 
-Having set up GraalVM as default runtime and debug environment in VS Code, switch to the built-in console and run:
-- uisng Gradle build tool:
-  ```shell
-  ./gradlew nativeImage
-  ```
-- using Maven build tool:
-  ```shell
-  ./mvnw package -Dpackaging=native-image
-  ```
+Having set up GraalVM as the default runtime and debug environment in VS Code, invoke the "Command Palette -> Micronaut: Build..." command, where you can select the build targets (e.g., `clean`, `build`, `nativeImage`, etc.) from a list of available ones.
+For example, if your project is built with Maven, and you would like to package the compiled code as a GraalVM native image, select `nativeImage`.
+That will run the `mvnw package -Dpackaging=native-image` job.
+
+![Micronaut Build Commands](images/micronaut-build-commands.png)
 
 Besides that, you can push a newly built native image to the Docker Registry from the VS Code console.
 
