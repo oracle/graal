@@ -8,9 +8,10 @@
 import * as vscode from 'vscode';
 import * as cp from 'child_process';
 import * as path from 'path';
-import { getJavaHome } from "./utils";
+import { getJavaHome, findExecutable } from "./utils";
 
 const MICRONAUT: string = 'Micronaut';
+const NATIVE_IMAGE: string = 'native-image';
 let goals: vscode.QuickPickItem[] = [];
 
 export async function builderInit() {
@@ -29,12 +30,27 @@ export async function build(goal?: string) {
         }
     }
     if (goal) {
+        const javaHome = getJavaHome();
+        if (javaHome && (goal === 'nativeImage' || goal === 'dockerBuildNative')) {
+            const nativeImage = findExecutable(NATIVE_IMAGE, javaHome);
+            if (!nativeImage) {
+                const gu = findExecutable('gu', javaHome);
+                if (gu) {
+                    const selected = await vscode.window.showInformationMessage(`${NATIVE_IMAGE} is not installed in your GraalVM`, `Install ${NATIVE_IMAGE}`);
+                    if (selected === `Install ${NATIVE_IMAGE}`) {
+                        await vscode.commands.executeCommand('extension.graalvm.installGraalVMComponent', NATIVE_IMAGE, javaHome);
+                        return;
+                    }
+                } else {
+                    vscode.window.showWarningMessage(`native-image is missing in ${javaHome}`);
+                }
+            }
+        }
         const command = await terminalCommandFor(goal);
         if (command) {
             let terminal: vscode.Terminal | undefined = vscode.window.terminals.find(terminal => terminal.name === MICRONAUT);
             if (!terminal) {
                 const env: any = {};
-                const javaHome = getJavaHome();
                 if (javaHome) {
                     env.JAVA_HOME = javaHome;
                     env.PATH = `${path.join(javaHome, 'bin')}${path.delimiter}${process.env.PATH}`;
