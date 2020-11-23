@@ -166,7 +166,6 @@ public class RuntimeCodeInstaller extends AbstractRuntimeCodeInstaller {
     }
 
     private void doInstall(SubstrateInstalledCode installedCode) {
-
         ReferenceAdjuster adjuster = new InstantReferenceAdjuster();
 
         // A freshly allocated CodeInfo object is protected from the GC until the tether is set.

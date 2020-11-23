@@ -197,7 +197,7 @@ public class CodeInfoTable {
      * invalidation/freeing that the GC does because the tether is still reachable.
      */
     @Uninterruptible(reason = "Must prevent the GC from freeing the CodeInfo object.")
-    public static void invalidateInstalledCodeAtSafepoint(CodePointer codePointer) {
+    private static void invalidateInstalledCodeAtSafepoint(CodePointer codePointer) {
         UntetheredCodeInfo untetheredInfo = getRuntimeCodeCache().lookupCodeInfo(codePointer);
         Object tether = CodeInfoAccess.acquireTether(untetheredInfo);
         try {

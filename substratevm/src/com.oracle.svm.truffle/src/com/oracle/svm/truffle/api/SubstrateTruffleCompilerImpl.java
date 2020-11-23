@@ -36,9 +36,9 @@ import org.graalvm.compiler.options.OptionValues;
 import org.graalvm.compiler.phases.PhaseSuite;
 import org.graalvm.compiler.phases.tiers.HighTierContext;
 import org.graalvm.compiler.truffle.common.CompilableTruffleAST;
-import org.graalvm.compiler.truffle.compiler.TruffleCompilerConfiguration;
 import org.graalvm.compiler.truffle.compiler.PartialEvaluator;
 import org.graalvm.compiler.truffle.compiler.TruffleCompilationIdentifier;
+import org.graalvm.compiler.truffle.compiler.TruffleCompilerConfiguration;
 import org.graalvm.compiler.truffle.compiler.TruffleCompilerImpl;
 import org.graalvm.compiler.truffle.runtime.OptimizedCallTarget;
 import org.graalvm.nativeimage.Platform;
@@ -116,6 +116,6 @@ public class SubstrateTruffleCompilerImpl extends TruffleCompilerImpl implements
 
     @Override
     protected InstalledCode createInstalledCode(CompilableTruffleAST compilable) {
-        return ((SubstrateCompilableTruffleAST) compilable).createInstalledCode();
+        return ((SubstrateCompilableTruffleAST) compilable).createPreliminaryInstalledCode();
     }
 }

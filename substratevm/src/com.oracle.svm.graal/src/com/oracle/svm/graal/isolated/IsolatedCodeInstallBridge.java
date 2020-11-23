@@ -34,22 +34,21 @@ import jdk.vm.ci.code.InstalledCode;
 
 /**
  * A helper to pass information for installing code in the compilation client through a Truffle
- * compilation. It does not implement {@link InstalledCode} in any meaningful way, just like
- * {@code SubstrateTruffleInstalledCodeBridge}.
+ * compilation. It does not implement {@link InstalledCode} in any meaningful way.
  */
 public final class IsolatedCodeInstallBridge extends InstalledCode implements OptimizedAssumptionDependency {
-    private final ClientHandle<? extends SubstrateInstalledCode.Access> installedCodeAccessHandle;
+    private final ClientHandle<? extends SubstrateInstalledCode.Factory> installedCodeFactoryHandle;
     private final ClientHandle<? extends OptimizedAssumptionDependency.Access> dependencyAccessHandle;
 
-    public IsolatedCodeInstallBridge(ClientHandle<? extends SubstrateInstalledCode.Access> installedCodeAccessHandle,
+    public IsolatedCodeInstallBridge(ClientHandle<? extends SubstrateInstalledCode.Factory> installedCodeFactoryHandle,
                     ClientHandle<? extends OptimizedAssumptionDependency.Access> dependencyAccessHandle) {
         super(IsolatedCodeInstallBridge.class.getSimpleName());
-        this.installedCodeAccessHandle = installedCodeAccessHandle;
+        this.installedCodeFactoryHandle = installedCodeFactoryHandle;
         this.dependencyAccessHandle = dependencyAccessHandle;
     }
 
-    public ClientHandle<? extends SubstrateInstalledCode.Access> getInstalledCodeAccessHandle() {
-        return installedCodeAccessHandle;
+    public ClientHandle<? extends SubstrateInstalledCode.Factory> getInstalledCodeFactoryHandle() {
+        return installedCodeFactoryHandle;
     }
 
     public ClientHandle<? extends Access> getDependencyAccessHandle() {

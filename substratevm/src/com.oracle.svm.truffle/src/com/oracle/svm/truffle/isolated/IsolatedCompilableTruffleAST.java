@@ -136,7 +136,7 @@ final class IsolatedCompilableTruffleAST extends IsolatedObjectProxy<SubstrateCo
     }
 
     @Override
-    public SubstrateInstalledCode getSubstrateInstalledCode() {
+    public SubstrateInstalledCode createSubstrateInstalledCode() {
         throw VMError.shouldNotReachHere("Must not be called during isolated compilation");
     }
 
@@ -146,7 +146,7 @@ final class IsolatedCompilableTruffleAST extends IsolatedObjectProxy<SubstrateCo
     }
 
     @Override
-    public InstalledCode createInstalledCode() {
+    public InstalledCode createPreliminaryInstalledCode() {
         return new IsolatedCodeInstallBridge(handle, handle);
     }
 

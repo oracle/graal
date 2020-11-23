@@ -54,17 +54,17 @@ public final class IsolateAwareCodeCacheProvider extends SubstrateCodeCacheProvi
 
         VMError.guarantee(!isDefault);
 
-        ClientHandle<? extends SubstrateInstalledCode.Access> installedCodeAccessHandle = ((IsolatedCodeInstallBridge) predefinedInstalledCode).getInstalledCodeAccessHandle();
+        ClientHandle<? extends SubstrateInstalledCode.Factory> installedCodeFactoryHandle = ((IsolatedCodeInstallBridge) predefinedInstalledCode).getInstalledCodeFactoryHandle();
 
         CompilationResult result = ((SubstrateCompiledCode) compiledCode).getCompilationResult();
         if (method instanceof IsolatedCompilationMethod<?>) {
             IsolatedCompilationMethod<?> compilerMethod = (IsolatedCompilationMethod<?>) method;
             ClientHandle<? extends SharedRuntimeMethod> clientMethodHandle = compilerMethod.getMirror();
             assert !clientMethodHandle.equal(IsolatedHandles.nullHandle()) : "Client method must not be null";
-            IsolatedRuntimeCodeInstaller.installInClientIsolate(compilerMethod, clientMethodHandle, result, installedCodeAccessHandle);
+            IsolatedRuntimeCodeInstaller.installInClientIsolate(compilerMethod, clientMethodHandle, result, installedCodeFactoryHandle);
         } else {
             ImageHeapRef<SubstrateMethod> methodRef = ImageHeapObjects.ref((SubstrateMethod) method);
-            IsolatedRuntimeCodeInstaller.installInClientIsolate(methodRef, result, installedCodeAccessHandle);
+            IsolatedRuntimeCodeInstaller.installInClientIsolate(methodRef, result, installedCodeFactoryHandle);
         }
         return predefinedInstalledCode;
     }

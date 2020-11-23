@@ -24,7 +24,6 @@
  */
 package com.oracle.svm.core.deopt;
 
-import jdk.vm.ci.code.CodeCacheProvider;
 import jdk.vm.ci.code.InstalledCode;
 import jdk.vm.ci.meta.ResolvedJavaMethod;
 
@@ -58,11 +57,9 @@ public interface SubstrateInstalledCode {
      * Provides access to a {@link SubstrateInstalledCode}.
      *
      * Introduced when {@code OptimizedCallTarget} was changed to no longer extend
-     * {@link InstalledCode}. This change means we now need a bridge from the {@link InstalledCode}
-     * object (passed to {@link CodeCacheProvider}) to the object that is actually installed in the
-     * SVM code cache.
+     * {@link InstalledCode}.
      */
-    interface Access {
-        SubstrateInstalledCode getSubstrateInstalledCode();
+    interface Factory {
+        SubstrateInstalledCode createSubstrateInstalledCode();
     }
 }
