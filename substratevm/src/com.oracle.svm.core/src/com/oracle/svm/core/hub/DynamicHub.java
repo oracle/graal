@@ -814,8 +814,8 @@ public final class DynamicHub implements JavaKind.FormatWithToString, AnnotatedE
     private boolean isAnonymousClass() {
         if (isAnonymousClass instanceof Boolean) {
             return (Boolean) isAnonymousClass;
-        } else if (isAnonymousClass instanceof NoClassDefFoundError) {
-            throw (NoClassDefFoundError) isAnonymousClass;
+        } else if (isAnonymousClass instanceof LinkageError) {
+            throw (LinkageError) isAnonymousClass;
         } else if (isAnonymousClass instanceof InternalError) {
             throw (InternalError) isAnonymousClass;
         } else {

@@ -540,7 +540,7 @@ public class SubstrateGraphBuilderPlugins {
                         try {
                             Field targetField = clazz.getDeclaredField(fieldName);
                             return processObjectFieldOffset(b, targetField, analysis, metaAccess);
-                        } catch (NoSuchFieldException | NoClassDefFoundError e) {
+                        } catch (NoSuchFieldException | LinkageError e) {
                             return false;
                         }
                     }

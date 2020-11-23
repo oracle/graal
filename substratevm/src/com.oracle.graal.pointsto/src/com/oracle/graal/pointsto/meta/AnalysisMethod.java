@@ -172,7 +172,7 @@ public class AnalysisMethod implements WrappedJavaMethod, GraphProvider, Origina
         ResolvedJavaType resolvedCatchType;
         try {
             resolvedCatchType = catchType.resolve(wrapped.getDeclaringClass());
-        } catch (NoClassDefFoundError e) {
+        } catch (LinkageError e) {
             /*
              * Type resolution fails if the catch type is missing. Just return the unresolved type.
              * The analysis doesn't model unresolved types, but we can reuse the JVMCI type; the

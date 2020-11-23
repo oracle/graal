@@ -24,6 +24,10 @@
  */
 package com.oracle.svm.core.snippets;
 
+// Checkstyle: allow reflection
+
+import java.lang.reflect.GenericSignatureFormatError;
+
 import com.oracle.svm.core.annotate.RestrictHeapAccess;
 import com.oracle.svm.core.jdk.InternalVMMethod;
 import com.oracle.svm.core.jdk.StackTraceUtils;
@@ -341,6 +345,8 @@ public class ImplicitExceptions {
         throw CACHED_ARITHMETIC_EXCEPTION;
     }
 
+    // ReflectiveOperationException subclasses
+
     public static void throwClassNotFoundException(String message) throws ClassNotFoundException {
         throw new ClassNotFoundException(message);
     }
@@ -353,19 +359,73 @@ public class ImplicitExceptions {
         throw new NoSuchMethodException(message);
     }
 
-    public static void throwNoClassDefFoundError(String message) throws NoClassDefFoundError {
-        throw new NoClassDefFoundError(message);
+    // LinkageError subclasses
+
+    public static void throwLinkageError(String message) throws LinkageError {
+        throw new LinkageError(message);
+    }
+
+    public static void throwClassCircularityError(String message) throws ClassCircularityError {
+        throw new ClassCircularityError(message);
+    }
+
+    public static void throwIncompatibleClassChangeError(String message) throws IncompatibleClassChangeError {
+        throw new IncompatibleClassChangeError(message);
     }
 
     public static void throwNoSuchFieldError(String message) throws NoSuchFieldError {
         throw new NoSuchFieldError(message);
     }
 
+    public static void throwInstantiationError(String message) throws InstantiationError {
+        throw new InstantiationError(message);
+    }
+
     public static void throwNoSuchMethodError(String message) throws NoSuchMethodError {
         throw new NoSuchMethodError(message);
     }
 
-    public static void throwVerifyError() {
+    public static void throwIllegalAccessError(String message) throws IllegalAccessError {
+        throw new IllegalAccessError(message);
+    }
+
+    public static void throwAbstractMethodError(String message) throws AbstractMethodError {
+        throw new AbstractMethodError(message);
+    }
+
+    public static void throwBootstrapMethodError(String message) throws BootstrapMethodError {
+        throw new BootstrapMethodError(message);
+    }
+
+    public static void throwClassFormatError(String message) throws ClassFormatError {
+        throw new ClassFormatError(message);
+    }
+
+    public static void throwGenericSignatureFormatError(String message) throws GenericSignatureFormatError {
+        throw new GenericSignatureFormatError(message);
+    }
+
+    public static void throwUnsupportedClassVersionError(String message) throws UnsupportedClassVersionError {
+        throw new UnsupportedClassVersionError(message);
+    }
+
+    public static void throwUnsatisfiedLinkError(String message) throws UnsatisfiedLinkError {
+        throw new UnsatisfiedLinkError(message);
+    }
+
+    public static void throwNoClassDefFoundError(String message) throws NoClassDefFoundError {
+        throw new NoClassDefFoundError(message);
+    }
+
+    public static void throwExceptionInInitializerError(String message) throws ExceptionInInitializerError {
+        throw new ExceptionInInitializerError(message);
+    }
+
+    public static void throwVerifyError(String message) throws VerifyError {
+        throw new VerifyError(message);
+    }
+
+    public static void throwVerifyError() throws VerifyError {
         throw new VerifyError();
     }
 

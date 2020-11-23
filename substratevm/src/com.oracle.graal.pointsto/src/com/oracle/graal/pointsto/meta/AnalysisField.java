@@ -124,7 +124,7 @@ public class AnalysisField implements ResolvedJavaField, OriginalFieldProvider {
         ResolvedJavaType resolvedType;
         try {
             resolvedType = wrappedField.getType().resolve(universe.substitutions.resolve(wrappedField.getDeclaringClass()));
-        } catch (NoClassDefFoundError e) {
+        } catch (LinkageError e) {
             /*
              * Type resolution fails if the declared type is missing. Just erase the type by
              * returning the Object type.
