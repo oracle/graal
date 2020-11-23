@@ -162,6 +162,7 @@ public final class Ids<T> {
         JDWPLogger.log("Replaced ID: %d", JDWPLogger.LogLevel.IDS, id);
     }
 
+    @SuppressWarnings({"unchecked", "rawtypes"})
     public void updateId(KlassRef klass) {
         // remove existing ID
         removeId(klass);
@@ -172,6 +173,7 @@ public final class Ids<T> {
         }
     }
 
+    @SuppressWarnings({"unchecked", "rawtypes"})
     private void removeId(KlassRef klass) {
         int id = (int) getId(klass);
         if (id > 0) {
