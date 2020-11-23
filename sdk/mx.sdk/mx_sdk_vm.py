@@ -727,8 +727,11 @@ grant codeBase "file:${java.home}/languages/-" {
                 for name, value in vendor_info.items():
                     jlink.append('--' + name + '=' + value)
 
+        release_file = join(jdk.home, 'release')
+        if isfile(release_file):
+            jlink.append('--release-info=' + release_file)
+
         # TODO: investigate the options below used by OpenJDK to see if they should be used:
-        # --release-info: this allow extra properties to be written to the <jdk>/release file
         # --order-resources: specifies order of resources in generated lib/modules file.
         #       This is apparently not so important if a CDS archive is available.
         # --generate-jli-classes: pre-generates a set of java.lang.invoke classes.
