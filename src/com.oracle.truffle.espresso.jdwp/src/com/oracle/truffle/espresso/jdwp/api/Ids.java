@@ -178,4 +178,8 @@ public final class Ids<T> {
             objects[id] = new WeakReference<>(null);
         }
     }
+
+    public boolean checkRemoved(long refTypeId) {
+        return innerClassIDMap.containsValue(refTypeId);
+    }
 }

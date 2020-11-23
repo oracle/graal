@@ -78,10 +78,11 @@ public final class InnerClassRedefiner {
                 String klassName = getClassNameFromBytes(redefineInfo.getClassBytes(), context);
                 Matcher matcher = ANON_INNER_CLASS_PATTERN.matcher(klassName);
                 if (matcher.matches()) {
+                    // don't assume that associated old klass instance represents this redefineInfo
+                    redefineInfo.clearKlass();
                     // anonymous inner class or nested named
                     // inner class of an anonymous inner class
                     // get the outer classinfo if present
-                    String outerName = getOuterClassName(klassName);
                     HotSwapClassInfo info = handled.get(getOuterClassName(klassName));
                     if (info != null) {
                         HotSwapClassInfo classInfo = ClassInfo.create(klassName, redefineInfo.getClassBytes(), info.getClassLoader(), context);
