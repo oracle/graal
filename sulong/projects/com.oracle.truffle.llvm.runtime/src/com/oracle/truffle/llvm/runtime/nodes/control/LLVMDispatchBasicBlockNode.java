@@ -37,18 +37,31 @@ import com.oracle.truffle.api.frame.FrameUtil;
 import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.instrumentation.StandardTags;
 import com.oracle.truffle.api.instrumentation.Tag;
+import com.oracle.truffle.api.interop.ArityException;
+import com.oracle.truffle.api.interop.InteropLibrary;
+import com.oracle.truffle.api.interop.UnsupportedMessageException;
+import com.oracle.truffle.api.interop.UnsupportedTypeException;
 import com.oracle.truffle.api.nodes.ExplodeLoop;
 import com.oracle.truffle.api.nodes.ExplodeLoop.LoopExplosionKind;
 import com.oracle.truffle.api.nodes.LoopNode;
+import com.oracle.truffle.llvm.runtime.LLVMFunction;
+import com.oracle.truffle.llvm.runtime.LLVMFunctionCode;
+import com.oracle.truffle.llvm.runtime.LLVMFunctionDescriptor;
+import com.oracle.truffle.llvm.runtime.LLVMLanguage;
+import com.oracle.truffle.llvm.runtime.LLVMSymbol;
 import com.oracle.truffle.llvm.runtime.except.LLVMUserException;
+import com.oracle.truffle.llvm.runtime.interop.LLVMForeignCreateUnwindHeaderNode;
 import com.oracle.truffle.llvm.runtime.nodes.api.LLVMControlFlowNode;
 import com.oracle.truffle.llvm.runtime.nodes.api.LLVMExpressionNode;
 import com.oracle.truffle.llvm.runtime.nodes.api.LLVMStatementNode;
 import com.oracle.truffle.llvm.runtime.nodes.base.LLVMBasicBlockNode;
 import com.oracle.truffle.llvm.runtime.nodes.base.LLVMFrameNullerUtil;
+import com.oracle.truffle.llvm.runtime.nodes.func.LLVMCallNode;
+import com.oracle.truffle.llvm.runtime.nodes.func.LLVMCallNodeGen;
 import com.oracle.truffle.llvm.runtime.nodes.func.LLVMInvokeNode;
 import com.oracle.truffle.llvm.runtime.nodes.func.LLVMResumeNode;
 import com.oracle.truffle.llvm.runtime.nodes.others.LLVMUnreachableNode;
+import com.oracle.truffle.llvm.runtime.pointer.LLVMPointer;
 import com.oracle.truffle.llvm.runtime.types.symbols.LocalVariableDebugInfo;
 
 public abstract class LLVMDispatchBasicBlockNode extends LLVMExpressionNode {
@@ -259,6 +272,29 @@ public abstract class LLVMDispatchBasicBlockNode extends LLVMExpressionNode {
                     basicBlockIndex = invokeNode.getUnwindSuccessor();
                     nullDeadSlots(frame, bodyNodes[basicBlockIndex].nullableBefore);
                     continue outer;
+                } catch (RuntimeException e) {
+                    /*
+                     * RuntimeException should be replaced by an AbstractTruffleException. However,
+                     * JSUserExceptions are no subclass of RuntimeException.
+                     */
+                    try {
+                        LLVMForeignCreateUnwindHeaderNode createUnwindHeaderNode = insert(LLVMForeignCreateUnwindHeaderNode.create());
+                        frame.setObject(exceptionValueSlot, new LLVMUserException(invokeNode, createUnwindHeaderNode.execute(e)));
+                        if (CompilerDirectives.inInterpreter()) {
+                            if (invokeNode.getUnwindSuccessor() <= basicBlockIndex) {
+                                backEdgeCounter++;
+                            }
+                        }
+                        nullDeadSlots(frame, bb.nullableAfter);
+                        executePhis(frame, invokeNode, LLVMInvokeNode.UNWIND_SUCCESSOR);
+                        basicBlockIndex = invokeNode.getUnwindSuccessor();
+                        nullDeadSlots(frame, bodyNodes[basicBlockIndex].nullableBefore);
+                        continue outer;
+                    } catch (UnsupportedTypeException | ArityException | UnsupportedMessageException e1) {
+
+                    }
+                    throw e;
+
                 }
             } else if (controlFlowNode instanceof LLVMRetNode) {
                 LLVMRetNode retNode = (LLVMRetNode) controlFlowNode;
