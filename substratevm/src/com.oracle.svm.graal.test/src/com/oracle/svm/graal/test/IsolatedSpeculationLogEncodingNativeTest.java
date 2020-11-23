@@ -25,6 +25,8 @@
  */
 package com.oracle.svm.graal.test;
 
+// Checkstyle: allow reflection
+
 import java.lang.reflect.Constructor;
 import java.lang.reflect.InvocationTargetException;
 import java.lang.reflect.Method;
@@ -45,7 +47,10 @@ public class IsolatedSpeculationLogEncodingNativeTest {
         final int groupId = 1234;
         final Object[] context = {'a', null, "Hello World!", Byte.MAX_VALUE, Short.MAX_VALUE, Long.MAX_VALUE, Integer.MAX_VALUE, Double.MAX_VALUE, Float.MAX_VALUE};
 
+        // Checkstyle: stop
         final Class<?> encodedSpeculationReasonClass = Class.forName("jdk.vm.ci.meta.EncodedSpeculationReason");
+        // Checkstyle: resume
+
         Constructor<?> encodedSpeculationReasonConstructor = encodedSpeculationReasonClass.getDeclaredConstructor(Integer.TYPE, String.class, Object[].class);
         SpeculationLog.SpeculationReason encodedReason = (SpeculationLog.SpeculationReason) encodedSpeculationReasonConstructor.newInstance(groupId, "testGroup", context);
 

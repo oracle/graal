@@ -25,6 +25,8 @@
  */
 package com.oracle.svm.graal.test;
 
+// Checkstyle: allow reflection
+
 import com.oracle.svm.graal.isolated.IsolatedSpeculationLog;
 import org.junit.Test;
 import org.junit.Assert;
@@ -49,8 +51,10 @@ public class IsolatedSpeculationLogEncodingTest {
         Class<?> sreClass = null;
         Class<?> isolatedSreClass = null;
         try {
+            // Checkstyle: stop
             sreClass = Class.forName(SRE_CLASS_NAME);
             isolatedSreClass = Class.forName(ISOLATED_SRE_CLASS_NAME);
+            // Checkstyle: resume
         } catch (ClassNotFoundException e) {
             Assert.fail("failed to get classes");
         }
@@ -75,7 +79,9 @@ public class IsolatedSpeculationLogEncodingTest {
     public void testEncodeAsByteArray() throws NoSuchMethodException, InvocationTargetException, IllegalAccessException, ClassNotFoundException, InstantiationException {
         final int groupId = 1234;
         final Object[] context = {'a', null, "Hello World!", Byte.MAX_VALUE, Short.MAX_VALUE, Long.MAX_VALUE, Integer.MAX_VALUE, Double.MAX_VALUE, Float.MAX_VALUE};
+        // Checkstyle: stop
         final Class<?> encodedSpeculationReasonClass = Class.forName("jdk.vm.ci.meta.EncodedSpeculationReason");
+        // Checkstyle: resume
         Constructor<?> encodedSpeculationReasonConstructor = encodedSpeculationReasonClass.getDeclaredConstructor(Integer.TYPE, String.class, Object[].class);
         SpeculationLog.SpeculationReason reason = (SpeculationLog.SpeculationReason) encodedSpeculationReasonConstructor.newInstance(groupId, "testGroup", context);
 
