@@ -73,7 +73,7 @@ public class LowTier extends BaseTier<LowTierContext> {
 
         appendPhase(new UseTrappingNullChecksPhase());
 
-        appendPhase(canonicalizerWithoutGVN);
+        appendPhase(canonicalizerWithoutGVN.copyWithoutFurtherCanonicalizations());
 
         appendPhase(new DeadCodeEliminationPhase(Required));
 
