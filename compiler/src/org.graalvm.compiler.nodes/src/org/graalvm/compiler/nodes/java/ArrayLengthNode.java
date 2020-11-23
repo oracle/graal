@@ -27,17 +27,20 @@ package org.graalvm.compiler.nodes.java;
 import static org.graalvm.compiler.nodeinfo.NodeCycles.CYCLES_2;
 import static org.graalvm.compiler.nodeinfo.NodeSize.SIZE_1;
 
+import org.graalvm.compiler.core.common.type.AbstractObjectStamp;
 import org.graalvm.compiler.core.common.type.StampFactory;
 import org.graalvm.compiler.graph.Node.NodeIntrinsicFactory;
 import org.graalvm.compiler.graph.NodeClass;
 import org.graalvm.compiler.graph.spi.Canonicalizable;
 import org.graalvm.compiler.graph.spi.CanonicalizerTool;
 import org.graalvm.compiler.nodeinfo.NodeInfo;
+import org.graalvm.compiler.nodes.BeginNode;
 import org.graalvm.compiler.nodes.ConstantNode;
 import org.graalvm.compiler.nodes.DeoptimizeNode;
 import org.graalvm.compiler.nodes.FixedWithNextNode;
+import org.graalvm.compiler.nodes.NodeView;
+import org.graalvm.compiler.nodes.PiNode;
 import org.graalvm.compiler.nodes.ValueNode;
-import org.graalvm.compiler.nodes.extended.FixedValueAnchorNode;
 import org.graalvm.compiler.nodes.graphbuilderconf.GraphBuilderContext;
 import org.graalvm.compiler.nodes.spi.ArrayLengthProvider;
 import org.graalvm.compiler.nodes.spi.Lowerable;
@@ -110,13 +113,19 @@ public final class ArrayLengthNode extends FixedWithNextNode implements Canonica
     }
 
     public static boolean intrinsify(GraphBuilderContext b, ValueNode array) {
-        /*
-         * Reading the length must not float above a check whether the object is actually an array.
-         * There is currently no good way to ask whether a stamp is really an array, and the
-         * lowering of ArrayLengthNode also skips Pi nodes. So we anchor the value here via a
-         * FixedValueAnchorNode. GR-27560 should optimize this.
-         */
-        ValueNode anchoredArray = b.add(new FixedValueAnchorNode(array));
+        ValueNode anchoredArray;
+        AbstractObjectStamp arrayStamp = (AbstractObjectStamp) array.stamp(NodeView.DEFAULT);
+        if (!arrayStamp.isAlwaysArray() || !arrayStamp.nonNull()) {
+            /*
+             * Reading the length must not float above a check whether the object is actually an
+             * array. Every correct usage of the intrinsic must have a null check and an is-array
+             * check beforehand. But it might not be reflected in the stamp, in which case we anchor
+             * the array to the current block.
+             */
+            anchoredArray = b.add(new PiNode(array, arrayStamp.asAlwaysArray().asNonNull(), b.add(new BeginNode())));
+        } else {
+            anchoredArray = array;
+        }
 
         b.addPush(JavaKind.Int, new ArrayLengthNode(anchoredArray));
         return true;

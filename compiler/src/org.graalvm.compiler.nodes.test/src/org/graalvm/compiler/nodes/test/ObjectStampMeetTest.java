@@ -24,15 +24,14 @@
  */
 package org.graalvm.compiler.nodes.test;
 
-import jdk.vm.ci.meta.JavaKind;
-
-import org.junit.Assert;
-import org.junit.Test;
-
 import org.graalvm.compiler.core.common.type.ObjectStamp;
 import org.graalvm.compiler.core.common.type.Stamp;
 import org.graalvm.compiler.core.common.type.StampFactory;
 import org.graalvm.compiler.core.common.type.TypeReference;
+import org.junit.Assert;
+import org.junit.Test;
+
+import jdk.vm.ci.meta.JavaKind;
 
 public class ObjectStampMeetTest extends AbstractObjectStampTest {
 
@@ -160,5 +159,41 @@ public class ObjectStampMeetTest extends AbstractObjectStampTest {
                 }
             }
         }
+    }
+
+    @Test
+    public void testAlwaysArray() {
+        Stamp object = StampFactory.object(getType(Object.class));
+        Stamp objectExact = StampFactory.object(getType(Object.class).asExactReference());
+        Stamp objectArray = StampFactory.object(getType(Object[].class));
+        Stamp a = StampFactory.object(getType(A.class));
+        Stamp aArray = StampFactory.object(getType(A[].class));
+
+        Stamp alwaysArray = ((ObjectStamp) StampFactory.object()).asAlwaysArray();
+
+        Assert.assertFalse(((ObjectStamp) object).isAlwaysArray());
+        Assert.assertFalse(((ObjectStamp) objectExact).isAlwaysArray());
+        Assert.assertTrue(((ObjectStamp) objectArray).isAlwaysArray());
+        Assert.assertFalse(((ObjectStamp) a).isAlwaysArray());
+        Assert.assertTrue(((ObjectStamp) aArray).isAlwaysArray());
+        Assert.assertTrue(((ObjectStamp) alwaysArray).isAlwaysArray());
+
+        Assert.assertFalse(((ObjectStamp) object.meet(alwaysArray)).isAlwaysArray());
+        Assert.assertFalse(((ObjectStamp) objectExact.meet(alwaysArray)).isAlwaysArray());
+        Assert.assertTrue(((ObjectStamp) objectArray.meet(alwaysArray)).isAlwaysArray());
+        Assert.assertFalse(((ObjectStamp) a.meet(alwaysArray)).isAlwaysArray());
+        Assert.assertTrue(((ObjectStamp) aArray.meet(alwaysArray)).isAlwaysArray());
+
+        Assert.assertFalse(((ObjectStamp) object.meet(objectArray)).isAlwaysArray());
+        Assert.assertFalse(((ObjectStamp) objectExact.meet(objectArray)).isAlwaysArray());
+        Assert.assertFalse(((ObjectStamp) a.meet(objectArray)).isAlwaysArray());
+        Assert.assertTrue(((ObjectStamp) aArray.meet(objectArray)).isAlwaysArray());
+        Assert.assertTrue(((ObjectStamp) alwaysArray.meet(objectArray)).isAlwaysArray());
+
+        Assert.assertFalse(((ObjectStamp) object.meet(a)).isAlwaysArray());
+        Assert.assertFalse(((ObjectStamp) objectExact.meet(a)).isAlwaysArray());
+        Assert.assertFalse(((ObjectStamp) objectArray.meet(a)).isAlwaysArray());
+        Assert.assertFalse(((ObjectStamp) aArray.meet(a)).isAlwaysArray());
+        Assert.assertFalse(((ObjectStamp) alwaysArray.meet(a)).isAlwaysArray());
     }
 }

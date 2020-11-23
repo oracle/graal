@@ -71,7 +71,6 @@ import org.graalvm.compiler.nodes.graphbuilderconf.InlineInvokePlugin;
 import org.graalvm.compiler.nodes.graphbuilderconf.InvocationPlugin;
 import org.graalvm.compiler.nodes.graphbuilderconf.InvocationPlugins;
 import org.graalvm.compiler.nodes.graphbuilderconf.InvocationPlugins.Registration;
-import org.graalvm.compiler.nodes.java.ArrayLengthNode;
 import org.graalvm.compiler.nodes.spi.Replacements;
 import org.graalvm.compiler.options.Option;
 import org.graalvm.compiler.phases.util.Providers;
@@ -1049,22 +1048,6 @@ final class Target_com_oracle_truffle_polyglot_LanguageCache {
      */
     @Alias @RecomputeFieldValue(kind = Kind.Reset) //
     private String languageHome;
-}
-
-@TargetClass(className = "com.oracle.truffle.polyglot.HostObject", onlyWith = TruffleFeature.IsEnabled.class)
-final class Target_com_oracle_truffle_polyglot_HostObject {
-
-    /**
-     * TODO: Remove when java.lang.reflect.Array.getLength is made PE-safe (GR-23860).
-     */
-    @Substitute
-    static int getArrayLength(Object array) {
-        if (array == null || !array.getClass().isArray()) {
-            CompilerDirectives.transferToInterpreterAndInvalidate();
-            throw new IllegalStateException("should not reach here");
-        }
-        return ArrayLengthNode.arrayLength(array);
-    }
 }
 
 @TargetClass(className = "com.oracle.truffle.object.CoreLocations$DynamicObjectFieldLocation", onlyWith = TruffleFeature.IsEnabled.class)

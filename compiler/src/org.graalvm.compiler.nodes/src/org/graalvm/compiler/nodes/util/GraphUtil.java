@@ -693,12 +693,12 @@ public class GraphUtil {
         return n;
     }
 
-    public static ValueNode skipPiWhileNonNull(ValueNode node) {
+    public static ValueNode skipPiWhileNonNullArray(ValueNode node) {
         ValueNode n = node;
         while (n instanceof PiNode) {
             PiNode piNode = (PiNode) n;
             ObjectStamp originalStamp = (ObjectStamp) piNode.getOriginalNode().stamp(NodeView.DEFAULT);
-            if (originalStamp.nonNull()) {
+            if (originalStamp.nonNull() && originalStamp.isAlwaysArray()) {
                 n = piNode.getOriginalNode();
             } else {
                 break;

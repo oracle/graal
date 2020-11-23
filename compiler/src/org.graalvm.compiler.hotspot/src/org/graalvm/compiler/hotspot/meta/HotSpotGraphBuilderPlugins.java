@@ -322,7 +322,6 @@ public class HotSpotGraphBuilderPlugins {
 
         r.registerMethodSubstitution(HotSpotClassSubstitutions.class, "getModifiers", Receiver.class);
         r.registerMethodSubstitution(HotSpotClassSubstitutions.class, "isInterface", Receiver.class);
-        r.registerMethodSubstitution(HotSpotClassSubstitutions.class, "isArray", Receiver.class);
         r.register1("isPrimitive", Receiver.class, new InvocationPlugin() {
             @Override
             public boolean apply(GraphBuilderContext b, ResolvedJavaMethod targetMethod, Receiver receiver) {

@@ -28,7 +28,6 @@ package com.oracle.svm.core.jdk;
 
 import java.lang.reflect.Array;
 
-import org.graalvm.compiler.nodes.java.ArrayLengthNode;
 import org.graalvm.compiler.word.BarrieredAccess;
 import org.graalvm.word.UnsignedWord;
 
@@ -41,16 +40,6 @@ import com.oracle.svm.core.util.VMError;
 
 @TargetClass(java.lang.reflect.Array.class)
 final class Target_java_lang_reflect_Array {
-
-    @Substitute
-    private static int getLength(Object array) {
-        if (array == null) {
-            throw new NullPointerException();
-        } else if (!array.getClass().isArray()) {
-            throw new IllegalArgumentException();
-        }
-        return ArrayLengthNode.arrayLength(array);
-    }
 
     @Substitute
     private static boolean getBoolean(Object array, int index) {

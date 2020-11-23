@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2013, 2019, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2020, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -22,33 +22,25 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package org.graalvm.compiler.replacements;
+package org.graalvm.compiler.hotspot.replacements;
 
-import java.lang.reflect.Array;
+import static org.graalvm.compiler.hotspot.replacements.HotSpotReplacementsUtil.klassIsArray;
 
-import org.graalvm.compiler.api.replacements.ClassSubstitution;
-import org.graalvm.compiler.api.replacements.MethodSubstitution;
-import org.graalvm.compiler.nodes.DeoptimizeNode;
-import org.graalvm.compiler.nodes.extended.BranchProbabilityNode;
-import org.graalvm.compiler.nodes.java.ArrayLengthNode;
+import org.graalvm.compiler.hotspot.word.KlassPointer;
+import org.graalvm.compiler.nodes.SnippetAnchorNode;
+import org.graalvm.compiler.replacements.IsArraySnippets;
 
-import jdk.vm.ci.meta.DeoptimizationAction;
-import jdk.vm.ci.meta.DeoptimizationReason;
+public class HotSpotIsArraySnippets extends IsArraySnippets {
 
-// JaCoCo Exclude
-
-/**
- * Substitutions for {@link java.lang.reflect.Array} methods.
- */
-@ClassSubstitution(Array.class)
-public class ArraySubstitutions {
-
-    @MethodSubstitution
-    public static int getLength(Object array) {
-        if (BranchProbabilityNode.probability(BranchProbabilityNode.DEOPT_PROBABILITY, !array.getClass().isArray())) {
-            DeoptimizeNode.deopt(DeoptimizationAction.None, DeoptimizationReason.RuntimeConstraint);
+    @Override
+    protected boolean classIsArray(Class<?> clazz) {
+        KlassPointer klass = ClassGetHubNode.readClass(clazz);
+        if (klass.isNull()) {
+            // Class for primitive type
+            return false;
+        } else {
+            KlassPointer klassNonNull = ClassGetHubNode.piCastNonNull(klass, SnippetAnchorNode.anchor());
+            return klassIsArray(klassNonNull);
         }
-        return ArrayLengthNode.arrayLength(array);
     }
-
 }
