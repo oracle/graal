@@ -22,6 +22,7 @@
  */
 package com.oracle.truffle.espresso.impl;
 
+import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.espresso.runtime.StaticObject;
 
 public class ForceAnonClassLoading {
@@ -32,6 +33,7 @@ public class ForceAnonClassLoading {
         ANON_CLASS_LOADING.set(new AnonClassLoading(name, definingLoader));
     }
 
+    @TruffleBoundary
     public static boolean isMarked(String name, StaticObject definingLoader) {
         AnonClassLoading anonClassLoading = ANON_CLASS_LOADING.get();
         if (anonClassLoading != null) {
