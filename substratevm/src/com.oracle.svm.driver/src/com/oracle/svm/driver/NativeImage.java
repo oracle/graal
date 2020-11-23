@@ -67,9 +67,8 @@ import java.util.function.Supplier;
 import java.util.jar.Attributes;
 import java.util.jar.JarFile;
 import java.util.jar.Manifest;
-import java.util.regex.Matcher;
-import java.util.regex.Pattern;
 import java.util.stream.Collectors;
+import java.util.stream.Stream;
 
 import org.graalvm.compiler.options.OptionKey;
 import org.graalvm.compiler.serviceprovider.JavaVersionUtil;
@@ -89,6 +88,7 @@ import com.oracle.svm.driver.MacroOption.EnabledOption;
 import com.oracle.svm.driver.MacroOption.MacroOptionKind;
 import com.oracle.svm.driver.MacroOption.Registry;
 import com.oracle.svm.hosted.AbstractNativeImageClassLoaderSupport;
+import com.oracle.svm.hosted.NativeImageGeneratorRunner;
 import com.oracle.svm.hosted.NativeImageSystemClassLoader;
 import com.oracle.svm.util.ModuleSupport;
 
@@ -1248,6 +1248,26 @@ public class NativeImage {
         return result;
     }
 
+    protected static String createImageBuilderArgumentFile(List<String> imageBuilderArguments) {
+        try {
+            Path argsFile = Files.createTempFile("native-image", "args");
+            Files.write(argsFile, imageBuilderArguments);
+            Runtime.getRuntime().addShutdownHook(new Thread() {
+                @Override
+                public void run() {
+                    try {
+                        Files.delete(argsFile);
+                    } catch (IOException e) {
+                        System.err.println("Failed to delete temporary image builder arguments file: " + argsFile.toString());
+                    }
+                }
+            });
+            return NativeImageGeneratorRunner.IMAGE_BUILDER_ARG_FILE_OPTION + argsFile.toString();
+        } catch (IOException e) {
+            throw showError(e.getMessage());
+        }
+    }
+
     protected int buildImage(List<String> javaArgs, LinkedHashSet<Path> bcp, LinkedHashSet<Path> cp, LinkedHashSet<String> imageArgs, LinkedHashSet<Path> imagecp) {
         /* Construct ProcessBuilder command from final arguments */
         List<String> command = new ArrayList<>();
@@ -1266,10 +1286,12 @@ public class NativeImage {
              */
             command.addAll(Arrays.asList(SubstrateOptions.WATCHPID_PREFIX, "" + ProcessProperties.getProcessID()));
         }
-        command.addAll(createImageBuilderArgs(imageArgs, imagecp));
+        List<String> finalImageBuilderArgs = createImageBuilderArgs(imageArgs, imagecp);
+        List<String> completeCommandList = Stream.concat(command.stream(), finalImageBuilderArgs.stream()).collect(Collectors.toList());
+        command.add(createImageBuilderArgumentFile(finalImageBuilderArgs));
 
         showVerboseMessage(isVerbose() || dryRun, "Executing [");
-        showVerboseMessage(isVerbose() || dryRun, SubstrateUtil.getShellCommandString(command, true));
+        showVerboseMessage(isVerbose() || dryRun, SubstrateUtil.getShellCommandString(completeCommandList, true));
         showVerboseMessage(isVerbose() || dryRun, "]");
 
         if (dryRun) {
@@ -1278,44 +1300,14 @@ public class NativeImage {
 
         int exitStatus = 1;
         try {
-            Path[] argsFileBox = new Path[1];
-            if (config.useJavaModules()) {
-                /* For Java > 8 we use an argument file to pass the options to the builder */
-                Path argsFile = Files.createTempFile("native-image", "args");
-                argsFileBox[0] = argsFile;
-                Runtime.getRuntime().addShutdownHook(new Thread() {
-                    @Override
-                    public void run() {
-                        if (argsFileBox[0] != null) {
-                            argsFileBox[0].toFile().delete();
-                        }
-                    }
-                });
-                Files.write(argsFile, (Iterable<String>) command.stream().skip(1).map(NativeImage::quoteFileArg)::iterator);
-                List<String> atCommand = new ArrayList<>();
-                atCommand.add(command.get(0));
-                atCommand.add("@" + argsFile);
-                command = atCommand;
-            }
             ProcessBuilder pb = new ProcessBuilder();
             pb.command(command);
             Process p = pb.inheritIO().start();
             exitStatus = p.waitFor();
-            if (exitStatus != 0 && isVerbose()) {
-                argsFileBox[0] = null;
-            }
         } catch (IOException | InterruptedException e) {
             throw showError(e.getMessage());
         }
         return exitStatus;
-    }
-
-    private static String quoteFileArg(String arg) {
-        String resultArg = arg.replaceAll(Pattern.quote("\\"), Matcher.quoteReplacement("\\\\"));
-        if (resultArg.contains(" ")) {
-            resultArg = "\"" + resultArg + "\"";
-        }
-        return resultArg;
     }
 
     private static final Function<BuildConfiguration, NativeImage> defaultNativeImageProvider = config -> IS_AOT ? NativeImageServer.create(config) : new NativeImage(config);
