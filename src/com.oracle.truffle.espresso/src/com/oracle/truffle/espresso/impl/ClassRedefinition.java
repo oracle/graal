@@ -328,11 +328,7 @@ public final class ClassRedefinition {
                             if (constantPoolChanged) {
                                 if (isObsolete(oldParserMethod, newMethod, oldParserKlass.getConstantPool(), newParserKlass.getConstantPool())) {
                                     result = ClassChange.CONSTANT_POOL_CHANGE;
-                                    if (isPatched) {
-                                        bodyChanges.put(oldMethod, newMethod);
-                                    } else {
-                                        collectedChanges.addMethodBodyChange(oldMethod, newMethod);
-                                    }
+                                    collectedChanges.addMethodBodyChange(oldMethod, newMethod);
                                 }
                             }
                             break;
