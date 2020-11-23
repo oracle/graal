@@ -22,54 +22,32 @@
  */
 package com.oracle.truffle.espresso.nodes.quick;
 
-import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
-import com.oracle.truffle.api.dsl.Cached;
-import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.espresso.impl.Klass;
 import com.oracle.truffle.espresso.meta.JavaKind;
 import com.oracle.truffle.espresso.nodes.BytecodeNode;
+import com.oracle.truffle.espresso.nodes.helper.TypeCheckNode;
+import com.oracle.truffle.espresso.nodes.helper.TypeCheckNodeGen;
 import com.oracle.truffle.espresso.runtime.StaticObject;
 
-public abstract class InstanceOfNode extends QuickNode {
+public final class InstanceOfNode extends QuickNode {
 
     final Klass typeToCheck;
+    @Child TypeCheckNode typeCheckNode;
 
-    static final int INLINE_CACHE_SIZE_LIMIT = 5;
-
-    protected abstract boolean executeInstanceOf(Klass instanceKlass);
-
-    @SuppressWarnings("unused")
-    @Specialization(limit = "INLINE_CACHE_SIZE_LIMIT", guards = "instanceKlass == cachedKlass")
-    boolean instanceOfCached(Klass instanceKlass,
-                    @Cached("instanceKlass") Klass cachedKlass,
-                    @Cached("instanceOf(typeToCheck, cachedKlass)") boolean cachedAnswer) {
-        return cachedAnswer;
-    }
-
-    @Specialization(replaces = "instanceOfCached")
-    boolean instanceOfSlow(Klass instanceKlass) {
-        // Brute instanceof checks, walk the whole klass hierarchy.
-        return instanceOf(typeToCheck, instanceKlass);
-    }
-
-    InstanceOfNode(Klass typeToCheck, int top, int curBCI) {
+    public InstanceOfNode(Klass typeToCheck, int top, int curBCI) {
         super(top, curBCI);
         assert !typeToCheck.isPrimitive();
         this.typeToCheck = typeToCheck;
-    }
-
-    @TruffleBoundary
-    static boolean instanceOf(Klass typeToCheck, Klass instanceKlass) {
-        return typeToCheck.isAssignableFrom(instanceKlass);
+        this.typeCheckNode = TypeCheckNodeGen.create(typeToCheck.getContext());
     }
 
     @Override
-    public final int execute(final VirtualFrame frame) {
+    public int execute(final VirtualFrame frame) {
         // TODO(peterssen): Maybe refrain from exposing the whole root node?.
         BytecodeNode root = getBytecodesNode();
         StaticObject receiver = root.popObject(frame, top - 1);
-        boolean result = StaticObject.notNull(receiver) && executeInstanceOf(receiver.getKlass());
+        boolean result = StaticObject.notNull(receiver) && typeCheckNode.executeTypeCheck(typeToCheck, receiver.getKlass());
         root.putKind(frame, top - 1, result, JavaKind.Boolean);
         return 0; // stack effect -> pop receiver, push boolean
     }

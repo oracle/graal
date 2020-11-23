@@ -1675,7 +1675,7 @@ public final class VM extends NativeEnv implements ContextAccess {
         if (Types.isPrimitive(type)) {
             return StaticObject.NULL;
         }
-        Klass klass = getMeta().resolveSymbolOrNull(type, StaticObject.NULL);
+        Klass klass = getMeta().resolveSymbolOrNull(type, StaticObject.NULL, StaticObject.NULL);
         if (klass == null) {
             return StaticObject.NULL;
         }
@@ -2363,7 +2363,7 @@ public final class VM extends NativeEnv implements ContextAccess {
     @VmImpl
     public @Host(Object[].class) StaticObject GetMemoryPools(@SuppressWarnings("unused") @Host(Object.class) StaticObject unused,
                     @GuestCall(target = "sun_management_ManagementFactory_createMemoryPool") DirectCallNode createMemoryPool) {
-        Klass memoryPoolMXBean = getMeta().resolveSymbolOrFail(Type.java_lang_management_MemoryPoolMXBean, StaticObject.NULL);
+        Klass memoryPoolMXBean = getMeta().resolveSymbolOrFail(Type.java_lang_management_MemoryPoolMXBean, StaticObject.NULL, StaticObject.NULL);
         return memoryPoolMXBean.allocateReferenceArray(1, new IntFunction<StaticObject>() {
             @Override
             public StaticObject apply(int value) {
@@ -2381,7 +2381,7 @@ public final class VM extends NativeEnv implements ContextAccess {
     @VmImpl
     public @Host(Object[].class) StaticObject GetMemoryManagers(@SuppressWarnings("unused") @Host(Object.class) StaticObject pool,
                     @GuestCall(target = "sun_management_ManagementFactory_createMemoryManager") DirectCallNode createMemoryManager) {
-        Klass memoryManagerMXBean = getMeta().resolveSymbolOrFail(Type.java_lang_management_MemoryManagerMXBean, StaticObject.NULL);
+        Klass memoryManagerMXBean = getMeta().resolveSymbolOrFail(Type.java_lang_management_MemoryManagerMXBean, StaticObject.NULL, StaticObject.NULL);
         return memoryManagerMXBean.allocateReferenceArray(1, new IntFunction<StaticObject>() {
             @Override
             public StaticObject apply(int value) {

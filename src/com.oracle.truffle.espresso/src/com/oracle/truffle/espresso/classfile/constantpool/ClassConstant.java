@@ -116,12 +116,13 @@ public interface ClassConstant extends PoolConstant {
         @Override
         public Resolved resolve(RuntimeConstantPool pool, int thisIndex, Klass accessingKlass) {
             CLASS_RESOLVE_COUNT.inc();
+            assert accessingKlass != null;
             CompilerDirectives.transferToInterpreterAndInvalidate();
             Symbol<Name> klassName = getName(pool);
             try {
                 EspressoContext context = pool.getContext();
                 Symbol<Symbol.Type> type = context.getTypes().fromName(klassName);
-                Klass klass = context.getMeta().resolveSymbolOrFail(type, accessingKlass.getDefiningClassLoader());
+                Klass klass = context.getMeta().resolveSymbolOrFail(type, accessingKlass.getDefiningClassLoader(), accessingKlass.protectionDomain());
                 if (!Klass.checkAccess(klass.getElementalType(), accessingKlass)) {
                     Meta meta = context.getMeta();
                     context.getLogger().log(Level.WARNING,
@@ -187,12 +188,13 @@ public interface ClassConstant extends PoolConstant {
         @Override
         public Resolved resolve(RuntimeConstantPool pool, int thisIndex, Klass accessingKlass) {
             CLASS_RESOLVE_COUNT.inc();
+            assert accessingKlass != null;
             CompilerDirectives.transferToInterpreterAndInvalidate();
             Symbol<Name> klassName = getName(pool);
             try {
                 EspressoContext context = pool.getContext();
                 Meta meta = context.getMeta();
-                Klass klass = meta.resolveSymbolOrFail(context.getTypes().fromName(klassName), accessingKlass.getDefiningClassLoader());
+                Klass klass = meta.resolveSymbolOrFail(context.getTypes().fromName(klassName), accessingKlass.getDefiningClassLoader(), accessingKlass.protectionDomain());
                 if (!Klass.checkAccess(klass.getElementalType(), accessingKlass)) {
                     context.getLogger().log(Level.WARNING,
                                     EspressoOptions.INCEPTION_NAME + " Access check of: " + klass.getType() + " from " + accessingKlass.getType() + " throws IllegalAccessError");

@@ -21,7 +21,7 @@
 # questions.
 #
 suite = {
-    "mxversion": "5.273.10",
+    "mxversion": "5.275.5",
     "name": "espresso",
 
     # ------------- licenses
@@ -42,7 +42,7 @@ suite = {
                 "name": "truffle",
                 "subdir": True,
                 # Custom changes in Truffle (NFI) for Espresso (branch slimbeans).
-                "version": "a145eed23fd5026c9cea83b77604a8aff6b58432",
+                "version": "3881c674263826047e4616a6e26f89e6f6cdf6eb",
                 "urls": [
                     {"url": "https://github.com/graalvm/graal", "kind": "git"},
                     {"url": "https://curio.ssw.jku.at/nexus/content/repositories/snapshots", "kind": "binary"},
@@ -52,7 +52,16 @@ suite = {
                 "name": "tools",
                 "subdir": True,
                 # Custom changes in Truffle (NFI) for Espresso (branch slimbeans).
-                "version": "a145eed23fd5026c9cea83b77604a8aff6b58432",
+                "version": "3881c674263826047e4616a6e26f89e6f6cdf6eb",
+                "urls": [
+                    {"url": "https://github.com/graalvm/graal", "kind": "git"},
+                    {"url": "https://curio.ssw.jku.at/nexus/content/repositories/snapshots", "kind": "binary"},
+                ]
+            },
+            {
+                "name" : "java-benchmarks",
+                "subdir": True,
+                "version": "3881c674263826047e4616a6e26f89e6f6cdf6eb",
                 "urls": [
                     {"url": "https://github.com/graalvm/graal", "kind": "git"},
                     {"url": "https://curio.ssw.jku.at/nexus/content/repositories/snapshots", "kind": "binary"},
@@ -60,7 +69,7 @@ suite = {
             },
             {
                 "name": "truffleruby",
-                "version": "a72ca6e7f72a4f3b019630baf2a17423eec39072",
+                "version": "2930581daeeb0dca649476f721a9f6a5481841ce",
                 "dynamic": True,
                 "urls": [
                     {"url": "https://github.com/oracle/truffleruby.git", "kind": "git"},
@@ -100,14 +109,14 @@ suite = {
 
     "projects": {
 
-	"com.oracle.truffle.espresso.polyglot": {
-            "subDir": "src",
-            "sourceDirs": ["src"],
-            "dependencies": [
-            ],
-            "javaCompliance": "1.8+",
-            "checkstyle": "com.oracle.truffle.espresso",
-	},
+        "com.oracle.truffle.espresso.polyglot": {
+                "subDir": "src",
+                "sourceDirs": ["src"],
+                "dependencies": [
+                ],
+                "javaCompliance": "1.8+",
+                "checkstyle": "com.oracle.truffle.espresso",
+        },
 
         "com.oracle.truffle.espresso": {
             "subDir": "src",
@@ -350,6 +359,17 @@ suite = {
                 }
             },
         },
+
+        "com.oracle.truffle.espresso.dacapo": {
+            "subDir": "src",
+            "sourceDirs": ["src"],
+            "dependencies": [
+                "java-benchmarks:DACAPO_SCALA",
+            ],
+            "javaCompliance": "8+",
+            "checkstyle": "com.oracle.truffle.espresso",
+            "testProject" : True,
+        },
     },
 
     # ------------- distributions
@@ -511,6 +531,33 @@ suite = {
                 "com.oracle.truffle.espresso.polyglot"
             ],
             "description": "Espresso polyglot API",
+        },
+
+        "DACAPO_SCALA_WARMUP": {
+            "subDir": "src",
+            "dependencies": [
+                "com.oracle.truffle.espresso.dacapo",
+                "java-benchmarks:DACAPO_SCALA",
+            ],
+            "testDistribution": True,
+            "manifestEntries" : {
+                    "Manifest-Version": "1.0",
+                    "Build-Timestamp": "2012-02-16T11:12:52",
+                    "Implementation-Title": "Scala Benchmark Suite",
+                    "Implementation-Version": "0.1.0-SNAPSHOT",
+                    "Built-By": "sewe",
+                    "Specification-Vendor": "Technische Universitat Darmstadt",
+                    "Created-By": "Apache Maven 3.0.4",
+                    "Implementation-Vendor": "Technische Universitat Darmstadt",
+                    "Build-Number": "02fbc0d55f60",
+                    "Implementation-Vendor-Id": "org.scalabench.benchmarks",
+                    "Build-Jdk": "1.6.0_26",
+                    "Specification-Title": "Scala Benchmark Suite",
+                    "Specification-Version": "0.1.0-SNAPSHOT",
+                    "Main-Class": "Harness",
+                    "Archiver-Version": "Plexus Archiver",
+            },
+            "description": "Scala DaCapo with WallTime callback",
         },
     }
 }

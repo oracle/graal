@@ -713,6 +713,16 @@ public abstract class Klass implements ModifiersProvider, ContextAccess, KlassRe
         return getElementalType().isFinalFlagSet();
     }
 
+    @Override
+    public final boolean isFinalFlagSet() {
+        /*
+         * HotSpot's Class Hierarchy Analysis does not allow inlining invoke interface pointing to
+         * never overriden default interface methods. We cirumvent this CHA limitation here by using
+         * an invokespecial, which is inlinable.
+         */
+        return ModifiersProvider.super.isFinalFlagSet() /* || isLeafAssumption() */;
+    }
+
     /**
      * Checks whether this type is initialized. If a type is initialized it implies that it was
      * linked and that the static initializer has run.
@@ -765,17 +775,33 @@ public abstract class Klass implements ModifiersProvider, ContextAccess, KlassRe
         if (isInterface()) {
             return checkInterfaceSubclassing(other);
         }
+        return checkOrdinaryClassSubclassing(other);
+    }
+
+    /**
+     * Performs type checking for non-interface, non-array classes.
+     * 
+     * @param other the class whose type is to be checked against {@code this}
+     * @return true if {@code other} is a subclass of {@code this}
+     */
+    public boolean checkOrdinaryClassSubclassing(Klass other) {
         int depth = getHierarchyDepth();
         return other.getHierarchyDepth() >= depth && other.getSuperTypes()[depth] == this;
     }
 
-    public final int getId() {
-        return id;
-    }
-
-    boolean checkInterfaceSubclassing(Klass other) {
+    /**
+     * Performs type checking for interface classes.
+     * 
+     * @param other the class whose type is to be checked against {@code this}
+     * @return true if {@code this} is a super interface of {@code other}
+     */
+    public boolean checkInterfaceSubclassing(Klass other) {
         Klass[] interfaces = other.getTransitiveInterfacesList();
         return fastLookup(this, interfaces) >= 0;
+    }
+
+    public final int getId() {
+        return id;
     }
 
     public final Klass findLeastCommonAncestor(Klass other) {
@@ -1324,6 +1350,10 @@ public abstract class Klass implements ModifiersProvider, ContextAccess, KlassRe
     @SuppressWarnings("unused")
     public boolean nestMembersCheck(Klass k) {
         return false;
+    }
+
+    public StaticObject protectionDomain() {
+        return (StaticObject) mirror().getHiddenField(getMeta().HIDDEN_PROTECTION_DOMAIN);
     }
 
     /**
