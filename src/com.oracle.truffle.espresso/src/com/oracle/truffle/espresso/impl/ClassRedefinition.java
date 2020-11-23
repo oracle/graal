@@ -219,7 +219,6 @@ public final class ClassRedefinition {
         } catch (EspressoException ex) {
             // TODO(Gregersen) - return appropriate error code based on the exception type
             // we get from parsing the class file
-            ex.printStackTrace();
             return ErrorCodes.INVALID_CLASS_FORMAT;
         }
     }
@@ -598,10 +597,9 @@ public final class ClassRedefinition {
             Symbol<Symbol.Type> type = context.getTypes().fromClassGetName(packet.info.getName());
             Klass loadedKlass = classRegistry.findLoadedKlass(type);
             if (loadedKlass != null) {
-                context.getRegistries().removeUnloadeKlassConstraint(loadedKlass, type);
+                context.getRegistries().removeUnloadedKlassConstraint(loadedKlass, type);
             }
 
-            oldKlass.patchClassName(packet.info.getName());
             classRegistry.onClassRenamed(oldKlass, packet.info.getName());
 
             InterpreterToVM.setFieldObject(StaticObject.NULL, oldKlass.mirror(), context.getMeta().java_lang_Class_name);

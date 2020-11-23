@@ -354,7 +354,7 @@ public abstract class ClassRegistry implements ContextAccess {
         ClassRegistries.RegistryEntry removed = classes.remove(type);
         // purge class loader constraint for this type
         if (removed != null && removed.klass() != null) {
-            getRegistries().removeUnloadeKlassConstraint(removed.klass(), type);
+            getRegistries().removeUnloadedKlassConstraint(removed.klass(), type);
         }
     }
 }
