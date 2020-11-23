@@ -132,7 +132,7 @@ public abstract class ClassInfo {
             inners.add(copyFrom(innerClass));
         }
         return new ImmutableClassInfo(info.getKlass(), info.getName(), info.getClassLoader(), info.finalClassFingerprint, info.finalMethodFingerprint, info.finalFieldFingerprint,
-                info.finalEnclosingMethodFingerprint, inners.toArray(new ImmutableClassInfo[0]), info.getBytes());
+                        info.finalEnclosingMethodFingerprint, inners.toArray(new ImmutableClassInfo[0]), info.getBytes());
     }
 
     public abstract String getClassFingerprint();

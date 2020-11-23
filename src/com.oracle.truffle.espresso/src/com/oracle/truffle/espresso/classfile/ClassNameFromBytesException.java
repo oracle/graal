@@ -25,6 +25,7 @@ package com.oracle.truffle.espresso.classfile;
 public class ClassNameFromBytesException extends RuntimeException {
     private static final long serialVersionUID = -2167747575371919556L;
     private final String classTypeName;
+
     public ClassNameFromBytesException(String classTypeName) {
         this.classTypeName = classTypeName;
     }

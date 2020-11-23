@@ -37,6 +37,6 @@ public final class ChangePacket {
     }
 
     public ChangePacket(HotSwapClassInfo redefineInfo, ClassRedefinition.ClassChange classChange) {
-       this(redefineInfo, null, classChange, null);
+        this(redefineInfo, null, classChange, null);
     }
 }

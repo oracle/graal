@@ -54,7 +54,7 @@ public final class HotSwapClassInfo extends ClassInfo {
     private int nextNewClass = 1;
 
     HotSwapClassInfo(ObjectKlass klass, String originalName, StaticObject classLoader, String classFingerprint, String methodFingerprint, String fieldFingerprint, String enclosingMethodFingerprint,
-                             ArrayList<HotSwapClassInfo> inners, byte[] bytes) {
+                    ArrayList<HotSwapClassInfo> inners, byte[] bytes) {
         this.thisKlass = new WeakReference<>(klass);
         this.originalName = originalName;
         this.classLoader = classLoader;

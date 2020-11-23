@@ -43,7 +43,7 @@ public final class ImmutableClassInfo extends ClassInfo {
     private final ImmutableClassInfo[] innerClasses;
 
     ImmutableClassInfo(ObjectKlass klass, String originalName, StaticObject classLoader, String classFingerprint, String methodFingerprint, String fieldFingerprint, String enclosingMethodFingerprint,
-                       ImmutableClassInfo[] inners, byte[] bytes) {
+                    ImmutableClassInfo[] inners, byte[] bytes) {
         this.klass = new WeakReference<>(klass);
         this.name = originalName;
         this.classLoader = classLoader;

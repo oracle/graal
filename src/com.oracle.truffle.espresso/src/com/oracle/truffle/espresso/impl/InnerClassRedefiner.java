@@ -166,9 +166,12 @@ public final class InnerClassRedefiner {
 
                     // we play a trick to get the bytes of the new inner class
                     // 1. set a ThreadLocal to mark this a special loading
-                    // 2. in findLoadedClass we return null for the special loading of the class name
-                    // 3. in define class we grab the bytes and throws a Special ForceAnonClassLoadException
-                    // in which the bytes are stored. Note that in defineClass we must check if the threadlocal
+                    // 2. in findLoadedClass we return null for the special loading of the class
+                    // name
+                    // 3. in define class we grab the bytes and throws a Special
+                    // ForceAnonClassLoadException
+                    // in which the bytes are stored. Note that in defineClass we must check if the
+                    // threadlocal
                     // contains the expected combination of class name and defining class loader
                     try {
                         ForceAnonClassLoading.mark(innerName, definingLoader);

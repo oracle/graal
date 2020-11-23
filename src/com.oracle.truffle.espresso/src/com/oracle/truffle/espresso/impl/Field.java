@@ -63,6 +63,7 @@ public final class Field extends Member<Type> implements FieldRef {
     public Symbol<Type> getType() {
         return descriptor;
     }
+
     public Attribute[] getAttributes() {
         return linkedField.getParserField().getAttributes();
     }
