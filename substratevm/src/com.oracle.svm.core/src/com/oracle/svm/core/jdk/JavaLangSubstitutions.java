@@ -180,18 +180,6 @@ final class Target_java_lang_Throwable {
 
     @Alias String detailMessage;
 
-    /*
-     * Suppressed exception handling is disabled for now.
-     */
-    @Substitute
-    private void addSuppressed(Throwable exception) {
-        /*
-         * This method is called frequently from try-with-resource blocks. The original
-         * implementation performs allocations, which are problematic when allocations are disabled.
-         * For now, we just do nothing until someone needs suppressed exception handling.
-         */
-    }
-
     @Substitute
     @NeverInline("Starting a stack walk in the caller frame")
     private Object fillInStackTrace() {

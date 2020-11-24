@@ -779,10 +779,10 @@ public abstract class JavaThreads {
         }
 
         @Override
-        @SuppressWarnings("try")
         public void operate() {
             list.clear();
-            try (VMMutex lock = VMThreads.THREAD_MUTEX.lock()) {
+            VMMutex lock = VMThreads.THREAD_MUTEX.lock();
+            try {
                 for (IsolateThread isolateThread = VMThreads.firstThread(); isolateThread.isNonNull(); isolateThread = VMThreads.nextThread(isolateThread)) {
                     if (isApplicationThread(isolateThread)) {
                         final Thread thread = JavaThreads.fromVMThread(isolateThread);
@@ -791,6 +791,8 @@ public abstract class JavaThreads {
                         }
                     }
                 }
+            } finally {
+                lock.unlock();
             }
         }
     }
@@ -817,11 +819,11 @@ public abstract class JavaThreads {
         }
 
         @Override
-        @SuppressWarnings("try")
         public void operate() {
             int attachedCount = 0;
             int unattachedStartedCount;
-            try (VMMutex lock = VMThreads.THREAD_MUTEX.lock()) {
+            VMMutex lock = VMThreads.THREAD_MUTEX.lock();
+            try {
                 for (IsolateThread isolateThread = VMThreads.firstThread(); isolateThread.isNonNull(); isolateThread = VMThreads.nextThread(isolateThread)) {
                     if (isApplicationThread(isolateThread)) {
                         attachedCount++;
@@ -850,6 +852,8 @@ public abstract class JavaThreads {
                  * thread from attaching, so we will never consider being ready for tear-down.
                  */
                 unattachedStartedCount = singleton().unattachedStartedThreads.get();
+            } finally {
+                lock.unlock();
             }
             readyForTearDown = (attachedCount == 1 && unattachedStartedCount == 0);
         }
