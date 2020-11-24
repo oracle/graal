@@ -186,7 +186,6 @@ public class StandardGraphBuilderPlugins {
         registerGraalDirectivesPlugins(plugins);
         registerBoxingPlugins(plugins);
         registerJMHBlackholePlugins(plugins, replacements);
-        registerTruffleBlackholePlugins(plugins, replacements);
         registerJFRThrowablePlugins(plugins, replacements);
         registerMethodHandleImplPlugins(plugins, replacements);
         registerPreconditionsPlugins(plugins, replacements);
@@ -1480,32 +1479,6 @@ public class StandardGraphBuilderPlugins {
                 }
             }
             r.registerOptional2("consume", Receiver.class, Object[].class, blackholePlugin);
-        }
-    }
-
-    private static void registerTruffleBlackholePlugins(InvocationPlugins plugins, Replacements replacements) {
-        InvocationPlugin blackholePlugin = new InvocationPlugin() {
-            @Override
-            public boolean apply(GraphBuilderContext b, ResolvedJavaMethod targetMethod, Receiver blackhole, ValueNode value) {
-                b.add(new BlackholeNode(value));
-                return true;
-            }
-
-            @Override
-            public boolean isDecorator() {
-                return true;
-            }
-        };
-        String[] names = {"com.oracle.truffle.api.HostCompilerDirectives"};
-        for (String name : names) {
-            Registration r = new Registration(plugins, name, replacements);
-            for (JavaKind kind : JavaKind.values()) {
-                if ((kind.isPrimitive() && kind != JavaKind.Void) || kind == JavaKind.Object) {
-                    Class<?> javaClass = kind == JavaKind.Object ? Object.class : kind.toJavaClass();
-                    r.registerOptional1("consume", javaClass, blackholePlugin);
-                }
-            }
-            r.registerOptional1("consume", Object[].class, blackholePlugin);
         }
     }
 
