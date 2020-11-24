@@ -1,6 +1,6 @@
 # Micronaut Visual Studio Code Extension <!-- omit in toc -->
 
-The Micronaut extension for Visual Studio Code (VS Code) provides the basic support for developing applications based on the [Micronaut Framework](https://micronaut.io/). Please be informed that the extension is Technology Preview.
+The Micronaut extension for Visual Studio Code (VS Code) provides the basic support for developing applications based on the [Micronaut Framework](https://micronaut.io/). The extension is Technology Preview.
 
 Besides, it enables the [Micronaut Launch](https://micronaut.io/launch/) application that allows you to create Micronaut projects through an interface inside VS Code, in addition to using the console CLI.
 Optionally, if a user provides a path to the Micronaut CLI installation, the option to create a project using the `mn` executable is also provided.
@@ -17,6 +17,7 @@ The Micronaut extension was also developed to help developers build native image
 - [Create Micronaut Project](#create-micronaut-project)
 - [Generate Native Images of Micronaut Projects](#generate-native-images-of-micronaut-projects)
 - [Privacy Policy](#privacy-policy)
+- [Known Issues](#known-issues)
 
 ## Installation and Setup
 
@@ -97,3 +98,13 @@ For more details, continue reading to the [Micronaut documentation](https://guid
 ## Privacy Policy
 
 Read the [Oracle Privacy Policy](https://www.oracle.com/legal/privacy/privacy-policy.html) to learn more.
+
+## Known Issues
+
+The Micronaut extension 0.5.0 is Technology Preview, meaning the features are not fully supported, may not be functionally complete, and may undergo some reimplementation.
+
+Please be informed that the subsequent runs of a Micronaut project may fail in this version.
+For example, you create a Gradle Micronaut project using GraalVM, run it with the Run / Run Without Debugging command (Ctrl+F5), and then terminate it. If you re-run the project again using the same Run / Run Without Debugging command (Ctrl+F5), startup may fail with this exception:
+```shell
+[main] ERROR i.m.h.server.netty.NettyHttpServer - Unable to start server. Port already 8080 in use.
+```
