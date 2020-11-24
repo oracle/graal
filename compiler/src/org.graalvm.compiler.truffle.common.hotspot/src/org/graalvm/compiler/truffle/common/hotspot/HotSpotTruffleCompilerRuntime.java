@@ -45,11 +45,25 @@ public interface HotSpotTruffleCompilerRuntime extends TruffleCompilerRuntime {
      */
     void onCodeInstallation(CompilableTruffleAST compilable, InstalledCode installedCode);
 
-    default void enterLibGraalScope() {
+    /**
+     * In compilations that are separated between HotSpot and AOT-compiled Graal, creates a scope
+     * object that is used for calls across the HotSpot-Graal call-boundary.
+     *
+     * The return depth must be passed to the {@code exitLibGraalScope} call.
+     */
+    default int enterLibGraalScope() {
         throw new UnsupportedOperationException();
     }
 
-    default void exitLibGraalScope() {
+    /**
+     * In compilations that are separated between HotSpot and AOT-compiled Graal, closes the
+     * previously-created scope object.
+     *
+     * The expected depth must match the depth returned by the previous {@code enterLibGraalScope}
+     * call.
+     */
+    @SuppressWarnings("unused")
+    default void exitLibGraalScope(int expectedDepth) {
         throw new UnsupportedOperationException();
     }
 }

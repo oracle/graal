@@ -394,14 +394,14 @@ final class HSTruffleCompilerRuntime extends HSObject implements HotSpotTruffleC
 
     @TruffleFromLibGraal(EnterLibGraalScope)
     @Override
-    public void enterLibGraalScope() {
-        callEnterLibGraalScope(env(), getHandle());
+    public int enterLibGraalScope() {
+        return callEnterLibGraalScope(env(), getHandle());
     }
 
     @TruffleFromLibGraal(ExitLibGraalScope)
     @Override
-    public void exitLibGraalScope() {
-        callExitLibGraalScope(env(), getHandle());
+    public void exitLibGraalScope(int expectedDepth) {
+        callExitLibGraalScope(env(), getHandle(), expectedDepth);
     }
 
     static final class MethodCache {

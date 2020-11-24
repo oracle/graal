@@ -642,11 +642,11 @@ final class Target_org_graalvm_compiler_hotspot_HotSpotGraalCompiler {
             // Then, we open the Truffle-side scope object.
             // Finally, after the compilation ends, we remove the Truffle-side scope object.
             try (JNILibGraalScope<TruffleToLibGraal.Id> scope = new JNILibGraalScope<>(null, env)) {
-                runtime.enterLibGraalScope();
+                int nestingDepth = runtime.enterLibGraalScope();
                 try {
                     return compiler.compileMethod(request, true, compiler.getGraalRuntime().getOptions());
                 } finally {
-                    runtime.exitLibGraalScope();
+                    runtime.exitLibGraalScope(nestingDepth);
                 }
             }
         }
