@@ -114,7 +114,6 @@ meth public static long multiplyHighUnsigned(long,long)
 supr java.lang.Object
 
 CLSS public final com.oracle.truffle.api.HostCompilerDirectives
-cons public init()
 innr public abstract interface static !annotation BytecodeInterpreterSwitch
 innr public abstract interface static !annotation BytecodeInterpreterSwitchBoundary
 meth public static void consume(int)

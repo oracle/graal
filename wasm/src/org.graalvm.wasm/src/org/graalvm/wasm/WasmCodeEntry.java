@@ -45,6 +45,7 @@ import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
 import com.oracle.truffle.api.frame.FrameDescriptor;
 import com.oracle.truffle.api.frame.FrameSlot;
 import com.oracle.truffle.api.frame.FrameSlotKind;
+import org.graalvm.wasm.collection.IntArrayList;
 
 public final class WasmCodeEntry {
     private final WasmFunction function;
@@ -126,6 +127,8 @@ public final class WasmCodeEntry {
     public void setProfileCount(int size) {
         if (size > 0) {
             this.profileCounters = new int[size];
+        } else {
+            this.profileCounters = IntArrayList.EMPTY_INT_ARRAY;
         }
     }
 
@@ -155,7 +158,7 @@ public final class WasmCodeEntry {
      * @param condition Condition value
      * @return {@code condition}
      */
-    public boolean profileCondition(int[] counters, int index, boolean condition) {
+    public static boolean profileCondition(int[] counters, int index, boolean condition) {
         // locals required to guarantee no overflow in multi-threaded environments
         int tf = counters[index];
         int t = tf >>> 16;

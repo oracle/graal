@@ -322,12 +322,12 @@ public abstract class BinaryStreamParser {
     public static byte peekLeb128Length(byte[] data, int initialOffset) {
         int currentOffset = initialOffset;
         byte length = 0;
-        byte b;
-        do {
+        byte b = (byte) 0x80;
+        while ((b & 0x80) != 0 && length < 12) {
             b = data[currentOffset];
             currentOffset++;
             length++;
-        } while ((b & 0x80) != 0 && length < 12);
+        }
 
         return length;
     }

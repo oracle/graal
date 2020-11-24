@@ -54,6 +54,15 @@ import java.lang.annotation.Target;
 public final class HostCompilerDirectives {
 
     /**
+     * This object is a placeholder for the static methods that implement compiler directives, and
+     * cannot be constructed.
+     *
+     * @since 21.0
+     */
+    private HostCompilerDirectives() {
+    }
+
+    /**
      * Marks a method that is an implementation of a Truffle interpreter, and which should receive
      * additional optimization budget.
      *
