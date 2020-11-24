@@ -124,7 +124,6 @@ suite = {
             "dependencies": [
                 "truffle:TRUFFLE_API",
                 "truffle:TRUFFLE_NFI",
-                "tools:TRUFFLE_PROFILER",
                 "com.oracle.truffle.espresso.jdwp"
             ],
             "annotationProcessors": ["truffle:TRUFFLE_DSL_PROCESSOR", "ESPRESSO_PROCESSOR"],
@@ -384,6 +383,7 @@ suite = {
             "distDependencies": [
                 "truffle:TRUFFLE_API",
                 "truffle:TRUFFLE_NFI",
+                "tools:TRUFFLE_PROFILER",
             ],
             "javaProperties": {
                 "org.graalvm.language.java.home": "<path:ESPRESSO_SUPPORT>",
