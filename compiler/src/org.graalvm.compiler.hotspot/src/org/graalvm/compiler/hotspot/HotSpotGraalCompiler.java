@@ -106,11 +106,20 @@ public class HotSpotGraalCompiler implements GraalJVMCICompiler, Cancellable {
 
     @Override
     public CompilationRequestResult compileMethod(CompilationRequest request) {
-        return compileMethod(request, true, graalRuntime.getOptions());
+        return compileMethod(this, request);
+    }
+
+    /**
+     * Substituted by
+     * {@code com.oracle.svm.graal.hotspot.libgraal.Target_org_graalvm_compiler_hotspot_HotSpotGraalCompiler}
+     * to create a {@code org.graalvm.libgraal.jni.JNILibGraalScope}.
+     */
+    private static CompilationRequestResult compileMethod(HotSpotGraalCompiler compiler, CompilationRequest request) {
+        return compiler.compileMethod(request, true, compiler.getGraalRuntime().getOptions());
     }
 
     @SuppressWarnings("try")
-    CompilationRequestResult compileMethod(CompilationRequest request, boolean installAsDefault, OptionValues initialOptions) {
+    public CompilationRequestResult compileMethod(CompilationRequest request, boolean installAsDefault, OptionValues initialOptions) {
         try (CompilationContext scope = HotSpotGraalServices.openLocalCompilationContext(request)) {
             if (graalRuntime.isShutdown()) {
                 return HotSpotCompilationRequestResult.failure(String.format("Shutdown entered"), true);
