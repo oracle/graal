@@ -296,7 +296,7 @@ public @interface ExportLibrary {
      *
      * <pre>
      * &#64;ExportLibrary(value = ArrayLibrary.class, delegateTo = "delegate")
-     * &#64;ExportLibrary(ReflectionLibrary.class, delegateTo = "delegate")
+     * &#64;ExportLibrary(value = ReflectionLibrary.class, delegateTo = "delegate")
      * final class ArrayFullWrapper {
      *
      *     final Object delegate;
