@@ -67,7 +67,7 @@ public class PerformanceWarningTest extends TruffleCompilerImplTest {
     public void setUp() {
         outContent = new ByteArrayOutputStream();
         setupContext(Context.newBuilder().logHandler(outContent).allowAllAccess(true).allowExperimentalOptions(true).option("engine.TracePerformanceWarnings", "all").option(
-                        "engine.TreatPerformanceWarningsAsErrors", "all").option("engine.CompilationFailureAction", "ExitVM").build());
+                        "engine.TreatPerformanceWarningsAsErrors", "all").option("engine.CompilationFailureAction", "ExitVM").option("engine.FrameClear", "true").build());
     }
 
     @Test
@@ -124,7 +124,6 @@ public class PerformanceWarningTest extends TruffleCompilerImplTest {
 
     @SuppressWarnings("try")
     private void testHelper(RootNode rootNode, boolean expectException, String... outputStrings) {
-
         // Compile and capture output to logger's stream.
         boolean seenException = false;
         try {

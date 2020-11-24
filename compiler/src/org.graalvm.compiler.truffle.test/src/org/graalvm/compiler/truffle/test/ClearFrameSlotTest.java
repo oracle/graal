@@ -43,6 +43,7 @@ import org.graalvm.compiler.nodes.virtual.VirtualObjectNode;
 import org.graalvm.compiler.truffle.runtime.OptimizedCallTarget;
 import org.graalvm.compiler.virtual.nodes.MaterializedObjectState;
 import org.graalvm.compiler.virtual.nodes.VirtualObjectState;
+import org.graalvm.polyglot.Context;
 import org.junit.Assert;
 import org.junit.Test;
 
@@ -278,6 +279,7 @@ public class ClearFrameSlotTest extends PartialEvaluationTest {
     }
 
     private void doTest(Supplier<RootNode> rootProvider, Consumer<StructuredGraph> graphChecker, Object[] args, boolean peFails, boolean executionFails) {
+        setupContext(Context.newBuilder().option("engine.FrameClear", "true"));
         RootNode rootNode = rootProvider.get();
         RootCallTarget callTarget = Truffle.getRuntime().createCallTarget(rootNode);
         StructuredGraph graph = null;
