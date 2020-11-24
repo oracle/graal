@@ -940,11 +940,6 @@ public final class VM extends NativeEnv implements ContextAccess {
         final byte[] bytes = new byte[len];
         buf.get(bytes);
 
-        // check for special forced anon inner class loading
-        if (ForceAnonClassLoading.isMarked(name, loader)) {
-            throw ForceAnonClassLoading.throwing(bytes);
-        }
-
         Symbol<Type> type = null;
         if (name != null) {
             String internalName = name;

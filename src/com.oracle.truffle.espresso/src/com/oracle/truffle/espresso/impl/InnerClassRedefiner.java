@@ -25,6 +25,7 @@ package com.oracle.truffle.espresso.impl;
 import com.oracle.truffle.espresso.classfile.ClassNameFromBytesException;
 import com.oracle.truffle.espresso.classfile.ClassfileParser;
 import com.oracle.truffle.espresso.classfile.ClassfileStream;
+import com.oracle.truffle.espresso.descriptors.Symbol;
 import com.oracle.truffle.espresso.jdwp.api.ErrorCodes;
 import com.oracle.truffle.espresso.jdwp.api.RedefineInfo;
 import com.oracle.truffle.espresso.jdwp.impl.JDWPLogger;
@@ -165,7 +166,7 @@ public final class InnerClassRedefiner {
                     // the following scheme:
 
                     // we play a trick to get the bytes of the new inner class
-                    // 1. set a ThreadLocal to mark this a special loading
+                    // 1. mark this a special loading in the associated class registry
                     // 2. in findLoadedClass we return null for the special loading of the class
                     // name
                     // 3. in define class we grab the bytes and throws a Special
@@ -173,14 +174,16 @@ public final class InnerClassRedefiner {
                     // in which the bytes are stored. Note that in defineClass we must check if the
                     // threadlocal
                     // contains the expected combination of class name and defining class loader
+                    ClassRegistry classRegistry = context.getRegistries().getClassRegistry(definingLoader);
                     try {
-                        ForceAnonClassLoading.mark(innerName, definingLoader);
+                        Symbol<Symbol.Type> type = context.getTypes().fromClassGetName(innerName);
+                        classRegistry.markSpecialLoading(type);
                         StaticObject guestName = context.getMeta().toGuestString(innerName.replace('/', '.'));
                         context.getMeta().java_lang_ClassLoader_loadClass.invokeDirect(definingLoader, guestName);
                     } catch (ForceAnonClassLoading.BlockDefiningClassException ex) {
                         classBytes = ex.getBytes();
                     } finally {
-                        ForceAnonClassLoading.clear();
+                        classRegistry.clearSpecialLoading();
                     }
                 }
                 if (classBytes != null) {
