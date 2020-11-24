@@ -678,7 +678,9 @@ public final class RegexParser {
             token = lexer.next();
             if (options.getFlavor() != RubyFlavor.INSTANCE && token.kind != Token.Kind.quantifier && curTerm != null && curTerm.isBackReference() &&
                             curTerm.asBackReference().isNestedOrForwardReference() && !isNestedInLookBehindAssertion(curTerm)) {
-                // nested/forward back-references are no-ops in JavaScript
+                // In JavaScript, nested/forward back-references are dropped as no-ops.
+                // However, in Ruby, they are valid, since the contents of capture groups
+                // are not cleared when re-entering a loop.
                 removeCurTerm();
             }
             switch (token.kind) {
