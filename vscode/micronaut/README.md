@@ -101,7 +101,7 @@ Read the [Oracle Privacy Policy](https://www.oracle.com/legal/privacy/privacy-po
 
 ## Known Issues
 
-The Micronaut extension 0.5.0 is Technology Preview, meaning the features are not fully supported, may not be functionally complete, and may undergo some reimplementation.
+The Micronaut extension 0.5.0 is Technology Preview, meaning the functionality may not be complete.
 
 Please be informed that the subsequent runs of a Micronaut project may fail in this version.
 For example, you create a Gradle Micronaut project using GraalVM, run it with the Run / Run Without Debugging command (Ctrl+F5), and then terminate it. If you re-run the project again using the same Run / Run Without Debugging command (Ctrl+F5), startup may fail with this exception:
