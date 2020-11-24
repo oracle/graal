@@ -71,10 +71,14 @@ public class ExportSubclassTest extends AbstractLibraryTest {
         }
 
         public abstract String m1(Object receiver);
+
+        public String m2(Object receiver) {
+            return "m2_default";
+        }
     }
 
     @ExportLibrary(ExportSubclassLibrary.class)
-    static class ExportSubclassBaseClass {
+    public static class ExportSubclassBaseClass {
 
         // directly inherit to SubClass1 and SubClass2
         @ExportMessage
@@ -90,11 +94,16 @@ public class ExportSubclassTest extends AbstractLibraryTest {
             }
         }
 
+        @ExportMessage
+        String m2() {
+            return "base_m0";
+        }
+
     }
 
     // subclass that re-exports
     @ExportLibrary(ExportSubclassLibrary.class)
-    static class ExportSubclassSubClass1 extends ExportSubclassBaseClass {
+    static final class ExportSubclassSubClass1 extends ExportSubclassBaseClass {
 
         @ExportMessage
         static class M0 {
@@ -106,7 +115,7 @@ public class ExportSubclassTest extends AbstractLibraryTest {
 
         @SuppressWarnings("static-method")
         @ExportMessage
-        final String m1() {
+        String m1() {
             return "sub1_m1";
         }
 
@@ -193,7 +202,7 @@ public class ExportSubclassTest extends AbstractLibraryTest {
     }
 
     @ExportLibrary(ExportSubclassLibrary.class)
-    static class SubClass3 extends ExportSubclassBaseClass {
+    static class ExportSubclassSubClass3 extends ExportSubclassBaseClass {
 
         @ExportMessage(library = ExportSubclassLibrary.class, name = "m0")
         @ExportMessage(library = ExportSubclassLibrary.class, name = "m1")
@@ -211,12 +220,12 @@ public class ExportSubclassTest extends AbstractLibraryTest {
             assertEquals("base_m0", lib.m0(new ExportSubclassBaseClass()));
             assertEquals("sub1_m0", lib.m0(new ExportSubclassSubClass1()));
             assertEquals("sub2_m0", lib.m0(new ExportSubclassSubClass2()));
-            assertEquals("sub3_m01", lib.m0(new SubClass3()));
+            assertEquals("sub3_m01", lib.m0(new ExportSubclassSubClass3()));
 
             assertEquals("base_m1", lib.m1(new ExportSubclassBaseClass()));
             assertEquals("sub1_m1", lib.m1(new ExportSubclassSubClass1()));
             assertEquals("base_m1", lib.m1(new ExportSubclassSubClass2()));
-            assertEquals("sub3_m01", lib.m0(new SubClass3()));
+            assertEquals("sub3_m01", lib.m0(new ExportSubclassSubClass3()));
         }
     }
 
@@ -259,6 +268,44 @@ public class ExportSubclassTest extends AbstractLibraryTest {
             }
             assert firstLib == lib : "merged library is not shared";
             return "sub_m0";
+        }
+    }
+
+    @ExportLibrary(value = ExportSubclassLibrary.class)
+    static class AcceptsRedeclaredBase extends ExportSubclassBaseClass {
+
+        @ExportMessage
+        boolean accepts() {
+            return true;
+        }
+    }
+
+    @ExportLibrary(value = ExportSubclassLibrary.class)
+    static class AcceptsRedeclaredSub extends AcceptsRedeclaredBase {
+
+        @ExportMessage(name = "accepts")
+        boolean accepts2() {
+            return true;
+        }
+    }
+
+    @ExportLibrary(value = ExportSubclassLibrary.class)
+    static class ExportRedirectionBase {
+
+        @ExportMessage
+        String m1() {
+            return "m1_base";
+        }
+    }
+
+    @ExportLibrary(value = ExportSubclassLibrary.class, delegateTo = "delegate")
+    static class ExportRedirectionSub extends ExportRedirectionBase {
+
+        final Object delegate = null;
+
+        @ExportMessage
+        String m0() {
+            return "m0_sub";
         }
     }
 

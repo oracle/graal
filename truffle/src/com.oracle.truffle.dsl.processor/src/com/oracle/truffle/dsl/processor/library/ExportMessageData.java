@@ -50,6 +50,7 @@ import javax.lang.model.element.Modifier;
 import javax.lang.model.element.TypeElement;
 import javax.lang.model.type.TypeMirror;
 
+import com.oracle.truffle.dsl.processor.java.ElementUtils;
 import com.oracle.truffle.dsl.processor.java.model.GeneratedElement;
 import com.oracle.truffle.dsl.processor.model.MessageContainer;
 import com.oracle.truffle.dsl.processor.model.NodeData;
@@ -130,6 +131,17 @@ public class ExportMessageData extends MessageContainer {
         } else {
             throw new AssertionError(element.getClass().getName());
         }
+    }
+
+    public boolean isDeclared() {
+        if (getElement() == null) {
+            return true;
+        }
+        return ElementUtils.elementEquals(getElement().getEnclosingElement(), exports.getDeclaringType());
+    }
+
+    public Element getElement() {
+        return element;
     }
 
     public void setSpecializedNode(NodeData specializedNode) {
