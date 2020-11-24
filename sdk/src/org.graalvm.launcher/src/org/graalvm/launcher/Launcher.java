@@ -138,7 +138,7 @@ public abstract class Launcher {
     }
 
     protected Launcher() {
-        verbose = STATIC_VERBOSE || Boolean.valueOf(System.getenv("VERBOSE_GRAALVM_LAUNCHERS"));
+        verbose = STATIC_VERBOSE || Boolean.parseBoolean(System.getenv("VERBOSE_GRAALVM_LAUNCHERS"));
         if (IS_AOT) {
             nativeAccess = new Native();
         } else {
