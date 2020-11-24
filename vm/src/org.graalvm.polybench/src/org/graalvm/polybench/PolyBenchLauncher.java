@@ -99,7 +99,10 @@ public final class PolyBenchLauncher extends AbstractLanguageLauncher {
                         config.metric = new NoMetric();
                         break;
                     case "compilation-time":
-                        config.metric = new CompilationTimeMetric();
+                        config.metric = new CompilationTimeMetric(CompilationTimeMetric.Mode.COMPILATION);
+                        break;
+                    case "partial-evaluation-time":
+                        config.metric = new CompilationTimeMetric(CompilationTimeMetric.Mode.PARTIAL_EVALUATION);
                         break;
                     default:
                         throw new IllegalArgumentException("Unknown metric: " + value);

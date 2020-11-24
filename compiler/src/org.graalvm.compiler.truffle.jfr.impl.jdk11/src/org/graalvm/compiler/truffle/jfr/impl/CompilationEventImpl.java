@@ -56,6 +56,8 @@ class CompilationEventImpl extends RootFunctionEventImpl implements CompilationE
 
     @Label("Truffle Nodes") @Description("Truffle Node Count") @Unsigned public int peNodeCount;
 
+    @Label("Partial Evaluation Time") @Description("Partial Evaluation Time in Milliseconds") @Unsigned public long peTime;
+
     private transient CompilationFailureEventImpl failure;
 
     @Override
@@ -104,6 +106,11 @@ class CompilationEventImpl extends RootFunctionEventImpl implements CompilationE
     @Override
     public void setPartialEvaluationNodeCount(int count) {
         this.peNodeCount = count;
+    }
+
+    @Override
+    public void setPartialEvaluationTime(long time) {
+        this.peTime = time;
     }
 
     @Override

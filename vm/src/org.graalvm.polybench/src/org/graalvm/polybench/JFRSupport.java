@@ -22,30 +22,32 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package org.graalvm.compiler.truffle.jfr;
+package org.graalvm.polybench;
 
-/**
- * The JFR event describing a Truffle compilation.
- */
-public interface CompilationEvent extends RootFunctionEvent {
+import java.io.IOException;
 
-    void compilationStarted();
+final class JFRSupport {
 
-    void failed(boolean permanent, CharSequence reason);
+    private JFRSupport() {
+    }
 
-    void succeeded();
+    static boolean isAvailable() {
+        return false;
+    }
 
-    void setCompiledCodeSize(int size);
+    static Object startRecording(String enabledEvent) {
+        throw new UnsupportedOperationException();
+    }
 
-    void setCompiledCodeAddress(long addr);
+    static Object snapshotRecording(Object recording) {
+        throw new UnsupportedOperationException();
+    }
 
-    void setInlinedCalls(int count);
+    static void disposeRecording(Object recording, boolean stop) {
+        throw new UnsupportedOperationException();
+    }
 
-    void setDispatchedCalls(int count);
-
-    void setGraalNodeCount(int count);
-
-    void setPartialEvaluationNodeCount(int count);
-
-    void setPartialEvaluationTime(long time);
+    static long computeCumulativeTime(Object recording, String eventName, String fieldName) throws IOException {
+        throw new UnsupportedOperationException();
+    }
 }
