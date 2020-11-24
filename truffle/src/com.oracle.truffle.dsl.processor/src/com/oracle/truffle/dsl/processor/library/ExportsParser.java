@@ -129,6 +129,7 @@ public class ExportsParser extends AbstractParser<ExportsData> {
         // set of types that contribute members
         Set<TypeElement> declaringTypes = new HashSet<>();
         Set<TypeElement> declaringInTemplateTypes = new HashSet<>();
+        declaringInTemplateTypes.add(type);
         for (ExportsLibrary library : model.getExportedLibraries().values()) {
             declaringTypes.addAll(library.getDeclaringTypes());
             if (library.isDeclaredInTemplate()) {
@@ -169,6 +170,18 @@ public class ExportsParser extends AbstractParser<ExportsData> {
             }
         }
 
+        if (model.getExportedLibraries().isEmpty()) {
+            for (Element member : loadMembers(null, type)) {
+                List<AnnotationMirror> exportedMessageMirrors = getRepeatedAnnotation(member.getAnnotationMirrors(), types.ExportMessage);
+                if (!exportedMessageMirrors.isEmpty()) {
+                    model.addError("Class declares @%s annotations but does not export any libraries. "//
+                                    + "Exported messages cannot be resoved without exported library. "//
+                                    + "Add @%s(MyLibrary.class) to the class ot resolve this.", getSimpleName(types.ExportMessage), getSimpleName(types.ExportLibrary));
+                    return model;
+                }
+            }
+        }
+
         List<? extends Element> members = loadMembers(declaringInTemplateTypes, type);
 
         /*
@@ -200,17 +213,6 @@ public class ExportsParser extends AbstractParser<ExportsData> {
             }
         }
 
-        /*
-         * Second pass: filter elements that come from exports not relevant for this class. Remove
-         * all export declarations not relevant for this type.
-         */
-        Set<ExportsLibrary> declaredExports = model.getExportedLibraries().values().stream().filter(ExportsLibrary::isDeclaredInTemplate).collect(Collectors.toSet());
-        model.getExportedLibraries().values().removeIf((e) -> !declaredExports.contains(e));
-        exportedElements = exportedElements.stream().filter((e) -> declaredExports.contains(e.getExportsLibrary())).collect(Collectors.toList());
-
-        /*
-         * Second pass: duplication checks and resolve re-exports in subclasses.
-         */
         for (ExportMessageData exportedMessage : exportedElements) {
             Element member = exportedMessage.getMessageElement();
             String messageName = exportedMessage.getResolvedMessage().getName();
@@ -276,6 +278,59 @@ public class ExportsParser extends AbstractParser<ExportsData> {
                                 getSimpleName(types.ExportLibrary));
             }
         }
+
+        for (ExportsLibrary exportsLibrary : model.getExportedLibraries().values()) {
+            if (!exportsLibrary.isDeclaredInTemplate()) {
+                for (ExportMessageData message : exportsLibrary.getExportedMessages().values()) {
+                    if (elementEquals(message.getMessageElement().getEnclosingElement(), type)) {
+                        message.addError("The @%s declaration is missing for this exported message. "//
+                                        + "Add @%s(%s.class) to the enclosing class %s to resolve this.",
+                                        getSimpleName(types.ExportLibrary),
+                                        getSimpleName(types.ExportLibrary),
+                                        getSimpleName(exportsLibrary.getLibrary().getTemplateType()),
+                                        getSimpleName(type));
+                    }
+                }
+            }
+        }
+        // avoid removal of elements if errors occured.
+        if (model.hasErrors()) {
+            return model;
+        }
+
+        for (ExportsLibrary exportsLibrary : model.getExportedLibraries().values()) {
+            if (exportsLibrary.isBuiltinDefaultExport()) {
+                // we don't print unused warnings for builtin defaults.
+                continue;
+            }
+            if (exportsLibrary.isDeclaredInTemplate()) {
+                boolean foundDeclared = false;
+                for (ExportMessageData message : exportsLibrary.getExportedMessages().values()) {
+                    if (message.isDeclared()) {
+                        foundDeclared = true;
+                        break;
+                    }
+                }
+
+                if (!foundDeclared) {
+                    exportsLibrary.addWarning("Exported library %s does not export any messages and therefore has no effect. Remove the export declaration to resolve this.",
+                                    getSimpleName(exportsLibrary.getLibrary().getTemplateType()));
+                }
+            }
+        }
+
+        // avoid removal of elements if errors occured.
+        if (model.hasErrors()) {
+            return model;
+        }
+
+        /*
+         * filter elements that come from exports not relevant for this class. Remove all export
+         * declarations not relevant for this type.
+         */
+        Set<ExportsLibrary> declaredExports = model.getExportedLibraries().values().stream().filter(ExportsLibrary::isDeclaredInTemplate).collect(Collectors.toSet());
+        model.getExportedLibraries().values().removeIf((e) -> !declaredExports.contains(e));
+        exportedElements = exportedElements.stream().filter((e) -> declaredExports.contains(e.getExportsLibrary())).collect(Collectors.toList());
 
         /*
          * Third pass: initialize and further parsing that need both method and node to be
