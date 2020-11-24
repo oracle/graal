@@ -92,6 +92,7 @@ import org.graalvm.compiler.phases.util.Providers;
 import org.graalvm.compiler.serviceprovider.GraalServices;
 import org.graalvm.compiler.serviceprovider.IsolateUtil;
 import org.graalvm.compiler.truffle.common.TruffleCompilerRuntime;
+import org.graalvm.compiler.truffle.common.hotspot.HotSpotTruffleCompilerRuntime;
 import org.graalvm.compiler.truffle.common.hotspot.libgraal.TruffleToLibGraal;
 import org.graalvm.compiler.truffle.compiler.PartialEvaluatorConfiguration;
 import org.graalvm.compiler.truffle.compiler.TruffleCompilerBase;
@@ -630,14 +631,23 @@ final class Target_org_graalvm_compiler_hotspot_HotSpotGraalCompiler {
         long offset = compiler.getGraalRuntime().getVMConfig().jniEnvironmentOffset;
         long javaThreadAddr = HotSpotJVMCIRuntime.runtime().getCurrentJavaThread();
         JNI.JNIEnv env = (JNI.JNIEnv) WordFactory.unsigned(javaThreadAddr).add(WordFactory.unsigned(offset));
-        if (TruffleCompilerRuntime.getRuntimeIfAvailable() == null) {
+        final HotSpotTruffleCompilerRuntime runtime = (HotSpotTruffleCompilerRuntime) TruffleCompilerRuntime.getRuntimeIfAvailable();
+        if (runtime == null) {
             return compiler.compileMethod(request, true, compiler.getGraalRuntime().getOptions());
         } else {
             // This scope is required to allow Graal compilations of host methods to call methods
-            // on the TruffleCompilerRuntime, for example, to find out about Truffle-specific
-            // method annotations.
+            // on the TruffleCompilerRuntime. This is, for example, required to find out about
+            // Truffle-specific method annotations.
+            // We first open the libgraal-side scope.
+            // Then, we open the Truffle-side scope object.
+            // Finally, after the compilation ends, we remove the Truffle-side scope object.
             try (JNILibGraalScope<TruffleToLibGraal.Id> scope = new JNILibGraalScope<>(null, env)) {
-                return compiler.compileMethod(request, true, compiler.getGraalRuntime().getOptions());
+                runtime.enterLibGraalScope();
+                try {
+                    return compiler.compileMethod(request, true, compiler.getGraalRuntime().getOptions());
+                } finally {
+                    runtime.exitLibGraalScope();
+                }
             }
         }
     }

@@ -218,6 +218,16 @@ final class TruffleFromLibGraalEntryPoints {
         return ((TruffleCompilerRuntime) truffleRuntime).getFrameSlotKindTagForJavaKind(JavaKind.values()[ordinal]);
     }
 
+    @TruffleFromLibGraal(IsBytecodeInterpreterSwitchBoundary)
+    static void enterLibGraalScope(Object truffleRuntime) {
+        ((HotSpotTruffleCompilerRuntime) truffleRuntime).enterLibGraalScope();
+    }
+
+    @TruffleFromLibGraal(IsBytecodeInterpreterSwitchBoundary)
+    static void exitLibGraalScope(Object truffleRuntime) {
+        ((HotSpotTruffleCompilerRuntime) truffleRuntime).exitLibGraalScope();
+    }
+
     @TruffleFromLibGraal(GetTruffleCallBoundaryMethods)
     static long[] getTruffleCallBoundaryMethods(Object truffleRuntime) {
         Collection<ResolvedJavaMethod> source;

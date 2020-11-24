@@ -115,4 +115,14 @@ final class LibGraalTruffleRuntime extends AbstractHotSpotTruffleRuntime {
             return TruffleToLibGraalCalls.isPrintGraphEnabled(getIsolateThread(), handle());
         }
     }
+
+    @Override
+    public void enterLibGraalScope() {
+        new LibGraalScope();
+    }
+
+    @Override
+    public void exitLibGraalScope() {
+        LibGraalScope.current().close();
+    }
 }

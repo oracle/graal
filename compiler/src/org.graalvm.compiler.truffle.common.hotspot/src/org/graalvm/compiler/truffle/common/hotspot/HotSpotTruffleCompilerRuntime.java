@@ -44,4 +44,12 @@ public interface HotSpotTruffleCompilerRuntime extends TruffleCompilerRuntime {
      * @param installedCode code that has just been installed in the code cache
      */
     void onCodeInstallation(CompilableTruffleAST compilable, InstalledCode installedCode);
+
+    default void enterLibGraalScope() {
+        throw new UnsupportedOperationException();
+    }
+
+    default void exitLibGraalScope() {
+        throw new UnsupportedOperationException();
+    }
 }

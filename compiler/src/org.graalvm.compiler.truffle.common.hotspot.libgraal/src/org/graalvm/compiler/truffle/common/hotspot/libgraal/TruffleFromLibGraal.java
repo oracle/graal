@@ -68,6 +68,8 @@ public @interface TruffleFromLibGraal {
         CreateInliningPlan(Object.class, Object.class),
         CreateStringSupplier(Supplier.class, long.class),
         DequeueInlined(void.class, Object.class),
+        EnterLibGraalScope(void.class, Object.class),
+        ExitLibGraalScope(void.class, Object.class),
         FindCallNode(Object.class, Object.class, long.class),
         GetCallCount(int.class, Object.class),
         GetCallNodes(Object[].class, Object.class),
