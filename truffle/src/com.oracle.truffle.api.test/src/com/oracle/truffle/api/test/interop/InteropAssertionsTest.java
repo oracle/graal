@@ -500,7 +500,6 @@ public class InteropAssertionsTest extends InteropLibraryBaseTest {
         assertTrue(l0.isIdentical(v0, v1, l1));
     }
 
-    @ExportLibrary(InteropLibrary.class)
     static class Members implements TruffleObject {
     }
 

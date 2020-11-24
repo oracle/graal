@@ -227,7 +227,6 @@ public class DefaultExportTest extends AbstractParametrizedLibraryTest {
     @ExportLibrary(value = DefaultErrorLibrary3.class, receiverType = OtherClass.class)
     @ExpectError({
                     "The following message(s) of library DefaultErrorLibrary3 are abstract%",
-                    "Exported library DefaultErrorLibrary3 does not export any messages and therefore has no effect.%"
     })
     abstract static class AbstractDefault {
     }
