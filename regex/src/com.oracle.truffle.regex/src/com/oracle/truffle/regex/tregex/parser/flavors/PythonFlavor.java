@@ -63,9 +63,6 @@ import com.oracle.truffle.regex.RegexSource;
  * to use much more complex global rewriting rules than the current approach.</li>
  * </ul>
  *
- * Furthermore, features not supported by TRegex in general are also not supported (e.g.
- * backreferences or variable-length lookbehind).
- * 
  * @see PythonREMode
  */
 public final class PythonFlavor implements RegexFlavor {
