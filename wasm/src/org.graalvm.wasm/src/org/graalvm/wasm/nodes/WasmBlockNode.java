@@ -248,6 +248,8 @@ import static org.graalvm.wasm.constants.Instructions.UNREACHABLE;
 
 public final class WasmBlockNode extends WasmNode implements RepeatingNode {
 
+    private static final double HIGH_PROBABILITY = 0.99999;
+
     /**
      * The number of integers in the int constant table used by this node.
      */
@@ -352,23 +354,13 @@ public final class WasmBlockNode extends WasmNode implements RepeatingNode {
         int offset = startOffset;
         final WasmCodeEntry codeEntry = codeEntry();
         WasmMemory memory = instance().memory();
-        if (memory == null) {
-            // This allows hoisting the subsequent memory-length reads.
-            memory = WasmMemory.EMPTY_MEMORY;
-        }
         final byte[] data = codeEntry.data();
         final int[] intConstants = codeEntry.intConstants();
         final int[] profileCounters = codeEntry.profileCounters();
-        HostCompilerDirectives.consume(memory.byteSize());
-        HostCompilerDirectives.consume(data.length);
-        HostCompilerDirectives.consume(intConstants.length);
-        HostCompilerDirectives.consume(profileCounters.length);
-        HostCompilerDirectives.consume(locals.length);
-        HostCompilerDirectives.consume(stack.length);
         final int blockByteLength = byteLength();
         final int offsetLimit = startOffset + blockByteLength;
         try {
-            while (offset < offsetLimit) {
+            while (CompilerDirectives.injectBranchProbability(HIGH_PROBABILITY, offset < offsetLimit)) {
                 byte byteOpcode = BinaryStreamParser.rawPeek1(data, offset);
                 int opcode = byteOpcode & 0xFF;
                 offset++;
