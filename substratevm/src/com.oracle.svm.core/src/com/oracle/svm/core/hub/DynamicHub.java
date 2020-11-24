@@ -901,6 +901,13 @@ public final class DynamicHub implements JavaKind.FormatWithToString, AnnotatedE
 
     @Substitute
     public Object newInstance() throws Throwable {
+        /*
+         * The JavaDoc for the original method states that "The class is initialized if it has not
+         * already been initialized". However, it doesn't specify if the absence of a nullary
+         * constructor will result in an InstantiationException before the class is initialized. We
+         * eagerly initialize it to conform with JCK tests.
+         */
+        ensureInitialized();
         final Constructor<?> nullaryConstructor = rd.nullaryConstructor;
         if (nullaryConstructor == null) {
             if (JavaVersionUtil.JAVA_SPEC <= 8) {
