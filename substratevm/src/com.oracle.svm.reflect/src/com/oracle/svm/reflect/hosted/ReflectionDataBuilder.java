@@ -261,10 +261,11 @@ public class ReflectionDataBuilder implements RuntimeReflectionSupport {
             clazz.getConstructors();
             clazz.getDeclaredClasses();
             clazz.getClasses();
-        } catch (TypeNotPresentException | NoClassDefFoundError | VerifyError e) {
+        } catch (TypeNotPresentException | LinkageError e) {
             /*
-             * If any of the methods or fields reference missing types in their signatures a
-             * NoClassDefFoundError is thrown. Skip registering reflection metadata for this class.
+             * If any of the methods or fields signatures reference missing types or types that have
+             * incompatible changes a LinkageError is thrown. Skip registering reflection metadata
+             * for this class.
              *
              * If the class fails verification then no reflection metadata can be registered.
              * Howerver, the class is still registered for run time loading with Class.forName() and
@@ -326,10 +327,11 @@ public class ReflectionDataBuilder implements RuntimeReflectionSupport {
         try {
             enclosingMethod = clazz.getEnclosingMethod();
             enclosingConstructor = clazz.getEnclosingConstructor();
-        } catch (TypeNotPresentException | NoClassDefFoundError e) {
+        } catch (TypeNotPresentException | LinkageError e) {
             /*
              * If any of the methods or fields in the class of the enclosing method reference
-             * missing types in their signatures a NoClassDefFoundError is thrown. Skip the class.
+             * missing types or types that have incompatible changes a LinkageError is thrown. Skip
+             * the class.
              */
             return null;
         } catch (InternalError ex) {
@@ -432,7 +434,7 @@ public class ReflectionDataBuilder implements RuntimeReflectionSupport {
 
         ReflectionDataAccessors(DuringSetupAccessImpl access) {
             reflectionDataMethod = ReflectionUtil.lookupMethod(Class.class, "reflectionData");
-            Class<?> originalReflectionDataClass = access.getImageClassLoader().findClassByName("java.lang.Class$ReflectionData");
+            Class<?> originalReflectionDataClass = access.getImageClassLoader().findClassOrFail("java.lang.Class$ReflectionData");
             declaredFieldsField = ReflectionUtil.lookupField(originalReflectionDataClass, "declaredFields");
             publicFieldsField = ReflectionUtil.lookupField(originalReflectionDataClass, "publicFields");
             declaredMethodsField = ReflectionUtil.lookupField(originalReflectionDataClass, "declaredMethods");

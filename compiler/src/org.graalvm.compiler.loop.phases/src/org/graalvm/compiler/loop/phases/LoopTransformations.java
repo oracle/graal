@@ -207,6 +207,16 @@ public abstract class LoopTransformations {
         LoopFragmentInside newSegment = loop.inside().duplicate();
         newSegment.insertWithinAfter(loop, opaqueUnrolledStrides);
 
+        // Try to update the corresponding post loop's frequency.
+        for (LoopExitNode exit : loop.loopBegin().loopExits()) {
+            if (exit.next().hasExactlyOneUsage() && exit.next().usages().first() instanceof LoopBeginNode) {
+                LoopBeginNode possiblePostLoopBegin = (LoopBeginNode) exit.next().usages().first();
+                if (possiblePostLoopBegin.isPostLoop()) {
+                    possiblePostLoopBegin.setLoopFrequency(Math.max(1.0, loop.loopBegin().getUnrollFactor() - 1));
+                    break;
+                }
+            }
+        }
     }
 
     // This function splits candidate loops into pre, main and post loops,
@@ -373,9 +383,13 @@ public abstract class LoopTransformations {
         } else {
             updatePreLoopLimit(preCounted);
         }
+        double originalFrequency = loop.loopBegin().loopFrequency();
         preLoopBegin.setLoopFrequency(1.0);
         mainLoopBegin.setLoopFrequency(Math.max(1.0, mainLoopBegin.loopFrequency() - 2));
-        postLoopBegin.setLoopFrequency(Math.max(1.0, postLoopBegin.loopFrequency() - 1));
+        postLoopBegin.setLoopFrequency(1.0);
+        preLoopBegin.setLoopOrigFrequency(originalFrequency);
+        mainLoopBegin.setLoopOrigFrequency(originalFrequency);
+        postLoopBegin.setLoopOrigFrequency(originalFrequency);
 
         if (!graph.hasValueProxies()) {
             // The pre and post loops don't require safepoints at all

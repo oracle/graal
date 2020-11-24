@@ -65,8 +65,14 @@ export async function createProject() {
             }
         }
         if (created) {
-            const uri = vscode.Uri.file(options.target);
+            if (options.java) {
+                const commands: string[] = await vscode.commands.getCommands();
+                if (commands.includes('extension.graalvm.selectGraalVMHome')) {
+                    await vscode.commands.executeCommand('extension.graalvm.selectGraalVMHome', options.java, true);
+                }
+            }
             updateGitIgnore(options);
+            const uri = vscode.Uri.file(options.target);
             if (vscode.workspace.workspaceFolders) {
                 const value = await vscode.window.showInformationMessage('New Micronaut project created', OPEN_IN_NEW_WINDOW, ADD_TO_CURRENT_WORKSPACE);
                 if (value === OPEN_IN_NEW_WINDOW) {
@@ -81,12 +87,6 @@ export async function createProject() {
                 }
             } else {
                 await vscode.commands.executeCommand('vscode.openFolder', uri, false);
-            }
-            if (options.java) {
-                const commands: string[] = await vscode.commands.getCommands();
-                if (commands.includes('extension.graalvm.selectGraalVMHome')) {
-                    await vscode.commands.executeCommand('extension.graalvm.selectGraalVMHome', options.java, true);
-                }
             }
         }
     }

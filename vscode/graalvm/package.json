@@ -358,6 +358,23 @@
 				"path": "./snippets/ruby-polyglot-snippets.json"
 			}
 		],
+		"breakpoints": [
+			{
+				"language": "javascript"
+			},
+			{
+				"language": "typescript"
+			},
+			{
+				"language": "python"
+			},
+			{
+				"language": "r"
+			},
+			{
+				"language": "ruby"
+			}
+		],
 		"debuggers": [
 			{
 				"type": "graalvm",
@@ -365,8 +382,6 @@
 				"languages": [
 					"javascript",
 					"typescript",
-					"javascriptreact",
-					"typescriptreact",
 					"python",
 					"r",
 					"ruby"

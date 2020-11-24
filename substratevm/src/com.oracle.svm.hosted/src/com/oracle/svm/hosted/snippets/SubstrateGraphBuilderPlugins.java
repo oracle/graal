@@ -540,7 +540,7 @@ public class SubstrateGraphBuilderPlugins {
                         try {
                             Field targetField = clazz.getDeclaredField(fieldName);
                             return processObjectFieldOffset(b, targetField, analysis, metaAccess);
-                        } catch (NoSuchFieldException | NoClassDefFoundError e) {
+                        } catch (NoSuchFieldException | LinkageError e) {
                             return false;
                         }
                     }
@@ -729,13 +729,6 @@ public class SubstrateGraphBuilderPlugins {
             @Override
             public boolean apply(GraphBuilderContext b, ResolvedJavaMethod targetMethod, Receiver receiver) {
                 b.addPush(JavaKind.Object, ReadReservedRegister.createReadHeapBaseNode(b.getGraph()));
-                return true;
-            }
-        });
-        r.register1("readArrayLength", Object.class, new InvocationPlugin() {
-            @Override
-            public boolean apply(GraphBuilderContext b, ResolvedJavaMethod targetMethod, Receiver receiver, ValueNode array) {
-                b.addPush(JavaKind.Int, new ArrayLengthNode(array));
                 return true;
             }
         });

@@ -339,7 +339,7 @@ public class Inflation extends BigBang {
         Type[] allGenericInterfaces;
         try {
             allGenericInterfaces = javaClass.getGenericInterfaces();
-        } catch (MalformedParameterizedTypeException | TypeNotPresentException | NoClassDefFoundError t) {
+        } catch (MalformedParameterizedTypeException | TypeNotPresentException | LinkageError t) {
             /*
              * Loading generic interfaces can fail due to missing types. Ignore the exception and
              * return an empty array.
@@ -351,7 +351,7 @@ public class Inflation extends BigBang {
         Type[] cachedGenericInterfaces;
         try {
             cachedGenericInterfaces = genericInterfacesMap.computeIfAbsent(new GenericInterfacesEncodingKey(genericInterfaces), k -> genericInterfaces);
-        } catch (MalformedParameterizedTypeException | TypeNotPresentException | NoClassDefFoundError t) {
+        } catch (MalformedParameterizedTypeException | TypeNotPresentException | LinkageError t) {
             /*
              * Computing the hash code of generic interfaces can fail due to missing types. Ignore
              * the exception and proceed without caching. De-duplication of generic interfaces is an
@@ -363,7 +363,7 @@ public class Inflation extends BigBang {
         Type genericSuperClass;
         try {
             genericSuperClass = javaClass.getGenericSuperclass();
-        } catch (MalformedParameterizedTypeException | TypeNotPresentException | NoClassDefFoundError t) {
+        } catch (MalformedParameterizedTypeException | TypeNotPresentException | LinkageError t) {
             /*
              * Loading the generic super class can fail due to missing types. Ignore the exception
              * and return null.
@@ -382,7 +382,7 @@ public class Inflation extends BigBang {
         AnnotatedType annotatedSuperclass;
         try {
             annotatedSuperclass = javaClass.getAnnotatedSuperclass();
-        } catch (MalformedParameterizedTypeException | TypeNotPresentException | NoClassDefFoundError t) {
+        } catch (MalformedParameterizedTypeException | TypeNotPresentException | LinkageError t) {
             /*
              * Loading the annotated super class can fail due to missing types. Ignore the exception
              * and return null.
@@ -396,7 +396,7 @@ public class Inflation extends BigBang {
         AnnotatedType[] allAnnotatedInterfaces;
         try {
             allAnnotatedInterfaces = javaClass.getAnnotatedInterfaces();
-        } catch (MalformedParameterizedTypeException | TypeNotPresentException | NoClassDefFoundError t) {
+        } catch (MalformedParameterizedTypeException | TypeNotPresentException | LinkageError t) {
             /*
              * Loading annotated interfaces can fail due to missing types. Ignore the exception and
              * return an empty array.

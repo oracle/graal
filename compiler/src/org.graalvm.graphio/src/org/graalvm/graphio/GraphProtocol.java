@@ -77,7 +77,7 @@ abstract class GraphProtocol<Graph, Node, NodeClass, Edges, Block, ResolvedJavaM
 
     private static final byte[] MAGIC_BYTES = {'B', 'I', 'G', 'V'};
 
-    private static final int MAJOR_VERSION = 7;
+    private static final int MAJOR_VERSION = 8;
     private static final int MINOR_VERSION = 0;
 
     private final ConstantPool constantPool;
@@ -849,7 +849,16 @@ abstract class GraphProtocol<Graph, Node, NodeClass, Edges, Block, ResolvedJavaM
         }
         final int size = props.size();
         // properties
-        writeShort((char) size);
+        if (size >= Character.MAX_VALUE) {
+            if (versionMajor > 7) {
+                writeShort(Character.MAX_VALUE);
+                writeInt(size);
+            } else {
+                throw new IllegalArgumentException("Property count is too big. Properties can contain only " + (Character.MAX_VALUE - 1) + " in version < 8.");
+            }
+        } else {
+            writeShort((char) size);
+        }
         int cnt = 0;
         for (Map.Entry<? extends Object, ? extends Object> entry : props.entrySet()) {
             String key = entry.getKey().toString();

@@ -32,7 +32,7 @@ package com.oracle.truffle.llvm.runtime.nodes.intrinsics.handles;
 import com.oracle.truffle.api.dsl.Fallback;
 import com.oracle.truffle.api.dsl.NodeChild;
 import com.oracle.truffle.api.dsl.Specialization;
-import com.oracle.truffle.llvm.runtime.memory.LLVMNativeMemory;
+import com.oracle.truffle.llvm.runtime.memory.LLVMHandleMemoryBase;
 import com.oracle.truffle.llvm.runtime.nodes.api.LLVMExpressionNode;
 import com.oracle.truffle.llvm.runtime.nodes.intrinsics.llvm.LLVMIntrinsic;
 import com.oracle.truffle.llvm.runtime.pointer.LLVMNativePointer;
@@ -42,7 +42,7 @@ public abstract class GraalVMPointsToHandleSpace extends LLVMIntrinsic {
 
     @Specialization
     protected boolean doLongCase(long a) {
-        return LLVMNativeMemory.isHandleMemory(a);
+        return LLVMHandleMemoryBase.isHandleMemory(a);
     }
 
     @Specialization

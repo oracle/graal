@@ -249,6 +249,9 @@ public class LoopEx {
         }
         countedLoopChecked = true;
         LoopBeginNode loopBegin = loopBegin();
+        if (loopBegin.countedLoopDisabled()) {
+            return false;
+        }
         FixedNode next = loopBegin.next();
         while (next instanceof FixedGuardNode || next instanceof ValueAnchorNode || next instanceof FullInfopointNode) {
             next = ((FixedWithNextNode) next).next();

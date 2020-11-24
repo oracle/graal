@@ -78,6 +78,7 @@ import com.oracle.truffle.regex.tregex.parser.ast.visitors.InitIDVisitor;
 import com.oracle.truffle.regex.tregex.parser.ast.visitors.MarkLookBehindEntriesVisitor;
 import com.oracle.truffle.regex.tregex.parser.ast.visitors.NodeCountVisitor;
 import com.oracle.truffle.regex.tregex.parser.ast.visitors.SetSourceSectionVisitor;
+import com.oracle.truffle.regex.tregex.parser.flavors.RubyFlavor;
 import com.oracle.truffle.regex.tregex.string.Encodings;
 
 public final class RegexParser {
@@ -675,9 +676,11 @@ public final class RegexParser {
         while (lexer.hasNext()) {
             prevKind = token == null ? null : token.kind;
             token = lexer.next();
-            if (token.kind != Token.Kind.quantifier && curTerm != null && curTerm.isBackReference() && curTerm.asBackReference().isNestedOrForwardReference() &&
-                            !isNestedInLookBehindAssertion(curTerm)) {
-                // nested/forward back-references are no-ops in JavaScript
+            if (options.getFlavor() != RubyFlavor.INSTANCE && token.kind != Token.Kind.quantifier && curTerm != null && curTerm.isBackReference() &&
+                            curTerm.asBackReference().isNestedOrForwardReference() && !isNestedInLookBehindAssertion(curTerm)) {
+                // In JavaScript, nested/forward back-references are dropped as no-ops.
+                // However, in Ruby, they are valid, since the contents of capture groups
+                // are not cleared when re-entering a loop.
                 removeCurTerm();
             }
             switch (token.kind) {

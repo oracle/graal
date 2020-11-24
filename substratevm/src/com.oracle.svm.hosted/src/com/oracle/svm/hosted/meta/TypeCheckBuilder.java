@@ -1622,7 +1622,8 @@ public class TypeCheckBuilder {
                     HostedType checkedType = types.get(j);
                     boolean legacyCheck = legacyCheckAssignable(superType, checkedType);
                     boolean newCheck = newCheckAssignable(superType, checkedType);
-                    boolean checksMatch = legacyCheck == newCheck;
+                    boolean hostedCheck = superType.isAssignableFrom(checkedType);
+                    boolean checksMatch = legacyCheck == newCheck && newCheck == hostedCheck;
                     if (!checksMatch) {
                         StringBuilder message = new StringBuilder();
                         message.append("\n********Type checks do not match:********\n");
@@ -1630,6 +1631,7 @@ public class TypeCheckBuilder {
                         message.append(String.format("checked type: %s\n", checkedType.toString()));
                         message.append(String.format("legacy check: %b\n", legacyCheck));
                         message.append(String.format("new check: %b\n", newCheck));
+                        message.append(String.format("hosted check: %b\n", hostedCheck));
                         VMError.shouldNotReachHere(message.toString());
                     }
                 }

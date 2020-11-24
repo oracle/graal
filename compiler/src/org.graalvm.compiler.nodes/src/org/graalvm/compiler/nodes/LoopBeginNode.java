@@ -27,7 +27,9 @@ package org.graalvm.compiler.nodes;
 import static org.graalvm.compiler.graph.iterators.NodePredicates.isNotA;
 
 import org.graalvm.compiler.core.common.type.IntegerStamp;
+import org.graalvm.compiler.debug.CounterKey;
 import org.graalvm.compiler.debug.DebugCloseable;
+import org.graalvm.compiler.debug.DebugContext;
 import org.graalvm.compiler.graph.IterableNodeType;
 import org.graalvm.compiler.graph.Node;
 import org.graalvm.compiler.graph.NodeClass;
@@ -41,6 +43,10 @@ import org.graalvm.compiler.nodes.extended.GuardingNode;
 import org.graalvm.compiler.nodes.spi.LIRLowerable;
 import org.graalvm.compiler.nodes.spi.NodeLIRBuilderTool;
 import org.graalvm.compiler.nodes.util.GraphUtil;
+import org.graalvm.compiler.serviceprovider.SpeculationReasonGroup;
+
+import jdk.vm.ci.meta.ResolvedJavaMethod;
+import jdk.vm.ci.meta.SpeculationLog;
 
 @NodeInfo
 public final class LoopBeginNode extends AbstractMergeNode implements IterableNodeType, LIRLowerable {
@@ -56,6 +62,15 @@ public final class LoopBeginNode extends AbstractMergeNode implements IterableNo
     protected LoopType loopType;
     protected int unrollFactor;
     protected boolean osrLoop;
+    /**
+     * Flag to indicate that this loop must not be detected as a counted loop.
+     */
+    protected boolean disableCounted;
+    /**
+     * Flag indicating that this loop can never overflow based on some property not visible in the
+     * loop control computations.
+     */
+    protected boolean canNeverOverflow;
 
     public enum LoopType {
         SIMPLE_LOOP,
@@ -69,6 +84,11 @@ public final class LoopBeginNode extends AbstractMergeNode implements IterableNo
 
     @OptionalInput(InputType.Guard) GuardingNode overflowGuard;
 
+    public static final CounterKey overflowSpeculationTaken = DebugContext.counter("CountedLoops_OverflowSpeculation_Taken");
+    public static final CounterKey overflowSpeculationNotTaken = DebugContext.counter("CountedLoops_OverflowSpeculation_NotTaken");
+
+    public static final SpeculationReasonGroup LOOP_OVERFLOW_DEOPT = new SpeculationReasonGroup("LoopOverflowDeopt", ResolvedJavaMethod.class, int.class);
+
     public LoopBeginNode() {
         super(TYPE);
         loopFrequency = 1;
@@ -78,6 +98,32 @@ public final class LoopBeginNode extends AbstractMergeNode implements IterableNo
         this.canEndsSafepoint = true;
         loopType = LoopType.SIMPLE_LOOP;
         unrollFactor = 1;
+    }
+
+    public void checkDisableCountedBySpeculation(int bci, StructuredGraph graph) {
+        SpeculationLog speculationLog = graph.getSpeculationLog();
+        boolean disableCountedBasedOnSpeculation = false;
+        if (speculationLog != null) {
+            SpeculationLog.SpeculationReason speculationReason = LOOP_OVERFLOW_DEOPT.createSpeculationReason(graph.method(), bci);
+            if (!speculationLog.maySpeculate(speculationReason)) {
+                overflowSpeculationNotTaken.increment(graph.getDebug());
+                disableCountedBasedOnSpeculation = true;
+            }
+        }
+        disableCounted = disableCountedBasedOnSpeculation;
+    }
+
+    public boolean canNeverOverflow() {
+        return canNeverOverflow;
+    }
+
+    public void setCanNeverOverflow() {
+        assert !canNeverOverflow;
+        this.canNeverOverflow = true;
+    }
+
+    public boolean countedLoopDisabled() {
+        return disableCounted;
     }
 
     public boolean isSimpleLoop() {

@@ -26,6 +26,7 @@ package com.oracle.svm.configure.config;
 
 import java.util.List;
 
+import com.oracle.svm.core.TypeResult;
 import com.oracle.svm.core.configure.ReflectionConfigurationParserDelegate;
 
 public class ParserConfigurationAdapter implements ReflectionConfigurationParserDelegate<ConfigurationType> {
@@ -37,9 +38,10 @@ public class ParserConfigurationAdapter implements ReflectionConfigurationParser
     }
 
     @Override
-    public ConfigurationType resolveType(String typeName) {
+    public TypeResult<ConfigurationType> resolveTypeResult(String typeName) {
         ConfigurationType type = configuration.get(typeName);
-        return (type != null) ? type : new ConfigurationType(typeName);
+        ConfigurationType result = type != null ? type : new ConfigurationType(typeName);
+        return TypeResult.forType(typeName, result);
     }
 
     @Override

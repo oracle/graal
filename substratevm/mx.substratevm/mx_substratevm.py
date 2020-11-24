@@ -140,13 +140,15 @@ def is_musl_supported():
 
 
 class GraalVMConfig(object):
-    def __init__(self, primary_suite_dir, dynamicimports=None, disable_libpolyglot=False, force_bash_launchers=None, skip_libraries=None, exclude_components=None):
+    def __init__(self, primary_suite_dir, dynamicimports=None, disable_libpolyglot=False, force_bash_launchers=None, skip_libraries=None,
+            exclude_components=None, native_images=None):
         self._primary_suite_dir = primary_suite_dir
         self.dynamicimports = dynamicimports or []
         self.disable_libpolyglot = disable_libpolyglot
         self.force_bash_launchers = force_bash_launchers or []
         self.skip_libraries = skip_libraries or []
         self.exclude_components = exclude_components or []
+        self.native_images = native_images or []
         for x, _ in mx.get_dynamic_imports():
             self.dynamicimports.append(x)
 
@@ -171,12 +173,14 @@ class GraalVMConfig(object):
                 args += ['--skip-libraries=' + ','.join(self.skip_libraries)]
         if self.exclude_components:
             args += ['--exclude-components=' + ','.join(self.exclude_components)]
+        if self.native_images:
+            args += ['--native-images=' + ','.join(self.native_images)]
         return args
 
     def _tuple(self):
         _force_bash_launchers = tuple(self.force_bash_launchers) if isinstance(self.force_bash_launchers, list) else self.force_bash_launchers
         _skip_libraries = tuple(self.skip_libraries) if isinstance(self.skip_libraries, list) else self.skip_libraries
-        return tuple(self.dynamicimports), self.disable_libpolyglot, _force_bash_launchers, _skip_libraries, tuple(self.exclude_components)
+        return tuple(self.dynamicimports), self.disable_libpolyglot, _force_bash_launchers, _skip_libraries, tuple(self.exclude_components), tuple(self.native_images)
 
     def __hash__(self):
         return hash(self._tuple())
@@ -405,17 +409,7 @@ def svm_gate_body(args, tasks):
 
         with Task('native unittests', tasks, tags=[GraalTags.test]) as t:
             if t:
-                with tempfile.NamedTemporaryFile(mode='w') as blacklist:
-                    if svm_java8():
-                        blacklist_args = []
-                    else:
-                        # Currently not working on Java > 8
-                        blacklist.write('com.oracle.svm.test.ServiceLoaderTest')
-                        blacklist.flush()
-                        blacklist_args = ['--blacklist', blacklist.name]
-
-                    # We need the -H:+EnableAllSecurityServices for com.oracle.svm.test.SecurityServiceTest
-                    native_unittest(['--build-args', _native_unittest_features, '-H:+EnableAllSecurityServices'] + blacklist_args)
+                native_unittests_task()
 
         with Task('Run Truffle NFI unittests with SVM image', tasks, tags=["svmjunit"]) as t:
             if t:
@@ -458,6 +452,18 @@ def svm_gate_body(args, tasks):
         if t:
             maven_plugin_install([])
             maven_plugin_test([])
+
+
+def native_unittests_task():
+    if not svm_java8():
+        # Currently not working on Java > 8
+        mx_unittest.add_global_ignore_glob('com.oracle.svm.test.ServiceLoaderTest')
+    if mx.is_windows():
+        # GR-24075
+        mx_unittest.add_global_ignore_glob('com.oracle.svm.test.ProcessPropertiesTest')
+
+    # We need the -H:+EnableAllSecurityServices for com.oracle.svm.test.SecurityServiceTest
+    native_unittest(['--build-args', _native_unittest_features, '-H:+EnableAllSecurityServices'])
 
 
 def javac_image_command(javac_path):
@@ -1610,8 +1616,8 @@ def maven_plugin_test(args):
         maven_opts.append('-XX:+EnableJVMCI')
         maven_opts.append('--add-exports=java.base/jdk.internal.module=ALL-UNNAMED')
     env['MAVEN_OPTS'] = ' '.join(maven_opts)
-    config = graalvm_config()
-    with native_image_context(IMAGE_ASSERTION_FLAGS, config=config):
+    config = GraalVMConfig(primary_suite_dir=svm_suite().dir, native_images=['native-image'])
+    with native_image_context(IMAGE_ASSERTION_FLAGS, config=config, build_if_missing=True):
         env['JAVA_HOME'] = _vm_home(config)
         mx.run_maven(['-e', 'package'], cwd=proj_dir, env=env)
     mx.run([join(proj_dir, 'target', 'com.oracle.substratevm.nativeimagemojotest')])

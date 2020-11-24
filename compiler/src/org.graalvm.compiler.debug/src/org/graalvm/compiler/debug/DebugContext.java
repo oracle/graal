@@ -107,8 +107,18 @@ public final class DebugContext implements AutoCloseable {
     CloseableCounter currentMemUseTracker;
     Scope lastClosedScope;
     Throwable lastExceptionThrown;
-    private IgvDumpChannel sharedChannel;
-    private GraphOutput<?, ?> parentOutput;
+
+    /**
+     * Lazily initialized IGV channel used for {@linkplain #buildOutput dumping a graph} associated
+     * with this context.
+     */
+    private IgvDumpChannel igvChannel;
+
+    /**
+     * An existing object for graph dumping whose IGV channel and other internals can be shared with
+     * newly {@linkplain #buildOutput created} graph dumping objects.
+     */
+    private GraphOutput<?, ?> prototypeOutput;
 
     /**
      * Stores the {@link MetricKey} values.
@@ -126,16 +136,19 @@ public final class DebugContext implements AutoCloseable {
         return immutable.scopesEnabled;
     }
 
+    /**
+     * Gets an object for describing a graph and sending it to IGV.
+     */
     public <G, N, M> GraphOutput<G, M> buildOutput(GraphOutput.Builder<G, N, M> builder) throws IOException {
-        if (parentOutput != null) {
-            return builder.build(parentOutput);
+        if (prototypeOutput != null) {
+            return builder.build(prototypeOutput);
         } else {
-            if (sharedChannel == null) {
-                sharedChannel = new IgvDumpChannel(() -> getDumpPath(".bgv", false), immutable.options);
+            if (igvChannel == null) {
+                igvChannel = new IgvDumpChannel(() -> getDumpPath(".bgv", false), immutable.options);
             }
             builder.attr(GraphOutput.ATTR_VM_ID, GraalServices.getExecutionID());
-            final GraphOutput<G, M> output = builder.build(sharedChannel);
-            parentOutput = output;
+            final GraphOutput<G, M> output = builder.build(igvChannel);
+            prototypeOutput = output;
             return output;
         }
     }
@@ -2143,13 +2156,15 @@ public final class DebugContext implements AutoCloseable {
             globalMetrics.add(this);
         }
         metricValues = null;
-        if (sharedChannel != null) {
+        if (igvChannel != null) {
             try {
-                sharedChannel.realClose();
+                igvChannel.realClose();
+                igvChannel = null;
             } catch (IOException ex) {
                 // ignore.
             }
         }
+        prototypeOutput = null;
     }
 
     public void closeDumpHandlers(boolean ignoreErrors) {

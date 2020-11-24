@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2019, Oracle and/or its affiliates.
+ * Copyright (c) 2019, 2020, Oracle and/or its affiliates.
  *
  * All rights reserved.
  *
@@ -90,7 +90,7 @@ public final class ElfLibraryLocator extends LibraryLocator {
     public TruffleFile locateLibrary(LLVMContext context, String lib, Object reason) {
         Path libPath = Paths.get(lib);
         if (libPath.isAbsolute()) {
-            return DefaultLibraryLocator.locateAbsolute(context, lib, libPath);
+            return DefaultLibraryLocator.locateAbsolute(context, libPath);
         }
         TruffleFile path = DefaultLibraryLocator.locateGlobal(context, lib);
         if (path != null) {

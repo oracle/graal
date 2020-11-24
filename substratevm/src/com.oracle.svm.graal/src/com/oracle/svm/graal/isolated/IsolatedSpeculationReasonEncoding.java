@@ -31,6 +31,8 @@ import java.security.MessageDigest;
 import java.security.NoSuchAlgorithmException;
 import java.util.Arrays;
 
+import com.oracle.svm.core.graal.meta.SharedRuntimeMethod;
+
 import jdk.vm.ci.common.JVMCIError;
 import jdk.vm.ci.meta.ResolvedJavaMethod;
 import jdk.vm.ci.meta.ResolvedJavaType;
@@ -78,7 +80,11 @@ final class IsolatedSpeculationReasonEncoding extends ByteArrayOutputStream impl
 
     @Override
     public void addMethod(ResolvedJavaMethod method) {
-        addImageHeapObject(method, NULL_METHOD);
+        ResolvedJavaMethod original = method;
+        if (method instanceof SharedRuntimeMethod) {
+            original = ((SharedRuntimeMethod) method).getOriginal();
+        }
+        addImageHeapObject(original, NULL_METHOD);
     }
 
     @Override

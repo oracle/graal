@@ -18,47 +18,13 @@ jdk:
 
 env:
   global:
-    - JVMCI_VERSION="jvmci-20.3-b05"
+    - JVMCI_VERSION="jvmci-21.0-b02"
     - JDK8_UPDATE_VERSION="272"
     - JDK8_UPDATE_VERSION_SUFFIX="+10"
     - JDK11_VERSION="11.0.9+10"
 
 matrix:
   include:
-  - env: JDK="jdk8" GATE="style,fullbuild" PRIMARY="substratevm"
-  - env: JDK="jdk8" GATE="build,test" PRIMARY="compiler"
-  - env: JDK="jdk8" GATE="build,test,helloworld" PRIMARY="substratevm"
-  - env: JDK="jdk8" GATE="build,test,helloworld_debug" PRIMARY="substratevm"
-  - env: JDK="jdk8" GATE="build,bootstraplite" PRIMARY="compiler"
-  - env: JDK="jdk8" GATE="style,fullbuild,sulongBasic" PRIMARY="sulong"
-    addons:
-      apt:
-        packages:
-          - python-pip
-          - libc++1
-          - libc++abi1
-  - env: JDK="jdk8" GATE="build,sulong" PRIMARY="vm" DYNAMIC_IMPORTS="/sulong,/substratevm" DISABLE_POLYGLOT=true DISABLE_LIBPOLYGLOT=true
-    addons:
-      apt:
-        sources:
-          - ubuntu-toolchain-r-test
-        packages:
-          - libc++1
-          - libc++abi1
-  - os: linux
-    env:
-      - JDK="jdk8" GATE="build,debuginfotest" PRIMARY="substratevm"
-    addons:
-      apt:
-        packages:
-          - gdb
-  - os: linux
-    env:
-      - JDK="jdk11" GATE="build,debuginfotest" PRIMARY="substratevm"
-    addons:
-      apt:
-        packages:
-          - gdb
   - os: linux
     env:
       - JDK="jdk11" GATE="build,debuginfotest" PRIMARY="substratevm"
@@ -68,9 +34,6 @@ matrix:
       apt:
         packages:
           - gdb
-  - env: JDK="jdk11" GATE="style,fullbuild" PRIMARY="compiler"
-  - env: JDK="jdk11" GATE="build,test" PRIMARY="compiler"
-  - env: JDK="jdk11" GATE="build,bootstraplite" PRIMARY="compiler"
   - os: linux
     arch: arm64
     env: JDK="jdk11" GATE="fullbuild,test:1:100" PRIMARY="compiler"
@@ -80,10 +43,6 @@ matrix:
   - os: linux
     arch: arm64
     env: JDK="jdk11" GATE="build,bootstraplite" PRIMARY="compiler"
-  - os: linux
-    env: JDK="jdk11" WITHOUT_VCS=true
-# GR-16977
-#  - env: JDK="jdk11" GATE="build,test,helloworld" PRIMARY="substratevm"
 
 install:
   - |
@@ -91,41 +50,11 @@ install:
       git clone https://github.com/graalvm/mx.git ${MX_PATH}
       export PATH=${PATH}:${MX_PATH}
   - |
-      if [[ ${GATE} == *style* ]]
-      then
-        virtualenv venv
-        source venv/bin/activate
-        pip install astroid==1.1.0
-        pip install pylint==1.1.0
-
-        export ECLIPSE_TAR=${TRAVIS_BUILD_DIR}/../eclipse.tar.gz
-        wget https://archive.eclipse.org/eclipse/downloads/drops4/R-4.14-201912100610/eclipse-SDK-4.14-linux-gtk-x86_64.tar.gz  -O ${ECLIPSE_TAR}
-        tar -C ${TRAVIS_BUILD_DIR}/.. -xzf ${ECLIPSE_TAR}
-        export ECLIPSE_EXE=${TRAVIS_BUILD_DIR}/../eclipse/eclipse
-
-        # the style gate needs the full commit history for checking copyright years
-        git fetch --unshallow
-      fi
-  - |
-      if [[ ${GATE} == *fullbuild* ]]
-      then
-        # Only test JDT on JDK8
-        if [ "${JDK}" == "jdk8" ]
-        then
-          export JDT=${MX_PATH}/ecj.jar
-          wget https://archive.eclipse.org/eclipse/downloads/drops4/R-4.14-201912100610/ecj-4.14.jar -O ${JDT}
-        fi
-      fi
-  - |
       if [ "${TRAVIS_CPU_ARCH}" == "arm64" ]
       then
         export TRAVIS_CPU_ARCH="aarch64"
       fi
       JDK_TAR=${TRAVIS_BUILD_DIR}/../jdk.tar.gz
-      if [ "${JDK}" == "jdk8" ]
-      then
-        wget https://github.com/graalvm/graal-jvmci-8/releases/download/${JVMCI_VERSION}/openjdk-8u${JDK8_UPDATE_VERSION}${JDK8_UPDATE_VERSION_SUFFIX}-${JVMCI_VERSION}-linux-${TRAVIS_CPU_ARCH}.tar.gz -O ${JDK_TAR}
-      fi
       if [ "${JDK}" == "jdk11" ]
       then
       wget https://github.com/graalvm/labs-openjdk-11/releases/download/${JVMCI_VERSION}/labsjdk-ce-${JDK11_VERSION}-${JVMCI_VERSION}-linux-${TRAVIS_CPU_ARCH}.tar.gz -O ${JDK_TAR}
@@ -138,13 +67,7 @@ script:
   - echo ${JAVA_HOME}
   - ${JAVA_HOME}/bin/java -version
   - |
-      if [[ ${WITHOUT_VCS} ]]
-      then
-        rm -rf .git
-        mx --primary-suite-path ${TRAVIS_BUILD_DIR}/substratevm native-image --help
-      else
-        mx --primary-suite-path ${TRAVIS_BUILD_DIR}/${PRIMARY} --J @"-Xmx2g" --java-home=${JAVA_HOME} gate --strict-mode --tags ${GATE}
-      fi
+      mx --primary-suite-path ${TRAVIS_BUILD_DIR}/${PRIMARY} --J @"-Xmx2g" --java-home=${JAVA_HOME} gate --strict-mode --tags ${GATE}
 after_failure:
   - cat hs_err*
 notifications:

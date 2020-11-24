@@ -213,7 +213,6 @@ final class PolyglotLimits {
         };
 
         final PolyglotEngineImpl engine;
-        @CompilationFinal boolean timeLimitEnabled;
         @CompilationFinal long statementLimit = -1;
         @CompilationFinal Assumption sameStatementLimit;
         @CompilationFinal Predicate<Source> statementLimitSourcePredicate;
@@ -224,31 +223,33 @@ final class PolyglotLimits {
         }
 
         void validate(PolyglotLimits limits) {
-            Predicate<Source> newPredicate = limits != null ? limits.statementLimitSourcePredicate : null;
-            if (newPredicate == null) {
-                newPredicate = NO_PREDICATE;
+            if (limits != null && limits.statementLimit != 0) {
+                Predicate<Source> newPredicate = limits.statementLimitSourcePredicate;
+                if (newPredicate == null) {
+                    newPredicate = NO_PREDICATE;
+                }
+                if (this.statementLimitSourcePredicate != null && newPredicate != statementLimitSourcePredicate) {
+                    throw PolyglotEngineException.illegalArgument("Using multiple source predicates per engine is not supported. " +
+                                    "The same statement limit source predicate must be used for all polyglot contexts that are assigned to the same engine. " +
+                                    "Resolve this by using the same predicate instance when constructing the limits object with ResourceLimits.Builder.statementLimit(long, Predicate).");
+                }
             }
-            if (this.statementLimitSourcePredicate != null && newPredicate != statementLimitSourcePredicate) {
-                throw PolyglotEngineException.illegalArgument("Using multiple source predicates per engine is not supported. " +
-                                "The same statement limit source predicate must be used for all polyglot contexts that are assigned to the same engine. " +
-                                "Resolve this by using the same predicate instance when constructing the limits object with ResourceLimits.Builder.statementLimit(long, Predicate).");
-            }
-
         }
 
         void initialize(PolyglotLimits limits, PolyglotContextImpl context) {
             assert Thread.holdsLock(engine.lock);
-            Predicate<Source> newPredicate = limits.statementLimitSourcePredicate;
-            if (newPredicate == null) {
-                newPredicate = NO_PREDICATE;
-            }
-            if (this.statementLimitSourcePredicate == null) {
-                this.statementLimitSourcePredicate = newPredicate;
-            }
-            // ensured by validate
-            assert this.statementLimitSourcePredicate == newPredicate;
 
             if (limits.statementLimit != 0) {
+                Predicate<Source> newPredicate = limits.statementLimitSourcePredicate;
+                if (newPredicate == null) {
+                    newPredicate = NO_PREDICATE;
+                }
+                if (this.statementLimitSourcePredicate == null) {
+                    this.statementLimitSourcePredicate = newPredicate;
+                }
+                // ensured by validate
+                assert this.statementLimitSourcePredicate == newPredicate;
+
                 Assumption sameLimit = this.sameStatementLimit;
                 if (sameLimit != null && sameLimit.isValid() && limits.statementLimit != statementLimit) {
                     sameLimit.invalidate();

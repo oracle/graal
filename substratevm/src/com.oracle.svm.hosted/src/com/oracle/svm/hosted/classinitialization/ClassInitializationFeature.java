@@ -360,7 +360,7 @@ public class ClassInitializationFeature implements GraalFeature {
 
         } catch (VerifyError e) {
             /* Synthesize a VerifyError to be thrown at run time. */
-            AnalysisMethod throwVerifyError = access.getMetaAccess().lookupJavaMethod(ExceptionSynthesizer.throwVerifyErrorMethod);
+            AnalysisMethod throwVerifyError = access.getMetaAccess().lookupJavaMethod(ExceptionSynthesizer.throwExceptionMethod(VerifyError.class));
             access.registerAsCompiled(throwVerifyError);
             return new ClassInitializationInfo(MethodPointer.factory(throwVerifyError));
         } catch (Throwable t) {

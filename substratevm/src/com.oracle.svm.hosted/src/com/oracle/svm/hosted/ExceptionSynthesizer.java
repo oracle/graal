@@ -27,7 +27,11 @@ package com.oracle.svm.hosted;
 import static jdk.vm.ci.meta.DeoptimizationAction.InvalidateReprofile;
 import static jdk.vm.ci.meta.DeoptimizationReason.UnreachedCode;
 
+import java.lang.reflect.GenericSignatureFormatError;
 import java.lang.reflect.Method;
+import java.util.Arrays;
+import java.util.HashMap;
+import java.util.Map;
 
 import org.graalvm.compiler.nodes.CallTargetNode.InvokeKind;
 import org.graalvm.compiler.nodes.ConstantNode;
@@ -42,57 +46,72 @@ import com.oracle.svm.core.util.VMError;
 
 import jdk.vm.ci.meta.ResolvedJavaMethod;
 
-public class ExceptionSynthesizer {
+public final class ExceptionSynthesizer {
 
-    public static final Method throwClassNotFoundExceptionMethod;
-    public static final Method throwNoSuchFieldExceptionMethod;
-    public static final Method throwNoSuchMethodExceptionMethod;
-    public static final Method throwNoClassDefFoundErrorMethod;
-    public static final Method throwNoSuchFieldErrorMethod;
-    public static final Method throwNoSuchMethodErrorMethod;
-    public static final Method throwVerifyErrorMethod;
+    /**
+     * Cache exception throwing methods. The key is a Class[]: first element is the exception type,
+     * the next elements are the parameter types.
+     */
+    private static final Map<Key, Method> exceptionMethods = new HashMap<>();
 
     static {
+        // ReflectiveOperationException subclasses
+        registerMethod(ClassNotFoundException.class, String.class);
+        registerMethod(NoSuchFieldException.class, String.class);
+        registerMethod(NoSuchMethodException.class, String.class);
+        // LinkageError subclasses
+        registerMethod(LinkageError.class, String.class);
+        registerMethod(ClassCircularityError.class, String.class);
+        registerMethod(IncompatibleClassChangeError.class, String.class);
+        registerMethod(NoSuchFieldError.class, String.class);
+        registerMethod(InstantiationError.class, String.class);
+        registerMethod(NoSuchMethodError.class, String.class);
+        registerMethod(IllegalAccessError.class, String.class);
+        registerMethod(AbstractMethodError.class, String.class);
+        registerMethod(BootstrapMethodError.class, String.class);
+        registerMethod(ClassFormatError.class, String.class);
+        registerMethod(GenericSignatureFormatError.class, String.class);
+        registerMethod(UnsupportedClassVersionError.class, String.class);
+        registerMethod(UnsatisfiedLinkError.class, String.class);
+        registerMethod(NoClassDefFoundError.class, String.class);
+        registerMethod(ExceptionInInitializerError.class, String.class);
+        registerMethod(VerifyError.class, String.class);
+        registerMethod(VerifyError.class);
+    }
+
+    private static void registerMethod(Class<?> exceptionClass) {
         try {
-            throwClassNotFoundExceptionMethod = ImplicitExceptions.class.getDeclaredMethod("throwClassNotFoundException", String.class);
-            throwNoSuchFieldExceptionMethod = ImplicitExceptions.class.getDeclaredMethod("throwNoSuchFieldException", String.class);
-            throwNoSuchMethodExceptionMethod = ImplicitExceptions.class.getDeclaredMethod("throwNoSuchMethodException", String.class);
-            throwNoClassDefFoundErrorMethod = ImplicitExceptions.class.getDeclaredMethod("throwNoClassDefFoundError", String.class);
-            throwNoSuchFieldErrorMethod = ImplicitExceptions.class.getDeclaredMethod("throwNoSuchFieldError", String.class);
-            throwNoSuchMethodErrorMethod = ImplicitExceptions.class.getDeclaredMethod("throwNoSuchMethodError", String.class);
-            throwVerifyErrorMethod = ImplicitExceptions.class.getDeclaredMethod("throwVerifyError");
+            exceptionMethods.put(Key.from(exceptionClass), ImplicitExceptions.class.getDeclaredMethod("throw" + exceptionClass.getSimpleName()));
         } catch (NoSuchMethodException ex) {
             throw VMError.shouldNotReachHere(ex);
         }
     }
 
-    public static void throwClassNotFoundException(GraphBuilderContext b, String targetClass) {
-        throwException(b, targetClass, throwClassNotFoundExceptionMethod);
+    private static void registerMethod(Class<?> exceptionClass, Class<?> paramterClass) {
+        try {
+            exceptionMethods.put(Key.from(exceptionClass, paramterClass), ImplicitExceptions.class.getDeclaredMethod("throw" + exceptionClass.getSimpleName(), paramterClass));
+        } catch (NoSuchMethodException ex) {
+            throw VMError.shouldNotReachHere(ex);
+        }
     }
 
-    public static void throwNoSuchFieldException(GraphBuilderContext b, String targetField) {
-        throwException(b, targetField, throwNoSuchFieldExceptionMethod);
+    private ExceptionSynthesizer() {
     }
 
-    public static void throwNoSuchMethodException(GraphBuilderContext b, String targetMethod) {
-        throwException(b, targetMethod, throwNoSuchMethodExceptionMethod);
+    public static Method throwExceptionMethod(Class<?>... methodDescriptor) {
+        Method method = exceptionMethods.get(Key.from(methodDescriptor));
+        VMError.guarantee(method != null, "Exception synthesizer method " + Arrays.toString(methodDescriptor) + " not found.");
+        return method;
     }
 
-    public static void throwNoClassDefFoundError(GraphBuilderContext b, String targetField) {
-        throwException(b, targetField, throwNoClassDefFoundErrorMethod);
+    public static void throwException(GraphBuilderContext b, Class<?> exceptionClass, String message) {
+        /* Get the exception throwing method that has a message parameter. */
+        throwException(b, throwExceptionMethod(exceptionClass, String.class), message);
     }
 
-    public static void throwNoSuchFieldError(GraphBuilderContext b, String targetField) {
-        throwException(b, targetField, throwNoSuchFieldErrorMethod);
-    }
-
-    public static void throwNoSuchMethodError(GraphBuilderContext b, String targetMethod) {
-        throwException(b, targetMethod, throwNoSuchMethodErrorMethod);
-    }
-
-    public static void throwException(GraphBuilderContext b, String message, Method reportExceptionMethod) {
+    public static void throwException(GraphBuilderContext b, Method throwExceptionMethod, String message) {
         ValueNode messageNode = ConstantNode.forConstant(SubstrateObjectConstant.forObject(message), b.getMetaAccess(), b.getGraph());
-        ResolvedJavaMethod exceptionMethod = b.getMetaAccess().lookupJavaMethod(reportExceptionMethod);
+        ResolvedJavaMethod exceptionMethod = b.getMetaAccess().lookupJavaMethod(throwExceptionMethod);
         assert exceptionMethod.isStatic();
         Invoke invoke = b.handleReplacedInvoke(InvokeKind.Static, exceptionMethod, new ValueNode[]{messageNode}, false);
         if (invoke != null) {
@@ -108,6 +127,38 @@ public class ExceptionSynthesizer {
              */
             b.add(new DeoptimizeNode(InvalidateReprofile, UnreachedCode));
         }
+    }
 
+    /**
+     * The key describes an exception throwing method via a Class[]: first element is the exception
+     * type, the next elements are the parameter types.
+     */
+    static final class Key {
+        static Key from(Class<?>... values) {
+            return new Key(values);
+        }
+
+        private final Class<?>[] elements;
+
+        private Key(Class<?>[] values) {
+            elements = values;
+        }
+
+        @Override
+        public boolean equals(Object o) {
+            if (this == o) {
+                return true;
+            }
+            if (o == null || getClass() != o.getClass()) {
+                return false;
+            }
+            Key key = (Key) o;
+            return Arrays.equals(elements, key.elements);
+        }
+
+        @Override
+        public int hashCode() {
+            return Arrays.hashCode(elements);
+        }
     }
 }
