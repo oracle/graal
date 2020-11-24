@@ -120,8 +120,6 @@ This configuration is then used to launch the Java Language Server.
 
 The project you create from scratch or a Java project you open in VS Code will run in the GraalVM runtime.
 
-![Java Overview](images/java_overview_window.png)
-
 To debug a Java application running on GraalVM, creating a launch configuration for the application is necessary.
 Having opened the file to be debugged or run in VS Code, switch to the Debug view by clicking on the "bug" icon in the left-hand side panel.
 The newly opened window will suggest to create a _launch.json_ file:
