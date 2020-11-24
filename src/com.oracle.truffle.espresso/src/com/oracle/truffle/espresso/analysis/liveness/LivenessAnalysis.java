@@ -209,6 +209,9 @@ public class LivenessAnalysis {
                 // Clear all non-argument locals (and non-used args)
                 processEntryBlock(blockID);
             } else {
+                if (isUnreachable(blockID)) {
+                    return;
+                }
                 // merge the state from all predecessors
                 BitSet mergedEntryState = mergePredecessors(current);
 
@@ -219,6 +222,10 @@ public class LivenessAnalysis {
 
             // Replay history in reverse to seek the last load for each variable.
             replayHistory(blockID);
+        }
+
+        private boolean isUnreachable(int blockID) {
+            return helper.entryFor(blockID) == null;
         }
 
         private void processEntryBlock(int blockID) {
@@ -237,7 +244,11 @@ public class LivenessAnalysis {
         private BitSet mergePredecessors(LinkedBlock current) {
             BitSet mergedEntryState = new BitSet(method.getMaxLocals());
             for (int pred : current.predecessorsID()) {
-                mergedEntryState.or(helper.endFor(pred));
+                BitSet predState = helper.endFor(pred);
+                if (predState != null) {
+                    // reachable predecessor.
+                    mergedEntryState.or(predState);
+                }
             }
             return mergedEntryState;
         }
@@ -245,6 +256,10 @@ public class LivenessAnalysis {
         @SuppressWarnings("unchecked")
         private void killLocalsOnBlockEntry(int blockID, LinkedBlock current, BitSet mergedEntryState) {
             BitSet entryState = helper.entryFor(blockID);
+            if (entryState == null) {
+                // unreachable block.
+                return;
+            }
             mergedEntryState.andNot(entryState);
 
             int nbPredKills = 0;
