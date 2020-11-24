@@ -173,6 +173,7 @@ public abstract class ClassRegistry implements ContextAccess {
      *            {@link StaticObject#NULL} if trusted.
      * @return The Klass corresponding to given type
      */
+    @SuppressWarnings("try")
     Klass loadKlass(Symbol<Type> type, StaticObject protectionDomain) {
         if (Types.isArray(type)) {
             Klass elemental = loadKlass(getTypes().getElementalType(type), protectionDomain);
@@ -236,6 +237,7 @@ public abstract class ClassRegistry implements ContextAccess {
         return entry.klass();
     }
 
+    @SuppressWarnings("try")
     public ObjectKlass defineKlass(Symbol<Type> typeOrNull, final byte[] bytes) {
         Meta meta = getMeta();
         String strType = typeOrNull == null ? null : typeOrNull.toString();
@@ -269,6 +271,7 @@ public abstract class ClassRegistry implements ContextAccess {
                         (meta.getJavaVersion().java9OrLater() && meta.jdk_internal_loader_ClassLoaders$PlatformClassLoader.isAssignableFrom(loader.getKlass()));
     }
 
+    @SuppressWarnings("try")
     private ObjectKlass createAndPutKlass(Meta meta, ParserKlass parserKlass, Symbol<Type> type, Symbol<Type> superKlassType) {
         TypeStack chain = stack.get();
 

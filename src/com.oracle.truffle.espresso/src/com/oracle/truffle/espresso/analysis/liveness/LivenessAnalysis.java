@@ -253,7 +253,7 @@ public class LivenessAnalysis {
             return mergedEntryState;
         }
 
-        @SuppressWarnings("unchecked")
+        @SuppressWarnings({"unchecked", "rawtypes"})
         private void killLocalsOnBlockEntry(int blockID, LinkedBlock current, BitSet mergedEntryState) {
             BitSet entryState = helper.entryFor(blockID);
             if (entryState == null) {

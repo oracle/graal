@@ -73,6 +73,7 @@ final class LoadingConstraints implements ContextAccess {
     /**
      * Checks that loader1 and loader2 resolve type as the same Klass instance.
      */
+    @SuppressWarnings("try")
     void checkConstraint(Symbol<Type> type, StaticObject loader1, StaticObject loader2) {
         try (DebugCloseable constraints = CONSTRAINTS.scope(getContext().getTimers())) {
             Klass k1 = getContext().getRegistries().findLoadedClass(type, loader1);
