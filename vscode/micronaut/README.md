@@ -1,6 +1,6 @@
 # Micronaut Visual Studio Code Extension <!-- omit in toc -->
 
-The Micronaut extension for Visual Studio Code (VS Code) provides the basic support for developing applications based on the [Micronaut Framework](https://micronaut.io/). The extension is Technology Preview.
+The Micronaut extension for Visual Studio Code (VS Code) provides the basic support for developing applications based on the [Micronaut Framework](https://micronaut.io/). Please be informed that the extension is Technology Preview.
 
 Besides, it enables the [Micronaut Launch](https://micronaut.io/launch/) application that allows you to create Micronaut projects through an interface inside VS Code, in addition to using the console CLI.
 Optionally, if a user provides a path to the Micronaut CLI installation, the option to create a project using the `mn` executable is also provided.
