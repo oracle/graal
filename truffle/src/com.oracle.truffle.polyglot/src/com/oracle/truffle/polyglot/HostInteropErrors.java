@@ -109,6 +109,24 @@ final class HostInteropErrors {
     }
 
     @TruffleBoundary
+    static RuntimeException iterableUnsupported(PolyglotLanguageContext context, Object receiver, Type componentType, String operation) {
+        String message = String.format("Unsupported operation %s for Iterable<%s> %s.", operation, formatComponentType(componentType), getValueInfo(context, receiver));
+        throw PolyglotEngineException.unsupported(message);
+    }
+
+    @TruffleBoundary
+    static RuntimeException iteratorUnsupported(PolyglotLanguageContext context, Object receiver, Type componentType, String operation) {
+        String message = String.format("Unsupported operation %s for Iterator<%s> %s.", operation, formatComponentType(componentType), getValueInfo(context, receiver));
+        throw PolyglotEngineException.unsupported(message);
+    }
+
+    @TruffleBoundary
+    static RuntimeException stopIteration(PolyglotLanguageContext context, Object receiver, Type componentType) {
+        String message = String.format("Iteration was stopped for Iterator<%s> %s.", formatComponentType(componentType), getValueInfo(context, receiver));
+        throw PolyglotEngineException.noSuchElement(message);
+    }
+
+    @TruffleBoundary
     static RuntimeException mapUnsupported(PolyglotLanguageContext context, Object receiver, Type keyType, Type valueType, String operation) {
         String message = String.format("Unsupported operation %s for Map<%s, %s> %s.", operation, formatComponentType(keyType), formatComponentType(valueType), getValueInfo(context, receiver));
         throw PolyglotEngineException.unsupported(message);

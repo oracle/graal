@@ -55,8 +55,10 @@ import java.time.LocalTime;
 import java.time.ZoneId;
 import java.time.ZonedDateTime;
 import java.time.zone.ZoneRules;
+import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
+import java.util.NoSuchElementException;
 import java.util.Objects;
 import java.util.Set;
 import java.util.function.Function;
@@ -1301,6 +1303,19 @@ public final class Value {
      * returned array will not be reflected in the original value. Since conversion to a Java array
      * might be an expensive operation it is recommended to use the `List` or `Collection` target
      * type if possible.
+     * <li><code>{@link Iterable}.class</code> is supported if the value has an
+     * {@link #hasArrayIterator() array iterator}. The returned iterable can be safely cast to
+     * <code>Iterable&lt;Object&gt;</code>. It is recommended to use {@link #as(TypeLiteral) type
+     * literals} to specify the expected component type. With type literals the value type can be
+     * restricted to any supported target type, for example to <code>Iterable&lt;Integer&gt;</code>.
+     * <li><code>{@link Iterator}.class</code> is supported if the value is an {@link #isIterator()
+     * iterator} The returned iterator can be safely cast to <code>Iterator&lt;Object&gt;</code>. It
+     * is recommended to use {@link #as(TypeLiteral) type literals} to specify the expected
+     * component type. With type literals the value type can be restricted to any supported target
+     * type, for example to <code>Iterator&lt;Integer&gt;</code>. If the raw
+     * <code>{@link Iterator}.class</code> or an Object component type is used, then the return
+     * types of the the iterator are recursively subject to Object target type mapping rules.
+     *
      * <li>Any {@link FunctionalInterface functional} interface if the value can be
      * {@link #canExecute() executed} or {@link #canInstantiate() instantiated} and the interface
      * type is {@link HostAccess implementable}. Note that {@link FunctionalInterface} are
@@ -1385,6 +1400,12 @@ public final class Value {
      * element of the value maps to one list element. The size of the returned list maps to the
      * array size of the value. The returned value may also implement {@link Function} if the value
      * can be {@link #canExecute() executed} or {@link #canInstantiate() instantiated}.
+     * <li>If the value has an {@link #hasArrayIterator()} array iterator} then the result value
+     * will implement {@link Iterable}. The returned value may also implement {@link Function} if
+     * the value can be {@link #canExecute() executed} or {@link #canInstantiate() instantiated}.
+     * <li>If the value is an {@link #isIterator()} iterator} then the result value will implement
+     * {@link Iterator}. The returned value may also implement {@link Function} if the value can be
+     * {@link #canExecute() executed} or {@link #canInstantiate() instantiated}.
      * <li>If the value can be {@link #canExecute() executed} or {@link #canInstantiate()
      * instantiated} then the result value implements {@link Function Function}. By default the
      * argument of the function will be used as single argument to the function when executed. If a
@@ -1740,6 +1761,82 @@ public final class Value {
     @Override
     public int hashCode() {
         return impl.hashCodeImpl(receiver);
+    }
+
+    /**
+     * Returns <code>true</code> if this polyglot value provides an array iterator. The array
+     * iterator can be obtained using {@link #getArrayIterator()}.
+     *
+     * @throws IllegalStateException if the context is already closed.
+     * @throws PolyglotException if a guest language error occurred during execution.
+     *
+     * @see #getArrayIterator()
+     * @since 21.1
+     */
+    public boolean hasArrayIterator() {
+        return impl.hasArrayIterator(receiver);
+    }
+
+    /**
+     * Returns the array iterator.
+     *
+     * @throws UnsupportedOperationException if the value does not provide
+     *             {@link #hasArrayIterator() iterator}.
+     * @throws IllegalStateException if the context is already closed.
+     * @throws PolyglotException if a guest language error occurred during execution.
+     *
+     * @see #hasArrayIterator()
+     * @since 21.1
+     */
+    public Value getArrayIterator() {
+        return impl.getArrayIterator(receiver);
+    }
+
+    /**
+     * Returns <code>true</code> if the value represents an iterator object. In such a case the
+     * iterator elements can be accessed using {@link #getIteratorNextElement()}.
+     *
+     * @throws IllegalStateException if the context is already closed.
+     * @throws PolyglotException if a guest language error occurred during execution.
+     *
+     * @see #hasIteratorNextElement()
+     * @see #getIteratorNextElement()
+     * @since 21.1
+     */
+    public boolean isIterator() {
+        return impl.isIterator(receiver);
+    }
+
+    /**
+     * Returns <code>true</code> if the value represents an iterator which has more elements.
+     *
+     * @throws UnsupportedOperationException if the value is not an {@link #isIterator() iterator}.
+     * @throws IllegalStateException if the context is already closed.
+     * @throws PolyglotException if a guest language error occurred during execution.
+     *
+     * @see #isIterator()
+     * @see #getIteratorNextElement()
+     * @since 21.1
+     */
+    public boolean hasIteratorNextElement() {
+        return impl.hasIteratorNextElement(receiver);
+    }
+
+    /**
+     * Returns the next element in the iteration.
+     *
+     * @throws UnsupportedOperationException if the value is not an {@link #isIterator() iterator}.
+     * @throws NoSuchElementException if the iteration has no more elements, the
+     *             {@link #hasIteratorNextElement()} returns <code>false</code>.
+     * @throws IllegalStateException if the context is already closed.
+     * @throws PolyglotException if a guest language error occurred during execution.
+     *
+     *             * @see #isIterator()
+     * @see #hasIteratorNextElement()
+     * @since 21.1
+     */
+    public Value getIteratorNextElement() {
+        return impl.getIteratorNextElement(receiver);
     }
 
     /**

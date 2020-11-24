@@ -679,6 +679,15 @@ public final class Engine implements AutoCloseable {
             return access.allowBufferAccess;
         }
 
+        public boolean isIterableAccessible(HostAccess access) {
+            return access.allowIterableAccess;
+        }
+
+        @Override
+        public boolean isIteratorAccessible(HostAccess access) {
+            return access.allowIteratorAccess;
+        }
+
         @Override
         public Object getHostAccessImpl(HostAccess conf) {
             return conf.impl;

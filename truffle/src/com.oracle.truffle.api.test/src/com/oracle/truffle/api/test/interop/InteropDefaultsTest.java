@@ -41,18 +41,22 @@
 package com.oracle.truffle.api.test.interop;
 
 import com.oracle.truffle.api.exception.AbstractTruffleException;
+import com.oracle.truffle.api.interop.InvalidArrayIndexException;
 import com.oracle.truffle.api.interop.ExceptionType;
 import com.oracle.truffle.api.interop.InteropException;
 import com.oracle.truffle.api.interop.InteropLibrary;
 import com.oracle.truffle.api.interop.TruffleObject;
+import com.oracle.truffle.api.interop.StopIterationException;
 import com.oracle.truffle.api.interop.UnsupportedMessageException;
+import com.oracle.truffle.api.library.ExportLibrary;
+import com.oracle.truffle.api.library.ExportMessage;
 import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.api.source.Source;
 import com.oracle.truffle.api.source.SourceSection;
 import com.oracle.truffle.api.test.polyglot.ProxyLanguage;
 import org.graalvm.polyglot.Context;
 import org.junit.Test;
-
+import java.util.BitSet;
 import java.util.concurrent.atomic.AtomicBoolean;
 
 import static org.junit.Assert.assertEquals;
@@ -609,5 +613,85 @@ public class InteropDefaultsTest extends InteropLibraryBaseTest {
         public boolean isInternalError() {
             return true;
         }
+    }
+
+    @Test
+    public void testIterableDefaults() throws UnsupportedMessageException {
+        Object empty = new TruffleObject() {
+        };
+        InteropLibrary emptyLib = createLibrary(InteropLibrary.class, empty);
+        assertFalse(emptyLib.hasArrayIterator(empty));
+        assertFails(() -> emptyLib.getArrayIterator(empty), UnsupportedMessageException.class);
+
+        Array array = new Array(1, 2, 3);
+        InteropLibrary arrayLib = createLibrary(InteropLibrary.class, array);
+        assertTrue(arrayLib.hasArrayIterator(array));
+        arrayLib.getArrayIterator(array);
+    }
+
+    @Test
+    public void testIteratorDefaults() throws UnsupportedMessageException, StopIterationException {
+        Object empty = new TruffleObject() {
+        };
+        InteropLibrary emptyLib = createLibrary(InteropLibrary.class, empty);
+        assertFalse(emptyLib.isIterator(empty));
+        assertFails(() -> emptyLib.hasIteratorNextElement(empty), UnsupportedMessageException.class);
+        assertFails(() -> emptyLib.getIteratorNextElement(empty), UnsupportedMessageException.class);
+
+        Array array = new Array(1, 2, 3);
+        InteropLibrary arrayLib = createLibrary(InteropLibrary.class, array);
+        assertFalse(arrayLib.isIterator(array));
+        assertFails(() -> arrayLib.hasIteratorNextElement(array), UnsupportedMessageException.class);
+        assertFails(() -> arrayLib.getIteratorNextElement(array), UnsupportedMessageException.class);
+
+        Object iterator = arrayLib.getArrayIterator(array);
+        InteropLibrary iteratorLib = createLibrary(InteropLibrary.class, iterator);
+        assertTrue(iteratorLib.isIterator(iterator));
+        assertTrue(iteratorLib.hasIteratorNextElement(iterator));
+        iteratorLib.getIteratorNextElement(iterator);
+    }
+
+    @ExportLibrary(InteropLibrary.class)
+    static final class Array implements TruffleObject {
+
+        private final Object[] elements;
+        private final BitSet readable;
+
+        Array(Object... elements) {
+            this(elements, null);
+        }
+
+        Array(Object[] elements, BitSet readable) {
+            if (readable != null && elements.length != readable.size()) {
+                throw new IllegalArgumentException();
+            }
+            this.elements = elements;
+            this.readable = readable;
+        }
+
+        @ExportMessage
+        @SuppressWarnings("static-method")
+        boolean hasArrayElements() {
+            return true;
+        }
+
+        @ExportMessage
+        long getArraySize() {
+            return elements.length;
+        }
+
+        @ExportMessage
+        boolean isArrayElementReadable(long index) {
+            return readable == null || readable.get((int) index);
+        }
+
+        @ExportMessage
+        Object readArrayElement(long index) throws InvalidArrayIndexException {
+            if (index < 0 || index > elements.length || !isArrayElementReadable(index)) {
+                throw InvalidArrayIndexException.create(index);
+            }
+            return elements[(int) index];
+        }
+
     }
 }

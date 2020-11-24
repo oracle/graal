@@ -182,6 +182,10 @@ public abstract class AbstractPolyglotImpl {
 
         public abstract boolean isBufferAccessible(HostAccess access);
 
+        public abstract boolean isIterableAccessible(HostAccess access);
+
+        public abstract boolean isIteratorAccessible(HostAccess access);
+
         public abstract Object getHostAccessImpl(HostAccess conf);
 
         public abstract void setHostAccessImpl(HostAccess conf, Object impl);
@@ -799,6 +803,20 @@ public abstract class AbstractPolyglotImpl {
         public abstract boolean equalsImpl(Object receiver, Object obj);
 
         public abstract int hashCodeImpl(Object receiver);
+
+        public boolean hasArrayIterator(Object receiver) {
+            return false;
+        }
+
+        public abstract Value getArrayIterator(Object receiver);
+
+        public boolean isIterator(Object receiver) {
+            return false;
+        }
+
+        public abstract boolean hasIteratorNextElement(Object receiver);
+
+        public abstract Value getIteratorNextElement(Object receiver);
     }
 
     public abstract Class<?> loadLanguageClass(String className);

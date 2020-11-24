@@ -1846,6 +1846,84 @@ public abstract class InteropLibrary extends Library {
     }
 
     /**
+     * Returns {@code true} if the receiver provides an array iterator. For example, an array or a
+     * list provide an iterator over their content. Invoking this message does not cause any
+     * observable side-effects. By default returns {@code true} for receivers that have
+     * {@link #hasArrayElements(Object) array elements}.
+     *
+     * @see #getArrayIterator(Object)
+     * @since 21.1
+     */
+    @Abstract(ifExported = {"getArrayIterator"})
+    public boolean hasArrayIterator(Object receiver) {
+        return hasArrayElements(receiver);
+    }
+
+    /**
+     * Returns the iterator for the receiver. The return value is guaranteed to return {@code true}
+     * for {@link #isIterator(Object)}.
+     * <p>
+     * This method must not cause any observable side-effects.
+     *
+     * @throws UnsupportedMessageException if and only if {@link #hasArrayIterator(Object)} returns
+     *             {@code false} for the same receiver.
+     * @since 21.1
+     */
+    @Abstract(ifExported = {"hasArrayIterator"})
+    public Object getArrayIterator(Object receiver) throws UnsupportedMessageException {
+        if (!hasArrayIterator(receiver)) {
+            throw UnsupportedMessageException.create();
+        }
+        return new ArrayIterator(receiver);
+    }
+
+    /**
+     * Returns {@code true} if the receiver represents an iterator. Invoking this message does not
+     * cause any observable side-effects. Returns {@code false} by default.
+     *
+     * @see #hasArrayIterator(Object)
+     * @see #getArrayIterator(Object)
+     * @since 21.1
+     */
+    @Abstract(ifExported = {"hasIteratorNextElement", "getIteratorNextElement"})
+    public boolean isIterator(Object receiver) {
+        return false;
+    }
+
+    /**
+     * Returns {@code true} if the receiver is an iterator which has more elements.
+     *
+     * @throws UnsupportedMessageException if and only if {@link #isIterator(Object)} returns
+     *             {@code false} for the same receiver.
+     *
+     * @see #isIterator(Object)
+     * @see #getIteratorNextElement(Object)
+     * @since 21.1
+     */
+    @Abstract(ifExported = {"isIterator", "getIteratorNextElement"})
+    public boolean hasIteratorNextElement(Object receiver) throws UnsupportedMessageException {
+        throw UnsupportedMessageException.create();
+    }
+
+    /**
+     * Returns the next element in the iteration.
+     *
+     * @throws UnsupportedMessageException if and only if {@link #isIterator(Object)} returns
+     *             {@code false} for the same receiver.
+     * @throws StopIterationException if the iteration has no more elements, the
+     *             {@link #hasIteratorNextElement(Object)} returns {@code false} for the same
+     *             receiver.
+     *
+     * @see #isIterator(Object)
+     * @see #hasIteratorNextElement(Object)
+     * @since 21.1
+     */
+    @Abstract(ifExported = {"isIterator", "hasIteratorNextElement"})
+    public Object getIteratorNextElement(Object receiver) throws UnsupportedMessageException, StopIterationException {
+        throw UnsupportedMessageException.create();
+    }
+
+    /**
      * Returns <code>true</code> if the receiver value has a declared source location attached, else
      * <code>false</code>. Returning a source location for a value is optional and typically impacts
      * the capabilities of tools like debuggers to jump to the declaration of a value.
@@ -3947,6 +4025,90 @@ public abstract class InteropLibrary extends Library {
         }
 
         @Override
+        public boolean hasArrayIterator(Object receiver) {
+            assert preCondition(receiver);
+            boolean result = delegate.hasArrayIterator(receiver);
+            return result;
+        }
+
+        @Override
+        public Object getArrayIterator(Object receiver) throws UnsupportedMessageException {
+            if (CompilerDirectives.inCompiledCode()) {
+                return delegate.getArrayIterator(receiver);
+            }
+            assert preCondition(receiver);
+            boolean wasHasArrayIterator = delegate.hasArrayIterator(receiver);
+            try {
+                Object result = delegate.getArrayIterator(receiver);
+                assert wasHasArrayIterator : violationInvariant(receiver);
+                assert assertIterator(receiver, result);
+                return result;
+            } catch (InteropException e) {
+                assert e instanceof UnsupportedMessageException : violationInvariant(receiver);
+                assert !wasHasArrayIterator : violationInvariant(receiver);
+                throw e;
+            }
+        }
+
+        private static boolean assertIterator(Object receiver, Object iterator) {
+            assert iterator != null : violationPost(receiver, iterator);
+            InteropLibrary uncached = InteropLibrary.getUncached(iterator);
+            assert uncached.isIterator(iterator) : violationPost(receiver, iterator);
+            return true;
+        }
+
+        @Override
+        public boolean isIterator(Object receiver) {
+            assert preCondition(receiver);
+            boolean result = delegate.isIterator(receiver);
+            return result;
+        }
+
+        @Override
+        public boolean hasIteratorNextElement(Object receiver) throws UnsupportedMessageException {
+            if (CompilerDirectives.inCompiledCode()) {
+                return delegate.hasIteratorNextElement(receiver);
+            }
+            assert preCondition(receiver);
+            boolean wasIterator = delegate.isIterator(receiver);
+            try {
+                boolean result = delegate.hasIteratorNextElement(receiver);
+                assert wasIterator : violationInvariant(receiver);
+                return result;
+            } catch (InteropException e) {
+                assert e instanceof UnsupportedMessageException : violationInvariant(receiver);
+                assert !wasIterator : violationInvariant(receiver);
+                throw e;
+            }
+        }
+
+        @Override
+        public Object getIteratorNextElement(Object receiver) throws UnsupportedMessageException, StopIterationException {
+            if (CompilerDirectives.inCompiledCode()) {
+                return delegate.getIteratorNextElement(receiver);
+            }
+            assert preCondition(receiver);
+            boolean wasIterator = delegate.isIterator(receiver);
+            try {
+                boolean wasIteratorNextElement = delegate.hasIteratorNextElement(receiver);
+                try {
+                    Object result = delegate.getIteratorNextElement(receiver);
+                    assert wasIterator : violationInvariant(receiver);
+                    assert wasIteratorNextElement || isMultiThreaded(receiver) : violationInvariant(receiver);
+                    assert validReturn(receiver, result);
+                    return result;
+                } catch (StopIterationException e) {
+                    assert !wasIteratorNextElement || isMultiThreaded(receiver) : violationInvariant(receiver);
+                    throw e;
+                }
+            } catch (InteropException e) {
+                assert e instanceof UnsupportedMessageException || e instanceof StopIterationException : violationPost(receiver, e);
+                assert !(e instanceof UnsupportedMessageException) || !wasIterator : violationInvariant(receiver);
+                throw e;
+            }
+        }
+
+        @Override
         public boolean hasSourceLocation(Object receiver) {
             if (CompilerDirectives.inCompiledCode()) {
                 return delegate.hasSourceLocation(receiver);
@@ -4435,4 +4597,12 @@ class InteropLibrarySnippets {
         }
     }
     // END: InteropLibrarySnippets.TryCatchNode
+
+    // BEGIN: InteropLibrarySnippets.Iterator
+
+    // END: InteropLibrarySnippets.Iterator
+
+    // BEGIN: InteropLibrarySnippets.ForEachNode
+
+    // END: InteropLibrarySnippets.ForEachNode
 }

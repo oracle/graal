@@ -48,6 +48,8 @@ import static org.junit.Assert.assertTrue;
 import java.util.function.Function;
 import java.util.function.Supplier;
 
+import com.oracle.truffle.api.interop.StopIterationException;
+import org.graalvm.polyglot.Context;
 import org.junit.Test;
 
 import com.oracle.truffle.api.TruffleLanguage;
@@ -818,6 +820,69 @@ public class InteropAssertionsTest extends InteropLibraryBaseTest {
         }
     }
 
+    @ExportLibrary(InteropLibrary.class)
+    static final class IteratorTest implements TruffleObject {
+
+        boolean isIterator;
+        Supplier<Boolean> hasNext;
+        Supplier<Object> next;
+
+        IteratorTest(Object element) {
+            isIterator = true;
+            next = () -> element;
+            hasNext = () -> true;
+        }
+
+        @ExportMessage
+        boolean isIterator() {
+            return isIterator;
+        }
+
+        @ExportMessage
+        boolean hasIteratorNextElement() throws UnsupportedMessageException {
+            if (hasNext == null) {
+                throw UnsupportedMessageException.create();
+            }
+            return hasNext.get();
+        }
+
+        @ExportMessage
+        Object getIteratorNextElement() throws StopIterationException, UnsupportedMessageException {
+            if (next == null) {
+                throw UnsupportedMessageException.create();
+            }
+            if (next.get() == null) {
+                throw StopIterationException.create();
+            }
+            return next.get();
+        }
+    }
+
+    @ExportLibrary(InteropLibrary.class)
+    static final class IterableTest implements TruffleObject {
+
+        Supplier<Object> iterator;
+        boolean hasIterator;
+
+        IterableTest(Object iterator) {
+            this.iterator = () -> iterator;
+            this.hasIterator = true;
+        }
+
+        @ExportMessage
+        boolean hasArrayIterator() {
+            return hasIterator;
+        }
+
+        @ExportMessage
+        Object getArrayIterator() throws UnsupportedMessageException {
+            if (iterator == null) {
+                throw UnsupportedMessageException.create();
+            }
+            return iterator.get();
+        }
+    }
+
     @Test
     public void testGetExceptionMessage() throws UnsupportedMessageException {
         ExceptionTest exceptionTest = new ExceptionTest();
@@ -971,5 +1036,59 @@ public class InteropAssertionsTest extends InteropLibraryBaseTest {
         assertFails(() -> stackFrameLib.getDeclaringMetaObject(stackFrameTest), AssertionError.class);
         InteropLibrary objectLib = createLibrary(InteropLibrary.class, empty);
         assertFails(() -> objectLib.getDeclaringMetaObject(empty), UnsupportedMessageException.class);
+    }
+
+    @Test
+    public void getArrayIterable() throws UnsupportedMessageException {
+        IterableTest iterableTest = new IterableTest(new IteratorTest(1));
+        InteropLibrary iterableLib = createLibrary(InteropLibrary.class, iterableTest);
+        assertEquals(iterableTest.iterator.get(), iterableLib.getArrayIterator(iterableTest));
+        iterableTest.hasIterator = false;
+        assertFails(() -> iterableLib.getArrayIterator(iterableTest), AssertionError.class);
+        iterableTest.hasIterator = true;
+        iterableTest.iterator = null;
+        assertFails(() -> iterableLib.getArrayIterator(iterableTest), AssertionError.class);
+        iterableTest.iterator = () -> null;
+        assertFails(() -> iterableLib.getArrayIterator(iterableTest), AssertionError.class);
+        TruffleObject empty = new TruffleObject() {
+        };
+        iterableTest.iterator = () -> empty;
+        assertFails(() -> iterableLib.getArrayIterator(iterableTest), AssertionError.class);
+    }
+
+    @Test
+    public void hasIteratorNextElement() throws UnsupportedMessageException {
+        IteratorTest iteratorTest = new IteratorTest(1);
+        InteropLibrary iteratorLib = createLibrary(InteropLibrary.class, iteratorTest);
+        assertEquals(true, iteratorLib.hasIteratorNextElement(iteratorTest));
+        iteratorTest.isIterator = false;
+        assertFails(() -> iteratorLib.hasIteratorNextElement(iteratorTest), AssertionError.class);
+        iteratorTest.isIterator = true;
+        iteratorTest.hasNext = null;
+        assertFails(() -> iteratorLib.hasIteratorNextElement(iteratorTest), AssertionError.class);
+    }
+
+    @Test
+    public void getIteratorNextElement() throws UnsupportedMessageException, StopIterationException {
+        setupEnv(Context.create()); // we need no multi threaded context.
+        IteratorTest iteratorTest = new IteratorTest(1);
+        InteropLibrary iteratorLib = createLibrary(InteropLibrary.class, iteratorTest);
+        assertEquals(iteratorTest.next.get(), iteratorLib.getIteratorNextElement(iteratorTest));
+        iteratorTest.isIterator = false;
+        assertFails(() -> iteratorLib.getIteratorNextElement(iteratorTest), AssertionError.class);
+        iteratorTest.isIterator = true;
+        iteratorTest.next = null;
+        assertFails(() -> iteratorLib.getIteratorNextElement(iteratorTest), AssertionError.class);
+
+// Todo: Ask about isMultiThreaded
+// iteratorTest.next = () -> null;
+// assertFails(() -> iteratorLib.getIteratorNextElement(iteratorTest), AssertionError.class);
+// iteratorTest.hasNext = () -> false;
+// iteratorTest.next = () -> 2;
+// assertFails(() -> iteratorLib.getIteratorNextElement(iteratorTest), AssertionError.class);
+
+        iteratorTest.hasNext = () -> true;
+        iteratorTest.next = Object::new;
+        assertFails(() -> iteratorLib.getIteratorNextElement(iteratorTest), AssertionError.class);
     }
 }

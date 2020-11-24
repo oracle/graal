@@ -54,8 +54,9 @@ import org.graalvm.polyglot.PolyglotException;
  * {@link PolyglotException#asHostException()}.
  * <p>
  * The interfaces {@link Proxy}, {@link ProxyArray}, {@link ProxyExecutable},
- * {@link ProxyInstantiable}, {@link ProxyNativeObject}, {@link ProxyObject} can be used in
- * combination with any other proxy interfaces.
+ * {@link ProxyInstantiable}, {@link ProxyNativeObject}, {@link ProxyObject},
+ * {@link ProxyArrayIterable}, {@link ProxyIterator} can be used in combination with any other proxy
+ * interfaces.
  * <p>
  * The following proxy interface combinations are exclusive and throw an {@link AssertionError} if
  * used together:
@@ -80,6 +81,8 @@ import org.graalvm.polyglot.PolyglotException;
  * @see ProxyTimeZone to mimic timezone objects
  * @see ProxyDuration to mimic duration objects
  * @see ProxyInstant to mimic timestamp objects
+ * @see ProxyArrayIterable to mimic iterable objects
+ * @see ProxyIterator to mimic iterator objects
  *
  * @since 19.0
  */

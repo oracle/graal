@@ -46,6 +46,7 @@ import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.TruffleLanguage;
 import com.oracle.truffle.api.TruffleStackTrace;
 import com.oracle.truffle.api.dsl.Cached;
+import com.oracle.truffle.api.dsl.Cached.Exclusive;
 import com.oracle.truffle.api.dsl.Cached.Shared;
 import com.oracle.truffle.api.dsl.Fallback;
 import com.oracle.truffle.api.dsl.GenerateUncached;
@@ -55,6 +56,7 @@ import com.oracle.truffle.api.interop.ExceptionType;
 import com.oracle.truffle.api.interop.InteropLibrary;
 import com.oracle.truffle.api.interop.InvalidArrayIndexException;
 import com.oracle.truffle.api.interop.InvalidBufferOffsetException;
+import com.oracle.truffle.api.interop.StopIterationException;
 import com.oracle.truffle.api.interop.TruffleObject;
 import com.oracle.truffle.api.interop.UnknownIdentifierException;
 import com.oracle.truffle.api.interop.UnsupportedMessageException;
@@ -80,7 +82,9 @@ import java.time.LocalTime;
 import java.time.ZoneId;
 import java.time.ZonedDateTime;
 import java.util.Date;
+import java.util.Iterator;
 import java.util.List;
+import java.util.NoSuchElementException;
 import java.util.Objects;
 
 @ExportLibrary(InteropLibrary.class)
@@ -1624,6 +1628,104 @@ final class HostObject implements TruffleObject {
         }
     }
 
+    @ExportMessage
+    boolean hasArrayIterator(@Shared("isIterable") @Cached IsIterableNode isIterable,
+                    @Shared("isArray") @Cached IsArrayNode isArray) {
+        return isIterable.execute(this) || isArray.execute(this);
+    }
+
+    @ExportMessage
+    abstract static class GetArrayIterator {
+
+        @Specialization(guards = {"isArray.execute(receiver)"}, limit = "1")
+        protected static Object doArray(HostObject receiver,
+                        @Shared("isArray") @Cached IsArrayNode isArray,
+                        @Shared("toGuest") @Cached ToGuestValueNode toGuest) {
+            return toGuest.execute(receiver.languageContext, arrayIteratorImpl((Object[]) receiver.obj));
+        }
+
+        @TruffleBoundary
+        private static Object arrayIteratorImpl(Object[] array) {
+            return Arrays.asList(array).iterator();
+        }
+
+        @Specialization(guards = {"isIterable.execute(receiver)"}, limit = "1")
+        protected static Object doIterable(HostObject receiver,
+                        @Shared("isIterable") @Cached IsIterableNode isIterable,
+                        @Shared("toGuest") @Cached ToGuestValueNode toGuest) {
+            return toGuest.execute(receiver.languageContext, iteratorImpl((Iterable<?>) receiver.obj));
+        }
+
+        @TruffleBoundary
+        private static Object iteratorImpl(Iterable<?> iterable) {
+            return iterable.iterator();
+        }
+
+        @SuppressWarnings("unused")
+        @Specialization(guards = {"!isArray.execute(receiver)", "!isIterable.execute(receiver)"}, limit = "1")
+        protected static Object doNotArrayOrIterable(HostObject receiver,
+                        @Shared("isArray") @Cached IsArrayNode isArray,
+                        @Shared("isIterable") @Cached IsIterableNode isIterable) throws UnsupportedMessageException {
+            throw UnsupportedMessageException.create();
+        }
+    }
+
+    @ExportMessage
+    boolean isIterator(@Shared("isIterator") @Cached IsIteratorNode isIterator) {
+        return isIterator.execute(this);
+    }
+
+    @ExportMessage
+    abstract static class HasIteratorNextElement {
+
+        @Specialization(guards = {"isIterator.execute(receiver)"}, limit = "1")
+        protected static boolean doIterator(HostObject receiver,
+                        @Shared("isIterator") @Cached IsIteratorNode isIterator) {
+            return hasNextImpl((Iterator<?>) receiver.obj);
+        }
+
+        @TruffleBoundary
+        private static boolean hasNextImpl(Iterator<?> iterator) {
+            return iterator.hasNext();
+        }
+
+        @SuppressWarnings("unused")
+        @Specialization(guards = {"!isIterator.execute(receiver)"}, limit = "1")
+        protected static boolean doNotIterator(HostObject receiver,
+                        @Shared("isIterator") @Cached IsIteratorNode isIterator) throws UnsupportedMessageException {
+            throw UnsupportedMessageException.create();
+        }
+    }
+
+    @ExportMessage
+    abstract static class GetIteratorNextElement {
+
+        @Specialization(guards = {"isIterator.execute(receiver)"}, limit = "1")
+        protected static Object doIterator(HostObject receiver,
+                        @Shared("isIterator") @Cached IsIteratorNode isIterator,
+                        @Shared("toGuest") @Cached ToGuestValueNode toGuest,
+                        @Exclusive @Cached BranchProfile stopIteration) throws StopIterationException {
+            try {
+                return toGuest.execute(receiver.languageContext, nextImpl((Iterator<?>) receiver.obj));
+            } catch (NoSuchElementException e) {
+                stopIteration.enter();
+                throw StopIterationException.create();
+            }
+        }
+
+        @TruffleBoundary
+        private static Object nextImpl(Iterator<?> iterator) {
+            return iterator.next();
+        }
+
+        @SuppressWarnings("unused")
+        @Specialization(guards = {"!isIterator.execute(receiver)"}, limit = "1")
+        protected static Object doNotIterator(HostObject receiver,
+                        @Shared("isIterator") @Cached IsIteratorNode isIterator) throws UnsupportedMessageException {
+            throw UnsupportedMessageException.create();
+        }
+    }
+
     @SuppressWarnings("static-method")
     @ExportMessage
     boolean hasMetaObject() {
@@ -2116,11 +2218,36 @@ final class HostObject implements TruffleObject {
 
         @Specialization
         public boolean doDefault(HostObject receiver,
-                        @Cached(value = "receiver.getHostClassCache().isBufferAccess()", allowUncached = true) boolean isBufferAccess) {
+                                 @Cached(value = "receiver.getHostClassCache().isBufferAccess()", allowUncached = true) boolean isBufferAccess) {
             assert receiver.getHostClassCache().isBufferAccess() == isBufferAccess;
             return isBufferAccess && receiver.obj != null && ByteBuffer.class.isAssignableFrom(receiver.obj.getClass());
         }
 
     }
 
+    @GenerateUncached
+    abstract static class IsIterableNode extends Node {
+
+        public abstract boolean execute(HostObject receiver);
+
+        @Specialization
+        public boolean doDefault(HostObject receiver,
+                                 @Cached(value = "receiver.getHostClassCache().isIterableAccess()", allowUncached = true) boolean isIterableAccess) {
+            assert receiver.getHostClassCache().isIterableAccess() == isIterableAccess;
+            return isIterableAccess && receiver.obj instanceof Iterable;
+        }
+    }
+
+    @GenerateUncached
+    abstract static class IsIteratorNode extends Node {
+
+        public abstract boolean execute(HostObject receiver);
+
+        @Specialization
+        public boolean doDefault(HostObject receiver,
+                                 @Cached(value = "receiver.getHostClassCache().isIteratorAccess()", allowUncached = true) boolean isIteratorAccess) {
+            assert receiver.getHostClassCache().isIteratorAccess() == isIteratorAccess;
+            return isIteratorAccess && receiver.obj instanceof Iterator;
+        }
+    }
 }

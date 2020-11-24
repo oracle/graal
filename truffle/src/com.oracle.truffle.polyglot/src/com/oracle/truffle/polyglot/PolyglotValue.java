@@ -70,18 +70,23 @@ import com.oracle.truffle.polyglot.PolyglotValueFactory.InteropCodeCacheFactory.
 import com.oracle.truffle.polyglot.PolyglotValueFactory.InteropCodeCacheFactory.GetArrayElementNodeGen;
 import com.oracle.truffle.polyglot.PolyglotValueFactory.InteropCodeCacheFactory.GetArraySizeNodeGen;
 import com.oracle.truffle.polyglot.PolyglotValueFactory.InteropCodeCacheFactory.GetBufferSizeNodeGen;
+import com.oracle.truffle.polyglot.PolyglotValueFactory.InteropCodeCacheFactory.GetArrayIteratorNodeGen;
+import com.oracle.truffle.polyglot.PolyglotValueFactory.InteropCodeCacheFactory.GetIteratorNextElementNodeGen;
 import com.oracle.truffle.polyglot.PolyglotValueFactory.InteropCodeCacheFactory.GetMemberKeysNodeGen;
 import com.oracle.truffle.polyglot.PolyglotValueFactory.InteropCodeCacheFactory.GetMemberNodeGen;
 import com.oracle.truffle.polyglot.PolyglotValueFactory.InteropCodeCacheFactory.GetMetaQualifiedNameNodeGen;
 import com.oracle.truffle.polyglot.PolyglotValueFactory.InteropCodeCacheFactory.GetMetaSimpleNameNodeGen;
 import com.oracle.truffle.polyglot.PolyglotValueFactory.InteropCodeCacheFactory.HasArrayElementsNodeGen;
 import com.oracle.truffle.polyglot.PolyglotValueFactory.InteropCodeCacheFactory.HasBufferElementsNodeGen;
+import com.oracle.truffle.polyglot.PolyglotValueFactory.InteropCodeCacheFactory.HasArrayIteratorNodeGen;
 import com.oracle.truffle.polyglot.PolyglotValueFactory.InteropCodeCacheFactory.HasMemberNodeGen;
 import com.oracle.truffle.polyglot.PolyglotValueFactory.InteropCodeCacheFactory.HasMembersNodeGen;
 import com.oracle.truffle.polyglot.PolyglotValueFactory.InteropCodeCacheFactory.IsBufferWritableNodeGen;
+import com.oracle.truffle.polyglot.PolyglotValueFactory.InteropCodeCacheFactory.HasIteratorNextElementNodeGen;
 import com.oracle.truffle.polyglot.PolyglotValueFactory.InteropCodeCacheFactory.IsDateNodeGen;
 import com.oracle.truffle.polyglot.PolyglotValueFactory.InteropCodeCacheFactory.IsDurationNodeGen;
 import com.oracle.truffle.polyglot.PolyglotValueFactory.InteropCodeCacheFactory.IsExceptionNodeGen;
+import com.oracle.truffle.polyglot.PolyglotValueFactory.InteropCodeCacheFactory.IsIteratorNodeGen;
 import com.oracle.truffle.polyglot.PolyglotValueFactory.InteropCodeCacheFactory.IsMetaInstanceNodeGen;
 import com.oracle.truffle.polyglot.PolyglotValueFactory.InteropCodeCacheFactory.IsMetaObjectNodeGen;
 import com.oracle.truffle.polyglot.PolyglotValueFactory.InteropCodeCacheFactory.IsNativePointerNodeGen;
@@ -918,6 +923,57 @@ abstract class PolyglotValue extends AbstractValueImpl {
         }
     }
 
+    @Override
+    public Value getArrayIterator(Object receiver) {
+        Object prev = hostEnter(languageContext);
+        try {
+            return getArrayIteratorUnsupported(languageContext, receiver);
+        } catch (Throwable e) {
+            throw PolyglotImpl.guestToHostException(languageContext, e, true);
+        } finally {
+            hostLeave(languageContext, prev);
+        }
+    }
+
+    @TruffleBoundary
+    static final Value getArrayIteratorUnsupported(PolyglotLanguageContext context, Object receiver) {
+        throw unsupported(context, receiver, "getArrayIterator()", "hasArrayIterator()");
+    }
+
+    @Override
+    public boolean hasIteratorNextElement(Object receiver) {
+        Object prev = hostEnter(languageContext);
+        try {
+            return hasIteratorNextElementUnsupported(languageContext, receiver);
+        } catch (Throwable e) {
+            throw PolyglotImpl.guestToHostException(languageContext, e, true);
+        } finally {
+            hostLeave(languageContext, prev);
+        }
+    }
+
+    @TruffleBoundary
+    static final boolean hasIteratorNextElementUnsupported(PolyglotLanguageContext context, Object receiver) {
+        throw unsupported(context, receiver, "hasIteratorNextElement()", "isIterator()");
+    }
+
+    @Override
+    public Value getIteratorNextElement(Object receiver) {
+        Object prev = hostEnter(languageContext);
+        try {
+            return getIteratorNextElementUnsupported(languageContext, receiver);
+        } catch (Throwable e) {
+            throw PolyglotImpl.guestToHostException(languageContext, e, true);
+        } finally {
+            hostLeave(languageContext, prev);
+        }
+    }
+
+    @TruffleBoundary
+    static final Value getIteratorNextElementUnsupported(PolyglotLanguageContext context, Object receiver) {
+        throw unsupported(context, receiver, "getIteratorNextElement()", "isIterator()");
+    }
+
     protected Value getMetaObjectImpl(Object receiver) {
         InteropLibrary lib = InteropLibrary.getFactory().getUncached(receiver);
         if (lib.hasMetaObject(receiver)) {
@@ -1080,6 +1136,25 @@ abstract class PolyglotValue extends AbstractValueImpl {
     protected static RuntimeException invalidMemberValue(PolyglotLanguageContext context, Object receiver, String identifier, Object value) {
         String message = String.format("Invalid member value %s for object %s and member key '%s'.", getValueInfo(context, value), getValueInfo(context, receiver), identifier);
         throw PolyglotEngineException.illegalArgument(message);
+    }
+
+    @TruffleBoundary
+    protected static RuntimeException stopIteration(PolyglotLanguageContext context, Object receiver) {
+        String message = String.format("Iteration was stopped for iterator %s.", getValueInfo(context, receiver));
+        throw PolyglotEngineException.noSuchElement(message);
+    }
+
+    @TruffleBoundary
+    protected static RuntimeException invalidIterator(PolyglotLanguageContext context, Object receiver) {
+        String message = String.format("GetNext method has not yet been called on the iterator %s.", getValueInfo(context, receiver));
+        throw PolyglotEngineException.illegalState(message);
+    }
+
+    @TruffleBoundary
+    protected static RuntimeException invalidIteratorValue(PolyglotLanguageContext context, Object receiver, Object value) {
+        throw PolyglotEngineException.classCast(
+                        String.format("Invalid value %s for iterator %s.",
+                                        getValueInfo(context, value), getValueInfo(context, receiver)));
     }
 
     @TruffleBoundary
@@ -1343,6 +1418,11 @@ abstract class PolyglotValue extends AbstractValueImpl {
         final CallTarget isMetaInstance;
         final CallTarget getMetaQualifiedName;
         final CallTarget getMetaSimpleName;
+        final CallTarget hasArrayIterator;
+        final CallTarget getArrayIterator;
+        final CallTarget isIterator;
+        final CallTarget hasIteratorNextElement;
+        final CallTarget getIteratorNextElement;
 
         final boolean isProxy;
         final boolean isHost;
@@ -1414,6 +1494,11 @@ abstract class PolyglotValue extends AbstractValueImpl {
             this.isMetaInstance = createTarget(IsMetaInstanceNodeGen.create(this));
             this.getMetaQualifiedName = createTarget(GetMetaQualifiedNameNodeGen.create(this));
             this.getMetaSimpleName = createTarget(GetMetaSimpleNameNodeGen.create(this));
+            this.hasArrayIterator = createTarget(HasArrayIteratorNodeGen.create(this));
+            this.getArrayIterator = createTarget(GetArrayIteratorNodeGen.create(this));
+            this.isIterator = createTarget(IsIteratorNodeGen.create(this));
+            this.hasIteratorNextElement = createTarget(HasIteratorNextElementNodeGen.create(this));
+            this.getIteratorNextElement = createTarget(GetIteratorNextElementNodeGen.create(this));
         }
 
         abstract static class IsDateNode extends InteropNode {
@@ -3232,6 +3317,144 @@ abstract class PolyglotValue extends AbstractValueImpl {
             }
         }
 
+        abstract static class HasArrayIteratorNode extends InteropNode {
+
+            protected HasArrayIteratorNode(InteropCodeCache interop) {
+                super(interop);
+            }
+
+            @Override
+            protected Class<?>[] getArgumentTypes() {
+                return new Class<?>[]{PolyglotLanguageContext.class, polyglot.receiverType};
+            }
+
+            @Override
+            protected String getOperationName() {
+                return "hasArrayIterator";
+            }
+
+            @Specialization(limit = "CACHE_LIMIT")
+            static Object doCached(PolyglotLanguageContext context, Object receiver, Object[] args, //
+                            @CachedLibrary("receiver") InteropLibrary iterators) {
+                return iterators.hasArrayIterator(receiver);
+            }
+        }
+
+        abstract static class GetArrayIteratorNode extends InteropNode {
+
+            protected GetArrayIteratorNode(InteropCodeCache interop) {
+                super(interop);
+            }
+
+            @Override
+            protected Class<?>[] getArgumentTypes() {
+                return new Class<?>[]{PolyglotLanguageContext.class, polyglot.receiverType};
+            }
+
+            @Override
+            protected String getOperationName() {
+                return "getArrayIterator";
+            }
+
+            @Specialization(limit = "CACHE_LIMIT")
+            static Object doCached(PolyglotLanguageContext context, Object receiver, Object[] args, //
+                            @CachedLibrary("receiver") InteropLibrary iterators,
+                            @Cached("createToHost()") ToHostValueNode toHost,
+                            @Cached BranchProfile unsupported) {
+                try {
+                    return toHost.execute(context, iterators.getArrayIterator(receiver));
+                } catch (UnsupportedMessageException e) {
+                    unsupported.enter();
+                    return getArrayIteratorUnsupported(context, receiver);
+                }
+            }
+        }
+
+        abstract static class IsIteratorNode extends InteropNode {
+
+            protected IsIteratorNode(InteropCodeCache interop) {
+                super(interop);
+            }
+
+            @Override
+            protected Class<?>[] getArgumentTypes() {
+                return new Class<?>[]{PolyglotLanguageContext.class, polyglot.receiverType};
+            }
+
+            @Override
+            protected String getOperationName() {
+                return "isIterator";
+            }
+
+            @Specialization(limit = "CACHE_LIMIT")
+            static Object doCached(PolyglotLanguageContext context, Object receiver, Object[] args, //
+                            @CachedLibrary("receiver") InteropLibrary iterators) {
+                return iterators.isIterator(receiver);
+            }
+        }
+
+        abstract static class HasIteratorNextElementNode extends InteropNode {
+
+            protected HasIteratorNextElementNode(InteropCodeCache interop) {
+                super(interop);
+            }
+
+            @Override
+            protected Class<?>[] getArgumentTypes() {
+                return new Class<?>[]{PolyglotLanguageContext.class, polyglot.receiverType};
+            }
+
+            @Override
+            protected String getOperationName() {
+                return "hasIteratorNextElement";
+            }
+
+            @Specialization(limit = "CACHE_LIMIT")
+            static Object doCached(PolyglotLanguageContext context, Object receiver, Object[] args, //
+                            @CachedLibrary("receiver") InteropLibrary iterators,
+                            @Cached BranchProfile unsupported) {
+                try {
+                    return iterators.hasIteratorNextElement(receiver);
+                } catch (UnsupportedMessageException e) {
+                    unsupported.enter();
+                    return hasIteratorNextElementUnsupported(context, receiver);
+                }
+            }
+        }
+
+        abstract static class GetIteratorNextElementNode extends InteropNode {
+
+            protected GetIteratorNextElementNode(InteropCodeCache interop) {
+                super(interop);
+            }
+
+            @Override
+            protected Class<?>[] getArgumentTypes() {
+                return new Class<?>[]{PolyglotLanguageContext.class, polyglot.receiverType};
+            }
+
+            @Override
+            protected String getOperationName() {
+                return "getIteratorNextElement";
+            }
+
+            @Specialization(limit = "CACHE_LIMIT")
+            static Object doCached(PolyglotLanguageContext context, Object receiver, Object[] args, //
+                            @CachedLibrary("receiver") InteropLibrary iterators,
+                            @Cached("createToHost()") ToHostValueNode toHost,
+                            @Cached BranchProfile unsupported,
+                            @Cached BranchProfile stop) {
+                try {
+                    return toHost.execute(context, iterators.getIteratorNextElement(receiver));
+                } catch (UnsupportedMessageException e) {
+                    unsupported.enter();
+                    return getIteratorNextElementUnsupported(context, receiver);
+                } catch (StopIterationException e) {
+                    stop.enter();
+                    throw stopIteration(context, receiver);
+                }
+            }
+        }
     }
 
     static final class PrimitiveValue extends PolyglotValue {
@@ -4093,6 +4316,31 @@ abstract class PolyglotValue extends AbstractValueImpl {
         @Override
         public String getMetaSimpleName(Object receiver) {
             return (String) RUNTIME.callProfiled(cache.getMetaSimpleName, languageContext, receiver);
+        }
+
+        @Override
+        public boolean hasArrayIterator(Object receiver) {
+            return (boolean) RUNTIME.callProfiled(cache.hasArrayIterator, languageContext, receiver);
+        }
+
+        @Override
+        public Value getArrayIterator(Object receiver) {
+            return (Value) RUNTIME.callProfiled(cache.getArrayIterator, languageContext, receiver);
+        }
+
+        @Override
+        public boolean isIterator(Object receiver) {
+            return (boolean) RUNTIME.callProfiled(cache.isIterator, languageContext, receiver);
+        }
+
+        @Override
+        public boolean hasIteratorNextElement(Object receiver) {
+            return (boolean) RUNTIME.callProfiled(cache.hasIteratorNextElement, languageContext, receiver);
+        }
+
+        @Override
+        public Value getIteratorNextElement(Object receiver) {
+            return (Value) RUNTIME.callProfiled(cache.getIteratorNextElement, languageContext, receiver);
         }
 
         private final class MemberSet extends AbstractSet<String> {
