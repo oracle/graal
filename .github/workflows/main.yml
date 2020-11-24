@@ -139,3 +139,21 @@ jobs:
         else
           ${MX_PATH}/mx --primary-suite-path ${PRIMARY} --J @"-Xmx2g" --java-home=${JAVA_HOME} gate --strict-mode --tags ${GATE}
         fi
+    - name: Notify slack success
+      if: success()
+      env:
+        SLACK_BOT_TOKEN: ${{ secrets.SLACK_BOT_TOKEN }}
+      uses: oracle/github-action-slack-notify-build@v1
+      with:
+        channel_id: C01613ELDS6 #travis-ci
+        status: SUCCESS
+        color: good
+    - name: Notify slack fail
+      if: failure()
+      env:
+        SLACK_BOT_TOKEN: ${{ secrets.SLACK_BOT_TOKEN }}
+      uses: oracle/github-action-slack-notify-build@v1
+      with:
+        channel_id: C01613ELDS6 #travis-ci
+        status: FAILED
+        color: danger
