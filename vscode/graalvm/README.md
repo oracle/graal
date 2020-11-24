@@ -129,9 +129,9 @@ The newly opened window will suggest to create a _launch.json_ file:
 ![Create Launch Configuration for Java](images/create_java_launch_configuration.png)
 
 Make sure to select the "Java 8+" environment. To start debugging, press F5 or navigate to Run > Start Debugging.
-To add more lunch configurations, navigate to Run > Add Configuration or open the _.vscode/launch.json_ file and press the Add Configuration button in the right-hand corner:
+To add more lunch configurations, navigate to Run > Add Configuration or open the _.vscode/launch.json_ file and press the Add Configuration button in the right-hand corner.
 
-![Add Launch Configuration for Java](images/create_java_launch_configuration.png)
+![Add Launch Configuration for Java](images/add_java_launch_configuration.png)
 
 ## JavaScript and Node.js Debugging
 
