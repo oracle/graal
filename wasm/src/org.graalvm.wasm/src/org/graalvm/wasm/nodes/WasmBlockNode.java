@@ -45,7 +45,6 @@ import com.oracle.truffle.api.CompilerAsserts;
 import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
-import com.oracle.truffle.api.HostCompilerDirectives;
 import com.oracle.truffle.api.HostCompilerDirectives.BytecodeInterpreterSwitch;
 import com.oracle.truffle.api.HostCompilerDirectives.BytecodeInterpreterSwitchBoundary;
 import com.oracle.truffle.api.Truffle;
@@ -248,8 +247,6 @@ import static org.graalvm.wasm.constants.Instructions.UNREACHABLE;
 
 public final class WasmBlockNode extends WasmNode implements RepeatingNode {
 
-    private static final double HIGH_PROBABILITY = 0.99999;
-
     /**
      * The number of integers in the int constant table used by this node.
      */
@@ -330,37 +327,40 @@ public final class WasmBlockNode extends WasmNode implements RepeatingNode {
     @Override
     public Integer executeRepeatingWithValue(VirtualFrame frame) {
         final WasmCodeEntry codeEntry = codeEntry();
-        final long[] stack;
-        final long[] locals;
+        final long[] stacklocals;
         try {
-            stack = (long[]) frame.getObject(codeEntry.stackSlot());
-            locals = (long[]) frame.getObject(codeEntry.localsSlot());
+            stacklocals = (long[]) frame.getObject(codeEntry.stackLocalsSlot());
         } catch (FrameSlotTypeException e) {
             throw WasmException.create(Failure.UNSPECIFIED_INTERNAL, this, "Invalid object type in the stack slot.");
         }
-        return execute(contextReference().get(), frame, locals, stack);
+        return execute(contextReference().get(), frame, stacklocals);
     }
 
     @Override
     @BytecodeInterpreterSwitch
     @BytecodeInterpreterSwitchBoundary
     @ExplodeLoop(kind = ExplodeLoop.LoopExplosionKind.FULL_EXPLODE_UNTIL_RETURN)
-    public int execute(WasmContext context, VirtualFrame frame, long[] locals, long[] stack) {
-        int childrenOffset = 0;
-        int intConstantOffset = initialIntConstantOffset;
-        int branchTableOffset = initialBranchTableOffset;
-        int stackPointer = initialStackPointer;
-        int profileOffset = initialProfileOffset;
-        int offset = startOffset;
+    public int execute(WasmContext context, VirtualFrame frame, long[] stacklocals) {
         final WasmCodeEntry codeEntry = codeEntry();
-        WasmMemory memory = instance().memory();
+        final int numLocals = codeEntry.numLocals();
         final byte[] data = codeEntry.data();
         final int[] intConstants = codeEntry.intConstants();
         final int[] profileCounters = codeEntry.profileCounters();
         final int blockByteLength = byteLength();
         final int offsetLimit = startOffset + blockByteLength;
+        int childrenOffset = 0;
+        int intConstantOffset = initialIntConstantOffset;
+        int branchTableOffset = initialBranchTableOffset;
+        int stackPointer = numLocals + initialStackPointer;
+        int profileOffset = initialProfileOffset;
+        int offset = startOffset;
+        WasmMemory memory = instance().memory();
+        check(data.length, (1 << 31) - 1);
+        check(intConstants.length, (1 << 31) - 1);
+        check(profileCounters.length, (1 << 31) - 1);
+        check(stacklocals.length, (1 << 31) - 1);
         try {
-            while (CompilerDirectives.injectBranchProbability(HIGH_PROBABILITY, offset < offsetLimit)) {
+            while (offset < offsetLimit) {
                 byte byteOpcode = BinaryStreamParser.rawPeek1(data, offset);
                 int opcode = byteOpcode & 0xFF;
                 offset++;
@@ -375,7 +375,7 @@ public final class WasmBlockNode extends WasmNode implements RepeatingNode {
 
                         // The unwind counter indicates how many levels up we need to branch from
                         // within the block.
-                        int unwindCounter = block.execute(context, frame, locals, stack);
+                        int unwindCounter = block.execute(context, frame, stacklocals);
                         if (unwindCounter > 0) {
                             return unwindCounter - 1;
                         }
@@ -423,7 +423,7 @@ public final class WasmBlockNode extends WasmNode implements RepeatingNode {
                     case IF: {
                         WasmIfNode ifNode = (WasmIfNode) children[childrenOffset];
                         stackPointer--;
-                        int unwindCounter = ifNode.execute(context, frame, locals, stack);
+                        int unwindCounter = ifNode.execute(context, frame, stacklocals);
                         if (unwindCounter > 0) {
                             return unwindCounter - 1;
                         }
@@ -459,7 +459,7 @@ public final class WasmBlockNode extends WasmNode implements RepeatingNode {
 
                         // Populate the stack with the return values of the current block (the one
                         // we are escaping from).
-                        unwindStack(stack, stackPointer, continuationStackPointer, targetBlockReturnLength);
+                        unwindStack(stacklocals, stackPointer, numLocals + continuationStackPointer, targetBlockReturnLength);
 
                         return unwindCounter;
                     }
@@ -480,13 +480,13 @@ public final class WasmBlockNode extends WasmNode implements RepeatingNode {
                         intConstantOffset++;
                         // endregion
 
-                        boolean condition = WasmCodeEntry.profileCondition(profileCounters, profileOffset, popBoolean(stack, stackPointer));
+                        boolean condition = WasmCodeEntry.profileCondition(profileCounters, profileOffset, popBoolean(stacklocals, stackPointer));
                         ++profileOffset;
 
                         if (condition) {
                             // Populate the stack with the return values of the current block (the
                             // one we are escaping from).
-                            unwindStack(stack, stackPointer, continuationStackPointer, targetBlockReturnLength);
+                            unwindStack(stacklocals, stackPointer, numLocals + continuationStackPointer, targetBlockReturnLength);
 
                             return unwindCounter;
                         }
@@ -494,7 +494,7 @@ public final class WasmBlockNode extends WasmNode implements RepeatingNode {
                     }
                     case BR_TABLE: {
                         stackPointer--;
-                        int index = popInt(stack, stackPointer);
+                        int index = popInt(stacklocals, stackPointer);
                         int[] table = codeEntry.branchTable(branchTableOffset);
                         index = index < 0 || index >= (table.length - 1) / 2 ? (table.length - 1) / 2 - 1 : index;
                         // Technically, we should increment the branchTableOffset at this point,
@@ -509,7 +509,7 @@ public final class WasmBlockNode extends WasmNode implements RepeatingNode {
 
                                 // Populate the stack with the return values of the current block
                                 // (the one we are escaping from).
-                                unwindStack(stack, stackPointer, continuationStackPointer, returnTypeLength);
+                                unwindStack(stacklocals, stackPointer, numLocals + continuationStackPointer, returnTypeLength);
 
                                 return unwindCounter;
                             }
@@ -528,7 +528,7 @@ public final class WasmBlockNode extends WasmNode implements RepeatingNode {
                         int rootBlockReturnLength = intConstants[intConstantOffset];
                         intConstantOffset++;
                         // endregion
-                        unwindStack(stack, stackPointer, 0, rootBlockReturnLength);
+                        unwindStack(stacklocals, stackPointer, numLocals, rootBlockReturnLength);
                         return unwindCounter;
                     }
                     case CALL: {
@@ -543,7 +543,7 @@ public final class WasmBlockNode extends WasmNode implements RepeatingNode {
                         byte returnType = function.returnType();
                         int numArgs = function.numArguments();
 
-                        Object[] args = createArgumentsForCall(stack, function.typeIndex(), numArgs, stackPointer);
+                        Object[] args = createArgumentsForCall(stacklocals, function.typeIndex(), numArgs, stackPointer);
                         stackPointer -= args.length;
 
                         Object result = executeDirectCall(childrenOffset, args);
@@ -554,22 +554,22 @@ public final class WasmBlockNode extends WasmNode implements RepeatingNode {
                         // this restriction may be lifted in the future.
                         switch (returnType) {
                             case WasmType.I32_TYPE: {
-                                pushInt(stack, stackPointer, (int) result);
+                                pushInt(stacklocals, stackPointer, (int) result);
                                 stackPointer++;
                                 break;
                             }
                             case WasmType.I64_TYPE: {
-                                push(stack, stackPointer, (long) result);
+                                push(stacklocals, stackPointer, (long) result);
                                 stackPointer++;
                                 break;
                             }
                             case WasmType.F32_TYPE: {
-                                pushFloat(stack, stackPointer, (float) result);
+                                pushFloat(stacklocals, stackPointer, (float) result);
                                 stackPointer++;
                                 break;
                             }
                             case WasmType.F64_TYPE: {
-                                pushDouble(stack, stackPointer, (double) result);
+                                pushDouble(stacklocals, stackPointer, (double) result);
                                 stackPointer++;
                                 break;
                             }
@@ -590,7 +590,7 @@ public final class WasmBlockNode extends WasmNode implements RepeatingNode {
                         final SymbolTable symtab = instance().symbolTable();
                         final WasmTable table = instance().table();
                         final Object[] elements = table.elements();
-                        final int elementIndex = popInt(stack, stackPointer);
+                        final int elementIndex = popInt(stacklocals, stackPointer);
                         if (elementIndex < 0 || elementIndex >= elements.length) {
                             throw WasmException.format(Failure.UNSPECIFIED_TRAP, this, "Element index '%d' out of table bounds.", elementIndex);
                         }
@@ -635,7 +635,7 @@ public final class WasmBlockNode extends WasmNode implements RepeatingNode {
 
                         // Invoke the resolved function.
                         int numArgs = instance().symbolTable().functionTypeArgumentCount(expectedFunctionTypeIndex);
-                        Object[] args = createArgumentsForCall(stack, expectedFunctionTypeIndex, numArgs, stackPointer);
+                        Object[] args = createArgumentsForCall(stacklocals, expectedFunctionTypeIndex, numArgs, stackPointer);
                         stackPointer -= args.length;
 
                         final Object result = executeIndirectCallNode(childrenOffset, target, args);
@@ -647,22 +647,22 @@ public final class WasmBlockNode extends WasmNode implements RepeatingNode {
                         byte returnType = instance().symbolTable().functionTypeReturnType(expectedFunctionTypeIndex);
                         switch (returnType) {
                             case WasmType.I32_TYPE: {
-                                pushInt(stack, stackPointer, (int) result);
+                                pushInt(stacklocals, stackPointer, (int) result);
                                 stackPointer++;
                                 break;
                             }
                             case WasmType.I64_TYPE: {
-                                push(stack, stackPointer, (long) result);
+                                push(stacklocals, stackPointer, (long) result);
                                 stackPointer++;
                                 break;
                             }
                             case WasmType.F32_TYPE: {
-                                pushFloat(stack, stackPointer, (float) result);
+                                pushFloat(stacklocals, stackPointer, (float) result);
                                 stackPointer++;
                                 break;
                             }
                             case WasmType.F64_TYPE: {
-                                pushDouble(stack, stackPointer, (double) result);
+                                pushDouble(stacklocals, stackPointer, (double) result);
                                 stackPointer++;
                                 break;
                             }
@@ -679,17 +679,17 @@ public final class WasmBlockNode extends WasmNode implements RepeatingNode {
                     }
                     case DROP: {
                         stackPointer--;
-                        pop(stack, stackPointer);
+                        pop(stacklocals, stackPointer);
                         break;
                     }
                     case SELECT: {
                         stackPointer--;
-                        int cond = popInt(stack, stackPointer);
+                        int cond = popInt(stacklocals, stackPointer);
                         stackPointer--;
-                        long val2 = pop(stack, stackPointer);
+                        long val2 = pop(stacklocals, stackPointer);
                         stackPointer--;
-                        long val1 = pop(stack, stackPointer);
-                        push(stack, stackPointer, cond != 0 ? val1 : val2);
+                        long val1 = pop(stacklocals, stackPointer);
+                        push(stacklocals, stackPointer, cond != 0 ? val1 : val2);
                         stackPointer++;
                         break;
                     }
@@ -700,7 +700,7 @@ public final class WasmBlockNode extends WasmNode implements RepeatingNode {
                         int offsetDelta = hiBits(valueLength);
                         offset += offsetDelta;
                         // endregion
-                        local_get(locals, stack, stackPointer, index);
+                        local_get(stacklocals, stackPointer, index);
                         stackPointer++;
                         break;
                     }
@@ -712,7 +712,7 @@ public final class WasmBlockNode extends WasmNode implements RepeatingNode {
                         offset += offsetDelta;
                         // endregion
                         stackPointer--;
-                        local_set(locals, stack, stackPointer, index);
+                        local_set(stacklocals, stackPointer, index);
                         break;
                     }
                     case LOCAL_TEE: {
@@ -722,7 +722,7 @@ public final class WasmBlockNode extends WasmNode implements RepeatingNode {
                         int offsetDelta = hiBits(valueLength);
                         offset += offsetDelta;
                         // endregion
-                        local_tee(locals, stack, stackPointer - 1, index);
+                        local_tee(stacklocals, stackPointer - 1, index);
                         break;
                     }
                     case GLOBAL_GET: {
@@ -732,7 +732,7 @@ public final class WasmBlockNode extends WasmNode implements RepeatingNode {
                         int offsetDelta = hiBits(valueLength);
                         offset += offsetDelta;
                         // endregion
-                        global_get(context, stack, stackPointer, index);
+                        global_get(context, stacklocals, stackPointer, index);
                         stackPointer++;
                         break;
                     }
@@ -744,7 +744,7 @@ public final class WasmBlockNode extends WasmNode implements RepeatingNode {
                         offset += offsetDelta;
                         // endregion
                         stackPointer--;
-                        global_set(context, stack, stackPointer, index);
+                        global_set(context, stacklocals, stackPointer, index);
                         break;
                     }
                     case I32_LOAD: {
@@ -759,11 +759,11 @@ public final class WasmBlockNode extends WasmNode implements RepeatingNode {
                         offset += offsetDelta;
                         // endregion
 
-                        int baseAddress = popInt(stack, stackPointer - 1);
+                        int baseAddress = popInt(stacklocals, stackPointer - 1);
                         int address = baseAddress + memOffset;
 
                         int value = memory.load_i32(this, address);
-                        pushInt(stack, stackPointer - 1, value);
+                        pushInt(stacklocals, stackPointer - 1, value);
                         break;
                     }
                     case I64_LOAD:
@@ -790,7 +790,7 @@ public final class WasmBlockNode extends WasmNode implements RepeatingNode {
                         offset += offsetDelta;
                         // endregion
 
-                        load(memory, stack, stackPointer - 1, opcode, memOffset);
+                        load(memory, stacklocals, stackPointer - 1, opcode, memOffset);
                         break;
                     }
                     case I32_STORE:
@@ -813,7 +813,7 @@ public final class WasmBlockNode extends WasmNode implements RepeatingNode {
                         offset += offsetDelta;
                         // endregion
 
-                        store(memory, stack, stackPointer, opcode, memOffset);
+                        store(memory, stacklocals, stackPointer, opcode, memOffset);
                         stackPointer -= 2;
 
                         break;
@@ -822,7 +822,7 @@ public final class WasmBlockNode extends WasmNode implements RepeatingNode {
                         // Skip the 0x00 constant.
                         offset++;
                         int pageSize = memory.pageSize();
-                        pushInt(stack, stackPointer, pageSize);
+                        pushInt(stacklocals, stackPointer, pageSize);
                         stackPointer++;
                         break;
                     }
@@ -830,13 +830,13 @@ public final class WasmBlockNode extends WasmNode implements RepeatingNode {
                         // Skip the 0x00 constant.
                         offset++;
                         stackPointer--;
-                        int extraSize = popInt(stack, stackPointer);
+                        int extraSize = popInt(stacklocals, stackPointer);
                         int pageSize = memory.pageSize();
                         if (memory.grow(extraSize)) {
-                            pushInt(stack, stackPointer, pageSize);
+                            pushInt(stacklocals, stackPointer, pageSize);
                             stackPointer++;
                         } else {
-                            pushInt(stack, stackPointer, -1);
+                            pushInt(stacklocals, stackPointer, -1);
                             stackPointer++;
                         }
                         break;
@@ -847,7 +847,7 @@ public final class WasmBlockNode extends WasmNode implements RepeatingNode {
                         int offsetDelta = hiBits(valueAndLength);
                         offset += offsetDelta;
                         // endregion
-                        push(stack, stackPointer, loBits(valueAndLength));
+                        push(stacklocals, stackPointer, loBits(valueAndLength));
                         stackPointer++;
                         break;
                     }
@@ -857,280 +857,280 @@ public final class WasmBlockNode extends WasmNode implements RepeatingNode {
                         int offsetDelta = offsetDelta(data, offset);
                         offset += offsetDelta;
                         // endregion
-                        push(stack, stackPointer, value);
+                        push(stacklocals, stackPointer, value);
                         stackPointer++;
                         break;
                     }
                     case I32_EQZ:
-                        i32_eqz(stack, stackPointer);
+                        i32_eqz(stacklocals, stackPointer);
                         break;
                     case I32_EQ:
-                        i32_eq(stack, stackPointer);
+                        i32_eq(stacklocals, stackPointer);
                         stackPointer--;
                         break;
                     case I32_NE:
-                        i32_ne(stack, stackPointer);
+                        i32_ne(stacklocals, stackPointer);
                         stackPointer--;
                         break;
                     case I32_LT_S:
-                        i32_lt_s(stack, stackPointer);
+                        i32_lt_s(stacklocals, stackPointer);
                         stackPointer--;
                         break;
                     case I32_LT_U:
-                        i32_lt_u(stack, stackPointer);
+                        i32_lt_u(stacklocals, stackPointer);
                         stackPointer--;
                         break;
                     case I32_GT_S:
-                        i32_gt_s(stack, stackPointer);
+                        i32_gt_s(stacklocals, stackPointer);
                         stackPointer--;
                         break;
                     case I32_GT_U:
-                        i32_gt_u(stack, stackPointer);
+                        i32_gt_u(stacklocals, stackPointer);
                         stackPointer--;
                         break;
                     case I32_LE_S:
-                        i32_le_s(stack, stackPointer);
+                        i32_le_s(stacklocals, stackPointer);
                         stackPointer--;
                         break;
                     case I32_LE_U:
-                        i32_le_u(stack, stackPointer);
+                        i32_le_u(stacklocals, stackPointer);
                         stackPointer--;
                         break;
                     case I32_GE_S:
-                        i32_ge_s(stack, stackPointer);
+                        i32_ge_s(stacklocals, stackPointer);
                         stackPointer--;
                         break;
                     case I32_GE_U:
-                        i32_ge_u(stack, stackPointer);
+                        i32_ge_u(stacklocals, stackPointer);
                         stackPointer--;
                         break;
                     case I64_EQZ:
-                        i64_eqz(stack, stackPointer);
+                        i64_eqz(stacklocals, stackPointer);
                         break;
                     case I64_EQ:
-                        i64_eq(stack, stackPointer);
+                        i64_eq(stacklocals, stackPointer);
                         stackPointer--;
                         break;
                     case I64_NE:
-                        i64_ne(stack, stackPointer);
+                        i64_ne(stacklocals, stackPointer);
                         stackPointer--;
                         break;
                     case I64_LT_S:
-                        i64_lt_s(stack, stackPointer);
+                        i64_lt_s(stacklocals, stackPointer);
                         stackPointer--;
                         break;
                     case I64_LT_U:
-                        i64_lt_u(stack, stackPointer);
+                        i64_lt_u(stacklocals, stackPointer);
                         stackPointer--;
                         break;
                     case I64_GT_S:
-                        i64_gt_s(stack, stackPointer);
+                        i64_gt_s(stacklocals, stackPointer);
                         stackPointer--;
                         break;
                     case I64_GT_U:
-                        i64_gt_u(stack, stackPointer);
+                        i64_gt_u(stacklocals, stackPointer);
                         stackPointer--;
                         break;
                     case I64_LE_S:
-                        i64_le_s(stack, stackPointer);
+                        i64_le_s(stacklocals, stackPointer);
                         stackPointer--;
                         break;
                     case I64_LE_U:
-                        i64_le_u(stack, stackPointer);
+                        i64_le_u(stacklocals, stackPointer);
                         stackPointer--;
                         break;
                     case I64_GE_S:
-                        i64_ge_s(stack, stackPointer);
+                        i64_ge_s(stacklocals, stackPointer);
                         stackPointer--;
                         break;
                     case I64_GE_U:
-                        i64_ge_u(stack, stackPointer);
+                        i64_ge_u(stacklocals, stackPointer);
                         stackPointer--;
                         break;
                     case F32_EQ:
-                        f32_eq(stack, stackPointer);
+                        f32_eq(stacklocals, stackPointer);
                         stackPointer--;
                         break;
                     case F32_NE:
-                        f32_ne(stack, stackPointer);
+                        f32_ne(stacklocals, stackPointer);
                         stackPointer--;
                         break;
                     case F32_LT:
-                        f32_lt(stack, stackPointer);
+                        f32_lt(stacklocals, stackPointer);
                         stackPointer--;
                         break;
                     case F32_GT:
-                        f32_gt(stack, stackPointer);
+                        f32_gt(stacklocals, stackPointer);
                         stackPointer--;
                         break;
                     case F32_LE:
-                        f32_le(stack, stackPointer);
+                        f32_le(stacklocals, stackPointer);
                         stackPointer--;
                         break;
                     case F32_GE:
-                        f32_ge(stack, stackPointer);
+                        f32_ge(stacklocals, stackPointer);
                         stackPointer--;
                         break;
                     case F64_EQ:
-                        f64_eq(stack, stackPointer);
+                        f64_eq(stacklocals, stackPointer);
                         stackPointer--;
                         break;
                     case F64_NE:
-                        f64_ne(stack, stackPointer);
+                        f64_ne(stacklocals, stackPointer);
                         stackPointer--;
                         break;
                     case F64_LT:
-                        f64_lt(stack, stackPointer);
+                        f64_lt(stacklocals, stackPointer);
                         stackPointer--;
                         break;
                     case F64_GT:
-                        f64_gt(stack, stackPointer);
+                        f64_gt(stacklocals, stackPointer);
                         stackPointer--;
                         break;
                     case F64_LE:
-                        f64_le(stack, stackPointer);
+                        f64_le(stacklocals, stackPointer);
                         stackPointer--;
                         break;
                     case F64_GE:
-                        f64_ge(stack, stackPointer);
+                        f64_ge(stacklocals, stackPointer);
                         stackPointer--;
                         break;
                     case I32_CLZ:
-                        i32_clz(stack, stackPointer);
+                        i32_clz(stacklocals, stackPointer);
                         break;
                     case I32_CTZ:
-                        i32_ctz(stack, stackPointer);
+                        i32_ctz(stacklocals, stackPointer);
                         break;
                     case I32_POPCNT:
-                        i32_popcnt(stack, stackPointer);
+                        i32_popcnt(stacklocals, stackPointer);
                         break;
                     case I32_ADD:
-                        i32_add(stack, stackPointer);
+                        i32_add(stacklocals, stackPointer);
                         stackPointer--;
                         break;
                     case I32_SUB:
-                        i32_sub(stack, stackPointer);
+                        i32_sub(stacklocals, stackPointer);
                         stackPointer--;
                         break;
                     case I32_MUL:
-                        i32_mul(stack, stackPointer);
+                        i32_mul(stacklocals, stackPointer);
                         stackPointer--;
                         break;
                     case I32_DIV_S:
-                        i32_div_s(stack, stackPointer);
+                        i32_div_s(stacklocals, stackPointer);
                         stackPointer--;
                         break;
                     case I32_DIV_U:
-                        i32_div_u(stack, stackPointer);
+                        i32_div_u(stacklocals, stackPointer);
                         stackPointer--;
                         break;
                     case I32_REM_S:
-                        i32_rem_s(stack, stackPointer);
+                        i32_rem_s(stacklocals, stackPointer);
                         stackPointer--;
                         break;
                     case I32_REM_U:
-                        i32_rem_u(stack, stackPointer);
+                        i32_rem_u(stacklocals, stackPointer);
                         stackPointer--;
                         break;
                     case I32_AND:
-                        i32_and(stack, stackPointer);
+                        i32_and(stacklocals, stackPointer);
                         stackPointer--;
                         break;
                     case I32_OR:
-                        i32_or(stack, stackPointer);
+                        i32_or(stacklocals, stackPointer);
                         stackPointer--;
                         break;
                     case I32_XOR:
-                        i32_xor(stack, stackPointer);
+                        i32_xor(stacklocals, stackPointer);
                         stackPointer--;
                         break;
                     case I32_SHL:
-                        i32_shl(stack, stackPointer);
+                        i32_shl(stacklocals, stackPointer);
                         stackPointer--;
                         break;
                     case I32_SHR_S:
-                        i32_shr_s(stack, stackPointer);
+                        i32_shr_s(stacklocals, stackPointer);
                         stackPointer--;
                         break;
                     case I32_SHR_U:
-                        i32_shr_u(stack, stackPointer);
+                        i32_shr_u(stacklocals, stackPointer);
                         stackPointer--;
                         break;
                     case I32_ROTL:
-                        i32_rotl(stack, stackPointer);
+                        i32_rotl(stacklocals, stackPointer);
                         stackPointer--;
                         break;
                     case I32_ROTR:
-                        i32_rotr(stack, stackPointer);
+                        i32_rotr(stacklocals, stackPointer);
                         stackPointer--;
                         break;
                     case I64_CLZ:
-                        i64_clz(stack, stackPointer);
+                        i64_clz(stacklocals, stackPointer);
                         break;
                     case I64_CTZ:
-                        i64_ctz(stack, stackPointer);
+                        i64_ctz(stacklocals, stackPointer);
                         break;
                     case I64_POPCNT:
-                        i64_popcnt(stack, stackPointer);
+                        i64_popcnt(stacklocals, stackPointer);
                         break;
                     case I64_ADD:
-                        i64_add(stack, stackPointer);
+                        i64_add(stacklocals, stackPointer);
                         stackPointer--;
                         break;
                     case I64_SUB:
-                        i64_sub(stack, stackPointer);
+                        i64_sub(stacklocals, stackPointer);
                         stackPointer--;
                         break;
                     case I64_MUL:
-                        i64_mul(stack, stackPointer);
+                        i64_mul(stacklocals, stackPointer);
                         stackPointer--;
                         break;
                     case I64_DIV_S:
-                        i64_div_s(stack, stackPointer);
+                        i64_div_s(stacklocals, stackPointer);
                         stackPointer--;
                         break;
                     case I64_DIV_U:
-                        i64_div_u(stack, stackPointer);
+                        i64_div_u(stacklocals, stackPointer);
                         stackPointer--;
                         break;
                     case I64_REM_S:
-                        i64_rem_s(stack, stackPointer);
+                        i64_rem_s(stacklocals, stackPointer);
                         stackPointer--;
                         break;
                     case I64_REM_U:
-                        i64_rem_u(stack, stackPointer);
+                        i64_rem_u(stacklocals, stackPointer);
                         stackPointer--;
                         break;
                     case I64_AND:
-                        i64_and(stack, stackPointer);
+                        i64_and(stacklocals, stackPointer);
                         stackPointer--;
                         break;
                     case I64_OR:
-                        i64_or(stack, stackPointer);
+                        i64_or(stacklocals, stackPointer);
                         stackPointer--;
                         break;
                     case I64_XOR:
-                        i64_xor(stack, stackPointer);
+                        i64_xor(stacklocals, stackPointer);
                         stackPointer--;
                         break;
                     case I64_SHL:
-                        i64_shl(stack, stackPointer);
+                        i64_shl(stacklocals, stackPointer);
                         stackPointer--;
                         break;
                     case I64_SHR_S:
-                        i64_shr_s(stack, stackPointer);
+                        i64_shr_s(stacklocals, stackPointer);
                         stackPointer--;
                         break;
                     case I64_SHR_U:
-                        i64_shr_u(stack, stackPointer);
+                        i64_shr_u(stacklocals, stackPointer);
                         stackPointer--;
                         break;
                     case I64_ROTL:
-                        i64_rotl(stack, stackPointer);
+                        i64_rotl(stacklocals, stackPointer);
                         stackPointer--;
                         break;
                     case I64_ROTR:
-                        i64_rotr(stack, stackPointer);
+                        i64_rotr(stacklocals, stackPointer);
                         stackPointer--;
                         break;
                     case F32_CONST: {
@@ -1138,57 +1138,57 @@ public final class WasmBlockNode extends WasmNode implements RepeatingNode {
                         int value = BinaryStreamParser.peek4(data, offset);
                         // endregion
                         offset += 4;
-                        pushInt(stack, stackPointer, value);
+                        pushInt(stacklocals, stackPointer, value);
                         stackPointer++;
                         break;
                     }
                     case F32_ABS:
-                        f32_abs(stack, stackPointer);
+                        f32_abs(stacklocals, stackPointer);
                         break;
                     case F32_NEG:
-                        f32_neg(stack, stackPointer);
+                        f32_neg(stacklocals, stackPointer);
                         break;
                     case F32_CEIL:
-                        f32_ceil(stack, stackPointer);
+                        f32_ceil(stacklocals, stackPointer);
                         break;
                     case F32_FLOOR:
-                        f32_floor(stack, stackPointer);
+                        f32_floor(stacklocals, stackPointer);
                         break;
                     case F32_TRUNC:
-                        f32_trunc(stack, stackPointer);
+                        f32_trunc(stacklocals, stackPointer);
                         break;
                     case F32_NEAREST:
-                        f32_nearest(stack, stackPointer);
+                        f32_nearest(stacklocals, stackPointer);
                         break;
                     case F32_SQRT:
-                        f32_sqrt(stack, stackPointer);
+                        f32_sqrt(stacklocals, stackPointer);
                         break;
                     case F32_ADD:
-                        f32_add(stack, stackPointer);
+                        f32_add(stacklocals, stackPointer);
                         stackPointer--;
                         break;
                     case F32_SUB:
-                        f32_sub(stack, stackPointer);
+                        f32_sub(stacklocals, stackPointer);
                         stackPointer--;
                         break;
                     case F32_MUL:
-                        f32_mul(stack, stackPointer);
+                        f32_mul(stacklocals, stackPointer);
                         stackPointer--;
                         break;
                     case F32_DIV:
-                        f32_div(stack, stackPointer);
+                        f32_div(stacklocals, stackPointer);
                         stackPointer--;
                         break;
                     case F32_MIN:
-                        f32_min(stack, stackPointer);
+                        f32_min(stacklocals, stackPointer);
                         stackPointer--;
                         break;
                     case F32_MAX:
-                        f32_max(stack, stackPointer);
+                        f32_max(stacklocals, stackPointer);
                         stackPointer--;
                         break;
                     case F32_COPYSIGN:
-                        f32_copysign(stack, stackPointer);
+                        f32_copysign(stacklocals, stackPointer);
                         stackPointer--;
                         break;
                     case F64_CONST: {
@@ -1196,121 +1196,121 @@ public final class WasmBlockNode extends WasmNode implements RepeatingNode {
                         long value = BinaryStreamParser.peek8(data, offset);
                         // endregion
                         offset += 8;
-                        push(stack, stackPointer, value);
+                        push(stacklocals, stackPointer, value);
                         stackPointer++;
                         break;
                     }
                     case F64_ABS:
-                        f64_abs(stack, stackPointer);
+                        f64_abs(stacklocals, stackPointer);
                         break;
                     case F64_NEG:
-                        f64_neg(stack, stackPointer);
+                        f64_neg(stacklocals, stackPointer);
                         break;
                     case F64_CEIL:
-                        f64_ceil(stack, stackPointer);
+                        f64_ceil(stacklocals, stackPointer);
                         break;
                     case F64_FLOOR:
-                        f64_floor(stack, stackPointer);
+                        f64_floor(stacklocals, stackPointer);
                         break;
                     case F64_TRUNC:
-                        f64_trunc(stack, stackPointer);
+                        f64_trunc(stacklocals, stackPointer);
                         break;
                     case F64_NEAREST:
-                        f64_nearest(stack, stackPointer);
+                        f64_nearest(stacklocals, stackPointer);
                         break;
                     case F64_SQRT:
-                        f64_sqrt(stack, stackPointer);
+                        f64_sqrt(stacklocals, stackPointer);
                         break;
                     case F64_ADD:
-                        f64_add(stack, stackPointer);
+                        f64_add(stacklocals, stackPointer);
                         stackPointer--;
                         break;
                     case F64_SUB:
-                        f64_sub(stack, stackPointer);
+                        f64_sub(stacklocals, stackPointer);
                         stackPointer--;
                         break;
                     case F64_MUL:
-                        f64_mul(stack, stackPointer);
+                        f64_mul(stacklocals, stackPointer);
                         stackPointer--;
                         break;
                     case F64_DIV:
-                        f64_div(stack, stackPointer);
+                        f64_div(stacklocals, stackPointer);
                         stackPointer--;
                         break;
                     case F64_MIN:
-                        f64_min(stack, stackPointer);
+                        f64_min(stacklocals, stackPointer);
                         stackPointer--;
                         break;
                     case F64_MAX:
-                        f64_max(stack, stackPointer);
+                        f64_max(stacklocals, stackPointer);
                         stackPointer--;
                         break;
                     case F64_COPYSIGN:
-                        f64_copysign(stack, stackPointer);
+                        f64_copysign(stacklocals, stackPointer);
                         stackPointer--;
                         break;
                     case I32_WRAP_I64:
-                        i32_wrap_i64(stack, stackPointer);
+                        i32_wrap_i64(stacklocals, stackPointer);
                         break;
                     case I32_TRUNC_F32_S:
-                        i32_trunc_f32_s(stack, stackPointer);
+                        i32_trunc_f32_s(stacklocals, stackPointer);
                         break;
                     case I32_TRUNC_F32_U:
-                        i32_trunc_f32_u(stack, stackPointer);
+                        i32_trunc_f32_u(stacklocals, stackPointer);
                         break;
                     case I32_TRUNC_F64_S:
-                        i32_trunc_f64_s(stack, stackPointer);
+                        i32_trunc_f64_s(stacklocals, stackPointer);
                         break;
                     case I32_TRUNC_F64_U:
-                        i32_trunc_f64_u(stack, stackPointer);
+                        i32_trunc_f64_u(stacklocals, stackPointer);
                         break;
                     case I64_EXTEND_I32_S:
-                        i64_extend_i32_s(stack, stackPointer);
+                        i64_extend_i32_s(stacklocals, stackPointer);
                         break;
                     case I64_EXTEND_I32_U:
-                        i64_extend_i32_u(stack, stackPointer);
+                        i64_extend_i32_u(stacklocals, stackPointer);
                         break;
                     case I64_TRUNC_F32_S:
-                        i64_trunc_f32_s(stack, stackPointer);
+                        i64_trunc_f32_s(stacklocals, stackPointer);
                         break;
                     case I64_TRUNC_F32_U:
-                        i64_trunc_f32_u(stack, stackPointer);
+                        i64_trunc_f32_u(stacklocals, stackPointer);
                         break;
                     case I64_TRUNC_F64_S:
-                        i64_trunc_f64_s(stack, stackPointer);
+                        i64_trunc_f64_s(stacklocals, stackPointer);
                         break;
                     case I64_TRUNC_F64_U:
-                        i64_trunc_f64_u(stack, stackPointer);
+                        i64_trunc_f64_u(stacklocals, stackPointer);
                         break;
                     case F32_CONVERT_I32_S:
-                        f32_convert_i32_s(stack, stackPointer);
+                        f32_convert_i32_s(stacklocals, stackPointer);
                         break;
                     case F32_CONVERT_I32_U:
-                        f32_convert_i32_u(stack, stackPointer);
+                        f32_convert_i32_u(stacklocals, stackPointer);
                         break;
                     case F32_CONVERT_I64_S:
-                        f32_convert_i64_s(stack, stackPointer);
+                        f32_convert_i64_s(stacklocals, stackPointer);
                         break;
                     case F32_CONVERT_I64_U:
-                        f32_convert_i64_u(stack, stackPointer);
+                        f32_convert_i64_u(stacklocals, stackPointer);
                         break;
                     case F32_DEMOTE_F64:
-                        f32_demote_f64(stack, stackPointer);
+                        f32_demote_f64(stacklocals, stackPointer);
                         break;
                     case F64_CONVERT_I32_S:
-                        f64_convert_i32_s(stack, stackPointer);
+                        f64_convert_i32_s(stacklocals, stackPointer);
                         break;
                     case F64_CONVERT_I32_U:
-                        f64_convert_i32_u(stack, stackPointer);
+                        f64_convert_i32_u(stacklocals, stackPointer);
                         break;
                     case F64_CONVERT_I64_S:
-                        f64_convert_i64_s(stack, stackPointer);
+                        f64_convert_i64_s(stacklocals, stackPointer);
                         break;
                     case F64_CONVERT_I64_U:
-                        f64_convert_i64_u(stack, stackPointer);
+                        f64_convert_i64_u(stacklocals, stackPointer);
                         break;
                     case F64_PROMOTE_F32:
-                        f64_promote_f32(stack, stackPointer);
+                        f64_promote_f32(stacklocals, stackPointer);
                         break;
                     case I32_REINTERPRET_F32:
                         // As we don't store type information for the frame slots (everything is
@@ -1344,6 +1344,14 @@ public final class WasmBlockNode extends WasmNode implements RepeatingNode {
             throw WasmException.fromArithmeticException(this, e);
         }
         return -1;
+    }
+
+    @SuppressWarnings("unused")
+    private void check(int v, int limit) {
+        // This is a temporary hack to hoist values out of the loop.
+        if (v >= limit) {
+            throw WasmException.create(Failure.UNSPECIFIED_INTERNAL, this, "array length too large");
+        }
     }
 
     @BytecodeInterpreterSwitchBoundary
@@ -1609,24 +1617,24 @@ public final class WasmBlockNode extends WasmNode implements RepeatingNode {
         }
     }
 
-    private void local_tee(long[] locals, long[] stack, int stackPointer, int index) {
-        final long value = pop(stack, stackPointer);
+    private void local_tee(long[] stacklocals, int stackPointer, int index) {
+        final long value = pop(stacklocals, stackPointer);
         // In the interpreter, no need to push, as the value is still on the stack.
         // In compiled code, the pop erases the value on the stack, so we push the value back.
         if (CompilerDirectives.inCompiledCode()) {
-            push(stack, stackPointer, value);
+            push(stacklocals, stackPointer, value);
         }
-        locals[index] = value;
+        stacklocals[index] = value;
     }
 
-    private void local_set(long[] locals, long[] stack, int stackPointer, int index) {
-        final long value = pop(stack, stackPointer);
-        locals[index] = value;
+    private void local_set(long[] stacklocals, int stackPointer, int index) {
+        final long value = pop(stacklocals, stackPointer);
+        stacklocals[index] = value;
     }
 
-    private void local_get(long[] locals, long[] stack, int stackPointer, int index) {
-        long value = locals[index];
-        push(stack, stackPointer, value);
+    private void local_get(long[] stacklocals, int stackPointer, int index) {
+        long value = stacklocals[index];
+        push(stacklocals, stackPointer, value);
     }
 
     @SuppressWarnings("unused")

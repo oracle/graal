@@ -55,8 +55,6 @@ import static java.lang.Math.toIntExact;
 
 @ExportLibrary(InteropLibrary.class)
 public abstract class WasmMemory implements TruffleObject {
-    public static final WasmMemory EMPTY_MEMORY = new ByteArrayWasmMemory(0, 0);
-
     static final int PAGE_SIZE = 1 << 16;
     static final int LONG_SIZE = 8;
 

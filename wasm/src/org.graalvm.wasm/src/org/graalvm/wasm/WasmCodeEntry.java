@@ -54,8 +54,7 @@ public final class WasmCodeEntry {
     @CompilationFinal(dimensions = 1) private int[] intConstants;
     @CompilationFinal(dimensions = 2) private int[][] branchTables;
     @CompilationFinal(dimensions = 1) private int[] profileCounters;
-    @CompilationFinal private FrameSlot stackSlot;
-    @CompilationFinal private FrameSlot localsSlot;
+    @CompilationFinal private FrameSlot stackLocalsSlot;
     @CompilationFinal private int maxStackSize;
 
     public WasmCodeEntry(WasmFunction function, byte[] data) {
@@ -74,12 +73,8 @@ public final class WasmCodeEntry {
         return data;
     }
 
-    public void initLocalSlots(FrameDescriptor frameDescriptor) {
-        this.localsSlot = frameDescriptor.addFrameSlot(1, FrameSlotKind.Object);
-    }
-
-    public void initStack(FrameDescriptor frameDescriptor, int maximumStackSize) {
-        this.stackSlot = frameDescriptor.addFrameSlot(0, FrameSlotKind.Object);
+    public void initStackLocals(FrameDescriptor frameDescriptor, int maximumStackSize) {
+        this.stackLocalsSlot = frameDescriptor.addFrameSlot(0, FrameSlotKind.Object);
         this.maxStackSize = maximumStackSize;
     }
 
@@ -87,12 +82,8 @@ public final class WasmCodeEntry {
         return maxStackSize;
     }
 
-    public FrameSlot stackSlot() {
-        return stackSlot;
-    }
-
-    public FrameSlot localsSlot() {
-        return localsSlot;
+    public FrameSlot stackLocalsSlot() {
+        return stackLocalsSlot;
     }
 
     public void setLocalTypes(byte[] localTypes) {

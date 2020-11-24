@@ -407,16 +407,13 @@ public class BinaryParser extends BinaryStreamParser {
                         "Stack size must match the return type length at the function end", Failure.RETURN_SIZE_MISMATCH);
         rootNode.setBody(bodyBlock);
 
-        /* Push a frame slot to the frame descriptor for every local. */
-        rootNode.codeEntry().initLocalSlots(rootNode.getFrameDescriptor());
-
         /* Initialize the Truffle-related components required for execution. */
         rootNode.codeEntry().setIntConstants(state.intConstants());
         if (state.branchTables().length > 0) {
             rootNode.codeEntry().setBranchTables(state.branchTables());
         }
         rootNode.codeEntry().setProfileCount(state.profileCount());
-        rootNode.codeEntry().initStack(rootNode.getFrameDescriptor(), state.maxStackSize());
+        rootNode.codeEntry().initStackLocals(rootNode.getFrameDescriptor(), state.maxStackSize());
     }
 
     private ByteArrayList readCodeEntryLocals() {
