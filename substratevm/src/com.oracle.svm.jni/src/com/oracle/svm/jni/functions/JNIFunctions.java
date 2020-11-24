@@ -36,6 +36,7 @@ import java.nio.Buffer;
 import java.nio.ByteBuffer;
 import java.util.Arrays;
 
+import org.graalvm.compiler.nodes.java.ArrayLengthNode;
 import org.graalvm.compiler.serviceprovider.GraalUnsafeAccess;
 import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.nativeimage.IsolateThread;
@@ -731,7 +732,13 @@ public final class JNIFunctions {
     @CEntryPoint(exceptionHandler = JNIExceptionHandlerReturnMinusOne.class)
     @CEntryPointOptions(prologue = JNIEnvEnterReturnMinusOneOnFailurePrologue.class, publishAs = Publish.NotPublished, include = CEntryPointOptions.NotIncludedAutomatically.class)
     static int GetArrayLength(JNIEnvironment env, JNIObjectHandle harray) {
-        return Array.getLength(JNIObjectHandles.getObject(harray));
+        /*
+         * JNI does not specify the behavior for illegal arguments (e.g. null or non-array objects);
+         * it is the JNI caller's responsibility to ensure that arguments are correct. We therefore
+         * use an unchecked access to the length field. Note that the lack of check is also
+         * necessary to support hybrid object layouts.
+         */
+        return ArrayLengthNode.arrayLength(JNIObjectHandles.getObject(harray));
     }
 
     /*
