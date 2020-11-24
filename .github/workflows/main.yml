@@ -142,7 +142,7 @@ jobs:
     - name: Notify slack success
       if: success()
       env:
-        SLACK_BOT_TOKEN: ${{ secrets.SLACK_BOT_TOKEN }}
+        SLACK_BOT_TOKEN: xoxb-751263462801-1524443519971-vbyKGpYFTKr5Jj00RAdp1oMc
       uses: oracle/github-action-slack-notify-build@v1
       with:
         channel_id: C01613ELDS6 #travis-ci
@@ -151,7 +151,7 @@ jobs:
     - name: Notify slack fail
       if: failure()
       env:
-        SLACK_BOT_TOKEN: ${{ secrets.SLACK_BOT_TOKEN }}
+        SLACK_BOT_TOKEN: xoxb-751263462801-1524443519971-vbyKGpYFTKr5Jj00RAdp1oMc
       uses: oracle/github-action-slack-notify-build@v1
       with:
         channel_id: C01613ELDS6 #travis-ci
