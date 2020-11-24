@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2017, 2020, Oracle and/or its affiliates.
+ * Copyright (c) 2020, 2020, Oracle and/or its affiliates.
  *
  * All rights reserved.
  *
@@ -29,13 +29,10 @@
  */
 package com.oracle.truffle.llvm.launcher;
 
-import java.io.IOException;
-import java.io.OutputStream;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.Iterator;
 import java.util.List;
-import java.util.ListIterator;
 import java.util.Map;
 
 import org.graalvm.polyglot.Context;

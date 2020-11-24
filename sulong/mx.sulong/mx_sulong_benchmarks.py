@@ -53,23 +53,21 @@ class SulongBenchmarkRule(mx_benchmark.StdOutRule):
             replacement=replacement)
 
     def parseResults(self, text):
-    
+
         # Prepending the summary lines by the run number
         newText = ""
         forkNum1 = 0
         forkNum2 = 0
         for line in text.splitlines():
             if line.startswith("first"):
-                newText+="run " + str(forkNum1) + " " + line + "\n" 
-                forkNum1+=1
+                newText += "run " + str(forkNum1) + " " + line + "\n"
+                forkNum1 += 1
             if line.startswith("last"):
-                newText+="run " + str(forkNum2) + " " + line + "\n" 
-                forkNum2+=1
-        
+                newText += "run " + str(forkNum2) + " " + line + "\n"
+                forkNum2 += 1
+
         text = newText
-        
-        mx.log(text)
-            
+
         def _parse_results_gen():
             for d in super(SulongBenchmarkRule, self).parseResults(text):
                 line = d.pop('line')
@@ -78,7 +76,7 @@ class SulongBenchmarkRule(mx_benchmark.StdOutRule):
                     r['score'] = value.strip()
                     r['iteration'] = str(iteration)
                     yield r
-                    
+
         return (x for x in _parse_results_gen())
 
 
@@ -335,11 +333,14 @@ class SulongVm(CExecutionEnvironmentMixin, GuestVm):
     def launcherClass(self):
         return "com.oracle.truffle.llvm.launcher.LLVMLauncher"
 
+    def launcherName(self):
+        return "lli"
+
     def run(self, cwd, args):
         bench_file_and_args = args[-3:]
         launcher_args = self.launcher_args(args[:-3]) + bench_file_and_args
         if hasattr(self.host_vm(), 'run_launcher'):
-            result = self.host_vm().run_launcher('lli', launcher_args, cwd)
+            result = self.host_vm().run_launcher(self.launcherName(), launcher_args, cwd)
         else:
             def _filter_properties(args):
                 props = []
@@ -396,6 +397,10 @@ class SulongMultiContextVm(SulongVm):
 
     def launcherClass(self):
         return "com.oracle.truffle.llvm.launcher.LLVMMultiContextLauncher"
+
+    def launcherName(self):
+        return "llimul"
+
 
 _suite = mx.suite("sulong")
 

@@ -1214,6 +1214,13 @@ mx_sdk_vm.register_graalvm_component(mx_sdk_vm.GraalVmLanguage(
             build_args=[],
             language='llvm',
         ),
+        mx_sdk_vm.LanguageLauncherConfig(
+            destination='bin/<exe:llimul>',
+            jar_distributions=['sulong:SULONG_LAUNCHER'],
+            main_class='com.oracle.truffle.llvm.launcher.LLVMMultiContextLauncher',
+            build_args=[],
+            language='llvm',
+        ),
     ],
     installable=False,
 ))
