@@ -129,7 +129,6 @@ public final class GuestClassRegistry extends ClassRegistry {
             }
         }
         return super.findLoadedKlass(type);
-
     }
 
     @Override
