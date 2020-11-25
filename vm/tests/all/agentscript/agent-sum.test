@@ -1,14 +1,14 @@
 > js agent-sum.js
 21
-> js --insight=agent-summul.js --experimental-options agent-sum.js 
+> js --insight=agent-summul.js agent-sum.js 
 720
-> js --insight=agent-summul2.js --experimental-options agent-sum.js
+> js --insight=agent-summul2.js agent-sum.js
 720
-> js --insight=agent-sumneg.js --experimental-options agent-sum.js
+> js --insight=agent-sumneg.js  agent-sum.js
 -21
-> js --insight=agent-summul2.js --experimental-options agent-fib.js
+> js --insight=agent-summul2.js agent-fib.js
 Three is the result 80
-> js --insight=agent-summul3.js --experimental-options agent-sum.js
+> js --insight=agent-summul3.js agent-sum.js
 enter of plus with 1 * 1 * 2 = 2
 enter of plus with 2 * 1 * 2 = 4
 enter of plus with 3 * 1 * 2 = 6
