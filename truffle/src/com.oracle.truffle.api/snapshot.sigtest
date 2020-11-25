@@ -116,7 +116,6 @@ supr java.lang.Object
 CLSS public final com.oracle.truffle.api.HostCompilerDirectives
 innr public abstract interface static !annotation BytecodeInterpreterSwitch
 innr public abstract interface static !annotation BytecodeInterpreterSwitchBoundary
-meth public static void consume(int)
 supr java.lang.Object
 
 CLSS public abstract interface static !annotation com.oracle.truffle.api.HostCompilerDirectives$BytecodeInterpreterSwitch

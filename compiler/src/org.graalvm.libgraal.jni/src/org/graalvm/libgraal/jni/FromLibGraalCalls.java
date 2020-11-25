@@ -174,8 +174,10 @@ public abstract class FromLibGraalCalls<T extends Enum<T> & FromLibGraalId> {
             return classes.computeIfAbsent(className, new Function<String, JNIClass>() {
                 @Override
                 public JNIClass apply(String name) {
-                    JClass clazz = JNIUtil.findClass(env, getBinaryName(name));
+                    JNI.JObject classLoader = JNIUtil.getJVMCIClassLoader(env);
+                    JClass clazz = JNIUtil.findClass(env, classLoader, getBinaryName(name));
                     if (clazz.isNull()) {
+                        JNIUtil.ExceptionDescribe(env);
                         JNIUtil.ExceptionClear(env);
                         throw new InternalError("Cannot load class: " + name);
                     }
