@@ -91,7 +91,7 @@ public final class LLVMStack {
         return stackPointer != 0;
     }
 
-    private static FrameSlot getStackSlot(FrameDescriptor frameDescriptor) {
+    public static FrameSlot getStackSlot(FrameDescriptor frameDescriptor) {
         return frameDescriptor.findOrAddFrameSlot(STACK_ID, PointerType.VOID, FrameSlotKind.Object);
     }
 
