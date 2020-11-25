@@ -9,7 +9,7 @@ Examining and accessing program elements through `java.lang.reflect.*` or loadin
 Native Image tries to resolve the target elements through a static analysis that detects calls to the Reflection API.
 Where the analysis fails, the program elements reflectively accessed at run time must be specified using a manual configuration.
 
-See also the [guide on assisted configuration of Java resources and other dynamic features](Configuration.md#assisted-configuration-of-native-image-builds).
+See also the [guide on assisted configuration of Java resources and other dynamic features](BuildConfiguration.md#assisted-configuration-of-native-image-builds).
 
 ## Automatic Detection
 
