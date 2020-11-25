@@ -17,6 +17,7 @@ The Micronaut extension was also developed to help developers build native image
 - [Create Micronaut Project](#create-micronaut-project)
 - [Generate Native Images of Micronaut Projects](#generate-native-images-of-micronaut-projects)
 - [Privacy Policy](#privacy-policy)
+- [Known Issues](#known-issues)
 
 ## Installation and Setup
 
@@ -24,7 +25,7 @@ Install the Micronaut extension from the VS Code consolde by clicking on the Ext
 
 Note: The Micronaut extension also requires the [GraalVM Extension](https://marketplace.visualstudio.com/items?itemName=oracle-labs-graalvm.graalvm), which provides support for editing and debugging polyglot programs running on GraalVM. Please install it the same way.
 
-When installed, the Micronaut extension might check whether there is a registered GraalVM instance and eventually request to download it or point to a local installation (see [GraalVM  Installation and Setup in VS Code](../graalvm/README.md#graalvm-installation-and-setup)).
+When installed, the Micronaut extension might check whether there is a registered GraalVM instance and eventually request to download it or point to a local installation (see [GraalVM  Installation and Setup in VS Code](../graalvm/README.md#installation-and-setup)).
 
 Upon the installaiton, the Micronaut Tools Page window opens which provides you with shortcuts to create a new Micronaut project, or open an exisiting one; to build a native image of a Micronaut project; to acquaint you with available features and redirect to the documentation available.
 
@@ -68,13 +69,16 @@ The Create Micronaut Project command in VS Code supports generating Micronaut ap
   * provide a base package name
   * pick the project language (Java, Kotlin, Groovy)
   * pick the project features
+
   ![Micronaut Project Features](images/micronaut-project-features_view.png)
+
   * pick the build tool (Maven or Gradle)
   * pick the test framework (JUnit, Spock, Kotlintest)
 
 Finally, you are asked to select the destination folder on your local disk and whether to open the created project in new editor or add to the current workspace.
 
 The GUI part of the Micronaut extension adds a new view to the Explorer activity, which shows Micronaut projects in the current workspace:
+
 ![Micronaut Project Features](images/micronaut-project-features_view.png)
 
 ## Generate Native Images of Micronaut Projects
@@ -94,3 +98,13 @@ For more details, continue reading to the [Micronaut documentation](https://guid
 ## Privacy Policy
 
 Read the [Oracle Privacy Policy](https://www.oracle.com/legal/privacy/privacy-policy.html) to learn more.
+
+## Known Issues
+
+The Micronaut extension 0.5.0 is Technology Preview, meaning the functionality may not be complete.
+
+Please be informed that the subsequent runs of a Micronaut project may fail in this version.
+For example, you create a Gradle Micronaut project using GraalVM, run it with the Run / Run Without Debugging command (Ctrl+F5), and then terminate it. If you re-run the project again using the same Run / Run Without Debugging command (Ctrl+F5), startup may fail with this exception:
+```shell
+[main] ERROR i.m.h.server.netty.NettyHttpServer - Unable to start server. Port already 8080 in use.
+```
