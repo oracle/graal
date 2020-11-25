@@ -232,6 +232,8 @@ class EspressoShutdownHandler implements ContextAccess {
             assert !hostToGuestReferenceDrainThread.isAlive();
         }
 
+        context.getTimers().report(context.getLogger());
+
         throw new EspressoExitException(getExitStatus());
     }
 
