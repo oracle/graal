@@ -77,9 +77,7 @@ The Create Micronaut Project command in VS Code supports generating Micronaut ap
 
 Finally, you are asked to select the destination folder on your local disk and whether to open the created project in new editor or add to the current workspace.
 
-The GUI part of the Micronaut extension adds a new view to the Explorer activity, which shows Micronaut projects in the current workspace:
-
-![Micronaut Project Features](images/micronaut-project-features_view.png)
+The GUI part of the Micronaut extension adds a new view to the Explorer activity, which shows Micronaut projects in the current workspace.
 
 ## Generate Native Images of Micronaut Projects
 
