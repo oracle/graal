@@ -34,9 +34,9 @@ import sun.misc.Unsafe;
 public abstract class StringConversion {
     private static final Unsafe UNSAFE = UnsafeAccess.get();
 
-    private static final long String_value_offset;
-    private static final long String_hash_offset;
-    private static final long String_coder_offset;
+    private static final long hostValueOffset;
+    private static final long hostHashOffset;
+    private static final long hostCoderOffset;
 
     public abstract String toHost(StaticObject str, Meta meta);
 
@@ -47,9 +47,9 @@ public abstract class StringConversion {
 
     static {
         try {
-            String_value_offset = UNSAFE.objectFieldOffset(String.class.getDeclaredField("value"));
-            String_hash_offset = UNSAFE.objectFieldOffset(String.class.getDeclaredField("hash"));
-            String_coder_offset = JavaVersion.hostUsesCompactStrings()
+            hostValueOffset = UNSAFE.objectFieldOffset(String.class.getDeclaredField("value"));
+            hostHashOffset = UNSAFE.objectFieldOffset(String.class.getDeclaredField("hash"));
+            hostCoderOffset = JavaVersion.hostUsesCompactStrings()
                             ? UNSAFE.objectFieldOffset(String.class.getDeclaredField("coder"))
                             : -1;
         } catch (NoSuchFieldException e) {
@@ -106,19 +106,19 @@ public abstract class StringConversion {
     }
 
     private static char[] extractHostChars8(String str) {
-        return (char[]) UNSAFE.getObject(str, String_value_offset);
+        return (char[]) UNSAFE.getObject(str, hostValueOffset);
     }
 
     private static byte[] extractHostBytes11(String str) {
-        return (byte[]) UNSAFE.getObject(str, String_value_offset);
+        return (byte[]) UNSAFE.getObject(str, hostValueOffset);
     }
 
     private static int extractHostHash(String str) {
-        return UNSAFE.getInt(str, String_hash_offset);
+        return UNSAFE.getInt(str, hostHashOffset);
     }
 
     private static byte extractHostCoder(String str) {
-        return UNSAFE.getByte(str, String_coder_offset);
+        return UNSAFE.getByte(str, hostCoderOffset);
     }
 
     private static StaticObject produceGuestString8(Meta meta, char[] value, int hash) {
@@ -138,16 +138,16 @@ public abstract class StringConversion {
 
     private static String produceHostString8(char[] value, int hash) {
         String res = allocateHost();
-        UNSAFE.putInt(res, String_hash_offset, hash);
-        UNSAFE.putObjectVolatile(res, String_value_offset, value);
+        UNSAFE.putInt(res, hostHashOffset, hash);
+        UNSAFE.putObjectVolatile(res, hostValueOffset, value);
         return res;
     }
 
     private static String produceHostString11(byte[] value, int hash, byte coder) {
         String res = allocateHost();
-        UNSAFE.putInt(res, String_hash_offset, hash);
-        UNSAFE.putByte(res, String_coder_offset, coder);
-        UNSAFE.putObjectVolatile(res, String_value_offset, value);
+        UNSAFE.putInt(res, hostHashOffset, hash);
+        UNSAFE.putByte(res, hostCoderOffset, coder);
+        UNSAFE.putObjectVolatile(res, hostValueOffset, value);
         return res;
     }
 

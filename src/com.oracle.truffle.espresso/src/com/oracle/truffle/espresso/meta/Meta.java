@@ -1321,19 +1321,19 @@ public final class Meta implements ContextAccess {
         return klass;
     }
 
-    @SuppressWarnings("unused")
-    public static String toHostString(StaticObject str, int dummy) {
-        if (StaticObject.isNull(str)) {
-            return null;
-        }
-        return str.getKlass().getMeta().toHostString(str);
-    }
-
     public String toHostString(StaticObject str) {
         if (StaticObject.isNull(str)) {
             return null;
         }
         return stringConversion.toHost(str, this);
+    }
+
+    @TruffleBoundary
+    public static String toHostStringStatic(StaticObject str) {
+        if (StaticObject.isNull(str)) {
+            return null;
+        }
+        return str.getKlass().getMeta().toHostString(str);
     }
 
     public StaticObject toGuestString(Symbol<?> hostString) {

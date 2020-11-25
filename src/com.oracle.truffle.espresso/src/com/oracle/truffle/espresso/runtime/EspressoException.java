@@ -61,7 +61,7 @@ public final class EspressoException extends RuntimeException implements com.ora
     }
 
     public static String getMessage(StaticObject e) {
-        return Meta.toHostString((StaticObject) e.getKlass().lookupMethod(Name.getMessage, Signature.String).invokeDirect(e), 0);
+        return Meta.toHostStringStatic((StaticObject) e.getKlass().lookupMethod(Name.getMessage, Signature.String).invokeDirect(e));
     }
 
     @Override

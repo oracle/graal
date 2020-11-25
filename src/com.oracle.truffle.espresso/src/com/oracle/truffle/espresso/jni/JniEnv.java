@@ -1752,7 +1752,7 @@ public final class JniEnv extends NativeEnv implements ContextAccess {
             throw Meta.throwException(getMeta().java_lang_StringIndexOutOfBoundsException);
         }
         byte[] bytes = ModifiedUtf8.asUtf(getMeta().toHostString(str), start, len, true); // always
-                                                                                          // 0
+        // 0
         // terminated.
         ByteBuffer buf = directByteBuffer(bufPtr, bytes.length, JavaKind.Byte);
         buf.put(bytes);

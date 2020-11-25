@@ -140,7 +140,7 @@ public final class StaticObject implements TruffleObject {
         if (isNull(this)) {
             return null;
         }
-        return Meta.toHostString(this, 0);
+        return Meta.toHostStringStatic(this);
     }
 
     @ExportMessage
@@ -1221,7 +1221,7 @@ public final class StaticObject implements TruffleObject {
             if (instanceOf(this, meta.java_time_ZoneId)) {
                 int index = meta.java_time_ZoneId_getId.getVTableIndex();
                 StaticObject zoneIdEspresso = (StaticObject) getKlass().vtableLookup(index).invokeDirect(this);
-                String zoneId = Meta.toHostString(zoneIdEspresso, 0);
+                String zoneId = Meta.toHostStringStatic(zoneIdEspresso);
                 return ZoneId.of(zoneId, ZoneId.SHORT_IDS);
             } else if (instanceOf(this, meta.java_time_ZonedDateTime)) {
                 StaticObject zoneId = (StaticObject) meta.java_time_ZonedDateTime_getZone.invokeDirect(this);
@@ -1985,7 +1985,7 @@ public final class StaticObject implements TruffleObject {
                 // Prevents debugger crashes when trying to inspect a string in construction.
                 return "<UNINITIALIZED>";
             }
-            return meta.toHostString(this);
+            return Meta.toHostStringStatic(this);
         }
         if (isArray()) {
             return unwrap().toString();
@@ -2011,7 +2011,7 @@ public final class StaticObject implements TruffleObject {
                 // Prevents debugger crashes when trying to inspect a string in construction.
                 return "<UNINITIALIZED>";
             }
-            return Meta.toHostString(this, 0);
+            return Meta.toHostStringStatic(this);
         }
         if (isArray()) {
             return unwrap().toString();
