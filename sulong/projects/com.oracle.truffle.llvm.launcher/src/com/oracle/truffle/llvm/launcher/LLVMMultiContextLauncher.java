@@ -29,6 +29,7 @@
  */
 package com.oracle.truffle.llvm.launcher;
 
+import java.io.IOException;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.Iterator;
@@ -37,10 +38,11 @@ import java.util.Map;
 
 import org.graalvm.polyglot.Context;
 import org.graalvm.polyglot.Engine;
+import org.graalvm.polyglot.Source;
 
 public class LLVMMultiContextLauncher extends LLVMLauncher {
 
-    private static final int DEFAULT_NUMBER_OF_RUNS = 2;
+    private static final int DEFAULT_NUMBER_OF_RUNS = 1;
 
     private final Map<String, String> multiContextEngineOptions = new HashMap<>();
     private int numOfRuns = DEFAULT_NUMBER_OF_RUNS;
@@ -85,11 +87,27 @@ public class LLVMMultiContextLauncher extends LLVMLauncher {
 
     @Override
     protected int execute(Context.Builder contextBuilder) {
-        contextBuilder.engine(Engine.newBuilder().allowExperimentalOptions(true).options(multiContextEngineOptions).build());
-        int ret = 0;
-        for (int i = 0; i < numOfRuns; i++) {
-            ret = super.execute(contextBuilder);
+        if (numOfRuns <= 1) {
+            // Do not create the shared engine for the number of runs <= 1
+            contextBuilder.options(multiContextEngineOptions);
+        } else {
+            contextBuilder.engine(Engine.newBuilder().allowExperimentalOptions(true).options(multiContextEngineOptions).build());
         }
-        return ret;
+        if (numOfRuns == 0) {
+            // Create the context and close it right afterwards to trigger the compilation of AOT
+            // roots
+            try (Context context = contextBuilder.build()) {
+                context.eval(Source.newBuilder(getLanguageId(), file).build());
+                return 0;
+            } catch (IOException e) {
+                throw abort(String.format("Error loading file '%s' (%s)", file, e.getMessage()));
+            }
+        } else {
+            int ret = 0;
+            for (int i = 0; i < numOfRuns; i++) {
+                ret = super.execute(contextBuilder);
+            }
+            return ret;
+        }
     }
 }

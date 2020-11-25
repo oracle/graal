@@ -53,21 +53,6 @@ class SulongBenchmarkRule(mx_benchmark.StdOutRule):
             replacement=replacement)
 
     def parseResults(self, text):
-
-        # Prepending the summary lines by the run number
-        newText = ""
-        forkNum1 = 0
-        forkNum2 = 0
-        for line in text.splitlines():
-            if line.startswith("first"):
-                newText += "run " + str(forkNum1) + " " + line + "\n"
-                forkNum1 += 1
-            if line.startswith("last"):
-                newText += "run " + str(forkNum2) + " " + line + "\n"
-                forkNum2 += 1
-
-        text = newText
-
         def _parse_results_gen():
             for d in super(SulongBenchmarkRule, self).parseResults(text):
                 line = d.pop('line')
@@ -76,7 +61,6 @@ class SulongBenchmarkRule(mx_benchmark.StdOutRule):
                     r['score'] = value.strip()
                     r['iteration'] = str(iteration)
                     yield r
-
         return (x for x in _parse_results_gen())
 
 
@@ -145,6 +129,11 @@ class SulongBenchmarkSuite(VmBenchmarkSuite):
 
     def successPatterns(self):
         return [re.compile(r'^(### )?([a-zA-Z0-9\.\-_]+): +([0-9]+(?:\.[0-9]+)?)', re.MULTILINE)]
+
+    def flakySkipPatterns(self, benchmarks, bmSuiteArgs):
+        if any(a == "--multi-context-runs=0" for a in bmSuiteArgs):
+            return [re.compile(r'.*', re.MULTILINE)]
+        return []
 
     def rules(self, out, benchmarks, bmSuiteArgs):
         return [
@@ -400,6 +389,28 @@ class SulongMultiContextVm(SulongVm):
 
     def launcherName(self):
         return "llimul"
+
+    def run(self, cwd, args):
+        ret_code, out, vm_dims = super(SulongMultiContextVm, self).run(cwd, args)
+
+        # Prepending the summary lines by the run number
+        newText = ""
+        forkNum1 = 0
+        forkNum2 = 0
+        for line in out.splitlines():
+            if line.startswith("first"):
+                newText += "run " + str(forkNum1) + " " + line + "\n"
+                forkNum1 += 1
+                continue
+            if line.startswith("last"):
+                newText += "run " + str(forkNum2) + " " + line + "\n"
+                forkNum2 += 1
+                continue
+            newText += line + "\n"
+
+        out = newText
+
+        return ret_code, out, vm_dims
 
 
 _suite = mx.suite("sulong")
