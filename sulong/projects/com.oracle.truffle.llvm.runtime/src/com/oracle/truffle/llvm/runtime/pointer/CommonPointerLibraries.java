@@ -30,8 +30,8 @@
 package com.oracle.truffle.llvm.runtime.pointer;
 
 import com.oracle.truffle.api.CompilerDirectives;
-import com.oracle.truffle.api.TruffleLanguage;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
+import com.oracle.truffle.api.TruffleLanguage;
 import com.oracle.truffle.api.dsl.Cached;
 import com.oracle.truffle.api.dsl.Cached.Exclusive;
 import com.oracle.truffle.api.dsl.Cached.Shared;
@@ -63,7 +63,6 @@ import com.oracle.truffle.llvm.runtime.interop.export.LLVMForeignGetMemberPointe
 import com.oracle.truffle.llvm.runtime.interop.export.LLVMForeignReadNode;
 import com.oracle.truffle.llvm.runtime.interop.export.LLVMForeignWriteNode;
 import com.oracle.truffle.llvm.runtime.nodes.op.LLVMAddressEqualsNode;
-import com.oracle.truffle.llvm.runtime.nodes.others.LLVMAccessSymbolNode;
 import com.oracle.truffle.llvm.runtime.nodes.others.LLVMDynAccessSymbolNode;
 
 @ExportLibrary(value = InteropLibrary.class, receiverType = LLVMPointerImpl.class)
@@ -175,16 +174,16 @@ abstract class CommonPointerLibraries {
          */
         @Specialization(guards = {"asClazz(receiver)==clazz", "member.equals(methodName)", "argCount==arguments.length"})
         static Object doCached(LLVMPointerImpl receiver, String member, Object[] arguments,
-                        @CachedContext(LLVMLanguage.class) LLVMContext context, @CachedLibrary(limit = "5") InteropLibrary interop,
+                        @CachedContext(LLVMLanguage.class) LLVMContext context,
+                        @CachedLibrary(limit = "5") InteropLibrary interop,
                         @Cached(value = "asClazz(receiver)") LLVMInteropType.Clazz clazz,
                         @Cached(value = "clazz.findMethodByArguments(receiver, member, arguments)") Method method,
                         @Cached(value = "arguments.length") int argCount,
                         @Cached(value = "method.getName()") String methodName,
-                        @Cached(value = "getLLVMFunction(context, method, clazz, member)") LLVMFunction llvmFunction,
-                        @Cached(value = "new(llvmFunction)") LLVMAccessSymbolNode accessSymbolNode)
+                        @Cached(value = "getLLVMFunction(context, method, clazz, member)") LLVMFunction llvmFunction)
                         throws UnsupportedMessageException, ArityException, UnsupportedTypeException {
             Object[] newArguments = addSelfObject(receiver, arguments);
-            return interop.execute(accessSymbolNode.execute(), newArguments);
+            return interop.execute(context.getSymbol(llvmFunction), newArguments);
         }
 
         @Specialization(replaces = "doCached")

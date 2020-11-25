@@ -29,31 +29,31 @@
  */
 package com.oracle.truffle.llvm.runtime.nodes.others;
 
-import com.oracle.truffle.api.Assumption;
 import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
-import com.oracle.truffle.api.TruffleLanguage.ContextReference;
+import com.oracle.truffle.api.dsl.CachedContext;
+import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.llvm.runtime.LLVMAlias;
 import com.oracle.truffle.llvm.runtime.LLVMContext;
 import com.oracle.truffle.llvm.runtime.LLVMLanguage;
 import com.oracle.truffle.llvm.runtime.LLVMSymbol;
-import com.oracle.truffle.llvm.runtime.debug.scope.LLVMSourceLocation;
+import com.oracle.truffle.llvm.runtime.memory.LLVMStack;
 import com.oracle.truffle.llvm.runtime.memory.LLVMStack.LLVMStackAccess;
 import com.oracle.truffle.llvm.runtime.nodes.api.LLVMExpressionNode;
 import com.oracle.truffle.llvm.runtime.nodes.func.LLVMRootNode;
-import com.oracle.truffle.llvm.runtime.pointer.LLVMPointer;
 
+/**
+ * Returns the value of a given symbol for the current context. This node behaves differently for
+ * single context and multi context mode: In single context mode, the cached context will resolve to
+ * a constant, which is very efficient, but in multi context mode, it's more efficient to get the
+ * context from the {@link LLVMStack} stored in the frame.
+ */
 public abstract class LLVMAccessSymbolNode extends LLVMExpressionNode {
-
-    private boolean statement;
-    private LLVMSourceLocation sourceLocation;
 
     protected final LLVMSymbol symbol;
 
-    @CompilationFinal private Assumption singleContextAssumption;
     @CompilationFinal private LLVMStackAccess stackAccess;
-    @CompilationFinal private ContextReference<LLVMContext> contextRef;
 
     LLVMAccessSymbolNode(LLVMSymbol symbol) {
         this.symbol = LLVMAlias.resolveAlias(symbol);
@@ -68,47 +68,18 @@ public abstract class LLVMAccessSymbolNode extends LLVMExpressionNode {
         return symbol;
     }
 
-    public LLVMPointer execute() {
-        if (contextRef == null) {
-            CompilerDirectives.transferToInterpreterAndInvalidate();
-            contextRef = lookupContextReference(LLVMLanguage.class);
-        }
-        return contextRef.get().getSymbol(symbol);
+    @Specialization(assumptions = "singleContextAssumption()")
+    public Object accessSingleContext(
+                    @CachedContext(LLVMLanguage.class) LLVMContext context) {
+        return context.getSymbol(symbol);
     }
 
-    @Override
-    public Object executeGeneric(VirtualFrame frame) {
-        if (singleContextAssumption == null) {
-            CompilerDirectives.transferToInterpreterAndInvalidate();
-            singleContextAssumption = singleContextAssumption();
-        }
-        if (singleContextAssumption.isValid()) {
-            return execute();
-        }
+    @Specialization
+    public Object accessMultiContext(VirtualFrame frame) {
         if (stackAccess == null) {
             CompilerDirectives.transferToInterpreterAndInvalidate();
             stackAccess = ((LLVMRootNode) getRootNode()).getStackAccess();
         }
         return stackAccess.executeGetStack(frame).getContext().getSymbol(symbol);
-    }
-
-    @Override
-    public LLVMSourceLocation getSourceLocation() {
-        return sourceLocation;
-    }
-
-    @Override
-    public void setSourceLocation(LLVMSourceLocation sourceLocation) {
-        this.sourceLocation = sourceLocation;
-    }
-
-    @Override
-    protected boolean isStatement() {
-        return statement;
-    }
-
-    @Override
-    protected void setStatement(boolean statementTag) {
-        this.statement = statementTag;
     }
 }
