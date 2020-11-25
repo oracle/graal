@@ -43,6 +43,7 @@ public abstract class InvokeInterfaceNode extends QuickNode {
 
     final Method resolutionSeed;
     final Klass declaringKlass;
+    final int resultAt;
 
     static final int INLINE_CACHE_SIZE_LIMIT = 5;
 
@@ -69,6 +70,7 @@ public abstract class InvokeInterfaceNode extends QuickNode {
         assert !resolutionSeed.isStatic();
         this.resolutionSeed = resolutionSeed;
         this.declaringKlass = resolutionSeed.getDeclaringKlass();
+        this.resultAt = top - Signatures.slotsForParameters(resolutionSeed.getParsedSignature()) - 1; // -receiver
     }
 
     protected static MethodVersion methodLookup(StaticObject receiver, Method resolutionSeed, Klass declaringKlass) {
@@ -102,6 +104,6 @@ public abstract class InvokeInterfaceNode extends QuickNode {
     }
 
     private int getResultAt() {
-        return top - Signatures.slotsForParameters(resolutionSeed.getParsedSignature()) - 1; // -receiver
+        return resultAt;
     }
 }

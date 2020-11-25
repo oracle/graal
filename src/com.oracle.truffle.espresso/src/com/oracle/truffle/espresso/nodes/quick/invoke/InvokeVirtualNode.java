@@ -41,6 +41,7 @@ import com.oracle.truffle.espresso.runtime.StaticObject;
 public abstract class InvokeVirtualNode extends QuickNode {
 
     final Method resolutionSeed;
+    final int resultAt;
 
     static final int INLINE_CACHE_SIZE_LIMIT = 5;
 
@@ -61,7 +62,7 @@ public abstract class InvokeVirtualNode extends QuickNode {
         // vtable lookup.
         MethodVersion target = methodLookup(receiver, resolutionSeed);
         if (!target.getMethod().hasCode()) {
-            CompilerDirectives.transferToInterpreterAndInvalidate();
+            CompilerDirectives.transferToInterpreter();
             Meta meta = receiver.getKlass().getMeta();
             throw Meta.throwException(meta.java_lang_AbstractMethodError);
         }
@@ -72,6 +73,7 @@ public abstract class InvokeVirtualNode extends QuickNode {
         super(top, curBCI);
         assert !resolutionSeed.isStatic();
         this.resolutionSeed = resolutionSeed;
+        this.resultAt = top - Signatures.slotsForParameters(resolutionSeed.getParsedSignature()) - 1; // -receiver;
     }
 
     static MethodVersion methodLookup(StaticObject receiver, Method resolutionSeed) {
@@ -87,12 +89,10 @@ public abstract class InvokeVirtualNode extends QuickNode {
     }
 
     @Override
-    public final int execute(VirtualFrame frame, final OperandStack stack) {
+    public final int execute(VirtualFrame frame, OperandStack stack) {
         // Method signature does not change across methods.
         // Can safely use the constant signature from `resolutionSeed` instead of the non-constant
         // signature from the lookup.
-        // TODO(peterssen): Maybe refrain from exposing the whole root node?.
-        // TODO(peterssen): IsNull Node?.
         Object[] args = BytecodeNode.popArguments(stack, top, true, resolutionSeed.getParsedSignature());
         StaticObject receiver = nullCheck((StaticObject) args[0]);
         Object result = executeVirtual(receiver, args);
@@ -105,11 +105,11 @@ public abstract class InvokeVirtualNode extends QuickNode {
     }
 
     @Override
-    public boolean producedForeignObject(OperandStack stack) {
+    public final boolean producedForeignObject(OperandStack stack) {
         return resolutionSeed.getReturnKind().isObject() && BytecodeNode.peekObject(stack, getResultAt()).isForeignObject();
     }
 
     private int getResultAt() {
-        return top - Signatures.slotsForParameters(resolutionSeed.getParsedSignature()) - 1; // -receiver
+        return resultAt;
     }
 }

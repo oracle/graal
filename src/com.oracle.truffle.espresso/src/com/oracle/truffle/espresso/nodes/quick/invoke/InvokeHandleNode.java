@@ -38,6 +38,7 @@ import com.oracle.truffle.espresso.nodes.quick.QuickNode;
 public final class InvokeHandleNode extends QuickNode {
 
     private final Method method;
+    final int resultAt;
 
     @CompilationFinal(dimensions = 1) //
     private final Symbol<Type>[] parsedSignature;
@@ -57,6 +58,7 @@ public final class InvokeHandleNode extends QuickNode {
         this.argCount = method.getParameterCount() + (method.isStatic() ? 0 : 1) + (method.isInvokeIntrinsic() ? 1 : 0);
         this.parameterCount = method.getParameterCount();
         this.rKind = method.getReturnKind();
+        this.resultAt = top - Signatures.slotsForParameters(method.getParsedSignature()) - (hasReceiver ? 1 : 0); // -receiver
     }
 
     @Override
@@ -76,6 +78,6 @@ public final class InvokeHandleNode extends QuickNode {
     }
 
     private int getResultAt() {
-        return top - Signatures.slotsForParameters(method.getParsedSignature()) - (hasReceiver ? 1 : 0); // -receiver
+        return resultAt;
     }
 }
