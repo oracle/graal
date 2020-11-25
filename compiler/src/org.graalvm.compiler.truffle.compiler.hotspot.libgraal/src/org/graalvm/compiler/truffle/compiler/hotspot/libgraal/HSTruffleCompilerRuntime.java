@@ -207,8 +207,12 @@ final class HSTruffleCompilerRuntime extends HSObject implements HotSpotTruffleC
     @TruffleFromLibGraal(IsBytecodeInterpreterSwitch)
     @Override
     public boolean isBytecodeInterpreterSwitch(ResolvedJavaMethod method) {
-        MethodCache cache = getMethodCache(method);
-        return cache.isBytecodeInterpreterSwitch;
+        if (JNILibGraalScope.scope() != null) {
+            MethodCache cache = getMethodCache(method);
+            return cache.isBytecodeInterpreterSwitch;
+        } else {
+            return false;
+        }
     }
 
     private boolean isBytecodeInterpreterSwitchImpl(ResolvedJavaMethod method) {
@@ -218,8 +222,12 @@ final class HSTruffleCompilerRuntime extends HSObject implements HotSpotTruffleC
     @TruffleFromLibGraal(IsBytecodeInterpreterSwitchBoundary)
     @Override
     public boolean isBytecodeInterpreterSwitchBoundary(ResolvedJavaMethod method) {
-        MethodCache cache = getMethodCache(method);
-        return cache.isBytecodeInterpreterSwitchBoundary;
+        if (JNILibGraalScope.scope() != null) {
+            MethodCache cache = getMethodCache(method);
+            return cache.isBytecodeInterpreterSwitchBoundary;
+        } else {
+            return false;
+        }
     }
 
     private boolean isBytecodeInterpreterSwitchBoundaryImpl(ResolvedJavaMethod method) {
