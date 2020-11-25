@@ -23,9 +23,9 @@
 
 package com.oracle.truffle.espresso.analysis.liveness.actions;
 
-import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.espresso.analysis.liveness.LocalVariableAction;
 import com.oracle.truffle.espresso.nodes.BytecodeNode;
+import com.oracle.truffle.espresso.nodes.Locals;
 
 public final class NullOutAction extends LocalVariableAction {
     private static final int MAX_CACHE = 256;
@@ -56,8 +56,8 @@ public final class NullOutAction extends LocalVariableAction {
     }
 
     @Override
-    public void execute(VirtualFrame frame, BytecodeNode node) {
-        node.freeLocal(frame, local);
+    public void execute(Locals locals) {
+        BytecodeNode.freeLocal(locals, local);
     }
 
     @Override
