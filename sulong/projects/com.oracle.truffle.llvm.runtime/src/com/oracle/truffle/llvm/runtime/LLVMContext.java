@@ -695,26 +695,28 @@ public final class LLVMContext {
         throw new LLVMLinkerException(String.format("External %s %s cannot be found.", symbol.getKind(), symbol.getName()));
     }
 
-    public boolean setSymbol(LLVMSymbol symbol, LLVMPointer value) {
+    public void setSymbol(LLVMSymbol symbol, LLVMPointer value) {
         CompilerAsserts.neverPartOfCompilation();
-        int bitcodeID = symbol.getBitcodeID(false);
+        LLVMSymbol target = symbol;
+        while (target.isAlias()) {
+            target = ((LLVMAlias) target).getTarget();
+        }
+        int bitcodeID = target.getBitcodeID(false);
         LLVMPointer[] symbols = symbolDynamicStorage[bitcodeID];
         Assumption[] assumptions = symbolAssumptions[bitcodeID];
         synchronized (symbols) {
             try {
-                int index = symbol.getSymbolIndex(false);
+                int index = target.getSymbolIndex(false);
                 symbols[index] = value;
                 assumptions[index].invalidate();
                 assumptions[index] = Truffle.getRuntime().createAssumption();
-                if (symbol instanceof LLVMFunction) {
-                    ((LLVMFunction) symbol).setValue(value);
+                if (target instanceof LLVMFunction) {
+                    ((LLVMFunction) target).setValue(value);
                 }
-                return true;
             } catch (LLVMIllegalSymbolIndexException e) {
-                // fallthrough
+                throw CompilerDirectives.shouldNotReachHere("symbol to be replaced was not found: " + target);
             }
         }
-        return false;
     }
 
     @SuppressWarnings({"unchecked", "rawtypes"})
