@@ -44,7 +44,7 @@ import com.oracle.truffle.llvm.runtime.nodes.api.LLVMExpressionNode;
 import com.oracle.truffle.llvm.runtime.nodes.func.LLVMRootNode;
 import com.oracle.truffle.llvm.runtime.pointer.LLVMPointer;
 
-public final class LLVMAccessSymbolNode extends LLVMExpressionNode {
+public abstract class LLVMAccessSymbolNode extends LLVMExpressionNode {
 
     private boolean statement;
     private LLVMSourceLocation sourceLocation;
@@ -55,16 +55,8 @@ public final class LLVMAccessSymbolNode extends LLVMExpressionNode {
     @CompilationFinal private LLVMStackAccess stackAccess;
     @CompilationFinal private ContextReference<LLVMContext> contextRef;
 
-    public LLVMAccessSymbolNode(LLVMSymbol symbol) {
-        this.symbol = resolveAlias(symbol);
-    }
-
-    public static LLVMSymbol resolveAlias(LLVMSymbol symbol) {
-        LLVMSymbol tmp = symbol;
-        while (tmp.isAlias()) {
-            tmp = ((LLVMAlias) tmp).getTarget();
-        }
-        return tmp;
+    LLVMAccessSymbolNode(LLVMSymbol symbol) {
+        this.symbol = LLVMAlias.resolveAlias(symbol);
     }
 
     @Override

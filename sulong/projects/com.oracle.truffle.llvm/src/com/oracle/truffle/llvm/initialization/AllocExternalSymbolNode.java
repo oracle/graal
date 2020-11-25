@@ -114,10 +114,7 @@ public abstract class AllocExternalSymbolNode extends LLVMNode {
                         @SuppressWarnings("unused") LLVMIntrinsicProvider intrinsicProvider,
                         @SuppressWarnings("unused") NativeContextExtension nativeContextExtension,
                         LLVMContext context) {
-            LLVMSymbol function = localScope.get(symbol.getName());
-            while (function.isAlias()) {
-                function = ((LLVMAlias) function).getTarget();
-            }
+            LLVMSymbol function = LLVMAlias.resolveAlias(localScope.get(symbol.getName()));
             LLVMPointer pointer = context.getSymbol(function);
             context.registerSymbol(symbol, pointer);
             return pointer;
@@ -171,11 +168,8 @@ public abstract class AllocExternalSymbolNode extends LLVMNode {
                             @SuppressWarnings("unused") LLVMIntrinsicProvider intrinsicProvider,
                             @SuppressWarnings("unused") NativeContextExtension nativeContextExtension,
                             LLVMContext context) {
-                LLVMSymbol function = globalScope.get(symbol.getName());
+                LLVMSymbol function = LLVMAlias.resolveAlias(globalScope.get(symbol.getName()));
                 assert function.isFunction();
-                while (function.isAlias()) {
-                    function = ((LLVMAlias) function).getTarget();
-                }
                 LLVMPointer pointer = context.getSymbol(function);
                 context.registerSymbol(symbol, pointer);
                 return pointer;

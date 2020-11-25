@@ -697,10 +697,7 @@ public final class LLVMContext {
 
     public void setSymbol(LLVMSymbol symbol, LLVMPointer value) {
         CompilerAsserts.neverPartOfCompilation();
-        LLVMSymbol target = symbol;
-        while (target.isAlias()) {
-            target = ((LLVMAlias) target).getTarget();
-        }
+        LLVMSymbol target = LLVMAlias.resolveAlias(symbol);
         int bitcodeID = target.getBitcodeID(false);
         LLVMPointer[] symbols = symbolDynamicStorage[bitcodeID];
         Assumption[] assumptions = symbolAssumptions[bitcodeID];
