@@ -285,8 +285,6 @@ abstract class ToHostNode extends Node {
                 return false;
             }
             return true;
-        } else if (targetType == Object.class) {
-            return true;
         } else if (targetType == Value.class && languageContext != null) {
             return true;
         } else if (isPrimitiveTarget(targetType)) {
@@ -303,6 +301,10 @@ abstract class ToHostNode extends Node {
             return false;
         }
 
+        if (targetType == Object.class) {
+            return true;
+        }
+
         if (isPrimitiveTarget(targetType)) {
             Object convertedValue = convertLossy(value, targetType, interop);
             if (convertedValue != null) {
@@ -314,6 +316,8 @@ abstract class ToHostNode extends Node {
             return interop.hasMembers(value);
         } else if (targetType.isArray()) {
             return interop.hasArrayElements(value);
+        } else if (targetType == Function.class) {
+            return interop.isExecutable(value) || interop.isInstantiable(value);
         } else if (targetType == LocalDate.class) {
             return interop.isDate(value);
         } else if (targetType == LocalTime.class) {
