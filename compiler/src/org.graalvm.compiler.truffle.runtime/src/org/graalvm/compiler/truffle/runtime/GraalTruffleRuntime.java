@@ -111,7 +111,6 @@ import com.oracle.truffle.api.nodes.UnexpectedResultException;
 import com.oracle.truffle.api.object.LayoutFactory;
 import com.oracle.truffle.api.profiles.BranchProfile;
 import com.oracle.truffle.api.profiles.ConditionProfile;
-import java.util.function.Predicate;
 
 import jdk.vm.ci.code.BailoutException;
 import jdk.vm.ci.code.stack.InspectedFrame;
@@ -164,7 +163,6 @@ public abstract class GraalTruffleRuntime implements TruffleRuntime, TruffleComp
     private final EngineCacheSupport engineCacheSupport;
     private final UnmodifiableEconomicMap<String, Class<?>> lookupTypes;
     private final OptionDescriptors engineOptions;
-    private final Predicate<ResolvedJavaMethod> instrumentedFilter;
 
     public GraalTruffleRuntime(Iterable<Class<?>> extraLookupTypes) {
         this.lookupTypes = initLookupTypes(extraLookupTypes);
@@ -174,7 +172,6 @@ public abstract class GraalTruffleRuntime implements TruffleRuntime, TruffleComp
         this.engineCacheSupport = support == null ? new EngineCacheSupport.Disabled() : support;
         options.add(PolyglotCompilerOptions.getDescriptors());
         this.engineOptions = OptionDescriptors.createUnion(options.toArray(new OptionDescriptors[options.size()]));
-        this.instrumentedFilter = JFRListener.createInstrumentedMethodFilter();
     }
 
     @Override
@@ -982,7 +979,7 @@ public abstract class GraalTruffleRuntime implements TruffleRuntime, TruffleComp
             }
         } else if (getAnnotation(TruffleCallBoundary.class, original) != null) {
             return InlineKind.DO_NOT_INLINE_WITH_EXCEPTION;
-        } else if (instrumentedFilter.test(original)) {
+        } else if (JFRListener.isInstrumented(original)) {
             return InlineKind.DO_NOT_INLINE_WITH_EXCEPTION;
         }
         return InlineKind.INLINE;
