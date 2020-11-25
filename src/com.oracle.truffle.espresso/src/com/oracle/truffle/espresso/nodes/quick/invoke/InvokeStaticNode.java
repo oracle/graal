@@ -43,12 +43,15 @@ public final class InvokeStaticNode extends QuickNode {
 
     @Child private DirectCallNode directCallNode;
 
+    final int resultAt;
+
     public InvokeStaticNode(Method method, int top, int curBCI) {
         super(top, curBCI);
         assert method.isStatic();
         this.method = method.getMethodVersion();
         this.callsDoPrivileged = method.getMeta().java_security_AccessController.equals(method.getDeclaringKlass()) &&
                         Name.doPrivileged.equals(method.getName());
+        this.resultAt = top - Signatures.slotsForParameters(method.getParsedSignature()); // no receiver
     }
 
     @Override
@@ -67,7 +70,6 @@ public final class InvokeStaticNode extends QuickNode {
             // stack frame iteration will see this node as parent
             directCallNode = insert(DirectCallNode.create(method.getMethod().getCallTarget()));
         }
-        Object[] args = BytecodeNode.popArguments(stack, top, false, method.getMethod().getParsedSignature());
 
         // Support for AccessController.doPrivileged*.
         if (callsDoPrivileged) {
@@ -78,6 +80,7 @@ public final class InvokeStaticNode extends QuickNode {
             }
         }
 
+        Object[] args = BytecodeNode.popArguments(stack, top, false, method.getMethod().getParsedSignature());
         Object result = directCallNode.call(args);
         return (getResultAt() - top) + BytecodeNode.putKind(stack, getResultAt(), result, method.getMethod().getReturnKind());
     }
@@ -88,8 +91,7 @@ public final class InvokeStaticNode extends QuickNode {
     }
 
     private int getResultAt() {
-        // no receiver
-        return top - Signatures.slotsForParameters(method.getMethod().getParsedSignature());
+        return resultAt;
     }
 
     @Override
