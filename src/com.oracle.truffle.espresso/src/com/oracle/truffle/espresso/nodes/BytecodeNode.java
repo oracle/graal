@@ -349,15 +349,19 @@ public final class BytecodeNode extends EspressoMethodNode {
     private static final DebugCounter EXECUTED_BYTECODES_COUNT = DebugCounter.create("Executed bytecodes");
     private static final DebugCounter QUICKENED_BYTECODES = DebugCounter.create("Quickened bytecodes");
     private static final DebugCounter QUICKENED_INVOKES = DebugCounter.create("Quickened invokes (excluding INDY)");
+    private static final DebugCounter[] BYTECODE_HISTOGRAM;
+
+    static {
+        BYTECODE_HISTOGRAM = new DebugCounter[0xFF];
+        for (int bc = 0; bc <= SLIM_QUICK; ++bc) {
+            BYTECODE_HISTOGRAM[bc] = DebugCounter.create(Bytecodes.nameOf(bc));
+        }
+    }
 
     @Children private QuickNode[] nodes = QuickNode.EMPTY_ARRAY;
     @Children private QuickNode[] sparseNodes = QuickNode.EMPTY_ARRAY;
 
-    @CompilationFinal(dimensions = 1) //
-    private final FrameSlot[] locals;
-
-    private final FrameSlot stackSlot;
-
+    private final FrameSlot localsSlot;
     private final FrameSlot bciSlot;
 
     @CompilationFinal(dimensions = 1) //
@@ -368,7 +372,7 @@ public final class BytecodeNode extends EspressoMethodNode {
 
     private final BytecodeStream bs;
 
-    private EspressoRootNode rootNode;
+    @CompilationFinal private EspressoRootNode rootNode;
 
     @Child private volatile InstrumentationSupport instrumentation;
 
@@ -379,25 +383,23 @@ public final class BytecodeNode extends EspressoMethodNode {
     // exception is thrown.
     @CompilationFinal private boolean implicitExceptionProfile;
 
-    public BytecodeNode(MethodVersion method, FrameDescriptor frameDescriptor, FrameSlot stackSlot, FrameSlot bciSlot) {
+    public BytecodeNode(MethodVersion method, FrameDescriptor frameDescriptor) {
         super(method);
         CompilerAsserts.neverPartOfCompilation();
         CodeAttribute codeAttribute = method.getCodeAttribute();
         this.bs = new BytecodeStream(codeAttribute.getCode());
-        FrameSlot[] slots = frameDescriptor.getSlots().toArray(new FrameSlot[0]);
-
-        this.locals = Arrays.copyOfRange(slots, 0, codeAttribute.getMaxLocals());
-        this.stackSlot = stackSlot;
-        this.bciSlot = bciSlot;
         this.stackOverflowErrorInfo = getMethod().getSOEHandlerInfo();
         // TODO(peterssen): Allocate new assumption iff there's a bytecode that can produce foreign
         // objects.
-        this.noForeignObjects = Truffle.getRuntime().createAssumption("noForeignObjects");
+        this.localsSlot = frameDescriptor.addFrameSlot("locals", FrameSlotKind.Object);
+        // this.stackSlot = frameDescriptor.addFrameSlot("stack", FrameSlotKind.Object);
+        this.bciSlot = frameDescriptor.addFrameSlot("bci", FrameSlotKind.Int);
+        this.noForeignObjects = NeverValidAssumption.INSTANCE; //Truffle.getRuntime().createAssumption("noForeignObjects");
         this.implicitExceptionProfile = false;
     }
 
     public BytecodeNode(BytecodeNode copy) {
-        this(copy.getMethodVersion(), copy.getRootNode().getFrameDescriptor(), copy.stackSlot, copy.bciSlot);
+        this(copy.getMethodVersion(), copy.getRootNode().getFrameDescriptor());
         getContext().getLogger().log(Level.FINE, "Copying node for {}", getMethod());
     }
 
@@ -417,49 +419,41 @@ public final class BytecodeNode extends EspressoMethodNode {
     }
 
     @ExplodeLoop
-    private void initArguments(final VirtualFrame frame) {
-        boolean hasReceiver = !getMethod().isStatic();
+    private void initArguments(Object[] arguments, Locals locals) {
+
         int argCount = Signatures.parameterCount(getMethod().getParsedSignature(), false);
 
         CompilerAsserts.partialEvaluationConstant(argCount);
-        CompilerAsserts.partialEvaluationConstant(locals.length);
+        //CompilerAsserts.partialEvaluationConstant(locals);
 
-        Object[] frameArguments = frame.getArguments();
-        Object[] arguments;
+        boolean hasReceiver = !getMethod().isStatic();
+        int receiverSlot = hasReceiver ? 1 : 0;
+        int curSlot = 0;
         if (hasReceiver) {
-            arguments = copyOfRange(frameArguments, 1, argCount + 1);
-        } else {
-            arguments = frameArguments;
-        }
-
-        assert arguments.length == argCount;
-
-        int n = 0;
-        if (hasReceiver) {
-            assert StaticObject.notNull((StaticObject) frameArguments[0]) : "null receiver in init arguments !";
-            StaticObject receiver = (StaticObject) frameArguments[0];
-            setLocalObject(frame, n, receiver);
+            assert StaticObject.notNull((StaticObject) arguments[0]) : "null receiver in init arguments !";
+            StaticObject receiver = (StaticObject) arguments[0];
+            setLocalObject(locals, curSlot, receiver);
             if (noForeignObjects.isValid() && receiver.isForeignObject()) {
                 CompilerDirectives.transferToInterpreterAndInvalidate();
                 noForeignObjects.invalidate();
             }
-            n += JavaKind.Object.getSlotCount();
+            curSlot += JavaKind.Object.getSlotCount();
         }
         for (int i = 0; i < argCount; ++i) {
             JavaKind expectedkind = Signatures.parameterKind(getMethod().getParsedSignature(), i);
             // @formatter:off
             switch (expectedkind) {
-                case Boolean : setLocalInt(frame, n, ((boolean) arguments[i]) ? 1 : 0); break;
-                case Byte    : setLocalInt(frame, n, ((byte) arguments[i]));            break;
-                case Short   : setLocalInt(frame, n, ((short) arguments[i]));           break;
-                case Char    : setLocalInt(frame, n, ((char) arguments[i]));            break;
-                case Int     : setLocalInt(frame, n, (int) arguments[i]);               break;
-                case Float   : setLocalFloat(frame, n, (float) arguments[i]);           break;
-                case Long    : setLocalLong(frame, n, (long) arguments[i]);             break;
-                case Double  : setLocalDouble(frame, n, (double) arguments[i]);         break;
+                case Boolean : setLocalInt(locals, curSlot, ((boolean) arguments[i + receiverSlot]) ? 1 : 0); break;
+                case Byte    : setLocalInt(locals, curSlot, ((byte) arguments[i + receiverSlot]));            break;
+                case Short   : setLocalInt(locals, curSlot, ((short) arguments[i + receiverSlot]));           break;
+                case Char    : setLocalInt(locals, curSlot, ((char) arguments[i + receiverSlot]));            break;
+                case Int     : setLocalInt(locals, curSlot, (int) arguments[i + receiverSlot]);               break;
+                case Float   : setLocalFloat(locals, curSlot, (float) arguments[i + receiverSlot]);           break;
+                case Long    : setLocalLong(locals, curSlot, (long) arguments[i + receiverSlot]);             break;
+                case Double  : setLocalDouble(locals, curSlot, (double) arguments[i + receiverSlot]);         break;
                 case Object  :
-                    setLocalObject(frame, n, (StaticObject) arguments[i]);
-                    if (noForeignObjects.isValid() && ((StaticObject) arguments[i]).isForeignObject()) {
+                    setLocalObject(locals, curSlot, (StaticObject) arguments[i + receiverSlot]);
+                    if (noForeignObjects.isValid() && ((StaticObject) arguments[i + receiverSlot]).isForeignObject()) {
                         CompilerDirectives.transferToInterpreterAndInvalidate();
                         noForeignObjects.invalidate();
                     }
@@ -469,9 +463,8 @@ public final class BytecodeNode extends EspressoMethodNode {
                     throw EspressoError.shouldNotReachHere("unexpected kind");
             }
             // @formatter:on
-            n += expectedkind.getSlotCount();
+            curSlot += expectedkind.getSlotCount();
         }
-        setBCI(frame, 0);
     }
 
     private void setBCI(VirtualFrame frame, int bci) {
@@ -543,63 +536,63 @@ public final class BytecodeNode extends EspressoMethodNode {
 
     // region Local accessors
 
-    private void setLocalObject(VirtualFrame frame, int slot, StaticObject value) {
-        frame.setObject(locals[slot], value);
+    private static void setLocalObject(Locals locals, int slot, StaticObject value) {
+        locals.putObject(slot, value);
     }
 
-    private void setLocalObjectOrReturnAddress(VirtualFrame frame, int slot, Object value) {
-        frame.setObject(locals[slot], value);
+    private static void setLocalObjectOrReturnAddress(Locals locals, int slot, Object value) {
+        locals.putRawObject(slot, value);
     }
 
-    private void setLocalInt(VirtualFrame frame, int slot, int value) {
-        frame.setLong(locals[slot], value);
+    private static void setLocalInt(Locals locals, int slot, int value) {
+        locals.putInt(slot, value);
     }
 
-    private void setLocalFloat(VirtualFrame frame, int slot, float value) {
-        frame.setLong(locals[slot], Float.floatToRawIntBits(value));
+    private static void setLocalFloat(Locals locals, int slot, float value) {
+        locals.putInt(slot, Float.floatToRawIntBits(value));
     }
 
-    private void setLocalLong(VirtualFrame frame, int slot, long value) {
-        frame.setLong(locals[slot], value);
+    private static void setLocalLong(Locals locals, int slot, long value) {
+        locals.putLong(slot, value);
     }
 
-    private void setLocalDouble(VirtualFrame frame, int slot, double value) {
-        frame.setLong(locals[slot], Double.doubleToRawLongBits(value));
+    private static void setLocalDouble(Locals locals, int slot, double value) {
+        locals.putLong(slot, Double.doubleToRawLongBits(value));
     }
 
-    private int getLocalInt(VirtualFrame frame, int slot) {
-        return (int) FrameUtil.getLongSafe(frame, locals[slot]);
+    private static int getLocalInt(Locals locals, int slot) {
+        return locals.peekInt(slot);
     }
 
-    private StaticObject getLocalObject(VirtualFrame frame, int slot) {
-        Object result = FrameUtil.getObjectSafe(frame, locals[slot]);
-        assert result instanceof StaticObject;
-        return (StaticObject) result;
+    private static StaticObject getLocalObject(Locals locals, int slot) {
+        return locals.peekObject(slot);
     }
 
-    private int getLocalReturnAddress(VirtualFrame frame, int slot) {
-        Object result = FrameUtil.getObjectSafe(frame, locals[slot]);
+    private static int getLocalReturnAddress(Locals locals, int slot) {
+        Object result = locals.peekRawObject(slot);
         assert result instanceof ReturnAddress;
         return ((ReturnAddress) result).getBci();
     }
 
-    private float getLocalFloat(VirtualFrame frame, int slot) {
-        return Float.intBitsToFloat((int) FrameUtil.getLongSafe(frame, locals[slot]));
+    private static float getLocalFloat(Locals locals, int slot) {
+        return Float.intBitsToFloat(locals.peekInt(slot));
     }
 
-    private long getLocalLong(VirtualFrame frame, int slot) {
-        return FrameUtil.getLongSafe(frame, locals[slot]);
+    private static long getLocalLong(Locals locals, int slot) {
+        return locals.peekLong(slot);
     }
 
-    private double getLocalDouble(VirtualFrame frame, int slot) {
-        return Double.longBitsToDouble(FrameUtil.getLongSafe(frame, locals[slot]));
+    private static double getLocalDouble(Locals locals, int slot) {
+        return Double.longBitsToDouble(locals.peekLong(slot));
     }
 
     // endregion Local accessors
 
     @Override
     void initializeBody(VirtualFrame frame) {
-        initArguments(frame);
+        final Locals locals = new Locals(getMethod().getMaxLocals());
+        frame.setObject(localsSlot, locals);
+        initArguments(frame.getArguments(), locals);
     }
 
     @Override
@@ -612,6 +605,15 @@ public final class BytecodeNode extends EspressoMethodNode {
         int nextStatementIndex = 0;
 
         final OperandStack stack = new OperandStack(getMethod().getMaxStackSize());
+        final Locals locals = (Locals) FrameUtil.getObjectSafe(frame, localsSlot);
+
+        CompilerDirectives.ensureVirtualized(stack);
+        CompilerDirectives.ensureVirtualized(locals);
+
+        setBCI(frame, curBCI);
+        // frame.setObject(stackSlot, stack);
+
+        final int[] loopCount = new int[]{0};
 
         if (instrument != null) {
             instrument.notifyEntry(frame);
@@ -674,32 +676,32 @@ public final class BytecodeNode extends EspressoMethodNode {
                     case LDC_W: // fall through
                     case LDC2_W: putPoolConstant(stack, top, bs.readCPI(curBCI), curOpcode); break;
 
-                    case ILOAD: putInt(stack, top, getLocalInt(frame, bs.readLocalIndex(curBCI))); break;
-                    case LLOAD: putLong(stack, top, getLocalLong(frame, bs.readLocalIndex(curBCI))); break;
-                    case FLOAD: putFloat(stack, top, getLocalFloat(frame, bs.readLocalIndex(curBCI))); break;
-                    case DLOAD: putDouble(stack, top, getLocalDouble(frame, bs.readLocalIndex(curBCI))); break;
-                    case ALOAD: putObject(stack, top, getLocalObject(frame, bs.readLocalIndex(curBCI))); break;
+                    case ILOAD: putInt(stack, top, getLocalInt(locals, bs.readLocalIndex(curBCI))); break;
+                    case LLOAD: putLong(stack, top, getLocalLong(locals, bs.readLocalIndex(curBCI))); break;
+                    case FLOAD: putFloat(stack, top, getLocalFloat(locals, bs.readLocalIndex(curBCI))); break;
+                    case DLOAD: putDouble(stack, top, getLocalDouble(locals, bs.readLocalIndex(curBCI))); break;
+                    case ALOAD: putObject(stack, top, getLocalObject(locals, bs.readLocalIndex(curBCI))); break;
 
                     case ILOAD_0: // fall through
                     case ILOAD_1: // fall through
                     case ILOAD_2: // fall through
-                    case ILOAD_3: putInt(stack, top, getLocalInt(frame, curOpcode - ILOAD_0)); break;
+                    case ILOAD_3: putInt(stack, top, getLocalInt(locals, curOpcode - ILOAD_0)); break;
                     case LLOAD_0: // fall through
                     case LLOAD_1: // fall through
                     case LLOAD_2: // fall through
-                    case LLOAD_3: putLong(stack, top, getLocalLong(frame, curOpcode - LLOAD_0)); break;
+                    case LLOAD_3: putLong(stack, top, getLocalLong(locals, curOpcode - LLOAD_0)); break;
                     case FLOAD_0: // fall through
                     case FLOAD_1: // fall through
                     case FLOAD_2: // fall through
-                    case FLOAD_3: putFloat(stack, top, getLocalFloat(frame, curOpcode - FLOAD_0)); break;
+                    case FLOAD_3: putFloat(stack, top, getLocalFloat(locals, curOpcode - FLOAD_0)); break;
                     case DLOAD_0: // fall through
                     case DLOAD_1: // fall through
                     case DLOAD_2: // fall through
-                    case DLOAD_3: putDouble(stack, top, getLocalDouble(frame, curOpcode - DLOAD_0)); break;
-                    case ALOAD_0: // fall through
+                    case DLOAD_3: putDouble(stack, top, getLocalDouble(locals, curOpcode - DLOAD_0)); break;
+                    case ALOAD_0: putObject(stack, top, getLocalObject(locals, 0)); break;
                     case ALOAD_1: // fall through
                     case ALOAD_2: // fall through
-                    case ALOAD_3: putObject(stack, top, getLocalObject(frame, curOpcode - ALOAD_0)); break;
+                    case ALOAD_3: putObject(stack, top, getLocalObject(locals, curOpcode - ALOAD_0)); break;
 
                     case IALOAD: // fall through
                     case LALOAD: // fall through
@@ -716,32 +718,32 @@ public final class BytecodeNode extends EspressoMethodNode {
                         }
                         break;
 
-                    case ISTORE: setLocalInt(frame, bs.readLocalIndex(curBCI), popInt(stack, top - 1)); break;
-                    case LSTORE: setLocalLong(frame, bs.readLocalIndex(curBCI), popLong(stack, top - 1)); break;
-                    case FSTORE: setLocalFloat(frame, bs.readLocalIndex(curBCI), popFloat(stack, top - 1)); break;
-                    case DSTORE: setLocalDouble(frame, bs.readLocalIndex(curBCI), popDouble(stack, top - 1)); break;
-                    case ASTORE: setLocalObjectOrReturnAddress(frame, bs.readLocalIndex(curBCI), popReturnAddressOrObject(stack, top - 1)); break;
+                    case ISTORE: setLocalInt(locals, bs.readLocalIndex(curBCI), popInt(stack, top - 1)); break;
+                    case LSTORE: setLocalLong(locals, bs.readLocalIndex(curBCI), popLong(stack, top - 1)); break;
+                    case FSTORE: setLocalFloat(locals, bs.readLocalIndex(curBCI), popFloat(stack, top - 1)); break;
+                    case DSTORE: setLocalDouble(locals, bs.readLocalIndex(curBCI), popDouble(stack, top - 1)); break;
+                    case ASTORE: setLocalObjectOrReturnAddress(locals, bs.readLocalIndex(curBCI), popReturnAddressOrObject(stack, top - 1)); break;
 
                     case ISTORE_0: // fall through
                     case ISTORE_1: // fall through
                     case ISTORE_2: // fall through
-                    case ISTORE_3: setLocalInt(frame, curOpcode - ISTORE_0, popInt(stack, top - 1)); break;
+                    case ISTORE_3: setLocalInt(locals, curOpcode - ISTORE_0, popInt(stack, top - 1)); break;
                     case LSTORE_0: // fall through
                     case LSTORE_1: // fall through
                     case LSTORE_2: // fall through
-                    case LSTORE_3: setLocalLong(frame, curOpcode - LSTORE_0, popLong(stack, top - 1)); break;
+                    case LSTORE_3: setLocalLong(locals, curOpcode - LSTORE_0, popLong(stack, top - 1)); break;
                     case FSTORE_0: // fall through
                     case FSTORE_1: // fall through
                     case FSTORE_2: // fall through
-                    case FSTORE_3: setLocalFloat(frame, curOpcode - FSTORE_0, popFloat(stack, top - 1)); break;
+                    case FSTORE_3: setLocalFloat(locals, curOpcode - FSTORE_0, popFloat(stack, top - 1)); break;
                     case DSTORE_0: // fall through
                     case DSTORE_1: // fall through
                     case DSTORE_2: // fall through
-                    case DSTORE_3: setLocalDouble(frame, curOpcode - DSTORE_0, popDouble(stack, top - 1)); break;
+                    case DSTORE_3: setLocalDouble(locals, curOpcode - DSTORE_0, popDouble(stack, top - 1)); break;
                     case ASTORE_0: // fall through
                     case ASTORE_1: // fall through
                     case ASTORE_2: // fall through
-                    case ASTORE_3: setLocalObjectOrReturnAddress(frame, curOpcode - ASTORE_0, popReturnAddressOrObject(stack, top - 1)); break;
+                    case ASTORE_3: setLocalObjectOrReturnAddress(locals, curOpcode - ASTORE_0, popReturnAddressOrObject(stack, top - 1)); break;
 
                     case IASTORE: // fall through
                     case LASTORE: // fall through
@@ -815,7 +817,7 @@ public final class BytecodeNode extends EspressoMethodNode {
                     case IXOR: putInt(stack, top - 2, popInt(stack, top - 1) ^ popInt(stack, top - 2)); break;
                     case LXOR: putLong(stack, top - 4, popLong(stack, top - 1) ^ popLong(stack, top - 3)); break;
 
-                    case IINC: setLocalInt(frame, bs.readLocalIndex(curBCI), getLocalInt(frame, bs.readLocalIndex(curBCI)) + bs.readIncrement(curBCI)); break;
+                    case IINC: setLocalInt(locals, bs.readLocalIndex(curBCI), getLocalInt(locals, bs.readLocalIndex(curBCI)) + bs.readIncrement(curBCI)); break;
 
                     case I2L: putLong(stack, top - 1, popInt(stack, top - 1)); break;
                     case I2F: putFloat(stack, top - 1, popInt(stack, top - 1)); break;
@@ -869,7 +871,7 @@ public final class BytecodeNode extends EspressoMethodNode {
                         if (takeBranch(stack, top, curOpcode)) {
                             int targetBCI = bs.readBranchDest(curBCI);
                             CompilerAsserts.partialEvaluationConstant(targetBCI);
-                            checkBackEdge(curBCI, targetBCI, top, curOpcode);
+                            checkBackEdge(curBCI, targetBCI, curOpcode, loopCount);
                             if (instrument != null) {
                                 nextStatementIndex = instrument.getStatementIndexAfterJump(statementIndex, curBCI, targetBCI);
                             }
@@ -884,7 +886,7 @@ public final class BytecodeNode extends EspressoMethodNode {
                         putReturnAddress(stack, top, bs.nextBCI(curBCI));
                         int targetBCI = bs.readBranchDest(curBCI);
                         CompilerAsserts.partialEvaluationConstant(targetBCI);
-                        checkBackEdge(curBCI, targetBCI, top, curOpcode);
+                        checkBackEdge(curBCI, targetBCI, curOpcode, loopCount);
                         if (instrument != null) {
                             nextStatementIndex = instrument.getStatementIndexAfterJump(statementIndex, curBCI, targetBCI);
                         }
@@ -893,7 +895,7 @@ public final class BytecodeNode extends EspressoMethodNode {
                         continue loop;
                     }
                     case RET: {
-                        int targetBCI = getLocalReturnAddress(frame, bs.readLocalIndex(curBCI));
+                        int targetBCI = getLocalReturnAddress(locals, bs.readLocalIndex(curBCI));
                         if (jsrBci == null) {
                             CompilerDirectives.transferToInterpreterAndInvalidate();
                             jsrBci = new int[bs.endBCI()][];
@@ -907,7 +909,7 @@ public final class BytecodeNode extends EspressoMethodNode {
                                 CompilerAsserts.partialEvaluationConstant(jsr);
                                 targetBCI = jsr;
                                 CompilerAsserts.partialEvaluationConstant(targetBCI);
-                                checkBackEdge(curBCI, targetBCI, top, curOpcode);
+                                checkBackEdge(curBCI, targetBCI, curOpcode, loopCount);
                                 if (instrument != null) {
                                     nextStatementIndex = instrument.getStatementIndexAfterJump(statementIndex, curBCI, targetBCI);
                                 }
@@ -920,7 +922,7 @@ public final class BytecodeNode extends EspressoMethodNode {
                         jsrBci[curBCI] = Arrays.copyOf(jsrBci[curBCI], jsrBci[curBCI].length + 1);
                         jsrBci[curBCI][jsrBci[curBCI].length - 1] = targetBCI;
                         CompilerAsserts.partialEvaluationConstant(targetBCI);
-                        checkBackEdge(curBCI, targetBCI, top, curOpcode);
+                        checkBackEdge(curBCI, targetBCI, curOpcode, loopCount);
                         if (instrument != null) {
                             nextStatementIndex = instrument.getStatementIndexAfterJump(statementIndex, curBCI, targetBCI);
                         }
@@ -945,7 +947,7 @@ public final class BytecodeNode extends EspressoMethodNode {
                                 targetBCI = switchHelper.defaultTarget(bs, curBCI);
                             }
                             CompilerAsserts.partialEvaluationConstant(targetBCI);
-                            checkBackEdge(curBCI, targetBCI, top, curOpcode);
+                            checkBackEdge(curBCI, targetBCI, curOpcode, loopCount);
                             if (instrument != null) {
                                 nextStatementIndex = instrument.getStatementIndexAfterJump(statementIndex, curBCI, targetBCI);
                             }
@@ -961,7 +963,7 @@ public final class BytecodeNode extends EspressoMethodNode {
                                 // Key found.
                                 int targetBCI = switchHelper.targetAt(bs, curBCI, i - low);
                                 CompilerAsserts.partialEvaluationConstant(targetBCI);
-                                checkBackEdge(curBCI, targetBCI, top, curOpcode);
+                                checkBackEdge(curBCI, targetBCI, curOpcode, loopCount);
                                 if (instrument != null) {
                                     nextStatementIndex = instrument.getStatementIndexAfterJump(statementIndex, curBCI, targetBCI);
                                 }
@@ -974,7 +976,7 @@ public final class BytecodeNode extends EspressoMethodNode {
                         // Key not found.
                         int targetBCI = switchHelper.defaultTarget(bs, curBCI);
                         CompilerAsserts.partialEvaluationConstant(targetBCI);
-                        checkBackEdge(curBCI, targetBCI, top, curOpcode);
+                        checkBackEdge(curBCI, targetBCI, curOpcode, loopCount);
                         if (instrument != null) {
                             nextStatementIndex = instrument.getStatementIndexAfterJump(statementIndex, curBCI, targetBCI);
                         }
@@ -998,7 +1000,7 @@ public final class BytecodeNode extends EspressoMethodNode {
                                 // Key found.
                                 int targetBCI = curBCI + switchHelper.offsetAt(bs, curBCI, mid);
                                 CompilerAsserts.partialEvaluationConstant(targetBCI);
-                                checkBackEdge(curBCI, targetBCI, top, curOpcode);
+                                checkBackEdge(curBCI, targetBCI, curOpcode, loopCount);
                                 if (instrument != null) {
                                     nextStatementIndex = instrument.getStatementIndexAfterJump(statementIndex, curBCI, targetBCI);
                                 }
@@ -1011,7 +1013,7 @@ public final class BytecodeNode extends EspressoMethodNode {
                         // Key not found.
                         int targetBCI = switchHelper.defaultTarget(bs, curBCI);
                         CompilerAsserts.partialEvaluationConstant(targetBCI);
-                        checkBackEdge(curBCI, targetBCI, top, curOpcode);
+                        checkBackEdge(curBCI, targetBCI, curOpcode, loopCount);
                         if (instrument != null) {
                             nextStatementIndex = instrument.getStatementIndexAfterJump(statementIndex, curBCI, targetBCI);
                         }
@@ -1124,7 +1126,7 @@ public final class BytecodeNode extends EspressoMethodNode {
                                 putObject(stack, 0, wrappedStackOverflowError.getExceptionObject());
                                 top++;
                                 int targetBCI = stackOverflowErrorInfo[i + 2];
-                                checkBackEdge(curBCI, targetBCI, top, NOP);
+                                checkBackEdge(curBCI, targetBCI, NOP, loopCount);
                                 if (instrument != null) {
                                     nextStatementIndex = instrument.getStatementIndexAfterJump(statementIndex, curBCI, targetBCI);
                                 }
@@ -1171,7 +1173,7 @@ public final class BytecodeNode extends EspressoMethodNode {
                         putObject(stack, 0, wrappedException.getExceptionObject());
                         top++;
                         int targetBCI = handler.getHandlerBCI();
-                        checkBackEdge(curBCI, targetBCI, top, NOP);
+                        checkBackEdge(curBCI, targetBCI, NOP, loopCount);
                         if (instrument != null) {
                             nextStatementIndex = instrument.getStatementIndexAfterJump(statementIndex, curBCI, targetBCI);
                         }
@@ -1213,6 +1215,7 @@ public final class BytecodeNode extends EspressoMethodNode {
 
     private EspressoRootNode getRoot() {
         if (rootNode == null) {
+            CompilerDirectives.transferToInterpreterAndInvalidate();
             rootNode = (EspressoRootNode) getRootNode();
         }
         return rootNode;
@@ -1396,20 +1399,18 @@ public final class BytecodeNode extends EspressoMethodNode {
         }
     }
 
-    private int checkBackEdge(int curBCI, int targetBCI, int top, int opcode) {
-        int newTop = top + Bytecodes.stackEffectOf(opcode);
+    private void checkBackEdge(int curBCI, int targetBCI, int opcode, int[] loopCount) {
         if (targetBCI <= curBCI) {
-            checkStopping(curBCI, targetBCI);
-            LoopNode.reportLoopCount(this, 1);
+            checkStopping();
+            if ((++loopCount[0] & 0x3F) == 0) {
+                LoopNode.reportLoopCount(this, curBCI - targetBCI);
+            }
         }
-        return newTop;
     }
 
-    private void checkStopping(int curBCI, int targetBCI) {
+    private void checkStopping() {
         if (getContext().shouldCheckDeprecationStatus()) {
-            if (targetBCI <= curBCI) {
-                Target_java_lang_Thread.checkDeprecatedState(getMeta(), getContext().getCurrentThread());
-            }
+            Target_java_lang_Thread.checkDeprecatedState(getMeta(), getContext().getCurrentThread());
         }
     }
 
@@ -1434,16 +1435,6 @@ public final class BytecodeNode extends EspressoMethodNode {
             }
         }
         return resolved;
-    }
-
-    @ExplodeLoop
-    private static Object[] copyOfRange(Object[] src, int from, int toExclusive) {
-        int len = toExclusive - from;
-        Object[] dst = new Object[len];
-        for (int i = 0; i < len; ++i) {
-            dst[i] = src[i + from];
-        }
-        return dst;
     }
 
     private void putPoolConstant(OperandStack stack, int top, char cpi, int opcode) {
