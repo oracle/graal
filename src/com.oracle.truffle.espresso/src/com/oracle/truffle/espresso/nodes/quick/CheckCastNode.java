@@ -50,7 +50,7 @@ public class CheckCastNode extends QuickNode {
     }
 
     @Override
-    public final int execute(VirtualFrame frame, final OperandStack stack) {
+    public final int execute(VirtualFrame frame, OperandStack stack) {
         BytecodeNode root = getBytecodesNode();
         StaticObject receiver = stack.peekObject(top - 1);
         if (StaticObject.isNull(receiver) || typeCheckNode.executeTypeCheck(typeToCheck, receiver.getKlass())) {
