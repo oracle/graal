@@ -51,14 +51,17 @@ final class PolyglotContextThreadLocal extends ThreadLocal<Object> {
     private final Assumption singleThread = Truffle.getRuntime().createAssumption("single thread");
     private volatile PolyglotContextImpl activeSingleContext;
     private PolyglotContextImpl activeSingleContextNonVolatile;
-    @CompilationFinal private volatile Thread activeSingleThread;
+    @CompilationFinal private volatile Thread activeSingleThreadCompilationFinal;
+    private volatile Thread activeSingleThread;
+    @CompilationFinal private volatile boolean compilationFinalThread = true;
 
     @Override
     protected Object initialValue() {
-        if (Thread.currentThread() == activeSingleThread) {
+        if (Thread.currentThread() == getSingleThread()) {
             // must only happen once
             Object context = activeSingleContext;
             activeSingleContext = null;
+            activeSingleThreadCompilationFinal = null;
             activeSingleThread = null;
             activeSingleContextNonVolatile = null;
             return context;
@@ -66,10 +69,44 @@ final class PolyglotContextThreadLocal extends ThreadLocal<Object> {
         return null;
     }
 
+    /**
+     * Enabled when any engine was configured for storing for the first time.
+     */
+    public void enableStore() {
+        if (singleThread.isValid() && compilationFinalThread) {
+            Thread t = getSingleThread();
+            /*
+             * We cannot embed the thread as a constant if we plant to write the engine to disk.
+             *
+             * Since we enable store before we run or compile any code we can switch this using a
+             * boolean instead of an assumption. This avoids deoptimizing unnecessarily if other
+             * contexts were used in the same VM.
+             */
+            compilationFinalThread = false;
+            setSingleThread(t);
+        }
+    }
+
+    private void setSingleThread(Thread t) {
+        if (compilationFinalThread) {
+            activeSingleThreadCompilationFinal = t;
+        } else {
+            activeSingleThread = t;
+        }
+    }
+
+    private Thread getSingleThread() {
+        if (compilationFinalThread) {
+            return activeSingleThreadCompilationFinal;
+        } else {
+            return activeSingleThread;
+        }
+    }
+
     public boolean isSet() {
         if (singleThread.isValid()) {
             boolean set = activeSingleContext != null;
-            return Thread.currentThread() == activeSingleThread && set;
+            return Thread.currentThread() == getSingleThread() && set;
         } else {
             return getTL() != null;
         }
@@ -81,7 +118,7 @@ final class PolyglotContextThreadLocal extends ThreadLocal<Object> {
      */
     public Object getEntered() {
         if (singleThread.isValid()) {
-            assert Thread.currentThread() == activeSingleThread : failIllegalState();
+            assert Thread.currentThread() == getSingleThread() : failIllegalState();
             return activeSingleContextNonVolatile;
         } else {
             return getTL();
@@ -96,7 +133,7 @@ final class PolyglotContextThreadLocal extends ThreadLocal<Object> {
     public Object get() {
         Object context;
         if (singleThread.isValid()) {
-            if (Thread.currentThread() == activeSingleThread) {
+            if (Thread.currentThread() == getSingleThread()) {
                 context = activeSingleContext;
             } else {
                 CompilerDirectives.transferToInterpreter();
@@ -116,7 +153,7 @@ final class PolyglotContextThreadLocal extends ThreadLocal<Object> {
     PolyglotContextImpl setReturnParent(PolyglotContextImpl value) {
         if (singleThread.isValid()) {
             PolyglotContextImpl prev;
-            if (Thread.currentThread() == activeSingleThread) {
+            if (Thread.currentThread() == getSingleThread()) {
                 prev = this.activeSingleContext;
                 this.activeSingleContext = value;
                 this.activeSingleContextNonVolatile = value;
@@ -143,10 +180,11 @@ final class PolyglotContextThreadLocal extends ThreadLocal<Object> {
         if (current instanceof PolyglotThread) {
             PolyglotThread polyglotThread = ((PolyglotThread) current);
             Object context = polyglotThread.context;
-            if (context == null && activeSingleThread == current) {
+            if (context == null && getSingleThread() == current) {
                 context = polyglotThread.context = activeSingleContext;
                 activeSingleContext = null;
                 activeSingleContextNonVolatile = null;
+                activeSingleThreadCompilationFinal = null;
                 activeSingleThread = null;
             }
             return context;
@@ -175,14 +213,14 @@ final class PolyglotContextThreadLocal extends ThreadLocal<Object> {
             return setTLReturnParent(context);
         }
         Thread currentThread = Thread.currentThread();
-        Thread storeThread = activeSingleThread;
+        Thread storeThread = getSingleThread();
         PolyglotContextImpl prev = this.activeSingleContext;
         if (currentThread == storeThread) {
             this.activeSingleContext = context;
             this.activeSingleContextNonVolatile = context;
         } else {
             if (storeThread == null) {
-                this.activeSingleThread = currentThread;
+                setSingleThread(currentThread);
                 this.activeSingleContext = context;
                 this.activeSingleContextNonVolatile = context;
             } else {

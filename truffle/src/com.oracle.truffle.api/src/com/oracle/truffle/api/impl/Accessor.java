@@ -1013,7 +1013,6 @@ public abstract class Accessor {
             case "com.oracle.truffle.api.impl.DefaultRuntimeAccessor":
             case "org.graalvm.compiler.truffle.runtime.GraalRuntimeAccessor":
             case "org.graalvm.compiler.truffle.runtime.debug.CompilerDebugAccessor":
-            case "com.oracle.svm.enterprise.truffle.SubstrateEnterpriseAccessor":
             case "com.oracle.truffle.api.library.LibraryAccessor":// OK, classes allowed to use
                                                                   // accessors
                 break;
