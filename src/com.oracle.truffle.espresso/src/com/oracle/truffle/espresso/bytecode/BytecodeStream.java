@@ -227,6 +227,7 @@ public final class BytecodeStream {
                     }
                 }
                 default:
+                    CompilerDirectives.transferToInterpreter();
                     throw error(opcode(curBCI));
             }
         }

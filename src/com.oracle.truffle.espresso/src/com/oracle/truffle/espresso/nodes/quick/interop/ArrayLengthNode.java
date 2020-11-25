@@ -81,7 +81,7 @@ public abstract class ArrayLengthNode extends QuickNode {
     }
 
     @Override
-    public boolean producedForeignObject(OperandStack stack) {
+    public final boolean producedForeignObject(OperandStack stack) {
         return false;
     }
 }
