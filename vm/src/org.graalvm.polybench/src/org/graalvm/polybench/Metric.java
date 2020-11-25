@@ -24,10 +24,20 @@
  */
 package org.graalvm.polybench;
 
+import java.util.Collections;
+import java.util.Map;
 import java.util.Optional;
 
 @SuppressWarnings("unused")
 interface Metric {
+
+    /**
+     * Returns engine options required by the {@link Metric}. The returned options are set on the
+     * polyglot context.
+     */
+    default Map<String, String> getEngineOptions(Config config) {
+        return Collections.emptyMap();
+    }
 
     default void beforeIteration(boolean warmup, int iteration, Config config) {
     }

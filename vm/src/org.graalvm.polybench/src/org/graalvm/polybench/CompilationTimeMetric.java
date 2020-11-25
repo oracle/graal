@@ -25,19 +25,21 @@
 package org.graalvm.polybench;
 
 import java.io.IOException;
+import java.util.Collections;
+import java.util.Map;
 import java.util.Optional;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 
 final class CompilationTimeMetric implements Metric {
 
-    enum Mode {
+    enum MetricType {
         COMPILATION(null),
         PARTIAL_EVALUATION("peTime");
 
         private final String fieldName;
 
-        Mode(String fieldName) {
+        MetricType(String fieldName) {
             this.fieldName = fieldName;
         }
 
@@ -49,15 +51,20 @@ final class CompilationTimeMetric implements Metric {
     private static final Logger LOG = Logger.getLogger(CompilationTimeMetric.class.getName());
     private static final String TRUFFLE_COMPILATION_EVENT = "org.graalvm.compiler.truffle.Compilation";
 
-    private final Mode mode;
+    private final MetricType metricType;
     private Object recording;
     private Object snapshot;
 
-    CompilationTimeMetric(Mode mode) {
+    CompilationTimeMetric(MetricType metricType) {
         if (!JFRSupport.isAvailable()) {
             throw new IllegalStateException("The VM does not support Java Flight Recorder.");
         }
-        this.mode = mode;
+        this.metricType = metricType;
+    }
+
+    @Override
+    public Map<String, String> getEngineOptions(Config config) {
+        return Collections.singletonMap("engine.BackgroundCompilation", "false");
     }
 
     @Override
@@ -115,7 +122,7 @@ final class CompilationTimeMetric implements Metric {
             throw new IllegalStateException("No snapshot.");
         }
         try {
-            return Optional.of(1.0 * JFRSupport.computeCumulativeTime(snapshot, TRUFFLE_COMPILATION_EVENT, mode.getFieldName()));
+            return Optional.of(1.0 * JFRSupport.computeCumulativeTime(snapshot, TRUFFLE_COMPILATION_EVENT, metricType.getFieldName()));
         } catch (IOException ioe) {
             LOG.log(Level.SEVERE, "Cannot write recording.", ioe);
             return Optional.empty();

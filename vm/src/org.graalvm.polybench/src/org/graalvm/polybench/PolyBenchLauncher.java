@@ -99,10 +99,10 @@ public final class PolyBenchLauncher extends AbstractLanguageLauncher {
                         config.metric = new NoMetric();
                         break;
                     case "compilation-time":
-                        config.metric = new CompilationTimeMetric(CompilationTimeMetric.Mode.COMPILATION);
+                        config.metric = new CompilationTimeMetric(CompilationTimeMetric.MetricType.COMPILATION);
                         break;
                     case "partial-evaluation-time":
-                        config.metric = new CompilationTimeMetric(CompilationTimeMetric.Mode.PARTIAL_EVALUATION);
+                        config.metric = new CompilationTimeMetric(CompilationTimeMetric.MetricType.PARTIAL_EVALUATION);
                         break;
                     default:
                         throw new IllegalArgumentException("Unknown metric: " + value);
@@ -200,6 +200,7 @@ public final class PolyBenchLauncher extends AbstractLanguageLauncher {
             default:
                 throw new AssertionError("Unknown execution-mode: " + config.mode);
         }
+        contextBuilder.options(config.metric.getEngineOptions(config));
 
         try (Context context = contextBuilder.build()) {
             log("::: Initializing :::");
