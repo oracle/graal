@@ -1,12 +1,12 @@
 > cat > ${TMP_DIR}/test.rb
 < puts('Ahoj')
 > truffleruby --insight=agent-ruby.rb --experimental-options ${TMP_DIR}/test.rb
-Ruby: Insight version 0.7 is launching
+Ruby: Insight version 1.0 is launching
 Ruby: Hooks are ready!
 Ruby: observed loading of .*test.rb
 Ahoj
 > js --polyglot --insight=agent-ruby.rb --experimental-options agent-fib.js
-Ruby: Insight version 0.7 is launching
+Ruby: Insight version 1.0 is launching
 Ruby: Hooks are ready!
 Ruby: observed loading of agent-fib.js
 minusOne 4
