@@ -140,9 +140,13 @@ public final class ClassRegistries {
     }
 
     @TruffleBoundary
-    public Klass[] getLoadedClassesByLoader(StaticObject classLoader) {
+    public List<Klass> getLoadedClassesByLoader(StaticObject classLoader) {
         if (classLoader == StaticObject.NULL) {
-            return bootClassRegistry.classes.values().toArray(new Klass[0]);
+            ArrayList<Klass> result = new ArrayList<>(bootClassRegistry.classes.size());
+            for (RegistryEntry value : bootClassRegistry.classes.values()) {
+                result.add(value.klass());
+            }
+            return result;
         }
         return getClassRegistry(classLoader).getLoadedKlasses();
     }

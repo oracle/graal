@@ -223,7 +223,7 @@ public final class JDWPContextImpl implements JDWPContext {
     }
 
     @Override
-    public KlassRef[] getInitiatedClasses(Object classLoader) {
+    public List<? extends KlassRef> getInitiatedClasses(Object classLoader) {
         return context.getRegistries().getLoadedClassesByLoader((StaticObject) classLoader);
     }
 

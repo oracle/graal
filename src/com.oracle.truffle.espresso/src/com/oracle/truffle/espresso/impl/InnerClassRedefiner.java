@@ -33,6 +33,7 @@ import com.oracle.truffle.espresso.runtime.StaticObject;
 
 import java.io.ByteArrayOutputStream;
 import java.io.IOException;
+import java.lang.instrument.IllegalClassFormatException;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collection;
@@ -118,7 +119,11 @@ public final class InnerClassRedefiner {
             if (classInfo.getBytes() != null) {
                 Map<String, String> rules = renamingRules.get(classInfo.getClassLoader());
                 if (rules != null && !rules.isEmpty()) {
-                    classInfo.patchBytes(ConstantPoolPatcher.patchConstantPool(classInfo.getBytes(), rules));
+                    try {
+                        classInfo.patchBytes(ConstantPoolPatcher.patchConstantPool(classInfo.getBytes(), rules));
+                    } catch (IllegalClassFormatException ex) {
+                        throw new RedefintionNotSupportedException(ErrorCodes.INVALID_CLASS_FORMAT);
+                    }
                 }
             }
         }
@@ -159,7 +164,11 @@ public final class InnerClassRedefiner {
         StaticObject definingLoader = hotswapInfo.getClassLoader();
 
         ArrayList<String> innerNames = new ArrayList<>(1);
-        searchConstantPoolForInnerClassNames(hotswapInfo, innerNames);
+        try {
+            searchConstantPoolForInnerClassNames(hotswapInfo, innerNames);
+        } catch (IllegalClassFormatException ex) {
+            throw new RedefintionNotSupportedException(ErrorCodes.INVALID_CLASS_FORMAT);
+        }
 
         // poke the defining guest classloader for the resources
         for (String innerName : innerNames) {
@@ -204,7 +213,7 @@ public final class InnerClassRedefiner {
         }
     }
 
-    private static void searchConstantPoolForInnerClassNames(ClassInfo classInfo, ArrayList<String> innerNames) {
+    private static void searchConstantPoolForInnerClassNames(ClassInfo classInfo, ArrayList<String> innerNames) throws IllegalClassFormatException {
         byte[] bytes = classInfo.getBytes();
         assert bytes != null;
 
@@ -319,7 +328,7 @@ public final class InnerClassRedefiner {
     public static Klass[] findLoadedInnerClasses(Klass klass, EspressoContext context) {
         ArrayList<Klass> result = new ArrayList<>(1);
         String name = klass.getNameAsString();
-        Klass[] loadedKlasses = context.getRegistries().getClassRegistry(klass.getDefiningClassLoader()).getLoadedKlasses();
+        List<Klass> loadedKlasses = context.getRegistries().getClassRegistry(klass.getDefiningClassLoader()).getLoadedKlasses();
 
         for (Klass loadedKlass : loadedKlasses) {
             String klassName = loadedKlass.getNameAsString();

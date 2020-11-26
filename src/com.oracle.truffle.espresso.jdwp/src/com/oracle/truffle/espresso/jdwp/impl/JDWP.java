@@ -2548,9 +2548,9 @@ final class JDWP {
                 if (classLoader == null) {
                     return new CommandResult(reply);
                 }
-                KlassRef[] klasses = context.getInitiatedClasses(classLoader);
+                List<? extends KlassRef> klasses = context.getInitiatedClasses(classLoader);
 
-                reply.writeInt(klasses.length);
+                reply.writeInt(klasses.size());
 
                 for (KlassRef klass : klasses) {
                     reply.writeByte(TypeTag.getKind(klass));
