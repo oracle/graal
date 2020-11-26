@@ -185,7 +185,7 @@ public class CodeInfoTable {
         /* Captures "installedCode" for the VMOperation. */
         JavaVMOperation.enqueueBlockingSafepoint("CodeInfoTable.invalidateInstalledCode", () -> {
             counters().invalidateInstalledCodeCount.inc();
-            if (installedCode.isValid()) {
+            if (installedCode.isAlive()) { // could be invalid (non-entrant), but executing
                 invalidateInstalledCodeAtSafepoint(WordFactory.pointer(installedCode.getAddress()));
             }
         });

@@ -25,8 +25,6 @@
 package com.oracle.svm.truffle.api;
 
 import org.graalvm.compiler.nodes.extended.MembarNode;
-import org.graalvm.compiler.truffle.common.CompilableTruffleAST;
-import org.graalvm.compiler.truffle.common.OptimizedAssumptionDependency;
 import org.graalvm.compiler.truffle.runtime.OptimizedCallTarget;
 import org.graalvm.nativeimage.c.function.CFunctionPointer;
 
@@ -39,7 +37,7 @@ import com.oracle.truffle.api.nodes.RootNode;
 import jdk.vm.ci.code.InstalledCode;
 import jdk.vm.ci.meta.SpeculationLog;
 
-public class SubstrateOptimizedCallTarget extends OptimizedCallTarget implements SubstrateCompilableTruffleAST, OptimizedAssumptionDependency {
+public class SubstrateOptimizedCallTarget extends OptimizedCallTarget implements SubstrateCompilableTruffleAST {
 
     /**
      * Stores the most recently installed code, which is the only entry point for this call target
@@ -68,22 +66,17 @@ public class SubstrateOptimizedCallTarget extends OptimizedCallTarget implements
     }
 
     @Override
-    public void invalidate() {
-        invalidate(null, null);
-    }
-
-    @Override
-    public CompilableTruffleAST getCompilable() {
-        return this;
-    }
-
-    @Override
-    public OptimizedAssumptionDependency getDependency() {
-        return this;
-    }
-
-    @Override
     public void invalidateCode() {
+        /*
+         * FIXME: this method is called from OptimizedCallTarget.invalidate(), which is supposed to
+         * invalidate ANY code representing this call target.
+         *
+         * Therefore, this method should do that instead of invalidating just the most recent code.
+         *
+         * Can this be done by using an assumption for each call target that all its code has a
+         * dependency on?
+         */
+        MembarNode.memoryBarrier(0); // prevent installedCode read from floating across safepoint
         installedCode.invalidate();
     }
 
@@ -94,6 +87,17 @@ public class SubstrateOptimizedCallTarget extends OptimizedCallTarget implements
 
     @Override
     public boolean isAlive() {
+        /*
+         * FIXME: this method is called from OptimizedCallTarget.invalidate(), which is supposed to
+         * invalidate ANY code representing this call target.
+         *
+         * Therefore, this method should return if there is ANY live code representing this call
+         * target, not just the most recent code.
+         *
+         * Can this be done by using an assumption for each call target that all its code has a
+         * dependency on?
+         */
+        MembarNode.memoryBarrier(0); // prevent installedCode read from floating across safepoint
         return installedCode.isAlive();
     }
 

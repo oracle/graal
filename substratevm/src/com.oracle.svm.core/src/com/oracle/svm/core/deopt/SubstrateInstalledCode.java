@@ -31,6 +31,10 @@ public interface SubstrateInstalledCode {
 
     String getName();
 
+    /** The entry point address of this code if {@linkplain #isValid valid}, or 0 otherwise. */
+    long getEntryPoint();
+
+    /** The address of this code if {@linkplain #isAlive alive}, or 0 otherwise. */
     long getAddress();
 
     /**
@@ -43,13 +47,40 @@ public interface SubstrateInstalledCode {
      */
     ResolvedJavaMethod getMethod();
 
+    /**
+     * Called during code installation: initialize this instance with the given address where its
+     * instructions are, and the method it was compiled from. Afterwards, {@link #getAddress()} and
+     * {@link #getEntryPoint()} return the given address, and {@link #isValid()} and
+     * {@link #isAlive()} return {@code true}.
+     */
     void setAddress(long address, ResolvedJavaMethod method);
 
+    /**
+     * This method is called during code uninstallation. Consider {@link #invalidate()} instead.
+     * <p>
+     * Reset this instance so that {@link #getAddress()} and {@link #getEntryPoint()} return 0, and
+     * {@link #isValid()} and {@link #isAlive()} return {@code false}.
+     */
     void clearAddress();
 
+    /** Whether the code represented by this object exists and can be invoked. */
     boolean isValid();
 
+    /**
+     * Invalidates this installed code and deoptimizes all live invocations, after which both
+     * {@link #isValid} and {@link #isAlive} return {@code false}.
+     */
     void invalidate();
+
+    /** Whether the code represented by this object exists and could have live invocations. */
+    boolean isAlive();
+
+    /**
+     * Make this code non-entrant, but let live invocations continue execution. Afterwards,
+     * {@link #isValid()} returns {@code false}, {@link #isAlive()} returns {@code true}, and
+     * {@link #getEntryPoint()} returns 0.
+     */
+    void invalidateWithoutDeoptimization();
 
     SubstrateSpeculationLog getSpeculationLog();
 

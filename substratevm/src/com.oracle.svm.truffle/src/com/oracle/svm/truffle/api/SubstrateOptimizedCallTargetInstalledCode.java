@@ -24,7 +24,11 @@
  */
 package com.oracle.svm.truffle.api;
 
+import org.graalvm.compiler.truffle.common.CompilableTruffleAST;
+import org.graalvm.compiler.truffle.common.OptimizedAssumptionDependency;
 import org.graalvm.compiler.truffle.common.TruffleCompiler;
+import org.graalvm.compiler.truffle.runtime.GraalTruffleRuntime;
+import org.graalvm.compiler.truffle.runtime.OptimizedCallTarget;
 import org.graalvm.word.WordFactory;
 
 import com.oracle.svm.core.annotate.Uninterruptible;
@@ -36,11 +40,12 @@ import com.oracle.svm.core.deopt.SubstrateSpeculationLog;
 import com.oracle.svm.core.snippets.KnownIntrinsics;
 import com.oracle.svm.core.thread.VMOperation;
 import com.oracle.svm.core.util.VMError;
+import com.oracle.truffle.api.Truffle;
 
 import jdk.vm.ci.code.InstalledCode;
 import jdk.vm.ci.meta.ResolvedJavaMethod;
 
-public class SubstrateOptimizedCallTargetInstalledCode extends InstalledCode implements SubstrateInstalledCode {
+public class SubstrateOptimizedCallTargetInstalledCode extends InstalledCode implements SubstrateInstalledCode, OptimizedAssumptionDependency {
     protected final SubstrateOptimizedCallTarget callTarget;
 
     protected SubstrateOptimizedCallTargetInstalledCode(SubstrateOptimizedCallTarget callTarget) {
@@ -51,6 +56,35 @@ public class SubstrateOptimizedCallTargetInstalledCode extends InstalledCode imp
     @Override
     public void invalidate() {
         CodeInfoTable.invalidateInstalledCode(this); // calls clearAddress
+
+        /*
+         * FIXME: this can now be called from an invalidated assumption, not from the call target.
+         * However, we probably need to involve the call target in a better way to log the reason
+         * and source and anything else that OptimizedCallTarget.invalidate(source, reason) does.
+         */
+        GraalTruffleRuntime runtime = (GraalTruffleRuntime) Truffle.getRuntime();
+        runtime.getListener().onCompilationInvalidated(callTarget, null, null);
+    }
+
+    @Override
+    public boolean isValid() {
+        /*
+         * FIXME: returns false if invalidated without deoptimization, but callers must always call
+         * invalidate() on us to deoptimize any running code. In other words, callers must not
+         * assume that because !isValid(), a call to invalidate() is unnecessary.
+         */
+        return super.isValid();
+    }
+
+    /**
+     * Returns {@code null} even though the code represents {@link OptimizedCallTarget} since
+     * {@code OptimizedAssumption.invalidateWithReason} will also invoke
+     * {@link SubstrateOptimizedCallTarget#invalidate} and therefore invalidate the <em>current</em>
+     * code, which can be different from <em>this</em> code.
+     */
+    @Override
+    public CompilableTruffleAST getCompilable() {
+        return null;
     }
 
     @Override
@@ -71,6 +105,7 @@ public class SubstrateOptimizedCallTargetInstalledCode extends InstalledCode imp
     @Override
     public void setAddress(long address, ResolvedJavaMethod method) {
         assert VMOperation.isInProgressAtSafepoint();
+        this.entryPoint = address;
         this.address = address;
         callTarget.setInstalledCode(this);
     }
@@ -78,18 +113,14 @@ public class SubstrateOptimizedCallTargetInstalledCode extends InstalledCode imp
     @Override
     public void clearAddress() {
         assert VMOperation.isInProgressAtSafepoint();
+        this.entryPoint = 0;
         this.address = 0;
     }
 
     @Override
-    public boolean isValid() {
-        return address != 0;
-    }
-
-    @Override
-    public boolean isAlive() {
-        // Same as isValid(): when SVM invalidates code, it immediately deoptimizes all frames.
-        return isValid();
+    public void invalidateWithoutDeoptimization() {
+        assert VMOperation.isInProgressAtSafepoint();
+        this.entryPoint = 0;
     }
 
     static Object doInvoke(SubstrateOptimizedCallTarget callTarget, SubstrateOptimizedCallTargetInstalledCode installedCode, Object[] args) {
@@ -99,7 +130,7 @@ public class SubstrateOptimizedCallTargetInstalledCode extends InstalledCode imp
          * address. Otherwise, the code can be invalidated concurrently and we invoke an address
          * that no longer contains executable code.
          */
-        long start = installedCode.address;
+        long start = installedCode.entryPoint;
         if (start != 0) {
             SubstrateOptimizedCallTarget.CallBoundaryFunctionPointer target = WordFactory.pointer(start);
             Object result = target.invoke(callTarget, args);
@@ -111,16 +142,18 @@ public class SubstrateOptimizedCallTargetInstalledCode extends InstalledCode imp
 
     @Uninterruptible(reason = "Prevent the GC from freeing the CodeInfo object.")
     boolean isValidLastTier() {
-        UntetheredCodeInfo info = CodeInfoTable.lookupCodeInfo(WordFactory.pointer(address));
-        if (info.isNonNull() && info.notEqual(CodeInfoTable.getImageCodeInfo())) {
-            return UntetheredCodeInfoAccess.getTier(info) == TruffleCompiler.LAST_TIER_INDEX;
+        if (entryPoint == 0) {
+            return false; // not valid
         }
-        return false;
+        UntetheredCodeInfo info = CodeInfoTable.lookupCodeInfo(WordFactory.pointer(entryPoint));
+        return info.isNonNull() && info.notEqual(CodeInfoTable.getImageCodeInfo()) &&
+                        UntetheredCodeInfoAccess.getTier(info) == TruffleCompiler.LAST_TIER_INDEX;
     }
 
-    // All methods below should never be called in SVM. There are others defined
-    // in InstalledCode (such as getAddress) that should also not be called
-    // but they are unfortunately final.
+    /*
+     * All methods below should never be called in SVM. There are others defined in InstalledCode
+     * (such as getAddress) that should also not be called but they are unfortunately final.
+     */
 
     private static final String NOT_CALLED_IN_SUBSTRATE_VM = "No implementation in Substrate VM";
 

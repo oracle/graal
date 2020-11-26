@@ -27,7 +27,6 @@ package com.oracle.svm.truffle.isolated;
 import java.util.function.Supplier;
 
 import org.graalvm.compiler.truffle.common.CompilableTruffleAST;
-import org.graalvm.compiler.truffle.common.OptimizedAssumptionDependency;
 import org.graalvm.compiler.truffle.common.TruffleCallNode;
 import org.graalvm.nativeimage.PinnedObject;
 import org.graalvm.nativeimage.c.function.CEntryPoint;
@@ -141,13 +140,8 @@ final class IsolatedCompilableTruffleAST extends IsolatedObjectProxy<SubstrateCo
     }
 
     @Override
-    public OptimizedAssumptionDependency getDependency() {
-        throw VMError.shouldNotReachHere("Must not be called during isolated compilation");
-    }
-
-    @Override
     public InstalledCode createPreliminaryInstalledCode() {
-        return new IsolatedCodeInstallBridge(handle, handle);
+        return new IsolatedCodeInstallBridge(handle);
     }
 
     @Override
