@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2017, 2020, Oracle and/or its affiliates.
+ * Copyright (c) 2018, 2020, Oracle and/or its affiliates.
  *
  * All rights reserved.
  *
@@ -27,37 +27,32 @@
  * NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED
  * OF THE POSSIBILITY OF SUCH DAMAGE.
  */
-package com.oracle.truffle.llvm.runtime.nodes.func;
+#include <graalvm/llvm/polyglot.h>
+#include <truffle.h>
+#include <stdio.h>
 
-import com.oracle.truffle.api.dsl.Cached;
-import com.oracle.truffle.api.dsl.Specialization;
-import com.oracle.truffle.api.frame.VirtualFrame;
-import com.oracle.truffle.llvm.runtime.LLVMFunction;
-import com.oracle.truffle.llvm.runtime.LLVMFunctionCode;
-import com.oracle.truffle.llvm.runtime.nodes.api.LLVMExpressionNode;
-import com.oracle.truffle.llvm.runtime.nodes.others.LLVMAccessSymbolNodeGen;
+int __attribute__((noinline)) test(int x, int y) {
+    return 1000 - x - y;
+}
 
-public abstract class LLVMLookupDispatchTargetSymbolNode extends LLVMExpressionNode {
+int __attribute__((noinline)) test2(int x, int y) {
+    return test(x, y) * 2;
+}
 
-    protected final LLVMFunction function;
+int main(void) {
 
-    protected LLVMLookupDispatchTargetSymbolNode(LLVMFunction function) {
-        this.function = function;
+    int a = test(10, 20);
+    int b = test2(10, 20);
+
+    truffle_assign_managed(&test, polyglot_import("global_object"));
+
+    int c = test(20, 30);
+    int d = test2(20, 30);
+
+    if (a != 970 || b != 1940 || c != 173 || d != 346) {
+        printf("%d %d %d %d\n", a, b, c, d);
+        return 1;
     }
 
-    @Specialization(guards = {"code != null", "code.isLLVMIRFunction() || code.isIntrinsicFunctionSlowPath()"}, assumptions = "function.getFixedCodeAssumption()")
-    protected LLVMFunctionCode getCode(
-                    @Cached("function.getFixedCode()") LLVMFunctionCode code) {
-        return code;
-    }
-
-    @Specialization(replaces = "getCode")
-    protected Object getGeneric(VirtualFrame frame,
-                    @Cached("createLookupNode()") LLVMLookupDispatchTargetNode node) {
-        return node.executeGeneric(frame);
-    }
-
-    protected LLVMLookupDispatchTargetNode createLookupNode() {
-        return LLVMLookupDispatchTargetNodeGen.create(LLVMAccessSymbolNodeGen.create(function));
-    }
+    return 0;
 }

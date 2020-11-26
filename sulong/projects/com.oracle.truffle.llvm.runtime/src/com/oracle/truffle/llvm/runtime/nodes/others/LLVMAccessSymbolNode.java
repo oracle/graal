@@ -38,10 +38,12 @@ import com.oracle.truffle.llvm.runtime.LLVMAlias;
 import com.oracle.truffle.llvm.runtime.LLVMContext;
 import com.oracle.truffle.llvm.runtime.LLVMLanguage;
 import com.oracle.truffle.llvm.runtime.LLVMSymbol;
+import com.oracle.truffle.llvm.runtime.except.LLVMLinkerException;
 import com.oracle.truffle.llvm.runtime.memory.LLVMStack;
 import com.oracle.truffle.llvm.runtime.memory.LLVMStack.LLVMStackAccess;
 import com.oracle.truffle.llvm.runtime.nodes.api.LLVMExpressionNode;
 import com.oracle.truffle.llvm.runtime.nodes.func.LLVMRootNode;
+import com.oracle.truffle.llvm.runtime.pointer.LLVMPointer;
 
 /**
  * Returns the value of a given symbol for the current context. This node behaves differently for
@@ -68,10 +70,18 @@ public abstract class LLVMAccessSymbolNode extends LLVMExpressionNode {
         return symbol;
     }
 
+    private LLVMPointer checkNull(LLVMPointer result) {
+        if (result == null) {
+            CompilerDirectives.transferToInterpreter();
+            throw new LLVMLinkerException(this, String.format("External %s %s cannot be found.", symbol.getKind(), symbol.getName()));
+        }
+        return result;
+    }
+
     @Specialization(assumptions = "singleContextAssumption()")
     public Object accessSingleContext(
                     @CachedContext(LLVMLanguage.class) LLVMContext context) {
-        return context.getSymbol(symbol);
+        return checkNull(context.getSymbol(symbol));
     }
 
     @Specialization
@@ -80,6 +90,6 @@ public abstract class LLVMAccessSymbolNode extends LLVMExpressionNode {
             CompilerDirectives.transferToInterpreterAndInvalidate();
             stackAccess = ((LLVMRootNode) getRootNode()).getStackAccess();
         }
-        return stackAccess.executeGetStack(frame).getContext().getSymbol(symbol);
+        return checkNull(stackAccess.executeGetStack(frame).getContext().getSymbol(symbol));
     }
 }
