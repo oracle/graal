@@ -34,6 +34,7 @@ import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.interop.UnsupportedTypeException;
 import com.oracle.truffle.api.library.CachedLibrary;
 import com.oracle.truffle.llvm.runtime.interop.LLVMInternalTruffleObject;
+import com.oracle.truffle.llvm.runtime.interop.access.LLVMInteropType;
 import com.oracle.truffle.llvm.runtime.library.internal.LLVMAsForeignLibrary;
 import com.oracle.truffle.llvm.runtime.pointer.LLVMManagedPointer;
 import com.oracle.truffle.llvm.runtime.pointer.LLVMPointer;
@@ -101,6 +102,11 @@ public abstract class ToAnyLLVM extends ForeignToLLVM {
         return LLVMManagedPointer.create(object);
     }
 
+    @Specialization
+    protected LLVMInteropType fromInteropType(LLVMInteropType object) {
+        return object;
+    }
+
     @TruffleBoundary
     static Object slowPathPrimitiveConvert(Object value) throws UnsupportedTypeException {
         if (value instanceof Number) {
@@ -117,6 +123,8 @@ public abstract class ToAnyLLVM extends ForeignToLLVM {
             return LLVMManagedPointer.create(value);
         } else if (LLVMAsForeignLibrary.getFactory().getUncached().isForeign(value)) {
             return LLVMManagedPointer.create(value);
+        } else if (value instanceof LLVMInteropType) {
+            return value;
         } else {
             throw UnsupportedTypeException.create(new Object[]{value});
         }
