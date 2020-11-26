@@ -129,11 +129,13 @@ suite = {
       "license" : "Apache-2.0-LLVM",
     },
     "LLVM_ORG_SRC" : {
-      "version" : "10.0.0-4-g22d2637565-bg83994d0b4b",
+      # The sources contain a backport to fix libunwind CMake issue with cmake 3.19 [GR-27589]
+      # https://github.com/llvm/llvm-project/commit/c48974ffd7d1676f79d39d3b1e70f07d3a5e2e44
+      "version" : "10.0.0-5-g67b19b2aed-bg83994d0b4b",
       "host" : "https://lafo.ssw.uni-linz.ac.at/pub/llvm-org",
       "packedResource" : True,
       "urls" : ["{host}/llvm-src-llvmorg-{version}.tar.gz"],
-      "sha1" : "be5a38ed0dd5b48b6a936d826318f5c142b3b0f0",
+      "sha1" : "9c06839edd6983107753bc74bdd17452e98d9b7d",
       "license" : "Apache-2.0-LLVM",
       },
   },
