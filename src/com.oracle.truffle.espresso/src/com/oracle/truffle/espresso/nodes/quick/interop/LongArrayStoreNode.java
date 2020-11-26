@@ -46,9 +46,9 @@ public abstract class LongArrayStoreNode extends QuickNode {
 
     @Override
     public final int execute(VirtualFrame frame, long[] primitives, Object[] refs) {
-        StaticObject array = nullCheck(BytecodeNode.popObject(primitives, refs, top - 4));
-        int index = BytecodeNode.popInt(primitives, refs, top - 3);
-        long value = BytecodeNode.popLong(primitives, refs, top - 1);
+        StaticObject array = nullCheck(BytecodeNode.popObject(refs, top - 4));
+        int index = BytecodeNode.popInt(primitives, top - 3);
+        long value = BytecodeNode.popLong(primitives, top - 1);
         executeStore(array, index, value);
         return Bytecodes.stackEffectOf(Bytecodes.LASTORE);
     }

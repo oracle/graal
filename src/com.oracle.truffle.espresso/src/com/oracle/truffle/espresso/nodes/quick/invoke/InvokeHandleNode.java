@@ -73,7 +73,7 @@ public final class InvokeHandleNode extends QuickNode {
 
     @Override
     public boolean producedForeignObject(long[] primitives, Object[] refs) {
-        return method.getReturnKind().isObject() && BytecodeNode.peekObject(primitives, refs, getResultAt()).isForeignObject();
+        return method.getReturnKind().isObject() && BytecodeNode.peekObject(refs, getResultAt()).isForeignObject();
     }
 
     private int getResultAt() {

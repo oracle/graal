@@ -44,7 +44,7 @@ public final class LeafAssumptionSetterNode extends InlinedSetterNode {
         if (inlinedMethod.leafAssumption()) {
             StaticObject receiver = field.isStatic()
                             ? field.getDeclaringKlass().tryInitializeAndGetStatics()
-                            : nullCheck(BytecodeNode.popObject(primitives, refs, top - 1 - slotCount));
+                            : nullCheck(BytecodeNode.popObject(refs, top - 1 - slotCount));
             setFieldNode.setField(frame, primitives, refs, root, receiver, top, statementIndex);
             return -slotCount + stackEffect;
         } else {

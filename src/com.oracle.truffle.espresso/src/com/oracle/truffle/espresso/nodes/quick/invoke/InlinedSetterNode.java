@@ -75,7 +75,7 @@ public class InlinedSetterNode extends QuickNode {
         BytecodeNode root = getBytecodesNode();
         StaticObject receiver = field.isStatic()
                         ? field.getDeclaringKlass().tryInitializeAndGetStatics()
-                        : nullCheck(BytecodeNode.popObject(primitives, refs, top - 1 - slotCount));
+                        : nullCheck(BytecodeNode.popObject(refs, top - 1 - slotCount));
         setFieldNode.setField(frame, primitives, refs, root, receiver, top, statementIndex);
         return -slotCount + stackEffect;
     }

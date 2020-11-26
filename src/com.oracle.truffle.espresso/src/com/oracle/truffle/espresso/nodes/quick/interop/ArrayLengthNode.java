@@ -49,8 +49,8 @@ public abstract class ArrayLengthNode extends QuickNode {
 
     @Override
     public final int execute(VirtualFrame frame, long[] primitives, Object[] refs) {
-        StaticObject array = nullCheck(BytecodeNode.popObject(primitives, refs, top - 1));
-        BytecodeNode.putInt(primitives, refs, top - 1, executeGetLength(array));
+        StaticObject array = nullCheck(BytecodeNode.popObject(refs, top - 1));
+        BytecodeNode.putInt(primitives, top - 1, executeGetLength(array));
         return Bytecodes.stackEffectOf(Bytecodes.ARRAYLENGTH);
     }
 

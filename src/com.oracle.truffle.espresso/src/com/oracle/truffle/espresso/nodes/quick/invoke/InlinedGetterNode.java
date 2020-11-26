@@ -70,13 +70,13 @@ public class InlinedGetterNode extends QuickNode {
         BytecodeNode root = getBytecodesNode();
         StaticObject receiver = field.isStatic()
                         ? field.getDeclaringKlass().tryInitializeAndGetStatics()
-                        : nullCheck(BytecodeNode.popObject(primitives, refs, top - 1));
+                        : nullCheck(BytecodeNode.popObject(refs, top - 1));
         return (getResultAt() - top) + getFieldNode.getField(frame, primitives, refs, root, receiver, getResultAt(), statementIndex);
     }
 
     @Override
     public boolean producedForeignObject(long[] primitives, Object[] refs) {
-        return field.getKind().isObject() && BytecodeNode.peekObject(primitives, refs, getResultAt()).isForeignObject();
+        return field.getKind().isObject() && BytecodeNode.peekObject(refs, getResultAt()).isForeignObject();
     }
 
     private int getResultAt() {

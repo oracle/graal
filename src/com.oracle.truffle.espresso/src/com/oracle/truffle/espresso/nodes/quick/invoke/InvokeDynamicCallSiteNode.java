@@ -75,7 +75,7 @@ public final class InvokeDynamicCallSiteNode extends QuickNode {
 
     @Override
     public boolean producedForeignObject(long[] primitives, Object[] refs) {
-        return returnKind.isObject() && BytecodeNode.peekObject(primitives, refs, getResultAt()).isForeignObject();
+        return returnKind.isObject() && BytecodeNode.peekObject(refs, getResultAt()).isForeignObject();
     }
 
     // Transforms ints to sub-words

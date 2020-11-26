@@ -86,7 +86,7 @@ public final class InvokeStaticNode extends QuickNode {
 
     @Override
     public boolean producedForeignObject(long[] primitives, Object[] refs) {
-        return method.getMethod().getReturnKind().isObject() && BytecodeNode.peekObject(primitives, refs, getResultAt()).isForeignObject();
+        return method.getMethod().getReturnKind().isObject() && BytecodeNode.peekObject(refs, getResultAt()).isForeignObject();
     }
 
     private int getResultAt() {
