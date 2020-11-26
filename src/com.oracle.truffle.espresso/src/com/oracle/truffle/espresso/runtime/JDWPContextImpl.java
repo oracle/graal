@@ -79,11 +79,13 @@ public final class JDWPContextImpl implements JDWPContext {
     private final Ids<Object> ids;
     private JDWPSetup setup;
     private VMListener eventListener = new EmptyListener();
+    private InnerClassRedefiner innerClassRedefiner;
 
     public JDWPContextImpl(EspressoContext context) {
         this.context = context;
         this.ids = new Ids<>(StaticObject.NULL);
         this.setup = new JDWPSetup();
+        this.innerClassRedefiner = new InnerClassRedefiner(context);
     }
 
     public VMListener jdwpInit(TruffleLanguage.Env env, Object mainThread) {
@@ -655,7 +657,7 @@ public final class JDWPContextImpl implements JDWPContext {
 
             // match anon inner classes with previous state
             List<ObjectKlass> removedInnerClasses = new ArrayList<>(0);
-            HotSwapClassInfo[] matchedInfos = InnerClassRedefiner.matchAnonymousInnerClasses(redefineInfos, context, removedInnerClasses);
+            HotSwapClassInfo[] matchedInfos = innerClassRedefiner.matchAnonymousInnerClasses(redefineInfos, removedInnerClasses);
 
             // detect all changes to all classes, throws if redefinition cannot be completed
             // due to the nature of the changes
@@ -691,7 +693,7 @@ public final class JDWPContextImpl implements JDWPContext {
             }
 
             // tell the InnerClassRedefiner to commit the changes to cache
-            InnerClassRedefiner.commit(matchedInfos);
+            innerClassRedefiner.commit(matchedInfos);
 
             for (ObjectKlass removed : removedInnerClasses) {
                 removed.removeByRedefinition();
