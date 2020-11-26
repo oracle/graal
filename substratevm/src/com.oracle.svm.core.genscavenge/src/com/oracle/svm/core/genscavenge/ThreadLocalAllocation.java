@@ -157,7 +157,7 @@ public final class ThreadLocalAllocation {
             HeapImpl.exitIfAllocationDisallowed("ThreadLocalAllocation.allocateNewInstance", DynamicHub.toClass(hub).getName());
 
             // Policy: Possibly collect before this allocation.
-            HeapImpl.getHeapImpl().getHeapPolicy().getCollectOnAllocationPolicy().maybeCauseCollection();
+            HeapPolicy.maybeCollectOnAllocation();
 
             // On this path allocation failed in the allocation chunk, so refill it.
             AlignedHeader newChunk = prepareNewAllocationChunk(tlab);
@@ -212,7 +212,7 @@ public final class ThreadLocalAllocation {
             HeapImpl.exitIfAllocationDisallowed("Heap.allocateNewArray", DynamicHub.toClass(hub).getName());
 
             // Policy: Possibly collect before this allocation.
-            HeapImpl.getHeapImpl().getHeapPolicy().getCollectOnAllocationPolicy().maybeCauseCollection();
+            HeapPolicy.maybeCollectOnAllocation();
 
             UnsignedWord size = LayoutEncoding.getArraySize(hub.getLayoutEncoding(), length);
             Object result;
