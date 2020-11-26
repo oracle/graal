@@ -67,7 +67,7 @@ public class PerformanceWarningTest extends TruffleCompilerImplTest {
     public void setUp() {
         outContent = new ByteArrayOutputStream();
         setupContext(Context.newBuilder().logHandler(outContent).allowAllAccess(true).allowExperimentalOptions(true).option("engine.TracePerformanceWarnings", "all").option(
-                        "engine.TreatPerformanceWarningsAsErrors", "all").option("engine.CompilationFailureAction", "ExitVM").option("engine.ForceFrameLivenessAnalysis", "true").build());
+                        "engine.TreatPerformanceWarningsAsErrors", "all").option("engine.CompilationFailureAction", "ExitVM").build());
     }
 
     @Test
@@ -402,7 +402,7 @@ public class PerformanceWarningTest extends TruffleCompilerImplTest {
             if ((boolean) args[0]) {
                 frame.clear(slot);
             }
-            // Expected CompilationError
+            // Expected Perf warn
             boundary();
             return null;
         }
