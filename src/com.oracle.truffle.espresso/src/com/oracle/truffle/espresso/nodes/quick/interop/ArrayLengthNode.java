@@ -35,7 +35,6 @@ import com.oracle.truffle.espresso.EspressoLanguage;
 import com.oracle.truffle.espresso.bytecode.Bytecodes;
 import com.oracle.truffle.espresso.meta.Meta;
 import com.oracle.truffle.espresso.nodes.BytecodeNode;
-import com.oracle.truffle.espresso.nodes.OperandStack;
 import com.oracle.truffle.espresso.nodes.quick.QuickNode;
 import com.oracle.truffle.espresso.runtime.EspressoContext;
 import com.oracle.truffle.espresso.runtime.StaticObject;
@@ -49,9 +48,9 @@ public abstract class ArrayLengthNode extends QuickNode {
     }
 
     @Override
-    public final int execute(VirtualFrame frame, OperandStack stack) {
-        StaticObject array = nullCheck(BytecodeNode.popObject(stack, top - 1));
-        BytecodeNode.putInt(stack, top - 1, executeGetLength(array));
+    public final int execute(VirtualFrame frame, long[] primitives, Object[] refs) {
+        StaticObject array = nullCheck(BytecodeNode.popObject(primitives, refs, top - 1));
+        BytecodeNode.putInt(primitives, refs, top - 1, executeGetLength(array));
         return Bytecodes.stackEffectOf(Bytecodes.ARRAYLENGTH);
     }
 
@@ -81,7 +80,7 @@ public abstract class ArrayLengthNode extends QuickNode {
     }
 
     @Override
-    public final boolean producedForeignObject(OperandStack stack) {
+    public final boolean producedForeignObject(long[] primitives, Object[] refs) {
         return false;
     }
 }

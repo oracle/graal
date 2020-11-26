@@ -33,7 +33,6 @@ import com.oracle.truffle.api.profiles.BranchProfile;
 import com.oracle.truffle.espresso.EspressoLanguage;
 import com.oracle.truffle.espresso.bytecode.Bytecodes;
 import com.oracle.truffle.espresso.nodes.BytecodeNode;
-import com.oracle.truffle.espresso.nodes.OperandStack;
 import com.oracle.truffle.espresso.nodes.quick.QuickNode;
 import com.oracle.truffle.espresso.runtime.EspressoContext;
 import com.oracle.truffle.espresso.runtime.StaticObject;
@@ -46,10 +45,10 @@ public abstract class DoubleArrayStoreNode extends QuickNode {
     }
 
     @Override
-    public final int execute(VirtualFrame frame, OperandStack stack) {
-        StaticObject array = nullCheck(BytecodeNode.popObject(stack, top - 4));
-        int index = BytecodeNode.popInt(stack, top - 3);
-        double value = BytecodeNode.popDouble(stack, top - 1);
+    public final int execute(VirtualFrame frame, long[] primitives, Object[] refs) {
+        StaticObject array = nullCheck(BytecodeNode.popObject(primitives, refs, top - 4));
+        int index = BytecodeNode.popInt(primitives, refs, top - 3);
+        double value = BytecodeNode.popDouble(primitives, refs, top - 1);
         executeStore(array, index, value);
         return Bytecodes.stackEffectOf(Bytecodes.DASTORE);
     }
@@ -70,7 +69,7 @@ public abstract class DoubleArrayStoreNode extends QuickNode {
     }
 
     @Override
-    public boolean producedForeignObject(OperandStack stack) {
+    public boolean producedForeignObject(long[] primitives, Object[] refs) {
         return false;
     }
 }

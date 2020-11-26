@@ -30,7 +30,6 @@ import com.oracle.truffle.espresso.descriptors.Signatures;
 import com.oracle.truffle.espresso.impl.Method;
 import com.oracle.truffle.espresso.impl.Method.MethodVersion;
 import com.oracle.truffle.espresso.nodes.BytecodeNode;
-import com.oracle.truffle.espresso.nodes.OperandStack;
 import com.oracle.truffle.espresso.nodes.quick.QuickNode;
 import com.oracle.truffle.espresso.runtime.StaticObject;
 
@@ -48,7 +47,7 @@ public final class InvokeSpecialNode extends QuickNode {
     }
 
     @Override
-    public int execute(VirtualFrame frame, final OperandStack stack) {
+    public int execute(VirtualFrame frame, long[] primitives, Object[] refs) {
         if (!method.getAssumption().isValid()) {
             // update to the latest method version and grab a new direct call target
             CompilerDirectives.transferToInterpreterAndInvalidate();
@@ -57,15 +56,15 @@ public final class InvokeSpecialNode extends QuickNode {
             adoptChildren();
         }
         // TODO(peterssen): IsNull Node?
-        Object[] args = BytecodeNode.popArguments(stack, top, true, method.getMethod().getParsedSignature());
+        Object[] args = BytecodeNode.popArguments(primitives, refs, top, true, method.getMethod().getParsedSignature());
         nullCheck((StaticObject) args[0]); // nullcheck receiver
         Object result = directCallNode.call(args);
-        return (getResultAt() - top) + BytecodeNode.putKind(stack, getResultAt(), result, method.getMethod().getReturnKind());
+        return (getResultAt() - top) + BytecodeNode.putKind(primitives, refs, getResultAt(), result, method.getMethod().getReturnKind());
     }
 
     @Override
-    public boolean producedForeignObject(OperandStack stack) {
-        return method.getMethod().getReturnKind().isObject() && BytecodeNode.peekObject(stack, getResultAt()).isForeignObject();
+    public boolean producedForeignObject(long[] primitives, Object[] refs) {
+        return method.getMethod().getReturnKind().isObject() && BytecodeNode.peekObject(primitives, refs, getResultAt()).isForeignObject();
     }
 
     private int getResultAt() {

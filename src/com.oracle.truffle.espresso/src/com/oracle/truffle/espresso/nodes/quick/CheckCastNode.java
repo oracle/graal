@@ -45,14 +45,14 @@ public class CheckCastNode extends QuickNode {
     }
 
     @Override
-    public boolean producedForeignObject(OperandStack stack) {
+    public boolean producedForeignObject(long[] primitives, Object[] refs) {
         return false;
     }
 
     @Override
-    public final int execute(VirtualFrame frame, OperandStack stack) {
+    public final int execute(VirtualFrame frame, long[] primitives, Object[] refs) {
         BytecodeNode root = getBytecodesNode();
-        StaticObject receiver = stack.peekObject(top - 1);
+        StaticObject receiver = BytecodeNode.peekObject(primitives, refs, top - 1);
         if (StaticObject.isNull(receiver) || typeCheckNode.executeTypeCheck(typeToCheck, receiver.getKlass())) {
             return 0;
         }

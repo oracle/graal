@@ -32,7 +32,6 @@ import com.oracle.truffle.espresso.impl.Method;
 import com.oracle.truffle.espresso.meta.JavaKind;
 import com.oracle.truffle.espresso.meta.Meta;
 import com.oracle.truffle.espresso.nodes.BytecodeNode;
-import com.oracle.truffle.espresso.nodes.OperandStack;
 import com.oracle.truffle.espresso.nodes.quick.QuickNode;
 import com.oracle.truffle.espresso.runtime.StaticObject;
 
@@ -60,14 +59,14 @@ public final class InvokeDynamicCallSiteNode extends QuickNode {
     }
 
     @Override
-    public int execute(VirtualFrame frame, final OperandStack stack) {
+    public int execute(VirtualFrame frame, long[] primitives, Object[] refs) {
         int argCount = Signatures.parameterCount(parsedSignature, false);
-        Object[] args = BytecodeNode.popBasicArgumentsWithArray(stack, top, parsedSignature, new Object[argCount + (hasAppendix ? 1 : 0)], argCount, 0);
+        Object[] args = BytecodeNode.popBasicArgumentsWithArray(primitives, refs, top, parsedSignature, new Object[argCount + (hasAppendix ? 1 : 0)], argCount, 0);
         if (hasAppendix) {
             args[args.length - 1] = appendix;
         }
         Object result = callNode.call(args);
-        return (getResultAt() - top) + BytecodeNode.putKind(stack, getResultAt(), unbasic(result, returnType), returnKind);
+        return (getResultAt() - top) + BytecodeNode.putKind(primitives, refs, getResultAt(), unbasic(result, returnType), returnKind);
     }
 
     private int getResultAt() {
@@ -75,8 +74,8 @@ public final class InvokeDynamicCallSiteNode extends QuickNode {
     }
 
     @Override
-    public boolean producedForeignObject(OperandStack stack) {
-        return returnKind.isObject() && BytecodeNode.peekObject(stack, getResultAt()).isForeignObject();
+    public boolean producedForeignObject(long[] primitives, Object[] refs) {
+        return returnKind.isObject() && BytecodeNode.peekObject(primitives, refs, getResultAt()).isForeignObject();
     }
 
     // Transforms ints to sub-words

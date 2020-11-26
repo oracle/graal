@@ -40,7 +40,6 @@ import com.oracle.truffle.espresso.meta.EspressoError;
 import com.oracle.truffle.espresso.meta.JavaKind;
 import com.oracle.truffle.espresso.meta.Meta;
 import com.oracle.truffle.espresso.nodes.BytecodeNode;
-import com.oracle.truffle.espresso.nodes.OperandStack;
 import com.oracle.truffle.espresso.nodes.interop.ToEspressoNode;
 import com.oracle.truffle.espresso.runtime.EspressoContext;
 import com.oracle.truffle.espresso.runtime.StaticObject;
@@ -57,7 +56,7 @@ public abstract class AbstractGetFieldNode extends Node {
         this.slotCount = field.getKind().getSlotCount();
     }
 
-    public abstract int getField(VirtualFrame frame, OperandStack stack, BytecodeNode root, StaticObject receiver, int at, int statementIndex);
+    public abstract int getField(VirtualFrame frame, long[] primitives, Object[] refs, BytecodeNode root, StaticObject receiver, int at, int statementIndex);
 
     public static AbstractGetFieldNode create(Field f) {
         // @formatter:off
@@ -98,9 +97,9 @@ abstract class IntGetFieldNode extends AbstractGetFieldNode {
     }
 
     @Override
-    public int getField(VirtualFrame frame, OperandStack stack, BytecodeNode root, StaticObject receiver, int at, int statementIndex) {
+    public int getField(VirtualFrame frame, long[] primitives, Object[] refs, BytecodeNode root, StaticObject receiver, int at, int statementIndex) {
         root.notifyFieldAccess(frame, statementIndex, field, receiver);
-        BytecodeNode.putInt(stack, at, executeGetField(receiver));
+        BytecodeNode.putInt(primitives, refs, at, executeGetField(receiver));
         return slotCount;
     }
 
@@ -150,9 +149,9 @@ abstract class BooleanGetFieldNode extends AbstractGetFieldNode {
     }
 
     @Override
-    public int getField(VirtualFrame frame, OperandStack stack, BytecodeNode root, StaticObject receiver, int at, int statementIndex) {
+    public int getField(VirtualFrame frame, long[] primitives, Object[] refs, BytecodeNode root, StaticObject receiver, int at, int statementIndex) {
         root.notifyFieldAccess(frame, statementIndex, field, receiver);
-        BytecodeNode.putInt(stack, at, executeGetField(receiver) ? 1 : 0);
+        BytecodeNode.putInt(primitives, refs, at, executeGetField(receiver) ? 1 : 0);
         return slotCount;
     }
 
@@ -202,9 +201,9 @@ abstract class CharGetFieldNode extends AbstractGetFieldNode {
     }
 
     @Override
-    public int getField(VirtualFrame frame, OperandStack stack, BytecodeNode root, StaticObject receiver, int at, int statementIndex) {
+    public int getField(VirtualFrame frame, long[] primitives, Object[] refs, BytecodeNode root, StaticObject receiver, int at, int statementIndex) {
         root.notifyFieldAccess(frame, statementIndex, field, receiver);
-        BytecodeNode.putInt(stack, at, executeGetField(receiver));
+        BytecodeNode.putInt(primitives, refs, at, executeGetField(receiver));
         return slotCount;
     }
 
@@ -259,9 +258,9 @@ abstract class ShortGetFieldNode extends AbstractGetFieldNode {
     }
 
     @Override
-    public int getField(VirtualFrame frame, OperandStack stack, BytecodeNode root, StaticObject receiver, int at, int statementIndex) {
+    public int getField(VirtualFrame frame, long[] primitives, Object[] refs, BytecodeNode root, StaticObject receiver, int at, int statementIndex) {
         root.notifyFieldAccess(frame, statementIndex, field, receiver);
-        BytecodeNode.putInt(stack, at, executeGetField(receiver));
+        BytecodeNode.putInt(primitives, refs, at, executeGetField(receiver));
         return slotCount;
     }
 
@@ -311,9 +310,9 @@ abstract class ByteGetFieldNode extends AbstractGetFieldNode {
     }
 
     @Override
-    public int getField(VirtualFrame frame, OperandStack stack, BytecodeNode root, StaticObject receiver, int at, int statementIndex) {
+    public int getField(VirtualFrame frame, long[] primitives, Object[] refs, BytecodeNode root, StaticObject receiver, int at, int statementIndex) {
         root.notifyFieldAccess(frame, statementIndex, field, receiver);
-        BytecodeNode.putInt(stack, at, executeGetField(receiver));
+        BytecodeNode.putInt(primitives, refs, at, executeGetField(receiver));
         return slotCount;
     }
 
@@ -363,9 +362,9 @@ abstract class LongGetFieldNode extends AbstractGetFieldNode {
     }
 
     @Override
-    public int getField(VirtualFrame frame, OperandStack stack, BytecodeNode root, StaticObject receiver, int at, int statementIndex) {
+    public int getField(VirtualFrame frame, long[] primitives, Object[] refs, BytecodeNode root, StaticObject receiver, int at, int statementIndex) {
         root.notifyFieldAccess(frame, statementIndex, field, receiver);
-        BytecodeNode.putLong(stack, at, executeGetField(receiver));
+        BytecodeNode.putLong(primitives, refs, at, executeGetField(receiver));
         return slotCount;
     }
 
@@ -415,9 +414,9 @@ abstract class FloatGetFieldNode extends AbstractGetFieldNode {
     }
 
     @Override
-    public int getField(VirtualFrame frame, OperandStack stack, BytecodeNode root, StaticObject receiver, int at, int statementIndex) {
+    public int getField(VirtualFrame frame, long[] primitives, Object[] refs, BytecodeNode root, StaticObject receiver, int at, int statementIndex) {
         root.notifyFieldAccess(frame, statementIndex, field, receiver);
-        BytecodeNode.putFloat(stack, at, executeGetField(receiver));
+        BytecodeNode.putFloat(primitives, refs, at, executeGetField(receiver));
         return slotCount;
     }
 
@@ -467,9 +466,9 @@ abstract class DoubleGetFieldNode extends AbstractGetFieldNode {
     }
 
     @Override
-    public int getField(VirtualFrame frame, OperandStack stack, BytecodeNode root, StaticObject receiver, int at, int statementIndex) {
+    public int getField(VirtualFrame frame, long[] primitives, Object[] refs, BytecodeNode root, StaticObject receiver, int at, int statementIndex) {
         root.notifyFieldAccess(frame, statementIndex, field, receiver);
-        BytecodeNode.putDouble(stack, at, executeGetField(receiver));
+        BytecodeNode.putDouble(primitives, refs, at, executeGetField(receiver));
         return slotCount;
     }
 
@@ -522,9 +521,9 @@ abstract class ObjectGetFieldNode extends AbstractGetFieldNode {
     }
 
     @Override
-    public int getField(VirtualFrame frame, OperandStack stack, BytecodeNode root, StaticObject receiver, int at, int statementIndex) {
+    public int getField(VirtualFrame frame, long[] primitives, Object[] refs, BytecodeNode root, StaticObject receiver, int at, int statementIndex) {
         root.notifyFieldAccess(frame, statementIndex, field, receiver);
-        BytecodeNode.putObject(stack, at, executeGetField(receiver));
+        BytecodeNode.putObject(primitives, refs, at, executeGetField(receiver));
         return slotCount;
     }
 

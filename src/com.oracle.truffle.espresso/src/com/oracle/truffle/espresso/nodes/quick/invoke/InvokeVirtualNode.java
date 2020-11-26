@@ -34,7 +34,6 @@ import com.oracle.truffle.espresso.impl.Method;
 import com.oracle.truffle.espresso.impl.Method.MethodVersion;
 import com.oracle.truffle.espresso.meta.Meta;
 import com.oracle.truffle.espresso.nodes.BytecodeNode;
-import com.oracle.truffle.espresso.nodes.OperandStack;
 import com.oracle.truffle.espresso.nodes.quick.QuickNode;
 import com.oracle.truffle.espresso.runtime.StaticObject;
 
@@ -89,14 +88,14 @@ public abstract class InvokeVirtualNode extends QuickNode {
     }
 
     @Override
-    public final int execute(VirtualFrame frame, OperandStack stack) {
+    public final int execute(VirtualFrame frame, long[] primitives, Object[] refs) {
         // Method signature does not change across methods.
         // Can safely use the constant signature from `resolutionSeed` instead of the non-constant
         // signature from the lookup.
-        Object[] args = BytecodeNode.popArguments(stack, top, true, resolutionSeed.getParsedSignature());
+        Object[] args = BytecodeNode.popArguments(primitives, refs, top, true, resolutionSeed.getParsedSignature());
         StaticObject receiver = nullCheck((StaticObject) args[0]);
         Object result = executeVirtual(receiver, args);
-        return (getResultAt() - top) + BytecodeNode.putKind(stack, getResultAt(), result, resolutionSeed.getReturnKind());
+        return (getResultAt() - top) + BytecodeNode.putKind(primitives, refs, getResultAt(), result, resolutionSeed.getReturnKind());
     }
 
     @Override
@@ -105,8 +104,8 @@ public abstract class InvokeVirtualNode extends QuickNode {
     }
 
     @Override
-    public final boolean producedForeignObject(OperandStack stack) {
-        return resolutionSeed.getReturnKind().isObject() && BytecodeNode.peekObject(stack, getResultAt()).isForeignObject();
+    public final boolean producedForeignObject(long[] primitives, Object[] refs) {
+        return resolutionSeed.getReturnKind().isObject() && BytecodeNode.peekObject(primitives, refs, getResultAt()).isForeignObject();
     }
 
     private int getResultAt() {

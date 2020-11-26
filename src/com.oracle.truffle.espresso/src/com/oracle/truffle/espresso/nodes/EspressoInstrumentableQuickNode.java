@@ -31,7 +31,7 @@ import com.oracle.truffle.api.nodes.Node;
 @GenerateWrapper
 public abstract class EspressoInstrumentableQuickNode extends Node implements InstrumentableNode {
 
-    public abstract int execute(VirtualFrame frame, OperandStack stack);
+    public abstract int execute(VirtualFrame frame, long[] primitives, Object[] refs);
 
     public final boolean isInstrumentable() {
         return true;

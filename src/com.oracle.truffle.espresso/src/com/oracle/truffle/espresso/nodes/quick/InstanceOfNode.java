@@ -44,15 +44,15 @@ public final class InstanceOfNode extends QuickNode {
     }
 
     @Override
-    public final int execute(VirtualFrame frame, OperandStack stack) {
-        StaticObject receiver = stack.popObject(top - 1);
+    public final int execute(VirtualFrame frame, long[] primitives, Object[] refs) {
+        StaticObject receiver = OperandStack.popObject(refs, top - 1);
         boolean result = StaticObject.notNull(receiver) && typeCheckNode.executeTypeCheck(typeToCheck, receiver.getKlass());
-        BytecodeNode.putKind(stack, top - 1, result, JavaKind.Boolean);
+        BytecodeNode.putKind(primitives, refs, top - 1, result, JavaKind.Boolean);
         return 0; // stack effect -> pop receiver, push boolean
     }
 
     @Override
-    public boolean producedForeignObject(OperandStack stack) {
+    public boolean producedForeignObject(long[] primitives, Object[] refs) {
         return false;
     }
 }
