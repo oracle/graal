@@ -23,8 +23,6 @@
 
 package com.oracle.truffle.espresso.analysis.liveness;
 
-import com.oracle.truffle.espresso.nodes.Locals;
-
 public abstract class LocalVariableAction {
     public abstract void execute(long[] primitives, Object[] refs);
 

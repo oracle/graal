@@ -22,16 +22,13 @@
  */
 package com.oracle.truffle.espresso.nodes;
 
+import com.oracle.truffle.espresso.meta.EspressoError;
 import com.oracle.truffle.espresso.runtime.StaticObject;
 
 public final class OperandStack {
 
-    public final Object[] refs;
-    public final long[] primitives;
-
-    public OperandStack(int maxStackSize) {
-        this.refs = new Object[maxStackSize];
-        this.primitives = new long[maxStackSize];
+    private OperandStack() {
+        throw EspressoError.shouldNotReachHere();
     }
 
     public static int peekInt(long[] primitives, int slot) {
