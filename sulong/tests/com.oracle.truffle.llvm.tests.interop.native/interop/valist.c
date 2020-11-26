@@ -29,21 +29,48 @@
  */
 
 #include <stdarg.h>
+#include <stdlib.h>
+#include <graalvm/llvm/polyglot.h>
+
+typedef int int_t;
+POLYGLOT_DECLARE_TYPE(int_t)
+
+polyglot_typeid get_int_t_typeid() {
+    return polyglot_int_t_typeid();
+}
+
+struct StructA {
+    int x;
+    int y;
+};
+
+POLYGLOT_DECLARE_STRUCT(StructA)
+
+polyglot_typeid get_StructA_typeid() {
+    return polyglot_StructA_typeid();
+}
+
+void *newStructA(int x, int y) {
+    struct StructA *sa = malloc(sizeof(struct StructA));
+    sa->x = x;
+    sa->y = y;
+    return polyglot_from_StructA(sa);
+}
 
 int get_next_vaarg(va_list *p_va) {
     return va_arg(*p_va, int);
 }
 
-int test_va_list_callback(int (*callback)(va_list *), ...) {
+int test_va_list_callback(int (*callback)(va_list *, void *), void *libHandle, ...) {
     va_list argp;
 
-    va_start(argp, callback);
-    int res = callback(&argp);
+    va_start(argp, libHandle);
+    int res = callback(&argp, libHandle);
     va_end(argp);
 
     return res;
 }
 
-int test_va_list_callback3(int (*callback)(va_list *), int a0, int a1, int a2) {
-    return test_va_list_callback(callback, a0, a1, a2);
+int test_va_list_callback3(int (*callback)(va_list *, void *), void *libHandle, int a0, int a1, int a2, void *sa) {
+    return test_va_list_callback(callback, libHandle, a0, a1, a2, sa);
 }
