@@ -28,6 +28,7 @@ import static org.graalvm.compiler.truffle.common.TruffleCompilerRuntimeInstance
 
 import java.util.Map;
 import java.util.function.Consumer;
+import java.util.function.Supplier;
 
 import jdk.vm.ci.meta.JavaConstant;
 import jdk.vm.ci.meta.JavaKind;
@@ -453,4 +454,11 @@ public interface TruffleCompilerRuntime {
      * Determines if {@code method} is annotated by {@code TruffleBoundary}.
      */
     boolean isSpecializationMethod(ResolvedJavaMethod method);
+
+    /**
+     * Determines if the exception which happened during the compilation is suppressed and should be
+     * silent.
+     */
+    boolean isSuppressedFailure(CompilableTruffleAST compilable, Supplier<String> serializedException);
+
 }

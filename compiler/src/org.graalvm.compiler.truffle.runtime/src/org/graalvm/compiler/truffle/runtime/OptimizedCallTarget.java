@@ -828,7 +828,7 @@ public abstract class OptimizedCallTarget implements CompilableTruffleAST, RootC
     }
 
     @Override
-    public final void onCompilationFailed(Supplier<String> serializedException, boolean bailout, boolean permanentBailout, boolean graphTooBig) {
+    public final void onCompilationFailed(Supplier<String> serializedException, boolean silent, boolean bailout, boolean permanentBailout, boolean graphTooBig) {
         if (graphTooBig) {
             if (computeBlockCompilations()) {
                 // retry compilation
@@ -847,7 +847,7 @@ public abstract class OptimizedCallTarget implements CompilableTruffleAST, RootC
             action = ExceptionAction.Silent;
         } else {
             compilationFailed = true;
-            action = engine.compilationFailureAction;
+            action = silent ? ExceptionAction.Silent : engine.compilationFailureAction;
         }
         if (action == ExceptionAction.Throw) {
             final InternalError error = new InternalError(serializedException.get());

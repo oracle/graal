@@ -110,6 +110,7 @@ import com.oracle.truffle.api.object.LayoutFactory;
 import com.oracle.truffle.api.profiles.BranchProfile;
 import com.oracle.truffle.api.profiles.ConditionProfile;
 import java.util.HashMap;
+import java.util.function.Supplier;
 
 import jdk.vm.ci.code.BailoutException;
 import jdk.vm.ci.code.stack.InspectedFrame;
@@ -165,6 +166,7 @@ public abstract class GraalTruffleRuntime implements TruffleRuntime, TruffleComp
     private final EngineCacheSupport engineCacheSupport;
     private final UnmodifiableEconomicMap<String, Class<?>> lookupTypes;
     private final OptionDescriptors engineOptions;
+    private final FloodControlHandler floodControlHandler;
 
     public GraalTruffleRuntime(Iterable<Class<?>> extraLookupTypes) {
         this.lookupTypes = initLookupTypes(extraLookupTypes);
@@ -174,6 +176,7 @@ public abstract class GraalTruffleRuntime implements TruffleRuntime, TruffleComp
         this.engineCacheSupport = support == null ? new EngineCacheSupport.Disabled() : support;
         options.add(PolyglotCompilerOptions.getDescriptors());
         this.engineOptions = OptionDescriptors.createUnion(options.toArray(new OptionDescriptors[options.size()]));
+        this.floodControlHandler = loadGraalRuntimeServiceProvider(FloodControlHandler.class, null, false);
     }
 
     @Override
@@ -726,7 +729,8 @@ public abstract class GraalTruffleRuntime implements TruffleRuntime, TruffleComp
                 listeners.onCompilationDequeued(callTarget, this, String.format("Failed to create Truffle compiler due to %s.", t.getMessage()));
             }
         } finally {
-            callTarget.onCompilationFailed(() -> CompilableTruffleAST.serializeException(t), false, false, false);
+            Supplier<String> serializedException = () -> CompilableTruffleAST.serializeException(t);
+            callTarget.onCompilationFailed(serializedException, isSuppressedFailure(callTarget, serializedException), false, false, false);
         }
     }
 
@@ -1034,6 +1038,11 @@ public abstract class GraalTruffleRuntime implements TruffleRuntime, TruffleComp
     @Override
     public void log(String loggerId, CompilableTruffleAST compilable, String message) {
         ((OptimizedCallTarget) compilable).engine.getLogger(loggerId).log(Level.INFO, message);
+    }
+
+    @Override
+    public boolean isSuppressedFailure(CompilableTruffleAST compilable, Supplier<String> serializedException) {
+        return floodControlHandler != null && floodControlHandler.isSuppressedFailure(compilable, serializedException);
     }
 
     // https://bugs.openjdk.java.net/browse/JDK-8209535

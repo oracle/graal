@@ -47,7 +47,6 @@ import org.graalvm.compiler.truffle.compiler.PartialEvaluator;
 import org.graalvm.compiler.truffle.compiler.TruffleCompilationIdentifier;
 import org.graalvm.compiler.truffle.compiler.TruffleCompilerImpl;
 import org.graalvm.compiler.truffle.runtime.OptimizedCallTarget;
-import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;
 
@@ -86,31 +85,6 @@ public class SubstrateTruffleCompilerImpl extends TruffleCompilerImpl implements
     @Override
     public PhaseSuite<HighTierContext> createGraphBuilderSuite() {
         return null;
-    }
-
-    /**
-     * Support for an embedder to impose control over logging and dumping during Truffle compilation
-     * failure handling.
-     */
-    public interface TruffleCompilationFailureHandler {
-
-        /**
-         * Calls {@code failure.handle()} to handle the compilation failure represented by
-         * {@code failure}.
-         *
-         * The {@code silent} parameter to the call can be {@code false} to suppress logging and
-         * dumping during handling.
-         */
-        void handle(CompilationWrapper<Void>.Failure failure);
-    }
-
-    @Override
-    protected void handleCompilationFailure(CompilationWrapper<Void>.Failure failure) {
-        if (ImageSingletons.contains(TruffleCompilationFailureHandler.class)) {
-            ImageSingletons.lookup(TruffleCompilationFailureHandler.class).handle(failure);
-        } else {
-            super.handleCompilationFailure(failure);
-        }
     }
 
     @Override

@@ -60,6 +60,7 @@ import java.util.concurrent.locks.ReentrantLock;
 import java.util.function.BooleanSupplier;
 import java.util.function.Consumer;
 import java.util.function.Predicate;
+import java.util.function.Supplier;
 import java.util.stream.Collectors;
 
 import org.graalvm.compiler.api.replacements.SnippetReflectionProvider;
@@ -150,6 +151,7 @@ import com.oracle.truffle.api.nodes.RootNode;
 import com.oracle.truffle.api.object.DynamicObject;
 import com.oracle.truffle.api.object.Layout;
 import com.oracle.truffle.api.profiles.Profile;
+import com.oracle.truffle.api.utilities.TriState;
 
 import jdk.vm.ci.code.Architecture;
 import jdk.vm.ci.meta.JavaConstant;
@@ -283,6 +285,13 @@ public final class TruffleFeature implements com.oracle.svm.core.graal.GraalFeat
                 return IsolatedTruffleRuntimeSupport.tryLog(loggerId, compilable, message);
             }
             return false;
+        }
+
+        public TriState tryIsSuppressedFailure(CompilableTruffleAST compilable, Supplier<String> serializedException) {
+            if (isIsolatedCompilation()) {
+                return IsolatedTruffleRuntimeSupport.tryIsSuppressedFailure(compilable, serializedException);
+            }
+            return TriState.UNDEFINED;
         }
     }
 
