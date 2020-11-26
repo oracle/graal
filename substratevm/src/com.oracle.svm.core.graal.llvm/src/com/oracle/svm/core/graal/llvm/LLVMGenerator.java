@@ -121,6 +121,7 @@ import com.oracle.svm.shadowed.org.bytedeco.llvm.LLVM.LLVMValueRef;
 
 import jdk.vm.ci.code.CallingConvention;
 import jdk.vm.ci.code.CodeCacheProvider;
+import jdk.vm.ci.code.DebugInfo;
 import jdk.vm.ci.code.Register;
 import jdk.vm.ci.code.RegisterValue;
 import jdk.vm.ci.code.StackSlot;
@@ -903,9 +904,14 @@ public class LLVMGenerator implements LIRGeneratorTool, SubstrateLIRGenerator {
     public Variable emitForeignCall(ForeignCallLinkage linkage, LIRFrameState state, LLVMBasicBlockRef successor, LLVMBasicBlockRef handler, Value... arguments) {
         ResolvedJavaMethod targetMethod = ((SnippetRuntime.SubstrateForeignCallDescriptor) linkage.getDescriptor()).findMethod(getMetaAccess());
 
-        state.initDebugInfo(null, false);
+        DebugInfo debugInfo = null;
+        if (state != null) {
+            state.initDebugInfo(null, false);
+            debugInfo = state.debugInfo();
+        }
+
         long patchpointId = nextPatchpointId.getAndIncrement();
-        compilationResult.recordCall(NumUtil.safeToInt(patchpointId), 0, targetMethod, state.debugInfo(), true);
+        compilationResult.recordCall(NumUtil.safeToInt(patchpointId), 0, targetMethod, debugInfo, true);
 
         LLVMValueRef callee = getFunction(targetMethod);
         LLVMValueRef[] args = Arrays.stream(arguments).map(LLVMUtils::getVal).toArray(LLVMValueRef[]::new);
