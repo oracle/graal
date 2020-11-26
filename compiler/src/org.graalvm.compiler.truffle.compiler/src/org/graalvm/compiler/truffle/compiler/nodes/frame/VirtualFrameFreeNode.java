@@ -29,6 +29,7 @@ import static org.graalvm.compiler.nodeinfo.NodeCycles.CYCLES_0;
 import static org.graalvm.compiler.nodeinfo.NodeSize.SIZE_0;
 
 import org.graalvm.compiler.core.common.type.StampFactory;
+import org.graalvm.compiler.graph.IterableNodeType;
 import org.graalvm.compiler.graph.NodeClass;
 import org.graalvm.compiler.nodeinfo.NodeInfo;
 import org.graalvm.compiler.nodes.ValueNode;
@@ -38,7 +39,7 @@ import org.graalvm.compiler.nodes.spi.VirtualizerTool;
 import org.graalvm.compiler.nodes.virtual.VirtualObjectNode;
 
 @NodeInfo(cycles = CYCLES_0, size = SIZE_0)
-public class VirtualFrameFreeNode extends VirtualFrameAccessorNode implements Virtualizable {
+public class VirtualFrameFreeNode extends VirtualFrameAccessorNode implements Virtualizable, IterableNodeType {
     public static final NodeClass<VirtualFrameFreeNode> TYPE = NodeClass.create(VirtualFrameFreeNode.class);
 
     public VirtualFrameFreeNode(Receiver frame, int frameSlotIndex, int illegalTag) {

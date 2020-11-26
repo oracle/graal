@@ -279,7 +279,7 @@ public class ClearFrameSlotTest extends PartialEvaluationTest {
     }
 
     private void doTest(Supplier<RootNode> rootProvider, Consumer<StructuredGraph> graphChecker, Object[] args, boolean peFails, boolean executionFails) {
-        setupContext(Context.newBuilder().option("engine.FrameClear", "true"));
+        setupContext(Context.newBuilder().option("engine.ForceFrameLivenessAnalysis", "true"));
         RootNode rootNode = rootProvider.get();
         RootCallTarget callTarget = Truffle.getRuntime().createCallTarget(rootNode);
         StructuredGraph graph = null;

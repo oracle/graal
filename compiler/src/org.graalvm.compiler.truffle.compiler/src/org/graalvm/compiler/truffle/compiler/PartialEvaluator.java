@@ -25,7 +25,7 @@
 package org.graalvm.compiler.truffle.compiler;
 
 import static org.graalvm.compiler.truffle.options.PolyglotCompilerOptions.ExcludeAssertions;
-import static org.graalvm.compiler.truffle.options.PolyglotCompilerOptions.FrameClear;
+import static org.graalvm.compiler.truffle.options.PolyglotCompilerOptions.ForceFrameLivenessAnalysis;
 import static org.graalvm.compiler.truffle.options.PolyglotCompilerOptions.InlineAcrossTruffleBoundary;
 import static org.graalvm.compiler.truffle.options.PolyglotCompilerOptions.IterativePartialEscape;
 import static org.graalvm.compiler.truffle.options.PolyglotCompilerOptions.MaximumGraalNodeCount;
@@ -91,6 +91,7 @@ import org.graalvm.compiler.truffle.compiler.TruffleCompilerImpl.CancellableTruf
 import org.graalvm.compiler.truffle.compiler.nodes.TruffleAssumption;
 import org.graalvm.compiler.truffle.compiler.nodes.asserts.NeverPartOfCompilationNode;
 import org.graalvm.compiler.truffle.compiler.nodes.frame.AllowMaterializeNode;
+import org.graalvm.compiler.truffle.compiler.nodes.frame.VirtualFrameFreeNode;
 import org.graalvm.compiler.truffle.compiler.phases.DeoptimizeOnExceptionPhase;
 import org.graalvm.compiler.truffle.compiler.phases.FrameClearPhase;
 import org.graalvm.compiler.truffle.compiler.phases.InstrumentBranchesPhase;
@@ -355,10 +356,11 @@ public abstract class PartialEvaluator {
                 try (DebugCloseable a = TruffleCanonicalizerTimer.start(request.debug)) {
                     canonicalizer.apply(request.graph, request.highTierContext);
                 }
+                boolean performFrameClear = request.options.get(ForceFrameLivenessAnalysis) || request.graph.hasNode(VirtualFrameFreeNode.TYPE);
                 try (DebugCloseable a = TruffleEscapeAnalysisTimer.start(request.debug)) {
                     partialEscape(request);
                 }
-                if (request.options.get(FrameClear)) {
+                if (performFrameClear) {
                     try (DebugCloseable a = TruffleFrameClearTimer.start(request.debug)) {
                         new FrameClearPhase(knownTruffleTypes, canonicalizer, request.compilable).apply(request.graph, request.highTierContext);
                     }
