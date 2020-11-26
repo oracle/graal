@@ -56,10 +56,18 @@ final class CompilationTimeMetric implements Metric {
     private Object snapshot;
 
     CompilationTimeMetric(MetricType metricType) {
+        this.metricType = metricType;
+    }
+
+    @Override
+    public void validateConfig(Config config, Map<String, String> polyglotOptions) {
         if (!JFRSupport.isAvailable()) {
             throw new IllegalStateException("The VM does not support Java Flight Recorder.");
         }
-        this.metricType = metricType;
+        if (Boolean.parseBoolean(polyglotOptions.get("engine.BackgroundCompilation"))) {
+            throw new IllegalStateException("The Compile Time Metric cannot be used with a background compilation.\n" +
+                            "Remove the 'engine.BackgroundCompilation=true' option.");
+        }
     }
 
     @Override

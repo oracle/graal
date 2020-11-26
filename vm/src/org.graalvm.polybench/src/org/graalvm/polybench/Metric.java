@@ -32,6 +32,15 @@ import java.util.Optional;
 interface Metric {
 
     /**
+     * Validates the mode and polyglot options parsed from the command line.
+     *
+     * @throws IllegalStateException when the mode or polyglot options cannot be used with the
+     *             metric.
+     */
+    default void validateConfig(Config config, Map<String, String> polyglotOptions) {
+    }
+
+    /**
      * Returns engine options required by the {@link Metric}. The returned options are set on the
      * polyglot context.
      */
