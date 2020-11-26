@@ -24,7 +24,6 @@
 package com.oracle.truffle.espresso.analysis.liveness.actions;
 
 import com.oracle.truffle.espresso.analysis.liveness.LocalVariableAction;
-import com.oracle.truffle.espresso.nodes.Locals;
 
 public final class NoAction extends LocalVariableAction {
     public static final LocalVariableAction NO_ACTION = new NoAction();
@@ -33,7 +32,7 @@ public final class NoAction extends LocalVariableAction {
     }
 
     @Override
-    public void execute(Locals locals) {
+    public void execute(long[] primitives, Object[] refs) {
         /* nop */
     }
 

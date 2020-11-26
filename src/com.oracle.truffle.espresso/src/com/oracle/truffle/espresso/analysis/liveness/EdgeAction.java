@@ -27,5 +27,5 @@ import com.oracle.truffle.espresso.nodes.BytecodeNode;
 import com.oracle.truffle.espresso.nodes.Locals;
 
 public interface EdgeAction {
-    void onEdge(Locals locals, int fromBCI);
+    void onEdge(long[] primitives, Object[] refs, int fromBCI);
 }

@@ -370,9 +370,8 @@ public final class BytecodeNode extends EspressoMethodNode {
      */
     @Child private volatile EspressoReferenceArrayStoreNode refArrayStoreNode;
 
-    // private final FrameSlot primitivesSlot;
-    // private final FrameSlot refsSlot;
-    private final FrameSlot localsSlot;
+    private final FrameSlot primitivesSlot;
+    private final FrameSlot refsSlot;
     private final FrameSlot bciSlot;
 
     @CompilationFinal(dimensions = 1) //
@@ -402,9 +401,8 @@ public final class BytecodeNode extends EspressoMethodNode {
         CodeAttribute codeAttribute = method.getCodeAttribute();
         this.bs = new BytecodeStream(codeAttribute.getCode());
         this.stackOverflowErrorInfo = getMethod().getSOEHandlerInfo();
-        // this.primitivesSlot = frameDescriptor.addFrameSlot("primitives", FrameSlotKind.Object);
-        // this.refsSlot = frameDescriptor.addFrameSlot("primitives", FrameSlotKind.Object);
-        this.localsSlot = frameDescriptor.addFrameSlot("locals", FrameSlotKind.Object);
+        this.primitivesSlot = frameDescriptor.addFrameSlot("primitives", FrameSlotKind.Object);
+        this.refsSlot = frameDescriptor.addFrameSlot("refs", FrameSlotKind.Object);
         this.bciSlot = frameDescriptor.addFrameSlot("bci", FrameSlotKind.Int);
         this.noForeignObjects = Truffle.getRuntime().createAssumption("noForeignObjects");
         this.implicitExceptionProfile = false;
@@ -432,12 +430,13 @@ public final class BytecodeNode extends EspressoMethodNode {
     }
 
     @ExplodeLoop
-    private void initArguments(Object[] arguments, Locals locals) {
+    private void initArguments(Object[] arguments, long[] primitives, Object[] refs) {
 
         int argCount = Signatures.parameterCount(getMethod().getParsedSignature(), false);
 
         CompilerAsserts.partialEvaluationConstant(argCount);
-        CompilerAsserts.compilationConstant(locals.slotCount());
+        CompilerAsserts.partialEvaluationConstant(primitives.length);
+        CompilerAsserts.partialEvaluationConstant(refs.length);
 
         boolean hasReceiver = !getMethod().isStatic();
         int receiverSlot = hasReceiver ? 1 : 0;
@@ -445,7 +444,7 @@ public final class BytecodeNode extends EspressoMethodNode {
         if (hasReceiver) {
             assert StaticObject.notNull((StaticObject) arguments[0]) : "null receiver in init arguments !";
             StaticObject receiver = (StaticObject) arguments[0];
-            setLocalObject(locals, curSlot, receiver);
+            setLocalObject(primitives, refs, curSlot, receiver);
             if (noForeignObjects.isValid() && receiver.isForeignObject()) {
                 CompilerDirectives.transferToInterpreterAndInvalidate();
                 noForeignObjects.invalidate();
@@ -456,16 +455,16 @@ public final class BytecodeNode extends EspressoMethodNode {
             JavaKind expectedkind = Signatures.parameterKind(getMethod().getParsedSignature(), i);
             // @formatter:off
             switch (expectedkind) {
-                case Boolean : setLocalInt(locals, curSlot, ((boolean) arguments[i + receiverSlot]) ? 1 : 0); break;
-                case Byte    : setLocalInt(locals, curSlot, ((byte) arguments[i + receiverSlot]));            break;
-                case Short   : setLocalInt(locals, curSlot, ((short) arguments[i + receiverSlot]));           break;
-                case Char    : setLocalInt(locals, curSlot, ((char) arguments[i + receiverSlot]));            break;
-                case Int     : setLocalInt(locals, curSlot, (int) arguments[i + receiverSlot]);               break;
-                case Float   : setLocalFloat(locals, curSlot, (float) arguments[i + receiverSlot]);           break;
-                case Long    : setLocalLong(locals, curSlot, (long) arguments[i + receiverSlot]);             break;
-                case Double  : setLocalDouble(locals, curSlot, (double) arguments[i + receiverSlot]);         break;
+                case Boolean : setLocalInt(primitives, refs, curSlot, ((boolean) arguments[i + receiverSlot]) ? 1 : 0); break;
+                case Byte    : setLocalInt(primitives, refs, curSlot, ((byte) arguments[i + receiverSlot]));            break;
+                case Short   : setLocalInt(primitives, refs, curSlot, ((short) arguments[i + receiverSlot]));           break;
+                case Char    : setLocalInt(primitives, refs, curSlot, ((char) arguments[i + receiverSlot]));            break;
+                case Int     : setLocalInt(primitives, refs, curSlot, (int) arguments[i + receiverSlot]);               break;
+                case Float   : setLocalFloat(primitives, refs, curSlot, (float) arguments[i + receiverSlot]);           break;
+                case Long    : setLocalLong(primitives, refs, curSlot, (long) arguments[i + receiverSlot]);             break;
+                case Double  : setLocalDouble(primitives, refs, curSlot, (double) arguments[i + receiverSlot]);         break;
                 case Object  :
-                    setLocalObject(locals, curSlot, (StaticObject) arguments[i + receiverSlot]);
+                    setLocalObject(primitives, refs, curSlot, (StaticObject) arguments[i + receiverSlot]);
                     if (noForeignObjects.isValid() && ((StaticObject) arguments[i + receiverSlot]).isForeignObject()) {
                         CompilerDirectives.transferToInterpreterAndInvalidate();
                         noForeignObjects.invalidate();
@@ -549,72 +548,74 @@ public final class BytecodeNode extends EspressoMethodNode {
 
     // region Local accessors
 
-    public static void freeLocal(Locals locals, int slot) {
+    public static void freeLocal(long[] primitives, Object[] refs, int slot) {
         // TODO(garcia): use frame.clear() once available
-        // frame.clear(locals[slot]);
-        locals.putLong(slot, 0);
-        locals.putRawObject(slot, null);
+        // frame.clear(OperandStack[slot]primitives.length - 1 - );
+        OperandStack.putLong(primitives, primitives.length - 1 - slot, 0);
+        OperandStack.putRawObject(refs, refs.length - 1 - slot, null);
     }
 
-    private static void setLocalObject(Locals locals, int slot, StaticObject value) {
-        locals.putObject(slot, value);
+    private static void setLocalObject(long[] primitives, Object[] refs, int slot, StaticObject value) {
+        OperandStack.putObject(refs, refs.length - 1 - slot, value);
     }
 
-    private static void setLocalObjectOrReturnAddress(Locals locals, int slot, Object value) {
-        locals.putRawObject(slot, value);
+    private static void setLocalObjectOrReturnAddress(long[] primitives, Object[] refs, int slot, Object value) {
+        OperandStack.putRawObject(refs, refs.length - 1 - slot, value);
     }
 
-    private static void setLocalInt(Locals locals, int slot, int value) {
-        locals.putInt(slot, value);
+    private static void setLocalInt(long[] primitives, Object[] refs, int slot, int value) {
+        OperandStack.putInt(primitives, primitives.length - 1 - slot, value);
     }
 
-    private static void setLocalFloat(Locals locals, int slot, float value) {
-        locals.putInt(slot, Float.floatToRawIntBits(value));
+    private static void setLocalFloat(long[] primitives, Object[] refs, int slot, float value) {
+        OperandStack.putInt(primitives, primitives.length - 1 - slot, Float.floatToRawIntBits(value));
     }
 
-    private static void setLocalLong(Locals locals, int slot, long value) {
-        locals.putLong(slot, value);
+    private static void setLocalLong(long[] primitives, Object[] refs, int slot, long value) {
+        OperandStack.putLong(primitives, primitives.length - 1 - slot, value);
     }
 
-    private static void setLocalDouble(Locals locals, int slot, double value) {
-        locals.putLong(slot, Double.doubleToRawLongBits(value));
+    private static void setLocalDouble(long[] primitives, Object[] refs, int slot, double value) {
+        OperandStack.putLong(primitives, primitives.length - 1 - slot, Double.doubleToRawLongBits(value));
     }
 
-    private static int getLocalInt(Locals locals, int slot) {
-        return locals.peekInt(slot);
+    private static int getLocalInt(long[] primitives, Object[] refs, int slot) {
+        return OperandStack.peekInt(primitives, primitives.length - 1 - slot);
     }
 
-    private static StaticObject getLocalObject(Locals locals, int slot) {
-        return locals.peekObject(slot);
+    private static StaticObject getLocalObject(long[] primitives, Object[] refs, int slot) {
+        return OperandStack.peekObject(refs, refs.length - 1 - slot);
     }
 
-    private static int getLocalReturnAddress(Locals locals, int slot) {
-        Object result = locals.peekRawObject(slot);
+    private static int getLocalReturnAddress(long[] primitives, Object[] refs, int slot) {
+        Object result = OperandStack.peekRawObject(refs, refs.length - 1 - slot);
         assert result instanceof ReturnAddress;
         return ((ReturnAddress) result).getBci();
     }
 
-    private static float getLocalFloat(Locals locals, int slot) {
-        return Float.intBitsToFloat(locals.peekInt(slot));
+    private static float getLocalFloat(long[] primitives, Object[] refs, int slot) {
+        return Float.intBitsToFloat(OperandStack.peekInt(primitives, primitives.length - 1 - slot));
     }
 
-    private static long getLocalLong(Locals locals, int slot) {
-        return locals.peekLong(slot);
+    private static long getLocalLong(long[] primitives, Object[] refs, int slot) {
+        return OperandStack.peekLong(primitives, primitives.length - 1 - slot);
     }
 
-    private static double getLocalDouble(Locals locals, int slot) {
-        return Double.longBitsToDouble(locals.peekLong(slot));
+    private static double getLocalDouble(long[] primitives, Object[] refs, int slot) {
+        return Double.longBitsToDouble(OperandStack.peekLong(primitives, primitives.length - 1 - slot));
     }
 
     // endregion Local accessors
 
     @Override
     void initializeBody(VirtualFrame frame) {
-        int slotCount = getMethod().getMaxLocals();
+        int slotCount = getMethod().getMaxLocals() + getMethod().getMaxStackSize();
         CompilerAsserts.partialEvaluationConstant(slotCount);
-        final Locals locals = new Locals(slotCount);
-        frame.setObject(localsSlot, locals);
-        initArguments(frame.getArguments(), locals);
+        long[] primitives = new long[slotCount];
+        Object[] refs = new Object[slotCount];
+        frame.setObject(primitivesSlot, primitives);
+        frame.setObject(refsSlot, refs);
+        initArguments(frame.getArguments(), primitives, refs);
     }
 
     @Override
@@ -626,9 +627,8 @@ public final class BytecodeNode extends EspressoMethodNode {
         int statementIndex = -1;
         int nextStatementIndex = 0;
 
-        final Locals locals = (Locals) FrameUtil.getObjectSafe(frame, localsSlot);
-        final long[] primitives = new long[getMethod().getMaxLocals() + getMethod().getMaxStackSize()];
-        final Object[] refs = new Object[getMethod().getMaxLocals() + getMethod().getMaxStackSize()];
+        final long[] primitives = (long[]) FrameUtil.getObjectSafe(frame, primitivesSlot);
+        final Object[] refs = (Object[]) FrameUtil.getObjectSafe(frame, refsSlot);
 
         CompilerDirectives.ensureVirtualized(primitives);
         CompilerDirectives.ensureVirtualized(refs);
@@ -638,7 +638,7 @@ public final class BytecodeNode extends EspressoMethodNode {
         if (instrument != null) {
             instrument.notifyEntry(frame);
         }
-        onStart(locals);
+        onStart(primitives, refs);
 
         loop: while (true) {
             int curOpcode;
@@ -697,32 +697,32 @@ public final class BytecodeNode extends EspressoMethodNode {
                     case LDC_W: // fall through
                     case LDC2_W: putPoolConstant(primitives, refs, top, bs.readCPI(curBCI), curOpcode); break;
 
-                    case ILOAD: putInt(primitives, refs, top, getLocalInt(locals, bs.readLocalIndex(curBCI))); break;
-                    case LLOAD: putLong(primitives, refs, top, getLocalLong(locals, bs.readLocalIndex(curBCI))); break;
-                    case FLOAD: putFloat(primitives, refs, top, getLocalFloat(locals, bs.readLocalIndex(curBCI))); break;
-                    case DLOAD: putDouble(primitives, refs, top, getLocalDouble(locals, bs.readLocalIndex(curBCI))); break;
-                    case ALOAD: putObject(primitives, refs, top, getLocalObject(locals, bs.readLocalIndex(curBCI))); break;
+                    case ILOAD: putInt(primitives, refs, top, getLocalInt(primitives, refs, bs.readLocalIndex(curBCI))); break;
+                    case LLOAD: putLong(primitives, refs, top, getLocalLong(primitives, refs, bs.readLocalIndex(curBCI))); break;
+                    case FLOAD: putFloat(primitives, refs, top, getLocalFloat(primitives, refs, bs.readLocalIndex(curBCI))); break;
+                    case DLOAD: putDouble(primitives, refs, top, getLocalDouble(primitives, refs, bs.readLocalIndex(curBCI))); break;
+                    case ALOAD: putObject(primitives, refs, top, getLocalObject(primitives, refs, bs.readLocalIndex(curBCI))); break;
 
                     case ILOAD_0: // fall through
                     case ILOAD_1: // fall through
                     case ILOAD_2: // fall through
-                    case ILOAD_3: putInt(primitives, refs, top, getLocalInt(locals, curOpcode - ILOAD_0)); break;
+                    case ILOAD_3: putInt(primitives, refs, top, getLocalInt(primitives, refs, curOpcode - ILOAD_0)); break;
                     case LLOAD_0: // fall through
                     case LLOAD_1: // fall through
                     case LLOAD_2: // fall through
-                    case LLOAD_3: putLong(primitives, refs, top, getLocalLong(locals, curOpcode - LLOAD_0)); break;
+                    case LLOAD_3: putLong(primitives, refs, top, getLocalLong(primitives, refs, curOpcode - LLOAD_0)); break;
                     case FLOAD_0: // fall through
                     case FLOAD_1: // fall through
                     case FLOAD_2: // fall through
-                    case FLOAD_3: putFloat(primitives, refs, top, getLocalFloat(locals, curOpcode - FLOAD_0)); break;
+                    case FLOAD_3: putFloat(primitives, refs, top, getLocalFloat(primitives, refs, curOpcode - FLOAD_0)); break;
                     case DLOAD_0: // fall through
                     case DLOAD_1: // fall through
                     case DLOAD_2: // fall through
-                    case DLOAD_3: putDouble(primitives, refs, top, getLocalDouble(locals, curOpcode - DLOAD_0)); break;
-                    case ALOAD_0: putObject(primitives, refs, top, getLocalObject(locals, 0)); break;
+                    case DLOAD_3: putDouble(primitives, refs, top, getLocalDouble(primitives, refs, curOpcode - DLOAD_0)); break;
+                    case ALOAD_0: putObject(primitives, refs, top, getLocalObject(primitives, refs, 0)); break;
                     case ALOAD_1: // fall through
                     case ALOAD_2: // fall through
-                    case ALOAD_3: putObject(primitives, refs, top, getLocalObject(locals, curOpcode - ALOAD_0)); break;
+                    case ALOAD_3: putObject(primitives, refs, top, getLocalObject(primitives, refs, curOpcode - ALOAD_0)); break;
 
                     case IALOAD: // fall through
                     case LALOAD: // fall through
@@ -739,32 +739,32 @@ public final class BytecodeNode extends EspressoMethodNode {
                         }
                         break;
 
-                    case ISTORE: setLocalInt(locals, bs.readLocalIndex(curBCI), popInt(primitives, refs, top - 1)); break;
-                    case LSTORE: setLocalLong(locals, bs.readLocalIndex(curBCI), popLong(primitives, refs, top - 1)); break;
-                    case FSTORE: setLocalFloat(locals, bs.readLocalIndex(curBCI), popFloat(primitives, refs, top - 1)); break;
-                    case DSTORE: setLocalDouble(locals, bs.readLocalIndex(curBCI), popDouble(primitives, refs, top - 1)); break;
-                    case ASTORE: setLocalObjectOrReturnAddress(locals, bs.readLocalIndex(curBCI), popReturnAddressOrObject(primitives, refs, top - 1)); break;
+                    case ISTORE: setLocalInt(primitives, refs, bs.readLocalIndex(curBCI), popInt(primitives, refs, top - 1)); break;
+                    case LSTORE: setLocalLong(primitives, refs, bs.readLocalIndex(curBCI), popLong(primitives, refs, top - 1)); break;
+                    case FSTORE: setLocalFloat(primitives, refs, bs.readLocalIndex(curBCI), popFloat(primitives, refs, top - 1)); break;
+                    case DSTORE: setLocalDouble(primitives, refs, bs.readLocalIndex(curBCI), popDouble(primitives, refs, top - 1)); break;
+                    case ASTORE: setLocalObjectOrReturnAddress(primitives, refs, bs.readLocalIndex(curBCI), popReturnAddressOrObject(primitives, refs, top - 1)); break;
 
                     case ISTORE_0: // fall through
                     case ISTORE_1: // fall through
                     case ISTORE_2: // fall through
-                    case ISTORE_3: setLocalInt(locals, curOpcode - ISTORE_0, popInt(primitives, refs, top - 1)); break;
+                    case ISTORE_3: setLocalInt(primitives, refs, curOpcode - ISTORE_0, popInt(primitives, refs, top - 1)); break;
                     case LSTORE_0: // fall through
                     case LSTORE_1: // fall through
                     case LSTORE_2: // fall through
-                    case LSTORE_3: setLocalLong(locals, curOpcode - LSTORE_0, popLong(primitives, refs, top - 1)); break;
+                    case LSTORE_3: setLocalLong(primitives, refs, curOpcode - LSTORE_0, popLong(primitives, refs, top - 1)); break;
                     case FSTORE_0: // fall through
                     case FSTORE_1: // fall through
                     case FSTORE_2: // fall through
-                    case FSTORE_3: setLocalFloat(locals, curOpcode - FSTORE_0, popFloat(primitives, refs, top - 1)); break;
+                    case FSTORE_3: setLocalFloat(primitives, refs, curOpcode - FSTORE_0, popFloat(primitives, refs, top - 1)); break;
                     case DSTORE_0: // fall through
                     case DSTORE_1: // fall through
                     case DSTORE_2: // fall through
-                    case DSTORE_3: setLocalDouble(locals, curOpcode - DSTORE_0, popDouble(primitives, refs, top - 1)); break;
+                    case DSTORE_3: setLocalDouble(primitives, refs, curOpcode - DSTORE_0, popDouble(primitives, refs, top - 1)); break;
                     case ASTORE_0: // fall through
                     case ASTORE_1: // fall through
                     case ASTORE_2: // fall through
-                    case ASTORE_3: setLocalObjectOrReturnAddress(locals, curOpcode - ASTORE_0, popReturnAddressOrObject(primitives, refs, top - 1)); break;
+                    case ASTORE_3: setLocalObjectOrReturnAddress(primitives, refs, curOpcode - ASTORE_0, popReturnAddressOrObject(primitives, refs, top - 1)); break;
 
                     case IASTORE: // fall through
                     case LASTORE: // fall through
@@ -838,7 +838,7 @@ public final class BytecodeNode extends EspressoMethodNode {
                     case IXOR: putInt(primitives, refs, top - 2, popInt(primitives, refs, top - 1) ^ popInt(primitives, refs, top - 2)); break;
                     case LXOR: putLong(primitives, refs, top - 4, popLong(primitives, refs, top - 1) ^ popLong(primitives, refs, top - 3)); break;
 
-                    case IINC: setLocalInt(locals, bs.readLocalIndex(curBCI), getLocalInt(locals, bs.readLocalIndex(curBCI)) + bs.readIncrement(curBCI)); break;
+                    case IINC: setLocalInt(primitives, refs, bs.readLocalIndex(curBCI), getLocalInt(primitives, refs, bs.readLocalIndex(curBCI)) + bs.readIncrement(curBCI)); break;
 
                     case I2L: putLong(primitives, refs, top - 1, popInt(primitives, refs, top - 1)); break;
                     case I2F: putFloat(primitives, refs, top - 1, popInt(primitives, refs, top - 1)); break;
@@ -891,7 +891,7 @@ public final class BytecodeNode extends EspressoMethodNode {
 
                         if (takeBranch(primitives, refs, top, curOpcode)) {
                             int targetBCI = bs.readBranchDest(curBCI);
-                            nextStatementIndex = beforeJumpChecks(locals, curBCI, targetBCI, statementIndex, instrument);
+                            nextStatementIndex = beforeJumpChecks(primitives, refs, curBCI, targetBCI, statementIndex, instrument);
                             top += Bytecodes.stackEffectOf(curOpcode);
                             curBCI = targetBCI;
                             continue loop;
@@ -902,14 +902,14 @@ public final class BytecodeNode extends EspressoMethodNode {
                     case JSR_W: {
                         putReturnAddress(primitives, refs, top, bs.nextBCI(curBCI));
                         int targetBCI = bs.readBranchDest(curBCI);
-                        nextStatementIndex = beforeJumpChecks(locals, curBCI, targetBCI, statementIndex, instrument);
+                        nextStatementIndex = beforeJumpChecks(primitives, refs, curBCI, targetBCI, statementIndex, instrument);
                         top += Bytecodes.stackEffectOf(curOpcode);
                         curBCI = targetBCI;
                         continue loop;
                     }
                     case RET: {
-                        int targetBCI = getLocalReturnAddress(locals, bs.readLocalIndex(curBCI));
-                        postLocalAccess(locals, curBCI);
+                        int targetBCI = getLocalReturnAddress(primitives, refs, bs.readLocalIndex(curBCI));
+                        postLocalAccess(primitives, refs, curBCI);
                         if (jsrBci == null) {
                             CompilerDirectives.transferToInterpreterAndInvalidate();
                             jsrBci = new int[bs.endBCI()][];
@@ -922,7 +922,7 @@ public final class BytecodeNode extends EspressoMethodNode {
                             if (jsr == targetBCI) {
                                 CompilerAsserts.partialEvaluationConstant(jsr);
                                 targetBCI = jsr;
-                                nextStatementIndex = beforeJumpChecks(locals, curBCI, targetBCI, statementIndex, instrument);
+                                nextStatementIndex = beforeJumpChecks(primitives, refs, curBCI, targetBCI, statementIndex, instrument);
                                 top += Bytecodes.stackEffectOf(curOpcode);
                                 curBCI = targetBCI;
                                 continue loop;
@@ -931,7 +931,7 @@ public final class BytecodeNode extends EspressoMethodNode {
                         CompilerDirectives.transferToInterpreterAndInvalidate();
                         jsrBci[curBCI] = Arrays.copyOf(jsrBci[curBCI], jsrBci[curBCI].length + 1);
                         jsrBci[curBCI][jsrBci[curBCI].length - 1] = targetBCI;
-                        nextStatementIndex = beforeJumpChecks(locals, curBCI, targetBCI, statementIndex, instrument);
+                        nextStatementIndex = beforeJumpChecks(primitives, refs, curBCI, targetBCI, statementIndex, instrument);
                         top += Bytecodes.stackEffectOf(curOpcode);
                         curBCI = targetBCI;
                         continue loop;
@@ -952,7 +952,7 @@ public final class BytecodeNode extends EspressoMethodNode {
                             } else {
                                 targetBCI = switchHelper.defaultTarget(bs, curBCI);
                             }
-                            nextStatementIndex = beforeJumpChecks(locals, curBCI, targetBCI, statementIndex, instrument);
+                            nextStatementIndex = beforeJumpChecks(primitives, refs, curBCI, targetBCI, statementIndex, instrument);
                             top += Bytecodes.stackEffectOf(curOpcode);
                             curBCI = targetBCI;
                             continue loop;
@@ -964,7 +964,7 @@ public final class BytecodeNode extends EspressoMethodNode {
                             if (i == index) {
                                 // Key found.
                                 int targetBCI = switchHelper.targetAt(bs, curBCI, i - low);
-                                nextStatementIndex = beforeJumpChecks(locals, curBCI, targetBCI, statementIndex, instrument);
+                                nextStatementIndex = beforeJumpChecks(primitives, refs, curBCI, targetBCI, statementIndex, instrument);
                                 top += Bytecodes.stackEffectOf(curOpcode);
                                 curBCI = targetBCI;
                                 continue loop;
@@ -973,7 +973,7 @@ public final class BytecodeNode extends EspressoMethodNode {
 
                         // Key not found.
                         int targetBCI = switchHelper.defaultTarget(bs, curBCI);
-                        nextStatementIndex = beforeJumpChecks(locals, curBCI, targetBCI, statementIndex, instrument);
+                        nextStatementIndex = beforeJumpChecks(primitives, refs, curBCI, targetBCI, statementIndex, instrument);
                         top += Bytecodes.stackEffectOf(curOpcode);
                         curBCI = targetBCI;
                         continue loop;
@@ -993,7 +993,7 @@ public final class BytecodeNode extends EspressoMethodNode {
                             } else {
                                 // Key found.
                                 int targetBCI = curBCI + switchHelper.offsetAt(bs, curBCI, mid);
-                                nextStatementIndex = beforeJumpChecks(locals, curBCI, targetBCI, statementIndex, instrument);
+                                nextStatementIndex = beforeJumpChecks(primitives, refs, curBCI, targetBCI, statementIndex, instrument);
                                 top += Bytecodes.stackEffectOf(curOpcode);
                                 curBCI = targetBCI;
                                 continue loop;
@@ -1002,7 +1002,7 @@ public final class BytecodeNode extends EspressoMethodNode {
 
                         // Key not found.
                         int targetBCI = switchHelper.defaultTarget(bs, curBCI);
-                        nextStatementIndex = beforeJumpChecks(locals, curBCI, targetBCI, statementIndex, instrument);
+                        nextStatementIndex = beforeJumpChecks(primitives, refs, curBCI, targetBCI, statementIndex, instrument);
                         top += Bytecodes.stackEffectOf(curOpcode);
                         curBCI = targetBCI;
                         continue loop;
@@ -1112,7 +1112,7 @@ public final class BytecodeNode extends EspressoMethodNode {
                                 putObject(primitives, refs, 0, wrappedStackOverflowError.getExceptionObject());
                                 top++;
                                 int targetBCI = stackOverflowErrorInfo[i + 2];
-                                nextStatementIndex = beforeJumpChecks(locals, curBCI, targetBCI, statementIndex, instrument);
+                                nextStatementIndex = beforeJumpChecks(primitives, refs, curBCI, targetBCI, statementIndex, instrument);
                                 curBCI = targetBCI;
                                 continue loop; // skip bs.next()
                             }
@@ -1155,7 +1155,7 @@ public final class BytecodeNode extends EspressoMethodNode {
                         putObject(primitives, refs, 0, wrappedException.getExceptionObject());
                         top++;
                         int targetBCI = handler.getHandlerBCI();
-                        nextStatementIndex = beforeJumpChecks(locals, curBCI, targetBCI, statementIndex, instrument);
+                        nextStatementIndex = beforeJumpChecks(primitives, refs, curBCI, targetBCI, statementIndex, instrument);
                         curBCI = targetBCI;
                         continue loop; // skip bs.next()
                     } else {
@@ -1185,28 +1185,28 @@ public final class BytecodeNode extends EspressoMethodNode {
                 }
             }
             if (Bytecodes.isLoad(curOpcode) || Bytecodes.isStore(curOpcode)) {
-                postLocalAccess(locals, curBCI);
+                postLocalAccess(primitives, refs, curBCI);
             }
             top += Bytecodes.stackEffectOf(curOpcode);
             int targetBCI = bs.nextBCI(curBCI);
             if (instrument != null) {
                 nextStatementIndex = instrument.getNextStatementIndex(statementIndex, targetBCI);
             }
-            edgeLocalAnalysis(locals, curBCI, targetBCI);
+            edgeLocalAnalysis(primitives, refs, curBCI, targetBCI);
             curBCI = targetBCI;
         }
     }
 
-    private void edgeLocalAnalysis(Locals locals, int curBCI, int nextBCI) {
-        livenessAnalysis.performOnEdge(locals, curBCI, nextBCI);
+    private void edgeLocalAnalysis(long[] primitives, Object[] refs, int curBCI, int nextBCI) {
+        livenessAnalysis.performOnEdge(primitives, refs, curBCI, nextBCI);
     }
 
-    private void onStart(Locals locals) {
-        livenessAnalysis.onStart(locals);
+    private void onStart(long[] primitives, Object[] refs) {
+        livenessAnalysis.onStart(primitives, refs);
     }
 
-    private void postLocalAccess(Locals locals, int curBCI) {
-        livenessAnalysis.performPostBCI(locals, curBCI);
+    private void postLocalAccess(long[] primitives, Object[] refs, int curBCI) {
+        livenessAnalysis.performPostBCI(primitives, refs, curBCI);
     }
 
     private EspressoRootNode getRoot() {
@@ -1407,7 +1407,7 @@ public final class BytecodeNode extends EspressoMethodNode {
         refArrayStoreNode.arrayStore(OperandStack.popObject(refs, top - 1), index, array);
     }
 
-    private int beforeJumpChecks(Locals locals, int curBCI, int targetBCI, int statementIndex, InstrumentationSupport instrument) {
+    private int beforeJumpChecks(long[] primitives, Object[] refs, int curBCI, int targetBCI, int statementIndex, InstrumentationSupport instrument) {
         CompilerAsserts.partialEvaluationConstant(targetBCI);
         int nextStatementIndex = 0;
         if (targetBCI <= curBCI) {
@@ -1417,7 +1417,7 @@ public final class BytecodeNode extends EspressoMethodNode {
         if (instrument != null) {
             nextStatementIndex = instrument.getStatementIndexAfterJump(statementIndex, curBCI, targetBCI);
         }
-        edgeLocalAnalysis(locals, curBCI, targetBCI);
+        edgeLocalAnalysis(primitives, refs, curBCI, targetBCI);
         return nextStatementIndex;
     }
 
