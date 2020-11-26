@@ -4,6 +4,8 @@ This changelog summarizes major changes between Truffle Tools versions.
 
 ## Version 21.0.0
 
+* `--insight` option is no longer considered experimental
+
 ## Version 20.3.0
 
 * [GraalVM Insight](docs/Insight.md) Maven artifact is now `org.graalvm.tools:insight:20.3.0`
