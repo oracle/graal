@@ -60,7 +60,6 @@ import org.graalvm.wasm.nodes.WasmBlockNode;
 import org.graalvm.wasm.nodes.WasmCallStubNode;
 import org.graalvm.wasm.nodes.WasmIfNode;
 import org.graalvm.wasm.nodes.WasmIndirectCallNode;
-import org.graalvm.wasm.nodes.WasmNode;
 import org.graalvm.wasm.nodes.WasmRootNode;
 
 import java.nio.ByteBuffer;
@@ -408,18 +407,13 @@ public class BinaryParser extends BinaryStreamParser {
                         "Stack size must match the return type length at the function end", Failure.RETURN_SIZE_MISMATCH);
         rootNode.setBody(bodyBlock);
 
-        /* Push a frame slot to the frame descriptor for every local. */
-        rootNode.codeEntry().initLocalSlots(rootNode.getFrameDescriptor());
-
         /* Initialize the Truffle-related components required for execution. */
-        if (state.intConstants().length > 0) {
-            rootNode.codeEntry().setIntConstants(state.intConstants());
-        }
+        rootNode.codeEntry().setIntConstants(state.intConstants());
         if (state.branchTables().length > 0) {
             rootNode.codeEntry().setBranchTables(state.branchTables());
         }
         rootNode.codeEntry().setProfileCount(state.profileCount());
-        rootNode.codeEntry().initStack(rootNode.getFrameDescriptor(), state.maxStackSize());
+        rootNode.codeEntry().initStackLocals(rootNode.getFrameDescriptor(), state.maxStackSize());
     }
 
     private ByteArrayList readCodeEntryLocals() {
@@ -1048,7 +1042,7 @@ public class BinaryParser extends BinaryStreamParser {
         state.unwindStack(stackSizeAfterCondition);
 
         // Read false branch, if it exists.
-        WasmNode falseBranchBlock = null;
+        WasmBlockNode falseBranchBlock = null;
         if (peek1(-1) == Instructions.ELSE) {
             falseBranchBlock = readBlockBody(instance, codeEntry, state, blockTypeId, false);
         } else if (blockTypeId != WasmType.VOID_TYPE) {
@@ -1468,10 +1462,10 @@ public class BinaryParser extends BinaryStreamParser {
     }
 
     protected int readSignedInt32() {
-        int value = peekSignedInt32(data, offset);
-        byte length = peekLeb128Length(data, offset);
+        long valueAndLength = peekSignedInt32AndLength(data, offset);
+        int length = (int) ((valueAndLength >>> 32) & 0xffff_ffffL);
         offset += length;
-        return value;
+        return (int) (valueAndLength & 0xffff_ffffL);
     }
 
     private long readSignedInt64() {

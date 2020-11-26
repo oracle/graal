@@ -104,28 +104,29 @@ public class WasmRootNode extends RootNode implements WasmNodeInterface {
     }
 
     public Object executeWithContext(VirtualFrame frame, WasmContext context) {
-        // The operand stack is represented as a long array,
-        // and is kept in a dedicated frame slot.x
-        // The reason for this is that the operand stack cannot be passed
-        // as an argument to the loop-node's execute method,
-        // and must be restored at the beginning of the loop body.
-        long[] stack = new long[codeEntry.maxStackSize()];
-        frame.setObject(codeEntry.stackSlot(), stack);
-
         // WebAssembly structure dictates that a function's arguments are provided to the function
         // as local variables, followed by any additional local variables that the function
         // declares. A VirtualFrame contains a special array for the arguments, so we need to move
         // the arguments to the array that holds the locals.
-        long[] locals = new long[body.codeEntry().numLocals()];
-        frame.setObject(codeEntry.localsSlot(), locals);
-        moveArgumentsToLocals(frame, locals);
+        //
+        // The operand stack is also represented in the same long array.
+        //
+        // This combined array is kept inside a frame slot.
+        // The reason for this is that the operand stack cannot be passed
+        // as an argument to the loop-node's execute method,
+        // and must be restored at the beginning of the loop body.
+        final int maxStackSize = codeEntry.maxStackSize();
+        final int numLocals = body.codeEntry().numLocals();
+        long[] stacklocals = new long[numLocals + maxStackSize];
+        frame.setObject(codeEntry.stackLocalsSlot(), stacklocals);
+        moveArgumentsToLocals(frame, stacklocals);
 
         // WebAssembly rules dictate that a function's locals must be initialized to zero before
         // function invocation. For more information, check the specification:
         // https://webassembly.github.io/spec/core/exec/instructions.html#function-calls
-        initializeLocals(locals);
+        initializeLocals(stacklocals);
 
-        body.execute(context, frame, locals, stack);
+        body.execute(context, frame, stacklocals);
 
         switch (body.returnTypeId()) {
             case 0x00:
@@ -133,21 +134,21 @@ public class WasmRootNode extends RootNode implements WasmNodeInterface {
                 return WasmVoidResult.getInstance();
             }
             case WasmType.I32_TYPE: {
-                long returnValue = pop(stack, 0);
+                long returnValue = pop(stacklocals, numLocals);
                 assert returnValue >>> 32 == 0;
                 return (int) returnValue;
             }
             case WasmType.I64_TYPE: {
-                long returnValue = pop(stack, 0);
+                long returnValue = pop(stacklocals, numLocals);
                 return returnValue;
             }
             case WasmType.F32_TYPE: {
-                long returnValue = pop(stack, 0);
+                long returnValue = pop(stacklocals, numLocals);
                 assert returnValue >>> 32 == 0;
                 return Float.intBitsToFloat((int) returnValue);
             }
             case WasmType.F64_TYPE: {
-                long returnValue = pop(stack, 0);
+                long returnValue = pop(stacklocals, numLocals);
                 return Double.longBitsToDouble(returnValue);
             }
             default:
@@ -156,7 +157,7 @@ public class WasmRootNode extends RootNode implements WasmNodeInterface {
     }
 
     @ExplodeLoop
-    private void moveArgumentsToLocals(VirtualFrame frame, long[] locals) {
+    private void moveArgumentsToLocals(VirtualFrame frame, long[] stacklocals) {
         Object[] args = frame.getArguments();
         int numArgs = body.instance().symbolTable().function(codeEntry().functionIndex()).numArguments();
         assert args.length == numArgs : "Expected number of arguments " + numArgs + ", actual " + args.length;
@@ -165,23 +166,23 @@ public class WasmRootNode extends RootNode implements WasmNodeInterface {
             byte type = body.codeEntry().localType(i);
             switch (type) {
                 case WasmType.I32_TYPE:
-                    locals[i] = (int) arg;
+                    stacklocals[i] = (int) arg;
                     break;
                 case WasmType.I64_TYPE:
-                    locals[i] = (long) arg;
+                    stacklocals[i] = (long) arg;
                     break;
                 case WasmType.F32_TYPE:
-                    locals[i] = Float.floatToRawIntBits((float) arg);
+                    stacklocals[i] = Float.floatToRawIntBits((float) arg);
                     break;
                 case WasmType.F64_TYPE:
-                    locals[i] = Double.doubleToRawLongBits((double) arg);
+                    stacklocals[i] = Double.doubleToRawLongBits((double) arg);
                     break;
             }
         }
     }
 
     @ExplodeLoop
-    private void initializeLocals(long[] locals) {
+    private void initializeLocals(long[] stacklocals) {
         int numArgs = body.instance().symbolTable().function(codeEntry().functionIndex()).numArguments();
         for (int i = numArgs; i != body.codeEntry().numLocals(); ++i) {
             byte type = body.codeEntry().localType(i);
@@ -193,10 +194,10 @@ public class WasmRootNode extends RootNode implements WasmNodeInterface {
                     // Already set to 0 at allocation.
                     break;
                 case WasmType.F32_TYPE:
-                    locals[i] = Float.floatToRawIntBits(0.0f);
+                    stacklocals[i] = Float.floatToRawIntBits(0.0f);
                     break;
                 case WasmType.F64_TYPE:
-                    locals[i] = Double.doubleToRawLongBits(0.0);
+                    stacklocals[i] = Double.doubleToRawLongBits(0.0);
                     break;
             }
         }

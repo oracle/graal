@@ -62,7 +62,8 @@ public abstract class FromLibGraalCalls<T extends Enum<T> & FromLibGraalId> {
     /**
      * Prevents recursion when an exception happens in {@link #getJNIClass} or {@link #getJNIMethod}
      * called from
-     * {@link JNIExceptionWrapper#wrapAndThrowPendingJNIException(org.graalvm.libgraal.jni.JNI.JNIEnv, java.lang.Class...)}.
+     * {@link JNIExceptionWrapper#wrapAndThrowPendingJNIException(org.graalvm.libgraal.jni.JNI.JNIEnv, java.lang.Class...)}
+     * .
      */
     private static final ThreadLocal<Boolean> inExceptionHandler = new ThreadLocal<>();
 
@@ -174,7 +175,11 @@ public abstract class FromLibGraalCalls<T extends Enum<T> & FromLibGraalId> {
             return classes.computeIfAbsent(className, new Function<String, JNIClass>() {
                 @Override
                 public JNIClass apply(String name) {
-                    JClass clazz = JNIUtil.findClass(env, getBinaryName(name));
+                    JNI.JObject classLoader = JNIUtil.getJVMCIClassLoader(env);
+                    // If the JVMCI classloader does not exist, then JVMCI must have been loaded on
+                    // the boot classpath. This is the case, for example, in unit tests, when the
+                    // -XX:-UseJVMCIClassLoader flag is specified.
+                    JClass clazz = classLoader.isNull() ? JNIUtil.findClass(env, getBinaryName(name)) : JNIUtil.findClass(env, classLoader, getBinaryName(name));
                     if (clazz.isNull()) {
                         JNIUtil.ExceptionClear(env);
                         throw new InternalError("Cannot load class: " + name);

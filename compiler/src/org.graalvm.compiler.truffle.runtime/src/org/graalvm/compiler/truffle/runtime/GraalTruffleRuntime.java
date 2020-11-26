@@ -45,6 +45,8 @@ import java.util.concurrent.TimeoutException;
 import java.util.function.Consumer;
 import java.util.logging.Level;
 
+import com.oracle.truffle.api.HostCompilerDirectives.BytecodeInterpreterSwitch;
+import com.oracle.truffle.api.HostCompilerDirectives.BytecodeInterpreterSwitchBoundary;
 import org.graalvm.collections.EconomicMap;
 import org.graalvm.collections.UnmodifiableEconomicMap;
 import org.graalvm.compiler.truffle.common.CompilableTruffleAST;
@@ -993,6 +995,16 @@ public abstract class GraalTruffleRuntime implements TruffleRuntime, TruffleComp
     @Override
     public boolean isSpecializationMethod(ResolvedJavaMethod method) {
         return getAnnotation(Specialization.class, method) != null;
+    }
+
+    @Override
+    public boolean isBytecodeInterpreterSwitch(ResolvedJavaMethod method) {
+        return getAnnotation(BytecodeInterpreterSwitch.class, method) != null;
+    }
+
+    @Override
+    public boolean isBytecodeInterpreterSwitchBoundary(ResolvedJavaMethod method) {
+        return getAnnotation(BytecodeInterpreterSwitchBoundary.class, method) != null;
     }
 
     @Override
