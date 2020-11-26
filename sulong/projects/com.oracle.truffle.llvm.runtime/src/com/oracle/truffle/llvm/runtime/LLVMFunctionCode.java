@@ -63,7 +63,7 @@ import com.oracle.truffle.llvm.runtime.types.FunctionType;
  * A call target is generated when a {@link Function} is resolved.
  *
  */
-public class LLVMFunctionCode {
+public final class LLVMFunctionCode {
     private static final long SULONG_FUNCTION_POINTER_TAG = 0xBADE_FACE_0000_0000L;
 
     static {
