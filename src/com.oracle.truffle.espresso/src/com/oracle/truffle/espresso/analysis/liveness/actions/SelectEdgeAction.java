@@ -27,7 +27,6 @@ import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
 import com.oracle.truffle.api.nodes.ExplodeLoop;
 import com.oracle.truffle.espresso.analysis.liveness.EdgeAction;
 import com.oracle.truffle.espresso.analysis.liveness.LocalVariableAction;
-import com.oracle.truffle.espresso.nodes.BytecodeNode;
 import com.oracle.truffle.espresso.nodes.Locals;
 
 public class SelectEdgeAction implements EdgeAction {
@@ -42,7 +41,7 @@ public class SelectEdgeAction implements EdgeAction {
     }
 
     @ExplodeLoop
-    public void onEdge(Locals locals, int fromBCI, BytecodeNode node) {
+    public void onEdge(Locals locals, int fromBCI) {
         for (int i = 0; i < from.length; i++) {
             if (from[i] == fromBCI) {
                 actions[i].execute(locals);

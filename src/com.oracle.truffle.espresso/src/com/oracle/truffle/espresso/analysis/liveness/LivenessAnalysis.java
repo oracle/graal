@@ -38,7 +38,6 @@ import com.oracle.truffle.espresso.analysis.liveness.actions.MultiAction;
 import com.oracle.truffle.espresso.analysis.liveness.actions.NullOutAction;
 import com.oracle.truffle.espresso.analysis.liveness.actions.SelectEdgeAction;
 import com.oracle.truffle.espresso.impl.Method;
-import com.oracle.truffle.espresso.nodes.BytecodeNode;
 import com.oracle.truffle.espresso.nodes.Locals;
 import com.oracle.truffle.espresso.perf.DebugCloseable;
 import com.oracle.truffle.espresso.perf.DebugTimer;
@@ -55,15 +54,15 @@ public class LivenessAnalysis {
 
     public static final LivenessAnalysis NO_ANALYSIS = new LivenessAnalysis() {
         @Override
-        public void performPostBCI(Locals locals, int bci, BytecodeNode node) {
+        public void performPostBCI(Locals locals, int bci) {
         }
 
         @Override
-        public void performOnEdge(Locals locals, int bci, int nextBci, BytecodeNode node) {
+        public void performOnEdge(Locals locals, int bci, int nextBci) {
         }
 
         @Override
-        public void onStart(Locals locals, BytecodeNode node) {
+        public void onStart(Locals locals) {
         }
     };
 
@@ -84,15 +83,15 @@ public class LivenessAnalysis {
         return !compiledCodeOnly || CompilerDirectives.inCompiledCode();
     }
 
-    public void performOnEdge(Locals locals, int bci, int nextBci, BytecodeNode node) {
+    public void performOnEdge(Locals locals, int bci, int nextBci) {
         if (compiledCodeCheck()) {
             if (edge != null && edge[nextBci] != null) {
-                edge[nextBci].onEdge(locals, bci, node);
+                edge[nextBci].onEdge(locals, bci);
             }
         }
     }
 
-    public void onStart(Locals locals, BytecodeNode node) {
+    public void onStart(Locals locals) {
         if (compiledCodeCheck()) {
             if (onStart != null) {
                 onStart.execute(locals);
@@ -100,7 +99,7 @@ public class LivenessAnalysis {
         }
     }
 
-    public void performPostBCI(Locals locals, int bci, BytecodeNode node) {
+    public void performPostBCI(Locals locals, int bci) {
         if (compiledCodeCheck()) {
             if (result != null && result[bci] != null) {
                 result[bci].execute(locals);

@@ -436,7 +436,7 @@ public final class BytecodeNode extends EspressoMethodNode {
         int argCount = Signatures.parameterCount(getMethod().getParsedSignature(), false);
 
         CompilerAsserts.partialEvaluationConstant(argCount);
-        //CompilerAsserts.partialEvaluationConstant(locals);
+        // CompilerAsserts.partialEvaluationConstant(locals);
 
         boolean hasReceiver = !getMethod().isStatic();
         int receiverSlot = hasReceiver ? 1 : 0;
@@ -1195,15 +1195,15 @@ public final class BytecodeNode extends EspressoMethodNode {
     }
 
     private void edgeLocalAnalysis(Locals locals, int curBCI, int nextBCI) {
-        livenessAnalysis.performOnEdge(locals, curBCI, nextBCI, this);
+        livenessAnalysis.performOnEdge(locals, curBCI, nextBCI);
     }
 
     private void onStart(Locals locals) {
-        livenessAnalysis.onStart(locals, this);
+        livenessAnalysis.onStart(locals);
     }
 
     private void postLocalAccess(Locals locals, int curBCI) {
-        livenessAnalysis.performPostBCI(locals, curBCI, this);
+        livenessAnalysis.performPostBCI(locals, curBCI);
     }
 
     private EspressoRootNode getRoot() {
@@ -1417,7 +1417,6 @@ public final class BytecodeNode extends EspressoMethodNode {
         edgeLocalAnalysis(locals, curBCI, targetBCI);
         return nextStatementIndex;
     }
-
 
     private void checkStopping() {
         if (getContext().shouldCheckDeprecationStatus()) {
