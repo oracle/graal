@@ -979,6 +979,8 @@ public abstract class GraalTruffleRuntime implements TruffleRuntime, TruffleComp
             }
         } else if (getAnnotation(TruffleCallBoundary.class, original) != null) {
             return InlineKind.DO_NOT_INLINE_WITH_EXCEPTION;
+        } else if (JFRListener.isInstrumented(original)) {
+            return InlineKind.DO_NOT_INLINE_WITH_EXCEPTION;
         }
         return InlineKind.INLINE;
     }
@@ -1093,5 +1095,4 @@ public abstract class GraalTruffleRuntime implements TruffleRuntime, TruffleComp
                         valueClass == Double.class ||
                         valueClass == String.class;
     }
-
 }
