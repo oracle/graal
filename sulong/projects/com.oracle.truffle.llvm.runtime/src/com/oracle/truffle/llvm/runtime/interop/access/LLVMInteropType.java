@@ -48,6 +48,7 @@ import com.oracle.truffle.llvm.runtime.debug.type.LLVMSourcePointerType;
 import com.oracle.truffle.llvm.runtime.debug.type.LLVMSourceStructLikeType;
 import com.oracle.truffle.llvm.runtime.debug.type.LLVMSourceType;
 import com.oracle.truffle.llvm.runtime.interop.convert.ForeignToLLVM.ForeignToLLVMType;
+import com.oracle.truffle.llvm.runtime.library.internal.LLVMAsForeignLibrary;
 import com.oracle.truffle.llvm.runtime.pointer.LLVMPointer;
 import org.graalvm.collections.EconomicMap;
 import org.graalvm.collections.EconomicSet;
@@ -61,6 +62,7 @@ import java.util.stream.Collectors;
  * Describes how foreign interop should interpret values.
  */
 @ExportLibrary(InteropLibrary.class)
+@ExportLibrary(LLVMAsForeignLibrary.class)
 public abstract class LLVMInteropType implements TruffleObject {
 
     public static final LLVMInteropType.Value UNKNOWN = Value.primitive(null, 0);
@@ -77,6 +79,11 @@ public abstract class LLVMInteropType implements TruffleObject {
 
     public LLVMInteropType.Array toArray(long length) {
         return new Array(this, size, length);
+    }
+
+    @ExportMessage
+    boolean isForeign() {
+        return false;
     }
 
     @SuppressWarnings("static-method")

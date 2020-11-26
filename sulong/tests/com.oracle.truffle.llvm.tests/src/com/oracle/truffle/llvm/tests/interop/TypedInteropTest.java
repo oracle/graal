@@ -285,6 +285,29 @@ public class TypedInteropTest extends InteropTestBase {
         Assert.assertEquals("y", 42, point.get("y"));
     }
 
+    public static class GetPointTypeNode extends SulongTestNode {
+
+        public GetPointTypeNode() {
+            super(testLibrary, "getPointType");
+        }
+    }
+
+    public static class FlipPointDynamicNode extends SulongTestNode {
+
+        public FlipPointDynamicNode() {
+            super(testLibrary, "flipPointDynamic");
+        }
+    }
+
+    @Test
+    public void testFlipPointDynamic(@Inject(GetPointTypeNode.class) CallTarget getPointType, @Inject(FlipPointDynamicNode.class) CallTarget flipPointDynamic) {
+        StructObject point = makePoint(123, 321);
+        Object type = getPointType.call();
+        flipPointDynamic.call(point, type);
+        Assert.assertEquals("x", 321, point.get("x"));
+        Assert.assertEquals("y", 123, point.get("y"));
+    }
+
     public static class SumPointsNode extends SulongTestNode {
 
         public SumPointsNode() {
