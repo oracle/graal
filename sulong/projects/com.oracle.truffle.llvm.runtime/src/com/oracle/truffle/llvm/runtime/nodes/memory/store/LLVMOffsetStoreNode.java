@@ -32,6 +32,8 @@ package com.oracle.truffle.llvm.runtime.nodes.memory.store;
 import com.oracle.truffle.api.dsl.NodeChild;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.frame.VirtualFrame;
+import com.oracle.truffle.llvm.runtime.CommonNodeFactory;
+import com.oracle.truffle.llvm.runtime.interop.access.LLVMInteropType;
 import com.oracle.truffle.llvm.runtime.nodes.api.LLVMExpressionNode;
 import com.oracle.truffle.llvm.runtime.nodes.api.LLVMNode;
 import com.oracle.truffle.llvm.runtime.nodes.api.LLVMStoreNode;
@@ -42,6 +44,8 @@ import com.oracle.truffle.llvm.runtime.pointer.LLVMPointer;
 @NodeChild(value = "offset", type = LLVMExpressionNode.class)
 @NodeChild(value = "value", type = LLVMExpressionNode.class)
 public abstract class LLVMOffsetStoreNode extends LLVMNode {
+
+    public abstract void executeWithTargetGeneric(LLVMPointer receiver, long offset, Object value);
 
     public abstract void executeWithTarget(VirtualFrame frame, LLVMPointer receiver, long offset);
 
@@ -67,4 +71,11 @@ public abstract class LLVMOffsetStoreNode extends LLVMNode {
         }
     }
 
+    public static final LLVMOffsetStoreNode create(LLVMInteropType.ValueKind kind) {
+        return CommonNodeFactory.createOffsetStoreNode(kind);
+    }
+
+    public static LLVMOffsetStoreNode getUncached(LLVMInteropType.ValueKind kind) {
+        return CommonNodeFactory.getUncachedOffsetStoreNode(kind);
+    }
 }

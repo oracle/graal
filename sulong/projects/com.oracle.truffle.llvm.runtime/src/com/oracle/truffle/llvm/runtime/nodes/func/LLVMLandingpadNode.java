@@ -112,18 +112,6 @@ public abstract class LLVMLandingpadNode extends LLVMExpressionNode {
 
         public abstract int execute(VirtualFrame frame, LLVMStack stack, LLVMPointer unwindHeader);
 
-        /**
-         * Override to allow access from generated wrapper.
-         */
-        @Override
-        protected abstract boolean isStatement();
-
-        /**
-         * Override to allow access from generated wrapper.
-         */
-        @Override
-        protected abstract void setStatement(boolean statementTag);
-
         @Override
         public WrapperNode createWrapper(ProbeNode probe) {
             return new LandingpadEntryNodeWrapper(this, probe);

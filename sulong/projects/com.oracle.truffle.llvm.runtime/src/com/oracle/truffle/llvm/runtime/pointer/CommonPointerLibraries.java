@@ -400,7 +400,7 @@ abstract class CommonPointerLibraries {
 
         @Specialization
         static boolean doNative(LLVMPointerImpl receiver, LLVMPointerImpl other,
-                        @Cached LLVMAddressEqualsNode equals) {
+                        @Cached LLVMAddressEqualsNode.Operation equals) {
             return equals.executeWithTarget(receiver, other);
         }
 
@@ -453,7 +453,7 @@ abstract class CommonPointerLibraries {
 
         @Specialization
         static TriState doPointer(LLVMPointerImpl receiver, LLVMPointerImpl other,
-                        @Cached LLVMAddressEqualsNode equals) {
+                        @Cached LLVMAddressEqualsNode.Operation equals) {
             return TriState.valueOf(equals.executeWithTarget(receiver, other));
         }
 

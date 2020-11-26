@@ -29,6 +29,8 @@
  */
 package com.oracle.truffle.llvm.runtime;
 
+import java.math.BigInteger;
+
 import com.oracle.truffle.api.frame.FrameSlot;
 import com.oracle.truffle.llvm.runtime.LLVMUnsupportedException.UnsupportedReason;
 import com.oracle.truffle.llvm.runtime.datalayout.DataLayout;
@@ -59,7 +61,6 @@ import com.oracle.truffle.llvm.runtime.interop.convert.ToVoidLLVMNodeGen;
 import com.oracle.truffle.llvm.runtime.nodes.api.LLVMExpressionNode;
 import com.oracle.truffle.llvm.runtime.nodes.api.LLVMLoadNode;
 import com.oracle.truffle.llvm.runtime.nodes.api.LLVMStatementNode;
-import com.oracle.truffle.llvm.runtime.nodes.api.LLVMStoreNode;
 import com.oracle.truffle.llvm.runtime.nodes.cast.LLVMTo80BitFloatingNodeGen.LLVMBitcastToLLVM80BitFloatNodeGen;
 import com.oracle.truffle.llvm.runtime.nodes.cast.LLVMTo80BitFloatingNodeGen.LLVMSignedCastToLLVM80BitFloatNodeGen;
 import com.oracle.truffle.llvm.runtime.nodes.cast.LLVMTo80BitFloatingNodeGen.LLVMUnsignedCastToLLVM80BitFloatNodeGen;
@@ -128,25 +129,29 @@ import com.oracle.truffle.llvm.runtime.nodes.literals.LLVMSimpleLiteralNodeFacto
 import com.oracle.truffle.llvm.runtime.nodes.literals.LLVMSimpleLiteralNodeFactory.LLVMManagedPointerLiteralNodeGen;
 import com.oracle.truffle.llvm.runtime.nodes.literals.LLVMSimpleLiteralNodeFactory.LLVMNativePointerLiteralNodeGen;
 import com.oracle.truffle.llvm.runtime.nodes.memory.LLVMVectorizedGetElementPtrNodeGen;
-import com.oracle.truffle.llvm.runtime.nodes.memory.load.LLVMDirectLoadNode.LLVMPointerDirectLoadNode;
-import com.oracle.truffle.llvm.runtime.nodes.memory.load.LLVMDirectLoadNodeFactory.LLVM80BitFloatDirectLoadNodeGen;
-import com.oracle.truffle.llvm.runtime.nodes.memory.load.LLVMDirectLoadNodeFactory.LLVMIVarBitDirectLoadNodeGen;
-import com.oracle.truffle.llvm.runtime.nodes.memory.load.LLVMDirectLoadNodeFactory.LLVMPointerDirectLoadNodeGen;
-import com.oracle.truffle.llvm.runtime.nodes.memory.load.LLVMDirectLoadNodeFactory.LLVMStructDirectLoadNodeGen;
-import com.oracle.truffle.llvm.runtime.nodes.memory.load.LLVMDoubleLoadNode;
+import com.oracle.truffle.llvm.runtime.nodes.memory.load.LLVM80BitFloatLoadNodeGen;
+import com.oracle.truffle.llvm.runtime.nodes.memory.load.LLVMDoubleLoadNode.LLVMDoubleOffsetLoadNode;
 import com.oracle.truffle.llvm.runtime.nodes.memory.load.LLVMDoubleLoadNodeGen;
-import com.oracle.truffle.llvm.runtime.nodes.memory.load.LLVMFloatLoadNode;
+import com.oracle.truffle.llvm.runtime.nodes.memory.load.LLVMDoubleLoadNodeGen.LLVMDoubleOffsetLoadNodeGen;
+import com.oracle.truffle.llvm.runtime.nodes.memory.load.LLVMFloatLoadNode.LLVMFloatOffsetLoadNode;
 import com.oracle.truffle.llvm.runtime.nodes.memory.load.LLVMFloatLoadNodeGen;
-import com.oracle.truffle.llvm.runtime.nodes.memory.load.LLVMI16LoadNode;
+import com.oracle.truffle.llvm.runtime.nodes.memory.load.LLVMFloatLoadNodeGen.LLVMFloatOffsetLoadNodeGen;
+import com.oracle.truffle.llvm.runtime.nodes.memory.load.LLVMI16LoadNode.LLVMI16OffsetLoadNode;
 import com.oracle.truffle.llvm.runtime.nodes.memory.load.LLVMI16LoadNodeGen;
-import com.oracle.truffle.llvm.runtime.nodes.memory.load.LLVMI1LoadNode;
+import com.oracle.truffle.llvm.runtime.nodes.memory.load.LLVMI16LoadNodeGen.LLVMI16OffsetLoadNodeGen;
+import com.oracle.truffle.llvm.runtime.nodes.memory.load.LLVMI1LoadNode.LLVMI1OffsetLoadNode;
 import com.oracle.truffle.llvm.runtime.nodes.memory.load.LLVMI1LoadNodeGen;
-import com.oracle.truffle.llvm.runtime.nodes.memory.load.LLVMI32LoadNode;
+import com.oracle.truffle.llvm.runtime.nodes.memory.load.LLVMI1LoadNodeGen.LLVMI1OffsetLoadNodeGen;
+import com.oracle.truffle.llvm.runtime.nodes.memory.load.LLVMI32LoadNode.LLVMI32OffsetLoadNode;
 import com.oracle.truffle.llvm.runtime.nodes.memory.load.LLVMI32LoadNodeGen;
-import com.oracle.truffle.llvm.runtime.nodes.memory.load.LLVMI64LoadNode;
+import com.oracle.truffle.llvm.runtime.nodes.memory.load.LLVMI32LoadNodeGen.LLVMI32OffsetLoadNodeGen;
+import com.oracle.truffle.llvm.runtime.nodes.memory.load.LLVMI64LoadNode.LLVMI64OffsetLoadNode;
 import com.oracle.truffle.llvm.runtime.nodes.memory.load.LLVMI64LoadNodeGen;
-import com.oracle.truffle.llvm.runtime.nodes.memory.load.LLVMI8LoadNode;
+import com.oracle.truffle.llvm.runtime.nodes.memory.load.LLVMI64LoadNodeGen.LLVMI64OffsetLoadNodeGen;
+import com.oracle.truffle.llvm.runtime.nodes.memory.load.LLVMI8LoadNode.LLVMI8OffsetLoadNode;
 import com.oracle.truffle.llvm.runtime.nodes.memory.load.LLVMI8LoadNodeGen;
+import com.oracle.truffle.llvm.runtime.nodes.memory.load.LLVMI8LoadNodeGen.LLVMI8OffsetLoadNodeGen;
+import com.oracle.truffle.llvm.runtime.nodes.memory.load.LLVMIVarBitLoadNodeGen;
 import com.oracle.truffle.llvm.runtime.nodes.memory.load.LLVMLoadVectorNodeFactory.LLVMLoadDoubleVectorNodeGen;
 import com.oracle.truffle.llvm.runtime.nodes.memory.load.LLVMLoadVectorNodeFactory.LLVMLoadFloatVectorNodeGen;
 import com.oracle.truffle.llvm.runtime.nodes.memory.load.LLVMLoadVectorNodeFactory.LLVMLoadI16VectorNodeGen;
@@ -155,22 +160,28 @@ import com.oracle.truffle.llvm.runtime.nodes.memory.load.LLVMLoadVectorNodeFacto
 import com.oracle.truffle.llvm.runtime.nodes.memory.load.LLVMLoadVectorNodeFactory.LLVMLoadI64VectorNodeGen;
 import com.oracle.truffle.llvm.runtime.nodes.memory.load.LLVMLoadVectorNodeFactory.LLVMLoadI8VectorNodeGen;
 import com.oracle.truffle.llvm.runtime.nodes.memory.load.LLVMLoadVectorNodeFactory.LLVMLoadPointerVectorNodeGen;
-import com.oracle.truffle.llvm.runtime.nodes.memory.store.LLVMDoubleStoreNode;
-import com.oracle.truffle.llvm.runtime.nodes.memory.store.LLVMDoubleStoreNodeGen;
-import com.oracle.truffle.llvm.runtime.nodes.memory.store.LLVMFloatStoreNode;
-import com.oracle.truffle.llvm.runtime.nodes.memory.store.LLVMFloatStoreNodeGen;
-import com.oracle.truffle.llvm.runtime.nodes.memory.store.LLVMI16StoreNode;
-import com.oracle.truffle.llvm.runtime.nodes.memory.store.LLVMI16StoreNodeGen;
-import com.oracle.truffle.llvm.runtime.nodes.memory.store.LLVMI1StoreNode;
-import com.oracle.truffle.llvm.runtime.nodes.memory.store.LLVMI1StoreNodeGen;
-import com.oracle.truffle.llvm.runtime.nodes.memory.store.LLVMI32StoreNode;
-import com.oracle.truffle.llvm.runtime.nodes.memory.store.LLVMI32StoreNodeGen;
-import com.oracle.truffle.llvm.runtime.nodes.memory.store.LLVMI64StoreNode;
-import com.oracle.truffle.llvm.runtime.nodes.memory.store.LLVMI64StoreNodeGen;
-import com.oracle.truffle.llvm.runtime.nodes.memory.store.LLVMI8StoreNode;
-import com.oracle.truffle.llvm.runtime.nodes.memory.store.LLVMI8StoreNodeGen;
-import com.oracle.truffle.llvm.runtime.nodes.memory.store.LLVMPointerStoreNode;
-import com.oracle.truffle.llvm.runtime.nodes.memory.store.LLVMPointerStoreNodeGen;
+import com.oracle.truffle.llvm.runtime.nodes.memory.load.LLVMOffsetLoadNode;
+import com.oracle.truffle.llvm.runtime.nodes.memory.load.LLVMPointerLoadNode.LLVMPointerOffsetLoadNode;
+import com.oracle.truffle.llvm.runtime.nodes.memory.load.LLVMPointerLoadNodeGen;
+import com.oracle.truffle.llvm.runtime.nodes.memory.load.LLVMPointerLoadNodeGen.LLVMPointerOffsetLoadNodeGen;
+import com.oracle.truffle.llvm.runtime.nodes.memory.load.LLVMStructLoadNodeGen;
+import com.oracle.truffle.llvm.runtime.nodes.memory.store.LLVMDoubleStoreNode.LLVMDoubleOffsetStoreNode;
+import com.oracle.truffle.llvm.runtime.nodes.memory.store.LLVMDoubleStoreNodeGen.LLVMDoubleOffsetStoreNodeGen;
+import com.oracle.truffle.llvm.runtime.nodes.memory.store.LLVMFloatStoreNode.LLVMFloatOffsetStoreNode;
+import com.oracle.truffle.llvm.runtime.nodes.memory.store.LLVMFloatStoreNodeGen.LLVMFloatOffsetStoreNodeGen;
+import com.oracle.truffle.llvm.runtime.nodes.memory.store.LLVMI16StoreNode.LLVMI16OffsetStoreNode;
+import com.oracle.truffle.llvm.runtime.nodes.memory.store.LLVMI16StoreNodeGen.LLVMI16OffsetStoreNodeGen;
+import com.oracle.truffle.llvm.runtime.nodes.memory.store.LLVMI1StoreNode.LLVMI1OffsetStoreNode;
+import com.oracle.truffle.llvm.runtime.nodes.memory.store.LLVMI1StoreNodeGen.LLVMI1OffsetStoreNodeGen;
+import com.oracle.truffle.llvm.runtime.nodes.memory.store.LLVMI32StoreNode.LLVMI32OffsetStoreNode;
+import com.oracle.truffle.llvm.runtime.nodes.memory.store.LLVMI32StoreNodeGen.LLVMI32OffsetStoreNodeGen;
+import com.oracle.truffle.llvm.runtime.nodes.memory.store.LLVMI64StoreNode.LLVMI64OffsetStoreNode;
+import com.oracle.truffle.llvm.runtime.nodes.memory.store.LLVMI64StoreNodeGen.LLVMI64OffsetStoreNodeGen;
+import com.oracle.truffle.llvm.runtime.nodes.memory.store.LLVMI8StoreNode.LLVMI8OffsetStoreNode;
+import com.oracle.truffle.llvm.runtime.nodes.memory.store.LLVMI8StoreNodeGen.LLVMI8OffsetStoreNodeGen;
+import com.oracle.truffle.llvm.runtime.nodes.memory.store.LLVMOffsetStoreNode;
+import com.oracle.truffle.llvm.runtime.nodes.memory.store.LLVMPointerStoreNode.LLVMPointerOffsetStoreNode;
+import com.oracle.truffle.llvm.runtime.nodes.memory.store.LLVMPointerStoreNodeGen.LLVMPointerOffsetStoreNodeGen;
 import com.oracle.truffle.llvm.runtime.nodes.op.LLVMAbstractCompareNode;
 import com.oracle.truffle.llvm.runtime.nodes.op.LLVMArithmeticNode;
 import com.oracle.truffle.llvm.runtime.nodes.op.LLVMArithmeticNode.LLVMAbstractI64ArithmeticNode;
@@ -247,8 +258,6 @@ import com.oracle.truffle.llvm.runtime.types.VectorType;
 import com.oracle.truffle.llvm.runtime.types.VoidType;
 import com.oracle.truffle.llvm.runtime.vector.LLVMVector;
 
-import java.math.BigInteger;
-
 public class CommonNodeFactory {
 
     public CommonNodeFactory() {
@@ -290,93 +299,93 @@ public class CommonNodeFactory {
         throw new AssertionError(value + " " + type);
     }
 
-    public static LLVMLoadNode createLoadNode(LLVMInteropType.ValueKind kind) {
+    public static LLVMOffsetLoadNode createOffsetLoadNode(LLVMInteropType.ValueKind kind) {
         switch (kind) {
             case I1:
-                return LLVMI1LoadNode.create();
+                return LLVMI1OffsetLoadNode.create();
             case I8:
-                return LLVMI8LoadNode.create();
+                return LLVMI8OffsetLoadNode.create();
             case I16:
-                return LLVMI16LoadNode.create();
+                return LLVMI16OffsetLoadNode.create();
             case I32:
-                return LLVMI32LoadNode.create();
+                return LLVMI32OffsetLoadNode.create();
             case I64:
-                return LLVMI64LoadNode.create();
+                return LLVMI64OffsetLoadNode.create();
             case FLOAT:
-                return LLVMFloatLoadNode.create();
+                return LLVMFloatOffsetLoadNode.create();
             case DOUBLE:
-                return LLVMDoubleLoadNode.create();
+                return LLVMDoubleOffsetLoadNode.create();
             case POINTER:
-                return LLVMPointerDirectLoadNode.create();
+                return LLVMPointerOffsetLoadNode.create();
             default:
                 throw new IllegalStateException("unexpected interop kind " + kind);
         }
     }
 
-    public static LLVMLoadNode getUncachedLoadNode(LLVMInteropType.ValueKind kind) {
+    public static LLVMOffsetLoadNode getUncachedOffsetLoadNode(LLVMInteropType.ValueKind kind) {
         switch (kind) {
             case I1:
-                return LLVMI1LoadNodeGen.getUncached();
+                return LLVMI1OffsetLoadNodeGen.getUncached();
             case I8:
-                return LLVMI8LoadNodeGen.getUncached();
+                return LLVMI8OffsetLoadNodeGen.getUncached();
             case I16:
-                return LLVMI16LoadNodeGen.getUncached();
+                return LLVMI16OffsetLoadNodeGen.getUncached();
             case I32:
-                return LLVMI32LoadNodeGen.getUncached();
+                return LLVMI32OffsetLoadNodeGen.getUncached();
             case I64:
-                return LLVMI64LoadNodeGen.getUncached();
+                return LLVMI64OffsetLoadNodeGen.getUncached();
             case FLOAT:
-                return LLVMFloatLoadNodeGen.getUncached();
+                return LLVMFloatOffsetLoadNodeGen.getUncached();
             case DOUBLE:
-                return LLVMDoubleLoadNodeGen.getUncached();
+                return LLVMDoubleOffsetLoadNodeGen.getUncached();
             case POINTER:
-                return LLVMPointerDirectLoadNodeGen.getUncached();
+                return LLVMPointerOffsetLoadNodeGen.getUncached();
             default:
                 throw new IllegalStateException("unexpected interop kind " + kind);
         }
     }
 
-    public static LLVMStoreNode createStoreNode(LLVMInteropType.ValueKind kind) {
+    public static LLVMOffsetStoreNode createOffsetStoreNode(LLVMInteropType.ValueKind kind) {
         switch (kind) {
             case I1:
-                return LLVMI1StoreNode.create();
+                return LLVMI1OffsetStoreNode.create();
             case I8:
-                return LLVMI8StoreNode.create();
+                return LLVMI8OffsetStoreNode.create();
             case I16:
-                return LLVMI16StoreNode.create();
+                return LLVMI16OffsetStoreNode.create();
             case I32:
-                return LLVMI32StoreNode.create();
+                return LLVMI32OffsetStoreNode.create();
             case I64:
-                return LLVMI64StoreNode.create();
+                return LLVMI64OffsetStoreNode.create();
             case FLOAT:
-                return LLVMFloatStoreNode.create();
+                return LLVMFloatOffsetStoreNode.create();
             case DOUBLE:
-                return LLVMDoubleStoreNode.create();
+                return LLVMDoubleOffsetStoreNode.create();
             case POINTER:
-                return LLVMPointerStoreNode.create();
+                return LLVMPointerOffsetStoreNode.create();
             default:
                 throw new IllegalStateException("unexpected interop kind " + kind);
         }
     }
 
-    public static LLVMStoreNode getUncachedStoreNode(LLVMInteropType.ValueKind kind) {
+    public static LLVMOffsetStoreNode getUncachedOffsetStoreNode(LLVMInteropType.ValueKind kind) {
         switch (kind) {
             case I1:
-                return LLVMI1StoreNodeGen.getUncached();
+                return LLVMI1OffsetStoreNodeGen.getUncached();
             case I8:
-                return LLVMI8StoreNodeGen.getUncached();
+                return LLVMI8OffsetStoreNodeGen.getUncached();
             case I16:
-                return LLVMI16StoreNodeGen.getUncached();
+                return LLVMI16OffsetStoreNodeGen.getUncached();
             case I32:
-                return LLVMI32StoreNodeGen.getUncached();
+                return LLVMI32OffsetStoreNodeGen.getUncached();
             case I64:
-                return LLVMI64StoreNodeGen.getUncached();
+                return LLVMI64OffsetStoreNodeGen.getUncached();
             case FLOAT:
-                return LLVMFloatStoreNodeGen.getUncached();
+                return LLVMFloatOffsetStoreNodeGen.getUncached();
             case DOUBLE:
-                return LLVMDoubleStoreNodeGen.getUncached();
+                return LLVMDoubleOffsetStoreNodeGen.getUncached();
             case POINTER:
-                return LLVMPointerStoreNodeGen.getUncached();
+                return LLVMPointerOffsetStoreNodeGen.getUncached();
             default:
                 throw new IllegalStateException("unexpected interop kind " + kind);
         }
@@ -688,16 +697,16 @@ public class CommonNodeFactory {
                 case DOUBLE:
                     return LLVMDoubleLoadNodeGen.create(loadTarget);
                 case X86_FP80:
-                    return LLVM80BitFloatDirectLoadNodeGen.create(loadTarget);
+                    return LLVM80BitFloatLoadNodeGen.create(loadTarget);
                 default:
                     throw new AssertionError(resultType);
             }
         } else if (resultType instanceof VariableBitWidthType) {
-            return LLVMIVarBitDirectLoadNodeGen.create(loadTarget, bits);
+            return LLVMIVarBitLoadNodeGen.create(loadTarget, bits);
         } else if (resultType instanceof StructureType || resultType instanceof ArrayType) {
-            return LLVMStructDirectLoadNodeGen.create(loadTarget);
+            return LLVMStructLoadNodeGen.create(loadTarget);
         } else if (resultType instanceof PointerType || resultType instanceof FunctionType) {
-            return LLVMPointerDirectLoadNodeGen.create(loadTarget);
+            return LLVMPointerLoadNodeGen.create(loadTarget);
         } else {
             throw new AssertionError(resultType);
         }

@@ -44,11 +44,11 @@ import com.oracle.truffle.llvm.runtime.pointer.LLVMManagedPointer;
 import com.oracle.truffle.llvm.runtime.pointer.LLVMNativePointer;
 import com.oracle.truffle.llvm.runtime.pointer.LLVMPointer;
 
-@GenerateUncached
 public abstract class LLVMI32StoreNode extends LLVMStoreNode {
 
     public abstract void executeWithTarget(LLVMPointer address, int value);
 
+    @GenerateUncached
     public abstract static class LLVMI32OffsetStoreNode extends LLVMOffsetStoreNode {
 
         public static LLVMI32OffsetStoreNode create() {

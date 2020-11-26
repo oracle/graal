@@ -222,8 +222,7 @@ import com.oracle.truffle.llvm.runtime.nodes.memory.literal.LLVMArrayLiteralNode
 import com.oracle.truffle.llvm.runtime.nodes.memory.literal.LLVMArrayLiteralNodeGen;
 import com.oracle.truffle.llvm.runtime.nodes.memory.literal.LLVMI8ArrayLiteralNodeGen;
 import com.oracle.truffle.llvm.runtime.nodes.memory.literal.LLVMStructArrayLiteralNodeGen;
-import com.oracle.truffle.llvm.runtime.nodes.memory.load.LLVMDirectLoadNodeFactory.LLVM80BitFloatDirectLoadNodeGen;
-import com.oracle.truffle.llvm.runtime.nodes.memory.load.LLVMDirectLoadNodeFactory.LLVMPointerDirectLoadNodeGen;
+import com.oracle.truffle.llvm.runtime.nodes.memory.load.LLVM80BitFloatLoadNodeGen;
 import com.oracle.truffle.llvm.runtime.nodes.memory.load.LLVMDoubleLoadNodeGen;
 import com.oracle.truffle.llvm.runtime.nodes.memory.load.LLVMFloatLoadNodeGen;
 import com.oracle.truffle.llvm.runtime.nodes.memory.load.LLVMI16LoadNodeGen;
@@ -239,6 +238,7 @@ import com.oracle.truffle.llvm.runtime.nodes.memory.load.LLVMLoadVectorNodeFacto
 import com.oracle.truffle.llvm.runtime.nodes.memory.load.LLVMLoadVectorNodeFactory.LLVMLoadI64VectorNodeGen;
 import com.oracle.truffle.llvm.runtime.nodes.memory.load.LLVMLoadVectorNodeFactory.LLVMLoadI8VectorNodeGen;
 import com.oracle.truffle.llvm.runtime.nodes.memory.load.LLVMLoadVectorNodeFactory.LLVMLoadPointerVectorNodeGen;
+import com.oracle.truffle.llvm.runtime.nodes.memory.load.LLVMPointerLoadNodeGen;
 import com.oracle.truffle.llvm.runtime.nodes.memory.rmw.LLVMI16RMWNodeFactory;
 import com.oracle.truffle.llvm.runtime.nodes.memory.rmw.LLVMI1RMWNodeFactory;
 import com.oracle.truffle.llvm.runtime.nodes.memory.rmw.LLVMI32RMWNodeFactory;
@@ -817,7 +817,7 @@ public class BasicNodeFactory implements NodeFactory {
                 case DOUBLE:
                     return LLVMDoubleLoadNodeGen.create(targetAddress);
                 case X86_FP80:
-                    return LLVM80BitFloatDirectLoadNodeGen.create(targetAddress);
+                    return LLVM80BitFloatLoadNodeGen.create(targetAddress);
                 default:
                     throw new AssertionError(type);
             }
@@ -850,7 +850,7 @@ public class BasicNodeFactory implements NodeFactory {
                 throw new AssertionError(type);
             }
         } else if (type instanceof PointerType || type instanceof StructureType || type instanceof ArrayType) {
-            return LLVMPointerDirectLoadNodeGen.create(targetAddress);
+            return LLVMPointerLoadNodeGen.create(targetAddress);
         } else {
             throw new AssertionError(type + " is not supported for extractvalue");
         }

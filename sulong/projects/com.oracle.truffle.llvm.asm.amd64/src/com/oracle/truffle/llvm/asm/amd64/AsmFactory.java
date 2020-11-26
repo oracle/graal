@@ -223,11 +223,11 @@ import com.oracle.truffle.llvm.runtime.nodes.intrinsics.llvm.debug.LLVMDebugTrap
 import com.oracle.truffle.llvm.runtime.nodes.intrinsics.llvm.x86.LLVMX86_ConversionNode;
 import com.oracle.truffle.llvm.runtime.nodes.intrinsics.llvm.x86.LLVMX86_ConversionNodeFactory;
 import com.oracle.truffle.llvm.runtime.nodes.memory.LLVMFenceNodeGen;
-import com.oracle.truffle.llvm.runtime.nodes.memory.load.LLVMDirectLoadNodeFactory.LLVMPointerDirectLoadNodeGen;
 import com.oracle.truffle.llvm.runtime.nodes.memory.load.LLVMI16LoadNodeGen;
 import com.oracle.truffle.llvm.runtime.nodes.memory.load.LLVMI32LoadNodeGen;
 import com.oracle.truffle.llvm.runtime.nodes.memory.load.LLVMI64LoadNodeGen;
 import com.oracle.truffle.llvm.runtime.nodes.memory.load.LLVMI8LoadNodeGen;
+import com.oracle.truffle.llvm.runtime.nodes.memory.load.LLVMPointerLoadNodeGen;
 import com.oracle.truffle.llvm.runtime.nodes.memory.store.LLVMI16StoreNode;
 import com.oracle.truffle.llvm.runtime.nodes.memory.store.LLVMI16StoreNodeGen;
 import com.oracle.truffle.llvm.runtime.nodes.memory.store.LLVMI32StoreNode;
@@ -1950,7 +1950,7 @@ public class AsmFactory {
             FrameSlot frame = getArgumentSlot(op.getIndex(), type);
             if (info.isMemory()) {
                 if (type instanceof PointerType) {
-                    return LLVMPointerDirectLoadNodeGen.create(LLVMAddressReadNodeGen.create(frame));
+                    return LLVMPointerLoadNodeGen.create(LLVMAddressReadNodeGen.create(frame));
                 }
                 switch (((PrimitiveType) type).getPrimitiveKind()) {
                     case I8:
@@ -1996,7 +1996,7 @@ public class AsmFactory {
                         throw unsupportedOperandType(type);
                 }
             } else if (type instanceof PointerType) {
-                return LLVMPointerDirectLoadNodeGen.create(addr);
+                return LLVMPointerLoadNodeGen.create(addr);
             } else {
                 throw unsupportedOperandType(type);
             }

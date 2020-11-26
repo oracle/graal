@@ -43,7 +43,6 @@ import com.oracle.truffle.llvm.runtime.pointer.LLVMManagedPointer;
 import com.oracle.truffle.llvm.runtime.pointer.LLVMNativePointer;
 import com.oracle.truffle.llvm.runtime.pointer.LLVMPointer;
 
-@GenerateUncached
 public abstract class LLVMI16LoadNode extends LLVMLoadNode {
 
     public static LLVMI16LoadNode create() {
@@ -52,6 +51,7 @@ public abstract class LLVMI16LoadNode extends LLVMLoadNode {
 
     public abstract short executeWithTarget(Object address);
 
+    @GenerateUncached
     public abstract static class LLVMI16OffsetLoadNode extends LLVMOffsetLoadNode {
 
         public static LLVMI16OffsetLoadNode create() {
