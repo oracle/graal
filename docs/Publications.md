@@ -55,11 +55,37 @@ SPLASH 2012, October 19-26, Tucson, AZ
 
 ## Truffle Papers
 
+### 2020
+
+- Fabio Niephaus, Patrick Rein, Jakob Edding, Jonas Hering, Bastian König, Kolya Opahle, Nico Scordialo, Robert Hirschfeld
+[**Example-based Live Programming for Everyone: Building Language-agnostic Tools for Live Programming With LSP and GraalVM**](https://doi.org/10.1145/3426428.3426919)
+In _Proceedings of the ACM Symposium for New Ideas, New Paradigms, and Reflections on Everything to do with Programming and Software (Onward! 2020)_
+
+- Jacob Kreindl, Daniele Bonetta, Lukas Stadler, David Leopoldseder, Hanspeter Mössenböck   
+[**Multi-language Dynamic Taint Analysis in a Polyglot Virtual Machine**](https://doi.org/10.1145/3426182.3426184)
+In _Proceedings of the 17th International Conference on Managed Programming Languages and Runtimes (MPLR 2020)_
+
+- Alexander Riese, Fabio Niephaus, Tim Felgentreff, Robert Hirschfeld
+[**User-Defined Interface Mappings for the GraalVM**](https://doi.org/10.1145/3397537.3399577)
+In _Proceedings of the Interconnecting Code Workshop (ICW) 2020, companion volume to International Conference on the Art, Science, and Engineering of Programming (‹Programming›)_
+
+- Jan Ehmueller, Alexander Riese, Hendrik Tjabben, Fabio Niephaus, Robert Hirschfeld
+[**Polyglot Code Finder**](https://doi.org/10.1145/3397537.3397559)
+In _Proceedings of the Programming Experience 2020 (PX/20) Workshop, companion volume to International Conference on the Art, Science, and Engineering of Programming (‹Programming›)_
+
+- Johannes Henning, Tim Felgentreff, Fabio Niephaus, Robert Hirschfeld
+[**Toward Presizing and Pretransitioning Strategies for GraalPython**](https://doi.org/10.1145/3397537.3397564)
+In _Proceedings of the Workshop on Modern Language Runtimes, Ecosystems, and VMs (MoreVMs) 2020, companion volume to International Conference on the Art, Science, and Engineering of Programming (‹Programming›)_
+
 ### 2019
 
 -  Christian Wimmer, Peter Hofer, Codrut Stancu, Vojin Jovanovic, Peter Kessler, Thomas Wuerthinger, Oleg Pliss, Paul Woegerer
 [**Initialize Once, Start Fast: Application Initialization at Build Time**](https://dl.acm.org/citation.cfm?id=3360610)
 In _Proceedings of the ACM on Programming Languages_
+
+-  Fabio Niephaus, Tim Felgentreff, Robert Hirschfeld
+[**GraalSqueak: Toward a Smalltalk-based Tooling Platform for Polyglot Programming**](https://doi.org/10.1145/3357390.3361024)
+In _Proceedings of the International Conference on Managed Programming Languages and Runtimes (MPLR 2019)_
 
 - Aleksandar Prokopec, Gilles Duboscq, David Leopoldseder, Thomas Wuerthinger
 [**An Optimization-Driven Incremental Inline Substitution Algorithm for Just-In-Time Compilers**](https://dl.acm.org/citation.cfm?id=3314893)
@@ -247,6 +273,12 @@ In _Proceedings of the Dynamic Languages Symposium (DLS)_.
 Describes the design of self-optimizing and self-specializing interpreter, and the application to JavaScript.
 
 ## GraalVM Compiler Papers
+
+### 2020
+
+- Sebastian Kloibhofer, Thomas Pointhuber, Maximilian Heisinger, Hanspeter Mössenböck, Lukas Stadler, David Leopoldseder   
+[**SymJEx: Symbolic Execution on the GraalVM**](https://doi.org/10.1145/3426182.3426187)
+In _Proceedings of the 17th International Conference on Managed Programming Languages and Runtimes (MPLR 2020)_
 
 ### 2019
 
