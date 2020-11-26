@@ -436,7 +436,7 @@ public final class BytecodeNode extends EspressoMethodNode {
         int argCount = Signatures.parameterCount(getMethod().getParsedSignature(), false);
 
         CompilerAsserts.partialEvaluationConstant(argCount);
-        // CompilerAsserts.partialEvaluationConstant(locals);
+        CompilerAsserts.compilationConstant(locals.slotCount());
 
         boolean hasReceiver = !getMethod().isStatic();
         int receiverSlot = hasReceiver ? 1 : 0;
@@ -609,7 +609,9 @@ public final class BytecodeNode extends EspressoMethodNode {
 
     @Override
     void initializeBody(VirtualFrame frame) {
-        final Locals locals = new Locals(getMethod().getMaxLocals());
+        int slotCount = getMethod().getMaxLocals();
+        CompilerAsserts.partialEvaluationConstant(slotCount);
+        final Locals locals = new Locals(slotCount);
         frame.setObject(localsSlot, locals);
         initArguments(frame.getArguments(), locals);
     }
@@ -623,14 +625,15 @@ public final class BytecodeNode extends EspressoMethodNode {
         int statementIndex = -1;
         int nextStatementIndex = 0;
 
-        final OperandStack stack = new OperandStack(getMethod().getMaxStackSize());
         final Locals locals = (Locals) FrameUtil.getObjectSafe(frame, localsSlot);
+        final OperandStack stack = new OperandStack(getMethod().getMaxStackSize());
+        // There's no need to make the operand stack accessible in the frame, we save the slot.
+        // frame.setObject(stackSlot, stack);
 
         CompilerDirectives.ensureVirtualized(stack);
         CompilerDirectives.ensureVirtualized(locals);
 
         setBCI(frame, curBCI);
-        // frame.setObject(stackSlot, stack);
 
         if (instrument != null) {
             instrument.notifyEntry(frame);

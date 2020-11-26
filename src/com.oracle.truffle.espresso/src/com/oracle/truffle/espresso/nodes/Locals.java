@@ -22,6 +22,8 @@
  */
 package com.oracle.truffle.espresso.nodes;
 
+import com.oracle.truffle.api.CompilerDirectives;
+import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
 import com.oracle.truffle.espresso.runtime.StaticObject;
 
 public final class Locals {
@@ -32,6 +34,11 @@ public final class Locals {
     public Locals(int numberOfSlots) {
         this.refs = new Object[numberOfSlots];
         this.primitives = new long[numberOfSlots];
+    }
+
+    public int slotCount() {
+        assert refs.length == primitives.length;
+        return refs.length;
     }
 
     public int peekInt(int slot) {
