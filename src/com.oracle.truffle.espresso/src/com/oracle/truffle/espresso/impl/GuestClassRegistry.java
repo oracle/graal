@@ -23,9 +23,6 @@
 
 package com.oracle.truffle.espresso.impl;
 
-import com.oracle.truffle.api.Assumption;
-import com.oracle.truffle.api.CompilerDirectives;
-import com.oracle.truffle.api.Truffle;
 import com.oracle.truffle.espresso.descriptors.Symbol;
 import com.oracle.truffle.espresso.descriptors.Symbol.Name;
 import com.oracle.truffle.espresso.descriptors.Symbol.Signature;
@@ -46,13 +43,6 @@ public final class GuestClassRegistry extends ClassRegistry {
 
     static final DebugCounter loadKlassCount = DebugCounter.create("Guest loadKlassCount");
     static final DebugCounter loadKlassCacheHits = DebugCounter.create("Guest loadKlassCacheHits");
-
-    // used to mark a loading event of the type for which the defineClass event
-    // is intercepted, returning the underlying class bytes through an special
-    // exception type
-    private Symbol<Type> specialLoading;
-
-    private Assumption specialLoadingAssumption = Truffle.getRuntime().createAssumption();
 
     @Override
     protected void loadKlassCountInc() {
@@ -106,40 +96,9 @@ public final class GuestClassRegistry extends ClassRegistry {
     @SuppressWarnings("sync-override")
     @Override
     public ObjectKlass defineKlass(Symbol<Type> type, final byte[] bytes) {
-        if (!specialLoadingAssumption.isValid()) {
-            CompilerDirectives.transferToInterpreterAndInvalidate();
-            // special loading event
-            if (specialLoading == type) {
-                throw ForceAnonClassLoading.throwing(bytes);
-            }
-        }
         ObjectKlass klass = super.defineKlass(type, bytes);
         // Register class in guest CL. Mimics HotSpot behavior.
         addClass.invokeDirect(classLoader, klass.mirror());
         return klass;
-    }
-
-    @Override
-    public Klass findLoadedKlass(Symbol<Type> type) {
-        if (!specialLoadingAssumption.isValid()) {
-            CompilerDirectives.transferToInterpreterAndInvalidate();
-            // special loading event
-            if (specialLoading == type) {
-                return null;
-            }
-        }
-        return super.findLoadedKlass(type);
-    }
-
-    @Override
-    public void markSpecialLoading(Symbol<Type> type) {
-        specialLoading = type;
-        specialLoadingAssumption.invalidate();
-    }
-
-    @Override
-    public void clearSpecialLoading() {
-        specialLoading = null;
-        specialLoadingAssumption = Truffle.getRuntime().createAssumption();
     }
 }

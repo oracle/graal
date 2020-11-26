@@ -42,7 +42,6 @@ import com.oracle.truffle.espresso.bytecode.BytecodeStream;
 import com.oracle.truffle.espresso.descriptors.Symbol;
 import com.oracle.truffle.espresso.impl.ArrayKlass;
 import com.oracle.truffle.espresso.impl.ChangePacket;
-import com.oracle.truffle.espresso.impl.ClassInfo;
 import com.oracle.truffle.espresso.impl.ClassRedefinition;
 import com.oracle.truffle.espresso.impl.HotSwapClassInfo;
 import com.oracle.truffle.espresso.impl.InnerClassRedefiner;
@@ -655,7 +654,7 @@ public final class JDWPContextImpl implements JDWPContext {
             List<ObjectKlass> refreshSubClasses = new ArrayList<>();
 
             // match anon inner classes with previous state
-            List<ClassInfo> removedInnerClasses = new ArrayList<>(0);
+            List<ObjectKlass> removedInnerClasses = new ArrayList<>(0);
             HotSwapClassInfo[] matchedInfos = InnerClassRedefiner.matchAnonymousInnerClasses(redefineInfos, context, removedInnerClasses);
 
             // detect all changes to all classes, throws if redefinition cannot be completed
@@ -693,6 +692,10 @@ public final class JDWPContextImpl implements JDWPContext {
 
             // tell the InnerClassRedefiner to commit the changes to cache
             InnerClassRedefiner.commit(matchedInfos);
+
+            for (ObjectKlass removed : removedInnerClasses) {
+                removed.removeByRedefinition();
+            }
         } catch (RedefintionNotSupportedException ex) {
             return ex.getErrorCode();
         } finally {

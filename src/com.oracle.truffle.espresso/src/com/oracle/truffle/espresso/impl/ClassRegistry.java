@@ -58,15 +58,6 @@ public abstract class ClassRegistry implements ContextAccess {
     // TODO: Rework this, a thread local is certainly less than optimal.
     static final ThreadLocal<TypeStack> stack = ThreadLocal.withInitial(TypeStack.supplier);
 
-    @SuppressWarnings("unused")
-    public void markSpecialLoading(Symbol<Type> type) {
-        // default implementation does nothing
-    }
-
-    public void clearSpecialLoading() {
-        // default implementation does nothing
-    }
-
     static final class TypeStack {
         static final Supplier<TypeStack> supplier = new Supplier<TypeStack>() {
             @Override

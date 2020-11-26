@@ -1272,6 +1272,14 @@ public final class ObjectKlass extends Klass {
         name = getContext().getNames().getOrCreate(newName);
     }
 
+    public void removeByRedefinition() {
+        // currently implemented by marking
+        // all methods as removed
+        for (Method declaredMethod : getDeclaredMethods()) {
+            declaredMethod.removedByRedefinition();
+        }
+    }
+
     private static final class RedefinitionCache {
         final Assumption assumption;
         final RuntimeConstantPool pool;

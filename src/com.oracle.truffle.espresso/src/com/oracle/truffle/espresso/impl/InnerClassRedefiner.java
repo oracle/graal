@@ -25,8 +25,6 @@ package com.oracle.truffle.espresso.impl;
 import com.oracle.truffle.espresso.classfile.ClassNameFromBytesException;
 import com.oracle.truffle.espresso.classfile.ClassfileParser;
 import com.oracle.truffle.espresso.classfile.ClassfileStream;
-import com.oracle.truffle.espresso.descriptors.Symbol;
-import com.oracle.truffle.espresso.jdwp.api.ErrorCodes;
 import com.oracle.truffle.espresso.jdwp.api.RedefineInfo;
 import com.oracle.truffle.espresso.jdwp.impl.JDWPLogger;
 import com.oracle.truffle.espresso.runtime.EspressoContext;
@@ -62,7 +60,7 @@ public final class InnerClassRedefiner {
     // list of class info for all top-level classed about to be redefined
     private static final Map<String, HotSwapClassInfo> hotswapState = new HashMap<>();
 
-    public static HotSwapClassInfo[] matchAnonymousInnerClasses(RedefineInfo[] redefineInfos, EspressoContext context, List<ClassInfo> removedInnerClasses) {
+    public static HotSwapClassInfo[] matchAnonymousInnerClasses(RedefineInfo[] redefineInfos, EspressoContext context, List<ObjectKlass> removedInnerClasses) {
         hotswapState.clear();
         ArrayList<RedefineInfo> unhandled = new ArrayList<>(redefineInfos.length);
         Collections.addAll(unhandled, redefineInfos);
@@ -161,36 +159,17 @@ public final class InnerClassRedefiner {
                 if (StaticObject.notNull(inputStream)) {
                     classBytes = readAllBytes(inputStream, context);
                 } else {
-                    // if getResourceAsStream is not able to fetch the class bytes
-                    // fall back to use loadClass on the defining classloader using
-                    // the following scheme:
-
-                    // we play a trick to get the bytes of the new inner class
-                    // 1. mark this a special loading in the associated class registry
-                    // 2. in findLoadedClass we return null for the special loading of the class
-                    // name
-                    // 3. in define class we grab the bytes and throws a Special
-                    // ForceAnonClassLoadException
-                    // in which the bytes are stored. Note that in defineClass we must check if the
-                    // threadlocal
-                    // contains the expected combination of class name and defining class loader
-                    ClassRegistry classRegistry = context.getRegistries().getClassRegistry(definingLoader);
-                    try {
-                        Symbol<Symbol.Type> type = context.getTypes().fromClassGetName(innerName);
-                        classRegistry.markSpecialLoading(type);
-                        StaticObject guestName = context.getMeta().toGuestString(innerName.replace('/', '.'));
-                        context.getMeta().java_lang_ClassLoader_loadClass.invokeDirect(definingLoader, guestName);
-                    } catch (ForceAnonClassLoading.BlockDefiningClassException ex) {
-                        classBytes = ex.getBytes();
-                    } finally {
-                        classRegistry.clearSpecialLoading();
-                    }
+                    // There is no safe way to retrieve the class bytes using e.g. a scheme using
+                    // j.l.ClassLoader#loadClass and special marker for the type to have the call
+                    // end up in defineClass where we could grab the bytes. Guest language
+                    // classloaders in many cases have caches for the class name that prevents
+                    // forcefully attempting to load previously not loadable classes.
+                    // without the class bytes, the matching is less precise and cached un-matched
+                    // inner class instances that are executed after redefintion will lead to
+                    // NoSuchMethod errors because they're marked as removed
                 }
                 if (classBytes != null) {
                     hotswapInfo.addInnerClass(ClassInfo.create(innerName, classBytes, definingLoader, context));
-                } else {
-                    // bail out on redefinition if we can't fetch the class bytes
-                    throw new RedefintionNotSupportedException(ErrorCodes.HIERARCHY_CHANGE_NOT_IMPLEMENTED);
                 }
             }
         }
@@ -226,7 +205,7 @@ public final class InnerClassRedefiner {
         return innerName.substring(0, innerName.lastIndexOf('$'));
     }
 
-    private static void matchClassInfo(HotSwapClassInfo hotSwapInfo, EspressoContext context, List<ClassInfo> removedInnerClasses, Map<StaticObject, Map<String, String>> renamingRules) {
+    private static void matchClassInfo(HotSwapClassInfo hotSwapInfo, EspressoContext context, List<ObjectKlass> removedInnerClasses, Map<StaticObject, Map<String, String>> renamingRules) {
         Klass klass = hotSwapInfo.getKlass();
 
         // try to fetch all direct inner classes
@@ -280,8 +259,10 @@ public final class InnerClassRedefiner {
                         info.setKlass(bestMatch.getKlass());
                     }
                 }
-                for (ClassInfo removedClass : removedClasses) {
-                    removedInnerClasses.add(removedClass);
+                for (ImmutableClassInfo removedClass : removedClasses) {
+                    if (removedClass.getKlass() != null) {
+                        removedInnerClasses.add(removedClass.getKlass());
+                    }
                 }
             }
         }
@@ -350,10 +331,9 @@ public final class InnerClassRedefiner {
                 classLoaderMap.remove(info.getNewName());
             }
         }
-        Map<String, ImmutableClassInfo> classLoaderMap = null;
         for (HotSwapClassInfo hotSwapInfo : infos) {
             StaticObject classLoader = hotSwapInfo.getClassLoader();
-            classLoaderMap = innerClassInfoMap.get(classLoader);
+            Map<String, ImmutableClassInfo> classLoaderMap = innerClassInfoMap.get(classLoader);
             if (classLoaderMap == null) {
                 classLoaderMap = new HashMap<>(1);
                 innerClassInfoMap.put(classLoader, classLoaderMap);
