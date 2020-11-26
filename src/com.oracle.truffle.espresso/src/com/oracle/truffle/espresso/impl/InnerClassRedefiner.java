@@ -22,12 +22,13 @@
  */
 package com.oracle.truffle.espresso.impl;
 
-import com.oracle.truffle.espresso.classfile.ClassNameFromBytesException;
 import com.oracle.truffle.espresso.classfile.ClassfileParser;
 import com.oracle.truffle.espresso.classfile.ClassfileStream;
+import com.oracle.truffle.espresso.jdwp.api.ErrorCodes;
 import com.oracle.truffle.espresso.jdwp.api.RedefineInfo;
 import com.oracle.truffle.espresso.jdwp.impl.JDWPLogger;
 import com.oracle.truffle.espresso.runtime.EspressoContext;
+import com.oracle.truffle.espresso.runtime.EspressoException;
 import com.oracle.truffle.espresso.runtime.StaticObject;
 
 import java.io.ByteArrayOutputStream;
@@ -125,16 +126,26 @@ public final class InnerClassRedefiner {
         return result.toArray(new HotSwapClassInfo[0]);
     }
 
-    // method is only reachable from test code, because we pass in bytes
-    // for new anonynous inner classes without a refTypeID
     public static String getClassNameFromBytes(byte[] bytes, EspressoContext context) {
         try {
-            // pass in the special test marked as the requested class name
-            ClassfileParser.parse(new ClassfileStream(bytes, null), "!TEST!", null, context);
-        } catch (ClassNameFromBytesException ex) {
-            return ex.getClassTypeName().substring(1, ex.getClassTypeName().length() - 1);
+            // pass in a class name we know is not correct only to catch
+            // the NoClassDefFoundError which is known to contain the type
+            // name of the class in the exception message
+            ClassfileParser.parse(new ClassfileStream(bytes, null), "!INVALID!", null, context);
+        } catch (EspressoException ex) {
+            String message = ex.getMessage();
+            if (message != null && message.contains("(wrong name:")) {
+                int typeEndIndex = message.indexOf(';');
+                if (typeEndIndex != -1) {
+                    // name is between 'L' and ';' as the first characters in the message
+                    return message.substring(1, typeEndIndex);
+                }
+            }
         }
-        return null;
+        // We only end up here in case the message in the
+        // exception changed format in that case, we fail fast
+        JDWPLogger.log("Critical failure in fetching class name from bytes", JDWPLogger.LogLevel.ALL);
+        throw new RedefintionNotSupportedException(ErrorCodes.INVALID_CLASS);
     }
 
     private static void collectAllHotswapClasses(Collection<HotSwapClassInfo> infos, ArrayList<HotSwapClassInfo> result) {
