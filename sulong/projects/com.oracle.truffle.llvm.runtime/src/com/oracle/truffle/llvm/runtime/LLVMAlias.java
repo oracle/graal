@@ -97,6 +97,9 @@ public class LLVMAlias extends LLVMSymbol {
     }
 
     public static LLVMSymbol resolveAlias(LLVMSymbol symbol) {
+        if (symbol == null) {
+            return null;
+        }
         LLVMSymbol tmp = symbol;
         while (tmp.isAlias()) {
             tmp = ((LLVMAlias) tmp).getTarget();

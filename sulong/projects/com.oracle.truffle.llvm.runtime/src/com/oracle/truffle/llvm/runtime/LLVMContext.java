@@ -643,6 +643,7 @@ public final class LLVMContext {
     }
 
     public LLVMPointer getSymbol(LLVMSymbol symbol) {
+        assert !symbol.isAlias();
         int bitcodeID = symbol.getBitcodeID(false);
         int index = symbol.getSymbolIndex(false);
         if (CompilerDirectives.inCompiledCode() && CompilerDirectives.isPartialEvaluationConstant(this)) {
