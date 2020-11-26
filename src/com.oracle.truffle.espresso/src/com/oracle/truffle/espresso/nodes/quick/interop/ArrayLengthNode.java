@@ -80,7 +80,7 @@ public abstract class ArrayLengthNode extends QuickNode {
     }
 
     @Override
-    public final boolean producedForeignObject(long[] primitives, Object[] refs) {
+    public final boolean producedForeignObject(Object[] refs) {
         return false;
     }
 }

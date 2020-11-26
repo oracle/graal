@@ -90,7 +90,7 @@ public abstract class ByteArrayLoadNode extends QuickNode {
     }
 
     @Override
-    public final boolean producedForeignObject(long[] primitives, Object[] refs) {
+    public final boolean producedForeignObject(Object[] refs) {
         return false;
     }
 }

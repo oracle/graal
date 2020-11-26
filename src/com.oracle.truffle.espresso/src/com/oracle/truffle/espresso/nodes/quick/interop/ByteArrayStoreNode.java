@@ -75,7 +75,7 @@ public abstract class ByteArrayStoreNode extends QuickNode {
     }
 
     @Override
-    public boolean producedForeignObject(long[] primitives, Object[] refs) {
+    public boolean producedForeignObject(Object[] refs) {
         return false;
     }
 }

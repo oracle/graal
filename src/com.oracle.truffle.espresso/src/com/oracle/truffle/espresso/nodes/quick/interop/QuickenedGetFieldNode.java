@@ -51,7 +51,7 @@ public final class QuickenedGetFieldNode extends QuickNode {
     }
 
     @Override
-    public boolean producedForeignObject(long[] primitives, Object[] refs) {
+    public boolean producedForeignObject(Object[] refs) {
         return field.getKind().isObject() && BytecodeNode.peekObject(refs, top - 1).isForeignObject();
     }
 }

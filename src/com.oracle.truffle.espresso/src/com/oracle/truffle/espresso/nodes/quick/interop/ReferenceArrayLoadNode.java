@@ -81,7 +81,7 @@ public abstract class ReferenceArrayLoadNode extends QuickNode {
     }
 
     @Override
-    public boolean producedForeignObject(long[] primitives, Object[] refs) {
+    public boolean producedForeignObject(Object[] refs) {
         return BytecodeNode.peekObject(refs, top - 2).isForeignObject();
     }
 }

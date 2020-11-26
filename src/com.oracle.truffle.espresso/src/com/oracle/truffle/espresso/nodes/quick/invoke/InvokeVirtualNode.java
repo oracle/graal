@@ -104,7 +104,7 @@ public abstract class InvokeVirtualNode extends QuickNode {
     }
 
     @Override
-    public final boolean producedForeignObject(long[] primitives, Object[] refs) {
+    public final boolean producedForeignObject(Object[] refs) {
         return resolutionSeed.getReturnKind().isObject() && BytecodeNode.peekObject(refs, getResultAt()).isForeignObject();
     }
 
