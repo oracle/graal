@@ -29,6 +29,7 @@
  */
 package com.oracle.truffle.llvm.runtime.interop.access;
 
+import com.oracle.truffle.api.dsl.Cached;
 import com.oracle.truffle.api.dsl.GenerateUncached;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.interop.ArityException;
@@ -48,13 +49,18 @@ public abstract class LLVMInteropVtableAccessNode extends LLVMNode {
         return LLVMInteropVtableAccessNodeGen.create();
     }
 
+    LLVMLoadNode createLoadNode() {
+        return LLVMLoadNode.create(LLVMInteropType.ValueKind.POINTER);
+    }
+
     @Specialization
-    Object doPointer(LLVMPointer vtablePointer, long virtualIndex, Object[] arguments, @CachedLibrary(limit = "5") InteropLibrary interop)
+    Object doPointer(LLVMPointer vtablePointer, long virtualIndex, Object[] arguments,
+                    @Cached(value = "createLoadNode()", allowUncached = true) LLVMLoadNode loadNode,
+                    @CachedLibrary(limit = "5") InteropLibrary interop)
                     throws UnsupportedTypeException, ArityException, UnsupportedMessageException {
 
-        LLVMPointer vtableElementPointer = vtablePointer.increment(virtualIndex * 8);
-        LLVMLoadNode llvmLoadNode = insert(LLVMLoadNode.create(LLVMInteropType.ValueKind.POINTER));
-        return interop.execute(llvmLoadNode.executeWithTarget(vtableElementPointer), arguments);
+        LLVMPointer vtableElementPointer = vtablePointer.increment(virtualIndex * LLVMNode.ADDRESS_SIZE_IN_BYTES);
+        return interop.execute(loadNode.executeWithTarget(vtableElementPointer), arguments);
     }
 
 }

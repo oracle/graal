@@ -30,41 +30,23 @@
 
 package com.oracle.truffle.llvm.runtime.interop.export;
 
-import com.oracle.truffle.api.dsl.Cached;
+import org.graalvm.collections.Pair;
+
 import com.oracle.truffle.api.dsl.GenerateUncached;
-import com.oracle.truffle.api.dsl.Specialization;
-import com.oracle.truffle.api.interop.UnknownIdentifierException;
-import com.oracle.truffle.api.interop.UnsupportedMessageException;
 import com.oracle.truffle.llvm.runtime.interop.access.LLVMInteropType;
 import com.oracle.truffle.llvm.runtime.nodes.api.LLVMNode;
 import com.oracle.truffle.llvm.runtime.pointer.LLVMPointer;
 
-import java.util.List;
-import org.graalvm.collections.Pair;
-
 @GenerateUncached
-public abstract class LLVMForeignGetVirtualMemberPtrNode extends LLVMNode {
+public abstract class LLVMForeignGetSuperElemPtrNode extends LLVMNode {
+    public abstract LLVMPointer execute(LLVMPointer receiver);
 
-    public abstract LLVMPointer execute(LLVMPointer receiver, LLVMInteropType.StructMember structMember, List<Pair<LLVMInteropType.StructMember, LLVMInteropType.ClazzInheritance>> accessList)
-                    throws UnsupportedMessageException, UnknownIdentifierException;
-
-    @Specialization
-    public LLVMPointer doResolve(LLVMPointer receiver, LLVMInteropType.StructMember structMember, List<Pair<LLVMInteropType.StructMember, LLVMInteropType.ClazzInheritance>> accessList,
-                    @Cached LLVMForeignReadNode read) {
-        LLVMPointer curReceiver = receiver;
-        for (Pair<LLVMInteropType.StructMember, LLVMInteropType.ClazzInheritance> p : accessList) {
-            if (p.getRight().virtual) {
-                Object vtablePointer = read.execute(curReceiver, LLVMInteropType.ValueKind.POINTER.type);
-                LLVMPointer parent = LLVMPointer.cast(vtablePointer).increment(-p.getRight().offset);
-                Object parentOffset = read.execute(parent, LLVMInteropType.ValueKind.I64.type);
-                curReceiver = curReceiver.increment((long) parentOffset);
-            } else {
-                curReceiver = curReceiver.increment(p.getLeft().startOffset);
-            }
+    public static LLVMForeignGetSuperElemPtrNode createFromPair(Pair<LLVMInteropType.StructMember, LLVMInteropType.ClazzInheritance> p) {
+        if (p.getRight().virtual) {
+            return LLVMForeignVirtualSuperElemPtrNodeGen.create(p.getRight().offset);
+        } else {
+            return LLVMForeignDirectSuperElemPtrNodeGen.create(p.getLeft().startOffset);
         }
-        LLVMPointer elemPtr = curReceiver.increment(structMember.startOffset).export(structMember.type);
-        return elemPtr;
-
     }
 
 }

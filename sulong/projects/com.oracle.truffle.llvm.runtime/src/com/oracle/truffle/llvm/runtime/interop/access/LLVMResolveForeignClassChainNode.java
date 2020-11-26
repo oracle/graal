@@ -30,42 +30,42 @@
 
 package com.oracle.truffle.llvm.runtime.interop.access;
 
-import java.util.List;
-
 import org.graalvm.collections.Pair;
 
-import com.oracle.truffle.api.dsl.Cached;
 import com.oracle.truffle.api.dsl.GenerateUncached;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.interop.UnknownIdentifierException;
-import com.oracle.truffle.api.interop.UnsupportedMessageException;
-import com.oracle.truffle.llvm.runtime.interop.export.LLVMForeignGetMemberPointerNode;
-import com.oracle.truffle.llvm.runtime.interop.export.LLVMForeignWriteNode;
-import com.oracle.truffle.llvm.runtime.interop.export.LLVMForeignGetVirtualMemberPtrNode;
+import com.oracle.truffle.llvm.runtime.interop.access.LLVMInteropType.Struct;
+import com.oracle.truffle.llvm.runtime.interop.export.LLVMForeignGetSuperElemPtrNode;
 import com.oracle.truffle.llvm.runtime.nodes.api.LLVMNode;
 import com.oracle.truffle.llvm.runtime.pointer.LLVMPointer;
 
 @GenerateUncached
-public abstract class LLVMInteropWriteMemberNode extends LLVMNode {
-    public abstract void execute(LLVMPointer receiver, String ident, Object value, LLVMInteropType exportType) throws UnsupportedMessageException, UnknownIdentifierException;
+public abstract class LLVMResolveForeignClassChainNode extends LLVMNode {
+    public abstract LLVMPointer execute(LLVMPointer receiver, String ident, LLVMInteropType exportType) throws UnknownIdentifierException;
 
     @Specialization
-    public void doClazzFieldRead(LLVMPointer receiver, String ident, Object value, LLVMInteropType.Clazz clazz, @Cached LLVMForeignGetVirtualMemberPtrNode virtualMemberPtrNode,
-                    @Cached LLVMForeignGetMemberPointerNode getMemberPtr, @Cached LLVMForeignWriteNode write)
-                    throws UnsupportedMessageException, UnknownIdentifierException {
-        List<Pair<LLVMInteropType.StructMember, LLVMInteropType.ClazzInheritance>> list = clazz.getMemberAccessList(ident);
-        if (list != null && list.size() > 0) {
-            LLVMPointer elemPtr = virtualMemberPtrNode.execute(receiver, clazz.findMember(ident), list);
-            write.execute(elemPtr, elemPtr.getExportType(), value);
-        } else {
-            doNormal(receiver, ident, value, clazz, getMemberPtr, write);
+    public LLVMPointer doClazzFieldReads(LLVMPointer receiver, String ident, LLVMInteropType.Clazz clazz) throws UnknownIdentifierException {
+        LLVMPointer curReceiver = receiver;
+        Pair<LLVMForeignGetSuperElemPtrNode[], Struct> p = clazz.getSuperElementPtrChain(ident);
+        for (LLVMForeignGetSuperElemPtrNode n : p.getLeft()) {
+            curReceiver = insert(n).execute(curReceiver);
         }
+        return curReceiver.export(p.getRight() == null ? receiver.getExportType() : p.getRight());
     }
 
-    @Specialization
-    public void doNormal(LLVMPointer receiver, String ident, Object value, LLVMInteropType exportType, @Cached LLVMForeignGetMemberPointerNode getElementPointer,
-                    @Cached LLVMForeignWriteNode write) throws UnsupportedMessageException, UnknownIdentifierException {
-        LLVMPointer ptr = getElementPointer.execute(exportType, receiver, ident);
-        write.execute(ptr, ptr.getExportType(), value);
+    static boolean isClazzType(Object o) {
+        return o instanceof LLVMInteropType.Clazz;
+    }
+
+    /**
+     * @param receiver
+     * @param ident
+     * @param type
+     */
+    @Specialization(guards = "!isClazzType(type)")
+    public LLVMPointer doNothing(LLVMPointer receiver, String ident, LLVMInteropType type) {
+        // since the exporttype of 'receiver' is no class, no resolving is needed
+        return receiver;
     }
 }
