@@ -56,6 +56,7 @@ import com.oracle.truffle.api.library.ExportMessage;
 import com.oracle.truffle.api.nodes.DirectCallNode;
 import com.oracle.truffle.api.nodes.IndirectCallNode;
 import com.oracle.truffle.api.nodes.RootNode;
+import com.oracle.truffle.llvm.runtime.except.LLVMIllegalSymbolIndexException;
 import com.oracle.truffle.llvm.runtime.except.LLVMLinkerException;
 import com.oracle.truffle.llvm.runtime.nodes.api.LLVMNode;
 import com.oracle.truffle.llvm.runtime.nodes.func.LLVMGlobalRootNode;
@@ -121,7 +122,7 @@ public final class SulongLibrary implements TruffleObject {
                     return (LLVMFunctionDescriptor) LLVMManagedPointer.cast(value).getObject();
                 }
             }
-        } catch (LLVMLinkerException e) {
+        } catch (LLVMLinkerException | LLVMIllegalSymbolIndexException e) {
             // fallthrough
         }
         return null;

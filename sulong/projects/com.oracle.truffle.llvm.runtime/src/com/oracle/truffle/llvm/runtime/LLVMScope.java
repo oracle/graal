@@ -45,6 +45,7 @@ import com.oracle.truffle.api.interop.UnknownIdentifierException;
 import com.oracle.truffle.api.library.ExportLibrary;
 import com.oracle.truffle.api.library.ExportMessage;
 import com.oracle.truffle.api.profiles.BranchProfile;
+import com.oracle.truffle.llvm.runtime.except.LLVMIllegalSymbolIndexException;
 import com.oracle.truffle.llvm.runtime.except.LLVMLinkerException;
 import com.oracle.truffle.llvm.runtime.global.LLVMGlobal;
 import com.oracle.truffle.llvm.runtime.pointer.LLVMManagedPointer;
@@ -253,7 +254,7 @@ public class LLVMScope implements TruffleObject {
                     if (value != null) {
                         return LLVMManagedPointer.cast(value).getObject();
                     }
-                } catch (LLVMLinkerException e) {
+                } catch (LLVMLinkerException | LLVMIllegalSymbolIndexException e) {
                     // fallthrough
                 }
                 exception.enter();
