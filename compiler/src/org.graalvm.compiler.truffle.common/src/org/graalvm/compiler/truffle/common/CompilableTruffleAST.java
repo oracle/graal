@@ -53,6 +53,9 @@ public interface CompilableTruffleAST {
      * @param serializedException serializedException a serialized representation of the exception
      *            representing the reason for compilation failure. See
      *            {@link #serializeException(Throwable)}.
+     * @param suppressed specifies whether the failure was suppressed and should be silent. Use the
+     *            {@link TruffleCompilerRuntime#isSuppressedFailure(CompilableTruffleAST, Supplier)}
+     *            to determine if the failure should be suppressed.
      * @param bailout specifies whether the failure was a bailout or an error in the compiler. A
      *            bailout means the compiler aborted the compilation based on some of property of
      *            the AST (e.g., too big). A non-bailout means an unexpected error in the compiler
@@ -62,7 +65,7 @@ public interface CompilableTruffleAST {
      *            {@code bailout == false}.
      * @param graphTooBig graph was too big
      */
-    void onCompilationFailed(Supplier<String> serializedException, boolean bailout, boolean permanentBailout, boolean graphTooBig);
+    void onCompilationFailed(Supplier<String> serializedException, boolean suppressed, boolean bailout, boolean permanentBailout, boolean graphTooBig);
 
     /**
      * Gets a descriptive name for this call target.

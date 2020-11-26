@@ -1878,7 +1878,8 @@ suite = {
         "java.logging",
       ],
       "uses" : [
-        "org.graalvm.compiler.truffle.jfr.EventFactory.Provider"
+        "org.graalvm.compiler.truffle.jfr.EventFactory.Provider",
+        "org.graalvm.compiler.truffle.runtime.FloodControlHandler",
       ],
       "checkstyle" : "org.graalvm.compiler.graph",
       "annotationProcessors" : [
