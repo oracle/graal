@@ -1547,8 +1547,10 @@ final class PolyglotEngineImpl extends AbstractPolyglotImpl.AbstractEngineImpl i
                     boolean allowHostClassLoading, boolean allowExperimentalOptions, Predicate<String> classFilter, Map<String, String> options,
                     Map<String, String[]> arguments, String[] onlyLanguages, FileSystem fileSystem, Object logHandlerOrStream, boolean allowCreateProcess, ProcessHandler processHandler,
                     EnvironmentAccess environmentAccess, Map<String, String> environment, ZoneId zone, Object limitsImpl, String currentWorkingDirectory, ClassLoader hostClassLoader) {
+        PolyglotContextImpl context;
+        boolean replayEvents;
+        boolean contextAddedToEngine;
         try {
-            PolyglotContextImpl context;
             synchronized (this.lock) {
                 checkState();
                 if (boundEngine && !contexts.isEmpty()) {
@@ -1627,20 +1629,31 @@ final class PolyglotEngineImpl extends AbstractPolyglotImpl.AbstractEngineImpl i
                             allowExperimentalOptions, classFilter, arguments, allowedLanguages, options, fs, internalFs, useHandler, allowCreateProcess, useProcessHandler,
                             environmentAccess, environment, zone, polyglotLimits, hostClassLoader);
             context = loadPreinitializedContext(config, hostAccess);
-            boolean replayEvents = false;
+            replayEvents = false;
+            contextAddedToEngine = false;
             if (context == null) {
                 synchronized (this.lock) {
                     checkState();
                     context = new PolyglotContextImpl(this, config);
                     addContext(context);
+                    contextAddedToEngine = true;
                 }
             } else if (context.engine == this) {
                 replayEvents = true;
             }
 
             if (!replayEvents) { // is new context
-                synchronized (context) {
-                    context.initializeContextLocals();
+                try {
+                    synchronized (context) {
+                        context.initializeContextLocals();
+                    }
+                } catch (Throwable t) {
+                    if (contextAddedToEngine) {
+                        synchronized (this.lock) {
+                            removeContext(context);
+                        }
+                    }
+                    throw t;
                 }
             }
 
@@ -1869,7 +1882,6 @@ final class PolyglotEngineImpl extends AbstractPolyglotImpl.AbstractEngineImpl i
             this.contextLocalLocations = newStableLocations = new StableLocalLocations(locationsCopy);
             stableLocations.assumption.invalidate("Context local added");
             newLocations = Arrays.copyOfRange(locationsCopy, stableLocations.locations.length, index);
-            stableLocations = this.contextLocalLocations;
         }
         for (PolyglotContextImpl context : aliveContexts) {
             synchronized (context) {

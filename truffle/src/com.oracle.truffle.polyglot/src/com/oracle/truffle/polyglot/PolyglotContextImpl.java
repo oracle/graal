@@ -266,7 +266,7 @@ final class PolyglotContextImpl extends AbstractContextImpl implements com.oracl
             EngineAccessor.LANGUAGE.configureLoggers(this, config.logLevels, getAllLoggers(engine));
         }
         this.subProcesses = new HashSet<>();
-        this.statementLimit = config.limits != null ? config.limits.statementLimit : Long.MAX_VALUE - 1;
+        this.statementLimit = config.limits != null && config.limits.statementLimit != 0 ? config.limits.statementLimit : Long.MAX_VALUE - 1;
         this.statementCounter = statementLimit;
         this.volatileStatementCounter.set(statementLimit);
 
@@ -1625,11 +1625,13 @@ final class PolyglotContextImpl extends AbstractContextImpl implements com.oracl
         Thread thread = threadInfo.getThread();
         for (PolyglotInstrument instrument : engine.idToInstrument.values()) {
             if (instrument.isCreated()) {
+                invokeContextLocalsFactory(this.contextLocals, instrument.contextLocalLocations);
                 invokeContextThreadFactory(locals, instrument.contextThreadLocalLocations, thread);
             }
         }
         for (PolyglotLanguageContext language : contexts) {
             if (language.isCreated()) {
+                invokeContextLocalsFactory(this.contextLocals, language.getLanguageInstance().contextLocalLocations);
                 invokeContextThreadFactory(locals, language.getLanguageInstance().contextThreadLocalLocations, thread);
             }
         }
@@ -1639,6 +1641,11 @@ final class PolyglotContextImpl extends AbstractContextImpl implements com.oracl
 
     void initializeContextLocals() {
         assert Thread.holdsLock(this);
+
+        if (this.contextLocals != null) {
+            // Could have already been populated by resizeContextLocals.
+            return;
+        }
 
         StableLocalLocations locations = engine.contextLocalLocations;
         Object[] locals = new Object[locations.locations.length];
@@ -1678,10 +1685,14 @@ final class PolyglotContextImpl extends AbstractContextImpl implements com.oracl
     void resizeContextLocals(StableLocalLocations locations) {
         Thread.holdsLock(this);
         Object[] oldLocals = this.contextLocals;
-        if (oldLocals.length > locations.locations.length) {
-            throw new AssertionError("Context locals array must never shrink.");
-        } else if (locations.locations.length > oldLocals.length) {
-            this.contextLocals = Arrays.copyOf(oldLocals, locations.locations.length);
+        if (oldLocals != null) {
+            if (oldLocals.length > locations.locations.length) {
+                throw new AssertionError("Context locals array must never shrink.");
+            } else if (locations.locations.length > oldLocals.length) {
+                this.contextLocals = Arrays.copyOf(oldLocals, locations.locations.length);
+            }
+        } else {
+            this.contextLocals = new Object[locations.locations.length];
         }
     }
 
