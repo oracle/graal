@@ -93,6 +93,6 @@ The `--language:python`, `--language:ruby` and `--language:R` polyglot macro opt
 * `--debug-attach[=< port >]`: attach to debugger during image building (default port is 8000)
 * `--dry-run`: output the command line that would be used for building
 * `-V<key>=<value>`:  provide values for placeholders in _native-image.properties_ files
-* `--help-experimental-build-server`: display help for experimental use of a native image build server
+* `--help-experimental-build-server`: display help for the image-build server specific options
 
 Native Image options are also distinguished as hosted and runtime options. Continue reading to the [Native Image Hosted and Runtime Options](HostedvsRuntimeOptions.md) guide.
