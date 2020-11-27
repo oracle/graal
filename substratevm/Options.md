@@ -20,7 +20,7 @@ The options fall into four categories:
 image generation options, macro options, non-standard options, and server options.
 Non-standard and server options are subject to change through a deprecation cycle.
 
-A command line help is available. Run `native-image --help` to get
+Command-line help is available. Run `native-image --help` to get
 the commands overview, and `native-image --help-extra` to print help on non-standard,
 macro, and server options.
 
@@ -43,7 +43,7 @@ The following options are currently supported:
 * `--enable-url-protocols`: list comma-separated URL protocols to enable.
 * `--features`: a comma-separated list of fully qualified feature implementation classes.
 * `--force-fallback`: force building of a fallback image.
-* `--gc=<value>`: select the Native Image garbage collector implementation. Allowed options for `<value>` are `G1` for G1 garbage collector or `serial` for Serial garbage collector (default).
+* `--gc=<value>`: select the Native Image garbage collector implementation. Allowed options for `<value>` are `G1` for G1 garbage collector or `serial` for Serial garbage collector (default). <a href="https://www.oracle.com/downloads/graalvm-downloads.html" class="enterprise">[GraalVM Enterprise]</a>
 * `--initialize-at-build-time`: a comma-separated list of packages and classes (and implicitly all of their superclasses) that are initialized during the image build. An empty string designates all packages.
 * `--initialize-at-run-time`: a comma-separated list of packages and classes (and implicitly all of their subclasses) that must be initialized at runtime and not during the image build. An empty string is currently not supported.
 * `--install-exit-handlers`: provide `java.lang.Terminator` exit handlers for executable images.
@@ -53,8 +53,8 @@ The following options are currently supported:
 and linking.
 * `--native-image-info`: show native toolchain information and image's build settings.
 * `--no-fallback`: build a standalone image or report a failure.
-* `--pgo`: a comma-separated list of files from which to read the data collected for profile-guided optimization of AOT compiled code (reads from _default.iprof_ if nothing is specified)
-* `--pgo-instrument`: instrument AOT compiled code to collect data for profile-guided optimization into the _default.iprof_ file.
+* `--pgo`: a comma-separated list of files from which to read the data collected for profile-guided optimization of AOT compiled code (reads from _default.iprof_ if nothing is specified). <a href="https://www.oracle.com/downloads/graalvm-downloads.html" class="enterprise">[GraalVM Enterprise]</a>
+* `--pgo-instrument`: instrument AOT compiled code to collect data for profile-guided optimization into the _default.iprof_ file. <a href="https://www.oracle.com/downloads/graalvm-downloads.html" class="enterprise">[GraalVM Enterprise]</a>
 * `--report-unsupported-elements-at-runtime`: report the usage of unsupported methods and fields at runtime when they are accessed the first time, instead of an error during an image building.
 * `--shared`: build a shared library.
 * `--static`: build a statically-linked executable (requires `libc` and `zlib` static libraries).
@@ -72,14 +72,14 @@ instantiation is traced for.
 * `--language:nfi`: make the Truffle Native Function Interface language available
 * `--language:python`: make Python available as a language for the image
 * `--language:R`: make R available as a language for the image
-* `--language:regex`: make Truffle Regular Expression engine available, exposing regular expression functionality in GraalVM supported languages
+* `--language:regex`: make the Truffle Regular Expression engine available
 * `--language:wasm`: make WebAssembly available as a language for the image
-* `--language:llvm`: make the LLVM bitcode available for the image
+* `--language:llvm`: make LLVM bitcode available as a language for the image
 * `--language:js`: make JavaScript available as a language for the image
 * `--language:ruby`: make Ruby available as a language for the image
 * `--tool:coverage`: add source code coverage support to a GraalVM supported language
-* `--tool:insight`: add the detailed access to a program's runtime behavior, allowing users to inspect values and types at invocation or allocation sites
-* `--tool:dap`: open a debugger port serving the Debug Adapter Protocol
+* `--tool:insight`: add support for detailed access to a program's runtime behavior, allowing users to inspect values and types at invocation or allocation sites
+* `--tool:dap`: add support to allow image to open a debugger port serving the Debug Adapter Protocol in IDEs like VS Code
 * `--tool:chromeinspector`: add debugging support to a GraalVM supported language
 * `--tool:lsp`: add the Language Server Protocol support to later attach compatible debuggers to GraalVM in IDEs like VS Code
 * `--tool:profiler`: add profiling support to a GraalVM supported language
