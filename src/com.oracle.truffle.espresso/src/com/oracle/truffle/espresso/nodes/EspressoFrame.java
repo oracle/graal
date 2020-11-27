@@ -25,9 +25,9 @@ package com.oracle.truffle.espresso.nodes;
 import com.oracle.truffle.espresso.meta.EspressoError;
 import com.oracle.truffle.espresso.runtime.StaticObject;
 
-public final class OperandStack {
+final class EspressoFrame {
 
-    private OperandStack() {
+    private EspressoFrame() {
         throw EspressoError.shouldNotReachHere();
     }
 

@@ -64,7 +64,7 @@ public final class InvokeHandleNode extends QuickNode {
     public int execute(VirtualFrame frame, long[] primitives, Object[] refs) {
         Object[] args = new Object[argCount];
         if (hasReceiver) {
-            args[0] = nullCheck(BytecodeNode.peekReceiver(primitives, refs, top, method));
+            args[0] = nullCheck(BytecodeNode.peekReceiver(refs, top, method));
         }
         BytecodeNode.popBasicArgumentsWithArray(primitives, refs, top, parsedSignature, args, parameterCount, hasReceiver ? 1 : 0);
         Object result = intrinsic.processReturnValue(intrinsic.call(args), rKind);

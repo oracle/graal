@@ -484,124 +484,124 @@ public final class BytecodeNode extends EspressoMethodNode {
     }
 
     public static int popInt(long[] primitives, int slot) {
-        return OperandStack.popInt(primitives, slot);
+        return EspressoFrame.popInt(primitives, slot);
     }
 
     // Exposed to CheckCastNode.
     // Exposed to InstanceOfNode and quick nodes, which can produce foreign objects.
     public static StaticObject peekObject(Object[] refs, int slot) {
-        return OperandStack.peekObject(refs, slot);
+        return EspressoFrame.peekObject(refs, slot);
     }
 
     /**
      * Reads and clear the operand stack slot.
      */
     public static StaticObject popObject(Object[] refs, int slot) {
-        return OperandStack.popObject(refs, slot);
+        return EspressoFrame.popObject(refs, slot);
     }
 
     public static float popFloat(long[] primitives, int slot) {
-        return Float.intBitsToFloat(OperandStack.popInt(primitives, slot));
+        return Float.intBitsToFloat(EspressoFrame.popInt(primitives, slot));
     }
 
     public static long popLong(long[] primitives, int slot) {
-        return OperandStack.popLong(primitives, slot);
+        return EspressoFrame.popLong(primitives, slot);
     }
 
     public static double popDouble(long[] primitives, int slot) {
-        return Double.longBitsToDouble(OperandStack.popLong(primitives, slot));
+        return Double.longBitsToDouble(EspressoFrame.popLong(primitives, slot));
     }
 
     /**
      * Read and clear the operand stack slot.
      */
     private static Object popReturnAddressOrObject(Object[] refs, int slot) {
-        Object result = OperandStack.peekRawObject(refs, slot);
-        OperandStack.putRawObject(refs, slot, null);
+        Object result = EspressoFrame.peekRawObject(refs, slot);
+        EspressoFrame.putRawObject(refs, slot, null);
         assert result instanceof StaticObject || result instanceof ReturnAddress;
         return result;
     }
 
     private static void putReturnAddress(Object[] refs, int slot, int targetBCI) {
-        OperandStack.putRawObject(refs, slot, ReturnAddress.create(targetBCI));
+        EspressoFrame.putRawObject(refs, slot, ReturnAddress.create(targetBCI));
     }
 
     public static void putObject(Object[] refs, int slot, StaticObject value) {
-        OperandStack.putObject(refs, slot, value);
+        EspressoFrame.putObject(refs, slot, value);
     }
 
     public static void putInt(long[] primitives, int slot, int value) {
-        OperandStack.putInt(primitives, slot, value);
+        EspressoFrame.putInt(primitives, slot, value);
     }
 
     public static void putFloat(long[] primitives, int slot, float value) {
-        OperandStack.putInt(primitives, slot, Float.floatToRawIntBits(value));
+        EspressoFrame.putInt(primitives, slot, Float.floatToRawIntBits(value));
     }
 
     public static void putLong(long[] primitives, int slot, long value) {
-        OperandStack.putLong(primitives, slot + 1, value);
+        EspressoFrame.putLong(primitives, slot + 1, value);
     }
 
     public static void putDouble(long[] primitives, int slot, double value) {
-        OperandStack.putLong(primitives, slot + 1, Double.doubleToRawLongBits(value));
+        EspressoFrame.putLong(primitives, slot + 1, Double.doubleToRawLongBits(value));
     }
 
     // region Local accessors
 
     public static void freeLocal(long[] primitives, Object[] refs, int slot) {
         // TODO(garcia): use frame.clear() once available
-        OperandStack.putLong(primitives, primitives.length - 1 - slot, 0);
-        OperandStack.putRawObject(refs, refs.length - 1 - slot, null);
+        EspressoFrame.putLong(primitives, primitives.length - 1 - slot, 0);
+        EspressoFrame.putRawObject(refs, refs.length - 1 - slot, null);
     }
 
     private static void setLocalObject(Object[] refs, int slot, StaticObject value) {
-        OperandStack.putObject(refs, refs.length - 1 - slot, value);
+        EspressoFrame.putObject(refs, refs.length - 1 - slot, value);
     }
 
     private static void setLocalObjectOrReturnAddress(Object[] refs, int slot, Object value) {
-        OperandStack.putRawObject(refs, refs.length - 1 - slot, value);
+        EspressoFrame.putRawObject(refs, refs.length - 1 - slot, value);
     }
 
     private static void setLocalInt(long[] primitives, int slot, int value) {
-        OperandStack.putInt(primitives, primitives.length - 1 - slot, value);
+        EspressoFrame.putInt(primitives, primitives.length - 1 - slot, value);
     }
 
     private static void setLocalFloat(long[] primitives, int slot, float value) {
-        OperandStack.putInt(primitives, primitives.length - 1 - slot, Float.floatToRawIntBits(value));
+        EspressoFrame.putInt(primitives, primitives.length - 1 - slot, Float.floatToRawIntBits(value));
     }
 
     private static void setLocalLong(long[] primitives, int slot, long value) {
-        OperandStack.putLong(primitives, primitives.length - 1 - slot, value);
+        EspressoFrame.putLong(primitives, primitives.length - 1 - slot, value);
     }
 
     private static void setLocalDouble(long[] primitives, int slot, double value) {
-        OperandStack.putLong(primitives, primitives.length - 1 - slot, Double.doubleToRawLongBits(value));
+        EspressoFrame.putLong(primitives, primitives.length - 1 - slot, Double.doubleToRawLongBits(value));
     }
 
     private static int getLocalInt(long[] primitives, int slot) {
-        return OperandStack.peekInt(primitives, primitives.length - 1 - slot);
+        return EspressoFrame.peekInt(primitives, primitives.length - 1 - slot);
     }
 
     private static StaticObject getLocalObject(Object[] refs, int slot) {
-        return OperandStack.peekObject(refs, refs.length - 1 - slot);
+        return EspressoFrame.peekObject(refs, refs.length - 1 - slot);
     }
 
     private static int getLocalReturnAddress(Object[] refs, int slot) {
-        Object result = OperandStack.peekRawObject(refs, refs.length - 1 - slot);
+        Object result = EspressoFrame.peekRawObject(refs, refs.length - 1 - slot);
         assert result instanceof ReturnAddress;
         return ((ReturnAddress) result).getBci();
     }
 
     private static float getLocalFloat(long[] primitives, int slot) {
-        return Float.intBitsToFloat(OperandStack.peekInt(primitives, primitives.length - 1 - slot));
+        return Float.intBitsToFloat(EspressoFrame.peekInt(primitives, primitives.length - 1 - slot));
     }
 
     private static long getLocalLong(long[] primitives, int slot) {
-        return OperandStack.peekLong(primitives, primitives.length - 1 - slot);
+        return EspressoFrame.peekLong(primitives, primitives.length - 1 - slot);
     }
 
     private static double getLocalDouble(long[] primitives, int slot) {
-        return Double.longBitsToDouble(OperandStack.peekLong(primitives, primitives.length - 1 - slot));
+        return Double.longBitsToDouble(EspressoFrame.peekLong(primitives, primitives.length - 1 - slot));
     }
 
     // endregion Local accessors
@@ -784,21 +784,21 @@ public final class BytecodeNode extends EspressoMethodNode {
                     case SASTORE: arrayStore(frame, primitives, refs, top, curBCI, curOpcode); break;
 
                     case POP2:
-                        OperandStack.clear(primitives, refs, top - 1);
-                        OperandStack.clear(primitives, refs, top - 2);
+                        EspressoFrame.clear(primitives, refs, top - 1);
+                        EspressoFrame.clear(primitives, refs, top - 2);
                         break;
                     case POP:
-                        OperandStack.clear(primitives, refs, top - 1);
+                        EspressoFrame.clear(primitives, refs, top - 1);
                         break;
 
                     // TODO(peterssen): Stack shuffling is expensive.
-                    case DUP     : OperandStack.dup1(primitives, refs, top);       break;
-                    case DUP_X1  : OperandStack.dupx1(primitives, refs, top);      break;
-                    case DUP_X2  : OperandStack.dupx2(primitives, refs, top);      break;
-                    case DUP2    : OperandStack.dup2(primitives, refs, top);       break;
-                    case DUP2_X1 : OperandStack.dup2x1(primitives, refs, top);     break;
-                    case DUP2_X2 : OperandStack.dup2x2(primitives, refs, top);     break;
-                    case SWAP    : OperandStack.swapSingle(primitives, refs, top); break;
+                    case DUP     : EspressoFrame.dup1(primitives, refs, top);       break;
+                    case DUP_X1  : EspressoFrame.dupx1(primitives, refs, top);      break;
+                    case DUP_X2  : EspressoFrame.dupx2(primitives, refs, top);      break;
+                    case DUP2    : EspressoFrame.dup2(primitives, refs, top);       break;
+                    case DUP2_X1 : EspressoFrame.dup2x1(primitives, refs, top);     break;
+                    case DUP2_X2 : EspressoFrame.dup2x2(primitives, refs, top);     break;
+                    case SWAP    : EspressoFrame.swapSingle(primitives, refs, top); break;
 
                     case IADD: putInt(primitives, top - 2, popInt(primitives, top - 1) + popInt(primitives, top - 2)); break;
                     case LADD: putLong(primitives, top - 4, popLong(primitives, top - 1) + popLong(primitives, top - 3)); break;
@@ -1412,7 +1412,7 @@ public final class BytecodeNode extends EspressoMethodNode {
                 }
             }
         }
-        refArrayStoreNode.arrayStore(OperandStack.popObject(refs, top - 1), index, array);
+        refArrayStoreNode.arrayStore(EspressoFrame.popObject(refs, top - 1), index, array);
     }
 
     private int beforeJumpChecks(long[] primitives, Object[] refs, int curBCI, int targetBCI, int statementIndex, InstrumentationSupport instrument, int[] loopCount) {
@@ -2436,7 +2436,7 @@ public final class BytecodeNode extends EspressoMethodNode {
 
     // internal
 
-    public static StaticObject peekReceiver(long[] primitives, Object[] refs, int top, Method m) {
+    public static StaticObject peekReceiver(Object[] refs, int top, Method m) {
         assert !m.isStatic();
         int skipSlots = Signatures.slotsForParameters(m.getParsedSignature());
         StaticObject result = peekObject(refs, top - skipSlots - 1);
