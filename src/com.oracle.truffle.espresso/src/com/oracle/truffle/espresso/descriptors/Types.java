@@ -319,7 +319,8 @@ public final class Types {
     @SuppressWarnings("unchecked")
     public static Symbol<Type> fromSymbol(Symbol<?> symbol) {
         Symbol<Type> type = (Symbol<Type>) symbol;
-        return isValid(type) ? type : null;
+        assert isValid(type) : "Type validity should have been checked beforehand";
+        return type;
     }
 
     public Symbol<Type> fromName(Symbol<Name> name) {
@@ -331,7 +332,9 @@ public final class Types {
         Symbol.copyBytes(name, 0, bytes, 1, name.length());
         bytes[0] = 'L';
         bytes[bytes.length - 1] = ';';
-        return symbols.symbolify(checkType(ByteSequence.wrap(bytes)));
+        ByteSequence wrap = ByteSequence.wrap(bytes);
+        assert checkType(wrap) != null : "Type validity should have been checked beforehand";
+        return symbols.symbolify(wrap);
     }
 
     public Symbol<Type> lookup(String type) {
