@@ -636,6 +636,10 @@ public abstract class GraalTruffleRuntime implements TruffleRuntime, TruffleComp
     }
 
     protected final void doCompile(OptimizedCallTarget callTarget, TruffleCompilationTask task) {
+        doCompile(null, callTarget, task);
+    }
+
+    protected final void doCompile(TruffleDebugContext debug, OptimizedCallTarget callTarget, TruffleCompilationTask task) {
         List<OptimizedCallTarget> oldBlockCompilations = callTarget.blockCompilations;
         if (oldBlockCompilations != null) {
             for (OptimizedCallTarget blockTarget : oldBlockCompilations) {
@@ -648,10 +652,10 @@ public abstract class GraalTruffleRuntime implements TruffleRuntime, TruffleComp
                     listeners.onCompilationDequeued(blockTarget, null, "Partial block is too big to be compiled.");
                     continue;
                 }
-                compileImpl(blockTarget, task);
+                compileImpl(debug, blockTarget, task);
             }
         }
-        compileImpl(callTarget, task);
+        compileImpl(debug, callTarget, task);
 
         if (oldBlockCompilations == null && callTarget.blockCompilations != null) {
             // retry with block compilations
@@ -662,13 +666,17 @@ public abstract class GraalTruffleRuntime implements TruffleRuntime, TruffleComp
     }
 
     @SuppressWarnings("try")
-    private void compileImpl(OptimizedCallTarget callTarget, TruffleCompilationTask task) {
+    private void compileImpl(TruffleDebugContext initialDebug, OptimizedCallTarget callTarget, TruffleCompilationTask task) {
         boolean compilationStarted = false;
         try {
             TruffleCompiler compiler = getTruffleCompiler(callTarget);
             try (TruffleCompilation compilation = compiler.openCompilation(callTarget)) {
                 final Map<String, Object> optionsMap = getOptionsForCompiler(callTarget);
-                try (TruffleDebugContext debug = compiler.openDebugContext(optionsMap, compilation)) {
+                TruffleDebugContext debug = initialDebug;
+                if (debug == null) {
+                    debug = compiler.openDebugContext(optionsMap, compilation);
+                }
+                try {
                     compilationStarted = true;
                     listeners.onCompilationStarted(callTarget);
                     TruffleInlining inlining = new TruffleInlining();
@@ -694,6 +702,10 @@ public abstract class GraalTruffleRuntime implements TruffleRuntime, TruffleComp
                     }
                     // used by language-agnostic inlining
                     inlining.dequeueTargets();
+                } finally {
+                    if (initialDebug == null) {
+                        debug.close();
+                    }
                 }
             }
         } catch (OptimizationFailedException e) {
