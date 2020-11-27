@@ -1767,7 +1767,7 @@ final class InstrumentationHandler {
                             (singleBindingOperations == 1 && multiBindingOriginalTreeOperations == 0));
 
             Set<Class<?>> compoundTags = null; // null means all provided tags by the language
-            for (VisitOperation operation : operations) {
+            outer: for (VisitOperation operation : operations) {
                 /*
                  * Operations that don't depend on their bindings do not influence materializations.
                  */
@@ -1776,7 +1776,7 @@ final class InstrumentationHandler {
                         Set<Class<?>> limitedTags = sourceBinding.getLimitedTags();
                         if (limitedTags == null) {
                             compoundTags = null;
-                            break;
+                            break outer;
                         } else {
                             if (compoundTags == null) {
                                 compoundTags = new HashSet<>();
