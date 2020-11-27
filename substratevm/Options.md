@@ -25,7 +25,9 @@ the commands overview, and `native-image --help-extra` to print help on non-stan
 macro, and server options.
 
 ### Options to Native Image Builder
-The following options are currently supported:
+
+Depending on the GraalVM edition, the options to the native image builder (`native-image`) may differ.
+The following options are equally supported with both GraalVM Communty and Enterprise editions:
 
 * `-cp, -classpath, --class-path <class search path of directories and zip/jar files>`: a separated list of directories, JAR archives, and ZIP archives to search for class files.
 * `-D<name>=<value>`: set a system property.
@@ -43,7 +45,6 @@ The following options are currently supported:
 * `--enable-url-protocols`: list comma-separated URL protocols to enable.
 * `--features`: a comma-separated list of fully qualified feature implementation classes.
 * `--force-fallback`: force building of a fallback image.
-* `--gc=<value>`: select the Native Image garbage collector implementation. Allowed options for `<value>` are `G1` for G1 garbage collector or `serial` for Serial garbage collector (default). <a href="https://www.oracle.com/downloads/graalvm-downloads.html" class="enterprise">[GraalVM Enterprise]</a>
 * `--initialize-at-build-time`: a comma-separated list of packages and classes (and implicitly all of their superclasses) that are initialized during the image build. An empty string designates all packages.
 * `--initialize-at-run-time`: a comma-separated list of packages and classes (and implicitly all of their subclasses) that must be initialized at runtime and not during the image build. An empty string is currently not supported.
 * `--install-exit-handlers`: provide `java.lang.Terminator` exit handlers for executable images.
@@ -53,8 +54,6 @@ The following options are currently supported:
 and linking.
 * `--native-image-info`: show native toolchain information and image's build settings.
 * `--no-fallback`: build a standalone image or report a failure.
-* `--pgo`: a comma-separated list of files from which to read the data collected for profile-guided optimization of AOT compiled code (reads from _default.iprof_ if nothing is specified). <a href="https://www.oracle.com/downloads/graalvm-downloads.html" class="enterprise">[GraalVM Enterprise]</a>
-* `--pgo-instrument`: instrument AOT compiled code to collect data for profile-guided optimization into the _default.iprof_ file. <a href="https://www.oracle.com/downloads/graalvm-downloads.html" class="enterprise">[GraalVM Enterprise]</a>
 * `--report-unsupported-elements-at-runtime`: report the usage of unsupported methods and fields at runtime when they are accessed the first time, instead of an error during an image building.
 * `--shared`: build a shared library.
 * `--static`: build a statically-linked executable (requires `libc` and `zlib` static libraries).
@@ -66,7 +65,13 @@ instantiation is traced for.
 * `-dsa`: disable assertions in all system classes.
 * `-ea`: enable assertions with specified granularity in a generated image. The  `-ea[:[packagename]|:[classname]` or -`enableassertions[:[packagename]|:[classname]` variants are also supported.
 * `-esa`: enable assertions in all system classes.
-* `-g`: generate debugging information.
+* `-g`: generate debugging information. Please be informed that debug information produced on GraalVM Community will differ from that generated on GraalVM Enterprise.
+
+Next three options are available only with Communty Enterprise:
+* `--gc=<value>`: select the Native Image garbage collector implementation. Allowed options for `<value>` are `G1` for G1 garbage collector or `serial` for Serial garbage collector (default).
+* `--pgo`: a comma-separated list of files from which to read the data collected for profile-guided optimization of AOT compiled code (reads from _default.iprof_ if nothing is specified).
+* `--pgo-instrument`: instrument AOT compiled code to collect data for profile-guided optimization into the _default.iprof_ file.
+
 
 ### Macro Options
 * `--language:nfi`: make the Truffle Native Function Interface language available
