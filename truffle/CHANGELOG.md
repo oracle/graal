@@ -10,6 +10,7 @@ This changelog summarizes major changes between Truffle versions relevant to lan
     * `TruffleLanguage.isThreadAccessAllowed(Thread, boolean)`
     * `TruffleLanguage.initializeMultiThreading(Object)`
     * `TruffleLanguage.initializeThread(Object, Thread)`
+* Truffle DSL generated nodes are no longer limited to 64 state bits. Use these state bits responsibly.
 
 ## Version 20.3.0
 * Added `RepeatingNode.initialLoopStatus` and `RepeatingNode.shouldContinue` to allow defining a custom loop continuation condition.
