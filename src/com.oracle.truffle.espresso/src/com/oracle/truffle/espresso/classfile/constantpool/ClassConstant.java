@@ -32,6 +32,7 @@ import com.oracle.truffle.espresso.classfile.ConstantPool.Tag;
 import com.oracle.truffle.espresso.classfile.RuntimeConstantPool;
 import com.oracle.truffle.espresso.descriptors.Symbol;
 import com.oracle.truffle.espresso.descriptors.Symbol.Name;
+import com.oracle.truffle.espresso.descriptors.Validation;
 import com.oracle.truffle.espresso.impl.Klass;
 import com.oracle.truffle.espresso.meta.Meta;
 import com.oracle.truffle.espresso.runtime.EspressoContext;
@@ -210,6 +211,14 @@ public interface ClassConstant extends PoolConstant {
                 // and OutOfMemoryError, etc.
                 // Needs clarification to section 5.4.3 of the JVM spec (see 6308271)
                 throw e;
+            }
+        }
+
+        @Override
+        public void validate(ConstantPool pool) {
+            // No UTF8 entry: cannot cache validation.
+            if (!Validation.validModifiedUTF8(name) || !Validation.validClassNameEntry(name)) {
+                throw ConstantPool.classFormatError("Invalid class name entry: " + name);
             }
         }
     }
