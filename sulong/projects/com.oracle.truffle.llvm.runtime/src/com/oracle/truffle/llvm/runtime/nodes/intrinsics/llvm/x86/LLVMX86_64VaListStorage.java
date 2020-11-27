@@ -331,13 +331,13 @@ public final class LLVMX86_64VaListStorage implements TruffleObject {
                     throw new ArrayIndexOutOfBoundsException(i);
                 }
 
+                Object arg = realArguments[numberOfExplicitArguments + i];
+
                 if (!(arguments[1] instanceof LLVMInteropType.Structured)) {
-                    CompilerDirectives.transferToInterpreterAndInvalidate();
-                    throw UnsupportedTypeException.create(new Object[]{arguments[1]}, "Type argument must be an instance of LLVMInteropType.Structured");
+                    return arg;
                 }
                 LLVMInteropType.Structured type = (LLVMInteropType.Structured) arguments[1];
 
-                Object arg = realArguments[numberOfExplicitArguments + i];
                 if (!LLVMPointer.isInstance(arg)) {
                     // TODO: Do some conversion if the type in the 2nd argument does not match the
                     // arg's types
