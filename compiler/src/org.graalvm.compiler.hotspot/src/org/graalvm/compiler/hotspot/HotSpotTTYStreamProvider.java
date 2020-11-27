@@ -29,7 +29,6 @@ import static org.graalvm.compiler.hotspot.HotSpotGraalOptionValues.defaultOptio
 import static org.graalvm.word.LocationIdentity.ANY_LOCATION;
 
 import java.io.File;
-import java.io.FileNotFoundException;
 import java.io.FileOutputStream;
 import java.io.IOException;
 import java.io.OutputStream;
@@ -172,44 +171,56 @@ public class HotSpotTTYStreamProvider implements TTYStreamProvider {
         class DelayedOutputStream extends OutputStream {
             @NativeImageReinitialize private volatile OutputStream lazy;
 
-            private OutputStream lazy() throws FileNotFoundException {
+            private OutputStream lazy() {
                 if (lazy == null) {
                     synchronized (this) {
                         if (lazy == null) {
-                            String nameTemplate = LogStreamOptionKey.this.getValue(defaultOptions());
-                            if (nameTemplate != null) {
-                                String name = makeFilename(nameTemplate);
-                                switch (name) {
-                                    case "%o":
-                                        lazy = System.out;
-                                        break;
-                                    case "%e":
-                                        lazy = System.err;
-                                        break;
-                                    default:
-                                        boolean executed = execute(() -> {
-                                            File file = new File(name);
-                                            if (file.exists()) {
-                                                file.delete();
+                            try {
+                                String nameTemplate = LogStreamOptionKey.this.getValue(defaultOptions());
+                                if (nameTemplate != null) {
+                                    String name = makeFilename(nameTemplate);
+                                    switch (name) {
+                                        case "%o":
+                                            lazy = System.out;
+                                            break;
+                                        case "%e":
+                                            lazy = System.err;
+                                            break;
+                                        default:
+                                            boolean executed = execute(() -> {
+                                                File file = new File(name);
+                                                if (file.exists()) {
+                                                    file.delete();
+                                                }
+                                            }, getBarrierPointer());
+                                            final boolean enableAutoflush = true;
+                                            FileOutputStream result = new FileOutputStream(name, true);
+                                            if (executed) {
+                                                printVMConfig(enableAutoflush, result);
                                             }
-                                        }, getBarrierPointer());
-                                        final boolean enableAutoflush = true;
-                                        FileOutputStream result = new FileOutputStream(name, true);
-                                        if (executed) {
-                                            printVMConfig(enableAutoflush, result);
-                                        }
-                                        lazy = result;
+                                            lazy = result;
+                                    }
+                                    return lazy;
                                 }
-                                return lazy;
+
+                                lazy = HotSpotJVMCIRuntime.runtime().getLogStream();
+                                execute(() -> {
+                                    PrintStream ps = new PrintStream(lazy);
+                                    ps.printf("[Use -D%sLogFile=<path> to redirect Graal log output to a file.]%n", GRAAL_OPTION_PROPERTY_PREFIX);
+                                    ps.flush();
+
+                                }, getBarrierPointer());
+                            } catch (Throwable t) {
+                                /*
+                                 * Since this will typically happen on a compiler thread, the
+                                 * exception would be silently swallowed by the CompilationWrapper.
+                                 * Instead, it should result in a VM exit like handling of all other
+                                 * malformed Graal options does.
+                                 */
+                                System.err.println("Error initializing Graal log output:");
+                                t.printStackTrace();
+                                HotSpotGraalServices.exit(1, HotSpotJVMCIRuntime.runtime());
                             }
-
-                            lazy = HotSpotJVMCIRuntime.runtime().getLogStream();
-                            execute(() -> {
-                                PrintStream ps = new PrintStream(lazy);
-                                ps.printf("[Use -D%sLogFile=<path> to redirect Graal log output to a file.]%n", GRAAL_OPTION_PROPERTY_PREFIX);
-                                ps.flush();
-
-                            }, getBarrierPointer());
                         }
                     }
                 }

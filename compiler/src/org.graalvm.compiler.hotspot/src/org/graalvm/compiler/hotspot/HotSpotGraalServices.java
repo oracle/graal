@@ -26,6 +26,7 @@ package org.graalvm.compiler.hotspot;
 
 import static org.graalvm.compiler.debug.GraalError.shouldNotReachHere;
 
+import jdk.vm.ci.hotspot.HotSpotJVMCIRuntime;
 import jdk.vm.ci.hotspot.HotSpotMetaData;
 import jdk.vm.ci.meta.JavaConstant;
 import jdk.vm.ci.meta.SpeculationLog;
@@ -74,9 +75,11 @@ public class HotSpotGraalServices {
     /**
      * Exits Graal's runtime. This calls {@link System#exit(int)} in HotSpot's runtime if possible
      * otherwise calls {@link System#exit(int)} in the current runtime.
+     *
+     * This exists so that the HotSpot VM can be exited from within libgraal.
      */
     @SuppressWarnings("unused")
-    public static void exit(int status) {
+    public static void exit(int status, HotSpotJVMCIRuntime runtime) {
         throw shouldNotReachHere();
     }
 

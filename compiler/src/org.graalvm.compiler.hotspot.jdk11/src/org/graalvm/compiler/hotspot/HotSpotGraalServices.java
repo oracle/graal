@@ -119,10 +119,10 @@ public class HotSpotGraalServices {
         }
     }
 
-    public static void exit(int status) {
+    public static void exit(int status, HotSpotJVMCIRuntime runtime) {
         if (Services.IS_IN_NATIVE_IMAGE) {
             try {
-                runtimeExitHotSpot.invoke(HotSpotJVMCIRuntime.runtime(), status);
+                runtimeExitHotSpot.invoke(runtime, status);
             } catch (Throwable throwable) {
                 throw new InternalError(throwable);
             }
