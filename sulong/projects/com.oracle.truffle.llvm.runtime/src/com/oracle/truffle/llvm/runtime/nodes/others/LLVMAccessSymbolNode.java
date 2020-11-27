@@ -78,6 +78,10 @@ public abstract class LLVMAccessSymbolNode extends LLVMExpressionNode {
         return result;
     }
 
+    /*
+     * CachedContext is very efficient in single-context mode, otherwise we should get the context
+     * from the frame.
+     */
     @Specialization(assumptions = "singleContextAssumption()")
     public Object accessSingleContext(
                     @CachedContext(LLVMLanguage.class) LLVMContext context) {
