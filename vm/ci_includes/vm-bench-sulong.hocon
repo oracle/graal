@@ -73,6 +73,8 @@ bench-llvm-sulong-graalvm-ce: ${bench_vm_ce_linux_base} ${bench-llvm-sulong-comm
   ]
   run: [
     [mx, --dynamicimport, sulong-benchmarks, --env, ce, benchmark, --results-file, ${bench_vm_ce_linux_base.resultFile}, "csuite:*", --, --native-vm, sulong, --native-vm-config, default, --jvm, graalvm-ce, --jvm-config, "${JVM_CONFIG}"]
+    # TODO: Remove --engine.CompilationFailureAction=Silent and --engine.TreatPerformanceWarningsAsErrors=none when compilation failures are resolved
+    [mx, --dynamicimport, sulong-benchmarks, --env, ce, benchmark, --results-file, ${bench_vm_ce_linux_base.resultFile}, "csuite:*", --, --native-vm, sulong-multi, --native-vm-config, default, --jvm, graalvm-ce, --jvm-config, "${JVM_CONFIG}", "--multi-context-runs=3", "--engine.CompilationFailureAction=Silent", "--engine.TreatPerformanceWarningsAsErrors=none"]
   ]
   timelimit: "10:00:01"
 }
