@@ -1076,6 +1076,33 @@ public class AArch64MacroAssembler extends AArch64Assembler {
     /**
      * dst = src + immediate.
      *
+     * If immediate >= 2^24, then this method uses the scratch register to hold the immediate value.
+     *
+     * @param size register size. Has to be 32 or 64.
+     * @param dst general purpose register. May not be null or zero-register.
+     * @param src general purpose register. May not be null or zero-register.
+     * @param immediate 32-bit signed int.
+     * @param scratch general purpose register to hold immediate value (if necessary).
+     */
+    public void add(int size, Register dst, Register src, int immediate, Register scratch) {
+        assert (!dst.equals(zr) && !src.equals(zr));
+        if (immediate < 0) {
+            sub(size, dst, src, -immediate, scratch);
+        } else if (NumUtil.isUnsignedNbit(24, immediate) || !dst.equals(src)) {
+            add(size, dst, src, immediate);
+        } else {
+            assert scratch != null;
+            assert !scratch.equals(zr);
+            mov(scratch, immediate);
+            add(size, dst, src, scratch);
+        }
+    }
+
+    /**
+     * dst = src + immediate.
+     *
+     * If immediate >= 2^24, then this method assumes dst and src are not the same register.
+     *
      * @param size register size. Has to be 32 or 64.
      * @param dst general purpose register. May not be null or zero-register.
      * @param src general purpose register. May not be null or zero-register.
@@ -1090,13 +1117,13 @@ public class AArch64MacroAssembler extends AArch64Assembler {
             if (!(dst.equals(src) && immediate == 0)) {
                 super.add(size, dst, src, immediate);
             }
-        } else if (immediate >= -(1 << 24) && immediate < (1 << 24)) {
-            super.add(size, dst, src, immediate & -(1 << 12));
-            super.add(size, dst, dst, immediate & ((1 << 12) - 1));
+        } else if (NumUtil.isUnsignedNbit(24, immediate)) {
+            super.add(size, dst, src, immediate & (NumUtil.getNbitNumberInt(12) << 12));
+            super.add(size, dst, dst, immediate & NumUtil.getNbitNumberInt(12));
         } else {
             assert !dst.equals(src);
             mov(dst, immediate);
-            add(size, src, dst, dst);
+            add(size, dst, src, dst);
         }
     }
 
@@ -1116,7 +1143,7 @@ public class AArch64MacroAssembler extends AArch64Assembler {
             assert !dst.equals(src);
             assert size == 64;
             mov(dst, immediate);
-            add(size, src, dst, dst);
+            add(size, dst, src, dst);
         }
     }
 
@@ -1141,6 +1168,34 @@ public class AArch64MacroAssembler extends AArch64Assembler {
     /**
      * dst = src - immediate.
      *
+     * If immediate >= 2^24, then this method uses the scratch register to hold the immediate value.
+     *
+     * @param size register size. Has to be 32 or 64.
+     * @param dst general purpose register. May not be null or zero-register.
+     * @param src general purpose register. May not be null or zero-register.
+     * @param immediate 32-bit signed int.
+     * @param scratch general purpose register to hold immediate value (if necessary).
+     */
+    public void sub(int size, Register dst, Register src, int immediate, Register scratch) {
+        assert (!dst.equals(zr) && !src.equals(zr));
+        if (immediate < 0) {
+            add(size, dst, src, -immediate, scratch);
+        }
+        if (NumUtil.isUnsignedNbit(24, immediate) || !dst.equals(src)) {
+            sub(size, dst, src, immediate);
+        } else {
+            assert scratch != null;
+            assert !scratch.equals(zr);
+            mov(scratch, immediate);
+            sub(size, dst, src, scratch);
+        }
+    }
+
+    /**
+     * dst = src - immediate.
+     *
+     * If immediate >= 2^24, then this method assumes dst and src are not the same register.
+     *
      * @param size register size. Has to be 32 or 64.
      * @param dst general purpose register. May not be null or zero-register.
      * @param src general purpose register. May not be null or zero-register.
@@ -1155,13 +1210,13 @@ public class AArch64MacroAssembler extends AArch64Assembler {
             if (!(dst.equals(src) && immediate == 0)) {
                 super.sub(size, dst, src, immediate);
             }
-        } else if (immediate >= -(1 << 24) && immediate < (1 << 24)) {
-            super.sub(size, dst, src, immediate & -(1 << 12));
-            super.sub(size, dst, dst, immediate & ((1 << 12) - 1));
+        } else if (NumUtil.isUnsignedNbit(24, immediate)) {
+            super.sub(size, dst, src, immediate & (NumUtil.getNbitNumberInt(12) << 12));
+            super.sub(size, dst, dst, immediate & NumUtil.getNbitNumberInt(12));
         } else {
             assert !dst.equals(src);
             mov(dst, immediate);
-            sub(size, src, dst, dst);
+            sub(size, dst, src, dst);
         }
     }
 
