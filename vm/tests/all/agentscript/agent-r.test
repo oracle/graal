@@ -3,13 +3,11 @@
 > Rscript --agentscript=agent-r.R --experimental-options ${TMP_DIR}/test.R
 Warning.*agentscript.*deprecated.*insight.*
 R: Initializing GraalVM Insight script
-Warning: 'agent' is deprecated. Use 'insight'.
 R: Hooks are ready!
 R: observed loading of.*test.R
 Ahoj
-> Rscript --insight=agent-r.R --experimental-options ${TMP_DIR}/test.R
+> Rscript --insight=agent-r.R ${TMP_DIR}/test.R
 R: Initializing GraalVM Insight script
-Warning: 'agent' is deprecated. Use 'insight'.
 R: Hooks are ready!
 R: observed loading of.*test.R
 Ahoj
@@ -22,9 +20,9 @@ Ahoj
 < }
 < cat(fib(6))
 < cat('\n')
->[1] Rscript --jvm --insight=agent-histogram.js --experimental-options ${TMP_DIR}/fib.R
+>[1] Rscript --jvm --insight=agent-histogram.js ${TMP_DIR}/fib.R
 .*insight: Access to language 'js' is not permitted.
-> Rscript --jvm --polyglot --insight=agent-histogram.js --experimental-options ${TMP_DIR}/fib.R
+> Rscript --jvm --polyglot --insight=agent-histogram.js ${TMP_DIR}/fib.R
 8
 ==== Histogram ====
  15 calls to fib
@@ -37,13 +35,11 @@ Ahoj
 > polyglot --jvm --agentscript=agent-r.R --experimental-options ${TMP_DIR}/test.js
 Warning.*agentscript.*deprecated.*insight.*
 R: Initializing GraalVM Insight script
-Warning: 'agent' is deprecated. Use 'insight'.
 R: Hooks are ready!
 R: observed loading of.*test.js
 hi js!
-> polyglot --jvm --insight=agent-r.R --experimental-options ${TMP_DIR}/test.js
+> polyglot --jvm --insight=agent-r.R ${TMP_DIR}/test.js
 R: Initializing GraalVM Insight script
-Warning: 'agent' is deprecated. Use 'insight'.
 R: Hooks are ready!
 R: observed loading of.*test.js
 hi js!
