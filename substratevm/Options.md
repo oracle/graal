@@ -94,6 +94,7 @@ The `--language:python`, `--language:ruby` and `--language:R` polyglot macro opt
 ### Non-standard Options
 * `--expert-options`: list image build options for experts
 * `--expert-options-all `: list all image build options for experts (use at your own risk)
+* `--expert-options-detail`: display all available help for a comma-separated list of option names. Pass `*` to show extra help for all options that contain it
 * `--configurations-path <search path of option-configuration directories>`: a separated list of directories to be treated as option-configuration directories
 * `--debug-attach[=< port >]`: attach to debugger during image building (default port is 8000)
 * `--dry-run`: output the command line that would be used for building
