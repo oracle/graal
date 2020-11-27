@@ -236,8 +236,10 @@ public final class Symbol<T> extends ByteSequence {
         public static final Symbol<Name> hashCode = StaticSymbols.putName("hashCode");
         public static final Symbol<Name> length = StaticSymbols.putName("length");
         public static final Symbol<Name> toCharArray = StaticSymbols.putName("toCharArray");
+        public static final Symbol<Name> charAt = StaticSymbols.putName("charAt");
         public static final Symbol<Name> coder = StaticSymbols.putName("coder");
         public static final Symbol<Name> COMPACT_STRINGS = StaticSymbols.putName("COMPACT_STRINGS");
+        public static final Symbol<Name> indexOf = StaticSymbols.putName("indexOf");
 
         // j.l.Throwable
         public static final Symbol<Name> backtrace = StaticSymbols.putName("backtrace");
@@ -724,6 +726,7 @@ public final class Symbol<T> extends ByteSequence {
 
         public static final Symbol<Signature> _byte = StaticSymbols.putSignature(Type._byte);
         public static final Symbol<Signature> _short = StaticSymbols.putSignature(Type._short);
+        public static final Symbol<Signature> _char = StaticSymbols.putSignature(Type._char);
         public static final Symbol<Signature> _int = StaticSymbols.putSignature(Type._int);
         public static final Symbol<Signature> _long = StaticSymbols.putSignature(Type._long);
         public static final Symbol<Signature> _float = StaticSymbols.putSignature(Type._float);
@@ -766,6 +769,7 @@ public final class Symbol<T> extends ByteSequence {
         public static final Symbol<Signature> _void_int = StaticSymbols.putSignature(Type._void, Type._int);
         public static final Symbol<Signature> _void_long = StaticSymbols.putSignature(Type._void, Type._long);
         public static final Symbol<Signature> _void_long_int = StaticSymbols.putSignature(Type._void, Type._long, Type._int);
+        public static final Symbol<Signature> _int_int_int = StaticSymbols.putSignature(Type._int, Type._int, Type._int);
         public static final Symbol<Signature> _void_char_array = StaticSymbols.putSignature(Type._void, Type._char_array);
         public static final Symbol<Signature> _char_array = StaticSymbols.putSignature(Type._char_array);
         public static final Symbol<Signature> _int_boolean_boolean = StaticSymbols.putSignature(Type._int, Type._boolean, Type._boolean);

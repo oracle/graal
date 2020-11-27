@@ -247,7 +247,7 @@ public final class Target_sun_misc_Unsafe {
         // TODO(peterssen): Protection domain is ignored.
         byte[] buf = guestBuf.unwrap();
         byte[] bytes = Arrays.copyOfRange(buf, offset, len);
-        Klass klass = meta.getRegistries().defineKlass(meta.getTypes().fromClassGetName(Meta.toHostString(name)), bytes, loader);
+        Klass klass = meta.getRegistries().defineKlass(meta.getTypes().fromClassGetName(meta.toHostString(name)), bytes, loader);
         klass.mirror().setHiddenField(meta.HIDDEN_PROTECTION_DOMAIN, pd);
         return klass.mirror();
     }
@@ -1443,7 +1443,7 @@ public final class Target_sun_misc_Unsafe {
     public static long objectFieldOffset1(@Host(Unsafe.class) StaticObject self, @Host(value = Class.class) StaticObject cl, @Host(value = String.class) StaticObject guestName,
                     @InjectMeta Meta meta) {
         Klass k = cl.getMirrorKlass();
-        String hostName = Meta.toHostString(guestName);
+        String hostName = meta.toHostString(guestName);
         if (k instanceof ObjectKlass) {
             ObjectKlass kl = (ObjectKlass) k;
             for (Field f : kl.getFieldTable()) {

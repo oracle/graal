@@ -30,6 +30,9 @@ package com.oracle.truffle.espresso.runtime;
  * Makes it harder to access the raw int version: please add new predicates instead.
  */
 public final class JavaVersion {
+    private static final String HOST_VERSION = System.getProperty("java.version");
+    private static final boolean hostCompactStrings = !HOST_VERSION.startsWith("1.");
+
     public static final int LATEST_SUPPORTED = 11;
 
     private final int version;
@@ -64,6 +67,10 @@ public final class JavaVersion {
 
     public int classFileVersion() {
         return version + 44;
+    }
+
+    public static boolean hostUsesCompactStrings() {
+        return hostCompactStrings;
     }
 
     @Override

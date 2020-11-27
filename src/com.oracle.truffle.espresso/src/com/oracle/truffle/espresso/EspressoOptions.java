@@ -212,6 +212,10 @@ public final class EspressoOptions {
                     category = OptionCategory.EXPERT, stability = OptionStability.EXPERIMENTAL) //
     public static final OptionKey<Boolean> SplitMethodHandles = new OptionKey<>(false);
 
+    @Option(help = "Enable string representation sharing between host and guest (If both have the same string representation). When enabled, reflective modifications to the underlying array of guest strings reflect on host strings. ", //
+                    category = OptionCategory.EXPERT, stability = OptionStability.EXPERIMENTAL) //
+    public static final OptionKey<Boolean> StringSharing = new OptionKey<>(true);
+
     public enum LivenessAnalysisMode {
         DISABLED,
         ENABLED, // Also apply liveness analysis in interpreter
