@@ -30,34 +30,35 @@
 package com.oracle.truffle.llvm.runtime.nodes.others;
 
 import com.oracle.truffle.api.CompilerDirectives;
-import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
+import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
 import com.oracle.truffle.api.dsl.CachedContext;
 import com.oracle.truffle.api.dsl.Specialization;
-import com.oracle.truffle.api.nodes.Node;
-import com.oracle.truffle.api.utilities.AssumedValue;
+import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.llvm.runtime.LLVMAlias;
 import com.oracle.truffle.llvm.runtime.LLVMContext;
 import com.oracle.truffle.llvm.runtime.LLVMLanguage;
 import com.oracle.truffle.llvm.runtime.LLVMSymbol;
-import com.oracle.truffle.llvm.runtime.except.LLVMIllegalSymbolIndexException;
 import com.oracle.truffle.llvm.runtime.except.LLVMLinkerException;
+import com.oracle.truffle.llvm.runtime.memory.LLVMStack;
+import com.oracle.truffle.llvm.runtime.memory.LLVMStack.LLVMStackAccess;
 import com.oracle.truffle.llvm.runtime.nodes.api.LLVMExpressionNode;
+import com.oracle.truffle.llvm.runtime.nodes.func.LLVMRootNode;
 import com.oracle.truffle.llvm.runtime.pointer.LLVMPointer;
 
+/**
+ * Returns the value of a given symbol for the current context. This node behaves differently for
+ * single context and multi context mode: In single context mode, the cached context will resolve to
+ * a constant, which is very efficient, but in multi context mode, it's more efficient to get the
+ * context from the {@link LLVMStack} stored in the frame.
+ */
 public abstract class LLVMAccessSymbolNode extends LLVMExpressionNode {
 
     protected final LLVMSymbol symbol;
 
-    public LLVMAccessSymbolNode(LLVMSymbol symbol) {
-        this.symbol = resolveAlias(symbol);
-    }
+    @CompilationFinal private LLVMStackAccess stackAccess;
 
-    public static LLVMSymbol resolveAlias(LLVMSymbol symbol) {
-        LLVMSymbol tmp = symbol;
-        while (tmp.isAlias()) {
-            tmp = ((LLVMAlias) tmp).getTarget();
-        }
-        return tmp;
+    LLVMAccessSymbolNode(LLVMSymbol symbol) {
+        this.symbol = LLVMAlias.resolveAlias(symbol);
     }
 
     @Override
@@ -69,67 +70,26 @@ public abstract class LLVMAccessSymbolNode extends LLVMExpressionNode {
         return symbol;
     }
 
-    public abstract LLVMPointer execute();
+    private LLVMPointer checkNull(LLVMPointer result) {
+        if (result == null) {
+            CompilerDirectives.transferToInterpreter();
+            throw new LLVMLinkerException(this, String.format("External %s %s cannot be found.", symbol.getKind(), symbol.getName()));
+        }
+        return result;
+    }
+
+    @Specialization(assumptions = "singleContextAssumption()")
+    public Object accessSingleContext(
+                    @CachedContext(LLVMLanguage.class) LLVMContext context) {
+        return checkNull(context.getSymbol(symbol));
+    }
 
     @Specialization
-    LLVMPointer doAccess(
-                    @CachedContext(LLVMLanguage.class) LLVMContext context) {
-        return getSymbol(context, symbol, this);
-    }
-
-    public static LLVMPointer getSymbol(LLVMContext context, LLVMSymbol symbol, Node node) {
-        assert !symbol.isAlias();
-        if (symbol.hasValidIndexAndID()) {
-            int bitcodeID = symbol.getBitcodeID(false);
-            if (context.symbolTableExists(bitcodeID)) {
-                AssumedValue<LLVMPointer>[] symbols = context.findSymbolTable(bitcodeID);
-                int index = symbol.getSymbolIndex(false);
-                AssumedValue<LLVMPointer> assumedValue = symbols[index];
-                if (assumedValue != null) {
-                    return assumedValue.get();
-                }
-            }
+    public Object accessMultiContext(VirtualFrame frame) {
+        if (stackAccess == null) {
+            CompilerDirectives.transferToInterpreterAndInvalidate();
+            stackAccess = ((LLVMRootNode) getRootNode()).getStackAccess();
         }
-        CompilerDirectives.transferToInterpreter();
-        throw new LLVMLinkerException(node, String.format("External %s %s cannot be found.", symbol.getKind(), symbol.getName()));
-    }
-
-    /**
-     * This method is only intended to be used during initialization of a Sulong library.
-     */
-    @TruffleBoundary
-    public static void writeSymbol(LLVMSymbol symbol, LLVMPointer pointer, LLVMContext context, Node node) {
-        assert !symbol.isAlias();
-        AssumedValue<LLVMPointer>[] symbols = context.findSymbolTable(symbol.getBitcodeID(false));
-        synchronized (symbols) {
-            try {
-                int index = symbol.getSymbolIndex(false);
-                symbols[index] = new AssumedValue<>(symbol.getKind() + "." + symbol.getName(), pointer);
-            } catch (LLVMIllegalSymbolIndexException e) {
-                CompilerDirectives.transferToInterpreter();
-                throw new LLVMLinkerException(node, "Writing symbol into symbol table is inconsistent.");
-            }
-        }
-    }
-
-    /**
-     * This method is only intended to be used during initialization of a Sulong library.
-     */
-    public static boolean checkSymbol(LLVMSymbol symbol, LLVMContext context, Node node) {
-        assert !symbol.isAlias();
-        if (symbol.hasValidIndexAndID()) {
-            int bitcodeID = symbol.getBitcodeID(false);
-            if (context.symbolTableExists(bitcodeID)) {
-                AssumedValue<LLVMPointer>[] symbols = context.findSymbolTable(bitcodeID);
-                int index = symbol.getSymbolIndex(false);
-                AssumedValue<LLVMPointer> pointer = symbols[index];
-                if (pointer == null) {
-                    return false;
-                }
-                return pointer.get() != null;
-            }
-        }
-        CompilerDirectives.transferToInterpreter();
-        throw new LLVMLinkerException(node, String.format("External %s %s cannot be found.", symbol.getKind(), symbol.getName()));
+        return checkNull(stackAccess.executeGetStack(frame).getContext().getSymbol(symbol));
     }
 }

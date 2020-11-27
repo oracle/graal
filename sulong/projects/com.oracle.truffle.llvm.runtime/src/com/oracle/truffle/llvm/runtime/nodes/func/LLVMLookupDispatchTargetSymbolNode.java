@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2020, Oracle and/or its affiliates.
+ * Copyright (c) 2017, 2020, Oracle and/or its affiliates.
  *
  * All rights reserved.
  *
@@ -27,36 +27,37 @@
  * NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED
  * OF THE POSSIBILITY OF SUCH DAMAGE.
  */
+package com.oracle.truffle.llvm.runtime.nodes.func;
 
-package com.oracle.truffle.llvm.runtime.nodes.others;
-
-import com.oracle.truffle.api.CompilerDirectives;
-import com.oracle.truffle.api.dsl.CachedContext;
-import com.oracle.truffle.api.dsl.GenerateUncached;
+import com.oracle.truffle.api.dsl.Cached;
 import com.oracle.truffle.api.dsl.Specialization;
-import com.oracle.truffle.llvm.runtime.LLVMContext;
-import com.oracle.truffle.llvm.runtime.LLVMLanguage;
-import com.oracle.truffle.llvm.runtime.LLVMSymbol;
-import com.oracle.truffle.llvm.runtime.except.LLVMLinkerException;
-import com.oracle.truffle.llvm.runtime.nodes.api.LLVMNode;
-import com.oracle.truffle.llvm.runtime.pointer.LLVMPointer;
+import com.oracle.truffle.api.frame.VirtualFrame;
+import com.oracle.truffle.llvm.runtime.LLVMFunction;
+import com.oracle.truffle.llvm.runtime.LLVMFunctionCode;
+import com.oracle.truffle.llvm.runtime.nodes.api.LLVMExpressionNode;
+import com.oracle.truffle.llvm.runtime.nodes.others.LLVMAccessSymbolNodeGen;
 
-@GenerateUncached
-public abstract class LLVMDynAccessSymbolNode extends LLVMNode {
+public abstract class LLVMLookupDispatchTargetSymbolNode extends LLVMExpressionNode {
 
-    public LLVMDynAccessSymbolNode() {
+    protected final LLVMFunction function;
+
+    protected LLVMLookupDispatchTargetSymbolNode(LLVMFunction function) {
+        this.function = function;
     }
 
-    public abstract LLVMPointer execute(LLVMSymbol symbol);
+    @Specialization(guards = {"code != null", "code.isLLVMIRFunction() || code.isIntrinsicFunctionSlowPath()"}, assumptions = "function.getFixedCodeAssumption()")
+    protected LLVMFunctionCode getCode(
+                    @Cached("function.getFixedCode()") LLVMFunctionCode code) {
+        return code;
+    }
 
-    @Specialization
-    LLVMPointer doAccess(LLVMSymbol symbol,
-                    @CachedContext(LLVMLanguage.class) LLVMContext context) {
-        LLVMPointer value = context.getSymbol(symbol);
-        if (value != null) {
-            return value;
-        }
-        CompilerDirectives.transferToInterpreter();
-        throw new LLVMLinkerException(this, String.format("External %s %s cannot be found.", symbol.getKind(), symbol.getName()));
+    @Specialization(replaces = "getCode")
+    protected Object getGeneric(VirtualFrame frame,
+                    @Cached("createLookupNode()") LLVMLookupDispatchTargetNode node) {
+        return node.executeGeneric(frame);
+    }
+
+    protected LLVMLookupDispatchTargetNode createLookupNode() {
+        return LLVMLookupDispatchTargetNodeGen.create(LLVMAccessSymbolNodeGen.create(function));
     }
 }

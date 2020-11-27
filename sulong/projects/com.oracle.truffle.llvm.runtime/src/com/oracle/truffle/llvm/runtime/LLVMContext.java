@@ -29,21 +29,39 @@
  */
 package com.oracle.truffle.llvm.runtime;
 
+import java.io.IOException;
+import java.nio.file.Path;
+import java.nio.file.Paths;
+import java.security.SecureRandom;
+import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.Collections;
+import java.util.HashMap;
+import java.util.LinkedHashMap;
+import java.util.List;
+import java.util.Map;
+import java.util.concurrent.ConcurrentHashMap;
+import java.util.stream.Collectors;
+
+import org.graalvm.collections.EconomicMap;
+
+import com.oracle.truffle.api.Assumption;
 import com.oracle.truffle.api.CallTarget;
 import com.oracle.truffle.api.CompilerAsserts;
 import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.RootCallTarget;
+import com.oracle.truffle.api.Truffle;
 import com.oracle.truffle.api.TruffleFile;
 import com.oracle.truffle.api.TruffleLanguage.Env;
 import com.oracle.truffle.api.nodes.ControlFlowException;
 import com.oracle.truffle.api.source.Source;
-import com.oracle.truffle.api.utilities.AssumedValue;
 import com.oracle.truffle.llvm.api.Toolchain;
 import com.oracle.truffle.llvm.runtime.LLVMArgumentBuffer.LLVMArgumentArray;
 import com.oracle.truffle.llvm.runtime.datalayout.DataLayout;
 import com.oracle.truffle.llvm.runtime.debug.LLVMSourceContext;
+import com.oracle.truffle.llvm.runtime.except.LLVMIllegalSymbolIndexException;
 import com.oracle.truffle.llvm.runtime.except.LLVMLinkerException;
 import com.oracle.truffle.llvm.runtime.global.LLVMGlobal;
 import com.oracle.truffle.llvm.runtime.global.LLVMGlobalContainer;
@@ -58,21 +76,6 @@ import com.oracle.truffle.llvm.runtime.pointer.LLVMManagedPointer;
 import com.oracle.truffle.llvm.runtime.pointer.LLVMNativePointer;
 import com.oracle.truffle.llvm.runtime.pointer.LLVMPointer;
 import com.oracle.truffle.llvm.runtime.pthread.LLVMPThreadContext;
-import org.graalvm.collections.EconomicMap;
-
-import java.io.IOException;
-import java.nio.file.Path;
-import java.nio.file.Paths;
-import java.security.SecureRandom;
-import java.util.ArrayList;
-import java.util.Arrays;
-import java.util.Collections;
-import java.util.HashMap;
-import java.util.LinkedHashMap;
-import java.util.List;
-import java.util.Map;
-import java.util.concurrent.ConcurrentHashMap;
-import java.util.stream.Collectors;
 
 public final class LLVMContext {
 
@@ -124,7 +127,9 @@ public final class LLVMContext {
     private final Map<Thread, Object> tls = new ConcurrentHashMap<>();
 
     // The symbol table for storing the symbols of each bitcode library
-    @CompilationFinal(dimensions = 2) private AssumedValue<LLVMPointer>[][] symbolStorage;
+    @CompilationFinal(dimensions = 2) private Assumption[][] symbolAssumptions;
+    @CompilationFinal(dimensions = 2) private LLVMPointer[][] symbolFinalStorage;
+    @CompilationFinal(dimensions = 1) private LLVMPointer[][] symbolDynamicStorage;
     private boolean[] libraryLoaded;
 
     // signals
@@ -199,7 +204,9 @@ public final class LLVMContext {
 
         pThreadContext = new LLVMPThreadContext(getEnv(), getLanguage(), getLibsulongDataLayout());
 
-        symbolStorage = new AssumedValue[10][];
+        symbolAssumptions = new Assumption[10][];
+        symbolDynamicStorage = new LLVMPointer[10][];
+        symbolFinalStorage = symbolDynamicStorage;
         libraryLoaded = new boolean[10];
     }
 
@@ -437,9 +444,7 @@ public final class LLVMContext {
                 if (sulongDisposeContext == null) {
                     throw new IllegalStateException("Context cannot be disposed: " + SULONG_DISPOSE_CONTEXT + " was not found");
                 }
-                AssumedValue<LLVMPointer>[] functions = findSymbolTable(sulongDisposeContext.getBitcodeID(false));
-                int index = sulongDisposeContext.getSymbolIndex(false);
-                LLVMPointer pointer = functions[index].get();
+                LLVMPointer pointer = getSymbol(sulongDisposeContext);
                 if (LLVMManagedPointer.isInstance(pointer)) {
                     LLVMFunctionDescriptor functionDescriptor = (LLVMFunctionDescriptor) LLVMManagedPointer.cast(pointer).getObject();
                     RootCallTarget disposeContext = functionDescriptor.getFunctionCode().getLLVMIRFunctionSlowPath();
@@ -637,29 +642,96 @@ public final class LLVMContext {
         return null;
     }
 
-    public AssumedValue<LLVMPointer>[] findSymbolTable(int id) {
-        return symbolStorage[id];
+    public LLVMPointer getSymbol(LLVMSymbol symbol) {
+        assert !symbol.isAlias();
+        int bitcodeID = symbol.getBitcodeID(false);
+        int index = symbol.getSymbolIndex(false);
+        if (CompilerDirectives.inCompiledCode() && CompilerDirectives.isPartialEvaluationConstant(this)) {
+            if (!symbolAssumptions[bitcodeID][index].isValid()) {
+                CompilerDirectives.transferToInterpreterAndInvalidate();
+            }
+            return symbolFinalStorage[bitcodeID][index];
+        } else {
+            return symbolDynamicStorage[bitcodeID][index];
+        }
     }
 
-    public boolean symbolTableExists(int id) {
-        return id < symbolStorage.length && symbolStorage[id] != null;
+    /**
+     * This method is only intended to be used during initialization of a Sulong library.
+     */
+    @TruffleBoundary
+    public void initializeSymbol(LLVMSymbol symbol, LLVMPointer value) {
+        assert !symbol.isAlias();
+        int bitcodeID = symbol.getBitcodeID(false);
+        LLVMPointer[] symbols = symbolDynamicStorage[bitcodeID];
+        Assumption[] assumptions = symbolAssumptions[bitcodeID];
+        synchronized (symbols) {
+            try {
+                int index = symbol.getSymbolIndex(false);
+                symbols[index] = value;
+                assumptions[index] = Truffle.getRuntime().createAssumption();
+                if (symbol instanceof LLVMFunction) {
+                    ((LLVMFunction) symbol).setValue(value);
+                }
+            } catch (LLVMIllegalSymbolIndexException e) {
+                throw new LLVMLinkerException("Writing symbol into symbol table is inconsistent.");
+            }
+        }
+    }
+
+    /**
+     * This method is only intended to be used during initialization of a Sulong library.
+     */
+    @TruffleBoundary
+    public boolean checkSymbol(LLVMSymbol symbol) {
+        assert !symbol.isAlias();
+        if (symbol.hasValidIndexAndID()) {
+            int bitcodeID = symbol.getBitcodeID(false);
+            if (bitcodeID < symbolDynamicStorage.length && symbolDynamicStorage[bitcodeID] != null) {
+                LLVMPointer[] symbols = symbolDynamicStorage[bitcodeID];
+                int index = symbol.getSymbolIndex(false);
+                return symbols[index] != null;
+            }
+        }
+        throw new LLVMLinkerException(String.format("External %s %s cannot be found.", symbol.getKind(), symbol.getName()));
+    }
+
+    public void setSymbol(LLVMSymbol symbol, LLVMPointer value) {
+        CompilerAsserts.neverPartOfCompilation();
+        LLVMSymbol target = LLVMAlias.resolveAlias(symbol);
+        int bitcodeID = target.getBitcodeID(false);
+        LLVMPointer[] symbols = symbolDynamicStorage[bitcodeID];
+        Assumption[] assumptions = symbolAssumptions[bitcodeID];
+        synchronized (symbols) {
+            try {
+                int index = target.getSymbolIndex(false);
+                symbols[index] = value;
+                assumptions[index].invalidate();
+                assumptions[index] = Truffle.getRuntime().createAssumption();
+                if (target instanceof LLVMFunction) {
+                    ((LLVMFunction) target).setValue(value);
+                }
+            } catch (LLVMIllegalSymbolIndexException e) {
+                throw CompilerDirectives.shouldNotReachHere("symbol to be replaced was not found: " + target);
+            }
+        }
     }
 
     @SuppressWarnings({"unchecked", "rawtypes"})
     @TruffleBoundary
-    public void registerSymbolTable(int index, AssumedValue<LLVMPointer>[] target) {
+    public void initializeSymbolTable(int index, int globalLength) {
         synchronized (this) {
-            if (index < symbolStorage.length && symbolStorage[index] == null) {
-                symbolStorage[index] = target;
-            } else if (index >= symbolStorage.length) {
+            assert symbolDynamicStorage == symbolFinalStorage;
+            if (index >= symbolDynamicStorage.length) {
                 int newLength = (index + 1) + ((index + 1) / 2);
-                AssumedValue<LLVMPointer>[][] temp = new AssumedValue[newLength][];
-                System.arraycopy(symbolStorage, 0, temp, 0, symbolStorage.length);
-                symbolStorage = temp;
-                symbolStorage[index] = target;
-            } else {
+                symbolAssumptions = Arrays.copyOf(symbolAssumptions, newLength);
+                symbolFinalStorage = symbolDynamicStorage = Arrays.copyOf(symbolDynamicStorage, newLength);
+            }
+            if (symbolDynamicStorage[index] != null) {
                 throw new IllegalStateException("Registering a new symbol table for an existing id. ");
             }
+            symbolAssumptions[index] = new Assumption[globalLength];
+            symbolDynamicStorage[index] = new LLVMPointer[globalLength];
         }
     }
 
@@ -936,5 +1008,4 @@ public final class LLVMContext {
     public TargetStream llDebugVerboseStream() {
         return llDebugVerboseStream;
     }
-
 }

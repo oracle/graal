@@ -51,7 +51,6 @@ import com.oracle.truffle.llvm.runtime.NativeContextExtension;
 import com.oracle.truffle.llvm.runtime.NodeFactory;
 import com.oracle.truffle.llvm.runtime.global.LLVMGlobal;
 import com.oracle.truffle.llvm.runtime.nodes.api.LLVMNode;
-import com.oracle.truffle.llvm.runtime.nodes.others.LLVMAccessSymbolNode;
 import com.oracle.truffle.llvm.runtime.pointer.LLVMPointer;
 
 /**
@@ -133,7 +132,7 @@ public final class InitializeExternalNode extends LLVMNode {
             if (pointer == null) {
                 continue;
             }
-            LLVMAccessSymbolNode.writeSymbol(symbols[i], pointer, context, this);
+            context.initializeSymbol(symbols[i], pointer);
         }
     }
 

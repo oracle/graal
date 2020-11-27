@@ -44,7 +44,6 @@ import com.oracle.truffle.llvm.runtime.LLVMScope;
 import com.oracle.truffle.llvm.runtime.LLVMSymbol;
 import com.oracle.truffle.llvm.runtime.global.LLVMGlobal;
 import com.oracle.truffle.llvm.runtime.nodes.api.LLVMNode;
-import com.oracle.truffle.llvm.runtime.nodes.others.LLVMAccessSymbolNode;
 import com.oracle.truffle.llvm.runtime.pointer.LLVMPointer;
 
 /**
@@ -111,7 +110,7 @@ public final class InitializeOverwriteNode extends LLVMNode {
             if (pointer == null) {
                 continue;
             }
-            LLVMAccessSymbolNode.writeSymbol(symbols[i], pointer, context, this);
+            context.initializeSymbol(symbols[i], pointer);
         }
     }
 }

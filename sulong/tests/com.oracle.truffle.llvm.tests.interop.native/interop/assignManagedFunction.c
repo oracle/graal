@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2020, Oracle and/or its affiliates.
+ * Copyright (c) 2018, 2020, Oracle and/or its affiliates.
  *
  * All rights reserved.
  *
@@ -27,36 +27,32 @@
  * NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED
  * OF THE POSSIBILITY OF SUCH DAMAGE.
  */
+#include <graalvm/llvm/polyglot.h>
+#include <truffle.h>
+#include <stdio.h>
 
-package com.oracle.truffle.llvm.runtime.nodes.others;
+int __attribute__((noinline)) test(int x, int y) {
+    return 1000 - x - y;
+}
 
-import com.oracle.truffle.api.CompilerDirectives;
-import com.oracle.truffle.api.dsl.CachedContext;
-import com.oracle.truffle.api.dsl.GenerateUncached;
-import com.oracle.truffle.api.dsl.Specialization;
-import com.oracle.truffle.llvm.runtime.LLVMContext;
-import com.oracle.truffle.llvm.runtime.LLVMLanguage;
-import com.oracle.truffle.llvm.runtime.LLVMSymbol;
-import com.oracle.truffle.llvm.runtime.except.LLVMLinkerException;
-import com.oracle.truffle.llvm.runtime.nodes.api.LLVMNode;
-import com.oracle.truffle.llvm.runtime.pointer.LLVMPointer;
+int __attribute__((noinline)) test2(int x, int y) {
+    return test(x, y) * 2;
+}
 
-@GenerateUncached
-public abstract class LLVMDynAccessSymbolNode extends LLVMNode {
+int main(void) {
 
-    public LLVMDynAccessSymbolNode() {
+    int a = test(10, 20);
+    int b = test2(10, 20);
+
+    truffle_assign_managed(&test, polyglot_import("global_object"));
+
+    int c = test(20, 30);
+    int d = test2(20, 30);
+
+    if (a != 970 || b != 1940 || c != 173 || d != 346) {
+        printf("%d %d %d %d\n", a, b, c, d);
+        return 1;
     }
 
-    public abstract LLVMPointer execute(LLVMSymbol symbol);
-
-    @Specialization
-    LLVMPointer doAccess(LLVMSymbol symbol,
-                    @CachedContext(LLVMLanguage.class) LLVMContext context) {
-        LLVMPointer value = context.getSymbol(symbol);
-        if (value != null) {
-            return value;
-        }
-        CompilerDirectives.transferToInterpreter();
-        throw new LLVMLinkerException(this, String.format("External %s %s cannot be found.", symbol.getKind(), symbol.getName()));
-    }
+    return 0;
 }

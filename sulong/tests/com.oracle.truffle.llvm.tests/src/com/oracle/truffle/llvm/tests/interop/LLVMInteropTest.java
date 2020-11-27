@@ -1216,10 +1216,42 @@ public class LLVMInteropTest {
         }
     }
 
+    @ExportLibrary(InteropLibrary.class)
+    static class ExecutableForeignObject implements TruffleObject {
+        protected int foo;
+
+        ExecutableForeignObject(int i) {
+            this.foo = i;
+        }
+
+        @ExportMessage
+        boolean isExecutable() {
+            return true;
+        }
+
+        @ExportMessage
+        Object execute(Object[] arguments,
+                        @CachedLibrary(limit = "3") InteropLibrary interop) throws UnsupportedMessageException {
+            int sum = foo;
+            for (Object arg : arguments) {
+                sum += interop.asInt(arg);
+            }
+            return sum;
+        }
+    }
+
     @Test
     public void testRegisterHandle() {
         try (Runner runner = new Runner("registerHandle.c")) {
             runner.export(new ForeignObject(1), "global_object");
+            Assert.assertEquals(0, runner.run());
+        }
+    }
+
+    @Test
+    public void testAssignManagedFunction() {
+        try (Runner runner = new Runner("assignManagedFunction.c")) {
+            runner.export(new ExecutableForeignObject(123), "global_object");
             Assert.assertEquals(0, runner.run());
         }
     }

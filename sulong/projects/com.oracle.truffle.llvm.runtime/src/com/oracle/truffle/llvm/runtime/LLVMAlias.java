@@ -95,4 +95,15 @@ public class LLVMAlias extends LLVMSymbol {
             checkForCycle((LLVMAlias) alias.getTarget(), visited);
         }
     }
+
+    public static LLVMSymbol resolveAlias(LLVMSymbol symbol) {
+        if (symbol == null) {
+            return null;
+        }
+        LLVMSymbol tmp = symbol;
+        while (tmp.isAlias()) {
+            tmp = ((LLVMAlias) tmp).getTarget();
+        }
+        return tmp;
+    }
 }

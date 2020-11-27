@@ -45,7 +45,6 @@ import com.oracle.truffle.llvm.runtime.nodes.api.LLVMStatementNode;
 import com.oracle.truffle.llvm.runtime.nodes.memory.store.LLVMI64StoreNode.LLVMI64OffsetStoreNode;
 import com.oracle.truffle.llvm.runtime.nodes.memory.store.LLVMI8StoreNode.LLVMI8OffsetStoreNode;
 import com.oracle.truffle.llvm.runtime.nodes.memory.store.LLVMOffsetStoreNode;
-import com.oracle.truffle.llvm.runtime.nodes.others.LLVMAccessSymbolNode;
 import com.oracle.truffle.llvm.runtime.pointer.LLVMPointer;
 
 public abstract class AggregateLiteralInPlaceNode extends LLVMStatementNode {
@@ -91,7 +90,7 @@ public abstract class AggregateLiteralInPlaceNode extends LLVMStatementNode {
         int offset = 0;
         int nextStore = 0;
         for (int i = 0; i < descriptors.length; i++) {
-            LLVMPointer address = LLVMAccessSymbolNode.getSymbol(context, descriptors[i], this);
+            LLVMPointer address = context.getSymbol(descriptors[i]);
             int bufferOffset = bufferOffsets[i];
             int bufferEnd = i == descriptors.length - 1 ? data.length : bufferOffsets[i + 1];
             while (offset < bufferEnd) {
@@ -109,7 +108,7 @@ public abstract class AggregateLiteralInPlaceNode extends LLVMStatementNode {
         int offset = 0;
         int nextStore = 0;
         for (int i = 0; i < descriptors.length; i++) {
-            LLVMPointer address = LLVMAccessSymbolNode.getSymbol(context, descriptors[i], this);
+            LLVMPointer address = context.getSymbol(descriptors[i]);
             int bufferOffset = bufferOffsets[i];
             int bufferEnd = i == descriptors.length - 1 ? data.length : bufferOffsets[i + 1];
             while (offset < bufferEnd) {
