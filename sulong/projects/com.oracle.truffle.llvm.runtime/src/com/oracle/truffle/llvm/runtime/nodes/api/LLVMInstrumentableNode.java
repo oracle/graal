@@ -30,16 +30,20 @@
 package com.oracle.truffle.llvm.runtime.nodes.api;
 
 import com.oracle.truffle.api.CompilerAsserts;
-import com.oracle.truffle.api.dsl.NodeField;
 import com.oracle.truffle.api.instrumentation.InstrumentableNode;
 import com.oracle.truffle.api.instrumentation.StandardTags;
 import com.oracle.truffle.api.instrumentation.Tag;
 import com.oracle.truffle.api.source.SourceSection;
 import com.oracle.truffle.llvm.runtime.debug.scope.LLVMSourceLocation;
 
-@NodeField(name = "sourceLocation", type = LLVMSourceLocation.class)
-@NodeField(name = "statement", type = boolean.class)
 public abstract class LLVMInstrumentableNode extends LLVMNode implements InstrumentableNode {
+
+    private LLVMSourceLocation sourceLocation;
+    private boolean statement;
+
+    private LLVMInstrumentableNode unwrap() {
+        return this instanceof WrapperNode ? (LLVMInstrumentableNode) ((WrapperNode) this).getDelegateNode() : this;
+    }
 
     /**
      * Get a {@link LLVMSourceLocation descriptor} for the source-level code location and scope
@@ -47,19 +51,27 @@ public abstract class LLVMInstrumentableNode extends LLVMNode implements Instrum
      *
      * @return the {@link LLVMSourceLocation} attached to this node
      */
-    public abstract LLVMSourceLocation getSourceLocation();
+    public final LLVMSourceLocation getSourceLocation() {
+        return unwrap().sourceLocation;
+    }
 
-    public abstract void setSourceLocation(LLVMSourceLocation sourceLocation);
+    public final void setSourceLocation(LLVMSourceLocation sourceLocation) {
+        unwrap().sourceLocation = sourceLocation;
+    }
 
     @Override
     public final SourceSection getSourceSection() {
-        LLVMSourceLocation sourceLocation = getSourceLocation();
-        return sourceLocation == null ? null : sourceLocation.getSourceSection();
+        LLVMSourceLocation location = getSourceLocation();
+        return location == null ? null : location.getSourceSection();
     }
 
-    protected abstract boolean isStatement();
+    protected final boolean isStatement() {
+        return unwrap().statement;
+    }
 
-    protected abstract void setStatement(boolean statementTag);
+    protected final void setStatement(boolean statementTag) {
+        unwrap().statement = statementTag;
+    }
 
     /**
      * Describes whether this node has source-level debug information attached and should be

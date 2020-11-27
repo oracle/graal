@@ -79,16 +79,4 @@ public abstract class LLVMResumeNode extends LLVMControlFlowNode {
             throw new IllegalStateException(e);
         }
     }
-
-    /**
-     * Override to allow access from generated wrapper.
-     */
-    @Override
-    protected abstract boolean isStatement();
-
-    /**
-     * Override to allow access from generated wrapper.
-     */
-    @Override
-    protected abstract void setStatement(boolean statementTag);
 }

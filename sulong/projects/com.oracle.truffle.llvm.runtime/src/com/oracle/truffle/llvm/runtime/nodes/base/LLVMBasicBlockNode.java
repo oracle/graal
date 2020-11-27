@@ -126,18 +126,6 @@ public abstract class LLVMBasicBlockNode extends LLVMStatementNode {
         return getShortString("blockId", "nullableBefore", "nullableAfter");
     }
 
-    /**
-     * Override to allow access from generated wrapper.
-     */
-    @Override
-    protected abstract boolean isStatement();
-
-    /**
-     * Override to allow access from generated wrapper.
-     */
-    @Override
-    protected abstract void setStatement(boolean statementTag);
-
     abstract static class InitializedBlock extends LLVMBasicBlockNode {
 
         private final BranchProfile controlFlowExceptionProfile = BranchProfile.create();

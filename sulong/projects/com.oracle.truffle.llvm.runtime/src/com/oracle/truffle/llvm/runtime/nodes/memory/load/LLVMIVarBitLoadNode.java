@@ -31,73 +31,55 @@ package com.oracle.truffle.llvm.runtime.nodes.memory.load;
 
 import com.oracle.truffle.api.dsl.Cached;
 import com.oracle.truffle.api.dsl.CachedLanguage;
-import com.oracle.truffle.api.dsl.GenerateUncached;
+import com.oracle.truffle.api.dsl.NodeField;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.library.CachedLibrary;
+import com.oracle.truffle.llvm.runtime.LLVMIVarBit;
 import com.oracle.truffle.llvm.runtime.LLVMLanguage;
 import com.oracle.truffle.llvm.runtime.library.internal.LLVMManagedReadLibrary;
-import com.oracle.truffle.llvm.runtime.nodes.api.LLVMExpressionNode;
 import com.oracle.truffle.llvm.runtime.nodes.api.LLVMLoadNode;
-import com.oracle.truffle.llvm.runtime.nodes.memory.load.LLVMI1LoadNodeGen.LLVMI1OffsetLoadNodeGen;
 import com.oracle.truffle.llvm.runtime.pointer.LLVMManagedPointer;
 import com.oracle.truffle.llvm.runtime.pointer.LLVMNativePointer;
-import com.oracle.truffle.llvm.runtime.pointer.LLVMPointer;
 
-public abstract class LLVMI1LoadNode extends LLVMLoadNode {
+@NodeField(name = "bitWidth", type = int.class)
+public abstract class LLVMIVarBitLoadNode extends LLVMLoadNode {
 
-    public static LLVMI1LoadNode create() {
-        return LLVMI1LoadNodeGen.create((LLVMExpressionNode) null);
-    }
+    public abstract LLVMIVarBit executeWithTarget(LLVMManagedPointer addr);
 
-    public abstract boolean executeWithTarget(Object address);
-
-    @GenerateUncached
-    public abstract static class LLVMI1OffsetLoadNode extends LLVMOffsetLoadNode {
-
-        public static LLVMI1OffsetLoadNode create() {
-            return LLVMI1OffsetLoadNodeGen.create();
-        }
-
-        public abstract boolean executeWithTarget(LLVMPointer receiver, long offset);
-
-        @Specialization(guards = "!isAutoDerefHandle(language, addr)")
-        protected boolean doI1Native(LLVMNativePointer addr, long offset,
-                        @CachedLanguage LLVMLanguage language) {
-            return language.getLLVMMemory().getI1(this, addr.asNative() + offset);
-        }
-
-        @Specialization(guards = "isAutoDerefHandle(language, addr)")
-        protected boolean doI1DerefHandle(LLVMNativePointer addr, long offset,
-                        @Cached LLVMDerefHandleGetReceiverNode getReceiver,
-                        @CachedLanguage @SuppressWarnings("unused") LLVMLanguage language,
-                        @CachedLibrary(limit = "3") LLVMManagedReadLibrary nativeRead) {
-            return doI1Managed(getReceiver.execute(addr), offset, nativeRead);
-        }
-
-        @Specialization(limit = "3")
-        protected boolean doI1Managed(LLVMManagedPointer addr, long offset,
-                        @CachedLibrary("addr.getObject()") LLVMManagedReadLibrary nativeRead) {
-            return nativeRead.readI8(addr.getObject(), addr.getOffset() + offset) != 0;
-        }
-    }
+    public abstract int getBitWidth();
 
     @Specialization(guards = "!isAutoDerefHandle(language, addr)")
-    protected boolean doI1Native(LLVMNativePointer addr,
+    protected LLVMIVarBit doIVarBitNative(LLVMNativePointer addr,
                     @CachedLanguage LLVMLanguage language) {
-        return language.getLLVMMemory().getI1(this, addr);
+        return language.getLLVMMemory().getIVarBit(this, addr, getBitWidth());
+    }
+
+    LLVMIVarBitLoadNode createRecursive() {
+        return LLVMIVarBitLoadNodeGen.create(null, getBitWidth());
     }
 
     @Specialization(guards = "isAutoDerefHandle(language, addr)")
-    protected boolean doI1DerefHandle(LLVMNativePointer addr,
+    protected LLVMIVarBit doIVarBitDerefHandle(LLVMNativePointer addr,
                     @Cached LLVMDerefHandleGetReceiverNode getReceiver,
                     @CachedLanguage @SuppressWarnings("unused") LLVMLanguage language,
-                    @CachedLibrary(limit = "3") LLVMManagedReadLibrary nativeRead) {
-        return doI1Managed(getReceiver.execute(addr), nativeRead);
+                    @Cached("createRecursive()") LLVMIVarBitLoadNode load) {
+        return load.executeWithTarget(getReceiver.execute(addr));
     }
 
     @Specialization(limit = "3")
-    protected boolean doI1Managed(LLVMManagedPointer addr,
+    protected LLVMIVarBit doForeign(LLVMManagedPointer addr,
                     @CachedLibrary("addr.getObject()") LLVMManagedReadLibrary nativeRead) {
-        return nativeRead.readI8(addr.getObject(), addr.getOffset()) != 0;
+        byte[] result = new byte[getByteSize()];
+        long curOffset = addr.getOffset();
+        for (int i = result.length - 1; i >= 0; i--) {
+            result[i] = nativeRead.readI8(addr.getObject(), curOffset);
+            curOffset += I8_SIZE_IN_BYTES;
+        }
+        return LLVMIVarBit.create(getBitWidth(), result, getBitWidth(), false);
+    }
+
+    private int getByteSize() {
+        assert getBitWidth() % Byte.SIZE == 0;
+        return getBitWidth() / Byte.SIZE;
     }
 }

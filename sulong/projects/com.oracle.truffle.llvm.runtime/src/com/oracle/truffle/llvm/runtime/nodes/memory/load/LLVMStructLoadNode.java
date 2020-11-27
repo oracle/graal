@@ -29,20 +29,14 @@
  */
 package com.oracle.truffle.llvm.runtime.nodes.memory.load;
 
-import com.oracle.truffle.llvm.runtime.CommonNodeFactory;
-import com.oracle.truffle.llvm.runtime.interop.access.LLVMInteropType;
-import com.oracle.truffle.llvm.runtime.nodes.api.LLVMNode;
+import com.oracle.truffle.api.dsl.Specialization;
+import com.oracle.truffle.llvm.runtime.nodes.api.LLVMLoadNode;
 import com.oracle.truffle.llvm.runtime.pointer.LLVMPointer;
 
-public abstract class LLVMOffsetLoadNode extends LLVMNode {
+public abstract class LLVMStructLoadNode extends LLVMLoadNode {
 
-    public abstract Object executeWithTargetGeneric(LLVMPointer receiver, long offset);
-
-    public static final LLVMOffsetLoadNode create(LLVMInteropType.ValueKind kind) {
-        return CommonNodeFactory.createOffsetLoadNode(kind);
-    }
-
-    public static LLVMOffsetLoadNode getUncached(LLVMInteropType.ValueKind kind) {
-        return CommonNodeFactory.getUncachedOffsetLoadNode(kind);
+    @Specialization
+    protected LLVMPointer doPointer(LLVMPointer addr) {
+        return addr; // we do not actually load the struct into a virtual register
     }
 }

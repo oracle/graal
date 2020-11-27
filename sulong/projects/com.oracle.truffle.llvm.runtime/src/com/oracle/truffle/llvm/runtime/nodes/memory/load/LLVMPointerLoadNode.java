@@ -38,66 +38,66 @@ import com.oracle.truffle.llvm.runtime.LLVMLanguage;
 import com.oracle.truffle.llvm.runtime.library.internal.LLVMManagedReadLibrary;
 import com.oracle.truffle.llvm.runtime.nodes.api.LLVMExpressionNode;
 import com.oracle.truffle.llvm.runtime.nodes.api.LLVMLoadNode;
-import com.oracle.truffle.llvm.runtime.nodes.memory.load.LLVMI1LoadNodeGen.LLVMI1OffsetLoadNodeGen;
+import com.oracle.truffle.llvm.runtime.nodes.memory.load.LLVMPointerLoadNodeGen.LLVMPointerOffsetLoadNodeGen;
 import com.oracle.truffle.llvm.runtime.pointer.LLVMManagedPointer;
 import com.oracle.truffle.llvm.runtime.pointer.LLVMNativePointer;
 import com.oracle.truffle.llvm.runtime.pointer.LLVMPointer;
 
-public abstract class LLVMI1LoadNode extends LLVMLoadNode {
+public abstract class LLVMPointerLoadNode extends LLVMLoadNode {
 
-    public static LLVMI1LoadNode create() {
-        return LLVMI1LoadNodeGen.create((LLVMExpressionNode) null);
+    public static LLVMPointerLoadNode create() {
+        return LLVMPointerLoadNodeGen.create((LLVMExpressionNode) null);
     }
 
-    public abstract boolean executeWithTarget(Object address);
+    public abstract LLVMPointer executeWithTarget(LLVMPointer addr);
 
     @GenerateUncached
-    public abstract static class LLVMI1OffsetLoadNode extends LLVMOffsetLoadNode {
+    public abstract static class LLVMPointerOffsetLoadNode extends LLVMOffsetLoadNode {
 
-        public static LLVMI1OffsetLoadNode create() {
-            return LLVMI1OffsetLoadNodeGen.create();
+        public static LLVMPointerOffsetLoadNode create() {
+            return LLVMPointerOffsetLoadNodeGen.create();
         }
 
-        public abstract boolean executeWithTarget(LLVMPointer receiver, long offset);
+        public abstract LLVMPointer executeWithTarget(LLVMPointer receiver, long offset);
 
         @Specialization(guards = "!isAutoDerefHandle(language, addr)")
-        protected boolean doI1Native(LLVMNativePointer addr, long offset,
+        protected LLVMNativePointer doNativePointer(LLVMNativePointer addr, long offset,
                         @CachedLanguage LLVMLanguage language) {
-            return language.getLLVMMemory().getI1(this, addr.asNative() + offset);
+            return language.getLLVMMemory().getPointer(this, addr.asNative() + offset);
         }
 
         @Specialization(guards = "isAutoDerefHandle(language, addr)")
-        protected boolean doI1DerefHandle(LLVMNativePointer addr, long offset,
+        protected LLVMPointer doDerefHandle(LLVMNativePointer addr, long offset,
                         @Cached LLVMDerefHandleGetReceiverNode getReceiver,
                         @CachedLanguage @SuppressWarnings("unused") LLVMLanguage language,
                         @CachedLibrary(limit = "3") LLVMManagedReadLibrary nativeRead) {
-            return doI1Managed(getReceiver.execute(addr), offset, nativeRead);
+            return doIndirectedForeign(getReceiver.execute(addr), offset, nativeRead);
         }
 
         @Specialization(limit = "3")
-        protected boolean doI1Managed(LLVMManagedPointer addr, long offset,
+        protected LLVMPointer doIndirectedForeign(LLVMManagedPointer addr, long offset,
                         @CachedLibrary("addr.getObject()") LLVMManagedReadLibrary nativeRead) {
-            return nativeRead.readI8(addr.getObject(), addr.getOffset() + offset) != 0;
+            return nativeRead.readPointer(addr.getObject(), addr.getOffset() + offset);
         }
     }
 
     @Specialization(guards = "!isAutoDerefHandle(language, addr)")
-    protected boolean doI1Native(LLVMNativePointer addr,
+    protected LLVMNativePointer doNativePointer(LLVMNativePointer addr,
                     @CachedLanguage LLVMLanguage language) {
-        return language.getLLVMMemory().getI1(this, addr);
+        return language.getLLVMMemory().getPointer(this, addr);
     }
 
     @Specialization(guards = "isAutoDerefHandle(language, addr)")
-    protected boolean doI1DerefHandle(LLVMNativePointer addr,
+    protected LLVMPointer doDerefHandle(LLVMNativePointer addr,
                     @Cached LLVMDerefHandleGetReceiverNode getReceiver,
                     @CachedLanguage @SuppressWarnings("unused") LLVMLanguage language,
                     @CachedLibrary(limit = "3") LLVMManagedReadLibrary nativeRead) {
-        return doI1Managed(getReceiver.execute(addr), nativeRead);
+        return doIndirectedForeign(getReceiver.execute(addr), nativeRead);
     }
 
     @Specialization(limit = "3")
-    protected boolean doI1Managed(LLVMManagedPointer addr,
+    protected LLVMPointer doIndirectedForeign(LLVMManagedPointer addr,
                     @CachedLibrary("addr.getObject()") LLVMManagedReadLibrary nativeRead) {
-        return nativeRead.readI8(addr.getObject(), addr.getOffset()) != 0;
+        return nativeRead.readPointer(addr.getObject(), addr.getOffset());
     }
 }

@@ -44,11 +44,11 @@ import com.oracle.truffle.llvm.runtime.pointer.LLVMManagedPointer;
 import com.oracle.truffle.llvm.runtime.pointer.LLVMNativePointer;
 import com.oracle.truffle.llvm.runtime.pointer.LLVMPointer;
 
-@GenerateUncached
 public abstract class LLVMFloatStoreNode extends LLVMStoreNode {
 
     public abstract void executeWithTarget(LLVMPointer address, float value);
 
+    @GenerateUncached
     public abstract static class LLVMFloatOffsetStoreNode extends LLVMOffsetStoreNode {
 
         public static LLVMFloatOffsetStoreNode create() {

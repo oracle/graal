@@ -46,7 +46,6 @@ import com.oracle.truffle.llvm.runtime.pointer.LLVMManagedPointer;
 import com.oracle.truffle.llvm.runtime.pointer.LLVMNativePointer;
 import com.oracle.truffle.llvm.runtime.pointer.LLVMPointer;
 
-@GenerateUncached
 public abstract class LLVM80BitFloatStoreNode extends LLVMStoreNode {
 
     public static LLVM80BitFloatStoreNode create() {
@@ -55,6 +54,7 @@ public abstract class LLVM80BitFloatStoreNode extends LLVMStoreNode {
 
     public abstract void executeWithTarget(LLVMPointer address, LLVM80BitFloat value);
 
+    @GenerateUncached
     public abstract static class LLVM80BitFloatOffsetStoreNode extends LLVMOffsetStoreNode {
 
         public static LLVM80BitFloatOffsetStoreNode create() {
