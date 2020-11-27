@@ -67,10 +67,9 @@ instantiation is traced for.
 * `-esa`: enable assertions in all system classes.
 * `-g`: generate debugging information. Please be informed that debug information produced on GraalVM Community will differ from that generated on GraalVM Enterprise.
 
-Next three options are available only with Communty Enterprise:
-* `--gc=<value>`: select the Native Image garbage collector implementation. Allowed options for `<value>` are `G1` for G1 garbage collector or `serial` for Serial garbage collector (default).
-* `--pgo`: a comma-separated list of files from which to read the data collected for profile-guided optimization of AOT compiled code (reads from _default.iprof_ if nothing is specified).
-* `--pgo-instrument`: instrument AOT compiled code to collect data for profile-guided optimization into the _default.iprof_ file.
+* GraalVM Enterprise only: `--gc=<value>`: select the Native Image garbage collector implementation. Allowed options for `<value>` are `G1` for G1 garbage collector or `serial` for Serial garbage collector (default).
+* GraalVM Enterprise only: `--pgo`: a comma-separated list of files from which to read the data collected for profile-guided optimization of AOT compiled code (reads from _default.iprof_ if nothing is specified).
+* GraalVM Enterprise only: `--pgo-instrument`: instrument AOT compiled code to collect data for profile-guided optimization into the _default.iprof_ file.
 
 
 ### Macro Options
