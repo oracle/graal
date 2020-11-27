@@ -34,7 +34,6 @@ import com.oracle.truffle.api.dsl.CachedLanguage;
 import com.oracle.truffle.api.dsl.GenerateUncached;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.library.CachedLibrary;
-import com.oracle.truffle.api.profiles.IntValueProfile;
 import com.oracle.truffle.llvm.runtime.LLVMLanguage;
 import com.oracle.truffle.llvm.runtime.library.internal.LLVMManagedReadLibrary;
 import com.oracle.truffle.llvm.runtime.nodes.api.LLVMExpressionNode;
@@ -63,9 +62,8 @@ public abstract class LLVMI32LoadNode extends LLVMLoadNode {
 
         @Specialization(guards = "!isAutoDerefHandle(language, addr)")
         protected int doI32Native(LLVMNativePointer addr, long offset,
-                        @Cached("createIdentityProfile()") IntValueProfile profile,
                         @CachedLanguage LLVMLanguage language) {
-            return profile.profile(language.getLLVMMemory().getI32(this, addr.asNative() + offset));
+            return language.getLLVMMemory().getI32(this, addr.asNative() + offset);
         }
 
         @Specialization(guards = "isAutoDerefHandle(language, addr)")
@@ -85,9 +83,8 @@ public abstract class LLVMI32LoadNode extends LLVMLoadNode {
 
     @Specialization(guards = "!isAutoDerefHandle(language, addr)")
     protected int doI32Native(LLVMNativePointer addr,
-                    @Cached("createIdentityProfile()") IntValueProfile profile,
                     @CachedLanguage LLVMLanguage language) {
-        return profile.profile(language.getLLVMMemory().getI32(this, addr));
+        return language.getLLVMMemory().getI32(this, addr);
     }
 
     @Specialization(guards = "isAutoDerefHandle(language, addr)")
