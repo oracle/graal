@@ -35,7 +35,6 @@ import com.oracle.truffle.api.dsl.GenerateUncached;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.library.CachedLibrary;
 import com.oracle.truffle.api.nodes.UnexpectedResultException;
-import com.oracle.truffle.api.profiles.LongValueProfile;
 import com.oracle.truffle.llvm.runtime.LLVMLanguage;
 import com.oracle.truffle.llvm.runtime.library.internal.LLVMManagedReadLibrary;
 import com.oracle.truffle.llvm.runtime.nodes.api.LLVMExpressionNode;
@@ -64,9 +63,8 @@ public abstract class LLVMI64LoadNode extends LLVMLoadNode {
 
         @Specialization(guards = "!isAutoDerefHandle(language, addr)")
         protected long doI64Native(LLVMNativePointer addr, long offset,
-                        @Cached("createIdentityProfile()") LongValueProfile profile,
                         @CachedLanguage LLVMLanguage language) {
-            return profile.profile(language.getLLVMMemory().getI64(this, addr.asNative() + offset));
+            return language.getLLVMMemory().getI64(this, addr.asNative() + offset);
         }
 
         @Specialization(guards = "isAutoDerefHandle(language, addr)", rewriteOn = UnexpectedResultException.class)
@@ -100,9 +98,8 @@ public abstract class LLVMI64LoadNode extends LLVMLoadNode {
 
     @Specialization(guards = "!isAutoDerefHandle(language, addr)")
     protected long doI64Native(LLVMNativePointer addr,
-                    @Cached("createIdentityProfile()") LongValueProfile profile,
                     @CachedLanguage LLVMLanguage language) {
-        return profile.profile(language.getLLVMMemory().getI64(this, addr));
+        return language.getLLVMMemory().getI64(this, addr);
     }
 
     @Specialization(guards = "isAutoDerefHandle(language, addr)", rewriteOn = UnexpectedResultException.class)

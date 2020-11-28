@@ -222,7 +222,6 @@ import com.oracle.truffle.llvm.runtime.nodes.op.LLVMVectorCompareNodeGen;
 import com.oracle.truffle.llvm.runtime.nodes.others.LLVMAccessSymbolNode;
 import com.oracle.truffle.llvm.runtime.nodes.others.LLVMAccessSymbolNodeGen;
 import com.oracle.truffle.llvm.runtime.nodes.others.LLVMUnsupportedInstructionNode;
-import com.oracle.truffle.llvm.runtime.nodes.others.LLVMValueProfilingNode;
 import com.oracle.truffle.llvm.runtime.nodes.vars.LLVMReadNodeFactory;
 import com.oracle.truffle.llvm.runtime.nodes.vars.LLVMReadNodeFactory.LLVM80BitFloatReadNodeGen;
 import com.oracle.truffle.llvm.runtime.nodes.vars.LLVMReadNodeFactory.LLVMAddressReadNodeGen;
@@ -763,8 +762,7 @@ public class CommonNodeFactory {
     }
 
     public static LLVMExpressionNode createFunctionCall(LLVMExpressionNode functionNode, LLVMExpressionNode[] argNodes, FunctionType type) {
-        LLVMExpressionNode callNode = LLVMCallNode.create(type, functionNode, argNodes, true);
-        return LLVMValueProfilingNode.create(callNode, type.getReturnType());
+        return LLVMCallNode.create(type, functionNode, argNodes, true);
     }
 
     public static LLVMStatementNode createDebugTrap() {

@@ -303,7 +303,6 @@ import com.oracle.truffle.llvm.runtime.nodes.others.LLVMSelectNodeFactory.LLVMI6
 import com.oracle.truffle.llvm.runtime.nodes.others.LLVMSelectNodeFactory.LLVMI8SelectNodeGen;
 import com.oracle.truffle.llvm.runtime.nodes.others.LLVMUnreachableNodeGen;
 import com.oracle.truffle.llvm.runtime.nodes.others.LLVMUnsupportedInstructionNode;
-import com.oracle.truffle.llvm.runtime.nodes.others.LLVMValueProfilingNode;
 import com.oracle.truffle.llvm.runtime.nodes.others.LLVMVectorSelectNodeFactory.LLVMDoubleVectorSelectNodeGen;
 import com.oracle.truffle.llvm.runtime.nodes.others.LLVMVectorSelectNodeFactory.LLVMFloatVectorSelectNodeGen;
 import com.oracle.truffle.llvm.runtime.nodes.others.LLVMVectorSelectNodeFactory.LLVMI16VectorSelectNodeGen;
@@ -755,12 +754,7 @@ public class BasicNodeFactory implements NodeFactory {
         if (argIndex < 0) {
             throw new AssertionError();
         }
-        LLVMExpressionNode argNode = LLVMArgNodeGen.create(argIndex);
-        if (argIndex < LLVMCallNode.USER_ARGUMENT_OFFSET) {
-            // Do not profile the stackpointer
-            return argNode;
-        }
-        return LLVMValueProfilingNode.create(argNode, paramType);
+        return LLVMArgNodeGen.create(argIndex);
     }
 
     @Override
