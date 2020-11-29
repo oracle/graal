@@ -870,6 +870,15 @@ class GraalVmLayoutDistribution(BaseGraalVmLayoutDistribution, LayoutSuper):  # 
             stage1=stage1,
             **kw_args)
 
+    def extra_suite_revisions_data(self):
+        if self == get_final_graalvm_distribution() and _base_jdk_name() and _base_jdk_version():
+            yield "basejdk", {
+                "name": _base_jdk_name(),
+                "version": _base_jdk_version()
+            }
+        else:
+            yield None, {}
+
     def getBuildTask(self, args):
         return GraalVmLayoutDistributionTask(args, self, 'latest_graalvm', 'latest_graalvm_home')
 
@@ -2699,6 +2708,8 @@ mx.add_argument('--release-catalog', action='store', help='Change the default UR
 mx.add_argument('--extra-image-builder-argument', action='append', help='Add extra arguments to the image builder.', default=[])
 mx.add_argument('--image-profile', action='append', help='Add a profile to be used while building a native image.', default=[])
 mx.add_argument('--no-licenses', action='store_true', help='Do not add license files in the archives.')
+mx.add_argument('--base-jdk-name', action='store', help='Base JDK name, to be added on deployment to the \'basejdk\' attribute of the \'suite-revisions.xml\' file.')
+mx.add_argument('--base-jdk-version', action='store', help='Base JDK version, to be added on deployment to the \'basejdk\' attribute of the \'suite-revisions.xml\' file.')
 
 
 def _parse_cmd_arg(arg_name, env_var_name=None, separator=',', parse_bool=True, default_value=None):
@@ -2913,6 +2924,14 @@ def _snapshot_catalog():
 
 def _release_catalog():
     return mx.get_opts().release_catalog or mx.get_env('RELEASE_CATALOG')
+
+
+def _base_jdk_name():
+    return mx.get_opts().base_jdk_name or mx.get_env('BASE_JDK_NAME')
+
+
+def _base_jdk_version():
+    return mx.get_opts().base_jdk_version or mx.get_env('BASE_JDK_VERSION')
 
 
 def mx_post_parse_cmd_line(args):
