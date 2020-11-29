@@ -1,14 +1,14 @@
 vm_java_8: ${openjdk8} {
-  environment: { BASE_JDK_VERSION: "8" }
+  environment: { BASE_JDK_SHORT_VERSION: "8" }
 }
 vm_java_11: ${labsjdk-ce-11} {
-  environment: { BASE_JDK_VERSION: "11" }
+  environment: { BASE_JDK_SHORT_VERSION: "11" }
 }
 vm_java_15: ${labsjdk-ce-15} {
-  environment: { BASE_JDK_VERSION: "15" }
+  environment: { BASE_JDK_SHORT_VERSION: "15" }
 }
 vm_java_15Debug: ${labsjdk-ce-15Debug} {
-  environment: { BASE_JDK_VERSION: "15" }
+  environment: { BASE_JDK_SHORT_VERSION: "15" }
 }
 svm_suite: /substratevm
 vm_extra_suites: "truffleruby,graalpython,fastr,/wasm"
@@ -27,8 +27,8 @@ vm_setup: {
   short_name: ce
   setup: [
     [set-export, VM_ENV, ce]
-    [set-export, RELEASE_CATALOG, "https://www.graalvm.org/component-catalog/graal-updater-component-catalog-java${BASE_JDK_VERSION}.properties"]
-    [set-export, SNAPSHOT_CATALOG, [mx, urlrewrite, "http://www.graalvm.org/catalog/ce/java${BASE_JDK_VERSION}"]]
+    [set-export, RELEASE_CATALOG, "https://www.graalvm.org/component-catalog/graal-updater-component-catalog-java${BASE_JDK_SHORT_VERSION}.properties"]
+    [set-export, SNAPSHOT_CATALOG, [mx, urlrewrite, "http://www.graalvm.org/catalog/ce/java${BASE_JDK_SHORT_VERSION}"]]
     [cd, ${vm_subdir}]
   ]
 }
