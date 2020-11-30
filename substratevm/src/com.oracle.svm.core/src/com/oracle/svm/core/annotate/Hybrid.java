@@ -28,20 +28,20 @@ import java.lang.annotation.ElementType;
 import java.lang.annotation.Retention;
 import java.lang.annotation.RetentionPolicy;
 import java.lang.annotation.Target;
-import java.util.BitSet;
 
 import com.oracle.svm.core.hub.DynamicHub;
 
 /**
  * Defines that the annotated class should have a Hybrid layout. Hybrid layouts are hybrids between
- * instance layouts and array layouts. The contents of a specified member array and an (optional)
- * member {@link BitSet} are directly placed within the class layout. This saves one indirection
- * when accessing the array or bit-set.
+ * instance layouts and array layouts. The contents of a specified member array and (optional)
+ * member type id slots are directly placed within the class layout. This saves one indirection when
+ * accessing the array or type id slots.
  *
  * <p>
  * The array length is located directly after the HUB pointer, like in regular array. Then (if
- * present) the bits are located. Then the instance fields are placed. Then, with the default GC,
- * there is an optional identity hashcode. At the end of the layout, the array elements are located.
+ * present) the type id slots follow. Then the instance fields are placed. Then, with the default
+ * GC, there is an optional identity hashcode. At the end of the layout, the array elements are
+ * located.
  * 
  * <pre>
  *    +--------------------------------+
@@ -49,7 +49,7 @@ import com.oracle.svm.core.hub.DynamicHub;
  *    +--------------------------------+
  *    | Array length                   |
  *    +--------------------------------+
- *    | bits | type id slots (optional)|
+ *    | type id slots (optional)|
  *    |     ...                        |
  *    +--------------------------------+
  *    | instance fields                |
@@ -81,13 +81,5 @@ public @interface Hybrid {
     @Retention(RetentionPolicy.RUNTIME)
     @Target(ElementType.FIELD)
     public @interface TypeIDSlots {
-    }
-
-    /**
-     * Specifies a single member {@link BitSet} as the hybrid bit-set.
-     */
-    @Retention(RetentionPolicy.RUNTIME)
-    @Target(ElementType.FIELD)
-    public @interface Bitset {
     }
 }

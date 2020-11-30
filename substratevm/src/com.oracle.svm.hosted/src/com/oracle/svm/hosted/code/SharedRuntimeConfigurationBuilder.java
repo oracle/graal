@@ -173,7 +173,7 @@ public abstract class SharedRuntimeConfigurationBuilder {
         HybridLayout<DynamicHub> hubLayout = new HybridLayout<>(DynamicHub.class, ConfigurationValues.getObjectLayout(), hMetaAccess);
         int vtableBaseOffset = hubLayout.getArrayBaseOffset();
         int vtableEntrySize = ConfigurationValues.getObjectLayout().sizeInBytes(hubLayout.getArrayElementStorageKind());
-        int instanceOfBitsOrTypeIDSlotsOffset = HybridLayout.getBitFieldOrTypeIDSlotsFieldOffset(ConfigurationValues.getObjectLayout());
+        int typeIDSlotsOffset = HybridLayout.getTypeIDSlotsFieldOffset(ConfigurationValues.getObjectLayout());
 
         int componentHubOffset = hMetaAccess.lookupJavaField(ReflectionUtil.lookupField(DynamicHub.class, "componentHub")).getLocation();
 
@@ -187,7 +187,7 @@ public abstract class SharedRuntimeConfigurationBuilder {
 
         int imageCodeInfoCodeStartOffset = hMetaAccess.lookupJavaField(ReflectionUtil.lookupField(ImageCodeInfo.class, "codeStart")).getLocation();
 
-        runtimeConfig.setLazyState(vtableBaseOffset, vtableEntrySize, instanceOfBitsOrTypeIDSlotsOffset, componentHubOffset,
+        runtimeConfig.setLazyState(vtableBaseOffset, vtableEntrySize, typeIDSlotsOffset, componentHubOffset,
                         javaFrameAnchorLastSPOffset, javaFrameAnchorLastIPOffset, vmThreadStatusOffset, imageCodeInfoCodeStartOffset);
     }
 

@@ -24,6 +24,7 @@
  */
 package com.oracle.svm.hosted.meta;
 
+import java.io.Serializable;
 import java.lang.reflect.Modifier;
 import java.util.ArrayList;
 import java.util.Arrays;
@@ -149,15 +150,13 @@ public class UniverseBuilder {
             BigBang bb = staticAnalysisResultsBuilder.getBigBang();
             ForkJoinTask<?> profilingInformationBuildTask = ForkJoinTask.adapt(this::buildProfilingInformation).fork();
 
-            buildSubTypes();
-            buildOrderedTypes();
-            buildTypeCheckIDs();
-            typeCheckBuilder = new TypeCheckBuilder(hUniverse.orderedTypes, hUniverse.objectType());
-            if (SubstrateOptions.UseLegacyTypeCheck.getValue()) {
-                assert typeCheckBuilder.calculateIDs();
-            } else {
-                typeCheckBuilder.calculateIDs();
-            }
+            Collection<HostedType> allTypes = hUniverse.types.values();
+            HostedType objectType = hUniverse.objectType();
+            HostedType cloneableType = hUniverse.types.get(aMetaAccess.lookupJavaType(Cloneable.class));
+            HostedType serializableType = hUniverse.types.get(aMetaAccess.lookupJavaType(Serializable.class));
+            typeCheckBuilder = new TypeCheckBuilder(allTypes, objectType, cloneableType, serializableType);
+            typeCheckBuilder.buildTypeInformation(hUniverse);
+            typeCheckBuilder.calculateIDs();
 
             collectDeclaredMethods();
             collectMonitorFieldInfo(bb);
@@ -351,224 +350,6 @@ public class UniverseBuilder {
         staticAnalysisResultsBuilder = null;
     }
 
-    private void buildSubTypes() {
-        /*
-         * We cannot use the sub-type information from the AnalysisType because there are some minor
-         * differences regarding array types. Therefore we build the sub-type information from
-         * scratch.
-         */
-        Map<HostedType, Set<HostedType>> allSubTypes = new HashMap<>();
-        for (HostedType type : hUniverse.types.values()) {
-            allSubTypes.put(type, new HashSet<>());
-        }
-
-        for (HostedType type : hUniverse.types.values()) {
-            if (type.getSuperclass() != null) {
-                allSubTypes.get(type.getSuperclass()).add(type);
-            }
-            if (type.isInterface() && type.getInterfaces().length == 0) {
-                allSubTypes.get(hUniverse.getObjectClass()).add(type);
-            }
-            for (HostedInterface interf : type.getInterfaces()) {
-                allSubTypes.get(interf).add(type);
-            }
-        }
-
-        for (HostedType type : hUniverse.types.values()) {
-            Set<HostedType> subTypesSet = allSubTypes.get(type);
-            HostedType[] subTypes = subTypesSet.toArray(new HostedType[subTypesSet.size()]);
-            Arrays.sort(subTypes);
-            type.subTypes = subTypes;
-        }
-    }
-
-    private void buildOrderedTypes() {
-        List<HostedType> orderedTypes = new ArrayList<>();
-        int arrayDepth = 0;
-        boolean typeFound;
-        do {
-            typeFound = false;
-            /*
-             * Order all primitive types are before Object, so that Object and all array types are
-             * consecutive.
-             */
-            for (Map.Entry<JavaKind, HostedType> entry : hUniverse.kindToType.entrySet()) {
-                if (entry.getKey() != JavaKind.Object) {
-                    typeFound |= orderTypes(entry.getValue(), arrayDepth, orderedTypes);
-                }
-            }
-            if (hUniverse.kindToType.containsKey(JavaKind.Object)) {
-                typeFound |= orderTypes(hUniverse.kindToType.get(JavaKind.Object), arrayDepth, orderedTypes);
-            }
-            arrayDepth++;
-        } while (typeFound);
-
-        ImageSingletons.lookup(DynamicHubSupport.class).setMaxTypeId(orderedTypes.size());
-
-        assert assertSame(orderedTypes, hUniverse.types.values());
-        hUniverse.orderedTypes = orderedTypes;
-    }
-
-    private boolean orderTypes(HostedType baseType, int arrayDepth, List<HostedType> allTypes) {
-        HostedType type = baseType.getArrayClass(arrayDepth);
-        if (type == null) {
-            return false;
-        }
-        if (type.typeID != -1) {
-            return true;
-        }
-
-        type.typeID = allTypes.size();
-        allTypes.add(type);
-
-        for (HostedType sub : baseType.subTypes) {
-            if (!sub.isArray()) {
-                orderTypes(sub, arrayDepth, allTypes);
-            }
-        }
-        return true;
-    }
-
-    private void buildTypeCheckIDs() {
-        BitSet[] assignableTypeIDs = new BitSet[hUniverse.orderedTypes.size()];
-        BitSet[] concreteTypeIDs = new BitSet[hUniverse.orderedTypes.size()];
-        for (int i = hUniverse.orderedTypes.size() - 1; i >= 0; i--) {
-            HostedType type = hUniverse.orderedTypes.get(i);
-            buildTypeCheckIDs(type, assignableTypeIDs, concreteTypeIDs);
-        }
-    }
-
-    private static final int[] EMPTY = new int[0];
-
-    /**
-     * Traverses the type hierarchy recursively and builds the information needed for type checks.
-     *
-     * @param type The current type during traversal
-     * @param assignableTypeIDs A bit-set for each type (index by typeID). A set contains bits for
-     *            each type which can be assigned to the containing type.
-     * @param concreteTypeIDs The same as assignableTypeIDs, but the bit sets only contain
-     *            instantiated types, i.e. they are a subset of assignableTypeIDs
-     */
-    private void buildTypeCheckIDs(HostedType type, BitSet[] assignableTypeIDs, BitSet[] concreteTypeIDs) {
-        if (assignableTypeIDs[type.typeID] != null) {
-            return;
-        }
-
-        BitSet assignable = new BitSet();
-        BitSet concrete = new BitSet();
-        HostedType strengthenStampType = null;
-
-        /*
-         * Collect information about the sub types. Note that the type hierarchy is not a tree but a
-         * DAG because sub-types include types which implement interfaces.
-         */
-        for (HostedType subBase : type.getBaseType().subTypes) {
-            HostedType sub = subBase.getArrayClass(type.getArrayDimension());
-            if (sub != null && !sub.equals(type)) {
-                buildTypeCheckIDs(sub, assignableTypeIDs, concreteTypeIDs);
-                assignable.or(assignableTypeIDs[sub.getTypeID()]);
-                concrete.or(concreteTypeIDs[sub.getTypeID()]);
-
-                if (strengthenStampType == null) {
-                    strengthenStampType = sub.strengthenStampType;
-                } else if (sub.strengthenStampType != null) {
-                    strengthenStampType = type;
-                }
-            }
-        }
-
-        if (type.isInstantiated()) {
-            strengthenStampType = type;
-        }
-        type.strengthenStampType = strengthenStampType;
-
-        /*
-         * Set the bit for this type.
-         */
-        assignable.set(type.typeID);
-        if (type.getWrapped().isInstantiated()) {
-            assert (type.isInstanceClass() && !Modifier.isAbstract(type.getModifiers())) || type.isArray();
-            concrete.set(type.typeID);
-        }
-
-        /*
-         * Convert the assignable bit-set to a list of typeID ranges. Note that the assignable set
-         * is used for dynamic type checks (e.g. Class.isInstance(Object)). It includes bits for
-         * abstract types and not instantated types.
-         */
-        int[] assignableFromMatches = EMPTY;
-        int assignableStart = assignable.nextSetBit(0);
-        while (assignableStart != -1) {
-            int assignableEnd = assignable.nextClearBit(assignableStart);
-            assignableFromMatches = Arrays.copyOf(assignableFromMatches, assignableFromMatches.length + 2);
-            assignableFromMatches[assignableFromMatches.length - 2] = assignableStart;
-            assignableFromMatches[assignableFromMatches.length - 1] = assignableEnd - assignableStart;
-            assignableStart = assignable.nextSetBit(assignableEnd);
-        }
-        type.assignableFromMatches = assignableFromMatches;
-
-        /*
-         * Now we do the same for concrete types (which are a significant subset of all types). Used
-         * for static instanceof checks.
-         */
-        int rangeStart = concrete.nextSetBit(0);
-        if (rangeStart >= 0) {
-            int rangeEnd = concrete.nextClearBit(rangeStart);
-            int assignableEnd = assignable.nextClearBit(rangeStart);
-            if (assignableEnd > concrete.nextSetBit(rangeEnd)) {
-                /*
-                 * Better a single larger range than multiple ranges.
-                 */
-                rangeEnd = assignableEnd;
-            }
-            int rangeLength = rangeEnd - rangeStart;
-            if (concrete.nextSetBit(rangeEnd) < 0) {
-                /*
-                 * There is only a single range. We are done. Note that we exclude Word types here,
-                 * since all implementations that we might see during native image generation are
-                 * not present at run time.
-                 */
-                if (rangeLength == 1 && !type.isWordType()) {
-                    type.uniqueConcreteImplementation = hUniverse.orderedTypes.get(rangeStart);
-                }
-                type.setInstanceOfRange(rangeStart, rangeLength);
-            } else { // if (type.getWrapped().isInTypeCheck()) {
-                /*
-                 * There are multiple ranges, e.g. if the type is an interface which is
-                 * "distributed" over the type hierarchy. In this case we use another method for
-                 * instanceof checks: bit testing. We assign a unique bit to the type.
-                 */
-                int interfaceBit = hUniverse.numInterfaceBits++;
-                setInstanceOfBits(type, interfaceBit);
-                type.setInstanceOfRange(interfaceBit, -1);
-                // } else {
-                // type.setInstanceOfRange(0, -2);
-            }
-        }
-
-        assignableTypeIDs[type.typeID] = assignable;
-        concreteTypeIDs[type.typeID] = concrete;
-    }
-
-    /**
-     * Sets the allocated bit for instanceof checking to all sub-types of a type.
-     */
-    private static void setInstanceOfBits(HostedType type, int bit) {
-        if (type.instanceOfBits == null) {
-            type.instanceOfBits = new BitSet(bit + 1);
-        }
-        if (!type.instanceOfBits.get(bit)) {
-            type.instanceOfBits.set(bit);
-
-            for (HostedType subBase : type.getBaseType().subTypes) {
-                HostedType sub = subBase.getArrayClass(type.getArrayDimension());
-                if (sub != null && !sub.equals(type)) {
-                    setInstanceOfBits(sub, bit);
-                }
-            }
-        }
-    }
-
     /**
      * We want these types to be immutable so that they can be in the read-only part of the image
      * heap. Those types that contain relocatable pointers *must* be in the read-only relocatables
@@ -628,16 +409,12 @@ public class UniverseBuilder {
             startSize += fieldSize;
 
             /*
-             * Set start after bitset/typecheck slots field, if the hybrid class has one. For now,
-             * only DynamicHubs can this field(s).
+             * Set start after typecheck slots field, if the hybrid class has one. For now, only
+             * DynamicHubs can this field(s).
              */
             if (clazz.equals(hMetaAccess.lookupJavaType(DynamicHub.class))) {
-                if (SubstrateOptions.UseLegacyTypeCheck.getValue()) {
-                    startSize += (hUniverse.numInterfaceBits + Byte.SIZE - 1) / Byte.SIZE;
-                } else {
-                    /* Each type check id slot is 2 bytes. */
-                    startSize += typeCheckBuilder.getNumTypeCheckSlots() * 2;
-                }
+                /* Each type check id slot is 2 bytes. */
+                startSize += typeCheckBuilder.getNumTypeCheckSlots() * 2;
             }
         }
 
@@ -719,7 +496,7 @@ public class UniverseBuilder {
         int nextObjectField = 0;
 
         @SuppressWarnings("unchecked")
-        List<HostedField>[] fieldsOfTypes = (List<HostedField>[]) new ArrayList<?>[hUniverse.orderedTypes.size()];
+        List<HostedField>[] fieldsOfTypes = (List<HostedField>[]) new ArrayList<?>[hUniverse.getTypes().size()];
 
         for (HostedField field : fields) {
             if (!field.wrapped.isWritten() && !MaterializedConstantFields.singleton().contains(field.wrapped)) {
@@ -745,7 +522,7 @@ public class UniverseBuilder {
         }
 
         HostedField[] noFields = new HostedField[0];
-        for (HostedType type : hUniverse.orderedTypes) {
+        for (HostedType type : hUniverse.getTypes()) {
             List<HostedField> fieldsOfType = fieldsOfTypes[type.getTypeID()];
             if (fieldsOfType != null) {
                 type.staticFields = fieldsOfType.toArray(new HostedField[fieldsOfType.size()]);
@@ -761,7 +538,7 @@ public class UniverseBuilder {
 
     @SuppressWarnings("unchecked")
     private void collectDeclaredMethods() {
-        List<HostedMethod>[] methodsOfType = (ArrayList<HostedMethod>[]) new ArrayList<?>[hUniverse.orderedTypes.size()];
+        List<HostedMethod>[] methodsOfType = (ArrayList<HostedMethod>[]) new ArrayList<?>[hUniverse.getTypes().size()];
         for (HostedMethod method : hUniverse.methods.values()) {
             int typeId = method.getDeclaringClass().getTypeID();
             List<HostedMethod> list = methodsOfType[typeId];
@@ -773,7 +550,7 @@ public class UniverseBuilder {
         }
 
         HostedMethod[] noMethods = new HostedMethod[0];
-        for (HostedType type : hUniverse.orderedTypes) {
+        for (HostedType type : hUniverse.getTypes()) {
             List<HostedMethod> list = methodsOfType[type.getTypeID()];
             if (list != null) {
                 Collections.sort(list);
@@ -826,7 +603,7 @@ public class UniverseBuilder {
          */
         Map<HostedMethod, Set<Integer>> vtablesSlots = new HashMap<>();
 
-        for (HostedType type : hUniverse.orderedTypes) {
+        for (HostedType type : hUniverse.getTypes()) {
             vtablesMap.put(type, new ArrayList<>());
             BitSet initialBitSet = new BitSet();
             usedSlotsMap.put(type, initialBitSet);
@@ -845,7 +622,7 @@ public class UniverseBuilder {
          * by that number, to further reduce the filler slots.
          */
         List<Pair<HostedType, Integer>> interfaces = new ArrayList<>();
-        for (HostedType type : hUniverse.orderedTypes) {
+        for (HostedType type : hUniverse.getTypes()) {
             if (type.isInterface()) {
                 /*
                  * We use the number of subtypes as the importance for an interface: If an interface
@@ -870,7 +647,7 @@ public class UniverseBuilder {
          */
         buildVTable(hUniverse.getObjectClass(), vtablesMap, usedSlotsMap, vtablesSlots);
 
-        for (HostedType type : hUniverse.orderedTypes) {
+        for (HostedType type : hUniverse.getTypes()) {
             if (type.vtable == null) {
                 assert type.isInterface() || type.isPrimitive();
                 type.vtable = new HostedMethod[0];
@@ -879,7 +656,7 @@ public class UniverseBuilder {
 
         if (SubstrateUtil.assertionsEnabled()) {
             /* Check that all vtable entries are the correctly resolved methods. */
-            for (HostedType type : hUniverse.orderedTypes) {
+            for (HostedType type : hUniverse.getTypes()) {
                 for (HostedMethod m : type.vtable) {
                     assert m == null || m.equals(hUniverse.lookup(type.wrapped.resolveConcreteMethod(m.wrapped, type.wrapped)));
                 }
@@ -1052,7 +829,7 @@ public class UniverseBuilder {
     private void buildHubs() {
         InstanceReferenceMapEncoder referenceMapEncoder = new InstanceReferenceMapEncoder();
         Map<HostedType, ReferenceMapEncoder.Input> referenceMaps = new HashMap<>();
-        for (HostedType type : hUniverse.orderedTypes) {
+        for (HostedType type : hUniverse.getTypes()) {
             ReferenceMapEncoder.Input referenceMap = createReferenceMap(type);
             assert ((SubstrateReferenceMap) referenceMap).hasNoDerivedOffsets();
             referenceMaps.put(type, referenceMap);
@@ -1061,8 +838,7 @@ public class UniverseBuilder {
         ImageSingletons.lookup(DynamicHubSupport.class).setData(referenceMapEncoder.encodeAll());
 
         ObjectLayout ol = ConfigurationValues.getObjectLayout();
-        short[] emptySlots = null;
-        for (HostedType type : hUniverse.orderedTypes) {
+        for (HostedType type : hUniverse.getTypes()) {
             int layoutHelper;
             int monitorOffset = 0;
             if (type.isInstanceClass()) {
@@ -1110,21 +886,8 @@ public class UniverseBuilder {
             long referenceMapIndex = referenceMapEncoder.lookupEncoding(referenceMap);
 
             DynamicHub hub = type.getHub();
-            if (SubstrateOptions.UseLegacyTypeCheck.getValue()) {
-                hub.setData(layoutHelper, type.getTypeID(), monitorOffset, type.getAssignableFromMatches(), type.instanceOfBits, vtable, referenceMapIndex, type.isInstantiated());
-            } else {
-                short[] typeCheckSlots;
-                if (type.getWrapped().isReachable()) {
-                    typeCheckSlots = type.getTypeCheckSlots();
-                } else {
-                    if (emptySlots == null) {
-                        emptySlots = new short[typeCheckBuilder.getNumTypeCheckSlots()];
-                    }
-                    typeCheckSlots = emptySlots;
-                }
-                hub.setData(layoutHelper, type.getTypeID(), monitorOffset, type.getTypeCheckStart(), type.getTypeCheckRange(), type.getTypeCheckSlot(), typeCheckSlots,
-                                vtable, referenceMapIndex, type.isInstantiated());
-            }
+            hub.setData(layoutHelper, type.getTypeID(), monitorOffset, type.getTypeCheckStart(), type.getTypeCheckRange(), type.getTypeCheckSlot(), type.getTypeCheckSlots(),
+                            vtable, referenceMapIndex, type.isInstantiated());
         }
     }
 
@@ -1169,18 +932,5 @@ public class UniverseBuilder {
                 hField.setUnmaterializedStaticConstant();
             }
         }
-    }
-
-    private static boolean assertSame(Collection<HostedType> c1, Collection<HostedType> c2) {
-        List<HostedType> list1 = new ArrayList<>(c1);
-        List<HostedType> list2 = new ArrayList<>(c2);
-        Collections.sort(list1);
-        Collections.sort(list2);
-
-        for (int i = 0; i < Math.min(list1.size(), list2.size()); i++) {
-            assert list1.get(i) == list2.get(i);
-        }
-        assert list1.size() == list2.size();
-        return true;
     }
 }
