@@ -60,6 +60,12 @@ public abstract class ClassRegistry implements ContextAccess {
     // TODO: Rework this, a thread local is certainly less than optimal.
     static final ThreadLocal<TypeStack> stack = ThreadLocal.withInitial(TypeStack.supplier);
 
+    private DefineKlassListener defineKlassListener;
+
+    public void registerOnLoadListener(DefineKlassListener listener) {
+        defineKlassListener = listener;
+    }
+
     static final class TypeStack {
         static final Supplier<TypeStack> supplier = new Supplier<TypeStack>() {
             @Override
@@ -323,6 +329,9 @@ public abstract class ClassRegistry implements ContextAccess {
         EspressoError.guarantee(previous == null, "Class " + type + " is already defined");
 
         getRegistries().recordConstraint(type, klass, getClassLoader());
+        if (defineKlassListener != null) {
+            defineKlassListener.onKlassDefined(klass);
+        }
         return klass;
     }
 

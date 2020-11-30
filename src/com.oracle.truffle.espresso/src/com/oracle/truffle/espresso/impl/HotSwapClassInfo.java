@@ -98,8 +98,8 @@ public final class HotSwapClassInfo extends ClassInfo {
     }
 
     @Override
-    public HotSwapClassInfo[] getInnerClasses() {
-        return innerClasses.toArray(new HotSwapClassInfo[innerClasses.size()]);
+    public ArrayList<? extends ClassInfo> getInnerClasses() {
+        return innerClasses;
     }
 
     public void addInnerClass(HotSwapClassInfo inner) {
@@ -173,5 +173,9 @@ public final class HotSwapClassInfo extends ClassInfo {
 
     public String addHotClassMarker() {
         return getNewName() + InnerClassRedefiner.HOT_CLASS_MARKER + nextNewClass++;
+    }
+
+    public ArrayList<HotSwapClassInfo> getHotSwapInnerClasses() {
+        return innerClasses;
     }
 }

@@ -24,6 +24,7 @@ package com.oracle.truffle.espresso.impl;
 
 import com.oracle.truffle.espresso.classfile.ClassfileParser;
 import com.oracle.truffle.espresso.classfile.ClassfileStream;
+import com.oracle.truffle.espresso.descriptors.Symbol;
 import com.oracle.truffle.espresso.jdwp.api.ErrorCodes;
 import com.oracle.truffle.espresso.jdwp.api.RedefineInfo;
 import com.oracle.truffle.espresso.jdwp.impl.JDWPLogger;
@@ -35,18 +36,19 @@ import java.io.ByteArrayOutputStream;
 import java.io.IOException;
 import java.lang.instrument.IllegalClassFormatException;
 import java.util.ArrayList;
-import java.util.Arrays;
 import java.util.Collection;
 import java.util.Collections;
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 import java.util.WeakHashMap;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
-public final class InnerClassRedefiner {
+public final class InnerClassRedefiner implements DefineKlassListener {
 
     public static final Pattern ANON_INNER_CLASS_PATTERN = Pattern.compile(".*\\$\\d+.*");
     public static final int METHOD_FINGERPRINT_EQUALS = 8;
@@ -61,6 +63,10 @@ public final class InnerClassRedefiner {
 
     // map from classloader to a map of class names to inner class infos
     private final Map<StaticObject, Map<String, ImmutableClassInfo>> innerClassInfoMap = new WeakHashMap<>();
+
+    // map from classloader to a map of Type to
+    private final Map<StaticObject, Map<Symbol<Symbol.Type>, Set<ObjectKlass>>> innerKlassCache = new WeakHashMap<>();
+
     // list of class info for all top-level classed about to be redefined
     private final Map<String, HotSwapClassInfo> hotswapState = new HashMap<>();
 
@@ -162,7 +168,7 @@ public final class InnerClassRedefiner {
     private static void collectAllHotswapClasses(Collection<HotSwapClassInfo> infos, ArrayList<HotSwapClassInfo> result) {
         for (HotSwapClassInfo info : infos) {
             result.add(info);
-            collectAllHotswapClasses(Arrays.asList(info.getInnerClasses()), result);
+            collectAllHotswapClasses((Collection<HotSwapClassInfo>) info.getInnerClasses(), result);
         }
     }
 
@@ -248,8 +254,8 @@ public final class InnerClassRedefiner {
             addRenamingRule(renamingRules, hotSwapInfo.getClassLoader(), hotSwapInfo.getName(), hotSwapInfo.getNewName());
         } else {
             ImmutableClassInfo previousInfo = getGlobalClassInfo(klass);
-            ImmutableClassInfo[] previousInnerClasses = previousInfo.getInnerClasses();
-            HotSwapClassInfo[] newInnerClasses = hotSwapInfo.getInnerClasses();
+            ArrayList<ImmutableClassInfo> previousInnerClasses = previousInfo.getImmutableInnerClasses();
+            ArrayList<HotSwapClassInfo> newInnerClasses = hotSwapInfo.getHotSwapInnerClasses();
 
             // apply potential outer rename to inner class fingerprints
             // before matching
@@ -259,8 +265,8 @@ public final class InnerClassRedefiner {
                 }
             }
 
-            if (previousInnerClasses.length > 0 || newInnerClasses.length > 0) {
-                ArrayList<ImmutableClassInfo> removedClasses = new ArrayList<>(Arrays.asList(previousInnerClasses));
+            if (previousInnerClasses.size() > 0 || newInnerClasses.size() > 0) {
+                ArrayList<ImmutableClassInfo> removedClasses = new ArrayList<>(previousInnerClasses);
                 for (HotSwapClassInfo info : newInnerClasses) {
                     ImmutableClassInfo bestMatch = null;
                     int maxScore = 0;
@@ -293,7 +299,7 @@ public final class InnerClassRedefiner {
             }
         }
 
-        for (HotSwapClassInfo innerClass : hotSwapInfo.getInnerClasses()) {
+        for (HotSwapClassInfo innerClass : hotSwapInfo.getHotSwapInnerClasses()) {
             matchClassInfo(innerClass, removedInnerClasses, renamingRules);
         }
     }
@@ -331,21 +337,57 @@ public final class InnerClassRedefiner {
         return result;
     }
 
-    Klass[] findLoadedInnerClasses(Klass klass) {
-        ArrayList<Klass> result = new ArrayList<>(1);
-        String name = klass.getNameAsString();
-        List<Klass> loadedKlasses = context.getRegistries().getClassRegistry(klass.getDefiningClassLoader()).getLoadedKlasses();
+    Set<ObjectKlass> findLoadedInnerClasses(Klass klass) {
+        // we use a cache to store inner/outer class mappings
+        Map<Symbol<Symbol.Type>, Set<ObjectKlass>> classLoaderMap = innerKlassCache.get(klass.getDefiningClassLoader());
+        if (classLoaderMap == null) {
+            // register a listener on the registry to fill in
+            // future loaded anonymous inner classes
+            ClassRegistry classRegistry = context.getRegistries().getClassRegistry(klass.getDefiningClassLoader());
+            classRegistry.registerOnLoadListener(this);
 
-        for (Klass loadedKlass : loadedKlasses) {
-            String klassName = loadedKlass.getNameAsString();
-            if (klassName.contains("$")) {
-                String outerName = InnerClassRedefiner.getOuterClassName(klassName);
-                if (name.equals(outerName)) {
-                    result.add(loadedKlass);
+            // do a one-time look up of all currently loaded
+            // classes for this loader and fill in the map
+            List<Klass> loadedKlasses = classRegistry.getLoadedKlasses();
+            HashSet<ObjectKlass> innerKlassList = new HashSet<>(1);
+            for (Klass loadedKlass : loadedKlasses) {
+                if (loadedKlass instanceof ObjectKlass) {
+                    ObjectKlass objectKlass = (ObjectKlass) loadedKlass;
+                    String klassName = loadedKlass.getNameAsString();
+                    if (klassName.contains("$")) {
+                        String outerName = InnerClassRedefiner.getOuterClassName(klassName);
+                        if (klass.getNameAsString().equals(outerName)) {
+                            innerKlassList.add(objectKlass);
+                        }
+                    }
                 }
             }
+            // add to cache
+            classLoaderMap = new HashMap<>();
+            classLoaderMap.put(klass.getType(), innerKlassList);
+            innerKlassCache.put(klass.getDefiningClassLoader(), classLoaderMap);
         }
-        return result.toArray(new Klass[result.size()]);
+        Set<ObjectKlass> innerClasses = classLoaderMap.get(klass.getType());
+        return innerClasses != null ? innerClasses : new HashSet<>(0);
+    }
+
+    @Override
+    public void onKlassDefined(ObjectKlass klass) {
+        Matcher matcher = ANON_INNER_CLASS_PATTERN.matcher(klass.getNameAsString());
+
+        if (matcher.matches()) {
+            Map<Symbol<Symbol.Type>, Set<ObjectKlass>> classLoaderMap = innerKlassCache.get(klass.getDefiningClassLoader());
+            // found inner class, now hunt down the outer
+            String outerName = InnerClassRedefiner.getOuterClassName(klass.getNameAsString());
+            Symbol<Symbol.Type> outerType = context.getTypes().fromClassGetName(outerName);
+
+            Set<ObjectKlass> innerKlasses = classLoaderMap.get(outerType);
+            if (innerKlasses == null) {
+                innerKlasses = new HashSet<>(1);
+                classLoaderMap.put(outerType, innerKlasses);
+            }
+            innerKlasses.add(klass);
+        }
     }
 
     public void commit(HotSwapClassInfo[] infos) {

@@ -33,6 +33,7 @@ import com.oracle.truffle.espresso.runtime.EspressoContext;
 import com.oracle.truffle.espresso.runtime.StaticObject;
 
 import java.util.ArrayList;
+import java.util.Set;
 import java.util.regex.Matcher;
 
 public abstract class ClassInfo {
@@ -70,7 +71,7 @@ public abstract class ClassInfo {
         // find all currently loaded direct inner classes and create class infos
         ArrayList<ImmutableClassInfo> inners = new ArrayList<>(1);
 
-        Klass[] loadedInnerClasses = innerClassRedefiner.findLoadedInnerClasses(klass);
+        Set<ObjectKlass> loadedInnerClasses = innerClassRedefiner.findLoadedInnerClasses(klass);
         for (Klass inner : loadedInnerClasses) {
             matcher = InnerClassRedefiner.ANON_INNER_CLASS_PATTERN.matcher(inner.getNameAsString());
             // only add anonymous inner classes
@@ -79,7 +80,7 @@ public abstract class ClassInfo {
             }
         }
         return new ImmutableClassInfo((ObjectKlass) klass, name, klass.getDefiningClassLoader(), hierarchy.toString(), methods.toString(), fields.toString(), enclosing.toString(),
-                        inners.toArray(new ImmutableClassInfo[0]), null);
+                        inners, null);
     }
 
     public static HotSwapClassInfo create(RedefineInfo redefineInfo, EspressoContext context) {
@@ -127,12 +128,12 @@ public abstract class ClassInfo {
     }
 
     public static ImmutableClassInfo copyFrom(HotSwapClassInfo info) {
-        ArrayList<ImmutableClassInfo> inners = new ArrayList<>(info.getInnerClasses().length);
-        for (HotSwapClassInfo innerClass : info.getInnerClasses()) {
-            inners.add(copyFrom(innerClass));
+        ArrayList<ImmutableClassInfo> inners = new ArrayList<>();
+        for (ClassInfo innerClass : info.getInnerClasses()) {
+            inners.add(copyFrom((HotSwapClassInfo) innerClass));
         }
         return new ImmutableClassInfo(info.getKlass(), info.getName(), info.getClassLoader(), info.finalClassFingerprint, info.finalMethodFingerprint, info.finalFieldFingerprint,
-                        info.finalEnclosingMethodFingerprint, inners.toArray(new ImmutableClassInfo[0]), info.getBytes());
+                        info.finalEnclosingMethodFingerprint, inners, info.getBytes());
     }
 
     public abstract String getClassFingerprint();
@@ -143,7 +144,7 @@ public abstract class ClassInfo {
 
     public abstract String getEnclosingMethodFingerprint();
 
-    public abstract ClassInfo[] getInnerClasses();
+    public abstract ArrayList<? extends ClassInfo> getInnerClasses();
 
     public abstract String getName();
 
@@ -167,7 +168,7 @@ public abstract class ClassInfo {
         score += getMethodFingerprint().equals(other.getMethodFingerprint()) ? InnerClassRedefiner.METHOD_FINGERPRINT_EQUALS : 0;
         score += getEnclosingMethodFingerprint().equals(other.getEnclosingMethodFingerprint()) ? InnerClassRedefiner.ENCLOSING_METHOD_FINGERPRINT_EQUALS : 0;
         score += getFieldFingerprint().equals(other.getFieldFingerprint()) ? InnerClassRedefiner.FIELD_FINGERPRINT_EQUALS : 0;
-        score += getInnerClasses().length == other.getInnerClasses().length ? InnerClassRedefiner.NUMBER_INNER_CLASSES : 0;
+        score += getInnerClasses().size() == other.getInnerClasses().size() ? InnerClassRedefiner.NUMBER_INNER_CLASSES : 0;
         return score;
     }
 }
