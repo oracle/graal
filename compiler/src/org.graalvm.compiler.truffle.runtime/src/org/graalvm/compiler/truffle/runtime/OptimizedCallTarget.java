@@ -33,7 +33,6 @@ import java.util.Objects;
 import java.util.concurrent.RejectedExecutionException;
 import java.util.concurrent.atomic.AtomicReferenceFieldUpdater;
 import java.util.function.Supplier;
-import java.util.function.UnaryOperator;
 
 import org.graalvm.compiler.truffle.common.CompilableTruffleAST;
 import org.graalvm.compiler.truffle.common.TruffleCallNode;
@@ -109,11 +108,14 @@ import jdk.vm.ci.meta.SpeculationLog;
 public abstract class OptimizedCallTarget implements CompilableTruffleAST, RootCallTarget, ReplaceObserver {
 
     private static final String NODE_REWRITING_ASSUMPTION_NAME = "nodeRewritingAssumption";
+    private static final String VALID_ROOT_ASSUMPTION_NAME = "validRootAssumption";
     static final String EXECUTE_ROOT_NODE_METHOD_NAME = "executeRootNode";
     private static final AtomicReferenceFieldUpdater<OptimizedCallTarget, SpeculationLog> SPECULATION_LOG_UPDATER = AtomicReferenceFieldUpdater.newUpdater(OptimizedCallTarget.class,
                     SpeculationLog.class, "speculationLog");
     private static final AtomicReferenceFieldUpdater<OptimizedCallTarget, Assumption> NODE_REWRITING_ASSUMPTION_UPDATER = AtomicReferenceFieldUpdater.newUpdater(OptimizedCallTarget.class,
                     Assumption.class, "nodeRewritingAssumption");
+    private static final AtomicReferenceFieldUpdater<OptimizedCallTarget, Assumption> VALID_ROOT_ASSUMPTION_UPDATER = //
+                    AtomicReferenceFieldUpdater.newUpdater(OptimizedCallTarget.class, Assumption.class, "validRootAssumption");
     private static final AtomicReferenceFieldUpdater<OptimizedCallTarget, ArgumentsProfile> ARGUMENTS_PROFILE_UPDATER = AtomicReferenceFieldUpdater.newUpdater(
                     OptimizedCallTarget.class, ArgumentsProfile.class, "argumentsProfile");
     private static final AtomicReferenceFieldUpdater<OptimizedCallTarget, ReturnProfile> RETURN_PROFILE_UPDATER = AtomicReferenceFieldUpdater.newUpdater(
@@ -294,6 +296,12 @@ public abstract class OptimizedCallTarget implements CompilableTruffleAST, RootC
     private volatile Assumption nodeRewritingAssumption;
 
     /**
+     * When this call target is compiled, the resulting {@link InstalledCode} registers this
+     * assumption. It gets invalidated when this call target is invalidated.
+     */
+    private volatile Assumption validRootAssumption;
+
+    /**
      * Traversing the AST to cache non trivial nodes is expensive so we don't want to repeat it only
      * if the AST changes.
      */
@@ -336,6 +344,19 @@ public abstract class OptimizedCallTarget implements CompilableTruffleAST, RootC
         return runtime().forObject(getNodeRewritingAssumption());
     }
 
+    final Assumption getValidRootAssumption() {
+        Assumption assumption = validRootAssumption;
+        if (assumption == null) {
+            assumption = initializeValidRootAssumption();
+        }
+        return assumption;
+    }
+
+    @Override
+    public JavaConstant getValidRootAssumptionConstant() {
+        return runtime().forObject(getValidRootAssumption());
+    }
+
     @Override
     public boolean isTrivial() {
         return GraalRuntimeAccessor.NODES.isTrivial(rootNode);
@@ -356,29 +377,40 @@ public abstract class OptimizedCallTarget implements CompilableTruffleAST, RootC
      * @return an existing or the newly initialized node rewriting assumption.
      */
     private Assumption initializeNodeRewritingAssumption() {
-        Assumption newAssumption = runtime().createAssumption(
-                        !getOptionValue(PolyglotCompilerOptions.TraceAssumptions) ? NODE_REWRITING_ASSUMPTION_NAME : NODE_REWRITING_ASSUMPTION_NAME + " of " + rootNode);
-        if (NODE_REWRITING_ASSUMPTION_UPDATER.compareAndSet(this, null, newAssumption)) {
+        return initializeAssumption(NODE_REWRITING_ASSUMPTION_UPDATER, NODE_REWRITING_ASSUMPTION_NAME);
+    }
+
+    private Assumption initializeAssumption(AtomicReferenceFieldUpdater<OptimizedCallTarget, Assumption> updater, String name) {
+        Assumption newAssumption = runtime().createAssumption(!getOptionValue(PolyglotCompilerOptions.TraceAssumptions) ? name : name + " of " + rootNode);
+        if (updater.compareAndSet(this, null, newAssumption)) {
             return newAssumption;
-        } else {
-            // if CAS failed, assumption is already initialized; cannot be null after that.
-            return Objects.requireNonNull(nodeRewritingAssumption);
+        } else { // if CAS failed, assumption is already initialized; cannot be null after that.
+            return Objects.requireNonNull(updater.get(this));
         }
     }
 
-    /**
-     * Invalidate node rewriting assumption iff it has been initialized.
-     */
+    /** Invalidate node rewriting assumption iff it has been initialized. */
     private void invalidateNodeRewritingAssumption() {
-        Assumption oldAssumption = NODE_REWRITING_ASSUMPTION_UPDATER.getAndUpdate(this, new UnaryOperator<Assumption>() {
-            @Override
-            public Assumption apply(Assumption prev) {
-                return prev == null ? null : runtime().createAssumption(prev.getName());
-            }
-        });
-        if (oldAssumption != null) {
-            oldAssumption.invalidate();
+        invalidateAssumption(NODE_REWRITING_ASSUMPTION_UPDATER, "");
+    }
+
+    private boolean invalidateAssumption(AtomicReferenceFieldUpdater<OptimizedCallTarget, Assumption> updater, CharSequence reason) {
+        Assumption oldAssumption = updater.getAndUpdate(this, prev -> (prev == null) ? null : runtime().createAssumption(prev.getName()));
+        if (oldAssumption == null) {
+            return false;
         }
+        oldAssumption.invalidate((reason != null) ? reason.toString() : "");
+        return true;
+    }
+
+    /** @return an existing or the newly initialized valid root assumption. */
+    private Assumption initializeValidRootAssumption() {
+        return initializeAssumption(VALID_ROOT_ASSUMPTION_UPDATER, VALID_ROOT_ASSUMPTION_NAME);
+    }
+
+    /** Invalidate valid root assumption iff it has been initialized. */
+    private boolean invalidateValidRootAssumption(CharSequence reason) {
+        return invalidateAssumption(VALID_ROOT_ASSUMPTION_UPDATER, reason);
     }
 
     @Override
@@ -576,7 +608,7 @@ public abstract class OptimizedCallTarget implements CompilableTruffleAST, RootC
         runtime().getListener().onCompilationDeoptimized(this, frame);
     }
 
-    static GraalTruffleRuntime runtime() {
+    protected static GraalTruffleRuntime runtime() {
         return (GraalTruffleRuntime) Truffle.getRuntime();
     }
 
@@ -710,12 +742,6 @@ public abstract class OptimizedCallTarget implements CompilableTruffleAST, RootC
     public abstract boolean isValid();
 
     /**
-     * Determines if this call target has machine code that might still have live activations
-     * attached to it.
-     */
-    public abstract boolean isAlive();
-
-    /**
      * Determines if this call target has valid machine code attached to it, and that this code was
      * compiled in the last tier.
      */
@@ -724,19 +750,16 @@ public abstract class OptimizedCallTarget implements CompilableTruffleAST, RootC
     /**
      * Invalidates this call target by invalidating any machine code attached to it.
      *
-     * @param source the source object that caused the machine code to be invalidated. For example
-     *            the source {@link Node} object. May be {@code null}.
      * @param reason a textual description of the reason why the machine code was invalidated. May
      *            be {@code null}.
+     *
+     * @return imprecise: whether code has possibly been invalidated or a compilation has been
+     *         cancelled. Returns {@code false} only if both are guaranteed to not have happened,
+     *         {@code true} otherwise.
      */
-    public final boolean invalidate(Object source, CharSequence reason) {
+    public final boolean invalidate(CharSequence reason) {
         cachedNonTrivialNodeCount = -1;
-        boolean invalidated = false;
-        if (isAlive()) {
-            invalidateCode();
-            runtime().getListener().onCompilationInvalidated(this, source, reason);
-            invalidated = true;
-        }
+        boolean invalidated = invalidateValidRootAssumption(reason);
         return cancelCompilation(reason) || invalidated;
     }
 
@@ -948,7 +971,7 @@ public abstract class OptimizedCallTarget implements CompilableTruffleAST, RootC
     @Override
     public final boolean nodeReplaced(Node oldNode, Node newNode, CharSequence reason) {
         CompilerAsserts.neverPartOfCompilation();
-        invalidate(newNode, reason);
+        invalidate(reason);
         /*
          * Notify compiled method that have inlined this call target that the tree changed. It also
          * ensures that compiled code that might be installed by currently running compilation task

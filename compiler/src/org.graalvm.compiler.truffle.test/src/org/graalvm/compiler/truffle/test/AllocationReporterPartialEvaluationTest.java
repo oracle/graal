@@ -107,7 +107,7 @@ public class AllocationReporterPartialEvaluationTest extends TestWithSynchronous
             assertEquals(expectedCounters, tester.getReturnCount());
 
             // Deoptimize enter:
-            enterTarget.invalidate(this, "test");
+            enterTarget.invalidate("test");
             assertNotCompiled(enterTarget);
             enterTarget.call();
             assertCompiled(returnTarget);
@@ -119,7 +119,7 @@ public class AllocationReporterPartialEvaluationTest extends TestWithSynchronous
             assertCompiled(returnTarget);
 
             // Deoptimize return:
-            returnTarget.invalidate(this, "test");
+            returnTarget.invalidate("test");
             assertCompiled(enterTarget);
             enterTarget.call();
             assertNotCompiled(returnTarget);
@@ -131,8 +131,8 @@ public class AllocationReporterPartialEvaluationTest extends TestWithSynchronous
             assertCompiled(returnTarget);
 
             // Deoptimize both:
-            enterTarget.invalidate(this, "test");
-            returnTarget.invalidate(this, "test");
+            enterTarget.invalidate("test");
+            returnTarget.invalidate("test");
             assertNotCompiled(enterTarget);
             enterTarget.call();
             assertNotCompiled(returnTarget);
@@ -154,7 +154,7 @@ public class AllocationReporterPartialEvaluationTest extends TestWithSynchronous
         value[0] = null;
         boolean expectedFailure = true;
         // Deoptimize for assertions to be active
-        enterTarget.invalidate(this, "test");
+        enterTarget.invalidate("test");
         try {
             enterTarget.call();
             expectedFailure = false;
@@ -164,7 +164,7 @@ public class AllocationReporterPartialEvaluationTest extends TestWithSynchronous
         assertTrue("onEnter(null) did not fail!", expectedFailure);
 
         // Deoptimize for assertions to be active
-        returnTarget.invalidate(this, "test");
+        returnTarget.invalidate("test");
 
         value[0] = Long.MIN_VALUE;
         try {

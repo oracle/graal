@@ -135,6 +135,11 @@ final class IsolatedCompilableTruffleAST extends IsolatedObjectProxy<SubstrateCo
     }
 
     @Override
+    public JavaConstant getValidRootAssumptionConstant() {
+        return new IsolatedObjectConstant(getValidRootAssumption0(IsolatedCompileContext.get().getClient(), handle), false);
+    }
+
+    @Override
     public SubstrateInstalledCode createSubstrateInstalledCode() {
         throw VMError.shouldNotReachHere("Must not be called during isolated compilation");
     }
@@ -263,6 +268,15 @@ final class IsolatedCompilableTruffleAST extends IsolatedObjectProxy<SubstrateCo
     private static ClientHandle<Assumption> getNodeRewritingAssumption0(@SuppressWarnings("unused") ClientIsolateThread client, ClientHandle<SubstrateCompilableTruffleAST> handle) {
         CompilableTruffleAST ast = IsolatedCompileClient.get().unhand(handle);
         JavaConstant assumptionConstant = ast.getNodeRewritingAssumptionConstant();
+        Assumption assumption = KnownIntrinsics.convertUnknownValue(SubstrateObjectConstant.asObject(assumptionConstant), Assumption.class);
+        return IsolatedCompileClient.get().hand(assumption);
+    }
+
+    @CEntryPoint
+    @CEntryPointOptions(include = CEntryPointOptions.NotIncludedAutomatically.class, publishAs = CEntryPointOptions.Publish.NotPublished)
+    private static ClientHandle<Assumption> getValidRootAssumption0(@SuppressWarnings("unused") ClientIsolateThread client, ClientHandle<SubstrateCompilableTruffleAST> handle) {
+        CompilableTruffleAST ast = IsolatedCompileClient.get().unhand(handle);
+        JavaConstant assumptionConstant = ast.getValidRootAssumptionConstant();
         Assumption assumption = KnownIntrinsics.convertUnknownValue(SubstrateObjectConstant.asObject(assumptionConstant), Assumption.class);
         return IsolatedCompileClient.get().hand(assumption);
     }

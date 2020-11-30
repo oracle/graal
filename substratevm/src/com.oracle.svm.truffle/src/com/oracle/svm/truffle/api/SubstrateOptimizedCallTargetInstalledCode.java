@@ -28,7 +28,6 @@ import org.graalvm.compiler.truffle.common.CompilableTruffleAST;
 import org.graalvm.compiler.truffle.common.OptimizedAssumptionDependency;
 import org.graalvm.compiler.truffle.common.TruffleCompiler;
 import org.graalvm.compiler.truffle.runtime.GraalTruffleRuntime;
-import org.graalvm.compiler.truffle.runtime.OptimizedCallTarget;
 import org.graalvm.word.WordFactory;
 
 import com.oracle.svm.core.annotate.Uninterruptible;
@@ -56,35 +55,34 @@ public class SubstrateOptimizedCallTargetInstalledCode extends InstalledCode imp
     @Override
     public void invalidate() {
         CodeInfoTable.invalidateInstalledCode(this); // calls clearAddress
-
-        /*
-         * FIXME: this can now be called from an invalidated assumption, not from the call target.
-         * However, we probably need to involve the call target in a better way to log the reason
-         * and source and anything else that OptimizedCallTarget.invalidate(source, reason) does.
-         */
-        GraalTruffleRuntime runtime = (GraalTruffleRuntime) Truffle.getRuntime();
-        runtime.getListener().onCompilationInvalidated(callTarget, null, null);
     }
 
     @Override
-    public boolean isValid() {
-        /*
-         * FIXME: returns false if invalidated without deoptimization, but callers must always call
-         * invalidate() on us to deoptimize any running code. In other words, callers must not
-         * assume that because !isValid(), a call to invalidate() is unnecessary.
-         */
-        return super.isValid();
+    public void onAssumptionInvalidated(Object source, CharSequence reason) {
+        if (isAlive()) {
+            invalidate();
+
+            GraalTruffleRuntime runtime = (GraalTruffleRuntime) Truffle.getRuntime();
+            runtime.getListener().onCompilationInvalidated(callTarget, source, reason);
+        } else {
+            assert !isValid() : "Cannot be valid but not alive";
+        }
     }
 
     /**
-     * Returns {@code null} even though the code represents {@link OptimizedCallTarget} since
-     * {@code OptimizedAssumption.invalidateWithReason} will also invoke
-     * {@link SubstrateOptimizedCallTarget#invalidate} and therefore invalidate the <em>current</em>
-     * code, which can be different from <em>this</em> code.
+     * Returns false if not valid, including if {@linkplain #invalidateWithoutDeoptimization
+     * previously invalidated without deoptimization} in which case there can still be
+     * {@linkplain #isAlive live activations}. In order to entirely invalidate code in such cases,
+     * {@link #invalidate} must still be called even when this method returns false.
      */
     @Override
+    public boolean isValid() {
+        return super.isValid();
+    }
+
+    @Override
     public CompilableTruffleAST getCompilable() {
-        return null;
+        return callTarget;
     }
 
     @Override

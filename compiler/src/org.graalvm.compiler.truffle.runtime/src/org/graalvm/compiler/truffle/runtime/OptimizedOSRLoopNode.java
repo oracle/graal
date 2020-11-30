@@ -216,7 +216,7 @@ public abstract class OptimizedOSRLoopNode extends LoopNode implements ReplaceOb
                     if (target.isValid()) {
                         return callOSR(target, frame);
                     }
-                    invalidateOSRTarget(this, "OSR compilation failed or cancelled");
+                    invalidateOSRTarget("OSR compilation failed or cancelled");
                     return repeatableNode.initialLoopStatus();
                 }
                 iterations++;
@@ -235,7 +235,7 @@ public abstract class OptimizedOSRLoopNode extends LoopNode implements ReplaceOb
             return status;
         } else {
             if (!target.isValid()) {
-                invalidateOSRTarget(this, "OSR compilation got invalidated");
+                invalidateOSRTarget("OSR compilation got invalidated");
             }
             return status;
         }
@@ -310,14 +310,14 @@ public abstract class OptimizedOSRLoopNode extends LoopNode implements ReplaceOb
         this.compiledOSRLoop = null;
     }
 
-    private void invalidateOSRTarget(Object source, CharSequence reason) {
+    private void invalidateOSRTarget(CharSequence reason) {
         atomic(new Runnable() {
             @Override
             public void run() {
                 OptimizedCallTarget target = compiledOSRLoop;
                 if (target != null) {
                     resetCompiledOSRLoop();
-                    target.invalidate(source, reason);
+                    target.invalidate(reason);
                 }
             }
         });

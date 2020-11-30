@@ -98,7 +98,7 @@ public final class IsolatedCodeInstallBridge extends InstalledCode implements Op
     }
 
     @Override
-    public void invalidate() {
+    public void onAssumptionInvalidated(Object source, CharSequence reason) {
         throw VMError.shouldNotReachHere(DO_NOT_CALL_REASON);
     }
 

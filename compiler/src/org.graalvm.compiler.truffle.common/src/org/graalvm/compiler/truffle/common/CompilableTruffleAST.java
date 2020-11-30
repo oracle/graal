@@ -73,12 +73,6 @@ public interface CompilableTruffleAST {
     String getName();
 
     /**
-     * Invalidates any machine code attached to this call target.
-     */
-    default void invalidateCode() {
-    }
-
-    /**
      * Returns the estimate of the Truffle node count in this AST.
      */
     int getNonTrivialNodeCount();
@@ -120,6 +114,12 @@ public interface CompilableTruffleAST {
      *         rewritten.
      */
     JavaConstant getNodeRewritingAssumptionConstant();
+
+    /**
+     * @return A {@link JavaConstant} representing the assumption that the compiled code of the AST
+     *         was not invalidated.
+     */
+    JavaConstant getValidRootAssumptionConstant();
 
     /**
      * Returns {@code e} serialized as a string. The format of the returned string is:
