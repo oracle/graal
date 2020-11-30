@@ -157,7 +157,7 @@ public final class HotSpotGraalRuntime implements HotSpotGraalRuntimeProvider {
     /**
      * @param nameQualifier a qualifier to be added to this runtime's {@linkplain #getName() name}
      * @param compilerConfigurationFactory factory for the compiler configuration
-     *            {@link CompilerConfigurationFactory#selectFactory(String, OptionValues)}
+     *            {@link CompilerConfigurationFactory#selectFactory}
      */
     @SuppressWarnings("try")
     HotSpotGraalRuntime(String nameQualifier, HotSpotJVMCIRuntime jvmciRuntime, CompilerConfigurationFactory compilerConfigurationFactory, OptionValues initialOptions) {

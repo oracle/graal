@@ -98,7 +98,7 @@ public class CompilationTask {
 
         @Override
         protected void exitHostVM(int status) {
-            HotSpotGraalServices.exit(status);
+            HotSpotGraalServices.exit(status, jvmciRuntime);
         }
 
         @Override

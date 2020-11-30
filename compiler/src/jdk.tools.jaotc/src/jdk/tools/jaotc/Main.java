@@ -68,9 +68,9 @@ import org.graalvm.compiler.runtime.RuntimeProvider;
 
 import jdk.tools.jaotc.Options.Option;
 import jdk.tools.jaotc.binformat.BinaryContainer;
+import jdk.vm.ci.hotspot.HotSpotJVMCIRuntime;
 import jdk.vm.ci.meta.MetaAccessProvider;
 import jdk.vm.ci.meta.ResolvedJavaMethod;
-import jdk.vm.ci.runtime.JVMCI;
 
 public final class Main {
 
@@ -176,7 +176,9 @@ public final class Main {
                 graalOptions = new OptionValues(graalOptions, TieredAOT, options.tiered);
             }
             graalOptions = new OptionValues(graalOptions, GeneratePIC, true, ImmutableCode, true);
-            GraalJVMCICompiler graalCompiler = HotSpotGraalCompilerFactory.createCompiler("JAOTC", JVMCI.getRuntime(), graalOptions, CompilerConfigurationFactory.selectFactory(null, graalOptions));
+            HotSpotJVMCIRuntime jvmciRuntime = HotSpotJVMCIRuntime.runtime();
+            CompilerConfigurationFactory factory = CompilerConfigurationFactory.selectFactory(null, graalOptions, jvmciRuntime);
+            GraalJVMCICompiler graalCompiler = HotSpotGraalCompilerFactory.createCompiler("JAOTC", jvmciRuntime, graalOptions, factory);
             HotSpotGraalRuntime runtime = (HotSpotGraalRuntime) graalCompiler.getGraalRuntime();
             GraalHotSpotVMConfig graalHotSpotVMConfig = runtime.getVMConfig();
 

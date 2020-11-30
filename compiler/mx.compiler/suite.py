@@ -566,24 +566,6 @@ suite = {
       "workingSets" : "Graal,HotSpot",
     },
 
-    "org.graalvm.compiler.hotspot.jdk12" : {
-      "subDir" : "src",
-      "sourceDirs" : ["src"],
-      "dependencies": ["org.graalvm.compiler.hotspot"],
-      "requiresConcealed" : {
-        "jdk.internal.vm.ci" : [
-          "jdk.vm.ci.hotspot",
-          "jdk.vm.ci.services",
-          "jdk.vm.ci.meta",
-        ],
-      },
-      "overlayTarget" : "org.graalvm.compiler.hotspot",
-      "multiReleaseJarVersion" : "12",
-      "checkstyle" : "org.graalvm.compiler.graph",
-      "javaCompliance" : "12+",
-      "workingSets" : "Graal,HotSpot",
-    },
-
     "org.graalvm.compiler.hotspot.jdk13" : {
       "subDir" : "src",
       "sourceDirs" : ["src"],
@@ -591,7 +573,8 @@ suite = {
       "requiresConcealed" : {
         "jdk.internal.vm.ci" : [
           "jdk.vm.ci.hotspot",
-          "jdk.vm.ci.meta"
+          "jdk.vm.ci.meta",
+          "jdk.vm.ci.services",
         ],
       },
       "overlayTarget" : "org.graalvm.compiler.hotspot",

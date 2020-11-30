@@ -35,6 +35,7 @@ import org.graalvm.compiler.options.OptionKey;
 import org.graalvm.compiler.options.OptionType;
 import org.graalvm.compiler.options.OptionValues;
 
+import jdk.vm.ci.hotspot.HotSpotJVMCIRuntime;
 import jdk.vm.ci.meta.ResolvedJavaMethod;
 import jdk.vm.ci.services.Services;
 
@@ -238,7 +239,7 @@ class CompilationWatchDog implements Runnable, AutoCloseable {
                                             TTY.printf("======================= WATCH DOG THREAD =======================%n" +
                                                             "%s took %d identical stack traces, which indicates a stuck compilation (id=%d) of %s%n%sExiting VM%n", this,
                                                             numberOfIdenticalStackTraces, currentId, fmt(currentMethod), fmt(lastStackTrace));
-                                            HotSpotGraalServices.exit(-1);
+                                            HotSpotGraalServices.exit(-1, HotSpotJVMCIRuntime.runtime());
                                         }
                                     } else if (newStackTrace) {
                                         synchronized (CompilationWatchDog.class) {
