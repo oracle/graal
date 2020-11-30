@@ -117,8 +117,8 @@ suite = {
                 "optional": True,
             }
         },
-        "license" : "Apache-2.0-LLVM",
-      }
+      },
+      "license" : "Apache-2.0-LLVM",
     },
     "LLVM_ORG_COMPILER_RT_LINUX" : {
       "version" : "10.0.0-4-g22d2637565-bg83994d0b4b",
