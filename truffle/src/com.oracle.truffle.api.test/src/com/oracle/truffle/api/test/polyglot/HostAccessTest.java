@@ -1220,7 +1220,7 @@ public class HostAccessTest {
 
         @Export
         public String m(Function<Value, Value> s) {
-            return "runnable";
+            return "function";
         }
 
         @Export
@@ -1230,7 +1230,7 @@ public class HostAccessTest {
     }
 
     @Test
-    public void testConverterOverloadPrecedencFunctionProxy() {
+    public void testConverterOverloadPrecedenceFunctionProxy() {
         OverloadPrecedenceFunctionProxy obj = new OverloadPrecedenceFunctionProxy();
 
         ProxyExecutable f = new ProxyExecutable() {
@@ -1242,7 +1242,7 @@ public class HostAccessTest {
         };
 
         setupEnv(HostAccess.ALL);
-        assertFails(() -> context.asValue(obj).invokeMember("m", f), IllegalArgumentException.class);
+        assertEquals("function", context.asValue(obj).invokeMember("m", f).asString());
 
         setupEnv(HostAccess.newBuilder().targetTypeMapping(Function.class, Runnable.class, null,
                         (v) -> null, TargetMappingPrecedence.HIGHEST));
@@ -1254,11 +1254,11 @@ public class HostAccessTest {
 
         setupEnv(HostAccess.newBuilder().targetTypeMapping(Function.class, Runnable.class, null,
                         (v) -> null, TargetMappingPrecedence.LOW));
-        assertEquals("runnable", context.asValue(obj).invokeMember("m", f).asString());
+        assertFails(() -> context.asValue(obj).invokeMember("m", f), IllegalArgumentException.class);
 
         setupEnv(HostAccess.newBuilder().targetTypeMapping(Function.class, Runnable.class, null,
                         (v) -> null, TargetMappingPrecedence.LOWEST));
-        assertFails(() -> context.asValue(obj).invokeMember("m", f), IllegalArgumentException.class);
+        assertEquals("function", context.asValue(obj).invokeMember("m", f).asString());
     }
 
     @Implementable
@@ -1290,7 +1290,7 @@ public class HostAccessTest {
     }
 
     @Test
-    public void testConverterOverloadPrecedencObjectProxy() {
+    public void testConverterOverloadPrecedenceObjectProxy() {
         Map<String, Object> originalValues = new HashMap<>();
         originalValues.put("test", "OriginalObject");
         ProxyObject arg = ProxyObject.fromMap(originalValues);

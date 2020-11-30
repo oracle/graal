@@ -884,7 +884,7 @@ public class ValueHostConversionTest extends AbstractPolyglotTest {
         assertEquals("CharSequence", hierarchy.execute("foo").asString());
         assertEquals("CharSequence", hierarchy.execute(new StringBuilder("a")).asString());
 
-        assertEquals("object", hierarchy.execute(42).asString());
+        assertEquals("char", hierarchy.execute(42).asString());
         assertEquals("object", hierarchy.execute(false).asString());
     }
 
@@ -919,7 +919,7 @@ public class ValueHostConversionTest extends AbstractPolyglotTest {
         assertEquals("string", hierarchy.execute("foo").asString());
         assertEquals("CharSequence", hierarchy.execute(new StringBuilder("a")).asString());
 
-        assertEquals("object", hierarchy.execute(42).asString());
+        assertEquals("char", hierarchy.execute(42).asString());
         assertEquals("object", hierarchy.execute(false).asString());
     }
 
