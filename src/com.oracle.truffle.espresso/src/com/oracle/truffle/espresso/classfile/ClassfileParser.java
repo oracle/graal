@@ -60,7 +60,9 @@ import static com.oracle.truffle.espresso.classfile.Constants.SAME_LOCALS_1_STAC
 
 import java.io.IOException;
 import java.lang.reflect.Modifier;
+import java.util.HashSet;
 import java.util.Objects;
+import java.util.concurrent.ConcurrentHashMap;
 
 import com.oracle.truffle.espresso.EspressoLanguage;
 import com.oracle.truffle.espresso.classfile.ConstantPool.Tag;
@@ -96,6 +98,8 @@ import com.oracle.truffle.espresso.jni.ModifiedUtf8;
 import com.oracle.truffle.espresso.meta.ExceptionHandler;
 import com.oracle.truffle.espresso.meta.JavaKind;
 import com.oracle.truffle.espresso.meta.Meta;
+import com.oracle.truffle.espresso.perf.DebugCloseable;
+import com.oracle.truffle.espresso.perf.DebugTimer;
 import com.oracle.truffle.espresso.runtime.Attribute;
 import com.oracle.truffle.espresso.runtime.ClasspathFile;
 import com.oracle.truffle.espresso.runtime.EspressoContext;
@@ -104,6 +108,26 @@ import com.oracle.truffle.espresso.runtime.StaticObject;
 import com.oracle.truffle.espresso.substitutions.Host;
 
 public final class ClassfileParser {
+
+    private static final DebugTimer KLASS_PARSE = DebugTimer.create("klass parsing");
+    private static final DebugTimer CONSTANT_POOL = DebugTimer.create("constant pool", KLASS_PARSE);
+    private static final DebugTimer PARSE_INTERFACES = DebugTimer.create("interfaces", KLASS_PARSE);
+
+    private static final DebugTimer PARSE_METHOD = DebugTimer.create("methods", KLASS_PARSE);
+    private static final DebugTimer NO_DUP_CHECK = DebugTimer.create("method dup", PARSE_METHOD);
+    private static final DebugTimer METHOD_INIT = DebugTimer.create("method parse init", PARSE_METHOD);
+    private static final DebugTimer NAME_CHECK = DebugTimer.create("name check", METHOD_INIT);
+    private static final DebugTimer SIGNATURE_CHECK = DebugTimer.create("signature check", METHOD_INIT);
+
+    private static final DebugTimer PARSE_FIELD = DebugTimer.create("fields", KLASS_PARSE);
+
+    private static final DebugTimer PARSE_CLASSATTR = DebugTimer.create("class attr", KLASS_PARSE);
+
+    private static final ConcurrentHashMap<String, DebugTimer> timers = new ConcurrentHashMap<>();
+
+    private static DebugTimer getTimer(String key, DebugTimer parent) {
+        return timers.computeIfAbsent(key, (k) -> DebugTimer.create(k, parent));
+    }
 
     public static final int MAGIC = 0xCAFEBABE;
 
@@ -218,7 +242,7 @@ public final class ClassfileParser {
     }
 
     private ParserKlass parseClass() {
-        try {
+        try (DebugCloseable parse = KLASS_PARSE.scope(context.getTimers())) {
             return parseClassImpl();
         } catch (EspressoException e) {
             throw e;
@@ -293,10 +317,12 @@ public final class ClassfileParser {
         majorVersion = stream.readU2();
         verifyVersion(majorVersion, minorVersion);
 
-        if (constantPoolPatches == null) {
-            this.pool = ConstantPool.parse(context.getLanguage(), stream, this, majorVersion, minorVersion);
-        } else {
-            this.pool = ConstantPool.parse(context.getLanguage(), stream, this, constantPoolPatches, context, majorVersion, minorVersion);
+        try (DebugCloseable closeable = CONSTANT_POOL.scope(context.getTimers())) {
+            if (constantPoolPatches == null) {
+                this.pool = ConstantPool.parse(context.getLanguage(), stream, this, majorVersion, minorVersion);
+            } else {
+                this.pool = ConstantPool.parse(context.getLanguage(), stream, this, constantPoolPatches, context, majorVersion, minorVersion);
+            }
         }
 
         // JVM_ACC_MODULE is defined in JDK-9 and later.
@@ -357,11 +383,22 @@ public final class ClassfileParser {
             throw ConstantPool.classFormatError("Interface " + classType + " must extend java.lang.Object");
         }
 
-        Symbol<Type>[] superInterfaces = parseInterfaces();
-
-        final ParserField[] fields = parseFields(isInterface);
-        final ParserMethod[] methods = parseMethods(isInterface);
-        final Attribute[] attributes = parseClassAttributes();
+        Symbol<Type>[] superInterfaces;
+        try (DebugCloseable closeable = PARSE_INTERFACES.scope(context.getTimers())) {
+            superInterfaces = parseInterfaces();
+        }
+        final ParserField[] fields;
+        try (DebugCloseable closeable = PARSE_FIELD.scope(context.getTimers())) {
+            fields = parseFields(isInterface);
+        }
+        final ParserMethod[] methods;
+        try (DebugCloseable closeable = PARSE_METHOD.scope(context.getTimers())) {
+            methods = parseMethods(isInterface);
+        }
+        final Attribute[] attributes;
+        try (DebugCloseable closeable = PARSE_CLASSATTR.scope(context.getTimers())) {
+            attributes = parseClassAttributes();
+        }
 
         // Ensure there are no trailing bytes
         stream.checkEndOfFile();
@@ -375,11 +412,17 @@ public final class ClassfileParser {
             return ParserMethod.EMPTY_ARRAY;
         }
         ParserMethod[] methods = new ParserMethod[methodCount];
+        /*
+         * Classes in general have lots of methods: use a hash set rather than array lookup for dup
+         * check.
+         */
+        final HashSet<MethodKey> dup = new HashSet<>(methodCount);
         for (int i = 0; i < methodCount; ++i) {
-            methods[i] = parseMethod(isInterface);
-            for (int j = 0; j < i; ++j) {
-                if (methods[j].getName().equals(methods[i].getName()) && methods[j].getSignature().equals(methods[i].getSignature())) {
-                    throw ConstantPool.classFormatError("Duplicate method name and signature: " + methods[j].getName() + " " + methods[j].getSignature());
+            ParserMethod method = parseMethod(isInterface);
+            methods[i] = method;
+            try (DebugCloseable closeable = NO_DUP_CHECK.scope(context.getTimers())) {
+                if (!dup.add(new MethodKey(method))) {
+                    throw ConstantPool.classFormatError("Duplicate method name and signature: " + method.getName() + " " + method.getSignature());
                 }
             }
         }
@@ -567,70 +610,83 @@ public final class ClassfileParser {
         int methodFlags = stream.readU2();
         int nameIndex = stream.readU2();
         int signatureIndex = stream.readU2();
-
-        pool.utf8At(nameIndex).validateMethodName(true);
-        final Symbol<Name> name = pool.symbolAt(nameIndex, "method name");
+        final Symbol<Name> name;
+        final Symbol<Signature> signature;
+        int attributeCount;
+        Attribute[] methodAttributes;
 
         int extraFlags = methodFlags;
         boolean isClinit = false;
         boolean isInit = false;
-        if (name.equals(Name._clinit_)) {
-            // Class and interface initialization methods (3.9) are called
-            // implicitly by the Java virtual machine; the value of their
-            // access_flags item is ignored except for the settings of the
-            // ACC_STRICT flag.
-            if (majorVersion < JAVA_7_VERSION) {
-                // Backwards compatibility.
-                methodFlags = ACC_STATIC;
-            } else if ((methodFlags & ACC_STATIC) == ACC_STATIC) {
-                methodFlags &= (ACC_STRICT | ACC_STATIC);
-            } else if (context.getJavaVersion().java9OrLater()) {
-                throw ConstantPool.classFormatError("Method <clinit> is not static.");
+
+        try (DebugCloseable closeable = METHOD_INIT.scope(context.getTimers())) {
+
+            try (DebugCloseable nameCheck = NAME_CHECK.scope(context.getTimers())) {
+                pool.utf8At(nameIndex).validateMethodName(true);
+                name = pool.symbolAt(nameIndex, "method name");
+
+                if (name.equals(Name._clinit_)) {
+                    // Class and interface initialization methods (3.9) are called
+                    // implicitly by the Java virtual machine; the value of their
+                    // access_flags item is ignored except for the settings of the
+                    // ACC_STRICT flag.
+                    if (majorVersion < JAVA_7_VERSION) {
+                        // Backwards compatibility.
+                        methodFlags = ACC_STATIC;
+                    } else if ((methodFlags & ACC_STATIC) == ACC_STATIC) {
+                        methodFlags &= (ACC_STRICT | ACC_STATIC);
+                    } else if (context.getJavaVersion().java9OrLater()) {
+                        throw ConstantPool.classFormatError("Method <clinit> is not static.");
+                    }
+                    // extraFlags = INITIALIZER | methodFlags;
+                    isClinit = true;
+                } else if (name.equals(Name._init_)) {
+                    if (isInterface) {
+                        throw ConstantPool.classFormatError("Method <init> is not valid in an interface.");
+                    }
+                    isInit = true;
+                }
             }
-            // extraFlags = INITIALIZER | methodFlags;
-            isClinit = true;
-        } else if (name.equals(Name._init_)) {
-            if (isInterface) {
-                throw ConstantPool.classFormatError("Method <init> is not valid in an interface.");
+
+            final boolean isStatic = Modifier.isStatic(extraFlags);
+
+            verifyMethodFlags(methodFlags, isInterface, isInit, isClinit, majorVersion);
+
+            /*
+             * A method is a class or interface initialization method if all of the following are
+             * true:
+             *
+             * It has the special name <clinit>.
+             *
+             * It is void (4.3.3). (checked earlier)
+             *
+             * In a class file whose version number is 51.0 or above, the method has its ACC_STATIC
+             * flag set and takes no arguments (4.6).
+             */
+            try (DebugCloseable signatureCheck = SIGNATURE_CHECK.scope(context.getTimers())) {
+                // Checks for void method if init or clinit.
+                pool.utf8At(signatureIndex).validateSignature(isInit || isClinit);
+                signature = Signatures.check(pool.symbolAt(signatureIndex, "method descriptor"));
+                if (isClinit && majorVersion >= JAVA_7_VERSION) {
+                    // Checks clinit takes no arguments.
+                    if (!signature.equals(Signature._void)) {
+                        throw ConstantPool.classFormatError("Method <clinit> has invalid signature: " + signature);
+                    }
+                }
+
+                if (Signatures.slotsForParameters(context.getSignatures().parsed(signature)) + (isStatic ? 0 : 1) > 255) {
+                    throw ConstantPool.classFormatError("Too many arguments in method signature: " + signature);
+                }
+
+                if (name.equals(Name.finalize) && signature.equals(Signature._void) && !Modifier.isStatic(methodFlags) && !Type.java_lang_Object.equals(classType)) {
+                    // This class has a finalizer method implementation (ignore for
+                    // java.lang.Object).
+                    classFlags |= ACC_FINALIZER;
+                }
             }
-            isInit = true;
+            attributeCount = stream.readU2();
+            methodAttributes = new Attribute[attributeCount];
         }
-
-        final boolean isStatic = Modifier.isStatic(extraFlags);
-
-        verifyMethodFlags(methodFlags, isInterface, isInit, isClinit, majorVersion);
-
-        /*
-         * A method is a class or interface initialization method if all of the following are true:
-         *
-         * It has the special name <clinit>.
-         *
-         * It is void (4.3.3). (checked earlier)
-         *
-         * In a class file whose version number is 51.0 or above, the method has its ACC_STATIC flag
-         * set and takes no arguments (4.6).
-         */
-        // Checks for void method if init or clinit.
-        pool.utf8At(signatureIndex).validateSignature(isInit || isClinit);
-        final Symbol<Signature> signature = Signatures.check(pool.symbolAt(signatureIndex, "method descriptor"));
-        if (isClinit && majorVersion >= JAVA_7_VERSION) {
-            // Checks clinit takes no arguments.
-            if (!signature.equals(Signature._void)) {
-                throw ConstantPool.classFormatError("Method <clinit> has invalid signature: " + signature);
-            }
-        }
-
-        if (Signatures.slotsForParameters(context.getSignatures().parsed(signature)) + (isStatic ? 0 : 1) > 255) {
-            throw ConstantPool.classFormatError("Too many arguments in method signature: " + signature);
-        }
-
-        if (name.equals(Name.finalize) && signature.equals(Signature._void) && !Modifier.isStatic(methodFlags) && !Type.java_lang_Object.equals(classType)) {
-            // This class has a finalizer method implementation (ignore for java.lang.Object).
-            classFlags |= ACC_FINALIZER;
-        }
-
-        int attributeCount = stream.readU2();
-        Attribute[] methodAttributes = new Attribute[attributeCount];
 
         CodeAttribute codeAttribute = null;
         Attribute checkedExceptions = null;
@@ -643,65 +699,67 @@ public final class ClassfileParser {
         for (int i = 0; i < attributeCount; ++i) {
             final int attributeNameIndex = stream.readU2();
             final Symbol<Name> attributeName = pool.symbolAt(attributeNameIndex, "attribute name");
-            final int attributeSize = stream.readS4();
-            final int startPosition = stream.getPosition();
-            if (attributeName.equals(Name.Code)) {
-                if (codeAttribute != null) {
-                    throw ConstantPool.classFormatError("Duplicate Code attribute");
-                }
-                methodAttributes[i] = codeAttribute = parseCodeAttribute(attributeName);
-            } else if (attributeName.equals(Name.Exceptions)) {
-                if (checkedExceptions != null) {
-                    throw ConstantPool.classFormatError("Duplicate Exceptions attribute");
-                }
-                methodAttributes[i] = checkedExceptions = parseExceptions(attributeName);
-            } else if (attributeName.equals(Name.Synthetic)) {
-                methodFlags |= ACC_SYNTHETIC;
-                methodAttributes[i] = checkedExceptions = new Attribute(attributeName, null);
-            } else if (majorVersion >= JAVA_1_5_VERSION) {
-                if (attributeName.equals(Name.RuntimeVisibleAnnotations)) {
-                    if (runtimeVisibleAnnotations != null) {
-                        throw ConstantPool.classFormatError("Duplicate RuntimeVisibleAnnotations attribute");
+            try (DebugCloseable closeable = getTimer("m: " + attributeName.toString(), PARSE_METHOD).scope(context.getTimers())) {
+                final int attributeSize = stream.readS4();
+                final int startPosition = stream.getPosition();
+                if (attributeName.equals(Name.Code)) {
+                    if (codeAttribute != null) {
+                        throw ConstantPool.classFormatError("Duplicate Code attribute");
                     }
-                    // Check if java.lang.invoke.LambdaForm.Compiled is present here.
-                    byte[] data = stream.readByteArray(attributeSize);
-                    ClassfileStream subStream = new ClassfileStream(data, this.classfile);
-                    int count = subStream.readU2();
-                    for (int j = 0; j < count; j++) {
-                        int typeIndex = parseAnnotation(subStream);
-                        Utf8Constant constant = pool.utf8At(typeIndex, "annotation type");
-                        // Validation of the type is done at runtime by guest java code.
-                        Symbol<Type> annotType = constant.value();
-                        if (Type.java_lang_invoke_LambdaForm$Compiled.equals(annotType)) {
-                            methodFlags |= ACC_LAMBDA_FORM_COMPILED;
-                        } else if (Type.java_lang_invoke_LambdaForm$Hidden.equals(annotType)) {
-                            methodFlags |= ACC_LAMBDA_FORM_HIDDEN;
-                        } else if (Type.sun_reflect_CallerSensitive.equals(annotType) ||
-                                        Type.jdk_internal_reflect_CallerSensitive.equals(annotType)) {
-                            methodFlags |= ACC_CALLER_SENSITIVE;
+                    methodAttributes[i] = codeAttribute = parseCodeAttribute(attributeName);
+                } else if (attributeName.equals(Name.Exceptions)) {
+                    if (checkedExceptions != null) {
+                        throw ConstantPool.classFormatError("Duplicate Exceptions attribute");
+                    }
+                    methodAttributes[i] = checkedExceptions = parseExceptions(attributeName);
+                } else if (attributeName.equals(Name.Synthetic)) {
+                    methodFlags |= ACC_SYNTHETIC;
+                    methodAttributes[i] = checkedExceptions = new Attribute(attributeName, null);
+                } else if (majorVersion >= JAVA_1_5_VERSION) {
+                    if (attributeName.equals(Name.RuntimeVisibleAnnotations)) {
+                        if (runtimeVisibleAnnotations != null) {
+                            throw ConstantPool.classFormatError("Duplicate RuntimeVisibleAnnotations attribute");
                         }
+                        // Check if java.lang.invoke.LambdaForm.Compiled is present here.
+                        byte[] data = stream.readByteArray(attributeSize);
+                        ClassfileStream subStream = new ClassfileStream(data, this.classfile);
+                        int count = subStream.readU2();
+                        for (int j = 0; j < count; j++) {
+                            int typeIndex = parseAnnotation(subStream);
+                            Utf8Constant constant = pool.utf8At(typeIndex, "annotation type");
+                            // Validation of the type is done at runtime by guest java code.
+                            Symbol<Type> annotType = constant.value();
+                            if (Type.java_lang_invoke_LambdaForm$Compiled.equals(annotType)) {
+                                methodFlags |= ACC_LAMBDA_FORM_COMPILED;
+                            } else if (Type.java_lang_invoke_LambdaForm$Hidden.equals(annotType)) {
+                                methodFlags |= ACC_LAMBDA_FORM_HIDDEN;
+                            } else if (Type.sun_reflect_CallerSensitive.equals(annotType) ||
+                                            Type.jdk_internal_reflect_CallerSensitive.equals(annotType)) {
+                                methodFlags |= ACC_CALLER_SENSITIVE;
+                            }
+                        }
+                        methodAttributes[i] = runtimeVisibleAnnotations = new Attribute(attributeName, data);
+                    } else if (attributeName.equals(Name.MethodParameters)) {
+                        if (methodParameters != null) {
+                            throw ConstantPool.classFormatError("Duplicate MethodParameters attribute");
+                        }
+                        methodAttributes[i] = methodParameters = parseMethodParameters(attributeName);
+                    } else {
+                        Attribute attr = commonAttributeParser.parseCommonAttribute(attributeName, attributeSize);
+                        // stream.skip(attributeSize);
+                        methodAttributes[i] = attr == null ? new Attribute(attributeName, stream.readByteArray(attributeSize)) : attr;
+
                     }
-                    methodAttributes[i] = runtimeVisibleAnnotations = new Attribute(attributeName, data);
-                } else if (attributeName.equals(Name.MethodParameters)) {
-                    if (methodParameters != null) {
-                        throw ConstantPool.classFormatError("Duplicate MethodParameters attribute");
-                    }
-                    methodAttributes[i] = methodParameters = parseMethodParameters(attributeName);
                 } else {
-                    Attribute attr = commonAttributeParser.parseCommonAttribute(attributeName, attributeSize);
                     // stream.skip(attributeSize);
-                    methodAttributes[i] = attr == null ? new Attribute(attributeName, stream.readByteArray(attributeSize)) : attr;
-
+                    methodAttributes[i] = new Attribute(attributeName, stream.readByteArray(attributeSize));
                 }
-            } else {
-                // stream.skip(attributeSize);
-                methodAttributes[i] = new Attribute(attributeName, stream.readByteArray(attributeSize));
-            }
 
-            final int distance = stream.getPosition() - startPosition;
-            if (attributeSize != distance) {
-                final String message = "Invalid attribute_length for " + attributeName + " attribute (reported " + attributeSize + " != parsed " + distance + ")";
-                throw ConstantPool.classFormatError(message);
+                final int distance = stream.getPosition() - startPosition;
+                if (attributeSize != distance) {
+                    final String message = "Invalid attribute_length for " + attributeName + " attribute (reported " + attributeSize + " != parsed " + distance + ")";
+                    throw ConstantPool.classFormatError(message);
+                }
             }
         }
 
@@ -787,68 +845,70 @@ public final class ClassfileParser {
         for (int i = 0; i < attributeCount; i++) {
             final int attributeNameIndex = stream.readU2();
             final Symbol<Name> attributeName = pool.symbolAt(attributeNameIndex, "attribute name");
-            final int attributeSize = stream.readS4();
-            final int startPosition = stream.getPosition();
-            if (attributeName.equals(Name.SourceFile)) {
-                if (sourceFileName != null) {
-                    throw ConstantPool.classFormatError("Duplicate SourceFile attribute");
-                }
-                classAttributes[i] = sourceFileName = parseSourceFileAttribute(attributeName);
-            } else if (attributeName.equals(Name.SourceDebugExtension)) {
-                if (sourceDebugExtensionAttribute != null) {
-                    throw ConstantPool.classFormatError("Duplicate SourceDebugExtension attribute");
-                }
-                classAttributes[i] = sourceDebugExtensionAttribute = parseSourceDebugExtensionAttribute(attributeName, attributeSize);
-            } else if (attributeName.equals(Name.Synthetic)) {
-                classFlags |= ACC_SYNTHETIC;
-                classAttributes[i] = new Attribute(attributeName, null);
-            } else if (attributeName.equals(Name.InnerClasses)) {
-                if (innerClasses != null) {
-                    throw ConstantPool.classFormatError("Duplicate InnerClasses attribute");
-                }
-                classAttributes[i] = innerClasses = parseInnerClasses(attributeName);
-            } else if (majorVersion >= JAVA_1_5_VERSION) {
-                if (majorVersion >= JAVA_7_VERSION && attributeName.equals(Name.BootstrapMethods)) {
-                    if (bootstrapMethods != null) {
-                        throw ConstantPool.classFormatError("Duplicate BootstrapMethods attribute");
+            try (DebugCloseable closeable = getTimer("c: " + attributeName.toString(), PARSE_CLASSATTR).scope(context.getTimers())) {
+                final int attributeSize = stream.readS4();
+                final int startPosition = stream.getPosition();
+                if (attributeName.equals(Name.SourceFile)) {
+                    if (sourceFileName != null) {
+                        throw ConstantPool.classFormatError("Duplicate SourceFile attribute");
                     }
-                    classAttributes[i] = bootstrapMethods = parseBootstrapMethods(attributeName);
-                } else if (attributeName.equals(Name.EnclosingMethod)) {
-                    if (enclosingMethod != null) {
-                        throw ConstantPool.classFormatError("Duplicate EnclosingMethod attribute");
+                    classAttributes[i] = sourceFileName = parseSourceFileAttribute(attributeName);
+                } else if (attributeName.equals(Name.SourceDebugExtension)) {
+                    if (sourceDebugExtensionAttribute != null) {
+                        throw ConstantPool.classFormatError("Duplicate SourceDebugExtension attribute");
                     }
-                    classAttributes[i] = enclosingMethod = parseEnclosingMethodAttribute(attributeName);
-                } else if (majorVersion >= JAVA_11_VERSION && attributeName.equals(Name.NestHost)) {
-                    if (nestHost != null) {
-                        throw ConstantPool.classFormatError("Duplicate NestHost attribute");
+                    classAttributes[i] = sourceDebugExtensionAttribute = parseSourceDebugExtensionAttribute(attributeName, attributeSize);
+                } else if (attributeName.equals(Name.Synthetic)) {
+                    classFlags |= ACC_SYNTHETIC;
+                    classAttributes[i] = new Attribute(attributeName, null);
+                } else if (attributeName.equals(Name.InnerClasses)) {
+                    if (innerClasses != null) {
+                        throw ConstantPool.classFormatError("Duplicate InnerClasses attribute");
                     }
-                    if (nestMembers != null) {
-                        throw ConstantPool.classFormatError("Classfile cannot have both a nest members and a nest host attribute.");
+                    classAttributes[i] = innerClasses = parseInnerClasses(attributeName);
+                } else if (majorVersion >= JAVA_1_5_VERSION) {
+                    if (majorVersion >= JAVA_7_VERSION && attributeName.equals(Name.BootstrapMethods)) {
+                        if (bootstrapMethods != null) {
+                            throw ConstantPool.classFormatError("Duplicate BootstrapMethods attribute");
+                        }
+                        classAttributes[i] = bootstrapMethods = parseBootstrapMethods(attributeName);
+                    } else if (attributeName.equals(Name.EnclosingMethod)) {
+                        if (enclosingMethod != null) {
+                            throw ConstantPool.classFormatError("Duplicate EnclosingMethod attribute");
+                        }
+                        classAttributes[i] = enclosingMethod = parseEnclosingMethodAttribute(attributeName);
+                    } else if (majorVersion >= JAVA_11_VERSION && attributeName.equals(Name.NestHost)) {
+                        if (nestHost != null) {
+                            throw ConstantPool.classFormatError("Duplicate NestHost attribute");
+                        }
+                        if (nestMembers != null) {
+                            throw ConstantPool.classFormatError("Classfile cannot have both a nest members and a nest host attribute.");
+                        }
+                        if (attributeSize != 2) {
+                            throw ConstantPool.classFormatError("Attribute length of NestHost must be 2");
+                        }
+                        classAttributes[i] = nestHost = parseNestHostAttribute(attributeName);
+                    } else if (majorVersion >= JAVA_11_VERSION && attributeName.equals(Name.NestMembers)) {
+                        if (nestMembers != null) {
+                            throw ConstantPool.classFormatError("Duplicate NestMembers attribute");
+                        }
+                        if (nestHost != null) {
+                            throw ConstantPool.classFormatError("Classfile cannot have both a nest members and a nest host attribute.");
+                        }
+                        classAttributes[i] = nestMembers = parseNestMembers(attributeName);
+                    } else {
+                        Attribute attr = commonAttributeParser.parseCommonAttribute(attributeName, attributeSize);
+                        // stream.skip(attributeSize);
+                        classAttributes[i] = attr == null ? new Attribute(attributeName, stream.readByteArray(attributeSize)) : attr;
                     }
-                    if (attributeSize != 2) {
-                        throw ConstantPool.classFormatError("Attribute length of NestHost must be 2");
-                    }
-                    classAttributes[i] = nestHost = parseNestHostAttribute(attributeName);
-                } else if (majorVersion >= JAVA_11_VERSION && attributeName.equals(Name.NestMembers)) {
-                    if (nestMembers != null) {
-                        throw ConstantPool.classFormatError("Duplicate NestMembers attribute");
-                    }
-                    if (nestHost != null) {
-                        throw ConstantPool.classFormatError("Classfile cannot have both a nest members and a nest host attribute.");
-                    }
-                    classAttributes[i] = nestMembers = parseNestMembers(attributeName);
                 } else {
-                    Attribute attr = commonAttributeParser.parseCommonAttribute(attributeName, attributeSize);
                     // stream.skip(attributeSize);
-                    classAttributes[i] = attr == null ? new Attribute(attributeName, stream.readByteArray(attributeSize)) : attr;
+                    classAttributes[i] = new Attribute(attributeName, stream.readByteArray(attributeSize));
                 }
-            } else {
-                // stream.skip(attributeSize);
-                classAttributes[i] = new Attribute(attributeName, stream.readByteArray(attributeSize));
-            }
 
-            if (attributeSize != stream.getPosition() - startPosition) {
-                throw ConstantPool.classFormatError("Invalid attribute length for " + attributeName + " attribute");
+                if (attributeSize != stream.getPosition() - startPosition) {
+                    throw ConstantPool.classFormatError("Invalid attribute length for " + attributeName + " attribute");
+                }
             }
         }
 
@@ -1023,6 +1083,7 @@ public final class ClassfileParser {
             }
 
             for (int j = 0; j < i; ++j) {
+                // Inner class info is often small: better to use array lookup for startup.
                 final InnerClassesAttribute.Entry otherInnerClassInfo = innerClassInfos[j];
                 if (otherInnerClassInfo != null) {
                     if (innerClassIndex == otherInnerClassInfo.innerClassIndex && outerClassIndex == otherInnerClassInfo.outerClassIndex) {
@@ -1208,36 +1269,38 @@ public final class ClassfileParser {
         for (int i = 0; i < attributeCount; i++) {
             final int attributeNameIndex = stream.readU2();
             final Symbol<Name> attributeName = pool.symbolAt(attributeNameIndex, "attribute name");
-            final int attributeSize = stream.readS4();
-            final int startPosition = stream.getPosition();
+            try (DebugCloseable c = getTimer("code: " + attributeName.toString(), getTimer("m: Code", null)).scope(context.getTimers())) {
+                final int attributeSize = stream.readS4();
+                final int startPosition = stream.getPosition();
 
-            if (attributeName.equals(Name.LineNumberTable)) {
-                codeAttributes[i] = parseLineNumberTable(attributeName);
-            } else if (attributeName.equals(Name.LocalVariableTable)) {
-                codeAttributes[i] = parseLocalVariableAttribute(attributeName);
-            } else if (attributeName.equals(Name.LocalVariableTypeTable)) {
-                codeAttributes[i] = parseLocalVariableTypeAttribute(attributeName);
-            } else if (attributeName.equals(Name.StackMapTable)) {
-                if (stackMapTable != null) {
-                    throw ConstantPool.classFormatError("Duplicate StackMapTable attribute");
+                if (attributeName.equals(Name.LineNumberTable)) {
+                    codeAttributes[i] = parseLineNumberTable(attributeName);
+                } else if (attributeName.equals(Name.LocalVariableTable)) {
+                    codeAttributes[i] = parseLocalVariableAttribute(attributeName);
+                } else if (attributeName.equals(Name.LocalVariableTypeTable)) {
+                    codeAttributes[i] = parseLocalVariableTypeAttribute(attributeName);
+                } else if (attributeName.equals(Name.StackMapTable)) {
+                    if (stackMapTable != null) {
+                        throw ConstantPool.classFormatError("Duplicate StackMapTable attribute");
+                    }
+                    codeAttributes[i] = stackMapTable = parseStackMapTableAttribute(attributeName);
+                    // GR-19627 HotSpot's ad-hoc behavior: Truncated StackMapTable attributes throws
+                    // either VerifyError or ClassFormatError only if verified. Here the
+                    // attribute is marked for the verifier.
+                    int remaining = attributeSize - (stream.getPosition() - startPosition);
+                    if (remaining > 0) {
+                        stream.skip(remaining);
+                        stackMapTable.setTruncated();
+                    }
+                } else {
+                    Attribute attr = commonAttributeParser.parseCommonAttribute(attributeName, attributeSize);
+                    // stream.skip(attributeSize);
+                    codeAttributes[i] = attr == null ? new Attribute(attributeName, stream.readByteArray(attributeSize)) : attr;
                 }
-                codeAttributes[i] = stackMapTable = parseStackMapTableAttribute(attributeName);
-                // GR-19627 HotSpot's ad-hoc behavior: Truncated StackMapTable attributes throws
-                // either VerifyError or ClassFormatError only if verified. Here the
-                // attribute is marked for the verifier.
-                int remaining = attributeSize - (stream.getPosition() - startPosition);
-                if (remaining > 0) {
-                    stream.skip(remaining);
-                    stackMapTable.setTruncated();
-                }
-            } else {
-                Attribute attr = commonAttributeParser.parseCommonAttribute(attributeName, attributeSize);
-                // stream.skip(attributeSize);
-                codeAttributes[i] = attr == null ? new Attribute(attributeName, stream.readByteArray(attributeSize)) : attr;
-            }
 
-            if (attributeSize != stream.getPosition() - startPosition) {
-                throw ConstantPool.classFormatError("Invalid attribute length for " + attributeName + " attribute");
+                if (attributeSize != stream.getPosition() - startPosition) {
+                    throw ConstantPool.classFormatError("Invalid attribute length for " + attributeName + " attribute");
+                }
             }
         }
 
@@ -1450,5 +1513,31 @@ public final class ClassfileParser {
     int getMajorVersion() {
         assert majorVersion != 0;
         return majorVersion;
+    }
+
+    private static class MethodKey {
+        private final Symbol<Name> methodName;
+        private final Symbol<Signature> signature;
+        private final int hash;
+
+        public MethodKey(ParserMethod method) {
+            this.methodName = method.getName();
+            this.signature = method.getSignature();
+            this.hash = Objects.hash(methodName, signature);
+        }
+
+        @Override
+        public boolean equals(Object obj) {
+            if (obj instanceof MethodKey) {
+                MethodKey other = (MethodKey) obj;
+                return methodName.equals(other.methodName) && signature.equals(other.signature);
+            }
+            return false;
+        }
+
+        @Override
+        public int hashCode() {
+            return hash;
+        }
     }
 }
