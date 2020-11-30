@@ -92,6 +92,12 @@ local base = {
       JDT: {name: 'ecj', version: '4.14.0', platformspecific: false},
     },
   },
+
+  bench_upload: {
+    teardown+: [
+      ['bench-uploader.py', 'bench-results.json'],
+    ]
+  }
 };
 
 local gate_coverage = base.eclipse + {
@@ -168,10 +174,10 @@ local espresso_benchmark(env, suite, host_jvm=_host_jvm(env), host_jvm_config=_h
             '--jvm=' + guest_jvm, '--jvm-config=' + guest_jvm_config,
             '--vm.Xss32m'] + extra_args
         ),
-        ['bench-uploader.py', 'bench-results.json'],
     ],
     timelimit: '3:00:00',
-  };
+  } +
+  base.bench_upload;
 
 local _graal_host_jvm_config(env) = if std.endsWith(env, '-ce') then 'graal-core' else 'graal-enterprise';
 
@@ -187,10 +193,10 @@ local graal_benchmark(env, suite, host_jvm='server', host_jvm_config=_graal_host
             '--jvm=' + host_jvm, '--jvm-config=' + host_jvm_config,
           ] + extra_args
         ),
-        ['bench-uploader.py', 'bench-results.json'],
     ],
     timelimit: '1:00:00',
-  };
+  } +
+  base.bench_upload;
 
 local espresso_minheap_benchmark(env, suite, guest_jvm_config) =
   espresso_benchmark(env, suite, host_jvm='server', host_jvm_config='default', guest_jvm='espresso-minheap', guest_jvm_config=guest_jvm_config, extra_args=['--', '--iterations', '1']);

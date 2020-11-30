@@ -42,7 +42,7 @@ suite = {
                 "name": "truffle",
                 "subdir": True,
                 # Custom changes in Truffle (NFI) for Espresso (branch slimbeans).
-                "version": "3881c674263826047e4616a6e26f89e6f6cdf6eb",
+                "version": "fccedc67d44d6a9cde21b977f26f70a7647bfc5b",
                 "urls": [
                     {"url": "https://github.com/graalvm/graal", "kind": "git"},
                     {"url": "https://curio.ssw.jku.at/nexus/content/repositories/snapshots", "kind": "binary"},
@@ -52,7 +52,7 @@ suite = {
                 "name": "tools",
                 "subdir": True,
                 # Custom changes in Truffle (NFI) for Espresso (branch slimbeans).
-                "version": "3881c674263826047e4616a6e26f89e6f6cdf6eb",
+                "version": "fccedc67d44d6a9cde21b977f26f70a7647bfc5b",
                 "urls": [
                     {"url": "https://github.com/graalvm/graal", "kind": "git"},
                     {"url": "https://curio.ssw.jku.at/nexus/content/repositories/snapshots", "kind": "binary"},
@@ -61,7 +61,7 @@ suite = {
             {
                 "name" : "java-benchmarks",
                 "subdir": True,
-                "version": "3881c674263826047e4616a6e26f89e6f6cdf6eb",
+                "version": "fccedc67d44d6a9cde21b977f26f70a7647bfc5b",
                 "urls": [
                     {"url": "https://github.com/graalvm/graal", "kind": "git"},
                     {"url": "https://curio.ssw.jku.at/nexus/content/repositories/snapshots", "kind": "binary"},
@@ -69,7 +69,7 @@ suite = {
             },
             {
                 "name": "truffleruby",
-                "version": "2930581daeeb0dca649476f721a9f6a5481841ce",
+                "version": "7f4e518f3959c05e086ff426d27e0243697fe65f",
                 "dynamic": True,
                 "urls": [
                     {"url": "https://github.com/oracle/truffleruby.git", "kind": "git"},
@@ -383,6 +383,7 @@ suite = {
             "distDependencies": [
                 "truffle:TRUFFLE_API",
                 "truffle:TRUFFLE_NFI",
+                "tools:TRUFFLE_PROFILER",
             ],
             "javaProperties": {
                 "org.graalvm.language.java.home": "<path:ESPRESSO_SUPPORT>",

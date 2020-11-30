@@ -137,7 +137,10 @@ public final class StaticObject implements TruffleObject {
     @ExportMessage
     String asString() {
         checkNotForeign();
-        return Meta.toHostString(this);
+        if (isNull(this)) {
+            return null;
+        }
+        return Meta.toHostStringStatic(this);
     }
 
     @ExportMessage
@@ -1218,7 +1221,7 @@ public final class StaticObject implements TruffleObject {
             if (instanceOf(this, meta.java_time_ZoneId)) {
                 int index = meta.java_time_ZoneId_getId.getVTableIndex();
                 StaticObject zoneIdEspresso = (StaticObject) getKlass().vtableLookup(index).invokeDirect(this);
-                String zoneId = Meta.toHostString(zoneIdEspresso);
+                String zoneId = Meta.toHostStringStatic(zoneIdEspresso);
                 return ZoneId.of(zoneId, ZoneId.SHORT_IDS);
             } else if (instanceOf(this, meta.java_time_ZonedDateTime)) {
                 StaticObject zoneId = (StaticObject) meta.java_time_ZonedDateTime_getZone.invokeDirect(this);
@@ -1314,20 +1317,20 @@ public final class StaticObject implements TruffleObject {
             return "NULL";
         }
         Klass thisKlass = getKlass();
-
+        Meta meta = thisKlass.getMeta();
         if (allowSideEffects) {
             // Call guest toString.
-            int toStringIndex = thisKlass.getMeta().java_lang_Object_toString.getVTableIndex();
+            int toStringIndex = meta.java_lang_Object_toString.getVTableIndex();
             Method toString = thisKlass.vtableLookup(toStringIndex);
-            return Meta.toHostString((StaticObject) toString.invokeDirect(this));
+            return meta.toHostString((StaticObject) toString.invokeDirect(this));
         }
 
         // Handle some special instances without side effects.
-        if (thisKlass == thisKlass.getMeta().java_lang_Class) {
+        if (thisKlass == meta.java_lang_Class) {
             return "class " + thisKlass.getTypeAsString();
         }
-        if (thisKlass == thisKlass.getMeta().java_lang_String) {
-            return Meta.toHostString(this);
+        if (thisKlass == meta.java_lang_String) {
+            return meta.toHostString(this);
         }
         return thisKlass.getTypeAsString() + "@" + Integer.toHexString(System.identityHashCode(this));
     }
@@ -1976,7 +1979,13 @@ public final class StaticObject implements TruffleObject {
             return "foreign object: " + getKlass().getTypeAsString();
         }
         if (getKlass() == getKlass().getMeta().java_lang_String) {
-            return Meta.toHostString(this);
+            Meta meta = getKlass().getMeta();
+            StaticObject value = getField(meta.java_lang_String_value);
+            if (value == null || isNull(value)) {
+                // Prevents debugger crashes when trying to inspect a string in construction.
+                return "<UNINITIALIZED>";
+            }
+            return Meta.toHostStringStatic(this);
         }
         if (isArray()) {
             return unwrap().toString();
@@ -1996,7 +2005,13 @@ public final class StaticObject implements TruffleObject {
             return String.format("foreign object: %s\n%s", getKlass().getTypeAsString(), InteropLibrary.getUncached().toDisplayString(rawForeignObject()));
         }
         if (getKlass() == getKlass().getMeta().java_lang_String) {
-            return Meta.toHostString(this);
+            Meta meta = getKlass().getMeta();
+            StaticObject value = getField(meta.java_lang_String_value);
+            if (value == null || isNull(value)) {
+                // Prevents debugger crashes when trying to inspect a string in construction.
+                return "<UNINITIALIZED>";
+            }
+            return Meta.toHostStringStatic(this);
         }
         if (isArray()) {
             return unwrap().toString();

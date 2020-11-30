@@ -212,6 +212,36 @@ public final class EspressoOptions {
                     category = OptionCategory.EXPERT, stability = OptionStability.EXPERIMENTAL) //
     public static final OptionKey<Boolean> SplitMethodHandles = new OptionKey<>(false);
 
+    @Option(help = "Enable string representation sharing between host and guest (If both have the same string representation). When enabled, reflective modifications to the underlying array of guest strings reflect on host strings. ", //
+                    category = OptionCategory.EXPERT, stability = OptionStability.EXPERIMENTAL) //
+    public static final OptionKey<Boolean> StringSharing = new OptionKey<>(true);
+
+    public enum LivenessAnalysisMode {
+        DISABLED,
+        ENABLED, // Also apply liveness analysis in interpreter
+        COMPILED // Only apply liveness analysis in compiled code.
+    }
+
+    private static final OptionType<LivenessAnalysisMode> LIVENESS_ANALYSIS_MODE_OPTION_TYPE = new OptionType<>("LivenessAnalysisMode",
+                    new Function<String, LivenessAnalysisMode>() {
+                        @Override
+                        public LivenessAnalysisMode apply(String s) {
+                            try {
+                                return LivenessAnalysisMode.valueOf(s.toUpperCase());
+                            } catch (IllegalArgumentException e) {
+                                throw new IllegalArgumentException("--java.LivenessAnalysis: Mode can be 'DISABLED', 'ENABLED' or 'COMPILED'.");
+                            }
+                        }
+                    });
+
+    @Option(help = "Controls the static liveness analysis of bytecodes. Liveness analysis nulls out local variables during bytecode execution if it is detected they are stale." +
+                    "Options values are:" +
+                    "\t- Disabled: disables liveness analysis." +
+                    "\t- Enabled: performs full liveness analysis, nulling out non-live local variables even in interpreter." +
+                    "\t- Compiled: performs liveness analysis, and nulls out local variables only in compiled code.", //
+                    category = OptionCategory.EXPERT, stability = OptionStability.STABLE) //
+    public static final OptionKey<LivenessAnalysisMode> LivenessAnalysis = new OptionKey<>(LivenessAnalysisMode.DISABLED, LIVENESS_ANALYSIS_MODE_OPTION_TYPE);
+
     @Option(help = "Load native libraries on a per-context, isolated linking namespace; by default enabled on the JVM, disabled on SVM.", //
                     category = OptionCategory.EXPERT, stability = OptionStability.EXPERIMENTAL) //
     public static final OptionKey<Boolean> UseTruffleNFIIsolatedNamespace = new OptionKey<>(!RUNNING_ON_SVM);
@@ -293,6 +323,10 @@ public final class EspressoOptions {
                     "Rather than abruptly terminating execution, gives all leftover non-daemon thread some leeway to finish executing in guest.", //
                     category = OptionCategory.EXPERT, stability = OptionStability.EXPERIMENTAL) //
     public static final OptionKey<Boolean> SoftExit = new OptionKey<>(false);
+
+    @Option(help = "Enables espresso runtime timers.", //
+                    category = OptionCategory.INTERNAL, stability = OptionStability.STABLE) //
+    public static final OptionKey<Boolean> EnableTimers = new OptionKey<>(false);
 
     public static final String INCEPTION_NAME = System.getProperty("espresso.inception.name", "#");
 }

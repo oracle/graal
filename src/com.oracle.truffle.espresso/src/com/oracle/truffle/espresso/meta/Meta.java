@@ -22,8 +22,6 @@
  */
 package com.oracle.truffle.espresso.meta;
 
-import static com.oracle.truffle.espresso.meta.StringUtil.LATIN1;
-
 import java.util.logging.Level;
 
 import com.oracle.truffle.api.CompilerAsserts;
@@ -55,10 +53,12 @@ public final class Meta implements ContextAccess {
 
     private final EspressoContext context;
     private final ExceptionDispatch dispatch;
+    private final StringConversion stringConversion;
 
     public Meta(EspressoContext context) {
         CompilerAsserts.neverPartOfCompilation();
         this.context = context;
+        this.stringConversion = StringConversion.select(context);
 
         // Give access to the partially-built Meta instance.
         context.setBootstrapMeta(this);
@@ -163,6 +163,9 @@ public final class Meta implements ContextAccess {
         java_lang_String_hashCode = java_lang_String.lookupDeclaredMethod(Name.hashCode, Signature._int);
         java_lang_String_length = java_lang_String.lookupDeclaredMethod(Name.length, Signature._int);
         java_lang_String_toCharArray = java_lang_String.lookupDeclaredMethod(Name.toCharArray, Signature._char_array);
+        java_lang_String_charAt = java_lang_String.lookupDeclaredMethod(Name.charAt, Signature._char);
+        java_lang_String_indexOf = java_lang_String.lookupDeclaredMethod(Name.indexOf, Signature._int_int_int);
+        java_lang_String_init_char_array = java_lang_String.lookupDeclaredMethod(Name._init_, Signature._void_char_array);
 
         java_lang_Throwable = knownKlass(Type.java_lang_Throwable);
         java_lang_Throwable_getStackTrace = java_lang_Throwable.lookupDeclaredMethod(Name.getStackTrace, Signature.StackTraceElement_array);
@@ -674,6 +677,9 @@ public final class Meta implements ContextAccess {
     public final Method java_lang_String_hashCode;
     public final Method java_lang_String_length;
     public final Method java_lang_String_toCharArray;
+    public final Method java_lang_String_charAt;
+    public final Method java_lang_String_indexOf;
+    public final Method java_lang_String_init_char_array;
 
     public final ObjectKlass java_lang_ClassLoader;
     public final Field java_lang_ClassLoader_parent;
@@ -1329,57 +1335,33 @@ public final class Meta implements ContextAccess {
         return klass;
     }
 
-    @TruffleBoundary
-    public static String toHostString(StaticObject str) {
+    public String toHostString(StaticObject str) {
         if (StaticObject.isNull(str)) {
             return null;
         }
-        Meta meta = str.getKlass().getMeta();
-        if (meta.getJavaVersion().compactStringsEnabled()) {
-            StaticObject wrappedChars = (StaticObject) meta.java_lang_String_toCharArray.invokeDirect(str);
-            return HostJava.createString(wrappedChars.unwrap());
-        }
-        char[] value = ((StaticObject) meta.java_lang_String_value.get(str)).unwrap();
-        return HostJava.createString(value);
+        return stringConversion.toHost(str, this);
     }
 
     @TruffleBoundary
-    public StaticObject toGuestString(String hostString) {
-        if (hostString == null) {
-            return StaticObject.NULL;
+    public static String toHostStringStatic(StaticObject str) {
+        if (StaticObject.isNull(str)) {
+            return null;
         }
-        final char[] value = HostJava.getStringValue(hostString);
-        final int hash = HostJava.getStringHash(hostString);
-        StaticObject guestString = java_lang_String.allocateInstance();
-        if (getJavaVersion().compactStringsEnabled()) {
-            // TODO(garcia): avoid expensive array copies
-            byte[] bytes = null;
-            byte coder = LATIN1;
-            if (java_lang_String.getStatics().getBooleanField(java_lang_String_COMPACT_STRINGS)) {
-                bytes = StringUtil.compress(value);
-            }
-            if (bytes == null) {
-                bytes = StringUtil.toBytes(value);
-                coder = StringUtil.UTF16;
-            }
-            java_lang_String_value.set(guestString, StaticObject.wrap(bytes, this));
-            java_lang_String_coder.set(guestString, coder);
-            java_lang_String_hash.set(guestString, hash);
-        } else {
-            java_lang_String_value.set(guestString, StaticObject.wrap(value, this));
-            java_lang_String_hash.set(guestString, hash);
-        }
-        // String.hashCode must be equivalent for host and guest.
-        assert hostString.hashCode() == (int) java_lang_String_hashCode.invokeDirect(guestString);
-        return guestString;
+        return str.getKlass().getMeta().toHostString(str);
     }
 
-    @TruffleBoundary
     public StaticObject toGuestString(Symbol<?> hostString) {
         if (hostString == null) {
             return StaticObject.NULL;
         }
         return toGuestString(hostString.toString());
+    }
+
+    public StaticObject toGuestString(String hostString) {
+        if (hostString == null) {
+            return StaticObject.NULL;
+        }
+        return stringConversion.toGuest(hostString, this);
     }
 
     public static boolean isString(Object string) {
@@ -1440,45 +1422,6 @@ public final class Meta implements ContextAccess {
     public EspressoContext getContext() {
         return context;
     }
-
-    // region Low level host String access
-
-    private static class HostJava {
-
-        private static final java.lang.reflect.Field String_value;
-        private static final java.lang.reflect.Field String_hash;
-
-        static {
-            try {
-                String_value = String.class.getDeclaredField("value");
-                String_value.setAccessible(true);
-                String_hash = String.class.getDeclaredField("hash");
-                String_hash.setAccessible(true);
-            } catch (NoSuchFieldException e) {
-                throw EspressoError.shouldNotReachHere(e);
-            }
-        }
-
-        private static char[] getStringValue(String s) {
-            char[] chars = new char[s.length()];
-            s.getChars(0, s.length(), chars, 0);
-            return chars;
-        }
-
-        private static int getStringHash(String s) {
-            try {
-                return (int) String_hash.get(s);
-            } catch (IllegalAccessException e) {
-                throw EspressoError.shouldNotReachHere(e);
-            }
-        }
-
-        private static String createString(final char[] value) {
-            return new String(value);
-        }
-    }
-
-    // endregion
 
     // region Guest Unboxing
 

@@ -23,6 +23,8 @@
 
 package com.oracle.truffle.espresso;
 
+import java.lang.reflect.Method;
+
 import com.oracle.truffle.espresso.runtime.StaticObject;
 
 /**
@@ -73,4 +75,6 @@ public class InternalUtils {
      * @return true iff we are running in Espresso.
      */
     public static native boolean inEspresso();
+
+    public static native void triggerLivenessAnalysis(Method m);
 }

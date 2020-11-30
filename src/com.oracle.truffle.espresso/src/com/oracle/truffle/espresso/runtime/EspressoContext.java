@@ -62,6 +62,9 @@ import com.oracle.truffle.espresso.jdwp.impl.EmptyListener;
 import com.oracle.truffle.espresso.jni.JniEnv;
 import com.oracle.truffle.espresso.meta.EspressoError;
 import com.oracle.truffle.espresso.meta.Meta;
+import com.oracle.truffle.espresso.perf.DebugCloseable;
+import com.oracle.truffle.espresso.perf.DebugTimer;
+import com.oracle.truffle.espresso.perf.TimerCollection;
 import com.oracle.truffle.espresso.substitutions.Substitutions;
 import com.oracle.truffle.espresso.substitutions.Target_java_lang_ref_Reference;
 import com.oracle.truffle.espresso.vm.InterpreterToVM;
@@ -72,12 +75,23 @@ public final class EspressoContext {
     public static final int DEFAULT_STACK_SIZE = 32;
     public static final StackTraceElement[] EMPTY_STACK = new StackTraceElement[0];
 
+    private static final DebugTimer SPAWN_VM = DebugTimer.create("spawnVM");
+    private static final DebugTimer SYSTEM_INIT = DebugTimer.create("system init", SPAWN_VM);
+    private static final DebugTimer KNOWN_CLASS_INIT = DebugTimer.create("known class init", SPAWN_VM);
+    private static final DebugTimer META_INIT = DebugTimer.create("meta init", SPAWN_VM);
+    private static final DebugTimer VM_INIT = DebugTimer.create("vm init", SPAWN_VM);
+    private static final DebugTimer SYSTEM_CLASSLOADER = DebugTimer.create("system classloader", SPAWN_VM);
+
     private final TruffleLogger logger = TruffleLogger.getLogger(EspressoLanguage.ID);
 
     private final EspressoLanguage language;
     private final TruffleLanguage.Env env;
 
     private String[] mainArguments;
+
+    // region Debug
+    private final TimerCollection timers;
+    // endregion Debug
 
     // region Runtime
     private final StringTable strings;
@@ -100,6 +114,7 @@ public final class EspressoContext {
 
     // region InitControl
     public long initDoneTimeNanos;
+
     @CompilationFinal private boolean modulesInitialized = false;
     @CompilationFinal private boolean metaInitialized = false;
     private boolean initialized = false;
@@ -119,6 +134,7 @@ public final class EspressoContext {
     public final boolean InlineFieldAccessors;
     public final boolean InlineMethodHandle;
     public final boolean SplitMethodHandles;
+    public final EspressoOptions.LivenessAnalysisMode livenessAnalysisMode;
 
     // Behavior control
     public final boolean EnableManagement;
@@ -185,6 +201,8 @@ public final class EspressoContext {
         this.referenceDrainer = new EspressoReferenceDrainer(this);
         this.shutdownManager = new EspressoShutdownHandler(this, threadManager, referenceDrainer);
 
+        this.timers = TimerCollection.create(env.getOptions().get(EspressoOptions.EnableTimers));
+
         // null if not specified
         this.JDWPOptions = env.getOptions().get(EspressoOptions.JDWPOptions);
 
@@ -193,6 +211,7 @@ public final class EspressoContext {
         this.SplitMethodHandles = JDWPOptions != null ? false : env.getOptions().get(EspressoOptions.SplitMethodHandles);
         this.Verify = env.getOptions().get(EspressoOptions.Verify);
         this.SpecCompliancyMode = env.getOptions().get(EspressoOptions.SpecCompliancy);
+        this.livenessAnalysisMode = env.getOptions().get(EspressoOptions.LivenessAnalysis);
         this.EnableManagement = env.getOptions().get(EspressoOptions.EnableManagement);
         this.MultiThreaded = env.getOptions().get(EspressoOptions.MultiThreaded);
         this.SoftExit = env.getOptions().get(EspressoOptions.SoftExit);
@@ -298,95 +317,111 @@ public final class EspressoContext {
         return meta;
     }
 
+    @SuppressWarnings("try")
     private void spawnVM() {
+        try (DebugCloseable spawn = SPAWN_VM.scope(timers)) {
 
-        long initStartTimeNanos = System.nanoTime();
+            long initStartTimeNanos = System.nanoTime();
 
-        initVmProperties();
+            initVmProperties();
 
-        if (getJavaVersion().modulesEnabled()) {
-            registries.initJavaBaseModule();
-            registries.getBootClassRegistry().initUnnamedModule(StaticObject.NULL);
-        }
-
-        // Spawn JNI first, then the VM.
-        this.vm = VM.create(getJNI()); // Mokapot is loaded
-
-        // TODO: link libjimage
-
-        this.meta = new Meta(this);
-        this.metaInitialized = true;
-
-        this.interpreterToVM = new InterpreterToVM(this);
-
-        initializeKnownClass(Type.java_lang_Object);
-
-        for (Symbol<Type> type : Arrays.asList(
-                        Type.java_lang_String,
-                        Type.java_lang_System,
-                        Type.java_lang_ThreadGroup,
-                        Type.java_lang_Thread,
-                        Type.java_lang_Class,
-                        Type.java_lang_reflect_Method)) {
-            initializeKnownClass(type);
-        }
-
-        threadManager.createMainThread(meta);
-
-        initializeKnownClass(Type.java_lang_ref_Finalizer);
-
-        referenceDrainer.initReferenceDrain();
-
-        // Call guest initialization
-        if (getJavaVersion().java8OrEarlier()) {
-            meta.java_lang_System_initializeSystemClass.invokeDirect(null);
-        } else {
-            assert getJavaVersion().java9OrLater();
-            meta.java_lang_System_initPhase1.invokeDirect(null);
-            int e = (int) meta.java_lang_System_initPhase2.invokeDirect(null, false, false);
-            if (e != 0) {
-                throw EspressoError.shouldNotReachHere();
+            if (getJavaVersion().modulesEnabled()) {
+                registries.initJavaBaseModule();
+                registries.getBootClassRegistry().initUnnamedModule(StaticObject.NULL);
             }
-            modulesInitialized = true;
-            meta.java_lang_System_initPhase3.invokeDirect(null);
+
+            // Spawn JNI first, then the VM.
+            try (DebugCloseable vmInit = VM_INIT.scope(timers)) {
+                this.vm = VM.create(getJNI()); // Mokapot is loaded
+            }
+
+            // TODO: link libjimage
+
+            try (DebugCloseable metaInit = META_INIT.scope(timers)) {
+                this.meta = new Meta(this);
+            }
+            this.metaInitialized = true;
+
+            this.interpreterToVM = new InterpreterToVM(this);
+
+            try (DebugCloseable knownClassInit = KNOWN_CLASS_INIT.scope(timers)) {
+                initializeKnownClass(Type.java_lang_Object);
+
+                for (Symbol<Type> type : Arrays.asList(
+                                Type.java_lang_String,
+                                Type.java_lang_System,
+                                Type.java_lang_ThreadGroup,
+                                Type.java_lang_Thread,
+                                Type.java_lang_Class,
+                                Type.java_lang_reflect_Method)) {
+                    initializeKnownClass(type);
+                }
+            }
+
+            threadManager.createMainThread(meta);
+
+            try (DebugCloseable knownClassInit = KNOWN_CLASS_INIT.scope(timers)) {
+                initializeKnownClass(Type.java_lang_ref_Finalizer);
+            }
+
+            referenceDrainer.initReferenceDrain();
+
+            try (DebugCloseable systemInit = SYSTEM_INIT.scope(timers)) {
+                // Call guest initialization
+                if (getJavaVersion().java8OrEarlier()) {
+                    meta.java_lang_System_initializeSystemClass.invokeDirect(null);
+                } else {
+                    assert getJavaVersion().java9OrLater();
+                    meta.java_lang_System_initPhase1.invokeDirect(null);
+                    int e = (int) meta.java_lang_System_initPhase2.invokeDirect(null, false, false);
+                    if (e != 0) {
+                        throw EspressoError.shouldNotReachHere();
+                    }
+                    modulesInitialized = true;
+                    meta.java_lang_System_initPhase3.invokeDirect(null);
+                }
+            }
+
+            meta.postSystemInit();
+
+            try (DebugCloseable knownClassInit = KNOWN_CLASS_INIT.scope(timers)) {
+                // System exceptions.
+                for (Symbol<Type> type : Arrays.asList(
+                                Type.java_lang_OutOfMemoryError,
+                                Type.java_lang_NullPointerException,
+                                Type.java_lang_ClassCastException,
+                                Type.java_lang_ArrayStoreException,
+                                Type.java_lang_ArithmeticException,
+                                Type.java_lang_StackOverflowError,
+                                Type.java_lang_IllegalMonitorStateException,
+                                Type.java_lang_IllegalArgumentException)) {
+                    initializeKnownClass(type);
+                }
+            }
+            // Init memoryError instances
+            StaticObject stackOverflowErrorInstance = meta.java_lang_StackOverflowError.allocateInstance();
+            StaticObject outOfMemoryErrorInstance = meta.java_lang_OutOfMemoryError.allocateInstance();
+
+            // Preemptively set stack trace.
+            stackOverflowErrorInstance.setHiddenField(meta.HIDDEN_FRAMES, VM.StackTrace.EMPTY_STACK_TRACE);
+            stackOverflowErrorInstance.setField(meta.java_lang_Throwable_backtrace, stackOverflowErrorInstance);
+            outOfMemoryErrorInstance.setHiddenField(meta.HIDDEN_FRAMES, VM.StackTrace.EMPTY_STACK_TRACE);
+            outOfMemoryErrorInstance.setField(meta.java_lang_Throwable_backtrace, outOfMemoryErrorInstance);
+
+            this.stackOverflow = EspressoException.wrap(stackOverflowErrorInstance);
+            this.outOfMemory = EspressoException.wrap(outOfMemoryErrorInstance);
+            meta.java_lang_StackOverflowError.lookupDeclaredMethod(Name._init_, Signature._void_String).invokeDirect(stackOverflowErrorInstance, meta.toGuestString("VM StackOverFlow"));
+            meta.java_lang_OutOfMemoryError.lookupDeclaredMethod(Name._init_, Signature._void_String).invokeDirect(outOfMemoryErrorInstance, meta.toGuestString("VM OutOfMemory"));
+
+            // Create application (system) class loader.
+            try (DebugCloseable systemLoader = SYSTEM_CLASSLOADER.scope(timers)) {
+                meta.java_lang_ClassLoader_getSystemClassLoader.invokeDirect(null);
+            }
+
+            initDoneTimeNanos = System.nanoTime();
+            long elapsedNanos = initDoneTimeNanos - initStartTimeNanos;
+            getLogger().log(Level.FINE, "VM booted in {0} ms", TimeUnit.NANOSECONDS.toMillis(elapsedNanos));
         }
-
-        meta.postSystemInit();
-
-        // System exceptions.
-        for (Symbol<Type> type : Arrays.asList(
-                        Type.java_lang_OutOfMemoryError,
-                        Type.java_lang_NullPointerException,
-                        Type.java_lang_ClassCastException,
-                        Type.java_lang_ArrayStoreException,
-                        Type.java_lang_ArithmeticException,
-                        Type.java_lang_StackOverflowError,
-                        Type.java_lang_IllegalMonitorStateException,
-                        Type.java_lang_IllegalArgumentException)) {
-            initializeKnownClass(type);
-        }
-
-        // Init memoryError instances
-        StaticObject stackOverflowErrorInstance = meta.java_lang_StackOverflowError.allocateInstance();
-        StaticObject outOfMemoryErrorInstance = meta.java_lang_OutOfMemoryError.allocateInstance();
-
-        // Preemptively set stack trace.
-        stackOverflowErrorInstance.setHiddenField(meta.HIDDEN_FRAMES, VM.StackTrace.EMPTY_STACK_TRACE);
-        stackOverflowErrorInstance.setField(meta.java_lang_Throwable_backtrace, stackOverflowErrorInstance);
-        outOfMemoryErrorInstance.setHiddenField(meta.HIDDEN_FRAMES, VM.StackTrace.EMPTY_STACK_TRACE);
-        outOfMemoryErrorInstance.setField(meta.java_lang_Throwable_backtrace, outOfMemoryErrorInstance);
-
-        this.stackOverflow = EspressoException.wrap(stackOverflowErrorInstance);
-        this.outOfMemory = EspressoException.wrap(outOfMemoryErrorInstance);
-        meta.java_lang_StackOverflowError.lookupDeclaredMethod(Name._init_, Signature._void_String).invokeDirect(stackOverflowErrorInstance, meta.toGuestString("VM StackOverFlow"));
-        meta.java_lang_OutOfMemoryError.lookupDeclaredMethod(Name._init_, Signature._void_String).invokeDirect(outOfMemoryErrorInstance, meta.toGuestString("VM OutOfMemory"));
-
-        // Create application (system) class loader.
-        meta.java_lang_ClassLoader_getSystemClassLoader.invokeDirect(null);
-
-        initDoneTimeNanos = System.nanoTime();
-        long elapsedNanos = initDoneTimeNanos - initStartTimeNanos;
-        getLogger().log(Level.FINE, "VM booted in {0} ms", TimeUnit.NANOSECONDS.toMillis(elapsedNanos));
     }
 
     private void initVmProperties() {
@@ -628,4 +663,12 @@ public final class EspressoContext {
     }
 
     // endregion ReferenceDrain
+
+    // region DebugAccess
+
+    public TimerCollection getTimers() {
+        return timers;
+    }
+
+    // endregion DebugAccess
 }
