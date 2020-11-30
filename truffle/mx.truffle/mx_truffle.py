@@ -240,7 +240,7 @@ def _truffle_gate_runner(args, tasks):
 def _truffle_gate_state_bitwidth_tests():
     runs = [1, 2, 4, 8, 16, 32, 64]
     for run_bits in runs:
-        build_args = ['-f', '-p', '--warning-as-error', '--dependencies', 'TRUFFLE_TEST', '--force-javac',
+        build_args = ['-f', '-p', '--dependencies', 'TRUFFLE_TEST', '--force-javac',
                       '-A-Atruffle.dsl.StateBitWidth={0}'.format(run_bits)]
 
         unittest_args = ['--suite', 'truffle', '--enable-timing', '--fail-fast', '-Dtruffle.dsl.StateBitWidth={0}'.format(run_bits),
