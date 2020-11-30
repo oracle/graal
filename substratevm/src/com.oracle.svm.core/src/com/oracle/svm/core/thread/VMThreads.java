@@ -696,6 +696,11 @@ public abstract class VMThreads {
         }
 
         @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
+        public static boolean isStatusIgnoreSafepoints() {
+            return safepointsDisabledTL.getVolatile() == 1;
+        }
+
+        @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
         public static boolean isStatusIgnoreSafepoints(IsolateThread vmThread) {
             return safepointsDisabledTL.getVolatile(vmThread) == 1;
         }
