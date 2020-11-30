@@ -43,6 +43,7 @@ import com.oracle.svm.core.heap.ReferenceInternals;
 import com.oracle.svm.core.hub.DynamicHub;
 import com.oracle.svm.core.log.Log;
 import com.oracle.svm.core.snippets.KnownIntrinsics;
+import com.oracle.svm.core.thread.VMOperation;
 import com.oracle.svm.core.util.UnsignedUtils;
 
 /** Discovers and handles {@link Reference} objects during garbage collection. */
@@ -73,6 +74,7 @@ final class ReferenceObjectProcessing {
      * last resort to avoid running out of memory.
      */
     public static void setSoftReferencesAreWeak(boolean enabled) {
+        assert VMOperation.isGCInProgress();
         softReferencesAreWeak = enabled;
     }
 
