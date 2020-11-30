@@ -220,7 +220,7 @@ abstract class CommonPointerLibraries {
                     @Shared("getMember") @Cached LLVMForeignGetMemberPointerNode getElementPointer,
                     @Exclusive @Cached LLVMForeignReadNode read) throws UnsupportedMessageException, UnknownIdentifierException {
         LLVMPointer correctClassPtr = resolveClassChain.execute(receiver, ident, receiver.getExportType());
-        LLVMPointer ptr = getElementPointer.execute(receiver.getExportType(), correctClassPtr, ident);
+        LLVMPointer ptr = getElementPointer.execute(correctClassPtr.getExportType(), correctClassPtr, ident);
         return read.execute(ptr, ptr.getExportType());
     }
 
@@ -299,7 +299,7 @@ abstract class CommonPointerLibraries {
                     @Exclusive @Cached LLVMForeignWriteNode write)
                     throws UnsupportedMessageException, UnknownIdentifierException {
         LLVMPointer correctClassPtr = resolveClassChain.execute(receiver, ident, receiver.getExportType());
-        LLVMPointer ptr = getElementPointer.execute(receiver.getExportType(), correctClassPtr, ident);
+        LLVMPointer ptr = getElementPointer.execute(correctClassPtr.getExportType(), correctClassPtr, ident);
         write.execute(ptr, ptr.getExportType(), value);
     }
 

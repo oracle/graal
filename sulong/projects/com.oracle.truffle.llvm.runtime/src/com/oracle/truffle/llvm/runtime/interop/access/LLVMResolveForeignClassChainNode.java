@@ -60,7 +60,7 @@ public abstract class LLVMResolveForeignClassChainNode extends LLVMNode {
         for (LLVMForeignGetSuperElemPtrNode n : p.getLeft()) {
             curReceiver = insert(n).execute(curReceiver);
         }
-        return curReceiver.export(p.getRight() == null ? receiver.getExportType() : p.getRight());
+        return curReceiver.export(p.getRight() == null ? clazz : p.getRight());
     }
 
     @Specialization(replaces = "doClassResolvingCached")
@@ -71,7 +71,7 @@ public abstract class LLVMResolveForeignClassChainNode extends LLVMNode {
         for (LLVMForeignGetSuperElemPtrNode n : p.getLeft()) {
             curReceiver = insert(n).execute(curReceiver);
         }
-        return curReceiver.export(p.getRight() == null ? receiver.getExportType() : p.getRight());
+        return curReceiver.export(p.getRight() == null ? clazz : p.getRight());
     }
 
     static int getCIHash(LLVMInteropType.Clazz o1, String o2) {
