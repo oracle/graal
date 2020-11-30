@@ -48,9 +48,8 @@ public final class Validation {
         }
         for (int i = 0; i < bytes.length(); ++i) {
             char ch = (char) bytes.byteAt(i);
-            if (ch == '.' || ch == ';' || ch == '[' || ch == '/') {
+            if (invalidUnqualifiedNameChar(ch))
                 return false;
-            }
         }
         return true;
     }
@@ -64,11 +63,22 @@ public final class Validation {
         }
         for (int i = 0; i < chars.length(); ++i) {
             char ch = chars.charAt(i);
-            if (ch == '.' || ch == ';' || ch == '[' || ch == '/') {
+            if (invalidUnqualifiedNameChar(ch))
                 return false;
-            }
         }
         return true;
+    }
+
+    private static boolean invalidUnqualifiedNameChar(char ch) {
+        switch (ch) {
+            case '.':
+            case ';':
+            case '[':
+            case '/':
+                return true;
+            default:
+                return false;
+        }
     }
 
     /**
@@ -88,11 +98,25 @@ public final class Validation {
         }
         for (int i = 0; i < bytes.length(); ++i) {
             char ch = (char) bytes.byteAt(i);
-            if (ch == '.' || ch == ';' || ch == '[' || ch == '/' || ch == '<' || ch == '>') {
+            if (invalidMethodNameChar(ch)) {
                 return false;
             }
         }
         return true;
+    }
+
+    private static boolean invalidMethodNameChar(char ch) {
+        switch (ch) {
+            case '.':
+            case ';':
+            case '[':
+            case '/':
+            case '<':
+            case '>':
+                return true;
+            default:
+                return false;
+        }
     }
 
     /**
@@ -185,17 +209,9 @@ public final class Validation {
         if (bytes.length() == 0) {
             return false;
         }
-        char first = (char) bytes.byteAt(0);
+        byte first = bytes.byteAt(0);
         if (bytes.length() == 1) {
-            return (first == 'V' && allowVoid) ||
-                            first == 'B' ||
-                            first == 'C' ||
-                            first == 'D' ||
-                            first == 'F' ||
-                            first == 'I' ||
-                            first == 'J' ||
-                            first == 'S' ||
-                            first == 'Z';
+            return ((first == 'V' && allowVoid) || validPrimitiveChar(first));
         }
         if (first == '[') {
             int dimensions = 0;
@@ -267,17 +283,10 @@ public final class Validation {
                 ++index; // skip ;
             } else {
                 // Must be a non-void primitive.
-                char ch = (char) bytes.byteAt(index);
-                if (!(ch == 'B' ||
-                                ch == 'C' ||
-                                ch == 'D' ||
-                                ch == 'F' ||
-                                ch == 'I' ||
-                                ch == 'J' ||
-                                ch == 'S' ||
-                                ch == 'Z')) {
+                if (!validPrimitiveChar(bytes.byteAt(index))) {
                     return false;
                 }
+
                 ++index; // skip
             }
         }
@@ -287,9 +296,25 @@ public final class Validation {
         assert bytes.byteAt(index) == ')';
         // Validate return type.
         if (isInitOrClinit) {
-            return bytes.subSequence(index + 1, bytes.length() - index - 1).contentEquals(Symbol.Type._void);
+            return bytes.byteAt(index + 1) == 'V' && bytes.length() == index + 2;
         } else {
             return validTypeDescriptor(bytes.subSequence(index + 1, bytes.length() - index - 1), true);
+        }
+    }
+
+    private static boolean validPrimitiveChar(byte ch) {
+        switch (ch) {
+            case 'B':
+            case 'C':
+            case 'D':
+            case 'F':
+            case 'I':
+            case 'J':
+            case 'S':
+            case 'Z':
+                return true;
+            default:
+                return false;
         }
     }
 
