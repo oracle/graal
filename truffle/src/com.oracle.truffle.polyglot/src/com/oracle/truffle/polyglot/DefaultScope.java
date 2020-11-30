@@ -360,6 +360,7 @@ final class DefaultScope {
         }
 
         @ExportMessage
+        @TruffleBoundary
         Object readMember(String member) throws UnsupportedMessageException {
             try {
                 int index = Integer.parseInt(member);
