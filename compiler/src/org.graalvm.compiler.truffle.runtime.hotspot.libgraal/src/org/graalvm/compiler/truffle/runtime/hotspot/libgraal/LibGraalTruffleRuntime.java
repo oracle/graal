@@ -115,20 +115,4 @@ final class LibGraalTruffleRuntime extends AbstractHotSpotTruffleRuntime {
             return TruffleToLibGraalCalls.isPrintGraphEnabled(getIsolateThread(), handle());
         }
     }
-
-    @SuppressWarnings("unused")
-    @Override
-    public int enterLibGraalScope() {
-        final LibGraalScope scope = new LibGraalScope();
-        return scope.getDepth();
-    }
-
-    @Override
-    public void exitLibGraalScope(int expectedDepth) {
-        LibGraalScope s = LibGraalScope.current();
-        if (s.getDepth() != expectedDepth) {
-            throw new IllegalStateException("The current nesting depth " + s.getDepth() + " is not equal to the expected depth " + expectedDepth);
-        }
-        s.close();
-    }
 }

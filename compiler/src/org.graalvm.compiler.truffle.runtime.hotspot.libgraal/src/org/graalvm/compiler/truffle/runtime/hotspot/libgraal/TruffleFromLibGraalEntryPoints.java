@@ -121,6 +121,7 @@ import jdk.vm.ci.meta.JavaKind;
 import jdk.vm.ci.meta.ResolvedJavaField;
 import jdk.vm.ci.meta.ResolvedJavaMethod;
 import jdk.vm.ci.meta.ResolvedJavaType;
+import org.graalvm.libgraal.LibGraalScope;
 
 /**
  * Entry points in HotSpot for {@link TruffleFromLibGraal calls} from libgraal.
@@ -221,13 +222,18 @@ final class TruffleFromLibGraalEntryPoints {
     }
 
     @TruffleFromLibGraal(EnterLibGraalScope)
-    static int enterLibGraalScope(Object truffleRuntime) {
-        return ((HotSpotTruffleCompilerRuntime) truffleRuntime).enterLibGraalScope();
+    static int enterLibGraalScope() {
+        final LibGraalScope scope = new LibGraalScope();
+        return scope.getDepth();
     }
 
     @TruffleFromLibGraal(ExitLibGraalScope)
-    static void exitLibGraalScope(Object truffleRuntime, int expectedDepth) {
-        ((HotSpotTruffleCompilerRuntime) truffleRuntime).exitLibGraalScope(expectedDepth);
+    static void exitLibGraalScope(int expectedDepth) {
+        LibGraalScope s = LibGraalScope.current();
+        if (s.getDepth() != expectedDepth) {
+            throw new IllegalStateException("The current nesting depth " + s.getDepth() + " is not equal to the expected depth " + expectedDepth);
+        }
+        s.close();
     }
 
     @TruffleFromLibGraal(GetTruffleCallBoundaryMethods)
