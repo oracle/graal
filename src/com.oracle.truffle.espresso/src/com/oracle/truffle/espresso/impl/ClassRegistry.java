@@ -354,8 +354,8 @@ public abstract class ClassRegistry implements ContextAccess {
         return (ObjectKlass) klass;
     }
 
-    public void onClassRenamed(ObjectKlass oldKlass, String newName) {
-        Symbol<Symbol.Type> newType = context.getTypes().fromClassGetName(newName);
+    public void onClassRenamed(ObjectKlass oldKlass, Symbol<Symbol.Name> newName) {
+        Symbol<Symbol.Type> newType = context.getTypes().fromName(newName);
         classes.put(newType, new ClassRegistries.RegistryEntry(oldKlass));
     }
 

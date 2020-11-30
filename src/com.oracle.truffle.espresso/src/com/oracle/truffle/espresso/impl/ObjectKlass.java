@@ -1267,9 +1267,9 @@ public final class ObjectKlass extends Klass {
         return !Modifier.isStatic(m.getFlags()) && !Modifier.isPrivate(m.getFlags()) && !Name._init_.equals(m.getName());
     }
 
-    public void patchClassName(String newName) {
-        type = getContext().getTypes().fromClassGetName(newName);
-        name = getContext().getNames().getOrCreate(newName);
+    public void patchClassName(Symbol<Symbol.Name> newName) {
+        name = newName;
+        type = getContext().getTypes().fromName(newName);
     }
 
     public void removeByRedefinition() {

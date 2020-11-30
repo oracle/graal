@@ -22,6 +22,7 @@
  */
 package com.oracle.truffle.espresso.impl;
 
+import com.oracle.truffle.espresso.descriptors.Symbol;
 import com.oracle.truffle.espresso.runtime.StaticObject;
 
 import java.lang.ref.WeakReference;
@@ -30,7 +31,7 @@ import java.util.ArrayList;
 // Represents ClassInfo instances that are cached in the global
 // cache for all classes having been involved in a redefinition
 public final class ImmutableClassInfo extends ClassInfo {
-    private final String name; // key in global cache
+    private final Symbol<Symbol.Name> name; // key in global cache
     private final WeakReference<ObjectKlass> klass;
     private final StaticObject classLoader;
     private final byte[] bytes;
@@ -43,8 +44,8 @@ public final class ImmutableClassInfo extends ClassInfo {
 
     private final ArrayList<ImmutableClassInfo> innerClasses;
 
-    ImmutableClassInfo(ObjectKlass klass, String originalName, StaticObject classLoader, String classFingerprint, String methodFingerprint, String fieldFingerprint, String enclosingMethodFingerprint,
-                    ArrayList<ImmutableClassInfo> inners, byte[] bytes) {
+    ImmutableClassInfo(ObjectKlass klass, Symbol<Symbol.Name> originalName, StaticObject classLoader, String classFingerprint, String methodFingerprint, String fieldFingerprint,
+                    String enclosingMethodFingerprint, ArrayList<ImmutableClassInfo> inners, byte[] bytes) {
         this.klass = new WeakReference<>(klass);
         this.name = originalName;
         this.classLoader = classLoader;
@@ -57,7 +58,7 @@ public final class ImmutableClassInfo extends ClassInfo {
     }
 
     @Override
-    public String getName() {
+    public Symbol<Symbol.Name> getName() {
         return name;
     }
 

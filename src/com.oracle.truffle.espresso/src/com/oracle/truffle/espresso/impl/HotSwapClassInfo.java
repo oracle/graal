@@ -22,6 +22,7 @@
  */
 package com.oracle.truffle.espresso.impl;
 
+import com.oracle.truffle.espresso.descriptors.Symbol;
 import com.oracle.truffle.espresso.runtime.StaticObject;
 
 import java.lang.ref.WeakReference;
@@ -35,8 +36,8 @@ public final class HotSwapClassInfo extends ClassInfo {
     private byte[] bytes;
     private byte[] patchedBytes;
     private final StaticObject classLoader;
-    private final String originalName;
-    private String newName;
+    private final Symbol<Symbol.Name> originalName;
+    private Symbol<Symbol.Name> newName;
 
     // below fields constitute the "fingerprint" of the class relevant for matching
     private String classFingerprint;
@@ -53,7 +54,7 @@ public final class HotSwapClassInfo extends ClassInfo {
     private HotSwapClassInfo outerClassInfo;
     private int nextNewClass = 1;
 
-    HotSwapClassInfo(ObjectKlass klass, String originalName, StaticObject classLoader, String classFingerprint, String methodFingerprint, String fieldFingerprint, String enclosingMethodFingerprint,
+    HotSwapClassInfo(ObjectKlass klass, Symbol<Symbol.Name> originalName, StaticObject classLoader, String classFingerprint, String methodFingerprint, String fieldFingerprint, String enclosingMethodFingerprint,
                     ArrayList<HotSwapClassInfo> inners, byte[] bytes) {
         this.thisKlass = new WeakReference<>(klass);
         this.originalName = originalName;
@@ -81,15 +82,15 @@ public final class HotSwapClassInfo extends ClassInfo {
     }
 
     @Override
-    public String getName() {
+    public Symbol<Symbol.Name> getName() {
         return originalName;
     }
 
-    public String getNewName() {
+    public Symbol<Symbol.Name> getNewName() {
         return newName != null ? newName : originalName;
     }
 
-    public void rename(String name) {
+    public void rename(Symbol<Symbol.Name> name) {
         this.newName = name;
     }
 
@@ -107,7 +108,7 @@ public final class HotSwapClassInfo extends ClassInfo {
         inner.setOuterClass(this);
     }
 
-    public boolean knowsInnerClass(String innerName) {
+    public boolean knowsInnerClass(Symbol<Symbol.Name> innerName) {
         for (ClassInfo innerClass : innerClasses) {
             if (innerName.equals(innerClass.getName())) {
                 return true;

@@ -202,7 +202,7 @@ public final class ClassRedefinition {
                     // if there is a currently loaded class under that name
                     // we have to replace that in the class loader registry etc.
                     // otherwise, don't eagerly define the new class
-                    Symbol<Symbol.Type> type = context.getTypes().fromClassGetName(classInfo.getName());
+                    Symbol<Symbol.Type> type = context.getTypes().fromName(classInfo.getName());
                     ClassRegistry classRegistry = context.getRegistries().getClassRegistry(classInfo.getClassLoader());
                     Klass loadedKlass = classRegistry.findLoadedKlass(type);
                     if (loadedKlass != null) {
@@ -590,7 +590,7 @@ public final class ClassRedefinition {
             // 4. update the JDWP refType ID for the klass instance
             // 5. replace/record a classloader constraint for the new type and klass combination
 
-            Symbol<Symbol.Type> type = context.getTypes().fromClassGetName(packet.info.getName());
+            Symbol<Symbol.Type> type = context.getTypes().fromName(packet.info.getName());
             Klass loadedKlass = classRegistry.findLoadedKlass(type);
             if (loadedKlass != null) {
                 context.getRegistries().removeUnloadedKlassConstraint(loadedKlass, type);

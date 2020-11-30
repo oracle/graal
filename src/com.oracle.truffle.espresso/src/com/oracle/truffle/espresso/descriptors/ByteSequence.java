@@ -143,6 +143,18 @@ public abstract class ByteSequence {
         return true;
     }
 
+    public final boolean contentStartsWith(ByteSequence other) {
+        if (length() < other.length()) {
+            return false;
+        }
+        for (int i = 0; i < other.length(); ++i) {
+            if (byteAt(i) != other.byteAt(i)) {
+                return false;
+            }
+        }
+        return true;
+    }
+
     @Override
     public String toString() {
         try {
