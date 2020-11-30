@@ -353,12 +353,14 @@ public class GraphKit implements GraphBuilderTool {
     }
 
     /**
-     * Recursively {@linkplain #inline inlines} all invocations currently in the graph.
+     * Recursively {@linkplain #inlineAsIntrinsic inlines} all invocations currently in the graph.
+     * The graph of the inlined method is processed in the same manner as for snippets and method
+     * substitutions (e.g. intrinsics).
      */
-    public void inlineInvokes(String reason, String phase) {
+    public void inlineInvokesAsIntrinsics(String reason, String phase) {
         while (!graph.getNodes().filter(InvokeNode.class).isEmpty()) {
             for (InvokeNode invoke : graph.getNodes().filter(InvokeNode.class).snapshot()) {
-                inline(invoke, reason, phase);
+                inlineAsIntrinsic(invoke, reason, phase);
             }
         }
 
@@ -368,9 +370,9 @@ public class GraphKit implements GraphBuilderTool {
 
     /**
      * Inlines a given invocation to a method. The graph of the inlined method is processed in the
-     * same manner as for snippets and method substitutions.
+     * same manner as for snippets and method substitutions (e.g. intrinsics).
      */
-    public void inline(Invoke invoke, String reason, String phase) {
+    public void inlineAsIntrinsic(Invoke invoke, String reason, String phase) {
         assert invoke instanceof Node;
         Node invokeNode = (Node) invoke;
         ResolvedJavaMethod method = invoke.callTarget().targetMethod();
@@ -391,6 +393,26 @@ public class GraphKit implements GraphBuilderTool {
         new DeadCodeEliminationPhase(Optionality.Required).apply(calleeGraph);
 
         InliningUtil.inline(invoke, calleeGraph, false, method, reason, phase);
+    }
+
+    public void inline(Invoke invoke, String reason, String phase) {
+        assert invoke instanceof Node;
+        Node invokeNode = (Node) invoke;
+        ResolvedJavaMethod methodToInline = invoke.callTarget().targetMethod();
+        Plugins plugins = new Plugins(graphBuilderPlugins);
+        GraphBuilderConfiguration config = GraphBuilderConfiguration.getDefault(plugins);
+        StructuredGraph calleeGraph = new StructuredGraph.Builder(invokeNode.getOptions(), invokeNode.getDebug()).method(methodToInline).trackNodeSourcePosition(
+                        invokeNode.graph().trackNodeSourcePosition()).setIsSubstitution(false).build();
+        /*
+         * Using null as the intrinsic context makes the ByteCodeParser inline invokes using
+         * InliningScope instead of IntrinsicScope. This allows exceptions to be a part of the
+         * inlined method.
+         */
+        GraphBuilderPhase.Instance instance = createGraphBuilderInstance(providers, config, OptimisticOptimizations.NONE, null);
+        instance.apply(calleeGraph);
+
+        new DeadCodeEliminationPhase().apply(calleeGraph);
+        InliningUtil.inline(invoke, calleeGraph, false, methodToInline, reason, phase);
     }
 
     protected GraphBuilderPhase.Instance createGraphBuilderInstance(Providers theProviders, GraphBuilderConfiguration graphBuilderConfig, OptimisticOptimizations optimisticOpts,
