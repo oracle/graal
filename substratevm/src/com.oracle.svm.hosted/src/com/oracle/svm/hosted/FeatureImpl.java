@@ -460,6 +460,19 @@ public class FeatureImpl {
         }
     }
 
+    public static class BeforeUniverseBuildingAccessImpl extends FeatureAccessImpl implements Feature.BeforeUniverseBuildingAccess {
+        protected final HostedMetaAccess hMetaAccess;
+
+        BeforeUniverseBuildingAccessImpl(FeatureHandler featureHandler, ImageClassLoader imageClassLoader, DebugContext debugContext, HostedMetaAccess hMetaAccess) {
+            super(featureHandler, imageClassLoader, debugContext);
+            this.hMetaAccess = hMetaAccess;
+        }
+
+        public HostedMetaAccess getMetaAccess() {
+            return hMetaAccess;
+        }
+    }
+
     public static class CompilationAccessImpl extends FeatureAccessImpl implements Feature.CompilationAccess {
 
         protected final AnalysisUniverse aUniverse;
