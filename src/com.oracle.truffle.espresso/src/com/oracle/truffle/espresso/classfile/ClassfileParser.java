@@ -113,9 +113,10 @@ public final class ClassfileParser {
     private static final DebugTimer CONSTANT_POOL = DebugTimer.create("constant pool", KLASS_PARSE);
     private static final DebugTimer PARSE_INTERFACES = DebugTimer.create("interfaces", KLASS_PARSE);
 
-    private static final DebugTimer PARSE_METHOD = DebugTimer.create("methods", KLASS_PARSE);
-    private static final DebugTimer NO_DUP_CHECK = DebugTimer.create("method dup", PARSE_METHOD);
-    private static final DebugTimer METHOD_INIT = DebugTimer.create("method parse init", PARSE_METHOD);
+    private static final DebugTimer PARSE_METHODS = DebugTimer.create("methods", KLASS_PARSE);
+    private static final DebugTimer NO_DUP_CHECK = DebugTimer.create("method dup", PARSE_METHODS);
+    private static final DebugTimer PARSE_SINGLE_METHOD = DebugTimer.create("single method", PARSE_METHODS);
+    private static final DebugTimer METHOD_INIT = DebugTimer.create("method parse init", PARSE_METHODS);
     private static final DebugTimer NAME_CHECK = DebugTimer.create("name check", METHOD_INIT);
     private static final DebugTimer SIGNATURE_CHECK = DebugTimer.create("signature check", METHOD_INIT);
 
@@ -392,7 +393,7 @@ public final class ClassfileParser {
             fields = parseFields(isInterface);
         }
         final ParserMethod[] methods;
-        try (DebugCloseable closeable = PARSE_METHOD.scope(context.getTimers())) {
+        try (DebugCloseable closeable = PARSE_METHODS.scope(context.getTimers())) {
             methods = parseMethods(isInterface);
         }
         final Attribute[] attributes;
@@ -418,7 +419,10 @@ public final class ClassfileParser {
          */
         final HashSet<MethodKey> dup = new HashSet<>(methodCount);
         for (int i = 0; i < methodCount; ++i) {
-            ParserMethod method = parseMethod(isInterface);
+            ParserMethod method;
+            try (DebugCloseable closeable = PARSE_SINGLE_METHOD.scope(context.getTimers())) {
+                method = parseMethod(isInterface);
+            }
             methods[i] = method;
             try (DebugCloseable closeable = NO_DUP_CHECK.scope(context.getTimers())) {
                 if (!dup.add(new MethodKey(method))) {
@@ -665,7 +669,12 @@ public final class ClassfileParser {
              */
             try (DebugCloseable signatureCheck = SIGNATURE_CHECK.scope(context.getTimers())) {
                 // Checks for void method if init or clinit.
-                pool.utf8At(signatureIndex).validateSignature(isInit || isClinit);
+                /*
+                 * Obtain slot number for the signature. Forces a validation, but better in startup
+                 * than going twice through the sequence, once for validation, once for slots.
+                 */
+                int slots = pool.utf8At(signatureIndex).validateSignatureGetSlots(isInit || isClinit);
+
                 signature = Signatures.check(pool.symbolAt(signatureIndex, "method descriptor"));
                 if (isClinit && majorVersion >= JAVA_7_VERSION) {
                     // Checks clinit takes no arguments.
@@ -674,7 +683,7 @@ public final class ClassfileParser {
                     }
                 }
 
-                if (Signatures.slotsForParameters(context.getSignatures().parsed(signature)) + (isStatic ? 0 : 1) > 255) {
+                if (slots + (isStatic ? 0 : 1) > 255) {
                     throw ConstantPool.classFormatError("Too many arguments in method signature: " + signature);
                 }
 
@@ -699,7 +708,7 @@ public final class ClassfileParser {
         for (int i = 0; i < attributeCount; ++i) {
             final int attributeNameIndex = stream.readU2();
             final Symbol<Name> attributeName = pool.symbolAt(attributeNameIndex, "attribute name");
-            try (DebugCloseable closeable = getTimer("m: " + attributeName.toString(), PARSE_METHOD).scope(context.getTimers())) {
+            try (DebugCloseable closeable = getTimer("m: " + attributeName.toString(), PARSE_METHODS).scope(context.getTimers())) {
                 final int attributeSize = stream.readS4();
                 final int startPosition = stream.getPosition();
                 if (attributeName.equals(Name.Code)) {
@@ -1222,15 +1231,15 @@ public final class ClassfileParser {
     private VerificationTypeInfo parseVerificationTypeInfo() {
         int tag = stream.readU1();
         if (tag < ITEM_InitObject) {
-            return new PrimitiveTypeInfo(tag);
+            return PrimitiveTypeInfo.get(tag);
         }
         switch (tag) {
             case ITEM_InitObject:
-                return new UninitializedThis(tag);
+                return UninitializedThis.get();
             case ITEM_Object:
-                return new ReferenceVariable(tag, stream.readU2());
+                return new ReferenceVariable(stream.readU2());
             case ITEM_NewObject:
-                return new UninitializedVariable(tag, stream.readU2());
+                return new UninitializedVariable(stream.readU2());
             default:
                 throw ConstantPool.classFormatError("Unrecognized verification type info tag: " + tag);
         }

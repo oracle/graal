@@ -134,6 +134,22 @@ public final class Utf8Constant implements PoolConstant {
         }
     }
 
+    public int validateSignatureGetSlots(boolean isInitOrClinit) {
+        validateUTF8();
+        int mask;
+        if (isInitOrClinit) {
+            mask = VALID_INIT_SIGNATURE;
+        } else {
+            mask = VALID_SIGNATURE;
+        }
+        int slots = Validation.validSignatureDescriptorGetSlots(value, isInitOrClinit);
+        if (slots < 0) {
+            throw ConstantPool.classFormatError("Invalid signature descriptor: " + value);
+        }
+        validationCache |= (mask | VALID_SIGNATURE);
+        return slots;
+    }
+
     @Override
     public String toString() {
         return value.toString();
