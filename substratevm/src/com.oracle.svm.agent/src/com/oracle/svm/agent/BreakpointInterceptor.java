@@ -145,9 +145,6 @@ final class BreakpointInterceptor {
     /** Enables experimental support for instrumenting class lookups via {@code ClassLoader}. */
     private static boolean experimentalClassLoaderSupport = false;
 
-    /** Enables support for non-interpreted method handles. */
-    private static boolean methodHandleSupport = false;
-
     /**
      * Locations in methods where explicit calls to {@code ClassLoader.loadClass} have been found.
      */
@@ -750,10 +747,6 @@ final class BreakpointInterceptor {
     }
 
     private static boolean resolveMemberName(JNIEnvironment jni, Breakpoint bp) {
-        if (!methodHandleSupport) {
-            return false;
-        }
-
         JNIObjectHandle factory = getObjectArgument(0);
         byte refKind = getByteArgument(1);
         JNIObjectHandle unresolvedName = getObjectArgument(2);
@@ -1030,12 +1023,11 @@ final class BreakpointInterceptor {
                     JvmtiEnv.class, JNIEnvironment.class, JNIObjectHandle.class, JNIObjectHandle.class);
 
     public static void onLoad(JvmtiEnv jvmti, JvmtiEventCallbacks callbacks, TraceWriter writer, NativeImageAgent nativeImageTracingAgent,
-                    boolean exptlClassLoaderSupport, boolean supportMethodHandles) {
+                    boolean exptlClassLoaderSupport) {
 
         BreakpointInterceptor.traceWriter = writer;
         BreakpointInterceptor.agent = nativeImageTracingAgent;
         BreakpointInterceptor.experimentalClassLoaderSupport = exptlClassLoaderSupport;
-        BreakpointInterceptor.methodHandleSupport = supportMethodHandles;
 
         JvmtiCapabilities capabilities = UnmanagedMemory.calloc(SizeOf.get(JvmtiCapabilities.class));
         check(jvmti.getFunctions().GetCapabilities().invoke(jvmti, capabilities));

@@ -221,6 +221,6 @@ public class NativeImageOptions {
     }
 
     public static boolean areMethodHandlesSupported() {
-        return JavaVersionUtil.JAVA_SPEC >= 11 && NativeImageOptions.ReportUnsupportedElementsAtRuntime.getValue();
+        return JavaVersionUtil.JAVA_SPEC >= 11;
     }
 }
