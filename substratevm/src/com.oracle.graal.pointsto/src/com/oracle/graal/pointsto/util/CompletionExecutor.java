@@ -98,7 +98,7 @@ public class CompletionExecutor {
     }
 
     public void init(Timing newTiming) {
-// assert isSequential() || !executorService.hasQueuedSubmissions();
+        assert isSequential() || !(executorService instanceof ForkJoinPool) || !((ForkJoinPool) executorService).hasQueuedSubmissions();
 
         timing = newTiming;
         setState(State.BEFORE_START);
@@ -269,8 +269,7 @@ public class CompletionExecutor {
     }
 
     public void shutdown() {
-// assert isSequential() || !executorService.hasQueuedSubmissions() : "There should be no queued
-// submissions on shutdown.";
+        assert isSequential() || !(executorService instanceof ForkJoinPool) || !((ForkJoinPool) executorService).hasQueuedSubmissions() : "There should be no queued submissions on shutdown.";
         assert completedOperations.sum() == postedOperations.sum() : "Posted operations (" + postedOperations.sum() + ") must match completed (" + completedOperations.sum() + ") operations";
         setState(State.UNUSED);
     }

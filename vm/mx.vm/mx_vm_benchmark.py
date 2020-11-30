@@ -480,7 +480,7 @@ class NativeImageVM(GraalVm):
                 executable_name_args = ['-H:Name=' + final_image_name]
                 pgo_verification_output_path = os.path.join(config.output_dir, final_image_name + '-probabilities.log')
                 pgo_args = ['--pgo=' + latest_profile_path, '-H:+VerifyPGOProfiles', '-H:VerificationDumpFile=' + pgo_verification_output_path] if self.pgo_instrumented_iterations > 0 or self.hotspot_pgo else []
-                pgo_args += ['-H:+AOTExpansionInline'] if self.pgo_aot_inline else ['-H:-AOTExpansionInline']
+                pgo_args += ['-H:+AOTInliner'] if self.pgo_aot_inline else ['-H:-AOTInliner']
                 final_image_command = base_image_build_args + executable_name_args + pgo_args
                 with stages.set_command(final_image_command) as s:
                     s.execute_command()

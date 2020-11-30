@@ -325,16 +325,12 @@ public class CompileQueue {
         this.runtimeConfig = runtimeConfigBuilder.getRuntimeConfig();
         this.deoptimizeAll = deoptimizeAll;
         this.dataCache = new ConcurrentHashMap<>();
-        this.executor = createCompletionExecutor(universe.getBigBang(), executorService);
+        this.executor = new CompletionExecutor(universe.getBigBang(), executorService, universe.getBigBang().getHeartbeatCallback());
         this.featureHandler = featureHandler;
         this.snippetReflection = snippetReflection;
 
         // let aotjs override the replacements registration
         callForReplacements(debug, runtimeConfig);
-    }
-
-    public CompletionExecutor createCompletionExecutor(BigBang bb, ForkJoinPool executorService) {
-        return new CompletionExecutor(bb, executorService, bb.getHeartbeatCallback());
     }
 
     public static OptimisticOptimizations getOptimisticOpts() {
@@ -384,7 +380,7 @@ public class CompileQueue {
         return regularSuites == null && deoptTargetLIRSuites == null && regularLIRSuites == null && deoptTargetSuites == null;
     }
 
-    protected void createSuites() {
+    private void createSuites() {
         regularSuites = NativeImageGenerator.createSuites(featureHandler, runtimeConfig, snippetReflection, true);
         modifyRegularSuites(regularSuites);
         deoptTargetSuites = NativeImageGenerator.createSuites(featureHandler, runtimeConfig, snippetReflection, true);

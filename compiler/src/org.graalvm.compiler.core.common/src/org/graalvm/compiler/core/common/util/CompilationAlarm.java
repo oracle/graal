@@ -39,7 +39,7 @@ public final class CompilationAlarm implements AutoCloseable {
         // @formatter:off
         @Option(help = "Time limit in seconds before a compilation expires (0 to disable the limit). " +
                        "The compilation alarm will be implicitly disabled if assertions are enabled.", type = OptionType.Debug)
-        public static final OptionKey<Integer> CompilationExpirationPeriod = new OptionKey<>(0);
+        public static final OptionKey<Integer> CompilationExpirationPeriod = new OptionKey<>(300);
         // @formatter:on
     }
 
