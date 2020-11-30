@@ -660,15 +660,16 @@ class AgentScriptJsBenchmarkSuite(mx_benchmark.VmBenchmarkSuite):
 
 
 class PolyBenchBenchmarkSuite(mx_benchmark.VmBenchmarkSuite):
+
+    _configuration = {
+            "peak-time": "interpreter",
+            "compilation-time": "compiler",
+            "partial-evaluation-time": "compiler",
+        }
+
     def __init__(self):
         super(PolyBenchBenchmarkSuite, self).__init__()
         self._extensions = [".js", ".rb", ".wasm"]
-        self._benchmarks = []
-        for group in ["interpreter"]:
-            for (_, _, files) in os.walk(os.path.join(_suite.dir, "benchmarks", group)):
-                for f in files:
-                    if os.path.splitext(f)[1] in self._extensions:
-                        self._benchmarks.append(group + "/" + f)
 
     def group(self):
         return "Graal"
@@ -680,7 +681,13 @@ class PolyBenchBenchmarkSuite(mx_benchmark.VmBenchmarkSuite):
         return "polybench"
 
     def benchmarkList(self, bmSuiteArgs):
-        return self._benchmarks
+        benchmarks = []
+        for group in [self._benchmark_folder_for_metric(bmSuiteArgs)]:
+            for (_, _, files) in os.walk(os.path.join(_suite.dir, "benchmarks", group)):
+                for f in files:
+                    if os.path.splitext(f)[1] in self._extensions:
+                        benchmarks.append(group + "/" + f)
+        return benchmarks
 
     def createCommandLineArgs(self, benchmarks, bmSuiteArgs):
         if len(benchmarks) != 1:
@@ -706,6 +713,19 @@ class PolyBenchBenchmarkSuite(mx_benchmark.VmBenchmarkSuite):
             })
         ]
 
+    def _benchmark_folder_for_metric(self, bmSuiteArgs):
+        name = None
+        for arg in bmSuiteArgs:
+            if arg.startswith("--metric="):
+                name =  arg[len("--metric="):]
+                break
+        name = "peak-time" if not name else name
+        folder = PolyBenchBenchmarkSuite._configuration.get(name)
+        if not folder:
+            mx.abort("Unsupported metric {0}, supported metrics are {1}".format(
+                    name,
+                    ', '.join(PolyBenchBenchmarkSuite._configuration.keys())))
+        return folder
 
 class PolyBenchVm(GraalVm):
     def run(self, cwd, args):

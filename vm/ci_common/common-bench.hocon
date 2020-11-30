@@ -22,7 +22,7 @@ vm_bench_js_linux: ${vm_bench_common} ${vm_java_8} ${svm-common-linux-amd64} ${s
   ]
 }
 
-vm_bench_polybench_linux: ${vm_bench_common} ${vm_java_8} ${svm-common-linux-amd64} ${truffleruby_linux} ${custom_vm_linux} {
+vm_bench_polybench_linux: ${vm_bench_common} ${vm_java_11} ${svm-common-linux-amd64} ${truffleruby_linux} ${custom_vm_linux} {
   base_cmd: [mx, --env, "polybench-${VM_ENV}"]
   bench_cmd: ${vm_bench_polybench_linux.base_cmd} [benchmark, "polybench:*", --results-file, ${vm_bench_polybench_linux.result_file}, --, "--polybench-vm=graalvm-${VM_ENV}"]
   downloads: {
@@ -36,6 +36,10 @@ vm_bench_polybench_linux: ${vm_bench_common} ${vm_java_8} ${svm-common-linux-amd
     ${vm_bench_polybench_linux.bench_cmd} ["--polybench-vm-config=jvm-interpreter"]
     ${vm_bench_common.upload}
     ${vm_bench_polybench_linux.bench_cmd} ["--polybench-vm-config=native-interpreter"]
+    ${vm_bench_common.upload}
+    ${vm_bench_polybench_linux.bench_cmd} ["--polybench-vm-config=jvm-standard", "--metric=compilation-time"]
+    ${vm_bench_common.upload}
+    ${vm_bench_polybench_linux.bench_cmd} ["--polybench-vm-config=jvm-standard", "--metric=partial-evaluation-time"]
     ${vm_bench_common.upload}
   ]
   notify_emails: [ "aleksandar.prokopec@oracle.com" ]
