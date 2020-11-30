@@ -29,6 +29,7 @@
  */
 package com.oracle.truffle.llvm.runtime.interop.access;
 
+import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.HashMap;
 import java.util.HashSet;
@@ -370,6 +371,9 @@ public abstract class LLVMInteropType implements TruffleObject {
                 }
             }
             List<Pair<StructMember, ClazzInheritance>> list = getMemberAccessList(ident);
+            if (list == null) {
+                throw UnknownIdentifierException.create(ident);
+            }
             LLVMForeignGetSuperElemPtrNode[] arr = new LLVMForeignGetSuperElemPtrNode[list.size()];
             Struct struct = null;
             for (int i = 0; i < arr.length; i++) {
@@ -399,7 +403,7 @@ public abstract class LLVMInteropType implements TruffleObject {
                     }
                 }
             }
-            throw UnknownIdentifierException.create(ident);
+            return null;
         }
 
         @Override
@@ -417,6 +421,22 @@ public abstract class LLVMInteropType implements TruffleObject {
                 }
             }
             return null;
+        }
+
+        @TruffleBoundary
+        public String[] getVtableAccessNames() {
+            if (!hasVirtualMethods()) {
+                throw new IllegalStateException("vtable of given LLVMInteropType.Clazz type does not exist");
+            }
+            ArrayList<String> list = new ArrayList<>();
+            StructMember structMember = findMember(0);
+            list.add(structMember.name);
+
+            while (structMember.type instanceof LLVMInteropType.Clazz) {
+                structMember = ((Clazz) structMember.type).findMember(0);
+                list.add(structMember.name);
+            }
+            return list.toArray(new String[0]);
         }
 
         public Set<Clazz> getSuperClasses() {

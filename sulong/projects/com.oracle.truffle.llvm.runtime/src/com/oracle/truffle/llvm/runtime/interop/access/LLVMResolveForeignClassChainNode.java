@@ -32,9 +32,11 @@ package com.oracle.truffle.llvm.runtime.interop.access;
 
 import org.graalvm.collections.Pair;
 
+import com.oracle.truffle.api.dsl.Cached;
 import com.oracle.truffle.api.dsl.GenerateUncached;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.interop.UnknownIdentifierException;
+import com.oracle.truffle.api.nodes.ExplodeLoop;
 import com.oracle.truffle.llvm.runtime.interop.access.LLVMInteropType.Struct;
 import com.oracle.truffle.llvm.runtime.interop.export.LLVMForeignGetSuperElemPtrNode;
 import com.oracle.truffle.llvm.runtime.nodes.api.LLVMNode;
@@ -44,14 +46,36 @@ import com.oracle.truffle.llvm.runtime.pointer.LLVMPointer;
 public abstract class LLVMResolveForeignClassChainNode extends LLVMNode {
     public abstract LLVMPointer execute(LLVMPointer receiver, String ident, LLVMInteropType exportType) throws UnknownIdentifierException;
 
-    @Specialization
-    public LLVMPointer doClazzFieldReads(LLVMPointer receiver, String ident, LLVMInteropType.Clazz clazz) throws UnknownIdentifierException {
+    /**
+     * @param ident
+     * @param clazz
+     * @param classIdentHash
+     */
+    @Specialization(guards = "classIdentHash == getCIHash(clazz, ident)")
+    @ExplodeLoop
+    public LLVMPointer doClassResolvingCached(LLVMPointer receiver, String ident, LLVMInteropType.Clazz clazz,
+                    @Cached(value = "getCIHash(clazz, ident)", allowUncached = true) int classIdentHash,
+                    @Cached(value = "clazz.getSuperElementPtrChain(ident)") Pair<LLVMForeignGetSuperElemPtrNode[], Struct> p) {
+        LLVMPointer curReceiver = receiver;
+        for (LLVMForeignGetSuperElemPtrNode n : p.getLeft()) {
+            curReceiver = insert(n).execute(curReceiver);
+        }
+        return curReceiver.export(p.getRight() == null ? receiver.getExportType() : p.getRight());
+    }
+
+    @Specialization(replaces = "doClassResolvingCached")
+    @ExplodeLoop
+    public LLVMPointer doClazzResolving(LLVMPointer receiver, String ident, LLVMInteropType.Clazz clazz) throws UnknownIdentifierException {
         LLVMPointer curReceiver = receiver;
         Pair<LLVMForeignGetSuperElemPtrNode[], Struct> p = clazz.getSuperElementPtrChain(ident);
         for (LLVMForeignGetSuperElemPtrNode n : p.getLeft()) {
             curReceiver = insert(n).execute(curReceiver);
         }
         return curReceiver.export(p.getRight() == null ? receiver.getExportType() : p.getRight());
+    }
+
+    static int getCIHash(LLVMInteropType.Clazz o1, String o2) {
+        return o1.hashCode() ^ o2.hashCode();
     }
 
     static boolean isClazzType(Object o) {
