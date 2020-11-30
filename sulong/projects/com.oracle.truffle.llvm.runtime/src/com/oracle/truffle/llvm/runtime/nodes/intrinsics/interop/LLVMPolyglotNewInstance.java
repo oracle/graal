@@ -69,7 +69,6 @@ public abstract class LLVMPolyglotNewInstance extends LLVMIntrinsic {
         this.foreignNewInstance = InteropLibrary.getFactory().createDispatched(5);
     }
 
-    @SuppressWarnings("try")
     @Specialization
     @ExplodeLoop
     protected Object doNew(VirtualFrame frame, LLVMManagedPointer value,

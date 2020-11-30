@@ -37,6 +37,7 @@ import com.oracle.truffle.api.dsl.Cached.Exclusive;
 import com.oracle.truffle.api.dsl.Cached.Shared;
 import com.oracle.truffle.api.dsl.CachedContext;
 import com.oracle.truffle.api.dsl.Fallback;
+import com.oracle.truffle.api.dsl.ImportStatic;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.interop.ArityException;
 import com.oracle.truffle.api.interop.InteropLibrary;
@@ -161,6 +162,7 @@ abstract class CommonPointerLibraries {
     }
 
     @ExportMessage
+    @ImportStatic(LLVMLanguage.class)
     static class InvokeMember {
         /**
          * @param member
@@ -172,7 +174,7 @@ abstract class CommonPointerLibraries {
          * @param llvmFunction
          * @see InteropLibrary#invokeMember(Object, String, Object[])
          */
-        @Specialization(guards = {"asClazz(receiver)==clazz", "member.equals(methodName)", "argCount==arguments.length"})
+        @Specialization(guards = {"asClazz(receiver)==clazz", "member.equals(methodName)", "argCount==arguments.length"}, assumptions = "getLanguage().singleContextAssumption")
         static Object doCached(LLVMPointerImpl receiver, String member, Object[] arguments,
                         @CachedContext(LLVMLanguage.class) LLVMContext context,
                         @CachedLibrary(limit = "5") InteropLibrary interop,
@@ -188,7 +190,8 @@ abstract class CommonPointerLibraries {
 
         @Specialization(replaces = "doCached")
         static Object doResolve(LLVMPointerImpl receiver, String member, Object[] arguments,
-                        @CachedContext(LLVMLanguage.class) LLVMContext context, @CachedLibrary(limit = "5") InteropLibrary interop,
+                        @CachedContext(LLVMLanguage.class) LLVMContext context,
+                        @CachedLibrary(limit = "5") InteropLibrary interop,
                         @Cached LLVMDynAccessSymbolNode dynAccessSymbolNode)
                         throws UnsupportedMessageException, ArityException, UnsupportedTypeException, UnknownIdentifierException {
             Object[] newArguments = addSelfObject(receiver, arguments);

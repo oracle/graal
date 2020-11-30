@@ -59,7 +59,7 @@ public abstract class LLVMGetStackFromThreadNode extends LLVMNode {
      * @param currentThread
      * @see #executeWithTarget(LLVMThreadingStack, Thread)
      */
-    @Specialization(limit = "3", guards = "currentThread == cachedThread")
+    @Specialization(limit = "3", guards = "currentThread == cachedThread", assumptions = "singleContextAssumption()")
     protected LLVMStack cached(LLVMThreadingStack stack, Thread currentThread,
                     @Cached("currentThread") @SuppressWarnings("unused") Thread cachedThread,
                     @Cached("getStack(stack, cachedThread)") LLVMStack cachedStack) {
