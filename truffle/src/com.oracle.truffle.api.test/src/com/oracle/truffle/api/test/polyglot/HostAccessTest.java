@@ -43,8 +43,8 @@ package com.oracle.truffle.api.test.polyglot;
 import static com.oracle.truffle.api.test.polyglot.AbstractPolyglotTest.assertFails;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
-import static org.junit.Assert.assertNotSame;
 import static org.junit.Assert.assertNotNull;
+import static org.junit.Assert.assertNotSame;
 import static org.junit.Assert.assertNull;
 import static org.junit.Assert.assertSame;
 import static org.junit.Assert.assertTrue;
@@ -1387,6 +1387,36 @@ public class HostAccessTest {
                         targetTypeMapping(String.class, String.class, null, (v) -> "42", TargetMappingPrecedence.LOWEST));
         assertEquals("string", context.asValue(obj).invokeMember("m", "").asString());
         assertEquals("int", context.asValue(obj).invokeMember("m", 42).asString());
+    }
+
+    @SuppressWarnings("unused")
+    public static class VarArgsFunctionPrecedence {
+
+        @Export
+        public String m(String name, Function<Integer, Integer> func, Object... args) {
+            func.apply(42);
+            return "function";
+        }
+
+        @Export
+        public String m(String name, Object... args) {
+            return "object";
+        }
+    }
+
+    @Test
+    public void testVarArgsFunctionPrecedence() {
+        VarArgsFunctionPrecedence obj = new VarArgsFunctionPrecedence();
+
+        ProxyExecutable f = arguments -> 42;
+
+        setupEnv(HostAccess.ALL);
+        // both overloads are applicable but the more specific Function overload is preferred
+        assertEquals("function", context.asValue(obj).invokeMember("m", "dummy", f).asString());
+        assertEquals("function", context.asValue(obj).invokeMember("m", "dummy", f, 1, 2, 3).asString());
+
+        assertEquals("object", context.asValue(obj).invokeMember("m", "dummy").asString());
+        assertEquals("object", context.asValue(obj).invokeMember("m", "dummy", "dummy").asString());
     }
 
     @Test
