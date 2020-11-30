@@ -24,13 +24,13 @@
  */
 package com.oracle.svm.methodhandles;
 
-import static com.oracle.svm.core.util.VMError.unsupportedFeature;
-
+import java.lang.invoke.MethodHandle;
 // Checkstyle: stop
+import java.lang.reflect.Constructor;
+import java.lang.reflect.Field;
 import java.lang.reflect.Method;
 import java.lang.reflect.Modifier;
 // Checkstyle: resume
-
 import java.util.Arrays;
 
 import com.oracle.svm.core.SubstrateUtil;
@@ -48,53 +48,75 @@ final class Target_java_lang_invoke_MethodHandle {
     @Alias
     native Target_java_lang_invoke_LambdaForm internalForm();
 
+    /* All MethodHandle.invoke* methods funnel through here. */
     @Substitute(polymorphicSignature = true)
-    private Object invokeBasic(Object... args) throws Throwable {
-        Target_java_lang_invoke_MemberName memberName = internalMemberName() != null ? internalMemberName() : internalForm().vmentry;
-        if (memberName == null) { /* Interpretation mode */
-            throw unsupportedFeature("Method handles requiring lambda form interpretation (e.g through a bindTo() call) are not supported. " +
-                            "See https://github.com/oracle/graal/issues/2939.");
-        }
-
-        /*
-         * The method handle may have been resolved at build time. If that is the case, the
-         * SVM-specific information needed to perform the invoke is not stored in the handle yet, so
-         * we perform the resolution again.
-         */
-        if (memberName.reflectAccess == null) {
-            Target_java_lang_invoke_MethodHandleNatives.resolve(memberName, null, false);
-        }
-
-        Method method = SubstrateUtil.cast(memberName.reflectAccess, Method.class);
-        Target_java_lang_reflect_AccessibleObject methodAsAO = SubstrateUtil.cast(method, Target_java_lang_reflect_AccessibleObject.class);
-
-        /* Access control was already performed by the JDK code calling invokeBasic */
-        boolean oldOverride = methodAsAO.override;
-        methodAsAO.override = true;
-
-        Object result;
-        try {
-            if (Modifier.isStatic(method.getModifiers())) {
-                result = method.invoke(null, args);
-            } else {
-                result = method.invoke(args[0], Arrays.copyOfRange(args, 1, args.length));
+    Object invokeBasic(Object... args) throws Throwable {
+        Target_java_lang_invoke_MemberName memberName = internalMemberName();
+        if (memberName != null) { /* Direct method handle */
+            /*
+             * The method handle may have been resolved at build time. If that is the case, the
+             * SVM-specific information needed to perform the invoke is not stored in the handle
+             * yet, so we perform the resolution again.
+             */
+            if (memberName.reflectAccess == null && memberName.intrinsic == null) {
+                Target_java_lang_invoke_MethodHandleNatives.resolve(memberName, null, false);
             }
-        } finally {
-            methodAsAO.override = oldOverride;
+
+            if (memberName.intrinsic != null) { /* Intrinsic call */
+                assert memberName.reflectAccess == null;
+                return memberName.intrinsic.execute(args);
+            } else if (memberName.isField()) { /* Field access */
+                assert args.length == 1;
+                Object obj = args[0];
+                return ((Field) memberName.reflectAccess).get(obj);
+            } else { /* Method or constructor invocation */
+                Target_java_lang_reflect_AccessibleObject executable = SubstrateUtil.cast(memberName.reflectAccess, Target_java_lang_reflect_AccessibleObject.class);
+
+                /* Access control was already performed by the JDK code calling invokeBasic */
+                boolean oldOverride = executable.override;
+                executable.override = true;
+                try {
+                    if (memberName.isConstructor()) {
+                        return ((Constructor<?>) memberName.reflectAccess).newInstance(args);
+                    } else {
+                        Method method = (Method) memberName.reflectAccess;
+                        if (Modifier.isStatic(method.getModifiers())) {
+                            return method.invoke(null, args);
+                        } else {
+                            Object receiver = args[0];
+                            Object[] invokeArgs = Arrays.copyOfRange(args, 1, args.length);
+                            return method.invoke(receiver, invokeArgs);
+                        }
+                    }
+                } finally {
+                    executable.override = oldOverride;
+                }
+            }
+        } else { /* Interpretation mode */
+            Target_java_lang_invoke_LambdaForm form = internalForm();
+            Object[] interpreterArguments = new Object[args.length + 1];
+            interpreterArguments[0] = this;
+            System.arraycopy(args, 0, interpreterArguments, 1, args.length);
+            return form.interpretWithArguments(interpreterArguments);
         }
-
-        return result;
     }
 
-    @SuppressWarnings("unused")
     @Substitute(polymorphicSignature = true)
-    static Object linkToVirtual(Object... args) throws Throwable {
-        throw unsupportedFeature("MethodHandle.linkToVirtual()");
+    Object invoke(Object... args) throws Throwable {
+        MethodHandle self = SubstrateUtil.cast(this, MethodHandle.class);
+        return self.asType(self.type()).invokeExact(args);
     }
 
-    @SuppressWarnings("unused")
     @Substitute(polymorphicSignature = true)
-    static Object linkToStatic(Object... args) throws Throwable {
-        throw unsupportedFeature("MethodHandle.linkToStatic()");
+    Object invokeExact(Object... args) throws Throwable {
+        return invokeBasic(args);
     }
+}
+
+@TargetClass(className = "java.lang.invoke.MethodHandleImpl", onlyWith = MethodHandlesSupported.class)
+final class Target_java_lang_invoke_MethodHandleImpl {
+}
+
+@TargetClass(className = "java.lang.invoke.MethodHandleImpl", innerClass = "ArrayAccessor", onlyWith = MethodHandlesSupported.class)
+final class Target_java_lang_invoke_MethodHandleImpl_ArrayAccessor {
 }

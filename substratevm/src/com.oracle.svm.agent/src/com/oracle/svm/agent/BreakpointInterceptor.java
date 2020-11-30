@@ -791,11 +791,12 @@ final class BreakpointInterceptor {
             paramTypesHandle = nullHandle();
         }
 
-        JNIObjectHandle result = nullHandle();
-        String function;
         String declaringClassName = fromJniString(jni, declaringClassNameHandle);
         String name = fromJniString(jni, nameHandle);
         Object paramTypes = getClassArrayNames(jni, paramTypesHandle);
+
+        JNIObjectHandle result = nullHandle();
+        String function;
         Object[] args;
         if (isMethod) {
             result = Support.callObjectMethodLL(jni, declaringClass, agent.handles().javaLangClassGetDeclaredMethod, nameHandle, paramTypesHandle);
@@ -825,7 +826,7 @@ final class BreakpointInterceptor {
         boolean ignore = declaringClassName == null || name == null || declaringClassName.startsWith("java.lang.invoke") ||
                         declaringClassName.contains("$$Lambda$") || name.contains("$anonfun$") || name.startsWith("lambda$");
         if (!ignore) {
-            traceBreakpoint(jni, declaringClass, resultDeclaringClass, lookupClass, function, result.notEqual(nullHandle()), args);
+            traceBreakpoint(jni, declaringClass, resultDeclaringClass, nullHandle(), function, result.notEqual(nullHandle()), args);
         }
         return true;
     }
