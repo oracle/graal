@@ -139,16 +139,13 @@ public class SLJavaInteropDebugTest {
                                     "callback", "sl", 3, false, //
                                     "com.oracle.truffle.polyglot.PolyglotFunction.apply", null, null, true, //
                                     HostCalls.class.getName() + ".apply", null, null, true, //
-                                    HostCalls.class.getName() + ".apply", null, null, true, //
                                     "doCall", "sl", 11, false, //
                                     "callback", "sl", 5, false, //
                                     "com.oracle.truffle.polyglot.PolyglotFunction.apply", null, null, true, //
                                     HostCalls.class.getName() + ".apply", null, null, true, //
-                                    HostCalls.class.getName() + ".apply", null, null, true, //
                                     "doCall", "sl", 11, false, //
                                     "callback", "sl", 5, false, //
                                     "com.oracle.truffle.polyglot.PolyglotFunction.apply", null, null, true, //
-                                    HostCalls.class.getName() + ".apply", null, null, true, //
                                     HostCalls.class.getName() + ".apply", null, null, true, //
                                     "doCall", "sl", 11, false, //
                                     Value.class.getName() + ".execute", null, null, true);
@@ -170,7 +167,6 @@ public class SLJavaInteropDebugTest {
                     checkFrames(event, "done", "sl", 8, false, //
                                     "callback", "sl", 3, false, //
                                     "com.oracle.truffle.polyglot.PolyglotFunction.apply", null, null, true, //
-                                    HostCalls.class.getName() + ".apply", null, null, true, //
                                     HostCalls.class.getName() + ".apply", null, null, true, //
                                     "doCall", "sl", 11, false, //
                                     Value.class.getName() + ".execute", null, null, true);
