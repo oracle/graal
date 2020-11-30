@@ -407,7 +407,7 @@ abstract class HostExecuteNode extends Node {
             if (args.length == parameterCount) {
                 Class<?> varArgParamType = overload.getParameterTypes()[parameterCount - 1];
                 return !ToHostNode.canConvert(args[parameterCount - 1], varArgParamType, overload.getGenericParameterTypes()[parameterCount - 1],
-                                null, languageContext, ToHostNode.LOOSE,
+                                null, languageContext, ToHostNode.COERCE,
                                 InteropLibrary.getFactory().getUncached(), TargetMappingNode.getUncached());
             } else {
                 assert args.length != parameterCount;

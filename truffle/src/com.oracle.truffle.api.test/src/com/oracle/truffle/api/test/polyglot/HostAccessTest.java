@@ -1208,7 +1208,7 @@ public class HostAccessTest {
 
         setupEnv(HostAccess.newBuilder().targetTypeMapping(Integer.class, List.class, null,
                         (v) -> Arrays.asList(v), TargetMappingPrecedence.LOW));
-        assertFails(() -> context.asValue(obj).invokeMember("m", 42), IllegalArgumentException.class);
+        assertEquals("list", context.asValue(obj).invokeMember("m", 42).asString());
 
         setupEnv(HostAccess.newBuilder().targetTypeMapping(Integer.class, List.class, null,
                         (v) -> Arrays.asList(v), TargetMappingPrecedence.LOWEST));
@@ -1417,6 +1417,31 @@ public class HostAccessTest {
 
         assertEquals("object", context.asValue(obj).invokeMember("m", "dummy").asString());
         assertEquals("object", context.asValue(obj).invokeMember("m", "dummy", "dummy").asString());
+    }
+
+    @SuppressWarnings("unused")
+    public static class ListVsArray {
+
+        @Export
+        public String m(List<Object> list) {
+            return "list";
+        }
+
+        @Export
+        public String m(Object[] array) {
+            return "array";
+        }
+    }
+
+    @Test
+    public void testListVsArray() {
+        ListVsArray obj = new ListVsArray();
+
+        ProxyArray a = ProxyArray.fromArray(4, 5, 6);
+
+        setupEnv(HostAccess.ALL);
+        // both overloads are applicable but List is preferred over array types.
+        assertEquals("list", context.asValue(obj).invokeMember("m", a).asString());
     }
 
     @Test
