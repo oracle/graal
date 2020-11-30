@@ -263,14 +263,19 @@ public class VariablesScopeLegacyTest extends AbstractInstrumentationTest {
 
     @Test
     public void testSPIScopeCalls() throws Throwable {
-        org.graalvm.polyglot.Source source = org.graalvm.polyglot.Source.create("test-custom-variables-scope-legacy-language", "test");
-        assureEnabled(engine.getInstruments().get("testVariablesScopeLegacyInstrument"));
-        TestScopeLegacyInstrument.INSTANCE.setTester(new CustomScopeTester());
-        context.eval(source);
-        TestScopeLegacyInstrument.INSTANCE.checkForFailure();
-        TestScopeLegacyInstrument.INSTANCE.setTester(new CustomScopeLibraryTester());
-        context.eval(source);
-        TestScopeLegacyInstrument.INSTANCE.checkForFailure();
+        try {
+            org.graalvm.polyglot.Source source = org.graalvm.polyglot.Source.create("test-custom-variables-scope-legacy-language", "test");
+            assureEnabled(engine.getInstruments().get("testVariablesScopeLegacyInstrument"));
+            TestScopeLegacyInstrument.INSTANCE.setTester(new CustomScopeTester());
+            context.eval(source);
+            TestScopeLegacyInstrument.INSTANCE.checkForFailure();
+            TestScopeLegacyInstrument.INSTANCE.setTester(new CustomScopeLibraryTester());
+            context.eval(source);
+            TestScopeLegacyInstrument.INSTANCE.checkForFailure();
+        } finally {
+            TestScopeLegacyInstrument.INSTANCE = null;
+            CustomScope.LAST_INSTANCE = null;
+        }
     }
 
     @TruffleLanguage.Registration(name = "", id = "test-custom-variables-scope-legacy-language")
