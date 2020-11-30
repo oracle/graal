@@ -58,7 +58,7 @@ public class TestCallback implements TruffleObject {
             Object ret = function.call(args);
             return ret;
         } else {
-            throw ArityException.create(arity, args.length);
+            throw ArityException.create(arity, arity, args.length);
         }
     }
 

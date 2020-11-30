@@ -54,7 +54,7 @@ public class TestConstructor implements TruffleObject {
             Object ret = constructor.call(args);
             return ret;
         } else {
-            throw ArityException.create(arity, args.length);
+            throw ArityException.create(arity, arity, args.length);
         }
     }
 

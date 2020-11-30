@@ -1350,27 +1350,27 @@ abstract class PolyglotValue extends AbstractValueImpl {
     }
 
     @TruffleBoundary
-    protected static RuntimeException invalidInstantiateArity(PolyglotLanguageContext context, Object receiver, Object[] arguments, int expected, int actual) {
+    protected static RuntimeException invalidInstantiateArity(PolyglotLanguageContext context, Object receiver, Object[] arguments, int expectedMin, int expectedMax, int actual) {
         String[] formattedArgs = formatArgs(context, arguments);
         String message = String.format("Invalid argument count when instantiating %s with arguments %s. Expected %d argument(s) but got %d.",
-                        getValueInfo(context, receiver), Arrays.asList(formattedArgs), expected, actual);
+                        getValueInfo(context, receiver), Arrays.asList(formattedArgs), expectedMin, expectedMax, actual);
         throw PolyglotEngineException.illegalArgument(message);
     }
 
     @TruffleBoundary
-    protected static RuntimeException invalidExecuteArity(PolyglotLanguageContext context, Object receiver, Object[] arguments, int expected, int actual) {
+    protected static RuntimeException invalidExecuteArity(PolyglotLanguageContext context, Object receiver, Object[] arguments, int expectedMin, int expectedMax, int actual) {
         String[] formattedArgs = formatArgs(context, arguments);
         String message = String.format("Invalid argument count when executing %s with arguments %s. Expected %d argument(s) but got %d.",
-                        getValueInfo(context, receiver), Arrays.asList(formattedArgs), expected, actual);
+                        getValueInfo(context, receiver), Arrays.asList(formattedArgs), expectedMin, expectedMax, actual);
         throw PolyglotEngineException.illegalArgument(message);
     }
 
     @TruffleBoundary
-    protected static RuntimeException invalidInvokeArity(PolyglotLanguageContext context, Object receiver, String member, Object[] arguments, int expected, int actual) {
+    protected static RuntimeException invalidInvokeArity(PolyglotLanguageContext context, Object receiver, String member, Object[] arguments, int expectedMin, int expectedMax, int actual) {
         String[] formattedArgs = formatArgs(context, arguments);
         String message = String.format("Invalid argument count when invoking '%s' on %s with arguments %s. Expected %d argument(s) but got %d.",
                         member,
-                        getValueInfo(context, receiver), Arrays.asList(formattedArgs), expected, actual);
+                        getValueInfo(context, receiver), Arrays.asList(formattedArgs), expectedMin, expectedMax, actual);
         throw PolyglotEngineException.illegalArgument(message);
     }
 
@@ -2875,6 +2875,7 @@ abstract class PolyglotValue extends AbstractValueImpl {
                     unknown.enter();
                     throw nonWritableMemberKey(context, receiver, key);
                 } catch (UnsupportedTypeException e) {
+<<<<<<< HEAD
                     invalidValue.enter();
                     throw invalidMemberValue(context, receiver, key, value);
                 }
@@ -2909,6 +2910,13 @@ abstract class PolyglotValue extends AbstractValueImpl {
                     assert key != null : "should be handled already";
                     objects.removeMember(receiver, key);
                     value = Boolean.TRUE;
+=======
+                    invalidArgument.enter();
+                    throw invalidInstantiateArgumentType(context, receiver, instantiateArguments);
+                } catch (ArityException e) {
+                    arity.enter();
+                    throw invalidInstantiateArity(context, receiver, instantiateArguments, e.getExpectedMinArity(), e.getExpectedMaxArity(), e.getActualArity());
+>>>>>>> 483f6927de64 (Migrate to expected arity exception ranges.)
                 } catch (UnsupportedMessageException e) {
                     unsupported.enter();
                     if (!objects.hasMembers(receiver)) {

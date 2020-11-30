@@ -199,18 +199,18 @@ final class HostInteropErrors {
     }
 
     @TruffleBoundary
-    static RuntimeException invalidInstantiateArity(PolyglotLanguageContext context, Object receiver, Object[] arguments, int expected, int actual) {
+    static RuntimeException invalidInstantiateArity(PolyglotLanguageContext context, Object receiver, Object[] arguments, int minArity, int maxArity, int actual) {
         String[] formattedArgs = formatArgs(context, arguments);
         String message = String.format("Invalid argument count when instantiating %s with arguments %s. Expected %s argument(s) but got %s.",
-                        getValueInfo(context, receiver), Arrays.asList(formattedArgs), expected, actual);
+                        getValueInfo(context, receiver), Arrays.asList(formattedArgs), minArity, maxArity, actual);
         throw PolyglotEngineException.illegalArgument(message);
     }
 
     @TruffleBoundary
-    static RuntimeException invalidExecuteArity(PolyglotLanguageContext context, Object receiver, Object[] arguments, int expected, int actual) {
+    static RuntimeException invalidExecuteArity(PolyglotLanguageContext context, Object receiver, Object[] arguments, int minArity, int maxArity, int actual) {
         String[] formattedArgs = formatArgs(context, arguments);
         String message = String.format("Invalid argument count when executing %s with arguments %s. Expected %s argument(s) but got %s.",
-                        getValueInfo(context, receiver), Arrays.asList(formattedArgs), expected, actual);
+                        getValueInfo(context, receiver), Arrays.asList(formattedArgs), minArity, maxArity, actual);
         throw PolyglotEngineException.illegalArgument(message);
     }
 
