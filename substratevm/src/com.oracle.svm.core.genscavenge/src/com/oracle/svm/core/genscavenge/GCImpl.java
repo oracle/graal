@@ -225,6 +225,9 @@ public final class GCImpl implements GC {
         try (Timer ct = timers.collection.open()) {
             completeCollection = appliedPolicy.collectCompletely();
             if (completeCollection) {
+                if (HeapPolicyOptions.CollectYoungGenerationSeparately.getValue()) {
+                    scavenge(true);
+                }
                 scavenge(false);
             } else if (appliedPolicy.collectIncrementally()) {
                 scavenge(true);
