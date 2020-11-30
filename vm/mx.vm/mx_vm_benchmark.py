@@ -717,7 +717,7 @@ class PolyBenchBenchmarkSuite(mx_benchmark.VmBenchmarkSuite):
         name = None
         for arg in bmSuiteArgs:
             if arg.startswith("--metric="):
-                name =  arg[len("--metric="):]
+                name = arg[len("--metric="):]
                 break
         name = "peak-time" if not name else name
         folder = PolyBenchBenchmarkSuite._configuration.get(name)

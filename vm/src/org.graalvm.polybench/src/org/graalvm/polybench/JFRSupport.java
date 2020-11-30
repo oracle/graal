@@ -35,18 +35,22 @@ final class JFRSupport {
         return false;
     }
 
+    @SuppressWarnings("unused")
     static Object startRecording(String enabledEvent) {
         throw new UnsupportedOperationException();
     }
 
+    @SuppressWarnings("unused")
     static Object snapshotRecording(Object recording) {
         throw new UnsupportedOperationException();
     }
 
+    @SuppressWarnings("unused")
     static void disposeRecording(Object recording, boolean stop) {
         throw new UnsupportedOperationException();
     }
 
+    @SuppressWarnings("unused")
     static long computeCumulativeTime(Object recording, String eventName, String fieldName) throws IOException {
         throw new UnsupportedOperationException();
     }
