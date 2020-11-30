@@ -22,6 +22,8 @@
  */
 package com.oracle.truffle.espresso.classfile.constantpool;
 
+import java.nio.ByteBuffer;
+
 import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.espresso.classfile.ConstantPool;
 import com.oracle.truffle.espresso.classfile.ConstantPool.Tag;
@@ -138,6 +140,12 @@ public interface InvokeDynamicConstant extends PoolConstant {
             StaticObject unboxedAppendix = appendix.get(0);
 
             return new InvokeDynamicConstant.Resolved(getBootstrapMethodAttrIndex(), getNameAndTypeIndex(), memberName, unboxedAppendix, parsedInvokeSignature);
+        }
+
+        @Override
+        public void dump(ByteBuffer buf) {
+            buf.putChar((char) bootstrapMethodAttrIndex);
+            buf.putChar((char) nameAndTypeIndex);
         }
     }
 

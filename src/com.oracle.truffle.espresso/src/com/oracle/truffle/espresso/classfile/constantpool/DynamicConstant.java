@@ -22,6 +22,8 @@
  */
 package com.oracle.truffle.espresso.classfile.constantpool;
 
+import java.nio.ByteBuffer;
+
 import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.espresso.classfile.ConstantPool;
 import com.oracle.truffle.espresso.classfile.ConstantPool.Tag;
@@ -95,6 +97,12 @@ public interface DynamicConstant extends PoolConstant {
         @Override
         public void validate(ConstantPool pool) {
             pool.nameAndTypeAt(nameAndTypeIndex).validateField(pool);
+        }
+
+        @Override
+        public void dump(ByteBuffer buf) {
+            buf.putChar(bootstrapMethodAttrIndex);
+            buf.putChar(nameAndTypeIndex);
         }
 
         @Override
