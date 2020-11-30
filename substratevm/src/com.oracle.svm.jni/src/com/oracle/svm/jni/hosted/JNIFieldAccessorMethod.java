@@ -108,15 +108,15 @@ import jdk.vm.ci.meta.Signature;
  *      "https://docs.oracle.com/javase/8/docs/technotes/guides/jni/spec/functions.html">JNI
  *      Functions</a>
  */
-public final class JNIFieldAccessorMethod extends JNIGeneratedMethod {
+public class JNIFieldAccessorMethod extends JNIGeneratedMethod {
 
-    private final JavaKind fieldKind;
-    private final boolean isSetter;
-    private final boolean isStatic;
-    private final ResolvedJavaType declaringClass;
-    private final ConstantPool constantPool;
-    private final String name;
-    private final Signature signature;
+    protected final JavaKind fieldKind;
+    protected final boolean isSetter;
+    protected final boolean isStatic;
+    protected final ResolvedJavaType declaringClass;
+    protected final ConstantPool constantPool;
+    protected final String name;
+    protected final Signature signature;
 
     public JNIFieldAccessorMethod(JavaKind fieldKind, boolean isSetter, boolean isStatic, ResolvedJavaType declaringClass, ConstantPool constantPool, MetaAccessProvider metaAccess) {
         if (!EnumSet.of(JavaKind.Object, JavaKind.Boolean, JavaKind.Byte, JavaKind.Char, JavaKind.Short,
@@ -179,8 +179,20 @@ public final class JNIFieldAccessorMethod extends JNIGeneratedMethod {
 
         ValueNode vmThread = kit.loadLocal(0, signature.getParameterKind(0));
         kit.append(CEntryPointEnterNode.enter(vmThread));
-
         List<ValueNode> arguments = kit.loadArguments(signature.toParameterTypes(null));
+
+        ValueNode returnValue = buildGraphBody(kit, arguments, state, providers.getMetaAccess());
+
+        kit.appendStateSplitProxy(state);
+        CEntryPointLeaveNode leave = new CEntryPointLeaveNode(LeaveAction.Leave);
+        kit.append(leave);
+        JavaKind returnKind = isSetter ? JavaKind.Void : fieldKind;
+        kit.createReturn(returnValue, returnKind);
+
+        return kit.finalizeGraph();
+    }
+
+    protected ValueNode buildGraphBody(JNIGraphKit kit, List<ValueNode> arguments, @SuppressWarnings("unused") FrameStateBuilder state, @SuppressWarnings("unused") MetaAccessProvider metaAccess) {
         ValueNode object;
         if (isStatic) {
             if (fieldKind.isPrimitive()) {
@@ -208,13 +220,7 @@ public final class JNIFieldAccessorMethod extends JNIGeneratedMethod {
                 returnValue = kit.boxObjectInLocalHandle(returnValue);
             }
         }
-        kit.appendStateSplitProxy(state);
-        CEntryPointLeaveNode leave = new CEntryPointLeaveNode(LeaveAction.Leave);
-        kit.append(leave);
-        JavaKind returnKind = isSetter ? JavaKind.Void : fieldKind;
-        kit.createReturn(returnValue, returnKind);
-
-        return kit.finalizeGraph();
+        return returnValue;
     }
 
     @Override

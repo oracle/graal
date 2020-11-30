@@ -66,6 +66,7 @@ import com.oracle.svm.hosted.meta.MaterializedConstantFields;
 import com.oracle.svm.hosted.substitute.SubstitutionReflectivityFilter;
 import com.oracle.svm.jni.JNIJavaCallWrappers;
 import com.oracle.svm.jni.hosted.JNICallTrampolineMethod;
+import com.oracle.svm.jni.hosted.JNIFieldAccessorMethodFactory;
 import com.oracle.svm.jni.hosted.JNIJavaCallWrapperMethod;
 import com.oracle.svm.jni.hosted.JNIJavaCallWrapperMethod.CallVariant;
 import com.oracle.svm.jni.hosted.JNIJavaCallWrapperMethodSupport;
@@ -154,9 +155,11 @@ public class JNIAccessFeature implements Feature {
 
     @Override
     public void beforeAnalysis(BeforeAnalysisAccess arg) {
-        /* Must be in the ImageSingletons before `JNIJavaCallWrapperMethod`s are created. */
         if (!ImageSingletons.contains(JNIJavaCallWrapperMethodSupport.class)) {
             ImageSingletons.add(JNIJavaCallWrapperMethodSupport.class, new JNIJavaCallWrapperMethodSupport());
+        }
+        if (!ImageSingletons.contains(JNIFieldAccessorMethodFactory.class)) {
+            ImageSingletons.add(JNIFieldAccessorMethodFactory.class, new JNIFieldAccessorMethodFactory());
         }
 
         BeforeAnalysisAccessImpl access = (BeforeAnalysisAccessImpl) arg;

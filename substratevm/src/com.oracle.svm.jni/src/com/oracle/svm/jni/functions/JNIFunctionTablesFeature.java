@@ -30,6 +30,7 @@ import java.util.EnumSet;
 import java.util.List;
 import java.util.stream.Stream;
 
+import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.nativeimage.c.function.CEntryPoint;
 import org.graalvm.nativeimage.c.function.CFunctionPointer;
 import org.graalvm.nativeimage.hosted.Feature;
@@ -61,6 +62,7 @@ import com.oracle.svm.jni.functions.JNIFunctions.UnimplementedWithJNIEnvArgument
 import com.oracle.svm.jni.functions.JNIFunctions.UnimplementedWithJavaVMArgument;
 import com.oracle.svm.jni.hosted.JNICallTrampolineMethod;
 import com.oracle.svm.jni.hosted.JNIFieldAccessorMethod;
+import com.oracle.svm.jni.hosted.JNIFieldAccessorMethodFactory;
 import com.oracle.svm.jni.hosted.JNIJavaCallWrapperMethod.CallVariant;
 import com.oracle.svm.jni.hosted.JNIPrimitiveArrayOperationMethod;
 import com.oracle.svm.jni.hosted.JNIPrimitiveArrayOperationMethod.Operation;
@@ -136,7 +138,7 @@ public class JNIFunctionTablesFeature implements Feature {
             boolean[] trueFalse = {true, false};
             for (boolean isSetter : trueFalse) {
                 for (boolean isStatic : trueFalse) {
-                    JNIFieldAccessorMethod method = new JNIFieldAccessorMethod(kind, isSetter, isStatic, generatedMethodClass, constantPool, wrappedMetaAccess);
+                    JNIFieldAccessorMethod method = ImageSingletons.lookup(JNIFieldAccessorMethodFactory.class).create(kind, isSetter, isStatic, generatedMethodClass, constantPool, wrappedMetaAccess);
                     AnalysisMethod analysisMethod = access.getUniverse().lookup(method);
                     access.getBigBang().addRootMethod(analysisMethod).registerAsEntryPoint(method.createEntryPointData());
                     generated.add(method);
