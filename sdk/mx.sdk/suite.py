@@ -93,23 +93,31 @@ suite = {
       "license" : "BSD-new"
     },
     "LLVM_ORG" : {
-      "version" : "10.0.0-4-g22d2637565-bg83994d0b4b",
+      "version" : "10.0.0-5-g67b19b2aed-bgb23ce12f48",
       "host" : "https://lafo.ssw.uni-linz.ac.at/pub/llvm-org",
       "os_arch" : {
         "linux" : {
           "amd64" : {
             "urls" : ["{host}/llvm-llvmorg-{version}-linux-amd64.tar.gz"],
-            "sha1" : "7fa523a9a1a40674da5ad6c3bdd91375bb566830",
+            "sha1" : "a342aa46f6a45d91c5dbda8cd42d4a493166babe",
           },
           "aarch64" : {
             "urls" : ["{host}/llvm-llvmorg-{version}-linux-aarch64.tar.gz"],
-            "sha1" : "6ae659cc5bab9e76b457b595f7e84943aa97e056",
+            "sha1" : "772d729ae66105ceeb647e8e69b3b6204dc9ff7b",
           }
         },
         "darwin" : {
           "amd64" : {
             "urls" : ["{host}/llvm-llvmorg-{version}-darwin-amd64.tar.gz"],
-            "sha1" : "8b9e665f1b734d41c62a83b1b6081ffe50f63a4c",
+            "sha1" : "3f0c7311c5bf3371ebf34cdd6a73f51c997ab9c2",
+          }
+        },
+        "windows" : {
+          "amd64" : {
+            # version difference due to rebuilding to statically link the standard library on windows
+            # "urls" : ["{host}/llvm-llvmorg-{version}-windows-amd64.tar.gz"],
+            "urls" : ["{host}/llvm-llvmorg-10.0.0-5-g67b19b2aed-bgfbfba28a74-windows-amd64.tar.gz"],
+            "sha1" : "7973931f1dcef6b3259d39c53efd5f7891c956c6",
           }
         },
         "<others>": {
@@ -121,16 +129,15 @@ suite = {
       "license" : "Apache-2.0-LLVM",
     },
     "LLVM_ORG_COMPILER_RT_LINUX" : {
-      "version" : "10.0.0-4-g22d2637565-bg83994d0b4b",
+      "version" : "10.0.0-5-g67b19b2aed-bgb23ce12f48",
       "host" : "https://lafo.ssw.uni-linz.ac.at/pub/llvm-org",
       # we really want linux-amd64, also on non-linux and non-amd64 platforms for cross-compilation
       "urls" : ["{host}/compiler-rt-llvmorg-{version}-linux-amd64.tar.gz"],
-      "sha1" : "c70e1aef1e685eb9c7294d8dacbc1b5c35c1bc21",
+      "sha1" : "8ebce7c8e9937246572e066f533f910778b7c870",
       "license" : "Apache-2.0-LLVM",
     },
     "LLVM_ORG_SRC" : {
-      # The sources contain a backport to fix libunwind CMake issue with cmake 3.19 [GR-27589]
-      # https://github.com/llvm/llvm-project/commit/c48974ffd7d1676f79d39d3b1e70f07d3a5e2e44
+      # version difference as the sources did not change
       "version" : "10.0.0-5-g67b19b2aed-bg83994d0b4b",
       "host" : "https://lafo.ssw.uni-linz.ac.at/pub/llvm-org",
       "packedResource" : True,
