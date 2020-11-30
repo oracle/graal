@@ -232,18 +232,6 @@ final class Target_java_lang_Throwable {
 final class Target_java_lang_Runtime {
 
     @Substitute
-    public void loadLibrary(String libname) {
-        // Substituted because the original is caller-sensitive, which we don't support
-        loadLibrary0(null, libname);
-    }
-
-    @Substitute
-    public void load(String filename) {
-        // Substituted because the original is caller-sensitive, which we don't support
-        load0(null, filename);
-    }
-
-    @Substitute
     public void runFinalization() {
     }
 
@@ -261,14 +249,6 @@ final class Target_java_lang_Runtime {
             return 1;
         }
     }
-
-    // Checkstyle: stop
-    @Alias
-    synchronized native void loadLibrary0(Class<?> fromClass, String libname);
-
-    @Alias
-    synchronized native void load0(Class<?> fromClass, String libname);
-    // Checkstyle: resume
 }
 
 @TargetClass(java.lang.System.class)
@@ -339,18 +319,6 @@ final class Target_java_lang_System {
 
     @Alias
     private static native void checkKey(String key);
-
-    @Substitute
-    public static void loadLibrary(String libname) {
-        // Substituted because the original is caller-sensitive, which we don't support
-        Runtime.getRuntime().loadLibrary(libname);
-    }
-
-    @Substitute
-    public static void load(String filename) {
-        // Substituted because the original is caller-sensitive, which we don't support
-        Runtime.getRuntime().load(filename);
-    }
 
     /*
      * Note that there is no substitution for getSecurityManager, but instead getSecurityManager it
