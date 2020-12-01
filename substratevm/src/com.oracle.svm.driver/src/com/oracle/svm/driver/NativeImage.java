@@ -1251,7 +1251,8 @@ public class NativeImage {
     protected static String createImageBuilderArgumentFile(List<String> imageBuilderArguments) {
         try {
             Path argsFile = Files.createTempFile("native-image", "args");
-            Files.write(argsFile, imageBuilderArguments);
+            String joinedOptions = String.join("\0", imageBuilderArguments);
+            Files.write(argsFile, joinedOptions.getBytes());
             Runtime.getRuntime().addShutdownHook(new Thread() {
                 @Override
                 public void run() {

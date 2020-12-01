@@ -183,7 +183,8 @@ public class NativeImageGeneratorRunner implements ImageBuildTask {
         if (argsFile.isPresent()) {
             String argFilePath = argsFile.get().substring(IMAGE_BUILDER_ARG_FILE_OPTION.length());
             try {
-                result.addAll(Files.readAllLines(Paths.get(argFilePath)));
+                String options = new String(Files.readAllBytes(Paths.get(argFilePath)));
+                result.addAll(Arrays.asList(options.split("\0")));
             } catch (IOException e) {
                 throw VMError.shouldNotReachHere("Exception occurred during image builder argument file processing.", e);
             }
