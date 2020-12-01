@@ -39,6 +39,7 @@ import org.graalvm.compiler.nodes.spi.CoreProviders;
 import org.graalvm.compiler.phases.OptimisticOptimizations;
 import org.graalvm.compiler.word.WordTypes;
 
+import com.oracle.graal.pointsto.constraints.TypeInstantiationException;
 import com.oracle.graal.pointsto.constraints.UnresolvedElementException;
 import com.oracle.svm.core.option.SubstrateOptionsParser;
 import com.oracle.svm.core.util.UserError;
@@ -156,6 +157,22 @@ public abstract class SharedGraphBuilderPhase extends GraphBuilderPhase.Instance
         }
 
         @Override
+        protected void handleIllegalNewInstance(JavaType type) {
+            /*
+             * If --allow-incomplete-classpath is set defer the error reporting to runtime,
+             * otherwise report the error during image building.
+             */
+            if (allowIncompleteClassPath) {
+                ExceptionSynthesizer.throwException(this, InstantiationError.class, type.toJavaName());
+            } else {
+                String message = "Cannot instantiate " + type.toJavaName() +
+                                ". To diagnose the issue you can use the " + allowIncompleteClassPathOption() +
+                                " option. The instantiation error is then reported at run time.";
+                throw new TypeInstantiationException(message);
+            }
+        }
+
+        @Override
         protected void handleUnresolvedNewInstance(JavaType type) {
             handleUnresolvedType(type);
         }
@@ -255,10 +272,13 @@ public abstract class SharedGraphBuilderPhase extends GraphBuilderPhase.Instance
 
         private static void reportUnresolvedElement(String elementKind, String elementAsString) {
             String message = "Discovered unresolved " + elementKind + " during parsing: " + elementAsString +
-                            ". To diagnose the issue you can use the " +
-                            SubstrateOptionsParser.commandArgument(NativeImageOptions.AllowIncompleteClasspath, "+") +
+                            ". To diagnose the issue you can use the " + allowIncompleteClassPathOption() +
                             " option. The missing " + elementKind + " is then reported at run time when it is accessed the first time.";
             throw new UnresolvedElementException(message);
+        }
+
+        private static String allowIncompleteClassPathOption() {
+            return SubstrateOptionsParser.commandArgument(NativeImageOptions.AllowIncompleteClasspath, "+");
         }
 
         @Override
