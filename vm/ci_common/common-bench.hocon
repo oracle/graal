@@ -61,6 +61,7 @@ builds += [
       ${mx_vm_common} [benchmark, --results-file, ${vm_bench_js_linux.result_file}, "agentscript-graal-js:*", --, "--jvm=graalvm-${VM_ENV}", "--jvm-config=native", "--js=graal-js", "--js-config=default"]
       ${vm_bench_common.upload}
     ]
+    targets: [bench, daily]
     timelimit: "45:00"
     name: bench-vm-${vm_setup.short_name}-agentscript-js-java8-linux-amd64
   }
