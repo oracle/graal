@@ -139,7 +139,7 @@ public abstract class LLVMInstrumentableNode extends LLVMNode implements Instrum
     }
 
     @CompilerDirectives.TruffleBoundary
-    private static boolean isLLDebugEnabled(LLVMContext ctx){
+    private static boolean isLLDebugEnabled(LLVMContext ctx) {
         return ctx.getEnv().getOptions().get(SulongEngineOption.LL_DEBUG);
     }
 }
