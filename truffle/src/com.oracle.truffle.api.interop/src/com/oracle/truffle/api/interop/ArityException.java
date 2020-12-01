@@ -142,7 +142,7 @@ public final class ArityException extends InteropException {
     }
 
     /**
-     * @deprecated in 21.0 use {@link #create(int, int, int)} instead. Note the new method now
+     * @deprecated in 21.1 use {@link #create(int, int, int)} instead. Note the new method now
      *             validates its arguments if assertions are enabled.
      * @since 19.0
      */
@@ -152,7 +152,7 @@ public final class ArityException extends InteropException {
     }
 
     /**
-     * @deprecated in 21.0 use {@link #create(int, int, int, Throwable)} instead. Note the new
+     * @deprecated in 21.1 use {@link #create(int, int, int, Throwable)} instead. Note the new
      *             method now validates its arguments if assertions are enabled.
      * @since 20.2
      */
@@ -177,7 +177,7 @@ public final class ArityException extends InteropException {
      *            {@code expectedMinArity}.
      * @param actualArity the number of provided by the executable. The actual arity must not be
      *            within range of the expected min and max arity.
-     * @since 21.0
+     * @since 21.1
      */
     public static ArityException create(int expectedMinArity, int expectedMaxArity, int actualArity) {
         assert validateArity(expectedMinArity, expectedMaxArity, actualArity);
@@ -212,7 +212,7 @@ public final class ArityException extends InteropException {
      * @param actualArity the number of provided by the executable. The actual arity must not be
      *            within range of the expected min and max arity.
      * @param cause the guest language exception that caused the error.
-     * @since 21.0
+     * @since 21.1
      */
     public static ArityException create(int expectedMinArity, int expectedMaxArity, int actualArity, Throwable cause) {
         assert validateArity(expectedMinArity, expectedMaxArity, actualArity);
