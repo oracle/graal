@@ -52,9 +52,9 @@ In the second part of the pseudo code two cases are differentiated:
 
 2) The call target has only one known caller - in this case you know that marking this call target as "needs split" cannot help remove the polymorphism. But, the polymorphism could be coming into this call target from its sole caller, which could have multiple callers and could be a candidate for splitting. Thus, you recursively apply the algorithm to the caller of our call target.
 
-Ignore for now the return value of our algorithm and its usage, and consider the following Simple Language example to illustrate why this distinction between one and multiple callers is needed:
+Ignore for now the return value of our algorithm and its usage, and consider the following SimpleLanguage example to illustrate why this distinction between one and multiple callers is needed:
 
-```java
+```
 function add(arg1, arg2) {
     return arg1 + arg2;
 }
@@ -81,7 +81,7 @@ All of the early return checks will fail (`add` is not marked "needs split", it 
 Observe that `add` has only one caller (`double`), so you apply the algorithm to `double`.
 Early returns all fail, and since `double` has multiple callers, you mark it as "needs split" and on later iterations calls to `double` are split resulting in the following code representation of the run time state:
 
-```java
+```
 function add(arg1, arg2) {
     return arg1 + arg2; // + is polymorphic
 }
@@ -116,7 +116,7 @@ This is where the algorithms return value comes in to play.
 If the algorithm was successful in finding a target to mark than all the transitive callee's of that target need to be marked "needs split" as well.
 With this final step in place, the final run time result of our splitting approach for the previous example can be represent as the following source code:
 
-```java
+```
 function add(arg1, arg2) {
     return arg1 + arg2; // + is polymorphic
 }
@@ -158,7 +158,7 @@ Final note to observe at this point is that the splitting does not remove the or
 Thus, even if new calls to these call targets are created, they will also be split.
 Consider if the `main` of the previous example looked as follows.
 
-```java
+```
 function main() {
     i = 0;
     while (i < 1000) {

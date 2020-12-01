@@ -18,7 +18,7 @@ Since the Truffle DSL automates much of the transitions between specializations,
 This annotation instructs the DSL to include checks for polymorphism after specializations and to call `Node#reportPolymorphicSpecialize` if needed.
 
 For an example on how to use this annotation, consider the `com.oracle.truffle.sl.nodes.SLStatementNode`. It is the base class for all
-Simple Language nodes and, since the `ReportPolymorphism` annotation is inherited, simply annotating this class will enable reporting of polymorphic specializations for all SimpleLanguage nodes.
+SimpleLanguage nodes and, since the `ReportPolymorphism` annotation is inherited, simply annotating this class will enable reporting of polymorphic specializations for all SimpleLanguage nodes.
 Below is the diff of the change that adds this annotation to `SLStatementNode`:
 
 ```shell
