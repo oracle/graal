@@ -693,11 +693,12 @@ class PolyBenchBenchmarkSuite(mx_benchmark.VmBenchmarkSuite):
         return _polybench_vm_registry
 
     def rules(self, output, benchmarks, bmSuiteArgs):
+        metric_name = self._get_metric_name(bmSuiteArgs)
         return [
             mx_benchmark.StdOutRule(r"\[(?P<name>.*)\] after run: (?P<value>.*) (?P<unit>.*)", {
                 "benchmark": ("<name>", str),
                 "metric.better": "lower",
-                "metric.name": "time",
+                "metric.name": metric_name,
                 "metric.unit": ("<unit>", str),
                 "metric.value": ("<value>", float),
                 "metric.type": "numeric",
@@ -706,6 +707,18 @@ class PolyBenchBenchmarkSuite(mx_benchmark.VmBenchmarkSuite):
             })
         ]
 
+    def _get_metric_name(self, bmSuiteArgs):
+        metric = None
+        for arg in bmSuiteArgs:
+            if arg.startswith("--metric="):
+                metric = arg[len("--metric="):]
+                break
+        if metric == "compilation-time":
+            return "compile-time"
+        elif metric == "partial-evaluation-time":
+            return "pe-time"
+        else:
+            return "time"
 
 class PolyBenchVm(GraalVm):
     def run(self, cwd, args):

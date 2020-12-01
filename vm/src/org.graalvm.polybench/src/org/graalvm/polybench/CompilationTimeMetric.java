@@ -126,27 +126,23 @@ final class CompilationTimeMetric implements Metric {
 
     @Override
     public Optional<Double> reportAfterIteration(Config config) {
-        return computeCumulativeTime();
+        return supported ? computeCumulativeTime() : Optional.of(0.0);
     }
 
     @Override
     public Optional<Double> reportAfterAll() {
-        return computeCumulativeTime();
+        return supported && recording != null ? computeCumulativeTime() : Optional.of(0.0);
     }
 
     private Optional<Double> computeCumulativeTime() {
-        if (supported) {
-            if (snapshot == null) {
-                throw new IllegalStateException("No snapshot.");
-            }
-            try {
-                return Optional.of(1.0 * JFRSupport.computeCumulativeTime(snapshot, TRUFFLE_COMPILATION_EVENT, metricType.getFieldName()));
-            } catch (IOException ioe) {
-                LOG.log(Level.SEVERE, "Cannot write recording.", ioe);
-                return Optional.empty();
-            }
-        } else {
-            return Optional.of(0.0);
+        if (snapshot == null) {
+            throw new IllegalStateException("No snapshot.");
+        }
+        try {
+            return Optional.of(1.0 * JFRSupport.computeCumulativeTime(snapshot, TRUFFLE_COMPILATION_EVENT, metricType.getFieldName()));
+        } catch (IOException ioe) {
+            LOG.log(Level.SEVERE, "Cannot write recording.", ioe);
+            return Optional.empty();
         }
     }
 }

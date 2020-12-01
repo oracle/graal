@@ -46,7 +46,7 @@ vm_bench_polybench_linux_interpreter: ${vm_bench_polybench_linux_common} ${vm_ja
 }
 
 vm_bench_polybench_linux_compiler: ${vm_bench_polybench_linux_common} ${vm_java_11} {
-  bench_cmd: ${vm_bench_polybench_linux_common.base_cmd} [benchmark, "polybench:*[compiler/dispatch.js]", --results-file, ${vm_bench_polybench_linux_compiler.result_file}, --, "--polybench-vm=graalvm-${VM_ENV}"]
+  bench_cmd: ${vm_bench_polybench_linux_common.base_cmd} [benchmark, "polybench:*[compiler/dispatch.js]", --results-file, ${vm_bench_polybench_linux_compiler.result_file}, --, "-w", "0", "-i", "10", "--polybench-vm=graalvm-${VM_ENV}-java11"]
   run: [
     ${vm_bench_polybench_linux_compiler.bench_cmd} ["--polybench-vm-config=jvm-standard", "--metric=compilation-time"]
     ${vm_bench_common.upload}
