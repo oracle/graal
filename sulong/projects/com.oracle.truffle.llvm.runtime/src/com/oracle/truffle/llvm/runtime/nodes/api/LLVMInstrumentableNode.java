@@ -30,12 +30,25 @@
 package com.oracle.truffle.llvm.runtime.nodes.api;
 
 import com.oracle.truffle.api.CompilerAsserts;
+import com.oracle.truffle.api.dsl.CachedContext;
+import com.oracle.truffle.api.dsl.NodeField;
+import com.oracle.truffle.api.frame.Frame;
 import com.oracle.truffle.api.instrumentation.InstrumentableNode;
 import com.oracle.truffle.api.instrumentation.StandardTags;
 import com.oracle.truffle.api.instrumentation.Tag;
+import com.oracle.truffle.api.interop.NodeLibrary;
+import com.oracle.truffle.api.library.ExportLibrary;
+import com.oracle.truffle.api.library.ExportMessage;
 import com.oracle.truffle.api.source.SourceSection;
+import com.oracle.truffle.llvm.runtime.LLVMContext;
+import com.oracle.truffle.llvm.runtime.LLVMLanguage;
+import com.oracle.truffle.llvm.runtime.debug.scope.LLVMDebuggerScopeFactory;
 import com.oracle.truffle.llvm.runtime.debug.scope.LLVMSourceLocation;
+import com.oracle.truffle.llvm.runtime.options.SulongEngineOption;
 
+@NodeField(name = "sourceLocation", type = LLVMSourceLocation.class)
+@NodeField(name = "statement", type = boolean.class)
+@ExportLibrary(NodeLibrary.class)
 public abstract class LLVMInstrumentableNode extends LLVMNode implements InstrumentableNode {
 
     private LLVMSourceLocation sourceLocation;
@@ -110,6 +123,20 @@ public abstract class LLVMInstrumentableNode extends LLVMNode implements Instrum
             return hasStatementTag();
         } else {
             return false;
+        }
+    }
+
+    @ExportMessage
+    boolean hasScope(@SuppressWarnings("unused") Frame frame) {
+        return true;
+    }
+
+    @ExportMessage
+    public Object getScope(Frame frame, @SuppressWarnings("unused") boolean nodeEnter, @CachedContext(LLVMLanguage.class) LLVMContext ctx) {
+        if (ctx.getEnv().getOptions().get(SulongEngineOption.LL_DEBUG)) {
+            return LLVMDebuggerScopeFactory.newCreateIRLevelScope(this, frame, ctx);
+        } else {
+            return LLVMDebuggerScopeFactory.newCreateSourceLevelScope(this, frame, ctx);
         }
     }
 }
