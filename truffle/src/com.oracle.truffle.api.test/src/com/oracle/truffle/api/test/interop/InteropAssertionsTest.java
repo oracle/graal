@@ -1578,7 +1578,7 @@ public class InteropAssertionsTest extends InteropLibraryBaseTest {
         assertNotNull(ArityException.create(0, 1, 3));
         assertNotNull(ArityException.create(1, -1, 0));
         assertNotNull(ArityException.create(2, -1, 1));
-        assertNotNull(ArityException.create(0, Integer.MAX_VALUE, Integer.MAX_VALUE - 1));
+        assertNotNull(ArityException.create(0, Integer.MAX_VALUE - 1, Integer.MAX_VALUE));
 
         assertFails(() -> ArityException.create(0, 0, 0), IllegalArgumentException.class);
         assertFails(() -> ArityException.create(0, 1, 0), IllegalArgumentException.class);

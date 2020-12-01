@@ -96,7 +96,6 @@ public final class ArityException extends InteropException {
             }
             return "Arity error - expected range: [" + expectedMinArity + " - " + maxLabel + "] actual: " + actualLabel;
         }
-
     }
 
     /**
@@ -145,6 +144,7 @@ public final class ArityException extends InteropException {
     /**
      * @deprecated in 21.0 use {@link #create(int, int, int)} instead. Note the new method now
      *             validates its arguments if assertions are enabled.
+     * @since 19.0
      */
     @Deprecated
     public static ArityException create(int expectedArity, int actualArity) {
@@ -154,6 +154,7 @@ public final class ArityException extends InteropException {
     /**
      * @deprecated in 21.0 use {@link #create(int, int, int, Throwable)} instead. Note the new
      *             method now validates its arguments if assertions are enabled.
+     * @since 20.2
      */
     @Deprecated
     public static ArityException create(int expectedArity, int actualArity, Throwable cause) {
@@ -173,14 +174,14 @@ public final class ArityException extends InteropException {
      * @param expectedMaxArity (inclusive) the maximum number of arguments expected by the
      *            executable. If the maximum is negative then an infinite number of arguments is
      *            expected. If the number is positive then the maximum must be greater or equal to
-     *            {@link #expectedMinArity}.
+     *            {@code expectedMinArity}.
      * @param actualArity the number of provided by the executable. The actual arity must not be
      *            within range of the expected min and max arity.
      * @since 21.0
      */
-    public static ArityException create(int expectedMinArity, int exectedMaxArity, int actualArity) {
-        assert validateArity(expectedMinArity, exectedMaxArity, actualArity);
-        return new ArityException(expectedMinArity, exectedMaxArity, actualArity);
+    public static ArityException create(int expectedMinArity, int expectedMaxArity, int actualArity) {
+        assert validateArity(expectedMinArity, expectedMaxArity, actualArity);
+        return new ArityException(expectedMinArity, expectedMaxArity, actualArity);
     }
 
     /**
@@ -207,7 +208,7 @@ public final class ArityException extends InteropException {
      * @param expectedMaxArity (inclusive) the maximum number of arguments expected by the
      *            executable. If the maximum is negative then an infinite number of arguments is
      *            expected. If the number is positive then the maximum must be greater or equal to
-     *            {@link #expectedMinArity}.
+     *            {@code expectedMinArity}.
      * @param actualArity the number of provided by the executable. The actual arity must not be
      *            within range of the expected min and max arity.
      * @param cause the guest language exception that caused the error.
