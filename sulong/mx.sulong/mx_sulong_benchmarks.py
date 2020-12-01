@@ -251,6 +251,11 @@ class ClangVm(GccLikeVm):
     def cxx_compiler_exe(self):
         return os.path.join(mx.distribution("LLVM_TOOLCHAIN").get_output(), "bin", "clang++")
 
+    def prepare_env(self, env):
+        super(ClangVm, self).prepare_env(env)
+        env["CXXFLAGS"] = env.get("CXXFLAGS", []) + ["-stdlib=libc++"]
+        return env
+
 
 class SulongVm(CExecutionEnvironmentMixin, GuestVm):
     def config_name(self):
