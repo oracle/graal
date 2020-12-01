@@ -1,17 +1,17 @@
 # Dynamic Object Model
 
-This guide demonstrates how to get started with using [DynamicObject](https://www.graalvm.org/truffle/javadoc/com/oracle/truffle/api/object/DynamicObject.html) and [DynamicObjectLibrary](https://www.graalvm.org/truffle/javadoc/com/oracle/truffle/api/object/DynamicObjectLibrary.html) APIs introduced with GraalVM 20.2.0.
+This guide demonstrates how to get started with using the [DynamicObject](https://www.graalvm.org/truffle/javadoc/com/oracle/truffle/api/object/DynamicObject.html) and [DynamicObjectLibrary](https://www.graalvm.org/truffle/javadoc/com/oracle/truffle/api/object/DynamicObjectLibrary.html) APIs introduced with GraalVM 20.2.0.
 The full documentation can be found in the [Javadoc](https://www.graalvm.org/truffle/javadoc/com/oracle/truffle/api/object/DynamicObjectLibrary.html).
 
-## Motivation
+### Motivation
 
-When implementing a dynamic language, the object layout of user-defined objects/classes can often not be statically inferred and needs to accommodate dynamically added members and changing types.
-This is where the Dynamic Object API comes in: it takes care of the object layout and classifies objects by their shape, i.e., their properties and the types of their values.
+When implementing a dynamic language, the object layout of user-defined objects/classes often cannot be statically inferred and needs to accommodate dynamically added members and changing types.
+This is where the Dynamic Object API comes in: it takes care of the object layout and classifies objects by their shape, i.e., their properties, and the types of their values.
 Access nodes can then cache the encountered shapes, forego costly checks and access object properties more efficiently.
 
 ## Getting Started
 
-Guest language should have a common base class for all language objects that extends `DynamicObject` and implements `TruffleObject`, for example:
+A guest language should have a common base class for all language objects that extends `DynamicObject` and implements `TruffleObject`. For example:
 
 ```java
 @ExportLibrary(InteropLibrary.class)
@@ -55,8 +55,8 @@ public class Array extends BasicObject {
 }
 ```
 
-Members can be accessed using the DynamicObjectLibrary, which can be obtained using the `@CachedLibrary` annotation of the Truffle DSL and `DynamicObjectLibrary.getFactory()` + `getUncached()`, `create(DynamicObject)`, and `createDispatched(int)`.
-Here's an example of how it could be used to implement `InteropLibrary` messages:
+Class members can be accessed using the `DynamicObjectLibrary`, which can be obtained using the `@CachedLibrary` annotation of the Truffle DSL and `DynamicObjectLibrary.getFactory()` + `getUncached()`, `create(DynamicObject)`, and `createDispatched(int)`.
+Here is an example of how it could be used to implement `InteropLibrary` messages:
 ```java
 @ExportLibrary(InteropLibrary.class)
 public class SimpleObject extends BasicObject {
@@ -102,7 +102,7 @@ This shape is created using [`Shape.newBuilder().build()`](https://www.graalvm.o
 The returned shape describes the initial shape of the object and forms the root of a new shape tree.
 As you are adding new properties with `DynamicObjectLibrary#put`, the object will mutate into other shapes in this shape tree.
 
-Note that you should reuse the same initial shapes because shapes are internally cached per root shape.
+Note: You should reuse the same initial shapes because shapes are internally cached per root shape.
 It is recommended that you store the initial shapes in the `TruffleLanguage` instance, so they can be shared across contexts of the same engine.
 Static shapes should be avoided except for singletons (like a `null` value).
 
@@ -131,7 +131,7 @@ public final class MyLanguage extends TruffleLanguage<MyContext> {
 
 You can extend the default object layout with extra _dynamic fields_ that you hand over to the dynamic object model by adding `@DynamicField`-annotated field declarations of type `Object` or `long` in your subclasses, and specifying the _layout class_ with `Shape.newBuilder().layout(ExtendedObject.class).build();`.
 Dynamic fields declared in this class and its superclasses will then automatically be used to store dynamic object properties and allow faster access to properties that fit into this reserved space.
-Note that you must not access dynamic fields directly, always use `DynamicObjectLibrary` for this purpose.
+Note: You must not access dynamic fields directly. Always use `DynamicObjectLibrary` for this purpose.
 
 ```java
 @ExportLibrary(InteropLibrary.class)
@@ -152,10 +152,11 @@ public class ExtendedObject extends SimpleObject {
 
 ## Caching Considerations
 
-In order to ensure optimal caching, avoid reusing the same cached `DynamicObjectLibrary` for multiple, independent operations (`get`, `put`, etc.) and try to minimize the number of different shapes and property keys seen by each cached library instance.
+In order to ensure optimal caching, avoid reusing the same cached `DynamicObjectLibrary` for multiple, independent operations (`get`, `put`, etc.).
+Try to minimize the number of different shapes and property keys seen by each cached library instance.
 When the property keys are known statically (compilation-final), always use a separate `DynamicObjectLibrary` for each property key.
 Use dispatched libraries (`@CachedLibrary(limit=...)`) when putting multiple properties in succession.
-Example:
+For example:
 ```java
 public abstract class MakePairNode extends BinaryExpressionNode {
     @Specialization
@@ -173,7 +174,7 @@ public abstract class MakePairNode extends BinaryExpressionNode {
 
 <hr/>
 
-### Further Reading
+## Further Reading
 
 A high-level description of the object model has been published in [**An Object Storage Model for the Truffle Language Implementation Framework**](http://dl.acm.org/citation.cfm?id=2647517).
 
