@@ -30,6 +30,7 @@
 package com.oracle.truffle.llvm.runtime.nodes.api;
 
 import com.oracle.truffle.api.CompilerAsserts;
+import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.dsl.CachedContext;
 import com.oracle.truffle.api.frame.Frame;
 import com.oracle.truffle.api.instrumentation.InstrumentableNode;
@@ -130,10 +131,15 @@ public abstract class LLVMInstrumentableNode extends LLVMNode implements Instrum
 
     @ExportMessage
     public Object getScope(Frame frame, @SuppressWarnings("unused") boolean nodeEnter, @CachedContext(LLVMLanguage.class) LLVMContext ctx) {
-        if (ctx.getEnv().getOptions().get(SulongEngineOption.LL_DEBUG)) {
+        if (isLLDebugEnabled(ctx)) {
             return LLVMDebuggerScopeFactory.newCreateIRLevelScope(this, frame, ctx);
         } else {
             return LLVMDebuggerScopeFactory.newCreateSourceLevelScope(this, frame, ctx);
         }
+    }
+
+    @CompilerDirectives.TruffleBoundary
+    private boolean isLLDebugEnabled(LLVMContext ctx){
+        return ctx.getEnv().getOptions().get(SulongEngineOption.LL_DEBUG);
     }
 }
