@@ -148,17 +148,16 @@ bench-scala-dacapo-all-timing-hwloc: ${bench-scala-dacapo-timing} ${hwloc.bench-
   ]
 }
 
-# Renaissance-related targets
-# Parallel executions of renaissance not yet supported : https://github.com/renaissance-benchmarks/renaissance/issues/13
-# Still running on a single socket for better benchmark stability (local RAM and CPUs) and for consistency with other suites
 bench-renaissance-hwloc: ${bench-renaissance} ${hwloc.bench-common} {
   setup: ${bench-renaissance.setup} ${hwloc.bench-common.setup}
   run: [
-     ${export.node0}
-     ${hwloc.node} ${bench-jvmci.mx-renaissance} ${bench-arguments}
-  ]
-  teardown: [
-    ["bench-uploader.py", "node0-${BASE_BENCH_RESULTS_FILE_NAME}"]
+    [export, "SPARK_LOCAL_IP=127.0.0.1"]
+    [export, "LOGDIR=${PWD}"]
+    ${export.node0}
+    ${hwloc.node} ${bench-jvmci.mx-renaissance} ${bench-arguments} ${hwloc.cmd.suffix}
+    ${export.node1}
+    ${hwloc.node} ${bench-jvmci.mx-renaissance} ${bench-arguments} ${hwloc.cmd.suffix}
+    [wait]
   ]
 }
 
@@ -166,6 +165,7 @@ bench-renaissance-hwloc: ${bench-renaissance} ${hwloc.bench-common} {
 bench-renaissance-legacy-hwloc: ${bench-renaissance-legacy} ${hwloc.bench-common} {
   setup: ${bench-renaissance-legacy.setup} ${hwloc.bench-common.setup}
   run: [
+    [export, "SPARK_LOCAL_IP=127.0.0.1"]
     [export, "LOGDIR=${PWD}"]
     ${export.node0}
     ${hwloc.node} ${bench-jvmci.mx-renaissance-legacy} ${bench-arguments} ${hwloc.cmd.suffix}
