@@ -633,16 +633,8 @@ final class Target_org_graalvm_compiler_hotspot_HotSpotGraalCompiler {
         // This scope is required to allow Graal compilations of host methods to call methods
         // on the TruffleCompilerRuntime. This is, for example, required to find out about
         // Truffle-specific method annotations.
-        // We first open the libgraal-side scope.
-        // Then, we open the Truffle-side scope object.
-        // Finally, after the compilation ends, we remove the Truffle-side scope object.
         try (JNILibGraalScope<TruffleToLibGraal.Id> scope = new JNILibGraalScope<>(null, env)) {
-            int nestingDepth = TruffleFromLibGraalStaticCalls.enterLibGraalScope();
-            try {
-                return compiler.compileMethod(request, true, compiler.getGraalRuntime().getOptions());
-            } finally {
-                TruffleFromLibGraalStaticCalls.exitLibGraalScope(nestingDepth);
-            }
+            return compiler.compileMethod(request, true, compiler.getGraalRuntime().getOptions());
         }
     }
 }

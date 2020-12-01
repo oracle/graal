@@ -38,8 +38,6 @@ import static org.graalvm.compiler.truffle.common.hotspot.libgraal.TruffleFromLi
 import static org.graalvm.compiler.truffle.common.hotspot.libgraal.TruffleFromLibGraal.Id.CreateInliningPlan;
 import static org.graalvm.compiler.truffle.common.hotspot.libgraal.TruffleFromLibGraal.Id.CreateStringSupplier;
 import static org.graalvm.compiler.truffle.common.hotspot.libgraal.TruffleFromLibGraal.Id.DequeueInlined;
-import static org.graalvm.compiler.truffle.common.hotspot.libgraal.TruffleFromLibGraal.Id.EnterLibGraalScope;
-import static org.graalvm.compiler.truffle.common.hotspot.libgraal.TruffleFromLibGraal.Id.ExitLibGraalScope;
 import static org.graalvm.compiler.truffle.common.hotspot.libgraal.TruffleFromLibGraal.Id.FindCallNode;
 import static org.graalvm.compiler.truffle.common.hotspot.libgraal.TruffleFromLibGraal.Id.GetCallCount;
 import static org.graalvm.compiler.truffle.common.hotspot.libgraal.TruffleFromLibGraal.Id.GetCallNodes;
@@ -121,7 +119,6 @@ import jdk.vm.ci.meta.JavaKind;
 import jdk.vm.ci.meta.ResolvedJavaField;
 import jdk.vm.ci.meta.ResolvedJavaMethod;
 import jdk.vm.ci.meta.ResolvedJavaType;
-import org.graalvm.libgraal.LibGraalScope;
 
 /**
  * Entry points in HotSpot for {@link TruffleFromLibGraal calls} from libgraal.
@@ -219,21 +216,6 @@ final class TruffleFromLibGraalEntryPoints {
     @TruffleFromLibGraal(GetFrameSlotKindTagForJavaKind)
     static int getFrameSlotKindTagForJavaKind(Object truffleRuntime, int ordinal) {
         return ((TruffleCompilerRuntime) truffleRuntime).getFrameSlotKindTagForJavaKind(JavaKind.values()[ordinal]);
-    }
-
-    @TruffleFromLibGraal(EnterLibGraalScope)
-    static int enterLibGraalScope() {
-        final LibGraalScope scope = new LibGraalScope();
-        return scope.getDepth();
-    }
-
-    @TruffleFromLibGraal(ExitLibGraalScope)
-    static void exitLibGraalScope(int expectedDepth) {
-        LibGraalScope s = LibGraalScope.current();
-        if (s.getDepth() != expectedDepth) {
-            throw new IllegalStateException("The current nesting depth " + s.getDepth() + " is not equal to the expected depth " + expectedDepth);
-        }
-        s.close();
     }
 
     @TruffleFromLibGraal(GetTruffleCallBoundaryMethods)

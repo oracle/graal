@@ -822,7 +822,6 @@ suite = {
             "javaCompliance": "8,11+",
             "annotationProcessors": [
                 "compiler:GRAAL_PROCESSOR",
-                "compiler:GRAAL_LIBGRAAL_PROCESSOR",
             ],
         },
 
