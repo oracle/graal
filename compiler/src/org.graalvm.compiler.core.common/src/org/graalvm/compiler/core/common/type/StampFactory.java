@@ -45,9 +45,9 @@ public class StampFactory {
 
     private static final Stamp[] stampCache = new Stamp[JavaKind.values().length];
     private static final Stamp[] emptyStampCache = new Stamp[JavaKind.values().length];
-    private static final Stamp objectStamp = new ObjectStamp(null, false, false, false);
-    private static final Stamp objectNonNullStamp = new ObjectStamp(null, false, true, false);
-    private static final Stamp objectAlwaysNullStamp = new ObjectStamp(null, false, false, true);
+    private static final Stamp objectStamp = new ObjectStamp(null, false, false, false, false);
+    private static final Stamp objectNonNullStamp = new ObjectStamp(null, false, true, false, false);
+    private static final Stamp objectAlwaysNullStamp = new ObjectStamp(null, false, false, true, false);
     private static final Stamp positiveInt = forInteger(JavaKind.Int, 0, Integer.MAX_VALUE, 0, Integer.MAX_VALUE);
     private static final Stamp booleanTrue = forInteger(JavaKind.Boolean, -1, -1, 1, 1);
     private static final Stamp booleanFalse = forInteger(JavaKind.Boolean, 0, 0, 0, 0);
@@ -222,7 +222,7 @@ public class StampFactory {
     public static Stamp forConstant(JavaConstant value, MetaAccessProvider metaAccess) {
         if (value.getJavaKind() == JavaKind.Object) {
             ResolvedJavaType type = value.isNull() ? null : metaAccess.lookupJavaType(value);
-            return new ObjectStamp(type, value.isNonNull(), value.isNonNull(), value.isNull());
+            return new ObjectStamp(type, value.isNonNull(), value.isNonNull(), value.isNull(), false);
         } else {
             return forConstant(value);
         }
@@ -250,9 +250,9 @@ public class StampFactory {
 
     public static ObjectStamp object(TypeReference type, boolean nonNull) {
         if (type == null) {
-            return new ObjectStamp(null, false, nonNull, false);
+            return new ObjectStamp(null, false, nonNull, false, false);
         } else {
-            return new ObjectStamp(type.getType(), type.isExact(), nonNull, false);
+            return new ObjectStamp(type.getType(), type.isExact(), nonNull, false, false);
         }
     }
 

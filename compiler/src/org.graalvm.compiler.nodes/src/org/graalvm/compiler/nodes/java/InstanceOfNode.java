@@ -49,8 +49,6 @@ import org.graalvm.compiler.nodes.calc.IsNullNode;
 import org.graalvm.compiler.nodes.extended.AnchoringNode;
 import org.graalvm.compiler.nodes.graphbuilderconf.GraphBuilderContext;
 import org.graalvm.compiler.nodes.spi.Lowerable;
-import org.graalvm.compiler.nodes.spi.Virtualizable;
-import org.graalvm.compiler.nodes.spi.VirtualizerTool;
 import org.graalvm.compiler.nodes.type.StampTool;
 
 import jdk.vm.ci.meta.JavaKind;
@@ -63,7 +61,7 @@ import jdk.vm.ci.meta.TriState;
  */
 @NodeInfo(cycles = CYCLES_8, size = SIZE_8)
 @NodeIntrinsicFactory
-public class InstanceOfNode extends UnaryOpLogicNode implements Lowerable, Virtualizable {
+public class InstanceOfNode extends UnaryOpLogicNode implements Lowerable {
     public static final NodeClass<InstanceOfNode> TYPE = NodeClass.create(InstanceOfNode.class);
 
     private final ObjectStamp checkedStamp;
@@ -158,15 +156,6 @@ public class InstanceOfNode extends UnaryOpLogicNode implements Lowerable, Virtu
 
     public JavaTypeProfile profile() {
         return profile;
-    }
-
-    @Override
-    public void virtualize(VirtualizerTool tool) {
-        ValueNode alias = tool.getAlias(getValue());
-        TriState fold = tryFold(alias.stamp(NodeView.DEFAULT));
-        if (fold != TriState.UNKNOWN) {
-            tool.replaceWithValue(LogicConstantNode.forBoolean(fold.isTrue(), graph()));
-        }
     }
 
     @Override

@@ -164,7 +164,7 @@ public class SubstrateType extends NodeClass implements SharedType {
 
     @Override
     public boolean isArray() {
-        return hub.isArray();
+        return DynamicHub.toClass(hub).isArray();
     }
 
     @Override

@@ -699,7 +699,7 @@ public class IntrinsifyMethodHandlesInvocationPlugin implements NodePlugin {
             Stamp result;
             if (((Stamp) oStamp).getClass() == ObjectStamp.class) {
                 ObjectStamp oObjectStamp = (ObjectStamp) oStamp;
-                result = new ObjectStamp(lookup(oObjectStamp.type()), oObjectStamp.isExactType(), oObjectStamp.nonNull(), oObjectStamp.alwaysNull());
+                result = new ObjectStamp(lookup(oObjectStamp.type()), oObjectStamp.isExactType(), oObjectStamp.nonNull(), oObjectStamp.alwaysNull(), oObjectStamp.isAlwaysArray());
             } else if (oStamp instanceof PrimitiveStamp) {
                 result = oStamp;
             } else {

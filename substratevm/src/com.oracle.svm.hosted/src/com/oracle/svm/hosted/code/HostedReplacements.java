@@ -113,14 +113,15 @@ public class HostedReplacements extends SubstrateReplacements {
                  * ObjectStamp references a type indirectly, so we need to provide a new stamp with
                  * a modified type.
                  */
-                return new ObjectStamp((ResolvedJavaType) replaceAnalysisObjects(stamp.type()), stamp.isExactType(), stamp.nonNull(), stamp.alwaysNull());
+                return new ObjectStamp((ResolvedJavaType) replaceAnalysisObjects(stamp.type()), stamp.isExactType(), stamp.nonNull(), stamp.alwaysNull(), stamp.isAlwaysArray());
             }
         } else if (obj.getClass() == SubstrateNarrowOopStamp.class) {
             SubstrateNarrowOopStamp stamp = (SubstrateNarrowOopStamp) obj;
             if (stamp.type() == null) {
                 return obj;
             } else {
-                return new SubstrateNarrowOopStamp((ResolvedJavaType) replaceAnalysisObjects(stamp.type()), stamp.isExactType(), stamp.nonNull(), stamp.alwaysNull(), stamp.getEncoding());
+                return new SubstrateNarrowOopStamp((ResolvedJavaType) replaceAnalysisObjects(stamp.type()), stamp.isExactType(), stamp.nonNull(), stamp.alwaysNull(),
+                                stamp.isAlwaysArray(), stamp.getEncoding());
             }
         } else if (obj.getClass() == PlaceholderStamp.class) {
             assert ((PlaceholderStamp) obj).type() == null : "PlaceholderStamp never references a type";

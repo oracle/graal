@@ -562,8 +562,7 @@ public class SubstrateGraphBuilderPlugins {
                             unsafe.get();
 
                             LogicNode lengthNegative = b.append(IntegerLessThanNode.create(lengthNode, ConstantNode.forInt(0), NodeView.DEFAULT));
-                            b.emitBytecodeExceptionCheck(lengthNegative, false, BytecodeExceptionNode.BytecodeExceptionKind.ILLEGAL_ARGUMENT_EXCEPTION,
-                                            ConstantNode.forConstant(snippetReflection.forObject("Negative length"), b.getMetaAccess(), b.getGraph()));
+                            b.emitBytecodeExceptionCheck(lengthNegative, false, BytecodeExceptionNode.BytecodeExceptionKind.ILLEGAL_ARGUMENT_EXCEPTION_NEGATIVE_LENGTH);
                             b.addPush(JavaKind.Object, new NewArrayNode(componentType, lengthNode, false));
                             return true;
                         }
@@ -657,17 +656,6 @@ public class SubstrateGraphBuilderPlugins {
                         }
                     }
                 }
-                return false;
-            }
-        });
-
-        /*
-         * We have our own Java-level implementation of Array.getLength(), so we just disable the
-         * plugin defined in StandardGraphBuilderPlugins.
-         */
-        r.register1("getLength", Object.class, new InvocationPlugin() {
-            @Override
-            public boolean apply(GraphBuilderContext b, ResolvedJavaMethod targetMethod, Receiver type, ValueNode array) {
                 return false;
             }
         });
