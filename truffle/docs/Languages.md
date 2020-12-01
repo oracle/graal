@@ -1,6 +1,6 @@
 # Language Implementations
 
-This page is intended to keep track of the growing number of Truffle language implementations and experiments.
+This page is intended to keep track of the growing number of language implementations and experiments on top of Truffle.
 The following language implementations exist already:
 
 * [FastR](https://github.com/graalvm/fastr), an implementation of GNU R. *
@@ -13,7 +13,7 @@ The following language implementations exist already:
 * [TruffleRuby](https://github.com/graalvm/truffleruby), an implementation of Ruby. *
 * [TruffleSOM](https://github.com/SOM-st/TruffleSOM), a SOM Smalltalk implementation.
 * [TruffleSqueak](https://github.com/hpi-swa/trufflesqueak/), a Squeak/Smalltalk VM implementation and polyglot programming environment.
-* [Yona](https://yona-lang.org/), the reference implementation of a minimalistic, strongly dynamically typed, parallel and non-blocking, polyglot, strict, functional programming language.
+* [Yona](https://yona-lang.org/), the reference implementation of a minimalistic, strongly and dynamically-typed, parallel and non-blocking, polyglot, strict, functional programming language.
 
 \* Shipped as part of [GraalVM](https://www.oracle.com/technetwork/graalvm/downloads/index.html).
 
@@ -23,14 +23,14 @@ The following language implementations exist already:
 * [brainfuck-jvm](https://github.com/mthmulders/brainfuck-jvm), another Brainfuck language implementation.
 * [Cover](https://github.com/gerard-/cover), a Safe Subset of C++.
 * [DynSem](https://github.com/metaborg/dynsem), a DSL for declarative specification of dynamic semantics of languages.
-* [Heap Language](https://github.com/jaroslavtulach/heapdump) tutorial showing embedding of Truffle languages via interoperability.
+* [Heap Language](https://github.com/jaroslavtulach/heapdump), a tutorial showing the embedding of Truffle languages via interoperability.
 * [hextruffe](https://bitbucket.org/hexafraction/truffles), an implementation of Hex.
 * [LuaTruffle](https://github.com/lucasallan/LuaTruffle), an implementation of the Lua language.
 * [Mozart-Graal](https://github.com/eregon/mozart-graal), an implementation of the Oz programming language.
 * [Mumbler](https://github.com/cesquivias/mumbler), an experimental Lisp programming language.
 * [PorcE](https://github.com/orc-lang/orc/tree/master/PorcE), an Orc language implementation.
 * [ProloGraal](https://gitlab.forge.hefr.ch/tony.licata/prolog-truffle) a Prolog language implementation supporting interoperability.
-* [PureScript](https://github.com/slamdata/truffled-purescript), a small strongly typed programming language.
+* [PureScript](https://github.com/slamdata/truffled-purescript), a small, strongly-typed programming language.
 * [Reactive Ruby](https://github.com/guidosalva/ReactiveRubyTruffle), TruffleRuby meets Reactive Programming.
 * [shen-truffle](https://github.com/ragnard/shen-truffle), a port of the Shen programming language.
 * [TruffleMATE](https://github.com/charig/TruffleMATE), a Smalltalk with a completely reified runtime system.
