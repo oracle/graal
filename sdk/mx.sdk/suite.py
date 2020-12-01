@@ -461,6 +461,8 @@ suite = {
               "libexec",
               # the following is added by COMPILER_RT
               "lib/clang/*/lib/linux/*clang_rt*",
+              # Windows libarary excludes
+              "lib/*.lib",
             ]
           },
           "extracted-dependency:LLVM_ORG_COMPILER_RT_LINUX",
