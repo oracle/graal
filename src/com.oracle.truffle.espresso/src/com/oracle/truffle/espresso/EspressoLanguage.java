@@ -24,8 +24,24 @@ package com.oracle.truffle.espresso;
 
 import java.util.Collections;
 import java.util.concurrent.TimeUnit;
+import java.util.function.Supplier;
 import java.util.logging.Level;
 
+import com.oracle.truffle.api.ContextLocal;
+import com.oracle.truffle.api.interop.ArityException;
+import com.oracle.truffle.api.interop.InteropLibrary;
+import com.oracle.truffle.api.interop.InvalidArrayIndexException;
+import com.oracle.truffle.api.interop.TruffleObject;
+import com.oracle.truffle.api.interop.UnknownIdentifierException;
+import com.oracle.truffle.api.interop.UnsupportedMessageException;
+import com.oracle.truffle.api.interop.UnsupportedTypeException;
+import com.oracle.truffle.api.library.ExportLibrary;
+import com.oracle.truffle.api.library.ExportMessage;
+import com.oracle.truffle.api.library.GenerateLibrary;
+import com.oracle.truffle.espresso.meta.EspressoError;
+import com.oracle.truffle.espresso.meta.Meta;
+import com.oracle.truffle.espresso.runtime.EspressoException;
+import com.oracle.truffle.espresso.runtime.StaticObject;
 import org.graalvm.options.OptionDescriptors;
 
 import com.oracle.truffle.api.CallTarget;
@@ -219,6 +235,81 @@ public final class EspressoLanguage extends TruffleLanguage<EspressoContext> {
             context.doExit(0);
         } catch (EspressoExitException e) {
             // Expected. Suppress. We do not want to throw during context closing.
+        }
+    }
+
+    @Override
+    protected Object getScope(EspressoContext context) {
+        Meta meta = context.getMeta();
+        StaticObject systemClassloader = (StaticObject) meta.java_lang_ClassLoader_getSystemClassLoader.invokeDirect(null);
+        return new TopScope(systemClassloader);
+    }
+
+    @ExportLibrary(InteropLibrary.class)
+    static class TopScope implements TruffleObject {
+
+        final StaticObject loader;
+
+        TopScope(StaticObject loader) {
+            this.loader = loader;
+        }
+
+        @ExportMessage
+        boolean isMemberReadable(String member) {
+            // TODO(peterssen): Validate member is a proper class name.
+            return true;
+        }
+
+        @ExportLibrary(InteropLibrary.class)
+        public static final class EmptyKeysArray implements TruffleObject {
+
+            public static final TruffleObject INSTANCE = new EmptyKeysArray();
+
+            @ExportMessage
+            @SuppressWarnings("static-method")
+            boolean hasArrayElements() {
+                return true;
+            }
+
+            @ExportMessage
+            @SuppressWarnings("static-method")
+            long getArraySize() {
+                return 0;
+            }
+
+            @ExportMessage
+            @SuppressWarnings("static-method")
+            boolean isArrayElementReadable(@SuppressWarnings("unused") long index) {
+                return false;
+            }
+
+            @ExportMessage
+            @SuppressWarnings("static-method")
+            Object readArrayElement(long index) throws InvalidArrayIndexException {
+                throw InvalidArrayIndexException.create(index);
+            }
+        }
+
+        @ExportMessage
+        Object getMembers(boolean includeInternal) {
+            return EmptyKeysArray.INSTANCE;
+        }
+
+        @ExportMessage
+        boolean hasMembers() {
+            return true;
+        }
+
+        @ExportMessage
+        Object readMember(String member) throws UnsupportedMessageException, UnknownIdentifierException {
+            try {
+                StaticObject clazz = (StaticObject) InteropLibrary.getUncached().invokeMember(loader, "loadClass:(Ljava/lang/String;)Ljava/lang/Class;", member);
+                return clazz.getMirrorKlass();
+            } catch (ArityException | UnsupportedTypeException e) {
+                throw EspressoError.shouldNotReachHere(e);
+            } catch (EspressoException e) {
+                throw UnknownIdentifierException.create(member, e);
+            }
         }
     }
 
