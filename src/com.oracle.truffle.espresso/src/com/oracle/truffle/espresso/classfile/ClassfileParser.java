@@ -107,6 +107,7 @@ import com.oracle.truffle.espresso.runtime.EspressoException;
 import com.oracle.truffle.espresso.runtime.StaticObject;
 import com.oracle.truffle.espresso.substitutions.Host;
 
+@SuppressWarnings("try")
 public final class ClassfileParser {
 
     private static final DebugTimer KLASS_PARSE = DebugTimer.create("klass parsing");
@@ -116,7 +117,7 @@ public final class ClassfileParser {
     private static final DebugTimer PARSE_METHODS = DebugTimer.create("methods", KLASS_PARSE);
     private static final DebugTimer NO_DUP_CHECK = DebugTimer.create("method dup", PARSE_METHODS);
     private static final DebugTimer PARSE_SINGLE_METHOD = DebugTimer.create("single method", PARSE_METHODS);
-    private static final DebugTimer METHOD_INIT = DebugTimer.create("method parse init", PARSE_METHODS);
+    private static final DebugTimer METHOD_INIT = DebugTimer.create("method parse init", PARSE_SINGLE_METHOD);
     private static final DebugTimer NAME_CHECK = DebugTimer.create("name check", METHOD_INIT);
     private static final DebugTimer SIGNATURE_CHECK = DebugTimer.create("signature check", METHOD_INIT);
 
@@ -708,7 +709,7 @@ public final class ClassfileParser {
         for (int i = 0; i < attributeCount; ++i) {
             final int attributeNameIndex = stream.readU2();
             final Symbol<Name> attributeName = pool.symbolAt(attributeNameIndex, "attribute name");
-            try (DebugCloseable closeable = getTimer("m: " + attributeName.toString(), PARSE_METHODS).scope(context.getTimers())) {
+            try (DebugCloseable closeable = getTimer("m: " + attributeName.toString(), PARSE_SINGLE_METHOD).scope(context.getTimers())) {
                 final int attributeSize = stream.readS4();
                 final int startPosition = stream.getPosition();
                 if (attributeName.equals(Name.Code)) {
@@ -1265,8 +1266,14 @@ public final class ClassfileParser {
             throw ConstantPool.classFormatError("code_length > than 64 KB");
         }
 
-        byte[] code = stream.readByteArray(codeLength);
-        ExceptionHandler[] entries = parseExceptionHandlerEntries();
+        byte[] code;
+        try (DebugCloseable codeRead = getTimer("code read", getTimer("m: Code", null)).scope(context.getTimers())) {
+            code = stream.readByteArray(codeLength);
+        }
+        ExceptionHandler[] entries;
+        try (DebugCloseable handlers = getTimer("Exception handlers", getTimer("m: Code", null)).scope(context.getTimers())) {
+            entries = parseExceptionHandlerEntries();
+        }
 
         int attributeCount = stream.readU2();
         final Attribute[] codeAttributes = new Attribute[attributeCount];
@@ -1277,7 +1284,8 @@ public final class ClassfileParser {
 
         for (int i = 0; i < attributeCount; i++) {
             final int attributeNameIndex = stream.readU2();
-            final Symbol<Name> attributeName = pool.symbolAt(attributeNameIndex, "attribute name");
+            final Symbol<Name> attributeName;
+            attributeName = pool.symbolAt(attributeNameIndex, "attribute name");
             try (DebugCloseable c = getTimer("code: " + attributeName.toString(), getTimer("m: Code", null)).scope(context.getTimers())) {
                 final int attributeSize = stream.readS4();
                 final int startPosition = stream.getPosition();
@@ -1313,7 +1321,9 @@ public final class ClassfileParser {
             }
         }
 
-        return new CodeAttribute(name, maxStack, maxLocals, code, entries, codeAttributes, majorVersion);
+        try (DebugCloseable c = getTimer("spawn code", getTimer("m: Code", null)).scope(context.getTimers())) {
+            return new CodeAttribute(name, maxStack, maxLocals, code, entries, codeAttributes, majorVersion);
+        }
 
     }
 
@@ -1529,7 +1539,7 @@ public final class ClassfileParser {
         private final Symbol<Signature> signature;
         private final int hash;
 
-        public MethodKey(ParserMethod method) {
+        MethodKey(ParserMethod method) {
             this.methodName = method.getName();
             this.signature = method.getSignature();
             this.hash = Objects.hash(methodName, signature);

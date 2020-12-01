@@ -48,8 +48,9 @@ public final class Validation {
         }
         for (int i = 0; i < bytes.length(); ++i) {
             char ch = (char) bytes.byteAt(i);
-            if (invalidUnqualifiedNameChar(ch))
+            if (invalidUnqualifiedNameChar(ch)) {
                 return false;
+            }
         }
         return true;
     }
@@ -63,8 +64,9 @@ public final class Validation {
         }
         for (int i = 0; i < chars.length(); ++i) {
             char ch = chars.charAt(i);
-            if (invalidUnqualifiedNameChar(ch))
+            if (invalidUnqualifiedNameChar(ch)) {
                 return false;
+            }
         }
         return true;
     }
