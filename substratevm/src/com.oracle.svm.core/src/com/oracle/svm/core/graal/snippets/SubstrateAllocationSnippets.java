@@ -512,12 +512,6 @@ public abstract class SubstrateAllocationSnippets extends AllocationSnippets {
                 args.addConst("arrayBaseOffset", arrayBaseOffset);
                 args.addConst("log2ElementSize", log2ElementSize);
                 args.addConst("fillContents", fillContents);
-                /*
-                 * Unlike for arrays (see NewArrayLowering), no optimizations split the allocation
-                 * and zeroing of a hybrid object into two operations. We can therefore safely zero
-                 * all fields after the array length. We do not need a separate write for the
-                 * identity hashcode.
-                 */
                 args.addConst("fillStartOffset", afterArrayLengthOffset());
                 args.addConst("emitMemoryBarrier", node.emitMemoryBarrier());
                 args.addConst("maybeUnroll", length.isConstant());
@@ -543,20 +537,6 @@ public abstract class SubstrateAllocationSnippets extends AllocationSnippets {
                 int layoutEncoding = hub.getLayoutEncoding();
                 int arrayBaseOffset = getArrayBaseOffset(layoutEncoding);
                 int log2ElementSize = LayoutEncoding.getArrayIndexShift(layoutEncoding);
-                /*
-                 * On SVM, some optimizations (escape analysis, vectorization, explicit allocation
-                 * of uninitialized arrays using `sun.misc.Unsafe`, ...) can split the allocation
-                 * and the zeroing of an array into two separate operations if `fillContents` is
-                 * `false`. However, these optimizations do not know about the synthetic identity
-                 * hashcode field, so when emitting the separate zeroing operation, they zero
-                 * starting at the array base offset.
-                 *
-                 * To ensure that the identity hashcode is zeroed exactly once when `fillContents`
-                 * is `false`, we therefore zero it in the object initialization instead of in the
-                 * zeroing operation.
-                 */
-                boolean fillContents = node.fillContents();
-                int fillStartOffset = fillContents ? afterArrayLengthOffset() : arrayBaseOffset;
                 ConstantNode hubConstant = ConstantNode.forConstant(SubstrateObjectConstant.forObject(hub), providers.getMetaAccess(), graph);
 
                 Arguments args = new Arguments(allocateArray, graph.getGuardsStage(), tool.getLoweringStage());
@@ -564,8 +544,8 @@ public abstract class SubstrateAllocationSnippets extends AllocationSnippets {
                 args.add("length", length.isAlive() ? length : graph.addOrUniqueWithInputs(length));
                 args.addConst("arrayBaseOffset", arrayBaseOffset);
                 args.addConst("log2ElementSize", log2ElementSize);
-                args.addConst("fillContents", fillContents);
-                args.addConst("fillStartOffset", fillStartOffset);
+                args.addConst("fillContents", node.fillContents());
+                args.addConst("fillStartOffset", afterArrayLengthOffset());
                 args.addConst("emitMemoryBarrier", node.emitMemoryBarrier());
                 args.addConst("maybeUnroll", length.isConstant());
                 args.addConst("supportsBulkZeroing", tool.getLowerer().supportsBulkZeroing());

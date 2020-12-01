@@ -491,7 +491,7 @@ public class HotSpotAllocationSnippets extends AllocationSnippets {
     }
 
     @Override
-    public final void initializeObjectHeader(Word memory, Word hub, Word prototypeMarkWord, boolean isArray, boolean fillContents) {
+    public final void initializeObjectHeader(Word memory, Word hub, Word prototypeMarkWord, boolean isArray) {
         KlassPointer klassPtr = KlassPointer.fromWord(hub);
         Word markWord = prototypeMarkWord;
         if (!isArray && HotSpotReplacementsUtil.useBiasedLocking(INJECTED_VMCONFIG)) {
@@ -729,15 +729,6 @@ public class HotSpotAllocationSnippets extends AllocationSnippets {
             args.addConst("arrayBaseOffset", arrayBaseOffset);
             args.addConst("log2ElementSize", log2ElementSize);
             args.addConst("fillContents", node.fillContents());
-            /*
-             * On HotSpot, we may only use the `arrayBaseOffset` as the `fillStartOffset` because
-             * there are optimizations (escape analysis, vectorization, explicit allocation of
-             * uninitialized arrays using `sun.misc.Unsafe`, ...) that split the allocation and the
-             * zeroing into two separate operations. However, these optimizations do not know about
-             * the synthetic identity hashcode field, so when they emit the separate zeroing
-             * operation, they zero starting at the array base offset. To ensure that the identity
-             * hashcode is zeroed.
-             */
             args.addConst("fillStartOffset", arrayBaseOffset);
             args.addConst("emitMemoryBarrier", node.emitMemoryBarrier());
             args.addConst("maybeUnroll", length.isConstant());
