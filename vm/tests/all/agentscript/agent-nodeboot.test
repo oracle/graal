@@ -8,7 +8,7 @@
 > cat > ${TMP_DIR}/script.js
 < console.log("World");
 > cd ${TMP_DIR}
->[6] node --experimental-options --insight=agent.js script.js
+>[6] node --insight=agent.js script.js
 agent.js:3
    console.log("Hello");
    ^

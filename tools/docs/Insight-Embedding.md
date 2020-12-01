@@ -83,7 +83,7 @@ which opens an HTTP server at port `9999` and listens for incoming scripts to
 be applied any time later. Invoke your application as
 
 ```bash
-$ node --insight=adminserver.js --experimental-options yourapp.js
+$ node --insight=adminserver.js yourapp.js
 Admin ready at 9999
 ```
 
