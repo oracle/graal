@@ -67,10 +67,6 @@ class NativePointer implements TruffleObject {
         return language.getTools().createBindableSymbol(new NativePointer(nativePointer));
     }
 
-    static Object createBound(NFILanguageImpl language, long nativePointer, LibFFISignature signature) {
-        return language.getTools().createBoundSymbol(new NativePointer(nativePointer), signature);
-    }
-
     NativePointer(long nativePointer) {
         this.nativePointer = nativePointer;
     }

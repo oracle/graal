@@ -47,15 +47,9 @@ import com.oracle.truffle.api.CallTarget;
 import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.TruffleLanguage.Env;
-import com.oracle.truffle.nfi.impl.LibFFIType.ClosureType;
 import com.oracle.truffle.nfi.impl.LibFFIType.EnvType;
 import com.oracle.truffle.nfi.impl.NativeAllocation.FreeDestructor;
-import com.oracle.truffle.nfi.spi.types.NativeArrayTypeMirror;
-import com.oracle.truffle.nfi.spi.types.NativeFunctionTypeMirror;
 import com.oracle.truffle.nfi.spi.types.NativeSimpleType;
-import com.oracle.truffle.nfi.spi.types.NativeSimpleTypeMirror;
-import com.oracle.truffle.nfi.spi.types.NativeTypeMirror;
-import com.oracle.truffle.nfi.spi.types.NativeTypeMirror.Kind;
 
 class NFIContext {
 
@@ -178,14 +172,6 @@ class NFIContext {
         return LibFFISymbol.create(language, library, name, lookup(nativeContext, library.handle, name));
     }
 
-    LibFFIType lookupArgType(NativeTypeMirror type) {
-        return lookup(type, false);
-    }
-
-    LibFFIType lookupRetType(NativeTypeMirror type) {
-        return lookup(type, true);
-    }
-
     LibFFIType lookupSimpleType(NativeSimpleType type) {
         return simpleTypeMap[type.ordinal()];
     }
@@ -197,41 +183,6 @@ class NFIContext {
     @TruffleBoundary
     LibFFIType lookupEnvType() {
         return cachedEnvType;
-    }
-
-    private LibFFIType lookup(NativeTypeMirror type, boolean asRetType) {
-        switch (type.getKind()) {
-            case SIMPLE:
-                NativeSimpleTypeMirror simpleType = (NativeSimpleTypeMirror) type;
-                return lookupSimpleType(simpleType.getSimpleType());
-
-            case ARRAY:
-                NativeArrayTypeMirror arrayType = (NativeArrayTypeMirror) type;
-                NativeTypeMirror elementType = arrayType.getElementType();
-
-                LibFFIType ret = null;
-                if (elementType.getKind() == Kind.SIMPLE) {
-                    ret = arrayTypeMap[((NativeSimpleTypeMirror) elementType).getSimpleType().ordinal()];
-                }
-
-                if (ret == null) {
-                    throw new AssertionError("unsupported array type");
-                } else {
-                    return ret;
-                }
-
-            case FUNCTION: {
-                NativeFunctionTypeMirror functionType = (NativeFunctionTypeMirror) type;
-                LibFFISignature signature = null; // FIXME LibFFISignature.create(this, functionType.getSignature());
-                LibFFIType ptrType = lookupSimpleType(NativeSimpleType.POINTER);
-                return new LibFFIType(new ClosureType(ptrType.typeInfo, signature, asRetType), ptrType.type);
-            }
-
-            case ENV: {
-                return cachedEnvType;
-            }
-        }
-        throw new AssertionError("unsupported type");
     }
 
     protected void initializeSimpleType(NativeSimpleType simpleType, int size, int alignment, long ffiType) {

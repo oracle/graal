@@ -63,12 +63,6 @@ final class NFIContext {
         public Object createBindableSymbol(Object symbol) {
             return NFISymbol.createBindable(backend, symbol);
         }
-
-        @Override
-        public Object createBoundSymbol(Object symbol, Object signature) {
-            //return NFISymbol.createBound(backend, symbol, signature);
-            return symbol;
-        }
     }
 
     Env env;
