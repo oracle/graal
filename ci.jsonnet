@@ -231,6 +231,25 @@ local scala_dacapo_warmup_benchmark(env, guest_jvm_config='default', extra_args=
     extra_args=extra_args
   );
 
+# GraalVM EE + JS + Espresso
+local graalvm_ee_build_cmd = [
+  'mx', '--dy', '/vm-enterprise,/substratevm-enterprise,/graal-js', '--disable-polyglot', '--disable-installables=true', '--native-images=espresso,js,lib:jvmcicompiler,lib:polyglot,native-image', '--exclude-components=nju,npi,gu'
+];
+local graalvm_ee_build = {
+  downloads+: {
+    MAVEN_HOME: {name: "maven", version: "3.3.9", platformspecific: false}
+  },
+  environment+: {
+    PATH : "$MAVEN_HOME/bin:$JAVA_HOME/bin:$PATH"
+  },
+  run+: [
+    clone_repo('graal'),
+    clone_repo('graal-enterprise'),
+    graalvm_ee_build_cmd + ['build'],
+    graalvm_ee_build_cmd + ['--suite', 'sdk', 'maven-deploy', '--all-distribution-types', '--tag=graalvm', 'graal-us'],
+  ],
+};
+
 local jdk8_gate_windows           = base.jdk8  + base.gate          + base.windows;
 local jdk8_gate_darwin            = base.jdk8  + base.gate          + base.darwin;
 local jdk8_gate_linux             = base.jdk8  + base.gate          + base.linux;
@@ -314,5 +333,8 @@ local awfy = 'awfy:*';
     // On-demand
     jdk8_on_demand_linux          + espresso_minheap_benchmark('jvm-ce', awfy, 'infinite-overhead')       + {name: 'espresso-jvm-ce-awfy-minheap-infinite-ovh-jdk8-linux-amd64'},
     jdk8_on_demand_bench_linux    + espresso_minheap_benchmark('jvm-ce', awfy, '1.5-overhead')            + {name: 'espresso-bench-jvm-ce-awfy-minheap-1.5-ovh-jdk8-linux-amd64'},
+
+    base.jdk8 + base.linux + base.onDemand + graalvm_ee_build                                             + {name: 'deploy-graalvm-ee-8-js-espresso'},
+    base.jdk11 + base.linux + base.onDemand + graalvm_ee_build                                            + {name: 'deploy-graalvm-ee-11-js-espresso'},
   ],
 }
