@@ -1352,26 +1352,46 @@ abstract class PolyglotValue extends AbstractValueImpl {
     @TruffleBoundary
     protected static RuntimeException invalidInstantiateArity(PolyglotLanguageContext context, Object receiver, Object[] arguments, int expectedMin, int expectedMax, int actual) {
         String[] formattedArgs = formatArgs(context, arguments);
-        String message = String.format("Invalid argument count when instantiating %s with arguments %s. Expected %d argument(s) but got %d.",
-                        getValueInfo(context, receiver), Arrays.asList(formattedArgs), expectedMin, expectedMax, actual);
+        String message = String.format("Invalid argument count when instantiating %s with arguments %s. %s",
+                        getValueInfo(context, receiver), Arrays.asList(formattedArgs), formatExpectedArguments(expectedMin, expectedMax, actual));
         throw PolyglotEngineException.illegalArgument(message);
     }
 
     @TruffleBoundary
     protected static RuntimeException invalidExecuteArity(PolyglotLanguageContext context, Object receiver, Object[] arguments, int expectedMin, int expectedMax, int actual) {
         String[] formattedArgs = formatArgs(context, arguments);
-        String message = String.format("Invalid argument count when executing %s with arguments %s. Expected %d argument(s) but got %d.",
-                        getValueInfo(context, receiver), Arrays.asList(formattedArgs), expectedMin, expectedMax, actual);
+        String message = String.format("Invalid argument count when executing %s with arguments %s. %s",
+                        getValueInfo(context, receiver), Arrays.asList(formattedArgs), formatExpectedArguments(expectedMin, expectedMax, actual));
         throw PolyglotEngineException.illegalArgument(message);
     }
 
     @TruffleBoundary
     protected static RuntimeException invalidInvokeArity(PolyglotLanguageContext context, Object receiver, String member, Object[] arguments, int expectedMin, int expectedMax, int actual) {
         String[] formattedArgs = formatArgs(context, arguments);
-        String message = String.format("Invalid argument count when invoking '%s' on %s with arguments %s. Expected %d argument(s) but got %d.",
+        String message = String.format("Invalid argument count when invoking '%s' on %s with arguments %s. %s",
                         member,
-                        getValueInfo(context, receiver), Arrays.asList(formattedArgs), expectedMin, expectedMax, actual);
+                        getValueInfo(context, receiver), Arrays.asList(formattedArgs), formatExpectedArguments(expectedMin, expectedMax, actual));
         throw PolyglotEngineException.illegalArgument(message);
+    }
+
+    static String formatExpectedArguments(int expectedMin, int expectedMax, int actual) {
+        String actualLabel;
+        if (actual < 0) {
+            actualLabel = "unknown";
+        } else {
+            actualLabel = String.valueOf(actual);
+        }
+        if (expectedMin == expectedMax) {
+            return String.format("Expected %d argument(s) but got %d.", expectedMin, actual);
+        } else {
+            String maxLabel;
+            if (expectedMax < 0) {
+                maxLabel = "infinity";
+            } else {
+                maxLabel = String.valueOf(expectedMax);
+            }
+            return String.format("Expected argument range [%d - %s] but got %s.", expectedMin, maxLabel, actualLabel);
+        }
     }
 
     private static String[] formatArgs(PolyglotLanguageContext context, Object[] arguments) {
