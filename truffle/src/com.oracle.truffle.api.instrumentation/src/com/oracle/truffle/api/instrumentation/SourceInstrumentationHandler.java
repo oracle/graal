@@ -197,6 +197,7 @@ final class SourceInstrumentationHandler {
                 initializeSources = true;
             }
             bindings.add(binding);
+            binding.attachedSemaphore.release();
             if (notify) {
                 notificationsToProcess = addAllSourcesNotification(binding);
             } else if (initializeSources) {
