@@ -38,8 +38,6 @@ import static org.graalvm.compiler.truffle.common.hotspot.libgraal.TruffleFromLi
 import static org.graalvm.compiler.truffle.common.hotspot.libgraal.TruffleFromLibGraal.Id.CreateInliningPlan;
 import static org.graalvm.compiler.truffle.common.hotspot.libgraal.TruffleFromLibGraal.Id.CreateStringSupplier;
 import static org.graalvm.compiler.truffle.common.hotspot.libgraal.TruffleFromLibGraal.Id.DequeueInlined;
-import static org.graalvm.compiler.truffle.common.hotspot.libgraal.TruffleFromLibGraal.Id.EnterLibGraalScope;
-import static org.graalvm.compiler.truffle.common.hotspot.libgraal.TruffleFromLibGraal.Id.ExitLibGraalScope;
 import static org.graalvm.compiler.truffle.common.hotspot.libgraal.TruffleFromLibGraal.Id.FindCallNode;
 import static org.graalvm.compiler.truffle.common.hotspot.libgraal.TruffleFromLibGraal.Id.GetCallCount;
 import static org.graalvm.compiler.truffle.common.hotspot.libgraal.TruffleFromLibGraal.Id.GetCallNodes;
@@ -218,16 +216,6 @@ final class TruffleFromLibGraalEntryPoints {
     @TruffleFromLibGraal(GetFrameSlotKindTagForJavaKind)
     static int getFrameSlotKindTagForJavaKind(Object truffleRuntime, int ordinal) {
         return ((TruffleCompilerRuntime) truffleRuntime).getFrameSlotKindTagForJavaKind(JavaKind.values()[ordinal]);
-    }
-
-    @TruffleFromLibGraal(EnterLibGraalScope)
-    static int enterLibGraalScope(Object truffleRuntime) {
-        return ((HotSpotTruffleCompilerRuntime) truffleRuntime).enterLibGraalScope();
-    }
-
-    @TruffleFromLibGraal(ExitLibGraalScope)
-    static void exitLibGraalScope(Object truffleRuntime, int expectedDepth) {
-        ((HotSpotTruffleCompilerRuntime) truffleRuntime).exitLibGraalScope(expectedDepth);
     }
 
     @TruffleFromLibGraal(GetTruffleCallBoundaryMethods)
