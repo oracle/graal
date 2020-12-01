@@ -36,6 +36,7 @@ double sumDoublesNative(int count, va_list *args) {
     int i = 0;
     for (; i < count; ++i) {
         double num = va_arg(*args, double);
+		printf("arg[%d]=%f\n", i, num);
         sum += num;
     }
     return sum;

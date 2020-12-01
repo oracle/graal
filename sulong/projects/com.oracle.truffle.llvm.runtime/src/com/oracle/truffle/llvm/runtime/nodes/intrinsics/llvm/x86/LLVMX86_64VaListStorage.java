@@ -53,7 +53,6 @@ import com.oracle.truffle.api.interop.UnsupportedTypeException;
 import com.oracle.truffle.api.library.CachedLibrary;
 import com.oracle.truffle.api.library.ExportLibrary;
 import com.oracle.truffle.api.library.ExportMessage;
-import com.oracle.truffle.api.nodes.ExplodeLoop;
 import com.oracle.truffle.api.nodes.RootNode;
 import com.oracle.truffle.api.nodes.UnexpectedResultException;
 import com.oracle.truffle.api.profiles.BranchProfile;
@@ -544,13 +543,13 @@ public final class LLVMX86_64VaListStorage implements TruffleObject {
         }
     }
 
-    private enum VarArgArea {
+    public enum VarArgArea {
         GP_AREA,
         FP_AREA,
         OVERFLOW_AREA;
     }
 
-    private static VarArgArea getVarArgArea(Object arg) {
+    public static VarArgArea getVarArgArea(Object arg) {
         if (arg instanceof Boolean) {
             return VarArgArea.GP_AREA;
         } else if (arg instanceof Byte) {
@@ -628,7 +627,6 @@ public final class LLVMX86_64VaListStorage implements TruffleObject {
         return usedFpArea;
     }
 
-    @ExplodeLoop
     private static int calculateUsedGpArea(Object[] realArguments, int numberOfExplicitArguments) {
         assert numberOfExplicitArguments <= realArguments.length;
 
@@ -858,7 +856,6 @@ public final class LLVMX86_64VaListStorage implements TruffleObject {
         return language.getActiveConfiguration().createNodeFactory(language, dataLayout).createAlloca(VA_LIST_TYPE, 16);
     }
 
-    @SuppressWarnings("static-method")
     LLVMExpressionNode createAllocaNodeUncached(LLVMLanguage language) {
         DataLayout dataLayout = getDataLayout();
         LLVMExpressionNode alloca = language.getActiveConfiguration().createNodeFactory(language, dataLayout).createAlloca(VA_LIST_TYPE, 16);
@@ -874,7 +871,7 @@ public final class LLVMX86_64VaListStorage implements TruffleObject {
         return llvmCtx.getLanguage().getActiveConfiguration().createNodeFactory(llvmCtx.getLanguage(), dataLayout).createVarargsAreaStackAllocation();
     }
 
-    private static DataLayout getDataLayout() {
+    public static DataLayout getDataLayout() {
         RootCallTarget rootCallTarget = (RootCallTarget) Truffle.getRuntime().getCurrentFrame().getCallTarget();
         DataLayout dataLayout = (((LLVMHasDatalayoutNode) rootCallTarget.getRootNode())).getDatalayout();
         return dataLayout;
@@ -991,7 +988,7 @@ public final class LLVMX86_64VaListStorage implements TruffleObject {
         }
     }
 
-    private static long storeArgument(LLVMPointer ptr, long offset, LLVMMemMoveNode memmove, LLVMI64OffsetStoreNode storeI64Node,
+    public static long storeArgument(LLVMPointer ptr, long offset, LLVMMemMoveNode memmove, LLVMI64OffsetStoreNode storeI64Node,
                     LLVMI32OffsetStoreNode storeI32Node, LLVM80BitFloatOffsetStoreNode storeFP80Node, LLVMPointerOffsetStoreNode storePointerNode, Object object) {
         if (object instanceof Number) {
             return doPrimitiveWrite(ptr, offset, storeI64Node, object);
@@ -1172,9 +1169,9 @@ public final class LLVMX86_64VaListStorage implements TruffleObject {
      */
     @ExportLibrary(LLVMManagedReadLibrary.class)
     public abstract static class ArgsArea implements TruffleObject {
-        final Object[] args;
+        protected final Object[] args;
 
-        ArgsArea(Object[] args) {
+        protected ArgsArea(Object[] args) {
             this.args = args;
         }
 
@@ -1189,12 +1186,12 @@ public final class LLVMX86_64VaListStorage implements TruffleObject {
 
         @ExportMessage
         @SuppressWarnings("static-method")
-        boolean isReadable() {
+        public boolean isReadable() {
             return true;
         }
 
         @ExportMessage
-        byte readI8(long offset, @Cached ByteConversionHelperNode convNode) {
+        public byte readI8(long offset, @Cached ByteConversionHelperNode convNode) {
             long n = offsetToIndex(offset);
             int i = (int) ((n << 32) >> 32);
             int j = (int) (n >> 32);
@@ -1206,7 +1203,7 @@ public final class LLVMX86_64VaListStorage implements TruffleObject {
         }
 
         @ExportMessage
-        short readI16(long offset, @Cached ShortConversionHelperNode convNode) {
+        public short readI16(long offset, @Cached ShortConversionHelperNode convNode) {
             long n = offsetToIndex(offset);
             int i = (int) ((n << 32) >> 32);
             int j = (int) (n >> 32);
@@ -1218,7 +1215,7 @@ public final class LLVMX86_64VaListStorage implements TruffleObject {
         }
 
         @ExportMessage
-        int readI32(long offset, @Cached IntegerConversionHelperNode convNode) {
+        public int readI32(long offset, @Cached IntegerConversionHelperNode convNode) {
             long n = offsetToIndex(offset);
             int i = (int) ((n << 32) >> 32);
             int j = (int) (n >> 32);
@@ -1230,7 +1227,7 @@ public final class LLVMX86_64VaListStorage implements TruffleObject {
         }
 
         @ExportMessage
-        LLVMPointer readPointer(long offset, @Cached PointerConversionHelperNode convNode) {
+        public LLVMPointer readPointer(long offset, @Cached PointerConversionHelperNode convNode) {
             long n = offsetToIndex(offset);
             int i = (int) ((n << 32) >> 32);
             int j = (int) (n >> 32);
@@ -1238,7 +1235,7 @@ public final class LLVMX86_64VaListStorage implements TruffleObject {
         }
 
         @ExportMessage
-        Object readGenericI64(long offset, @Cached LongConversionHelperNode convNode) {
+        public Object readGenericI64(long offset, @Cached LongConversionHelperNode convNode) {
             long n = offsetToIndex(offset);
             int i = (int) ((n << 32) >> 32);
             int j = (int) (n >> 32);
@@ -1357,14 +1354,13 @@ public final class LLVMX86_64VaListStorage implements TruffleObject {
      * stored in the <code>overflow_area</code>. The <code>offsets</code> array serves to map
      * offsets to the indices of that array.
      */
-    @ExportLibrary(NativeTypeLibrary.class)
-    public static final class OverflowArgArea extends ArgsArea implements Cloneable {
-        private final long[] offsets;
-        final int overflowAreaSize;
+    public static abstract class AbstractOverflowArgArea extends ArgsArea implements Cloneable {
+        protected final long[] offsets;
+        public final int overflowAreaSize;
 
-        private long currentOffset;
+        protected long currentOffset;
 
-        OverflowArgArea(Object[] args, long[] offsets, int overflowAreaSize) {
+        protected AbstractOverflowArgArea(Object[] args, long[] offsets, int overflowAreaSize) {
             super(args);
             this.overflowAreaSize = overflowAreaSize;
             this.offsets = offsets;
@@ -1415,28 +1411,37 @@ public final class LLVMX86_64VaListStorage implements TruffleObject {
             currentOffset = offsets[i + steps];
         }
 
-        void setOffset(long newOffset) {
+        public void setOffset(long newOffset) {
             currentOffset = newOffset;
         }
 
-        Object getCurrentArg() {
-            long n = offsetToIndex(currentOffset);
-            int i = (int) ((n << 32) >> 32);
+        public Object getCurrentArg() {
+            int i = getCurrentArgIndex();
             return i < 0 ? null : args[i];
         }
 
-        int getCurrentArgIndex() {
+        public int getCurrentArgIndex() {
             long n = offsetToIndex(currentOffset);
             int i = (int) ((n << 32) >> 32);
             return i;
         }
 
-        LLVMManagedPointer getCurrentArgPtr() {
+        public LLVMManagedPointer getCurrentArgPtr() {
             return LLVMManagedPointer.create(this, currentOffset);
         }
 
-        long getOffset() {
+        public long getOffset() {
             return currentOffset;
+        }
+
+    }
+
+    @ExportLibrary(LLVMManagedReadLibrary.class)
+    @ExportLibrary(NativeTypeLibrary.class)
+    public static final class OverflowArgArea extends AbstractOverflowArgArea {
+
+        OverflowArgArea(Object[] args, long[] offsets, int overflowAreaSize) {
+            super(args, offsets, overflowAreaSize);
         }
 
         @Override
@@ -1461,7 +1466,7 @@ public final class LLVMX86_64VaListStorage implements TruffleObject {
 
     }
 
-    abstract static class NumberConversionHelperNode extends LLVMNode {
+    public abstract static class NumberConversionHelperNode extends LLVMNode {
 
         abstract Object execute(Object x, int offset);
 
@@ -1476,7 +1481,7 @@ public final class LLVMX86_64VaListStorage implements TruffleObject {
     }
 
     @GenerateUncached
-    abstract static class ByteConversionHelperNode extends NumberConversionHelperNode {
+    public abstract static class ByteConversionHelperNode extends NumberConversionHelperNode {
 
         @Specialization
         byte byteConversion(Byte x, @SuppressWarnings("unused") int offset) {
@@ -1571,14 +1576,14 @@ public final class LLVMX86_64VaListStorage implements TruffleObject {
             return nativePointerObjectConversion(nativePointer, offset, conditionProfile1, conditionProfile2, conditionProfile3);
         }
 
-        static ByteConversionHelperNode create() {
+        public static ByteConversionHelperNode create() {
             return ByteConversionHelperNodeGen.create();
         }
 
     }
 
     @GenerateUncached
-    abstract static class ShortConversionHelperNode extends NumberConversionHelperNode {
+    public abstract static class ShortConversionHelperNode extends NumberConversionHelperNode {
 
         @Specialization
         short byteConversion(Byte x, @SuppressWarnings("unused") int offset) {
@@ -1657,13 +1662,13 @@ public final class LLVMX86_64VaListStorage implements TruffleObject {
             return nativePointerObjectConversion(nativePointer, offset, conditionProfile1, conditionProfile2);
         }
 
-        static ShortConversionHelperNode create() {
+        public static ShortConversionHelperNode create() {
             return ShortConversionHelperNodeGen.create();
         }
     }
 
     @GenerateUncached
-    abstract static class IntegerConversionHelperNode extends NumberConversionHelperNode {
+    public abstract static class IntegerConversionHelperNode extends NumberConversionHelperNode {
 
         @Specialization
         int byteConversion(Byte x, @SuppressWarnings("unused") int offset) {
@@ -1732,13 +1737,13 @@ public final class LLVMX86_64VaListStorage implements TruffleObject {
             return nativePointerObjectConversion(nativePointer, offset, conditionProfile);
         }
 
-        static IntegerConversionHelperNode create() {
+        public static IntegerConversionHelperNode create() {
             return IntegerConversionHelperNodeGen.create();
         }
     }
 
     @GenerateUncached
-    abstract static class LongConversionHelperNode extends NumberConversionHelperNode {
+    public abstract static class LongConversionHelperNode extends NumberConversionHelperNode {
 
         @Specialization
         long byteConversion(Byte x, @SuppressWarnings("unused") int offset) {
@@ -1815,13 +1820,13 @@ public final class LLVMX86_64VaListStorage implements TruffleObject {
             return x;
         }
 
-        static LongConversionHelperNode create() {
+        public static LongConversionHelperNode create() {
             return LongConversionHelperNodeGen.create();
         }
     }
 
     @GenerateUncached
-    abstract static class PointerConversionHelperNode extends NumberConversionHelperNode {
+    public abstract static class PointerConversionHelperNode extends NumberConversionHelperNode {
 
         @Specialization
         LLVMPointer pointerConversion(LLVMPointer p, @SuppressWarnings("unused") int offset) {
@@ -1858,7 +1863,7 @@ public final class LLVMX86_64VaListStorage implements TruffleObject {
             return LLVMNativePointer.createNull();
         }
 
-        static PointerConversionHelperNode create() {
+        public static PointerConversionHelperNode create() {
             return PointerConversionHelperNodeGen.create();
         }
     }

@@ -111,6 +111,8 @@ import com.oracle.truffle.llvm.runtime.nodes.api.LLVMInstrumentableNode;
 import com.oracle.truffle.llvm.runtime.nodes.api.LLVMNode;
 import com.oracle.truffle.llvm.runtime.nodes.api.LLVMStatementNode;
 import com.oracle.truffle.llvm.runtime.nodes.api.LLVMVoidStatementNodeGen;
+import com.oracle.truffle.llvm.runtime.nodes.memory.literal.LLVMArrayLiteralNode;
+import com.oracle.truffle.llvm.runtime.nodes.memory.load.LLVMDirectLoadNode;
 import com.oracle.truffle.llvm.runtime.nodes.vars.LLVMWriteNode;
 import com.oracle.truffle.llvm.runtime.options.SulongEngineOption;
 import com.oracle.truffle.llvm.runtime.types.AggregateType;
@@ -406,6 +408,8 @@ public final class LLVMBitcodeInstructionVisitor implements SymbolVisitor {
             final AttributesGroup paramAttr = call.getParameterAttributesGroup(i);
             if (isByValue(paramAttr)) {
                 argNodes[argIndex + i] = capsuleAddressByValue(argNodes[argIndex + i], argTypes.get(argIndex + i), paramAttr);
+            } else if (isArrayByValue(argTypes.get(argIndex + i), argNodes[argIndex + i])) {
+                argNodes[argIndex + i] = capsuleArrayByValue(argNodes[argIndex + i], argTypes.get(argIndex + i));
             }
         }
 
@@ -1215,6 +1219,16 @@ public final class LLVMBitcodeInstructionVisitor implements SymbolVisitor {
         }
     }
 
+    private LLVMExpressionNode capsuleArrayByValue(LLVMExpressionNode child, Type type) {
+        try {
+            final long size = type.getSize(dataLayout);
+            int alignment = type.getAlignment(dataLayout);
+            return nodeFactory.createVarArgCompoundValue(size, alignment, child);
+        } catch (TypeOverflowException e) {
+            return Type.handleOverflowExpression(e);
+        }
+    }
+
     private static boolean isByValue(AttributesGroup parameter) {
         if (parameter == null) {
             return false;
@@ -1227,6 +1241,13 @@ public final class LLVMBitcodeInstructionVisitor implements SymbolVisitor {
         }
 
         return false;
+    }
+
+    private static boolean isArrayByValue(Type type, LLVMExpressionNode exprNode) {
+// if (type.toString().contains("[2 x i64]")) {
+// return true;
+// }
+        return ((exprNode instanceof LLVMDirectLoadNode.LLVMStructDirectLoadNode) || (exprNode instanceof LLVMArrayLiteralNode) && (type instanceof ArrayType));
     }
 
     private void assignSourceLocation(LLVMInstrumentableNode node, Instruction sourceInstruction) {
