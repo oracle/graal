@@ -1,6 +1,9 @@
 # hwloc (Hardware Locality) provides means to bind a process to NUMA nodes
 hwloc.bench-common : {
-  packages: {hwloc: ">=1.9"}
+  docker : {
+    "image": "phx.ocir.io/oraclelabs2/c_graal/buildslave:buildslave_ol8",
+    "mount_modules": true
+  }
   environment: {
     BASE_BENCH_RESULTS_FILE_NAME: "bench-results.json"
     LOG_FILE_NAME : "-output.log"
@@ -29,10 +32,7 @@ hwloc.scala.bench-common : ${hwloc.bench-common} {
 hwloc.cmd.nobackground.suffix : ["|","tee", "-a", "${LOGDIR}/node${MACHINE_NODE}${LOG_FILE_NAME}"]
 hwloc.cmd.suffix : ${hwloc.cmd.nobackground.suffix} ["&"]
 
-# command prefix for binding a command to a certain node
-hwloc.node0 : ["hwloc-bind", "--cpubind", "node:0", "--membind", "node:0", "--"]
-hwloc.node1 : ["hwloc-bind", "--cpubind", "node:1", "--membind", "node:1", "--"]
-hwloc.node : ["hwloc-bind", "--cpubind", "node:${MACHINE_NODE}", "--membind", "node:${MACHINE_NODE}", "--"]
+hwloc.node : ["hwloc-bind", "--cpubind", "node:${MACHINE_NODE}", "--membind", "node:${MACHINE_NODE}", "--", "isolate-network.sh"]
 
 export.node0: [export, "MACHINE_NODE=0", "BENCH_RESULTS_FILE_PATH=node0-${BASE_BENCH_RESULTS_FILE_NAME}"]
 export.node1: [export, "MACHINE_NODE=1", "BENCH_RESULTS_FILE_PATH=node1-${BASE_BENCH_RESULTS_FILE_NAME}"]
