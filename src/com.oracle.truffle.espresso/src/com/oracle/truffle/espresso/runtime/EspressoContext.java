@@ -34,6 +34,8 @@ import java.util.function.Function;
 import java.util.logging.Level;
 import java.util.stream.Collectors;
 
+import com.oracle.truffle.api.interop.TruffleObject;
+import com.oracle.truffle.espresso.EspressoBindings;
 import org.graalvm.polyglot.Engine;
 
 import com.oracle.truffle.api.Assumption;
@@ -150,7 +152,7 @@ public final class EspressoContext {
     // Checkstyle: resume field name check
     // endregion Options
 
-    // Must be initialized after the context instance creation.
+    @CompilationFinal private TruffleObject topBindings;
 
     // region VM
     @CompilationFinal private Meta meta;
@@ -415,7 +417,8 @@ public final class EspressoContext {
 
             // Create application (system) class loader.
             try (DebugCloseable systemLoader = SYSTEM_CLASSLOADER.scope(timers)) {
-                meta.java_lang_ClassLoader_getSystemClassLoader.invokeDirect(null);
+                StaticObject systemClassLoader = (StaticObject) meta.java_lang_ClassLoader_getSystemClassLoader.invokeDirect(null);
+                topBindings = new EspressoBindings(systemClassLoader);
             }
 
             initDoneTimeNanos = System.nanoTime();
@@ -668,6 +671,10 @@ public final class EspressoContext {
 
     public TimerCollection getTimers() {
         return timers;
+    }
+
+    public TruffleObject getBindings() {
+        return topBindings;
     }
 
     // endregion DebugAccess
