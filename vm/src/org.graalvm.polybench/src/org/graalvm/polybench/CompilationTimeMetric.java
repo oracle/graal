@@ -52,18 +52,21 @@ final class CompilationTimeMetric implements Metric {
     private static final String TRUFFLE_COMPILATION_EVENT = "org.graalvm.compiler.truffle.Compilation";
 
     private final MetricType metricType;
+    /**
+     * {@code true} is the JFR is supported by the VM. We need to run also on the native-image CE
+     * which does not support JFR. In this case this metric returns {@code 0} in each report.
+     */
+    private final boolean supported;
     private Object recording;
     private Object snapshot;
 
     CompilationTimeMetric(MetricType metricType) {
         this.metricType = metricType;
+        this.supported = JFRSupport.isAvailable();
     }
 
     @Override
     public void validateConfig(Config config, Map<String, String> polyglotOptions) {
-        if (!JFRSupport.isAvailable()) {
-            throw new IllegalStateException("The VM does not support Java Flight Recorder.");
-        }
         if (Boolean.parseBoolean(polyglotOptions.get("engine.BackgroundCompilation"))) {
             throw new IllegalStateException("The Compile Time Metric cannot be used with a background compilation.\n" +
                             "Remove the 'engine.BackgroundCompilation=true' option.");
@@ -87,32 +90,38 @@ final class CompilationTimeMetric implements Metric {
 
     @Override
     public void beforeIteration(boolean warmup, int iteration, Config config) {
-        if (recording == null) {
-            // First iteration, create a new Recording used for all iterations until reset.
-            recording = JFRSupport.startRecording(TRUFFLE_COMPILATION_EVENT);
+        if (supported) {
+            if (recording == null) {
+                // First iteration, create a new Recording used for all iterations until reset.
+                recording = JFRSupport.startRecording(TRUFFLE_COMPILATION_EVENT);
+            }
+            JFRSupport.disposeRecording(snapshot, false);
+            snapshot = null;
         }
-        JFRSupport.disposeRecording(snapshot, false);
-        snapshot = null;
     }
 
     @Override
     public void afterIteration(boolean warmup, int iteration, Config config) {
-        if (recording == null) {
-            throw new IllegalStateException("Missing JFR recording.");
+        if (supported) {
+            if (recording == null) {
+                throw new IllegalStateException("Missing JFR recording.");
+            }
+            if (snapshot != null) {
+                throw new IllegalStateException("Existing JFR snapshot.");
+            }
+            snapshot = JFRSupport.snapshotRecording(recording);
         }
-        if (snapshot != null) {
-            throw new IllegalStateException("Existing JFR snapshot.");
-        }
-        snapshot = JFRSupport.snapshotRecording(recording);
     }
 
     @Override
     public void reset() {
-        // Stop and dispose JFR recording.
-        JFRSupport.disposeRecording(recording, true);
-        recording = null;
-        JFRSupport.disposeRecording(snapshot, false);
-        snapshot = null;
+        if (supported) {
+            // Stop and dispose JFR recording.
+            JFRSupport.disposeRecording(recording, true);
+            recording = null;
+            JFRSupport.disposeRecording(snapshot, false);
+            snapshot = null;
+        }
     }
 
     @Override
@@ -126,14 +135,18 @@ final class CompilationTimeMetric implements Metric {
     }
 
     private Optional<Double> computeCumulativeTime() {
-        if (snapshot == null) {
-            throw new IllegalStateException("No snapshot.");
-        }
-        try {
-            return Optional.of(1.0 * JFRSupport.computeCumulativeTime(snapshot, TRUFFLE_COMPILATION_EVENT, metricType.getFieldName()));
-        } catch (IOException ioe) {
-            LOG.log(Level.SEVERE, "Cannot write recording.", ioe);
-            return Optional.empty();
+        if (supported) {
+            if (snapshot == null) {
+                throw new IllegalStateException("No snapshot.");
+            }
+            try {
+                return Optional.of(1.0 * JFRSupport.computeCumulativeTime(snapshot, TRUFFLE_COMPILATION_EVENT, metricType.getFieldName()));
+            } catch (IOException ioe) {
+                LOG.log(Level.SEVERE, "Cannot write recording.", ioe);
+                return Optional.empty();
+            }
+        } else {
+            return Optional.of(0.0);
         }
     }
 }

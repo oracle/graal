@@ -22,28 +22,41 @@ vm_bench_js_linux: ${vm_bench_common} ${vm_java_8} ${svm-common-linux-amd64} ${s
   ]
 }
 
-vm_bench_polybench_linux: ${vm_bench_common} ${vm_java_11} ${svm-common-linux-amd64} ${truffleruby_linux} ${custom_vm_linux} {
+vm_bench_polybench_linux_common: ${vm_bench_common} ${svm-common-linux-amd64} ${truffleruby_linux} ${custom_vm_linux} {
   base_cmd: [mx, --env, "polybench-${VM_ENV}"]
-  bench_cmd: ${vm_bench_polybench_linux.base_cmd} [benchmark, "polybench:*", --results-file, ${vm_bench_polybench_linux.result_file}, --, "--polybench-vm=graalvm-${VM_ENV}"]
   downloads: {
     WABT_DIR: {name: wabt, version: "1.0.12", platformspecific: true},
   }
   setup: ${common_vm.setup} [
-    ${vm_bench_polybench_linux.base_cmd} [build]
-    ${vm_bench_polybench_linux.base_cmd} [build, "--projects=benchmarks.interpreter.wasm"]
-  ]
-  run: [
-    ${vm_bench_polybench_linux.bench_cmd} ["--polybench-vm-config=jvm-interpreter"]
-    ${vm_bench_common.upload}
-    ${vm_bench_polybench_linux.bench_cmd} ["--polybench-vm-config=native-interpreter"]
-    ${vm_bench_common.upload}
-    ${vm_bench_polybench_linux.bench_cmd} ["--polybench-vm-config=jvm-standard", "--metric=compilation-time"]
-    ${vm_bench_common.upload}
-    ${vm_bench_polybench_linux.bench_cmd} ["--polybench-vm-config=jvm-standard", "--metric=partial-evaluation-time"]
-    ${vm_bench_common.upload}
+    ${vm_bench_polybench_linux_common.base_cmd} [build]
+    ${vm_bench_polybench_linux_common.base_cmd} [build, "--projects=benchmarks.interpreter.wasm"]
   ]
   notify_emails: [ "aleksandar.prokopec@oracle.com" ]
   targets: [bench, daily]
+}
+
+vm_bench_polybench_linux_interpreter: ${vm_bench_polybench_linux_common} ${vm_java_8} {
+  bench_cmd: ${vm_bench_polybench_linux_common.base_cmd} [benchmark, "polybench:*[interpreter/fibonacci.wasm,interpreter/fibonacci.js,interpreter/fibonacci.rb,interpreter/sieve.wasm,interpreter/sieve.js,interpreter/sieve.rb]", --results-file, ${vm_bench_polybench_linux_interpreter.result_file}, --, "--polybench-vm=graalvm-${VM_ENV}"]
+  run: [
+    ${vm_bench_polybench_linux_interpreter.bench_cmd} ["--polybench-vm-config=jvm-interpreter"]
+    ${vm_bench_common.upload}
+    ${vm_bench_polybench_linux_interpreter.bench_cmd} ["--polybench-vm-config=native-interpreter"]
+    ${vm_bench_common.upload}
+  ]
+}
+
+vm_bench_polybench_linux_compiler: ${vm_bench_polybench_linux_common} ${vm_java_11} {
+  bench_cmd: ${vm_bench_polybench_linux_common.base_cmd} [benchmark, "polybench:*[compiler/dispatch.js]", --results-file, ${vm_bench_polybench_linux_compiler.result_file}, --, "--polybench-vm=graalvm-${VM_ENV}"]
+  run: [
+    ${vm_bench_polybench_linux_compiler.bench_cmd} ["--polybench-vm-config=jvm-standard", "--metric=compilation-time"]
+    ${vm_bench_common.upload}
+    ${vm_bench_polybench_linux_compiler.bench_cmd} ["--polybench-vm-config=native-standard", "--metric=compilation-time"]
+    ${vm_bench_common.upload}
+    ${vm_bench_polybench_linux_compiler.bench_cmd} ["--polybench-vm-config=jvm-standard", "--metric=partial-evaluation-time"]
+    ${vm_bench_common.upload}
+    ${vm_bench_polybench_linux_compiler.bench_cmd} ["--polybench-vm-config=native-standard", "--metric=partial-evaluation-time"]
+    ${vm_bench_common.upload}
+  ]
 }
 
 builds += [
@@ -56,7 +69,8 @@ builds += [
   ${common_vm_linux} ${vm_bench_js_linux} { environment: { BENCH_SUITE: misc },      name: bench-vm-${vm_setup.short_name}-js-misc-linux}
   ${common_vm_linux} ${vm_bench_js_linux} { environment: { BENCH_SUITE: npm-regex }, name: bench-vm-${vm_setup.short_name}-js-npm-regex-linux}
 
-  ${common_vm_linux} ${vm_bench_polybench_linux} {name: bench-vm-${vm_setup.short_name}-polybench-linux}
+  ${common_vm_linux} ${vm_bench_polybench_linux_interpreter} {name: bench-vm-${vm_setup.short_name}-polybench-linux}
+  ${common_vm_linux} ${vm_bench_polybench_linux_compiler} {name: bench-vm-${vm_setup.short_name}-polybench-compiler-linux}
 
   ${bench_daily_vm_linux} ${vm_bench_js_linux} {
     run: [

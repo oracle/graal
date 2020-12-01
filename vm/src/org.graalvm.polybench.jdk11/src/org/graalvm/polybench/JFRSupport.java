@@ -41,7 +41,12 @@ final class JFRSupport {
     }
 
     static boolean isAvailable() {
-        return FlightRecorder.isAvailable();
+        try {
+            return FlightRecorder.isAvailable();
+        } catch (LinkageError e) {
+            // Thrown on the JDK-11 CE native-image without JFR support.
+            return false;
+        }
     }
 
     static Object startRecording(String enabledEvent) {
