@@ -40,8 +40,9 @@ import com.oracle.truffle.api.interop.UnknownIdentifierException;
 import com.oracle.truffle.api.interop.UnsupportedMessageException;
 import com.oracle.truffle.api.library.CachedLibrary;
 import com.oracle.truffle.llvm.runtime.except.LLVMPolyglotException;
-import com.oracle.truffle.llvm.runtime.interop.access.LLVMInteropAccessNodeGen.MakeAccessLocationNodeGen;
+import com.oracle.truffle.llvm.runtime.interop.access.LLVMInteropType.Clazz;
 import com.oracle.truffle.llvm.runtime.interop.access.LLVMInteropType.StructMember;
+import com.oracle.truffle.llvm.runtime.interop.access.LLVMInteropType.Structured;
 import com.oracle.truffle.llvm.runtime.nodes.api.LLVMNode;
 
 @GenerateUncached
@@ -77,31 +78,16 @@ abstract class LLVMInteropAccessNode extends LLVMNode {
 
     @Specialization
     AccessLocation doClazz(LLVMInteropType.Clazz type, Object foreign, long offset,
+                    @Cached LLVMInteropAccessNode recursiveNode,
                     @Cached MakeAccessLocation makeAccessLocation) {
-        LLVMInteropType.Clazz classType = type;
-        StructMember member = findMember(classType, offset);
-        try {
+        StructMember member = findMember(type, offset);
+        if (type.getSuperClasses().contains(member.type) &&
+                        member.name.contentEquals("super (" + ((Clazz) (member.type)).name + ")")) {
+            return recursiveNode.execute((Structured) member.type, foreign, offset - member.startOffset);
+        } else {
             return makeAccessLocation.execute(foreign, member.name, member.type, offset - member.startOffset);
-        } catch (LLVMPolyglotException e) {
-            // normal way failed
-            if (member.name != null && member.name.startsWith("super (")) {
-                /*
-                 * field not found in super class: assume flat class model and look in current
-                 * object (='foreign') with information of parent class
-                 */
-                for (LLVMInteropType.Clazz superclass : type.getSuperClasses()) {
-                    for (StructMember s : superclass.members) {
-                        if (s.startOffset == offset) {
-                            MakeAccessLocation makeAccessLocation2 = MakeAccessLocationNodeGen.create();
-                            super.insert(makeAccessLocation2);
-                            return doClazz(superclass, foreign, offset, makeAccessLocation2);
-                        }
-                    }
-                }
-            }
-            // no other working solution found
-            throw e;
         }
+
     }
 
     @Specialization(guards = "checkMember(type, cachedMember, offset)")

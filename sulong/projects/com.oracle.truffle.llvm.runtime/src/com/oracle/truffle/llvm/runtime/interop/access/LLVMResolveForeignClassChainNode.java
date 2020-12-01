@@ -55,7 +55,7 @@ public abstract class LLVMResolveForeignClassChainNode extends LLVMNode {
     @ExplodeLoop
     public LLVMPointer doClassResolvingCached(LLVMPointer receiver, String ident, LLVMInteropType.Clazz clazz,
                     @Cached(value = "getCIHash(clazz, ident)", allowUncached = true) int classIdentHash,
-                    @Cached(value = "clazz.getSuperElementPtrChain(ident)") Pair<LLVMForeignGetSuperElemPtrNode[], Struct> p) {
+                    @Cached(value = "clazz.getSuperElementPtrChain(ident)", allowUncached = true) Pair<LLVMForeignGetSuperElemPtrNode[], Struct> p) {
         LLVMPointer curReceiver = receiver;
         for (LLVMForeignGetSuperElemPtrNode n : p.getLeft()) {
             curReceiver = insert(n).execute(curReceiver);
