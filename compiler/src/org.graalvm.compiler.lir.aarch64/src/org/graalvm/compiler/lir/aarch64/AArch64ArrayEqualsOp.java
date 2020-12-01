@@ -52,7 +52,8 @@ public final class AArch64ArrayEqualsOp extends AArch64LIRInstruction {
     public static final LIRInstructionClass<AArch64ArrayEqualsOp> TYPE = LIRInstructionClass.create(AArch64ArrayEqualsOp.class);
 
     private final JavaKind kind;
-    private final int arrayBaseOffset;
+    private final int array1BaseOffset;
+    private final int array2BaseOffset;
     private final int arrayIndexScale;
 
     @Def({REG}) protected Value resultValue;
@@ -64,13 +65,19 @@ public final class AArch64ArrayEqualsOp extends AArch64LIRInstruction {
     @Temp({REG}) protected Value temp3;
     @Temp({REG}) protected Value temp4;
 
-    public AArch64ArrayEqualsOp(LIRGeneratorTool tool, JavaKind kind, int arrayBaseOffset, Value result, Value array1, Value array2, Value length, boolean directPointers) {
+    public AArch64ArrayEqualsOp(LIRGeneratorTool tool, JavaKind kind, int array1BaseOffset, int array2BaseOffset, Value result, Value array1, Value array2, Value length, boolean directPointers) {
         super(TYPE);
 
         assert !kind.isNumericFloat() : "Float arrays comparison (bitwise_equal || both_NaN) isn't supported";
         this.kind = kind;
 
-        this.arrayBaseOffset = directPointers ? 0 : arrayBaseOffset;
+        /*
+         * The arrays are expected to have the same kind and thus the same index scale. For
+         * primitive arrays, this will mean the same array base offset as well; but if we compare a
+         * regular array with a hybrid object, they may have two different offsets.
+         */
+        this.array1BaseOffset = directPointers ? 0 : array1BaseOffset;
+        this.array2BaseOffset = directPointers ? 0 : array2BaseOffset;
         this.arrayIndexScale = tool.getProviders().getMetaAccess().getArrayIndexScale(kind);
 
         this.resultValue = result;
@@ -97,8 +104,8 @@ public final class AArch64ArrayEqualsOp extends AArch64LIRInstruction {
         try (ScratchRegister sc1 = masm.getScratchRegister()) {
             Register rscratch1 = sc1.getRegister();
             // Load array base addresses.
-            masm.loadAddress(array1, AArch64Address.createImmediateAddress(64, AArch64Address.AddressingMode.IMMEDIATE_SIGNED_UNSCALED, asRegister(array1Value), arrayBaseOffset));
-            masm.loadAddress(array2, AArch64Address.createImmediateAddress(64, AArch64Address.AddressingMode.IMMEDIATE_SIGNED_UNSCALED, asRegister(array2Value), arrayBaseOffset));
+            masm.loadAddress(array1, AArch64Address.createImmediateAddress(64, AArch64Address.AddressingMode.IMMEDIATE_SIGNED_UNSCALED, asRegister(array1Value), array1BaseOffset));
+            masm.loadAddress(array2, AArch64Address.createImmediateAddress(64, AArch64Address.AddressingMode.IMMEDIATE_SIGNED_UNSCALED, asRegister(array2Value), array2BaseOffset));
 
             // Get array length in bytes.
             masm.mov(rscratch1, arrayIndexScale);

@@ -27,6 +27,8 @@ package org.graalvm.compiler.replacements.nodes;
 import static org.graalvm.compiler.core.common.GraalOptions.UseGraalStubs;
 import static org.graalvm.compiler.nodeinfo.InputType.Memory;
 
+import java.util.Arrays;
+
 import org.graalvm.compiler.core.common.spi.ForeignCallLinkage;
 import org.graalvm.compiler.core.common.type.StampFactory;
 import org.graalvm.compiler.graph.Node;
@@ -67,7 +69,13 @@ import jdk.vm.ci.meta.Value;
 public class ArrayEqualsNode extends FixedWithNextNode implements LIRLowerable, Canonicalizable, Virtualizable, MemoryAccess {
 
     public static final NodeClass<ArrayEqualsNode> TYPE = NodeClass.create(ArrayEqualsNode.class);
-    /** {@link JavaKind} of the arrays to compare. */
+
+    /**
+     * {@link JavaKind} of the arrays to compare.
+     *
+     * We are guaranteed that the arrays always have the same kind because the signature of
+     * {@link Arrays#equals} only allows arrays of the same kind.
+     */
     protected final JavaKind kind;
 
     /** One array to be tested for equality. */
@@ -250,9 +258,10 @@ public class ArrayEqualsNode extends FixedWithNextNode implements LIRLowerable, 
                 return;
             }
         }
-        int arrayBaseOffset = getArrayBaseOffset(gen.getLIRGeneratorTool().getMetaAccess(), array1);
-        Value result = gen.getLIRGeneratorTool().emitArrayEquals(kind, arrayBaseOffset, gen.operand(array1), gen.operand(array2), gen.operand(length),
-                        false);
+        int array1BaseOffset = getArrayBaseOffset(gen.getLIRGeneratorTool().getMetaAccess(), array1);
+        int array2BaseOffset = getArrayBaseOffset(gen.getLIRGeneratorTool().getMetaAccess(), array2);
+        Value result = gen.getLIRGeneratorTool().emitArrayEquals(kind, array1BaseOffset, array2BaseOffset, gen.operand(array1), gen.operand(array2),
+                        gen.operand(length), false);
         gen.setResult(this, result);
     }
 

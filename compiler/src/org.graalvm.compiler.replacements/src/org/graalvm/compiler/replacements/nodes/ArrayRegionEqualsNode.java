@@ -127,10 +127,10 @@ public class ArrayRegionEqualsNode extends FixedWithNextNode implements LIRLower
         Value result;
         MetaAccessProvider metaAccess = gen.getLIRGeneratorTool().getMetaAccess();
         int arrayBaseOffset1 = getArrayBaseOffset(metaAccess, array1, kind1);
+        int arrayBaseOffset2 = getArrayBaseOffset(metaAccess, array2, kind2);
         if (kind1 == kind2) {
-            result = gen.getLIRGeneratorTool().emitArrayEquals(kind1, arrayBaseOffset1, gen.operand(array1), gen.operand(array2), gen.operand(length), true);
+            result = gen.getLIRGeneratorTool().emitArrayEquals(kind1, arrayBaseOffset1, arrayBaseOffset2, gen.operand(array1), gen.operand(array2), gen.operand(length), true);
         } else {
-            int arrayBaseOffset2 = getArrayBaseOffset(metaAccess, array1, kind1);
             result = gen.getLIRGeneratorTool().emitArrayEquals(kind1, kind2, arrayBaseOffset1, arrayBaseOffset2, gen.operand(array1), gen.operand(array2), gen.operand(length), true);
         }
         gen.setResult(this, result);

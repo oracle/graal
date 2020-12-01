@@ -233,7 +233,7 @@ public interface LIRGeneratorTool extends DiagnosticLIRGeneratorTool, ValueKindF
     }
 
     @SuppressWarnings("unused")
-    default Variable emitArrayEquals(JavaKind kind, int arrayBaseOffset, Value array1, Value array2, Value length, boolean directPointers) {
+    default Variable emitArrayEquals(JavaKind kind, int array1BaseOffset, int array2BaseOffset, Value array1, Value array2, Value length, boolean directPointers) {
         throw GraalError.unimplemented("Array.equals substitution is not implemented on this architecture");
     }
 
