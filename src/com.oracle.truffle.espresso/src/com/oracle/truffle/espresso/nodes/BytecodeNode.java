@@ -554,53 +554,57 @@ public final class BytecodeNode extends EspressoMethodNode {
         EspressoFrame.putRawObject(refs, refs.length - 1 - slot, null);
     }
 
-    private static void setLocalObject(Object[] refs, int slot, StaticObject value) {
+    public static void setLocalObject(Object[] refs, int slot, StaticObject value) {
         EspressoFrame.putObject(refs, refs.length - 1 - slot, value);
     }
 
-    private static void setLocalObjectOrReturnAddress(Object[] refs, int slot, Object value) {
+    public static void setLocalObjectOrReturnAddress(Object[] refs, int slot, Object value) {
         EspressoFrame.putRawObject(refs, refs.length - 1 - slot, value);
     }
 
-    private static void setLocalInt(long[] primitives, int slot, int value) {
+    public static void setLocalInt(long[] primitives, int slot, int value) {
         EspressoFrame.putInt(primitives, primitives.length - 1 - slot, value);
     }
 
-    private static void setLocalFloat(long[] primitives, int slot, float value) {
+    public static void setLocalFloat(long[] primitives, int slot, float value) {
         EspressoFrame.putInt(primitives, primitives.length - 1 - slot, Float.floatToRawIntBits(value));
     }
 
-    private static void setLocalLong(long[] primitives, int slot, long value) {
+    public static void setLocalLong(long[] primitives, int slot, long value) {
         EspressoFrame.putLong(primitives, primitives.length - 1 - slot, value);
     }
 
-    private static void setLocalDouble(long[] primitives, int slot, double value) {
+    public static void setLocalDouble(long[] primitives, int slot, double value) {
         EspressoFrame.putLong(primitives, primitives.length - 1 - slot, Double.doubleToRawLongBits(value));
     }
 
-    private static int getLocalInt(long[] primitives, int slot) {
+    public static int getLocalInt(long[] primitives, int slot) {
         return EspressoFrame.peekInt(primitives, primitives.length - 1 - slot);
     }
 
-    private static StaticObject getLocalObject(Object[] refs, int slot) {
+    public static StaticObject getLocalObject(Object[] refs, int slot) {
         return EspressoFrame.peekObject(refs, refs.length - 1 - slot);
     }
 
-    private static int getLocalReturnAddress(Object[] refs, int slot) {
+    public static Object getRawLocalObject(Object[] refs, int slot) {
+        return EspressoFrame.peekRawObject(refs, refs.length - 1 - slot);
+    }
+
+    public static int getLocalReturnAddress(Object[] refs, int slot) {
         Object result = EspressoFrame.peekRawObject(refs, refs.length - 1 - slot);
         assert result instanceof ReturnAddress;
         return ((ReturnAddress) result).getBci();
     }
 
-    private static float getLocalFloat(long[] primitives, int slot) {
+    public static float getLocalFloat(long[] primitives, int slot) {
         return Float.intBitsToFloat(EspressoFrame.peekInt(primitives, primitives.length - 1 - slot));
     }
 
-    private static long getLocalLong(long[] primitives, int slot) {
+    public static long getLocalLong(long[] primitives, int slot) {
         return EspressoFrame.peekLong(primitives, primitives.length - 1 - slot);
     }
 
-    private static double getLocalDouble(long[] primitives, int slot) {
+    public static double getLocalDouble(long[] primitives, int slot) {
         return Double.longBitsToDouble(EspressoFrame.peekLong(primitives, primitives.length - 1 - slot));
     }
 

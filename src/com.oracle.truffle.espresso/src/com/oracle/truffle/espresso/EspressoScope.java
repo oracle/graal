@@ -42,32 +42,30 @@ import com.oracle.truffle.api.interop.UnsupportedMessageException;
 import com.oracle.truffle.api.library.ExportLibrary;
 import com.oracle.truffle.api.library.ExportMessage;
 import com.oracle.truffle.espresso.classfile.attributes.Local;
+import com.oracle.truffle.espresso.nodes.BytecodeNode;
+import com.oracle.truffle.espresso.runtime.StaticObject;
 
 public class EspressoScope {
 
     public static Object createVariables(Local[] liveLocals, Frame frame) {
-        List<? extends FrameSlot> slots;
-
-        slots = frame.getFrameDescriptor().getSlots();
-        int size = slots.size();
-
+        int slotCount = liveLocals.length;
         Map<String, FrameSlotInfo> slotsMap;
         Map<String, FrameSlotInfo> identifiersMap;
-        if (slots.isEmpty()) {
+        if (liveLocals.length == 0) {
             slotsMap = Collections.emptyMap();
             identifiersMap = Collections.emptyMap();
-        } else if (size == 1) {
-            FrameSlot slot = slots.get(0);
-            String identifier = slot.getIdentifier().toString();
+        } else if (liveLocals.length == 1) {
+            int slot = 0;
+            String identifier = "0";
             FrameSlotInfo frameSlotInfo = new FrameSlotInfo(slot);
-            slotsMap = Collections.singletonMap(Objects.toString(identifier), frameSlotInfo);
+            slotsMap = Collections.singletonMap(identifier, frameSlotInfo);
             Local local = getLocal(liveLocals, slot);
             identifiersMap = Collections.singletonMap(local.getNameAsString(), frameSlotInfo);
         } else {
-            slotsMap = new LinkedHashMap<>(size);
-            identifiersMap = new LinkedHashMap<>(size);
-            for (FrameSlot slot : slots) {
-                String slotNumber = slot.getIdentifier().toString();
+            slotsMap = new LinkedHashMap<>(slotCount);
+            identifiersMap = new LinkedHashMap<>(slotCount);
+            for (int slot = 0; slot < slotCount; ++slot) {
+                String slotNumber = String.valueOf(slot);
                 Local local = getLocal(liveLocals, slot);
                 if (local != null) {
                     String localName = local.getNameAsString();
@@ -99,11 +97,10 @@ public class EspressoScope {
         return new VariablesMapObject(slotsMap, identifiersMap, frame);
     }
 
-    private static Local getLocal(Local[] liveLocals, FrameSlot slot) {
-        String identifier = slot.getIdentifier().toString();
+    private static Local getLocal(Local[] liveLocals, int slot) {
         for (Local local : liveLocals) {
             try {
-                if (local.getSlot() == Integer.parseInt(identifier)) {
+                if (local.getSlot() == slot) {
                     return local;
                 }
             } catch (NumberFormatException nf) {
@@ -146,16 +143,29 @@ public class EspressoScope {
                 // also try identifiers map
                 slotInfo = identifiers.get(member);
             }
-            if (slotInfo == null || slotInfo.getSlot() == null) {
+
+            if (slotInfo == null) {
                 throw UnknownIdentifierException.create(member);
-            } else if (slotInfo.getKind() == FrameSlotInfo.Kind.DOUBLE) {
-                return Double.longBitsToDouble(FrameUtil.getLongSafe(frame, slotInfo.getSlot()));
+            }
+            FrameSlot refsSlot = frame.getFrameDescriptor().findFrameSlot("refs");
+            FrameSlot primitivesSlot = frame.getFrameDescriptor().findFrameSlot("primitives");
+            final Object[] refs = (Object[]) FrameUtil.getObjectSafe(frame, refsSlot);
+            final long[] primitives = (long[]) FrameUtil.getObjectSafe(frame, primitivesSlot);
+
+            if (slotInfo.getKind() == FrameSlotInfo.Kind.DOUBLE) {
+                return BytecodeNode.getLocalDouble(primitives, slotInfo.getSlot());
             } else if (slotInfo.getKind() == FrameSlotInfo.Kind.FLOAT) {
-                return Float.intBitsToFloat((int) FrameUtil.getLongSafe(frame, slotInfo.getSlot()));
-            } else if (slotInfo.getKind() == FrameSlotInfo.Kind.LONG || slotInfo.getKind() == FrameSlotInfo.Kind.INT) {
-                return FrameUtil.getLongSafe(frame, slotInfo.getSlot());
+                return BytecodeNode.getLocalFloat(primitives, slotInfo.getSlot());
+            } else if (slotInfo.getKind() == FrameSlotInfo.Kind.LONG)
+                return BytecodeNode.getLocalLong(primitives, slotInfo.getSlot());
+            else if (slotInfo.getKind() == FrameSlotInfo.Kind.INT) {
+                return (long) BytecodeNode.getLocalInt(primitives, slotInfo.getSlot());
             } else {
-                return frame.getValue(slotInfo.getSlot());
+                Object localObject = BytecodeNode.getRawLocalObject(refs, slotInfo.getSlot());
+                if (localObject != null) {
+                    return localObject;
+                }
+                return BytecodeNode.getLocalLong(primitives, slotInfo.getSlot());
             }
         }
 
@@ -188,18 +198,25 @@ public class EspressoScope {
                 // try identifiers map also
                 slotInfo = identifiers.get(member);
             }
-            if (slotInfo == null || slotInfo.getSlot() == null) {
+            if (slotInfo == null) {
                 throw UnknownIdentifierException.create(member);
-            } else if (slotInfo.getKind() == FrameSlotInfo.Kind.DOUBLE) {
-                frame.setLong(slotInfo.getSlot(), Double.doubleToRawLongBits((double) value));
+            }
+
+            FrameSlot refsSlot = frame.getFrameDescriptor().findFrameSlot("refs");
+            FrameSlot primitivesSlot = frame.getFrameDescriptor().findFrameSlot("primitives");
+            final Object[] refs = (Object[]) FrameUtil.getObjectSafe(frame, refsSlot);
+            final long[] primitives = (long[]) FrameUtil.getObjectSafe(frame, primitivesSlot);
+
+            if (slotInfo.getKind() == FrameSlotInfo.Kind.DOUBLE) {
+                BytecodeNode.setLocalDouble(primitives, slotInfo.getSlot(), (double) value);
             } else if (slotInfo.getKind() == FrameSlotInfo.Kind.FLOAT) {
-                frame.setLong(slotInfo.getSlot(), Float.floatToRawIntBits((float) value));
+                BytecodeNode.setLocalFloat(primitives, slotInfo.getSlot(), (float) value);
             } else if (slotInfo.getKind() == FrameSlotInfo.Kind.INT) {
-                frame.setLong(slotInfo.getSlot(), (int) value);
+                BytecodeNode.setLocalInt(primitives, slotInfo.getSlot(), (int) value);
             } else if (slotInfo.getKind() == FrameSlotInfo.Kind.LONG) {
-                frame.setLong(slotInfo.getSlot(), (long) value);
+                BytecodeNode.setLocalLong(primitives, slotInfo.getSlot(), (long) value);
             } else {
-                frame.setObject(slotInfo.getSlot(), value);
+                BytecodeNode.setLocalObject(refs, slotInfo.getSlot(), (StaticObject) value);
             }
         }
 
@@ -265,7 +282,7 @@ public class EspressoScope {
 
     private static class FrameSlotInfo {
 
-        private final FrameSlot slot;
+        private final int slot;
         private final Kind kind;
 
         private enum Kind {
@@ -276,16 +293,16 @@ public class EspressoScope {
             OTHER
         }
 
-        FrameSlotInfo(FrameSlot slot) {
+        FrameSlotInfo(int slot) {
             this(slot, Kind.OTHER);
         }
 
-        FrameSlotInfo(FrameSlot slot, Kind kind) {
+        FrameSlotInfo(int slot, Kind kind) {
             this.slot = slot;
             this.kind = kind;
         }
 
-        public FrameSlot getSlot() {
+        public int getSlot() {
             return slot;
         }
 
