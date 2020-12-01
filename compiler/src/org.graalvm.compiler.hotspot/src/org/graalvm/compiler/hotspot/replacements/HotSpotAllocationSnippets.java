@@ -425,7 +425,7 @@ public class HotSpotAllocationSnippets extends AllocationSnippets {
     }
 
     @Override
-    protected final Object callNewArrayStub(Word hub, int length) {
+    protected final Object callNewArrayStub(Word hub, int length, int fillStartOffset) {
         KlassPointer klassPtr = KlassPointer.fromWord(hub);
         if (useNullAllocationStubs(INJECTED_VMCONFIG)) {
             return nonNullOrDeopt(newArrayOrNull(NEW_ARRAY_OR_NULL, klassPtr, length));

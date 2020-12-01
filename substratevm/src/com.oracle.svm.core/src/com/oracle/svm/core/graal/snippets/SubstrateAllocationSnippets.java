@@ -365,8 +365,8 @@ public abstract class SubstrateAllocationSnippets extends AllocationSnippets {
     }
 
     @Override
-    protected final Object callNewArrayStub(Word objectHeader, int length) {
-        return callSlowNewArray(getSlowNewArrayStub(), objectHeader, length);
+    protected final Object callNewArrayStub(Word objectHeader, int length, int fillStartOffset) {
+        return callSlowNewArray(getSlowNewArrayStub(), objectHeader, length, fillStartOffset);
     }
 
     @Override
@@ -378,7 +378,7 @@ public abstract class SubstrateAllocationSnippets extends AllocationSnippets {
     private static native Object callSlowNewInstance(@ConstantNodeParameter ForeignCallDescriptor descriptor, Word hub);
 
     @NodeIntrinsic(value = ForeignCallNode.class)
-    private static native Object callSlowNewArray(@ConstantNodeParameter ForeignCallDescriptor descriptor, Word hub, int length);
+    private static native Object callSlowNewArray(@ConstantNodeParameter ForeignCallDescriptor descriptor, Word hub, int length, int fillStartOffset);
 
     @NodeIntrinsic(value = ForeignCallNode.class)
     private static native Object callNewMultiArray(@ConstantNodeParameter ForeignCallDescriptor descriptor, Word hub, int rank, Word dimensions);

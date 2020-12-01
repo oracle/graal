@@ -101,7 +101,7 @@ public abstract class AllocationSnippets implements Snippets {
                             profilingData.snippetCounters);
         } else {
             profilingData.snippetCounters.stub.inc();
-            result = callNewArrayStub(hub, length);
+            result = callNewArrayStub(hub, length, fillStartOffset);
         }
         profileAllocation(profilingData, allocationSize);
         return verifyOop(result);
@@ -354,7 +354,7 @@ public abstract class AllocationSnippets implements Snippets {
 
     protected abstract Object callNewInstanceStub(Word hub);
 
-    protected abstract Object callNewArrayStub(Word hub, int length);
+    protected abstract Object callNewArrayStub(Word hub, int length, int fillStartOffset);
 
     protected abstract Object callNewMultiArrayStub(Word hub, int rank, Word dims);
 
