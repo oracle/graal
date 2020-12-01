@@ -31,7 +31,6 @@ package com.oracle.truffle.llvm.runtime.nodes.api;
 
 import com.oracle.truffle.api.CompilerAsserts;
 import com.oracle.truffle.api.dsl.CachedContext;
-import com.oracle.truffle.api.dsl.NodeField;
 import com.oracle.truffle.api.frame.Frame;
 import com.oracle.truffle.api.instrumentation.InstrumentableNode;
 import com.oracle.truffle.api.instrumentation.StandardTags;
@@ -46,8 +45,6 @@ import com.oracle.truffle.llvm.runtime.debug.scope.LLVMDebuggerScopeFactory;
 import com.oracle.truffle.llvm.runtime.debug.scope.LLVMSourceLocation;
 import com.oracle.truffle.llvm.runtime.options.SulongEngineOption;
 
-@NodeField(name = "sourceLocation", type = LLVMSourceLocation.class)
-@NodeField(name = "statement", type = boolean.class)
 @ExportLibrary(NodeLibrary.class)
 public abstract class LLVMInstrumentableNode extends LLVMNode implements InstrumentableNode {
 
