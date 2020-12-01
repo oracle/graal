@@ -149,7 +149,7 @@ import jdk.vm.ci.code.TargetDescription;
 
 public abstract class AArch64Assembler extends Assembler {
 
-    public static class LogicalImmediateTable {
+    public static class LogicalBitmaskImmediateEncoding {
 
         private static final Immediate[] IMMEDIATE_TABLE = buildImmediateTable();
 
@@ -158,67 +158,48 @@ public abstract class AArch64Assembler extends Assembler {
         private static final int ImmediateSizeOffset = 22;
 
         /**
-         * Specifies whether immediate can be represented in all cases (YES), as a 64bit instruction
-         * (SIXTY_FOUR_BIT_ONLY) or not at all (NO).
+         * Tests whether an immediate can be encoded for logical instructions.
+         *
+         * @param is64bit if true immediate part of a 64-bit instruction, false if part of a 32-bit
+         *            instruction.
+         * @return whether the value can be encoded.
          */
-        enum Representable {
-            YES,
-            SIXTY_FOUR_BIT_ONLY,
-            NO
+        protected static boolean canEncode(boolean is64bit, long immediate) {
+            assert is64bit || NumUtil.isUnsignedNbit(32, immediate);
+
+            int pos = getImmediateTablePosition(is64bit, immediate);
+            return pos >= 0;
         }
 
         /**
-         * Tests whether an immediate can be encoded for logical instructions.
-         *
-         * @param is64bit if true immediate is considered a 64-bit pattern. If false we may use a
-         *            64-bit instruction to load the 32-bit pattern into a register.
-         * @return enum specifying whether immediate can be used for 32- and 64-bit logical
-         *         instructions ({@code #Representable.YES}), for 64-bit instructions only (
-         *         {@link Representable#SIXTY_FOUR_BIT_ONLY}) or not at all (
-         *         {@link Representable#NO}).
+         * Returns the immediate bitmask encoding for the requested value. Assumes that an encoding
+         * is available.
          */
-        public static Representable isRepresentable(boolean is64bit, long immediate) {
-            int pos = getLogicalImmTablePos(is64bit, immediate);
-            if (pos < 0) {
-                // if 32bit instruction we can try again as 64bit immediate which may succeed.
-                // i.e. 0xffffffff fails as a 32bit immediate but works as 64bit one.
-                if (!is64bit) {
-                    assert NumUtil.isUnsignedNbit(32, immediate);
-                    pos = getLogicalImmTablePos(true, immediate);
-                    return pos >= 0 ? Representable.SIXTY_FOUR_BIT_ONLY : Representable.NO;
-                }
-                return Representable.NO;
-            }
-            Immediate imm = IMMEDIATE_TABLE[pos];
-            return imm.only64bit() ? Representable.SIXTY_FOUR_BIT_ONLY : Representable.YES;
-        }
+        public static int getEncoding(boolean is64bit, long value) {
+            assert is64bit || NumUtil.isUnsignedNbit(32, value);
 
-        public static Representable isRepresentable(int immediate) {
-            return isRepresentable(false, immediate & 0xFFFF_FFFFL);
-        }
-
-        public static int getLogicalImmEncoding(boolean is64bit, long value) {
-            int pos = getLogicalImmTablePos(is64bit, value);
+            int pos = getImmediateTablePosition(is64bit, value);
             assert pos >= 0 : "Value cannot be represented as logical immediate: " + value + ", is64bit=" + is64bit;
             Immediate imm = IMMEDIATE_TABLE[pos];
-            assert is64bit || !imm.only64bit() : "Immediate can only be represented for 64bit, but 32bit instruction specified";
+            assert is64bit || !imm.only64Bit() : "Immediate can only be represented for 64bit, but 32bit instruction specified";
             return IMMEDIATE_TABLE[pos].encoding;
         }
 
         /**
-         * @param is64bit if true also allow 64-bit only encodings to be returned.
+         * @param is64bit if true immediate part of a 64-bit instruction, false if part of a 32-bit
+         *            instruction.
          * @return If positive the return value is the position into the IMMEDIATE_TABLE for the
          *         given immediate, if negative the immediate cannot be encoded.
          */
-        private static int getLogicalImmTablePos(boolean is64bit, long value) {
+        private static int getImmediateTablePosition(boolean is64bit, long value) {
+            assert is64bit || NumUtil.isUnsignedNbit(32, value);
+
             Immediate imm;
             if (!is64bit) {
-                // 32bit instructions can only have 32bit immediates.
-                if (!NumUtil.isUnsignedNbit(32, value)) {
-                    return -1;
-                }
-                // If we have a 32bit instruction (and therefore immediate) we have to duplicate it
-                // across 64bit to find it in the table.
+                /*
+                 * If we have a 32bit instruction (and therefore immediate) we have to duplicate it
+                 * across 64bit to find it in the table.
+                 */
                 imm = new Immediate(value << 32 | value);
             } else {
                 imm = new Immediate(value);
@@ -227,7 +208,7 @@ public abstract class AArch64Assembler extends Assembler {
             if (pos < 0) {
                 return -1;
             }
-            if (!is64bit && IMMEDIATE_TABLE[pos].only64bit()) {
+            if (!is64bit && IMMEDIATE_TABLE[pos].only64Bit()) {
                 return -1;
             }
             return pos;
@@ -237,19 +218,21 @@ public abstract class AArch64Assembler extends Assembler {
          * To quote 5.4.2: [..] an immediate is a 32 or 64 bit pattern viewed as a vector of
          * identical elements of size e = 2, 4, 8, 16, 32 or (in the case of bimm64) 64 bits. Each
          * element contains the same sub-pattern: a single run of 1 to e-1 non-zero bits, rotated by
-         * 0 to e-1 bits. It is encoded in the following: 10-16: rotation amount (6bit) starting
-         * from 1s in the LSB (i.e. 0111->1011->1101->1110) 16-22: This stores a combination of the
-         * number of set bits and the pattern size. The pattern size is encoded as follows (x is
-         * used to store the number of 1 bits - 1) e pattern 2 1111xx 4 1110xx 8 110xxx 16 10xxxx 32
-         * 0xxxxx 64 xxxxxx 22: if set we have an instruction with 64bit pattern?
+         * 0 to e-1 bits. It is encoded in the following: 21..16: rotation amount (6bit) starting
+         * from 1s in the LSB (i.e. 0111->1011->1101->1110) 22:15..10: This stores a combination of
+         * the number of set bits and the pattern size. The pattern size is encoded as follows (x is
+         * used to store the number of 1 bits - 1) e pattern 2 0_11110x 4 0_1110xx 8 0_110xxx 16
+         * 0_10xxxx 32 0_0xxxxx 64 1_xxxxxx.
          */
         private static final class Immediate implements Comparable<Immediate> {
             public final long imm;
+            public final boolean isOnly64Bit;
             public final int encoding;
 
-            Immediate(long imm, boolean is64, int s, int r) {
+            Immediate(long imm, boolean isOnly64Bit, int s, int r) {
                 this.imm = imm;
-                this.encoding = computeEncoding(is64, s, r);
+                this.isOnly64Bit = isOnly64Bit;
+                this.encoding = computeEncoding(isOnly64Bit, s, r);
             }
 
             // Used to be able to binary search for an immediate in the table.
@@ -260,8 +243,8 @@ public abstract class AArch64Assembler extends Assembler {
             /**
              * Returns true if this pattern is only representable as 64bit.
              */
-            public boolean only64bit() {
-                return (encoding & (1 << ImmediateSizeOffset)) != 0;
+            public boolean only64Bit() {
+                return isOnly64Bit;
             }
 
             private static int computeEncoding(boolean is64, int s, int r) {
@@ -277,17 +260,26 @@ public abstract class AArch64Assembler extends Assembler {
 
         private static Immediate[] buildImmediateTable() {
             final int nrImmediates = 5334;
+            final int[] elementSizeEncodings = {
+                            /* 2 */ 0b111100,
+                            /* 4 */ 0b111000,
+                            /* 8 */ 0b110000,
+                            /* 16 */ 0b100000,
+                            /* 32 */ 0b000000,
+                            /* 64 */ 0b000000,
+            };
             final Immediate[] table = new Immediate[nrImmediates];
             int nrImms = 0;
             for (int logE = 1; logE <= 6; logE++) {
+                /* e specifies the element size. */
                 int e = 1 << logE;
                 long mask = NumUtil.getNbitNumberLong(e);
                 for (int nrOnes = 1; nrOnes < e; nrOnes++) {
                     long val = (1L << nrOnes) - 1;
-                    // r specifies how much we rotate the value
+                    /* r specifies how much we rotate the value. */
                     for (int r = 0; r < e; r++) {
                         long immediate = (val >>> r | val << (e - r)) & mask;
-                        // Duplicate pattern to fill whole 64bit range.
+                        /* Duplicate pattern to fill whole 64bit range. */
                         switch (logE) {
                             case 1:
                                 immediate |= immediate << 2;
@@ -314,12 +306,12 @@ public abstract class AArch64Assembler extends Assembler {
                             case 5:
                                 immediate |= immediate << 32;
                                 break;
+                            case 6:
+                                /* No duplication needed (element size is 64bits). */
+                                break;
                         }
-                        // 5 - logE can underflow to -1, but we shift this bogus result
-                        // out of the masked area.
-                        int sizeEncoding = (1 << (5 - logE)) - 1;
-                        int s = ((sizeEncoding << (logE + 1)) & 0x3f) | (nrOnes - 1);
-                        table[nrImms++] = new Immediate(immediate, /* is64bit */e == 64, s, r);
+                        int s = elementSizeEncodings[logE - 1] | (nrOnes - 1);
+                        table[nrImms++] = new Immediate(immediate, /* isOnly64Bit */e == 64, s, r);
                     }
                 }
             }
@@ -1132,7 +1124,7 @@ public abstract class AArch64Assembler extends Assembler {
     /**
      * Returns the log2 size of the number of bytes expected to be transferred.
      */
-    private static int getLog2TransferSize(int bitSize) {
+    protected static int getLog2TransferSize(int bitSize) {
         assert bitSize % 8 == 0; // bit size must be multiple of 8
         int byteSize = bitSize / 8;
         return NumUtil.log2Ceil(byteSize);
@@ -1735,7 +1727,8 @@ public abstract class AArch64Assembler extends Assembler {
      * @param size register size. Has to be 32 or 64.
      * @param dst general purpose register. May not be null or zero-register.
      * @param src general purpose register. May not be null or stack-pointer.
-     * @param bimm logical immediate. See {@link LogicalImmediateTable} for exact definition.
+     * @param bimm logical immediate. See {@link LogicalBitmaskImmediateEncoding} for exact
+     *            definition.
      */
     public void and(int size, Register dst, Register src, long bimm) {
         assert !dst.equals(zr);
@@ -1749,7 +1742,8 @@ public abstract class AArch64Assembler extends Assembler {
      * @param size register size. Has to be 32 or 64.
      * @param dst general purpose register. May not be null or stack-pointer.
      * @param src general purpose register. May not be null or stack-pointer.
-     * @param bimm logical immediate. See {@link LogicalImmediateTable} for exact definition.
+     * @param bimm logical immediate. See {@link LogicalBitmaskImmediateEncoding} for exact
+     *            definition.
      */
     public void ands(int size, Register dst, Register src, long bimm) {
         assert !dst.equals(sp);
@@ -1763,7 +1757,8 @@ public abstract class AArch64Assembler extends Assembler {
      * @param size register size. Has to be 32 or 64.
      * @param dst general purpose register. May not be null or zero-register.
      * @param src general purpose register. May not be null or stack-pointer.
-     * @param bimm logical immediate. See {@link LogicalImmediateTable} for exact definition.
+     * @param bimm logical immediate. See {@link LogicalBitmaskImmediateEncoding} for exact
+     *            definition.
      */
     public void eor(int size, Register dst, Register src, long bimm) {
         assert !dst.equals(zr);
@@ -1777,7 +1772,8 @@ public abstract class AArch64Assembler extends Assembler {
      * @param size register size. Has to be 32 or 64.
      * @param dst general purpose register. May not be null or zero-register.
      * @param src general purpose register. May not be null or stack-pointer.
-     * @param bimm logical immediate. See {@link LogicalImmediateTable} for exact definition.
+     * @param bimm logical immediate. See {@link LogicalBitmaskImmediateEncoding} for exact
+     *            definition.
      */
     protected void orr(int size, Register dst, Register src, long bimm) {
         assert !dst.equals(zr);
@@ -1789,12 +1785,12 @@ public abstract class AArch64Assembler extends Assembler {
         // Mask higher bits off, since we always pass longs around even for the 32-bit instruction.
         long bimmValue;
         if (type == General32) {
-            assert (bimm >> 32) == 0 || (bimm >> 32) == -1L : "Higher order bits for 32-bit instruction must either all be 0 or 1.";
+            assert (bimm >> 32) == 0 || ((bimm >> 32) == -1L && (int) bimm < 0) : "Immediate must be either 0x0000_0000_xxxx_xxxx or (0xFFFF_FFFF_xxxx_xxxx | 0x8000_0000)";
             bimmValue = bimm & NumUtil.getNbitNumberLong(32);
         } else {
             bimmValue = bimm;
         }
-        int immEncoding = LogicalImmediateTable.getLogicalImmEncoding(type == General64, bimmValue);
+        int immEncoding = LogicalBitmaskImmediateEncoding.getEncoding(type == General64, bimmValue);
         emitInt(type.encoding | instr.encoding | LogicalImmOp | immEncoding | rd(dst) | rs1(src));
     }
 

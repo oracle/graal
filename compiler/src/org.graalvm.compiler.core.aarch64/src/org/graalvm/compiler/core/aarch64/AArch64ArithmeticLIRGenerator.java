@@ -415,9 +415,9 @@ public class AArch64ArithmeticLIRGenerator extends ArithmeticLIRGenerator implem
     private static boolean isLogicalConstant(JavaConstant constValue) {
         switch (constValue.getJavaKind()) {
             case Int:
-                return AArch64MacroAssembler.isLogicalImmediate(constValue.asInt());
+                return AArch64MacroAssembler.isLogicalImmediate(32, constValue.asInt());
             case Long:
-                return AArch64MacroAssembler.isLogicalImmediate(constValue.asLong());
+                return AArch64MacroAssembler.isLogicalImmediate(64, constValue.asLong());
             default:
                 return false;
         }

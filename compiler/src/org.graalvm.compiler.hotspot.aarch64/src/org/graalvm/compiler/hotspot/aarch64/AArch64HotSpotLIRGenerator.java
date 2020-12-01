@@ -42,7 +42,6 @@ import java.util.EnumSet;
 import java.util.function.Function;
 
 import org.graalvm.compiler.asm.Label;
-import org.graalvm.compiler.asm.aarch64.AArch64Address.AddressingMode;
 import org.graalvm.compiler.asm.aarch64.AArch64Assembler.ConditionFlag;
 import org.graalvm.compiler.asm.aarch64.AArch64Assembler.PrefetchMode;
 import org.graalvm.compiler.core.aarch64.AArch64ArithmeticLIRGenerator;
@@ -71,20 +70,20 @@ import org.graalvm.compiler.hotspot.stubs.Stub;
 import org.graalvm.compiler.lir.LIRFrameState;
 import org.graalvm.compiler.lir.LIRInstruction;
 import org.graalvm.compiler.lir.LabelRef;
-import org.graalvm.compiler.lir.StandardOp.ZapRegistersOp;
 import org.graalvm.compiler.lir.SwitchStrategy;
 import org.graalvm.compiler.lir.Variable;
 import org.graalvm.compiler.lir.VirtualStackSlot;
+import org.graalvm.compiler.lir.StandardOp.ZapRegistersOp;
 import org.graalvm.compiler.lir.aarch64.AArch64AddressValue;
 import org.graalvm.compiler.lir.aarch64.AArch64CCall;
 import org.graalvm.compiler.lir.aarch64.AArch64Call;
-import org.graalvm.compiler.lir.aarch64.AArch64ControlFlow.StrategySwitchOp;
 import org.graalvm.compiler.lir.aarch64.AArch64FrameMapBuilder;
 import org.graalvm.compiler.lir.aarch64.AArch64Move;
-import org.graalvm.compiler.lir.aarch64.AArch64Move.StoreOp;
 import org.graalvm.compiler.lir.aarch64.AArch64PrefetchOp;
 import org.graalvm.compiler.lir.aarch64.AArch64RestoreRegistersOp;
 import org.graalvm.compiler.lir.aarch64.AArch64SaveRegistersOp;
+import org.graalvm.compiler.lir.aarch64.AArch64ControlFlow.StrategySwitchOp;
+import org.graalvm.compiler.lir.aarch64.AArch64Move.StoreOp;
 import org.graalvm.compiler.lir.gen.LIRGenerationResult;
 import org.graalvm.compiler.options.OptionValues;
 
@@ -419,9 +418,9 @@ public class AArch64HotSpotLIRGenerator extends AArch64LIRGenerator implements H
 
     private void moveValueToThread(Value value, int offset) {
         LIRKind wordKind = LIRKind.value(target().arch.getWordKind());
+        int size = value.getValueKind().getPlatformKind().getSizeInBytes() * Byte.SIZE;
         RegisterValue thread = getProviders().getRegisters().getThreadRegister().asValue(wordKind);
-        final int transferSize = value.getValueKind().getPlatformKind().getSizeInBytes();
-        AArch64AddressValue address = new AArch64AddressValue(value.getValueKind(), thread, Value.ILLEGAL, offset, transferSize, AddressingMode.IMMEDIATE_UNSIGNED_SCALED);
+        AArch64AddressValue address = AArch64AddressValue.makeAddress(wordKind, size, thread, offset);
         append(new StoreOp((AArch64Kind) value.getPlatformKind(), address, loadReg(value), null));
     }
 

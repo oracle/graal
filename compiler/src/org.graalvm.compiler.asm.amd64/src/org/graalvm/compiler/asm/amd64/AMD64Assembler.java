@@ -3959,6 +3959,10 @@ public class AMD64Assembler extends AMD64BaseAssembler {
     }
 
     @Override
+    public AMD64Address makeAddress(int transferSize, Register base, int displacement) {
+        return makeAddress(base, displacement);
+    }
+
     public AMD64Address makeAddress(Register base, int displacement) {
         return new AMD64Address(base, displacement);
     }

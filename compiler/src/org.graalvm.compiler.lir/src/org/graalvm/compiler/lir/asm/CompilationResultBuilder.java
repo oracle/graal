@@ -526,7 +526,8 @@ public class CompilationResultBuilder {
     public AbstractAddress asAddress(Value value) {
         assert isStackSlot(value);
         StackSlot slot = asStackSlot(value);
-        return asm.makeAddress(frameMap.getRegisterConfig().getFrameRegister(), frameMap.offsetForStackSlot(slot));
+        int size = slot.getPlatformKind().getSizeInBytes() * 8;
+        return asm.makeAddress(size, frameMap.getRegisterConfig().getFrameRegister(), frameMap.offsetForStackSlot(slot));
     }
 
     /**

@@ -214,8 +214,10 @@ public abstract class Assembler {
     /**
      * This is used by the CompilationResultBuilder to convert a {@link StackSlot} to an
      * {@link AbstractAddress}.
+     *
+     * @param transferSize bit size of memory operation this address will be used in.
      */
-    public abstract AbstractAddress makeAddress(Register base, int displacement);
+    public abstract AbstractAddress makeAddress(int transferSize, Register base, int displacement);
 
     /**
      * Returns a target specific placeholder address that can be used for code patching.

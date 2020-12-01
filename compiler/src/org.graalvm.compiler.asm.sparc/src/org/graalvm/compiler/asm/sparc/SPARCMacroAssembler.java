@@ -97,7 +97,7 @@ public class SPARCMacroAssembler extends SPARCAssembler {
     }
 
     @Override
-    public AbstractAddress makeAddress(Register base, int displacement) {
+    public AbstractAddress makeAddress(int transferSize, Register base, int displacement) {
         return new SPARCAddress(base, displacement);
     }
 

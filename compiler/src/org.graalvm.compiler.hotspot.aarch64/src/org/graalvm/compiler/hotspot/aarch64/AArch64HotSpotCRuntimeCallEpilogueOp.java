@@ -55,7 +55,7 @@ public class AArch64HotSpotCRuntimeCallEpilogueOp extends AArch64LIRInstruction 
     @Override
     public void emitCode(CompilationResultBuilder crb, AArch64MacroAssembler masm) {
         // Reset last Java frame:
-        masm.str(64, zr, masm.makeAddress(thread, threadLastJavaSpOffset, 8));
-        masm.str(64, zr, masm.makeAddress(thread, threadLastJavaPcOffset, 8));
+        masm.str(64, zr, masm.makeAddress(64, thread, threadLastJavaSpOffset));
+        masm.str(64, zr, masm.makeAddress(64, thread, threadLastJavaPcOffset));
     }
 }

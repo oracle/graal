@@ -327,12 +327,13 @@ public class SubstrateAArch64Backend extends SubstrateBackend implements LIRGene
             SubstrateForeignCallLinkage callTarget = (SubstrateForeignCallLinkage) linkage;
             SharedMethod targetMethod = (SharedMethod) callTarget.getMethod();
 
-            Value codeOffsetInImage = emitConstant(getLIRKindTool().getWordKind(), JavaConstant.forInt(targetMethod.getCodeOffsetInImage()));
+            LIRKind wordKind = getLIRKindTool().getWordKind();
+            Value codeOffsetInImage = emitConstant(wordKind, JavaConstant.forInt(targetMethod.getCodeOffsetInImage()));
             Value codeInfo = emitJavaConstant(SubstrateObjectConstant.forObject(CodeInfoTable.getImageCodeCache()));
+            int size = wordKind.getPlatformKind().getSizeInBytes() * Byte.SIZE;
             int codeStartFieldOffset = getRuntimeConfiguration().getImageCodeInfoCodeStartOffset();
-            Value codeStartField = new AArch64AddressValue(getLIRKindTool().getWordKind(), asAllocatable(codeInfo),
-                            Value.ILLEGAL, codeStartFieldOffset, 1, AArch64Address.AddressingMode.IMMEDIATE_SIGNED_UNSCALED);
-            Value codeStart = getArithmetic().emitLoad(getLIRKindTool().getWordKind(), codeStartField, null);
+            Value codeStartField = AArch64AddressValue.makeAddress(wordKind, size, asAllocatable(codeInfo), codeStartFieldOffset);
+            Value codeStart = getArithmetic().emitLoad(wordKind, codeStartField, null);
             return getArithmetic().emitAdd(codeStart, codeOffsetInImage, false);
         }
 
@@ -756,7 +757,7 @@ public class SubstrateAArch64Backend extends SubstrateBackend implements LIRGene
             if (masm.target.inlineObjects) {
                 crb.recordInlineDataInCode(inputConstant);
                 if (referenceSize == 4) {
-                    masm.mov(resultReg, 0xDEADDEADL, true);
+                    masm.mov(resultReg, 0xDEADDEAD, true);
                 } else {
                     masm.mov(resultReg, 0xDEADDEADDEADDEADL, true);
                 }
