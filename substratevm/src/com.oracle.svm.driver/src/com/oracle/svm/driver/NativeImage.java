@@ -1325,34 +1325,6 @@ public class NativeImage {
         performBuild(new DefaultBuildConfiguration(javaHome, workDir, buildArgs), NativeImage::new);
     }
 
-    public static Map<Path, List<String>> extractEmbeddedImageArgs(Path workDir, String[] imageClasspath) {
-        NativeImage nativeImage = new NativeImage(new BuildConfiguration() {
-            @Override
-            public Path getWorkingDirectory() {
-                return workDir;
-            }
-        });
-        Map<Path, List<String>> extractionResults = new HashMap<>();
-        NativeImageMetaInfResourceProcessor extractor = (classpathEntry, resourceRoot, resourcePath, resourceType, resolver) -> {
-            nativeImage.imageBuilderArgs.clear();
-            NativeImageArgsProcessor args = nativeImage.new NativeImageArgsProcessor();
-            if (resourceType == MetaInfFileType.Properties) {
-                Map<String, String> properties = loadProperties(Files.newInputStream(resourcePath));
-                forEachPropertyValue(properties.get("Args"), args, resolver);
-            } else {
-                args.accept(oH(resourceType.optionKey) + resourceRoot.relativize(resourcePath));
-            }
-            args.apply(true);
-            List<String> perEntryResults = extractionResults.computeIfAbsent(classpathEntry, unused -> new ArrayList<>());
-            perEntryResults.addAll(nativeImage.imageBuilderArgs);
-        };
-        for (String entry : imageClasspath) {
-            Path classpathEntry = nativeImage.canonicalize(ClasspathUtils.stringToClasspath(entry), false);
-            nativeImage.processClasspathNativeImageMetaInf(classpathEntry, extractor);
-        }
-        return extractionResults;
-    }
-
     private static void performBuild(BuildConfiguration config, Function<BuildConfiguration, NativeImage> nativeImageProvider) {
         try {
             build(config, nativeImageProvider);
