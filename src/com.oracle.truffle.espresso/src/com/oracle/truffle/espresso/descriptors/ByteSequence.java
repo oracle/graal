@@ -172,4 +172,14 @@ public abstract class ByteSequence {
         }
         return -1;
     }
+
+    /**
+     * Writes this sequence into the destiation byte array.
+     *
+     * @param dest the destination
+     * @param index index in the destination array to start writing the sequence
+     */
+    public void writeTo(byte[] dest, int index) {
+        System.arraycopy(getUnderlyingBytes(), 0, dest, index, getUnderlyingBytes().length);
+    }
 }
