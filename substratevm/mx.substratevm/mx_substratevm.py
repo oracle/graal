@@ -456,7 +456,7 @@ def svm_gate_body(args, tasks):
 
     with Task('maven plugin checks', tasks, tags=[GraalTags.maven]) as t:
         if t:
-            maven_plugin_install(["--deploy-dependencies"])
+            maven_plugin_install([])
             maven_plugin_test([])
 
 
@@ -770,7 +770,7 @@ def native_image_context_run(func, func_args=None, config=None, build_if_missing
 
 def pom_from_template(proj_dir, svmVersion):
     # Create native-image-maven-plugin pom with correct version info from template
-    dom = parse(join(proj_dir, 'pom_template.xml'))
+    dom = parse(join(proj_dir, 'template-pom.xml'))
     for svmVersionElement in dom.getElementsByTagName('svmVersion'):
         svmVersionElement.parentNode.replaceChild(dom.createTextNode(svmVersion), svmVersionElement)
     with open(join(proj_dir, 'pom.xml'), 'w') as pom_file:
@@ -1557,40 +1557,7 @@ def maven_plugin_install(args):
     svm_version = suite.release_version(snapshotSuffix='SNAPSHOT')
 
     if parsed.deploy_dependencies:
-        deploy_args = [
-            '--suppress-javadoc',
-            '--all-distribution-types',
-            '--validate=full',
-            '--all-suites',
-            '--tags=default',
-        ]
-        if parsed.licenses:
-            deploy_args += ["--licenses", parsed.licenses]
-        if parsed.gpg:
-            deploy_args += ["--gpg"]
-        if parsed.gpg_keyid:
-            deploy_args += ["--gpg-keyid", parsed.gpg_keyid]
-        if parsed.repository_id:
-            deploy_args += [parsed.repository_id]
-            if parsed.url:
-                deploy_args += [parsed.url]
-        suites = set()
-
-        def collect_imports(s):
-            if s.name not in suites:
-                suites.add(s.name)
-                s.visit_imports(visitor)
-
-        def visitor(_, suite_import):
-            collect_imports(mx.suite(suite_import.name))
-
-        collect_imports(suite)
-        new_env = os.environ.copy()
-        if 'DYNAMIC_IMPORTS' in new_env:
-            del new_env['DYNAMIC_IMPORTS']
-        if 'MX_ENV_PATH' in new_env:
-            del new_env['MX_ENV_PATH']
-        mx.run_mx(['--suite=' + s for s in suites] + ['maven-deploy'] + deploy_args, suite, env=new_env)
+        mx.warn("native-image-maven-plugin does not have GraalVM maven dependencies anymore. --deploy-dependencies is obsolete.")
 
     mvn_out = None
     mvn_err = None
@@ -1645,7 +1612,10 @@ def maven_plugin_test(args):
         maven_opts.append('-XX:+EnableJVMCI')
         maven_opts.append('--add-exports=java.base/jdk.internal.module=ALL-UNNAMED')
     env['MAVEN_OPTS'] = ' '.join(maven_opts)
-    mx.run_maven(['-e', 'package'], cwd=proj_dir, env=env)
+    config = graalvm_config()
+    with native_image_context(IMAGE_ASSERTION_FLAGS, config=config):
+        env['JAVA_HOME'] = _vm_home(config)
+        mx.run_maven(['-e', 'package'], cwd=proj_dir, env=env)
     mx.run([join(proj_dir, 'target', 'com.oracle.substratevm.nativeimagemojotest')])
 
 
