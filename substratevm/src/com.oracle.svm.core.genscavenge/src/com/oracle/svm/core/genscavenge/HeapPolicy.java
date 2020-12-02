@@ -87,6 +87,7 @@ public final class HeapPolicy {
         return WordFactory.unsigned(bytes).multiply(1024).multiply(1024);
     }
 
+    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
     public static int getMaxSurvivorSpaces() {
         return HeapPolicyOptions.MaxSurvivorSpaces.getValue();
     }
