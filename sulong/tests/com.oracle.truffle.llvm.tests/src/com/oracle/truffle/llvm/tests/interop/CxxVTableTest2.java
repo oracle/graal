@@ -35,20 +35,75 @@ import org.junit.BeforeClass;
 import org.junit.Test;
 import org.junit.runner.RunWith;
 
+import com.oracle.truffle.api.CallTarget;
+import com.oracle.truffle.api.CompilerDirectives;
+import com.oracle.truffle.api.dsl.Specialization;
+import com.oracle.truffle.api.frame.VirtualFrame;
+import com.oracle.truffle.api.interop.InteropException;
+import com.oracle.truffle.api.interop.InteropLibrary;
+import com.oracle.truffle.api.library.CachedLibrary;
+import com.oracle.truffle.api.nodes.Node;
+import com.oracle.truffle.api.nodes.RootNode;
+import com.oracle.truffle.llvm.tests.interop.CxxVTableTest2Factory.CallFoo1NodeGen;
 import com.oracle.truffle.tck.TruffleRunner;
+import com.oracle.truffle.tck.TruffleRunner.Inject;
 
 @RunWith(TruffleRunner.class)
 public class CxxVTableTest2 extends InteropTestBase {
 
     private static Value testCppLibrary;
+    private static Object testCppLibraryInternal;
     private static Value preparePolyglotA;
     private static Value preparePolyglotBasA;
+    private static Object preparePolyglotBasAInternal;
 
     @BeforeClass
     public static void loadTestBitcode() {
         testCppLibrary = loadTestBitcodeValue("vtableTest2.cpp");
+        testCppLibraryInternal = loadTestBitcodeInternal("vtableTest2.cpp");
         preparePolyglotA = testCppLibrary.getMember("preparePolyglotA");
         preparePolyglotBasA = testCppLibrary.getMember("preparePolyglotBasA");
+        try {
+            preparePolyglotBasAInternal = InteropLibrary.getUncached().readMember(testCppLibraryInternal, "preparePolyglotBasA");
+        } catch (InteropException e) {
+            CompilerDirectives.transferToInterpreterAndInvalidate();
+            throw new IllegalStateException(e);
+        }
+    }
+
+    abstract static class CallFoo1Node extends Node {
+        abstract Object execute(Object a);
+
+        @Specialization(limit = "3")
+        Object doFoo1(Object a,
+                        @CachedLibrary("a") InteropLibrary interop) {
+            try {
+                return interop.invokeMember(a, "foo1");
+            } catch (InteropException ex) {
+                CompilerDirectives.transferToInterpreterAndInvalidate();
+                throw new IllegalStateException(ex);
+            }
+        }
+    }
+
+    public static class TestVirtualCallNode extends RootNode {
+        @Child CallFoo1Node callFoo1 = CallFoo1NodeGen.create();
+
+        public TestVirtualCallNode() {
+            super(null);
+        }
+
+        @Override
+        public Object execute(VirtualFrame frame) {
+            return callFoo1.execute(frame.getArguments()[0]);
+        }
+    }
+
+    @Test
+    public void testVirtualCall(@Inject(TestVirtualCallNode.class) CallTarget call) throws InteropException {
+        Object a = InteropLibrary.getUncached().execute(preparePolyglotBasAInternal);
+        Object ret = call.call(a);
+        Assert.assertEquals(11, InteropLibrary.getUncached().asInt(ret));
     }
 
     @Test

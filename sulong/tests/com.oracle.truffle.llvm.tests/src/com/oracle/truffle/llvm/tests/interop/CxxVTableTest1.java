@@ -35,12 +35,17 @@ import org.junit.BeforeClass;
 import org.junit.Test;
 import org.junit.runner.RunWith;
 
+import com.oracle.truffle.api.CallTarget;
+import com.oracle.truffle.api.interop.InteropLibrary;
+import com.oracle.truffle.api.interop.UnsupportedMessageException;
 import com.oracle.truffle.tck.TruffleRunner;
+import com.oracle.truffle.tck.TruffleRunner.Inject;
 
 @RunWith(TruffleRunner.class)
 public class CxxVTableTest1 extends InteropTestBase {
 
     private static Value testCppLibrary;
+    private static Object testCppLibraryInternal;
     private static Value evaluateDirectly;
     private static Value evaluateWithPolyglotConversion;
     private static Value getB1F;
@@ -49,10 +54,29 @@ public class CxxVTableTest1 extends InteropTestBase {
     @BeforeClass
     public static void loadTestBitcode() {
         testCppLibrary = loadTestBitcodeValue("vtableTest1.cpp");
+        testCppLibraryInternal = loadTestBitcodeInternal("vtableTest1.cpp");
         evaluateDirectly = testCppLibrary.getMember("evaluateDirectly");
         evaluateWithPolyglotConversion = testCppLibrary.getMember("evaluateWithPolyglotConversion");
         getB1F = testCppLibrary.getMember("getB1F");
         getB1G = testCppLibrary.getMember("getB1G");
+    }
+
+    public static class EvaluateDirectly extends SulongTestNode {
+        public EvaluateDirectly() {
+            super(testCppLibraryInternal, "evaluateDirectly");
+        }
+    }
+
+    @Test
+    public void testInternal(@Inject(EvaluateDirectly.class) CallTarget ed) throws UnsupportedMessageException {
+        CxxVTableTest1_TestClass testObject = new CxxVTableTest1_TestClass();
+        Object guestValue = runWithPolyglot.getTruffleTestEnv().asGuestValue(testObject);
+        Object ret = ed.call(guestValue, 10);
+        Assert.assertEquals(50, InteropLibrary.getUncached().asInt(ret));
+        ret = ed.call(guestValue, 10);
+        Assert.assertEquals(60, InteropLibrary.getUncached().asInt(ret));
+        ret = ed.call(guestValue, 0);
+        Assert.assertEquals(10, InteropLibrary.getUncached().asInt(ret));
     }
 
     @Test
