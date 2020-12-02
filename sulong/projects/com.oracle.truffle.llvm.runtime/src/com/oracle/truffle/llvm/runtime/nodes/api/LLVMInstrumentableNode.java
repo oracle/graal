@@ -132,9 +132,9 @@ public abstract class LLVMInstrumentableNode extends LLVMNode implements Instrum
     @ExportMessage
     public Object getScope(Frame frame, @SuppressWarnings("unused") boolean nodeEnter, @CachedContext(LLVMLanguage.class) LLVMContext ctx) {
         if (isLLDebugEnabled(ctx)) {
-            return LLVMDebuggerScopeFactory.newCreateIRLevelScope(this, frame, ctx);
+            return LLVMDebuggerScopeFactory.createIRLevelScope(this, frame, ctx);
         } else {
-            return LLVMDebuggerScopeFactory.newCreateSourceLevelScope(this, frame, ctx);
+            return LLVMDebuggerScopeFactory.createSourceLevelScope(this, frame, ctx);
         }
     }
 

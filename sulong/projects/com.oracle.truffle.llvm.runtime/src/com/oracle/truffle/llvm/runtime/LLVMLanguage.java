@@ -526,16 +526,6 @@ public class LLVMLanguage extends TruffleLanguage<LLVMContext> {
         }
     }
 
-    /*
-     * @Override
-     * 
-     * @SuppressWarnings("deprecation") protected Iterable<com.oracle.truffle.api.Scope>
-     * findLocalScopes(LLVMContext context, Node node, Frame frame) { if
-     * (context.getEnv().getOptions().get(SulongEngineOption.LL_DEBUG)) { return
-     * LLVMDebuggerScopeFactory.createIRLevelScope(node, frame, context); } else { return
-     * LLVMDebuggerScopeFactory.createSourceLevelScope(node, frame, context); } }
-     */
-
     @Override
     protected void initializeMultipleContexts() {
         super.initializeMultipleContexts();
