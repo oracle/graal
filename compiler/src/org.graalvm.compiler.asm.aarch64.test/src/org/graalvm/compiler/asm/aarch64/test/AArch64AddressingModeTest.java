@@ -29,16 +29,15 @@ import static org.junit.Assert.assertArrayEquals;
 
 import java.util.EnumSet;
 
-import org.junit.Assert;
-import org.junit.Before;
-import org.junit.Test;
-
-import org.graalvm.compiler.core.common.NumUtil;
 import org.graalvm.compiler.asm.aarch64.AArch64Address;
 import org.graalvm.compiler.asm.aarch64.AArch64Assembler;
 import org.graalvm.compiler.asm.aarch64.AArch64MacroAssembler;
 import org.graalvm.compiler.asm.aarch64.AArch64MacroAssembler.AddressGenerationPlan;
+import org.graalvm.compiler.core.common.NumUtil;
 import org.graalvm.compiler.test.GraalTest;
+import org.junit.Assert;
+import org.junit.Before;
+import org.junit.Test;
 
 import jdk.vm.ci.aarch64.AArch64;
 import jdk.vm.ci.aarch64.AArch64.CPUFeature;
@@ -219,8 +218,8 @@ public class AArch64AddressingModeTest extends GraalTest {
         Register dst = AArch64.r26;
         AArch64Address address = AArch64Address.createImmediateAddress(64, AArch64Address.AddressingMode.IMMEDIATE_UNSIGNED_SCALED, base, NumUtil.getNbitNumberInt(12) << 3);
         masm.loadAddress(dst, address, 8);
-        asm.add(64, dst, base, NumUtil.getNbitNumberInt(9) << 3);
-        asm.add(64, dst, dst, NumUtil.getNbitNumberInt(3) << 12);
+        asm.add(64, dst, base, NumUtil.getNbitNumberInt(3) << 12);
+        asm.add(64, dst, dst, NumUtil.getNbitNumberInt(9) << 3);
         compareAssembly();
     }
 

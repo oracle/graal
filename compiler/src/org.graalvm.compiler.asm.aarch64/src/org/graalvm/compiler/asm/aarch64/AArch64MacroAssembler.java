@@ -174,7 +174,7 @@ public class AArch64MacroAssembler extends AArch64Assembler {
      *         AArch64Address for the given parameters.
      */
     public static AddressGenerationPlan generateAddressPlan(long displacement, boolean hasIndexRegister, int transferSize) {
-        assert transferSize == 0 || transferSize == 1 || transferSize == 2 || transferSize == 4 || transferSize == 8;
+        assert transferSize == 0 || transferSize == 1 || transferSize == 2 || transferSize == 4 || transferSize == 8 || transferSize == 16;
         boolean indexScaled = transferSize != 0;
         int log2Scale = NumUtil.log2Ceil(transferSize);
         long scaledDisplacement = displacement >> log2Scale;
@@ -318,30 +318,26 @@ public class AArch64MacroAssembler extends AArch64Assembler {
      * @param dst general purpose register. May not be null, zero-register or stackpointer.
      * @param address address whose value is loaded into dst. May not be null,
      *            {@link org.graalvm.compiler.asm.aarch64.AArch64Address.AddressingMode#IMMEDIATE_POST_INDEXED
-     *            POST_INDEXED} or
+     *            POST_INDEXED},
      *            {@link org.graalvm.compiler.asm.aarch64.AArch64Address.AddressingMode#IMMEDIATE_PRE_INDEXED
-     *            IMMEDIATE_PRE_INDEXED}
+     *            PRE_INDEXED},
+     *            {@link org.graalvm.compiler.asm.aarch64.AArch64Address.AddressingMode#IMMEDIATE_PAIR_SIGNED_SCALED
+     *            PAIR_SIGNED_SCALED},
+     *            {@link org.graalvm.compiler.asm.aarch64.AArch64Address.AddressingMode#IMMEDIATE_PAIR_POST_INDEXED
+     *            PAIR_POST_INDEXED}, or
+     *            {@link org.graalvm.compiler.asm.aarch64.AArch64Address.AddressingMode#IMMEDIATE_PAIR_PRE_INDEXED
+     *            PAIR PRE_INDEXED}.
      * @param transferSize the memory transfer size in bytes. The log2 of this specifies how much
-     *            the index register is scaled. Can be 1, 2, 4 or 8.
+     *            the index register is scaled. Can be 1, 2, 4, 8, or 16.
      */
     public void loadAddress(Register dst, AArch64Address address, int transferSize) {
-        assert transferSize == 1 || transferSize == 2 || transferSize == 4 || transferSize == 8;
+        assert transferSize == 1 || transferSize == 2 || transferSize == 4 || transferSize == 8 || transferSize == 16;
         assert dst.getRegisterCategory().equals(CPU);
         int shiftAmt = NumUtil.log2Ceil(transferSize);
         switch (address.getAddressingMode()) {
             case IMMEDIATE_UNSIGNED_SCALED:
                 int scaledImmediate = address.getImmediateRaw() << shiftAmt;
-                int lowerBits = scaledImmediate & NumUtil.getNbitNumberInt(12);
-                int higherBits = scaledImmediate & ~NumUtil.getNbitNumberInt(12);
-                boolean firstAdd = true;
-                if (lowerBits != 0) {
-                    add(64, dst, address.getBase(), lowerBits);
-                    firstAdd = false;
-                }
-                if (higherBits != 0) {
-                    Register src = firstAdd ? address.getBase() : dst;
-                    add(64, dst, src, higherBits);
-                }
+                add(64, dst, address.getBase(), scaledImmediate);
                 break;
             case IMMEDIATE_SIGNED_UNSCALED:
                 int immediate = address.getImmediateRaw();
@@ -462,10 +458,11 @@ public class AArch64MacroAssembler extends AArch64Assembler {
             rt1 = curRt;
             rt2 = preRt;
         }
-        int immediate = offset / sizeInBytes;
-        Instruction instruction = isStore ? STP : LDP;
+
         int size = sizeInBytes * Byte.SIZE;
-        insertLdpStp(size, instruction, rt1, rt2, curBase, immediate, lastPosition);
+        AArch64Address pairAddress = AArch64Address.createImmediateAddress(size, AArch64Address.AddressingMode.IMMEDIATE_PAIR_SIGNED_SCALED, curBase, offset);
+        Instruction instruction = isStore ? STP : LDP;
+        insertLdpStp(lastPosition, size, instruction, rt1, rt2, pairAddress);
         lastImmLoadStoreEncoding = null;
         isImmLoadStoreMerged = true;
         return true;
