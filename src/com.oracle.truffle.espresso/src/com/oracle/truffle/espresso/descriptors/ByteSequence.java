@@ -180,6 +180,6 @@ public abstract class ByteSequence {
      * @param index index in the destination array to start writing the sequence
      */
     public void writeTo(byte[] dest, int index) {
-        System.arraycopy(getUnderlyingBytes(), 0, dest, index, getUnderlyingBytes().length);
+        System.arraycopy(getUnderlyingBytes(), offset(), dest, index, length());
     }
 }
