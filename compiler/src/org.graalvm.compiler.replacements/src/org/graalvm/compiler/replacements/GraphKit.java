@@ -41,6 +41,7 @@ import org.graalvm.compiler.debug.DebugCloseable;
 import org.graalvm.compiler.debug.DebugContext;
 import org.graalvm.compiler.debug.GraalError;
 import org.graalvm.compiler.graph.Graph;
+import org.graalvm.compiler.graph.Node;
 import org.graalvm.compiler.graph.Node.ValueNumberable;
 import org.graalvm.compiler.graph.NodeSourcePosition;
 import org.graalvm.compiler.java.FrameStateBuilder;
@@ -53,6 +54,7 @@ import org.graalvm.compiler.nodes.EndNode;
 import org.graalvm.compiler.nodes.FixedNode;
 import org.graalvm.compiler.nodes.FixedWithNextNode;
 import org.graalvm.compiler.nodes.IfNode;
+import org.graalvm.compiler.nodes.Invoke;
 import org.graalvm.compiler.nodes.InvokeNode;
 import org.graalvm.compiler.nodes.InvokeWithExceptionNode;
 import org.graalvm.compiler.nodes.KillingBeginNode;
@@ -368,18 +370,20 @@ public class GraphKit implements GraphBuilderTool {
      * Inlines a given invocation to a method. The graph of the inlined method is processed in the
      * same manner as for snippets and method substitutions.
      */
-    public void inline(InvokeNode invoke, String reason, String phase) {
-        ResolvedJavaMethod method = ((MethodCallTargetNode) invoke.callTarget()).targetMethod();
+    public void inline(Invoke invoke, String reason, String phase) {
+        assert invoke instanceof Node;
+        Node invokeNode = (Node) invoke;
+        ResolvedJavaMethod method = invoke.callTarget().targetMethod();
 
         Plugins plugins = new Plugins(graphBuilderPlugins);
         GraphBuilderConfiguration config = GraphBuilderConfiguration.getSnippetDefault(plugins);
 
         StructuredGraph calleeGraph;
         if (IS_IN_NATIVE_IMAGE) {
-            calleeGraph = providers.getReplacements().getSnippet(method, null, null, false, null, invoke.getOptions());
+            calleeGraph = providers.getReplacements().getSnippet(method, null, null, false, null, invokeNode.getOptions());
         } else {
-            calleeGraph = new StructuredGraph.Builder(invoke.getOptions(), invoke.getDebug()).method(method).trackNodeSourcePosition(invoke.graph().trackNodeSourcePosition()).setIsSubstitution(
-                            true).build();
+            calleeGraph = new StructuredGraph.Builder(invokeNode.getOptions(), invokeNode.getDebug()).method(method).trackNodeSourcePosition(
+                            invokeNode.graph().trackNodeSourcePosition()).setIsSubstitution(true).build();
             IntrinsicContext initialReplacementContext = new IntrinsicContext(method, method, providers.getReplacements().getDefaultReplacementBytecodeProvider(), INLINE_AFTER_PARSING);
             GraphBuilderPhase.Instance instance = createGraphBuilderInstance(providers, config, OptimisticOptimizations.NONE, initialReplacementContext);
             instance.apply(calleeGraph);
