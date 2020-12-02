@@ -45,6 +45,7 @@ import com.oracle.truffle.api.Truffle;
 import com.oracle.truffle.api.dsl.Cached;
 import com.oracle.truffle.api.dsl.CachedLanguage;
 import com.oracle.truffle.api.dsl.Fallback;
+import com.oracle.truffle.api.dsl.ImportStatic;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.interop.ArityException;
 import com.oracle.truffle.api.interop.TruffleObject;
@@ -108,13 +109,14 @@ final class NFISignature implements TruffleObject {
     }
 
     @ExportMessage
+    @ImportStatic(NFILanguage.class)
     static class CreateClosure {
 
         static NFIClosure createClosure(Object executable, NFISignature signature) {
             return new NFIClosure(executable, signature);
         }
 
-        @Specialization(guards = {"executable == cachedClosure.executable", "signature == cachedClosure.signature"})
+        @Specialization(guards = {"executable == cachedClosure.executable", "signature == cachedClosure.signature"}, assumptions = "getSingleContextAssumption()")
         @SuppressWarnings("unused")
         static Object doCached(NFISignature signature, Object executable,
                         @Cached("createClosure(executable, signature)") NFIClosure cachedClosure,

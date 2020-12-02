@@ -47,6 +47,7 @@ import com.oracle.truffle.api.TruffleLanguage.ContextReference;
 import com.oracle.truffle.api.dsl.Cached;
 import com.oracle.truffle.api.dsl.CachedContext;
 import com.oracle.truffle.api.dsl.GenerateUncached;
+import com.oracle.truffle.api.dsl.ImportStatic;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.interop.InteropLibrary;
 import com.oracle.truffle.api.interop.UnsupportedMessageException;
@@ -63,6 +64,7 @@ import com.oracle.truffle.api.source.Source;
  * bind call, and improve code sharing.
  */
 @GenerateUncached
+@ImportStatic(NFILanguage.class)
 abstract class BindSignatureNode extends Node {
 
     abstract Object execute(NFISymbol symbol, Object signature) throws UnsupportedMessageException, UnsupportedTypeException;
@@ -89,13 +91,12 @@ abstract class BindSignatureNode extends Node {
         return (NFISignature) ct.call();
     }
 
-    @Specialization(limit = "5", guards = {"symbol.backend == cachedBackend", "signature == cachedSignature"})
+    @Specialization(limit = "5", guards = {"symbol.backend == cachedBackend", "signature == cachedSignature"}, assumptions = "getSingleContextAssumption()")
     @SuppressWarnings("unused")
     static Object doCachedSignature(NFISymbol symbol, Object signature,
                     @Cached("symbol.backend") String cachedBackend,
                     @Cached("signature") Object cachedSignature,
                     @CachedContext(NFILanguage.class) ContextReference<NFIContext> ctxRef,
-                    // FIXME(rs) invalid sharing
                     @Cached("parseSignature(cachedBackend, cachedSignature, ctxRef)") NFISignature parsedSignature) {
         return NFISymbol.createBound(symbol.backend, symbol.nativeSymbol, parsedSignature);
     }

@@ -40,18 +40,22 @@
  */
 package com.oracle.truffle.nfi;
 
+import com.oracle.truffle.api.Assumption;
 import com.oracle.truffle.api.CallTarget;
 import com.oracle.truffle.api.Truffle;
 import com.oracle.truffle.api.TruffleLanguage;
+import com.oracle.truffle.api.TruffleLanguage.ContextPolicy;
 import com.oracle.truffle.api.nodes.RootNode;
 import com.oracle.truffle.nfi.NativeSource.Content;
 import com.oracle.truffle.nfi.NativeSource.ParsedLibrary;
 import com.oracle.truffle.nfi.NativeSource.ParsedSignature;
 
-@TruffleLanguage.Registration(id = "nfi", name = "TruffleNFI", version = "0.1", characterMimeTypes = NFILanguage.MIME_TYPE, internal = true)
+@TruffleLanguage.Registration(id = "nfi", name = "TruffleNFI", version = "0.1", characterMimeTypes = NFILanguage.MIME_TYPE, internal = true, contextPolicy = ContextPolicy.SHARED)
 public class NFILanguage extends TruffleLanguage<NFIContext> {
 
     public static final String MIME_TYPE = "application/x-native";
+
+    private final Assumption singleContextAssumption = Truffle.getRuntime().createAssumption("NFI single context");
 
     @Override
     protected NFIContext createContext(Env env) {
@@ -62,6 +66,16 @@ public class NFILanguage extends TruffleLanguage<NFIContext> {
     protected boolean patchContext(NFIContext context, Env newEnv) {
         context.patch(newEnv);
         return true;
+    }
+
+    @Override
+    protected void initializeMultipleContexts() {
+        super.initializeMultipleContexts();
+        singleContextAssumption.invalidate();
+    }
+
+    static Assumption getSingleContextAssumption() {
+        return getCurrentLanguage(NFILanguage.class).singleContextAssumption;
     }
 
     @Override
