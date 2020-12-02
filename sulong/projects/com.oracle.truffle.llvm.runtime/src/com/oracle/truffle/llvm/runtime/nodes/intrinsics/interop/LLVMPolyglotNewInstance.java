@@ -86,7 +86,7 @@ public abstract class LLVMPolyglotNewInstance extends LLVMIntrinsic {
             return toLLVM.executeWithTarget(rawValue);
         } catch (UnsupportedMessageException e) {
             CompilerDirectives.transferToInterpreter();
-            throw new LLVMPolyglotException(this, "Polyglot value can not be instantiated.");
+            throw new LLVMPolyglotException(this, "Polyglot value cannot be instantiated.");
         } catch (UnsupportedTypeException e) {
             CompilerDirectives.transferToInterpreter();
             throw new LLVMPolyglotException(this, "Wrong argument type passed to polyglot_new_instance.");

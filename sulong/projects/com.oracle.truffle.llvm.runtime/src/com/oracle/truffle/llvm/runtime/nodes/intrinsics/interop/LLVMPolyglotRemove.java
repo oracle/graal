@@ -68,7 +68,7 @@ public final class LLVMPolyglotRemove {
                 return false;
             } catch (UnsupportedMessageException ex) {
                 exception.enter();
-                throw new LLVMPolyglotException(this, "Can not remove member '%s' from polyglot value.", id);
+                throw new LLVMPolyglotException(this, "Cannot remove member '%s' from polyglot value.", id);
             }
         }
 
@@ -103,7 +103,7 @@ public final class LLVMPolyglotRemove {
                 return false;
             } catch (UnsupportedMessageException ex) {
                 exception.enter();
-                throw new LLVMPolyglotException(this, "Can not remove index %d from polyglot value.", idx);
+                throw new LLVMPolyglotException(this, "Cannot remove index %d from polyglot value.", idx);
             }
         }
 

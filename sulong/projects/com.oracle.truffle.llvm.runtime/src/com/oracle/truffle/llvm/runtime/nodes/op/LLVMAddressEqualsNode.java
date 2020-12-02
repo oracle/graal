@@ -153,7 +153,7 @@ public abstract class LLVMAddressEqualsNode extends LLVMAbstractCompareNode {
         @Specialization(guards = "a.getClass() != b.getClass()")
         protected boolean doDifferentType(Object a, Object b) {
             // different type, and at least one of them is managed, and not a pointer
-            // these objects can not have the same address
+            // these objects cannot have the same address
             return false;
         }
 
