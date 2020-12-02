@@ -40,7 +40,6 @@
  */
 package com.oracle.truffle.api.debug;
 
-import com.oracle.truffle.api.CompilerDirectives;
 import java.io.PrintStream;
 import java.io.PrintWriter;
 import java.util.ArrayList;
@@ -50,6 +49,7 @@ import java.util.List;
 import java.util.Objects;
 import java.util.function.Function;
 
+import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.TruffleLanguage;
 import com.oracle.truffle.api.TruffleStackTrace;
 import com.oracle.truffle.api.TruffleStackTraceElement;
@@ -79,6 +79,7 @@ public final class DebugException extends RuntimeException {
     private final Throwable exception; // the exception, or null when only a message is given
     private final LanguageInfo preferredLanguage; // the preferred language, or null
     private final Node throwLocation;         // node which intercepted the exception, or null
+    private final StackTraceElement[] rawStackTrace;
     private volatile boolean isCatchNodeComputed; // the catch node is computed lazily, can be given
     private volatile CatchLocation catchLocation; // the catch location, or null
     private SuspendedEvent suspendedEvent;    // the SuspendedEvent when from breakpoint, or null
@@ -86,20 +87,35 @@ public final class DebugException extends RuntimeException {
     private List<List<DebugStackTraceElement>> debugAsyncStacks;
     private StackTraceElement[] javaLikeStackTrace;
 
-    DebugException(DebuggerSession session, String message, Node throwLocation, boolean isCatchNodeComputed, CatchLocation catchLocation) {
-        super(message);
-        this.session = session;
-        this.exception = null;
-        this.preferredLanguage = null;
-        this.throwLocation = throwLocation;
-        this.isCatchNodeComputed = isCatchNodeComputed;
-        this.catchLocation = catchLocation != null ? catchLocation.cloneFor(session) : null;
-        // we need to materialize the stack for the case that this exception is printed
-        super.setStackTrace(getStackTrace());
+    static DebugException create(DebuggerSession session, String message) {
+        return new DebugException(session, message, null, null, null, true, null);
     }
 
-    DebugException(DebuggerSession session, Throwable exception, LanguageInfo preferredLanguage, Node throwLocation, boolean isCatchNodeComputed, CatchLocation catchLocation) {
-        super(exception.getLocalizedMessage());
+    static DebugException create(DebuggerSession session, Throwable exception, LanguageInfo preferredLanguage) {
+        return create(session, exception, preferredLanguage, null, true, null);
+    }
+
+    static DebugException create(DebuggerSession session, Throwable exception, LanguageInfo preferredLanguage, Node throwLocation, boolean isCatchNodeComputed, CatchLocation catchLocation) {
+        return new DebugException(session, exception.getLocalizedMessage(), exception, preferredLanguage, throwLocation, isCatchNodeComputed, catchLocation);
+    }
+
+    private DebugException(DebuggerSession session, String message, Throwable exception, LanguageInfo preferredLanguage, Node throwLocation, boolean isCatchNodeComputed, CatchLocation catchLocation) {
+        super(message);
+        StackTraceElement[] exceptionStackTrace = null;
+        if (session.isShowHostStackFrames()) {
+            if (exception != null) {
+                StackTraceElement[] stackTrace = exception.getStackTrace();
+                if (stackTrace.length > 0) {
+                    exceptionStackTrace = stackTrace;
+                }
+            }
+            if (exceptionStackTrace == null) {
+                // We take the stack trace ourselves
+                Throwable t = super.fillInStackTrace();
+                assert this == t;
+            }
+        }
+        this.rawStackTrace = exceptionStackTrace;
         this.session = session;
         this.exception = exception;
         this.preferredLanguage = preferredLanguage;
@@ -150,6 +166,14 @@ public final class DebugException extends RuntimeException {
         }
     }
 
+    private StackTraceElement[] getRawStackTrace() {
+        if (rawStackTrace != null) {
+            return rawStackTrace;
+        } else {
+            return super.getStackTrace();
+        }
+    }
+
     /**
      * Gets stack trace elements of guest languages. It is recommended to use
      * {@link #getDebugStackTrace()} as the guest language stack elements do not always fit the Java
@@ -161,7 +185,7 @@ public final class DebugException extends RuntimeException {
     public StackTraceElement[] getStackTrace() {
         if (javaLikeStackTrace == null) {
             if (isInternalError()) {
-                return super.getStackTrace();
+                return getRawStackTrace();
             } else {
                 List<DebugStackTraceElement> debugStack = getDebugStackTrace();
                 int size = debugStack.size();
@@ -196,7 +220,7 @@ public final class DebugException extends RuntimeException {
                     }
                 }
                 if (hostInfo) {
-                    StackTraceElement[] stack = SuspendedEvent.cutToHostDepth(super.getStackTrace());
+                    StackTraceElement[] stack = SuspendedEvent.cutToHostDepth(getRawStackTrace());
                     Iterator<DebugStackTraceElement> mergedElements = Debugger.ACCESSOR.engineSupport().mergeHostGuestFrames(stack, debugStack.iterator(), true,
                                     new Function<StackTraceElement, DebugStackTraceElement>() {
                                         @Override

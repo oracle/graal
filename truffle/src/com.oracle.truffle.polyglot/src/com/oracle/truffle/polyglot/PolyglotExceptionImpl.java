@@ -703,7 +703,7 @@ final class PolyglotExceptionImpl extends AbstractExceptionImpl {
             }
 
             // consume guest frames
-            if (guestFrames.hasNext()) {
+            while (guestFrames.hasNext()) {
                 G guestFrame = guestFrames.next();
                 T frame = guestFrameConvertor.apply(guestFrame);
                 if (frame != null) {

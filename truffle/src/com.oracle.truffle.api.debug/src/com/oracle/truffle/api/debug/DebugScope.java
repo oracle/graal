@@ -114,7 +114,7 @@ public final class DebugScope {
         try {
             return INTEROP.asString(INTEROP.toDisplayString(scope));
         } catch (UnsupportedMessageException ex) {
-            throw new DebugException(session, ex, language, node, true, null);
+            throw DebugException.create(session, ex, language, node, true, null);
         }
     }
 
@@ -134,7 +134,7 @@ public final class DebugScope {
         } catch (ThreadDeath td) {
             throw td;
         } catch (Throwable ex) {
-            throw new DebugException(session, ex, language, null, true, null);
+            throw DebugException.create(session, ex, language);
         }
         return parent;
     }
@@ -202,7 +202,7 @@ public final class DebugScope {
         } catch (ThreadDeath td) {
             throw td;
         } catch (Throwable ex) {
-            throw new DebugException(session, ex, language, null, true, null);
+            throw DebugException.create(session, ex, language);
         }
     }
 
@@ -258,7 +258,7 @@ public final class DebugScope {
         } catch (ThreadDeath td) {
             throw td;
         } catch (Throwable ex) {
-            throw new DebugException(session, ex, language, null, true, null);
+            throw DebugException.create(session, ex, language);
         }
         return null;
     }
@@ -292,7 +292,7 @@ public final class DebugScope {
         } catch (ThreadDeath td) {
             throw td;
         } catch (Throwable ex) {
-            throw new DebugException(session, ex, language, null, true, null);
+            throw DebugException.create(session, ex, language);
         }
         return receiverValue;
     }
@@ -318,7 +318,7 @@ public final class DebugScope {
         } catch (ThreadDeath td) {
             throw td;
         } catch (Throwable ex) {
-            throw new DebugException(session, ex, language, null, true, null);
+            throw DebugException.create(session, ex, language);
         }
         return functionValue;
     }
@@ -384,7 +384,7 @@ public final class DebugScope {
         } catch (ThreadDeath td) {
             throw td;
         } catch (Throwable ex) {
-            throw new DebugException(session, ex, language, null, true, null);
+            throw DebugException.create(session, ex, language);
         }
         return variables;
     }
