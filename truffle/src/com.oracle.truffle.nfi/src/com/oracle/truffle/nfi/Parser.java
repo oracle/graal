@@ -40,7 +40,6 @@
  */
 package com.oracle.truffle.nfi;
 
-import com.oracle.truffle.nfi.spi.types.NativeSignature;
 import com.oracle.truffle.nfi.spi.types.NativeLibraryDescriptor;
 import com.oracle.truffle.nfi.Lexer.Token;
 import com.oracle.truffle.nfi.NativeSource.Content;
@@ -105,14 +104,6 @@ import java.util.Locale;
  * {@code bind} method on native symbols.
  */
 final class Parser extends TypeFactory {
-
-    static NativeSignature parseSignature(CharSequence source) {
-        /*Parser parser = new Parser(source);
-        NativeSignature ret = parser.parseSignature();
-        parser.expect(Token.EOF);
-        return ret;*/
-        return null;
-    }
 
     static NativeSource parseNFISource(CharSequence source) {
         Parser parser = new Parser(source);
