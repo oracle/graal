@@ -287,10 +287,6 @@ public abstract class VMThreads {
         assert !ThreadingSupportImpl.isRecurringCallbackRegistered(thread);
         Safepoint.setSafepointRequested(thread, Safepoint.THREAD_REQUEST_RESET);
 
-        /*
-         * Not using try-with-resources to avoid implicitly calling addSuppressed(), which is not
-         * uninterruptible.
-         */
         VMThreads.THREAD_MUTEX.lockNoTransition();
         try {
             nextTL.set(thread, head);

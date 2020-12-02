@@ -776,6 +776,7 @@ public final class TruffleFeature implements com.oracle.svm.core.graal.GraalFeat
         blacklistMethod(metaAccess, String.class, "valueOf", Object.class);
         blacklistMethod(metaAccess, String.class, "getBytes");
         blacklistMethod(metaAccess, Throwable.class, "initCause", Throwable.class);
+        blacklistMethod(metaAccess, Throwable.class, "addSuppressed", Throwable.class);
         blacklistMethod(metaAccess, System.class, "getProperty", String.class);
 
         blacklistAllMethods(metaAccess, AssertionError.class);
