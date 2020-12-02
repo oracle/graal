@@ -47,15 +47,15 @@ import com.oracle.svm.core.hub.DynamicHub;
  *    +--------------------------------+
  *    | pointer to DynamicHub          |
  *    +--------------------------------+
- *    | Array length                   |
+ *    | identity hashcode              |
  *    +--------------------------------+
- *    | type id slots (optional)|
+ *    | array length                   |
+ *    +--------------------------------+
+ *    | type id slots (optional)       |
  *    |     ...                        |
  *    +--------------------------------+
  *    | instance fields                |
  *    |     ...                        |
- *    +--------------------------------+
- *    | identity hashcode (optional)   |
  *    +--------------------------------+
  *    | array elements                 |
  *    :     ...                        :
