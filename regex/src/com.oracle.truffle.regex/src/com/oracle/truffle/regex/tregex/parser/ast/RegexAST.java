@@ -51,6 +51,7 @@ import org.graalvm.collections.Equivalence;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.source.SourceSection;
 import com.oracle.truffle.regex.RegexFlags;
+import com.oracle.truffle.regex.RegexLanguage;
 import com.oracle.truffle.regex.RegexOptions;
 import com.oracle.truffle.regex.RegexSource;
 import com.oracle.truffle.regex.UnsupportedRegexException;
@@ -77,6 +78,7 @@ public final class RegexAST implements StateIndex<RegexASTNode>, JsonConvertible
     /**
      * Original pattern as seen by the parser.
      */
+    private final RegexLanguage language;
     private final RegexSource source;
     private final RegexFlags flags;
     private final RegexOptions options;
@@ -107,11 +109,16 @@ public final class RegexAST implements StateIndex<RegexASTNode>, JsonConvertible
 
     private final EconomicMap<RegexASTNode, List<SourceSection>> sourceSections;
 
-    public RegexAST(RegexSource source, RegexFlags flags, RegexOptions options) {
+    public RegexAST(RegexLanguage language, RegexSource source, RegexFlags flags, RegexOptions options) {
+        this.language = language;
         this.source = source;
         this.flags = flags;
         this.options = options;
-        sourceSections = options.isDumpAutomata() ? EconomicMap.create(Equivalence.IDENTITY_WITH_SYSTEM_HASHCODE) : null;
+        this.sourceSections = options.isDumpAutomata() ? EconomicMap.create(Equivalence.IDENTITY_WITH_SYSTEM_HASHCODE) : null;
+    }
+
+    public RegexLanguage getLanguage() {
+        return language;
     }
 
     public RegexSource getSource() {
@@ -518,7 +525,7 @@ public final class RegexAST implements StateIndex<RegexASTNode>, JsonConvertible
     }
 
     public GroupBoundaries createGroupBoundaries(CompilationFinalBitSet updateIndices, CompilationFinalBitSet clearIndices) {
-        GroupBoundaries staticInstance = GroupBoundaries.getStaticInstance(updateIndices, clearIndices);
+        GroupBoundaries staticInstance = GroupBoundaries.getStaticInstance(language, updateIndices, clearIndices);
         if (staticInstance != null) {
             return staticInstance;
         }

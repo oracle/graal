@@ -47,6 +47,9 @@ import com.oracle.truffle.api.TruffleLanguage;
 import com.oracle.truffle.api.instrumentation.ProvidedTags;
 import com.oracle.truffle.api.instrumentation.StandardTags;
 import com.oracle.truffle.api.nodes.RootNode;
+import com.oracle.truffle.regex.tregex.nfa.PureNFAIndex;
+import com.oracle.truffle.regex.tregex.parser.RegexParserGlobals;
+import com.oracle.truffle.regex.tregex.parser.ast.GroupBoundaries;
 
 /**
  * Truffle Regular Expression Language
@@ -92,6 +95,20 @@ public final class RegexLanguage extends TruffleLanguage<RegexLanguage.RegexCont
     public static final String MIME_TYPE = "application/tregex";
 
     public final RegexEngineBuilder engineBuilder = new RegexEngineBuilder(this);
+
+    private final GroupBoundaries[] cachedGroupBoundaries;
+    public final RegexParserGlobals parserGlobals;
+    public final PureNFAIndex emptyNFAIndex;
+
+    public RegexLanguage() {
+        this.cachedGroupBoundaries = GroupBoundaries.createCachedGroupBoundaries();
+        this.parserGlobals = new RegexParserGlobals(this);
+        this.emptyNFAIndex = new PureNFAIndex(0);
+    }
+
+    public GroupBoundaries[] getCachedGroupBoundaries() {
+        return cachedGroupBoundaries;
+    }
 
     @Override
     protected CallTarget parse(ParsingRequest parsingRequest) {
