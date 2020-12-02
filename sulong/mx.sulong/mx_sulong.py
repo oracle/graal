@@ -869,6 +869,10 @@ def create_toolchain_root_provider(name, dist):
     return provider
 
 
+def _exe_sub(program):
+    return mx_subst.path_substitutions.substitute("<exe:{}>".format(program))
+
+
 class ToolchainConfig(object):
     # Please keep this list in sync with Toolchain.java (method documentation) and ToolchainImpl.java (lookup switch block).
     _llvm_tool_map = ["ar", "nm", "objcopy", "objdump", "ranlib", "readelf", "readobj", "strip"]
@@ -886,8 +890,8 @@ class ToolchainConfig(object):
         self.tools = tools
         self.suite = suite
         self.mx_command = self.name + '-toolchain'
-        self.tool_map = {tool: [alias.format(name=name) for alias in aliases] for tool, aliases in ToolchainConfig._tool_map.items()}
-        self.exe_map = {exe: tool for tool, aliases in self.tool_map.items() for exe in aliases}
+        self.tool_map = {tool: [_exe_sub(alias.format(name=name)) for alias in aliases] for tool, aliases in ToolchainConfig._tool_map.items()}
+        self.exe_map = {_exe_sub(exe): tool for tool, aliases in self.tool_map.items() for exe in aliases}
         # register mx command
         mx.update_commands(_suite, {
             self.mx_command: [self._toolchain_helper, 'launch {} toolchain commands'.format(self.name)],
