@@ -174,7 +174,7 @@ public abstract class ByteSequence {
     }
 
     /**
-     * Writes this sequence into the destiation byte array.
+     * Writes this sequence into the destination byte array.
      *
      * @param dest the destination
      * @param index index in the destination array to start writing the sequence
