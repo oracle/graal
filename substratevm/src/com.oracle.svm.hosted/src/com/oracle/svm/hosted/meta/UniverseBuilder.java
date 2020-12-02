@@ -466,6 +466,7 @@ public class UniverseBuilder {
 
         clazz.instanceFields = orderedFields.toArray(new HostedField[orderedFields.size()]);
         clazz.instanceSize = layout.alignUp(nextOffset);
+        clazz.afterFieldsOffset = nextOffset;
 
         for (HostedType subClass : clazz.subTypes) {
             if (subClass.isInstanceClass()) {

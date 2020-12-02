@@ -61,7 +61,7 @@ public class HybridLayout<T> {
     private final ObjectLayout layout;
     private final HostedField arrayField;
     private final HostedField typeIDSlotsField;
-    private final int instanceSize;
+    private final int arrayBaseOffset;
 
     public HybridLayout(Class<T> hybridClass, ObjectLayout layout, HostedMetaAccess metaAccess) {
         this((HostedInstanceClass) metaAccess.lookupJavaType(hybridClass), layout);
@@ -73,7 +73,7 @@ public class HybridLayout<T> {
         HybridLayoutSupport.HybridFields hybridFields = utils.findHybridFields(hybridClass);
         arrayField = hybridFields.arrayField;
         typeIDSlotsField = hybridFields.typeIDSlotsField;
-        instanceSize = hybridClass.getInstanceSize();
+        arrayBaseOffset = NumUtil.roundUp(hybridClass.getAfterFieldsOffset(), layout.sizeInBytes(getArrayElementStorageKind()));
     }
 
     public JavaKind getArrayElementStorageKind() {
@@ -81,7 +81,7 @@ public class HybridLayout<T> {
     }
 
     public int getArrayBaseOffset() {
-        return NumUtil.roundUp(instanceSize, layout.sizeInBytes(getArrayElementStorageKind()));
+        return arrayBaseOffset;
     }
 
     public long getArrayElementOffset(int index) {
@@ -98,10 +98,6 @@ public class HybridLayout<T> {
 
     public HostedField getTypeIDSlotsField() {
         return typeIDSlotsField;
-    }
-
-    public int getInstanceSize() {
-        return instanceSize;
     }
 
     /**
