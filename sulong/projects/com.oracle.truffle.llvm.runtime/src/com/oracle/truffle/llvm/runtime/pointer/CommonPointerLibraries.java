@@ -63,14 +63,107 @@ import com.oracle.truffle.llvm.runtime.interop.export.LLVMForeignGetIndexPointer
 import com.oracle.truffle.llvm.runtime.interop.export.LLVMForeignGetMemberPointerNode;
 import com.oracle.truffle.llvm.runtime.interop.export.LLVMForeignReadNode;
 import com.oracle.truffle.llvm.runtime.interop.export.LLVMForeignWriteNode;
+import com.oracle.truffle.llvm.runtime.library.internal.LLVMManagedReadLibrary;
+import com.oracle.truffle.llvm.runtime.library.internal.LLVMManagedWriteLibrary;
 import com.oracle.truffle.llvm.runtime.nodes.op.LLVMAddressEqualsNode;
 import com.oracle.truffle.llvm.runtime.nodes.others.LLVMDynAccessSymbolNode;
 
 @ExportLibrary(value = InteropLibrary.class, receiverType = LLVMPointerImpl.class)
+@ExportLibrary(value = LLVMManagedWriteLibrary.class, receiverType = LLVMPointerImpl.class)
+@ExportLibrary(value = LLVMManagedReadLibrary.class, receiverType = LLVMPointerImpl.class)
 @ExportLibrary(value = com.oracle.truffle.llvm.spi.ReferenceLibrary.class, receiverType = LLVMPointerImpl.class)
 @SuppressWarnings({"static-method", "deprecation"})
 // implements deprecated ReferenceLibrary for backwards compatibility
 abstract class CommonPointerLibraries {
+    @ExportMessage
+    static boolean isReadable(@SuppressWarnings("unused") LLVMPointerImpl receiver) {
+        return false;
+    }
+
+    @ExportMessage
+    static byte readI8(@SuppressWarnings("unused") LLVMPointerImpl receiver, @SuppressWarnings("unused") long offset) {
+        throw CompilerDirectives.shouldNotReachHere("Cannot read a value of type I8 directly from a pointer. Perhaps a getObject() call is missing.");
+    }
+
+    @ExportMessage
+    static short readI16(@SuppressWarnings("unused") LLVMPointerImpl receiver, @SuppressWarnings("unused") long offset) {
+        throw CompilerDirectives.shouldNotReachHere("Cannot read a value of type I16 directly from a pointer. Perhaps a getObject() call is missing.");
+    }
+
+    @ExportMessage
+    static int readI32(@SuppressWarnings("unused") LLVMPointerImpl receiver, @SuppressWarnings("unused") long offset) {
+        throw CompilerDirectives.shouldNotReachHere("Cannot read a value of type I32 directly from a pointer. Perhaps a getObject() call is missing.");
+    }
+
+    @ExportMessage
+    static float readFloat(@SuppressWarnings("unused") LLVMPointerImpl receiver, @SuppressWarnings("unused") long offset) {
+        throw CompilerDirectives.shouldNotReachHere("Cannot read a value of type Float directly from a pointer. Perhaps a getObject() call is missing.");
+    }
+
+    @ExportMessage
+    static long readI64(@SuppressWarnings("unused") LLVMPointerImpl receiver, @SuppressWarnings("unused") long offset) {
+        throw CompilerDirectives.shouldNotReachHere("Cannot read a value of type I64 directly from a pointer. Perhaps a getObject() call is missing.");
+    }
+
+    @ExportMessage
+    static double readDouble(@SuppressWarnings("unused") LLVMPointerImpl receiver, @SuppressWarnings("unused") long offset) {
+        throw CompilerDirectives.shouldNotReachHere("Cannot read a value of type Double directly from a pointer. Perhaps a getObject() call is missing.");
+    }
+
+    @ExportMessage
+    static LLVMPointer readPointer(@SuppressWarnings("unused") LLVMPointerImpl receiver, @SuppressWarnings("unused") long offset) {
+        throw CompilerDirectives.shouldNotReachHere("Cannot read a value of type Pointer directly from a pointer. Perhaps a getObject() call is missing.");
+    }
+
+    @ExportMessage
+    static Object readGenericI64(@SuppressWarnings("unused") LLVMPointerImpl receiver, @SuppressWarnings("unused") long offset) {
+        throw CompilerDirectives.shouldNotReachHere("Cannot read a value of type Object directly from a pointer. Perhaps a getObject() call is missing.");
+    }
+
+    @ExportMessage
+    static boolean isWritable(@SuppressWarnings("unused") LLVMPointerImpl receiver) {
+        return false;
+    }
+
+    @ExportMessage
+    static void writeI8(@SuppressWarnings("unused") LLVMPointerImpl receiver, @SuppressWarnings("unused") long offset, @SuppressWarnings("unused") byte value) {
+        throw CompilerDirectives.shouldNotReachHere("Cannot write a value of type I8 directly to a pointer. Perhaps a getObject() call is missing.");
+    }
+
+    @ExportMessage
+    static void writeI16(@SuppressWarnings("unused") LLVMPointerImpl receiver, @SuppressWarnings("unused") long offset, @SuppressWarnings("unused") short value) {
+        throw CompilerDirectives.shouldNotReachHere("Cannot write a value of type I16 directly to a pointer. Perhaps a getObject() call is missing.");
+    }
+
+    @ExportMessage
+    static void writeI32(@SuppressWarnings("unused") LLVMPointerImpl receiver, @SuppressWarnings("unused") long offset, @SuppressWarnings("unused") int value) {
+        throw CompilerDirectives.shouldNotReachHere("Cannot write a value of type I32 directly to a pointer. Perhaps a getObject() call is missing.");
+    }
+
+    @ExportMessage
+    static void writeFloat(@SuppressWarnings("unused") LLVMPointerImpl receiver, @SuppressWarnings("unused") long offset, @SuppressWarnings("unused") float value) {
+        throw CompilerDirectives.shouldNotReachHere("Cannot write a value of type Float directly to a pointer. Perhaps a getObject() call is missing.");
+    }
+
+    @ExportMessage
+    static void writeI64(@SuppressWarnings("unused") LLVMPointerImpl receiver, @SuppressWarnings("unused") long offset, @SuppressWarnings("unused") long value) {
+        throw CompilerDirectives.shouldNotReachHere("Cannot write a value of type I64 directly to a pointer. Perhaps a getObject() call is missing.");
+    }
+
+    @ExportMessage
+    static void writeGenericI64(@SuppressWarnings("unused") LLVMPointerImpl receiver, @SuppressWarnings("unused") long offset, @SuppressWarnings("unused") Object value) {
+        throw CompilerDirectives.shouldNotReachHere("Cannot write a value of type Object directly to a pointer. Perhaps a getObject() call is missing.");
+    }
+
+    @ExportMessage
+    static void writeDouble(@SuppressWarnings("unused") LLVMPointerImpl receiver, @SuppressWarnings("unused") long offset, @SuppressWarnings("unused") double value) {
+        throw CompilerDirectives.shouldNotReachHere("Cannot write a value of type Double directly to a pointer. Perhaps a getObject() call is missing.");
+    }
+
+    @ExportMessage
+    static void writePointer(@SuppressWarnings("unused") LLVMPointerImpl receiver, @SuppressWarnings("unused") long offset, @SuppressWarnings("unused") LLVMPointer value) {
+        throw CompilerDirectives.shouldNotReachHere("Cannot write a value of type Pointer directly to a pointer. Perhaps a getObject() call is missing.");
+    }
 
     @ExportMessage
     static boolean hasMembers(LLVMPointerImpl receiver) {
