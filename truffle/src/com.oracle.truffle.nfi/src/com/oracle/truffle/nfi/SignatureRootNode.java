@@ -53,6 +53,7 @@ import com.oracle.truffle.nfi.spi.NFIBackendLibrary;
 import com.oracle.truffle.nfi.spi.NFIBackendSignatureBuilderLibrary;
 import com.oracle.truffle.nfi.spi.types.NativeSimpleType;
 import com.oracle.truffle.nfi.util.ProfiledArrayBuilder.ArrayBuilderFactory;
+import com.oracle.truffle.nfi.util.ProfiledArrayBuilder.ArrayFactory;
 
 final class SignatureRootNode extends RootNode {
 
@@ -89,6 +90,14 @@ final class SignatureRootNode extends RootNode {
             this.argBuilders = argBuilders;
         }
 
+        private static final ArrayFactory<NFIType> FACTORY = new ArrayFactory<NFIType>() {
+
+            @Override
+            public NFIType[] create(int size) {
+                return new NFIType[size];
+            }
+        };
+
         @Specialization(limit = "3")
         @ExplodeLoop
         Object doBuild(API api,
@@ -96,7 +105,7 @@ final class SignatureRootNode extends RootNode {
                         @CachedLibrary(limit = "1") NFIBackendSignatureBuilderLibrary sigBuilderLibrary,
                         @Cached ArrayBuilderFactory factory) {
             Object backendBuilder = backendLibrary.createSignatureBuilder(api.backend);
-            SignatureBuilder sigBuilder = new SignatureBuilder(api.backendId, backendBuilder, factory.allocate(NFIType[]::new));
+            SignatureBuilder sigBuilder = new SignatureBuilder(api.backendId, backendBuilder, factory.allocate(FACTORY));
 
             for (int i = 0; i < argBuilders.length; i++) {
                 argBuilders[i].execute(api, sigBuilder);

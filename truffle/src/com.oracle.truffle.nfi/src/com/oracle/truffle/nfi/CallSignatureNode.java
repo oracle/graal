@@ -124,7 +124,7 @@ abstract class CallSignatureNode extends Node {
         return OptimizedCallClosureNodeGen.create(retType, argsState);
     }
 
-    static abstract class OptimizedCallSignatureNode extends CallSignatureNode {
+    abstract static class OptimizedCallSignatureNode extends CallSignatureNode {
 
         @Child OptimizedConvertTypeNode convertRet;
         @Children final OptimizedConvertTypeNode[] convertArgs;
@@ -173,7 +173,7 @@ abstract class CallSignatureNode extends Node {
         }
     }
 
-    static abstract class OptimizedCallClosureNode extends CallSignatureNode {
+    abstract static class OptimizedCallClosureNode extends CallSignatureNode {
 
         @Child OptimizedConvertTypeNode convertRet;
         @Children final OptimizedConvertTypeNode[] convertArgs;

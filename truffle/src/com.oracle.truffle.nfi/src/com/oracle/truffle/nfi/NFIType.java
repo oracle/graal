@@ -55,11 +55,11 @@ final class NFIType {
 
     final Object runtimeData;
 
-    public NFIType(TypeCachedState cachedState, Object backendType) {
+    NFIType(TypeCachedState cachedState, Object backendType) {
         this(cachedState, backendType, null);
     }
 
-    public NFIType(TypeCachedState cachedState, Object backendType, Object runtimeData) {
+    NFIType(TypeCachedState cachedState, Object backendType, Object runtimeData) {
         this.cachedState = cachedState;
         this.backendType = backendType;
         this.runtimeData = runtimeData;

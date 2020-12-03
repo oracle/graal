@@ -88,7 +88,7 @@ public final class ProfiledArrayBuilder<T> {
     }
 
     @FunctionalInterface
-    public abstract interface ArrayFactory<T> {
+    public interface ArrayFactory<T> {
 
         T[] create(int size);
     }
