@@ -96,17 +96,19 @@ abstract class CallSignatureNode extends Node {
                         @Cached ConvertToNativeNode convertArg,
                         @Cached ConvertFromNativeNode convertRet,
                         @CachedLibrary("signature.nativeSignature") NFIBackendSignatureLibrary nativeLibrary) throws ArityException, UnsupportedTypeException, UnsupportedMessageException {
-            int expectedArgsLength = signature.managedArgCount;
-            if (args.length != expectedArgsLength) {
+            if (args.length != signature.managedArgCount) {
                 exception.enter();
-                throw ArityException.create(expectedArgsLength, args.length);
+                throw ArityException.create(signature.managedArgCount, args.length);
             }
 
-            Object[] preparedArgs = new Object[expectedArgsLength];
+            Object[] preparedArgs = new Object[signature.nativeArgCount];
             int argIdx = 0;
             for (int i = 0; i < preparedArgs.length; i++) {
-                preparedArgs[i] = convertArg.execute(signature.argTypes[i], args[argIdx]);
-                argIdx += signature.argTypes[i].cachedState.managedArgCount;
+                Object input = null;
+                if (signature.argTypes[i].cachedState.managedArgCount == 1) {
+                    input = args[argIdx++];
+                }
+                preparedArgs[i] = convertArg.execute(signature.argTypes[i], input);
             }
 
             Object ret = nativeLibrary.call(signature.nativeSignature, function, preparedArgs);
