@@ -483,6 +483,8 @@ public final class BytecodeNode extends EspressoMethodNode {
         frame.setInt(bciSlot, bci);
     }
 
+    // region Operand stack accessors
+
     public static int popInt(long[] primitives, int slot) {
         return EspressoFrame.popInt(primitives, slot);
     }
@@ -545,6 +547,8 @@ public final class BytecodeNode extends EspressoMethodNode {
     public static void putDouble(long[] primitives, int slot, double value) {
         EspressoFrame.putLong(primitives, slot + 1, Double.doubleToRawLongBits(value));
     }
+
+    // endregion Operand stack accessors
 
     // region Local accessors
 
