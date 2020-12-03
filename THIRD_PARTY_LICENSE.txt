@@ -11,7 +11,7 @@ The following software may be included in this product:
 
 ===============================================================================
 
-JSON 20180813 
+JSON 20201115 
 
 Copyright (c) 2002 JSON.org
 
@@ -1152,7 +1152,7 @@ IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN
 CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 ===============================================================================
-JLine 3.16.0
+JLine 3.13.2
 
 Copyright (c) 2002-2018, the original author or authors.
 All rights reserved.
