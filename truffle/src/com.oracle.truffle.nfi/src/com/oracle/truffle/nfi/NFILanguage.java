@@ -94,9 +94,7 @@ public class NFILanguage extends TruffleLanguage<NFIContext> {
         assert c != null;
         if (c instanceof ParsedLibrary) {
             ParsedLibrary lib = (ParsedLibrary) c;
-            NFIBackend backend = getCurrentContext(NFILanguage.class).getBackend(backendId);
-            CallTarget loadLibrary = backend.parse(lib.getLibraryDescriptor());
-            return Truffle.getRuntime().createCallTarget(new NFIRootNode(this, loadLibrary, lib));
+            return Truffle.getRuntime().createCallTarget(new NFIRootNode(this, lib, backendId));
         } else {
             ParsedSignature sig = (ParsedSignature) c;
             RootNode buildSignature = new SignatureRootNode(this, backendId, sig.getBuildSignatureNode());
