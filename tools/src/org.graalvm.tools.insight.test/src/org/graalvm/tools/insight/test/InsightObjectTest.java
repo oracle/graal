@@ -42,8 +42,10 @@ import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.Executor;
 import java.util.concurrent.Executors;
 import java.util.concurrent.TimeUnit;
+import java.util.function.Function;
 import java.util.function.Predicate;
 import org.graalvm.polyglot.Context;
+import org.graalvm.polyglot.Instrument;
 import org.graalvm.polyglot.PolyglotException;
 import org.graalvm.polyglot.Source;
 import org.graalvm.polyglot.Value;
@@ -750,6 +752,44 @@ public class InsightObjectTest {
             agentAPI.off("return", return42);
 
             assertEquals(42, fourtyTwo.asInt());
+        }
+    }
+
+    @Test
+    public void unknownLanguageCall() throws Exception {
+        try (Context c = InsightObjectFactory.newContext()) {
+            Instrument insight = c.getEngine().getInstruments().get(Insight.ID);
+            assertNotNull("found", insight);
+
+            // @formatter:off
+            Source sampleScript = Source.newBuilder(InstrumentationTestLanguage.ID,
+                "ROOT(\n" +
+                "  DEFINE(meaning,\n" +
+                "    EXPRESSION(\n" +
+                "      CONSTANT(6),\n" +
+                "      CONSTANT(7)\n" +
+                "    )\n" +
+                "  ),\n" +
+                "  CALL(meaning)\n" +
+                ")",
+                "sample.px"
+            ).build();
+
+            Source insightScript = Source.newBuilder("unknownInsightLanguage",
+                "anything",
+                "insightScript.uil"
+            ).build();
+            // @formatter:on
+
+            @SuppressWarnings("unchecked")
+            Object script = insight.lookup(Function.class).apply(insightScript);
+
+            try {
+                Value fourtyTwo = c.eval(sampleScript);
+                assertEquals("Unlikely to happen, expect exception", 42, fourtyTwo.asInt());
+            } catch (PolyglotException ex) {
+                assertNotEquals("Missing language error reported", -1, ex.getMessage().indexOf("No language for id unknownInsightLanguage found"));
+            }
         }
     }
 
