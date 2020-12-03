@@ -151,6 +151,7 @@ class ReflectionProcessor extends AbstractProcessor {
                 unsafeAccess = true;
                 // fall through
             case "getDeclaredField":
+            case "findFieldHandle":
                 memberKind = ConfigurationMemberKind.DECLARED;
                 // fall through
             case "getField": {
@@ -162,6 +163,7 @@ class ReflectionProcessor extends AbstractProcessor {
             }
 
             case "getDeclaredMethod":
+            case "findMethodHandle":
                 memberKind = ConfigurationMemberKind.DECLARED;
                 // fall through
             case "getMethod": {
@@ -179,6 +181,7 @@ class ReflectionProcessor extends AbstractProcessor {
             }
 
             case "getDeclaredConstructor":
+            case "findConstructorHandle":
                 memberKind = ConfigurationMemberKind.DECLARED; // fall through
             case "getConstructor": {
                 List<String> parameterTypes = singleElement(args);
