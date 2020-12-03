@@ -135,7 +135,7 @@ bench-specjvm2008-Single: ${bench-specjvm2008} ${specjvm-bench-notifications} {
 }
 
 bench-specjvm2008-OneVM: ${bench-specjvm2008} ${specjvm-bench-notifications} {
-  targets: [bench, weekly]
+  targets: [bench]
   run: [
     ${bench-jvmci.mx-specjvm2008-OneVM} ${bench-arguments} [
       "--", "-it", "240s", "-wt", "120s"
