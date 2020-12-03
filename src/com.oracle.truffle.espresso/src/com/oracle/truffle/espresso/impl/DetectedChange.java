@@ -31,10 +31,10 @@ import java.util.Map;
 import java.util.Set;
 
 final class DetectedChange {
-
     private final Map<Method, ParserMethod> changedMethodBodies = new HashMap<>();
     private final List<ParserMethod> addedMethods = new ArrayList<>();
     private final Set<Method> removedMethods = new HashSet<>();
+    private final List<Field> outerFields = new ArrayList<>();
 
     void addMethodBodyChange(Method oldMethod, ParserMethod newMethod) {
         changedMethodBodies.put(oldMethod, newMethod);
@@ -52,11 +52,27 @@ final class DetectedChange {
         return Collections.unmodifiableSet(removedMethods);
     }
 
-    public void addNewMethods(List<ParserMethod> methods) {
-        addedMethods.addAll(methods);
+    public void addNewMethod(ParserMethod method) {
+        addedMethods.add(method);
+    }
+
+    public void addRemovedMethods(Method method) {
+        removedMethods.add(method);
     }
 
     public void addRemovedMethods(List<Method> methods) {
         removedMethods.addAll(methods);
+    }
+
+    public void addNewMethods(List<ParserMethod> newMethods) {
+        addedMethods.addAll(newMethods);
+    }
+
+    public void addOuterField(Field oldField) {
+        outerFields.add(oldField);
+    }
+
+    public List<Field> getOuterFields() {
+        return Collections.unmodifiableList(outerFields);
     }
 }

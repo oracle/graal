@@ -23,6 +23,8 @@
 
 package com.oracle.truffle.espresso.impl;
 
+import java.util.ArrayList;
+import java.util.List;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.locks.ReadWriteLock;
 import java.util.concurrent.locks.ReentrantReadWriteLock;
@@ -63,6 +65,12 @@ public abstract class ClassRegistry implements ContextAccess {
      */
     // TODO: Rework this, a thread local is certainly less than optimal.
     static final ThreadLocal<TypeStack> stack = ThreadLocal.withInitial(TypeStack.supplier);
+
+    private DefineKlassListener defineKlassListener;
+
+    public void registerOnLoadListener(DefineKlassListener listener) {
+        defineKlassListener = listener;
+    }
 
     static final class TypeStack {
         static final Supplier<TypeStack> supplier = new Supplier<TypeStack>() {
@@ -217,8 +225,12 @@ public abstract class ClassRegistry implements ContextAccess {
 
     public abstract @Host(ClassLoader.class) StaticObject getClassLoader();
 
-    public Klass[] getLoadedKlasses() {
-        return classes.values().toArray(Klass.EMPTY_ARRAY);
+    public List<Klass> getLoadedKlasses() {
+        ArrayList<Klass> klasses = new ArrayList<>(classes.size());
+        for (ClassRegistries.RegistryEntry entry : classes.values()) {
+            klasses.add(entry.klass());
+        }
+        return klasses;
     }
 
     public Klass findLoadedKlass(Symbol<Type> type) {
@@ -334,6 +346,9 @@ public abstract class ClassRegistry implements ContextAccess {
         EspressoError.guarantee(previous == null, "Class " + type + " is already defined");
 
         getRegistries().recordConstraint(type, klass, getClassLoader());
+        if (defineKlassListener != null) {
+            defineKlassListener.onKlassDefined(klass);
+        }
         return klass;
     }
 
@@ -354,5 +369,19 @@ public abstract class ClassRegistry implements ContextAccess {
             throw Meta.throwExceptionWithMessage(meta.java_lang_IncompatibleClassChangeError, "Super interface of " + type + " is in fact not an interface.");
         }
         return (ObjectKlass) klass;
+    }
+
+    public void onClassRenamed(ObjectKlass oldKlass, Symbol<Symbol.Name> newName) {
+        Symbol<Symbol.Type> newType = context.getTypes().fromName(newName);
+        classes.put(newType, new ClassRegistries.RegistryEntry(oldKlass));
+    }
+
+    public void onInnerClassRemoved(Symbol<Symbol.Type> type) {
+        // "unload" the class by removing from classes
+        ClassRegistries.RegistryEntry removed = classes.remove(type);
+        // purge class loader constraint for this type
+        if (removed != null && removed.klass() != null) {
+            getRegistries().removeUnloadedKlassConstraint(removed.klass(), type);
+        }
     }
 }

@@ -1795,7 +1795,8 @@ public final class BytecodeNode extends EspressoMethodNode {
                 if (resolved.isConstructor()) {
                     if (resolved.getDeclaringKlass().getName() != getConstantPool().methodAt(cpi).getHolderKlassName(getConstantPool())) {
                         CompilerDirectives.transferToInterpreter();
-                        throw Meta.throwException(getMeta().java_lang_NoSuchMethodError);
+                        throw Meta.throwExceptionWithMessage(getMeta().java_lang_NoSuchMethodError,
+                                        getContext().getMeta().toGuestString(resolved.getDeclaringKlass().getNameAsString() + "." + resolved.getName() + resolved.getRawSignature()));
                     }
                 }
                 // Otherwise, if the resolved method is a class (static) method, the invokespecial
@@ -2144,7 +2145,7 @@ public final class BytecodeNode extends EspressoMethodNode {
          * PUTFIELD: Otherwise, if the field is final, it must be declared in the current class, and
          * the instruction must occur in an instance initialization method (<init>) of the current
          * class. Otherwise, an IllegalAccessError is thrown.
-         * 
+         *
          * PUTSTATIC: Otherwise, if the field is final, it must be declared in the current class,
          * and the instruction must occur in the <clinit> method of the current class. Otherwise, an
          * IllegalAccessError is thrown.
@@ -2283,7 +2284,7 @@ public final class BytecodeNode extends EspressoMethodNode {
         /*
          * GETFIELD: Otherwise, if the resolved field is a static field, getfield throws an
          * IncompatibleClassChangeError.
-         * 
+         *
          * GETSTATIC: Otherwise, if the resolved field is not a static (class) field or an interface
          * field, getstatic throws an IncompatibleClassChangeError.
          */

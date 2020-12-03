@@ -64,7 +64,7 @@ public final class Target_java_lang_Class {
                     @Host(String.class) StaticObject name,
                     @InjectMeta Meta meta) {
 
-        String hostName = Meta.toHostString(name);
+        String hostName = meta.toHostString(name);
 
         switch (hostName) {
             case "boolean":
@@ -113,7 +113,7 @@ public final class Target_java_lang_Class {
             throw meta.throwNullPointerException();
         }
 
-        String hostName = Meta.toHostString(name);
+        String hostName = meta.toHostString(name);
         if (hostName.indexOf('/') >= 0) {
             throw Meta.throwExceptionWithMessage(meta.java_lang_ClassNotFoundException, name);
         }

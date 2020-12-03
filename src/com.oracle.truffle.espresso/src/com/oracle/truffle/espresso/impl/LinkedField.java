@@ -85,4 +85,8 @@ final class LinkedField {
     public boolean isHidden() {
         return parserField.isHidden();
     }
+
+    ParserField getParserField() {
+        return parserField;
+    }
 }

@@ -26,7 +26,6 @@ import java.util.concurrent.ConcurrentHashMap;
 import java.util.function.Function;
 
 import com.oracle.truffle.espresso.descriptors.Symbol;
-import com.oracle.truffle.espresso.meta.Meta;
 import com.oracle.truffle.espresso.substitutions.Host;
 
 /**
@@ -78,7 +77,7 @@ public final class StringTable {
 
     public @Host(String.class) StaticObject intern(@Host(String.class) StaticObject guestString) {
         assert StaticObject.notNull(guestString);
-        String hostString = Meta.toHostString(guestString);
+        String hostString = context.getMeta().toHostString(guestString);
         return interned.computeIfAbsent(hostString, new Function<String, StaticObject>() {
             @Override
             public StaticObject apply(String k) {

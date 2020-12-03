@@ -971,7 +971,7 @@ public final class VM extends NativeEnv implements ContextAccess {
     @VmImpl
     @JniImpl
     public @Host(Class.class) StaticObject JVM_FindLoadedClass(@Host(ClassLoader.class) StaticObject loader, @Host(String.class) StaticObject name) {
-        Symbol<Type> type = getTypes().fromClassGetName(Meta.toHostString(name));
+        Symbol<Type> type = getTypes().fromClassGetName(getMeta().toHostString(name));
         // HotSpot skips reflection (DelegatingClassLoader) class loaders.
         Klass klass = getRegistries().findLoadedClass(type, nonReflectionClassLoader(loader));
         if (klass == null) {
@@ -1889,7 +1889,7 @@ public final class VM extends NativeEnv implements ContextAccess {
     @VmImpl
     @JniImpl
     public @Host(String.class) StaticObject JVM_GetSystemPackage(@Host(String.class) StaticObject name) {
-        String hostPkgName = Meta.toHostString(name);
+        String hostPkgName = getMeta().toHostString(name);
         if (hostPkgName.endsWith("/")) {
             hostPkgName = hostPkgName.substring(0, hostPkgName.length() - 1);
         }
@@ -2010,7 +2010,7 @@ public final class VM extends NativeEnv implements ContextAccess {
     @JniImpl
     @VmImpl
     public int JVM_ClassDepth(@Host(String.class) StaticObject name) {
-        Symbol<Name> className = getContext().getNames().lookup(Meta.toHostString(name).replace('.', '/'));
+        Symbol<Name> className = getContext().getNames().lookup(getMeta().toHostString(name).replace('.', '/'));
         if (className == null) {
             return -1;
         }
@@ -2520,7 +2520,7 @@ public final class VM extends NativeEnv implements ContextAccess {
                     profiler.profile(2);
                     throw meta.throwNullPointerException();
                 }
-                getLogger().fine("GetVMGlobals: " + Meta.toHostString(entry));
+                getLogger().fine("GetVMGlobals: " + meta.toHostString(entry));
             }
         }
         return 0;
@@ -2671,7 +2671,7 @@ public final class VM extends NativeEnv implements ContextAccess {
             throw Meta.throwExceptionWithMessage(getMeta().java_lang_IllegalArgumentException, "modue name cannot be null");
         }
 
-        String hostName = Meta.toHostString(guestName);
+        String hostName = getMeta().toHostString(guestName);
         if (hostName.equals(JAVA_BASE)) {
             profiler.profile(5);
             defineJavaBaseModule(module, pkgs, num_package, profiler);

@@ -29,6 +29,7 @@ import java.util.ArrayList;
 import java.util.Collections;
 import java.util.Comparator;
 import java.util.List;
+import java.util.regex.Matcher;
 
 import com.oracle.truffle.api.TruffleLanguage;
 import com.oracle.truffle.api.debug.Debugger;
@@ -42,9 +43,12 @@ import com.oracle.truffle.espresso.descriptors.Symbol;
 import com.oracle.truffle.espresso.impl.ArrayKlass;
 import com.oracle.truffle.espresso.impl.ChangePacket;
 import com.oracle.truffle.espresso.impl.ClassRedefinition;
+import com.oracle.truffle.espresso.impl.HotSwapClassInfo;
+import com.oracle.truffle.espresso.impl.InnerClassRedefiner;
 import com.oracle.truffle.espresso.impl.Klass;
 import com.oracle.truffle.espresso.impl.Method.MethodVersion;
 import com.oracle.truffle.espresso.impl.ObjectKlass;
+import com.oracle.truffle.espresso.impl.RedefintionNotSupportedException;
 import com.oracle.truffle.espresso.jdwp.api.CallFrame;
 import com.oracle.truffle.espresso.jdwp.api.FieldRef;
 import com.oracle.truffle.espresso.jdwp.api.Ids;
@@ -75,11 +79,13 @@ public final class JDWPContextImpl implements JDWPContext {
     private final Ids<Object> ids;
     private JDWPSetup setup;
     private VMListener eventListener = new EmptyListener();
+    private InnerClassRedefiner innerClassRedefiner;
 
     public JDWPContextImpl(EspressoContext context) {
         this.context = context;
         this.ids = new Ids<>(StaticObject.NULL);
         this.setup = new JDWPSetup();
+        this.innerClassRedefiner = new InnerClassRedefiner(context);
     }
 
     public VMListener jdwpInit(TruffleLanguage.Env env, Object mainThread) {
@@ -219,7 +225,7 @@ public final class JDWPContextImpl implements JDWPContext {
     }
 
     @Override
-    public KlassRef[] getInitiatedClasses(Object classLoader) {
+    public List<? extends KlassRef> getInitiatedClasses(Object classLoader) {
         return context.getRegistries().getLoadedClassesByLoader((StaticObject) classLoader);
     }
 
@@ -643,14 +649,19 @@ public final class JDWPContextImpl implements JDWPContext {
     }
 
     @Override
-    public int redefineClasses(RedefineInfo[] redefineInfos) {
+    public synchronized int redefineClasses(RedefineInfo[] redefineInfos) {
         try {
             JDWPLogger.log("Redefining %d classes", JDWPLogger.LogLevel.REDEFINE, redefineInfos.length);
             // list of sub classes that needs to refresh things like vtable
             List<ObjectKlass> refreshSubClasses = new ArrayList<>();
 
-            // first, detect all changes to all classes
-            List<ChangePacket> changePackets = ClassRedefinition.detectClassChanges(redefineInfos, context);
+            // match anon inner classes with previous state
+            List<ObjectKlass> removedInnerClasses = new ArrayList<>(0);
+            HotSwapClassInfo[] matchedInfos = innerClassRedefiner.matchAnonymousInnerClasses(redefineInfos, removedInnerClasses);
+
+            // detect all changes to all classes, throws if redefinition cannot be completed
+            // due to the nature of the changes
+            List<ChangePacket> changePackets = ClassRedefinition.detectClassChanges(matchedInfos, context);
 
             // We have to redefine super classes prior to subclasses
             Collections.sort(changePackets, new HierarchyComparator());
@@ -658,8 +669,8 @@ public final class JDWPContextImpl implements JDWPContext {
             // begin redefine transaction
             ClassRedefinition.begin();
             for (ChangePacket packet : changePackets) {
-                JDWPLogger.log("Redefining class %s", JDWPLogger.LogLevel.REDEFINE, packet.parserKlass.getName());
-                int result = ClassRedefinition.redefineClass(packet, getIds(), refreshSubClasses);
+                JDWPLogger.log("Redefining class %s", JDWPLogger.LogLevel.REDEFINE, packet.info.getNewName());
+                int result = ClassRedefinition.redefineClass(packet, getIds(), context, refreshSubClasses);
                 if (result != 0) {
                     return result;
                 }
@@ -670,6 +681,25 @@ public final class JDWPContextImpl implements JDWPContext {
                 JDWPLogger.log("Updating sub class %s for redefined super class", JDWPLogger.LogLevel.REDEFINE, subKlass.getName());
                 subKlass.onSuperKlassUpdate();
             }
+
+            // update the JWDP IDs
+            for (ChangePacket changePacket : changePackets) {
+                if (changePacket.info.isRenamed()) {
+                    ObjectKlass klass = changePacket.info.getKlass();
+                    if (klass != null) {
+                        ids.updateId(klass);
+                    }
+                }
+            }
+
+            // tell the InnerClassRedefiner to commit the changes to cache
+            innerClassRedefiner.commit(matchedInfos);
+
+            for (ObjectKlass removed : removedInnerClasses) {
+                removed.removeByRedefinition();
+            }
+        } catch (RedefintionNotSupportedException ex) {
+            return ex.getErrorCode();
         } finally {
             ClassRedefinition.end();
         }
@@ -678,11 +708,11 @@ public final class JDWPContextImpl implements JDWPContext {
 
     private static class HierarchyComparator implements Comparator<ChangePacket> {
         public int compare(ChangePacket packet1, ChangePacket packet2) {
-            Klass k1 = (Klass) packet1.info.getKlass();
-            Klass k2 = (Klass) packet2.info.getKlass();
+            Klass k1 = packet1.info.getKlass();
+            Klass k2 = packet2.info.getKlass();
             // we need to do this check because isAssignableFrom is true in this case
             // and we would get an order that doesn't exist
-            if (k1.equals(k2)) {
+            if (k1 == null || k2 == null || k1.equals(k2)) {
                 return 0;
             }
             if (k1.isAssignableFrom(k2)) {
@@ -690,8 +720,18 @@ public final class JDWPContextImpl implements JDWPContext {
             } else if (k2.isAssignableFrom(k1)) {
                 return 1;
             }
-            // no hierarchy
-            return 0;
+            // no hierarchy, check anon inner classes
+            Matcher m1 = InnerClassRedefiner.ANON_INNER_CLASS_PATTERN.matcher(k1.getNameAsString());
+            Matcher m2 = InnerClassRedefiner.ANON_INNER_CLASS_PATTERN.matcher(k2.getNameAsString());
+            if (!m1.matches()) {
+                return -1;
+            } else {
+                if (m2.matches()) {
+                    return 0;
+                } else {
+                    return 1;
+                }
+            }
         }
     }
 
