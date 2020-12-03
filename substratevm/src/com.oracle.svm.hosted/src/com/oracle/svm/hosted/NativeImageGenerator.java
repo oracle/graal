@@ -1223,10 +1223,7 @@ public class NativeImageGenerator {
         Architecture architecture = ConfigurationValues.getTarget().arch;
         OptionValues options = aUniverse.hostVM().options();
         ImageSingletons.lookup(TargetGraphBuilderPlugins.class).register(plugins, replacements, architecture,
-                        explicitUnsafeNullChecks, /* registerForeignCallMath */false,
-                        GraalOptions.EmitJDK8StringSubstitutions.getValue(options) && JavaVersionUtil.JAVA_SPEC < 9,
-                        GraalOptions.EmitJDK9PlusStringSubstitutions.getValue(options) && JavaVersionUtil.JAVA_SPEC >= 9,
-                        JavaVersionUtil.JAVA_SPEC >= 11);
+                        explicitUnsafeNullChecks, /* registerForeignCallMath */false, JavaVersionUtil.JAVA_SPEC >= 11, options);
 
         /*
          * When the context is hosted, i.e., ahead-of-time compilation, and after the analysis we

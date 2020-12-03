@@ -34,7 +34,6 @@ import java.util.List;
 import org.graalvm.compiler.core.aarch64.AArch64AddressLoweringByUse;
 import org.graalvm.compiler.core.aarch64.AArch64LIRKindTool;
 import org.graalvm.compiler.core.aarch64.AArch64SuitesCreator;
-import org.graalvm.compiler.core.common.GraalOptions;
 import org.graalvm.compiler.hotspot.GraalHotSpotVMConfig;
 import org.graalvm.compiler.hotspot.HotSpotBackendFactory;
 import org.graalvm.compiler.hotspot.HotSpotGraalRuntimeProvider;
@@ -58,7 +57,6 @@ import org.graalvm.compiler.phases.common.AddressLoweringByUsePhase;
 import org.graalvm.compiler.phases.schedule.SchedulePhase;
 import org.graalvm.compiler.phases.tiers.CompilerConfiguration;
 import org.graalvm.compiler.replacements.aarch64.AArch64GraphBuilderPlugins;
-import org.graalvm.compiler.serviceprovider.JavaVersionUtil;
 import org.graalvm.compiler.serviceprovider.ServiceProvider;
 
 import jdk.vm.ci.aarch64.AArch64;
@@ -102,9 +100,7 @@ public class AArch64HotSpotBackendFactory extends HotSpotBackendFactory {
                         options,
                         target);
         AArch64GraphBuilderPlugins.register(plugins, replacements, false, //
-                        /* registerForeignCallMath */true,
-                        /* emitJDK9StringSubstitutions */GraalOptions.EmitJDK9PlusStringSubstitutions.getValue(options) && JavaVersionUtil.JAVA_SPEC >= 9,
-                        config.useFMAIntrinsics);
+                        /* registerForeignCallMath */true, config.useFMAIntrinsics, options);
         return plugins;
     }
 
