@@ -25,6 +25,7 @@
 package org.graalvm.compiler.truffle.runtime;
 
 import static org.graalvm.compiler.truffle.common.TruffleOutputGroup.GROUP_ID;
+import static org.graalvm.compiler.truffle.options.PolyglotCompilerOptions.CompilerIdleDelay;
 
 import java.io.CharArrayWriter;
 import java.io.PrintWriter;
@@ -1072,12 +1073,21 @@ public abstract class GraalTruffleRuntime implements TruffleRuntime, TruffleComp
     }
 
     /**
-     * Gets the time in milliseconds an idle Truffle compiler thread will wait for new tasks before
-     * terminating. A value of {@code <= 0} means that Truffle compiler threads block indefinitely
-     * waiting for a task and thus never terminate.
+     * Gets the time in milliseconds an idle compiler thread will wait for new tasks before
+     * terminating. A value of {@code <= 0} means that compiler threads block indefinitely waiting
+     * for a task and thus never terminate.
      */
-    protected long getCompilerIdleDelay(@SuppressWarnings("unused") OptimizedCallTarget callTarget) {
-        return 0;
+    protected long getCompilerIdleDelay(OptimizedCallTarget callTarget) {
+        OptionValues options = callTarget.engine.getEngineOptions();
+        /*
+         * Compiler idle time is set to 0 to avoid that the compiler thread is shut down. We are
+         * collecting statistics if any of the flags are used.
+         */
+        if (!options.get(PolyglotCompilerOptions.MethodExpansionStatistics).isEmpty() || !options.get(PolyglotCompilerOptions.NodeExpansionStatistics).isEmpty() ||
+                        options.get(PolyglotCompilerOptions.InstrumentBranches) || options.get(PolyglotCompilerOptions.InstrumentBoundaries)) {
+            return 0L;
+        }
+        return callTarget.getOptionValue(CompilerIdleDelay);
     }
 
     final OptionDescriptors getEngineOptionDescriptors() {
