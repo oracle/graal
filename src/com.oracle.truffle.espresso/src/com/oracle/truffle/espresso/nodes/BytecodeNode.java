@@ -1433,7 +1433,7 @@ public final class BytecodeNode extends EspressoMethodNode {
         if (targetBCI <= curBCI) {
             checkStopping();
             if ((++loopCount[0] & 0x3F) == 0) {
-                LoopNode.reportLoopCount(this, 0x3F);
+                LoopNode.reportLoopCount(this, 0x40);
             }
         }
         if (instrument != null) {
@@ -2436,8 +2436,8 @@ public final class BytecodeNode extends EspressoMethodNode {
             case Float   : putFloat(primitives, top, (float) value);           break;
             case Long    : putLong(primitives, top, (long) value);             break;
             case Double  : putDouble(primitives, top, (double) value);         break;
-            case Object  : putObject(refs, top, (StaticObject) value);   break;
-            case Void    : /* ignore */                                   break;
+            case Object  : putObject(refs, top, (StaticObject) value);         break;
+            case Void    : /* ignore */                                        break;
             default      :
                 CompilerDirectives.transferToInterpreter();
                 throw EspressoError.shouldNotReachHere();
