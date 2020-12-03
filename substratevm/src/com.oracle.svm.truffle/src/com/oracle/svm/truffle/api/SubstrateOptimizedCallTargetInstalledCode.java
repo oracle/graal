@@ -31,6 +31,8 @@ import org.graalvm.compiler.truffle.runtime.GraalTruffleRuntime;
 import org.graalvm.word.WordFactory;
 
 import com.oracle.svm.core.annotate.Uninterruptible;
+import com.oracle.svm.core.code.CodeInfo;
+import com.oracle.svm.core.code.CodeInfoAccess;
 import com.oracle.svm.core.code.CodeInfoTable;
 import com.oracle.svm.core.code.UntetheredCodeInfo;
 import com.oracle.svm.core.code.UntetheredCodeInfoAccess;
@@ -118,7 +120,25 @@ public class SubstrateOptimizedCallTargetInstalledCode extends InstalledCode imp
     @Override
     public void invalidateWithoutDeoptimization() {
         assert VMOperation.isInProgressAtSafepoint();
+        if (isValid()) {
+            invalidateWithoutDeoptimization0();
+        }
+    }
+
+    @Uninterruptible(reason = "Must tether the CodeInfo.")
+    private void invalidateWithoutDeoptimization0() {
         this.entryPoint = 0;
+
+        UntetheredCodeInfo untetheredInfo = CodeInfoTable.lookupCodeInfo(WordFactory.pointer(this.address));
+        assert untetheredInfo.isNonNull() && untetheredInfo.notEqual(CodeInfoTable.getImageCodeInfo());
+
+        Object tether = CodeInfoAccess.acquireTether(untetheredInfo);
+        try { // Indicates to GC that the code can be freed once there are no activations left
+            CodeInfo codeInfo = CodeInfoAccess.convert(untetheredInfo, tether);
+            CodeInfoAccess.setState(codeInfo, CodeInfo.STATE_NON_ENTRANT);
+        } finally {
+            CodeInfoAccess.releaseTether(untetheredInfo, tether);
+        }
     }
 
     static Object doInvoke(SubstrateOptimizedCallTarget callTarget, SubstrateOptimizedCallTargetInstalledCode installedCode, Object[] args) {

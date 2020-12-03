@@ -165,7 +165,7 @@ public final class RuntimeCodeInfoAccess {
         boolean continueVisiting = true;
         continueVisiting = continueVisiting &&
                         NonmovableArrays.walkUnmanagedObjectArray(impl.getObjectFields(), visitor, CodeInfoImpl.FIRST_WEAKLY_REFERENCED_OBJFIELD, CodeInfoImpl.WEAKLY_REFERENCED_OBJFIELD_COUNT);
-        if (impl.getState() == CodeInfo.STATE_CODE_CONSTANTS_LIVE) {
+        if (CodeInfoAccess.isAliveState(impl.getState())) {
             continueVisiting = continueVisiting && CodeReferenceMapDecoder.walkOffsetsFromPointer(impl.getCodeStart(),
                             impl.getCodeConstantsReferenceMapEncoding(), impl.getCodeConstantsReferenceMapIndex(), visitor);
         }
@@ -209,7 +209,7 @@ public final class RuntimeCodeInfoAccess {
     @Uninterruptible(reason = "Prevent the GC from running - otherwise, it could accidentally visit the freed memory.")
     private static void releaseMemory(CodeInfo info, boolean notifyGC) {
         CodeInfoImpl impl = cast(info);
-        assert impl.getState() == CodeInfo.STATE_CODE_CONSTANTS_LIVE || impl.getState() == CodeInfo.STATE_READY_FOR_INVALIDATION : "unexpected state (probably already released)";
+        assert CodeInfoAccess.isAliveState(impl.getState()) || impl.getState() == CodeInfo.STATE_READY_FOR_INVALIDATION : "unexpected state (probably already released)";
         if (notifyGC) {
             // Notify the GC as long as the object data is still valid.
             Heap.getHeap().getRuntimeCodeInfoGCSupport().unregisterCodeConstants(info);

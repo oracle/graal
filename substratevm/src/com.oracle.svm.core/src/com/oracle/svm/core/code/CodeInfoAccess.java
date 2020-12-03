@@ -142,6 +142,16 @@ public final class CodeInfoAccess {
         return cast(info).getState();
     }
 
+    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
+    public static boolean isAlive(CodeInfo info) {
+        return isAliveState(cast(info).getState());
+    }
+
+    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
+    public static boolean isAliveState(int state) {
+        return state == CodeInfo.STATE_CODE_CONSTANTS_LIVE || state == CodeInfo.STATE_NON_ENTRANT;
+    }
+
     /** @see CodeInfoImpl#getCodeStart */
     @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
     public static CodePointer getCodeStart(CodeInfo info) {

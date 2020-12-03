@@ -37,8 +37,8 @@ import org.graalvm.word.WordFactory;
 
 import com.oracle.svm.core.annotate.AutomaticFeature;
 import com.oracle.svm.core.annotate.RestrictHeapAccess;
-import com.oracle.svm.core.annotate.Uninterruptible;
 import com.oracle.svm.core.annotate.RestrictHeapAccess.Access;
+import com.oracle.svm.core.annotate.Uninterruptible;
 import com.oracle.svm.core.c.NonmovableArray;
 import com.oracle.svm.core.c.NonmovableArrays;
 import com.oracle.svm.core.deopt.DeoptimizedFrame;
@@ -204,7 +204,7 @@ public class CodeInfoTable {
             assert tether != null : "Invalidation can't be triggered before the code was fully installed.";
             CodeInfo info = CodeInfoAccess.convert(untetheredInfo, tether);
             // Multiple threads could trigger this method - only the first one must do something.
-            if (CodeInfoAccess.getState(info) == CodeInfo.STATE_CODE_CONSTANTS_LIVE) {
+            if (CodeInfoAccess.isAlive(info)) {
                 invalidateCodeAtSafepoint0(info);
             }
             assert CodeInfoAccess.getState(info) == CodeInfo.STATE_PARTIALLY_FREED;
