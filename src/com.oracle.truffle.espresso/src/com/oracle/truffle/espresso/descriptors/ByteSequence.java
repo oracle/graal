@@ -143,6 +143,18 @@ public abstract class ByteSequence {
         return true;
     }
 
+    public final boolean contentStartsWith(ByteSequence other) {
+        if (length() < other.length()) {
+            return false;
+        }
+        for (int i = 0; i < other.length(); ++i) {
+            if (byteAt(i) != other.byteAt(i)) {
+                return false;
+            }
+        }
+        return true;
+    }
+
     @Override
     public String toString() {
         try {
@@ -159,5 +171,15 @@ public abstract class ByteSequence {
             }
         }
         return -1;
+    }
+
+    /**
+     * Writes this sequence into the destination byte array.
+     *
+     * @param dest the destination
+     * @param index index in the destination array to start writing the sequence
+     */
+    public void writeTo(byte[] dest, int index) {
+        System.arraycopy(getUnderlyingBytes(), offset(), dest, index, length());
     }
 }

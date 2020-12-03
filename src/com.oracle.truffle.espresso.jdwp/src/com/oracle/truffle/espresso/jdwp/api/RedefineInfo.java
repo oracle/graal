@@ -24,7 +24,7 @@ package com.oracle.truffle.espresso.jdwp.api;
 
 public final class RedefineInfo {
 
-    private final KlassRef klass;
+    private KlassRef klass;
     private final byte[] classBytes;
 
     public RedefineInfo(KlassRef klass, byte[] classBytes) {
@@ -38,5 +38,9 @@ public final class RedefineInfo {
 
     public byte[] getClassBytes() {
         return classBytes;
+    }
+
+    public void clearKlass() {
+        klass = null;
     }
 }

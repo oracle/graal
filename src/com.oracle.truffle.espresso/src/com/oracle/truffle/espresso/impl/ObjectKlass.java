@@ -132,8 +132,8 @@ public final class ObjectKlass extends Klass {
 
     private final StaticObject definingClassLoader;
 
-    public Attribute getAttribute(Symbol<Name> name) {
-        return getLinkedKlass().getAttribute(name);
+    public Attribute getAttribute(Symbol<Name> attrName) {
+        return getLinkedKlass().getAttribute(attrName);
     }
 
     public ObjectKlass(EspressoContext context, LinkedKlass linkedKlass, ObjectKlass superKlass, ObjectKlass[] superInterfaces, StaticObject classLoader) {
@@ -577,11 +577,11 @@ public final class ObjectKlass extends Klass {
         return staticFieldTable[slot];
     }
 
-    public Field lookupHiddenField(Symbol<Name> name) {
+    public Field lookupHiddenField(Symbol<Name> fieldName) {
         // Hidden fields are (usually) located at the end of the field table.
         for (int i = fieldTable.length - 1; i > 0; i--) {
             Field f = fieldTable[i];
-            if (f.getName() == name && f.isHidden()) {
+            if (f.getName() == fieldName && f.isHidden()) {
                 return f;
             }
         }
@@ -621,10 +621,10 @@ public final class ObjectKlass extends Klass {
         return getRedefineCache().iKlassTable;
     }
 
-    int findVirtualMethodIndex(Symbol<Name> name, Symbol<Signature> signature, Klass subClass) {
+    int findVirtualMethodIndex(Symbol<Name> methodName, Symbol<Signature> signature, Klass subClass) {
         for (int i = 0; i < getVTable().length; i++) {
             Method m = getVTable()[i];
-            if (!m.isStatic() && !m.isPrivate() && m.getName() == name && m.getRawSignature() == signature) {
+            if (!m.isStatic() && !m.isPrivate() && m.getName() == methodName && m.getRawSignature() == signature) {
                 if (m.isProtected() || m.isPublic() || m.getDeclaringKlass().sameRuntimePackage(subClass)) {
                     return i;
                 }
@@ -634,10 +634,10 @@ public final class ObjectKlass extends Klass {
     }
 
     void lookupVirtualMethodOverrides(Method current, Klass subKlass, List<Method> result) {
-        Symbol<Name> name = current.getName();
+        Symbol<Name> methodName = current.getName();
         Symbol<Signature> signature = current.getRawSignature();
         for (Method m : getVTable()) {
-            if (!m.isStatic() && !m.isPrivate() && m.getName() == name && m.getRawSignature() == signature) {
+            if (!m.isStatic() && !m.isPrivate() && m.getName() == methodName && m.getRawSignature() == signature) {
                 if (m.isProtected() || m.isPublic()) {
                     result.add(m);
                 } else {
@@ -663,14 +663,14 @@ public final class ObjectKlass extends Klass {
         }
     }
 
-    public Method resolveInterfaceMethod(Symbol<Name> name, Symbol<Signature> signature) {
+    public Method resolveInterfaceMethod(Symbol<Name> methodName, Symbol<Signature> signature) {
         assert isInterface();
         /*
          * 2. Otherwise, if C declares a method with the name and descriptor specified by the
          * interface method reference, method lookup succeeds.
          */
         for (Method m : getDeclaredMethods()) {
-            if (name == m.getName() && signature == m.getRawSignature()) {
+            if (methodName == m.getName() && signature == m.getRawSignature()) {
                 return m;
             }
         }
@@ -680,7 +680,7 @@ public final class ObjectKlass extends Klass {
          * not have its ACC_STATIC flag set, method lookup succeeds.
          */
         assert getSuperKlass().getType() == Type.java_lang_Object;
-        Method m = getSuperKlass().lookupDeclaredMethod(name, signature);
+        Method m = getSuperKlass().lookupDeclaredMethod(methodName, signature);
         if (m != null && m.isPublic() && !m.isStatic()) {
             return m;
         }
@@ -697,7 +697,7 @@ public final class ObjectKlass extends Klass {
                  * Methods in superInterf.getInterfaceMethodsTable() are all non-static non-private
                  * methods declared in superInterf.
                  */
-                if (name == superM.getName() && signature == superM.getRawSignature()) {
+                if (methodName == superM.getName() && signature == superM.getRawSignature()) {
                     if (resolved == null) {
                         resolved = superM;
                     } else {
@@ -1082,6 +1082,27 @@ public final class ObjectKlass extends Klass {
         }
         LinkedKlass linkedKlass = new LinkedKlass(parserKlass, getSuperKlass().getLinkedKlass(), interfaces);
 
+        // fields
+        if (!change.getOuterFields().isEmpty()) {
+            LinkedField[] instanceFields = linkedKlass.getInstanceFields();
+            for (Field outerField : change.getOuterFields()) {
+                CompilerDirectives.transferToInterpreterAndInvalidate();
+
+                // we know that the special field is always at the same index
+                for (int i = 0; i < fieldTable.length; i++) {
+                    Field oldField = fieldTable[i];
+                    if (outerField == oldField) {
+                        for (LinkedField instanceField : instanceFields) {
+                            if (instanceField.getName().equals(outerField.getName())) {
+                                // replace with new field
+                                fieldTable[i] = new Field(this, instanceField, false);
+                            }
+                        }
+                    }
+                }
+            }
+        }
+
         Method[][] itable = oldVersion.itable;
         Method[] vtable = oldVersion.vtable;
         ObjectKlass[] iKlassTable;
@@ -1182,13 +1203,13 @@ public final class ObjectKlass extends Klass {
     // if an added/removed method is an override of a super method
     // we need to invalidate the super class method, to allow
     // for new method dispatch lookup
-    private void updateOverrideMethods(Ids<Object> ids, int flags, Symbol<Name> name, Symbol<Signature> signature) {
-        if (!Modifier.isStatic(flags) && !Modifier.isPrivate(flags) && !Name._init_.equals(name)) {
+    private void updateOverrideMethods(Ids<Object> ids, int flags, Symbol<Name> methodName, Symbol<Signature> signature) {
+        if (!Modifier.isStatic(flags) && !Modifier.isPrivate(flags) && !Name._init_.equals(methodName)) {
             ObjectKlass superKlass = getSuperKlass();
 
             while (superKlass != null) {
                 // look for the method
-                int vtableIndex = superKlass.findVirtualMethodIndex(name, signature, this);
+                int vtableIndex = superKlass.findVirtualMethodIndex(methodName, signature, this);
                 if (vtableIndex != -1) {
                     superKlass.getVTable()[vtableIndex].onSubclassMethodChanged(ids);
                 }
@@ -1244,6 +1265,19 @@ public final class ObjectKlass extends Klass {
 
     private static boolean isVirtual(ParserMethod m) {
         return !Modifier.isStatic(m.getFlags()) && !Modifier.isPrivate(m.getFlags()) && !Name._init_.equals(m.getName());
+    }
+
+    public void patchClassName(Symbol<Symbol.Name> newName) {
+        name = newName;
+        type = getContext().getTypes().fromName(newName);
+    }
+
+    public void removeByRedefinition() {
+        // currently implemented by marking
+        // all methods as removed
+        for (Method declaredMethod : getDeclaredMethods()) {
+            declaredMethod.removedByRedefinition();
+        }
     }
 
     private static final class RedefinitionCache {

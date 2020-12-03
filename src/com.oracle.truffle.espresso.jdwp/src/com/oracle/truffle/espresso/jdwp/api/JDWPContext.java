@@ -176,7 +176,7 @@ public interface JDWPContext {
      * @param classLoader guest language class loader
      * @return array of classes initiated by the class loader
      */
-    KlassRef[] getInitiatedClasses(Object classLoader);
+    List<? extends KlassRef> getInitiatedClasses(Object classLoader);
 
     /**
      * Retrieves the field value of a static field.

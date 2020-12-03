@@ -443,8 +443,8 @@ public abstract class Klass implements ModifiersProvider, ContextAccess, KlassRe
     static final DebugCounter KLASS_LOOKUP_DECLARED_METHOD_COUNT = DebugCounter.create("Klass.lookupDeclaredMethod call count");
     static final DebugCounter KLASS_LOOKUP_DECLARED_FIELD_COUNT = DebugCounter.create("Klass.lookupDeclaredField call count");
 
-    private final Symbol<Name> name;
-    private final Symbol<Type> type;
+    protected Symbol<Name> name;
+    protected Symbol<Type> type;
     private final EspressoContext context;
     private final ObjectKlass superKlass;
 
@@ -1232,7 +1232,7 @@ public abstract class Klass implements ModifiersProvider, ContextAccess, KlassRe
     @CompilationFinal private Symbol<Name> runtimePackage;
 
     private Symbol<Name> initRuntimePackage() {
-        ByteSequence hostPkgName = Types.getRuntimePackage(getType());
+        ByteSequence hostPkgName = Types.getRuntimePackage(type);
         return getNames().getOrCreate(hostPkgName);
     }
 

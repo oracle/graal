@@ -376,17 +376,25 @@ final class JDWP {
             static CommandResult createReply(Packet packet, JDWPContext context) {
                 PacketStream input = new PacketStream(packet);
                 PacketStream reply = new PacketStream().replyPacket().id(packet.id);
-                JDWPLogger.log("Request to redefine received", JDWPLogger.LogLevel.REDEFINE);
                 int classes = input.readInt();
+                JDWPLogger.log("Request to redefine %d classes received", JDWPLogger.LogLevel.REDEFINE, classes);
                 RedefineInfo[] redefineInfos = new RedefineInfo[classes];
                 for (int i = 0; i < classes; i++) {
-                    KlassRef klass = verifyRefType(input.readLong(), reply, context);
-
-                    if (klass == null) {
-                        return new CommandResult(reply);
-                    } else if (klass == context.getNullObject()) {
-                        reply.errorCode(ErrorCodes.INVALID_OBJECT);
-                        return new CommandResult(reply);
+                    KlassRef klass = null;
+                    long refTypeId = input.readLong();
+                    if (refTypeId != -1) { // -1 for new classes in tests
+                        klass = verifyRefType(refTypeId, reply, context);
+                        if (klass == null) {
+                            // check if klass was removed by a previous redefinition
+                            if (!context.getIds().checkRemoved(refTypeId)) {
+                                reply.errorCode(ErrorCodes.INVALID_OBJECT);
+                                return new CommandResult(reply);
+                            }
+                        }
+                        if (klass == context.getNullObject()) {
+                            reply.errorCode(ErrorCodes.INVALID_OBJECT);
+                            return new CommandResult(reply);
+                        }
                     }
 
                     int byteLength = input.readInt();
@@ -2540,9 +2548,9 @@ final class JDWP {
                 if (classLoader == null) {
                     return new CommandResult(reply);
                 }
-                KlassRef[] klasses = context.getInitiatedClasses(classLoader);
+                List<? extends KlassRef> klasses = context.getInitiatedClasses(classLoader);
 
-                reply.writeInt(klasses.length);
+                reply.writeInt(klasses.size());
 
                 for (KlassRef klass : klasses) {
                     reply.writeByte(TypeTag.getKind(klass));
