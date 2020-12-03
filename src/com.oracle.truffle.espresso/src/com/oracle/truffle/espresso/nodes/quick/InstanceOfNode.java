@@ -43,7 +43,7 @@ public final class InstanceOfNode extends QuickNode {
     }
 
     @Override
-    public final int execute(VirtualFrame frame, long[] primitives, Object[] refs) {
+    public int execute(VirtualFrame frame, long[] primitives, Object[] refs) {
         StaticObject receiver = BytecodeNode.popObject(refs, top - 1);
         boolean result = StaticObject.notNull(receiver) && typeCheckNode.executeTypeCheck(typeToCheck, receiver.getKlass());
         BytecodeNode.putKind(primitives, refs, top - 1, result, JavaKind.Boolean);
