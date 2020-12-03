@@ -29,8 +29,6 @@
  */
 package com.oracle.truffle.llvm.runtime;
 
-import java.math.BigInteger;
-
 import com.oracle.truffle.api.frame.FrameSlot;
 import com.oracle.truffle.llvm.runtime.LLVMUnsupportedException.UnsupportedReason;
 import com.oracle.truffle.llvm.runtime.datalayout.DataLayout;
@@ -256,6 +254,8 @@ import com.oracle.truffle.llvm.runtime.types.VariableBitWidthType;
 import com.oracle.truffle.llvm.runtime.types.VectorType;
 import com.oracle.truffle.llvm.runtime.types.VoidType;
 import com.oracle.truffle.llvm.runtime.vector.LLVMVector;
+
+import java.math.BigInteger;
 
 public class CommonNodeFactory {
 

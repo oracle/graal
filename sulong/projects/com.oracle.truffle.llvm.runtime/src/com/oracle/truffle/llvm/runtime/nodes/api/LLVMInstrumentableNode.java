@@ -37,6 +37,7 @@ import com.oracle.truffle.api.instrumentation.InstrumentableNode;
 import com.oracle.truffle.api.instrumentation.StandardTags;
 import com.oracle.truffle.api.instrumentation.Tag;
 import com.oracle.truffle.api.interop.NodeLibrary;
+import com.oracle.truffle.api.interop.UnsupportedMessageException;
 import com.oracle.truffle.api.library.ExportLibrary;
 import com.oracle.truffle.api.library.ExportMessage;
 import com.oracle.truffle.api.source.SourceSection;
@@ -44,7 +45,10 @@ import com.oracle.truffle.llvm.runtime.LLVMContext;
 import com.oracle.truffle.llvm.runtime.LLVMLanguage;
 import com.oracle.truffle.llvm.runtime.debug.scope.LLVMDebuggerScopeFactory;
 import com.oracle.truffle.llvm.runtime.debug.scope.LLVMSourceLocation;
+import com.oracle.truffle.llvm.runtime.nodes.func.LLVMFunctionStartNode;
 import com.oracle.truffle.llvm.runtime.options.SulongEngineOption;
+import com.oracle.truffle.llvm.runtime.pointer.LLVMManagedPointer;
+import com.oracle.truffle.llvm.runtime.pointer.LLVMPointer;
 
 @ExportLibrary(NodeLibrary.class)
 public abstract class LLVMInstrumentableNode extends LLVMNode implements InstrumentableNode {
@@ -130,6 +134,11 @@ public abstract class LLVMInstrumentableNode extends LLVMNode implements Instrum
     }
 
     @ExportMessage
+    public boolean hasRootInstance(@SuppressWarnings("unused") Frame frame) {
+        return this.getRootNode() instanceof LLVMFunctionStartNode;
+    }
+
+    @ExportMessage
     public Object getScope(Frame frame, @SuppressWarnings("unused") boolean nodeEnter, @CachedContext(LLVMLanguage.class) LLVMContext ctx) {
         if (isLLDebugEnabled(ctx)) {
             return LLVMDebuggerScopeFactory.createIRLevelScope(this, frame, ctx);
@@ -141,5 +150,16 @@ public abstract class LLVMInstrumentableNode extends LLVMNode implements Instrum
     @CompilerDirectives.TruffleBoundary
     private static boolean isLLDebugEnabled(LLVMContext ctx) {
         return ctx.getEnv().getOptions().get(SulongEngineOption.LL_DEBUG);
+    }
+
+    @ExportMessage
+    public Object getRootInstance(Frame frame, @CachedContext(LLVMLanguage.class) LLVMContext ctx) throws UnsupportedMessageException {
+        if (hasRootInstance(frame)) {
+            LLVMPointer pointer = ctx.getSymbol(((LLVMFunctionStartNode) this.getRootNode()).getRootFunction());
+            if (LLVMManagedPointer.isInstance(pointer)) {
+                return LLVMManagedPointer.cast(pointer).getObject();
+            }
+        }
+        throw UnsupportedMessageException.create();
     }
 }

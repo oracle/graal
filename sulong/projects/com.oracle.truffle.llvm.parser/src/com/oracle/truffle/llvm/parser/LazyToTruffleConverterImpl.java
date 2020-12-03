@@ -63,6 +63,7 @@ import com.oracle.truffle.llvm.parser.util.LLVMControlFlowGraph.CFGLoop;
 import com.oracle.truffle.llvm.runtime.CommonNodeFactory;
 import com.oracle.truffle.llvm.runtime.GetStackSpaceFactory;
 import com.oracle.truffle.llvm.runtime.LLVMContext;
+import com.oracle.truffle.llvm.runtime.LLVMFunction;
 import com.oracle.truffle.llvm.runtime.LLVMFunctionCode.LazyToTruffleConverter;
 import com.oracle.truffle.llvm.runtime.LLVMLanguage;
 import com.oracle.truffle.llvm.runtime.NodeFactory;
@@ -110,6 +111,7 @@ public class LazyToTruffleConverterImpl implements LazyToTruffleConverter {
     private final DataLayout dataLayout;
 
     private RootCallTarget resolved;
+    private LLVMFunction rootFunction;
 
     LazyToTruffleConverterImpl(LLVMParserRuntime runtime, FunctionDefinition method, Source source, LazyFunctionParser parser,
                     DebugInfoFunctionProcessor diProcessor, DataLayout dataLayout) {
@@ -132,6 +134,10 @@ public class LazyToTruffleConverterImpl implements LazyToTruffleConverter {
             }
             return resolved;
         }
+    }
+
+    public void setRootFunction(LLVMFunction rootFunction) {
+        this.rootFunction = rootFunction;
     }
 
     private RootCallTarget generateCallTarget() {
@@ -223,7 +229,7 @@ public class LazyToTruffleConverterImpl implements LazyToTruffleConverter {
         LLVMSourceLocation location = method.getLexicalScope();
         LLVMStatementNode[] copyArgumentsToFrameArray = copyArgumentsToFrame(frame, symbols).toArray(LLVMStatementNode.NO_STATEMENTS);
         RootNode rootNode = nodeFactory.createFunction(frame.findFrameSlot(LLVMUserException.FRAME_SLOT_ID), blockNodes, uniquesRegion, copyArgumentsToFrameArray, frame, loopSuccessorSlot, info,
-                        method.getName(), method.getSourceName(), method.getParameters().size(), source, location);
+                        method.getName(), method.getSourceName(), method.getParameters().size(), source, location, rootFunction);
         method.onAfterParse();
 
         if (printAST) {

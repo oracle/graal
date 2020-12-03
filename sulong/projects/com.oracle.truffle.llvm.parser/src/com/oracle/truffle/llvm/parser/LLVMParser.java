@@ -123,6 +123,7 @@ public final class LLVMParser {
         Function function = new LazyLLVMIRFunction(lazyConverter);
         LLVMFunction llvmFunction = LLVMFunction.create(functionSymbol.getName(), function, functionSymbol.getType(), runtime.getBitcodeID(), functionSymbol.getIndex(),
                         functionDefinition.isExported(), runtime.getFile().getPath());
+        lazyConverter.setRootFunction(llvmFunction);
         runtime.getFileScope().register(llvmFunction);
         final boolean cxxInterop = LLVMLanguage.getContext().getEnv().getOptions().get(SulongEngineOption.CXX_INTEROP);
         if (cxxInterop) {
