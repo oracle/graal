@@ -56,6 +56,9 @@ import java.util.Map;
 import java.util.Set;
 import java.util.function.BiFunction;
 
+import org.graalvm.collections.EconomicMap;
+import org.graalvm.collections.UnmodifiableEconomicMap;
+
 import com.oracle.truffle.api.CompilerAsserts;
 import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
@@ -74,6 +77,7 @@ final class HostClassDesc {
     private final HostClassCache cache;
     private volatile Members members;
     private volatile JNIMembers jniMembers;
+    private volatile MethodsBySignature methodsBySignature;
     private volatile AdapterResult adapter;
     private final boolean allowsImplementation;
     private final boolean allowedTargetType;
@@ -383,17 +387,17 @@ final class HostClassDesc {
                         (m.getParameterCount() == 1 && m.getName().equals("equals") && m.getParameterTypes()[0] == Object.class));
     }
 
-    private static class JNIMembers {
-        final Map<String, HostMethodDesc> methods;
-        final Map<String, HostMethodDesc> staticMethods;
+    private static final class JNIMembers {
+        final UnmodifiableEconomicMap<String, HostMethodDesc> methods;
+        final UnmodifiableEconomicMap<String, HostMethodDesc> staticMethods;
 
         JNIMembers(Members members) {
             this.methods = collectJNINamedMethods(members.methods);
             this.staticMethods = collectJNINamedMethods(members.staticMethods);
         }
 
-        private static Map<String, HostMethodDesc> collectJNINamedMethods(Map<String, HostMethodDesc> methods) {
-            Map<String, HostMethodDesc> jniMethods = new LinkedHashMap<>();
+        private static UnmodifiableEconomicMap<String, HostMethodDesc> collectJNINamedMethods(Map<String, HostMethodDesc> methods) {
+            EconomicMap<String, HostMethodDesc> jniMethods = EconomicMap.create();
             for (HostMethodDesc method : methods.values()) {
                 if (method.isConstructor()) {
                     continue;
@@ -404,6 +408,30 @@ final class HostClassDesc {
                 }
             }
             return jniMethods;
+        }
+    }
+
+    private static final class MethodsBySignature {
+        final UnmodifiableEconomicMap<String, HostMethodDesc> methods;
+        final UnmodifiableEconomicMap<String, HostMethodDesc> staticMethods;
+
+        MethodsBySignature(Members members) {
+            this.methods = collectMethodsBySignature(members.methods);
+            this.staticMethods = collectMethodsBySignature(members.staticMethods);
+        }
+
+        private static UnmodifiableEconomicMap<String, HostMethodDesc> collectMethodsBySignature(Map<String, HostMethodDesc> methods) {
+            EconomicMap<String, HostMethodDesc> methodMap = EconomicMap.create();
+            for (HostMethodDesc method : methods.values()) {
+                if (method.isConstructor()) {
+                    continue;
+                }
+                for (SingleMethod m : method.getOverloads()) {
+                    assert m.isMethod();
+                    methodMap.put(HostInteropReflect.toNameAndSignature((Method) m.getReflectionMethod()), m);
+                }
+            }
+            return methodMap;
         }
     }
 
@@ -435,6 +463,20 @@ final class HostClassDesc {
         return m;
     }
 
+    private MethodsBySignature getMethodsBySignature() {
+        MethodsBySignature m = methodsBySignature;
+        if (m == null) {
+            CompilerDirectives.transferToInterpreterAndInvalidate();
+            synchronized (this) {
+                m = methodsBySignature;
+                if (m == null) {
+                    methodsBySignature = m = new MethodsBySignature(getMembers());
+                }
+            }
+        }
+        return m;
+    }
+
     /**
      * Looks up a public non-static method in this class.
      *
@@ -459,8 +501,14 @@ final class HostClassDesc {
         return onlyStatic ? lookupStaticMethod(name) : lookupMethod(name);
     }
 
+    public HostMethodDesc lookupMethodBySignature(String nameAndSignature, boolean onlyStatic) {
+        MethodsBySignature m = getMethodsBySignature();
+        return onlyStatic ? m.staticMethods.get(nameAndSignature) : m.methods.get(nameAndSignature);
+    }
+
     public HostMethodDesc lookupMethodByJNIName(String jniName, boolean onlyStatic) {
-        return onlyStatic ? getJNIMembers().staticMethods.get(jniName) : getJNIMembers().methods.get(jniName);
+        JNIMembers m = getJNIMembers();
+        return onlyStatic ? m.staticMethods.get(jniName) : m.methods.get(jniName);
     }
 
     public Collection<String> getMethodNames(boolean onlyStatic, boolean includeInternal) {

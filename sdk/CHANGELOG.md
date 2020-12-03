@@ -3,6 +3,8 @@
 This changelog summarizes major changes between GraalVM SDK versions. The main focus is on APIs exported by GraalVM SDK.
 
 ## Version 21.0.0
+* Added support for explicitly selecting a host method overload using the signature in the form of comma-separated fully qualified parameter type names enclosed by parentheses (e.g. `methodName(f.q.TypeName,java.lang.String,int,int[])`).
+* Deprecated host method selection by JNI mangled signature, replaced by the aforementioned new form. Scheduled for removal in 21.2.
 
 ## Version 20.3.0
 * Added a `log.file` option that allows redirection of all language, instrument or engine logging to a file. The handler configured with the `Context.Builder.logHandler` method has precedence over the new option.
