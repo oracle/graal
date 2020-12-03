@@ -27,6 +27,31 @@ export.node0: [export, "MACHINE_NODE=0", "BENCH_RESULTS_FILE_PATH=node0-${BASE_B
 export.node1: [export, "MACHINE_NODE=1", "BENCH_RESULTS_FILE_PATH=node1-${BASE_BENCH_RESULTS_FILE_NAME}"]
 
 
+
+bench-micros-graal-whitebox-hwloc: ${bench-micros-graal-whitebox} ${hwloc.bench-common} {
+  setup: ${bench-micros-graal-whitebox.setup} ${hwloc.bench-common.setup}
+  run: [
+    [export, "LOGDIR=${PWD}"]
+    ${export.node0}
+    ${hwloc.node} ${bench-jvmci.mx-micros-graal-whitebox} ${bench-arguments} ${hwloc.cmd.suffix}
+    ${export.node1}
+    ${hwloc.node} ${bench-jvmci.mx-micros-graal-whitebox} ${bench-arguments} ${hwloc.cmd.suffix}
+    [wait]
+  ]
+}
+
+bench-micros-graal-dist-hwloc: ${bench-micros-graal-dist} ${hwloc.bench-common} {
+  setup: ${bench-micros-graal-dist.setup} ${hwloc.bench-common.setup}
+  run: [
+    [export, "LOGDIR=${PWD}"]
+    ${export.node0}
+    ${hwloc.node} ${bench-jvmci.mx-micros-graal-dist} ${bench-arguments} ${hwloc.cmd.suffix}
+    ${export.node1}
+    ${hwloc.node} ${bench-jvmci.mx-micros-graal-dist} ${bench-arguments} ${hwloc.cmd.suffix}
+    [wait]
+  ]
+}
+
 bench-awfy-hwloc: ${bench-awfy} ${hwloc.bench-common} {
   setup: ${bench-awfy.setup} ${hwloc.bench-common.setup}
   run: [
