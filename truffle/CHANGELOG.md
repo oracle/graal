@@ -15,6 +15,7 @@ This changelog summarizes major changes between Truffle versions relevant to lan
     * `HostCompilerDirectives.BytecodeInterpreterSwitchBoundary` - to denote methods that do not need to be inlined into the bytecode interpreter switch
 * Truffle DSL generated nodes are no longer limited to 64 state bits. Use these state bits responsibly.
 * Added support for explicitly selecting a host method overload using the signature in the form of comma-separated fully qualified parameter type names enclosed by parentheses (e.g. `methodName(f.q.TypeName,java.lang.String,int,int[])`).
+* Changed the default value of `--engine.MultiTier` from `false` to `true`. This should significantly improve the warmup time of Truffle interpreters.
 
 ## Version 20.3.0
 * Added `RepeatingNode.initialLoopStatus` and `RepeatingNode.shouldContinue` to allow defining a custom loop continuation condition.
@@ -71,7 +72,6 @@ This changelog summarizes major changes between Truffle versions relevant to lan
 * Removed deprecation for `RootNode.getLanguage(Class<?>)`, it is still useful to efficiently access the associated language of a root node.
 * Block node partial compilation is no longer eagerly triggered but only when the `--engine.MaximumGraalNodeCount` limit was reached once for a call target.
 * Lifted the restriction that the dynamic type of a `DynamicObject` needs to be an instance of `ObjectType`, allowing any non-null object. Deprecated `Shape.getObjectType()` that has been replaced by `Shape.getDynamicType()`.
-* Changed the default value of `--engine.MultiTier` from `false` to `true`. This should significantly improve the warmup time of Truffle interpreters. 
 * Added [TruffleLanguage.Env.createHostAdapterClass](https://www.graalvm.org/truffle/javadoc/com/oracle/truffle/api/TruffleLanguage.Env.html#createHostAdapterClass-java.lang.Class:A-) to allow extending a host class and/or interfaces with a guest object via a generated host adapter class (JVM only).
 * Deprecated the old truffle-node-count based inlining heuristic and related options (namely InliningNodeBudget and LanguageAgnosticInlining).
 * Added `@GenerateLibrary.pushEncapsulatingNode()` that allows to configure whether encapsulating nodes are pushed or popped.
