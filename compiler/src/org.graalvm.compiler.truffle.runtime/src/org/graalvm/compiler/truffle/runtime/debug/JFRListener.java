@@ -134,6 +134,7 @@ public final class JFRListener extends AbstractGraalTruffleRuntimeListener {
         CompilationData data = getCurrentData();
         if (data.event != null) {
             data.partialEvalNodeCount = graph.getNodeCount();
+            data.timePartialEvaluationFinished = System.nanoTime();
         }
     }
 
@@ -177,6 +178,7 @@ public final class JFRListener extends AbstractGraalTruffleRuntimeListener {
             event.setDispatchedCalls(dispatchedCalls);
             event.setGraalNodeCount(graph.getNodeCount());
             event.setPartialEvaluationNodeCount(data.partialEvalNodeCount);
+            event.setPartialEvaluationTime((data.timePartialEvaluationFinished - data.timeCompilationStarted) / 1_000_000);
             event.publish();
             currentCompilation.remove();
         }
@@ -201,16 +203,17 @@ public final class JFRListener extends AbstractGraalTruffleRuntimeListener {
 
     private static final class CompilationData {
         final CompilationEvent event;
-        final long startTime;
+        final long timeCompilationStarted;
         int partialEvalNodeCount;
+        long timePartialEvaluationFinished;
 
         CompilationData(CompilationEvent event) {
             this.event = event;
-            this.startTime = System.nanoTime();
+            this.timeCompilationStarted = System.nanoTime();
         }
 
         int finish() {
-            return (int) (System.nanoTime() - startTime) / 1_000_000;
+            return (int) (System.nanoTime() - timeCompilationStarted) / 1_000_000;
         }
     }
 
