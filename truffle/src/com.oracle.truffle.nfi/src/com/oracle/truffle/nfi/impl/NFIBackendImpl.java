@@ -42,7 +42,6 @@ package com.oracle.truffle.nfi.impl;
 
 import com.oracle.truffle.api.CallTarget;
 import com.oracle.truffle.api.CompilerDirectives;
-import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
 import com.oracle.truffle.api.Truffle;
 import com.oracle.truffle.api.TruffleLanguage.ContextReference;
 import com.oracle.truffle.api.dsl.Cached;
@@ -122,7 +121,6 @@ final class NFIBackendImpl implements NFIBackend {
         private final String name;
         private final int flags;
 
-        @CompilationFinal private LibFFILibrary cached;
         private final ContextReference<NFIContext> ctxRef;
 
         LoadLibraryNode(NFILanguageImpl language, String name, int flags) {
@@ -143,11 +141,7 @@ final class NFIBackendImpl implements NFIBackend {
                 CompilerDirectives.transferToInterpreter();
                 throw new NFIUnsatisfiedLinkError("Access to native code is not allowed by the host environment.", this);
             }
-            if (cached == null) {
-                CompilerDirectives.transferToInterpreterAndInvalidate();
-                cached = ctxRef.get().loadLibrary(name, flags);
-            }
-            return cached;
+            return ctxRef.get().loadLibrary(name, flags);
         }
     }
 

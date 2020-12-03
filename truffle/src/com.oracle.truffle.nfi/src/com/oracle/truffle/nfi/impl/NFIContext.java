@@ -164,6 +164,7 @@ class NFIContext {
         return LibFFIClosure.newClosureWrapper(getClosureNativePointer(codePointer));
     }
 
+    @TruffleBoundary
     LibFFILibrary loadLibrary(String name, int flags) {
         return LibFFILibrary.create(loadLibrary(nativeContext, name, flags));
     }
