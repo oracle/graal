@@ -75,8 +75,8 @@ import com.oracle.truffle.nfi.util.ProfiledArrayBuilder.ArrayBuilderFactory;
  * shared AST nodes, since they contain references to native datastructures of libffi.
  *
  * All information that is context and process independent is collected in a separate object,
- * {@link CachedSignatureInfo}. Two {@link LibFFISignature} objects that have the same {@link
- * CachedSignatureInfo} are guaranteed to behave the same semantically.
+ * {@link CachedSignatureInfo}. Two {@link LibFFISignature} objects that have the same
+ * {@link CachedSignatureInfo} are guaranteed to behave the same semantically.
  */
 @ExportLibrary(NFIBackendSignatureLibrary.class)
 final class LibFFISignature {
@@ -170,7 +170,7 @@ final class LibFFISignature {
         CachedTypeInfo[] argTypesInfo = new CachedTypeInfo[state.argCount];
         ArgsState curState = state;
         for (int i = state.argCount - 1; i >= 0; i--) {
-            argTypesInfo[i]  = curState.lastArg;
+            argTypesInfo[i] = curState.lastArg;
             curState = curState.prev;
         }
 

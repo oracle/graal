@@ -77,7 +77,8 @@ final class NFISignature implements TruffleObject {
     final int nativeArgCount;
     final int managedArgCount;
 
-    public NFISignature(String backendId, CallTarget optimizedSignatureCall, CallTarget optimizedClosureCall, Object nativeSignature, NFIType retType, NFIType[] argTypes, int nativeArgCount, int managedArgCount) {
+    public NFISignature(String backendId, CallTarget optimizedSignatureCall, CallTarget optimizedClosureCall, Object nativeSignature, NFIType retType, NFIType[] argTypes, int nativeArgCount,
+                    int managedArgCount) {
         this.backendId = backendId;
         this.optimizedSignatureCall = optimizedSignatureCall;
         this.optimizedClosureCall = optimizedClosureCall;
@@ -248,14 +249,16 @@ final class NFISignature implements TruffleObject {
                             @Cached("prepareOptimizedClosureCall(retTypeState, argsState, language)") CallTarget optimizedClosureCall,
                             @CachedLibrary("builder.backendBuilder") NFIBackendSignatureBuilderLibrary backendLibrary) {
                 Object nativeSignature = backendLibrary.build(builder.backendBuilder);
-                return new NFISignature(builder.backendId, optimizedSignatureCall, optimizedClosureCall, nativeSignature, builder.retType, builder.argTypes.getFinalArray(), argsState.nativeArgCount, argsState.managedArgCount);
+                return new NFISignature(builder.backendId, optimizedSignatureCall, optimizedClosureCall, nativeSignature, builder.retType, builder.argTypes.getFinalArray(), argsState.nativeArgCount,
+                                argsState.managedArgCount);
             }
 
             @Specialization(replaces = "doCached")
             static NFISignature doGeneric(SignatureBuilder builder,
                             @CachedLibrary("builder.backendBuilder") NFIBackendSignatureBuilderLibrary backendLibrary) {
                 Object nativeSignature = backendLibrary.build(builder.backendBuilder);
-                return new NFISignature(builder.backendId, null, null, nativeSignature, builder.retType, builder.argTypes.getFinalArray(), builder.argsState.nativeArgCount, builder.argsState.managedArgCount);
+                return new NFISignature(builder.backendId, null, null, nativeSignature, builder.retType, builder.argTypes.getFinalArray(), builder.argsState.nativeArgCount,
+                                builder.argsState.managedArgCount);
             }
         }
     }
