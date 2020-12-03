@@ -136,11 +136,11 @@ bench-renaissance-legacy-hwloc-forks-batch3 : ${bench-renaissance-legacy-hwloc} 
   }
 }
 
-bench-specjbb2005-forks : ${bench-specjbb2005} ${weeklys-bench-notifications} {
+bench-specjbb2005-hwloc-forks : ${bench-specjbb2005-hwloc} ${weeklys-bench-notifications} {
   targets: [bench, weekly],
-  setup: ${fork-counts.setup} ${bench-specjbb2005.setup}
+  setup: ${fork-counts.setup} ${bench-specjbb2005-hwloc.setup}
   timelimit: "20:00:00"
-  environment : ${bench-specjbb2005.environment} ${fork-counts.environment} ${bench-perftag.environment} {
+  environment : ${bench-specjbb2005-hwloc.environment} ${fork-counts.environment} ${bench-perftag.environment} {
     FORK_COUNT_FILE: "${FORK_COUNTS_DIRECTORY}/compiler/specjbb2005_forks.json"
   }
 }
@@ -172,7 +172,7 @@ builds += [
   ${x52.tmpfs10g} ${bench-renaissance-legacy-hwloc-forks-batch1}     ${oraclejdk8} { name: "bench-forks-compiler-renaissance-legacy-linux-x52-batch1" }
   ${x52.tmpfs10g} ${bench-renaissance-legacy-hwloc-forks-batch2}     ${oraclejdk8} { name: "bench-forks-compiler-renaissance-legacy-linux-x52-batch2" }
   ${x52.tmpfs10g} ${bench-renaissance-legacy-hwloc-forks-batch3}     ${oraclejdk8} { name: "bench-forks-compiler-renaissance-legacy-linux-x52-batch3" }
-  ${x52.default} ${bench-specjbb2005-forks}                          ${oraclejdk8} { name: "bench-forks-compiler-specjbb2005-linux-x52" }
+  ${x52.default} ${bench-specjbb2005-hwloc-forks}                    ${oraclejdk8} { name: "bench-forks-compiler-specjbb2005-linux-x52" }
   ${x52.default} ${bench-specjbb2015-forks}                          ${oraclejdk8} { name: "bench-forks-compiler-specjbb2015-linux-x52" }
 
   ## libgraal
@@ -191,7 +191,7 @@ builds += [
   ${x52.tmpfs10g-libgraal} ${bench-renaissance-legacy-hwloc-forks-batch1}   ${oraclejdk8} { name: "bench-forks-compiler-renaissance-legacy-libgraal-linux-x52-batch1" }
   ${x52.tmpfs10g-libgraal} ${bench-renaissance-legacy-hwloc-forks-batch2}   ${oraclejdk8} { name: "bench-forks-compiler-renaissance-legacy-libgraal-linux-x52-batch2" }
   ${x52.tmpfs10g-libgraal} ${bench-renaissance-legacy-hwloc-forks-batch3}   ${oraclejdk8} { name: "bench-forks-compiler-renaissance-legacy-libgraal-linux-x52-batch3" }
-  ${x52.default-libgraal} ${bench-specjbb2005-forks}                        ${oraclejdk8} { name: "bench-forks-compiler-specjbb2005-libgraal-linux-x52" }
+  ${x52.default-libgraal} ${bench-specjbb2005-hwloc-forks}                  ${oraclejdk8} { name: "bench-forks-compiler-specjbb2005-libgraal-linux-x52" }
   ${x52.default-libgraal} ${bench-specjbb2015-forks}                        ${oraclejdk8} { name: "bench-forks-compiler-specjbb2015-libgraal-linux-x52" }
 
   # JDK 11
@@ -211,7 +211,7 @@ builds += [
   ${x52.tmpfs10g} ${bench-renaissance-legacy-hwloc-forks-batch1}     ${labsjdk11} { name: "bench-forks-compiler-renaissance-legacy-11-linux-x52-batch1" }
   ${x52.tmpfs10g} ${bench-renaissance-legacy-hwloc-forks-batch2}     ${labsjdk11} { name: "bench-forks-compiler-renaissance-legacy-11-linux-x52-batch2" }
   ${x52.tmpfs10g} ${bench-renaissance-legacy-hwloc-forks-batch3}     ${labsjdk11} { name: "bench-forks-compiler-renaissance-legacy-11-linux-x52-batch3" }
-  ${x52.default} ${bench-specjbb2005-forks}                          ${labsjdk11} { name: "bench-forks-compiler-specjbb2005-11-linux-x52" }
+  ${x52.default} ${bench-specjbb2005-hwloc-forks}                    ${labsjdk11} { name: "bench-forks-compiler-specjbb2005-11-linux-x52" }
   ${x52.default} ${bench-specjbb2015-forks}                          ${labsjdk11} { name: "bench-forks-compiler-specjbb2015-11-linux-x52" }
 
   ## libgraal
@@ -230,6 +230,6 @@ builds += [
   ${x52.tmpfs10g-libgraal} ${bench-renaissance-legacy-hwloc-forks-batch1}   ${labsjdk11} { name: "bench-forks-compiler-renaissance-legacy-libgraal-11-linux-x52-batch1" }
   ${x52.tmpfs10g-libgraal} ${bench-renaissance-legacy-hwloc-forks-batch2}   ${labsjdk11} { name: "bench-forks-compiler-renaissance-legacy-libgraal-11-linux-x52-batch2" }
   ${x52.tmpfs10g-libgraal} ${bench-renaissance-legacy-hwloc-forks-batch3}   ${labsjdk11} { name: "bench-forks-compiler-renaissance-legacy-libgraal-11-linux-x52-batch3" }
-  ${x52.default-libgraal} ${bench-specjbb2005-forks}                        ${labsjdk11} { name: "bench-forks-compiler-specjbb2005-libgraal-11-linux-x52" }
+  ${x52.default-libgraal} ${bench-specjbb2005-hwloc-forks}                  ${labsjdk11} { name: "bench-forks-compiler-specjbb2005-libgraal-11-linux-x52" }
   ${x52.default-libgraal} ${bench-specjbb2015-forks}                        ${labsjdk11} { name: "bench-forks-compiler-specjbb2015-libgraal-11-linux-x52" }
 ]

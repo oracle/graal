@@ -154,3 +154,16 @@ bench-specjvm2008-OneVM-hwloc: ${bench-specjvm2008-OneVM} ${hwloc.bench-common} 
     [wait]
   ]
 }
+
+
+bench-specjbb2005-hwloc: ${bench-specjbb2005} ${hwloc.bench-common} {
+  setup: ${bench-specjbb2005.setup} ${hwloc.bench-common.setup}
+  run: [
+    [export, "LOGDIR=${PWD}"]
+    ${export.node0}
+    ${hwloc.node} ${bench-jvmci.mx-specjbb2005} ${bench-arguments} ["input.ending_number_warehouses=77"] ${hwloc.cmd.suffix}
+    ${export.node1}
+    ${hwloc.node} ${bench-jvmci.mx-specjbb2005} ${bench-arguments} ["input.ending_number_warehouses=77"] ${hwloc.cmd.suffix}
+    [wait]
+  ]
+}
