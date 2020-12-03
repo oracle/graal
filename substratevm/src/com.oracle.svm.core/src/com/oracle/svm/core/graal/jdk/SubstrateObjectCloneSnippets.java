@@ -40,6 +40,7 @@ import org.graalvm.compiler.nodes.NodeView;
 import org.graalvm.compiler.nodes.StructuredGraph;
 import org.graalvm.compiler.nodes.extended.ForeignCallNode;
 import org.graalvm.compiler.nodes.extended.ForeignCallWithExceptionNode;
+import org.graalvm.compiler.nodes.java.ArrayLengthNode;
 import org.graalvm.compiler.nodes.spi.LoweringTool;
 import org.graalvm.compiler.options.OptionValues;
 import org.graalvm.compiler.phases.util.Providers;
@@ -89,7 +90,7 @@ public final class SubstrateObjectCloneSnippets extends SubstrateTemplates imple
         DynamicHub hub = KnownIntrinsics.readHub(thisObj);
         int layoutEncoding = hub.getLayoutEncoding();
         if (LayoutEncoding.isArray(layoutEncoding)) {
-            int length = KnownIntrinsics.readArrayLength(thisObj);
+            int length = ArrayLengthNode.arrayLength(thisObj);
             return SubstrateArraysCopyOfSnippets.doArraysCopyOf(hub, thisObj, length, length);
         } else {
             sun.misc.Unsafe unsafe = GraalUnsafeAccess.getUnsafe();
