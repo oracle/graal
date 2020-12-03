@@ -50,7 +50,8 @@ public final class InvokeStaticNode extends QuickNode {
         this.method = method.getMethodVersion();
         this.callsDoPrivileged = method.getMeta().java_security_AccessController.equals(method.getDeclaringKlass()) &&
                         Name.doPrivileged.equals(method.getName());
-        this.resultAt = top - Signatures.slotsForParameters(method.getParsedSignature()); // no receiver
+        this.resultAt = top - Signatures.slotsForParameters(method.getParsedSignature()); // no
+                                                                                          // receiver
     }
 
     @Override

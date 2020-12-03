@@ -1330,7 +1330,7 @@ public final class BytecodeNode extends EspressoMethodNode {
     }
 
     private void arrayLength(VirtualFrame frame, long[] primitives, Object[] refs, int top, int curBCI) {
-        StaticObject array = nullCheck(popObject(refs,  top - 1));
+        StaticObject array = nullCheck(popObject(refs, top - 1));
         if (noForeignObjects.isValid() || array.isEspressoObject()) {
             putInt(primitives, top - 1, InterpreterToVM.arrayLength(array));
         } else {
@@ -1567,7 +1567,7 @@ public final class BytecodeNode extends EspressoMethodNode {
 
     private int quickenCheckCast(VirtualFrame frame, long[] primitives, Object[] refs, int top, int curBCI, int opcode) {
         if (StaticObject.isNull(peekObject(refs, top - 1))) {
-                    // Skip resolution.
+            // Skip resolution.
             return -Bytecodes.stackEffectOf(opcode);
         }
         CompilerDirectives.transferToInterpreterAndInvalidate();
