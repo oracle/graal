@@ -99,7 +99,8 @@ import jdk.vm.ci.meta.ResolvedJavaType;
 public abstract class SubstrateAllocationSnippets extends AllocationSnippets {
     public static final LocationIdentity TLAB_TOP_IDENTITY = NamedLocationIdentity.mutable("TLAB.top");
     public static final LocationIdentity TLAB_END_IDENTITY = NamedLocationIdentity.mutable("TLAB.end");
-    public static final Object[] ALLOCATION_LOCATION_IDENTITIES = new Object[]{TLAB_TOP_IDENTITY, TLAB_END_IDENTITY, AllocationCounter.COUNT_FIELD, AllocationCounter.SIZE_FIELD};
+    public static final Object[] ALLOCATION_LOCATIONS = new Object[]{TLAB_TOP_IDENTITY, TLAB_END_IDENTITY, AllocationCounter.COUNT_FIELD, AllocationCounter.SIZE_FIELD};
+    public static final LocationIdentity[] TLAB_LOCATIONS = new LocationIdentity[]{TLAB_TOP_IDENTITY, TLAB_END_IDENTITY};
 
     private static final SubstrateForeignCallDescriptor NEW_MULTI_ARRAY = SnippetRuntime.findForeignCall(SubstrateAllocationSnippets.class, "newMultiArrayStub", true);
     private static final SubstrateForeignCallDescriptor HUB_ERROR = SnippetRuntime.findForeignCall(SubstrateAllocationSnippets.class, "hubErrorStub", true);
@@ -408,13 +409,13 @@ public abstract class SubstrateAllocationSnippets extends AllocationSnippets {
             snippetCounters = new AllocationSnippetCounters(groupFactory);
             profilingData = new SubstrateAllocationProfilingData(snippetCounters, null);
 
-            allocateInstance = snippet(SubstrateAllocationSnippets.class, "allocateInstance", null, receiver, ALLOCATION_LOCATION_IDENTITIES);
-            allocateArray = snippet(SubstrateAllocationSnippets.class, "allocateArray", null, receiver, ALLOCATION_LOCATION_IDENTITIES);
-            allocateInstanceDynamic = snippet(SubstrateAllocationSnippets.class, "allocateInstanceDynamic", null, receiver, ALLOCATION_LOCATION_IDENTITIES);
-            allocateArrayDynamic = snippet(SubstrateAllocationSnippets.class, "allocateArrayDynamic", null, receiver, ALLOCATION_LOCATION_IDENTITIES);
-            newmultiarray = snippet(SubstrateAllocationSnippets.class, "newmultiarray", null, receiver, ALLOCATION_LOCATION_IDENTITIES);
+            allocateInstance = snippet(SubstrateAllocationSnippets.class, "allocateInstance", null, receiver, ALLOCATION_LOCATIONS);
+            allocateArray = snippet(SubstrateAllocationSnippets.class, "allocateArray", null, receiver, ALLOCATION_LOCATIONS);
+            allocateInstanceDynamic = snippet(SubstrateAllocationSnippets.class, "allocateInstanceDynamic", null, receiver, ALLOCATION_LOCATIONS);
+            allocateArrayDynamic = snippet(SubstrateAllocationSnippets.class, "allocateArrayDynamic", null, receiver, ALLOCATION_LOCATIONS);
+            newmultiarray = snippet(SubstrateAllocationSnippets.class, "newmultiarray", null, receiver, ALLOCATION_LOCATIONS);
 
-            validateNewInstanceClass = snippet(SubstrateAllocationSnippets.class, "validateNewInstanceClass", ALLOCATION_LOCATION_IDENTITIES);
+            validateNewInstanceClass = snippet(SubstrateAllocationSnippets.class, "validateNewInstanceClass", ALLOCATION_LOCATIONS);
         }
 
         public void registerLowerings(Map<Class<? extends Node>, NodeLoweringProvider<?>> lowerings) {

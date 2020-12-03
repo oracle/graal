@@ -28,7 +28,6 @@ import static org.graalvm.compiler.nodes.PiNode.piCastToSnippetReplaceeStamp;
 
 import java.util.Map;
 
-import com.oracle.svm.core.jdk.IdentityHashCodeSupport;
 import org.graalvm.compiler.api.replacements.Snippet;
 import org.graalvm.compiler.api.replacements.SnippetReflectionProvider;
 import org.graalvm.compiler.core.common.NumUtil;
@@ -63,6 +62,7 @@ import com.oracle.svm.core.heap.InstanceReferenceMapEncoder;
 import com.oracle.svm.core.hub.DynamicHub;
 import com.oracle.svm.core.hub.DynamicHubSupport;
 import com.oracle.svm.core.hub.LayoutEncoding;
+import com.oracle.svm.core.jdk.IdentityHashCodeSupport;
 import com.oracle.svm.core.snippets.KnownIntrinsics;
 import com.oracle.svm.core.snippets.SnippetRuntime;
 import com.oracle.svm.core.snippets.SnippetRuntime.SubstrateForeignCallDescriptor;
@@ -70,7 +70,7 @@ import com.oracle.svm.core.snippets.SubstrateForeignCallTarget;
 import com.oracle.svm.core.util.NonmovableByteArrayReader;
 
 public final class SubstrateObjectCloneSnippets extends SubstrateTemplates implements Snippets {
-    private static final SubstrateForeignCallDescriptor CLONE = SnippetRuntime.findForeignCall(SubstrateObjectCloneSnippets.class, "doClone", true, LocationIdentity.ANY_LOCATION);
+    private static final SubstrateForeignCallDescriptor CLONE = SnippetRuntime.findForeignCall(SubstrateObjectCloneSnippets.class, "doClone", true, LocationIdentity.any());
     private static final SubstrateForeignCallDescriptor[] FOREIGN_CALLS = new SubstrateForeignCallDescriptor[]{CLONE};
     private static final CloneNotSupportedException CLONE_NOT_SUPPORTED_EXCEPTION = new CloneNotSupportedException("Object is not instance of Cloneable.");
 

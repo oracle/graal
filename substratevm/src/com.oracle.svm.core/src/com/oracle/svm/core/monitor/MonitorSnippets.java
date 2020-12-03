@@ -70,7 +70,7 @@ import jdk.vm.ci.meta.SpeculationLog;
  * Snippets for lowering of monitor nodes (the nodes representing the Java "synchronized" keyword).
  * There is currently no fast path, because the {@link java.util.concurrent.locks.ReentrantLock}
  * used for monitor operations cannot be inlined in a snippet without changes or code duplication.
- * 
+ *
  * For AOT compiled code, the null check for the object is already inserted by the bytecode parser,
  * i.e., the object is already guaranteed to be non-null. For JIT compiled code though the null
  * check needs to be inserted during lowering. To enable further high-level optimizations, the null
@@ -79,8 +79,10 @@ import jdk.vm.ci.meta.SpeculationLog;
  */
 public class MonitorSnippets extends SubstrateTemplates implements Snippets {
 
-    protected static final SubstrateForeignCallDescriptor SLOW_PATH_MONITOR_ENTER = SnippetRuntime.findForeignCall(MultiThreadedMonitorSupport.class, "slowPathMonitorEnter", false);
-    protected static final SubstrateForeignCallDescriptor SLOW_PATH_MONITOR_EXIT = SnippetRuntime.findForeignCall(MultiThreadedMonitorSupport.class, "slowPathMonitorExit", false);
+    protected static final SubstrateForeignCallDescriptor SLOW_PATH_MONITOR_ENTER = SnippetRuntime.findForeignCall(MultiThreadedMonitorSupport.class, "slowPathMonitorEnter", false,
+                    LocationIdentity.any());
+    protected static final SubstrateForeignCallDescriptor SLOW_PATH_MONITOR_EXIT = SnippetRuntime.findForeignCall(MultiThreadedMonitorSupport.class, "slowPathMonitorExit", false,
+                    LocationIdentity.any());
 
     protected static final SubstrateForeignCallDescriptor[] FOREIGN_CALLS = new SubstrateForeignCallDescriptor[]{SLOW_PATH_MONITOR_ENTER, SLOW_PATH_MONITOR_EXIT};
 

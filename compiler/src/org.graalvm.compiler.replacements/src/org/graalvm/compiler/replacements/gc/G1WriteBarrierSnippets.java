@@ -72,6 +72,9 @@ import org.graalvm.word.WordFactory;
 
 import jdk.vm.ci.meta.ResolvedJavaType;
 
+/**
+ * Implementation of the write barriers for the G1 garbage collector.
+ */
 public abstract class G1WriteBarrierSnippets extends WriteBarrierSnippets implements Snippets {
 
     public static final LocationIdentity GC_LOG_LOCATION = NamedLocationIdentity.mutable("GC-Log");
@@ -81,6 +84,11 @@ public abstract class G1WriteBarrierSnippets extends WriteBarrierSnippets implem
     public static final LocationIdentity SATB_QUEUE_BUFFER_LOCATION = NamedLocationIdentity.mutable("GC-Queue-Buffer");
     public static final LocationIdentity CARD_QUEUE_INDEX_LOCATION = NamedLocationIdentity.mutable("GC-Card-Queue-Index");
     public static final LocationIdentity CARD_QUEUE_BUFFER_LOCATION = NamedLocationIdentity.mutable("GC-Card-Queue-Buffer");
+
+    protected static final LocationIdentity[] KILLED_PRE_WRITE_BARRIER_STUB_LOCATIONS = new LocationIdentity[]{SATB_QUEUE_INDEX_LOCATION, SATB_QUEUE_BUFFER_LOCATION, GC_LOG_LOCATION,
+                    GC_INDEX_LOCATION};
+    protected static final LocationIdentity[] KILLED_POST_WRITE_BARRIER_STUB_LOCATIONS = new LocationIdentity[]{CARD_QUEUE_INDEX_LOCATION, CARD_QUEUE_BUFFER_LOCATION, GC_LOG_LOCATION,
+                    GC_INDEX_LOCATION, GC_CARD_LOCATION};
 
     public static class Counters {
         Counters(SnippetCounter.Group.Factory factory) {
@@ -137,7 +145,7 @@ public abstract class G1WriteBarrierSnippets extends WriteBarrierSnippets implem
         int gcCycle = 0;
         if (trace) {
             Pointer gcTotalCollectionsAddress = WordFactory.pointer(gcTotalCollectionsAddress());
-            gcCycle = (int) gcTotalCollectionsAddress.readLong(0);
+            gcCycle = (int) gcTotalCollectionsAddress.readLong(0, LocationIdentity.any());
             log(trace, "[%d] G1-Pre Thread %p Object %p\n", gcCycle, thread.rawValue(), Word.objectToTrackedPointer(object).rawValue());
             log(trace, "[%d] G1-Pre Thread %p Expected Object %p\n", gcCycle, thread.rawValue(), Word.objectToTrackedPointer(expectedObject).rawValue());
             log(trace, "[%d] G1-Pre Thread %p Field %p\n", gcCycle, thread.rawValue(), field.rawValue());
@@ -152,7 +160,7 @@ public abstract class G1WriteBarrierSnippets extends WriteBarrierSnippets implem
             // The load is always issued except the cases of CAS and referent field.
             Object previousObject;
             if (doLoad) {
-                previousObject = field.readObject(0, BarrierType.NONE);
+                previousObject = field.readObject(0, BarrierType.NONE, LocationIdentity.any());
                 if (trace) {
                     log(trace, "[%d] G1-Pre Thread %p Previous Object %p\n ", gcCycle, thread.rawValue(), Word.objectToTrackedPointer(previousObject).rawValue());
                     verifyOop(previousObject);
@@ -213,7 +221,7 @@ public abstract class G1WriteBarrierSnippets extends WriteBarrierSnippets implem
         int gcCycle = 0;
         if (trace) {
             Pointer gcTotalCollectionsAddress = WordFactory.pointer(gcTotalCollectionsAddress());
-            gcCycle = (int) gcTotalCollectionsAddress.readLong(0);
+            gcCycle = (int) gcTotalCollectionsAddress.readLong(0, LocationIdentity.any());
             log(trace, "[%d] G1-Post Thread: %p Object: %p\n", gcCycle, thread.rawValue(), Word.objectToTrackedPointer(object).rawValue());
             log(trace, "[%d] G1-Post Thread: %p Field: %p\n", gcCycle, thread.rawValue(), oop.rawValue());
         }
@@ -282,7 +290,7 @@ public abstract class G1WriteBarrierSnippets extends WriteBarrierSnippets implem
 
         for (int i = 0; i < length; i++) {
             Word arrElemPtr = start.add(i * scale);
-            Object previousObject = arrElemPtr.readObject(0, BarrierType.NONE);
+            Object previousObject = arrElemPtr.readObject(0, BarrierType.NONE, LocationIdentity.any());
             verifyOop(previousObject);
             if (probability(FREQUENT_PROBABILITY, previousObject != null)) {
                 if (probability(FREQUENT_PROBABILITY, indexValue != 0)) {

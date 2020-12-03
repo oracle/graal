@@ -128,7 +128,17 @@ import com.oracle.svm.core.util.VMError;
  * @see SafepointCheckNode
  */
 public final class Safepoint {
-
+    /*
+     * For all safepoint-related foreign calls, we must assume that they kill the TLAB locations
+     * because those might be modified by a GC or when a recurring callback allocates. We ignore all
+     * other writes as those need to use volatile semantics anyways (to prevent normal race
+     * conditions). For performance reasons, we need to assume that recurring callbacks don't do any
+     * writes that interfere in a problematic way with the read elimination that is done for the
+     * application (otherwise, we would have to kill all memory locations at every safepoint).
+     *
+     * NOTE: all locations that are killed by safepoint slowpath calls must also be killed by most
+     * other foreign calls because the call target may contain a safepoint.
+     */
     public static final SubstrateForeignCallDescriptor ENTER_SLOW_PATH_SAFEPOINT_CHECK = SnippetRuntime.findForeignCall(Safepoint.class, "enterSlowPathSafepointCheck", true);
     private static final SubstrateForeignCallDescriptor ENTER_SLOW_PATH_TRANSITION_FROM_NATIVE_TO_NEW_STATUS = SnippetRuntime.findForeignCall(Safepoint.class,
                     "enterSlowPathTransitionFromNativeToNewStatus", true);

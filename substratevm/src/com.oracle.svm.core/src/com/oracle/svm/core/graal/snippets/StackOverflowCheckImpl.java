@@ -260,7 +260,6 @@ final class InsertStackOverflowCheckPhase extends Phase {
 }
 
 final class StackOverflowCheckSnippets extends SubstrateTemplates implements Snippets {
-
     private static final SubstrateForeignCallDescriptor THROW_CACHED_STACK_OVERFLOW_ERROR = SnippetRuntime.findForeignCall(StackOverflowCheckSnippets.class, "throwCachedStackOverflowError", true);
     private static final SubstrateForeignCallDescriptor THROW_NEW_STACK_OVERFLOW_ERROR = SnippetRuntime.findForeignCall(StackOverflowCheckSnippets.class, "throwNewStackOverflowError", true);
 
