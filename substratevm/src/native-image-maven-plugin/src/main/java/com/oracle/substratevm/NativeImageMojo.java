@@ -123,9 +123,13 @@ public class NativeImageMojo extends AbstractMojo {
         addClasspath(project.getArtifact());
         String classpathStr = classpath.stream().map(Path::toString).collect(Collectors.joining(File.pathSeparator));
 
-        Path nativeImageExecutable = getMojoJavaHome().resolve("bin").resolve("native-image" + (isWindows() ? ".cmd" : ""));
+        Path nativeImageExecutableRelPath = Paths.get("lib", "svm", "bin", "native-image" + (isWindows() ? ".exe" : ""));
+        Path nativeImageExecutable = getMojoJavaHome().resolve(nativeImageExecutableRelPath);
         if (!Files.isExecutable(nativeImageExecutable)) {
-            throw new MojoExecutionException("Could not find executable native-image in " + nativeImageExecutable);
+            nativeImageExecutable = getMojoJavaHome().resolve("jre").resolve(nativeImageExecutableRelPath);
+            if (!Files.isExecutable(nativeImageExecutable)) {
+                throw new MojoExecutionException("Could not find executable native-image in " + nativeImageExecutable);
+            }
         }
 
         String nativeImageExecutableVersion = "Unknown";
