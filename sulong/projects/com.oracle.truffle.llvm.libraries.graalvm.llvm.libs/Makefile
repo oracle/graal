@@ -35,7 +35,6 @@ default: bin/${SONAME}
 CLANG?=clang
 
 CFLAGS+=-gdwarf-5 -fdebug-prefix-map=${VPATH}=com.oracle.truffle.llvm.libraries.graalvm.llvm
-CPPFLAGS+=-I${VPATH}/include
 
 ifeq ($(OS), darwin)
 CLANG_PREFIX=/usr/bin/xcrun
