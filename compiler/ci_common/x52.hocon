@@ -103,8 +103,8 @@ builds += [
 
   ${x52.tmpfs10g-libgraal} ${bench-dacapo-hwloc}                  ${labsjdk11} { targets: [daily, bench], name: "bench-compiler-dacapo-libgraal-11-linux-x52" }
   ${x52.tmpfs10g-libgraal} ${bench-dacapo-timing-hwloc}           ${labsjdk11} { targets: [weekly, bench], name: "bench-compiler-dacapo-timing-libgraal-11-linux-x52" }
-  ${x52.tmpfs10g-libgraal} ${bench-scala-dacapo-all-hwloc}        ${labsjdk11} { targets: [daily, bench], name: "bench-compiler-scala-dacapo-libgraal-11-linux-x52" }
-  ${x52.tmpfs10g-libgraal} ${bench-scala-dacapo-all-timing-hwloc} ${labsjdk11} { targets: [weekly, bench], name: "bench-compiler-scala-dacapo-timing-libgraal-11-linux-x52" }
+  ${x52.tmpfs10g-libgraal} ${bench-scala-dacapo-hwloc}            ${labsjdk11} { targets: [daily, bench], name: "bench-compiler-scala-dacapo-libgraal-11-linux-x52" }
+  ${x52.tmpfs10g-libgraal} ${bench-scala-dacapo-timing-hwloc}     ${labsjdk11} { targets: [weekly, bench], name: "bench-compiler-scala-dacapo-timing-libgraal-11-linux-x52" }
   ${x52.default-libgraal} ${bench-renaissance-hwloc}              ${labsjdk11} { name: "bench-compiler-renaissance-libgraal-11-linux-x52" }
   ${x52.default-libgraal} ${bench-specjvm2008-Single-hwloc}       ${labsjdk11} { targets: [daily, bench], name: "bench-compiler-specjvm2008-Single-libgraal-11-linux-x52" }
   ${x52.default-libgraal} ${bench-specjbb2005}                    ${labsjdk11} { targets: [daily, bench], name: "bench-compiler-specjbb2005-libgraal-11-linux-x52" }
@@ -146,8 +146,8 @@ builds += [
 
   ${x52.tmpfs10g} ${bench-dacapo-hwloc}                  ${labsjdk11} { targets: [daily, bench], name: "bench-compiler-dacapo-11-linux-x52" }
   ${x52.tmpfs10g} ${bench-dacapo-timing-hwloc}           ${labsjdk11} { targets: [weekly, bench], name: "bench-compiler-dacapo-timing-11-linux-x52" }
-  ${x52.tmpfs10g} ${bench-scala-dacapo-all-hwloc}        ${labsjdk11} { targets: [daily, bench], name: "bench-compiler-scala-dacapo-11-linux-x52" }
-  ${x52.tmpfs10g} ${bench-scala-dacapo-all-timing-hwloc} ${labsjdk11} { targets: [weekly, bench], name: "bench-compiler-scala-dacapo-timing-11-linux-x52" }
+  ${x52.tmpfs10g} ${bench-scala-dacapo-hwloc}            ${labsjdk11} { targets: [daily, bench], name: "bench-compiler-scala-dacapo-11-linux-x52" }
+  ${x52.tmpfs10g} ${bench-scala-dacapo-timing-hwloc}     ${labsjdk11} { targets: [weekly, bench], name: "bench-compiler-scala-dacapo-timing-11-linux-x52" }
   ${x52.default} ${bench-renaissance-hwloc}              ${labsjdk11} { targets: [daily, bench], name: "bench-compiler-renaissance-11-linux-x52" }
   ${x52.default} ${bench-specjvm2008-Single-hwloc}       ${labsjdk11} { targets: [daily, bench], name: "bench-compiler-specjvm2008-Single-11-linux-x52" }
   ${x52.default} ${bench-specjbb2005}                    ${labsjdk11} { targets: [daily, bench], name: "bench-compiler-specjbb2005-11-linux-x52" }

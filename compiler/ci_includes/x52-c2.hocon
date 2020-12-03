@@ -31,7 +31,7 @@ builds += [
 
   # JDK 11
   ${x52.tmpfs10g-c2} ${bench-dacapo-hwloc-forks}                     ${labsjdk11} { name: "bench-forks-compiler-dacapo-11-linux-x52-c2" }
-  ${x52.tmpfs10g-c2} ${bench-scala-dacapo-all-hwloc-forks}           ${labsjdk11} { name: "bench-forks-compiler-scala-dacapo-11-linux-x52-c2" }
+  ${x52.tmpfs10g-c2} ${bench-scala-dacapo-hwloc-forks}               ${labsjdk11} { name: "bench-forks-compiler-scala-dacapo-11-linux-x52-c2" }
   ${x52.c2} ${bench-specjvm2008-Single-forks-batch0}                 ${labsjdk11} { name: "bench-forks-compiler-specjvm2008-Single-11-linux-x52-c2-batch0" }
   ${x52.c2} ${bench-specjvm2008-Single-forks-batch1}                 ${labsjdk11} { name: "bench-forks-compiler-specjvm2008-Single-11-linux-x52-c2-batch1" }
   ${x52.c2} ${bench-specjvm2008-Single-forks-batch2}                 ${labsjdk11} { name: "bench-forks-compiler-specjvm2008-Single-11-linux-x52-c2-batch2" }

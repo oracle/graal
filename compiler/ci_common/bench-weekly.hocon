@@ -22,15 +22,6 @@ bench-scala-dacapo-hwloc-forks : ${bench-scala-dacapo-hwloc} ${weeklys-bench-not
   }
 }
 
-bench-scala-dacapo-all-hwloc-forks : ${bench-scala-dacapo-all-hwloc} ${weeklys-bench-notifications} {
-  targets: [bench, weekly],
-  setup: ${fork-counts.setup} ${bench-scala-dacapo-all-hwloc.setup}
-  timelimit: "03:30:00"
-  environment : ${bench-scala-dacapo-all-hwloc.environment} ${fork-counts.environment} ${bench-perftag.environment} {
-    FORK_COUNT_FILE: "${FORK_COUNTS_DIRECTORY}/compiler/scala_dacapo_forks.json"
-  }
-}
-
 bench-specjvm2008-Single-hwloc-forks-batch0 : ${bench-specjvm2008-Single-hwloc} ${weeklys-bench-notifications} {
   targets: [bench, weekly],
   setup: ${fork-counts.setup} ${bench-specjvm2008-Single-hwloc.setup}
@@ -206,7 +197,7 @@ builds += [
   # JDK 11
   # jargraal
   ${x52.tmpfs10g} ${bench-dacapo-hwloc-forks}                        ${labsjdk11} { name: "bench-forks-compiler-dacapo-11-linux-x52" }
-  ${x52.tmpfs10g} ${bench-scala-dacapo-all-hwloc-forks}              ${labsjdk11} { name: "bench-forks-compiler-scala-dacapo-11-linux-x52" }
+  ${x52.tmpfs10g} ${bench-scala-dacapo-hwloc-forks}                  ${labsjdk11} { name: "bench-forks-compiler-scala-dacapo-11-linux-x52" }
   ${x52.default} ${bench-specjvm2008-Single-hwloc-forks-batch0}      ${labsjdk11} { name: "bench-forks-compiler-specjvm2008-Single-11-linux-x52-batch0" }
   ${x52.default} ${bench-specjvm2008-Single-hwloc-forks-batch1}      ${labsjdk11} { name: "bench-forks-compiler-specjvm2008-Single-11-linux-x52-batch1" }
   ${x52.default} ${bench-specjvm2008-Single-hwloc-forks-batch2}      ${labsjdk11} { name: "bench-forks-compiler-specjvm2008-Single-11-linux-x52-batch2" }
@@ -225,7 +216,7 @@ builds += [
 
   ## libgraal
   ${x52.tmpfs10g-libgraal} ${bench-dacapo-hwloc-forks}                      ${labsjdk11} { name: "bench-forks-compiler-dacapo-libgraal-11-linux-x52" }
-  ${x52.tmpfs10g-libgraal} ${bench-scala-dacapo-all-hwloc-forks}            ${labsjdk11} { name: "bench-forks-compiler-scala-dacapo-libgraal-11-linux-x52" }
+  ${x52.tmpfs10g-libgraal} ${bench-scala-dacapo-hwloc-forks}                ${labsjdk11} { name: "bench-forks-compiler-scala-dacapo-libgraal-11-linux-x52" }
   ${x52.default-libgraal} ${bench-specjvm2008-Single-hwloc-forks-batch0}    ${labsjdk11} { name: "bench-forks-compiler-specjvm2008-Single-libgraal-11-linux-x52-batch0" }
   ${x52.default-libgraal} ${bench-specjvm2008-Single-hwloc-forks-batch1}    ${labsjdk11} { name: "bench-forks-compiler-specjvm2008-Single-libgraal-11-linux-x52-batch1" }
   ${x52.default-libgraal} ${bench-specjvm2008-Single-hwloc-forks-batch2}    ${labsjdk11} { name: "bench-forks-compiler-specjvm2008-Single-libgraal-11-linux-x52-batch2" }
