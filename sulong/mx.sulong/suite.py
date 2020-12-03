@@ -589,6 +589,7 @@ suite = {
       "license" : "BSD-new",
     },
     "com.oracle.truffle.llvm.libraries.graalvm.llvm" : {
+      "class" : "HeaderProject",
       "subDir" : "projects",
       "native" : True,
       "vpath" : True,

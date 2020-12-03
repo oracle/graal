@@ -1145,6 +1145,29 @@ class DocumentationProject(AbstractSulongNativeProject):  # pylint: disable=too-
         return DocumentationBuildTask(args, self)
 
 
+class HeaderBuildTask(mx.NativeBuildTask):
+    def __str__(self):
+        return 'Building {} with Header Build Task'.format(self.subject.name)
+
+    def build(self):
+        self._newestOutput = None
+
+    def needsBuild(self, newestInput):
+        return (False, "up to date according to GNU Make")
+
+    def clean(self, forBuild=False):
+        pass
+
+
+class HeaderProject(AbstractSulongNativeProject):  # pylint: disable=too-many-ancestors
+    def __init__(self, suite, name, deps, workingSets, subDir, results=None, output=None, **args):
+        super(HeaderProject, self).__init__(suite, name, deps, workingSets, subDir, results, output, **args)
+        self.dir = self.source_dirs()[0]
+
+    def getBuildTask(self, args):
+        return HeaderBuildTask(args, self)
+
+
 _suite.toolchain = ToolchainConfig('native', 'SULONG_TOOLCHAIN_LAUNCHERS', 'SULONG_BOOTSTRAP_TOOLCHAIN',
                                    # unfortunately, we cannot define those in the suite.py because graalvm component
                                    # registration runs before the suite is properly initialized
