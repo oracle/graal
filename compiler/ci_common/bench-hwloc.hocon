@@ -158,6 +158,21 @@ bench-renaissance-hwloc: ${bench-renaissance} ${hwloc.bench-common} {
 }
 
 
+bench-renaissance-0-10-0-hwloc: ${bench-renaissance} ${hwloc.bench-common} {
+  setup: ${bench-renaissance.setup} ${hwloc.bench-common.setup}
+  run: [
+    [export, "RENAISSANCE_VERSION=0.10.0"]
+    [export, "SPARK_LOCAL_IP=127.0.0.1"]
+    [export, "LOGDIR=${PWD}"]
+    ${export.node0}
+    ${hwloc.node} ${bench-jvmci.mx-renaissance} ["--bench-suite-version=$RENAISSANCE_VERSION"] ${bench-arguments} ${hwloc.cmd.suffix}
+    ${export.node1}
+    ${hwloc.node} ${bench-jvmci.mx-renaissance} ["--bench-suite-version=$RENAISSANCE_VERSION"] ${bench-arguments} ${hwloc.cmd.suffix}
+    [wait]
+  ]
+}
+
+
 bench-renaissance-legacy-hwloc: ${bench-renaissance-legacy} ${hwloc.bench-common} {
   setup: ${bench-renaissance-legacy.setup} ${hwloc.bench-common.setup}
   run: [
