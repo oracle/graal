@@ -289,8 +289,8 @@ public class SerializationSupport implements SerializationRegistry {
             if (serializationTargetClassName.contains("$$Lambda$")) {
                 throw VMError.unsupportedFeature("Can't serialize " + serializationTargetClassName + ". Serializing Lambda class is not supported");
             } else {
-                throw VMError.unsupportedFeature("SerializationConstructorAccessor class is not found for class :" + serializationTargetClassName + "\n" +
-                                "Generating SerializationConstructorAccessor classes at runtime is not supported. ");
+                throw VMError.unsupportedFeature("SerializationConstructorAccessor class is not found for class :" + serializationTargetClassName +
+                                ". Generating SerializationConstructorAccessor classes at runtime is not supported. ");
             }
         } else {
             Object accessor = ret.serializationConstructorAccessor;
