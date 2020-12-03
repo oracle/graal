@@ -183,13 +183,9 @@ public abstract class Klass implements ModifiersProvider, ContextAccess, KlassRe
     }
 
     @ExportMessage
-    final boolean isMemberInvocable(String member) {
-        for (Method m : getDeclaredMethods()) {
-            if (m.isPublic() && m.isStatic() && member.equals(m.getName().toString())) {
-                return true;
-            }
-        }
-        return false;
+    final boolean isMemberInvocable(String member,
+                    @Exclusive @Cached LookupDeclaredMethod lookupMethod) {
+        return lookupMethod.isInvocable(this, member, true, true);
     }
 
     @ExportMessage
@@ -201,7 +197,7 @@ public abstract class Klass implements ModifiersProvider, ContextAccess, KlassRe
         Method method = lookupMethod.execute(this, member, true, true, arguments.length);
         if (method != null) {
             assert method.isStatic() && method.isPublic();
-            assert member.equals(method.getName().toString()) || member.equals(method.getName() + ":" + method.getRawSignature());
+            assert member.startsWith(method.getNameAsString());
             assert method.getParameterCount() == arguments.length;
 
             return invoke.execute(method, null, arguments);
