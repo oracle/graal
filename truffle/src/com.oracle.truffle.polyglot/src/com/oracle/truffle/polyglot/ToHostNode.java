@@ -81,22 +81,24 @@ abstract class ToHostNode extends Node {
 
     /** Reserved for target type mappings with highest precedence. */
     static final int HIGHEST = 0;
-    /** Custom or lossless conversion to primitive type (incl. unboxing). */
+    /** Direct (subtype) or lossless conversion to primitive type (incl. unboxing). */
     static final int STRICT = 1;
-    /** Wrapping (Map, List) or array conversion; int to char. */
+    /** Wrapping (Map, List, Function) or semi-lossy mapping (e.g. Instant) conversion. */
     static final int LOOSE = 2;
+    /** Coercing conversion: Host array (copying) or int to char conversion. */
+    static final int COERCE = 3;
     /** Wrap executable into functional interface proxy. */
-    static final int FUNCTION_PROXY = 3;
+    static final int FUNCTION_PROXY = 4;
     /** Wrap object with members into arbitrary interface proxy. */
-    static final int OBJECT_PROXY_IFACE = 4;
+    static final int OBJECT_PROXY_IFACE = 5;
     /** Wrap object with members into arbitrary interface or class proxy. */
-    static final int OBJECT_PROXY_CLASS = 5;
+    static final int OBJECT_PROXY_CLASS = 6;
     /** Host object to interface proxy conversion. */
-    static final int HOST_PROXY = 6;
+    static final int HOST_PROXY = 7;
     /** Reserved for target type mappings with lowest. */
-    static final int LOWEST = 7;
+    static final int LOWEST = 8;
 
-    static final int[] PRIORITIES = {HIGHEST, STRICT, LOOSE, FUNCTION_PROXY, OBJECT_PROXY_IFACE, OBJECT_PROXY_CLASS, HOST_PROXY, LOWEST};
+    static final int[] PRIORITIES = {HIGHEST, STRICT, LOOSE, COERCE, FUNCTION_PROXY, OBJECT_PROXY_IFACE, OBJECT_PROXY_CLASS, HOST_PROXY, LOWEST};
 
     public abstract Object execute(Object value, Class<?> targetType, Type genericType, PolyglotLanguageContext languageContext, boolean useTargetMapping);
 
@@ -285,8 +287,6 @@ abstract class ToHostNode extends Node {
                 return false;
             }
             return true;
-        } else if (targetType == Object.class) {
-            return true;
         } else if (targetType == Value.class && languageContext != null) {
             return true;
         } else if (isPrimitiveTarget(targetType)) {
@@ -303,17 +303,16 @@ abstract class ToHostNode extends Node {
             return false;
         }
 
-        if (isPrimitiveTarget(targetType)) {
-            Object convertedValue = convertLossy(value, targetType, interop);
-            if (convertedValue != null) {
-                return true;
-            }
-        } else if (targetType == List.class) {
+        if (targetType == Object.class) {
+            return true;
+        }
+
+        if (targetType == List.class) {
             return interop.hasArrayElements(value);
         } else if (targetType == Map.class) {
             return interop.hasMembers(value);
-        } else if (targetType.isArray()) {
-            return interop.hasArrayElements(value);
+        } else if (targetType == Function.class) {
+            return interop.isExecutable(value) || interop.isInstantiable(value);
         } else if (targetType == LocalDate.class) {
             return interop.isDate(value);
         } else if (targetType == LocalTime.class) {
@@ -328,6 +327,19 @@ abstract class ToHostNode extends Node {
             return interop.isDuration(value);
         } else if (targetType == PolyglotException.class) {
             return interop.isException(value);
+        }
+
+        if (priority <= LOOSE) {
+            return false;
+        }
+
+        if (targetType.isArray()) {
+            return interop.hasArrayElements(value);
+        } else if (isPrimitiveTarget(targetType)) {
+            Object convertedValue = convertLossy(value, targetType, interop);
+            if (convertedValue != null) {
+                return true;
+            }
         }
 
         if (value instanceof TruffleObject) {
