@@ -167,3 +167,16 @@ bench-specjbb2005-hwloc: ${bench-specjbb2005} ${hwloc.bench-common} {
     [wait]
   ]
 }
+
+
+bench-specjbb2015-hwloc: ${bench-specjbb2015} ${hwloc.bench-common} {
+  setup: ${bench-specjbb2015.setup} ${hwloc.bench-common.setup}
+  run: [
+    [export, "LOGDIR=${PWD}"]
+    ${export.node0}
+    ${hwloc.node} ${bench-jvmci.mx-specjbb2015} ${bench-arguments} ${hwloc.cmd.suffix}
+    ${export.node1}
+    ${hwloc.node} ${bench-jvmci.mx-specjbb2015} ${bench-arguments} ${hwloc.cmd.suffix}
+    [wait]
+  ]
+}

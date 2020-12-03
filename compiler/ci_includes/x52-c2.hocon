@@ -27,7 +27,7 @@ builds += [
   ${x52.tmpfs10g-c2} ${bench-renaissance-legacy-hwloc-forks-batch2}  ${oraclejdk8} { name: "bench-forks-compiler-renaissance-legacy-linux-x52-c2-batch2" }
   ${x52.tmpfs10g-c2} ${bench-renaissance-legacy-hwloc-forks-batch3}  ${oraclejdk8} { name: "bench-forks-compiler-renaissance-legacy-linux-x52-c2-batch3" }
   ${x52.c2} ${bench-specjbb2005-hwloc-forks}                         ${oraclejdk8} { name: "bench-forks-compiler-specjbb2005-linux-x52-c2" }
-  ${x52.c2} ${bench-specjbb2015-forks}                               ${oraclejdk8} { name: "bench-forks-compiler-specjbb2015-linux-x52-c2" }
+  ${x52.c2} ${bench-specjbb2015-hwloc-forks}                         ${oraclejdk8} { name: "bench-forks-compiler-specjbb2015-linux-x52-c2" }
 
   # JDK 11
   ${x52.tmpfs10g-c2} ${bench-dacapo-hwloc-forks}                     ${labsjdk11} { name: "bench-forks-compiler-dacapo-11-linux-x52-c2" }
@@ -46,5 +46,5 @@ builds += [
   ${x52.tmpfs10g-c2} ${bench-renaissance-legacy-hwloc-forks-batch2}  ${labsjdk11} { name: "bench-forks-compiler-renaissance-legacy-11-linux-x52-c2-batch2" }
   ${x52.tmpfs10g-c2} ${bench-renaissance-legacy-hwloc-forks-batch3}  ${labsjdk11} { name: "bench-forks-compiler-renaissance-legacy-11-linux-x52-c2-batch3" }
   ${x52.c2} ${bench-specjbb2005-hwloc-forks}                         ${labsjdk11} { name: "bench-forks-compiler-specjbb2005-11-linux-x52-c2" }
-  ${x52.c2} ${bench-specjbb2015-forks}                               ${labsjdk11} { name: "bench-forks-compiler-specjbb2015-11-linux-x52-c2" }
+  ${x52.c2} ${bench-specjbb2015-hwloc-forks}                         ${labsjdk11} { name: "bench-forks-compiler-specjbb2015-11-linux-x52-c2" }
 ]
