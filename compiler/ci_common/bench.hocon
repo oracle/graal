@@ -23,6 +23,10 @@ bench-jvmci : {
 }
 
 bench-common : ${compilerCommon} {
+  docker : {
+    "image": "phx.ocir.io/oraclelabs2/c_graal/buildslave:buildslave_ol8",
+    "mount_modules": true
+  }
   environment: {
     MX_PYTHON_VERSION : "3",
     BENCH_RESULTS_FILE_PATH : "bench-results.json"

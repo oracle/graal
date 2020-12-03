@@ -1,9 +1,5 @@
 # hwloc (Hardware Locality) provides means to bind a process to NUMA nodes
 hwloc.bench-common : {
-  docker : {
-    "image": "phx.ocir.io/oraclelabs2/c_graal/buildslave:buildslave_ol8",
-    "mount_modules": true
-  }
   environment: {
     BASE_BENCH_RESULTS_FILE_NAME: "bench-results.json"
     LOG_FILE_NAME : "-output.log"
@@ -171,6 +167,32 @@ bench-renaissance-legacy-hwloc: ${bench-renaissance-legacy} ${hwloc.bench-common
     ${hwloc.node} ${bench-jvmci.mx-renaissance-legacy} ${bench-arguments} ${hwloc.cmd.suffix}
     ${export.node1}
     ${hwloc.node} ${bench-jvmci.mx-renaissance-legacy} ${bench-arguments} ${hwloc.cmd.suffix}
+    [wait]
+  ]
+}
+
+
+bench-specjvm2008-Single-hwloc: ${bench-specjvm2008-Single} ${hwloc.bench-common} {
+  setup: ${bench-specjvm2008-Single.setup} ${hwloc.bench-common.setup}
+  run: [
+    [export, "LOGDIR=${PWD}"]
+    ${export.node0}
+    ${hwloc.node} ${bench-jvmci.mx-specjvm2008-Single} ${bench-arguments} ${hwloc.cmd.suffix}
+    ${export.node1}
+    ${hwloc.node} ${bench-jvmci.mx-specjvm2008-Single} ${bench-arguments} ${hwloc.cmd.suffix}
+    [wait]
+  ]
+}
+
+
+bench-specjvm2008-OneVM-hwloc: ${bench-specjvm2008-OneVM} ${hwloc.bench-common} {
+  setup: ${bench-specjvm2008-OneVM.setup} ${hwloc.bench-common.setup}
+  run: [
+    [export, "LOGDIR=${PWD}"]
+    ${export.node0}
+    ${hwloc.node} ${bench-jvmci.mx-specjvm2008-OneVM} ${bench-arguments} ${hwloc.cmd.suffix}
+    ${export.node1}
+    ${hwloc.node} ${bench-jvmci.mx-specjvm2008-OneVM} ${bench-arguments} ${hwloc.cmd.suffix}
     [wait]
   ]
 }
