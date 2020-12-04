@@ -87,7 +87,7 @@ public final class LoadStoreFinder {
     public LoadStoreFinder(Graph<? extends LinkedBlock> graph, Method method) {
         this.graph = graph;
         this.blockHistory = new History[graph.totalBlocks()];
-        this.bs = new BytecodeStream(method.getCode());
+        this.bs = new BytecodeStream(method.getOriginalCode());
     }
 
     public void analyze() {
