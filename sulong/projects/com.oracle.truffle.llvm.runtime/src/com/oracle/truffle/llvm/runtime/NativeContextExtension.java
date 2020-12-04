@@ -31,7 +31,11 @@ package com.oracle.truffle.llvm.runtime;
 
 import com.oracle.truffle.api.CallTarget;
 import com.oracle.truffle.api.TruffleFile;
+import com.oracle.truffle.api.interop.ArityException;
+import com.oracle.truffle.api.interop.UnsupportedMessageException;
+import com.oracle.truffle.api.interop.UnsupportedTypeException;
 import com.oracle.truffle.api.source.Source;
+import com.oracle.truffle.llvm.runtime.nodes.api.LLVMNode;
 import com.oracle.truffle.llvm.runtime.types.FunctionType;
 import com.oracle.truffle.llvm.runtime.types.Type;
 
@@ -89,6 +93,17 @@ public abstract class NativeContextExtension implements ContextExtension {
     public abstract CallTarget parseNativeLibrary(TruffleFile file, LLVMContext context) throws UnsatisfiedLinkError;
 
     public abstract NativeLookupResult getNativeFunctionOrNull(String name);
+
+    public abstract static class WellKnownNativeFunctionNode extends LLVMNode {
+
+        public final Object execute(Object... args) throws ArityException, UnsupportedMessageException, UnsupportedTypeException {
+            return executeImpl(args);
+        }
+
+        protected abstract Object executeImpl(Object[] args) throws ArityException, UnsupportedMessageException, UnsupportedTypeException;
+    }
+
+    public abstract WellKnownNativeFunctionNode getWellKnownNativeFunction(String name, String signature);
 
     public abstract Object getNativeFunction(String name, String signature);
 

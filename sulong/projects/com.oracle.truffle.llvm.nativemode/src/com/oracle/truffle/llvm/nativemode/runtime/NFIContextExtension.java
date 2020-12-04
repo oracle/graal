@@ -30,6 +30,7 @@
 package com.oracle.truffle.llvm.nativemode.runtime;
 
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.List;
 import java.util.WeakHashMap;
 
@@ -42,7 +43,6 @@ import org.graalvm.collections.EconomicMap;
 
 import com.oracle.truffle.api.CallTarget;
 import com.oracle.truffle.api.CompilerAsserts;
-import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.TruffleFile;
 import com.oracle.truffle.api.TruffleLanguage.Env;
@@ -67,24 +67,53 @@ import org.graalvm.collections.Equivalence;
 
 public final class NFIContextExtension extends NativeContextExtension {
 
+    static final class WellKnownFunction {
+
+        final int index;
+        final String name;
+        final Source signatureSource;
+
+        WellKnownFunction(int index, String name, Source signatureSource) {
+            this.index = index;
+            this.name = name;
+            this.signatureSource = signatureSource;
+        }
+    }
+
     private static final class SignatureSourceCache {
 
         private final ArrayList<WeakHashMap<FunctionType, Source>> cache;
+
+        private final EconomicMap<String, WellKnownFunction> wellKnown;
+        private int nextIndex;
 
         SignatureSourceCache() {
             // skipArgs is always either 0 or 1
             cache = new ArrayList<>(2);
             cache.add(new WeakHashMap<>());
             cache.add(new WeakHashMap<>());
+
+            wellKnown = EconomicMap.create();
+            nextIndex = 0;
         }
 
-        synchronized Source get(FunctionType type, int skipArgs) throws UnsupportedNativeTypeException {
+        synchronized Source getSignatureSource(FunctionType type, int skipArgs) throws UnsupportedNativeTypeException {
             WeakHashMap<FunctionType, Source> map = cache.get(skipArgs);
             Source ret = map.get(type);
             if (ret == null) {
                 String sig = getNativeSignature(type, skipArgs);
                 ret = Source.newBuilder("nfi", sig, "llvm-nfi-signature").build();
                 map.put(type, ret);
+            }
+            return ret;
+        }
+
+        synchronized WellKnownFunction getWellKnownFunction(String name, String signature) {
+            WellKnownFunction ret = wellKnown.get(name);
+            if (ret == null) {
+                Source signatureSource = Source.newBuilder("nfi", signature, "llvm-nfi-signature").build();
+                ret = new WellKnownFunction(nextIndex++, name, signatureSource);
+                wellKnown.put(name, ret);
             }
             return ret;
         }
@@ -103,7 +132,7 @@ public final class NFIContextExtension extends NativeContextExtension {
 
     private static final InteropLibrary INTEROP = InteropLibrary.getFactory().getUncached();
 
-    @CompilerDirectives.CompilationFinal private Object defaultLibraryHandle;
+    private Object defaultLibraryHandle;
     private boolean internalLibrariesAdded = false;
     private final List<Object> libraryHandles = new ArrayList<>();
     private final EconomicMap<TruffleFile, CallTarget> visited = EconomicMap.create();
@@ -112,10 +141,13 @@ public final class NFIContextExtension extends NativeContextExtension {
     private final SignatureSourceCache signatureSourceCache;
     private final EconomicMap<Source, Object> signatureCache = EconomicMap.create(Equivalence.IDENTITY);
 
+    private Object[] wellKnownFunctionCache;
+
     private NFIContextExtension(Env env, SignatureSourceCache signatureSourceCache) {
         assert env.getOptions().get(SulongEngineOption.ENABLE_NFI);
         this.env = env;
         this.signatureSourceCache = signatureSourceCache;
+        this.wellKnownFunctionCache = new Object[16];
     }
 
     @Override
@@ -382,9 +414,53 @@ public final class NFIContextExtension extends NativeContextExtension {
     }
 
     @Override
+    public WellKnownNativeFunctionNode getWellKnownNativeFunction(String name, String signature) {
+        CompilerAsserts.neverPartOfCompilation();
+        WellKnownFunction fn = signatureSourceCache.getWellKnownFunction(name, signature);
+        return WellKnownNFIFunctionNodeGen.create(fn);
+    }
+
+    private Object createWellKnownFunction(WellKnownFunction fn) {
+        CompilerAsserts.neverPartOfCompilation();
+        NativeLookupResult result = getNativeFunctionOrNull(fn.name);
+        if (result != null) {
+            CallTarget parsedSignature = env.parseInternal(fn.signatureSource);
+            Object signature = parsedSignature.call();
+            return SignatureLibrary.getUncached().bind(signature, result.getObject());
+        }
+        throw new LLVMLinkerException(String.format("External function %s cannot be found.", fn.name));
+    }
+
+    @TruffleBoundary
+    private Object getWellKnownFuctionSlowPath(WellKnownFunction fn) {
+        synchronized (this) {
+            if (wellKnownFunctionCache.length <= fn.index) {
+                int newLength = Math.max(wellKnownFunctionCache.length * 2, fn.index);
+                wellKnownFunctionCache = Arrays.copyOf(wellKnownFunctionCache, newLength);
+            }
+            Object ret = wellKnownFunctionCache[fn.index];
+            if (ret == null) {
+                ret = createWellKnownFunction(fn);
+                wellKnownFunctionCache[fn.index] = ret;
+            }
+            return ret;
+        }
+    }
+
+    Object getCachedWellKnownFunction(WellKnownFunction fn) {
+        if (fn.index < wellKnownFunctionCache.length) {
+            Object ret = wellKnownFunctionCache[fn.index];
+            if (ret != null) {
+                return ret;
+            }
+        }
+        return getWellKnownFuctionSlowPath(fn);
+    }
+
+    @Override
     public Source getNativeSignatureSource(FunctionType type, int skipArguments) throws UnsupportedNativeTypeException {
         CompilerAsserts.neverPartOfCompilation();
-        return signatureSourceCache.get(type, skipArguments);
+        return signatureSourceCache.getSignatureSource(type, skipArguments);
     }
 
     @TruffleBoundary

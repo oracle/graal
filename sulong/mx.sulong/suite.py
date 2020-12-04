@@ -294,6 +294,7 @@ suite = {
         "SULONG_CORE"
       ],
       "checkstyle" : "com.oracle.truffle.llvm.runtime",
+      "annotationProcessors" : ["truffle:TRUFFLE_DSL_PROCESSOR"],
       "javaCompliance" : "1.8+",
       "workingSets" : "Truffle, LLVM",
       "license" : "BSD-new",
