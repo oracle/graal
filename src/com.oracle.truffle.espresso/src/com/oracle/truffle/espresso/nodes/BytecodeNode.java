@@ -648,11 +648,6 @@ public final class BytecodeNode extends EspressoMethodNode {
         CompilerDirectives.ensureVirtualized(primitives);
         CompilerDirectives.ensureVirtualized(refs);
 
-        // Manually hoists lengths out of the main loop.
-        hoistCheck(primitives.length, 2 * (1 << 16));
-        hoistCheck(refs.length, 2 * (1 << 16));
-        hoistCheck(loopCount.length, 1);
-
         setBCI(frame, curBCI);
 
         if (instrument != null) {
@@ -1223,13 +1218,6 @@ public final class BytecodeNode extends EspressoMethodNode {
     private static void clearOperandStack(long[] primitives, Object[] refs, int top) {
         for (int slot = top - 1; slot >= 0; --slot) {
             EspressoFrame.clear(primitives, refs, slot);
-        }
-    }
-
-    private static void hoistCheck(int value, int limit) {
-        if (value > limit) {
-            CompilerDirectives.transferToInterpreter();
-            throw EspressoError.shouldNotReachHere();
         }
     }
 
