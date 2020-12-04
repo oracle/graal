@@ -1121,6 +1121,10 @@ public final class BytecodeNode extends EspressoMethodNode {
                     if (stackOverflowErrorInfo != null) {
                         for (int i = 0; i < stackOverflowErrorInfo.length; i += 3) {
                             if (curBCI >= stackOverflowErrorInfo[i] && curBCI < stackOverflowErrorInfo[i + 1]) {
+                                // Release all references from the operand stack.
+                                while (--top >= 0) {
+                                    EspressoFrame.clear(primitives, refs, top);
+                                }
                                 top = 0;
                                 putObject(refs, 0, wrappedStackOverflowError.getExceptionObject());
                                 top++;
