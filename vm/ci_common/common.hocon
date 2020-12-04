@@ -237,7 +237,7 @@ weekly_vm_darwin: ${vm_darwin} {
   targets: [weekly]
 }
 
-mx_vm_common: [mx, --strip-jars, "--sources=sdk:GRAAL_SDK,truffle:TRUFFLE_API,compiler:GRAAL,substratevm:SVM", --with-debuginfo, --env, "${VM_ENV}", "--force-bash-launchers=env.FORCE_BASH_LAUNCHERS,"${non-product-native-launchers}, "--base-jdk-name=${BASE_JDK_NAME}", "--base-jdk-version=${BASE_JDK_VERSION}"]
+mx_vm_common: [mx, --strip-jars, "--sources=sdk:GRAAL_SDK,truffle:TRUFFLE_API,compiler:GRAAL,substratevm:SVM", --with-debuginfo, --env, "${VM_ENV}", "--force-bash-launchers=env.FORCE_BASH_LAUNCHERS,"${non-product-native-launchers}, "--base-jdk-info=${BASE_JDK_NAME}:${BASE_JDK_VERSION}"]
 mx_vm_installables: ${mx_vm_common}
 
 maven_deploy_sdk: [--suite, sdk, maven-deploy, --validate, none, --all-distribution-types, --with-suite-revisions-metadata]
