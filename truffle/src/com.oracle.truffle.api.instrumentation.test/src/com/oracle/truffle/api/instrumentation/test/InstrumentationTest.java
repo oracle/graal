@@ -122,7 +122,6 @@ import com.oracle.truffle.api.interop.InteropLibrary;
 import com.oracle.truffle.api.interop.NodeLibrary;
 import com.oracle.truffle.api.interop.UnknownIdentifierException;
 import com.oracle.truffle.api.interop.UnsupportedMessageException;
-import com.oracle.truffle.api.library.ExportLibrary;
 import com.oracle.truffle.api.nodes.DirectCallNode;
 import com.oracle.truffle.api.nodes.ExecutableNode;
 import com.oracle.truffle.api.nodes.LanguageInfo;
@@ -1922,7 +1921,6 @@ public class InstrumentationTest extends AbstractInstrumentationTest {
     }
 
     @SuppressWarnings("serial")
-    @ExportLibrary(InteropLibrary.class)
     static class TestException extends AbstractTruffleException {
 
         TestException(Node location) {

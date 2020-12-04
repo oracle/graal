@@ -30,14 +30,17 @@
 package com.oracle.truffle.llvm.runtime.debug.value;
 
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
+import com.oracle.truffle.api.interop.InteropLibrary;
 import com.oracle.truffle.api.interop.TruffleObject;
 import com.oracle.truffle.api.interop.UnsupportedMessageException;
+import com.oracle.truffle.api.library.ExportLibrary;
 import com.oracle.truffle.api.library.ExportMessage;
 import com.oracle.truffle.llvm.runtime.debug.LLVMDebuggerValue;
 import com.oracle.truffle.llvm.runtime.pointer.LLVMManagedPointer;
 import com.oracle.truffle.llvm.runtime.types.VectorType;
 import com.oracle.truffle.llvm.runtime.vector.LLVMVector;
 
+@ExportLibrary(InteropLibrary.class)
 public abstract class LLVMDebugManagedValue extends LLVMDebuggerValue {
 
     final Object llvmType;

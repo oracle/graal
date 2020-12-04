@@ -48,14 +48,19 @@ import com.oracle.truffle.llvm.runtime.library.internal.LLVMAsForeignLibrary;
 import com.oracle.truffle.llvm.runtime.library.internal.LLVMNativeLibrary;
 
 @ExportLibrary(value = LLVMNativeLibrary.class, receiverType = LLVMPointerImpl.class)
-@ExportLibrary(value = LLVMAsForeignLibrary.class, receiverType = LLVMPointerImpl.class)
 @ExportLibrary(value = InteropLibrary.class, receiverType = LLVMPointerImpl.class)
+@ExportLibrary(value = LLVMAsForeignLibrary.class, receiverType = LLVMPointerImpl.class)
 @SuppressWarnings("deprecation") // needed because the superclass implements ReferenceLibrary
 abstract class NativePointerLibraries extends CommonPointerLibraries {
 
     @ExportMessage
     static boolean isNull(LLVMPointerImpl receiver) {
         return receiver.isNull();
+    }
+
+    @ExportMessage
+    static boolean isForeign(@SuppressWarnings("unused") LLVMPointerImpl receiver) {
+        return false;
     }
 
     @ExportMessage

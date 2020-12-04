@@ -1284,7 +1284,6 @@ public final class LLVMX86_64VaListStorage implements TruffleObject {
      * index for the input offset and uses the <code>gpIdx</code> and <code>fpIdx</code> arrays to
      * translate <code>reg_save_area</code> index to the real arguments index.
      */
-    @ExportLibrary(LLVMManagedReadLibrary.class)
     @ExportLibrary(NativeTypeLibrary.class)
     public static final class RegSaveArea extends ArgsArea {
 
@@ -1349,7 +1348,6 @@ public final class LLVMX86_64VaListStorage implements TruffleObject {
      * stored in the <code>overflow_area</code>. The <code>offsets</code> array serves to map
      * offsets to the indices of that array.
      */
-    @ExportLibrary(LLVMManagedReadLibrary.class)
     @ExportLibrary(NativeTypeLibrary.class)
     public static final class OverflowArgArea extends ArgsArea implements Cloneable {
         private final long[] offsets;

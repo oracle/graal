@@ -40,14 +40,10 @@
  */
 package org.graalvm.wasm.api;
 
-import com.oracle.truffle.api.CallTarget;
-import com.oracle.truffle.api.CompilerDirectives;
-import com.oracle.truffle.api.TruffleContext;
-import com.oracle.truffle.api.interop.InteropLibrary;
-import com.oracle.truffle.api.interop.InvalidArrayIndexException;
-import com.oracle.truffle.api.interop.UnknownIdentifierException;
-import com.oracle.truffle.api.interop.UnsupportedMessageException;
-import com.oracle.truffle.api.library.ExportLibrary;
+import java.util.HashMap;
+import java.util.Map;
+import java.util.Objects;
+
 import org.graalvm.collections.Pair;
 import org.graalvm.wasm.WasmContext;
 import org.graalvm.wasm.WasmFunction;
@@ -59,11 +55,14 @@ import org.graalvm.wasm.exception.WasmJsApiException;
 import org.graalvm.wasm.exception.WasmJsApiException.Kind;
 import org.graalvm.wasm.memory.WasmMemory;
 
-import java.util.HashMap;
-import java.util.Map;
-import java.util.Objects;
+import com.oracle.truffle.api.CallTarget;
+import com.oracle.truffle.api.CompilerDirectives;
+import com.oracle.truffle.api.TruffleContext;
+import com.oracle.truffle.api.interop.InteropLibrary;
+import com.oracle.truffle.api.interop.InvalidArrayIndexException;
+import com.oracle.truffle.api.interop.UnknownIdentifierException;
+import com.oracle.truffle.api.interop.UnsupportedMessageException;
 
-@ExportLibrary(InteropLibrary.class)
 public class Instance extends Dictionary {
     private final TruffleContext truffleContext;
     private final Module module;
