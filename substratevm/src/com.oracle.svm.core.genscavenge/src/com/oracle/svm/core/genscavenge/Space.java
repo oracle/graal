@@ -111,6 +111,7 @@ final class Space {
         return age > 0 && age <= HeapPolicy.getMaxSurvivorSpaces();
     }
 
+    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
     boolean isOldSpace() {
         return age == (HeapPolicy.getMaxSurvivorSpaces() + 1);
     }
@@ -290,6 +291,7 @@ final class Space {
         trace.string("]").newline();
     }
 
+    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
     void appendAlignedHeapChunk(AlignedHeapChunk.AlignedHeader aChunk) {
         /*
          * This method is used from {@link PosixJavaThreads#detachThread(VMThread)}, so it can not
@@ -298,20 +300,8 @@ final class Space {
         if (SubstrateOptions.MultiThreaded.getValue()) {
             VMThreads.guaranteeOwnsThreadMutex("Trying to append an aligned heap chunk but no mutual exclusion.");
         }
-        Log trace = Log.noopLog().string("[Space.appendAlignedHeapChunk:").newline();
-        if (trace.isEnabled()) {
-            trace.string("  before space: ").string(getName()).string("  first: ").hex(getFirstAlignedHeapChunk()).string("  last: ").hex(getLastAlignedHeapChunk()).newline();
-            trace.string("  before chunk: ").hex(aChunk).string("  .space: ").object(HeapChunk.getSpace(aChunk));
-            trace.string("  .previous: ").hex(HeapChunk.getPrevious(aChunk)).string("  .next: ").hex(HeapChunk.getNext(aChunk)).newline();
-        }
         appendAlignedHeapChunkUninterruptibly(aChunk);
         accounting.noteAlignedHeapChunk(aChunk);
-        if (trace.isEnabled()) {
-            trace.string("  after  space: ").string(getName()).string("  first: ").hex(getFirstAlignedHeapChunk()).string("  last: ").hex(getLastAlignedHeapChunk()).newline();
-            trace.string("  after  chunk: ").hex(aChunk).hex(aChunk).string("  space: ").string(HeapChunk.getSpace(aChunk).getName());
-            trace.string("  .previous: ").hex(HeapChunk.getPrevious(aChunk)).string("  .next: ").hex(HeapChunk.getNext(aChunk)).newline();
-            trace.string("]").newline();
-        }
     }
 
     @Uninterruptible(reason = "Must not interact with garbage collections.")
@@ -354,6 +344,7 @@ final class Space {
         HeapChunk.setSpace(aChunk, null);
     }
 
+    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
     void appendUnalignedHeapChunk(UnalignedHeapChunk.UnalignedHeader uChunk) {
         /*
          * This method is used from {@link PosixJavaThreads#detachThread(VMThread)}, so it can not
@@ -685,6 +676,7 @@ final class SpaceAccounting {
         reportLog.string("unaligned: ").unsigned(unalignedChunkBytes).string("/").unsigned(unalignedCount);
     }
 
+    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
     void noteAlignedHeapChunk(AlignedHeapChunk.AlignedHeader chunk) {
         UnsignedWord size = AlignedHeapChunk.getCommittedObjectMemory(chunk);
         alignedCount += 1;
@@ -697,6 +689,7 @@ final class SpaceAccounting {
         alignedChunkBytes = alignedChunkBytes.subtract(size);
     }
 
+    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
     void noteUnalignedHeapChunk(UnalignedHeapChunk.UnalignedHeader chunk) {
         UnsignedWord size = UnalignedHeapChunk.getCommittedObjectMemory(chunk);
         unalignedCount += 1;

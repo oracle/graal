@@ -122,7 +122,7 @@ final class GenScavengeAllocationSnippets extends SubstrateAllocationSnippets {
 
     @Override
     public Word getTLABInfo() {
-        return (Word) ThreadLocalAllocation.regularTLAB.getAddress();
+        return ThreadLocalAllocation.getTlabAddress();
     }
 
     @Override

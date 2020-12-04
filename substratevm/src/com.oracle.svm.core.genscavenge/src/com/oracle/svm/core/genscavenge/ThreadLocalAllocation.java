@@ -107,7 +107,11 @@ public final class ThreadLocalAllocation {
         void setAllocationEnd(Pointer end, LocationIdentity endIdentity);
     }
 
-    public static final FastThreadLocalBytes<Descriptor> regularTLAB = FastThreadLocalFactory.createBytes(ThreadLocalAllocation::getRegularTLABSize).setMaxOffset(FastThreadLocal.BYTE_OFFSET);
+    /**
+     * Don't read this value directly, use the {@link Uninterruptible} accessor methods instead.
+     * This is necessary to avoid races between the GC and code that accesses or modifies the TLAB.
+     */
+    private static final FastThreadLocalBytes<Descriptor> regularTLAB = FastThreadLocalFactory.createBytes(ThreadLocalAllocation::getRegularTLABSize).setMaxOffset(FastThreadLocal.BYTE_OFFSET);
 
     private ThreadLocalAllocation() {
     }
@@ -120,6 +124,20 @@ public final class ThreadLocalAllocation {
     @Platforms(Platform.HOSTED_ONLY.class)
     private static int getRegularTLABSize() {
         return SizeOf.get(Descriptor.class);
+    }
+
+    public static Word getTlabAddress() {
+        return (Word) regularTLAB.getAddress();
+    }
+
+    @Uninterruptible(reason = "Accesses TLAB", callerMustBe = true)
+    private static Descriptor getTlab(IsolateThread vmThread) {
+        return regularTLAB.getAddress(vmThread);
+    }
+
+    @Uninterruptible(reason = "Accesses TLAB", callerMustBe = true)
+    private static Descriptor getTlab() {
+        return regularTLAB.getAddress();
     }
 
     @SubstrateForeignCallTarget(stubCallingConvention = false)
@@ -213,7 +231,7 @@ public final class ThreadLocalAllocation {
 
     @Uninterruptible(reason = "Holds uninitialized memory, modifies TLAB")
     private static Object allocateLargeArrayInNewTlab(DynamicHub hub, int length, UnsignedWord size, UnalignedHeapChunk.UnalignedHeader newTlabChunk) {
-        ThreadLocalAllocation.Descriptor tlab = ThreadLocalAllocation.regularTLAB.getAddress();
+        ThreadLocalAllocation.Descriptor tlab = getTlab();
 
         HeapChunk.setNext(newTlabChunk, tlab.getUnalignedChunk());
         tlab.setUnalignedChunk(newTlabChunk);
@@ -227,7 +245,7 @@ public final class ThreadLocalAllocation {
 
     @Uninterruptible(reason = "Returns uninitialized memory, modifies TLAB", callerMustBe = true)
     private static Pointer allocateRawMemoryInNewTlab(UnsignedWord size, AlignedHeader newTlabChunk) {
-        ThreadLocalAllocation.Descriptor tlab = ThreadLocalAllocation.regularTLAB.getAddress();
+        ThreadLocalAllocation.Descriptor tlab = getTlab();
         assert DeoptTester.enabled() || availableTlabMemory(tlab).belowThan(size) : "Slowpath allocation was used even though TLAB had sufficient space";
 
         retireCurrentAllocationChunk(tlab);
@@ -268,8 +286,9 @@ public final class ThreadLocalAllocation {
         }
     }
 
+    @Uninterruptible(reason = "Accesses TLAB")
     static void disableAndFlushForThread(IsolateThread vmThread) {
-        retireToSpace(regularTLAB.getAddress(vmThread), HeapImpl.getHeapImpl().getYoungGeneration().getEden());
+        retireToSpace(getTlab(vmThread), HeapImpl.getHeapImpl().getYoungGeneration().getEden());
     }
 
     @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
@@ -280,7 +299,7 @@ public final class ThreadLocalAllocation {
             thread = VMThreads.firstThreadUnsafe();
             VMError.guarantee(VMThreads.nextThread(thread).isNull(), "Other isolate threads are still active");
         }
-        freeHeapChunks(regularTLAB.getAddress(thread));
+        freeHeapChunks(getTlab(thread));
     }
 
     @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
@@ -289,23 +308,19 @@ public final class ThreadLocalAllocation {
         HeapChunkProvider.freeUnalignedChunkList(tlab.getUnalignedChunk());
     }
 
+    @Uninterruptible(reason = "Accesses TLAB")
     static void suspendInCurrentThread() {
-        retireCurrentAllocationChunk(regularTLAB.getAddress());
+        retireCurrentAllocationChunk(getTlab());
     }
 
+    @Uninterruptible(reason = "Accesses TLAB")
     static void resumeInCurrentThread() {
-        resumeAllocationInCurrentChunk(regularTLAB.getAddress());
+        resumeAllocationInCurrentChunk(getTlab());
     }
 
-    /**
-     * On the first glance, this method looks awfully dangerous as the TLAB descriptor is accessed
-     * outside of uninterruptible code. However, this is fine as we always hold the thread mutex
-     * (which prevents GCs from happening) when executing this method. Furthermore, all code that
-     * executes this method ignores safepoints.
-     */
+    @Uninterruptible(reason = "Accesses TLAB")
     static void retireToSpace(Descriptor tlab, Space space) {
-        VMThreads.guaranteeOwnsThreadMutex("Otherwise, we wouldn't be allowed to access the TLAB.");
-        assert VMOperation.isGCInProgress() || VMThreads.StatusSupport.isStatusIgnoreSafepoints() : "must ignore safepoints";
+        VMThreads.guaranteeOwnsThreadMutex("Otherwise, we wouldn't be allowed to access the space.");
         assert !space.isOldSpace() : "must not be moved to the old gen - otherwise a remembered set would have to be constructed";
 
         retireCurrentAllocationChunk(tlab);

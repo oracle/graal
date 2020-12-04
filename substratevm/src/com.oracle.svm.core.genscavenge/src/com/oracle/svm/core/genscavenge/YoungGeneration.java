@@ -106,6 +106,7 @@ final class YoungGeneration extends Generation {
         return log;
     }
 
+    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
     Space getEden() {
         return eden;
     }
