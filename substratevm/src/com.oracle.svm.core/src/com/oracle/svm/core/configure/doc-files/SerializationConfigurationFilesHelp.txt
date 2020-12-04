@@ -1,6 +1,6 @@
 One or several (comma-separated) paths to JSON files that specify lists of serialization configurations.
 The structure is an array of elements specifying the target serialization/deserialization class name and a checksum automatically calculated from its class contents and hierarchy by native-image-agent.
-The checksum is used to verify the serialization target class is consistency at configuration collecting time, image build time and image run time.
+The checksum is used to verify the serialization target class is consistent at configuration collecting time, image build time and image run time.
 Checksum is optional, there will be no verification when the checksum is absent.
 
 Example:
