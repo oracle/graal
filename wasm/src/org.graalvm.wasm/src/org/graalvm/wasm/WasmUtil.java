@@ -46,4 +46,11 @@ public class WasmUtil {
         // See https://stackoverflow.com/a/22938125.
         return n & 0xFFFFFFFFL;
     }
+
+    public static String[] prepend(String[] xs, String x) {
+        final String[] result = new String[xs.length + 1];
+        result[0] = x;
+        System.arraycopy(xs, 0, result, 1, xs.length);
+        return result;
+    }
 }
