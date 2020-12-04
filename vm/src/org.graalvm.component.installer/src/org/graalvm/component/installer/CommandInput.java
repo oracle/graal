@@ -26,7 +26,9 @@ package org.graalvm.component.installer;
 
 import org.graalvm.component.installer.model.ComponentRegistry;
 import java.nio.file.Path;
+import java.util.List;
 import java.util.Map;
+import org.graalvm.component.installer.model.GraalEdition;
 
 /**
  * Provides access to command line parameters and useful variables.
@@ -141,5 +143,11 @@ public interface CommandInput {
          * @return ComponentCatalog usable with target installation
          */
         ComponentCatalog createComponentCatalog(CommandInput input, ComponentRegistry targetGraalVM);
+        
+        /**
+         * Lists GraalVM editions defined for the installation.
+         * @return graalvm editions.
+         */
+        List<GraalEdition> listEditions(ComponentRegistry targetGraalVM);
     }
 }

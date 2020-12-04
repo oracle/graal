@@ -123,7 +123,7 @@ public class ListInstalledCommand extends QueryCommandBase {
 
     protected List<ComponentInfo> filterDisplayedVersions(@SuppressWarnings("unused") String id, Collection<ComponentInfo> infos) {
         List<ComponentInfo> ordered = new ArrayList<>(infos);
-        Collections.sort(ordered, ComponentInfo.versionComparator());
+        Collections.sort(ordered, ComponentInfo.reverseVersionComparator(input.getLocalRegistry().getManagementStorage()));
         return ordered;
     }
 
@@ -138,7 +138,7 @@ public class ListInstalledCommand extends QueryCommandBase {
         Version.Match versionFilter = getVersionFilter();
         for (String id : ids) {
             try {
-                Collection<ComponentInfo> infos = catalog.loadComponents(id, versionFilter, listFiles);
+                List<ComponentInfo> infos = new ArrayList<>(catalog.loadComponents(id, versionFilter, listFiles));
                 if (infos != null) {
                     for (ComponentInfo ci : filterDisplayedVersions(id, infos)) {
                         addComponent(null, ci);

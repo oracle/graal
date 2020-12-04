@@ -317,7 +317,7 @@ public final class CatalogContents implements ComponentCatalog {
                         it.remove();
                     }
                 }
-                Collections.sort(versions, ComponentInfo.versionComparator());
+                Collections.sort(versions, ComponentInfo.versionComparator(installed.getManagementStorage()));
                 if (filelist) {
                     for (ComponentInfo ci : infos) {
                         storage.loadComponentFiles(ci);

@@ -28,12 +28,15 @@ import java.io.IOException;
 import java.net.URL;
 import java.net.URLConnection;
 import java.nio.file.Path;
+import java.util.Collections;
 import java.util.List;
 import java.util.Set;
+import org.graalvm.component.installer.CommandInput;
 import org.graalvm.component.installer.remote.CatalogIterable;
 import org.graalvm.component.installer.CommandTestBase;
 import org.graalvm.component.installer.Commands;
 import org.graalvm.component.installer.CommonConstants;
+import org.graalvm.component.installer.ComponentCatalog;
 import org.graalvm.component.installer.ComponentParam;
 import org.graalvm.component.installer.DependencyException;
 import org.graalvm.component.installer.FailedOperationException;
@@ -42,6 +45,8 @@ import org.graalvm.component.installer.IncompatibleException;
 import org.graalvm.component.installer.SoftwareChannelSource;
 import org.graalvm.component.installer.model.CatalogContents;
 import org.graalvm.component.installer.model.ComponentInfo;
+import org.graalvm.component.installer.model.ComponentRegistry;
+import org.graalvm.component.installer.model.GraalEdition;
 import org.graalvm.component.installer.persist.ProxyResource;
 import org.graalvm.component.installer.remote.RemoteCatalogDownloader;
 import org.graalvm.component.installer.persist.test.Handler;
@@ -468,7 +473,17 @@ public class CatalogInstallTest extends CommandTestBase {
         downloader = new RemoteCatalogDownloader(this, this, (URL) null);
         downloader.addLocalChannelSource(
                         new SoftwareChannelSource(ruby193Source.getParent().toFile().toURI().toString()));
-        catalogFactory = (input, reg) -> new CatalogContents(this, downloader.getStorage(), reg);
+        catalogFactory = new CatalogFactory() {
+            @Override
+            public ComponentCatalog createComponentCatalog(CommandInput input, ComponentRegistry reg) {
+                return new CatalogContents(CatalogInstallTest.this, downloader.getStorage(), reg);
+            }
+
+            @Override
+            public List<GraalEdition> listEditions(ComponentRegistry targetGraalVM) {
+                return Collections.emptyList();
+            }
+        };
         FileIterable fit = new FileIterable(this, this);
         fit.setCatalogFactory(catalogFactory);
         paramIterable = fit;
