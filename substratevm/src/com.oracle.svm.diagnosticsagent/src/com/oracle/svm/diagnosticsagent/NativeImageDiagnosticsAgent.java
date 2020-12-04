@@ -40,13 +40,10 @@ import org.graalvm.nativeimage.c.function.CEntryPoint;
 import org.graalvm.nativeimage.c.function.CEntryPointLiteral;
 import org.graalvm.nativeimage.c.function.CFunctionPointer;
 import org.graalvm.nativeimage.c.struct.SizeOf;
-import org.graalvm.nativeimage.c.type.CCharPointer;
-import org.graalvm.nativeimage.c.type.CCharPointerPointer;
 import org.graalvm.nativeimage.c.type.CIntPointer;
 import org.graalvm.nativeimage.c.type.CTypeConversion;
 import org.graalvm.nativeimage.c.type.WordPointer;
 import org.graalvm.nativeimage.hosted.Feature;
-import org.graalvm.word.Pointer;
 import org.graalvm.word.WordFactory;
 
 import com.oracle.svm.core.c.function.CEntryPointOptions;
@@ -63,13 +60,10 @@ import com.oracle.svm.jvmtiagentbase.Support;
 import com.oracle.svm.jvmtiagentbase.jvmti.JvmtiCapabilities;
 import com.oracle.svm.jvmtiagentbase.jvmti.JvmtiEnv;
 import com.oracle.svm.jvmtiagentbase.jvmti.JvmtiEnv11;
-import com.oracle.svm.jvmtiagentbase.jvmti.JvmtiError;
 import com.oracle.svm.jvmtiagentbase.jvmti.JvmtiEvent;
 import com.oracle.svm.jvmtiagentbase.jvmti.JvmtiEventCallbacks;
 import com.oracle.svm.jvmtiagentbase.jvmti.JvmtiEventMode;
-import com.oracle.svm.jvmtiagentbase.jvmti.JvmtiFrameInfo;
 import com.oracle.svm.jvmtiagentbase.jvmti.JvmtiInterface;
-import com.oracle.svm.jvmtiagentbase.jvmti.JvmtiLineNumberEntry;
 
 /**
  * JVMTI agent that provides diagnostics information that helps resolve native-image build failures.
@@ -102,8 +96,6 @@ public class NativeImageDiagnosticsAgent extends JvmtiAgentBase<NativeImageDiagn
     private final Map<Long, ClassHandleHolder> initClassMap = new ConcurrentHashMap<>();
 
     private TracingAdvisor advisor;
-
-    private static final long LINE_NUMBER_UNAVAILABLE = -1;
 
     /*
      * We cannot store a JNIObjectHandle directly in a map so we store it in a wrapper class.
@@ -227,7 +219,8 @@ public class NativeImageDiagnosticsAgent extends JvmtiAgentBase<NativeImageDiagn
 
     private void handleClinitBreakpoint(JvmtiEnv jvmti, JNIEnvironment jni, JNIMethodId method) {
         JNIObjectHandle clazz = clinitClassMap.get(method.rawValue()).clazz;
-        JNIObjectHandle threadStackTrace = getCurrentThreadStackTrace(jvmti, jni);
+        JavaStackTraceCreator stackTraceCreator = new JavaStackTraceCreator(jvmti, jni);
+        JNIObjectHandle threadStackTrace = stackTraceCreator.getStackTraceArray();
         reportClassInitialized(jni, clazz, threadStackTrace);
     }
 
@@ -235,8 +228,11 @@ public class NativeImageDiagnosticsAgent extends JvmtiAgentBase<NativeImageDiagn
         WordPointer thisPtr = StackValue.get(WordPointer.class);
         check(jvmti.getFunctions().GetLocalInstance().invoke(jvmti, thread, 0, thisPtr));
         JNIObjectHandle thisHandle = thisPtr.read();
-        JNIObjectHandle threadStackTrace = getCurrentThreadStackTrace(jvmti, jni);
-        reportObjectInstantiated(jni, thisHandle, threadStackTrace);
+        ObjectInstantiationTraceCreator stackTraceCreator = new ObjectInstantiationTraceCreator(jvmti, jni);
+        JNIObjectHandle threadStackTrace = stackTraceCreator.getStackTraceArray();
+        if (!stackTraceCreator.encounteredObjectInstantiatedReportCall()) {
+            reportObjectInstantiated(jni, thisHandle, threadStackTrace);
+        }
     }
 
     private static void enableCapabilities(JvmtiEnv jvmti) {
@@ -325,92 +321,6 @@ public class NativeImageDiagnosticsAgent extends JvmtiAgentBase<NativeImageDiagn
         List<MethodIdHolder> classMethodIdsWithName = getClassMethodIdsWithName(jvmti, clazz, "<clinit>");
         VMError.guarantee(classMethodIdsWithName.size() < 2);
         return classMethodIdsWithName.size() == 1 ? classMethodIdsWithName.get(0).methodId : WordFactory.nullPointer();
-    }
-
-    private static int getCurrentThreadStackFrameCount(JvmtiEnv jvmti) {
-        CIntPointer countPointer = StackValue.get(CIntPointer.class);
-        check(jvmti.getFunctions().GetFrameCount().invoke(jvmti, nullHandle(), countPointer));
-        return countPointer.read();
-    }
-
-    private static long getFrameSourceLineNumber(JvmtiEnv jvmti, JvmtiFrameInfo frameInfo) {
-        CIntPointer entryCountPointer = StackValue.get(CIntPointer.class);
-        WordPointer lineEntryTablePointer = StackValue.get(WordPointer.class);
-        JvmtiError errorCode = jvmti.getFunctions().GetLineNumberTable().invoke(jvmti, frameInfo.getMethod(), entryCountPointer, lineEntryTablePointer);
-        if (errorCode == JvmtiError.JVMTI_ERROR_MUST_POSSESS_CAPABILITY || errorCode == JvmtiError.JVMTI_ERROR_ABSENT_INFORMATION) {
-            return LINE_NUMBER_UNAVAILABLE;
-        }
-        check(errorCode);
-
-        int entryCount = entryCountPointer.read();
-        Pointer lineEntryTable = lineEntryTablePointer.read();
-        VMError.guarantee(lineEntryTable.isNonNull());
-        long previousLineNumber = LINE_NUMBER_UNAVAILABLE;
-        for (int i = 0; i < entryCount; ++i) {
-            JvmtiLineNumberEntry entry = (JvmtiLineNumberEntry) lineEntryTable.add(i * SizeOf.get(JvmtiLineNumberEntry.class));
-            if (entry.getStartLocation() > frameInfo.getLocation()) {
-                break;
-            }
-            previousLineNumber = entry.getLineNumber();
-        }
-
-        jvmti.getFunctions().Deallocate().invoke(jvmti, lineEntryTable);
-        return previousLineNumber;
-    }
-
-    private static JNIObjectHandle getSourceFileName(JvmtiEnv jvmti, JNIEnvironment jni, JNIObjectHandle clazz) {
-        CCharPointerPointer sourceFileNamePointer = StackValue.get(CCharPointerPointer.class);
-        JvmtiError errorCode = jvmti.getFunctions().GetSourceFileName().invoke(jvmti, clazz, sourceFileNamePointer);
-        if (errorCode == JvmtiError.JVMTI_ERROR_NONE) {
-            String sourceFileName = Support.fromCString(sourceFileNamePointer.read());
-            JNIObjectHandle sourceFileNameHandle = Support.toJniString(jni, sourceFileName);
-            jvmti.getFunctions().Deallocate().invoke(jvmti, sourceFileNamePointer.read());
-            return sourceFileNameHandle;
-        } else {
-            return nullHandle();
-        }
-    }
-
-    private JNIObjectHandle getFrameStackTraceInfo(JvmtiEnv jvmti, JNIEnvironment jni, JvmtiFrameInfo frameInfo) {
-        JNIObjectHandle declaringClass = Support.getMethodDeclaringClass(frameInfo.getMethod());
-
-        String methodName = Support.getMethodNameOr(frameInfo.getMethod(), "");
-        String className = Support.getClassNameOrNull(jni, declaringClass);
-
-        JNIObjectHandle methodNameHandle = Support.toJniString(jni, methodName);
-        JNIObjectHandle classNameHandle = Support.toJniString(jni, className);
-
-        CCharPointer isNativePtr = StackValue.get(CCharPointer.class);
-
-        JNIObjectHandle fileName = nullHandle();
-        long lineNumber = LINE_NUMBER_UNAVAILABLE;
-        JvmtiError errorCode = jvmti.getFunctions().IsMethodNative().invoke(jvmti, frameInfo.getMethod(), isNativePtr);
-        if (errorCode == JvmtiError.JVMTI_ERROR_NONE && isNativePtr.read() == 0) {
-            fileName = getSourceFileName(jvmti, jni, declaringClass);
-            lineNumber = getFrameSourceLineNumber(jvmti, frameInfo);
-        }
-        return Support.newObjectLLLJ(jni, handles().javaLangStackTraceElement, handles().javaLangStackTraceElementCtor4, classNameHandle, methodNameHandle, fileName, lineNumber);
-    }
-
-    private JNIObjectHandle getCurrentThreadStackTrace(JvmtiEnv jvmti, JNIEnvironment jni) {
-        int threadStackFrameCount = getCurrentThreadStackFrameCount(jvmti);
-        int frameInfoSize = SizeOf.get(JvmtiFrameInfo.class);
-        Pointer stackFramesPtr = UnmanagedMemory.malloc(frameInfoSize * threadStackFrameCount);
-        CIntPointer readStackFramesPtr = StackValue.get(CIntPointer.class);
-        check(jvmti.getFunctions().GetStackTrace().invoke(jvmti, nullHandle(), 0, threadStackFrameCount, (WordPointer) stackFramesPtr, readStackFramesPtr));
-        VMError.guarantee(readStackFramesPtr.read() == threadStackFrameCount);
-
-        NativeImageDiagnosticsAgent agent = singleton();
-        JNIObjectHandle stackTrace = jni.getFunctions().getNewObjectArray().invoke(jni, threadStackFrameCount, agent.handles().javaLangStackTraceElement, nullHandle());
-
-        for (int i = 0; i < threadStackFrameCount; ++i) {
-            JvmtiFrameInfo frameInfo = (JvmtiFrameInfo) stackFramesPtr.add(i * frameInfoSize);
-            JNIObjectHandle stackTraceElementHandle = getFrameStackTraceInfo(jvmti, jni, frameInfo);
-            jni.getFunctions().getSetObjectArrayElement().invoke(jni, stackTrace, i, stackTraceElementHandle);
-        }
-
-        UnmanagedMemory.free(stackFramesPtr);
-        return stackTrace;
     }
 
     private void reportClassInitialized(JNIEnvironment jni, JNIObjectHandle clazz, JNIObjectHandle stackTrace) {
