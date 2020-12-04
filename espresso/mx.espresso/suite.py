@@ -110,6 +110,17 @@ suite = {
             "checkstyle": "com.oracle.truffle.espresso",
         },
 
+        "com.oracle.truffle.espresso.staticobject.test": {
+            "subDir" : "src",
+            "sourceDirs" : ["src"],
+            "dependencies" : [
+                "com.oracle.truffle.espresso.staticobject",
+                "mx:JUNIT"
+            ],
+            "javaCompliance": "1.8+",
+            "checkstyle": "com.oracle.truffle.espresso",
+        },
+
         "com.oracle.truffle.espresso.processor": {
             "subDir": "src",
             "sourceDirs": ["src"],
@@ -275,6 +286,19 @@ suite = {
                 "org.graalvm.language.java.home": "<path:ESPRESSO_SUPPORT>",
                 "polyglot.java.JVMLibraryPath": "<path:ESPRESSO_JVM_SUPPORT>/truffle",
             },
+        },
+
+        "ESPRESSO_TESTS": {
+            "subDir": "src",
+            "dependencies": [
+                "com.oracle.truffle.espresso.staticobject.test",
+            ],
+            "distDependencies": [
+                "espresso:ESPRESSO",
+            ],
+            "exclude": [
+                "mx:JUNIT",
+            ],
         },
 
         "ESPRESSO_LAUNCHER": {
