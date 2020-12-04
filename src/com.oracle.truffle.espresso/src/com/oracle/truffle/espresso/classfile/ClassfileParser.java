@@ -123,8 +123,8 @@ public final class ClassfileParser {
     private static final DebugTimer SIGNATURE_CHECK = DebugTimer.create("signature check", METHOD_INIT);
 
     private static final DebugTimer CODE_PARSE = DebugTimer.create("code parsing", PARSE_SINGLE_METHOD);
-    private static final DebugTimer CODE_READ = DebugTimer.create("code parsing", CODE_PARSE);
-    private static final DebugTimer EXCEPTION_HANDLERS = DebugTimer.create("code parsing", CODE_PARSE);
+    private static final DebugTimer CODE_READ = DebugTimer.create("code read", CODE_PARSE);
+    private static final DebugTimer EXCEPTION_HANDLERS = DebugTimer.create("exception handlers", CODE_PARSE);
 
     public static final int MAGIC = 0xCAFEBABE;
 

@@ -37,15 +37,11 @@ import com.oracle.truffle.espresso.impl.Klass;
 import com.oracle.truffle.espresso.meta.EspressoError;
 
 public abstract class VerificationTypeInfo {
-    private int tag;
 
-    VerificationTypeInfo(int tag) {
-        this.tag = tag;
+    VerificationTypeInfo() {
     }
 
-    public int getTag() {
-        return tag;
-    }
+    public abstract int getTag();
 
     public int getNewOffset() {
         throw EspressoError.shouldNotReachHere("Asking for new offset of non Uninitialized variable verification_type_info");
@@ -89,8 +85,15 @@ final class PrimitiveTypeInfo extends VerificationTypeInfo {
     private static final PrimitiveTypeInfo Long = new PrimitiveTypeInfo(ITEM_Long);
     private static final PrimitiveTypeInfo Null = new PrimitiveTypeInfo(ITEM_Null);
 
+    private final int tag;
+
     private PrimitiveTypeInfo(int tag) {
-        super(tag);
+        this.tag = tag;
+    }
+
+    @Override
+    public int getTag() {
+        return tag;
     }
 
     static VerificationTypeInfo get(int tag) {
@@ -117,7 +120,11 @@ final class UninitializedThis extends VerificationTypeInfo {
     private static final UninitializedThis UNINITIALIZED_THIS = new UninitializedThis();
 
     private UninitializedThis() {
-        super(ITEM_InitObject);
+    }
+
+    @Override
+    public int getTag() {
+        return ITEM_InitObject;
     }
 
     static VerificationTypeInfo get() {
@@ -134,8 +141,12 @@ final class UninitializedVariable extends VerificationTypeInfo {
     private final int newOffset;
 
     UninitializedVariable(int newOffset) {
-        super(ITEM_NewObject);
         this.newOffset = newOffset;
+    }
+
+    @Override
+    public int getTag() {
+        return ITEM_NewObject;
     }
 
     @Override
@@ -150,11 +161,16 @@ final class UninitializedVariable extends VerificationTypeInfo {
 }
 
 final class ReferenceVariable extends VerificationTypeInfo {
+
     private final int constantPoolOffset;
 
     ReferenceVariable(int constantPoolOffset) {
-        super(ITEM_Object);
         this.constantPoolOffset = constantPoolOffset;
+    }
+
+    @Override
+    public int getTag() {
+        return ITEM_Object;
     }
 
     @Override
