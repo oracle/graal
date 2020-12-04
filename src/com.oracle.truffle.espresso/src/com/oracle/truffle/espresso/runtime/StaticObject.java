@@ -953,21 +953,14 @@ public final class StaticObject implements TruffleObject {
     }
 
     @ExportMessage
-    boolean isMemberInvocable(String member) {
+    boolean isMemberInvocable(String member,
+                    @Cached.Exclusive @Cached LookupVirtualMethodNode lookupMethod) {
         checkNotForeign();
         if (isNull(this)) {
             return false;
         }
         ObjectKlass k = getInteropKlass();
-
-        for (Method m : k.getVTable()) {
-            if (LookupVirtualMethodNode.isCanditate(m)) {
-                if (m.getNameAsString().equals(member)) {
-                    return true;
-                }
-            }
-        }
-        return false;
+        return lookupMethod.isInvocable(k, member);
     }
 
     @ExportMessage
@@ -978,7 +971,9 @@ public final class StaticObject implements TruffleObject {
                     throws ArityException, UnknownIdentifierException, UnsupportedTypeException {
         Method method = lookupMethod.execute(getKlass(), member, arguments.length);
         if (method != null) {
-            assert !method.isStatic() && method.isPublic() && member.equals(method.getName().toString()) && method.getParameterCount() == arguments.length;
+            assert !method.isStatic() && method.isPublic();
+            assert member.startsWith(method.getNameAsString());
+            assert method.getParameterCount() == arguments.length;
             return invoke.execute(method, this, arguments);
         }
         throw UnknownIdentifierException.create(member);

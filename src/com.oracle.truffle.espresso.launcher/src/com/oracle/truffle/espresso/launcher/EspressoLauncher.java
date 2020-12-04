@@ -450,7 +450,7 @@ public class EspressoLauncher extends AbstractLanguageLauncher {
                 Value mainKlass = launcherHelper //
                                 .invokeMember("checkAndLoadMain", true, launchMode.ordinal(), mainClassName) //
                                 .getMember("static");
-                mainKlass.invokeMember("main:([Ljava/lang/String;)V", (Object) mainClassArgs.toArray(new String[0]));
+                mainKlass.invokeMember("main/([Ljava/lang/String;)V", (Object) mainClassArgs.toArray(new String[0]));
                 if (pauseOnExit) {
                     getError().print("Press any key to continue...");
                     try {
