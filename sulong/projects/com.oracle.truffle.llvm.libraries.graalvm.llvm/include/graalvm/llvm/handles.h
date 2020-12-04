@@ -49,7 +49,7 @@ extern "C" {
 /**
  * Create a handle to a managed object.
  *
- * Normally, pointers to managed objects can not be stored in native memory. A handle is a special
+ * Normally, pointers to managed objects cannot be stored in native memory. A handle is a special
  * kind of pointer that can be stored in native memory, and that can be resolved back to the
  * managed object using {@link resolve_handle}.
  *
@@ -85,7 +85,7 @@ static void release_handle(void *nativeHandle);
  * can dereference the handle directly without using {@link resolve_handle}.
  *
  * It is possible to pass deref handles down to native code running outside of the GraalVM LLVM
- * runtime, but note that the native code can not dereference these handles directly. Passing them
+ * runtime, but note that the native code cannot dereference these handles directly. Passing them
  * back to the GraalVM LLVM runtime will work though.
  *
  * Using this function comes with a slight performance penalty also for code that does not deal with

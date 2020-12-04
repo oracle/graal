@@ -129,7 +129,7 @@ abstract class LLVMInteropAccessNode extends LLVMNode {
                 throw new LLVMPolyglotException(this, "Member '%s' not found", identifier);
             } catch (UnsupportedMessageException ex) {
                 CompilerDirectives.transferToInterpreter();
-                throw new LLVMPolyglotException(this, "Can not read member '%s'", identifier);
+                throw new LLVMPolyglotException(this, "Cannot read member '%s'", identifier);
             }
 
             return recursive.execute(type, inner, restOffset);
