@@ -29,10 +29,13 @@ import java.net.URL;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.Arrays;
+import java.util.Collections;
 import java.util.List;
 import org.graalvm.component.installer.BundleConstants;
+import org.graalvm.component.installer.CommandInput;
 import org.graalvm.component.installer.CommandTestBase;
 import org.graalvm.component.installer.Commands;
+import org.graalvm.component.installer.ComponentCatalog;
 import org.graalvm.component.installer.ComponentParam;
 import org.graalvm.component.installer.FailedOperationException;
 import org.graalvm.component.installer.UnknownVersionException;
@@ -40,6 +43,7 @@ import org.graalvm.component.installer.Version;
 import org.graalvm.component.installer.model.CatalogContents;
 import org.graalvm.component.installer.model.ComponentInfo;
 import org.graalvm.component.installer.model.ComponentRegistry;
+import org.graalvm.component.installer.model.GraalEdition;
 import org.graalvm.component.installer.persist.MetadataLoader;
 import org.graalvm.component.installer.persist.ProxyResource;
 import org.graalvm.component.installer.persist.test.Handler;
@@ -611,10 +615,18 @@ public class UpgradeTest extends CommandTestBase {
         boolean installed = cmd.getProcess().installGraalCore(graalInfo);
         assertTrue(installed);
 
-        factory = (in, reg) -> {
-            RemoteCatalogDownloader dnl = new RemoteCatalogDownloader(in, this, downloader.getOverrideCatalogSpec());
-            // carry over the override spec
-            return new CatalogContents(this, dnl.getStorage(), reg);
+        factory = new CatalogFactory() {
+            @Override
+            public ComponentCatalog createComponentCatalog(CommandInput in, ComponentRegistry reg) {
+                RemoteCatalogDownloader dnl = new RemoteCatalogDownloader(in, UpgradeTest.this, downloader.getOverrideCatalogSpec());
+                // carry over the override spec
+                return new CatalogContents(UpgradeTest.this, dnl.getStorage(), reg);
+            }
+
+            @Override
+            public List<GraalEdition> listEditions(ComponentRegistry targetGraalVM) {
+                return Collections.emptyList();
+            }
         };
 
         InstallTrampoline targetInstall = new InstallTrampoline();
@@ -657,11 +669,17 @@ public class UpgradeTest extends CommandTestBase {
         ComponentInfo graalInfo = cmd.configureProcess();
         boolean installed = cmd.getProcess().installGraalCore(graalInfo);
         assertTrue(installed);
-        factory = (in, reg) -> {
-            // creating a downloader WITHOUT explicit catalog value - will be read from the
-            // installation.
-            RemoteCatalogDownloader dnl = new RemoteCatalogDownloader(in, this, (String) null);
-            return new CatalogContents(this, dnl.getStorage(), reg);
+        factory = new CatalogFactory() {
+            @Override
+            public ComponentCatalog createComponentCatalog(CommandInput in, ComponentRegistry reg) {
+                RemoteCatalogDownloader dnl = new RemoteCatalogDownloader(in, UpgradeTest.this, (String) null);
+                return new CatalogContents(UpgradeTest.this, dnl.getStorage(), reg);
+            }
+
+            @Override
+            public List<GraalEdition> listEditions(ComponentRegistry targetGraalVM) {
+                return Collections.emptyList();
+            }
         };
         InstallTrampoline targetInstall = new InstallTrampoline();
         cmd.getProcess().configureInstallCommand(targetInstall);

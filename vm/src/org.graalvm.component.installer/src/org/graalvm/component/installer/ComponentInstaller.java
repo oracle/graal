@@ -76,6 +76,7 @@ import org.graalvm.component.installer.commands.UninstallCommand;
 import org.graalvm.component.installer.commands.UpgradeCommand;
 import org.graalvm.component.installer.model.CatalogContents;
 import org.graalvm.component.installer.model.ComponentRegistry;
+import org.graalvm.component.installer.model.GraalEdition;
 import org.graalvm.component.installer.os.WindowsJVMWrapper;
 import org.graalvm.component.installer.persist.DirectoryStorage;
 import org.graalvm.component.installer.remote.CatalogIterable;
@@ -379,17 +380,25 @@ public class ComponentInstaller extends Launcher {
             builtinCatLocation = feedback.l10n("Installer_BuiltingCatalogURL");
         }
         downloader.setDefaultCatalog(builtinCatLocation); // NOI18N
-        CatalogFactory cFactory = (CommandInput in, ComponentRegistry lreg) -> {
-            RemoteCatalogDownloader nDownloader;
-            if (lreg == in.getLocalRegistry()) {
-                nDownloader = downloader;
-            } else {
-                nDownloader = new RemoteCatalogDownloader(in, env,
-                                downloader.getOverrideCatalogSpec());
+        CatalogFactory cFactory = new CatalogFactory() {
+            @Override
+            public ComponentCatalog createComponentCatalog(CommandInput in, ComponentRegistry lreg) {
+                RemoteCatalogDownloader nDownloader;
+                if (lreg == in.getLocalRegistry()) {
+                    nDownloader = downloader;
+                } else {
+                    nDownloader = new RemoteCatalogDownloader(in, env,
+                                    downloader.getOverrideCatalogSpec());
+                }
+                CatalogContents col = new CatalogContents(env, nDownloader.getStorage(), lreg);
+                col.setRemoteEnabled(downloader.isRemoteSourcesAllowed());
+                return col;
             }
-            CatalogContents col = new CatalogContents(env, nDownloader.getStorage(), lreg);
-            col.setRemoteEnabled(downloader.isRemoteSourcesAllowed());
-            return col;
+
+            @Override
+            public List<GraalEdition> listEditions(ComponentRegistry targetGraalVM) {
+                return Collections.emptyList();
+            }
         };
         env.setCatalogFactory(cFactory);
         boolean builtinsImplied = true;
@@ -410,6 +419,7 @@ public class ComponentInstaller extends Launcher {
                         Path parent = p.getParent();
                         if (parent != null && Files.isDirectory(parent)) {
                             SoftwareChannelSource localSource = new SoftwareChannelSource(parent.toUri().toString(), null);
+                            localSource.setPriority(10000);
                             downloader.addLocalChannelSource(localSource);
                         }
                     }

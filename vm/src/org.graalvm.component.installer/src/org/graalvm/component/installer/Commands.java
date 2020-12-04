@@ -225,4 +225,10 @@ public interface Commands {
      */
     String OPTION_IGNORE_CATALOG_ERRORS = "E";
     String LONG_OPTION_IGNORE_CATALOG_ERRORS = "no-catalog-errors";
+
+    /**
+     * Use specific edition.
+     */
+    String OPTION_USE_EDITION = "$";
+    String LONG_OPTION_USE_EDITION = "edition";
 }
