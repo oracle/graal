@@ -161,13 +161,9 @@ public final class NFIContextExtension extends NativeContextExtension {
         Object wrapper = null;
 
         try {
-            String signature = getNativeSignature(function.getType(), 0);
-            Object createNativeWrapper = getNativeFunction("createNativeWrapper", String.format("(env, %s):object", signature));
-            try {
-                wrapper = INTEROP.execute(createNativeWrapper, new LLVMNativeWrapper(function, code));
-            } catch (InteropException ex) {
-                throw new AssertionError(ex);
-            }
+            Source signatureSource = getNativeSignatureSource(function.getType(), 0);
+            Object signature = getCachedSignature(signatureSource);
+            wrapper = SignatureLibrary.getUncached().createClosure(signature, new LLVMNativeWrapper(function, code));
         } catch (UnsupportedNativeTypeException ex) {
             // ignore, fall back to tagged id
         }
