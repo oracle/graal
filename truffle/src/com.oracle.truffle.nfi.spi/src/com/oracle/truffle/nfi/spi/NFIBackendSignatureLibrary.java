@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2017, 2019, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2020, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -38,11 +38,35 @@
  * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
  * SOFTWARE.
  */
-package com.oracle.truffle.nfi.spi.types;
+package com.oracle.truffle.nfi.spi;
 
-final class NativeEnvTypeMirror extends NativeTypeMirror {
+import com.oracle.truffle.api.interop.ArityException;
+import com.oracle.truffle.api.interop.InteropLibrary;
+import com.oracle.truffle.api.interop.UnsupportedMessageException;
+import com.oracle.truffle.api.interop.UnsupportedTypeException;
+import com.oracle.truffle.api.library.GenerateLibrary;
+import com.oracle.truffle.api.library.Library;
+import com.oracle.truffle.nfi.spi.types.NativeSimpleType;
 
-    NativeEnvTypeMirror() {
-        super(Kind.ENV);
-    }
+/**
+ * Library that specifies the protocol between the Truffle NFI and its backend implementations.
+ */
+@GenerateLibrary
+@SuppressWarnings("unused")
+public abstract class NFIBackendSignatureLibrary extends Library {
+
+    /**
+     * Call a native function with this signature.
+     */
+    public abstract Object call(Object signature, Object functionPointer, Object... args) throws ArityException, UnsupportedTypeException, UnsupportedMessageException;
+
+    /**
+     * Create a function pointer closure that calls back into an executable object.
+     *
+     * This message must return something that's compatible with {@link NativeSimpleType#POINTER}.
+     * The returned pointer should be a function pointer. Calling that function pointer sends the
+     * {@link InteropLibrary#execute} message to the executable object. The returned object should
+     * not be executable.
+     */
+    public abstract Object createClosure(Object signature, Object executable);
 }

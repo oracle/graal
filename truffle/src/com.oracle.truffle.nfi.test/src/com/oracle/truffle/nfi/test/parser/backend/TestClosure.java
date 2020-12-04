@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2017, 2019, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2020, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -38,39 +38,17 @@
  * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
  * SOFTWARE.
  */
-package com.oracle.truffle.nfi.spi.types;
+package com.oracle.truffle.nfi.test.parser.backend;
 
-import java.util.Collections;
-import java.util.List;
+import com.oracle.truffle.api.interop.TruffleObject;
 
-public final class NativeSignature {
+public class TestClosure implements TruffleObject {
 
-    static final int NOT_VARARGS = -1;
+    public final TestSignature signature;
+    public final Object executable;
 
-    private final NativeTypeMirror retType;
-    private final List<NativeTypeMirror> argTypes;
-
-    private final int fixedArgCount;
-
-    NativeSignature(NativeTypeMirror retType, int fixedArgCount, List<NativeTypeMirror> argTypes) {
-        this.retType = retType;
-        this.argTypes = argTypes;
-        this.fixedArgCount = fixedArgCount;
-    }
-
-    public NativeTypeMirror getRetType() {
-        return retType;
-    }
-
-    public List<NativeTypeMirror> getArgTypes() {
-        return Collections.unmodifiableList(argTypes);
-    }
-
-    public boolean isVarargs() {
-        return fixedArgCount != NOT_VARARGS;
-    }
-
-    public int getFixedArgCount() {
-        return isVarargs() ? fixedArgCount : argTypes.size();
+    TestClosure(TestSignature signature, Object executable) {
+        this.signature = signature;
+        this.executable = executable;
     }
 }

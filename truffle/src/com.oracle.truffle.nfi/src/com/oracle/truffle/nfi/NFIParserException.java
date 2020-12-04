@@ -38,31 +38,33 @@
  * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
  * SOFTWARE.
  */
-package com.oracle.truffle.nfi.spi.types;
+package com.oracle.truffle.nfi;
 
-import java.util.List;
+import com.oracle.truffle.api.exception.AbstractTruffleException;
+import com.oracle.truffle.api.interop.ExceptionType;
+import com.oracle.truffle.api.interop.InteropLibrary;
+import com.oracle.truffle.api.library.ExportLibrary;
+import com.oracle.truffle.api.library.ExportMessage;
 
-public abstract class TypeFactory {
+@ExportLibrary(InteropLibrary.class)
+class NFIParserException extends AbstractTruffleException {
 
-    /**
-     * Should be used only by the Truffle NFI.
-     */
-    protected TypeFactory() {
-        // export only for select packages
-        assert checkCaller();
+    private static final long serialVersionUID = 1L;
+
+    private final boolean incompleteSource;
+
+    NFIParserException(String message, boolean incompleteSource) {
+        super(message, null);
+        this.incompleteSource = incompleteSource;
     }
 
-    private boolean checkCaller() {
-        final String packageName = getClass().getPackage().getName();
-        assert packageName.equals("com.oracle.truffle.nfi") : TypeFactory.class.getName() + " subclass is not in trusted package: " + getClass().getName();
-        return true;
+    @ExportMessage
+    ExceptionType getExceptionType() {
+        return ExceptionType.PARSE_ERROR;
     }
 
-    protected static NativeLibraryDescriptor createDefaultLibrary() {
-        return new NativeLibraryDescriptor(null, null);
-    }
-
-    protected static NativeLibraryDescriptor createLibraryDescriptor(String filename, List<String> flags) {
-        return new NativeLibraryDescriptor(filename, flags);
+    @ExportMessage
+    boolean isExceptionIncompleteSource() {
+        return incompleteSource;
     }
 }

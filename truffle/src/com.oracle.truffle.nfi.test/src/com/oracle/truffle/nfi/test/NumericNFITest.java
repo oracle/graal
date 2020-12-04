@@ -257,13 +257,13 @@ public class NumericNFITest extends NFITest {
         @Override
         public Object executeTest(VirtualFrame frame) throws InteropException {
             Object functionPtr = getIncrementInterop.execute(getIncrement);
-            checkIsClosure(functionPtr);
+            checkIsClosure(closureInterop.isExecutable(functionPtr));
             return closureInterop.execute(functionPtr, 42);
         }
 
         @TruffleBoundary
-        private void checkIsClosure(Object value) {
-            Assert.assertTrue("closure", UNCACHED_INTEROP.isExecutable(value));
+        private void checkIsClosure(boolean isExecutable) {
+            Assert.assertTrue("closure", isExecutable);
         }
     }
 

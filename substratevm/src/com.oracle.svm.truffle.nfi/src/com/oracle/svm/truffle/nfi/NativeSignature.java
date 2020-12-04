@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2017, 2017, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2017, 2020, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -63,10 +63,10 @@ final class NativeSignature {
 
     static class PrepareHelper {
 
-        static CifData prepareArgs(Target_com_oracle_truffle_nfi_impl_LibFFIType... args) {
-            CifData data = UnmanagedMemory.malloc(SizeOf.get(CifData.class) + args.length * SizeOf.get(ffi_type_array.class));
+        static CifData prepareArgs(int argCount, Target_com_oracle_truffle_nfi_impl_LibFFIType... args) {
+            CifData data = UnmanagedMemory.malloc(SizeOf.get(CifData.class) + argCount * SizeOf.get(ffi_type_array.class));
 
-            for (int i = 0; i < args.length; i++) {
+            for (int i = 0; i < argCount; i++) {
                 data.args().write(i, WordFactory.pointer(args[i].type));
             }
 
@@ -125,7 +125,7 @@ final class NativeSignature {
                     } else if (tag == Target_com_oracle_truffle_nfi_impl_NativeArgumentBuffer_TypeTag.STRING) {
                         PointerBase strPtr = scope.pinString((String) obj);
                         prim.writeWord(offset, strPtr);
-                    } else if (tag == Target_com_oracle_truffle_nfi_impl_NativeArgumentBuffer_TypeTag.CLOSURE) {
+                    } else if (tag == Target_com_oracle_truffle_nfi_impl_NativeArgumentBuffer_TypeTag.KEEPALIVE) {
                         // nothing to do
                     } else if (tag == Target_com_oracle_truffle_nfi_impl_NativeArgumentBuffer_TypeTag.ENV) {
                         prim.writeWord(offset, env);

@@ -144,17 +144,17 @@ final class Target_com_oracle_truffle_nfi_impl_NFIContext {
 
     @Substitute
     @SuppressWarnings("static-method")
-    long prepareSignature(Target_com_oracle_truffle_nfi_impl_LibFFIType retType, Target_com_oracle_truffle_nfi_impl_LibFFIType... args) {
-        CifData data = PrepareHelper.prepareArgs(args);
-        int ret = LibFFI.ffi_prep_cif(data.cif(), LibFFI.FFI_DEFAULT_ABI(), WordFactory.unsigned(args.length), WordFactory.pointer(retType.type), data.args());
+    long prepareSignature(Target_com_oracle_truffle_nfi_impl_LibFFIType retType, int argCount, Target_com_oracle_truffle_nfi_impl_LibFFIType... args) {
+        CifData data = PrepareHelper.prepareArgs(argCount, args);
+        int ret = LibFFI.ffi_prep_cif(data.cif(), LibFFI.FFI_DEFAULT_ABI(), WordFactory.unsigned(argCount), WordFactory.pointer(retType.type), data.args());
         return PrepareHelper.checkRet(data, ret);
     }
 
     @Substitute
     @SuppressWarnings("static-method")
-    long prepareSignatureVarargs(Target_com_oracle_truffle_nfi_impl_LibFFIType retType, int nFixedArgs, Target_com_oracle_truffle_nfi_impl_LibFFIType... args) {
-        CifData data = PrepareHelper.prepareArgs(args);
-        int ret = LibFFI.ffi_prep_cif_var(data.cif(), LibFFI.FFI_DEFAULT_ABI(), WordFactory.unsigned(nFixedArgs), WordFactory.unsigned(args.length), WordFactory.pointer(retType.type), data.args());
+    long prepareSignatureVarargs(Target_com_oracle_truffle_nfi_impl_LibFFIType retType, int argCount, int nFixedArgs, Target_com_oracle_truffle_nfi_impl_LibFFIType... args) {
+        CifData data = PrepareHelper.prepareArgs(argCount, args);
+        int ret = LibFFI.ffi_prep_cif_var(data.cif(), LibFFI.FFI_DEFAULT_ABI(), WordFactory.unsigned(nFixedArgs), WordFactory.unsigned(argCount), WordFactory.pointer(retType.type), data.args());
         return PrepareHelper.checkRet(data, ret);
     }
 

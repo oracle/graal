@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2017, 2019, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2020, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -38,18 +38,17 @@
  * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
  * SOFTWARE.
  */
-package com.oracle.truffle.nfi.spi.types;
+package com.oracle.truffle.nfi;
 
-public final class NativeFunctionTypeMirror extends NativeTypeMirror {
+import com.oracle.truffle.nfi.spi.NFIBackend;
 
-    private final NativeSignature signature;
+final class API {
 
-    NativeFunctionTypeMirror(NativeSignature signature) {
-        super(Kind.FUNCTION);
-        this.signature = signature;
-    }
+    final String backendId;
+    final NFIBackend backend;
 
-    public NativeSignature getSignature() {
-        return signature;
+    API(String backendId, NFIBackend backend) {
+        this.backendId = backendId;
+        this.backend = backend;
     }
 }

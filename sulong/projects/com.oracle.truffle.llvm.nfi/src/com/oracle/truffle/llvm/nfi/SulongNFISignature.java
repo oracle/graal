@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2019, Oracle and/or its affiliates.
+ * Copyright (c) 2019, 2020, Oracle and/or its affiliates.
  *
  * All rights reserved.
  *
@@ -31,61 +31,47 @@ package com.oracle.truffle.llvm.nfi;
 
 import com.oracle.truffle.api.interop.ArityException;
 import com.oracle.truffle.api.interop.InteropLibrary;
-import com.oracle.truffle.api.interop.TruffleObject;
 import com.oracle.truffle.api.interop.UnsupportedMessageException;
 import com.oracle.truffle.api.interop.UnsupportedTypeException;
 import com.oracle.truffle.api.library.CachedLibrary;
 import com.oracle.truffle.api.library.ExportLibrary;
 import com.oracle.truffle.api.library.ExportMessage;
-import com.oracle.truffle.nfi.spi.NativeSymbolLibrary;
-import com.oracle.truffle.nfi.spi.types.NativeSignature;
+import com.oracle.truffle.nfi.spi.NFIBackendSignatureBuilderLibrary;
+import com.oracle.truffle.nfi.spi.NFIBackendSignatureLibrary;
 
-@ExportLibrary(InteropLibrary.class)
-@ExportLibrary(NativeSymbolLibrary.class)
-final class SulongNFIFunction implements TruffleObject {
+@ExportLibrary(NFIBackendSignatureLibrary.class)
+@SuppressWarnings("static-method")
+final class SulongNFISignature {
 
-    final Object function;
+    static final SignatureBuilder BUILDER = new SignatureBuilder();
 
-    SulongNFIFunction(Object function) {
-        this.function = function;
-    }
-
-    @ExportMessage
-    boolean isNull(@CachedLibrary("this.function") InteropLibrary interop) {
-        return interop.isNull(function);
-    }
-
-    @ExportMessage
-    boolean isPointer(@CachedLibrary("this.function") InteropLibrary interop) {
-        return interop.isPointer(function);
-    }
-
-    @ExportMessage
-    long asPointer(@CachedLibrary("this.function") InteropLibrary interop) throws UnsupportedMessageException {
-        return interop.asPointer(function);
-    }
-
-    @ExportMessage
-    void toNative(@CachedLibrary("this.function") InteropLibrary interop) {
-        interop.toNative(function);
-    }
-
-    @ExportMessage
-    @SuppressWarnings("static-method")
-    boolean isBindable() {
-        return true;
-    }
-
-    @ExportMessage
-    @SuppressWarnings("static-method")
-    Object prepareSignature(@SuppressWarnings("unused") NativeSignature signature) {
-        // for now, Sulong ignores the signature
-        return null;
-    }
-
-    @ExportMessage
-    Object call(@SuppressWarnings("unused") Object signature, Object[] args,
-                    @CachedLibrary("this.function") InteropLibrary interop) throws ArityException, UnsupportedTypeException, UnsupportedMessageException {
+    @ExportMessage(limit = "1")
+    Object call(Object function, Object[] args,
+                    @CachedLibrary("function") InteropLibrary interop) throws ArityException, UnsupportedTypeException, UnsupportedMessageException {
         return interop.execute(function, args);
+    }
+
+    @ExportMessage
+    Object createClosure(Object executable) {
+        return executable;
+    }
+
+    @ExportLibrary(NFIBackendSignatureBuilderLibrary.class)
+    static final class SignatureBuilder {
+
+        @ExportMessage
+        void setReturnType(@SuppressWarnings("unused") Object type) {
+            // no need for type information, we already have it in bitcode
+        }
+
+        @ExportMessage
+        void addArgument(@SuppressWarnings("unused") Object type) {
+            // no need for type information, we already have it in bitcode
+        }
+
+        @ExportMessage
+        Object build() {
+            return new SulongNFISignature();
+        }
     }
 }

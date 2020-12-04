@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2019, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2020, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -40,53 +40,18 @@
  */
 package com.oracle.truffle.nfi.spi;
 
-import com.oracle.truffle.api.interop.ArityException;
-import com.oracle.truffle.api.interop.UnsupportedMessageException;
-import com.oracle.truffle.api.interop.UnsupportedTypeException;
 import com.oracle.truffle.api.library.GenerateLibrary;
-import com.oracle.truffle.api.library.GenerateLibrary.Abstract;
 import com.oracle.truffle.api.library.Library;
-import com.oracle.truffle.nfi.spi.types.NativeSignature;
 
-/**
- * Library that specifies the protocol between the Truffle NFI and its backend implementations.
- * Symbols contained in native libraries should implement this library.
- *
- * @see NFIBackendTools#createBindableSymbol
- */
 @GenerateLibrary
-@SuppressWarnings("unused")
-public abstract class NativeSymbolLibrary extends Library {
+public abstract class NFIBackendSignatureBuilderLibrary extends Library {
 
-    /**
-     * Returns <code>true</code> if the receiver is a native symbol that can be bound to a signature
-     * and subsequently called.
-     */
-    @Abstract
-    public boolean isBindable(Object receiver) {
-        return false;
+    public abstract void setReturnType(Object builder, Object type);
+
+    public abstract void addArgument(Object builder, Object type);
+
+    public void makeVarargs(@SuppressWarnings("unused") Object builder) {
     }
 
-    /**
-     * Prepare a signature for use by the NFI backend. This message is sent when binding a signature
-     * to a receiver. The NFI backend should allocate any data structures needed for calling symbols
-     * with this signature.
-     *
-     * The signature returned by this method will be cached, and may be reused for different
-     * receivers.
-     */
-    @Abstract
-    public Object prepareSignature(Object receiver, NativeSignature signature) throws UnsupportedMessageException, UnsupportedTypeException {
-        throw UnsupportedMessageException.create();
-    }
-
-    /**
-     * Call a native function with a specified signature. The signature is guaranteed to be an
-     * object produced by the {@link #prepareSignature} message of this library, but not necessarily
-     * with the same receiver symbol.
-     */
-    @Abstract
-    public Object call(Object receiver, Object signature, Object... args) throws ArityException, UnsupportedMessageException, UnsupportedTypeException {
-        throw UnsupportedMessageException.create();
-    }
+    public abstract Object build(Object builder);
 }

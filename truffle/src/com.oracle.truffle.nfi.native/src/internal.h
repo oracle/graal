@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2017, 2019, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2017, 2020, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -76,7 +76,9 @@ struct __TruffleContextInternal {
     jmethodID CallTarget_call;
 
     jfieldID LibFFISignature_cif;
-    jfieldID LibFFISignature_argTypes;
+    jfieldID LibFFISignature_signatureInfo;
+
+    jfieldID CachedSignatureInfo_argTypes;
 
     jfieldID LibFFIType_type;
     jclass LibFFIType_EnvType;
@@ -123,7 +125,7 @@ extern __thread int errnoMirror;
 enum TypeTag {
     OBJECT = 0,
     STRING,
-    CLOSURE,
+    KEEPALIVE,
     ENV,
 
     BOOLEAN_ARRAY,

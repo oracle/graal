@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2019, 2020, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2020, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -38,31 +38,48 @@
  * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
  * SOFTWARE.
  */
-package com.oracle.truffle.nfi.spi.types;
+package com.oracle.truffle.nfi.api;
 
-import java.util.List;
+import com.oracle.truffle.api.interop.ArityException;
+import com.oracle.truffle.api.interop.InteropLibrary;
+import com.oracle.truffle.api.interop.UnsupportedMessageException;
+import com.oracle.truffle.api.interop.UnsupportedTypeException;
+import com.oracle.truffle.api.library.GenerateLibrary;
+import com.oracle.truffle.api.library.Library;
+import com.oracle.truffle.api.library.LibraryFactory;
 
-public abstract class TypeFactory {
+/**
+ */
+@GenerateLibrary
+public abstract class SignatureLibrary extends Library {
 
     /**
-     * Should be used only by the Truffle NFI.
+     * Interpret a pointer as function pointer with the given signature and call it.
      */
-    protected TypeFactory() {
-        // export only for select packages
-        assert checkCaller();
+    public abstract Object call(Object signature, Object functionPointer, Object... args) throws ArityException, UnsupportedTypeException, UnsupportedMessageException;
+
+    /**
+     * Create an executable interop object from a signature and a function pointer. Sending the
+     * {@link InteropLibrary#execute} message to the returned object is equivalent to calling
+     * {@link #call}.
+     */
+    public abstract Object bind(Object signature, Object functionPointer);
+
+    /**
+     * Create a native closure object with the given signature. The returned object is a function
+     * pointer that sends the {@link InteropLibrary#execute} message to the executable object when
+     * called.
+     */
+    public abstract Object createClosure(Object signature, Object executable);
+
+    static final LibraryFactory<SignatureLibrary> FACTORY = LibraryFactory.resolve(SignatureLibrary.class);
+    static final SignatureLibrary UNCACHED = FACTORY.getUncached();
+
+    public static LibraryFactory<SignatureLibrary> getFactory() {
+        return FACTORY;
     }
 
-    private boolean checkCaller() {
-        final String packageName = getClass().getPackage().getName();
-        assert packageName.equals("com.oracle.truffle.nfi") : TypeFactory.class.getName() + " subclass is not in trusted package: " + getClass().getName();
-        return true;
-    }
-
-    protected static NativeLibraryDescriptor createDefaultLibrary() {
-        return new NativeLibraryDescriptor(null, null);
-    }
-
-    protected static NativeLibraryDescriptor createLibraryDescriptor(String filename, List<String> flags) {
-        return new NativeLibraryDescriptor(filename, flags);
+    public static SignatureLibrary getUncached() {
+        return UNCACHED;
     }
 }

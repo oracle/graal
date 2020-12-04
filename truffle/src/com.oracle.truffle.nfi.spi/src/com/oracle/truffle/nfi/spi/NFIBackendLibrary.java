@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2017, 2019, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2020, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -38,18 +38,20 @@
  * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
  * SOFTWARE.
  */
-package com.oracle.truffle.nfi.spi.types;
+package com.oracle.truffle.nfi.spi;
 
-public final class NativeArrayTypeMirror extends NativeTypeMirror {
+import com.oracle.truffle.api.library.GenerateLibrary;
+import com.oracle.truffle.api.library.Library;
+import com.oracle.truffle.nfi.spi.types.NativeSimpleType;
 
-    private final NativeTypeMirror elementType;
+@GenerateLibrary
+public abstract class NFIBackendLibrary extends Library {
 
-    NativeArrayTypeMirror(NativeTypeMirror elementType) {
-        super(Kind.ARRAY);
-        this.elementType = elementType;
-    }
+    public abstract Object getSimpleType(Object backend, NativeSimpleType type);
 
-    public NativeTypeMirror getElementType() {
-        return elementType;
-    }
+    public abstract Object getArrayType(Object backend, NativeSimpleType type);
+
+    public abstract Object getEnvType(Object backend);
+
+    public abstract Object createSignatureBuilder(Object backend);
 }

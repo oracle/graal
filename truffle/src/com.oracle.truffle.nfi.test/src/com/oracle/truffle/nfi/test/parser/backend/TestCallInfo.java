@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2017, 2019, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2020, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -38,18 +38,19 @@
  * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
  * SOFTWARE.
  */
-package com.oracle.truffle.nfi.spi.types;
+package com.oracle.truffle.nfi.test.parser.backend;
 
-public final class NativeSimpleTypeMirror extends NativeTypeMirror {
+import com.oracle.truffle.api.interop.TruffleObject;
 
-    private final NativeSimpleType simpleType;
+public class TestCallInfo implements TruffleObject {
 
-    NativeSimpleTypeMirror(NativeSimpleType simpleType) {
-        super(Kind.SIMPLE);
-        this.simpleType = simpleType;
-    }
+    public final TestSignature signature;
+    public final Object executable;
+    public final Object[] args;
 
-    public NativeSimpleType getSimpleType() {
-        return simpleType;
+    TestCallInfo(TestSignature signature, Object executable, Object[] args) {
+        this.signature = signature;
+        this.executable = executable;
+        this.args = args;
     }
 }

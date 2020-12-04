@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2017, 2019, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2017, 2020, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -331,7 +331,7 @@ abstract class SerializeArgumentLibrary extends Library {
             @Specialization(guards = "interop.isPointer(arg)", rewriteOn = UnsupportedMessageException.class)
             static void putPointer(Object arg, NativeArgumentBuffer buffer, int ptrSize,
                             @CachedLibrary("arg") InteropLibrary interop) throws UnsupportedMessageException {
-                buffer.putPointer(interop.asPointer(arg), ptrSize);
+                buffer.putPointerKeepalive(arg, interop.asPointer(arg), ptrSize);
             }
 
             @Specialization(guards = {"!interop.isPointer(arg)", "interop.isNull(arg)"})
@@ -347,7 +347,7 @@ abstract class SerializeArgumentLibrary extends Library {
                 try {
                     interop.toNative(arg);
                     if (interop.isPointer(arg)) {
-                        buffer.putPointer(interop.asPointer(arg), ptrSize);
+                        buffer.putPointerKeepalive(arg, interop.asPointer(arg), ptrSize);
                         return;
                     }
                 } catch (UnsupportedMessageException ex) {
@@ -369,7 +369,7 @@ abstract class SerializeArgumentLibrary extends Library {
                     try {
                         // workaround: some objects do not yet adhere to the contract of
                         // toNative/isPointer/asPointer, ask for pointer one more time
-                        buffer.putPointer(interop.asPointer(arg), ptrSize);
+                        buffer.putPointerKeepalive(arg, interop.asPointer(arg), ptrSize);
                         return;
                     } catch (UnsupportedMessageException e) {
                         // fallthrough

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2019, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2019, 2020, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -41,33 +41,12 @@
 package com.oracle.truffle.nfi.test.parser.backend;
 
 import com.oracle.truffle.api.interop.TruffleObject;
-import com.oracle.truffle.api.library.ExportLibrary;
-import com.oracle.truffle.api.library.ExportMessage;
-import com.oracle.truffle.nfi.spi.NativeSymbolLibrary;
-import com.oracle.truffle.nfi.spi.types.NativeSignature;
 
-@ExportLibrary(NativeSymbolLibrary.class)
 class TestSymbol implements TruffleObject {
 
     final String name;
 
     TestSymbol(String name) {
         this.name = name;
-    }
-
-    @ExportMessage
-    boolean isBindable() {
-        return true;
-    }
-
-    @ExportMessage
-    Object prepareSignature(NativeSignature signature) {
-        return new TestSignature(signature);
-    }
-
-    @ExportMessage
-    Object call(Object signature, @SuppressWarnings("unused") Object[] args) {
-        // just return the signature, so it can be inspected by the test harness
-        return signature;
     }
 }
