@@ -425,9 +425,11 @@ public class ExportNodeTest extends AbstractLibraryTest {
 
     // forgot ExportMessage
     @ExportLibrary(ExportNodeLibrary1.class)
-    @ExpectError("The method has the same name 'Foo' as a message in the exported library ExportNodeLibrary1. " +
+    @ExpectError({"The method has the same name 'Foo' as a message in the exported library ExportNodeLibrary1. " +
                     "Did you forget to export it? " +
-                    "Use @ExportMessage to export the message, @Ignore to ignore this warning, rename the method or reduce the visibility of the method to private to resolve this warning.")
+                    "Use @ExportMessage to export the message, @Ignore to ignore this warning, rename the method or reduce the visibility of the method to private to resolve this warning.",
+                    "Exported library ExportNodeLibrary1 does not export any messages and therefore has no effect. Remove the export declaration to resolve this."
+    })
     static class TestObjectError1 {
 
         static class Foo {

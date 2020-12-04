@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2015, 2018, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2015, 2020, Oracle and/or its affiliates. All rights reserved.
  * Copyright (c) 2018, Red Hat Inc. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
@@ -58,14 +58,13 @@ public final class AArch64HotSpotLoadConfigValueOp extends AArch64LIRInstruction
         if (GeneratePIC.getValue(crb.getOptions())) {
             AArch64Kind kind = (AArch64Kind) result.getPlatformKind();
             Register reg = asRegister(result);
-            masm.adrp(reg);
-            masm.add(64, reg, reg, 1);
+            masm.adrpAdd(reg);
             switch (kind) {
                 case BYTE:
-                    masm.ldrs(8, 32, reg, AArch64Address.createBaseRegisterOnlyAddress(reg));
+                    masm.ldrs(32, 8, reg, AArch64Address.createBaseRegisterOnlyAddress(reg));
                     break;
                 case WORD:
-                    masm.ldrs(16, 32, reg, AArch64Address.createBaseRegisterOnlyAddress(reg));
+                    masm.ldrs(32, 16, reg, AArch64Address.createBaseRegisterOnlyAddress(reg));
                     break;
                 case DWORD:
                     masm.ldr(32, reg, AArch64Address.createBaseRegisterOnlyAddress(reg));

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2016, 2019, Oracle and/or its affiliates.
+ * Copyright (c) 2016, 2020, Oracle and/or its affiliates.
  *
  * All rights reserved.
  *
@@ -138,11 +138,11 @@ public final class Constants implements ParserListener {
                 return;
             }
             case CONSTANT_STRING:
-                scope.addSymbol(new StringConstant((ArrayType) type, buffer.readString(), false), type);
+                scope.addSymbol(new StringConstant((ArrayType) type, buffer.readStringAsBytes(false)), type);
                 return;
 
             case CONSTANT_CSTRING:
-                scope.addSymbol(new StringConstant((ArrayType) type, buffer.readString(), true), type);
+                scope.addSymbol(new StringConstant((ArrayType) type, buffer.readStringAsBytes(true)), type);
                 return;
 
             case CONSTANT_CE_BINOP: {

@@ -27,9 +27,11 @@ package org.graalvm.compiler.truffle.jfr.impl;
 import jdk.jfr.Category;
 import jdk.jfr.Description;
 import jdk.jfr.Label;
+import jdk.jfr.Name;
 import jdk.jfr.StackTrace;
 import org.graalvm.compiler.truffle.jfr.InvalidationEvent;
 
+@Name("org.graalvm.compiler.truffle.AssumptionInvalidation")
 @Category("Truffle Compiler")
 @Label("Assumption Invalidation")
 @Description("Truffle Assumption Invalidation")

@@ -27,7 +27,6 @@ export class GraalVMDebugAdapter extends ChromeDebugAdapter {
     public initialize(args: DebugProtocol.InitializeRequestArguments): DebugProtocol.Capabilities {
         this._supportsRunInTerminalRequest = args.supportsRunInTerminalRequest;
         const capabilities = super.initialize(args);
-        capabilities.supportsTerminateRequest = true;
         return capabilities;
     }
 

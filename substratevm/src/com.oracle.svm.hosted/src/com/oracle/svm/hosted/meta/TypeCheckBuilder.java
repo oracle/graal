@@ -24,8 +24,11 @@
  */
 package com.oracle.svm.hosted.meta;
 
+import java.lang.reflect.Modifier;
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.BitSet;
+import java.util.Collection;
 import java.util.Comparator;
 import java.util.HashMap;
 import java.util.HashSet;
@@ -35,11 +38,14 @@ import java.util.Set;
 import java.util.stream.Collectors;
 
 import org.graalvm.compiler.core.common.calc.UnsignedMath;
+import org.graalvm.nativeimage.ImageSingletons;
 
+import com.oracle.svm.core.hub.DynamicHubSupport;
 import com.oracle.svm.core.util.VMError;
 
 /**
- * Native image type checks are performed by a range check (see
+ * This class assigns each type an id, determines stamp metadata, and generates the information
+ * needed to perform type checks. Native image type checks are performed by a range check (see
  * {@link com.oracle.svm.core.graal.snippets.TypeSnippets} for specific implementation details).
  *
  * <p>
@@ -82,32 +88,47 @@ public class TypeCheckBuilder {
     private static final int SLOT_CAPACITY = 1 << 16;
 
     private final HostedType objectType;
-    private final List<HostedType> allTypes;
+    private final HostedType cloneableType;
+    private final HostedType serializableType;
+    private final Collection<HostedType> allTypes;
 
-    /** We only assign type ids to Types which are reachable {@link #shouldIncludeType}. */
-    private Set<HostedType> allIncludedTypes;
+    /** We only generate information for Types which are needed {@link #shouldIncludeType}. */
+    private final Set<HostedType> allIncludedTypes;
 
     /**
      * Within the type graph, roots are types without a super type (i.e. {@link Object} and
      * primitives).
      */
-    private List<HostedType> allIncludedRoots;
+    private final List<HostedType> allIncludedRoots;
 
     /**
      * All included types in sorted order based on the type's height within the type graph.
      */
-    private List<HostedType> heightOrderedTypes;
+    private final List<HostedType> heightOrderedTypes;
 
     private int numTypeCheckSlots = -1;
 
     /**
      * Map created to describe the type hierarchy graph.
      */
-    private Map<HostedType, List<HostedType>> subtypeMap = new HashMap<>();
+    private final Map<HostedType, List<HostedType>> subtypeMap;
 
-    public TypeCheckBuilder(List<HostedType> types, HostedType objectType) {
+    public TypeCheckBuilder(Collection<HostedType> types, HostedType objectType, HostedType cloneableType, HostedType serializableType) {
         this.allTypes = types;
         this.objectType = objectType;
+        this.cloneableType = cloneableType;
+        this.serializableType = serializableType;
+
+        allIncludedTypes = allTypes.stream().filter(TypeCheckBuilder::shouldIncludeType).collect(Collectors.toSet());
+
+        subtypeMap = computeSubtypeInformation();
+
+        /* Finding subtype graph roots. */
+        HashSet<HostedType> hasParent = new HashSet<>();
+        subtypeMap.forEach((type, subtypes) -> hasParent.addAll(subtypes));
+        allIncludedRoots = allIncludedTypes.stream().filter(t -> !hasParent.contains(t)).collect(Collectors.toList());
+
+        heightOrderedTypes = generateHeightOrder(allIncludedRoots, subtypeMap);
     }
 
     public int getNumTypeCheckSlots() {
@@ -116,10 +137,21 @@ public class TypeCheckBuilder {
     }
 
     /**
-     * Only need to calculate type check ids for reachable types.
+     * Checks whether this type should be included.
+     *
+     * Currently, all types are included; however, in the future, only reachable types should be
+     * included.
      */
     private static boolean shouldIncludeType(HostedType type) {
-        return type.getWrapped().isReachable();
+        assert type != null;
+        return true;
+    }
+
+    /**
+     * Checks whether the given type is present within allIncludedTypes.
+     */
+    private boolean isTypePresent(HostedType type) {
+        return type != null && allIncludedTypes.contains(type);
     }
 
     /**
@@ -140,181 +172,186 @@ public class TypeCheckBuilder {
     }
 
     /**
-     * Calculates all of the needed type check id information and stores it in the HostedTypes.
+     * Calculating a sorted list based on the height of each node. This allows one to compute many
+     * graph traits in one iteration of the nodes.
      */
-    public boolean calculateIDs() {
-        computeMetadata();
-        ClassIDBuilder classBuilder = new ClassIDBuilder(objectType, allIncludedRoots, heightOrderedTypes, subtypeMap);
-        classBuilder.computeSlots();
-        InterfaceIDBuilder interfaceBuilder = new InterfaceIDBuilder(classBuilder.numClassSlots, heightOrderedTypes, subtypeMap);
-        interfaceBuilder.computeSlots();
-        generateTypeCheckSlots(classBuilder, interfaceBuilder);
-        assert TypeCheckValidator.compareTypeIDResults(heightOrderedTypes);
-        return true;
-    }
+    private static List<HostedType> generateHeightOrder(List<HostedType> roots, Map<HostedType, List<HostedType>> subtypeMap) {
 
-    private void computeMetadata() {
-        allIncludedTypes = allTypes.stream().filter(t -> shouldIncludeType(t)).collect(Collectors.toSet());
-        computeSubtypeInformation();
-
-        Map<HostedType, Set<HostedType>> parentMap = new HashMap<>();
-        for (HostedType type : allIncludedTypes) {
-            for (HostedType subtype : subtypeMap.get(type)) {
-                assert shouldIncludeType(subtype);
-                parentMap.computeIfAbsent(subtype, k -> new HashSet<>()).add(type);
-            }
-        }
-        allIncludedRoots = allIncludedTypes.stream().filter(t -> !parentMap.containsKey(t)).collect(Collectors.toList());
-        heightOrderedTypes = generateHeightOrder(allIncludedRoots);
-    }
-
-    /**
-     * Calculating a sorted list based on the height of each node. This allows one to create the
-     * interface graph and compute all class descendants in one iteration of the nodes.
-     */
-    private List<HostedType> generateHeightOrder(List<HostedType> roots) {
-
-        /* Set initial height of all nodes to an impossible height */
+        Set<HostedType> allTypes = subtypeMap.keySet();
+        /* Set initial height of all nodes to an impossible height. */
         Map<HostedType, Integer> heightMap = new HashMap<>();
-        allIncludedTypes.forEach(t -> heightMap.put(t, Integer.MIN_VALUE));
+        allTypes.forEach(t -> heightMap.put(t, Integer.MIN_VALUE));
 
         /* Find the height of each tree. */
         for (HostedType root : roots) {
-            generateHeightOrderHelper(0, root, heightMap);
+            generateHeightOrderHelper(0, root, subtypeMap, heightMap, allTypes);
         }
 
         /* Now create a sorted array from this information. */
-        return allIncludedTypes.stream().sorted(Comparator.comparingInt(heightMap::get)).collect(Collectors.toList());
+        return allTypes.stream().sorted(Comparator.comparingInt(heightMap::get)).collect(Collectors.toList());
     }
 
     /**
      * Helper method to assist with determining the height of each node.
      */
-    private void generateHeightOrderHelper(int depth, HostedType node, Map<HostedType, Integer> heightMap) {
-        assert shouldIncludeType(node);
-        heightMap.compute(node, (k, currentHeight) -> Integer.max(depth, currentHeight));
+    private static void generateHeightOrderHelper(int depth, HostedType type, Map<HostedType, List<HostedType>> subtypeMap, Map<HostedType, Integer> heightMap, Set<HostedType> allTypes) {
+        assert allTypes.contains(type);
+        heightMap.compute(type, (k, currentHeight) -> Integer.max(depth, currentHeight));
 
-        for (HostedType subtype : subtypeMap.get(node)) {
-            generateHeightOrderHelper(depth + 1, subtype, heightMap);
-        }
-    }
-
-    private void computeSubtypeInformation() {
-        /*
-         * We cannot use the sub-type information from the HostType because there are some minor
-         * differences regarding array types. Therefore we build the sub-type information from
-         * scratch.
-         */
-        Map<HostedType, Set<HostedType>> allTypeCheckSubTypes = new HashMap<>();
-        allIncludedTypes.stream().forEach(t -> allTypeCheckSubTypes.put(t, new HashSet<>()));
-
-        Set<HostedType> descendantsToCompute = new HashSet<>();
-        for (HostedType type : allIncludedTypes) {
-
-            if (type.getSuperclass() != null) {
-                HostedType superClass;
-                if (!type.isArray()) {
-                    /* Non-arrays get their normal superclass. */
-                    superClass = type.getSuperclass();
-                } else {
-                    /*
-                     * For arrays, the superclass is always Object, but for type checking purposes
-                     * if is useful to create a different graph.
-                     */
-                    HostedType baseType = type.getBaseType();
-                    int dim = type.getArrayDimension();
-                    assert dim >= 1;
-                    if (baseType.isInterface()) {
-                        /* Want object of appropriate depth. */
-                        superClass = getHighestDimArrayType(objectType, dim);
-                        /* For interface arrays have to compute all possible descendants. */
-                        descendantsToCompute.add(baseType);
-                    } else if (baseType.isPrimitive()) {
-                        /* Superclass should be object of one less dimension. */
-                        superClass = getHighestDimArrayType(objectType, dim - 1);
-                    } else {
-                        // is an instance class
-                        HostedType baseSuperClass = baseType.getSuperclass();
-                        if (baseSuperClass == null) {
-                            /*
-                             * This means this in an object array. In this case its parent should be
-                             * the object type of one less dimension.
-                             */
-                            superClass = getHighestDimArrayType(objectType, dim - 1);
-                        } else {
-                            /* Otherwise make the super class the equivalent base superclass. */
-                            superClass = baseSuperClass.getArrayClass(dim);
-                            while (!isTypeIncluded(superClass)) {
-                                /*
-                                 * Not all array type check supertypes are reachable. In this case,
-                                 * make its superclass the first reachable super class.
-                                 */
-                                baseSuperClass = baseSuperClass.getSuperclass();
-                                if (baseSuperClass == null) {
-                                    /* means object type of the array size wasn't reachable */
-                                    superClass = getHighestDimArrayType(objectType, dim - 1);
-                                } else {
-                                    superClass = baseSuperClass.getArrayClass(dim);
-                                }
-                            }
-                        }
-                    }
-                }
-
-                allTypeCheckSubTypes.get(superClass).add(type);
-            }
-
-            if (type.isInterface()) {
-                assert type.getSuperclass() == null;
-                allTypeCheckSubTypes.get(objectType).add(type);
-            }
-
-            for (HostedInterface interfaceType : type.getInterfaces()) {
-                if (!type.isArray()) {
-                    allTypeCheckSubTypes.get(interfaceType).add(type);
-                } else {
-                    /*
-                     * For arrays, the two implemented interfaces are Serializable and Cloneable.
-                     * For these, the implemented interface should be of one less dimension.
-                     */
-                    int dim = type.getArrayDimension();
-                    HostedType baseType = interfaceType.getBaseType();
-                    HostedType arrayInterfaceType = getHighestDimArrayType(baseType, dim - 1);
-                    allTypeCheckSubTypes.get(arrayInterfaceType).add(type);
-                }
-            }
-
-        }
-
-        Map<HostedType, Set<HostedType>> descendantsMap = computeNonArrayDescendants(descendantsToCompute);
-        for (HostedType type : allIncludedTypes) {
-            Set<HostedType> typeCheckSubTypeSet = allTypeCheckSubTypes.get(type);
-            if (type.isArray() && type.getBaseType().isInterface()) {
-                /*
-                 * For array interfaces, also adding as subtypes all arrays of the same dimension
-                 * which implement this interfaces.
-                 */
-                int dim = type.getArrayDimension();
-                assert dim >= 1;
-                Set<HostedType> descendants = descendantsMap.get(type.getBaseType());
-                for (HostedType descendant : descendants) {
-                    assert !descendant.isArray();
-                    HostedType arrayDescendant = descendant.getArrayClass(dim);
-                    if (isTypeIncluded(arrayDescendant)) {
-                        typeCheckSubTypeSet.add(arrayDescendant);
-                    }
-                }
-            }
-            List<HostedType> typeCheckSubTypes = typeCheckSubTypeSet.stream().sorted().collect(Collectors.toList());
-            subtypeMap.put(type, typeCheckSubTypes);
+        for (HostedType subtype : subtypeMap.get(type)) {
+            generateHeightOrderHelper(depth + 1, subtype, subtypeMap, heightMap, allTypes);
         }
     }
 
     /**
-     * Checks whether the given type is present.
+     * Generates a list of immediate subtypes for each included type.
+     *
+     * Because potentially not all parent array types are present, a type parent map is initially
+     * calculated for the element types. Then, for each dimension, the each present array type is
+     * linked to its nearest reachable parent.
+     *
+     * This method assumes that the entire type hierarchy is included for element types, but not for
+     * array types.
      */
-    private boolean isTypeIncluded(HostedType type) {
-        return type != null && allIncludedTypes.contains(type);
+    private Map<HostedType, List<HostedType>> computeSubtypeInformation() {
+        Map<HostedType, Set<HostedType>> subtypes = new HashMap<>();
+
+        /* Creating an element parent map, where each element type points to its parents. */
+        List<HostedType> allElementTypes = allTypes.stream().filter(t -> !t.isArray()).collect(Collectors.toList());
+        Map<HostedType, List<HostedType>> elementParentMap = computeElementParentMap(allElementTypes);
+
+        /* Finding the roots of the parent map. */
+        Set<HostedType> hasSubtype = new HashSet<>();
+        elementParentMap.forEach((child, parents) -> hasSubtype.addAll(parents));
+        List<HostedType> elementParentMapRoots = allElementTypes.stream().filter(t -> !hasSubtype.contains(t)).collect(Collectors.toList());
+
+        List<HostedType> heightOrderedElements = generateHeightOrder(elementParentMapRoots, elementParentMap);
+
+        /* Finding the included subtype information for each array depth. */
+        int dimension = 0;
+        boolean typePresent;
+        do {
+            typePresent = addDimensionSubtypeEntries(dimension, subtypes, elementParentMap, heightOrderedElements);
+
+            dimension++;
+        } while (typePresent);
+
+        /* Convert values into a sorted list. */
+        Map<HostedType, List<HostedType>> result = new HashMap<>();
+        subtypes.forEach((k, v) -> result.put(k, v.stream().sorted().collect(Collectors.toList())));
+
+        return result;
+    }
+
+    /**
+     * Compute parents of each element type. A type's parents is its superclass and all interfaces
+     * the type implements.
+     */
+    private Map<HostedType, List<HostedType>> computeElementParentMap(List<HostedType> allElementTypes) {
+        Map<HostedType, List<HostedType>> result = new HashMap<>();
+
+        for (HostedType type : allElementTypes) {
+            ArrayList<HostedType> parents = new ArrayList<>();
+
+            if (type.getSuperclass() != null) {
+                parents.add(type.getSuperclass());
+            }
+            if (type.isInterface() && type.getInterfaces().length == 0) {
+                parents.add(objectType);
+            }
+            for (HostedInterface interf : type.getInterfaces()) {
+                parents.add(interf);
+            }
+
+            result.put(type, parents);
+        }
+
+        return result;
+    }
+
+    /**
+     * This method adds to the {@link #subtypeMap} all links for the requested dimension. Because
+     * potentially not all parent array types are included within {@link #allIncludedTypes}, each
+     * included array type must be linked to its nearest included parent. This is accomplished by
+     * iterating through the element parent map, determining which types are included, and assigning
+     * included subtypes to their first included parents.
+     */
+    private boolean addDimensionSubtypeEntries(int dimension,
+                    Map<HostedType, Set<HostedType>> subtypes,
+                    Map<HostedType, List<HostedType>> elementParentMap,
+                    List<HostedType> heightOrderedElements) {
+
+        /* Whether any type of this dimension was found. */
+        boolean typePresent = false;
+
+        /*
+         * The subtype map. For each type, it holds the either a) if a type's array subtype is
+         * included, then the array subtype b) otherwise, it holds the subtype's first included
+         * array subtypes.
+         */
+        Map<HostedType, Set<HostedType>> includedArraySubtypesMap = new HashMap<>();
+        heightOrderedElements.forEach(t -> includedArraySubtypesMap.put(t, new HashSet<>()));
+
+        for (HostedType type : heightOrderedElements) {
+            Set<HostedType> includedArraySubtypes;
+            HostedType arrayType = type.getArrayClass(dimension);
+            if (isTypePresent(arrayType)) {
+                /* Since this array type is included, it's parents should point to it. */
+                includedArraySubtypes = new HashSet<>();
+                includedArraySubtypes.add(arrayType);
+                typePresent = true;
+            } else {
+                /*
+                 * Since this type is not included, it's parents should point to this type's
+                 * subtypes which are included.
+                 */
+                includedArraySubtypes = includedArraySubtypesMap.get(type);
+            }
+
+            for (HostedType parent : elementParentMap.get(type)) {
+                includedArraySubtypesMap.get(parent).addAll(includedArraySubtypes);
+            }
+        }
+
+        /* If no type found, then don't need to add any subtype information */
+        if (typePresent) {
+
+            /* Filtering out types which are not included and converting keys to array types. */
+            Map<HostedType, Set<HostedType>> filteredArraySubtypesMap = new HashMap<>();
+            includedArraySubtypesMap.forEach((k, v) -> {
+                HostedType arrayType = k.getArrayClass(dimension);
+                if (isTypePresent(arrayType)) {
+                    filteredArraySubtypesMap.put(arrayType, v);
+                }
+            });
+
+            if (dimension > 0) {
+                /*
+                 * Array type roots need to added as subtypes to the appropriate Object,
+                 * Serializable, and Cloneable parent types links
+                 */
+
+                /* Getting filteredArraySubtypesMap roots. */
+                Set<HostedType> typesWithSubtypes = new HashSet<>();
+                filteredArraySubtypesMap.forEach((k, v) -> typesWithSubtypes.addAll(v));
+                List<HostedType> roots = filteredArraySubtypesMap.keySet().stream().filter(t -> !typesWithSubtypes.contains(t)).collect(Collectors.toList());
+
+                HostedType parentObjectType = getHighestDimArrayType(objectType, dimension - 1);
+                HostedType parentCloneableType = getHighestDimArrayType(cloneableType, dimension - 1);
+                HostedType parentSerializableType = getHighestDimArrayType(serializableType, dimension - 1);
+                subtypes.get(parentObjectType).addAll(roots);
+                subtypes.get(parentCloneableType).addAll(roots);
+                subtypes.get(parentSerializableType).addAll(roots);
+            }
+
+            /* Passing included entries to the subtypeMap. */
+            filteredArraySubtypesMap.forEach((k, v) -> {
+                assert isTypePresent(k);
+                subtypes.put(k, v);
+            });
+        }
+
+        return typePresent;
     }
 
     /**
@@ -327,39 +364,102 @@ public class TypeCheckBuilder {
         do {
             result = type.getArrayClass(dim);
             dim--;
-        } while (!isTypeIncluded(result));
+        } while (!isTypePresent(result));
 
         return result;
     }
 
     /**
-     * Computes the non array descendant set for each of the provided types.
+     * This method set's the universe's orderedType collection, and for each HostedType, sets the
+     * following fields:
+     * <ul>
+     * <li>typeID</li>
+     * <li>subTypes</li>
+     * <li>strengthenStampType</li>
+     * <li>uniqueConcreteImplementation</li>
+     * </ul>
+     *
+     * The stamps are calculated by performing a dataflow analysis of the {@link #subtypeMap}.
      */
-    private Map<HostedType, Set<HostedType>> computeNonArrayDescendants(Set<HostedType> types) {
-        Map<HostedType, Set<HostedType>> descendantsMap = new HashMap<>();
-        for (HostedType type : types) {
-            computeNonArrayDescendantsHelper(type, descendantsMap);
+    public void buildTypeInformation(HostedUniverse hUniverse) {
+        hUniverse.orderedTypes = heightOrderedTypes;
+        ImageSingletons.lookup(DynamicHubSupport.class).setMaxTypeId(heightOrderedTypes.size());
+
+        for (int i = 0; i < heightOrderedTypes.size(); i++) {
+            HostedType type = heightOrderedTypes.get(i);
+            type.typeID = i;
+            assert subtypeMap.containsKey(type);
+            type.subTypes = subtypeMap.get(type).toArray(new HostedType[0]);
         }
 
-        return descendantsMap;
+        /*
+         * Search through list in reverse order so that all of a type's subtypes are traversed
+         * before itself.
+         */
+        for (int i = heightOrderedTypes.size() - 1; i >= 0; i--) {
+            HostedType type = heightOrderedTypes.get(i);
+
+            HostedType subtypeStampType = null;
+            for (HostedType child : subtypeMap.get(type)) {
+                if (child.strengthenStampType != null) {
+                    if (subtypeStampType != null && !subtypeStampType.equals(child.strengthenStampType)) {
+                        /* The join of instantiated subtypes is this type. */
+                        subtypeStampType = type;
+                        break;
+                    } else {
+                        subtypeStampType = child.strengthenStampType;
+                    }
+                }
+            }
+
+            boolean isInstantiated = type.getWrapped().isInstantiated();
+            assert !isInstantiated ||
+                            ((type.isInstanceClass() &&
+                                            !Modifier.isAbstract(type.getModifiers())) || type.isArray());
+
+            if (subtypeStampType == null) {
+                /* Type has no instantiated subtypes. */
+                if (isInstantiated) {
+                    type.strengthenStampType = type;
+                    /*
+                     * We exclude Word types, since all implementations that we might see during
+                     * native image generation are not present at run time.
+                     */
+                    type.uniqueConcreteImplementation = type.isWordType() ? null : type;
+                } else {
+                    type.strengthenStampType = null;
+                    type.uniqueConcreteImplementation = null;
+                }
+            } else if (subtypeStampType.equals(type)) {
+                /* Type has multiple instantiated subtypes. */
+                type.strengthenStampType = type;
+                type.uniqueConcreteImplementation = null;
+            } else {
+                /*
+                 * Type has a single instantiated child type which covers all instantiated subtypes.
+                 */
+                if (isInstantiated) {
+                    type.strengthenStampType = type;
+                    type.uniqueConcreteImplementation = null;
+                } else {
+                    type.strengthenStampType = subtypeStampType;
+                    type.uniqueConcreteImplementation = subtypeStampType.uniqueConcreteImplementation;
+                }
+            }
+        }
     }
 
-    private void computeNonArrayDescendantsHelper(HostedType type, Map<HostedType, Set<HostedType>> descendantsMap) {
-        if (descendantsMap.containsKey(type)) {
-            // already computed this map
-            return;
-        }
-        Set<HostedType> descendants = new HashSet<>();
-        for (HostedType child : type.subTypes) {
-            if (child.isArray()) {
-                continue; // only care about non-array subtypes
-            }
-            descendants.add(child);
-            computeNonArrayDescendantsHelper(child, descendantsMap);
-            descendants.addAll(descendantsMap.get(child));
-        }
-        descendantsMap.put(type, descendants);
-
+    /**
+     * Calculates all of the needed type check id information and stores it in the HostedTypes.
+     */
+    public boolean calculateIDs() {
+        ClassIDBuilder classBuilder = new ClassIDBuilder(objectType, allIncludedRoots, heightOrderedTypes, subtypeMap);
+        classBuilder.computeSlots();
+        InterfaceIDBuilder interfaceBuilder = new InterfaceIDBuilder(classBuilder.numClassSlots, heightOrderedTypes, subtypeMap);
+        interfaceBuilder.computeSlots();
+        generateTypeCheckSlots(classBuilder, interfaceBuilder);
+        assert TypeCheckValidator.compareTypeIDResults(heightOrderedTypes);
+        return true;
     }
 
     /**
@@ -372,11 +472,13 @@ public class TypeCheckBuilder {
         int numSlots = getNumTypeCheckSlots();
         for (HostedType type : allIncludedTypes) {
             short[] typeCheckSlots = new short[numSlots];
+
             int[] slots = classBuilder.classSlotIDMap.get(type);
             for (int i = 0; i < slots.length; i++) {
                 typeCheckSlots[i] = getShortValue(slots[i]);
                 assert typeCheckSlots[i] < SLOT_CAPACITY;
             }
+
             slots = interfaceBuilder.interfaceSlotIDMap.get(type);
             if (slots != null) {
                 for (int i = 0; i < slots.length; i++) {
@@ -387,7 +489,6 @@ public class TypeCheckBuilder {
 
             type.setTypeCheckSlots(typeCheckSlots);
         }
-
     }
 
     /**
@@ -489,7 +590,7 @@ public class TypeCheckBuilder {
          * calculated in {@link InterfaceIDBuilder}.
          */
         void assignID(HostedType type, Map<HostedType, Integer> numClassDescendantsMap, ArrayList<Integer> currentIDs, ArrayList<Integer> numReservedIDs) {
-            assert shouldIncludeType(type) && !isInterface(type);
+            assert !isInterface(type);
 
             int numClassDescendants = numClassDescendantsMap.get(type);
             TypeState state = generateTypeState(numClassDescendants, currentIDs, numReservedIDs);
@@ -802,7 +903,7 @@ public class TypeCheckBuilder {
              * Recording duplicate information which later will be placed into the merged nodes.
              */
             static void recordDuplicateRelation(Map<Node, Set<HostedType>> duplicateMap, Node node, Node duplicate) {
-                assert !duplicateMap.containsKey(duplicate) : "By removing this node, I am losing record of some duplicates.";
+                assert !duplicateMap.containsKey(duplicate) : "By removing this node, duplicate records are being lost.";
                 duplicateMap.computeIfAbsent(node, k -> new HashSet<>()).add(duplicate.type);
             }
 
@@ -840,18 +941,6 @@ public class TypeCheckBuilder {
                     }
                 }
                 this.interfaceNodes = interfaceList.toArray(new Node[0]);
-                int maxDescendants = Integer.MIN_VALUE;
-                int maxAncestors = Integer.MIN_VALUE;
-                for (Node node : interfaceList) {
-                    maxDescendants = Math.max(node.sortedDescendants.length, maxDescendants);
-                    maxAncestors = Math.max(node.sortedAncestors.length, maxAncestors);
-                }
-                maxDescendants = Integer.MIN_VALUE;
-                maxAncestors = Integer.MIN_VALUE;
-                for (Node node : nodes) {
-                    maxDescendants = Math.max(node.sortedDescendants.length, maxDescendants);
-                    maxAncestors = Math.max(node.sortedAncestors.length, maxAncestors);
-                }
             }
 
             /*
@@ -1088,7 +1177,7 @@ public class TypeCheckBuilder {
              * Getting a valid C1P order for all nodes within this slot. Nodes part of the same set
              * can be assigned the same ID value.
              */
-            List<Set<Integer>> getC1POrder() {
+            List<BitSet> getC1POrder() {
                 /*
                  * Order prime matrices based on the # of nodes, in decreasing order.
                  *
@@ -1101,40 +1190,49 @@ public class TypeCheckBuilder {
                  * nodes. In this case, that set can be split and the new C1P ordering can be added
                  * in this spot.
                  */
-                List<PrimeMatrix> sizeOrderedMatrices = matrices.stream().sorted(Comparator.comparingInt(n -> -(n.containedNodes.size()))).collect(Collectors.toList());
+                List<PrimeMatrix> sizeOrderedMatrices = matrices.stream().sorted(Comparator.comparingInt(n -> -(n.containedNodes.cardinality()))).collect(Collectors.toList());
 
-                List<Set<Integer>> c1POrdering = new ArrayList<>();
-                Set<Integer> coveredNodes = new HashSet<>();
+                List<BitSet> c1POrdering = new ArrayList<>();
+                BitSet coveredNodes = new BitSet();
                 for (PrimeMatrix matrix : sizeOrderedMatrices) {
 
                     /* The new ordering constraints which must be applied. */
-                    List<Set<Integer>> newOrderingConstraints = matrix.c1POrdering;
+                    List<BitSet> newOrderingConstraints = matrix.c1POrdering;
 
-                    assert matrix.containedNodes.size() > 0; // can't have an empty matrix
-                    Integer matrixRepresentativeNode = matrix.containedNodes.stream().findAny().get();
-                    boolean hasOverlap = coveredNodes.contains(matrixRepresentativeNode);
+                    assert !matrix.containedNodes.isEmpty(); // can't have an empty matrix
+
+                    /*
+                     * Because either all or not nodes will be contained, it is sufficient to check
+                     * against one node.
+                     */
+                    int matrixRepresentativeIndex = matrix.containedNodes.nextSetBit(0);
+                    boolean hasOverlap = coveredNodes.get(matrixRepresentativeIndex);
                     if (!hasOverlap) {
-                        // no overlap -> just add nodes to end of the list
+                        assert !coveredNodes.intersects(matrix.containedNodes);
+                        /* No overlap -> just add nodes to end of the list. */
                         c1POrdering.addAll(newOrderingConstraints);
-                        coveredNodes.addAll(matrix.containedNodes);
+                        coveredNodes.or(matrix.containedNodes);
 
                     } else {
                         /*
                          * when there is overlap, all overlapping nodes will be in one set in the
                          * current list.
                          */
-                        assert coveredNodes.containsAll(matrix.containedNodes);
+                        BitSet testBitSet = (BitSet) coveredNodes.clone();
+                        testBitSet.and(matrix.containedNodes);
+                        boolean result = testBitSet.equals(matrix.containedNodes);
+                        assert result;
 
                         assert verifyC1POrderingProperty(c1POrdering, matrix);
 
                         for (int i = 0; i < c1POrdering.size(); i++) {
-                            Set<Integer> item = c1POrdering.get(i);
+                            BitSet item = c1POrdering.get(i);
                             /* It is enough to use one node to find where the overlap is. */
-                            hasOverlap = item.contains(matrixRepresentativeNode);
+                            hasOverlap = item.get(matrixRepresentativeIndex);
                             if (hasOverlap) {
-                                item.removeAll(matrix.containedNodes);
+                                item.andNot(matrix.containedNodes);
                                 c1POrdering.addAll(i + 1, newOrderingConstraints);
-                                if (item.size() == 0) {
+                                if (item.isEmpty()) {
                                     c1POrdering.remove(i);
                                 }
                                 break;
@@ -1150,11 +1248,11 @@ public class TypeCheckBuilder {
              * Verifying assumption that all of the overlap will be confined to one set within the
              * current c1POrdering.
              */
-            static boolean verifyC1POrderingProperty(List<Set<Integer>> c1POrdering, PrimeMatrix matrix) {
+            static boolean verifyC1POrderingProperty(List<BitSet> c1POrdering, PrimeMatrix matrix) {
                 ArrayList<Integer> overlappingSets = new ArrayList<>();
                 for (int i = 0; i < c1POrdering.size(); i++) {
-                    Set<Integer> item = c1POrdering.get(i);
-                    boolean hasOverlap = item.stream().anyMatch(n -> matrix.containedNodes.contains(n));
+                    BitSet item = c1POrdering.get(i);
+                    boolean hasOverlap = item.intersects(matrix.containedNodes);
                     if (hasOverlap) {
                         overlappingSets.add(i);
                     }
@@ -1184,8 +1282,8 @@ public class TypeCheckBuilder {
              * current ordering (c1POrdering) and another keeping track of all of the nodes
              * contained in the current ordering (containedNodes).
              */
-            List<Set<Integer>> c1POrdering;
-            Set<Integer> containedNodes;
+            List<BitSet> c1POrdering;
+            BitSet containedNodes;
 
             PrimeMatrix(ContiguousGroup initialGroup) {
                 this.initialGroup = initialGroup;
@@ -1195,15 +1293,15 @@ public class TypeCheckBuilder {
             }
 
             void initializeC1PInformation() {
-                this.containedNodes = new HashSet<>();
+                this.containedNodes = new BitSet();
                 this.c1POrdering = new ArrayList<>();
             }
 
             void copyC1PInformation(PrimeMatrix src) {
-                this.containedNodes = new HashSet<>(src.containedNodes);
+                this.containedNodes = (BitSet) src.containedNodes.clone();
                 this.c1POrdering = new ArrayList<>();
-                for (Set<Integer> entry : src.c1POrdering) {
-                    this.c1POrdering.add(new HashSet<>(entry));
+                for (BitSet entry : src.c1POrdering) {
+                    this.c1POrdering.add((BitSet) entry.clone());
                 }
             }
 
@@ -1359,14 +1457,17 @@ public class TypeCheckBuilder {
                  * Return the color of the provide set, based on what is "colored" by the colored
                  * set.
                  */
-                private static SetColor getSetColor(Set<Integer> set, Set<Integer> coloredSet) {
-                    long numColoredNodes = set.stream().filter(coloredSet::contains).count();
-                    if (numColoredNodes == 0) {
+                private static SetColor getSetColor(BitSet set, BitSet coloredSet) {
+                    if (!set.intersects(coloredSet)) {
                         return SetColor.EMPTY;
-                    } else if (numColoredNodes == set.size()) {
-                        return SetColor.FULL;
                     } else {
-                        return SetColor.PARTIAL;
+                        BitSet intersection = (BitSet) set.clone();
+                        intersection.and(coloredSet);
+                        if (intersection.equals(set)) {
+                            return SetColor.FULL;
+                        } else {
+                            return SetColor.PARTIAL;
+                        }
                     }
                 }
 
@@ -1375,11 +1476,12 @@ public class TypeCheckBuilder {
                  *
                  * @return Set of colored nodes from original set.
                  */
-                private static Set<Integer> splitOffColored(Set<Integer> set, Set<Integer> coloredSet) {
-                    Set<Integer> coloredNodes = set.stream().filter(coloredSet::contains).collect(Collectors.toSet());
-                    // assuming that this is invoked a partially colored set
-                    assert coloredNodes.size() != 0 && coloredNodes.size() < set.size();
-                    set.removeAll(coloredNodes);
+                private static BitSet splitOffColored(BitSet set, BitSet coloredSet) {
+                    BitSet coloredNodes = (BitSet) set.clone();
+                    coloredNodes.and(coloredSet);
+                    set.andNot(coloredNodes);
+                    /* Assuming that this is invoked on a partially colored set. */
+                    assert !coloredNodes.isEmpty() && !set.isEmpty();
 
                     return coloredNodes;
                 }
@@ -1394,15 +1496,18 @@ public class TypeCheckBuilder {
              * @return if the new grouping constraint was able to be added.
              */
             boolean addGroupAndCheckC1P(ContiguousGroup grouping) {
-                Set<Integer> newGroup = Arrays.stream(grouping.sortedGroupIds).boxed().collect(Collectors.toSet());
+                BitSet newGroup = new BitSet();
+                Arrays.stream(grouping.sortedGroupIds).forEach(i -> newGroup.set(i));
 
                 /*
                  * Nodes that are part of this grouping, but aren't part of the current c1POrdering
                  */
-                Set<Integer> uncoveredNodes = newGroup.stream().filter(n -> !containedNodes.contains(n)).collect(Collectors.toSet());
+                BitSet uncoveredNodes = (BitSet) newGroup.clone();
+                uncoveredNodes.andNot(containedNodes);
 
                 int numSets = c1POrdering.size();
                 if (numSets == 0) {
+                    assert uncoveredNodes.equals(newGroup);
                     /* add the initial ordering requirement */
                     c1POrdering.add(uncoveredNodes);
 
@@ -1412,9 +1517,10 @@ public class TypeCheckBuilder {
                      * B - (A ^ B)
                      */
                     // nodes which are only in the original group
-                    c1POrdering.get(0).removeAll(newGroup);
+                    c1POrdering.get(0).andNot(newGroup);
                     // nodes which are in both groups (i.e. the intersection)
-                    c1POrdering.add(newGroup.stream().filter(containedNodes::contains).collect(Collectors.toSet()));
+                    newGroup.and(containedNodes);
+                    c1POrdering.add(newGroup);
                     // nodes which are only in the new group
                     c1POrdering.add(uncoveredNodes);
 
@@ -1458,7 +1564,7 @@ public class TypeCheckBuilder {
 
                     SetColor rightColor = setColors[rightIntersect];
                     SetColor leftColor = setColors[leftIntersect];
-                    if (uncoveredNodes.size() == 0) {
+                    if (uncoveredNodes.isEmpty()) {
                         /* COLUMN-PARTITION Algorithm STEP 2.1. */
                         splitColoredNodes(rightColor, newGroup, rightIntersect, rightIntersect);
                         if (leftIntersect != rightIntersect) {
@@ -1490,7 +1596,7 @@ public class TypeCheckBuilder {
                 }
 
                 /* Recording that these nodes have been covered now. */
-                containedNodes.addAll(uncoveredNodes);
+                containedNodes.or(uncoveredNodes);
                 return true;
             }
 
@@ -1498,10 +1604,10 @@ public class TypeCheckBuilder {
              * If only partially colored, putting the colored nodes into a new set and inserting
              * them into a new place within the c1POrdering.
              */
-            void splitColoredNodes(SetColor color, Set<Integer> coloredSet, int srcIndex, int dstIndex) {
+            void splitColoredNodes(SetColor color, BitSet coloredSet, int srcIndex, int dstIndex) {
                 assert color != SetColor.EMPTY;
                 if (color != SetColor.FULL) {
-                    Set<Integer> newSet = SetColor.splitOffColored(c1POrdering.get(srcIndex), coloredSet);
+                    BitSet newSet = SetColor.splitOffColored(c1POrdering.get(srcIndex), coloredSet);
                     c1POrdering.add(dstIndex, newSet);
                 }
             }
@@ -1548,7 +1654,7 @@ public class TypeCheckBuilder {
                     }
                 }
                 if (!foundAssignment) {
-                    // a new slot is needed to satisfy this grouping
+                    /* A new slot is needed to satisfy this grouping. */
                     InterfaceSlot newSlot = new InterfaceSlot(slots.size());
                     InterfaceSlot.AddGroupingResult result = newSlot.tryAddGrouping(node);
                     assert result == InterfaceSlot.AddGroupingResult.SUCCESS : "must be able to add first node";
@@ -1571,13 +1677,17 @@ public class TypeCheckBuilder {
 
             // assigning slot IDs
             for (InterfaceSlot slot : slots) {
-                List<Set<Integer>> c1POrder = slot.getC1POrder();
+                List<BitSet> c1POrder = slot.getC1POrder();
                 int slotId = slot.id;
                 int id = 1;
-                for (Set<Integer> group : c1POrder) {
-                    for (Integer nodeID : group) {
+
+                for (BitSet group : c1POrder) {
+                    for (int nodeID = group.nextSetBit(0); nodeID >= 0; nodeID = group.nextSetBit(nodeID + 1)) {
                         HostedType type = graph.nodes[nodeID].type;
                         interfaceSlotIDMap.get(type)[slotId] = id;
+                        if (nodeID == Integer.MAX_VALUE) {
+                            break; // or (nodeID + 1) would overflow
+                        }
                     }
                     id++;
                 }
@@ -1589,13 +1699,11 @@ public class TypeCheckBuilder {
                 int maxId = Integer.MIN_VALUE;
                 HostedType type = interfaceNode.type;
                 int slotId = Short.toUnsignedInt(type.getTypeCheckSlot()) - startingSlotNum;
-                Set<Integer> idCheck = new HashSet<>();
                 for (Node descendant : interfaceNode.sortedDescendants) {
                     int id = interfaceSlotIDMap.get(descendant.type)[slotId];
                     assert id != 0;
                     minId = Integer.min(minId, id);
                     maxId = Integer.max(maxId, id);
-                    idCheck.add(id);
                 }
                 type.setTypeCheckRange(getShortValue(minId), getShortValue(maxId - minId + 1));
             }
@@ -1620,16 +1728,16 @@ public class TypeCheckBuilder {
                 HostedType superType = types.get(i);
                 for (int j = 0; j < numTypes; j++) {
                     HostedType checkedType = types.get(j);
-                    boolean legacyCheck = legacyCheckAssignable(superType, checkedType);
-                    boolean newCheck = newCheckAssignable(superType, checkedType);
-                    boolean checksMatch = legacyCheck == newCheck;
+                    boolean hostedCheck = superType.isAssignableFrom(checkedType);
+                    boolean runtimeCheck = runtimeIsAssignableFrom(superType, checkedType);
+                    boolean checksMatch = hostedCheck == runtimeCheck;
                     if (!checksMatch) {
                         StringBuilder message = new StringBuilder();
                         message.append("\n********Type checks do not match:********\n");
                         message.append(String.format("super type: %s\n", superType.toString()));
                         message.append(String.format("checked type: %s\n", checkedType.toString()));
-                        message.append(String.format("legacy check: %b\n", legacyCheck));
-                        message.append(String.format("new check: %b\n", newCheck));
+                        message.append(String.format("hosted check: %b\n", hostedCheck));
+                        message.append(String.format("runtime check: %b\n", runtimeCheck));
                         VMError.shouldNotReachHere(message.toString());
                     }
                 }
@@ -1637,20 +1745,7 @@ public class TypeCheckBuilder {
             return true;
         }
 
-        static boolean legacyCheckAssignable(HostedType superType, HostedType checkedType) {
-            int[] matches = superType.getAssignableFromMatches();
-            int checkedID = checkedType.getTypeID();
-            for (int i = 0; i < matches.length; i += 2) {
-                int assignableStart = matches[i];
-                int assignableEnd = assignableStart + matches[i + 1] - 1;
-                if (checkedID >= assignableStart && checkedID <= assignableEnd) {
-                    return true;
-                }
-            }
-            return false;
-        }
-
-        static boolean newCheckAssignable(HostedType superType, HostedType checkedType) {
+        static boolean runtimeIsAssignableFrom(HostedType superType, HostedType checkedType) {
             int typeCheckStart = Short.toUnsignedInt(superType.getTypeCheckStart());
             int typeCheckRange = Short.toUnsignedInt(superType.getTypeCheckRange());
             int typeCheckSlot = Short.toUnsignedInt(superType.getTypeCheckSlot());

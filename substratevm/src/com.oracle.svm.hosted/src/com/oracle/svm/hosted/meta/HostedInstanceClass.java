@@ -39,8 +39,6 @@ public class HostedInstanceClass extends HostedClass {
     protected int instanceSize;
     protected boolean monitorFieldNeeded = false;
     protected int monitorFieldOffset = 0;
-    protected boolean hashCodeFieldNeeded = false;
-    protected int hashCodeFieldOffset = 0;
 
     public HostedInstanceClass(HostedUniverse universe, AnalysisType wrapped, JavaKind kind, JavaKind storageKind, HostedClass superClass, HostedInterface[] interfaces, boolean isCloneable) {
         super(universe, wrapped, kind, storageKind, superClass, interfaces, isCloneable);
@@ -123,26 +121,5 @@ public class HostedInstanceClass extends HostedClass {
     public void setMonitorFieldOffset(int monitorFieldOffset) {
         assert this.monitorFieldOffset == 0 : "setting monitor field offset twice";
         this.monitorFieldOffset = monitorFieldOffset;
-    }
-
-    /*
-     * identityHashCode field.
-     */
-
-    public boolean needHashCodeField() {
-        return hashCodeFieldNeeded;
-    }
-
-    public void setNeedHashCodeField() {
-        this.hashCodeFieldNeeded = true;
-    }
-
-    public int getHashCodeFieldOffset() {
-        return hashCodeFieldOffset;
-    }
-
-    public void setHashCodeFieldOffset(int hashCodeFieldOffset) {
-        assert this.hashCodeFieldOffset == 0 : "setting hash code field offset twice";
-        this.hashCodeFieldOffset = hashCodeFieldOffset;
     }
 }

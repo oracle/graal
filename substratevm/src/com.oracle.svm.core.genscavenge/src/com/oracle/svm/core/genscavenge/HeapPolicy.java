@@ -28,7 +28,6 @@ import org.graalvm.compiler.api.replacements.Fold;
 import org.graalvm.compiler.word.Word;
 import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;
-import org.graalvm.nativeimage.hosted.Feature.FeatureAccess;
 import org.graalvm.word.UnsignedWord;
 import org.graalvm.word.WordFactory;
 
@@ -52,12 +51,8 @@ public final class HeapPolicy {
     static final long LARGE_ARRAY_THRESHOLD_SENTINEL_VALUE = 0;
     static final int ALIGNED_HEAP_CHUNK_FRACTION_FOR_LARGE_ARRAY_THRESHOLD = 8;
 
-    /* Policy constants initialized from command line options during image build. */
-    private final CollectOnAllocationPolicy collectOnAllocationPolicy;
-    private final HeapPolicy.HintGCPolicy userRequestedGCPolicy;
-
     @Platforms(Platform.HOSTED_ONLY.class)
-    HeapPolicy(FeatureAccess access) {
+    HeapPolicy() {
         if (!SubstrateUtil.isPowerOf2(getAlignedHeapChunkSize().rawValue())) {
             throw UserError.abort("AlignedHeapChunkSize (%d) should be a power of 2.", getAlignedHeapChunkSize().rawValue());
         }
@@ -65,30 +60,6 @@ public final class HeapPolicy {
             throw UserError.abort("LargeArrayThreshold (%d) should be below or equal to AlignedHeapChunkSize (%d).",
                             getLargeArrayThreshold().rawValue(), getAlignedHeapChunkSize().rawValue());
         }
-        userRequestedGCPolicy = instantiatePolicy(access, HeapPolicy.HintGCPolicy.class, HeapPolicyOptions.UserRequestedGCPolicy.getValue());
-        collectOnAllocationPolicy = new SometimesCollectOnAllocation();
-    }
-
-    @Platforms(Platform.HOSTED_ONLY.class)
-    static <T> T instantiatePolicy(FeatureAccess access, Class<T> policyClass, String className) {
-        Class<?> policy = access.findClassByName(className);
-        if (policy == null) {
-            throw UserError.abort("Policy %s does not exist. It must be a fully qualified class name.", className);
-        }
-        Object result;
-        try {
-            result = policy.getDeclaredConstructor().newInstance();
-        } catch (Exception ex) {
-            throw UserError.abort("Policy %s cannot be instantiated.", className);
-        }
-        if (!policyClass.isInstance(result)) {
-            throw UserError.abort("Policy %s does not extend %s.", className, policyClass.getTypeName());
-        }
-        return policyClass.cast(result);
-    }
-
-    CollectOnAllocationPolicy getCollectOnAllocationPolicy() {
-        return collectOnAllocationPolicy;
     }
 
     @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
@@ -115,10 +86,6 @@ public final class HeapPolicy {
         assert 0 <= bytes;
         return WordFactory.unsigned(bytes).multiply(1024).multiply(1024);
     }
-
-    /*
-     * Survivor space configuration
-     */
 
     public static int getMaxSurvivorSpaces() {
         return HeapPolicyOptions.MaxSurvivorSpaces.getValue();
@@ -344,8 +311,22 @@ public final class HeapPolicy {
         return WordFactory.unsigned(HeapPolicyOptions.AllocationBeforePhysicalMemorySize.getValue());
     }
 
-    HeapPolicy.HintGCPolicy getUserRequestedGCPolicy() {
-        return userRequestedGCPolicy;
+    public static void maybeCollectOnAllocation() {
+        UnsignedWord maxYoungSize = getMaximumYoungGenerationSize();
+        maybeCollectOnAllocation(maxYoungSize);
+    }
+
+    @Uninterruptible(reason = "Avoid races with other threads that also try to trigger a GC")
+    private static void maybeCollectOnAllocation(UnsignedWord maxYoungSize) {
+        if (youngUsedBytes.get().aboveOrEqual(maxYoungSize)) {
+            GCImpl.getGCImpl().collectWithoutAllocating(GenScavengeGCCause.OnAllocation, false);
+        }
+    }
+
+    public static void maybeCauseUserRequestedCollection() {
+        if (!SubstrateGCOptions.DisableExplicitGC.getValue()) {
+            HeapImpl.getHeapImpl().getGC().collectCompletely(GCCause.JavaLangSystemGC);
+        }
     }
 
     public static final class TestingBackDoor {
@@ -355,60 +336,6 @@ public final class HeapPolicy {
         /** The size, in bytes, of what qualifies as a "large" array. */
         public static long getUnalignedObjectSize() {
             return HeapPolicy.getLargeArrayThreshold().rawValue();
-        }
-    }
-
-    /** A policy for when to cause automatic collections on allocation. */
-    interface CollectOnAllocationPolicy {
-        /** Cause a collection if the policy says to. */
-        void maybeCauseCollection();
-    }
-
-    static final class NeverCollectOnAllocation implements CollectOnAllocationPolicy {
-        @Override
-        public void maybeCauseCollection() {
-        }
-    }
-
-    static final class AlwaysCollectOnAllocation implements CollectOnAllocationPolicy {
-        @Override
-        public void maybeCauseCollection() {
-            HeapImpl.getHeapImpl().getGCImpl().collectWithoutAllocating(GenScavengeGCCause.OnAllocationAlways);
-        }
-    }
-
-    /** A policy that causes collections if enough young generation allocation has happened. */
-    static final class SometimesCollectOnAllocation implements CollectOnAllocationPolicy {
-        @Override
-        public void maybeCauseCollection() {
-            if (youngUsedBytes.get().aboveOrEqual(getMaximumYoungGenerationSize())) {
-                GCImpl.getGCImpl().collectWithoutAllocating(GenScavengeGCCause.OnAllocationSometimes);
-            }
-        }
-    }
-
-    public interface HintGCPolicy {
-        void maybeCauseCollection(GCCause cause);
-    }
-
-    public static final class AlwaysCollectCompletely implements HeapPolicy.HintGCPolicy {
-        @Override
-        public void maybeCauseCollection(GCCause cause) {
-            HeapImpl.getHeapImpl().getGC().collectCompletely(cause);
-        }
-    }
-
-    /** Collect if bytes allocated since last collection exceed a threshold. */
-    public static final class ScepticallyCollect implements HeapPolicy.HintGCPolicy {
-        @Override
-        public void maybeCauseCollection(GCCause cause) {
-            if (youngUsedBytes.get().aboveOrEqual(collectScepticallyThreshold())) {
-                HeapImpl.getHeapImpl().getGCImpl().collect(cause);
-            }
-        }
-
-        public static UnsignedWord collectScepticallyThreshold() {
-            return getMaximumYoungGenerationSize().subtract(WordFactory.unsigned(HeapPolicyOptions.UserRequestedGCThreshold.getValue()));
         }
     }
 

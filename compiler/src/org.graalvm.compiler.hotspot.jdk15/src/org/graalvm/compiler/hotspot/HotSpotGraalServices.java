@@ -56,9 +56,9 @@ public class HotSpotGraalServices {
         return impl == null ? null : new CompilationContext(impl);
     }
 
-    public static void exit(int status) {
+    public static void exit(int status, HotSpotJVMCIRuntime runtime) {
         if (Services.IS_IN_NATIVE_IMAGE) {
-            HotSpotJVMCIRuntime.runtime().exitHotSpot(status);
+            runtime.exitHotSpot(status);
         } else {
             System.exit(status);
         }

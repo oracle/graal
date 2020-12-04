@@ -31,9 +31,14 @@ package com.oracle.truffle.llvm.parser.model.symbols.constants.integer;
 
 import java.math.BigInteger;
 
+import com.oracle.truffle.llvm.parser.LLVMParserRuntime;
 import com.oracle.truffle.llvm.parser.model.SymbolImpl;
 import com.oracle.truffle.llvm.parser.model.symbols.constants.AbstractConstant;
 import com.oracle.truffle.llvm.parser.model.visitors.SymbolVisitor;
+import com.oracle.truffle.llvm.runtime.CommonNodeFactory;
+import com.oracle.truffle.llvm.runtime.GetStackSpaceFactory;
+import com.oracle.truffle.llvm.runtime.datalayout.DataLayout;
+import com.oracle.truffle.llvm.runtime.nodes.api.LLVMExpressionNode;
 import com.oracle.truffle.llvm.runtime.types.Type;
 import com.oracle.truffle.llvm.runtime.types.Type.TypeOverflowException;
 
@@ -69,5 +74,19 @@ public final class BigIntegerConstant extends AbstractConstant {
             // fall-through
         }
         return value.toString();
+    }
+
+    @Override
+    public LLVMExpressionNode createNode(LLVMParserRuntime runtime, DataLayout dataLayout, GetStackSpaceFactory stackFactory) {
+        try {
+            Type type = getType();
+            if (Long.compareUnsigned(type.getBitSize(), Long.SIZE) <= 0) {
+                return CommonNodeFactory.createSimpleConstantNoArray(value.longValueExact(), type);
+            } else {
+                return CommonNodeFactory.createSimpleConstantNoArray(value, type);
+            }
+        } catch (TypeOverflowException e) {
+            return Type.handleOverflowExpression(e);
+        }
     }
 }

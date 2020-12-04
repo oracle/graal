@@ -329,9 +329,6 @@ public final class PolyglotCompilerOptions {
     @Option(help = "Print the entire AST after each compilation", category = OptionCategory.INTERNAL)
     public static final OptionKey<Boolean> TraceCompilationAST = new OptionKey<>(false);
 
-    @Option(help = "Print the inlined call tree for each compiled method", category = OptionCategory.INTERNAL)
-    public static final OptionKey<Boolean> TraceCompilationCallTree = new OptionKey<>(false);
-
     @Option(help = "Print information for inlining decisions.", category = OptionCategory.INTERNAL)
     public static final OptionKey<Boolean> TraceInlining = new OptionKey<>(false);
 
@@ -382,14 +379,8 @@ public final class PolyglotCompilerOptions {
     @Option(help = "Enable automatic inlining of guest language call targets.", category = OptionCategory.EXPERT)
     public static final OptionKey<Boolean> Inlining = new OptionKey<>(true);
 
-    @Option(help = "Maximum number of inlined non-trivial AST nodes per compilation unit. Deprecated, use InliningExpansionBudget and InliningInliningBudget.", category = OptionCategory.EXPERT, deprecated = true)
-    public static final OptionKey<Integer> InliningNodeBudget = new OptionKey<>(2250);
-
     @Option(help = "Maximum depth for recursive inlining.", category = OptionCategory.EXPERT)
     public static final OptionKey<Integer> InliningRecursionDepth = new OptionKey<>(2);
-
-    @Option(help = "Use language-agnostic inlining. Deprecated without replacement.", category = OptionCategory.EXPERT, deprecated = true)
-    public static final OptionKey<Boolean> LanguageAgnosticInlining = new OptionKey<>(true);
 
     // Splitting
 

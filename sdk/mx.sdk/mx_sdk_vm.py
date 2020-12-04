@@ -82,10 +82,8 @@ _graalvm_components_by_name = dict()
 _vm_configs = []
 _graalvm_hostvm_configs = [
     ('jvm', [], ['--jvm'], 50),
-    ('jvm-la-inline', [], ['--jvm', '--experimental-options', '--engine.LanguageAgnosticInlining'], 30),
     ('jvm-no-truffle-compilation', [], ['--jvm', '--experimental-options', '--engine.Compilation=false'], 29),
     ('native', [], ['--native'], 100),
-    ('native-la-inline', [], ['--native', '--experimental-options', '--engine.LanguageAgnosticInlining'], 40),
     ('native-no-truffle-compilation', [], ['--native', '--experimental-options', '--engine.Compilation=false'], 39)
 ]
 
@@ -293,7 +291,10 @@ class GraalVmComponent(object):
         return "{} ({})".format(self.name, self.dir_name)
 
     def direct_dependencies(self):
-        return [graalvm_component_by_name(name) for name in self.dependency_names]
+        try:
+            return [graalvm_component_by_name(name) for name in self.dependency_names]
+        except Exception as e:
+            raise Exception("{} (required by {})".format(e, self.name))
 
 
 class GraalVmTruffleComponent(GraalVmComponent):
@@ -726,8 +727,11 @@ grant codeBase "file:${java.home}/languages/-" {
                 for name, value in vendor_info.items():
                     jlink.append('--' + name + '=' + value)
 
+        release_file = join(jdk.home, 'release')
+        if isfile(release_file):
+            jlink.append('--release-info=' + release_file)
+
         # TODO: investigate the options below used by OpenJDK to see if they should be used:
-        # --release-info: this allow extra properties to be written to the <jdk>/release file
         # --order-resources: specifies order of resources in generated lib/modules file.
         #       This is apparently not so important if a CDS archive is available.
         # --generate-jli-classes: pre-generates a set of java.lang.invoke classes.

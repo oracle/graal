@@ -62,6 +62,34 @@ export class GraalVMConfigurationProvider implements vscode.DebugConfigurationPr
 
 	resolveDebugConfiguration(_folder: vscode.WorkspaceFolder | undefined, config: vscode.DebugConfiguration, _token?: vscode.CancellationToken): vscode.ProviderResult<vscode.DebugConfiguration> {
 		return new Promise<vscode.DebugConfiguration>(resolve => {
+			if (!config.type && !config.request && !config.name && !config.runtimeExecutable) {
+				// if launch.json is missing or empty
+				const editor = vscode.window.activeTextEditor;
+				if (editor) {
+					switch (editor.document.languageId) {
+						case 'javascript':
+						case 'typescript':
+							config.runtimeExecutable = 'js';
+							break;
+						case 'python':
+							config.runtimeExecutable = 'graalpython';
+							break;
+						case 'r':
+							config.runtimeExecutable = 'Rscript';
+							break;
+						case 'ruby':
+							config.runtimeExecutable = 'ruby';
+							break;
+					}
+					if (config.runtimeExecutable) {
+						config.type = 'graalvm';
+						config.name = 'Launch';
+						config.request = 'launch';
+						config.program = '${file}';
+					}
+				}
+			}
+
 			if (config.request === 'launch' && config.name === 'Launch R Term') {
 				config.request = 'attach';
 				const conf = getConf('r');
@@ -78,7 +106,7 @@ export class GraalVMConfigurationProvider implements vscode.DebugConfigurationPr
 					}, config.timeout | 3000);
 				}, 1000);
 			} else {
-				const gvmc = getGVMConfig()
+				const gvmc = getGVMConfig();
 				const inProcessServer = gvmc.get('languageServer.inProcessServer') as boolean;
 				const graalVMHome = getGVMHome(gvmc);
 				if (graalVMHome) {
@@ -149,7 +177,7 @@ export class GraalVMConfigurationProvider implements vscode.DebugConfigurationPr
 export class GraalVMDebugAdapterDescriptorFactory implements vscode.DebugAdapterDescriptorFactory {
 
 	createDebugAdapterDescriptor(session: vscode.DebugSession, executable: vscode.DebugAdapterExecutable | undefined): vscode.ProviderResult<vscode.DebugAdapterDescriptor> {
-		if (!session.configuration.protocol || session.configuration.protocol === 'debugAdapter') {
+		if (session.configuration.protocol === 'debugAdapter') {
 			if (session.configuration.request === 'attach') {
 				return new vscode.DebugAdapterServer(session.configuration.port, session.configuration.address);
 			} else if (session.configuration.request === 'launch') {
@@ -281,14 +309,18 @@ async function getLaunchInfo(config: vscode.DebugConfiguration | ILaunchRequestA
 	const programArgs = config.args || [];
 	let launchArgs = [];
 	if (!config.noDebug) {
-		if (!config.protocol || config.protocol === 'debugAdapter') {
-			launchArgs.push(`--dap=${port}`);
-		} else if (config.protocol === 'chromeDevTools') {
+		if (!config.protocol || config.protocol === 'chromeDevTools') {
 			if (path.basename(runtimeExecutable) === NODE) {
 				launchArgs.push(`--inspect-brk=${port}`);
 			} else {
 				launchArgs.push(`--inspect=${port}`);
 			}
+		} else if (config.protocol === 'debugAdapter') {
+			let idx = runtimeArgs.indexOf('--jvm');
+			if (idx < 0) {
+				launchArgs.push('--jvm');
+			}
+			launchArgs.push(`--dap=${port}`);
 		}
 	}
 	return Promise.resolve({exec: runtimeExecutable, args: runtimeArgs.concat(launchArgs, program ? [program] : [], programArgs), cwd: cwd, port: port});

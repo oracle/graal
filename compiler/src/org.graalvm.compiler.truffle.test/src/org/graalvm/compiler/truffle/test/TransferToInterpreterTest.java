@@ -24,8 +24,11 @@
  */
 package org.graalvm.compiler.truffle.test;
 
-import org.graalvm.compiler.truffle.common.TruffleInliningPlan;
-import org.graalvm.compiler.truffle.runtime.DefaultInliningPolicy;
+import java.util.Map;
+
+import org.graalvm.compiler.truffle.common.TruffleCompilation;
+import org.graalvm.compiler.truffle.common.TruffleCompiler;
+import org.graalvm.compiler.truffle.common.TruffleDebugContext;
 import org.graalvm.compiler.truffle.runtime.GraalTruffleRuntime;
 import org.graalvm.compiler.truffle.runtime.OptimizedCallTarget;
 import org.graalvm.compiler.truffle.runtime.TruffleInlining;
@@ -36,10 +39,6 @@ import org.junit.Test;
 import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.nodes.RootNode;
-import java.util.Map;
-import org.graalvm.compiler.truffle.common.TruffleCompilation;
-import org.graalvm.compiler.truffle.common.TruffleCompiler;
-import org.graalvm.compiler.truffle.common.TruffleDebugContext;
 
 public class TransferToInterpreterTest extends TestWithPolyglotOptions {
 
@@ -78,8 +77,7 @@ public class TransferToInterpreterTest extends TestWithPolyglotOptions {
         Map<String, Object> options = GraalTruffleRuntime.getOptionsForCompiler(target);
         try (TruffleCompilation compilation = compiler.openCompilation(compilable)) {
             TruffleDebugContext debug = compiler.openDebugContext(options, compilation);
-            TruffleInliningPlan inliningPlan = new TruffleInlining(compilable, new DefaultInliningPolicy());
-            compiler.doCompile(debug, compilation, options, inliningPlan, null, null);
+            compiler.doCompile(debug, compilation, options, new TruffleInlining(), null, null);
         }
         Assert.assertTrue(target.isValid());
         target.call(0);

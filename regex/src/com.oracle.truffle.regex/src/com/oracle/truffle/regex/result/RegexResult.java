@@ -68,8 +68,6 @@ import com.oracle.truffle.regex.util.TruffleReadOnlyKeysArray;
  * {@code exec} method and has the following properties:
  * <ol>
  * <li>{@code boolean isMatch}: {@code true} if a match was found, {@code false} otherwise.</li>
- * <li>{@code int groupCount}: number of capture groups present in the regular expression, including
- * group 0. If the result is no match, this property is undefined.</li>
  * <li>{@link TruffleObject} {@code getStart(int groupNumber)}: returns the position where the
  * beginning of the capture group with the given number was found. If the result is no match, the
  * returned value is undefined. Capture group number {@code 0} denotes the boundaries of the entire

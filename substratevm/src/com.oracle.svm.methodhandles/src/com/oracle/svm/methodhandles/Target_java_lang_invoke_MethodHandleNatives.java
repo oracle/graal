@@ -129,7 +129,7 @@ final class Target_java_lang_invoke_MethodHandleNatives {
 
     @TargetElement(onlyWith = JDK11OrLater.class)
     @Substitute
-    private static Target_java_lang_invoke_MemberName resolve(Target_java_lang_invoke_MemberName self, Class<?> caller, boolean speculativeResolve) throws LinkageError, ClassNotFoundException {
+    static Target_java_lang_invoke_MemberName resolve(Target_java_lang_invoke_MemberName self, Class<?> caller, boolean speculativeResolve) throws LinkageError, ClassNotFoundException {
         if (self.reflectAccess != null) {
             return self;
         }

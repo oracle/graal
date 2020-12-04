@@ -29,9 +29,14 @@
  */
 package com.oracle.truffle.llvm.runtime;
 
+import java.util.HashMap;
+import java.util.Map;
+
+import com.oracle.truffle.api.Assumption;
 import com.oracle.truffle.api.CallTarget;
 import com.oracle.truffle.api.CompilerAsserts;
 import com.oracle.truffle.api.CompilerDirectives;
+import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.RootCallTarget;
 import com.oracle.truffle.api.Truffle;
@@ -40,7 +45,6 @@ import com.oracle.truffle.api.dsl.GenerateUncached;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.interop.InteropLibrary;
 import com.oracle.truffle.api.interop.UnsupportedMessageException;
-import com.oracle.truffle.api.utilities.AssumedValue;
 import com.oracle.truffle.llvm.runtime.LLVMFunctionCodeFactory.ResolveFunctionNodeGen;
 import com.oracle.truffle.llvm.runtime.debug.type.LLVMSourceFunctionType;
 import com.oracle.truffle.llvm.runtime.except.LLVMLinkerException;
@@ -48,13 +52,10 @@ import com.oracle.truffle.llvm.runtime.interop.LLVMForeignCallNode;
 import com.oracle.truffle.llvm.runtime.interop.LLVMForeignConstructorCallNode;
 import com.oracle.truffle.llvm.runtime.interop.LLVMForeignFunctionCallNode;
 import com.oracle.truffle.llvm.runtime.interop.access.LLVMInteropType;
-import com.oracle.truffle.llvm.runtime.memory.LLVMNativeMemory;
+import com.oracle.truffle.llvm.runtime.memory.LLVMHandleMemoryBase;
 import com.oracle.truffle.llvm.runtime.nodes.api.LLVMNode;
 import com.oracle.truffle.llvm.runtime.pointer.LLVMNativePointer;
 import com.oracle.truffle.llvm.runtime.types.FunctionType;
-
-import java.util.HashMap;
-import java.util.Map;
 
 /**
  * {@link LLVMFunctionCode} represents the callable function of a {@link LLVMFunction}.
@@ -62,20 +63,23 @@ import java.util.Map;
  * A call target is generated when a {@link Function} is resolved.
  *
  */
-public class LLVMFunctionCode {
+public final class LLVMFunctionCode {
     private static final long SULONG_FUNCTION_POINTER_TAG = 0xBADE_FACE_0000_0000L;
 
     static {
-        assert LLVMNativeMemory.isCommonHandleMemory(SULONG_FUNCTION_POINTER_TAG);
-        assert !LLVMNativeMemory.isDerefHandleMemory(SULONG_FUNCTION_POINTER_TAG);
+        assert LLVMHandleMemoryBase.isCommonHandleMemory(SULONG_FUNCTION_POINTER_TAG);
+        assert !LLVMHandleMemoryBase.isDerefHandleMemory(SULONG_FUNCTION_POINTER_TAG);
     }
 
-    private final AssumedValue<Function> function;
+    @CompilationFinal private Function functionFinal;
+    private Function functionDynamic;
+    @CompilationFinal private Assumption assumption;
     private final LLVMFunction llvmFunction;
 
     public LLVMFunctionCode(LLVMFunction llvmFunction) {
         this.llvmFunction = llvmFunction;
-        this.function = new AssumedValue<>("LLVMFunctionRuntime.initialFunction", llvmFunction.getFunction());
+        this.functionFinal = this.functionDynamic = llvmFunction.getFunction();
+        this.assumption = Truffle.getRuntime().createAssumption();
     }
 
     private static long tagSulongFunctionPointer(int id) {
@@ -188,9 +192,9 @@ public class LLVMFunctionCode {
             LLVMContext context = LLVMLanguage.getContext();
             Object wrapper = null;
             LLVMNativePointer pointer = null;
-            NFIContextExtension nfiContextExtension = context.getContextExtensionOrNull(NFIContextExtension.class);
-            if (nfiContextExtension != null) {
-                wrapper = nfiContextExtension.createNativeWrapper(descriptor.getLLVMFunction(), descriptor.getFunctionCode());
+            NativeContextExtension nativeContextExtension = context.getContextExtensionOrNull(NativeContextExtension.class);
+            if (nativeContextExtension != null) {
+                wrapper = nativeContextExtension.createNativeWrapper(descriptor.getLLVMFunction(), descriptor.getFunctionCode());
                 if (wrapper != null) {
                     try {
                         pointer = LLVMNativePointer.create(InteropLibrary.getFactory().getUncached().asPointer(wrapper));
@@ -405,11 +409,21 @@ public class LLVMFunctionCode {
     }
 
     private void setFunction(Function newFunction) {
-        function.set(newFunction);
+        this.functionDynamic = this.functionFinal = newFunction;
+        this.assumption.invalidate();
+        this.assumption = Truffle.getRuntime().createAssumption();
     }
 
     public Function getFunction() {
-        return function.get();
+        if (CompilerDirectives.isPartialEvaluationConstant(this)) {
+            if (!assumption.isValid()) {
+                CompilerDirectives.transferToInterpreterAndInvalidate();
+                return functionDynamic;
+            }
+            return functionFinal;
+        } else {
+            return functionDynamic;
+        }
     }
 
     public LLVMFunction getLLVMFunction() {

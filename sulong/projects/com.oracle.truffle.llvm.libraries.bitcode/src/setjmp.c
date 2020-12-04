@@ -33,12 +33,12 @@
 #include "unsupported.h"
 
 int setjmp(jmp_buf env) {
-    WARN_UNSUPPORTED(setjmp);
+    // WARN_UNSUPPORTED(setjmp); // setjmp is unsupported but we do not want to warn eagerly - longjmp will take care
     return 0;
 }
 
 int sigsetjmp(sigjmp_buf env, int savesigs) {
-    WARN_UNSUPPORTED(sigsetjmp);
+    // WARN_UNSUPPORTED(sigsetjmp); // sigsetjmp is unsupported but we do not want to warn eagerly - siglongjmp will take care
     return 0;
 }
 

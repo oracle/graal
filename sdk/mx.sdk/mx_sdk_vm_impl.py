@@ -692,7 +692,7 @@ class BaseGraalVmLayoutDistribution(_with_metaclass(ABCMeta, mx.LayoutDistributi
                         _link_path = _add_link(_jdk_jre_bin, _link_dest, _component)
                         _jre_bin_names.append(basename(_link_path))
                 _add_native_image_macro(_launcher_config, _component)
-                if 'poly' in _components_set(self.components, stage1) and isinstance(_launcher_config, mx_sdk.LanguageLauncherConfig):
+                if isinstance(_launcher_config, mx_sdk.LanguageLauncherConfig):
                     _add(layout, _component_base, 'dependency:{}/polyglot.config'.format(launcher_project), _component)
             for _library_config in sorted(_get_library_configs(_component), key=lambda c: c.destination):
                 graalvm_dists.update(_library_config.jar_distributions)
@@ -1666,9 +1666,8 @@ class GraalVmLanguageLauncher(GraalVmLauncher):  # pylint: disable=too-many-ance
             yield e
             if single:
                 return
-        if 'poly' in _components_set(stage1=self.stage1):
-            out = self.polyglot_config_output_file()
-            yield out, basename(out)
+        out = self.polyglot_config_output_file()
+        yield out, basename(out)
 
 
 class GraalVmNativeImageBuildTask(_with_metaclass(ABCMeta, mx.ProjectBuildTask)):
@@ -1706,7 +1705,7 @@ class GraalVmNativeImageBuildTask(_with_metaclass(ABCMeta, mx.ProjectBuildTask))
         return self._polyglot_config_contents
 
     def with_polyglot_config(self):
-        return isinstance(self.subject.native_image_config, mx_sdk.LanguageLauncherConfig) and 'poly' in _components_set(stage1=self.subject.stage1)
+        return isinstance(self.subject.native_image_config, mx_sdk.LanguageLauncherConfig)
 
     def native_image_needs_build(self, out_file):
         # TODO check if definition has changed
@@ -2377,10 +2376,9 @@ def mx_register_dynamic_suite_constituents(register_project, register_distributi
             register_project(GraalVmJvmciParentClasspath(jvmci_parent_jars))
 
         if _src_jdk.javaCompliance >= '9':
-            assert get_final_graalvm_distribution().jimage_jars
             register_project(GraalVmJImage(
                 suite=_suite,
-                jimage_jars=list(get_final_graalvm_distribution().jimage_jars),
+                jimage_jars=sorted(get_final_graalvm_distribution().jimage_jars),
                 workingSets=None,
             ))
 
@@ -2682,8 +2680,8 @@ def graalvm_vendor_version(graalvm_dist):
     vendor_version += ' {}'.format(graalvm_version())
     return vendor_version
 
-mx.add_argument('--components', action='store', help='Comma-separated list of component names to build. Only those components and their dependencies are built.')
-mx.add_argument('--exclude-components', action='store', help='Comma-separated list of component names to be excluded from the build.')
+mx.add_argument('--components', action='store', help='Comma-separated list of component names to build. Only those components and their dependencies are built. suite:NAME can be used to exclude all components of a suite.')
+mx.add_argument('--exclude-components', action='store', help='Comma-separated list of component names to be excluded from the build. suite:NAME can be used to exclude all components of a suite.')
 mx.add_argument('--disable-libpolyglot', action='store_true', help='Disable the \'polyglot\' library project.')
 mx.add_argument('--disable-polyglot', action='store_true', help='Disable the \'polyglot\' launcher project.')
 mx.add_argument('--disable-installables', action='store', help='Disable the \'installable\' distributions for gu.'
@@ -2753,14 +2751,30 @@ def _components_include_list():
     included = _parse_cmd_arg('components', parse_bool=False, default_value=None)
     if included is None:
         return None
-    return [mx_sdk.graalvm_component_by_name(name) for name in included]
+    components = []
+    for name in included:
+        if name.startswith('suite:'):
+            suite_name = name[len('suite:'):]
+            components.extend([c for c in mx_sdk_vm.graalvm_components() if c.suite.name == suite_name])
+        else:
+            components.append(mx_sdk.graalvm_component_by_name(name))
+    return components
 
 
 def _excluded_components():
     excluded = _parse_cmd_arg('exclude_components', parse_bool=False, default_value='')
     if mx.get_opts().disable_polyglot or _env_var_to_bool('DISABLE_POLYGLOT'):
         excluded.append('poly')
-    return excluded
+
+    expanded = []
+    for name in excluded:
+        if name.startswith('suite:'):
+            suite_name = name[len('suite:'):]
+            expanded.extend([c.name for c in mx_sdk_vm.graalvm_components() if c.suite.name == suite_name])
+        else:
+            expanded.append(name)
+
+    return expanded
 
 
 def _extra_image_builder_args(image):

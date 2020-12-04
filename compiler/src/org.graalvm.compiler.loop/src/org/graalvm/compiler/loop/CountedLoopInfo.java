@@ -33,12 +33,14 @@ import org.graalvm.compiler.core.common.type.IntegerStamp;
 import org.graalvm.compiler.core.common.type.Stamp;
 import org.graalvm.compiler.core.common.util.UnsignedLong;
 import org.graalvm.compiler.debug.DebugCloseable;
+import org.graalvm.compiler.debug.GraalError;
 import org.graalvm.compiler.loop.InductionVariable.Direction;
 import org.graalvm.compiler.nodes.AbstractBeginNode;
 import org.graalvm.compiler.nodes.ConstantNode;
 import org.graalvm.compiler.nodes.GuardNode;
 import org.graalvm.compiler.nodes.IfNode;
 import org.graalvm.compiler.nodes.LogicNode;
+import org.graalvm.compiler.nodes.LoopBeginNode;
 import org.graalvm.compiler.nodes.NodeView;
 import org.graalvm.compiler.nodes.StructuredGraph;
 import org.graalvm.compiler.nodes.ValueNode;
@@ -299,9 +301,60 @@ public class CountedLoopInfo {
     }
 
     public boolean counterNeverOverflows() {
+        if (loop.loopBegin().canNeverOverflow()) {
+            return true;
+        }
         if (iv.isConstantStride() && abs(iv.constantStride()) == 1) {
             return true;
         }
+        // @formatter:off
+        /*
+         * Following comment reasons about the simplest possible loop form:
+         *
+         *              for(i = 0;i < end;i += stride)
+         *
+         * The problem is we want to create an overflow guard for the loop that can be hoisted
+         * before the loop, i.e., the overflow guard must not have loop variant inputs else it must
+         * be scheduled inside the loop. This means we cannot refer explicitly to the induction
+         * variable's phi but must establish a relation between end, stride and max (max integer
+         * range for a given loop) that is sufficient for most cases.
+         *
+         * We know that a head counted loop with a stride > 1 may overflow if the stride is big
+         * enough that end + stride will be > MAX, i.e. it overflows into negative value range.
+         *
+         * It is important that "end" in this context is the checked value of the loop condition:
+         * i.e., an arbitrary value. There is no relation between end and MAX established except
+         * that based on the integer representation we know that end <= MAX.
+         *
+         * A loop can overflow if the last checked value of the iv allows an overflow in the next
+         * iteration: the value range for which an overflow can happen is [MAX-(stride-1),MAX] e.g.
+         *
+         * MAX=10, stride = 3, overflow if number > 10
+         *  end = MAX -> 10 -> 10 + 3 = 13 -> overflow
+         *  end = MAX-1 -> 9 -> 9 + 3 = 12 -> overflow
+         *  end = MAX-2 -> 8 -> 8 + 3 = 11 -> overflow
+         *  end = MAX-3 -> 7 -> 7 + 3 = 10 -> No overflow at MAX - stride
+         *
+         * Note that this guard is pessimistic, i.e., it marks loops as potentially overflowing that
+         * are actually not overflowing. Consider the following loop:
+         *
+         * <pre>
+         *    for(i = MAX-56; i < MAX, i += 8)
+         * </pre>
+         *
+         *  where i in last loop body visit = MAX - 8, i after = MAX, no overflow
+         *
+         * which is wrongly detected as overflowing since "end" is element of [MAX-(stride-1),MAX]
+         * which is [MAX-7,MAX] and end is MAX. We handle such cases with a speculation and disable
+         * counted loop detection on subsequent compilations. We can only avoid such false positive
+         * detections by actually computing the number of iterations with a division, however we try
+         * to avoid that since that may be part of the fast path.
+         *
+         * And additional backup strategy could be to actually emit the precise guard inside the
+         * loop if the deopt already failed, but we refrain from this for now for simplicity
+         * reasons.
+         */
+        // @formatter:on
         IntegerStamp endStamp = (IntegerStamp) end.stamp(NodeView.DEFAULT);
         ValueNode strideNode = iv.strideNode();
         IntegerStamp strideStamp = (IntegerStamp) strideNode.stamp(NodeView.DEFAULT);
@@ -343,8 +396,21 @@ public class CountedLoopInfo {
                 cond = graph.addOrUniqueWithInputs(integerHelper.createCompareNode(end, v1, NodeView.DEFAULT));
             }
             assert graph.getGuardsStage().allowsFloatingGuards();
+
+            SpeculationLog speculationLog = graph.getSpeculationLog();
+            SpeculationLog.Speculation speculation = SpeculationLog.NO_SPECULATION;
+            if (speculationLog != null) {
+                SpeculationLog.SpeculationReason speculationReason = LoopBeginNode.LOOP_OVERFLOW_DEOPT.createSpeculationReason(graph.method(), iv.loop.loopBegin().stateAfter().bci);
+                if (speculationLog.maySpeculate(speculationReason)) {
+                    speculation = speculationLog.speculate(speculationReason);
+                    LoopBeginNode.overflowSpeculationTaken.increment(graph.getDebug());
+                } else {
+                    GraalError.shouldNotReachHere("Must not create overflow guard for loop " + loop.loopBegin() + " where the speculation guard already failed, this can create deopt loops");
+                }
+            }
+
             overflowGuard = graph.unique(new GuardNode(cond, AbstractBeginNode.prevBegin(loop.entryPoint()), DeoptimizationReason.LoopLimitCheck, DeoptimizationAction.InvalidateRecompile, true,
-                            SpeculationLog.NO_SPECULATION, null)); // TODO gd: use speculation
+                            speculation, null));
             loop.loopBegin().setOverflowGuard(overflowGuard);
             return overflowGuard;
         }

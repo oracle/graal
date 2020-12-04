@@ -51,7 +51,7 @@ public class NativeImageOptions {
                     "For AMD64, SSE and SSE2 are enabled by default. Available features are: " +
                     "CX8, CMOV, FXSR, HT, MMX, AMD_3DNOW_PREFETCH, SSE3, SSSE3, SSE4A, SSE4_1, " +
                     "SSE4_2, POPCNT, LZCNT, TSC, TSCINV, AVX, AVX2, AES, ERMS, CLMUL, BMI1, " +
-                    "BMI2, RTM, ADX, AVX512F, AVX512DQ, AVX512PF, AVX512ER, AVX512CD, AVX512BW, " +
+                    "BMI2, RTM, ADX, AVX512F, AVX512DQ, AVX512PF, AVX512ER, AVX512CD, AVX512BW, AVX512VL, " +
                     "SHA, FMA. On AArch64, no features are enabled by default. Available features " +
                     "are: FP, ASIMD, EVTSTRM, AES, PMULL, SHA1, SHA2, CRC32, LSE, STXR_PREFETCH, " +
                     "A53MAC", type = User)//
@@ -178,7 +178,7 @@ public class NativeImageOptions {
     @Option(help = "Show exception stack traces for exceptions during image building.)")//
     public static final HostedOptionKey<Boolean> ReportExceptionStackTraces = new HostedOptionKey<>(areAssertionsEnabled());
 
-    @Option(help = "Maximum number of types allowed in the image. Used for tests where small number of types in necessary.", type = Debug)//
+    @Option(help = "Maximum number of types allowed in the image. Used for tests where small number of types is necessary.", type = Debug)//
     public static final HostedOptionKey<Integer> MaxReachableTypes = new HostedOptionKey<>(-1);
 
     public static int getMaximumNumberOfConcurrentThreads(OptionValues optionValues) {

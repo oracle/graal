@@ -376,8 +376,8 @@ public final class SVMHost implements HostVM {
 
         boolean assertionStatus = RuntimeAssertionsSupport.singleton().desiredAssertionStatus(javaClass);
 
-        final DynamicHub dynamicHub = new DynamicHub(className, computeHubType(type), computeReferenceType(type), type.isLocal(), isAnonymousClass(javaClass), superHub, componentHub, sourceFileName,
-                        modifiers, hubClassLoader, isHidden, isRecord, nestHost, assertionStatus);
+        final DynamicHub dynamicHub = new DynamicHub(javaClass, className, computeHubType(type), computeReferenceType(type), type.isLocal(), isAnonymousClass(javaClass), superHub, componentHub,
+                        sourceFileName, modifiers, hubClassLoader, isHidden, isRecord, nestHost, assertionStatus);
         if (JavaVersionUtil.JAVA_SPEC > 8) {
             ModuleAccess.extractAndSetModule(dynamicHub, javaClass);
         }
@@ -385,22 +385,22 @@ public final class SVMHost implements HostVM {
     }
 
     /**
-     * @return boolean if class is available or NoClassDefFoundError if class' parents are not on
-     *         the classpath or InternalError if the class is invalid.
+     * @return boolean if class is available or LinkageError if class' parents are not on the
+     *         classpath or InternalError if the class is invalid.
      */
     private static Object isAnonymousClass(Class<?> javaClass) {
         try {
             return javaClass.isAnonymousClass();
         } catch (InternalError e) {
             return e;
-        } catch (NoClassDefFoundError e) {
+        } catch (LinkageError e) {
             if (NativeImageOptions.AllowIncompleteClasspath.getValue()) {
                 return e;
             } else {
                 String message = "Discovered a type for which isAnonymousClass can't be called: " + javaClass.getTypeName() +
                                 ". To avoid this issue at build time use the " +
                                 SubstrateOptionsParser.commandArgument(NativeImageOptions.AllowIncompleteClasspath, "+") +
-                                " option. The NoClassDefFoundError will then be reported at run time when this method is called for the first time.";
+                                " option. The LinkageError will then be reported at run time when this method is called for the first time.";
                 throw new UnsupportedFeatureException(message);
             }
         }

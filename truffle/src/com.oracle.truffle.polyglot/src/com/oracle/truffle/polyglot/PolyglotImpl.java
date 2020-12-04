@@ -529,7 +529,7 @@ public final class PolyglotImpl extends AbstractPolyglotImpl {
      * why this coercion should only be used in the catch block at the outermost API call.
      */
     @TruffleBoundary
-    static <T extends Throwable> PolyglotException guestToHostException(PolyglotLanguageContext languageContext, T e) {
+    static <T extends Throwable> PolyglotException guestToHostException(PolyglotLanguageContext languageContext, T e, boolean entered) {
         assert !(e instanceof PolyglotException) : "polyglot exceptions must not be thrown to the host: " + e;
         PolyglotEngineException.rethrow(e);
 
@@ -543,19 +543,12 @@ public final class PolyglotImpl extends AbstractPolyglotImpl {
             exceptionImpl = new PolyglotExceptionImpl(context.engine, e);
         } else {
             try {
-                Object prev = context.engine.enterIfNeeded(context);
-                try {
-                    exceptionImpl = new PolyglotExceptionImpl(languageContext, e);
-                } finally {
-                    context.engine.leaveIfNeeded(prev, context);
-                }
+                exceptionImpl = new PolyglotExceptionImpl(languageContext.getImpl(), languageContext.context.engine,
+                                languageContext, e, true, entered);
             } catch (Throwable t) {
                 /*
-                 * It is possible that we fail to enter or produce a guest value using a context at
-                 * this point, because the context might be closed or invalidated. This can happen
-                 * as a race condition. We don't want to lock here, because this would be very prone
-                 * to deadlocks. So if we fail to produce a guest value here we construct polyglot
-                 * exception only using the engine, which does not require a context to be entered.
+                 * It is possible that we fail to produce a guest value or interop message failed.
+                 * Report the exception as an internal error.
                  */
                 e.addSuppressed(t);
                 exceptionImpl = new PolyglotExceptionImpl(context.engine, e);

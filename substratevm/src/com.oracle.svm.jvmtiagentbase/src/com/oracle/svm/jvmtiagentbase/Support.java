@@ -37,7 +37,6 @@ import org.graalvm.nativeimage.c.type.CCharPointerPointer;
 import org.graalvm.nativeimage.c.type.CIntPointer;
 import org.graalvm.nativeimage.c.type.CTypeConversion;
 import org.graalvm.nativeimage.c.type.WordPointer;
-import org.graalvm.word.WordBase;
 
 import com.oracle.svm.core.SubstrateUtil;
 import com.oracle.svm.core.util.VMError;
@@ -386,14 +385,6 @@ public final class Support {
         return jniFunctions().getCallIntMethodA().invoke(env, obj, method, args);
     }
 
-    public static JNIObjectHandle newObjectLLL(JNIEnvironment env, JNIObjectHandle clazz, JNIMethodId ctor, JNIObjectHandle l0, JNIObjectHandle l1, JNIObjectHandle l2) {
-        JNIValue args = StackValue.get(3, JNIValue.class);
-        args.addressOf(0).setObject(l0);
-        args.addressOf(1).setObject(l1);
-        args.addressOf(2).setObject(l2);
-        return jniFunctions().getNewObjectA().invoke(env, clazz, ctor, args);
-    }
-
     public static JNIObjectHandle newObjectLLLJ(JNIEnvironment env, JNIObjectHandle clazz, JNIMethodId ctor, JNIObjectHandle l0, JNIObjectHandle l1, JNIObjectHandle l2, long l3) {
         JNIValue args = StackValue.get(4, JNIValue.class);
         args.addressOf(0).setObject(l0);
@@ -413,10 +404,6 @@ public final class Support {
 
     public static void checkJni(int resultCode) {
         guarantee(resultCode == JNIErrors.JNI_OK());
-    }
-
-    public interface WordSupplier<T extends WordBase> {
-        T get();
     }
 
     private Support() {

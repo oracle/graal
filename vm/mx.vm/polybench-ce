@@ -1,3 +1,3 @@
 DYNAMIC_IMPORTS=/substratevm,/wasm,/graal-js,truffleruby
-COMPONENTS=Polybench Launcher,Native Image,GraalWasm,TruffleRuby,Graal.js
+COMPONENTS=Polybench Launcher,Native Image,GraalWasm,TruffleRuby,Graal.js,LLVM Runtime Launcher
 NATIVE_IMAGES=polybench

@@ -36,6 +36,8 @@ import com.oracle.truffle.llvm.runtime.global.LLVMGlobal;
 
 public abstract class LLVMSymbol {
 
+    public static final LLVMSymbol[] EMPTY = new LLVMSymbol[0];
+
     private final String name;
     private final int moduleId;
     private final int symbolIndex;
@@ -54,16 +56,16 @@ public abstract class LLVMSymbol {
         this.exported = exported;
     }
 
-    public String getName() {
+    public final String getName() {
         return name;
     }
 
-    public String getKind() {
+    public final String getKind() {
         CompilerAsserts.neverPartOfCompilation();
         return this.getClass().getSimpleName();
     }
 
-    public boolean isExported() {
+    public final boolean isExported() {
         return exported;
     }
 
@@ -73,7 +75,7 @@ public abstract class LLVMSymbol {
      *
      * @param illegalOK if symbols created not from bitcode files can be retrieved.
      */
-    public int getSymbolIndex(boolean illegalOK) {
+    public final int getSymbolIndex(boolean illegalOK) {
         if (symbolIndex >= 0 || illegalOK) {
             return symbolIndex;
         }
@@ -88,7 +90,7 @@ public abstract class LLVMSymbol {
      *
      * @param illegalOK if symbols created not from bitcode files can be retrieved.
      */
-    public int getBitcodeID(boolean illegalOK) {
+    public final int getBitcodeID(boolean illegalOK) {
         if (moduleId >= 0 || illegalOK) {
             return moduleId;
         }
@@ -96,7 +98,7 @@ public abstract class LLVMSymbol {
         throw new LLVMIllegalSymbolIndexException("Invalid function ID: " + moduleId);
     }
 
-    public boolean hasValidIndexAndID() {
+    public final boolean hasValidIndexAndID() {
         return symbolIndex >= 0 && moduleId >= 0;
     }
 

@@ -45,11 +45,32 @@ import com.oracle.truffle.llvm.runtime.pointer.LLVMPointer;
 
 @NodeChild(type = LLVMExpressionNode.class)
 @NodeChild(type = LLVMExpressionNode.class)
-@GenerateUncached
 public abstract class LLVMAddressEqualsNode extends LLVMAbstractCompareNode {
 
     public static LLVMAddressEqualsNode create() {
         return LLVMAddressEqualsNodeGen.create(null, null);
+    }
+
+    @GenerateUncached
+    public abstract static class Operation extends LLVMNode {
+
+        public abstract boolean executeWithTarget(Object a, Object b);
+
+        @Specialization
+        boolean doCompare(long a, long b) {
+            return a == b;
+        }
+
+        @Specialization
+        boolean doCompare(LLVMNativePointer a, LLVMNativePointer b) {
+            return a.asNative() == b.asNative();
+        }
+
+        @Specialization
+        boolean doCompare(Object a, Object b,
+                        @Cached LLVMPointerEqualsNode equals) {
+            return equals.execute(a, b);
+        }
     }
 
     // the first two cases are redundant but much more efficient than the ones below

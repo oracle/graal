@@ -3,6 +3,7 @@
 	"displayName": "Micronaut",
 	"description": "Micronaut support for VS Code",
 	"version": "0.5.0",
+	"preview": true,
 	"license": "SEE LICENSE IN LICENSE.txt",
 	"publisher": "oracle-labs-graalvm",
 	"author": {
@@ -40,10 +41,10 @@
 					"default": true,
 					"description": "Show Micornaut Tools page on extension activation"
 				},
-				"micronaut.mn": {
+				"micronaut.home": {
 					"type": "string",
 					"default": "",
-					"description": "Optional path to Micronaut CLI 'mn' executable"
+					"description": "Optional path to Micronaut CLI installation"
 				}
 			}
 		},
@@ -60,12 +61,7 @@
 			},
 			{
 				"command": "extension.micronaut.build",
-				"title": "Build...",
-				"category": "Micronaut"
-			},
-			{
-				"command": "extension.micronaut.buildProject",
-				"title": "Build Project",
+				"title": "Build ...",
 				"category": "Micronaut"
 			},
 			{
@@ -81,12 +77,8 @@
 					"when": "micronautProjectExists && javaHomeSet"
 				},
 				{
-					"command": "extension.micronaut.buildProject",
-					"when": "micronautProjectExists && javaHomeSet"
-				},
-				{
 					"command": "extension.micronaut.buildNativeImage",
-					"when": "micronautProjectExists && graalVMHomeSet"
+					"when": "micronautProjectExists && javaHomeSet"
 				}
 			]
 		}

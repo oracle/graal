@@ -24,55 +24,40 @@
  */
 package com.oracle.svm.agent;
 
-import static com.oracle.svm.jni.JNIObjectHandles.nullHandle;
-
-import com.oracle.svm.jvmtiagentbase.JNIHandleSet;
 import com.oracle.svm.jni.nativeapi.JNIEnvironment;
 import com.oracle.svm.jni.nativeapi.JNIMethodId;
 import com.oracle.svm.jni.nativeapi.JNIObjectHandle;
+import com.oracle.svm.jvmtiagentbase.JNIHandleSet;
 
 public class NativeImageAgentJNIHandleSet extends JNIHandleSet {
 
+    final JNIObjectHandle javaLangClass;
     final JNIMethodId javaLangClassForName3;
-    final JNIMethodId javaLangReflectMemberGetName;
-    final JNIMethodId javaLangReflectMemberGetDeclaringClass;
-    final JNIMethodId javaUtilEnumerationHasMoreElements;
-    final JNIMethodId javaUtilMissingResourceExceptionCtor3;
-    final JNIObjectHandle javaLangClassLoader;
-    public final JNIObjectHandle javaLangSecurityException;
-    public final JNIObjectHandle javaLangNoClassDefFoundError;
-    public final JNIObjectHandle javaLangNoSuchMethodError;
-    final JNIObjectHandle javaLangNoSuchMethodException;
-    public final JNIObjectHandle javaLangNoSuchFieldError;
-    final JNIObjectHandle javaLangNoSuchFieldException;
-    final JNIObjectHandle javaLangClassNotFoundException;
-    final JNIObjectHandle javaLangRuntimeException;
-    final JNIObjectHandle javaUtilMissingResourceException;
     final JNIMethodId javaLangClassGetDeclaredMethod;
     final JNIMethodId javaLangClassGetDeclaredConstructor;
     final JNIMethodId javaLangClassGetDeclaredField;
     final JNIMethodId javaLangClassGetName;
+
+    final JNIMethodId javaLangReflectMemberGetName;
+    final JNIMethodId javaLangReflectMemberGetDeclaringClass;
+
+    final JNIMethodId javaUtilEnumerationHasMoreElements;
+
+    final JNIObjectHandle javaLangClassLoader;
+
     final JNIMethodId javaLangInvokeMemberNameGetDeclaringClass;
     final JNIMethodId javaLangInvokeMemberNameGetName;
     final JNIMethodId javaLangInvokeMemberNameGetParameterTypes;
     final JNIMethodId javaLangInvokeMemberNameIsMethod;
-    final JNIMethodId javaLangInvokeMemberNameIsField;
     final JNIMethodId javaLangInvokeMemberNameIsConstructor;
-
-    // HotSpot crashes when looking these up eagerly
-    private JNIObjectHandle javaLangReflectField;
-    private JNIObjectHandle javaLangReflectMethod;
-    private JNIObjectHandle javaLangReflectConstructor;
-
-    private JNIObjectHandle javaUtilCollections;
-    private JNIMethodId javaUtilCollectionsEmptyEnumeration;
+    final JNIMethodId javaLangInvokeMemberNameIsField;
 
     private JNIMethodId javaUtilResourceBundleGetBundleImplSLCC;
     private boolean queriedJavaUtilResourceBundleGetBundleImplSLCC;
 
     NativeImageAgentJNIHandleSet(JNIEnvironment env) {
         super(env);
-        JNIObjectHandle javaLangClass = findClass(env, "java/lang/Class");
+        javaLangClass = newClassGlobalRef(env, "java/lang/Class");
         javaLangClassForName3 = getMethodId(env, javaLangClass, "forName", "(Ljava/lang/String;ZLjava/lang/ClassLoader;)Ljava/lang/Class;", true);
         javaLangClassGetDeclaredMethod = getMethodId(env, javaLangClass, "getDeclaredMethod", "(Ljava/lang/String;[Ljava/lang/Class;)Ljava/lang/reflect/Method;", false);
         javaLangClassGetDeclaredConstructor = getMethodId(env, javaLangClass, "getDeclaredConstructor", "([Ljava/lang/Class;)Ljava/lang/reflect/Constructor;", false);
@@ -87,16 +72,6 @@ public class NativeImageAgentJNIHandleSet extends JNIHandleSet {
         javaUtilEnumerationHasMoreElements = getMethodId(env, javaUtilEnumeration, "hasMoreElements", "()Z", false);
 
         javaLangClassLoader = newClassGlobalRef(env, "java/lang/ClassLoader");
-        javaLangSecurityException = newClassGlobalRef(env, "java/lang/SecurityException");
-        javaLangNoClassDefFoundError = newClassGlobalRef(env, "java/lang/NoClassDefFoundError");
-        javaLangNoSuchMethodError = newClassGlobalRef(env, "java/lang/NoSuchMethodError");
-        javaLangNoSuchMethodException = newClassGlobalRef(env, "java/lang/NoSuchMethodException");
-        javaLangNoSuchFieldError = newClassGlobalRef(env, "java/lang/NoSuchFieldError");
-        javaLangNoSuchFieldException = newClassGlobalRef(env, "java/lang/NoSuchFieldException");
-        javaLangClassNotFoundException = newClassGlobalRef(env, "java/lang/ClassNotFoundException");
-        javaLangRuntimeException = newClassGlobalRef(env, "java/lang/RuntimeException");
-        javaUtilMissingResourceException = newClassGlobalRef(env, "java/util/MissingResourceException");
-        javaUtilMissingResourceExceptionCtor3 = getMethodId(env, javaUtilMissingResourceException, "<init>", "(Ljava/lang/String;Ljava/lang/String;Ljava/lang/String;)V", false);
 
         JNIObjectHandle javaLangInvokeMemberName = findClass(env, "java/lang/invoke/MemberName");
         javaLangInvokeMemberNameGetDeclaringClass = getMethodId(env, javaLangInvokeMemberName, "getDeclaringClass", "()Ljava/lang/Class;", false);
@@ -105,41 +80,6 @@ public class NativeImageAgentJNIHandleSet extends JNIHandleSet {
         javaLangInvokeMemberNameIsMethod = getMethodId(env, javaLangInvokeMemberName, "isMethod", "()Z", false);
         javaLangInvokeMemberNameIsConstructor = getMethodId(env, javaLangInvokeMemberName, "isConstructor", "()Z", false);
         javaLangInvokeMemberNameIsField = getMethodId(env, javaLangInvokeMemberName, "isField", "()Z", false);
-    }
-
-    public JNIObjectHandle getJavaLangReflectField(JNIEnvironment env) {
-        if (javaLangReflectField.equal(nullHandle())) {
-            javaLangReflectField = newClassGlobalRef(env, "java/lang/reflect/Field");
-        }
-        return javaLangReflectField;
-    }
-
-    JNIObjectHandle getJavaLangReflectMethod(JNIEnvironment env) {
-        if (javaLangReflectMethod.equal(nullHandle())) {
-            javaLangReflectMethod = newClassGlobalRef(env, "java/lang/reflect/Method");
-        }
-        return javaLangReflectMethod;
-    }
-
-    JNIObjectHandle getJavaLangReflectConstructor(JNIEnvironment env) {
-        if (javaLangReflectConstructor.equal(nullHandle())) {
-            javaLangReflectConstructor = newClassGlobalRef(env, "java/lang/reflect/Constructor");
-        }
-        return javaLangReflectConstructor;
-    }
-
-    JNIObjectHandle getJavaUtilCollections(JNIEnvironment env) {
-        if (javaUtilCollections.equal(nullHandle())) {
-            javaUtilCollections = newClassGlobalRef(env, "java/util/Collections");
-        }
-        return javaUtilCollections;
-    }
-
-    JNIMethodId getJavaUtilCollectionsEmptyEnumeration(JNIEnvironment env) {
-        if (javaUtilCollectionsEmptyEnumeration.isNull()) {
-            javaUtilCollectionsEmptyEnumeration = getMethodId(env, getJavaUtilCollections(env), "emptyEnumeration", "()Ljava/util/Enumeration;", true);
-        }
-        return javaUtilCollectionsEmptyEnumeration;
     }
 
     JNIMethodId tryGetJavaUtilResourceBundleGetBundleImplSLCC(JNIEnvironment env) {

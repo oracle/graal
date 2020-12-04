@@ -99,6 +99,10 @@ final class HostInteropReflect {
         return null;
     }
 
+    static boolean isSignature(String name) {
+        return name.length() > 0 && name.charAt(name.length() - 1) == ')' && name.indexOf('(') != -1;
+    }
+
     static boolean isJNIName(String name) {
         return name.contains("__");
     }
@@ -107,6 +111,9 @@ final class HostInteropReflect {
     static HostMethodDesc findMethod(PolyglotEngineImpl impl, Class<?> clazz, String name, boolean onlyStatic) {
         HostClassDesc classDesc = HostClassDesc.forClass(impl, clazz);
         HostMethodDesc foundMethod = classDesc.lookupMethod(name, onlyStatic);
+        if (foundMethod == null && isSignature(name)) {
+            foundMethod = classDesc.lookupMethodBySignature(name, onlyStatic);
+        }
         if (foundMethod == null && isJNIName(name)) {
             foundMethod = classDesc.lookupMethodByJNIName(name, onlyStatic);
         }
@@ -125,6 +132,11 @@ final class HostInteropReflect {
         HostMethodDesc foundMethod = classDesc.lookupMethod(name, onlyStatic);
         if (foundMethod != null) {
             return true;
+        } else if (isSignature(name)) {
+            foundMethod = classDesc.lookupMethodBySignature(name, onlyStatic);
+            if (foundMethod != null) {
+                return true;
+            }
         } else if (isJNIName(name)) {
             foundMethod = classDesc.lookupMethodByJNIName(name, onlyStatic);
             if (foundMethod != null) {
@@ -170,6 +182,11 @@ final class HostInteropReflect {
         HostMethodDesc foundMethod = classDesc.lookupMethod(name, onlyStatic);
         if (foundMethod != null) {
             return true;
+        } else if (isSignature(name)) {
+            foundMethod = classDesc.lookupMethodBySignature(name, onlyStatic);
+            if (foundMethod != null) {
+                return true;
+            }
         } else if (isJNIName(name)) {
             foundMethod = classDesc.lookupMethodByJNIName(name, onlyStatic);
             if (foundMethod != null) {
@@ -183,7 +200,14 @@ final class HostInteropReflect {
     static boolean isInternal(HostObject object, Class<?> clazz, String name, boolean onlyStatic) {
         HostClassDesc classDesc = HostClassDesc.forClass(object.getEngine(), clazz);
         HostMethodDesc foundMethod = classDesc.lookupMethod(name, onlyStatic);
-        if (foundMethod == null && isJNIName(name)) {
+        if (foundMethod != null) {
+            return false;
+        } else if (isSignature(name)) {
+            foundMethod = classDesc.lookupMethodBySignature(name, onlyStatic);
+            if (foundMethod != null) {
+                return true;
+            }
+        } else if (isJNIName(name)) {
             foundMethod = classDesc.lookupMethodByJNIName(name, onlyStatic);
             if (foundMethod != null) {
                 return true;
@@ -334,6 +358,21 @@ final class HostInteropReflect {
             return Object.class;
         }
         return method.getGenericReturnType();
+    }
+
+    static String toNameAndSignature(Method m) {
+        StringBuilder sb = new StringBuilder();
+        sb.append(m.getName());
+        sb.append('(');
+        Class<?>[] arr = m.getParameterTypes();
+        for (int i = 0; i < arr.length; i++) {
+            if (i != 0) {
+                sb.append(',');
+            }
+            sb.append(arr[i].getTypeName());
+        }
+        sb.append(')');
+        return sb.toString();
     }
 
     static String jniName(Method m) {

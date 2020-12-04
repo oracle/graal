@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2019, Oracle and/or its affiliates.
+ * Copyright (c) 2018, 2020, Oracle and/or its affiliates.
  *
  * All rights reserved.
  *
@@ -29,7 +29,8 @@
  */
 package com.oracle.truffle.llvm.runtime.nodes.intrinsics.interop;
 
-import com.oracle.truffle.llvm.runtime.interop.LLVMAsForeignNode;
+import java.nio.ByteBuffer;
+
 import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.dsl.Cached;
 import com.oracle.truffle.api.dsl.NodeChild;
@@ -39,19 +40,17 @@ import com.oracle.truffle.api.interop.InteropLibrary;
 import com.oracle.truffle.api.interop.UnsupportedMessageException;
 import com.oracle.truffle.api.library.CachedLibrary;
 import com.oracle.truffle.api.profiles.BranchProfile;
-import com.oracle.truffle.llvm.runtime.nodes.intrinsics.interop.LLVMReadCharsetNode.LLVMCharset;
-import com.oracle.truffle.llvm.runtime.nodes.intrinsics.llvm.LLVMIntrinsic;
 import com.oracle.truffle.llvm.runtime.except.LLVMPolyglotException;
-import com.oracle.truffle.llvm.runtime.nodes.api.LLVMStoreNode;
+import com.oracle.truffle.llvm.runtime.interop.LLVMAsForeignNode;
 import com.oracle.truffle.llvm.runtime.nodes.api.LLVMExpressionNode;
 import com.oracle.truffle.llvm.runtime.nodes.api.LLVMNode;
 import com.oracle.truffle.llvm.runtime.nodes.intrinsics.interop.LLVMPolyglotAsStringNodeGen.EncodeStringNodeGen;
 import com.oracle.truffle.llvm.runtime.nodes.intrinsics.interop.LLVMPolyglotAsStringNodeGen.WriteStringNodeGen;
-import com.oracle.truffle.llvm.runtime.nodes.memory.store.LLVMI8StoreNodeGen;
+import com.oracle.truffle.llvm.runtime.nodes.intrinsics.interop.LLVMReadCharsetNode.LLVMCharset;
+import com.oracle.truffle.llvm.runtime.nodes.intrinsics.llvm.LLVMIntrinsic;
+import com.oracle.truffle.llvm.runtime.nodes.memory.store.LLVMI8StoreNode.LLVMI8OffsetStoreNode;
 import com.oracle.truffle.llvm.runtime.pointer.LLVMManagedPointer;
 import com.oracle.truffle.llvm.runtime.pointer.LLVMPointer;
-
-import java.nio.ByteBuffer;
 
 @NodeChild(value = "object", type = LLVMExpressionNode.class)
 @NodeChild(value = "buffer", type = LLVMExpressionNode.class)
@@ -109,28 +108,24 @@ public abstract class LLVMPolyglotAsString extends LLVMIntrinsic {
 
     abstract static class WriteStringNode extends LLVMNode {
 
-        @Child private LLVMStoreNode write = LLVMI8StoreNodeGen.create(null, null);
-
         protected abstract long execute(VirtualFrame frame, ByteBuffer source, Object target, long targetLen, int zeroTerminatorLen);
 
         @Specialization(guards = "srcBuffer.getClass() == srcBufferClass")
         long doWrite(ByteBuffer srcBuffer, LLVMPointer target, long targetLen, int zeroTerminatorLen,
-                        @Cached("srcBuffer.getClass()") Class<? extends ByteBuffer> srcBufferClass) {
+                        @Cached("srcBuffer.getClass()") Class<? extends ByteBuffer> srcBufferClass,
+                        @Cached LLVMI8OffsetStoreNode write) {
             ByteBuffer source = CompilerDirectives.castExact(srcBuffer, srcBufferClass);
 
             long bytesWritten = 0;
-            LLVMPointer ptr = target;
             while (source.hasRemaining() && bytesWritten < targetLen) {
-                write.executeWithTarget(ptr, source.get());
-                ptr = ptr.increment(Byte.BYTES);
+                write.executeWithTarget(target, bytesWritten, source.get());
                 bytesWritten++;
             }
 
             long ret = bytesWritten;
 
             for (int i = 0; i < zeroTerminatorLen && bytesWritten < targetLen; i++) {
-                write.executeWithTarget(ptr, (byte) 0);
-                ptr = ptr.increment(Byte.BYTES);
+                write.executeWithTarget(target, bytesWritten, (byte) 0);
                 bytesWritten++;
             }
 

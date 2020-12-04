@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2017, 2018, Oracle and/or its affiliates.
+ * Copyright (c) 2017, 2020, Oracle and/or its affiliates.
  *
  * All rights reserved.
  *
@@ -34,12 +34,24 @@ import com.oracle.truffle.llvm.parser.model.symbols.constants.NullConstant;
 import com.oracle.truffle.llvm.parser.model.symbols.constants.UndefinedConstant;
 import com.oracle.truffle.llvm.parser.model.symbols.constants.integer.BigIntegerConstant;
 import com.oracle.truffle.llvm.parser.model.symbols.constants.integer.IntegerConstant;
+import com.oracle.truffle.llvm.runtime.except.LLVMParserException;
 import com.oracle.truffle.llvm.runtime.types.MetaType;
 import com.oracle.truffle.llvm.runtime.types.Type;
 import com.oracle.truffle.llvm.runtime.types.VoidType;
 import com.oracle.truffle.llvm.parser.model.SymbolImpl;
 
 public final class ParseUtil {
+
+    private ParseUtil() {
+        // no instance
+    }
+
+    public static int checkInt(long value) {
+        if (value != (int) value) {
+            throw new LLVMParserException("value in 'int' range expected");
+        }
+        return (int) value;
+    }
 
     public static boolean isInteger(long[] args, int index, Metadata md) {
         final int typeIndex = index << 1;

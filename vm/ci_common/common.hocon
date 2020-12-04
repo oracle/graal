@@ -252,8 +252,11 @@ full_vm_build_darwin: ${svm-common-darwin} ${sulong_darwin} ${truffleruby_darwin
 
 libgraal_build: [mx,
     --env, ${libgraal_env},
+    # enable all asserts in the image building code
     "--extra-image-builder-argument=-J-esa",
     "--extra-image-builder-argument=-J-ea",
+    # enable all asserts in the generated libgraal
+    "--extra-image-builder-argument=-esa",
     "--extra-image-builder-argument=-ea",
     build
 ]
@@ -302,12 +305,12 @@ builds += [
   }
   ${libgraal_compiler} ${vm_java_8}  { name: gate-vm-libgraal-compiler-8-linux-amd64 }
   ${libgraal_compiler} ${vm_java_11} { name: gate-vm-libgraal-compiler-11-linux-amd64 }
-  ${libgraal_compiler} ${vm_java_15} { name: gate-vm-libgraal-compiler-15-linux-amd64 }
+  # GR-25369 ${libgraal_compiler} ${vm_java_15} { name: gate-vm-libgraal-compiler-15-linux-amd64 }
   ${libgraal_compiler} ${vm_java_15Debug} { name: daily-vm-libgraal-compiler-15-linux-amd64 } ${dailyJDK15Debug} ${binutils2_34}
 
   ${libgraal_truffle} ${vm_java_8}  { name: gate-vm-libgraal-truffle-8-linux-amd64 }
   ${libgraal_truffle} ${vm_java_11} { name: gate-vm-libgraal-truffle-11-linux-amd64 }
-  ${libgraal_truffle} ${vm_java_15} { name: gate-vm-libgraal-truffle-15-linux-amd64 }
+  # GR-25369 ${libgraal_truffle} ${vm_java_15} { name: gate-vm-libgraal-truffle-15-linux-amd64 }
   ${libgraal_truffle} ${vm_java_15Debug} { name: daily-vm-libgraal-truffle-15-linux-amd64 } ${dailyJDK15Debug} ${binutils2_34}
 
   ${vm_java_8} ${svm-common-linux-amd64} ${sulong_linux} ${custom_vm_linux} ${gate_vm_linux} {
@@ -321,7 +324,7 @@ builds += [
   #
   # Deploy GraalVM Base and Installables
   #
-  # Linux
+  # Linux/AMD64
   ${vm_java_8} ${full_vm_build_linux} ${linux-deploy} ${deploy_vm_linux} {
     run: [
       ${mx_vm_installables} [--dynamicimports, ${vm_extra_suites}, "--exclude-components="${non-product-vm-components}, build]
@@ -349,7 +352,21 @@ builds += [
     timelimit: "1:30:00"
     name: deploy-vm-java11-linux-amd64
   }
-  # Darwin
+  # Linux/AARCH64
+  ${vm_java_11} ${full_vm_build_linux_aarch64} ${linux-deploy} ${deploy_vm_linux_aarch64} {
+    run: [
+      ${mx_vm_installables} [--dynamicimports, ${vm_extra_suites_aarch64}, "--exclude-components="${non-product-vm-components}, build]
+      ${mx_vm_installables} [--dynamicimports, ${vm_extra_suites_aarch64}, "--exclude-components="${non-product-vm-components}] ${maven_deploy_sdk_components}
+    ] ${collect_profiles} [
+      ${mx_vm_common} ${vm_profiles} [build]
+      ${mx_vm_common} ${vm_profiles} ${maven_deploy_sdk_base}
+      ${notify-nexus-deploy}
+    ]
+    logs: ${common_vm.logs}
+    timelimit: "1:30:00"
+    name: deploy-vm-java11-linux-aarch64
+  }
+  # Darwin/AMD64
   ${vm_java_8} ${full_vm_build_darwin} ${darwin-deploy} ${deploy_daily_vm_darwin} {
     run: ${collect_profiles} [
       ${mx_vm_common} ${vm_profiles} [build]
@@ -387,7 +404,7 @@ builds += [
     timelimit: "2:00:00"
     name: deploy-vm-installable-java11-darwin-amd64
   }
-  # Windows
+  # Windows/AMD64
   ${vm_java_8} ${deploy_daily_vm_windows} ${js_windows} ${svm-common-windows} {
     run: [
       [set-export, VM_ENV, "${VM_ENV}-win"]
@@ -431,7 +448,7 @@ builds += [
   #
   # Deploy GraalVM Complete (no FastR)
   #
-  # Linux
+  # Linux/AMD64
   ${vm_java_8} ${full_vm_build_linux} ${linux-deploy} ${deploy_vm_linux} {
     run: [
       [set-export, VM_ENV, "${VM_ENV}-complete"]
@@ -452,7 +469,7 @@ builds += [
     timelimit: "1:30:00"
     name: deploy-vm-no-fastr-java11-linux-amd64
   }
-  # Darwin
+  # Darwin/AMD64
   ${vm_java_8} ${full_vm_build_darwin} ${darwin-deploy} ${deploy_daily_vm_darwin} {
     run: [
       [set-export, VM_ENV, "${VM_ENV}-complete"]

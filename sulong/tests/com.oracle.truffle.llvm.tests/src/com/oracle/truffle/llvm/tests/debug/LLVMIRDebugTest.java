@@ -29,6 +29,7 @@
  */
 package com.oracle.truffle.llvm.tests.debug;
 
+import com.oracle.truffle.llvm.runtime.options.SulongEngineOption;
 import com.oracle.truffle.llvm.tests.options.TestOptions;
 import com.oracle.truffle.llvm.tests.Platform;
 import org.graalvm.polyglot.Context;
@@ -97,6 +98,7 @@ public final class LLVMIRDebugTest extends LLVMDebugTestBase {
     @Override
     void setContextOptions(Context.Builder contextBuilder) {
         contextBuilder.option(OPTION_LLDEBUG, String.valueOf(true));
+        contextBuilder.option(SulongEngineOption.LL_DEBUG_VERBOSE_NAME, String.valueOf(false));
         final String sourceMapping = String.format("%s=%s", loadBitcodeSource().getPath(), loadOriginalSource().getPath());
         contextBuilder.option(OPTION_LLDEBUG_SOURCES, sourceMapping);
     }

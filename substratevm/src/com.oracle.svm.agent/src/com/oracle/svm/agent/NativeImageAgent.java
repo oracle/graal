@@ -24,14 +24,10 @@
  */
 package com.oracle.svm.agent;
 
-import java.io.File;
 import java.io.FileReader;
 import java.io.IOException;
 import java.io.Reader;
-import java.net.URI;
 import java.nio.file.AtomicMoveNotSupportedException;
-import java.nio.file.FileSystem;
-import java.nio.file.FileSystems;
 import java.nio.file.Files;
 import java.nio.file.NoSuchFileException;
 import java.nio.file.Path;
@@ -41,32 +37,19 @@ import java.text.DateFormat;
 import java.text.SimpleDateFormat;
 import java.util.ArrayList;
 import java.util.Arrays;
-import java.util.Collections;
 import java.util.Date;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
-import java.util.Set;
 import java.util.TimeZone;
 import java.util.concurrent.ScheduledThreadPoolExecutor;
 import java.util.concurrent.TimeUnit;
 import java.util.function.Function;
 import java.util.regex.Pattern;
 
-import org.graalvm.compiler.options.OptionKey;
 import org.graalvm.nativeimage.ProcessProperties;
+import org.graalvm.nativeimage.hosted.Feature;
 
-import com.oracle.svm.jvmtiagentbase.JvmtiAgentBase;
-import com.oracle.svm.jvmtiagentbase.JNIHandleSet;
-import com.oracle.svm.jvmtiagentbase.Support;
-import com.oracle.svm.jvmtiagentbase.jvmti.JvmtiEnv;
-import com.oracle.svm.jvmtiagentbase.jvmti.JvmtiEventCallbacks;
-import com.oracle.svm.jvmtiagentbase.jvmti.JvmtiInterface;
-import com.oracle.svm.agent.restrict.JniAccessVerifier;
-import com.oracle.svm.agent.restrict.ProxyAccessVerifier;
-import com.oracle.svm.agent.restrict.ReflectAccessVerifier;
-import com.oracle.svm.agent.restrict.ResourceAccessVerifier;
-import com.oracle.svm.agent.restrict.TypeAccessChecker;
 import com.oracle.svm.configure.config.ConfigurationSet;
 import com.oracle.svm.configure.filters.FilterConfigurationParser;
 import com.oracle.svm.configure.filters.RuleNode;
@@ -74,29 +57,23 @@ import com.oracle.svm.configure.json.JsonPrintable;
 import com.oracle.svm.configure.json.JsonWriter;
 import com.oracle.svm.configure.trace.AccessAdvisor;
 import com.oracle.svm.configure.trace.TraceProcessor;
-import com.oracle.svm.core.FallbackExecutor;
 import com.oracle.svm.core.SubstrateUtil;
 import com.oracle.svm.core.configure.ConfigurationFiles;
 import com.oracle.svm.driver.NativeImage;
 import com.oracle.svm.jni.nativeapi.JNIEnvironment;
 import com.oracle.svm.jni.nativeapi.JNIJavaVM;
 import com.oracle.svm.jni.nativeapi.JNIObjectHandle;
-import org.graalvm.nativeimage.hosted.Feature;
+import com.oracle.svm.jvmtiagentbase.JNIHandleSet;
+import com.oracle.svm.jvmtiagentbase.JvmtiAgentBase;
+import com.oracle.svm.jvmtiagentbase.Support;
+import com.oracle.svm.jvmtiagentbase.jvmti.JvmtiEnv;
+import com.oracle.svm.jvmtiagentbase.jvmti.JvmtiEventCallbacks;
+import com.oracle.svm.jvmtiagentbase.jvmti.JvmtiInterface;
 
 public final class NativeImageAgent extends JvmtiAgentBase<NativeImageAgentJNIHandleSet> {
     private static final String AGENT_NAME = "native-image-agent";
     public static final String MESSAGE_PREFIX = AGENT_NAME + ": ";
     private static final TimeZone UTC_TIMEZONE = TimeZone.getTimeZone("UTC");
-
-    private static final String oHJNIConfigurationResources = oH(ConfigurationFiles.Options.JNIConfigurationResources);
-    private static final String oHReflectionConfigurationResources = oH(ConfigurationFiles.Options.ReflectionConfigurationResources);
-    private static final String oHDynamicProxyConfigurationResources = oH(ConfigurationFiles.Options.DynamicProxyConfigurationResources);
-    private static final String oHResourceConfigurationResources = oH(ConfigurationFiles.Options.ResourceConfigurationResources);
-    private static final String oHConfigurationResourceRoots = oH(ConfigurationFiles.Options.ConfigurationResourceRoots);
-
-    private static <T> String oH(OptionKey<T> option) {
-        return NativeImage.oH + option.getName();
-    }
 
     private ScheduledThreadPoolExecutor periodicConfigWriterExecutor = null;
 
@@ -124,9 +101,7 @@ public final class NativeImageAgent extends JvmtiAgentBase<NativeImageAgentJNIHa
     protected int onLoadCallback(JNIJavaVM vm, JvmtiEnv jvmti, JvmtiEventCallbacks callbacks, String options) {
         String traceOutputFile = null;
         String configOutputDir = null;
-        ConfigurationSet restrictConfigs = new ConfigurationSet();
         ConfigurationSet mergeConfigs = new ConfigurationSet();
-        boolean restrict = false;
         boolean builtinCallerFilter = true;
         boolean builtinHeuristicFilter = true;
         List<String> callerFilterFiles = new ArrayList<>();
@@ -138,7 +113,7 @@ public final class NativeImageAgent extends JvmtiAgentBase<NativeImageAgentJNIHa
         int configWritePeriodInitialDelay = 1; // in seconds
 
         if (options.length() == 0) {
-            System.err.println(MESSAGE_PREFIX + "invalid option string. Please read Configuration.md.");
+            System.err.println(MESSAGE_PREFIX + "invalid option string. Please read BuildConfiguration.md.");
             return 1;
         }
         for (String token : options.split(",")) {
@@ -157,13 +132,8 @@ public final class NativeImageAgent extends JvmtiAgentBase<NativeImageAgentJNIHa
                 if (token.startsWith("config-merge-dir=")) {
                     mergeConfigs.addDirectory(Paths.get(configOutputDir));
                 }
-            } else if (token.startsWith("restrict-all-dir")) {
-                /* Used for testing */
-                restrictConfigs.addDirectory(Paths.get(getTokenValue(token)));
-            } else if (token.equals("restrict")) {
-                restrict = true;
-            } else if (token.startsWith("restrict=")) {
-                restrict = Boolean.parseBoolean(getTokenValue(token));
+            } else if (token.startsWith("restrict-all-dir") || token.equals("restrict") || token.startsWith("restrict=")) {
+                System.err.println(MESSAGE_PREFIX + "restrict mode is no longer supported.");
             } else if (token.equals("no-builtin-caller-filter")) {
                 builtinCallerFilter = false;
             } else if (token.startsWith("builtin-caller-filter=")) {
@@ -207,14 +177,14 @@ public final class NativeImageAgent extends JvmtiAgentBase<NativeImageAgentJNIHa
             } else if (token.startsWith("method-handle-support")) {
                 methodHandleSupport = Boolean.parseBoolean(getTokenValue(token));
             } else {
-                System.err.println(MESSAGE_PREFIX + "unsupported option: '" + token + "'. Please read Configuration.md.");
+                System.err.println(MESSAGE_PREFIX + "unsupported option: '" + token + "'. Please read BuildConfiguration.md.");
                 return 1;
             }
         }
 
-        if (traceOutputFile == null && configOutputDir == null && !restrict && restrictConfigs.isEmpty() && !build) {
+        if (traceOutputFile == null && configOutputDir == null && !build) {
             configOutputDir = transformPath(AGENT_NAME + "_config-pid{pid}-{datetime}/");
-            System.err.println(MESSAGE_PREFIX + "no output/restrict/build options provided, tracking dynamic accesses and writing configuration to directory: " + configOutputDir);
+            System.err.println(MESSAGE_PREFIX + "no output/build options provided, tracking dynamic accesses and writing configuration to directory: " + configOutputDir);
         }
 
         RuleNode callerFilter = null;
@@ -282,51 +252,18 @@ public final class NativeImageAgent extends JvmtiAgentBase<NativeImageAgentJNIHa
             System.exit(status);
         }
 
-        Map<URI, FileSystem> temporaryFileSystems = new HashMap<>();
-        if (restrict && !addRestrictConfigs(jvmti, restrictConfigs, temporaryFileSystems)) {
-            return 2;
-        }
-
         accessAdvisor = createAccessAdvisor(builtinHeuristicFilter, callerFilter, accessFilter);
-        TypeAccessChecker reflectAccessChecker = null;
         try {
-            ReflectAccessVerifier verifier = null;
-            if (!restrictConfigs.getReflectConfigPaths().isEmpty()) {
-                reflectAccessChecker = new TypeAccessChecker(restrictConfigs.loadReflectConfig(ConfigurationSet.FAIL_ON_EXCEPTION));
-                verifier = new ReflectAccessVerifier(reflectAccessChecker, accessAdvisor, this);
-            }
-            ProxyAccessVerifier proxyVerifier = null;
-            if (!restrictConfigs.getProxyConfigPaths().isEmpty()) {
-                proxyVerifier = new ProxyAccessVerifier(restrictConfigs.loadProxyConfig(ConfigurationSet.FAIL_ON_EXCEPTION), accessAdvisor);
-            }
-            ResourceAccessVerifier resourceVerifier = null;
-            if (!restrictConfigs.getResourceConfigPaths().isEmpty()) {
-                resourceVerifier = new ResourceAccessVerifier(restrictConfigs.loadResourceConfig(ConfigurationSet.FAIL_ON_EXCEPTION), accessAdvisor);
-            }
-            BreakpointInterceptor.onLoad(jvmti, callbacks, traceWriter, verifier, proxyVerifier, resourceVerifier, this, experimentalClassLoaderSupport, methodHandleSupport);
+            BreakpointInterceptor.onLoad(jvmti, callbacks, traceWriter, this, experimentalClassLoaderSupport, methodHandleSupport);
         } catch (Throwable t) {
             System.err.println(MESSAGE_PREFIX + t);
             return 3;
         }
         try {
-            JniAccessVerifier verifier = null;
-            if (!restrictConfigs.getJniConfigPaths().isEmpty()) {
-                TypeAccessChecker accessChecker = new TypeAccessChecker(restrictConfigs.loadJniConfig(ConfigurationSet.FAIL_ON_EXCEPTION));
-                verifier = new JniAccessVerifier(accessChecker, reflectAccessChecker, accessAdvisor, this);
-            }
-            JniCallInterceptor.onLoad(traceWriter, verifier, this);
+            JniCallInterceptor.onLoad(traceWriter, this);
         } catch (Throwable t) {
             System.err.println(MESSAGE_PREFIX + t);
             return 4;
-        }
-
-        for (FileSystem fileSystem : temporaryFileSystems.values()) {
-            try {
-                fileSystem.close();
-            } catch (IOException e) {
-                System.err.println(MESSAGE_PREFIX + "restrict mode could not close jar filesystem " + fileSystem);
-                e.printStackTrace();
-            }
         }
 
         setupExecutorServiceForPeriodicConfigurationCapture(configWritePeriod, configWritePeriodInitialDelay);
@@ -388,79 +325,6 @@ public final class NativeImageAgent extends JvmtiAgentBase<NativeImageAgentJNIHa
                         initialDelay, writePeriod, TimeUnit.SECONDS);
     }
 
-    interface AddURI {
-        void add(Set<URI> uris, Path classpathEntry, String resourceLocation);
-    }
-
-    private static boolean addRestrictConfigs(JvmtiEnv jvmti, ConfigurationSet restrictConfigs, Map<URI, FileSystem> temporaryFileSystems) {
-        Path workDir = Paths.get(".").toAbsolutePath().normalize();
-        AddURI addURI = (target, classpathEntry, resourceLocation) -> {
-            boolean added = false;
-            if (Files.isDirectory(classpathEntry)) {
-                Path resourcePath = classpathEntry.resolve(Paths.get(resourceLocation));
-                if (Files.isReadable(resourcePath)) {
-                    added = target.add(resourcePath.toUri());
-                }
-            } else {
-                URI jarFileURI = URI.create("jar:" + classpathEntry.toUri());
-                try {
-                    FileSystem prevJarFS = temporaryFileSystems.get(jarFileURI);
-                    FileSystem jarFS = prevJarFS == null ? FileSystems.newFileSystem(jarFileURI, Collections.emptyMap()) : prevJarFS;
-                    Path resourcePath = jarFS.getPath("/" + resourceLocation);
-                    if (Files.isReadable(resourcePath)) {
-                        added = target.add(resourcePath.toUri());
-                    }
-                    if (prevJarFS == null) {
-                        if (added) {
-                            temporaryFileSystems.put(jarFileURI, jarFS);
-                        } else {
-                            jarFS.close();
-                        }
-                    }
-                } catch (IOException e) {
-                    System.err.println(MESSAGE_PREFIX + "restrict mode could not access " + classpathEntry + " as a jar file");
-                }
-            }
-            if (added) {
-                System.err.println(MESSAGE_PREFIX + "restrict mode added " + resourceLocation + " from " + workDir.relativize(classpathEntry));
-            }
-        };
-        String classpath = Support.getSystemProperty(jvmti, "java.class.path");
-        if (classpath == null) {
-            System.err.println(MESSAGE_PREFIX + "restrict mode could not determine classpath");
-            return false;
-        }
-        try {
-            Map<Path, List<String>> extractionResults = NativeImage.extractEmbeddedImageArgs(workDir, SubstrateUtil.split(classpath, File.pathSeparator));
-            extractionResults.forEach((cpEntry, imageArgs) -> {
-                for (String imageArg : imageArgs) {
-                    String[] optionParts = SubstrateUtil.split(imageArg, "=");
-                    String argName = optionParts[0];
-                    if (oHJNIConfigurationResources.equals(argName)) {
-                        addURI.add(restrictConfigs.getJniConfigPaths(), cpEntry, optionParts[1]);
-                    } else if (oHReflectionConfigurationResources.equals(argName)) {
-                        addURI.add(restrictConfigs.getReflectConfigPaths(), cpEntry, optionParts[1]);
-                    } else if (oHDynamicProxyConfigurationResources.equals(argName)) {
-                        addURI.add(restrictConfigs.getProxyConfigPaths(), cpEntry, optionParts[1]);
-                    } else if (oHResourceConfigurationResources.equals(argName)) {
-                        addURI.add(restrictConfigs.getResourceConfigPaths(), cpEntry, optionParts[1]);
-                    } else if (oHConfigurationResourceRoots.equals(argName)) {
-                        String resourceLocation = optionParts[1];
-                        addURI.add(restrictConfigs.getJniConfigPaths(), cpEntry, resourceLocation + "/" + ConfigurationFiles.JNI_NAME);
-                        addURI.add(restrictConfigs.getReflectConfigPaths(), cpEntry, resourceLocation + "/" + ConfigurationFiles.REFLECTION_NAME);
-                        addURI.add(restrictConfigs.getProxyConfigPaths(), cpEntry, resourceLocation + "/" + ConfigurationFiles.DYNAMIC_PROXY_NAME);
-                        addURI.add(restrictConfigs.getResourceConfigPaths(), cpEntry, resourceLocation + "/" + ConfigurationFiles.RESOURCES_NAME);
-                    }
-                }
-            });
-        } catch (NativeImage.NativeImageError err) {
-            System.err.println(MESSAGE_PREFIX + "restrict mode could not extract restrict configuration from classpath");
-            err.printStackTrace();
-            return false;
-        }
-        return true;
-    }
-
     private static final Pattern propertyBlacklist = Pattern.compile("(java\\..*)|(sun\\..*)|(jvmci\\..*)");
     private static final Pattern propertyWhitelist = Pattern.compile("(java\\.library\\.path)|(java\\.io\\.tmpdir)");
 
@@ -499,8 +363,6 @@ public final class NativeImageAgent extends JvmtiAgentBase<NativeImageAgentJNIHa
             buildArgs.addAll(Arrays.asList("-cp", classpath));
         }
         buildArgs.add(mainClass);
-        String enableAgentRestrictArg = "-agentlib:native-image-agent=restrict";
-        buildArgs.add(oH(FallbackExecutor.Options.FallbackExecutorJavaArg) + "=" + enableAgentRestrictArg);
         buildArgs.add(AGENT_NAME + ".build");
         // System.out.println(String.join("\n", buildArgs));
         Path javaHome = Paths.get(Support.getSystemProperty(jvmti, "java.home"));

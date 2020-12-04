@@ -85,7 +85,7 @@ public final class InitializeModuleNode extends LLVMNode implements LLVMHasDatal
     private final RootCallTarget destructor;
     private final DataLayout dataLayout;
 
-    @Child StaticInitsNode constructor;
+    @Child private StaticInitsNode constructor;
 
     public InitializeModuleNode(LLVMLanguage language, LLVMParserResult parserResult, String moduleName) {
         this.destructor = createDestructor(parserResult, moduleName, language);
@@ -151,14 +151,14 @@ public final class InitializeModuleNode extends LLVMNode implements LLVMHasDatal
 
             final ArrayList<Pair<Integer, LLVMStatementNode>> structors = new ArrayList<>(elemCount);
             for (int i = 0; i < elemCount; i++) {
-                final LLVMExpressionNode globalVarAddress = nodeFactory.createLiteral(global, new PointerType(globalSymbol.getType()));
-                final LLVMExpressionNode iNode = nodeFactory.createLiteral(i, PrimitiveType.I32);
+                final LLVMExpressionNode globalVarAddress = CommonNodeFactory.createLiteral(global, new PointerType(globalSymbol.getType()));
+                final LLVMExpressionNode iNode = CommonNodeFactory.createLiteral(i, PrimitiveType.I32);
                 final LLVMExpressionNode structPointer = nodeFactory.createTypedElementPointer(elementSize, elementType, globalVarAddress, iNode);
-                final LLVMExpressionNode loadedStruct = CommonNodeFactory.createLoad(elementType, structPointer);
+                final LLVMExpressionNode loadedStruct = nodeFactory.createLoad(elementType, structPointer);
 
-                final LLVMExpressionNode oneLiteralNode = nodeFactory.createLiteral(1, PrimitiveType.I32);
+                final LLVMExpressionNode oneLiteralNode = CommonNodeFactory.createLiteral(1, PrimitiveType.I32);
                 final LLVMExpressionNode functionLoadTarget = nodeFactory.createTypedElementPointer(indexedTypeLength, functionType, loadedStruct, oneLiteralNode);
-                final LLVMExpressionNode loadedFunction = CommonNodeFactory.createLoad(functionType, functionLoadTarget);
+                final LLVMExpressionNode loadedFunction = nodeFactory.createLoad(functionType, functionLoadTarget);
                 final LLVMExpressionNode[] argNodes = new LLVMExpressionNode[]{nodeFactory.createGetStackFromFrame()};
                 final LLVMStatementNode functionCall = LLVMVoidStatementNodeGen.create(CommonNodeFactory.createFunctionCall(loadedFunction, argNodes, functionType));
 

@@ -128,6 +128,7 @@ public class GraalHotSpotVMConfigAccess {
     public final String osArch;
 
     protected static final Version JVMCI_0_55 = new Version2(0, 55);
+    public static final Version JVMCI_20_3_b04 = new Version3(20, 3, 4);
     protected static final Version JVMCI_20_2_b04 = new Version3(20, 2, 4);
     protected static final Version JVMCI_20_2_b01 = new Version3(20, 2, 1);
     protected static final Version JVMCI_20_1_b01 = new Version3(20, 1, 1);
@@ -137,7 +138,7 @@ public class GraalHotSpotVMConfigAccess {
     protected static final Version JVMCI_19_3_b07 = new Version3(19, 3, 7);
 
     public static boolean jvmciGE(Version v) {
-        return !JVMCI_VERSION.isLessThan(v);
+        return JVMCI && !JVMCI_VERSION.isLessThan(v);
     }
 
     public static final int JDK = JavaVersionUtil.JAVA_SPEC;

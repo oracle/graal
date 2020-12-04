@@ -54,7 +54,6 @@ import com.oracle.svm.core.annotate.Uninterruptible;
 import com.oracle.svm.core.config.ConfigurationValues;
 import com.oracle.svm.core.genscavenge.graal.SubstrateCardTableBarrierSet;
 import com.oracle.svm.core.heap.GC;
-import com.oracle.svm.core.heap.GCCause;
 import com.oracle.svm.core.heap.Heap;
 import com.oracle.svm.core.heap.NoAllocationVerifier;
 import com.oracle.svm.core.heap.ObjectHeader;
@@ -116,7 +115,7 @@ public final class HeapImpl extends Heap {
     public HeapImpl(FeatureAccess access) {
         this.gcImpl = new GCImpl(access);
         this.runtimeCodeInfoGcSupport = new RuntimeCodeInfoGCSupportImpl();
-        this.heapPolicy = new HeapPolicy(access);
+        this.heapPolicy = new HeapPolicy();
         if (getVerifyHeapBeforeGC() || getVerifyHeapAfterGC() || getVerifyStackBeforeGC() || getVerifyStackAfterGC() || getVerifyDirtyCardBeforeGC() || getVerifyDirtyCardAfterGC()) {
             this.heapVerifier = new HeapVerifier();
             this.stackVerifier = new StackVerifier();
@@ -741,6 +740,6 @@ final class Target_java_lang_Runtime {
 
     @Substitute
     private void gc() {
-        HeapImpl.getHeapImpl().getHeapPolicy().getUserRequestedGCPolicy().maybeCauseCollection(GCCause.JavaLangSystemGC);
+        HeapPolicy.maybeCauseUserRequestedCollection();
     }
 }

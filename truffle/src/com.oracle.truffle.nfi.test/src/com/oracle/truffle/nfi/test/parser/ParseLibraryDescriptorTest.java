@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2017, 2019, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2017, 2020, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -43,15 +43,19 @@ package com.oracle.truffle.nfi.test.parser;
 import com.oracle.truffle.api.CallTarget;
 import com.oracle.truffle.api.source.Source;
 import com.oracle.truffle.nfi.spi.types.NativeLibraryDescriptor;
+import com.oracle.truffle.nfi.test.parser.ErrorParseSignatureTest.ParserExceptionMatcher;
 import com.oracle.truffle.nfi.test.parser.backend.TestLibrary;
 import com.oracle.truffle.tck.TruffleRunner.RunWithPolyglotRule;
 import org.junit.Assert;
 import org.junit.ClassRule;
+import org.junit.Rule;
 import org.junit.Test;
+import org.junit.rules.ExpectedException;
 
 public class ParseLibraryDescriptorTest {
 
     @ClassRule public static RunWithPolyglotRule runWithPolyglot = new RunWithPolyglotRule();
+    @Rule public ExpectedException exception = ExpectedException.none();
 
     private static NativeLibraryDescriptor parseLibraryDescriptor(String descriptor) {
         Source source = Source.newBuilder("nfi", String.format("with test %s", descriptor), "ParseLibraryDescriptorTest").internal(true).build();
@@ -101,33 +105,39 @@ public class ParseLibraryDescriptorTest {
         Assert.assertEquals("RTLD_GLOBAL", test.getFlags().get(1));
     }
 
-    @Test(expected = IllegalArgumentException.class)
+    @Test
     public void parseUnknownCommand() {
+        exception.expect(ParserExceptionMatcher.PARSER);
         parseLibraryDescriptor("_unknown_command");
     }
 
-    @Test(expected = IllegalArgumentException.class)
+    @Test
     public void parseUnknownToken() {
+        exception.expect(ParserExceptionMatcher.PARSER);
         parseLibraryDescriptor("%");
     }
 
-    @Test(expected = IllegalArgumentException.class)
+    @Test
     public void parseEmpty() {
+        exception.expect(ParserExceptionMatcher.INCOMPLETE);
         parseLibraryDescriptor("");
     }
 
-    @Test(expected = IllegalArgumentException.class)
+    @Test
     public void parseEmptyFlags() {
+        exception.expect(ParserExceptionMatcher.PARSER);
         parseLibraryDescriptor("load() testfile");
     }
 
-    @Test(expected = IllegalArgumentException.class)
+    @Test
     public void parseFlagsError() {
+        exception.expect(ParserExceptionMatcher.PARSER);
         parseLibraryDescriptor("load(RTLD_NOW .) testfile");
     }
 
-    @Test(expected = IllegalArgumentException.class)
+    @Test
     public void parseStringError() {
+        exception.expect(ParserExceptionMatcher.PARSER);
         parseLibraryDescriptor("load 'testfile");
     }
 }

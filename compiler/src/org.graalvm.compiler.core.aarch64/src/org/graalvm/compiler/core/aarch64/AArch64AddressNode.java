@@ -72,6 +72,8 @@ public class AArch64AddressNode extends AddressNode implements LIRLowerable {
 
     @Override
     public void generate(NodeLIRBuilderTool gen) {
+        assert verify();
+
         LIRGeneratorTool tool = gen.getLIRGeneratorTool();
 
         AllocatableValue baseValue = base == null ? Value.ILLEGAL : tool.asAllocatable(gen.operand(base));
@@ -79,20 +81,36 @@ public class AArch64AddressNode extends AddressNode implements LIRLowerable {
 
         AllocatableValue baseReference = LIRKind.derivedBaseFromValue(baseValue);
         AllocatableValue indexReference;
-        if (index == null) {
+        if (index == null || LIRKind.isValue(indexValue.getValueKind())) {
             indexReference = null;
-        } else if (addressingMode.equals(AddressingMode.IMMEDIATE_SIGNED_UNSCALED)) {
-            indexReference = LIRKind.derivedBaseFromValue(indexValue);
         } else {
-            if (LIRKind.isValue(indexValue.getValueKind())) {
-                indexReference = null;
-            } else {
-                indexReference = Value.ILLEGAL;
-            }
+            indexReference = Value.ILLEGAL;
         }
 
         LIRKind kind = LIRKind.combineDerived(tool.getLIRKind(stamp(NodeView.DEFAULT)), baseReference, indexReference);
         gen.setResult(this, new AArch64AddressValue(kind, baseValue, indexValue, (int) displacement, scaleFactor, addressingMode));
+    }
+
+    @Override
+    public boolean verify() {
+        assert super.verify();
+        switch (addressingMode) {
+            case IMMEDIATE_SIGNED_UNSCALED:
+            case IMMEDIATE_UNSIGNED_SCALED:
+                assert index == null;
+                break;
+            case BASE_REGISTER_ONLY:
+                assert displacement == 0 && index == null;
+                break;
+            case REGISTER_OFFSET:
+            case EXTENDED_REGISTER_OFFSET:
+                assert displacement == 0 && index != null;
+                break;
+            default:
+                /* Pairwise and post/pre index addressing modes should not be present. */
+                assert false;
+        }
+        return true;
     }
 
     @Override

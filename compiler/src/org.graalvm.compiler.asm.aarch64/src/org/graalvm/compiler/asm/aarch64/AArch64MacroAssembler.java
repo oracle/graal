@@ -174,7 +174,7 @@ public class AArch64MacroAssembler extends AArch64Assembler {
      *         AArch64Address for the given parameters.
      */
     public static AddressGenerationPlan generateAddressPlan(long displacement, boolean hasIndexRegister, int transferSize) {
-        assert transferSize == 0 || transferSize == 1 || transferSize == 2 || transferSize == 4 || transferSize == 8;
+        assert transferSize == 0 || transferSize == 1 || transferSize == 2 || transferSize == 4 || transferSize == 8 || transferSize == 16;
         boolean indexScaled = transferSize != 0;
         int log2Scale = NumUtil.log2Ceil(transferSize);
         long scaledDisplacement = displacement >> log2Scale;
@@ -318,30 +318,26 @@ public class AArch64MacroAssembler extends AArch64Assembler {
      * @param dst general purpose register. May not be null, zero-register or stackpointer.
      * @param address address whose value is loaded into dst. May not be null,
      *            {@link org.graalvm.compiler.asm.aarch64.AArch64Address.AddressingMode#IMMEDIATE_POST_INDEXED
-     *            POST_INDEXED} or
+     *            POST_INDEXED},
      *            {@link org.graalvm.compiler.asm.aarch64.AArch64Address.AddressingMode#IMMEDIATE_PRE_INDEXED
-     *            IMMEDIATE_PRE_INDEXED}
+     *            PRE_INDEXED},
+     *            {@link org.graalvm.compiler.asm.aarch64.AArch64Address.AddressingMode#IMMEDIATE_PAIR_SIGNED_SCALED
+     *            PAIR_SIGNED_SCALED},
+     *            {@link org.graalvm.compiler.asm.aarch64.AArch64Address.AddressingMode#IMMEDIATE_PAIR_POST_INDEXED
+     *            PAIR_POST_INDEXED}, or
+     *            {@link org.graalvm.compiler.asm.aarch64.AArch64Address.AddressingMode#IMMEDIATE_PAIR_PRE_INDEXED
+     *            PAIR PRE_INDEXED}.
      * @param transferSize the memory transfer size in bytes. The log2 of this specifies how much
-     *            the index register is scaled. Can be 1, 2, 4 or 8.
+     *            the index register is scaled. Can be 1, 2, 4, 8, or 16.
      */
     public void loadAddress(Register dst, AArch64Address address, int transferSize) {
-        assert transferSize == 1 || transferSize == 2 || transferSize == 4 || transferSize == 8;
+        assert transferSize == 1 || transferSize == 2 || transferSize == 4 || transferSize == 8 || transferSize == 16;
         assert dst.getRegisterCategory().equals(CPU);
         int shiftAmt = NumUtil.log2Ceil(transferSize);
         switch (address.getAddressingMode()) {
             case IMMEDIATE_UNSIGNED_SCALED:
                 int scaledImmediate = address.getImmediateRaw() << shiftAmt;
-                int lowerBits = scaledImmediate & NumUtil.getNbitNumberInt(12);
-                int higherBits = scaledImmediate & ~NumUtil.getNbitNumberInt(12);
-                boolean firstAdd = true;
-                if (lowerBits != 0) {
-                    add(64, dst, address.getBase(), lowerBits);
-                    firstAdd = false;
-                }
-                if (higherBits != 0) {
-                    Register src = firstAdd ? address.getBase() : dst;
-                    add(64, dst, src, higherBits);
-                }
+                add(64, dst, address.getBase(), scaledImmediate);
                 break;
             case IMMEDIATE_SIGNED_UNSCALED:
                 int immediate = address.getImmediateRaw();
@@ -462,10 +458,11 @@ public class AArch64MacroAssembler extends AArch64Assembler {
             rt1 = curRt;
             rt2 = preRt;
         }
-        int immediate = offset / sizeInBytes;
-        Instruction instruction = isStore ? STP : LDP;
+
         int size = sizeInBytes * Byte.SIZE;
-        insertLdpStp(size, instruction, rt1, rt2, curBase, immediate, lastPosition);
+        AArch64Address pairAddress = AArch64Address.createImmediateAddress(size, AArch64Address.AddressingMode.IMMEDIATE_PAIR_SIGNED_SCALED, curBase, offset);
+        Instruction instruction = isStore ? STP : LDP;
+        insertLdpStp(lastPosition, size, instruction, rt1, rt2, pairAddress);
         lastImmLoadStoreEncoding = null;
         isImmLoadStoreMerged = true;
         return true;
@@ -896,6 +893,42 @@ public class AArch64MacroAssembler extends AArch64Assembler {
         }
     }
 
+    /* exclusive access */
+    /**
+     * Load exclusive. Natural alignment of address is required.
+     *
+     * @param size size of memory read in bits. Must be 8, 16, 32 or 64.
+     * @param rt general purpose register. May not be null or stackpointer.
+     * @param rn general purpose register.
+     * @param acquire memory model flag. Decide whether the load has acquire semantics.
+     */
+    public void loadExclusive(int size, Register rt, Register rn, boolean acquire) {
+        if (acquire) {
+            ldaxr(size, rt, rn);
+        } else {
+            ldxr(size, rt, rn);
+        }
+    }
+
+    /**
+     * Store exclusive. Natural alignment of address is required. rs and rt may not point to the
+     * same register.
+     *
+     * @param size size of bits written to memory. Must be 8, 16, 32 or 64.
+     * @param rs general purpose register. Set to exclusive access status. 0 means success,
+     *            everything else failure. May not be null, or stackpointer.
+     * @param rt general purpose register. May not be null or stackpointer.
+     * @param rn general purpose register.
+     * @param release memory model flag. Decide whether the store has release semantics.
+     */
+    public void storeExclusive(int size, Register rs, Register rt, Register rn, boolean release) {
+        if (release) {
+            stlxr(size, rs, rt, rn);
+        } else {
+            stxr(size, rs, rt, rn);
+        }
+    }
+
     /**
      * Conditional move. dst = src1 if condition else src2.
      *
@@ -1040,6 +1073,33 @@ public class AArch64MacroAssembler extends AArch64Assembler {
     /**
      * dst = src + immediate.
      *
+     * If immediate >= 2^24, then this method uses the scratch register to hold the immediate value.
+     *
+     * @param size register size. Has to be 32 or 64.
+     * @param dst general purpose register. May not be null or zero-register.
+     * @param src general purpose register. May not be null or zero-register.
+     * @param immediate 32-bit signed int.
+     * @param scratch general purpose register to hold immediate value (if necessary).
+     */
+    public void add(int size, Register dst, Register src, int immediate, Register scratch) {
+        assert (!dst.equals(zr) && !src.equals(zr));
+        if (immediate < 0) {
+            sub(size, dst, src, -immediate, scratch);
+        } else if (NumUtil.isUnsignedNbit(24, immediate) || !dst.equals(src)) {
+            add(size, dst, src, immediate);
+        } else {
+            assert scratch != null;
+            assert !scratch.equals(zr);
+            mov(scratch, immediate);
+            add(size, dst, src, scratch);
+        }
+    }
+
+    /**
+     * dst = src + immediate.
+     *
+     * If immediate >= 2^24, then this method assumes dst and src are not the same register.
+     *
      * @param size register size. Has to be 32 or 64.
      * @param dst general purpose register. May not be null or zero-register.
      * @param src general purpose register. May not be null or zero-register.
@@ -1054,13 +1114,13 @@ public class AArch64MacroAssembler extends AArch64Assembler {
             if (!(dst.equals(src) && immediate == 0)) {
                 super.add(size, dst, src, immediate);
             }
-        } else if (immediate >= -(1 << 24) && immediate < (1 << 24)) {
-            super.add(size, dst, src, immediate & -(1 << 12));
-            super.add(size, dst, dst, immediate & ((1 << 12) - 1));
+        } else if (NumUtil.isUnsignedNbit(24, immediate)) {
+            super.add(size, dst, src, immediate & (NumUtil.getNbitNumberInt(12) << 12));
+            super.add(size, dst, dst, immediate & NumUtil.getNbitNumberInt(12));
         } else {
             assert !dst.equals(src);
             mov(dst, immediate);
-            add(size, src, dst, dst);
+            add(size, dst, src, dst);
         }
     }
 
@@ -1080,7 +1140,7 @@ public class AArch64MacroAssembler extends AArch64Assembler {
             assert !dst.equals(src);
             assert size == 64;
             mov(dst, immediate);
-            add(size, src, dst, dst);
+            add(size, dst, src, dst);
         }
     }
 
@@ -1105,6 +1165,34 @@ public class AArch64MacroAssembler extends AArch64Assembler {
     /**
      * dst = src - immediate.
      *
+     * If immediate >= 2^24, then this method uses the scratch register to hold the immediate value.
+     *
+     * @param size register size. Has to be 32 or 64.
+     * @param dst general purpose register. May not be null or zero-register.
+     * @param src general purpose register. May not be null or zero-register.
+     * @param immediate 32-bit signed int.
+     * @param scratch general purpose register to hold immediate value (if necessary).
+     */
+    public void sub(int size, Register dst, Register src, int immediate, Register scratch) {
+        assert (!dst.equals(zr) && !src.equals(zr));
+        if (immediate < 0) {
+            add(size, dst, src, -immediate, scratch);
+        }
+        if (NumUtil.isUnsignedNbit(24, immediate) || !dst.equals(src)) {
+            sub(size, dst, src, immediate);
+        } else {
+            assert scratch != null;
+            assert !scratch.equals(zr);
+            mov(scratch, immediate);
+            sub(size, dst, src, scratch);
+        }
+    }
+
+    /**
+     * dst = src - immediate.
+     *
+     * If immediate >= 2^24, then this method assumes dst and src are not the same register.
+     *
      * @param size register size. Has to be 32 or 64.
      * @param dst general purpose register. May not be null or zero-register.
      * @param src general purpose register. May not be null or zero-register.
@@ -1119,13 +1207,13 @@ public class AArch64MacroAssembler extends AArch64Assembler {
             if (!(dst.equals(src) && immediate == 0)) {
                 super.sub(size, dst, src, immediate);
             }
-        } else if (immediate >= -(1 << 24) && immediate < (1 << 24)) {
-            super.sub(size, dst, src, immediate & -(1 << 12));
-            super.sub(size, dst, dst, immediate & ((1 << 12) - 1));
+        } else if (NumUtil.isUnsignedNbit(24, immediate)) {
+            super.sub(size, dst, src, immediate & (NumUtil.getNbitNumberInt(12) << 12));
+            super.sub(size, dst, dst, immediate & NumUtil.getNbitNumberInt(12));
         } else {
             assert !dst.equals(src);
             mov(dst, immediate);
-            sub(size, src, dst, dst);
+            sub(size, dst, src, dst);
         }
     }
 

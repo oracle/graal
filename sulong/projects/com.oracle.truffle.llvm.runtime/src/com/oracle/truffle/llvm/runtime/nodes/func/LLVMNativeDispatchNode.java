@@ -45,8 +45,8 @@ import com.oracle.truffle.api.library.CachedLibrary;
 import com.oracle.truffle.api.nodes.ExplodeLoop;
 import com.oracle.truffle.llvm.runtime.LLVMContext;
 import com.oracle.truffle.llvm.runtime.LLVMLanguage;
-import com.oracle.truffle.llvm.runtime.NFIContextExtension;
-import com.oracle.truffle.llvm.runtime.NFIContextExtension.UnsupportedNativeTypeException;
+import com.oracle.truffle.llvm.runtime.NativeContextExtension;
+import com.oracle.truffle.llvm.runtime.NativeContextExtension.UnsupportedNativeTypeException;
 import com.oracle.truffle.llvm.runtime.interop.nfi.LLVMNativeConvertNode;
 import com.oracle.truffle.llvm.runtime.nodes.api.LLVMNode;
 import com.oracle.truffle.llvm.runtime.pointer.LLVMNativePointer;
@@ -68,14 +68,14 @@ public abstract class LLVMNativeDispatchNode extends LLVMNode {
     @TruffleBoundary
     protected Object identityFunction() {
         LLVMContext context = lookupContextReference(LLVMLanguage.class).get();
-        NFIContextExtension nfiContextExtension = context.getContextExtension(NFIContextExtension.class);
+        NativeContextExtension nativeContextExtension = context.getContextExtension(NativeContextExtension.class);
         String signature;
         try {
-            signature = nfiContextExtension.getNativeSignature(type, LLVMCallNode.USER_ARGUMENT_OFFSET);
+            signature = nativeContextExtension.getNativeSignature(type, LLVMCallNode.USER_ARGUMENT_OFFSET);
         } catch (UnsupportedNativeTypeException e) {
             throw new IllegalStateException(e);
         }
-        return nfiContextExtension.getNativeFunction("identity", String.format("(POINTER):%s", signature));
+        return nativeContextExtension.getNativeFunction("identity", String.format("(POINTER):%s", signature));
     }
 
     protected Object dispatchIdentity(long pointer) {
@@ -121,7 +121,6 @@ public abstract class LLVMNativeDispatchNode extends LLVMNode {
      * @param function
      * @see #executeDispatch(Object, Object[])
      */
-    @SuppressWarnings("try")
     @Specialization(guards = "function.asNative() == cachedFunction.asNative()")
     protected Object doCached(LLVMNativePointer function, Object[] arguments,
                     @CachedContext(LLVMLanguage.class) ContextReference<LLVMContext> context,
@@ -137,7 +136,6 @@ public abstract class LLVMNativeDispatchNode extends LLVMNode {
         return fromNative.executeConvert(returnValue);
     }
 
-    @SuppressWarnings("try")
     @Specialization
     protected Object doGeneric(LLVMNativePointer function, Object[] arguments,
                     @CachedContext(LLVMLanguage.class) ContextReference<LLVMContext> context,

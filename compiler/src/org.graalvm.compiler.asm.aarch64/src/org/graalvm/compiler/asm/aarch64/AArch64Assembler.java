@@ -376,11 +376,6 @@ public abstract class AArch64Assembler extends Assembler {
         return reg.encoding << RnOffset;
     }
 
-    private static int maskField(int sizeInBits, int n) {
-        assert NumUtil.isSignedNbit(sizeInBits, n);
-        return n & NumUtil.getNbitNumberInt(sizeInBits);
-    }
-
     /**
      * Enumeration of all different lane types of SIMD register.
      *
@@ -506,27 +501,26 @@ public abstract class AArch64Assembler extends Assembler {
     private static final int ConditionalSelectOp = 0x1A800000;
     private static final int ConditionalConditionOffset = 12;
 
-    private static final int LoadStoreScaledOp = 0b111_0_01_00 << 22;
-    private static final int LoadStoreUnscaledOp = 0b111_0_00_00 << 22;
-
-    private static final int LoadStoreRegisterOp = 0b111_0_00_00_1 << 21 | 0b10 << 10;
-
+    private static final int LoadStoreScaledOp = 0b111_0_01_0_0_0 << 21;
+    private static final int LoadStoreUnscaledOp = 0b111_0_00_0_0_0 << 21;
+    private static final int LoadStorePostIndexedOp = LoadStoreUnscaledOp | 0b01 << 10;
+    private static final int LoadStorePreIndexedOp = LoadStoreUnscaledOp | 0b11 << 10;
+    private static final int LoadStoreRegisterOp = 0b111_0_00_0_0_1 << 21 | 0b10 << 10;
     private static final int LoadLiteralOp = 0x18000000;
-
-    private static final int LoadStorePostIndexedOp = 0b111_0_00_00_0 << 21 | 0b01 << 10;
-    private static final int LoadStorePreIndexedOp = 0b111_0_00_00_0 << 21 | 0b11 << 10;
 
     private static final int LoadStoreUnscaledImmOffset = 12;
     private static final int LoadStoreScaledImmOffset = 10;
     private static final int LoadStoreScaledRegOffset = 12;
     private static final int LoadStoreIndexedImmOffset = 12;
     private static final int LoadStoreTransferSizeOffset = 30;
+    private static final int LoadStoreQuadWordTransferSizeOffset = 23;
     private static final int LoadStoreFpFlagOffset = 26;
-    private static final int LoadLiteralImmeOffset = 5;
+    private static final int LoadLiteralImmOffset = 5;
+    private static final int LoadFlag = 0b1 << 22;
 
-    private static final int LoadStorePairOp = 0b101_0 << 26;
-    @SuppressWarnings("unused") private static final int LoadStorePairPostIndexOp = 0b101_0_001 << 23;
-    @SuppressWarnings("unused") private static final int LoadStorePairPreIndexOp = 0b101_0_011 << 23;
+    private static final int LoadStorePairOp = 0b101_0_000 << 23;
+    private static final int LoadStorePairPostIndexOp = 0b101_0_001 << 23;
+    private static final int LoadStorePairPreIndexOp = 0b101_0_011 << 23;
     private static final int LoadStorePairImm7Offset = 15;
 
     private static final int LogicalShiftOp = 0x0A000000;
@@ -565,19 +559,28 @@ public abstract class AArch64Assembler extends Assembler {
         BLR(0x003F0000),
         RET(0x005F0000),
 
+        /*
+         * This instruction does not automatically set the LoadFlag, since it is not set in the
+         * PC-literal addressing mode. Note that this instruction is also used for prefetching
+         * instructions (see prfm(AArch64Address, PrefetchMode) for more info).
+         */
         LDR(0x00000000),
+        /*
+         * This instruction does not set the LoadFlag, as this bit is instead part of the target
+         * size.
+         */
         LDRS(0x00800000),
-        LDXR(0x081f7c00),
-        LDAR(0x8dffc00),
-        LDAXR(0x85ffc00),
+        LDXR(0x08000000 | LoadFlag | 0x1F << Rs2Offset | 0x1F << Rt2Offset),
+        LDAR(0x08808000 | LoadFlag | 0x1F << Rs2Offset | 0x1F << Rt2Offset),
+        LDAXR(0x08008000 | LoadFlag | 0x1F << Rs2Offset | 0x1F << Rt2Offset),
 
         STR(0x00000000),
-        STXR(0x08007c00),
-        STLR(0x089ffc00),
-        STLXR(0x0800fc00),
+        STXR(0x08000000 | 0x1F << Rt2Offset),
+        STLR(0x08808000 | 0x1F << Rs2Offset | 0x1F << Rt2Offset),
+        STLXR(0x08008000 | 0x1F << Rt2Offset),
 
-        LDP(0b1 << 22),
-        STP(0b0 << 22),
+        LDP(LoadFlag),
+        STP(0x00000000),
 
         CAS(0x08A07C00),
         LDADD(0x38200000),
@@ -1126,6 +1129,15 @@ public abstract class AArch64Assembler extends Assembler {
 
     }
 
+    /**
+     * Returns the log2 size of the number of bytes expected to be transferred.
+     */
+    private static int getLog2TransferSize(int bitSize) {
+        assert bitSize % 8 == 0; // bit size must be multiple of 8
+        int byteSize = bitSize / 8;
+        return NumUtil.log2Ceil(byteSize);
+    }
+
     /* Load-Store Single Register (5.3.1) */
 
     /**
@@ -1138,8 +1150,10 @@ public abstract class AArch64Assembler extends Assembler {
     public void ldr(int srcSize, Register rt, AArch64Address address) {
         assert rt.getRegisterCategory().equals(CPU);
         assert srcSize == 8 || srcSize == 16 || srcSize == 32 || srcSize == 64;
-        int transferSize = NumUtil.log2Ceil(srcSize / 8);
-        loadStoreInstruction(LDR, rt, address, General32, transferSize);
+
+        /* When using an immediate or register based addressing mode, then the load flag is set. */
+        int loadFlag = address.getAddressingMode() == AddressingMode.PC_LITERAL ? 0 : LoadFlag;
+        loadStoreInstruction(LDR, rt, address, false, getLog2TransferSize(srcSize), loadFlag);
     }
 
     /**
@@ -1153,9 +1167,13 @@ public abstract class AArch64Assembler extends Assembler {
      */
     protected void ldrs(int targetSize, int srcSize, Register rt, AArch64Address address) {
         assert rt.getRegisterCategory().equals(CPU);
-        assert (srcSize == 8 || srcSize == 16 || srcSize == 32) && srcSize != targetSize;
-        int transferSize = NumUtil.log2Ceil(srcSize / 8);
-        loadStoreInstruction(LDRS, rt, address, generalFromSize(targetSize), transferSize);
+        assert srcSize == 8 || srcSize == 16 || srcSize == 32;
+        assert targetSize == 32 || targetSize == 64;
+        assert srcSize != targetSize;
+
+        /* A flag is used to differentiate whether the value should be extended to 32 or 64 bits. */
+        int target32BitFlag = targetSize == 32 ? 1 << 22 : 0;
+        loadStoreInstruction(LDRS, rt, address, false, getLog2TransferSize(srcSize), target32BitFlag);
     }
 
     public enum PrefetchMode {
@@ -1225,31 +1243,40 @@ public abstract class AArch64Assembler extends Assembler {
         }
     }
 
-    /*
-     * implements a prefetch at a 64-bit aligned address using a scaled 12 bit or unscaled 9 bit
-     * displacement addressing mode
-     *
-     * @param rt general purpose register. May not be null, zr or stackpointer.
-     *
-     * @param address only displacement addressing modes allowed. May not be null.
+    /**
+     * Implements a prefetch at a 64-bit aligned address.
      */
     public void prfm(AArch64Address address, PrefetchMode mode) {
-        assert (address.getAddressingMode() == AddressingMode.IMMEDIATE_UNSIGNED_SCALED ||
-                        address.getAddressingMode() == AddressingMode.IMMEDIATE_SIGNED_UNSCALED ||
-                        address.getAddressingMode() == AddressingMode.REGISTER_OFFSET);
         assert mode != null;
-        final int srcSize = 64;
-        final int transferSize = NumUtil.log2Ceil(srcSize / 8);
+
+        /*
+         * Prefetch instructions are encoded the same as LDR, except:
+         *
+         * 1) They do not have the load flag set [22]
+         *
+         * 2) They have an addressing mode variant flag set (either [31] or [23]).
+         */
+        int prfmFlag;
+        switch (address.getAddressingMode()) {
+            case IMMEDIATE_UNSIGNED_SCALED:
+            case IMMEDIATE_SIGNED_UNSCALED:
+            case BASE_REGISTER_ONLY:
+            case REGISTER_OFFSET:
+            case EXTENDED_REGISTER_OFFSET:
+                prfmFlag = 1 << 23;
+                break;
+            case PC_LITERAL:
+                prfmFlag = 1 << 31;
+                break;
+            default:
+                /* Invalid addressing mode provided. */
+                throw GraalError.shouldNotReachHere();
+        }
+
+        /* The prefetch mode is encoded within rt. */
         final Register rt = mode.toRegister();
-        // this looks weird but that's because loadStoreInstruction is weird
-        // instruction select fields are size [31:30], v [26] and opc [25:24]
-        // prfm requires size == 0b11, v == 0b0 and opc == 0b11
-        // passing LDRS ensures opc[1] == 0b1
-        // (n.b. passing LDR/STR makes no difference to opc[1:0]!!)
-        // passing General64 ensures opc[0] == 0b1 and v = 0b0
-        // (n.b. passing General32 ensures opc[0] == 0b0 and v = 0b0)
-        // srcSize 64 ensures size == 0b11
-        loadStoreInstruction(LDRS, rt, address, General64, transferSize);
+
+        loadStoreInstruction(LDR, rt, address, false, getLog2TransferSize(64), prfmFlag);
     }
 
     /**
@@ -1262,47 +1289,56 @@ public abstract class AArch64Assembler extends Assembler {
     public void str(int destSize, Register rt, AArch64Address address) {
         assert rt.getRegisterCategory().equals(CPU) : rt;
         assert destSize == 8 || destSize == 16 || destSize == 32 || destSize == 64;
-        int transferSize = NumUtil.log2Ceil(destSize / 8);
-        loadStoreInstruction(STR, rt, address, General64, transferSize);
+        loadStoreInstruction(STR, rt, address, false, getLog2TransferSize(destSize));
     }
 
-    private void loadStoreInstruction(Instruction instr, Register reg, AArch64Address address, InstructionType type, int log2TransferSize) {
-        assert log2TransferSize >= 0 && log2TransferSize < 4;
-        int transferSizeEncoding = log2TransferSize << LoadStoreTransferSizeOffset;
-        int is32Bit = type.width == 32 ? 1 << ImmediateSizeOffset : 0;
-        int isFloat = !type.isGeneral ? 1 << LoadStoreFpFlagOffset : 0;
-        int memop = instr.encoding | transferSizeEncoding | is32Bit | isFloat | rt(reg);
+    private void loadStoreInstruction(Instruction instr, Register reg, AArch64Address address, boolean isFP, int log2TransferSize) {
+        loadStoreInstruction(instr, reg, address, isFP, log2TransferSize, 0);
+    }
+
+    private void loadStoreInstruction(Instruction instr, Register reg, AArch64Address address, boolean isFP, int log2TransferSize, int extraEncoding) {
+        assert log2TransferSize >= 0 && log2TransferSize < (isFP ? 5 : 4);
+
+        int transferSizeEncoding;
+        if (address.getAddressingMode() == AddressingMode.PC_LITERAL) {
+            assert log2TransferSize >= 2 : "PC literal loads only works for load/stores of 32-bit and larger";
+            transferSizeEncoding = (log2TransferSize - 2) << LoadStoreTransferSizeOffset;
+        } else {
+            transferSizeEncoding = ((log2TransferSize & 0x3) << LoadStoreTransferSizeOffset) | ((log2TransferSize >> 2) << LoadStoreQuadWordTransferSizeOffset);
+        }
+
+        int floatFlag = isFP ? 1 << LoadStoreFpFlagOffset : 0;
+        int memOp = extraEncoding | transferSizeEncoding | instr.encoding | floatFlag | rt(reg);
         switch (address.getAddressingMode()) {
             case IMMEDIATE_UNSIGNED_SCALED:
                 annotatePatchingImmediate(position(), instr, 12, LoadStoreScaledImmOffset, log2TransferSize);
-                emitInt(memop | LoadStoreScaledOp | address.getImmediate() << LoadStoreScaledImmOffset | rs1(address.getBase()));
+                emitInt(memOp | LoadStoreScaledOp | address.getImmediate() << LoadStoreScaledImmOffset | rs1(address.getBase()));
                 break;
             case IMMEDIATE_SIGNED_UNSCALED:
                 annotatePatchingImmediate(position(), instr, 9, LoadStoreUnscaledImmOffset, 0);
-                emitInt(memop | LoadStoreUnscaledOp | address.getImmediate() << LoadStoreUnscaledImmOffset | rs1(address.getBase()));
+                emitInt(memOp | LoadStoreUnscaledOp | address.getImmediate() << LoadStoreUnscaledImmOffset | rs1(address.getBase()));
                 break;
             case BASE_REGISTER_ONLY:
-                emitInt(memop | LoadStoreScaledOp | rs1(address.getBase()));
+                /* Note that this is the same as IMMEDIATE_UNSIGNED_SCALED with no immediate. */
+                emitInt(memOp | LoadStoreScaledOp | rs1(address.getBase()));
                 break;
             case EXTENDED_REGISTER_OFFSET:
             case REGISTER_OFFSET:
                 ExtendType extendType = address.getAddressingMode() == AddressingMode.EXTENDED_REGISTER_OFFSET ? address.getExtendType() : ExtendType.UXTX;
-                boolean shouldScale = address.isRegisterOffsetScaled() && log2TransferSize != 0;
-                emitInt(memop | LoadStoreRegisterOp | rs2(address.getOffset()) | extendType.encoding << ExtendTypeOffset | (shouldScale ? 1 : 0) << LoadStoreScaledRegOffset | rs1(address.getBase()));
+                int shouldScaleFlag = (address.isRegisterOffsetScaled() && log2TransferSize != 0 ? 1 : 0) << LoadStoreScaledRegOffset;
+                emitInt(memOp | LoadStoreRegisterOp | rs2(address.getOffset()) | extendType.encoding << ExtendTypeOffset | shouldScaleFlag | rs1(address.getBase()));
                 break;
             case PC_LITERAL:
-                assert log2TransferSize >= 2 : "PC literal loads only works for load/stores of 32-bit and larger";
-                transferSizeEncoding = (log2TransferSize - 2) << LoadStoreTransferSizeOffset;
-                annotatePatchingImmediate(position(), instr, 21, LoadLiteralImmeOffset, 2);
-                emitInt(transferSizeEncoding | isFloat | LoadLiteralOp | rd(reg) | address.getImmediate() << LoadLiteralImmeOffset);
+                annotatePatchingImmediate(position(), instr, 21, LoadLiteralImmOffset, 2);
+                emitInt(transferSizeEncoding | floatFlag | LoadLiteralOp | rd(reg) | address.getImmediate() << LoadLiteralImmOffset);
                 break;
             case IMMEDIATE_POST_INDEXED:
                 annotatePatchingImmediate(position(), instr, 9, LoadStoreIndexedImmOffset, 0);
-                emitInt(memop | LoadStorePostIndexedOp | rs1(address.getBase()) | address.getImmediate() << LoadStoreIndexedImmOffset);
+                emitInt(memOp | LoadStorePostIndexedOp | rs1(address.getBase()) | address.getImmediate() << LoadStoreIndexedImmOffset);
                 break;
             case IMMEDIATE_PRE_INDEXED:
                 annotatePatchingImmediate(position(), instr, 9, LoadStoreIndexedImmOffset, 0);
-                emitInt(memop | LoadStorePreIndexedOp | rs1(address.getBase()) | address.getImmediate() << LoadStoreIndexedImmOffset);
+                emitInt(memOp | LoadStorePreIndexedOp | rs1(address.getBase()) | address.getImmediate() << LoadStoreIndexedImmOffset);
                 break;
             default:
                 throw GraalError.shouldNotReachHere("Unhandled addressing mode: " + address.getAddressingMode());
@@ -1312,11 +1348,9 @@ public abstract class AArch64Assembler extends Assembler {
     /**
      * Insert ldp/stp at the specified position.
      */
-    protected void insertLdpStp(int size, Instruction instr, Register rt, Register rt2, Register base, int offset, int position) {
-        InstructionType type = generalFromSize(size);
-        int scaledOffset = maskField(7, offset);
-        int memop = type.encoding | instr.encoding | scaledOffset << LoadStorePairImm7Offset | rt2(rt2) | rn(base) | rt(rt);
-        emitInt(memop | LoadStorePairOp | (0b010 << 23), position);
+    protected void insertLdpStp(int position, int size, Instruction instr, Register rt, Register rt2, AArch64Address address) {
+        int instructionEncoding = generateLoadStorePairInstructionEncoding(instr, rt, rt2, address, false, getLog2TransferSize(size));
+        emitInt(instructionEncoding, position);
     }
 
     /**
@@ -1326,7 +1360,7 @@ public abstract class AArch64Assembler extends Assembler {
      */
     public void ldp(int size, Register rt, Register rt2, AArch64Address address) {
         assert size == 32 || size == 64;
-        loadStorePairInstruction(size, LDP, rt, rt2, address);
+        loadStorePairInstruction(LDP, rt, rt2, address, false, getLog2TransferSize(size));
     }
 
     /**
@@ -1336,27 +1370,31 @@ public abstract class AArch64Assembler extends Assembler {
      */
     public void stp(int size, Register rt, Register rt2, AArch64Address address) {
         assert size == 32 || size == 64;
-        loadStorePairInstruction(size, STP, rt, rt2, address);
+        loadStorePairInstruction(STP, rt, rt2, address, false, getLog2TransferSize(size));
     }
 
-    private void loadStorePairInstruction(int size, Instruction instr, Register rt, Register rt2, AArch64Address address) {
-        InstructionType type = generalFromSize(size);
+    private static int generateLoadStorePairInstructionEncoding(Instruction instr, Register rt, Register rt2, AArch64Address address, boolean isFP, int log2TransferSize) {
+        assert log2TransferSize >= 2 && log2TransferSize < (isFP ? 5 : 4);
+        int transferSizeEncoding = (log2TransferSize - 2) << (isFP ? 30 : 31);
+        int floatFlag = isFP ? 1 << LoadStoreFpFlagOffset : 0;
         // LDP/STP uses a 7-bit scaled offset
         int offset = address.getImmediate();
-        int memop = type.encoding | instr.encoding | offset << LoadStorePairImm7Offset | rt2(rt2) | rn(address.getBase()) | rt(rt);
+        int memOp = transferSizeEncoding | instr.encoding | floatFlag | offset << LoadStorePairImm7Offset | rt2(rt2) | rn(address.getBase()) | rt(rt);
         switch (address.getAddressingMode()) {
             case IMMEDIATE_PAIR_SIGNED_SCALED:
-                emitInt(memop | LoadStorePairOp | (0b010 << 23));
-                break;
+                return (memOp | LoadStorePairOp);
             case IMMEDIATE_PAIR_POST_INDEXED:
-                emitInt(memop | LoadStorePairOp | (0b001 << 23));
-                break;
+                return (memOp | LoadStorePairPostIndexOp);
             case IMMEDIATE_PAIR_PRE_INDEXED:
-                emitInt(memop | LoadStorePairOp | (0b011 << 23));
-                break;
+                return (memOp | LoadStorePairPreIndexOp);
             default:
                 throw GraalError.shouldNotReachHere("Unhandled addressing mode: " + address.getAddressingMode());
         }
+    }
+
+    private void loadStorePairInstruction(Instruction instr, Register rt, Register rt2, AArch64Address address, boolean isFP, int log2TransferSize) {
+        int instructionEncoding = generateLoadStorePairInstructionEncoding(instr, rt, rt2, address, isFP, log2TransferSize);
+        emitInt(instructionEncoding);
     }
 
     /* Load-Store Exclusive (5.3.6) */
@@ -1370,8 +1408,7 @@ public abstract class AArch64Assembler extends Assembler {
      */
     protected void ldxr(int size, Register rt, Register rn) {
         assert size == 8 || size == 16 || size == 32 || size == 64;
-        int transferSize = NumUtil.log2Ceil(size / 8);
-        exclusiveLoadInstruction(LDXR, rt, rn, transferSize);
+        exclusiveLoadInstruction(LDXR, rt, rn, getLog2TransferSize(size));
     }
 
     /**
@@ -1386,8 +1423,7 @@ public abstract class AArch64Assembler extends Assembler {
      */
     protected void stxr(int size, Register rs, Register rt, Register rn) {
         assert size == 8 || size == 16 || size == 32 || size == 64;
-        int transferSize = NumUtil.log2Ceil(size / 8);
-        exclusiveStoreInstruction(STXR, rs, rt, rn, transferSize);
+        exclusiveStoreInstruction(STXR, rs, rt, rn, getLog2TransferSize(size));
     }
 
     /* Load-Acquire/Store-Release (5.3.7) */
@@ -1402,8 +1438,7 @@ public abstract class AArch64Assembler extends Assembler {
      */
     public void ldar(int size, Register rt, Register rn) {
         assert size == 8 || size == 16 || size == 32 || size == 64;
-        int transferSize = NumUtil.log2Ceil(size / 8);
-        exclusiveLoadInstruction(LDAR, rt, rn, transferSize);
+        exclusiveLoadInstruction(LDAR, rt, rn, getLog2TransferSize(size));
     }
 
     /**
@@ -1415,9 +1450,8 @@ public abstract class AArch64Assembler extends Assembler {
      */
     public void stlr(int size, Register rt, Register rn) {
         assert size == 8 || size == 16 || size == 32 || size == 64;
-        int transferSize = NumUtil.log2Ceil(size / 8);
         // Hack: Passing the zero-register means it is ignored when building the encoding.
-        exclusiveStoreInstruction(STLR, r0, rt, rn, transferSize);
+        exclusiveStoreInstruction(STLR, r0, rt, rn, getLog2TransferSize(size));
     }
 
     /* exclusive access */
@@ -1430,8 +1464,7 @@ public abstract class AArch64Assembler extends Assembler {
      */
     public void ldaxr(int size, Register rt, Register rn) {
         assert size == 8 || size == 16 || size == 32 || size == 64;
-        int transferSize = NumUtil.log2Ceil(size / 8);
-        exclusiveLoadInstruction(LDAXR, rt, rn, transferSize);
+        exclusiveLoadInstruction(LDAXR, rt, rn, getLog2TransferSize(size));
     }
 
     /**
@@ -1446,15 +1479,21 @@ public abstract class AArch64Assembler extends Assembler {
      */
     public void stlxr(int size, Register rs, Register rt, Register rn) {
         assert size == 8 || size == 16 || size == 32 || size == 64;
-        int transferSize = NumUtil.log2Ceil(size / 8);
-        exclusiveStoreInstruction(STLXR, rs, rt, rn, transferSize);
+        exclusiveStoreInstruction(STLXR, rs, rt, rn, getLog2TransferSize(size));
     }
 
-    private void exclusiveLoadInstruction(Instruction instr, Register reg, Register rn, int log2TransferSize) {
+    /**
+     * Loads data into rt from address and registers address as an exclusive access.
+     *
+     * @param rt general purpose register. May not be null
+     * @param rn general purpose register containing the address specifying where rt is loaded from.
+     * @param log2TransferSize log2Ceil of memory transfer size.
+     */
+    private void exclusiveLoadInstruction(Instruction instr, Register rt, Register rn, int log2TransferSize) {
         assert log2TransferSize >= 0 && log2TransferSize < 4;
-        assert reg.getRegisterCategory().equals(CPU);
+        assert rt.getRegisterCategory().equals(CPU);
         int transferSizeEncoding = log2TransferSize << LoadStoreTransferSizeOffset;
-        emitInt(transferSizeEncoding | instr.encoding | 1 << ImmediateSizeOffset | rn(rn) | rt(reg));
+        emitInt(transferSizeEncoding | instr.encoding | rn(rn) | rt(rt));
     }
 
     /**
@@ -1488,8 +1527,7 @@ public abstract class AArch64Assembler extends Assembler {
      */
     public void cas(int size, Register rs, Register rt, Register rn, boolean acquire, boolean release) {
         assert size == 32 || size == 64;
-        int transferSize = NumUtil.log2Ceil(size / 8);
-        compareAndSwapInstruction(CAS, rs, rt, rn, transferSize, acquire, release);
+        compareAndSwapInstruction(CAS, rs, rt, rn, getLog2TransferSize(size), acquire, release);
     }
 
     private void compareAndSwapInstruction(Instruction instr, Register rs, Register rt, Register rn, int log2TransferSize, boolean acquire, boolean release) {
@@ -1513,8 +1551,7 @@ public abstract class AArch64Assembler extends Assembler {
      */
     public void ldadd(int size, Register rs, Register rt, Register rn, boolean acquire, boolean release) {
         assert size == 8 || size == 16 || size == 32 || size == 64;
-        int transferSize = NumUtil.log2Ceil(size / 8);
-        loadAndAddInstruction(LDADD, rs, rt, rn, transferSize, acquire, release);
+        loadAndAddInstruction(LDADD, rs, rt, rn, getLog2TransferSize(size), acquire, release);
     }
 
     private void loadAndAddInstruction(Instruction instr, Register rs, Register rt, Register rn, int log2TransferSize, boolean acquire, boolean release) {
@@ -1537,8 +1574,7 @@ public abstract class AArch64Assembler extends Assembler {
      */
     public void swp(int size, Register rs, Register rt, Register rn, boolean acquire, boolean release) {
         assert size == 8 || size == 16 || size == 32 || size == 64;
-        int transferSize = NumUtil.log2Ceil(size / 8);
-        swapInstruction(SWP, rs, rt, rn, transferSize, acquire, release);
+        swapInstruction(SWP, rs, rt, rn, getLog2TransferSize(size), acquire, release);
     }
 
     private void swapInstruction(Instruction instr, Register rs, Register rt, Register rn, int log2TransferSize, boolean acquire, boolean release) {
@@ -1688,7 +1724,7 @@ public abstract class AArch64Assembler extends Assembler {
      * @return true if valid arithmetic immediate, false otherwise.
      */
     protected static boolean isAimm(int imm) {
-        return NumUtil.isUnsignedNbit(12, imm) || NumUtil.isUnsignedNbit(12, imm >>> 12) && (imm & 0xfff) == 0;
+        return NumUtil.isUnsignedNbit(12, imm) || (NumUtil.isUnsignedNbit(12, imm >>> 12) && ((imm & 0xfff) == 0));
     }
 
     /* Logical (immediate) (5.4.2) */
@@ -2446,15 +2482,17 @@ public abstract class AArch64Assembler extends Assembler {
     /**
      * Floating point load.
      *
-     * @param size number of bits read from memory into rt. Must be 32 or 64.
+     * @param size number of bits read from memory into rt. Must be 8, 16, 32, 64 or 128.
      * @param rt floating point register. May not be null.
      * @param address all addressing modes allowed. May not be null.
      */
     public void fldr(int size, Register rt, AArch64Address address) {
         assert rt.getRegisterCategory().equals(SIMD);
-        assert size == 32 || size == 64;
-        int transferSize = NumUtil.log2Ceil(size / 8);
-        loadStoreInstruction(LDR, rt, address, InstructionType.FP32, transferSize);
+        assert size == 8 || size == 16 || size == 32 || size == 64 || size == 128;
+
+        /* When using an immediate or register based addressing mode, then the load flag is set. */
+        int loadFlag = address.getAddressingMode() == AddressingMode.PC_LITERAL ? 0 : LoadFlag;
+        loadStoreInstruction(LDR, rt, address, true, getLog2TransferSize(size), loadFlag);
     }
 
     /**
@@ -2466,9 +2504,32 @@ public abstract class AArch64Assembler extends Assembler {
      */
     public void fstr(int size, Register rt, AArch64Address address) {
         assert rt.getRegisterCategory().equals(SIMD);
-        assert size == 32 || size == 64;
-        int transferSize = NumUtil.log2Ceil(size / 8);
-        loadStoreInstruction(STR, rt, address, InstructionType.FP64, transferSize);
+        assert size == 8 || size == 16 || size == 32 || size == 64 || size == 128;
+
+        loadStoreInstruction(STR, rt, address, true, getLog2TransferSize(size));
+    }
+
+    /**
+     * Load Pair of Registers calculates an address from a base register value and an immediate
+     * offset, and stores two single, double, or quad words to the calculated address, from two
+     * registers.
+     */
+    public void fldp(int size, Register rt, Register rt2, AArch64Address address) {
+        assert rt.getRegisterCategory().equals(SIMD) && rt2.getRegisterCategory().equals(SIMD);
+        assert size == 32 || size == 64 || size == 128;
+
+        loadStorePairInstruction(LDP, rt, rt2, address, true, getLog2TransferSize(size));
+    }
+
+    /**
+     * Store Pair of Registers calculates an address from a base register value and an immediate
+     * offset, and stores two single, double, or quad words to the calculated address, from two
+     * registers.
+     */
+    public void fstp(int size, Register rt, Register rt2, AArch64Address address) {
+        assert rt.getRegisterCategory().equals(SIMD) && rt2.getRegisterCategory().equals(SIMD);
+        assert size == 32 || size == 64 || size == 128;
+        loadStorePairInstruction(STP, rt, rt2, address, true, getLog2TransferSize(size));
     }
 
     /* Floating-point Move (register) (5.7.2) */

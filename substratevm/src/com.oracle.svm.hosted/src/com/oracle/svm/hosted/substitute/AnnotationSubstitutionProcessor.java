@@ -709,7 +709,7 @@ public class AnnotationSubstitutionProcessor extends SubstitutionProcessor {
 
         } catch (NoSuchMethodException ex) {
             throw UserError.abort("Could not find target method: %s", annotatedMethod);
-        } catch (NoClassDefFoundError error) {
+        } catch (LinkageError error) {
             throw UserError.abort("Cannot find %s.%s, %s can not be loaded, due to %s not being available in the classpath. Are you missing a dependency in your classpath?",
                             originalClass.getName(), originalName, originalClass.getName(), error.getMessage());
         }
@@ -826,7 +826,7 @@ public class AnnotationSubstitutionProcessor extends SubstitutionProcessor {
                 guarantee(recomputeAnnotation.declClassName().isEmpty(), "Both class and class name specified");
                 targetClass = recomputeAnnotation.declClass();
             } else if (!recomputeAnnotation.declClassName().isEmpty()) {
-                targetClass = imageClassLoader.findClassByName(recomputeAnnotation.declClassName());
+                targetClass = imageClassLoader.findClassOrFail(recomputeAnnotation.declClassName());
             }
         }
         return new ComputedValueField(original, annotated, kind, targetClass, targetName, isFinal);
@@ -905,7 +905,7 @@ public class AnnotationSubstitutionProcessor extends SubstitutionProcessor {
             }
         }
 
-        Class<?> holder = imageClassLoader.findClassByName(className, false);
+        Class<?> holder = imageClassLoader.findClass(className).get();
         if (holder == null) {
             throw UserError.abort("Substitution target for %s is not loaded. Use field `onlyWith` in the `TargetClass` annotation to make substitution only active when needed.",
                             annotatedBaseClass.getName());

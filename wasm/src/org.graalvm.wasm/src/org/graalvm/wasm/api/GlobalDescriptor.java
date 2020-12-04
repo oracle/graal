@@ -40,10 +40,6 @@
  */
 package org.graalvm.wasm.api;
 
-import com.oracle.truffle.api.interop.InteropLibrary;
-import com.oracle.truffle.api.library.ExportLibrary;
-
-@ExportLibrary(InteropLibrary.class)
 public class GlobalDescriptor extends Dictionary {
     private final ValueType valueType;
     private final Boolean mutable;

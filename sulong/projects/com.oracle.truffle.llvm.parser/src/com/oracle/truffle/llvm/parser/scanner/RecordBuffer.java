@@ -162,14 +162,19 @@ public final class RecordBuffer {
         return string.toString();
     }
 
-    public String readUnicodeString() {
-        // We use a byte array, so "new String(...)" is able to handle Unicode Characters correctly
-        final byte[] bytes = new byte[remaining()];
-        for (int i = 0; i < bytes.length; i++) {
-            bytes[i] = (byte) (opBuffer[index + i] & 0xFF);
+    public byte[] readStringAsBytes(boolean cstring) {
+        int length = remaining();
+        byte[] result = new byte[length + (cstring ? 1 : 0)];
+        for (int i = 0; i < length; i++) {
+            result[i] = (byte) opBuffer[index + i];
         }
-        index += bytes.length;
-        return new String(bytes);
+        index += length;
+        return result;
+    }
+
+    public String readUnicodeString() {
+        // We use the byte array String constructor to Unicode Characters correctly
+        return new String(readStringAsBytes(false));
     }
 
     public long[] dumpArray() {

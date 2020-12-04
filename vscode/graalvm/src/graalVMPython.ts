@@ -13,24 +13,20 @@ export function getPythonConfigurations(): ConfigurationPickItem[] {
     ret.push(new ConfigurationPickItem(
         'Set as Python runtime',
         '(python.pythonPath)',
-        graalVMHome => {
-            const executable = utils.findExecutable('graalpython', graalVMHome);
-            if (executable) {
-                return utils.checkRecommendedExtension('ms-python.python', 'Python Language') && executable !== getConf('python').get('pythonPath');
-            }
-            return false;
-        }, 
+        graalVMHome => utils.findExecutable('graalpython', graalVMHome) !== undefined && utils.checkRecommendedExtension('ms-python.python', 'Python Language'),
+        graalVMHome => utils.findExecutable('graalpython', graalVMHome) === getConf('python').get('pythonPath'),
         async graalVMHome => {
             const executable = utils.findExecutable('graalpython', graalVMHome);
             if (executable) {
                 return setConfig('pythonPath', executable);
             }
-        })
+        },
+        async _graalVMHome => setConfig('pythonPath', undefined))
     );
     return ret;
 }
 
-function setConfig(section: string, path: string) {
+function setConfig(section: string, path?: string) {
 	const config = getConf('python');
 	const term = config.inspect(section);
 	if (term) {

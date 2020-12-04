@@ -68,7 +68,7 @@ public final class WasmException extends AbstractTruffleException {
 
     @TruffleBoundary
     public static WasmException create(Failure failure, Node location, String message) {
-        return new WasmException(message, location, failure);
+        return new WasmException(String.format(message), location, failure);
     }
 
     @TruffleBoundary
@@ -82,8 +82,8 @@ public final class WasmException extends AbstractTruffleException {
     }
 
     @TruffleBoundary
-    public static WasmException format(Failure failure, String format, Object arg) {
-        return create(failure, String.format(format, arg));
+    public static WasmException format(Failure failure, String format, Object... args) {
+        return create(failure, String.format(format, args));
     }
 
     @TruffleBoundary

@@ -128,6 +128,7 @@ import com.oracle.svm.core.graal.stackvalue.StackValueNode.StackSlotIdentity;
 import com.oracle.svm.core.heap.ReferenceAccess;
 import com.oracle.svm.core.heap.ReferenceAccessImpl;
 import com.oracle.svm.core.hub.DynamicHub;
+import com.oracle.svm.core.identityhashcode.SubstrateIdentityHashCodeNode;
 import com.oracle.svm.core.jdk.proxy.DynamicProxyRegistry;
 import com.oracle.svm.core.meta.SharedMethod;
 import com.oracle.svm.core.meta.SubstrateObjectConstant;
@@ -197,9 +198,9 @@ public class SubstrateGraphBuilderPlugins {
     }
 
     private static void registerSystemPlugins(MetaAccessProvider metaAccess, InvocationPlugins plugins) {
+        Registration r = new Registration(plugins, System.class);
         if (SubstrateOptions.FoldSecurityManagerGetter.getValue()) {
-            Registration proxyRegistration = new Registration(plugins, System.class);
-            proxyRegistration.register0("getSecurityManager", new InvocationPlugin() {
+            r.register0("getSecurityManager", new InvocationPlugin() {
                 @Override
                 public boolean apply(GraphBuilderContext b, ResolvedJavaMethod targetMethod, Receiver receiver) {
                     /* System.getSecurityManager() always returns null. */
@@ -208,6 +209,14 @@ public class SubstrateGraphBuilderPlugins {
                 }
             });
         }
+
+        r.register1("identityHashCode", Object.class, new InvocationPlugin() {
+            @Override
+            public boolean apply(GraphBuilderContext b, ResolvedJavaMethod targetMethod, Receiver receiver, ValueNode object) {
+                b.addPush(JavaKind.Int, new SubstrateIdentityHashCodeNode(object, b.bci()));
+                return true;
+            }
+        });
     }
 
     private static void registerReflectionPlugins(InvocationPlugins plugins, Replacements replacements, boolean analysis) {
@@ -496,6 +505,15 @@ public class SubstrateGraphBuilderPlugins {
                 return true;
             }
         });
+
+        r.register1("hashCode", Receiver.class, new InvocationPlugin() {
+            @Override
+            public boolean apply(GraphBuilderContext b, ResolvedJavaMethod targetMethod, Receiver receiver) {
+                ValueNode object = receiver.get();
+                b.addPush(JavaKind.Int, new SubstrateIdentityHashCodeNode(object, b.bci()));
+                return true;
+            }
+        });
     }
 
     public static ObjectClone objectCloneNode(MacroParams macroParams, boolean parsingIntrinsic) {
@@ -522,7 +540,7 @@ public class SubstrateGraphBuilderPlugins {
                         try {
                             Field targetField = clazz.getDeclaredField(fieldName);
                             return processObjectFieldOffset(b, targetField, analysis, metaAccess);
-                        } catch (NoSuchFieldException | NoClassDefFoundError e) {
+                        } catch (NoSuchFieldException | LinkageError e) {
                             return false;
                         }
                     }
@@ -544,8 +562,7 @@ public class SubstrateGraphBuilderPlugins {
                             unsafe.get();
 
                             LogicNode lengthNegative = b.append(IntegerLessThanNode.create(lengthNode, ConstantNode.forInt(0), NodeView.DEFAULT));
-                            b.emitBytecodeExceptionCheck(lengthNegative, false, BytecodeExceptionNode.BytecodeExceptionKind.ILLEGAL_ARGUMENT_EXCEPTION,
-                                            ConstantNode.forConstant(snippetReflection.forObject("Negative length"), b.getMetaAccess(), b.getGraph()));
+                            b.emitBytecodeExceptionCheck(lengthNegative, false, BytecodeExceptionNode.BytecodeExceptionKind.ILLEGAL_ARGUMENT_EXCEPTION_NEGATIVE_LENGTH);
                             b.addPush(JavaKind.Object, new NewArrayNode(componentType, lengthNode, false));
                             return true;
                         }
@@ -642,17 +659,6 @@ public class SubstrateGraphBuilderPlugins {
                 return false;
             }
         });
-
-        /*
-         * We have our own Java-level implementation of Array.getLength(), so we just disable the
-         * plugin defined in StandardGraphBuilderPlugins.
-         */
-        r.register1("getLength", Object.class, new InvocationPlugin() {
-            @Override
-            public boolean apply(GraphBuilderContext b, ResolvedJavaMethod targetMethod, Receiver type, ValueNode array) {
-                return false;
-            }
-        });
     }
 
     private static void registerArraysPlugins(InvocationPlugins plugins, boolean analysis) {
@@ -711,13 +717,6 @@ public class SubstrateGraphBuilderPlugins {
             @Override
             public boolean apply(GraphBuilderContext b, ResolvedJavaMethod targetMethod, Receiver receiver) {
                 b.addPush(JavaKind.Object, ReadReservedRegister.createReadHeapBaseNode(b.getGraph()));
-                return true;
-            }
-        });
-        r.register1("readArrayLength", Object.class, new InvocationPlugin() {
-            @Override
-            public boolean apply(GraphBuilderContext b, ResolvedJavaMethod targetMethod, Receiver receiver, ValueNode array) {
-                b.addPush(JavaKind.Int, new ArrayLengthNode(array));
                 return true;
             }
         });

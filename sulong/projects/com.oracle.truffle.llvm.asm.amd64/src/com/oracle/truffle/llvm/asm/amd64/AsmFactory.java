@@ -223,16 +223,20 @@ import com.oracle.truffle.llvm.runtime.nodes.intrinsics.llvm.debug.LLVMDebugTrap
 import com.oracle.truffle.llvm.runtime.nodes.intrinsics.llvm.x86.LLVMX86_ConversionNode;
 import com.oracle.truffle.llvm.runtime.nodes.intrinsics.llvm.x86.LLVMX86_ConversionNodeFactory;
 import com.oracle.truffle.llvm.runtime.nodes.memory.LLVMFenceNodeGen;
-import com.oracle.truffle.llvm.runtime.nodes.memory.load.LLVMDirectLoadNodeFactory.LLVMPointerDirectLoadNodeGen;
 import com.oracle.truffle.llvm.runtime.nodes.memory.load.LLVMI16LoadNodeGen;
 import com.oracle.truffle.llvm.runtime.nodes.memory.load.LLVMI32LoadNodeGen;
 import com.oracle.truffle.llvm.runtime.nodes.memory.load.LLVMI64LoadNodeGen;
 import com.oracle.truffle.llvm.runtime.nodes.memory.load.LLVMI8LoadNodeGen;
+import com.oracle.truffle.llvm.runtime.nodes.memory.load.LLVMPointerLoadNodeGen;
+import com.oracle.truffle.llvm.runtime.nodes.memory.store.LLVMI16StoreNode;
 import com.oracle.truffle.llvm.runtime.nodes.memory.store.LLVMI16StoreNodeGen;
+import com.oracle.truffle.llvm.runtime.nodes.memory.store.LLVMI32StoreNode;
 import com.oracle.truffle.llvm.runtime.nodes.memory.store.LLVMI32StoreNodeGen;
+import com.oracle.truffle.llvm.runtime.nodes.memory.store.LLVMI64StoreNode;
 import com.oracle.truffle.llvm.runtime.nodes.memory.store.LLVMI64StoreNodeGen;
+import com.oracle.truffle.llvm.runtime.nodes.memory.store.LLVMI8StoreNode;
 import com.oracle.truffle.llvm.runtime.nodes.memory.store.LLVMI8StoreNodeGen;
-import com.oracle.truffle.llvm.runtime.nodes.memory.store.LLVMPointerStoreNodeGen;
+import com.oracle.truffle.llvm.runtime.nodes.memory.store.LLVMPointerStoreNode;
 import com.oracle.truffle.llvm.runtime.nodes.others.LLVMUnsupportedInstructionNode;
 import com.oracle.truffle.llvm.runtime.nodes.vars.LLVMReadNodeFactory.LLVMAddressReadNodeGen;
 import com.oracle.truffle.llvm.runtime.nodes.vars.LLVMReadNodeFactory.LLVMI1ReadNodeGen;
@@ -1681,25 +1685,25 @@ public class AsmFactory {
                         assert retTypes[arg.getOutIndex()] == arg.getType();
                         if (arg.getType() instanceof PointerType) {
                             valueNodes[arg.getOutIndex()] = LLVMToAddressNodeGen.create(register);
-                            writeNodes[arg.getOutIndex()] = LLVMPointerStoreNodeGen.create(null, null);
+                            writeNodes[arg.getOutIndex()] = LLVMPointerStoreNode.create();
                         } else {
                             PrimitiveKind primitiveKind = getPrimitiveKind(arg);
                             switch (primitiveKind) {
                                 case I8:
                                     valueNodes[arg.getOutIndex()] = CommonNodeFactory.createSignedCast(register, PrimitiveType.I8);
-                                    writeNodes[arg.getOutIndex()] = LLVMI8StoreNodeGen.create(null, null);
+                                    writeNodes[arg.getOutIndex()] = LLVMI8StoreNode.create();
                                     break;
                                 case I16:
                                     valueNodes[arg.getOutIndex()] = CommonNodeFactory.createSignedCast(register, PrimitiveType.I16);
-                                    writeNodes[arg.getOutIndex()] = LLVMI16StoreNodeGen.create(null, null);
+                                    writeNodes[arg.getOutIndex()] = LLVMI16StoreNode.create();
                                     break;
                                 case I32:
                                     valueNodes[arg.getOutIndex()] = CommonNodeFactory.createSignedCast(register, PrimitiveType.I32);
-                                    writeNodes[arg.getOutIndex()] = LLVMI32StoreNodeGen.create(null, null);
+                                    writeNodes[arg.getOutIndex()] = LLVMI32StoreNode.create();
                                     break;
                                 case I64:
                                     valueNodes[arg.getOutIndex()] = register;
-                                    writeNodes[arg.getOutIndex()] = LLVMI64StoreNodeGen.create(null, null);
+                                    writeNodes[arg.getOutIndex()] = LLVMI64StoreNode.create();
                                     break;
                                 default:
                                     throw invalidOperandType(arg.getType());
@@ -1946,7 +1950,7 @@ public class AsmFactory {
             FrameSlot frame = getArgumentSlot(op.getIndex(), type);
             if (info.isMemory()) {
                 if (type instanceof PointerType) {
-                    return LLVMPointerDirectLoadNodeGen.create(LLVMAddressReadNodeGen.create(frame));
+                    return LLVMPointerLoadNodeGen.create(LLVMAddressReadNodeGen.create(frame));
                 }
                 switch (((PrimitiveType) type).getPrimitiveKind()) {
                     case I8:
@@ -1992,7 +1996,7 @@ public class AsmFactory {
                         throw unsupportedOperandType(type);
                 }
             } else if (type instanceof PointerType) {
-                return LLVMPointerDirectLoadNodeGen.create(addr);
+                return LLVMPointerLoadNodeGen.create(addr);
             } else {
                 throw unsupportedOperandType(type);
             }

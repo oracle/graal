@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2016, 2019, Oracle and/or its affiliates.
+ * Copyright (c) 2016, 2020, Oracle and/or its affiliates.
  *
  * All rights reserved.
  *
@@ -38,8 +38,8 @@ import com.oracle.truffle.llvm.runtime.pointer.LLVMNativePointer;
 import com.oracle.truffle.llvm.runtime.pointer.LLVMPointer;
 import com.oracle.truffle.llvm.runtime.types.Type;
 
-@NodeChild(type = LLVMExpressionNode.class)
-@NodeChild(type = LLVMExpressionNode.class)
+@NodeChild(value = "base", type = LLVMExpressionNode.class)
+@NodeChild(value = "offset", type = LLVMExpressionNode.class)
 public abstract class LLVMGetElementPtrNode extends LLVMExpressionNode {
     final long typeWidth;
     final Type targetType;
@@ -47,6 +47,14 @@ public abstract class LLVMGetElementPtrNode extends LLVMExpressionNode {
     public LLVMGetElementPtrNode(long typeWidth, Type targetType) {
         this.typeWidth = typeWidth;
         this.targetType = targetType;
+    }
+
+    public abstract LLVMExpressionNode getBase();
+
+    public abstract LLVMExpressionNode getOffset();
+
+    public final long getTypeWidth() {
+        return typeWidth;
     }
 
     protected static boolean isNegated(Object obj, Object negatedObj) {

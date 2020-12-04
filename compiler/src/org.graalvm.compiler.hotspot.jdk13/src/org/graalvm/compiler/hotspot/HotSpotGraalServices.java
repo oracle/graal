@@ -24,9 +24,11 @@
  */
 package org.graalvm.compiler.hotspot;
 
+import jdk.vm.ci.hotspot.HotSpotJVMCIRuntime;
 import jdk.vm.ci.hotspot.HotSpotMetaData;
 import jdk.vm.ci.hotspot.HotSpotSpeculationLog;
 import jdk.vm.ci.meta.SpeculationLog;
+import jdk.vm.ci.services.Services;
 
 /**
  * JDK 13 version of {@code HotSpotGraalServices}.
@@ -50,8 +52,12 @@ public class HotSpotGraalServices {
         return null;
     }
 
-    public static void exit(int status) {
-        System.exit(status);
+    public static void exit(int status, HotSpotJVMCIRuntime runtime) {
+        if (Services.IS_IN_NATIVE_IMAGE) {
+            runtime.exitHotSpot(status);
+        } else {
+            System.exit(status);
+        }
     }
 
     public static SpeculationLog newHotSpotSpeculationLog(long cachedFailedSpeculationsAddress) {

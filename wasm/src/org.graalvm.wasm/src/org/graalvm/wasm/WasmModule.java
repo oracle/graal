@@ -53,15 +53,13 @@ import static com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
 @SuppressWarnings("static-method")
 public final class WasmModule extends SymbolTable {
     private final String name;
-    private final WasmOptions.StoreConstantsPolicyEnum storeConstantsPolicy;
     private final ArrayList<BiConsumer<WasmContext, WasmInstance>> linkActions;
     @CompilationFinal(dimensions = 1) private byte[] data;
     @CompilationFinal private boolean isParsed;
 
-    public WasmModule(String name, byte[] data, WasmOptions.StoreConstantsPolicyEnum storeConstantsPolicy) {
+    public WasmModule(String name, byte[] data) {
         super();
         this.name = name;
-        this.storeConstantsPolicy = storeConstantsPolicy;
         this.linkActions = new ArrayList<>();
         this.data = data;
         this.isParsed = false;
@@ -98,10 +96,6 @@ public final class WasmModule extends SymbolTable {
 
     public void addLinkAction(BiConsumer<WasmContext, WasmInstance> action) {
         linkActions.add(action);
-    }
-
-    public WasmOptions.StoreConstantsPolicyEnum storeConstantsPolicy() {
-        return storeConstantsPolicy;
     }
 
     @Override

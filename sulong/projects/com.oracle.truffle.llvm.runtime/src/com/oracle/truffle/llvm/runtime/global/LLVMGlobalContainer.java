@@ -35,6 +35,7 @@ import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.Truffle;
 import com.oracle.truffle.api.dsl.Cached;
+import com.oracle.truffle.api.dsl.Cached.Shared;
 import com.oracle.truffle.api.dsl.CachedLanguage;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.interop.InteropLibrary;
@@ -42,6 +43,7 @@ import com.oracle.truffle.api.interop.UnsupportedMessageException;
 import com.oracle.truffle.api.library.CachedLibrary;
 import com.oracle.truffle.api.library.ExportLibrary;
 import com.oracle.truffle.api.library.ExportMessage;
+import com.oracle.truffle.api.profiles.BranchProfile;
 import com.oracle.truffle.llvm.runtime.LLVMLanguage;
 import com.oracle.truffle.llvm.runtime.interop.LLVMInternalTruffleObject;
 import com.oracle.truffle.llvm.runtime.library.internal.LLVMManagedReadLibrary;
@@ -96,15 +98,15 @@ public final class LLVMGlobalContainer extends LLVMInternalTruffleObject {
         }
     }
 
-    public void set(Object value) {
+    public void set(Object value, BranchProfile needsInitialize, BranchProfile needsInvalidation) {
         State c = contents;
         if (c.writeCount < MAX_CACHED_WRITES) {
-            CompilerDirectives.transferToInterpreterAndInvalidate();
+            needsInitialize.enter();
             contents = new State(value, c.writeCount + 1);
             c.assumption.invalidate();
         } else {
             if (c.assumption.isValid()) {
-                CompilerDirectives.transferToInterpreterAndInvalidate();
+                needsInvalidation.enter();
                 c.assumption.invalidate();
             }
             fallbackContents = value;
@@ -411,9 +413,11 @@ public final class LLVMGlobalContainer extends LLVMInternalTruffleObject {
         }
 
         @Specialization(guards = {"!self.isPointer()", "offset == 0"})
-        static void writeManaged(LLVMGlobalContainer self, long offset, long value) {
+        static void writeManaged(LLVMGlobalContainer self, long offset, long value,
+                        @Shared("p1") @Cached BranchProfile needsInitialize,
+                        @Shared("p2") @Cached BranchProfile needsInvalidation) {
             assert offset == 0;
-            self.set(value);
+            self.set(value, needsInitialize, needsInvalidation);
         }
 
         @Specialization(guards = {"!self.isPointer()", "offset != 0"})
@@ -437,9 +441,11 @@ public final class LLVMGlobalContainer extends LLVMInternalTruffleObject {
         }
 
         @Specialization(guards = {"!self.isPointer()", "offset == 0"})
-        static void writeManaged(LLVMGlobalContainer self, long offset, Object value) {
+        static void writeManaged(LLVMGlobalContainer self, long offset, Object value,
+                        @Shared("p1") @Cached BranchProfile needsInitialize,
+                        @Shared("p2") @Cached BranchProfile needsInvalidation) {
             assert offset == 0;
-            self.set(value);
+            self.set(value, needsInitialize, needsInvalidation);
         }
 
         @Specialization(guards = {"!self.isPointer()", "offset != 0"})

@@ -407,7 +407,7 @@ abstract class HostExecuteNode extends Node {
             if (args.length == parameterCount) {
                 Class<?> varArgParamType = overload.getParameterTypes()[parameterCount - 1];
                 return !ToHostNode.canConvert(args[parameterCount - 1], varArgParamType, overload.getGenericParameterTypes()[parameterCount - 1],
-                                null, languageContext, ToHostNode.LOOSE,
+                                null, languageContext, ToHostNode.COERCE,
                                 InteropLibrary.getFactory().getUncached(), TargetMappingNode.getUncached());
             } else {
                 assert args.length != parameterCount;
@@ -647,11 +647,9 @@ abstract class HostExecuteNode extends Node {
 
     private static int compareOverloads(PolyglotLanguageContext languageContext, SingleMethod m1, SingleMethod m2, Object[] args, boolean varArgs, int priority) {
         int res = 0;
-        int maxParamCount = Math.max(m1.getParameterCount(), m2.getParameterCount());
         assert !varArgs || m1.isVarArgs() && m2.isVarArgs();
         assert varArgs || (m1.getParameterCount() == m2.getParameterCount() && args.length == m1.getParameterCount());
-        assert maxParamCount <= args.length;
-        for (int i = 0; i < maxParamCount; i++) {
+        for (int i = 0; i < args.length; i++) {
             Class<?> t1 = getParameterType(m1.getParameterTypes(), i, varArgs);
             Class<?> t2 = getParameterType(m2.getParameterTypes(), i, varArgs);
             if (t1 == t2) {

@@ -26,7 +26,6 @@ package org.graalvm.compiler.truffle.runtime;
 
 import java.lang.ref.WeakReference;
 import java.util.ArrayList;
-import java.util.Iterator;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
@@ -515,6 +514,10 @@ public abstract class OptimizedCallTarget implements CompilableTruffleAST, RootC
         return !isValid() && shouldCompileImpl(this.callCount, this.callAndLoopCount);
     }
 
+    public final boolean wasExecuted() {
+        return this.callCount > 0 || this.callAndLoopCount > 0;
+    }
+
     // Note: {@code PartialEvaluator} looks up this method by name and signature.
     protected final Object profiledPERoot(Object[] originalArguments) {
         Object[] args = originalArguments;
@@ -827,7 +830,7 @@ public abstract class OptimizedCallTarget implements CompilableTruffleAST, RootC
     }
 
     @Override
-    public final void onCompilationFailed(Supplier<String> serializedException, boolean bailout, boolean permanentBailout, boolean graphTooBig) {
+    public final void onCompilationFailed(Supplier<String> serializedException, boolean silent, boolean bailout, boolean permanentBailout, boolean graphTooBig) {
         if (graphTooBig) {
             if (computeBlockCompilations()) {
                 // retry compilation
@@ -846,7 +849,7 @@ public abstract class OptimizedCallTarget implements CompilableTruffleAST, RootC
             action = ExceptionAction.Silent;
         } else {
             compilationFailed = true;
-            action = engine.compilationFailureAction;
+            action = silent ? ExceptionAction.Silent : engine.compilationFailureAction;
         }
         if (action == ExceptionAction.Throw) {
             final InternalError error = new InternalError(serializedException.get());
@@ -955,27 +958,8 @@ public abstract class OptimizedCallTarget implements CompilableTruffleAST, RootC
         return false;
     }
 
-    public final void accept(NodeVisitor visitor, TruffleInlining inlingDecision) {
-        if (inlingDecision != null) {
-            inlingDecision.accept(this, visitor);
-        } else {
-            getRootNode().accept(visitor);
-        }
-    }
-
-    public final Iterable<Node> nodeIterable(TruffleInlining inliningDecision) {
-        Iterator<Node> iterator = nodeIterator(inliningDecision);
-        return () -> iterator;
-    }
-
-    public final Iterator<Node> nodeIterator(TruffleInlining inliningDecision) {
-        Iterator<Node> iterator;
-        if (inliningDecision != null) {
-            iterator = inliningDecision.makeNodeIterator(this);
-        } else {
-            iterator = NodeUtil.makeRecursiveIterator(this.getRootNode());
-        }
-        return iterator;
+    public final void accept(NodeVisitor visitor) {
+        getRootNode().accept(visitor);
     }
 
     @Override
@@ -1531,8 +1515,8 @@ public abstract class OptimizedCallTarget implements CompilableTruffleAST, RootC
     }
 
     public final boolean prepareForAOT() {
-        if (isInitialized()) {
-            throw new IllegalStateException("Cannot prepare for AOT if call target is already initialized.");
+        if (wasExecuted()) {
+            throw new IllegalStateException("Cannot prepare for AOT if call target was already executed.");
         }
         /*
          * We do not validate the call target as we are not technically entered in any context when
@@ -1548,6 +1532,7 @@ public abstract class OptimizedCallTarget implements CompilableTruffleAST, RootC
             // call profile already initialized
             return true;
         }
+
         assert returnProfile == null : "return profile already initialized";
         assert argumentsProfile == null : "argument profile already initialized";
 

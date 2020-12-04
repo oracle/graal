@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2015, 2018, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2015, 2020, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -58,13 +58,18 @@ public class OffsetAddressNode extends AddressNode implements Canonicalizable {
         super(TYPE);
         this.base = base;
         this.offset = offset;
-
         assert base != null && (base.stamp(NodeView.DEFAULT) instanceof AbstractPointerStamp || IntegerStamp.getBits(base.stamp(NodeView.DEFAULT)) == 64) &&
                         offset != null && IntegerStamp.getBits(offset.stamp(NodeView.DEFAULT)) == 64 : "both values must have 64 bits";
     }
 
     public static OffsetAddressNode create(ValueNode base) {
-        return new OffsetAddressNode(base, ConstantNode.forIntegerBits(PrimitiveStamp.getBits(base.stamp(NodeView.DEFAULT)), 0));
+        ValueNode offset;
+        if (base.stamp(NodeView.DEFAULT) instanceof AbstractPointerStamp) {
+            offset = ConstantNode.forIntegerBits(64, 0);
+        } else {
+            offset = ConstantNode.forIntegerBits(PrimitiveStamp.getBits(base.stamp(NodeView.DEFAULT)), 0);
+        }
+        return new OffsetAddressNode(base, offset);
     }
 
     @Override

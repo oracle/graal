@@ -53,6 +53,8 @@ import java.util.function.BooleanSupplier;
 import java.util.function.Supplier;
 import java.util.stream.Collectors;
 
+import jdk.vm.ci.code.CompilationRequest;
+import jdk.vm.ci.code.CompilationRequestResult;
 import org.graalvm.collections.EconomicMap;
 import org.graalvm.collections.MapCursor;
 import org.graalvm.compiler.api.replacements.SnippetReflectionProvider;
@@ -90,13 +92,17 @@ import org.graalvm.compiler.phases.util.Providers;
 import org.graalvm.compiler.serviceprovider.GraalServices;
 import org.graalvm.compiler.serviceprovider.IsolateUtil;
 import org.graalvm.compiler.truffle.common.TruffleCompilerRuntime;
+import org.graalvm.compiler.truffle.common.hotspot.libgraal.TruffleToLibGraal;
+import org.graalvm.compiler.truffle.compiler.PartialEvaluatorConfiguration;
 import org.graalvm.compiler.truffle.compiler.TruffleCompilerBase;
 import org.graalvm.compiler.truffle.compiler.hotspot.TruffleCallBoundaryInstrumentationFactory;
-import org.graalvm.compiler.truffle.compiler.substitutions.TruffleInvocationPluginProvider;
+import org.graalvm.compiler.truffle.compiler.substitutions.GraphBuilderInvocationPluginProvider;
+import org.graalvm.compiler.truffle.compiler.substitutions.GraphDecoderInvocationPluginProvider;
 import org.graalvm.compiler.truffle.runtime.GraalTruffleRuntime;
 import org.graalvm.libgraal.LibGraal;
 import org.graalvm.libgraal.jni.JNI;
 import org.graalvm.libgraal.jni.JNIExceptionWrapper;
+import org.graalvm.libgraal.jni.JNILibGraalScope;
 import org.graalvm.libgraal.jni.JNIUtil;
 import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.nativeimage.LogHandler;
@@ -296,7 +302,7 @@ public final class LibGraalFeature implements com.oracle.svm.core.graal.GraalFea
         }
 
         Class<?> findClass(String name) {
-            Class<?> c = loader.findClassByName(name, false);
+            Class<?> c = loader.findClass(name).get();
             if (c == null) {
                 throw error("Class " + name + " not found");
             }
@@ -433,7 +439,9 @@ public final class LibGraalFeature implements com.oracle.svm.core.graal.GraalFea
         // Services that will not be loaded if native-image is run
         // with -XX:-UseJVMCICompiler.
         GraalServices.load(TruffleCallBoundaryInstrumentationFactory.class);
-        GraalServices.load(TruffleInvocationPluginProvider.class);
+        GraalServices.load(GraphBuilderInvocationPluginProvider.class);
+        GraalServices.load(GraphDecoderInvocationPluginProvider.class);
+        GraalServices.load(PartialEvaluatorConfiguration.class);
         GraalServices.load(HotSpotCodeCacheListener.class);
         GraalServices.load(HotSpotMBeanOperationProvider.class);
 
@@ -610,6 +618,24 @@ final class Target_jdk_vm_ci_hotspot_DirectHotSpotObjectConstantImpl {
     @TargetElement(name = TargetElement.CONSTRUCTOR_NAME)
     void constructor(Object object, boolean compressed) {
         throw new InternalError("DirectHotSpotObjectConstantImpl unsupported");
+    }
+}
+
+@TargetClass(className = "org.graalvm.compiler.hotspot.HotSpotGraalCompiler", onlyWith = LibGraalFeature.IsEnabled.class)
+final class Target_org_graalvm_compiler_hotspot_HotSpotGraalCompiler {
+
+    @SuppressWarnings({"unused", "try"})
+    @Substitute
+    private static CompilationRequestResult compileMethod(HotSpotGraalCompiler compiler, CompilationRequest request) {
+        long offset = compiler.getGraalRuntime().getVMConfig().jniEnvironmentOffset;
+        long javaThreadAddr = HotSpotJVMCIRuntime.runtime().getCurrentJavaThread();
+        JNI.JNIEnv env = (JNI.JNIEnv) WordFactory.unsigned(javaThreadAddr).add(WordFactory.unsigned(offset));
+        // This scope is required to allow Graal compilations of host methods to call methods
+        // on the TruffleCompilerRuntime. This is, for example, required to find out about
+        // Truffle-specific method annotations.
+        try (JNILibGraalScope<TruffleToLibGraal.Id> scope = new JNILibGraalScope<>(null, env)) {
+            return compiler.compileMethod(request, true, compiler.getGraalRuntime().getOptions());
+        }
     }
 }
 

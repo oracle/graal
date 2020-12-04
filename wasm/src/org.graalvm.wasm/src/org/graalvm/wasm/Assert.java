@@ -46,15 +46,21 @@ import org.graalvm.wasm.exception.WasmException;
 
 public class Assert {
 
+    public static void assertByteEqual(byte b1, byte b2, Failure failure) throws WasmException {
+        if (b1 != b2) {
+            fail(format("%s: 0x%02X should = 0x%02X.", failure.name, b1, b2), failure);
+        }
+    }
+
     public static void assertByteEqual(byte b1, byte b2, String message, Failure failure) throws WasmException {
         if (b1 != b2) {
             fail(format("%s: 0x%02X should = 0x%02X.", message, b1, b2), failure);
         }
     }
 
-    public static void assertIntEqual(int n1, int n2, String message, Failure failure) throws WasmException {
-        if (n1 != n2) {
-            fail(format("%s: %d should = %d.", message, n1, n2), failure);
+    public static void assertIntEqual(int actual, int expected, String message, Failure failure) throws WasmException {
+        if (actual != expected) {
+            fail(format("%s: %d should = %d.", message, actual, expected), failure);
         }
     }
 
@@ -67,6 +73,12 @@ public class Assert {
     public static void assertIntGreaterOrEqual(int n1, int n2, String message, Failure failure) throws WasmException {
         if (n1 < n2) {
             fail(format("%s: %d should be >= %d.", message, n1, n2), failure);
+        }
+    }
+
+    public static void assertIntLessOrEqual(int n1, int n2, Failure failure) throws WasmException {
+        if (n1 > n2) {
+            fail(format("%s: %d should be <= %d.", failure.name, n1, n2), failure);
         }
     }
 

@@ -11,7 +11,7 @@ import * as fs from 'fs';
 import * as https from 'https';
 import * as path from 'path';
 import * as decompress from 'decompress';
-import * as utils from './utils';
+import { getMicronautHome, getJavaHome, MultiStepInput } from "./utils";
 
 const PROTOCOL: string = 'https://';
 const MICRONAUT_LAUNCH_URL: string = 'https://launch.micronaut.io';
@@ -24,6 +24,29 @@ const OPEN_IN_NEW_WINDOW = 'Open in new window';
 const OPEN_IN_CURRENT_WINDOW: string = 'Open in current window';
 const ADD_TO_CURRENT_WORKSPACE = 'Add to current workspace';
 
+let cliMNVersion: {label: string, serviceUrl: string, description: string} | undefined;
+
+export async function creatorInit() {
+    cliMNVersion = undefined;
+    const micronautHome: string = getMicronautHome();
+    if (micronautHome) {
+        let mnPath = path.join(micronautHome, 'bin', 'mn');
+        if (process.platform === 'win32') {
+            mnPath += '.bat';
+        }
+        if (fs.existsSync(mnPath)) {
+            try {
+                const info: string[] | null = cp.execFileSync(mnPath, ['--version'], { env: { JAVA_HOME: getJavaHome() } }).toString().match(/.*:\s*(\S*)/);
+                if (info && info.length >= 2) {
+                    cliMNVersion = { label: info[1], serviceUrl: mnPath, description: '(using local CLI)' };
+                }
+            } catch (e) {
+                vscode.window.showErrorMessage(`Cannot get Micronaut version: ${e}`);
+            }
+        }
+    }
+}
+
 export async function createProject() {
     const options = await selectCreateOptions();
     if (options) {
@@ -34,12 +57,22 @@ export async function createProject() {
             fs.unlinkSync(downloadedFile);
             created = files.length > 0;
         } else {
-            const out = cp.execFileSync(options.url, options.args, { cwd: path.dirname(options.target) });
-            created = out.toString().indexOf('Application created') >= 0;
+            try {
+                const out = cp.execFileSync(options.url, options.args, { cwd: path.dirname(options.target), env: {JAVA_HOME: getJavaHome() } });
+                created = out.toString().indexOf('Application created') >= 0;
+            } catch (e) {
+                vscode.window.showErrorMessage(`Cannot create Micronaut project: ${e}`);
+            }
         }
         if (created) {
-            const uri = vscode.Uri.file(options.target);
+            if (options.java) {
+                const commands: string[] = await vscode.commands.getCommands();
+                if (commands.includes('extension.graalvm.selectGraalVMHome')) {
+                    await vscode.commands.executeCommand('extension.graalvm.selectGraalVMHome', options.java, true);
+                }
+            }
             updateGitIgnore(options);
+            const uri = vscode.Uri.file(options.target);
             if (vscode.workspace.workspaceFolders) {
                 const value = await vscode.window.showInformationMessage('New Micronaut project created', OPEN_IN_NEW_WINDOW, ADD_TO_CURRENT_WORKSPACE);
                 if (value === OPEN_IN_NEW_WINDOW) {
@@ -54,12 +87,6 @@ export async function createProject() {
                 }
             } else {
                 await vscode.commands.executeCommand('vscode.openFolder', uri, false);
-            }
-            if (options.java) {
-                const commands: string[] = await vscode.commands.getCommands();
-                if (commands.includes('extension.graalvm.selectGraalVMHome')) {
-                    await vscode.commands.executeCommand('extension.graalvm.selectGraalVMHome', options.java, true);
-                }
             }
         }
     }
@@ -104,14 +131,14 @@ async function selectCreateOptions(): Promise<{url: string, args?: string[], nam
 
 	async function collectInputs(): Promise<State> {
 		const state = {} as Partial<State>;
-        await utils.MultiStepInput.run(input => pickMicronautVersion(input, state));
+        await MultiStepInput.run(input => pickMicronautVersion(input, state));
 		return state as State;
 	}
 
     const title = 'Create Micronaut Project';
     const totalSteps = graalVMs.length > 0 ? 9 : 8;
 
-	async function pickMicronautVersion(input: utils.MultiStepInput, state: Partial<State>) {
+	async function pickMicronautVersion(input: MultiStepInput, state: Partial<State>) {
         const selected: any = await input.showQuickPick({
 			title,
 			step: 1,
@@ -122,10 +149,10 @@ async function selectCreateOptions(): Promise<{url: string, args?: string[], nam
 			shouldResume: () => Promise.resolve(false)
         });
         state.micronautVersion = selected;
-		return (input: utils.MultiStepInput) => pickApplicationType(input, state);
+		return (input: MultiStepInput) => pickApplicationType(input, state);
 	}
 
-	async function pickApplicationType(input: utils.MultiStepInput, state: Partial<State>) {
+	async function pickApplicationType(input: MultiStepInput, state: Partial<State>) {
 		const selected: any = await input.showQuickPick({
 			title,
 			step: 2,
@@ -136,10 +163,10 @@ async function selectCreateOptions(): Promise<{url: string, args?: string[], nam
 			shouldResume: () => Promise.resolve(false)
         });
         state.applicationType = selected;
-		return (input: utils.MultiStepInput) => graalVMs.length > 0 ? pickJavaVersion(input, state) : projectName(input, state);
+		return (input: MultiStepInput) => graalVMs.length > 0 ? pickJavaVersion(input, state) : projectName(input, state);
 	}
 
-	async function pickJavaVersion(input: utils.MultiStepInput, state: Partial<State>) {
+	async function pickJavaVersion(input: MultiStepInput, state: Partial<State>) {
         const items: {label: string, value: string, description?: string}[] = graalVMs.map(item => ({label: item.name, value: item.path, description: item.active ? '(active)' : undefined}));
         items.push({label: 'Other Java', value: '', description: '(manual configuration)'});
 		const selected: any = await input.showQuickPick({
@@ -152,10 +179,10 @@ async function selectCreateOptions(): Promise<{url: string, args?: string[], nam
 			shouldResume: () => Promise.resolve(false)
         });
         state.javaVersion = selected;
-		return (input: utils.MultiStepInput) => projectName(input, state);
+		return (input: MultiStepInput) => projectName(input, state);
 	}
 
-	async function projectName(input: utils.MultiStepInput, state: Partial<State>) {
+	async function projectName(input: MultiStepInput, state: Partial<State>) {
 		state.projectName = await input.showInputBox({
 			title,
 			step: graalVMs.length > 0 ? 4 : 3,
@@ -165,10 +192,10 @@ async function selectCreateOptions(): Promise<{url: string, args?: string[], nam
 			validate: () => Promise.resolve(undefined),
 			shouldResume: () => Promise.resolve(false)
 		});
-		return (input: utils.MultiStepInput) => basePackage(input, state);
+		return (input: MultiStepInput) => basePackage(input, state);
 	}
 
-	async function basePackage(input: utils.MultiStepInput, state: Partial<State>) {
+	async function basePackage(input: MultiStepInput, state: Partial<State>) {
 		state.basePackage = await input.showInputBox({
 			title,
 			step: graalVMs.length > 0 ? 5 : 4,
@@ -178,10 +205,10 @@ async function selectCreateOptions(): Promise<{url: string, args?: string[], nam
 			validate: () => Promise.resolve(undefined),
 			shouldResume: () => Promise.resolve(false)
 		});
-		return (input: utils.MultiStepInput) => pickLanguage(input, state);
+		return (input: MultiStepInput) => pickLanguage(input, state);
 	}
 
-	async function pickLanguage(input: utils.MultiStepInput, state: Partial<State>) {
+	async function pickLanguage(input: MultiStepInput, state: Partial<State>) {
 		const selected: any = await input.showQuickPick({
 			title,
 			step: graalVMs.length > 0 ? 6 : 5,
@@ -192,10 +219,10 @@ async function selectCreateOptions(): Promise<{url: string, args?: string[], nam
 			shouldResume: () => Promise.resolve(false)
         });
         state.language = selected;
-		return (input: utils.MultiStepInput) => pickFeatures(input, state);
+		return (input: MultiStepInput) => pickFeatures(input, state);
 	}
 
-	async function pickFeatures(input: utils.MultiStepInput, state: Partial<State>) {
+	async function pickFeatures(input: MultiStepInput, state: Partial<State>) {
 		const selected: any = await input.showQuickPick({
 			title,
 			step: graalVMs.length > 0 ? 7 : 6,
@@ -207,10 +234,10 @@ async function selectCreateOptions(): Promise<{url: string, args?: string[], nam
 			shouldResume: () => Promise.resolve(false)
         });
         state.features = selected;
-		return (input: utils.MultiStepInput) => pickBuildTool(input, state);
+		return (input: MultiStepInput) => pickBuildTool(input, state);
 	}
 
-	async function pickBuildTool(input: utils.MultiStepInput, state: Partial<State>) {
+	async function pickBuildTool(input: MultiStepInput, state: Partial<State>) {
 		const selected: any = await input.showQuickPick({
 			title,
 			step: graalVMs.length > 0 ? 8 : 7,
@@ -221,10 +248,10 @@ async function selectCreateOptions(): Promise<{url: string, args?: string[], nam
 			shouldResume: () => Promise.resolve(false)
         });
         state.buildTool = selected;
-		return (input: utils.MultiStepInput) => pickTestFramework(input, state);
+		return (input: MultiStepInput) => pickTestFramework(input, state);
 	}
 
-	async function pickTestFramework(input: utils.MultiStepInput, state: Partial<State>) {
+	async function pickTestFramework(input: MultiStepInput, state: Partial<State>) {
 		const selected: any = await input.showQuickPick({
 			title,
 			step: graalVMs.length > 0 ? 9 : 8,
@@ -272,7 +299,7 @@ async function selectCreateOptions(): Promise<{url: string, args?: string[], nam
                 };
             }
             let args = [state.applicationType.name];
-            args.push(`--java-version=${state.javaVersion.label}`);
+            args.push('--java-version=8');
             args.push(`--lang=${state.language.value}`);
             args.push(`--build=${state.buildTool.value}`);
             args.push(`--test=${state.testFramework.value}`);
@@ -380,56 +407,57 @@ async function get(url: string): Promise<string> {
 }
 
 function getMNVersion(): {label: string, serviceUrl: string, description: string} | undefined {
-    const mnPath: string = vscode.workspace.getConfiguration('micronaut').get('mn') as string;
-    if (mnPath) {
-        const info: string[] | null = cp.execFileSync(mnPath, ['--version']).toString().match(/.*:\s*(\S*)/);
-        if (info && info.length >= 2) {
-            return { label: info[1], serviceUrl: mnPath, description: '(using local CLI)' };
-        }
-    }
-    return undefined;
+    return cliMNVersion;
 }
 
 function getMNApplicationTypes(mnPath: string): {label: string, name: string}[] {
     const types: {label: string, name: string}[] = [];
-    let header: boolean = true;
-    cp.execFileSync(mnPath, ['--help']).toString().split('\n').map(line => line.trim()).forEach(line => {
-        if (header) {
-            if (line.startsWith('Commands:')) {
-                header = false;
+    try {
+        let header: boolean = true;
+        cp.execFileSync(mnPath, ['--help'], { env: { JAVA_HOME: getJavaHome() } }).toString().split('\n').map(line => line.trim()).forEach(line => {
+            if (header) {
+                if (line.startsWith('Commands:')) {
+                    header = false;
+                }
+            } else {
+                const info: string[] | null = line.match(/\s*(\S*)\s*Creates an? (.*)/);
+                if (info && info.length >= 3) {
+                    types.push({ label: `Micronaut ${info[2]}`, name: info[1] });
+                }
             }
-        } else {
-            const info: string[] | null = line.match(/\s*(\S*)\s*Creates an? (.*)/);
-            if (info && info.length >= 3) {
-                types.push({ label: `Micronaut ${info[2]}`, name: info[1] });
-            }
-        }
-    });
+        });
+    } catch (e) {
+        vscode.window.showErrorMessage(`Cannot get Micronaut application types: ${e}`);
+    }
     return types;
 }
 
 function getMNFeatures(mnPath: string, applicationType: string): {label: string, detail?: string, name: string}[] {
     const features: {label: string, detail?: string, name: string}[] = [];
-    let header: boolean = true;
-    let category: string | undefined;
-    cp.execFileSync(mnPath, [applicationType, '--list-features']).toString().split('\n').map(line => line.trim()).forEach(line => {
-        if (header) {
-            if (line.startsWith('------')) {
-                header = false;
-            }
-        } else {
-            if (line.length === 0) {
-                category = undefined;
-            } else if (category) {
-                const info: string[] | null = line.match(/(\S*)\s*(\[PREVIEW\]|\(\*\))?\s*(.*)/);
-                if (info && info.length >= 4) {
-                    features.push({ label: `${category}: ${info[1]}`, detail: info[3], name: info[1] });
+    try {
+        let header: boolean = true;
+        let category: string | undefined;
+        cp.execFileSync(mnPath, [applicationType, '--list-features'], { env: { JAVA_HOME: getJavaHome() } }).toString().split('\n').map(line => line.trim()).forEach(line => {
+            if (header) {
+                if (line.startsWith('------')) {
+                    header = false;
                 }
             } else {
-                category = line;
+                if (line.length === 0) {
+                    category = undefined;
+                } else if (category) {
+                    const info: string[] | null = line.match(/(\S*)\s*(\[PREVIEW\]|\(\*\))?\s*(.*)/);
+                    if (info && info.length >= 4) {
+                        features.push({ label: `${category}: ${info[1]}`, detail: info[3], name: info[1] });
+                    }
+                } else {
+                    category = line;
+                }
             }
-        }
-    });
+        });
+    } catch (e) {
+        vscode.window.showErrorMessage(`Cannot get Micronaut features: ${e}`);
+    }
     return features;
 }
 

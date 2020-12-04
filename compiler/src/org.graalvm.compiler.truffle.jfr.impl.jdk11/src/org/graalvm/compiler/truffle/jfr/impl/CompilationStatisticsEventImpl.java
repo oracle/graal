@@ -29,12 +29,14 @@ import jdk.jfr.Description;
 import jdk.jfr.DataAmount;
 import jdk.jfr.Event;
 import jdk.jfr.Label;
+import jdk.jfr.Name;
 import jdk.jfr.Period;
 import jdk.jfr.StackTrace;
 import jdk.jfr.Timespan;
 import jdk.jfr.Unsigned;
 import org.graalvm.compiler.truffle.jfr.CompilationStatisticsEvent;
 
+@Name("org.graalvm.compiler.truffle.CompilerStatistics")
 @Category("Truffle Compiler")
 @Label("Compiler Statistics")
 @Description("Truffe Compiler Statistics")

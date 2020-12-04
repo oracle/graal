@@ -36,12 +36,51 @@ import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.library.CachedLibrary;
 import com.oracle.truffle.llvm.runtime.LLVMLanguage;
 import com.oracle.truffle.llvm.runtime.library.internal.LLVMManagedWriteLibrary;
+import com.oracle.truffle.llvm.runtime.nodes.api.LLVMExpressionNode;
+import com.oracle.truffle.llvm.runtime.nodes.api.LLVMStoreNode;
 import com.oracle.truffle.llvm.runtime.nodes.memory.load.LLVMDerefHandleGetReceiverNode;
+import com.oracle.truffle.llvm.runtime.nodes.memory.store.LLVMI8StoreNodeGen.LLVMI8OffsetStoreNodeGen;
 import com.oracle.truffle.llvm.runtime.pointer.LLVMManagedPointer;
 import com.oracle.truffle.llvm.runtime.pointer.LLVMNativePointer;
+import com.oracle.truffle.llvm.runtime.pointer.LLVMPointer;
 
-@GenerateUncached
-public abstract class LLVMI8StoreNode extends LLVMStoreNodeCommon {
+public abstract class LLVMI8StoreNode extends LLVMStoreNode {
+
+    public abstract void executeWithTarget(LLVMPointer address, byte value);
+
+    @GenerateUncached
+    public abstract static class LLVMI8OffsetStoreNode extends LLVMOffsetStoreNode {
+
+        public static LLVMI8OffsetStoreNode create() {
+            return LLVMI8OffsetStoreNodeGen.create(null, null, null);
+        }
+
+        public static LLVMI8OffsetStoreNode create(LLVMExpressionNode value) {
+            return LLVMI8OffsetStoreNodeGen.create(null, null, value);
+        }
+
+        public abstract void executeWithTarget(LLVMPointer receiver, long offset, byte value);
+
+        @Specialization(guards = "!isAutoDerefHandle(language, addr)")
+        protected void doOp(LLVMNativePointer addr, long offset, byte value,
+                        @CachedLanguage LLVMLanguage language) {
+            language.getLLVMMemory().putI8(this, addr.asNative() + offset, value);
+        }
+
+        @Specialization(guards = "isAutoDerefHandle(language, addr)")
+        protected static void doOpDerefHandle(LLVMNativePointer addr, long offset, byte value,
+                        @CachedLanguage @SuppressWarnings("unused") LLVMLanguage language,
+                        @Cached LLVMDerefHandleGetReceiverNode getReceiver,
+                        @CachedLibrary(limit = "3") LLVMManagedWriteLibrary nativeWrite) {
+            doOpManaged(getReceiver.execute(addr), offset, value, nativeWrite);
+        }
+
+        @Specialization(limit = "3")
+        protected static void doOpManaged(LLVMManagedPointer address, long offset, byte value,
+                        @CachedLibrary("address.getObject()") LLVMManagedWriteLibrary nativeWrite) {
+            nativeWrite.writeI8(address.getObject(), address.getOffset() + offset, value);
+        }
+    }
 
     @Specialization(guards = "!isAutoDerefHandle(language, addr)")
     protected void doOp(LLVMNativePointer addr, byte value,
@@ -50,7 +89,7 @@ public abstract class LLVMI8StoreNode extends LLVMStoreNodeCommon {
     }
 
     @Specialization(guards = "isAutoDerefHandle(language, addr)")
-    protected void doOpDerefHandle(LLVMNativePointer addr, byte value,
+    protected static void doOpDerefHandle(LLVMNativePointer addr, byte value,
                     @CachedLanguage @SuppressWarnings("unused") LLVMLanguage language,
                     @Cached LLVMDerefHandleGetReceiverNode getReceiver,
                     @CachedLibrary(limit = "3") LLVMManagedWriteLibrary nativeWrite) {
@@ -58,8 +97,12 @@ public abstract class LLVMI8StoreNode extends LLVMStoreNodeCommon {
     }
 
     @Specialization(limit = "3")
-    protected void doOpManaged(LLVMManagedPointer address, byte value,
+    protected static void doOpManaged(LLVMManagedPointer address, byte value,
                     @CachedLibrary("address.getObject()") LLVMManagedWriteLibrary nativeWrite) {
         nativeWrite.writeI8(address.getObject(), address.getOffset(), value);
+    }
+
+    public static LLVMI8StoreNode create() {
+        return LLVMI8StoreNodeGen.create(null, null);
     }
 }

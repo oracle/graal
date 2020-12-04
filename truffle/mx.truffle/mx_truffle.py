@@ -222,12 +222,36 @@ def _truffle_gate_runner(args, tasks):
     if jdk.javaCompliance < '9':
         with Task('Truffle Javadoc', tasks) as t:
             if t: javadoc([])
-    with Task('Truffle UnitTests', tasks) as t:
-        if t: unittest(['--suite', 'truffle', '--enable-timing', '--verbose', '--fail-fast'])
-    with Task('Truffle Signature Tests', tasks) as t:
-        if t: sigtest(['--check', 'binary'])
     with Task('File name length check', tasks) as t:
         if t: check_filename_length([])
+    with Task('Truffle Signature Tests', tasks) as t:
+        if t: sigtest(['--check', 'binary'])
+    with Task('Truffle UnitTests', tasks) as t:
+        if t: unittest(['--suite', 'truffle', '--enable-timing', '--verbose', '--fail-fast'])
+    with Task('Truffle DSL max state bit tests', tasks) as t:
+        if t:
+            _truffle_gate_state_bitwidth_tests()
+
+# The Truffle DSL specialization state bit width computation is complicated and
+# rarely used as the default maximum bit width of 32 is rarely exceeded. Therefore
+# we rebuild the truffle tests with a number of max state bit width values to
+# force using multiple state fields for the tests. This makes sure the tests
+# do not break for rarely used combination of features and bit widths.
+def _truffle_gate_state_bitwidth_tests():
+    runs = [1, 2, 4, 8, 16, 32, 64]
+    for run_bits in runs:
+        build_args = ['-f', '-p', '--dependencies', 'TRUFFLE_TEST', '--force-javac',
+                      '-A-Atruffle.dsl.StateBitWidth={0}'.format(run_bits)]
+
+        unittest_args = ['--suite', 'truffle', '--enable-timing', '--fail-fast', '-Dtruffle.dsl.StateBitWidth={0}'.format(run_bits),
+                         'com.oracle.truffle.api.dsl.test', 'com.oracle.truffle.api.library.test', 'com.oracle.truffle.sl.test']
+        try:
+            mx.build(build_args)
+            unittest(unittest_args)
+        finally:
+            mx.log('Completed Truffle DSL state bitwidth test. Reproduce with:')
+            mx.log('  mx build {0}'.format(" ".join(build_args)))
+            mx.log('  mx unittest {0}'.format(" ".join(unittest_args)))
 
 mx_gate.add_gate_runner(_suite, _truffle_gate_runner)
 

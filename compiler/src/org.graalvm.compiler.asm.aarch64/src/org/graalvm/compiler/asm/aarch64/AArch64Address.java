@@ -124,11 +124,11 @@ public final class AArch64Address extends AbstractAddress {
             case IMMEDIATE_POST_INDEXED:
             case IMMEDIATE_PRE_INDEXED:
             case IMMEDIATE_UNSIGNED_SCALED:
-                return size == 8 || size == 16 || size == 32 || size == 64;
+                return size == 8 || size == 16 || size == 32 || size == 64 || size == 128;
             case IMMEDIATE_PAIR_SIGNED_SCALED:
             case IMMEDIATE_PAIR_POST_INDEXED:
             case IMMEDIATE_PAIR_PRE_INDEXED:
-                return size == 32 || size == 64;
+                return size == 32 || size == 64 || size == 128;
         }
         throw GraalError.shouldNotReachHere();
     }
@@ -414,7 +414,7 @@ public final class AArch64Address extends AbstractAddress {
     }
 
     public String toString(int log2TransferSize) {
-        int shiftVal = registerOffsetScaled ? log2TransferSize : 0;
+        int regShiftVal = registerOffsetScaled ? log2TransferSize : 0;
         switch (addressingMode) {
             case IMMEDIATE_UNSIGNED_SCALED:
             case IMMEDIATE_PAIR_SIGNED_SCALED:
@@ -424,17 +424,19 @@ public final class AArch64Address extends AbstractAddress {
             case BASE_REGISTER_ONLY:
                 return String.format("[X%d]", base.encoding);
             case EXTENDED_REGISTER_OFFSET:
-                if (shiftVal != 0) {
-                    return String.format("[X%d, W%d, %s %d]", base.encoding, offset.encoding, extendType.name(), shiftVal);
+                if (regShiftVal != 0) {
+                    return String.format("[X%d, W%d, %s %d]", base.encoding, offset.encoding, extendType.name(), regShiftVal);
                 } else {
                     return String.format("[X%d, W%d, %s]", base.encoding, offset.encoding, extendType.name());
                 }
             case REGISTER_OFFSET:
-                if (shiftVal != 0) {
-                    return String.format("[X%d, X%d, LSL %d]", base.encoding, offset.encoding, shiftVal);
+                if (regShiftVal != 0) {
+                    return String.format("[X%d, X%d, LSL %d]", base.encoding, offset.encoding, regShiftVal);
                 } else {
-                    // LSL 0 may be optional, but still encoded differently so we always leave it
-                    // off
+                    /*
+                     * LSL 0 may be optional, but still encoded differently so we always leave it
+                     * off
+                     */
                     return String.format("[X%d, X%d]", base.encoding, offset.encoding);
                 }
             case PC_LITERAL:

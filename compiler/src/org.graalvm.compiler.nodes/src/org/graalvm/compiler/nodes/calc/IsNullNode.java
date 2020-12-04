@@ -39,8 +39,6 @@ import org.graalvm.compiler.nodes.UnaryOpLogicNode;
 import org.graalvm.compiler.nodes.ValueNode;
 import org.graalvm.compiler.nodes.spi.LIRLowerable;
 import org.graalvm.compiler.nodes.spi.NodeLIRBuilderTool;
-import org.graalvm.compiler.nodes.spi.Virtualizable;
-import org.graalvm.compiler.nodes.spi.VirtualizerTool;
 import org.graalvm.compiler.nodes.type.NarrowOopStamp;
 import org.graalvm.compiler.nodes.type.StampTool;
 
@@ -51,7 +49,7 @@ import jdk.vm.ci.meta.TriState;
  * An IsNullNode will be true if the supplied value is null, and false if it is non-null.
  */
 @NodeInfo(cycles = NodeCycles.CYCLES_2)
-public final class IsNullNode extends UnaryOpLogicNode implements LIRLowerable, Virtualizable {
+public final class IsNullNode extends UnaryOpLogicNode implements LIRLowerable {
 
     public static final NodeClass<IsNullNode> TYPE = NodeClass.create(IsNullNode.class);
 
@@ -137,15 +135,6 @@ public final class IsNullNode extends UnaryOpLogicNode implements LIRLowerable, 
              * If we are at original node, just return it. Otherwise create a new node.
              */
             return (node != null && value == forValue) ? node : new IsNullNode(value, nullConstant);
-        }
-    }
-
-    @Override
-    public void virtualize(VirtualizerTool tool) {
-        ValueNode alias = tool.getAlias(getValue());
-        TriState fold = tryFold(alias.stamp(NodeView.DEFAULT));
-        if (fold != TriState.UNKNOWN) {
-            tool.replaceWithValue(LogicConstantNode.forBoolean(fold.isTrue(), graph()));
         }
     }
 

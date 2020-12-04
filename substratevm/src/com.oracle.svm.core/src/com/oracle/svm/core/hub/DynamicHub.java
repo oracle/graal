@@ -49,14 +49,12 @@ import java.net.URL;
 import java.security.CodeSource;
 import java.security.ProtectionDomain;
 import java.security.cert.Certificate;
-import java.util.BitSet;
 import java.util.List;
 import java.util.Set;
 import java.util.StringJoiner;
 
 import org.graalvm.compiler.core.common.SuppressFBWarnings;
 import org.graalvm.compiler.serviceprovider.JavaVersionUtil;
-import org.graalvm.compiler.word.ObjectAccess;
 import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;
 import org.graalvm.nativeimage.ProcessProperties;
@@ -104,6 +102,9 @@ public final class DynamicHub implements JavaKind.FormatWithToString, AnnotatedE
 
     /* Value copied from java.lang.Class. */
     private static final int SYNTHETIC = 0x00001000;
+
+    @Platforms(Platform.HOSTED_ONLY.class) //
+    private final Class<?> hostedJavaClass;
 
     /**
      * The name of the class this hub is representing, as defined in {@link Class#getName()}.
@@ -159,17 +160,6 @@ public final class DynamicHub implements JavaKind.FormatWithToString, AnnotatedE
      * instance is locked.
      */
     private int monitorOffset;
-
-    /**
-     * The offset of the synthetic hash-code field which stores the identity hash-code for an
-     * instance of the class.
-     * <p>
-     * If 0, the class has no hash-code field. A class has a hash-code field if an instance of this
-     * class may be a parameter to {@link System#identityHashCode(Object)} or the this-parameter to
-     * {@link Object#hashCode()}. It stores a random hash-code, which is generated at the first call
-     * to one of those methods.
-     */
-    private int hashCodeOffset;
 
     /**
      * The result of {@link Class#isLocalClass()}.
@@ -242,8 +232,6 @@ public final class DynamicHub implements JavaKind.FormatWithToString, AnnotatedE
      */
     private Object interfacesEncoding;
 
-    private int[] assignableFromMatches;
-
     /**
      * Reference to a list of enum values for subclasses of {@link Enum}; null otherwise.
      */
@@ -298,19 +286,6 @@ public final class DynamicHub implements JavaKind.FormatWithToString, AnnotatedE
      * Classloader used for loading this class during image-build time.
      */
     private final ClassLoader classLoader;
-
-    /**
-     * Bits used for instance-of checks. A bit is set for each type, which an object with this HUB
-     * is an instance of.
-     * <p>
-     * This set only includes types for which no trivial type-ID range check can be done, i.e.
-     * interface types, which are "distributed" over the type hierarchy. Therefore this bit-set is
-     * relatively small (usually < 64 bits).
-     * <p>
-     * This bit-set is directly located in the layout of {@link DynamicHub} (see {@link Hybrid}). It
-     * is accessed in the instance-of snippet with {@link ObjectAccess}.
-     */
-    @Hybrid.Bitset private BitSet instanceOfBits;
 
     /**
      * Array containing this type's type check id information. During a type check, a requested
@@ -374,8 +349,9 @@ public final class DynamicHub implements JavaKind.FormatWithToString, AnnotatedE
     private final LazyFinalReference<String> packageNameReference = new LazyFinalReference<>(this::computePackageName);
 
     @Platforms(Platform.HOSTED_ONLY.class)
-    public DynamicHub(String name, HubType hubType, ReferenceType referenceType, boolean isLocalClass, Object isAnonymousClass, DynamicHub superType, DynamicHub componentHub, String sourceFileName,
-                    int modifiers, ClassLoader classLoader, boolean isHidden, boolean isRecord, Class<?> nestHost, boolean assertionStatus) {
+    public DynamicHub(Class<?> hostedJavaClass, String name, HubType hubType, ReferenceType referenceType, boolean isLocalClass, Object isAnonymousClass, DynamicHub superType, DynamicHub componentHub,
+                    String sourceFileName, int modifiers, ClassLoader classLoader, boolean isHidden, boolean isRecord, Class<?> nestHost, boolean assertionStatus) {
+        this.hostedJavaClass = hostedJavaClass;
         this.name = name;
         this.hubType = hubType.getValue();
         this.referenceType = referenceType.getValue();
@@ -405,35 +381,16 @@ public final class DynamicHub implements JavaKind.FormatWithToString, AnnotatedE
     }
 
     @Platforms(Platform.HOSTED_ONLY.class)
-    public void setData(int layoutEncoding, int typeID, int monitorOffset, int hashCodeOffset,
+    public void setData(int layoutEncoding, int typeID, int monitorOffset,
                     short typeCheckStart, short typeCheckRange, short typeCheckSlot, short[] typeCheckSlots,
                     CFunctionPointer[] vtable, long referenceMapIndex, boolean isInstantiated) {
         this.layoutEncoding = layoutEncoding;
         this.typeID = typeID;
         this.monitorOffset = monitorOffset;
-        this.hashCodeOffset = hashCodeOffset;
         this.typeCheckStart = typeCheckStart;
         this.typeCheckRange = typeCheckRange;
         this.typeCheckSlot = typeCheckSlot;
         this.typeCheckSlots = typeCheckSlots;
-        this.vtable = vtable;
-
-        if ((int) referenceMapIndex != referenceMapIndex) {
-            throw VMError.shouldNotReachHere("Reference map index not within integer range, need to switch field from int to long");
-        }
-        this.referenceMapIndex = (int) referenceMapIndex;
-        this.isInstantiated = isInstantiated;
-    }
-
-    @Platforms(Platform.HOSTED_ONLY.class)
-    public void setData(int layoutEncoding, int typeID, int monitorOffset, int hashCodeOffset, int[] assignableFromMatches, BitSet instanceOfBits,
-                    CFunctionPointer[] vtable, long referenceMapIndex, boolean isInstantiated) {
-        this.layoutEncoding = layoutEncoding;
-        this.typeID = typeID;
-        this.monitorOffset = monitorOffset;
-        this.hashCodeOffset = hashCodeOffset;
-        this.assignableFromMatches = assignableFromMatches;
-        this.instanceOfBits = instanceOfBits;
         this.vtable = vtable;
 
         if ((int) referenceMapIndex != referenceMapIndex) {
@@ -605,10 +562,6 @@ public final class DynamicHub implements JavaKind.FormatWithToString, AnnotatedE
         return monitorOffset;
     }
 
-    public int getHashCodeOffset() {
-        return hashCodeOffset;
-    }
-
     public DynamicHub getSuperHub() {
         return superHub;
     }
@@ -619,10 +572,6 @@ public final class DynamicHub implements JavaKind.FormatWithToString, AnnotatedE
 
     public DynamicHub getArrayHub() {
         return arrayHub;
-    }
-
-    public int[] getAssignableFromMatches() {
-        return assignableFromMatches;
     }
 
     public int getReferenceMapIndex() {
@@ -646,6 +595,14 @@ public final class DynamicHub implements JavaKind.FormatWithToString, AnnotatedE
         return SubstrateUtil.cast(hub, Class.class);
     }
 
+    /**
+     * Returns the {@link Class} object that represents the type during image generation.
+     */
+    @Platforms(Platform.HOSTED_ONLY.class)
+    public Class<?> getHostedJavaClass() {
+        return hostedJavaClass;
+    }
+
     @Substitute
     @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
     public String getName() {
@@ -661,7 +618,11 @@ public final class DynamicHub implements JavaKind.FormatWithToString, AnnotatedE
     }
 
     @Substitute
-    public boolean isArray() {
+    private boolean isArray() {
+        throw VMError.shouldNotReachHere("Intrinsified in StandardGraphBuilderPlugins.");
+    }
+
+    public boolean hubIsArray() {
         return HubType.isArray(hubType);
     }
 
@@ -819,8 +780,8 @@ public final class DynamicHub implements JavaKind.FormatWithToString, AnnotatedE
     private boolean isAnonymousClass() {
         if (isAnonymousClass instanceof Boolean) {
             return (Boolean) isAnonymousClass;
-        } else if (isAnonymousClass instanceof NoClassDefFoundError) {
-            throw (NoClassDefFoundError) isAnonymousClass;
+        } else if (isAnonymousClass instanceof LinkageError) {
+            throw (LinkageError) isAnonymousClass;
         } else if (isAnonymousClass instanceof InternalError) {
             throw (InternalError) isAnonymousClass;
         } else {
@@ -906,6 +867,13 @@ public final class DynamicHub implements JavaKind.FormatWithToString, AnnotatedE
 
     @Substitute
     public Object newInstance() throws Throwable {
+        /*
+         * The JavaDoc for the original method states that "The class is initialized if it has not
+         * already been initialized". However, it doesn't specify if the absence of a nullary
+         * constructor will result in an InstantiationException before the class is initialized. We
+         * eagerly initialize it to conform with JCK tests.
+         */
+        ensureInitialized();
         final Constructor<?> nullaryConstructor = rd.nullaryConstructor;
         if (nullaryConstructor == null) {
             if (JavaVersionUtil.JAVA_SPEC <= 8) {
@@ -1304,7 +1272,7 @@ public final class DynamicHub implements JavaKind.FormatWithToString, AnnotatedE
     private String computePackageName() {
         String pn = null;
         DynamicHub me = this;
-        while (me.isArray()) {
+        while (me.hubIsArray()) {
             me = (DynamicHub) me.getComponentType();
         }
         if (me.isPrimitive()) {

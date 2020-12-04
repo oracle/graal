@@ -85,22 +85,23 @@ class SulongBenchmarkSuite(VmBenchmarkSuite):
         # compile benchmarks
 
         # save current Directory
-        currentDir = os.getcwd()
+        current_dir = os.getcwd()
         for bench in benchnames:
             try:
-                # benchmark dir
-                path = self.workingDirectory(benchnames, bmSuiteArgs)
+                # benchmark output dir
+                bench_out_dir = self.workingDirectory(benchnames, bmSuiteArgs)
                 # create directory for executable of this vm
-                if os.path.exists(path):
-                    shutil.rmtree(path)
-                os.makedirs(path)
-                os.chdir(path)
+                if os.path.exists(bench_out_dir):
+                    shutil.rmtree(bench_out_dir)
+                os.makedirs(bench_out_dir)
+                os.chdir(bench_out_dir)
 
                 env = os.environ.copy()
                 env['VPATH'] = '..'
-
+                # prepare_env adds CC, CXX, CFLAGS, etc... and we copy the environment to avoid modifying the default one.
                 env = vm.prepare_env(env)
-                out = os.path.join(path, vm.out_file())
+
+                out = os.path.join(bench_out_dir, vm.out_file())
                 cmdline = ['make', '-f', '../Makefile', out]
                 if mx._opts.verbose:
                     # The Makefiles should have logic to disable the @ sign
@@ -110,7 +111,7 @@ class SulongBenchmarkSuite(VmBenchmarkSuite):
                 self.bench_to_exec[bench] = out
             finally:
                 # reset current Directory
-                os.chdir(currentDir)
+                os.chdir(current_dir)
 
         return super(SulongBenchmarkSuite, self).run(benchnames, bmSuiteArgs)
 
@@ -208,6 +209,9 @@ class GccLikeVm(CExecutionEnvironmentMixin, Vm):
     def c_compiler_exe(self):
         mx.nyi('c_compiler_exe', self)
 
+    def cxx_compiler_exe(self):
+        mx.nyi('cxx_compiler_exe', self)
+
     def run(self, cwd, args):
         myStdOut = mx.OutputCapture()
         retCode = mx.run(args, out=mx.TeeOutputCapture(myStdOut), cwd=cwd)
@@ -216,6 +220,7 @@ class GccLikeVm(CExecutionEnvironmentMixin, Vm):
     def prepare_env(self, env):
         env['CFLAGS'] = ' '.join(self.options + _env_flags)
         env['CC'] = self.c_compiler_exe() # pylint: disable=assignment-from-no-return
+        env['CXX'] = self.cxx_compiler_exe()  # pylint: disable=assignment-from-no-return
         return env
 
 
@@ -229,6 +234,9 @@ class GccVm(GccLikeVm):
     def c_compiler_exe(self):
         return "gcc"
 
+    def cxx_compiler_exe(self):
+        return "g++"
+
 
 class ClangVm(GccLikeVm):
     def name(self):
@@ -239,6 +247,14 @@ class ClangVm(GccLikeVm):
 
     def c_compiler_exe(self):
         return os.path.join(mx.distribution("LLVM_TOOLCHAIN").get_output(), "bin", "clang")
+
+    def cxx_compiler_exe(self):
+        return os.path.join(mx.distribution("LLVM_TOOLCHAIN").get_output(), "bin", "clang++")
+
+    def prepare_env(self, env):
+        super(ClangVm, self).prepare_env(env)
+        env["CXXFLAGS"] = env.get("CXXFLAGS", []) + ["-stdlib=libc++"]
+        return env
 
 
 class SulongVm(CExecutionEnvironmentMixin, GuestVm):
@@ -283,6 +299,7 @@ class SulongVm(CExecutionEnvironmentMixin, GuestVm):
         # we always use the bootstrap toolchain since the toolchain is not installed by default in a graalvm
         # change this if we can properly install components into a graalvm deployment
         env['CC'] = mx_subst.path_substitutions.substitute('<toolchainGetToolPath:{},CC>'.format(self.toolchain_name()))
+        env['CXX'] = mx_subst.path_substitutions.substitute('<toolchainGetToolPath:{},CXX>'.format(self.toolchain_name()))
         return env
 
     def out_file(self):
@@ -297,7 +314,6 @@ class SulongVm(CExecutionEnvironmentMixin, GuestVm):
     def launcher_args(self, args):
         launcher_args = [
             '--experimental-options',
-            '--engine.InliningNodeBudget=10000',
             '--engine.CompilationFailureAction=ExitVM',
             '--engine.TreatPerformanceWarningsAsErrors=call,instanceof,store',
         ]

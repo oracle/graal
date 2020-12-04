@@ -30,6 +30,7 @@ import java.lang.reflect.Array;
 import java.nio.ByteBuffer;
 import java.util.Arrays;
 
+import org.graalvm.compiler.nodes.java.ArrayLengthNode;
 import org.graalvm.compiler.word.Word;
 import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.nativeimage.Platform;
@@ -97,7 +98,7 @@ public final class NonmovableArrays {
 
         ObjectHeader header = Heap.getHeap().getObjectHeader();
         Word encodedHeader = header.encodeAsUnmanagedObjectHeader(hub);
-        header.initializeHeaderOfNewObject(array, encodedHeader, true);
+        header.initializeHeaderOfNewObject(array, encodedHeader);
 
         array.writeInt(ConfigurationValues.getObjectLayout().getArrayLengthOffset(), length);
         // already zero-initialized thanks to calloc()
@@ -279,7 +280,7 @@ public final class NonmovableArrays {
         }
         DynamicHub destHub = KnownIntrinsics.readHub(dest);
         assert LayoutEncoding.isArray(destHub.getLayoutEncoding()) && destHub == readHub(src) : "Copying is only supported for arrays with identical types";
-        assert srcPos >= 0 && destPos >= 0 && length >= 0 && srcPos + length <= lengthOf(src) && destPos + length <= KnownIntrinsics.readArrayLength(dest);
+        assert srcPos >= 0 && destPos >= 0 && length >= 0 && srcPos + length <= lengthOf(src) && destPos + length <= ArrayLengthNode.arrayLength(dest);
         Pointer destAddressAtPos = Word.objectToUntrackedPointer(dest).add(LayoutEncoding.getArrayElementOffset(destHub.getLayoutEncoding(), destPos));
         if (LayoutEncoding.isPrimitiveArray(destHub.getLayoutEncoding())) {
             MemoryUtil.copyConjointMemoryAtomic(addressOf(src, srcPos), destAddressAtPos, WordFactory.unsigned(length << readElementShift(src)));

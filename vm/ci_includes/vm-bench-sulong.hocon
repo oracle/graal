@@ -19,9 +19,6 @@ sulong_logs: [
     "*/svmbuild/*.log"
     "*/svmbuild/images/*.log"
 ]
-sulong_logs_bc: ${sulong_logs} [
-    "../sulong-benchmarks/*/*/*.bc"
-]
 
 bench-llvm-linux: ${sulong_linux}  ${x52.default} ${oraclejdk8} {
   capabilities: ${x52.default.capabilities} [tmpfs25g]
@@ -92,8 +89,6 @@ bench-llvm-native: ${bench-llvm-common} ${bench-llvm-linux} ${sulong-weekly-noti
 builds += [
   ${bench-llvm-sulong-graalvm-ce} {targets: [daily, bench], name: "daily-bench-sulong-graalvm-ce-jvm-csuite", environment: { JVM_CONFIG: jvm } }
   ${bench-llvm-sulong-graalvm-ce} {targets: [daily, bench], name: "daily-bench-sulong-graalvm-ce-native-csuite", environment: { JVM_CONFIG: native } }
-  ${bench-llvm-sulong-graalvm-ce} {targets: [daily, bench], name: "daily-bench-sulong-graalvm-ce-jvm-la-inline-csuite", environment: { JVM_CONFIG: jvm-la-inline } }
-  ${bench-llvm-sulong-graalvm-ce} {targets: [daily, bench], name: "daily-bench-sulong-graalvm-ce-native-la-inline-csuite", environment: { JVM_CONFIG: native-la-inline } }
   ${bench-llvm-sulong-core} {name: daily-bench-sulong-graal-core-csuite}
   # sulong reference benchmark
   ${bench-llvm-native} {name: "weekly-bench-clangO3-csuite"}
@@ -105,6 +100,6 @@ builds += [
       JVM_CONFIG: jvm
     }
     name: "bench-sulong-graalvm-ce-jvm-csuite-upload-bitcode-files"
-    logs: ${sulong_logs_bc}
+    logs: ${sulong_logs}
   }
 ]

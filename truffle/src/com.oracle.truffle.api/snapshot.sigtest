@@ -113,6 +113,23 @@ meth public static long multiplyHigh(long,long)
 meth public static long multiplyHighUnsigned(long,long)
 supr java.lang.Object
 
+CLSS public final com.oracle.truffle.api.HostCompilerDirectives
+innr public abstract interface static !annotation BytecodeInterpreterSwitch
+innr public abstract interface static !annotation BytecodeInterpreterSwitchBoundary
+supr java.lang.Object
+
+CLSS public abstract interface static !annotation com.oracle.truffle.api.HostCompilerDirectives$BytecodeInterpreterSwitch
+ outer com.oracle.truffle.api.HostCompilerDirectives
+ anno 0 java.lang.annotation.Retention(java.lang.annotation.RetentionPolicy value=RUNTIME)
+ anno 0 java.lang.annotation.Target(java.lang.annotation.ElementType[] value=[METHOD, CONSTRUCTOR])
+intf java.lang.annotation.Annotation
+
+CLSS public abstract interface static !annotation com.oracle.truffle.api.HostCompilerDirectives$BytecodeInterpreterSwitchBoundary
+ outer com.oracle.truffle.api.HostCompilerDirectives
+ anno 0 java.lang.annotation.Retention(java.lang.annotation.RetentionPolicy value=RUNTIME)
+ anno 0 java.lang.annotation.Target(java.lang.annotation.ElementType[] value=[METHOD, CONSTRUCTOR])
+intf java.lang.annotation.Annotation
+
 CLSS public final com.oracle.truffle.api.InstrumentInfo
 meth public java.lang.String getId()
 meth public java.lang.String getName()
@@ -1172,7 +1189,6 @@ meth public static java.lang.String printCompactTreeToString(com.oracle.truffle.
 meth public static java.lang.String printSourceAttributionTree(com.oracle.truffle.api.nodes.Node)
 meth public static java.lang.String printSyntaxTags(java.lang.Object)
 meth public static java.lang.String printTreeToString(com.oracle.truffle.api.nodes.Node)
-meth public static java.util.Iterator<com.oracle.truffle.api.nodes.Node> makeRecursiveIterator(com.oracle.truffle.api.nodes.Node)
 meth public static java.util.List<com.oracle.truffle.api.nodes.Node> collectNodes(com.oracle.truffle.api.nodes.Node,com.oracle.truffle.api.nodes.Node)
 meth public static java.util.List<com.oracle.truffle.api.nodes.Node> findNodeChildren(com.oracle.truffle.api.nodes.Node)
 meth public static void popEncapsulatingNode(com.oracle.truffle.api.nodes.Node)

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2017, 2018, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2017, 2020, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -31,10 +31,15 @@ import com.oracle.svm.core.annotate.TargetClass;
 final class Target_com_oracle_truffle_nfi_impl_LibFFISignature {
 
     @Alias long cif;
+    @Alias Target_com_oracle_truffle_nfi_impl_LibFFISignature_CachedSignatureInfo signatureInfo;
+}
+
+@TargetClass(className = "com.oracle.truffle.nfi.impl.LibFFISignature", innerClass = "CachedSignatureInfo", onlyWith = TruffleNFIFeature.IsEnabled.class)
+final class Target_com_oracle_truffle_nfi_impl_LibFFISignature_CachedSignatureInfo {
 
     @Alias
-    public native Target_com_oracle_truffle_nfi_impl_LibFFIType[] getArgTypes();
+    public native Target_com_oracle_truffle_nfi_impl_LibFFIType_CachedTypeInfo[] getArgTypes();
 
     @Alias
-    public native Target_com_oracle_truffle_nfi_impl_LibFFIType getRetType();
+    public native Target_com_oracle_truffle_nfi_impl_LibFFIType_CachedTypeInfo getRetType();
 }

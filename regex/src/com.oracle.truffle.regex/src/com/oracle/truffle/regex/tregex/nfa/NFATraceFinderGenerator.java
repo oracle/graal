@@ -300,7 +300,7 @@ public final class NFATraceFinderGenerator {
 
     private NFAStateTransition copyEntry(NFAState dummyInitialState, NFAStateTransition originalReverseEntry) {
         return new NFAStateTransition((short) transitionID.inc(), copy(originalReverseEntry.getSource()), dummyInitialState, originalReverseEntry.getCodePointSet(),
-                        GroupBoundaries.getEmptyInstance());
+                        GroupBoundaries.getEmptyInstance(originalNFA.getAst().getLanguage()));
     }
 
     private NFAState copy(NFAState s) {

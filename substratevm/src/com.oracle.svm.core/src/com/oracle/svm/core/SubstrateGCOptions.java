@@ -49,6 +49,9 @@ public class SubstrateGCOptions {
     @Option(help = "Verify the heap before and after each collection.")//
     public static final HostedOptionKey<Boolean> VerifyHeap = new HostedOptionKey<>(false);
 
+    @Option(help = "Ignore calls to System.gc()", type = OptionType.Expert)//
+    public static final RuntimeOptionKey<Boolean> DisableExplicitGC = new RuntimeOptionKey<>(false);
+
     @Option(help = "The minimum heap size at run-time, in bytes.", type = OptionType.User)//
     public static final RuntimeOptionKey<Long> MinHeapSize = new RuntimeOptionKey<Long>(0L) {
         @Override

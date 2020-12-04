@@ -88,7 +88,7 @@ public abstract class NativeBootImageViaCC extends NativeBootImage {
     class BinutilsCCLinkerInvocation extends CCLinkerInvocation {
 
         private final boolean staticExecWithDynamicallyLinkLibC = SubstrateOptions.StaticExecutableWithDynamicLibC.getValue();
-        private final Set<String> libCLibaries = new HashSet<>(Arrays.asList("pthread", "dl", "rt"));
+        private final Set<String> libCLibaries = new HashSet<>(Arrays.asList("pthread", "dl", "rt", "m"));
 
         BinutilsCCLinkerInvocation() {
             additionalPreOptions.add("-z");

@@ -24,9 +24,9 @@
  */
 package org.graalvm.compiler.truffle.test;
 
-import com.oracle.truffle.api.nodes.RootNode;
 import java.io.ByteArrayOutputStream;
 import java.io.IOException;
+
 import org.graalvm.compiler.debug.TTY;
 import org.graalvm.compiler.truffle.common.TruffleCompilerListener;
 import org.graalvm.compiler.truffle.runtime.GraalTruffleRuntime;
@@ -36,6 +36,8 @@ import org.graalvm.compiler.truffle.runtime.TruffleInlining;
 import org.graalvm.polyglot.Context;
 import org.junit.Assert;
 import org.junit.Test;
+
+import com.oracle.truffle.api.nodes.RootNode;
 
 public class CompilerLoggingTest extends TruffleCompilerImplTest {
 
@@ -66,7 +68,8 @@ public class CompilerLoggingTest extends TruffleCompilerImplTest {
     private static final class TestListener implements GraalTruffleRuntimeListener {
 
         @Override
-        public void onCompilationSuccess(OptimizedCallTarget target, TruffleInlining inliningDecision, TruffleCompilerListener.GraphInfo graph, TruffleCompilerListener.CompilationResultInfo result) {
+        public void onCompilationSuccess(OptimizedCallTarget target, TruffleInlining inliningDecision, TruffleCompilerListener.GraphInfo graph,
+                        TruffleCompilerListener.CompilationResultInfo result) {
             TTY.printf(FORMAT_SUCCESS, target.getName());
             printCommon();
         }

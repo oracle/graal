@@ -106,7 +106,7 @@ public class FeatureImpl {
 
         @Override
         public Class<?> findClassByName(String className) {
-            return imageClassLoader.findClassByName(className, false);
+            return imageClassLoader.findClass(className).get();
         }
 
         public <T> List<Class<? extends T>> findSubclasses(Class<T> baseClass) {

@@ -65,7 +65,7 @@ import org.graalvm.tools.insight.Insight;
 public class InsightInstrument extends TruffleInstrument {
     static final String NAME = "Insight";
 
-    @Option(stability = OptionStability.EXPERIMENTAL, name = "", help = "Use provided file as an insight script", category = OptionCategory.USER) //
+    @Option(stability = OptionStability.STABLE, name = "", help = "Use provided file as an insight script", category = OptionCategory.USER) //
     static final OptionKey<String> SCRIPT = new OptionKey<>("");
 
     private Env env;
@@ -112,6 +112,10 @@ public class InsightInstrument extends TruffleInstrument {
         return SCRIPT;
     }
 
+    boolean onlyInsight() {
+        return true;
+    }
+
     final AutoCloseable registerAgentScript(final Supplier<Source> src) {
         final Instrumenter instrumenter = env.getInstrumenter();
         class InitializeAgent implements ContextsListener, AutoCloseable {
@@ -121,10 +125,12 @@ public class InsightInstrument extends TruffleInstrument {
 
             @CompilerDirectives.TruffleBoundary
             synchronized boolean initializeAgentObject() {
-                if (agent == null) {
+                if (insight == null) {
                     AgentObject.Data sharedData = new AgentObject.Data();
                     insight = new AgentObject(null, env, ignoreSources, sharedData);
-                    agent = new AgentObject("Warning: 'agent' is deprecated. Use 'insight'.\n", env, ignoreSources, sharedData);
+                    if (!onlyInsight()) {
+                        agent = new AgentObject("Warning: 'agent' is deprecated. Use 'insight'.\n", env, ignoreSources, sharedData);
+                    }
                     return true;
                 }
                 return false;
@@ -136,12 +142,21 @@ public class InsightInstrument extends TruffleInstrument {
                     Source script = src.get();
                     ignoreSources.ignoreSource(script);
                     CallTarget target;
-                    try {
-                        target = env.parse(script, "insight", "agent");
-                    } catch (Exception ex) {
-                        throw InsightException.raise(ex);
+                    if (agent == null) {
+                        try {
+                            target = env.parse(script, "insight");
+                        } catch (Exception ex) {
+                            throw InsightException.raise(ex);
+                        }
+                        target.call(insight);
+                    } else {
+                        try {
+                            target = env.parse(script, "insight", "agent");
+                        } catch (Exception ex) {
+                            throw InsightException.raise(ex);
+                        }
+                        target.call(insight, agent);
                     }
-                    target.call(insight, agent);
                 }
             }
 
@@ -188,6 +203,9 @@ public class InsightInstrument extends TruffleInstrument {
                 if (agent != null) {
                     agent.onClosed();
                 }
+                if (insight != null) {
+                    insight.onClosed();
+                }
             }
 
             @Override
@@ -202,6 +220,9 @@ public class InsightInstrument extends TruffleInstrument {
             public void close() {
                 if (agent != null) {
                     agent.onClosed();
+                }
+                if (insight != null) {
+                    insight.onClosed();
                 }
                 if (agentBinding != null) {
                     agentBinding.dispose();

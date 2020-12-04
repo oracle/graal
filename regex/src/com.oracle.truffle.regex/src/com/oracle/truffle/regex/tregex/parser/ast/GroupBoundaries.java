@@ -46,6 +46,7 @@ import com.oracle.truffle.api.CompilerAsserts;
 import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.nodes.ExplodeLoop;
+import com.oracle.truffle.regex.RegexLanguage;
 import com.oracle.truffle.regex.result.PreCalculatedResultFactory;
 import com.oracle.truffle.regex.tregex.nfa.ASTTransition;
 import com.oracle.truffle.regex.tregex.nfa.NFAStateTransition;
@@ -72,14 +73,6 @@ import com.oracle.truffle.regex.util.CompilationFinalBitSet;
  */
 public class GroupBoundaries implements JsonConvertible {
 
-    private static final GroupBoundaries[] STATIC_INSTANCES = new GroupBoundaries[CompilationFinalBitSet.getNumberOfStaticInstances()];
-
-    static {
-        for (int i = 0; i < CompilationFinalBitSet.getNumberOfStaticInstances(); i++) {
-            STATIC_INSTANCES[i] = new GroupBoundaries(CompilationFinalBitSet.getStaticInstance(i), CompilationFinalBitSet.getEmptyInstance());
-        }
-    }
-
     private static final byte[] EMPTY_BYTE_ARRAY = {};
     private static final short[] EMPTY_SHORT_ARRAY = {};
 
@@ -99,21 +92,29 @@ public class GroupBoundaries implements JsonConvertible {
         this.cachedHash = Objects.hashCode(updateIndices) * 31 + Objects.hashCode(clearIndices);
     }
 
+    public static GroupBoundaries[] createCachedGroupBoundaries() {
+        GroupBoundaries[] instances = new GroupBoundaries[CompilationFinalBitSet.getNumberOfStaticInstances()];
+        for (int i = 0; i < instances.length; i++) {
+            instances[i] = new GroupBoundaries(CompilationFinalBitSet.getStaticInstance(i), CompilationFinalBitSet.getEmptyInstance());
+        }
+        return instances;
+    }
+
     /**
      * Used for deduplication of very common instances of this class.
      */
-    public static GroupBoundaries getStaticInstance(CompilationFinalBitSet updateIndices, CompilationFinalBitSet clearIndices) {
+    public static GroupBoundaries getStaticInstance(RegexLanguage language, CompilationFinalBitSet updateIndices, CompilationFinalBitSet clearIndices) {
         if (clearIndices.isEmpty()) {
             int key = updateIndices.getStaticCacheKey();
             if (key >= 0) {
-                return STATIC_INSTANCES[key];
+                return language.getCachedGroupBoundaries()[key];
             }
         }
         return null;
     }
 
-    public static GroupBoundaries getEmptyInstance() {
-        return STATIC_INSTANCES[0];
+    public static GroupBoundaries getEmptyInstance(RegexLanguage language) {
+        return language.getCachedGroupBoundaries()[0];
     }
 
     public boolean isEmpty() {

@@ -64,6 +64,7 @@ import com.oracle.truffle.regex.tregex.parser.ast.RegexAST;
 import com.oracle.truffle.regex.tregex.parser.ast.RegexASTNode;
 import com.oracle.truffle.regex.tregex.parser.ast.Sequence;
 import com.oracle.truffle.regex.tregex.parser.ast.Term;
+import com.oracle.truffle.regex.tregex.parser.flavors.RubyFlavor;
 import com.oracle.truffle.regex.tregex.util.Exceptions;
 import com.oracle.truffle.regex.util.CompilationFinalBitSet;
 
@@ -366,11 +367,13 @@ public abstract class NFATraversalRegexASTVisitor {
                     captureGroupUpdates.set(b);
                     captureGroupClears.clear(b);
                 }
-                if (pathIsGroupEnter(element) && group.hasQuantifier() && group.hasEnclosedCaptureGroups()) {
-                    int lo = Group.groupNumberToBoundaryIndexStart(group.getEnclosedCaptureGroupsLow());
-                    int hi = Group.groupNumberToBoundaryIndexEnd(group.getEnclosedCaptureGroupsHigh() - 1);
-                    captureGroupUpdates.clearRange(lo, hi);
-                    captureGroupClears.setRange(lo, hi);
+                if (ast.getOptions().getFlavor() != RubyFlavor.INSTANCE) {
+                    if (pathIsGroupEnter(element) && group.hasQuantifier() && group.hasEnclosedCaptureGroups()) {
+                        int lo = Group.groupNumberToBoundaryIndexStart(group.getEnclosedCaptureGroupsLow());
+                        int hi = Group.groupNumberToBoundaryIndexEnd(group.getEnclosedCaptureGroupsHigh() - 1);
+                        captureGroupUpdates.clearRange(lo, hi);
+                        captureGroupClears.setRange(lo, hi);
+                    }
                 }
             }
         }

@@ -29,24 +29,35 @@
  */
 package com.oracle.truffle.llvm.tests.interop;
 
+import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertNotNull;
+
 import org.graalvm.polyglot.Value;
 import org.junit.Assert;
 import org.junit.BeforeClass;
 import org.junit.Test;
 import org.junit.runner.RunWith;
 
+import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
+import com.oracle.truffle.api.interop.ArityException;
 import com.oracle.truffle.api.interop.InteropLibrary;
 import com.oracle.truffle.api.interop.TruffleObject;
+import com.oracle.truffle.api.interop.UnknownIdentifierException;
+import com.oracle.truffle.api.interop.UnsupportedMessageException;
+import com.oracle.truffle.api.interop.UnsupportedTypeException;
 import com.oracle.truffle.api.library.ExportLibrary;
 import com.oracle.truffle.api.library.ExportMessage;
+import com.oracle.truffle.llvm.runtime.pointer.LLVMPointer;
 import com.oracle.truffle.llvm.tests.Platform;
 import com.oracle.truffle.tck.TruffleRunner;
 
 @RunWith(TruffleRunner.class)
 public class VaListTest extends InteropTestBase {
 
+    static Value testLibrary;
     static Value testVaListCallback3;
     static Value getNextVaarg;
+    static Value newStructA;
 
     @ExportLibrary(InteropLibrary.class)
     static class VaListCallback implements TruffleObject {
@@ -57,20 +68,45 @@ public class VaListTest extends InteropTestBase {
         }
 
         @ExportMessage
+        @TruffleBoundary
         Object execute(Object... arguments) {
+            try {
+                testInvokeInterop(arguments);
+
+                Object vaList = arguments[0];
+                Value res0 = getNextVaarg.execute(vaList);
+                Value res1 = getNextVaarg.execute(vaList);
+                Value res2 = getNextVaarg.execute(vaList);
+                return res0.asInt() + res1.asInt() + res2.asInt();
+            } catch (Exception e) {
+                throw new RuntimeException(e);
+            }
+        }
+
+        private static void testInvokeInterop(Object... arguments) throws UnsupportedMessageException, UnknownIdentifierException, UnsupportedTypeException, ArityException {
             Object vaList = arguments[0];
-            Value res0 = getNextVaarg.execute(vaList);
-            Value res1 = getNextVaarg.execute(vaList);
-            Value res2 = getNextVaarg.execute(vaList);
-            return res0.asInt() + res1.asInt() + res2.asInt();
+            Object libHandle = arguments[1];
+            InteropLibrary libHandleInterop = InteropLibrary.getUncached(libHandle);
+
+            Object getInttTypeId = libHandleInterop.readMember(libHandle, "get_int_t_typeid");
+            Object inttTypeId = InteropLibrary.getUncached(getInttTypeId).execute(getInttTypeId);
+            Object vaListElem0 = InteropLibrary.getUncached(vaList).invokeMember(vaList, "get", 0, inttTypeId);
+            assertEquals(1, vaListElem0);
+
+            Object getStructATypeId = libHandleInterop.readMember(libHandle, "get_StructA_typeid");
+            Object structATypeId = InteropLibrary.getUncached(getInttTypeId).execute(getStructATypeId);
+            Object vaListElem3 = InteropLibrary.getUncached(vaList).invokeMember(vaList, "get", 3, structATypeId);
+            assertNotNull(LLVMPointer.isInstance(vaListElem3));
+            assertEquals(structATypeId, LLVMPointer.cast(vaListElem3).getExportType());
         }
     }
 
     @BeforeClass
     public static void loadLibrary() {
-        Value testLibrary = loadTestBitcodeValue("valist.c");
+        testLibrary = loadTestBitcodeValue("valist.c");
         testVaListCallback3 = testLibrary.getMember("test_va_list_callback3");
         getNextVaarg = testLibrary.getMember("get_next_vaarg");
+        newStructA = testLibrary.getMember("newStructA");
     }
 
     @Test
@@ -80,8 +116,8 @@ public class VaListTest extends InteropTestBase {
             return;
         }
 
-        Value res = testVaListCallback3.execute(new VaListCallback(), 1, 2, 3);
+        Value sa = newStructA.execute(10, 20);
+        Value res = testVaListCallback3.execute(new VaListCallback(), testLibrary, 1, 2, 3, sa);
         Assert.assertEquals(6, res.asInt());
     }
-
 }

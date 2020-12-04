@@ -69,6 +69,7 @@ import com.oracle.truffle.regex.tregex.TRegexCompiler;
  * compiling {@code str}-based regular expressions</li>
  * <li>{@code PythonBytes}: regular expressions as provided by the {@code re} module in Python when
  * compiling {@code bytes}-based regular expressions</li>
+ * <li>{@code Ruby}: regular expressions as provided by the {@code Regexp} class in Ruby</li>
  * </ul>
  * </li>
  * <li>{@code U180EWhitespace}: the U+180E Unicode character (MONGOLIAN VOWEL SEPARATOR) is to be

@@ -61,7 +61,7 @@ abstract class NativeArgumentBuffer {
         // keep this in sync with the code in com.oracle.truffle.nfi.native/src/internal.h
         OBJECT,
         STRING,
-        CLOSURE,
+        KEEPALIVE,
         ENV,
 
         BOOLEAN_ARRAY,
@@ -436,5 +436,10 @@ abstract class NativeArgumentBuffer {
         objects[idx] = o;
 
         position(pos + size);
+    }
+
+    public void putPointerKeepalive(Object o, long ptr, int size) {
+        putObject(TypeTag.KEEPALIVE, o, 0);
+        putPointer(ptr, size);
     }
 }

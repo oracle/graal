@@ -37,7 +37,7 @@ import com.oracle.truffle.api.interop.InteropLibrary;
 import com.oracle.truffle.api.library.CachedLibrary;
 import com.oracle.truffle.llvm.runtime.LLVMContext;
 import com.oracle.truffle.llvm.runtime.LLVMLanguage;
-import com.oracle.truffle.llvm.runtime.NFIContextExtension;
+import com.oracle.truffle.llvm.runtime.NativeContextExtension;
 import com.oracle.truffle.llvm.runtime.nodes.api.LLVMNode;
 
 public abstract class LLVMPosixCallNode extends LLVMNode {
@@ -51,8 +51,8 @@ public abstract class LLVMPosixCallNode extends LLVMNode {
 
     protected Object createFunction() {
         LLVMContext context = lookupContextReference(LLVMLanguage.class).get();
-        NFIContextExtension nfiContextExtension = context.getContextExtension(NFIContextExtension.class);
-        return nfiContextExtension.getNativeFunction("__sulong_posix_" + name, signature);
+        NativeContextExtension nativeContextExtension = context.getContextExtension(NativeContextExtension.class);
+        return nativeContextExtension.getNativeFunction("__sulong_posix_" + name, signature);
     }
 
     // Workaround for nice syntax + Truffle DSL

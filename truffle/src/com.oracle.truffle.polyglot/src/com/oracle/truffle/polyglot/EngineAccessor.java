@@ -870,7 +870,7 @@ final class EngineAccessor extends Accessor {
             }
             PolyglotLanguage language = pc.engine.findLanguage(null, languageId, null, true, true);
             PolyglotLanguageContext languageContext = pc.getContextInitialized(language, null);
-            return (PolyglotException) PolyglotImpl.guestToHostException(languageContext, e);
+            return (PolyglotException) PolyglotImpl.guestToHostException(languageContext, e, true);
         }
 
         @Override

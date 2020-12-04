@@ -93,12 +93,16 @@ public final class BytecodeExceptionNode extends AbstractMemoryCheckpoint implem
         ARRAY_STORE(1, ArrayStoreException.class),
 
         /**
-         * Represents a {@link IllegalArgumentException}. One argument is required:
-         * <ol>
-         * <li>The exception message (type: java.lang.String, null is allowed)</li>
-         * </ol>
+         * Represents a {@link IllegalArgumentException} with a fixed message. No additional
+         * arguments are allowed.
          */
-        ILLEGAL_ARGUMENT_EXCEPTION(1, IllegalArgumentException.class),
+        ILLEGAL_ARGUMENT_EXCEPTION_NEGATIVE_LENGTH(0, IllegalArgumentException.class, "Negative length"),
+
+        /**
+         * Represents a {@link IllegalArgumentException} with a fixed message. No additional
+         * arguments are allowed.
+         */
+        ILLEGAL_ARGUMENT_EXCEPTION_ARGUMENT_IS_NOT_AN_ARRAY(0, IllegalArgumentException.class, "Argument is not an array"),
 
         /**
          * Represents a {@link ArithmeticException}, with the exception message indicating a
@@ -120,10 +124,20 @@ public final class BytecodeExceptionNode extends AbstractMemoryCheckpoint implem
 
         final int numArguments;
         final Class<? extends Throwable> exceptionClass;
+        final String exceptionMessage;
 
         BytecodeExceptionKind(int numArguments, Class<? extends Throwable> exceptionClass) {
+            this(numArguments, exceptionClass, null);
+        }
+
+        BytecodeExceptionKind(int numArguments, Class<? extends Throwable> exceptionClass, String exceptionMessage) {
             this.numArguments = numArguments;
             this.exceptionClass = exceptionClass;
+            this.exceptionMessage = exceptionMessage;
+        }
+
+        public String getExceptionMessage() {
+            return exceptionMessage;
         }
     }
 

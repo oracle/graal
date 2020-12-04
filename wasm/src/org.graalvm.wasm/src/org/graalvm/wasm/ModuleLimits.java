@@ -82,73 +82,73 @@ public final class ModuleLimits {
 
     public void checkModuleSize(int size) {
         if (size > moduleSizeLimit) {
-            throw WasmException.format(Failure.UNSPECIFIED_INVALID, null, "The size of the module (%d bytes) exceeds the limit (%d bytes).", size, moduleSizeLimit);
+            throw WasmException.format(Failure.UNSPECIFIED_INVALID, "The size of the module (%d bytes) exceeds the limit (%d bytes).", size, moduleSizeLimit);
         }
     }
 
     public void checkTypeCount(int count) {
         if (count > typeCountLimit) {
-            throw WasmException.format(Failure.UNSPECIFIED_INVALID, null, "The number of types defined in the types section (%d) exceeds the limit (%d).", count, typeCountLimit);
+            throw WasmException.format(Failure.UNSPECIFIED_INVALID, "The number of types defined in the types section (%d) exceeds the limit (%d).", count, typeCountLimit);
         }
     }
 
     public void checkFunctionCount(int count) {
         if (count > functionCountLimit) {
-            throw WasmException.format(Failure.UNSPECIFIED_INVALID, null, "The number of functions defined in the module (%d) exceeds the limit (%d).", count, functionCountLimit);
+            throw WasmException.format(Failure.UNSPECIFIED_INVALID, "The number of functions defined in the module (%d) exceeds the limit (%d).", count, functionCountLimit);
         }
     }
 
     public void checkImportCount(int count) {
         if (count > importCountLimit) {
-            throw WasmException.format(Failure.UNSPECIFIED_INVALID, null, "The number of imports declared in the module (%d) exceeds the limit (%d).", count, importCountLimit);
+            throw WasmException.format(Failure.UNSPECIFIED_INVALID, "The number of imports declared in the module (%d) exceeds the limit (%d).", count, importCountLimit);
         }
     }
 
     public void checkExportCount(int count) {
         if (count > exportCountLimit) {
-            throw WasmException.format(Failure.UNSPECIFIED_INVALID, null, "The number of exports declared in the module (%d) exceeds the limit (%d).", count, exportCountLimit);
+            throw WasmException.format(Failure.UNSPECIFIED_INVALID, "The number of exports declared in the module (%d) exceeds the limit (%d).", count, exportCountLimit);
         }
     }
 
     public void checkGlobalCount(int count) {
         if (count > globalCountLimit) {
-            throw WasmException.format(Failure.UNSPECIFIED_INVALID, null, "The number of globals defined in the module (%d) exceeds the limit (%d).", count, globalCountLimit);
+            throw WasmException.format(Failure.UNSPECIFIED_INVALID, "The number of globals defined in the module (%d) exceeds the limit (%d).", count, globalCountLimit);
         }
     }
 
     public void checkDataSegmentCount(int count) {
         if (count > dataSegmentCountLimit) {
-            throw WasmException.format(Failure.UNSPECIFIED_INVALID, null, "The number of data segments defined in the module (%d) exceeds the limit (%d).", count, dataSegmentCountLimit);
+            throw WasmException.format(Failure.UNSPECIFIED_INVALID, "The number of data segments defined in the module (%d) exceeds the limit (%d).", count, dataSegmentCountLimit);
         }
     }
 
     public void checkElementSegmentCount(int count) {
         if (count > elementSegmentCountLimit) {
-            throw WasmException.format(Failure.UNSPECIFIED_INVALID, null, "The number of table entries in the table initialization (%d) exceeds the limit (%d).", count, elementSegmentCountLimit);
+            throw WasmException.format(Failure.UNSPECIFIED_INVALID, "The number of table entries in the table initialization (%d) exceeds the limit (%d).", count, elementSegmentCountLimit);
         }
     }
 
     public void checkFunctionSize(int size) {
         if (size > functionSizeLimit) {
-            throw WasmException.format(Failure.UNSPECIFIED_INVALID, null, "The size of the function body (%d) exceeds the limit (%d).", size, functionSizeLimit);
+            throw WasmException.format(Failure.UNSPECIFIED_INVALID, "The size of the function body (%d) exceeds the limit (%d).", size, functionSizeLimit);
         }
     }
 
     public void checkParamCount(int count) {
         if (count > paramCountLimit) {
-            throw WasmException.format(Failure.UNSPECIFIED_INVALID, null, "The number of parameters of the function (%d) exceeds the limit (%d).", count, paramCountLimit);
+            throw WasmException.format(Failure.UNSPECIFIED_INVALID, "The number of parameters of the function (%d) exceeds the limit (%d).", count, paramCountLimit);
         }
     }
 
     public void checkReturnCount(int count) {
         if (count > returnCountLimit) {
-            throw WasmException.format(Failure.UNSPECIFIED_INVALID, null, "The number of return values of the function (%d) exceeds the limit (%d).", count, returnCountLimit);
+            throw WasmException.format(Failure.UNSPECIFIED_INVALID, "The number of return values of the function (%d) exceeds the limit (%d).", count, returnCountLimit);
         }
     }
 
     public void checkLocalCount(int count) {
         if (count > localCountLimit) {
-            throw WasmException.format(Failure.UNSPECIFIED_INVALID, null, "The number of locals declared in the function (%d) exceeds the limit (%d).", count, localCountLimit);
+            throw WasmException.format(Failure.UNSPECIFIED_INVALID, "The number of locals declared in the function (%d) exceeds the limit (%d).", count, localCountLimit);
         }
     }
 

@@ -29,7 +29,6 @@ import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collection;
 import java.util.Collections;
-import java.util.HashMap;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
@@ -38,19 +37,15 @@ import org.graalvm.collections.EconomicMap;
 import org.graalvm.collections.Equivalence;
 import org.graalvm.compiler.truffle.common.TruffleDebugContext;
 import org.graalvm.compiler.truffle.common.TruffleSourceLanguagePosition;
-import org.graalvm.compiler.truffle.options.PolyglotCompilerOptions;
 import org.graalvm.graphio.GraphBlocks;
 import org.graalvm.graphio.GraphOutput;
 import org.graalvm.graphio.GraphStructure;
 
-import com.oracle.truffle.api.CallTarget;
 import com.oracle.truffle.api.RootCallTarget;
 import com.oracle.truffle.api.dsl.Introspection;
-import com.oracle.truffle.api.nodes.DirectCallNode;
 import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.api.nodes.NodeClass;
 import com.oracle.truffle.api.nodes.NodeInfo;
-import com.oracle.truffle.api.nodes.NodeUtil;
 import com.oracle.truffle.api.nodes.RootNode;
 
 public final class TruffleTreeDumper {
@@ -59,21 +54,19 @@ public final class TruffleTreeDumper {
     }
 
     private static final ASTDumpStructure AST_DUMP_STRUCTURE = new ASTDumpStructure();
-    private static final CallTreeDumpStructure CALL_GRAPH_DUMP_STRUCTURE = new CallTreeDumpStructure();
     private static final String AFTER_PROFILING = "After Profiling";
-    private static final String AFTER_INLINING = "After Inlining";
 
-    public static void dump(TruffleDebugContext debug, OptimizedCallTarget callTarget, TruffleInlining inliningDecision) {
+    public static void dump(TruffleDebugContext debug, OptimizedCallTarget callTarget) {
         if (GraalTruffleRuntime.getRuntime().isPrintGraphEnabled()) {
             try {
-                dumpASTAndCallTrees(debug, callTarget, inliningDecision, inliningDecision.getTruffleNodeSources());
+                dumpASTAndCallTrees(debug, callTarget, new TruffleNodeSources());
             } catch (IOException ex) {
                 throw new RuntimeException("Failed to dump AST: " + callTarget, ex);
             }
         }
     }
 
-    private static void dumpASTAndCallTrees(TruffleDebugContext debug, OptimizedCallTarget callTarget, TruffleInlining inlining, TruffleNodeSources nodeSources) throws IOException {
+    private static void dumpASTAndCallTrees(TruffleDebugContext debug, OptimizedCallTarget callTarget, TruffleNodeSources nodeSources) throws IOException {
         if (callTarget.getRootNode() != null) {
             AST ast = new AST(callTarget, nodeSources);
             final GraphOutput<AST, ?> astOutput = debug.buildOutput(GraphOutput.newBuilder(AST_DUMP_STRUCTURE).blocks(AST_DUMP_STRUCTURE));
@@ -81,49 +74,8 @@ public final class TruffleTreeDumper {
             astOutput.beginGroup(ast, "AST", "AST", null, 0, debug.getVersionProperties());
 
             astOutput.print(ast, Collections.emptyMap(), 0, AFTER_PROFILING);
-            if (inlining.countInlinedCalls() > 0) {
-                dumpInlinedTrees(debug, astOutput, callTarget, inlining, nodeSources, new ArrayList<>());
-                ast.inline(inlining, nodeSources);
-                astOutput.print(ast, null, 1, AFTER_INLINING);
-            }
             astOutput.endGroup(); // AST
             astOutput.close();
-
-            if (callTarget.getOptionValue(PolyglotCompilerOptions.LanguageAgnosticInlining)) {
-                return;
-            }
-            CallTree callTree = new CallTree(callTarget, null);
-            final GraphOutput<CallTree, ?> callTreeOutput = debug.buildOutput(GraphOutput.newBuilder(CALL_GRAPH_DUMP_STRUCTURE).blocks(CALL_GRAPH_DUMP_STRUCTURE));
-            callTreeOutput.beginGroup(null, "Call Tree", "Call Tree", null, 0, debug.getVersionProperties());
-            callTreeOutput.print(callTree, null, 0, AFTER_PROFILING);
-            if (inlining.countInlinedCalls() > 0) {
-                callTree = new CallTree(callTarget, inlining);
-                callTreeOutput.print(callTree, null, 0, AFTER_INLINING);
-            }
-            callTreeOutput.endGroup(); // Call Tree
-            callTreeOutput.close();
-        }
-    }
-
-    private static void dumpInlinedTrees(TruffleDebugContext debug, GraphOutput<AST, ?> output, final RootCallTarget callTarget, TruffleInlining inlining, TruffleNodeSources nodeSources,
-                    List<RootCallTarget> dumped)
-                    throws IOException {
-        for (DirectCallNode callNode : NodeUtil.findAllNodeInstances(callTarget.getRootNode(), DirectCallNode.class)) {
-            CallTarget inlinedCallTarget = callNode.getCurrentCallTarget();
-            if (inlinedCallTarget instanceof RootCallTarget && callNode instanceof OptimizedDirectCallNode) {
-                TruffleInliningDecision decision = inlining.findByCall((OptimizedDirectCallNode) callNode);
-                if (decision != null && decision.shouldInline()) {
-                    final RootCallTarget rootCallTarget = (RootCallTarget) inlinedCallTarget;
-                    if (!dumped.contains(rootCallTarget)) {
-                        AST ast = new AST(rootCallTarget, nodeSources);
-                        output.beginGroup(ast, inlinedCallTarget.toString(), rootCallTarget.getRootNode().getName(), null, 0, debug.getVersionProperties());
-                        output.print(ast, Collections.emptyMap(), 0, AFTER_PROFILING);
-                        output.endGroup();
-                        dumped.add(rootCallTarget);
-                        dumpInlinedTrees(debug, output, (OptimizedCallTarget) inlinedCallTarget, decision, nodeSources, dumped);
-                    }
-                }
-            }
         }
     }
 
@@ -241,28 +193,6 @@ public final class TruffleTreeDumper {
             return astBlock;
         }
 
-        void inline(TruffleInlining inliningDecisions, TruffleNodeSources nodeSources) {
-            traverseSeenNodes(root.source, root, this, inliningDecisions, nodeSources, blocks.get(0));
-        }
-
-        private static void traverseSeenNodes(Node parent, ASTNode astParent, AST ast, TruffleInlining inliningDecisions, TruffleNodeSources nodeSources, ASTBlock currentBlock) {
-            for (Map.Entry<String, Node> entry : findNamedNodeChildren(parent).entrySet()) {
-                final String label = entry.getKey();
-                final Node node = entry.getValue();
-                final ASTNode seenAstNode = ast.findASTNode(node);
-                if (seenAstNode == null) {
-                    final ASTNode astNode = ast.makeASTNode(node, nodeSources);
-                    currentBlock.nodes.add(astNode);
-                    astParent.edges.add(new ASTEdge(astNode, label));
-                    handleCallNodes(ast, inliningDecisions, nodeSources, node, astNode, currentBlock);
-                    traverseSeenNodes(node, astNode, ast, inliningDecisions, nodeSources, currentBlock);
-                } else {
-                    handleCallNodes(ast, inliningDecisions, nodeSources, node, seenAstNode, currentBlock);
-                    traverseSeenNodes(node, seenAstNode, ast, inliningDecisions, nodeSources, currentBlock);
-                }
-            }
-        }
-
         private static void traverseNodes(Node parent, ASTNode astParent, AST ast, TruffleInlining inliningDecisions, TruffleNodeSources nodeSources, ASTBlock currentBlock) {
             for (Map.Entry<String, Node> entry : findNamedNodeChildren(parent).entrySet()) {
                 final String label = entry.getKey();
@@ -270,38 +200,10 @@ public final class TruffleTreeDumper {
                 final ASTNode astNode = ast.makeASTNode(node, nodeSources);
                 currentBlock.nodes.add(astNode);
                 astParent.edges.add(new ASTEdge(astNode, label));
-                handleCallNodes(ast, inliningDecisions, nodeSources, node, astNode, currentBlock);
                 traverseNodes(node, astNode, ast, inliningDecisions, nodeSources, currentBlock);
             }
         }
 
-        private static void handleCallNodes(AST ast, TruffleInlining inliningDecisions, TruffleNodeSources nodeSources, Node node, ASTNode astNode, ASTBlock currentBlock) {
-            // Has this call node been handled already?
-            if (astNode.edges.size() > 0) {
-                return;
-            }
-            if (inliningDecisions != null) {
-                if (node instanceof DirectCallNode) {
-                    final DirectCallNode callNode = (DirectCallNode) node;
-                    final CallTarget inlinedCallTarget = callNode.getCurrentCallTarget();
-                    if (inlinedCallTarget instanceof OptimizedCallTarget && callNode instanceof OptimizedDirectCallNode) {
-                        TruffleInliningDecision decision = inliningDecisions.findByCall((OptimizedDirectCallNode) callNode);
-                        if (decision != null && decision.shouldInline()) {
-                            final RootNode targetRootNode = ((OptimizedCallTarget) inlinedCallTarget).getRootNode();
-                            final ASTNode astTargetRootNode = ast.makeASTNode(targetRootNode, nodeSources);
-                            astNode.edges.add(new ASTEdge(astTargetRootNode, inlinedCallTarget.toString()));
-                            astNode.setNewClass();
-                            final ASTBlock newBlock = ast.makeASTBlock();
-                            if (currentBlock != null) {
-                                currentBlock.successors.add(newBlock);
-                            }
-                            newBlock.nodes.add(astTargetRootNode);
-                            traverseNodes(targetRootNode, astTargetRootNode, ast, decision, nodeSources, newBlock);
-                        }
-                    }
-                }
-            }
-        }
     }
 
     static class ASTNode {
@@ -520,239 +422,4 @@ public final class TruffleTreeDumper {
             return block.successors;
         }
     }
-
-    static class CallTree {
-        final CallTreeNode root;
-        final List<CallTreeNode> nodes = new ArrayList<>();
-        final CallTreeBlock inlined = new CallTreeBlock(0);
-        final CallTreeBlock notInlined = new CallTreeBlock(1);
-
-        CallTree(RootCallTarget target, TruffleInlining inlining) {
-            root = makeCallTreeNode(target);
-            inlined.nodes.add(root);
-            root.properties.put("label", target.toString());
-            root.properties.putAll(((OptimizedCallTarget) target).getDebugProperties());
-            build(target, root, inlining, this);
-        }
-
-        private static void build(RootCallTarget target, CallTreeNode parent, TruffleInlining inlining, CallTree graph) {
-            if (inlining == null) {
-                for (DirectCallNode callNode : NodeUtil.findAllNodeInstances((target).getRootNode(), DirectCallNode.class)) {
-                    CallTarget inlinedCallTarget = callNode.getCurrentCallTarget();
-                    final CallTreeNode callTreeNode = graph.makeCallTreeNode(inlinedCallTarget);
-                    parent.edges.add(new CallTreeEdge(callTreeNode, ""));
-                    graph.notInlined.nodes.add(callTreeNode);
-                    callTreeNode.properties.put("label", inlinedCallTarget.toString());
-                    callTreeNode.properties.put("inlined", "false");
-                }
-            } else {
-                List<RootCallTarget> furtherTargets = new ArrayList<>();
-                List<CallTreeNode> furtherParent = new ArrayList<>();
-                List<TruffleInlining> furtherDecisions = new ArrayList<>();
-                for (DirectCallNode callNode : NodeUtil.findAllNodeInstances((target).getRootNode(), DirectCallNode.class)) {
-                    CallTarget inlinedCallTarget = callNode.getCurrentCallTarget();
-                    if (inlinedCallTarget instanceof OptimizedCallTarget && callNode instanceof OptimizedDirectCallNode) {
-                        TruffleInliningDecision decision = inlining.findByCall((OptimizedDirectCallNode) callNode);
-                        final CallTreeNode callTreeNode = graph.makeCallTreeNode(inlinedCallTarget);
-                        callTreeNode.properties.put("label", inlinedCallTarget.toString());
-                        parent.edges.add(new CallTreeEdge(callTreeNode, ""));
-                        if (decision != null && decision.shouldInline()) {
-                            graph.inlined.nodes.add(callTreeNode);
-                            callTreeNode.properties.put("inlined", "true");
-                            callTreeNode.properties.putAll(decision.getProfile().getDebugProperties());
-                            furtherTargets.add((RootCallTarget) inlinedCallTarget);
-                            furtherParent.add(callTreeNode);
-                            furtherDecisions.add(decision);
-                        } else {
-                            callTreeNode.properties.put("inlined", "false");
-                            if (decision != null) {
-                                callTreeNode.properties.putAll(decision.getTarget().getDebugProperties());
-                            }
-                            graph.notInlined.nodes.add(callTreeNode);
-                        }
-                    }
-                }
-                for (int i = 0; i < furtherTargets.size(); i++) {
-                    build(furtherTargets.get(i), furtherParent.get(i), furtherDecisions.get(i), graph);
-                }
-            }
-        }
-
-        CallTreeNode makeCallTreeNode(CallTarget source) {
-            final CallTreeNode callTreeNode = new CallTreeNode(source, nodes.size());
-            nodes.add(callTreeNode);
-            return callTreeNode;
-        }
-    }
-
-    static class CallTreeNode {
-        final CallTarget source;
-        List<CallTreeEdge> edges = new ArrayList<>();
-        final int id;
-        final Map<String, ? super Object> properties = new HashMap<>();
-        final CallTreeClass c = new CallTreeClass();
-
-        CallTreeNode(CallTarget source, int id) {
-            this.source = source;
-            this.id = id;
-        }
-
-        class CallTreeClass {
-            CallTreeNode getNode() {
-                return CallTreeNode.this;
-            }
-
-            @Override
-            public boolean equals(Object obj) {
-                if (!(obj instanceof CallTreeClass)) {
-                    return false;
-                }
-                CallTreeClass other = (CallTreeClass) obj;
-                return other.getNode() == CallTreeNode.this;
-            }
-
-            @Override
-            public int hashCode() {
-                return CallTreeNode.this.hashCode();
-            }
-
-        }
-    }
-
-    static class CallTreeEdge {
-        final CallTreeNode target;
-        final String label;
-
-        CallTreeEdge(CallTreeNode target, String label) {
-            this.target = target;
-            this.label = label;
-        }
-    }
-
-    static class CallTreeBlock {
-        final int id;
-        final List<CallTreeNode> nodes = new ArrayList<>();
-
-        CallTreeBlock(int id) {
-            this.id = id;
-        }
-    }
-
-    static class CallTreeDumpStructure implements
-                    GraphStructure<CallTree, CallTreeNode, CallTreeNode.CallTreeClass, List<CallTreeEdge>>,
-                    GraphBlocks<CallTree, CallTreeBlock, CallTreeNode> {
-
-        @Override
-        public CallTree graph(CallTree currentGraph, Object obj) {
-            return obj instanceof CallTree ? (CallTree) obj : null;
-        }
-
-        @Override
-        public Iterable<? extends CallTreeNode> nodes(CallTree graph) {
-            return graph.nodes;
-        }
-
-        @Override
-        public int nodesCount(CallTree graph) {
-            return graph.nodes.size();
-        }
-
-        @Override
-        public int nodeId(CallTreeNode node) {
-            return node.id;
-        }
-
-        @Override
-        public boolean nodeHasPredecessor(CallTreeNode node) {
-            return false;
-        }
-
-        @Override
-        public void nodeProperties(CallTree graph, CallTreeNode node, Map<String, ? super Object> properties) {
-            properties.putAll(node.properties);
-        }
-
-        @Override
-        public CallTreeNode node(Object obj) {
-            return obj instanceof CallTreeNode ? (CallTreeNode) obj : null;
-        }
-
-        @Override
-        public CallTreeNode.CallTreeClass nodeClass(Object obj) {
-            return obj instanceof CallTreeNode.CallTreeClass ? (CallTreeNode.CallTreeClass) obj : null;
-        }
-
-        @Override
-        public CallTreeNode.CallTreeClass classForNode(CallTreeNode node) {
-            return node.c;
-        }
-
-        @Override
-        public String nameTemplate(CallTreeNode.CallTreeClass nodeClass) {
-            return "{p#label}";
-        }
-
-        @Override
-        public Object nodeClassType(CallTreeNode.CallTreeClass nodeClass) {
-            return nodeClass.getNode().source.getClass();
-        }
-
-        @Override
-        public List<CallTreeEdge> portInputs(CallTreeNode.CallTreeClass nodeClass) {
-            return Collections.emptyList();
-        }
-
-        @Override
-        public List<CallTreeEdge> portOutputs(CallTreeNode.CallTreeClass nodeClass) {
-            return nodeClass.getNode().edges;
-        }
-
-        @Override
-        public int portSize(List<CallTreeEdge> port) {
-            return port.size();
-        }
-
-        @Override
-        public boolean edgeDirect(List<CallTreeEdge> port, int index) {
-            return true;
-        }
-
-        @Override
-        public String edgeName(List<CallTreeEdge> port, int index) {
-            return "";
-        }
-
-        @Override
-        public Object edgeType(List<CallTreeEdge> port, int index) {
-            return port.get(index).label;
-        }
-
-        @Override
-        public Collection<? extends CallTreeNode> edgeNodes(CallTree graph, CallTreeNode node, List<CallTreeEdge> port, int index) {
-            List<CallTreeNode> singleton = new ArrayList<>(1);
-            singleton.add(port.get(index).target);
-            return singleton;
-        }
-
-        @Override
-        public Collection<? extends CallTreeBlock> blocks(CallTree graph) {
-            return Arrays.asList(graph.inlined, graph.notInlined);
-        }
-
-        @Override
-        public int blockId(CallTreeBlock block) {
-            return block.id;
-        }
-
-        @Override
-        public Collection<? extends CallTreeNode> blockNodes(CallTree info, CallTreeBlock block) {
-            return block.nodes;
-        }
-
-        @Override
-        public Collection<? extends CallTreeBlock> blockSuccessors(CallTreeBlock block) {
-            return Collections.emptyList();
-        }
-    }
-
 }

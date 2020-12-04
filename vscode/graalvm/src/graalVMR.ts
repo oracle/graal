@@ -21,19 +21,15 @@ export function getRConfigurations(): ConfigurationPickItem[] {
     ret.push(new ConfigurationPickItem(
         'Set as R runtime',
         `(r.${getConfigSection()})`,
-        graalVMHome => {
-            const executable = utils.findExecutable('R', graalVMHome);
-            if (executable) {
-                return utils.checkRecommendedExtension('Ikuyadeu.r', 'R Language') && executable !== getConf('r').get(getConfigSection());
-            }
-            return false;
-        }, 
+        graalVMHome => utils.findExecutable('R', graalVMHome) !== undefined && utils.checkRecommendedExtension('Ikuyadeu.r', 'R Language'),
+        graalVMHome => utils.findExecutable('R', graalVMHome) === getConf('r').get(getConfigSection()), 
         async graalVMHome => {
             const executable = utils.findExecutable('R', graalVMHome);
             if (executable) {
                 return setConfig(executable);
             }
-        })
+        }, 
+        async _graalVMHome => setConfig(undefined))
     );
     return ret;
 }
@@ -50,7 +46,7 @@ function getConfigSection(): string {
 	return section;
 }
 
-function setConfig(path: string) {
+function setConfig(path?: string) {
 	const config = getConf('r');
 	let section: string = getConfigSection();
 	const term = section ? config.inspect(section) : undefined;
@@ -58,7 +54,7 @@ function setConfig(path: string) {
 		config.update(section, path, true);
 	}
 	const startRLS = getGVMConfig().get('languageServer.startRLanguageServer') as boolean;
-	if (startRLS) {
+	if (path && startRLS) {
 		if (!isRPackageInstalled(R_LANGUAGE_SERVER_PACKAGE_NAME)) {
 			vscode.window.showInformationMessage('Language Server package is not installed in your GraalVM R.', INSTALL_R_LANGUAGE_SERVER).then(value => {
 				switch (value) {

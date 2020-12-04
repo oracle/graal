@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2017, 2018, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2017, 2020, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -30,11 +30,16 @@ import com.oracle.svm.core.annotate.TargetClass;
 @TargetClass(className = "com.oracle.truffle.nfi.impl.LibFFIType", onlyWith = TruffleNFIFeature.IsEnabled.class)
 final class Target_com_oracle_truffle_nfi_impl_LibFFIType {
 
+    @Alias protected long type;
+    @Alias Target_com_oracle_truffle_nfi_impl_LibFFIType_CachedTypeInfo typeInfo;
+}
+
+@TargetClass(className = "com.oracle.truffle.nfi.impl.LibFFIType", innerClass = "CachedTypeInfo", onlyWith = TruffleNFIFeature.IsEnabled.class)
+final class Target_com_oracle_truffle_nfi_impl_LibFFIType_CachedTypeInfo {
+
     @Alias protected int size;
     @Alias protected int alignment;
     @Alias protected int objectCount;
-
-    @Alias protected long type;
 }
 
 @TargetClass(className = "com.oracle.truffle.nfi.impl.LibFFIType", innerClass = "StringType", onlyWith = TruffleNFIFeature.IsEnabled.class)

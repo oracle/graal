@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2016, 2018, Oracle and/or its affiliates.
+ * Copyright (c) 2016, 2020, Oracle and/or its affiliates.
  *
  * All rights reserved.
  *
@@ -30,62 +30,124 @@
 package com.oracle.truffle.llvm.parser.metadata;
 
 import com.oracle.truffle.llvm.parser.listeners.Metadata;
+import com.oracle.truffle.llvm.runtime.debug.scope.LLVMSourceFileReference;
 
-public final class MDFile implements MDBaseNode {
-
-    private MDBaseNode directory;
-    private MDBaseNode file;
+public abstract class MDFile implements MDBaseNode {
 
     private MDFile() {
-        this.file = MDVoidNode.INSTANCE;
-        this.directory = MDVoidNode.INSTANCE;
     }
 
-    @Override
-    public void accept(MetadataVisitor visitor) {
-        visitor.visit(this);
-    }
+    public abstract MDBaseNode getMDFile();
 
-    public MDBaseNode getFile() {
-        return file;
-    }
+    public abstract MDBaseNode getMDDirectory();
 
-    public MDBaseNode getDirectory() {
-        return directory;
-    }
+    public abstract LLVMSourceFileReference toSourceFileReference();
 
-    @Override
-    public void replace(MDBaseNode oldValue, MDBaseNode newValue) {
-        if (file == oldValue) {
-            file = newValue;
+    /**
+     * Separate implementation to hide {@link LLVMSourceFileReference} from {@link MDFile}.
+     */
+    private static final class MDFileImpl extends MDFile implements LLVMSourceFileReference {
+        private MDBaseNode directory;
+        private MDBaseNode file;
+        private int checksumKind;
+        private MDBaseNode checksum;
+
+        private MDFileImpl() {
+            this.file = MDVoidNode.INSTANCE;
+            this.directory = MDVoidNode.INSTANCE;
+            this.checksumKind = 0;
+            this.checksum = MDVoidNode.INSTANCE;
         }
-        if (directory == oldValue) {
-            directory = newValue;
+
+        @Override
+        public void accept(MetadataVisitor visitor) {
+            visitor.visit(this);
         }
+
+        @Override
+        public MDBaseNode getMDFile() {
+            return file;
+        }
+
+        @Override
+        public MDBaseNode getMDDirectory() {
+            return directory;
+        }
+
+        @Override
+        public LLVMSourceFileReference toSourceFileReference() {
+            return this;
+        }
+
+        @Override
+        public void replace(MDBaseNode oldValue, MDBaseNode newValue) {
+            if (file == oldValue) {
+                file = newValue;
+            }
+            if (directory == oldValue) {
+                directory = newValue;
+            }
+            if (checksum == oldValue) {
+                checksum = newValue;
+            }
+        }
+
+        @Override
+        public String getFilename() {
+            return MDString.getIfInstance(file);
+        }
+
+        @Override
+        public String getDirectory() {
+            return MDString.getIfInstance(directory);
+        }
+
+        @Override
+        public LLVMSourceFileReference.ChecksumKind getChecksumKind() {
+            return LLVMSourceFileReference.ChecksumKind.forBitcodeValue(checksumKind);
+        }
+
+        @Override
+        public String getChecksum() {
+            return MDString.getIfInstance(checksum);
+        }
+
     }
 
     private static final int ARGINDEX_FILENAME = 1;
     private static final int ARGINDEX_DIRECTORY = 2;
+    private static final int ARGINDEX_CHECKSUMKIND = 3;
+    private static final int ARGINDEX_CHECKSUM = 4;
 
     public static MDFile create38(long[] args, MetadataValueList md) {
         // [distinct, filename, directory]
-        final MDFile file = new MDFile();
+        final MDFileImpl file = new MDFileImpl();
         file.file = md.getNullable(args[ARGINDEX_FILENAME], file);
         file.directory = md.getNullable(args[ARGINDEX_DIRECTORY], file);
+        file.checksumKind = (int) args[ARGINDEX_CHECKSUMKIND];
+        file.checksum = md.getNullable(args[ARGINDEX_CHECKSUM], file);
         return file;
     }
 
     public static MDFile create32(long[] args, Metadata md) {
-        final MDFile file = new MDFile();
+        final MDFileImpl file = new MDFileImpl();
         file.file = ParseUtil.resolveReference(args, ARGINDEX_FILENAME, file, md);
         file.directory = ParseUtil.resolveReference(args, ARGINDEX_DIRECTORY, file, md);
+        file.checksumKind = (int) args[ARGINDEX_CHECKSUMKIND];
+        file.checksum = ParseUtil.resolveReference(args, ARGINDEX_CHECKSUM, file, md);
         return file;
     }
 
     public static MDFile create(MDBaseNode fileNode, MDBaseNode dirNode) {
-        final MDFile file = new MDFile();
+        return create(fileNode, dirNode, 0, MDVoidNode.INSTANCE);
+    }
+
+    public static MDFile create(MDBaseNode fileNode, MDBaseNode dirNode, int checksumKind, MDBaseNode checksum) {
+        final MDFileImpl file = new MDFileImpl();
         file.file = fileNode;
         file.directory = dirNode;
+        file.checksumKind = checksumKind;
+        file.checksum = checksum;
         return file;
     }
 }

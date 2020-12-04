@@ -54,10 +54,14 @@ public enum Failure {
     RETURN_SIZE_MISMATCH(Type.INVALID, "type mismatch"),
     EMPTY_STACK(Type.INVALID, "type mismatch"),
     TABLE_TARGET_MISMATCH(Type.INVALID, "type mismatch"),
+    UNEXPECTED_TYPE(Type.INVALID, "type mismatch"),
+    MULTIPLE_RETURN_VALUES(Type.INVALID, "multiple return values"),
+    LOOP_INPUT(Type.INVALID, "non-empty loop input type"),
 
     UNSPECIFIED_UNLINKABLE(Type.UNLINKABLE, "unspecified"),
 
     UNSPECIFIED_INTERNAL(Type.INTERNAL, "unspecified"),
+    INVALID_STACK_SHRINK_SIZE(Type.INTERNAL, "invalid stack shrink size"),
     OTHER_ARITHMETIC_EXCEPTION(Type.INTERNAL, "non-standard arithmetic exception");
 
     public enum Type {

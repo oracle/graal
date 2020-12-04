@@ -42,6 +42,31 @@ export function setGVMInsts(gvmConfig: vscode.WorkspaceConfiguration, installati
 	return gvmConfig.update(CONFIG_INSTALLATIONS, installations, true);
 }
 
+export function dist(): string {
+    if (process.platform === 'linux') {
+        return 'linux';
+    } else if (process.platform === 'darwin') {
+        return 'mac';
+    } else if (process.platform === 'win32') {
+        return 'windows';
+    }
+    return 'undefined';
+}
+
+const TERMINAL_INTEGRATED: string = 'terminal.integrated';
+
+export function getTerminalEnvName(): string {
+    return `${TERMINAL_INTEGRATED}.env.${dist()}`;
+}
+
+export function getTerminalEnv(): any {
+    return getConf(TERMINAL_INTEGRATED).get(`env.${dist()}`) as any | {};
+}
+
+export async function setTerminalEnv(env: any): Promise<any> {
+    return getConf(TERMINAL_INTEGRATED).update(`env.${dist()}`, env, true);
+}
+
 export function setupProxy() {
     const http = getConf('http');
     const proxy = http.get('proxy') as string;
@@ -60,10 +85,22 @@ export function setupProxy() {
     });
 }
 
+export async function checkGraalVMconfiguration(graalVMHome: string) {
+    gatherConfigurations();
+    for (const conf of configurations) {
+        if (!conf.show(graalVMHome) && conf.setted(graalVMHome)) {
+            try {
+                await conf.unset(graalVMHome);
+            } catch (_err) {}
+        }
+    }
+}
+
 export async function configureGraalVMHome(graalVMHome: string, nonInteractive?: boolean) {
     const gr = getGVMConfig();
-    if (graalVMHome !== getGVMHome(gr)) {
-        await setGVMHome(graalVMHome, gr);
+    const oldGVM = getGVMHome(gr);
+    if (graalVMHome !== oldGVM) {
+        await removeConfigurations(oldGVM);
         await defaultConfig(graalVMHome, gr);
     }
     if (!nonInteractive) {
@@ -71,22 +108,77 @@ export async function configureGraalVMHome(graalVMHome: string, nonInteractive?:
     }
 }
 
+export async function removeGraalVMconfiguration(graalVMHome: string) {
+    await removeDefaultConfigurations(graalVMHome);
+    await removeConfigurations(graalVMHome);
+}
+
+async function removeDefaultConfigurations(graalVMHome: string) {
+    const gr = getGVMConfig();
+    const installations = getGVMInsts(gr);
+    const index = installations.indexOf(graalVMHome);
+    if (index > -1) {
+        installations.splice(index, 1);
+        await setGVMInsts(gr, installations);
+    }
+    const home = getGVMHome(gr);
+    if (home === graalVMHome) {
+        await setGVMHome(undefined, gr);
+    }
+    const env = getTerminalEnv();
+    if (env) {
+        if (env.GRAALVM_HOME === graalVMHome) {
+            env.GRAALVM_HOME = undefined;
+        }
+        await setTerminalEnv(env);
+    }
+    try {
+        const nbConf = getConf('netbeans');
+        const nbHome = nbConf.get('jdkhome') as string;
+        if (nbHome === graalVMHome) {
+            await nbConf.update('jdkhome', undefined, true);
+        }
+    } catch(_err) {}
+}
+
+async function removeConfigurations(graalVMHome: string) {
+    gatherConfigurations();
+    for (const conf of configurations) {
+        if (conf.setted(graalVMHome)) {
+            try {
+                await conf.unset(graalVMHome);
+            } catch (_err) {}
+        }
+    }
+}
+
 async function configureInteractive(graalVMHome: string) {
     checkForMissingComponents(graalVMHome);
     gatherConfigurations();
-    const toShow = configurations.filter(conf => conf.show(graalVMHome));
+    const toShow: ConfigurationPickItem[] = configurations.filter(conf => {
+        const show = conf.show(graalVMHome);
+        if (show) {
+            conf.picked = conf.setted(graalVMHome);
+        }
+        return show;
+    });
     if (toShow.length > 0) {
-        const selected: ConfigurationPickItem[] = await vscode.window.showQuickPick(
+        const selected: ConfigurationPickItem[] | undefined = await vscode.window.showQuickPick(
             toShow, {
                 canPickMany: true,
                 placeHolder: 'Configure active GraalVM'
-            }) || [];
-
-        for (const select of selected) {
-            try {
-                await select.set(graalVMHome);
-            } catch (error) {
-                vscode.window.showErrorMessage(error?.message);
+            });
+        if (selected) {
+            for (const shown of toShow) {
+                try {
+                    if (selected.includes(shown)) {
+                        await shown.set(graalVMHome);
+                    } else {
+                        await shown.unset(graalVMHome);
+                    }
+                } catch (error) {
+                    vscode.window.showErrorMessage(error?.message);
+                }
             }
         }
     }
@@ -103,6 +195,7 @@ function gatherConfigurations() {
 }
 
 async function defaultConfig(graalVMHome: string, gr: vscode.WorkspaceConfiguration) {
+    await setGVMHome(graalVMHome, gr);
     const insts = getGVMInsts(gr);
     if (!insts.includes(graalVMHome)) {
         insts.push(graalVMHome);
@@ -113,19 +206,9 @@ async function defaultConfig(graalVMHome: string, gr: vscode.WorkspaceConfigurat
         await getConf('netbeans').update('jdkhome', graalVMHome, true);
     } catch (error) {}
 
-    const termConfig = getConf('terminal.integrated');
-    let section: string = '';
-    if (process.platform === 'linux') {
-        section = 'env.linux';
-    } else if (process.platform === 'darwin') {
-        section = 'env.mac';
-    } else if (process.platform === 'win32') {
-        section = 'env.windows';
-    }
-
-    let env: any = termConfig.get(section);
+    let env: any = getTerminalEnv();
     env.GRAALVM_HOME = graalVMHome;
-    await termConfig.update(section, env, true);
+    await setTerminalEnv(env);
 }
 
 export class ConfigurationPickItem implements vscode.QuickPickItem {
@@ -135,6 +218,8 @@ export class ConfigurationPickItem implements vscode.QuickPickItem {
         public readonly label: string,
         public readonly description: string,
         public readonly show: (graalVMHome: string) => boolean,
-        public readonly set: ((graalVMHome: string) => Promise<any>)
+        public readonly setted: (graalVMHome: string) => boolean,
+        public readonly set: ((graalVMHome: string) => Promise<any>),
+        public readonly unset: ((graalVMHome: string) => Promise<any>)
 	) {}
 }

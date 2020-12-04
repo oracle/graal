@@ -1,8 +1,9 @@
 # Change Log
 
-## Version 0.0.11
+## Version 0.5.0
 * GraalVM DAP support added
 * GraalVM installations management added
+* GraalVM EE download supported
 * GraalVM for Windows supported
 
 ## Version 0.0.10

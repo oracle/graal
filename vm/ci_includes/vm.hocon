@@ -78,6 +78,21 @@ builds += [
     ]
     name: gate-vm-maven-dry-run-linux-amd64
   }
+  ${gate_vm_linux} ${linux-deploy} ${maven_base_8_11} {
+    downloads+= {
+      OPEN_JDK_11: ${jdks.openjdk11},
+    }
+    run: [
+      ${maven_base_8_11.build}
+      ${maven_base_8_11.deploy} ["--version-string", "GATE"]
+      [set-export, JAVA_HOME, "$OPEN_JDK_11"]
+      ["git", "clone", "--depth", "1", ["mx", "urlrewrite", "https://github.com/graalvm/graal-js-jdk11-maven-demo.git"], "graal-js-jdk11-maven-demo"]
+      ["cd", "graal-js-jdk11-maven-demo"]
+      ["mvn", "-Dgraalvm.version=GATE", "package"]
+      ["mvn", "-Dgraalvm.version=GATE", "exec:exec"]
+    ]
+    name: gate-vm-js-on-jdk11-maven-linux-amd64
+  }
   ${deploy_vm_linux} ${linux-deploy} ${maven_base_8_11} {
     run: [
       ${maven_base_8_11.build}
@@ -138,20 +153,6 @@ builds += [
       ${maven_base_8_native.deploy} ["lafo-maven"]
     ]
     name: deploy-vm-maven-windows-amd64
-  }
-  # Deploy GraalVM base on JDK11 for Linux/AARCH64
-  ${vm_java_11} ${full_vm_build_linux_aarch64} ${linux-deploy} ${deploy_vm_linux_aarch64} {
-    run: [
-      ${mx_vm_installables} [--dynamicimports, ${vm_extra_suites_aarch64}, "--exclude-components="${non-product-vm-components}, build]
-      ${mx_vm_installables} [--dynamicimports, ${vm_extra_suites_aarch64}, "--exclude-components="${non-product-vm-components}] ${maven_deploy_sdk_components}
-    ] ${collect_profiles} [
-      ${mx_vm_common} ${vm_profiles} [build]
-      ${mx_vm_common} ${vm_profiles} ${maven_deploy_sdk_base}
-      ${notify-nexus-deploy}
-    ]
-    logs: ${common_vm.logs}
-    timelimit: "1:30:00"
-    name: deploy-vm-java11-linux-aarch64
   }
 ]
 

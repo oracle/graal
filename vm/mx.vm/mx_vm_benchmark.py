@@ -664,7 +664,7 @@ class PolyBenchBenchmarkSuite(mx_benchmark.VmBenchmarkSuite):
         super(PolyBenchBenchmarkSuite, self).__init__()
         self._extensions = [".js", ".rb", ".wasm"]
         self._benchmarks = []
-        for group in ["interpreter"]:
+        for group in ["interpreter", "compiler"]:
             for (_, _, files) in os.walk(os.path.join(_suite.dir, "benchmarks", group)):
                 for f in files:
                     if os.path.splitext(f)[1] in self._extensions:
@@ -685,18 +685,20 @@ class PolyBenchBenchmarkSuite(mx_benchmark.VmBenchmarkSuite):
     def createCommandLineArgs(self, benchmarks, bmSuiteArgs):
         if len(benchmarks) != 1:
             mx.abort("Can only specify one benchmark at a time.")
+        vmArgs = self.vmArgs(bmSuiteArgs)
         benchmark_path = os.path.join(_suite.dir, "benchmarks", benchmarks[0])
-        return ["--path=" + benchmark_path]
+        return ["--path=" + benchmark_path] + vmArgs
 
     def get_vm_registry(self):
         return _polybench_vm_registry
 
     def rules(self, output, benchmarks, bmSuiteArgs):
+        metric_name = self._get_metric_name(bmSuiteArgs)
         return [
             mx_benchmark.StdOutRule(r"\[(?P<name>.*)\] after run: (?P<value>.*) (?P<unit>.*)", {
                 "benchmark": ("<name>", str),
                 "metric.better": "lower",
-                "metric.name": "time",
+                "metric.name": metric_name,
                 "metric.unit": ("<unit>", str),
                 "metric.value": ("<value>", float),
                 "metric.type": "numeric",
@@ -705,6 +707,18 @@ class PolyBenchBenchmarkSuite(mx_benchmark.VmBenchmarkSuite):
             })
         ]
 
+    def _get_metric_name(self, bmSuiteArgs):
+        metric = None
+        for arg in bmSuiteArgs:
+            if arg.startswith("--metric="):
+                metric = arg[len("--metric="):]
+                break
+        if metric == "compilation-time":
+            return "compile-time"
+        elif metric == "partial-evaluation-time":
+            return "pe-time"
+        else:
+            return "time"
 
 class PolyBenchVm(GraalVm):
     def run(self, cwd, args):
@@ -732,6 +746,7 @@ def register_graalvm_vms():
     for short_name, config_suffix in [('niee', 'ee'), ('ni', 'ce')]:
         if any(component.short_name == short_name for component in mx_sdk_vm_impl.registered_graalvm_components(stage1=False)):
             mx_benchmark.add_java_vm(NativeImageVM('native-image', 'default-' + config_suffix, None, None, 0, False, False, False), _suite, 10)
+            mx_benchmark.add_java_vm(NativeImageVM('native-image', 'gate-' + config_suffix, None, None, 0, False, False, True), _suite, 10)
             mx_benchmark.add_java_vm(NativeImageVM('native-image', 'llvm-' + config_suffix, None, None, 0, False, False, False, True), _suite, 10)
             break
 

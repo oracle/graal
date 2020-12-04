@@ -1,3 +1,5 @@
+The sieve benchmark counts the number of primes below 600000.
+The correct result is 49098.
 
 How to build these benchmarks.
 

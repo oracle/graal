@@ -153,14 +153,14 @@ public class Table extends Dictionary {
                     try {
                         return InteropLibrary.getUncached().execute(element, frame.getArguments());
                     } catch (UnsupportedTypeException e) {
-                        throw WasmException.format(Failure.UNSPECIFIED_TRAP, null, "Table element %s has an unsupported type.", element);
+                        throw WasmException.format(Failure.UNSPECIFIED_TRAP, "Table element %s has an unsupported type.", element);
                     } catch (ArityException e) {
-                        throw WasmException.format(Failure.UNSPECIFIED_TRAP, null, "Table element %s has unexpected arity.", element);
+                        throw WasmException.format(Failure.UNSPECIFIED_TRAP, "Table element %s has unexpected arity.", element);
                     } catch (UnsupportedMessageException e) {
-                        throw WasmException.format(Failure.UNSPECIFIED_TRAP, null, "Table element %s is not executable.", element);
+                        throw WasmException.format(Failure.UNSPECIFIED_TRAP, "Table element %s is not executable.", element);
                     }
                 } else {
-                    throw WasmException.format(Failure.UNSPECIFIED_TRAP, null, "Table element %s is not executable.", element);
+                    throw WasmException.format(Failure.UNSPECIFIED_TRAP, "Table element %s is not executable.", element);
                 }
             }
         })));

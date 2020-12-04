@@ -1,48 +1,203 @@
-# Memory Management
+# Memory Management at Image Run Time
 
-This page looks at memory management models available for native images.
+A native image, when being executed, does not run on the Java HotSpot VM but on the runtime system provided with GraalVM.
+That runtime includes all necessary components, and one of them is the memory management.
 
-## Memory Management at Image Run Time
+Java objects that a native image allocates at run time reside in the area called "the Java heap".
+The Java heap is created when the native image starts up, and may increase or decrease in size while the native image runs.
+When the heap becomes full, a garbage collection is triggered to reclaim memory of objects that are no longer used.
 
-A native image, when being executed, does not run on a JVM, but on a runtime
-system provided with GraalVM. That runtime includes all necessary components,
-like memory management, thread scheduling, etc. The memory management is handled
-by GraalVM's garbage collector implementation -- Serial Garbage Collector
-(Serial GC). Serial GC is default for Native Image in GraalVM Enterprise and
-Community Editions.
+For managing the Java heap, Native Image provides different garbage collector (GC) implementations:
+* The **Serial GC** is the default GC in both GraalVM Community and Enterprise Edition.
+It is optimized for low memory footprint and small Java heap sizes.
+* The **G1 GC** (only available with GraalVM Enterprise Edition) is a multi-threaded GC that is optimized to reduce stop-the-world pauses and therefore improve latency, while achieving high throughput.
+To enable G1, specify the option `--gc=G1` at image build time.
+Currently, G1 can only be used in native images that are built on Linux for AMD64.
 
-When running an executable, it will, by default, use up to
-`-H:MaximumHeapSizePercent` of the physical memory size. For example, with the
-default value of 80%, and on a machine with 4GB of RAM, it will at most use
-3.2GB of RAM. If the same image is executed on a machine that has 32GB of RAM,
-it will use up to 25.6GB.
+## Performance Considerations
 
-To set options to a native image, use the `-XX` switch. For example, to get some information on garbage collection at run time, run:
+The primary metrics for garbage collection are throughput, latency, and footprint:
+* *Throughput* is the percentage of total time not spent in garbage collection considered over long periods of time.
+* *Latency* is the responsiveness of an application.
+Garbage collection pauses negatively affect the responsiveness.
+* *Footprint* is the working set of a process, measured in pages and cache lines.
+
+Choosing settings for the Java heap is always a trade-off between these metrics.
+For example, a very large young generation may maximize throughput, but does so at the expense of footprint and latency.
+Young generation pauses can be minimized by using a small young generation at the expense of throughput.
+
+By default, Native Image automatically determines values for the Java heap settings that are listed below.
+The exact values may depend on the system configuration and the used GC.
+
+* The *maximum Java heap size* defines the upper limit for the size of the whole Java heap.
+If the Java heap is full and the GC is unable reclaim sufficient memory for a Java object allocation, the allocation will fail with the `OutOfMemoryError`.
+Note: The maximum heap size is only the upper limit for the Java heap and not necessarily the upper limit for the total amount of consumed memory, as Native Image places some data such as thread stacks, just-in-time compiled code, and internal data structures in memory that is separate from the Java heap.
+* The *minimum Java heap size* defines how much memory the GC may always assume as reserved for the Java heap, no matter how little of that memory is actually used.
+* The *young generation size* determines the amount of Java memory that can be allocated without triggering a garbage collection.
+
+## Serial Garbage Collector
+
+The *Serial GC* is optimized for low footprint and small Java heap sizes.
+If no other GC is specified, the Serial GC will be used implicitly as the default on both GraalVM Community and Enterprise Edition.
+Since GraalVM 20.3, it is also possible to explicitly enable the Serial GC by passing the option `--gc=serial` to the native image builder.
+
 ```shell
+# Build a native image that uses the serial GC with default settings
+native-image --gc:serial HelloWorld
+```
+
+### Overview
+
+In its core, the Serial GC is a simple (non-parallel, non-concurrent) stop and copy GC.
+It divides the Java heap into a young and an old generation.
+Each generation consists of a set of equally sized chunks, each a contiguous range of virtual memory.
+Those chunks are the GC-internal unit for memory allocation and memory reclamation.
+
+The young generation is reserved for the allocation of new objects and when this part becomes full, a young collection is triggered.
+Objects that are alive in the young generation, will be moved to the old generation, thus freeing up the young generation for subsequent object allocations.
+When the old generation becomes full, a full collection is triggered.
+Typically, a young collection is much faster than an full collection, however doing full collections is important for keeping the memory footprint low.
+By default, the GC tries to balance the time that is spent in young and full collections.
+
+If no maximum Java heap size is specified, a native image that uses the Serial GC will set its maximum Java heap size to 80% of the physical memory size.
+For example, on a machine with 4GB of RAM, the maximum Java heap size will be set to 3.2GB.
+If the same image is executed on a machine that has 32GB of RAM, the maximum Java heap size will be set to 25.6GB.
+Note that this is just the maximum value.
+Depending on the application, the amount of actually used Java heap memory can be much lower.
+To override this default behavior, either specify a value for `-XX:MaximumHeapSizePercent` or explicitly set the maximum [Java heap size](#java-heap-size).
+
+### Performance Tuning
+
+For tuning the GC performance and the memory footprint, the following options can be used:
+* `-H:AlignedHeapChunkSize` - the size of a heap chunk in bytes. It can only be specified at image build time.
+* `-XX:MaximumHeapSizePercent` - the percentage of the physical memory size that is used as the maximum Java heap size if the maximum Java heap size is not specified otherwise.
+* `-XX:PercentTimeInIncrementalCollection` - determine how much time the GC should spend doing young collections.
+With the default value of 50, the GC tries to balance the time spent on young and full collections.
+Increasing this value will reduce the number of full GCs, which can improve performance but may worsen the memory footprint.
+Decreasing this value will increase the number of full GCs, which can improve the memory footprint but may decrease performance.
+* `-XX:MaximumYoungGenerationSizePercent` - the maximum size of the young generation as a percentage of the maximum Java heap size.
+
+```shell
+# Build and execute a native image that uses the serial GC but does less full GCs
+native-image --gc:serial -R:PercentTimeInIncrementalCollection=70 HelloWorld
+./helloworld
+
+# Execute the native image from above but force more full GCs
+./helloworld -XX:PercentTimeInIncrementalCollection=40
+```
+
+## G1 Garbage Collector
+
+GraalVM Enterprise Edition also provides the Garbage-First (G1) garbage collector, which is based on the G1 GC from the Java HotSpot VM.
+Currently, G1 can only be used in native images that are built on Linux for AMD64.
+To enable it, pass the option `--gc=G1` to the native image builder.
+
+```shell
+# Build a native image that uses the G1 GC with default settings
+native-image --gc=G1 HelloWorld
+```
+
+Note: In GraalVM 20.0, 20.1, and 20.2, the G1 GC was called low-latency GC and could be enabled via the experimental option `-H:+UseLowLatencyGC`.
+
+### Overview
+
+G1 is a generational, incremental, parallel, mostly concurrent, stop-the-world, and evacuating GC.
+It aims to provide the best balance between latency and throughput.
+
+Some operations are always performed in stop-the-world pauses to improve throughput.
+Other operations that would take more time with the application stopped, such as whole-heap operations like global marking, are performed in parallel and concurrently with the application.
+The G1 GC tries to meet set pause-time targets with high probability over a longer time.
+However, there is no absolute certainty for a given pause.
+
+G1 partitions the heap into a set of equally sized heap regions, each a contiguous range of virtual memory.
+A region is the GC-internal unit for memory allocation and memory reclamation.
+At any given time, each of these regions can be empty, or assigned to a particular generation.
+
+If no maximum Java heap size is specified, a native image that uses the G1 GC will set its maximum Java heap size to 25% of the physical memory size.
+For example, on a machine with 4GB of RAM, the maximum Java heap size will be set to 1GB.
+If the same image is executed on a machine that has 32GB of RAM, the maximum Java heap size will be set to 8GB.
+To override this default behavior, either specify a value for `-XX:MaxRAMPercentage` or explicitly set the maximum [Java heap size](#java-heap-size).
+
+### Performance Tuning
+
+The G1 GC is an adaptive garbage collector with defaults that enable it to work efficiently without modification.
+However, it can be tuned to the performance needs of a particular application.
+Here is a small subset of the options that can be specified when doing performance tuning:
+
+* `-H:G1HeapRegionSize` - the size of a G1 region. It can only be specified at image build time.
+* `-XX:MaxRAMPercentage` - the percentage of the physical memory size that is used as the maximum heap size if the maximum heap size is not specified otherwise.
+* `-XX:MaxGCPauseMillis` - the goal for the maximum pause time.
+* `-XX:ParallelGCThreads` - the maximum number of threads used for parallel work during garbage collection pauses.
+* `-XX:ConcGCThreads` - the maximum number of threads used for concurrent work.
+* `-XX:InitiatingHeapOccupancyPercent` - the Java heap occupancy threshold that triggers a marking cycle.
+* `-XX:G1HeapWastePercent` - the allowed unreclaimed space in the collection set candidates. G1 stops the space-reclamation phase if the free space in the collection set candidates is lower than that.
+
+```shell
+# Build and execute a native image that uses the G1 GC with a region size of 2MB and a maximum pause time goal of 100ms
+native-image --gc=G1 -H:G1RegionSize=2m -R:MaxGCPauseMillis=100 HelloWorld
+./helloworld
+
+# Execute the native image from above and override the maximum pause time goal
+./helloworld -XX:MaxGCPauseMillis=50
+```
+
+## Memory Management Options
+
+This section describes the most important memory management command-line options that are independent of the used GC.
+For all numeric values the suffix `k`, `m`, or `g` can be used for scaling.
+Further options to the native image builder can be listed using `native-image --expert-options-all`.
+
+### Java Heap Size
+
+When executing a native image, suitable Java heap settings will be determined automatically based on the system configuration and the used GC.
+To override this automatic mechanism and to explicitly set the heap size at run time, the following command-line options can be used:
+* `-Xmx` - maximum heap size in bytes
+* `-Xms` - minimum heap size in bytes
+* `-Xmn` - the size of the young generation in bytes
+
+It is also possible to preconfigure default heap settings at image build time.
+The specified values will then be used as the default values at run time:
+* `-R:MaxHeapSize` (since GraalVM 20.0) - maximum heap size in bytes
+* `-R:MinHeapSize` (since GraalVM 20.0) - minimum heap size in bytes
+* `-R:MaxNewSize` (since GraalVM 20.0) - size of the young generation in bytes
+
+```shell
+# Build a native image with the default heap settings and override the heap settings at run time
+native-image HelloWorld
+./helloworld -Xms2m -Xmx10m -Xmn1m
+
+# Build a native image and "bake" heap settings into the image. The specified values will be used at run time
+native-image -R:MinHeapSize=2m -R:MaxHeapSize=10m -R:MaxNewSize=1m HelloWorld
+./helloworld
+```
+
+### Compressed References
+
+GraalVM Enterprise Edition supports compressed references to Java objects that use 32-bit instead of 64-bit.
+Compressed references are enabled by default and can have a large impact on the memory footprint.
+However, they limit the maximum Java heap size to 32 GB of memory.
+If more than 32 GB are needed, compressed references need to be disabled.
+
+* `-H:±UseCompressedReferences` - determines if 32-bit instead of 64-bit references to Java objects are used. It can only be specified at image build time.
+
+### Native Memory
+
+Native Image may also allocate memory that is separate from the Java heap.
+One common use-case is a `java.nio.DirectByteBuffer` that directly references native memory.
+
+* `-XX:MaxDirectMemorySize` (since GraalVM 20.1) - the maximum size of direct buffer allocations.
+
+### Printing Garbage Collections
+
+When executing a native image, the following options can be be used to print some information on garbage collection.
+Which data is printed in detail depends on the used GC.
+* `-XX:+PrintGC` - print basic information for every garbage collection
+* `-XX:+VerboseGC` - can be added to print further garbage collection details
+
+```shell
+# Execute a native image and print basic garbage collection information
+./helloworld -XX:+PrintGC
+
+# Execute a native image and print detailed garbage collection information
 ./helloworld -XX:+PrintGC -XX:+VerboseGC
 ```
-
-In general, there are different ways for specifying the heap size that a native image can use at run time:
-* Passing the arguments `-Xms`, `-Xmx`, and/or `-Xmn` when executing the native image, e.g., `./helloworld -Xms2m -Xmx10m -Xmn1m`. This always has the highest priority and overrides any other configured values.
-  * `-Xmx` - maximum heap size in bytes. Note that this is not the maximum amount of consumed memory, because during GC the system can request more temporary memory. The value is specified in bytes, suffix `k`, `m`, or `g` can be used for scaling.
-  * `-Xms` - minimum heap size in bytes. Heap space that is unused will be retained for future heap usage, rather than being returned to the operating system.
-  * `-Xmn` - the size of the young generation in bytes (the amount of memory that can be allocated without triggering a GC).
-* Setting an absolute default heap size at image build time: `native-image -R:MinHeapSize=2m -R:MaxHeapSize=10m -R:MaxNewSize=1m HelloWorld`.
-* Setting a relative default heap size at image build time: `native-image -R:MaximumHeapSizePercent=80 -R:MaximumYoungGenerationSizePercent=10 HelloWorld`. This variant is used as the fallback if the user does not specify anything during the image build, nor when executing the built image.
-
-As of version 20.1.0 option `-XX:MaxDirectMemorySize=...` was added to allow
-controlling the maximum size of direct buffer allocations. Check other related options to the native image builder from the `native-image --expert-options-all` list.
-
-## G1 Garbage Collector Integration
-
-GraalVM Enterprise Edition also offers even more efficient, lower latency garbage collector -- G1 Garbage Collector (G1 GC).
-It is integrated from the Java HotSpot's G1. This garbage collection implementation
-improves the performance of native images by reducing the stop-the-world pauses.
-To enable it, pass the `-H:+UseLowLatencyGC` option to the native image builder, e.g.:
-```shell
-native-image -H:+UseLowLatencyGC HelloWorld
-```
-Note: The `-H:+UseLowLatencyGC` option will be depricated in GraalVM  20.3 version in favour of `--gc=G1`.
-
-Currently, the G1 GC can only be used in native images built on Linux for AMD64.
-Note: The G1 GC integration is available with **GraalVM Enterprise** only and is experimental.

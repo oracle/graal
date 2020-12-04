@@ -431,7 +431,7 @@ final class HostObject implements TruffleObject {
         @Specialization(guards = "isArray.execute(receiver)", limit = "1")
         static boolean doArray(HostObject receiver, long index,
                         @Shared("isArray") @Cached IsArrayNode isArray) {
-            long size = getArrayLength(receiver.obj);
+            long size = Array.getLength(receiver.obj);
             return index >= 0 && index < size;
         }
 
@@ -646,28 +646,12 @@ final class HostObject implements TruffleObject {
 
     }
 
-    /**
-     * java.lang.reflect.Array.getLength is not PE-safe if the error conditions (null or not an
-     * array) can happen. In our case, we know the error conditions can't happen because we check
-     * them manually. This helper function is here to help the static analysis of native-image
-     * figure out that the error condition can not happen.
-     *
-     * TODO: Remove when Array.getLength is made PE-safe on native-image (GR-23860).
-     */
-    private static int getArrayLength(Object array) {
-        if (array == null || !array.getClass().isArray()) {
-            CompilerDirectives.transferToInterpreterAndInvalidate();
-            throw new IllegalStateException("should not reach here");
-        }
-        return Array.getLength(array);
-    }
-
     @ExportMessage
     long getArraySize(@Shared("isArray") @Cached IsArrayNode isArray,
                     @Shared("isList") @Cached IsListNode isList,
                     @Shared("error") @Cached BranchProfile error) throws UnsupportedMessageException {
         if (isArray.execute(this)) {
-            return getArrayLength(obj);
+            return Array.getLength(obj);
         } else if (isList.execute(this)) {
             return getListSize();
         }
@@ -1314,7 +1298,6 @@ final class HostObject implements TruffleObject {
     }
 
     @ExportMessage
-    @TruffleBoundary
     static int identityHashCode(HostObject receiver) {
         return System.identityHashCode(receiver.obj);
     }

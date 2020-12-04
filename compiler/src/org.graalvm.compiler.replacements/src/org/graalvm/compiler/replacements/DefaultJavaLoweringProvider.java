@@ -36,7 +36,6 @@ import static org.graalvm.compiler.nodes.NamedLocationIdentity.ARRAY_LENGTH_LOCA
 import static org.graalvm.compiler.nodes.calc.BinaryArithmeticNode.branchlessMax;
 import static org.graalvm.compiler.nodes.calc.BinaryArithmeticNode.branchlessMin;
 import static org.graalvm.compiler.nodes.java.ArrayLengthNode.readArrayLength;
-import static org.graalvm.compiler.nodes.util.GraphUtil.skipPiWhileNonNull;
 
 import java.nio.ByteOrder;
 import java.util.ArrayList;
@@ -94,6 +93,7 @@ import org.graalvm.compiler.nodes.calc.UnpackEndianHalfNode;
 import org.graalvm.compiler.nodes.calc.ZeroExtendNode;
 import org.graalvm.compiler.nodes.debug.VerifyHeapNode;
 import org.graalvm.compiler.nodes.extended.BoxNode;
+import org.graalvm.compiler.nodes.extended.ClassIsArrayNode;
 import org.graalvm.compiler.nodes.extended.FixedValueAnchorNode;
 import org.graalvm.compiler.nodes.extended.ForeignCallNode;
 import org.graalvm.compiler.nodes.extended.GuardedUnsafeLoadNode;
@@ -104,6 +104,7 @@ import org.graalvm.compiler.nodes.extended.LoadArrayComponentHubNode;
 import org.graalvm.compiler.nodes.extended.LoadHubNode;
 import org.graalvm.compiler.nodes.extended.LoadHubOrNullNode;
 import org.graalvm.compiler.nodes.extended.MembarNode;
+import org.graalvm.compiler.nodes.extended.ObjectIsArrayNode;
 import org.graalvm.compiler.nodes.extended.RawLoadNode;
 import org.graalvm.compiler.nodes.extended.RawStoreNode;
 import org.graalvm.compiler.nodes.extended.UnboxNode;
@@ -158,6 +159,7 @@ import org.graalvm.compiler.options.OptionValues;
 import org.graalvm.compiler.phases.util.Providers;
 import org.graalvm.compiler.replacements.SnippetLowerableMemoryNode.SnippetLowering;
 import org.graalvm.compiler.replacements.nodes.BinaryMathIntrinsicNode;
+import org.graalvm.compiler.replacements.nodes.IdentityHashCodeNode;
 import org.graalvm.compiler.replacements.nodes.UnaryMathIntrinsicNode;
 import org.graalvm.word.LocationIdentity;
 
@@ -192,6 +194,8 @@ public abstract class DefaultJavaLoweringProvider implements LoweringProvider {
 
     private BoxingSnippets.Templates boxingSnippets;
     private ConstantStringIndexOfSnippets.Templates indexOfSnippets;
+    protected IdentityHashCodeSnippets.Templates identityHashCodeSnippets;
+    protected IsArraySnippets.Templates isArraySnippets;
 
     public DefaultJavaLoweringProvider(MetaAccessProvider metaAccess, ForeignCallsProvider foreignCalls, PlatformConfigurationProvider platformConfig,
                     MetaAccessExtensionProvider metaAccessExtensionProvider,
@@ -316,6 +320,10 @@ public abstract class DefaultJavaLoweringProvider implements LoweringProvider {
                 lowerVolatileWrite(((VolatileWriteNode) n), tool);
             } else if (n instanceof RegisterFinalizerNode) {
                 return;
+            } else if (n instanceof IdentityHashCodeNode) {
+                identityHashCodeSnippets.lower((IdentityHashCodeNode) n, tool);
+            } else if (n instanceof ObjectIsArrayNode || n instanceof ClassIsArrayNode) {
+                isArraySnippets.lower((LogicNode) n, tool);
             } else {
                 throw GraalError.shouldNotReachHere("Node implementing Lowerable not handled: " + n);
             }
@@ -635,7 +643,7 @@ public abstract class DefaultJavaLoweringProvider implements LoweringProvider {
      */
     protected ReadNode createReadArrayLength(ValueNode array, FixedNode before, LoweringTool tool) {
         StructuredGraph graph = array.graph();
-        ValueNode canonicalArray = this.createNullCheckedValue(skipPiWhileNonNull(array), before, tool);
+        ValueNode canonicalArray = this.createNullCheckedValue(GraphUtil.skipPiWhileNonNullArray(array), before, tool);
         AddressNode address = createOffsetAddress(graph, canonicalArray, arrayLengthOffset());
         ReadNode readArrayLength = graph.add(new ReadNode(address, ARRAY_LENGTH_LOCATION, StampFactory.positiveInt(), BarrierType.NONE));
         graph.addBeforeFixed(before, readArrayLength);

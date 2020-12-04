@@ -130,7 +130,6 @@ public class ChunkedImageHeapLayouter extends AbstractImageHeapLayouter<ChunkedI
             int chunkPosition = NumUtil.safeToInt(current.getBegin());
             if (current instanceof AlignedChunk) {
                 AlignedChunk aligned = (AlignedChunk) current;
-                assert aligned.isFinished();
                 writer.initializeAlignedChunk(chunkPosition, current.getTopOffset(), current.getEndOffset(), offsetToPrevious, offsetToNext);
                 for (ImageHeapObject obj : aligned.getObjects()) {
                     long offsetInChunk = obj.getOffset() - chunkPosition;

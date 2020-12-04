@@ -34,7 +34,7 @@ import java.io.IOException;
 import java.nio.file.Path;
 import java.nio.file.Paths;
 
-import com.oracle.truffle.llvm.runtime.NFIContextExtension;
+import com.oracle.truffle.llvm.runtime.NativeContextExtension;
 import com.oracle.truffle.llvm.runtime.options.SulongEngineOption;
 import com.oracle.truffle.llvm.tests.BaseSuiteHarness;
 import org.graalvm.polyglot.Context;
@@ -61,7 +61,7 @@ public class InteropTestBase {
     }
 
     protected static final Path testBase = Paths.get(TestOptions.TEST_SUITE_PATH, "interop");
-    public static final String TEST_FILE_NAME = "O1." + NFIContextExtension.getNativeLibrarySuffix();
+    public static final String TEST_FILE_NAME = "O1." + NativeContextExtension.getNativeLibrarySuffix();
 
     protected static Object loadTestBitcodeInternal(String name) {
         File file = Paths.get(testBase.toString(), name + BaseSuiteHarness.TEST_DIR_EXT, TEST_FILE_NAME).toFile();

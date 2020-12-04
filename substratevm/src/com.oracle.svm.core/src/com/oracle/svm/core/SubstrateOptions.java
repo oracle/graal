@@ -375,9 +375,6 @@ public class SubstrateOptions {
         return "llvm".equals(CompilerBackend.getValue());
     }
 
-    @Option(help = "Revert to using previous native-image type check.")//
-    public static final HostedOptionKey<Boolean> UseLegacyTypeCheck = new HostedOptionKey<>(false);
-
     @Option(help = "Emit substitutions for UTF16 and latin1 compression", type = OptionType.Debug)//
     public static final HostedOptionKey<Boolean> EmitStringEncodingSubstitutions = new HostedOptionKey<>(true);
 

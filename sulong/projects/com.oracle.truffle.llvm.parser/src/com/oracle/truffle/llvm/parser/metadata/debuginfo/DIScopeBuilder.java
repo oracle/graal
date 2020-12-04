@@ -108,7 +108,7 @@ final class DIScopeBuilder {
         }
 
         final Env env = LLVMLanguage.getContext().getEnv();
-        String name = MDString.getIfInstance(file.getFile());
+        String name = MDString.getIfInstance(file.getMDFile());
         TruffleFile[] sourceFiles;
 
         if (STDIN_FILENAME.equals(name)) {
@@ -119,7 +119,7 @@ final class DIScopeBuilder {
             if (simple.isAbsolute()) {
                 sourceFiles = new TruffleFile[]{simple};
             } else {
-                String directoryName = MDString.getIfInstance(file.getDirectory());
+                String directoryName = MDString.getIfInstance(file.getMDDirectory());
                 if (directoryName != null) {
                     TruffleFile qualifiedFile = env.getInternalTruffleFile(directoryName + env.getFileNameSeparator() + name);
                     // provide two options if we have a directory in the debug info
@@ -455,7 +455,7 @@ final class DIScopeBuilder {
             return null;
         }
 
-        final String relPath = MDString.getIfInstance(file.getFile());
+        final String relPath = MDString.getIfInstance(file.getMDFile());
         if (relPath == null || relPath.isEmpty()) {
             return null;
         }

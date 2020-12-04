@@ -51,6 +51,7 @@ import com.oracle.truffle.llvm.runtime.nodes.memory.load.LLVMI16LoadNode;
 import com.oracle.truffle.llvm.runtime.nodes.memory.load.LLVMI32LoadNode;
 import com.oracle.truffle.llvm.runtime.nodes.memory.load.LLVMI64LoadNode;
 import com.oracle.truffle.llvm.runtime.nodes.memory.load.LLVMI8LoadNode;
+import com.oracle.truffle.llvm.runtime.nodes.memory.load.LLVMI8LoadNode.LLVMI8OffsetLoadNode;
 import com.oracle.truffle.llvm.runtime.pointer.LLVMManagedPointer;
 import com.oracle.truffle.llvm.runtime.pointer.LLVMPointer;
 
@@ -83,17 +84,15 @@ public abstract class LLVMPolyglotFromString extends LLVMIntrinsic {
     @NodeChild(value = "string", type = LLVMExpressionNode.class)
     @NodeChild(value = "len", type = LLVMExpressionNode.class)
     abstract static class ReadBytesWithLengthNode extends ReadBytesNode {
-        @Child private LLVMLoadNode load = LLVMI8LoadNode.create();
+
+        @Child private LLVMI8OffsetLoadNode load = LLVMI8OffsetLoadNode.create();
 
         @Specialization
         byte[] doRead(@SuppressWarnings("unused") LLVMCharset charset, LLVMPointer string, long len) {
             byte[] buffer = new byte[(int) len];
 
-            LLVMPointer ptr = string;
             for (int i = 0; i < len; i++) {
-                byte value = (byte) load.executeWithTarget(ptr);
-                ptr = ptr.increment(Byte.BYTES);
-                buffer[i] = value;
+                buffer[i] = load.executeWithTarget(string, i * Byte.BYTES);
             }
 
             return buffer;
@@ -124,7 +123,7 @@ public abstract class LLVMPolyglotFromString extends LLVMIntrinsic {
             LLVMPointer ptr = string;
             Object value;
             do {
-                value = load.executeWithTarget(ptr);
+                value = load.executeWithTargetGeneric(ptr);
                 ptr = ptr.increment(increment);
 
                 if (capacity - size < increment) {

@@ -48,7 +48,7 @@ OPT_FLAGS=-mem2reg -globalopt -simplifycfg -constprop -instcombine -dse -loop-si
 LD_FLAGS+=$(EXTRA_LDFLAGS)
 
 CPPFLAGS+=-I${VPATH}/include
-CFLAGS+=-g -fdebug-prefix-map=${VPATH}=com.oracle.truffle.llvm.libraries.bitcode -fPIC $(EXTRA_CFLAGS)
+CFLAGS+=-gdwarf-5 -fdebug-prefix-map=${VPATH}=com.oracle.truffle.llvm.libraries.bitcode -fPIC $(EXTRA_CFLAGS)
 CXXFLAGS+=-std=c++11 -stdlib=libc++ -DLIBCXXABI_SILENT_TERMINATE $(EXTRA_CXXFLAGS)
 
 DEPFLAGS = -MT $@ -MMD -MP -MF deps/$*.Td

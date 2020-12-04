@@ -60,25 +60,20 @@ import com.oracle.truffle.tools.chromeinspector.types.ScriptTypeProfile;
 import com.oracle.truffle.tools.chromeinspector.types.TypeObject;
 import com.oracle.truffle.tools.chromeinspector.types.TypeProfileEntry;
 
-import com.oracle.truffle.tools.coverage.CoverageTracker;
-import com.oracle.truffle.tools.coverage.RootCoverage;
-import com.oracle.truffle.tools.coverage.SectionCoverage;
-import com.oracle.truffle.tools.coverage.SourceCoverage;
-import com.oracle.truffle.tools.coverage.impl.CoverageInstrument;
-
 import com.oracle.truffle.tools.profiler.CPUSampler;
+import com.oracle.truffle.tools.profiler.CPUTracer;
 import com.oracle.truffle.tools.profiler.ProfilerNode;
 import com.oracle.truffle.tools.profiler.impl.CPUSamplerInstrument;
+import com.oracle.truffle.tools.profiler.impl.CPUTracerInstrument;
 
 public final class InspectorProfiler extends ProfilerDomain {
 
     private CPUSampler sampler;
-    private CoverageTracker coverageTracker;
+    private CPUTracer tracer;
     private TypeHandler typeHandler;
     private ScriptsHandler slh;
     private long startTimestamp;
     private boolean oldGatherSelfHitTimes;
-    private boolean detailedCoverage;
 
     private final InspectorExecutionContext context;
     private final ConnectionWatcher connectionWatcher;
@@ -93,7 +88,7 @@ public final class InspectorProfiler extends ProfilerDomain {
     public void doEnable() {
         slh = context.acquireScriptsHandler();
         sampler = context.getEnv().lookup(context.getEnv().getInstruments().get(CPUSamplerInstrument.ID), CPUSampler.class);
-        coverageTracker = context.getEnv().lookup(context.getEnv().getInstruments().get(CoverageInstrument.ID), CoverageTracker.class);
+        tracer = context.getEnv().lookup(context.getEnv().getInstruments().get(CPUTracerInstrument.ID), CPUTracer.class);
         InstrumentInfo instrumentInfo = context.getEnv().getInstruments().get(TypeProfileInstrument.ID);
         this.enabler = context.getEnv().lookup(instrumentInfo, Enabler.class);
         enabler.enable();
@@ -106,8 +101,7 @@ public final class InspectorProfiler extends ProfilerDomain {
             context.releaseScriptsHandler();
             slh = null;
             sampler = null;
-            coverageTracker.close();
-            coverageTracker = null;
+            tracer = null;
             typeHandler = null;
             enabler.disable();
             enabler = null;
@@ -148,32 +142,35 @@ public final class InspectorProfiler extends ProfilerDomain {
     @Override
     public void startPreciseCoverage(boolean callCount, boolean detailed) {
         connectionWatcher.setWaitForClose();
-        synchronized (coverageTracker) {
-            this.detailedCoverage = detailed;
-            coverageTracker.start(new CoverageTracker.Config(
-                            SourceSectionFilter.newBuilder().tagIs(detailed ? StandardTags.StatementTag.class : StandardTags.RootTag.class).includeInternal(context.isInspectInternal()).build(),
-                            callCount));
+        synchronized (tracer) {
+            tracer.setFilter(SourceSectionFilter.newBuilder().tagIs(detailed ? StandardTags.StatementTag.class : StandardTags.RootTag.class).includeInternal(context.isInspectInternal()).build());
+            tracer.setCollecting(true);
         }
     }
 
     @Override
     public void stopPreciseCoverage() {
-        synchronized (coverageTracker) {
-            coverageTracker.end();
+        synchronized (tracer) {
+            tracer.setCollecting(false);
+            tracer.clearData();
         }
     }
 
     @Override
     public Params takePreciseCoverage() {
-        synchronized (coverageTracker) {
-            return getCoverage(this.coverageTracker.resetCoverage());
+        synchronized (tracer) {
+            Params coverage = getCoverage(tracer.getPayloads());
+            tracer.clearData();
+            return coverage;
         }
     }
 
     @Override
     public Params getBestEffortCoverage() {
-        synchronized (coverageTracker) {
-            return getCoverage(this.coverageTracker.resetCoverage());
+        synchronized (tracer) {
+            Params coverage = getCoverage(tracer.getPayloads());
+            tracer.clearData();
+            return coverage;
         }
     }
 
@@ -200,38 +197,32 @@ public final class InspectorProfiler extends ProfilerDomain {
         }
     }
 
-    private Params getCoverage(SourceCoverage[] coverages) {
+    private Params getCoverage(Collection<CPUTracer.Payload> payloads) {
         JSONObject json = new JSONObject();
+        Map<Source, Map<String, Collection<CPUTracer.Payload>>> sourceToRoots = new LinkedHashMap<>();
+        payloads.forEach(payload -> {
+            Map<String, Collection<CPUTracer.Payload>> rootsToPayloads = sourceToRoots.computeIfAbsent(payload.getSourceSection().getSource(), s -> new LinkedHashMap<>());
+            Collection<CPUTracer.Payload> pls = rootsToPayloads.computeIfAbsent(payload.getRootName(), t -> new LinkedList<>());
+            pls.add(payload);
+        });
         JSONArray result = new JSONArray();
-        for (SourceCoverage coverage : coverages) {
-            RootCoverage[] rootCoverages = coverage.getRoots();
-            List<FunctionCoverage> functions = new ArrayList<>(rootCoverages.length);
-            for (RootCoverage rootCoverage : rootCoverages) {
-                if (detailedCoverage || rootCoverage.isCovered()) {
-                    SectionCoverage[] sectionCoverages = rootCoverage.getSectionCoverage();
-                    if (detailedCoverage) {
-                        List<CoverageRange> ranges = new ArrayList<>(sectionCoverages.length);
-                        for (SectionCoverage sectionCoverage : sectionCoverages) {
-                            if (sectionCoverage.isCovered()) {
-                                ranges.add(new CoverageRange(sectionCoverage.getSourceSection().getCharIndex(), sectionCoverage.getSourceSection().getCharEndIndex(), sectionCoverage.getCount()));
-                            }
-                        }
-                        if (!ranges.isEmpty()) {
-                            functions.add(new FunctionCoverage(rootCoverage.getName(), true, ranges.toArray(new CoverageRange[ranges.size()])));
-                        }
-                    } else {
-                        functions.add(new FunctionCoverage(rootCoverage.getName(), false,
-                                        new CoverageRange[]{new CoverageRange(rootCoverage.getSourceSection().getCharIndex(), rootCoverage.getSourceSection().getCharEndIndex(),
-                                                        rootCoverage.getCount())}));
-                    }
+        sourceToRoots.entrySet().stream().map(sourceEntry -> {
+            List<FunctionCoverage> functions = new ArrayList<>();
+            sourceEntry.getValue().entrySet().forEach(rootEntry -> {
+                boolean isBlockCoverage = false;
+                List<CoverageRange> ranges = new ArrayList<>();
+                for (CPUTracer.Payload payload : rootEntry.getValue()) {
+                    isBlockCoverage |= payload.getTags().contains(StandardTags.StatementTag.class);
+                    ranges.add(new CoverageRange(payload.getSourceSection().getCharIndex(), payload.getSourceSection().getCharEndIndex(), payload.getCount()));
                 }
-            }
-            if (!functions.isEmpty()) {
-                int scriptId = slh.getScriptId(coverage.getSource());
-                Script script = scriptId < 0 ? null : slh.getScript(scriptId);
-                result.put(new ScriptCoverage(script != null ? script.getId() : 0, script != null ? script.getUrl() : "", functions.toArray(new FunctionCoverage[functions.size()])).toJSON());
-            }
-        }
+                functions.add(new FunctionCoverage(rootEntry.getKey(), isBlockCoverage, ranges.toArray(new CoverageRange[ranges.size()])));
+            });
+            int scriptId = slh.getScriptId(sourceEntry.getKey());
+            Script script = scriptId < 0 ? null : slh.getScript(scriptId);
+            return new ScriptCoverage(script != null ? script.getId() : 0, script != null ? script.getUrl() : "", functions.toArray(new FunctionCoverage[functions.size()]));
+        }).forEachOrdered(scriptCoverage -> {
+            result.put(scriptCoverage.toJSON());
+        });
         json.put("result", result);
         return new Params(json);
     }

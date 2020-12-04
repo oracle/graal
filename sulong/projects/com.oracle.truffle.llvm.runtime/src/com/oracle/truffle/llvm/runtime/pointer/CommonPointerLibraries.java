@@ -30,13 +30,14 @@
 package com.oracle.truffle.llvm.runtime.pointer;
 
 import com.oracle.truffle.api.CompilerDirectives;
-import com.oracle.truffle.api.TruffleLanguage;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
+import com.oracle.truffle.api.TruffleLanguage;
 import com.oracle.truffle.api.dsl.Cached;
 import com.oracle.truffle.api.dsl.Cached.Exclusive;
 import com.oracle.truffle.api.dsl.Cached.Shared;
 import com.oracle.truffle.api.dsl.CachedContext;
 import com.oracle.truffle.api.dsl.Fallback;
+import com.oracle.truffle.api.dsl.ImportStatic;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.interop.ArityException;
 import com.oracle.truffle.api.interop.InteropLibrary;
@@ -63,7 +64,6 @@ import com.oracle.truffle.llvm.runtime.interop.export.LLVMForeignGetMemberPointe
 import com.oracle.truffle.llvm.runtime.interop.export.LLVMForeignReadNode;
 import com.oracle.truffle.llvm.runtime.interop.export.LLVMForeignWriteNode;
 import com.oracle.truffle.llvm.runtime.nodes.op.LLVMAddressEqualsNode;
-import com.oracle.truffle.llvm.runtime.nodes.others.LLVMAccessSymbolNode;
 import com.oracle.truffle.llvm.runtime.nodes.others.LLVMDynAccessSymbolNode;
 
 @ExportLibrary(value = InteropLibrary.class, receiverType = LLVMPointerImpl.class)
@@ -162,6 +162,7 @@ abstract class CommonPointerLibraries {
     }
 
     @ExportMessage
+    @ImportStatic(LLVMLanguage.class)
     static class InvokeMember {
         /**
          * @param member
@@ -173,23 +174,24 @@ abstract class CommonPointerLibraries {
          * @param llvmFunction
          * @see InteropLibrary#invokeMember(Object, String, Object[])
          */
-        @Specialization(guards = {"asClazz(receiver)==clazz", "member.equals(methodName)", "argCount==arguments.length"})
+        @Specialization(guards = {"asClazz(receiver)==clazz", "member.equals(methodName)", "argCount==arguments.length"}, assumptions = "getLanguage().singleContextAssumption")
         static Object doCached(LLVMPointerImpl receiver, String member, Object[] arguments,
-                        @CachedContext(LLVMLanguage.class) LLVMContext context, @CachedLibrary(limit = "5") InteropLibrary interop,
+                        @CachedContext(LLVMLanguage.class) LLVMContext context,
+                        @CachedLibrary(limit = "5") InteropLibrary interop,
                         @Cached(value = "asClazz(receiver)") LLVMInteropType.Clazz clazz,
                         @Cached(value = "clazz.findMethodByArguments(receiver, member, arguments)") Method method,
                         @Cached(value = "arguments.length") int argCount,
                         @Cached(value = "method.getName()") String methodName,
-                        @Cached(value = "getLLVMFunction(context, method, clazz, member)") LLVMFunction llvmFunction,
-                        @Cached(value = "create(llvmFunction)") LLVMAccessSymbolNode accessSymbolNode)
+                        @Cached(value = "getLLVMFunction(context, method, clazz, member)") LLVMFunction llvmFunction)
                         throws UnsupportedMessageException, ArityException, UnsupportedTypeException {
             Object[] newArguments = addSelfObject(receiver, arguments);
-            return interop.execute(accessSymbolNode.execute(), newArguments);
+            return interop.execute(context.getSymbol(llvmFunction), newArguments);
         }
 
         @Specialization(replaces = "doCached")
         static Object doResolve(LLVMPointerImpl receiver, String member, Object[] arguments,
-                        @CachedContext(LLVMLanguage.class) LLVMContext context, @CachedLibrary(limit = "5") InteropLibrary interop,
+                        @CachedContext(LLVMLanguage.class) LLVMContext context,
+                        @CachedLibrary(limit = "5") InteropLibrary interop,
                         @Cached LLVMDynAccessSymbolNode dynAccessSymbolNode)
                         throws UnsupportedMessageException, ArityException, UnsupportedTypeException, UnknownIdentifierException {
             Object[] newArguments = addSelfObject(receiver, arguments);
@@ -401,7 +403,7 @@ abstract class CommonPointerLibraries {
 
         @Specialization
         static boolean doNative(LLVMPointerImpl receiver, LLVMPointerImpl other,
-                        @Cached LLVMAddressEqualsNode equals) {
+                        @Cached LLVMAddressEqualsNode.Operation equals) {
             return equals.executeWithTarget(receiver, other);
         }
 
@@ -454,7 +456,7 @@ abstract class CommonPointerLibraries {
 
         @Specialization
         static TriState doPointer(LLVMPointerImpl receiver, LLVMPointerImpl other,
-                        @Cached LLVMAddressEqualsNode equals) {
+                        @Cached LLVMAddressEqualsNode.Operation equals) {
             return TriState.valueOf(equals.executeWithTarget(receiver, other));
         }
 
