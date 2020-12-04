@@ -31,6 +31,7 @@ package com.oracle.truffle.llvm.nativemode.runtime;
 
 import java.util.ArrayList;
 import java.util.List;
+import java.util.WeakHashMap;
 
 import com.oracle.truffle.llvm.runtime.LLVMContext;
 import com.oracle.truffle.llvm.runtime.LLVMFunction;
@@ -50,17 +51,55 @@ import com.oracle.truffle.api.interop.InteropLibrary;
 import com.oracle.truffle.api.interop.UnknownIdentifierException;
 import com.oracle.truffle.api.interop.UnsupportedMessageException;
 import com.oracle.truffle.api.source.Source;
+import com.oracle.truffle.llvm.runtime.ContextExtension;
 import com.oracle.truffle.llvm.runtime.except.LLVMLinkerException;
 import com.oracle.truffle.llvm.runtime.interop.nfi.LLVMNativeWrapper;
 import com.oracle.truffle.llvm.runtime.options.SulongEngineOption;
+import com.oracle.truffle.llvm.runtime.pointer.LLVMNativePointer;
 import com.oracle.truffle.llvm.runtime.types.FunctionType;
 import com.oracle.truffle.llvm.runtime.types.PointerType;
 import com.oracle.truffle.llvm.runtime.types.PrimitiveType;
 import com.oracle.truffle.llvm.runtime.types.PrimitiveType.PrimitiveKind;
 import com.oracle.truffle.llvm.runtime.types.Type;
 import com.oracle.truffle.llvm.runtime.types.VoidType;
+import com.oracle.truffle.nfi.api.SignatureLibrary;
+import org.graalvm.collections.Equivalence;
 
 public final class NFIContextExtension extends NativeContextExtension {
+
+    private static final class SignatureSourceCache {
+
+        private final ArrayList<WeakHashMap<FunctionType, Source>> cache;
+
+        SignatureSourceCache() {
+            // skipArgs is always either 0 or 1
+            cache = new ArrayList<>(2);
+            cache.add(new WeakHashMap<>());
+            cache.add(new WeakHashMap<>());
+        }
+
+        synchronized Source get(FunctionType type, int skipArgs) throws UnsupportedNativeTypeException {
+            WeakHashMap<FunctionType, Source> map = cache.get(skipArgs);
+            Source ret = map.get(type);
+            if (ret == null) {
+                String sig = getNativeSignature(type, skipArgs);
+                ret = Source.newBuilder("nfi", sig, "llvm-nfi-signature").build();
+                map.put(type, ret);
+            }
+            return ret;
+        }
+    }
+
+    public static final class Factory implements ContextExtension.Factory<NativeContextExtension> {
+
+        // share the SignatureSourceCache between contexts
+        private final SignatureSourceCache signatureSourceCache = new SignatureSourceCache();
+
+        @Override
+        public NativeContextExtension create(Env env) {
+            return new NFIContextExtension(env, signatureSourceCache);
+        }
+    }
 
     private static final InteropLibrary INTEROP = InteropLibrary.getFactory().getUncached();
 
@@ -70,9 +109,13 @@ public final class NFIContextExtension extends NativeContextExtension {
     private final EconomicMap<TruffleFile, CallTarget> visited = EconomicMap.create();
     private final Env env;
 
-    public NFIContextExtension(Env env) {
+    private final SignatureSourceCache signatureSourceCache;
+    private final EconomicMap<Source, Object> signatureCache = EconomicMap.create(Equivalence.IDENTITY);
+
+    private NFIContextExtension(Env env, SignatureSourceCache signatureSourceCache) {
         assert env.getOptions().get(SulongEngineOption.ENABLE_NFI);
         this.env = env;
+        this.signatureSourceCache = signatureSourceCache;
     }
 
     @Override
@@ -229,7 +272,7 @@ public final class NFIContextExtension extends NativeContextExtension {
         }
     }
 
-    private String getNativeType(Type type) throws UnsupportedNativeTypeException {
+    private static String getNativeType(Type type) throws UnsupportedNativeTypeException {
         if (type instanceof FunctionType) {
             return getNativeSignature((FunctionType) type, 0);
         } else if (type instanceof PointerType && ((PointerType) type).getPointeeType() instanceof FunctionType) {
@@ -264,7 +307,7 @@ public final class NFIContextExtension extends NativeContextExtension {
         throw new UnsupportedNativeTypeException(type);
     }
 
-    private String[] getNativeArgumentTypes(FunctionType functionType, int skipArguments) throws UnsupportedNativeTypeException {
+    private static String[] getNativeArgumentTypes(FunctionType functionType, int skipArguments) throws UnsupportedNativeTypeException {
         String[] types = new String[functionType.getNumberOfArguments() - skipArguments];
         for (int i = skipArguments; i < functionType.getNumberOfArguments(); i++) {
             types[i - skipArguments] = getNativeType(functionType.getArgumentType(i));
@@ -343,8 +386,50 @@ public final class NFIContextExtension extends NativeContextExtension {
     }
 
     @Override
-    public String getNativeSignature(FunctionType type, int skipArguments) throws UnsupportedNativeTypeException {
+    public Source getNativeSignatureSource(FunctionType type, int skipArguments) throws UnsupportedNativeTypeException {
         CompilerAsserts.neverPartOfCompilation();
+        return signatureSourceCache.get(type, skipArguments);
+    }
+
+    @TruffleBoundary
+    private Object createSignature(Source signatureSource) {
+        synchronized (signatureCache) {
+            Object ret = signatureCache.get(signatureSource);
+            if (ret == null) {
+                CallTarget createSignature = env.parseInternal(signatureSource);
+                ret = createSignature.call();
+                signatureCache.put(signatureSource, ret);
+            }
+            return ret;
+        }
+    }
+
+    private Object getCachedSignature(Source signatureSource) {
+        Object ret = signatureCache.get(signatureSource);
+        if (ret == null) {
+            ret = createSignature(signatureSource);
+        }
+        return ret;
+    }
+
+    @Override
+    public Object bindSignature(LLVMFunctionCode function, Source signatureSource) {
+        // TODO(rs): make a fast-path version of this code
+        CompilerAsserts.neverPartOfCompilation();
+        Object nativeFunction = function.getNativeFunctionSlowPath();
+        Object signature = getCachedSignature(signatureSource);
+        return SignatureLibrary.getUncached().bind(signature, nativeFunction);
+    }
+
+    @Override
+    public Object bindSignature(long fnPtr, Source signatureSource) {
+        // TODO(rs): make a fast-path version of this code
+        CompilerAsserts.neverPartOfCompilation();
+        Object signature = getCachedSignature(signatureSource);
+        return SignatureLibrary.getUncached().bind(signature, LLVMNativePointer.create(fnPtr));
+    }
+
+    private static String getNativeSignature(FunctionType type, int skipArguments) throws UnsupportedNativeTypeException {
         // TODO varargs
         CompilerAsserts.neverPartOfCompilation();
         String nativeRet = getNativeType(type.getReturnType());

@@ -31,6 +31,7 @@ package com.oracle.truffle.llvm.runtime;
 
 import com.oracle.truffle.api.CallTarget;
 import com.oracle.truffle.api.TruffleFile;
+import com.oracle.truffle.api.source.Source;
 import com.oracle.truffle.llvm.runtime.types.FunctionType;
 import com.oracle.truffle.llvm.runtime.types.Type;
 
@@ -91,7 +92,11 @@ public abstract class NativeContextExtension implements ContextExtension {
 
     public abstract Object getNativeFunction(String name, String signature);
 
-    public abstract String getNativeSignature(FunctionType type, int skipArguments) throws UnsupportedNativeTypeException;
+    public abstract Source getNativeSignatureSource(FunctionType type, int skipArguments) throws UnsupportedNativeTypeException;
+
+    public abstract Object bindSignature(LLVMFunctionCode function, Source signatureSource);
+
+    public abstract Object bindSignature(long fnPtr, Source signatureSource);
 
     /**
      * Allow subclasses to locate internal libraries.
