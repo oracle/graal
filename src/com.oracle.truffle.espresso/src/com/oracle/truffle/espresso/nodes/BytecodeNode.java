@@ -634,7 +634,14 @@ public final class BytecodeNode extends EspressoMethodNode {
         int statementIndex = -1;
         int nextStatementIndex = 0;
 
-        final long[] primitives = (long[]) FrameUtil.getObjectSafe(frame, primitivesSlot);
+        long[] primitivesTemp = (long[]) FrameUtil.getObjectSafe(frame, primitivesSlot);
+        // pop frame cause initializeBody to be skipped on re-entry
+        // so force the initialization here
+        if (primitivesTemp == null) {
+            initializeBody(frame);
+            primitivesTemp = (long[]) FrameUtil.getObjectSafe(frame, primitivesSlot);
+        }
+        final long[] primitives = primitivesTemp;
         final Object[] refs = (Object[]) FrameUtil.getObjectSafe(frame, refsSlot);
         final int[] loopCount = new int[1];
 
