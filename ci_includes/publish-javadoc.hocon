@@ -24,7 +24,7 @@ builds += [
         [cd, "../../.."],
         [set-export, GRAAL_REPO, [pwd]],
         [cd, ".."]
-        ["git", "clone", "https://github.com/graalvm/graalvm-website.git"],
+        ["git", "clone", [mx, urlrewrite, "https://github.com/graalvm/graalvm-website.git"]],
         [cd, "graalvm-website"]
         ["rm", "-rf", "sdk/javadoc", "truffle/javadoc", "tools/javadoc", "graphio/javadoc"],
         ["git", "status" ],
