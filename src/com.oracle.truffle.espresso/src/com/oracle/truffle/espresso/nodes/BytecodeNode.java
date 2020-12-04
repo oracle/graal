@@ -553,9 +553,8 @@ public final class BytecodeNode extends EspressoMethodNode {
     // region Local accessors
 
     public static void freeLocal(long[] primitives, Object[] refs, int slot) {
-        // TODO(garcia): use frame.clear() once available
-        EspressoFrame.putLong(primitives, primitives.length - 1 - slot, 0);
-        EspressoFrame.putRawObject(refs, refs.length - 1 - slot, null);
+        assert primitives.length == refs.length;
+        EspressoFrame.clear(primitives, refs, primitives.length - 1 - slot);
     }
 
     public static void setLocalObject(Object[] refs, int slot, StaticObject value) {
