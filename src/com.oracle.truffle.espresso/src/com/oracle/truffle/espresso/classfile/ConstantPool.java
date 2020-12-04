@@ -478,6 +478,7 @@ public abstract class ConstantPool {
                 case INTEGER: {
                     if (existsAt(patches, i)) {
                         entries[i] = IntegerConstant.create(context.getMeta().unboxInteger(patches[i]));
+                        stream.readS4();
                         break;
                     }
                     entries[i] = IntegerConstant.create(stream.readS4());
