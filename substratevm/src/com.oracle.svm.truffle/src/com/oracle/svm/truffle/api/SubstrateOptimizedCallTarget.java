@@ -64,14 +64,6 @@ public class SubstrateOptimizedCallTarget extends OptimizedCallTarget implements
         return getSpeculationLog();
     }
 
-    /**
-     * Prevents reads from floating across a safepoint when the caller is inlined in another method.
-     * Intrinsified in {@link SubstrateTruffleGraphBuilderPlugins}.
-     */
-    protected static void safepointBarrier() {
-        // Intrinsified, but empty so it can be called during hosted Truffle calls
-    }
-
     @Override
     public boolean isValid() {
         // Only the most recently installed code can be valid, which entails being an entry point.
@@ -90,8 +82,7 @@ public class SubstrateOptimizedCallTarget extends OptimizedCallTarget implements
 
     @Override
     public Object doInvoke(Object[] args) {
-        safepointBarrier();
-        return SubstrateOptimizedCallTargetInstalledCode.doInvoke(this, installedCode, args);
+        return SubstrateOptimizedCallTargetInstalledCode.doInvoke(this, args);
     }
 
     @Override

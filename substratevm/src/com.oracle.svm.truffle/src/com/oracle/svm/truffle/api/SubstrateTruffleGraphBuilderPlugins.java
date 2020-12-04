@@ -62,7 +62,7 @@ public class SubstrateTruffleGraphBuilderPlugins {
     }
 
     private static void registerOptimizedCallTargetPlugins(InvocationPlugins plugins) {
-        InvocationPlugins.Registration r0 = new InvocationPlugins.Registration(plugins, SubstrateOptimizedCallTarget.class);
+        InvocationPlugins.Registration r0 = new InvocationPlugins.Registration(plugins, SubstrateOptimizedCallTargetInstalledCode.class);
         r0.register0("safepointBarrier", new InvocationPlugin() {
             @Override
             public boolean apply(GraphBuilderContext b, ResolvedJavaMethod targetMethod, Receiver receiver) {

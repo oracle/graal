@@ -141,14 +141,23 @@ public class SubstrateOptimizedCallTargetInstalledCode extends InstalledCode imp
         }
     }
 
-    static Object doInvoke(SubstrateOptimizedCallTarget callTarget, SubstrateOptimizedCallTargetInstalledCode installedCode, Object[] args) {
+    /**
+     * Prevents reads from floating across a safepoint when the caller is inlined in another method.
+     * Intrinsified in {@link SubstrateTruffleGraphBuilderPlugins}.
+     */
+    protected static void safepointBarrier() {
+        // Intrinsified, but empty so it can be called during hosted Truffle calls
+    }
+
+    static Object doInvoke(SubstrateOptimizedCallTarget callTarget, Object[] args) {
+        safepointBarrier();
         /*
          * We have to be very careful that the calling code is uninterruptible, i.e., has no
          * safepoint between the read of the entry point address and the indirect call to this
          * address. Otherwise, the code can be invalidated concurrently and we invoke an address
          * that no longer contains executable code.
          */
-        long start = installedCode.entryPoint;
+        long start = callTarget.installedCode.entryPoint;
         if (start != 0) {
             SubstrateOptimizedCallTarget.CallBoundaryFunctionPointer target = WordFactory.pointer(start);
             Object result = target.invoke(callTarget, args);
