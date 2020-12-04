@@ -61,7 +61,7 @@ public abstract class InvokeVirtualNode extends QuickNode {
         // vtable lookup.
         MethodVersion target = methodLookup(receiver, resolutionSeed);
         if (!target.getMethod().hasCode()) {
-            CompilerDirectives.transferToInterpreter();
+            enterExceptionProfile();
             Meta meta = receiver.getKlass().getMeta();
             throw Meta.throwException(meta.java_lang_AbstractMethodError);
         }
