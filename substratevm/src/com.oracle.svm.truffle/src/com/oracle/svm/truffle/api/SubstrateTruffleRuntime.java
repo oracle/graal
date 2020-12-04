@@ -60,6 +60,8 @@ import com.oracle.svm.hosted.c.GraalAccess;
 import com.oracle.svm.truffle.TruffleFeature;
 import com.oracle.truffle.api.CompilerAsserts;
 import com.oracle.truffle.api.nodes.RootNode;
+import com.oracle.truffle.api.utilities.TriState;
+import java.util.function.Supplier;
 
 import jdk.vm.ci.code.stack.StackIntrospection;
 import jdk.vm.ci.meta.JavaConstant;
@@ -351,6 +353,21 @@ public final class SubstrateTruffleRuntime extends GraalTruffleRuntime {
     public void log(String loggerId, CompilableTruffleAST compilable, String message) {
         if (!TruffleFeature.getSupport().tryLog(this, loggerId, compilable, message)) {
             super.log(loggerId, compilable, message);
+        }
+    }
+
+    @Override
+    public boolean isSuppressedFailure(CompilableTruffleAST compilable, Supplier<String> serializedException) {
+        TriState res = TruffleFeature.getSupport().tryIsSuppressedFailure(compilable, serializedException);
+        switch (res) {
+            case TRUE:
+                return true;
+            case FALSE:
+                return false;
+            case UNDEFINED:
+                return super.isSuppressedFailure(compilable, serializedException);
+            default:
+                throw new IllegalStateException("Unsupported value " + res);
         }
     }
 }

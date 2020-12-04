@@ -145,13 +145,13 @@ final class HSCompilableTruffleAST extends HSObject implements CompilableTruffle
     @TruffleFromLibGraal(CreateStringSupplier)
     @TruffleFromLibGraal(OnCompilationFailed)
     @Override
-    public void onCompilationFailed(Supplier<String> serializedException, boolean bailout, boolean permanentBailout, boolean graphTooBig) {
+    public void onCompilationFailed(Supplier<String> serializedException, boolean silent, boolean bailout, boolean permanentBailout, boolean graphTooBig) {
         long serializedExceptionHandle = LibGraalObjectHandles.create(serializedException);
         boolean success = false;
         JNIEnv env = env();
         try {
             JObject instance = callCreateStringSupplier(env, serializedExceptionHandle);
-            callOnCompilationFailed(env, getHandle(), instance, bailout, permanentBailout, graphTooBig);
+            callOnCompilationFailed(env, getHandle(), instance, silent, bailout, permanentBailout, graphTooBig);
             success = true;
         } finally {
             if (!success) {
