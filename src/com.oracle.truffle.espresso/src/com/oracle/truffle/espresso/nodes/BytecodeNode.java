@@ -2332,16 +2332,20 @@ public final class BytecodeNode extends EspressoMethodNode {
             case Double  : putDouble(primitives, resultAt, InterpreterToVM.getFieldDouble(receiver, field)); break;
             case Float   : putFloat(primitives, resultAt, InterpreterToVM.getFieldFloat(receiver, field));   break;
             case Long    : putLong(primitives, resultAt, InterpreterToVM.getFieldLong(receiver, field));     break;
-            case Object  : putObject(refs, resultAt, InterpreterToVM.getFieldObject(receiver, field)); break;
-            default      :
+            case Object  : {
+                StaticObject value = InterpreterToVM.getFieldObject(receiver, field);
+                putObject(refs, resultAt, value);
+                if (noForeignObjects.isValid() && value.isForeignObject()) {
+                    CompilerDirectives.transferToInterpreterAndInvalidate();
+                    noForeignObjects.invalidate();
+                }
+                break;
+            }
+            default :
                 CompilerDirectives.transferToInterpreter();
                 throw EspressoError.shouldNotReachHere("unexpected kind");
         }
         // @formatter:on
-        if (noForeignObjects.isValid() && field.getKind().isObject() && peekObject(refs, resultAt).isForeignObject()) {
-            CompilerDirectives.transferToInterpreterAndInvalidate();
-            noForeignObjects.invalidate();
-        }
         return field.getKind().getSlotCount();
     }
 
