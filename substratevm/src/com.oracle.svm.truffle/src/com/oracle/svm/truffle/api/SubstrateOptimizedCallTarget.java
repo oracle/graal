@@ -36,6 +36,17 @@ import com.oracle.truffle.api.nodes.RootNode;
 import jdk.vm.ci.code.InstalledCode;
 import jdk.vm.ci.meta.SpeculationLog;
 
+/**
+ * Truffle call target which can be partially evaluated and compiled to machine code, which is then
+ * represented by {@link SubstrateOptimizedCallTargetInstalledCode}. At most one piece of code is
+ * <em>valid</em> as an entry point for new invocations at any given time, but arbitrarily many
+ * pieces of code for this call target can be <em>alive</em> at the same time (for example, from
+ * previous lower-tier compilations).
+ * <p>
+ * Assume that methods such as {@link #isValid} or {@link #getCodeAddress} return stale values
+ * because internal state can change at any safepoint. Consistent reads of such values require
+ * ensuring the absence of safepoint checks and preventing floating reads and read elimination.
+ */
 public class SubstrateOptimizedCallTarget extends OptimizedCallTarget implements SubstrateCompilableTruffleAST {
 
     /**

@@ -24,9 +24,24 @@
  */
 package com.oracle.svm.core.deopt;
 
+import com.oracle.svm.core.code.CodeInfo;
+import com.oracle.svm.core.code.CodeInfoAccess;
+import com.oracle.svm.core.code.RuntimeCodeCache;
+
 import jdk.vm.ci.code.InstalledCode;
 import jdk.vm.ci.meta.ResolvedJavaMethod;
 
+/**
+ * Interface for objects representing runtime-compiled code that can be installed in the
+ * {@linkplain RuntimeCodeCache runtime code cache}. This interface is intentionally compatible with
+ * the class {@link InstalledCode}, but can be implemented in an existing class hierarchy. Code also
+ * has native structures associated with it, see {@link CodeInfo} and {@link CodeInfoAccess}.
+ * <p>
+ * Assume that methods such as {@link #isValid}, {@link #isAlive} or {@link #getEntryPoint} return
+ * stale values because generally, their internal state can change at any safepoint. Consistent
+ * reads of such values require ensuring the absence of safepoint checks and preventing floating
+ * reads and read elimination.
+ */
 public interface SubstrateInstalledCode {
 
     String getName();
