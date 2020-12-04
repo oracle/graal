@@ -73,6 +73,21 @@ public class SerializationChecksumCalculator {
 
     }
 
+    private static class Holder {
+
+        static final boolean warningPrinted;
+        static {
+            // Checkstyle: stop
+            System.out.println("Warning: Object checksum calculation is not resistant against collisions. Deserialization of untrusted data is not supported.");
+            // Checkstyle: resume
+            warningPrinted = true;
+        }
+
+        static boolean printWarning() {
+            return warningPrinted;
+        }
+    }
+
     /**
      * This class is for regular Java usage.
      */
@@ -85,6 +100,7 @@ public class SerializationChecksumCalculator {
                 return checksum;
             }
             if (targetConstructorClassName != null && targetConstructorClassName.length() > 0) {
+                Holder.printWarning();
                 String currentClassName = serializationClassName;
                 Class<?> currentClass = serializationClass;
                 while (!targetConstructorClassName.equals(currentClassName)) {
