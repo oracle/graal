@@ -18,9 +18,39 @@ import com.oracle.truffle.api.profiles.BranchProfile;
 import com.oracle.truffle.espresso.meta.EspressoError;
 import com.oracle.truffle.espresso.runtime.EspressoException;
 import com.oracle.truffle.espresso.runtime.StaticObject;
+import org.graalvm.polyglot.Context;
+import org.graalvm.polyglot.Engine;
+import org.graalvm.polyglot.HostAccess;
+import org.graalvm.polyglot.PolyglotException;
+import org.graalvm.polyglot.SourceSection;
+import org.graalvm.polyglot.TypeLiteral;
+import org.graalvm.polyglot.impl.AbstractPolyglotImpl;
+import org.graalvm.polyglot.proxy.Proxy;
+
+import java.lang.annotation.ElementType;
+import java.lang.annotation.Repeatable;
+import java.lang.annotation.Retention;
+import java.lang.annotation.RetentionPolicy;
+import java.lang.annotation.Target;
+import java.math.BigDecimal;
+import java.math.BigInteger;
+import java.time.Duration;
+import java.time.Instant;
+import java.time.LocalDate;
+import java.time.LocalDateTime;
+import java.time.LocalTime;
+import java.time.ZoneId;
+import java.time.ZonedDateTime;
+import java.time.zone.ZoneRules;
+import java.util.Date;
+import java.util.List;
+import java.util.Map;
+import java.util.Objects;
+import java.util.Set;
+import java.util.function.Function;
 
 @ExportLibrary(InteropLibrary.class)
-public class EspressoBindings implements TruffleObject {
+public final class EspressoBindings implements TruffleObject {
 
     final StaticObject loader;
 
@@ -59,7 +89,7 @@ public class EspressoBindings implements TruffleObject {
     }
 
     @ExportMessage
-    Object getMembers(boolean includeInternal) {
+    Object getMembers(@SuppressWarnings("unused") boolean includeInternal) {
         return EmptyKeysArray.INSTANCE;
     }
 
@@ -109,7 +139,7 @@ public class EspressoBindings implements TruffleObject {
 
     @ExportMessage
     @SuppressWarnings("static-method")
-    Class<? extends TruffleLanguage<?>> getLanguage() throws UnsupportedMessageException {
+    Class<? extends TruffleLanguage<?>> getLanguage() {
         return EspressoLanguage.class;
     }
 }
