@@ -82,6 +82,10 @@ public final class LLVMFunctionDescriptor extends LLVMInternalTruffleObject impl
         return functionCode;
     }
 
+    public long getNativePointer() {
+        return nativePointer;
+    }
+
     public LLVMFunctionDescriptor(LLVMFunction llvmFunction, LLVMFunctionCode functionCode) {
         CompilerAsserts.neverPartOfCompilation();
         this.llvmFunction = llvmFunction;
