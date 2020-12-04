@@ -46,15 +46,20 @@ import jdk.vm.ci.code.Register;
  *  - Literal: PC + 19-bit signed word aligned offset
  * </pre>
  *
- * Not all addressing modes are supported for all instructions.
+ * Note not all addressing modes are supported for all instructions. For debugging purposes, the
+ * address also stores the expected size of the memory access it will be associated with in
+ * {@link #bitMemoryTransferSize}.
  */
 public final class AArch64Address extends AbstractAddress {
-    // Placeholder for addresses that get patched later.
-    public static final AArch64Address PLACEHOLDER = createPcLiteralAddress(0);
+    /** This means that {@link #bitMemoryTransferSize} is allowed to be any size. */
+    public static final int ANY_SIZE = -1;
+
+    /** Placeholder for addresses that get patched later. */
+    public static final AArch64Address PLACEHOLDER = createPCLiteralAddress(ANY_SIZE);
 
     public enum AddressingMode {
         /**
-         * base + uimm12 << log2(memory_transfer_size).
+         * base + uimm12 << log2(byte_memory_transfer_size).
          */
         IMMEDIATE_UNSIGNED_SCALED,
         /**
@@ -66,11 +71,11 @@ public final class AArch64Address extends AbstractAddress {
          */
         BASE_REGISTER_ONLY,
         /**
-         * base + offset [<< log2(memory_transfer_size)].
+         * base + offset [<< log2(byte_memory_transfer_size)].
          */
         REGISTER_OFFSET,
         /**
-         * base + extend(offset) [<< log2(memory_transfer_size)].
+         * base + extend(offset) [<< log2(byte_memory_transfer_size)].
          */
         EXTENDED_REGISTER_OFFSET,
         /**
@@ -86,20 +91,21 @@ public final class AArch64Address extends AbstractAddress {
          */
         IMMEDIATE_PRE_INDEXED,
         /**
-         * base + imm7 << log2(memory_transfer_size).
+         * base + imm7 << log2(byte_memory_transfer_size).
          */
         IMMEDIATE_PAIR_SIGNED_SCALED,
         /**
-         * address = base. base is updated to base + imm7 << log2(memory_transfer_size)
+         * address = base. base is updated to base + imm7 << log2(byte_memory_transfer_size)
          */
         IMMEDIATE_PAIR_POST_INDEXED,
         /**
-         * address = base + imm7 << log2(memory_transfer_size). base is updated to base + imm7 <<
-         * log2(memory_transfer_size)
+         * address = base + imm7 << log2(byte_memory_transfer_size). base is updated to base + imm7
+         * << log2(byte_memory_transfer_size)
          */
         IMMEDIATE_PAIR_PRE_INDEXED,
     }
 
+    private final int bitMemoryTransferSize;
     private final Register base;
     private final Register offset;
     private final int immediate;
@@ -116,24 +122,25 @@ public final class AArch64Address extends AbstractAddress {
      * register the register has to be the zero-register. extendType has to be null for every
      * addressingMode except EXTENDED_REGISTER_OFFSET.
      */
-    public static AArch64Address createAddress(AddressingMode addressingMode, Register base, Register offset, int immediate, boolean isScaled, AArch64Assembler.ExtendType extendType) {
-        return new AArch64Address(base, offset, immediate, isScaled, extendType, addressingMode);
+    public static AArch64Address createAddress(int bitMemoryTransferSize, AddressingMode addressingMode, Register base, Register offset, int immediate, boolean registerOffsetScaled,
+                    AArch64Assembler.ExtendType extendType) {
+        return new AArch64Address(bitMemoryTransferSize, base, offset, immediate, registerOffsetScaled, extendType, addressingMode);
     }
 
     /**
      * Checks whether the memory size provided is available for the given immediate addressing mode.
      */
-    private static boolean isValidSize(int size, AddressingMode mode) {
+    private static boolean isValidSize(int bitMemoryTransferSize, AddressingMode mode) {
         switch (mode) {
             case IMMEDIATE_SIGNED_UNSCALED:
             case IMMEDIATE_POST_INDEXED:
             case IMMEDIATE_PRE_INDEXED:
             case IMMEDIATE_UNSIGNED_SCALED:
-                return size == 8 || size == 16 || size == 32 || size == 64 || size == 128;
+                return bitMemoryTransferSize == 8 || bitMemoryTransferSize == 16 || bitMemoryTransferSize == 32 || bitMemoryTransferSize == 64 || bitMemoryTransferSize == 128;
             case IMMEDIATE_PAIR_SIGNED_SCALED:
             case IMMEDIATE_PAIR_POST_INDEXED:
             case IMMEDIATE_PAIR_PRE_INDEXED:
-                return size == 32 || size == 64 || size == 128;
+                return bitMemoryTransferSize == 32 || bitMemoryTransferSize == 64 || bitMemoryTransferSize == 128;
         }
         throw GraalError.shouldNotReachHere();
     }
@@ -172,21 +179,33 @@ public final class AArch64Address extends AbstractAddress {
     }
 
     /**
+     * Checks whether the offset provided is aligned for a given memory operation size.
+     *
+     * @param bitMemoryTransferSize Memory operation size. This determines the alignment
+     *            requirements.
+     * @param offset Value to be checked.
+     */
+    public static boolean isOffsetAligned(int bitMemoryTransferSize, long offset) {
+        assert bitMemoryTransferSize == 8 || bitMemoryTransferSize == 16 || bitMemoryTransferSize == 32 || bitMemoryTransferSize == 64 || bitMemoryTransferSize == 128;
+        int mask = (bitMemoryTransferSize / Byte.SIZE) - 1;
+        return (offset & mask) == 0;
+    }
+
+    /**
      * Scales the immediate value according the size of the memory operation.
      *
-     * @param size Memory operation size. This determines now many bits will be shifted out from the
-     *            immediate in its scaled representation.
+     * @param bitMemoryTransferSize Memory operation size. This determines now many bits will be
+     *            shifted out from the immediate in its scaled representation.
      * @param immediate Value to be scaled.
      * @return The scaled representation of the immediate. If non-zero bits would be shifted out,
      *         then Integer.MAX_VALUE is returned.
      */
-    private static int getScaledImmediate(int size, int immediate) {
-        int byteSize = size / 8;
-        int mask = byteSize - 1;
-        if (mask != 0 && ((immediate & mask) != 0)) {
+    private static int getScaledImmediate(int bitMemoryTransferSize, int immediate) {
+        if (!isOffsetAligned(bitMemoryTransferSize, immediate)) {
+            /* Non-zero values would be shifted out. */
             return Integer.MAX_VALUE;
         }
-        return immediate / byteSize;
+        return immediate / (bitMemoryTransferSize / Byte.SIZE);
     }
 
     /**
@@ -194,36 +213,36 @@ public final class AArch64Address extends AbstractAddress {
      * expects an unscaled immediate value and will fail if the provided immediate cannot be encoded
      * within the requested addressing mode.
      *
-     * @param size Memory operation size.
+     * @param bitMemoryTransferSize Memory operation size.
      * @param addressingMode Immediate addressing mode to use.
      * @param base Base register for memory operation. May not be null or the zero-register.
      * @param immediate *Unscaled* immediate value to encode. All scaling needed is performed within
      *            this method
      * @return Address encoding for the input operation.
      */
-    public static AArch64Address createImmediateAddress(int size, AddressingMode addressingMode, Register base, int immediate) {
-        GraalError.guarantee(isValidImmediateAddress(size, addressingMode, immediate), "provided immediate cannot be encoded in instruction");
+    public static AArch64Address createImmediateAddress(int bitMemoryTransferSize, AddressingMode addressingMode, Register base, int immediate) {
+        GraalError.guarantee(isValidImmediateAddress(bitMemoryTransferSize, addressingMode, immediate), "provided immediate cannot be encoded in instruction");
 
         boolean isScaled = isImmediateScaled(addressingMode);
         int absoluteImm = immediate;
         if (isScaled) {
-            absoluteImm = getScaledImmediate(size, immediate);
+            absoluteImm = getScaledImmediate(bitMemoryTransferSize, immediate);
         }
 
         /* Note register offset scaled field does not matter for immediate addresses. */
-        return new AArch64Address(base, zr, absoluteImm, false, null, addressingMode);
+        return new AArch64Address(bitMemoryTransferSize, base, zr, absoluteImm, false, null, addressingMode);
     }
 
     /**
      * Checks whether an immediate can be encoded within the provided immediate addressing mode.
      * This method expected an unscaled immediate value.
      */
-    public static boolean isValidImmediateAddress(int size, AddressingMode addressingMode, int immediate) {
-        assert isValidSize(size, addressingMode) : "invalid transfer size";
+    public static boolean isValidImmediateAddress(int bitMemoryTransferSize, AddressingMode addressingMode, int immediate) {
+        assert isValidSize(bitMemoryTransferSize, addressingMode) : "invalid transfer size";
 
         int absoluteImm = immediate;
         if (isImmediateScaled(addressingMode)) {
-            absoluteImm = getScaledImmediate(size, immediate);
+            absoluteImm = getScaledImmediate(bitMemoryTransferSize, immediate);
             if (absoluteImm == Integer.MAX_VALUE) {
                 return false;
             }
@@ -233,47 +252,55 @@ public final class AArch64Address extends AbstractAddress {
     }
 
     /**
+     * @param bitMemoryTransferSize Memory operation size.
      * @param base May not be null or the zero register.
      * @return an address specifying the address pointed to by base.
      */
-    public static AArch64Address createBaseRegisterOnlyAddress(Register base) {
-        return createRegisterOffsetAddress(base, zr, false);
+    public static AArch64Address createBaseRegisterOnlyAddress(int bitMemoryTransferSize, Register base) {
+        return createRegisterOffsetAddress(bitMemoryTransferSize, base, zr, false);
     }
 
     /**
+     * @param bitMemoryTransferSize Memory operation size.
      * @param base may not be null or the zero-register.
-     * @param offset Register specifying some offset, optionally scaled by the memory_transfer_size.
-     *            May not be null or the stackpointer.
-     * @param scaled Specifies whether offset should be scaled by memory_transfer_size or not.
+     * @param offset Register specifying some offset, optionally scaled by the
+     *            byte_memory_transfer_size. May not be null or the stackpointer.
+     * @param scaled Specifies whether offset should be scaled by byte_memory_transfer_size or not.
      * @return an address specifying a register offset address of the form base + offset [<< log2
-     *         (memory_transfer_size)]
+     *         (byte_memory_transfer_size)]
      */
-    public static AArch64Address createRegisterOffsetAddress(Register base, Register offset, boolean scaled) {
-        return new AArch64Address(base, offset, 0, scaled, null, AddressingMode.REGISTER_OFFSET);
+    public static AArch64Address createRegisterOffsetAddress(int bitMemoryTransferSize, Register base, Register offset, boolean scaled) {
+        return new AArch64Address(bitMemoryTransferSize, base, offset, 0, scaled, null, AddressingMode.REGISTER_OFFSET);
     }
 
     /**
+     * @param bitMemoryTransferSize Memory operation size.
      * @param base may not be null or the zero-register.
      * @param offset Word register specifying some offset, optionally scaled by the
-     *            memory_transfer_size. May not be null or the stackpointer.
-     * @param scaled Specifies whether offset should be scaled by memory_transfer_size or not.
+     *            byte_memory_transfer_size. May not be null or the stackpointer.
+     * @param scaled Specifies whether offset should be scaled by byte_memory_transfer_size or not.
      * @param extendType Describes whether register is zero- or sign-extended. May not be null.
      * @return an address specifying an extended register offset of the form base +
-     *         extendType(offset) [<< log2(memory_transfer_size)]
+     *         extendType(offset) [<< log2(byte_memory_transfer_size)]
      */
-    public static AArch64Address createExtendedRegisterOffsetAddress(Register base, Register offset, boolean scaled, AArch64Assembler.ExtendType extendType) {
-        return new AArch64Address(base, offset, 0, scaled, extendType, AddressingMode.EXTENDED_REGISTER_OFFSET);
+    public static AArch64Address createExtendedRegisterOffsetAddress(int bitMemoryTransferSize, Register base, Register offset, boolean scaled, AArch64Assembler.ExtendType extendType) {
+        return new AArch64Address(bitMemoryTransferSize, base, offset, 0, scaled, extendType, AddressingMode.EXTENDED_REGISTER_OFFSET);
     }
 
     /**
-     * @param imm21 Signed 21-bit offset, word aligned.
-     * @return AArch64Address specifying a PC-literal address of the form PC + offset
+     * AArch64Address specifying a PC-literal address of the form PC + imm21
+     *
+     * Note that the imm21 offset is expected to be patched later.
+     *
+     * @param bitMemoryTransferSize Memory operation size.
      */
-    public static AArch64Address createPcLiteralAddress(int imm21) {
-        return new AArch64Address(zr, zr, imm21, false, null, AddressingMode.PC_LITERAL);
+    public static AArch64Address createPCLiteralAddress(int bitMemoryTransferSize) {
+        return new AArch64Address(bitMemoryTransferSize, zr, zr, 0, false, null, AddressingMode.PC_LITERAL);
     }
 
-    private AArch64Address(Register base, Register offset, int immediate, boolean registerOffsetScaled, AArch64Assembler.ExtendType extendType, AddressingMode addressingMode) {
+    private AArch64Address(int bitMemoryTransferSize, Register base, Register offset, int immediate, boolean registerOffsetScaled, AArch64Assembler.ExtendType extendType,
+                    AddressingMode addressingMode) {
+        this.bitMemoryTransferSize = bitMemoryTransferSize;
         this.base = base;
         this.offset = offset;
         if ((addressingMode == AddressingMode.REGISTER_OFFSET || addressingMode == AddressingMode.EXTENDED_REGISTER_OFFSET) && offset.equals(zr)) {
@@ -288,12 +315,15 @@ public final class AArch64Address extends AbstractAddress {
     }
 
     private boolean verify() {
+        assert bitMemoryTransferSize == ANY_SIZE || bitMemoryTransferSize == 8 || bitMemoryTransferSize == 16 || bitMemoryTransferSize == 32 || bitMemoryTransferSize == 64 ||
+                        bitMemoryTransferSize == 128;
         assert addressingMode != null;
         assert base.getRegisterCategory().equals(AArch64.CPU);
         assert offset.getRegisterCategory().equals(AArch64.CPU);
 
         switch (addressingMode) {
             case IMMEDIATE_UNSIGNED_SCALED:
+                assert bitMemoryTransferSize != ANY_SIZE;
                 assert !base.equals(zr);
                 assert offset.equals(zr);
                 assert extendType == null;
@@ -314,12 +344,14 @@ public final class AArch64Address extends AbstractAddress {
                 assert immediate == 0;
                 break;
             case REGISTER_OFFSET:
+                assert !(registerOffsetScaled && bitMemoryTransferSize == ANY_SIZE);
                 assert !base.equals(zr);
                 assert offset.getRegisterCategory().equals(AArch64.CPU);
                 assert extendType == null;
                 assert immediate == 0;
                 break;
             case EXTENDED_REGISTER_OFFSET:
+                assert !(registerOffsetScaled && bitMemoryTransferSize == ANY_SIZE);
                 assert !base.equals(zr);
                 assert offset.getRegisterCategory().equals(AArch64.CPU);
                 assert (extendType == AArch64Assembler.ExtendType.SXTW || extendType == AArch64Assembler.ExtendType.UXTW);
@@ -335,6 +367,7 @@ public final class AArch64Address extends AbstractAddress {
             case IMMEDIATE_PAIR_SIGNED_SCALED:
             case IMMEDIATE_PAIR_POST_INDEXED:
             case IMMEDIATE_PAIR_PRE_INDEXED:
+                assert bitMemoryTransferSize != ANY_SIZE;
                 assert !base.equals(zr);
                 assert offset.equals(zr);
                 assert extendType == null;
@@ -345,6 +378,10 @@ public final class AArch64Address extends AbstractAddress {
         }
 
         return true;
+    }
+
+    public int getBitMemoryTransferSize() {
+        return bitMemoryTransferSize;
     }
 
     public Register getBase() {
@@ -420,8 +457,8 @@ public final class AArch64Address extends AbstractAddress {
 
     @Override
     public String toString() {
-        String transferSize = "(unknown)";
         String addressEncoding;
+        String transferSize = bitMemoryTransferSize == ANY_SIZE ? "(unknown)" : Integer.toString(AArch64Assembler.getLog2TransferSize(bitMemoryTransferSize));
         switch (addressingMode) {
             case IMMEDIATE_UNSIGNED_SCALED:
             case IMMEDIATE_PAIR_SIGNED_SCALED:

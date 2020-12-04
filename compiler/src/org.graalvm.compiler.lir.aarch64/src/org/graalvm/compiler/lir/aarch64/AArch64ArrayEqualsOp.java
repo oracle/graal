@@ -104,8 +104,8 @@ public final class AArch64ArrayEqualsOp extends AArch64LIRInstruction {
         try (ScratchRegister sc1 = masm.getScratchRegister()) {
             Register rscratch1 = sc1.getRegister();
             // Load array base addresses.
-            masm.loadAddress(array1, AArch64Address.createImmediateAddress(64, AArch64Address.AddressingMode.IMMEDIATE_SIGNED_UNSCALED, asRegister(array1Value), array1BaseOffset));
-            masm.loadAddress(array2, AArch64Address.createImmediateAddress(64, AArch64Address.AddressingMode.IMMEDIATE_SIGNED_UNSCALED, asRegister(array2Value), array2BaseOffset));
+            masm.add(64, array1, asRegister(array1Value), array1BaseOffset);
+            masm.add(64, array2, asRegister(array2Value), array2BaseOffset);
 
             // Get array length in bytes.
             masm.mov(rscratch1, arrayIndexScale);
@@ -142,15 +142,15 @@ public final class AArch64ArrayEqualsOp extends AArch64LIRInstruction {
         masm.ands(64, length, length, ~(VECTOR_SIZE - 1));  // vector count (in bytes)
         masm.branchConditionally(ConditionFlag.EQ, compareTail);
 
-        masm.loadAddress(array1, AArch64Address.createRegisterOffsetAddress(array1, length, false));
-        masm.loadAddress(array2, AArch64Address.createRegisterOffsetAddress(array2, length, false));
+        masm.add(64, array1, array1, length);
+        masm.add(64, array2, array2, length);
         masm.sub(64, length, zr, length);
 
         // Align the main loop
         masm.align(crb.target.wordSize * 2);
         masm.bind(loop);
-        masm.ldr(64, temp, AArch64Address.createRegisterOffsetAddress(array1, length, false));
-        masm.ldr(64, rscratch1, AArch64Address.createRegisterOffsetAddress(array2, length, false));
+        masm.ldr(64, temp, AArch64Address.createRegisterOffsetAddress(64, array1, length, false));
+        masm.ldr(64, rscratch1, AArch64Address.createRegisterOffsetAddress(64, array2, length, false));
         masm.eor(64, rscratch1, temp, rscratch1);
         masm.cbnz(64, rscratch1, breakLabel);
         masm.add(64, length, length, VECTOR_SIZE);
@@ -162,10 +162,10 @@ public final class AArch64ArrayEqualsOp extends AArch64LIRInstruction {
          * Compare the remaining bytes with an unaligned memory load aligned to the end of the
          * array.
          */
-        masm.loadAddress(array1, AArch64Address.createImmediateAddress(64, AArch64Address.AddressingMode.IMMEDIATE_SIGNED_UNSCALED, array1, -VECTOR_SIZE));
-        masm.loadAddress(array2, AArch64Address.createImmediateAddress(64, AArch64Address.AddressingMode.IMMEDIATE_SIGNED_UNSCALED, array2, -VECTOR_SIZE));
-        masm.ldr(64, temp, AArch64Address.createRegisterOffsetAddress(array1, result, false));
-        masm.ldr(64, rscratch1, AArch64Address.createRegisterOffsetAddress(array2, result, false));
+        masm.add(64, array1, array1, -VECTOR_SIZE);
+        masm.add(64, array2, array2, -VECTOR_SIZE);
+        masm.ldr(64, temp, AArch64Address.createRegisterOffsetAddress(64, array1, result, false));
+        masm.ldr(64, rscratch1, AArch64Address.createRegisterOffsetAddress(64, array2, result, false));
         masm.eor(64, rscratch1, temp, rscratch1);
         masm.jmp(breakLabel);
 
@@ -208,8 +208,8 @@ public final class AArch64ArrayEqualsOp extends AArch64LIRInstruction {
                     masm.bind(compare1Byte);
                     masm.ands(32, zr, result, 1);
                     masm.branchConditionally(ConditionFlag.EQ, end);
-                    masm.ldr(8, temp, AArch64Address.createBaseRegisterOnlyAddress(array1));
-                    masm.ldr(8, rscratch1, AArch64Address.createBaseRegisterOnlyAddress(array2));
+                    masm.ldr(8, temp, AArch64Address.createBaseRegisterOnlyAddress(8, array1));
+                    masm.ldr(8, rscratch1, AArch64Address.createBaseRegisterOnlyAddress(8, array2));
                     masm.eor(32, rscratch1, temp, rscratch1);
                     masm.cbnz(32, rscratch1, breakLabel);
                 } else {

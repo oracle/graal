@@ -156,8 +156,7 @@ public class AArch64Move {
         @Override
         public void emitCode(CompilationResultBuilder crb, AArch64MacroAssembler masm) {
             Register dst = asRegister(result);
-            AArch64Address adr = address.toAddress();
-            masm.loadAddress(dst, adr, address.getScaleFactor());
+            masm.loadAddress(dst, address.toAddress());
         }
     }
 
@@ -239,6 +238,10 @@ public class AArch64Move {
 
         MemOp(LIRInstructionClass<? extends MemOp> c, AArch64Kind kind, AArch64AddressValue address, LIRFrameState state) {
             super(c);
+
+            int size = address.getBitMemoryTransferSize();
+            assert size == AArch64Address.ANY_SIZE || size == kind.getSizeInBytes() * Byte.SIZE;
+
             this.kind = kind;
             this.addressValue = address;
             this.state = state;
@@ -596,10 +599,10 @@ public class AArch64Move {
                         crb.asFloatConstRef(input);
                         masm.adrpAdd(scratch);
                         if (result.getRegisterCategory().equals(CPU)) {
-                            masm.ldr(32, result, AArch64Address.createBaseRegisterOnlyAddress(scratch));
+                            masm.ldr(32, result, AArch64Address.createBaseRegisterOnlyAddress(32, scratch));
                         } else {
                             assert result.getRegisterCategory().equals(SIMD);
-                            masm.fldr(32, result, AArch64Address.createBaseRegisterOnlyAddress(scratch));
+                            masm.fldr(32, result, AArch64Address.createBaseRegisterOnlyAddress(32, scratch));
                         }
                     }
                 }
@@ -619,10 +622,10 @@ public class AArch64Move {
                         crb.asDoubleConstRef(input);
                         masm.adrpAdd(scratch);
                         if (result.getRegisterCategory().equals(CPU)) {
-                            masm.ldr(64, result, AArch64Address.createBaseRegisterOnlyAddress(scratch));
+                            masm.ldr(64, result, AArch64Address.createBaseRegisterOnlyAddress(64, scratch));
                         } else {
                             assert result.getRegisterCategory().equals(SIMD);
-                            masm.fldr(64, result, AArch64Address.createBaseRegisterOnlyAddress(scratch));
+                            masm.fldr(64, result, AArch64Address.createBaseRegisterOnlyAddress(64, scratch));
                         }
                     }
                 }
