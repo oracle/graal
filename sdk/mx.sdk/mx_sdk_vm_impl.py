@@ -870,6 +870,15 @@ class GraalVmLayoutDistribution(BaseGraalVmLayoutDistribution, LayoutSuper):  # 
             stage1=stage1,
             **kw_args)
 
+    def extra_suite_revisions_data(self):
+        base_jdk_info = _base_jdk_info()
+        if self == get_final_graalvm_distribution() and base_jdk_info:
+            assert len(base_jdk_info) == 2
+            yield "basejdk", {
+                "name": base_jdk_info[0],
+                "version": base_jdk_info[1]
+            }
+
     def getBuildTask(self, args):
         return GraalVmLayoutDistributionTask(args, self, 'latest_graalvm', 'latest_graalvm_home')
 
@@ -2699,6 +2708,7 @@ mx.add_argument('--release-catalog', action='store', help='Change the default UR
 mx.add_argument('--extra-image-builder-argument', action='append', help='Add extra arguments to the image builder.', default=[])
 mx.add_argument('--image-profile', action='append', help='Add a profile to be used while building a native image.', default=[])
 mx.add_argument('--no-licenses', action='store_true', help='Do not add license files in the archives.')
+mx.add_argument('--base-jdk-info', action='store', help='Colon-separated tuple of base JDK `NAME:VERSION`, to be added on deployment to the \'basejdk\' attribute of the \'suite-revisions.xml\' file on maven-deployment.')
 
 
 def _parse_cmd_arg(arg_name, env_var_name=None, separator=',', parse_bool=True, default_value=None):
@@ -2913,6 +2923,16 @@ def _snapshot_catalog():
 
 def _release_catalog():
     return mx.get_opts().release_catalog or mx.get_env('RELEASE_CATALOG')
+
+
+def _base_jdk_info():
+    base_jdk_info = mx.get_opts().base_jdk_info or mx.get_env('BASE_JDK_INFO')
+    if base_jdk_info is None:
+        return base_jdk_info
+    elif base_jdk_info.count(':') != 1:
+        mx.abort("Unexpected base JDK info: '{}'. Expected format: 'NAME:VERSION'.".format(base_jdk_info))
+    else:
+        return base_jdk_info.split(':')
 
 
 def mx_post_parse_cmd_line(args):
