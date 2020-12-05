@@ -247,7 +247,7 @@ public final class TruffleFeature implements com.oracle.svm.core.graal.GraalFeat
             return new SubstrateTruffleCompilerImpl(truffleCompilerConfig);
         }
 
-        protected static boolean isIsolatedCompilation() {
+        public static boolean isIsolatedCompilation() {
             return !SubstrateUtil.HOSTED && SubstrateOptions.shouldCompileInIsolates();
         }
 

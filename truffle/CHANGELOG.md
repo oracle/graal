@@ -15,6 +15,7 @@ This changelog summarizes major changes between Truffle versions relevant to lan
     * `HostCompilerDirectives.BytecodeInterpreterSwitchBoundary` - to denote methods that do not need to be inlined into the bytecode interpreter switch
 * Truffle DSL generated nodes are no longer limited to 64 state bits. Use these state bits responsibly.
 * Added support for explicitly selecting a host method overload using the signature in the form of comma-separated fully qualified parameter type names enclosed by parentheses (e.g. `methodName(f.q.TypeName,java.lang.String,int,int[])`).
+* Changed the default value of `--engine.MultiTier` from `false` to `true`. This should significantly improve the warmup time of Truffle interpreters.
 
 ## Version 20.3.0
 * Added `RepeatingNode.initialLoopStatus` and `RepeatingNode.shouldContinue` to allow defining a custom loop continuation condition.
@@ -63,7 +64,6 @@ This changelog summarizes major changes between Truffle versions relevant to lan
     * Attention: Since [AbstractTruffleException](https://www.graalvm.org/truffle/javadoc/com/oracle/truffle/api/exception/AbstractTruffleException.html) is an abstract base class, not an interface, the exceptions the Truffle NFI throws do not extend UnsatisfiedLinkError anymore. This is an incompatible change for guest languages that relied on the exact exception class. The recommended fix is to catch AbstractTruffleException instead of UnsatisfiedLinkError.
 * Added [TruffleInstrument.Env.getEnteredContext](https://www.graalvm.org/truffle/javadoc/com/oracle/truffle/api/instrumentation/TruffleInstrument.Env.html#getEnteredContext--) returning the entered `TruffleContext`.
 * Added [DebuggerSession.setShowHostStackFrames](https://www.graalvm.org/truffle/javadoc/com/oracle/truffle/api/debug/DebuggerSession.html#setShowHostStackFrames-boolean-) and host `DebugStackFrame` and `DebugStackTraceElement`. This is useful for debugging of applications that use host interop.
-
 * All Truffle Graal runtime options (-Dgraal.) which were deprecated in GraalVM 20.1 are removed. The Truffle runtime options are no longer specified as Graal options (-Dgraal.). The Graal options must be replaced by corresponding engine options specified using [polyglot API](https://www.graalvm.org/truffle/javadoc/org/graalvm/polyglot/Engine.Builder.html#option-java.lang.String-java.lang.String-).
 * Deprecated the `com.oracle.truffle.api.object.dsl` API without replacement. The migration path is to use `DynamicObject` subclasses with the `com.oracle.truffle.api.object` API.
 * A node parameter now needs to be provided to TruffleContext.enter() and TruffleContext.leave(Object). The overloads without node parameter are deprecated. This is useful to allow the runtime to compile the enter and leave code better if a node is passed as argument. 

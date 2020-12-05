@@ -64,6 +64,7 @@ import static org.graalvm.compiler.truffle.common.hotspot.libgraal.TruffleFromLi
 import static org.graalvm.compiler.truffle.common.hotspot.libgraal.TruffleFromLibGraal.Id.GetSuppliedString;
 import static org.graalvm.compiler.truffle.common.hotspot.libgraal.TruffleFromLibGraal.Id.GetTruffleCallBoundaryMethods;
 import static org.graalvm.compiler.truffle.common.hotspot.libgraal.TruffleFromLibGraal.Id.GetURI;
+import static org.graalvm.compiler.truffle.common.hotspot.libgraal.TruffleFromLibGraal.Id.GetValidRootAssumptionConstant;
 import static org.graalvm.compiler.truffle.common.hotspot.libgraal.TruffleFromLibGraal.Id.IsBytecodeInterpreterSwitch;
 import static org.graalvm.compiler.truffle.common.hotspot.libgraal.TruffleFromLibGraal.Id.IsBytecodeInterpreterSwitchBoundary;
 import static org.graalvm.compiler.truffle.common.hotspot.libgraal.TruffleFromLibGraal.Id.IsCancelled;
@@ -275,6 +276,12 @@ final class TruffleFromLibGraalEntryPoints {
     @TruffleFromLibGraal(GetNodeRewritingAssumptionConstant)
     static long getNodeRewritingAssumptionConstant(Object compilable) {
         JavaConstant assumption = ((CompilableTruffleAST) compilable).getNodeRewritingAssumptionConstant();
+        return LibGraal.translate(assumption);
+    }
+
+    @TruffleFromLibGraal(GetValidRootAssumptionConstant)
+    static long getValidRootAssumptionConstant(Object compilable) {
+        JavaConstant assumption = ((CompilableTruffleAST) compilable).getValidRootAssumptionConstant();
         return LibGraal.translate(assumption);
     }
 

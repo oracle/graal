@@ -830,7 +830,7 @@ public abstract class TruffleCompilerImpl implements TruffleCompilerBase {
                         // inlines a call to a compile-time constant Truffle node.
                         dependency = new OptimizedAssumptionDependency() {
                             @Override
-                            public void invalidate() {
+                            public void onAssumptionInvalidated(Object source, CharSequence reason) {
                                 installedCode.invalidate();
                             }
 

@@ -49,7 +49,7 @@ public class CompilerLoggingTest extends TruffleCompilerImplTest {
     @Test
     public void testLogging() throws IOException {
         try (ByteArrayOutputStream logOut = new ByteArrayOutputStream()) {
-            setupContext(Context.newBuilder().logHandler(logOut).option("engine.CompileImmediately", "true").option("engine.BackgroundCompilation", "false"));
+            setupContext(Context.newBuilder().logHandler(logOut).option("engine.CompileImmediately", "true").option("engine.MultiTier", "false").option("engine.BackgroundCompilation", "false"));
             GraalTruffleRuntime runtime = GraalTruffleRuntime.getRuntime();
             TestListener listener = new TestListener();
             try {

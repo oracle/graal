@@ -24,6 +24,8 @@
  */
 package com.oracle.svm.truffle.api;
 
+import java.util.concurrent.ConcurrentHashMap;
+
 import org.graalvm.collections.EconomicMap;
 import org.graalvm.compiler.graph.SourceLanguagePositionProvider;
 import org.graalvm.compiler.nodes.EncodedGraph;
@@ -48,8 +50,6 @@ import org.graalvm.nativeimage.Platforms;
 import com.oracle.svm.core.graal.phases.DeadStoreRemovalPhase;
 
 import jdk.vm.ci.meta.ResolvedJavaMethod;
-
-import java.util.concurrent.ConcurrentHashMap;
 
 public class SubstratePartialEvaluator extends PartialEvaluator {
 
@@ -93,7 +93,7 @@ public class SubstratePartialEvaluator extends PartialEvaluator {
     @Override
     protected void registerGraphBuilderInvocationPlugins(InvocationPlugins invocationPlugins, boolean canDelayIntrinsification) {
         super.registerGraphBuilderInvocationPlugins(invocationPlugins, canDelayIntrinsification);
-        SubstrateTruffleGraphBuilderPlugins.registerCompilationFinalReferencePlugins(invocationPlugins, canDelayIntrinsification, (SubstrateKnownTruffleTypes) getKnownTruffleTypes());
+        SubstrateTruffleGraphBuilderPlugins.registerInvocationPlugins(invocationPlugins, canDelayIntrinsification, (SubstrateKnownTruffleTypes) getKnownTruffleTypes());
     }
 
     @Platforms(Platform.HOSTED_ONLY.class)

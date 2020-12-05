@@ -248,7 +248,7 @@ public final class EngineData {
         this.compilation = options.get(Compilation);
         this.compileOnly = options.get(CompileOnly);
         this.compileImmediately = options.get(CompileImmediately);
-        this.multiTier = options.get(MultiTier);
+        this.multiTier = !compileImmediately && options.get(MultiTier);
 
         this.returnTypeSpeculation = options.get(ReturnTypeSpeculation);
         this.argumentTypeSpeculation = options.get(ArgumentTypeSpeculation);

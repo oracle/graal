@@ -91,7 +91,7 @@ final class RuntimeCodeCacheWalker implements CodeInfoVisitor {
              * to make sure that all the objects that are accessed during the invalidation remain
              * reachable. Those objects can only be collected in a subsequent garbage collection.
              */
-            if (invalidateCodeThatReferencesUnreachableObjects && state == CodeInfo.STATE_CODE_CONSTANTS_LIVE && hasWeakReferenceToUnreachableObject(codeInfo)) {
+            if (state == CodeInfo.STATE_NON_ENTRANT || invalidateCodeThatReferencesUnreachableObjects && state == CodeInfo.STATE_CODE_CONSTANTS_LIVE && hasWeakReferenceToUnreachableObject(codeInfo)) {
                 RuntimeCodeInfoAccess.walkObjectFields(codeInfo, greyToBlackObjectVisitor);
                 CodeInfoAccess.setState(codeInfo, CodeInfo.STATE_READY_FOR_INVALIDATION);
                 return true;

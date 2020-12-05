@@ -81,7 +81,9 @@ public class HotSpotOptimizedCallTarget extends OptimizedCallTarget implements O
         if (installedCode == code) {
             return;
         }
-        invalidateCode();
+        if (installedCode.isAlive()) {
+            installedCode.invalidate();
+        }
         // A default nmethod can be called from entry points in the VM (e.g., Method::_code)
         // and so allowing it to be installed here would invalidate the truth of
         // `soleExecutionEntryPoint`
@@ -105,21 +107,9 @@ public class HotSpotOptimizedCallTarget extends OptimizedCallTarget implements O
     }
 
     @Override
-    public boolean isAlive() {
-        return installedCode.isAlive();
-    }
-
-    @Override
     public boolean isValidLastTier() {
         InstalledCode code = installedCode;
         return code.isValid() && code.getName().endsWith(TruffleCompiler.SECOND_TIER_COMPILATION_SUFFIX);
-    }
-
-    @Override
-    public void invalidateCode() {
-        if (installedCode.isAlive()) {
-            installedCode.invalidate();
-        }
     }
 
     @Override
@@ -128,8 +118,11 @@ public class HotSpotOptimizedCallTarget extends OptimizedCallTarget implements O
     }
 
     @Override
-    public void invalidate() {
-        invalidate(null, null);
+    public void onAssumptionInvalidated(Object source, CharSequence reason) {
+        if (installedCode.isAlive()) {
+            installedCode.invalidate();
+            runtime().getListener().onCompilationInvalidated(this, source, reason);
+        }
     }
 
     @Override

@@ -35,6 +35,7 @@ import org.graalvm.compiler.truffle.runtime.OptimizedDirectCallNode;
 import org.graalvm.nativeimage.c.function.CEntryPoint;
 
 import com.oracle.svm.core.c.function.CEntryPointOptions;
+import com.oracle.svm.core.deopt.SubstrateInstalledCode;
 import com.oracle.svm.graal.isolated.ClientHandle;
 import com.oracle.svm.graal.isolated.ClientIsolateThread;
 import com.oracle.svm.graal.isolated.CompilerHandle;
@@ -58,12 +59,15 @@ public final class IsolatedTruffleRuntimeSupport {
         if (consumerHandle.equal(IsolatedHandles.nullHandle())) {
             return null;
         }
-        return arg -> {
-            ClientHandle<? extends OptimizedAssumptionDependency.Access> dependencyAccessHandle = IsolatedHandles.nullHandle();
-            if (arg != null) {
-                IsolatedCodeInstallBridge accessor = (IsolatedCodeInstallBridge) arg;
-                dependencyAccessHandle = accessor.getDependencyAccessHandle();
+        return codeInstallBridge -> {
+            ClientHandle<? extends SubstrateInstalledCode> installedCodeHandle = IsolatedHandles.nullHandle();
+            if (codeInstallBridge != null) {
+                installedCodeHandle = ((IsolatedCodeInstallBridge) codeInstallBridge).getSubstrateInstalledCodeHandle();
             }
+
+            @SuppressWarnings("unchecked")
+            ClientHandle<? extends OptimizedAssumptionDependency> dependencyAccessHandle = (ClientHandle<? extends OptimizedAssumptionDependency>) installedCodeHandle;
+
             notifyAssumption0(IsolatedCompileContext.get().getClient(), consumerHandle, dependencyAccessHandle);
         };
     }
@@ -82,11 +86,11 @@ public final class IsolatedTruffleRuntimeSupport {
     @CEntryPointOptions(include = CEntryPointOptions.NotIncludedAutomatically.class, publishAs = CEntryPointOptions.Publish.NotPublished)
     private static void notifyAssumption0(@SuppressWarnings("unused") ClientIsolateThread client,
                     ClientHandle<Consumer<OptimizedAssumptionDependency>> consumerHandle,
-                    ClientHandle<? extends OptimizedAssumptionDependency.Access> dependencyAccessHandle) {
+                    ClientHandle<? extends OptimizedAssumptionDependency> dependencyHandle) {
 
         OptimizedAssumptionDependency dependency = null;
-        if (dependencyAccessHandle.notEqual(IsolatedHandles.nullHandle())) {
-            dependency = IsolatedCompileClient.get().unhand(dependencyAccessHandle).getDependency();
+        if (dependencyHandle.notEqual(IsolatedHandles.nullHandle())) {
+            dependency = IsolatedCompileClient.get().unhand(dependencyHandle);
         }
         IsolatedCompileClient.get().unhand(consumerHandle).accept(dependency);
     }
