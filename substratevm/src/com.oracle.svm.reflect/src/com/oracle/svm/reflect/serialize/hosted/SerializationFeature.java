@@ -41,6 +41,7 @@ import com.oracle.svm.hosted.NativeImageOptions;
 import com.oracle.svm.hosted.config.ConfigurationParserUtils;
 import com.oracle.svm.reflect.serialize.SerializationSupport;
 import com.oracle.svm.util.ReflectionUtil;
+import jdk.vm.ci.meta.MetaUtil;
 import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.nativeimage.hosted.Feature;
 import org.graalvm.nativeimage.hosted.RuntimeReflection;
@@ -93,7 +94,7 @@ public class SerializationFeature implements Feature {
         }
 
         RuntimeReflection.register(serializationTargetClass);
-        /**
+        /*
          * ObjectStreamClass.computeDefaultSUID is always called at runtime to verify serialization
          * class consistency, so need to register all constructors, methods and fields/
          */
@@ -139,9 +140,14 @@ public class SerializationFeature implements Feature {
     }
 
     private static Class<?> resolveClass(String typeName, FeatureAccess a) {
-        Class<?> ret = a.findClassByName(typeName);
+        String name = typeName;
+        if (name.indexOf('[') != -1) {
+            /* accept "int[][]", "java.lang.String[]" */
+            name = MetaUtil.internalNameToJava(MetaUtil.toInternalName(name), true, true);
+        }
+        Class<?> ret = a.findClassByName(name);
         if (ret == null) {
-            handleError("Could not resolve " + typeName + " for serialization configuration.");
+            handleError("Could not resolve " + name + " for serialization configuration.");
         }
         return ret;
     }
