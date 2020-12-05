@@ -56,8 +56,6 @@ import com.oracle.svm.jvmtiagentbase.jvmti.JvmtiInterface;
  * A utility class that contains helper methods for JNI/JVMTI that agents can use.
  */
 public final class Support {
-    private static final byte JNI_TRUE = 1;
-    private static final byte JNI_FALSE = 0;
 
     public static boolean isInitialized() {
         boolean initialized = jvmtiEnv.isNonNull();
@@ -183,24 +181,6 @@ public final class Support {
         return handlePtr.read();
     }
 
-    public static byte getByteArgument(int slot) {
-        CIntPointer valuePtr = StackValue.get(CIntPointer.class);
-        if (jvmtiFunctions().GetLocalInt().invoke(jvmtiEnv(), nullHandle(), 0, slot, valuePtr) != JvmtiError.JVMTI_ERROR_NONE) {
-            return 0;
-        }
-        assert (byte) valuePtr.read() == valuePtr.read();
-        return (byte) valuePtr.read();
-    }
-
-    public static boolean getBooleanArgument(int slot) {
-        CIntPointer valuePtr = StackValue.get(CIntPointer.class);
-        if (jvmtiFunctions().GetLocalInt().invoke(jvmtiEnv(), nullHandle(), 0, slot, valuePtr) != JvmtiError.JVMTI_ERROR_NONE) {
-            return false;
-        }
-        assert valuePtr.read() == JNI_TRUE || valuePtr.read() == JNI_FALSE;
-        return valuePtr.read() == JNI_TRUE;
-    }
-
     public static String getClassNameOr(JNIEnvironment env, JNIObjectHandle clazz, String forNullHandle, String forNullNameOrException) {
         if (clazz.notEqual(nullHandle())) {
             JNIObjectHandle clazzName = callObjectMethod(env, clazz, JvmtiAgentBase.singleton().handles().javaLangClassGetName);
@@ -306,12 +286,20 @@ public final class Support {
         return jniFunctions().getCallObjectMethodA().invoke(env, obj, method, args);
     }
 
-    public static JNIObjectHandle callObjectMethodBLLZ(JNIEnvironment env, JNIObjectHandle obj, JNIMethodId method, byte b0, JNIObjectHandle l1, JNIObjectHandle l2, boolean z3) {
-        JNIValue args = StackValue.get(4, JNIValue.class);
-        args.addressOf(0).setByte(b0);
+    public static JNIObjectHandle callObjectMethodLLL(JNIEnvironment env, JNIObjectHandle obj, JNIMethodId method, JNIObjectHandle l0, JNIObjectHandle l1, JNIObjectHandle l2) {
+        JNIValue args = StackValue.get(3, JNIValue.class);
+        args.addressOf(0).setObject(l0);
         args.addressOf(1).setObject(l1);
         args.addressOf(2).setObject(l2);
-        args.addressOf(3).setBoolean(z3);
+        return jniFunctions().getCallObjectMethodA().invoke(env, obj, method, args);
+    }
+
+    public static JNIObjectHandle callObjectMethodLLLL(JNIEnvironment env, JNIObjectHandle obj, JNIMethodId method, JNIObjectHandle l0, JNIObjectHandle l1, JNIObjectHandle l2, JNIObjectHandle l3) {
+        JNIValue args = StackValue.get(4, JNIValue.class);
+        args.addressOf(0).setObject(l0);
+        args.addressOf(1).setObject(l1);
+        args.addressOf(2).setObject(l2);
+        args.addressOf(3).setObject(l3);
         return jniFunctions().getCallObjectMethodA().invoke(env, obj, method, args);
     }
 

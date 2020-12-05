@@ -26,8 +26,10 @@ package com.oracle.svm.agent;
 
 import static com.oracle.svm.jni.JNIObjectHandles.nullHandle;
 
-import com.oracle.svm.jni.nativeapi.JNIFieldId;
+import org.graalvm.word.WordFactory;
+
 import com.oracle.svm.jni.nativeapi.JNIEnvironment;
+import com.oracle.svm.jni.nativeapi.JNIFieldId;
 import com.oracle.svm.jni.nativeapi.JNIMethodId;
 import com.oracle.svm.jni.nativeapi.JNIObjectHandle;
 import com.oracle.svm.jvmtiagentbase.JNIHandleSet;
@@ -49,12 +51,7 @@ public class NativeImageAgentJNIHandleSet extends JNIHandleSet {
 
     final JNIObjectHandle javaLangClassLoader;
 
-    final JNIMethodId javaLangInvokeMemberNameGetDeclaringClass;
-    final JNIMethodId javaLangInvokeMemberNameGetName;
-    final JNIMethodId javaLangInvokeMemberNameGetParameterTypes;
-    final JNIMethodId javaLangInvokeMemberNameIsMethod;
-    final JNIMethodId javaLangInvokeMemberNameIsConstructor;
-    final JNIMethodId javaLangInvokeMemberNameIsField;
+    private JNIMethodId javaLangInvokeMethodTypeParameterArray = WordFactory.nullPointer();
 
     private JNIMethodId javaUtilResourceBundleGetBundleImplSLCC;
 
@@ -86,14 +83,14 @@ public class NativeImageAgentJNIHandleSet extends JNIHandleSet {
         javaUtilEnumerationNextElement = getMethodId(env, javaUtilEnumeration, "nextElement", "()Ljava/lang/Object;", false);
 
         javaLangClassLoader = newClassGlobalRef(env, "java/lang/ClassLoader");
+    }
 
-        JNIObjectHandle javaLangInvokeMemberName = findClass(env, "java/lang/invoke/MemberName");
-        javaLangInvokeMemberNameGetDeclaringClass = getMethodId(env, javaLangInvokeMemberName, "getDeclaringClass", "()Ljava/lang/Class;", false);
-        javaLangInvokeMemberNameGetName = getMethodId(env, javaLangInvokeMemberName, "getName", "()Ljava/lang/String;", false);
-        javaLangInvokeMemberNameGetParameterTypes = getMethodId(env, javaLangInvokeMemberName, "getParameterTypes", "()[Ljava/lang/Class;", false);
-        javaLangInvokeMemberNameIsMethod = getMethodId(env, javaLangInvokeMemberName, "isMethod", "()Z", false);
-        javaLangInvokeMemberNameIsConstructor = getMethodId(env, javaLangInvokeMemberName, "isConstructor", "()Z", false);
-        javaLangInvokeMemberNameIsField = getMethodId(env, javaLangInvokeMemberName, "isField", "()Z", false);
+    JNIMethodId getJavaLangInvokeMethodTypeParameterArray(JNIEnvironment env) {
+        if (javaLangInvokeMethodTypeParameterArray.isNull()) {
+            JNIObjectHandle javaLangInvokeMethodType = newClassGlobalRef(env, "java/lang/invoke/MethodType");
+            javaLangInvokeMethodTypeParameterArray = getMethodId(env, javaLangInvokeMethodType, "parameterArray", "()[Ljava/lang/Class;", false);
+        }
+        return javaLangInvokeMethodTypeParameterArray;
     }
 
     JNIMethodId tryGetJavaUtilResourceBundleGetBundleImplSLCC(JNIEnvironment env) {

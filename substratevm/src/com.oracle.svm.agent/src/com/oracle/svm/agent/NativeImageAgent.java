@@ -107,7 +107,6 @@ public final class NativeImageAgent extends JvmtiAgentBase<NativeImageAgentJNIHa
         List<String> callerFilterFiles = new ArrayList<>();
         List<String> accessFilterFiles = new ArrayList<>();
         boolean experimentalClassLoaderSupport = true;
-        boolean methodHandleSupport = false;
         boolean build = false;
         int configWritePeriod = -1; // in seconds
         int configWritePeriodInitialDelay = 1; // in seconds
@@ -172,10 +171,6 @@ public final class NativeImageAgent extends JvmtiAgentBase<NativeImageAgentJNIHa
                 build = true;
             } else if (token.startsWith("build=")) {
                 build = Boolean.parseBoolean(getTokenValue(token));
-            } else if (token.equals("method-handle-support")) {
-                methodHandleSupport = true;
-            } else if (token.startsWith("method-handle-support")) {
-                methodHandleSupport = Boolean.parseBoolean(getTokenValue(token));
             } else {
                 System.err.println(MESSAGE_PREFIX + "unsupported option: '" + token + "'. Please read BuildConfiguration.md.");
                 return 1;
@@ -254,7 +249,7 @@ public final class NativeImageAgent extends JvmtiAgentBase<NativeImageAgentJNIHa
 
         accessAdvisor = createAccessAdvisor(builtinHeuristicFilter, callerFilter, accessFilter);
         try {
-            BreakpointInterceptor.onLoad(jvmti, callbacks, traceWriter, this, experimentalClassLoaderSupport, methodHandleSupport);
+            BreakpointInterceptor.onLoad(jvmti, callbacks, traceWriter, this, experimentalClassLoaderSupport);
         } catch (Throwable t) {
             System.err.println(MESSAGE_PREFIX + t);
             return 3;
