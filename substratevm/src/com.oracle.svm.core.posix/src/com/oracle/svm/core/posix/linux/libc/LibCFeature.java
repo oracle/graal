@@ -24,7 +24,12 @@
  */
 package com.oracle.svm.core.posix.linux.libc;
 
+import java.util.ServiceLoader;
+
+import org.graalvm.collections.UnmodifiableEconomicMap;
 import org.graalvm.compiler.options.Option;
+import org.graalvm.compiler.options.OptionKey;
+import org.graalvm.compiler.options.OptionValues;
 import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.hosted.Feature;
@@ -45,27 +50,35 @@ public class LibCFeature implements Feature {
 
     public static class LibCOptions {
         @APIOption(name = "libc")//
-        @Option(help = "Selects the libc implementation to use. Available implementations: glibc, musl")//
-        public static final HostedOptionKey<String> UseLibC = new HostedOptionKey<>("glibc");
+        @Option(help = "Selects the libc implementation to use. Available implementations: glibc, musl, bionic")//
+        public static final HostedOptionKey<String> UseLibC = new HostedOptionKey<String>(null) {
+            @Override
+            public String getValueOrDefault(UnmodifiableEconomicMap<OptionKey<?>, Object> values) {
+                if (!values.containsKey(this)) {
+                    return Platform.includedIn(Platform.ANDROID.class) ? "bionic" : "glibc";
+                }
+                return (String) values.get(this);
+            }
+
+            @Override
+            public String getValue(OptionValues values) {
+                assert checkDescriptorExists();
+                return getValueOrDefault(values.getMap());
+            }
+        };
     }
 
     @Override
     public void afterRegistration(AfterRegistrationAccess access) {
-        LibCBase libc;
         String targetLibC = LibCOptions.UseLibC.getValue();
-        switch (targetLibC) {
-            case GLibC.NAME:
-                libc = new GLibC();
-                break;
-            case MuslLibC.NAME:
-                libc = new MuslLibC();
-                break;
-            case BionicLibC.NAME:
-                libc = new BionicLibC();
-                break;
-            default:
-                throw UserError.abort("Unknown libc %s selected. Please use one of the available libc implementations.", targetLibC);
+        ServiceLoader<LibCBase> loader = ServiceLoader.load(LibCBase.class);
+        for (LibCBase libc : loader) {
+            if (libc.getName().equals(targetLibC)) {
+                libc.checkIfLibCSupported();
+                ImageSingletons.add(LibCBase.class, libc);
+                return;
+            }
         }
-        ImageSingletons.add(LibCBase.class, libc);
+        throw UserError.abort("Unknown libc %s selected. Please use one of the available libc implementations.", targetLibC);
     }
 }

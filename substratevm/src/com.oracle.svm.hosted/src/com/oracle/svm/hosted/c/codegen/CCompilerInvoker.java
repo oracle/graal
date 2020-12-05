@@ -226,6 +226,16 @@ public abstract class CCompilerInvoker {
                     int minor1 = scanner.nextInt();
                     return new CompilerInfo(compilerPath, "intel", "Intel(R) C++ Compiler", "icc", major, minor0, minor1, "x86_64");
                 }
+
+                if (scanner.findInLine("clang version ") != null) {
+                    scanner.useDelimiter("[. ]");
+                    int major = scanner.nextInt();
+                    int minor0 = scanner.nextInt();
+                    int minor1 = scanner.nextInt();
+                    String[] triplet = guessTargetTriplet(scanner);
+                    return new CompilerInfo(compilerPath, "llvm", "Clang C++ Compiler", "clang", major, minor0, minor1, triplet[0]);
+                }
+
                 String[] triplet = guessTargetTriplet(scanner);
                 while (scanner.findInLine("gcc version ") == null) {
                     scanner.nextLine();

@@ -70,8 +70,10 @@ import java.util.jar.Manifest;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
+import com.oracle.svm.core.util.UserError;
 import org.graalvm.compiler.options.OptionKey;
 import org.graalvm.compiler.serviceprovider.JavaVersionUtil;
+import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.ProcessProperties;
 
 import com.oracle.graal.pointsto.api.PointstoOptions;
@@ -180,6 +182,7 @@ public class NativeImage {
     final String oRRuntimeJavaArg = oR(Options.FallbackExecutorRuntimeJavaArg);
     final String oHTraceClassInitialization = oH(SubstrateOptions.TraceClassInitialization);
     final String oHTraceObjectInstantiation = oH(SubstrateOptions.TraceObjectInstantiation);
+    final String oHTargetPlatform = oH(SubstrateOptions.TargetPlatform);
 
     /* List arguments */
     final String oHSubstitutionFiles = oH(ConfigurationFiles.Options.SubstitutionFiles);
@@ -747,11 +750,7 @@ public class NativeImage {
         addImageBuilderJavaArgs("-Xshare:off");
         config.getBuilderClasspath().forEach(this::addImageBuilderClasspath);
         config.getImageProvidedClasspath().forEach(this::addImageProvidedClasspath);
-        String clibrariesBuilderArg = config.getBuilderCLibrariesPaths()
-                        .stream()
-                        .map(path -> canonicalize(path.resolve(platform)).toString())
-                        .collect(Collectors.joining(",", oHCLibraryPath, ""));
-        addPlainImageBuilderArg(clibrariesBuilderArg);
+
         if (config.getBuilderInspectServerPath() != null) {
             addPlainImageBuilderArg(oHInspectServerContentPath + config.getBuilderInspectServerPath());
         }
@@ -1043,6 +1042,13 @@ public class NativeImage {
         List<String> leftoverArgs = processNativeImageArgs();
 
         completeOptionArgs();
+        addTargetArguments();
+
+        String clibrariesPath = (targetPlatform != null) ? targetPlatform : platform;
+        String clibrariesBuilderArg = config.getBuilderCLibrariesPaths().stream()
+                        .map(path -> canonicalize(path.resolve(clibrariesPath)).toString())
+                        .collect(Collectors.joining(",", oHCLibraryPath, ""));
+        addPlainImageBuilderArg(clibrariesBuilderArg);
 
         if (printFlagsOptionQuery != null) {
             addPlainImageBuilderArg(NativeImage.oH + enablePrintFlags + printFlagsOptionQuery);
@@ -1202,13 +1208,21 @@ public class NativeImage {
         return customImageClasspath.isEmpty();
     }
 
+    private static boolean isListArgumentSet(Collection<String> list, String argPrefix) {
+        return list.stream().anyMatch(arg -> arg.startsWith(argPrefix) && !arg.equals(argPrefix));
+    }
+
     private boolean isListArgumentSet(String argPrefix) {
-        return imageBuilderArgs.stream().anyMatch(arg -> arg.startsWith(argPrefix) && !arg.equals(argPrefix));
+        return isListArgumentSet(imageBuilderArgs, argPrefix);
+    }
+
+    private static String getListArgumentValue(Collection<String> list, String argPrefix) {
+        VMError.guarantee(isListArgumentSet(list, argPrefix));
+        return list.stream().filter(arg -> arg.startsWith(argPrefix)).map(arg -> arg.substring(argPrefix.length())).collect(Collectors.joining());
     }
 
     private String getListArgumentValue(String argPrefix) {
-        VMError.guarantee(isListArgumentSet(argPrefix));
-        return imageBuilderArgs.stream().filter(arg -> arg.startsWith(argPrefix)).map(arg -> arg.substring(argPrefix.length())).collect(Collectors.joining());
+        return getListArgumentValue(imageBuilderArgs, argPrefix);
     }
 
     private List<String> getAgentArguments() {
@@ -1237,6 +1251,43 @@ public class NativeImage {
 
     private static String getAgentOptions(String options, String optionName) {
         return Arrays.stream(options.split(",")).map(option -> optionName + "=" + option).collect(Collectors.joining(","));
+    }
+
+    private String targetPlatform = null;
+    private String targetOS = null;
+    private String targetArch = null;
+
+    private void addTargetArguments() {
+        /*
+         * Since regular hosted options are parsed at a later phase of NativeImageGeneratorRunner
+         * process (see comments for NativeImageGenerator.getTargetPlatform), we are parsing the
+         * --target argument here, and generating required internal arguments.
+         */
+
+        if (!isListArgumentSet(oHTargetPlatform)) {
+            return;
+        }
+
+        targetPlatform = getListArgumentValue(oHTargetPlatform).toLowerCase();
+
+        String[] parts = targetPlatform.split("-");
+        if (parts.length != 2) {
+            throw UserError.abort("--target argument must be in format <OS>-<architecture>");
+        }
+
+        targetOS = parts[0];
+        targetArch = parts[1];
+
+        if (isListArgumentSet(customJavaArgs, "-D" + Platform.PLATFORM_PROPERTY_NAME)) {
+            NativeImage.showWarning("Usage of -D" + Platform.PLATFORM_PROPERTY_NAME + " might conflict with --target parameter.");
+        }
+
+        if (targetOS != null) {
+            customJavaArgs.add("-Dsvm.targetPlatformOS=" + targetOS);
+        }
+        if (targetArch != null) {
+            customJavaArgs.add("-Dsvm.targetPlatformArch=" + targetArch);
+        }
     }
 
     private String mainClass;

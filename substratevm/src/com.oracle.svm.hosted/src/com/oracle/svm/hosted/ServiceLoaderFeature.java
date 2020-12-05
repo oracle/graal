@@ -103,8 +103,16 @@ public class ServiceLoaderFeature implements Feature {
      */
     private static final Set<String> SERVICES_TO_SKIP = new HashSet<>(Arrays.asList(
                     "java.security.Provider",                       // see SecurityServicesFeature
-                    "sun.util.locale.provider.LocaleDataMetaInfo"   // see LocaleSubstitutions
+                    "sun.util.locale.provider.LocaleDataMetaInfo",  // see LocaleSubstitutions
+                    "org.graalvm.nativeimage.Platform"  // shouldn't be reachable after
+                                                        // intrinsification
     ));
+
+    // NOTE: Platform class had to be added to this list since our analysis discovers that
+    // Platform.includedIn is reachable regardless of fact that it is constant folded at
+    // registerPlatformPlugins method of SubstrateGraphBuilderPlugins. This issue hasn't manifested
+    // before because implementation classes were instantiated using runtime reflection instead of
+    // ServiceLoader (and thus weren't reachable in analysis).
 
     private static final Set<String> SERVICE_PROVIDERS_TO_SKIP = new HashSet<>(Arrays.asList(
                     "com.sun.jndi.rmi.registry.RegistryContextFactory"      // GR-26547

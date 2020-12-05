@@ -22,39 +22,61 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.svm.core.posix.linux.libc;
+package com.oracle.svm.core.windows.headers;
 
-import java.util.Collections;
-import java.util.List;
+// Checkstyle: stop
 
-import com.oracle.svm.core.c.libc.LibCBase;
+import org.graalvm.nativeimage.c.CContext;
+import org.graalvm.nativeimage.c.struct.CField;
+import org.graalvm.nativeimage.c.struct.CStruct;
+import org.graalvm.word.PointerBase;
 
-public class BionicLibC implements LibCBase {
+/**
+ * Definitions for Windows verrsrc.h
+ */
+@CContext(WindowsDirectives.class)
+public class VerRsrc {
 
-    public static final String NAME = "bionic";
+    /** Contains version information for a file. */
+    @CStruct
+    public interface VS_FIXEDFILEINFO extends PointerBase {
+        @CField
+        int dwSignature();
 
-    @Override
-    public String getName() {
-        return NAME;
-    }
+        @CField
+        int dwStrucVersion();
 
-    @Override
-    public List<String> getAdditionalQueryCodeCompilerOptions() {
-        return Collections.emptyList();
-    }
+        @CField
+        int dwFileVersionMS();
 
-    @Override
-    public String getTargetCompiler() {
-        return "clang";
-    }
+        @CField
+        int dwFileVersionLS();
 
-    @Override
-    public boolean hasIsolatedNamespaces() {
-        return false;
-    }
+        @CField
+        int dwProductVersionMS();
 
-    @Override
-    public boolean requiresLibCSpecificStaticJDKLibraries() {
-        return true;
+        @CField
+        int dwProductVersionLS();
+
+        @CField
+        int dwFileFlagsMask();
+
+        @CField
+        int dwFileFlags();
+
+        @CField
+        int dwFileOS();
+
+        @CField
+        int dwFileType();
+
+        @CField
+        int dwFileSubtype();
+
+        @CField
+        int dwFileDateMS();
+
+        @CField
+        int dwFileDateLS();
     }
 }
