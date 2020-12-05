@@ -87,6 +87,7 @@ public abstract class SystemPropertiesSupport {
         properties = new Properties();
         savedProperties = new HashMap<>();
         readOnlySavedProperties = Collections.unmodifiableMap(savedProperties);
+        lazyRuntimeValues = new HashMap<>();
 
         for (String key : HOSTED_PROPERTIES) {
             String value = System.getProperty(key);
@@ -114,19 +115,18 @@ public abstract class SystemPropertiesSupport {
             initializeProperty("java.awt.printerjob", System.getProperty("java.awt.printerjob"));
         }
 
-        lazyRuntimeValues = new HashMap<>();
-        lazyRuntimeValues.put("user.name", this::userName);
-        lazyRuntimeValues.put("user.home", this::userHome);
-        lazyRuntimeValues.put("user.dir", this::userDir);
-        lazyRuntimeValues.put("java.io.tmpdir", this::tmpdirValue);
-        lazyRuntimeValues.put("os.version", this::osVersionValue);
-        lazyRuntimeValues.put("java.vm.version", VM::getVersion);
+        initializeLazyProperty("user.name", this::userName);
+        initializeLazyProperty("user.home", this::userHome);
+        initializeLazyProperty("user.dir", this::userDir);
+        initializeLazyProperty("java.io.tmpdir", this::tmpdirValue);
+        initializeLazyProperty("os.version", this::osVersionValue);
+        initializeLazyProperty("java.vm.version", VM::getVersion);
 
         String targetName = System.getProperty("svm.targetName");
         if (targetName != null) {
             initializeProperty("os.name", targetName);
         } else {
-            lazyRuntimeValues.put("os.name", this::osNameValue);
+            initializeLazyProperty("os.name", this::osNameValue);
         }
 
         String targetArch = System.getProperty("svm.targetArch");
@@ -186,6 +186,14 @@ public abstract class SystemPropertiesSupport {
     public void initializeProperty(String key, String value) {
         savedProperties.put(key, value);
         properties.setProperty(key, value);
+    }
+
+    /**
+     * Lazily initializes a property at runtime when it is first requested, based on the supplier's
+     * return value.
+     */
+    public void initializeLazyProperty(String key, Supplier<String> value) {
+        lazyRuntimeValues.put(key, value);
     }
 
     public String setProperty(String key, String value) {
