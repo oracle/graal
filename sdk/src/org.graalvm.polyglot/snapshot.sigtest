@@ -375,7 +375,7 @@ meth public org.graalvm.polyglot.ResourceLimits build()
 meth public org.graalvm.polyglot.ResourceLimits$Builder onLimit(java.util.function.Consumer<org.graalvm.polyglot.ResourceLimitEvent>)
 meth public org.graalvm.polyglot.ResourceLimits$Builder statementLimit(long,java.util.function.Predicate<org.graalvm.polyglot.Source>)
 supr java.lang.Object
-hfds onLimit,statementLimit,statementLimitSourceFilter,timeLimit,timeLimitAccuracy
+hfds onLimit,statementLimit,statementLimitSourceFilter
 
 CLSS public final org.graalvm.polyglot.Source
 innr public Builder
