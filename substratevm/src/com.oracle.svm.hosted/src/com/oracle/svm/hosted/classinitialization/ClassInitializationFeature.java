@@ -322,7 +322,9 @@ public class ClassInitializationFeature implements GraalFeature {
                                  */
                                 if (!classInitializationSupport.shouldInitializeAtRuntime(c)) {
                                     provenSafe.add(type);
-                                    ((SVMHost) universe.hostVM()).dynamicHub(type).setClassInitializationInfo(ClassInitializationInfo.INITIALIZED_INFO_SINGLETON);
+                                    ClassInitializationInfo initializationInfo = type.getClassInitializer() == null ? ClassInitializationInfo.NO_INITIALIZER_INFO_SINGLETON
+                                                    : ClassInitializationInfo.INITIALIZED_INFO_SINGLETON;
+                                    ((SVMHost) universe.hostVM()).dynamicHub(type).setClassInitializationInfo(initializationInfo);
                                 }
                             }
                         });
@@ -344,7 +346,7 @@ public class ClassInitializationFeature implements GraalFeature {
             info = buildRuntimeInitializationInfo(access, type);
         } else {
             assert type.isInitialized();
-            info = ClassInitializationInfo.INITIALIZED_INFO_SINGLETON;
+            info = type.getClassInitializer() == null ? ClassInitializationInfo.NO_INITIALIZER_INFO_SINGLETON : ClassInitializationInfo.INITIALIZED_INFO_SINGLETON;
         }
         hub.setClassInitializationInfo(info, type.hasDefaultMethods(), type.declaresDefaultMethods());
     }

@@ -852,6 +852,7 @@ supr java.lang.Object
 hfds MESSAGE
 
 CLSS public final org.graalvm.nativeimage.hosted.RuntimeReflection
+meth public !varargs static void register(boolean,boolean,java.lang.reflect.Field[])
 meth public !varargs static void register(boolean,java.lang.reflect.Field[])
 meth public !varargs static void register(java.lang.Class<?>[])
 meth public !varargs static void register(java.lang.reflect.Executable[])
