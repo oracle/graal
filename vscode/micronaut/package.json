@@ -39,7 +39,7 @@
 				"micronaut.showWelcomePage": {
 					"type": "boolean",
 					"default": true,
-					"description": "Show Micornaut Tools page on extension activation"
+					"description": "Show Micronaut Tools page on extension activation"
 				},
 				"micronaut.home": {
 					"type": "string",
