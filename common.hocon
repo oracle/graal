@@ -14,7 +14,7 @@ overlay = ${ci.overlay}
 # to another branch/commit in a Graal PR when mx changes are required for the PR.
 mx : {
   packages : {
-    mx: "HEAD"
+    mx: "5.279.2"
   }
 }
 
