@@ -32,13 +32,11 @@ import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.nativeimage.ObjectHandle;
 import org.graalvm.nativeimage.ObjectHandles;
 import org.graalvm.nativeimage.c.type.CCharPointer;
-import org.graalvm.nativeimage.c.type.CIntPointer;
 import org.graalvm.nativeimage.c.type.CTypeConversion;
 import org.graalvm.word.SignedWord;
 import org.graalvm.word.UnsignedWord;
 import org.graalvm.word.WordFactory;
 
-import com.oracle.svm.core.CErrorNumber;
 import com.oracle.svm.core.SubstrateUtil;
 import com.oracle.svm.core.threadlocal.FastThreadLocalFactory;
 import com.oracle.svm.core.threadlocal.FastThreadLocalObject;
@@ -211,45 +209,5 @@ public abstract class TruffleNFISupport {
         TruffleNFISupport truffleNFISupport = ImageSingletons.lookup(TruffleNFISupport.class);
         NativeAPI.NativeTruffleContext ctx = WordFactory.pointer(nativeContext);
         return truffleNFISupport.resolveContextHandle(ctx.contextHandle());
-    }
-
-    /**
-     * Context for calling from native code into Java code. On entry, the native {@code errno} value
-     * is stored in {@link ErrnoMirror}. When leaving the context, the {@link ErrnoMirror} value is
-     * written back to the native {@code errno} location.
-     */
-    public static class ErrnoMirrorContext implements AutoCloseable {
-
-        private final CIntPointer errnoMirror;
-
-        public ErrnoMirrorContext() {
-            errnoMirror = ErrnoMirror.getErrnoMirrorLocation();
-            errnoMirror.write(CErrorNumber.getCErrorNumber());
-        }
-
-        @Override
-        public void close() {
-            CErrorNumber.setCErrorNumber(errnoMirror.read());
-        }
-    }
-
-    /**
-     * Context for calling from Java code into native code. On entry, the {@link ErrnoMirror} mirror
-     * value is stored to the native {@code errno} location. When leaving the context, the native
-     * {@code errno} value is written back to the {@link ErrnoMirror}.
-     */
-    public static class NativeErrnoContext implements AutoCloseable {
-
-        private final CIntPointer errnoMirror;
-
-        public NativeErrnoContext() {
-            errnoMirror = ErrnoMirror.getErrnoMirrorLocation();
-            CErrorNumber.setCErrorNumber(errnoMirror.read());
-        }
-
-        @Override
-        public void close() {
-            errnoMirror.write(CErrorNumber.getCErrorNumber());
-        }
     }
 }
