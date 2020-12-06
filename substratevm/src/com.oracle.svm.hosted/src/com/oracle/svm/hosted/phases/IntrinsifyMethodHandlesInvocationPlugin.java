@@ -161,7 +161,10 @@ import jdk.vm.ci.meta.ResolvedJavaType;
  */
 public class IntrinsifyMethodHandlesInvocationPlugin implements NodePlugin {
 
-    static class IntrinsificationRegistry extends IntrinsificationPluginRegistry {
+    public static class IntrinsificationRegistry extends IntrinsificationPluginRegistry {
+        public static AutoCloseable startThreadLocalnRegistry() {
+            return ImageSingletons.lookup(IntrinsificationRegistry.class).startThreadLocalIntrinsificationRegistry();
+        }
     }
 
     private final boolean analysis;
@@ -233,7 +236,14 @@ public class IntrinsifyMethodHandlesInvocationPlugin implements NodePlugin {
          * direct call, otherwise we do not have a single target method.
          */
         if (b.getInvokeKind().isDirect() && (hasMethodHandleArgument(args) || isVarHandleMethod(method, args)) && !ignoreMethod(method)) {
-            processInvokeWithMethodHandle(b, universeProviders.getReplacements(), method, args);
+            if (b.bciCanBeDuplicated()) {
+                /*
+                 * If we capture duplication of the bci, we don't process invoke.
+                 */
+                reportUnsupportedFeature(b, method);
+            } else {
+                processInvokeWithMethodHandle(b, universeProviders.getReplacements(), method, args);
+            }
             return true;
 
         } else if (methodHandleType.equals(method.getDeclaringClass()) && methodHandleInvokeMethodNames.contains(method.getName())) {
@@ -455,11 +465,10 @@ public class IntrinsifyMethodHandlesInvocationPlugin implements NodePlugin {
          * intrinsified during analysis. Otherwise new code that was not seen as reachable by the
          * static analysis would be compiled.
          */
-        if (!analysis && intrinsificationRegistry.get(b.getMethod(), b.bci()) != Boolean.TRUE) {
+        if (!analysis && intrinsificationRegistry.get(b.getCallingContext()) != Boolean.TRUE) {
             reportUnsupportedFeature(b, methodHandleMethod);
             return;
         }
-
         Plugins graphBuilderPlugins = new Plugins(parsingProviders.getReplacements().getGraphBuilderPlugins());
 
         registerInvocationPlugins(graphBuilderPlugins.getInvocationPlugins(), replacements);
@@ -507,7 +516,7 @@ public class IntrinsifyMethodHandlesInvocationPlugin implements NodePlugin {
                      * Successfully intrinsified during analysis, remember that we can intrinsify
                      * when parsing for compilation.
                      */
-                    intrinsificationRegistry.add(b.getMethod(), b.bci(), Boolean.TRUE);
+                    intrinsificationRegistry.add(b.getCallingContext(), Boolean.TRUE);
                 }
             } catch (AbortTransplantException ex) {
                 /*

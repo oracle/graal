@@ -384,7 +384,7 @@ public abstract class NativeImageCodeCache {
             boolean isDeoptEntry = compilationInfo.isDeoptEntry(rootFrame.getBCI(), rootFrame.duringCall, rootFrame.rethrowException);
             if (infopoint instanceof DeoptEntryInfopoint) {
                 assert isDeoptEntry;
-                assert topFrame == rootFrame : "Deoptimization target has inlined frame";
+                assert topFrame == rootFrame : "Deoptimization target has inlined frame: " + topFrame;
 
                 numDeoptEntryPoints++;
                 return true;
@@ -393,7 +393,7 @@ public abstract class NativeImageCodeCache {
 
             if (isDeoptEntry && topFrame.duringCall) {
                 assert infopoint instanceof Call;
-                assert topFrame == rootFrame : "Deoptimization target has inlined frame";
+                assert topFrame == rootFrame : "Deoptimization target has inlined frame: " + topFrame;
 
                 numDuringCallEntryPoints++;
                 return true;
@@ -434,12 +434,12 @@ public abstract class NativeImageCodeCache {
             boolean isDeoptEntry = compilationInfo.isDeoptEntry(rootFrame.getBCI(), rootFrame.duringCall, rootFrame.rethrowException);
             if (infopoint instanceof DeoptEntryInfopoint) {
                 assert isDeoptEntry;
-                assert topFrame == rootFrame : "Deoptimization target has inlined frame";
+                assert topFrame == rootFrame : "Deoptimization target has inlined frame: " + topFrame;
                 return true;
             }
             if (isDeoptEntry && topFrame.duringCall) {
                 assert infopoint instanceof Call;
-                assert topFrame == rootFrame : "Deoptimization target has inlined frame";
+                assert topFrame == rootFrame : "Deoptimization target has inlined frame: " + topFrame;
                 return true;
             }
             return false;
