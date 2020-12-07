@@ -1,7 +1,7 @@
 # Truffle Interop 2.0
 
 This document is targeted at guest language and tool implementers.
-It is recommended to read the [Truffle Library Tutorial](https://github.com/oracle/graal/blob/master/truffle/docs TruffleLibraries.md) first, before proceeding.
+It is recommended to read the [Truffle Library Tutorial](https://github.com/oracle/graal/blob/master/truffle/docs/TruffleLibraries.md) first, before proceeding.
 
 ## Motivation
 
@@ -13,12 +13,12 @@ adopted by languages and tools.
 
 Here is a list of arguments why current interoperability APIs were changed and Interop 2.0 was introduced:
 
-* *Footprint:* In the current interop API every message send goes through a CallTarget and the arguments are boxed into an Object[]. This makes current interop inefficient for interpreter calls and it requires additional memory. Truffle Libraries use simple nodes and type-specialized call signatures that don't require argument array boxing or call targets.
+* *Footprint:* In the current interop API every message send goes through a `CallTarget` and the arguments are boxed into an `Object[]`. This makes current interop inefficient for interpreter calls and it requires additional memory. Truffle Libraries use simple nodes and type-specialized call signatures that do not require argument array boxing or call targets.
 * *Uncached dispatch:* There is no way to execute current interop messages from the slow-path without allocating a temporary node. Truffle Libraries automatically generate an uncached version of every exported message. This allows the use of interop messages from slow-path/runtime without allocating any temporary data structures.
 * *Reuse dispatch for multiple messages:* In current interop, the dispatch to exported messages is repeated for each message that is sent. If multiple messages need to be sent and the receiver type becomes polymorphic, this produces bad code. Interop libraries instances can be specialized for input values. This allows users to do the dispatch once and invoke multiple messages without repeating the dispatch. This leads to more efficient code in polymorphic cases.
 * *Support for default implementations:* Current interop can only be used for implementations of `TruffleObject`. Truffle Libraries can be used with any receiver type. For example, it is possible to invoke the isExecutable message on primitive numbers and it just returns `false`.
 * *Error proneness:* There were some common issues with message resolutions that Truffle Libraries try to avoid by not making them possible, such as mixing up receiver types or implementing a wrong type check. The new assertion feature for Truffle Libraries allows specifying message specific assertions that allow verifying invariants, pre, and post-conditions.
-* *Redundancy in documentation:* Current interop documents the messages in the Message constant and in the ForeignAccess static accessor method. This leads to mostly redundant documentation. With Truffle interop, there is only one place for the documentation, which is the instance method in the library class.
+* *Redundancy in documentation:* Current interop documents the messages in the `Message` constant and in the `ForeignAccess` static accessor method. This leads to mostly redundant documentation. With Truffle interop, there is only one place for the documentation, which is the instance method in the library class.
 * *Generality:* Truffle Libraries can be used for language representation abstractions, since it is now efficient enough in terms of memory consumption and interpreter performance. The current interop API could not realistically be used that way because of this issue.
 * *Address protocol issues:* There are some design issues with the current interop API that interop 2.0 tries to address (see later).
 
