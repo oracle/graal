@@ -72,7 +72,7 @@ public class ArrayEqualsNode extends FixedWithNextNode implements LIRLowerable, 
     /**
      * {@link JavaKind} of the arrays to compare.
      *
-     * We are guaranteed that the arrays always have the same kind because the signature of
+     * The arrays are guaranteed to always have the same kind because the signature of
      * {@link Arrays#equals} only allows arrays of the same kind.
      */
     protected final JavaKind kind;
