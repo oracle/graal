@@ -46,7 +46,7 @@ public final class SoftwareChannelSource {
     private String label;
 
     private int priority;
-    
+
     /**
      * Optional parametrs for the software channel.
      */

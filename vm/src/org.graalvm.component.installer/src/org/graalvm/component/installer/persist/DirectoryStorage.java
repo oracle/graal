@@ -225,7 +225,7 @@ public class DirectoryStorage implements ManagementStorage {
         graalAttributes.putIfAbsent(CommonConstants.CAP_JAVA_VERSION, javaVersion);
         return graalAttributes;
     }
-    
+
     /**
      * Loads list of components.
      *

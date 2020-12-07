@@ -143,9 +143,10 @@ public interface CommandInput {
          * @return ComponentCatalog usable with target installation
          */
         ComponentCatalog createComponentCatalog(CommandInput input, ComponentRegistry targetGraalVM);
-        
+
         /**
          * Lists GraalVM editions defined for the installation.
+         * 
          * @return graalvm editions.
          */
         List<GraalEdition> listEditions(ComponentRegistry targetGraalVM);

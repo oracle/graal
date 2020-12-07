@@ -59,6 +59,9 @@ public class UpgradeCommand implements InstallerCommand {
         options.put(Commands.LONG_OPTION_NO_DOWNLOAD_PROGRESS, Commands.OPTION_NO_DOWNLOAD_PROGRESS);
         options.put(Commands.LONG_OPTION_NO_VERIFY_JARS, Commands.OPTION_NO_VERIFY_JARS);
 
+        options.put(Commands.OPTION_USE_EDITION, "s");
+        options.put(Commands.LONG_OPTION_USE_EDITION, Commands.OPTION_USE_EDITION);
+
         options.putAll(ComponentInstaller.componentOptions);
     }
 

@@ -387,7 +387,7 @@ public final class GraalEditionList implements CatalogFactory {
         GraalEdition ge;
         if (editions.isEmpty()) {
             String label = getEditionLabel(defEditionId);
-            ge = new GraalEdition(defEditionId, label);
+            ge = new GraalEdition(defEditionId == null ? "" : defEditionId, label);
         } else if (defaultEdition == null) {
             ge = editions.get(0);
         } else {
@@ -424,7 +424,11 @@ public final class GraalEditionList implements CatalogFactory {
         if (label == null) {
             label = targetGraal.getGraalCapabilities().get(CommonConstants.CAP_EDITION);
             if (label == null) {
-                return "CE"; // NOI18N
+                if ("".equals(id) || id == null) {
+                    return "CE"; // NOI18N
+                } else {
+                    return id.toUpperCase(Locale.ENGLISH);
+                }
             } else {
                 return label.toUpperCase(Locale.ENGLISH);
             }
@@ -549,7 +553,7 @@ public final class GraalEditionList implements CatalogFactory {
 
     @Override
     public ComponentCatalog createComponentCatalog(CommandInput in, ComponentRegistry targetGraalVM) {
-        if (targetGraalVM == this.targetGraal) {
+        if (targetGraalVM != this.targetGraal) {
             return listGraalEditions(targetGraal).createComponentCatalog(in, targetGraalVM);
         }
         String edId = in.optValue(Commands.OPTION_USE_EDITION, "");

@@ -164,6 +164,12 @@ public final class ComponentRegistry implements ComponentCollection {
      */
     private static final Pattern JAVA_VERSION_PATTERN = Pattern.compile("((?:1\\.)?[0-9]+)([._].*)?"); // NOI18N
 
+    private String overrideEdition;
+
+    public void setOverrideEdition(String overrideEdition) {
+        this.overrideEdition = overrideEdition;
+    }
+
     public Map<String, String> getGraalCapabilities() {
         if (graalAttributes != null) {
             return graalAttributes;
@@ -195,6 +201,9 @@ public final class ComponentRegistry implements ComponentCollection {
                         m.get(CommonConstants.CAP_OS_ARCH));
         if (v != null) {
             m.put(CommonConstants.CAP_OS_NAME, v);
+        }
+        if (overrideEdition != null) {
+            graalAttributes.put(CommonConstants.CAP_EDITION, overrideEdition);
         }
         return graalAttributes;
     }
@@ -535,7 +544,7 @@ public final class ComponentRegistry implements ComponentCollection {
     public String getJavaVersion() {
         return getGraalCapabilities().get(CommonConstants.CAP_JAVA_VERSION);
     }
-    
+
     public ManagementStorage getManagementStorage() {
         return storage;
     }
