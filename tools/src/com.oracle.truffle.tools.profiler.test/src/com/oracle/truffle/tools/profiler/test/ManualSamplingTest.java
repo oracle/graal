@@ -35,14 +35,18 @@ import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
 import java.util.Map.Entry;
+import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.Semaphore;
 import java.util.function.Consumer;
 
 import org.graalvm.polyglot.Context;
 import org.graalvm.polyglot.Engine;
+import org.graalvm.polyglot.Value;
 import org.junit.Before;
 import org.junit.Test;
 
+import com.oracle.truffle.api.debug.Debugger;
+import com.oracle.truffle.api.debug.DebuggerSession;
 import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.instrumentation.EventContext;
 import com.oracle.truffle.api.instrumentation.ExecutionEventListener;
@@ -222,6 +226,38 @@ public class ManualSamplingTest extends AbstractPolyglotTest {
                 assertFalse(iterator.hasNext());
             }
         }, false);
+    }
+
+    @Test
+    public void testCombinedWithDebugger() {
+        sampler.setCollecting(false);
+        AtomicInteger numSamples = new AtomicInteger();
+        Debugger debugger = Debugger.find(context.getEngine());
+        DebuggerSession debuggerSession = debugger.startSession(event -> {
+            assertEquals("debugger", event.getSourceSection().getCharacters());
+            if (!sampler.isCollecting()) {
+                sampler.setCollecting(true);
+            } else {
+                Map<Thread, List<StackTraceEntry>> samples = sampler.takeSample();
+                assertEquals(1, samples.size());
+                for (Entry<Thread, List<StackTraceEntry>> entry : samples.entrySet()) {
+                    Iterator<StackTraceEntry> iterator = entry.getValue().iterator();
+                    assertEntry(iterator, "test", 9, ROOT_TAGS);
+                    assertFalse(iterator.hasNext());
+                }
+                numSamples.incrementAndGet();
+            }
+        });
+        context.eval("sl", "function test() {\n" +
+                        "  x = 10;\n" +
+                        "  debugger;\n" +
+                        "}\n");
+        Value test = context.getBindings("sl").getMember("test");
+        for (int i = 0; i < 10; i++) {
+            test.execute();
+        }
+        debuggerSession.close();
+        assertEquals(9, numSamples.get());
     }
 
     private static void assertEntry(Iterator<StackTraceEntry> iterator, String expectedName, int expectedCharIndex, Class<?>... expectedTags) {
