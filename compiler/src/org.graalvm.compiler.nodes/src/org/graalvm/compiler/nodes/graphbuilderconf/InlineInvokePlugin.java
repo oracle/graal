@@ -99,8 +99,9 @@ public interface InlineInvokePlugin extends GraphBuilderPlugin {
         }
 
         /**
-         * Gets a provider for the bytecode of the intrinsic to use when inlining the method
-         * returned by {@link #getMethodToInline()}, if this inlining is an intrinsic inlining.
+         * Returns a provider for the bytecode that should be used in the intrinsic inlining. The
+         * bytecode represents the intrinsic implementation for the method returned by
+         * {@link #getMethodToInline()}.
          *
          * @return A non-null {@link BytecodeProvider} if the method to inline should be
          *         intrinsified, or {@code null} if this is not an intrinsic inlining.
