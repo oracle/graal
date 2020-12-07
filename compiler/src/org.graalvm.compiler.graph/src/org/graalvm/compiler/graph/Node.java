@@ -1071,13 +1071,6 @@ public abstract class Node implements Cloneable, Formattable, NodeInterface {
     }
 
     /**
-     * Returns whether this node can be deduplicated by simplification and optimization phases.
-     */
-    public boolean canBeDeduplicated() {
-        return true;
-    }
-
-    /**
      * @param newNode the result of cloning this node or {@link Unsafe#allocateInstance(Class) raw
      *            allocating} a copy of this node
      * @param type the type of edges to process

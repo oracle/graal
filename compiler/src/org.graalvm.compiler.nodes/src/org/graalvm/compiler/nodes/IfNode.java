@@ -69,6 +69,7 @@ import org.graalvm.compiler.nodes.calc.IntegerNormalizeCompareNode;
 import org.graalvm.compiler.nodes.calc.IsNullNode;
 import org.graalvm.compiler.nodes.calc.ObjectEqualsNode;
 import org.graalvm.compiler.nodes.cfg.Block;
+import org.graalvm.compiler.nodes.debug.ControlFlowAnchored;
 import org.graalvm.compiler.nodes.extended.UnboxNode;
 import org.graalvm.compiler.nodes.java.InstanceOfNode;
 import org.graalvm.compiler.nodes.java.LoadFieldNode;
@@ -594,7 +595,7 @@ public final class IfNode extends ControlSplitNode implements Simplifiable, LIRL
                     if (trueNext instanceof AbstractBeginNode) {
                         // Cannot do this optimization for begin nodes, because it could
                         // move guards above the if that need to stay below a branch.
-                    } else if (nodeClass.equalInputs(trueNext, falseNext) && trueNext.valueEquals(falseNext) && trueNext.canBeDeduplicated()) {
+                    } else if (nodeClass.equalInputs(trueNext, falseNext) && trueNext.valueEquals(falseNext) && !(trueNext instanceof ControlFlowAnchored)) {
                         falseNext.replaceAtUsages(trueNext);
                         graph().removeFixed(falseNext);
                         GraphUtil.unlinkFixedNode(trueNext);
