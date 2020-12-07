@@ -486,10 +486,11 @@ class BaseGraalVmLayoutDistribution(_with_metaclass(ABCMeta, mx.LayoutDistributi
                 for profile in _image_profile(GraalVmNativeProperties.canonical_image_name(image_config)):
                     _add(layout, _macro_dir, 'file:{}'.format(abspath(profile)))
 
-        def _add_link(_dest, _target, _component=None):
+        def _add_link(_dest, _target, _component=None, _dest_base_name=None):
             assert _dest.endswith('/')
             _linkname = relpath(path_substitutions.substitute(_target), start=path_substitutions.substitute(_dest[:-1]))
-            if _linkname != basename(_target):
+            dest_base_name = _dest_base_name or basename(_target)
+            if _linkname != dest_base_name:
                 if mx.is_windows():
                     if _target.endswith('.exe') or _target.endswith('.cmd'):
                         link_template_name = join(_suite.mxDir, 'vm', 'exe_link_template.cmd')
@@ -497,14 +498,14 @@ class BaseGraalVmLayoutDistribution(_with_metaclass(ABCMeta, mx.LayoutDistributi
                             _template_subst = mx_subst.SubstitutionEngine(mx_subst.string_substitutions)
                             _template_subst.register_no_arg('target', normpath(_linkname))
                             contents = _template_subst.substitute(template.read())
-                        full_dest = _dest + basename(_target)[:-len('.exe')] + '.cmd'
+                        full_dest = _dest + dest_base_name[:-len('.exe')] + '.cmd'
                         _add(layout, full_dest, 'string:{}'.format(contents), _component)
                         return full_dest
                     else:
                         mx.abort("Cannot create link on windows for {}->{}".format(_dest, _target))
                 else:
-                    _add(layout, _dest, 'link:{}'.format(_linkname), _component)
-                    return _dest + basename(_target)
+                    _add(layout, _dest + dest_base_name, 'link:{}'.format(_linkname), _component)
+                    return _dest + dest_base_name
 
         def _find_escaping_links(root_dir):
             escaping_links = []
@@ -696,7 +697,8 @@ class BaseGraalVmLayoutDistribution(_with_metaclass(ABCMeta, mx.LayoutDistributi
                 for _component_link in _launcher_config.links:
                     _link_dest = _component_base + _component_link
                     # add links `LauncherConfig.links` -> `LauncherConfig.destination`
-                    _add(layout, _link_dest, 'link:{}'.format(relpath(_launcher_dest, start=dirname(_link_dest))), _component)
+                    _link_dest_dir, _link_dest_base_name = os.path.split(_link_dest)
+                    _add_link(_link_dest_dir + '/', _launcher_dest, _component, _dest_base_name=_link_dest_base_name)
                     # add links from jre/bin to component link
                     if _launcher_config.default_symlinks:
                         _link_path = _add_link(_jdk_jre_bin, _link_dest, _component)
