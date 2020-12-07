@@ -60,11 +60,11 @@ import com.oracle.truffle.nfi.api.SignatureLibrary;
 @ExportLibrary(InteropLibrary.class)
 final class NFISymbol implements TruffleObject {
 
-    static NFISymbol createBindable(String backend, Object nativeSymbol) {
+    static Object createBindable(String backend, Object nativeSymbol) {
         return new NFISymbol(backend, nativeSymbol, NO_SIGNATURE);
     }
 
-    static NFISymbol createBound(String backend, Object nativeSymbol, NFISignature signature) {
+    static Object createBound(String backend, Object nativeSymbol, Object signature) {
         return new NFISymbol(backend, nativeSymbol, signature);
     }
 
