@@ -55,6 +55,9 @@ public class ComponentInstallerTest extends CommandTestBase {
     }
 
     void reportOption(String k) {
+        if (k.length() == 1 && !Character.isLetterOrDigit(k.charAt(0))) {
+            return;
+        }
         if (message.length() > 0) {
             message.append(", ");
         }
@@ -355,7 +358,8 @@ public class ComponentInstallerTest extends CommandTestBase {
 
                 List<String> oneChars = opts.keySet().stream().filter((s) -> s.length() == 1         // one-liner
                                 && !"X".equals(opts.get(s))       // not disabled
-                                && !deprecatedOptions.contains(s) // not deprecated
+                                && (s.length() > 1 || Character.isLetterOrDigit(s.charAt(0))) && !deprecatedOptions.contains(s) // not
+                                                                                                                                // deprecated
                 ).sorted().collect(Collectors.toList());
                 if (!oneChars.isEmpty()) {
                     errors.add("Command " + currentCmd + ": Option(s) missing in command overview - " + oneChars);

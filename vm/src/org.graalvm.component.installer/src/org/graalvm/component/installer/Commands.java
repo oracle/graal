@@ -231,4 +231,16 @@ public interface Commands {
      */
     String OPTION_USE_EDITION = "$";
     String LONG_OPTION_USE_EDITION = "edition";
+
+    /**
+     * Show the core component.
+     */
+    String OPTION_SHOW_CORE = "%";
+    String LONG_OPTION_SHOW_CORE = "show-core";
+
+    /**
+     * Show updates to components. Implies --show-core.
+     */
+    String OPTION_SHOW_UPDATES = "&";
+    String LONG_OPTION_SHOW_UPDATES = "show-updates";
 }

@@ -93,7 +93,7 @@ public class CommonConstants {
      * Prefix for env variables that define catalog list.
      */
     public static final String CAP_CATALOG_PREFIX = "component_catalog_"; // NOI18N
-    
+
     public static final String CAP_CATALOG_EDITION = "edition"; // NOI18N
     public static final String CAP_CATALOG_EDITION_NAME = "editionLabel"; // NOI18N
 

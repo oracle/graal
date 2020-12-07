@@ -63,7 +63,6 @@ import java.util.logging.Logger;
 import java.util.logging.SimpleFormatter;
 import java.util.logging.StreamHandler;
 import java.util.stream.Collectors;
-import org.graalvm.component.installer.CommandInput.CatalogFactory;
 import static org.graalvm.component.installer.CommonConstants.PATH_COMPONENT_STORAGE;
 import org.graalvm.component.installer.commands.AvailableCommand;
 import org.graalvm.component.installer.commands.InfoCommand;
@@ -74,13 +73,11 @@ import org.graalvm.component.installer.commands.PreRemoveCommand;
 import org.graalvm.component.installer.commands.RebuildImageCommand;
 import org.graalvm.component.installer.commands.UninstallCommand;
 import org.graalvm.component.installer.commands.UpgradeCommand;
-import org.graalvm.component.installer.model.CatalogContents;
 import org.graalvm.component.installer.model.ComponentRegistry;
-import org.graalvm.component.installer.model.GraalEdition;
 import org.graalvm.component.installer.os.WindowsJVMWrapper;
 import org.graalvm.component.installer.persist.DirectoryStorage;
 import org.graalvm.component.installer.remote.CatalogIterable;
-import org.graalvm.component.installer.remote.RemoteCatalogDownloader;
+import org.graalvm.component.installer.remote.GraalEditionList;
 import org.graalvm.launcher.Launcher;
 import org.graalvm.options.OptionCategory;
 import org.graalvm.options.OptionDescriptor;
@@ -372,40 +369,24 @@ public class ComponentInstaller extends Launcher {
         // explicit location
         String catalogURL = getExplicitCatalogURL();
         String builtinCatLocation = getReleaseCatalogURL();
-        RemoteCatalogDownloader downloader = new RemoteCatalogDownloader(
-                        input,
-                        feedback,
-                        catalogURL);
         if (builtinCatLocation == null) {
             builtinCatLocation = feedback.l10n("Installer_BuiltingCatalogURL");
         }
-        downloader.setDefaultCatalog(builtinCatLocation); // NOI18N
-        CatalogFactory cFactory = new CatalogFactory() {
-            @Override
-            public ComponentCatalog createComponentCatalog(CommandInput in, ComponentRegistry lreg) {
-                RemoteCatalogDownloader nDownloader;
-                if (lreg == in.getLocalRegistry()) {
-                    nDownloader = downloader;
-                } else {
-                    nDownloader = new RemoteCatalogDownloader(in, env,
-                                    downloader.getOverrideCatalogSpec());
-                }
-                CatalogContents col = new CatalogContents(env, nDownloader.getStorage(), lreg);
-                col.setRemoteEnabled(downloader.isRemoteSourcesAllowed());
-                return col;
-            }
 
-            @Override
-            public List<GraalEdition> listEditions(ComponentRegistry targetGraalVM) {
-                return Collections.emptyList();
-            }
-        };
-        env.setCatalogFactory(cFactory);
+        GraalEditionList editionList = new GraalEditionList(feedback, input, input.getLocalRegistry());
+        editionList.setDefaultCatalogSpec(builtinCatLocation);
+        editionList.setOverrideCatalogSpec(catalogURL);
+        env.setCatalogFactory(editionList);
+
+        if (input.hasOption(Commands.OPTION_USE_EDITION)) {
+            input.getLocalRegistry().setOverrideEdition(input.optValue(Commands.OPTION_USE_EDITION));
+        }
+
         boolean builtinsImplied = true;
         boolean setIterable = true;
         if (input.hasOption(Commands.OPTION_FILES)) {
             FileIterable fi = new FileIterable(env, env);
-            fi.setCatalogFactory(cFactory);
+            fi.setCatalogFactory(editionList);
             env.setFileIterable(fi);
 
             // optionally resolve local dependencies against parent directories
@@ -420,7 +401,7 @@ public class ComponentInstaller extends Launcher {
                         if (parent != null && Files.isDirectory(parent)) {
                             SoftwareChannelSource localSource = new SoftwareChannelSource(parent.toUri().toString(), null);
                             localSource.setPriority(10000);
-                            downloader.addLocalChannelSource(localSource);
+                            editionList.addLocalChannelSource(localSource);
                         }
                     }
                 }
@@ -429,7 +410,7 @@ public class ComponentInstaller extends Launcher {
             setIterable = false;
         } else if (input.hasOption(Commands.OPTION_URLS)) {
             DownloadURLIterable dit = new DownloadURLIterable(env, env);
-            dit.setCatalogFactory(cFactory);
+            dit.setCatalogFactory(editionList);
             env.setFileIterable(dit);
             setIterable = false;
             builtinsImplied = false;
@@ -438,7 +419,8 @@ public class ComponentInstaller extends Launcher {
         if (setIterable) {
             env.setFileIterable(new CatalogIterable(env, env));
         }
-        downloader.setRemoteSourcesAllowed(builtinsImplied || env.hasOption(Commands.OPTION_CATALOG) ||
+
+        editionList.setRemoteSourcesAllowed(builtinsImplied || env.hasOption(Commands.OPTION_CATALOG) ||
                         env.hasOption(Commands.OPTION_FOREIGN_CATALOG));
         return -1;
     }

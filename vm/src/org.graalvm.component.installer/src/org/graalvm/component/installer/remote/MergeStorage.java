@@ -130,7 +130,7 @@ public class MergeStorage extends AbstractCatalogStorage implements ComponentCat
     List<SoftwareChannel> getChannels() {
         return channels;
     }
-    
+
     private int getChannelPriority(SoftwareChannel ch) {
         SoftwareChannelSource src = this.channelInfos.get(ch);
         if (src != null) {
@@ -140,7 +140,7 @@ public class MergeStorage extends AbstractCatalogStorage implements ComponentCat
             return index == -1 ? 0 : index;
         }
     }
-    
+
     @Override
     public Set<ComponentInfo> loadComponentMetadata(String id) throws IOException {
         Set<ComponentInfo> cis = new HashSet<>();
