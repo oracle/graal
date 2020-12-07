@@ -95,12 +95,13 @@ public class AMD64GraphBuilderPlugins implements TargetGraphBuilderPlugins {
                 registerPlatformSpecificUnsafePlugins(invocationPlugins, replacements, explicitUnsafeNullChecks,
                                 new JavaKind[]{JavaKind.Int, JavaKind.Long, JavaKind.Object, JavaKind.Boolean, JavaKind.Byte, JavaKind.Short, JavaKind.Char, JavaKind.Float, JavaKind.Double});
                 registerUnsafePlugins(invocationPlugins, replacements, explicitUnsafeNullChecks);
-                if (GraalOptions.EmitJDK8StringSubstitutions.getValue(options) && JavaVersionUtil.JAVA_SPEC < 9) {
-                    registerStringPlugins(invocationPlugins, replacements);
-                }
-                if (GraalOptions.EmitJDK9PlusStringSubstitutions.getValue(options) && JavaVersionUtil.JAVA_SPEC >= 9) {
-                    registerStringLatin1Plugins(invocationPlugins, replacements);
-                    registerStringUTF16Plugins(invocationPlugins, replacements);
+                if (GraalOptions.EmitStringSubstitutions.getValue(options)) {
+                    if (JavaVersionUtil.JAVA_SPEC <= 8) {
+                        registerStringPlugins(invocationPlugins, replacements);
+                    } else {
+                        registerStringLatin1Plugins(invocationPlugins, replacements);
+                        registerStringUTF16Plugins(invocationPlugins, replacements);
+                    }
                 }
                 registerMathPlugins(invocationPlugins, useFMAIntrinsics, arch, replacements);
                 registerArraysEqualsPlugins(invocationPlugins, replacements);

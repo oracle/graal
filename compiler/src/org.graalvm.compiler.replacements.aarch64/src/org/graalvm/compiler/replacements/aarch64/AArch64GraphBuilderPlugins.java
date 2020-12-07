@@ -82,7 +82,7 @@ public class AArch64GraphBuilderPlugins implements TargetGraphBuilderPlugins {
                 registerIntegerLongPlugins(invocationPlugins, JavaKind.Int, replacements);
                 registerIntegerLongPlugins(invocationPlugins, JavaKind.Long, replacements);
                 registerMathPlugins(invocationPlugins, registerForeignCallMath, useFMAIntrinsics);
-                if (GraalOptions.EmitJDK9PlusStringSubstitutions.getValue(options) && JavaVersionUtil.JAVA_SPEC >= 9) {
+                if (JavaVersionUtil.JAVA_SPEC >= 9 && GraalOptions.EmitStringSubstitutions.getValue(options)) {
                     registerStringLatin1Plugins(invocationPlugins, replacements);
                     registerStringUTF16Plugins(invocationPlugins, replacements);
                 }

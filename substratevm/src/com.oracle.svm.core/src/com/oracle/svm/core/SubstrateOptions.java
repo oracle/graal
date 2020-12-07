@@ -364,7 +364,7 @@ public class SubstrateOptions {
             if ("llvm".equals(newValue)) {
                 if (JavaVersionUtil.JAVA_SPEC >= 9) {
                     /* See GR-14405, https://github.com/oracle/graal/issues/1056 */
-                    GraalOptions.EmitJDK9PlusStringSubstitutions.update(values, false);
+                    GraalOptions.EmitStringSubstitutions.update(values, false);
                 }
                 /*
                  * The code information is filled before linking, which means that stripping dead
