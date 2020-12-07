@@ -52,16 +52,21 @@ export async function createProject() {
     if (options) {
         let created = false;
         if (options.url.startsWith(PROTOCOL)) {
-            const downloadedFile = await downloadProject(options);
-            const files = await decompress(downloadedFile, options.target);
-            fs.unlinkSync(downloadedFile);
-            created = files.length > 0;
+            try {
+                const downloadedFile = await downloadProject(options);
+                const files = await decompress(downloadedFile, options.target);
+                fs.unlinkSync(downloadedFile);
+                created = files.length > 0;
+            } catch (e) {
+                fs.rmdirSync(options.target, { recursive: true });
+                vscode.window.showErrorMessage(`Cannot create Micronaut project: ${e}`);
+            }
         } else {
             try {
                 const out = cp.execFileSync(options.url, options.args, { cwd: path.dirname(options.target), env: {JAVA_HOME: getJavaHome() } });
                 created = out.toString().indexOf('Application created') >= 0;
             } catch (e) {
-                vscode.window.showErrorMessage(`Cannot create Micronaut project: ${e}`);
+                vscode.window.showErrorMessage(`Cannot create Micronaut project: ${e.message}`);
             }
         }
         if (created) {
@@ -386,9 +391,9 @@ async function get(url: string): Promise<string> {
             const contentType = res.headers['content-type'] || '';
             let error;
             if (statusCode !== 200) {
-                error = new Error(`Request Failed.\nStatus Code: ${statusCode}`);
+                error = `Request Failed.\nStatus Code: ${statusCode}`;
             } else if (!/^application\/json/.test(contentType)) {
-                error = new Error(`Invalid content-type.\nExpected application/json but received ${contentType}`);
+                error = `Invalid content-type.\nExpected application/json but received ${contentType}`;
             }
             if (error) {
                 res.resume();
@@ -401,7 +406,7 @@ async function get(url: string): Promise<string> {
                 });
             }
         }).on('error', e => {
-            reject(e);
+            reject(e.message);
         }).end();
     });
 }
@@ -469,23 +474,33 @@ async function downloadProject(options: {url: string, name: string, target: stri
         https.get(options.url, res => {
             const { statusCode } = res;
             const contentType = res.headers['content-type'] || '';
-            let error;
             if (statusCode !== 201) {
-                error = new Error(`Request Failed.\nStatus Code: ${statusCode}`);
+                let rawData: string = '';
+                res.on('data', chunk => { rawData += chunk; });
+                res.on('end', () => {
+                    if (/^application\/json/.test(contentType)) {
+                        reject(JSON.parse(rawData).message);
+                    } else {
+                        reject(`Request failed.\nStatus Code: ${statusCode}`);
+                    }
+                });
+                res.on('error', e => {
+                    reject(e.message);
+                });
             } else if (!/^application\/zip/.test(contentType)) {
-                error = new Error(`Invalid content-type.\nExpected application/zip but received ${contentType}`);
-            }
-            if (error) {
                 res.resume();
-                reject(error);
+                reject(`Invalid content-type.\nExpected application/zip but received ${contentType}`);
             } else {
                 res.pipe(file);
-                res.on('end', () => {
+                file.on('close', () => {
                     resolve(filePath);
+                });
+                res.on('error', e => {
+                    reject(e.message);
                 });
             }
         }).on('error', e => {
-            reject(e);
+            reject(e.message);
         }).end();
     });
 }
