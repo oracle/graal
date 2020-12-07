@@ -107,9 +107,9 @@ public class HostInteropErrorTest extends ProxyLanguageEnvTest {
         Object foo = INTEROP.readMember(hostObj, "foo");
 
         assertFails(() -> INTEROP.invokeMember(hostObj, "foo"), ArityException.class,
-                        "Arity error - expected: 1 actual: 0");
+                        "Arity error - actual 0, expected 1");
         assertFails(() -> INTEROP.execute(foo), ArityException.class,
-                        "Arity error - expected: 1 actual: 0");
+                        "Arity error - actual 0, expected 1");
     }
 
     @Test

@@ -79,23 +79,23 @@ public final class ArityException extends InteropException {
     @Override
     @TruffleBoundary
     public String getMessage() {
-        String actualLabel;
+        String given;
         if (actualArity < 0) {
-            actualLabel = "unknown";
+            given = "unknown";
         } else {
-            actualLabel = String.valueOf(actualArity);
+            given = String.valueOf(actualArity);
         }
+        String expected;
         if (expectedMinArity == expectedMaxArity) {
-            return "Arity error - expected: " + expectedMinArity + " actual: " + actualLabel;
+            expected = String.valueOf(expectedMinArity);
         } else {
-            String maxLabel;
             if (expectedMaxArity < 0) {
-                maxLabel = "infinity";
+                expected = expectedMinArity + "+";
             } else {
-                maxLabel = String.valueOf(expectedMaxArity);
+                expected = expectedMinArity + "-" + expectedMaxArity;
             }
-            return "Arity error - expected range: [" + expectedMinArity + " - " + maxLabel + "] actual: " + actualLabel;
         }
+        return String.format("Arity error - actual %s, expected %s", given, expected);
     }
 
     /**
