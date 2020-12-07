@@ -34,6 +34,7 @@ import org.graalvm.nativeimage.c.CContext;
 import org.graalvm.nativeimage.c.struct.CFieldAddress;
 import org.graalvm.nativeimage.c.struct.CStruct;
 import org.graalvm.nativeimage.c.struct.SizeOf;
+import org.graalvm.nativeimage.c.type.CIntPointer;
 import org.graalvm.nativeimage.c.type.WordPointer;
 import org.graalvm.word.Pointer;
 import org.graalvm.word.PointerBase;
@@ -142,7 +143,7 @@ final class NativeSignature {
                     }
                 }
 
-                ffiCall(cif, WordFactory.pointer(functionPointer), ret, argPtrs);
+                ffiCall(cif, WordFactory.pointer(functionPointer), ret, argPtrs, ErrnoMirror.errnoMirror.getAddress());
 
                 Throwable pending = NativeClosure.pendingException.get();
                 if (pending != null) {
@@ -159,22 +160,22 @@ final class NativeSignature {
          * it is possibly altered at a safepoint.
          */
         @NeverInline("Must not be inlined in a caller that has an exception handler: We only support InvokeNode and not InvokeWithExceptionNode between a CFunctionPrologueNode and CFunctionEpilogueNode")
-        private static void ffiCall(ffi_cif cif, PointerBase fn, PointerBase rvalue, WordPointer avalue) {
+        private static void ffiCall(ffi_cif cif, PointerBase fn, PointerBase rvalue, WordPointer avalue, CIntPointer errnoMirror) {
             CFunctionPrologueNode.cFunctionPrologue(VMThreads.StatusSupport.STATUS_IN_NATIVE);
-            doFfiCall(cif, fn, rvalue, avalue);
+            doFfiCall(cif, fn, rvalue, avalue, errnoMirror);
             CFunctionEpilogueNode.cFunctionEpilogue(VMThreads.StatusSupport.STATUS_IN_NATIVE);
         }
 
         @Uninterruptible(reason = "In native.")
         @NeverInline("Can have only a single invoke between CFunctionPrologueNode and CFunctionEpilogueNode.")
-        private static void doFfiCall(ffi_cif cif, PointerBase fn, PointerBase rvalue, WordPointer avalue) {
+        private static void doFfiCall(ffi_cif cif, PointerBase fn, PointerBase rvalue, WordPointer avalue, CIntPointer errnoMirror) {
             /*
              * Set / get the error number immediately before / after the ffi call. We must be
              * uninterruptible, so that no safepoint can interfere.
              */
-            CErrorNumber.setCErrorNumber(ErrnoMirror.errnoMirror.getAddress().read());
+            CErrorNumber.setCErrorNumber(errnoMirror.read());
             LibFFI.NoTransitions.ffi_call(cif, fn, rvalue, avalue);
-            ErrnoMirror.errnoMirror.getAddress().write(CErrorNumber.getCErrorNumber());
+            errnoMirror.write(CErrorNumber.getCErrorNumber());
         }
     }
 
