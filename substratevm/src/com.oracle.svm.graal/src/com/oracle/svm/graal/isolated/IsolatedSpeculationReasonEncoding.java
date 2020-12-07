@@ -36,10 +36,9 @@ import com.oracle.svm.core.graal.meta.SharedRuntimeMethod;
 import jdk.vm.ci.common.JVMCIError;
 import jdk.vm.ci.meta.ResolvedJavaMethod;
 import jdk.vm.ci.meta.ResolvedJavaType;
-import jdk.vm.ci.meta.SpeculationLog;
 
 /** Adapted from {@code jdk.vm.ci.hotspot.HotSpotSpeculationEncoding}. */
-final class IsolatedSpeculationReasonEncoding extends ByteArrayOutputStream implements SpeculationLog.SpeculationReasonEncoding {
+final class IsolatedSpeculationReasonEncoding extends ByteArrayOutputStream implements SpeculationReasonEncodingClone {
 
     private DataOutputStream dos = new DataOutputStream(this);
     private byte[] result;
