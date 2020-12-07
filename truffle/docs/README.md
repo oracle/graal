@@ -1,6 +1,6 @@
 # Truffle Language Implementation Framework
 
-Truffle Language Implementation Framework (henceforth "Truffle") is an open source library for building tools and programming languages implementations as interpreters for self-modifying Abstract Syntax Trees.
+The Truffle language implementation framework (henceforth "Truffle") is an open source library for building tools and programming languages implementations as interpreters for self-modifying Abstract Syntax Trees.
 Together with the open source [GraalVM compiler](https://github.com/oracle/graal/tree/master/compiler), Truffle represents a significant step
 forward in programming language implementation technology in the current era of dynamic languages.
 
@@ -33,7 +33,7 @@ The reference API documentation is available as part of the [Truffle Javadoc](ht
 Start with looking at the [TruffleLanguage](http://www.graalvm.org/truffle/javadoc/com/oracle/truffle/api/TruffleLanguage.html) class, which one should subclass to start developing a language.
 Truffle comes prebuilt with the GraalVM compiler and several language implementations as part of GraalVM.
 
-A good way to start implementing your language with the Truffle framework is to fork the [SimpleLanguage](https://github.com/graalvm/simplelanguage) project and start hacking.
+A good way to start implementing your language with Truffle is to fork the [SimpleLanguage](https://github.com/graalvm/simplelanguage) project and start hacking.
 SimpleLanguage is a relatively small language implementation, well-documented, and designed to demonstrate most of the Truffle features.
 You could also try by looking at code in one of the existing open source languages [implementations and experiments](./Languages.md).
 
