@@ -278,7 +278,7 @@ public final class PolyglotCompilerOptions {
     // MultiTier
 
     @Option(help = "Whether to use multiple Truffle compilation tiers by default.", category = OptionCategory.EXPERT)
-    public static final OptionKey<Boolean> MultiTier = new OptionKey<>(false);
+    public static final OptionKey<Boolean> MultiTier = new OptionKey<>(true);
 
     @Option(help = "Explicitly pick a first tier inlining policy by name (None, TrivialOnly). If empty (default) the lowest priority policy (TrivialOnly) is chosen.", category = OptionCategory.INTERNAL)
     public static final OptionKey<String> FirstTierInliningPolicy = new OptionKey<>("");
