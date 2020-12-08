@@ -185,7 +185,7 @@ public final class DebugStackFrame {
         } catch (ThreadDeath td) {
             throw td;
         } catch (Throwable ex) {
-            throw new DebugException(event.getSession(), ex, root.getLanguageInfo(), null, true, null);
+            throw DebugException.create(event.getSession(), ex, root.getLanguageInfo());
         }
     }
 
@@ -276,7 +276,7 @@ public final class DebugStackFrame {
         } catch (ThreadDeath td) {
             throw td;
         } catch (Throwable ex) {
-            throw new DebugException(session, ex, root.getLanguageInfo(), null, true, null);
+            throw DebugException.create(session, ex, root.getLanguageInfo());
         }
     }
 

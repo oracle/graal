@@ -214,6 +214,7 @@ public class SLJavaInteropDebugTest {
             }
             frameInfoIndex += 4;
         }
+        assertEquals(frameInfo.length, frameInfoIndex);
         checkException(event, frameInfo);
     }
 
@@ -244,6 +245,7 @@ public class SLJavaInteropDebugTest {
                 }
                 frameInfoIndex += 4;
             }
+            assertEquals(frameInfo.length, frameInfoIndex);
         }
     }
 }
