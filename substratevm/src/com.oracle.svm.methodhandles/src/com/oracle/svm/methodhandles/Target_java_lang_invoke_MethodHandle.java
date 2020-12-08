@@ -66,9 +66,15 @@ final class Target_java_lang_invoke_MethodHandle {
                 assert memberName.reflectAccess == null;
                 return memberName.intrinsic.execute(args);
             } else if (memberName.isField()) { /* Field access */
-                assert args.length == 1;
-                Object obj = args[0];
-                return ((Field) memberName.reflectAccess).get(obj);
+                Field field = (Field) memberName.reflectAccess;
+                if (Modifier.isStatic(field.getModifiers())) {
+                    assert args == null || args.length == 0;
+                    return field.get(null);
+                } else {
+                    assert args.length == 1;
+                    Object receiver = args[0];
+                    return field.get(receiver);
+                }
             } else { /* Method or constructor invocation */
                 Target_java_lang_reflect_AccessibleObject executable = SubstrateUtil.cast(memberName.reflectAccess, Target_java_lang_reflect_AccessibleObject.class);
 
