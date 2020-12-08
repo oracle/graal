@@ -55,7 +55,7 @@ public class Array extends BasicObject {
 }
 ```
 
-Class members can be accessed using the `DynamicObjectLibrary`, which can be obtained using the `@CachedLibrary` annotation of the Truffle DSL and `DynamicObjectLibrary.getFactory()` + `getUncached()`, `create(DynamicObject)`, and `createDispatched(int)`.
+Dynamic object members can be accessed using the `DynamicObjectLibrary`, which can be obtained using the `@CachedLibrary` annotation of the Truffle DSL and `DynamicObjectLibrary.getFactory()` + `getUncached()`, `create(DynamicObject)`, and `createDispatched(int)`.
 Here is an example of how it could be used to implement `InteropLibrary` messages:
 ```java
 @ExportLibrary(InteropLibrary.class)

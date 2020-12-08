@@ -68,7 +68,8 @@ If both annotations are used, then both polymorphic and megamorphic activations 
 
 ### Tools Support
 
-Knowing which nodes should and should not report polymorphic specializations is for the language developer to conclude through either knowledge of the language in question, or through experimentation with the effects of including/excluding particular nodes/specializations.
+Knowing which nodes should and should not report polymorphic specializations is for the language developer to conclude.
+This can be done either through domain knowledge (which nodes of the language are expensive when polymorphic), or through experimentation (measuring the effects of including/excluding particular nodes/specializations).
 To aid language developers in better understanding the impact of reporting polymorphic specializations some tools support was provided.
 
 #### Tracing individual splits
