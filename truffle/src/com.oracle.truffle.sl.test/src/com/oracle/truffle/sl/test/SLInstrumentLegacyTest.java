@@ -70,6 +70,7 @@ import org.junit.Test;
 
 import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
+import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.frame.MaterializedFrame;
 import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.instrumentation.EventBinding;
@@ -641,7 +642,7 @@ public class SLInstrumentLegacyTest {
             env.getInstrumenter().attachExecutionEventListener(SourceSectionFilter.ANY, new ExecutionEventListener() {
                 @Override
                 public void onEnter(EventContext context, VirtualFrame frame) {
-                    if ("readln".equals(context.getInstrumentedSourceSection().getCharacters())) {
+                    if ("readln".equals(getSourceSectionCharacters(context.getInstrumentedSourceSection()))) {
                         CompilerDirectives.transferToInterpreter();
                         // Interrupt the I/O
                         final Thread thread = Thread.currentThread();
@@ -660,6 +661,11 @@ public class SLInstrumentLegacyTest {
                             }
                         }.start();
                     }
+                }
+
+                @TruffleBoundary
+                private CharSequence getSourceSectionCharacters(SourceSection section) {
+                    return section.getCharacters();
                 }
 
                 @Override
