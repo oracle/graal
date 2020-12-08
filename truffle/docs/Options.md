@@ -3,21 +3,21 @@
 You can list options from the command line with any language launcher:
 
 ```shell
-my-language --help:expert
+language-launcher --help:expert
 ```
 
-or for options only relevant for Truffle language implementers:
+Or, for options only relevant for Truffle language implementers:
 
 ```shell
-my-language --help:internal
+language-launcher --help:internal
 ```
 
-In addition the GraalVM compiler options can be listed with:
+In addition, the GraalVM compiler options can be listed with:
 
 ```shell
-my-language --jvm --vm.XX:+JVMCIPrintProperties
+language-launcher --jvm --vm.XX:+JVMCIPrintProperties
 ```
-See [graalvm_ce_jdk8_options](https://chriswhocodes.com/graalvm_ce_jdk8_options.html) for a list of the GraalVM compiler options.
+See [graalvm_ce_jdk8_options](https://chriswhocodes.com/graalvm_ce_jdk8_options.html) for a list of GraalVM compiler options.
 
 ## Default Language Launcher Options
 
@@ -40,9 +40,10 @@ See [graalvm_ce_jdk8_options](https://chriswhocodes.com/graalvm_ce_jdk8_options.
 
 ## Expert Engine Options
 
-Advanced engine options for controlling the engine. Useful for users and language and tool implementers.
+These are advanced options for controlling the engine.
+They are useful to users and language and tool implementers.
 
-```
+```shell
 Expert engine options:
   --engine.BackgroundCompilation=<Boolean>     Enable asynchronous truffle compilation in background threads
   --engine.Compilation=<Boolean>               Enable or disable Truffle compilation.
@@ -64,8 +65,10 @@ Expert engine options:
   --engine.Inlining=<Boolean>                  Enable automatic inlining of guest language call targets.
   --engine.InliningExpansionBudget=<Integer>   The base expansion budget for language-agnostic inlining.
   --engine.InliningInliningBudget=<Integer>    The base inlining budget for language-agnostic inlining
+  --engine.InliningNodeBudget=<Integer>        Maximum number of inlined non-trivial AST nodes per compilation unit.
   --engine.InliningPolicy=<String>             Explicitly pick a inlining policy by name. Highest priority chosen by default.
   --engine.InliningRecursionDepth=<Integer>    Maximum depth for recursive inlining.
+  --engine.LanguageAgnosticInlining=<Boolean>  Use language-agnostic inlining (overrides the TruffleFunctionInlining setting, option is experimental).
   --engine.MinInvokeThreshold=<Integer>        Minimum number of calls before a call target is compiled
   --engine.Mode=<EngineMode>                   Configures the execution mode of the engine. Available modes are 'latency' and 'throughput'. The default value balances
                                                between the two.
@@ -80,9 +83,9 @@ Expert engine options:
 
 ## Internal Engine Options
 
-Internal options for debugging language implementations and tools.
+These are internal options for debugging language implementations and tools.
 
-```
+```shell
   --engine.ArgumentTypeSpeculation=<Boolean>   Speculate on arguments types at call sites
   --engine.CompilationFailureAction=<ExceptionAction>
                                                Specifies the action to take when Truffle compilation fails.%nThe accepted values are:%n    Silent - Print nothing to
