@@ -79,6 +79,7 @@ public abstract class AbstractCompareAndSwapNode extends FixedAccessNode impleme
         return newValue;
     }
 
+    @Override
     public final MemoryOrderMode getMemoryOrder() {
         return memoryOrder;
     }

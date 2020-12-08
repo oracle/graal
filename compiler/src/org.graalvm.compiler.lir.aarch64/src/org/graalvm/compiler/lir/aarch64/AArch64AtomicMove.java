@@ -70,7 +70,7 @@ public class AArch64AtomicMove {
         @Temp protected AllocatableValue scratchValue;
 
         public CompareAndSwapOp(AArch64Kind accessKind, AllocatableValue result, Value expectedValue, AllocatableValue newValue, AllocatableValue addressValue, AllocatableValue scratch,
-                                MemoryOrderMode memoryOrder) {
+                        MemoryOrderMode memoryOrder) {
             super(TYPE);
             this.accessKind = accessKind;
             this.resultValue = result;
@@ -84,7 +84,7 @@ public class AArch64AtomicMove {
         @Override
         public void emitCode(CompilationResultBuilder crb, AArch64MacroAssembler masm) {
             assert accessKind.isInteger();
-            final int size = accessKind.getSizeInBytes() * Byte.SIZE;
+            final int memAccessSize = accessKind.getSizeInBytes() * Byte.SIZE;
 
             Register address = asRegister(addressValue);
             Register result = asRegister(resultValue);
@@ -98,8 +98,8 @@ public class AArch64AtomicMove {
             boolean release = (memoryOrder.preWriteBarriers & (LOAD_STORE | STORE_STORE)) != 0;
 
             if (AArch64LIRFlagsVersioned.useLSE(masm.target.arch)) {
-                masm.mov(Math.max(size, 32), result, expected);
-                masm.cas(size, result, newVal, address, acquire, release);
+                masm.mov(Math.max(memAccessSize, 32), result, expected);
+                masm.cas(memAccessSize, result, newVal, address, acquire, release);
                 AArch64Compare.gpCompare(masm, resultValue, expectedValue);
             } else {
                 // We could avoid using a scratch register here, by reusing resultValue for the
@@ -109,10 +109,10 @@ public class AArch64AtomicMove {
                 Label retry = new Label();
                 Label fail = new Label();
                 masm.bind(retry);
-                masm.loadExclusive(size, result, address, acquire);
+                masm.loadExclusive(memAccessSize, result, address, acquire);
                 AArch64Compare.gpCompare(masm, resultValue, expectedValue);
                 masm.branchConditionally(AArch64Assembler.ConditionFlag.NE, fail);
-                masm.storeExclusive(size, scratch, newVal, address, release);
+                masm.storeExclusive(memAccessSize, scratch, newVal, address, release);
                 // if scratch == 0 then write successful, else retry.
                 masm.cbnz(32, scratch, retry);
                 masm.bind(fail);
@@ -149,26 +149,26 @@ public class AArch64AtomicMove {
         @Override
         public void emitCode(CompilationResultBuilder crb, AArch64MacroAssembler masm) {
             assert accessKind.isInteger();
-            final int srcSize = accessKind.getSizeInBytes() * Byte.SIZE;
-            final int dstSize = Math.max(srcSize, 32);
+            final int memAccessSize = accessKind.getSizeInBytes() * Byte.SIZE;
+            final int addSize = Math.max(memAccessSize, 32);
 
             Register address = asRegister(addressValue);
             Register result = asRegister(resultValue);
 
             Label retry = new Label();
             masm.bind(retry);
-            masm.ldaxr(srcSize, result, address);
+            masm.ldaxr(memAccessSize, result, address);
             try (ScratchRegister scratchRegister1 = masm.getScratchRegister()) {
                 Register scratch1 = scratchRegister1.getRegister();
                 if (LIRValueUtil.isConstantValue(deltaValue)) {
                     long delta = LIRValueUtil.asConstantValue(deltaValue).getJavaConstant().asLong();
-                    masm.add(dstSize, scratch1, result, delta);
+                    masm.add(addSize, scratch1, result, delta);
                 } else { // must be a register then
-                    masm.add(dstSize, scratch1, result, asRegister(deltaValue));
+                    masm.add(addSize, scratch1, result, asRegister(deltaValue));
                 }
                 try (ScratchRegister scratchRegister2 = masm.getScratchRegister()) {
                     Register scratch2 = scratchRegister2.getRegister();
-                    masm.stlxr(srcSize, scratch2, scratch1, address);
+                    masm.stlxr(memAccessSize, scratch2, scratch1, address);
                     // if scratch2 == 0 then write successful, else retry
                     masm.cbnz(32, scratch2, retry);
                 }
@@ -213,12 +213,12 @@ public class AArch64AtomicMove {
         @Override
         public void emitCode(CompilationResultBuilder crb, AArch64MacroAssembler masm) {
             assert accessKind.isInteger();
-            final int srcSize = accessKind.getSizeInBytes() * Byte.SIZE;
+            final int memAccessSize = accessKind.getSizeInBytes() * Byte.SIZE;
 
             Register address = asRegister(addressValue);
             Register delta = asRegister(deltaValue);
             Register result = asRegister(resultValue);
-            masm.ldadd(srcSize, delta, result, address, true, true);
+            masm.ldadd(memAccessSize, delta, result, address, true, true);
         }
     }
 
@@ -253,20 +253,20 @@ public class AArch64AtomicMove {
         @Override
         public void emitCode(CompilationResultBuilder crb, AArch64MacroAssembler masm) {
             assert accessKind.isInteger();
-            final int size = accessKind.getSizeInBytes() * Byte.SIZE;
+            final int memAccessSize = accessKind.getSizeInBytes() * Byte.SIZE;
 
             Register address = asRegister(addressValue);
             Register value = asRegister(newValue);
             Register result = asRegister(resultValue);
 
             if (AArch64LIRFlagsVersioned.useLSE(masm.target.arch)) {
-                masm.swp(size, value, result, address, true, true);
+                masm.swp(memAccessSize, value, result, address, true, true);
             } else {
                 Register scratch = asRegister(scratchValue);
                 Label retry = new Label();
                 masm.bind(retry);
-                masm.ldaxr(size, result, address);
-                masm.stlxr(size, scratch, value, address);
+                masm.ldaxr(memAccessSize, result, address);
+                masm.stlxr(memAccessSize, scratch, value, address);
                 // if scratch == 0 then write successful, else retry
                 masm.cbnz(32, scratch, retry);
             }
