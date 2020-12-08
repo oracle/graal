@@ -536,7 +536,7 @@ public final class MethodVerifier implements ContextAccess {
      */
     private MethodVerifier(CodeAttribute codeAttribute, Method m, boolean useStackMaps) {
         // Extract info from codeAttribute
-        this.code = new BytecodeStream(codeAttribute.getCode());
+        this.code = new BytecodeStream(codeAttribute.getOriginalCode());
         this.maxStack = codeAttribute.getMaxStack();
         this.maxLocals = codeAttribute.getMaxLocals();
         this.bciStates = new int[code.endBCI()];
