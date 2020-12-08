@@ -22,14 +22,14 @@
  */
 package com.oracle.truffle.espresso.classfile.constantpool;
 
+import java.nio.ByteBuffer;
+
 import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.espresso.classfile.ConstantPool;
 import com.oracle.truffle.espresso.classfile.ConstantPool.Tag;
 import com.oracle.truffle.espresso.classfile.RuntimeConstantPool;
 import com.oracle.truffle.espresso.classfile.attributes.BootstrapMethodsAttribute;
-import com.oracle.truffle.espresso.descriptors.Signatures;
 import com.oracle.truffle.espresso.descriptors.Symbol;
-import com.oracle.truffle.espresso.descriptors.Symbol.Name;
 import com.oracle.truffle.espresso.descriptors.Symbol.Signature;
 import com.oracle.truffle.espresso.descriptors.Symbol.Type;
 import com.oracle.truffle.espresso.impl.Klass;
@@ -38,22 +38,10 @@ import com.oracle.truffle.espresso.meta.EspressoError;
 import com.oracle.truffle.espresso.meta.Meta;
 import com.oracle.truffle.espresso.runtime.StaticObject;
 
-public interface InvokeDynamicConstant extends PoolConstant {
+public interface InvokeDynamicConstant extends BootstrapMethodConstant {
 
     static InvokeDynamicConstant create(int bootstrapMethodAttrIndex, int nameAndTypeIndex) {
         return new Indexes(bootstrapMethodAttrIndex, nameAndTypeIndex);
-    }
-
-    int getBootstrapMethodAttrIndex();
-
-    int getNameAndTypeIndex();
-
-    default Symbol<Signature> getSignature(ConstantPool pool) {
-        return Signatures.check(pool.nameAndTypeAt(getNameAndTypeIndex()).getDescriptor(pool));
-    }
-
-    default Symbol<Name> getName(ConstantPool pool) {
-        return pool.nameAndTypeAt(getNameAndTypeIndex()).getName(pool);
     }
 
     default Tag tag() {
@@ -64,33 +52,9 @@ public interface InvokeDynamicConstant extends PoolConstant {
         return false;
     }
 
-    @Override
-    default String toString(ConstantPool pool) {
-        return "bsmIndex:" + getBootstrapMethodAttrIndex() + " " + getSignature(pool);
-    }
-
-    final class Indexes implements InvokeDynamicConstant, Resolvable {
-        public final int bootstrapMethodAttrIndex;
-        public final int nameAndTypeIndex;
-
+    final class Indexes extends BootstrapMethodConstant.Indexes implements InvokeDynamicConstant, Resolvable {
         Indexes(int bootstrapMethodAttrIndex, int nameAndTypeIndex) {
-            this.bootstrapMethodAttrIndex = bootstrapMethodAttrIndex;
-            this.nameAndTypeIndex = nameAndTypeIndex;
-        }
-
-        @Override
-        public int getBootstrapMethodAttrIndex() {
-            return bootstrapMethodAttrIndex;
-        }
-
-        @Override
-        public int getNameAndTypeIndex() {
-            return nameAndTypeIndex;
-        }
-
-        @Override
-        public void validate(ConstantPool pool) {
-            pool.nameAndTypeAt(getNameAndTypeIndex()).validateMethod(pool);
+            super(bootstrapMethodAttrIndex, nameAndTypeIndex);
         }
 
         @Override
@@ -99,7 +63,6 @@ public interface InvokeDynamicConstant extends PoolConstant {
 
             // Indy constant resolving.
             BootstrapMethodsAttribute bms = (BootstrapMethodsAttribute) ((ObjectKlass) accessingKlass).getAttribute(BootstrapMethodsAttribute.NAME);
-            NameAndTypeConstant specifier = pool.nameAndTypeAt(getNameAndTypeIndex());
 
             assert (bms != null);
             // TODO(garcia) cache bootstrap method resolution
@@ -110,8 +73,8 @@ public interface InvokeDynamicConstant extends PoolConstant {
             StaticObject[] args = bsEntry.getStaticArguments(accessingKlass, pool);
 
             // Preparing Bootstrap call.
-            StaticObject name = meta.toGuestString(specifier.getName(pool));
-            Symbol<Signature> invokeSignature = Signatures.check(specifier.getDescriptor(pool));
+            StaticObject name = meta.toGuestString(getName(pool));
+            Symbol<Signature> invokeSignature = getSignature(pool);
             Symbol<Type>[] parsedInvokeSignature = meta.getSignatures().parsed(invokeSignature);
             StaticObject methodType = MethodTypeConstant.signatureToMethodType(parsedInvokeSignature, accessingKlass, meta.getContext().getJavaVersion().java8OrEarlier(), meta);
             StaticObject appendix = StaticObject.createArray(meta.java_lang_Object_array, new StaticObject[1]);
@@ -137,34 +100,30 @@ public interface InvokeDynamicConstant extends PoolConstant {
 
             StaticObject unboxedAppendix = appendix.get(0);
 
-            return new InvokeDynamicConstant.Resolved(getBootstrapMethodAttrIndex(), getNameAndTypeIndex(), memberName, unboxedAppendix, parsedInvokeSignature);
+            return new InvokeDynamicConstant.Resolved(memberName, unboxedAppendix, parsedInvokeSignature);
+        }
+
+        @Override
+        public void dump(ByteBuffer buf) {
+            buf.putChar(bootstrapMethodAttrIndex);
+            buf.putChar(nameAndTypeIndex);
+        }
+
+        @Override
+        public String toString(ConstantPool pool) {
+            return "bsmIndex:" + getBootstrapMethodAttrIndex() + " " + getSignature(pool);
         }
     }
 
     final class Resolved implements InvokeDynamicConstant, Resolvable.ResolvedConstant {
-        public final int bootstrapMethodAttrIndex;
-        public final int nameAndTypeIndex;
-
         final StaticObject memberName;
         final StaticObject unboxedAppendix;
         @CompilerDirectives.CompilationFinal(dimensions = 1) final Symbol<Type>[] parsedSignature;
 
-        public Resolved(int bootstrapMethodAttrIndex, int nameAndTypeIndex, StaticObject memberName, StaticObject unboxedAppendix, Symbol<Type>[] parsedSignature) {
-            this.bootstrapMethodAttrIndex = bootstrapMethodAttrIndex;
-            this.nameAndTypeIndex = nameAndTypeIndex;
+        public Resolved(StaticObject memberName, StaticObject unboxedAppendix, Symbol<Type>[] parsedSignature) {
             this.memberName = memberName;
             this.unboxedAppendix = unboxedAppendix;
             this.parsedSignature = parsedSignature;
-        }
-
-        @Override
-        public int getBootstrapMethodAttrIndex() {
-            return bootstrapMethodAttrIndex;
-        }
-
-        @Override
-        public int getNameAndTypeIndex() {
-            return nameAndTypeIndex;
         }
 
         public StaticObject getMemberName() {
@@ -180,8 +139,23 @@ public interface InvokeDynamicConstant extends PoolConstant {
         }
 
         @Override
+        public int getBootstrapMethodAttrIndex() {
+            throw EspressoError.shouldNotReachHere("Invoke dynamic already resolved.");
+        }
+
+        @Override
+        public Symbol<Symbol.Name> getName(ConstantPool pool) {
+            throw EspressoError.shouldNotReachHere("Invoke dynamic already resolved.");
+        }
+
+        @Override
+        public Symbol<Signature> getSignature(ConstantPool pool) {
+            throw EspressoError.shouldNotReachHere("Invoke dynamic already resolved.");
+        }
+
+        @Override
         public String toString(ConstantPool pool) {
-            return null;
+            return "ResolvedInvokeDynamicConstant(" + memberName + ")";
         }
 
         @Override

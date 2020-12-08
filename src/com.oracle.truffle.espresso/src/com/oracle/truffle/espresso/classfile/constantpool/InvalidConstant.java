@@ -22,6 +22,8 @@
  */
 package com.oracle.truffle.espresso.classfile.constantpool;
 
+import java.nio.ByteBuffer;
+
 import com.oracle.truffle.espresso.classfile.ConstantPool;
 import com.oracle.truffle.espresso.classfile.ConstantPool.Tag;
 
@@ -46,4 +48,12 @@ public final class InvalidConstant implements PoolConstant {
     }
 
     public static final InvalidConstant VALUE = new InvalidConstant();
+
+    @Override
+    public void dumpBytes(ByteBuffer buf) {
+    }
+
+    @Override
+    public void dump(ByteBuffer buf) {
+    }
 }
