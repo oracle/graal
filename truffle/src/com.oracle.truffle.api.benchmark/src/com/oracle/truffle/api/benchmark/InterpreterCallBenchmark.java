@@ -47,13 +47,11 @@ import org.openjdk.jmh.annotations.Benchmark;
 import org.openjdk.jmh.annotations.CompilerControl;
 import org.openjdk.jmh.annotations.CompilerControl.Mode;
 import org.openjdk.jmh.annotations.Level;
-import org.openjdk.jmh.annotations.Measurement;
 import org.openjdk.jmh.annotations.OperationsPerInvocation;
 import org.openjdk.jmh.annotations.Scope;
 import org.openjdk.jmh.annotations.Setup;
 import org.openjdk.jmh.annotations.State;
 import org.openjdk.jmh.annotations.TearDown;
-import org.openjdk.jmh.annotations.Warmup;
 
 import com.oracle.truffle.api.CallTarget;
 import com.oracle.truffle.api.Truffle;
@@ -63,11 +61,6 @@ import com.oracle.truffle.api.nodes.DirectCallNode;
 import com.oracle.truffle.api.nodes.IndirectCallNode;
 import com.oracle.truffle.api.nodes.RootNode;
 
-/*
- * This benchmark may take a long time to reach a stable performance.
- */
-@Warmup(iterations = 100, time = 1)
-@Measurement(iterations = 5, time = 2)
 public class InterpreterCallBenchmark extends TruffleBenchmark {
 
     @State(Scope.Thread)
@@ -142,6 +135,11 @@ public class InterpreterCallBenchmark extends TruffleBenchmark {
             for (int i = 0; i < TARGETS; i++) {
                 callTargets[i] = Truffle.getRuntime().createCallTarget(rootNodes[i % rootNodes.length]);
             }
+        }
+
+        @TearDown(Level.Invocation)
+        public void tearDownIteration() {
+            System.gc();
         }
 
     }

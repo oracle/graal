@@ -70,7 +70,7 @@ public class ByteArrayAccessCloneBenchmark extends TruffleBenchmark {
         }
     }
 
-    @Param({"10", "100", "1_000", "1_000_000"}) public String count;
+    @Param({"10", "100", "1_000_000"}) public String count;
 
     byte[] array;
 
