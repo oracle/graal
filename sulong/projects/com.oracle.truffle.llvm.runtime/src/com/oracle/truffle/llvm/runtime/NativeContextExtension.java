@@ -90,7 +90,7 @@ public abstract class NativeContextExtension implements ContextExtension {
 
     public abstract void addLibraryHandles(Object library);
 
-    public abstract CallTarget parseNativeLibrary(TruffleFile file, LLVMContext context) throws UnsatisfiedLinkError;
+    public abstract CallTarget parseNativeLibrary(String path, LLVMContext context) throws UnsatisfiedLinkError;
 
     public abstract NativeLookupResult getNativeFunctionOrNull(String name);
 
