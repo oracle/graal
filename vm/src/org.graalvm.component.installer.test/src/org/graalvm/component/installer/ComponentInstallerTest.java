@@ -189,6 +189,8 @@ public class ComponentInstallerTest extends CommandTestBase {
                 it.remove();
             }
         }
+        // exclusion: update is not mentioned on main page:
+        allCmds.remove("update");
         if (!allCmds.isEmpty()) {
             Assert.fail("Not all commands documented: " + allCmds);
         }
