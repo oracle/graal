@@ -47,6 +47,7 @@ import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.stream.Collectors;
 
+import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.TruffleFile;
 import com.oracle.truffle.regex.tregex.automaton.StateSet;
@@ -144,7 +145,7 @@ public final class NFAExport {
             case REGULAR:
                 return "circle";
             default:
-                throw Exceptions.shouldNotReachHere();
+                throw CompilerDirectives.shouldNotReachHere();
         }
     }
 
@@ -317,7 +318,7 @@ public final class NFAExport {
             case REGULAR:
                 return "state";
             default:
-                throw Exceptions.shouldNotReachHere();
+                throw CompilerDirectives.shouldNotReachHere();
         }
     }
 

@@ -42,13 +42,16 @@ package com.oracle.truffle.regex;
 
 import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
+import com.oracle.truffle.api.interop.InteropLibrary;
 import com.oracle.truffle.api.interop.UnknownIdentifierException;
+import com.oracle.truffle.api.library.ExportLibrary;
 import com.oracle.truffle.api.library.ExportMessage;
 import com.oracle.truffle.regex.tregex.util.json.Json;
 import com.oracle.truffle.regex.tregex.util.json.JsonConvertible;
 import com.oracle.truffle.regex.tregex.util.json.JsonValue;
 import com.oracle.truffle.regex.util.TruffleReadOnlyKeysArray;
 
+@ExportLibrary(InteropLibrary.class)
 public final class RegexFlags extends AbstractConstantKeysObject implements JsonConvertible {
 
     private static final TruffleReadOnlyKeysArray KEYS = new TruffleReadOnlyKeysArray("source", "ignoreCase", "multiline", "sticky", "global", "unicode", "dotAll");
@@ -205,8 +208,9 @@ public final class RegexFlags extends AbstractConstantKeysObject implements Json
         }
     }
 
-    @ExportMessage
     @TruffleBoundary
+    @ExportMessage
+    @Override
     public Object toDisplayString(@SuppressWarnings("unused") boolean allowSideEffects) {
         return "TRegexJSFlags{flags=" + toString() + '}';
     }

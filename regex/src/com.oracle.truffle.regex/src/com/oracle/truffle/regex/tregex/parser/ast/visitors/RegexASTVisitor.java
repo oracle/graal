@@ -40,6 +40,7 @@
  */
 package com.oracle.truffle.regex.tregex.parser.ast.visitors;
 
+import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.regex.tregex.parser.ast.BackReference;
 import com.oracle.truffle.regex.tregex.parser.ast.CharacterClass;
 import com.oracle.truffle.regex.tregex.parser.ast.Group;
@@ -48,7 +49,6 @@ import com.oracle.truffle.regex.tregex.parser.ast.LookBehindAssertion;
 import com.oracle.truffle.regex.tregex.parser.ast.PositionAssertion;
 import com.oracle.truffle.regex.tregex.parser.ast.RegexASTNode;
 import com.oracle.truffle.regex.tregex.parser.ast.Sequence;
-import com.oracle.truffle.regex.tregex.util.Exceptions;
 
 public abstract class RegexASTVisitor {
 
@@ -90,7 +90,7 @@ public abstract class RegexASTVisitor {
         } else if (cur instanceof BackReference) {
             visit((BackReference) cur);
         } else {
-            throw Exceptions.shouldNotReachHere();
+            throw CompilerDirectives.shouldNotReachHere();
         }
     }
 
@@ -104,7 +104,7 @@ public abstract class RegexASTVisitor {
         } else if (cur instanceof LookAheadAssertion) {
             leave((LookAheadAssertion) cur);
         } else {
-            throw Exceptions.shouldNotReachHere();
+            throw CompilerDirectives.shouldNotReachHere();
         }
     }
 }

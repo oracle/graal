@@ -46,8 +46,8 @@ import java.io.PrintWriter;
 import java.io.StringWriter;
 import java.nio.file.StandardOpenOption;
 
-import com.oracle.truffle.api.TruffleFile;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
+import com.oracle.truffle.api.TruffleFile;
 
 public abstract class JsonValue implements JsonConvertible {
 

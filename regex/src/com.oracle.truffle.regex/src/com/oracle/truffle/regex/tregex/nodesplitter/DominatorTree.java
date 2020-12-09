@@ -43,7 +43,7 @@ package com.oracle.truffle.regex.tregex.nodesplitter;
 import java.util.ArrayList;
 import java.util.Arrays;
 
-import com.oracle.truffle.regex.tregex.util.Exceptions;
+import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.regex.util.CompilationFinalBitSet;
 
 /**
@@ -164,7 +164,7 @@ final class DominatorTree {
                     }
                 }
                 if (selectedPredecessor == null) {
-                    throw Exceptions.shouldNotReachHere();
+                    throw CompilerDirectives.shouldNotReachHere();
                 }
                 int newIDom = selectedPredecessor.getPostOrderIndex();
                 for (GraphNode p : b.getPredecessors()) {

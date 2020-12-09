@@ -52,7 +52,6 @@ import com.oracle.truffle.regex.tregex.nodes.dfa.DFAStateNode.LoopOptIndexOfStri
 import com.oracle.truffle.regex.tregex.nodes.dfa.DFAStateNode.LoopOptimizationNode;
 import com.oracle.truffle.regex.tregex.nodes.dfa.Matchers;
 import com.oracle.truffle.regex.tregex.nodes.dfa.Matchers.Builder;
-import com.oracle.truffle.regex.tregex.util.Exceptions;
 
 public final class Encodings {
 
@@ -80,7 +79,7 @@ public final class Encodings {
                 return LATIN_1;
             default:
                 CompilerDirectives.transferToInterpreterAndInvalidate();
-                throw Exceptions.shouldNotReachHere("Unknown Encoding \"" + name + "\"");
+                throw CompilerDirectives.shouldNotReachHere("Unknown Encoding \"" + name + "\"");
         }
     }
 

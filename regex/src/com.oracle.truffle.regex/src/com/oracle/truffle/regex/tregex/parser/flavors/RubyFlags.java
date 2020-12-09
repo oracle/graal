@@ -42,7 +42,9 @@ package com.oracle.truffle.regex.tregex.parser.flavors;
 
 import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
+import com.oracle.truffle.api.interop.InteropLibrary;
 import com.oracle.truffle.api.interop.UnknownIdentifierException;
+import com.oracle.truffle.api.library.ExportLibrary;
 import com.oracle.truffle.api.library.ExportMessage;
 import com.oracle.truffle.regex.AbstractConstantKeysObject;
 import com.oracle.truffle.regex.util.TruffleReadOnlyKeysArray;
@@ -50,6 +52,7 @@ import com.oracle.truffle.regex.util.TruffleReadOnlyKeysArray;
 /**
  * An immutable representation of a set of Ruby regular expression flags.
  */
+@ExportLibrary(InteropLibrary.class)
 public final class RubyFlags extends AbstractConstantKeysObject {
 
     private static final TruffleReadOnlyKeysArray KEYS = new TruffleReadOnlyKeysArray("EXTENDED", "IGNORECASE", "MULTILINE");
@@ -179,8 +182,9 @@ public final class RubyFlags extends AbstractConstantKeysObject {
         return out.toString();
     }
 
-    @ExportMessage
     @TruffleBoundary
+    @ExportMessage
+    @Override
     public Object toDisplayString(@SuppressWarnings("unused") boolean allowSideEffects) {
         return "TRegexRubyFlags{flags=" + toString() + '}';
     }

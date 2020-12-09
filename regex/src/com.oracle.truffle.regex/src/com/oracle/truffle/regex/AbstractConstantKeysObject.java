@@ -69,7 +69,7 @@ public abstract class AbstractConstantKeysObject extends AbstractRegexObject {
     public abstract static class IsMemberReadable {
 
         @SuppressWarnings("unused")
-        @Specialization(guards = "symbol == cachedSymbol", limit = "8")
+        @Specialization(guards = {"symbol == cachedSymbol", "result"}, limit = "8")
         public static boolean cacheIdentity(AbstractConstantKeysObject receiver, String symbol,
                         @Cached("symbol") String cachedSymbol,
                         @Cached("isReadable(receiver, cachedSymbol)") boolean result) {
@@ -77,7 +77,7 @@ public abstract class AbstractConstantKeysObject extends AbstractRegexObject {
         }
 
         @SuppressWarnings("unused")
-        @Specialization(guards = "symbol.equals(cachedSymbol)", limit = "8", replaces = "cacheIdentity")
+        @Specialization(guards = {"symbol.equals(cachedSymbol)", "result"}, limit = "8", replaces = "cacheIdentity")
         public static boolean cacheEquals(AbstractConstantKeysObject receiver, String symbol,
                         @Cached("symbol") String cachedSymbol,
                         @Cached("isReadable(receiver, cachedSymbol)") boolean result) {
