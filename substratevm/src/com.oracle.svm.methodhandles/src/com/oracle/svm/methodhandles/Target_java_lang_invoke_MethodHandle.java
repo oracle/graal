@@ -37,7 +37,10 @@ import com.oracle.svm.core.SubstrateUtil;
 import com.oracle.svm.core.annotate.Alias;
 import com.oracle.svm.core.annotate.Substitute;
 import com.oracle.svm.core.annotate.TargetClass;
+import com.oracle.svm.reflect.helpers.InvokeSpecialReflectionProxy;
 import com.oracle.svm.reflect.target.Target_java_lang_reflect_AccessibleObject;
+import com.oracle.svm.reflect.target.Target_java_lang_reflect_Method;
+import com.oracle.svm.reflect.target.Target_jdk_internal_reflect_MethodAccessor;
 
 @TargetClass(className = "java.lang.invoke.MethodHandle", onlyWith = MethodHandlesSupported.class)
 final class Target_java_lang_invoke_MethodHandle {
@@ -91,7 +94,12 @@ final class Target_java_lang_invoke_MethodHandle {
                         } else {
                             Object receiver = args[0];
                             Object[] invokeArgs = Arrays.copyOfRange(args, 1, args.length);
-                            return method.invoke(receiver, invokeArgs);
+                            if (memberName.getReferenceKind() == Target_java_lang_invoke_MethodHandleNatives_Constants.REF_invokeSpecial) {
+                                Target_jdk_internal_reflect_MethodAccessor accessor = SubstrateUtil.cast(method, Target_java_lang_reflect_Method.class).acquireMethodAccessor();
+                                return SubstrateUtil.cast(accessor, InvokeSpecialReflectionProxy.class).invokeSpecial(receiver, invokeArgs);
+                            } else {
+                                return method.invoke(receiver, invokeArgs);
+                            }
                         }
                     }
                 } finally {
