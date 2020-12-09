@@ -36,6 +36,7 @@ import java.util.Map;
 import java.util.Objects;
 import java.util.Set;
 import org.graalvm.component.installer.CommonConstants;
+import org.graalvm.component.installer.SystemUtils;
 import org.graalvm.component.installer.Version;
 
 /**
@@ -164,6 +165,20 @@ public final class ComponentInfo {
     }
 
     public void addRequiredValues(Map<String, String> vals) {
+        String os = vals.get(CommonConstants.CAP_OS_NAME);
+        String arch = vals.get(CommonConstants.CAP_OS_ARCH);
+        if (os != null) {
+            String nos = SystemUtils.normalizeOSName(os, arch);
+            if (!nos.equals(os)) {
+                vals.put(CommonConstants.CAP_OS_NAME, nos);
+            }
+        }
+        if (arch != null) {
+            String narch = SystemUtils.normalizeArchitecture(os, arch);
+            if (!narch.equals(os)) {
+                vals.put(CommonConstants.CAP_OS_ARCH, narch);
+            }
+        }
         requiredGraalValues.putAll(vals);
     }
 
@@ -171,7 +186,18 @@ public final class ComponentInfo {
         if (val == null) {
             requiredGraalValues.remove(s);
         } else {
-            requiredGraalValues.put(s, val);
+            String v = val;
+            switch (s) {
+                case CommonConstants.CAP_OS_ARCH:
+                    v = SystemUtils.normalizeArchitecture(null, val);
+                    break;
+                case CommonConstants.CAP_OS_NAME:
+                    v = SystemUtils.normalizeOSName(val, null);
+                    break;
+                default:
+                    break;
+            }
+            requiredGraalValues.put(s, v);
         }
     }
 

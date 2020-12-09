@@ -38,6 +38,8 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.Map;
 import java.util.Properties;
+import java.util.regex.Pattern;
+import java.util.stream.Stream;
 import org.graalvm.component.installer.BundleConstants;
 import org.graalvm.component.installer.CommandInput;
 import org.graalvm.component.installer.CommonConstants;
@@ -49,6 +51,7 @@ import org.graalvm.component.installer.remote.FileDownloader;
 import org.graalvm.component.installer.remote.RemotePropertiesStorage;
 import org.graalvm.component.installer.SoftwareChannel;
 import org.graalvm.component.installer.SoftwareChannelSource;
+import org.graalvm.component.installer.SystemUtils;
 import org.graalvm.component.installer.model.ComponentInfo;
 import org.graalvm.component.installer.model.RemoteInfoProcessor;
 
@@ -114,9 +117,9 @@ public class WebCatalog implements SoftwareChannel {
         Map<String, String> graalCaps = local.getGraalCapabilities();
 
         StringBuilder sb = new StringBuilder();
-        sb.append(graalCaps.get(CommonConstants.CAP_OS_NAME).toLowerCase());
+        sb.append(SystemUtils.patternOsName(graalCaps.get(CommonConstants.CAP_OS_NAME)).toLowerCase());
         sb.append("_");
-        sb.append(graalCaps.get(CommonConstants.CAP_OS_ARCH).toLowerCase());
+        sb.append(SystemUtils.patternOsArch(graalCaps.get(CommonConstants.CAP_OS_ARCH).toLowerCase()));
 
         try {
             catalogURL = new URL(urlString);
@@ -164,11 +167,11 @@ public class WebCatalog implements SoftwareChannel {
 
         StringBuilder graalPref = new StringBuilder(oldGraalPref);
 
-        oldGraalPref.append(graalVersionString);
+        oldGraalPref.append(Pattern.quote(graalVersionString));
 
         oldGraalPref.append('_').append(sb);
         graalPref.append(sb).append('/');
-        graalPref.append(normalizedVersion);
+        graalPref.append(Pattern.quote(normalizedVersion));
 
         try (FileInputStream fis = new FileInputStream(dn.getLocalFile())) {
             loadProps.load(fis);
@@ -176,8 +179,12 @@ public class WebCatalog implements SoftwareChannel {
             throw feedback.failure("REMOTE_CorruptedCatalogFile", ex, catalogURL);
         }
 
-        if (loadProps.getProperty(oldGraalPref.toString()) == null &&
-                        loadProps.getProperty(graalPref.toString()) == null) {
+        Pattern oldPrefixPattern = Pattern.compile(oldGraalPref.toString(), Pattern.CASE_INSENSITIVE);
+        Pattern newPrefixPattern = Pattern.compile(graalPref.toString(), Pattern.CASE_INSENSITIVE);
+        Stream<String> propNames = loadProps.stringPropertyNames().stream();
+        boolean foundPrefix = propNames.anyMatch(p -> oldPrefixPattern.matcher(p).matches() ||
+                        newPrefixPattern.matcher(p).matches());
+        if (!foundPrefix) {
             boolean graalPrefixFound = false;
             boolean componentFound = false;
             for (String s : loadProps.stringPropertyNames()) {
