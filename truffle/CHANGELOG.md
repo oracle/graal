@@ -13,7 +13,7 @@ This changelog summarizes major changes between Truffle versions relevant to lan
 * Added `HostCompilerDirectives` for directives that guide the host compilations of Truffle interpreters.
     * `HostCompilerDirectives.BytecodeInterpreterSwitch` - to denote methods that contain the instruction-dispatch switch in bytecode interpreters
     * `HostCompilerDirectives.BytecodeInterpreterSwitchBoundary` - to denote methods that do not need to be inlined into the bytecode interpreter switch
-* Added `Frame.clear(FrameSlot)`. This allows the compiler to argue about the liveness of local variables. Languages are recommended to use it when applicable.
+* Added `Frame.clear(FrameSlot)`. This allows the compiler to reason about the liveness of local variables. Languages are recommended to use it when applicable.
 
 ## Version 20.3.0
 * Added `RepeatingNode.initialLoopStatus` and `RepeatingNode.shouldContinue` to allow defining a custom loop continuation condition.
