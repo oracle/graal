@@ -26,7 +26,9 @@ package org.graalvm.component.installer;
 
 import java.util.Set;
 import org.graalvm.component.installer.model.ComponentInfo;
+import org.graalvm.component.installer.persist.MetadataLoader;
 import org.graalvm.component.installer.remote.FileDownloader;
+import org.graalvm.component.installer.remote.MergeStorage;
 
 /**
  *
@@ -73,5 +75,19 @@ public interface ComponentCatalog extends ComponentCollection {
          * @return the configured Downloader or {@code null}, if the ComponentInfo is not known.
          */
         FileDownloader processDownloader(ComponentInfo info, FileDownloader dn);
+
+        /**
+         * Allows to intercept metadata loader operations. The interface may be implemented on
+         * {@link SoftwareChannel} merged into {@link MergeStorage}. The default implementation
+         * simply returns the delegate itself.
+         * 
+         * @param info component info for which the MetadataLoader is wanted
+         * @param delegate the original delegate
+         * @return possibly wrapped/delegated instance
+         */
+        @SuppressWarnings("unused")
+        default MetadataLoader interceptMetadataLoader(ComponentInfo info, MetadataLoader delegate) {
+            return delegate;
+        }
     }
 }

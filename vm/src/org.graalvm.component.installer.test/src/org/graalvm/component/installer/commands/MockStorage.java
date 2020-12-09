@@ -122,7 +122,7 @@ public class MockStorage implements ManagementStorage {
 
     @Override
     public Date licenseAccepted(ComponentInfo info, String licenseID) {
-        return acceptedLicenses.computeIfAbsent(info.getId(), (i) -> new HashMap<>()).get(licenseID);
+        return acceptedLicenses.getOrDefault(info.getId(), Collections.emptyMap()).get(licenseID);
     }
 
     @Override

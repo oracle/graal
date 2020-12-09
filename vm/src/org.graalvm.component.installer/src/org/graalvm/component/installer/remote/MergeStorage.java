@@ -41,6 +41,7 @@ import org.graalvm.component.installer.SoftwareChannelSource;
 import org.graalvm.component.installer.model.ComponentInfo;
 import org.graalvm.component.installer.model.ComponentRegistry;
 import org.graalvm.component.installer.persist.AbstractCatalogStorage;
+import org.graalvm.component.installer.persist.MetadataLoader;
 
 /**
  * The Storage merges storages of individual providers.
@@ -169,4 +170,15 @@ public class MergeStorage extends AbstractCatalogStorage implements ComponentCat
         SoftwareChannel orig = getOrigin(info);
         return orig != null ? orig.configureDownloader(info, dn) : dn;
     }
+
+    @Override
+    public MetadataLoader interceptMetadataLoader(ComponentInfo info, MetadataLoader delegate) {
+        SoftwareChannel orig = getOrigin(info);
+        if (orig instanceof ComponentCatalog.DownloadInterceptor) {
+            return ((ComponentCatalog.DownloadInterceptor) orig).interceptMetadataLoader(info, delegate);
+        } else {
+            return delegate;
+        }
+    }
+
 }

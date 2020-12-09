@@ -52,6 +52,7 @@ import org.graalvm.component.installer.remote.RemotePropertiesStorage;
 import org.graalvm.component.installer.SoftwareChannel;
 import org.graalvm.component.installer.SoftwareChannelSource;
 import org.graalvm.component.installer.SystemUtils;
+import org.graalvm.component.installer.Version;
 import org.graalvm.component.installer.model.ComponentInfo;
 import org.graalvm.component.installer.model.RemoteInfoProcessor;
 
@@ -66,6 +67,16 @@ public class WebCatalog implements SoftwareChannel {
     private RuntimeException savedException;
     private RemoteInfoProcessor remoteProcessor = RemoteInfoProcessor.NONE;
 
+    /**
+     * The accepted version - only exact match is supported at the moment.
+     */
+    private Version.Match matchVersion;
+
+    /**
+     * If true, enables loading different versions from V1 catalogs.
+     */
+    private boolean enableV1Versions;
+
     public WebCatalog(String u, SoftwareChannelSource source) {
         this.urlString = u;
         this.source = source;
@@ -77,6 +88,38 @@ public class WebCatalog implements SoftwareChannel {
 
     public void setRemoteProcessor(RemoteInfoProcessor remoteProcessor) {
         this.remoteProcessor = remoteProcessor;
+    }
+
+    public Version.Match getMatchVersion() {
+        return matchVersion;
+    }
+
+    public boolean isEnableV1Versions() {
+        return enableV1Versions;
+    }
+
+    /**
+     * Enables version processing in V1 catalogs. Note that not complete version string semantics is
+     * possible with v1 format, as version may contain underscores (_), which are delimiters in v1
+     * catalogs.
+     * <p/>
+     * The default setting is false.
+     * 
+     * @param enableV1Versions true, if should be enabled.
+     */
+    public void setEnableV1Versions(boolean enableV1Versions) {
+        this.enableV1Versions = enableV1Versions;
+    }
+
+    /**
+     * Overrides versions loaded by this catalog. By default own version only is accepted. If
+     * matchVersion is set, the catalog will load matching version(s). At this moment <b>only exact
+     * match is supported</b>.
+     * 
+     * @param aMatchVersion
+     */
+    public void setMatchVersion(Version.Match aMatchVersion) {
+        this.matchVersion = aMatchVersion;
     }
 
     protected static boolean acceptURLScheme(String scheme, String urlSpec) {
@@ -162,8 +205,17 @@ public class WebCatalog implements SoftwareChannel {
         StringBuilder oldGraalPref = new StringBuilder(BundleConstants.GRAAL_COMPONENT_ID);
         oldGraalPref.append('.');
 
-        String graalVersionString = graalCaps.get(CommonConstants.CAP_GRAALVM_VERSION).toLowerCase();
-        String normalizedVersion = local.getGraalVersion().toString();
+        String graalVersionString;
+        String normalizedVersion;
+
+        if (matchVersion != null) {
+            graalVersionString = matchVersion.getVersion().displayString();
+            normalizedVersion = matchVersion.getVersion().toString();
+        } else {
+            // read from the release file
+            graalVersionString = graalCaps.get(CommonConstants.CAP_GRAALVM_VERSION).toLowerCase();
+            normalizedVersion = local.getGraalVersion().toString();
+        }
 
         StringBuilder graalPref = new StringBuilder(oldGraalPref);
 

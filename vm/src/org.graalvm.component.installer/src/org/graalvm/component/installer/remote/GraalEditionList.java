@@ -185,7 +185,7 @@ public final class GraalEditionList implements CatalogFactory {
         return defaultEdition;
     }
 
-    void setDefaultEdition(GraalEdition ed) {
+    public void setDefaultEdition(GraalEdition ed) {
         this.defaultEdition = ed;
     }
 
@@ -220,17 +220,22 @@ public final class GraalEditionList implements CatalogFactory {
     }
 
     @SuppressWarnings("ThrowableResultIgnored")
-    List<SoftwareChannelSource> parseChannelSources(String overrideSpec) {
+    List<SoftwareChannelSource> parseChannelSources(String edId, String overrideSpec) {
         List<SoftwareChannelSource> sources = new ArrayList<>();
         if (!remoteSourcesAllowed || overrideSpec == null) {
             return sources;
         }
         int priority = 1;
         String[] parts = overrideSpec.split("\\|"); // NOI18N
+        String id = edId;
+        if (id == null) {
+            id = targetGraal.getGraalCapabilities().get(CommonConstants.CAP_EDITION);
+        }
         for (String s : parts) {
             try {
                 SoftwareChannelSource chs = new SoftwareChannelSource(s);
                 chs.setPriority(priority);
+                chs.setParameter("edition", id);
                 sources.add(chs);
             } catch (MalformedURLException ex) {
                 feedback.error("REMOTE_FailedToParseParameter", ex, s); // NOI18N
@@ -246,6 +251,9 @@ public final class GraalEditionList implements CatalogFactory {
         }
         String[] eds = spec.split("\\{");
         for (String part : eds) {
+            if ("".equals(part)) {
+                continue;
+            }
             String edName;
             String edId;
 
@@ -272,7 +280,7 @@ public final class GraalEditionList implements CatalogFactory {
             }
             GraalEdition ge = new GraalEdition(edId, edName);
             boolean def = false;
-            ge.setSoftwareSources(parseChannelSources(src));
+            ge.setSoftwareSources(parseChannelSources(edId, src));
             if (defaultEdition == null && endBracket == -1) {
                 def = true;
             } else if (edId.equals(defId)) {
@@ -456,19 +464,19 @@ public final class GraalEditionList implements CatalogFactory {
         List<SoftwareChannelSource> res;
         String readPrefix = editionPrefix == null ? "" : editionPrefix + "_";
         Map<String, String> lcEnv = lowercaseMap(input.parameters(false));
-        res = readChannelSources(CommonConstants.ENV_VARIABLE_PREFIX.toLowerCase(Locale.ENGLISH) + readPrefix, lcEnv);
+        res = readChannelSources(editionPrefix, CommonConstants.ENV_VARIABLE_PREFIX.toLowerCase(Locale.ENGLISH) + readPrefix, lcEnv);
         if (res != null && !res.isEmpty()) {
             return res;
         }
         if (remoteSourcesAllowed) {
-            return readChannelSources(readPrefix, input.getLocalRegistry().getGraalCapabilities()); // NOI18N
+            return readChannelSources(editionPrefix, readPrefix, input.getLocalRegistry().getGraalCapabilities()); // NOI18N
         } else {
             List<SoftwareChannelSource> l = new ArrayList<>();
             return l;
         }
     }
 
-    List<SoftwareChannelSource> readChannelSources(String pref, Map<String, String> graalCaps) {
+    List<SoftwareChannelSource> readChannelSources(String id, String pref, Map<String, String> graalCaps) {
         List<SoftwareChannelSource> sources = new ArrayList<>();
         if (!remoteSourcesAllowed) {
             return sources;
@@ -500,6 +508,9 @@ public final class GraalEditionList implements CatalogFactory {
                         continue;
                 }
                 s.setParameter(k, graalCaps.get(a));
+            }
+            if (s.getParameter("edition") == null) {
+                s.setParameter("edition", id != null ? id : targetGraal.getGraalCapabilities().get(CommonConstants.CAP_EDITION));
             }
 
             sources.add(s);
