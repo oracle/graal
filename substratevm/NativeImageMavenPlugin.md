@@ -3,10 +3,9 @@
 To simplify the generation of native images, Native Image now works out
 of [Maven](https://maven.apache.org/what-is-maven.html) with the [Native Image Maven Plugin](https://search.maven.org/artifact/org.graalvm.nativeimage/native-image-maven-plugin).
 
-You can build a native image directly with Maven
-using the `mvn package` command without running the `native-image` command as a
-separate step. However, the project has to be build with GraalVM and not a regular JDK.
-For example, if you work in Intellij IDE, you can set GraalVM as a project's default JDK under File -> Project Structure -> Project -> Project SDK.
+You can build a native executable directly with Maven using the `mvn package` command without running the `native-image` command as a separate step.
+However, the Maven project that uses the plugin should be built on a JDK containing the `native-image` tool in `<java.home>/lib/svm/bin/native-image` (or `<java.home>/jre/lib/svm/bin/native-image` for a Java 8 JDK).
+GraalVM is such a JDK (if `native-image` has been previously installed with `gu`).
 
 Next, add `native-image-maven-plugin` into the `<plugins>` section of the `pom.xml` file:
 
