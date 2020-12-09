@@ -49,12 +49,12 @@ import org.graalvm.compiler.lir.aarch64.AArch64AddressValue;
 import org.graalvm.compiler.lir.aarch64.AArch64ArithmeticLIRGeneratorTool;
 import org.graalvm.compiler.lir.aarch64.AArch64ArithmeticOp;
 import org.graalvm.compiler.lir.aarch64.AArch64BitManipulationOp;
+import org.graalvm.compiler.lir.aarch64.AArch64Convert;
 import org.graalvm.compiler.lir.aarch64.AArch64Move;
 import org.graalvm.compiler.lir.aarch64.AArch64Move.LoadOp;
 import org.graalvm.compiler.lir.aarch64.AArch64Move.StoreConstantOp;
 import org.graalvm.compiler.lir.aarch64.AArch64Move.StoreOp;
 import org.graalvm.compiler.lir.aarch64.AArch64ReinterpretOp;
-import org.graalvm.compiler.lir.aarch64.AArch64SignExtendOp;
 import org.graalvm.compiler.lir.aarch64.AArch64Unary;
 import org.graalvm.compiler.lir.gen.ArithmeticLIRGenerator;
 
@@ -84,6 +84,7 @@ public class AArch64ArithmeticLIRGenerator extends ArithmeticLIRGenerator implem
     }
 
     public AllocatableValue getNullRegisterValue() {
+        assert nullRegisterValue != null : "Should not be requesting null register value.";
         return nullRegisterValue;
     }
 
@@ -234,19 +235,19 @@ public class AArch64ArithmeticLIRGenerator extends ArithmeticLIRGenerator implem
         PlatformKind resultPlatformKind = getFloatConvertResultKind(op);
         LIRKind resultLirKind = LIRKind.combine(inputVal).changeType(resultPlatformKind);
         Variable result = getLIRGen().newVariable(resultLirKind);
-        getLIRGen().append(new AArch64FloatConvertOp(op, result, asAllocatable(inputVal)));
+        getLIRGen().append(new AArch64Convert.FloatConvertOp(op, result, asAllocatable(inputVal)));
         return result;
     }
 
-    Value emitIntegerMAdd(Value a, Value b, Value c, boolean isI2L) {
+    public Value emitIntegerMAdd(Value a, Value b, Value c, boolean isI2L) {
         return emitMultiplyAddSub(isI2L ? AArch64ArithmeticOp.SMADDL : AArch64ArithmeticOp.MADD, a, b, c);
     }
 
-    Value emitIntegerMSub(Value a, Value b, Value c, boolean isI2L) {
+    public Value emitIntegerMSub(Value a, Value b, Value c, boolean isI2L) {
         return emitMultiplyAddSub(isI2L ? AArch64ArithmeticOp.SMSUBL : AArch64ArithmeticOp.MSUB, a, b, c);
     }
 
-    private Value emitMultiplyAddSub(AArch64ArithmeticOp op, Value a, Value b, Value c) {
+    protected Value emitMultiplyAddSub(AArch64ArithmeticOp op, Value a, Value b, Value c) {
         assert a.getPlatformKind() == b.getPlatformKind();
         Variable result;
         if (op == AArch64ArithmeticOp.SMADDL || op == AArch64ArithmeticOp.SMSUBL) {
@@ -273,7 +274,7 @@ public class AArch64ArithmeticLIRGenerator extends ArithmeticLIRGenerator implem
         return result;
     }
 
-    private static PlatformKind getFloatConvertResultKind(FloatConvert op) {
+    protected static AArch64Kind getFloatConvertResultKind(FloatConvert op) {
         switch (op) {
             case F2I:
             case D2I:
@@ -308,7 +309,7 @@ public class AArch64ArithmeticLIRGenerator extends ArithmeticLIRGenerator implem
     @Override
     public Value emitNarrow(Value inputVal, int bits) {
         if (inputVal.getPlatformKind() == AArch64Kind.QWORD && bits <= 32) {
-            LIRKind resultKind = getResultLirKind(bits, inputVal);
+            LIRKind resultKind = getResultLIRKind(bits, inputVal);
             long mask = NumUtil.getNbitNumberLong(bits);
             Value maskValue = new ConstantValue(resultKind, JavaConstant.forLong(mask));
             return emitBinary(resultKind, AArch64ArithmeticOp.AND, true, inputVal, maskValue);
@@ -323,7 +324,7 @@ public class AArch64ArithmeticLIRGenerator extends ArithmeticLIRGenerator implem
         if (fromBits == toBits) {
             return inputVal;
         }
-        LIRKind resultKind = getResultLirKind(toBits, inputVal);
+        LIRKind resultKind = getResultLIRKind(toBits, inputVal);
         long mask = NumUtil.getNbitNumberLong(fromBits);
         Value maskValue = new ConstantValue(resultKind, JavaConstant.forLong(mask));
         return emitBinary(resultKind, AArch64ArithmeticOp.AND, true, inputVal, maskValue);
@@ -331,7 +332,7 @@ public class AArch64ArithmeticLIRGenerator extends ArithmeticLIRGenerator implem
 
     @Override
     public Value emitSignExtend(Value inputVal, int fromBits, int toBits) {
-        LIRKind resultKind = getResultLirKind(toBits, inputVal);
+        LIRKind resultKind = getResultLIRKind(toBits, inputVal);
         assert fromBits <= toBits && toBits <= 64;
         if (fromBits == toBits) {
             return inputVal;
@@ -347,11 +348,11 @@ public class AArch64ArithmeticLIRGenerator extends ArithmeticLIRGenerator implem
             return new ConstantValue(resultKind, JavaConstant.forLong((constant << shiftCount) >> shiftCount));
         }
         Variable result = getLIRGen().newVariable(resultKind);
-        getLIRGen().append(new AArch64SignExtendOp(result, asAllocatable(inputVal), fromBits, toBits));
+        getLIRGen().append(new AArch64Convert.SignExtendOp(result, asAllocatable(inputVal), fromBits, toBits));
         return result;
     }
 
-    private static LIRKind getResultLirKind(int resultBitSize, Value... inputValues) {
+    private static LIRKind getResultLIRKind(int resultBitSize, Value... inputValues) {
         if (resultBitSize == 64) {
             return LIRKind.combine(inputValues).changeType(QWORD);
         } else {
@@ -471,7 +472,7 @@ public class AArch64ArithmeticLIRGenerator extends ArithmeticLIRGenerator implem
     public Value emitMathSqrt(Value input) {
         assert input.getPlatformKind() == AArch64Kind.DOUBLE ||
                         input.getPlatformKind() == AArch64Kind.SINGLE;
-        return emitUnary(AArch64ArithmeticOp.SQRT, input);
+        return emitUnary(AArch64ArithmeticOp.FSQRT, input);
     }
 
     @Override

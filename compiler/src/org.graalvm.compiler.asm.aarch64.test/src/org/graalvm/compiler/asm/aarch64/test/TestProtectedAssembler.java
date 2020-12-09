@@ -29,6 +29,7 @@ import org.graalvm.compiler.asm.AbstractAddress;
 import org.graalvm.compiler.asm.Label;
 import org.graalvm.compiler.asm.aarch64.AArch64Address;
 import org.graalvm.compiler.asm.aarch64.AArch64Assembler;
+import org.graalvm.compiler.asm.aarch64.AArch64Assembler.ASIMDAssembler.ASIMDSize;
 
 import jdk.vm.ci.code.Register;
 import jdk.vm.ci.code.TargetDescription;
@@ -38,8 +39,11 @@ import jdk.vm.ci.code.TargetDescription;
  */
 class TestProtectedAssembler extends AArch64Assembler {
 
+    public final TestProtectedASIMDAssembler neon;
+
     TestProtectedAssembler(TargetDescription target) {
         super(target);
+        this.neon = new TestProtectedASIMDAssembler(this);
     }
 
     @Override
@@ -540,18 +544,26 @@ class TestProtectedAssembler extends AArch64Assembler {
         throw new UnsupportedOperationException();
     }
 
-    @Override
-    public void cnt(int size, Register dst, Register src) {
-        super.cnt(size, dst, src);
+    public static class TestProtectedASIMDAssembler extends ASIMDAssembler {
+
+        protected TestProtectedASIMDAssembler(AArch64Assembler asm) {
+            super(asm);
+        }
+
+        @Override
+        public void cnt(ASIMDSize size, Register dst, Register src) {
+            super.cnt(size, dst, src);
+        }
+
+        @Override
+        public void addv(ASIMDSize size, ElementSize laneWidth, Register dst, Register src) {
+            super.addv(size, laneWidth, dst, src);
+        }
+
+        @Override
+        public void umovGeneral(ElementSize size, Register dst, Register src, int index) {
+            super.umovGeneral(size, dst, src, index);
+        }
     }
 
-    @Override
-    public void addv(int size, SIMDElementSize laneWidth, Register dst, Register src) {
-        super.addv(size, laneWidth, dst, src);
-    }
-
-    @Override
-    public void umov(int size, Register dst, int srcIdx, Register src) {
-        super.umov(size, dst, srcIdx, src);
-    }
 }

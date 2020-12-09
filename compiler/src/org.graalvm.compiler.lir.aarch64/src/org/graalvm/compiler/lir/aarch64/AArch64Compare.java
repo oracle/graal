@@ -32,13 +32,18 @@ import static org.graalvm.compiler.lir.LIRValueUtil.asJavaConstant;
 import static org.graalvm.compiler.lir.LIRValueUtil.isJavaConstant;
 
 import org.graalvm.compiler.asm.aarch64.AArch64Assembler;
+import org.graalvm.compiler.asm.aarch64.AArch64Assembler.ASIMDAssembler.ASIMDSize;
+import org.graalvm.compiler.asm.aarch64.AArch64Assembler.ASIMDAssembler.ElementSize;
 import org.graalvm.compiler.asm.aarch64.AArch64MacroAssembler;
 import org.graalvm.compiler.core.common.NumUtil;
 import org.graalvm.compiler.core.common.calc.Condition;
 import org.graalvm.compiler.debug.GraalError;
 import org.graalvm.compiler.lir.LIRInstructionClass;
+import org.graalvm.compiler.lir.Opcode;
 import org.graalvm.compiler.lir.asm.CompilationResultBuilder;
 
+import jdk.vm.ci.code.Register;
+import jdk.vm.ci.meta.AllocatableValue;
 import jdk.vm.ci.meta.JavaConstant;
 import jdk.vm.ci.meta.Value;
 
@@ -171,4 +176,105 @@ public class AArch64Compare {
         }
     }
 
+    public static class ASIMDCompareOp extends AArch64LIRInstruction {
+        public static final LIRInstructionClass<ASIMDCompareOp> TYPE = LIRInstructionClass.create(ASIMDCompareOp.class);
+
+        @Opcode private final Condition condition;
+        @Def({REG}) protected AllocatableValue result;
+        @Use({REG}) protected AllocatableValue x;
+        @Use({REG}) protected AllocatableValue y;
+
+        public ASIMDCompareOp(Condition condition, AllocatableValue result, AllocatableValue x, AllocatableValue y) {
+            super(TYPE);
+            assert x.getPlatformKind() == y.getPlatformKind() : x.getPlatformKind() + " " + y.getPlatformKind();
+            this.condition = condition;
+            this.result = result;
+            this.x = x;
+            this.y = y;
+        }
+
+        @Override
+        public void emitCode(CompilationResultBuilder crb, AArch64MacroAssembler masm) {
+            ASIMDSize size = ASIMDSize.fromVectorKind(result.getPlatformKind());
+            ElementSize eSize = ElementSize.fromKind(result.getPlatformKind());
+
+            Register dst = asRegister(result);
+            Register left = asRegister(x);
+            Register right = asRegister(y);
+            switch (condition) {
+                case EQ:
+                    masm.neon.cmeqVector(size, eSize, dst, left, right);
+                    break;
+                case NE:
+                    masm.neon.cmeqVector(size, eSize, dst, left, right);
+                    masm.neon.mvnVector(size, dst, dst);
+                    break;
+                case LT:
+                    masm.neon.cmgtVector(size, eSize, dst, right, left);
+                    break;
+                case LE:
+                    masm.neon.cmgeVector(size, eSize, dst, right, left);
+                    break;
+                case GT:
+                    masm.neon.cmgtVector(size, eSize, dst, left, right);
+                    break;
+                case GE:
+                    masm.neon.cmgeVector(size, eSize, dst, left, right);
+                    break;
+                default:
+                    throw GraalError.unimplemented();
+            }
+        }
+    }
+
+    public static class ASIMDFloatCompareOp extends AArch64LIRInstruction {
+        public static final LIRInstructionClass<ASIMDFloatCompareOp> TYPE = LIRInstructionClass.create(ASIMDFloatCompareOp.class);
+
+        @Opcode private final Condition condition;
+        @Def({REG}) protected AllocatableValue result;
+        @Use({REG}) protected AllocatableValue x;
+        @Use({REG}) protected AllocatableValue y;
+
+        public ASIMDFloatCompareOp(Condition condition, AllocatableValue result, AllocatableValue x, AllocatableValue y) {
+            super(TYPE);
+            assert x.getPlatformKind() == y.getPlatformKind() : x.getPlatformKind() + " " + y.getPlatformKind();
+            this.condition = condition;
+            this.result = result;
+            this.x = x;
+            this.y = y;
+        }
+
+        @Override
+        public void emitCode(CompilationResultBuilder crb, AArch64MacroAssembler masm) {
+            ASIMDSize size = ASIMDSize.fromVectorKind(result.getPlatformKind());
+            ElementSize eSize = ElementSize.fromKind(result.getPlatformKind());
+
+            Register dst = asRegister(result);
+            Register left = asRegister(x);
+            Register right = asRegister(y);
+            switch (condition) {
+                case EQ:
+                    masm.neon.fcmeqVector(size, eSize, dst, left, right);
+                    break;
+                case NE:
+                    masm.neon.fcmeqVector(size, eSize, dst, left, right);
+                    masm.neon.mvnVector(size, dst, dst);
+                    break;
+                case LT:
+                    masm.neon.fcmgtVector(size, eSize, dst, right, left);
+                    break;
+                case LE:
+                    masm.neon.fcmgeVector(size, eSize, dst, right, left);
+                    break;
+                case GT:
+                    masm.neon.fcmgtVector(size, eSize, dst, left, right);
+                    break;
+                case GE:
+                    masm.neon.fcmgeVector(size, eSize, dst, left, right);
+                    break;
+                default:
+                    throw GraalError.unimplemented();
+            }
+        }
+    }
 }

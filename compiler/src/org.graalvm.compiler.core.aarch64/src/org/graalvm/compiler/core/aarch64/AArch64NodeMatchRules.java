@@ -163,7 +163,7 @@ public class AArch64NodeMatchRules extends NodeMatchRules {
         return getLIRGeneratorTool().moveSp(value);
     }
 
-    private ComplexMatchResult emitBinaryShift(AArch64ArithmeticOp op, ValueNode value, BinaryNode shift) {
+    protected ComplexMatchResult emitBinaryShift(AArch64ArithmeticOp op, ValueNode value, BinaryNode shift) {
         AArch64MacroAssembler.ShiftType shiftType = shiftTypeMap.get(shift.getClass());
         assert shiftType != null;
         assert value.getStackKind().isNumericInteger();

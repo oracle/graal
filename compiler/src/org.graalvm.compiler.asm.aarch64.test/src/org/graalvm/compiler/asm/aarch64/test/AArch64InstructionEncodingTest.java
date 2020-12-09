@@ -30,6 +30,8 @@ import static org.junit.Assume.assumeTrue;
 import java.nio.ByteBuffer;
 
 import org.graalvm.compiler.asm.aarch64.AArch64Assembler;
+import org.graalvm.compiler.asm.aarch64.AArch64Assembler.ASIMDAssembler.ASIMDSize;
+import org.graalvm.compiler.asm.aarch64.AArch64Assembler.ASIMDAssembler.ElementSize;
 import org.graalvm.compiler.debug.GraalError;
 import org.graalvm.compiler.test.GraalTest;
 import org.junit.Before;
@@ -71,25 +73,25 @@ public class AArch64InstructionEncodingTest extends GraalTest {
     }
 
     private class CntEncodingTestCase extends AArch64InstructionEncodingTestCase {
-        CntEncodingTestCase(int expected, int size, Register dst, Register src) {
+        CntEncodingTestCase(int expected, ASIMDSize size, Register dst, Register src) {
             super(expected);
-            assembler.cnt(size, dst, src);
+            assembler.neon.cnt(size, dst, src);
             closeAssembler();
         }
     }
 
     private class AddvEncodingTestCase extends AArch64InstructionEncodingTestCase {
-        AddvEncodingTestCase(int expected, int size, AArch64Assembler.SIMDElementSize laneWidth, Register dst, Register src) {
+        AddvEncodingTestCase(int expected, ASIMDSize size, ElementSize laneWidth, Register dst, Register src) {
             super(expected);
-            assembler.addv(size, laneWidth, dst, src);
+            assembler.neon.addv(size, laneWidth, dst, src);
             closeAssembler();
         }
     }
 
     private class UmovEncodingTestCase extends AArch64InstructionEncodingTestCase {
-        UmovEncodingTestCase(int expected, int size, Register dst, int srcIdx, Register src) {
+        UmovEncodingTestCase(int expected, ElementSize eSize, Register dst, int srcIdx, Register src) {
             super(expected);
-            assembler.umov(size, dst, srcIdx, src);
+            assembler.neon.umovGeneral(eSize, dst, src, srcIdx);
             closeAssembler();
         }
     }
@@ -102,67 +104,49 @@ public class AArch64InstructionEncodingTest extends GraalTest {
 
     @Test
     public void testCnt() {
-        assertWrapper(new CntEncodingTestCase(0x0058200e, 64, AArch64.v0, AArch64.v0));
-        assertWrapper(new CntEncodingTestCase(0x3f58204e, 128, AArch64.v31, AArch64.v1));
-    }
-
-    @Test(expected = AssertionError.class)
-    @SuppressWarnings("unused")
-    public void testCntWithInvalidDataSize() {
-        new CntEncodingTestCase(invalidInstructionCode, 32, AArch64.v5, AArch64.v5);
+        assertWrapper(new CntEncodingTestCase(0x0058200e, ASIMDSize.HalfReg, AArch64.v0, AArch64.v0));
+        assertWrapper(new CntEncodingTestCase(0x3f58204e, ASIMDSize.FullReg, AArch64.v31, AArch64.v1));
     }
 
     @Test
     public void testAddv() {
-        assertWrapper(new AddvEncodingTestCase(0x20b8310e, 64, AArch64Assembler.SIMDElementSize.Byte, AArch64.v0, AArch64.v1));
-        assertWrapper(new AddvEncodingTestCase(0x42b8314e, 128, AArch64Assembler.SIMDElementSize.Byte, AArch64.v2, AArch64.v2));
-        assertWrapper(new AddvEncodingTestCase(0xd2ba710e, 64, AArch64Assembler.SIMDElementSize.HalfWord, AArch64.v18, AArch64.v22));
-        assertWrapper(new AddvEncodingTestCase(0x77ba714e, 128, AArch64Assembler.SIMDElementSize.HalfWord, AArch64.v23, AArch64.v19));
-        assertWrapper(new AddvEncodingTestCase(0x18bbb14e, 128, AArch64Assembler.SIMDElementSize.Word, AArch64.v24, AArch64.v24));
+        assertWrapper(new AddvEncodingTestCase(0x20b8310e, ASIMDSize.HalfReg, ElementSize.Byte, AArch64.v0, AArch64.v1));
+        assertWrapper(new AddvEncodingTestCase(0x42b8314e, ASIMDSize.FullReg, ElementSize.Byte, AArch64.v2, AArch64.v2));
+        assertWrapper(new AddvEncodingTestCase(0xd2ba710e, ASIMDSize.HalfReg, ElementSize.HalfWord, AArch64.v18, AArch64.v22));
+        assertWrapper(new AddvEncodingTestCase(0x77ba714e, ASIMDSize.FullReg, ElementSize.HalfWord, AArch64.v23, AArch64.v19));
+        assertWrapper(new AddvEncodingTestCase(0x18bbb14e, ASIMDSize.FullReg, ElementSize.Word, AArch64.v24, AArch64.v24));
     }
 
     @Test(expected = AssertionError.class)
     @SuppressWarnings("unused")
     public void testAddvWithInvalidSizeLaneCombo() {
-        new AddvEncodingTestCase(invalidInstructionCode, 64, AArch64Assembler.SIMDElementSize.Word, AArch64.v0, AArch64.v1);
-    }
-
-    @Test(expected = AssertionError.class)
-    @SuppressWarnings("unused")
-    public void testAddvWithInvalidDataSize() {
-        new AddvEncodingTestCase(invalidInstructionCode, 32, AArch64Assembler.SIMDElementSize.Word, AArch64.v0, AArch64.v1);
+        new AddvEncodingTestCase(invalidInstructionCode, ASIMDSize.HalfReg, ElementSize.Word, AArch64.v0, AArch64.v1);
     }
 
     @Test(expected = AssertionError.class)
     @SuppressWarnings("unused")
     public void testAddvWithInvalidLane() {
-        new AddvEncodingTestCase(invalidInstructionCode, 128, AArch64Assembler.SIMDElementSize.DoubleWord, AArch64.v0, AArch64.v1);
+        new AddvEncodingTestCase(invalidInstructionCode, ASIMDSize.FullReg, ElementSize.DoubleWord, AArch64.v0, AArch64.v1);
     }
 
     @Test
     public void testUmov() {
-        assertWrapper(new UmovEncodingTestCase(0x1f3c084e, 64, AArch64.r31, 0, AArch64.v0));
-        assertWrapper(new UmovEncodingTestCase(0xe13f184e, 64, AArch64.r1, 1, AArch64.v31));
+        assertWrapper(new UmovEncodingTestCase(0x1f3c084e, ElementSize.DoubleWord, AArch64.r31, 0, AArch64.v0));
+        assertWrapper(new UmovEncodingTestCase(0xe13f184e, ElementSize.DoubleWord, AArch64.r1, 1, AArch64.v31));
 
-        assertWrapper(new UmovEncodingTestCase(0x5d3c040e, 32, AArch64.r29, 0, AArch64.v2));
-        assertWrapper(new UmovEncodingTestCase(0x833f1c0e, 32, AArch64.r3, 3, AArch64.v28));
+        assertWrapper(new UmovEncodingTestCase(0x5d3c040e, ElementSize.Word, AArch64.r29, 0, AArch64.v2));
+        assertWrapper(new UmovEncodingTestCase(0x833f1c0e, ElementSize.Word, AArch64.r3, 3, AArch64.v28));
 
-        assertWrapper(new UmovEncodingTestCase(0x4b3d020e, 16, AArch64.r11, 0, AArch64.v10));
-        assertWrapper(new UmovEncodingTestCase(0x893d1e0e, 16, AArch64.r9, 7, AArch64.v12));
+        assertWrapper(new UmovEncodingTestCase(0x4b3d020e, ElementSize.HalfWord, AArch64.r11, 0, AArch64.v10));
+        assertWrapper(new UmovEncodingTestCase(0x893d1e0e, ElementSize.HalfWord, AArch64.r9, 7, AArch64.v12));
 
-        assertWrapper(new UmovEncodingTestCase(0x0d3d010e, 8, AArch64.r13, 0, AArch64.v8));
-        assertWrapper(new UmovEncodingTestCase(0xc73d1f0e, 8, AArch64.r7, 15, AArch64.v14));
+        assertWrapper(new UmovEncodingTestCase(0x0d3d010e, ElementSize.Byte, AArch64.r13, 0, AArch64.v8));
+        assertWrapper(new UmovEncodingTestCase(0xc73d1f0e, ElementSize.Byte, AArch64.r7, 15, AArch64.v14));
     }
 
     @Test(expected = AssertionError.class)
     @SuppressWarnings("unused")
     public void testUmovInvalidSrcIdx() {
-        new UmovEncodingTestCase(invalidInstructionCode, 64, AArch64.r0, 2, AArch64.v0);
-    }
-
-    @Test(expected = GraalError.class)
-    @SuppressWarnings("unused")
-    public void testUmovInvalidDataSize() {
-        new UmovEncodingTestCase(invalidInstructionCode, 31, AArch64.r0, 3, AArch64.v0);
+        new UmovEncodingTestCase(invalidInstructionCode, ElementSize.DoubleWord, AArch64.r0, 2, AArch64.v0);
     }
 }
