@@ -3,9 +3,9 @@ insight.on("return", function(ctx, frame) {
       return;
   }
   print("dumping locals");
-  ctx.iterateFrames(frame, (frameCtx, frameVars) => {
-      for (let p in frameVars) {
-          print(`    at ${frameCtx.name} (${frameCtx.source.name}:${frameCtx.line}:${frameCtx.column}) ${p} has value ${frameVars[p]}`);
+  ctx.iterateFrames((at, vars) => {
+      for (let p in vars) {
+          print(`    at ${at.name} (${at.source.name}:${at.line}:${at.column}) ${p} has value ${vars[p]}`);
       }
   });
   print("end of locals");

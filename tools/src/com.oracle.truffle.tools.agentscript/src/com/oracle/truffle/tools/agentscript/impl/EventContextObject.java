@@ -104,10 +104,9 @@ final class EventContextObject extends AbstractContextObject {
 
     @CompilerDirectives.TruffleBoundary
     private static Object iterateFrames(Object[] args, EventContextObject obj) {
-        if (args.length == 0 || !(args[0] instanceof VariablesObject)) {
-            return NullObject.nullCheck(null);
+        if (args.length == 0) {
+            return ArityException.create(1, 0);
         }
-        VariablesObject vars = (VariablesObject) args[0];
         Truffle.getRuntime().iterateFrames((frameInstance) -> {
             final Node n = frameInstance.getCallNode();
             if (n == null) {
@@ -121,7 +120,7 @@ final class EventContextObject extends AbstractContextObject {
                 try {
                     Object frameVars = lib.getScope(n, frame, false);
                     LocationObject location = new LocationObject(n);
-                    iop.execute(args[1], location, frameVars);
+                    iop.execute(args[0], location, frameVars);
                 } catch (UnsupportedMessageException | UnsupportedTypeException | ArityException ex) {
                     throw InsightException.raise(ex);
                 }
