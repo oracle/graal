@@ -137,4 +137,9 @@ public class TruffleReadOnlyMap extends AbstractRegexObject {
             return Boundaries.mapGet(receiver.map, symbol);
         }
     }
+
+    @Override
+    public String toString() {
+        return "TRegexReadOnlyMap";
+    }
 }

@@ -41,7 +41,9 @@
 package com.oracle.truffle.regex.tregex.parser.flavors;
 
 import com.oracle.truffle.api.CompilerDirectives;
+import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.interop.UnknownIdentifierException;
+import com.oracle.truffle.api.library.ExportMessage;
 import com.oracle.truffle.regex.AbstractConstantKeysObject;
 import com.oracle.truffle.regex.util.TruffleReadOnlyKeysArray;
 
@@ -164,6 +166,7 @@ public final class RubyFlags extends AbstractConstantKeysObject {
         return value;
     }
 
+    @TruffleBoundary
     @Override
     public String toString() {
         StringBuilder out = new StringBuilder(COMPILE_TIME_FLAGS.length());
@@ -174,6 +177,12 @@ public final class RubyFlags extends AbstractConstantKeysObject {
             }
         }
         return out.toString();
+    }
+
+    @ExportMessage
+    @TruffleBoundary
+    public Object toDisplayString(@SuppressWarnings("unused") boolean allowSideEffects) {
+        return "TRegexRubyFlags{flags=" + toString() + '}';
     }
 
     @Override

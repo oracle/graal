@@ -42,6 +42,9 @@ package com.oracle.truffle.regex.result;
 
 import com.oracle.truffle.api.CallTarget;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
+import com.oracle.truffle.api.library.ExportMessage;
+
+import java.util.Arrays;
 
 public final class SingleResultLazyStart extends LazyResult {
 
@@ -103,5 +106,14 @@ public final class SingleResultLazyStart extends LazyResult {
             debugForceEvaluation();
         }
         return "[" + start + ", " + getEnd() + "]";
+    }
+
+    @TruffleBoundary
+    @ExportMessage
+    public Object toDisplayString(boolean allowSideEffects) {
+        if (allowSideEffects) {
+            return "TRegexLazyResult" + toString();
+        }
+        return "TRegexLazyResult[" + (isStartCalculated() ? start : "_not computed yet_") + ", " + getEnd() + ']';
     }
 }

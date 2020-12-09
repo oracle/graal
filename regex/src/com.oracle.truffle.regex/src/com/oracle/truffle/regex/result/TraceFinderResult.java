@@ -45,6 +45,7 @@ import java.util.Arrays;
 import com.oracle.truffle.api.CallTarget;
 import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
+import com.oracle.truffle.api.library.ExportMessage;
 
 public final class TraceFinderResult extends LazyResult {
 
@@ -114,5 +115,14 @@ public final class TraceFinderResult extends LazyResult {
             debugForceEvaluation();
         }
         return Arrays.toString(indices);
+    }
+
+    @TruffleBoundary
+    @ExportMessage
+    public Object toDisplayString(boolean allowSideEffects) {
+        if (allowSideEffects) {
+            return "TRegexLazyResult" + toString();
+        }
+        return "TRegexLazyResult" + (indices == null ? "[not computed yet]" : Arrays.toString(indices));
     }
 }

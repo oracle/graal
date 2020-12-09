@@ -40,6 +40,8 @@
  */
 package com.oracle.truffle.regex.result;
 
+import com.oracle.truffle.api.library.ExportMessage;
+
 public final class NoMatchResult extends RegexResult {
 
     private static final NoMatchResult INSTANCE = new NoMatchResult();
@@ -64,5 +66,11 @@ public final class NoMatchResult extends RegexResult {
     @Override
     public int getEnd(int groupNumber) {
         return -1;
+    }
+
+    @SuppressWarnings("static-method")
+    @ExportMessage
+    public Object toDisplayString(@SuppressWarnings("unused") boolean allowSideEffects) {
+        return "TRegexNoMatchResult";
     }
 }

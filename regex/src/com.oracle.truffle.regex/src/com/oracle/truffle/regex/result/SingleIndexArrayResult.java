@@ -44,6 +44,7 @@ import java.util.Arrays;
 
 import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
+import com.oracle.truffle.api.library.ExportMessage;
 
 public final class SingleIndexArrayResult extends RegexResult {
 
@@ -71,5 +72,11 @@ public final class SingleIndexArrayResult extends RegexResult {
     @Override
     public String toString() {
         return Arrays.toString(indices);
+    }
+
+    @TruffleBoundary
+    @ExportMessage
+    public Object toDisplayString(@SuppressWarnings("unused") boolean allowSideEffects) {
+        return "TRegexResult" + toString();
     }
 }

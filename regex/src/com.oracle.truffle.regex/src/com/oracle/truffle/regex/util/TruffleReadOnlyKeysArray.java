@@ -87,4 +87,10 @@ public class TruffleReadOnlyKeysArray extends AbstractRegexObject {
         }
         return keys[(int) index];
     }
+
+    @TruffleBoundary
+    @Override
+    public String toString() {
+        return "TRegexReadOnlyArray{" + "keys=" + Arrays.toString(keys) + '}';
+    }
 }

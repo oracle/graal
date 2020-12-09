@@ -41,6 +41,7 @@
 package com.oracle.truffle.regex.result;
 
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
+import com.oracle.truffle.api.library.ExportMessage;
 
 public final class SingleResult extends RegexResult {
 
@@ -74,5 +75,11 @@ public final class SingleResult extends RegexResult {
     @Override
     public String toString() {
         return "[" + start + ", " + end + "]";
+    }
+
+    @TruffleBoundary
+    @ExportMessage
+    public Object toDisplayString(@SuppressWarnings("unused") boolean allowSideEffects) {
+        return "TRegexResult" + toString();
     }
 }
