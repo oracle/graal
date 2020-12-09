@@ -121,7 +121,7 @@ mx_sdk_vm.register_vm_config('libgraal', ['bgu', 'cmp', 'dis', 'gu', 'gvm', 'lg'
 mx_sdk_vm.register_vm_config('toolchain-only', ['sdk', 'tfl', 'tflm', 'nfi', 'cmp', 'svm', 'llp', 'llrc', 'llrn'], _suite)
 mx_sdk_vm.register_vm_config('libgraal-bash', ['bgraalvm-native-clang', 'bgraalvm-native-clang++', 'bgraalvm-native-ld', 'bgraalvm-native-binutil', 'bgu', 'cmp', 'gu', 'gvm', 'lg', 'nfi', 'poly', 'polynative', 'sdk', 'svm', 'svml', 'tfl', 'tflm', 'bpolyglot'], _suite, env_file=False)
 mx_sdk_vm.register_vm_config('toolchain-only-bash', ['bgraalvm-native-clang', 'bgraalvm-native-clang++', 'bgraalvm-native-ld', 'bgraalvm-native-binutil', 'tfl', 'tflm', 'gu', 'svm', 'gvm', 'polynative', 'llp', 'nfi', 'svml', 'bgu', 'sdk', 'llrc', 'llrn', 'cmp'], _suite, env_file=False)
-mx_sdk_vm.register_vm_config('ce', ['bgraalvm-native-binutil', 'bgraalvm-native-clang', 'bgraalvm-native-clang++', 'bgraalvm-native-ld', 'bjs', 'blli', 'bnative-image', 'btruffleruby', 'bwasm', 'cmp', 'gwa', 'js', 'llp', 'nfi', 'ni', 'nil', 'pbm', 'rby', 'rbyl', 'rgx', 'sdk', 'llrc', 'llrn', 'llrl', 'snative-image-agent', 'snative-image-diagnostics-agent', 'svm', 'tfl', 'tflm'], _suite, env_file='polybench-ce')
+mx_sdk_vm.register_vm_config('ce', ['bgraalvm-native-binutil', 'bgraalvm-native-clang', 'bgraalvm-native-clang++', 'bgraalvm-native-ld', 'bjs', 'blli', 'bnative-image', 'btruffleruby', 'bwasm', 'cmp', 'gwa', 'js', 'lg', 'llp', 'nfi', 'ni', 'nil', 'pbm', 'rby', 'rbyl', 'rgx', 'sdk', 'llrc', 'llrn', 'llrl', 'snative-image-agent', 'snative-image-diagnostics-agent', 'svm', 'tfl', 'tflm'], _suite, env_file='polybench-ce')
 # pylint: enable=line-too-long
 
 if mx.get_os() == 'windows':
