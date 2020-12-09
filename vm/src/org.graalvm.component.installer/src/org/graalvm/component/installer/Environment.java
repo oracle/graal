@@ -376,6 +376,11 @@ public class Environment implements Feedback, CommandInput, Config {
             public Path getLocalCache(URL location) {
                 return Environment.this.getLocalCache(location);
             }
+
+            @Override
+            public boolean isNonInteractive() {
+                return Environment.this.isNonInteractive();
+            }
         };
     }
 

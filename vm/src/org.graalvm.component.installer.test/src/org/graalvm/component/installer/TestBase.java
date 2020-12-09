@@ -507,6 +507,11 @@ public class TestBase implements Feedback {
         public Path getLocalCache(URL location) {
             return TestBase.this.getLocalCache(location);
         }
+
+        @Override
+        public boolean isNonInteractive() {
+            return TestBase.this.isNonInteractive();
+        }
     }
 
     public class FeedbackAdapter implements Feedback {
@@ -611,6 +616,15 @@ public class TestBase implements Feedback {
             return TestBase.this.getLocalCache(location);
         }
 
+        @Override
+        public boolean isNonInteractive() {
+            return TestBase.this.isNonInteractive();
+        }
+    }
+
+    @Override
+    public boolean isNonInteractive() {
+        return false;
     }
 
     public static boolean isWindows() {
@@ -638,7 +652,7 @@ public class TestBase implements Feedback {
             nl = userInput.length();
         }
         String r = userInput.substring(0, nl);
-        userInput.delete(0, nl);
+        userInput.delete(0, nl + 1); // including the newline
         return r;
     }
 

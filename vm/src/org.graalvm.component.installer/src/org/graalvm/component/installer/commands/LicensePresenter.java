@@ -114,7 +114,12 @@ public class LicensePresenter {
             Collection<MetadataLoader> loaders = licensesToAccept.get(licId);
             for (MetadataLoader ldr : new ArrayList<>(loaders)) {
                 ComponentInfo ci = ldr.getComponentInfo();
-                Date accepted = localRegistry.isLicenseAccepted(ci, licId);
+                // query the metadata loader (possibly delegates to original software channel
+                // provider).
+                Date accepted = ldr.isLicenseAccepted(ci, licId);
+                if (accepted == null) {
+                    accepted = localRegistry.isLicenseAccepted(ci, licId);
+                }
                 if (accepted != null) {
                     feedback.verboseOutput("INSTALL_LicenseAcceptedAt", ldr.getLicenseType(), accepted, ci.getId(), ci.getName());
                     loaders.remove(ldr);
@@ -223,7 +228,7 @@ public class LicensePresenter {
         return n;
     }
 
-    void acceptLicense(String licenseId) {
+    protected void acceptLicense(String licenseId) {
         String licText;
         try {
             licText = loadLicenseText(licenseId);
@@ -231,7 +236,16 @@ public class LicensePresenter {
             throw feedback.failure("INSTALL_ErrorHandlingLicenses", ex, ex.getLocalizedMessage());
         }
         for (MetadataLoader ldr : licensesToAccept.get(licenseId)) {
-            localRegistry.acceptLicense(ldr.getComponentInfo(), licenseId, licText);
+            Boolean result = null;
+            try {
+                // first ask the metadata loader delegate.
+                result = ldr.recordLicenseAccepted(ldr.getComponentInfo(), licenseId, licText, null);
+            } catch (IOException ex) {
+                feedback.error("WARN_LicenseNotRecorded", ex, licenseId, ex.getLocalizedMessage());
+            }
+            if (result == null) {
+                localRegistry.acceptLicense(ldr.getComponentInfo(), licenseId, licText);
+            }
         }
         licensesToAccept.remove(licenseId);
     }

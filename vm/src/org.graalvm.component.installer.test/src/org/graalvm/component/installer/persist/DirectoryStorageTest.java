@@ -49,10 +49,10 @@ import java.util.Set;
 import java.util.stream.Collectors;
 
 import org.graalvm.component.installer.BundleConstants;
+import org.graalvm.component.installer.CommandTestBase;
 import org.graalvm.component.installer.CommonConstants;
 import org.graalvm.component.installer.FailedOperationException;
 import org.graalvm.component.installer.SystemUtils;
-import org.graalvm.component.installer.TestBase;
 import org.graalvm.component.installer.Version;
 import org.graalvm.component.installer.model.ComponentInfo;
 import org.junit.After;
@@ -67,7 +67,7 @@ import org.junit.rules.ExpectedException;
 import org.junit.rules.TemporaryFolder;
 import org.junit.rules.TestName;
 
-public class DirectoryStorageTest extends TestBase {
+public class DirectoryStorageTest extends CommandTestBase {
     @Rule public TestName name = new TestName();
     @Rule public TemporaryFolder workDir = new TemporaryFolder();
     @Rule public ExpectedException exception = ExpectedException.none();
@@ -88,7 +88,9 @@ public class DirectoryStorageTest extends TestBase {
     }
 
     @Before
+    @Override
     public void setUp() throws Exception {
+        super.setUp();
         graalVMPath = workDir.newFolder("graal").toPath();
         Files.createDirectory(graalVMPath.resolve("bin"));
         registryPath = workDir.newFolder("registry").toPath();
@@ -185,18 +187,18 @@ public class DirectoryStorageTest extends TestBase {
     @Test
     public void testListComponentsSimple() throws Exception {
         copyDir("list1", registryPath);
-        List<String> components = new ArrayList<>(storage.listComponentIDs());
-        Collections.sort(components);
-        components.remove(BundleConstants.GRAAL_COMPONENT_ID);
-        assertEquals(Arrays.asList("fastr", "fastr-2", "ruby", "sulong"), components);
+        List<String> comps = new ArrayList<>(storage.listComponentIDs());
+        Collections.sort(comps);
+        comps.remove(BundleConstants.GRAAL_COMPONENT_ID);
+        assertEquals(Arrays.asList("fastr", "fastr-2", "ruby", "sulong"), comps);
     }
 
     @Test
     public void testListComponentsEmpty() throws Exception {
         copyDir("emptylist", registryPath);
-        List<String> components = new ArrayList<>(storage.listComponentIDs());
-        components.remove(BundleConstants.GRAAL_COMPONENT_ID);
-        assertEquals(Collections.emptyList(), components);
+        List<String> comps = new ArrayList<>(storage.listComponentIDs());
+        comps.remove(BundleConstants.GRAAL_COMPONENT_ID);
+        assertEquals(Collections.emptyList(), comps);
     }
 
     private ComponentInfo loadLastComponent(String id) throws IOException {
@@ -245,9 +247,9 @@ public class DirectoryStorageTest extends TestBase {
         copyDir("list1", registryPath);
         ComponentInfo info = loadLastComponent("fastr");
         storage.loadComponentFiles(info);
-        List<String> files = info.getPaths();
+        List<String> paths = info.getPaths();
         assertEquals(Arrays.asList(
-                        "bin/", "bin/R", "bin/Rscript"), files.subList(0, 3));
+                        "bin/", "bin/R", "bin/Rscript"), paths.subList(0, 3));
     }
 
     /**
@@ -262,8 +264,8 @@ public class DirectoryStorageTest extends TestBase {
 
         ComponentInfo info = loadLastComponent("fastr");
         storage.loadComponentFiles(info);
-        List<String> files = info.getPaths();
-        assertTrue(files.isEmpty());
+        List<String> paths = info.getPaths();
+        assertTrue(paths.isEmpty());
     }
 
     /**
@@ -296,9 +298,9 @@ public class DirectoryStorageTest extends TestBase {
      */
     @Test
     public void testUpdateReplacedFiles() throws Exception {
-        Map<String, Collection<String>> files = new HashMap<>();
-        files.put("whatever/lib.jar", Arrays.asList("fastr", "sulong"));
-        storage.updateReplacedFiles(files);
+        Map<String, Collection<String>> paths = new HashMap<>();
+        paths.put("whatever/lib.jar", Arrays.asList("fastr", "sulong"));
+        storage.updateReplacedFiles(paths);
         Path regPath = registryPath.resolve(SystemUtils.fileName("replaced-files.properties"));
         Path goldenPath = dataFile("golden-replaced-files.properties");
         List<String> lines1 = Files.readAllLines(goldenPath);
@@ -314,8 +316,8 @@ public class DirectoryStorageTest extends TestBase {
         try (InputStream is = getClass().getResourceAsStream("replaced-files.properties")) {
             Files.copy(is, registryPath.resolve(SystemUtils.fileName("replaced-files.properties")));
         }
-        Map<String, Collection<String>> files = new HashMap<>();
-        storage.updateReplacedFiles(files);
+        Map<String, Collection<String>> paths = new HashMap<>();
+        storage.updateReplacedFiles(paths);
         Path regPath = registryPath.resolve(SystemUtils.fileName("replaced-files.properties"));
         assertFalse(Files.exists(regPath));
     }
@@ -325,17 +327,17 @@ public class DirectoryStorageTest extends TestBase {
      */
     @Test
     public void testUpdateReplacedFilesEmpty() throws Exception {
-        Map<String, Collection<String>> files = new HashMap<>();
+        Map<String, Collection<String>> paths = new HashMap<>();
         // make some existing file
         Path goldenPath = dataFile("golden-replaced-files.properties");
         Path regPath = registryPath.resolve(SystemUtils.fileName("replaced-files.properties"));
         Files.copy(goldenPath, regPath, StandardCopyOption.REPLACE_EXISTING);
-        storage.updateReplacedFiles(files);
+        storage.updateReplacedFiles(paths);
 
         // should be deleted
         assertFalse(Files.exists(regPath));
 
-        storage.updateReplacedFiles(files);
+        storage.updateReplacedFiles(paths);
         // should not be created
         assertFalse(Files.exists(regPath));
     }
@@ -496,6 +498,59 @@ public class DirectoryStorageTest extends TestBase {
         Path p2 = registryPath.resolve(SystemUtils.fromCommonString("licenses/cafebabe"));
         assertTrue(Files.isReadable(p));
         assertEquals(Arrays.asList("This is a dummy license"), Files.readAllLines(p2));
+    }
+
+    /**
+     * URLs contain characters not representable in filesystem, check they are transliterated.
+     * 
+     * @throws Exception
+     */
+    @Test
+    public void testAcceptLicenseWithUrlId() throws Exception {
+        copyDir("list1", registryPath);
+        ComponentInfo info = loadLastComponent("fastr");
+        enableLicensesForTesting();
+        storage.recordLicenseAccepted(info, "http://acme.org/license.txt", "This is a dummy license", null);
+        Path p = registryPath.resolve(SystemUtils.fromCommonString("licenses/http___acme.org_license.txt.accepted/org.graalvm.fastr"));
+        Path p2 = registryPath.resolve(SystemUtils.fromCommonString("licenses/http___acme.org_license.txt"));
+        Path p3 = registryPath.resolve(SystemUtils.fromCommonString("licenses/http___acme.org_license.txt.id"));
+        assertTrue(Files.isReadable(p));
+        assertEquals(Arrays.asList("This is a dummy license"), Files.readAllLines(p2));
+        assertTrue(Files.isReadable(p3));
+        assertEquals(Arrays.asList("http://acme.org/license.txt"), Files.readAllLines(p3));
+    }
+
+    /**
+     * Acceptance test must use transliteration, too.
+     * 
+     * @throws Exception
+     */
+    @Test
+    public void testCheckedAcceptedURLLicense() throws Exception {
+        String urlString = "http://acme.org/license.txt";
+        copyDir("list1", registryPath);
+        ComponentInfo info = loadLastComponent("fastr");
+        enableLicensesForTesting();
+        storage.recordLicenseAccepted(info, urlString, "This is a dummy license", null);
+
+        assertNotNull(storage.licenseAccepted(info, urlString));
+    }
+
+    /**
+     * When listing licenses, Ids cannot be transliterated back, so they are stored\ aside.
+     * 
+     * @throws Exception
+     */
+    @Test
+    public void testCheckedAcceptedURLLicenseListed() throws Exception {
+        String urlString = "http://acme.org/license.txt";
+        copyDir("list1", registryPath);
+        ComponentInfo info = loadLastComponent("fastr");
+        enableLicensesForTesting();
+        storage.recordLicenseAccepted(info, urlString, "This is a dummy license", null);
+
+        Map<String, Collection<String>> lics = storage.findAcceptedLicenses();
+        assertNotNull(lics.get(urlString));
     }
 
     @Test
