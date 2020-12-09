@@ -39,11 +39,11 @@ CPPFLAGS+=-I${VPATH}/include
 
 ifeq ($(OS), darwin)
 CLANG_PREFIX=/usr/bin/xcrun
-LDFLAGS=-dynamiclib -gdwarf-5
+LDFLAGS=-dynamiclib -gdwarf-5 ${EXTRA_LDFLAGS}
 LDFLAGS+=-Wl,-install_name,@rpath/$(notdir $@)
 else
 CLANG_PREFIX=
-LDFLAGS=-shared -gdwarf-5 -Wl,-soname,$(notdir $@)
+LDFLAGS=-shared -gdwarf-5 -Wl,-soname,$(notdir $@) ${EXTRA_LDFLAGS}
 endif
 
 LDFLAGS+= ${EXTRA_LDFLAGS}
