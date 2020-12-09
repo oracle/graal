@@ -81,6 +81,12 @@ public class CommonConstants {
     public static final String ENV_VARIABLE_PREFIX = "GRAALVM_"; // NOI18N
 
     /**
+     * Env variable that points to GRAALVM_HOME. Note that GRAAL_HOME was used historically, this is
+     * still supported, but should be removed before 22.0.0
+     */
+    public static final String ENV_GRAALVM_HOME = "GRAALVM_HOME"; // NOI18N
+
+    /**
      * Env variable that controls catalog URL.
      */
     public static final String ENV_CATALOG_URL = ENV_VARIABLE_PREFIX + "CATALOG"; // NOI18N
