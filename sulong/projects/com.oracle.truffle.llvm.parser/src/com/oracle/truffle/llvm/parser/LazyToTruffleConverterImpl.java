@@ -227,6 +227,7 @@ public class LazyToTruffleConverterImpl implements LazyToTruffleConverter {
         }
 
         LLVMSourceLocation location = method.getLexicalScope();
+        rootFunction.setSourceLocation(LLVMSourceLocation.orDefault(location));
         LLVMStatementNode[] copyArgumentsToFrameArray = copyArgumentsToFrame(frame, symbols).toArray(LLVMStatementNode.NO_STATEMENTS);
         RootNode rootNode = nodeFactory.createFunction(frame.findFrameSlot(LLVMUserException.FRAME_SLOT_ID), blockNodes, uniquesRegion, copyArgumentsToFrameArray, frame, loopSuccessorSlot, info,
                         method.getName(), method.getSourceName(), method.getParameters().size(), source, location, rootFunction);

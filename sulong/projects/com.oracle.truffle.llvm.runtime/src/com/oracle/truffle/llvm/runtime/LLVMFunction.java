@@ -33,6 +33,7 @@ import com.oracle.truffle.api.Assumption;
 import com.oracle.truffle.api.Truffle;
 import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
 import com.oracle.truffle.llvm.runtime.LLVMFunctionCode.Function;
+import com.oracle.truffle.llvm.runtime.debug.scope.LLVMSourceLocation;
 import com.oracle.truffle.llvm.runtime.global.LLVMGlobal;
 import com.oracle.truffle.llvm.runtime.pointer.LLVMManagedPointer;
 import com.oracle.truffle.llvm.runtime.pointer.LLVMPointer;
@@ -49,6 +50,7 @@ public final class LLVMFunction extends LLVMSymbol {
     private final FunctionType type;
     private final Function function;
     private final String path;
+    private LLVMSourceLocation sourceLocation;
 
     private final Assumption fixedCodeAssumption = Truffle.getRuntime().createAssumption();
     @CompilationFinal private LLVMFunctionCode fixedCode;
@@ -62,6 +64,14 @@ public final class LLVMFunction extends LLVMSymbol {
         this.type = type;
         this.function = function;
         this.path = path;
+    }
+
+    public final LLVMSourceLocation getSourceLocation() {
+        return sourceLocation;
+    }
+
+    public final void setSourceLocation(LLVMSourceLocation sourceLocation) {
+        this.sourceLocation = sourceLocation;
     }
 
     public String getStringPath() {
