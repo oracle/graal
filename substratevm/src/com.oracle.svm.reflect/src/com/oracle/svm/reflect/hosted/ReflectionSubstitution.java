@@ -33,8 +33,9 @@ import java.lang.reflect.Field;
 import java.lang.reflect.InvocationTargetException;
 import java.lang.reflect.Member;
 import java.lang.reflect.Method;
-import java.util.Arrays;
+import java.lang.reflect.Modifier;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.HashMap;
 import java.util.List;
 
@@ -46,6 +47,7 @@ import com.oracle.svm.core.util.VMError;
 import com.oracle.svm.hosted.ImageClassLoader;
 import com.oracle.svm.hosted.annotation.CustomSubstitution;
 import com.oracle.svm.hosted.classinitialization.ClassInitializationSupport;
+import com.oracle.svm.reflect.helpers.InvokeSpecialReflectionProxy;
 import com.oracle.svm.reflect.helpers.ReflectionProxy;
 import com.oracle.svm.reflect.hosted.ReflectionSubstitutionType.ReflectionSubstitutionMethod;
 import com.oracle.svm.util.ReflectionUtil;
@@ -150,12 +152,17 @@ final class ReflectionSubstitution extends CustomSubstitution<ReflectionSubstitu
             /* the unique ID is added for unit tests that don't change the class loader */
             ClassLoader loader = imageClassLoader.getClassLoader();
             String name = getStableProxyName(member) + PROXY_NAME_SEPARATOR + proxyNr.incrementAndGet();
-            Class<?> iface = getAccessorInterface(member);
+            Class<?>[] ifaces;
+            if (member instanceof Method && !Modifier.isStatic(member.getModifiers()) && !Modifier.isAbstract(member.getModifiers())) {
+                ifaces = new Class<?>[]{getAccessorInterface(member), ReflectionProxy.class, InvokeSpecialReflectionProxy.class};
+            } else {
+                ifaces = new Class<?>[]{getAccessorInterface(member), ReflectionProxy.class};
+            }
             byte[] proxyBC;
             if (JavaVersionUtil.JAVA_SPEC < 14) {
-                proxyBC = generateProxyClass(name, new Class<?>[]{iface, ReflectionProxy.class});
+                proxyBC = generateProxyClass(name, ifaces);
             } else {
-                proxyBC = generateProxyClass14(name, new Class<?>[]{iface, ReflectionProxy.class}, loader);
+                proxyBC = generateProxyClass14(name, ifaces, loader);
             }
             try {
                 ret = (Class<?>) defineClass.invoke(loader, name, proxyBC, 0, proxyBC.length);
