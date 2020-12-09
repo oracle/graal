@@ -75,6 +75,7 @@ final class EventContextObject extends AbstractContextObject {
     }
 
     @ExportMessage
+    @Override
     Object readMember(String member) throws UnknownIdentifierException {
         return super.readMember(member);
     }
@@ -135,6 +136,7 @@ final class EventContextObject extends AbstractContextObject {
         return "returnNow".equals(member) || "returnValue".equals(member) || "iterateFrames".equals(member);
     }
 
+    @Override
     Node getInstrumentedNode() {
         return context.getInstrumentedNode();
     }

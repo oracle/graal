@@ -52,6 +52,7 @@ final class LocationObject extends AbstractContextObject {
     }
 
     @ExportMessage
+    @Override
     Object readMember(String member) throws UnknownIdentifierException {
         return super.readMember(member);
     }
@@ -61,6 +62,7 @@ final class LocationObject extends AbstractContextObject {
         return MEMBERS.contains(member);
     }
 
+    @Override
     Node getInstrumentedNode() {
         return node;
     }
