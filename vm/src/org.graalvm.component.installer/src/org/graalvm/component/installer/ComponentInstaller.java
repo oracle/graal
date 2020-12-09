@@ -187,10 +187,6 @@ public class ComponentInstaller extends Launcher {
 
     static {
         initCommands();
-        forSoftwareChannels(true, (ch) -> {
-            ch.init(SIMPLE_ENV, SIMPLE_ENV);
-            globalOptions.putAll(ch.globalOptions());
-        });
     }
 
     public ComponentInstaller(String[] args) {
@@ -258,12 +254,16 @@ public class ComponentInstaller extends Launcher {
         this.feedback = feedback;
     }
 
+    Path getGraalHomePath() {
+        return graalHomePath;
+    }
+
     protected Environment setupEnvironment(SimpleGetopt go) {
         Environment e = new Environment(command, parameters, go.getOptValues());
         setInput(e);
         setFeedback(e);
 
-        finddGraalHome();
+        findGraalHome();
         e.setGraalHome(graalHomePath);
         // Use our own GraalVM's trust store contents; also bypasses embedded trust store
         // when running AOT.
@@ -494,7 +494,7 @@ public class ComponentInstaller extends Launcher {
     }
 
     /**
-     * Finds Graal Home directory. It is either specified by the GRAAL_HOME system property,
+     * Finds Graal Home directory. It is either specified by the GRAALVM_HOME system property,
      * environment variable, or the executing JAR's location - in the order of precedence.
      * <p/>
      * The location is sanity checked and the method throws {@link FailedOperationException} if not
@@ -502,10 +502,16 @@ public class ComponentInstaller extends Launcher {
      *
      * @return existing Graal home
      */
-    Path finddGraalHome() {
-        String graalHome = input.getParameter("GRAAL_HOME", // NOI18N
-                        input.getParameter("GRAAL_HOME", false), // NOI18N
+    Path findGraalHome() {
+        String graalHome = input.getParameter(CommonConstants.ENV_GRAALVM_HOME, // NOI18N
+                        input.getParameter(CommonConstants.ENV_GRAALVM_HOME, false), // NOI18N
                         true);
+        if (graalHome == null) {
+            // compatibility, GRAAL_HOME was used for a long time. To be removed in 22.0.0 at most.
+            graalHome = input.getParameter("GRAAL_HOME", // NOI18N
+                            input.getParameter("GRAAL_HOME", false), // NOI18N
+                            true);
+        }
         Path graalPath = null;
         if (graalHome != null) {
             graalPath = SystemUtils.fromUserString(graalHome);
@@ -557,7 +563,15 @@ public class ComponentInstaller extends Launcher {
         return graalPath;
     }
 
+    static void initGlobalOptions() {
+        forSoftwareChannels(true, (ch) -> {
+            ch.init(SIMPLE_ENV, SIMPLE_ENV);
+            globalOptions.putAll(ch.globalOptions());
+        });
+    }
+
     public void run() {
+        initGlobalOptions();
         try {
             System.exit(processCommand(cmdlineParams));
         } catch (UserAbortException ex) {
