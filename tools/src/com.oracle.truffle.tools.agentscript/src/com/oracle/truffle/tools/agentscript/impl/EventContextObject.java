@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2019, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2020, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -26,16 +26,13 @@ package com.oracle.truffle.tools.agentscript.impl;
 
 import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.Truffle;
-import com.oracle.truffle.api.TruffleStackTrace;
 import com.oracle.truffle.api.frame.Frame;
 import com.oracle.truffle.api.frame.FrameInstance;
-import com.oracle.truffle.api.frame.FrameSlot;
 import com.oracle.truffle.api.instrumentation.EventContext;
 import com.oracle.truffle.api.interop.ArityException;
 import com.oracle.truffle.api.interop.InteropException;
 import com.oracle.truffle.api.interop.InteropLibrary;
 import com.oracle.truffle.api.interop.NodeLibrary;
-import com.oracle.truffle.api.interop.TruffleObject;
 import com.oracle.truffle.api.interop.UnknownIdentifierException;
 import com.oracle.truffle.api.interop.UnsupportedMessageException;
 import com.oracle.truffle.api.interop.UnsupportedTypeException;
@@ -48,14 +45,8 @@ import java.util.logging.Logger;
 
 @SuppressWarnings("unused")
 @ExportLibrary(InteropLibrary.class)
-final class EventContextObject implements TruffleObject {
-    private static final ArrayObject MEMBERS = ArrayObject.array(
-                    "name", "source", "characters",
-                    "line", "startLine", "endLine",
-                    "column", "startColumn", "endColumn");
+final class EventContextObject extends AbstractContextObject {
     private final EventContext context;
-    @CompilerDirectives.CompilationFinal private String name;
-    @CompilerDirectives.CompilationFinal(dimensions = 1) private int[] values;
 
     EventContextObject(EventContext context) {
         this.context = context;
@@ -87,52 +78,7 @@ final class EventContextObject implements TruffleObject {
 
     @ExportMessage
     Object readMember(String member) throws UnknownIdentifierException {
-        int index;
-        switch (member) {
-            case "name":
-                if (name == null) {
-                    CompilerDirectives.transferToInterpreterAndInvalidate();
-                    name = context.getInstrumentedNode().getRootNode().getName();
-                }
-                return name;
-            case "characters":
-                CompilerDirectives.transferToInterpreter();
-                return context.getInstrumentedSourceSection().getCharacters().toString();
-            case "source":
-                return new SourceEventObject(context.getInstrumentedSourceSection().getSource());
-            case "line":
-            case "startLine":
-                index = 0;
-                break;
-            case "endLine":
-                index = 1;
-                break;
-            case "column":
-            case "startColumn":
-                index = 2;
-                break;
-            case "endColumn":
-                index = 3;
-                break;
-            default:
-                throw UnknownIdentifierException.create(member);
-        }
-        if (values == null) {
-            CompilerDirectives.transferToInterpreterAndInvalidate();
-            values = valuesForContext();
-        }
-        return values[index];
-    }
-
-    @CompilerDirectives.TruffleBoundary
-    private int[] valuesForContext() {
-        final SourceSection section = context.getInstrumentedSourceSection();
-        return new int[]{
-                        section.getStartLine(),
-                        section.getEndLine(),
-                        section.getStartColumn(),
-                        section.getEndColumn()
-        };
+        return super.readMember(member);
     }
 
     @ExportMessage
@@ -171,7 +117,8 @@ final class EventContextObject implements TruffleObject {
                 if (scope) {
                     try {
                         Object frameVars = lib.getScope(n, frame, false);
-                        iop.execute(args[1], /* XXX */ obj, frameVars);
+                        LocationObject location = new LocationObject(n);
+                        iop.execute(args[1], location, frameVars);
                     } catch (UnsupportedMessageException | UnsupportedTypeException | ArityException ex) {
                         Logger.getLogger(EventContextObject.class.getName()).log(Level.SEVERE, null, ex);
                     }
@@ -192,4 +139,8 @@ final class EventContextObject implements TruffleObject {
         return context.getInstrumentedNode();
     }
 
+    @Override
+    SourceSection getInstrumentedSourceSection() {
+        return context.getInstrumentedSourceSection();
+    }
 }
