@@ -108,7 +108,7 @@ public class CatalogIterable implements ComponentIterable {
 
     private ComponentParam latest(String s, Collection<ComponentInfo> infos) {
         List<ComponentInfo> ordered = new ArrayList<>(infos);
-        Collections.sort(ordered, ComponentInfo.versionComparator().reversed());
+        Collections.sort(ordered, ComponentInfo.reverseVersionComparator(input.getLocalRegistry().getManagementStorage()));
         boolean progress = input.optValue(Commands.OPTION_NO_DOWNLOAD_PROGRESS) == null;
         return createComponentParam(s, ordered.get(0), progress);
     }

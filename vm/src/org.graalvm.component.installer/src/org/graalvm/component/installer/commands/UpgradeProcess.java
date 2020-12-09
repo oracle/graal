@@ -34,6 +34,7 @@ import java.util.Date;
 import java.util.HashSet;
 import java.util.Iterator;
 import java.util.List;
+import java.util.Locale;
 import java.util.Map;
 import java.util.NoSuchElementException;
 import java.util.Objects;
@@ -57,6 +58,7 @@ import org.graalvm.component.installer.UnknownVersionException;
 import org.graalvm.component.installer.Version;
 import org.graalvm.component.installer.model.ComponentInfo;
 import org.graalvm.component.installer.model.ComponentRegistry;
+import org.graalvm.component.installer.model.DistributionType;
 import org.graalvm.component.installer.persist.DirectoryStorage;
 import org.graalvm.component.installer.persist.MetadataLoader;
 import org.graalvm.component.installer.remote.CatalogIterable;
@@ -108,7 +110,7 @@ public class UpgradeProcess implements AutoCloseable {
      */
     public void addComponent(ComponentParam info) throws IOException {
         addComponents.add(info);
-        explicitIds.add(info.createMetaLoader().getComponentInfo().getId());
+        explicitIds.add(info.createMetaLoader().getComponentInfo().getId().toLowerCase(Locale.ENGLISH));
     }
 
     public Set<ComponentParam> addedComponents() {
@@ -289,6 +291,8 @@ public class UpgradeProcess implements AutoCloseable {
                         input.getFileOperations(),
                         input.getLocalRegistry(), completeInfo, catalog,
                         metaLoader.getArchive());
+        // will make registrations for bundled components, too.
+        gvmInstaller.setAllowFilesInComponentDir(true);
         gvmInstaller.setCurrentInstallPath(input.getGraalHomePath());
         gvmInstaller.setInstallPath(newInstallPath);
         gvmInstaller.setPermissions(ldr.loadPermissions());
@@ -369,6 +373,10 @@ public class UpgradeProcess implements AutoCloseable {
         return targetInfo;
     }
 
+    private String lowerCaseId(String s) {
+        return s.toLowerCase(Locale.ENGLISH);
+    }
+
     public ComponentInfo findGraalVersion(Version.Match minimum) throws IOException {
         Version.Match filter;
         if (minimum.getType() == Version.Match.Type.MOSTRECENT) {
@@ -407,7 +415,10 @@ public class UpgradeProcess implements AutoCloseable {
         Set<ComponentInfo> installables = null;
         Set<ComponentInfo> first = null;
         ComponentInfo result = null;
-        Set<String> toMigrate = new HashSet<>(existingComponents);
+        Set<String> toMigrate = existingComponents.stream().filter((id) -> {
+            ComponentInfo ci = input.getLocalRegistry().loadSingleComponent(id, false);
+            return ci.getDistributionType() != DistributionType.BUNDLED;
+        }).collect(Collectors.toSet());
         toMigrate.removeAll(explicitIds);
         for (Iterator<ComponentInfo> it = versions.iterator(); it.hasNext();) {
             ComponentInfo candidate = it.next();
@@ -415,7 +426,8 @@ public class UpgradeProcess implements AutoCloseable {
             if (first == null) {
                 first = instCandidates;
             }
-            if (allowMissing || instCandidates.size() == toMigrate.size()) {
+            Set<String> canMigrate = instCandidates.stream().map(ComponentInfo::getId).map(this::lowerCaseId).collect(Collectors.toSet());
+            if (allowMissing || canMigrate.containsAll(toMigrate)) {
                 installables = instCandidates;
                 result = candidate;
                 break;

@@ -131,6 +131,16 @@ public class MergeStorage extends AbstractCatalogStorage implements ComponentCat
         return channels;
     }
 
+    private int getChannelPriority(SoftwareChannel ch) {
+        SoftwareChannelSource src = this.channelInfos.get(ch);
+        if (src != null) {
+            return src.getPriority();
+        } else {
+            int index = channels.indexOf(ch);
+            return index == -1 ? 0 : index;
+        }
+    }
+
     @Override
     public Set<ComponentInfo> loadComponentMetadata(String id) throws IOException {
         Set<ComponentInfo> cis = new HashSet<>();
@@ -141,6 +151,7 @@ public class MergeStorage extends AbstractCatalogStorage implements ComponentCat
             }
             newInfos.removeAll(cis);
             for (ComponentInfo ci : newInfos) {
+                ci.setPriority(getChannelPriority(swch));
                 channelMap.put(ci, swch);
             }
             cis.addAll(newInfos);

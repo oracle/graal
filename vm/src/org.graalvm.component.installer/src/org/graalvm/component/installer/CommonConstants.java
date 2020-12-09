@@ -94,6 +94,9 @@ public class CommonConstants {
      */
     public static final String CAP_CATALOG_PREFIX = "component_catalog_"; // NOI18N
 
+    public static final String CAP_CATALOG_EDITION = "edition"; // NOI18N
+    public static final String CAP_CATALOG_EDITION_NAME = "editionLabel"; // NOI18N
+
     public static final String CAP_CATALOG_URL = "url"; // NOI18N
     public static final String CAP_CATALOG_LABEL = "label"; // NOI18N
 
