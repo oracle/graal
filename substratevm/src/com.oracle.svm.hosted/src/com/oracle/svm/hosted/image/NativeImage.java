@@ -586,6 +586,8 @@ public abstract class NativeImage extends AbstractImage {
                 return (addend & 0x3) == 0;
             case AARCH64_R_AARCH64_LDST64_ABS_LO12_NC:
                 return (addend & 0x7) == 0;
+            case AARCH64_R_AARCH64_LDST128_ABS_LO12_NC:
+                return (addend & 0xF) == 0;
         }
         return true;
     }
