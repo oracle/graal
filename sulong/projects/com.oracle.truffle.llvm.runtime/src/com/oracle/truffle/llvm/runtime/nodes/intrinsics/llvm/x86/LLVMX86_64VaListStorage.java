@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2020, Oracle and/or its affiliates.
+x * Copyright (c) 2020, Oracle and/or its affiliates.
  *
  * All rights reserved.
  *
@@ -578,7 +578,7 @@ public final class LLVMX86_64VaListStorage implements TruffleObject {
         }
     }
 
-    private static VarArgArea getVarArgArea(Type type) {
+    public static VarArgArea getVarArgArea(Type type) {
         if (type == PrimitiveType.I1) {
             return VarArgArea.GP_AREA;
         } else if (type == PrimitiveType.I8) {
@@ -1169,7 +1169,7 @@ public final class LLVMX86_64VaListStorage implements TruffleObject {
      */
     @ExportLibrary(LLVMManagedReadLibrary.class)
     public abstract static class ArgsArea implements TruffleObject {
-        protected final Object[] args;
+        public final Object[] args;
 
         protected ArgsArea(Object[] args) {
             this.args = args;
@@ -1405,7 +1405,7 @@ public final class LLVMX86_64VaListStorage implements TruffleObject {
             return i + (j << 32);
         }
 
-        void shift(int steps) {
+        public void shift(int steps) {
             long n = offsetToIndex(currentOffset);
             int i = (int) ((n << 32) >> 32);
             currentOffset = offsets[i + steps];

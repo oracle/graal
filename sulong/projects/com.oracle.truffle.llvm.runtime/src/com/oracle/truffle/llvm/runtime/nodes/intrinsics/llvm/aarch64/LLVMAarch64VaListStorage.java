@@ -18,6 +18,7 @@ import com.oracle.truffle.api.library.ExportLibrary;
 import com.oracle.truffle.api.library.ExportMessage;
 import com.oracle.truffle.api.nodes.RootNode;
 import com.oracle.truffle.api.profiles.BranchProfile;
+import com.oracle.truffle.api.profiles.ConditionProfile;
 import com.oracle.truffle.llvm.runtime.LLVMLanguage;
 import com.oracle.truffle.llvm.runtime.LLVMVarArgCompoundValue;
 import com.oracle.truffle.llvm.runtime.datalayout.DataLayout;
@@ -323,7 +324,6 @@ public class LLVMAarch64VaListStorage implements TruffleObject {
 
             for (int i = numOfExpArgs; i < realArgs.length; i++) {
                 final Object arg = realArgs[i];
-                System.out.printf("arg[%d]: gp=%d, arg.getClass=%s\n", i, gp, arg.getClass());
 
                 final LLVMX86_64VaListStorage.VarArgArea area = LLVMX86_64VaListStorage.getVarArgArea(arg);
                 if (area == VarArgArea.GP_AREA && gp < 0) {
@@ -377,6 +377,36 @@ public class LLVMAarch64VaListStorage implements TruffleObject {
             vaList.fpSaveAreaPtr = LLVMManagedPointer.create(vaList.fpSaveArea);
             vaList.overflowArgArea = new OverflowArgArea(overflowArgs, overflowAreaArgOffsets, overflowArea, oi);
         }
+
+        @Specialization(guards = {"vaList.isNativized()"})
+        static void initializeNativized(LLVMAarch64VaListStorage vaList, Object[] realArgs, int numOfExpArgs,
+                        @Cached NativeAllocaInstruction stackAllocationNode,
+                        @Cached LLVMI64StoreNode i64RegSaveAreaStore,
+                        @Cached LLVMI32StoreNode i32RegSaveAreaStore,
+                        @Cached LLVM80BitFloatStoreNode fp80bitRegSaveAreaStore,
+                        @Cached LLVMPointerStoreNode pointerRegSaveAreaStore,
+                        @Cached LLVMI64StoreNode i64OverflowArgAreaStore,
+                        @Cached LLVMI32StoreNode i32OverflowArgAreaStore,
+                        @Cached LLVM80BitFloatStoreNode fp80bitOverflowArgAreaStore,
+                        @Cached LLVMPointerStoreNode pointerOverflowArgAreaStore,
+                        @Cached LLVMI32StoreNode gpOffsetStore,
+                        @Cached LLVMI32StoreNode fpOffsetStore,
+                        @Cached LLVMPointerStoreNode overflowArgAreaStore,
+                        @Cached LLVMPointerStoreNode gpSaveAreaStore,
+                        @Cached LLVMPointerStoreNode fpSaveAreaStore,
+                        @Cached NativeProfiledMemMove memMove) {
+            initializeManaged(vaList, realArgs, numOfExpArgs);
+
+            VirtualFrame frame = (VirtualFrame) Truffle.getRuntime().getCurrentFrame().getFrame(FrameAccess.READ_WRITE);
+            LLVMPointer[] regSaveAreaNativePtrs = vaList.allocateNativeAreas(stackAllocationNode, gpOffsetStore, fpOffsetStore, overflowArgAreaStore, gpSaveAreaStore, fpSaveAreaStore, frame);
+
+            initNativeAreas(vaList.realArguments, vaList.numberOfExplicitArguments, vaList.gpOffset, vaList.fpOffset, regSaveAreaNativePtrs[0], regSaveAreaNativePtrs[1],
+                            vaList.overflowArgAreaBaseNativePtr,
+                            i64RegSaveAreaStore,
+                            i32RegSaveAreaStore, fp80bitRegSaveAreaStore, pointerRegSaveAreaStore, i64OverflowArgAreaStore, i32OverflowArgAreaStore, fp80bitOverflowArgAreaStore,
+                            pointerOverflowArgAreaStore, memMove);
+        }
+
     }
 
     @SuppressWarnings("static-method")
@@ -590,10 +620,75 @@ public class LLVMAarch64VaListStorage implements TruffleObject {
         return curAddr - baseAddr;
     }
 
+    /**
+     * This is the implementation of the {@code va_arg} instruction.
+     */
+    @SuppressWarnings("static-method")
     @ExportMessage
-    public Object shift(Type type) {
-        // this
-        return null;
+    Object shift(Type type,
+                    @CachedLibrary("this") LLVMManagedReadLibrary readLib,
+                    @CachedLibrary("this") LLVMManagedWriteLibrary writeLib,
+                    @Cached BranchProfile regAreaProfile,
+                    @Cached("createBinaryProfile()") ConditionProfile isNativizedProfile) {
+        int regSaveOffs = 0;
+        int regSaveStep = 0;
+        boolean lookIntoRegSaveArea = true;
+
+        VarArgArea varArgArea = LLVMX86_64VaListStorage.getVarArgArea(type);
+        RegSaveArea regSaveArea = null;
+        switch (varArgArea) {
+            case GP_AREA:
+                regSaveOffs = Aarch64BitVarArgs.GP_OFFSET;
+                regSaveStep = Aarch64BitVarArgs.GP_STEP;
+                regSaveArea = gpSaveArea;
+                break;
+
+            case FP_AREA:
+                regSaveOffs = Aarch64BitVarArgs.FP_OFFSET;
+                regSaveStep = Aarch64BitVarArgs.FP_STEP;
+                regSaveArea = fpSaveArea;
+                break;
+
+            case OVERFLOW_AREA:
+                lookIntoRegSaveArea = false;
+                break;
+        }
+
+        if (lookIntoRegSaveArea) {
+            regAreaProfile.enter();
+
+            int offs = readLib.readI32(this, regSaveOffs);
+            if (offs < 0) {
+                // The va shift logic for GP/FP regsave areas is done by updating the gp/fp offset
+                // field in va_list
+                writeLib.writeI32(this, regSaveOffs, offs + regSaveStep);
+                long n = regSaveArea.offsetToIndex(offs);
+                assert regSaveArea != null;
+                if (n >= 0) {
+                    int i = (int) ((n << 32) >> 32);
+                    return regSaveArea.args[i];
+                }
+            }
+        }
+
+        // overflow area
+        if (isNativizedProfile.profile(isNativized())) {
+            // Synchronize the managed current argument pointer from the native overflow area
+            this.overflowArgArea.setOffset(getArgPtrFromNativePtr(this, readLib));
+            Object currentArg = this.overflowArgArea.getCurrentArg();
+            // Shift the managed current argument pointer
+            this.overflowArgArea.shift(1);
+            // Update the new native current argument pointer from the managed one
+            long shiftOffs = this.overflowArgArea.getOffset();
+            LLVMPointer shiftedOverflowAreaPtr = overflowArgAreaBaseNativePtr.increment(shiftOffs);
+            writeLib.writePointer(this, Aarch64BitVarArgs.OVERFLOW_ARG_AREA, shiftedOverflowAreaPtr);
+
+            return currentArg;
+        } else {
+            Object currentArg = this.overflowArgArea.getCurrentArg();
+            this.overflowArgArea.shift(1);
+            return currentArg;
+        }
     }
 
     @ExportLibrary(LLVMManagedReadLibrary.class)
@@ -616,7 +711,7 @@ public class LLVMAarch64VaListStorage implements TruffleObject {
         }
 
         @Override
-        protected long offsetToIndex(long offset) {
+        public long offsetToIndex(long offset) {
             if (offset >= 0) {
                 return -1;
             }

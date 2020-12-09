@@ -27,19 +27,19 @@
  * NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED
  * OF THE POSSIBILITY OF SUCH DAMAGE.
  */
-#include <stdio.h>
+//#include <stdio.h>
 #include <stdarg.h>
 
 // Dummy functions whose call sites are manually replaced by va_arg invocations in the LL code
-double va_argDouble(va_list args);
-int va_argInt(va_list args);
+double va_argDouble(va_list* args);
+int va_argInt(va_list* args);
 
 double testVaArgDouble(int count, ...) {
     double sum = 0;
     va_list args;
     va_start(args, count);
     for (int i = 0; i < count; ++i) {
-        double num = va_argDouble(args);
+        double num = va_argDouble(&args);
         sum += num;
     }
     va_end(args);
@@ -51,7 +51,7 @@ int testVaArgInt(int count, ...) {
     va_list args;
     va_start(args, count);
     for (int i = 0; i < count; ++i) {
-        double num = va_argInt(args);
+        double num = va_argInt(&args);
         sum += num;
     }
     va_end(args);

@@ -31,7 +31,10 @@ QUIETLY$(MX_VERBOSE)  = @
 
 default: va_arg/va_arg_test.out
 
-va_arg/va_arg_test.out: va_arg/va_arg_test.ll va_arg/Makefile
+PLATFORM?=$(shell uname -p)
+VA_ARG_TEST_LL=va_arg/va_arg_test_$(PLATFORM).ll
+
+va_arg/va_arg_test.out: $(VA_ARG_TEST_LL) va_arg/Makefile
 	@mkdir -p $(shell dirname $@)
 	$(QUIETLY) $(CLANG) $(CPPFLAGS) $(CFLAGS) $(LDFLAGS) -fPIC -o $@ $<
 	
