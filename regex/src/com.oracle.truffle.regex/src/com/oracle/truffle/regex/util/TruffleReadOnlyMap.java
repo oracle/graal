@@ -48,15 +48,11 @@ import java.util.Map;
 import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.dsl.Cached;
-import com.oracle.truffle.api.dsl.Cached.Shared;
-import com.oracle.truffle.api.dsl.GenerateUncached;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.interop.InteropLibrary;
 import com.oracle.truffle.api.interop.UnknownIdentifierException;
 import com.oracle.truffle.api.library.ExportLibrary;
 import com.oracle.truffle.api.library.ExportMessage;
-import com.oracle.truffle.api.nodes.Node;
-import com.oracle.truffle.api.profiles.ValueProfile;
 import com.oracle.truffle.regex.AbstractRegexObject;
 
 @ExportLibrary(InteropLibrary.class)
@@ -80,23 +76,7 @@ public class TruffleReadOnlyMap extends AbstractRegexObject {
     }
 
     @ExportMessage
-    boolean isMemberReadable(String member,
-                    @Cached IsReadableCacheNode cache,
-                    @Shared("receiverProfile") @Cached("createIdentityProfile()") ValueProfile receiverProfile) {
-        return cache.execute(receiverProfile.profile(this), member);
-    }
-
-    @ExportMessage
-    Object readMember(String member,
-                    @Cached ReadCacheNode readCache,
-                    @Shared("receiverProfile") @Cached("createIdentityProfile()") ValueProfile receiverProfile) throws UnknownIdentifierException {
-        return readCache.execute(receiverProfile.profile(this), member);
-    }
-
-    @GenerateUncached
-    abstract static class IsReadableCacheNode extends Node {
-
-        abstract boolean execute(TruffleReadOnlyMap receiver, String symbol);
+    abstract static class IsMemberReadable {
 
         @SuppressWarnings("unused")
         @Specialization(guards = {"receiver == cachedReceiver", "symbol == cachedSymbol", "result"}, limit = "6")
@@ -122,10 +102,8 @@ public class TruffleReadOnlyMap extends AbstractRegexObject {
         }
     }
 
-    @GenerateUncached
-    abstract static class ReadCacheNode extends Node {
-
-        abstract Object execute(TruffleReadOnlyMap receiver, String symbol) throws UnknownIdentifierException;
+    @ExportMessage
+    abstract static class ReadMember {
 
         @SuppressWarnings("unused")
         @Specialization(guards = {"receiver == cachedReceiver", "symbol == cachedSymbol", "result != null"}, limit = "6")
