@@ -69,7 +69,19 @@ import org.graalvm.collections.Equivalence;
 public final class NFIContextExtension extends NativeContextExtension {
 
     private static final String SIGNATURE_SOURCE_NAME = "llvm-nfi-signature";
-    private static final int WELL_KNOWN_CACHE_INITIAL_SIZE = 16;
+
+    /**
+     * The current well-known functions that are used through this interface are:
+     *
+     * <pre>
+     * - `__sulong_fp80_*` (5 operations)
+     * - `__sulong_posix_syscall`
+     * - `identity`
+     * </pre>
+     *
+     * Rounding up to the next power of 2.
+     */
+    private static final int WELL_KNOWN_CACHE_INITIAL_SIZE = 8;
 
     /**
      * Used to cache well-known native functions that are used by the LLVM runtime directly from
@@ -90,8 +102,8 @@ public final class NFIContextExtension extends NativeContextExtension {
 
         /**
          * Cached source for the signature of the well-known function. This is cached per engine.
-         * Each context has to lookup the native function separately, but the NFI signature can
-         * be shared.
+         * Each context has to lookup the native function separately, but the NFI signature can be
+         * shared.
          */
         final Source signatureSource;
 
@@ -481,7 +493,11 @@ public final class NFIContextExtension extends NativeContextExtension {
     private Object getWellKnownFuctionSlowPath(WellKnownFunction fn) {
         synchronized (this) {
             if (wellKnownFunctionCache.length <= fn.index) {
-                int newLength = Math.max(wellKnownFunctionCache.length * 2, fn.index);
+                int newLength = wellKnownFunctionCache.length * 2;
+                assert fn.index < signatureSourceCache.nextIndex;
+                while (newLength < signatureSourceCache.nextIndex) {
+                    newLength *= 2;
+                }
                 wellKnownFunctionCache = Arrays.copyOf(wellKnownFunctionCache, newLength);
             }
             Object ret = wellKnownFunctionCache[fn.index];
