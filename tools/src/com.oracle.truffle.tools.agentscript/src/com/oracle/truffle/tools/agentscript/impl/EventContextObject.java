@@ -99,35 +99,39 @@ final class EventContextObject extends AbstractContextObject {
             return vars.getReturnValue();
         }
         if ("iterateFrames".equals(member)) {
-            CompilerDirectives.transferToInterpreter();
-            if (args.length == 0 || !(args[0] instanceof VariablesObject)) {
-                return NullObject.nullCheck(null);
-            }
-            VariablesObject vars = (VariablesObject) args[0];
-            Truffle.getRuntime().iterateFrames((frameInstance) -> {
-                if (frameInstance.getCallNode() == null) {
-                    // skip top most record about the instrument
-                    return null;
-                }
-                final Frame frame = frameInstance.getFrame(FrameInstance.FrameAccess.READ_ONLY);
-                NodeLibrary lib = NodeLibrary.getUncached();
-                InteropLibrary iop = InteropLibrary.getUncached();
-                final Node n = frameInstance.getCallNode() == null ? obj.getInstrumentedNode() : frameInstance.getCallNode();
-                boolean scope = lib.hasScope(n, frame);
-                if (scope) {
-                    try {
-                        Object frameVars = lib.getScope(n, frame, false);
-                        LocationObject location = new LocationObject(n);
-                        iop.execute(args[1], location, frameVars);
-                    } catch (UnsupportedMessageException | UnsupportedTypeException | ArityException ex) {
-                        Logger.getLogger(EventContextObject.class.getName()).log(Level.SEVERE, null, ex);
-                    }
-                }
-                return null;
-            });
-            return NullObject.nullCheck(null);
+            return iterateFrames(args, obj);
         }
         throw UnknownIdentifierException.create(member);
+    }
+
+    @CompilerDirectives.TruffleBoundary
+    private static Object iterateFrames(Object[] args, EventContextObject obj) {
+        if (args.length == 0 || !(args[0] instanceof VariablesObject)) {
+            return NullObject.nullCheck(null);
+        }
+        VariablesObject vars = (VariablesObject) args[0];
+        Truffle.getRuntime().iterateFrames((frameInstance) -> {
+            if (frameInstance.getCallNode() == null) {
+                // skip top most record about the instrument
+                return null;
+            }
+            final Frame frame = frameInstance.getFrame(FrameInstance.FrameAccess.READ_ONLY);
+            NodeLibrary lib = NodeLibrary.getUncached();
+            InteropLibrary iop = InteropLibrary.getUncached();
+            final Node n = frameInstance.getCallNode() == null ? obj.getInstrumentedNode() : frameInstance.getCallNode();
+            boolean scope = lib.hasScope(n, frame);
+            if (scope) {
+                try {
+                    Object frameVars = lib.getScope(n, frame, false);
+                    LocationObject location = new LocationObject(n);
+                    iop.execute(args[1], location, frameVars);
+                } catch (UnsupportedMessageException | UnsupportedTypeException | ArityException ex) {
+                    Logger.getLogger(EventContextObject.class.getName()).log(Level.SEVERE, null, ex);
+                }
+            }
+            return null;
+        });
+        return NullObject.nullCheck(null);
     }
 
     @ExportMessage
