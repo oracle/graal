@@ -25,16 +25,26 @@
 package com.oracle.truffle.tools.agentscript.impl;
 
 import com.oracle.truffle.api.CompilerDirectives;
+import com.oracle.truffle.api.Truffle;
+import com.oracle.truffle.api.TruffleStackTrace;
+import com.oracle.truffle.api.frame.Frame;
+import com.oracle.truffle.api.frame.FrameInstance;
+import com.oracle.truffle.api.frame.FrameSlot;
 import com.oracle.truffle.api.instrumentation.EventContext;
 import com.oracle.truffle.api.interop.ArityException;
 import com.oracle.truffle.api.interop.InteropException;
 import com.oracle.truffle.api.interop.InteropLibrary;
+import com.oracle.truffle.api.interop.NodeLibrary;
 import com.oracle.truffle.api.interop.TruffleObject;
 import com.oracle.truffle.api.interop.UnknownIdentifierException;
+import com.oracle.truffle.api.interop.UnsupportedMessageException;
+import com.oracle.truffle.api.interop.UnsupportedTypeException;
 import com.oracle.truffle.api.library.ExportLibrary;
 import com.oracle.truffle.api.library.ExportMessage;
 import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.api.source.SourceSection;
+import java.util.logging.Level;
+import java.util.logging.Logger;
 
 @SuppressWarnings("unused")
 @ExportLibrary(InteropLibrary.class)
@@ -142,12 +152,40 @@ final class EventContextObject implements TruffleObject {
             VariablesObject vars = (VariablesObject) args[0];
             return vars.getReturnValue();
         }
+        if ("iterateFrames".equals(member)) {
+            CompilerDirectives.transferToInterpreter();
+            if (args.length == 0 || !(args[0] instanceof VariablesObject)) {
+                return NullObject.nullCheck(null);
+            }
+            VariablesObject vars = (VariablesObject) args[0];
+            Truffle.getRuntime().iterateFrames((frameInstance) -> {
+                if (frameInstance.getCallNode() == null) {
+                    // skip top most record about the instrument
+                    return null;
+                }
+                final Frame frame = frameInstance.getFrame(FrameInstance.FrameAccess.READ_ONLY);
+                NodeLibrary lib = NodeLibrary.getUncached();
+                InteropLibrary iop = InteropLibrary.getUncached();
+                final Node n = frameInstance.getCallNode() == null ? obj.getInstrumentedNode() : frameInstance.getCallNode();
+                boolean scope = lib.hasScope(n, frame);
+                if (scope) {
+                    try {
+                        Object frameVars = lib.getScope(n, frame, false);
+                        iop.execute(args[1], /* XXX */ obj, frameVars);
+                    } catch (UnsupportedMessageException | UnsupportedTypeException | ArityException ex) {
+                        Logger.getLogger(EventContextObject.class.getName()).log(Level.SEVERE, null, ex);
+                    }
+                }
+                return null;
+            });
+            return NullObject.nullCheck(null);
+        }
         throw UnknownIdentifierException.create(member);
     }
 
     @ExportMessage
     static boolean isMemberInvocable(EventContextObject obj, String member) {
-        return "returnNow".equals(member) || "returnValue".equals(member);
+        return "returnNow".equals(member) || "returnValue".equals(member) || "iterateFrames".equals(member);
     }
 
     Node getInstrumentedNode() {

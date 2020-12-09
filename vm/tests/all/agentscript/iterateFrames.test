@@ -1,0 +1,40 @@
+> cp iterateFrames.js ${TMP_DIR}/iterateFrames.js
+> cp agent-fib.js ${TMP_DIR}/fib.js
+> cd ${TMP_DIR}
+>[0] js --insight=iterateFrames.js fib.js
+Error: This is the stack:
+    at iterateFrames.js:6:13
+    at fib (fib.js:8:3)
+    at fib (fib.js:10:15)
+    at fib (fib.js:10:15)
+    at fib (fib.js:10:15)
+    at fib.js:12:32
+    #1 frame: n has value 1
+    #2 frame: n has value 2
+    #3 frame: n has value 3
+    #4 frame: n has value 4
+    #5 frame: <return> has value undefined
+end of locals
+Error: This is the stack:
+    at iterateFrames.js:6:13
+    at fib (fib.js:8:3)
+    at fib (fib.js:10:34)
+    at fib (fib.js:10:15)
+    at fib.js:12:32
+    #1 frame: n has value 1
+    #2 frame: n has value 3
+    #3 frame: n has value 4
+    #4 frame: <return> has value undefined
+end of locals
+Error: This is the stack:
+    at iterateFrames.js:6:13
+    at fib (fib.js:8:3)
+    at fib (fib.js:10:15)
+    at fib (fib.js:10:34)
+    at fib.js:12:32
+    #1 frame: n has value 1
+    #2 frame: n has value 2
+    #3 frame: n has value 4
+    #4 frame: <return> has value undefined
+end of locals
+Three is the result 3
