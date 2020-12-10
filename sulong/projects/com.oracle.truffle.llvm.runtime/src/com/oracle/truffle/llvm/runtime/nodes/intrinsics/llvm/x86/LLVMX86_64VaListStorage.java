@@ -1,5 +1,5 @@
 /*
-x * Copyright (c) 2020, Oracle and/or its affiliates.
+ * Copyright (c) 2020, Oracle and/or its affiliates.
  *
  * All rights reserved.
  *
@@ -44,12 +44,8 @@ import com.oracle.truffle.api.dsl.ImportStatic;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.frame.FrameInstance.FrameAccess;
 import com.oracle.truffle.api.frame.VirtualFrame;
-import com.oracle.truffle.api.interop.ArityException;
 import com.oracle.truffle.api.interop.InteropLibrary;
-import com.oracle.truffle.api.interop.InvalidArrayIndexException;
 import com.oracle.truffle.api.interop.TruffleObject;
-import com.oracle.truffle.api.interop.UnknownIdentifierException;
-import com.oracle.truffle.api.interop.UnsupportedTypeException;
 import com.oracle.truffle.api.library.CachedLibrary;
 import com.oracle.truffle.api.library.ExportLibrary;
 import com.oracle.truffle.api.library.ExportMessage;
@@ -66,7 +62,6 @@ import com.oracle.truffle.llvm.runtime.datalayout.DataLayout;
 import com.oracle.truffle.llvm.runtime.debug.value.LLVMSourceTypeFactory;
 import com.oracle.truffle.llvm.runtime.except.LLVMMemoryException;
 import com.oracle.truffle.llvm.runtime.floating.LLVM80BitFloat;
-import com.oracle.truffle.llvm.runtime.interop.LLVMDataEscapeNode.LLVMPointerDataEscapeNode;
 import com.oracle.truffle.llvm.runtime.interop.access.LLVMInteropType;
 import com.oracle.truffle.llvm.runtime.interop.access.LLVMInteropType.Array;
 import com.oracle.truffle.llvm.runtime.library.internal.LLVMManagedReadLibrary;
@@ -84,6 +79,7 @@ import com.oracle.truffle.llvm.runtime.nodes.intrinsics.llvm.va.LLVMVAEnd;
 import com.oracle.truffle.llvm.runtime.nodes.intrinsics.llvm.va.LLVMVAListNode;
 import com.oracle.truffle.llvm.runtime.nodes.intrinsics.llvm.va.LLVMVAStart;
 import com.oracle.truffle.llvm.runtime.nodes.intrinsics.llvm.va.LLVMVaListLibrary;
+import com.oracle.truffle.llvm.runtime.nodes.intrinsics.llvm.va.LLVMVaListStorage;
 import com.oracle.truffle.llvm.runtime.nodes.intrinsics.llvm.x86.LLVMX86_64VaListStorageFactory.ByteConversionHelperNodeGen;
 import com.oracle.truffle.llvm.runtime.nodes.intrinsics.llvm.x86.LLVMX86_64VaListStorageFactory.IntegerConversionHelperNodeGen;
 import com.oracle.truffle.llvm.runtime.nodes.intrinsics.llvm.x86.LLVMX86_64VaListStorageFactory.LongConversionHelperNodeGen;
@@ -205,17 +201,12 @@ import com.oracle.truffle.llvm.spi.NativeTypeLibrary;
 @ExportLibrary(LLVMManagedReadLibrary.class)
 @ExportLibrary(LLVMManagedWriteLibrary.class)
 @ExportLibrary(LLVMVaListLibrary.class)
-@ExportLibrary(InteropLibrary.class)
 @ExportLibrary(NativeTypeLibrary.class)
-public final class LLVMX86_64VaListStorage implements TruffleObject {
+@ExportLibrary(InteropLibrary.class)
+public final class LLVMX86_64VaListStorage extends LLVMVaListStorage {
 
     public static final ArrayType VA_LIST_TYPE = new ArrayType(StructureType.createNamedFromList("struct.__va_list_tag", false,
                     new ArrayList<>(Arrays.asList(PrimitiveType.I32, PrimitiveType.I32, PointerType.I8, PointerType.I8))), 1);
-
-    private static final String GET_MEMBER = "get";
-
-    private Object[] realArguments;
-    private int numberOfExplicitArguments;
 
     private int initGPOffset;
     private int gpOffset;
@@ -226,7 +217,6 @@ public final class LLVMX86_64VaListStorage implements TruffleObject {
     private LLVMPointer regSaveAreaPtr;
     private OverflowArgArea overflowArgArea;
 
-    private LLVMNativePointer nativized;
     private LLVMPointer overflowArgAreaBaseNativePtr;
 
     private final LLVMRootNode rootNode;
@@ -254,128 +244,6 @@ public final class LLVMX86_64VaListStorage implements TruffleObject {
     Object getNativeType(@CachedLanguage LLVMLanguage language) {
         // This method should never be invoked
         return language.getInteropType(LLVMSourceTypeFactory.resolveType(VA_LIST_TYPE, getDataLayout()));
-    }
-
-    // InteropLibrary implementation
-
-    /*
-     * The managed va_list can be accessed as an array, where the array elements correspond to the
-     * varargs, i.e. the explicit arguments are excluded.
-     *
-     * Further, the managed va_list exposes one invokable member 'get(index, type)'. The index
-     * argument identifies the argument in the va_list, while the type specifies the required type
-     * of the returned argument. In the case of a pointer argument, the pointer is just exported
-     * with the given type. For other argument types the appropriate conversion should be done
-     * (TODO).
-     */
-
-    @SuppressWarnings("static-method")
-    @ExportMessage
-    public boolean hasMembers() {
-        return true;
-    }
-
-    @ExportLibrary(InteropLibrary.class)
-    static final class VAListMembers implements TruffleObject {
-
-        @ExportMessage
-        @SuppressWarnings("static-method")
-        boolean hasArrayElements() {
-            return true;
-        }
-
-        @ExportMessage
-        @SuppressWarnings("static-method")
-        long getArraySize() {
-            return 1;
-        }
-
-        @ExportMessage
-        @SuppressWarnings("static-method")
-        boolean isArrayElementReadable(long index) {
-            return index == 0;
-        }
-
-        @ExportMessage
-        @SuppressWarnings("static-method")
-        Object readArrayElement(long index) throws InvalidArrayIndexException {
-            if (index == 0) {
-                return "get";
-            } else {
-                throw InvalidArrayIndexException.create(index);
-            }
-        }
-    }
-
-    @SuppressWarnings("static-method")
-    @ExportMessage
-    public Object getMembers(@SuppressWarnings("unused") boolean includeInternal) {
-        return new VAListMembers();
-    }
-
-    @SuppressWarnings("static-method")
-    @ExportMessage
-    public boolean isMemberInvocable(String member) {
-        return GET_MEMBER.equals(member);
-    }
-
-    @ExportMessage
-    public Object invokeMember(String member, Object[] arguments,
-                    @Cached LLVMPointerDataEscapeNode pointerEscapeNode) throws ArityException, UnknownIdentifierException, UnsupportedTypeException {
-        if (GET_MEMBER.equals(member)) {
-            if (arguments.length == 2) {
-                if (!(arguments[0] instanceof Integer)) {
-                    CompilerDirectives.transferToInterpreterAndInvalidate();
-                    throw UnsupportedTypeException.create(new Object[]{arguments[0]}, "Index argument must be an integer");
-                }
-                int i = (Integer) arguments[0];
-                if (i >= realArguments.length - numberOfExplicitArguments) {
-                    CompilerDirectives.transferToInterpreterAndInvalidate();
-                    throw new ArrayIndexOutOfBoundsException(i);
-                }
-
-                Object arg = realArguments[numberOfExplicitArguments + i];
-
-                if (!(arguments[1] instanceof LLVMInteropType.Structured)) {
-                    return arg;
-                }
-                LLVMInteropType.Structured type = (LLVMInteropType.Structured) arguments[1];
-
-                if (!LLVMPointer.isInstance(arg)) {
-                    // TODO: Do some conversion if the type in the 2nd argument does not match the
-                    // arg's types
-                    return arg;
-                }
-                LLVMPointer ptrArg = LLVMPointer.cast(arg);
-
-                return pointerEscapeNode.executeWithType(ptrArg, type);
-
-            } else {
-                throw ArityException.create(2, arguments.length);
-            }
-        }
-        throw UnknownIdentifierException.create(member);
-    }
-
-    @SuppressWarnings("static-method")
-    @ExportMessage
-    public boolean hasArrayElements() {
-        return true;
-    }
-
-    @ExportMessage
-    public long getArraySize() {
-        return realArguments.length - numberOfExplicitArguments;
-    }
-
-    @ExportMessage
-    public boolean isArrayElementReadable(long index) {
-        return index < realArguments.length - numberOfExplicitArguments;
-    }
-
-    @ExportMessage
-    public Object readArrayElement(long index) {
-        return realArguments[(int) index + numberOfExplicitArguments];
     }
 
     // LLVMManagedReadLibrary implementation
@@ -1039,16 +907,6 @@ public final class LLVMX86_64VaListStorage implements TruffleObject {
         return X86_64BitVarArgs.STACK_STEP;
     }
 
-    @ExportMessage
-    boolean isPointer() {
-        return nativized != null && LLVMNativePointer.isInstance(nativized);
-    }
-
-    @ExportMessage
-    long asPointer() {
-        return nativized == null ? 0L : nativized.asNative();
-    }
-
     /**
      * A helper implementation of {@link LLVMVaListLibrary} for native <code>va_list</code>
      * instances. It allows for {@link LLVMVAStart} and others to treat native LLVM pointers to
@@ -1354,7 +1212,7 @@ public final class LLVMX86_64VaListStorage implements TruffleObject {
      * stored in the <code>overflow_area</code>. The <code>offsets</code> array serves to map
      * offsets to the indices of that array.
      */
-    public static abstract class AbstractOverflowArgArea extends ArgsArea implements Cloneable {
+    public abstract static class AbstractOverflowArgArea extends ArgsArea implements Cloneable {
         protected final long[] offsets;
         public final int overflowAreaSize;
 

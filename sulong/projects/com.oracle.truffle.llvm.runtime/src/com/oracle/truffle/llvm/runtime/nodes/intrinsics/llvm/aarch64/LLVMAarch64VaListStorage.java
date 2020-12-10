@@ -12,7 +12,6 @@ import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.frame.FrameInstance.FrameAccess;
 import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.interop.InteropLibrary;
-import com.oracle.truffle.api.interop.TruffleObject;
 import com.oracle.truffle.api.library.CachedLibrary;
 import com.oracle.truffle.api.library.ExportLibrary;
 import com.oracle.truffle.api.library.ExportMessage;
@@ -32,6 +31,7 @@ import com.oracle.truffle.llvm.runtime.memory.LLVMStack.LLVMGetStackSpaceInstruc
 import com.oracle.truffle.llvm.runtime.nodes.api.LLVMExpressionNode;
 import com.oracle.truffle.llvm.runtime.nodes.func.LLVMRootNode;
 import com.oracle.truffle.llvm.runtime.nodes.intrinsics.llvm.va.LLVMVaListLibrary;
+import com.oracle.truffle.llvm.runtime.nodes.intrinsics.llvm.va.LLVMVaListStorage;
 import com.oracle.truffle.llvm.runtime.nodes.intrinsics.llvm.x86.LLVMX86_64VaListStorage;
 import com.oracle.truffle.llvm.runtime.nodes.intrinsics.llvm.x86.LLVMX86_64VaListStorage.AbstractOverflowArgArea;
 import com.oracle.truffle.llvm.runtime.nodes.intrinsics.llvm.x86.LLVMX86_64VaListStorage.NativeAllocaInstruction;
@@ -53,9 +53,9 @@ import com.oracle.truffle.llvm.spi.NativeTypeLibrary;
 @ExportLibrary(LLVMManagedReadLibrary.class)
 @ExportLibrary(LLVMManagedWriteLibrary.class)
 @ExportLibrary(LLVMVaListLibrary.class)
-@ExportLibrary(InteropLibrary.class)
 @ExportLibrary(NativeTypeLibrary.class)
-public class LLVMAarch64VaListStorage implements TruffleObject {
+@ExportLibrary(InteropLibrary.class)
+public class LLVMAarch64VaListStorage extends LLVMVaListStorage {
 
     // %struct.__va_list = type { i8*, i8*, i8*, i32, i32 }
 
@@ -63,9 +63,6 @@ public class LLVMAarch64VaListStorage implements TruffleObject {
                     new ArrayList<>(Arrays.asList(PointerType.I8, PointerType.I8, PointerType.I8, PrimitiveType.I32, PrimitiveType.I32)));
 
     private final LLVMRootNode rootNode;
-
-    private Object[] realArguments;
-    private int numberOfExplicitArguments;
 
     private int gpOffset;
     private int fpOffset;
@@ -551,16 +548,6 @@ public class LLVMAarch64VaListStorage implements TruffleObject {
                 }
             }
         }
-    }
-
-    @ExportMessage
-    boolean isPointer() {
-        return nativized != null && LLVMNativePointer.isInstance(nativized);
-    }
-
-    @ExportMessage
-    long asPointer() {
-        return nativized == null ? 0L : LLVMNativePointer.cast(nativized).asNative();
     }
 
     @ExportMessage
