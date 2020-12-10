@@ -8,6 +8,12 @@ local base = {
     },
   },
 
+  jdk11: {
+    downloads+: {
+      JAVA_HOME: jdks["labsjdk-ee-11"],
+    },
+  },
+
   extra_jdk11: {
       downloads+: {
       EXTRA_JAVA_HOMES: jdks["labsjdk-ce-11"],
@@ -150,11 +156,18 @@ local run_espresso(env, args) = {
   ],
 };
 
-local hello_world_args = ['-cp', 'mxbuild/dists/jdk1.8/espresso-playground.jar', 'com.oracle.truffle.espresso.playground.HelloWorld'];
+local hello_world_args = ['-cp', '$ESPRESSO_PLAYGROUND', 'com.oracle.truffle.espresso.playground.HelloWorld'];
+
+local setup_playground(env) = {
+  run+: [
+    ['set-export', 'ESPRESSO_PLAYGROUND', _mx(env, ['path', 'ESPRESSO_PLAYGROUND'])],
+  ],
+};
 
 local clone_build_run(env, args) =
   clone_graal(env) +
   build_espresso(env) +
+  setup_playground(env) +
   run_espresso(env, args);
 
 local _host_jvm(env) = 'graalvm-espresso-' + env;
@@ -218,15 +231,16 @@ local scala_dacapo_warmup_benchmark(env, guest_jvm_config='default', extra_args=
     extra_args=extra_args
   );
 
-local jdk8_gate_windows           = base.jdk8 + base.gate          + base.windows;
-local jdk8_gate_darwin            = base.jdk8 + base.gate          + base.darwin;
-local jdk8_gate_linux             = base.jdk8 + base.gate          + base.linux;
-local jdk8_gate_linux_eclipse_jdt = base.jdk8 + base.gate          + base.linux + base.eclipse + base.jdt;
-local jdk8_bench_linux            = base.jdk8 + base.bench         + base.x52;
-local jdk8_weekly_linux           = base.jdk8 + base.weekly        + base.linux;
-local jdk8_weekly_bench_linux     = base.jdk8 + base.weeklyBench   + base.x52;
-local jdk8_on_demand_linux        = base.jdk8 + base.onDemand      + base.linux;
-local jdk8_on_demand_bench_linux  = base.jdk8 + base.onDemandBench + base.x52;
+local jdk8_gate_windows           = base.jdk8  + base.gate          + base.windows;
+local jdk8_gate_darwin            = base.jdk8  + base.gate          + base.darwin;
+local jdk8_gate_linux             = base.jdk8  + base.gate          + base.linux;
+local jdk8_gate_linux_eclipse_jdt = base.jdk8  + base.gate          + base.linux + base.eclipse + base.jdt;
+local jdk8_bench_linux            = base.jdk8  + base.bench         + base.x52;
+local jdk8_weekly_linux           = base.jdk8  + base.weekly        + base.linux;
+local jdk8_weekly_bench_linux     = base.jdk8  + base.weeklyBench   + base.x52;
+local jdk8_on_demand_linux        = base.jdk8  + base.onDemand      + base.linux;
+local jdk8_on_demand_bench_linux  = base.jdk8  + base.onDemandBench + base.x52;
+local jdk11_gate_linux            = base.jdk11 + base.gate          + base.linux;
 
 local espresso_configs = ['jvm-ce', 'jvm-ee', 'native-ce', 'native-ee'];
 local benchmark_suites = ['dacapo', 'renaissance', 'scala-dacapo'];
@@ -265,6 +279,9 @@ local awfy = 'awfy:*';
     jdk8_gate_darwin              + clone_build_run('native-ee', hello_world_args)                        + {name: 'espresso-gate-native-ee-hello-world-jdk8-darwin-amd64'},
     jdk8_gate_windows             + clone_build_run('native-ce', hello_world_args)                        + {name: 'espresso-gate-native-ce-hello-world-jdk8-windows-amd64'},
     jdk8_gate_windows             + clone_build_run('native-ee', hello_world_args)                        + {name: 'espresso-gate-native-ee-hello-world-jdk8-windows-amd64'},
+    jdk11_gate_linux              + clone_build_run('jvm-ce',    hello_world_args)                        + {name: 'espresso-gate-jvm-ce-hello-world-jdk11-linux-amd64'},
+    jdk11_gate_linux              + clone_build_run('native-ce', hello_world_args)                        + {name: 'espresso-gate-native-ce-hello-world-jdk11-linux-amd64'},
+    jdk11_gate_linux              + clone_build_run('native-ee', hello_world_args)                        + {name: 'espresso-gate-native-ee-hello-world-jdk11-linux-amd64'},
 
     // AWFY peak perf. benchmarks (post-merge)
     jdk8_bench_linux              + espresso_benchmark('jvm-ce', awfy)                                    + {name: 'espresso-bench-jvm-ce-awfy-jdk8-linux-amd64'},
