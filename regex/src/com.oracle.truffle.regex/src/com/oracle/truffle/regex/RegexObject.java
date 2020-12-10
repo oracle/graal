@@ -119,19 +119,18 @@ public final class RegexObject extends AbstractConstantKeysObject {
     private static final String PROP_GROUPS = "groups";
     private static final TruffleReadOnlyKeysArray KEYS = new TruffleReadOnlyKeysArray(PROP_EXEC, PROP_PATTERN, PROP_FLAGS, PROP_GROUP_COUNT, PROP_GROUPS);
 
-    private final RegexCompiler compiler;
     private final RegexSource source;
     private final TruffleObject flags;
     private final int numberOfCaptureGroups;
     private final TruffleObject namedCaptureGroups;
-    private Object compiledRegexObject;
+    private final Object compiledRegexObject;
 
     public RegexObject(RegexCompiler compiler, RegexSource source, TruffleObject flags, int numberOfCaptureGroups, Map<String, Integer> namedCaptureGroups) {
-        this.compiler = compiler;
         this.source = source;
         this.flags = flags;
         this.numberOfCaptureGroups = numberOfCaptureGroups;
         this.namedCaptureGroups = namedCaptureGroups != null ? createNamedCaptureGroupMap(namedCaptureGroups) : TruffleNull.INSTANCE;
+        this.compiledRegexObject = compiler.compile(source);
     }
 
     @TruffleBoundary
@@ -159,19 +158,7 @@ public final class RegexObject extends AbstractConstantKeysObject {
     }
 
     public Object getCompiledRegexObject() {
-        if (compiledRegexObject == null) {
-            compiledRegexObject = compileRegex(source);
-        }
         return compiledRegexObject;
-    }
-
-    @TruffleBoundary
-    private Object compileRegex(RegexSource src) {
-        return compiler.compile(src);
-    }
-
-    public void setCompiledRegexObject(TruffleObject compiledRegexObject) {
-        this.compiledRegexObject = compiledRegexObject;
     }
 
     public RegexObjectExecMethod getExecMethod() {

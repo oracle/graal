@@ -59,12 +59,6 @@ public final class UnsupportedRegexException extends AbstractTruffleException {
         this.reason = reason;
     }
 
-    @TruffleBoundary
-    public UnsupportedRegexException(String reason, Throwable cause) {
-        super(cause != null ? cause.getMessage() : null, cause, UNLIMITED_STACK_TRACE, null);
-        this.reason = reason;
-    }
-
     public UnsupportedRegexException(String reason, RegexSource regexSrc) {
         this(reason);
         this.regexSrc = regexSrc;

@@ -43,10 +43,10 @@ package com.oracle.truffle.regex;
 import java.util.Arrays;
 
 import com.oracle.truffle.api.CompilerDirectives;
-import com.oracle.truffle.regex.tregex.parser.RegexFeatureSet;
 import com.oracle.truffle.regex.tregex.parser.flavors.PythonFlavor;
 import com.oracle.truffle.regex.tregex.parser.flavors.RegexFlavor;
 import com.oracle.truffle.regex.tregex.parser.flavors.RubyFlavor;
+import com.oracle.truffle.regex.tregex.util.Loggers;
 
 public final class RegexOptions {
 
@@ -70,20 +70,15 @@ public final class RegexOptions {
     private static final String FLAVOR_ECMASCRIPT = "ECMAScript";
 
     private static final String FEATURE_SET_NAME = "FeatureSet";
-    private static final String FEATURE_SET_TREGEX_JONI = "TRegexJoni";
-    private static final String FEATURE_SET_JONI = "Joni";
 
-    public static final RegexOptions DEFAULT = new RegexOptions(0, null, RegexFeatureSet.DEFAULT);
+    public static final RegexOptions DEFAULT = new RegexOptions(0, null);
 
     private final int options;
     private final RegexFlavor flavor;
-    private final RegexFeatureSet featureSet;
 
-    private RegexOptions(int options, RegexFlavor flavor, RegexFeatureSet featureSet) {
-        assert flavor == null || featureSet == RegexFeatureSet.DEFAULT;
+    private RegexOptions(int options, RegexFlavor flavor) {
         this.options = options;
         this.flavor = flavor;
-        this.featureSet = featureSet;
     }
 
     public static Builder newBuilder() {
@@ -94,7 +89,6 @@ public final class RegexOptions {
     public static RegexOptions parse(String optionsString) throws RegexSyntaxException {
         int options = 0;
         RegexFlavor flavor = null;
-        RegexFeatureSet featureSet = RegexFeatureSet.DEFAULT;
         for (String propValue : optionsString.split(",")) {
             if (propValue.isEmpty()) {
                 continue;
@@ -128,13 +122,13 @@ public final class RegexOptions {
                     flavor = parseFlavor(optionsString, value);
                     break;
                 case FEATURE_SET_NAME:
-                    featureSet = parseFeatureSet(optionsString, value);
+                    // deprecated
                     break;
                 default:
                     throw optionsSyntaxError(optionsString, "unexpected option " + key);
             }
         }
-        return new RegexOptions(options, flavor, featureSet);
+        return new RegexOptions(options, flavor);
     }
 
     private static int parseBooleanOption(String optionsString, int options, String key, String value, int flag) throws RegexSyntaxException {
@@ -158,17 +152,6 @@ public final class RegexOptions {
                 return null;
             default:
                 throw optionsSyntaxErrorUnexpectedValue(optionsString, FLAVOR_NAME, value, FLAVOR_PYTHON_STR, FLAVOR_PYTHON_BYTES, FLAVOR_RUBY, FLAVOR_ECMASCRIPT);
-        }
-    }
-
-    private static RegexFeatureSet parseFeatureSet(String optionsString, String value) throws RegexSyntaxException {
-        switch (value) {
-            case FEATURE_SET_TREGEX_JONI:
-                return RegexFeatureSet.DEFAULT;
-            case FEATURE_SET_JONI:
-                return RegexFeatureSet.DEFAULT;
-            default:
-                throw optionsSyntaxErrorUnexpectedValue(optionsString, FEATURE_SET_NAME, value, FEATURE_SET_TREGEX_JONI, FEATURE_SET_JONI);
         }
     }
 
@@ -225,15 +208,6 @@ public final class RegexOptions {
         return flavor;
     }
 
-    /**
-     * The set of features that the regex compilers will be able to support. This is used to detect
-     * unsupported regular expressions early, during their validation. This only applies to
-     * ECMAScript regular expressions. Other flavors implement their own validation logic.
-     */
-    public RegexFeatureSet getFeatureSet() {
-        return featureSet;
-    }
-
     @Override
     public int hashCode() {
         int flavorHash = flavor == null ? 0 : flavor.hashCode();
@@ -277,7 +251,6 @@ public final class RegexOptions {
         } else if (flavor == RubyFlavor.INSTANCE) {
             sb.append(FLAVOR_NAME + "=" + FLAVOR_RUBY + ",");
         }
-        sb.append(FEATURE_SET_NAME + "=Default");
         return sb.toString();
     }
 
@@ -285,12 +258,10 @@ public final class RegexOptions {
 
         private int options;
         private RegexFlavor flavor;
-        private RegexFeatureSet featureSet;
 
         private Builder() {
             this.options = 0;
             this.flavor = null;
-            this.featureSet = RegexFeatureSet.DEFAULT;
         }
 
         public Builder u180eWhitespace(boolean enabled) {
@@ -328,13 +299,8 @@ public final class RegexOptions {
             return this;
         }
 
-        public Builder featureSet(@SuppressWarnings("hiding") RegexFeatureSet featureSet) {
-            this.featureSet = featureSet;
-            return this;
-        }
-
         public RegexOptions build() {
-            return new RegexOptions(this.options, this.flavor, this.featureSet);
+            return new RegexOptions(this.options, this.flavor);
         }
 
         private void updateOption(boolean enabled, int bitMask) {

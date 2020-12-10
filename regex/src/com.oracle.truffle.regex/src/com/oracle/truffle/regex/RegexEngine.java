@@ -112,12 +112,7 @@ public class RegexEngine extends AbstractConstantKeysObject {
         } else {
             RegexValidator validator = new RegexValidator(regexSource, options);
             validator.validate();
-            options.getFeatureSet().checkSupport(regexSource, validator.getFeatures());
             regexObject = new RegexObject(compiler, regexSource, RegexFlags.parseFlags(regexSource.getFlags()), validator.getNumberOfCaptureGroups(), validator.getNamedCaptureGroups());
-        }
-        if (options.isRegressionTestMode()) {
-            // Force the compilation of the RegExp.
-            regexObject.getCompiledRegexObject();
         }
         return regexObject;
     }
