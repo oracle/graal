@@ -647,9 +647,6 @@ public final class BytecodeNode extends EspressoMethodNode {
         final Object[] refs = (Object[]) FrameUtil.getObjectSafe(frame, refsSlot);
         final int[] loopCount = new int[1];
 
-        CompilerDirectives.ensureVirtualized(primitives);
-        CompilerDirectives.ensureVirtualized(refs);
-
         setBCI(frame, curBCI);
 
         if (instrument != null) {
@@ -668,6 +665,9 @@ public final class BytecodeNode extends EspressoMethodNode {
 
                 CompilerAsserts.partialEvaluationConstant(statementIndex);
                 CompilerAsserts.partialEvaluationConstant(nextStatementIndex);
+
+                CompilerDirectives.ensureVirtualized(primitives);
+                CompilerDirectives.ensureVirtualized(refs);
 
                 if (Bytecodes.canTrap(curOpcode) || instrument != null) {
                     setBCI(frame, curBCI);
