@@ -212,7 +212,7 @@ final class Target_com_oracle_truffle_nfi_impl_NFIContext {
 
     @Substitute
     @TruffleBoundary
-    TruffleObject lookupSymbol(Target_com_oracle_truffle_nfi_impl_LibFFILibrary library, String name) {
+    Object lookupSymbol(Target_com_oracle_truffle_nfi_impl_LibFFILibrary library, String name) {
         if (ImageSingletons.lookup(TruffleNFISupport.class).errnoGetterFunctionName.equals(name)) {
             return new ErrnoMirror();
         } else {
