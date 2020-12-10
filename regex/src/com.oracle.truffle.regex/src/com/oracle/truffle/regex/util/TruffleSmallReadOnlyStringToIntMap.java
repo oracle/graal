@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2019, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2020, 2020, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -38,52 +38,86 @@
  * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
  * SOFTWARE.
  */
-package com.oracle.truffle.regex.result;
+package com.oracle.truffle.regex.util;
 
+import java.util.Map;
+
+import com.oracle.truffle.api.CompilerDirectives;
+import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.interop.InteropLibrary;
 import com.oracle.truffle.api.library.ExportLibrary;
 import com.oracle.truffle.api.library.ExportMessage;
+import com.oracle.truffle.regex.AbstractRegexObject;
 
 @ExportLibrary(InteropLibrary.class)
-public final class SingleResult extends RegexResult {
+public final class TruffleSmallReadOnlyStringToIntMap extends AbstractRegexObject {
 
-    private final int start;
-    private final int end;
+    public static final int MAX_SIZE = 8;
 
-    public SingleResult(int start, int end) {
-        this.start = start;
-        this.end = end;
-    }
+    private final TruffleReadOnlyKeysArray keys;
+    @CompilationFinal(dimensions = 1) private final String[] map;
 
-    public int getStart() {
-        return start;
-    }
-
-    public int getEnd() {
-        return end;
-    }
-
-    @Override
-    public int getStart(int groupNumber) {
-        return groupNumber == 0 ? start : -1;
-    }
-
-    @Override
-    public int getEnd(int groupNumber) {
-        return groupNumber == 0 ? end : -1;
+    private TruffleSmallReadOnlyStringToIntMap(String[] keys, String[] map) {
+        this.keys = new TruffleReadOnlyKeysArray(keys);
+        this.map = map;
     }
 
     @TruffleBoundary
+    public static boolean canCreate(Map<String, Integer> map) {
+        return maxValue(map) < MAX_SIZE;
+    }
+
+    @TruffleBoundary
+    public static TruffleSmallReadOnlyStringToIntMap create(Map<String, Integer> argMap) {
+        String[] keys = new String[argMap.size()];
+        String[] map = new String[maxValue(argMap) + 1];
+        assert map.length <= MAX_SIZE;
+        int i = 0;
+        for (Map.Entry<String, Integer> entry : argMap.entrySet()) {
+            keys[i++] = entry.getKey();
+            map[entry.getValue()] = entry.getKey();
+        }
+        return new TruffleSmallReadOnlyStringToIntMap(keys, map);
+    }
+
+    @TruffleBoundary
+    private static int maxValue(Map<String, Integer> map) {
+        int max = 0;
+        for (int i : map.values()) {
+            max = Math.max(max, i);
+        }
+        return max;
+    }
+
+    @SuppressWarnings("static-method")
+    @ExportMessage
+    boolean hasMembers() {
+        return true;
+    }
+
+    @ExportMessage
+    Object getMembers(@SuppressWarnings("unused") boolean includeInternal) {
+        return keys;
+    }
+
+    @ExportMessage
+    boolean isMemberReadable(String symbol) {
+        return keys.contains(symbol);
+    }
+
+    @ExportMessage
+    int readMember(String symbol) {
+        for (int i = 0; i < map.length; i++) {
+            if (map[i] != null && map[i].equals(symbol)) {
+                return i;
+            }
+        }
+        throw CompilerDirectives.shouldNotReachHere();
+    }
+
     @Override
     public String toString() {
-        return "[" + start + ", " + end + "]";
-    }
-
-    @TruffleBoundary
-    @ExportMessage
-    @Override
-    public Object toDisplayString(@SuppressWarnings("unused") boolean allowSideEffects) {
-        return "TRegexResult" + toString();
+        return "TRegexReadOnlyMap";
     }
 }

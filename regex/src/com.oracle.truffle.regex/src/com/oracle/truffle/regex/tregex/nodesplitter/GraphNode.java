@@ -44,12 +44,12 @@ import java.util.Arrays;
 import java.util.Iterator;
 import java.util.Set;
 
+import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.regex.tregex.automaton.StateIndex;
 import com.oracle.truffle.regex.tregex.automaton.StateSet;
 import com.oracle.truffle.regex.tregex.dfa.DFAGenerator;
 import com.oracle.truffle.regex.tregex.nodes.dfa.DFAAbstractStateNode;
 import com.oracle.truffle.regex.tregex.nodes.dfa.DFAInitialStateNode;
-import com.oracle.truffle.regex.tregex.util.Exceptions;
 
 /**
  * Abstract graph node wrapper with lots of extra fields used by the dominator tree algorithm in
@@ -102,7 +102,7 @@ final class GraphNode implements Comparable<GraphNode> {
     void createCopy(DFANodeSplit graph, short dfaNodeId) {
         if (getId() == 0) {
             assert dfaNode instanceof DFAInitialStateNode;
-            throw Exceptions.shouldNotReachHere();
+            throw CompilerDirectives.shouldNotReachHere();
         }
         this.copy = new GraphNode(this, dfaNodeId);
         graph.addGraphNode(copy);

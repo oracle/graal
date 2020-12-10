@@ -41,11 +41,11 @@
 package com.oracle.truffle.regex.tregex.nodes.dfa;
 
 import com.oracle.truffle.api.CompilerAsserts;
+import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.nodes.ExplodeLoop;
 import com.oracle.truffle.api.nodes.Node;
-import com.oracle.truffle.regex.tregex.util.Exceptions;
 
 public final class DFACaptureGroupPartialTransitionDispatchNode extends Node {
 
@@ -87,10 +87,10 @@ public final class DFACaptureGroupPartialTransitionDispatchNode extends Node {
                         return;
                     }
                 }
-                throw Exceptions.shouldNotReachHere();
+                throw CompilerDirectives.shouldNotReachHere();
             }
         }
-        throw Exceptions.shouldNotReachHere();
+        throw CompilerDirectives.shouldNotReachHere();
     }
 
     public void applyPreAnchoredFinalTransition(TRegexDFAExecutorLocals locals, TRegexDFAExecutorNode executor, short transitionIndex, int currentIndex) {
@@ -115,7 +115,7 @@ public final class DFACaptureGroupPartialTransitionDispatchNode extends Node {
                 return;
             }
         }
-        throw Exceptions.shouldNotReachHere();
+        throw CompilerDirectives.shouldNotReachHere();
     }
 
     public void applyPreFinalTransition(TRegexDFAExecutorLocals locals, TRegexDFAExecutorNode executor, short transitionIndex, int currentIndex) {
@@ -140,6 +140,6 @@ public final class DFACaptureGroupPartialTransitionDispatchNode extends Node {
                 return;
             }
         }
-        throw Exceptions.shouldNotReachHere();
+        throw CompilerDirectives.shouldNotReachHere();
     }
 }

@@ -49,6 +49,7 @@ import java.util.Map;
 import java.util.Optional;
 import java.util.function.Predicate;
 
+import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.interop.TruffleObject;
 import com.oracle.truffle.regex.RegexSource;
@@ -60,7 +61,6 @@ import com.oracle.truffle.regex.charset.Range;
 import com.oracle.truffle.regex.charset.UnicodeProperties;
 import com.oracle.truffle.regex.tregex.parser.CaseFoldTable;
 import com.oracle.truffle.regex.tregex.string.Encodings;
-import com.oracle.truffle.regex.tregex.util.Exceptions;
 import com.oracle.truffle.regex.util.CompilationFinalBitSet;
 
 /**
@@ -403,7 +403,7 @@ public final class PythonFlavorProcessor implements RegexFlavorProcessor {
             case Bytes:
                 return inPattern.charAt(position);
             default:
-                throw Exceptions.shouldNotReachHere();
+                throw CompilerDirectives.shouldNotReachHere();
         }
     }
 
@@ -1027,7 +1027,7 @@ public final class PythonFlavorProcessor implements RegexFlavorProcessor {
                             escapeLength = 8;
                             break;
                         default:
-                            throw Exceptions.shouldNotReachHere();
+                            throw CompilerDirectives.shouldNotReachHere();
                     }
                     String code = getUpTo(escapeLength, PythonFlavorProcessor::isHexDigit);
                     if (code.length() < escapeLength) {

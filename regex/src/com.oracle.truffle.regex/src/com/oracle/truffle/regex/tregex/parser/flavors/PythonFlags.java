@@ -41,15 +41,19 @@
 package com.oracle.truffle.regex.tregex.parser.flavors;
 
 import com.oracle.truffle.api.CompilerDirectives;
+import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
+import com.oracle.truffle.api.interop.InteropLibrary;
 import com.oracle.truffle.api.interop.UnknownIdentifierException;
+import com.oracle.truffle.api.library.ExportLibrary;
+import com.oracle.truffle.api.library.ExportMessage;
 import com.oracle.truffle.regex.AbstractConstantKeysObject;
 import com.oracle.truffle.regex.RegexSyntaxException;
-import com.oracle.truffle.regex.tregex.util.Exceptions;
 import com.oracle.truffle.regex.util.TruffleReadOnlyKeysArray;
 
 /**
  * An immutable representation of a set of Python regular expression flags.
  */
+@ExportLibrary(InteropLibrary.class)
 public final class PythonFlags extends AbstractConstantKeysObject {
 
     private static final TruffleReadOnlyKeysArray KEYS = new TruffleReadOnlyKeysArray("ASCII", "DOTALL", "IGNORECASE", "LOCALE", "MULTILINE", "TEMPLATE", "UNICODE", "VERBOSE");
@@ -166,7 +170,7 @@ public final class PythonFlags extends AbstractConstantKeysObject {
                 }
                 return this;
             default:
-                throw Exceptions.shouldNotReachHere();
+                throw CompilerDirectives.shouldNotReachHere();
         }
     }
 
@@ -207,6 +211,7 @@ public final class PythonFlags extends AbstractConstantKeysObject {
         return value;
     }
 
+    @TruffleBoundary
     @Override
     public String toString() {
         StringBuilder out = new StringBuilder(FLAGS.length());
@@ -217,6 +222,13 @@ public final class PythonFlags extends AbstractConstantKeysObject {
             }
         }
         return out.toString();
+    }
+
+    @TruffleBoundary
+    @ExportMessage
+    @Override
+    public Object toDisplayString(@SuppressWarnings("unused") boolean allowSideEffects) {
+        return "TRegexPythonFlags{flags=" + toString() + '}';
     }
 
     @Override

@@ -45,6 +45,7 @@ import java.util.Set;
 
 import org.graalvm.collections.EconomicMap;
 
+import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.regex.UnsupportedRegexException;
 import com.oracle.truffle.regex.tregex.automaton.StateSet;
@@ -65,7 +66,6 @@ import com.oracle.truffle.regex.tregex.parser.ast.RegexASTNode;
 import com.oracle.truffle.regex.tregex.parser.ast.Sequence;
 import com.oracle.truffle.regex.tregex.parser.ast.Term;
 import com.oracle.truffle.regex.tregex.parser.flavors.RubyFlavor;
-import com.oracle.truffle.regex.tregex.util.Exceptions;
 import com.oracle.truffle.regex.util.CompilationFinalBitSet;
 
 /**
@@ -349,7 +349,7 @@ public abstract class NFATraversalRegexASTVisitor {
                 return (PositionAssertion) pathGetNode(element);
             }
         }
-        throw Exceptions.shouldNotReachHere();
+        throw CompilerDirectives.shouldNotReachHere();
     }
 
     protected GroupBoundaries getGroupBoundaries() {
@@ -441,7 +441,7 @@ public abstract class NFATraversalRegexASTVisitor {
                         addToVisitedSet(dollarsOnPath);
                         return advanceTerm((Term) cur);
                     default:
-                        throw Exceptions.shouldNotReachHere();
+                        throw CompilerDirectives.shouldNotReachHere();
                 }
             } else if (canTraverseLookArounds() && cur.isLookAheadAssertion()) {
                 enterLookAhead((LookAheadAssertion) cur);
