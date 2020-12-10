@@ -159,4 +159,10 @@ public class CommonConstants {
      * Return code which will cause the wrapper to retry operations on locked files.
      */
     public static final int WINDOWS_RETCODE_DELAYED_OPERATION = 11;
+
+    /**
+     * Hacky way how to reach out to all classes. Used to switch the output to a script-readable
+     * format.
+     */
+    public static final String SYSPROP_SIMPLE_OUTPUT = "org.graalvm.component.installer.SimpleOutput";
 }
