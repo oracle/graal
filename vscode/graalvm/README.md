@@ -3,7 +3,9 @@
 [GraalVM Extension for Visual Studio Code (VS Code)](https://marketplace.visualstudio.com/items?itemName=oracle-labs-graalvm.graalvm) provides the basic support for editing and debugging programs running on [GraalVM](http://www.graalvm.org).
 The extension is Technology Preview.
 
-The major goal of creating GraalVM VS Code Extension was to enable a polyglot environment in VS Code, to make it suitable and convenient to work with GraalVM from an integrated development environment, to allow VS Code users to edit and debug applications written in any of the GraalVM supported languages (Java, JS, Ruby, R, and Python).
+The major goal of creating GraalVM VS Code Extension is to enable a polyglot environment in VS Code, to make it suitable and convenient to work with GraalVM from an integrated development environment, to allow VS Code users to edit and debug applications written in any of the GraalVM supported dynamic languages (JS, Ruby, R, and Python).
+
+The GraalVM extension on pair with [Apache NetBeans Language Server](https://marketplace.visualstudio.com/items?itemName=asf.apache-netbeans-java) extension will also enable a full-fledged support for Java 8 and higher, as well as Java to scripting languages polyglot debugging in VS Code.
 
 #### Table of contents
 - [Features](#features)
@@ -112,7 +114,8 @@ The "Download & Install GraalVM" action is a preferable way, as it eliminates th
 
 ## Java Development and Debugging
 
-To enable support for Java development with GraalVM in VS Code, you have to install the [Apache NetBeans Language Server](https://marketplace.visualstudio.com/items?itemName=asf.apache-netbeans-java) extension. Reload will be required.
+Java development and debugging running on GraalVM in VS Code can be enabled with the [Apache NetBeans Language Server](https://marketplace.visualstudio.com/items?itemName=asf.apache-netbeans-java) extension.
+Make sure to install this extension and reload the window.
 
 To start developping or debugging Java applications, ensure GraalVM is used as your Java runtime in VS Code.
 If the current path is not pointing to the GraalVM folder, go to User Settings window and edit `netbeans.jdkhome` value in _settings.json_ file.
