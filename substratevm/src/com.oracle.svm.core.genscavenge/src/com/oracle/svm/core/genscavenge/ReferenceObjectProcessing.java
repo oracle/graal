@@ -115,9 +115,10 @@ final class ReferenceObjectProcessing {
             trace.string(" has already been promoted and field has been updated]").newline();
             return;
         }
-        if (willSurviveThisCollection(referentAddr.toObject())) {
+        Object refObject = referentAddr.toObject();
+        if (willSurviveThisCollection(refObject)) {
             // Referent is in a to-space, so it won't be reclaimed at this time (incremental GC?)
-            HeapImpl.getHeapImpl().dirtyCardIfNecessary(dr, referentAddr.toObject());
+            HeapImpl.getHeapImpl().dirtyCardIfNecessary(dr, refObject);
             trace.string(" referent is in a to-space]").newline();
             return;
         }
@@ -137,6 +138,7 @@ final class ReferenceObjectProcessing {
         // null link means undiscovered, avoid for the last node with a cyclic reference
         Reference<?> next = (rememberedRefsList != null) ? rememberedRefsList : dr;
         ReferenceInternals.setNextDiscovered(dr, next);
+        HeapImpl.getHeapImpl().dirtyCardIfNecessary(dr, next);
         rememberedRefsList = dr;
     }
 
@@ -228,6 +230,7 @@ final class ReferenceObjectProcessing {
             Reference<?> next = ReferenceInternals.getNextDiscovered(result);
             rememberedRefsList = (next != result) ? next : null; // cyclic link for last node
             ReferenceInternals.setNextDiscovered(result, null);
+            // no need to do any card dirtying when writing null
         }
         return result;
     }
