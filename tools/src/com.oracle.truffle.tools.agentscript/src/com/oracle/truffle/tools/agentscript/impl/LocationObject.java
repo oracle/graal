@@ -24,11 +24,11 @@
  */
 package com.oracle.truffle.tools.agentscript.impl;
 
+import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.interop.InteropLibrary;
 import com.oracle.truffle.api.interop.UnknownIdentifierException;
 import com.oracle.truffle.api.library.ExportLibrary;
 import com.oracle.truffle.api.library.ExportMessage;
-import com.oracle.truffle.api.nodes.ExplodeLoop;
 import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.api.source.SourceSection;
 
@@ -67,8 +67,8 @@ final class LocationObject extends AbstractContextObject {
         return node;
     }
 
-    @ExplodeLoop
     @Override
+    @CompilerDirectives.TruffleBoundary
     SourceSection getInstrumentedSourceSection() {
         for (Node n = node;; n = n.getParent()) {
             SourceSection section = n.getSourceSection();
