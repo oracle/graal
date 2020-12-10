@@ -86,7 +86,7 @@ public final class DebuggerController implements ContextsListener {
     private VMEventListener eventListener;
     private TruffleContext truffleContext;
     private Object previous;
-    private Object mainThread;
+    private Object initialThread;
 
     public DebuggerController(JDWPInstrument instrument) {
         this.instrument = instrument;
@@ -96,13 +96,13 @@ public final class DebuggerController implements ContextsListener {
         this.eventFilters = new EventFilters();
     }
 
-    public void initialize(Debugger debug, JDWPOptions jdwpOptions, JDWPContext jdwpContext, Object thread) {
+    public void initialize(Debugger debug, JDWPOptions jdwpOptions, JDWPContext jdwpContext, Object initialThread) {
         this.debugger = debug;
         this.options = jdwpOptions;
         this.context = jdwpContext;
         this.ids = jdwpContext.getIds();
-        this.eventListener = new VMEventListenerImpl(this, thread);
-        this.mainThread = thread;
+        this.eventListener = new VMEventListenerImpl(this, initialThread);
+        this.initialThread = initialThread;
 
         // setup the debug session object early to make sure instrumentable nodes are materialized
         debuggerSession = debug.startSession(new SuspendedCallbackImpl(), SourceElement.ROOT, SourceElement.STATEMENT);
@@ -112,7 +112,7 @@ public final class DebuggerController implements ContextsListener {
     }
 
     public void reInitialize() {
-        initialize(debugger, options, context, mainThread);
+        initialize(debugger, options, context, initialThread);
     }
 
     public JDWPContext getContext() {

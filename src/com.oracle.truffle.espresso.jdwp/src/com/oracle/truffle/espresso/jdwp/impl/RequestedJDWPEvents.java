@@ -168,6 +168,14 @@ public final class RequestedJDWPEvents {
                 eventListener.increaseFieldBreakpointCount();
                 break;
             case THREAD_START:
+                postFutures.add(new Callable<Void>() {
+                    @Override
+                    public Void call() {
+                        // make sure we send a thread start event for already running threads if any
+                        eventListener.sendInitialThreadStartedEvents();
+                        return null;
+                    }
+                });
                 eventListener.addThreadStartedRequestId(packet.id, suspendPolicy);
                 break;
             case THREAD_DEATH:
