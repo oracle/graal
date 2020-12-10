@@ -60,6 +60,7 @@ public class InstallerCommandlineTest extends CommandTestBase {
     class MockInstallerMain extends ComponentInstaller {
         MockInstallerMain(String[] args) {
             super(args);
+            initGlobalOptions();
         }
 
         @Override
@@ -80,8 +81,7 @@ public class InstallerCommandlineTest extends CommandTestBase {
 
             setInput(env);
             setFeedback(InstallerCommandlineTest.this);
-
-            env.setGraalHome(getGraalHomePath());
+            env.setGraalHome(exposeGraalHomePath());
             env.setLocalRegistry(getLocalRegistry());
             env.setFileOperations(getFileOperations());
             environment = env;
@@ -108,6 +108,10 @@ public class InstallerCommandlineTest extends CommandTestBase {
         protected void printUsage(Feedback output) {
             super.printUsage(InstallerCommandlineTest.this);
         }
+    }
+
+    Path exposeGraalHomePath() {
+        return getGraalHomePath();
     }
 
     MockInstallerMain main = new MockInstallerMain(new String[0]);
@@ -177,6 +181,7 @@ public class InstallerCommandlineTest extends CommandTestBase {
     public void setUp() throws Exception {
         super.setUp();
         ComponentInstaller.initCommands();
+        ComponentInstaller.initGlobalOptions();
         delegateFeedback(capture);
     }
 
