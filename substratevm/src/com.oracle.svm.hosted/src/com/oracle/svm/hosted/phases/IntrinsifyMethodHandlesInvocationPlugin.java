@@ -83,6 +83,7 @@ import org.graalvm.compiler.nodes.graphbuilderconf.InvocationPlugins;
 import org.graalvm.compiler.nodes.graphbuilderconf.InvocationPlugins.Registration;
 import org.graalvm.compiler.nodes.graphbuilderconf.NodePlugin;
 import org.graalvm.compiler.nodes.graphbuilderconf.ParameterPlugin;
+import org.graalvm.compiler.nodes.java.FinalFieldBarrierNode;
 import org.graalvm.compiler.nodes.java.InstanceOfNode;
 import org.graalvm.compiler.nodes.java.LoadFieldNode;
 import org.graalvm.compiler.nodes.java.MethodCallTargetNode;
@@ -646,6 +647,12 @@ public class IntrinsifyMethodHandlesInvocationPlugin implements NodePlugin {
             } else if (oNode.getClass() == NewArrayNode.class) {
                 NewArrayNode oNew = (NewArrayNode) oNode;
                 NewArrayNode tNew = b.add(new NewArrayNode(lookup(oNew.elementType()), node(oNew.length()), oNew.fillContents()));
+                transplanted.put(oNew, tNew);
+                return true;
+
+            } else if (oNode.getClass() == FinalFieldBarrierNode.class) {
+                FinalFieldBarrierNode oNew = (FinalFieldBarrierNode) oNode;
+                FinalFieldBarrierNode tNew = b.add(new FinalFieldBarrierNode(node(oNew.getValue())));
                 transplanted.put(oNew, tNew);
                 return true;
 
