@@ -22,6 +22,9 @@
  */
 package com.oracle.truffle.espresso.classfile.constantpool;
 
+import java.nio.ByteBuffer;
+
+import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.espresso.classfile.ConstantPool;
 import com.oracle.truffle.espresso.classfile.ConstantPool.Tag;
 import com.oracle.truffle.espresso.classfile.RuntimeConstantPool;
@@ -97,12 +100,17 @@ public interface DynamicConstant extends PoolConstant {
         }
 
         @Override
+        public void dump(ByteBuffer buf) {
+            buf.putChar(bootstrapMethodAttrIndex);
+            buf.putChar(nameAndTypeIndex);
+        }
+
+        @Override
         public ResolvedConstant resolve(RuntimeConstantPool pool, int thisIndex, Klass accessingKlass) {
             Meta meta = accessingKlass.getMeta();
 
             // Indy constant resolving.
             BootstrapMethodsAttribute bms = (BootstrapMethodsAttribute) ((ObjectKlass) accessingKlass).getAttribute(BootstrapMethodsAttribute.NAME);
-            NameAndTypeConstant specifier = pool.nameAndTypeAt(nameAndTypeIndex);
 
             assert (bms != null);
             // TODO(garcia) cache bootstrap method resolution
@@ -112,8 +120,8 @@ public interface DynamicConstant extends PoolConstant {
             StaticObject bootstrapmethodMethodHandle = bsEntry.getMethodHandle(accessingKlass, pool);
             StaticObject[] args = bsEntry.getStaticArguments(accessingKlass, pool);
 
-            StaticObject fieldName = meta.toGuestString(specifier.getName(pool));
-            Klass fieldType = meta.resolveSymbolOrFail(Types.fromDescriptor(specifier.getDescriptor(pool)),
+            StaticObject fieldName = meta.toGuestString(getName(pool));
+            Klass fieldType = meta.resolveSymbolOrFail(Types.fromDescriptor(getSignature(pool)),
                             accessingKlass.getDefiningClassLoader(),
                             accessingKlass.protectionDomain());
 

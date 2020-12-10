@@ -82,7 +82,7 @@ public final class GraphBuilder {
     private int nBlocks;
 
     private GraphBuilder(Method method) {
-        this.bs = new BytecodeStream(method.getCode());
+        this.bs = new BytecodeStream(method.getOriginalCode());
         this.status = new long[bs.endBCI()];
         this.handlers = method.getExceptionHandlers();
     }

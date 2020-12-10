@@ -423,13 +423,16 @@ public abstract class ConstantPool {
                 case CLASS: {
                     if (existsAt(patches, i)) {
                         StaticObject classSpecifier = patches[i];
+                        int index = stream.readU2();
+                        if (index == 0 || index >= length) {
+                            throw classFormatError("Invalid Class constant index " + (i - 1));
+                        }
                         if (classSpecifier.getKlass().getType() == Type.java_lang_Class) {
                             entries[i] = ClassConstant.preResolved(classSpecifier.getMirrorKlass());
                         } else {
                             entries[i] = ClassConstant.withString(context.getNames().lookup(context.getMeta().toHostString(patches[i])));
                         }
 
-                        stream.readU2();
                         break;
                     }
                     int classNameIndex = stream.readU2();
@@ -565,7 +568,11 @@ public abstract class ConstantPool {
         }
         int rawPoolLength = stream.getPosition() - rawPoolStartPosition;
 
-        final ConstantPool constantPool = new ConstantPoolImpl(entries, majorVersion, minorVersion, stream.getByteRange(rawPoolStartPosition, rawPoolLength));
+        final ConstantPool constantPool = new ConstantPoolImpl(entries, majorVersion, minorVersion, rawPoolLength);
+
+        // Cannot faithfully reconstruct patched pools. obtaining raw pool of patched class is
+        // meaningless anyway.
+        assert patches != null || sameRawPool(constantPool, stream, rawPoolStartPosition, rawPoolLength);
 
         // Validation
         for (int j = 1; j < constantPool.length(); ++j) {
@@ -573,6 +580,10 @@ public abstract class ConstantPool {
         }
 
         return constantPool;
+    }
+
+    private static boolean sameRawPool(ConstantPool constantPool, ClassfileStream stream, int rawPoolStartPosition, int rawPoolLength) {
+        return Arrays.equals(constantPool.getRawBytes(), stream.getByteRange(rawPoolStartPosition, rawPoolLength));
     }
 
     private static boolean existsAt(StaticObject[] patches, int index) {

@@ -22,20 +22,22 @@
  */
 package com.oracle.truffle.espresso.nodes.interop;
 
-import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.dsl.Cached;
 import com.oracle.truffle.api.dsl.GenerateUncached;
 import com.oracle.truffle.api.dsl.Specialization;
-import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.espresso.impl.Klass;
 import com.oracle.truffle.espresso.impl.Method;
 
 @GenerateUncached
-public abstract class LookupDeclaredMethod extends Node {
+public abstract class LookupDeclaredMethod extends AbstractLookupNode {
 
     static final int LIMIT = 2;
 
     public abstract Method execute(Klass klass, String key, boolean publicOnly, boolean isStatic, int arity);
+
+    public boolean isInvocable(Klass klass, String key, boolean publicOnly, boolean isStatic) {
+        return doLookup(klass, key, publicOnly, isStatic, -1) != null;
+    }
 
     @SuppressWarnings("unused")
     @Specialization(guards = {
@@ -59,34 +61,12 @@ public abstract class LookupDeclaredMethod extends Node {
     }
 
     @Specialization(replaces = "doCached")
-    @TruffleBoundary
     Method doGeneric(Klass klass, String key, boolean publicOnly, boolean isStatic, int arity) {
-        Method result = null;
-        String methodName;
-        String signature = null;
-        int colonIndex = key.indexOf(':');
-        if (colonIndex >= 0) {
-            String[] split = key.split(":");
-            if (split.length != 2) {
-                return null;
-            }
-            methodName = split[0];
-            signature = split[1];
-        } else {
-            methodName = key;
-        }
-        for (Method m : klass.getDeclaredMethods()) {
-            if (m.isPublic() == publicOnly && m.isStatic() == isStatic && !m.isSignaturePolymorphicDeclared() &&
-                            m.getName().toString().equals(methodName) && (signature == null || m.getSignatureAsString().equals(signature))) {
-                if (m.getParameterCount() == arity) {
-                    /* Multiple methods with the same name and arity, cannot disambiguate */
-                    if (result != null) {
-                        return null;
-                    }
-                    result = m;
-                }
-            }
-        }
-        return result;
+        return doLookup(klass, key, publicOnly, isStatic, arity);
+    }
+
+    @Override
+    Method[] getMethodArray(Klass k) {
+        return k.getDeclaredMethods();
     }
 }

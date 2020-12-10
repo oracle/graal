@@ -187,8 +187,8 @@ public class LivenessAnalysis {
         private final BlockBoundaryResult helper;
 
         private Builder(Graph<? extends LinkedBlock> graph, Method method, BlockBoundaryResult helper) {
-            this.actions = new LocalVariableAction[method.getCode().length];
-            this.edge = new EdgeAction[method.getCode().length];
+            this.actions = new LocalVariableAction[method.getOriginalCode().length];
+            this.edge = new EdgeAction[method.getOriginalCode().length];
             this.graph = graph;
             this.method = method;
             this.helper = helper;

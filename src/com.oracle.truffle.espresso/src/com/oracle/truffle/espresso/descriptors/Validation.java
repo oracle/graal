@@ -48,7 +48,7 @@ public final class Validation {
         }
         for (int i = 0; i < bytes.length(); ++i) {
             char ch = (char) bytes.byteAt(i);
-            if (ch == '.' || ch == ';' || ch == '[' || ch == '/') {
+            if (invalidUnqualifiedNameChar(ch)) {
                 return false;
             }
         }
@@ -64,11 +64,23 @@ public final class Validation {
         }
         for (int i = 0; i < chars.length(); ++i) {
             char ch = chars.charAt(i);
-            if (ch == '.' || ch == ';' || ch == '[' || ch == '/') {
+            if (invalidUnqualifiedNameChar(ch)) {
                 return false;
             }
         }
         return true;
+    }
+
+    private static boolean invalidUnqualifiedNameChar(char ch) {
+        switch (ch) {
+            case '.':
+            case ';':
+            case '[':
+            case '/':
+                return true;
+            default:
+                return false;
+        }
     }
 
     /**
@@ -88,11 +100,25 @@ public final class Validation {
         }
         for (int i = 0; i < bytes.length(); ++i) {
             char ch = (char) bytes.byteAt(i);
-            if (ch == '.' || ch == ';' || ch == '[' || ch == '/' || ch == '<' || ch == '>') {
+            if (invalidMethodNameChar(ch)) {
                 return false;
             }
         }
         return true;
+    }
+
+    private static boolean invalidMethodNameChar(char ch) {
+        switch (ch) {
+            case '.':
+            case ';':
+            case '[':
+            case '/':
+            case '<':
+            case '>':
+                return true;
+            default:
+                return false;
+        }
     }
 
     /**
@@ -185,17 +211,9 @@ public final class Validation {
         if (bytes.length() == 0) {
             return false;
         }
-        char first = (char) bytes.byteAt(0);
+        byte first = bytes.byteAt(0);
         if (bytes.length() == 1) {
-            return (first == 'V' && allowVoid) ||
-                            first == 'B' ||
-                            first == 'C' ||
-                            first == 'D' ||
-                            first == 'F' ||
-                            first == 'I' ||
-                            first == 'J' ||
-                            first == 'S' ||
-                            first == 'Z';
+            return ((first == 'V' && allowVoid) || validPrimitiveChar(first));
         }
         if (first == '[') {
             int dimensions = 0;
@@ -222,6 +240,12 @@ public final class Validation {
         return validSignatureDescriptor(bytes, false);
     }
 
+    public static boolean validSignatureDescriptor(ByteSequence bytes, boolean isInitOrClinit) {
+        return validSignatureDescriptorGetSlots(bytes, isInitOrClinit) >= 0;
+    }
+
+    private static final int INVALID_SIGNATURE = -1;
+
     /**
      * A method descriptor contains zero or more parameter descriptors, representing the types of
      * parameters that the method takes, and a return descriptor, representing the type of the value
@@ -231,13 +255,16 @@ public final class Validation {
      *     SignatureDescriptor: ( {FieldDescriptor} ) TypeDescriptor
      * </pre>
      */
-    public static boolean validSignatureDescriptor(ByteSequence bytes, boolean isInitOrClinit) {
+    public static int validSignatureDescriptorGetSlots(ByteSequence bytes, boolean isInitOrClinit) {
         if (bytes.length() < 3) { // shortest descriptor e.g. ()V
-            return false;
+            return INVALID_SIGNATURE;
         }
         if (bytes.byteAt(0) != '(') { // not a signature
-            return false;
+            return INVALID_SIGNATURE;
         }
+        int slots = 0;
+        int currentSlot = -1;
+
         int index = 1;
         while (index < bytes.length() && bytes.byteAt(index) != ')') {
             int prev = index;
@@ -247,10 +274,13 @@ public final class Validation {
             }
             int dimensions = index - prev;
             if (dimensions > Constants.MAX_ARRAY_DIMENSIONS) {
-                return false;
+                return INVALID_SIGNATURE;
             }
             if (index >= bytes.length()) {
-                return false;
+                return INVALID_SIGNATURE;
+            }
+            if (dimensions > 0) {
+                currentSlot = 1;
             }
             if (bytes.byteAt(index) == 'L') {
                 ++index;
@@ -258,38 +288,58 @@ public final class Validation {
                     ++index;
                 }
                 if (index >= bytes.length()) {
-                    return false;
+                    return INVALID_SIGNATURE;
                 }
                 assert bytes.byteAt(index) == ';';
                 if (!validFieldDescriptor(bytes.subSequence(prev, index - prev + 1))) {
-                    return false;
+                    return INVALID_SIGNATURE;
                 }
                 ++index; // skip ;
+                currentSlot = 1;
             } else {
                 // Must be a non-void primitive.
-                char ch = (char) bytes.byteAt(index);
-                if (!(ch == 'B' ||
-                                ch == 'C' ||
-                                ch == 'D' ||
-                                ch == 'F' ||
-                                ch == 'I' ||
-                                ch == 'J' ||
-                                ch == 'S' ||
-                                ch == 'Z')) {
-                    return false;
+                byte ch = bytes.byteAt(index);
+                if (!validPrimitiveChar(ch)) {
+                    return INVALID_SIGNATURE;
+                }
+                if (currentSlot <= 0) {
+                    if (ch == 'D' || ch == 'J') {
+                        currentSlot = 2;
+                    } else {
+                        currentSlot = 1;
+                    }
                 }
                 ++index; // skip
             }
+            assert currentSlot > 0;
+            slots += currentSlot;
+            currentSlot = -1;
         }
         if (index >= bytes.length()) {
-            return false;
+            return INVALID_SIGNATURE;
         }
         assert bytes.byteAt(index) == ')';
         // Validate return type.
         if (isInitOrClinit) {
-            return bytes.subSequence(index + 1, bytes.length() - index - 1).contentEquals(Symbol.Type._void);
+            return (bytes.byteAt(index + 1) == 'V' && bytes.length() == index + 2) ? slots : INVALID_SIGNATURE;
         } else {
-            return validTypeDescriptor(bytes.subSequence(index + 1, bytes.length() - index - 1), true);
+            return (validTypeDescriptor(bytes.subSequence(index + 1, bytes.length() - index - 1), true)) ? slots : INVALID_SIGNATURE;
+        }
+    }
+
+    private static boolean validPrimitiveChar(byte ch) {
+        switch (ch) {
+            case 'B':
+            case 'C':
+            case 'D':
+            case 'F':
+            case 'I':
+            case 'J':
+            case 'S':
+            case 'Z':
+                return true;
+            default:
+                return false;
         }
     }
 

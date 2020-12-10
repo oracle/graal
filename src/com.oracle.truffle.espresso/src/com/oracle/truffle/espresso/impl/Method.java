@@ -368,7 +368,7 @@ public final class Method extends Member<Signature> implements TruffleObject, Co
                 return (usesMonitors = 1) != 0;
             }
             if (getCodeAttribute() != null) {
-                BytecodeStream bs = new BytecodeStream(getCodeAttribute().getCode());
+                BytecodeStream bs = new BytecodeStream(getOriginalCode());
                 int bci = 0;
                 while (bci < bs.endBCI()) {
                     int opcode = bs.currentBC(bci);
@@ -715,7 +715,7 @@ public final class Method extends Member<Signature> implements TruffleObject, Co
     }
 
     private boolean hasGetterBytecodes() {
-        byte[] code = getCodeAttribute().getCode();
+        byte[] code = getOriginalCode();
         if (isStatic()) {
             if (code.length == STATIC_GETTER_LENGTH && getExceptionHandlers().length == 0) {
                 return (code[0] == (byte) GETSTATIC) && (Bytecodes.isReturn(code[3])) && code[3] != (byte) RETURN;
@@ -740,7 +740,7 @@ public final class Method extends Member<Signature> implements TruffleObject, Co
     }
 
     private boolean hasSetterBytecodes() {
-        byte[] code = getCodeAttribute().getCode();
+        byte[] code = getOriginalCode();
         if (isStatic()) {
             if (code.length == STATIC_SETTER_LENGTH && getExceptionHandlers().length == 0) {
                 return (code[0] == (byte) ALOAD_0) && (code[1] == (byte) PUTSTATIC) && (code[4] == (byte) RETURN);
@@ -771,7 +771,7 @@ public final class Method extends Member<Signature> implements TruffleObject, Co
 
     @SuppressWarnings("unused")
     void printBytecodes(PrintStream out) {
-        new BytecodeStream(getCode()).printBytecode(declaringKlass, out);
+        new BytecodeStream(getOriginalCode()).printBytecode(declaringKlass, out);
     }
 
     public LineNumberTableAttribute getLineNumberTable() {
