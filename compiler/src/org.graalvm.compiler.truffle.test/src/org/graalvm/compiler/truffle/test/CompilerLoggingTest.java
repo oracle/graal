@@ -69,13 +69,13 @@ public class CompilerLoggingTest extends TruffleCompilerImplTest {
 
         @Override
         public void onCompilationSuccess(OptimizedCallTarget target, TruffleInlining inliningDecision, TruffleCompilerListener.GraphInfo graph,
-                        TruffleCompilerListener.CompilationResultInfo result) {
+                        TruffleCompilerListener.CompilationResultInfo result, int tier) {
             TTY.printf(FORMAT_SUCCESS, target.getName());
             printCommon();
         }
 
         @Override
-        public void onCompilationFailed(OptimizedCallTarget target, String reason, boolean bailout, boolean permanentBailout) {
+        public void onCompilationFailed(OptimizedCallTarget target, String reason, boolean bailout, boolean permanentBailout, int tier) {
             TTY.printf(FORMAT_FAILURE, target.getName(), reason);
             printCommon();
         }

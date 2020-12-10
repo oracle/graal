@@ -77,7 +77,16 @@ public interface GraalTruffleRuntimeListener {
      *
      * @param target the call target that has just been enqueued for compilation
      */
+    @Deprecated
     default void onCompilationQueued(OptimizedCallTarget target) {
+    }
+
+    /**
+     * Notifies this object after {@code target} is added to the compilation queue.
+     *
+     * @param target the call target that has just been enqueued for compilation
+     */
+    default void onCompilationQueued(OptimizedCallTarget target, int tier) {
     }
 
     /**
@@ -89,7 +98,21 @@ public interface GraalTruffleRuntimeListener {
      * @param reason a textual description of the reason why the compilation was unqueued. May be
      *            {@code null}.
      */
+    @Deprecated
     default void onCompilationDequeued(OptimizedCallTarget target, Object source, CharSequence reason) {
+    }
+
+    /**
+     * Notifies this object after {@code target} is removed from the compilation queue.
+     *
+     * @param target the call target that has just been removed from the compilation queue
+     * @param source the source object that caused the compilation to be unqueued. For example the
+     *            source {@link Node} object. May be {@code null}.
+     * @param reason a textual description of the reason why the compilation was unqueued. May be
+     *            {@code null}.
+     * @param tier Which compilation tier is in question.
+     */
+    default void onCompilationDequeued(OptimizedCallTarget target, Object source, CharSequence reason, int tier) {
     }
 
     /**
@@ -97,7 +120,17 @@ public interface GraalTruffleRuntimeListener {
      *
      * @param target the call target about to be compiled
      */
+    @Deprecated
     default void onCompilationStarted(OptimizedCallTarget target) {
+    }
+
+    /**
+     * Notifies this object when compilation of {@code target} is about to start.
+     *
+     * @param target the call target about to be compiled
+     * @param tier Which compilation tier is in question.
+     */
+    default void onCompilationStarted(OptimizedCallTarget target, int tier) {
     }
 
     /**
@@ -129,7 +162,20 @@ public interface GraalTruffleRuntimeListener {
      * @param graph access to compiler graph info
      * @param result access to compilation result info
      */
+    @Deprecated
     default void onCompilationSuccess(OptimizedCallTarget target, TruffleInlining inliningDecision, GraphInfo graph, CompilationResultInfo result) {
+    }
+
+    /**
+     * Notifies this object when compilation of {@code target} succeeds.
+     *
+     * @param target the call target whose compilation succeeded
+     * @param inliningDecision the inlining plan used during the compilation
+     * @param graph access to compiler graph info
+     * @param result access to compilation result info
+     * @param tier Which compilation tier is in question.
+     */
+    default void onCompilationSuccess(OptimizedCallTarget target, TruffleInlining inliningDecision, GraphInfo graph, CompilationResultInfo result, int tier) {
     }
 
     /**
@@ -145,7 +191,25 @@ public interface GraalTruffleRuntimeListener {
      *            change if the {@code target} is compiled again. This value is meaningless if
      *            {@code bailout == false}.
      */
+    @Deprecated
     default void onCompilationFailed(OptimizedCallTarget target, String reason, boolean bailout, boolean permanentBailout) {
+    }
+
+    /**
+     * Notifies this object when compilation of {@code target} fails.
+     *
+     * @param target the call target whose compilation failed
+     * @param reason a description of the failure
+     * @param bailout specifies whether the failure was a bailout or an error in the compiler. A
+     *            bailout means the compiler aborted the compilation based on some of property of
+     *            {@code target} (e.g., too big). A non-bailout means an unexpected error in the
+     *            compiler itself.
+     * @param permanentBailout specifies if a bailout is due to a condition that probably won't
+     *            change if the {@code target} is compiled again. This value is meaningless if
+     *            {@code bailout == false}.
+     * @param tier Which compilation tier is in question.
+     */
+    default void onCompilationFailed(OptimizedCallTarget target, String reason, boolean bailout, boolean permanentBailout, int tier) {
     }
 
     /**

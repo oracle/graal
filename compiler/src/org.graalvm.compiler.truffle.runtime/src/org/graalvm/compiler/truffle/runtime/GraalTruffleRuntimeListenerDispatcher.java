@@ -59,23 +59,23 @@ final class GraalTruffleRuntimeListenerDispatcher extends CopyOnWriteArrayList<G
     }
 
     @Override
-    public void onCompilationQueued(OptimizedCallTarget target) {
-        invokeListeners((l) -> l.onCompilationQueued(target));
+    public void onCompilationQueued(OptimizedCallTarget target, int tier) {
+        invokeListeners((l) -> l.onCompilationQueued(target, tier));
     }
 
     @Override
-    public void onCompilationDequeued(OptimizedCallTarget target, Object source, CharSequence reason) {
-        invokeListeners((l) -> l.onCompilationDequeued(target, source, reason));
+    public void onCompilationDequeued(OptimizedCallTarget target, Object source, CharSequence reason, int tier) {
+        invokeListeners((l) -> l.onCompilationDequeued(target, source, reason, tier));
     }
 
     @Override
-    public void onCompilationFailed(OptimizedCallTarget target, String reason, boolean bailout, boolean permanent) {
-        invokeListeners((l) -> l.onCompilationFailed(target, reason, bailout, permanent));
+    public void onCompilationFailed(OptimizedCallTarget target, String reason, boolean bailout, boolean permanent, int tier) {
+        invokeListeners((l) -> l.onCompilationFailed(target, reason, bailout, permanent, tier));
     }
 
     @Override
-    public void onCompilationStarted(OptimizedCallTarget target) {
-        invokeListeners((l) -> l.onCompilationStarted(target));
+    public void onCompilationStarted(OptimizedCallTarget target, int tier) {
+        invokeListeners((l) -> l.onCompilationStarted(target, tier));
     }
 
     @Override
@@ -89,8 +89,8 @@ final class GraalTruffleRuntimeListenerDispatcher extends CopyOnWriteArrayList<G
     }
 
     @Override
-    public void onCompilationSuccess(OptimizedCallTarget target, TruffleInlining inliningDecision, GraphInfo graph, CompilationResultInfo result) {
-        invokeListeners((l) -> l.onCompilationSuccess(target, inliningDecision, graph, result));
+    public void onCompilationSuccess(OptimizedCallTarget target, TruffleInlining inliningDecision, GraphInfo graph, CompilationResultInfo result, int tier) {
+        invokeListeners((l) -> l.onCompilationSuccess(target, inliningDecision, graph, result, tier));
     }
 
     @Override
@@ -151,18 +151,18 @@ final class GraalTruffleRuntimeListenerDispatcher extends CopyOnWriteArrayList<G
     }
 
     @Override
-    public void onSuccess(CompilableTruffleAST compilable, TruffleMetaAccessProvider inliningPlan, GraphInfo graph, CompilationResultInfo result) {
-        onCompilationSuccess((OptimizedCallTarget) compilable, (TruffleInlining) inliningPlan, graph, result);
+    public void onSuccess(CompilableTruffleAST compilable, TruffleMetaAccessProvider inliningPlan, GraphInfo graph, CompilationResultInfo result, int tier) {
+        onCompilationSuccess((OptimizedCallTarget) compilable, (TruffleInlining) inliningPlan, graph, result, tier);
     }
 
     @Override
-    public void onFailure(CompilableTruffleAST compilable, String reason, boolean bailout, boolean permanentBailout) {
-        onCompilationFailed((OptimizedCallTarget) compilable, reason, bailout, permanentBailout);
+    public void onFailure(CompilableTruffleAST compilable, String reason, boolean bailout, boolean permanentBailout, int tier) {
+        onCompilationFailed((OptimizedCallTarget) compilable, reason, bailout, permanentBailout, tier);
     }
 
     @Override
-    public void onCompilationRetry(CompilableTruffleAST compilable) {
-        onCompilationQueued((OptimizedCallTarget) compilable);
-        onCompilationStarted((OptimizedCallTarget) compilable);
+    public void onCompilationRetry(CompilableTruffleAST compilable, int tier) {
+        onCompilationQueued((OptimizedCallTarget) compilable, tier);
+        onCompilationStarted((OptimizedCallTarget) compilable, tier);
     }
 }

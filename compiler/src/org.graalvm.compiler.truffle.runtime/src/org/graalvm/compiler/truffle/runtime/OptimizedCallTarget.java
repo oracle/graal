@@ -695,7 +695,7 @@ public abstract class OptimizedCallTarget implements CompilableTruffleAST, RootC
                 }
             }
             if (task != null) {
-                runtime().getListener().onCompilationQueued(this);
+                runtime().getListener().onCompilationQueued(this, lastTierCompilation ? 2 : 1);
                 return maybeWaitForTask(task);
             }
         }
@@ -818,8 +818,9 @@ public abstract class OptimizedCallTarget implements CompilableTruffleAST, RootC
             /* no cancellation necessary if the call target was initialized */
             return false;
         }
+        CompilationTask task = this.compilationTask;
         if (cancelAndResetCompilationTask()) {
-            runtime().getListener().onCompilationDequeued(this, null, reason);
+            runtime().getListener().onCompilationDequeued(this, null, reason, task.isFirstTier() ? 1 : 2);
             return true;
         }
         return false;

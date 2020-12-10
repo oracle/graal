@@ -132,15 +132,15 @@ public class JNIExceptionWrapperTest extends TestWithPolyglotOptions {
         }
 
         @Override
-        public void onSuccess(CompilableTruffleAST compilable, TruffleMetaAccessProvider inliningPlan, GraphInfo graphInfo, CompilationResultInfo compilationResultInfo) {
+        public void onSuccess(CompilableTruffleAST compilable, TruffleMetaAccessProvider inliningPlan, GraphInfo graphInfo, CompilationResultInfo compilationResultInfo, int tier) {
         }
 
         @Override
-        public void onFailure(CompilableTruffleAST compilable, String reason, boolean bailout, boolean permanentBailout) {
+        public void onFailure(CompilableTruffleAST compilable, String reason, boolean bailout, boolean permanentBailout, int tier) {
         }
 
         @Override
-        public void onCompilationRetry(CompilableTruffleAST compilable) {
+        public void onCompilationRetry(CompilableTruffleAST compilable, int tier) {
         }
     }
 }
