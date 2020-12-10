@@ -36,6 +36,7 @@ import com.oracle.truffle.api.dsl.NodeChild;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.profiles.BranchProfile;
 import com.oracle.truffle.api.profiles.ConditionProfile;
+import com.oracle.truffle.api.profiles.ValueProfile;
 import com.oracle.truffle.llvm.runtime.LLVMContext;
 import com.oracle.truffle.llvm.runtime.LLVMLanguage;
 import com.oracle.truffle.llvm.runtime.except.LLVMMemoryException;
@@ -54,13 +55,15 @@ public abstract class GraalVMResolveHandle extends LLVMIntrinsic {
                     @Cached LLVMToNativeNode forceAddressNode,
                     @CachedLanguage LLVMLanguage language,
                     @Cached ConditionProfile isDerefProfile,
-                    @Cached BranchProfile invalidHandle) {
+                    @Cached BranchProfile invalidHandle,
+                    @Cached("createClassProfile()") ValueProfile derefHandleContainerProfile,
+                    @Cached("createClassProfile()") ValueProfile handleContainerProfile) {
         long address = forceAddressNode.executeWithTarget(rawHandle).asNative();
         try {
             if (!language.getNoDerefHandleAssumption().isValid() && isDerefProfile.profile(LLVMHandleMemoryBase.isDerefHandleMemory(address))) {
-                return context.getDerefHandleContainer().getValue(this, address).copy();
+                return derefHandleContainerProfile.profile(context.getDerefHandleContainer()).getValue(this, address).copy();
             } else {
-                return context.getHandleContainer().getValue(this, address).copy();
+                return handleContainerProfile.profile(context.getHandleContainer()).getValue(this, address).copy();
             }
         } catch (ArrayIndexOutOfBoundsException | NullPointerException ex) {
             invalidHandle.enter();
