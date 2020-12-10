@@ -22,6 +22,7 @@
  */
 package com.oracle.truffle.espresso.nodes.quick.invoke;
 
+import com.oracle.truffle.api.CallTarget;
 import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
 import com.oracle.truffle.api.frame.VirtualFrame;
@@ -61,10 +62,14 @@ public final class InvokeStaticNode extends QuickNode {
         // TODO(peterssen): Constant fold this check.
         if (directCallNode == null) {
             CompilerDirectives.transferToInterpreterAndInvalidate();
-            // Obtaining call target initializes the declaring klass
+            // Obtaining call target does not initialize the declaring klass
+            // but we must make sure that's done explicitly here before
+            // calling the method
+            CallTarget callTarget = method.getMethod().getCallTarget();
+            method.getMethod().getDeclaringKlass().safeInitialize();
             // insert call node though insertion method so that
             // stack frame iteration will see this node as parent
-            directCallNode = insert(DirectCallNode.create(method.getMethod().getCallTarget()));
+            directCallNode = insert(DirectCallNode.create(callTarget));
         }
         BytecodeNode root = getBytecodesNode();
         Object[] args = root.peekAndReleaseArguments(frame, top, false, method.getMethod().getParsedSignature());

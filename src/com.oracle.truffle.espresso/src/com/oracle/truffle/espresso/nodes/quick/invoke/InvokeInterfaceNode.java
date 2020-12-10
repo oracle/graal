@@ -22,6 +22,7 @@
  */
 package com.oracle.truffle.espresso.nodes.quick.invoke;
 
+import com.oracle.truffle.api.CallTarget;
 import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.dsl.Cached;
 import com.oracle.truffle.api.dsl.Specialization;
@@ -53,6 +54,12 @@ public abstract class InvokeInterfaceNode extends QuickNode {
                     @Cached("receiver.getKlass()") Klass cachedKlass,
                     @Cached("methodLookup(receiver, resolutionSeed, declaringKlass)") MethodVersion resolvedMethod,
                     @Cached("create(resolvedMethod.getMethod().getCallTarget())") DirectCallNode directCallNode) {
+        // getCallTarget doesn't ensure declaring class is initialized
+        // so we need the below check prior to executing the method
+        if (!resolvedMethod.getMethod().getDeclaringKlass().isInitialized()) {
+            CompilerDirectives.transferToInterpreterAndInvalidate();
+            resolvedMethod.getMethod().getDeclaringKlass().safeInitialize();
+        }
         return directCallNode.call(args);
     }
 
@@ -60,7 +67,15 @@ public abstract class InvokeInterfaceNode extends QuickNode {
     Object callVirtualIndirect(StaticObject receiver, Object[] arguments,
                     @Cached("create()") IndirectCallNode indirectCallNode) {
         // itable Lookup
-        return indirectCallNode.call(methodLookup(receiver, resolutionSeed, declaringKlass).getMethod().getCallTarget(), arguments);
+        Method method = methodLookup(receiver, resolutionSeed, declaringKlass).getMethod();
+        CallTarget callTarget = method.getCallTarget();
+        // getCallTarget doesn't ensure declaring class is initialized
+        // so we need the below check prior to executing the method
+        if (!method.getDeclaringKlass().isInitialized()) {
+            CompilerDirectives.transferToInterpreterAndInvalidate();
+            method.getDeclaringKlass().safeInitialize();
+        }
+        return indirectCallNode.call(callTarget, arguments);
     }
 
     InvokeInterfaceNode(Method resolutionSeed, int top, int curBCI) {

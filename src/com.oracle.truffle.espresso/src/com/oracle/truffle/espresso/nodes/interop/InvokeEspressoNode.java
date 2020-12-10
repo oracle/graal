@@ -23,6 +23,7 @@
 package com.oracle.truffle.espresso.nodes.interop;
 
 import com.oracle.truffle.api.CallTarget;
+import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.dsl.Cached;
 import com.oracle.truffle.api.dsl.GenerateUncached;
 import com.oracle.truffle.api.dsl.Specialization;
@@ -78,6 +79,10 @@ public abstract class InvokeEspressoNode extends Node {
                     throws ArityException, UnsupportedTypeException {
 
         checkValidInvoke(method, receiver);
+        if (!cachedMethod.getDeclaringKlass().isInitialized()) {
+            CompilerDirectives.transferToInterpreterAndInvalidate();
+            cachedMethod.getDeclaringKlass().safeInitialize();
+        }
 
         int expectedArity = cachedMethod.getParameterCount();
         if (arguments.length != expectedArity) {
@@ -120,6 +125,13 @@ public abstract class InvokeEspressoNode extends Node {
         Object[] convertedArguments = new Object[expectedArity];
         for (int i = 0; i < expectedArity; i++) {
             convertedArguments[i] = toEspressoNode.execute(arguments[i], parameterKlasses[i]);
+        }
+
+        // make sure the declaring class is initialized
+        // getCallTarget never runs <clinit>
+        if (!method.getDeclaringKlass().isInitialized()) {
+            CompilerDirectives.transferToInterpreterAndInvalidate();
+            method.getDeclaringKlass().safeInitialize();
         }
 
         if (!method.isStatic()) {

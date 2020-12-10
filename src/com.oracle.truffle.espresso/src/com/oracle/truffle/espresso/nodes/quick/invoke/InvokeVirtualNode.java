@@ -51,6 +51,12 @@ public abstract class InvokeVirtualNode extends QuickNode {
                     @Cached("receiver.getKlass()") Klass cachedKlass,
                     @Cached("methodLookup(receiver, resolutionSeed)") MethodVersion resolvedMethod,
                     @Cached("create(resolvedMethod.getCallTarget())") DirectCallNode directCallNode) {
+        // getCallTarget doesn't ensure declaring class is initialized
+        // so we need the below check prior to executing the method
+        if (!resolvedMethod.getMethod().getDeclaringKlass().isInitialized()) {
+            CompilerDirectives.transferToInterpreterAndInvalidate();
+            resolvedMethod.getMethod().getDeclaringKlass().safeInitialize();
+        }
         return directCallNode.call(args);
     }
 
@@ -63,6 +69,12 @@ public abstract class InvokeVirtualNode extends QuickNode {
             CompilerDirectives.transferToInterpreterAndInvalidate();
             Meta meta = receiver.getKlass().getMeta();
             throw Meta.throwException(meta.java_lang_AbstractMethodError);
+        }
+        // getCallTarget doesn't ensure declaring class is initialized
+        // so we need the below check prior to executing the method
+        if (!target.getMethod().getDeclaringKlass().isInitialized()) {
+            CompilerDirectives.transferToInterpreterAndInvalidate();
+            target.getMethod().getDeclaringKlass().safeInitialize();
         }
         return indirectCallNode.call(target.getCallTarget(), arguments);
     }

@@ -504,6 +504,8 @@ public final class Method extends Member<Signature> implements TruffleObject, Co
                 filteredArgs[i] = getMeta().toGuestBoxed(args[i - 1]);
             }
         }
+        // clinit is not performed on obtaining call target
+        getDeclaringKlass().safeInitialize();
         return getMeta().toHostBoxed(getCallTarget().call(filteredArgs));
     }
 
@@ -518,13 +520,15 @@ public final class Method extends Member<Signature> implements TruffleObject, Co
         getContext().getJNI().clearPendingException();
         if (isStatic()) {
             assert args.length == Signatures.parameterCount(getParsedSignature(), false);
-            // clinit performed on obtaining call target
+            // clinit is not performed on obtaining call target
+            getDeclaringKlass().safeInitialize();
             return getCallTarget().call(args);
         } else {
             assert args.length + 1 /* self */ == Signatures.parameterCount(getParsedSignature(), !isStatic());
             Object[] fullArgs = new Object[args.length + 1];
             System.arraycopy(args, 0, fullArgs, 1, args.length);
             fullArgs[0] = self;
+            getDeclaringKlass().safeInitialize();
             return getCallTarget().call(fullArgs);
         }
     }
@@ -1082,15 +1086,6 @@ public final class Method extends Member<Signature> implements TruffleObject, Co
                     }
                     throw Meta.throwExceptionWithMessage(meta.java_lang_IncompatibleClassChangeError, "Conflicting default methods: " + getMethod().getName());
                 }
-                // Initializing a class costs a lock, do it outside of this method's lock to avoid
-                // congestion.
-                // Note that requesting a call target is immediately followed by a call to the
-                // method, before advancing BCI.
-                // This ensures that we are respecting the specs, saying that a class must be
-                // initialized before a method is called, while saving a call to safeInitialize
-                // after a method lookup.
-                declaringKlass.safeInitialize();
-
                 synchronized (this) {
                     if (callTarget != null) {
                         return callTarget;
