@@ -441,9 +441,19 @@ public class FrameInfoEncoder {
                     length += 2;
 
                 } else {
-                    assert objectLayout.sizeInBytes(valueKind.getStackKind()) <= objectLayout.sizeInBytes(kind.getStackKind());
-                    valueList.add(makeValueInfo(data, kind, value, isDeoptEntry));
-                    length++;
+                    if (kind == JavaKind.Byte) {
+                        /* Escape analysis of byte arrays needs special care. */
+                        int byteCount = restoreByteArrayEntryByteCount(virtualObject, i);
+                        valueKind = restoreByteArrayEntryValueKind(valueKind, byteCount);
+                        valueList.add(makeValueInfo(data, valueKind, value, isDeoptEntry));
+                        length += byteCount;
+
+                        i += byteCount - /* loop increment */ 1;
+                    } else {
+                        assert objectLayout.sizeInBytes(valueKind.getStackKind()) <= objectLayout.sizeInBytes(kind.getStackKind());
+                        valueList.add(makeValueInfo(data, kind, value, isDeoptEntry));
+                        length++;
+                    }
                 }
 
                 assert objectLayout.getArrayElementOffset(kind, length) == objectLayout.getArrayBaseOffset(kind) + computeOffset(valueList, 2);
@@ -510,6 +520,51 @@ public class FrameInfoEncoder {
 
         data.virtualObjects[id] = valueList.toArray(new ValueInfo[valueList.size()]);
         ImageSingletons.lookup(Counters.class).virtualObjectsCount.inc();
+    }
+
+    /**
+     * Virtualized byte arrays might look like:
+     * <p>
+     * [b1, b2, INT, ILLEGAL, ILLEGAL, ILLEGAL, b7, b8]
+     * <p>
+     * This indicates that an int was written over 4 slots of a byte array, and this write was
+     * escape analysed.
+     *
+     * The written int should write over the 3 illegals, and we can then simply ignore them
+     * afterwards.
+     */
+    private static int restoreByteArrayEntryByteCount(VirtualObject vObject, int curIdx) {
+        int pos = curIdx + 1;
+        while (pos < vObject.getValues().length &&
+                        vObject.getSlotKind(pos) == JavaKind.Illegal) {
+            pos++;
+        }
+        return pos - curIdx;
+    }
+
+    /**
+     * Returns a correctly-sized kind to write at once in the array. Uses the declared kind to
+     * decide on whether the kind should be a numeric float (This should not matter).
+     */
+    private static JavaKind restoreByteArrayEntryValueKind(JavaKind kind, int byteCount) {
+        switch (byteCount) {
+            case 1:
+                return JavaKind.Byte;
+            case 2:
+                return JavaKind.Short;
+            case 4:
+                if (kind.isNumericFloat()) {
+                    return JavaKind.Float;
+                }
+                return JavaKind.Int;
+            case 8:
+                if (kind.isNumericFloat()) {
+                    return JavaKind.Double;
+                }
+                return JavaKind.Long;
+            default:
+                throw VMError.shouldNotReachHere();
+        }
     }
 
     private static int computeOffset(ArrayList<ValueInfo> valueInfos, int startIndex) {
