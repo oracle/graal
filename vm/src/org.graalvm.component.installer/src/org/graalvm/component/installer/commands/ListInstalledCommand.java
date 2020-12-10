@@ -132,7 +132,9 @@ public class ListInstalledCommand extends QueryCommandBase {
         List<String> ids = findComponentIds();
         List<MetadataException> exceptions = new ArrayList<>();
         if (ids.isEmpty()) {
-            feedback.message("LIST_NoComponentsFound");
+            if (!simpleFormat) {
+                feedback.message("LIST_NoComponentsFound");
+            }
             return false;
         }
         Version.Match versionFilter = getVersionFilter();
@@ -149,10 +151,12 @@ public class ListInstalledCommand extends QueryCommandBase {
             }
         }
         if (components.isEmpty()) {
-            feedback.message("LIST_NoComponentsFound");
+            if (!simpleFormat) {
+                feedback.message("LIST_NoComponentsFound");
+            }
             return false;
         }
-        if (!exceptions.isEmpty()) {
+        if (!simpleFormat && !exceptions.isEmpty()) {
             feedback.error("LIST_ErrorInComponentMetadata", null);
             for (Exception e : exceptions) {
                 feedback.error("LIST_ErrorInComponentMetadataItem", e, e.getLocalizedMessage());

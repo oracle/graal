@@ -265,7 +265,7 @@ public class TestBase implements Feedback {
     }
 
     public void verbosePart(ResourceBundle bundle, String bundleKey, Object... params) {
-        if (bundle != null) {
+        if (bundle != null && bundleKey != null) {
             MessageFormat.format(bundle.getString(bundleKey), params);
         }
         if (feedbackDelegate instanceof FeedbackAdapter) {
