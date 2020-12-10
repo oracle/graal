@@ -130,7 +130,7 @@ public class ComponentInstaller extends Launcher {
         commands.put("info", new InfoCommand()); // NOI18N
         commands.put("rebuild-images", new RebuildImageCommand()); // NOI18N
         commands.put("update", new UpgradeCommand()); // NOI18N
-        // commands.put("update", new UpgradeCommand(false)); // NOI18N
+        commands.put("upgrade", new UpgradeCommand()); // NOI18N
 
         // commands used internally by system scripts, names intentionally hashed.
         commands.put("#postinstall", new PostInstCommand()); // NOI18N
