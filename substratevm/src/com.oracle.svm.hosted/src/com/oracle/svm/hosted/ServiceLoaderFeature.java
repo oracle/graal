@@ -33,7 +33,6 @@ import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collection;
-import java.util.Collections;
 import java.util.Enumeration;
 import java.util.HashSet;
 import java.util.List;
@@ -43,6 +42,7 @@ import java.util.Set;
 import java.util.TreeSet;
 import java.util.concurrent.ConcurrentHashMap;
 
+import com.oracle.svm.core.option.OptionUtils;
 import org.graalvm.compiler.debug.DebugContext;
 import org.graalvm.compiler.options.Option;
 import org.graalvm.compiler.options.OptionType;
@@ -90,10 +90,10 @@ public class ServiceLoaderFeature implements Feature {
         public static final HostedOptionKey<Boolean> TraceServiceLoaderFeature = new HostedOptionKey<>(false);
 
         @Option(help = "Comma-separated list of services that should be excluded", type = OptionType.Expert) //
-        public static final HostedOptionKey<String[]> ServiceLoaderFeatureExcludeServices = new HostedOptionKey<>(new String[0]);
+        public static final HostedOptionKey<String[]> ServiceLoaderFeatureExcludeServices = new HostedOptionKey<>(null);
 
         @Option(help = "Comma-separated list of service providers that should be excluded", type = OptionType.Expert) //
-        public static final HostedOptionKey<String[]> ServiceLoaderFeatureExcludeServiceProviders = new HostedOptionKey<>(new String[0]);
+        public static final HostedOptionKey<String[]> ServiceLoaderFeatureExcludeServiceProviders = new HostedOptionKey<>(null);
 
     }
 
@@ -141,8 +141,8 @@ public class ServiceLoaderFeature implements Feature {
 
     @Override
     public void afterRegistration(AfterRegistrationAccess access) {
-        Collections.addAll(SERVICES_TO_SKIP, Options.ServiceLoaderFeatureExcludeServices.getValue());
-        Collections.addAll(SERVICE_PROVIDERS_TO_SKIP, Options.ServiceLoaderFeatureExcludeServiceProviders.getValue());
+        SERVICES_TO_SKIP.addAll(OptionUtils.flatten(",", Options.ServiceLoaderFeatureExcludeServices.getValue()));
+        SERVICE_PROVIDERS_TO_SKIP.addAll(OptionUtils.flatten(",", Options.ServiceLoaderFeatureExcludeServiceProviders.getValue()));
     }
 
     @Override
