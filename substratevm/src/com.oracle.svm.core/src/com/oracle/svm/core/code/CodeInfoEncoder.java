@@ -602,13 +602,21 @@ class CodeInfoVerifier {
     private static ValueInfo findActualValue(ValueInfo[] actualObject, UnsignedWord expectedOffset, ObjectLayout objectLayout, UnsignedWord startOffset, int startIdx) {
         UnsignedWord curOffset = startOffset;
         int curIdx = startIdx;
-        while (curOffset.notEqual(expectedOffset)) {
+        while (curOffset.belowThan(expectedOffset)) {
             ValueInfo value = actualObject[curIdx];
             curOffset = curOffset.add(objectLayout.sizeInBytes(value.getKind()));
             curIdx++;
         }
-        assert curOffset.equal(expectedOffset);
-        return actualObject[curIdx];
+        if (curOffset.equal(expectedOffset)) {
+            return actualObject[curIdx];
+        }
+        /*
+         * If we go after the expected offset, return an illegal. Takes care of large byte array
+         * accesses, and should raise flags for other cases.
+         */
+        ValueInfo illegal = new ValueInfo();
+        illegal.type = ValueType.Illegal;
+        return illegal;
     }
 }
 
