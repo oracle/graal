@@ -106,7 +106,7 @@ public class ConfigurationSet {
 
     public SerializationConfiguration loadSerializationConfig(Function<IOException, Exception> exceptionHandler) throws Exception {
         SerializationConfiguration serializationConfiguration = new SerializationConfiguration();
-        loadConfig(serializationConfigPaths, new SerializationConfigurationParser((targetSerializationClass, checksum) -> serializationConfiguration.add(targetSerializationClass, checksum)),
+        loadConfig(serializationConfigPaths, new SerializationConfigurationParser((targetSerializationClass, checksums) -> serializationConfiguration.addAll(targetSerializationClass, checksums)),
                         exceptionHandler);
         return serializationConfiguration;
     }
