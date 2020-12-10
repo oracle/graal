@@ -290,9 +290,11 @@ suite = {
       "subDir" : "projects",
       "sourceDirs" : ["src"],
       "dependencies" : [
+        "truffle:TRUFFLE_NFI",
         "SULONG_CORE"
       ],
       "checkstyle" : "com.oracle.truffle.llvm.runtime",
+      "annotationProcessors" : ["truffle:TRUFFLE_DSL_PROCESSOR"],
       "javaCompliance" : "1.8+",
       "workingSets" : "Truffle, LLVM",
       "license" : "BSD-new",
@@ -1252,6 +1254,7 @@ suite = {
       ],
       "distDependencies" : [
         "SULONG_CORE",
+        "truffle:TRUFFLE_NFI",
       ],
       "license" : "BSD-new",
     },
