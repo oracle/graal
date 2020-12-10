@@ -27,6 +27,24 @@ package com.oracle.svm.reflect.serialize;
 
 // Checkstyle: allow reflection
 
+import java.io.Externalizable;
+import java.io.ObjectStreamClass;
+import java.io.Serializable;
+import java.lang.reflect.Constructor;
+import java.lang.reflect.InvocationTargetException;
+import java.lang.reflect.Method;
+import java.lang.reflect.Modifier;
+import java.net.URL;
+import java.net.URLClassLoader;
+import java.util.List;
+import java.util.Map;
+import java.util.concurrent.ConcurrentHashMap;
+import java.util.stream.Collectors;
+
+import org.graalvm.nativeimage.Platform;
+import org.graalvm.nativeimage.Platforms;
+import org.graalvm.nativeimage.hosted.Feature.FeatureAccess;
+
 import com.oracle.graal.pointsto.BigBang;
 import com.oracle.svm.core.jdk.Package_jdk_internal_reflect;
 import com.oracle.svm.core.jdk.serialize.SerializationRegistry;
@@ -37,21 +55,6 @@ import com.oracle.svm.hosted.ImageClassLoader;
 import com.oracle.svm.hosted.NativeImageOptions;
 import com.oracle.svm.util.ReflectionUtil;
 import com.oracle.svm.util.SerializationChecksumCalculator;
-import org.graalvm.nativeimage.Platform;
-import org.graalvm.nativeimage.Platforms;
-import org.graalvm.nativeimage.hosted.Feature.FeatureAccess;
-
-import java.io.Externalizable;
-import java.io.ObjectStreamClass;
-import java.io.Serializable;
-import java.lang.reflect.Constructor;
-import java.lang.reflect.InvocationTargetException;
-import java.lang.reflect.Method;
-import java.lang.reflect.Modifier;
-import java.net.URL;
-import java.net.URLClassLoader;
-import java.util.Map;
-import java.util.concurrent.ConcurrentHashMap;
 
 public class SerializationSupport implements SerializationRegistry {
 
@@ -169,7 +172,7 @@ public class SerializationSupport implements SerializationRegistry {
     }
 
     @Platforms({Platform.HOSTED_ONLY.class})
-    public Class<?> addSerializationConstructorAccessorClass(Class<?> serializationTargetClass, Long configuredChecksum, FeatureAccess access) {
+    public Class<?> addSerializationConstructorAccessorClass(Class<?> serializationTargetClass, List<Long> configuredChecksums, FeatureAccess access) {
         if (serializationTargetClass.isArray() || Enum.class.isAssignableFrom(serializationTargetClass)) {
             return null;
         }
@@ -222,7 +225,7 @@ public class SerializationSupport implements SerializationRegistry {
             // Prepare build time checksum and verify with configured checksum only for non-abstract
             // classes. Abstract class' checksum is always 0.
             if (!isAbstract) {
-                checksum = getChecksum(serializationTargetClass, configuredChecksum, (FeatureImpl.BeforeAnalysisAccessImpl) access, buildTimeConsClass, targetClassName);
+                checksum = getChecksum(serializationTargetClass, configuredChecksums, (FeatureImpl.BeforeAnalysisAccessImpl) access, buildTimeConsClass, targetClassName);
             }
             try {
                 Method getConstructorAccessor = ReflectionUtil.lookupMethod(Constructor.class, "getConstructorAccessor");
@@ -250,8 +253,7 @@ public class SerializationSupport implements SerializationRegistry {
         return buildTimeConsClass;
     }
 
-    private long getChecksum(Class<?> serializationTargetClass, Long configuredChecksum, FeatureImpl.BeforeAnalysisAccessImpl access, Class<?> buildTimeConsClass, String targetClassName) {
-        long checksum;
+    private long getChecksum(Class<?> serializationTargetClass, List<Long> configuredChecksums, FeatureImpl.BeforeAnalysisAccessImpl access, Class<?> buildTimeConsClass, String targetClassName) {
         // this class is getting from SerializationChecksumClassLoader classloader
         Class<?> checksumCalculationTargetClass;
         try {
@@ -262,20 +264,18 @@ public class SerializationSupport implements SerializationRegistry {
             throw VMError.shouldNotReachHere(e);
         }
         long buildTimeChecksum = checksumCalculator.calculateChecksum(buildTimeConsClass.getName(), serializationTargetClass.getName(), checksumCalculationTargetClass);
-        if (configuredChecksum != null) {
-            if (configuredChecksum.longValue() != buildTimeChecksum) {
+        if (!configuredChecksums.isEmpty()) {
+            /* If we have checksums, one of them has to match the buildTimeChecksum */
+            if (!configuredChecksums.contains(buildTimeChecksum)) {
                 StringBuilder sb = new StringBuilder();
                 sb.append("\nBuild time serialization class checksum verify failure.")
                                 .append(" The classes' hierarchy may have been changed from configuration collecting time to image build time:\n");
-                sb.append(targetClassName).append(": configured checksum is ").append(configuredChecksum).append(", build time checksum is ").append(buildTimeChecksum);
+                sb.append(targetClassName).append(": configured checksums: ").append(configuredChecksums.stream().map(String::valueOf).collect(Collectors.joining(", "))).append("\n");
+                sb.append(targetClassName).append(": build time checksum: ").append(buildTimeChecksum);
                 reportError(access, CHECKSUM_VERIFY_FAIL, sb.toString());
             }
-            checksum = configuredChecksum;
-        } else {
-            // If the checksum is not set in configurations, use the build time checksum instead
-            checksum = buildTimeChecksum;
         }
-        return checksum;
+        return buildTimeChecksum;
     }
 
     @Override

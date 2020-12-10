@@ -25,26 +25,28 @@
  */
 package com.oracle.svm.configure.config;
 
-import com.oracle.svm.configure.json.JsonPrintable;
-import com.oracle.svm.configure.json.JsonWriter;
-
 import java.io.IOException;
-import java.util.HashSet;
+import java.util.Collection;
+import java.util.Collections;
+import java.util.LinkedHashSet;
 import java.util.Map;
 import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
+import java.util.stream.Collectors;
+
+import com.oracle.svm.configure.json.JsonPrintable;
+import com.oracle.svm.configure.json.JsonWriter;
 
 public class SerializationConfiguration implements JsonPrintable {
 
     private final ConcurrentHashMap<String, Set<Long>> serializations = new ConcurrentHashMap<>();
 
+    public void addAll(String serializationTargetClass, Collection<Long> checksums) {
+        serializations.computeIfAbsent(serializationTargetClass, key -> new LinkedHashSet<>()).addAll(checksums);
+    }
+
     public void add(String serializationTargetClass, Long checksum) {
-        Set<Long> ret = serializations.get(serializationTargetClass);
-        if (ret == null) {
-            ret = new HashSet<>();
-            serializations.put(serializationTargetClass, ret);
-        }
-        ret.add(checksum);
+        addAll(serializationTargetClass, Collections.singleton(checksum));
     }
 
     public boolean contains(String serializationTargetClass, Long checksum) {
@@ -56,20 +58,23 @@ public class SerializationConfiguration implements JsonPrintable {
         writer.append('[').indent();
         String prefix = "";
         for (Map.Entry<String, Set<Long>> entry : serializations.entrySet()) {
-            for (Long value : entry.getValue()) {
-                writer.append(prefix);
-                writer.newline().append('{');
-                writer.newline();
-                writer.quote("name").append(":").quote(entry.getKey());
-                if (value != null) {
-                    writer.append(",").newline();
-                    writer.quote("checksum").append(':').append(value.toString()).newline();
+            writer.append(prefix);
+            writer.newline().append('{').newline();
+            String className = entry.getKey();
+            writer.quote("name").append(":").quote(className);
+            Set<Long> checksums = entry.getValue();
+            if (!checksums.isEmpty()) {
+                writer.append(",").newline();
+                writer.quote("checksum").append(':');
+                if (checksums.size() == 1) {
+                    writer.append(checksums.iterator().next().toString());
                 } else {
-                    writer.newline();
+                    writer.append(checksums.stream().map(String::valueOf).collect(Collectors.joining(", ", "[", "]")));
                 }
-                writer.append('}');
-                prefix = ",";
+                writer.newline();
             }
+            writer.append('}');
+            prefix = ",";
         }
         writer.unindent().newline();
         writer.append(']').newline();
