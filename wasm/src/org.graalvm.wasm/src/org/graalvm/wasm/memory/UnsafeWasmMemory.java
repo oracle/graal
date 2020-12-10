@@ -130,8 +130,10 @@ public class UnsafeWasmMemory extends WasmMemory implements AutoCloseable {
     }
 
     @Override
-    public void clear() {
-        unsafe.setMemory(startAddress, byteSize(), (byte) 0);
+    public void reset() {
+        size = declaredMinSize;
+        unsafe.freeMemory(startAddress);
+        startAddress = unsafe.allocateMemory(byteSize());
     }
 
     @Override
@@ -159,7 +161,7 @@ public class UnsafeWasmMemory extends WasmMemory implements AutoCloseable {
     public boolean grow(int extraPageSize) {
         if (extraPageSize == 0) {
             return true;
-        } else if (compareUnsigned(extraPageSize, maxAllowedSize) < 0 && compareUnsigned(size() + extraPageSize, maxAllowedSize) < 0) {
+        } else if (compareUnsigned(extraPageSize, maxAllowedSize) <= 0 && compareUnsigned(size() + extraPageSize, maxAllowedSize) <= 0) {
             // Condition above and limit on maxPageSize (see ModuleLimits#MAX_MEMORY_SIZE) ensure
             // computation of targetByteSize does not overflow.
             final int targetByteSize = multiplyExact(addExact(size(), extraPageSize), MEMORY_PAGE_SIZE);
