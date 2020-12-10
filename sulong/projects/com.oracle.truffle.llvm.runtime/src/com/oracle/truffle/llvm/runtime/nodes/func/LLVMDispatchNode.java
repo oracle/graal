@@ -85,6 +85,11 @@ public abstract class LLVMDispatchNode extends LLVMNode {
         return getShortString("type", "signature");
     }
 
+    boolean haveNativeCtxExt() {
+        CompilerAsserts.neverPartOfCompilation();
+        return LLVMLanguage.getLanguage().lookupContextExtension(NativeContextExtension.class) != null;
+    }
+
     NativeContextExtension getNativeCtxExt(ContextReference<LLVMContext> ctxRef) {
         if (nativeCtxExtKey == null) {
             CompilerDirectives.transferToInterpreterAndInvalidate();
@@ -170,7 +175,8 @@ public abstract class LLVMDispatchNode extends LLVMNode {
      * available. We do a native call.
      */
 
-    @Specialization(limit = "INLINE_CACHE_SIZE", guards = {"descriptor == cachedDescriptor", "cachedFunctionCode.isNativeFunctionSlowPath()"}, assumptions = "singleContextAssumption()")
+    @Specialization(limit = "INLINE_CACHE_SIZE", guards = {"descriptor == cachedDescriptor", "cachedFunctionCode.isNativeFunctionSlowPath()",
+                    "haveNativeCtxExt()"}, assumptions = "singleContextAssumption()")
     protected Object doCachedNativeFunction(@SuppressWarnings("unused") LLVMFunctionDescriptor descriptor,
                     Object[] arguments,
                     @Cached("descriptor") LLVMFunctionDescriptor cachedDescriptor,
@@ -216,7 +222,7 @@ public abstract class LLVMDispatchNode extends LLVMNode {
         return doBind(getNativeCtxExt(ctxRef), functionCode, getSignatureSource(ctxRef));
     }
 
-    @Specialization(replaces = "doCachedNativeCode", guards = "descriptor.getFunctionCode().isNativeFunction(resolve)")
+    @Specialization(replaces = "doCachedNativeCode", guards = {"descriptor.getFunctionCode().isNativeFunction(resolve)", "haveNativeCtxExt()"})
     protected Object doNative(LLVMFunctionDescriptor descriptor, Object[] arguments,
                     @Cached("createToNativeNodes()") LLVMNativeConvertNode[] toNative,
                     @Cached("createFromNativeNode()") LLVMNativeConvertNode fromNative,
@@ -262,7 +268,7 @@ public abstract class LLVMDispatchNode extends LLVMNode {
         return lookupDispatchForeignNode.execute(foreigns.asForeign(receiver), natives.getNativeType(receiver), arguments);
     }
 
-    @Specialization
+    @Specialization(guards = "haveNativeCtxExt()")
     protected static Object doNativeFunction(LLVMNativePointer pointer, Object[] arguments,
                     @Cached("createCachedNativeDispatch()") LLVMNativeDispatchNode dispatchNode) {
         try {
@@ -271,6 +277,11 @@ public abstract class LLVMDispatchNode extends LLVMNode {
             CompilerDirectives.transferToInterpreter();
             throw new LLVMNativePointerException(dispatchNode, "Invalid native function pointer", e);
         }
+    }
+
+    @Specialization(guards = "!haveNativeCtxExt()")
+    protected Object doInvalidNativeFunction(@SuppressWarnings("unused") LLVMNativePointer pointer, @SuppressWarnings("unused") Object[] arguments) {
+        throw new LLVMNativePointerException(this, "Invalid native function pointer", null);
     }
 
     protected LLVMNativeDispatchNode createCachedNativeDispatch() {
