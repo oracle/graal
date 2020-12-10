@@ -381,19 +381,19 @@ public class LLVMAarch64VaListStorage implements TruffleObject {
         @Specialization(guards = {"vaList.isNativized()"})
         static void initializeNativized(LLVMAarch64VaListStorage vaList, Object[] realArgs, int numOfExpArgs,
                         @Cached NativeAllocaInstruction stackAllocationNode,
-                        @Cached LLVMI64StoreNode i64RegSaveAreaStore,
-                        @Cached LLVMI32StoreNode i32RegSaveAreaStore,
-                        @Cached LLVM80BitFloatStoreNode fp80bitRegSaveAreaStore,
-                        @Cached LLVMPointerStoreNode pointerRegSaveAreaStore,
-                        @Cached LLVMI64StoreNode i64OverflowArgAreaStore,
-                        @Cached LLVMI32StoreNode i32OverflowArgAreaStore,
-                        @Cached LLVM80BitFloatStoreNode fp80bitOverflowArgAreaStore,
-                        @Cached LLVMPointerStoreNode pointerOverflowArgAreaStore,
-                        @Cached LLVMI32StoreNode gpOffsetStore,
-                        @Cached LLVMI32StoreNode fpOffsetStore,
-                        @Cached LLVMPointerStoreNode overflowArgAreaStore,
-                        @Cached LLVMPointerStoreNode gpSaveAreaStore,
-                        @Cached LLVMPointerStoreNode fpSaveAreaStore,
+                        @Cached LLVMI64OffsetStoreNode i64RegSaveAreaStore,
+                        @Cached LLVMI32OffsetStoreNode i32RegSaveAreaStore,
+                        @Cached LLVM80BitFloatOffsetStoreNode fp80bitRegSaveAreaStore,
+                        @Cached LLVMPointerOffsetStoreNode pointerRegSaveAreaStore,
+                        @Cached LLVMI64OffsetStoreNode i64OverflowArgAreaStore,
+                        @Cached LLVMI32OffsetStoreNode i32OverflowArgAreaStore,
+                        @Cached LLVM80BitFloatOffsetStoreNode fp80bitOverflowArgAreaStore,
+                        @Cached LLVMPointerOffsetStoreNode pointerOverflowArgAreaStore,
+                        @Cached LLVMI32OffsetStoreNode gpOffsetStore,
+                        @Cached LLVMI32OffsetStoreNode fpOffsetStore,
+                        @Cached LLVMPointerOffsetStoreNode overflowArgAreaStore,
+                        @Cached LLVMPointerOffsetStoreNode gpSaveAreaStore,
+                        @Cached LLVMPointerOffsetStoreNode fpSaveAreaStore,
                         @Cached NativeProfiledMemMove memMove) {
             initializeManaged(vaList, realArgs, numOfExpArgs);
 
@@ -691,7 +691,6 @@ public class LLVMAarch64VaListStorage implements TruffleObject {
         }
     }
 
-    @ExportLibrary(LLVMManagedReadLibrary.class)
     @ExportLibrary(NativeTypeLibrary.class)
     public static final class RegSaveArea extends LLVMX86_64VaListStorage.ArgsArea {
 
@@ -753,7 +752,6 @@ public class LLVMAarch64VaListStorage implements TruffleObject {
 
     }
 
-    @ExportLibrary(LLVMManagedReadLibrary.class)
     @ExportLibrary(NativeTypeLibrary.class)
     public static final class OverflowArgArea extends AbstractOverflowArgArea {
 

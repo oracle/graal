@@ -27,9 +27,9 @@
  * NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED
  * OF THE POSSIBILITY OF SUCH DAMAGE.
  */
-#include <stdlib.h>
-#include <stdio.h>
-#include <math.h>
+//#include <stdlib.h>
+//#include <stdio.h>
+//#include <math.h>
 
 #include "vahandler.h"
 
@@ -71,6 +71,9 @@ double sumDoublesLLVM(int count, va_list *args) {
 }
 
 double testVariousTypesLLVM(int count, va_list *args) {
+//double testVariousTypesLLVM(int count, ...) {
+//    va_list args;
+//    va_start(args, count);
     double sum = 0;
     for (int i = 0; i < count; ++i) {
         double num1 = va_arg(*args, double);
@@ -84,6 +87,7 @@ double testVariousTypesLLVM(int count, va_list *args) {
     int overflow1 = va_arg(*args, int);
     char *overflow2 = va_arg(*args, char *);
     printf("%s, %d, %f, %d, %f, %d, %f, %d, %s\n", msg, a.x, a.y, b.x, b.y, c->x, c->y, overflow1, overflow2);
+//    va_end(args);
     return sum;
 }
 
@@ -125,7 +129,6 @@ int main(void) {
            callVAHandlers(sumDoublesNative, sumDoublesNative, 16, 1., 2., 3., 4., 5., 6., 7., 8., 9., 10., 11., 12., 13., 14., 15., 16.));
     printf("Sum of doubles (LLVM, LLVM)     : %f\n",
            callVAHandlers(sumDoublesLLVM, sumDoublesLLVM, 16, 1., 2., 3., 4., 5., 6., 7., 8., 9., 10., 11., 12., 13., 14., 15., 16.));
-
     printf("VACopy test (LLVM, LLVM)     : %f\n",
            testVACopy(sumDoublesLLVM, sumDoublesLLVM, 16, 1., 2., 3., 4., 5., 6., 7., 8., 9., 10., 11., 12., 13., 14., 15., 16.));
     printf("VACopy test (native, LLVM)   : %f\n",
@@ -154,7 +157,7 @@ int main(void) {
     c->x = 12;
     c->y = 5.14;
     printf("Test various types (LLVM):\n");
-    printf("res=%f\n", callVAHandler(testVariousTypesNative, 4, 25.0, 1, 27.3, 2, 26.9, 3, 25.7, 4, "Hello!", a, b, c, 1000, "Hello2!"));
-    printf("Test various types (native):\n");
     printf("res=%f\n", callVAHandler(testVariousTypesLLVM, 4, 25.0, 1, 27.3, 2, 26.9, 3, 25.7, 4, "Hello!", a, b, c, 1000, "Hello2!"));
+    printf("Test various types (native):\n");
+    printf("res=%f\n", callVAHandler(testVariousTypesNative, 4, 25.0, 1, 27.3, 2, 26.9, 3, 25.7, 4, "Hello!", a, b, c, 1000, "Hello2!"));
 }

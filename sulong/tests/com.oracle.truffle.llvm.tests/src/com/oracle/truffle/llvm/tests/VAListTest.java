@@ -60,7 +60,17 @@ public final class VAListTest extends BaseSuiteHarness {
     protected Predicate<? super Path> getIsSulongFilter() {
         return f -> {
             boolean isOut = f.getFileName().toString().endsWith(".out");
-            return isOut;
+            boolean isBc = f.getFileName().toString().endsWith(".bc");
+            return isOut || isBc;
+        };
+    }
+
+    @Override
+    protected Predicate<? super Path> getIsExecutableFilter() {
+        return f -> {
+            boolean isOut = f.getFileName().toString().endsWith(".out");
+            boolean isRef = f.getFileName().toString().endsWith(".ref");
+            return isOut || isRef;
         };
     }
 

@@ -112,7 +112,7 @@ import com.oracle.truffle.llvm.runtime.nodes.api.LLVMNode;
 import com.oracle.truffle.llvm.runtime.nodes.api.LLVMStatementNode;
 import com.oracle.truffle.llvm.runtime.nodes.api.LLVMVoidStatementNodeGen;
 import com.oracle.truffle.llvm.runtime.nodes.memory.literal.LLVMArrayLiteralNode;
-import com.oracle.truffle.llvm.runtime.nodes.memory.load.LLVMDirectLoadNode;
+import com.oracle.truffle.llvm.runtime.nodes.memory.load.LLVMStructLoadNode;
 import com.oracle.truffle.llvm.runtime.nodes.vars.LLVMWriteNode;
 import com.oracle.truffle.llvm.runtime.options.SulongEngineOption;
 import com.oracle.truffle.llvm.runtime.types.AggregateType;
@@ -1247,7 +1247,7 @@ public final class LLVMBitcodeInstructionVisitor implements SymbolVisitor {
 // if (type.toString().contains("[2 x i64]")) {
 // return true;
 // }
-        return ((exprNode instanceof LLVMDirectLoadNode.LLVMStructDirectLoadNode) || (exprNode instanceof LLVMArrayLiteralNode) && (type instanceof ArrayType));
+        return ((exprNode instanceof LLVMStructLoadNode) || (exprNode instanceof LLVMArrayLiteralNode) && (type instanceof ArrayType));
     }
 
     private void assignSourceLocation(LLVMInstrumentableNode node, Instruction sourceInstruction) {

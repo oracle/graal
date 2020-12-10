@@ -1436,7 +1436,6 @@ public final class LLVMX86_64VaListStorage implements TruffleObject {
 
     }
 
-    @ExportLibrary(LLVMManagedReadLibrary.class)
     @ExportLibrary(NativeTypeLibrary.class)
     public static final class OverflowArgArea extends AbstractOverflowArgArea {
 

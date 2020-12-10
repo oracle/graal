@@ -60,14 +60,14 @@ final class DarwinAMD64PlatformCapability extends BasicPlatformCapability<Darwin
 
     @Override
     public Object createVAListStorage(RootNode rootNode) {
-        // return new LLVMX86_64VaListStorage(rootNode);
-        return new LLVMAarch64VaListStorage(rootNode);
+        return new LLVMX86_64VaListStorage(rootNode);
+        // return new LLVMAarch64VaListStorage(rootNode);
     }
 
     @Override
     public Type getVAListType() {
-        // return LLVMX86_64VaListStorage.VA_LIST_TYPE;
-        return LLVMAarch64VaListStorage.VA_LIST_TYPE;
+        return LLVMX86_64VaListStorage.VA_LIST_TYPE;
+        // return LLVMAarch64VaListStorage.VA_LIST_TYPE;
     }
 
     @Override

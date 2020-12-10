@@ -166,7 +166,7 @@ public abstract class BaseSuiteHarness extends BaseTestHarness {
         Path referenceBinary;
         ProcessResult referenceResult;
         try (Stream<Path> walk = Files.list(getTestDirectory())) {
-            List<Path> files = walk.filter(isExecutable).collect(Collectors.toList());
+            List<Path> files = walk.filter(getIsExecutableFilter()).collect(Collectors.toList());
 
             // some tests do not compile with certain versions of clang
             Assume.assumeFalse("reference binary missing", files.isEmpty());
@@ -187,6 +187,10 @@ public abstract class BaseSuiteHarness extends BaseTestHarness {
 
     protected Predicate<? super Path> getIsSulongFilter() {
         return isSulong;
+    }
+
+    protected Predicate<? super Path> getIsExecutableFilter() {
+        return isExecutable;
     }
 
     protected static AssertionError fail(String testName, AssertionError error) {

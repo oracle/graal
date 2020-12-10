@@ -29,14 +29,17 @@
 #
 QUIETLY$(MX_VERBOSE)  = @
 
-default: va_arg/va_arg_test.out
+.PHONY: default
+
+default: va_arg/va_arg_test.bc va_arg/va_arg_test.ref
 
 PLATFORM?=$(shell uname -p)
 VA_ARG_TEST_LL=va_arg/va_arg_test_$(PLATFORM).ll
 
-va_arg/va_arg_test.out: $(VA_ARG_TEST_LL) va_arg/Makefile
+va_arg/va_arg_test.bc: $(VA_ARG_TEST_LL) va_arg/Makefile
+	@mkdir -p $(shell dirname $@)
+	$(QUIETLY) $(CLANG) -emit-llvm -o $@ -c $<
+
+va_arg/va_arg_test.ref: va_arg/ref.c va_arg/Makefile
 	@mkdir -p $(shell dirname $@)
 	$(QUIETLY) $(CLANG) $(CPPFLAGS) $(CFLAGS) $(LDFLAGS) -fPIC -o $@ $<
-	
-%.bc: %.out
-	cp $< $@
