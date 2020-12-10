@@ -146,6 +146,8 @@ public class CommonConstants {
 
     public static final String OS_MACOS_DARWIN = "darwin"; // NOI18N
     public static final String OS_TOKEN_MACOS = "macos"; // NOI18N
+    public static final String OS_TOKEN_LINUX = "linux"; // NOI18N
+    public static final String OS_TOKEN_WINDOWS = "windows"; // NOI18N
 
     /**
      * Return code which will cause the wrapper to retry operations on locked files.
