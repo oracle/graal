@@ -73,7 +73,7 @@ public abstract class LLVMGetStackFromThreadNode extends LLVMNode {
      */
     @Specialization(replaces = "cached")
     static LLVMStack generic(LLVMThreadingStack stack, Thread currentThread,
-                             @Cached ConditionProfile profile) {
+                    @Cached ConditionProfile profile) {
         return stack.getStackProfiled(currentThread, profile);
     }
 }
