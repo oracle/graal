@@ -311,7 +311,7 @@ class UnitTestRun:
                     extra_args = ['--verbose', '--enable-timing']
                 else:
                     extra_args = []
-                if Task.tags is None or 'coverage' not in Task.tags:
+                if Task.tags is None or 'coverage' not in Task.tags: # pylint: disable=unsupported-membership-test
                     # If this is a coverage execution, we want maximal coverage
                     # and thus must not fail fast.
                     extra_args += ['--fail-fast']
@@ -813,7 +813,7 @@ class StdoutUnstripping:
                 with open(tmp_file, 'w') as fp:
                     fp.write(data)
                 retraceOut = mx.OutputCapture()
-                unstrip_args = [m for m in set(self.mapFiles)] + [tmp_file]
+                unstrip_args = list(set(self.mapFiles)) + [tmp_file]
                 mx.unstrip(unstrip_args, out=retraceOut)
                 retraceOut = retraceOut.data
                 if data != retraceOut and mx.is_windows():
