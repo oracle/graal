@@ -69,6 +69,9 @@ public abstract class StringConversion {
     }
 
     static StringConversion select(EspressoContext context) {
+        // This gets folded during parsing, making sure that SVM analysis on a 8 host doesn't see
+        // CompactToCompact or CopyingCompactToCompact and thus doesn't reach any 11-host-specific
+        // code.
         if (JavaVersion.HOST_COMPACT_STRINGS) {
             if (context.getJavaVersion().compactStringsEnabled()) {
                 if (context.getEnv().getOptions().get(EspressoOptions.StringSharing)) {
