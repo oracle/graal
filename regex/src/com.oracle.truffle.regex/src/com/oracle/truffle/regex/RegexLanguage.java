@@ -42,14 +42,22 @@ package com.oracle.truffle.regex;
 
 import com.oracle.truffle.api.CallTarget;
 import com.oracle.truffle.api.CompilerDirectives;
+import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.Truffle;
 import com.oracle.truffle.api.TruffleLanguage;
 import com.oracle.truffle.api.instrumentation.ProvidedTags;
 import com.oracle.truffle.api.instrumentation.StandardTags;
 import com.oracle.truffle.api.nodes.RootNode;
+import com.oracle.truffle.api.source.Source;
+import com.oracle.truffle.regex.tregex.TRegexOptions;
 import com.oracle.truffle.regex.tregex.nfa.PureNFAIndex;
 import com.oracle.truffle.regex.tregex.parser.RegexParserGlobals;
 import com.oracle.truffle.regex.tregex.parser.ast.GroupBoundaries;
+import com.oracle.truffle.regex.tregex.string.Encodings;
+import com.oracle.truffle.regex.util.LRUCache;
+
+import java.util.Collections;
+import java.util.Map;
 
 /**
  * Truffle Regular Expression Language
@@ -96,6 +104,7 @@ public final class RegexLanguage extends TruffleLanguage<RegexLanguage.RegexCont
 
     public final RegexEngineBuilder engineBuilder = new RegexEngineBuilder(this);
 
+    private final Map<RegexSource, CallTarget> cache = Collections.synchronizedMap(new LRUCache<>(TRegexOptions.RegexMaxCacheSize));
     private final GroupBoundaries[] cachedGroupBoundaries;
     public final RegexParserGlobals parserGlobals;
     public final PureNFAIndex emptyNFAIndex;
@@ -112,7 +121,50 @@ public final class RegexLanguage extends TruffleLanguage<RegexLanguage.RegexCont
 
     @Override
     protected CallTarget parse(ParsingRequest parsingRequest) {
+        Source source = parsingRequest.getSource();
+        String mimeType = source.getMimeType();
+        if (mimeType != null) {
+            RegexSource regexSource = createRegexSource(source);
+            CallTarget result = cacheGet(regexSource);
+            if (result == null) {
+                result = Truffle.getRuntime().createCallTarget(new GetRegexObjectNode(this, source, regexSource));
+                cachePut(regexSource, result);
+            }
+            return result;
+        }
+        // TODO: deprecated
         return getCurrentContext().getEngineBuilderCT;
+    }
+
+    @TruffleBoundary
+    private CallTarget cacheGet(RegexSource source) {
+        return cache.get(source);
+    }
+
+    @TruffleBoundary
+    private void cachePut(RegexSource source, CallTarget result) {
+        cache.put(source, result);
+    }
+
+    private static RegexSource createRegexSource(Source source) {
+        String srcStr = source.getCharacters().toString();
+        if (srcStr.length() < 2) {
+            throw CompilerDirectives.shouldNotReachHere("malformed regex");
+        }
+        RegexOptions.Builder optBuilder = RegexOptions.builder();
+        int firstSlash = optBuilder.parseOptions(srcStr);
+        int lastSlash = srcStr.lastIndexOf('/');
+        assert firstSlash >= 0 && firstSlash <= srcStr.length();
+        if (lastSlash <= firstSlash || lastSlash >= srcStr.length()) {
+            throw CompilerDirectives.shouldNotReachHere("malformed regex");
+        }
+        String pattern = srcStr.substring(firstSlash + 1, lastSlash);
+        String flags = srcStr.substring(lastSlash + 1);
+        // ECMAScript-specific: the 'u' flag changes the encoding
+        if (optBuilder.getFlavor() == null && !optBuilder.isUtf16ExplodeAstralSymbols() && optBuilder.getEncoding() == Encodings.UTF_16_RAW && flags.indexOf('u') >= 0) {
+            optBuilder.encoding(Encodings.UTF_16);
+        }
+        return new RegexSource(pattern, flags, optBuilder.build(), source);
     }
 
     @Override
@@ -134,8 +186,8 @@ public final class RegexLanguage extends TruffleLanguage<RegexLanguage.RegexCont
     /**
      * {@link RegexLanguage} is thread-safe - it supports parallel parsing requests as well as
      * parallel access to all {@link AbstractRegexObject}s. Parallel access to
-     * {@link com.oracle.truffle.regex.result.LazyCaptureGroupsResult} objects may lead to duplicate
-     * execution of code, but no wrong results.
+     * {@link com.oracle.truffle.regex.result.LazyResult}s objects may lead to duplicate execution
+     * of code, but no wrong results.
      *
      * @param thread the thread that accesses the context for the first time.
      * @param singleThreaded {@code true} if the access is considered single-threaded, {@code false}

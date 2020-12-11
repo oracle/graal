@@ -105,7 +105,7 @@ import com.oracle.truffle.regex.tregex.util.json.Json;
 import com.oracle.truffle.regex.tregex.util.json.JsonConvertible;
 import com.oracle.truffle.regex.tregex.util.json.JsonValue;
 import com.oracle.truffle.regex.util.BitSets;
-import com.oracle.truffle.regex.util.CompilationFinalBitSet;
+import com.oracle.truffle.regex.util.TBitSet;
 
 public final class DFAGenerator implements JsonConvertible {
 
@@ -116,7 +116,6 @@ public final class DFAGenerator implements JsonConvertible {
     private final NFA nfa;
     private final TRegexDFAExecutorProperties executorProps;
     private final CompilationBuffer compilationBuffer;
-    private final RegexOptions engineOptions;
 
     private final boolean pruneUnambiguousPaths;
 
@@ -145,13 +144,12 @@ public final class DFAGenerator implements JsonConvertible {
 
     private final Matchers.Builder matchersBuilder;
 
-    public DFAGenerator(TRegexCompilationRequest compilationReqest, NFA nfa, TRegexDFAExecutorProperties executorProps, CompilationBuffer compilationBuffer, RegexOptions engineOptions) {
+    public DFAGenerator(TRegexCompilationRequest compilationReqest, NFA nfa, TRegexDFAExecutorProperties executorProps, CompilationBuffer compilationBuffer) {
         this.compilationReqest = compilationReqest;
         this.nfa = nfa;
         this.executorProps = executorProps;
         this.pruneUnambiguousPaths = executorProps.isBackward() && nfa.isTraceFinderNFA() && nfa.hasReverseUnAnchoredEntry();
         this.compilationBuffer = compilationBuffer;
-        this.engineOptions = engineOptions;
         this.cgPartialTransitions = debugMode() ? new ArrayList<>() : null;
         this.bfsTraversalCur = needBFSTraversalLists() ? new ArrayList<>() : null;
         this.bfsTraversalNext = needBFSTraversalLists() ? new ArrayList<>() : null;
@@ -199,12 +197,8 @@ public final class DFAGenerator implements JsonConvertible {
         return executorProps.isSearching();
     }
 
-    private RegexOptions getOptions() {
+    public RegexOptions getOptions() {
         return nfa.getAst().getOptions();
-    }
-
-    public RegexOptions getEngineOptions() {
-        return engineOptions;
     }
 
     private Encoding getEncoding() {
@@ -343,7 +337,7 @@ public final class DFAGenerator implements JsonConvertible {
         }
         executorProps.setSimpleCG(doSimpleCG);
         executorProps.setSimpleCGMustCopy(simpleCGMustCopy);
-        return new TRegexDFAExecutorNode(executorProps, maxNumberOfNfaStates, states, captureGroupTransitions, TRegexDFAExecutorDebugRecorder.create(engineOptions, this));
+        return new TRegexDFAExecutorNode(executorProps, maxNumberOfNfaStates, states, captureGroupTransitions, TRegexDFAExecutorDebugRecorder.create(getOptions(), this));
     }
 
     private void createInitialStatesForward() {
@@ -617,7 +611,7 @@ public final class DFAGenerator implements JsonConvertible {
             DFAStateNodeBuilder literalFirstDFAState = null;
             DFAStateNodeBuilder literalLastDFAState = null;
             DFAStateNodeBuilder unanchoredInitialState = getUnanchoredInitialState();
-            CompilationFinalBitSet visited = new CompilationFinalBitSet(nextID);
+            TBitSet visited = new TBitSet(nextID);
             visited.set(unanchoredInitialState.getId());
             bfsTraversalCur.clear();
             bfsTraversalCur.add(unanchoredInitialState.getSuccessors());
@@ -1067,7 +1061,7 @@ public final class DFAGenerator implements JsonConvertible {
     }
 
     private boolean debugMode() {
-        return engineOptions.isDumpAutomata() || engineOptions.isStepExecution();
+        return getOptions().isDumpAutomata() || getOptions().isStepExecution();
     }
 
     public String getDebugDumpName(String name) {

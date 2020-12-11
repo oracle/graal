@@ -125,12 +125,12 @@ public final class RegexObject extends AbstractConstantKeysObject {
     private final TruffleObject namedCaptureGroups;
     private final Object compiledRegexObject;
 
-    public RegexObject(RegexCompiler compiler, RegexSource source, TruffleObject flags, int numberOfCaptureGroups, Map<String, Integer> namedCaptureGroups) {
+    public RegexObject(Object compiledRegexObject, RegexSource source, TruffleObject flags, int numberOfCaptureGroups, Map<String, Integer> namedCaptureGroups) {
         this.source = source;
         this.flags = flags;
         this.numberOfCaptureGroups = numberOfCaptureGroups;
         this.namedCaptureGroups = namedCaptureGroups != null ? createNamedCaptureGroupMap(namedCaptureGroups) : TruffleNull.INSTANCE;
-        this.compiledRegexObject = compiler.compile(source);
+        this.compiledRegexObject = compiledRegexObject;
     }
 
     @TruffleBoundary

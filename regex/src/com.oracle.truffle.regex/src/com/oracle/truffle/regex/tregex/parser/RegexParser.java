@@ -87,7 +87,6 @@ public final class RegexParser {
     private final RegexAST ast;
     private final RegexSource source;
     private final RegexFlags flags;
-    private final RegexOptions options;
     private final RegexLexer lexer;
     private final RegexProperties properties;
     private final Counter.ThresholdCounter groupCount;
@@ -102,23 +101,22 @@ public final class RegexParser {
     private final CompilationBuffer compilationBuffer;
 
     @TruffleBoundary
-    public RegexParser(RegexLanguage language, RegexSource source, RegexFlags flags, RegexOptions options, CompilationBuffer compilationBuffer) throws RegexSyntaxException {
+    public RegexParser(RegexLanguage language, RegexSource source, RegexFlags flags, CompilationBuffer compilationBuffer) throws RegexSyntaxException {
         this.globals = language.parserGlobals;
         this.source = source;
         this.flags = flags;
-        this.options = options;
-        this.lexer = new RegexLexer(source, flags, options);
-        this.ast = new RegexAST(language, source, flags, options);
+        this.lexer = new RegexLexer(source, flags);
+        this.ast = new RegexAST(language, source, flags);
         this.properties = ast.getProperties();
         this.groupCount = ast.getGroupCount();
         this.copyVisitor = new CopyVisitor(ast);
         this.countVisitor = new NodeCountVisitor();
-        this.setSourceSectionVisitor = options.isDumpAutomata() ? new SetSourceSectionVisitor(ast) : null;
+        this.setSourceSectionVisitor = source.getOptions().isDumpAutomata() ? new SetSourceSectionVisitor(ast) : null;
         this.compilationBuffer = compilationBuffer;
     }
 
     public static Group parseRootLess(RegexLanguage language, String pattern) throws RegexSyntaxException {
-        return new RegexParser(language, new RegexSource(pattern, "", Encodings.UTF_16_RAW), RegexFlags.DEFAULT, RegexOptions.DEFAULT, new CompilationBuffer(Encodings.UTF_16_RAW)).parse(false);
+        return new RegexParser(language, new RegexSource(pattern, "", RegexOptions.DEFAULT), RegexFlags.DEFAULT, new CompilationBuffer(Encodings.UTF_16_RAW)).parse(false);
     }
 
     @TruffleBoundary
@@ -312,7 +310,7 @@ public final class RegexParser {
             // we don't have to expand the inverse in unicode explode mode here, because the
             // character set is guaranteed to be in BMP range, and its inverse will match all
             // surrogates
-            assert !flags.isUnicode() || !options.isUTF16ExplodeAstralSymbols() || cc.getCharSet().matchesNothing() || cc.getCharSet().getMax() <= 0xffff;
+            assert !flags.isUnicode() || !source.getOptions().isUTF16ExplodeAstralSymbols() || cc.getCharSet().matchesNothing() || cc.getCharSet().getMax() <= 0xffff;
             assert !group.hasEnclosedCaptureGroups();
             cc.setCharSet(cc.getCharSet().createInverse(ast.getEncoding()));
             ast.updatePropsCC(cc);
@@ -347,7 +345,7 @@ public final class RegexParser {
 
     private Term translateUnicodeCharClass(Token.CharacterClass token) {
         CodePointSet codePointSet = token.getCodePointSet();
-        if (!options.isUTF16ExplodeAstralSymbols() || Constants.BMP_WITHOUT_SURROGATES.contains(token.getCodePointSet())) {
+        if (!source.getOptions().isUTF16ExplodeAstralSymbols() || Constants.BMP_WITHOUT_SURROGATES.contains(token.getCodePointSet())) {
             return createCharClass(codePointSet, token, token.wasSingleChar());
         }
         Group group = ast.createGroup();
@@ -622,7 +620,7 @@ public final class RegexParser {
 
     private void substitute(Token token, Group substitution) {
         Group copy = substitution.copyRecursive(ast, compilationBuffer);
-        if (options.isDumpAutomata()) {
+        if (source.getOptions().isDumpAutomata()) {
             setSourceSectionVisitor.run(copy, token);
         }
         addTerm(copy);
@@ -633,7 +631,7 @@ public final class RegexParser {
     private Group parse(boolean rootCapture) throws RegexSyntaxException {
         RegexASTRootNode rootParent = ast.createRootNode();
         Group root = createGroup(null, false, rootCapture, rootParent);
-        if (options.isDumpAutomata()) {
+        if (source.getOptions().isDumpAutomata()) {
             // set leading and trailing '/' as source sections of root
             ast.addSourceSections(root, Arrays.asList(ast.getSource().getSource().createSection(0, 1), ast.getSource().getSource().createSection(ast.getSource().getPattern().length() + 1, 1)));
         }
@@ -642,7 +640,7 @@ public final class RegexParser {
         while (lexer.hasNext()) {
             prevKind = token == null ? null : token.kind;
             token = lexer.next();
-            if (options.getFlavor() != RubyFlavor.INSTANCE && token.kind != Token.Kind.quantifier && curTerm != null && curTerm.isBackReference() &&
+            if (source.getOptions().getFlavor() != RubyFlavor.INSTANCE && token.kind != Token.Kind.quantifier && curTerm != null && curTerm.isBackReference() &&
                             curTerm.asBackReference().isNestedOrForwardReference() && !isNestedInLookBehindAssertion(curTerm)) {
                 // In JavaScript, nested/forward back-references are dropped as no-ops.
                 // However, in Ruby, they are valid, since the contents of capture groups

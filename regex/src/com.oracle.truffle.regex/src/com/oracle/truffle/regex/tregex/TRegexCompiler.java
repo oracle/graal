@@ -44,7 +44,6 @@ import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.regex.CompiledRegexObject;
 import com.oracle.truffle.regex.RegexCompiler;
 import com.oracle.truffle.regex.RegexLanguage;
-import com.oracle.truffle.regex.RegexOptions;
 import com.oracle.truffle.regex.RegexSource;
 import com.oracle.truffle.regex.RegexSyntaxException;
 import com.oracle.truffle.regex.tregex.nfa.NFA;
@@ -58,25 +57,24 @@ import com.oracle.truffle.regex.tregex.parser.flavors.RegexFlavorProcessor;
 public final class TRegexCompiler implements RegexCompiler {
 
     private final RegexLanguage language;
-    private final RegexOptions options;
 
-    public TRegexCompiler(RegexLanguage language, RegexOptions options) {
+    public TRegexCompiler(RegexLanguage language) {
         this.language = language;
-        this.options = options;
     }
 
     public RegexLanguage getLanguage() {
         return language;
     }
 
-    public RegexOptions getOptions() {
-        return options;
-    }
-
     @TruffleBoundary
     @Override
     public CompiledRegexObject compile(RegexSource source) throws RegexSyntaxException {
-        RegexFlavor flavor = options.getFlavor();
+        return compile(language, source);
+    }
+
+    @TruffleBoundary
+    public static CompiledRegexObject compile(RegexLanguage language, RegexSource source) throws RegexSyntaxException {
+        RegexFlavor flavor = source.getOptions().getFlavor();
         RegexSource ecmascriptSource = source;
         if (flavor != null) {
             /*
@@ -86,21 +84,21 @@ public final class TRegexCompiler implements RegexCompiler {
             RegexFlavorProcessor flavorProcessor = flavor.forRegex(source);
             ecmascriptSource = flavorProcessor.toECMAScriptRegex();
         }
-        return new TRegexCompilationRequest(this, ecmascriptSource).compile();
+        return new TRegexCompilationRequest(language, ecmascriptSource).compile();
     }
 
     @TruffleBoundary
-    public TRegexDFAExecutorNode compileEagerDFAExecutor(RegexSource source) {
-        return new TRegexCompilationRequest(this, source).compileEagerDFAExecutor();
+    public static TRegexDFAExecutorNode compileEagerDFAExecutor(RegexLanguage language, RegexSource source) {
+        return new TRegexCompilationRequest(language, source).compileEagerDFAExecutor();
     }
 
     @TruffleBoundary
-    public LazyCaptureGroupRegexSearchNode compileLazyDFAExecutor(NFA nfa, TRegexExecRootNode rootNode, boolean allowSimpleCG) {
-        return new TRegexCompilationRequest(this, nfa).compileLazyDFAExecutor(rootNode, allowSimpleCG);
+    public static LazyCaptureGroupRegexSearchNode compileLazyDFAExecutor(RegexLanguage language, NFA nfa, TRegexExecRootNode rootNode, boolean allowSimpleCG) {
+        return new TRegexCompilationRequest(language, nfa).compileLazyDFAExecutor(rootNode, allowSimpleCG);
     }
 
     @TruffleBoundary
-    public TRegexBacktrackingNFAExecutorNode compileBacktrackingExecutor(NFA nfa) {
-        return new TRegexCompilationRequest(this, nfa).compileBacktrackingExecutor();
+    public static TRegexBacktrackingNFAExecutorNode compileBacktrackingExecutor(RegexLanguage language, NFA nfa) {
+        return new TRegexCompilationRequest(language, nfa).compileBacktrackingExecutor();
     }
 }

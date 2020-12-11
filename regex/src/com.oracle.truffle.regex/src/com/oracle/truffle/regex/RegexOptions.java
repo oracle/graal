@@ -41,12 +41,13 @@
 package com.oracle.truffle.regex;
 
 import java.util.Arrays;
+import java.util.Objects;
 
-import com.oracle.truffle.api.CompilerDirectives;
+import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.regex.tregex.parser.flavors.PythonFlavor;
 import com.oracle.truffle.regex.tregex.parser.flavors.RegexFlavor;
 import com.oracle.truffle.regex.tregex.parser.flavors.RubyFlavor;
-import com.oracle.truffle.regex.tregex.util.Loggers;
+import com.oracle.truffle.regex.tregex.string.Encodings;
 
 public final class RegexOptions {
 
@@ -62,30 +63,37 @@ public final class RegexOptions {
     public static final String ALWAYS_EAGER_NAME = "AlwaysEager";
     private static final int UTF_16_EXPLODE_ASTRAL_SYMBOLS = 1 << 5;
     public static final String UTF_16_EXPLODE_ASTRAL_SYMBOLS_NAME = "UTF16ExplodeAstralSymbols";
+    private static final int VALIDATE = 1 << 6;
+    public static final String VALIDATE_NAME = "Validate";
 
-    private static final String FLAVOR_NAME = "Flavor";
-    private static final String FLAVOR_PYTHON_STR = "PythonStr";
-    private static final String FLAVOR_PYTHON_BYTES = "PythonBytes";
-    private static final String FLAVOR_RUBY = "Ruby";
-    private static final String FLAVOR_ECMASCRIPT = "ECMAScript";
+    public static final String FLAVOR_NAME = "Flavor";
+    public static final String FLAVOR_PYTHON_STR = "PythonStr";
+    public static final String FLAVOR_PYTHON_BYTES = "PythonBytes";
+    public static final String FLAVOR_RUBY = "Ruby";
+    public static final String FLAVOR_ECMASCRIPT = "ECMAScript";
+    private static final String[] FLAVOR_OPTIONS = {FLAVOR_PYTHON_STR, FLAVOR_PYTHON_BYTES, FLAVOR_RUBY, FLAVOR_ECMASCRIPT};
+
+    public static final String ENCODING_NAME = "Encoding";
 
     private static final String FEATURE_SET_NAME = "FeatureSet";
 
-    public static final RegexOptions DEFAULT = new RegexOptions(0, null);
+    public static final RegexOptions DEFAULT = new RegexOptions(0, null, Encodings.UTF_16_RAW);
 
     private final int options;
     private final RegexFlavor flavor;
+    private final Encodings.Encoding encoding;
 
-    private RegexOptions(int options, RegexFlavor flavor) {
+    private RegexOptions(int options, RegexFlavor flavor, Encodings.Encoding encoding) {
         this.options = options;
         this.flavor = flavor;
+        this.encoding = encoding;
     }
 
-    public static Builder newBuilder() {
+    public static Builder builder() {
         return new Builder();
     }
 
-    @CompilerDirectives.TruffleBoundary
+    @TruffleBoundary
     public static RegexOptions parse(String optionsString) throws RegexSyntaxException {
         int options = 0;
         RegexFlavor flavor = null;
@@ -128,7 +136,7 @@ public final class RegexOptions {
                     throw optionsSyntaxError(optionsString, "unexpected option " + key);
             }
         }
-        return new RegexOptions(options, flavor);
+        return new RegexOptions(options, flavor, Encodings.UTF_16_RAW);
     }
 
     private static int parseBooleanOption(String optionsString, int options, String key, String value, int flag) throws RegexSyntaxException {
@@ -204,14 +212,33 @@ public final class RegexOptions {
         return isBitSet(UTF_16_EXPLODE_ASTRAL_SYMBOLS);
     }
 
+    /**
+     * Do not generate an actual regular expression matcher, just check the given regular expression
+     * for syntax errors.
+     */
+    public boolean isValidate() {
+        return isBitSet(VALIDATE);
+    }
+
     public RegexFlavor getFlavor() {
         return flavor;
     }
 
+    public Encodings.Encoding getEncoding() {
+        return encoding;
+    }
+
+    public RegexOptions withEncoding(Encodings.Encoding newEnc) {
+        return newEnc == encoding ? this : new RegexOptions(options, flavor, newEnc);
+    }
+
     @Override
     public int hashCode() {
-        int flavorHash = flavor == null ? 0 : flavor.hashCode();
-        return options + 13 * flavorHash;
+        final int prime = 31;
+        int hash = options;
+        hash = prime * hash + Objects.hashCode(flavor);
+        hash = prime * hash + encoding.hashCode();
+        return hash;
     }
 
     @Override
@@ -223,7 +250,7 @@ public final class RegexOptions {
             return false;
         }
         RegexOptions other = (RegexOptions) obj;
-        return this.options == other.options && this.flavor == other.flavor;
+        return this.options == other.options && this.flavor == other.flavor && this.encoding == other.encoding;
     }
 
     @Override
@@ -258,10 +285,171 @@ public final class RegexOptions {
 
         private int options;
         private RegexFlavor flavor;
+        private Encodings.Encoding encoding = Encodings.UTF_16_RAW;
 
         private Builder() {
             this.options = 0;
             this.flavor = null;
+        }
+
+        @TruffleBoundary
+        public int parseOptions(String src) throws RegexSyntaxException {
+            int i = 0;
+            while (i < src.length()) {
+                switch (src.charAt(i)) {
+                    case 'A':
+                        i = parseBooleanOption(src, i, ALWAYS_EAGER_NAME, ALWAYS_EAGER);
+                        break;
+                    case 'D':
+                        i = parseBooleanOption(src, i, DUMP_AUTOMATA_NAME, DUMP_AUTOMATA);
+                        break;
+                    case 'E':
+                        i = parseEncoding(src, i);
+                        break;
+                    case 'F':
+                        i = parseFlavor(src, i);
+                        break;
+                    case 'R':
+                        i = parseBooleanOption(src, i, REGRESSION_TEST_MODE_NAME, REGRESSION_TEST_MODE);
+                        break;
+                    case 'S':
+                        i = parseBooleanOption(src, i, STEP_EXECUTION_NAME, STEP_EXECUTION);
+                        break;
+                    case 'U':
+                        if (i + 1 >= src.length()) {
+                            throw optionsSyntaxErrorUnexpectedKey(src, i);
+                        }
+                        switch (src.charAt(i + 1)) {
+                            case '1':
+                                i = parseBooleanOption(src, i, U180E_WHITESPACE_NAME, U180E_WHITESPACE);
+                                break;
+                            case 'T':
+                                i = parseBooleanOption(src, i, UTF_16_EXPLODE_ASTRAL_SYMBOLS_NAME, UTF_16_EXPLODE_ASTRAL_SYMBOLS);
+                                break;
+                            default:
+                                throw optionsSyntaxErrorUnexpectedKey(src, i);
+                        }
+                        break;
+                    case 'V':
+                        i = parseBooleanOption(src, i, VALIDATE_NAME, VALIDATE);
+                        break;
+                    case ',':
+                        i++;
+                        break;
+                    case '/':
+                        return i;
+                    default:
+                        throw optionsSyntaxErrorUnexpectedKey(src, i);
+                }
+            }
+            return i;
+        }
+
+        private static int expectOptionName(String src, int i, String key) {
+            if (!src.regionMatches(i, key, 0, key.length()) || src.charAt(i + key.length()) != '=') {
+                throw optionsSyntaxErrorUnexpectedKey(src, i);
+            }
+            return i + key.length() + 1;
+        }
+
+        private static int expectValue(String src, int i, String value, String... expected) {
+            if (!src.regionMatches(i, value, 0, value.length())) {
+                throw optionsSyntaxErrorUnexpectedValue(src, i, expected);
+            }
+            return i + value.length();
+        }
+
+        private int parseBooleanOption(String src, int i, String key, int flag) throws RegexSyntaxException {
+            int iVal = expectOptionName(src, i, key);
+            if (src.regionMatches(iVal, "true", 0, "true".length())) {
+                options |= flag;
+                return iVal + "true".length();
+            } else if (!src.regionMatches(iVal, "false", 0, "false".length())) {
+                throw optionsSyntaxErrorUnexpectedValue(src, iVal, "true", "false");
+            }
+            return iVal + "false".length();
+        }
+
+        private int parseFlavor(String src, int i) throws RegexSyntaxException {
+            int iVal = expectOptionName(src, i, FLAVOR_NAME);
+            if (iVal >= src.length()) {
+                throw optionsSyntaxErrorUnexpectedValue(src, iVal, FLAVOR_OPTIONS);
+            }
+            switch (src.charAt(iVal)) {
+                case 'E':
+                    flavor = null;
+                    return expectValue(src, iVal, FLAVOR_ECMASCRIPT, FLAVOR_OPTIONS);
+                case 'R':
+                    flavor = RubyFlavor.INSTANCE;
+                    return expectValue(src, iVal, FLAVOR_RUBY, FLAVOR_OPTIONS);
+                case 'P':
+                    if (iVal + 6 >= src.length()) {
+                        throw optionsSyntaxErrorUnexpectedValue(src, iVal, FLAVOR_OPTIONS);
+                    }
+                    switch (src.charAt(iVal + 6)) {
+                        case 'B':
+                            flavor = PythonFlavor.BYTES_INSTANCE;
+                            return expectValue(src, iVal, FLAVOR_PYTHON_BYTES, FLAVOR_OPTIONS);
+                        case 'S':
+                            flavor = PythonFlavor.STR_INSTANCE;
+                            return expectValue(src, iVal, FLAVOR_PYTHON_STR, FLAVOR_OPTIONS);
+                        default:
+                            throw optionsSyntaxErrorUnexpectedValue(src, iVal, FLAVOR_OPTIONS);
+                    }
+                default:
+                    throw optionsSyntaxErrorUnexpectedValue(src, iVal, FLAVOR_OPTIONS);
+            }
+        }
+
+        private int parseEncoding(String src, int i) throws RegexSyntaxException {
+            int iVal = expectOptionName(src, i, ENCODING_NAME);
+            if (iVal >= src.length()) {
+                throw optionsSyntaxErrorUnexpectedValue(src, iVal, Encodings.ALL_NAMES);
+            }
+            switch (src.charAt(iVal)) {
+                case 'B':
+                    encoding = Encodings.LATIN_1;
+                    return expectValue(src, iVal, "BYTES", Encodings.ALL_NAMES);
+                case 'L':
+                    encoding = Encodings.LATIN_1;
+                    return expectValue(src, iVal, Encodings.LATIN_1.getName(), Encodings.ALL_NAMES);
+                case 'U':
+                    if (iVal + 4 >= src.length()) {
+                        throw optionsSyntaxErrorUnexpectedValue(src, iVal, FLAVOR_OPTIONS);
+                    }
+                    switch (src.charAt(iVal + 4)) {
+                        case '8':
+                            encoding = Encodings.UTF_8;
+                            return expectValue(src, iVal, Encodings.UTF_8.getName(), Encodings.ALL_NAMES);
+                        case '1':
+                            encoding = Encodings.UTF_16;
+                            return expectValue(src, iVal, Encodings.UTF_16.getName(), Encodings.ALL_NAMES);
+                        case '3':
+                            encoding = Encodings.UTF_32;
+                            return expectValue(src, iVal, Encodings.UTF_32.getName(), Encodings.ALL_NAMES);
+                        default:
+                            throw optionsSyntaxErrorUnexpectedValue(src, iVal, Encodings.ALL_NAMES);
+                    }
+                default:
+                    throw optionsSyntaxErrorUnexpectedValue(src, iVal, Encodings.ALL_NAMES);
+            }
+        }
+
+        @TruffleBoundary
+        private static RegexSyntaxException optionsSyntaxErrorUnexpectedKey(String src, int i) {
+            int eqlPos = src.indexOf('=', i);
+            return optionsSyntaxError(src, String.format("unexpected option '%s'", src.substring(i, eqlPos < 0 ? src.length() : eqlPos)));
+        }
+
+        @TruffleBoundary
+        private static RegexSyntaxException optionsSyntaxErrorUnexpectedValue(String src, int i, String... expected) {
+            int commaPos = src.indexOf(',', i);
+            String value = src.substring(i, commaPos < 0 ? src.length() : commaPos);
+            return optionsSyntaxError(src, String.format("unexpected value '%s', expected one of %s", value, Arrays.toString(expected)));
+        }
+
+        private boolean isBitSet(int bit) {
+            return (options & bit) != 0;
         }
 
         public Builder u180eWhitespace(boolean enabled) {
@@ -294,13 +482,30 @@ public final class RegexOptions {
             return this;
         }
 
+        public boolean isUtf16ExplodeAstralSymbols() {
+            return isBitSet(UTF_16_EXPLODE_ASTRAL_SYMBOLS);
+        }
+
         public Builder flavor(@SuppressWarnings("hiding") RegexFlavor flavor) {
             this.flavor = flavor;
             return this;
         }
 
+        public RegexFlavor getFlavor() {
+            return flavor;
+        }
+
+        public Builder encoding(@SuppressWarnings("hiding") Encodings.Encoding encoding) {
+            this.encoding = encoding;
+            return this;
+        }
+
+        public Encodings.Encoding getEncoding() {
+            return encoding;
+        }
+
         public RegexOptions build() {
-            return new RegexOptions(this.options, this.flavor);
+            return new RegexOptions(this.options, this.flavor, this.encoding);
         }
 
         private void updateOption(boolean enabled, int bitMask) {

@@ -47,47 +47,45 @@ import java.util.Spliterators;
 import java.util.stream.IntStream;
 import java.util.stream.StreamSupport;
 
-import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 
 /**
- * Immutable Bit Set implementation, with a lot of code shamelessly ripped from
- * {@link java.util.BitSet}.
+ * Bit Set implementation, with a lot of code shamelessly ripped from {@link java.util.BitSet}.
  */
-public class CompilationFinalBitSet implements Iterable<Integer> {
+public class TBitSet implements Iterable<Integer> {
 
-    private static final CompilationFinalBitSet[] STATIC_INSTANCES = new CompilationFinalBitSet[16];
+    private static final TBitSet[] STATIC_INSTANCES = new TBitSet[16];
 
     static {
         for (int i = 0; i < STATIC_INSTANCES.length; i++) {
-            STATIC_INSTANCES[i] = new CompilationFinalBitSet(new long[]{i});
+            STATIC_INSTANCES[i] = new TBitSet(new long[]{i});
         }
     }
 
-    public static CompilationFinalBitSet valueOf(int... values) {
+    public static TBitSet valueOf(int... values) {
         assert values.length > 0;
-        CompilationFinalBitSet bs = new CompilationFinalBitSet(values[values.length - 1]);
+        TBitSet bs = new TBitSet(values[values.length - 1]);
         for (int v : values) {
             bs.set(v);
         }
         return bs;
     }
 
-    @CompilationFinal(dimensions = 1) private long[] words;
+    private long[] words;
 
-    public CompilationFinalBitSet(int nbits) {
+    public TBitSet(int nbits) {
         this.words = BitSets.createBitSetArray(nbits);
     }
 
-    private CompilationFinalBitSet(long[] words) {
+    private TBitSet(long[] words) {
         this.words = words;
     }
 
-    private CompilationFinalBitSet(CompilationFinalBitSet copy) {
+    private TBitSet(TBitSet copy) {
         this.words = Arrays.copyOf(copy.words, copy.words.length);
     }
 
-    public static CompilationFinalBitSet getEmptyInstance() {
+    public static TBitSet getEmptyInstance() {
         return STATIC_INSTANCES[0];
     }
 
@@ -97,7 +95,7 @@ public class CompilationFinalBitSet implements Iterable<Integer> {
      * @param i The integer value of the static bit set's content, i.e. 0 is the empty bit set, 1
      *            has words <code>{0x0..., 0x1}</code>, 2 has <code>{0x0..., 0x2}</code>, and so on.
      */
-    public static CompilationFinalBitSet getStaticInstance(int i) {
+    public static TBitSet getStaticInstance(int i) {
         return STATIC_INSTANCES[i];
     }
 
@@ -117,8 +115,8 @@ public class CompilationFinalBitSet implements Iterable<Integer> {
         return 0 <= words[0] && words[0] < STATIC_INSTANCES.length ? (int) words[0] : -1;
     }
 
-    public CompilationFinalBitSet copy() {
-        return new CompilationFinalBitSet(this);
+    public TBitSet copy() {
+        return new TBitSet(this);
     }
 
     public long[] toLongArray() {
@@ -175,15 +173,15 @@ public class CompilationFinalBitSet implements Iterable<Integer> {
         BitSets.invert(words);
     }
 
-    public void intersect(CompilationFinalBitSet other) {
+    public void intersect(TBitSet other) {
         BitSets.intersect(words, other.words);
     }
 
-    public void subtract(CompilationFinalBitSet other) {
+    public void subtract(TBitSet other) {
         BitSets.subtract(words, other.words);
     }
 
-    public void union(CompilationFinalBitSet other) {
+    public void union(TBitSet other) {
         ensureCapacity(other.words.length);
         BitSets.union(words, other.words);
     }
@@ -194,11 +192,11 @@ public class CompilationFinalBitSet implements Iterable<Integer> {
         words[1] |= bs.getHi();
     }
 
-    public boolean isDisjoint(CompilationFinalBitSet other) {
+    public boolean isDisjoint(TBitSet other) {
         return BitSets.isDisjoint(words, other.words);
     }
 
-    public boolean contains(CompilationFinalBitSet other) {
+    public boolean contains(TBitSet other) {
         return BitSets.contains(words, other.words);
     }
 
@@ -207,10 +205,10 @@ public class CompilationFinalBitSet implements Iterable<Integer> {
         if (obj == this) {
             return true;
         }
-        if (!(obj instanceof CompilationFinalBitSet)) {
+        if (!(obj instanceof TBitSet)) {
             return false;
         }
-        CompilationFinalBitSet o = (CompilationFinalBitSet) obj;
+        TBitSet o = (TBitSet) obj;
         return BitSets.equals(words, o.words);
     }
 

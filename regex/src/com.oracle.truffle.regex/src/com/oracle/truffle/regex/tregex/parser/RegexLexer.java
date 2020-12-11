@@ -47,7 +47,6 @@ import java.util.Map;
 
 import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.regex.RegexFlags;
-import com.oracle.truffle.regex.RegexOptions;
 import com.oracle.truffle.regex.RegexSource;
 import com.oracle.truffle.regex.RegexSyntaxException;
 import com.oracle.truffle.regex.charset.CodePointSet;
@@ -55,12 +54,12 @@ import com.oracle.truffle.regex.charset.CodePointSetAccumulator;
 import com.oracle.truffle.regex.charset.Constants;
 import com.oracle.truffle.regex.charset.UnicodeProperties;
 import com.oracle.truffle.regex.tregex.string.Encodings.Encoding;
-import com.oracle.truffle.regex.util.CompilationFinalBitSet;
+import com.oracle.truffle.regex.util.TBitSet;
 
 public final class RegexLexer {
 
-    private static final CompilationFinalBitSet PREDEFINED_CHAR_CLASSES = CompilationFinalBitSet.valueOf('s', 'S', 'd', 'D', 'w', 'W');
-    private static final CompilationFinalBitSet SYNTAX_CHARS = CompilationFinalBitSet.valueOf(
+    private static final TBitSet PREDEFINED_CHAR_CLASSES = TBitSet.valueOf('s', 'S', 'd', 'D', 'w', 'W');
+    private static final TBitSet SYNTAX_CHARS = TBitSet.valueOf(
                     '^', '$', '/', '\\', '.', '*', '+', '?', '(', ')', '[', ']', '{', '}', '|');
 
     private static final CodePointSet ID_START = UnicodeProperties.getProperty("ID_Start");
@@ -70,7 +69,6 @@ public final class RegexLexer {
     private final String pattern;
     private final RegexFlags flags;
     private final Encoding encoding;
-    private final RegexOptions options;
     private Token lastToken;
     private int index = 0;
     private int nGroups = 1;
@@ -79,12 +77,11 @@ public final class RegexLexer {
     private final CodePointSetAccumulator curCharClass = new CodePointSetAccumulator();
     private final CodePointSetAccumulator charClassCaseFoldTmp = new CodePointSetAccumulator();
 
-    public RegexLexer(RegexSource source, RegexFlags flags, RegexOptions options) {
+    public RegexLexer(RegexSource source, RegexFlags flags) {
         this.source = source;
         this.pattern = source.getPattern();
         this.flags = flags;
         this.encoding = source.getEncoding();
-        this.options = options;
     }
 
     public boolean hasNext() {
@@ -109,7 +106,7 @@ public final class RegexLexer {
      *            {@link RegexSource#getPattern()}.
      */
     private void setSourceSection(Token t, int startIndex, int endIndex) {
-        if (options.isDumpAutomata()) {
+        if (source.getOptions().isDumpAutomata()) {
             // RegexSource#getSource() prepends a slash ('/') to the pattern, so we have to add an
             // offset of 1 here.
             t.setSourceSection(source.getSource().createSection(startIndex + 1, endIndex - startIndex));
@@ -589,13 +586,13 @@ public final class RegexLexer {
     private CodePointSet parsePredefCharClass(char c) {
         switch (c) {
             case 's':
-                if (options.isU180EWhitespace()) {
+                if (source.getOptions().isU180EWhitespace()) {
                     return Constants.LEGACY_WHITE_SPACE;
                 } else {
                     return Constants.WHITE_SPACE;
                 }
             case 'S':
-                if (options.isU180EWhitespace()) {
+                if (source.getOptions().isU180EWhitespace()) {
                     return Constants.LEGACY_NON_WHITE_SPACE;
                 } else {
                     return Constants.NON_WHITE_SPACE;
