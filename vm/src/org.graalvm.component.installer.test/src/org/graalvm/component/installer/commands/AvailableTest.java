@@ -84,7 +84,7 @@ public class AvailableTest extends CommandTestBase {
 
     private void initRemoteStorage() {
         GraalEditionList list = new GraalEditionList(this, this, getLocalRegistry());
-        this.registry = list.createComponentCatalog(this, getLocalRegistry());
+        this.registry = list.createComponentCatalog(this);
         this.editionList = list;
     }
 

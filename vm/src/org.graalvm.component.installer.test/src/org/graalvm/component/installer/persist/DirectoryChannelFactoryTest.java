@@ -75,7 +75,7 @@ public class DirectoryChannelFactoryTest extends CommandTestBase implements Comm
     }
 
     @Override
-    public ComponentCatalog createComponentCatalog(CommandInput input, ComponentRegistry targetGraalVM) {
+    public ComponentCatalog createComponentCatalog(CommandInput input) {
         return new CatalogContents(this, downloader.getStorage(), getLocalRegistry());
     }
 

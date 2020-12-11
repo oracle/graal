@@ -75,16 +75,21 @@ public class AvailableCommand extends ListInstalledCommand {
     @Override
     protected ComponentCollection initRegistry() {
         super.initRegistry();
+        if (showUpdates) {
+            input.getRegistry().setAllowDistUpdate(true);
+        }
         return input.getRegistry();
     }
 
     @Override
     public void init(CommandInput commandInput, Feedback feedBack) {
-        super.init(commandInput, feedBack);
         String v = commandInput.optValue(Commands.OPTION_VERSION);
         if (v != null) {
             vmatch = Version.versionFilter(v);
         }
+        showUpdates = commandInput.hasOption(Commands.OPTION_SHOW_UPDATES) || commandInput.hasOption(Commands.OPTION_ALL);
+        showCore = commandInput.hasOption(Commands.OPTION_SHOW_CORE) | showUpdates | commandInput.hasOption(Commands.OPTION_USE_EDITION);
+        super.init(commandInput, feedBack);
     }
 
     private boolean showUpdates;
@@ -96,9 +101,6 @@ public class AvailableCommand extends ListInstalledCommand {
             feedback.output("AVAILABLE_Help");
             return 0;
         }
-        showUpdates = input.hasOption(Commands.OPTION_SHOW_UPDATES);
-        showCore = input.hasOption(Commands.OPTION_SHOW_CORE) | showUpdates | input.hasOption(Commands.OPTION_USE_EDITION);
-
         return super.execute();
     }
 

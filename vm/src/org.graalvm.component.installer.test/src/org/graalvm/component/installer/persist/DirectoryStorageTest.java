@@ -496,7 +496,7 @@ public class DirectoryStorageTest extends CommandTestBase {
         enableLicensesForTesting();
         storage.recordLicenseAccepted(info, "cafebabe", "This is a dummy license", null);
         Path p = registryPath.resolve(SystemUtils.fromCommonString(
-                MessageFormat.format(DirectoryStorage.LICENSE_FILE_TEMPLATE, "cafebabe", "org.graalvm.fastr")));
+                        MessageFormat.format(DirectoryStorage.LICENSE_FILE_TEMPLATE, "cafebabe", "org.graalvm.fastr")));
         Path p2 = registryPath.resolve(SystemUtils.fromCommonString("licenses/cafebabe"));
         assertTrue(Files.isReadable(p));
         assertEquals(Arrays.asList("This is a dummy license"), Files.readAllLines(p2));
@@ -514,7 +514,7 @@ public class DirectoryStorageTest extends CommandTestBase {
         enableLicensesForTesting();
         storage.recordLicenseAccepted(info, "http://acme.org/license.txt", "This is a dummy license", null);
         Path p = registryPath.resolve(SystemUtils.fromCommonString(
-                MessageFormat.format(DirectoryStorage.LICENSE_FILE_TEMPLATE, "http___acme.org_license.txt", "org.graalvm.fastr")));
+                        MessageFormat.format(DirectoryStorage.LICENSE_FILE_TEMPLATE, "http___acme.org_license.txt", "org.graalvm.fastr")));
         Path p2 = registryPath.resolve(SystemUtils.fromCommonString("licenses/http___acme.org_license.txt"));
         Path p3 = registryPath.resolve(SystemUtils.fromCommonString("licenses/http___acme.org_license.txt.id"));
         assertTrue(Files.isReadable(p));
@@ -563,7 +563,7 @@ public class DirectoryStorageTest extends CommandTestBase {
         ComponentInfo info2 = loadLastComponent("ruby");
 
         Path p = registryPath.resolve(SystemUtils.fromCommonString(
-                MessageFormat.format(DirectoryStorage.LICENSE_FILE_TEMPLATE, "cafebabe", "org.graalvm.fastr")));
+                        MessageFormat.format(DirectoryStorage.LICENSE_FILE_TEMPLATE, "cafebabe", "org.graalvm.fastr")));
         Files.createDirectories(p.getParent());
         Files.write(p, Arrays.asList("ahoj"));
 

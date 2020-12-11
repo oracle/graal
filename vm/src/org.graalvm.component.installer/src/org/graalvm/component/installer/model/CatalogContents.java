@@ -152,6 +152,7 @@ public final class CatalogContents implements ComponentCatalog {
     /**
      * @return True, if components from newer distributions are allowed.
      */
+    @Override
     public boolean isAllowDistUpdate() {
         return allowDistUpdate;
     }

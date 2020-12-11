@@ -158,7 +158,7 @@ public class Environment implements Feedback, CommandInput, Config {
     @Override
     public ComponentCatalog getRegistry() {
         if (componentCatalog == null) {
-            componentCatalog = catalogFactory.createComponentCatalog(this, getLocalRegistry());
+            componentCatalog = catalogFactory.createComponentCatalog(this);
         }
         return componentCatalog;
     }

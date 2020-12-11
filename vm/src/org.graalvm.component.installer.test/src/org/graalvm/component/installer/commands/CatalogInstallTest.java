@@ -475,8 +475,8 @@ public class CatalogInstallTest extends CommandTestBase {
                         new SoftwareChannelSource(ruby193Source.getParent().toFile().toURI().toString()));
         catalogFactory = new CatalogFactory() {
             @Override
-            public ComponentCatalog createComponentCatalog(CommandInput input, ComponentRegistry reg) {
-                return new CatalogContents(CatalogInstallTest.this, downloader.getStorage(), reg);
+            public ComponentCatalog createComponentCatalog(CommandInput input) {
+                return new CatalogContents(CatalogInstallTest.this, downloader.getStorage(), input.getLocalRegistry());
             }
 
             @Override

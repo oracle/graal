@@ -554,24 +554,36 @@ public final class GraalEditionList implements CatalogFactory {
         }
     }
 
-    public GraalEditionList listGraalEditions(ComponentRegistry otherGraal) {
+    GraalEditionList listGraalEditions(CommandInput in, ComponentRegistry otherGraal) {
         return foreignGraals.computeIfAbsent(otherGraal, (og) -> {
-            GraalEditionList gl = new GraalEditionList(feedback, input, og);
+            GraalEditionList gl = new GraalEditionList(feedback, in, og);
             gl.setRemoteSourcesAllowed(remoteSourcesAllowed);
+            String defCatalog = og.getGraalCapabilities().get(CommonConstants.RELEASE_CATALOG_KEY);
+            gl.setDefaultCatalogSpec(defCatalog);
             return gl;
         });
     }
 
+    /**
+     * Cached instance of catalog, the storage tracks origin of supplied ComponentInfos.
+     */
+    private ComponentCatalog catalog;
+
     @Override
-    public ComponentCatalog createComponentCatalog(CommandInput in, ComponentRegistry targetGraalVM) {
+    public ComponentCatalog createComponentCatalog(CommandInput in) {
+        ComponentRegistry targetGraalVM = in.getLocalRegistry();
         if (targetGraalVM != this.targetGraal) {
-            return listGraalEditions(targetGraal).createComponentCatalog(in, targetGraalVM);
+            GraalEditionList gl = listGraalEditions(in, targetGraalVM);
+            return gl.createComponentCatalog(in);
+        }
+        if (catalog != null) {
+            return catalog;
         }
         String edId = in.optValue(Commands.OPTION_USE_EDITION, "");
         GraalEdition ge = getEdition(edId);
         RemoteCatalogDownloader downloader = createEditionDownloader(ge);
         CatalogContents col = new CatalogContents(feedback, downloader.getStorage(), targetGraalVM);
-        return col;
+        return catalog = col;
     }
 
     @Override
