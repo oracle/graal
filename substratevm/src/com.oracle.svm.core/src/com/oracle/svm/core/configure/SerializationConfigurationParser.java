@@ -50,16 +50,16 @@ public class SerializationConfigurationParser extends ConfigurationParser {
             Map<String, Object> data = asMap(serializationKey, "second level of document must be serialization descriptor objects ");
             String targetSerializationClass = asString(data.get("name"));
             Object checksumValue = data.get("checksum");
-            List<Long> checksums = new ArrayList<>();
+            List<String> checksums = new ArrayList<>();
             if (checksumValue != null) {
                 List<Object> jsonChecksums;
                 try {
                     jsonChecksums = asList(checksumValue, "list of checksums");
                 } catch (JSONParserException e) {
-                    jsonChecksums = Collections.singletonList(asLong(checksumValue, "checksum"));
+                    jsonChecksums = Collections.singletonList(asString(checksumValue, "checksum"));
                 }
                 for (Object jsonChecksum : jsonChecksums) {
-                    checksums.add(asLong(jsonChecksum, "checksum"));
+                    checksums.add(asString(jsonChecksum, "checksum"));
                 }
             }
             consumer.accept(targetSerializationClass, checksums);
@@ -68,6 +68,6 @@ public class SerializationConfigurationParser extends ConfigurationParser {
 
     @FunctionalInterface
     public interface SerializationParserFunction {
-        void accept(String targetSerializationClass, List<Long> checksum);
+        void accept(String targetSerializationClass, List<String> checksum);
     }
 }
