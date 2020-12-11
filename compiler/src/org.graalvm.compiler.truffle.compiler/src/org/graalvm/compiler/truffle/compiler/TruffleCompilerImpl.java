@@ -535,7 +535,7 @@ public abstract class TruffleCompilerImpl implements TruffleCompilerBase {
                 statistics.afterLowTier(compilable, graph);
             }
             if (listener != null) {
-                listener.onSuccess(compilable, inliningPlan, new GraphInfoImpl(graph), new CompilationResultInfoImpl(compilationResult));
+                listener.onSuccess(compilable, inliningPlan, new GraphInfoImpl(graph), new CompilationResultInfoImpl(compilationResult), task.isFirstTier() ? 1 : 2);
             }
 
             // Partial evaluation and installation are included in
@@ -550,7 +550,7 @@ public abstract class TruffleCompilerImpl implements TruffleCompilerBase {
             if (listener != null) {
                 BailoutException bailout = t instanceof BailoutException ? (BailoutException) t : null;
                 boolean permanentBailout = bailout != null ? bailout.isPermanent() : false;
-                listener.onFailure(compilable, t.toString(), bailout != null, permanentBailout);
+                listener.onFailure(compilable, t.toString(), bailout != null, permanentBailout, task.isFirstTier() ? 1 : 2);
             }
             throw t;
         }
