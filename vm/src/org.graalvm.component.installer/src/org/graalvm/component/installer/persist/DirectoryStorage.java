@@ -50,6 +50,7 @@ import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Locale;
 import java.util.Map;
+import java.util.Objects;
 import java.util.Properties;
 import java.util.Set;
 import java.util.regex.Matcher;
@@ -115,9 +116,10 @@ public class DirectoryStorage implements ManagementStorage {
     private static final String LICENSE_CONTENTS_ID = LICENSE_DIR + "/{0}.id"; // NOI18N'
 
     /**
+     * 
      * Template for license accepted records.
      */
-    private static final String LICENSE_FILE_TEMPLATE = LICENSE_DIR + "/{0}.accepted/{1}"; // NOI18N'
+    static final String LICENSE_FILE_TEMPLATE = LICENSE_DIR + "/{0}.accepted/_all"; // NOI18N'
 
     /**
      * 
@@ -626,7 +628,7 @@ public class DirectoryStorage implements ManagementStorage {
         }
         String id = transliterateLicenseId(licenseID);
         try {
-            String fn = MessageFormat.format(LICENSE_FILE_TEMPLATE, id, info.getId());
+            String fn = MessageFormat.format(LICENSE_FILE_TEMPLATE, id, info == null ? "_all" : info.getId());
             Path listFile = registryPath.resolve(SystemUtils.fromCommonRelative(fn));
             if (!Files.isReadable(listFile)) {
                 return null;
@@ -694,7 +696,7 @@ public class DirectoryStorage implements ManagementStorage {
             return;
         }
         String id = transliterateLicenseId(licenseID);
-        String fn = MessageFormat.format(LICENSE_FILE_TEMPLATE, id, info.getId());
+        String fn = MessageFormat.format(LICENSE_FILE_TEMPLATE, id, info == null ? "_all" : info.getId());
         Path listFile = registryPath.resolve(SystemUtils.fromCommonRelative(fn));
         if (listFile == null) {
             throw new IllegalArgumentException(licenseID);
@@ -763,4 +765,30 @@ public class DirectoryStorage implements ManagementStorage {
         }
         throw feedback.failure("ERROR_MustBecomeAdmin", null);
     }
+
+    @Override
+    public int hashCode() {
+        int hash = 3;
+        hash = 97 * hash + Objects.hashCode(this.graalHomePath);
+        return hash;
+    }
+
+    @Override
+    public boolean equals(Object obj) {
+        if (this == obj) {
+            return true;
+        }
+        if (obj == null) {
+            return false;
+        }
+        if (getClass() != obj.getClass()) {
+            return false;
+        }
+        final DirectoryStorage other = (DirectoryStorage) obj;
+        if (!Objects.equals(this.graalHomePath, other.graalHomePath)) {
+            return false;
+        }
+        return true;
+    }
+
 }
