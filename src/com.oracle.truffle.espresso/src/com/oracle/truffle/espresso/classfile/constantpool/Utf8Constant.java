@@ -22,6 +22,8 @@
  */
 package com.oracle.truffle.espresso.classfile.constantpool;
 
+import java.nio.ByteBuffer;
+
 import com.oracle.truffle.espresso.classfile.ConstantPool;
 import com.oracle.truffle.espresso.classfile.ConstantPool.Tag;
 import com.oracle.truffle.espresso.descriptors.Symbol;
@@ -37,9 +39,8 @@ public final class Utf8Constant implements PoolConstant {
 
     private static final int VALID_UTF8 = 0x20;
     private static final int VALID_TYPE = 0x40;
-    private static final int VALID_TYPE_OR_VOID = 0x80;
 
-    private static final int VALID_INIT_SIGNATURE = 0x100;
+    private static final int VALID_INIT_SIGNATURE = 0x80;
 
     private byte validationCache;
 
@@ -86,12 +87,11 @@ public final class Utf8Constant implements PoolConstant {
 
     public void validateType(boolean allowVoid) {
         validateUTF8();
-        int mask = allowVoid ? VALID_TYPE_OR_VOID : VALID_TYPE;
-        if ((validationCache & mask) == 0) {
+        if ((validationCache & VALID_TYPE) == 0) {
             if (!Validation.validTypeDescriptor(value, allowVoid)) {
                 throw ConstantPool.classFormatError("Invalid type descriptor: " + value);
             }
-            validationCache |= mask;
+            validationCache |= VALID_TYPE;
         }
     }
 
@@ -136,6 +136,22 @@ public final class Utf8Constant implements PoolConstant {
         }
     }
 
+    public int validateSignatureGetSlots(boolean isInitOrClinit) {
+        validateUTF8();
+        int mask;
+        if (isInitOrClinit) {
+            mask = VALID_INIT_SIGNATURE;
+        } else {
+            mask = VALID_SIGNATURE;
+        }
+        int slots = Validation.validSignatureDescriptorGetSlots(value, isInitOrClinit);
+        if (slots < 0) {
+            throw ConstantPool.classFormatError("Invalid signature descriptor: " + value);
+        }
+        validationCache |= (mask | VALID_SIGNATURE);
+        return slots;
+    }
+
     @Override
     public String toString() {
         return value.toString();
@@ -144,5 +160,13 @@ public final class Utf8Constant implements PoolConstant {
     @Override
     public String toString(ConstantPool pool) {
         return value.toString();
+    }
+
+    @Override
+    public void dump(ByteBuffer buf) {
+        buf.putChar((char) value().length());
+        for (int i = 0; i < value().length(); i++) {
+            buf.put(value().byteAt(i));
+        }
     }
 }

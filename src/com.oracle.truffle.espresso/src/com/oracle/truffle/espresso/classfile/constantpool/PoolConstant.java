@@ -22,6 +22,8 @@
  */
 package com.oracle.truffle.espresso.classfile.constantpool;
 
+import java.nio.ByteBuffer;
+
 import com.oracle.truffle.espresso.classfile.ConstantPool;
 import com.oracle.truffle.espresso.classfile.ConstantPool.Tag;
 
@@ -52,6 +54,17 @@ public interface PoolConstant {
     default void validate(ConstantPool pool) {
         /* nop */
     }
+
+    /**
+     * Pushes the byte representation of this pool constant as seen in the classfile to the given
+     * {@link ByteBuffer}. Only unresolved pool constants can restore their byte representation.
+     */
+    default void dumpBytes(ByteBuffer buf) {
+        buf.put((byte) tag().getValue());
+        dump(buf);
+    }
+
+    void dump(ByteBuffer buf);
 
     static byte u1(int i) {
         assert (byte) i == i;
