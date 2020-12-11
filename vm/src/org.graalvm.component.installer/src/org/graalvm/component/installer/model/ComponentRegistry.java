@@ -39,6 +39,7 @@ import java.util.List;
 import java.util.Locale;
 import java.util.Map;
 import java.util.MissingResourceException;
+import java.util.Objects;
 import java.util.Set;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
@@ -548,4 +549,30 @@ public final class ComponentRegistry implements ComponentCollection {
     public ManagementStorage getManagementStorage() {
         return storage;
     }
+
+    @Override
+    public int hashCode() {
+        int hash = 7;
+        hash = 97 * hash + Objects.hashCode(this.storage);
+        return hash;
+    }
+
+    @Override
+    public boolean equals(Object obj) {
+        if (this == obj) {
+            return true;
+        }
+        if (obj == null) {
+            return false;
+        }
+        if (getClass() != obj.getClass()) {
+            return false;
+        }
+        final ComponentRegistry other = (ComponentRegistry) obj;
+        if (!Objects.equals(this.storage, other.storage)) {
+            return false;
+        }
+        return true;
+    }
+
 }
