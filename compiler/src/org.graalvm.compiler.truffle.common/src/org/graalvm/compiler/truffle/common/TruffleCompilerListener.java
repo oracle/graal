@@ -133,6 +133,7 @@ public interface TruffleCompilerListener {
      */
     @Deprecated
     default void onSuccess(CompilableTruffleAST compilable, TruffleMetaAccessProvider inliningPlan, GraphInfo graph, CompilationResultInfo compilationResultInfo) {
+        onSuccess(compilable, inliningPlan, graph, compilationResultInfo, 0);
     }
 
     /**
@@ -169,6 +170,7 @@ public interface TruffleCompilerListener {
      */
     @Deprecated
     default void onFailure(CompilableTruffleAST compilable, String reason, boolean bailout, boolean permanentBailout) {
+        onFailure(compilable, reason, bailout, permanentBailout, 0);
     }
 
     /**
@@ -194,9 +196,11 @@ public interface TruffleCompilerListener {
      * compilation problem.
      *
      * @param compilable the Truffle AST which is going to be re-compiled.
+     * @deprecated use {@link #onCompilationRetry(CompilableTruffleAST, int)}
      */
     @Deprecated
     default void onCompilationRetry(CompilableTruffleAST compilable) {
+        onCompilationRetry(compilable, 0);
     }
 
     /**
