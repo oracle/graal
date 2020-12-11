@@ -271,21 +271,28 @@ public class FrameClearPhase extends BasePhase<CoreProviders> {
             visited = graph.createNodeBitMap();
         }
 
-        /*-
-         * Note that this is not a complete exploration of the values: We are relying on the fact
-         * that accesses to tags are only done through the provided methods of the
-         * FrameWithoutBoxing class.
+        /**
+         * Explores the phi graph of a given value node to detect if a given value can be the
+         * illegal tag.
          *
-         * In particular, since these methods only ever put constants in the tag slot, we will
-         * assume that a tag can either be:
-         * - A constant
-         * - A value with restricted stamp (Phi of constants, or ConditionalNode, for example)
-         * - A phi between constants and other such phis (loops may introduce phis with itself as
-         * input, yielding unrestricted stamps).
-         *
-         * Any other type of value will be considered a performance warning.
+         * @param node the node to start exploration from
+         * @return true if the node can be the illegal tag, false otherwise.
          */
         private boolean explore(ValueNode node) {
+            /*-
+             * Note that this is not a complete exploration of the values: We are relying on the
+             * fact that accesses to tags are only done through the provided methods of the
+             * FrameWithoutBoxing class.
+             *
+             * In particular, since these methods only ever put constants in the tag slot, we will
+             * assume that a tag can either be:
+             * - A constant
+             * - A value with restricted stamp (Phi of constants, or ConditionalNode, for example)
+             * - A phi between constants and other such phis (loops may introduce phis with itself
+             * as input, yielding unrestricted stamps).
+             *
+             * Any other type of value will be considered a performance warning.
+             */
             ValueNode toProcess = node;
             while (toProcess instanceof ValueProxyNode) {
                 toProcess = ((ValueProxyNode) toProcess).value();

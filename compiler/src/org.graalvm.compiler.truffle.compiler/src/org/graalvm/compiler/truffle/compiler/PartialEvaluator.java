@@ -91,7 +91,7 @@ import org.graalvm.compiler.truffle.compiler.TruffleCompilerImpl.CancellableTruf
 import org.graalvm.compiler.truffle.compiler.nodes.TruffleAssumption;
 import org.graalvm.compiler.truffle.compiler.nodes.asserts.NeverPartOfCompilationNode;
 import org.graalvm.compiler.truffle.compiler.nodes.frame.AllowMaterializeNode;
-import org.graalvm.compiler.truffle.compiler.nodes.frame.VirtualFrameFreeNode;
+import org.graalvm.compiler.truffle.compiler.nodes.frame.VirtualFrameClearNode;
 import org.graalvm.compiler.truffle.compiler.phases.DeoptimizeOnExceptionPhase;
 import org.graalvm.compiler.truffle.compiler.phases.FrameClearPhase;
 import org.graalvm.compiler.truffle.compiler.phases.InstrumentBranchesPhase;
@@ -356,7 +356,7 @@ public abstract class PartialEvaluator {
                 try (DebugCloseable a = TruffleCanonicalizerTimer.start(request.debug)) {
                     canonicalizer.apply(request.graph, request.highTierContext);
                 }
-                boolean performFrameClear = request.options.get(ForceFrameLivenessAnalysis) || request.graph.hasNode(VirtualFrameFreeNode.TYPE);
+                boolean performFrameClear = request.options.get(ForceFrameLivenessAnalysis) || request.graph.hasNode(VirtualFrameClearNode.TYPE);
                 try (DebugCloseable a = TruffleEscapeAnalysisTimer.start(request.debug)) {
                     partialEscape(request);
                 }

@@ -89,7 +89,7 @@ import org.graalvm.compiler.truffle.compiler.nodes.asserts.NeverPartOfCompilatio
 import org.graalvm.compiler.truffle.compiler.nodes.frame.AllowMaterializeNode;
 import org.graalvm.compiler.truffle.compiler.nodes.frame.ForceMaterializeNode;
 import org.graalvm.compiler.truffle.compiler.nodes.frame.NewFrameNode;
-import org.graalvm.compiler.truffle.compiler.nodes.frame.VirtualFrameFreeNode;
+import org.graalvm.compiler.truffle.compiler.nodes.frame.VirtualFrameClearNode;
 import org.graalvm.compiler.truffle.compiler.nodes.frame.VirtualFrameGetNode;
 import org.graalvm.compiler.truffle.compiler.nodes.frame.VirtualFrameIsNode;
 import org.graalvm.compiler.truffle.compiler.nodes.frame.VirtualFrameSetNode;
@@ -573,7 +573,7 @@ public class TruffleGraphBuilderPlugins {
                 int frameSlotIndex = maybeGetConstantFrameSlotIndex(receiver, frameSlot, constantReflection, types);
                 if (frameSlotIndex >= 0) {
                     TruffleCompilerRuntime runtime = getRuntime();
-                    b.add(new VirtualFrameFreeNode(receiver, frameSlotIndex, runtime.getFrameSlotKindTagForJavaKind(JavaKind.Illegal)));
+                    b.add(new VirtualFrameClearNode(receiver, frameSlotIndex, runtime.getFrameSlotKindTagForJavaKind(JavaKind.Illegal)));
                     return true;
                 }
                 return false;

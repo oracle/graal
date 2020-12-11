@@ -43,6 +43,7 @@ import org.graalvm.compiler.nodes.virtual.VirtualObjectNode;
 import org.graalvm.compiler.truffle.runtime.OptimizedCallTarget;
 import org.graalvm.compiler.virtual.nodes.MaterializedObjectState;
 import org.graalvm.compiler.virtual.nodes.VirtualObjectState;
+import org.graalvm.compiler.virtual.phases.ea.PartialEscapePhase;
 import org.graalvm.polyglot.Context;
 import org.junit.Assert;
 import org.junit.Test;
@@ -202,7 +203,7 @@ public class ClearFrameSlotTest extends PartialEvaluationTest {
     @Test
     public void clearAccess() {
         doTest(ClearFrameSlotTest::clearedAccessRoot,
-                        voidChecker, emptyArgs, false, true, false);
+                        voidChecker, emptyArgs, true, false);
     }
 
     /**
@@ -214,7 +215,7 @@ public class ClearFrameSlotTest extends PartialEvaluationTest {
         return new RootNode(null, fd) {
             @Override
             public Object execute(VirtualFrame frame) {
-                frame.setLong(slot, 1L);
+                frame.setInt(slot, 1);
                 frame.setObject(slot, new Object()); // clears primitive slot
                 boundary();
                 return null;
@@ -225,7 +226,7 @@ public class ClearFrameSlotTest extends PartialEvaluationTest {
     @Test
     public void setClearsPrim() {
         doTest(ClearFrameSlotTest::setClearsPrimitive,
-                        graphFSChecker(regularFSChecker), emptyArgs, false, false, true);
+                        graphFSChecker(regularFSChecker), emptyArgs, false, true);
     }
 
     /**
@@ -238,7 +239,7 @@ public class ClearFrameSlotTest extends PartialEvaluationTest {
             @Override
             public Object execute(VirtualFrame frame) {
                 frame.setObject(slot, new Object());
-                frame.setLong(slot, 1L); // clears object slot
+                frame.setInt(slot, 1); // clears object slot
                 boundary();
                 return null;
             }
@@ -248,7 +249,7 @@ public class ClearFrameSlotTest extends PartialEvaluationTest {
     @Test
     public void setClearsObj() {
         doTest(ClearFrameSlotTest::setClearsObject,
-                        graphFSChecker(regularFSChecker), emptyArgs, false, false, true);
+                        graphFSChecker(regularFSChecker), emptyArgs, false, true);
     }
 
     /**
@@ -262,7 +263,7 @@ public class ClearFrameSlotTest extends PartialEvaluationTest {
             public Object execute(VirtualFrame frame) {
                 Object[] args = frame.getArguments();
                 if ((boolean) args[0]) {
-                    frame.setLong(slot, 1L);
+                    frame.setInt(slot, 1);
                 } else {
                     frame.setObject(slot, new Object());
                 }
@@ -275,10 +276,10 @@ public class ClearFrameSlotTest extends PartialEvaluationTest {
     @Test
     public void setNotClear() {
         doTest(ClearFrameSlotTest::setNotClearPhi,
-                        graphFSChecker(noClearPhiChecker), trueArg, false, false, true);
+                        graphFSChecker(noClearPhiChecker), trueArg, false, true);
     }
 
-    private void doTest(Supplier<RootNode> rootProvider, Consumer<StructuredGraph> graphChecker, Object[] args, boolean peFails, boolean executionFails, boolean forceClearPhase) {
+    private void doTest(Supplier<RootNode> rootProvider, Consumer<StructuredGraph> graphChecker, Object[] args, boolean executionFails, boolean forceClearPhase) {
         if (forceClearPhase) {
             setupContext(Context.newBuilder().option("engine.ForceFrameLivenessAnalysis", "true"));
         }
@@ -291,12 +292,9 @@ public class ClearFrameSlotTest extends PartialEvaluationTest {
             Assert.assertTrue(executionFails);
             return;
         }
-        try {
-            graph = partialEval((OptimizedCallTarget) callTarget, args, CompilationIdentifier.INVALID_COMPILATION_ID);
-        } catch (Throwable e) {
-            Assert.assertTrue(peFails);
-            return;
-        }
+        graph = partialEval((OptimizedCallTarget) callTarget, args, CompilationIdentifier.INVALID_COMPILATION_ID);
+        graphChecker.accept(graph);
+        new PartialEscapePhase(true, this.createCanonicalizerPhase(), graph.getOptions()).apply(graph, getDefaultHighTierContext());
         graphChecker.accept(graph);
     }
 

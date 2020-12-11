@@ -258,13 +258,16 @@ public interface Frame {
     boolean isDouble(FrameSlot slot);
 
     /**
-     * Clears the given slot in the frame. Subsequent reads to this slot will fail with
+     * Clears the given slot in the frame. Writing over a previously cleared slot is still allowed.
+     * Subsequent reads to this slot, unless re-written to, will fail with
      * {@link FrameSlotTypeException}.
      * <p>
      * This method is intended to be used for implementations of liveness analysis. As such, the
      * compiler will find and report any inconsistency with respect to liveness analysis when using
-     * this method. These inconsistencies include:
-     * <li>Clearing a slot in a branch, but not on another one, and their execution merge.
+     * this method, such as clearing a slot in a branch, but not on another one, and their execution
+     * merge.
+     * <p>
+     * Liveness analysis implementations are expected to clear unused slots on method entry
      * 
      * @param slot the slot of the local variable
      * @since 21.0

@@ -39,10 +39,10 @@ import org.graalvm.compiler.nodes.spi.VirtualizerTool;
 import org.graalvm.compiler.nodes.virtual.VirtualObjectNode;
 
 @NodeInfo(cycles = CYCLES_0, size = SIZE_0)
-public class VirtualFrameFreeNode extends VirtualFrameAccessorNode implements Virtualizable, IterableNodeType {
-    public static final NodeClass<VirtualFrameFreeNode> TYPE = NodeClass.create(VirtualFrameFreeNode.class);
+public class VirtualFrameClearNode extends VirtualFrameAccessorNode implements Virtualizable, IterableNodeType {
+    public static final NodeClass<VirtualFrameClearNode> TYPE = NodeClass.create(VirtualFrameClearNode.class);
 
-    public VirtualFrameFreeNode(Receiver frame, int frameSlotIndex, int illegalTag) {
+    public VirtualFrameClearNode(Receiver frame, int frameSlotIndex, int illegalTag) {
         super(TYPE, StampFactory.forVoid(), frame, frameSlotIndex, illegalTag);
     }
 
