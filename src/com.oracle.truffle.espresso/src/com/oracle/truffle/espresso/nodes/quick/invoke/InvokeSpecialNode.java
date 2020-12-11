@@ -41,8 +41,6 @@ public final class InvokeSpecialNode extends QuickNode {
         super(top, callerBCI);
         this.method = method.getMethodVersion();
         this.directCallNode = DirectCallNode.create(method.getCallTarget());
-        // getCallTarget doesn't ensure declaring class is initialized
-        method.getDeclaringKlass().safeInitialize();
     }
 
     @Override

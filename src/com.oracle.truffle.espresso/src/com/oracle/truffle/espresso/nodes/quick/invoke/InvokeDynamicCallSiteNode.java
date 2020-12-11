@@ -54,8 +54,6 @@ public final class InvokeDynamicCallSiteNode extends QuickNode {
         this.returnKind = Signatures.returnKind(parsedSignature);
         this.hasAppendix = !StaticObject.isNull(appendix);
         this.callNode = DirectCallNode.create(target.getCallTarget());
-        // getCallTarget doesn't initialize declaring class
-        target.getDeclaringKlass().safeInitialize();
 
     }
 

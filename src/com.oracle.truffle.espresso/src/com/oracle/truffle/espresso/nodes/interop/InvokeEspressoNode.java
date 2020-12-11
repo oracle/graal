@@ -74,11 +74,14 @@ public abstract class InvokeEspressoNode extends Node {
     Object doCached(Method method, Object receiver, Object[] arguments,
                     @Cached("method") Method cachedMethod,
                     @Cached("createToEspresso(method.getParameterCount())") ToEspressoNode[] toEspressoNodes,
-                    @Cached(value = "createDirectCallNode(method.getCallTarget())") DirectCallNode directCallNode,
+                    @Cached(value = "createDirectCallNode(method.getCallTargetNoInit())") DirectCallNode directCallNode,
                     @Cached BranchProfile badArityProfile)
                     throws ArityException, UnsupportedTypeException {
 
         checkValidInvoke(method, receiver);
+        // explicitly ensure declaring class is initialized, since we use the
+        // NoInit variant of getCallTarget, because obtaining the cached direct
+        // call node is run under AST locking
         if (!cachedMethod.getDeclaringKlass().isInitialized()) {
             CompilerDirectives.transferToInterpreterAndInvalidate();
             cachedMethod.getDeclaringKlass().safeInitialize();
@@ -125,13 +128,6 @@ public abstract class InvokeEspressoNode extends Node {
         Object[] convertedArguments = new Object[expectedArity];
         for (int i = 0; i < expectedArity; i++) {
             convertedArguments[i] = toEspressoNode.execute(arguments[i], parameterKlasses[i]);
-        }
-
-        // make sure the declaring class is initialized
-        // getCallTarget never runs <clinit>
-        if (!method.getDeclaringKlass().isInitialized()) {
-            CompilerDirectives.transferToInterpreterAndInvalidate();
-            method.getDeclaringKlass().safeInitialize();
         }
 
         if (!method.isStatic()) {
