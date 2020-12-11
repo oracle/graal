@@ -805,22 +805,30 @@ class StdoutUnstripping:
         return self
 
     def __exit__(self, exc_type, exc_value, traceback):
-        if self.mapFiles and self.capture:
+        if self.mapFiles and self.capture and len(self.capture.data):
+            data = self.capture.data
+            tmp_fd, tmp_file = tempfile.mkstemp(suffix='.txt', prefix='unstrip')
+            os.close(tmp_fd) # Don't leak file descriptors
             try:
-                with tempfile.NamedTemporaryFile(mode='w') as inputFile:
-                    data = self.capture.data
-                    if len(data) != 0:
-                        inputFile.write(data)
-                        inputFile.flush()
-                        retraceOut = mx.OutputCapture()
-                        unstrip_args = [m for m in set(self.mapFiles)] + [inputFile.name]
-                        mx.unstrip(unstrip_args, out=retraceOut)
-                        if data != retraceOut.data:
-                            mx.log('>>>> BEGIN UNSTRIPPED OUTPUT')
-                            mx.log(retraceOut.data)
-                            mx.log('<<<< END UNSTRIPPED OUTPUT')
+                with open(tmp_file, 'w') as fp:
+                    fp.write(data)
+                retraceOut = mx.OutputCapture()
+                unstrip_args = [m for m in set(self.mapFiles)] + [tmp_file]
+                mx.unstrip(unstrip_args, out=retraceOut)
+                retraceOut = retraceOut.data
+                if data != retraceOut and mx.is_windows():
+                    # On Windows, ReTrace might duplicate line endings
+                    dedupOut = retraceOut.replace(os.linesep + os.linesep, os.linesep)
+                    if data == dedupOut:
+                        retraceOut = dedupOut
+                if data != retraceOut:
+                    mx.log('>>>> BEGIN UNSTRIPPED OUTPUT')
+                    mx.log(retraceOut.data)
+                    mx.log('<<<< END UNSTRIPPED OUTPUT')
             except BaseException as e:
                 mx.log('Error unstripping output from VM execution with stripped jars: ' + str(e))
+            finally:
+                os.remove(tmp_file)
 
 _graaljdk_override = None
 
