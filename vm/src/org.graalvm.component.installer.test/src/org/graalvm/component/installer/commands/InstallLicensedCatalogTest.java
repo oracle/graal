@@ -70,7 +70,7 @@ public class InstallLicensedCatalogTest extends CommandTestBase {
         channel.setReleasesIndexURL(u);
         cfactory = new CatalogFactory() {
             @Override
-            public ComponentCatalog createComponentCatalog(CommandInput input, ComponentRegistry targetGraalVM) {
+            public ComponentCatalog createComponentCatalog(CommandInput input) {
                 try {
                     return new CatalogContents(InstallLicensedCatalogTest.this, channel.getStorage(), localRegistry);
                 } catch (IOException ex) {

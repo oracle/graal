@@ -105,6 +105,7 @@ public final class ComponentRegistry implements ComponentCollection {
     /**
      * @return True, if components from newer distributions are allowed.
      */
+    @Override
     public boolean isAllowDistUpdate() {
         return allowDistUpdate;
     }

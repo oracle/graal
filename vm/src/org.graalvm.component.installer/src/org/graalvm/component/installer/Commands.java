@@ -243,4 +243,16 @@ public interface Commands {
      */
     String OPTION_SHOW_UPDATES = "&";
     String LONG_OPTION_SHOW_UPDATES = "show-updates";
+
+    /**
+     * Install into target directory.
+     */
+    String OPTION_TARGET_DIRECTORY = "d";
+    String LONG_OPTION_TARGET_DIRECTORY = "target-dir";
+
+    /**
+     * Do not create or update symlink.
+     */
+    String OPTION_NO_SYMLINK = "S";
+    String LONG_OPTION_NO_SYMLINK = "no-symlink";
 }
