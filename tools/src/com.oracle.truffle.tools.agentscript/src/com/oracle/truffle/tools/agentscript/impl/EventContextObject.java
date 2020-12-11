@@ -108,10 +108,16 @@ final class EventContextObject extends AbstractContextObject {
         if (args.length == 0) {
             return ArityException.create(1, 0);
         }
-        Truffle.getRuntime().iterateFrames((frameInstance) -> {
+        Object retValue = Truffle.getRuntime().iterateFrames((frameInstance) -> {
             final Node n = frameInstance.getCallNode();
             if (n == null) {
                 // skip top most record about the instrument
+                return null;
+            }
+            LocationObject location = new LocationObject(n);
+            final SourceSection ss = location.getInstrumentedSourceSection();
+            if (ss == null || ss.getSource().isInternal()) {
+                // skip internal frames
                 return null;
             }
             final Frame frame = frameInstance.getFrame(FrameInstance.FrameAccess.READ_ONLY);
@@ -120,15 +126,15 @@ final class EventContextObject extends AbstractContextObject {
             if (lib.hasScope(n, frame)) {
                 try {
                     Object frameVars = lib.getScope(n, frame, false);
-                    LocationObject location = new LocationObject(n);
-                    iop.execute(args[0], location, frameVars);
+                    Object ret = iop.execute(args[0], location, frameVars);
+                    return iop.isNull(ret) ? null : ret;
                 } catch (UnsupportedMessageException | UnsupportedTypeException | ArityException ex) {
                     throw InsightException.raise(ex);
                 }
             }
             return null;
         });
-        return NullObject.nullCheck(null);
+        return NullObject.nullCheck(retValue);
     }
 
     @ExportMessage
