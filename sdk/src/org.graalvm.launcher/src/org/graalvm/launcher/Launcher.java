@@ -1495,7 +1495,7 @@ public abstract class Launcher {
                 }
                 for (String entry : CLASSPATH.split(File.pathSeparator)) {
                     Path resolved = graalVMHome.resolve(entry);
-                    if (isVerbose() && !Files.exists(resolved)) {
+                    if (!entry.endsWith("*") && isVerbose() && !Files.exists(resolved)) {
                         warn("%s does not exist", resolved);
                     }
                     sb.append(resolved);
