@@ -85,6 +85,7 @@ public interface GraalTruffleRuntimeListener {
      * Notifies this object after {@code target} is added to the compilation queue.
      *
      * @param target the call target that has just been enqueued for compilation
+     * @param tier Which compilation tier is in question.
      */
     default void onCompilationQueued(OptimizedCallTarget target, int tier) {
     }

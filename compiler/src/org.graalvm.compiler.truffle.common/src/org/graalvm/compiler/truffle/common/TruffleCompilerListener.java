@@ -148,6 +148,7 @@ public interface TruffleCompilerListener {
      *            object is only valid for the lifetime of a call to this method. Invoking any
      *            {@link CompilationResultInfo} method on {@code compilationResultInfo} after this
      *            method returns will result in an {@link IllegalStateException}.
+     * @param tier Which compilation tier was the compilation
      */
     default void onSuccess(CompilableTruffleAST compilable, TruffleMetaAccessProvider inliningPlan, GraphInfo graph, CompilationResultInfo compilationResultInfo, int tier) {
     }
