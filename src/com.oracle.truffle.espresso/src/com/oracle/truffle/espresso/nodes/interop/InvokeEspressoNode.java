@@ -23,6 +23,7 @@
 package com.oracle.truffle.espresso.nodes.interop;
 
 import com.oracle.truffle.api.CallTarget;
+import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.dsl.Cached;
 import com.oracle.truffle.api.dsl.GenerateUncached;
 import com.oracle.truffle.api.dsl.Specialization;
@@ -73,11 +74,18 @@ public abstract class InvokeEspressoNode extends Node {
     Object doCached(Method method, Object receiver, Object[] arguments,
                     @Cached("method") Method cachedMethod,
                     @Cached("createToEspresso(method.getParameterCount())") ToEspressoNode[] toEspressoNodes,
-                    @Cached(value = "createDirectCallNode(method.getCallTarget())") DirectCallNode directCallNode,
+                    @Cached(value = "createDirectCallNode(method.getCallTargetNoInit())") DirectCallNode directCallNode,
                     @Cached BranchProfile badArityProfile)
                     throws ArityException, UnsupportedTypeException {
 
         checkValidInvoke(method, receiver);
+        // explicitly ensure declaring class is initialized, since we use the
+        // NoInit variant of getCallTarget, because obtaining the cached direct
+        // call node is run under AST locking
+        if (!cachedMethod.getDeclaringKlass().isInitialized()) {
+            CompilerDirectives.transferToInterpreterAndInvalidate();
+            cachedMethod.getDeclaringKlass().safeInitialize();
+        }
 
         int expectedArity = cachedMethod.getParameterCount();
         if (arguments.length != expectedArity) {

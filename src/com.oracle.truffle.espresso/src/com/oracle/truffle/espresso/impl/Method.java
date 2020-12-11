@@ -360,6 +360,10 @@ public final class Method extends Member<Signature> implements TruffleObject, Co
         return getMethodVersion().getCallTarget();
     }
 
+    public CallTarget getCallTargetNoInit() {
+        return getMethodVersion().getCallTargetNoInit();
+    }
+
     public boolean usesMonitors() {
         if (usesMonitors != -1) {
             return usesMonitors != 0;
@@ -1068,6 +1072,14 @@ public final class Method extends Member<Signature> implements TruffleObject, Co
         }
 
         public CallTarget getCallTarget() {
+            return getCallTarget(true);
+        }
+
+        public CallTarget getCallTargetNoInit() {
+            return getCallTarget(false);
+        }
+
+        public CallTarget getCallTarget(boolean initKlass) {
             if (callTarget == null) {
                 CompilerDirectives.transferToInterpreterAndInvalidate();
                 Meta meta = getMeta();
@@ -1082,15 +1094,17 @@ public final class Method extends Member<Signature> implements TruffleObject, Co
                     }
                     throw Meta.throwExceptionWithMessage(meta.java_lang_IncompatibleClassChangeError, "Conflicting default methods: " + getMethod().getName());
                 }
-                // Initializing a class costs a lock, do it outside of this method's lock to avoid
-                // congestion.
-                // Note that requesting a call target is immediately followed by a call to the
-                // method, before advancing BCI.
-                // This ensures that we are respecting the specs, saying that a class must be
-                // initialized before a method is called, while saving a call to safeInitialize
-                // after a method lookup.
-                declaringKlass.safeInitialize();
-
+                if (initKlass) {
+                    // Initializing a class costs a lock, do it outside of this method's lock to
+                    // avoid
+                    // congestion.
+                    // Note that requesting a call target is immediately followed by a call to the
+                    // method, before advancing BCI.
+                    // This ensures that we are respecting the specs, saying that a class must be
+                    // initialized before a method is called, while saving a call to safeInitialize
+                    // after a method lookup.
+                    declaringKlass.safeInitialize();
+                }
                 synchronized (this) {
                     if (callTarget != null) {
                         return callTarget;

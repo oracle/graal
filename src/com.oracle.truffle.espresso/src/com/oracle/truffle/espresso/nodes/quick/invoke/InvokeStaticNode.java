@@ -61,7 +61,6 @@ public final class InvokeStaticNode extends QuickNode {
         // TODO(peterssen): Constant fold this check.
         if (directCallNode == null) {
             CompilerDirectives.transferToInterpreterAndInvalidate();
-            // Obtaining call target initializes the declaring klass
             // insert call node though insertion method so that
             // stack frame iteration will see this node as parent
             directCallNode = insert(DirectCallNode.create(method.getMethod().getCallTarget()));

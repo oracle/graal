@@ -50,7 +50,13 @@ public abstract class InvokeVirtualNode extends QuickNode {
     Object callVirtualDirect(StaticObject receiver, Object[] args,
                     @Cached("receiver.getKlass()") Klass cachedKlass,
                     @Cached("methodLookup(receiver, resolutionSeed)") MethodVersion resolvedMethod,
-                    @Cached("create(resolvedMethod.getCallTarget())") DirectCallNode directCallNode) {
+                    @Cached("create(resolvedMethod.getCallTargetNoInit())") DirectCallNode directCallNode) {
+        // getCallTarget doesn't ensure declaring class is initialized
+        // so we need the below check prior to executing the method
+        if (!resolvedMethod.getMethod().getDeclaringKlass().isInitialized()) {
+            CompilerDirectives.transferToInterpreterAndInvalidate();
+            resolvedMethod.getMethod().getDeclaringKlass().safeInitialize();
+        }
         return directCallNode.call(args);
     }
 
