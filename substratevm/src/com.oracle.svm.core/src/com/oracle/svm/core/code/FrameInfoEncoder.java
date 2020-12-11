@@ -427,7 +427,8 @@ public class FrameInfoEncoder {
             int length = 0;
 
             JavaKind kind = ((SharedType) type.getComponentType()).getStorageKind();
-            for (int i = 0; i < virtualObject.getValues().length; i++) {
+            int i = 0;
+            while (i < virtualObject.getValues().length) {
                 JavaValue value = virtualObject.getValues()[i];
                 JavaKind valueKind = virtualObject.getSlotKind(i);
                 if (objectLayout.sizeInBytes(kind) == 4 && objectLayout.sizeInBytes(valueKind) == 8) {
@@ -447,7 +448,6 @@ public class FrameInfoEncoder {
                         valueKind = restoreByteArrayEntryValueKind(valueKind, byteCount);
                         valueList.add(makeValueInfo(data, valueKind, value, isDeoptEntry));
                         length += byteCount;
-
                         i += byteCount - /* loop increment */ 1;
                     } else {
                         assert objectLayout.sizeInBytes(valueKind.getStackKind()) <= objectLayout.sizeInBytes(kind.getStackKind());
@@ -456,6 +456,7 @@ public class FrameInfoEncoder {
                     }
                 }
 
+                i++;
                 assert objectLayout.getArrayElementOffset(kind, length) == objectLayout.getArrayBaseOffset(kind) + computeOffset(valueList, 2);
             }
 
