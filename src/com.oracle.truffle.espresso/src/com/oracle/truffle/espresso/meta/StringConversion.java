@@ -34,9 +34,32 @@ import sun.misc.Unsafe;
 public abstract class StringConversion {
     private static final Unsafe UNSAFE = UnsafeAccess.get();
 
-    private static final long hostValueOffset;
-    private static final long hostHashOffset;
-    private static final long hostCoderOffset;
+    private static final class Offsets8 {
+        static final long hostValueOffset;
+        static final long hostHashOffset;
+
+        static {
+            try {
+                hostValueOffset = UNSAFE.objectFieldOffset(String.class.getDeclaredField("value"));
+                hostHashOffset = UNSAFE.objectFieldOffset(String.class.getDeclaredField("hash"));
+            } catch (NoSuchFieldException e) {
+                throw EspressoError.shouldNotReachHere(e);
+            }
+        }
+    }
+
+    private static final class Offsets11 {
+        static final long hostCoderOffset;
+
+        static {
+            try {
+                assert JavaVersion.HOST_COMPACT_STRINGS;
+                hostCoderOffset = UNSAFE.objectFieldOffset(String.class.getDeclaredField("coder"));
+            } catch (NoSuchFieldException e) {
+                throw EspressoError.shouldNotReachHere(e);
+            }
+        }
+    }
 
     public abstract String toHost(StaticObject str, Meta meta);
 
@@ -45,20 +68,11 @@ public abstract class StringConversion {
     private StringConversion() {
     }
 
-    static {
-        try {
-            hostValueOffset = UNSAFE.objectFieldOffset(String.class.getDeclaredField("value"));
-            hostHashOffset = UNSAFE.objectFieldOffset(String.class.getDeclaredField("hash"));
-            hostCoderOffset = JavaVersion.hostUsesCompactStrings()
-                            ? UNSAFE.objectFieldOffset(String.class.getDeclaredField("coder"))
-                            : -1;
-        } catch (NoSuchFieldException e) {
-            throw EspressoError.shouldNotReachHere(e);
-        }
-    }
-
     static StringConversion select(EspressoContext context) {
-        if (JavaVersion.hostUsesCompactStrings()) {
+        // This gets folded during parsing, making sure that SVM analysis on a 8 host doesn't see
+        // CompactToCompact or CopyingCompactToCompact and thus doesn't reach any 11-host-specific
+        // code.
+        if (JavaVersion.HOST_COMPACT_STRINGS) {
             if (context.getJavaVersion().compactStringsEnabled()) {
                 if (context.getEnv().getOptions().get(EspressoOptions.StringSharing)) {
                     return CompactToCompact.INSTANCE;
@@ -106,19 +120,19 @@ public abstract class StringConversion {
     }
 
     private static char[] extractHostChars8(String str) {
-        return (char[]) UNSAFE.getObject(str, hostValueOffset);
+        return (char[]) UNSAFE.getObject(str, Offsets8.hostValueOffset);
     }
 
     private static byte[] extractHostBytes11(String str) {
-        return (byte[]) UNSAFE.getObject(str, hostValueOffset);
+        return (byte[]) UNSAFE.getObject(str, Offsets8.hostValueOffset);
     }
 
     private static int extractHostHash(String str) {
-        return UNSAFE.getInt(str, hostHashOffset);
+        return UNSAFE.getInt(str, Offsets8.hostHashOffset);
     }
 
     private static byte extractHostCoder(String str) {
-        return UNSAFE.getByte(str, hostCoderOffset);
+        return UNSAFE.getByte(str, Offsets11.hostCoderOffset);
     }
 
     private static StaticObject produceGuestString8(Meta meta, char[] value, int hash) {
@@ -138,16 +152,16 @@ public abstract class StringConversion {
 
     private static String produceHostString8(char[] value, int hash) {
         String res = allocateHost();
-        UNSAFE.putInt(res, hostHashOffset, hash);
-        UNSAFE.putObjectVolatile(res, hostValueOffset, value);
+        UNSAFE.putInt(res, Offsets8.hostHashOffset, hash);
+        UNSAFE.putObjectVolatile(res, Offsets8.hostValueOffset, value);
         return res;
     }
 
     private static String produceHostString11(byte[] value, int hash, byte coder) {
         String res = allocateHost();
-        UNSAFE.putInt(res, hostHashOffset, hash);
-        UNSAFE.putByte(res, hostCoderOffset, coder);
-        UNSAFE.putObjectVolatile(res, hostValueOffset, value);
+        UNSAFE.putInt(res, Offsets8.hostHashOffset, hash);
+        UNSAFE.putByte(res, Offsets11.hostCoderOffset, coder);
+        UNSAFE.putObjectVolatile(res, Offsets8.hostValueOffset, value);
         return res;
     }
 
