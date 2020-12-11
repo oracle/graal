@@ -401,14 +401,19 @@ public final class LLVMBitcodeInstructionVisitor implements SymbolVisitor {
             argNodes[argIndex] = nodeFactory.createGetUniqueStackSpace(targetType, uniquesRegion, frame);
             argIndex++;
         }
+
+        // realArgumentCount = argumentCount - varArgCount
+        int realArgumentCount = call.getCallTarget().getType() instanceof FunctionType ? ((FunctionType) call.getCallTarget().getType()).getNumberOfArguments() : argumentCount;
+
         final SymbolImpl target = call.getCallTarget();
         for (int i = call.getArgumentCount() - 1; i >= 0; i--) {
             argNodes[argIndex + i] = resolveOptimized(call.getArgument(i), i, target, call.getArguments());
             argTypes.set(argIndex + i, call.getArgument(i).getType());
+            boolean isVarArg = i >= realArgumentCount;
             final AttributesGroup paramAttr = call.getParameterAttributesGroup(i);
             if (isByValue(paramAttr)) {
                 argNodes[argIndex + i] = capsuleAddressByValue(argNodes[argIndex + i], argTypes.get(argIndex + i), paramAttr);
-            } else if (isArrayByValue(argTypes.get(argIndex + i), argNodes[argIndex + i])) {
+            } else if (isVarArg && isArrayByValue(argTypes.get(argIndex + i), argNodes[argIndex + i])) {
                 argNodes[argIndex + i] = capsuleArrayByValue(argNodes[argIndex + i], argTypes.get(argIndex + i));
             }
         }
@@ -582,12 +587,17 @@ public final class LLVMBitcodeInstructionVisitor implements SymbolVisitor {
 
         SymbolImpl target = call.getCallTarget();
 
+        int realArgumentCount = call.getCallTarget().getType() instanceof FunctionType ? ((FunctionType) call.getCallTarget().getType()).getNumberOfArguments() : argumentCount;
+
         for (int i = call.getArgumentCount() - 1; i >= 0; i--) {
             argNodes[argIndex + i] = resolveOptimized(call.getArgument(i), i, target, call.getArguments());
             argTypes.set(argIndex + i, call.getArgument(i).getType());
             final AttributesGroup paramAttr = call.getParameterAttributesGroup(i);
+            boolean isVarArg = i >= realArgumentCount;
             if (isByValue(paramAttr)) {
                 argNodes[argIndex + i] = capsuleAddressByValue(argNodes[argIndex + i], argTypes.get(argIndex + i), paramAttr);
+            } else if (isVarArg && isArrayByValue(argTypes.get(argIndex + i), argNodes[argIndex + i])) {
+                argNodes[argIndex + i] = capsuleArrayByValue(argNodes[argIndex + i], argTypes.get(argIndex + i));
             }
         }
 
@@ -629,12 +639,18 @@ public final class LLVMBitcodeInstructionVisitor implements SymbolVisitor {
             argNodes[argIndex] = nodeFactory.createGetUniqueStackSpace(targetType, uniquesRegion, frame);
             argIndex++;
         }
+
+        int realArgumentCount = call.getCallTarget().getType() instanceof FunctionType ? ((FunctionType) call.getCallTarget().getType()).getNumberOfArguments() : argumentCount;
+
         for (int i = call.getArgumentCount() - 1; i >= 0; i--) {
             argNodes[argIndex + i] = resolveOptimized(call.getArgument(i), i, target, call.getArguments());
             argTypes.set(argIndex + i, call.getArgument(i).getType());
             final AttributesGroup paramAttr = call.getParameterAttributesGroup(i);
+            boolean isVarArg = i >= realArgumentCount;
             if (isByValue(paramAttr)) {
                 argNodes[argIndex + i] = capsuleAddressByValue(argNodes[argIndex + i], argTypes.get(argIndex + i), paramAttr);
+            } else if (isVarArg && isArrayByValue(argTypes.get(argIndex + i), argNodes[argIndex + i])) {
+                argNodes[argIndex + i] = capsuleArrayByValue(argNodes[argIndex + i], argTypes.get(argIndex + i));
             }
         }
 
@@ -677,12 +693,17 @@ public final class LLVMBitcodeInstructionVisitor implements SymbolVisitor {
         argsType.set(argIndex, new PointerType(null));
         argIndex++;
 
+        int realArgumentCount = call.getCallTarget().getType() instanceof FunctionType ? ((FunctionType) call.getCallTarget().getType()).getNumberOfArguments() : argumentCount;
+
         for (int i = call.getArgumentCount() - 1; i >= 0; i--) {
             args[argIndex + i] = symbols.resolve(call.getArgument(i));
             argsType.set(argIndex + i, call.getArgument(i).getType());
             final AttributesGroup paramAttr = call.getParameterAttributesGroup(i);
+            boolean isVarArg = i >= realArgumentCount;
             if (isByValue(paramAttr)) {
                 args[argIndex + i] = capsuleAddressByValue(args[argIndex + i], argsType.get(argIndex + i), paramAttr);
+            } else if (isVarArg && isArrayByValue(argsType.get(argIndex + i), args[argIndex + i])) {
+                args[argIndex + i] = capsuleArrayByValue(args[argIndex + i], argsType.get(argIndex + i));
             }
         }
 
@@ -1248,6 +1269,7 @@ public final class LLVMBitcodeInstructionVisitor implements SymbolVisitor {
 // return true;
 // }
         return ((exprNode instanceof LLVMStructLoadNode) || (exprNode instanceof LLVMArrayLiteralNode) && (type instanceof ArrayType));
+// return false;
     }
 
     private void assignSourceLocation(LLVMInstrumentableNode node, Instruction sourceInstruction) {

@@ -71,9 +71,9 @@ double sumDoublesLLVM(int count, va_list *args) {
 }
 
 double testVariousTypesLLVM(int count, va_list *args) {
-//double testVariousTypesLLVM(int count, ...) {
-//    va_list args;
-//    va_start(args, count);
+    //double testVariousTypesLLVM(int count, ...) {
+    //    va_list args;
+    //    va_start(args, count);
     double sum = 0;
     for (int i = 0; i < count; ++i) {
         double num1 = va_arg(*args, double);
@@ -87,7 +87,7 @@ double testVariousTypesLLVM(int count, va_list *args) {
     int overflow1 = va_arg(*args, int);
     char *overflow2 = va_arg(*args, char *);
     printf("%s, %d, %f, %d, %f, %d, %f, %d, %s\n", msg, a.x, a.y, b.x, b.y, c->x, c->y, overflow1, overflow2);
-//    va_end(args);
+    //    va_end(args);
     return sum;
 }
 

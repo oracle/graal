@@ -31,8 +31,8 @@
 #include <stdarg.h>
 
 // Dummy functions whose call sites are manually replaced by va_arg invocations in the LL code
-double va_argDouble(va_list* args);
-int va_argInt(va_list* args);
+double va_argDouble(va_list *args);
+int va_argInt(va_list *args);
 
 double testVaArgDouble(int count, ...) {
     double sum = 0;

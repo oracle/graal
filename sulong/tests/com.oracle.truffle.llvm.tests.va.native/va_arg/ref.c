@@ -55,6 +55,6 @@ int testVaArgInt(int count, ...) {
 }
 
 int main(void) {
-	    printf("Test int va_arg    : %d\n", testVaArgInt(8, 1., 2, 3., 4, 5., 6, 7., 8, 9., 10, 11., 12, 13., 14, 15., 16));
+    printf("Test int va_arg    : %d\n", testVaArgInt(8, 1., 2, 3., 4, 5., 6, 7., 8, 9., 10, 11., 12, 13., 14, 15., 16));
     printf("Test double va_arg : %f\n", testVaArgDouble(8, 1., 2, 3., 4, 5., 6, 7., 8, 9., 10, 11., 12, 13., 14, 15., 16));
 }

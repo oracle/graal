@@ -36,7 +36,6 @@ import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.library.CachedLibrary;
 import com.oracle.truffle.api.nodes.UnexpectedResultException;
 import com.oracle.truffle.llvm.runtime.LLVMLanguage;
-import com.oracle.truffle.llvm.runtime.LLVMVarArgCompoundValue;
 import com.oracle.truffle.llvm.runtime.library.internal.LLVMManagedReadLibrary;
 import com.oracle.truffle.llvm.runtime.nodes.api.LLVMExpressionNode;
 import com.oracle.truffle.llvm.runtime.nodes.api.LLVMLoadNode;
@@ -130,11 +129,4 @@ public abstract class LLVMI64LoadNode extends LLVMLoadNode {
                     @CachedLibrary("addr.getObject()") LLVMManagedReadLibrary nativeRead) {
         return nativeRead.readGenericI64(addr.getObject(), addr.getOffset());
     }
-
-    @Specialization(rewriteOn = UnexpectedResultException.class)
-    protected long doI64Native(LLVMVarArgCompoundValue value,
-                    @Cached LLVMI64LoadNode recursionNode) throws UnexpectedResultException {
-        return recursionNode.executeWithTarget(value.getAddr());
-    }
-
 }
