@@ -269,6 +269,7 @@ public class ComponentInstaller extends Launcher {
                         "lib/security/cacerts"); // NOI18N
         System.setProperty("javax.net.ssl.trustStore", trustStorePath.normalize().toString()); // NOI18N
         DirectoryStorage storage = new DirectoryStorage(e, storagePath, graalHomePath);
+        storage.setConfig(env);
         storage.setJavaVersion("" + SystemUtils.getJavaMajorVersion(e));
         e.setLocalRegistry(new ComponentRegistry(e, storage));
         FileOperations fops = FileOperations.createPlatformInstance(e, e.getGraalHomePath());

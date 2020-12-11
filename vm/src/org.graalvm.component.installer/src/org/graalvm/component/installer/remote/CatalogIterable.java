@@ -276,6 +276,15 @@ public class CatalogIterable implements ComponentIterable {
         }
 
         @Override
+        public MetadataLoader createMetaLoader() throws IOException {
+            if (configurer == null) {
+                return super.createMetaLoader();
+            } else {
+                return configurer.interceptMetadataLoader(getCatalogInfo(), super.createMetaLoader());
+            }
+        }
+
+        @Override
         public FileDownloader configureRelatedDownloader(FileDownloader dn) {
             return configurer.processDownloader(getCatalogInfo(), dn);
         }

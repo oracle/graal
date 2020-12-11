@@ -112,6 +112,9 @@ public class InstallCommand implements InstallerCommand {
         OPTIONS.put(Commands.LONG_OPTION_LOCAL_DEPENDENCIES, Commands.OPTION_LOCAL_DEPENDENCIES);
         OPTIONS.put(Commands.LONG_OPTION_NO_DEPENDENCIES, Commands.OPTION_NO_DEPENDENCIES);
 
+        OPTIONS.put(Commands.OPTION_USE_EDITION, "s");
+        OPTIONS.put(Commands.LONG_OPTION_USE_EDITION, Commands.OPTION_USE_EDITION);
+
         OPTIONS.putAll(ComponentInstaller.componentOptions);
     }
 
@@ -743,7 +746,7 @@ public class InstallCommand implements InstallerCommand {
         return feedback;
     }
 
-    Map<String, List<MetadataLoader>> getLicensesToAccept() {
+    protected Map<String, List<MetadataLoader>> getLicensesToAccept() {
         return licensesToAccept;
     }
 
