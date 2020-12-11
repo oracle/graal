@@ -132,6 +132,9 @@ public final class JNIAccessibleMethod extends JNIAccessibleMember {
             arrayNonvirtualCallWrapper = MethodPointer.factory(hUniverse.lookup(aUniverse.lookup(arrayNonvirtualCallWrapperMethod)));
             valistNonvirtualCallWrapper = MethodPointer.factory(hUniverse.lookup(aUniverse.lookup(valistNonvirtualCallWrapperMethod)));
         }
+        if (descriptor.isConstructor() || descriptor.isClassInitializer()) {
+            return; // only hiding subclasses of methods need to be added
+        }
         setHidingSubclasses(access.getMetaAccess(), this::anyMatchIgnoreReturnType);
     }
 
