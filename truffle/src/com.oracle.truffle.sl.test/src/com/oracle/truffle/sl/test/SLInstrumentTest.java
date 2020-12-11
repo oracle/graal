@@ -69,6 +69,7 @@ import org.junit.Test;
 
 import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
+import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.frame.MaterializedFrame;
 import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.instrumentation.EventBinding;
@@ -600,6 +601,11 @@ public class SLInstrumentTest {
         private static final long serialVersionUID = -4735601164894088571L;
     }
 
+    @TruffleBoundary
+    private static CharSequence getSourceSectionCharacters(SourceSection section) {
+        return section.getCharacters();
+    }
+
     @TruffleInstrument.Registration(id = "testRedoIO", services = TestRedoIO.class)
     public static class TestRedoIO extends TruffleInstrument {
 
@@ -613,7 +619,7 @@ public class SLInstrumentTest {
             env.getInstrumenter().attachExecutionEventListener(SourceSectionFilter.ANY, new ExecutionEventListener() {
                 @Override
                 public void onEnter(EventContext context, VirtualFrame frame) {
-                    if ("readln".equals(context.getInstrumentedSourceSection().getCharacters())) {
+                    if ("readln".equals(getSourceSectionCharacters(context.getInstrumentedSourceSection()))) {
                         CompilerDirectives.transferToInterpreter();
                         // Interrupt the I/O
                         final Thread thread = Thread.currentThread();
@@ -759,7 +765,7 @@ public class SLInstrumentTest {
 
                 @Override
                 public void onReturnValue(EventContext context, VirtualFrame frame, Object result) {
-                    if (fceCode.equals(context.getInstrumentedSourceSection().getCharacters())) {
+                    if (fceCode.equals(getSourceSectionCharacters(context.getInstrumentedSourceSection()))) {
                         CompilerDirectives.transferToInterpreter();
                         throw context.createUnwind(null);
                     }
@@ -972,7 +978,7 @@ public class SLInstrumentTest {
                 @Override
                 public void onEnter(EventContext context, VirtualFrame frame) {
                     SourceSection ss = context.getInstrumentedSourceSection();
-                    if (ss.getCharacters().toString().contains(error)) {
+                    if (getSourceSectionCharacters(ss).toString().contains(error)) {
                         if (unwind == null) {
                             CompilerDirectives.transferToInterpreterAndInvalidate();
                             unwind = context.createUnwind(null, reenterBinding);

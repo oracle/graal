@@ -629,6 +629,11 @@ public class SLInstrumentLegacyTest {
         private static final long serialVersionUID = -4735601164894088571L;
     }
 
+    @TruffleBoundary
+    private static CharSequence getSourceSectionCharacters(SourceSection section) {
+        return section.getCharacters();
+    }
+
     @TruffleInstrument.Registration(id = "testRedoIOLegacy", services = TestRedoIOLegacy.class)
     public static class TestRedoIOLegacy extends TruffleInstrument {
 
@@ -661,11 +666,6 @@ public class SLInstrumentLegacyTest {
                             }
                         }.start();
                     }
-                }
-
-                @TruffleBoundary
-                private CharSequence getSourceSectionCharacters(SourceSection section) {
-                    return section.getCharacters();
                 }
 
                 @Override
@@ -793,7 +793,7 @@ public class SLInstrumentLegacyTest {
 
                 @Override
                 public void onReturnValue(EventContext context, VirtualFrame frame, Object result) {
-                    if (fceCode.equals(context.getInstrumentedSourceSection().getCharacters())) {
+                    if (fceCode.equals(getSourceSectionCharacters(context.getInstrumentedSourceSection()))) {
                         CompilerDirectives.transferToInterpreter();
                         throw context.createUnwind(null);
                     }
@@ -1006,7 +1006,7 @@ public class SLInstrumentLegacyTest {
                 @Override
                 public void onEnter(EventContext context, VirtualFrame frame) {
                     SourceSection ss = context.getInstrumentedSourceSection();
-                    if (ss.getCharacters().toString().contains(error)) {
+                    if (getSourceSectionCharacters(ss).toString().contains(error)) {
                         if (unwind == null) {
                             CompilerDirectives.transferToInterpreterAndInvalidate();
                             unwind = context.createUnwind(null, reenterBinding);
