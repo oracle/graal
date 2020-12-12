@@ -40,7 +40,7 @@ suite = {
                 "TRUFFLE_PROFILER",
                 "NanoHTTPD",
                 "NanoHTTPD-WebSocket",
-                "TruffleJSON",
+                "truffle:TruffleJSON",
                 "SLF4J_SIMPLE",
                 "Java-WebSocket",
             ],
@@ -114,7 +114,7 @@ suite = {
             "sourceDirs" : ["src"],
             "dependencies" : [
                 "truffle:TRUFFLE_API",
-                "TruffleJSON",
+                "truffle:TruffleJSON",
                 ],
             "exports" : [
               "<package-info>", # exports all packages containing package-info.java
@@ -143,7 +143,7 @@ suite = {
             "sourceDirs" : ["src"],
             "dependencies" : [
                 "truffle:TRUFFLE_API",
-                "TruffleJSON",
+                "truffle:TruffleJSON",
                 ],
             "exports" : [
               "<package-info>", # exports all packages containing package-info.java
@@ -172,7 +172,7 @@ suite = {
             "sourceDirs" : ["src"],
             "dependencies" : [
                 "truffle:TRUFFLE_API",
-                "TruffleJSON",
+                "truffle:TruffleJSON",
             ],
             "exports" : [
               "<package-info>", # exports all packages containing package-info.java
@@ -201,7 +201,7 @@ suite = {
             "sourceDirs" : ["src"],
             "dependencies" : [
                 "truffle:TRUFFLE_API",
-                "TruffleJSON",
+                "truffle:TruffleJSON",
             ],
             "exports" : [
               "<package-info>", # exports all packages containing package-info.java
@@ -241,7 +241,7 @@ suite = {
             "sourceDirs": ["src"],
             "dependencies": [
                 "org.graalvm.tools.api.lsp",
-                "TruffleJSON"
+                "truffle:TruffleJSON"
             ],
             "checkstyle": "com.oracle.truffle.tools.chromeinspector",
             "javaCompliance": "8+",
