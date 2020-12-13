@@ -272,12 +272,6 @@ suite = {
             "urls" : ["https://lafo.ssw.uni-linz.ac.at/pub/graal-external-deps/nanohttpd-websocket-2.3.2-efb2ebf85a2b06f7c508aba9eaad5377e3a01e81.jar"],
             "sha1" : "a8f5b9e7387e00a57d31be320a8246a7c8128aa4",
         },
-        "TruffleJSON" : {
-          "urls" : ["https://lafo.ssw.uni-linz.ac.at/pub/graal-external-deps/trufflejson-20201115.jar"],
-          "sha1" : "7987931963f4fa995fa515273d70116725d0e37f",
-          "sourceUrls": ["https://lafo.ssw.uni-linz.ac.at/pub/graal-external-deps/trufflejson-20201115-src.jar"],
-          "sourceSha1" : "1da7c590b0582fb4c2e4de9b581c70407fa9108b",
-        },
         "Java-WebSocket" : {
             "sha1" : "382b302303c830a7edb20c9ed61c4ac2cdf7a7a4",
             "maven" : {
