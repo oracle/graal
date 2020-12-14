@@ -759,6 +759,33 @@ No slowdown at all. [Insight](Insight.md) gives us great instrumentation capabil
 the great inlining algorithms of [GraalVM](http://graalvm.org/downloads)
 we can even access local variables with almost no performance penalty!
 
+### Accessing whole Stack
+
+There is a way for [Insight](Insight.md) to access the whole execution stack.
+Following code snippet shows how to do that:
+
+```js
+insight.on("return", function(ctx, frame) {
+  print("dumping locals");
+  ctx.iterateFrames((at, vars) => {
+      for (let p in vars) {
+          print(`    at ${at.name} (${at.source.name}:${at.line}:${at.column}) ${p} has value ${vars[p]}`);
+      }
+  });
+  print("end of locals");
+}, {
+  roots: true
+});
+```
+
+Whenever the [Insight](Insight.md) hook is triggered it prints the current execution
+stack with `name` of the function, `source.name`, `line` and `column`. Moreover
+it also prints values of all local `vars` at each frame. It is also possible to
+modify values of existing variables by assigning new values to them: `vars.n = 42`.
+Accessing whole stack is flexible, but unlike [access to locals in the current
+execution frame](Insight-Manual.md#modifying-local-variables), it is not fast
+operation. Use rarely, if you want your program to continue running at full speed!
+
 <!--
 
 ### TODO:
