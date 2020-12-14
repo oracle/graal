@@ -127,7 +127,7 @@ final class EventContextObject extends AbstractContextObject {
                 // skip internal frames
                 return null;
             }
-            final Frame frame = frameInstance.getFrame(FrameInstance.FrameAccess.READ_ONLY);
+            final Frame frame = frameInstance.getFrame(FrameInstance.FrameAccess.READ_WRITE);
             if (lib.hasScope(n, frame)) {
                 try {
                     Object frameVars = lib.getScope(n, frame, false);
