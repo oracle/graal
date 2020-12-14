@@ -2909,25 +2909,30 @@ final class JDWP {
     }
 
     private static void writeMethodResult(PacketStream reply, JDWPContext context, ThreadJob<?>.JobResult<?> result) {
-        if (result.getException() != null) {
-            JDWPLogger.log("method threw exception", JDWPLogger.LogLevel.PACKET);
-            reply.writeByte(TagConstants.OBJECT);
-            reply.writeLong(0);
-            reply.writeByte(TagConstants.OBJECT);
-            Object guestException = context.getGuestException(result.getException());
-            reply.writeLong(context.getIds().getIdAsLong(guestException));
-        } else {
-            Object value = context.toGuest(result.getResult());
-            if (value != null) {
-                byte tag = context.getTag(value);
-                writeValue(tag, value, reply, true, context);
-            } else { // return value is null
+        try {
+            if (result.getException() != null) {
+                JDWPLogger.log("method threw exception", JDWPLogger.LogLevel.PACKET);
+                reply.writeByte(TagConstants.OBJECT);
+                reply.writeLong(0);
+                reply.writeByte(TagConstants.OBJECT);
+                Object guestException = context.getGuestException(result.getException());
+                reply.writeLong(context.getIds().getIdAsLong(guestException));
+            } else {
+                Object value = context.toGuest(result.getResult());
+                if (value != null) {
+                    byte tag = context.getTag(value);
+                    writeValue(tag, value, reply, true, context);
+                } else { // return value is null
+                    reply.writeByte(TagConstants.OBJECT);
+                    reply.writeLong(0);
+                }
+                // no exception, so zero object ID
                 reply.writeByte(TagConstants.OBJECT);
                 reply.writeLong(0);
             }
-            // no exception, so zero object ID
-            reply.writeByte(TagConstants.OBJECT);
-            reply.writeLong(0);
+        } catch (Throwable t) {
+            JDWPLogger.log("Internal Espresso error: %s", JDWPLogger.LogLevel.ALL, t);
+            reply.errorCode(ErrorCodes.INTERNAL);
         }
     }
 

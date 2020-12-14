@@ -505,7 +505,7 @@ public final class JDWPContextImpl implements JDWPContext {
             EspressoException ex = (EspressoException) exception;
             return ex.getExceptionObject();
         } else {
-            throw new RuntimeException("unknown exception type: " + exception.getClass());
+            throw new RuntimeException("unknown exception type: " + exception.getClass(), exception);
         }
     }
 
