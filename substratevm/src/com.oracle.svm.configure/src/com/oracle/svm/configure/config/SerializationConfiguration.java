@@ -46,7 +46,11 @@ public class SerializationConfiguration implements JsonPrintable {
     }
 
     public void add(String serializationTargetClass, String checksum) {
-        addAll(serializationTargetClass, Collections.singleton(checksum));
+        if (checksum == null) {
+            addAll(serializationTargetClass, Collections.emptySet());
+        } else {
+            addAll(serializationTargetClass, Collections.singleton(checksum));
+        }
     }
 
     public boolean contains(String serializationTargetClass, String checksum) {
@@ -74,9 +78,8 @@ public class SerializationConfiguration implements JsonPrintable {
                                     .map(JsonWriter::quoteString)
                                     .collect(Collectors.joining(", ", "[", "]")));
                 }
-                writer.newline();
             }
-            writer.append('}');
+            writer.newline().append('}');
             prefix = ",";
         }
         writer.unindent().newline();
