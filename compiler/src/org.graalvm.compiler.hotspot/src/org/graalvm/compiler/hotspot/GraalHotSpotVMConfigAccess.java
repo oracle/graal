@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2020, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2020, 2021, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -375,34 +375,25 @@ public class GraalHotSpotVMConfigAccess {
     /**
      * @see HotSpotVMConfigAccess#getFlag(String, Class, Object)
      */
-    @SuppressWarnings("deprecation")
     public <T> T getFlag(String name, Class<T> type, T notPresent, boolean expectPresent) {
         if (expectPresent) {
             return getFlag(name, type);
         }
+        // Expecting flag not to be present
         if (Assertions.assertionsEnabled()) {
             // There's more overhead for checking unexpectedly
             // present flag values due to the fact that a VM call
-            // not exposed by JVMCI is needed to determine whether
+            // not exposed by JVMCI (i.e.,
+            // jdk.vm.ci.hotspot.CompilerToVM.getFlagValue)
+            // is needed to determine whether
             // a flag value is available. As such, only pay the
             // overhead when running with assertions enabled.
-            T sentinel;
-            if (type == Boolean.class) {
-                sentinel = type.cast(new Boolean(false));
-            } else if (type == Byte.class) {
-                sentinel = type.cast(new Byte((byte) 123));
-            } else if (type == Integer.class) {
-                sentinel = type.cast(new Integer(1234567890));
-            } else if (type == Long.class) {
-                sentinel = type.cast(new Long(1234567890987654321L));
-            } else if (type == String.class) {
-                sentinel = type.cast(new String("1234567890987654321"));
-            } else {
-                throw new JVMCIError("Unsupported flag type: " + type.getName());
-            }
-            T value = access.getFlag(name, type, sentinel);
-            if (value != sentinel) {
+            try {
+                T value = access.getFlag(name, type, null);
+                // Flag value present -> fail
                 recordError(name, unexpected, String.valueOf(value));
+            } catch (JVMCIError e) {
+                // Flag value not present -> pass
             }
         }
         return access.getFlag(name, type, notPresent);
