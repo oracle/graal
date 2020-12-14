@@ -70,11 +70,12 @@ final class LocationObject extends AbstractContextObject {
     @Override
     @CompilerDirectives.TruffleBoundary
     SourceSection getInstrumentedSourceSection() {
-        for (Node n = node;; n = n.getParent()) {
+        for (Node n = node; n != null; n = n.getParent()) {
             SourceSection section = n.getSourceSection();
             if (section != null) {
                 return section;
             }
         }
+        return null;
     }
 }

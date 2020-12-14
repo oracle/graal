@@ -52,11 +52,21 @@ abstract class AbstractContextObject implements TruffleObject {
                     name = getInstrumentedNode().getRootNode().getName();
                 }
                 return name;
-            case "characters":
+            case "characters": {
                 CompilerDirectives.transferToInterpreter();
-                return getInstrumentedSourceSection().getCharacters().toString();
-            case "source":
-                return new SourceEventObject(getInstrumentedSourceSection().getSource());
+                final SourceSection ss = getInstrumentedSourceSection();
+                if (ss == null) {
+                    return NullObject.nullCheck(null);
+                }
+                return ss.getCharacters().toString();
+            }
+            case "source": {
+                final SourceSection ss = getInstrumentedSourceSection();
+                if (ss == null) {
+                    return NullObject.nullCheck(null);
+                }
+                return new SourceEventObject(ss.getSource());
+            }
             case "line":
             case "startLine":
                 index = 0;
@@ -84,6 +94,9 @@ abstract class AbstractContextObject implements TruffleObject {
     @CompilerDirectives.TruffleBoundary
     private int[] valuesForContext() {
         final SourceSection section = getInstrumentedSourceSection();
+        if (section == null) {
+            return new int[4];
+        }
         return new int[]{
                         section.getStartLine(),
                         section.getEndLine(),
