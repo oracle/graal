@@ -63,14 +63,6 @@ public class AMD64AddressNode extends AddressNode implements Simplifiable, LIRLo
 
     private int displacement;
 
-    /*
-     * If this address has been improved by folding an uncompress operation into it, this is set by
-     * the address lowering to the uncompression scale used by the encoding strategy. It is null
-     * otherwise. This might be different from scale if we lowered an uncompression followed by
-     * further improvements that modify the scale.
-     */
-    private Scale uncompressionScale;
-
     public AMD64AddressNode(ValueNode base) {
         this(base, null);
     }
@@ -80,7 +72,6 @@ public class AMD64AddressNode extends AddressNode implements Simplifiable, LIRLo
         this.base = base;
         this.index = index;
         this.scale = Scale.Times1;
-        this.uncompressionScale = null;
     }
 
     public void canonicalizeIndex(SimplifierTool tool) {
@@ -118,7 +109,7 @@ public class AMD64AddressNode extends AddressNode implements Simplifiable, LIRLo
             indexReference = null;
         } else if (scale.equals(Scale.Times1)) {
             indexReference = LIRKind.derivedBaseFromValue(indexValue);
-        } else if (scale.equals(uncompressionScale) && LIRKind.isScalarCompressedReference(indexValue.getValueKind())) {
+        } else if (LIRKind.isScalarCompressedReference(indexValue.getValueKind())) {
             indexReference = LIRKind.derivedBaseFromValue(indexValue);
         } else {
             if (LIRKind.isValue(indexValue)) {
@@ -172,10 +163,6 @@ public class AMD64AddressNode extends AddressNode implements Simplifiable, LIRLo
 
     public void setDisplacement(int displacement) {
         this.displacement = displacement;
-    }
-
-    public void setUncompressionScale(Scale scale) {
-        this.uncompressionScale = scale;
     }
 
     @Override
