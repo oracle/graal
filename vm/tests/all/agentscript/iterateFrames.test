@@ -22,3 +22,33 @@ dumping locals
     at :program (fib.js:12:32) <return> has value undefined
 end of locals
 Three is the result 3
+> cat >err0.js
+< insight.on('enter', (ctx, frame) => {
+<    ctx.iterateFrames();
+< }, {
+<    expressions : true
+< });
+>[7] js --insight=err0.js -e "6 * 7"
+TypeError: invokeMember.*iterateFrames.*:program.*Arity error.*
+.*at.*js.*err0.js.*
+.*at.*js.*program.*
+> cat >err1.js
+< insight.on('enter', (ctx, frame) => {
+<    ctx.iterateFrames(null);
+< }, {
+<    expressions : true
+< });
+>[7] js --jvm --insight=err1.js -e "6 * 7"
+TypeError: invokeMember.*iterateFrames.*on :program.*Cannot execute null
+.*at.*js.*err1.js.*
+.*at.*js.*program.*
+> cat >err2.js
+< insight.on('enter', (ctx, frame) => {
+<    ctx.iterateFrames({});
+< }, {
+<    expressions : true
+< });
+>[7] js --jvm --insight=err2.js -e "6 * 7"
+TypeError: invokeMember.*iterateFrames.*on :program.*Cannot execute {}
+.*at.*js.*err2.js.*
+.*at.*js.*program.*

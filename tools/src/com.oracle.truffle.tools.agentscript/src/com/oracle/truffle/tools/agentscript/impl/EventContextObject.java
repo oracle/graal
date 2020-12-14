@@ -86,7 +86,7 @@ final class EventContextObject extends AbstractContextObject {
     }
 
     @ExportMessage
-    static Object invokeMember(EventContextObject obj, String member, Object[] args) throws ArityException, UnknownIdentifierException {
+    static Object invokeMember(EventContextObject obj, String member, Object[] args) throws ArityException, UnknownIdentifierException, UnsupportedTypeException {
         if ("returnNow".equals(member)) {
             throw AgentExecutionNode.returnNow(obj.context, args);
         }
@@ -104,9 +104,16 @@ final class EventContextObject extends AbstractContextObject {
     }
 
     @CompilerDirectives.TruffleBoundary
-    private static Object iterateFrames(Object[] args, EventContextObject obj) {
+    private static Object iterateFrames(Object[] args, EventContextObject obj) throws ArityException, UnsupportedTypeException {
         if (args.length == 0) {
-            return ArityException.create(1, 0);
+            throw ArityException.create(1, 0);
+        }
+        final NodeLibrary lib = NodeLibrary.getUncached();
+        final InteropLibrary iop = InteropLibrary.getUncached();
+        final Object callback = args[0];
+        if (!iop.isExecutable(callback)) {
+            Object displayCallback = iop.toDisplayString(callback, false);
+            throw UnsupportedTypeException.create(new Object[]{callback}, "Cannot execute " + displayCallback);
         }
         Object retValue = Truffle.getRuntime().iterateFrames((frameInstance) -> {
             final Node n = frameInstance.getCallNode();
@@ -121,12 +128,10 @@ final class EventContextObject extends AbstractContextObject {
                 return null;
             }
             final Frame frame = frameInstance.getFrame(FrameInstance.FrameAccess.READ_ONLY);
-            NodeLibrary lib = NodeLibrary.getUncached();
-            InteropLibrary iop = InteropLibrary.getUncached();
             if (lib.hasScope(n, frame)) {
                 try {
                     Object frameVars = lib.getScope(n, frame, false);
-                    Object ret = iop.execute(args[0], location, frameVars);
+                    Object ret = iop.execute(callback, location, frameVars);
                     return iop.isNull(ret) ? null : ret;
                 } catch (UnsupportedMessageException | UnsupportedTypeException | ArityException ex) {
                     throw InsightException.raise(ex);
@@ -150,5 +155,27 @@ final class EventContextObject extends AbstractContextObject {
     @Override
     SourceSection getInstrumentedSourceSection() {
         return context.getInstrumentedSourceSection();
+    }
+
+    @ExportMessage
+    public Object toDisplayString(boolean allowSideEffects) {
+        return toStringImpl();
+    }
+
+    @Override
+    public String toString() {
+        return toStringImpl();
+    }
+
+    @CompilerDirectives.TruffleBoundary
+    private String toStringImpl() {
+        SourceSection ss = getInstrumentedSourceSection();
+        final Node n = getInstrumentedNode();
+        if (ss == null || n == null) {
+            return super.toString();
+        }
+        return n.getRootNode().getName() + " (" +
+                        ss.getSource().getName() + ":" +
+                        ss.getStartLine() + ":" + ss.getStartColumn() + ")";
     }
 }
