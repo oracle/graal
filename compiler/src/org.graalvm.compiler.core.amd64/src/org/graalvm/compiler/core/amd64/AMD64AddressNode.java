@@ -103,13 +103,11 @@ public class AMD64AddressNode extends AddressNode implements Simplifiable, LIRLo
         AllocatableValue baseValue = base == null ? Value.ILLEGAL : tool.asAllocatable(gen.operand(base));
         AllocatableValue indexValue = index == null ? Value.ILLEGAL : tool.asAllocatable(gen.operand(index));
 
-        AllocatableValue baseReference = base == null ? null : LIRKind.derivedBaseFromValue(baseValue);
+        AllocatableValue baseReference = LIRKind.derivedBaseFromValue(baseValue);
         AllocatableValue indexReference;
         if (index == null) {
             indexReference = null;
         } else if (scale.equals(Scale.Times1)) {
-            indexReference = LIRKind.derivedBaseFromValue(indexValue);
-        } else if (LIRKind.isScalarCompressedReference(indexValue.getValueKind())) {
             indexReference = LIRKind.derivedBaseFromValue(indexValue);
         } else {
             if (LIRKind.isValue(indexValue)) {
