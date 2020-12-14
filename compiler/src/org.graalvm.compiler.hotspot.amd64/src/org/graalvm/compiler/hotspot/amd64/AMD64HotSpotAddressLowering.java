@@ -119,7 +119,6 @@ public class AMD64HotSpotAddressLowering extends AMD64CompressAddressLowering {
 
         Scale scale = Scale.fromShift(encoding.getShift());
         addr.setScale(scale);
-        addr.setUncompressionScale(scale);
         addr.setIndex(compression.getValue());
         return true;
     }
