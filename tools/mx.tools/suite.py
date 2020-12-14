@@ -40,7 +40,7 @@ suite = {
                 "TRUFFLE_PROFILER",
                 "NanoHTTPD",
                 "NanoHTTPD-WebSocket",
-                "TruffleJSON",
+                "truffle:TruffleJSON",
                 "SLF4J_SIMPLE",
                 "Java-WebSocket",
             ],
@@ -114,7 +114,7 @@ suite = {
             "sourceDirs" : ["src"],
             "dependencies" : [
                 "truffle:TRUFFLE_API",
-                "TruffleJSON",
+                "truffle:TruffleJSON",
                 ],
             "exports" : [
               "<package-info>", # exports all packages containing package-info.java
@@ -143,7 +143,7 @@ suite = {
             "sourceDirs" : ["src"],
             "dependencies" : [
                 "truffle:TRUFFLE_API",
-                "TruffleJSON",
+                "truffle:TruffleJSON",
                 ],
             "exports" : [
               "<package-info>", # exports all packages containing package-info.java
@@ -172,7 +172,7 @@ suite = {
             "sourceDirs" : ["src"],
             "dependencies" : [
                 "truffle:TRUFFLE_API",
-                "TruffleJSON",
+                "truffle:TruffleJSON",
             ],
             "exports" : [
               "<package-info>", # exports all packages containing package-info.java
@@ -201,7 +201,7 @@ suite = {
             "sourceDirs" : ["src"],
             "dependencies" : [
                 "truffle:TRUFFLE_API",
-                "TruffleJSON",
+                "truffle:TruffleJSON",
             ],
             "exports" : [
               "<package-info>", # exports all packages containing package-info.java
@@ -241,7 +241,7 @@ suite = {
             "sourceDirs": ["src"],
             "dependencies": [
                 "org.graalvm.tools.api.lsp",
-                "TruffleJSON"
+                "truffle:TruffleJSON"
             ],
             "checkstyle": "com.oracle.truffle.tools.chromeinspector",
             "javaCompliance": "8+",
@@ -271,12 +271,6 @@ suite = {
         "NanoHTTPD-WebSocket" : {
             "urls" : ["https://lafo.ssw.uni-linz.ac.at/pub/graal-external-deps/nanohttpd-websocket-2.3.2-efb2ebf85a2b06f7c508aba9eaad5377e3a01e81.jar"],
             "sha1" : "a8f5b9e7387e00a57d31be320a8246a7c8128aa4",
-        },
-        "TruffleJSON" : {
-          "urls" : ["https://lafo.ssw.uni-linz.ac.at/pub/graal-external-deps/trufflejson-20201115.jar"],
-          "sha1" : "7987931963f4fa995fa515273d70116725d0e37f",
-          "sourceUrls": ["https://lafo.ssw.uni-linz.ac.at/pub/graal-external-deps/trufflejson-20201115-src.jar"],
-          "sourceSha1" : "1da7c590b0582fb4c2e4de9b581c70407fa9108b",
         },
         "Java-WebSocket" : {
             "sha1" : "382b302303c830a7edb20c9ed61c4ac2cdf7a7a4",
