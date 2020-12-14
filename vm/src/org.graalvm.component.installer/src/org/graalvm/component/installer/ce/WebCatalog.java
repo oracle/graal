@@ -202,7 +202,7 @@ public class WebCatalog implements SoftwareChannel {
         // empty catalog.
         this.storage = newStorage;
 
-        StringBuilder oldGraalPref = new StringBuilder(BundleConstants.GRAAL_COMPONENT_ID);
+        StringBuilder oldGraalPref = new StringBuilder("^" + BundleConstants.GRAAL_COMPONENT_ID);
         oldGraalPref.append('.');
 
         String graalVersionString;
@@ -235,7 +235,7 @@ public class WebCatalog implements SoftwareChannel {
         Pattern newPrefixPattern = Pattern.compile(graalPref.toString(), Pattern.CASE_INSENSITIVE);
         Stream<String> propNames = loadProps.stringPropertyNames().stream();
         boolean foundPrefix = propNames.anyMatch(p -> oldPrefixPattern.matcher(p).matches() ||
-                        newPrefixPattern.matcher(p).matches());
+                        newPrefixPattern.matcher(p).find());
         if (!foundPrefix) {
             boolean graalPrefixFound = false;
             boolean componentFound = false;
