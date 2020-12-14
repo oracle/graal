@@ -1,13 +1,26 @@
 One or several (comma-separated) paths to JSON files that specify lists of serialization configurations.
-The structure is an array of elements specifying the target serialization/deserialization class name and a checksum automatically calculated from its class contents and hierarchy by native-image-agent.
-The checksum is used to verify the serialization target class is consistent at configuration collecting time, image build time and image run time.
-Checksum is optional, there will be no verification when the checksum is absent.
+The structure is an array of elements specifying the target serialization/deserialization class and an MD5 checksum
+automatically calculated from its class contents and hierarchy by native-image-agent. The checksum is used to verify
+if a serialization target class is consistent at configuration collecting time, image build time and image run time.
+The use of checksum is optional, there will be no verification when the checksum is absent.
 
 Example:
 
     [
      {
       "name":"java.util.ArrayList",
-      "checksum":1848188320
+      "checksum":"dcb00fdae89a4bd5ce2eff4af95d1f0e"
       }
     ]
+
+It is also possible to provide multiple checksums. This is useful to support building on different JDK versions.
+E.g. to support serialization of java.util.ArrayList on Java 8 and Java 11 we can use:
+
+    [
+     {
+      "name":"java.util.ArrayList",
+      "checksum":["c6beb425e88bf37cac00d214c582de51","dcb00fdae89a4bd5ce2eff4af95d1f0e"]
+      }
+    ]
+
+Here the checksum needed for ArrayList on Java 8 is "c6beb425e88bf37cac00d214c582de51".
