@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2016, 2018, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2020, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -22,12 +22,14 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
+
 package org.graalvm.compiler.truffle.compiler.nodes.frame;
 
 import static org.graalvm.compiler.nodeinfo.NodeCycles.CYCLES_0;
 import static org.graalvm.compiler.nodeinfo.NodeSize.SIZE_0;
 
 import org.graalvm.compiler.core.common.type.StampFactory;
+import org.graalvm.compiler.graph.IterableNodeType;
 import org.graalvm.compiler.graph.NodeClass;
 import org.graalvm.compiler.nodeinfo.NodeInfo;
 import org.graalvm.compiler.nodes.ValueNode;
@@ -35,40 +37,30 @@ import org.graalvm.compiler.nodes.graphbuilderconf.InvocationPlugin.Receiver;
 import org.graalvm.compiler.nodes.spi.Virtualizable;
 import org.graalvm.compiler.nodes.spi.VirtualizerTool;
 import org.graalvm.compiler.nodes.virtual.VirtualObjectNode;
-import org.graalvm.compiler.truffle.common.TruffleCompilerRuntime;
-
-import jdk.vm.ci.meta.JavaKind;
 
 @NodeInfo(cycles = CYCLES_0, size = SIZE_0)
-public final class VirtualFrameSetNode extends VirtualFrameAccessorNode implements Virtualizable {
-    public static final NodeClass<VirtualFrameSetNode> TYPE = NodeClass.create(VirtualFrameSetNode.class);
+public class VirtualFrameClearNode extends VirtualFrameAccessorNode implements Virtualizable, IterableNodeType {
+    public static final NodeClass<VirtualFrameClearNode> TYPE = NodeClass.create(VirtualFrameClearNode.class);
 
-    @Input private ValueNode value;
-
-    public VirtualFrameSetNode(Receiver frame, int frameSlotIndex, int accessTag, ValueNode value) {
-        super(TYPE, StampFactory.forVoid(), frame, frameSlotIndex, accessTag);
-        this.value = value;
+    public VirtualFrameClearNode(Receiver frame, int frameSlotIndex, int illegalTag) {
+        super(TYPE, StampFactory.forVoid(), frame, frameSlotIndex, illegalTag);
     }
 
     @Override
     public void virtualize(VirtualizerTool tool) {
         ValueNode tagAlias = tool.getAlias(frame.virtualFrameTagArray);
-        ValueNode dataAlias = tool.getAlias(
-                        TruffleCompilerRuntime.getRuntime().getJavaKindForFrameSlotKind(accessTag) == JavaKind.Object ? frame.virtualFrameObjectArray : frame.virtualFramePrimitiveArray);
-
-        if (tagAlias instanceof VirtualObjectNode && dataAlias instanceof VirtualObjectNode) {
+        if (tagAlias instanceof VirtualObjectNode) {
             VirtualObjectNode tagVirtual = (VirtualObjectNode) tagAlias;
-            VirtualObjectNode dataVirtual = (VirtualObjectNode) dataAlias;
-
-            if (frameSlotIndex < tagVirtual.entryCount() && frameSlotIndex < dataVirtual.entryCount()) {
-                tool.setVirtualEntry(tagVirtual, frameSlotIndex, getConstant(accessTag));
-
-                ValueNode dataEntry = tool.getEntry(dataVirtual, frameSlotIndex);
-                if (dataEntry.getStackKind() == value.getStackKind()) {
-                    if (tool.setVirtualEntry(dataVirtual, frameSlotIndex, value, value.getStackKind(), -1)) {
-                        tool.delete();
-                        return;
-                    }
+            if (frameSlotIndex < tagVirtual.entryCount()) {
+                // Simply set kind to illegal. A later phase will clear the slots.
+                boolean success = tool.setVirtualEntry(tagVirtual,
+                                frameSlotIndex,
+                                getConstant(accessTag),
+                                tagVirtual.entryKind(tool.getMetaAccessExtensionProvider(), frameSlotIndex),
+                                -1);
+                if (success) {
+                    tool.delete();
+                    return;
                 }
             }
         }

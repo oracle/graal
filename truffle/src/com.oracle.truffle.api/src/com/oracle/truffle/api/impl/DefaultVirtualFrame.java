@@ -259,4 +259,10 @@ final class DefaultVirtualFrame implements VirtualFrame {
     public boolean isDouble(FrameSlot slot) {
         return getTag(slot) == FrameSlotKind.Double.ordinal();
     }
+
+    @Override
+    public void clear(FrameSlot slot) {
+        verifySet(slot, FrameSlotKind.Illegal);
+        locals[getFrameSlotIndex(slot)] = null;
+    }
 }
