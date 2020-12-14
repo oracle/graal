@@ -126,7 +126,14 @@ public abstract class AbstractObjectStamp extends AbstractPointerStamp {
         if (this.isEmpty()) {
             str.append(" empty");
         } else {
-            str.append(nonNull() ? "!" : "").append(exactType ? "#" : "").append(alwaysArray ? "[" : "").append(' ').append(type == null ? "-" : type.getName()).append(alwaysNull() ? " NULL" : "");
+            // Append "[]" for arrays, but only if it's not included in the type.
+            boolean forceArrayNotation = alwaysArray && !(type != null && type.isArray());
+            str.append(nonNull() ? "!" : "").//
+                            append(exactType ? "#" : "").//
+                            append(' ').//
+                            append(type == null ? "-" : type.toJavaName()).//
+                            append(forceArrayNotation ? "[]" : "").//
+                            append(alwaysNull() ? " NULL" : "");
         }
     }
 
