@@ -115,7 +115,28 @@ double testDelayedVACopy(vahandler vaHandler1, vahandler vaHandler2, int count, 
     return res1 + res2;
 }
 
+static va_list globalVAList;
+
+double callVAHandlerWithGlobalVAList(vahandler vaHandler, int count, ...) {
+    va_start(globalVAList, count);
+    double res = (*vaHandler)(count, &globalVAList);
+    va_end(globalVAList);
+    return res;
+}
+
+double callVAHandlerWithAllocatedVAList(vahandler vaHandler, int count, ...) {
+    va_list *args = malloc(sizeof(va_list));
+    va_start(*args, count);
+    double res = (*vaHandler)(count, args);
+    va_end(*args);
+    free(args);
+    return res;
+}
+
 int main(void) {
+    printf("Sum of doubles (LLVM) (Global VAList)   : %f\n", callVAHandlerWithGlobalVAList(sumDoublesLLVM, 8, 1., 2, 3., 4, 5., 6, 7., 8, 9., 10, 11., 12, 13., 14, 15., 16));
+    printf("Sum of doubles (LLVM) (Allocated VAList): %f\n", callVAHandlerWithGlobalVAList(sumDoublesLLVM, 8, 1., 2, 3., 4, 5., 6, 7., 8, 9., 10, 11., 12, 13., 14, 15., 16));
+
     printf("Sum of doubles (LLVM)           : %f\n", callVAHandler(sumDoublesLLVM, 8, 1., 2, 3., 4, 5., 6, 7., 8, 9., 10, 11., 12, 13., 14, 15., 16));
     printf("Sum of ints (LLVM)              : %f\n", callVAHandler(sumIntsLLVM, 8, 1., 2, 3., 4, 5., 6, 7., 8, 9., 10, 11., 12, 13., 14, 15., 16));
 

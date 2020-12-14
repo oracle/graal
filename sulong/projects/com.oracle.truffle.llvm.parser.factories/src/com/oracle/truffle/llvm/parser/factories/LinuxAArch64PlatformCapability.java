@@ -36,7 +36,6 @@ import com.oracle.truffle.llvm.runtime.nodes.asm.syscall.LLVMNativeSyscallNode;
 import com.oracle.truffle.llvm.runtime.nodes.asm.syscall.LLVMSyscallExitNode;
 import com.oracle.truffle.llvm.runtime.nodes.asm.syscall.linux.aarch64.LinuxAArch64Syscall;
 import com.oracle.truffle.llvm.runtime.nodes.intrinsics.llvm.aarch64.LLVMAarch64VaListStorage;
-import com.oracle.truffle.llvm.runtime.nodes.intrinsics.llvm.x86.LLVMX86_64VaListStorage;
 import com.oracle.truffle.llvm.runtime.pointer.LLVMNativePointer;
 import com.oracle.truffle.llvm.runtime.types.Type;
 
@@ -72,7 +71,7 @@ final class LinuxAArch64PlatformCapability extends BasicPlatformCapability<Linux
 
     @Override
     public Object createNativeVAListWrapper(LLVMNativePointer vaListPtr, RootNode rootNode) {
-        return new LLVMX86_64VaListStorage.NativeVAListWrapper(vaListPtr, rootNode);
+        return new LLVMAarch64VaListStorage.NativeVAListWrapper(vaListPtr, rootNode);
     }
 
 }
