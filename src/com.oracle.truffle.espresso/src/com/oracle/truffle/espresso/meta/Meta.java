@@ -547,6 +547,14 @@ public final class Meta implements ContextAccess {
         java_time_ZoneId_getId = java_time_ZoneId.lookupDeclaredMethod(Name.getId, Signature.String);
         java_time_ZoneId_of = java_time_ZoneId.lookupDeclaredMethod(Name.of, Signature.ZoneId_String);
         assert java_time_ZoneId_of.isStatic();
+
+        // Interop support.
+        com_oracle_truffle_espresso_polyglot_ArityException = knownKlass(Type.com_oracle_truffle_espresso_polyglot_ArityException);
+        com_oracle_truffle_espresso_polyglot_UnknownIdentifierException = knownKlass(Type.com_oracle_truffle_espresso_polyglot_UnknownIdentifierException);
+        com_oracle_truffle_espresso_polyglot_UnsupportedMessageException = knownKlass(Type.com_oracle_truffle_espresso_polyglot_UnsupportedMessageException);
+        com_oracle_truffle_espresso_polyglot_UnsupportedTypeException = knownKlass(Type.com_oracle_truffle_espresso_polyglot_UnsupportedTypeException);
+        com_oracle_truffle_espresso_polyglot_InvalidArrayIndexException = knownKlass(Type.com_oracle_truffle_espresso_polyglot_InvalidArrayIndexException);
+
     }
 
     public void postSystemInit() {
@@ -1004,6 +1012,12 @@ public final class Meta implements ContextAccess {
     @CompilationFinal public Method sun_management_ManagementFactory_createMemoryManager;
     @CompilationFinal public Method sun_management_ManagementFactory_createGarbageCollector;
     @CompilationFinal public ObjectKlass java_lang_management_ThreadInfo;
+
+    @CompilationFinal public ObjectKlass com_oracle_truffle_espresso_polyglot_UnknownIdentifierException;
+    @CompilationFinal public ObjectKlass com_oracle_truffle_espresso_polyglot_UnsupportedMessageException;
+    @CompilationFinal public ObjectKlass com_oracle_truffle_espresso_polyglot_UnsupportedTypeException;
+    @CompilationFinal public ObjectKlass com_oracle_truffle_espresso_polyglot_ArityException;
+    @CompilationFinal public ObjectKlass com_oracle_truffle_espresso_polyglot_InvalidArrayIndexException;
 
     @CompilationFinal(dimensions = 1) //
     public final ObjectKlass[] ARRAY_SUPERINTERFACES;

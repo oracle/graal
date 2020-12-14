@@ -714,6 +714,13 @@ public final class Symbol<T> extends ByteSequence {
         public static final Symbol<Type> java_time_ZonedDateTime = StaticSymbols.putType(ZonedDateTime.class);
         public static final Symbol<Type> java_util_Date = StaticSymbols.putType(Date.class);
         public static final Symbol<Type> java_time_ZoneId = StaticSymbols.putType(ZoneId.class);
+
+        // Espresso's interop API exceptions.
+        public static final Symbol<Type> com_oracle_truffle_espresso_polyglot_ArityException = StaticSymbols.putType("Lcom/oracle/truffle/espresso/polyglot/ArityException;");
+        public static final Symbol<Type> com_oracle_truffle_espresso_polyglot_UnknownIdentifierException = StaticSymbols.putType("Lcom/oracle/truffle/espresso/polyglot/UnknownIdentifierException;");
+        public static final Symbol<Type> com_oracle_truffle_espresso_polyglot_UnsupportedMessageException = StaticSymbols.putType("Lcom/oracle/truffle/espresso/polyglot/UnsupportedMessageException;");
+        public static final Symbol<Type> com_oracle_truffle_espresso_polyglot_UnsupportedTypeException = StaticSymbols.putType("Lcom/oracle/truffle/espresso/polyglot/UnsupportedTypeException;");
+        public static final Symbol<Type> com_oracle_truffle_espresso_polyglot_InvalidArrayIndexException = StaticSymbols.putType("Lcom/oracle/truffle/espresso/polyglot/InvalidArrayIndexException;");
     }
 
     /**
