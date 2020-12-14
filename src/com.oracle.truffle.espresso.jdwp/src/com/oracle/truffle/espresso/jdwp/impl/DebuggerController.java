@@ -322,8 +322,12 @@ public final class DebuggerController implements ContextsListener {
                                 case STEP_OUT:
                                     suspendedInfo.getEvent().prepareStepOut(STEP_CONFIG);
                                     break;
-                                default:
+                                case SUBMIT_EXCEPTION_BREAKPOINT:
+                                case SUBMIT_LINE_BREAKPOINT:
+                                case SUBMIT_METHOD_ENTRY_BREAKPOINT:
                                     break;
+                                default:
+                                    throw new RuntimeException("should not reach here");
                             }
                         }
                     }
