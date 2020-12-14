@@ -215,7 +215,6 @@ public final class DebuggerController implements ContextsListener {
 
         SuspendedInfo susp = suspendedInfos.get(thread);
         if (susp != null && !(susp instanceof UnknownSuspendedInfo)) {
-            susp.getEvent().prepareStepOver(STEP_CONFIG);
             susp.recordStep(DebuggerCommand.Kind.STEP_OVER);
         } else {
             JDWPLogger.log("NOT STEPPING OVER for thread: %s", JDWPLogger.LogLevel.STEPPING, getThreadName(thread));
@@ -228,7 +227,6 @@ public final class DebuggerController implements ContextsListener {
 
         SuspendedInfo susp = suspendedInfos.get(thread);
         if (susp != null && !(susp instanceof UnknownSuspendedInfo)) {
-            susp.getEvent().prepareStepInto(STEP_CONFIG);
             susp.recordStep(DebuggerCommand.Kind.STEP_INTO);
         } else {
             JDWPLogger.log("not STEPPING INTO for thread: %s", JDWPLogger.LogLevel.STEPPING, getThreadName(thread));
@@ -259,8 +257,16 @@ public final class DebuggerController implements ContextsListener {
                 steppingInfo.setStepOutBCI(context.getIds().getIdAsLong(klass), context.getIds().getIdAsLong(method), stepOutBCI);
             }
         }
-        susp.getEvent().prepareStepOut(STEP_CONFIG);
         susp.recordStep(DebuggerCommand.Kind.STEP_OUT);
+    }
+
+    public void clearStepCommand(StepInfo stepInfo) {
+        SuspendedInfo susp = suspendedInfos.get(stepInfo.getGuestThread());
+        // only relevant to clear a step command
+        // if we have a known suspension state
+        if (susp != null && !(susp instanceof UnknownSuspendedInfo)) {
+            susp.clearStepping();
+        }
     }
 
     public boolean popFrames(Object guestThread, CallFrame frameToPop, int packetId) {
@@ -297,6 +303,28 @@ public final class DebuggerController implements ContextsListener {
                             debuggerSession.resume(getContext().asHostThread(thread));
                         } catch (Exception e) {
                             throw new RuntimeException("Failed to resume thread: " + getThreadName(thread), e);
+                        }
+                    }
+                } else {
+                    // we're currently stepping, so make sure to
+                    // commit the recorded step kind to Truffle
+                    SuspendedInfo suspendedInfo = getSuspendedInfo(thread);
+                    if (suspendedInfo != null) {
+                        DebuggerCommand.Kind stepKind = suspendedInfo.getStepKind();
+                        if (stepKind != null) {
+                            switch (stepKind) {
+                                case STEP_INTO:
+                                    suspendedInfo.getEvent().prepareStepInto(STEP_CONFIG);
+                                    break;
+                                case STEP_OVER:
+                                    suspendedInfo.getEvent().prepareStepOver(STEP_CONFIG);
+                                    break;
+                                case STEP_OUT:
+                                    suspendedInfo.getEvent().prepareStepOut(STEP_CONFIG);
+                                    break;
+                                default:
+                                    break;
+                            }
                         }
                     }
                 }

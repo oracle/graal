@@ -339,6 +339,8 @@ public final class RequestedJDWPEvents {
             if (kind == eventKind) {
                 switch (eventKind) {
                     case SINGLE_STEP:
+                        JDWPLogger.log("Clearing step command: %d", JDWPLogger.LogLevel.STEPPING, requestId);
+                        controller.clearStepCommand(requestFilter.getStepInfo());
                         break;
                     case METHOD_EXIT_WITH_RETURN_VALUE:
                     case METHOD_EXIT:
