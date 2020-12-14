@@ -2,7 +2,8 @@ One or several (comma-separated) paths to JSON files that specify lists of seria
 The structure is an array of elements specifying the target serialization/deserialization class and an MD5 checksum
 automatically calculated from its class contents and hierarchy by native-image-agent. The checksum is used to verify
 if a serialization target class is consistent at configuration collecting time, image build time and image run time.
-The use of checksum is optional, there will be no verification when the checksum is absent.
+The use of checksum is optional, there will be no verification when the checksum is absent. The checksum algorithm
+(MD5) is not collision-resistant and should thus not be used for security purposes.
 
 Example:
 
@@ -24,3 +25,5 @@ E.g. to support serialization of java.util.ArrayList on Java 8 and Java 11 we ca
     ]
 
 Here the checksum needed for ArrayList on Java 8 is "c6beb425e88bf37cac00d214c582de51".
+
+This JSON file format is also used for the serialization deny list. In this case the checksum field is always ignored.
