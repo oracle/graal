@@ -27,11 +27,13 @@
  * NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED
  * OF THE POSSIBILITY OF SUCH DAMAGE.
  */
-//#include <stdlib.h>
-//#include <stdio.h>
-//#include <math.h>
+#include <stdlib.h>
+#include <stdio.h>
+#include <math.h>
 
 #include "vahandler.h"
+
+static va_list globalVAList;
 
 double callVAHandler(vahandler vaHandler, int count, ...) {
     va_list args;
@@ -48,6 +50,23 @@ double callVAHandlers(vahandler vaHandler1, vahandler vaHandler2, int count, ...
     double res2 = (*vaHandler2)(count / 2, &args);
     va_end(args);
     return res1 + res2;
+}
+
+double callVAHandlerWithGlobalVAList(vahandler vaHandler, int count, ...) {
+    va_start(globalVAList, count);
+    double res = (*vaHandler)(count, &globalVAList);
+    va_end(globalVAList);
+    return res;
+}
+
+double callVAHandlerWithAllocatedVAList(vahandler vaHandler, int count, ...) {
+    // multiply by 2 to ensure the capacity, as the real size may be greater
+    va_list *args = malloc(2 * sizeof(va_list));
+    va_start(*args, count);
+    double res = (*vaHandler)(count, args);
+    va_end(*args);
+    free(args);
+    return res;
 }
 
 double sumIntsLLVM(int count, va_list *args) {
@@ -115,22 +134,39 @@ double testDelayedVACopy(vahandler vaHandler1, vahandler vaHandler2, int count, 
     return res1 + res2;
 }
 
-static va_list globalVAList;
-
-double callVAHandlerWithGlobalVAList(vahandler vaHandler, int count, ...) {
+double testGlobalVACopy1(vahandler vaHandler1, vahandler vaHandler2, int count, ...) {
     va_start(globalVAList, count);
-    double res = (*vaHandler)(count, &globalVAList);
+    va_list args2;
+    va_copy(args2, globalVAList);
+    double res1 = (*vaHandler1)(count / 2, &globalVAList);
+    double res2 = (*vaHandler2)(count / 2, &args2);
     va_end(globalVAList);
-    return res;
+    va_end(args2);
+    return res1 + res2;
 }
 
-double callVAHandlerWithAllocatedVAList(vahandler vaHandler, int count, ...) {
-    va_list *args = malloc(sizeof(va_list));
-    va_start(*args, count);
-    double res = (*vaHandler)(count, args);
-    va_end(*args);
-    free(args);
-    return res;
+double testGlobalVACopy2(vahandler vaHandler1, vahandler vaHandler2, int count, ...) {
+    va_list args1;
+    va_start(args1, count);
+    va_copy(globalVAList, args1);
+    double res1 = (*vaHandler1)(count / 2, &args1);
+    double res2 = (*vaHandler2)(count / 2, &globalVAList);
+    va_end(args1);
+    va_end(globalVAList);
+    return res1 + res2;
+}
+
+double testGlobalVACopy3(vahandler vaHandler1, vahandler vaHandler2, int count, ...) {
+    va_start(globalVAList, count);
+    // multiply by 2 to ensure the capacity, as the real size may be greater
+    va_list *args2 = malloc(2 * sizeof(va_list));
+    va_copy(*args2, globalVAList);
+    double res1 = (*vaHandler1)(count / 2, &globalVAList);
+    double res2 = (*vaHandler2)(count / 2, args2);
+    va_end(*args2);
+    free(args2);
+    va_end(globalVAList);
+    return res1 + res2;
 }
 
 int main(void) {
@@ -152,6 +188,14 @@ int main(void) {
            callVAHandlers(sumDoublesNative, sumDoublesNative, 16, 1., 2., 3., 4., 5., 6., 7., 8., 9., 10., 11., 12., 13., 14., 15., 16.));
     printf("Sum of doubles (LLVM, LLVM)     : %f\n",
            callVAHandlers(sumDoublesLLVM, sumDoublesLLVM, 16, 1., 2., 3., 4., 5., 6., 7., 8., 9., 10., 11., 12., 13., 14., 15., 16.));
+
+    printf("VACopy test (LLVM, LLVM) (Global VAList 1)  : %f\n",
+           testGlobalVACopy1(sumDoublesLLVM, sumDoublesLLVM, 16, 1., 2., 3., 4., 5., 6., 7., 8., 9., 10., 11., 12., 13., 14., 15., 16.));
+    printf("VACopy test (LLVM, LLVM) (Global VAList 2)  : %f\n",
+           testGlobalVACopy2(sumDoublesLLVM, sumDoublesLLVM, 16, 1., 2., 3., 4., 5., 6., 7., 8., 9., 10., 11., 12., 13., 14., 15., 16.));
+    printf("VACopy test (LLVM, LLVM) (Global VAList 3)  : %f\n",
+           testGlobalVACopy3(sumDoublesLLVM, sumDoublesLLVM, 16, 1., 2., 3., 4., 5., 6., 7., 8., 9., 10., 11., 12., 13., 14., 15., 16.));
+
     printf("VACopy test (LLVM, LLVM)     : %f\n",
            testVACopy(sumDoublesLLVM, sumDoublesLLVM, 16, 1., 2., 3., 4., 5., 6., 7., 8., 9., 10., 11., 12., 13., 14., 15., 16.));
     printf("VACopy test (native, LLVM)   : %f\n",

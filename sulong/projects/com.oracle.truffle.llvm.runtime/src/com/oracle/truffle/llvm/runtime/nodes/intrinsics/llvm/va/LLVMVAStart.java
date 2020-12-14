@@ -56,7 +56,7 @@ public abstract class LLVMVAStart extends LLVMExpressionNode {
         this.numberOfExplicitArguments = numberOfExplicitArguments;
     }
 
-    private static Object[] getArgumentsArray(VirtualFrame frame) {
+    static Object[] getArgumentsArray(VirtualFrame frame) {
         Object[] arguments = frame.getArguments();
         Object[] newArguments = new Object[arguments.length - LLVMCallNode.USER_ARGUMENT_OFFSET];
         System.arraycopy(arguments, LLVMCallNode.USER_ARGUMENT_OFFSET, newArguments, 0, newArguments.length);

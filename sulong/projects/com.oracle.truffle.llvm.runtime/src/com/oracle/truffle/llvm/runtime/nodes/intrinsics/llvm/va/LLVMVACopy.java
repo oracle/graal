@@ -29,13 +29,19 @@
  */
 package com.oracle.truffle.llvm.runtime.nodes.intrinsics.llvm.va;
 
+import com.oracle.truffle.api.dsl.Cached;
+import com.oracle.truffle.api.dsl.CachedLanguage;
 import com.oracle.truffle.api.dsl.NodeChild;
 import com.oracle.truffle.api.dsl.NodeField;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.library.CachedLibrary;
+import com.oracle.truffle.llvm.runtime.LLVMLanguage;
+import com.oracle.truffle.llvm.runtime.PlatformCapability;
 import com.oracle.truffle.llvm.runtime.nodes.api.LLVMExpressionNode;
+import com.oracle.truffle.llvm.runtime.nodes.api.LLVMNode;
 import com.oracle.truffle.llvm.runtime.nodes.intrinsics.llvm.LLVMBuiltin;
 import com.oracle.truffle.llvm.runtime.pointer.LLVMManagedPointer;
+import com.oracle.truffle.llvm.runtime.pointer.LLVMNativePointer;
 
 /**
  * The node handling the <code>va_copy</code> instruction. It just delegates to
@@ -52,9 +58,40 @@ public abstract class LLVMVACopy extends LLVMBuiltin {
     public abstract int getNumberExplicitArguments();
 
     @Specialization(limit = "1")
-    protected Object doVoid(LLVMManagedPointer dest, LLVMManagedPointer source,
+    protected Object copyManaged(LLVMManagedPointer dest, LLVMManagedPointer source,
                     @CachedLibrary("source.getObject()") LLVMVaListLibrary vaListLibrary) {
-        vaListLibrary.copy(source.getObject(), dest.getObject(), getNumberExplicitArguments());
+        vaListLibrary.copy(source.getObject(), dest.getObject());
         return null;
+    }
+
+    @Specialization(limit = "1")
+    protected Object copyManaged(LLVMNativePointer dest, LLVMManagedPointer source,
+                    @CachedLibrary("source.getObject()") LLVMVaListLibrary vaListLibrary) {
+        vaListLibrary.copy(source.getObject(), dest);
+        return null;
+    }
+
+    Object createNativeVAListWrapper(LLVMNativePointer targetAddress, LLVMLanguage lang) {
+        return lang.getCapability(PlatformCapability.class).createNativeVAListWrapper(targetAddress, getRootNode());
+    }
+
+    @Specialization
+    protected Object copyNative(Object dest, LLVMNativePointer source,
+                    @CachedLanguage LLVMLanguage lang,
+                    @Cached NativeLLVMVaListHelper nativeLLVMVaListHelper) {
+        return nativeLLVMVaListHelper.execute(dest, createNativeVAListWrapper(source, lang), getNumberExplicitArguments());
+    }
+
+    abstract static class NativeLLVMVaListHelper extends LLVMNode {
+
+        public abstract Object execute(Object dest, Object nativeVaListWrapper, int numberOfExplicitArguments);
+
+        @Specialization(limit = "1")
+        protected Object doCopy(Object dest, Object nativeVaListWrapper,
+                        @CachedLibrary("nativeVaListWrapper") LLVMVaListLibrary vaListLibrary) {
+            vaListLibrary.copy(nativeVaListWrapper, dest);
+            return null;
+        }
+
     }
 }

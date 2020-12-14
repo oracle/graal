@@ -60,18 +60,23 @@ final class DarwinAMD64PlatformCapability extends BasicPlatformCapability<Darwin
     @Override
     public Object createVAListStorage(RootNode rootNode) {
         return new LLVMX86_64VaListStorage(rootNode);
-        // return new LLVMAarch64VaListStorage(rootNode);
+        // return new
+        // com.oracle.truffle.llvm.runtime.nodes.intrinsics.llvm.aarch64.LLVMAarch64VaListStorage(rootNode);
     }
 
     @Override
     public Type getVAListType() {
         return LLVMX86_64VaListStorage.VA_LIST_TYPE;
-        // return LLVMAarch64VaListStorage.VA_LIST_TYPE;
+        // return
+        // com.oracle.truffle.llvm.runtime.nodes.intrinsics.llvm.aarch64.LLVMAarch64VaListStorage.VA_LIST_TYPE;
     }
 
     @Override
     public Object createNativeVAListWrapper(LLVMNativePointer vaListPtr, RootNode rootNode) {
         return new LLVMX86_64VaListStorage.NativeVAListWrapper(vaListPtr, rootNode);
+        // return new
+        // com.oracle.truffle.llvm.runtime.nodes.intrinsics.llvm.aarch64.LLVMAarch64VaListStorage.NativeVAListWrapper(vaListPtr,
+        // rootNode);
     }
 
 }
