@@ -64,10 +64,6 @@ import com.oracle.truffle.llvm.runtime.nodes.intrinsics.llvm.va.LLVMVAEnd;
 import com.oracle.truffle.llvm.runtime.nodes.intrinsics.llvm.va.LLVMVAStart;
 import com.oracle.truffle.llvm.runtime.nodes.intrinsics.llvm.va.LLVMVaListLibrary;
 import com.oracle.truffle.llvm.runtime.nodes.intrinsics.llvm.va.LLVMVaListStorage;
-import com.oracle.truffle.llvm.runtime.nodes.intrinsics.llvm.x86.LLVMX86_64VaListStorage;
-import com.oracle.truffle.llvm.runtime.nodes.intrinsics.llvm.x86.LLVMX86_64VaListStorage.AbstractOverflowArgArea;
-import com.oracle.truffle.llvm.runtime.nodes.intrinsics.llvm.x86.LLVMX86_64VaListStorage.NativeAllocaInstruction;
-import com.oracle.truffle.llvm.runtime.nodes.intrinsics.llvm.x86.LLVMX86_64VaListStorage.VarArgArea;
 import com.oracle.truffle.llvm.runtime.nodes.memory.LLVMNativeVarargsAreaStackAllocationNode;
 import com.oracle.truffle.llvm.runtime.nodes.memory.LLVMNativeVarargsAreaStackAllocationNodeGen;
 import com.oracle.truffle.llvm.runtime.nodes.memory.NativeProfiledMemMove;
@@ -126,7 +122,7 @@ public class LLVMAarch64VaListStorage extends LLVMVaListStorage {
 
         int usedFpArea = 0;
         for (int i = 0; i < numberOfExplicitArguments && usedFpArea < Aarch64BitVarArgs.FP_LIMIT; i++) {
-            if (LLVMX86_64VaListStorage.getVarArgArea(realArguments[i]) == VarArgArea.FP_AREA) {
+            if (getVarArgArea(realArguments[i]) == VarArgArea.FP_AREA) {
                 usedFpArea += Aarch64BitVarArgs.FP_STEP;
             }
         }
@@ -138,7 +134,7 @@ public class LLVMAarch64VaListStorage extends LLVMVaListStorage {
 
         int usedGpArea = 0;
         for (int i = 0; i < numberOfExplicitArguments && usedGpArea < Aarch64BitVarArgs.GP_LIMIT; i++) {
-            if (LLVMX86_64VaListStorage.getVarArgArea(realArguments[i]) == VarArgArea.GP_AREA) {
+            if (getVarArgArea(realArguments[i]) == VarArgArea.GP_AREA) {
                 usedGpArea += Aarch64BitVarArgs.GP_STEP;
             }
         }
@@ -159,7 +155,7 @@ public class LLVMAarch64VaListStorage extends LLVMVaListStorage {
     @TruffleBoundary
     Object getNativeType(@CachedLanguage LLVMLanguage language) {
         // This method should never be invoked
-        return language.getInteropType(LLVMSourceTypeFactory.resolveType(VA_LIST_TYPE, LLVMX86_64VaListStorage.getDataLayout()));
+        return language.getInteropType(LLVMSourceTypeFactory.resolveType(VA_LIST_TYPE, getDataLayout()));
     }
 
     // LLVMManagedReadLibrary implementation
@@ -358,7 +354,7 @@ public class LLVMAarch64VaListStorage extends LLVMVaListStorage {
             for (int i = numOfExpArgs; i < realArgs.length; i++) {
                 final Object arg = realArgs[i];
 
-                final LLVMX86_64VaListStorage.VarArgArea area = LLVMX86_64VaListStorage.getVarArgArea(arg);
+                final VarArgArea area = getVarArgArea(arg);
                 if (area == VarArgArea.GP_AREA && gp < 0) {
                     gpIdx[(Aarch64BitVarArgs.GP_LIMIT + gp) / Aarch64BitVarArgs.GP_STEP] = i;
                     gp += Aarch64BitVarArgs.GP_STEP;
@@ -444,12 +440,12 @@ public class LLVMAarch64VaListStorage extends LLVMVaListStorage {
 
     @SuppressWarnings("static-method")
     LLVMExpressionNode createAllocaNode(LLVMLanguage language) {
-        DataLayout dataLayout = LLVMX86_64VaListStorage.getDataLayout();
+        DataLayout dataLayout = getDataLayout();
         return language.getActiveConfiguration().createNodeFactory(language, dataLayout).createAlloca(VA_LIST_TYPE, 16);
     }
 
     LLVMExpressionNode createAllocaNodeUncached(LLVMLanguage language) {
-        DataLayout dataLayout = LLVMX86_64VaListStorage.getDataLayout();
+        DataLayout dataLayout = getDataLayout();
         LLVMExpressionNode alloca = language.getActiveConfiguration().createNodeFactory(language, dataLayout).createAlloca(VA_LIST_TYPE, 16);
         if (alloca instanceof LLVMGetStackSpaceInstruction) {
             ((LLVMGetStackSpaceInstruction) alloca).setStackAccess(rootNode.getStackAccess());
@@ -559,28 +555,25 @@ public class LLVMAarch64VaListStorage extends LLVMVaListStorage {
             // about the arguments
             for (int i = 0; i < vaLength; i++) {
                 final Object object = realArguments[numberOfExplicitArguments + i];
-                final VarArgArea area = LLVMX86_64VaListStorage.getVarArgArea(object);
+                final VarArgArea area = getVarArgArea(object);
 
                 if (area == VarArgArea.GP_AREA && gp < 0) {
-                    LLVMX86_64VaListStorage.storeArgument(gpSaveAreaNativePtr, gp, memMove, i64RegSaveAreaStore, i32RegSaveAreaStore,
-                                    fp80bitRegSaveAreaStore, pointerRegSaveAreaStore, object);
+                    storeArgument(gpSaveAreaNativePtr, gp, memMove, i64RegSaveAreaStore, i32RegSaveAreaStore, fp80bitRegSaveAreaStore, pointerRegSaveAreaStore, object, Aarch64BitVarArgs.STACK_STEP);
                     gp += Aarch64BitVarArgs.GP_STEP;
                 } else if (area == VarArgArea.FP_AREA && fp < 0) {
-                    LLVMX86_64VaListStorage.storeArgument(fpSaveAreaNativePtr, fp, memMove, i64RegSaveAreaStore, i32RegSaveAreaStore,
-                                    fp80bitRegSaveAreaStore, pointerRegSaveAreaStore, object);
+                    storeArgument(fpSaveAreaNativePtr, fp, memMove, i64RegSaveAreaStore, i32RegSaveAreaStore, fp80bitRegSaveAreaStore, pointerRegSaveAreaStore, object, Aarch64BitVarArgs.STACK_STEP);
                     fp += Aarch64BitVarArgs.FP_STEP;
                 } else if ((object instanceof LLVMVarArgCompoundValue) && (gp + ((LLVMVarArgCompoundValue) object).getSize()) <= 0 &&
                                 ((LLVMVarArgCompoundValue) object).getSize() <= 2 * Aarch64BitVarArgs.GP_STEP) {
                     long sz = ((LLVMVarArgCompoundValue) object).getSize();
                     assert sz % Aarch64BitVarArgs.GP_STEP == 0;
-                    LLVMX86_64VaListStorage.storeArgument(gpSaveAreaNativePtr, gp, memMove, i64RegSaveAreaStore, i32RegSaveAreaStore,
-                                    fp80bitRegSaveAreaStore, pointerRegSaveAreaStore, object);
+                    storeArgument(gpSaveAreaNativePtr, gp, memMove, i64RegSaveAreaStore, i32RegSaveAreaStore, fp80bitRegSaveAreaStore, pointerRegSaveAreaStore, object, Aarch64BitVarArgs.STACK_STEP);
                     gp += sz;
                 } else {
                     gp = 0; // Terminate the GP save area
-                    overflowOffset += LLVMX86_64VaListStorage.storeArgument(overflowArgAreaBaseNativePtr, overflowOffset, memMove,
+                    overflowOffset += storeArgument(overflowArgAreaBaseNativePtr, overflowOffset, memMove,
                                     i64OverflowArgAreaStore, i32OverflowArgAreaStore,
-                                    fp80bitOverflowArgAreaStore, pointerOverflowArgAreaStore, object);
+                                    fp80bitOverflowArgAreaStore, pointerOverflowArgAreaStore, object, Aarch64BitVarArgs.STACK_STEP);
                 }
             }
         }
@@ -657,7 +650,7 @@ public class LLVMAarch64VaListStorage extends LLVMVaListStorage {
         int regSaveStep = 0;
         boolean lookIntoRegSaveArea = true;
 
-        VarArgArea varArgArea = LLVMX86_64VaListStorage.getVarArgArea(type);
+        VarArgArea varArgArea = getVarArgArea(type);
         RegSaveArea regSaveArea = null;
         switch (varArgArea) {
             case GP_AREA:
@@ -724,7 +717,7 @@ public class LLVMAarch64VaListStorage extends LLVMVaListStorage {
      * @see LLVMVAEnd
      */
     @ExportLibrary(LLVMVaListLibrary.class)
-    @ImportStatic(LLVMX86_64VaListStorage.class)
+    @ImportStatic(LLVMVaListStorage.class)
     public static final class NativeVAListWrapper {
 
         final LLVMNativePointer nativeVAListPtr;
@@ -778,7 +771,7 @@ public class LLVMAarch64VaListStorage extends LLVMVaListStorage {
             int overflowArea = 0;
             for (int i = numberOfExplicitArguments; i < arguments.length; i++) {
                 final Object arg = arguments[i];
-                final VarArgArea area = LLVMX86_64VaListStorage.getVarArgArea(arg);
+                final VarArgArea area = getVarArgArea(arg);
 
                 if (area == VarArgArea.GP_AREA && gp < 0) {
                     gp += Aarch64BitVarArgs.GP_STEP;
@@ -841,7 +834,7 @@ public class LLVMAarch64VaListStorage extends LLVMVaListStorage {
     }
 
     @ExportLibrary(NativeTypeLibrary.class)
-    public static final class RegSaveArea extends LLVMX86_64VaListStorage.ArgsArea {
+    public static final class RegSaveArea extends ArgsArea {
 
         private final int[] idx;
         private final int numOfExpArgs;

@@ -1265,11 +1265,7 @@ public final class LLVMBitcodeInstructionVisitor implements SymbolVisitor {
     }
 
     private static boolean isArrayByValue(Type type, LLVMExpressionNode exprNode) {
-// if (type.toString().contains("[2 x i64]")) {
-// return true;
-// }
         return ((exprNode instanceof LLVMStructLoadNode) || (exprNode instanceof LLVMArrayLiteralNode) && (type instanceof ArrayType));
-// return false;
     }
 
     private void assignSourceLocation(LLVMInstrumentableNode node, Instruction sourceInstruction) {

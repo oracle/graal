@@ -34,23 +34,18 @@ import java.util.Arrays;
 
 import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
-import com.oracle.truffle.api.RootCallTarget;
 import com.oracle.truffle.api.Truffle;
 import com.oracle.truffle.api.dsl.Cached;
 import com.oracle.truffle.api.dsl.CachedLanguage;
-import com.oracle.truffle.api.dsl.Fallback;
-import com.oracle.truffle.api.dsl.GenerateUncached;
 import com.oracle.truffle.api.dsl.ImportStatic;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.frame.FrameInstance.FrameAccess;
 import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.interop.InteropLibrary;
-import com.oracle.truffle.api.interop.TruffleObject;
 import com.oracle.truffle.api.library.CachedLibrary;
 import com.oracle.truffle.api.library.ExportLibrary;
 import com.oracle.truffle.api.library.ExportMessage;
 import com.oracle.truffle.api.nodes.RootNode;
-import com.oracle.truffle.api.nodes.UnexpectedResultException;
 import com.oracle.truffle.api.profiles.BranchProfile;
 import com.oracle.truffle.api.profiles.ConditionProfile;
 import com.oracle.truffle.llvm.runtime.LLVMContext;
@@ -62,35 +57,22 @@ import com.oracle.truffle.llvm.runtime.datalayout.DataLayout;
 import com.oracle.truffle.llvm.runtime.debug.value.LLVMSourceTypeFactory;
 import com.oracle.truffle.llvm.runtime.except.LLVMMemoryException;
 import com.oracle.truffle.llvm.runtime.floating.LLVM80BitFloat;
-import com.oracle.truffle.llvm.runtime.interop.access.LLVMInteropType;
-import com.oracle.truffle.llvm.runtime.interop.access.LLVMInteropType.Array;
 import com.oracle.truffle.llvm.runtime.library.internal.LLVMManagedReadLibrary;
 import com.oracle.truffle.llvm.runtime.library.internal.LLVMManagedWriteLibrary;
-import com.oracle.truffle.llvm.runtime.library.internal.LLVMNativeLibrary;
 import com.oracle.truffle.llvm.runtime.memory.LLVMMemMoveNode;
 import com.oracle.truffle.llvm.runtime.memory.LLVMStack.LLVMGetStackSpaceInstruction;
-import com.oracle.truffle.llvm.runtime.memory.LLVMStack.LLVMStackAccess;
 import com.oracle.truffle.llvm.runtime.memory.VarargsAreaStackAllocationNode;
 import com.oracle.truffle.llvm.runtime.nodes.api.LLVMExpressionNode;
-import com.oracle.truffle.llvm.runtime.nodes.api.LLVMHasDatalayoutNode;
-import com.oracle.truffle.llvm.runtime.nodes.api.LLVMNode;
 import com.oracle.truffle.llvm.runtime.nodes.func.LLVMRootNode;
 import com.oracle.truffle.llvm.runtime.nodes.intrinsics.llvm.va.LLVMVAEnd;
 import com.oracle.truffle.llvm.runtime.nodes.intrinsics.llvm.va.LLVMVAListNode;
 import com.oracle.truffle.llvm.runtime.nodes.intrinsics.llvm.va.LLVMVAStart;
 import com.oracle.truffle.llvm.runtime.nodes.intrinsics.llvm.va.LLVMVaListLibrary;
 import com.oracle.truffle.llvm.runtime.nodes.intrinsics.llvm.va.LLVMVaListStorage;
-import com.oracle.truffle.llvm.runtime.nodes.intrinsics.llvm.x86.LLVMX86_64VaListStorageFactory.ByteConversionHelperNodeGen;
-import com.oracle.truffle.llvm.runtime.nodes.intrinsics.llvm.x86.LLVMX86_64VaListStorageFactory.IntegerConversionHelperNodeGen;
-import com.oracle.truffle.llvm.runtime.nodes.intrinsics.llvm.x86.LLVMX86_64VaListStorageFactory.LongConversionHelperNodeGen;
-import com.oracle.truffle.llvm.runtime.nodes.intrinsics.llvm.x86.LLVMX86_64VaListStorageFactory.PointerConversionHelperNodeGen;
-import com.oracle.truffle.llvm.runtime.nodes.intrinsics.llvm.x86.LLVMX86_64VaListStorageFactory.ShortConversionHelperNodeGen;
 import com.oracle.truffle.llvm.runtime.nodes.memory.LLVMNativeVarargsAreaStackAllocationNode;
 import com.oracle.truffle.llvm.runtime.nodes.memory.LLVMNativeVarargsAreaStackAllocationNodeGen;
 import com.oracle.truffle.llvm.runtime.nodes.memory.NativeProfiledMemMove;
 import com.oracle.truffle.llvm.runtime.nodes.memory.load.LLVMI32LoadNode;
-import com.oracle.truffle.llvm.runtime.nodes.memory.load.LLVMI64LoadNode;
-import com.oracle.truffle.llvm.runtime.nodes.memory.load.LLVMI8LoadNode;
 import com.oracle.truffle.llvm.runtime.nodes.memory.load.LLVMPointerLoadNode;
 import com.oracle.truffle.llvm.runtime.nodes.memory.store.LLVM80BitFloatStoreNode.LLVM80BitFloatOffsetStoreNode;
 import com.oracle.truffle.llvm.runtime.nodes.memory.store.LLVMI32StoreNode.LLVMI32OffsetStoreNode;
@@ -105,9 +87,6 @@ import com.oracle.truffle.llvm.runtime.types.PointerType;
 import com.oracle.truffle.llvm.runtime.types.PrimitiveType;
 import com.oracle.truffle.llvm.runtime.types.StructureType;
 import com.oracle.truffle.llvm.runtime.types.Type;
-import com.oracle.truffle.llvm.runtime.types.VectorType;
-import com.oracle.truffle.llvm.runtime.vector.LLVMDoubleVector;
-import com.oracle.truffle.llvm.runtime.vector.LLVMFloatVector;
 import com.oracle.truffle.llvm.spi.NativeTypeLibrary;
 
 /**
@@ -411,77 +390,6 @@ public final class LLVMX86_64VaListStorage extends LLVMVaListStorage {
         }
     }
 
-    public enum VarArgArea {
-        GP_AREA,
-        FP_AREA,
-        OVERFLOW_AREA;
-    }
-
-    public static VarArgArea getVarArgArea(Object arg) {
-        if (arg instanceof Boolean) {
-            return VarArgArea.GP_AREA;
-        } else if (arg instanceof Byte) {
-            return VarArgArea.GP_AREA;
-        } else if (arg instanceof Short) {
-            return VarArgArea.GP_AREA;
-        } else if (arg instanceof Integer) {
-            return VarArgArea.GP_AREA;
-        } else if (arg instanceof Long) {
-            return VarArgArea.GP_AREA;
-        } else if (arg instanceof Float) {
-            return VarArgArea.FP_AREA;
-        } else if (arg instanceof Double) {
-            return VarArgArea.FP_AREA;
-        } else if (arg instanceof LLVMVarArgCompoundValue) {
-            return VarArgArea.OVERFLOW_AREA;
-        } else if (LLVMPointer.isInstance(arg)) {
-            return VarArgArea.GP_AREA;
-        } else if (arg instanceof LLVM80BitFloat) {
-            return VarArgArea.OVERFLOW_AREA;
-        } else if (arg instanceof LLVMFloatVector && ((LLVMFloatVector) arg).getLength() <= 2) {
-            return VarArgArea.FP_AREA;
-        } else {
-            CompilerDirectives.transferToInterpreter();
-            throw new AssertionError(arg);
-        }
-    }
-
-    public static VarArgArea getVarArgArea(Type type) {
-        if (type == PrimitiveType.I1) {
-            return VarArgArea.GP_AREA;
-        } else if (type == PrimitiveType.I8) {
-            return VarArgArea.GP_AREA;
-        } else if (type == PrimitiveType.I16) {
-            return VarArgArea.GP_AREA;
-        } else if (type == PrimitiveType.I32) {
-            return VarArgArea.GP_AREA;
-        } else if (type == PrimitiveType.I64) {
-            return VarArgArea.GP_AREA;
-        } else if (type == PrimitiveType.FLOAT) {
-            return VarArgArea.FP_AREA;
-        } else if (type == PrimitiveType.DOUBLE) {
-            return VarArgArea.FP_AREA;
-        } else if (type == PrimitiveType.X86_FP80) {
-            return VarArgArea.OVERFLOW_AREA;
-        } else if (isFloatVectorWithMaxTwoElems(type)) {
-            return VarArgArea.FP_AREA;
-        } else if (type instanceof PointerType) {
-            return VarArgArea.GP_AREA;
-        } else {
-            return VarArgArea.OVERFLOW_AREA;
-        }
-    }
-
-    @TruffleBoundary
-    private static boolean isFloatVectorWithMaxTwoElems(Type type) {
-        return type instanceof VectorType && getElementType(type) == PrimitiveType.FLOAT && ((VectorType) type).getNumberOfElements() <= 2;
-    }
-
-    @TruffleBoundary
-    private static Type getElementType(Type type) {
-        return ((VectorType) type).getElementType();
-    }
-
     private static int calculateUsedFpArea(Object[] realArguments, int numberOfExplicitArguments) {
         assert numberOfExplicitArguments <= realArguments.length;
 
@@ -739,12 +647,6 @@ public final class LLVMX86_64VaListStorage extends LLVMVaListStorage {
         return llvmCtx.getLanguage().getActiveConfiguration().createNodeFactory(llvmCtx.getLanguage(), dataLayout).createVarargsAreaStackAllocation();
     }
 
-    public static DataLayout getDataLayout() {
-        RootCallTarget rootCallTarget = (RootCallTarget) Truffle.getRuntime().getCurrentFrame().getCallTarget();
-        DataLayout dataLayout = (((LLVMHasDatalayoutNode) rootCallTarget.getRootNode())).getDatalayout();
-        return dataLayout;
-    }
-
     @SuppressWarnings("static-method")
     @ExportMessage
     @TruffleBoundary
@@ -841,70 +743,19 @@ public final class LLVMX86_64VaListStorage extends LLVMVaListStorage {
 
                 if (area == VarArgArea.GP_AREA && gp < X86_64BitVarArgs.GP_LIMIT) {
                     storeArgument(regSaveAreaNativePtr, gp, memMove, i64RegSaveAreaStore, i32RegSaveAreaStore,
-                                    fp80bitRegSaveAreaStore, pointerRegSaveAreaStore, object);
+                                    fp80bitRegSaveAreaStore, pointerRegSaveAreaStore, object, X86_64BitVarArgs.STACK_STEP);
                     gp += X86_64BitVarArgs.GP_STEP;
                 } else if (area == VarArgArea.FP_AREA && fp < X86_64BitVarArgs.FP_LIMIT) {
                     storeArgument(regSaveAreaNativePtr, fp, memMove, i64RegSaveAreaStore, i32RegSaveAreaStore,
-                                    fp80bitRegSaveAreaStore, pointerRegSaveAreaStore, object);
+                                    fp80bitRegSaveAreaStore, pointerRegSaveAreaStore, object, X86_64BitVarArgs.STACK_STEP);
                     fp += X86_64BitVarArgs.FP_STEP;
                 } else {
                     overflowOffset += storeArgument(overflowArgAreaBaseNativePtr, overflowOffset, memMove,
                                     i64OverflowArgAreaStore, i32OverflowArgAreaStore,
-                                    fp80bitOverflowArgAreaStore, pointerOverflowArgAreaStore, object);
+                                    fp80bitOverflowArgAreaStore, pointerOverflowArgAreaStore, object, X86_64BitVarArgs.STACK_STEP);
                 }
             }
         }
-    }
-
-    public static long storeArgument(LLVMPointer ptr, long offset, LLVMMemMoveNode memmove, LLVMI64OffsetStoreNode storeI64Node,
-                    LLVMI32OffsetStoreNode storeI32Node, LLVM80BitFloatOffsetStoreNode storeFP80Node, LLVMPointerOffsetStoreNode storePointerNode, Object object) {
-        if (object instanceof Number) {
-            return doPrimitiveWrite(ptr, offset, storeI64Node, object);
-        } else if (object instanceof LLVMVarArgCompoundValue) {
-            LLVMVarArgCompoundValue obj = (LLVMVarArgCompoundValue) object;
-            Object currentPtr = ptr.increment(offset);
-            memmove.executeWithTarget(currentPtr, obj.getAddr(), obj.getSize());
-            return obj.getSize();
-        } else if (LLVMPointer.isInstance(object)) {
-            storePointerNode.executeWithTarget(ptr, offset, object);
-            return X86_64BitVarArgs.STACK_STEP;
-        } else if (object instanceof LLVM80BitFloat) {
-            storeFP80Node.executeWithTarget(ptr, offset, (LLVM80BitFloat) object);
-            return 16;
-        } else if (object instanceof LLVMFloatVector) {
-            final LLVMFloatVector floatVec = (LLVMFloatVector) object;
-            for (int i = 0; i < floatVec.getLength(); i++) {
-                storeI32Node.executeWithTarget(ptr, offset + i * Float.BYTES, Float.floatToIntBits(floatVec.getValue(i)));
-            }
-            return floatVec.getLength() * Float.BYTES;
-        } else {
-            CompilerDirectives.transferToInterpreter();
-            throw new AssertionError(object);
-        }
-    }
-
-    private static int doPrimitiveWrite(LLVMPointer ptr, long offset, LLVMI64OffsetStoreNode storeNode, Object arg) throws AssertionError {
-        long value;
-        if (arg instanceof Boolean) {
-            value = ((boolean) arg) ? 1L : 0L;
-        } else if (arg instanceof Byte) {
-            value = Integer.toUnsignedLong((byte) arg);
-        } else if (arg instanceof Short) {
-            value = Integer.toUnsignedLong((short) arg);
-        } else if (arg instanceof Integer) {
-            value = Integer.toUnsignedLong((int) arg);
-        } else if (arg instanceof Long) {
-            value = (long) arg;
-        } else if (arg instanceof Float) {
-            value = Integer.toUnsignedLong(Float.floatToIntBits((float) arg));
-        } else if (arg instanceof Double) {
-            value = Double.doubleToRawLongBits((double) arg);
-        } else {
-            CompilerDirectives.transferToInterpreter();
-            throw new AssertionError(arg);
-        }
-        storeNode.executeWithTarget(ptr, offset, value);
-        return X86_64BitVarArgs.STACK_STEP;
     }
 
     /**
@@ -1019,127 +870,6 @@ public final class LLVMX86_64VaListStorage extends LLVMVaListStorage {
     }
 
     /**
-     * The abstraction for the two special areas in the va_list structure. Both, the reg_save_area
-     * and overflow_area descendants have an array of arguments that is indirectly addressable by
-     * offset. The conversion between the offset and the array index is calculated by the abstract
-     * <code>offsetToIndex</code> method, which is called from the common implementation of
-     * {@link LLVMManagedReadLibrary}.
-     */
-    @ExportLibrary(LLVMManagedReadLibrary.class)
-    public abstract static class ArgsArea implements TruffleObject {
-        public final Object[] args;
-
-        protected ArgsArea(Object[] args) {
-            this.args = args;
-        }
-
-        /**
-         * @param offset the offset of the argument. The offset may exceed the offset of the
-         *            corresponding argument. When it happens, the remainder offset is encoded in
-         *            the higher 4 bytes of the returned value.
-         * @return -1 if there is no argument for the given offset or the argument index encoded in
-         *         the lower 4 bytes and the remainder offset encoded in the higher 4 bytes.
-         */
-        protected abstract long offsetToIndex(long offset);
-
-        @ExportMessage
-        @SuppressWarnings("static-method")
-        public boolean isReadable() {
-            return true;
-        }
-
-        @ExportMessage
-        public byte readI8(long offset, @Cached ByteConversionHelperNode convNode) {
-            long n = offsetToIndex(offset);
-            int i = (int) ((n << 32) >> 32);
-            int j = (int) (n >> 32);
-            if (i < 0) {
-                return 0;
-            } else {
-                return (Byte) convNode.execute(args[i], j);
-            }
-        }
-
-        @ExportMessage
-        public short readI16(long offset, @Cached ShortConversionHelperNode convNode) {
-            long n = offsetToIndex(offset);
-            int i = (int) ((n << 32) >> 32);
-            int j = (int) (n >> 32);
-            if (i < 0) {
-                return 0;
-            } else {
-                return (Short) convNode.execute(args[i], j);
-            }
-        }
-
-        @ExportMessage
-        public int readI32(long offset, @Cached IntegerConversionHelperNode convNode) {
-            long n = offsetToIndex(offset);
-            int i = (int) ((n << 32) >> 32);
-            int j = (int) (n >> 32);
-            if (i < 0) {
-                return 0;
-            } else {
-                return (Integer) convNode.execute(args[i], j);
-            }
-        }
-
-        @ExportMessage
-        public LLVMPointer readPointer(long offset, @Cached PointerConversionHelperNode convNode) {
-            long n = offsetToIndex(offset);
-            int i = (int) ((n << 32) >> 32);
-            int j = (int) (n >> 32);
-            return i < 0 ? LLVMNativePointer.createNull() : LLVMPointer.cast(convNode.execute(args[i], j));
-        }
-
-        @ExportMessage
-        public Object readGenericI64(long offset, @Cached LongConversionHelperNode convNode) {
-            long n = offsetToIndex(offset);
-            int i = (int) ((n << 32) >> 32);
-            int j = (int) (n >> 32);
-            return i < 0 ? Double.doubleToLongBits(0d) : convNode.execute(args[i], j);
-        }
-
-        private static final Array I8_ARG_TYPE = LLVMInteropType.ValueKind.I8.type.toArray(8);
-        private static final Array I16_ARG_TYPE = LLVMInteropType.ValueKind.I16.type.toArray(4);
-        private static final Array I32_ARG_TYPE = LLVMInteropType.ValueKind.I32.type.toArray(2);
-        private static final Array I64_ARG_TYPE = LLVMInteropType.ValueKind.I64.type.toArray(1);
-        private static final Array F80_ARG_TYPE = LLVMInteropType.ValueKind.I64.type.toArray(2);
-
-        protected static LLVMInteropType getVarArgType(Object arg) {
-            if (arg == null) {
-                return LLVMInteropType.ValueKind.I8.type.toArray(0);
-            } else if (arg instanceof Boolean) {
-                return I8_ARG_TYPE;
-            } else if (arg instanceof Byte) {
-                return I8_ARG_TYPE;
-            } else if (arg instanceof Short) {
-                return I16_ARG_TYPE;
-            } else if (arg instanceof Integer) {
-                return I32_ARG_TYPE;
-            } else if (arg instanceof Long) {
-                return I64_ARG_TYPE;
-            } else if (arg instanceof Float) {
-                return I32_ARG_TYPE;
-            } else if (arg instanceof Double) {
-                return I64_ARG_TYPE;
-            } else if (LLVMPointer.isInstance(arg)) {
-                return I64_ARG_TYPE;
-            } else if (arg instanceof LLVMFloatVector && ((LLVMFloatVector) arg).getLength() <= 2) {
-                return I32_ARG_TYPE;
-            } else if (arg instanceof LLVMVarArgCompoundValue) {
-                LLVMVarArgCompoundValue compVal = (LLVMVarArgCompoundValue) arg;
-                return LLVMInteropType.ValueKind.I64.type.toArray(compVal.getSize() / 8);
-            } else if (arg instanceof LLVM80BitFloat) {
-                return F80_ARG_TYPE;
-            } else {
-                CompilerDirectives.transferToInterpreter();
-                throw new AssertionError(arg);
-            }
-        }
-    }
-
-    /**
      * The class of the managed <code>reg_save_area</code> of <code>va_list</code>. The array of
      * arguments is the array of real arguments. The input offset argument to
      * <code>offsetToIndex</code> originates in <code>gp_offset</code> or <code>fp_offset</code>
@@ -1206,94 +936,6 @@ public final class LLVMX86_64VaListStorage extends LLVMVaListStorage {
 
     }
 
-    /**
-     * The class of the managed <code>overflow_area</code> in <code>va_list</code>. In contrast to
-     * the <code>RegSaveArea</code>, the arguments array contains only the arguments that are to be
-     * stored in the <code>overflow_area</code>. The <code>offsets</code> array serves to map
-     * offsets to the indices of that array.
-     */
-    public abstract static class AbstractOverflowArgArea extends ArgsArea implements Cloneable {
-        protected final long[] offsets;
-        public final int overflowAreaSize;
-
-        protected long currentOffset;
-
-        protected AbstractOverflowArgArea(Object[] args, long[] offsets, int overflowAreaSize) {
-            super(args);
-            this.overflowAreaSize = overflowAreaSize;
-            this.offsets = offsets;
-            this.currentOffset = offsets[0];
-        }
-
-        @Override
-        protected long offsetToIndex(long offset) {
-            if (offset < 0) {
-                return -1;
-            }
-
-            for (int i = 0; i < offsets.length; i++) {
-                // The offsets array has the same length as the real arguments, however, it is
-                // rarely fully filled. The unused elements are initialized to -1.
-                if (offsets[i] < 0) {
-                    // The input offset points beyond the last element of the offsets array
-                    if (offset < overflowAreaSize) {
-                        // and it is still within the boundary of the overflow area.
-                        long j = offset - offsets[i - 1];
-                        return (i - 1) + (j << 32);
-                    } else {
-                        // and it is outside the overflow area boundary. We return -1 as an
-                        // indication of that fact.
-                        return -1;
-                    }
-                }
-                if (offset == offsets[i]) {
-                    // The input offset aligns with the i-th calculated offset, so just return
-                    // the
-                    // index.
-                    return i;
-                }
-                if (offset < offsets[i]) {
-                    assert i > 0;
-                    long j = offset - offsets[i - 1];
-                    return (i - 1) + (j << 32);
-                }
-            }
-            int i = offsets.length - 1;
-            long j = offset - offsets[i];
-            return i + (j << 32);
-        }
-
-        public void shift(int steps) {
-            long n = offsetToIndex(currentOffset);
-            int i = (int) ((n << 32) >> 32);
-            currentOffset = offsets[i + steps];
-        }
-
-        public void setOffset(long newOffset) {
-            currentOffset = newOffset;
-        }
-
-        public Object getCurrentArg() {
-            int i = getCurrentArgIndex();
-            return i < 0 ? null : args[i];
-        }
-
-        public int getCurrentArgIndex() {
-            long n = offsetToIndex(currentOffset);
-            int i = (int) ((n << 32) >> 32);
-            return i;
-        }
-
-        public LLVMManagedPointer getCurrentArgPtr() {
-            return LLVMManagedPointer.create(this, currentOffset);
-        }
-
-        public long getOffset() {
-            return currentOffset;
-        }
-
-    }
-
     @ExportLibrary(NativeTypeLibrary.class)
     public static final class OverflowArgArea extends AbstractOverflowArgArea {
 
@@ -1319,447 +961,6 @@ public final class LLVMX86_64VaListStorage extends LLVMVaListStorage {
         @ExportMessage
         public Object getNativeType() {
             return getVarArgType(getCurrentArg());
-        }
-
-    }
-
-    public abstract static class NumberConversionHelperNode extends LLVMNode {
-
-        abstract Object execute(Object x, int offset);
-
-        static boolean isNativePointer(Object x) {
-            return LLVMNativePointer.isInstance(x);
-        }
-
-        static boolean isManagedPointer(Object x) {
-            return LLVMManagedPointer.isInstance(x);
-        }
-
-    }
-
-    @GenerateUncached
-    public abstract static class ByteConversionHelperNode extends NumberConversionHelperNode {
-
-        @Specialization
-        byte byteConversion(Byte x, @SuppressWarnings("unused") int offset) {
-            assert offset == 0;
-            return x;
-        }
-
-        @Specialization
-        byte shortConversion(Short x, int offset, @Cached("createBinaryProfile()") ConditionProfile conditionProfile) {
-            if (conditionProfile.profile(offset == 0)) {
-                return x.byteValue();
-            } else {
-                assert offset == 1 : "Illegal short offset " + offset;
-                return (byte) (x >> 8);
-            }
-        }
-
-        @Specialization
-        byte intConversion(Integer x, int offset,
-                        @Cached("createBinaryProfile()") ConditionProfile conditionProfile1,
-                        @Cached("createBinaryProfile()") ConditionProfile conditionProfile2) {
-            if (conditionProfile1.profile(offset < 2)) {
-                return shortConversion(x.shortValue(), offset, conditionProfile2);
-            } else {
-                return shortConversion((short) (x >> 16), offset % 2, conditionProfile2);
-            }
-        }
-
-        @Specialization
-        byte longConversion(Long x, int offset,
-                        @Cached("createBinaryProfile()") ConditionProfile conditionProfile1,
-                        @Cached("createBinaryProfile()") ConditionProfile conditionProfile2,
-                        @Cached("createBinaryProfile()") ConditionProfile conditionProfile3) {
-            if (conditionProfile1.profile(offset < 4)) {
-                return intConversion(x.intValue(), offset, conditionProfile2, conditionProfile3);
-            } else {
-                return intConversion((int) (x >> 32), offset % 4, conditionProfile2, conditionProfile3);
-            }
-        }
-
-        @Specialization
-        byte doubleConversion(Double x, int offset,
-                        @Cached("createBinaryProfile()") ConditionProfile conditionProfile1,
-                        @Cached("createBinaryProfile()") ConditionProfile conditionProfile2,
-                        @Cached("createBinaryProfile()") ConditionProfile conditionProfile3) {
-            return longConversion(Double.doubleToLongBits(x), offset, conditionProfile1, conditionProfile2, conditionProfile3);
-        }
-
-        @Specialization
-        byte float80Conversion(LLVM80BitFloat x, int offset) {
-            assert offset < 10;
-            return x.getBytes()[offset];
-        }
-
-        @Specialization
-        byte floatVectorConversion(LLVMFloatVector x, int offset,
-                        @Cached("createBinaryProfile()") ConditionProfile conditionProfile1,
-                        @Cached("createBinaryProfile()") ConditionProfile conditionProfile2) {
-            int index = offset / 4;
-            assert index < x.getLength();
-            int fi = Float.floatToIntBits((Float) x.getElement(index));
-            return intConversion(fi, offset, conditionProfile1, conditionProfile2);
-        }
-
-        @Specialization(guards = "isNativePointer(x.getAddr())")
-        byte compoundObjectConversionNative(LLVMVarArgCompoundValue x, int offset,
-                        @Cached LLVMI8LoadNode.LLVMI8OffsetLoadNode offsetLoad) {
-            return offsetLoad.executeWithTarget(LLVMNativePointer.cast(x.getAddr()), offset);
-        }
-
-        @Specialization(guards = "!isNativePointer(x.getAddr())")
-        byte compoundObjectConversionManaged(LLVMVarArgCompoundValue x, int offset, @CachedLibrary(limit = "1") LLVMManagedReadLibrary compObjReadLib) {
-            LLVMManagedPointer ptr = LLVMManagedPointer.cast(x.getAddr());
-            return compObjReadLib.readI8(ptr.getObject(), offset);
-        }
-
-        @Specialization(guards = "isNativePointer(x)")
-        byte nativePointerObjectConversion(LLVMNativePointer x, int offset,
-                        @Cached("createBinaryProfile()") ConditionProfile conditionProfile1,
-                        @Cached("createBinaryProfile()") ConditionProfile conditionProfile2,
-                        @Cached("createBinaryProfile()") ConditionProfile conditionProfile3) {
-            return longConversion(x.asNative(), offset, conditionProfile1, conditionProfile2, conditionProfile3);
-        }
-
-        @Specialization(guards = "!isNativePointer(x)")
-        byte managedPointerObjectConversion(LLVMManagedPointer x, int offset,
-                        @CachedLibrary(limit = "1") LLVMNativeLibrary nativeLib,
-                        @Cached("createBinaryProfile()") ConditionProfile conditionProfile1,
-                        @Cached("createBinaryProfile()") ConditionProfile conditionProfile2,
-                        @Cached("createBinaryProfile()") ConditionProfile conditionProfile3) {
-            LLVMNativePointer nativePointer = nativeLib.toNativePointer(x.getObject());
-            return nativePointerObjectConversion(nativePointer, offset, conditionProfile1, conditionProfile2, conditionProfile3);
-        }
-
-        public static ByteConversionHelperNode create() {
-            return ByteConversionHelperNodeGen.create();
-        }
-
-    }
-
-    @GenerateUncached
-    public abstract static class ShortConversionHelperNode extends NumberConversionHelperNode {
-
-        @Specialization
-        short byteConversion(Byte x, @SuppressWarnings("unused") int offset) {
-            assert offset == 0;
-            return x.shortValue();
-        }
-
-        @Specialization
-        short shortConversion(Short x, @SuppressWarnings("unused") int offset) {
-            assert offset == 0;
-            return x;
-        }
-
-        @Specialization
-        short intConversion(Integer x, int offset, @Cached("createBinaryProfile()") ConditionProfile conditionProfile) {
-            if (conditionProfile.profile(offset == 0)) {
-                return x.shortValue();
-            } else {
-                assert offset == 2 : "Illegal integer offset " + offset;
-                return (short) (x >> 16);
-            }
-        }
-
-        @Specialization
-        short longConversion(Long x, int offset,
-                        @Cached("createBinaryProfile()") ConditionProfile conditionProfile1,
-                        @Cached("createBinaryProfile()") ConditionProfile conditionProfile2) {
-
-            if (conditionProfile1.profile(offset < 4)) {
-                return intConversion(x.intValue(), offset, conditionProfile2);
-            } else {
-                return intConversion((int) (x >> 32), offset % 4, conditionProfile2);
-            }
-        }
-
-        @Specialization
-        short doubleConversion(Double x, int offset,
-                        @Cached("createBinaryProfile()") ConditionProfile conditionProfile1,
-                        @Cached("createBinaryProfile()") ConditionProfile conditionProfile2) {
-            return longConversion(Double.doubleToLongBits(x), offset, conditionProfile1, conditionProfile2);
-        }
-
-        @Specialization
-        short floatVectorConversion(LLVMFloatVector x, int offset,
-                        @Cached("createBinaryProfile()") ConditionProfile conditionProfile) {
-            int index = offset / 4;
-            assert index < x.getLength();
-            int fi = Float.floatToIntBits((Float) x.getElement(index));
-            return intConversion(fi, offset, conditionProfile);
-        }
-
-        @Specialization(guards = "isNativePointer(x.getAddr())")
-        short compoundObjectConversion(LLVMVarArgCompoundValue x, int offset, @CachedLibrary(limit = "1") LLVMManagedReadLibrary compObjReadLib) {
-            return compObjReadLib.readI16(x.getAddr(), offset);
-        }
-
-        @Specialization(guards = "!isNativePointer(x.getAddr())")
-        short compoundObjectConversionManaged(LLVMVarArgCompoundValue x, int offset, @CachedLibrary(limit = "1") LLVMManagedReadLibrary compObjReadLib) {
-            LLVMManagedPointer ptr = LLVMManagedPointer.cast(x.getAddr());
-            return compObjReadLib.readI16(ptr.getObject(), offset);
-        }
-
-        @Specialization(guards = "isNativePointer(x)")
-        short nativePointerObjectConversion(LLVMNativePointer x, int offset,
-                        @Cached("createBinaryProfile()") ConditionProfile conditionProfile1,
-                        @Cached("createBinaryProfile()") ConditionProfile conditionProfile2) {
-            return longConversion(x.asNative(), offset, conditionProfile1, conditionProfile2);
-        }
-
-        @Specialization(guards = "!isNativePointer(x)")
-        short managedPointerObjectConversion(LLVMManagedPointer x, int offset,
-                        @CachedLibrary(limit = "1") LLVMNativeLibrary nativeLib,
-                        @Cached("createBinaryProfile()") ConditionProfile conditionProfile1,
-                        @Cached("createBinaryProfile()") ConditionProfile conditionProfile2) {
-            LLVMNativePointer nativePointer = nativeLib.toNativePointer(x.getObject());
-            return nativePointerObjectConversion(nativePointer, offset, conditionProfile1, conditionProfile2);
-        }
-
-        public static ShortConversionHelperNode create() {
-            return ShortConversionHelperNodeGen.create();
-        }
-    }
-
-    @GenerateUncached
-    public abstract static class IntegerConversionHelperNode extends NumberConversionHelperNode {
-
-        @Specialization
-        int byteConversion(Byte x, @SuppressWarnings("unused") int offset) {
-            assert offset == 0;
-            return x.intValue();
-        }
-
-        @Specialization
-        int shortConversion(Short x, @SuppressWarnings("unused") int offset) {
-            assert offset == 0;
-            return x.intValue();
-        }
-
-        @Specialization
-        int intConversion(Integer x, @SuppressWarnings("unused") int offset) {
-            assert offset == 0;
-            return x;
-        }
-
-        @Specialization
-        int longConversion(Long x, int offset, @Cached("createBinaryProfile()") ConditionProfile conditionProfile) {
-            if (conditionProfile.profile(offset == 0)) {
-                return x.intValue();
-            } else {
-                assert offset == 4 : "Illegal long offset " + offset;
-                return (int) (x >> 32);
-            }
-        }
-
-        @Specialization
-        int doubleConversion(Double x, int offset,
-                        @Cached("createBinaryProfile()") ConditionProfile conditionProfile) {
-            return longConversion(Double.doubleToLongBits(x), offset, conditionProfile);
-        }
-
-        @Specialization
-        int floatVectorConversion(LLVMFloatVector x, int offset) {
-            int index = offset / 4;
-            assert index < x.getLength();
-            return Float.floatToIntBits((Float) x.getElement(index));
-        }
-
-        @Specialization(guards = "isNativePointer(x.getAddr())")
-        int compoundObjectConversion(LLVMVarArgCompoundValue x, int offset,
-                        @Cached LLVMI32LoadNode.LLVMI32OffsetLoadNode offsetLoad) {
-            return offsetLoad.executeWithTarget(LLVMNativePointer.cast(x.getAddr()), offset);
-        }
-
-        @Specialization(guards = "!isNativePointer(x.getAddr())")
-        int compoundObjectConversionManaged(LLVMVarArgCompoundValue x, int offset, @CachedLibrary(limit = "1") LLVMManagedReadLibrary compObjReadLib) {
-            LLVMManagedPointer ptr = LLVMManagedPointer.cast(x.getAddr());
-            return compObjReadLib.readI32(ptr.getObject(), offset);
-        }
-
-        @Specialization(guards = "isNativePointer(x)")
-        int nativePointerObjectConversion(LLVMNativePointer x, int offset,
-                        @Cached("createBinaryProfile()") ConditionProfile conditionProfile) {
-            return longConversion(LLVMNativePointer.cast(x).asNative(), offset, conditionProfile);
-        }
-
-        @Specialization(guards = "!isNativePointer(x)")
-        int managedPointerObjectConversion(LLVMManagedPointer x, int offset,
-                        @CachedLibrary(limit = "1") LLVMNativeLibrary nativeLib,
-                        @Cached("createBinaryProfile()") ConditionProfile conditionProfile) {
-            LLVMNativePointer nativePointer = nativeLib.toNativePointer(x.getObject());
-            return nativePointerObjectConversion(nativePointer, offset, conditionProfile);
-        }
-
-        public static IntegerConversionHelperNode create() {
-            return IntegerConversionHelperNodeGen.create();
-        }
-    }
-
-    @GenerateUncached
-    public abstract static class LongConversionHelperNode extends NumberConversionHelperNode {
-
-        @Specialization
-        long byteConversion(Byte x, @SuppressWarnings("unused") int offset) {
-            assert offset == 0;
-            return x.longValue();
-        }
-
-        @Specialization
-        long shortConversion(Short x, @SuppressWarnings("unused") int offset) {
-            assert offset == 0;
-            return x.longValue();
-        }
-
-        @Specialization
-        long intConversion(Integer x, @SuppressWarnings("unused") int offset) {
-            assert offset == 0;
-            return x.longValue();
-        }
-
-        @Specialization
-        long longConversion(Long x, int offset) {
-            assert offset == 0;
-            return x;
-        }
-
-        @Specialization
-        long doubleConversion(Double x, int offset) {
-            assert offset == 0;
-            return Double.doubleToLongBits(x);
-        }
-
-        @Specialization
-        long floatVectorConversion(LLVMFloatVector x, int offset) {
-            int index = offset / 4;
-            assert index + 1 < x.getLength();
-            long low = Float.floatToIntBits((Float) x.getElement(index));
-            long high = Float.floatToIntBits((Float) x.getElement(index + 1));
-            return low + (high << 32);
-        }
-
-        @Specialization
-        long doubleVectorConversion(LLVMDoubleVector x, int offset) {
-            int index = offset / 8;
-            assert index < x.getLength();
-            return Double.doubleToLongBits((Double) x.getElement(index));
-        }
-
-        @Specialization(guards = "isNativePointer(x.getAddr())")
-        long compoundObjectConversion(LLVMVarArgCompoundValue x, int offset,
-                        @Cached LLVMI64LoadNode.LLVMI64OffsetLoadNode offsetLoad) {
-            try {
-                return offsetLoad.executeWithTarget(LLVMNativePointer.cast(x.getAddr()), offset);
-            } catch (UnexpectedResultException e) {
-                CompilerDirectives.transferToInterpreter();
-                throw new UnsupportedOperationException("Should not get here");
-            }
-        }
-
-        @Specialization(guards = "!isNativePointer(x.getAddr())")
-        Object compoundObjectConversionManaged(LLVMVarArgCompoundValue x, int offset, @CachedLibrary(limit = "1") LLVMManagedReadLibrary compObjReadLib) {
-            LLVMManagedPointer ptr = LLVMManagedPointer.cast(x.getAddr());
-            return compObjReadLib.readGenericI64(ptr.getObject(), offset);
-        }
-
-        @Specialization(guards = "isNativePointer(x)")
-        long nativePointerConversion(LLVMPointer x, int offset) {
-            assert offset == 0;
-            return LLVMNativePointer.cast(x).asNative();
-        }
-
-        @Specialization(guards = "isManagedPointer(x)")
-        Object managedPointerConversion(LLVMPointer x, int offset) {
-            assert offset == 0;
-            return x;
-        }
-
-        public static LongConversionHelperNode create() {
-            return LongConversionHelperNodeGen.create();
-        }
-    }
-
-    @GenerateUncached
-    public abstract static class PointerConversionHelperNode extends NumberConversionHelperNode {
-
-        @Specialization
-        LLVMPointer pointerConversion(LLVMPointer p, @SuppressWarnings("unused") int offset) {
-            assert offset == 0;
-            return p;
-        }
-
-        @Specialization
-        LLVMPointer longObjectConversion(long x, int offset) {
-            assert offset == 0;
-            return LLVMNativePointer.create(x);
-        }
-
-        @Specialization
-        LLVMPointer intObjectConversion(int x, int offset) {
-            assert offset == 0;
-            return LLVMNativePointer.create(x);
-        }
-
-        @Specialization(guards = "isNativePointer(x.getAddr())")
-        LLVMPointer compoundObjectConversion(LLVMVarArgCompoundValue x, int offset,
-                        @Cached LLVMPointerLoadNode.LLVMPointerOffsetLoadNode offsetLoad) {
-            return offsetLoad.executeWithTarget(LLVMNativePointer.cast(x.getAddr()), offset);
-        }
-
-        @Specialization(guards = "!isNativePointer(x.getAddr())")
-        LLVMPointer compoundObjectConversionManaged(LLVMVarArgCompoundValue x, int offset, @CachedLibrary(limit = "1") LLVMManagedReadLibrary compObjReadLib) {
-            LLVMManagedPointer ptr = LLVMManagedPointer.cast(x.getAddr());
-            return compObjReadLib.readPointer(ptr.getObject(), offset);
-        }
-
-        @Fallback
-        LLVMPointer fallackConversion(@SuppressWarnings("unused") Object x, @SuppressWarnings("unused") int offset) {
-            return LLVMNativePointer.createNull();
-        }
-
-        public static PointerConversionHelperNode create() {
-            return PointerConversionHelperNodeGen.create();
-        }
-    }
-
-    public abstract static class NativeAllocaInstruction extends LLVMNode {
-
-        public static NativeAllocaInstruction create() {
-            return new NativeAllocaInstructionCached();
-        }
-
-        public static NativeAllocaInstruction getUncached() {
-            return NativeAllocaInstructionUncached.UNCACHED;
-        }
-
-        public abstract LLVMPointer executeWithTarget(VirtualFrame frame, long sizeInBytes, LLVMStackAccess stackAccess);
-
-    }
-
-    public static final class NativeAllocaInstructionCached extends NativeAllocaInstruction {
-
-        @Child private LLVMNativeVarargsAreaStackAllocationNode nativeAllocaNode = LLVMNativeVarargsAreaStackAllocationNodeGen.create();
-
-        @Override
-        public LLVMPointer executeWithTarget(VirtualFrame frame, long sizeInBytes, LLVMStackAccess stackAccess) {
-            return nativeAllocaNode.executeWithTarget(frame, sizeInBytes);
-        }
-
-    }
-
-    public static final class NativeAllocaInstructionUncached extends NativeAllocaInstruction {
-
-        private static final long size = 1;
-        private static final int alignment = 8;
-
-        static final NativeAllocaInstructionUncached UNCACHED = new NativeAllocaInstructionUncached();
-
-        @Override
-        public LLVMPointer executeWithTarget(VirtualFrame frame, long sizeInBytes, LLVMStackAccess stackAccess) {
-            return stackAccess.executeAllocate(frame, size * sizeInBytes, alignment);
         }
 
     }
