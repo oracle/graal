@@ -25,10 +25,8 @@
 package org.graalvm.compiler.phases.common;
 
 import org.graalvm.compiler.core.common.GraalOptions;
-import org.graalvm.compiler.graph.Node;
 import org.graalvm.compiler.nodeinfo.InputType;
 import org.graalvm.compiler.nodes.ConstantNode;
-import org.graalvm.compiler.nodes.FixedWithNextNode;
 import org.graalvm.compiler.nodes.StructuredGraph;
 import org.graalvm.compiler.nodes.ValueNode;
 import org.graalvm.compiler.nodes.calc.FloatingNode;
@@ -49,13 +47,11 @@ public class BoxNodeCanonicalizationPhase extends BasePhase<CoreProviders> {
 
     @Override
     protected void run(StructuredGraph graph, CoreProviders context) {
-        for (Node n : graph.getNodes()) {
-            if (n instanceof BoxNode) {
-                FloatingNode canonical = canonicalizeBoxing((BoxNode) n, context.getMetaAccess(), context.getConstantReflection());
-                if (canonical != null) {
-                    n.replaceAtUsages((ValueNode) ((BoxNode) n).getLastLocationAccess(), InputType.Memory);
-                    graph.replaceFixedWithFloating((FixedWithNextNode) n, canonical);
-                }
+        for (BoxNode box : graph.getNodes(BoxNode.TYPE)) {
+            FloatingNode canonical = canonicalizeBoxing(box, context.getMetaAccess(), context.getConstantReflection());
+            if (canonical != null) {
+                box.replaceAtUsages((ValueNode) box.getLastLocationAccess(), InputType.Memory);
+                graph.replaceFixedWithFloating(box, canonical);
             }
         }
     }
