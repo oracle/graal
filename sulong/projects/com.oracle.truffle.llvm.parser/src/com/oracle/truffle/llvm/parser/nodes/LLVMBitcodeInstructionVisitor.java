@@ -29,6 +29,14 @@
  */
 package com.oracle.truffle.llvm.parser.nodes;
 
+import java.util.ArrayList;
+import java.util.HashMap;
+import java.util.HashSet;
+import java.util.Iterator;
+import java.util.List;
+import java.util.Map.Entry;
+import java.util.Objects;
+
 import com.oracle.truffle.api.frame.FrameDescriptor;
 import com.oracle.truffle.api.frame.FrameSlot;
 import com.oracle.truffle.llvm.parser.LLVMLivenessAnalysis;
@@ -111,8 +119,6 @@ import com.oracle.truffle.llvm.runtime.nodes.api.LLVMInstrumentableNode;
 import com.oracle.truffle.llvm.runtime.nodes.api.LLVMNode;
 import com.oracle.truffle.llvm.runtime.nodes.api.LLVMStatementNode;
 import com.oracle.truffle.llvm.runtime.nodes.api.LLVMVoidStatementNodeGen;
-import com.oracle.truffle.llvm.runtime.nodes.memory.literal.LLVMArrayLiteralNode;
-import com.oracle.truffle.llvm.runtime.nodes.memory.load.LLVMStructLoadNode;
 import com.oracle.truffle.llvm.runtime.nodes.vars.LLVMWriteNode;
 import com.oracle.truffle.llvm.runtime.options.SulongEngineOption;
 import com.oracle.truffle.llvm.runtime.types.AggregateType;
@@ -126,14 +132,6 @@ import com.oracle.truffle.llvm.runtime.types.Type;
 import com.oracle.truffle.llvm.runtime.types.Type.TypeArrayBuilder;
 import com.oracle.truffle.llvm.runtime.types.Type.TypeOverflowException;
 import com.oracle.truffle.llvm.runtime.types.symbols.SSAValue;
-
-import java.util.ArrayList;
-import java.util.HashMap;
-import java.util.HashSet;
-import java.util.Iterator;
-import java.util.List;
-import java.util.Map.Entry;
-import java.util.Objects;
 
 public final class LLVMBitcodeInstructionVisitor implements SymbolVisitor {
 
@@ -1264,8 +1262,10 @@ public final class LLVMBitcodeInstructionVisitor implements SymbolVisitor {
         return false;
     }
 
-    private static boolean isArrayByValue(Type type, LLVMExpressionNode exprNode) {
-        return ((exprNode instanceof LLVMStructLoadNode) || (exprNode instanceof LLVMArrayLiteralNode) && (type instanceof ArrayType));
+    private static boolean isArrayByValue(Type type, @SuppressWarnings("unused") LLVMExpressionNode exprNode) {
+        return type instanceof ArrayType;
+        // return ((exprNode instanceof LLVMStructLoadNode) || (exprNode instanceof
+        // LLVMArrayLiteralNode) && (type instanceof ArrayType));
     }
 
     private void assignSourceLocation(LLVMInstrumentableNode node, Instruction sourceInstruction) {
