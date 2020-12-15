@@ -45,6 +45,7 @@ import com.oracle.truffle.api.RootCallTarget;
 import com.oracle.truffle.api.TruffleStackTraceElement;
 import com.oracle.truffle.api.frame.Frame;
 import com.oracle.truffle.api.frame.MaterializedFrame;
+import com.oracle.truffle.api.interop.InteropLibrary;
 import com.oracle.truffle.api.interop.NodeLibrary;
 import com.oracle.truffle.api.interop.UnsupportedMessageException;
 import com.oracle.truffle.api.nodes.LanguageInfo;
@@ -138,30 +139,22 @@ public final class DebugStackTraceElement {
         if (hostTraceElement != null) {
             return hostTraceElement.getClassName() + '.' + hostTraceElement.getMethodName();
         }
-        RootNode root = findCurrentRoot();
-        if (root == null) {
-            return null;
-        }
         try {
-            return root.getName();
+            Object guestObject = traceElement.getGuestObject();
+            if (InteropLibrary.getUncached().hasExecutableName(guestObject)) {
+                try {
+                    return InteropLibrary.getUncached().asString(InteropLibrary.getUncached().getExecutableName(guestObject));
+                } catch (UnsupportedMessageException ex) {
+                    throw CompilerDirectives.shouldNotReachHere(ex);
+                }
+            }
+            return null;
         } catch (ThreadDeath td) {
             throw td;
         } catch (Throwable ex) {
-            throw DebugException.create(session, ex, root.getLanguageInfo());
-        }
-    }
-
-    private String getName0() {
-        RootNode root = findCurrentRoot();
-        if (root == null) {
-            return null;
-        }
-        try {
-            return root.getName();
-        } catch (ThreadDeath td) {
-            throw td;
-        } catch (Throwable ex) {
-            return null;
+            RootNode root = findCurrentRoot();
+            LanguageInfo languageInfo = root != null ? root.getLanguageInfo() : null;
+            throw DebugException.create(session, ex, languageInfo);
         }
     }
 
@@ -249,9 +242,28 @@ public final class DebugStackTraceElement {
             } else {
                 LanguageInfo language = getLanguage();
                 String declaringClass = language != null ? "<" + language.getId() + ">" : "<unknown>";
-                String methodName = getName0();
-                if (methodName == null) {
-                    methodName = "";
+                String methodName;
+                try {
+                    Object guestObject = traceElement.getGuestObject();
+                    if (InteropLibrary.getUncached().hasExecutableName(guestObject)) {
+                        try {
+                            methodName = InteropLibrary.getUncached().asString(InteropLibrary.getUncached().getExecutableName(guestObject));
+                        } catch (UnsupportedMessageException ex) {
+                            throw CompilerDirectives.shouldNotReachHere(ex);
+                        }
+                    } else {
+                        methodName = "";
+                    }
+                } catch (ThreadDeath | AssertionError td) {
+                    throw td;
+                } catch (Throwable ex) {
+                    if (InteropLibrary.getUncached().isException(ex)) {
+                        // Should not throw additional guest exceptions
+                        // while creating a DebugException.
+                        methodName = "Error in generating method name: " + ex.getLocalizedMessage();
+                    } else {
+                        throw ex;
+                    }
                 }
                 SourceSection sourceLocation = getSourceSection();
                 String fileName = sourceLocation != null ? sourceLocation.getSource().getName() : "Unknown";
