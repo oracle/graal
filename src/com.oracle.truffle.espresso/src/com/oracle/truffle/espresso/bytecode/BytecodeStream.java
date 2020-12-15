@@ -25,8 +25,9 @@ package com.oracle.truffle.espresso.bytecode;
 import java.io.PrintStream;
 import java.util.Arrays;
 
-import com.oracle.truffle.api.CompilerAsserts;
+import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
+import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.espresso.classfile.ConstantPool;
 import com.oracle.truffle.espresso.classfile.constantpool.ClassConstant;
 import com.oracle.truffle.espresso.classfile.constantpool.InvokeDynamicConstant;
@@ -227,13 +228,16 @@ public final class BytecodeStream {
                     }
                 }
                 default:
-                    CompilerAsserts.neverPartOfCompilation();
+                    // Should rather be CompilerAsserts.neverPartOfCompilation() but this is
+                    // reachable in SVM.
+                    CompilerDirectives.transferToInterpreterAndInvalidate();
                     throw error(opcode(curBCI));
             }
         }
         return length;
     }
 
+    @TruffleBoundary
     private static EspressoError error(int opcode) {
         throw EspressoError.shouldNotReachHere("unknown variable-length bytecode: " + opcode);
     }
