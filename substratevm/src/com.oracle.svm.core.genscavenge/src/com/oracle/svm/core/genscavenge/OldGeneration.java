@@ -180,13 +180,12 @@ final class OldGeneration extends Generation {
             return true;
         }
         if (slowlyFindPointerInToSpace(p)) {
-            try (Log paranoia = Log.noopLog()) {
-                if (paranoia.isEnabled()) {
-                    paranoia.string("[OldGeneration.slowlyFindPointerInOldGeneration:");
-                    paranoia.string("  p: ").hex(p);
-                    paranoia.string("  found in: ").string(getToSpace().getName());
-                    paranoia.string("]").newline();
-                }
+            Log paranoia = Log.noopLog();
+            if (paranoia.isEnabled()) {
+                paranoia.string("[OldGeneration.slowlyFindPointerInOldGeneration:");
+                paranoia.string("  p: ").hex(p);
+                paranoia.string("  found in: ").string(getToSpace().getName());
+                paranoia.string("]").newline();
             }
             return false;
         }
