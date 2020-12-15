@@ -34,6 +34,7 @@ import java.util.Objects;
 
 import org.graalvm.options.OptionValues;
 
+import com.oracle.truffle.api.TruffleLogger;
 import com.oracle.truffle.espresso.EspressoLanguage;
 import com.oracle.truffle.espresso.EspressoOptions;
 import com.oracle.truffle.espresso.Utils;
@@ -254,7 +255,7 @@ public interface EspressoProperties {
         // Process boot classpath + append and prepend options.
         List<Path> bootClasspath = new ArrayList<>(builder.bootClasspath());
         if (options.hasBeenSet(EspressoOptions.BootClasspath)) {
-            bootClasspath = options.get(EspressoOptions.BootClasspath);
+            bootClasspath = new ArrayList<>(options.get(EspressoOptions.BootClasspath));
         }
         if (options.hasBeenSet(EspressoOptions.BootClasspathAppend)) {
             bootClasspath.addAll(options.get(EspressoOptions.BootClasspathAppend));
@@ -262,6 +263,16 @@ public interface EspressoProperties {
         if (options.hasBeenSet(EspressoOptions.BootClasspathPrepend)) {
             bootClasspath.addAll(0, options.get(EspressoOptions.BootClasspathPrepend));
         }
+
+        Path espressoHome = Paths.get(language.getEspressoHome());
+        Path polyglotJar = espressoHome.resolve("polyglot.jar");
+        if (Files.isReadable(polyglotJar)) {
+            TruffleLogger.getLogger(EspressoLanguage.ID).fine("Adding Polyglot API on the boot classpath: " + polyglotJar.toString());
+            bootClasspath.addAll(0, Collections.singletonList(polyglotJar));
+        } else {
+            TruffleLogger.getLogger(EspressoLanguage.ID).warning("polyglot.jar (Polyglot API) not found in " + espressoHome);
+        }
+
         builder.bootClasspath(bootClasspath);
 
         if (options.hasBeenSet(EspressoOptions.BootLibraryPath)) {

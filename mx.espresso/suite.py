@@ -462,6 +462,9 @@ suite = {
             "native": True,
             "description": "Espresso support distribution for the GraalVM",
             "platformDependent": True,
+            "dependencies": [
+                "espresso:POLYGLOT",
+            ],
             "layout": {
                 "./": [
                     "file:mx.espresso/native-image.properties",
@@ -472,6 +475,8 @@ suite = {
                     "dependency:espresso:com.oracle.truffle.espresso.native/<lib:nespresso>",
                     "dependency:espresso:com.oracle.truffle.espresso.mokapot/<lib:jvm>",
                 ],
+                # Espresso's polyglot API.
+                "./": "dependency:espresso:POLYGLOT/*",
             },
         },
 
