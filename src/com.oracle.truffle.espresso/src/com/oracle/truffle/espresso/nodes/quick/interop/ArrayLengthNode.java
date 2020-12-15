@@ -48,10 +48,9 @@ public abstract class ArrayLengthNode extends QuickNode {
     }
 
     @Override
-    public final int execute(VirtualFrame frame) {
-        BytecodeNode root = getBytecodesNode();
-        StaticObject array = nullCheck(root.popObject(frame, top - 1));
-        root.putInt(frame, top - 1, executeGetLength(array));
+    public final int execute(VirtualFrame frame, long[] primitives, Object[] refs) {
+        StaticObject array = nullCheck(BytecodeNode.popObject(refs, top - 1));
+        BytecodeNode.putInt(primitives, top - 1, executeGetLength(array));
         return Bytecodes.stackEffectOf(Bytecodes.ARRAYLENGTH);
     }
 
@@ -81,7 +80,7 @@ public abstract class ArrayLengthNode extends QuickNode {
     }
 
     @Override
-    public boolean producedForeignObject(VirtualFrame frame) {
+    public final boolean producedForeignObject(Object[] refs) {
         return false;
     }
 }

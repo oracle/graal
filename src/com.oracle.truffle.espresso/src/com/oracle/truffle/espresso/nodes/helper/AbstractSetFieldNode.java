@@ -52,7 +52,7 @@ public abstract class AbstractSetFieldNode extends Node {
         this.fieldName = field.getNameAsString();
     }
 
-    public abstract void setField(VirtualFrame frame, BytecodeNode root, StaticObject receiver, int top, int statementIndex);
+    public abstract void setField(VirtualFrame frame, long[] primitives, Object[] refs, BytecodeNode root, StaticObject receiver, int top, int statementIndex);
 
     public static AbstractSetFieldNode create(Field f) {
         // @formatter:off
@@ -98,8 +98,8 @@ abstract class IntSetFieldNode extends AbstractSetFieldNode {
     }
 
     @Override
-    public void setField(VirtualFrame frame, BytecodeNode root, StaticObject receiver, int top, int statementIndex) {
-        int value = root.popInt(frame, top - 1);
+    public void setField(VirtualFrame frame, long[] primitives, Object[] refs, BytecodeNode root, StaticObject receiver, int top, int statementIndex) {
+        int value = BytecodeNode.popInt(primitives, top - 1);
         root.notifyFieldModification(frame, statementIndex, field, receiver, value);
         executeSetField(receiver, value);
     }
@@ -127,8 +127,8 @@ abstract class BooleanSetFieldNode extends AbstractSetFieldNode {
     }
 
     @Override
-    public void setField(VirtualFrame frame, BytecodeNode root, StaticObject receiver, int top, int statementIndex) {
-        boolean value = root.popInt(frame, top - 1) != 0;
+    public void setField(VirtualFrame frame, long[] primitives, Object[] refs, BytecodeNode root, StaticObject receiver, int top, int statementIndex) {
+        boolean value = BytecodeNode.popInt(primitives, top - 1) != 0;
         root.notifyFieldModification(frame, statementIndex, field, receiver, value);
         executeSetField(receiver, value);
     }
@@ -156,8 +156,8 @@ abstract class CharSetFieldNode extends AbstractSetFieldNode {
     }
 
     @Override
-    public void setField(VirtualFrame frame, BytecodeNode root, StaticObject receiver, int top, int statementIndex) {
-        char value = (char) root.popInt(frame, top - 1);
+    public void setField(VirtualFrame frame, long[] primitives, Object[] refs, BytecodeNode root, StaticObject receiver, int top, int statementIndex) {
+        char value = (char) BytecodeNode.popInt(primitives, top - 1);
         root.notifyFieldModification(frame, statementIndex, field, receiver, value);
         executeSetField(receiver, value);
     }
@@ -185,8 +185,8 @@ abstract class ShortSetFieldNode extends AbstractSetFieldNode {
     }
 
     @Override
-    public void setField(VirtualFrame frame, BytecodeNode root, StaticObject receiver, int top, int statementIndex) {
-        short value = (short) root.popInt(frame, top - 1);
+    public void setField(VirtualFrame frame, long[] primitives, Object[] refs, BytecodeNode root, StaticObject receiver, int top, int statementIndex) {
+        short value = (short) BytecodeNode.popInt(primitives, top - 1);
         root.notifyFieldModification(frame, statementIndex, field, receiver, value);
         executeSetField(receiver, value);
     }
@@ -214,8 +214,8 @@ abstract class ByteSetFieldNode extends AbstractSetFieldNode {
     }
 
     @Override
-    public void setField(VirtualFrame frame, BytecodeNode root, StaticObject receiver, int top, int statementIndex) {
-        byte value = (byte) root.popInt(frame, top - 1);
+    public void setField(VirtualFrame frame, long[] primitives, Object[] refs, BytecodeNode root, StaticObject receiver, int top, int statementIndex) {
+        byte value = (byte) BytecodeNode.popInt(primitives, top - 1);
         root.notifyFieldModification(frame, statementIndex, field, receiver, value);
         executeSetField(receiver, value);
     }
@@ -243,8 +243,8 @@ abstract class LongSetFieldNode extends AbstractSetFieldNode {
     }
 
     @Override
-    public void setField(VirtualFrame frame, BytecodeNode root, StaticObject receiver, int top, int statementIndex) {
-        long value = root.popLong(frame, top - 1);
+    public void setField(VirtualFrame frame, long[] primitives, Object[] refs, BytecodeNode root, StaticObject receiver, int top, int statementIndex) {
+        long value = BytecodeNode.popLong(primitives, top - 1);
         root.notifyFieldModification(frame, statementIndex, field, receiver, value);
         executeSetField(receiver, value);
     }
@@ -272,8 +272,8 @@ abstract class FloatSetFieldNode extends AbstractSetFieldNode {
     }
 
     @Override
-    public void setField(VirtualFrame frame, BytecodeNode root, StaticObject receiver, int top, int statementIndex) {
-        float value = root.popFloat(frame, top - 1);
+    public void setField(VirtualFrame frame, long[] primitives, Object[] refs, BytecodeNode root, StaticObject receiver, int top, int statementIndex) {
+        float value = BytecodeNode.popFloat(primitives, top - 1);
         root.notifyFieldModification(frame, statementIndex, field, receiver, value);
         executeSetField(receiver, value);
     }
@@ -301,8 +301,8 @@ abstract class DoubleSetFieldNode extends AbstractSetFieldNode {
     }
 
     @Override
-    public void setField(VirtualFrame frame, BytecodeNode root, StaticObject receiver, int top, int statementIndex) {
-        double value = root.popDouble(frame, top - 1);
+    public void setField(VirtualFrame frame, long[] primitives, Object[] refs, BytecodeNode root, StaticObject receiver, int top, int statementIndex) {
+        double value = BytecodeNode.popDouble(primitives, top - 1);
         root.notifyFieldModification(frame, statementIndex, field, receiver, value);
         executeSetField(receiver, value);
     }
@@ -330,8 +330,8 @@ abstract class ObjectSetFieldNode extends AbstractSetFieldNode {
     }
 
     @Override
-    public void setField(VirtualFrame frame, BytecodeNode root, StaticObject receiver, int top, int statementIndex) {
-        StaticObject value = root.popObject(frame, top - 1);
+    public void setField(VirtualFrame frame, long[] primitives, Object[] refs, BytecodeNode root, StaticObject receiver, int top, int statementIndex) {
+        StaticObject value = BytecodeNode.popObject(refs, top - 1);
         root.notifyFieldModification(frame, statementIndex, field, receiver, value);
         executeSetField(receiver, value);
     }

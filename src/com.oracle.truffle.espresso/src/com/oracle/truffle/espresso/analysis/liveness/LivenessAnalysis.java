@@ -28,7 +28,6 @@ import java.util.ArrayList;
 import java.util.BitSet;
 
 import com.oracle.truffle.api.CompilerDirectives;
-import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.espresso.EspressoOptions;
 import com.oracle.truffle.espresso.analysis.DepthFirstBlockIterator;
 import com.oracle.truffle.espresso.analysis.GraphBuilder;
@@ -39,7 +38,6 @@ import com.oracle.truffle.espresso.analysis.liveness.actions.MultiAction;
 import com.oracle.truffle.espresso.analysis.liveness.actions.NullOutAction;
 import com.oracle.truffle.espresso.analysis.liveness.actions.SelectEdgeAction;
 import com.oracle.truffle.espresso.impl.Method;
-import com.oracle.truffle.espresso.nodes.BytecodeNode;
 import com.oracle.truffle.espresso.perf.DebugCloseable;
 import com.oracle.truffle.espresso.perf.DebugTimer;
 import com.oracle.truffle.espresso.perf.TimerCollection;
@@ -55,15 +53,15 @@ public class LivenessAnalysis {
 
     public static final LivenessAnalysis NO_ANALYSIS = new LivenessAnalysis() {
         @Override
-        public void performPostBCI(VirtualFrame frame, int bci, BytecodeNode node) {
+        public void performPostBCI(long[] primitives, Object[] refs, int bci) {
         }
 
         @Override
-        public void performOnEdge(VirtualFrame frame, int bci, int nextBci, BytecodeNode node) {
+        public void performOnEdge(long[] primitives, Object[] refs, int bci, int nextBci) {
         }
 
         @Override
-        public void onStart(VirtualFrame frame, BytecodeNode node) {
+        public void onStart(long[] primitives, Object[] refs) {
         }
     };
 
@@ -84,26 +82,26 @@ public class LivenessAnalysis {
         return !compiledCodeOnly || CompilerDirectives.inCompiledCode();
     }
 
-    public void performOnEdge(VirtualFrame frame, int bci, int nextBci, BytecodeNode node) {
+    public void performOnEdge(long[] primitives, Object[] refs, int bci, int nextBci) {
         if (compiledCodeCheck()) {
             if (edge != null && edge[nextBci] != null) {
-                edge[nextBci].onEdge(frame, bci, node);
+                edge[nextBci].onEdge(primitives, refs, bci);
             }
         }
     }
 
-    public void onStart(VirtualFrame frame, BytecodeNode node) {
+    public void onStart(long[] primitives, Object[] refs) {
         if (compiledCodeCheck()) {
             if (onStart != null) {
-                onStart.execute(frame, node);
+                onStart.execute(primitives, refs);
             }
         }
     }
 
-    public void performPostBCI(VirtualFrame frame, int bci, BytecodeNode node) {
+    public void performPostBCI(long[] primitives, Object[] refs, int bci) {
         if (compiledCodeCheck()) {
             if (result != null && result[bci] != null) {
-                result[bci].execute(frame, node);
+                result[bci].execute(primitives, refs);
             }
         }
     }

@@ -24,7 +24,6 @@ package com.oracle.truffle.espresso.classfile.constantpool;
 
 import java.nio.ByteBuffer;
 
-import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.espresso.classfile.ConstantPool;
 import com.oracle.truffle.espresso.classfile.ConstantPool.Tag;
 import com.oracle.truffle.espresso.classfile.RuntimeConstantPool;
@@ -147,7 +146,7 @@ public interface DynamicConstant extends PoolConstant {
     }
 
     interface Resolved extends DynamicConstant, Resolvable.ResolvedConstant {
-        void putResolved(VirtualFrame frame, int top, BytecodeNode node);
+        void putResolved(long[] primitives, Object[] refs, int top, BytecodeNode node);
 
         @Override
         default Symbol<Type> getTypeSymbol(ConstantPool pool) {
@@ -171,8 +170,8 @@ public interface DynamicConstant extends PoolConstant {
         }
 
         @Override
-        public void putResolved(VirtualFrame frame, int top, BytecodeNode node) {
-            node.putObject(frame, top, resolved);
+        public void putResolved(long[] primitives, Object[] refs, int top, BytecodeNode node) {
+            BytecodeNode.putObject(refs, top, resolved);
         }
 
         @Override
@@ -194,8 +193,8 @@ public interface DynamicConstant extends PoolConstant {
         }
 
         @Override
-        public void putResolved(VirtualFrame frame, int top, BytecodeNode node) {
-            node.putInt(frame, top, resolved);
+        public void putResolved(long[] primitives, Object[] refs, int top, BytecodeNode node) {
+            BytecodeNode.putInt(primitives, top, resolved);
         }
 
         @Override
@@ -217,8 +216,8 @@ public interface DynamicConstant extends PoolConstant {
         }
 
         @Override
-        public void putResolved(VirtualFrame frame, int top, BytecodeNode node) {
-            node.putLong(frame, top, resolved);
+        public void putResolved(long[] primitives, Object[] refs, int top, BytecodeNode node) {
+            BytecodeNode.putLong(primitives, top, resolved);
         }
 
         @Override
@@ -240,8 +239,8 @@ public interface DynamicConstant extends PoolConstant {
         }
 
         @Override
-        public void putResolved(VirtualFrame frame, int top, BytecodeNode node) {
-            node.putDouble(frame, top, resolved);
+        public void putResolved(long[] primitives, Object[] refs, int top, BytecodeNode node) {
+            BytecodeNode.putDouble(primitives, top, resolved);
         }
 
         @Override
@@ -263,8 +262,8 @@ public interface DynamicConstant extends PoolConstant {
         }
 
         @Override
-        public void putResolved(VirtualFrame frame, int top, BytecodeNode node) {
-            node.putFloat(frame, top, resolved);
+        public void putResolved(long[] primitives, Object[] refs, int top, BytecodeNode node) {
+            BytecodeNode.putFloat(primitives, top, resolved);
         }
 
         @Override

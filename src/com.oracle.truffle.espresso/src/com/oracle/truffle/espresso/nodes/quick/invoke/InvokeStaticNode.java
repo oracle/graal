@@ -42,16 +42,20 @@ public final class InvokeStaticNode extends QuickNode {
 
     @Child private DirectCallNode directCallNode;
 
+    final int resultAt;
+
     public InvokeStaticNode(Method method, int top, int curBCI) {
         super(top, curBCI);
         assert method.isStatic();
         this.method = method.getMethodVersion();
         this.callsDoPrivileged = method.getMeta().java_security_AccessController.equals(method.getDeclaringKlass()) &&
                         Name.doPrivileged.equals(method.getName());
+        this.resultAt = top - Signatures.slotsForParameters(method.getParsedSignature()); // no
+                                                                                          // receiver
     }
 
     @Override
-    public int execute(final VirtualFrame frame) {
+    public int execute(VirtualFrame frame, long[] primitives, Object[] refs) {
         if (!method.getAssumption().isValid()) {
             CompilerDirectives.transferToInterpreterAndInvalidate();
             directCallNode = null;
@@ -65,8 +69,6 @@ public final class InvokeStaticNode extends QuickNode {
             // stack frame iteration will see this node as parent
             directCallNode = insert(DirectCallNode.create(method.getMethod().getCallTarget()));
         }
-        BytecodeNode root = getBytecodesNode();
-        Object[] args = root.peekAndReleaseArguments(frame, top, false, method.getMethod().getParsedSignature());
 
         // Support for AccessController.doPrivileged*.
         if (callsDoPrivileged) {
@@ -77,18 +79,18 @@ public final class InvokeStaticNode extends QuickNode {
             }
         }
 
+        Object[] args = BytecodeNode.popArguments(primitives, refs, top, false, method.getMethod().getParsedSignature());
         Object result = directCallNode.call(args);
-        return (getResultAt() - top) + root.putKind(frame, getResultAt(), result, method.getMethod().getReturnKind());
+        return (getResultAt() - top) + BytecodeNode.putKind(primitives, refs, getResultAt(), result, method.getMethod().getReturnKind());
     }
 
     @Override
-    public boolean producedForeignObject(VirtualFrame frame) {
-        return method.getMethod().getReturnKind().isObject() && getBytecodesNode().peekObject(frame, getResultAt()).isForeignObject();
+    public boolean producedForeignObject(Object[] refs) {
+        return method.getMethod().getReturnKind().isObject() && BytecodeNode.peekObject(refs, getResultAt()).isForeignObject();
     }
 
     private int getResultAt() {
-        // no receiver
-        return top - Signatures.slotsForParameters(method.getMethod().getParsedSignature());
+        return resultAt;
     }
 
     @Override

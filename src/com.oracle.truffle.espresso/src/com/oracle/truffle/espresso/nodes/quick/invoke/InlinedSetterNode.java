@@ -71,17 +71,17 @@ public class InlinedSetterNode extends QuickNode {
     }
 
     @Override
-    public int execute(VirtualFrame frame) {
+    public int execute(VirtualFrame frame, long[] primitives, Object[] refs) {
         BytecodeNode root = getBytecodesNode();
         StaticObject receiver = field.isStatic()
                         ? field.getDeclaringKlass().tryInitializeAndGetStatics()
-                        : nullCheck(root.popObject(frame, top - 1 - slotCount));
-        setFieldNode.setField(frame, root, receiver, top, statementIndex);
+                        : nullCheck(BytecodeNode.popObject(refs, top - 1 - slotCount));
+        setFieldNode.setField(frame, primitives, refs, root, receiver, top, statementIndex);
         return -slotCount + stackEffect;
     }
 
     @Override
-    public boolean producedForeignObject(VirtualFrame frame) {
+    public boolean producedForeignObject(Object[] refs) {
         return false;
     }
 
