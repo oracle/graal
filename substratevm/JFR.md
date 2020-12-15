@@ -15,24 +15,26 @@ https://github.com/graalvm/labs-openjdk-11/releases
 For example:
 https://github.com/graalvm/labs-openjdk-11/releases/download/jvmci-20.3-b06/labsjdk-ce-11.0.9+10-jvmci-20.3-b06-linux-amd64.tar.gz
 
-## Testing the JFR code
+## Building a native image with JFR
 
-Clone the graalvm-jfr-tests repo somewhere to be used in the -cp argument. Use a JDK 11 to compile into class files.
+The JFR implementation is included at compile time via the flag:
+`-H:+FlightRecorder`
 
+## Running tests from the jfr-tests repo
+Clone the https://github.com/rh-jmc-team/jfr-tests repo to be used in the -cp argument. Follow its readme to compile class files via Maven.
+
+Then compile the classes to a native image, for example:
 ```
-javac /path/to/graalvm-jfr-tests/flat/EventCommit.java
-
-
-mx clean
 mx build
-mx native-image --allow-incomplete-classpath "-J-XX:FlightRecorderOptions=retransform=false" --no-fallback -ea -cp /path/to/graalvm-jfr-tests/flat/ EventCommit
+mx native-image -H:+FlightRecorder --no-fallback -cp /path/to/jfr-tests/target/classes com.redhat.jfr.tests.event.TestConcurrentEvents
+./com.redhat.jfr.tests.event.testconcurrentevents
 ```
 
-See `/tmp` for a `my-recording...` jfr file
+See `/tmp` for the jfr file
 
 ## Logging
 
-The JFR implementation supports log levels via runtime flag:
+The JFR implementation supports log levels via the runtime flag:
 ```
 -XX:FlightRecorderLogging=<value>
 ```
@@ -40,4 +42,11 @@ The JFR implementation supports log levels via runtime flag:
 Values include:
 ```
 trace, debug, info, warning, error
+```
+
+An empty value is treated as `error`
+
+For example:
+```
+./com.redhat.jfr.tests.event.testconcurrentevents -XX:FlightRecorderLogging=
 ```
