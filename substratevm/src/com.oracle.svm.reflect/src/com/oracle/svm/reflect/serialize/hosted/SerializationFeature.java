@@ -34,7 +34,9 @@ import java.io.Serializable;
 import java.lang.reflect.Field;
 import java.lang.reflect.Method;
 import java.lang.reflect.Modifier;
+import java.util.HashMap;
 import java.util.HashSet;
+import java.util.Map;
 import java.util.Set;
 
 import org.graalvm.nativeimage.ImageSingletons;
@@ -70,13 +72,33 @@ public class SerializationFeature implements Feature {
         SerializationSupport serializationSupport = new SerializationSupport(imageClassLoader);
         ImageSingletons.add(SerializationRegistry.class, serializationSupport);
 
+        Map<Class<?>, Boolean> deniedClasses = new HashMap<>();
+        SerializationConfigurationParser denyCollectorParser = new SerializationConfigurationParser((strTargetSerializationClass, checksums) -> {
+            Class<?> serializationTargetClass = resolveClass(strTargetSerializationClass, access);
+            if (serializationTargetClass != null) {
+                deniedClasses.put(serializationTargetClass, true);
+            }
+        });
+        ConfigurationParserUtils.parseAndRegisterConfigurations(denyCollectorParser, imageClassLoader, "serialization",
+                        ConfigurationFiles.Options.SerializationDenyConfigurationFiles, ConfigurationFiles.Options.SerializationDenyConfigurationResources,
+                        ConfigurationFiles.SERIALIZATION_DENY_NAME);
+
         SerializationParserFunction serializationAdapter = (strTargetSerializationClass, checksums) -> {
             Class<?> serializationTargetClass = resolveClass(strTargetSerializationClass, access);
             UserError.guarantee(serializationTargetClass != null, "Cannot find serialization target class %s. The missing of this class can't be ignored even if -H:+AllowIncompleteClasspath is set." +
                             " Please make sure it is in the classpath", strTargetSerializationClass);
             if (Serializable.class.isAssignableFrom(serializationTargetClass)) {
-                Class<?> targetConstructor = serializationSupport.addSerializationConstructorAccessorClass(serializationTargetClass, checksums, access);
-                addReflections(serializationTargetClass, targetConstructor);
+                if (deniedClasses.containsKey(serializationTargetClass)) {
+                    if (deniedClasses.get(serializationTargetClass)) {
+                        deniedClasses.put(serializationTargetClass, false); /* Warn only once */
+                        // Checkstyle: stop
+                        System.out.println("Warning: Serialization deny list contains " + serializationTargetClass.getName() + ". Image will not support serialization/deserialization of this class.");
+                        // Checkstyle: resume
+                    }
+                } else {
+                    Class<?> targetConstructor = serializationSupport.addSerializationConstructorAccessorClass(serializationTargetClass, checksums, access);
+                    addReflections(serializationTargetClass, targetConstructor);
+                }
             }
         };
 

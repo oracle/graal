@@ -117,10 +117,10 @@ public class ConfigurationSet {
         return configuration;
     }
 
-    private static void loadConfig(Collection<URI> configPaths, ConfigurationParser reflectParser, Function<IOException, Exception> exceptionHandler) throws Exception {
+    private static void loadConfig(Collection<URI> configPaths, ConfigurationParser configurationParser, Function<IOException, Exception> exceptionHandler) throws Exception {
         for (URI path : configPaths) {
             try (Reader reader = Files.newBufferedReader(Paths.get(path))) {
-                reflectParser.parseAndRegister(reader);
+                configurationParser.parseAndRegister(reader);
             } catch (IOException ioe) {
                 Exception e = ioe;
                 if (exceptionHandler != null) {
