@@ -69,7 +69,6 @@ public class VerifyIterableNodeTypes extends VerifyPhase<CoreProviders> {
                         if (callee.getName().equals("filter")) {
                             ResolvedJavaMethod.Parameter[] params = callee.getParameters();
                             if (params.length == 1 && params[0].getType().equals(classType)) {
-                                // call to filter
                                 ValueNode v = t.arguments().get(1);
                                 assert classType.isAssignableFrom(v.stamp(NodeView.DEFAULT).javaType(metaAccess)) : "Need to have a class type parameter.";
                                 if (v instanceof ConstantNode) {

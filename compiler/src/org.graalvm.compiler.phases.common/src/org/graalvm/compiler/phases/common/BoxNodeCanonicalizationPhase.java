@@ -41,7 +41,7 @@ import jdk.vm.ci.meta.MetaAccessProvider;
 /**
  * Utility phase to perform canonicalization of box nodes before lowering. We do not perform box
  * canonicalization directly in the node since want virtualization of box nodes. Creating a boxed
- * constant early on inhibits PEA so we do it after PEA before lowering.
+ * constant early on inhibits PEA so we do it after PEA but before lowering.
  */
 public class BoxNodeCanonicalizationPhase extends BasePhase<CoreProviders> {
 
