@@ -9,6 +9,8 @@ local graal_suite_root = root_ci.graal_suite_root;
   local labsjdk8 = jdks.oraclejdk8,
   local labsjdk11 = jdks["labsjdk-ce-11"],
 
+  devkits: (import "../../common.json").devkits,
+
   jdk8: {
     downloads+: {
       JAVA_HOME: labsjdk8,

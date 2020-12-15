@@ -33,7 +33,7 @@ common_vm_windows: ${common_vm} ${windows} {
   }
 }
 
-common_vm_windows-jdk11: ${common_vm} ${windows} ${windows-devkit-jdk11} {
+common_vm_windows-jdk11: ${common_vm} ${windows} ${devkits.windows-jdk11} {
   downloads : {
     MAVEN_HOME: {name: maven, version: "3.3.9", platformspecific: false}
   }
@@ -405,7 +405,7 @@ builds += [
     name: deploy-vm-installable-java11-darwin-amd64
   }
   # Windows/AMD64
-  ${vm_java_8} ${deploy_daily_vm_windows} ${js_windows} ${svm-common-windows} {
+  ${vm_java_8} ${deploy_daily_vm_windows} ${js_windows} ${vm_common_windows_jdk8} {
     run: [
       [set-export, VM_ENV, "${VM_ENV}-win"]
       ${mx_vm_common} [build]
@@ -425,7 +425,7 @@ builds += [
     timelimit: "1:30:00"
     name: deploy-vm-base-java11-windows-amd64
   }
-  ${vm_java_8} ${deploy_daily_vm_windows} ${js_windows} ${svm-common-windows} {
+  ${vm_java_8} ${deploy_daily_vm_windows} ${js_windows} ${vm_common_windows_jdk8} {
     run: [
       [set-export, VM_ENV, "${VM_ENV}-win"]
       ${mx_vm_installables} [--dynamicimports, ${vm_extra_suites_windows}, "--exclude-components="${non-product-vm-components-windows}, build]

@@ -208,26 +208,19 @@ svm-common-darwin: ${svm-common} ${darwin-amd64} {
   timelimit: "45:00"
 }
 
-svm-common-windows: ${svm-common} ${windows-amd64} {
+svm-common-windows-openjdk8: ${svm-common} ${windows-amd64} ${devkits.windows-openjdk8} {
   packages : {
-    msvc : "==10.0"
   }
   timelimit: "45:00"
 }
 
-windows-devkit-jdk11: {
+svm-common-windows-oraclejdk8: ${svm-common} ${windows-amd64} ${devkits.windows-oraclejdk8} {
   packages : {
-    "devkit:VS2017-15.9.16+1" : "==0"
   }
+  timelimit: "45:00"
 }
 
-windows-devkit-jdk15: {
-  packages : {
-    "devkit:VS2019-16.5.3+1" : "==0"
-  }
-}
-
-svm-common-windows-jdk11: ${svm-common} ${windows-amd64} ${windows-devkit-jdk11} {
+svm-common-windows-jdk11: ${svm-common} ${windows-amd64} ${devkits.windows-jdk11} {
   timelimit: "45:00"
 }
 
