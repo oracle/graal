@@ -62,6 +62,12 @@ public class UpgradeCommand implements InstallerCommand {
         options.put(Commands.OPTION_USE_EDITION, "s");
         options.put(Commands.LONG_OPTION_USE_EDITION, Commands.OPTION_USE_EDITION);
 
+        options.put(Commands.OPTION_TARGET_DIRECTORY, "s");
+        options.put(Commands.LONG_OPTION_TARGET_DIRECTORY, Commands.OPTION_TARGET_DIRECTORY);
+
+        options.put(Commands.OPTION_NO_SYMLINK, "");
+        options.put(Commands.LONG_OPTION_NO_SYMLINK, Commands.OPTION_NO_SYMLINK);
+
         options.putAll(ComponentInstaller.componentOptions);
     }
 
@@ -94,6 +100,10 @@ public class UpgradeCommand implements InstallerCommand {
         }
         if (input.optValue(Commands.OPTION_NO_VERIFY_JARS) != null) {
             verifyJars = false;
+        }
+        String ed = input.optValue(Commands.OPTION_USE_EDITION);
+        if (ed != null) {
+            helper.setEditionUpgrade(ed);
         }
     }
 

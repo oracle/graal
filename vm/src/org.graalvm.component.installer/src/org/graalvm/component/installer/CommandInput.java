@@ -138,11 +138,10 @@ public interface CommandInput {
         /**
          * Create a component catalog for the target VM installation, using the commandline options.
          * 
-         * @param targetGraalVM target installation component registry
          * @param input values for the catalog
          * @return ComponentCatalog usable with target installation
          */
-        ComponentCatalog createComponentCatalog(CommandInput input, ComponentRegistry targetGraalVM);
+        ComponentCatalog createComponentCatalog(CommandInput input);
 
         /**
          * Lists GraalVM editions defined for the installation.

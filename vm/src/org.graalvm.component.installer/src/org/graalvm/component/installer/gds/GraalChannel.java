@@ -39,6 +39,7 @@ import java.util.Collections;
 import java.util.Date;
 import java.util.List;
 import java.util.Map;
+import java.util.Properties;
 import java.util.Set;
 import java.util.logging.Level;
 import java.util.logging.Logger;
@@ -61,6 +62,7 @@ import org.graalvm.component.installer.persist.MetadataLoader;
 import org.graalvm.component.installer.persist.MetadataLoaderAdapter;
 import org.graalvm.component.installer.remote.FileDownloader;
 import org.graalvm.component.installer.remote.MergeStorage;
+import org.graalvm.component.installer.remote.RemotePropertiesStorage;
 
 /**
  * Accesses GDS Release file, the catalogs referenced from it and turns them into a
@@ -83,6 +85,12 @@ public class GraalChannel implements SoftwareChannel, DownloadInterceptor {
      * URL of the relases resource. Used for relative URL resolution.
      */
     private URL releasesIndexURL;
+
+    /**
+     * Delay-init storage. Make lazy, as the storage calls back to the toplevel registry. Prevents
+     * stack overflow.
+     */
+    private Delayed delayedStorage = new Delayed();
 
     /**
      * Cached initialized storage.
@@ -175,10 +183,41 @@ public class GraalChannel implements SoftwareChannel, DownloadInterceptor {
 
     @Override
     public ComponentStorage getStorage() throws IOException {
-        if (storage == null) {
-            storage = loadStorage();
+        return delayedStorage;
+    }
+
+    /**
+     * Delay-init storage. As listing (downloading) the catalogs require access to the toplevel
+     * registry, the toplevel needs to finish the initialization first.
+     */
+    class Delayed implements ComponentStorage {
+        private ComponentStorage init() throws IOException {
+            if (storage == null) {
+                allowUpdates = input.getRegistry().isAllowDistUpdate();
+                storage = loadStorage();
+            }
+            return storage;
         }
-        return storage;
+
+        @Override
+        public Set<String> listComponentIDs() throws IOException {
+            return init().listComponentIDs();
+        }
+
+        @Override
+        public ComponentInfo loadComponentFiles(ComponentInfo ci) throws IOException {
+            return init().loadComponentFiles(ci);
+        }
+
+        @Override
+        public Set<ComponentInfo> loadComponentMetadata(String id) throws IOException {
+            return init().loadComponentMetadata(id);
+        }
+
+        @Override
+        public Map<String, String> loadGraalVersionInfo() {
+            return Collections.emptyMap();
+        }
     }
 
     /**
@@ -327,12 +366,19 @@ public class GraalChannel implements SoftwareChannel, DownloadInterceptor {
             return throwEmptyStorage();
         }
         MergeStorage store = new MergeStorage(localRegistry, fb);
+        store.setAcceptAllSources(true);
         for (ReleaseEntry en : releases) {
             URL catURL = en.getCatalogURL();
-
+            Version v = Version.fromString(en.getVersion().displayString());
             SoftwareChannelSource src = new SoftwareChannelSource(
                             catURL.toString(), en.getLabel());
-            WebCatalog cata = new WebCatalog(src.getLocationURL(), src);
+            WebCatalog cata = new WebCatalog(src.getLocationURL(), src) {
+                @Override
+                protected RemotePropertiesStorage createPropertiesStorage(Feedback aFeedback, ComponentRegistry aLocal, Properties props, String selector, URL baseURL) {
+                    return new RemotePropertiesStorage(
+                                    aFeedback, aLocal, props, selector, v, baseURL);
+                }
+            };
             cata.init(localRegistry, fb);
             cata.setMatchVersion(en.getVersion().match(Version.Match.Type.EXACT));
             cata.setRemoteProcessor((i) -> configureLicense(i, en));

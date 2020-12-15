@@ -35,6 +35,7 @@ import org.graalvm.component.installer.BundleConstants;
 import org.graalvm.component.installer.CommandInput;
 import org.graalvm.component.installer.CommandTestBase;
 import org.graalvm.component.installer.Commands;
+import org.graalvm.component.installer.CommonConstants;
 import org.graalvm.component.installer.ComponentCatalog;
 import org.graalvm.component.installer.ComponentParam;
 import org.graalvm.component.installer.FailedOperationException;
@@ -370,13 +371,18 @@ public class UpgradeTest extends CommandTestBase {
 
         ComponentInfo info = cmd.configureProcess();
         Path p = getGraalHomePath().normalize();
-        Path ndir = p.resolveSibling("graalvm-ce-1.0.1");
+        Path ndir = graalVMDirectory(p, "1.0.1");
         Files.createDirectories(ndir);
         Files.write(ndir.resolve("some-content"), Arrays.asList("Fail"));
 
         exception.expect(FailedOperationException.class);
         exception.expectMessage("UPGRADE_TargetExistsNotEmpty");
         helper.prepareInstall(info);
+    }
+
+    private Path graalVMDirectory(Path sibling, String version) {
+        return sibling.resolveSibling("graalvm-ce-java" +
+                        getLocalRegistry().getGraalCapabilities().get(CommonConstants.CAP_JAVA_VERSION) + "-" + version);
     }
 
     /**
@@ -395,7 +401,7 @@ public class UpgradeTest extends CommandTestBase {
 
         ComponentInfo info = cmd.configureProcess();
         Path p = getGraalHomePath().normalize();
-        Path ndir = p.resolveSibling("graalvm-ce-1.0.1");
+        Path ndir = graalVMDirectory(p, "1.0.1");
         Files.createDirectories(ndir);
         Files.write(ndir.resolve("some-content"), Arrays.asList("Fail"));
         Path toCopy = dataFile("../persist/release_simple.properties");
@@ -422,7 +428,7 @@ public class UpgradeTest extends CommandTestBase {
 
         ComponentInfo info = cmd.configureProcess();
         Path p = getGraalHomePath().normalize();
-        Path ndir = p.resolveSibling("graalvm-ce-1.0.1");
+        Path ndir = graalVMDirectory(p, "1.0.1");
         Files.createDirectories(ndir);
 
         assertTrue(helper.prepareInstall(info));
@@ -617,10 +623,10 @@ public class UpgradeTest extends CommandTestBase {
 
         factory = new CatalogFactory() {
             @Override
-            public ComponentCatalog createComponentCatalog(CommandInput in, ComponentRegistry reg) {
+            public ComponentCatalog createComponentCatalog(CommandInput in) {
                 RemoteCatalogDownloader dnl = new RemoteCatalogDownloader(in, UpgradeTest.this, downloader.getOverrideCatalogSpec());
                 // carry over the override spec
-                return new CatalogContents(UpgradeTest.this, dnl.getStorage(), reg);
+                return new CatalogContents(UpgradeTest.this, dnl.getStorage(), in.getLocalRegistry());
             }
 
             @Override
@@ -671,9 +677,9 @@ public class UpgradeTest extends CommandTestBase {
         assertTrue(installed);
         factory = new CatalogFactory() {
             @Override
-            public ComponentCatalog createComponentCatalog(CommandInput in, ComponentRegistry reg) {
+            public ComponentCatalog createComponentCatalog(CommandInput in) {
                 RemoteCatalogDownloader dnl = new RemoteCatalogDownloader(in, UpgradeTest.this, (String) null);
-                return new CatalogContents(UpgradeTest.this, dnl.getStorage(), reg);
+                return new CatalogContents(UpgradeTest.this, dnl.getStorage(), in.getLocalRegistry());
             }
 
             @Override

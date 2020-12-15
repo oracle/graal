@@ -87,7 +87,7 @@ public class CatalogIterable implements ComponentIterable {
 
     ComponentCatalog getRegistry() {
         if (remoteRegistry == null) {
-            remoteRegistry = input.getCatalogFactory().createComponentCatalog(input, input.getLocalRegistry());
+            remoteRegistry = input.getCatalogFactory().createComponentCatalog(input);
         }
         return remoteRegistry;
     }

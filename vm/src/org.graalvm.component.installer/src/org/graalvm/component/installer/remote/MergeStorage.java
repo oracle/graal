@@ -54,9 +54,18 @@ public class MergeStorage extends AbstractCatalogStorage implements ComponentCat
     private final Map<SoftwareChannel, SoftwareChannelSource> channelInfos = new HashMap<>();
 
     private boolean ignoreCatalogErrors;
+    private boolean acceptAllSources;
 
     public MergeStorage(ComponentRegistry localRegistry, Feedback feedback) {
         super(localRegistry, feedback, null);
+    }
+
+    public boolean isAcceptAllSources() {
+        return acceptAllSources;
+    }
+
+    public void setAcceptAllSources(boolean acceptAllSources) {
+        this.acceptAllSources = acceptAllSources;
     }
 
     public void addChannel(SoftwareChannelSource info, SoftwareChannel delegate) {
@@ -150,13 +159,17 @@ public class MergeStorage extends AbstractCatalogStorage implements ComponentCat
             if (newInfos == null || newInfos.isEmpty()) {
                 continue;
             }
-            newInfos.removeAll(cis);
+            if (!acceptAllSources) {
+                newInfos.removeAll(cis);
+            }
             for (ComponentInfo ci : newInfos) {
                 ci.setPriority(getChannelPriority(swch));
                 channelMap.put(ci, swch);
             }
             cis.addAll(newInfos);
-            break;
+            if (!acceptAllSources) {
+                break;
+            }
         }
         return cis;
     }

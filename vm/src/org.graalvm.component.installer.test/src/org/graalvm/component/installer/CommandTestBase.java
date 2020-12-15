@@ -236,7 +236,7 @@ public class CommandTestBase extends TestBase implements CommandInput, SoftwareC
     @Override
     public ComponentCatalog getRegistry() {
         if (registry == null) {
-            registry = getCatalogFactory().createComponentCatalog(this, getLocalRegistry());
+            registry = getCatalogFactory().createComponentCatalog(this);
         }
         return registry;
     }
@@ -281,7 +281,7 @@ public class CommandTestBase extends TestBase implements CommandInput, SoftwareC
     public CatalogFactory getCatalogFactory() {
         return new CatalogFactory() {
             @Override
-            public ComponentCatalog createComponentCatalog(CommandInput input, ComponentRegistry targetGraalVM) {
+            public ComponentCatalog createComponentCatalog(CommandInput input) {
                 if (registry != null) {
                     return registry;
                 } else {
