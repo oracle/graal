@@ -1,0 +1,60 @@
+> cp iterateFrames.js ${TMP_DIR}/iterateFrames.js
+> cp agent-fib-main.js ${TMP_DIR}/fib.js
+> cd ${TMP_DIR}
+>[0] js --insight=iterateFrames.js fib.js
+dumping locals
+    at fib (fib.js:8:3) n has value 1
+    at fib (fib.js:10:15) n has value 2
+    at fib (fib.js:10:15) n has value 3
+    at fib (fib.js:10:15) n has value 4
+.*at.*main.*fib.js.*prefix has value Three is the result
+.*at.*main.*fib.js.*fib4 has value undefined
+.*at.*program.*fib.js:.*return.*has value undefined
+end of locals
+dumping locals
+    at fib (fib.js:8:3) n has value 1
+    at fib (fib.js:10:34) n has value 3
+    at fib (fib.js:10:15) n has value 4
+.*at.*main.*fib.js.*prefix has value The result is three
+.*at.*main.*fib.js.*fib4 has value undefined
+.*at.*program.*fib.js:.*return.*has value undefined
+end of locals
+dumping locals
+    at fib (fib.js:8:3) n has value 1
+    at fib (fib.js:10:15) n has value 2
+    at fib (fib.js:10:34) n has value 4
+.*at.*main.*fib.js.*prefix has value The result is three
+.*at.*main.*fib.js.*fib4 has value undefined
+.*at.*program.*fib.js:.*return.*has value undefined
+end of locals
+The result is three 3
+> cat >err0.js
+< insight.on('enter', (ctx, frame) => {
+<    ctx.iterateFrames();
+< }, {
+<    expressions : true
+< });
+>[7] js --insight=err0.js -e "6 * 7"
+TypeError: invokeMember.*iterateFrames.*:program.*Arity error.*
+.*at.*js.*err0.js.*
+.*at.*js.*program.*
+> cat >err1.js
+< insight.on('enter', (ctx, frame) => {
+<    ctx.iterateFrames(null);
+< }, {
+<    expressions : true
+< });
+>[7] js --jvm --insight=err1.js -e "6 * 7"
+TypeError: invokeMember.*iterateFrames.*on :program.*Cannot execute null
+.*at.*js.*err1.js.*
+.*at.*js.*program.*
+> cat >err2.js
+< insight.on('enter', (ctx, frame) => {
+<    ctx.iterateFrames({});
+< }, {
+<    expressions : true
+< });
+>[7] js --jvm --insight=err2.js -e "6 * 7"
+TypeError: invokeMember.*iterateFrames.*on :program.*Cannot execute {}
+.*at.*js.*err2.js.*
+.*at.*js.*program.*

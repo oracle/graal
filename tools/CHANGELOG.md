@@ -5,6 +5,7 @@ This changelog summarizes major changes between Truffle Tools versions.
 ## Version 21.0.0
 
 * `--insight` option is no longer considered experimental
+* Use `ctx.iterateFrames` to [access whole stack and its variables](docs/Insight-Manual.md#Accessing-whole-Stack)
 
 ## Version 20.3.0
 
