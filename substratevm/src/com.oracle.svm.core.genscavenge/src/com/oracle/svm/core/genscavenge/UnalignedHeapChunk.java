@@ -242,7 +242,8 @@ public final class UnalignedHeapChunk {
         return UnsignedUtils.roundUp(cardTableLimitOffset, alignment);
     }
 
-    private static UnsignedWord getObjectIndex() {
+    @Fold
+    static UnsignedWord getObjectIndex() {
         return WordFactory.zero();
     }
 
