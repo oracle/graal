@@ -88,11 +88,11 @@ public abstract class BinaryStreamParser {
         int shift = 0;
         int currentOffset = initialOffset;
         byte b = (byte) 0x80;
-        while ((b & 0x80) != 0 && shift != 42) {
+        while (shift < 42 && (b & 0x80) != 0) {
             b = rawPeek1(data, currentOffset);
+            currentOffset++;
             result |= (b & 0x7F) << shift;
             shift += 7;
-            currentOffset++;
         }
 
         return packValueAndLength(result, currentOffset - initialOffset);
@@ -133,14 +133,14 @@ public abstract class BinaryStreamParser {
         int shift = 0;
         int currentOffset = initialOffset;
         byte b = (byte) 0x80;
-        while ((b & 0x80) != 0 && shift != 42) {
+        while (shift < 42 && (b & 0x80) != 0) {
             b = rawPeek1(data, currentOffset);
+            currentOffset++;
             result |= (b & 0x7F) << shift;
             shift += 7;
-            currentOffset++;
         }
 
-        if (shift != 35 && (b & 0x40) != 0) {
+        if (shift < 35 && (b & 0x40) != 0) {
             result |= (~0 << shift);
         }
 
