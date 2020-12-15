@@ -21,9 +21,9 @@ import jdk.vm.ci.meta.ResolvedJavaMethod;
 import jdk.vm.ci.meta.ResolvedJavaType;
 
 /**
- * Checks that {@link Node} implementing {@link IterableNodeType} use
+ * Verifies that code which uses {@link Node} implementing {@link IterableNodeType} uses
  * {@link StructuredGraph#getNodes(org.graalvm.compiler.graph.NodeClass)} and not
- * {@linkplain NodeIterable#filter(Class)}.
+ * {@linkplain NodeIterable#filter(Class)} to access a subset of a {@link Graph}.
  */
 public class VerifyIterableNodeTypes extends VerifyPhase<CoreProviders> {
 

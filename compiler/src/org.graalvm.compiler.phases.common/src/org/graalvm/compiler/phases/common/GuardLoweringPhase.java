@@ -121,7 +121,7 @@ public class GuardLoweringPhase extends BasePhase<CoreProviders> {
     }
 
     private static boolean assertNoGuardsLeft(StructuredGraph graph) {
-        assert graph.getNodes().filter(GuardNode.class).isEmpty();
+        assert graph.getNodes(GuardNode.TYPE).isEmpty();
         return true;
     }
 
