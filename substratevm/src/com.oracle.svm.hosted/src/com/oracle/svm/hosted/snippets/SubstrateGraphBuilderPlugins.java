@@ -132,6 +132,7 @@ import com.oracle.svm.core.identityhashcode.SubstrateIdentityHashCodeNode;
 import com.oracle.svm.core.jdk.proxy.DynamicProxyRegistry;
 import com.oracle.svm.core.meta.SharedMethod;
 import com.oracle.svm.core.meta.SubstrateObjectConstant;
+import com.oracle.svm.core.OS;
 import com.oracle.svm.core.option.HostedOptionKey;
 import com.oracle.svm.core.snippets.KnownIntrinsics;
 import com.oracle.svm.core.util.UserError;
@@ -1030,21 +1031,23 @@ public class SubstrateGraphBuilderPlugins {
         });
     }
 
-    /*
-     * To prevent AWT linkage error that happens with 'awt_headless' in headless mode, we eliminate
-     * native methods that depend on 'awt_xawt' library in the call-tree.
+    /**
+     * To prevent AWT linkage error on {@link OS#LINUX} that happens with 'awt_headless' in headless
+     * mode, we eliminate native methods that depend on 'awt_xawt' library in the call-tree.
      */
     private static void registerAWTPlugins(InvocationPlugins plugins) {
-        Registration r = new Registration(plugins, GraphicsEnvironment.class);
-        r.register0("isHeadless", new InvocationPlugin() {
-            @SuppressWarnings("unchecked")
-            @Override
-            public boolean apply(GraphBuilderContext b, ResolvedJavaMethod targetMethod, Receiver receiver) {
-                boolean isHeadless = GraphicsEnvironment.isHeadless();
-                b.addPush(JavaKind.Boolean, ConstantNode.forBoolean(isHeadless));
-                return true;
-            }
-        });
+        if (OS.getCurrent() == OS.LINUX) {
+            Registration r = new Registration(plugins, GraphicsEnvironment.class);
+            r.register0("isHeadless", new InvocationPlugin() {
+                @SuppressWarnings("unchecked")
+                @Override
+                public boolean apply(GraphBuilderContext b, ResolvedJavaMethod targetMethod, Receiver receiver) {
+                    boolean isHeadless = GraphicsEnvironment.isHeadless();
+                    b.addPush(JavaKind.Boolean, ConstantNode.forBoolean(isHeadless));
+                    return true;
+                }
+            });
+        }
     }
 
     private static void registerSizeOfPlugins(SnippetReflectionProvider snippetReflection, InvocationPlugins plugins) {
