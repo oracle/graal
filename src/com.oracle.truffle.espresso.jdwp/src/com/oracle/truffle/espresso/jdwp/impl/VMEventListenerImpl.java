@@ -72,13 +72,13 @@ public final class VMEventListenerImpl implements VMEventListener {
     private final Map<Object, Object> currentContendedMonitor = new HashMap<>();
     private final ThreadLocal<Object> earlyReturns = new ThreadLocal<>();
     private final Map<Object, Map<Object, MonitorInfo>> monitorInfos = new HashMap<>();
-    private final Object mainThread;
+    private final Object initialThread;
 
-    public VMEventListenerImpl(DebuggerController controller, Object mainThread) {
+    public VMEventListenerImpl(DebuggerController controller, Object initialThread) {
         this.debuggerController = controller;
         this.context = controller.getContext();
         this.ids = context.getIds();
-        this.mainThread = mainThread;
+        this.initialThread = initialThread;
     }
 
     public void setConnection(SocketConnection connection) {
@@ -288,6 +288,7 @@ public final class VMEventListenerImpl implements VMEventListener {
                         if (holdEvents) {
                             heldEvents.add(stream);
                         } else {
+                            JDWPLogger.log("SENDING CLASS PREPARE EVENT FOR KLASS: %s WITH THREAD %s", JDWPLogger.LogLevel.THREAD, klass.getNameAsString(), context.getThreadName(prepareThread));
                             connection.queuePacket(stream);
                         }
                         return null;
@@ -871,6 +872,13 @@ public final class VMEventListenerImpl implements VMEventListener {
     }
 
     @Override
+    public void sendInitialThreadStartedEvents() {
+        for (Object allGuestThread : context.getAllGuestThreads()) {
+            threadStarted(allGuestThread);
+        }
+    }
+
+    @Override
     public MonitorInfo getMonitorInfo(Object guestThread, Object monitor) {
         Map<Object, MonitorInfo> monitorInfoMap = monitorInfos.get(guestThread);
         if (monitorInfoMap != null) {
@@ -950,7 +958,7 @@ public final class VMEventListenerImpl implements VMEventListener {
         stream.writeInt(1);
         stream.writeByte(RequestedJDWPEvents.VM_START);
         stream.writeInt(vmStartRequestId != -1 ? vmStartRequestId : 0);
-        stream.writeLong(context.getIds().getIdAsLong(mainThread));
+        stream.writeLong(context.getIds().getIdAsLong(initialThread));
         connection.queuePacket(stream);
     }
 
