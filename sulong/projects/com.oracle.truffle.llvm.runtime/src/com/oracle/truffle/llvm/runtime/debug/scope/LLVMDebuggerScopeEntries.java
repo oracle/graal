@@ -29,6 +29,7 @@
  */
 package com.oracle.truffle.llvm.runtime.debug.scope;
 
+import com.oracle.truffle.api.CompilerAsserts;
 import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.interop.InteropLibrary;
@@ -51,8 +52,8 @@ public final class LLVMDebuggerScopeEntries extends LLVMDebuggerValue {
     private final Map<String, Object> flattenedScopeMap;
 
     private final Map<String, Object> entries;
-    private String scopeName;
-    private boolean isScopeFlattened;
+    @CompilerDirectives.CompilationFinal private String scopeName;
+    @CompilerDirectives.CompilationFinal private boolean isScopeFlattened;
 
     LLVMDebuggerScopeEntries() {
         this.entries = new HashMap<>();
@@ -67,6 +68,7 @@ public final class LLVMDebuggerScopeEntries extends LLVMDebuggerValue {
     }
 
     void setScopeName(String scopeName) {
+        CompilerAsserts.neverPartOfCompilation();
         this.scopeName = scopeName;
     }
 
@@ -112,10 +114,12 @@ public final class LLVMDebuggerScopeEntries extends LLVMDebuggerValue {
     }
 
     protected void setParentScope(LLVMDebuggerScopeEntries parentScope) {
+        CompilerAsserts.neverPartOfCompilation();
         this.parentScope = parentScope;
     }
 
     private void flattenScopeEntries() {
+        CompilerAsserts.neverPartOfCompilation();
         LLVMDebuggerScopeEntries tempScope = this;
         while (tempScope != null) {
             flattenedScopeMap.putAll(tempScope.entries);
@@ -146,7 +150,6 @@ public final class LLVMDebuggerScopeEntries extends LLVMDebuggerValue {
 
     @ExportMessage
     @Override
-    @TruffleBoundary
     public String toDisplayString(@SuppressWarnings("unused") boolean allowSideEffects) {
         return scopeName;
     }
