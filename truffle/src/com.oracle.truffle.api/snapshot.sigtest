@@ -1201,7 +1201,7 @@ meth public static void printSourceAttributionTree(java.io.PrintWriter,com.oracl
 meth public static void printTree(java.io.OutputStream,com.oracle.truffle.api.nodes.Node)
 meth public static void printTree(java.io.PrintWriter,com.oracle.truffle.api.nodes.Node)
 supr java.lang.Object
-hcls NodeCounter,RecursiveNodeIterator
+hcls NodeCounter
 
 CLSS public abstract interface static com.oracle.truffle.api.nodes.NodeUtil$NodeCountFilter
  outer com.oracle.truffle.api.nodes.NodeUtil
