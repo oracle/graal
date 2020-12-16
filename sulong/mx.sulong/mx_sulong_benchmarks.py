@@ -163,6 +163,36 @@ class SulongBenchmarkSuite(VmBenchmarkSuite):
                 "metric.unit": "us",
                 "metric.iteration": ("0", int),
             }),
+            mx_benchmark.StdOutRule(r'^Startup of (?P<benchmark>[\S]+): (?P<score>\d+)', {
+                "benchmark": ("<benchmark>", str),
+                "metric.name": "startup",
+                "metric.type": "numeric",
+                "metric.value": ("<score>", int),
+                "metric.score-function": "id",
+                "metric.better": "lower",
+                "metric.unit": "us",
+                "metric.iteration": ("0", int),
+            }),
+            mx_benchmark.StdOutRule(r'^Early-warmup of (?P<benchmark>[\S]+): (?P<score>\d+)', {
+                "benchmark": ("<benchmark>", str),
+                "metric.name": "early-warmup",
+                "metric.type": "numeric",
+                "metric.value": ("<score>", int),
+                "metric.score-function": "id",
+                "metric.better": "lower",
+                "metric.unit": "us",
+                "metric.iteration": ("0", int),
+            }),
+            mx_benchmark.StdOutRule(r'^Late-warmup of (?P<benchmark>[\S]+): (?P<score>\d+)', {
+                "benchmark": ("<benchmark>", str),
+                "metric.name": "late-warmup",
+                "metric.type": "numeric",
+                "metric.value": ("<score>", int),
+                "metric.score-function": "id",
+                "metric.better": "lower",
+                "metric.unit": "us",
+                "metric.iteration": ("0", int),
+            }),
         ]
 
     def workingDirectory(self, benchmarks, bmSuiteArgs):
