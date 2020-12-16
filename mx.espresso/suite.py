@@ -21,7 +21,7 @@
 # questions.
 #
 suite = {
-    "mxversion": "5.275.5",
+    "mxversion": "5.279.2",
     "name": "espresso",
 
     # ------------- licenses
@@ -42,7 +42,7 @@ suite = {
                 "name": "truffle",
                 "subdir": True,
                 # Custom changes in Truffle (NFI) for Espresso (branch slimbeans).
-                "version": "fccedc67d44d6a9cde21b977f26f70a7647bfc5b",
+                "version": "f9c53dad354fe21c92bef623a9ef82c544e973f6",
                 "urls": [
                     {"url": "https://github.com/graalvm/graal", "kind": "git"},
                     {"url": "https://curio.ssw.jku.at/nexus/content/repositories/snapshots", "kind": "binary"},
@@ -52,7 +52,7 @@ suite = {
                 "name": "tools",
                 "subdir": True,
                 # Custom changes in Truffle (NFI) for Espresso (branch slimbeans).
-                "version": "fccedc67d44d6a9cde21b977f26f70a7647bfc5b",
+                "version": "f9c53dad354fe21c92bef623a9ef82c544e973f6",
                 "urls": [
                     {"url": "https://github.com/graalvm/graal", "kind": "git"},
                     {"url": "https://curio.ssw.jku.at/nexus/content/repositories/snapshots", "kind": "binary"},
@@ -61,7 +61,7 @@ suite = {
             {
                 "name" : "java-benchmarks",
                 "subdir": True,
-                "version": "fccedc67d44d6a9cde21b977f26f70a7647bfc5b",
+                "version": "f9c53dad354fe21c92bef623a9ef82c544e973f6",
                 "urls": [
                     {"url": "https://github.com/graalvm/graal", "kind": "git"},
                     {"url": "https://curio.ssw.jku.at/nexus/content/repositories/snapshots", "kind": "binary"},
@@ -69,7 +69,7 @@ suite = {
             },
             {
                 "name": "truffleruby",
-                "version": "7f4e518f3959c05e086ff426d27e0243697fe65f",
+                "version": "5010005cbb3306d0d7b1bbb7627ad2bc83f119a6",
                 "dynamic": True,
                 "urls": [
                     {"url": "https://github.com/oracle/truffleruby.git", "kind": "git"},

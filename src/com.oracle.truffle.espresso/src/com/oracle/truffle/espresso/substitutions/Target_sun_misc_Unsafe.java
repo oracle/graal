@@ -1264,6 +1264,7 @@ public final class Target_sun_misc_Unsafe {
      * Note: This operation is in the Unsafe class only because <tt>unpark</tt> is, so it would be
      * strange to place it elsewhere.
      */
+    @TruffleBoundary
     @Substitution(hasReceiver = true)
     public static void park(@SuppressWarnings("unused") @Host(Unsafe.class) StaticObject self, boolean isAbsolute, long time,
                     @InjectMeta Meta meta) {
