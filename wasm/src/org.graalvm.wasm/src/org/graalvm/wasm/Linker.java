@@ -80,7 +80,8 @@ public class Linker {
     public enum LinkState {
         nonLinked,
         inProgress,
-        linked
+        linked,
+        failed,
     }
 
     private final ResolutionDag resolutionDag;
@@ -92,6 +93,8 @@ public class Linker {
     // TODO: Many of the following methods should work on all the modules in the context, instead of
     // a single one. See which ones and update.
     public void tryLink(WasmInstance instance) {
+        // TODO: do something if instance is in failed linking state.
+
         // The first execution of a WebAssembly call target will trigger the linking of the modules
         // that are inside the current context (which will happen behind the call boundary).
         // This linking will set this flag to true.
@@ -122,12 +125,13 @@ public class Linker {
                             action.accept(context, instance);
                         }
                     } catch (Throwable e) {
-                        instance.setLinkCompleted();
+                        instance.setLinkFailed();
                         throw e;
                     }
                 }
             }
             linkTopologically();
+            // TODO: set instances link state appropriately if linkTopologically fails.
             assignTypeEquivalenceClasses();
             for (WasmInstance instance : instances.values()) {
                 if (instance.isLinkInProgress()) {
@@ -141,8 +145,10 @@ public class Linker {
                         if (start != null) {
                             instance.target(start.index()).call();
                         }
-                    } finally {
                         instance.setLinkCompleted();
+                    } catch (Throwable e) {
+                        instance.setLinkFailed();
+                        throw e;
                     }
                 }
             }
@@ -151,13 +157,8 @@ public class Linker {
 
     private void linkTopologically() {
         final Resolver[] sortedResolutions = resolutionDag.toposort();
-        try {
-            for (final Resolver resolver : sortedResolutions) {
-                resolver.runActionOnce();
-            }
-        } finally {
-            // Clear resolutionDag so that it is empty for the next linking.
-            resolutionDag.clear();
+        for (final Resolver resolver : sortedResolutions) {
+            resolver.runActionOnce();
         }
     }
 
@@ -847,8 +848,13 @@ public class Linker {
 
             public void runActionOnce() {
                 if (this.action != null) {
-                    this.action.run();
-                    this.action = null;
+                    try {
+                        this.action.run();
+                    } finally {
+                        // TODO: do something with remaining actions so that instances do not stay
+                        // in a half-initialized state.
+                        this.action = null;
+                    }
                 }
             }
         }
