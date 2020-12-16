@@ -68,7 +68,7 @@ public class Table extends Dictionary {
     private final WasmTable table;
 
     public Table(WasmTable table) {
-        this.descriptor = new TableDescriptor(TableKind.anyfunc.name(), table.size(), table.maxAllowedSize());
+        this.descriptor = new TableDescriptor(TableKind.anyfunc.name(), table.declaredMinSize(), table.declaredMaxSize());
         this.table = table;
         addMembers(new Object[]{
                         "descriptor", this.descriptor,
@@ -79,14 +79,13 @@ public class Table extends Dictionary {
     }
 
     public static Table create(int declaredMinSize, int declaredMaxSize) {
-        final int initialSize = declaredMinSize;
-        if (compareUnsigned(initialSize, declaredMaxSize) > 0) {
+        if (compareUnsigned(declaredMinSize, declaredMaxSize) > 0) {
             throw new WasmJsApiException(WasmJsApiException.Kind.LinkError, "Min table size exceeds max memory size");
-        } else if (compareUnsigned(initialSize, JS_LIMITS.memoryInstanceSizeLimit()) > 0) {
+        } else if (compareUnsigned(declaredMinSize, JS_LIMITS.memoryInstanceSizeLimit()) > 0) {
             throw new WasmJsApiException(WasmJsApiException.Kind.LinkError, "Min table size exceeds implementation limit");
         }
         final int maxAllowedSize = minUnsigned(declaredMaxSize, JS_LIMITS.memoryInstanceSizeLimit());
-        final WasmTable wasmTable = new WasmTable(declaredMinSize, declaredMaxSize, initialSize, maxAllowedSize);
+        final WasmTable wasmTable = new WasmTable(declaredMinSize, declaredMaxSize, maxAllowedSize);
         return new Table(wasmTable);
     }
 
@@ -138,26 +137,25 @@ public class Table extends Dictionary {
 
     public int grow(int delta) {
         final int size = table.size();
-        if (!table.grow(delta)) {
-            throw new WasmJsApiException(WasmJsApiException.Kind.RangeError, "Cannot grow table above max limit " + table.maxAllowedSize());
+        try {
+            table.grow(delta);
+        } catch (IllegalArgumentException e) {
+            throw new WasmJsApiException(WasmJsApiException.Kind.RangeError, e.getMessage());
         }
         return size;
     }
 
     public Object get(int index) {
-        if (index >= table.size()) {
-            throw new WasmJsApiException(WasmJsApiException.Kind.RangeError, "Cannot get element past the end of the table (" + table.maxAllowedSize() + ")");
+        try {
+            final Object result = table.get(index);
+            return result == null ? WasmVoidResult.getInstance() : result;
+        } catch (IndexOutOfBoundsException e) {
+            throw new WasmJsApiException(WasmJsApiException.Kind.RangeError, "Table index out of bounds: " + e.getMessage());
         }
-        final Object function = table.get(index);
-        return function;
     }
 
     public Object set(int index, Object element) {
-        if (index >= table.size()) {
-            throw new WasmJsApiException(WasmJsApiException.Kind.RangeError, "Cannot set element past the end of the table (" + table.maxAllowedSize() + ")");
-        }
-        table.set(index, new WasmFunctionInstance(null, Truffle.getRuntime().createCallTarget(new RootNode(WasmContext.getCurrent().language()) {
-
+        final WasmFunctionInstance functionInstance = new WasmFunctionInstance(null, Truffle.getRuntime().createCallTarget(new RootNode(WasmContext.getCurrent().language()) {
             @Override
             public Object execute(VirtualFrame frame) {
                 if (InteropLibrary.getUncached().isExecutable(element)) {
@@ -174,7 +172,14 @@ public class Table extends Dictionary {
                     throw WasmException.format(Failure.UNSPECIFIED_TRAP, "Table element %s is not executable.", element);
                 }
             }
-        })));
+        }));
+
+        try {
+            table.set(index, functionInstance);
+        } catch (ArrayIndexOutOfBoundsException e) {
+            throw new WasmJsApiException(WasmJsApiException.Kind.RangeError, "Table index out of bounds: " + e.getMessage());
+        }
+
         return WasmVoidResult.getInstance();
     }
 

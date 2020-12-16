@@ -43,6 +43,7 @@ package org.graalvm.wasm.memory;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.memory.ByteArraySupport;
 import com.oracle.truffle.api.nodes.Node;
+import org.graalvm.wasm.constants.Sizes;
 import org.graalvm.wasm.exception.Failure;
 import org.graalvm.wasm.exception.WasmException;
 
@@ -56,12 +57,31 @@ import static org.graalvm.wasm.constants.Sizes.MAX_MEMORY_INSTANCE_SIZE;
 import static org.graalvm.wasm.constants.Sizes.MEMORY_PAGE_SIZE;
 
 public final class ByteArrayWasmMemory extends WasmMemory {
+    /**
+     * @see #declaredMinSize()
+     */
     private final int declaredMinSize;
+
+    /**
+     * @see #declaredMaxSize()
+     */
     private final int declaredMaxSize;
+
+    /**
+     * The maximum practical size of this memory instance (measured in number of
+     * {@link Sizes#MEMORY_PAGE_SIZE pages}).
+     * <p>
+     * It is the minimum between {@link #declaredMaxSize the limit defined in the module binary},
+     * {@link Sizes#MAX_MEMORY_INSTANCE_SIZE the GraalWasm limit} and any additional limit (the JS
+     * API for example has lower limits).
+     * <p>
+     * This is different from {@link #declaredMaxSize()}, which can be higher.
+     */
     private final int maxAllowedSize;
+
     private byte[] buffer;
 
-    public ByteArrayWasmMemory(int declaredMinSize, int declaredMaxSize, int initialSize, int maxAllowedSize) {
+    private ByteArrayWasmMemory(int declaredMinSize, int declaredMaxSize, int initialSize, int maxAllowedSize) {
         assert compareUnsigned(declaredMinSize, initialSize) <= 0;
         assert compareUnsigned(initialSize, maxAllowedSize) <= 0;
         assert compareUnsigned(maxAllowedSize, declaredMaxSize) <= 0;
@@ -108,11 +128,6 @@ public final class ByteArrayWasmMemory extends WasmMemory {
     @Override
     public int byteSize() {
         return buffer.length;
-    }
-
-    @Override
-    public int maxAllowedSize() {
-        return maxAllowedSize;
     }
 
     @Override

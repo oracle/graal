@@ -71,18 +71,6 @@ public abstract class WasmMemory implements TruffleObject {
     public abstract int byteSize();
 
     /**
-     * The maximum practical size of this memory instance (measured in number of
-     * {@link Sizes#MEMORY_PAGE_SIZE pages}).
-     * <p>
-     * It is the minimum between {@link #declaredMaxSize the limit defined in the module binary},
-     * {@link Sizes#MAX_MEMORY_INSTANCE_SIZE the GraalWasm limit} and any additional limit (the JS
-     * API for example has lower limits).
-     * <p>
-     * This is different from {@link #declaredMaxSize()}, which can be higher.
-     */
-    public abstract int maxAllowedSize();
-
-    /**
      * The minimum size of this memory as declared in the binary (measured in number of
      * {@link Sizes#MEMORY_PAGE_SIZE pages}).
      * <p>
@@ -98,7 +86,7 @@ public abstract class WasmMemory implements TruffleObject {
      * This is an upper bound on this memory's size. This memory can only be imported with a greater
      * or equal maximum size.
      * <p>
-     * This is different from {@link #maxAllowedSize()}, which can be lower.
+     * This is different from the internal maximum allowed size, which can be lower.
      */
     public abstract int declaredMaxSize();
 

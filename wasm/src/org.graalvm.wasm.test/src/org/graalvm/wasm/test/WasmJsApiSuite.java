@@ -40,6 +40,8 @@
  */
 package org.graalvm.wasm.test;
 
+import com.oracle.truffle.api.Truffle;
+import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.interop.ArityException;
 import com.oracle.truffle.api.interop.ExceptionType;
 import com.oracle.truffle.api.interop.InteropLibrary;
@@ -48,12 +50,14 @@ import com.oracle.truffle.api.interop.TruffleObject;
 import com.oracle.truffle.api.interop.UnknownIdentifierException;
 import com.oracle.truffle.api.interop.UnsupportedMessageException;
 import com.oracle.truffle.api.interop.UnsupportedTypeException;
+import com.oracle.truffle.api.nodes.RootNode;
 import org.graalvm.polyglot.Context;
 import org.graalvm.polyglot.Source;
 import org.graalvm.polyglot.Value;
 import org.graalvm.polyglot.io.ByteSequence;
 import org.graalvm.wasm.ModuleLimits;
 import org.graalvm.wasm.WasmContext;
+import org.graalvm.wasm.WasmFunctionInstance;
 import org.graalvm.wasm.api.ByteArrayBuffer;
 import org.graalvm.wasm.api.Dictionary;
 import org.graalvm.wasm.api.Executable;
@@ -392,6 +396,73 @@ public class WasmJsApiSuite {
                 Assert.fail("Should have failed - export count exceeds the limit");
             } catch (WasmException ex) {
                 Assert.assertEquals("Parsing error expected", ExceptionType.PARSE_ERROR, ex.getExceptionType());
+            }
+        });
+    }
+
+    @Test
+    public void testTableInstanceOutOfBoundsGet() throws IOException {
+        runTest(context -> {
+            final WebAssembly wasm = new WebAssembly(context);
+            final WebAssemblyInstantiatedSource instantiatedSource = wasm.instantiate(binaryWithMixedExports, null);
+            final Instance instance = instantiatedSource.instance();
+            final InteropLibrary lib = InteropLibrary.getUncached();
+
+            // We should be able to get element 1.
+            try {
+                final Object exports = lib.readMember(instance, "exports");
+                lib.execute(lib.readMember(lib.readMember(exports, "t"), "get"), 0);
+            } catch (UnsupportedMessageException | UnknownIdentifierException | UnsupportedTypeException | ArityException e) {
+                throw new RuntimeException(e);
+            }
+
+            // But not element 2.
+            try {
+                final Object exports = lib.readMember(instance, "exports");
+                lib.execute(lib.readMember(lib.readMember(exports, "t"), "get"), 1);
+                Assert.fail("Should have failed - export count exceeds the limit");
+            } catch (UnsupportedMessageException | UnknownIdentifierException | UnsupportedTypeException | ArityException e) {
+                throw new RuntimeException(e);
+            } catch (WasmJsApiException e) {
+                Assert.assertEquals("Range error expected", WasmJsApiException.Kind.RangeError, e.kind());
+            }
+        });
+    }
+
+    @Test
+    public void testTableInstanceOutOfBoundsSet() throws IOException {
+        runTest(context -> {
+            final WebAssembly wasm = new WebAssembly(context);
+            final WebAssemblyInstantiatedSource instantiatedSource = wasm.instantiate(binaryWithMixedExports, null);
+            final Instance instance = instantiatedSource.instance();
+            final InteropLibrary lib = InteropLibrary.getUncached();
+
+            final WasmFunctionInstance functionInstance = new WasmFunctionInstance(
+                            null,
+                            Truffle.getRuntime().createCallTarget(new RootNode(WasmContext.getCurrent().language()) {
+                                @Override
+                                public Object execute(VirtualFrame frame) {
+                                    return 42;
+                                }
+                            }));
+
+            // We should be able to set element 1.
+            try {
+                final Object exports = lib.readMember(instance, "exports");
+                lib.execute(lib.readMember(lib.readMember(exports, "t"), "set"), 0, functionInstance);
+            } catch (UnsupportedMessageException | UnknownIdentifierException | UnsupportedTypeException | ArityException e) {
+                throw new RuntimeException(e);
+            }
+
+            // But not element 2.
+            try {
+                final Object exports = lib.readMember(instance, "exports");
+                lib.execute(lib.readMember(lib.readMember(exports, "t"), "get"), 1, functionInstance);
+                Assert.fail("Should have failed - export count exceeds the limit");
+            } catch (UnsupportedMessageException | UnknownIdentifierException | UnsupportedTypeException | ArityException e) {
+                throw new RuntimeException(e);
+            } catch (WasmJsApiException e) {
+                Assert.assertEquals("Range error expected", WasmJsApiException.Kind.RangeError, e.kind());
             }
         });
     }

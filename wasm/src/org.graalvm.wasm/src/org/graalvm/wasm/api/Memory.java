@@ -56,7 +56,7 @@ public class Memory extends Dictionary {
     private final WasmMemory memory;
 
     public Memory(WasmMemory memory) {
-        this.descriptor = new MemoryDescriptor(memory.size(), memory.maxAllowedSize());
+        this.descriptor = new MemoryDescriptor(memory.declaredMinSize(), memory.declaredMaxSize());
         this.memory = memory;
         addMembers(new Object[]{
                         "descriptor", this.descriptor,
@@ -66,14 +66,13 @@ public class Memory extends Dictionary {
     }
 
     public static Memory create(int declaredMinSize, int declaredMaxSize) {
-        final int initialSize = declaredMinSize;
-        if (compareUnsigned(initialSize, declaredMaxSize) > 0) {
+        if (compareUnsigned(declaredMinSize, declaredMaxSize) > 0) {
             throw new WasmJsApiException(WasmJsApiException.Kind.LinkError, "Min memory size exceeds max memory size");
-        } else if (compareUnsigned(initialSize, JS_LIMITS.memoryInstanceSizeLimit()) > 0) {
+        } else if (compareUnsigned(declaredMinSize, JS_LIMITS.memoryInstanceSizeLimit()) > 0) {
             throw new WasmJsApiException(WasmJsApiException.Kind.LinkError, "Min memory size exceeds implementation limit");
         }
         final int maxAllowedSize = minUnsigned(declaredMaxSize, JS_LIMITS.memoryInstanceSizeLimit());
-        final WasmMemory wasmMemory = new ByteArrayWasmMemory(declaredMinSize, declaredMaxSize, initialSize, maxAllowedSize);
+        final WasmMemory wasmMemory = new ByteArrayWasmMemory(declaredMinSize, declaredMaxSize, maxAllowedSize);
         return new Memory(wasmMemory);
     }
 
@@ -104,7 +103,7 @@ public class Memory extends Dictionary {
     private long grow(int delta) {
         final long pageSize = memory.size();
         if (!memory.grow(delta)) {
-            throw new WasmJsApiException(WasmJsApiException.Kind.LinkError, "Cannot grow memory above max limit " + memory.maxAllowedSize());
+            throw new WasmJsApiException(WasmJsApiException.Kind.LinkError, "Cannot grow memory above max limit");
         }
         return pageSize;
     }

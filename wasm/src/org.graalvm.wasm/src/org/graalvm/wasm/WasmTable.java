@@ -51,12 +51,30 @@ import static org.graalvm.wasm.constants.Sizes.MAX_TABLE_DECLARATION_SIZE;
 import static org.graalvm.wasm.constants.Sizes.MAX_TABLE_INSTANCE_SIZE;
 
 public final class WasmTable {
+    /**
+     * @see #declaredMinSize()
+     */
     private final int declaredMinSize;
+
+    /**
+     * @see #declaredMaxSize()
+     */
     private final int declaredMaxSize;
+
+    /**
+     * The maximum practical size of this table instance.
+     * <p>
+     * It is the minimum between {@link #declaredMaxSize the limit defined in the module binary},
+     * {@link Sizes#MAX_TABLE_INSTANCE_SIZE the GraalWasm limit} and any additional limit (the JS
+     * API for example has lower limits).
+     * <p>
+     * This is different from {@link #declaredMaxSize()}, which can be higher.
+     */
     private final int maxAllowedSize;
+
     private Object[] elements;
 
-    public WasmTable(int declaredMinSize, int declaredMaxSize, int initialSize, int maxAllowedSize) {
+    private WasmTable(int declaredMinSize, int declaredMaxSize, int initialSize, int maxAllowedSize) {
         assert compareUnsigned(declaredMinSize, initialSize) <= 0;
         assert compareUnsigned(initialSize, maxAllowedSize) <= 0;
         assert compareUnsigned(maxAllowedSize, declaredMaxSize) <= 0;
@@ -67,6 +85,10 @@ public final class WasmTable {
         this.declaredMaxSize = declaredMaxSize;
         this.maxAllowedSize = maxAllowedSize;
         this.elements = new Object[declaredMinSize];
+    }
+
+    public WasmTable(int declaredMinSize, int declaredMaxSize, int maxAllowedSize) {
+        this(declaredMinSize, declaredMaxSize, declaredMinSize, maxAllowedSize);
     }
 
     public void ensureSizeAtLeast(int targetSize) {
@@ -81,19 +103,6 @@ public final class WasmTable {
      */
     public int size() {
         return elements.length;
-    }
-
-    /**
-     * The maximum practical size of this table instance.
-     * <p>
-     * It is the minimum between {@link #declaredMaxSize the limit defined in the module binary},
-     * {@link Sizes#MAX_TABLE_INSTANCE_SIZE the GraalWasm limit} and any additional limit (the JS
-     * API for example has lower limits).
-     * <p>
-     * This is different from {@link #declaredMaxSize()}, which can be higher.
-     */
-    public int maxAllowedSize() {
-        return maxAllowedSize;
     }
 
     /**
@@ -112,7 +121,7 @@ public final class WasmTable {
      * This is an upper bound on this table's size. This table can only be imported with a greater
      * or equal maximum size.
      * <p>
-     * This is different from {@link #maxAllowedSize()}, which can be lower.
+     * This is different from internal max allowed size, which can be lower.
      */
     public int declaredMaxSize() {
         return declaredMaxSize;
@@ -122,25 +131,45 @@ public final class WasmTable {
         return elements;
     }
 
+    /**
+     * Gets element at {@code index}.
+     *
+     * @throws IndexOutOfBoundsException if the index is negative or greater or equal to table size
+     */
     public Object get(int index) {
         return elements[index];
     }
 
+    /**
+     * Gets element at {@code index}.
+     *
+     * @throws IndexOutOfBoundsException if the index is negative or greater or equal to table size
+     */
     public void set(int index, Object element) {
         elements[index] = element;
     }
 
+    /**
+     * Gets element at {@code index}.
+     *
+     * @throws IndexOutOfBoundsException if the index is negative or greater or equal to table size
+     */
     public void initialize(int i, WasmFunctionInstance function) {
         elements[i] = function;
     }
 
-    public boolean grow(int delta) {
+    /**
+     * Grows the table so that it can contain {@code delta} more elements.
+     *
+     * @throws IllegalArgumentException if growing the table of {@code delta} would make its size
+     *             larger than the internal limit
+     */
+    public void grow(int delta) {
         final int targetSize = size() + delta;
         if (compareUnsigned(delta, maxAllowedSize) <= 0 && compareUnsigned(targetSize, maxAllowedSize) <= 0) {
             ensureSizeAtLeast(size() + delta);
-            return true;
         } else {
-            return false;
+            throw new IllegalArgumentException("Cannot grow table above max limit " + maxAllowedSize);
         }
     }
 }

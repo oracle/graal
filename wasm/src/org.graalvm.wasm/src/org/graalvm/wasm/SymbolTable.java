@@ -134,7 +134,7 @@ public abstract class SymbolTable {
          * Upper bound on table size.
          * <p>
          * <em>Note:</em> this is the upper bound defined by the module. A table instance might have
-         * a lower {@link WasmTable#maxAllowedSize() size} in practice.
+         * a lower internal max allowed size in practice.
          */
         public final int maximumSize;
 
@@ -154,7 +154,7 @@ public abstract class SymbolTable {
          * Upper bound on memory size.
          * <p>
          * <em>Note:</em> this is the upper bound defined by the module. A memory instance might
-         * have a lower {@link WasmMemory#maxAllowedSize() maximum size} in practice.
+         * have a lower internal max allowed size in practice.
          */
         public final int maximumSize;
 
@@ -785,7 +785,7 @@ public abstract class SymbolTable {
             final int initialSize = declaredMinSize;
             final int maxAllowedSize = minUnsigned(declaredMaxSize, module().limits().tableInstanceSizeLimit());
             assert compareUnsigned(initialSize, maxAllowedSize) <= 0; // Tested when reading limits
-            final WasmTable wasmTable = new WasmTable(declaredMinSize, declaredMaxSize, initialSize, maxAllowedSize);
+            final WasmTable wasmTable = new WasmTable(declaredMinSize, declaredMaxSize, maxAllowedSize);
             final int index = context.tables().register(wasmTable);
             instance.setTable(context.tables().table(index));
         });
@@ -851,9 +851,9 @@ public abstract class SymbolTable {
             assert compareUnsigned(initialSize, maxAllowedSize) <= 0; // Tested when reading limits
             final WasmMemory wasmMemory;
             if (context.environment().getOptions().get(WasmOptions.UseUnsafeMemory)) {
-                wasmMemory = new UnsafeWasmMemory(declaredMinSize, declaredMaxSize, initialSize, maxAllowedSize);
+                wasmMemory = new UnsafeWasmMemory(declaredMinSize, declaredMaxSize, maxAllowedSize);
             } else {
-                wasmMemory = new ByteArrayWasmMemory(declaredMinSize, declaredMaxSize, initialSize, maxAllowedSize);
+                wasmMemory = new ByteArrayWasmMemory(declaredMinSize, declaredMaxSize, maxAllowedSize);
             }
             final int memoryIndex = context.memories().register(wasmMemory);
             final WasmMemory allocatedMemory = context.memories().memory(memoryIndex);
@@ -864,7 +864,7 @@ public abstract class SymbolTable {
     public void allocateExternalMemory(WasmMemory externalMemory) {
         checkNotParsed();
         validateSingleMemory();
-        memory = new MemoryInfo(externalMemory.size(), externalMemory.maxAllowedSize());
+        memory = new MemoryInfo(externalMemory.declaredMinSize(), externalMemory.declaredMaxSize());
         module().addLinkAction((context, instance) -> {
             final int memoryIndex = context.memories().registerExternal(externalMemory);
             final WasmMemory allocatedMemory = context.memories().memory(memoryIndex);
