@@ -6,6 +6,7 @@ local graal_suite_root = root_ci.graal_suite_root;
 
 {
   local jdks = (import "../../common.json").jdks,
+  local mx = (import "../../graal-common.json").mx_version,
   local labsjdk8 = jdks.oraclejdk8,
   local labsjdk11 = jdks["labsjdk-ce-11"],
 
@@ -42,6 +43,7 @@ local graal_suite_root = root_ci.graal_suite_root;
       MX_PYTHON: 'python3',
     },
     packages+: {
+      'mx': mx,
       '00:pip:logilab-common': '==1.4.4',
       'pip:pylint': '==1.9.3',
       'pip:ninja_syntax': '==1.7.2',
