@@ -18,10 +18,11 @@
     "labsjdk-ee-15Debug": {"name": "labsjdk",   "version": "ee-15.0.2+7-jvmci-21.0-b04-debug", "platformspecific": true }
   },
 
+  "COMMENT" : "The devkits versions reflect those used to build the JVMCI JDKs (e.g., see devkit_platform_revisions in <jdk>/make/conf/jib-profiles.js)",
   "devkits": {
       "windows-oraclejdk8": { "packages" : { "devkit:VS2017-15.9.16+1" : "==0" }},
       "windows-openjdk8":   { "packages" : { "devkit:VS2017-15.5.5+1"  : "==0" }},
-      "windows-jdk11":      { "packages" : { "devkit:VS2017-15.9.16+1" : "==0" }},
+      "windows-jdk11":      { "packages" : { "devkit:VS2017-15.9.24+1" : "==0" }},
       "windows-jdk15":      { "packages" : { "devkit:VS2019-16.5.3+1"  : "==0" }}
   },
 
