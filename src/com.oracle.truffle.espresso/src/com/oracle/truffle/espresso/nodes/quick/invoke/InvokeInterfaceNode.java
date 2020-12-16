@@ -42,6 +42,7 @@ public abstract class InvokeInterfaceNode extends QuickNode {
 
     final Method resolutionSeed;
     final Klass declaringKlass;
+    final int resultAt;
 
     static final int INLINE_CACHE_SIZE_LIMIT = 5;
 
@@ -52,7 +53,13 @@ public abstract class InvokeInterfaceNode extends QuickNode {
     Object callVirtualDirect(StaticObject receiver, Object[] args,
                     @Cached("receiver.getKlass()") Klass cachedKlass,
                     @Cached("methodLookup(receiver, resolutionSeed, declaringKlass)") MethodVersion resolvedMethod,
-                    @Cached("create(resolvedMethod.getMethod().getCallTarget())") DirectCallNode directCallNode) {
+                    @Cached("create(resolvedMethod.getMethod().getCallTargetNoInit())") DirectCallNode directCallNode) {
+        // getCallTarget doesn't ensure declaring class is initialized
+        // so we need the below check prior to executing the method
+        if (!resolvedMethod.getMethod().getDeclaringKlass().isInitialized()) {
+            CompilerDirectives.transferToInterpreterAndInvalidate();
+            resolvedMethod.getMethod().getDeclaringKlass().safeInitialize();
+        }
         return directCallNode.call(args);
     }
 
@@ -68,6 +75,7 @@ public abstract class InvokeInterfaceNode extends QuickNode {
         assert !resolutionSeed.isStatic();
         this.resolutionSeed = resolutionSeed;
         this.declaringKlass = resolutionSeed.getDeclaringKlass();
+        this.resultAt = top - Signatures.slotsForParameters(resolutionSeed.getParsedSignature()) - 1; // -receiver
     }
 
     protected static MethodVersion methodLookup(StaticObject receiver, Method resolutionSeed, Klass declaringKlass) {
@@ -83,25 +91,24 @@ public abstract class InvokeInterfaceNode extends QuickNode {
     }
 
     @Override
-    public final int execute(final VirtualFrame frame) {
+    public final int execute(VirtualFrame frame, long[] primitives, Object[] refs) {
         // Method signature does not change across methods.
         // Can safely use the constant signature from `resolutionSeed` instead of the non-constant
         // signature from the lookup.
         // TODO(peterssen): Maybe refrain from exposing the whole root node?.
-        BytecodeNode root = getBytecodesNode();
         // TODO(peterssen): IsNull Node?.
-        final Object[] args = root.peekAndReleaseArguments(frame, top, true, resolutionSeed.getParsedSignature());
+        final Object[] args = BytecodeNode.popArguments(primitives, refs, top, true, resolutionSeed.getParsedSignature());
         final StaticObject receiver = nullCheck((StaticObject) args[0]);
         Object result = executeInterface(receiver, args);
-        return (getResultAt() - top) + root.putKind(frame, getResultAt(), result, Signatures.returnKind(resolutionSeed.getParsedSignature()));
+        return (getResultAt() - top) + BytecodeNode.putKind(primitives, refs, getResultAt(), result, Signatures.returnKind(resolutionSeed.getParsedSignature()));
     }
 
     @Override
-    public boolean producedForeignObject(VirtualFrame frame) {
-        return resolutionSeed.getReturnKind().isObject() && getBytecodesNode().peekObject(frame, getResultAt()).isForeignObject();
+    public boolean producedForeignObject(Object[] refs) {
+        return resolutionSeed.getReturnKind().isObject() && BytecodeNode.peekObject(refs, getResultAt()).isForeignObject();
     }
 
     private int getResultAt() {
-        return top - Signatures.slotsForParameters(resolutionSeed.getParsedSignature()) - 1; // -receiver
+        return resultAt;
     }
 }

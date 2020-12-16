@@ -43,17 +43,15 @@ public final class InstanceOfNode extends QuickNode {
     }
 
     @Override
-    public int execute(final VirtualFrame frame) {
-        // TODO(peterssen): Maybe refrain from exposing the whole root node?.
-        BytecodeNode root = getBytecodesNode();
-        StaticObject receiver = root.popObject(frame, top - 1);
+    public int execute(VirtualFrame frame, long[] primitives, Object[] refs) {
+        StaticObject receiver = BytecodeNode.popObject(refs, top - 1);
         boolean result = StaticObject.notNull(receiver) && typeCheckNode.executeTypeCheck(typeToCheck, receiver.getKlass());
-        root.putKind(frame, top - 1, result, JavaKind.Boolean);
+        BytecodeNode.putKind(primitives, refs, top - 1, result, JavaKind.Boolean);
         return 0; // stack effect -> pop receiver, push boolean
     }
 
     @Override
-    public boolean producedForeignObject(VirtualFrame frame) {
+    public boolean producedForeignObject(Object[] refs) {
         return false;
     }
 }

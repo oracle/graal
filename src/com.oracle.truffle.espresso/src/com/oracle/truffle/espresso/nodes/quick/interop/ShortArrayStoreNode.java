@@ -45,11 +45,10 @@ public abstract class ShortArrayStoreNode extends QuickNode {
     }
 
     @Override
-    public final int execute(VirtualFrame frame) {
-        BytecodeNode root = getBytecodesNode();
-        StaticObject array = nullCheck(root.popObject(frame, top - 3));
-        int index = root.popInt(frame, top - 2);
-        short value = (short) root.popInt(frame, top - 1);
+    public final int execute(VirtualFrame frame, long[] primitives, Object[] refs) {
+        StaticObject array = nullCheck(BytecodeNode.popObject(refs, top - 3));
+        int index = BytecodeNode.popInt(primitives, top - 2);
+        short value = (short) BytecodeNode.popInt(primitives, top - 1);
         executeStore(array, index, value);
         return Bytecodes.stackEffectOf(Bytecodes.SASTORE);
     }
@@ -70,7 +69,7 @@ public abstract class ShortArrayStoreNode extends QuickNode {
     }
 
     @Override
-    public boolean producedForeignObject(VirtualFrame frame) {
+    public boolean producedForeignObject(Object[] refs) {
         return false;
     }
 }

@@ -37,6 +37,7 @@ import com.oracle.truffle.espresso.nodes.quick.QuickNode;
 public final class InvokeHandleNode extends QuickNode {
 
     private final Method method;
+    final int resultAt;
 
     @CompilationFinal(dimensions = 1) //
     private final Symbol<Type>[] parsedSignature;
@@ -56,26 +57,26 @@ public final class InvokeHandleNode extends QuickNode {
         this.argCount = method.getParameterCount() + (method.isStatic() ? 0 : 1) + (method.isInvokeIntrinsic() ? 1 : 0);
         this.parameterCount = method.getParameterCount();
         this.rKind = method.getReturnKind();
+        this.resultAt = top - Signatures.slotsForParameters(method.getParsedSignature()) - (hasReceiver ? 1 : 0); // -receiver
     }
 
     @Override
-    public int execute(VirtualFrame frame) {
-        BytecodeNode root = getBytecodesNode();
+    public int execute(VirtualFrame frame, long[] primitives, Object[] refs) {
         Object[] args = new Object[argCount];
         if (hasReceiver) {
-            args[0] = nullCheck(root.peekReceiver(frame, top, method));
+            args[0] = nullCheck(BytecodeNode.peekReceiver(refs, top, method));
         }
-        root.peekAndReleaseBasicArgumentsWithArray(frame, top, parsedSignature, args, parameterCount, hasReceiver ? 1 : 0);
+        BytecodeNode.popBasicArgumentsWithArray(primitives, refs, top, parsedSignature, args, parameterCount, hasReceiver ? 1 : 0);
         Object result = intrinsic.processReturnValue(intrinsic.call(args), rKind);
-        return (getResultAt() - top) + root.putKind(frame, getResultAt(), result, method.getReturnKind());
+        return (getResultAt() - top) + BytecodeNode.putKind(primitives, refs, getResultAt(), result, method.getReturnKind());
     }
 
     @Override
-    public boolean producedForeignObject(VirtualFrame frame) {
-        return method.getReturnKind().isObject() && getBytecodesNode().peekObject(frame, getResultAt()).isForeignObject();
+    public boolean producedForeignObject(Object[] refs) {
+        return method.getReturnKind().isObject() && BytecodeNode.peekObject(refs, getResultAt()).isForeignObject();
     }
 
     private int getResultAt() {
-        return top - Signatures.slotsForParameters(method.getParsedSignature()) - (hasReceiver ? 1 : 0); // -receiver
+        return resultAt;
     }
 }

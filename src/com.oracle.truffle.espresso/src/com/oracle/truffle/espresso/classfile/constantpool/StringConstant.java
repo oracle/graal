@@ -22,6 +22,8 @@
  */
 package com.oracle.truffle.espresso.classfile.constantpool;
 
+import java.nio.ByteBuffer;
+
 import com.oracle.truffle.espresso.classfile.ConstantPool;
 import com.oracle.truffle.espresso.classfile.ConstantPool.Tag;
 import com.oracle.truffle.espresso.classfile.RuntimeConstantPool;
@@ -60,7 +62,7 @@ public interface StringConstant extends PoolConstant {
     Symbol<ModifiedUTF8> getSymbol(ConstantPool pool);
 
     final class Index implements StringConstant, Resolvable {
-        private final int utf8Index;
+        private final char utf8Index;
 
         @Override
         public Symbol<ModifiedUTF8> getSymbol(ConstantPool pool) {
@@ -68,7 +70,7 @@ public interface StringConstant extends PoolConstant {
         }
 
         Index(int utf8Index) {
-            this.utf8Index = utf8Index;
+            this.utf8Index = PoolConstant.u2(utf8Index);
         }
 
         @Override
@@ -79,6 +81,11 @@ public interface StringConstant extends PoolConstant {
         @Override
         public void validate(ConstantPool pool) {
             pool.utf8At(utf8Index).validateUTF8();
+        }
+
+        @Override
+        public void dump(ByteBuffer buf) {
+            buf.putChar(utf8Index);
         }
     }
 
@@ -116,6 +123,11 @@ public interface StringConstant extends PoolConstant {
         @Override
         public ResolvedConstant resolve(RuntimeConstantPool pool, int thisIndex, Klass accessingKlass) {
             return new Resolved(resolved);
+        }
+
+        @Override
+        public void dump(ByteBuffer buf) {
+            buf.putChar((char) 0);
         }
     }
 }

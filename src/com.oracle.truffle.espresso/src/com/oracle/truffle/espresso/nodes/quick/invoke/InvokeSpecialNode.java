@@ -37,15 +37,17 @@ public final class InvokeSpecialNode extends QuickNode {
     @CompilationFinal protected MethodVersion method;
     @Child private DirectCallNode directCallNode;
 
+    final int resultAt;
+
     public InvokeSpecialNode(Method method, int top, int callerBCI) {
         super(top, callerBCI);
         this.method = method.getMethodVersion();
         this.directCallNode = DirectCallNode.create(method.getCallTarget());
+        this.resultAt = top - Signatures.slotsForParameters(method.getParsedSignature()) - 1; // -receiver
     }
 
     @Override
-    public int execute(final VirtualFrame frame) {
-        BytecodeNode root = getBytecodesNode();
+    public int execute(VirtualFrame frame, long[] primitives, Object[] refs) {
         if (!method.getAssumption().isValid()) {
             // update to the latest method version and grab a new direct call target
             CompilerDirectives.transferToInterpreterAndInvalidate();
@@ -54,19 +56,19 @@ public final class InvokeSpecialNode extends QuickNode {
             adoptChildren();
         }
         // TODO(peterssen): IsNull Node?
-        Object[] args = root.peekAndReleaseArguments(frame, top, true, method.getMethod().getParsedSignature());
+        Object[] args = BytecodeNode.popArguments(primitives, refs, top, true, method.getMethod().getParsedSignature());
         nullCheck((StaticObject) args[0]); // nullcheck receiver
         Object result = directCallNode.call(args);
-        return (getResultAt() - top) + root.putKind(frame, getResultAt(), result, method.getMethod().getReturnKind());
+        return (getResultAt() - top) + BytecodeNode.putKind(primitives, refs, getResultAt(), result, method.getMethod().getReturnKind());
     }
 
     @Override
-    public boolean producedForeignObject(VirtualFrame frame) {
-        return method.getMethod().getReturnKind().isObject() && getBytecodesNode().peekObject(frame, getResultAt()).isForeignObject();
+    public boolean producedForeignObject(Object[] refs) {
+        return method.getMethod().getReturnKind().isObject() && BytecodeNode.peekObject(refs, getResultAt()).isForeignObject();
     }
 
     private int getResultAt() {
-        return top - Signatures.slotsForParameters(method.getMethod().getParsedSignature()) - 1; // -receiver
+        return resultAt;
     }
 
     @Override

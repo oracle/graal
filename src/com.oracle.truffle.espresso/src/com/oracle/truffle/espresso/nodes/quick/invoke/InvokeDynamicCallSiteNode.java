@@ -42,6 +42,7 @@ public final class InvokeDynamicCallSiteNode extends QuickNode {
     private final Symbol<Type> returnType;
     private final JavaKind returnKind;
     @Child private DirectCallNode callNode;
+    final int resultAt;
 
     @CompilerDirectives.CompilationFinal(dimensions = 1) private Symbol<Type>[] parsedSignature;
 
@@ -53,30 +54,28 @@ public final class InvokeDynamicCallSiteNode extends QuickNode {
         this.returnType = Signatures.returnType(parsedSignature);
         this.returnKind = Signatures.returnKind(parsedSignature);
         this.hasAppendix = !StaticObject.isNull(appendix);
-        // target.getDeclaringKlass().safeInitialize();
         this.callNode = DirectCallNode.create(target.getCallTarget());
-
+        this.resultAt = top - Signatures.slotsForParameters(parsedSignature); // no receiver
     }
 
     @Override
-    public int execute(final VirtualFrame frame) {
-        BytecodeNode root = getBytecodesNode();
+    public int execute(VirtualFrame frame, long[] primitives, Object[] refs) {
         int argCount = Signatures.parameterCount(parsedSignature, false);
-        Object[] args = root.peekAndReleaseBasicArgumentsWithArray(frame, top, parsedSignature, new Object[argCount + (hasAppendix ? 1 : 0)], argCount, 0);
+        Object[] args = BytecodeNode.popBasicArgumentsWithArray(primitives, refs, top, parsedSignature, new Object[argCount + (hasAppendix ? 1 : 0)], argCount, 0);
         if (hasAppendix) {
             args[args.length - 1] = appendix;
         }
         Object result = callNode.call(args);
-        return (getResultAt() - top) + root.putKind(frame, getResultAt(), unbasic(result, returnType), returnKind);
+        return (getResultAt() - top) + BytecodeNode.putKind(primitives, refs, getResultAt(), unbasic(result, returnType), returnKind);
     }
 
     private int getResultAt() {
-        return top - Signatures.slotsForParameters(parsedSignature); // no receiver
+        return resultAt;
     }
 
     @Override
-    public boolean producedForeignObject(VirtualFrame frame) {
-        return returnKind.isObject() && getBytecodesNode().peekObject(frame, getResultAt()).isForeignObject();
+    public boolean producedForeignObject(Object[] refs) {
+        return returnKind.isObject() && BytecodeNode.peekObject(refs, getResultAt()).isForeignObject();
     }
 
     // Transforms ints to sub-words

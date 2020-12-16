@@ -22,6 +22,7 @@
  */
 package com.oracle.truffle.espresso.classfile.constantpool;
 
+import java.nio.ByteBuffer;
 import java.util.Objects;
 import java.util.logging.Level;
 
@@ -32,6 +33,7 @@ import com.oracle.truffle.espresso.classfile.ConstantPool.Tag;
 import com.oracle.truffle.espresso.classfile.RuntimeConstantPool;
 import com.oracle.truffle.espresso.descriptors.Symbol;
 import com.oracle.truffle.espresso.descriptors.Symbol.Name;
+import com.oracle.truffle.espresso.descriptors.Validation;
 import com.oracle.truffle.espresso.impl.Klass;
 import com.oracle.truffle.espresso.meta.Meta;
 import com.oracle.truffle.espresso.runtime.EspressoContext;
@@ -153,6 +155,11 @@ public interface ClassConstant extends PoolConstant {
         public void validate(ConstantPool pool) {
             pool.utf8At(classNameIndex).validateClassName();
         }
+
+        @Override
+        public void dump(ByteBuffer buf) {
+            buf.putChar(classNameIndex);
+        }
     }
 
     final class Resolved implements ClassConstant, Resolvable.ResolvedConstant {
@@ -212,6 +219,19 @@ public interface ClassConstant extends PoolConstant {
                 throw e;
             }
         }
+
+        @Override
+        public void validate(ConstantPool pool) {
+            // No UTF8 entry: cannot cache validation.
+            if (!Validation.validModifiedUTF8(name) || !Validation.validClassNameEntry(name)) {
+                throw ConstantPool.classFormatError("Invalid class name entry: " + name);
+            }
+        }
+
+        @Override
+        public void dump(ByteBuffer buf) {
+            buf.putChar((char) 0);
+        }
     }
 
     /**
@@ -236,6 +256,11 @@ public interface ClassConstant extends PoolConstant {
         @Override
         public Resolved resolve(RuntimeConstantPool pool, int thisIndex, Klass accessingKlass) {
             return new Resolved(resolved);
+        }
+
+        @Override
+        public void dump(ByteBuffer buf) {
+            buf.putChar((char) 0);
         }
     }
 }

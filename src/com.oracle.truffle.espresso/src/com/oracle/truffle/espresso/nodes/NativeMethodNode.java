@@ -98,6 +98,7 @@ public final class NativeMethodNode extends EspressoMethodNode {
 
     @Override
     void initializeBody(VirtualFrame frame) {
+        // nop
     }
 
     @Override

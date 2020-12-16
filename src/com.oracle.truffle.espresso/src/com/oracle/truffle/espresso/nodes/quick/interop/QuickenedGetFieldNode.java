@@ -44,14 +44,14 @@ public final class QuickenedGetFieldNode extends QuickNode {
     }
 
     @Override
-    public int execute(final VirtualFrame frame) {
+    public int execute(VirtualFrame frame, long[] primitives, Object[] refs) {
         BytecodeNode root = getBytecodesNode();
-        StaticObject receiver = nullCheck(root.popObject(frame, top - 1));
-        return getFieldNode.getField(frame, root, receiver, top - 1, statementIndex) - 1; // -receiver
+        StaticObject receiver = nullCheck(BytecodeNode.popObject(refs, top - 1));
+        return getFieldNode.getField(frame, primitives, refs, root, receiver, top - 1, statementIndex) - 1; // -receiver
     }
 
     @Override
-    public boolean producedForeignObject(VirtualFrame frame) {
-        return field.getKind().isObject() && getBytecodesNode().peekObject(frame, top - 1).isForeignObject();
+    public boolean producedForeignObject(Object[] refs) {
+        return field.getKind().isObject() && BytecodeNode.peekObject(refs, top - 1).isForeignObject();
     }
 }

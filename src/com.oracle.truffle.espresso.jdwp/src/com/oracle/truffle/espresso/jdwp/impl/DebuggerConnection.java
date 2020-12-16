@@ -603,7 +603,7 @@ public final class DebuggerConnection implements Commands {
                 handleReply(packet, result);
             } catch (Throwable t) {
                 PacketStream reply = new PacketStream().replyPacket().id(packet.id);
-                reply.errorCode(ErrorCodes.INTERNAL_ERROR);
+                reply.errorCode(ErrorCodes.INTERNAL);
                 handleReply(packet, new CommandResult(reply));
             } finally {
                 if (entered) {

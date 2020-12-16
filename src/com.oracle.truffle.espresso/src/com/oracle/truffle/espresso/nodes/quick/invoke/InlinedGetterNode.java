@@ -27,8 +27,8 @@ import com.oracle.truffle.espresso.bytecode.BytecodeStream;
 import com.oracle.truffle.espresso.impl.Field;
 import com.oracle.truffle.espresso.impl.Method;
 import com.oracle.truffle.espresso.nodes.BytecodeNode;
-import com.oracle.truffle.espresso.nodes.quick.QuickNode;
 import com.oracle.truffle.espresso.nodes.helper.AbstractGetFieldNode;
+import com.oracle.truffle.espresso.nodes.quick.QuickNode;
 import com.oracle.truffle.espresso.runtime.StaticObject;
 import com.oracle.truffle.object.DebugCounter;
 
@@ -66,17 +66,17 @@ public class InlinedGetterNode extends QuickNode {
     }
 
     @Override
-    public int execute(VirtualFrame frame) {
+    public int execute(VirtualFrame frame, long[] primitives, Object[] refs) {
         BytecodeNode root = getBytecodesNode();
         StaticObject receiver = field.isStatic()
                         ? field.getDeclaringKlass().tryInitializeAndGetStatics()
-                        : nullCheck(root.popObject(frame, top - 1));
-        return (getResultAt() - top) + getFieldNode.getField(frame, root, receiver, getResultAt(), statementIndex);
+                        : nullCheck(BytecodeNode.popObject(refs, top - 1));
+        return (getResultAt() - top) + getFieldNode.getField(frame, primitives, refs, root, receiver, getResultAt(), statementIndex);
     }
 
     @Override
-    public boolean producedForeignObject(VirtualFrame frame) {
-        return field.getKind().isObject() && getBytecodesNode().peekObject(frame, getResultAt()).isForeignObject();
+    public boolean producedForeignObject(Object[] refs) {
+        return field.getKind().isObject() && BytecodeNode.peekObject(refs, getResultAt()).isForeignObject();
     }
 
     private int getResultAt() {
@@ -84,7 +84,7 @@ public class InlinedGetterNode extends QuickNode {
     }
 
     private static Field getInlinedField(Method inlinedMethod) {
-        BytecodeStream code = new BytecodeStream(inlinedMethod.getCode());
+        BytecodeStream code = new BytecodeStream(inlinedMethod.getOriginalCode());
         if (inlinedMethod.isStatic()) {
             return inlinedMethod.getRuntimeConstantPool().resolvedFieldAt(inlinedMethod.getDeclaringKlass(), code.readCPI(STATIC_GETTER_BCI));
         } else {

@@ -28,8 +28,8 @@ import com.oracle.truffle.espresso.bytecode.Bytecodes;
 import com.oracle.truffle.espresso.impl.Field;
 import com.oracle.truffle.espresso.impl.Method;
 import com.oracle.truffle.espresso.nodes.BytecodeNode;
-import com.oracle.truffle.espresso.nodes.quick.QuickNode;
 import com.oracle.truffle.espresso.nodes.helper.AbstractSetFieldNode;
+import com.oracle.truffle.espresso.nodes.quick.QuickNode;
 import com.oracle.truffle.espresso.runtime.StaticObject;
 import com.oracle.truffle.object.DebugCounter;
 
@@ -71,22 +71,22 @@ public class InlinedSetterNode extends QuickNode {
     }
 
     @Override
-    public int execute(VirtualFrame frame) {
+    public int execute(VirtualFrame frame, long[] primitives, Object[] refs) {
         BytecodeNode root = getBytecodesNode();
         StaticObject receiver = field.isStatic()
                         ? field.getDeclaringKlass().tryInitializeAndGetStatics()
-                        : nullCheck(root.popObject(frame, top - 1 - slotCount));
-        setFieldNode.setField(frame, root, receiver, top, statementIndex);
+                        : nullCheck(BytecodeNode.popObject(refs, top - 1 - slotCount));
+        setFieldNode.setField(frame, primitives, refs, root, receiver, top, statementIndex);
         return -slotCount + stackEffect;
     }
 
     @Override
-    public boolean producedForeignObject(VirtualFrame frame) {
+    public boolean producedForeignObject(Object[] refs) {
         return false;
     }
 
     private static Field getInlinedField(Method inlinedMethod) {
-        BytecodeStream code = new BytecodeStream(inlinedMethod.getCode());
+        BytecodeStream code = new BytecodeStream(inlinedMethod.getOriginalCode());
         if (inlinedMethod.isStatic()) {
             return inlinedMethod.getRuntimeConstantPool().resolvedFieldAt(inlinedMethod.getDeclaringKlass(), code.readCPI(STATIC_SETTER_BCI));
         } else {

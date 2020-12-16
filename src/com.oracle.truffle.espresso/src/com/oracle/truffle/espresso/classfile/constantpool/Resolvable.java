@@ -22,8 +22,11 @@
  */
 package com.oracle.truffle.espresso.classfile.constantpool;
 
+import java.nio.ByteBuffer;
+
 import com.oracle.truffle.espresso.classfile.RuntimeConstantPool;
 import com.oracle.truffle.espresso.impl.Klass;
+import com.oracle.truffle.espresso.meta.EspressoError;
 
 public interface Resolvable extends PoolConstant {
 
@@ -31,5 +34,10 @@ public interface Resolvable extends PoolConstant {
 
     interface ResolvedConstant extends PoolConstant {
         Object value();
+
+        default void dump(ByteBuffer buf) {
+            throw EspressoError.shouldNotReachHere();
+        }
+
     }
 }

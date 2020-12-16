@@ -48,11 +48,10 @@ public abstract class IntArrayLoadNode extends QuickNode {
     }
 
     @Override
-    public final int execute(VirtualFrame frame) {
-        BytecodeNode root = getBytecodesNode();
-        StaticObject array = nullCheck(root.popObject(frame, top - 2));
-        int index = root.popInt(frame, top - 1);
-        root.putInt(frame, top - 2, executeLoad(array, index));
+    public final int execute(VirtualFrame frame, long[] primitives, Object[] refs) {
+        StaticObject array = nullCheck(BytecodeNode.popObject(refs, top - 2));
+        int index = BytecodeNode.popInt(primitives, top - 1);
+        BytecodeNode.putInt(primitives, top - 2, executeLoad(array, index));
         return Bytecodes.stackEffectOf(Bytecodes.IALOAD);
     }
 
@@ -80,7 +79,7 @@ public abstract class IntArrayLoadNode extends QuickNode {
     }
 
     @Override
-    public boolean producedForeignObject(VirtualFrame frame) {
+    public boolean producedForeignObject(Object[] refs) {
         return false;
     }
 }

@@ -52,7 +52,6 @@ import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.Truffle;
 import com.oracle.truffle.api.frame.FrameDescriptor;
-import com.oracle.truffle.api.frame.FrameSlot;
 import com.oracle.truffle.api.frame.FrameSlotKind;
 import com.oracle.truffle.api.interop.TruffleObject;
 import com.oracle.truffle.api.interop.UnknownIdentifierException;
@@ -360,6 +359,10 @@ public final class Method extends Member<Signature> implements TruffleObject, Co
         return getMethodVersion().getCallTarget();
     }
 
+    public CallTarget getCallTargetNoInit() {
+        return getMethodVersion().getCallTargetNoInit();
+    }
+
     public boolean usesMonitors() {
         if (usesMonitors != -1) {
             return usesMonitors != 0;
@@ -369,7 +372,7 @@ public final class Method extends Member<Signature> implements TruffleObject, Co
                 return (usesMonitors = 1) != 0;
             }
             if (getCodeAttribute() != null) {
-                BytecodeStream bs = new BytecodeStream(getCodeAttribute().getCode());
+                BytecodeStream bs = new BytecodeStream(getOriginalCode());
                 int bci = 0;
                 while (bci < bs.endBCI()) {
                     int opcode = bs.currentBC(bci);
@@ -716,7 +719,7 @@ public final class Method extends Member<Signature> implements TruffleObject, Co
     }
 
     private boolean hasGetterBytecodes() {
-        byte[] code = getCodeAttribute().getCode();
+        byte[] code = getOriginalCode();
         if (isStatic()) {
             if (code.length == STATIC_GETTER_LENGTH && getExceptionHandlers().length == 0) {
                 return (code[0] == (byte) GETSTATIC) && (Bytecodes.isReturn(code[3])) && code[3] != (byte) RETURN;
@@ -741,7 +744,7 @@ public final class Method extends Member<Signature> implements TruffleObject, Co
     }
 
     private boolean hasSetterBytecodes() {
-        byte[] code = getCodeAttribute().getCode();
+        byte[] code = getOriginalCode();
         if (isStatic()) {
             if (code.length == STATIC_SETTER_LENGTH && getExceptionHandlers().length == 0) {
                 return (code[0] == (byte) ALOAD_0) && (code[1] == (byte) PUTSTATIC) && (code[4] == (byte) RETURN);
@@ -772,7 +775,7 @@ public final class Method extends Member<Signature> implements TruffleObject, Co
 
     @SuppressWarnings("unused")
     void printBytecodes(PrintStream out) {
-        new BytecodeStream(getCode()).printBytecode(declaringKlass, out);
+        new BytecodeStream(getOriginalCode()).printBytecode(declaringKlass, out);
     }
 
     public LineNumberTableAttribute getLineNumberTable() {
@@ -853,13 +856,9 @@ public final class Method extends Member<Signature> implements TruffleObject, Co
 
     public Method forceSplit() {
         Method result = new Method(this, getCodeAttribute().forceSplit());
-        FrameDescriptor frameDescriptor = initFrameDescriptor(result.getMaxLocals() + result.getMaxStackSize());
-
-        // BCI slot is always the latest.
-        FrameSlot bciSlot = frameDescriptor.addFrameSlot("bci", FrameSlotKind.Int);
-        EspressoRootNode root = EspressoRootNode.create(frameDescriptor, new BytecodeNode(result.getMethodVersion(), frameDescriptor, bciSlot));
+        FrameDescriptor frameDescriptor = new FrameDescriptor();
+        EspressoRootNode root = EspressoRootNode.create(frameDescriptor, new BytecodeNode(result.getMethodVersion(), frameDescriptor));
         result.getMethodVersion().callTarget = Truffle.getRuntime().createCallTarget(root);
-
         return result;
     }
 
@@ -1068,6 +1067,14 @@ public final class Method extends Member<Signature> implements TruffleObject, Co
         }
 
         public CallTarget getCallTarget() {
+            return getCallTarget(true);
+        }
+
+        public CallTarget getCallTargetNoInit() {
+            return getCallTarget(false);
+        }
+
+        public CallTarget getCallTarget(boolean initKlass) {
             if (callTarget == null) {
                 CompilerDirectives.transferToInterpreterAndInvalidate();
                 Meta meta = getMeta();
@@ -1082,15 +1089,17 @@ public final class Method extends Member<Signature> implements TruffleObject, Co
                     }
                     throw Meta.throwExceptionWithMessage(meta.java_lang_IncompatibleClassChangeError, "Conflicting default methods: " + getMethod().getName());
                 }
-                // Initializing a class costs a lock, do it outside of this method's lock to avoid
-                // congestion.
-                // Note that requesting a call target is immediately followed by a call to the
-                // method, before advancing BCI.
-                // This ensures that we are respecting the specs, saying that a class must be
-                // initialized before a method is called, while saving a call to safeInitialize
-                // after a method lookup.
-                declaringKlass.safeInitialize();
-
+                if (initKlass) {
+                    // Initializing a class costs a lock, do it outside of this method's lock to
+                    // avoid
+                    // congestion.
+                    // Note that requesting a call target is immediately followed by a call to the
+                    // method, before advancing BCI.
+                    // This ensures that we are respecting the specs, saying that a class must be
+                    // initialized before a method is called, while saving a call to safeInitialize
+                    // after a method lookup.
+                    declaringKlass.safeInitialize();
+                }
                 synchronized (this) {
                     if (callTarget != null) {
                         return callTarget;
@@ -1158,12 +1167,8 @@ public final class Method extends Member<Signature> implements TruffleObject, Co
                                 throw Meta.throwExceptionWithMessage(meta.java_lang_AbstractMethodError,
                                                 "Calling abstract method: " + getMethod().getDeclaringKlass().getType() + "." + getName() + " -> " + getRawSignature());
                             }
-
-                            FrameDescriptor frameDescriptor = initFrameDescriptor(getMaxLocals() + getMaxStackSize());
-
-                            // BCI slot is always the latest.
-                            FrameSlot bciSlot = frameDescriptor.addFrameSlot("bci", FrameSlotKind.Int);
-                            EspressoRootNode rootNode = EspressoRootNode.create(frameDescriptor, new BytecodeNode(this, frameDescriptor, bciSlot));
+                            FrameDescriptor frameDescriptor = new FrameDescriptor();
+                            EspressoRootNode rootNode = EspressoRootNode.create(frameDescriptor, new BytecodeNode(this, frameDescriptor));
                             callTarget = Truffle.getRuntime().createCallTarget(rootNode);
                         }
                     }

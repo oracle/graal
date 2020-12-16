@@ -33,7 +33,7 @@ import com.oracle.truffle.espresso.impl.Method;
 import com.oracle.truffle.espresso.substitutions.Substitutor;
 import com.oracle.truffle.object.DebugCounter;
 
-public class IntrinsicSubstitutorNode extends EspressoMethodNode {
+public final class IntrinsicSubstitutorNode extends EspressoMethodNode {
     @Child private Substitutor substitution;
 
     @CompilerDirectives.CompilationFinal //
@@ -62,7 +62,7 @@ public class IntrinsicSubstitutorNode extends EspressoMethodNode {
 
     @Override
     void initializeBody(VirtualFrame frame) {
-
+        // nop
     }
 
     @Override
