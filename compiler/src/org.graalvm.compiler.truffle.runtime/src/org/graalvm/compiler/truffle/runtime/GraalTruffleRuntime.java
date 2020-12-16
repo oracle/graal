@@ -602,15 +602,20 @@ public abstract class GraalTruffleRuntime implements TruffleRuntime, TruffleComp
     @Override
     public final RootCallTarget createCallTarget(RootNode rootNode) {
         CompilerAsserts.neverPartOfCompilation();
-        final OptimizedCallTarget newCallTarget = createClonedCallTarget(rootNode, null);
-        TruffleSplittingStrategy.newTargetCreated(newCallTarget);
-        return newCallTarget;
+        final OptimizedCallTarget target = createClonedCallTarget(rootNode, null);
+        TruffleSplittingStrategy.newTargetCreated(target);
+        return target;
     }
 
     public final OptimizedCallTarget createClonedCallTarget(RootNode rootNode, OptimizedCallTarget source) {
         CompilerAsserts.neverPartOfCompilation();
         OptimizedCallTarget target = createOptimizedCallTarget(source, rootNode);
         GraalRuntimeAccessor.INSTRUMENT.onLoad(target.getRootNode());
+        if (target.engine.compileAOTOnCreate) {
+            if (target.prepareForAOT()) {
+                target.compile(true);
+            }
+        }
         return target;
     }
 

@@ -176,7 +176,8 @@ public abstract class OptimizedCallTarget implements CompilableTruffleAST, RootC
      * continuously dequeuing the target for single caller when the single caller itself has
      * multiple callers.
      */
-    private volatile boolean dequeueInlined = false;
+    private volatile boolean dequeueInlined;
+    private volatile boolean aotInitialized;
 
     public static final class ArgumentsProfile {
         private static final String ARGUMENT_TYPES_ASSUMPTION_NAME = "Profiled Argument Types";
@@ -684,8 +685,13 @@ public abstract class OptimizedCallTarget implements CompilableTruffleAST, RootC
                 if (!needsCompile(lastTierCompilation)) {
                     return true;
                 }
+
                 ensureInitialized();
                 if (!isSubmittedForCompilation()) {
+                    if (!wasExecuted() && !engine.backgroundCompilation) {
+                        prepareForAOTImpl();
+                    }
+
                     try {
                         assert compilationTask == null;
                         this.compilationTask = task = runtime().submitForCompilation(this, lastTierCompilation);
@@ -1573,6 +1579,13 @@ public abstract class OptimizedCallTarget implements CompilableTruffleAST, RootC
          * we do AOT compilation.
          */
         initialize(false);
+        return prepareForAOTImpl();
+    }
+
+    private boolean prepareForAOTImpl() {
+        if (aotInitialized) {
+            return false;
+        }
 
         ExecutionSignature profile = GraalRuntimeAccessor.NODES.prepareForAOT(rootNode);
         if (profile == null) {
@@ -1605,7 +1618,7 @@ public abstract class OptimizedCallTarget implements CompilableTruffleAST, RootC
 
         this.returnProfile = returnProfile;
         this.argumentsProfile = newProfile;
-
+        this.aotInitialized = true;
         return true;
     }
 }

@@ -36,6 +36,7 @@ import static org.graalvm.compiler.truffle.options.PolyglotCompilerOptions.Compi
 import static org.graalvm.compiler.truffle.options.PolyglotCompilerOptions.CompilationThreshold;
 import static org.graalvm.compiler.truffle.options.PolyglotCompilerOptions.CompileImmediately;
 import static org.graalvm.compiler.truffle.options.PolyglotCompilerOptions.CompileOnly;
+import static org.graalvm.compiler.truffle.options.PolyglotCompilerOptions.CompileAOTOnCreate;
 import static org.graalvm.compiler.truffle.options.PolyglotCompilerOptions.FirstTierCompilationThreshold;
 import static org.graalvm.compiler.truffle.options.PolyglotCompilerOptions.FirstTierMinInvokeThreshold;
 import static org.graalvm.compiler.truffle.options.PolyglotCompilerOptions.Inlining;
@@ -129,6 +130,7 @@ public final class EngineData {
     @CompilationFinal public boolean callTargetStatisticDetails;
     @CompilationFinal public boolean profilingEnabled;
     @CompilationFinal public boolean traceTransferToInterpreter;
+    @CompilationFinal public boolean compileAOTOnCreate;
 
     // computed fields.
     @CompilationFinal public int callThresholdInInterpreter;
@@ -249,12 +251,13 @@ public final class EngineData {
         this.compileOnly = options.get(CompileOnly);
         this.compileImmediately = options.get(CompileImmediately);
         this.multiTier = !compileImmediately && options.get(MultiTier);
+        this.compileAOTOnCreate = options.get(CompileAOTOnCreate);
 
         this.returnTypeSpeculation = options.get(ReturnTypeSpeculation);
         this.argumentTypeSpeculation = options.get(ArgumentTypeSpeculation);
         this.traceCompilation = options.get(TraceCompilation);
         this.traceCompilationDetails = options.get(TraceCompilationDetails);
-        this.backgroundCompilation = options.get(BackgroundCompilation);
+        this.backgroundCompilation = options.get(BackgroundCompilation) && !compileAOTOnCreate;
         this.callThresholdInInterpreter = computeCallThresholdInInterpreter(options);
         this.callAndLoopThresholdInInterpreter = computeCallAndLoopThresholdInInterpreter(options);
         this.callThresholdInFirstTier = computeCallThresholdInFirstTier(options);
