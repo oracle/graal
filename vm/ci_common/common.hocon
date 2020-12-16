@@ -355,6 +355,7 @@ builds += [
   # Linux/AARCH64
   ${vm_java_11} ${full_vm_build_linux_aarch64} ${linux-deploy} ${deploy_vm_linux_aarch64} {
     run: [
+      [set-export, VM_ENV, "${VM_ENV}-aarch64"]
       ${mx_vm_installables} [--dynamicimports, ${vm_extra_suites_aarch64}, "--exclude-components="${non-product-vm-components}, build]
       ${mx_vm_installables} [--dynamicimports, ${vm_extra_suites_aarch64}, "--exclude-components="${non-product-vm-components}] ${maven_deploy_sdk_components}
     ] ${collect_profiles} [
