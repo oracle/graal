@@ -898,7 +898,7 @@ public class NativeImage {
                     } catch (NoSuchFileException e) {
                         /* Fallthrough */
                     }
-                } else if (Files.isReadable(classpathEntry)) {
+                } else if (ClasspathUtils.isJar(classpathEntry)) {
                     jarFileMatches = Collections.singletonList(classpathEntry);
                 }
 
@@ -985,7 +985,7 @@ public class NativeImage {
             } catch (IOException e) {
                 throw NativeImage.showError("Error while expanding wildcard for '" + path + "'", e);
             }
-        } else if (!Files.isDirectory(path)) {
+        } else if (ClasspathUtils.isJar(path)) {
             processJarManifestMainAttributes(path, manifestConsumer);
         }
     }
