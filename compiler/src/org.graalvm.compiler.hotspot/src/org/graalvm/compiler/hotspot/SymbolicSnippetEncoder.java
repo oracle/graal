@@ -1041,7 +1041,7 @@ public class SymbolicSnippetEncoder {
         @Override
         protected void finalizeGraph(StructuredGraph graph) {
             if (substitutedMethod != null) {
-                for (MethodCallTargetNode target : graph.getNodes().filter(MethodCallTargetNode.class)) {
+                for (MethodCallTargetNode target : graph.getNodes(MethodCallTargetNode.TYPE)) {
                     if (substitutedMethod.equals(target.targetMethod())) {
                         // Replace call to original method with a placeholder
                         PartialIntrinsicCallTargetNode partial = graph.add(
