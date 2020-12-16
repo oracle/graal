@@ -347,7 +347,24 @@ class SulongVm(CExecutionEnvironmentMixin, GuestVm):
                             props + \
                             ['-XX:-UseJVMCIClassLoader', self.launcherClass()]
             result = self.host_vm().run(cwd, sulongCmdLine + launcher_args)
-        return result
+
+        # Prepending the summary lines by the run number
+        ret_code, out, vm_dims = result
+        newResult = ""
+        forkNum1 = 0
+        forkNum2 = 0
+        for line in out.splitlines():
+            if line.startswith("first"):
+                newResult += "run " + str(forkNum1) + " " + line + "\n"
+                forkNum1 += 1
+                continue
+            if line.startswith("last"):
+                newResult += "run " + str(forkNum2) + " " + line + "\n"
+                forkNum2 += 1
+                continue
+            newResult += line + "\n"
+
+        return ret_code, newResult, vm_dims
 
     def prepare_env(self, env):
         # if hasattr(self.host_vm(), 'run_launcher'):
@@ -389,29 +406,6 @@ class SulongMultiContextVm(SulongVm):
 
     def launcherName(self):
         return "llimul"
-
-    def run(self, cwd, args):
-        ret_code, out, vm_dims = super(SulongMultiContextVm, self).run(cwd, args)
-
-        # Prepending the summary lines by the run number
-        newText = ""
-        forkNum1 = 0
-        forkNum2 = 0
-        for line in out.splitlines():
-            if line.startswith("first"):
-                newText += "run " + str(forkNum1) + " " + line + "\n"
-                forkNum1 += 1
-                continue
-            if line.startswith("last"):
-                newText += "run " + str(forkNum2) + " " + line + "\n"
-                forkNum2 += 1
-                continue
-            newText += line + "\n"
-
-        out = newText
-
-        return ret_code, out, vm_dims
-
 
 _suite = mx.suite("sulong")
 
