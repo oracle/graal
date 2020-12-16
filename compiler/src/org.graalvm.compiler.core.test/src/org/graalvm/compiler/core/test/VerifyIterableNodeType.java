@@ -22,7 +22,7 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package org.graalvm.compiler.hotspot.test;
+package org.graalvm.compiler.core.test;
 
 import org.graalvm.compiler.graph.Graph;
 import org.graalvm.compiler.graph.IterableNodeType;
@@ -38,8 +38,6 @@ import org.graalvm.compiler.nodes.java.MethodCallTargetNode;
 import org.graalvm.compiler.nodes.spi.CoreProviders;
 import org.graalvm.compiler.phases.VerifyPhase;
 
-import jdk.vm.ci.hotspot.HotSpotObjectConstant;
-import jdk.vm.ci.meta.JavaConstant;
 import jdk.vm.ci.meta.MetaAccessProvider;
 import jdk.vm.ci.meta.ResolvedJavaMethod;
 import jdk.vm.ci.meta.ResolvedJavaType;
@@ -49,13 +47,14 @@ import jdk.vm.ci.meta.ResolvedJavaType;
  * {@link StructuredGraph#getNodes(org.graalvm.compiler.graph.NodeClass)} and not
  * {@linkplain NodeIterable#filter(Class)} to access a subset of a {@link Graph}.
  */
-public class VerifyIterableNodeTypes extends VerifyPhase<CoreProviders> {
+public class VerifyIterableNodeType extends VerifyPhase<CoreProviders> {
 
     @Override
     protected void verify(StructuredGraph graph, CoreProviders context) {
         ResolvedJavaMethod caller = graph.method();
         MetaAccessProvider metaAccess = context.getMetaAccess();
         final ResolvedJavaType nodeIterableType = metaAccess.lookupJavaType(NodeIterable.class);
+        final ResolvedJavaType iterableNodeType = metaAccess.lookupJavaType(IterableNodeType.class);
         final ResolvedJavaType classType = metaAccess.lookupJavaType(Class.class);
         final ResolvedJavaType graphType = metaAccess.lookupJavaType(Graph.class);
         for (MethodCallTargetNode t : graph.getNodes(MethodCallTargetNode.TYPE)) {
@@ -69,21 +68,18 @@ public class VerifyIterableNodeTypes extends VerifyPhase<CoreProviders> {
                         if (callee.getName().equals("filter")) {
                             ResolvedJavaMethod.Parameter[] params = callee.getParameters();
                             if (params.length == 1 && params[0].getType().equals(classType)) {
+                                // call to filter
                                 ValueNode v = t.arguments().get(1);
-                                assert classType.isAssignableFrom(v.stamp(NodeView.DEFAULT).javaType(metaAccess)) : "Need to have a class type parameter.";
+                                ResolvedJavaType javaType = v.stamp(NodeView.DEFAULT).javaType(metaAccess);
+                                assert classType.isAssignableFrom(javaType) : "Need to have a class type parameter.";
                                 if (v instanceof ConstantNode) {
                                     ConstantNode c = (ConstantNode) v;
-                                    JavaConstant cj = c.asJavaConstant();
-                                    if (cj instanceof HotSpotObjectConstant) {
-                                        HotSpotObjectConstant hob = (HotSpotObjectConstant) cj;
-                                        Object classConstant = hob.asObject(classType);
-                                        Class<?> clazz = (Class<?>) classConstant;
-                                        if (IterableNodeType.class.isAssignableFrom(clazz)) {
-                                            throw new VerificationError(
-                                                            "Call to %s at callsite %s is prohibited. Argument node class %s implements IterableNodeType. Use graph.getNodes(IterableNodeType.TYPE) instead.",
-                                                            callee.format("%H.%n(%p)"),
-                                                            caller.format("%H.%n(%p)"), clazz);
-                                        }
+                                    javaType = context.getConstantReflection().asJavaType(c.asConstant());
+                                    if (iterableNodeType.isAssignableFrom(javaType)) {
+                                        throw new VerificationError(
+                                                        "Call to %s at callsite %s is prohibited. Argument node class %s implements IterableNodeType. Use graph.getNodes(IterableNodeType.TYPE) instead.",
+                                                        callee.format("%H.%n(%p)"),
+                                                        caller.format("%H.%n(%p)"), javaType.toJavaName());
                                     }
                                 }
                             }
@@ -93,5 +89,4 @@ public class VerifyIterableNodeTypes extends VerifyPhase<CoreProviders> {
             }
         }
     }
-
 }

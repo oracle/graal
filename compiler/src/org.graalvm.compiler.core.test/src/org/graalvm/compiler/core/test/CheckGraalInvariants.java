@@ -253,19 +253,11 @@ public class CheckGraalInvariants extends GraalCompilerTest {
     @Test
     public void test() {
         assumeManagementLibraryIsLoadable();
-        test(new CheckGraalInvariants());
-    }
-
-    public void test(CheckGraalInvariants invariantsCheck) {
-        invariantsCheck.runTest(new InvariantsTool());
-    }
-
-    public List<VerifyPhase<CoreProviders>> getInitialVerifiers() {
-        return new ArrayList<>();
+        runTest(new InvariantsTool());
     }
 
     @SuppressWarnings("try")
-    public void runTest(InvariantsTool tool) {
+    public static void runTest(InvariantsTool tool) {
         RuntimeProvider rt = Graal.getRequiredCapability(RuntimeProvider.class);
         Providers providers = rt.getHostBackend().getProviders();
         MetaAccessProvider metaAccess = providers.getMetaAccess();
@@ -337,7 +329,7 @@ public class CheckGraalInvariants extends GraalCompilerTest {
 
         List<String> errors = Collections.synchronizedList(new ArrayList<>());
 
-        List<VerifyPhase<CoreProviders>> verifiers = getInitialVerifiers();
+        List<VerifyPhase<CoreProviders>> verifiers = new ArrayList<>();
 
         // If you add a new type to test here, be sure to add appropriate
         // methods to the BadUsageWithEquals class below
@@ -364,6 +356,7 @@ public class CheckGraalInvariants extends GraalCompilerTest {
         verifiers.add(new VerifyGetOptionsUsage());
         verifiers.add(new VerifyUnsafeAccess());
         verifiers.add(new VerifyVariableCasts());
+        verifiers.add(new VerifyIterableNodeType());
 
         loadVerifiers(verifiers);
 
