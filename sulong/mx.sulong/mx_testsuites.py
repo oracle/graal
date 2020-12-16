@@ -116,11 +116,12 @@ class SulongTestSuite(SulongTestSuiteBase):  # pylint: disable=too-many-ancestor
                  buildSharedObject=False, **args):
         projectDir = args.pop('dir', None)
         if projectDir:
-            d = os.path.join(suite.dir, projectDir)
+            d_rel = projectDir
         elif subDir is None:
-            d = os.path.join(suite.dir, name)
+            d_rel = name
         else:
-            d = os.path.join(suite.dir, subDir, name)
+            d_rel = os.path.join(subDir, name)
+        d = os.path.join(suite.dir, d_rel.replace('/', os.sep))
         super(SulongTestSuite, self).__init__(suite, name, subDir, deps, workingSets, results, output, d, **args)
         self.vpath = True
         self.buildRef = buildRef

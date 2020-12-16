@@ -1118,11 +1118,12 @@ class AbstractSulongNativeProject(mx.NativeProject):  # pylint: disable=too-many
     def __init__(self, suite, name, deps, workingSets, subDir, results=None, output=None, **args):
         projectDir = args.pop('dir', None)
         if projectDir:
-            d = join(suite.dir, projectDir)
+            d_rel = projectDir
         elif subDir is None:
-            d = join(suite.dir, name)
+            d_rel = name
         else:
-            d = join(suite.dir, subDir, name)
+            d_rel = os.path.join(subDir, name)
+        d = os.path.join(suite.dir, d_rel.replace('/', os.sep))
         srcDir = args.pop('sourceDir', d)
         if not srcDir:
             mx.abort("Exactly one 'sourceDir' is required")
