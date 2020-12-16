@@ -44,11 +44,53 @@ import java.util.Arrays;
 import java.util.Objects;
 
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
+import com.oracle.truffle.regex.result.RegexResult;
 import com.oracle.truffle.regex.tregex.parser.flavors.PythonFlavor;
 import com.oracle.truffle.regex.tregex.parser.flavors.RegexFlavor;
 import com.oracle.truffle.regex.tregex.parser.flavors.RubyFlavor;
 import com.oracle.truffle.regex.tregex.string.Encodings;
 
+/**
+ * These options define how TRegex should interpret a given parsing request.
+ * <p>
+ * Available options:
+ * <ul>
+ * <li><b>Flavor</b>: specifies the regex dialect to use. Possible values:
+ * <ul>
+ * <li><b>ECMAScript</b>: ECMAScript/JavaScript syntax (default).</li>
+ * <li><b>PythonStr</b>: regular Python 3 syntax.</li>
+ * <li><b>PythonBytes</b> Python 3 syntax, but for {@code bytes}-objects.</li>
+ * <li><b>Ruby</b>: ruby syntax.</li>
+ * </ul>
+ * </li>
+ * <li><b>Encoding</b>: specifies the string encoding to match against. Possible values:
+ * <ul>
+ * <li><b>UTF-8</b></li>
+ * <li><b>UTF-16</b></li>
+ * <li><b>UTF-32</b></li>
+ * <li><b>LATIN-1</b></li>
+ * <li><b>BYTES</b> (equivalent to LATIN-1)</li>
+ * </ul>
+ * </li>
+ * <li><b>Validate</b>: don't generate a regex matcher object, just check the regex for syntax
+ * errors.</li>
+ * <li><b>U180EWhitespace</b>: treat 0x180E MONGOLIAN VOWEL SEPARATOR as part of {@code \s}. This is
+ * a legacy feature for languages using a Unicode standard older than 6.3, such as ECMAScript 6 and
+ * older.</li>
+ * <li><b>UTF16ExplodeAstralSymbols</b>: generate one DFA states per (16 bit) {@code char} instead
+ * of per-codepoint. This may improve performance in certain scenarios, but increases the likelihood
+ * of DFA state explosion.</li>
+ * <li><b>AlwaysEager</b>: do not generate any lazy regex matchers (lazy in the sense that they may
+ * lazily compute properties of a {@link RegexResult}).</li>
+ * <li><b>RegressionTestMode</b>: exercise all supported regex matcher variants, and check if they
+ * produce the same results.</li>
+ * <li><b>DumpAutomata</b>: dump all generated parser trees, NFA, and DFA to disk. This will
+ * generate debugging dumps of most relevant data structures in JSON, GraphViz and LaTex
+ * format.</li>
+ * <li><b>StepExecution</b>: dump tracing information about all DFA matcher runs.</li>
+ * </ul>
+ * All options except {@code Flavor} and {@code Encoding} are boolean and {@code false} by default.
+ */
 public final class RegexOptions {
 
     private static final int U180E_WHITESPACE = 1;
