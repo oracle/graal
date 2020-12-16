@@ -167,7 +167,7 @@ class BitSet {
         String fieldName = name + "_";
         LocalVariable var = new LocalVariable(type, name, null);
         CodeTreeBuilder init = builder.create();
-        init.tree(CodeTreeBuilder.singleString(fieldName));
+        init.string("this.").tree(CodeTreeBuilder.singleString(fieldName));
         builder.tree(var.createDeclaration(init.build()));
         frameState.set(name, var);
         return builder.build();
@@ -256,7 +256,7 @@ class BitSet {
         return builder.build();
     }
 
-    public CodeTree createContains(FrameState frameState, Object[] elements) {
+    public CodeTree createContains(FrameState frameState, Object... elements) {
         CodeTreeBuilder builder = CodeTreeBuilder.createBuilder();
         builder.tree(createMaskedReference(frameState, elements));
         builder.string(" != 0");
@@ -289,7 +289,7 @@ class BitSet {
         return element.toString();
     }
 
-    public CodeTree createNotContains(FrameState frameState, Object[] elements) {
+    public CodeTree createNotContains(FrameState frameState, Object... elements) {
         CodeTreeBuilder builder = CodeTreeBuilder.createBuilder();
         builder.startParantheses();
         builder.tree(createMaskedReference(frameState, elements));
@@ -322,6 +322,10 @@ class BitSet {
         return builder.build();
     }
 
+    public CodeTree createSetZero(FrameState frameState, boolean persist) {
+        return createSet(frameState, persist, CodeTreeBuilder.singleString("0"), false);
+    }
+
     public CodeTree createSet(FrameState frameState, Object[] elements, boolean value, boolean persist) {
         CodeTreeBuilder valueBuilder = CodeTreeBuilder.createBuilder();
         boolean hasLocal = createLocalReference(frameState) != null;
@@ -341,7 +345,10 @@ class BitSet {
                 valueBuilder.string(" /* ", label("remove"), toString(elements, ", "), " */");
             }
         }
+        return createSet(frameState, persist, valueBuilder.build(), elements.length > 0);
+    }
 
+    private CodeTree createSet(FrameState frameState, boolean persist, CodeTree valueTree, boolean update) {
         CodeTreeBuilder builder = CodeTreeBuilder.createBuilder();
         builder.startStatement();
         if (persist) {
@@ -349,15 +356,14 @@ class BitSet {
 
             // if there is a local variable we need to update it as well
             CodeTree localReference = createLocalReference(frameState);
-            if (localReference != null && elements.length > 0) {
+            if (localReference != null && update) {
                 builder.tree(localReference).string(" = ");
             }
         } else {
             builder.tree(createReference(frameState)).string(" = ");
         }
-        builder.tree(valueBuilder.build());
+        builder.tree(valueTree);
         builder.end(); // statement
-
         return builder.build();
     }
 

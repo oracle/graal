@@ -93,6 +93,7 @@ public class TruffleTypes {
     public static final String NodeUtil_Name = "com.oracle.truffle.api.nodes.NodeUtil";
     public static final String Option_Group_Name = "com.oracle.truffle.api.Option.Group";
     public static final String Option_Name = "com.oracle.truffle.api.Option";
+    public static final String Profile_Name = "com.oracle.truffle.api.profiles.Profile";
     public static final String SlowPathException_Name = "com.oracle.truffle.api.nodes.SlowPathException";
     public static final String SourceSection_Name = "com.oracle.truffle.api.source.SourceSection";
     public static final String TruffleLanguage_ContextReference_Name = "com.oracle.truffle.api.TruffleLanguage.ContextReference";
@@ -123,6 +124,7 @@ public class TruffleTypes {
     public final DeclaredType NodeInfo = c.getDeclaredType(NodeInfo_Name);
     public final DeclaredType NodeInterface = c.getDeclaredType(NodeInterface_Name);
     public final DeclaredType NodeUtil = c.getDeclaredType(NodeUtil_Name);
+    public final DeclaredType Profile = c.getDeclaredTypeOptional(Profile_Name);
     public final DeclaredType SlowPathException = c.getDeclaredType(SlowPathException_Name);
     public final DeclaredType SourceSection = c.getDeclaredType(SourceSection_Name);
     public final DeclaredType TruffleLanguage = c.getDeclaredType(TruffleLanguage_Name);
@@ -145,6 +147,9 @@ public class TruffleTypes {
     public static final String CreateCast_Name = "com.oracle.truffle.api.dsl.CreateCast";
     public static final String Executed_Name = "com.oracle.truffle.api.dsl.Executed";
     public static final String Fallback_Name = "com.oracle.truffle.api.dsl.Fallback";
+    public static final String GenerateAOT_Name = "com.oracle.truffle.api.dsl.GenerateAOT";
+    public static final String GenerateAOT_Exclude_Name = "com.oracle.truffle.api.dsl.GenerateAOT.Exclude";
+    public static final String GenerateAOT_Provider_Name = "com.oracle.truffle.api.dsl.GenerateAOT.Provider";
     public static final String GeneratedBy_Name = "com.oracle.truffle.api.dsl.GeneratedBy";
     public static final String GenerateNodeFactory_Name = "com.oracle.truffle.api.dsl.GenerateNodeFactory";
     public static final String GenerateUncached_Name = "com.oracle.truffle.api.dsl.GenerateUncached";
@@ -180,6 +185,9 @@ public class TruffleTypes {
     public final DeclaredType CreateCast = c.getDeclaredType(CreateCast_Name);
     public final DeclaredType Executed = c.getDeclaredType(Executed_Name);
     public final DeclaredType Fallback = c.getDeclaredType(Fallback_Name);
+    public final DeclaredType GenerateAOT = c.getDeclaredType(GenerateAOT_Name);
+    public final DeclaredType GenerateAOT_Exclude = c.getDeclaredType(GenerateAOT_Exclude_Name);
+    public final DeclaredType GenerateAOT_Provider = c.getDeclaredType(GenerateAOT_Provider_Name);
     public final DeclaredType GeneratedBy = c.getDeclaredType(GeneratedBy_Name);
     public final DeclaredType GenerateNodeFactory = c.getDeclaredType(GenerateNodeFactory_Name);
     public final DeclaredType GenerateUncached = c.getDeclaredType(GenerateUncached_Name);

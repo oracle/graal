@@ -313,6 +313,11 @@ public final class NodeParser extends AbstractParser<NodeData> {
             node.setGenerateStatistics(true);
         }
 
+        AnnotationMirror generateAOT = findFirstAnnotation(lookupTypes, types.GenerateAOT);
+        if (generateAOT != null) {
+            node.setGenerateAOT(true);
+        }
+
         AnnotationMirror reportPolymorphism = findFirstAnnotation(lookupTypes, types.ReportPolymorphism);
         AnnotationMirror excludePolymorphism = findFirstAnnotation(lookupTypes, types.ReportPolymorphism_Exclude);
         if (reportPolymorphism != null && excludePolymorphism == null) {
@@ -341,10 +346,13 @@ public final class NodeParser extends AbstractParser<NodeData> {
         initializeSpecializations(members, node);
         initializeExecutableTypeHierarchy(node);
         initializeReceiverBound(node);
+
         if (node.hasErrors()) {
             return node;  // error sync point
         }
+
         initializeUncachable(node);
+        initializeAOT(node);
 
         if (mode == ParseMode.DEFAULT) {
             boolean emitWarnings = TruffleProcessorOptions.cacheSharingWarningsEnabled(processingEnv) && //
@@ -364,6 +372,125 @@ public final class NodeParser extends AbstractParser<NodeData> {
             removeFastPathSpecializations(node);
         }
         return node;
+    }
+
+    private void initializeAOT(NodeData node) {
+        if (!node.isGenerateAOT()) {
+            return;
+        }
+
+        // apply exclude rules
+        for (SpecializationData specialization : node.getSpecializations()) {
+            if (!specialization.isReachable() || specialization.getMethod() == null) {
+                continue;
+            }
+            AnnotationMirror mirror = ElementUtils.findAnnotationMirror(specialization.getMethod(), types.GenerateAOT_Exclude);
+            if (mirror != null) {
+                // explicitly excluded
+                continue;
+            }
+
+            specialization.setPrepareForAOT(true);
+        }
+
+        // exclude uncached specializations
+        for (SpecializationData specialization : node.getSpecializations()) {
+            if (specialization.getUncachedSpecialization() != null) {
+                specialization.getUncachedSpecialization().setPrepareForAOT(false);
+            }
+        }
+
+        // second pass to remove replaced specializations
+        outer: for (SpecializationData specialization : node.getSpecializations()) {
+            if (!specialization.isPrepareForAOT()) {
+                continue;
+            }
+
+            // not reachable during AOT
+            for (SpecializationData otherSpecialization : node.getSpecializations()) {
+                if (otherSpecialization.getReplaces().contains(specialization) && otherSpecialization.isPrepareForAOT()) {
+                    specialization.setPrepareForAOT(false);
+                    continue outer;
+                }
+            }
+        }
+
+        // third pass validate included specializations
+        outer: for (SpecializationData specialization : node.getSpecializations()) {
+            if (!specialization.isPrepareForAOT()) {
+                continue;
+            }
+
+            for (CacheExpression cache : specialization.getCaches()) {
+
+                TypeMirror type = cache.getParameter().getType();
+                if (NodeCodeGenerator.isSpecializedNode(type)) {
+                    List<TypeElement> lookupTypes = collectSuperClasses(new ArrayList<TypeElement>(), ElementUtils.castTypeElement(type));
+                    AnnotationMirror generateAOT = findFirstAnnotation(lookupTypes, types.GenerateAOT);
+                    if (generateAOT == null) {
+                        cache.addError("Failed to generate code for @%s: " + //
+                                        "Referenced node type cannot be initialized for AOT." + //
+                                        "Resolve this problem by either: %n" + //
+                                        " - Exclude this specialization from AOT with @%s.%s if it is acceptable to deoptimize for this specialization in AOT compiled code. %n" + //
+                                        " - Configure the specialization to be replaced with a more generic specialization. %n" + //
+                                        " - Remove the cached parameter value. %n" + //
+                                        " - Add the @%s annotation to node type '%s' or one of its super types.",
+                                        getSimpleName(types.GenerateAOT),
+                                        getSimpleName(types.GenerateAOT), getSimpleName(types.GenerateAOT_Exclude),
+                                        getSimpleName(types.GenerateAOT),
+                                        getSimpleName(type));
+                        continue;
+                    }
+                }
+
+                if (cache.isCachedLibrary() && cache.getCachedLibraryLimit() != null && !cache.getCachedLibraryLimit().equals("")) {
+                    cache.addError("Failed to generate code for @%s: " + //
+                                    "@%s with automatic dispatch cannot be prepared for AOT." + //
+                                    "Resolve this problem by either: %n" + //
+                                    " - Exclude this specialization from AOT with @%s.%s if it is acceptable to deoptimize for this specialization in AOT compiled code. %n" + //
+                                    " - Configure the specialization to be replaced with a more generic specialization. %n" + //
+                                    " - Remove the cached parameter value. %n" + //
+                                    " - Define a cached library initializer expression for manual dispatch.",
+                                    getSimpleName(types.GenerateAOT),
+                                    getSimpleName(types.CachedLibrary),
+                                    getSimpleName(types.GenerateAOT), getSimpleName(types.GenerateAOT_Exclude));
+                    continue;
+                }
+
+                if (specialization.isDynamicParameterBound(cache.getDefaultExpression(), true)) {
+
+                    /*
+                     * We explicitly support cached language references and lookups thereof in AOT.
+                     * But the generated code introduces a check to ensure that only the language of
+                     * the root node is used.
+                     */
+                    boolean onlyLanguageReferences = true;
+                    Set<CacheExpression> boundCaches = specialization.getBoundCaches(cache.getDefaultExpression(), false);
+                    for (CacheExpression bound : boundCaches) {
+                        if (!bound.isCachedLanguage()) {
+                            onlyLanguageReferences = false;
+                            break;
+                        }
+                    }
+                    if (onlyLanguageReferences && cache.getDefaultExpression().findBoundVariableElements().size() == boundCaches.size()) {
+                        continue;
+                    }
+
+                    cache.addError("Failed to generate code for @%s: " + //
+                                    "Cached values in specializations included for AOT must not bind dynamic values. " + //
+                                    "Such caches are only allowed to bind static values, values read from the node or values from the current language instance using a language reference. " + //
+                                    "Resolve this problem by either: %n" + //
+                                    " - Exclude this specialization from AOT with @%s.%s if it is acceptable to deoptimize for this specialization in AOT compiled code. %n" + //
+                                    " - Configure the specialization to be replaced with a more generic specialization. %n" + //
+                                    " - Remove the cached parameter value. %n" + //
+                                    " - Avoid binding dynamic parameters in the cache initializer expression.",
+                                    getSimpleName(types.GenerateAOT),
+                                    getSimpleName(types.GenerateAOT), getSimpleName(types.GenerateAOT_Exclude));
+                    continue outer;
+                }
+            }
+        }
+
     }
 
     public static Map<CacheExpression, String> computeSharing(Element templateType, Collection<NodeData> nodes, boolean emitSharingWarnings) {

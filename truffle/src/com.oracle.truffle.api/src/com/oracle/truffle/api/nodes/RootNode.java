@@ -449,6 +449,7 @@ public abstract class RootNode extends ExecutableNode {
      * <li>Initialize local variable types in the {@link FrameDescriptor} of the root node. Without
      * that any access to the frame will invalidate the code on first execute.
      * <li>Initialize specializing nodes with profiles that do not invalidate on first execution.
+     * For initialization of Truffle DSL nodes see {@link com.oracle.truffle.api.dsl.AOTSupport}.
      * <li>Compute the expected execution signature of a root node and return it.
      * </ul>
      * <p>
