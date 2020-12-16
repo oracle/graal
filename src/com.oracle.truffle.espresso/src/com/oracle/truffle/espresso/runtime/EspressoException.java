@@ -64,6 +64,12 @@ public final class EspressoException extends RuntimeException implements com.ora
         return Meta.toHostStringStatic((StaticObject) e.getKlass().lookupMethod(Name.getMessage, Signature.String).invokeDirect(e));
     }
 
+    @SuppressWarnings("sync-override")
+    @Override
+    public Throwable fillInStackTrace() {
+        return this;
+    }
+
     @Override
     public StaticObject getExceptionObject() {
         return exception;
