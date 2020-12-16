@@ -7,6 +7,7 @@ This changelog summarizes major changes between Truffle versions relevant to lan
 * Added `TruffleContext.isCancelling()` to check whether a truffle context is being cancelled.
 * Added `TruffleInstrument.Env.calculateContextHeapSize(TruffleContext, long, AtomicBoolean)` to calculate the heap size retained by a a context.
 * Added `ContextsListener.onLanguageContextCreate`, `ContextsListener.onLanguageContextCreateFailed`, `ContextsListener.onLanguageContextInitialize`, and `ContextsListener.onLanguageContextInitializeFailed`  to allow instruments to listen to language context creation start events, language context creation failure events, language context initialization start events, and language context initialization failure events, respectively.
+* Profiles now can be disabled using `Profile.disable()` and reset using `Profile.reset()`.
 
 ## Version 21.0.0
 * If an `AbstractTruffleException` is thrown from the `ContextLocalFactory`, `ContextThreadLocalFactory` or event listener, which is called during the context enter, the excepion interop messages are executed without a context being entered. The event listeners called during the context enter are:

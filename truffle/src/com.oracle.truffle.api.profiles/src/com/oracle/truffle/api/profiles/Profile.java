@@ -128,6 +128,25 @@ public abstract class Profile extends NodeCloneable {
         return String.format("%s(DISABLED)", profileClass.getSimpleName());
     }
 
+    /**
+     * Disables this profile by setting it to its generic state. After disabling it is guaranteed to
+     * never {@link CompilerDirectives#transferToInterpreterAndInvalidate() deoptimize} on any
+     * invocation of a profile method.
+     *
+     * @since 21.1
+     */
+    public void disable() {
+    }
+
+    /**
+     * Resets this profile to its uninitialized state. Has no effect if this profile is already in
+     * its uninitialized state or a disabled version of this profile is used.
+     *
+     * @since 21.1
+     */
+    public void reset() {
+    }
+
     String toString(Class<?> profileClass, boolean uninitialized, boolean generic, String specialization) {
         String s;
         if (uninitialized) {

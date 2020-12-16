@@ -108,6 +108,16 @@ public abstract class BranchProfile extends Profile {
         }
 
         @Override
+        public void disable() {
+            visited = true;
+        }
+
+        @Override
+        public void reset() {
+            visited = false;
+        }
+
+        @Override
         public String toString() {
             return toString(BranchProfile.class, !visited, false, "VISITED");
         }

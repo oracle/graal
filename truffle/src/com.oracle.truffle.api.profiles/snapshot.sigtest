@@ -83,6 +83,8 @@ supr com.oracle.truffle.api.profiles.ValueProfile
 hcls Disabled,Enabled
 
 CLSS public abstract com.oracle.truffle.api.profiles.Profile
+meth public void disable()
+meth public void reset()
 supr com.oracle.truffle.api.nodes.NodeCloneable
 
 CLSS public abstract com.oracle.truffle.api.profiles.ValueProfile
@@ -93,8 +95,6 @@ meth public static com.oracle.truffle.api.profiles.ValueProfile createIdentityPr
 meth public static com.oracle.truffle.api.profiles.ValueProfile getUncached()
 supr com.oracle.truffle.api.profiles.Profile
 hcls Disabled,Equality,ExactClass,Identity
-
-CLSS abstract interface com.oracle.truffle.api.profiles.package-info
 
 CLSS public abstract interface java.lang.Cloneable
 

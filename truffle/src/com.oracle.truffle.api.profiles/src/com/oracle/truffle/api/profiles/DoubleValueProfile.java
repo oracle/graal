@@ -116,7 +116,7 @@ public abstract class DoubleValueProfile extends Profile {
 
         @CompilationFinal private double cachedValue;
         @CompilationFinal private long cachedRawValue;
-        @CompilationFinal private byte state = 0;
+        @CompilationFinal private byte state = UNINITIALIZED;
 
         @Override
         public double profile(double value) {
@@ -137,6 +137,16 @@ public abstract class DoubleValueProfile extends Profile {
                 }
             }
             return value;
+        }
+
+        @Override
+        public void disable() {
+            this.state = GENERIC;
+        }
+
+        @Override
+        public void reset() {
+            this.state = UNINITIALIZED;
         }
 
         boolean isGeneric() {
