@@ -13,9 +13,8 @@ overlay = ${ci.overlay}
 devkits: {
   windows-oraclejdk8: { packages : { "devkit:VS2017-15.9.16+1" : "==0" }},
   windows-openjdk8:   { packages : { "devkit:VS2017-15.5.5+1"  : "==0" }},
-  windows-jdk11:      { packages : { "devkit:VS2017-15.9.16+1" : "==0" }},
+  windows-jdk11:      { packages : { "devkit:VS2017-15.9.24+1" : "==0" }},
   windows-jdk15:      { packages : { "devkit:VS2019-16.5.3+1" : "==0" }},
-
 }
 
 # This must always point to HEAD in the master branch but can be used to point
