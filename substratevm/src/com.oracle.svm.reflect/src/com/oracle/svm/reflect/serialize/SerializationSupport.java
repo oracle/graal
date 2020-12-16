@@ -46,6 +46,7 @@ import org.graalvm.nativeimage.Platforms;
 import org.graalvm.nativeimage.hosted.Feature.FeatureAccess;
 
 import com.oracle.graal.pointsto.BigBang;
+import com.oracle.svm.core.RuntimeAssertionsSupport;
 import com.oracle.svm.core.jdk.Package_jdk_internal_reflect;
 import com.oracle.svm.core.jdk.serialize.SerializationRegistry;
 import com.oracle.svm.core.option.SubstrateOptionsParser;
@@ -280,8 +281,9 @@ public class SerializationSupport implements SerializationRegistry {
                 sb.append(targetClassName).append(": build time checksum: ").append(buildTimeChecksum);
                 reportError(access, CHECKSUM_VERIFY_FAIL, sb.toString());
             }
+            SerializationChecksumCalculator.printUsageWarning();
         }
-        return buildTimeChecksum;
+        return RuntimeAssertionsSupport.Options.RuntimeSystemAssertions.getValue() ? buildTimeChecksum : "";
     }
 
     @Override
@@ -301,8 +303,12 @@ public class SerializationSupport implements SerializationRegistry {
         } else {
             Object accessor = ret.serializationConstructorAccessor;
             String configuredChecksum = ret.configuredChecksum;
-            String runtimeChecksum;
 
+            if (configuredChecksum.isEmpty()) {
+                return accessor;
+            }
+
+            String runtimeChecksum;
             if (isAbstract) {
                 runtimeChecksum = "0";
             } else {
@@ -314,7 +320,7 @@ public class SerializationSupport implements SerializationRegistry {
                 }
             }
             // configuredChecksum could be null if it is not set in the configuration.
-            if (configuredChecksum == null || configuredChecksum.equals(runtimeChecksum)) {
+            if (configuredChecksum.equals(runtimeChecksum)) {
                 return accessor;
             } else {
                 throw VMError.unimplemented("Serialization target class " + serializationTargetClassName + "'s hierarchy has been changed at run time. Configured checksum is " + configuredChecksum +
