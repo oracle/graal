@@ -26,6 +26,19 @@ import com.oracle.truffle.espresso.runtime.StaticObject;
 import com.oracle.truffle.espresso.substitutions.Host;
 import com.oracle.truffle.espresso.vm.InterpreterToVM;
 
+/**
+ * Wrapper to expose guest class loading as an non-enumerable interop map.
+ *
+ * <p>
+ * Classes cannot be enumerated; and in this implementation, not even the ones already loaded. e.g.
+ * {@link InteropLibrary#getMembers(Object) Peeking all memebers} will return an empty interop collection.
+ * <br>
+ * {@link InteropLibrary#readMember(Object, String) Reading a member} will trigger class loading; it is equivalent
+ * to calling {@link ClassLoader#loadClass(String)} on the provided guest class loader.
+ * <br>
+ * {@link ClassNotFoundException} is translated into interop's {@link UnknownIdentifierException member not found},
+ * all other guest exceptions thrown during class loading will be propagated.
+ */
 @ExportLibrary(InteropLibrary.class)
 public final class EspressoBindings implements TruffleObject {
 
