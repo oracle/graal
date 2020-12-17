@@ -10,11 +10,11 @@ builds += [
 # ${gateTestBenchmark}  ${oraclejdk8}      ${gateDarwinAMD64}  {name: "weekly-test-compiler-benchmarktest-8-darwin-amd64"} ${graalWeekly}
 
   # Windows AMD64
-  ${gateTest}          ${oraclejdk8}       ${gateWindowsAMD64} {name: "gate-compiler-test-8-windows-amd64", timelimit: "50:00", packages: {msvc: "==10.0" }}
-  ${gateTest}          ${labsjdk-ee-15}    ${gateWindowsAMD64} {name: "gate-compiler-test-15-windows-amd64", timelimit: "50:00"} ${windows-devkit-jdk15}
-  ${gateTest}                              ${gateWindowsAMD64} {name: "daily-compiler-test-15-windows-amd64"} ${windows-devkit-jdk15} ${dailyJDK15Debug}
+  ${gateTest}          ${oraclejdk8}       ${gateWindowsAMD64} {name: "gate-compiler-test-8-windows-amd64", timelimit: "50:00"} ${devkits.windows-oraclejdk8}
+  ${gateTest}          ${labsjdk-ee-15}    ${gateWindowsAMD64} {name: "gate-compiler-test-15-windows-amd64", timelimit: "50:00"} ${devkits.windows-jdk15}
+  ${gateTest}                              ${gateWindowsAMD64} {name: "daily-compiler-test-15-windows-amd64"} ${devkits.windows-jdk15} ${dailyJDK15Debug}
 # GR-20001
-# ${gateTest}          ${labsjdk-ee-11}    ${gateWindowsAMD64} {name: "gate-compiler-test-labsjdk-ee-11-windows-amd64", timelimit: "50:00"} ${windows-devkit-jdk11}
+# ${gateTest}          ${labsjdk-ee-11}    ${gateWindowsAMD64} {name: "gate-compiler-test-labsjdk-ee-11-windows-amd64", timelimit: "50:00"} ${devkits.windows-jdk11}
 
   # Linux AMD64
   ${gateTest}          ${oraclejdk8}       ${gateLinuxAMD64}   {name: "gate-compiler-test-8-linux-amd64", timelimit: "35:00"}
