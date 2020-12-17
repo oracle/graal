@@ -40,7 +40,6 @@
  */
 package com.oracle.truffle.regex;
 
-import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.exception.AbstractTruffleException;
 import com.oracle.truffle.api.interop.ExceptionType;
 import com.oracle.truffle.api.interop.InteropLibrary;
@@ -56,12 +55,6 @@ public final class UnsupportedRegexException extends AbstractTruffleException {
 
     public UnsupportedRegexException(String reason) {
         super();
-        this.reason = reason;
-    }
-
-    @TruffleBoundary
-    public UnsupportedRegexException(String reason, Throwable cause) {
-        super(cause != null ? cause.getMessage() : null, cause, UNLIMITED_STACK_TRACE, null);
         this.reason = reason;
     }
 

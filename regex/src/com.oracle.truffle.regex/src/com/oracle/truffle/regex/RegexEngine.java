@@ -108,16 +108,12 @@ public class RegexEngine extends AbstractConstantKeysObject {
         if (flavor != null) {
             RegexFlavorProcessor flavorProcessor = flavor.forRegex(regexSource);
             flavorProcessor.validate();
-            regexObject = new RegexObject(compiler, regexSource, flavorProcessor.getFlags(), flavorProcessor.getNumberOfCaptureGroups(), flavorProcessor.getNamedCaptureGroups());
+            regexObject = new RegexObject(compiler.compile(regexSource), regexSource, flavorProcessor.getFlags(), flavorProcessor.getNumberOfCaptureGroups(), flavorProcessor.getNamedCaptureGroups());
         } else {
-            RegexValidator validator = new RegexValidator(regexSource, options);
+            RegexValidator validator = new RegexValidator(regexSource);
             validator.validate();
-            options.getFeatureSet().checkSupport(regexSource, validator.getFeatures());
-            regexObject = new RegexObject(compiler, regexSource, RegexFlags.parseFlags(regexSource.getFlags()), validator.getNumberOfCaptureGroups(), validator.getNamedCaptureGroups());
-        }
-        if (options.isRegressionTestMode()) {
-            // Force the compilation of the RegExp.
-            regexObject.getCompiledRegexObject();
+            regexObject = new RegexObject(compiler.compile(regexSource), regexSource, RegexFlags.parseFlags(regexSource.getFlags()), validator.getNumberOfCaptureGroups(),
+                            validator.getNamedCaptureGroups());
         }
         return regexObject;
     }
@@ -217,7 +213,7 @@ public class RegexEngine extends AbstractConstantKeysObject {
         } else {
             encoding = flags.indexOf('u') >= 0 && !options.isUTF16ExplodeAstralSymbols() ? Encodings.UTF_16 : Encodings.UTF_16_RAW;
         }
-        return new RegexSource(pattern, flags, encoding);
+        return new RegexSource(pattern, flags, options.withEncoding(encoding));
     }
 
     @Override

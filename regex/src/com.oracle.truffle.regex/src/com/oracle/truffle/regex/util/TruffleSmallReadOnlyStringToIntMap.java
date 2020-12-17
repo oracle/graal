@@ -76,6 +76,7 @@ public final class TruffleSmallReadOnlyStringToIntMap extends AbstractRegexObjec
         int i = 0;
         for (Map.Entry<String, Integer> entry : argMap.entrySet()) {
             keys[i++] = entry.getKey();
+            assert map[entry.getValue()] == null;
             map[entry.getValue()] = entry.getKey();
         }
         return new TruffleSmallReadOnlyStringToIntMap(keys, map);

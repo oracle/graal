@@ -63,6 +63,8 @@ public final class Encodings {
     public static final Encoding UTF_16_RAW = new Encoding.UTF16Raw();
     public static final Encoding LATIN_1 = new Encoding.Latin1();
 
+    public static final String[] ALL_NAMES = {UTF_8.getName(), UTF_16.getName(), UTF_16_RAW.getName(), UTF_32.getName(), LATIN_1.getName(), "BYTES"};
+
     public static Encoding getEncoding(String name) {
         switch (name) {
             case "UTF-8":

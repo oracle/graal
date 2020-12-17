@@ -46,7 +46,6 @@ import java.util.Map;
 
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.regex.RegexFlags;
-import com.oracle.truffle.regex.RegexOptions;
 import com.oracle.truffle.regex.RegexSource;
 import com.oracle.truffle.regex.RegexSyntaxException;
 import com.oracle.truffle.regex.UnsupportedRegexException;
@@ -59,15 +58,15 @@ public class RegexValidator {
     private final RegexLexer lexer;
     private RegexFeatures features;
 
-    public RegexValidator(RegexSource source, RegexOptions options) {
+    public RegexValidator(RegexSource source) {
         this.source = source;
         this.flags = RegexFlags.parseFlags(source.getFlags());
-        this.lexer = new RegexLexer(source, flags, options);
+        this.lexer = new RegexLexer(source, flags);
     }
 
     @TruffleBoundary
     public static void validate(RegexSource source) throws RegexSyntaxException {
-        new RegexValidator(source, RegexOptions.DEFAULT).validate();
+        new RegexValidator(source).validate();
     }
 
     @TruffleBoundary

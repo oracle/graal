@@ -132,15 +132,15 @@ public final class RegexEngineBuilder extends AbstractRegexObject {
 
     @TruffleBoundary
     private static RegexEngine createRegexEngine(RegexLanguage regexLanguage, RegexOptions options, TruffleObject fallbackCompiler) {
-        RegexCompiler compiler = createRegexCompiler(regexLanguage, options, fallbackCompiler);
+        RegexCompiler compiler = createRegexCompiler(regexLanguage, fallbackCompiler);
         return options.isRegressionTestMode() ? new RegexEngine(compiler, options) : new CachingRegexEngine(compiler, options);
     }
 
-    private static RegexCompiler createRegexCompiler(RegexLanguage regexLanguage, RegexOptions options, TruffleObject fallbackCompiler) {
+    private static RegexCompiler createRegexCompiler(RegexLanguage regexLanguage, TruffleObject fallbackCompiler) {
         if (fallbackCompiler != null) {
-            return new RegexCompilerWithFallback(new TRegexCompiler(regexLanguage, options), fallbackCompiler);
+            return new RegexCompilerWithFallback(new TRegexCompiler(regexLanguage), fallbackCompiler);
         } else {
-            return new TRegexCompiler(regexLanguage, options);
+            return new TRegexCompiler(regexLanguage);
         }
     }
 

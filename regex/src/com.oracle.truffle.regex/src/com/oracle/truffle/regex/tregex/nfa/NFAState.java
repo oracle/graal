@@ -59,7 +59,7 @@ import com.oracle.truffle.regex.tregex.util.json.Json;
 import com.oracle.truffle.regex.tregex.util.json.JsonArray;
 import com.oracle.truffle.regex.tregex.util.json.JsonConvertible;
 import com.oracle.truffle.regex.tregex.util.json.JsonObject;
-import com.oracle.truffle.regex.util.CompilationFinalBitSet;
+import com.oracle.truffle.regex.util.TBitSet;
 
 /**
  * Represents a single state in the NFA form of a regular expression. States may either be matcher
@@ -82,7 +82,7 @@ public final class NFAState extends BasicState<NFAState, NFAStateTransition> imp
     @CompilationFinal private short transitionToUnAnchoredFinalState = -1;
     @CompilationFinal private short revTransitionToAnchoredFinalState = -1;
     @CompilationFinal private short revTransitionToUnAnchoredFinalState = -1;
-    private CompilationFinalBitSet possibleResults;
+    private TBitSet possibleResults;
     private final CodePointSet matcherBuilder;
     private final Set<LookBehindAssertion> finishedLookBehinds;
 
@@ -105,7 +105,7 @@ public final class NFAState extends BasicState<NFAState, NFAStateTransition> imp
     private NFAState(short id,
                     StateSet<RegexAST, ? extends RegexASTNode> stateSet,
                     byte flags,
-                    CompilationFinalBitSet possibleResults,
+                    TBitSet possibleResults,
                     CodePointSet matcherBuilder,
                     Set<LookBehindAssertion> finishedLookBehinds) {
         super(id, EMPTY_TRANSITIONS);
@@ -267,9 +267,9 @@ public final class NFAState extends BasicState<NFAState, NFAStateTransition> imp
      * priority, so when a single 'a' is encountered when searching for a match, the pre-calculated
      * result corresponding to capture group 1 must be preferred.
      */
-    public CompilationFinalBitSet getPossibleResults() {
+    public TBitSet getPossibleResults() {
         if (possibleResults == null) {
-            return CompilationFinalBitSet.getEmptyInstance();
+            return TBitSet.getEmptyInstance();
         }
         return possibleResults;
     }
@@ -280,7 +280,7 @@ public final class NFAState extends BasicState<NFAState, NFAStateTransition> imp
 
     public void addPossibleResult(int index) {
         if (possibleResults == null) {
-            possibleResults = new CompilationFinalBitSet(TRegexOptions.TRegexTraceFinderMaxNumberOfResults);
+            possibleResults = new TBitSet(TRegexOptions.TRegexTraceFinderMaxNumberOfResults);
         }
         possibleResults.set(index);
     }

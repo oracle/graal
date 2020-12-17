@@ -64,7 +64,7 @@ import com.oracle.truffle.regex.charset.Range;
 import com.oracle.truffle.regex.charset.UnicodeProperties;
 import com.oracle.truffle.regex.tregex.buffer.CompilationBuffer;
 import com.oracle.truffle.regex.tregex.string.Encodings;
-import com.oracle.truffle.regex.util.CompilationFinalBitSet;
+import com.oracle.truffle.regex.util.TBitSet;
 
 /**
  * Implements the parsing and translating of Ruby regular expressions to ECMAScript regular
@@ -78,11 +78,11 @@ public final class RubyFlavorProcessor implements RegexFlavorProcessor {
      * Characters that are considered special in ECMAScript regexes. To match these characters, they
      * need to be escaped using a backslash.
      */
-    private static final CompilationFinalBitSet SYNTAX_CHARACTERS = CompilationFinalBitSet.valueOf('^', '$', '\\', '.', '*', '+', '?', '(', ')', '[', ']', '{', '}', '|');
+    private static final TBitSet SYNTAX_CHARACTERS = TBitSet.valueOf('^', '$', '\\', '.', '*', '+', '?', '(', ')', '[', ']', '{', '}', '|');
     /**
      * Characters that are considered special in ECMAScript regex character classes.
      */
-    private static final CompilationFinalBitSet CHAR_CLASS_SYNTAX_CHARACTERS = CompilationFinalBitSet.valueOf('\\', ']', '-', '^');
+    private static final TBitSet CHAR_CLASS_SYNTAX_CHARACTERS = TBitSet.valueOf('\\', ']', '-', '^');
 
     // Ruby's predefined character classes.
     // This one is for classes like \w, \s or \d...
@@ -268,7 +268,7 @@ public final class RubyFlavorProcessor implements RegexFlavorProcessor {
     /**
      * Characters considered as whitespace in Ruby's regex verbose mode.
      */
-    private static final CompilationFinalBitSet WHITESPACE = CompilationFinalBitSet.valueOf(' ', '\t', '\n', '\r', '\f');
+    private static final TBitSet WHITESPACE = TBitSet.valueOf(' ', '\t', '\n', '\r', '\f');
 
     /**
      * The source object of the input pattern.
@@ -419,7 +419,7 @@ public final class RubyFlavorProcessor implements RegexFlavorProcessor {
         // some of the ECMAScript regex escape sequences which are restricted to Unicode regexes.
         // It also lets us reason with a more rigid grammar (as the ECMAScript non-Unicode regexes
         // contain a lot of ambiguous syntactic constructions for backwards compatibility).
-        return new RegexSource(outPattern.toString(), globalFlags.isSticky() ? "suy" : "su", inSource.getEncoding());
+        return new RegexSource(outPattern.toString(), globalFlags.isSticky() ? "suy" : "su", inSource.getOptions());
     }
 
     private RubyFlags getLocalFlags() {
@@ -533,7 +533,7 @@ public final class RubyFlavorProcessor implements RegexFlavorProcessor {
      */
     private void emitCharNoCasing(int codepoint, boolean inCharClass) {
         if (!silent) {
-            CompilationFinalBitSet syntaxChars = inCharClass ? CHAR_CLASS_SYNTAX_CHARACTERS : SYNTAX_CHARACTERS;
+            TBitSet syntaxChars = inCharClass ? CHAR_CLASS_SYNTAX_CHARACTERS : SYNTAX_CHARACTERS;
             if (syntaxChars.get(codepoint)) {
                 emitSnippet("\\");
             }

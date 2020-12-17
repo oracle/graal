@@ -57,7 +57,7 @@ import com.oracle.truffle.regex.tregex.matchers.RangeTreeMatcher;
 import com.oracle.truffle.regex.tregex.matchers.SingleCharMatcher;
 import com.oracle.truffle.regex.tregex.matchers.SingleRangeMatcher;
 import com.oracle.truffle.regex.tregex.matchers.TwoCharMatcher;
-import com.oracle.truffle.regex.util.CompilationFinalBitSet;
+import com.oracle.truffle.regex.util.TBitSet;
 
 /**
  * Helper class for converting {@link CodePointSet}s to {@link CharMatcher}s.
@@ -117,7 +117,7 @@ public class CharMatchers {
 
     private static InvertibleCharMatcher convertToBitSetMatcher(CodePointSet cps, CompilationBuffer compilationBuffer, boolean inverse) {
         int highByte = highByte(cps.getMin());
-        CompilationFinalBitSet bs = compilationBuffer.getByteSizeBitSet();
+        TBitSet bs = compilationBuffer.getByteSizeBitSet();
         for (int i = 0; i < cps.size(); i++) {
             assert highByte(cps.getLo(i)) == highByte && highByte(cps.getHi(i)) == highByte;
             bs.setRange(lowByte(cps.getLo(i)), lowByte(cps.getHi(i)));

@@ -40,17 +40,17 @@
  */
 package com.oracle.truffle.regex.tregex;
 
-import com.oracle.truffle.regex.util.CompilationFinalBitSet;
+import com.oracle.truffle.regex.util.TBitSet;
 import org.junit.Assert;
 import org.junit.Before;
 import org.junit.Test;
 
 import java.util.Iterator;
 
-public class CompilationFinalBitSetTest {
+public class TBitSetTest {
 
     private BitSetOracle oracle;
-    private CompilationFinalBitSet bitSet;
+    private TBitSet bitSet;
 
     @Before
     public void setUp() {
@@ -59,7 +59,7 @@ public class CompilationFinalBitSetTest {
 
     private void reset() {
         oracle = new BitSetOracle(256);
-        bitSet = new CompilationFinalBitSet(256);
+        bitSet = new TBitSet(256);
     }
 
     private void check() {
@@ -91,8 +91,8 @@ public class CompilationFinalBitSetTest {
         return ret;
     }
 
-    private static CompilationFinalBitSet bitSetFromOracle(BitSetOracle o) {
-        CompilationFinalBitSet bs = new CompilationFinalBitSet(256);
+    private static TBitSet bitSetFromOracle(BitSetOracle o) {
+        TBitSet bs = new TBitSet(256);
         for (int i : o) {
             bs.set(i);
         }

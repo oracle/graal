@@ -45,6 +45,7 @@ import java.util.Map;
 import com.oracle.truffle.api.CallTarget;
 import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
+import com.oracle.truffle.api.TruffleLanguage;
 import com.oracle.truffle.api.dsl.Cached;
 import com.oracle.truffle.api.dsl.GenerateUncached;
 import com.oracle.truffle.api.dsl.ImportStatic;
@@ -76,8 +77,9 @@ import com.oracle.truffle.regex.util.TruffleSmallReadOnlyStringToIntMap;
 
 /**
  * {@link RegexObject} represents a compiled regular expression that can be used to match against
- * input strings. It is the result of executing a {@link RegexEngine}. It exposes the following
- * three properties:
+ * input strings. It is the result of a call to
+ * {@link RegexLanguage#parse(TruffleLanguage.ParsingRequest)}. It exposes the following three
+ * properties:
  * <ol>
  * <li>{@link String} {@code pattern}: the source of the compiled regular expression</li>
  * <li>{@link TruffleObject} {@code flags}: the set of flags passed to the regular expression
@@ -119,19 +121,18 @@ public final class RegexObject extends AbstractConstantKeysObject {
     private static final String PROP_GROUPS = "groups";
     private static final TruffleReadOnlyKeysArray KEYS = new TruffleReadOnlyKeysArray(PROP_EXEC, PROP_PATTERN, PROP_FLAGS, PROP_GROUP_COUNT, PROP_GROUPS);
 
-    private final RegexCompiler compiler;
     private final RegexSource source;
     private final TruffleObject flags;
     private final int numberOfCaptureGroups;
     private final TruffleObject namedCaptureGroups;
-    private Object compiledRegexObject;
+    private final Object compiledRegexObject;
 
-    public RegexObject(RegexCompiler compiler, RegexSource source, TruffleObject flags, int numberOfCaptureGroups, Map<String, Integer> namedCaptureGroups) {
-        this.compiler = compiler;
+    public RegexObject(Object compiledRegexObject, RegexSource source, TruffleObject flags, int numberOfCaptureGroups, Map<String, Integer> namedCaptureGroups) {
         this.source = source;
         this.flags = flags;
         this.numberOfCaptureGroups = numberOfCaptureGroups;
         this.namedCaptureGroups = namedCaptureGroups != null ? createNamedCaptureGroupMap(namedCaptureGroups) : TruffleNull.INSTANCE;
+        this.compiledRegexObject = compiledRegexObject;
     }
 
     @TruffleBoundary
@@ -159,19 +160,7 @@ public final class RegexObject extends AbstractConstantKeysObject {
     }
 
     public Object getCompiledRegexObject() {
-        if (compiledRegexObject == null) {
-            compiledRegexObject = compileRegex(source);
-        }
         return compiledRegexObject;
-    }
-
-    @TruffleBoundary
-    private Object compileRegex(RegexSource src) {
-        return compiler.compile(src);
-    }
-
-    public void setCompiledRegexObject(TruffleObject compiledRegexObject) {
-        this.compiledRegexObject = compiledRegexObject;
     }
 
     public RegexObjectExecMethod getExecMethod() {
