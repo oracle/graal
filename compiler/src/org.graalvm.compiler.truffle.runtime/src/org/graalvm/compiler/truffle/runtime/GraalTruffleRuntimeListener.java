@@ -90,7 +90,8 @@ public interface GraalTruffleRuntimeListener {
     }
 
     /**
-     * @deprecated Use {@link #onCompilationDequeued(OptimizedCallTarget, Object, CharSequence, int)}
+     * @deprecated Use
+     *             {@link #onCompilationDequeued(OptimizedCallTarget, Object, CharSequence, int)}
      */
     @Deprecated
     default void onCompilationDequeued(OptimizedCallTarget target, Object source, CharSequence reason) {
@@ -149,7 +150,8 @@ public interface GraalTruffleRuntimeListener {
     }
 
     /**
-     * @deprecated Use {@link #onCompilationSuccess(OptimizedCallTarget, TruffleInlining, GraphInfo, CompilationResultInfo)}
+     * @deprecated Use
+     *             {@link #onCompilationSuccess(OptimizedCallTarget, TruffleInlining, GraphInfo, CompilationResultInfo)}
      */
     @Deprecated
     default void onCompilationSuccess(OptimizedCallTarget target, TruffleInlining inliningDecision, GraphInfo graph, CompilationResultInfo result) {
@@ -169,7 +171,8 @@ public interface GraalTruffleRuntimeListener {
     }
 
     /**
-     * @deprecated Use {@link #onCompilationFailed(OptimizedCallTarget, String, boolean, boolean, int)}
+     * @deprecated Use
+     *             {@link #onCompilationFailed(OptimizedCallTarget, String, boolean, boolean, int)}
      */
     @Deprecated
     default void onCompilationFailed(OptimizedCallTarget target, String reason, boolean bailout, boolean permanentBailout) {
