@@ -67,10 +67,14 @@ final class Target_java_lang_invoke_MethodHandleNatives {
         Member member = (Member) ref;
         Object type;
         int flags;
+        byte refKind;
         if (member instanceof Field) {
             Field field = (Field) member;
             type = field.getType();
             flags = Target_java_lang_invoke_MethodHandleNatives_Constants.MN_IS_FIELD | field.getModifiers();
+            /* The code calling this expects a getter, and will change it to a setter if needed */
+            refKind = Modifier.isStatic(field.getModifiers()) ? Target_java_lang_invoke_MethodHandleNatives_Constants.REF_getStatic
+                            : Target_java_lang_invoke_MethodHandleNatives_Constants.REF_getField;
         } else if (member instanceof Method) {
             Method method = (Method) member;
             Object[] typeInfo = new Object[2];
@@ -79,24 +83,26 @@ final class Target_java_lang_invoke_MethodHandleNatives {
             type = typeInfo;
             int mods = method.getModifiers();
             flags = Target_java_lang_invoke_MethodHandleNatives_Constants.MN_IS_METHOD | mods;
-            if ((flags >>> Target_java_lang_invoke_MethodHandleNatives_Constants.MN_REFERENCE_KIND_SHIFT & Target_java_lang_invoke_MethodHandleNatives_Constants.MN_REFERENCE_KIND_MASK) == 0) {
-                int refKind;
-                if (Modifier.isStatic(mods)) {
-                    refKind = Target_java_lang_invoke_MethodHandleNatives_Constants.REF_invokeStatic;
-                } else if (Modifier.isInterface(mods)) {
-                    refKind = Target_java_lang_invoke_MethodHandleNatives_Constants.REF_invokeInterface;
-                } else {
-                    refKind = Target_java_lang_invoke_MethodHandleNatives_Constants.REF_invokeVirtual;
-                }
-                flags |= refKind << Target_java_lang_invoke_MethodHandleNatives_Constants.MN_REFERENCE_KIND_SHIFT;
+            if (Modifier.isStatic(mods)) {
+                refKind = Target_java_lang_invoke_MethodHandleNatives_Constants.REF_invokeStatic;
+            } else if (Modifier.isInterface(mods)) {
+                refKind = Target_java_lang_invoke_MethodHandleNatives_Constants.REF_invokeInterface;
+            } else {
+                refKind = Target_java_lang_invoke_MethodHandleNatives_Constants.REF_invokeVirtual;
             }
         } else if (member instanceof Constructor) {
             Constructor<?> constructor = (Constructor<?>) member;
-            type = constructor.getParameterTypes();
+            Object[] typeInfo = new Object[2];
+            typeInfo[0] = void.class;
+            typeInfo[1] = constructor.getParameterTypes();
+            type = typeInfo;
             flags = Target_java_lang_invoke_MethodHandleNatives_Constants.MN_IS_CONSTRUCTOR | constructor.getModifiers();
+            refKind = Target_java_lang_invoke_MethodHandleNatives_Constants.REF_newInvokeSpecial;
         } else {
             throw new InternalError("unknown member type: " + member.getClass());
         }
+        flags |= refKind << Target_java_lang_invoke_MethodHandleNatives_Constants.MN_REFERENCE_KIND_SHIFT;
+
         self.init(member.getDeclaringClass(), member.getName(), type, flags);
         self.reflectAccess = (Member) ref;
     }
