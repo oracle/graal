@@ -144,8 +144,8 @@ public final class WasmContext {
     }
 
     public WasmModule readModule(String moduleName, byte[] data, ModuleLimits moduleLimits) {
-        final WasmModule module = new WasmModule(moduleName, data);
-        final BinaryParser reader = new BinaryParser(language, module, moduleLimits);
+        final WasmModule module = new WasmModule(moduleName, data, moduleLimits);
+        final BinaryParser reader = new BinaryParser(language, module);
         reader.readModule();
         return module;
     }

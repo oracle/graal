@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2019, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2020, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -38,14 +38,17 @@
  * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
  * SOFTWARE.
  */
-package org.graalvm.wasm.memory;
 
-public class WasmMemoryException extends RuntimeException {
+package org.graalvm.wasm.constants;
 
-    private static final long serialVersionUID = -5135952170574982889L;
+public final class Sizes {
+    public static final int MAX_TABLE_DECLARATION_SIZE = 0xffff_ffff;
+    public static final int MAX_MEMORY_DECLARATION_SIZE = 65536;
+    public static final int MEMORY_PAGE_SIZE = 65536;
 
-    public WasmMemoryException(String message) {
-        super(message);
+    public static final int MAX_TABLE_INSTANCE_SIZE = Integer.MAX_VALUE;
+    public static final int MAX_MEMORY_INSTANCE_SIZE = Integer.MAX_VALUE / MEMORY_PAGE_SIZE;
+
+    private Sizes() {
     }
-
 }

@@ -40,6 +40,8 @@
  */
 package org.graalvm.wasm;
 
+import com.oracle.truffle.api.CompilerAsserts;
+import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
 import com.oracle.truffle.api.interop.InteropLibrary;
 import com.oracle.truffle.api.interop.UnknownIdentifierException;
@@ -53,7 +55,6 @@ import org.graalvm.wasm.exception.WasmException;
 import org.graalvm.wasm.memory.ByteArrayWasmMemory;
 import org.graalvm.wasm.memory.UnsafeWasmMemory;
 import org.graalvm.wasm.memory.WasmMemory;
-import org.graalvm.wasm.memory.WasmMemoryException;
 
 import java.util.ArrayList;
 import java.util.Arrays;
@@ -61,9 +62,10 @@ import java.util.HashMap;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
-import java.util.Objects;
-import java.util.function.BiFunction;
 
+import static java.lang.Integer.compareUnsigned;
+import static org.graalvm.wasm.Assert.assertTrue;
+import static org.graalvm.wasm.WasmUtil.minUnsigned;
 import static org.graalvm.wasm.WasmUtil.unsignedInt32ToLong;
 
 /**
@@ -123,7 +125,17 @@ public abstract class SymbolTable {
     }
 
     public static class TableInfo {
+        /**
+         * Lower bound on table size.
+         */
         public final int initialSize;
+
+        /**
+         * Upper bound on table size.
+         * <p>
+         * <em>Note:</em> this is the upper bound defined by the module. A table instance might have
+         * a lower internal max allowed size in practice.
+         */
         public final int maximumSize;
 
         public TableInfo(int initialSize, int maximumSize) {
@@ -133,7 +145,17 @@ public abstract class SymbolTable {
     }
 
     public static class MemoryInfo {
+        /**
+         * Lower bound on memory size.
+         */
         public final int initialSize;
+
+        /**
+         * Upper bound on memory size.
+         * <p>
+         * <em>Note:</em> this is the upper bound defined by the module. A memory instance might
+         * have a lower internal max allowed size in practice.
+         */
         public final int maximumSize;
 
         public MemoryInfo(int initialSize, int maximumSize) {
@@ -263,9 +285,9 @@ public abstract class SymbolTable {
     @CompilationFinal private ImportDescriptor importedTableDescriptor;
 
     /**
-     * The name of the exported table of this module, if any.
+     * The name(s) of the exported table of this module, if any.
      */
-    @CompilationFinal private String exportedTable;
+    private final ArrayList<String> exportedTableNames;
 
     /**
      * The descriptor of the memory of this module.
@@ -281,9 +303,9 @@ public abstract class SymbolTable {
     @CompilationFinal private ImportDescriptor importedMemoryDescriptor;
 
     /**
-     * The name of the exported memory of this module, if any.
+     * The name(s) of the exported memory of this module, if any.
      */
-    @CompilationFinal private String exportedMemory;
+    private final ArrayList<String> exportedMemoryNames;
 
     /**
      * List of all custom sections.
@@ -291,6 +313,7 @@ public abstract class SymbolTable {
     private final List<WasmCustomSection> customSections;
 
     SymbolTable() {
+        CompilerAsserts.neverPartOfCompilation();
         this.typeData = new int[INITIAL_DATA_SIZE];
         this.typeOffsets = new int[INITIAL_TYPE_SIZE];
         this.typeEquivalenceClasses = new int[INITIAL_TYPE_SIZE];
@@ -310,29 +333,29 @@ public abstract class SymbolTable {
         this.maxGlobalIndex = -1;
         this.table = null;
         this.importedTableDescriptor = null;
-        this.exportedTable = null;
+        this.exportedTableNames = new ArrayList<>();
         this.memory = null;
         this.importedMemoryDescriptor = null;
-        this.exportedMemory = null;
+        this.exportedMemoryNames = new ArrayList<>();
         this.customSections = new ArrayList<>();
     }
 
     private void checkNotParsed() {
         // The symbol table must be read-only after the module gets linked.
         if (module().isParsed()) {
-            throw WasmException.create(Failure.UNSPECIFIED_INVALID, "The engine tried to modify the symbol table after parsing.");
+            throw CompilerDirectives.shouldNotReachHere("The engine tried to modify the symbol table after parsing.");
         }
     }
 
     private void checkUniqueExport(String name) {
-        if (exportedFunctions.containsKey(name) || exportedGlobals.containsKey(name) || Objects.equals(exportedMemory, name) || Objects.equals(exportedTable, name)) {
-            throw WasmException.create(Failure.UNSPECIFIED_UNLINKABLE, "All export names must be different, but '" + name + "' is exported twice.");
+        if (exportedFunctions.containsKey(name) || exportedGlobals.containsKey(name) || exportedMemoryNames.contains(name) || exportedTableNames.contains(name)) {
+            throw WasmException.create(Failure.DUPLICATE_EXPORT, "All export names must be different, but '" + name + "' is exported twice.");
         }
     }
 
     public void checkFunctionIndex(int funcIndex) {
         if (funcIndex < 0 || funcIndex >= numFunctions) {
-            throw WasmException.create(Failure.UNSPECIFIED_INVALID, String.format("Function index out of bounds: %d should be < %d.", unsignedInt32ToLong(funcIndex), numFunctions));
+            throw WasmException.create(Failure.UNKNOWN_FUNCTION, String.format("Function index out of bounds: %d should be < %d.", unsignedInt32ToLong(funcIndex), numFunctions));
         }
 
     }
@@ -386,7 +409,7 @@ public abstract class SymbolTable {
         typeOffsets[typeIdx] = typeDataSize;
 
         if (numReturnTypes != 0 && numReturnTypes != 1) {
-            throw WasmException.create(Failure.UNSPECIFIED_INVALID, "A function can return at most one result.");
+            throw WasmException.create(Failure.INVALID_RESULT_ARITY, "A function can return at most one result.");
         }
 
         int size = 2 + numParameterTypes + numReturnTypes;
@@ -444,7 +467,7 @@ public abstract class SymbolTable {
         checkNotParsed();
         ensureFunctionsCapacity(numFunctions);
         if (typeIndex < 0 || typeIndex >= typeCount) {
-            throw WasmException.create(Failure.UNSPECIFIED_INVALID, String.format("Function type out of bounds: %d should be < %d.", unsignedInt32ToLong(typeIndex), typeCount));
+            throw WasmException.create(Failure.UNKNOWN_TYPE, String.format("Function type out of bounds: %d should be < %d.", unsignedInt32ToLong(typeIndex), typeCount));
         }
         final WasmFunction function = new WasmFunction(this, numFunctions, typeIndex, importDescriptor);
         functions[numFunctions] = function;
@@ -473,10 +496,10 @@ public abstract class SymbolTable {
         checkNotParsed();
         WasmFunction start = function(functionIndex);
         if (start.numArguments() != 0) {
-            throw WasmException.create(Failure.UNSPECIFIED_INVALID, "Start function cannot take arguments.");
+            throw WasmException.create(Failure.START_FUNCTION_ARGUMENTS, "Start function cannot take arguments.");
         }
         if (start.returnTypeLength() != 0) {
-            throw WasmException.create(Failure.UNSPECIFIED_INVALID, "Start function cannot return a value.");
+            throw WasmException.create(Failure.START_FUNCTION_RETURN_VALUE, "Start function cannot return a value.");
         }
         this.startFunctionIndex = functionIndex;
     }
@@ -693,6 +716,7 @@ public abstract class SymbolTable {
         return maxGlobalIndex;
     }
 
+    @SuppressWarnings("unused")
     private boolean globalExported(int index) {
         final int exportStatus = globalTypes[index] & GLOBAL_EXPORT_BIT;
         return exportStatus != 0;
@@ -719,6 +743,7 @@ public abstract class SymbolTable {
         return exportedGlobals;
     }
 
+    @SuppressWarnings("unused")
     private String nameOfExportedGlobal(int index) {
         for (Map.Entry<String, Integer> entry : exportedGlobals.entrySet()) {
             if (entry.getValue() == index) {
@@ -731,9 +756,6 @@ public abstract class SymbolTable {
     void exportGlobal(String name, int index) {
         checkNotParsed();
         exportSymbol(name);
-        if (globalExported(index)) {
-            throw new WasmMemoryException("Global " + index + " already exported with the name: " + nameOfExportedGlobal(index));
-        }
         globalTypes[index] |= GLOBAL_EXPORT_BIT;
         exportedGlobals.put(name, index);
         module().addLinkAction((context, instance) -> context.linker().resolveGlobalExport(module(), name, index));
@@ -755,12 +777,16 @@ public abstract class SymbolTable {
         });
     }
 
-    public void allocateTable(int initSize, int maxSize) {
+    public void allocateTable(int declaredMinSize, int declaredMaxSize) {
         checkNotParsed();
         validateSingleTable();
-        table = new TableInfo(initSize, maxSize);
+        table = new TableInfo(declaredMinSize, declaredMaxSize);
         module().addLinkAction((context, instance) -> {
-            final int index = context.tables().allocateTable(initSize, maxSize);
+            final int initialSize = declaredMinSize;
+            final int maxAllowedSize = minUnsigned(declaredMaxSize, module().limits().tableInstanceSizeLimit());
+            assert compareUnsigned(initialSize, maxAllowedSize) <= 0; // Tested when reading limits
+            final WasmTable wasmTable = new WasmTable(declaredMinSize, declaredMaxSize, maxAllowedSize);
+            final int index = context.tables().register(wasmTable);
             instance.setTable(context.tables().table(index));
         });
     }
@@ -768,9 +794,9 @@ public abstract class SymbolTable {
     public void allocateExternalTable(WasmTable externalTable) {
         checkNotParsed();
         validateSingleTable();
-        table = new TableInfo(externalTable.size(), externalTable.maxSize());
+        table = new TableInfo(externalTable.declaredMinSize(), externalTable.declaredMaxSize());
         module().addLinkAction((context, instance) -> {
-            final int index = context.tables().allocateExternalTable(externalTable);
+            final int index = context.tables().registerExternal(externalTable);
             instance.setTable(context.tables().table(index));
         });
     }
@@ -784,12 +810,8 @@ public abstract class SymbolTable {
     }
 
     private void validateSingleTable() {
-        if (importedTableDescriptor != null) {
-            throw WasmException.create(Failure.UNSPECIFIED_INVALID, "A table has been already imported in the module.");
-        }
-        if (table != null) {
-            throw WasmException.create(Failure.UNSPECIFIED_INVALID, "A table has been already declared in the module.");
-        }
+        assertTrue(importedTableDescriptor == null, "A table has already been imported in the module.", Failure.MULTIPLE_TABLES);
+        assertTrue(table == null, "A table has already been declared in the module.", Failure.MULTIPLE_TABLES);
     }
 
     boolean tableExists() {
@@ -799,14 +821,11 @@ public abstract class SymbolTable {
     public void exportTable(String name) {
         checkNotParsed();
         exportSymbol(name);
-        if (exportedTable != null) {
-            throw WasmException.create(Failure.UNSPECIFIED_INVALID, "A table has been already exported from this module.");
-        }
         if (!tableExists()) {
             throw WasmException.create(Failure.UNSPECIFIED_INVALID, "No table has been declared or imported, so a table cannot be exported.");
         }
-        exportedTable = name;
-        module().addLinkAction((context, instance) -> context.linker().resolveTableExport(module(), exportedTable));
+        exportedTableNames.add(name);
+        module().addLinkAction((context, instance) -> context.linker().resolveTableExport(module(), name));
     }
 
     int tableCount() {
@@ -817,17 +836,26 @@ public abstract class SymbolTable {
         return importedTableDescriptor;
     }
 
-    public String exportedTable() {
-        return exportedTable;
+    public List<String> exportedTableNames() {
+        CompilerAsserts.neverPartOfCompilation();
+        return exportedTableNames;
     }
 
-    public void allocateMemory(int initSize, int maxSize) {
+    public void allocateMemory(int declaredMinSize, int declaredMaxSize) {
         checkNotParsed();
         validateSingleMemory();
-        memory = new MemoryInfo(initSize, maxSize);
+        memory = new MemoryInfo(declaredMinSize, declaredMaxSize);
         module().addLinkAction((context, instance) -> {
-            final BiFunction<Integer, Integer, WasmMemory> makeMemory = context.environment().getOptions().get(WasmOptions.UseUnsafeMemory) ? UnsafeWasmMemory::new : ByteArrayWasmMemory::new;
-            final int memoryIndex = context.memories().allocateMemory(memory, makeMemory);
+            final int initialSize = declaredMinSize;
+            final int maxAllowedSize = minUnsigned(declaredMaxSize, module().limits().memoryInstanceSizeLimit());
+            assert compareUnsigned(initialSize, maxAllowedSize) <= 0; // Tested when reading limits
+            final WasmMemory wasmMemory;
+            if (context.environment().getOptions().get(WasmOptions.UseUnsafeMemory)) {
+                wasmMemory = new UnsafeWasmMemory(declaredMinSize, declaredMaxSize, maxAllowedSize);
+            } else {
+                wasmMemory = new ByteArrayWasmMemory(declaredMinSize, declaredMaxSize, maxAllowedSize);
+            }
+            final int memoryIndex = context.memories().register(wasmMemory);
             final WasmMemory allocatedMemory = context.memories().memory(memoryIndex);
             instance.setMemory(allocatedMemory);
         });
@@ -836,9 +864,9 @@ public abstract class SymbolTable {
     public void allocateExternalMemory(WasmMemory externalMemory) {
         checkNotParsed();
         validateSingleMemory();
-        memory = new MemoryInfo(externalMemory.pageSize(), externalMemory.maxPageSize());
+        memory = new MemoryInfo(externalMemory.declaredMinSize(), externalMemory.declaredMaxSize());
         module().addLinkAction((context, instance) -> {
-            final int memoryIndex = context.memories().allocateExternalMemory(externalMemory);
+            final int memoryIndex = context.memories().registerExternal(externalMemory);
             final WasmMemory allocatedMemory = context.memories().memory(memoryIndex);
             instance.setMemory(allocatedMemory);
         });
@@ -853,12 +881,8 @@ public abstract class SymbolTable {
     }
 
     private void validateSingleMemory() {
-        if (importedMemoryDescriptor != null) {
-            throw WasmException.create(Failure.UNSPECIFIED_INVALID, "Memory has been already imported in the module.");
-        }
-        if (memory != null) {
-            throw WasmException.create(Failure.UNSPECIFIED_INVALID, "Memory has been already declared in the module.");
-        }
+        assertTrue(importedMemoryDescriptor == null, "A memory has already been imported in the module.", Failure.MULTIPLE_MEMORIES);
+        assertTrue(memory == null, "A memory has already been declared in the module.", Failure.MULTIPLE_MEMORIES);
     }
 
     boolean memoryExists() {
@@ -868,14 +892,20 @@ public abstract class SymbolTable {
     public void exportMemory(String name) {
         checkNotParsed();
         exportSymbol(name);
-        if (exportedMemory != null) {
-            throw WasmException.create(Failure.UNSPECIFIED_INVALID, "A memory has been already exported from this module.");
-        }
         if (!memoryExists()) {
             throw WasmException.create(Failure.UNSPECIFIED_INVALID, "No memory has been declared or imported, so memory cannot be exported.");
         }
-        exportedMemory = name;
+        exportedMemoryNames.add(name);
         module().addLinkAction((context, instance) -> context.linker().resolveMemoryExport(instance, name));
+    }
+
+    static String[] pushString(String[] xs, String x) {
+        if (xs == null || xs.length == 0) {
+            return new String[]{x};
+        }
+        final String[] result = Arrays.copyOf(xs, xs.length + 1);
+        result[result.length - 1] = x;
+        return result;
     }
 
     int memoryCount() {
@@ -886,8 +916,9 @@ public abstract class SymbolTable {
         return importedMemoryDescriptor;
     }
 
-    public String exportedMemory() {
-        return exportedMemory;
+    public List<String> exportedMemoryNames() {
+        CompilerAsserts.neverPartOfCompilation();
+        return exportedMemoryNames;
     }
 
     void allocateCustomSection(String name, int offset, int length) {

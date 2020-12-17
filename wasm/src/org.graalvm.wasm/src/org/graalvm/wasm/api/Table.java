@@ -40,7 +40,6 @@
  */
 package org.graalvm.wasm.api;
 
-import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.Truffle;
 import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.interop.ArityException;
@@ -54,9 +53,14 @@ import com.oracle.truffle.api.nodes.RootNode;
 import org.graalvm.wasm.WasmContext;
 import org.graalvm.wasm.WasmFunctionInstance;
 import org.graalvm.wasm.WasmTable;
+import org.graalvm.wasm.WasmVoidResult;
 import org.graalvm.wasm.exception.Failure;
 import org.graalvm.wasm.exception.WasmException;
 import org.graalvm.wasm.exception.WasmJsApiException;
+
+import static java.lang.Integer.compareUnsigned;
+import static org.graalvm.wasm.WasmUtil.minUnsigned;
+import static org.graalvm.wasm.api.JsConstants.JS_LIMITS;
 
 @ExportLibrary(InteropLibrary.class)
 public class Table extends Dictionary {
@@ -64,7 +68,7 @@ public class Table extends Dictionary {
     private final WasmTable table;
 
     public Table(WasmTable table) {
-        this.descriptor = new TableDescriptor(TableKind.anyfunc.name(), table.size(), table.maxSize());
+        this.descriptor = new TableDescriptor(TableKind.anyfunc.name(), table.declaredMinSize(), table.declaredMaxSize());
         this.table = table;
         addMembers(new Object[]{
                         "descriptor", this.descriptor,
@@ -74,8 +78,19 @@ public class Table extends Dictionary {
         });
     }
 
-    public Table(Object descriptor) {
-        this(new WasmTable(initial(descriptor), maximum(descriptor)));
+    public static Table create(int declaredMinSize, int declaredMaxSize) {
+        if (compareUnsigned(declaredMinSize, declaredMaxSize) > 0) {
+            throw new WasmJsApiException(WasmJsApiException.Kind.LinkError, "Min table size exceeds max memory size");
+        } else if (compareUnsigned(declaredMinSize, JS_LIMITS.memoryInstanceSizeLimit()) > 0) {
+            throw new WasmJsApiException(WasmJsApiException.Kind.LinkError, "Min table size exceeds implementation limit");
+        }
+        final int maxAllowedSize = minUnsigned(declaredMaxSize, JS_LIMITS.memoryInstanceSizeLimit());
+        final WasmTable wasmTable = new WasmTable(declaredMinSize, declaredMaxSize, maxAllowedSize);
+        return new Table(wasmTable);
+    }
+
+    public static Table create(Object descriptor) {
+        return create(initial(descriptor), maximum(descriptor));
     }
 
     @SuppressWarnings({"unused", "static-method"})
@@ -112,11 +127,6 @@ public class Table extends Dictionary {
         }
     }
 
-    @TruffleBoundary
-    private static WasmException rangeError() {
-        return WasmException.create(Failure.UNSPECIFIED_INTERNAL, "Range error.");
-    }
-
     public WasmTable wasmTable() {
         return table;
     }
@@ -127,26 +137,25 @@ public class Table extends Dictionary {
 
     public int grow(int delta) {
         final int size = table.size();
-        if (!table.grow(delta)) {
-            throw rangeError();
+        try {
+            table.grow(delta);
+        } catch (IllegalArgumentException e) {
+            throw new WasmJsApiException(WasmJsApiException.Kind.RangeError, e.getMessage());
         }
         return size;
     }
 
     public Object get(int index) {
-        if (index >= table.size()) {
-            throw rangeError();
+        try {
+            final Object result = table.get(index);
+            return result == null ? WasmVoidResult.getInstance() : result;
+        } catch (IndexOutOfBoundsException e) {
+            throw new WasmJsApiException(WasmJsApiException.Kind.RangeError, "Table index out of bounds: " + e.getMessage());
         }
-        final Object function = table.get(index);
-        return function;
     }
 
     public Object set(int index, Object element) {
-        if (index >= table.size()) {
-            throw rangeError();
-        }
-        table.set(index, new WasmFunctionInstance(null, Truffle.getRuntime().createCallTarget(new RootNode(WasmContext.getCurrent().language()) {
-
+        final WasmFunctionInstance functionInstance = new WasmFunctionInstance(null, Truffle.getRuntime().createCallTarget(new RootNode(WasmContext.getCurrent().language()) {
             @Override
             public Object execute(VirtualFrame frame) {
                 if (InteropLibrary.getUncached().isExecutable(element)) {
@@ -163,8 +172,15 @@ public class Table extends Dictionary {
                     throw WasmException.format(Failure.UNSPECIFIED_TRAP, "Table element %s is not executable.", element);
                 }
             }
-        })));
-        return null;
+        }));
+
+        try {
+            table.set(index, functionInstance);
+        } catch (ArrayIndexOutOfBoundsException e) {
+            throw new WasmJsApiException(WasmJsApiException.Kind.RangeError, "Table index out of bounds: " + e.getMessage());
+        }
+
+        return WasmVoidResult.getInstance();
     }
 
 }

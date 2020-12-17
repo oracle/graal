@@ -51,6 +51,7 @@ public class WasmJsApiException extends AbstractTruffleException {
 
     public enum Kind {
         TypeError,
+        RangeError,
         LinkError
     }
 

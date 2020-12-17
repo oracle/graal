@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2019, 2020, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2020, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -38,78 +38,37 @@
  * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
  * SOFTWARE.
  */
-package org.graalvm.wasm;
+package org.graalvm.wasm.predefined.spectest;
 
-import java.util.ArrayList;
-import java.util.Collections;
-import java.util.List;
-import java.util.function.BiConsumer;
+import com.oracle.truffle.api.CompilerDirectives;
+import com.oracle.truffle.api.frame.VirtualFrame;
+import org.graalvm.wasm.WasmContext;
+import org.graalvm.wasm.WasmInstance;
+import org.graalvm.wasm.WasmLanguage;
+import org.graalvm.wasm.WasmVoidResult;
+import org.graalvm.wasm.predefined.WasmBuiltinRootNode;
 
-import static com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
+public class PrintNode extends WasmBuiltinRootNode {
 
-/**
- * Represents a parsed and validated WebAssembly module, which has not yet been instantiated.
- */
-@SuppressWarnings("static-method")
-public final class WasmModule extends SymbolTable {
-    private final String name;
-    private final ArrayList<BiConsumer<WasmContext, WasmInstance>> linkActions;
-    private final ModuleLimits limits;
-    @CompilationFinal(dimensions = 1) private byte[] data;
-    @CompilationFinal private boolean isParsed;
-
-    public WasmModule(String name, byte[] data, ModuleLimits limits) {
-        super();
-        this.name = name;
-        this.limits = limits == null ? ModuleLimits.DEFAULTS : limits;
-        this.linkActions = new ArrayList<>();
-        this.data = data;
-        this.isParsed = false;
-    }
-
-    public WasmModule(String name, byte[] data) {
-        this(name, data, null);
-    }
-
-    public ModuleLimits limits() {
-        return limits;
+    public PrintNode(WasmLanguage language, WasmInstance module) {
+        super(language, module);
     }
 
     @Override
-    protected WasmModule module() {
-        return this;
+    public Object executeWithContext(VirtualFrame frame, WasmContext context) {
+        for (final Object arg : frame.getArguments()) {
+            print(arg);
+        }
+        return WasmVoidResult.getInstance();
     }
 
-    public void setParsed() {
-        isParsed = true;
-    }
-
-    public boolean isParsed() {
-        return isParsed;
-    }
-
-    public SymbolTable symbolTable() {
-        return this;
-    }
-
-    public String name() {
-        return name;
-    }
-
-    public byte[] data() {
-        return data;
-    }
-
-    public List<BiConsumer<WasmContext, WasmInstance>> linkActions() {
-        return Collections.unmodifiableList(linkActions);
-    }
-
-    public void addLinkAction(BiConsumer<WasmContext, WasmInstance> action) {
-        linkActions.add(action);
+    @CompilerDirectives.TruffleBoundary
+    private static void print(Object string) {
+        System.out.println(string);
     }
 
     @Override
-    public String toString() {
-        return "wasm-module(" + name + ")";
+    public String builtinNodeName() {
+        return "print";
     }
 }

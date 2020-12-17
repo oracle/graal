@@ -38,37 +38,44 @@
  * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
  * SOFTWARE.
  */
-package org.graalvm.wasm.predefined.spectest;
 
-import com.oracle.truffle.api.CompilerDirectives;
-import com.oracle.truffle.api.frame.VirtualFrame;
-import org.graalvm.wasm.WasmContext;
-import org.graalvm.wasm.WasmInstance;
-import org.graalvm.wasm.WasmLanguage;
-import org.graalvm.wasm.WasmVoidResult;
-import org.graalvm.wasm.predefined.WasmBuiltinRootNode;
+package org.graalvm.wasm.api;
 
-public class Print extends WasmBuiltinRootNode {
+import org.graalvm.wasm.ModuleLimits;
 
-    public Print(WasmLanguage language, WasmInstance module) {
-        super(language, module);
+public final class JsConstants {
+    private JsConstants() {
     }
 
-    @Override
-    public Object executeWithContext(VirtualFrame frame, WasmContext context) {
-        for (final Object arg : frame.getArguments()) {
-            print(arg);
-        }
-        return WasmVoidResult.getInstance();
-    }
+    // Limits specified by https://www.w3.org/TR/wasm-js-api/#limits
+    private static final int MODULE_SIZE_LIMIT = 1 << 30;
+    private static final int TYPE_COUNT_LIMIT = 1000000;
+    private static final int FUNCTION_COUNT_LIMIT = 1000000;
+    private static final int IMPORT_COUNT_LIMIT = 100000;
+    private static final int EXPORT_COUNT_LIMIT = 100000;
+    private static final int GLOBAL_COUNT_LIMIT = 1000000;
+    private static final int DATA_SEGMENT_LIMIT = 100000;
+    private static final int ELEMENT_SEGMENT_LIMIT = 10000000;
+    private static final int FUNCTION_SIZE_LIMIT = 7654321;
+    private static final int PARAM_COUNT_LIMIT = 1000;
+    private static final int RETURN_COUNT_LIMIT = 1;
+    private static final int LOCAL_COUNT_LIMIT = 50000;
+    private static final int TABLE_SIZE_LIMIT = 10000000;
+    private static final int MEMORY_SIZE_LIMIT = 32767;
 
-    @CompilerDirectives.TruffleBoundary
-    private static void print(Object string) {
-        System.out.println(string);
-    }
-
-    @Override
-    public String builtinNodeName() {
-        return "print";
-    }
+    static final ModuleLimits JS_LIMITS = new ModuleLimits(
+                    MODULE_SIZE_LIMIT,
+                    TYPE_COUNT_LIMIT,
+                    FUNCTION_COUNT_LIMIT,
+                    IMPORT_COUNT_LIMIT,
+                    EXPORT_COUNT_LIMIT,
+                    GLOBAL_COUNT_LIMIT,
+                    DATA_SEGMENT_LIMIT,
+                    ELEMENT_SEGMENT_LIMIT,
+                    FUNCTION_SIZE_LIMIT,
+                    PARAM_COUNT_LIMIT,
+                    RETURN_COUNT_LIMIT,
+                    LOCAL_COUNT_LIMIT,
+                    TABLE_SIZE_LIMIT,
+                    MEMORY_SIZE_LIMIT);
 }

@@ -40,15 +40,16 @@
  */
 package org.graalvm.wasm.test;
 
-import java.io.IOException;
-import java.util.function.Consumer;
-
 import org.graalvm.polyglot.Context;
 import org.graalvm.polyglot.Source;
 import org.graalvm.polyglot.Value;
 import org.graalvm.polyglot.io.ByteSequence;
 import org.junit.Assert;
+import org.junit.Ignore;
 import org.junit.Test;
+
+import java.io.IOException;
+import java.util.function.Consumer;
 
 import static org.graalvm.wasm.utils.WasmBinaryTools.compileWat;
 
@@ -83,6 +84,54 @@ public class WasmLateLinkingSuite {
         context.parse(sourceAux); // m1
         final Value g = context.getBindings("wasm").getMember("main").getMember("g");
         Assert.assertEquals(42, g.execute().asInt());
+    }
+
+    // TODO: define what should happen in this case and activate the test.
+    @Test
+    @Ignore
+    public void linkingFailure1() throws IOException, InterruptedException {
+        final Context context = Context.newBuilder("wasm").build();
+        final ByteSequence binaryAux = ByteSequence.create(compileWat("file1", "(import \"non_existing\" \"f\" (func))"));
+        final ByteSequence binaryMain = ByteSequence.create(compileWat("file2", "(func (export \"g\") (result i32) (i32.const 42))"));
+        final Source sourceAux = Source.newBuilder("wasm", binaryAux, "module1").build();
+        final Source sourceMain = Source.newBuilder("wasm", binaryMain, "module2").build();
+        context.eval(sourceMain);
+        final Value module2Instance = context.eval(sourceAux);
+
+        final Value g = module2Instance.getMember("g"); // Fails: "the module 'non_existing',
+                                                        // referenced by the import 'f' in the
+                                                        // module 'module1', does not exist."
+        final Value result = g.execute();
+        Assert.assertEquals(42, result.asInt());
+
+        final Value g2 = module2Instance.getMember("g"); // Fails: java.lang.NullPointerException
+                                                         // from getMember
+        final Value result2 = g2.execute();
+        Assert.assertEquals(42, result2.asInt());
+    }
+
+    // TODO: define what should happen in this case and activate the test.
+    @Test
+    @Ignore
+    public void linkingFailure2() throws IOException, InterruptedException {
+        final Context context = Context.newBuilder("wasm").build();
+        final ByteSequence binaryAux = ByteSequence.create(compileWat("file1", "(import \"non_existing\" \"f\" (func)) (func (export \"h\") (result i32) (i32.const 42))"));
+        final ByteSequence binaryMain = ByteSequence.create(compileWat("file2", "(import \"main\" \"h\" (func)) (func (export \"g\") (result i32) (i32.const 42))"));
+        final Source sourceAux = Source.newBuilder("wasm", binaryAux, "module1").build();
+        final Source sourceMain = Source.newBuilder("wasm", binaryMain, "module2").build();
+        context.eval(sourceMain);
+        final Value module2Instance = context.eval(sourceAux);
+
+        final Value g = module2Instance.getMember("g"); // Fails: "The imported function 'h',
+                                                        // referenced in the module 'main', does not
+                                                        // exist in the imported module 'main'."
+        final Value result = g.execute();
+        Assert.assertEquals(42, result.asInt());
+
+        final Value g2 = module2Instance.getMember("g"); // Fails: java.lang.NullPointerException
+                                                         // from getMember
+        final Value result2 = g2.execute();
+        Assert.assertEquals(42, result2.asInt());
     }
 
     private static void runTest(byte[] firstBinary, Consumer<Context> testCase) throws IOException {

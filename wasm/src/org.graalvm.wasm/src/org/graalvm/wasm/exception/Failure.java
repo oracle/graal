@@ -42,27 +42,82 @@
 package org.graalvm.wasm.exception;
 
 public enum Failure {
+    // TODO(mbovel): replace UNSPECIFIED_MALFORMED usages with appropriate errors.
+    UNSPECIFIED_MALFORMED(Type.MALFORMED, "unspecified"),
+    INTEGER_REPRESENTATION_TOO_LONG(Type.MALFORMED, "integer representation too long"),
+    INTEGER_TOO_LONG(Type.MALFORMED, "integer too large"),
+    UNEXPECTED_END(Type.MALFORMED, "unexpected end of section or function"),
+    MALFORMED_VALUE_TYPE(Type.MALFORMED, "malformed value type"),
+    INVALID_MAGIC_NUMBER(Type.MALFORMED, "magic header not detected"),
+    INVALID_VERSION_NUMBER(Type.MALFORMED, "unknown binary version"),
+    ZERO_FLAG_EXPECTED(Type.MALFORMED, "zero flag expected"),
+    SECTION_SIZE_MISMATCH(Type.MALFORMED, "section size mismatch"),
+    TOO_MANY_LOCALS(Type.MALFORMED, "too many locals"),
+    FUNCTIONS_CODE_INCONSISTENT_LENGTHS(Type.MALFORMED, "function and code section have inconsistent lengths"),
+    MALFORMED_UTF8(Type.MALFORMED, "malformed UTF-8 encoding"),
+    MALFORMED_SECTION_ID(Type.MALFORMED, "malformed section id"),
+    MALFORMED_MUTABILITY(Type.MALFORMED, "malformed mutability"),
+    LENGTH_OUT_OF_BOUNDS(Type.MALFORMED, "length out of bounds"),
+    // GraalWasm-specific:
+    INITIALIZER_NO_END(Type.MALFORMED, "initialization expression must end with an END instruction"),
+    DUPLICATED_SECTION(Type.MALFORMED, "duplicated section"),
+    INVALID_SECTION_ORDER(Type.MALFORMED, "invalid section order"),
+
+    // TODO(mbovel): replace UNSPECIFIED_INVALID usages with appropriate errors.
+    UNSPECIFIED_INVALID(Type.INVALID, "unspecified"),
+    TYPE_MISMATCH(Type.INVALID, "type mismatch"),
+    INVALID_RESULT_ARITY(Type.INVALID, "invalid result arity"),
+    MULTIPLE_MEMORIES(Type.INVALID, "multiple memories"),
+    MULTIPLE_TABLES(Type.INVALID, "multiple tables"),
+    LOOP_INPUT(Type.INVALID, "non-empty loop input type"),
+    UNKNOWN_LOCAL(Type.INVALID, "unknown local"),
+    UNKNOWN_GLOBAL(Type.INVALID, "unknown global"),
+    UNKNOWN_MEMORY(Type.INVALID, "unknown memory"),
+    UNKNOWN_TABLE(Type.INVALID, "unknown table"),
+    UNKNOWN_LABEL(Type.INVALID, "unknown label"),
+    UNKNOWN_FUNCTION(Type.INVALID, "unknown function"),
+    UNKNOWN_TYPE(Type.INVALID, "unknown type"),
+    START_FUNCTION_RETURN_VALUE(Type.INVALID, "start function"),
+    START_FUNCTION_ARGUMENTS(Type.INVALID, "start function"),
+    LIMIT_MINIMUM_GREATER_THAN_MAXIMUM(Type.INVALID, "size minimum must not be greater than maximum"),
+    DUPLICATE_EXPORT(Type.INVALID, "duplicate export name"),
+    IMMUTABLE_GLOBAL_WRITE(Type.INVALID, "global is immutable"),
+    GLOBAL_INIT_NON_CONSTANT(Type.INVALID, "constant expression required"),
+    LIMIT_EXCEEDED(Type.INVALID, "limit exceeded"),
+    MEMORY_SIZE_LIMIT_EXCEEDED(Type.INVALID, "memory size must be at most 65536 pages (4GiB)"),
+    // GraalWasm-specific:
+    MODULE_SIZE_LIMIT_EXCEEDED(Type.INVALID, "module size exceeds limit"),
+    TYPE_COUNT_LIMIT_EXCEEDED(Type.INVALID, "type count exceeds limit"),
+    FUNCTION_COUNT_LIMIT_EXCEEDED(Type.INVALID, "function count exceeds limit"),
+    IMPORT_COUNT_LIMIT_EXCEEDED(Type.INVALID, "import count exceeds limit"),
+    EXPORT_COUNT_LIMIT_EXCEEDED(Type.INVALID, "export count exceeds limit"),
+    GLOBAL_COUNT_LIMIT_EXCEEDED(Type.INVALID, "global count exceeds limit"),
+    DATA_SEGMENT_COUNT_LIMIT_EXCEEDED(Type.INVALID, "data segment count exceeds limit"),
+    ELEMENT_SEGMENT_COUNT_LIMIT_EXCEEDED(Type.INVALID, "element segment count exceeds limit"),
+    FUNCTION_SIZE_LIMIT_EXCEEDED(Type.INVALID, "function size exceeds limit"),
+    PARAMETERS_COUNT_LIMIT_EXCEEDED(Type.INVALID, "parameters count exceeds limit"),
+    RETURN_COUNT_LIMIT_EXCEEDED(Type.INVALID, "return values count exceeds limit"),
+
+    // TODO(mbovel): replace UNSPECIFIED_UNLINKABLE usages with appropriate errors.
+    UNSPECIFIED_UNLINKABLE(Type.UNLINKABLE, "unspecified"),
+    UNKNOWN_IMPORT(Type.UNLINKABLE, "unknown import"),
+    INCOMPATIBLE_IMPORT_TYPE(Type.UNLINKABLE, "incompatible import type"),
+
+    // TODO(mbovel): replace UNSPECIFIED_TRAP usages with appropriate errors.
     UNSPECIFIED_TRAP(Type.TRAP, "unspecified"),
     INT_DIVIDE_BY_ZERO(Type.TRAP, "integer divide by zero"),
     INT_OVERFLOW(Type.TRAP, "integer overflow"),
+    UNREACHABLE(Type.TRAP, "unreachable"),
+    UNDEFINED_ELEMENT(Type.TRAP, "undefined element"),
+    UNINITIALIZED_ELEMENT(Type.TRAP, "uninitialized element"),
+    OUT_OF_BOUNDS_MEMORY_ACCESS(Type.TRAP, "out of bounds memory access"),
+    INDIRECT_CALL_TYPE__MISMATCH(Type.TRAP, "indirect call type mismatch"),
+    // GraalWasm-specific:
+    TABLE_INSTANCE_SIZE_LIMIT_EXCEEDED(Type.TRAP, "table instance size exceeds limit"),
+    MEMORY_INSTANCE_SIZE_LIMIT_EXCEEDED(Type.TRAP, "memory instance size exceeds limit"),
 
-    UNSPECIFIED_EXHAUSTION(Type.EXHAUSTION, "unspecified"),
-
-    UNSPECIFIED_MALFORMED(Type.MALFORMED, "unspecified"),
-
-    UNSPECIFIED_INVALID(Type.INVALID, "unspecified"),
-    RETURN_SIZE_MISMATCH(Type.INVALID, "type mismatch"),
-    EMPTY_STACK(Type.INVALID, "type mismatch"),
-    TABLE_TARGET_MISMATCH(Type.INVALID, "type mismatch"),
-    UNEXPECTED_TYPE(Type.INVALID, "type mismatch"),
-    MULTIPLE_RETURN_VALUES(Type.INVALID, "multiple return values"),
-    LOOP_INPUT(Type.INVALID, "non-empty loop input type"),
-
-    UNSPECIFIED_UNLINKABLE(Type.UNLINKABLE, "unspecified"),
-
-    UNSPECIFIED_INTERNAL(Type.INTERNAL, "unspecified"),
-    INVALID_STACK_SHRINK_SIZE(Type.INTERNAL, "invalid stack shrink size"),
-    OTHER_ARITHMETIC_EXCEPTION(Type.INTERNAL, "non-standard arithmetic exception");
+    // TODO(mbovel): replace UNSPECIFIED_INTERNAL usages with assertInternal/shouldNotReachHere.
+    UNSPECIFIED_INTERNAL(Type.INTERNAL, "unspecified");
 
     public enum Type {
         TRAP("trap"),
@@ -93,7 +148,7 @@ public enum Failure {
             case "BigInteger divide by zero":
                 return Failure.INT_DIVIDE_BY_ZERO;
             default:
-                return Failure.OTHER_ARITHMETIC_EXCEPTION;
+                throw exception;
         }
     }
 }

@@ -40,7 +40,6 @@
  */
 package org.graalvm.wasm.exception;
 
-import com.oracle.truffle.api.CompilerAsserts;
 import com.oracle.truffle.api.exception.AbstractTruffleException;
 import com.oracle.truffle.api.interop.ExceptionType;
 import com.oracle.truffle.api.interop.InteropLibrary;
@@ -62,23 +61,23 @@ public final class WasmException extends AbstractTruffleException {
 
     private WasmException(String message, Node location, Failure failure) {
         super(message, location);
-        CompilerAsserts.neverPartOfCompilation();
         this.failure = failure;
     }
 
-    @TruffleBoundary
     public static WasmException create(Failure failure, Node location, String message) {
-        return new WasmException(String.format(message), location, failure);
+        return new WasmException(message, location, failure);
     }
 
-    @TruffleBoundary
     public static WasmException create(Failure failure, Node location) {
         return create(failure, location, failure.name);
     }
 
-    @TruffleBoundary
     public static WasmException create(Failure failure, String message) {
         return create(failure, null, message);
+    }
+
+    public static WasmException create(Failure failure) {
+        return create(failure, null, failure.name);
     }
 
     @TruffleBoundary
@@ -91,7 +90,6 @@ public final class WasmException extends AbstractTruffleException {
         return create(failure, location, String.format(format, args));
     }
 
-    @TruffleBoundary
     public static WasmException fromArithmeticException(WasmBlockNode location, ArithmeticException exception) {
         return create(Failure.fromArithmeticException(exception), location, exception.getMessage());
     }
@@ -106,8 +104,8 @@ public final class WasmException extends AbstractTruffleException {
         switch (failure.type) {
             case MALFORMED:
             case INVALID:
-            case UNLINKABLE:
                 return ExceptionType.PARSE_ERROR;
+            case UNLINKABLE:
             case INTERNAL:
             case EXHAUSTION:
             case TRAP:

@@ -72,8 +72,8 @@ public final class WasmInstance extends RuntimeState implements TruffleObject {
     }
 
     /**
-     * Try to infer the entry function for this instance. Not part from the spec, for testing
-     * purpose only.
+     * Try to infer the entry function for this instance. Not part of the spec, for testing purpose
+     * only.
      *
      * @return exported function named {@code _main}, exported function named {@code _start}, start
      *         function or {@code null} in this order.
@@ -117,9 +117,9 @@ public final class WasmInstance extends RuntimeState implements TruffleObject {
         }
         final Integer globalIndex = symbolTable.exportedGlobals().get(member);
         if (globalIndex != null) {
-            readGlobal(this, symbolTable, globalIndex);
+            return readGlobal(this, symbolTable, globalIndex);
         }
-        if (member.equals(symbolTable.exportedMemory())) {
+        if (symbolTable.exportedMemoryNames().contains(member)) {
             return memory();
         }
         throw UnknownIdentifierException.create(member);
@@ -155,7 +155,7 @@ public final class WasmInstance extends RuntimeState implements TruffleObject {
         final SymbolTable symbolTable = symbolTable();
         try {
             return symbolTable.exportedFunctions().containsKey(member) || symbolTable.exportedGlobals().containsKey(member) ||
-                            member.equals(symbolTable.exportedMemory());
+                            symbolTable.exportedTableNames().contains(member);
         } catch (NumberFormatException exc) {
             return false;
         }
@@ -170,11 +170,7 @@ public final class WasmInstance extends RuntimeState implements TruffleObject {
         if (index == null) {
             return false;
         }
-        final boolean mutable = symbolTable.globalMutability(index) == GlobalModifier.MUTABLE;
-        if (!mutable) {
-            return false;
-        }
-        return true;
+        return symbolTable.globalMutability(index) == GlobalModifier.MUTABLE;
     }
 
     @ExportMessage
@@ -245,11 +241,7 @@ public final class WasmInstance extends RuntimeState implements TruffleObject {
         @ExportMessage
         @TruffleBoundary
         long getArraySize() {
-            return exportedFunctions.size() + exportedGlobals.size() + memoriesSize();
-        }
-
-        private int memoriesSize() {
-            return (symbolTable.exportedMemory() != null ? 1 : 0);
+            return exportedFunctions.size() + exportedGlobals.size() + symbolTable.exportedMemoryNames().size();
         }
 
         @ExportMessage

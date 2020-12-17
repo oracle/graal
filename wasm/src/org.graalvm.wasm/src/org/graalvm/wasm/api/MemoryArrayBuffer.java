@@ -40,17 +40,17 @@
  */
 package org.graalvm.wasm.api;
 
-import static com.oracle.truffle.api.CompilerDirectives.transferToInterpreter;
-import static java.lang.Math.toIntExact;
-
-import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.interop.InteropLibrary;
 import com.oracle.truffle.api.interop.InvalidArrayIndexException;
 import com.oracle.truffle.api.interop.TruffleObject;
 import com.oracle.truffle.api.interop.UnsupportedMessageException;
+import com.oracle.truffle.api.interop.UnsupportedTypeException;
 import com.oracle.truffle.api.library.ExportLibrary;
 import com.oracle.truffle.api.library.ExportMessage;
 import org.graalvm.wasm.memory.WasmMemory;
+
+import static com.oracle.truffle.api.CompilerDirectives.transferToInterpreter;
+import static java.lang.Math.toIntExact;
 
 @ExportLibrary(InteropLibrary.class)
 public class MemoryArrayBuffer implements TruffleObject {
@@ -81,13 +81,13 @@ public class MemoryArrayBuffer implements TruffleObject {
     @SuppressWarnings({"unused", "static-method"})
     @ExportMessage
     final boolean isArrayElementModifiable(long index) {
-        return false;
+        return isArrayElementReadable(index);
     }
 
     @SuppressWarnings({"unused", "static-method"})
     @ExportMessage
     final boolean isArrayElementInsertable(long index) {
-        return false;
+        return isArrayElementReadable(index);
     }
 
     @SuppressWarnings({"unused"})
@@ -100,14 +100,17 @@ public class MemoryArrayBuffer implements TruffleObject {
         return memory.load_i32_8u(null, toIntExact(index));
     }
 
-    @CompilerDirectives.TruffleBoundary
-    private static UnsupportedMessageException unsupported() {
-        return UnsupportedMessageException.create();
-    }
-
     @SuppressWarnings({"unused", "static-method"})
     @ExportMessage
-    final void writeArrayElement(long index, Object arg2) throws UnsupportedMessageException {
-        throw unsupported();
+    final void writeArrayElement(long index, Object value) throws InvalidArrayIndexException, UnsupportedTypeException {
+        if (!isArrayElementModifiable(index)) {
+            transferToInterpreter();
+            throw InvalidArrayIndexException.create(index);
+        }
+        try {
+            memory.store_i32_8(null, toIntExact(index), InteropLibrary.getFactory().getUncached().asByte(value));
+        } catch (UnsupportedMessageException e) {
+            throw UnsupportedTypeException.create(new Object[]{value}, e.getMessage());
+        }
     }
 }
