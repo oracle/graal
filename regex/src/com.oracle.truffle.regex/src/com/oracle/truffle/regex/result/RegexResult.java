@@ -40,6 +40,7 @@
  */
 package com.oracle.truffle.regex.result;
 
+import com.oracle.truffle.api.CallTarget;
 import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.dsl.Cached;
@@ -51,6 +52,7 @@ import com.oracle.truffle.api.interop.ArityException;
 import com.oracle.truffle.api.interop.InteropLibrary;
 import com.oracle.truffle.api.interop.TruffleObject;
 import com.oracle.truffle.api.interop.UnknownIdentifierException;
+import com.oracle.truffle.api.interop.UnsupportedMessageException;
 import com.oracle.truffle.api.interop.UnsupportedTypeException;
 import com.oracle.truffle.api.library.ExportLibrary;
 import com.oracle.truffle.api.library.ExportMessage;
@@ -58,6 +60,8 @@ import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.regex.AbstractConstantKeysObject;
 import com.oracle.truffle.regex.AbstractRegexObject;
 import com.oracle.truffle.regex.RegexObject;
+import com.oracle.truffle.regex.runtime.nodes.ExpectByteArrayHostObjectNode;
+import com.oracle.truffle.regex.runtime.nodes.ExpectStringOrTruffleObjectNode;
 import com.oracle.truffle.regex.runtime.nodes.ToIntNode;
 import com.oracle.truffle.regex.util.TruffleReadOnlyKeysArray;
 
@@ -91,6 +95,99 @@ public abstract class RegexResult extends AbstractConstantKeysObject {
     public abstract int getStart(int groupNumber);
 
     public abstract int getEnd(int groupNumber);
+
+    @ExportMessage
+    public Object getMembers(@SuppressWarnings("unused") boolean includeInternal) {
+        return KEYS;
+    }
+
+    @ExportMessage
+    abstract static class ReadMember {
+
+        @SuppressWarnings("unused")
+        @Specialization(guards = {"symbol == cachedSymbol", "cachedSymbol.equals(PROP_IS_MATCH)"}, limit = "2")
+        static boolean isMatchIdentity(RegexResult receiver, String symbol,
+                        @Cached("symbol") String cachedSymbol) {
+            return receiver != NoMatchResult.getInstance();
+        }
+
+        @SuppressWarnings("unused")
+        @Specialization(guards = {"symbol.equals(cachedSymbol)", "cachedSymbol.equals(PROP_IS_MATCH)"}, limit = "2", replaces = "isMatchIdentity")
+        static boolean isMatchEquals(RegexResult receiver, String symbol,
+                        @Cached("symbol") String cachedSymbol) {
+            return receiver != NoMatchResult.getInstance();
+        }
+
+        @SuppressWarnings("unused")
+        @Specialization(guards = {"symbol == cachedSymbol", "cachedSymbol.equals(PROP_GET_START)"}, limit = "2")
+        static RegexResultGetStartMethod getStartIdentity(RegexResult receiver, String symbol,
+                        @Cached("symbol") String cachedSymbol) {
+            return new RegexResultGetStartMethod(receiver);
+        }
+
+        @SuppressWarnings("unused")
+        @Specialization(guards = {"symbol.equals(cachedSymbol)", "cachedSymbol.equals(PROP_GET_START)"}, limit = "2", replaces = "getStartIdentity")
+        static RegexResultGetStartMethod getStartEquals(RegexResult receiver, String symbol,
+                        @Cached("symbol") String cachedSymbol) {
+            return new RegexResultGetStartMethod(receiver);
+        }
+
+        @SuppressWarnings("unused")
+        @Specialization(guards = {"symbol == cachedSymbol", "cachedSymbol.equals(PROP_GET_END)"}, limit = "2")
+        static RegexResultGetEndMethod getEndIdentity(RegexResult receiver, String symbol,
+                        @Cached("symbol") String cachedSymbol) {
+            return new RegexResultGetEndMethod(receiver);
+        }
+
+        @SuppressWarnings("unused")
+        @Specialization(guards = {"symbol.equals(cachedSymbol)", "cachedSymbol.equals(PROP_GET_END)"}, limit = "2", replaces = "getEndIdentity")
+        static RegexResultGetEndMethod getEndEquals(RegexResult receiver, String symbol,
+                        @Cached("symbol") String cachedSymbol) {
+            return new RegexResultGetEndMethod(receiver);
+        }
+
+        @ReportPolymorphism.Megamorphic
+        @Specialization(replaces = {"isMatchEquals", "getStartEquals", "getEndEquals"})
+        static Object readGeneric(RegexResult receiver, String symbol) throws UnknownIdentifierException {
+            switch (symbol) {
+                case PROP_IS_MATCH:
+                    return receiver != NoMatchResult.getInstance();
+                case PROP_GET_START:
+                    return new RegexResultGetStartMethod(receiver);
+                case PROP_GET_END:
+                    return new RegexResultGetEndMethod(receiver);
+                default:
+                    CompilerDirectives.transferToInterpreterAndInvalidate();
+                    throw UnknownIdentifierException.create(symbol);
+            }
+        }
+    }
+
+    @ExportMessage
+    abstract static class IsMemberReadable {
+
+        @SuppressWarnings("unused")
+        @Specialization(guards = {"symbol == cachedSymbol", "result"}, limit = "3")
+        static boolean cacheIdentity(RegexResult receiver, String symbol,
+                        @Cached("symbol") String cachedSymbol,
+                        @Cached("isReadable(receiver, cachedSymbol)") boolean result) {
+            return result;
+        }
+
+        @SuppressWarnings("unused")
+        @Specialization(guards = {"symbol.equals(cachedSymbol)", "result"}, limit = "3", replaces = "cacheIdentity")
+        static boolean cacheEquals(RegexResult receiver, String symbol,
+                        @Cached("symbol") String cachedSymbol,
+                        @Cached("isReadable(receiver, cachedSymbol)") boolean result) {
+            return result;
+        }
+
+        @SuppressWarnings("unused")
+        @Specialization(replaces = "cacheEquals")
+        static boolean isReadable(RegexResult receiver, String symbol) {
+            return KEYS.contains(symbol);
+        }
+    }
 
     @Override
     public TruffleReadOnlyKeysArray getKeys() {

@@ -248,11 +248,12 @@ public final class RegexObject extends AbstractConstantKeysObject {
     @GenerateUncached
     abstract static class InvokeCacheNode extends Node {
 
-        abstract Object execute(String symbol, CallTarget receiver, Object input, int fromIndex) throws UnsupportedMessageException, ArityException, UnsupportedTypeException, UnknownIdentifierException;
+        abstract Object execute(String symbol, CallTarget receiver, Object input, int fromIndex)
+                        throws UnsupportedMessageException, ArityException, UnsupportedTypeException, UnknownIdentifierException;
 
         @SuppressWarnings("unused")
         @Specialization(guards = {"symbol == cachedSymbol", "cachedSymbol.equals(PROP_EXEC)"}, limit = N_METHODS)
-        Object getStartIdentity(String symbol, CallTarget receiver, Object input, int fromIndex,
+        Object execIdentity(String symbol, CallTarget receiver, Object input, int fromIndex,
                         @Cached("symbol") String cachedSymbol,
                         @Cached ExpectStringOrTruffleObjectNode expectStringOrTruffleObjectNode,
                         @Cached ExecCompiledRegexNode execNode) throws UnsupportedMessageException, ArityException, UnsupportedTypeException {
@@ -260,8 +261,8 @@ public final class RegexObject extends AbstractConstantKeysObject {
         }
 
         @SuppressWarnings("unused")
-        @Specialization(guards = {"symbol.equals(cachedSymbol)", "cachedSymbol.equals(PROP_EXEC)"}, limit = N_METHODS, replaces = "getStartIdentity")
-        Object getStartEquals(String symbol, CallTarget receiver, Object input, int fromIndex,
+        @Specialization(guards = {"symbol.equals(cachedSymbol)", "cachedSymbol.equals(PROP_EXEC)"}, limit = N_METHODS, replaces = "execIdentity")
+        Object execEquals(String symbol, CallTarget receiver, Object input, int fromIndex,
                         @Cached("symbol") String cachedSymbol,
                         @Cached ExpectStringOrTruffleObjectNode expectStringOrTruffleObjectNode,
                         @Cached ExecCompiledRegexNode execNode) throws UnsupportedMessageException, ArityException, UnsupportedTypeException {
@@ -271,7 +272,7 @@ public final class RegexObject extends AbstractConstantKeysObject {
         // EXPERIMENTAL
         @SuppressWarnings("unused")
         @Specialization(guards = {"symbol == cachedSymbol", "cachedSymbol.equals(PROP_EXEC_BYTES)"}, limit = N_METHODS)
-        Object getEndIdentity(String symbol, CallTarget receiver, Object input, int fromIndex,
+        Object execBytesIdentity(String symbol, CallTarget receiver, Object input, int fromIndex,
                         @Cached("symbol") String cachedSymbol,
                         @Cached ExpectByteArrayHostObjectNode expectByteArrayHostObjectNode,
                         @Cached ExecCompiledRegexNode execNode) throws UnsupportedMessageException, ArityException, UnsupportedTypeException {
@@ -280,8 +281,8 @@ public final class RegexObject extends AbstractConstantKeysObject {
 
         // EXPERIMENTAL
         @SuppressWarnings("unused")
-        @Specialization(guards = {"symbol.equals(cachedSymbol)", "cachedSymbol.equals(PROP_EXEC_BYTES)"}, limit = N_METHODS, replaces = "getEndIdentity")
-        Object getEndEquals(String symbol, CallTarget receiver, Object input, int fromIndex,
+        @Specialization(guards = {"symbol.equals(cachedSymbol)", "cachedSymbol.equals(PROP_EXEC_BYTES)"}, limit = N_METHODS, replaces = "execBytesIdentity")
+        Object execBytesEquals(String symbol, CallTarget receiver, Object input, int fromIndex,
                         @Cached("symbol") String cachedSymbol,
                         @Cached ExpectByteArrayHostObjectNode expectByteArrayHostObjectNode,
                         @Cached ExecCompiledRegexNode execNode) throws UnsupportedMessageException, ArityException, UnsupportedTypeException {
@@ -289,7 +290,7 @@ public final class RegexObject extends AbstractConstantKeysObject {
         }
 
         @ReportPolymorphism.Megamorphic
-        @Specialization(replaces = {"getStartEquals", "getEndEquals"})
+        @Specialization(replaces = {"execEquals", "execBytesEquals"})
         static Object invokeGeneric(String symbol, CallTarget receiver, Object input, int fromIndex,
                         @Cached ExpectStringOrTruffleObjectNode expectStringOrTruffleObjectNode,
                         @Cached ExpectByteArrayHostObjectNode expectByteArrayHostObjectNode,
