@@ -30,6 +30,14 @@ Ahoj
   2 calls to cat
   2 calls to stdout
 ===================
+> Rscript --polyglot --insight=agent-histogram.js ${TMP_DIR}/fib.R
+8
+==== Histogram ====
+ 15 calls to fib
+  3 calls to <repl wrapper>
+  2 calls to cat
+  2 calls to stdout
+===================
 > cat > ${TMP_DIR}/test.js
 < print('hi js!')
 > polyglot --jvm --agentscript=agent-r.R --experimental-options ${TMP_DIR}/test.js
@@ -39,6 +47,11 @@ R: Hooks are ready!
 R: observed loading of.*test.js
 hi js!
 > polyglot --jvm --insight=agent-r.R ${TMP_DIR}/test.js
+R: Initializing GraalVM Insight script
+R: Hooks are ready!
+R: observed loading of.*test.js
+hi js!
+> polyglot --insight=agent-r.R ${TMP_DIR}/test.js
 R: Initializing GraalVM Insight script
 R: Hooks are ready!
 R: observed loading of.*test.js
