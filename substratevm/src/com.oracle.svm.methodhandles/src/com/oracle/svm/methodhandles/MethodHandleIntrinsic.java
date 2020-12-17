@@ -32,7 +32,9 @@ import java.lang.reflect.Modifier;
 // Checkstyle: allow
 import java.util.Arrays;
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.Map;
+import java.util.Set;
 
 import com.oracle.svm.core.hub.DynamicHub;
 
@@ -55,6 +57,11 @@ final class MethodHandleIntrinsic {
         InvokeBasic(Modifier.FINAL | Modifier.NATIVE),
         /* MethodHandle.linkTo*(Object...) */
         Link(Modifier.STATIC | Modifier.NATIVE),
+
+        /* Field access */
+
+        /* Unsafe.(get|put)<T>[Volatile](Object, long[, <T>]) */
+        UnsafeFieldAccess(Modifier.PUBLIC | Modifier.NATIVE),
 
         /* Bound method handle operations */
 
@@ -98,6 +105,17 @@ final class MethodHandleIntrinsic {
 
     static Map<Variant, Map<String, Map<JavaKind, Map<Integer, MethodHandleIntrinsic>>>> cache = new HashMap<>();
     static final String NO_SPECIES = "";
+    static final Set<String> unsafeFieldAccessMethodNames = new HashSet<>();
+
+    static {
+        for (String op : Arrays.asList("get", "put")) {
+            for (String type : Arrays.asList("Object", "Boolean", "Byte", "Short", "Char", "Int", "Long", "Float", "Double")) {
+                for (String isVolatile : Arrays.asList("", "Volatile")) {
+                    unsafeFieldAccessMethodNames.add(op + type + isVolatile);
+                }
+            }
+        }
+    }
 
     final Variant variant;
     final String species; /* For BoundMethodHandle intrinsics */
@@ -161,6 +179,14 @@ final class MethodHandleIntrinsic {
              */
             case Link:
                 throw shouldNotReachHere("linkTo methods should not be executed");
+
+            /*
+             * The Unsafe.(get|put)<Type>[Volatile] method are resolved internally by the JDK
+             * implementation, but we don't use them to access fields. We keep those as intrinsics
+             * to avoid substituting a complex method just to filter them out.
+             */
+            case UnsafeFieldAccess:
+                throw shouldNotReachHere("unsafe field access methods should not be executed");
 
             /*
              * Bound method handle constructor. Creates an instance of BoundMethodHandle with an
@@ -386,6 +412,9 @@ final class MethodHandleIntrinsic {
                 case "linkToSpecial":
                     return MethodHandleIntrinsic.intrinsic(Variant.Link);
             }
+        } else if ("jdk.internal.misc.Unsafe".equals(declaringClass.getTypeName()) &&
+                        unsafeFieldAccessMethodNames.contains(name)) {
+            return MethodHandleIntrinsic.intrinsic(Variant.UnsafeFieldAccess);
         } else if (declaringClass == Target_java_lang_invoke_BoundMethodHandle.class ||
                         /*
                          * The L species is directly accessed in some places and needs a special
