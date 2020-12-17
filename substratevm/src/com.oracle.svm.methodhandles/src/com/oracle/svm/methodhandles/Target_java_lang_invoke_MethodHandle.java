@@ -39,6 +39,7 @@ import com.oracle.svm.core.SubstrateUtil;
 import com.oracle.svm.core.annotate.Alias;
 import com.oracle.svm.core.annotate.Substitute;
 import com.oracle.svm.core.annotate.TargetClass;
+import com.oracle.svm.core.util.VMError;
 import com.oracle.svm.reflect.helpers.InvokeSpecialReflectionProxy;
 import com.oracle.svm.reflect.target.Target_java_lang_reflect_AccessibleObject;
 import com.oracle.svm.reflect.target.Target_java_lang_reflect_Method;
@@ -78,14 +79,43 @@ final class Target_java_lang_invoke_MethodHandle {
                 assert memberName.reflectAccess == null;
                 return memberName.intrinsic.execute(args);
             } else if (memberName.isField()) { /* Field access */
-                Field field = (Field) memberName.reflectAccess;
-                if (Modifier.isStatic(field.getModifiers())) {
-                    assert args == null || args.length == 0;
-                    return field.get(null);
-                } else {
-                    assert args.length == 1;
-                    Object receiver = args[0];
-                    return field.get(receiver);
+                Target_java_lang_reflect_AccessibleObject executable = SubstrateUtil.cast(memberName.reflectAccess, Target_java_lang_reflect_AccessibleObject.class);
+
+                /* Access control was already performed by the JDK code calling invokeBasic */
+                boolean oldOverride = executable.override;
+                executable.override = true;
+                try {
+                    Field field = (Field) memberName.reflectAccess;
+                    byte refKind = memberName.getReferenceKind();
+                    if (Modifier.isStatic(field.getModifiers())) {
+                        if (refKind == Target_java_lang_invoke_MethodHandleNatives_Constants.REF_getStatic) {
+                            assert args == null || args.length == 0;
+                            return field.get(null);
+                        } else if (refKind == Target_java_lang_invoke_MethodHandleNatives_Constants.REF_putStatic) {
+                            assert args.length == 1;
+                            Object value = args[0];
+                            field.set(null, value);
+                            return null;
+                        } else {
+                            throw VMError.shouldNotReachHere("Wrong reference kind for static field access: " + memberName.getReferenceKind());
+                        }
+                    } else {
+                        if (refKind == Target_java_lang_invoke_MethodHandleNatives_Constants.REF_getField) {
+                            assert args.length == 1;
+                            Object receiver = args[0];
+                            return field.get(receiver);
+                        } else if (refKind == Target_java_lang_invoke_MethodHandleNatives_Constants.REF_putField) {
+                            assert args.length == 2;
+                            Object receiver = args[0];
+                            Object value = args[1];
+                            field.set(receiver, value);
+                            return null;
+                        } else {
+                            throw VMError.shouldNotReachHere("Wrong reference kind for instance field access: " + memberName.getReferenceKind());
+                        }
+                    }
+                } finally {
+                    executable.override = oldOverride;
                 }
             } else { /* Method or constructor invocation */
                 assert args.length == type.parameterCount();
