@@ -22,6 +22,7 @@
  */
 package com.oracle.truffle.espresso.jdwp.impl;
 
+import com.oracle.truffle.espresso.jdwp.api.ErrorCodes;
 import com.oracle.truffle.espresso.jdwp.api.JDWPContext;
 
 import java.io.IOException;
@@ -600,6 +601,10 @@ public final class DebuggerConnection implements Commands {
                     }
                 }
                 handleReply(packet, result);
+            } catch (Throwable t) {
+                PacketStream reply = new PacketStream().replyPacket().id(packet.id);
+                reply.errorCode(ErrorCodes.INTERNAL);
+                handleReply(packet, new CommandResult(reply));
             } finally {
                 if (entered) {
                     controller.leaveTruffleContext();
