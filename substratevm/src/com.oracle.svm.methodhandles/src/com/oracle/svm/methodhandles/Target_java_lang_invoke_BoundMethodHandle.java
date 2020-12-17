@@ -149,7 +149,7 @@ final class BoundMethodHandleUtils {
     static Target_java_lang_invoke_BoundMethodHandle make(MethodType type, Target_java_lang_invoke_LambdaForm form, String species, Object... args) {
         Target_java_lang_invoke_SimpleMethodHandle bmh = new Target_java_lang_invoke_SimpleMethodHandle(type, form);
         bmh.speciesData = SubstrateUtil.cast(Target_java_lang_invoke_BoundMethodHandle.SPECIALIZER, Target_java_lang_invoke_ClassSpecializer.class).findSpecies(species);
-        bmh.args = Arrays.copyOf(args, args.length);
+        bmh.args = (args != null) ? Arrays.copyOf(args, args.length) : new Object[0];
         return SubstrateUtil.cast(bmh, Target_java_lang_invoke_BoundMethodHandle.class);
     }
 
