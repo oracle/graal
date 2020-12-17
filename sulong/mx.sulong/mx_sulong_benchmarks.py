@@ -131,6 +131,12 @@ class SulongBenchmarkSuite(VmBenchmarkSuite):
         return [re.compile(r'^(### )?([a-zA-Z0-9\.\-_]+): +([0-9]+(?:\.[0-9]+)?)', re.MULTILINE)]
 
     def flakySkipPatterns(self, benchmarks, bmSuiteArgs):
+        # This comes into play when benchmarking with AOT auxiliary images. An AOT benchmark must
+        # be run twice: the first run involves parsing only with no run. Upon closing the context,
+        # the auxiliary image is saved and then loaded when the second benchmark is run. The no-run 
+        # preparatory benchmark is run using the llimul launcher and passing --multi-context-runs=0. 
+        # We can capture this argument here and instruct the benchmark infrastructure to ignore 
+        # the output of this benchmark.
         if any(a == "--multi-context-runs=0" for a in bmSuiteArgs):
             return [re.compile(r'.*', re.MULTILINE)]
         return []
