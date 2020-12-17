@@ -36,23 +36,21 @@ import org.graalvm.nativeimage.hosted.Feature;
 import java.util.Arrays;
 import java.util.List;
 import java.util.Map;
-import java.util.stream.Collectors;
+import java.util.HashMap;
 import java.util.stream.Stream;
 
 class CodeBreakdownJsonObject extends JsonObject {
 
-    private final Feature.AfterCompilationAccess access;
-
-    private static final String INFO_NAME = "name";
-    private static final List<String> NAMES = Arrays.asList(INFO_NAME, "size");
+    private boolean built = false;
+    private Feature.AfterCompilationAccess access;
+    private final Map<String, Integer> data = new HashMap<>();
 
     CodeBreakdownJsonObject(Feature.AfterCompilationAccess access) {
         this.access = access;
     }
 
     public Map<String, Integer> getData() {
-        return ((FeatureImpl.AfterCompilationAccessImpl) access).getCompilationTasks().stream()
-                        .collect(Collectors.toMap(t -> t.method.format("%H.%n(%p) %r"), t -> t.result.getTargetCodeSize()));
+        return data;
     }
 
     @Override
@@ -62,15 +60,35 @@ class CodeBreakdownJsonObject extends JsonObject {
 
     @Override
     JsonValue getValue(String name) {
-        return JsonArray.get(((FeatureImpl.AfterCompilationAccessImpl) access).getCompilationTasks().stream().map(MethodJsonObject::new));
+        return JsonArray.get(data.entrySet().stream().map(MethodJsonObject::new));
+    }
+
+    @Override
+    protected void build() {
+        if (built) {
+            return;
+        }
+        for (CompileQueue.CompileTask task : ((FeatureImpl.AfterCompilationAccessImpl) access).getCompilationTasks()) {
+            data.merge(task.method.format("%H.%n(%p) %r"), task.result.getTargetCodeSize(), Integer::sum);
+        }
+        access = null;
+        built = true;
     }
 
     private static class MethodJsonObject extends JsonObject {
+        private static final String INFO_NAME = "name";
+        private static final List<String> NAMES = Arrays.asList(INFO_NAME, "size");
 
-        private final CompileQueue.CompileTask task;
+        private final String methodName;
+        private final int methodSize;
 
-        MethodJsonObject(CompileQueue.CompileTask task) {
-            this.task = task;
+        MethodJsonObject(Map.Entry<String, Integer> entry) {
+            this(entry.getKey(), entry.getValue());
+        }
+
+        MethodJsonObject(String name, int size) {
+            this.methodName = name;
+            this.methodSize = size;
         }
 
         @Override
@@ -80,9 +98,9 @@ class CodeBreakdownJsonObject extends JsonObject {
 
         @Override
         JsonValue getValue(String name) {
-            return name == INFO_NAME
-                            ? JsonString.get(task.method.format("%H.%n(%p) %r"))
-                            : JsonNumber.get(task.result.getTargetCodeSize());
+            return INFO_NAME.equals(name)
+                            ? JsonString.get(this.methodName)
+                            : JsonNumber.get(this.methodSize);
         }
     }
 }
