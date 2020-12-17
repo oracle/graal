@@ -313,7 +313,7 @@ public class SourceCache {
             moduleName = ModuleSupport.getModuleName(clazz);
         }
 
-        if (moduleName != null) {
+        if (moduleName != null && !specialSrcRoots.isEmpty()) {
             for (String specialRootModule : specialRootModules) {
                 if (moduleName.equals(specialRootModule)) {
                     for (Path srcRoot : specialSrcRoots.get(specialRootModule)) {
