@@ -152,7 +152,7 @@ public final class EspressoContext {
     // Checkstyle: resume field name check
     // endregion Options
 
-    @CompilationFinal private TruffleObject topBindings;
+    // Must be initialized after the context instance creation.
 
     // region VM
     @CompilationFinal private Meta meta;
@@ -173,6 +173,8 @@ public final class EspressoContext {
     @CompilationFinal private Assumption noSuspend = Truffle.getRuntime().createAssumption();
     @CompilationFinal private Assumption noThreadDeprecationCalled = Truffle.getRuntime().createAssumption();
     // endregion ThreadDeprecated
+
+    @CompilationFinal private TruffleObject topBindings;
 
     public TruffleLogger getLogger() {
         return logger;
@@ -416,10 +418,11 @@ public final class EspressoContext {
             meta.java_lang_OutOfMemoryError.lookupDeclaredMethod(Name._init_, Signature._void_String).invokeDirect(outOfMemoryErrorInstance, meta.toGuestString("VM OutOfMemory"));
 
             // Create application (system) class loader.
+            StaticObject systemClassLoader = null;
             try (DebugCloseable systemLoader = SYSTEM_CLASSLOADER.scope(timers)) {
-                StaticObject systemClassLoader = (StaticObject) meta.java_lang_ClassLoader_getSystemClassLoader.invokeDirect(null);
-                topBindings = new EspressoBindings(systemClassLoader);
+                systemClassLoader = (StaticObject) meta.java_lang_ClassLoader_getSystemClassLoader.invokeDirect(null);
             }
+            topBindings = new EspressoBindings(systemClassLoader);
 
             initDoneTimeNanos = System.nanoTime();
             long elapsedNanos = initDoneTimeNanos - initStartTimeNanos;
