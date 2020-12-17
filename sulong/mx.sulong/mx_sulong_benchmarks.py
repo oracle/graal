@@ -29,6 +29,7 @@
 #
 import re
 import shutil
+import time
 
 import mx, mx_benchmark, mx_sulong
 import os
@@ -132,29 +133,35 @@ class SulongBenchmarkSuite(VmBenchmarkSuite):
 
     def rules(self, out, benchmarks, bmSuiteArgs):
         return [
-            SulongBenchmarkRule(
-		r'^first [\d]+ warmup iterations (?P<benchmark>[\S]+):(?P<line>([ ,]+(?:\d+(?:\.\d+)?))+)',
-		{
+            SulongBenchmarkRule(r'^first [\d]+ warmup iterations (?P<benchmark>[\S]+):(?P<line>([ ,]+(?:\d+(?:\.\d+)?))+)', {
                 "benchmark": ("<benchmark>", str),
                 "metric.name": "warmup",
                 "metric.type": "numeric",
-                "metric.value": ("<score>", float),
+                "metric.value": ("<score>", int),
                 "metric.score-function": "id",
                 "metric.better": "lower",
                 "metric.unit": "us",
                 "metric.iteration": ("<iteration>", int),
             }),
-            SulongBenchmarkRule(
-		r'^last [\d]+ iterations (?P<benchmark>[\S]+):(?P<line>([ ,]+(?:\d+(?:\.\d+)?))+)',
-		{
+            SulongBenchmarkRule(r'^last [\d]+ iterations (?P<benchmark>[\S]+):(?P<line>([ ,]+(?:\d+(?:\.\d+)?))+)', {
                 "benchmark": ("<benchmark>", str),
                 "metric.name": "time",
                 "metric.type": "numeric",
-                "metric.value": ("<score>", float),
+                "metric.value": ("<score>", int),
                 "metric.score-function": "id",
                 "metric.better": "lower",
                 "metric.unit": "us",
                 "metric.iteration": ("<iteration>", int),
+            }),
+            mx_benchmark.StdOutRule(r'^Pure-startup \(microseconds\) (?P<benchmark>[\S]+): (?P<score>\d+)', {
+                "benchmark": ("<benchmark>", str),
+                "metric.name": "pure-startup",
+                "metric.type": "numeric",
+                "metric.value": ("<score>", int),
+                "metric.score-function": "id",
+                "metric.better": "lower",
+                "metric.unit": "us",
+                "metric.iteration": ("0", int),
             }),
         ]
 
@@ -171,6 +178,11 @@ class SulongBenchmarkSuite(VmBenchmarkSuite):
             mx.abort("Please run a specific benchmark (mx benchmark csuite:<benchmark-name>) or all the benchmarks (mx benchmark csuite:*)")
         vmArgs = self.vmArgs(bmSuiteArgs)
         runArgs = self.runArgs(bmSuiteArgs)
+        try:
+            runArgs += ['--time', str(int(time.clock_gettime(time.CLOCK_REALTIME) * 1000000))]
+        except:
+            # We can end up here in case the python version we're running on doesn't have clock_gettime or CLOCK_REALTIME.
+            pass
         return vmArgs + [self.bench_to_exec[benchmarks[0]]] + runArgs
 
     def get_vm_registry(self):
@@ -268,8 +280,8 @@ class SulongVm(CExecutionEnvironmentMixin, GuestVm):
         return "sulong"
 
     def run(self, cwd, args):
-        bench_file = args[-1]
-        launcher_args = self.launcher_args(args[:-1]) + [bench_file]
+        bench_file_and_args = args[-3:]
+        launcher_args = self.launcher_args(args[:-3]) + bench_file_and_args
         if hasattr(self.host_vm(), 'run_launcher'):
             result = self.host_vm().run_launcher('lli', launcher_args, cwd)
         else:

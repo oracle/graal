@@ -1,5 +1,18 @@
 # Version 21.0.0
 
+Fixes:
+
+* Improve AST sharing, and support auxiliary engine caching.
+  On top of the regular AST sharing that allows sharing code between multiple contexts in a
+  single engine, this allows persisting of the shared code, to share it across process boundaries.
+
+* Add support for MacOS Big Sur.
+
+Deprecations:
+
+* Add deprecation warning for the old header locations `polyglot.h` and `llvm/api/toolchain.h`.
+  This header files were deprecated already in 20.3.0, but without a warning.
+
 # Version 20.3.0
 
 New features:

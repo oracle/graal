@@ -63,16 +63,6 @@ public final class IsolatedCodeInstallBridge extends InstalledCode implements Op
                     " only acts as an accessor for cross-isolate data. None of the implemented methods may be called.";
 
     @Override
-    public long getAddress() {
-        throw VMError.shouldNotReachHere(DO_NOT_CALL_REASON);
-    }
-
-    @Override
-    public long getEntryPoint() {
-        throw VMError.shouldNotReachHere(DO_NOT_CALL_REASON);
-    }
-
-    @Override
     public String getName() {
         throw VMError.shouldNotReachHere(DO_NOT_CALL_REASON);
     }

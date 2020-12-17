@@ -30,6 +30,7 @@ import com.oracle.truffle.api.interop.InteropLibrary;
 import com.oracle.truffle.api.test.polyglot.ProxyLanguage;
 import static org.graalvm.tools.insight.test.InsightObjectFactory.createConfig;
 import java.net.URI;
+import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
 import java.util.LinkedList;
@@ -790,6 +791,72 @@ public class InsightObjectTest {
             } catch (PolyglotException ex) {
                 assertNotEquals("Missing language error reported", -1, ex.getMessage().indexOf("No language for id unknownInsightLanguage found"));
             }
+        }
+    }
+
+    @Test
+    public void iterateFrames() throws Exception {
+        try (Context c = InsightObjectFactory.newContext()) {
+            Value insight = InsightObjectFactory.createAgentObject(c);
+            InsightAPI insightAPI = insight.as(InsightAPI.class);
+            Assert.assertNotNull("Agent API obtained", insightAPI);
+
+            // @formatter:off
+            Source s1 = Source.newBuilder(InstrumentationTestLanguage.ID,
+                "ROOT(\n" +
+                "  DEFINE(s1,\n" +
+                "    EXPRESSION(\n" +
+                "      CONSTANT(6),\n" +
+                "      CONSTANT(7)\n" +
+                "    )\n" +
+                "  )\n" +
+                ")",
+                "s1.px"
+            ).build();
+
+            Source s2internal = Source.newBuilder(InstrumentationTestLanguage.ID,
+                "ROOT(\n" +
+                "  DEFINE(s2,\n" +
+                "    CALL(s1)\n" +
+                "  )\n" +
+                ")",
+                "s2.px"
+            ).internal(true).build();
+
+            Source s3 = Source.newBuilder(InstrumentationTestLanguage.ID,
+                "ROOT(\n" +
+                "  CALL(s2)\n" +
+                ")",
+                "s3.px"
+            ).build();
+            // @formatter:on
+
+            String[] firstSourceName = {"ignore"};
+            List<InsightAPI.SourceSectionInfo> stackTraces = new ArrayList<>();
+            final InsightAPI.OnEventHandler threadDump = (ctx, frame) -> {
+                InsightAPI.FramesIterator<String> it = (loc, vars) -> {
+                    stackTraces.add(loc);
+                    return firstSourceName[0] == null ? loc.source().name() : null;
+                };
+                String value = ctx.iterateFrames(it);
+                if (firstSourceName[0] == null) {
+                    firstSourceName[0] = value;
+                }
+            };
+            insightAPI.on("return", threadDump, createConfig(true, false, false, "s1", null));
+
+            c.eval(s1);
+            c.eval(s2internal);
+            c.eval(s3);
+
+            assertEquals("Two frames", 2, stackTraces.size());
+            assertEquals("s1.px", stackTraces.get(0).source().name());
+            assertEquals("s3.px", stackTraces.get(1).source().name());
+
+            firstSourceName[0] = null;
+            c.eval(s3);
+            assertEquals("Third added", 3, stackTraces.size());
+            assertEquals("s1.px", stackTraces.get(2).source().name());
         }
     }
 

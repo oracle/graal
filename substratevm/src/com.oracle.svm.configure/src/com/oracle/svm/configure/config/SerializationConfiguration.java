@@ -25,51 +25,62 @@
  */
 package com.oracle.svm.configure.config;
 
-import com.oracle.svm.configure.json.JsonPrintable;
-import com.oracle.svm.configure.json.JsonWriter;
-
 import java.io.IOException;
-import java.util.HashSet;
+import java.util.Collection;
+import java.util.Collections;
+import java.util.LinkedHashSet;
 import java.util.Map;
 import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
+import java.util.stream.Collectors;
+
+import com.oracle.svm.configure.json.JsonPrintable;
+import com.oracle.svm.configure.json.JsonWriter;
 
 public class SerializationConfiguration implements JsonPrintable {
 
-    private final ConcurrentHashMap<String, Set<Long>> serializations = new ConcurrentHashMap<>();
+    private final ConcurrentHashMap<String, Set<String>> serializations = new ConcurrentHashMap<>();
 
-    public void add(String serializationTargetClass, Long checksum) {
-        Set<Long> ret = serializations.get(serializationTargetClass);
-        if (ret == null) {
-            ret = new HashSet<>();
-            serializations.put(serializationTargetClass, ret);
-        }
-        ret.add(checksum);
+    public void addAll(String serializationTargetClass, Collection<String> checksums) {
+        serializations.computeIfAbsent(serializationTargetClass, key -> new LinkedHashSet<>()).addAll(checksums);
     }
 
-    public boolean contains(String serializationTargetClass, Long checksum) {
-        return serializations.contains(serializationTargetClass) && serializations.get(serializationTargetClass).contains(checksum);
+    public void add(String serializationTargetClass, String checksum) {
+        if (checksum == null) {
+            addAll(serializationTargetClass, Collections.emptySet());
+        } else {
+            addAll(serializationTargetClass, Collections.singleton(checksum));
+        }
+    }
+
+    public boolean contains(String serializationTargetClass, String checksum) {
+        Set<String> checksums = serializations.get(serializationTargetClass);
+        return checksums != null && checksums.contains(checksum);
     }
 
     @Override
     public void printJson(JsonWriter writer) throws IOException {
         writer.append('[').indent();
         String prefix = "";
-        for (Map.Entry<String, Set<Long>> entry : serializations.entrySet()) {
-            for (Long value : entry.getValue()) {
-                writer.append(prefix);
-                writer.newline().append('{');
-                writer.newline();
-                writer.quote("name").append(":").quote(entry.getKey());
-                if (value != null) {
-                    writer.append(",").newline();
-                    writer.quote("checksum").append(':').append(value.toString()).newline();
+        for (Map.Entry<String, Set<String>> entry : serializations.entrySet()) {
+            writer.append(prefix);
+            writer.newline().append('{').newline();
+            String className = entry.getKey();
+            writer.quote("name").append(":").quote(className);
+            Set<String> checksums = entry.getValue();
+            if (!checksums.isEmpty()) {
+                writer.append(",").newline();
+                writer.quote("checksum").append(':');
+                if (checksums.size() == 1) {
+                    writer.quote(checksums.iterator().next());
                 } else {
-                    writer.newline();
+                    writer.append(checksums.stream()
+                                    .map(JsonWriter::quoteString)
+                                    .collect(Collectors.joining(", ", "[", "]")));
                 }
-                writer.append('}');
-                prefix = ",";
             }
+            writer.newline().append('}');
+            prefix = ",";
         }
         writer.unindent().newline();
         writer.append(']').newline();

@@ -147,7 +147,7 @@ public final class DebugStackTraceElement {
         } catch (ThreadDeath td) {
             throw td;
         } catch (Throwable ex) {
-            throw new DebugException(session, ex, root.getLanguageInfo(), null, true, null);
+            throw DebugException.create(session, ex, root.getLanguageInfo());
         }
     }
 

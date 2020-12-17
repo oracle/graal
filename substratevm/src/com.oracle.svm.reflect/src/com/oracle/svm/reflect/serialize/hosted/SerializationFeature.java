@@ -27,6 +27,22 @@ package com.oracle.svm.reflect.serialize.hosted;
 
 // Checkstyle: allow reflection
 
+import java.io.Externalizable;
+import java.io.ObjectStreamClass;
+import java.io.ObjectStreamField;
+import java.io.Serializable;
+import java.lang.reflect.Field;
+import java.lang.reflect.Method;
+import java.lang.reflect.Modifier;
+import java.util.HashMap;
+import java.util.HashSet;
+import java.util.Map;
+import java.util.Set;
+
+import org.graalvm.nativeimage.ImageSingletons;
+import org.graalvm.nativeimage.hosted.Feature;
+import org.graalvm.nativeimage.hosted.RuntimeReflection;
+
 import com.oracle.svm.core.annotate.AutomaticFeature;
 import com.oracle.svm.core.configure.ConfigurationFiles;
 import com.oracle.svm.core.configure.SerializationConfigurationParser;
@@ -41,19 +57,8 @@ import com.oracle.svm.hosted.NativeImageOptions;
 import com.oracle.svm.hosted.config.ConfigurationParserUtils;
 import com.oracle.svm.reflect.serialize.SerializationSupport;
 import com.oracle.svm.util.ReflectionUtil;
-import org.graalvm.nativeimage.ImageSingletons;
-import org.graalvm.nativeimage.hosted.Feature;
-import org.graalvm.nativeimage.hosted.RuntimeReflection;
 
-import java.io.Externalizable;
-import java.io.ObjectStreamClass;
-import java.io.ObjectStreamField;
-import java.io.Serializable;
-import java.lang.reflect.Field;
-import java.lang.reflect.Method;
-import java.lang.reflect.Modifier;
-import java.util.HashSet;
-import java.util.Set;
+import jdk.vm.ci.meta.MetaUtil;
 
 @AutomaticFeature
 public class SerializationFeature implements Feature {
@@ -67,13 +72,33 @@ public class SerializationFeature implements Feature {
         SerializationSupport serializationSupport = new SerializationSupport(imageClassLoader);
         ImageSingletons.add(SerializationRegistry.class, serializationSupport);
 
-        SerializationParserFunction serializationAdapter = (strTargetSerializationClass, checksum) -> {
+        Map<Class<?>, Boolean> deniedClasses = new HashMap<>();
+        SerializationConfigurationParser denyCollectorParser = new SerializationConfigurationParser((strTargetSerializationClass, checksums) -> {
+            Class<?> serializationTargetClass = resolveClass(strTargetSerializationClass, access);
+            if (serializationTargetClass != null) {
+                deniedClasses.put(serializationTargetClass, true);
+            }
+        });
+        ConfigurationParserUtils.parseAndRegisterConfigurations(denyCollectorParser, imageClassLoader, "serialization",
+                        ConfigurationFiles.Options.SerializationDenyConfigurationFiles, ConfigurationFiles.Options.SerializationDenyConfigurationResources,
+                        ConfigurationFiles.SERIALIZATION_DENY_NAME);
+
+        SerializationParserFunction serializationAdapter = (strTargetSerializationClass, checksums) -> {
             Class<?> serializationTargetClass = resolveClass(strTargetSerializationClass, access);
             UserError.guarantee(serializationTargetClass != null, "Cannot find serialization target class %s. The missing of this class can't be ignored even if -H:+AllowIncompleteClasspath is set." +
                             " Please make sure it is in the classpath", strTargetSerializationClass);
             if (Serializable.class.isAssignableFrom(serializationTargetClass)) {
-                Class<?> targetConstructor = serializationSupport.addSerializationConstructorAccessorClass(serializationTargetClass, checksum, access);
-                addReflections(serializationTargetClass, targetConstructor);
+                if (deniedClasses.containsKey(serializationTargetClass)) {
+                    if (deniedClasses.get(serializationTargetClass)) {
+                        deniedClasses.put(serializationTargetClass, false); /* Warn only once */
+                        // Checkstyle: stop
+                        System.out.println("Warning: Serialization deny list contains " + serializationTargetClass.getName() + ". Image will not support serialization/deserialization of this class.");
+                        // Checkstyle: resume
+                    }
+                } else {
+                    Class<?> targetConstructor = serializationSupport.addSerializationConstructorAccessorClass(serializationTargetClass, checksums, access);
+                    addReflections(serializationTargetClass, targetConstructor);
+                }
             }
         };
 
@@ -93,7 +118,7 @@ public class SerializationFeature implements Feature {
         }
 
         RuntimeReflection.register(serializationTargetClass);
-        /**
+        /*
          * ObjectStreamClass.computeDefaultSUID is always called at runtime to verify serialization
          * class consistency, so need to register all constructors, methods and fields/
          */
@@ -139,9 +164,14 @@ public class SerializationFeature implements Feature {
     }
 
     private static Class<?> resolveClass(String typeName, FeatureAccess a) {
-        Class<?> ret = a.findClassByName(typeName);
+        String name = typeName;
+        if (name.indexOf('[') != -1) {
+            /* accept "int[][]", "java.lang.String[]" */
+            name = MetaUtil.internalNameToJava(MetaUtil.toInternalName(name), true, true);
+        }
+        Class<?> ret = a.findClassByName(name);
         if (ret == null) {
-            handleError("Could not resolve " + typeName + " for serialization configuration.");
+            handleError("Could not resolve " + name + " for serialization configuration.");
         }
         return ret;
     }

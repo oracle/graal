@@ -507,7 +507,7 @@ public class VariablesScopeTest extends AbstractInstrumentationTest {
             @ExportMessage
             @SuppressWarnings("static-method")
             Object getMembers(@SuppressWarnings("unused") boolean includeInternal) {
-                throw new UnsupportedOperationException();
+                throw CompilerDirectives.shouldNotReachHere("Should never be called.");
             }
 
             @ExportMessage

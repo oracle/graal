@@ -1,33 +1,15 @@
 language: java
 python:
   - "2.7"
-addons:
-  apt:
-    packages:
-      - python-pip
-      - python-virtualenv
-      - wget
-      - mercurial
 
-# Use Trusty to get enough RAM
-sudo: required
-dist: xenial
+os: linux
+dist: bionic # 18.04
 
-jdk:
-    - openjdk11
-
-env:
-  global:
-    - JVMCI_VERSION="jvmci-21.0-b02"
-    - JDK8_UPDATE_VERSION="272"
-    - JDK8_UPDATE_VERSION_SUFFIX="+10"
-    - JDK11_VERSION="11.0.9+10"
-
-matrix:
+jobs:
   include:
   - os: linux
     env:
-      - JDK="jdk11" GATE="build,debuginfotest" PRIMARY="substratevm"
+      - JDK="labsjdk-ce-11" GATE="build,debuginfotest" PRIMARY="substratevm"
     arch:
       - arm64
     addons:
@@ -36,31 +18,21 @@ matrix:
           - gdb
   - os: linux
     arch: arm64
-    env: JDK="jdk11" GATE="fullbuild,test:1:100" PRIMARY="compiler"
+    env: JDK="labsjdk-ce-11" GATE="fullbuild,test:1:100" PRIMARY="compiler"
   - os: linux
     arch: arm64
-    env: JDK="jdk11" GATE="build,test:0:1" PRIMARY="compiler"
+    env: JDK="labsjdk-ce-11" GATE="build,test:0:1" PRIMARY="compiler"
   - os: linux
     arch: arm64
-    env: JDK="jdk11" GATE="build,bootstraplite" PRIMARY="compiler"
+    env: JDK="labsjdk-ce-11" GATE="build,bootstraplite" PRIMARY="compiler"
 
 install:
   - |
       export MX_PATH=${TRAVIS_BUILD_DIR}/../mx
-      git clone https://github.com/graalvm/mx.git ${MX_PATH}
+      git clone --depth 1 https://github.com/graalvm/mx.git ${MX_PATH}
       export PATH=${PATH}:${MX_PATH}
   - |
-      if [ "${TRAVIS_CPU_ARCH}" == "arm64" ]
-      then
-        export TRAVIS_CPU_ARCH="aarch64"
-      fi
-      JDK_TAR=${TRAVIS_BUILD_DIR}/../jdk.tar.gz
-      if [ "${JDK}" == "jdk11" ]
-      then
-      wget https://github.com/graalvm/labs-openjdk-11/releases/download/${JVMCI_VERSION}/labsjdk-ce-${JDK11_VERSION}-${JVMCI_VERSION}-linux-${TRAVIS_CPU_ARCH}.tar.gz -O ${JDK_TAR}
-      fi
-      mkdir -p ${TRAVIS_BUILD_DIR}/../jdk
-      tar -C ${TRAVIS_BUILD_DIR}/../jdk -xzf ${JDK_TAR} --strip-components=1
+      mx -y  --no-warning fetch-jdk --java-distribution ${JDK} --to ${TRAVIS_BUILD_DIR}/.. --alias jdk
       export JAVA_HOME=${TRAVIS_BUILD_DIR}/../jdk
 
 script:

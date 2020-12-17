@@ -61,7 +61,7 @@ public class NativeConfiguration implements Configuration {
         intrinsicProvider = new BasicIntrinsicsProvider(language);
         platformCapability = BasicPlatformCapability.create(key.loadCxxLibraries);
         if (key.enableNFI) {
-            ctxExtRegistry.register(NativeContextExtension.class, NFIContextExtension::new);
+            ctxExtRegistry.register(NativeContextExtension.class, new NFIContextExtension.Factory());
         }
     }
 
