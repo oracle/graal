@@ -966,15 +966,24 @@ class BootstrapToolchainLauncherProject(mx.Project):  # pylint: disable=too-many
     def launchers(self):
         for tool in self.suite.toolchain._supported_tools():
             for exe in self.suite.toolchain._tool_to_aliases(tool):
+                if mx.is_windows() and exe.endswith('.exe'):
+                    exe = exe[:-4] + ".cmd"
                 result = join(self.get_output_root(), exe)
-                yield result, tool, join('bin', exe)
+                yield result, tool, exe
 
     def getArchivableResults(self, use_relpath=True, single=False):
-        for result, _, prefixed in self.launchers():
-            yield result, prefixed
+        for result, _, exe in self.launchers():
+            yield result, join('bin', exe)
 
     def getBuildTask(self, args):
         return BootstrapToolchainLauncherBuildTask(self, args, 1)
+
+    def isPlatformDependent(self):
+        return True
+
+
+def _quote_windows(arg):
+    return '"{}"'.format(arg)
 
 
 class BootstrapToolchainLauncherBuildTask(mx.BuildTask):
@@ -989,35 +998,43 @@ class BootstrapToolchainLauncherBuildTask(mx.BuildTask):
         if sup[0]:
             return sup
 
-        for result, tool, _ in self.subject.launchers():
+        for result, tool, exe in self.subject.launchers():
             if not exists(result):
                 return True, result + ' does not exist'
             with open(result, "r") as f:
                 on_disk = f.read()
-            if on_disk != self.contents(tool):
+            if on_disk != self.contents(tool, exe):
                 return True, 'command line changed for ' + basename(result)
 
         return False, 'up to date'
 
     def build(self):
         mx.ensure_dir_exists(self.subject.get_output_root())
-        for result, tool, _ in self.subject.launchers():
+        for result, tool, exe in self.subject.launchers():
             with open(result, "w") as f:
-                f.write(self.contents(tool))
+                f.write(self.contents(tool, exe))
             os.chmod(result, 0o755)
 
     def clean(self, forBuild=False):
         if exists(self.subject.get_output_root()):
             mx.rmtree(self.subject.get_output_root())
 
-    def contents(self, tool):
+    def contents(self, tool, exe):
+        # platform support
+        all_params = '"%*"' if mx.is_windows() else '"$@"'
+        _quote = _quote_windows if mx.is_windows() else pipes.quote
+        # build command line
         java = mx.get_jdk().java
         classpath_deps = [dep for dep in self.subject.buildDependencies if isinstance(dep, mx.ClasspathDependency)]
-        jvm_args = [pipes.quote(arg) for arg in mx.get_runtime_jvm_args(classpath_deps)]
-        extra_props = ['-Dorg.graalvm.launcher.executablename="$0"']
+        extra_props = ['-Dorg.graalvm.launcher.executablename="{}"'.format(exe)]
         main_class = self.subject.suite.toolchain._tool_to_main(tool)
-        command = [java] + jvm_args + extra_props + [main_class, '"$@"']
-        return "#!/usr/bin/env bash\n" + "exec " + " ".join(command) + "\n"
+        jvm_args = [_quote(arg) for arg in mx.get_runtime_jvm_args(classpath_deps)]
+        command = [java] + jvm_args + extra_props + [main_class, all_params]
+        # create script
+        if mx.is_windows():
+            return "@echo off\n" + " ".join(command) + "\n"
+        else:
+            return "#!/usr/bin/env bash\n" + "exec " + " ".join(command) + "\n"
 
 
 class CMakeBuildTask(mx.NativeBuildTask):
