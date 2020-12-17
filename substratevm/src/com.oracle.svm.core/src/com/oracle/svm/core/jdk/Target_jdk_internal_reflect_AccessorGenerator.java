@@ -24,10 +24,11 @@
  */
 package com.oracle.svm.core.jdk;
 
+import org.graalvm.nativeimage.ImageSingletons;
+
 import com.oracle.svm.core.annotate.Substitute;
 import com.oracle.svm.core.annotate.TargetClass;
 import com.oracle.svm.core.jdk.serialize.SerializationRegistry;
-import org.graalvm.nativeimage.ImageSingletons;
 
 @TargetClass(classNameProvider = Package_jdk_internal_reflect.class, className = "AccessorGenerator")
 public final class Target_jdk_internal_reflect_AccessorGenerator {
@@ -44,7 +45,8 @@ final class Target_jdk_internal_reflect_MethodAccessorGenerator {
                     @SuppressWarnings("unused") int modifiers,
                     Class<?> targetConstructorClass) {
         SerializationRegistry serializationRegistry = ImageSingletons.lookup(SerializationRegistry.class);
-        return (Target_jdk_internal_reflect_SerializationConstructorAccessorImpl) serializationRegistry.getSerializationConstructorAccessorClass(declaringClass, targetConstructorClass.getName());
+        Object constructorAccessor = serializationRegistry.getSerializationConstructorAccessorClass(declaringClass, targetConstructorClass);
+        return (Target_jdk_internal_reflect_SerializationConstructorAccessorImpl) constructorAccessor;
     }
 }
 

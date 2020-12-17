@@ -39,20 +39,17 @@ import java.net.URLClassLoader;
 import java.security.NoSuchAlgorithmException;
 import java.util.List;
 import java.util.Map;
+import java.util.Objects;
 import java.util.concurrent.ConcurrentHashMap;
 
 import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;
-import org.graalvm.nativeimage.hosted.Feature.FeatureAccess;
 
-import com.oracle.graal.pointsto.BigBang;
-import com.oracle.svm.core.RuntimeAssertionsSupport;
 import com.oracle.svm.core.jdk.Package_jdk_internal_reflect;
 import com.oracle.svm.core.jdk.serialize.SerializationRegistry;
 import com.oracle.svm.core.option.SubstrateOptionsParser;
 import com.oracle.svm.core.util.VMError;
 import com.oracle.svm.hosted.FeatureImpl;
-import com.oracle.svm.hosted.ImageClassLoader;
 import com.oracle.svm.hosted.NativeImageOptions;
 import com.oracle.svm.util.ReflectionUtil;
 import com.oracle.svm.util.SerializationChecksumCalculator;
@@ -60,6 +57,12 @@ import com.oracle.svm.util.SerializationChecksumCalculator;
 public class SerializationSupport implements SerializationRegistry {
 
     static class ChecksumCalculator extends SerializationChecksumCalculator.JavaCalculator {
+        private final Method computeDefaultSUID;
+
+        ChecksumCalculator() {
+            computeDefaultSUID = ReflectionUtil.lookupMethod(ObjectStreamClass.class, "computeDefaultSUID", Class.class);
+        }
+
         @Override
         protected String getClassName(Class<?> clazz) {
             return clazz.getName();
@@ -73,7 +76,6 @@ public class SerializationSupport implements SerializationRegistry {
         @Override
         protected Long calculateFromComputeDefaultSUID(Class<?> clazz) {
             try {
-                Method computeDefaultSUID = ReflectionUtil.lookupMethod(ObjectStreamClass.class, "computeDefaultSUID", java.lang.Class.class);
                 return (Long) computeDefaultSUID.invoke(null, clazz);
             } catch (ReflectionUtil.ReflectionUtilError | InvocationTargetException | IllegalAccessException e) {
                 throw VMError.shouldNotReachHere(e);
@@ -119,8 +121,6 @@ public class SerializationSupport implements SerializationRegistry {
         private static final long serialVersionUID = 1L;
     }
 
-    private static Object stubAccessor = null;
-
     /**
      * Using a separated classloader for serialization checksum computation to avoid initializing
      * Classes that should be initialized at run time.
@@ -133,37 +133,159 @@ public class SerializationSupport implements SerializationRegistry {
 
     }
 
-    private static class CachedEntity {
-        private final Object serializationConstructorAccessor;
-        private final String configuredChecksum;
+    private static final class SerializationLookupKey {
+        final Class<?> declaringClass;
+        final Class<?> targetConstructorClass;
 
-        CachedEntity(Object accessor, String checksum) {
-            this.serializationConstructorAccessor = accessor;
-            this.configuredChecksum = checksum;
+        private SerializationLookupKey(Class<?> declaringClass, Class<?> targetConstructorClass) {
+            assert declaringClass != null && targetConstructorClass != null;
+            this.declaringClass = declaringClass;
+            this.targetConstructorClass = targetConstructorClass;
+        }
+
+        @Override
+        public boolean equals(Object o) {
+            if (this == o) {
+                return true;
+            }
+            if (o == null || getClass() != o.getClass()) {
+                return false;
+            }
+            SerializationLookupKey that = (SerializationLookupKey) o;
+            return declaringClass.equals(that.declaringClass) && targetConstructorClass.equals(that.targetConstructorClass);
+        }
+
+        @Override
+        public int hashCode() {
+            return Objects.hash(declaringClass, targetConstructorClass);
         }
     }
 
     // Cached SerializationConstructorAccessors for runtime usage
-    private final Map<String, CachedEntity> cachedSerializationConstructorAccessors;
-    private static final String MULTIPLE_CHECKSUMS = "MULTIPLE_CHECKSUM";
-    private static final String CHECKSUM_VERIFY_FAIL = "CHECKSUM_VERIFY_FAIL";
+    private final Map<SerializationLookupKey, Object> cachedSerializationConstructorAccessors;
+
     private final SerializationChecksumClassLoader serializationChecksumClassLoader;
     private final ChecksumCalculator checksumCalculator;
 
-    public SerializationSupport(ImageClassLoader imageClassLoader) {
+    private final FeatureImpl.BeforeAnalysisAccessImpl access;
+    private final Object reflectionFactory;
+    private final Method newConstructorForSerializationMethod;
+    private final Method getConstructorAccessorMethod;
+    private final Method getExternalizableConstructorMethod;
+    private final Constructor<?> stubConstructor;
+
+    public SerializationSupport(FeatureImpl.BeforeAnalysisAccessImpl access) {
         cachedSerializationConstructorAccessors = new ConcurrentHashMap<>();
         checksumCalculator = new ChecksumCalculator();
-        URLClassLoader cl = (URLClassLoader) imageClassLoader.getClassLoader();
+        try {
+            Class<?> reflectionFactoryClass = access.findClassByName(Package_jdk_internal_reflect.getQualifiedName() + ".ReflectionFactory");
+            Method getReflectionFactoryMethod = ReflectionUtil.lookupMethod(reflectionFactoryClass, "getReflectionFactory");
+            reflectionFactory = getReflectionFactoryMethod.invoke(null);
+            newConstructorForSerializationMethod = ReflectionUtil.lookupMethod(reflectionFactoryClass, "newConstructorForSerialization", Class.class);
+            getConstructorAccessorMethod = ReflectionUtil.lookupMethod(Constructor.class, "getConstructorAccessor");
+            getExternalizableConstructorMethod = ReflectionUtil.lookupMethod(ObjectStreamClass.class, "getExternalizableConstructor", Class.class);
+        } catch (ReflectiveOperationException e) {
+            throw VMError.shouldNotReachHere(e);
+        }
+        stubConstructor = newConstructorForSerialization(StubForAbstractClass.class);
+        this.access = access;
+
+        URLClassLoader cl = (URLClassLoader) access.getImageClassLoader().getClassLoader();
         serializationChecksumClassLoader = new SerializationChecksumClassLoader(cl.getURLs(), cl.getParent());
     }
 
-    private static void reportError(FeatureImpl.BeforeAnalysisAccessImpl access, String msgKey, String exceptionsMsg) {
+    private Constructor<?> newConstructorForSerialization(Class<?> serializationTargetClass) {
+        try {
+            return (Constructor<?>) newConstructorForSerializationMethod.invoke(reflectionFactory, serializationTargetClass);
+        } catch (ReflectiveOperationException e) {
+            throw VMError.shouldNotReachHere(e);
+        }
+    }
+
+    private Object getConstructorAccessor(Constructor<?> constructor) {
+        try {
+            return getConstructorAccessorMethod.invoke(constructor);
+        } catch (Exception e) {
+            throw VMError.shouldNotReachHere(e);
+        }
+    }
+
+    private Constructor<?> getExternalizableConstructor(Class<?> serializationTargetClass) {
+        try {
+            return (Constructor<?>) getExternalizableConstructorMethod.invoke(null, serializationTargetClass);
+        } catch (Exception e) {
+            throw VMError.shouldNotReachHere(e);
+        }
+    }
+
+    @Platforms({Platform.HOSTED_ONLY.class})
+    public Class<?> addSerializationConstructorAccessorClass(Class<?> serializationTargetClass, List<String> configuredChecksums) {
+        if (serializationTargetClass.isArray() || Enum.class.isAssignableFrom(serializationTargetClass)) {
+            return null;
+        }
+
+        // Don't generate SerializationConstructorAccessor class for Externalizable case
+        if (Externalizable.class.isAssignableFrom(serializationTargetClass)) {
+            try {
+                Constructor<?> externalizableConstructor = getExternalizableConstructor(serializationTargetClass);
+                return externalizableConstructor.getDeclaringClass();
+            } catch (Exception e) {
+                throw VMError.shouldNotReachHere(e);
+            }
+        }
+
+        /*
+         * Using reflection to make sure code is compatible with both JDK 8 and above. Reflectively
+         * call method ReflectionFactory.newConstructorForSerialization(Class) to get the
+         * SerializationConstructorAccessor instance.
+         */
+
+        Constructor<?> targetConstructor;
+        boolean abstractSerializationTarget = Modifier.isAbstract(serializationTargetClass.getModifiers());
+        if (abstractSerializationTarget) {
+            targetConstructor = stubConstructor;
+        } else {
+            targetConstructor = newConstructorForSerialization(serializationTargetClass);
+        }
+        if (targetConstructor == null) {
+            return null;
+        }
+        Class<?> targetConstructorClass = targetConstructor.getDeclaringClass();
+        Object constructorAccessor = getConstructorAccessor(targetConstructor);
+
+        if (!configuredChecksums.isEmpty() && !abstractSerializationTarget) {
+            try {
+                String targetClassName = serializationTargetClass.getName();
+                // Checkstyle: stop
+                Class<?> checksumCalculationTargetClass = Class.forName(targetClassName, false, serializationChecksumClassLoader);
+                // Checkstyle resume
+                String buildTimeChecksum = checksumCalculator.calculateChecksum(targetConstructorClass.getName(), targetClassName, checksumCalculationTargetClass);
+                /* If we have checksums, one of them has to match the buildTimeChecksum */
+                if (!configuredChecksums.contains(buildTimeChecksum)) {
+                    String sb = "\nBuild time serialization class checksum verify failure." +
+                                    " The classes' hierarchy may have been changed from configuration collecting time to image build time:\n" +
+                                    targetClassName + ": configured checksums: " + String.join(", ", configuredChecksums) + "\n" +
+                                    targetClassName + ": build time checksum: " + buildTimeChecksum;
+                    reportChecksumError(sb);
+                }
+            } catch (NoSuchAlgorithmException | ClassNotFoundException e) {
+                throw VMError.shouldNotReachHere(e);
+            }
+        }
+
+        // Cache constructorAccessor
+        SerializationLookupKey key = new SerializationLookupKey(serializationTargetClass, targetConstructorClass);
+        cachedSerializationConstructorAccessors.putIfAbsent(key, constructorAccessor);
+        return targetConstructorClass;
+    }
+
+    private void reportChecksumError(String exceptionsMsg) {
         // Checkstyle: stop
         String option = SubstrateOptionsParser.commandArgument(NativeImageOptions.ReportUnsupportedElementsAtRuntime, "+");
         if (!NativeImageOptions.ReportUnsupportedElementsAtRuntime.getValue()) {
-            BigBang bb = access.getBigBang();
-            bb.getUnsupportedFeatures().addMessage(msgKey, null,
-                            exceptionsMsg + "\n" + "To allow continuing compilation with above unsupported features, set " + option);
+            access.getBigBang().getUnsupportedFeatures()
+                            .addMessage("CHECKSUM_VERIFY_FAIL", null,
+                                            exceptionsMsg + "\n" + "To allow continuing compilation with above unsupported features, set " + option);
         } else {
             System.out.println(exceptionsMsg);
             System.out.println("Compilation will continue because " + option +
@@ -172,159 +294,20 @@ public class SerializationSupport implements SerializationRegistry {
         // Checkstyle: resume
     }
 
-    @Platforms({Platform.HOSTED_ONLY.class})
-    public Class<?> addSerializationConstructorAccessorClass(Class<?> serializationTargetClass, List<String> configuredChecksums, FeatureAccess access) {
-        if (serializationTargetClass.isArray() || Enum.class.isAssignableFrom(serializationTargetClass)) {
-            return null;
-        }
-        // Don't generate SerializationConstructorAccessor class for Externalizable case
-        if (Externalizable.class.isAssignableFrom(serializationTargetClass)) {
-            try {
-                Method getExternalizableConstructor = ReflectionUtil.lookupMethod(ObjectStreamClass.class, "getExternalizableConstructor", Class.class);
-                Constructor<?> c = (Constructor<?>) getExternalizableConstructor.invoke(null, serializationTargetClass);
-                return c.getDeclaringClass();
-            } catch (Exception e) {
-                throw VMError.shouldNotReachHere(e);
-            }
-        }
-
-        /*
-         * Using reflection to make sure code is compatible with both JDK 8 and above Reflectively
-         * call method ReflectionFactory.newConstructorForSerialization(Class) to get the
-         * SerializationConstructorAccessor instance.
-         */
-        Constructor<?> buildTimeConstructor;
-        Class<?> buildTimeConsClass;
-        Object constructorAccessor;
-        String targetClassName = serializationTargetClass.getName();
-        boolean isAbstract = Modifier.isAbstract(serializationTargetClass.getModifiers());
-        Constructor<?> stubConstructor = null;
-        try {
-            Class<?> reflectionFactoryClass = access.findClassByName(Package_jdk_internal_reflect.getQualifiedName() + ".ReflectionFactory");
-            Method getReflectionFactoryMethod = ReflectionUtil.lookupMethod(reflectionFactoryClass, "getReflectionFactory");
-            Object reflFactoryInstance = getReflectionFactoryMethod.invoke(null);
-            Method newConstructorForSerializationMethod = ReflectionUtil.lookupMethod(reflectionFactoryClass, "newConstructorForSerialization", Class.class);
-            buildTimeConstructor = (Constructor<?>) newConstructorForSerializationMethod.invoke(reflFactoryInstance, serializationTargetClass);
-
-            // Calculate GeneratedSerializationConstructor for StubForAbstractClass only once
-            if (isAbstract && stubAccessor == null) {
-                stubConstructor = (Constructor<?>) newConstructorForSerializationMethod.invoke(reflFactoryInstance, StubForAbstractClass.class);
-            }
-        } catch (ReflectiveOperationException e) {
-            throw VMError.shouldNotReachHere(e);
-        }
-        if (buildTimeConstructor == null) {
-            return null;
-        }
-        buildTimeConsClass = buildTimeConstructor.getDeclaringClass();
-
-        String checksum = "0";
-
-        if (isAbstract && stubAccessor != null) {
-            constructorAccessor = stubAccessor;
-            targetClassName = StubForAbstractClass.class.getName();
-        } else {
-            // Prepare build time checksum and verify with configured checksum only for non-abstract
-            // classes. Abstract class' checksum is always 0.
-            if (!isAbstract) {
-                checksum = getChecksum(serializationTargetClass, configuredChecksums, (FeatureImpl.BeforeAnalysisAccessImpl) access, buildTimeConsClass, targetClassName);
-            }
-            try {
-                Method getConstructorAccessor = ReflectionUtil.lookupMethod(Constructor.class, "getConstructorAccessor");
-                constructorAccessor = getConstructorAccessor.invoke(isAbstract ? stubConstructor : buildTimeConstructor);
-                if (isAbstract) {
-                    assert constructorAccessor != null;
-                    stubAccessor = constructorAccessor;
-                    targetClassName = StubForAbstractClass.class.getName();
-                }
-            } catch (Exception e) {
-                throw VMError.shouldNotReachHere(e);
-            }
-        }
-        // Cache constructorAccessor
-        CachedEntity exitingEntity = cachedSerializationConstructorAccessors.putIfAbsent(targetClassName,
-                        new CachedEntity(constructorAccessor, checksum));
-        if (exitingEntity != null && !exitingEntity.configuredChecksum.equals(checksum)) {
-            StringBuilder sb = new StringBuilder();
-            sb.append("Suspicious multiple-classloader usage is detected from serialization configurations:\n");
-            sb.append("Serialization target class (name=").append(targetClassName).append(", checksum=").append(checksum).append(")");
-            sb.append(" is already registered with checksum ").append(exitingEntity.configuredChecksum);
-            reportError((FeatureImpl.BeforeAnalysisAccessImpl) access, MULTIPLE_CHECKSUMS, sb.toString());
-        }
-
-        return buildTimeConsClass;
-    }
-
-    private String getChecksum(Class<?> serializationTargetClass, List<String> configuredChecksums, FeatureImpl.BeforeAnalysisAccessImpl access, Class<?> buildTimeConsClass, String targetClassName) {
-        // this class is getting from SerializationChecksumClassLoader classloader
-        Class<?> checksumCalculationTargetClass;
-        try {
-            // Checkstyle: stop
-            checksumCalculationTargetClass = Class.forName(serializationTargetClass.getName(), false, serializationChecksumClassLoader);
-            // Checkstyle resume
-        } catch (ClassNotFoundException e) {
-            throw VMError.shouldNotReachHere(e);
-        }
-        String buildTimeChecksum;
-        try {
-            buildTimeChecksum = checksumCalculator.calculateChecksum(buildTimeConsClass.getName(), serializationTargetClass.getName(), checksumCalculationTargetClass);
-        } catch (NoSuchAlgorithmException e) {
-            throw VMError.shouldNotReachHere("Building serialization checksum failed", e);
-        }
-        if (!configuredChecksums.isEmpty()) {
-            /* If we have checksums, one of them has to match the buildTimeChecksum */
-            if (!configuredChecksums.contains(buildTimeChecksum)) {
-                StringBuilder sb = new StringBuilder();
-                sb.append("\nBuild time serialization class checksum verify failure.")
-                                .append(" The classes' hierarchy may have been changed from configuration collecting time to image build time:\n");
-                sb.append(targetClassName).append(": configured checksums: ").append(String.join(", ", configuredChecksums)).append("\n");
-                sb.append(targetClassName).append(": build time checksum: ").append(buildTimeChecksum);
-                reportError(access, CHECKSUM_VERIFY_FAIL, sb.toString());
-            }
-            SerializationChecksumCalculator.printUsageWarning();
-        }
-        return RuntimeAssertionsSupport.Options.RuntimeSystemAssertions.getValue() ? buildTimeChecksum : "";
-    }
-
     @Override
-    public Object getSerializationConstructorAccessorClass(Class<?> serializationTargetClass, String targetConstructorClass) {
-        boolean isAbstract = Modifier.isAbstract(serializationTargetClass.getModifiers());
-        Class<?> actualSerializationTargetClass = isAbstract ? StubForAbstractClass.class : serializationTargetClass;
-        String serializationTargetClassName = actualSerializationTargetClass.getName();
-        CachedEntity ret = cachedSerializationConstructorAccessors.get(serializationTargetClassName);
-        if (ret == null) {
-            // Not support serializing Lambda yet
-            if (serializationTargetClassName.contains("$$Lambda$")) {
-                throw VMError.unsupportedFeature("Can't serialize " + serializationTargetClassName + ". Serializing Lambda class is not supported");
-            } else {
-                throw VMError.unsupportedFeature("SerializationConstructorAccessor class is not found for class :" + serializationTargetClassName +
-                                ". Generating SerializationConstructorAccessor classes at runtime is not supported. ");
-            }
+    public Object getSerializationConstructorAccessorClass(Class<?> declaringClass, Class<?> origTargetConstructorClass) {
+        Class<?> targetConstructorClass = Modifier.isAbstract(declaringClass.getModifiers()) ? stubConstructor.getDeclaringClass() : origTargetConstructorClass;
+        Object constructorAccessor = cachedSerializationConstructorAccessors.get(new SerializationLookupKey(declaringClass, targetConstructorClass));
+        if (constructorAccessor != null) {
+            return constructorAccessor;
         } else {
-            Object accessor = ret.serializationConstructorAccessor;
-            String configuredChecksum = ret.configuredChecksum;
-
-            if (configuredChecksum.isEmpty()) {
-                return accessor;
-            }
-
-            String runtimeChecksum;
-            if (isAbstract) {
-                runtimeChecksum = "0";
+            // Not support serializing Lambda yet
+            String targetConstructorClassName = origTargetConstructorClass.getName();
+            if (targetConstructorClassName.contains("$$Lambda$")) {
+                throw VMError.unsupportedFeature("Can't serialize " + targetConstructorClassName + ". Serializing Lambda class is not supported");
             } else {
-                try {
-                    runtimeChecksum = checksumCalculator.calculateChecksum(targetConstructorClass,
-                                    serializationTargetClassName, actualSerializationTargetClass);
-                } catch (NoSuchAlgorithmException e) {
-                    throw VMError.shouldNotReachHere("Building serialization checksum failed", e);
-                }
-            }
-            // configuredChecksum could be null if it is not set in the configuration.
-            if (configuredChecksum.equals(runtimeChecksum)) {
-                return accessor;
-            } else {
-                throw VMError.unimplemented("Serialization target class " + serializationTargetClassName + "'s hierarchy has been changed at run time. Configured checksum is " + configuredChecksum +
-                                ", runtime checksum is " + runtimeChecksum);
+                throw VMError.unsupportedFeature("SerializationConstructorAccessor class is not found for declaringClass:" + declaringClass.getName() +
+                                ", targetConstructorClass: " + origTargetConstructorClass.getName() + ". Generating SerializationConstructorAccessor classes at runtime is not supported. ");
             }
         }
     }
