@@ -25,11 +25,15 @@
  */
 package com.oracle.svm.core.configure;
 
-import com.oracle.svm.core.util.json.JSONParser;
-
 import java.io.IOException;
 import java.io.Reader;
+import java.util.ArrayList;
+import java.util.Collections;
+import java.util.List;
 import java.util.Map;
+
+import com.oracle.svm.core.util.json.JSONParser;
+import com.oracle.svm.core.util.json.JSONParserException;
 
 public class SerializationConfigurationParser extends ConfigurationParser {
     private final SerializationParserFunction consumer;
@@ -46,13 +50,24 @@ public class SerializationConfigurationParser extends ConfigurationParser {
             Map<String, Object> data = asMap(serializationKey, "second level of document must be serialization descriptor objects ");
             String targetSerializationClass = asString(data.get("name"));
             Object checksumValue = data.get("checksum");
-            Long checksum = checksumValue == null ? null : asLong(checksumValue, "checksum");
-            consumer.accept(targetSerializationClass, checksum);
+            List<String> checksums = new ArrayList<>();
+            if (checksumValue != null) {
+                List<Object> jsonChecksums;
+                try {
+                    jsonChecksums = asList(checksumValue, "list of checksums");
+                } catch (JSONParserException e) {
+                    jsonChecksums = Collections.singletonList(asString(checksumValue, "checksum"));
+                }
+                for (Object jsonChecksum : jsonChecksums) {
+                    checksums.add(asString(jsonChecksum, "checksum"));
+                }
+            }
+            consumer.accept(targetSerializationClass, checksums);
         }
     }
 
     @FunctionalInterface
     public interface SerializationParserFunction {
-        void accept(String targetSerializationClass, Long checksum);
+        void accept(String targetSerializationClass, List<String> checksum);
     }
 }
