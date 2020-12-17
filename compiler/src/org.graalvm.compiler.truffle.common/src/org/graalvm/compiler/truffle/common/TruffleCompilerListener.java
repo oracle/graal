@@ -116,18 +116,6 @@ public interface TruffleCompilerListener {
     void onTruffleTierFinished(CompilableTruffleAST compilable, TruffleMetaAccessProvider inliningPlan, GraphInfo graph);
 
     /**
-     * Notifies this object when compilation of {@code compilable} succeeds.
-     *
-     * @param compilable the Truffle AST whose compilation succeeded
-     * @param inliningPlan the inlining plan used during partial evaluation
-     * @param graph the graph representing {@code compilable}. The {@code graph} object is only
-     *            valid for the lifetime of a call to this method. Invoking any {@link GraphInfo}
-     *            method on {@code graph} after this method returns will result in an
-     *            {@link IllegalStateException}.
-     * @param compilationResultInfo the result of a compilation. The {@code compilationResultInfo}
-     *            object is only valid for the lifetime of a call to this method. Invoking any
-     *            {@link CompilationResultInfo} method on {@code compilationResultInfo} after this
-     *            method returns will result in an {@link IllegalStateException}.
      * @deprecated use
      *             {@link #onSuccess(CompilableTruffleAST, TruffleMetaAccessProvider, GraphInfo, CompilationResultInfo, int)}
      */
@@ -155,17 +143,6 @@ public interface TruffleCompilerListener {
     }
 
     /**
-     * Notifies this object when compilation of {@code compilable} fails.
-     *
-     * @param compilable the Truffle AST whose compilation failed
-     * @param reason the reason compilation failed
-     * @param bailout specifies whether the failure was a bailout or an error in the compiler. A
-     *            bailout means the compiler aborted the compilation based on some of property of
-     *            {@code target} (e.g., too big). A non-bailout means an unexpected error in the
-     *            compiler itself.
-     * @param permanentBailout specifies if a bailout is due to a condition that probably won't
-     *            change if the {@code target} is compiled again. This value is meaningless if
-     *            {@code bailout == false}.
      * @deprecated use {@link #onFailure(CompilableTruffleAST, String, boolean, boolean, int)}
      */
     @Deprecated
@@ -192,10 +169,6 @@ public interface TruffleCompilerListener {
     }
 
     /**
-     * Notifies this object when compilation of {@code compilable} is re-tried to diagnose a
-     * compilation problem.
-     *
-     * @param compilable the Truffle AST which is going to be re-compiled.
      * @deprecated use {@link #onCompilationRetry(CompilableTruffleAST, int)}
      */
     @Deprecated

@@ -73,9 +73,7 @@ public interface GraalTruffleRuntimeListener {
     }
 
     /**
-     * Notifies this object after {@code target} is added to the compilation queue.
-     *
-     * @param target the call target that has just been enqueued for compilation
+     * @deprecated Use {@link #onCompilationQueued(OptimizedCallTarget, int)}
      */
     @Deprecated
     default void onCompilationQueued(OptimizedCallTarget target) {
@@ -92,13 +90,7 @@ public interface GraalTruffleRuntimeListener {
     }
 
     /**
-     * Notifies this object after {@code target} is removed from the compilation queue.
-     *
-     * @param target the call target that has just been removed from the compilation queue
-     * @param source the source object that caused the compilation to be unqueued. For example the
-     *            source {@link Node} object. May be {@code null}.
-     * @param reason a textual description of the reason why the compilation was unqueued. May be
-     *            {@code null}.
+     * @deprecated Use {@link #onCompilationDequeued(OptimizedCallTarget, Object, CharSequence, int)}
      */
     @Deprecated
     default void onCompilationDequeued(OptimizedCallTarget target, Object source, CharSequence reason) {
@@ -119,9 +111,7 @@ public interface GraalTruffleRuntimeListener {
     }
 
     /**
-     * Notifies this object when compilation of {@code target} is about to start.
-     *
-     * @param target the call target about to be compiled
+     * @deprecated Use {@link #onCompilationStarted(OptimizedCallTarget, int)}
      */
     @Deprecated
     default void onCompilationStarted(OptimizedCallTarget target) {
@@ -159,12 +149,7 @@ public interface GraalTruffleRuntimeListener {
     }
 
     /**
-     * Notifies this object when compilation of {@code target} succeeds.
-     *
-     * @param target the call target whose compilation succeeded
-     * @param inliningDecision the inlining plan used during the compilation
-     * @param graph access to compiler graph info
-     * @param result access to compilation result info
+     * @deprecated Use {@link #onCompilationSuccess(OptimizedCallTarget, TruffleInlining, GraphInfo, CompilationResultInfo)}
      */
     @Deprecated
     default void onCompilationSuccess(OptimizedCallTarget target, TruffleInlining inliningDecision, GraphInfo graph, CompilationResultInfo result) {
@@ -184,17 +169,7 @@ public interface GraalTruffleRuntimeListener {
     }
 
     /**
-     * Notifies this object when compilation of {@code target} fails.
-     *
-     * @param target the call target whose compilation failed
-     * @param reason a description of the failure
-     * @param bailout specifies whether the failure was a bailout or an error in the compiler. A
-     *            bailout means the compiler aborted the compilation based on some of property of
-     *            {@code target} (e.g., too big). A non-bailout means an unexpected error in the
-     *            compiler itself.
-     * @param permanentBailout specifies if a bailout is due to a condition that probably won't
-     *            change if the {@code target} is compiled again. This value is meaningless if
-     *            {@code bailout == false}.
+     * @deprecated Use {@link #onCompilationFailed(OptimizedCallTarget, String, boolean, boolean, int)}
      */
     @Deprecated
     default void onCompilationFailed(OptimizedCallTarget target, String reason, boolean bailout, boolean permanentBailout) {
