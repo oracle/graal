@@ -316,15 +316,15 @@ public class IntrinsifyMethodHandlesInvocationPlugin implements NodePlugin {
         return varHandleType.isAssignableFrom(universeProviders.getMetaAccess().lookupJavaType(arg.asJavaConstant()));
     }
 
-    private static final List<Pair<String, String>> IGNORE_FILTER = Arrays.asList(
-                    Pair.create("java.lang.invoke.MethodHandles", "insertArguments"),
-                    Pair.create("java.lang.invoke.Invokers", "spreadInvoker"));
+    private static final List<Pair<String, List<String>>> IGNORE_FILTER = Arrays.asList(
+                    Pair.create("java.lang.invoke.MethodHandles", Arrays.asList("dropArguments", "filterReturnValue", "foldArguments", "insertArguments")),
+                    Pair.create("java.lang.invoke.Invokers", Collections.singletonList("spreadInvoker")));
 
     private static boolean ignoreMethod(ResolvedJavaMethod method) {
         String className = method.getDeclaringClass().toJavaName(true);
         String methodName = method.getName();
-        for (Pair<String, String> ignored : IGNORE_FILTER) {
-            if (ignored.getLeft().equals(className) && ignored.getRight().equals(methodName)) {
+        for (Pair<String, List<String>> ignored : IGNORE_FILTER) {
+            if (ignored.getLeft().equals(className) && ignored.getRight().contains(methodName)) {
                 return true;
             }
         }
