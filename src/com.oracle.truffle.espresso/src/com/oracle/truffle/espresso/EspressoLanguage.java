@@ -241,7 +241,7 @@ public final class EspressoLanguage extends TruffleLanguage<EspressoContext> {
             RootNode node = new DestroyVMNode(this);
             return Truffle.getRuntime().createCallTarget(node);
         }
-        throw new UnsupportedOperationException("Unsupported operation. Use the language bindings to load classes e.g. context.getBindings(\"" + ID +  "\").getMember(\"java.lang.Integer\")");
+        throw new UnsupportedOperationException("Unsupported operation. Use the language bindings to load classes e.g. context.getBindings(\"" + ID + "\").getMember(\"java.lang.Integer\")");
     }
 
     public Utf8ConstantTable getUtf8ConstantTable() {
