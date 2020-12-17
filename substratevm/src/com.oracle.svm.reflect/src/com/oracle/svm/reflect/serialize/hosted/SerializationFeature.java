@@ -69,7 +69,7 @@ public class SerializationFeature implements Feature {
         FeatureImpl.BeforeAnalysisAccessImpl access = (FeatureImpl.BeforeAnalysisAccessImpl) a;
         ImageClassLoader imageClassLoader = access.getImageClassLoader();
 
-        SerializationSupport serializationSupport = new SerializationSupport(imageClassLoader);
+        SerializationSupport serializationSupport = new SerializationSupport(access);
         ImageSingletons.add(SerializationRegistry.class, serializationSupport);
 
         Map<Class<?>, Boolean> deniedClasses = new HashMap<>();
@@ -96,7 +96,7 @@ public class SerializationFeature implements Feature {
                         // Checkstyle: resume
                     }
                 } else {
-                    Class<?> targetConstructor = serializationSupport.addSerializationConstructorAccessorClass(serializationTargetClass, checksums, access);
+                    Class<?> targetConstructor = serializationSupport.addSerializationConstructorAccessorClass(serializationTargetClass, checksums);
                     addReflections(serializationTargetClass, targetConstructor);
                 }
             }
