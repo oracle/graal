@@ -25,6 +25,7 @@
 package com.oracle.svm.methodhandles;
 
 import java.lang.invoke.MethodHandle;
+import java.lang.invoke.MethodType;
 // Checkstyle: stop
 import java.lang.reflect.Constructor;
 import java.lang.reflect.Field;
@@ -42,8 +43,15 @@ import com.oracle.svm.reflect.target.Target_java_lang_reflect_AccessibleObject;
 import com.oracle.svm.reflect.target.Target_java_lang_reflect_Method;
 import com.oracle.svm.reflect.target.Target_jdk_internal_reflect_MethodAccessor;
 
+// Checkstyle: stop
+import sun.invoke.util.ValueConversions;
+import sun.invoke.util.Wrapper;
+// Checkstyle: resume
+
 @TargetClass(className = "java.lang.invoke.MethodHandle", onlyWith = MethodHandlesSupported.class)
 final class Target_java_lang_invoke_MethodHandle {
+
+    @Alias private MethodType type;
 
     @Alias
     native Target_java_lang_invoke_MemberName internalMemberName();
@@ -79,6 +87,21 @@ final class Target_java_lang_invoke_MethodHandle {
                     return field.get(receiver);
                 }
             } else { /* Method or constructor invocation */
+                assert args.length == type.parameterCount();
+                for (int i = 0; i < args.length; ++i) {
+                    Class<?> expectedParamType = type.parameterType(i);
+                    if (expectedParamType.isPrimitive()) {
+                        Wrapper destWrapper = Wrapper.forPrimitiveType(expectedParamType);
+                        Wrapper srcWrapper = Wrapper.forWrapperType(args[i].getClass());
+                        if (destWrapper != srcWrapper) {
+                            /* We can't rely on automatic casting for the argument */
+                            Target_java_lang_invoke_MethodHandle typeConverter = SubstrateUtil.cast(ValueConversions.convertPrimitive(srcWrapper, destWrapper),
+                                            Target_java_lang_invoke_MethodHandle.class);
+                            args[i] = typeConverter.invokeBasic(args[i]);
+                        }
+                    }
+                }
+
                 Target_java_lang_reflect_AccessibleObject executable = SubstrateUtil.cast(memberName.reflectAccess, Target_java_lang_reflect_AccessibleObject.class);
 
                 /* Access control was already performed by the JDK code calling invokeBasic */
