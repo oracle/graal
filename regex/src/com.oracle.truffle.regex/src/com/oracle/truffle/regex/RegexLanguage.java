@@ -42,7 +42,6 @@ package com.oracle.truffle.regex;
 
 import com.oracle.truffle.api.CallTarget;
 import com.oracle.truffle.api.CompilerDirectives;
-import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.Truffle;
 import com.oracle.truffle.api.TruffleLanguage;
 import com.oracle.truffle.api.exception.AbstractTruffleException;
@@ -52,7 +51,6 @@ import com.oracle.truffle.api.interop.ExceptionType;
 import com.oracle.truffle.api.nodes.RootNode;
 import com.oracle.truffle.api.source.Source;
 import com.oracle.truffle.regex.tregex.TRegexCompiler;
-import com.oracle.truffle.regex.tregex.TRegexOptions;
 import com.oracle.truffle.regex.tregex.nfa.PureNFAIndex;
 import com.oracle.truffle.regex.tregex.parser.RegexParserGlobals;
 import com.oracle.truffle.regex.tregex.parser.RegexValidator;
@@ -60,11 +58,7 @@ import com.oracle.truffle.regex.tregex.parser.ast.GroupBoundaries;
 import com.oracle.truffle.regex.tregex.parser.flavors.RegexFlavor;
 import com.oracle.truffle.regex.tregex.parser.flavors.RegexFlavorProcessor;
 import com.oracle.truffle.regex.tregex.string.Encodings;
-import com.oracle.truffle.regex.util.LRUCache;
 import com.oracle.truffle.regex.util.TruffleNull;
-
-import java.util.Collections;
-import java.util.Map;
 
 /**
  * Truffle Regular Expression Language
@@ -136,7 +130,6 @@ public final class RegexLanguage extends TruffleLanguage<RegexLanguage.RegexCont
 
     public final RegexEngineBuilder engineBuilder = new RegexEngineBuilder(this);
 
-    private final Map<RegexSource, CallTarget> cache = Collections.synchronizedMap(new LRUCache<>(TRegexOptions.RegexMaxCacheSize));
     private final GroupBoundaries[] cachedGroupBoundaries;
     public final RegexParserGlobals parserGlobals;
     public final PureNFAIndex emptyNFAIndex;
@@ -156,26 +149,10 @@ public final class RegexLanguage extends TruffleLanguage<RegexLanguage.RegexCont
         Source source = parsingRequest.getSource();
         String mimeType = source.getMimeType();
         if (mimeType != null) {
-            RegexSource regexSource = createRegexSource(source);
-            CallTarget result = cacheGet(regexSource);
-            if (result == null) {
-                result = Truffle.getRuntime().createCallTarget(RootNode.createConstantNode(createRegexObject(regexSource)));
-                cachePut(regexSource, result);
-            }
-            return result;
+            return Truffle.getRuntime().createCallTarget(RootNode.createConstantNode(createRegexObject(createRegexSource(source))));
         }
         // TODO: deprecated
         return getCurrentContext().getEngineBuilderCT;
-    }
-
-    @TruffleBoundary
-    private CallTarget cacheGet(RegexSource source) {
-        return cache.get(source);
-    }
-
-    @TruffleBoundary
-    private void cachePut(RegexSource source, CallTarget result) {
-        cache.put(source, result);
     }
 
     private static RegexSource createRegexSource(Source source) {
