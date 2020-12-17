@@ -55,7 +55,7 @@ import com.oracle.truffle.regex.tregex.nfa.PureNFAMap;
 import com.oracle.truffle.regex.tregex.nfa.PureNFAState;
 import com.oracle.truffle.regex.tregex.nfa.PureNFATransition;
 import com.oracle.truffle.regex.tregex.nfa.QuantifierGuard;
-import com.oracle.truffle.regex.tregex.nodes.TRegexExecRootNode;
+import com.oracle.truffle.regex.tregex.nodes.TRegexExecNode;
 import com.oracle.truffle.regex.tregex.nodes.TRegexExecutorLocals;
 import com.oracle.truffle.regex.tregex.nodes.TRegexExecutorNode;
 import com.oracle.truffle.regex.tregex.nodes.input.InputIndexOfStringNode;
@@ -127,7 +127,7 @@ public final class TRegexBacktrackingNFAExecutorNode extends TRegexExecutorNode 
         this.maxNTransitions = maxTransitions;
     }
 
-    public void initialize(TRegexExecRootNode rootNode) {
+    public void initialize(TRegexExecNode rootNode) {
         for (TRegexExecutorNode executor : lookAroundExecutors) {
             executor.setRoot(rootNode);
             insert(executor);

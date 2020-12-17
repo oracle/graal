@@ -46,13 +46,13 @@ import com.oracle.truffle.regex.result.RegexResult;
 import com.oracle.truffle.regex.tregex.nodes.input.InputLengthNode;
 import com.oracle.truffle.regex.tregex.nodes.input.InputReadNode;
 
-public abstract class RegexExecRootNode extends RegexBodyNode {
+public abstract class RegexExecNode extends RegexBodyNode {
 
     private final boolean mustCheckUnicodeSurrogates;
     private @Child InputLengthNode lengthNode;
     private @Child InputReadNode charAtNode;
 
-    public RegexExecRootNode(RegexLanguage language, RegexSource source, boolean mustCheckUnicodeSurrogates) {
+    public RegexExecNode(RegexLanguage language, RegexSource source, boolean mustCheckUnicodeSurrogates) {
         super(language, source);
         this.mustCheckUnicodeSurrogates = mustCheckUnicodeSurrogates;
     }
@@ -61,13 +61,7 @@ public abstract class RegexExecRootNode extends RegexBodyNode {
     public final RegexResult execute(VirtualFrame frame) {
         Object[] args = frame.getArguments();
         assert args.length == 2;
-        Object input = args[0];
-        int fromIndex = (int) args[1];
-        if (fromIndex < 0 || fromIndex > inputLength(input)) {
-            CompilerDirectives.transferToInterpreterAndInvalidate();
-            throw new IllegalArgumentException(String.format("got illegal fromIndex value: %d. fromIndex must be >= 0 and <= input length (%d)", fromIndex, inputLength(input)));
-        }
-        return execute(input, adjustFromIndex(fromIndex, input));
+        return executeDirect(args[0], (int) args[1]);
     }
 
     private int adjustFromIndex(int fromIndex, Object input) {
@@ -93,6 +87,14 @@ public abstract class RegexExecRootNode extends RegexBodyNode {
             charAtNode = insert(InputReadNode.create());
         }
         return charAtNode.execute(input, i);
+    }
+
+    public RegexResult executeDirect(Object input, int fromIndex) {
+        if (fromIndex < 0 || fromIndex > inputLength(input)) {
+            CompilerDirectives.transferToInterpreterAndInvalidate();
+            throw new IllegalArgumentException(String.format("got illegal fromIndex value: %d. fromIndex must be >= 0 and <= input length (%d)", fromIndex, inputLength(input)));
+        }
+        return execute(input, adjustFromIndex(fromIndex, input));
     }
 
     protected abstract RegexResult execute(Object input, int fromIndex);

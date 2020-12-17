@@ -46,7 +46,7 @@ import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
 import com.oracle.truffle.api.Truffle;
 import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.api.profiles.ConditionProfile;
-import com.oracle.truffle.regex.RegexExecRootNode;
+import com.oracle.truffle.regex.RegexExecNode;
 import com.oracle.truffle.regex.RegexFlags;
 import com.oracle.truffle.regex.RegexLanguage;
 import com.oracle.truffle.regex.RegexProfile;
@@ -72,7 +72,7 @@ import com.oracle.truffle.regex.tregex.parser.ast.RegexAST;
 import com.oracle.truffle.regex.tregex.string.Encodings.Encoding;
 import com.oracle.truffle.regex.tregex.util.Loggers;
 
-public class TRegexExecRootNode extends RegexExecRootNode implements RegexProfile.TracksRegexProfile {
+public class TRegexExecNode extends RegexExecNode implements RegexProfile.TracksRegexProfile {
 
     private static final LazyCaptureGroupRegexSearchNode LAZY_DFA_BAILED_OUT = new LazyCaptureGroupRegexSearchNode(null, null, null, null, null, null, null, null);
     private static final EagerCaptureGroupRegexSearchNode EAGER_DFA_BAILED_OUT = new EagerCaptureGroupRegexSearchNode(null);
@@ -91,7 +91,7 @@ public class TRegexExecRootNode extends RegexExecRootNode implements RegexProfil
 
     @Child private RunRegexSearchNode runnerNode;
 
-    public TRegexExecRootNode(RegexAST ast, TRegexExecutorNode nfaExecutor) {
+    public TRegexExecNode(RegexAST ast, TRegexExecutorNode nfaExecutor) {
         super(ast.getLanguage(), ast.getSource(), ast.getFlags().isUnicode());
         this.encoding = ast.getEncoding();
         this.numberOfCaptureGroups = ast.getNumberOfCaptureGroups();
@@ -350,7 +350,7 @@ public class TRegexExecRootNode extends RegexExecRootNode implements RegexProfil
                         TRegexExecutorEntryNode forwardNode,
                         TRegexExecutorEntryNode backwardNode,
                         TRegexExecutorEntryNode captureGroupNode,
-                        TRegexExecRootNode rootNode) {
+                        TRegexExecNode rootNode) {
             this.forwardEntryNode = forwardNode;
             this.flags = flags;
             this.preCalculatedResults = preCalculatedResults;

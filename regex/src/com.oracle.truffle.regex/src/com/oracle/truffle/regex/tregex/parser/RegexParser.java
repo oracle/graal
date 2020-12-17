@@ -116,7 +116,7 @@ public final class RegexParser {
     }
 
     public static Group parseRootLess(RegexLanguage language, String pattern) throws RegexSyntaxException {
-        return new RegexParser(language, new RegexSource(pattern, "", RegexOptions.DEFAULT), RegexFlags.DEFAULT, new CompilationBuffer(Encodings.UTF_16_RAW)).parse(false);
+        return new RegexParser(language, new RegexSource(pattern, "", RegexOptions.DEFAULT, null), RegexFlags.DEFAULT, new CompilationBuffer(Encodings.UTF_16_RAW)).parse(false);
     }
 
     @TruffleBoundary

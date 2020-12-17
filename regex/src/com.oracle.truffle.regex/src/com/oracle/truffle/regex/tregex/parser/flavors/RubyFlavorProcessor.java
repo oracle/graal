@@ -55,6 +55,7 @@ import java.util.regex.Pattern;
 
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.interop.TruffleObject;
+import com.oracle.truffle.regex.AbstractRegexObject;
 import com.oracle.truffle.regex.RegexSource;
 import com.oracle.truffle.regex.RegexSyntaxException;
 import com.oracle.truffle.regex.UnsupportedRegexException;
@@ -392,7 +393,7 @@ public final class RubyFlavorProcessor implements RegexFlavorProcessor {
     }
 
     @Override
-    public TruffleObject getFlags() {
+    public AbstractRegexObject getFlags() {
         return globalFlags;
     }
 
@@ -419,7 +420,7 @@ public final class RubyFlavorProcessor implements RegexFlavorProcessor {
         // some of the ECMAScript regex escape sequences which are restricted to Unicode regexes.
         // It also lets us reason with a more rigid grammar (as the ECMAScript non-Unicode regexes
         // contain a lot of ambiguous syntactic constructions for backwards compatibility).
-        return new RegexSource(outPattern.toString(), globalFlags.isSticky() ? "suy" : "su", inSource.getOptions());
+        return new RegexSource(outPattern.toString(), globalFlags.isSticky() ? "suy" : "su", inSource.getOptions(), inSource.getSource());
     }
 
     private RubyFlags getLocalFlags() {

@@ -38,20 +38,31 @@
  * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
  * SOFTWARE.
  */
-package com.oracle.truffle.regex;
+package com.oracle.truffle.regex.dead;
 
-import com.oracle.truffle.api.CallTarget;
-import com.oracle.truffle.api.Truffle;
+import com.oracle.truffle.regex.RegexExecNode;
+import com.oracle.truffle.regex.RegexLanguage;
+import com.oracle.truffle.regex.RegexSource;
+import com.oracle.truffle.regex.result.NoMatchResult;
+import com.oracle.truffle.regex.result.RegexResult;
 
-public class CompiledRegexObject {
+/**
+ * This RegexNode is used for regular expressions that can never match, like /a^a/, /a\ba/, /(?=a)b/
+ * etc.
+ */
+public final class DeadRegexExecNode extends RegexExecNode {
 
-    private final CallTarget callTarget;
-
-    public CompiledRegexObject(RegexLanguage language, RegexExecRootNode compiledRegex) {
-        callTarget = Truffle.getRuntime().createCallTarget(new RegexRootNode(language, compiledRegex));
+    public DeadRegexExecNode(RegexLanguage language, RegexSource source) {
+        super(language, source, false);
     }
 
-    public CallTarget getCallTarget() {
-        return callTarget;
+    @Override
+    protected RegexResult execute(Object input, int fromIndex) {
+        return NoMatchResult.getInstance();
+    }
+
+    @Override
+    protected String getEngineLabel() {
+        return "dead";
     }
 }
