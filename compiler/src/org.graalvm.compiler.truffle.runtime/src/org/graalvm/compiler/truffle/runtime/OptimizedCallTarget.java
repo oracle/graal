@@ -820,17 +820,10 @@ public abstract class OptimizedCallTarget implements CompilableTruffleAST, RootC
         }
         CompilationTask task = this.compilationTask;
         if (cancelAndResetCompilationTask()) {
-            runtime().getListener().onCompilationDequeued(this, null, reason, taskTier(task));
+            runtime().getListener().onCompilationDequeued(this, null, reason, task != null ? task.tier() : 0);
             return true;
         }
         return false;
-    }
-
-    private static int taskTier(CompilationTask task) {
-        if (task != null) {
-            return task.isFirstTier() ? 1 : 2;
-        }
-        return 0;
     }
 
     private boolean cancelAndResetCompilationTask() {
