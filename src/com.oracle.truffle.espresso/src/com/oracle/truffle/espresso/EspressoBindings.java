@@ -101,7 +101,7 @@ public final class EspressoBindings implements TruffleObject {
             throw UnknownIdentifierException.create(member);
         }
         try {
-            StaticObject clazz = (StaticObject) interop.invokeMember(loader, "loadClass:(Ljava/lang/String;)Ljava/lang/Class;", member);
+            StaticObject clazz = (StaticObject) interop.invokeMember(loader, "loadClass/(Ljava/lang/String;)Ljava/lang/Class;", member);
             return clazz.getMirrorKlass();
         } catch (EspressoException e) {
             error.enter();
