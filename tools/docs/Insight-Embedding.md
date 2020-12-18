@@ -36,6 +36,29 @@ from [Insight](Insight-Manual.md) instrumentation capabilities.
 To hide priviledged scripts from [Insight](Insight.md) sight
 [mark such scripts as internal](https://www.graalvm.org/sdk/javadoc/org/graalvm/polyglot/Source.Builder.html#internal-boolean-). By default [Insight](Insight.md) ignores and doesn't process *internal* scripts.
 
+### Extending Functionality of Insight Scripts
+
+When [embedding Insight](#Embedding_Insight_into_Java_Application) into
+Java application one can make additional objects available to the Insight
+scripts being evaluated:
+
+```java
+final Engine engine = context.getEngine();
+Instrument instrument = engine.getInstruments().get("insight");
+BiConsumer<String, Value> registerSymbols = instrument.lookup(BiConsumer.class);
+registerSymbols.accept("count", Value.asValue(42));
+```
+
+The previous Java snippet registers new symbol `count` to every Insight script
+evaluated then. Each script can then reference it and use it for example
+for limiting number of method invocations:
+
+```js
+insight.on('enter', (ctx, frames) => { if (--count <= 0) throw 'Stop!' }, { roots : true });
+```
+
+It is possible to expose simple values, as well as complex objects.
+
 ### Embedding Insight into node.js Application
 
 The [Insight hacker's manual](Insight-Manual.md) shows many examples of using

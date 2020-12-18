@@ -1,4 +1,17 @@
 >[0] javac Embedding*.java -d ${TMP_DIR}
+>[1] java -ea -cp ${TMP_DIR} EmbeddingRegisterSymbols
+
+Exception in thread "main" Stop: 0
+.*at.*js.*insight.js.*
+.*at.*js.*fib.*Unnamed.*
+.*at.*js.*fib.*Unnamed.*
+.*at.*js.*fib.*Unnamed.*
+.*at.*js.*fib.*Unnamed.*
+.*at.*js.*fib.*Unnamed.*
+.*at.*js.*fib.*Unnamed.*
+.*at.*js.*fib.*Unnamed.*
+.*at org.graalvm.polyglot.Value.execute.*
+.*at EmbeddingRegisterSymbols.main.*
 >[0] java -ea -cp .:${TMP_DIR} Embedding
 Everything is OK!
 >[0] java -ea -cp ${TMP_DIR} EmbeddingDoubled

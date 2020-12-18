@@ -45,13 +45,17 @@ import java.io.IOException;
 import java.lang.reflect.InvocationHandler;
 import java.lang.reflect.Method;
 import java.lang.reflect.Proxy;
+import java.util.ArrayList;
+import java.util.List;
 import java.util.Map;
+import java.util.function.BiConsumer;
 import java.util.function.Function;
 import java.util.function.Supplier;
 import org.graalvm.options.OptionCategory;
 import org.graalvm.options.OptionDescriptors;
 import org.graalvm.options.OptionKey;
 import org.graalvm.options.OptionStability;
+import org.graalvm.polyglot.Value;
 import org.graalvm.tools.insight.Insight;
 
 // @formatter:off
@@ -59,7 +63,7 @@ import org.graalvm.tools.insight.Insight;
     id = Insight.ID,
     name = InsightInstrument.NAME,
     version = Insight.VERSION,
-    services = { Function.class }
+    services = { Function.class, BiConsumer.class }
 )
 // @formatter:on
 public class InsightInstrument extends TruffleInstrument {
@@ -71,6 +75,9 @@ public class InsightInstrument extends TruffleInstrument {
     private Env env;
     private final IgnoreSources ignoreSources = new IgnoreSources();
 
+    private final List<String> symbolNames = new ArrayList<>();
+    private final List<Object> symbols = new ArrayList<>();
+
     @Override
     protected OptionDescriptors getOptionDescriptors() {
         return new InsightInstrumentOptionDescriptors();
@@ -79,8 +86,10 @@ public class InsightInstrument extends TruffleInstrument {
     @Override
     protected void onCreate(Env tmp) {
         this.env = tmp;
-        final Function<?, ?> api = functionApi(this);
-        env.registerService(api);
+        final Function<?, ?> registerScripts = registerScriptsAPI(this);
+        env.registerService(registerScripts);
+        final BiConsumer<?, ?> registerSymbols = registerSymbolsAPI(this);
+        env.registerService(registerSymbols);
         final String path = env.getOptions().get(option());
         if (path != null && path.length() > 0) {
             registerAgentScript(() -> {
@@ -116,6 +125,19 @@ public class InsightInstrument extends TruffleInstrument {
         return true;
     }
 
+    final void registerSymbol(String name, Value value) {
+        synchronized (symbolNames) {
+            symbolNames.add(name);
+            if (value.isNumber()) {
+                symbols.add(value.as(Number.class));
+            } else if (value.isString()) {
+                symbols.add(value.asString());
+            } else {
+                symbols.add(value.asHostObject());
+            }
+        }
+    }
+
     final AutoCloseable registerAgentScript(final Supplier<Source> src) {
         final Instrumenter instrumenter = env.getInstrumenter();
         class InitializeAgent implements ContextsListener, AutoCloseable {
@@ -141,22 +163,27 @@ public class InsightInstrument extends TruffleInstrument {
                 if (initializeAgentObject()) {
                     Source script = src.get();
                     ignoreSources.ignoreSource(script);
-                    CallTarget target;
-                    if (agent == null) {
-                        try {
-                            target = env.parse(script, "insight");
-                        } catch (Exception ex) {
-                            throw InsightException.raise(ex);
-                        }
-                        target.call(insight);
-                    } else {
-                        try {
-                            target = env.parse(script, "insight", "agent");
-                        } catch (Exception ex) {
-                            throw InsightException.raise(ex);
-                        }
-                        target.call(insight, agent);
+                    List<String> argNames = new ArrayList<>();
+                    List<Object> args = new ArrayList<>();
+                    argNames.add("insight");
+                    args.add(insight);
+                    if (agent != null) {
+                        argNames.add("agent");
+                        args.add(agent);
                     }
+
+                    synchronized (symbolNames) {
+                        argNames.addAll(symbolNames);
+                        args.addAll(symbols);
+                    }
+
+                    CallTarget target;
+                    try {
+                        target = env.parse(script, argNames.toArray(new String[0]));
+                    } catch (Exception ex) {
+                        throw InsightException.raise(ex);
+                    }
+                    target.call(args.toArray());
                 }
             }
 
@@ -238,7 +265,7 @@ public class InsightInstrument extends TruffleInstrument {
     protected void onDispose(Env tmp) {
     }
 
-    private static Function<?, ?> functionApi(InsightInstrument agentScript) {
+    private static Function<?, ?> registerScriptsAPI(InsightInstrument insight) {
         Function<org.graalvm.polyglot.Source, AutoCloseable> f = (text) -> {
             final Source.LiteralBuilder b = Source.newBuilder(text.getLanguage(), text.getCharacters(), text.getName());
             b.uri(text.getURI());
@@ -246,9 +273,22 @@ public class InsightInstrument extends TruffleInstrument {
             b.internal(text.isInternal());
             b.interactive(text.isInteractive());
             Source src = b.build();
-            return agentScript.registerAgentScript(() -> src);
+            return insight.registerAgentScript(() -> src);
         };
         return maybeProxy(Function.class, f);
+    }
+
+    private static BiConsumer<?, ?> registerSymbolsAPI(InsightInstrument insight) {
+        BiConsumer<String, Value> f = (name, value) -> {
+            if (name.getClass() != String.class) {
+                throw new IllegalArgumentException();
+            }
+            if (value.getClass() != Value.class) {
+                throw new IllegalArgumentException();
+            }
+            insight.registerSymbol(name, value);
+        };
+        return maybeProxy(BiConsumer.class, f);
     }
 
     static <Interface> Interface maybeProxy(Class<Interface> type, Interface delegate) {
