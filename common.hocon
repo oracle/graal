@@ -6,20 +6,26 @@ overlay = 60620159e1b398d870996ef6fa75380987a4371d
 # openjdk8 JDKs on Linux are built by Oracle Labs
 # openjdk8 JDKs on macOS are based on AdoptOpenJDK binaries
 jdks: {
-  oraclejdk8:      {name : oraclejdk, version : "8u271+09-jvmci-19.3-b18", platformspecific: true}
-  openjdk8:        {name : openjdk,   version : "8u272+10-jvmci-19.3-b18", platformspecific: true}
-  oraclejdk8Debug: {name : oraclejdk, version : "8u271+09-jvmci-19.3-b18-fastdebug", platformspecific: true}
+  oraclejdk8:      {name : oraclejdk, version : "8u281+07-jvmci-19.3-b20", platformspecific: true}
+  openjdk8:        {name : openjdk,   version : "8u282+03-jvmci-19.3-b20", platformspecific: true}
+  oraclejdk8Debug: {name : oraclejdk, version : "8u281+07-jvmci-19.3-b20-fastdebug", platformspecific: true}
   oraclejdk11:     {name : oraclejdk, version : "11.0.3+12", platformspecific: true}
   openjdk11:       {name : openjdk,   version : "11.0.3+7", platformspecific: true}
-  labsjdk-ce-11:   {name : labsjdk,   version : "ce-11.0.9+10-jvmci-19.3-b18", platformspecific: true}
-  labsjdk-ee-11:   {name : labsjdk,   version : "ee-11.0.9+7-jvmci-19.3-b18", platformspecific: true}
+  labsjdk-ce-11:   {name : labsjdk,   version : "ce-11.0.10+5-jvmci-19.3-b20", platformspecific: true}
+  labsjdk-ee-11:   {name : labsjdk,   version : "ee-11.0.10+7-jvmci-19.3-b20", platformspecific: true}
+}
+
+devkits: {
+  windows-oraclejdk8: { packages : { "devkit:VS2017-15.9.16+1" : "==0" }},
+  windows-openjdk8:   { packages : { "devkit:VS2017-15.5.5+1"  : "==0" }},
+  windows-jdk11:      { packages : { "devkit:VS2017-15.9.16+1" : "==0" }},
 }
 
 # This must always point to HEAD in the master branch but can be used to point
 # to another branch/commit in a Graal PR when mx changes are required for the PR.
 mx : {
   packages : {
-    mx: "5.274.6"
+    mx: "cpu/graal-vm/19.3"
   }
 }
 
@@ -198,20 +204,12 @@ svm-common-darwin: ${svm-common} ${darwin-amd64} {
   timelimit: "45:00"
 }
 
-svm-common-windows: ${svm-common} ${windows-amd64} {
-  packages : {
-    msvc : "==10.0"
-  }
+svm-common-windows: ${svm-common} ${windows-amd64} ${devkits.windows-oraclejdk8}{
   timelimit: "45:00"
 }
 
-windows-devkit-jdk11: {
-  packages : {
-    "devkit:VS2017-15.9.16+1" : "==0"
-  }
-}
 
-svm-common-windows-jdk11: ${svm-common} ${windows-amd64} ${windows-devkit-jdk11} {
+svm-common-windows-jdk11: ${svm-common} ${windows-amd64} ${devkits.windows-jdk11} {
   timelimit: "45:00"
 }
 
