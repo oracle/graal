@@ -27,15 +27,22 @@ package com.oracle.svm.reflect.serialize.hosted;
 
 // Checkstyle: allow reflection
 
+import static com.oracle.svm.reflect.serialize.hosted.SerializationFeature.println;
+
 import java.io.Externalizable;
 import java.io.ObjectStreamClass;
 import java.io.ObjectStreamField;
 import java.io.Serializable;
+import java.lang.reflect.Constructor;
 import java.lang.reflect.Field;
 import java.lang.reflect.Method;
 import java.lang.reflect.Modifier;
+import java.net.URL;
+import java.net.URLClassLoader;
+import java.security.NoSuchAlgorithmException;
 import java.util.HashMap;
 import java.util.HashSet;
+import java.util.List;
 import java.util.Map;
 import java.util.Set;
 
@@ -47,8 +54,11 @@ import com.oracle.svm.core.annotate.AutomaticFeature;
 import com.oracle.svm.core.configure.ConfigurationFiles;
 import com.oracle.svm.core.configure.SerializationConfigurationParser;
 import com.oracle.svm.core.configure.SerializationConfigurationParser.SerializationParserFunction;
+import com.oracle.svm.core.jdk.Package_jdk_internal_reflect;
 import com.oracle.svm.core.jdk.serialize.SerializationRegistry;
+import com.oracle.svm.core.option.SubstrateOptionsParser;
 import com.oracle.svm.core.util.UserError;
+import com.oracle.svm.core.util.VMError;
 import com.oracle.svm.core.util.json.JSONParserException;
 import com.oracle.svm.hosted.FallbackFeature;
 import com.oracle.svm.hosted.FeatureImpl;
@@ -57,6 +67,7 @@ import com.oracle.svm.hosted.NativeImageOptions;
 import com.oracle.svm.hosted.config.ConfigurationParserUtils;
 import com.oracle.svm.reflect.serialize.SerializationSupport;
 import com.oracle.svm.util.ReflectionUtil;
+import com.oracle.svm.util.SerializationChecksumCalculator;
 
 import jdk.vm.ci.meta.MetaUtil;
 
@@ -67,10 +78,7 @@ public class SerializationFeature implements Feature {
     @Override
     public void beforeAnalysis(BeforeAnalysisAccess a) {
         FeatureImpl.BeforeAnalysisAccessImpl access = (FeatureImpl.BeforeAnalysisAccessImpl) a;
-        ImageClassLoader imageClassLoader = access.getImageClassLoader();
-
-        SerializationSupport serializationSupport = new SerializationSupport(access);
-        ImageSingletons.add(SerializationRegistry.class, serializationSupport);
+        SerializationBuilder serializationBuilder = new SerializationBuilder(access);
 
         Map<Class<?>, Boolean> deniedClasses = new HashMap<>();
         SerializationConfigurationParser denyCollectorParser = new SerializationConfigurationParser((strTargetSerializationClass, checksums) -> {
@@ -79,6 +87,7 @@ public class SerializationFeature implements Feature {
                 deniedClasses.put(serializationTargetClass, true);
             }
         });
+        ImageClassLoader imageClassLoader = access.getImageClassLoader();
         ConfigurationParserUtils.parseAndRegisterConfigurations(denyCollectorParser, imageClassLoader, "serialization",
                         ConfigurationFiles.Options.SerializationDenyConfigurationFiles, ConfigurationFiles.Options.SerializationDenyConfigurationResources,
                         ConfigurationFiles.SERIALIZATION_DENY_NAME);
@@ -91,12 +100,10 @@ public class SerializationFeature implements Feature {
                 if (deniedClasses.containsKey(serializationTargetClass)) {
                     if (deniedClasses.get(serializationTargetClass)) {
                         deniedClasses.put(serializationTargetClass, false); /* Warn only once */
-                        // Checkstyle: stop
-                        System.out.println("Warning: Serialization deny list contains " + serializationTargetClass.getName() + ". Image will not support serialization/deserialization of this class.");
-                        // Checkstyle: resume
+                        println("Warning: Serialization deny list contains " + serializationTargetClass.getName() + ". Image will not support serialization/deserialization of this class.");
                     }
                 } else {
-                    Class<?> targetConstructor = serializationSupport.addSerializationConstructorAccessorClass(serializationTargetClass, checksums);
+                    Class<?> targetConstructor = serializationBuilder.addConstructorAccessor(serializationTargetClass, checksums);
                     addReflections(serializationTargetClass, targetConstructor);
                 }
             }
@@ -140,11 +147,12 @@ public class SerializationFeature implements Feature {
 
         Set<String> serialPersistentFieldNames = new HashSet<>();
         try {
+            /* FIXME serialPersistentFieldNames is write-only. What is the point of this code? */
             Field f = ReflectionUtil.lookupField(serializationTargetClass, "serialPersistentFields");
             if ((f.getModifiers() & privateStaticFinalMask) == privateStaticFinalMask) {
                 ObjectStreamField[] serialPersistentFields = (ObjectStreamField[]) f.get(null);
-                for (int i = 0; i < serialPersistentFields.length; i++) {
-                    serialPersistentFieldNames.add(serialPersistentFields[i].getName());
+                for (ObjectStreamField serialPersistentField : serialPersistentFields) {
+                    serialPersistentFieldNames.add(serialPersistentField.getName());
                 }
             }
         } catch (ReflectionUtil.ReflectionUtilError | IllegalAccessException e) {
@@ -188,13 +196,189 @@ public class SerializationFeature implements Feature {
     }
 
     private static void handleError(String message) {
-        // Checkstyle: stop
         boolean allowIncompleteClasspath = NativeImageOptions.AllowIncompleteClasspath.getValue();
         if (allowIncompleteClasspath) {
-            System.out.println("WARNING: " + message);
+            println("WARNING: " + message);
         } else {
             throw new JSONParserException(message + " To allow unresolvable reflection configuration, use option -H:+AllowIncompleteClasspath");
         }
+    }
+
+    static void println(String str) {
+        // Checkstyle: stop
+        System.out.println(str);
         // Checkstyle: resume
+    }
+}
+
+final class SerializationBuilder {
+
+    /**
+     * Using a separated classloader for serialization checksum computation to avoid initializing
+     * Classes that should be initialized at run time.
+     */
+    private static final class SerializationChecksumClassLoader extends URLClassLoader {
+        private SerializationChecksumClassLoader(URL[] urls, ClassLoader parent) {
+            super(urls, parent);
+        }
+    }
+
+    private static final class ChecksumCalculator extends SerializationChecksumCalculator.JavaCalculator {
+        private final Method computeDefaultSUID;
+
+        private ChecksumCalculator() {
+            computeDefaultSUID = ReflectionUtil.lookupMethod(ObjectStreamClass.class, "computeDefaultSUID", Class.class);
+        }
+
+        @Override
+        protected String getClassName(Class<?> clazz) {
+            return clazz.getName();
+        }
+
+        @Override
+        protected Class<?> getSuperClass(Class<?> clazz) {
+            return clazz.getSuperclass();
+        }
+
+        @Override
+        protected Long calculateFromComputeDefaultSUID(Class<?> clazz) {
+            try {
+                return (Long) computeDefaultSUID.invoke(null, clazz);
+            } catch (ReflectiveOperationException e) {
+                throw VMError.shouldNotReachHere(e);
+            }
+        }
+
+        @Override
+        protected boolean isClassAbstract(Class<?> clazz) {
+            return Modifier.isAbstract(clazz.getModifiers());
+        }
+    }
+
+    private final SerializationChecksumClassLoader serializationChecksumClassLoader;
+    private final ChecksumCalculator checksumCalculator;
+
+    private final FeatureImpl.BeforeAnalysisAccessImpl access;
+    private final Object reflectionFactory;
+    private final Method newConstructorForSerializationMethod;
+    private final Method getConstructorAccessorMethod;
+    private final Method getExternalizableConstructorMethod;
+    private final Constructor<?> stubConstructor;
+
+    private final SerializationSupport serializationSupport;
+
+    SerializationBuilder(FeatureImpl.BeforeAnalysisAccessImpl access) {
+        try {
+            Class<?> reflectionFactoryClass = access.findClassByName(Package_jdk_internal_reflect.getQualifiedName() + ".ReflectionFactory");
+            Method getReflectionFactoryMethod = ReflectionUtil.lookupMethod(reflectionFactoryClass, "getReflectionFactory");
+            reflectionFactory = getReflectionFactoryMethod.invoke(null);
+            newConstructorForSerializationMethod = ReflectionUtil.lookupMethod(reflectionFactoryClass, "newConstructorForSerialization", Class.class);
+            getConstructorAccessorMethod = ReflectionUtil.lookupMethod(Constructor.class, "getConstructorAccessor");
+            getExternalizableConstructorMethod = ReflectionUtil.lookupMethod(ObjectStreamClass.class, "getExternalizableConstructor", Class.class);
+        } catch (ReflectiveOperationException e) {
+            throw VMError.shouldNotReachHere(e);
+        }
+        stubConstructor = newConstructorForSerialization(SerializationSupport.StubForAbstractClass.class);
+        this.access = access;
+
+        URLClassLoader cl = (URLClassLoader) access.getImageClassLoader().getClassLoader();
+        serializationChecksumClassLoader = new SerializationChecksumClassLoader(cl.getURLs(), cl.getParent());
+        checksumCalculator = new ChecksumCalculator();
+
+        serializationSupport = new SerializationSupport();
+        ImageSingletons.add(SerializationRegistry.class, serializationSupport);
+    }
+
+    private Constructor<?> newConstructorForSerialization(Class<?> serializationTargetClass) {
+        try {
+            return (Constructor<?>) newConstructorForSerializationMethod.invoke(reflectionFactory, serializationTargetClass);
+        } catch (ReflectiveOperationException e) {
+            throw VMError.shouldNotReachHere(e);
+        }
+    }
+
+    private Object getConstructorAccessor(Constructor<?> constructor) {
+        try {
+            return getConstructorAccessorMethod.invoke(constructor);
+        } catch (ReflectiveOperationException e) {
+            throw VMError.shouldNotReachHere(e);
+        }
+    }
+
+    private Constructor<?> getExternalizableConstructor(Class<?> serializationTargetClass) {
+        try {
+            return (Constructor<?>) getExternalizableConstructorMethod.invoke(null, serializationTargetClass);
+        } catch (ReflectiveOperationException e) {
+            throw VMError.shouldNotReachHere(e);
+        }
+    }
+
+    Class<?> addConstructorAccessor(Class<?> serializationTargetClass, List<String> configuredChecksums) {
+        if (serializationTargetClass.isArray() || Enum.class.isAssignableFrom(serializationTargetClass)) {
+            return null;
+        }
+
+        // Don't generate SerializationConstructorAccessor class for Externalizable case
+        if (Externalizable.class.isAssignableFrom(serializationTargetClass)) {
+            try {
+                Constructor<?> externalizableConstructor = getExternalizableConstructor(serializationTargetClass);
+                return externalizableConstructor.getDeclaringClass();
+            } catch (Exception e) {
+                throw VMError.shouldNotReachHere(e);
+            }
+        }
+
+        /*
+         * Using reflection to make sure code is compatible with both JDK 8 and above. Reflectively
+         * call method ReflectionFactory.newConstructorForSerialization(Class) to get the
+         * SerializationConstructorAccessor instance.
+         */
+        Constructor<?> targetConstructor;
+        Class<?> targetConstructorClass;
+        if (Modifier.isAbstract(serializationTargetClass.getModifiers())) {
+            targetConstructor = stubConstructor;
+            targetConstructorClass = targetConstructor.getDeclaringClass();
+        } else {
+            targetConstructor = newConstructorForSerialization(serializationTargetClass);
+            targetConstructorClass = targetConstructor.getDeclaringClass();
+            verifyBuildTimeChecksum(serializationTargetClass, targetConstructorClass, configuredChecksums);
+        }
+        serializationSupport.addConstructorAccessor(serializationTargetClass, targetConstructorClass, getConstructorAccessor(targetConstructor));
+        return targetConstructorClass;
+    }
+
+    private void verifyBuildTimeChecksum(Class<?> serializationTargetClass, Class<?> targetConstructorClass, List<String> configuredChecksums) {
+        if (configuredChecksums.isEmpty()) {
+            return;
+        }
+        try {
+            String targetClassName = serializationTargetClass.getName();
+            // Checkstyle: stop
+            Class<?> checksumCalculationTargetClass = Class.forName(targetClassName, false, serializationChecksumClassLoader);
+            // Checkstyle: resume
+            String buildTimeChecksum = checksumCalculator.calculateChecksum(targetConstructorClass.getName(), targetClassName, checksumCalculationTargetClass);
+            /* If we have checksums, one of them has to match the buildTimeChecksum */
+            if (!configuredChecksums.contains(buildTimeChecksum)) {
+                String msg = "\nBuild time serialization class checksum verify failure." +
+                                " The classes' hierarchy may have been changed from configuration collecting time to image build time:\n" +
+                                targetClassName + ": configured checksums: " + String.join(", ", configuredChecksums) + "\n" +
+                                targetClassName + ": build time checksum: " + buildTimeChecksum;
+                reportChecksumError(msg);
+            }
+        } catch (NoSuchAlgorithmException | ClassNotFoundException e) {
+            throw VMError.shouldNotReachHere(e);
+        }
+    }
+
+    private void reportChecksumError(String exceptionsMsg) {
+        String option = SubstrateOptionsParser.commandArgument(NativeImageOptions.ReportUnsupportedElementsAtRuntime, "+");
+        if (!NativeImageOptions.ReportUnsupportedElementsAtRuntime.getValue()) {
+            access.getBigBang().getUnsupportedFeatures()
+                            .addMessage("CHECKSUM_VERIFY_FAIL", null,
+                                            exceptionsMsg + "\n" + "To allow continuing compilation with above unsupported features, set " + option);
+        } else {
+            println(exceptionsMsg);
+            println("Compilation will continue because " + option + " was set. But the program may behave unexpectedly at runtime.");
+        }
     }
 }
