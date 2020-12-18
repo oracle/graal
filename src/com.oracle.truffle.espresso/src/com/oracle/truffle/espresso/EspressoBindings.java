@@ -56,8 +56,8 @@ import com.oracle.truffle.espresso.vm.InterpreterToVM;
  * {@link InteropLibrary#getMembers(Object) Peeking all memebers} will return an empty interop
  * collection. <br>
  * {@link InteropLibrary#readMember(Object, String) Reading a member} will trigger class loading; it
- * is equivalent to calling {@link ClassLoader#loadClass(String)} on the provided guest class
- * loader. <br>
+ * is equivalent to calling {@link Class#forName(String, boolean, ClassLoader)} with the provided
+ * guest class loader. <br>
  * {@link ClassNotFoundException} is translated into interop's {@link UnknownIdentifierException
  * member not found}, all other guest exceptions thrown during class loading will be propagated.
  */
@@ -86,33 +86,30 @@ public final class EspressoBindings implements TruffleObject {
     @ExportMessage
     @ExportMessage(name = "hasMemberReadSideEffects")
     @SuppressWarnings("static-method")
-    @TruffleBoundary
-    boolean isMemberReadable(String member) {
-        return SourceVersion.isName(member);
+    boolean isMemberReadable(@SuppressWarnings("unused") String member) {
+        // TODO(peterssen): Validate proper class name.
+        return true;
     }
 
     @ExportMessage
     Object readMember(String member,
-                    @CachedLibrary("this.loader") InteropLibrary interop,
                     @CachedContext(EspressoLanguage.class) EspressoContext context,
-                    @Cached BranchProfile error) throws UnsupportedMessageException, UnknownIdentifierException {
+                    @Cached BranchProfile error) throws UnknownIdentifierException {
         if (!isMemberReadable(member)) {
             error.enter();
             throw UnknownIdentifierException.create(member);
         }
+        Meta meta = context.getMeta();
         try {
-            StaticObject clazz = (StaticObject) interop.invokeMember(loader, "loadClass/(Ljava/lang/String;)Ljava/lang/Class;", member);
+            StaticObject clazz = (StaticObject) meta.java_lang_Class_forName_String_boolean_ClassLoader.invokeDirect(null,
+                            meta.toGuestString(member), false, loader);
             return clazz.getMirrorKlass();
         } catch (EspressoException e) {
             error.enter();
-            Meta meta = context.getMeta();
             if (InterpreterToVM.instanceOf(e.getExceptionObject(), meta.java_lang_ClassNotFoundException)) {
                 throw UnknownIdentifierException.create(member, e);
             }
             throw e; // exception during class loading
-        } catch (ArityException | UnsupportedTypeException e) {
-            CompilerDirectives.transferToInterpreter();
-            throw EspressoError.shouldNotReachHere(e);
         }
     }
 
