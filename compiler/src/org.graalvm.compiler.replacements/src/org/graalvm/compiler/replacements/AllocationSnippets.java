@@ -143,8 +143,8 @@ public abstract class AllocationSnippets implements Snippets {
      * that stores are aligned.
      *
      * @param memory beginning of object which is being zeroed
-     * @param startOffset offset to begin zeroing (inclusive). May be not word aligned.
-     * @param endOffset offset to stop zeroing (exclusive). May be not word aligned.
+     * @param startOffset offset to begin zeroing (inclusive). Does not have to be word-aligned.
+     * @param endOffset offset to stop zeroing (exclusive). Does not have to be word-aligned.
      * @param isEndOffsetConstant is {@code endOffset} known to be constant in the snippet
      * @param manualUnroll maximally unroll zeroing
      * @param supportsBulkZeroing whether bulk zeroing is supported by the backend
@@ -242,9 +242,10 @@ public abstract class AllocationSnippets implements Snippets {
      * necessary and ensuring that stores are aligned.
      *
      * @param memory beginning of object which is being zeroed
-     * @param startOffset offset to begin filling garbage value (inclusive). May be not word
-     *            aligned.
-     * @param endOffset offset to stop filling garbage value (exclusive). May be not word aligned.
+     * @param startOffset offset to begin filling garbage value (inclusive). Does not have to be
+     *            word-aligned.
+     * @param endOffset offset to stop filling garbage value (exclusive). Does not have to be
+     *            word-aligned.
      * @param isEndOffsetConstant is {@code endOffset} known to be constant in the snippet
      * @param manualUnroll maximally unroll zeroing
      * @param supportsOptimizedFilling whether optimized memory filling is supported by the backend

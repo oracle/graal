@@ -42,7 +42,7 @@ import org.graalvm.compiler.replacements.nodes.MacroStateSplitNode;
  * String.indexOf(char[] source, int sourceOffset, int sourceCount, char[] target, int targetOffset, int targetCount, int fromIndex)
  * </pre>
  *
- * This node is only for JDK 8 or less. For JDK 9+, see {@link StringLatin1IndexOfNode} and
+ * This node is only for JDK 8 or earlier. For JDK 9+, see {@link StringLatin1IndexOfNode} and
  * {@link StringUTF16IndexOfNode}.
  */
 @NodeInfo(size = SIZE_64, cycles = CYCLES_256)
