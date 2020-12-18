@@ -350,7 +350,7 @@ final class InstrumentationHandler {
         return binding;
     }
 
-    <T> EventBinding<T> addSourceSectionBinding(EventBinding.Source<T> binding, boolean notifyLoaded) {
+    <T> EventBinding<T> addSourceSectionBinding(EventBinding.SourceSectionLoaded<T> binding) {
         if (TRACE) {
             trace("BEGIN: Adding binding %s, %s%n", binding.getFilter(), binding.getElement());
         }
@@ -358,7 +358,7 @@ final class InstrumentationHandler {
         hasLoadOrExecutionBinding = true;
         this.sourceSectionBindings.add(binding);
 
-        if (notifyLoaded) {
+        if (binding.isNotifyLoaded()) {
             if (!loadedRoots.isEmpty()) {
                 VisitorBuilder visitorBuilder = new VisitorBuilder();
                 visitorBuilder.addNotifyLoadedOperationForBinding(VisitOperation.Scope.ONLY_ORIGINAL, binding);
@@ -397,13 +397,13 @@ final class InstrumentationHandler {
         }
     }
 
-    <T> EventBinding<T> addSourceLoadedBinding(EventBinding.Source<T> binding, boolean notifyLoaded) {
+    <T> EventBinding<T> addSourceLoadedBinding(EventBinding.SourceLoaded<T> binding) {
         if (TRACE) {
             trace("BEGIN: Adding source binding %s, %s%n", binding.getFilter(), binding.getElement());
         }
 
         hasLoadOrExecutionBinding = true;
-        SourceInstrumentationHandler.SourcesNotificationQueue notifications = sourcesLoaded.addBinding(binding, notifyLoaded);
+        SourceInstrumentationHandler.SourcesNotificationQueue notifications = sourcesLoaded.addBinding(binding, binding.isNotifyLoaded());
 
         if (notifications != null) {
             if (notifications.isSourcesInitializationRequired()) {
@@ -419,13 +419,13 @@ final class InstrumentationHandler {
         return binding;
     }
 
-    <T> EventBinding<T> addSourceExecutionBinding(EventBinding.Source<T> binding, boolean notifyLoaded) {
+    <T> EventBinding<T> addSourceExecutionBinding(EventBinding.SourceExecuted<T> binding) {
         if (TRACE) {
             trace("BEGIN: Adding source execution binding %s, %s%n", binding.getFilter(), binding.getElement());
         }
 
         hasLoadOrExecutionBinding = true;
-        SourceInstrumentationHandler.SourcesNotificationQueue notifications = sourcesExecuted.addBinding(binding, notifyLoaded);
+        SourceInstrumentationHandler.SourcesNotificationQueue notifications = sourcesExecuted.addBinding(binding, binding.isNotifyLoaded());
 
         if (notifications != null) {
             if (notifications.isSourcesInitializationRequired()) {
@@ -862,27 +862,27 @@ final class InstrumentationHandler {
     }
 
     private <T extends ExecutionEventNodeFactory> EventBinding<T> attachFactory(AbstractInstrumenter instrumenter, SourceSectionFilter filter, SourceSectionFilter inputFilter, T factory) {
-        return addExecutionBinding(new EventBinding.Source<>(instrumenter, filter, inputFilter, factory, true));
+        return addExecutionBinding(new EventBinding.Execution<>(instrumenter, filter, inputFilter, factory));
     }
 
     private <T extends ExecutionEventListener> EventBinding<T> attachListener(AbstractInstrumenter instrumenter, SourceSectionFilter filter, SourceSectionFilter inputFilter, T listener) {
-        return addExecutionBinding(new EventBinding.Source<>(instrumenter, filter, inputFilter, listener, true));
+        return addExecutionBinding(new EventBinding.Execution<>(instrumenter, filter, inputFilter, listener));
     }
 
     private <T extends LoadSourceListener> EventBinding<T> attachSourceListener(AbstractInstrumenter abstractInstrumenter, SourceSectionFilter filter, T listener, boolean notifyLoaded) {
-        return addSourceLoadedBinding(new EventBinding.Source<>(abstractInstrumenter, filter, null, listener, false), notifyLoaded);
+        return addSourceLoadedBinding(new EventBinding.SourceLoaded<>(abstractInstrumenter, filter, null, listener, true, notifyLoaded));
     }
 
     private <T> EventBinding<T> attachSourceSectionListener(AbstractInstrumenter abstractInstrumenter, SourceSectionFilter filter, T listener, boolean notifyLoaded) {
-        return addSourceSectionBinding(new EventBinding.Source<>(abstractInstrumenter, filter, null, listener, false), notifyLoaded);
+        return addSourceSectionBinding(new EventBinding.SourceSectionLoaded<>(abstractInstrumenter, filter, null, listener, true, notifyLoaded));
     }
 
     private void visitLoadedSourceSections(AbstractInstrumenter abstractInstrumenter, SourceSectionFilter filter, LoadSourceSectionListener listener) {
-        visitLoadedSourceSections(new EventBinding.Source<>(abstractInstrumenter, filter, null, listener, false));
+        visitLoadedSourceSections(new EventBinding.SourceSectionLoaded<>(abstractInstrumenter, filter, null, listener, true, true));
     }
 
     private <T> EventBinding<T> attachExecuteSourceListener(AbstractInstrumenter abstractInstrumenter, SourceSectionFilter filter, T listener, boolean notifyLoaded) {
-        return addSourceExecutionBinding(new EventBinding.Source<>(abstractInstrumenter, filter, null, listener, false), notifyLoaded);
+        return addSourceExecutionBinding(new EventBinding.SourceExecuted<>(abstractInstrumenter, filter, null, listener, true, notifyLoaded));
     }
 
     private <T extends OutputStream> EventBinding<T> attachOutputConsumer(AbstractInstrumenter instrumenter, T stream, boolean errorOutput) {
@@ -1735,6 +1735,7 @@ final class InstrumentationHandler {
         private Node savedParent;
         private SourceSection savedParentSourceSection;
 
+        @Override
         public boolean visit(Node originalNode) {
             Node node = originalNode;
             SourceSection sourceSection = node.getSourceSection();
@@ -2267,6 +2268,18 @@ final class InstrumentationHandler {
 
         abstract <T> T lookup(InstrumentationHandler handler, Class<T> type);
 
+        void attachSourceLoadedBinding(EventBinding.SourceLoaded<?> binding) {
+            InstrumentationHandler.this.addSourceLoadedBinding(binding);
+        }
+
+        void attachSourceExecutedBinding(EventBinding.SourceExecuted<?> binding) {
+            InstrumentationHandler.this.addSourceExecutionBinding(binding);
+        }
+
+        void attachSourceSectionBinding(EventBinding.SourceSectionLoaded<?> binding) {
+            InstrumentationHandler.this.addSourceSectionBinding(binding);
+        }
+
         void disposeBinding(EventBinding<?> binding) {
             InstrumentationHandler.this.disposeBinding(binding);
         }
@@ -2360,6 +2373,24 @@ final class InstrumentationHandler {
         public <T extends ExecuteSourceListener> EventBinding<T> attachExecuteSourceListener(SourceFilter filter, T listener, boolean notifyLoaded) {
             SourceSectionFilter sectionsFilter = SourceSectionFilter.newBuilder().sourceFilter(filter).build();
             return InstrumentationHandler.this.attachExecuteSourceListener(this, sectionsFilter, listener, notifyLoaded);
+        }
+
+        @Override
+        public <T extends LoadSourceListener> EventBinding<T> createLoadSourceBinding(SourceFilter filter, T listener, boolean notifyLoaded) {
+            SourceSectionFilter sectionsFilter = SourceSectionFilter.newBuilder().sourceFilter(filter).build();
+            return new EventBinding.SourceLoaded<>(this, sectionsFilter, null, listener, false, notifyLoaded);
+        }
+
+        @Override
+        public <T extends ExecuteSourceListener> EventBinding<T> createExecuteSourceBinding(SourceFilter filter, T listener, boolean notifyLoaded) {
+            SourceSectionFilter sectionsFilter = SourceSectionFilter.newBuilder().sourceFilter(filter).build();
+            return new EventBinding.SourceExecuted<>(this, sectionsFilter, null, listener, false, notifyLoaded);
+        }
+
+        @Override
+        public <T extends LoadSourceSectionListener> EventBinding<T> createLoadSourceSectionBinding(SourceSectionFilter filter, T listener, boolean notifyLoaded) {
+            verifyFilter(filter);
+            return new EventBinding.SourceSectionLoaded<>(this, filter, null, listener, false, notifyLoaded);
         }
 
         @Override
