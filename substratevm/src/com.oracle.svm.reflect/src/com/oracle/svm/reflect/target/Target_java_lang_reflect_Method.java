@@ -58,7 +58,7 @@ public final class Target_java_lang_reflect_Method {
     native Target_java_lang_reflect_Method copy();
 
     @Substitute
-    Target_jdk_internal_reflect_MethodAccessor acquireMethodAccessor() {
+    public Target_jdk_internal_reflect_MethodAccessor acquireMethodAccessor() {
         if (methodAccessor == null) {
             throw VMError.unsupportedFeature("Runtime reflection is not supported.");
         }
