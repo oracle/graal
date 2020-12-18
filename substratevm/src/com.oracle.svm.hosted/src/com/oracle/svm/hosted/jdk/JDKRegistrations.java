@@ -55,10 +55,6 @@ class JDKRegistrations extends JNIRegistrationUtil implements GraalFeature {
     public void beforeAnalysis(BeforeAnalysisAccess access) {
         if (JavaVersionUtil.JAVA_SPEC > 8) {
             access.registerReachabilityHandler(this::registerColorProfileResources, clazz(access, "java.awt.color.ICC_Profile"));
-
-            /* These classes contain standard color profile caches which may not be loaded yet */
-            rerunClassInit(access, "java.awt.color.ColorSpace");
-            rerunClassInit(access, "java.awt.color.ICC_Profile");
         }
     }
 
