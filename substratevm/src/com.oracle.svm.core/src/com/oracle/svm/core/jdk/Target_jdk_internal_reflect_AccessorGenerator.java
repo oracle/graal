@@ -45,7 +45,7 @@ final class Target_jdk_internal_reflect_MethodAccessorGenerator {
                     @SuppressWarnings("unused") int modifiers,
                     Class<?> targetConstructorClass) {
         SerializationRegistry serializationRegistry = ImageSingletons.lookup(SerializationRegistry.class);
-        Object constructorAccessor = serializationRegistry.getSerializationConstructorAccessorClass(declaringClass, targetConstructorClass);
+        Object constructorAccessor = serializationRegistry.getSerializationConstructorAccessor(declaringClass, targetConstructorClass);
         return (Target_jdk_internal_reflect_SerializationConstructorAccessorImpl) constructorAccessor;
     }
 }
