@@ -1228,7 +1228,6 @@ suite = {
       "distDependencies" : [
         "truffle:TRUFFLE_API",
         "truffle:ANTLR4",
-        "SULONG_HOME",
         "SULONG_API",
         "SULONG_TOOLCHAIN_CONFIG",
       ],
