@@ -34,6 +34,8 @@ import java.util.function.Function;
 import java.util.logging.Level;
 import java.util.stream.Collectors;
 
+import com.oracle.truffle.api.interop.TruffleObject;
+import com.oracle.truffle.espresso.EspressoBindings;
 import org.graalvm.polyglot.Engine;
 
 import com.oracle.truffle.api.Assumption;
@@ -171,6 +173,8 @@ public final class EspressoContext {
     @CompilationFinal private Assumption noSuspend = Truffle.getRuntime().createAssumption();
     @CompilationFinal private Assumption noThreadDeprecationCalled = Truffle.getRuntime().createAssumption();
     // endregion ThreadDeprecated
+
+    @CompilationFinal private TruffleObject topBindings;
 
     public TruffleLogger getLogger() {
         return logger;
@@ -414,9 +418,11 @@ public final class EspressoContext {
             meta.java_lang_OutOfMemoryError.lookupDeclaredMethod(Name._init_, Signature._void_String).invokeDirect(outOfMemoryErrorInstance, meta.toGuestString("VM OutOfMemory"));
 
             // Create application (system) class loader.
+            StaticObject systemClassLoader = null;
             try (DebugCloseable systemLoader = SYSTEM_CLASSLOADER.scope(timers)) {
-                meta.java_lang_ClassLoader_getSystemClassLoader.invokeDirect(null);
+                systemClassLoader = (StaticObject) meta.java_lang_ClassLoader_getSystemClassLoader.invokeDirect(null);
             }
+            topBindings = new EspressoBindings(systemClassLoader);
 
             initDoneTimeNanos = System.nanoTime();
             long elapsedNanos = initDoneTimeNanos - initStartTimeNanos;
@@ -668,6 +674,10 @@ public final class EspressoContext {
 
     public TimerCollection getTimers() {
         return timers;
+    }
+
+    public TruffleObject getBindings() {
+        return topBindings;
     }
 
     // endregion DebugAccess

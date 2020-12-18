@@ -428,13 +428,13 @@ public class EspressoLauncher extends AbstractLanguageLauncher {
             // runVersionAction(versionAction, context.getEngine());
             if (versionAction != VersionAction.None) {
                 // The Java version is not known yet, try 8 first.
-                Value version = context.eval("java", "sun.misc.Version");
+                Value version = context.getBindings("java").getMember("sun.misc.Version");
                 if (!version.isNull()) {
                     // Java 8
                     version.invokeMember("print");
                 } else {
                     // > Java 8
-                    version = context.eval("java", "java.lang.VersionProps");
+                    version = context.getBindings("java").getMember("java.lang.VersionProps");
                     version.invokeMember("print", /* print to stderr = */false);
                 }
                 if (versionAction == VersionAction.PrintAndExit) {
@@ -446,7 +446,7 @@ public class EspressoLauncher extends AbstractLanguageLauncher {
                 throw abort(usage());
             }
             try {
-                Value launcherHelper = context.eval("java", "sun.launcher.LauncherHelper");
+                Value launcherHelper = context.getBindings("java").getMember("sun.launcher.LauncherHelper");
                 Value mainKlass = launcherHelper //
                                 .invokeMember("checkAndLoadMain", true, launchMode.ordinal(), mainClassName) //
                                 .getMember("static");
@@ -504,7 +504,7 @@ public class EspressoLauncher extends AbstractLanguageLauncher {
     }
 
     private static void handleMainUncaught(Context context, PolyglotException e) {
-        Value threadClass = context.eval("java", "java.lang.Thread");
+        Value threadClass = context.getBindings("java").getMember("java.lang.Thread");
         Value currentThread = threadClass.invokeMember("currentThread");
         Value handler = currentThread.invokeMember("getUncaughtExceptionHandler");
         handler.invokeMember("uncaughtException", currentThread, e.getGuestObject());
