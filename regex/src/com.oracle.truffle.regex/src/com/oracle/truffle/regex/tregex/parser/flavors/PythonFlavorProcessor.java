@@ -51,7 +51,6 @@ import java.util.function.Predicate;
 
 import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
-import com.oracle.truffle.api.interop.TruffleObject;
 import com.oracle.truffle.regex.AbstractRegexObject;
 import com.oracle.truffle.regex.RegexSource;
 import com.oracle.truffle.regex.RegexSyntaxException;
@@ -329,7 +328,7 @@ public final class PythonFlavorProcessor implements RegexFlavorProcessor {
         this.inSource = source;
         this.inPattern = source.getPattern();
         this.inFlags = source.getFlags();
-        this.mode = mode;
+        this.mode = mode == PythonREMode.None ? PythonREMode.fromEncoding(source.getEncoding()) : mode;
         this.position = 0;
         this.outPattern = new StringBuilder(inPattern.length());
         this.globalFlags = new PythonFlags(inFlags);

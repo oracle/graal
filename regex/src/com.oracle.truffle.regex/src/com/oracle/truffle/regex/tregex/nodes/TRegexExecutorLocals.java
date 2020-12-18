@@ -71,8 +71,7 @@ public abstract class TRegexExecutorLocals {
     /**
      * The {@code fromIndex} argument given to {@link TRegexExecNode#execute(Object, int)}.
      *
-     * @return the {@code fromIndex} argument given to
-     *         {@link TRegexExecNode#execute(Object, int)}.
+     * @return the {@code fromIndex} argument given to {@link TRegexExecNode#execute(Object, int)}.
      */
     public int getFromIndex() {
         return fromIndex;

@@ -58,9 +58,8 @@ import com.oracle.truffle.regex.tregex.string.Encodings;
  * <li><b>Flavor</b>: specifies the regex dialect to use. Possible values:
  * <ul>
  * <li><b>ECMAScript</b>: ECMAScript/JavaScript syntax (default).</li>
- * <li><b>PythonStr</b>: regular Python 3 syntax.</li>
- * <li><b>PythonBytes</b> Python 3 syntax, but for {@code bytes}-objects.</li>
- * <li><b>Ruby</b>: ruby syntax.</li>
+ * <li><b>Python</b>: Python 3 syntax.</li>
+ * <li><b>Ruby</b>: Ruby syntax.</li>
  * </ul>
  * </li>
  * <li><b>Encoding</b>: specifies the string encoding to match against. Possible values:
@@ -109,15 +108,14 @@ public final class RegexOptions {
     public static final String VALIDATE_NAME = "Validate";
 
     public static final String FLAVOR_NAME = "Flavor";
+    public static final String FLAVOR_PYTHON = "Python";
     public static final String FLAVOR_PYTHON_STR = "PythonStr";
     public static final String FLAVOR_PYTHON_BYTES = "PythonBytes";
     public static final String FLAVOR_RUBY = "Ruby";
     public static final String FLAVOR_ECMASCRIPT = "ECMAScript";
-    private static final String[] FLAVOR_OPTIONS = {FLAVOR_PYTHON_STR, FLAVOR_PYTHON_BYTES, FLAVOR_RUBY, FLAVOR_ECMASCRIPT};
+    private static final String[] FLAVOR_OPTIONS = {FLAVOR_PYTHON, FLAVOR_PYTHON_STR, FLAVOR_PYTHON_BYTES, FLAVOR_RUBY, FLAVOR_ECMASCRIPT};
 
     public static final String ENCODING_NAME = "Encoding";
-
-    private static final String FEATURE_SET_NAME = "FeatureSet";
 
     public static final RegexOptions DEFAULT = new RegexOptions(0, null, Encodings.UTF_16_RAW);
 
@@ -133,84 +131,6 @@ public final class RegexOptions {
 
     public static Builder builder() {
         return new Builder();
-    }
-
-    @TruffleBoundary
-    public static RegexOptions parse(String optionsString) throws RegexSyntaxException {
-        int options = 0;
-        RegexFlavor flavor = null;
-        for (String propValue : optionsString.split(",")) {
-            if (propValue.isEmpty()) {
-                continue;
-            }
-            int eqlPos = propValue.indexOf('=');
-            if (eqlPos < 0) {
-                throw optionsSyntaxError(optionsString, propValue + " is not in form 'key=value'");
-            }
-            String key = propValue.substring(0, eqlPos);
-            String value = propValue.substring(eqlPos + 1);
-            switch (key) {
-                case U180E_WHITESPACE_NAME:
-                    options = parseBooleanOption(optionsString, options, key, value, U180E_WHITESPACE);
-                    break;
-                case REGRESSION_TEST_MODE_NAME:
-                    options = parseBooleanOption(optionsString, options, key, value, REGRESSION_TEST_MODE);
-                    break;
-                case DUMP_AUTOMATA_NAME:
-                    options = parseBooleanOption(optionsString, options, key, value, DUMP_AUTOMATA);
-                    break;
-                case STEP_EXECUTION_NAME:
-                    options = parseBooleanOption(optionsString, options, key, value, STEP_EXECUTION);
-                    break;
-                case ALWAYS_EAGER_NAME:
-                    options = parseBooleanOption(optionsString, options, key, value, ALWAYS_EAGER);
-                    break;
-                case UTF_16_EXPLODE_ASTRAL_SYMBOLS_NAME:
-                    options = parseBooleanOption(optionsString, options, key, value, UTF_16_EXPLODE_ASTRAL_SYMBOLS);
-                    break;
-                case FLAVOR_NAME:
-                    flavor = parseFlavor(optionsString, value);
-                    break;
-                case FEATURE_SET_NAME:
-                    // deprecated
-                    break;
-                default:
-                    throw optionsSyntaxError(optionsString, "unexpected option " + key);
-            }
-        }
-        return new RegexOptions(options, flavor, Encodings.UTF_16_RAW);
-    }
-
-    private static int parseBooleanOption(String optionsString, int options, String key, String value, int flag) throws RegexSyntaxException {
-        if (value.equals("true")) {
-            return options | flag;
-        } else if (!value.equals("false")) {
-            throw optionsSyntaxErrorUnexpectedValue(optionsString, key, value, "true", "false");
-        }
-        return options;
-    }
-
-    private static RegexFlavor parseFlavor(String optionsString, String value) throws RegexSyntaxException {
-        switch (value) {
-            case FLAVOR_PYTHON_STR:
-                return PythonFlavor.STR_INSTANCE;
-            case FLAVOR_PYTHON_BYTES:
-                return PythonFlavor.BYTES_INSTANCE;
-            case FLAVOR_RUBY:
-                return RubyFlavor.INSTANCE;
-            case FLAVOR_ECMASCRIPT:
-                return null;
-            default:
-                throw optionsSyntaxErrorUnexpectedValue(optionsString, FLAVOR_NAME, value, FLAVOR_PYTHON_STR, FLAVOR_PYTHON_BYTES, FLAVOR_RUBY, FLAVOR_ECMASCRIPT);
-        }
-    }
-
-    private static RegexSyntaxException optionsSyntaxErrorUnexpectedValue(String optionsString, String key, String value, String... expectedValues) {
-        return optionsSyntaxError(optionsString, String.format("unexpected value '%s' for option '%s', expected one of %s", value, key, Arrays.toString(expectedValues)));
-    }
-
-    private static RegexSyntaxException optionsSyntaxError(String optionsString, String msg) {
-        return new RegexSyntaxException(String.format("Invalid options syntax in '%s': %s", optionsString, msg));
     }
 
     private boolean isBitSet(int bit) {
@@ -426,7 +346,8 @@ public final class RegexOptions {
                     return expectValue(src, iVal, FLAVOR_RUBY, FLAVOR_OPTIONS);
                 case 'P':
                     if (iVal + 6 >= src.length()) {
-                        throw optionsSyntaxErrorUnexpectedValue(src, iVal, FLAVOR_OPTIONS);
+                        flavor = PythonFlavor.INSTANCE;
+                        return expectValue(src, iVal, FLAVOR_PYTHON, FLAVOR_OPTIONS);
                     }
                     switch (src.charAt(iVal + 6)) {
                         case 'B':
@@ -488,6 +409,11 @@ public final class RegexOptions {
             int commaPos = src.indexOf(',', i);
             String value = src.substring(i, commaPos < 0 ? src.length() : commaPos);
             return optionsSyntaxError(src, String.format("unexpected value '%s', expected one of %s", value, Arrays.toString(expected)));
+        }
+
+        @TruffleBoundary
+        private static RegexSyntaxException optionsSyntaxError(String optionsString, String msg) {
+            return new RegexSyntaxException(String.format("Invalid options syntax in '%s': %s", optionsString, msg));
         }
 
         private boolean isBitSet(int bit) {
