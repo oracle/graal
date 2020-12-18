@@ -44,6 +44,7 @@ import com.oracle.truffle.api.nodes.LanguageInfo;
 import com.oracle.truffle.api.source.Source;
 import java.io.IOException;
 import java.lang.reflect.InvocationHandler;
+import java.lang.reflect.InvocationTargetException;
 import java.lang.reflect.Method;
 import java.lang.reflect.Proxy;
 import java.util.ArrayList;
@@ -280,15 +281,7 @@ public class InsightInstrument extends TruffleInstrument {
     }
 
     private static BiConsumer<?, ?> registerSymbolsAPI(InsightInstrument insight) {
-        BiConsumer<String, Value> f = (name, value) -> {
-            if (name.getClass() != String.class) {
-                throw new IllegalArgumentException();
-            }
-            if (value.getClass() != Value.class) {
-                throw new IllegalArgumentException();
-            }
-            insight.registerSymbol(name, value);
-        };
+        BiConsumer<String, Value> f = insight::registerSymbol;
         return maybeProxy(BiConsumer.class, f);
     }
 
@@ -302,7 +295,11 @@ public class InsightInstrument extends TruffleInstrument {
 
     private static <Interface> Interface proxy(Class<Interface> type, Interface delegate) {
         InvocationHandler handler = (Object proxy, Method method, Object[] args) -> {
-            return method.invoke(delegate, args);
+            try {
+                return method.invoke(delegate, args);
+            } catch (InvocationTargetException ex) {
+                throw ex.getCause();
+            }
         };
         return type.cast(Proxy.newProxyInstance(type.getClassLoader(), new Class<?>[]{type}, handler));
     }

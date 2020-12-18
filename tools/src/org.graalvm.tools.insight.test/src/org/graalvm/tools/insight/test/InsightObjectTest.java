@@ -43,6 +43,7 @@ import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.Executor;
 import java.util.concurrent.Executors;
 import java.util.concurrent.TimeUnit;
+import java.util.function.BiConsumer;
 import java.util.function.Function;
 import java.util.function.Predicate;
 import org.graalvm.polyglot.Context;
@@ -791,6 +792,54 @@ public class InsightObjectTest {
             } catch (PolyglotException ex) {
                 assertNotEquals("Missing language error reported", -1, ex.getMessage().indexOf("No language for id unknownInsightLanguage found"));
             }
+        }
+    }
+
+    @Test
+    @SuppressWarnings({"unchecked", "rawtypes"})
+    public void exportSpecialSymbolsIAE() throws Exception {
+        try (Context c = InsightObjectFactory.newContext()) {
+            Instrument insight = c.getEngine().getInstruments().get(Insight.ID);
+            assertNotNull("found", insight);
+
+            BiConsumer registerSymbols = insight.lookup(BiConsumer.class);
+            assertNotNull("symbols", registerSymbols);
+
+            try {
+                registerSymbols.accept(1, Value.asValue(1));
+                fail("Exception should be thrown");
+            } catch (ClassCastException ex) {
+                // good
+            }
+
+            try {
+                registerSymbols.accept("name", 1);
+                fail("Exception should be thrown");
+            } catch (ClassCastException ex) {
+                // good
+            }
+
+            registerSymbols.accept("number", Value.asValue(1));
+            registerSymbols.accept("string", Value.asValue("string"));
+            registerSymbols.accept("char", Value.asValue('c'));
+
+            // @formatter:off
+            Source sampleScript = Source.newBuilder(InstrumentationTestLanguage.ID,
+                "ROOT(\n" +
+                "  DEFINE(meaning,\n" +
+                "    EXPRESSION(\n" +
+                "      CONSTANT(6),\n" +
+                "      CONSTANT(7)\n" +
+                "    )\n" +
+                "  ),\n" +
+                "  CALL(meaning)\n" +
+                ")",
+                "sample.px"
+            ).build();
+            // @formatter:on
+
+            Value fourtyTwo = c.eval(sampleScript);
+            registerSymbols.accept("object", fourtyTwo);
         }
     }
 
