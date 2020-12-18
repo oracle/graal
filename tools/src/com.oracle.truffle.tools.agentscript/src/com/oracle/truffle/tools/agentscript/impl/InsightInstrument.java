@@ -39,6 +39,7 @@ import com.oracle.truffle.api.instrumentation.Instrumenter;
 import com.oracle.truffle.api.instrumentation.SourceSectionFilter;
 import com.oracle.truffle.api.instrumentation.StandardTags;
 import com.oracle.truffle.api.instrumentation.TruffleInstrument;
+import com.oracle.truffle.api.interop.TruffleObject;
 import com.oracle.truffle.api.nodes.LanguageInfo;
 import com.oracle.truffle.api.source.Source;
 import java.io.IOException;
@@ -133,7 +134,7 @@ public class InsightInstrument extends TruffleInstrument {
             } else if (value.isString()) {
                 symbols.add(value.asString());
             } else {
-                symbols.add(value.asHostObject());
+                symbols.add(value.as(TruffleObject.class));
             }
         }
     }
