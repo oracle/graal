@@ -27,6 +27,7 @@ import java.util.logging.Level;
 import com.oracle.truffle.api.CompilerAsserts;
 import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
+import com.oracle.truffle.espresso.EspressoOptions;
 import com.oracle.truffle.espresso.descriptors.Symbol;
 import com.oracle.truffle.espresso.descriptors.Symbol.Name;
 import com.oracle.truffle.espresso.descriptors.Symbol.Signature;
@@ -549,12 +550,22 @@ public final class Meta implements ContextAccess {
         assert java_time_ZoneId_of.isStatic();
 
         // Interop support.
-        com_oracle_truffle_espresso_polyglot_ArityException = knownKlass(Type.com_oracle_truffle_espresso_polyglot_ArityException);
-        com_oracle_truffle_espresso_polyglot_UnknownIdentifierException = knownKlass(Type.com_oracle_truffle_espresso_polyglot_UnknownIdentifierException);
-        com_oracle_truffle_espresso_polyglot_UnsupportedMessageException = knownKlass(Type.com_oracle_truffle_espresso_polyglot_UnsupportedMessageException);
-        com_oracle_truffle_espresso_polyglot_UnsupportedTypeException = knownKlass(Type.com_oracle_truffle_espresso_polyglot_UnsupportedTypeException);
-        com_oracle_truffle_espresso_polyglot_InvalidArrayIndexException = knownKlass(Type.com_oracle_truffle_espresso_polyglot_InvalidArrayIndexException);
-
+        boolean polyglot = getContext().getEnv().getOptions().get(EspressoOptions.Polyglot);
+        if (polyglot) {
+            EspressoError.guarantee(knownKlass(Type.com_oracle_truffle_espresso_polyglot_Polyglot) != null,
+                    "polyglot.jar (Polyglot API) is not accessible");
+            com_oracle_truffle_espresso_polyglot_ArityException = knownKlass(Type.com_oracle_truffle_espresso_polyglot_ArityException);
+            com_oracle_truffle_espresso_polyglot_UnknownIdentifierException = knownKlass(Type.com_oracle_truffle_espresso_polyglot_UnknownIdentifierException);
+            com_oracle_truffle_espresso_polyglot_UnsupportedMessageException = knownKlass(Type.com_oracle_truffle_espresso_polyglot_UnsupportedMessageException);
+            com_oracle_truffle_espresso_polyglot_UnsupportedTypeException = knownKlass(Type.com_oracle_truffle_espresso_polyglot_UnsupportedTypeException);
+            com_oracle_truffle_espresso_polyglot_InvalidArrayIndexException = knownKlass(Type.com_oracle_truffle_espresso_polyglot_InvalidArrayIndexException);
+        } else {
+            com_oracle_truffle_espresso_polyglot_ArityException = null;
+            com_oracle_truffle_espresso_polyglot_UnknownIdentifierException = null;
+            com_oracle_truffle_espresso_polyglot_UnsupportedMessageException = null;
+            com_oracle_truffle_espresso_polyglot_UnsupportedTypeException = null;
+            com_oracle_truffle_espresso_polyglot_InvalidArrayIndexException = null;
+        }
     }
 
     public void postSystemInit() {

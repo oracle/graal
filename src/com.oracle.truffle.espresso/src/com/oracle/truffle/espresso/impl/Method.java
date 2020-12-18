@@ -1108,10 +1108,17 @@ public final class Method extends Member<Signature> implements TruffleObject, Co
                         this.callTarget = proxy.getCallTarget();
                         return callTarget;
                     }
-                    EspressoRootNode redirectedMethod = getSubstitutions().get(getMethod());
-                    if (redirectedMethod != null) {
-                        callTarget = Truffle.getRuntime().createCallTarget(redirectedMethod);
-                    } else {
+
+                    // Substitutions are only valid for methods loaded on the boot class loader.
+                    StaticObject loader = (StaticObject) getDeclaringKlass().getDefiningClassLoader();
+                    if (StaticObject.isNull(loader)) {
+                        EspressoRootNode redirectedMethod = getSubstitutions().get(getMethod());
+                        if (redirectedMethod != null) {
+                            callTarget = Truffle.getRuntime().createCallTarget(redirectedMethod);
+                        }
+                    }
+
+                    if (callTarget == null) {
                         if (getMethod().isNative()) {
                             // Bind native method.
                             // If the loader is null we have a system class, so we attempt a lookup
