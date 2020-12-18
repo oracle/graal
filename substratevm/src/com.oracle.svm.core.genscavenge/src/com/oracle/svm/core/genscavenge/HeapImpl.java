@@ -590,7 +590,6 @@ public final class HeapImpl extends Heap {
                     next = ReferenceInternals.getNextDiscovered(current);
                 }
                 ReferenceInternals.setNextDiscovered(current, list);
-                dirtyCardIfNecessary(current, list);
                 // No need to notify: waiters would have been notified about the existing list
             } else {
                 refPendingList = list;

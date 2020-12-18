@@ -31,7 +31,6 @@ import java.lang.ref.Reference;
 import java.lang.ref.ReferenceQueue;
 import java.lang.ref.SoftReference;
 
-import org.graalvm.compiler.word.Word;
 import org.graalvm.word.Pointer;
 import org.graalvm.word.UnsignedWord;
 import org.graalvm.word.WordFactory;
@@ -89,13 +88,11 @@ final class ReferenceObjectProcessing {
 
     private static void discover(Object obj, ObjectReferenceVisitor refVisitor) {
         Reference<?> dr = KnownIntrinsics.convertUnknownValue(obj, Reference.class);
-        Log trace = Log.noopLog().string("[ReferenceObjectProcessing.discover: ").object(dr);
         if (ReferenceInternals.getNextDiscovered(dr) != null) {
-            trace.string(" already discovered]").newline();
+            // Was already discovered earlier.
             return;
         }
         Pointer referentAddr = ReferenceInternals.getReferentPointer(dr);
-        trace.string(" referent: ").hex(referentAddr);
         if (referentAddr.isNull()) {
             /*
              * If the Reference has been allocated but not yet initialized (null referent), its
@@ -103,23 +100,23 @@ final class ReferenceObjectProcessing {
              * Reference is initialized but has a null referent, it has already been enqueued
              * (either manually or by the GC) and does not need to be discovered.
              */
-            trace.string(" is inactive]").newline();
             return;
         }
         if (Heap.getHeap().isInImageHeap(referentAddr)) {
-            // Referents in the image heap cannot be moved or reclaimed, no need to look closer
-            trace.string(" is in image heap]").newline();
+            // Referents in the image heap cannot be moved or reclaimed, no need to look closer.
             return;
         }
         if (maybeUpdateForwardedReference(dr, referentAddr)) {
-            trace.string(" has already been promoted and field has been updated]").newline();
+            // Some other object had a strong reference to the referent, so the referent was already
+            // promoted. The called above updated the reference so that it now points to the
+            // promoted object.
             return;
         }
         Object refObject = referentAddr.toObject();
         if (willSurviveThisCollection(refObject)) {
-            // Referent is in a to-space, so it won't be reclaimed at this time (incremental GC?)
+            // Referent is in a to-space. So, this is either an object that got promoted without
+            // being moved or an object in the old gen.
             HeapImpl.getHeapImpl().dirtyCardIfNecessary(dr, refObject);
-            trace.string(" referent is in a to-space]").newline();
             return;
         }
         if (!softReferencesAreWeak && dr instanceof SoftReference) {
@@ -134,11 +131,14 @@ final class ReferenceObjectProcessing {
                 return; // referent will survive and referent field has been updated
             }
         }
-        trace.string(" remembered to revisit later]").newline();
+
+        // When we reach this point, then we don't know if the referent will survive or not. So,
+        // lets add the reference to the list of remembered references. All remembered references
+        // are revisited after the GC finished promoting all strongly reachable objects.
+
         // null link means undiscovered, avoid for the last node with a cyclic reference
         Reference<?> next = (rememberedRefsList != null) ? rememberedRefsList : dr;
         ReferenceInternals.setNextDiscovered(dr, next);
-        HeapImpl.getHeapImpl().dirtyCardIfNecessary(dr, next);
         rememberedRefsList = dr;
     }
 
@@ -150,16 +150,28 @@ final class ReferenceObjectProcessing {
      */
     static Reference<?> processRememberedReferences() {
         Reference<?> pendingHead = null;
-        for (Reference<?> current = popRememberedRef(); current != null; current = popRememberedRef()) {
-            if (!processRememberedRef(current)) {
-                if (ReferenceInternals.hasQueue(current)) {
-                    ReferenceInternals.setNextDiscovered(current, pendingHead);
-                    pendingHead = current;
-                }
-                HeapImpl.getHeapImpl().dirtyCardIfNecessary(current, pendingHead);
+        Reference<?> current = rememberedRefsList;
+        rememberedRefsList = null;
+
+        while (current != null) {
+            // Get the next node (the last node has a cyclic reference to self).
+            Reference<?> next = ReferenceInternals.getNextDiscovered(current);
+            assert next != null;
+            next = (next != current) ? next : null;
+
+            if (!processRememberedRef(current) && ReferenceInternals.hasQueue(current)) {
+                // The referent is dead, so add it to the list of references that will be processed
+                // by the reference handler.
+                ReferenceInternals.setNextDiscovered(current, pendingHead);
+                pendingHead = current;
+            } else {
+                // No need to enqueue this reference.
+                ReferenceInternals.setNextDiscovered(current, null);
             }
+
+            current = next;
         }
-        assert rememberedRefsList == null;
+
         return pendingHead;
     }
 
@@ -179,14 +191,8 @@ final class ReferenceObjectProcessing {
      * @return true if the referent will survive the collection, false otherwise.
      */
     private static boolean processRememberedRef(Reference<?> dr) {
-        /*
-         * The referent *has not* been processed as a grey reference, so I have to be careful about
-         * looking through the referent field.
-         */
         Pointer refPointer = ReferenceInternals.getReferentPointer(dr);
-        if (refPointer.isNull()) {
-            return true;
-        }
+        assert refPointer.isNonNull() : "Referent is null: should not have been discovered";
         assert !HeapImpl.getHeapImpl().isInImageHeap(refPointer) : "Image heap referent: should not have been discovered";
         if (maybeUpdateForwardedReference(dr, refPointer)) {
             return true;
@@ -203,16 +209,15 @@ final class ReferenceObjectProcessing {
          * static analysis must see that the field can be null. This means that we get a write
          * barrier for this store.
          */
-        ReferenceInternals.clear(dr);
+        ReferenceInternals.setReferent(dr, null);
         return false;
     }
 
     private static boolean maybeUpdateForwardedReference(Reference<?> dr, Pointer referentAddr) {
         UnsignedWord header = ObjectHeaderImpl.readHeaderFromPointer(referentAddr);
         if (ObjectHeaderImpl.isForwardedHeader(header)) {
-            Pointer forwardedPointer = Word.objectToUntrackedPointer(ObjectHeaderImpl.getForwardedObject(referentAddr));
-            ReferenceInternals.setReferentPointer(dr, forwardedPointer);
-            HeapImpl.getHeapImpl().dirtyCardIfNecessary(dr, forwardedPointer.toObject());
+            Object forwardedObj = ObjectHeaderImpl.getForwardedObject(referentAddr);
+            ReferenceInternals.setReferent(dr, forwardedObj);
             return true;
         }
         return false;
@@ -222,17 +227,6 @@ final class ReferenceObjectProcessing {
         HeapChunk.Header<?> chunk = HeapChunk.getEnclosingHeapChunk(obj);
         Space space = HeapChunk.getSpace(chunk);
         return !space.isFromSpace();
-    }
-
-    private static Reference<?> popRememberedRef() {
-        Reference<?> result = rememberedRefsList;
-        if (result != null) {
-            Reference<?> next = ReferenceInternals.getNextDiscovered(result);
-            rememberedRefsList = (next != result) ? next : null; // cyclic link for last node
-            ReferenceInternals.setNextDiscovered(result, null);
-            // no need to do any card dirtying when writing null
-        }
-        return result;
     }
 
     public static boolean verify(Reference<?> dr) {
