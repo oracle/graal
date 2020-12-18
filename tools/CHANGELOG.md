@@ -6,6 +6,7 @@ This changelog summarizes major changes between Truffle Tools versions.
 
 * `--insight` option is no longer considered experimental
 * Use `ctx.iterateFrames` to [access whole stack and its variables](docs/Insight-Manual.md#Accessing-whole-Stack)
+* Embedders can [inject additional objects](docs/Insight-Embedding.md#Extending-Functionality-of-Insight-Scripts) into Insight scripts
 
 ## Version 20.3.0
 

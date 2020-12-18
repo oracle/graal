@@ -38,7 +38,7 @@ To hide priviledged scripts from [Insight](Insight.md) sight
 
 ### Extending Functionality of Insight Scripts
 
-When [embedding Insight](#Embedding_Insight_into_Java_Application) into
+When [embedding Insight](Insight-Embedding.md#Embedding_Insight_into_Java_Application) into
 Java application one can make additional objects available to the Insight
 scripts being evaluated:
 
