@@ -155,7 +155,8 @@ class SulongTestSuite(SulongTestSuiteBase):  # pylint: disable=too-many-ancestor
     def getTests(self):
         if not hasattr(self, '_tests'):
             self._tests = []
-            root = os.path.join(self.dir)
+            # collect tests from VPATH (defaults to self.dir)
+            root = os.path.join(self._get_vpath())
             for path, _, files in os.walk(root):
                 for f in files:
                     absPath = os.path.join(path, f)
@@ -164,6 +165,10 @@ class SulongTestSuite(SulongTestSuiteBase):  # pylint: disable=too-many-ancestor
                     if ext in getattr(self, "fileExts", ['.c', '.cpp', '.ll']):
                         self._tests.append(relPath + ".dir")
         return self._tests
+
+    def _get_vpath(self):
+        env = super(SulongTestSuite, self).getBuildEnv()
+        return env.get('VPATH', self.dir)
 
     def getBuildEnv(self, replaceVar=mx_subst.path_substitutions):
         env = super(SulongTestSuite, self).getBuildEnv(replaceVar=replaceVar)
