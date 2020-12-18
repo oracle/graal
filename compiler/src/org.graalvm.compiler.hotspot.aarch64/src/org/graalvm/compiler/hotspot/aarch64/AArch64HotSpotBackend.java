@@ -121,10 +121,9 @@ public class AArch64HotSpotBackend extends HotSpotHostBackend implements LIRGene
     @Override
     protected void bangStackWithOffset(CompilationResultBuilder crb, int bangOffset) {
         AArch64MacroAssembler masm = (AArch64MacroAssembler) crb.asm;
-        boolean allowOverwrite = false;
         try (ScratchRegister sc = masm.getScratchRegister()) {
             Register scratch = sc.getRegister();
-            AArch64Address address = masm.makeAddress(sp, -bangOffset, scratch, 8, allowOverwrite);
+            AArch64Address address = masm.makeAddress(64, sp, -bangOffset, scratch);
             masm.str(64, zr, address);
         }
     }
@@ -321,8 +320,8 @@ public class AArch64HotSpotBackend extends HotSpotHostBackend implements LIRGene
             // equal to scratch(1) careful!
             Register inlineCacheKlass = AArch64HotSpotRegisterConfig.inlineCacheRegister;
             Register receiver = asRegister(cc.getArgument(0));
-            int transferSize = config.useCompressedClassPointers ? 4 : 8;
-            AArch64Address klassAddress = masm.makeAddress(receiver, config.hubOffset, transferSize);
+            int size = config.useCompressedClassPointers ? 32 : 64;
+            AArch64Address klassAddress = masm.makeAddress(size, receiver, config.hubOffset);
 
             // Are r10 and r11 available scratch registers here? One would hope so.
             Register klass = r10;

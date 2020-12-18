@@ -30,16 +30,12 @@ import static jdk.vm.ci.aarch64.AArch64.rscratch1;
 import static jdk.vm.ci.aarch64.AArch64.rscratch2;
 import static jdk.vm.ci.aarch64.AArch64.sp;
 import static jdk.vm.ci.aarch64.AArch64.zr;
-import static org.graalvm.compiler.asm.aarch64.AArch64Address.AddressingMode.BASE_REGISTER_ONLY;
 import static org.graalvm.compiler.asm.aarch64.AArch64Address.AddressingMode.EXTENDED_REGISTER_OFFSET;
 import static org.graalvm.compiler.asm.aarch64.AArch64Address.AddressingMode.IMMEDIATE_SIGNED_UNSCALED;
 import static org.graalvm.compiler.asm.aarch64.AArch64Address.AddressingMode.IMMEDIATE_UNSIGNED_SCALED;
 import static org.graalvm.compiler.asm.aarch64.AArch64Address.AddressingMode.REGISTER_OFFSET;
 import static org.graalvm.compiler.asm.aarch64.AArch64Assembler.Instruction.LDP;
 import static org.graalvm.compiler.asm.aarch64.AArch64Assembler.Instruction.STP;
-import static org.graalvm.compiler.asm.aarch64.AArch64MacroAssembler.AddressGenerationPlan.WorkPlan.ADD_TO_BASE;
-import static org.graalvm.compiler.asm.aarch64.AArch64MacroAssembler.AddressGenerationPlan.WorkPlan.ADD_TO_INDEX;
-import static org.graalvm.compiler.asm.aarch64.AArch64MacroAssembler.AddressGenerationPlan.WorkPlan.NO_WORK;
 
 import org.graalvm.compiler.asm.BranchTargetOutOfBoundsException;
 import org.graalvm.compiler.asm.Label;
@@ -126,190 +122,65 @@ public class AArch64MacroAssembler extends AArch64Assembler {
     }
 
     /**
-     * Specifies what actions have to be taken to turn an arbitrary address of the form
-     * {@code base + displacement [+ index [<< scale]]} into a valid AArch64Address.
-     */
-    public static class AddressGenerationPlan {
-        public final WorkPlan workPlan;
-        public final AArch64Address.AddressingMode addressingMode;
-        public final boolean needsScratch;
-
-        public enum WorkPlan {
-            /**
-             * Can be used as-is without extra work.
-             */
-            NO_WORK,
-            /**
-             * Add scaled displacement to index register.
-             */
-            ADD_TO_INDEX,
-            /**
-             * Add unscaled displacement to base register.
-             */
-            ADD_TO_BASE,
-        }
-
-        /**
-         * @param workPlan Work necessary to generate a valid address.
-         * @param addressingMode Addressing mode of generated address.
-         * @param needsScratch True if generating address needs a scatch register, false otherwise.
-         */
-        public AddressGenerationPlan(WorkPlan workPlan, AArch64Address.AddressingMode addressingMode, boolean needsScratch) {
-            this.workPlan = workPlan;
-            this.addressingMode = addressingMode;
-            this.needsScratch = needsScratch;
-        }
-    }
-
-    /**
-     * Generates an addressplan for an address of the form
-     * {@code base + displacement [+ index [<< log2(transferSize)]]} with the index register and
-     * scaling being optional.
      *
-     * @param displacement an arbitrary displacement.
-     * @param hasIndexRegister true if the address uses an index register, false otherwise. non null
-     * @param transferSize the memory transfer size in bytes. The log2 of this specifies how much
-     *            the index register is scaled. If 0 no scaling is assumed. Can be 0, 1, 2, 4 or 8.
-     * @return AddressGenerationPlan that specifies the actions necessary to generate a valid
-     *         AArch64Address for the given parameters.
+     * Returns an AArch64Address pointing to {@code base + displacement}.
+     *
+     * <p>
+     * This methods chooses the appropriate way to generate this address, by first trying to use an
+     * immediate addressing mode, and then resorting to using the scratch register and a register
+     * offset addressing mode.
+     *
+     * @param transferSize bit size of memory operation this address will be used in.
+     * @param scratchReg scratch register to use if immediate addressing mode cannot be used. Should
+     *            be set to zero-register if scratch register is not available.
      */
-    public static AddressGenerationPlan generateAddressPlan(long displacement, boolean hasIndexRegister, int transferSize) {
-        assert transferSize == 0 || transferSize == 1 || transferSize == 2 || transferSize == 4 || transferSize == 8 || transferSize == 16;
-        boolean indexScaled = transferSize != 0;
-        int log2Scale = NumUtil.log2Ceil(transferSize);
-        long scaledDisplacement = displacement >> log2Scale;
-        boolean displacementScalable = indexScaled && (displacement & (transferSize - 1)) == 0;
+    public AArch64Address makeAddress(int transferSize, Register base, long displacement, Register scratchReg) {
+        assert transferSize == 8 || transferSize == 16 || transferSize == 32 || transferSize == 64 || transferSize == 128;
         if (displacement == 0) {
-            // register offset without any work beforehand.
-            return new AddressGenerationPlan(NO_WORK, REGISTER_OFFSET, false);
+            return AArch64Address.createBaseRegisterOnlyAddress(base);
+
         } else {
-            if (hasIndexRegister) {
-                if (displacementScalable) {
-                    boolean needsScratch = !isArithmeticImmediate(scaledDisplacement);
-                    return new AddressGenerationPlan(ADD_TO_INDEX, REGISTER_OFFSET, needsScratch);
-                } else {
-                    boolean needsScratch = !isArithmeticImmediate(displacement);
-                    return new AddressGenerationPlan(ADD_TO_BASE, REGISTER_OFFSET, needsScratch);
-                }
+            /* Addresses using IMMEDIATE_UNSIGNED_SCALED must be non-negative and shiftable. */
+            boolean canScale = displacement >= 0 &&
+                            (displacement & (NumUtil.getNbitNumberInt(getLog2TransferSize(transferSize)))) == 0;
+            AArch64Address.AddressingMode mode = canScale ? IMMEDIATE_UNSIGNED_SCALED : IMMEDIATE_SIGNED_UNSCALED;
+            if (NumUtil.is32bit(displacement) && AArch64Address.isValidImmediateAddress(transferSize, mode, NumUtil.safeToInt(displacement))) {
+                return AArch64Address.createImmediateAddress(transferSize, mode, base, NumUtil.safeToInt(displacement));
             } else {
-                if (displacementScalable && NumUtil.isUnsignedNbit(12, scaledDisplacement)) {
-                    return new AddressGenerationPlan(NO_WORK, IMMEDIATE_UNSIGNED_SCALED, false);
-                } else if (NumUtil.isSignedNbit(9, displacement)) {
-                    return new AddressGenerationPlan(NO_WORK, IMMEDIATE_SIGNED_UNSCALED, false);
-                } else {
-                    boolean needsScratch = !isArithmeticImmediate(displacement);
-                    return new AddressGenerationPlan(ADD_TO_BASE, REGISTER_OFFSET, needsScratch);
-                }
+                GraalError.guarantee(!scratchReg.equals(zr), "Address generation requires scratch register.");
+                mov(scratchReg, displacement);
+                return AArch64Address.createRegisterOffsetAddress(base, scratchReg, false);
             }
         }
     }
 
     /**
-     * Returns an AArch64Address pointing to
-     * {@code base + displacement + index << log2(transferSize)}.
+     * Generates an address of the form {@code base + displacement}.
      *
+     * Will fail if displacement cannot be represented directly as an immediate address.
+     *
+     * @param transferSize bit size of memory operation this address will be used in.
      * @param base general purpose register. May not be null or the zero register.
      * @param displacement arbitrary displacement added to base.
-     * @param index general purpose register. May not be null or the stack pointer.
-     * @param signExtendIndex if true consider index register a word register that should be
-     *            sign-extended before being added.
-     * @param transferSize the memory transfer size in bytes. The log2 of this specifies how much
-     *            the index register is scaled. If 0 no scaling is assumed. Can be 0, 1, 2, 4 or 8.
-     * @param additionalReg additional register used either as a scratch register or as part of the
-     *            final address, depending on whether allowOverwrite is true or not. May not be null
-     *            or stackpointer.
-     * @param allowOverwrite if true allows to change value of base or index register to generate
-     *            address.
-     * @return AArch64Address pointing to memory at
-     *         {@code base + displacement + index << log2(transferSize)}.
+     * @return AArch64Address referencing memory at {@code base + displacement}.
      */
-    public AArch64Address makeAddress(Register base, long displacement, Register index, boolean signExtendIndex, int transferSize, Register additionalReg, boolean allowOverwrite) {
-        AddressGenerationPlan plan = generateAddressPlan(displacement, !index.equals(zr), transferSize);
-        assert allowOverwrite || !zr.equals(additionalReg) || plan.workPlan == NO_WORK;
-        assert !plan.needsScratch || !zr.equals(additionalReg);
-        int log2Scale = NumUtil.log2Ceil(transferSize);
-        long scaledDisplacement = displacement >> log2Scale;
-        Register newIndex = index;
-        Register newBase = base;
-        int immediate;
-        switch (plan.workPlan) {
-            case NO_WORK:
-                if (plan.addressingMode == IMMEDIATE_UNSIGNED_SCALED) {
-                    immediate = (int) scaledDisplacement;
-                } else {
-                    immediate = (int) displacement;
-                }
-                break;
-            case ADD_TO_INDEX:
-                newIndex = allowOverwrite ? index : additionalReg;
-                assert !newIndex.equals(sp) && !newIndex.equals(zr);
-                if (plan.needsScratch) {
-                    mov(additionalReg, scaledDisplacement);
-                    add(signExtendIndex ? 32 : 64, newIndex, index, additionalReg);
-                } else {
-                    add(signExtendIndex ? 32 : 64, newIndex, index, (int) scaledDisplacement);
-                }
-                immediate = 0;
-                break;
-            case ADD_TO_BASE:
-                newBase = allowOverwrite ? base : additionalReg;
-                assert !newBase.equals(sp) && !newBase.equals(zr);
-                if (plan.needsScratch) {
-                    mov(additionalReg, displacement);
-                    add(64, newBase, base, additionalReg);
-                } else {
-                    add(64, newBase, base, (int) displacement);
-                }
-                immediate = 0;
-                break;
-            default:
-                throw GraalError.shouldNotReachHere();
-        }
-        AArch64Address.AddressingMode addressingMode = plan.addressingMode;
-        ExtendType extendType = null;
-        if (addressingMode == REGISTER_OFFSET) {
-            if (newIndex.equals(zr)) {
-                addressingMode = BASE_REGISTER_ONLY;
-            } else if (signExtendIndex) {
-                addressingMode = EXTENDED_REGISTER_OFFSET;
-                extendType = ExtendType.SXTW;
-            }
-        }
-        return AArch64Address.createAddress(addressingMode, newBase, newIndex, immediate, transferSize != 0, extendType);
+    public AArch64Address makeAddress(int transferSize, Register base, long displacement) {
+        return makeAddress(transferSize, base, displacement, zr);
     }
 
     /**
-     * Returns an AArch64Address pointing to {@code base + displacement}. Specifies the memory
-     * transfer size to allow some optimizations when building the address.
+     * Generates an address of the form {@code base + displacement}.
      *
+     * Will fail if displacement cannot be represented directly as an immediate address.
+     *
+     * @param transferSize bit size of memory operation this address will be used in.
      * @param base general purpose register. May not be null or the zero register.
      * @param displacement arbitrary displacement added to base.
-     * @param transferSize the memory transfer size in bytes.
-     * @param additionalReg additional register used either as a scratch register or as part of the
-     *            final address, depending on whether allowOverwrite is true or not. May not be
-     *            null, zero register or stackpointer.
-     * @param allowOverwrite if true allows to change value of base or index register to generate
-     *            address.
-     * @return AArch64Address pointing to memory at {@code base + displacement}.
+     * @return AArch64Address referencing memory at {@code base + displacement}.
      */
-    public AArch64Address makeAddress(Register base, long displacement, Register additionalReg, int transferSize, boolean allowOverwrite) {
-        assert additionalReg.getRegisterCategory().equals(CPU);
-        return makeAddress(base, displacement, zr, /* sign-extend */false, transferSize, additionalReg, allowOverwrite);
-    }
-
-    /**
-     * Returns an AArch64Address pointing to {@code base + displacement}. Fails if address cannot be
-     * represented without overwriting base register or using a scratch register.
-     *
-     * @param base general purpose register. May not be null or the zero register.
-     * @param displacement arbitrary displacement added to base.
-     * @param transferSize the memory transfer size in bytes. The log2 of this specifies how much
-     *            the index register is scaled. If 0 no scaling is assumed. Can be 0, 1, 2, 4 or 8.
-     * @return AArch64Address pointing to memory at {@code base + displacement}.
-     */
-    public AArch64Address makeAddress(Register base, long displacement, int transferSize) {
-        return makeAddress(base, displacement, zr, /* signExtend */false, //
-                        transferSize, zr, /* allowOverwrite */false);
+    @Override
+    public AArch64Address makeAddress(int transferSize, Register base, int displacement) {
+        return makeAddress(transferSize, base, displacement, zr);
     }
 
     /**
@@ -717,9 +588,9 @@ public class AArch64MacroAssembler extends AArch64Assembler {
      * @param needsImmAnnotation Flag to signal of the immediate value should be annotated.
      */
     public void mov(Register dst, int imm, boolean needsImmAnnotation) {
-        if (imm == 0) {
+        if (!needsImmAnnotation && imm == 0) {
             mov(32, dst, zr);
-        } else if (isLogicalImmediate(imm)) {
+        } else if (!needsImmAnnotation && isLogicalImmediate(32, imm)) {
             or(32, dst, zr, imm);
         } else {
             mov32(dst, imm, needsImmAnnotation);
@@ -735,17 +606,10 @@ public class AArch64MacroAssembler extends AArch64Assembler {
      */
     public void mov(Register dst, long imm, boolean needsImmAnnotation) {
         assert dst.getRegisterCategory().equals(CPU);
-        if (imm == 0L) {
+        if (!needsImmAnnotation && imm == 0L) {
             movx(dst, zr);
-        } else if (isLogicalImmediate(imm)) {
+        } else if (!needsImmAnnotation && isLogicalImmediate(64, imm)) {
             or(64, dst, zr, imm);
-        } else if (imm >> 32 == -1L && (int) imm < 0 && LogicalImmediateTable.isRepresentable((int) imm) != LogicalImmediateTable.Representable.NO) {
-            // If the higher 32-bit are 1s and the sign bit of the lower 32-bits is set *and* we can
-            // represent the lower 32 bits as a logical immediate we can create the lower 32-bit and
-            // then sign extend
-            // them. This allows us to cover immediates like ~1L with 2 instructions.
-            mov(dst, (int) imm);
-            sxt(64, 32, dst, dst);
         } else {
             mov64(dst, imm, needsImmAnnotation);
         }
@@ -808,30 +672,6 @@ public class AArch64MacroAssembler extends AArch64Assembler {
         assert (imm & 0xFFFF_FFFF_0000_0000L) == 0;
         movz(64, dst, (int) (imm >>> 16), 16);
         movk(64, dst, (int) (imm & 0xffff), 0);
-    }
-
-    /**
-     * @return Number of instructions necessary to load immediate into register.
-     */
-    public static int nrInstructionsToMoveImmediate(long imm) {
-        if (imm == 0L || LogicalImmediateTable.isRepresentable(true, imm) != LogicalImmediateTable.Representable.NO) {
-            return 1;
-        }
-        if (imm >> 32 == -1L && (int) imm < 0 && LogicalImmediateTable.isRepresentable((int) imm) != LogicalImmediateTable.Representable.NO) {
-            // If the higher 32-bit are 1s and the sign bit of the lower 32-bits is set *and* we can
-            // represent the lower 32 bits as a logical immediate we can create the lower 32-bit and
-            // then sign extend
-            // them. This allows us to cover immediates like ~1L with 2 instructions.
-            return 2;
-        }
-        int nrInstructions = 0;
-        for (int offset = 0; offset < 64; offset += 16) {
-            int part = (int) (imm >> offset) & NumUtil.getNbitNumberInt(16);
-            if (part != 0) {
-                nrInstructions++;
-            }
-        }
-        return nrInstructions;
     }
 
     /**
@@ -1625,8 +1465,8 @@ public class AArch64MacroAssembler extends AArch64Assembler {
      * @param size register size. Has to be 32 or 64.
      * @param dst general purpose register. May not be null or zero-register.
      * @param src general purpose register. May not be null or stack-pointer.
-     * @param bimm logical immediate. See {@link AArch64Assembler.LogicalImmediateTable} for exact
-     *            definition.
+     * @param bimm logical immediate. See {@link AArch64Assembler.LogicalBitmaskImmediateEncoding}
+     *            for exact definition.
      */
     public void or(int size, Register dst, Register src, long bimm) {
         super.orr(size, dst, src, bimm);
@@ -1794,17 +1634,15 @@ public class AArch64MacroAssembler extends AArch64Assembler {
     }
 
     /**
-     * @return True if the immediate can be used directly for logical 64-bit instructions.
+     * @param size size of instruction immediate will be encoded within.
+     * @param imm immediate to encode.
+     * @return True if the immediate can be directly encoded within a logical immediate.
      */
-    public static boolean isLogicalImmediate(long imm) {
-        return LogicalImmediateTable.isRepresentable(true, imm) != LogicalImmediateTable.Representable.NO;
-    }
-
-    /**
-     * @return True if the immediate can be used directly for logical 32-bit instructions.
-     */
-    public static boolean isLogicalImmediate(int imm) {
-        return LogicalImmediateTable.isRepresentable(imm) == LogicalImmediateTable.Representable.YES;
+    public static boolean isLogicalImmediate(int size, long imm) {
+        assert size == 32 || size == 64;
+        boolean is64bit = size == 64;
+        long maskedImm = size == 64 ? imm : imm & NumUtil.getNbitNumberLong(32);
+        return LogicalBitmaskImmediateEncoding.canEncode(is64bit, maskedImm);
     }
 
     /* Float instructions */
@@ -2338,22 +2176,6 @@ public class AArch64MacroAssembler extends AArch64Assembler {
             default:
                 throw GraalError.shouldNotReachHere();
         }
-    }
-
-    /**
-     * Generates an address of the form {@code base + displacement}.
-     *
-     * Does not change base register to fulfill this requirement. Will fail if displacement cannot
-     * be represented directly as address.
-     *
-     * @param base general purpose register. May not be null or the zero register.
-     * @param displacement arbitrary displacement added to base.
-     * @return AArch64Address referencing memory at {@code base + displacement}.
-     */
-    @Override
-    public AArch64Address makeAddress(Register base, int displacement) {
-        return makeAddress(base, displacement, zr, /* signExtend */false, /* transferSize */0, //
-                        zr, /* allowOverwrite */false);
     }
 
     @Override

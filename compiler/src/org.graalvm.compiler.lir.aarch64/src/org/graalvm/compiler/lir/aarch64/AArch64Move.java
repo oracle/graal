@@ -673,8 +673,8 @@ public class AArch64Move {
 
     private static AArch64Address loadStackSlotAddress(CompilationResultBuilder crb, AArch64MacroAssembler masm, StackSlot slot, Register scratchReg) {
         int displacement = crb.frameMap.offsetForStackSlot(slot);
-        int transferSize = slot.getPlatformKind().getSizeInBytes();
-        return masm.makeAddress(sp, displacement, scratchReg, transferSize, /* allowOverwrite */false);
+        int size = slot.getPlatformKind().getSizeInBytes() * 8;
+        return masm.makeAddress(size, sp, displacement, scratchReg);
     }
 
     public abstract static class PointerCompressionOp extends AArch64LIRInstruction {

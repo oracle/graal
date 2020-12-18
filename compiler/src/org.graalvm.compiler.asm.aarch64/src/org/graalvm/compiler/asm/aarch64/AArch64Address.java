@@ -155,7 +155,7 @@ public final class AArch64Address extends AbstractAddress {
     /**
      * Returns whether the immediate addressing mode being used scales the immediate operand.
      */
-    private static boolean isImmediateScaled(AddressingMode mode) {
+    public static boolean isImmediateScaled(AddressingMode mode) {
         switch (mode) {
             case IMMEDIATE_UNSIGNED_SCALED:
             case IMMEDIATE_PAIR_SIGNED_SCALED:
