@@ -10,9 +10,9 @@ Exception in thread "main" Stop: 0
 .*at.*js.*fib.*Unnamed.*
 .*at.*js.*fib.*Unnamed.*
 .*at.*js.*fib.*Unnamed.*
-.*at org.graalvm.polyglot.Value.execute.*
-.*at EmbeddingRegisterSymbols.exportAndTest.*
-.*at EmbeddingRegisterSymbols.main.*
+.*at.*org.graalvm.polyglot.Value.execute.*
+.*at.*EmbeddingRegisterSymbols.exportAndTest.*
+.*at.*EmbeddingRegisterSymbols.main.*
 >[0] java -ea -cp .:${TMP_DIR} Embedding
 Everything is OK!
 >[0] java -ea -cp ${TMP_DIR} EmbeddingDoubled
@@ -28,6 +28,6 @@ Exception in thread "main" Stop: 0
 .*at.*js.*fib.*Unnamed.*
 .*at.*js.*fib.*Unnamed.*
 .*at.*js.*fib.*Unnamed.*
-.*at org.graalvm.polyglot.Value.execute.*
-.*at EmbeddingRegisterSymbols.exportAndTest.*
-.*at EmbeddingRegisterSymbols.main.*
+.*at.*org.graalvm.polyglot.Value.execute.*
+.*at.*EmbeddingRegisterSymbols.exportAndTest.*
+.*at.*EmbeddingRegisterSymbols.main.*
