@@ -111,10 +111,10 @@ public class SerializationChecksumCalculator {
             // Checkstyle: resume
             warningPrinted = true;
         }
-    }
 
-    public static boolean printUsageWarning() {
-        return Holder.warningPrinted;
+        public static boolean printUsageWarning() {
+            return warningPrinted;
+        }
     }
 
     /**
@@ -127,6 +127,7 @@ public class SerializationChecksumCalculator {
             if (isClassAbstract(serializationClass)) {
                 return "0";
             }
+            Holder.printUsageWarning();
             MessageDigest md = createMessageDigest();
             if (targetConstructorClassName != null && targetConstructorClassName.length() > 0) {
                 String currentClassName = serializationClassName;
