@@ -22,7 +22,7 @@ devkits: {
 # to another branch/commit in a Graal PR when mx changes are required for the PR.
 mx : {
   packages : {
-    mx: "5.275.6"
+    mx: "cpu/graal-vm/20.3"
   }
 }
 
