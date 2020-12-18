@@ -72,6 +72,7 @@ import org.graalvm.options.OptionDescriptors;
 import org.graalvm.options.OptionValues;
 
 import java.util.ArrayList;
+import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.atomic.AtomicInteger;
 
 @TruffleLanguage.Registration(id = LLVMLanguage.ID, name = LLVMLanguage.NAME, internal = false, interactive = false, defaultMimeType = LLVMLanguage.LLVM_BITCODE_MIME_TYPE, //
@@ -143,6 +144,8 @@ public class LLVMLanguage extends TruffleLanguage<LLVMContext> {
     private final Assumption noDerefHandleAssumption = Truffle.getRuntime().createAssumption("no deref handle");
 
     private final LLVMInteropType.InteropTypeRegistry interopTypeRegistry = new LLVMInteropType.InteropTypeRegistry();
+
+    public final ConcurrentHashMap<Class<?>, RootCallTarget> cachedCallTargets = new ConcurrentHashMap<>();
 
     @CompilationFinal private LLVMFunctionCode sulongInitContextCode;
     @CompilationFinal private LLVMFunction sulongDisposeContext;
