@@ -437,7 +437,7 @@ public class LLVMLanguage extends TruffleLanguage<LLVMContext> {
     protected void initFreeGlobalBlocks(NodeFactory nodeFactory) {
         // lazily initialized, this is not necessary if there are no global blocks allocated
         if (freeGlobalBlocks == null) {
-            freeGlobalBlocks = Truffle.getRuntime().createCallTarget(new FreeGlobalsNode(this, nodeFactory));
+            freeGlobalBlocks = LLVMLanguage.createCallTarget(new FreeGlobalsNode(this, nodeFactory));
         }
     }
 
@@ -543,5 +543,9 @@ public class LLVMLanguage extends TruffleLanguage<LLVMContext> {
     protected void initializeMultipleContexts() {
         super.initializeMultipleContexts();
         singleContextAssumption.invalidate();
+    }
+
+    public static RootCallTarget createCallTarget(RootNode rootNode) {
+        return Truffle.getRuntime().createCallTarget(rootNode);
     }
 }

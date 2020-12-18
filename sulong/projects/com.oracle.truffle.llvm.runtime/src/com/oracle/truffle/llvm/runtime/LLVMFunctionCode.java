@@ -384,7 +384,7 @@ public final class LLVMFunctionCode {
             LLVMSourceFunctionType sourceType = getFunction().getSourceType();
             LLVMInteropType interopType = language.getInteropType(sourceType);
             LLVMForeignCallNode foreignCall = LLVMForeignFunctionCallNode.create(language, functionDescriptor, interopType, sourceType);
-            foreignFunctionCallTarget = Truffle.getRuntime().createCallTarget(foreignCall);
+            foreignFunctionCallTarget = LLVMLanguage.createCallTarget(foreignCall);
             assert foreignFunctionCallTarget != null;
         }
         return foreignFunctionCallTarget;
@@ -401,7 +401,7 @@ public final class LLVMFunctionCode {
                 LLVMInteropType.Structured structured = ((LLVMInteropType.Value) extractedType).baseType;
                 LLVMForeignCallNode foreignCall = LLVMForeignConstructorCallNode.create(
                                 language, functionDescriptor, interopType, sourceType, structured);
-                foreignConstructorCallTarget = Truffle.getRuntime().createCallTarget(foreignCall);
+                foreignConstructorCallTarget = LLVMLanguage.createCallTarget(foreignCall);
             }
             assert foreignConstructorCallTarget != null;
         }
