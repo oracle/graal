@@ -134,8 +134,29 @@ mx_sdk_vm.register_graalvm_component(mx_sdk_vm.GraalVmLanguage(
             destination='bin/<exe:espresso>',
             jar_distributions=['espresso:ESPRESSO_LAUNCHER'],
             main_class='com.oracle.truffle.espresso.launcher.EspressoLauncher',
-            build_args=['--language:java'],
+            build_args=[],
             language='java',
+        )
+    ],
+))
+
+mx_sdk_vm.register_graalvm_component(mx_sdk_vm.GraalVmJreComponent(
+    suite=_suite,
+    name='Espresso libjvm',
+    short_name='ejvm',
+    license_files=[],
+    third_party_license_files=[],
+    dependencies=['Espresso'],
+    library_configs=[
+        mx_sdk_vm.LibraryConfig(
+            destination='truffle/<lib:jvm>',
+            jar_distributions=['espresso:ESPRESSO_LIBJVM'],
+            build_args=[
+                '--language:java',
+                '-H:-JNIExportSymbols',
+            ],
+            jvm_library=True,
+            home_finder=True,
         )
     ],
 ))

@@ -351,7 +351,7 @@ abstract class PlatformBuilder extends EspressoProperties.Builder {
             paths.add(path);
             return paths;
         }
-        throw EspressoError.shouldNotReachHere("Cannot find boot class path.");
+        throw EspressoError.shouldNotReachHere("Cannot find boot class path for java home: ", javaHome());
     }
 
     protected static void expandEnvToPath(String envName, List<Path> paths) {

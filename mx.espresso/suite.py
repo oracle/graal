@@ -41,7 +41,15 @@ suite = {
             {
                 "name": "truffle",
                 "subdir": True,
-                # Custom changes in Truffle (NFI) for Espresso (branch slimbeans).
+                "version": "e2ff78d16c18a9d0fc2b60959ece21b65112098f",
+                "urls": [
+                    {"url": "https://github.com/graalvm/graal", "kind": "git"},
+                    {"url": "https://curio.ssw.jku.at/nexus/content/repositories/snapshots", "kind": "binary"},
+                ]
+            },
+            {
+                "name": "substratevm",
+                "subdir": True,
                 "version": "e2ff78d16c18a9d0fc2b60959ece21b65112098f",
                 "urls": [
                     {"url": "https://github.com/graalvm/graal", "kind": "git"},
@@ -51,7 +59,6 @@ suite = {
             {
                 "name": "tools",
                 "subdir": True,
-                # Custom changes in Truffle (NFI) for Espresso (branch slimbeans).
                 "version": "e2ff78d16c18a9d0fc2b60959ece21b65112098f",
                 "urls": [
                     {"url": "https://github.com/graalvm/graal", "kind": "git"},
@@ -147,6 +154,18 @@ suite = {
             "sourceDirs": ["src"],
             "dependencies": [
                 "sdk:GRAAL_SDK",
+                "sdk:LAUNCHER_COMMON",
+            ],
+            "javaCompliance": "1.8+",
+            "checkstyle": "com.oracle.truffle.espresso",
+        },
+
+        "com.oracle.truffle.espresso.libjvm": {
+            "subDir": "src",
+            "sourceDirs": ["src"],
+            "dependencies": [
+                # "sdk:GRAAL_SDK",
+                "substratevm:SVM",
                 "sdk:LAUNCHER_COMMON",
             ],
             "javaCompliance": "1.8+",
@@ -444,6 +463,21 @@ suite = {
             ],
             "license": "UPL",
             "description": "Espresso launcher using the polyglot API.",
+            "allowsJavadocWarnings": True,
+        },
+
+        "ESPRESSO_LIBJVM": {
+            "subDir": "src",
+            "dependencies": [
+                "com.oracle.truffle.espresso.libjvm",
+            ],
+            "distDependencies": [
+                # "sdk:GRAAL_SDK",
+                "substratevm:SVM",
+                "sdk:LAUNCHER_COMMON",
+            ],
+            "license": "UPL",
+            "description": "libjvm using the polyglot API.",
             "allowsJavadocWarnings": True,
         },
 
