@@ -47,11 +47,6 @@ public final class UnsafeCompareAndSwapNode extends AbstractUnsafeCompareAndSwap
 
     public static final NodeClass<UnsafeCompareAndSwapNode> TYPE = NodeClass.create(UnsafeCompareAndSwapNode.class);
 
-    public UnsafeCompareAndSwapNode(ValueNode object, ValueNode offset, ValueNode expected, ValueNode newValue, JavaKind valueKind, LocationIdentity locationIdentity) {
-        super(TYPE, StampFactory.forInteger(JavaKind.Int, 0, 1), object, offset, expected, newValue, valueKind, locationIdentity);
-        assert expected.stamp(NodeView.DEFAULT).isCompatible(newValue.stamp(NodeView.DEFAULT));
-    }
-
     public UnsafeCompareAndSwapNode(ValueNode object, ValueNode offset, ValueNode expected, ValueNode newValue, JavaKind valueKind, LocationIdentity locationIdentity, MemoryOrderMode memoryOrder) {
         super(TYPE, StampFactory.forInteger(JavaKind.Int, 0, 1), object, offset, expected, newValue, valueKind, locationIdentity, memoryOrder);
         assert expected.stamp(NodeView.DEFAULT).isCompatible(newValue.stamp(NodeView.DEFAULT));

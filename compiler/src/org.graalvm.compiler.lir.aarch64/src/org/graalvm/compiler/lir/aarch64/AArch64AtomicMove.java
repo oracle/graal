@@ -26,6 +26,7 @@ package org.graalvm.compiler.lir.aarch64;
 
 import static jdk.vm.ci.code.MemoryBarriers.LOAD_LOAD;
 import static jdk.vm.ci.code.MemoryBarriers.LOAD_STORE;
+import static jdk.vm.ci.code.MemoryBarriers.STORE_LOAD;
 import static jdk.vm.ci.code.MemoryBarriers.STORE_STORE;
 import static jdk.vm.ci.code.ValueUtil.asRegister;
 import static org.graalvm.compiler.lir.LIRInstruction.OperandFlag.CONST;
@@ -91,11 +92,11 @@ public class AArch64AtomicMove {
             Register newVal = asRegister(newValue);
             Register expected = asRegister(expectedValue);
 
-            /**
+            /*
              * Determining whether acquire and/or release semantics are needed.
              */
-            boolean acquire = (memoryOrder.postReadBarriers & (LOAD_LOAD | LOAD_STORE)) != 0;
-            boolean release = (memoryOrder.preWriteBarriers & (LOAD_STORE | STORE_STORE)) != 0;
+            boolean acquire = ((memoryOrder.postWriteBarriers & (STORE_LOAD | STORE_STORE)) != 0) || ((memoryOrder.postReadBarriers & (LOAD_LOAD | LOAD_STORE)) != 0);
+            boolean release = ((memoryOrder.preWriteBarriers & (LOAD_STORE | STORE_STORE)) != 0) || ((memoryOrder.preReadBarriers & (LOAD_LOAD | STORE_LOAD)) != 0);
 
             if (AArch64LIRFlagsVersioned.useLSE(masm.target.arch)) {
                 masm.mov(Math.max(memAccessSize, 32), result, expected);
@@ -105,6 +106,25 @@ public class AArch64AtomicMove {
                 // We could avoid using a scratch register here, by reusing resultValue for the
                 // stlxr success flag and issue a mov resultValue, expectedValue in case of success
                 // before returning.
+
+                /*
+                 * Because the store is only conditionally emitted, a dmb is needed for performing a
+                 * release.
+                 *
+                 * Furthermore, even if the stlxr is emitted, if both acquire and release semantics
+                 * are required, then a dmb is anyways needed to ensure that the instruction
+                 * sequence:
+                 *
+                 * A -> ldaxr -> stlxr -> B
+                 *
+                 * can not be executed as:
+                 *
+                 * ldaxr -> B -> A -> stlxr
+                 */
+                if (release) {
+                    masm.dmb(AArch64Assembler.BarrierKind.ANY_ANY);
+                }
+
                 Register scratch = asRegister(scratchValue);
                 Label retry = new Label();
                 Label fail = new Label();
@@ -112,7 +132,7 @@ public class AArch64AtomicMove {
                 masm.loadExclusive(memAccessSize, result, address, acquire);
                 AArch64Compare.gpCompare(masm, resultValue, expectedValue);
                 masm.branchConditionally(AArch64Assembler.ConditionFlag.NE, fail);
-                masm.storeExclusive(memAccessSize, scratch, newVal, address, release);
+                masm.storeExclusive(memAccessSize, scratch, newVal, address, false);
                 // if scratch == 0 then write successful, else retry.
                 masm.cbnz(32, scratch, retry);
                 masm.bind(fail);

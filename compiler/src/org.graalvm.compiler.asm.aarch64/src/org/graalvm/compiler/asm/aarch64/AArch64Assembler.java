@@ -1519,8 +1519,7 @@ public abstract class AArch64Assembler extends Assembler {
      */
     public void cas(int size, Register rs, Register rt, Register rn, boolean acquire, boolean release) {
         assert size == 8 || size == 16 || size == 32 || size == 64;
-        int transferSize = NumUtil.log2Ceil(size / 8);
-        compareAndSwapInstruction(CAS, rs, rt, rn, transferSize, acquire, release);
+        compareAndSwapInstruction(CAS, rs, rt, rn, getLog2TransferSize(size), acquire, release);
     }
 
     private void compareAndSwapInstruction(Instruction instr, Register rs, Register rt, Register rn, int log2TransferSize, boolean acquire, boolean release) {

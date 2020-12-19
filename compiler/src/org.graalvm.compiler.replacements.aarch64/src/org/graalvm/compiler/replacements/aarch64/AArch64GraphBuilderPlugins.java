@@ -88,7 +88,7 @@ public class AArch64GraphBuilderPlugins implements TargetGraphBuilderPlugins {
                 }
                 registerUnsafePlugins(invocationPlugins, replacements, explicitUnsafeNullChecks);
                 registerPlatformSpecificUnsafePlugins(invocationPlugins, replacements, explicitUnsafeNullChecks,
-                                new JavaKind[]{JavaKind.Boolean, JavaKind.Byte, JavaKind.Char, JavaKind.Short, JavaKind.Int, JavaKind.Long, JavaKind.Object});
+                                new JavaKind[]{JavaKind.Boolean, JavaKind.Byte, JavaKind.Char, JavaKind.Short, JavaKind.Int, JavaKind.Long, JavaKind.Float, JavaKind.Double, JavaKind.Object});
             }
         });
     }

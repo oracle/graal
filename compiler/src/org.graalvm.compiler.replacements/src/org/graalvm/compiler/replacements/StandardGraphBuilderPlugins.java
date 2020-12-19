@@ -395,7 +395,7 @@ public class StandardGraphBuilderPlugins {
                 returnKind = kind.isNumericInteger() ? kind.getStackKind() : kind;
             }
             for (String memoryOrderString : memoryOrders) {
-                MemoryOrderMode memoryOrder = memoryOrderString.equals("") ? MemoryOrderMode.RELEASE_ACQUIRE : MemoryOrderMode.valueOf(memoryOrderString.toUpperCase());
+                MemoryOrderMode memoryOrder = memoryOrderString.equals("") ? MemoryOrderMode.VOLATILE : MemoryOrderMode.valueOf(memoryOrderString.toUpperCase());
                 r.register5(casPrefix + kindName + memoryOrderString, Receiver.class, Object.class, long.class, javaClass, javaClass,
                                 new UnsafeCompareAndSwapPlugin(returnKind, kind, memoryOrder, isLogic, explicitUnsafeNullChecks));
             }
@@ -430,8 +430,8 @@ public class StandardGraphBuilderPlugins {
                     }
                 } else {
                     r.register4("put" + kindName + "Release", Receiver.class, Object.class, long.class, javaClass,
-                                    new UnsafePutPlugin(kind, MemoryOrderMode.RELEASE_ACQUIRE, explicitUnsafeNullChecks));
-                    r.register3("get" + kindName + "Acquire", Receiver.class, Object.class, long.class, new UnsafeGetPlugin(kind, MemoryOrderMode.RELEASE_ACQUIRE, explicitUnsafeNullChecks));
+                                    new UnsafePutPlugin(kind, MemoryOrderMode.RELEASE, explicitUnsafeNullChecks));
+                    r.register3("get" + kindName + "Acquire", Receiver.class, Object.class, long.class, new UnsafeGetPlugin(kind, MemoryOrderMode.ACQUIRE, explicitUnsafeNullChecks));
                     r.register4("put" + kindName + "Opaque", Receiver.class, Object.class, long.class, javaClass, new UnsafePutPlugin(kind, MemoryOrderMode.OPAQUE, explicitUnsafeNullChecks));
                     r.register3("get" + kindName + "Opaque", Receiver.class, Object.class, long.class, new UnsafeGetPlugin(kind, MemoryOrderMode.OPAQUE, explicitUnsafeNullChecks));
                 }

@@ -453,14 +453,15 @@ public class CheckGraalIntrinsics extends GraalTest {
         }
 
         if (!(arch instanceof AMD64 || arch instanceof AArch64)) {
-            add(toBeInvestigated, "jdk/internal/misc/Unsafe.getAndAddByte(Ljava/lang/Object;JB)B",
-                            "jdk/internal/misc/Unsafe.getAndAddShort(Ljava/lang/Object;JS)S",
-                            "jdk/internal/misc/Unsafe.getAndSetByte(Ljava/lang/Object;JB)B",
-                            "jdk/internal/misc/Unsafe.getAndSetShort(Ljava/lang/Object;JS)S",
+            add(toBeInvestigated,
                             "jdk/internal/misc/Unsafe.compareAndExchangeByte(Ljava/lang/Object;JBB)B",
                             "jdk/internal/misc/Unsafe.compareAndExchangeShort(Ljava/lang/Object;JSS)S",
                             "jdk/internal/misc/Unsafe.compareAndSetByte(Ljava/lang/Object;JBB)Z",
                             "jdk/internal/misc/Unsafe.compareAndSetShort(Ljava/lang/Object;JSS)Z",
+                            "jdk/internal/misc/Unsafe.getAndAddByte(Ljava/lang/Object;JB)B",
+                            "jdk/internal/misc/Unsafe.getAndAddShort(Ljava/lang/Object;JS)S",
+                            "jdk/internal/misc/Unsafe.getAndSetByte(Ljava/lang/Object;JB)B",
+                            "jdk/internal/misc/Unsafe.getAndSetShort(Ljava/lang/Object;JS)S",
                             "sun/misc/Unsafe.getAndAddInt(Ljava/lang/Object;JI)I",
                             "sun/misc/Unsafe.getAndAddLong(Ljava/lang/Object;JJ)J",
                             "sun/misc/Unsafe.getAndSetInt(Ljava/lang/Object;JI)I",

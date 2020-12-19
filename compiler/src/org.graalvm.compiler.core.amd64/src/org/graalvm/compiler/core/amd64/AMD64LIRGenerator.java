@@ -233,22 +233,22 @@ public abstract class AMD64LIRGenerator extends LIRGenerator {
         assert kind.equals(expectedValue.getValueKind());
 
         AMD64AddressValue addressValue = asAddressValue(address);
-        LIRKind integralAccessKind = accessKind;
+        LIRKind integerAccessKind = accessKind;
         Value reinterpretedExpectedValue = expectedValue;
         Value reinterpretedNewValue = newValue;
         boolean isXmm = ((AMD64Kind) accessKind.getPlatformKind()).isXMM();
         if (isXmm) {
             if (accessKind.getPlatformKind().equals(AMD64Kind.SINGLE)) {
-                integralAccessKind = LIRKind.fromJavaKind(target().arch, JavaKind.Int);
+                integerAccessKind = LIRKind.fromJavaKind(target().arch, JavaKind.Int);
             } else {
-                integralAccessKind = LIRKind.fromJavaKind(target().arch, JavaKind.Long);
+                integerAccessKind = LIRKind.fromJavaKind(target().arch, JavaKind.Long);
             }
-            reinterpretedExpectedValue = arithmeticLIRGen.emitReinterpret(integralAccessKind, expectedValue);
-            reinterpretedNewValue = arithmeticLIRGen.emitReinterpret(integralAccessKind, newValue);
+            reinterpretedExpectedValue = arithmeticLIRGen.emitReinterpret(integerAccessKind, expectedValue);
+            reinterpretedNewValue = arithmeticLIRGen.emitReinterpret(integerAccessKind, newValue);
         }
-        AMD64Kind memKind = (AMD64Kind) integralAccessKind.getPlatformKind();
-        RegisterValue aRes = AMD64.rax.asValue(integralAccessKind);
-        AllocatableValue allocatableNewValue = asAllocatable(reinterpretedNewValue, integralAccessKind);
+        AMD64Kind memKind = (AMD64Kind) integerAccessKind.getPlatformKind();
+        RegisterValue aRes = AMD64.rax.asValue(integerAccessKind);
+        AllocatableValue allocatableNewValue = asAllocatable(reinterpretedNewValue, integerAccessKind);
         emitMove(aRes, reinterpretedExpectedValue);
         append(new CompareAndSwapOp(memKind, aRes, addressValue, aRes, allocatableNewValue));
 
