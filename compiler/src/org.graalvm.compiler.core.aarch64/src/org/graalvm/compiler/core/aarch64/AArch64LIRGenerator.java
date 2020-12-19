@@ -168,6 +168,8 @@ public abstract class AArch64LIRGenerator extends LIRGenerator {
     }
 
     private Variable emitCompareAndSwap(LIRKind accessKind, Value address, Value expectedValue, Value newValue, MemoryOrderMode memoryOrder) {
+        // FIXME in AMD64 floats and doubles are converted to word types - why is this not happening
+        // here? Are these types never needed?? Should check this
         Variable result = newVariable(expectedValue.getValueKind());
         Variable scratch = newVariable(LIRKind.value(AArch64Kind.DWORD));
         append(new CompareAndSwapOp((AArch64Kind) accessKind.getPlatformKind(), result, loadReg(expectedValue), loadReg(newValue), asAllocatable(address), scratch, memoryOrder));

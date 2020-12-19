@@ -68,11 +68,6 @@ public abstract class AbstractUnsafeCompareAndSwapNode extends AbstractMemoryChe
     protected final MemoryOrderMode memoryOrder;
 
     public AbstractUnsafeCompareAndSwapNode(NodeClass<? extends AbstractMemoryCheckpoint> c, Stamp stamp, ValueNode object, ValueNode offset, ValueNode expected, ValueNode newValue,
-                    JavaKind valueKind, LocationIdentity locationIdentity) {
-        this(c, stamp, object, offset, expected, newValue, valueKind, locationIdentity, MemoryOrderMode.VOLATILE);
-    }
-
-    public AbstractUnsafeCompareAndSwapNode(NodeClass<? extends AbstractMemoryCheckpoint> c, Stamp stamp, ValueNode object, ValueNode offset, ValueNode expected, ValueNode newValue,
                     JavaKind valueKind, LocationIdentity locationIdentity, MemoryOrderMode memoryOrder) {
         super(c, stamp);
         this.object = object;
