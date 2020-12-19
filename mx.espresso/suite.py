@@ -364,7 +364,7 @@ suite = {
                 },
                 "linux": {
                     "<others>": {
-                        "cflags": ["-Wall", "-Werror"],
+                        "cflags": ["-Wall", "-Werror", "-g"],
                         "ldflags": [
                             "-Wl,-soname,libjvm.so",
                             "-Wl,--version-script,<path:espresso:com.oracle.truffle.espresso.mokapot>/mapfile-vers",

@@ -218,6 +218,7 @@ public final class Target_java_lang_Thread {
                 @Override
                 public void run() {
                     try {
+                        context.getVM().attachThread(Thread.currentThread());
                         try {
                             if (meta.getContext().IsolatedNamespace) {
                                 // Initialize TLS related to __ctype_b_loc to avoid crashes on

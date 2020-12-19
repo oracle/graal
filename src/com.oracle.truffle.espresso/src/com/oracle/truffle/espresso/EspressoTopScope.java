@@ -37,6 +37,7 @@ import com.oracle.truffle.espresso.runtime.EspressoContext;
 @ExportLibrary(InteropLibrary.class)
 public class EspressoTopScope implements TruffleObject {
     public static final String JNI = "<JNI>";
+    public static final String JAVA_VM = "<JavaVM>";
 
     private final EspressoContext context;
 
@@ -66,6 +67,9 @@ public class EspressoTopScope implements TruffleObject {
             // TODO
             return true;
         }
+        if (JAVA_VM.equals(member)) {
+            return context.getVM().getJavaVM();
+        }
         throw UnknownIdentifierException.create(member);
     }
 
@@ -73,6 +77,9 @@ public class EspressoTopScope implements TruffleObject {
     @TruffleBoundary
     boolean isMemberReadable(String member) {
         if (JNI.equals(member)) {
+            return true;
+        }
+        if (JAVA_VM.equals(member)) {
             return true;
         }
         return false;
@@ -83,6 +90,7 @@ public class EspressoTopScope implements TruffleObject {
     Object getMembers(@SuppressWarnings("unused") boolean includeInternal) {
         EconomicSet<String> members = EconomicSet.create();
         members.add(JNI);
+        members.add(JAVA_VM);
         return new KeysArray(members.toArray(new String[members.size()]));
     }
 

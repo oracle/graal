@@ -22,13 +22,16 @@
  */
 package com.oracle.truffle.espresso.libjvm.nativeapi;
 
-import com.oracle.truffle.espresso.libjvm.nativeapi.JNIFunctionPointerTypes.GetEnvFunctionPointer;
 import org.graalvm.nativeimage.Isolate;
 import org.graalvm.nativeimage.c.CContext;
-import org.graalvm.nativeimage.c.function.CFunctionPointer;
 import org.graalvm.nativeimage.c.struct.CField;
 import org.graalvm.nativeimage.c.struct.CStruct;
 import org.graalvm.word.PointerBase;
+
+import com.oracle.truffle.espresso.libjvm.nativeapi.JNIFunctionPointerTypes.AttachCurrentThreadFunctionPointer;
+import com.oracle.truffle.espresso.libjvm.nativeapi.JNIFunctionPointerTypes.DestroyJavaVMFunctionPointer;
+import com.oracle.truffle.espresso.libjvm.nativeapi.JNIFunctionPointerTypes.DetachCurrentThreadFunctionPointer;
+import com.oracle.truffle.espresso.libjvm.nativeapi.JNIFunctionPointerTypes.GetEnvFunctionPointer;
 
 @CContext(JNIHeaderDirectives.class)
 @CStruct(value = "JNIInvokeInterface_", addStructKeyword = true)
@@ -46,24 +49,39 @@ public interface JNIInvokeInterface extends PointerBase {
     @CField("reserved0")
     void setIsolate(Isolate isolate);
 
+    @CField("reserved1")
+    JNIJavaVM getEspressoJavaVM();
+
+    @CField("reserved1")
+    void setEspressoJavaVM(JNIJavaVM isolate);
+
     @CField("AttachCurrentThread")
-    void setAttachCurrentThread(CFunctionPointer p);
+    void setAttachCurrentThread(AttachCurrentThreadFunctionPointer p);
+
+    @CField("AttachCurrentThread")
+    AttachCurrentThreadFunctionPointer getAttachCurrentThread();
 
     @CField("AttachCurrentThreadAsDaemon")
-    void setAttachCurrentThreadAsDaemon(CFunctionPointer p);
+    void setAttachCurrentThreadAsDaemon(AttachCurrentThreadFunctionPointer p);
+
+    @CField("AttachCurrentThreadAsDaemon")
+    AttachCurrentThreadFunctionPointer getAttachCurrentThreadAsDaemon();
 
     @CField("DetachCurrentThread")
-    void setDetachCurrentThread(CFunctionPointer p);
+    void setDetachCurrentThread(DetachCurrentThreadFunctionPointer p);
+
+    @CField("DetachCurrentThread")
+    DetachCurrentThreadFunctionPointer getDetachCurrentThread();
 
     @CField("GetEnv")
-    void setGetEnv(CFunctionPointer p);
+    void setGetEnv(GetEnvFunctionPointer p);
 
     @CField("GetEnv")
     GetEnvFunctionPointer getGetEnv();
 
     @CField("DestroyJavaVM")
-    void setDestroyJavaVM(CFunctionPointer p);
+    void setDestroyJavaVM(DestroyJavaVMFunctionPointer p);
 
     @CField("DestroyJavaVM")
-    <T extends CFunctionPointer> T getDestroyJavaVM();
+    DestroyJavaVMFunctionPointer getDestroyJavaVM();
 }

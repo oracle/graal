@@ -123,7 +123,7 @@ public final class Arguments {
 
         builder.option("java.Classpath", classpath);
 
-        Path libJVMPath = Paths.get(ProcessProperties.getObjectFile(LibJVM.CREATE_JAVA_VM_SYMBOL));
+        Path libJVMPath = Paths.get(ProcessProperties.getObjectFile(JNIInvocationInterface.CREATE_JAVA_VM_SYMBOL));
         // Get rid of /libjvm.so.
         Path libJVMDir = libJVMPath.getParent();
         // Get rid of /{client|server|truffle}.

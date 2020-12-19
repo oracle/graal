@@ -343,6 +343,7 @@ public final class EspressoContext {
             // Spawn JNI first, then the VM.
             try (DebugCloseable vmInit = VM_INIT.scope(timers)) {
                 this.vm = VM.create(getJNI()); // Mokapot is loaded
+                vm.attachThread(Thread.currentThread());
             }
 
             // TODO: link libjimage
@@ -556,7 +557,7 @@ public final class EspressoContext {
      * Creates a new guest thread from the host thread, and adds it to the main thread group.
      */
     public void createThread(Thread hostThread) {
-        threadManager.createGuestThreadFromHost(hostThread, meta);
+        threadManager.createGuestThreadFromHost(hostThread, meta, vm);
     }
 
     public void disposeThread(@SuppressWarnings("unused") Thread hostThread) {

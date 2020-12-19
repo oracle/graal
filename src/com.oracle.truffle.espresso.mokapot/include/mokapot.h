@@ -313,7 +313,9 @@ JNIEXPORT MokapotEnv* JNICALL initializeMokapotContext(TruffleEnv *truffle_env, 
 
 JNIEXPORT void JNICALL disposeMokapotContext(TruffleEnv *truffle_env, MokapotEnv* moka_env);
 
-JNIEXPORT JavaVM* JNICALL getJavaVM();
+JNIEXPORT JavaVM* JNICALL getJavaVM(MokapotEnv* moka_env);
+
+JNIEXPORT void JNICALL mokapotAttachThread(MokapotEnv* moka_env);
 
 JNIEXPORT const char* JNICALL getPackageAt(const char* const* packages, int at);
 

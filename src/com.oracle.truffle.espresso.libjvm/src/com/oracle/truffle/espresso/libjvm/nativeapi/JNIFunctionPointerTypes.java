@@ -33,6 +33,21 @@ public final class JNIFunctionPointerTypes {
         int invoke(JNIJavaVM vm, PointerBase env, int version);
     }
 
+    public interface AttachCurrentThreadFunctionPointer extends CFunctionPointer {
+        @InvokeCFunctionPointer
+        int invoke(JNIJavaVM vm, JNIEnvironmentPointer penv, JNIJavaVMAttachArgs args);
+    }
+
+    public interface DetachCurrentThreadFunctionPointer extends CFunctionPointer {
+        @InvokeCFunctionPointer
+        int invoke(JNIJavaVM vm);
+    }
+
+    public interface DestroyJavaVMFunctionPointer extends CFunctionPointer {
+        @InvokeCFunctionPointer
+        int invoke(JNIJavaVM vm);
+    }
+
     public interface DefineClassFunctionPointer extends CFunctionPointer {
         @InvokeCFunctionPointer
         JNIObjectHandle invoke(JNIEnvironment env, CCharPointer name, JNIObjectHandle loader, CCharPointer buf, int bufLen);

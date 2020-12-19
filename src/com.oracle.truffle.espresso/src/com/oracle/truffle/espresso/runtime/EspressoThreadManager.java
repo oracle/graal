@@ -36,6 +36,7 @@ import com.oracle.truffle.espresso.impl.ContextAccess;
 import com.oracle.truffle.espresso.meta.Meta;
 import com.oracle.truffle.espresso.substitutions.SuppressFBWarnings;
 import com.oracle.truffle.espresso.substitutions.Target_java_lang_Thread;
+import com.oracle.truffle.espresso.vm.VM;
 
 class EspressoThreadManager implements ContextAccess {
 
@@ -96,12 +97,6 @@ class EspressoThreadManager implements ContextAccess {
     @CompilerDirectives.TruffleBoundary
     public StaticObject[] activeThreads() {
         return activeThreads.toArray(StaticObject.EMPTY_ARRAY);
-    }
-
-    public void registerMainThread(Thread thread, StaticObject self) {
-        mainThreadId = thread.getId();
-        guestMainThread = self;
-        activeThreads.add(self);
     }
 
     final AtomicLong createdThreadCount = new AtomicLong();
@@ -204,7 +199,7 @@ class EspressoThreadManager implements ContextAccess {
         return guestMainThread;
     }
 
-    public void createGuestThreadFromHost(Thread hostThread, Meta meta) {
+    public void createGuestThreadFromHost(Thread hostThread, Meta meta, VM vm) {
         if (meta == null) {
             // initial thread used to initialize the context and spawn the VM.
             // Don't attempt guest thread creation
@@ -215,6 +210,7 @@ class EspressoThreadManager implements ContextAccess {
                 // already a live guest thread for this host thread
                 return;
             }
+            vm.attachThread(hostThread);
             StaticObject guestThread = meta.java_lang_Thread.allocateInstance();
             // Allow guest Thread.currentThread() to work.
             guestThread.setIntField(meta.java_lang_Thread_priority, Thread.NORM_PRIORITY);
@@ -271,6 +267,12 @@ class EspressoThreadManager implements ContextAccess {
         mainThread.setIntField(meta.java_lang_Thread_threadStatus, Target_java_lang_Thread.State.RUNNABLE.value);
 
         mainThreadCreated = true;
+    }
+
+    private void registerMainThread(Thread thread, StaticObject self) {
+        mainThreadId = thread.getId();
+        guestMainThread = self;
+        activeThreads.add(self);
     }
 
     public boolean isMainThreadCreated() {

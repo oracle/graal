@@ -22,32 +22,7 @@
  */
 package com.oracle.truffle.espresso.libjvm;
 
-import static com.oracle.svm.core.c.function.CEntryPointOptions.Publish.SymbolOnly;
-import static com.oracle.svm.jni.nativeapi.JNIVersion.JNI_VERSION_1_1;
-import static com.oracle.svm.jni.nativeapi.JNIVersion.JNI_VERSION_1_2;
-
-import org.graalvm.nativeimage.c.function.CEntryPoint;
-import org.graalvm.nativeimage.c.function.CEntryPointLiteral;
-import org.graalvm.nativeimage.c.function.CFunctionPointer;
-import org.graalvm.nativeimage.c.struct.SizeOf;
-import org.graalvm.nativeimage.c.type.CCharPointer;
-import org.graalvm.nativeimage.c.type.CIntPointer;
-import org.graalvm.nativeimage.c.type.CTypeConversion;
-import org.graalvm.polyglot.Context;
-import org.graalvm.polyglot.Value;
-import org.graalvm.word.Pointer;
-import org.graalvm.word.WordFactory;
-
 import com.oracle.svm.core.annotate.Uninterruptible;
-import com.oracle.svm.core.c.function.CEntryPointActions;
-import com.oracle.svm.core.c.function.CEntryPointErrors;
-import com.oracle.svm.core.c.function.CEntryPointOptions;
-import com.oracle.svm.core.c.function.CEntryPointOptions.Publish;
-import com.oracle.truffle.espresso.libjvm.nativeapi.JNIEnvironmentPointer;
-import com.oracle.truffle.espresso.libjvm.nativeapi.JNIErrors;
-import com.oracle.truffle.espresso.libjvm.nativeapi.JNIJavaVMInitArgs;
-import com.oracle.truffle.espresso.libjvm.nativeapi.JNIJavaVMOption;
-import com.oracle.truffle.espresso.libjvm.nativeapi.JNIJavaVMPointer;
 import com.oracle.truffle.espresso.libjvm.nativeapi.JNIVersion;
 
 public class LibJVM {
@@ -58,90 +33,8 @@ public class LibJVM {
 
     // * JNI invocation API
 
-    static class JNICreateJavaVMPrologue {
-        @SuppressWarnings("unused")
-        static void enter(JNIJavaVMPointer vmBuf, JNIEnvironmentPointer penv, JNIJavaVMInitArgs vmArgs) {
-            int error = CEntryPointActions.enterCreateIsolate(WordFactory.nullPointer());
-            if (error == CEntryPointErrors.NO_ERROR) {
-                // success
-            } else if (error == CEntryPointErrors.UNSPECIFIED) {
-                CEntryPointActions.bailoutInPrologue(JNIErrors.JNI_ERR());
-            } else if (error == CEntryPointErrors.MAP_HEAP_FAILED || error == CEntryPointErrors.RESERVE_ADDRESS_SPACE_FAILED || error == CEntryPointErrors.INSUFFICIENT_ADDRESS_SPACE) {
-                CEntryPointActions.bailoutInPrologue(JNIErrors.JNI_ENOMEM());
-            } else { // return a (non-JNI) error that is more helpful for diagnosis
-                error = -1000000000 - error;
-                if (error == JNIErrors.JNI_OK() || error >= -100) {
-                    error = JNIErrors.JNI_ERR(); // non-negative or potential actual JNI error
-                }
-                CEntryPointActions.bailoutInPrologue(error);
-            }
-        }
-    }
-
-    public static final CEntryPointLiteral<CFunctionPointer> CREATE_JAVA_VM_SYMBOL = CEntryPointLiteral.create(LibJVM.class, "JNI_CreateJavaVM", JNIJavaVMPointer.class, JNIEnvironmentPointer.class,
-                    JNIJavaVMInitArgs.class);
-
-    @CEntryPoint(name = "JNI_CreateJavaVM")
-    @CEntryPointOptions(prologue = JNICreateJavaVMPrologue.class, publishAs = SymbolOnly)
-    static int JNI_CreateJavaVM(JNIJavaVMPointer javaVM, JNIEnvironmentPointer penv, JNIJavaVMInitArgs args) {
-        System.err.println("JNI_CreateJavaVM");
-        System.err.printf(" version: %s (%d)%n", JNIVersion.versionString(args.getVersion()), args.getVersion());
-        System.err.println(" ignoreUnrecognized:" + args.getIgnoreUnrecognized());
-        System.err.println(" noptions:" + args.getNOptions());
-        Pointer p = (Pointer) args.getOptions();
-        int count = args.getNOptions();
-        for (int i = 0; i < count; i++) {
-            JNIJavaVMOption option = (JNIJavaVMOption) p.add(i * SizeOf.get(JNIJavaVMOption.class));
-            CCharPointer str = option.getOptionString();
-            if (str.isNonNull()) {
-                String optionString = CTypeConversion.toJavaString(option.getOptionString());
-                System.err.printf(" * %s: %016x%n", optionString, option.getExtraInfo().rawValue());
-            } else {
-                System.err.println(" * NULL");
-            }
-        }
-        if (!isSupportedJniVersion(args.getVersion())) {
-            return JNIErrors.JNI_EVERSION();
-        }
-        // TODO use Launcher infra to parse graalvm specific options
-        Context.Builder builder = Context.newBuilder().allowAllAccess(true);
-        int result = Arguments.setupContext(builder, args);
-        if (result != JNIErrors.JNI_OK()) {
-            return result;
-        }
-        Context context = builder.build();
-        context.enter();
-        Value java = context.getBindings("java").getMember("<JNI>");
-        for (String jniMethod : java.getMemberKeys()) {
-            System.out.println(" * " + jniMethod);
-        }
-        throw new RuntimeException("JNI_CreateJavaVM is not fully implemented");
-    }
-
-    @CEntryPoint(name = "JNI_GetCreatedJavaVMs")
-    @CEntryPointOptions(prologue = CEntryPointOptions.NoPrologue.class, epilogue = CEntryPointOptions.NoEpilogue.class, publishAs = Publish.SymbolOnly)
-    @Uninterruptible(reason = "No Java context.")
-    static int JNI_GetCreatedJavaVMs(JNIJavaVMPointer vmBuf, int bufLen, CIntPointer nVMs) {
-        JNIJavaVMList.gather(vmBuf, bufLen, nVMs);
-        return JNIErrors.JNI_OK();
-    }
-
-    @CEntryPoint(name = "JNI_GetDefaultJavaVMInitArgs")
-    @CEntryPointOptions(prologue = CEntryPointOptions.NoPrologue.class, epilogue = CEntryPointOptions.NoEpilogue.class, publishAs = Publish.SymbolOnly)
-    @Uninterruptible(reason = "No Java context")
-    static int JNI_GetDefaultJavaVMInitArgs(JNIJavaVMInitArgs vmArgs) {
-        int version = vmArgs.getVersion();
-        if (!isSupportedJniVersion(version)) {
-            return JNIErrors.JNI_ERR();
-        }
-        if (version == JNI_VERSION_1_1()) {
-            vmArgs.setVersion(JNI_VERSION_1_2());
-        }
-        return JNIErrors.JNI_OK();
-    }
-
     @Uninterruptible(reason = "called from Uninterruptible")
-    private static boolean isSupportedJniVersion(int version) {
+    public static boolean isSupportedJniVersion(int version) {
         int javaSpecVersion = JNIVersion.javaSpecVersion(version);
         return 0 <= javaSpecVersion && javaSpecVersion <= JavaVersionUtil.JAVA_SPEC;
     }

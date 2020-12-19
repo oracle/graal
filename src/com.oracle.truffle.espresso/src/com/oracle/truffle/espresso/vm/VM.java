@@ -158,12 +158,13 @@ public final class VM extends NativeEnv implements ContextAccess {
     private final @Pointer TruffleObject initializeManagementContext;
     private final @Pointer TruffleObject disposeManagementContext;
     private final @Pointer TruffleObject getJavaVM;
+    private final @Pointer TruffleObject mokapotAttachThread;
     private final @Pointer TruffleObject getPackageAt;
 
     private final JniEnv jniEnv;
 
     private @Pointer TruffleObject managementPtr;
-    private @Pointer TruffleObject vmPtr;
+    private @Pointer TruffleObject mokapotEnvPtr;
 
     // jvm.dll (Windows) or libjvm.so (Unixes) is the Espresso implementation of the VM
     // interface (libjvm).
@@ -182,6 +183,15 @@ public final class VM extends NativeEnv implements ContextAccess {
 
     protected InteropLibrary getUncached() {
         return uncached;
+    }
+
+    public void attachThread(Thread hostThread) {
+        assert hostThread == Thread.currentThread();
+        try {
+            getUncached().execute(mokapotAttachThread, mokapotEnvPtr);
+        } catch (UnsupportedTypeException | ArityException | UnsupportedMessageException e) {
+            throw EspressoError.shouldNotReachHere("mokapotAttachThread failed");
+        }
     }
 
     public static final class GlobalFrameIDs {
@@ -235,7 +245,7 @@ public final class VM extends NativeEnv implements ContextAccess {
         try {
             // TODO(peterssen): Use JVM_FindLibraryEntry.
             TruffleObject jniOnLoad = NativeLibrary.lookupAndBind(libJava, "JNI_OnLoad", "(pointer, pointer): sint32");
-            getUncached().execute(jniOnLoad, vmPtr, RawPointer.nullInstance());
+            getUncached().execute(jniOnLoad, mokapotEnvPtr, RawPointer.nullInstance());
         } catch (UnknownIdentifierException e) {
             // ignore
         } catch (UnsupportedTypeException | UnsupportedMessageException | ArityException e) {
@@ -275,15 +285,19 @@ public final class VM extends NativeEnv implements ContextAccess {
 
             getJavaVM = NativeLibrary.lookupAndBind(mokapotLibrary,
                             "getJavaVM",
-                            "(env): pointer");
+                            "(pointer): pointer");
+
+            mokapotAttachThread = NativeLibrary.lookupAndBind(mokapotLibrary,
+                    "mokapotAttachThread",
+                    "(pointer): void");
 
             getPackageAt = NativeLibrary.lookupAndBind(mokapotLibrary,
                             "getPackageAt",
                             "(pointer, sint32): pointer");
 
-            this.vmPtr = (TruffleObject) getUncached().execute(initializeMokapotContext, jniEnv.getNativePointer(), lookupVmImplCallback);
-            assert getUncached().isPointer(this.vmPtr);
-            assert !getUncached().isNull(this.vmPtr);
+            this.mokapotEnvPtr = (TruffleObject) getUncached().execute(initializeMokapotContext, jniEnv.getNativePointer(), lookupVmImplCallback);
+            assert getUncached().isPointer(this.mokapotEnvPtr);
+            assert !getUncached().isNull(this.mokapotEnvPtr);
 
             javaLibrary = loadJavaLibrary(props.bootLibraryPath());
 
@@ -305,11 +319,11 @@ public final class VM extends NativeEnv implements ContextAccess {
     public @Pointer TruffleObject getJavaVM() {
         try {
             @Pointer
-            TruffleObject ptr = (TruffleObject) getUncached().execute(getJavaVM);
+            TruffleObject ptr = (TruffleObject) getUncached().execute(getJavaVM, mokapotEnvPtr);
             assert getUncached().isPointer(ptr);
             return ptr;
         } catch (UnsupportedTypeException | ArityException | UnsupportedMessageException e) {
-            throw EspressoError.shouldNotReachHere("getJavaVM failed");
+            throw EspressoError.shouldNotReachHere("getJavaVM failed", e);
         }
     }
 
@@ -1059,7 +1073,7 @@ public final class VM extends NativeEnv implements ContextAccess {
     }
 
     public void dispose() {
-        assert !getUncached().isNull(vmPtr) : "Mokapot already disposed";
+        assert !getUncached().isNull(mokapotEnvPtr) : "Mokapot already disposed";
         try {
 
             if (getContext().EnableManagement) {
@@ -1072,12 +1086,12 @@ public final class VM extends NativeEnv implements ContextAccess {
                 assert managementPtr == null;
             }
 
-            getUncached().execute(disposeMokapotContext, vmPtr);
-            this.vmPtr = RawPointer.nullInstance();
+            getUncached().execute(disposeMokapotContext, mokapotEnvPtr);
+            this.mokapotEnvPtr = RawPointer.nullInstance();
         } catch (UnsupportedTypeException | ArityException | UnsupportedMessageException e) {
             throw EspressoError.shouldNotReachHere("Cannot dispose Espresso libjvm (mokapot).");
         }
-        assert getUncached().isNull(vmPtr);
+        assert getUncached().isNull(mokapotEnvPtr);
     }
 
     @VmImpl

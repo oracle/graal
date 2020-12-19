@@ -27,12 +27,16 @@
 #include <stdlib.h>
 #include <stdio.h>
 #include <string.h>
+#include <threads.h>
 
-// Global
-MokapotEnv *mokaEnv = NULL;
+thread_local MokapotEnv* tls_moka_env;
 
-JNIEXPORT JavaVM* JNICALL getJavaVM() {
-  return (*mokaEnv)->vm;
+JNIEXPORT JavaVM* JNICALL getJavaVM(MokapotEnv* moka_env) {
+  return (*moka_env)->vm;
+}
+
+JNIEXPORT void JNICALL mokapotAttachThread(MokapotEnv* moka_env) {
+  tls_moka_env = moka_env;
 }
 
 #define JNI_INVOKE_INTERFACE_METHODS(V) \
@@ -61,8 +65,9 @@ JNIEXPORT MokapotEnv* JNICALL initializeMokapotContext(TruffleEnv *truffle_env, 
   VM_METHOD_LIST(INIT__)
   #undef INIT_
 
-  // Persist env globally.
-  mokaEnv = moka_env;
+  // Persist Moka env in JNI env.
+  //(*env)->reserved1 = moka_env;
+  tls_moka_env = moka_env;
 
   #define INIT_VM__(name) \
       java_vm_functions->name = fetch_by_name(#name);
@@ -74,7 +79,8 @@ JNIEXPORT MokapotEnv* JNICALL initializeMokapotContext(TruffleEnv *truffle_env, 
 }
 
 MokapotEnv* getEnv() {
-  return mokaEnv;
+  // thread local Moka or JNI Env?
+  return tls_moka_env;
 }
 
 JNIEXPORT void JNICALL disposeMokapotContext(TruffleEnv *truffle_env, MokapotEnv* moka_env) {
@@ -299,12 +305,14 @@ JNIEXPORT void JNICALL JVM_DisableCompiler(JNIEnv *env, jclass compCls) {
 }
 
 JNIEXPORT void JNICALL JVM_StartThread(JNIEnv *env, jobject thread) {
-  UNIMPLEMENTED(JVM_StartThread);
+  IMPLEMENTED(JVM_StartThread);
+  return (*getEnv())->JVM_StartThread(env, thread);
 
 }
 
 JNIEXPORT void JNICALL JVM_StopThread(JNIEnv *env, jobject thread, jobject exception) {
-  UNIMPLEMENTED(JVM_StopThread);
+  IMPLEMENTED(JVM_StopThread);
+  return (*getEnv())->JVM_StopThread(env, thread, exception);
 
 }
 
