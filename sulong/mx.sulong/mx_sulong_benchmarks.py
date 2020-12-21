@@ -265,7 +265,7 @@ class ClangVm(GccLikeVm):
 
     def prepare_env(self, env):
         super(ClangVm, self).prepare_env(env)
-        env["CXXFLAGS"] = env.get("CXXFLAGS", []) + ["-stdlib=libc++"]
+        env["CXXFLAGS"] = env.get("CXXFLAGS", "") + " -stdlib=libc++"
         return env
 
 
