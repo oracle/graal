@@ -52,3 +52,7 @@ bool _graalvm_llvm_is_handle(void *nativeHandle) {
 bool _graalvm_llvm_points_to_handle_space(void *nativeHandle) {
     return false;
 }
+void *_graalvm_llvm_resolve_function(void *nativeHandle) {
+    should_not_reach();
+    return NULL;
+}

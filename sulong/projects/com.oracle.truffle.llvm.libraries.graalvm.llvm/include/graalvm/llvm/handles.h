@@ -121,6 +121,15 @@ static bool is_handle(void *nativeHandle);
  */
 static bool points_to_handle_space(void *nativeHandle);
 
+/**
+ * Resolve a function back to the function descriptor.
+ *
+ * The nativeHandle argument needs to be a handle created with {@link create_handle} or
+ * {@link create_deref_handle}. This function will return the managedObject pointer of the function
+ * that the nativeHandle is pointing to.
+ */
+static void *resolve_function(void *nativeHandle);
+
 #include <graalvm/llvm/internal/handles-impl.h>
 
 #if defined(__cplusplus)
