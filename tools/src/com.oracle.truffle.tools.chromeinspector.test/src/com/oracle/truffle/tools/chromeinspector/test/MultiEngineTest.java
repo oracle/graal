@@ -49,6 +49,8 @@ import static org.junit.Assert.assertTrue;
 import static org.junit.Assert.fail;
 import org.junit.Test;
 
+import com.oracle.truffle.tools.utils.java_websocket.client.WebSocketClient;
+import com.oracle.truffle.tools.utils.java_websocket.handshake.ServerHandshake;
 import com.oracle.truffle.tools.utils.json.JSONArray;
 import com.oracle.truffle.tools.utils.json.JSONObject;
 
@@ -56,8 +58,6 @@ import org.graalvm.polyglot.Context;
 import org.graalvm.polyglot.Engine;
 import org.graalvm.polyglot.Source;
 import org.graalvm.polyglot.Value;
-import org.java_websocket.client.WebSocketClient;
-import org.java_websocket.handshake.ServerHandshake;
 
 /**
  * Test handling of multiple engines by the Inspector.

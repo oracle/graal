@@ -41,8 +41,7 @@ suite = {
                 "NanoHTTPD",
                 "NanoHTTPD-WebSocket",
                 "TruffleJSON",
-                "SLF4J_SIMPLE",
-                "Java-WebSocket",
+                "TruffleJWS",
             ],
             "exports" : [
               "<package-info>", # exports all packages containing package-info.java
@@ -276,31 +275,11 @@ suite = {
           "urls" : ["https://lafo.ssw.uni-linz.ac.at/pub/graal-external-deps/trufflejson-20180813.jar"],
           "sha1" : "c556821b83878d3a327bc07dedc1bf2998f99a8f",
         },
-        "Java-WebSocket" : {
-            "sha1" : "382b302303c830a7edb20c9ed61c4ac2cdf7a7a4",
-            "maven" : {
-                "groupId" : "org.java-websocket",
-                "artifactId" : "Java-WebSocket",
-                "version" : "1.5.1",
-            },
-            "dependencies" : ["SLF4J_API"],
-        },
-        "SLF4J_API" : {
-            "sha1" : "b5a4b6d16ab13e34a88fae84c35cd5d68cac922c",
-            "maven" : {
-                "groupId" : "org.slf4j",
-                "artifactId" : "slf4j-api",
-                "version" : "1.7.30",
-            }
-        },
-        "SLF4J_SIMPLE" : {
-            "sha1" : "e606eac955f55ecf1d8edcccba04eb8ac98088dd",
-            "maven" : {
-                "groupId" : "org.slf4j",
-                "artifactId" : "slf4j-simple",
-                "version" : "1.7.30",
-            },
-            "dependencies" : ["SLF4J_API"]
+        "TruffleJWS" : {
+          "urls" : ["https://lafo.ssw.uni-linz.ac.at/pub/graal-external-deps/trufflejws-1.5.1.jar"],
+          "sha1" : "5576fc4a93fe0fc01d236e92803543906d690c5f",
+          "sourceUrls": ["https://lafo.ssw.uni-linz.ac.at/pub/graal-external-deps/trufflejws-1.5.1-src.jar"],
+          "sourceSha1" : "298db2b3c573f9e76a5a7a60a49c7ceb5ddd35f7",
         },
         "VISUALVM_COMMON" : {
             "urls" : ["https://lafo.ssw.uni-linz.ac.at/pub/graal-external-deps/visualvm/visualvm-20.3-2.tar.gz"],
