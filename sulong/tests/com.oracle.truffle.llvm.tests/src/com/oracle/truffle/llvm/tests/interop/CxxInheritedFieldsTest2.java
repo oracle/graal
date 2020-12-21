@@ -38,8 +38,6 @@ import org.junit.runner.RunWith;
 import com.oracle.truffle.api.CallTarget;
 import com.oracle.truffle.api.interop.InteropLibrary;
 import com.oracle.truffle.api.interop.UnsupportedMessageException;
-import com.oracle.truffle.llvm.tests.interop.CxxVTableTest1.EvaluateDirectly;
-import com.oracle.truffle.llvm.tests.interop.InteropTestBase.SulongTestNode;
 import com.oracle.truffle.tck.TruffleRunner;
 import com.oracle.truffle.tck.TruffleRunner.Inject;
 

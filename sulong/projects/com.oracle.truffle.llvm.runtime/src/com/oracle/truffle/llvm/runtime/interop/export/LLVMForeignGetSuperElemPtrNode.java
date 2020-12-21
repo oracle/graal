@@ -31,20 +31,14 @@
 package com.oracle.truffle.llvm.runtime.interop.export;
 
 import com.oracle.truffle.api.dsl.GenerateUncached;
-import com.oracle.truffle.llvm.runtime.interop.access.LLVMInteropType;
 import com.oracle.truffle.llvm.runtime.nodes.api.LLVMNode;
 import com.oracle.truffle.llvm.runtime.pointer.LLVMPointer;
 
 @GenerateUncached
 public abstract class LLVMForeignGetSuperElemPtrNode extends LLVMNode {
-    public abstract LLVMPointer execute(LLVMPointer receiver);
-
-    public static LLVMForeignGetSuperElemPtrNode create(LLVMInteropType.StructMember structMember, LLVMInteropType.ClazzInheritance clazzInheritance) {
-        if (clazzInheritance.virtual) {
-            return LLVMForeignVirtualSuperElemPtrNodeGen.create(clazzInheritance.offset);
-        } else {
-            return LLVMForeignDirectSuperElemPtrNodeGen.create(structMember.startOffset);
-        }
-    }
+    /**
+     * @param offset either direct or virtual offset. See subclasses.
+     */
+    public abstract LLVMPointer execute(LLVMPointer receiver, long offset);
 
 }
