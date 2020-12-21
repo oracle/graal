@@ -32,7 +32,6 @@ package com.oracle.truffle.llvm.runtime.interop;
 
 import com.oracle.truffle.api.dsl.Cached;
 import com.oracle.truffle.api.dsl.CachedContext;
-import com.oracle.truffle.api.dsl.GenerateUncached;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.interop.ArityException;
 import com.oracle.truffle.api.interop.InteropLibrary;
@@ -43,20 +42,24 @@ import com.oracle.truffle.llvm.runtime.LLVMContext;
 import com.oracle.truffle.llvm.runtime.LLVMFunction;
 import com.oracle.truffle.llvm.runtime.LLVMLanguage;
 import com.oracle.truffle.llvm.runtime.nodes.api.LLVMNode;
+import com.oracle.truffle.llvm.runtime.nodes.func.LLVMTypeIdForExceptionNode;
 import com.oracle.truffle.llvm.runtime.nodes.others.LLVMDynAccessSymbolNode;
 import com.oracle.truffle.llvm.runtime.pointer.LLVMPointer;
 
-@GenerateUncached
 public abstract class LLVMForeignCreateUnwindHeaderNode extends LLVMNode {
+    @Child LLVMTypeIdForExceptionNode typeIdForExceptionNode;
+
     public abstract LLVMPointer execute(RuntimeException e) throws UnsupportedTypeException, ArityException, UnsupportedMessageException;
 
     @Specialization
-    public LLVMPointer doRuntimeException(RuntimeException e, @CachedContext(LLVMLanguage.class) LLVMContext context, @CachedLibrary(limit = "5") InteropLibrary interop,
+    public LLVMPointer doRuntimeException(RuntimeException e,
+                    @CachedContext(LLVMLanguage.class) LLVMContext context,
+                    @CachedLibrary(limit = "5") InteropLibrary interop,
                     @Cached LLVMDynAccessSymbolNode accessSymbolNode)
                     throws UnsupportedTypeException, ArityException, UnsupportedMessageException {
         LLVMFunction allocateExceptionFunction = context.getGlobalScope().getFunction("__cxa_allocate_exception");
-        LLVMPointer fnPointer = accessSymbolNode.execute(allocateExceptionFunction);
-        Object unwindHeader = interop.execute(fnPointer, LLVMNode.ADDRESS_SIZE_IN_BYTES);
+        LLVMPointer fnAllocExPointer = accessSymbolNode.execute(allocateExceptionFunction);
+        Object unwindHeader = interop.execute(fnAllocExPointer, LLVMNode.ADDRESS_SIZE_IN_BYTES);
         return LLVMPointer.cast(unwindHeader);
     }
 

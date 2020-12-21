@@ -44,12 +44,19 @@ static __cxa_exception *cxa_exception_from_exception_unwind_exception(_Unwind_Ex
 
 static void *thrown_object_from_cxa_exception(__cxa_exception *exception_header);
 
+static void* __cxa_begin_catch(void* unwind);
+
 } // namespace bGliYysrYWJp
 } // namespace ___sulong_import_base64
 
 extern "C" {
 
 unsigned int sulong_eh_canCatch(_Unwind_Exception *unwindHeader, std::type_info *catchType) {
+
+	if(polyglot_is_value(unwindHeader)) {
+		...
+	}
+
     __cxa_exception *ex = ___sulong_import_base64::bGliYysrYWJp::cxa_exception_from_exception_unwind_exception(unwindHeader);
     void *p = ___sulong_import_base64::bGliYysrYWJp::thrown_object_from_cxa_exception(ex);
     __shim_type_info *et = dynamic_cast<__shim_type_info *>(ex->exceptionType);
@@ -64,6 +71,11 @@ unsigned int sulong_eh_canCatch(_Unwind_Exception *unwindHeader, std::type_info 
     } else {
         return 0;
     }
+}
+
+void* __cxa_begin_catch(void* unwind) {
+
+	___sulong_import_base64::bGliYysrYWJp::__cxa_begin_catch(unwind);
 }
 
 } // extern "C"
