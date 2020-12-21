@@ -42,6 +42,7 @@ import com.oracle.svm.core.config.ConfigurationValues;
 import com.oracle.svm.core.graal.code.SubstrateBackendFactory;
 import com.oracle.svm.hosted.SVMHost;
 import com.oracle.svm.hosted.c.NativeLibraries;
+import com.oracle.svm.hosted.classinitialization.ClassInitializationSupport;
 import com.oracle.svm.hosted.meta.HostedConstantFieldProvider;
 import com.oracle.svm.hosted.meta.HostedConstantReflectionProvider;
 import com.oracle.svm.hosted.meta.HostedMemoryAccessProvider;
@@ -59,8 +60,8 @@ public class HostedRuntimeConfigurationBuilder extends SharedRuntimeConfiguratio
     private final HostedProviders analysisProviders;
 
     public HostedRuntimeConfigurationBuilder(OptionValues options, SVMHost hostVM, HostedUniverse universe, HostedMetaAccess metaAccess, HostedProviders analysisProviders,
-                    NativeLibraries nativeLibraries) {
-        super(options, hostVM, metaAccess, SubstrateBackendFactory.get()::newBackend, nativeLibraries);
+                    NativeLibraries nativeLibraries, ClassInitializationSupport classInitializationSupport) {
+        super(options, hostVM, metaAccess, SubstrateBackendFactory.get()::newBackend, nativeLibraries, classInitializationSupport);
         this.universe = universe;
         this.analysisProviders = analysisProviders;
     }
@@ -96,6 +97,6 @@ public class HostedRuntimeConfigurationBuilder extends SharedRuntimeConfiguratio
 
     @Override
     protected ConstantFieldProvider createConstantFieldProvider(Providers p) {
-        return new HostedConstantFieldProvider(p.getMetaAccess());
+        return new HostedConstantFieldProvider(p.getMetaAccess(), classInitializationSupport);
     }
 }

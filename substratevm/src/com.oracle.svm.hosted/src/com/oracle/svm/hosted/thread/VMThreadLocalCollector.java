@@ -39,12 +39,11 @@ import org.graalvm.compiler.nodes.graphbuilderconf.GraphBuilderContext;
 import org.graalvm.nativeimage.hosted.Feature;
 
 import com.oracle.svm.core.config.ConfigurationValues;
-import com.oracle.svm.core.meta.ReadableJavaField;
-import com.oracle.svm.core.meta.SharedField;
 import com.oracle.svm.core.meta.SubstrateObjectConstant;
 import com.oracle.svm.core.threadlocal.FastThreadLocal;
 import com.oracle.svm.core.threadlocal.VMThreadLocalInfo;
 import com.oracle.svm.hosted.FeatureImpl.CompilationAccessImpl;
+import com.oracle.svm.hosted.meta.HostedField;
 
 import jdk.vm.ci.meta.JavaKind;
 import jdk.vm.ci.meta.ResolvedJavaField;
@@ -101,9 +100,9 @@ class VMThreadLocalCollector implements Function<Object, Object> {
          * make the layout of VMThread deterministic.
          */
         for (ResolvedJavaField f : config.getFields()) {
-            SharedField field = (SharedField) f;
+            HostedField field = (HostedField) f;
             if (field.isStatic() && field.getStorageKind() == JavaKind.Object) {
-                Object fieldValue = SubstrateObjectConstant.asObject(((ReadableJavaField) field).readValue(null));
+                Object fieldValue = SubstrateObjectConstant.asObject(field.readValue(null));
                 if (fieldValue instanceof FastThreadLocal) {
                     FastThreadLocal threadLocal = (FastThreadLocal) fieldValue;
                     VMThreadLocalInfo info = threadLocals.get(threadLocal);

@@ -74,11 +74,7 @@ public class AnalysisConstantReflectionProvider extends SharedConstantReflection
 
     @Override
     public final JavaConstant readFieldValue(ResolvedJavaField field, JavaConstant receiver) {
-        if (field instanceof AnalysisField) {
-            return readValue((AnalysisField) field, receiver);
-        } else {
-            return super.readFieldValue(field, receiver);
-        }
+        return readValue((AnalysisField) field, receiver);
     }
 
     public JavaConstant readValue(AnalysisField field, JavaConstant receiver) {
