@@ -76,32 +76,33 @@ abstract class LLVMInteropAccessNode extends LLVMNode {
         return makeAccessLocation.execute(foreign, index, type.elementType, restOffset);
     }
 
-    @Specialization
-    AccessLocation doClazz(LLVMInteropType.Clazz type, Object foreign, long offset,
-                    @Cached LLVMInteropAccessNode recursiveNode,
-                    @Cached MakeAccessLocation makeAccessLocation) {
-        StructMember member = findMember(type, offset);
-        if (type.getSuperClasses().contains(member.type) &&
-                        member.name.contentEquals("super (" + ((Clazz) (member.type)).name + ")")) {
-            return recursiveNode.execute((Structured) member.type, foreign, offset - member.startOffset);
-        } else {
-            return makeAccessLocation.execute(foreign, member.name, member.type, offset - member.startOffset);
-        }
-
+    /**
+     * @param type
+     */
+    @Specialization(guards = {"checkMember(type, cachedMember, offset)", "cachedMember.isInheritanceMember"})
+    AccessLocation doClazzInheritance(LLVMInteropType.Clazz type, Object foreign, long offset,
+                    @Cached("findMember(type, offset)") StructMember cachedMember,
+                    @Cached LLVMInteropAccessNode recursiveNode) {
+        return recursiveNode.execute((Structured) cachedMember.type, foreign, offset - cachedMember.startOffset);
     }
 
-    @Specialization(guards = "checkMember(type, cachedMember, offset)")
+    @Specialization(guards = {"checkMember(type, cachedMember, offset)", "!cachedMember.isInheritanceMember"})
     AccessLocation doStructMember(@SuppressWarnings("unused") LLVMInteropType.Struct type, Object foreign, long offset,
                     @Cached("findMember(type, offset)") StructMember cachedMember,
                     @Cached("create()") MakeAccessLocation makeAccessLocation) {
         return makeAccessLocation.execute(foreign, cachedMember.name, cachedMember.type, offset - cachedMember.startOffset);
     }
 
-    @Specialization(replaces = "doStructMember")
+    @Specialization(replaces = {"doStructMember", "doClazzInheritance"})
     AccessLocation doStruct(LLVMInteropType.Struct type, Object foreign, long offset,
+                    @Cached LLVMInteropAccessNode recursiveNode,
                     @Cached MakeAccessLocation makeAccessLocation) {
         StructMember member = findMember(type, offset);
-        return makeAccessLocation.execute(foreign, member.name, member.type, offset - member.startOffset);
+        if (member.isInheritanceMember) {
+            return recursiveNode.execute((Structured) member.type, foreign, offset - member.startOffset);
+        } else {
+            return makeAccessLocation.execute(foreign, member.name, member.type, offset - member.startOffset);
+        }
     }
 
     static boolean checkMember(LLVMInteropType.Struct struct, StructMember member, long offset) {
