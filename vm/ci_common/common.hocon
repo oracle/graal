@@ -47,21 +47,20 @@ js_windows_common: {
   downloads: {
     NASM: {name: nasm, version: "2.14.02", platformspecific: true}
   }
-  setup: [
-    ["set-export", "DEVKIT_ROOT", "$VS2017_15_9_16_1_0_ROOT"]
+}
+
+js_windows_jdk11: ${common_vm_windows-jdk11} ${js_windows_common} {
+  setup: ${common_vm_windows-jdk11.setup} [
+    ["set-export", "DEVKIT_ROOT", "$VS2017_15_9_24_1_0_ROOT"]
     ["set-export", "DEVKIT_VERSION", "2017"]
   ]
 }
 
-js_windows_jdk11: ${common_vm_windows-jdk11} ${js_windows_common} {
-  setup: ${common_vm_windows-jdk11.setup} ${js_windows_common.setup}
-}
-
 js_windows: ${common_vm_windows} ${js_windows_common} {
-  packages: {
-	"devkit:VS2017-15.9.16+1" : "==0"
-  }
-  setup: ${common_vm_windows.setup} ${js_windows_common.setup}
+  setup: ${common_vm_windows.setup} [
+    ["set-export", "DEVKIT_ROOT", ${vm_windows_jdk8_devkit_var}]
+    ["set-export", "DEVKIT_VERSION", "2017"]
+  ]
 }
 
 # SULONG
