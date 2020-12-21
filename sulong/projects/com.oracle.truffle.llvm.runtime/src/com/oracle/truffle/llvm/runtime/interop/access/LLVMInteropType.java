@@ -793,8 +793,6 @@ public abstract class LLVMInteropType implements TruffleObject {
                 return convertClass((LLVMSourceClassLikeType) type);
             } else if (type instanceof LLVMSourceStructLikeType) {
                 return convertStruct((LLVMSourceStructLikeType) type);
-            } else if (type instanceof LLVMSourceStructLikeType) {
-                return convertStruct((LLVMSourceStructLikeType) type);
             } else if (type instanceof LLVMSourceFunctionType) {
                 return convertFunction((LLVMSourceFunctionType) type);
             } else {

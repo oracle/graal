@@ -59,7 +59,8 @@ public abstract class LLVMInteropReadNode extends LLVMNode {
     public abstract Object execute(LLVMInteropType.Structured type, Object foreign, long offset, ForeignToLLVMType accessType);
 
     @Specialization(guards = "type != null")
-    Object doClazz(LLVMInteropType.Clazz type, Object foreign, long offset, ForeignToLLVMType accessType, @Cached LLVMInteropAccessNode access,
+    Object doClazz(LLVMInteropType.Clazz type, Object foreign, long offset, ForeignToLLVMType accessType,
+                    @Cached LLVMInteropAccessNode access,
                     @Cached ReadLocationNode read) {
         if (type.hasVirtualMethods() && offset == 0) {
             // return an artificially created pointer pointing to vtable and foreign object

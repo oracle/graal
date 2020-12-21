@@ -54,8 +54,10 @@ public abstract class LLVMInteropInvokeNode extends LLVMNode {
     }
 
     @Specialization
-    Object doClazz(LLVMPointer receiver, LLVMInteropType.Clazz type, String method, Object[] arguments, @Cached LLVMInteropMethodInvokeNode invoke,
-                    @Cached(value = "create()", allowUncached = true) LLVMSelfArgumentPackNode selfPackNode, @CachedLibrary(limit = "5") InteropLibrary interop)
+    Object doClazz(LLVMPointer receiver, LLVMInteropType.Clazz type, String method, Object[] arguments,
+                    @Cached LLVMInteropMethodInvokeNode invoke,
+                    @Cached(value = "create()", allowUncached = true) LLVMSelfArgumentPackNode selfPackNode,
+                    @CachedLibrary(limit = "5") InteropLibrary interop)
                     throws ArityException, UnknownIdentifierException, UnsupportedTypeException, UnsupportedMessageException {
         Method methodObject = type.findMethodByArgumentsWithSelf(method, selfPackNode.execute(receiver, arguments));
         if (methodObject == null) {

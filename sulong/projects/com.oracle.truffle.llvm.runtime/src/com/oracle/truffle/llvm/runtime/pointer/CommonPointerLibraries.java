@@ -277,7 +277,8 @@ abstract class CommonPointerLibraries {
     }
 
     @ExportMessage
-    static Object invokeMember(LLVMPointerImpl receiver, String member, Object[] arguments, @Cached LLVMInteropInvokeNode invoke)
+    static Object invokeMember(LLVMPointerImpl receiver, String member, Object[] arguments,
+                    @Cached LLVMInteropInvokeNode invoke)
                     throws UnsupportedMessageException, ArityException, UnknownIdentifierException,
                     UnsupportedTypeException {
         return invoke.execute(receiver, receiver.getExportType(), member, arguments);
