@@ -59,11 +59,11 @@ public abstract class LLVMInteropMethodInvokeNode extends LLVMNode {
      * @param typeHash
      */
     @ExplodeLoop
-    @Specialization(guards = {"virtualIndex>=0", "type.hashCode()==typeHash"})
+    @Specialization(guards = {"virtualIndex>=0", "type==typeHash"})
     Object doVirtualCallCached(LLVMPointer receiver, String methodName, LLVMInteropType.Clazz type,
                     Method method, long virtualIndex, Object[] arguments,
                     @CachedLibrary(limit = "5") InteropLibrary interop,
-                    @Cached(value = "type.hashCode()", allowUncached = true) int typeHash,
+                    @Cached(value = "type") LLVMInteropType.Clazz typeHash,
                     @Cached(value = "type.getVtableAccessNames()", allowUncached = true, dimensions = 1) String[] vtableHelpNames,
                     @Cached LLVMInteropVtableAccessNode vtableAccessNode)
                     throws UnsupportedTypeException, ArityException, UnsupportedMessageException,
