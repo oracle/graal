@@ -59,23 +59,28 @@ public abstract class LLVMInteropInvokeNode extends LLVMNode {
                     @Cached(value = "create()", allowUncached = true) LLVMSelfArgumentPackNode selfPackNode,
                     @CachedLibrary(limit = "5") InteropLibrary interop)
                     throws ArityException, UnknownIdentifierException, UnsupportedTypeException, UnsupportedMessageException {
-        Method methodObject = type.findMethodByArgumentsWithSelf(method, selfPackNode.execute(receiver, arguments));
+        Object[] selfArgs = selfPackNode.execute(receiver, arguments);
+        Method methodObject = type.findMethodByArgumentsWithSelf(method, selfArgs);
         if (methodObject == null) {
             return doStruct(receiver, type, method, arguments, interop);
         }
         long virtualIndex = methodObject.getVirtualIndex();
-        return invoke.execute(receiver, method, type, methodObject, virtualIndex, selfPackNode.execute(receiver, arguments));
+        return invoke.execute(receiver, method, type, methodObject, virtualIndex, selfArgs);
     }
 
     /**
      * @param type
      */
-    @Specialization
+    @Specialization(guards = "!isClass(type)")
     Object doStruct(LLVMPointer receiver, LLVMInteropType.Struct type, String member, Object[] arguments,
                     @CachedLibrary(limit = "5") InteropLibrary interop)
                     throws UnsupportedMessageException, UnknownIdentifierException, UnsupportedTypeException, ArityException {
         Object readMember = interop.readMember(receiver, member);
         return interop.execute(readMember, arguments);
+    }
+
+    protected static boolean isClass(Object o) {
+        return o instanceof LLVMInteropType.Clazz;
     }
 
     /**
