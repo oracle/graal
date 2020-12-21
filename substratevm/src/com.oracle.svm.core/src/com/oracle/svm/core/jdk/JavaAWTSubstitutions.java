@@ -26,8 +26,6 @@ package com.oracle.svm.core.jdk;
 
 import java.awt.Toolkit;
 
-import com.oracle.svm.core.annotate.Alias;
-import com.oracle.svm.core.annotate.RecomputeFieldValue;
 import com.oracle.svm.core.annotate.Substitute;
 import com.oracle.svm.core.annotate.TargetClass;
 
@@ -42,18 +40,4 @@ final class Target_java_awt_Toolkit {
 
 /** Dummy class to have a class with the file's name. */
 public final class JavaAWTSubstitutions {
-}
-
-/**
- * The purpose of this substitution is to prevent standard color profile loading deferral. The only
- * reason this substitution exists is to ensure that our fix for loading standard color profiles
- * works. It should be removed once standard color profile loading is tested.
- */
-@TargetClass(className = "sun.java2d.cmm.ProfileDeferralMgr", onlyWith = JDK11OrLater.class)
-final class Target_sun_java2d_cmm_ProfileDeferralMgr {
-
-    @Alias//
-    @RecomputeFieldValue(kind = RecomputeFieldValue.Kind.FromAlias)//
-    public static boolean deferring = false;
-
 }
