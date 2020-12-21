@@ -608,6 +608,9 @@ class AgentScriptJsBenchmarkSuite(mx_benchmark.VmBenchmarkSuite):
     def name(self):
         return 'agentscript'
 
+    def version(self):
+        return '0.1.0'
+
     def benchmarkList(self, bmSuiteArgs):
         return self._benchmarks.keys()
 
@@ -678,6 +681,9 @@ class PolyBenchBenchmarkSuite(mx_benchmark.VmBenchmarkSuite):
 
     def name(self):
         return "polybench"
+
+    def version(self):
+        return "0.1.0"
 
     def benchmarkList(self, bmSuiteArgs):
         return self._benchmarks

@@ -400,6 +400,9 @@ class DaCapoBenchmarkSuite(BaseDaCapoBenchmarkSuite): #pylint: disable=too-many-
     def name(self):
         return "dacapo"
 
+    def version(self):
+        return '9.12-bach'
+
     def daCapoSuiteTitle(self):
         return "DaCapo 9.12"
 
@@ -609,6 +612,9 @@ class ScalaDaCapoBenchmarkSuite(BaseDaCapoBenchmarkSuite): #pylint: disable=too-
 
     def name(self):
         return "scala-dacapo"
+
+    def version(self):
+        return "0.1.0"
 
     def daCapoSuiteTitle(self):
         return "DaCapo 0.1.0-SNAPSHOT"
