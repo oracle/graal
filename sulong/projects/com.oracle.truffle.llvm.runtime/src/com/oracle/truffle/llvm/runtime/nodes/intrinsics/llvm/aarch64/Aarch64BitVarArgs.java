@@ -38,12 +38,6 @@ class Aarch64BitVarArgs {
     public static final int GP_OFFSET = 40;
     public static final int FP_OFFSET = 44;
 
-// public static final int OVERFLOW_ARG_AREA = 0;
-// public static final int GP_SAVE_AREA = 8;
-// public static final int FP_SAVE_AREA = 16;
-// public static final int GP_OFFSET = 24;
-// public static final int FP_OFFSET = 28;
-
     public static final int GP_LIMIT = 64;
     public static final int GP_STEP = 8;
     public static final int FP_LIMIT = 128;

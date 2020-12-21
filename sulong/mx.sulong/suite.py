@@ -1018,6 +1018,27 @@ suite = {
       "subDir" : "tests",
       "native": True,
       "vpath": True,
+      "os_arch" : {
+        "linux": {
+          "aarch64" : {
+            "buildEnv" : {
+              "PLATFORM" : "aarch64",
+            },
+          },
+          "<others>": {
+            "buildEnv" : {
+              "PLATFORM" : "x86_64",
+            },
+          }
+        },
+        "<others>": {
+          "<others>": {
+            "buildEnv" : {
+              "PLATFORM" : "x86_64",
+            },
+          },
+        },
+      },
       "buildEnv" : {
         "OS" : "<os>",
         "CLANG": "<toolchainGetToolPath:native,CC>",

@@ -51,7 +51,7 @@ import com.oracle.truffle.llvm.runtime.pointer.LLVMPointer;
 import com.oracle.truffle.tck.TruffleRunner;
 
 @RunWith(TruffleRunner.class)
-public class VaListTest extends InteropTestBase {
+public class VAListInteropTest extends InteropTestBase {
 
     static Value testLibrary;
     static Value testVaListCallback3;
