@@ -260,7 +260,8 @@ public class ReflectionDataBuilder implements RuntimeReflectionSupport {
             clazz.getMethods();
             clazz.getDeclaredConstructors();
             clazz.getConstructors();
-            // getClasses() and getDeclaredClasses() were taken out, because their failures do not necessarily mean that that other reflection data is invalid
+            // getClasses() and getDeclaredClasses() were taken out, because their failures do not
+            // necessarily mean that that other reflection data is invalid
             // see GR-21543 for example with scala-dacapo factorie benchmark
         } catch (TypeNotPresentException | LinkageError e) {
             /*
@@ -306,7 +307,8 @@ public class ReflectionDataBuilder implements RuntimeReflectionSupport {
     }
 
     /**
-     * Catches any linking or verification exception and returns a null object for given type instead.
+     * Catches any linking or verification exception and returns a null object for given type
+     * instead.
      * 
      * @param extractor code that extracts and filters the reflection data
      * @param clazz class, whose reflection data is being processed
