@@ -29,7 +29,7 @@
  */
 #include <stdio.h>
 #include <stdlib.h>
-#include <polyglot.h>
+#include <graalvm/llvm/polyglot.h>
 
 class A {
 public:

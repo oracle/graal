@@ -72,7 +72,6 @@ import com.oracle.truffle.llvm.runtime.debug.type.LLVMSourceStructLikeType;
 import com.oracle.truffle.llvm.runtime.debug.type.LLVMSourceType;
 import com.oracle.truffle.llvm.runtime.interop.convert.ForeignToLLVM.ForeignToLLVMType;
 import com.oracle.truffle.llvm.runtime.library.internal.LLVMAsForeignLibrary;
-import com.oracle.truffle.llvm.runtime.interop.export.LLVMForeignGetSuperElemPtrNode;
 import com.oracle.truffle.llvm.runtime.pointer.LLVMPointer;
 
 /**
