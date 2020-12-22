@@ -44,11 +44,11 @@ my-app-root
 ```
 Then:
 
-*  All resources can be loaded with `.*/Resource.*txt$`, specified as `{"pattern":".*/Resource.*txt$"}` in a configuration file, or `-H:IncludeResources='.*/Resource.*txt$'` on the command line.
-*  `Resource0.txt` can be loaded with `.*/Resource0.txt$`.
-*  `Resource0.txt` and `Resource1.txt` can be loaded with `.*/Resource0.txt$` and `.*/Resource1.txt$`
-   (or alternatively with a single `.*/(Resource0|Resource1).txt$`).
-*  Also, if we want to include everything except the `Resource2.txt` file, we can simply exclude it with `-H:IncludeResources='.*/Resource.*txt$'` followed by `-H:ExcludeResources='.*/Resource2.txt$'`.
+*  All resources can be loaded with `.*/Resource.+[.]txt$`, specified as `{"pattern":".*/Resource.+[.]txt$"}` in a configuration file, or `-H:IncludeResources='.*/Resource.+[.]txt$'` on the command line.
+*  `Resource0.txt` can be loaded with `.*/Resource0[.]txt$`.
+*  `Resource0.txt` and `Resource1.txt` can be loaded with `.*/Resource0[.]txt$` and `.*/Resource1[.]txt$`
+   (or alternatively with a single `.*/(Resource0|Resource1)[.]txt$`).
+*  Also, if we want to include everything except the `Resource2.txt` file, we can simply exclude it with `-H:IncludeResources='.*/Resource.*txt$'` followed by `-H:ExcludeResources='.*/Resource2[.]txt$'`.
 
 See also the [guide on assisted configuration of Java resources and other dynamic features](BuildConfiguration.md#assisted-configuration-of-native-image-builds).
 
