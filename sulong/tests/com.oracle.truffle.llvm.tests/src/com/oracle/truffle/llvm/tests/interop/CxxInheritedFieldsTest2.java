@@ -106,7 +106,7 @@ public class CxxInheritedFieldsTest2 extends InteropTestBase {
         }
     }
 
-    private Object toGuestValue(Object hostValue) {
+    private static Object toGuestValue(Object hostValue) {
         return runWithPolyglot.getTruffleTestEnv().asGuestValue(hostValue);
     }
 

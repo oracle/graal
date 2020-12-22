@@ -56,7 +56,7 @@ public abstract class LLVMInteropInvokeNode extends LLVMNode {
     @Specialization
     Object doClazz(LLVMPointer receiver, LLVMInteropType.Clazz type, String method, Object[] arguments,
                     @Cached LLVMInteropMethodInvokeNode invoke,
-                    @Cached(value = "create()", allowUncached = true) LLVMSelfArgumentPackNode selfPackNode,
+                    @Cached LLVMSelfArgumentPackNode selfPackNode,
                     @CachedLibrary(limit = "5") InteropLibrary interop)
                     throws ArityException, UnknownIdentifierException, UnsupportedTypeException, UnsupportedMessageException {
         Object[] selfArgs = selfPackNode.execute(receiver, arguments);
@@ -92,23 +92,6 @@ public abstract class LLVMInteropInvokeNode extends LLVMNode {
     @Fallback
     Object doError(LLVMPointer receiver, LLVMInteropType type, String member, Object[] arguments) throws UnsupportedMessageException {
         throw UnsupportedMessageException.create();
-    }
-
-    @GenerateUncached
-    static class LLVMSelfArgumentPackNode extends LLVMNode {
-
-        Object[] execute(LLVMPointer receiver, Object[] arguments) {
-            Object[] newArgs = new Object[arguments.length + 1];
-            newArgs[0] = receiver;
-            for (int i = 0; i < arguments.length; i++) {
-                newArgs[i + 1] = arguments[i];
-            }
-            return newArgs;
-        }
-
-        public static LLVMSelfArgumentPackNode create() {
-            return new LLVMSelfArgumentPackNode();
-        }
     }
 
 }

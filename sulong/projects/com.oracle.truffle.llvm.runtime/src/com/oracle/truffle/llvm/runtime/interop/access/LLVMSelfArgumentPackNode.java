@@ -27,36 +27,26 @@
  * NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED
  * OF THE POSSIBILITY OF SUCH DAMAGE.
  */
+
 package com.oracle.truffle.llvm.runtime.interop.access;
 
-import com.oracle.truffle.api.dsl.Cached;
 import com.oracle.truffle.api.dsl.GenerateUncached;
 import com.oracle.truffle.api.dsl.Specialization;
-import com.oracle.truffle.api.interop.ArityException;
-import com.oracle.truffle.api.interop.InteropLibrary;
-import com.oracle.truffle.api.interop.UnsupportedMessageException;
-import com.oracle.truffle.api.interop.UnsupportedTypeException;
-import com.oracle.truffle.api.library.CachedLibrary;
-import com.oracle.truffle.llvm.runtime.interop.export.LLVMForeignReadNode;
 import com.oracle.truffle.llvm.runtime.nodes.api.LLVMNode;
 import com.oracle.truffle.llvm.runtime.pointer.LLVMPointer;
 
 @GenerateUncached
-public abstract class LLVMInteropVtableAccessNode extends LLVMNode {
-    abstract Object execute(Object vtablePointer, long virtualIndex, Object[] arguments) throws UnsupportedTypeException, ArityException, UnsupportedMessageException;
-
-    public static LLVMInteropVtableAccessNode create() {
-        return LLVMInteropVtableAccessNodeGen.create();
-    }
+public abstract class LLVMSelfArgumentPackNode extends LLVMNode {
+    public abstract Object[] execute(LLVMPointer receiver, Object[] arguments);
 
     @Specialization
-    Object doPointer(LLVMPointer vtablePointer, long virtualIndex, Object[] arguments,
-                    @Cached LLVMForeignReadNode read,
-                    @CachedLibrary(limit = "5") InteropLibrary interop)
-                    throws UnsupportedTypeException, ArityException, UnsupportedMessageException {
-        LLVMPointer vtableElementPointer = vtablePointer.increment(virtualIndex * LLVMNode.ADDRESS_SIZE_IN_BYTES);
-        final LLVMInteropType type = LLVMInteropType.ValueKind.POINTER.type;
-        return interop.execute(read.execute(vtableElementPointer, type), arguments);
+    public Object[] doPack(LLVMPointer receiver, Object[] arguments) {
+        Object[] newArgs = new Object[arguments.length + 1];
+        newArgs[0] = receiver;
+        for (int i = 0; i < arguments.length; i++) {
+            newArgs[i + 1] = arguments[i];
+        }
+        return newArgs;
     }
 
 }

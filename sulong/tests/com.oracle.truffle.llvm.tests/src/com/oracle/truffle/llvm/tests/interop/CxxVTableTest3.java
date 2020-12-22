@@ -60,11 +60,9 @@ public class CxxVTableTest3 extends InteropTestBase {
     private static String methodName;
 
     private static Value getA1;
-    private static Object getA1Internal;
     private static Value getA2;
     private static Object getA2Internal;
     private static Value getA3;
-    private static Object getA3Internal;
     private static Value getA4;
     private static Object getA4Internal;
 
@@ -89,9 +87,7 @@ public class CxxVTableTest3 extends InteropTestBase {
         consImpl = testCppLibrary.getMember("Impl");
 
         try {
-            getA1Internal = InteropLibrary.getUncached().readMember(testCppLibraryInternal, "getA1");
             getA2Internal = InteropLibrary.getUncached().readMember(testCppLibraryInternal, "getA2");
-            getA3Internal = InteropLibrary.getUncached().readMember(testCppLibraryInternal, "getA3");
             getA4Internal = InteropLibrary.getUncached().readMember(testCppLibraryInternal, "getA4");
         } catch (UnsupportedMessageException | UnknownIdentifierException e) {
             CompilerDirectives.transferToInterpreterAndInvalidate();

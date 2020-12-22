@@ -47,7 +47,6 @@ import com.oracle.truffle.llvm.runtime.except.LLVMLinkerException;
 import com.oracle.truffle.llvm.runtime.interop.access.LLVMInteropType.Clazz;
 import com.oracle.truffle.llvm.runtime.interop.access.LLVMInteropType.Method;
 import com.oracle.truffle.llvm.runtime.nodes.api.LLVMNode;
-import com.oracle.truffle.llvm.runtime.nodes.others.LLVMAccessSymbolNode;
 import com.oracle.truffle.llvm.runtime.nodes.others.LLVMDynAccessSymbolNode;
 import com.oracle.truffle.llvm.runtime.pointer.LLVMPointer;
 
@@ -74,9 +73,9 @@ public abstract class LLVMInteropNonvirtualCallNode extends LLVMNode {
                     @CachedContext(LLVMLanguage.class) LLVMContext context,
                     @CachedLibrary(limit = "5") InteropLibrary interop, @Cached(value = "arguments.length", allowUncached = true) int argCount,
                     @Cached(value = "getLLVMFunction(context, method, type)", allowUncached = true) LLVMFunction llvmFunction,
-                    @Cached(value = "create(llvmFunction)", allowUncached = true) LLVMAccessSymbolNode accessSymbolNode)
+                    @Cached LLVMDynAccessSymbolNode accessSymbolNode)
                     throws UnsupportedTypeException, ArityException, UnsupportedMessageException {
-        return interop.execute(accessSymbolNode.execute(), arguments);
+        return interop.execute(accessSymbolNode.execute(llvmFunction), arguments);
     }
 
     /**
