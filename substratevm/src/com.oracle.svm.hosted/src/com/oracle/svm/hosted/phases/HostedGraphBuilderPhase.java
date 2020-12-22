@@ -129,12 +129,7 @@ class HostedBytecodeParser extends SubstrateBytecodeParser {
 
     @Override
     public MethodCallTargetNode createMethodCallTarget(InvokeKind invokeKind, ResolvedJavaMethod targetMethod, ValueNode[] args, StampPair returnStamp, JavaTypeProfile profile) {
-        HostedBytecodeParser outermostScope = this;
-        while (outermostScope.getParent() != null) {
-            outermostScope = (HostedBytecodeParser) outermostScope.getParent();
-        }
-
-        return new SubstrateMethodCallTargetNode(invokeKind, targetMethod, args, returnStamp, outermostScope.getMethod().getProfilingInfo(), outermostScope.bci());
+        return new SubstrateMethodCallTargetNode(invokeKind, targetMethod, args, returnStamp, getMethod().getProfilingInfo(), bci());
     }
 
     private void insertProxies(FixedNode deoptTarget, FrameStateBuilder state) {
