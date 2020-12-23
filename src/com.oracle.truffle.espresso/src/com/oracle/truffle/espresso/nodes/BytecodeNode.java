@@ -1100,7 +1100,7 @@ public final class BytecodeNode extends EspressoMethodNode {
                         throw EspressoError.shouldNotReachHere(Bytecodes.nameOf(curOpcode));
                 }
                 // @formatter:on
-            } catch (EspressoException | StackOverflowError | OutOfMemoryError e) {
+            } catch (EspressoException | AbstractTruffleException | StackOverflowError | OutOfMemoryError e) {
                 if (instrument != null && e instanceof EspressoException) {
                     instrument.notifyExceptionAt(frame, e, statementIndex);
                 }
@@ -1141,10 +1141,14 @@ public final class BytecodeNode extends EspressoMethodNode {
                     }
                     throw wrappedStackOverflowError;
 
-                } else /* EspressoException or OutOfMemoryError */ {
+                } else /* EspressoException or AbstractTruffleException or OutOfMemoryError */ {
                     EspressoException wrappedException;
                     if (e instanceof EspressoException) {
                         wrappedException = (EspressoException) e;
+                    } else if (getContext().Polyglot && e instanceof AbstractTruffleException) {
+                        assert !(e instanceof EspressoException);
+                        wrappedException = EspressoException.wrap(
+                                StaticObject.createForeign(getMeta().com_oracle_truffle_espresso_polyglot_ForeignException, e, InteropLibrary.getUncached(e)));
                     } else {
                         assert e instanceof OutOfMemoryError;
                         CompilerDirectives.transferToInterpreter();
