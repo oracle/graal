@@ -271,16 +271,18 @@ public class JfrOptions {
 
     private static long parseTimeOption(String arg) {
         String adjusted = arg.toLowerCase();
-        if (adjusted.contains("s")) {
-            return Long.parseLong(adjusted.split("s")[0]);
-        } else if (adjusted.contains("m")) {
-            return Long.parseLong(adjusted.split("m")[0]) * 60;
-        } else if (adjusted.contains("h")) {
-            return Long.parseLong(adjusted.split("h")[0]) * 360;
-        } else if (adjusted.contains("d")) {
-            return Long.parseLong(adjusted.split("d")[0]) * 60 * 60 * 24;
+        if (adjusted.endsWith("ms")) {
+            return Long.parseLong(adjusted.split("ms")[0]);
+        } else if (adjusted.endsWith("s")) {
+            return Long.parseLong(adjusted.split("s")[0]) * 1000;
+        } else if (adjusted.endsWith("m")) {
+            return Long.parseLong(adjusted.split("m")[0]) * 1000 * 60;
+        } else if (adjusted.endsWith("h")) {
+            return Long.parseLong(adjusted.split("h")[0]) * 1000 * 360;
+        } else if (adjusted.endsWith("d")) {
+            return Long.parseLong(adjusted.split("d")[0]) * 1000 * 60 * 60 * 24;
         } else {
-            throw new IllegalArgumentException("Invalid time specified for " + arg + " specify time lengths with s, m, h, or d");
+            throw new IllegalArgumentException("Invalid time specified for " + arg + " specify time lengths with ms, s, m, h, or d");
         }
     }
 

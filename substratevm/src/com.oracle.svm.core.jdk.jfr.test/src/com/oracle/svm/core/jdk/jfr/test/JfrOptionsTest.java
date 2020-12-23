@@ -79,9 +79,9 @@ public class JfrOptionsTest {
     @Test
     public void testTimeOptions() {
         JfrOptions.StartFlightRecordingOption.update(EconomicMap.create(),"delay=10s,maxage=1h,duration=2m");
-        Assert.assertEquals(10, JfrOptions.getRecordingDelay());
-        Assert.assertEquals(360, JfrOptions.getMaxAge());
-        Assert.assertEquals(120, JfrOptions.getDuration());
+        Assert.assertEquals(10000, JfrOptions.getRecordingDelay());
+        Assert.assertEquals(360000, JfrOptions.getMaxAge());
+        Assert.assertEquals(120000, JfrOptions.getDuration());
     }
 
     @Test
@@ -129,10 +129,10 @@ public class JfrOptionsTest {
         Assert.assertEquals(false, JfrOptions.getDumpOnExit());
         Assert.assertEquals("recording", JfrOptions.getRecordingName());
         Assert.assertEquals("/path/to/settings", JfrOptions.getRecordingSettingsFile());
-        Assert.assertEquals(10, JfrOptions.getRecordingDelay());
-        Assert.assertEquals(60, JfrOptions.getDuration());
+        Assert.assertEquals(10000, JfrOptions.getRecordingDelay());
+        Assert.assertEquals(60000, JfrOptions.getDuration());
         Assert.assertEquals(true, JfrOptions.isPersistedToDisk());
-        Assert.assertEquals(360, JfrOptions.getMaxAge());
+        Assert.assertEquals(360000, JfrOptions.getMaxAge());
         Assert.assertEquals(10*K, JfrOptions.getMaxRecordingSize());
         Assert.assertEquals(true, JfrOptions.trackPathToGcRoots());
     }
