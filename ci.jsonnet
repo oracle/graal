@@ -256,9 +256,9 @@ local graalvm_installables(ee) = {
   local dynamic_imports = if ee then '/vm-enterprise,/substratevm-enterprise' else '/vm,/substratevm',
   local repo_id = if ee then 'graal-us' else 'lafo',
   local base_cmd_line = ['mx', '--dynamicimports=' + dynamic_imports, '--native-images=espresso', '--exclude-components=nju,npi', '--disable-installables=ni,niee,nil,llp'],
+  local graal_repo = if ee then 'graal-enterprise' else 'graal',
   run+: [
-    clone_repo('graal'),
-    clone_repo('graal-enterprise'),
+    clone_repo(graal_repo),
     base_cmd_line + ['build'],
     base_cmd_line + ['--suite', 'sdk', 'maven-deploy', '--all-distribution-types', '--tag=installable', '--validate=none', repo_id],
   ],
