@@ -172,6 +172,18 @@ suite = {
             "checkstyle": "com.oracle.truffle.espresso",
         },
 
+        "com.oracle.truffle.espresso.libespresso": {
+            "subDir": "src",
+            "sourceDirs": ["src"],
+            "dependencies": [
+                 "sdk:GRAAL_SDK",
+                #"substratevm:SVM",
+                "sdk:LAUNCHER_COMMON",
+            ],
+            "javaCompliance": "1.8+",
+            "checkstyle": "com.oracle.truffle.espresso",
+        },
+
         "com.oracle.truffle.espresso.jdwp": {
             "subDir": "src",
             "sourceDirs": ["src"],
@@ -481,6 +493,22 @@ suite = {
             "allowsJavadocWarnings": True,
         },
 
+        "LIB_ESPRESSO": {
+            "subDir": "src",
+            "dependencies": [
+                "com.oracle.truffle.espresso.libespresso",
+            ],
+            "distDependencies": [
+                "sdk:GRAAL_SDK",
+                # "substratevm:SVM",
+                "sdk:LAUNCHER_COMMON",
+            ],
+            "license": "UPL",
+            "description": "provides native espresso entry points",
+            "allowsJavadocWarnings": True,
+            "maven": False,
+        },
+
         "ESPRESSO_PROCESSOR": {
             "subDir": "src",
             "dependencies": [
@@ -494,7 +522,7 @@ suite = {
 
         "ESPRESSO_SUPPORT": {
             "native": True,
-            "description": "Espresso support distribution for the GraalVM",
+            "description": "Espresso support distribution for the GraalVM (in espresso home)",
             "platformDependent": True,
             "layout": {
                 "./": [
@@ -504,6 +532,17 @@ suite = {
                 "lib/": [
                     "dependency:espresso:com.oracle.truffle.espresso.eden/<lib:eden>",
                     "dependency:espresso:com.oracle.truffle.espresso.native/<lib:nespresso>",
+                    "dependency:espresso:com.oracle.truffle.espresso.mokapot/<lib:jvm>",
+                ],
+            },
+        },
+
+        "ESPRESSO_JVM_SUPPORT": {
+            "native": True,
+            "description": "Espresso support distribution for the GraalVM (in JRE)",
+            "platformDependent": True,
+            "layout": {
+                "truffle/": [
                     "dependency:espresso:com.oracle.truffle.espresso.mokapot/<lib:jvm>",
                 ],
             },

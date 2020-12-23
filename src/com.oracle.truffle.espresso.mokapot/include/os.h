@@ -30,6 +30,12 @@
 #include <stddef.h>
 #include <stdint.h>
 
+#if !defined(_WIN32)
+#include "os_posix.h"
+#else
+#include "os_windows.h"
+#endif
+
 // Additional Java basic types
 
 typedef uint8_t  jubyte;
@@ -81,5 +87,10 @@ int os_get_sock_opt(int fd, int level, int optname,
 int os_set_sock_opt(int fd, int level, int optname,
                           const char* optval, socklen_t optlen);
 int os_get_host_name(char* name, int namelen);
+
+// dynamic library
+const char *os_current_library_path();
+OS_DL_HANDLE os_dl_open(const char * path);
+void *os_dl_sym(OS_DL_HANDLE handle, const char *sym);
 
 #endif // _OS_H

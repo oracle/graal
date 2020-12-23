@@ -138,6 +138,18 @@ mx_sdk_vm.register_graalvm_component(mx_sdk_vm.GraalVmLanguage(
             language='java',
         )
     ],
+    library_configs=[
+        mx_sdk_vm.LibraryConfig(
+            destination='lib/<lib:espresso>',
+            jar_distributions=['espresso:LIB_ESPRESSO'],
+            build_args=[
+                '--language:java',
+                '-H:-JNIExportSymbols',
+            ],
+            home_finder=True,
+        )
+    ],
+    installable_id='espresso',
 ))
 
 mx_sdk_vm.register_graalvm_component(mx_sdk_vm.GraalVmJreComponent(
@@ -147,18 +159,8 @@ mx_sdk_vm.register_graalvm_component(mx_sdk_vm.GraalVmJreComponent(
     license_files=[],
     third_party_license_files=[],
     dependencies=['Espresso'],
-    library_configs=[
-        mx_sdk_vm.LibraryConfig(
-            destination='truffle/<lib:jvm>',
-            jar_distributions=['espresso:ESPRESSO_LIBJVM'],
-            build_args=[
-                '--language:java',
-                '-H:-JNIExportSymbols',
-            ],
-            jvm_library=True,
-            home_finder=True,
-        )
-    ],
+    support_distributions=['espresso:ESPRESSO_JVM_SUPPORT'],
+    installable_id='espresso',
 ))
 
 

@@ -26,8 +26,6 @@ import static com.oracle.svm.core.c.function.CEntryPointOptions.Publish.SymbolOn
 import static com.oracle.truffle.espresso.libjvm.nativeapi.JNIVersion.JNI_VERSION_1_1;
 import static com.oracle.truffle.espresso.libjvm.nativeapi.JNIVersion.JNI_VERSION_1_2;
 
-import com.oracle.truffle.espresso.libjvm.nativeapi.JNIFunctionPointerTypes;
-import com.oracle.truffle.espresso.libjvm.nativeapi.JNIFunctionPointerTypes.GetEnvFunctionPointer;
 import org.graalvm.nativeimage.CurrentIsolate;
 import org.graalvm.nativeimage.UnmanagedMemory;
 import org.graalvm.nativeimage.c.function.CEntryPoint;
@@ -54,6 +52,7 @@ import com.oracle.truffle.espresso.libjvm.nativeapi.JNIErrors;
 import com.oracle.truffle.espresso.libjvm.nativeapi.JNIFunctionPointerTypes.AttachCurrentThreadFunctionPointer;
 import com.oracle.truffle.espresso.libjvm.nativeapi.JNIFunctionPointerTypes.DestroyJavaVMFunctionPointer;
 import com.oracle.truffle.espresso.libjvm.nativeapi.JNIFunctionPointerTypes.DetachCurrentThreadFunctionPointer;
+import com.oracle.truffle.espresso.libjvm.nativeapi.JNIFunctionPointerTypes.GetEnvFunctionPointer;
 import com.oracle.truffle.espresso.libjvm.nativeapi.JNIInvokeInterface;
 import com.oracle.truffle.espresso.libjvm.nativeapi.JNIJavaVM;
 import com.oracle.truffle.espresso.libjvm.nativeapi.JNIJavaVMAttachArgs;
@@ -85,7 +84,8 @@ public class JNIInvocationInterface {
         }
     }
 
-    public static final CEntryPointLiteral<CFunctionPointer> CREATE_JAVA_VM_SYMBOL = CEntryPointLiteral.create(JNIInvocationInterface.class, "JNI_CreateJavaVM", JNIJavaVMPointer.class, JNIEnvironmentPointer.class,
+    public static final CEntryPointLiteral<CFunctionPointer> CREATE_JAVA_VM_SYMBOL = CEntryPointLiteral.create(JNIInvocationInterface.class, "JNI_CreateJavaVM", JNIJavaVMPointer.class,
+                    JNIEnvironmentPointer.class,
                     JNIJavaVMInitArgs.class);
 
     @CEntryPoint(name = "JNI_CreateJavaVM")

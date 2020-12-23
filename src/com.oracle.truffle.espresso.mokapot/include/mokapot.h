@@ -55,6 +55,9 @@ typedef uint16_t jushort;
 typedef uint32_t juint;
 typedef uint64_t julong;
 
+#define MOKA_RISTRETTO ((void *)11)
+#define MOKA_AMERICANO ((void *)22)
+
 #define VM_METHOD_LIST(V) \
     V(JVM_Accept) \
     V(JVM_ActiveProcessorCount) \
@@ -847,5 +850,18 @@ struct MokapotEnv_ {
 
     #endif
 };
+
+// An always-growing, lock-free list of JavaVM*
+typedef struct VMList {
+    struct VMList* volatile next;
+    uint32_t capacity;
+    JavaVM* volatile vms[];
+} VMList;
+
+extern VMList* volatile vm_list_head;
+
+void add_java_vm(JavaVM* vm);
+jint remove_java_vm(JavaVM* vm);
+void gather_java_vms(JavaVM** buf, jsize buf_size, jsize* numVms);
 
 #endif // _MOKAPOT_H

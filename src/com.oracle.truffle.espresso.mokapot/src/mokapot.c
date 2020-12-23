@@ -20,6 +20,7 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
+#define _JNI_IMPLEMENTATION_
 #include "mokapot.h"
 #include "os.h"
 
@@ -28,8 +29,11 @@
 #include <stdio.h>
 #include <string.h>
 #include <threads.h>
+#include <stdatomic.h>
 
-thread_local MokapotEnv* tls_moka_env;
+#include "libespresso_dynamic.h"
+
+thread_local MokapotEnv* tls_moka_env = NULL;
 
 JNIEXPORT JavaVM* JNICALL getJavaVM(MokapotEnv* moka_env) {
   return (*moka_env)->vm;
@@ -59,6 +63,10 @@ JNIEXPORT MokapotEnv* JNICALL initializeMokapotContext(TruffleEnv *truffle_env, 
   *java_vm = java_vm_functions;
   functions->vm = java_vm;
   *moka_env = functions;
+
+  java_vm_functions->reserved0 = NULL;
+  java_vm_functions->reserved1 = MOKA_RISTRETTO;
+  java_vm_functions->reserved2 = NULL;
 
   #define INIT__(name) \
       functions->name = fetch_by_name(#name);
@@ -1421,9 +1429,159 @@ JNIEXPORT jboolean JNICALL JVM_IsUseContainerSupport(void) {
 
 // region Invocation API
 
-JNIEXPORT jint JNICALL JNI_GetCreatedJavaVMs(JavaVM **vm_buf, jsize buf_len, jsize *numVMs) {
+jboolean is_supported_jni_version(jint version) {
+    switch (version) {
+        case JNI_VERSION_1_2:
+        case JNI_VERSION_1_4:
+        case JNI_VERSION_1_6:
+        case JNI_VERSION_1_8:
+        case JNI_VERSION_9:
+        case JNI_VERSION_10: return JNI_TRUE;
+    }
+    return JNI_FALSE;
+}
+
+_JNI_IMPORT_OR_EXPORT_ jint JNICALL JNI_GetDefaultJavaVMInitArgs(void *args) {
+    JavaVMInitArgs *initArgs = args;
+    jint ret = JNI_ERR;
+    if (is_supported_jni_version(initArgs->version)) {
+        ret = JNI_OK;
+    }
+    // JNI specs we should update version to the supported version
+    // only update from 1.1 to 1.2 (like HotSpot) since we have to support both
+    // 1.8 and 10 and we don't know what is expected yet
+    if (initArgs->version == JNI_VERSION_1_1) {
+        initArgs->version = JNI_VERSION_1_2;
+    }
+    return ret;
+}
+
+static graal_create_isolate_fn_t create_isolate = NULL;
+static graal_attach_thread_fn_t attach_thread = NULL;
+static graal_detach_thread_fn_t detach_thread = NULL;
+static graal_tear_down_isolate_fn_t tear_down_isolate = NULL;
+
+jint ensure_libespresso_loaded() {
+    if (create_isolate == NULL ) {
+        const char *mokapot_path = os_current_library_path();
+        char* last_sep = strrchr(mokapot_path, OS_PATHSEP);
+        if (last_sep == NULL) {
+            return JNI_ERR;
+        }
+        unsigned long prefix_len = last_sep - mokapot_path + 1;
+        size_t lib_name_len = strlen(OS_LIB("espresso"));
+        if (prefix_len + lib_name_len + 1 > MAX_PATH) {
+            return JNI_ERR;
+        }
+        char espresso_path[MAX_PATH];
+        strncpy(espresso_path, mokapot_path, prefix_len);
+        strncpy(espresso_path + prefix_len, OS_LIB("espresso"), lib_name_len);
+
+        OS_DL_HANDLE libespresso = os_dl_open(espresso_path);
+
+        create_isolate = os_dl_sym(libespresso, "graal_create_isolate");
+        attach_thread = os_dl_sym(libespresso, "graal_attach_thread");
+        detach_thread = os_dl_sym(libespresso, "graal_detach_thread");
+        tear_down_isolate = os_dl_sym(libespresso, "graal_tear_down_isolate");
+    }
+    return JNI_OK;
+}
+
+_JNI_IMPORT_OR_EXPORT_ jint JNICALL JNI_CreateJavaVM(JavaVM **vm_ptr, void **penv, void *args) {
+
+//    JavaVMInitArgs *initArgs = args;
+//
+//    JavaVM * vm;
+//
+//    add_java_vm(vm);
+//    return JNI_OK;
+    return JNI_ERR;
+}
+
+_JNI_IMPORT_OR_EXPORT_ jint JNICALL JNI_GetCreatedJavaVMs(JavaVM **vm_buf, jsize buf_len, jsize *num_vms) {
     IMPLEMENTED(JNI_GetCreatedJavaVMs);
-    return (*getEnv())->JNI_GetCreatedJavaVMs(vm_buf, buf_len, numVMs);
+    MokapotEnv *moka_env = getEnv();
+    if (moka_env != NULL) {
+        jint ret = (*moka_env)->JNI_GetCreatedJavaVMs(vm_buf, buf_len, num_vms);
+        if (ret != JNI_OK) {
+            return ret;
+        }
+        if (*num_vms > buf_len) {
+            return JNI_ERR;
+        }
+        // filter out the "child" JavaVMs created from `JNI_CreateJavaVM`
+        for (jsize i = 0; i < *num_vms; ++i) {
+            JavaVM* vm = vm_buf[i];
+            if ((*vm)->reserved1 == MOKA_AMERICANO) {
+                for (jsize j = 0; j < *num_vms; ++j) {
+                    vm_buf[j] = vm_buf[j + 1];
+                }
+                *num_vms -= 1;
+            }
+        }
+    } else {
+        *num_vms = 0;
+    }
+    jsize other_num_vms = 0;
+    JavaVM **other_vm_buf = vm_buf + *num_vms;
+    gather_java_vms(other_vm_buf, buf_len - *num_vms, &other_num_vms);
+    *num_vms += other_num_vms;
+    return JNI_OK;
+}
+
+VMList* volatile vm_list_head = NULL;
+
+void add_java_vm(JavaVM* vm) {
+    VMList* volatile* next_ptr = &vm_list_head;
+    uint32_t capacity = 0;
+    for (;;) {
+        VMList* current = *next_ptr;
+        if (current == NULL) {
+            uint32_t new_capacity = capacity == 0 ? 8 : capacity * 2;
+            current = calloc(1, sizeof(VMList) + new_capacity * sizeof(VMList*));
+            current->capacity = new_capacity;
+            // assume NULL == 0
+            VMList** value = NULL;
+            if (atomic_compare_exchange_weak(next_ptr, value, current)) {
+                return;
+            }
+            free(current);
+        } else {
+            capacity = current->capacity;
+            for (int i = 0; i < capacity; ++i) {
+                JavaVM** value = NULL;
+                if (atomic_compare_exchange_weak(&current->vms[i], value, vm)) {
+                    return;
+                }
+            }
+            next_ptr = &current->next;
+        }
+    }
+}
+jint remove_java_vm(JavaVM* vm) {
+    VMList *volatile current = atomic_load(&vm_list_head);
+    while (current != NULL) {
+        for (int i = 0; i < current->capacity; ++i) {
+            current->vms[i] = NULL;
+            return JNI_OK;
+        }
+        current = current->next;
+    }
+    return JNI_ERR;
+}
+void gather_java_vms(JavaVM** buf, jsize buf_size, jsize* numVms) {
+    *numVms = 0;
+    VMList *volatile current = atomic_load(&vm_list_head);
+    while (current != NULL) {
+        for (int i = 0; i < current->capacity; ++i) {
+            if (*numVms >= buf_size) {
+                return;
+            }
+            *(buf++) = current->vms[i];
+            *numVms += 1;
+        }
+        current = current->next;
+    }
 }
 
 // endregion Invocation API
