@@ -257,7 +257,7 @@ local graalvm_installables(env) = {
     clone_repo('graal'),
     clone_repo('graal-enterprise'),
     ['mx', '--env', env, '--dynamicimports', '/vm-enterprise', 'build'],
-    ['mx', '--env', env, '--dynamicimports', '/vm-enterprise', '--suite', 'sdk', 'maven-deploy', '--all-distribution-types', '--tag=graalvm', 'graal-us'],
+    ['mx', '--env', env, '--dynamicimports', '/vm-enterprise', '--suite', 'sdk', 'maven-deploy', '--all-distribution-types', '--tag=installable', 'graal-us'],
   ],
 };
 
