@@ -274,10 +274,7 @@ public class ReflectionDataBuilder implements RuntimeReflectionSupport {
              * its class initializer is replaced with a synthesized 'throw new VerifyError()' (see
              * ClassInitializationFeature.buildRuntimeInitializationInfo()).
              */
-            // Checkstyle: stop
-            System.out.println("WARNING: Could not register reflection metadata for " + clazz.getTypeName() +
-                            ". Reason: " + e.getClass().getTypeName() + ": " + e.getMessage() + '.');
-            // Checkstyle: resume
+            reportLinkingError(clazz, e);
             return;
         }
 
@@ -317,12 +314,16 @@ public class ReflectionDataBuilder implements RuntimeReflectionSupport {
         try {
             return filterClasses(innerClassAccessor.apply(clazz), filter, access);
         } catch (TypeNotPresentException | LinkageError e) {
-            // Checkstyle: stop
-            System.out.println("WARNING: Could not register reflection metadata for " + clazz.getTypeName() +
-                            ". Reason: " + e.getClass().getTypeName() + ": " + e.getMessage() + '.');
-            // Checkstyle: resume
+            reportLinkingError(clazz, e);
             return EMPTY_CLASSES;
         }
+    }
+
+    private static void reportLinkingError(Class<?> clazz, Throwable e) {
+        // Checkstyle: stop
+        System.out.println("WARNING: Could not register reflection metadata for " + clazz.getTypeName() +
+                        ". Reason: " + e.getClass().getTypeName() + ": " + e.getMessage() + '.');
+        // Checkstyle: resume
     }
 
     protected void afterAnalysis() {
