@@ -57,6 +57,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.Objects;
 import java.util.ServiceLoader;
+import java.util.concurrent.atomic.AtomicBoolean;
 
 import org.graalvm.options.OptionDescriptor;
 import org.graalvm.options.OptionDescriptors;
@@ -1314,6 +1315,32 @@ public abstract class TruffleInstrument {
             }
         }
 
+        /**
+         * Returns heap memory size retained by a polyglot context.
+         * 
+         * @param truffleContext specifies the polyglot context for which retained size is
+         *            calculated.
+         * @param stopAtBytes when the calculated size exceeds stopAtBytes, calculation is stopped
+         *            and only size calculated up to that point is returned, i.e., if the retained
+         *            size is greater than stopAtBytes, a value greater than stopAtBytes will be
+         *            returned, not the total retained size which might be much greater.
+         * @param cancelled when cancelled returns true, calculation is cancelled and
+         *            {@link java.util.concurrent.CancellationException} is thrown. The message of
+         *            the exception specifies the number of bytes calculated up to that point.
+         * @return calculated heap memory size retained by the specified polyglot context, or a
+         *         value greater than stopAtBytes if the calculated size is greater than
+         *         stopAtBytes.
+         * 
+         * @throws UnsupportedOperationException in case heap size calculation is not supported on
+         *             current runtime.
+         * @throws java.util.concurrent.CancellationException in case the heap size calculation is
+         *             cancelled based on the cancelled parameter. The message of the exception
+         *             specifies the number of bytes calculated up to that point.
+         * @since 21.1
+         */
+        public long calculateContextHeapSize(TruffleContext truffleContext, long stopAtBytes, AtomicBoolean cancelled) {
+            return InstrumentAccessor.engineAccess().calculateContextHeapSize(InstrumentAccessor.langAccess().getPolyglotContext(truffleContext), stopAtBytes, cancelled);
+        }
     }
 
     /**

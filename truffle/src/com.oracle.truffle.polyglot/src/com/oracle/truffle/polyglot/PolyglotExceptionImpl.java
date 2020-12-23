@@ -455,7 +455,6 @@ final class PolyglotExceptionImpl extends AbstractExceptionImpl {
             if (!languageContext.isCreated()) {
                 return null;
             }
-
             return languageContext.getInternalFileSystemContext();
         }
     }

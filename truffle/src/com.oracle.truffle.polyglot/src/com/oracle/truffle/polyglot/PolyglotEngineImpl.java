@@ -916,8 +916,10 @@ final class PolyglotEngineImpl extends AbstractPolyglotImpl.AbstractEngineImpl i
             for (PolyglotLanguageContext lc : context.contexts) {
                 LanguageInfo language = lc.language.info;
                 if (lc.eventsEnabled && lc.env != null) {
+                    listener.onLanguageContextCreate(context.creatorTruffleContext, language);
                     listener.onLanguageContextCreated(context.creatorTruffleContext, language);
                     if (lc.isInitialized()) {
+                        listener.onLanguageContextInitialize(context.creatorTruffleContext, language);
                         listener.onLanguageContextInitialized(context.creatorTruffleContext, language);
                         if (lc.finalized) {
                             listener.onLanguageContextFinalized(context.creatorTruffleContext, language);
@@ -1144,7 +1146,7 @@ final class PolyglotEngineImpl extends AbstractPolyglotImpl.AbstractEngineImpl i
     }
 
     List<PolyglotContextImpl> collectAliveContexts() {
-        Thread.holdsLock(this.lock);
+        assert Thread.holdsLock(this.lock);
         List<PolyglotContextImpl> localContexts = new ArrayList<>(contexts.size());
         for (ContextWeakReference ref : contexts) {
             PolyglotContextImpl context = ref.get();
@@ -1191,7 +1193,10 @@ final class PolyglotEngineImpl extends AbstractPolyglotImpl.AbstractEngineImpl i
     public Set<Source> getCachedSources() {
         checkState();
         Set<Source> sources = new HashSet<>();
-        List<PolyglotContextImpl> activeContexts = collectAliveContexts();
+        List<PolyglotContextImpl> activeContexts;
+        synchronized (lock) {
+            activeContexts = collectAliveContexts();
+        }
         for (PolyglotContextImpl context : activeContexts) {
             for (PolyglotLanguageContext language : context.contexts) {
                 PolyglotLanguageInstance instance = language.getLanguageInstanceOrNull();
@@ -1679,6 +1684,9 @@ final class PolyglotEngineImpl extends AbstractPolyglotImpl.AbstractEngineImpl i
                     if (contextAddedToEngine) {
                         synchronized (this.lock) {
                             removeContext(context);
+                            if (boundEngine) {
+                                ensureClosed(false, false);
+                            }
                         }
                     }
                     throw t;
@@ -1924,7 +1932,7 @@ final class PolyglotEngineImpl extends AbstractPolyglotImpl.AbstractEngineImpl i
         }
         for (PolyglotContextImpl context : aliveContexts) {
             synchronized (context) {
-                if (context.closed || context.invalid) {
+                if (context.localsCleared) {
                     continue;
                 }
                 context.resizeContextLocals(newStableLocations);
@@ -1957,7 +1965,7 @@ final class PolyglotEngineImpl extends AbstractPolyglotImpl.AbstractEngineImpl i
         }
         for (PolyglotContextImpl context : aliveContexts) {
             synchronized (context) {
-                if (context.closed || context.invalid) {
+                if (context.localsCleared) {
                     continue;
                 }
                 context.resizeContextThreadLocals(newStableLocations);
