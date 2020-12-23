@@ -40,7 +40,7 @@ local graal_suite_root = root_ci.graal_suite_root;
       MX_PYTHON: 'python3',
     },
     packages+: {
-      'mx': '5.275.6',
+      'mx': 'cpu/graal-vm/20.3',
       '00:pip:logilab-common': '==1.4.4',
       'pip:pylint': '==1.9.3',
       'pip:ninja_syntax': '==1.7.2',

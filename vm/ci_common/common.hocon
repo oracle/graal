@@ -33,7 +33,7 @@ common_vm_windows: ${common_vm} ${windows} {
   }
 }
 
-common_vm_windows-jdk11: ${common_vm} ${windows} ${windows-devkit-jdk11} {
+common_vm_windows-jdk11: ${common_vm} ${windows} ${devkits.windows-jdk11} {
   downloads : {
     MAVEN_HOME: {name: maven, version: "3.3.9", platformspecific: false}
   }
@@ -157,7 +157,7 @@ vm_darwin: ${common_vm_darwin} {
   capabilities: [darwin_mojave, amd64, ram16gb]
 }
 
-vm_windows: ${common_vm_windows} {
+vm_windows: ${common_vm_windows} ${devkits.windows-openjdk8} {
   capabilities: [windows, amd64]
 }
 

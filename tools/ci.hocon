@@ -28,10 +28,7 @@ builds += [
     targets : [gate],
     name: "gate-tools-javadoc"
   },
-  ${windows-amd64} ${oraclejdk8}  ${toolsGateLite} {
-    packages : {
-      msvc : "==10.0"
-    },
+  ${windows-amd64} ${oraclejdk8} ${devkits.windows-oraclejdk8} ${toolsGateLite} {
     targets : [gate],
     name: "gate-tools-windows-8"
   },

@@ -50,7 +50,6 @@ import com.oracle.svm.core.c.libc.LibCBase;
 import com.oracle.svm.core.option.SubstrateOptionsParser;
 import com.oracle.svm.core.util.InterruptImageBuilding;
 import com.oracle.svm.core.util.UserError;
-import com.oracle.svm.core.util.VMError;
 import com.oracle.svm.hosted.c.util.FileUtils;
 
 import jdk.vm.ci.aarch64.AArch64;
@@ -175,16 +174,11 @@ public abstract class CCompilerInvoker {
 
         @Override
         protected void verify() {
-            if (JavaVersionUtil.JAVA_SPEC >= 11) {
-                if (compilerInfo.versionMajor < 19) {
-                    UserError.abort("Java %d native-image building on Windows requires Visual Studio 2015 version 14.0 or later (C/C++ Optimizing Compiler Version 19.* or later)",
-                                    JavaVersionUtil.JAVA_SPEC);
-                }
-            } else {
-                VMError.guarantee(JavaVersionUtil.JAVA_SPEC == 8, "Native-image building is only supported for Java 8 and Java 11 or later");
-                if (compilerInfo.versionMajor != 16 || compilerInfo.versionMinor0 != 0) {
-                    UserError.abort("Java 8 native-image building on Windows requires Microsoft Windows SDK 7.1");
-                }
+            // See details on _MSC_VER at https://en.wikipedia.org/wiki/Microsoft_Visual_C%2B%2B
+            // The constraint of `_MSC_VER >= 1912` reflects the version used for building OpenJDK8.
+            if (compilerInfo.versionMajor < 19 || compilerInfo.versionMinor0 < 12) {
+                UserError.abort("Java %d native-image building on Windows requires Visual Studio 2017 version 15.5 or later (C/C++ Optimizing Compiler Version 19.12 or later).%nCompiler info detected: %s",
+                                JavaVersionUtil.JAVA_SPEC, compilerInfo);
             }
             if (guessArchitecture(compilerInfo.targetArch) != AMD64.class) {
                 UserError.abort("Native-image building on Windows currently only supports target architecture: %s (%s unsupported)",
