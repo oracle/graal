@@ -315,14 +315,15 @@ class NativeImageVM(GraalVm):
                     mx.log(mx.current_mx_command())
 
                     if len(self.stages_till_now[:-1]) > 0:
-                        mx.log(mx.colorize('--------- To only prepare the benchmark add the following to the previous command: ', 'green'))
+                        mx.log(mx.colorize('--------- To only prepare the benchmark add the following to the end of the previous command: ', 'green'))
                         mx.log('-Dnative-image.benchmark.stages=' + ','.join(self.stages_till_now[:-1]))
 
-                    mx.log(mx.colorize('--------- To only run the failed stage add the following to the previous command: ', 'green'))
+                    mx.log(mx.colorize('--------- To only run the failed stage add the following to the end of the previous command: ', 'green'))
                     mx.log('-Dnative-image.benchmark.stages=' + self.current_stage)
 
-                    mx.log(mx.colorize('--------- Additional params that can be used for the benchmark are with -Dnative-image.benchmark.<param>: ', 'green'))
-                    mx.log(', '.join(self.config.params))
+                    mx.log(mx.colorize('--------- Additional arguments that can be used for debugging the benchmark go after the final --: ', 'green'))
+                    for param in self.config.params:
+                        mx.log('-Dnative-image.benchmark.' + param + '=')
 
                 self.separator_line()
                 if self.non_zero_is_fatal:
@@ -457,7 +458,6 @@ class NativeImageVM(GraalVm):
             if self.is_llvm:
                 base_image_build_args += ['-H:CompilerBackend=llvm', '-H:Features=org.graalvm.home.HomeFinderFeature', '-H:DeadlockWatchdogInterval=0']
             base_image_build_args += config.extra_image_build_arguments
-
             if not self.hotspot_pgo:
                 # Native Image profile collection
                 i = 0

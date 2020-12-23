@@ -351,7 +351,8 @@ _DACAPO_EXTRA_VM_ARGS = {
                     '-Dnative-image.benchmark.skip-agent-assertions=true',
                     '-Dnative-image.benchmark.extra-image-build-argument=--allow-incomplete-classpath',
                     '-Dnative-image.benchmark.extra-image-build-argument=--report-unsupported-elements-at-runtime',
-                    '-Dnative-image.benchmark.extra-image-build-argument=-H:-EnableLoggingFeature'
+                    '-Dnative-image.benchmark.extra-image-build-argument=-H:-EnableLoggingFeature',
+                    '-Dnative-image.benchmark.extra-image-build-argument=--initialize-at-run-time=org.apache.fop.render.rtf.rtflib.rtfdoc.RtfList'
                   ],
     'batik':      ['-Dnative-image.benchmark.extra-image-build-argument=--allow-incomplete-classpath']
 }
