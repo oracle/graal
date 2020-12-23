@@ -41,6 +41,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
+import java.util.function.Function;
 import java.util.function.Predicate;
 
 import org.graalvm.nativeimage.hosted.Feature.DuringAnalysisAccess;
@@ -259,8 +260,9 @@ public class ReflectionDataBuilder implements RuntimeReflectionSupport {
             clazz.getMethods();
             clazz.getDeclaredConstructors();
             clazz.getConstructors();
-            clazz.getDeclaredClasses();
-            clazz.getClasses();
+            // getClasses() and getDeclaredClasses() were taken out, because their failures do not
+            // necessarily mean that that other reflection data is invalid
+            // see GR-21543 for example with scala-dacapo factorie benchmark
         } catch (TypeNotPresentException | LinkageError e) {
             /*
              * If any of the methods or fields signatures reference missing types or types that have
@@ -268,14 +270,11 @@ public class ReflectionDataBuilder implements RuntimeReflectionSupport {
              * for this class.
              *
              * If the class fails verification then no reflection metadata can be registered.
-             * Howerver, the class is still registered for run time loading with Class.forName() and
+             * However, the class is still registered for run time loading with Class.forName() and
              * its class initializer is replaced with a synthesized 'throw new VerifyError()' (see
              * ClassInitializationFeature.buildRuntimeInitializationInfo()).
              */
-            // Checkstyle: stop
-            System.out.println("WARNING: Could not register reflection metadata for " + clazz.getTypeName() +
-                            ". Reason: " + e.getClass().getTypeName() + ": " + e.getMessage() + '.');
-            // Checkstyle: resume
+            reportLinkingError(clazz, e);
             return;
         }
 
@@ -297,12 +296,34 @@ public class ReflectionDataBuilder implements RuntimeReflectionSupport {
                             nullaryConstructor(accessors.getDeclaredConstructors(originalReflectionData), reflectionMethods),
                             filterFields(accessors.getDeclaredPublicFields(originalReflectionData), reflectionFields.keySet(), access.getMetaAccess()),
                             filterMethods(accessors.getDeclaredPublicMethods(originalReflectionData), reflectionMethods, access.getMetaAccess()),
-                            filterClasses(clazz.getDeclaredClasses(), reflectionClasses, access.getMetaAccess()),
-                            filterClasses(clazz.getClasses(), reflectionClasses, access.getMetaAccess()),
+                            catchLinkingErrors(clazz, reflectionClasses, access.getMetaAccess(), Class::getDeclaredClasses),
+                            catchLinkingErrors(clazz, reflectionClasses, access.getMetaAccess(), Class::getClasses),
                             enclosingMethodOrConstructor(clazz));
         }
-
         hub.setReflectionData(reflectionData);
+    }
+
+    /**
+     * Catches any linking or verification exceptions when accessing inner classes.
+     * 
+     * @param clazz class, whose reflection data is being processed
+     * @param innerClassAccessor method that extracts the inner classes
+     * @return filtered inner classes or empty array in case of a linking/verification error
+     */
+    private static Class<?>[] catchLinkingErrors(Class<?> clazz, Set<Class<?>> filter, AnalysisMetaAccess access, Function<Class<?>, Class<?>[]> innerClassAccessor) {
+        try {
+            return filterClasses(innerClassAccessor.apply(clazz), filter, access);
+        } catch (TypeNotPresentException | LinkageError e) {
+            reportLinkingError(clazz, e);
+            return EMPTY_CLASSES;
+        }
+    }
+
+    private static void reportLinkingError(Class<?> clazz, Throwable e) {
+        // Checkstyle: stop
+        System.out.println("WARNING: Could not register reflection metadata for " + clazz.getTypeName() +
+                        ". Reason: " + e.getClass().getTypeName() + ": " + e.getMessage() + '.');
+        // Checkstyle: resume
     }
 
     protected void afterAnalysis() {
