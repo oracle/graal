@@ -123,6 +123,7 @@ mx_sdk_vm.register_graalvm_component(mx_sdk_vm.GraalVmLanguage(
     suite=_suite,
     name='Espresso',
     short_name='java',
+    installable_id='espresso',
     license_files=[],
     third_party_license_files=[],
     dependencies=['Truffle', 'Truffle NFI'],
