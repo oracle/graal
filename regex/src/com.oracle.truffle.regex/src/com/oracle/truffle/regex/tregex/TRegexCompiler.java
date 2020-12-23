@@ -45,6 +45,7 @@ import java.util.logging.Level;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.regex.RegexExecNode;
 import com.oracle.truffle.regex.RegexLanguage;
+import com.oracle.truffle.regex.RegexObject;
 import com.oracle.truffle.regex.RegexSource;
 import com.oracle.truffle.regex.RegexSyntaxException;
 import com.oracle.truffle.regex.UnsupportedRegexException;
@@ -53,7 +54,6 @@ import com.oracle.truffle.regex.tregex.nodes.TRegexExecNode;
 import com.oracle.truffle.regex.tregex.nodes.TRegexExecNode.LazyCaptureGroupRegexSearchNode;
 import com.oracle.truffle.regex.tregex.nodes.dfa.TRegexDFAExecutorNode;
 import com.oracle.truffle.regex.tregex.nodes.nfa.TRegexBacktrackingNFAExecutorNode;
-import com.oracle.truffle.regex.tregex.parser.flavors.RegexFlavor;
 import com.oracle.truffle.regex.tregex.parser.flavors.RegexFlavorProcessor;
 import com.oracle.truffle.regex.tregex.util.DebugUtil;
 import com.oracle.truffle.regex.tregex.util.Loggers;
@@ -67,13 +67,13 @@ public final class TRegexCompiler {
      * @throws UnsupportedRegexException if the regular expression is not supported by the engine
      */
     @TruffleBoundary
-    public static RegexExecNode compile(RegexLanguage language, RegexSource source) throws RegexSyntaxException {
+    public static RegexObject compile(RegexLanguage language, RegexSource source) throws RegexSyntaxException {
         DebugUtil.Timer timer = shouldLogCompilationTime() ? new DebugUtil.Timer() : null;
         if (timer != null) {
             timer.start();
         }
         try {
-            RegexExecNode regex = doCompile(language, source);
+            RegexObject regex = doCompile(language, source);
             logCompilationTime(source, timer);
             Loggers.LOG_COMPILER_FALLBACK.finer(() -> "TRegex compiled: " + source);
             return regex;
@@ -85,18 +85,19 @@ public final class TRegexCompiler {
     }
 
     @TruffleBoundary
-    private static RegexExecNode doCompile(RegexLanguage language, RegexSource source) throws RegexSyntaxException {
-        RegexFlavor flavor = source.getOptions().getFlavor();
+    private static RegexObject doCompile(RegexLanguage language, RegexSource source) throws RegexSyntaxException {
         RegexSource ecmascriptSource = source;
-        if (flavor != null) {
-            /*
-             * We rewrite the pattern here, to avoid rewriting again when switching to other
-             * matching strategies via the other compile* methods below.
-             */
-            RegexFlavorProcessor flavorProcessor = flavor.forRegex(source);
+        RegexFlavorProcessor flavorProcessor = source.getOptions().getFlavor() == null ? null : source.getOptions().getFlavor().forRegex(source);
+        if (flavorProcessor != null) {
             ecmascriptSource = flavorProcessor.toECMAScriptRegex();
         }
-        return new TRegexCompilationRequest(language, ecmascriptSource).compile();
+        TRegexCompilationRequest compReq = new TRegexCompilationRequest(language, ecmascriptSource);
+        RegexExecNode execNode = compReq.compile();
+        if (flavorProcessor == null) {
+            return new RegexObject(execNode, source, compReq.getAst().getFlags(), compReq.getAst().getNumberOfCaptureGroups(), compReq.getAst().getNamedCaputureGroups());
+        } else {
+            return new RegexObject(execNode, source, flavorProcessor.getFlags(), flavorProcessor.getNumberOfCaptureGroups(), flavorProcessor.getNamedCaptureGroups());
+        }
     }
 
     @TruffleBoundary

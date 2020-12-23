@@ -170,28 +170,22 @@ public final class RegexLanguage extends TruffleLanguage<RegexLanguage.RegexCont
     }
 
     private Object createRegexObject(RegexSource source) {
-        RegexFlavor flavor = source.getOptions().getFlavor();
-        try {
+        if (source.getOptions().isValidate()) {
+            RegexFlavor flavor = source.getOptions().getFlavor();
             if (flavor != null) {
                 RegexFlavorProcessor flavorProcessor = flavor.forRegex(source);
                 flavorProcessor.validate();
-                if (!source.getOptions().isValidate()) {
-                    return new RegexObject(TRegexCompiler.compile(this, source), source, flavorProcessor.getFlags(), flavorProcessor.getNumberOfCaptureGroups(),
-                                    flavorProcessor.getNamedCaptureGroups());
-                }
             } else {
                 RegexValidator validator = new RegexValidator(source);
                 validator.validate();
-                if (!source.getOptions().isValidate()) {
-                    return new RegexObject(TRegexCompiler.compile(this, source), source, RegexFlags.parseFlags(source.getFlags()), validator.getNumberOfCaptureGroups(),
-                                    validator.getNamedCaptureGroups());
-                }
             }
+            return TruffleNull.INSTANCE;
+        }
+        try {
+            return TRegexCompiler.compile(this, source);
         } catch (UnsupportedRegexException e) {
             return TruffleNull.INSTANCE;
         }
-        // reached only if source.getOptions().isValidate()
-        return TruffleNull.INSTANCE;
     }
 
     @Override

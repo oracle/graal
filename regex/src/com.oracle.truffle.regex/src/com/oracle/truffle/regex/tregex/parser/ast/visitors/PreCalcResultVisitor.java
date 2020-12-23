@@ -107,10 +107,6 @@ public final class PreCalcResultVisitor extends DepthFirstTraversalRegexASTVisit
         return literal.materialize();
     }
 
-    public boolean hasMask() {
-        return mask != null;
-    }
-
     public AbstractString getMask() {
         return mask == null ? null : mask.materialize();
     }

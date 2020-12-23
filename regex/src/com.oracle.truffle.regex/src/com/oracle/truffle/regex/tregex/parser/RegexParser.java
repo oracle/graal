@@ -122,6 +122,7 @@ public final class RegexParser {
     @TruffleBoundary
     public RegexAST parse() throws RegexSyntaxException {
         ast.setRoot(parse(true));
+        ast.setNamedCaputureGroups(lexer.getNamedCaptureGroups());
         return ast;
     }
 
@@ -130,15 +131,9 @@ public final class RegexParser {
             UnrollQuantifiersVisitor.unrollQuantifiers(this, ast.getRoot());
         }
         CalcASTPropsVisitor.run(ast);
-        for (LookAroundAssertion lb : ast.getLookArounds()) {
-            if (lb.isLookBehindAssertion() && !lb.isLiteral()) {
-                properties.setNonLiteralLookBehindAssertions();
-                break;
-            }
-        }
         ast.createPrefix();
         InitIDVisitor.init(ast);
-        if (!properties.hasNonLiteralLookBehindAssertions() && !properties.hasBackReferences() && !properties.hasLargeCountedRepetitions()) {
+        if (!properties.hasNonLiteralLookBehindAssertions() && !ast.getRoot().hasBackReferences() && !properties.hasLargeCountedRepetitions()) {
             new MarkLookBehindEntriesVisitor(ast).run();
         }
         checkInnerLiteral();
@@ -151,7 +146,6 @@ public final class RegexParser {
         ArrayList<Term> terms = ast.getRoot().getFirstAlternative().getTerms();
         int literalStart = -1;
         int literalEnd = -1;
-        int maxPath = 0;
         for (int i = 0; i < terms.size(); i++) {
             Term t = terms.get(i);
             if (t.isCharacterClass() &&
@@ -165,8 +159,7 @@ public final class RegexParser {
             } else if (literalStart >= 0 || t.hasLoops() || t.hasBackReferences()) {
                 break;
             } else {
-                maxPath = t.getMaxPath();
-                if (maxPath > 4) {
+                if (t.getMaxPath() > 4) {
                     return;
                 }
             }
@@ -181,15 +174,6 @@ public final class RegexParser {
     }
 
     /* AST manipulation */
-
-    private void setComplexLookAround() {
-        if (curGroup.isInLookAheadAssertion()) {
-            properties.setComplexLookAheadAssertions();
-        }
-        if (curGroup.isInLookBehindAssertion()) {
-            properties.setComplexLookBehindAssertions();
-        }
-    }
 
     private void createGroup(Token token) {
         createGroup(token, true, false, true, null);
@@ -209,7 +193,6 @@ public final class RegexParser {
             parent.setGroup(group);
         }
         if (addToSeq) {
-            setComplexLookAround();
             addTerm(group);
         }
         ast.addSourceSection(group, token);
@@ -225,9 +208,6 @@ public final class RegexParser {
      * Adds a new {@link Sequence} to the current {@link Group}.
      */
     private void addSequence() {
-        if (!curGroup.isEmpty()) {
-            setComplexLookAround();
-        }
         curSequence = curGroup.addSequence(ast);
         curTerm = null;
     }
@@ -252,7 +232,6 @@ public final class RegexParser {
         if (parent.isLookAroundAssertion()) {
             curSequence = parent.getParent().asSequence();
             curTerm = (Term) parent;
-            optimizeLookAround();
         } else {
             curSequence = (Sequence) parent;
         }
@@ -260,6 +239,9 @@ public final class RegexParser {
     }
 
     private void optimizeLookAround() {
+        if (curTerm == null || !curTerm.isLookAroundAssertion()) {
+            return;
+        }
         LookAroundAssertion lookaround = (LookAroundAssertion) curTerm;
         Group group = lookaround.getGroup();
         if (!group.isCapturing()) {
@@ -305,7 +287,7 @@ public final class RegexParser {
          * expansion: {@code (?!x) -> (?:$|(?=[^x]))}. This simplifies things for the DFA generator.
          */
         if (lookaround.isNegated() && group.size() == 1 && group.getFirstAlternative().isSingleCharClass()) {
-            ast.invertNegativeLookAround(lookaround);
+            lookaround.setNegated(false);
             CharacterClass cc = group.getFirstAlternative().getFirstTerm().asCharacterClass();
             // we don't have to expand the inverse in unicode explode mode here, because the
             // character set is guaranteed to be in BMP range, and its inverse will match all
@@ -313,7 +295,6 @@ public final class RegexParser {
             assert !flags.isUnicode() || !source.getOptions().isUTF16ExplodeAstralSymbols() || cc.getCharSet().matchesNothing() || cc.getCharSet().getMax() <= 0xffff;
             assert !group.hasEnclosedCaptureGroups();
             cc.setCharSet(cc.getCharSet().createInverse(ast.getEncoding()));
-            ast.updatePropsCC(cc);
             curSequence.removeLastTerm();
             Group wrapGroup = ast.createGroup();
             Sequence positionAssertionSeq = wrapGroup.addSequence(ast);
@@ -443,10 +424,6 @@ public final class RegexParser {
                 completeRangesAlt.add(createCharClass(Constants.TRAIL_SURROGATES, token));
             }
         }
-
-        if (group.size() > 1) {
-            properties.setAlternations();
-        }
         assert !(group.size() == 1 && group.getFirstAlternative().getTerms().size() == 1);
         return group;
     }
@@ -490,7 +467,6 @@ public final class RegexParser {
         if (recurse < 0) {
             return;
         }
-        properties.setAlternations();
         if (copy) {
             // the outermost group is already generated by expandQuantifier if copy == false
             createGroup(null, true, false, false, null);
@@ -646,13 +622,17 @@ public final class RegexParser {
                 // However, in Ruby, they are valid, since the contents of capture groups
                 // are not cleared when re-entering a loop.
                 removeCurTerm();
+            } else if (token.kind != Token.Kind.quantifier) {
+                // We have to delay this optimization because it may remove look-around assertions
+                // entirely, which would lead to successive quantifiers being applied to the
+                // preceding term, e.g. /x(?=)*/ would be wrongfully transformed to /x*/.
+                optimizeLookAround();
             }
             switch (token.kind) {
                 case caret:
                     if (prevKind != Token.Kind.caret) {
                         if (flags.isMultiline()) {
                             substitute(token, globals.multiLineCaretSubstitution);
-                            properties.setAlternations();
                         } else {
                             PositionAssertion caret = ast.createPositionAssertion(PositionAssertion.Type.CARET);
                             ast.addSourceSection(caret, token);
@@ -664,7 +644,6 @@ public final class RegexParser {
                     if (prevKind != Token.Kind.dollar) {
                         if (flags.isMultiline()) {
                             substitute(token, globals.multiLineDollarSubsitution);
-                            properties.setAlternations();
                         } else {
                             PositionAssertion dollar = ast.createPositionAssertion(PositionAssertion.Type.DOLLAR);
                             ast.addSourceSection(dollar, token);
@@ -685,7 +664,6 @@ public final class RegexParser {
                     } else {
                         substitute(token, globals.wordBoundarySubstituion);
                     }
-                    properties.setAlternations();
                     break;
                 case nonWordBoundary:
                     if (prevKind == Token.Kind.nonWordBoundary) {
@@ -700,7 +678,6 @@ public final class RegexParser {
                     } else {
                         substitute(token, globals.nonWordBoundarySubstitution);
                     }
-                    properties.setAlternations();
                     break;
                 case backReference:
                     BackReference backReference = ast.createBackReference(((Token.BackReference) token).getGroupNr());
@@ -718,11 +695,9 @@ public final class RegexParser {
                 case alternation:
                     if (!tryMergeSingleCharClassAlternations()) {
                         addSequence();
-                        properties.setAlternations();
                     }
                     break;
                 case captureGroupBegin:
-                    properties.setCaptureGroups();
                     createCaptureGroup(token);
                     break;
                 case nonCaptureGroupBegin:
@@ -747,6 +722,7 @@ public final class RegexParser {
                     break;
             }
         }
+        optimizeLookAround();
         if (curGroup != root) {
             throw syntaxError(ErrorMessages.UNTERMINATED_GROUP);
         }
@@ -845,9 +821,7 @@ public final class RegexParser {
     private void removeCurTerm() {
         ast.getNodeCount().dec(countVisitor.count(curSequence.getLastTerm()));
         curSequence.removeLastTerm();
-        if (!curSequence.isEmpty()) {
-            curTerm = curSequence.getLastTerm();
-        }
+        curTerm = curSequence.isEmpty() ? null : curSequence.getLastTerm();
     }
 
     private void replaceCurTermWithDeadNode() {
@@ -861,9 +835,6 @@ public final class RegexParser {
             properties.setLargeCountedRepetitions();
         }
         properties.setQuantifiers();
-        if (quantifier.getMin() != quantifier.getMax()) {
-            properties.setAlternations();
-        }
     }
 
     /**
@@ -896,7 +867,6 @@ public final class RegexParser {
     private void mergeCharClasses(CharacterClass dst, CharacterClass src) {
         dst.setCharSet(dst.getCharSet().union(src.getCharSet()));
         dst.setWasSingleChar(false);
-        ast.updatePropsCC(dst);
         ast.addSourceSections(dst, ast.getSourceSections(src));
     }
 

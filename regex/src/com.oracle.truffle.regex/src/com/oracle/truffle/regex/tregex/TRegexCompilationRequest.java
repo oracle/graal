@@ -122,6 +122,10 @@ public final class TRegexCompilationRequest {
         return root;
     }
 
+    public RegexAST getAst() {
+        return ast;
+    }
+
     @TruffleBoundary
     RegexExecNode compile() {
         try {
@@ -245,7 +249,7 @@ public final class TRegexCompilationRequest {
         RegexProperties p = ast.getProperties();
         return ast.getNumberOfNodes() <= TRegexOptions.TRegexMaxParseTreeSizeForDFA &&
                         ast.getNumberOfCaptureGroups() <= TRegexOptions.TRegexMaxNumberOfCaptureGroupsForDFA &&
-                        !(p.hasBackReferences() ||
+                        !(ast.getRoot().hasBackReferences() ||
                                         p.hasLargeCountedRepetitions() ||
                                         p.hasNegativeLookAheadAssertions() ||
                                         p.hasNonLiteralLookBehindAssertions() ||
