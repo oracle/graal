@@ -253,13 +253,14 @@ local scala_dacapo_warmup_benchmark(env, guest_jvm_config='default', extra_args=
 
 # GraalVM Installables
 local graalvm_installables(ee) = {
-  local svm_suite = if ee then '/substratevm-enterprise' else '/substratevm',
-  local base_cmd_line = ['mx', '--dynamicimports=/vm-enterprise,' + svm_suite, '--native-images=espresso', '--exclude-components=nju,npi', '--disable-installables=ni,niee,nil,llp'],
+  local dynamic_imports = if ee then '/vm-enterprise,/substratevm-enterprise' else '/vm,/substratevm',
+  local repo_id = if ee then 'graal-us' else 'lafo',
+  local base_cmd_line = ['mx', '--dynamicimports=' + dynamic_imports, '--native-images=espresso', '--exclude-components=nju,npi', '--disable-installables=ni,niee,nil,llp'],
   run+: [
     clone_repo('graal'),
     clone_repo('graal-enterprise'),
     base_cmd_line + ['build'],
-    base_cmd_line + ['--suite', 'sdk', 'maven-deploy', '--all-distribution-types', '--tag=installable', '--validate=none', 'graal-us'],
+    base_cmd_line + ['--suite', 'sdk', 'maven-deploy', '--all-distribution-types', '--tag=installable', '--validate=none', repo_id],
   ],
 };
 
