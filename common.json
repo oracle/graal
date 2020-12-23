@@ -2,20 +2,20 @@
   "README": "This file contains definitions that are useful for the hocon and jsonnet CI files of multiple repositories.",
 
   "jdks": {
-    "openjdk8":           {"name": "openjdk",   "version": "8u282+03-jvmci-20.3-b07-dev", "platformspecific": true },
-    "oraclejdk8":         {"name": "oraclejdk", "version": "8u281+07-jvmci-20.3-b07-dev", "platformspecific": true },
-    "oraclejdk8Debug":    {"name": "oraclejdk", "version": "8u281+07-jvmci-20.3-b07-dev-fastdebug", "platformspecific": true },
+    "openjdk8":           {"name": "openjdk",   "version": "8u282+03-jvmci-20.3-b07", "platformspecific": true },
+    "oraclejdk8":         {"name": "oraclejdk", "version": "8u281+07-jvmci-20.3-b07", "platformspecific": true },
+    "oraclejdk8Debug":    {"name": "oraclejdk", "version": "8u281+07-jvmci-20.3-b07-fastdebug", "platformspecific": true },
 
     "openjdk11":          {"name": "openjdk",   "version": "11.0.3+7", "platformspecific": true },
     "oraclejdk11":        {"name": "oraclejdk", "version": "11.0.6+8", "platformspecific": true },
-    "labsjdk-ce-11":      {"name": "labsjdk",   "version": "ce-11.0.10+5-jvmci-20.3-b07-dev", "platformspecific": true },
-    "labsjdk-ee-11":      {"name": "labsjdk",   "version": "ee-11.0.10+7-jvmci-20.3-b07-dev", "platformspecific": true },
+    "labsjdk-ce-11":      {"name": "labsjdk",   "version": "ce-11.0.10+5-jvmci-20.3-b07", "platformspecific": true },
+    "labsjdk-ee-11":      {"name": "labsjdk",   "version": "ee-11.0.10+7-jvmci-20.3-b07", "platformspecific": true },
 
     "oraclejdk15":        {"name": "oraclejdk", "version": "15.0.1+6", "platformspecific": true },
-    "labsjdk-ce-15":      {"name": "labsjdk",   "version": "ce-15.0.1+9-jvmci-20.3-b07-dev", "platformspecific": true },
-    "labsjdk-ce-15Debug": {"name": "labsjdk",   "version": "ce-15.0.1+9-jvmci-20.3-b07-debug-dev", "platformspecific": true },
-    "labsjdk-ee-15":      {"name": "labsjdk",   "version": "ee-15.0.1+9-jvmci-20.3-b07-dev", "platformspecific": true },
-    "labsjdk-ee-15Debug": {"name": "labsjdk",   "version": "ee-15.0.1+9-jvmci-20.3-b07-debug-dev", "platformspecific": true }
+    "labsjdk-ce-15":      {"name": "labsjdk",   "version": "ce-15.0.1+9-jvmci-20.3-b07", "platformspecific": true },
+    "labsjdk-ce-15Debug": {"name": "labsjdk",   "version": "ce-15.0.1+9-jvmci-20.3-b07-debug", "platformspecific": true },
+    "labsjdk-ee-15":      {"name": "labsjdk",   "version": "ee-15.0.1+9-jvmci-20.3-b07", "platformspecific": true },
+    "labsjdk-ee-15Debug": {"name": "labsjdk",   "version": "ee-15.0.1+9-jvmci-20.3-b07-debug", "platformspecific": true }
   },
 
   "sulong": {
