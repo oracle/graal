@@ -79,6 +79,7 @@ public class JfrOptions {
     private static final String REPOSITORY = "repository";
     // Arguments from JfrDcmds.cpp
     private static final String DUMPONEXIT = "dumponexit";
+    private static final String FILENAME = "filename";
     private static final String NAME = "name";
     private static final String SETTINGS = "settings";
     private static final String DELAY = "delay";
@@ -179,7 +180,6 @@ public class JfrOptions {
         return true;
     }
 
-
     public static boolean parseStartFlightRecordingOption(String args) {
         if (args.equals("")) {
             // -XX:StartFlightRecording without any delimiter and values
@@ -236,6 +236,9 @@ public class JfrOptions {
                         break;
                     case DISK:
                         persistToDisk = Boolean.parseBoolean(val);
+                        break;
+                    case FILENAME:
+                        filename = val;
                         break;
                     case GCROOTS:
                         pathToGcRoots = Boolean.parseBoolean(val);
