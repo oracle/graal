@@ -394,4 +394,155 @@ public final class Interop {
     public static native Object getExceptionStackTrace(Object receiver) throws UnsupportedMessageException;
 
     // endregion Exception Messages
+
+    // region Array Messages
+
+    /**
+     * Returns <code>true</code> if the receiver may have array elements. Therefore, At least one of
+     * {@link #readArrayElement(Object, long)}, {@link #writeArrayElement(Object, long, Object)},
+     * {@link #removeArrayElement(Object, long)} must not throw {#link
+     * {@link UnsupportedMessageException}. For example, the contents of an array or list
+     * datastructure could be interpreted as array elements. Invoking this message does not cause
+     * any observable side-effects. Returns <code>false</code> by default.
+     *
+     * @see #getArraySize(Object)
+     * @since 19.0
+     */
+    public static native boolean hasArrayElements(Object receiver);
+
+    /**
+     * Reads the value of an array element by index. This method must have not observable
+     * side-effect.
+     *
+     * @throws UnsupportedMessageException when the receiver does not support reading at all. An
+     *             empty receiver with no readable array elements supports the read operation (even
+     *             though there is nothing to read), therefore it throws
+     *             {@link UnknownIdentifierException} for all arguments instead.
+     * @throws InvalidArrayIndexException if the given index is not
+     *             {@link #isArrayElementReadable(Object, long) readable}, e.g. when the index is
+     *             invalid or the index is out of bounds.
+     * @since 19.0
+     */
+    public static native Object readArrayElement(Object receiver, long index) throws UnsupportedMessageException, InvalidArrayIndexException;
+
+    /**
+     * Returns the array size of the receiver.
+     *
+     * @throws UnsupportedMessageException if and only if {@link #hasArrayElements(Object)} returns
+     *             <code>false</code>.
+     * @since 19.0
+     */
+    public static native long getArraySize(Object receiver) throws UnsupportedMessageException;
+
+    /**
+     * Returns <code>true</code> if a given array element is {@link #readArrayElement(Object, long)
+     * readable}. This method may only return <code>true</code> if {@link #hasArrayElements(Object)}
+     * returns <code>true</code> as well. Invoking this message does not cause any observable
+     * side-effects. Returns <code>false</code> by default.
+     *
+     * @see #readArrayElement(Object, long)
+     * @since 19.0
+     */
+    public static native boolean isArrayElementReadable(Object receiver, long index);
+
+    /**
+     * Writes the value of an array element by index. Writing an array element is allowed if is
+     * existing and {@link #isArrayElementModifiable(Object, long) modifiable}, or not existing and
+     * {@link #isArrayElementInsertable(Object, long) insertable}.
+     *
+     * This method must have not observable side-effects other than the changed array element.
+     *
+     * @throws UnsupportedMessageException when the receiver does not support writing at all, e.g.
+     *             when it is immutable.
+     * @throws InvalidArrayIndexException if the given index is not
+     *             {@link #isArrayElementInsertable(Object, long) insertable} nor
+     *             {@link #isArrayElementModifiable(Object, long) modifiable}, e.g. when the index
+     *             is invalid or the index is out of bounds and the array does not support growing.
+     * @throws UnsupportedTypeException if the provided value type is not allowed to be written.
+     * @since 19.0
+     */
+    public static native void writeArrayElement(Object receiver, long index, Object value) throws UnsupportedMessageException, UnsupportedTypeException, InvalidArrayIndexException;
+
+    /**
+     * Remove an array element from the receiver object. Removing member is allowed if the array
+     * element is {@link #isArrayElementRemovable(Object, long) removable}. This method may only
+     * return <code>true</code> if {@link #hasArrayElements(Object)} returns <code>true</code> as
+     * well and {@link #isArrayElementInsertable(Object, long)} returns <code>false</code>.
+     *
+     * This method does not have observable side-effects other than the removed array element and
+     * shift of remaining elements. If shifting is not supported then the array might allow only
+     * removal of last element.
+     *
+     * @throws UnsupportedMessageException when the receiver does not support removing at all, e.g.
+     *             when it is immutable.
+     * @throws InvalidArrayIndexException if the given index is not
+     *             {@link #isArrayElementRemovable(Object, long) removable}, e.g. when the index is
+     *             invalid, the index is out of bounds, or the array does not support shifting of
+     *             remaining elements.
+     * @see #isArrayElementRemovable(Object, long)
+     * @since 19.0
+     */
+    public static native void removeArrayElement(Object receiver, long index) throws UnsupportedMessageException, InvalidArrayIndexException;
+
+    /**
+     * Returns <code>true</code> if a given array element index is existing and
+     * {@link #writeArrayElement(Object, long, Object) writable}. This method may only return
+     * <code>true</code> if {@link #hasArrayElements(Object)} returns <code>true</code> as well and
+     * {@link #isArrayElementInsertable(Object, long)} returns <code>false</code>. Invoking this
+     * message does not cause any observable side-effects. Returns <code>false</code> by default.
+     *
+     * @see #writeArrayElement(Object, long, Object)
+     * @see #isArrayElementInsertable(Object, long)
+     * @since 19.0
+     */
+    public static native boolean isArrayElementModifiable(Object receiver, long index);
+
+    /**
+     * Returns <code>true</code> if a given array element index is not existing and
+     * {@link #writeArrayElement(Object, long, Object) insertable}. This method may only return
+     * <code>true</code> if {@link #hasArrayElements(Object)} returns <code>true</code> as well and
+     * {@link #isArrayElementExisting(Object, long)}} returns <code>false</code>. Invoking this
+     * message does not cause any observable side-effects. Returns <code>false</code> by default.
+     *
+     * @see #writeArrayElement(Object, long, Object)
+     * @see #isArrayElementModifiable(Object, long)
+     * @since 19.0
+     */
+    public static native boolean isArrayElementInsertable(Object receiver, long index);
+
+    /**
+     * Returns <code>true</code> if a given array element index is existing and
+     * {@link #removeArrayElement(Object, long) removable}. This method may only return
+     * <code>true</code> if {@link #hasArrayElements(Object)} returns <code>true</code> as well and
+     * {@link #isArrayElementInsertable(Object, long)}} returns <code>false</code>. Invoking this
+     * message does not cause any observable side-effects. Returns <code>false</code> by default.
+     *
+     * @see #removeArrayElement(Object, long)
+     * @since 19.0
+     */
+    public static native boolean isArrayElementRemovable(Object receiver, long index);
+
+    /**
+     * Returns true if the array element is {@link #isArrayElementModifiable(Object, long)
+     * modifiable} or {@link #isArrayElementInsertable(Object, long) insertable}.
+     *
+     * @since 19.0
+     */
+    public final boolean isArrayElementWritable(Object receiver, long index) {
+        return isArrayElementModifiable(receiver, index) || isArrayElementInsertable(receiver, index);
+    }
+
+    /**
+     * Returns true if the array element is existing. An array element is existing if it is,
+     * {@link #isArrayElementModifiable(Object, long) modifiable},
+     * {@link #isArrayElementReadable(Object, long) readable} or
+     * {@link #isArrayElementRemovable(Object, long) removable}.
+     *
+     * @since 19.0
+     */
+    public final boolean isArrayElementExisting(Object receiver, long index) {
+        return isArrayElementModifiable(receiver, index) || isArrayElementReadable(receiver, index) || isArrayElementRemovable(receiver, index);
+    }
+
+    // endregion Array Messages
 }
