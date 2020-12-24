@@ -425,8 +425,8 @@ public final class Target_com_oracle_truffle_espresso_polyglot_Interop {
             if (cause instanceof StaticObject) {
                 return (StaticObject) cause; // Already typed, do not re-type.
             }
-            // Wrap foreign object as ForeignException.
-            return StaticObject.createForeign(meta.com_oracle_truffle_espresso_polyglot_ForeignException, cause, InteropLibrary.getUncached(cause));
+            // The cause must be an exception, wrap it as ForeignException.
+            return StaticObject.createForeign(meta.com_oracle_truffle_espresso_polyglot_ForeignException, cause, UNCACHED);
         } catch (InteropException e) {
             throw throwInteropException(e, meta);
         }
@@ -458,8 +458,12 @@ public final class Target_com_oracle_truffle_espresso_polyglot_Interop {
         try {
             Object message = UNCACHED.getExceptionMessage(unwrap(receiver));
             assert UNCACHED.isString(message);
-            // TODO(peterssen): Maybe do not convert to String right away.
-            return meta.toGuestString(UNCACHED.asString(message));
+            if (message instanceof StaticObject) {
+                return (StaticObject) message;
+            }
+            // TODO(peterssen): Cannot wrap as String even if the foreign object is String-like.
+            // Executing String methods, that rely on it having a .value field is not supported yet in Espresso.
+            return StaticObject.createForeign(meta.java_lang_Object, message, UNCACHED);
         } catch (InteropException e) {
             throw throwInteropException(e, meta);
         }
@@ -535,10 +539,13 @@ public final class Target_com_oracle_truffle_espresso_polyglot_Interop {
     @Throws({UnsupportedMessageException.class, InvalidArrayIndexException.class})
     public static @Host(Object.class) StaticObject readArrayElement(@Host(Object.class) StaticObject receiver, long index, @InjectMeta Meta meta)  {
         try {
-            Object value = UNCACHED.readArrayElement(receiver, index);
+            Object value = UNCACHED.readArrayElement(unwrap(receiver), index);
             if (value instanceof StaticObject) {
                 return (StaticObject) value;
             }
+            // The foreign object *could* be wrapped into a more precise Java type, but inferring this Java type
+            // from the interop "kind" (string, primitive, exception, array...) is ambiguous and inefficient.
+            // The caller is responsible to re-wrap or convert the result as needed.
             return StaticObject.createForeign(meta.java_lang_Object, value, UNCACHED);
         } catch (InteropException e) {
             throw throwInteropException(e, meta);
