@@ -245,4 +245,153 @@ public final class Interop {
     public native static double asDouble(Object receiver) throws UnsupportedMessageException;
 
     // endregion Number Messages
+
+    // region Exception Messages
+
+    /**
+     * Returns <code>true</code> if the receiver value represents a throwable exception/error}.
+     * Invoking this message does not cause any observable side-effects. Returns <code>false</code>
+     * by default.
+     * <p>
+     * Objects must only return <code>true</code> if they support {@link #throwException} as well.
+     * If this method is implemented then also {@link #throwException(Object)} must be implemented.
+     *
+     * The following simplified {@code TryCatchNode} shows how the exceptions should be handled by
+     * languages.
+     *
+     * @see #throwException(Object)
+     * @see com.oracle.truffle.api.exception.AbstractTruffleException
+     * @since 19.3
+     */
+    public static native boolean isException(Object receiver);
+
+    /**
+     * Throws the receiver object as an exception of the source language, as if it was thrown by the
+     * source language itself. Allows rethrowing exceptions caught by another language. If this
+     * method is implemented then also {@link #isException(Object)} must be implemented.
+     * <p>
+     * Any interop value can be an exception value and export {@link #throwException(Object)}. The
+     * exception thrown by this message must extend
+     * {@link com.oracle.truffle.api.exception.AbstractTruffleException}. In future versions this
+     * contract will be enforced using an assertion.
+     * <p>
+     * For a sample {@code TryCatchNode} implementation see {@link #isException(Object)
+     * isException}.
+     *
+     * @throws UnsupportedMessageException if and only if {@link #isException(Object)} returns
+     *             <code>false</code> for the same receiver.
+     * @see #isException(Object)
+     * @since 19.3
+     */
+    public static native RuntimeException throwException(Object receiver) throws UnsupportedMessageException;
+
+    /**
+     * Returns {@link ExceptionType exception type} of the receiver. Throws
+     * {@code UnsupportedMessageException} when the receiver is not an {@link #isException(Object)
+     * exception}.
+     * <p>
+     * For a sample {@code TryCatchNode} implementation see {@link #isException(Object)
+     * isException}.
+     *
+     * @see #isException(Object)
+     * @see ExceptionType
+     * @since 20.3
+     */
+    public static native ExceptionType getExceptionType(Object receiver) throws UnsupportedMessageException;
+
+    /**
+     * Returns {@code true} if receiver value represents an incomplete source exception. Throws
+     * {@code UnsupportedMessageException} when the receiver is not an {@link #isException(Object)
+     * exception} or the exception is not a {@link ExceptionType#PARSE_ERROR}.
+     *
+     * @see #isException(Object)
+     * @see #getExceptionType(Object)
+     * @since 20.3
+     */
+    public static native boolean isExceptionIncompleteSource(Object receiver) throws UnsupportedMessageException;
+
+    /**
+     * Returns exception exit status of the receiver. Throws {@code UnsupportedMessageException}
+     * when the receiver is not an {@link #isException(Object) exception} of the
+     * {@link ExceptionType#EXIT exit type}. A return value zero indicates that the execution of the
+     * application was successful, a non-zero value that it failed. The individual interpretation of
+     * non-zero values depends on the application.
+     *
+     * @see #isException(Object)
+     * @see #getExceptionType(Object)
+     * @see ExceptionType
+     * @since 20.3
+     */
+    public static native int getExceptionExitStatus(Object receiver) throws UnsupportedMessageException;
+
+    /**
+     * Returns {@code true} if the receiver is an exception with an attached internal cause.
+     * Invoking this message does not cause any observable side-effects. Returns {@code false} by
+     * default.
+     *
+     * @see #isException(Object)
+     * @see #getExceptionCause(Object)
+     * @since 20.3
+     */
+    public static native boolean hasExceptionCause(Object receiver);
+
+    /**
+     * Returns the internal cause of the receiver. Throws {@code UnsupportedMessageException} when
+     * the receiver is not an {@link #isException(Object) exception} or has no internal cause. The
+     * return value of this message is guaranteed to return <code>true</code> for
+     * {@link #isException(Object)}.
+     *
+     *
+     * @see #isException(Object)
+     * @see #hasExceptionCause(Object)
+     * @since 20.3
+     */
+    public static native Object getExceptionCause(Object receiver) throws UnsupportedMessageException;
+    /**
+     * Returns {@code true} if the receiver is an exception that has an exception message. Invoking
+     * this message does not cause any observable side-effects. Returns {@code false} by default.
+     *
+     * @see #isException(Object)
+     * @see #getExceptionMessage(Object)
+     * @since 20.3
+     */
+    public static native boolean hasExceptionMessage(Object receiver);
+
+    /**
+     * Returns exception message of the receiver. Throws {@code UnsupportedMessageException} when
+     * the receiver is not an {@link #isException(Object) exception} or has no exception message.
+     * The return value of this message is guaranteed to return <code>true</code> for
+     * {@link #isString(Object)}.
+     *
+     * @see #isException(Object)
+     * @see #hasExceptionMessage(Object)
+     * @since 20.3
+     */
+    public static native Object getExceptionMessage(Object receiver) throws UnsupportedMessageException;
+
+    /**
+     * Returns {@code true} if the receiver is an exception and has a stack trace. Invoking this
+     * message does not cause any observable side-effects. Returns {@code false} by default.
+     *
+     * @see #isException(Object)
+     * @see #getExceptionStackTrace(Object)
+     * @since 20.3
+     */
+    public static native boolean hasExceptionStackTrace(Object receiver);
+    /**
+     * Returns the exception stack trace of the receiver that is of type exception. Returns an
+     * {@link #hasArrayElements(Object) array} of objects with potentially
+     * {@link #hasExecutableName(Object) executable name}, {@link #hasDeclaringMetaObject(Object)
+     * declaring meta object} and {@link #hasSourceLocation(Object) source location} of the caller.
+     * Throws {@code UnsupportedMessageException} when the receiver is not an
+     * {@link #isException(Object) exception} or has no stack trace. Invoking this message or
+     * accessing the stack trace elements array must not cause any observable side-effects.
+     *
+     * @see #isException(Object)
+     * @see #hasExceptionStackTrace(Object)
+     * @since 20.3
+     */
+    public static native Object getExceptionStackTrace(Object receiver) throws UnsupportedMessageException;
+
+    // endregion Exception Messages
 }
