@@ -117,7 +117,14 @@ public class JDKInitializationFeature implements Feature {
         RuntimeClassInitialization.initializeAtBuildTime("sun.security.x509", "Core JDK classes are initialized at build time");
         RuntimeClassInitialization.initializeAtBuildTime("sun.security.smartcardio", "Core JDK classes are initialized at build time");
 
-        // contains a SecureRandom reference, therefore it can't be included in the image heap
+        // contain Random references, therefore can't be included in the image heap
         RuntimeClassInitialization.initializeAtRunTime(com.sun.jndi.dns.DnsClient.class);
+        RuntimeClassInitialization.initializeAtRunTime("sun.net.www.protocol.http.DigestAuthentication$Parameters");
+        RuntimeClassInitialization.initializeAtRunTime("sun.security.krb5.KrbServiceLocator");
+
+        // The random number provider classes should be reinitialized at runtime to reset their
+        // values properly. Otherwise the numbers generated will be fixed for each generated image.
+        RuntimeClassInitialization.initializeAtRunTime("java.lang.Math$RandomNumberGeneratorHolder");
+        RuntimeClassInitialization.initializeAtRunTime("java.lang.StrictMath$RandomNumberGeneratorHolder");
     }
 }
