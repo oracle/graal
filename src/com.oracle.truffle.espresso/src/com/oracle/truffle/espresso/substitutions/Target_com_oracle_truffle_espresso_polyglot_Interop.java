@@ -479,11 +479,11 @@ public final class Target_com_oracle_truffle_espresso_polyglot_Interop {
 
     /**
      * Returns the exception stack trace of the receiver that is of type exception. Returns an
-     * {@link #hasArrayElements(Object) array} of objects with potentially
-     * {@link #hasExecutableName(Object) executable name}, {@link #hasDeclaringMetaObject(Object)
-     * declaring meta object} and {@link #hasSourceLocation(Object) source location} of the caller.
+     * {@link InteropLibrary#hasArrayElements(Object) array} of objects with potentially
+     * {@link InteropLibrary#hasExecutableName(Object) executable name}, {@link InteropLibrary#hasDeclaringMetaObject(Object)
+     * declaring meta object} and {@link InteropLibrary#hasSourceLocation(Object) source location} of the caller.
      * Throws {@code UnsupportedMessageException} when the receiver is not an
-     * {@link #isException(Object) exception} or has no stack trace. Invoking this message or
+     * {@link InteropLibrary#isException(Object) exception} or has no stack trace. Invoking this message or
      * accessing the stack trace elements array must not cause any observable side-effects.
      *
      * @see InteropLibrary#getExceptionStackTrace(Object)
@@ -492,12 +492,16 @@ public final class Target_com_oracle_truffle_espresso_polyglot_Interop {
     @Substitution
     @Throws(UnsupportedMessageException.class)
     public static @Host(Object.class) StaticObject getExceptionStackTrace(@Host(Object.class) StaticObject receiver, @InjectMeta Meta meta) {
-        throw new UnsupportedOperationException("unimplemented");
-//        try {
-//            return UNCACHED.getExceptionStackTrace(unwrap(receiver));
-//        } catch (InteropException e) {
-//            throw throwInteropException(e, meta);
-//        }
+        try {
+            Object stackTrace = UNCACHED.getExceptionStackTrace(unwrap(receiver));
+            if (stackTrace instanceof StaticObject) {
+                return (StaticObject) stackTrace;
+            }
+            // Return foreign object as an opaque j.l.Object.
+            return StaticObject.createForeign(meta.java_lang_Object, stackTrace, UNCACHED);
+        } catch (InteropException e) {
+            throw throwInteropException(e, meta);
+        }
     }
 
     // endregion Exception Messages
