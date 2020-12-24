@@ -29,7 +29,7 @@ public final class Target_com_oracle_truffle_espresso_polyglot_Interop {
      * <code>false</code>. Most object oriented languages have one or many values representing null
      * values. Invoking this message does not cause any observable side-effects.
      *
-     * @see InteropLibrary#isNull(Object) 
+     * @see InteropLibrary#isNull(Object)
      */
     @Substitution
     public static boolean isNull(@Host(Object.class) StaticObject receiver) {
@@ -73,7 +73,7 @@ public final class Target_com_oracle_truffle_espresso_polyglot_Interop {
      * Returns <code>true</code> if the receiver represents a <code>string</code> value, else
      * <code>false</code>. Invoking this message does not cause any observable side-effects.
      *
-     * @see InteropLibrary#isString(Object)  
+     * @see InteropLibrary#isString(Object)
      */
     public static boolean isString(@Host(Object.class) StaticObject receiver) {
         return UNCACHED.isString(unwrap(receiver));
@@ -83,7 +83,7 @@ public final class Target_com_oracle_truffle_espresso_polyglot_Interop {
      * Returns the Java string value if the receiver represents a {@link #isString(StaticObject) string}
      * like value.
      *
-     * @see InteropLibrary#asString(Object) 
+     * @see InteropLibrary#asString(Object)
      */
     @Substitution
     @Throws(UnsupportedMessageException.class)
@@ -102,8 +102,8 @@ public final class Target_com_oracle_truffle_espresso_polyglot_Interop {
     /**
      * Returns <code>true</code> if the receiver represents a <code>number</code> value, else
      * <code>false</code>. Invoking this message does not cause any observable side-effects.
-     * 
-     * @see InteropLibrary#isNumber(Object) 
+     *
+     * @see InteropLibrary#isNumber(Object)
      */
     @Substitution
     public static boolean isNumber(@Host(Object.class) StaticObject receiver) {
@@ -163,7 +163,7 @@ public final class Target_com_oracle_truffle_espresso_polyglot_Interop {
      * in a Java float primitive without loss of precision, else <code>false</code>. Invoking this
      * message does not cause any observable side-effects.
      *
-     * @see InteropLibrary#fitsInFloat(Object) 
+     * @see InteropLibrary#fitsInFloat(Object)
      */
     @Substitution
     public static boolean fitsInFloat(@Host(Object.class) StaticObject receiver) {
@@ -201,7 +201,7 @@ public final class Target_com_oracle_truffle_espresso_polyglot_Interop {
     /**
      * Returns the receiver value as Java short primitive if the number fits without loss of
      * precision. Invoking this message does not cause any observable side-effects.
-     * 
+     *
      * @see InteropLibrary#asShort(Object)
      */
     @Substitution
@@ -289,7 +289,7 @@ public final class Target_com_oracle_truffle_espresso_polyglot_Interop {
      * <p>
      * Objects must only return <code>true</code> if they support {@link #throwException} as well.
      * If this method is implemented then also {@link #throwException(Object)} must be implemented.
-     *
+     * <p>
      * The following simplified {@code TryCatchNode} shows how the exceptions should be handled by
      * languages.
      *
@@ -310,8 +310,8 @@ public final class Target_com_oracle_truffle_espresso_polyglot_Interop {
      * exception thrown by this message must extend
      * {@link com.oracle.truffle.api.exception.AbstractTruffleException}. In future versions this
      * contract will be enforced using an assertion.
-     * 
-     * @see InteropLibrary#throwException(Object) 
+     *
+     * @see InteropLibrary#throwException(Object)
      * @since 19.3
      */
     @Substitution
@@ -431,6 +431,7 @@ public final class Target_com_oracle_truffle_espresso_polyglot_Interop {
             throw throwInteropException(e, meta);
         }
     }
+
     /**
      * Returns {@code true} if the receiver is an exception that has an exception message. Invoking
      * this message does not cause any observable side-effects. Returns {@code false} by default.
@@ -447,7 +448,7 @@ public final class Target_com_oracle_truffle_espresso_polyglot_Interop {
      * Returns exception message of the receiver. Throws {@code UnsupportedMessageException} when
      * the receiver is not an exception or has no exception message.
      * The return value of this message is guaranteed to return <code>true</code> for
-     * {@link #isString(Object)}.
+     * {@link InteropLibrary#isString(Object)}.
      *
      * @see InteropLibrary#getExceptionMessage(Object)
      * @since 20.3
@@ -537,7 +538,7 @@ public final class Target_com_oracle_truffle_espresso_polyglot_Interop {
      */
     @Substitution
     @Throws({UnsupportedMessageException.class, InvalidArrayIndexException.class})
-    public static @Host(Object.class) StaticObject readArrayElement(@Host(Object.class) StaticObject receiver, long index, @InjectMeta Meta meta)  {
+    public static @Host(Object.class) StaticObject readArrayElement(@Host(Object.class) StaticObject receiver, long index, @InjectMeta Meta meta) {
         try {
             Object value = UNCACHED.readArrayElement(unwrap(receiver), index);
             if (value instanceof StaticObject) {
@@ -586,7 +587,7 @@ public final class Target_com_oracle_truffle_espresso_polyglot_Interop {
      * Writes the value of an array element by index. Writing an array element is allowed if is
      * existing and {@link InteropLibrary#isArrayElementModifiable(Object, long) modifiable}, or not existing and
      * {@link InteropLibrary#isArrayElementInsertable(Object, long) insertable}.
-     *
+     * <p>
      * This method must have not observable side-effects other than the changed array element.
      *
      * @see InteropLibrary#writeArrayElement(Object, long, Object)
@@ -613,7 +614,7 @@ public final class Target_com_oracle_truffle_espresso_polyglot_Interop {
      * element is {@link InteropLibrary#isArrayElementRemovable(Object, long) removable}. This method may only
      * return <code>true</code> if {@link InteropLibrary#hasArrayElements(Object)} returns <code>true</code> as
      * well and {@link InteropLibrary#isArrayElementInsertable(Object, long)} returns <code>false</code>.
-     *
+     * <p>
      * This method does not have observable side-effects other than the removed array element and
      * shift of remaining elements. If shifting is not supported then the array might allow only
      * removal of last element.
