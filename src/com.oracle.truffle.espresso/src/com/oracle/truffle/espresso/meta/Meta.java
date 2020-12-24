@@ -559,12 +559,20 @@ public final class Meta implements ContextAccess {
             com_oracle_truffle_espresso_polyglot_UnsupportedMessageException = knownKlass(Type.com_oracle_truffle_espresso_polyglot_UnsupportedMessageException);
             com_oracle_truffle_espresso_polyglot_UnsupportedTypeException = knownKlass(Type.com_oracle_truffle_espresso_polyglot_UnsupportedTypeException);
             com_oracle_truffle_espresso_polyglot_InvalidArrayIndexException = knownKlass(Type.com_oracle_truffle_espresso_polyglot_InvalidArrayIndexException);
+            com_oracle_truffle_espresso_polyglot_ForeignException = knownKlass(Type.com_oracle_truffle_espresso_polyglot_ForeignException);
+            com_oracle_truffle_espresso_polyglot_ExceptionType = knownKlass(Type.com_oracle_truffle_espresso_polyglot_ExceptionType);
+
+            com_oracle_truffle_espresso_polyglot_ExceptionType_EXIT = com_oracle_truffle_espresso_polyglot_ExceptionType.lookupDeclaredField(Name.EXIT, Type.com_oracle_truffle_espresso_polyglot_ExceptionType);
+            com_oracle_truffle_espresso_polyglot_ExceptionType_INTERRUPT = com_oracle_truffle_espresso_polyglot_ExceptionType.lookupDeclaredField(Name.INTERRUPT, Type.com_oracle_truffle_espresso_polyglot_ExceptionType);
+            com_oracle_truffle_espresso_polyglot_ExceptionType_RUNTIME_ERROR = com_oracle_truffle_espresso_polyglot_ExceptionType.lookupDeclaredField(Name.RUNTIME_ERROR, Type.com_oracle_truffle_espresso_polyglot_ExceptionType);
+            com_oracle_truffle_espresso_polyglot_ExceptionType_PARSE_ERROR = com_oracle_truffle_espresso_polyglot_ExceptionType.lookupDeclaredField(Name.PARSE_ERROR, Type.com_oracle_truffle_espresso_polyglot_ExceptionType);
         } else {
             com_oracle_truffle_espresso_polyglot_ArityException = null;
             com_oracle_truffle_espresso_polyglot_UnknownIdentifierException = null;
             com_oracle_truffle_espresso_polyglot_UnsupportedMessageException = null;
             com_oracle_truffle_espresso_polyglot_UnsupportedTypeException = null;
             com_oracle_truffle_espresso_polyglot_InvalidArrayIndexException = null;
+            com_oracle_truffle_espresso_polyglot_ForeignException = null;
         }
     }
 
@@ -1029,6 +1037,12 @@ public final class Meta implements ContextAccess {
     @CompilationFinal public ObjectKlass com_oracle_truffle_espresso_polyglot_UnsupportedTypeException;
     @CompilationFinal public ObjectKlass com_oracle_truffle_espresso_polyglot_ArityException;
     @CompilationFinal public ObjectKlass com_oracle_truffle_espresso_polyglot_InvalidArrayIndexException;
+    @CompilationFinal public ObjectKlass com_oracle_truffle_espresso_polyglot_ForeignException;
+    @CompilationFinal public ObjectKlass com_oracle_truffle_espresso_polyglot_ExceptionType;
+    @CompilationFinal public Field com_oracle_truffle_espresso_polyglot_ExceptionType_EXIT;
+    @CompilationFinal public Field com_oracle_truffle_espresso_polyglot_ExceptionType_INTERRUPT;
+    @CompilationFinal public Field com_oracle_truffle_espresso_polyglot_ExceptionType_RUNTIME_ERROR;
+    @CompilationFinal public Field com_oracle_truffle_espresso_polyglot_ExceptionType_PARSE_ERROR;
 
     @CompilationFinal(dimensions = 1) //
     public final ObjectKlass[] ARRAY_SUPERINTERFACES;
