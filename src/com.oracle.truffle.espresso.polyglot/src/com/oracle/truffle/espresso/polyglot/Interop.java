@@ -528,7 +528,7 @@ public final class Interop {
      *
      * @since 19.0
      */
-    public final boolean isArrayElementWritable(Object receiver, long index) {
+    public static boolean isArrayElementWritable(Object receiver, long index) {
         return isArrayElementModifiable(receiver, index) || isArrayElementInsertable(receiver, index);
     }
 
@@ -540,7 +540,7 @@ public final class Interop {
      *
      * @since 19.0
      */
-    public final boolean isArrayElementExisting(Object receiver, long index) {
+    public static boolean isArrayElementExisting(Object receiver, long index) {
         return isArrayElementModifiable(receiver, index) || isArrayElementReadable(receiver, index) || isArrayElementRemovable(receiver, index);
     }
 
