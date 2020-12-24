@@ -506,6 +506,171 @@ public final class Target_com_oracle_truffle_espresso_polyglot_Interop {
 
     // endregion Exception Messages
 
+    // region Array Messages
+
+    /**
+     * Returns <code>true</code> if the receiver may have array elements. Therefore, At least one of
+     * {@link InteropLibrary#readArrayElement(Object, long)}, {@link InteropLibrary#writeArrayElement(Object, long, Object)},
+     * {@link InteropLibrary#removeArrayElement(Object, long)} must not throw {#link
+     * {@link UnsupportedMessageException}. For example, the contents of an array or list
+     * datastructure could be interpreted as array elements. Invoking this message does not cause
+     * any observable side-effects. Returns <code>false</code> by default.
+     *
+     * @see InteropLibrary#hasArrayElements(Object)
+     * @since 19.0
+     */
+    @Substitution
+    public static boolean hasArrayElements(@Host(Object.class) StaticObject receiver) {
+        return UNCACHED.hasArrayElements(unwrap(receiver));
+    }
+
+    /**
+     * Reads the value of an array element by index. This method must have not observable
+     * side-effect.
+     *
+     * @see InteropLibrary#readArrayElement(Object, long)
+     * @since 19.0
+     */
+    @Substitution
+    @Throws({UnsupportedMessageException.class, InvalidArrayIndexException.class})
+    public static @Host(Object.class) StaticObject readArrayElement(@Host(Object.class) StaticObject receiver, long index, @InjectMeta Meta meta)  {
+        try {
+            Object value = UNCACHED.readArrayElement(receiver, index);
+            if (value instanceof StaticObject) {
+                return (StaticObject) value;
+            }
+            return StaticObject.createForeign(meta.java_lang_Object, value, UNCACHED);
+        } catch (InteropException e) {
+            throw throwInteropException(e, meta);
+        }
+    }
+
+    /**
+     * Returns the array size of the receiver.
+     *
+     * @see InteropLibrary#getArraySize(Object)
+     * @since 19.0
+     */
+    @Substitution
+    @Throws(UnsupportedMessageException.class)
+    public static long getArraySize(@Host(Object.class) StaticObject receiver, @InjectMeta Meta meta) {
+        try {
+            return UNCACHED.getArraySize(unwrap(receiver));
+        } catch (InteropException e) {
+            throw throwInteropException(e, meta);
+        }
+    }
+
+    /**
+     * Returns <code>true</code> if a given array element is {@link InteropLibrary#readArrayElement(Object, long)
+     * readable}. This method may only return <code>true</code> if {@link InteropLibrary#hasArrayElements(Object)}
+     * returns <code>true</code> as well. Invoking this message does not cause any observable
+     * side-effects. Returns <code>false</code> by default.
+     *
+     * @see InteropLibrary#isArrayElementReadable(Object, long)
+     * @since 19.0
+     */
+    @Substitution
+    public static boolean isArrayElementReadable(@Host(Object.class) StaticObject receiver, long index) {
+        return UNCACHED.isArrayElementReadable(unwrap(receiver), index);
+    }
+
+    /**
+     * Writes the value of an array element by index. Writing an array element is allowed if is
+     * existing and {@link InteropLibrary#isArrayElementModifiable(Object, long) modifiable}, or not existing and
+     * {@link InteropLibrary#isArrayElementInsertable(Object, long) insertable}.
+     *
+     * This method must have not observable side-effects other than the changed array element.
+     *
+     * @see InteropLibrary#writeArrayElement(Object, long, Object)
+     * @since 19.0
+     */
+    @Substitution
+    @Throws({UnsupportedMessageException.class, UnsupportedTypeException.class, InvalidArrayIndexException.class})
+    public static void writeArrayElement(@Host(Object.class) StaticObject receiver, long index, @Host(Object.class) StaticObject value, @InjectMeta Meta meta) {
+        try {
+            if (receiver.isEspressoObject()) {
+                // Do not throw away the types if the receiver is an Espresso object.
+                UNCACHED.writeArrayElement(value, index, value);
+            } else {
+                // Write to foreign array, full unwrap.
+                UNCACHED.writeArrayElement(unwrap(value), index, unwrap(value));
+            }
+        } catch (InteropException e) {
+            throw throwInteropException(e, meta);
+        }
+    }
+
+    /**
+     * Remove an array element from the receiver object. Removing member is allowed if the array
+     * element is {@link InteropLibrary#isArrayElementRemovable(Object, long) removable}. This method may only
+     * return <code>true</code> if {@link InteropLibrary#hasArrayElements(Object)} returns <code>true</code> as
+     * well and {@link InteropLibrary#isArrayElementInsertable(Object, long)} returns <code>false</code>.
+     *
+     * This method does not have observable side-effects other than the removed array element and
+     * shift of remaining elements. If shifting is not supported then the array might allow only
+     * removal of last element.
+     *
+     * @see InteropLibrary#removeArrayElement(Object, long)
+     * @since 19.0
+     */
+    @Substitution
+    @Throws({UnsupportedMessageException.class, InvalidArrayIndexException.class})
+    public static void removeArrayElement(@Host(Object.class) StaticObject receiver, long index, @InjectMeta Meta meta) {
+        try {
+            UNCACHED.removeArrayElement(unwrap(receiver), index);
+        } catch (InteropException e) {
+            throw throwInteropException(e, meta);
+        }
+    }
+
+    /**
+     * Returns <code>true</code> if a given array element index is existing and
+     * {@link InteropLibrary#writeArrayElement(Object, long, Object) writable}. This method may only return
+     * <code>true</code> if {@link InteropLibrary#hasArrayElements(Object)} returns <code>true</code> as well and
+     * {@link InteropLibrary#isArrayElementInsertable(Object, long)} returns <code>false</code>. Invoking this
+     * message does not cause any observable side-effects. Returns <code>false</code> by default.
+     *
+     * @see InteropLibrary#isArrayElementModifiable(Object, long)
+     * @since 19.0
+     */
+    @Substitution
+    public static boolean isArrayElementModifiable(@Host(Object.class) StaticObject receiver, long index) {
+        return UNCACHED.isArrayElementModifiable(unwrap(receiver), index);
+    }
+
+    /**
+     * Returns <code>true</code> if a given array element index is not existing and
+     * {@link InteropLibrary#writeArrayElement(Object, long, Object) insertable}. This method may only return
+     * <code>true</code> if {@link InteropLibrary#hasArrayElements(Object)} returns <code>true</code> as well and
+     * {@link InteropLibrary#isArrayElementExisting(Object, long)}} returns <code>false</code>. Invoking this
+     * message does not cause any observable side-effects. Returns <code>false</code> by default.
+     *
+     * @see InteropLibrary#isArrayElementInsertable(Object, long)
+     * @since 19.0
+     */
+    @Substitution
+    public static boolean isArrayElementInsertable(@Host(Object.class) StaticObject receiver, long index) {
+        return UNCACHED.isArrayElementModifiable(unwrap(receiver), index);
+    }
+
+    /**
+     * Returns <code>true</code> if a given array element index is existing and
+     * {@link InteropLibrary#removeArrayElement(Object, long) removable}. This method may only return
+     * <code>true</code> if {@link InteropLibrary#hasArrayElements(Object)} returns <code>true</code> as well and
+     * {@link InteropLibrary#isArrayElementInsertable(Object, long)}} returns <code>false</code>. Invoking this
+     * message does not cause any observable side-effects. Returns <code>false</code> by default.
+     *
+     * @see InteropLibrary#isArrayElementRemovable(Object, long)
+     * @since 19.0
+     */
+    @Substitution
+    public static boolean isArrayElementRemovable(@Host(Object.class) StaticObject receiver, long index) {
+        return UNCACHED.isArrayElementRemovable(unwrap(receiver), index);
+    }
+
+    // endregion Array Messages
+
     private static Object unwrap(StaticObject receiver) {
         return receiver.isForeignObject() ? receiver.rawForeignObject() : receiver;
     }
