@@ -24,10 +24,12 @@
  */
 package com.oracle.svm.hosted.jdk;
 
+import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.nativeimage.hosted.Feature;
 import org.graalvm.nativeimage.hosted.RuntimeClassInitialization;
 
 import com.oracle.svm.core.annotate.AutomaticFeature;
+import org.graalvm.nativeimage.impl.RuntimeClassInitializationSupport;
 
 @AutomaticFeature
 public class JDKInitializationFeature implements Feature {
@@ -117,14 +119,14 @@ public class JDKInitializationFeature implements Feature {
         RuntimeClassInitialization.initializeAtBuildTime("sun.security.x509", "Core JDK classes are initialized at build time");
         RuntimeClassInitialization.initializeAtBuildTime("sun.security.smartcardio", "Core JDK classes are initialized at build time");
 
-        // contain Random references, therefore can't be included in the image heap
-        RuntimeClassInitialization.initializeAtRunTime(com.sun.jndi.dns.DnsClient.class);
-        RuntimeClassInitialization.initializeAtRunTime("sun.net.www.protocol.http.DigestAuthentication$Parameters");
-        RuntimeClassInitialization.initializeAtRunTime("sun.security.krb5.KrbServiceLocator");
+        RuntimeClassInitializationSupport classInitSupport = ImageSingletons.lookup(RuntimeClassInitializationSupport.class);
+        classInitSupport.rerunInitialization("com.sun.jndi.dns.DnsClient", "Contains Random references, therefore can't be included in the image heap.");
+        classInitSupport.rerunInitialization("sun.net.www.protocol.http.DigestAuthentication$Parameters", "Contains Random references, therefore can't be included in the image heap.");
+        classInitSupport.rerunInitialization("sun.security.krb5.KrbServiceLocator", "Contains Random references, therefore can't be included in the image heap.");
 
         // The random number provider classes should be reinitialized at runtime to reset their
         // values properly. Otherwise the numbers generated will be fixed for each generated image.
-        RuntimeClassInitialization.initializeAtRunTime("java.lang.Math$RandomNumberGeneratorHolder");
-        RuntimeClassInitialization.initializeAtRunTime("java.lang.StrictMath$RandomNumberGeneratorHolder");
+        classInitSupport.rerunInitialization("java.lang.Math$RandomNumberGeneratorHolder", "Must not be initialized at build time in the final image.");
+        classInitSupport.rerunInitialization("java.lang.StrictMath$RandomNumberGeneratorHolder", "Must not be initialized at build time in the final image.");
     }
 }
