@@ -329,7 +329,7 @@ public final class EspressoOptions {
     public static final OptionKey<Boolean> EnableTimers = new OptionKey<>(false);
 
     @Option(help = "Enable polyglot support in Espresso.", //
-            category = OptionCategory.EXPERT, stability = OptionStability.EXPERIMENTAL) //
+                    category = OptionCategory.EXPERT, stability = OptionStability.EXPERIMENTAL) //
     public static final OptionKey<Boolean> Polyglot = new OptionKey<>(true);
 
     public static final String INCEPTION_NAME = System.getProperty("espresso.inception.name", "#");

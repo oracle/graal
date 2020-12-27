@@ -1,14 +1,13 @@
 package com.oracle.truffle.espresso.polyglot;
 
 /**
- * An exception thrown if a {@link Object} does not support a interop message. If this
- * exception is thrown then the receiver does not support the message at all and it is not supported
- * for any arguments given to the message.
+ * An exception thrown if a {@link Object} does not support a interop message. If this exception is
+ * thrown then the receiver does not support the message at all and it is not supported for any
+ * arguments given to the message.
  *
  * @since 0.11
  */
 public final class UnsupportedMessageException extends InteropException {
-
 
     private static final long serialVersionUID = 2325609708563016963L;
 
@@ -31,7 +30,8 @@ public final class UnsupportedMessageException extends InteropException {
     }
 
     /**
-     * Creates an {@link UnsupportedMessageException} to indicate that an interop message is not supported.
+     * Creates an {@link UnsupportedMessageException} to indicate that an interop message is not
+     * supported.
      * <p>
      * This method is designed to be used in compiled code paths.
      *
@@ -42,8 +42,8 @@ public final class UnsupportedMessageException extends InteropException {
     }
 
     /**
-     * Creates an {@link UnsupportedMessageException} to indicate that an
-     * interop message is not supported.
+     * Creates an {@link UnsupportedMessageException} to indicate that an interop message is not
+     * supported.
      * <p>
      * In addition a cause may be provided. The cause should only be set if the guest language code
      * caused this problem. An example for this is a language specific proxy mechanism that invokes
@@ -62,4 +62,3 @@ public final class UnsupportedMessageException extends InteropException {
     }
 
 }
-

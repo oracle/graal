@@ -553,7 +553,7 @@ public final class Meta implements ContextAccess {
         boolean polyglot = getContext().getEnv().getOptions().get(EspressoOptions.Polyglot);
         if (polyglot) {
             EspressoError.guarantee(knownKlass(Type.com_oracle_truffle_espresso_polyglot_Polyglot) != null,
-                    "polyglot.jar (Polyglot API) is not accessible");
+                            "polyglot.jar (Polyglot API) is not accessible");
             com_oracle_truffle_espresso_polyglot_ArityException = knownKlass(Type.com_oracle_truffle_espresso_polyglot_ArityException);
             com_oracle_truffle_espresso_polyglot_UnknownIdentifierException = knownKlass(Type.com_oracle_truffle_espresso_polyglot_UnknownIdentifierException);
             com_oracle_truffle_espresso_polyglot_UnsupportedMessageException = knownKlass(Type.com_oracle_truffle_espresso_polyglot_UnsupportedMessageException);
@@ -562,10 +562,14 @@ public final class Meta implements ContextAccess {
             com_oracle_truffle_espresso_polyglot_ForeignException = knownKlass(Type.com_oracle_truffle_espresso_polyglot_ForeignException);
             com_oracle_truffle_espresso_polyglot_ExceptionType = knownKlass(Type.com_oracle_truffle_espresso_polyglot_ExceptionType);
 
-            com_oracle_truffle_espresso_polyglot_ExceptionType_EXIT = com_oracle_truffle_espresso_polyglot_ExceptionType.lookupDeclaredField(Name.EXIT, Type.com_oracle_truffle_espresso_polyglot_ExceptionType);
-            com_oracle_truffle_espresso_polyglot_ExceptionType_INTERRUPT = com_oracle_truffle_espresso_polyglot_ExceptionType.lookupDeclaredField(Name.INTERRUPT, Type.com_oracle_truffle_espresso_polyglot_ExceptionType);
-            com_oracle_truffle_espresso_polyglot_ExceptionType_RUNTIME_ERROR = com_oracle_truffle_espresso_polyglot_ExceptionType.lookupDeclaredField(Name.RUNTIME_ERROR, Type.com_oracle_truffle_espresso_polyglot_ExceptionType);
-            com_oracle_truffle_espresso_polyglot_ExceptionType_PARSE_ERROR = com_oracle_truffle_espresso_polyglot_ExceptionType.lookupDeclaredField(Name.PARSE_ERROR, Type.com_oracle_truffle_espresso_polyglot_ExceptionType);
+            com_oracle_truffle_espresso_polyglot_ExceptionType_EXIT = com_oracle_truffle_espresso_polyglot_ExceptionType.lookupDeclaredField(Name.EXIT,
+                            Type.com_oracle_truffle_espresso_polyglot_ExceptionType);
+            com_oracle_truffle_espresso_polyglot_ExceptionType_INTERRUPT = com_oracle_truffle_espresso_polyglot_ExceptionType.lookupDeclaredField(Name.INTERRUPT,
+                            Type.com_oracle_truffle_espresso_polyglot_ExceptionType);
+            com_oracle_truffle_espresso_polyglot_ExceptionType_RUNTIME_ERROR = com_oracle_truffle_espresso_polyglot_ExceptionType.lookupDeclaredField(Name.RUNTIME_ERROR,
+                            Type.com_oracle_truffle_espresso_polyglot_ExceptionType);
+            com_oracle_truffle_espresso_polyglot_ExceptionType_PARSE_ERROR = com_oracle_truffle_espresso_polyglot_ExceptionType.lookupDeclaredField(Name.PARSE_ERROR,
+                            Type.com_oracle_truffle_espresso_polyglot_ExceptionType);
         } else {
             com_oracle_truffle_espresso_polyglot_ArityException = null;
             com_oracle_truffle_espresso_polyglot_UnknownIdentifierException = null;

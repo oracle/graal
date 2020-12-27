@@ -52,7 +52,7 @@ public final class Interop {
      * boolean} like value.
      *
      * @throws UnsupportedMessageException if and only if {@link #isBoolean(Object)} returns
-     *                                     <code>false</code> for the same receiver.
+     *             <code>false</code> for the same receiver.
      * @see #isBoolean(Object)
      * @since 19.0
      */
@@ -76,7 +76,7 @@ public final class Interop {
      * like value.
      *
      * @throws UnsupportedMessageException if and only if {@link #isString(Object)} returns
-     *                                     <code>false</code> for the same receiver.
+     *             <code>false</code> for the same receiver.
      * @see #isString(Object)
      * @since 19.0
      */
@@ -177,7 +177,7 @@ public final class Interop {
      * precision. Invoking this message does not cause any observable side-effects.
      *
      * @throws UnsupportedMessageException if and only if the receiver is not a
-     *                                     {@link #isNumber(Object)} or it does not fit without less of precision.
+     *             {@link #isNumber(Object)} or it does not fit without less of precision.
      * @see #isNumber(Object)
      * @see #fitsInByte(Object)
      * @since 19.0
@@ -189,7 +189,7 @@ public final class Interop {
      * precision. Invoking this message does not cause any observable side-effects.
      *
      * @throws UnsupportedMessageException if and only if the receiver is not a
-     *                                     {@link #isNumber(Object)} or it does not fit without less of precision.
+     *             {@link #isNumber(Object)} or it does not fit without less of precision.
      * @see #isNumber(Object)
      * @see #fitsInShort(Object)
      * @since 19.0
@@ -201,7 +201,7 @@ public final class Interop {
      * precision. Invoking this message does not cause any observable side-effects.
      *
      * @throws UnsupportedMessageException if and only if the receiver is not a
-     *                                     {@link #isNumber(Object)} or it does not fit without less of precision.
+     *             {@link #isNumber(Object)} or it does not fit without less of precision.
      * @see #isNumber(Object)
      * @see #fitsInInt(Object)
      * @since 19.0
@@ -213,7 +213,7 @@ public final class Interop {
      * precision. Invoking this message does not cause any observable side-effects.
      *
      * @throws UnsupportedMessageException if and only if the receiver is not a
-     *                                     {@link #isNumber(Object)} or it does not fit without less of precision.
+     *             {@link #isNumber(Object)} or it does not fit without less of precision.
      * @see #isNumber(Object)
      * @see #fitsInLong(Object)
      * @since 19.0
@@ -225,7 +225,7 @@ public final class Interop {
      * precision. Invoking this message does not cause any observable side-effects.
      *
      * @throws UnsupportedMessageException if and only if the receiver is not a
-     *                                     {@link #isNumber(Object)} or it does not fit without less of precision.
+     *             {@link #isNumber(Object)} or it does not fit without less of precision.
      * @see #isNumber(Object)
      * @see #fitsInFloat(Object)
      * @since 19.0
@@ -237,7 +237,7 @@ public final class Interop {
      * precision. Invoking this message does not cause any observable side-effects.
      *
      * @throws UnsupportedMessageException if and only if the receiver is not a
-     *                                     {@link #isNumber(Object)} or it does not fit without less of precision.
+     *             {@link #isNumber(Object)} or it does not fit without less of precision.
      * @see #isNumber(Object)
      * @see #fitsInDouble(Object)
      * @since 19.0
@@ -340,6 +340,7 @@ public final class Interop {
      * @since 20.3
      */
     public static native Object getExceptionCause(Object receiver) throws UnsupportedMessageException;
+
     /**
      * Returns {@code true} if the receiver is an exception that has an exception message. Invoking
      * this message does not cause any observable side-effects. Returns {@code false} by default.
@@ -371,6 +372,7 @@ public final class Interop {
      * @since 20.3
      */
     public static native boolean hasExceptionStackTrace(Object receiver);
+
     /**
      * Returns the exception stack trace of the receiver that is of type exception. Returns an
      * {@link #hasArrayElements(Object) array} of objects with potentially

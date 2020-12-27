@@ -66,7 +66,7 @@ public final class UnknownIdentifierException extends InteropException {
      * source language as well.
      *
      * @param unknownIdentifier the identifier that could not be accessed
-     * @param cause             the guest language exception that caused the error.
+     * @param cause the guest language exception that caused the error.
      * @since 20.2
      */
     @SuppressWarnings("deprecation")

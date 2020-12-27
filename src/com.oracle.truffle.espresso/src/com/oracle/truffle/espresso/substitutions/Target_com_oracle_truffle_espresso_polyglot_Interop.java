@@ -81,8 +81,8 @@ public final class Target_com_oracle_truffle_espresso_polyglot_Interop {
     }
 
     /**
-     * Returns the Java string value if the receiver represents a {@link #isString(StaticObject) string}
-     * like value.
+     * Returns the Java string value if the receiver represents a {@link #isString(StaticObject)
+     * string} like value.
      *
      * @see InteropLibrary#asString(Object)
      */
@@ -289,7 +289,8 @@ public final class Target_com_oracle_truffle_espresso_polyglot_Interop {
      * by default.
      * <p>
      * Objects must only return <code>true</code> if they support {@link #throwException} as well.
-     * If this method is implemented then also {@link InteropLibrary#throwException(Object)} must be implemented.
+     * If this method is implemented then also {@link InteropLibrary#throwException(Object)} must be
+     * implemented.
      * <p>
      * The following simplified {@code TryCatchNode} shows how the exceptions should be handled by
      * languages.
@@ -305,12 +306,13 @@ public final class Target_com_oracle_truffle_espresso_polyglot_Interop {
     /**
      * Throws the receiver object as an exception of the source language, as if it was thrown by the
      * source language itself. Allows rethrowing exceptions caught by another language. If this
-     * method is implemented then also {@link InteropLibrary#isException(Object)} must be implemented.
+     * method is implemented then also {@link InteropLibrary#isException(Object)} must be
+     * implemented.
      * <p>
-     * Any interop value can be an exception value and export {@link InteropLibrary#throwException(Object)}. The
-     * exception thrown by this message must extend
-     * {@link com.oracle.truffle.api.exception.AbstractTruffleException}. In future versions this
-     * contract will be enforced using an assertion.
+     * Any interop value can be an exception value and export
+     * {@link InteropLibrary#throwException(Object)}. The exception thrown by this message must
+     * extend {@link com.oracle.truffle.api.exception.AbstractTruffleException}. In future versions
+     * this contract will be enforced using an assertion.
      *
      * @see InteropLibrary#throwException(Object)
      * @since 19.3
@@ -335,8 +337,8 @@ public final class Target_com_oracle_truffle_espresso_polyglot_Interop {
     @Substitution
     @Throws(UnsupportedMessageException.class)
     public static @Host(typeName = "Lcom/oracle/truffle/espresso/polyglot/ExceptionType;") StaticObject getExceptionType(
-            @Host(Object.class) StaticObject receiver,
-            @InjectMeta Meta meta) {
+                    @Host(Object.class) StaticObject receiver,
+                    @InjectMeta Meta meta) {
         try {
             ExceptionType exceptionType = UNCACHED.getExceptionType(unwrap(receiver));
             StaticObject staticStorage = meta.com_oracle_truffle_espresso_polyglot_ExceptionType.tryInitializeAndGetStatics();
@@ -358,8 +360,9 @@ public final class Target_com_oracle_truffle_espresso_polyglot_Interop {
 
     /**
      * Returns {@code true} if receiver value represents an incomplete source exception. Throws
-     * {@code UnsupportedMessageException} when the receiver is not an {@link InteropLibrary#isException(Object)
-     * exception} or the exception is not a {@link ExceptionType#PARSE_ERROR}.
+     * {@code UnsupportedMessageException} when the receiver is not an
+     * {@link InteropLibrary#isException(Object) exception} or the exception is not a
+     * {@link ExceptionType#PARSE_ERROR}.
      *
      * @see InteropLibrary#isExceptionIncompleteSource(Object)
      * @since 20.3
@@ -409,9 +412,9 @@ public final class Target_com_oracle_truffle_espresso_polyglot_Interop {
 
     /**
      * Returns the internal cause of the receiver. Throws {@code UnsupportedMessageException} when
-     * the receiver is not an {@link InteropLibrary#isException(Object) exception} or has no internal cause. The
-     * return value of this message is guaranteed to return <code>true</code> for
-     * {@link InteropLibrary#isException(Object)}.
+     * the receiver is not an {@link InteropLibrary#isException(Object) exception} or has no
+     * internal cause. The return value of this message is guaranteed to return <code>true</code>
+     * for {@link InteropLibrary#isException(Object)}.
      *
      * @see InteropLibrary#getExceptionCause(Object)
      * @since 20.3
@@ -447,8 +450,8 @@ public final class Target_com_oracle_truffle_espresso_polyglot_Interop {
 
     /**
      * Returns exception message of the receiver. Throws {@code UnsupportedMessageException} when
-     * the receiver is not an exception or has no exception message.
-     * The return value of this message is guaranteed to return <code>true</code> for
+     * the receiver is not an exception or has no exception message. The return value of this
+     * message is guaranteed to return <code>true</code> for
      * {@link InteropLibrary#isString(Object)}.
      *
      * @see InteropLibrary#getExceptionMessage(Object)
@@ -464,7 +467,8 @@ public final class Target_com_oracle_truffle_espresso_polyglot_Interop {
                 return (StaticObject) message;
             }
             // TODO(peterssen): Cannot wrap as String even if the foreign object is String-like.
-            // Executing String methods, that rely on it having a .value field is not supported yet in Espresso.
+            // Executing String methods, that rely on it having a .value field is not supported yet
+            // in Espresso.
             return StaticObject.createForeign(meta.java_lang_Object, message, UNCACHED);
         } catch (InteropException e) {
             throw throwInteropException(e, meta);
@@ -486,11 +490,13 @@ public final class Target_com_oracle_truffle_espresso_polyglot_Interop {
     /**
      * Returns the exception stack trace of the receiver that is of type exception. Returns an
      * {@link InteropLibrary#hasArrayElements(Object) array} of objects with potentially
-     * {@link InteropLibrary#hasExecutableName(Object) executable name}, {@link InteropLibrary#hasDeclaringMetaObject(Object)
-     * declaring meta object} and {@link InteropLibrary#hasSourceLocation(Object) source location} of the caller.
-     * Throws {@code UnsupportedMessageException} when the receiver is not an
-     * {@link InteropLibrary#isException(Object) exception} or has no stack trace. Invoking this message or
-     * accessing the stack trace elements array must not cause any observable side-effects.
+     * {@link InteropLibrary#hasExecutableName(Object) executable name},
+     * {@link InteropLibrary#hasDeclaringMetaObject(Object) declaring meta object} and
+     * {@link InteropLibrary#hasSourceLocation(Object) source location} of the caller. Throws
+     * {@code UnsupportedMessageException} when the receiver is not an
+     * {@link InteropLibrary#isException(Object) exception} or has no stack trace. Invoking this
+     * message or accessing the stack trace elements array must not cause any observable
+     * side-effects.
      *
      * @see InteropLibrary#getExceptionStackTrace(Object)
      * @since 20.3
@@ -516,7 +522,8 @@ public final class Target_com_oracle_truffle_espresso_polyglot_Interop {
 
     /**
      * Returns <code>true</code> if the receiver may have array elements. Therefore, At least one of
-     * {@link InteropLibrary#readArrayElement(Object, long)}, {@link InteropLibrary#writeArrayElement(Object, long, Object)},
+     * {@link InteropLibrary#readArrayElement(Object, long)},
+     * {@link InteropLibrary#writeArrayElement(Object, long, Object)},
      * {@link InteropLibrary#removeArrayElement(Object, long)} must not throw {#link
      * {@link UnsupportedMessageException}. For example, the contents of an array or list
      * datastructure could be interpreted as array elements. Invoking this message does not cause
@@ -545,8 +552,10 @@ public final class Target_com_oracle_truffle_espresso_polyglot_Interop {
             if (value instanceof StaticObject) {
                 return (StaticObject) value;
             }
-            // The foreign object *could* be wrapped into a more precise Java type, but inferring this Java type
-            // from the interop "kind" (string, primitive, exception, array...) is ambiguous and inefficient.
+            // The foreign object *could* be wrapped into a more precise Java type, but inferring
+            // this Java type
+            // from the interop "kind" (string, primitive, exception, array...) is ambiguous and
+            // inefficient.
             // The caller is responsible to re-wrap or convert the result as needed.
             return StaticObject.createForeign(meta.java_lang_Object, value, UNCACHED);
         } catch (InteropException e) {
@@ -571,10 +580,11 @@ public final class Target_com_oracle_truffle_espresso_polyglot_Interop {
     }
 
     /**
-     * Returns <code>true</code> if a given array element is {@link InteropLibrary#readArrayElement(Object, long)
-     * readable}. This method may only return <code>true</code> if {@link InteropLibrary#hasArrayElements(Object)}
-     * returns <code>true</code> as well. Invoking this message does not cause any observable
-     * side-effects. Returns <code>false</code> by default.
+     * Returns <code>true</code> if a given array element is
+     * {@link InteropLibrary#readArrayElement(Object, long) readable}. This method may only return
+     * <code>true</code> if {@link InteropLibrary#hasArrayElements(Object)} returns
+     * <code>true</code> as well. Invoking this message does not cause any observable side-effects.
+     * Returns <code>false</code> by default.
      *
      * @see InteropLibrary#isArrayElementReadable(Object, long)
      * @since 19.0
@@ -586,8 +596,8 @@ public final class Target_com_oracle_truffle_espresso_polyglot_Interop {
 
     /**
      * Writes the value of an array element by index. Writing an array element is allowed if is
-     * existing and {@link InteropLibrary#isArrayElementModifiable(Object, long) modifiable}, or not existing and
-     * {@link InteropLibrary#isArrayElementInsertable(Object, long) insertable}.
+     * existing and {@link InteropLibrary#isArrayElementModifiable(Object, long) modifiable}, or not
+     * existing and {@link InteropLibrary#isArrayElementInsertable(Object, long) insertable}.
      * <p>
      * This method must have not observable side-effects other than the changed array element.
      *
@@ -612,9 +622,10 @@ public final class Target_com_oracle_truffle_espresso_polyglot_Interop {
 
     /**
      * Remove an array element from the receiver object. Removing member is allowed if the array
-     * element is {@link InteropLibrary#isArrayElementRemovable(Object, long) removable}. This method may only
-     * return <code>true</code> if {@link InteropLibrary#hasArrayElements(Object)} returns <code>true</code> as
-     * well and {@link InteropLibrary#isArrayElementInsertable(Object, long)} returns <code>false</code>.
+     * element is {@link InteropLibrary#isArrayElementRemovable(Object, long) removable}. This
+     * method may only return <code>true</code> if {@link InteropLibrary#hasArrayElements(Object)}
+     * returns <code>true</code> as well and
+     * {@link InteropLibrary#isArrayElementInsertable(Object, long)} returns <code>false</code>.
      * <p>
      * This method does not have observable side-effects other than the removed array element and
      * shift of remaining elements. If shifting is not supported then the array might allow only
@@ -635,10 +646,11 @@ public final class Target_com_oracle_truffle_espresso_polyglot_Interop {
 
     /**
      * Returns <code>true</code> if a given array element index is existing and
-     * {@link InteropLibrary#writeArrayElement(Object, long, Object) writable}. This method may only return
-     * <code>true</code> if {@link InteropLibrary#hasArrayElements(Object)} returns <code>true</code> as well and
-     * {@link InteropLibrary#isArrayElementInsertable(Object, long)} returns <code>false</code>. Invoking this
-     * message does not cause any observable side-effects. Returns <code>false</code> by default.
+     * {@link InteropLibrary#writeArrayElement(Object, long, Object) writable}. This method may only
+     * return <code>true</code> if {@link InteropLibrary#hasArrayElements(Object)} returns
+     * <code>true</code> as well and {@link InteropLibrary#isArrayElementInsertable(Object, long)}
+     * returns <code>false</code>. Invoking this message does not cause any observable side-effects.
+     * Returns <code>false</code> by default.
      *
      * @see InteropLibrary#isArrayElementModifiable(Object, long)
      * @since 19.0
@@ -650,10 +662,11 @@ public final class Target_com_oracle_truffle_espresso_polyglot_Interop {
 
     /**
      * Returns <code>true</code> if a given array element index is not existing and
-     * {@link InteropLibrary#writeArrayElement(Object, long, Object) insertable}. This method may only return
-     * <code>true</code> if {@link InteropLibrary#hasArrayElements(Object)} returns <code>true</code> as well and
-     * {@link InteropLibrary#isArrayElementExisting(Object, long)}} returns <code>false</code>. Invoking this
-     * message does not cause any observable side-effects. Returns <code>false</code> by default.
+     * {@link InteropLibrary#writeArrayElement(Object, long, Object) insertable}. This method may
+     * only return <code>true</code> if {@link InteropLibrary#hasArrayElements(Object)} returns
+     * <code>true</code> as well and {@link InteropLibrary#isArrayElementExisting(Object, long)}}
+     * returns <code>false</code>. Invoking this message does not cause any observable side-effects.
+     * Returns <code>false</code> by default.
      *
      * @see InteropLibrary#isArrayElementInsertable(Object, long)
      * @since 19.0
@@ -665,10 +678,11 @@ public final class Target_com_oracle_truffle_espresso_polyglot_Interop {
 
     /**
      * Returns <code>true</code> if a given array element index is existing and
-     * {@link InteropLibrary#removeArrayElement(Object, long) removable}. This method may only return
-     * <code>true</code> if {@link InteropLibrary#hasArrayElements(Object)} returns <code>true</code> as well and
-     * {@link InteropLibrary#isArrayElementInsertable(Object, long)}} returns <code>false</code>. Invoking this
-     * message does not cause any observable side-effects. Returns <code>false</code> by default.
+     * {@link InteropLibrary#removeArrayElement(Object, long) removable}. This method may only
+     * return <code>true</code> if {@link InteropLibrary#hasArrayElements(Object)} returns
+     * <code>true</code> as well and {@link InteropLibrary#isArrayElementInsertable(Object, long)}}
+     * returns <code>false</code>. Invoking this message does not cause any observable side-effects.
+     * Returns <code>false</code> by default.
      *
      * @see InteropLibrary#isArrayElementRemovable(Object, long)
      * @since 19.0

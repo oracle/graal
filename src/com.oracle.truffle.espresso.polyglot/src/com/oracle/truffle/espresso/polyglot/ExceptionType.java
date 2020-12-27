@@ -1,6 +1,5 @@
 package com.oracle.truffle.espresso.polyglot;
 
-
 /**
  * Represents a type of a Truffle exception.
  *
@@ -33,14 +32,13 @@ public enum ExceptionType {
     RUNTIME_ERROR,
 
     /**
-     * Indicates a parser or syntax error. Syntax errors typically occur while
-     * parsing of guest language source code. Use
-     * {@link Interop#isExceptionIncompleteSource(Object) isExceptionIncompleteSource} to
-     * find out if the parse error happened due to incomplete source.
+     * Indicates a parser or syntax error. Syntax errors typically occur while parsing of guest
+     * language source code. Use {@link Interop#isExceptionIncompleteSource(Object)
+     * isExceptionIncompleteSource} to find out if the parse error happened due to incomplete
+     * source.
      *
      * @see Interop#isExceptionIncompleteSource(Object)
      * @since 20.3
      */
     PARSE_ERROR
 }
-

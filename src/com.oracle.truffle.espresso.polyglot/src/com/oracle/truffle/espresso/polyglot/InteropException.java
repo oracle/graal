@@ -1,8 +1,8 @@
 package com.oracle.truffle.espresso.polyglot;
 
 /**
- * Common super class for exceptions that can occur when sending interop
- * messages. This super class is used to catch any kind of these exceptions.
+ * Common super class for exceptions that can occur when sending interop messages. This super class
+ * is used to catch any kind of these exceptions.
  */
 public abstract class InteropException extends Exception {
 
@@ -41,4 +41,3 @@ public abstract class InteropException extends Exception {
 
     private static final long serialVersionUID = -5173354806966156285L;
 }
-

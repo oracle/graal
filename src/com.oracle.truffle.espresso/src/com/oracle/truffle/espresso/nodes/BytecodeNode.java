@@ -1150,7 +1150,7 @@ public final class BytecodeNode extends EspressoMethodNode {
                     } else if (getContext().Polyglot && e instanceof AbstractTruffleException) {
                         assert !(e instanceof EspressoException);
                         wrappedException = EspressoException.wrap(
-                                StaticObject.createForeign(getMeta().com_oracle_truffle_espresso_polyglot_ForeignException, e, InteropLibrary.getUncached(e)));
+                                        StaticObject.createForeign(getMeta().com_oracle_truffle_espresso_polyglot_ForeignException, e, InteropLibrary.getUncached(e)));
                     } else {
                         assert e instanceof OutOfMemoryError;
                         CompilerDirectives.transferToInterpreter();

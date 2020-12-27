@@ -24,8 +24,8 @@ public final class UnsupportedTypeException extends InteropException {
     }
 
     /**
-     * Returns the arguments of the foreign object access that were not supported by the
-     * foreign {@link Object}.
+     * Returns the arguments of the foreign object access that were not supported by the foreign
+     * {@link Object}.
      *
      * @return the unsupported arguments
      * @since 0.11
@@ -76,4 +76,3 @@ public final class UnsupportedTypeException extends InteropException {
     }
 
 }
-
