@@ -289,7 +289,7 @@ public final class Target_com_oracle_truffle_espresso_polyglot_Interop {
      * by default.
      * <p>
      * Objects must only return <code>true</code> if they support {@link #throwException} as well.
-     * If this method is implemented then also {@link #throwException(Object)} must be implemented.
+     * If this method is implemented then also {@link InteropLibrary#throwException(Object)} must be implemented.
      * <p>
      * The following simplified {@code TryCatchNode} shows how the exceptions should be handled by
      * languages.
@@ -305,9 +305,9 @@ public final class Target_com_oracle_truffle_espresso_polyglot_Interop {
     /**
      * Throws the receiver object as an exception of the source language, as if it was thrown by the
      * source language itself. Allows rethrowing exceptions caught by another language. If this
-     * method is implemented then also {@link #isException(Object)} must be implemented.
+     * method is implemented then also {@link InteropLibrary#isException(Object)} must be implemented.
      * <p>
-     * Any interop value can be an exception value and export {@link #throwException(Object)}. The
+     * Any interop value can be an exception value and export {@link InteropLibrary#throwException(Object)}. The
      * exception thrown by this message must extend
      * {@link com.oracle.truffle.api.exception.AbstractTruffleException}. In future versions this
      * contract will be enforced using an assertion.
@@ -358,7 +358,7 @@ public final class Target_com_oracle_truffle_espresso_polyglot_Interop {
 
     /**
      * Returns {@code true} if receiver value represents an incomplete source exception. Throws
-     * {@code UnsupportedMessageException} when the receiver is not an {@link #isException(Object)
+     * {@code UnsupportedMessageException} when the receiver is not an {@link InteropLibrary#isException(Object)
      * exception} or the exception is not a {@link ExceptionType#PARSE_ERROR}.
      *
      * @see InteropLibrary#isExceptionIncompleteSource(Object)
@@ -376,7 +376,7 @@ public final class Target_com_oracle_truffle_espresso_polyglot_Interop {
 
     /**
      * Returns exception exit status of the receiver. Throws {@code UnsupportedMessageException}
-     * when the receiver is not an {@link #isException(Object) exception} of the
+     * when the receiver is not an {@link InteropLibrary#isException(Object) exception} of the
      * {@link ExceptionType#EXIT exit type}. A return value zero indicates that the execution of the
      * application was successful, a non-zero value that it failed. The individual interpretation of
      * non-zero values depends on the application.
@@ -409,9 +409,9 @@ public final class Target_com_oracle_truffle_espresso_polyglot_Interop {
 
     /**
      * Returns the internal cause of the receiver. Throws {@code UnsupportedMessageException} when
-     * the receiver is not an {@link #isException(Object) exception} or has no internal cause. The
+     * the receiver is not an {@link InteropLibrary#isException(Object) exception} or has no internal cause. The
      * return value of this message is guaranteed to return <code>true</code> for
-     * {@link #isException(Object)}.
+     * {@link InteropLibrary#isException(Object)}.
      *
      * @see InteropLibrary#getExceptionCause(Object)
      * @since 20.3

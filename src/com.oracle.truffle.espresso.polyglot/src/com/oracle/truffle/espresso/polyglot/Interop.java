@@ -260,7 +260,6 @@ public final class Interop {
      * languages.
      *
      * @see #throwException(Object)
-     * @see com.oracle.truffle.api.exception.AbstractTruffleException
      * @since 19.3
      */
     public static native boolean isException(Object receiver);
@@ -270,13 +269,7 @@ public final class Interop {
      * source language itself. Allows rethrowing exceptions caught by another language. If this
      * method is implemented then also {@link #isException(Object)} must be implemented.
      * <p>
-     * Any interop value can be an exception value and export {@link #throwException(Object)}. The
-     * exception thrown by this message must extend
-     * {@link com.oracle.truffle.api.exception.AbstractTruffleException}. In future versions this
-     * contract will be enforced using an assertion.
-     * <p>
-     * For a sample {@code TryCatchNode} implementation see {@link #isException(Object)
-     * isException}.
+     * Any interop value can be an exception value and export {@link #throwException(Object)}.
      *
      * @throws UnsupportedMessageException if and only if {@link #isException(Object)} returns
      *             <code>false</code> for the same receiver.
