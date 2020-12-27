@@ -9,6 +9,9 @@ package com.oracle.truffle.espresso.polyglot;
  */
 public final class UnsupportedMessageException extends InteropException {
 
+
+    private static final long serialVersionUID = 2325609708563016963L;
+
     private UnsupportedMessageException(Throwable cause) {
         super(null, cause);
     }
