@@ -551,33 +551,7 @@ public final class Meta implements ContextAccess {
 
         // Interop support.
         boolean polyglot = getContext().getEnv().getOptions().get(EspressoOptions.Polyglot);
-        if (polyglot) {
-            EspressoError.guarantee(knownKlass(Type.com_oracle_truffle_espresso_polyglot_Polyglot) != null,
-                            "polyglot.jar (Polyglot API) is not accessible");
-            com_oracle_truffle_espresso_polyglot_ArityException = knownKlass(Type.com_oracle_truffle_espresso_polyglot_ArityException);
-            com_oracle_truffle_espresso_polyglot_UnknownIdentifierException = knownKlass(Type.com_oracle_truffle_espresso_polyglot_UnknownIdentifierException);
-            com_oracle_truffle_espresso_polyglot_UnsupportedMessageException = knownKlass(Type.com_oracle_truffle_espresso_polyglot_UnsupportedMessageException);
-            com_oracle_truffle_espresso_polyglot_UnsupportedTypeException = knownKlass(Type.com_oracle_truffle_espresso_polyglot_UnsupportedTypeException);
-            com_oracle_truffle_espresso_polyglot_InvalidArrayIndexException = knownKlass(Type.com_oracle_truffle_espresso_polyglot_InvalidArrayIndexException);
-            com_oracle_truffle_espresso_polyglot_ForeignException = knownKlass(Type.com_oracle_truffle_espresso_polyglot_ForeignException);
-            com_oracle_truffle_espresso_polyglot_ExceptionType = knownKlass(Type.com_oracle_truffle_espresso_polyglot_ExceptionType);
-
-            com_oracle_truffle_espresso_polyglot_ExceptionType_EXIT = com_oracle_truffle_espresso_polyglot_ExceptionType.lookupDeclaredField(Name.EXIT,
-                            Type.com_oracle_truffle_espresso_polyglot_ExceptionType);
-            com_oracle_truffle_espresso_polyglot_ExceptionType_INTERRUPT = com_oracle_truffle_espresso_polyglot_ExceptionType.lookupDeclaredField(Name.INTERRUPT,
-                            Type.com_oracle_truffle_espresso_polyglot_ExceptionType);
-            com_oracle_truffle_espresso_polyglot_ExceptionType_RUNTIME_ERROR = com_oracle_truffle_espresso_polyglot_ExceptionType.lookupDeclaredField(Name.RUNTIME_ERROR,
-                            Type.com_oracle_truffle_espresso_polyglot_ExceptionType);
-            com_oracle_truffle_espresso_polyglot_ExceptionType_PARSE_ERROR = com_oracle_truffle_espresso_polyglot_ExceptionType.lookupDeclaredField(Name.PARSE_ERROR,
-                            Type.com_oracle_truffle_espresso_polyglot_ExceptionType);
-        } else {
-            com_oracle_truffle_espresso_polyglot_ArityException = null;
-            com_oracle_truffle_espresso_polyglot_UnknownIdentifierException = null;
-            com_oracle_truffle_espresso_polyglot_UnsupportedMessageException = null;
-            com_oracle_truffle_espresso_polyglot_UnsupportedTypeException = null;
-            com_oracle_truffle_espresso_polyglot_InvalidArrayIndexException = null;
-            com_oracle_truffle_espresso_polyglot_ForeignException = null;
-        }
+        this.polyglot = polyglot ? new PolyglotSupport() : null;
     }
 
     public void postSystemInit() {
@@ -1036,17 +1010,44 @@ public final class Meta implements ContextAccess {
     @CompilationFinal public Method sun_management_ManagementFactory_createGarbageCollector;
     @CompilationFinal public ObjectKlass java_lang_management_ThreadInfo;
 
-    @CompilationFinal public ObjectKlass com_oracle_truffle_espresso_polyglot_UnknownIdentifierException;
-    @CompilationFinal public ObjectKlass com_oracle_truffle_espresso_polyglot_UnsupportedMessageException;
-    @CompilationFinal public ObjectKlass com_oracle_truffle_espresso_polyglot_UnsupportedTypeException;
-    @CompilationFinal public ObjectKlass com_oracle_truffle_espresso_polyglot_ArityException;
-    @CompilationFinal public ObjectKlass com_oracle_truffle_espresso_polyglot_InvalidArrayIndexException;
-    @CompilationFinal public ObjectKlass com_oracle_truffle_espresso_polyglot_ForeignException;
-    @CompilationFinal public ObjectKlass com_oracle_truffle_espresso_polyglot_ExceptionType;
-    @CompilationFinal public Field com_oracle_truffle_espresso_polyglot_ExceptionType_EXIT;
-    @CompilationFinal public Field com_oracle_truffle_espresso_polyglot_ExceptionType_INTERRUPT;
-    @CompilationFinal public Field com_oracle_truffle_espresso_polyglot_ExceptionType_RUNTIME_ERROR;
-    @CompilationFinal public Field com_oracle_truffle_espresso_polyglot_ExceptionType_PARSE_ERROR;
+    public class PolyglotSupport {
+        public final ObjectKlass UnknownIdentifierException;
+        public final ObjectKlass UnsupportedMessageException;
+        public final ObjectKlass UnsupportedTypeException;
+        public final ObjectKlass ArityException;
+        public final ObjectKlass InvalidArrayIndexException;
+        public final ObjectKlass ForeignException;
+        public final ObjectKlass ExceptionType;
+        public final Field ExceptionType_EXIT;
+        public final Field ExceptionType_INTERRUPT;
+        public final Field ExceptionType_RUNTIME_ERROR;
+        public final Field ExceptionType_PARSE_ERROR;
+
+        private PolyglotSupport() {
+            boolean polyglot = getContext().getEnv().getOptions().get(EspressoOptions.Polyglot);
+            EspressoError.guarantee(polyglot, "--java.Polyglot must be enabled");
+            EspressoError.guarantee(knownKlass(Type.com_oracle_truffle_espresso_polyglot_Polyglot) != null,
+                    "polyglot.jar (Polyglot API) is not accessible");
+            ArityException = knownKlass(Type.com_oracle_truffle_espresso_polyglot_ArityException);
+            UnknownIdentifierException = knownKlass(Type.com_oracle_truffle_espresso_polyglot_UnknownIdentifierException);
+            UnsupportedMessageException = knownKlass(Type.com_oracle_truffle_espresso_polyglot_UnsupportedMessageException);
+            UnsupportedTypeException = knownKlass(Type.com_oracle_truffle_espresso_polyglot_UnsupportedTypeException);
+            InvalidArrayIndexException = knownKlass(Type.com_oracle_truffle_espresso_polyglot_InvalidArrayIndexException);
+            ForeignException = knownKlass(Type.com_oracle_truffle_espresso_polyglot_ForeignException);
+            ExceptionType = knownKlass(Type.com_oracle_truffle_espresso_polyglot_ExceptionType);
+
+            ExceptionType_EXIT = ExceptionType.lookupDeclaredField(Name.EXIT,
+                    Type.com_oracle_truffle_espresso_polyglot_ExceptionType);
+            ExceptionType_INTERRUPT = ExceptionType.lookupDeclaredField(Name.INTERRUPT,
+                    Type.com_oracle_truffle_espresso_polyglot_ExceptionType);
+            ExceptionType_RUNTIME_ERROR = ExceptionType.lookupDeclaredField(Name.RUNTIME_ERROR,
+                    Type.com_oracle_truffle_espresso_polyglot_ExceptionType);
+            ExceptionType_PARSE_ERROR = ExceptionType.lookupDeclaredField(Name.PARSE_ERROR,
+                    Type.com_oracle_truffle_espresso_polyglot_ExceptionType);
+        }
+    }
+
+    public final PolyglotSupport polyglot;
 
     @CompilationFinal(dimensions = 1) //
     public final ObjectKlass[] ARRAY_SUPERINTERFACES;
