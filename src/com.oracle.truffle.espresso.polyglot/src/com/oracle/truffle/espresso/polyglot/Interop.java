@@ -540,4 +540,155 @@ public final class Interop {
     }
 
     // endregion Array Messages
+
+    // region MetaObject Messages
+
+    /**
+     * Returns <code>true</code> if the receiver value has a metaobject associated. The metaobject
+     * represents a description of the object, reveals its kind and its features. Some information
+     * that a metaobject might define includes the base object's type, interface, class, methods,
+     * attributes, etc. Should return <code>false</code> when no metaobject is known for this type.
+     * Returns <code>false</code> by default.
+     * <p>
+     * An example, for Java objects the returned metaobject is the {@link Object#getClass() class}
+     * instance. In JavaScript this could be the function or class that is associated with the
+     * object.
+     * <p>
+     * Metaobjects for primitive values or values of other languages may be provided using
+     * language views. While an object is
+     * associated with a metaobject in one language, the metaobject might be a different when viewed
+     * from another language.
+     * <p>
+     * This method must not cause any observable side-effects. If this method is implemented then
+     * also {@link #getMetaObject(Object)} must be implemented.
+     *
+     * @see #getMetaObject(Object)
+     * @see #isMetaObject(Object)
+     * @since 20.1
+     */
+    public static native boolean hasMetaObject(Object receiver);
+
+    /**
+     * Returns the metaobject that is associated with this value. The metaobject represents a
+     * description of the object, reveals its kind and its features. Some information that a
+     * metaobject might define includes the base object's type, interface, class, methods,
+     * attributes, etc. When no metaobject is known for this type. Throws
+     * {@link UnsupportedMessageException} by default.
+     * <p>
+     * The returned object must return <code>true</code> for {@link #isMetaObject(Object)} and
+     * provide implementations for {@link #getMetaSimpleName(Object)},
+     * {@link #getMetaQualifiedName(Object)}, and {@link #isMetaInstance(Object, Object)}. For all
+     * values with metaobjects it must at hold that
+     * <code>isMetaInstance(getMetaObject(value), value) ==
+     * true</code>.
+     * <p>
+     * This method must not cause any observable side-effects. If this method is implemented then
+     * also {@link #hasMetaObject(Object)} must be implemented.
+     *
+     * @throws UnsupportedMessageException if and only if {@link #hasMetaObject(Object)} returns
+     *             <code>false</code> for the same receiver.
+     *
+     * @see #hasMetaObject(Object)
+     * @since 20.1
+     */
+    public static native Object getMetaObject(Object receiver) throws UnsupportedMessageException;
+
+    /**
+     * Converts the receiver to a human readable {@link #isString(Object) string}. Each language may
+     * have special formating conventions - even primitive values may not follow the traditional
+     * Java rules. The format of the returned string is intended to be interpreted by humans not
+     * machines and should therefore not be relied upon by machines. By default the receiver class
+     * name and its {@link System#identityHashCode(Object) identity hash code} is used as string
+     * representation.
+     * <p>
+     * String representations for primitive values or values of other languages may be provided
+     * using language views. It is common
+     * that languages provide different string representations for primitive and foreign values. To
+     * convert the result value to a Java string use {@link #asString(Object)}.
+     *
+     * @param allowSideEffects whether side-effects are allowed in the production of the string.
+     * @since 20.1
+     */
+    public static native Object toDisplayString(Object receiver, boolean allowSideEffects);
+
+    /**
+     * Converts the receiver to a human readable {@link #isString(Object) string} of the language.
+     * Short-cut for <code>{@link #toDisplayString(Object) toDisplayString}(true)</code>.
+     *
+     * @see #toDisplayString(Object, boolean)
+     * @since 20.1
+     */
+    public static Object toDisplayString(Object receiver) {
+        return toDisplayString(receiver, true);
+    }
+
+    /**
+     * Returns <code>true</code> if the receiver value represents a metaobject. Metaobjects may be
+     * values that naturally occur in a language or they may be returned by
+     * {@link #getMetaObject(Object)}. A metaobject represents a description of the object, reveals
+     * its kind and its features. If a receiver is a metaobject it is often also
+     * {@link #isInstantiable(Object) instantiable}, but this is not a requirement.
+     * <p>
+     * <b>Sample interpretations:</b> In Java an instance of the type {@link Class} is a metaobject.
+     * In JavaScript any function instance is a metaobject. For example, the metaobject of a
+     * JavaScript class is the associated constructor function.
+     * <p>
+     * This method must not cause any observable side-effects. If this method is implemented then
+     * also {@link #getMetaQualifiedName(Object)}, {@link #getMetaSimpleName(Object)} and
+     * {@link #isMetaInstance(Object, Object)} must be implemented as well.
+     *
+     * @since 20.1
+     */
+    public static native boolean isMetaObject(Object receiver);
+
+    /**
+     * Returns the qualified name of a metaobject as {@link #isString(Object) string}.
+     * <p>
+     * <b>Sample interpretations:</b> The qualified name of a Java class includes the package name
+     * and its class name. JavaScript does not have the notion of qualified name and therefore
+     * returns the {@link #getMetaSimpleName(Object) simple name} instead.
+     * <p>
+     * This method must not cause any observable side-effects. If this method is implemented then
+     * also {@link #isMetaObject(Object)} must be implemented as well.
+     *
+     * @throws UnsupportedMessageException if and only if {@link #isMetaObject(Object)} returns
+     *             <code>false</code> for the same receiver.
+     *
+     * @since 20.1
+     */
+    public static native Object getMetaQualifiedName(Object metaObject) throws UnsupportedMessageException;
+
+    /**
+     * Returns the simple name of a metaobject as {@link #isString(Object) string}.
+     * <p>
+     * <b>Sample interpretations:</b> The simple name of a Java class is the class name.
+     * <p>
+     * This method must not cause any observable side-effects. If this method is implemented then
+     * also {@link #isMetaObject(Object)} must be implemented as well.
+     *
+     * @throws UnsupportedMessageException if and only if {@link #isMetaObject(Object)} returns
+     *             <code>false</code> for the same receiver.
+     *
+     * @since 20.1
+     */
+    public static native Object getMetaSimpleName(Object metaObject) throws UnsupportedMessageException;
+
+    /**
+     * Returns <code>true</code> if the given instance is of the provided receiver metaobject, else
+     * <code>false</code>.
+     * <p>
+     * <b>Sample interpretations:</b> A Java object is an instance of its returned
+     * {@link Object#getClass() class}.
+     * <p>
+     * This method must not cause any observable side-effects. If this method is implemented then
+     * also {@link #isMetaObject(Object)} must be implemented as well.
+     *
+     * @param instance the instance object to check.
+     * @throws UnsupportedMessageException if and only if {@link #isMetaObject(Object)} returns
+     *             <code>false</code> for the same receiver.
+     * @since 20.1
+     */
+    public static native boolean isMetaInstance(Object receiver, Object instance) throws UnsupportedMessageException;
+
+    // endregion MetaObject Messages
 }
