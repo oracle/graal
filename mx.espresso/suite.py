@@ -527,6 +527,7 @@ suite = {
                 "com.oracle.truffle.espresso.polyglot"
             ],
             "description": "Espresso polyglot API",
+            "license": "UPL",
         },
 
         "DACAPO_SCALA_WARMUP": {
