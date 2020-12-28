@@ -692,6 +692,198 @@ public final class Target_com_oracle_truffle_espresso_polyglot_Interop {
 
     // endregion Array Messages
 
+    // region MetaObject Messages
+
+    /**
+     * Returns <code>true</code> if the receiver value has a metaobject associated. The metaobject
+     * represents a description of the object, reveals its kind and its features. Some information
+     * that a metaobject might define includes the base object's type, interface, class, methods,
+     * attributes, etc. Should return <code>false</code> when no metaobject is known for this type.
+     * Returns <code>false</code> by default.
+     * <p>
+     * An example, for Java objects the returned metaobject is the {@link Object#getClass() class}
+     * instance. In JavaScript this could be the function or class that is associated with the
+     * object.
+     * <p>
+     * Metaobjects for primitive values or values of other languages may be provided using
+     * language views. While an object is
+     * associated with a metaobject in one language, the metaobject might be a different when viewed
+     * from another language.
+     * <p>
+     * This method must not cause any observable side-effects. If this method is implemented then
+     * also {@link InteropLibrary#getMetaObject(Object)} must be implemented.
+     *
+     * @see InteropLibrary#hasMetaObject(Object)
+     * @since 20.1
+     */
+    @Substitution
+    public static boolean hasMetaObject(@Host(Object.class) StaticObject receiver) {
+        return UNCACHED.hasMetaObject(unwrap(receiver));
+    }
+
+    /**
+     * Returns the metaobject that is associated with this value. The metaobject represents a
+     * description of the object, reveals its kind and its features. Some information that a
+     * metaobject might define includes the base object's type, interface, class, methods,
+     * attributes, etc. When no metaobject is known for this type. Throws
+     * {@link UnsupportedMessageException} by default.
+     * <p>
+     * The returned object must return <code>true</code> for {@link InteropLibrary#isMetaObject(Object)} and
+     * provide implementations for {@link InteropLibrary#getMetaSimpleName(Object)},
+     * {@link InteropLibrary#getMetaQualifiedName(Object)}, and {@link InteropLibrary#isMetaInstance(Object, Object)}. For all
+     * values with metaobjects it must at hold that
+     * <code>isMetaInstance(getMetaObject(value), value) ==
+     * true</code>.
+     * <p>
+     * This method must not cause any observable side-effects. If this method is implemented then
+     * also {@link InteropLibrary#hasMetaObject(Object)} must be implemented.
+     *
+     * @see InteropLibrary#hasMetaObject(Object)
+     * @since 20.1
+     */
+    @Substitution
+    @Throws(UnsupportedMessageException.class)
+    public static @Host(Object.class) StaticObject getMetaObject(@Host(Object.class) StaticObject receiver, @InjectMeta Meta meta) {
+        try {
+            Object metaObject = UNCACHED.getMetaObject(unwrap(receiver));
+            if (metaObject instanceof StaticObject) {
+                return (StaticObject) metaObject;
+            }
+            return StaticObject.createForeign(meta.java_lang_Object, metaObject, UNCACHED);
+        } catch (InteropException e) {
+            throw throwInteropException(e, meta);
+        }
+    }
+
+    /**
+     * Converts the receiver to a human readable {@link InteropLibrary#isString(Object) string}. Each language may
+     * have special formating conventions - even primitive values may not follow the traditional
+     * Java rules. The format of the returned string is intended to be interpreted by humans not
+     * machines and should therefore not be relied upon by machines. By default the receiver class
+     * name and its {@link System#identityHashCode(Object) identity hash code} is used as string
+     * representation.
+     *
+     * @param allowSideEffects whether side-effects are allowed in the production of the string.
+     * @since 20.1
+     */
+    @Substitution
+    public static @Host(Object.class) StaticObject toDisplayString(@Host(Object.class) StaticObject receiver, boolean allowSideEffects, @InjectMeta Meta meta) {
+        Object displayString = UNCACHED.toDisplayString(unwrap(receiver), allowSideEffects);
+        if (displayString instanceof StaticObject) {
+            return (StaticObject) displayString;
+        }
+        return StaticObject.createForeign(meta.java_lang_Object, displayString, UNCACHED);
+    }
+
+    /**
+     * Converts the receiver to a human readable {@link InteropLibrary#isString(Object) string} of the language.
+     * Short-cut for <code>{@link InteropLibrary#toDisplayString(Object) toDisplayString}(true)</code>.
+     *
+     * @see InteropLibrary#toDisplayString(Object, boolean)
+     * @since 20.1
+     */
+    public static @Host(Object.class) StaticObject toDisplayString(@Host(Object.class) StaticObject receiver, @InjectMeta Meta meta) {
+        return toDisplayString(receiver, true, meta);
+    }
+
+    /**
+     * Returns <code>true</code> if the receiver value represents a metaobject. Metaobjects may be
+     * values that naturally occur in a language or they may be returned by
+     * {@link InteropLibrary#getMetaObject(Object)}. A metaobject represents a description of the object, reveals
+     * its kind and its features. If a receiver is a metaobject it is often also
+     * {@link InteropLibrary#isInstantiable(Object) instantiable}, but this is not a requirement.
+     * <p>
+     * <b>Sample interpretations:</b> In Java an instance of the type {@link Class} is a metaobject.
+     * In JavaScript any function instance is a metaobject. For example, the metaobject of a
+     * JavaScript class is the associated constructor function.
+     * <p>
+     * This method must not cause any observable side-effects. If this method is implemented then
+     * also {@link InteropLibrary#getMetaQualifiedName(Object)}, {@link InteropLibrary#getMetaSimpleName(Object)} and
+     * {@link InteropLibrary#isMetaInstance(Object, Object)} must be implemented as well.
+     *
+     * @since 20.1
+     */
+    @Substitution
+    public static boolean isMetaObject(@Host(Object.class) StaticObject receiver) {
+        return UNCACHED.isMetaObject(unwrap(receiver));
+    }
+
+    /**
+     * Returns the qualified name of a metaobject as {@link InteropLibrary#isString(Object) string}.
+     * <p>
+     * <b>Sample interpretations:</b> The qualified name of a Java class includes the package name
+     * and its class name. JavaScript does not have the notion of qualified name and therefore
+     * returns the {@link InteropLibrary#getMetaSimpleName(Object) simple name} instead.
+     * <p>
+     * This method must not cause any observable side-effects. If this method is implemented then
+     * also {@link InteropLibrary#isMetaObject(Object)} must be implemented as well.
+     *
+     * @since 20.1
+     */
+    @Substitution
+    @Throws(UnsupportedMessageException.class)
+    public static @Host(Object.class) StaticObject getMetaQualifiedName(@Host(Object.class) StaticObject metaObject, @InjectMeta Meta meta) {
+        try {
+            Object qualifiedName =  UNCACHED.getMetaQualifiedName(unwrap(metaObject));
+            if (qualifiedName instanceof StaticObject) {
+                return (StaticObject) qualifiedName;
+            }
+            return StaticObject.createForeign(meta.java_lang_Object, qualifiedName, UNCACHED);
+        } catch (InteropException e) {
+            throw throwInteropException(e, meta);
+        }
+    }
+
+
+    /**
+     * Returns the simple name of a metaobject as {@link InteropLibrary#isString(Object) string}.
+     * <p>
+     * <b>Sample interpretations:</b> The simple name of a Java class is the class name.
+     * <p>
+     * This method must not cause any observable side-effects. If this method is implemented then
+     * also {@link InteropLibrary#isMetaObject(Object)} must be implemented as well.
+     *
+     * @since 20.1
+     */
+    @Substitution
+    @Throws(UnsupportedMessageException.class)
+    public static @Host(Object.class) StaticObject getMetaSimpleName(@Host(Object.class) StaticObject metaObject, @InjectMeta Meta meta) {
+        try {
+            Object simpleName =  UNCACHED.getMetaSimpleName(unwrap(metaObject));
+            if (simpleName instanceof StaticObject) {
+                return (StaticObject) simpleName;
+            }
+            return StaticObject.createForeign(meta.java_lang_Object, simpleName, UNCACHED);
+        } catch (InteropException e) {
+            throw throwInteropException(e, meta);
+        }
+    }
+
+    /**
+     * Returns <code>true</code> if the given instance is of the provided receiver metaobject, else
+     * <code>false</code>.
+     * <p>
+     * <b>Sample interpretations:</b> A Java object is an instance of its returned
+     * {@link Object#getClass() class}.
+     * <p>
+     * This method must not cause any observable side-effects. If this method is implemented then
+     * also {@link InteropLibrary#isMetaObject(Object)} must be implemented as well.
+     *
+     * @param instance the instance object to check.
+     * @since 20.1
+     */
+    @Substitution
+    @Throws(UnsupportedMessageException.class)
+    public static boolean isMetaInstance(@Host(Object.class) StaticObject receiver, @Host(Object.class) StaticObject instance, @InjectMeta Meta meta) {
+        try {
+            return UNCACHED.isMetaInstance(unwrap(receiver), unwrap(instance));
+        } catch (InteropException e) {
+            throw throwInteropException(e, meta);
+        }
+    }
+
+    // endregion MetaObject Messages
+
     private static Object unwrap(StaticObject receiver) {
         return receiver.isForeignObject() ? receiver.rawForeignObject() : receiver;
     }
