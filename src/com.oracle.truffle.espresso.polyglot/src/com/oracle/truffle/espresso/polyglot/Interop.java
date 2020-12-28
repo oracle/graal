@@ -554,10 +554,9 @@ public final class Interop {
      * instance. In JavaScript this could be the function or class that is associated with the
      * object.
      * <p>
-     * Metaobjects for primitive values or values of other languages may be provided using
-     * language views. While an object is
-     * associated with a metaobject in one language, the metaobject might be a different when viewed
-     * from another language.
+     * Metaobjects for primitive values or values of other languages may be provided using language
+     * views. While an object is associated with a metaobject in one language, the metaobject might
+     * be a different when viewed from another language.
      * <p>
      * This method must not cause any observable side-effects. If this method is implemented then
      * also {@link #getMetaObject(Object)} must be implemented.
@@ -602,9 +601,9 @@ public final class Interop {
      * representation.
      * <p>
      * String representations for primitive values or values of other languages may be provided
-     * using language views. It is common
-     * that languages provide different string representations for primitive and foreign values. To
-     * convert the result value to a Java string use {@link #asString(Object)}.
+     * using language views. It is common that languages provide different string representations
+     * for primitive and foreign values. To convert the result value to a Java string use
+     * {@link #asString(Object)}.
      *
      * @param allowSideEffects whether side-effects are allowed in the production of the string.
      * @since 20.1
@@ -733,11 +732,11 @@ public final class Interop {
      * <p>
      * This method performs double dispatch by forwarding calls to
      * {@link #isIdenticalOrUndefined(Object, Object)} with receiver and other value first and then
-     * with reversed parameters if the result was undefined. This allows
-     * the receiver and the other value to negotiate identity semantics. This method is supposed to
-     * be exported only if the receiver represents a wrapper that forwards messages. In such a case
-     * the isIdentical message should be forwarded to the delegate value. Otherwise, the
-     * {isIdenticalOrUndefined(Object, Object)} should be exported instead.
+     * with reversed parameters if the result was undefined. This allows the receiver and the other
+     * value to negotiate identity semantics. This method is supposed to be exported only if the
+     * receiver represents a wrapper that forwards messages. In such a case the isIdentical message
+     * should be forwarded to the delegate value. Otherwise, the {isIdenticalOrUndefined(Object,
+     * Object)} should be exported instead.
      * <p>
      * This method must not cause any observable side-effects.
      * <p>
@@ -777,9 +776,9 @@ public final class Interop {
     /**
      * Returns <code>true</code> if and only if the receiver specifies identity, else
      * <code>false</code>. This method is a short-cut for
-     * <code>isIdentical(receiver, receiver)</code>. This message
-     * cannot be exported. To add identity support to the receiver export
-     * {@link #isIdenticalOrUndefined(Object, Object)} instead.
+     * <code>isIdentical(receiver, receiver)</code>. This message cannot be exported. To add
+     * identity support to the receiver export {@link #isIdenticalOrUndefined(Object, Object)}
+     * instead.
      *
      * @see #isIdenticalOrUndefined(Object, Object)
      * @since 20.2
@@ -799,9 +798,9 @@ public final class Interop {
      * context, the identityHashCode method must consistently return the same integer. This integer
      * need not remain consistent from one execution context of a guest application to another
      * execution context of the same application.
-     * <li>If two objects are the same according to the
-     * {@link #isIdentical(Object, Object)} message, then calling the
-     * identityHashCode method on each of the two objects must produce the same integer result.
+     * <li>If two objects are the same according to the {@link #isIdentical(Object, Object)}
+     * message, then calling the identityHashCode method on each of the two objects must produce the
+     * same integer result.
      * <li>As much as is reasonably practical, the identityHashCode message does return distinct
      * integers for objects that are not the same.
      * </ul>

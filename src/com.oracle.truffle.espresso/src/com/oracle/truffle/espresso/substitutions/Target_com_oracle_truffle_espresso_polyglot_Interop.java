@@ -49,8 +49,8 @@ public final class Target_com_oracle_truffle_espresso_polyglot_Interop {
     }
 
     /**
-     * Returns the Java boolean value if the receiver represents a {@link InteropLibrary#isBoolean(StaticObject)
-     * boolean} like value.
+     * Returns the Java boolean value if the receiver represents a
+     * {@link InteropLibrary#isBoolean(StaticObject) boolean} like value.
      *
      * @see InteropLibrary#asBoolean(Object)
      */
@@ -80,8 +80,8 @@ public final class Target_com_oracle_truffle_espresso_polyglot_Interop {
     }
 
     /**
-     * Returns the Java string value if the receiver represents a {@link InteropLibrary#isString(StaticObject)
-     * string} like value.
+     * Returns the Java string value if the receiver represents a
+     * {@link InteropLibrary#isString(StaticObject) string} like value.
      *
      * @see InteropLibrary#asString(Object)
      */
@@ -287,9 +287,9 @@ public final class Target_com_oracle_truffle_espresso_polyglot_Interop {
      * Invoking this message does not cause any observable side-effects. Returns <code>false</code>
      * by default.
      * <p>
-     * Objects must only return <code>true</code> if they support {@link InteropLibrary#throwException} as well.
-     * If this method is implemented then also {@link InteropLibrary#throwException(Object)} must be
-     * implemented.
+     * Objects must only return <code>true</code> if they support
+     * {@link InteropLibrary#throwException} as well. If this method is implemented then also
+     * {@link InteropLibrary#throwException(Object)} must be implemented.
      * <p>
      * The following simplified {@code TryCatchNode} shows how the exceptions should be handled by
      * languages.
@@ -706,10 +706,9 @@ public final class Target_com_oracle_truffle_espresso_polyglot_Interop {
      * instance. In JavaScript this could be the function or class that is associated with the
      * object.
      * <p>
-     * Metaobjects for primitive values or values of other languages may be provided using
-     * language views. While an object is
-     * associated with a metaobject in one language, the metaobject might be a different when viewed
-     * from another language.
+     * Metaobjects for primitive values or values of other languages may be provided using language
+     * views. While an object is associated with a metaobject in one language, the metaobject might
+     * be a different when viewed from another language.
      * <p>
      * This method must not cause any observable side-effects. If this method is implemented then
      * also {@link InteropLibrary#getMetaObject(Object)} must be implemented.
@@ -729,11 +728,12 @@ public final class Target_com_oracle_truffle_espresso_polyglot_Interop {
      * attributes, etc. When no metaobject is known for this type. Throws
      * {@link UnsupportedMessageException} by default.
      * <p>
-     * The returned object must return <code>true</code> for {@link InteropLibrary#isMetaObject(Object)} and
-     * provide implementations for {@link InteropLibrary#getMetaSimpleName(Object)},
-     * {@link InteropLibrary#getMetaQualifiedName(Object)}, and {@link InteropLibrary#isMetaInstance(Object, Object)}. For all
-     * values with metaobjects it must at hold that
-     * <code>isMetaInstance(getMetaObject(value), value) ==
+     * The returned object must return <code>true</code> for
+     * {@link InteropLibrary#isMetaObject(Object)} and provide implementations for
+     * {@link InteropLibrary#getMetaSimpleName(Object)},
+     * {@link InteropLibrary#getMetaQualifiedName(Object)}, and
+     * {@link InteropLibrary#isMetaInstance(Object, Object)}. For all values with metaobjects it
+     * must at hold that <code>isMetaInstance(getMetaObject(value), value) ==
      * true</code>.
      * <p>
      * This method must not cause any observable side-effects. If this method is implemented then
@@ -757,12 +757,12 @@ public final class Target_com_oracle_truffle_espresso_polyglot_Interop {
     }
 
     /**
-     * Converts the receiver to a human readable {@link InteropLibrary#isString(Object) string}. Each language may
-     * have special formating conventions - even primitive values may not follow the traditional
-     * Java rules. The format of the returned string is intended to be interpreted by humans not
-     * machines and should therefore not be relied upon by machines. By default the receiver class
-     * name and its {@link System#identityHashCode(Object) identity hash code} is used as string
-     * representation.
+     * Converts the receiver to a human readable {@link InteropLibrary#isString(Object) string}.
+     * Each language may have special formating conventions - even primitive values may not follow
+     * the traditional Java rules. The format of the returned string is intended to be interpreted
+     * by humans not machines and should therefore not be relied upon by machines. By default the
+     * receiver class name and its {@link System#identityHashCode(Object) identity hash code} is
+     * used as string representation.
      *
      * @param allowSideEffects whether side-effects are allowed in the production of the string.
      * @since 20.1
@@ -777,8 +777,9 @@ public final class Target_com_oracle_truffle_espresso_polyglot_Interop {
     }
 
     /**
-     * Converts the receiver to a human readable {@link InteropLibrary#isString(Object) string} of the language.
-     * Short-cut for <code>{@link InteropLibrary#toDisplayString(Object) toDisplayString}(true)</code>.
+     * Converts the receiver to a human readable {@link InteropLibrary#isString(Object) string} of
+     * the language. Short-cut for
+     * <code>{@link InteropLibrary#toDisplayString(Object) toDisplayString}(true)</code>.
      *
      * @see InteropLibrary#toDisplayString(Object, boolean)
      * @since 20.1
@@ -790,8 +791,8 @@ public final class Target_com_oracle_truffle_espresso_polyglot_Interop {
     /**
      * Returns <code>true</code> if the receiver value represents a metaobject. Metaobjects may be
      * values that naturally occur in a language or they may be returned by
-     * {@link InteropLibrary#getMetaObject(Object)}. A metaobject represents a description of the object, reveals
-     * its kind and its features. If a receiver is a metaobject it is often also
+     * {@link InteropLibrary#getMetaObject(Object)}. A metaobject represents a description of the
+     * object, reveals its kind and its features. If a receiver is a metaobject it is often also
      * {@link InteropLibrary#isInstantiable(Object) instantiable}, but this is not a requirement.
      * <p>
      * <b>Sample interpretations:</b> In Java an instance of the type {@link Class} is a metaobject.
@@ -799,7 +800,8 @@ public final class Target_com_oracle_truffle_espresso_polyglot_Interop {
      * JavaScript class is the associated constructor function.
      * <p>
      * This method must not cause any observable side-effects. If this method is implemented then
-     * also {@link InteropLibrary#getMetaQualifiedName(Object)}, {@link InteropLibrary#getMetaSimpleName(Object)} and
+     * also {@link InteropLibrary#getMetaQualifiedName(Object)},
+     * {@link InteropLibrary#getMetaSimpleName(Object)} and
      * {@link InteropLibrary#isMetaInstance(Object, Object)} must be implemented as well.
      *
      * @since 20.1
@@ -825,7 +827,7 @@ public final class Target_com_oracle_truffle_espresso_polyglot_Interop {
     @Throws(UnsupportedMessageException.class)
     public static @Host(Object.class) StaticObject getMetaQualifiedName(@Host(Object.class) StaticObject metaObject, @InjectMeta Meta meta) {
         try {
-            Object qualifiedName =  UNCACHED.getMetaQualifiedName(unwrap(metaObject));
+            Object qualifiedName = UNCACHED.getMetaQualifiedName(unwrap(metaObject));
             if (qualifiedName instanceof StaticObject) {
                 return (StaticObject) qualifiedName;
             }
@@ -834,7 +836,6 @@ public final class Target_com_oracle_truffle_espresso_polyglot_Interop {
             throw throwInteropException(e, meta);
         }
     }
-
 
     /**
      * Returns the simple name of a metaobject as {@link InteropLibrary#isString(Object) string}.
@@ -850,7 +851,7 @@ public final class Target_com_oracle_truffle_espresso_polyglot_Interop {
     @Throws(UnsupportedMessageException.class)
     public static @Host(Object.class) StaticObject getMetaSimpleName(@Host(Object.class) StaticObject metaObject, @InjectMeta Meta meta) {
         try {
-            Object simpleName =  UNCACHED.getMetaSimpleName(unwrap(metaObject));
+            Object simpleName = UNCACHED.getMetaSimpleName(unwrap(metaObject));
             if (simpleName instanceof StaticObject) {
                 return (StaticObject) simpleName;
             }
@@ -893,8 +894,9 @@ public final class Target_com_oracle_truffle_espresso_polyglot_Interop {
      * semantics in the target language and refer to the identical instance.
      * <p>
      * By default, an interop value does not support identical comparisons, and will return
-     * <code>false</code> for any invocation of this method. Use {@link InteropLibrary#hasIdentity(Object)} to
-     * find out whether a receiver supports identity comparisons.
+     * <code>false</code> for any invocation of this method. Use
+     * {@link InteropLibrary#hasIdentity(Object)} to find out whether a receiver supports identity
+     * comparisons.
      * <p>
      * This method has the following properties:
      * <ul>
@@ -902,7 +904,8 @@ public final class Target_com_oracle_truffle_espresso_polyglot_Interop {
      * {@code lib.isIdentical(x, x, lib)} may return {@code false} if the object does not support
      * identity, else <code>true</code>. This method is reflexive if {@code x} supports identity. A
      * value supports identity if {@code lib.isIdentical(x, x, lib)} returns <code>true</code>. The
-     * method {@link InteropLibrary#hasIdentity(Object)} may be used to document this intent explicitly.
+     * method {@link InteropLibrary#hasIdentity(Object)} may be used to document this intent
+     * explicitly.
      * <li>It is <i>symmetric</i>: for any values {@code x} and {@code y},
      * {@code lib.isIdentical(x, y, yLib)} returns {@code true} if and only if
      * {@code lib.isIdentical(y, x, xLib)} returns {@code true}.
@@ -925,12 +928,13 @@ public final class Target_com_oracle_truffle_espresso_polyglot_Interop {
      * violate the symmetric property.
      * <p>
      * This method performs double dispatch by forwarding calls to
-     * {@link InteropLibrary#isIdenticalOrUndefined(Object, Object)} with receiver and other value first and then
-     * with reversed parameters if the result was {@link TriState#UNDEFINED undefined}. This allows
-     * the receiver and the other value to negotiate identity semantics. This method is supposed to
-     * be exported only if the receiver represents a wrapper that forwards messages. In such a case
-     * the isIdentical message should be forwarded to the delegate value. Otherwise, the
-     * {@link InteropLibrary#isIdenticalOrUndefined(Object, Object)} should be exported instead.
+     * {@link InteropLibrary#isIdenticalOrUndefined(Object, Object)} with receiver and other value
+     * first and then with reversed parameters if the result was {@link TriState#UNDEFINED
+     * undefined}. This allows the receiver and the other value to negotiate identity semantics.
+     * This method is supposed to be exported only if the receiver represents a wrapper that
+     * forwards messages. In such a case the isIdentical message should be forwarded to the delegate
+     * value. Otherwise, the {@link InteropLibrary#isIdenticalOrUndefined(Object, Object)} should be
+     * exported instead.
      * <p>
      * This method must not cause any observable side-effects.
      *
@@ -945,10 +949,10 @@ public final class Target_com_oracle_truffle_espresso_polyglot_Interop {
     }
 
     /**
-     * Returns an identity hash code for the receiver if it has {@link InteropLibrary#hasIdentity(Object)
-     * identity}. If the receiver has no identity then an {@link UnsupportedMessageException} is
-     * thrown. The identity hash code may be used by languages to store foreign values with identity
-     * in an identity hash map.
+     * Returns an identity hash code for the receiver if it has
+     * {@link InteropLibrary#hasIdentity(Object) identity}. If the receiver has no identity then an
+     * {@link UnsupportedMessageException} is thrown. The identity hash code may be used by
+     * languages to store foreign values with identity in an identity hash map.
      * <p>
      * <ul>
      * <li>Whenever it is invoked on the same object more than once during an execution of a guest
@@ -956,8 +960,8 @@ public final class Target_com_oracle_truffle_espresso_polyglot_Interop {
      * need not remain consistent from one execution context of a guest application to another
      * execution context of the same application.
      * <li>If two objects are the same according to the
-     * {@link InteropLibrary#isIdentical(Object, Object)} message, then calling the
-     * identityHashCode method on each of the two objects must produce the same integer result.
+     * {@link InteropLibrary#isIdentical(Object, Object)} message, then calling the identityHashCode
+     * method on each of the two objects must produce the same integer result.
      * <li>As much as is reasonably practical, the identityHashCode message does return distinct
      * integers for objects that are not the same.
      * </ul>
@@ -985,7 +989,7 @@ public final class Target_com_oracle_truffle_espresso_polyglot_Interop {
 
     private static StaticObject wrapForeignException(Throwable throwable, Meta meta) {
         assert UNCACHED.isException(throwable);
-        assert throwable instanceof  AbstractTruffleException;
+        assert throwable instanceof AbstractTruffleException;
         return StaticObject.createForeign(meta.polyglot.ForeignException, throwable, UNCACHED);
     }
 
@@ -1007,10 +1011,11 @@ public final class Target_com_oracle_truffle_espresso_polyglot_Interop {
             Throwable cause = e.getCause();
             assert cause == null || cause instanceof AbstractTruffleException;
             StaticObject exception = (cause == null)
-                    // UnknownIdentifierException.create(String unknownIdentifier)
-                    ? (StaticObject) meta.polyglot.UnknownIdentifierException_create_String.invokeDirect(null, unknownIdentifier)
-                    // UnknownIdentifierException.create(String unknownIdentifier, Throwable cause)
-                    : (StaticObject) meta.polyglot.UnknownIdentifierException_create_String_Throwable.invokeDirect(null, unknownIdentifier, wrapForeignException(cause, meta));
+                            // UnknownIdentifierException.create(String unknownIdentifier)
+                            ? (StaticObject) meta.polyglot.UnknownIdentifierException_create_String.invokeDirect(null, unknownIdentifier)
+                            // UnknownIdentifierException.create(String unknownIdentifier, Throwable
+                            // cause)
+                            : (StaticObject) meta.polyglot.UnknownIdentifierException_create_String_Throwable.invokeDirect(null, unknownIdentifier, wrapForeignException(cause, meta));
             throw EspressoException.wrap(exception);
         }
 
@@ -1020,10 +1025,11 @@ public final class Target_com_oracle_truffle_espresso_polyglot_Interop {
             Throwable cause = e.getCause();
             assert cause == null || cause instanceof AbstractTruffleException;
             StaticObject exception = (cause == null)
-                    // ArityException.create(int expectedArity, int actualArity)
-                    ? (StaticObject) meta.polyglot.UnknownIdentifierException_create_String.invokeDirect(null, expectedArity, actualArity)
-                    // ArityException.create(int expectedArity, int actualArity, Throwable cause)
-                    : (StaticObject) meta.polyglot.UnknownIdentifierException_create_String_Throwable.invokeDirect(null, expectedArity, actualArity, wrapForeignException(cause, meta));
+                            // ArityException.create(int expectedArity, int actualArity)
+                            ? (StaticObject) meta.polyglot.UnknownIdentifierException_create_String.invokeDirect(null, expectedArity, actualArity)
+                            // ArityException.create(int expectedArity, int actualArity, Throwable
+                            // cause)
+                            : (StaticObject) meta.polyglot.UnknownIdentifierException_create_String_Throwable.invokeDirect(null, expectedArity, actualArity, wrapForeignException(cause, meta));
             throw EspressoException.wrap(exception);
         }
 
@@ -1045,10 +1051,11 @@ public final class Target_com_oracle_truffle_espresso_polyglot_Interop {
             Throwable cause = e.getCause();
             assert cause == null || cause instanceof AbstractTruffleException;
             StaticObject exception = (cause == null)
-                    // UnsupportedTypeException.create(Object[] suppliedValues, String hint)
-                    ? (StaticObject) meta.polyglot.UnsupportedTypeException_create_Object_array_String.invokeDirect(null, suppliedValues, hint)
-                    // UnsupportedTypeException.create(Object[] suppliedValues, String hint, Throwable cause)
-                    : (StaticObject) meta.polyglot.UnsupportedTypeException_create_Object_array_String_Throwable.invokeDirect(null, suppliedValues, hint, wrapForeignException(cause, meta));
+                            // UnsupportedTypeException.create(Object[] suppliedValues, String hint)
+                            ? (StaticObject) meta.polyglot.UnsupportedTypeException_create_Object_array_String.invokeDirect(null, suppliedValues, hint)
+                            // UnsupportedTypeException.create(Object[] suppliedValues, String hint,
+                            // Throwable cause)
+                            : (StaticObject) meta.polyglot.UnsupportedTypeException_create_Object_array_String_Throwable.invokeDirect(null, suppliedValues, hint, wrapForeignException(cause, meta));
             throw EspressoException.wrap(exception);
         }
 
@@ -1057,10 +1064,10 @@ public final class Target_com_oracle_truffle_espresso_polyglot_Interop {
             Throwable cause = e.getCause();
             assert cause == null || cause instanceof AbstractTruffleException;
             StaticObject exception = (cause == null)
-                    // InvalidArrayIndexException.create(long invalidIndex)
-                    ? (StaticObject) meta.polyglot.InvalidArrayIndexException_create_long.invokeDirect(null, invalidIndex)
-                    // InvalidArrayIndexException.create(long invalidIndex, Throwable cause)
-                    : (StaticObject) meta.polyglot.InvalidArrayIndexException_create_long_Throwable.invokeDirect(null, invalidIndex, wrapForeignException(cause, meta));
+                            // InvalidArrayIndexException.create(long invalidIndex)
+                            ? (StaticObject) meta.polyglot.InvalidArrayIndexException_create_long.invokeDirect(null, invalidIndex)
+                            // InvalidArrayIndexException.create(long invalidIndex, Throwable cause)
+                            : (StaticObject) meta.polyglot.InvalidArrayIndexException_create_long_Throwable.invokeDirect(null, invalidIndex, wrapForeignException(cause, meta));
             throw EspressoException.wrap(exception);
         }
 
