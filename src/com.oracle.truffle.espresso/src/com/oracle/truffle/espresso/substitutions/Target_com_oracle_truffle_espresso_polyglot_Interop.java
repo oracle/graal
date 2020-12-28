@@ -11,6 +11,7 @@ import com.oracle.truffle.api.interop.InvalidArrayIndexException;
 import com.oracle.truffle.api.interop.UnknownIdentifierException;
 import com.oracle.truffle.api.interop.UnsupportedMessageException;
 import com.oracle.truffle.api.interop.UnsupportedTypeException;
+import com.oracle.truffle.api.utilities.TriState;
 import com.oracle.truffle.espresso.impl.ObjectKlass;
 import com.oracle.truffle.espresso.meta.EspressoError;
 import com.oracle.truffle.espresso.meta.Meta;
@@ -48,7 +49,7 @@ public final class Target_com_oracle_truffle_espresso_polyglot_Interop {
     }
 
     /**
-     * Returns the Java boolean value if the receiver represents a {@link #isBoolean(StaticObject)
+     * Returns the Java boolean value if the receiver represents a {@link InteropLibrary#isBoolean(StaticObject)
      * boolean} like value.
      *
      * @see InteropLibrary#asBoolean(Object)
@@ -79,7 +80,7 @@ public final class Target_com_oracle_truffle_espresso_polyglot_Interop {
     }
 
     /**
-     * Returns the Java string value if the receiver represents a {@link #isString(StaticObject)
+     * Returns the Java string value if the receiver represents a {@link InteropLibrary#isString(StaticObject)
      * string} like value.
      *
      * @see InteropLibrary#asString(Object)
@@ -286,7 +287,7 @@ public final class Target_com_oracle_truffle_espresso_polyglot_Interop {
      * Invoking this message does not cause any observable side-effects. Returns <code>false</code>
      * by default.
      * <p>
-     * Objects must only return <code>true</code> if they support {@link #throwException} as well.
+     * Objects must only return <code>true</code> if they support {@link InteropLibrary#throwException} as well.
      * If this method is implemented then also {@link InteropLibrary#throwException(Object)} must be
      * implemented.
      * <p>
@@ -883,6 +884,100 @@ public final class Target_com_oracle_truffle_espresso_polyglot_Interop {
     }
 
     // endregion MetaObject Messages
+
+    // region Identity Messages
+
+    /**
+     * Returns <code>true</code> if two values represent the the identical value, else
+     * <code>false</code>. Two values are identical if and only if they have specified identity
+     * semantics in the target language and refer to the identical instance.
+     * <p>
+     * By default, an interop value does not support identical comparisons, and will return
+     * <code>false</code> for any invocation of this method. Use {@link InteropLibrary#hasIdentity(Object)} to
+     * find out whether a receiver supports identity comparisons.
+     * <p>
+     * This method has the following properties:
+     * <ul>
+     * <li>It is <b>not</b> <i>reflexive</i>: for any value {@code x},
+     * {@code lib.isIdentical(x, x, lib)} may return {@code false} if the object does not support
+     * identity, else <code>true</code>. This method is reflexive if {@code x} supports identity. A
+     * value supports identity if {@code lib.isIdentical(x, x, lib)} returns <code>true</code>. The
+     * method {@link InteropLibrary#hasIdentity(Object)} may be used to document this intent explicitly.
+     * <li>It is <i>symmetric</i>: for any values {@code x} and {@code y},
+     * {@code lib.isIdentical(x, y, yLib)} returns {@code true} if and only if
+     * {@code lib.isIdentical(y, x, xLib)} returns {@code true}.
+     * <li>It is <i>transitive</i>: for any values {@code x}, {@code y}, and {@code z}, if
+     * {@code lib.isIdentical(x, y, yLib)} returns {@code true} and
+     * {@code lib.isIdentical(y, z, zLib)} returns {@code true}, then
+     * {@code lib.isIdentical(x, z, zLib)} returns {@code true}.
+     * <li>It is <i>consistent</i>: for any values {@code x} and {@code y}, multiple invocations of
+     * {@code lib.isIdentical(x, y, yLib)} consistently returns {@code true} or consistently return
+     * {@code false}.
+     * </ul>
+     * <p>
+     * Note that the target language identical semantics typically does not map directly to interop
+     * identical implementation. Instead target language identity is specified by the language
+     * operation, may take multiple other rules into account and may only fallback to interop
+     * identical for values without dedicated interop type. For example, in many languages
+     * primitives like numbers or strings may be identical, in the target language sense, still
+     * identity can only be exposed for objects and non-primitive values. Primitive values like
+     * {@link Integer} can never be interop identical to other boxed language integers as this would
+     * violate the symmetric property.
+     * <p>
+     * This method performs double dispatch by forwarding calls to
+     * {@link InteropLibrary#isIdenticalOrUndefined(Object, Object)} with receiver and other value first and then
+     * with reversed parameters if the result was {@link TriState#UNDEFINED undefined}. This allows
+     * the receiver and the other value to negotiate identity semantics. This method is supposed to
+     * be exported only if the receiver represents a wrapper that forwards messages. In such a case
+     * the isIdentical message should be forwarded to the delegate value. Otherwise, the
+     * {@link InteropLibrary#isIdenticalOrUndefined(Object, Object)} should be exported instead.
+     * <p>
+     * This method must not cause any observable side-effects.
+     *
+     * For a full example please refer to the SLEqualNode of the SimpleLanguage example
+     * implementation.
+     *
+     * @since 20.2
+     */
+    @Substitution
+    public static boolean isIdentical(@Host(Object.class) StaticObject receiver, @Host(Object.class) StaticObject other) {
+        return UNCACHED.isIdentical(unwrap(receiver), unwrap(other), UNCACHED);
+    }
+
+    /**
+     * Returns an identity hash code for the receiver if it has {@link InteropLibrary#hasIdentity(Object)
+     * identity}. If the receiver has no identity then an {@link UnsupportedMessageException} is
+     * thrown. The identity hash code may be used by languages to store foreign values with identity
+     * in an identity hash map.
+     * <p>
+     * <ul>
+     * <li>Whenever it is invoked on the same object more than once during an execution of a guest
+     * context, the identityHashCode method must consistently return the same integer. This integer
+     * need not remain consistent from one execution context of a guest application to another
+     * execution context of the same application.
+     * <li>If two objects are the same according to the
+     * {@link InteropLibrary#isIdentical(Object, Object)} message, then calling the
+     * identityHashCode method on each of the two objects must produce the same integer result.
+     * <li>As much as is reasonably practical, the identityHashCode message does return distinct
+     * integers for objects that are not the same.
+     * </ul>
+     * This method must not cause any observable side-effects. If this method is implemented then
+     * also {@link InteropLibrary#isIdenticalOrUndefined(Object, Object)} must be implemented.
+     *
+     * @see InteropLibrary#identityHashCode(Object)
+     * @since 20.2
+     */
+    @Substitution
+    @Throws(UnsupportedMessageException.class)
+    public static int identityHashCode(@Host(Object.class) StaticObject receiver, @InjectMeta Meta meta) {
+        try {
+            return UNCACHED.identityHashCode(unwrap(receiver));
+        } catch (InteropException e) {
+            throw throwInteropException(e, meta);
+        }
+    }
+
+    // endregion Identity Messages
 
     private static Object unwrap(StaticObject receiver) {
         return receiver.isForeignObject() ? receiver.rawForeignObject() : receiver;
