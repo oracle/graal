@@ -13,8 +13,7 @@ public final class UnsupportedTypeException extends InteropException {
     private final Object[] suppliedValues;
 
     private UnsupportedTypeException(String message, Object[] suppliedValues) {
-        super(message); // GR-23961 - after language adoption we should initialize the cause with
-        // null.
+        super(message, null);
         this.suppliedValues = suppliedValues;
     }
 
