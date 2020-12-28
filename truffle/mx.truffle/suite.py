@@ -278,6 +278,33 @@ suite = {
       "javaCompliance" : "11+",
       "workingSets" : "API,Truffle",
     },
+    
+    "com.oracle.truffle.api.operation" : {
+      "subDir" : "src",
+      "sourceDirs" : ["src"],
+      "dependencies" : ["com.oracle.truffle.polyglot"],
+      "checkstyle" : "com.oracle.truffle.api",
+      "annotationProcessors" : ["TRUFFLE_DSL_PROCESSOR"],
+      "javaCompliance" : "8+",
+      "workingSets" : "API,Truffle",
+    },
+    
+    "com.oracle.truffle.api.operation.test" : {
+      "subDir" : "src",
+      "sourceDirs" : ["src"],
+      "dependencies" : [
+        "com.oracle.truffle.polyglot",
+        "com.oracle.truffle.api.test",
+        "com.oracle.truffle.api.operation",
+        "mx:JUNIT",
+      ],
+      "checkstyle" : "com.oracle.truffle.dsl.processor",
+      "javaCompliance" : "8+",
+      "annotationProcessors" : ["TRUFFLE_DSL_PROCESSOR"],
+      "workingSets" : "API,Truffle,Codegen,Test",
+      "jacoco" : "exclude",
+    },
+
 
     "com.oracle.truffle.api.dsl" : {
       "subDir" : "src",
