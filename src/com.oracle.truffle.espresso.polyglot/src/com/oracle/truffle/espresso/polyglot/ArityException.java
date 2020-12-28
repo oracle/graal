@@ -126,7 +126,6 @@ public final class ArityException extends InteropException {
      * @param cause the guest language exception that caused the error.
      * @since 20.2
      */
-    @SuppressWarnings("deprecation")
     public static ArityException create(int expectedArity, int actualArity, Throwable cause) {
         return new ArityException(expectedArity, actualArity, cause);
     }
