@@ -55,7 +55,7 @@ public final class InvalidArrayIndexException extends InteropException {
     private final long invalidIndex;
 
     private InvalidArrayIndexException(long invalidIndex) {
-        super(null); // GR-23961 - after language adoption we should initialize the cause with null.
+        super(null, null);
         this.invalidIndex = invalidIndex;
     }
 
@@ -109,7 +109,6 @@ public final class InvalidArrayIndexException extends InteropException {
      * @param cause the guest language exception that caused the error.
      * @since 20.2
      */
-    @SuppressWarnings("deprecation")
     public static InvalidArrayIndexException create(long invalidIndex, Throwable cause) {
         return new InvalidArrayIndexException(invalidIndex, cause);
     }

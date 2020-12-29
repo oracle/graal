@@ -95,7 +95,7 @@ public final class ForeignException extends RuntimeException {
      */
     @Override
     public void setStackTrace(StackTraceElement[] stackTrace) {
-        // validate arguments to fullfil contract
+        // Validate arguments to fulfill contract.
         for (int i = 0; i < stackTrace.length; i++) {
             if (stackTrace[i] == null) {
                 throw new NullPointerException("stackTrace[" + i + "]");

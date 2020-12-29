@@ -47,6 +47,8 @@ package com.oracle.truffle.espresso.polyglot;
  */
 public abstract class InteropException extends Exception {
 
+    private static final long serialVersionUID = -5173354806966156285L;
+
     InteropException(String message, Throwable cause) {
         super(message, cause);
     }
@@ -78,6 +80,4 @@ public abstract class InteropException extends Exception {
     public final Throwable fillInStackTrace() {
         return this;
     }
-
-    private static final long serialVersionUID = -5173354806966156285L;
 }

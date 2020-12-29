@@ -110,7 +110,6 @@ public final class UnsupportedTypeException extends InteropException {
      * @param cause the guest language exception that caused the error.
      * @since 20.2
      */
-    @SuppressWarnings("deprecation")
     public static UnsupportedTypeException create(Object[] suppliedValues, String hint, Throwable cause) {
         return new UnsupportedTypeException(hint, suppliedValues, cause);
     }

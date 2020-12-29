@@ -56,7 +56,7 @@ public final class UnknownIdentifierException extends InteropException {
     private final String unknownIdentifier;
 
     private UnknownIdentifierException(String unknownIdentifier) {
-        super(null); // GR-23961 - after language adoption we should initialize the cause with null.
+        super(null, null);
         this.unknownIdentifier = unknownIdentifier;
     }
 
@@ -111,7 +111,6 @@ public final class UnknownIdentifierException extends InteropException {
      * @param cause the guest language exception that caused the error.
      * @since 20.2
      */
-    @SuppressWarnings("deprecation")
     public static UnknownIdentifierException create(String unknownIdentifier, Throwable cause) {
         return new UnknownIdentifierException(unknownIdentifier, cause);
     }
