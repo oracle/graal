@@ -797,4 +797,251 @@ public final class Interop {
     public static native int identityHashCode(Object receiver) throws UnsupportedMessageException;
 
     // endregion Identity Messages
+
+    // region Member Messages
+
+    /**
+     * Returns <code>true</code> if the receiver may have members. Therefore, at least one of
+     * {@link #readMember(Object, String)}, {@link #writeMember(Object, String, Object)},
+     * {@link #removeMember(Object, String)}, {@link #invokeMember(Object, String, Object...)} must
+     * not throw {@link UnsupportedMessageException}. Members are structural elements of a class.
+     * For example, a method or field is a member of a class. Invoking this message does not cause
+     * any observable side-effects. Returns <code>false</code> by default.
+     *
+     * @see #getMembers(Object, boolean)
+     * @see #isMemberReadable(Object, String)
+     * @see #isMemberModifiable(Object, String)
+     * @see #isMemberInvocable(Object, String)
+     * @see #isMemberInsertable(Object, String)
+     * @see #isMemberRemovable(Object, String)
+     * @see #readMember(Object, String)
+     * @see #writeMember(Object, String, Object)
+     * @see #removeMember(Object, String)
+     * @see #invokeMember(Object, String, Object...)
+     * @since 19.0
+     */
+    public static native boolean hasMembers(Object receiver);
+
+    /**
+     * Returns an array of member name strings. The returned value must return <code>true</code> for
+     * {@link #hasArrayElements(Object)} and every array element must be of type
+     * {@link #isString(Object) string}. The member elements may also provide additional information
+     * like {@link #getSourceLocation(Object) source location} in case of {@link #isScope(Object)
+     * scope} variables, etc.
+     * <p>
+     * If the includeInternal argument is <code>true</code> then internal member names are returned
+     * as well. Internal members are implementation specific and should not be exposed to guest
+     * language application. An example of internal members are internal slots in ECMAScript.
+     *
+     * @throws UnsupportedMessageException if and only if the receiver does not have any
+     *             {@link #hasMembers(Object) members}.
+     * @see #hasMembers(Object)
+     * @since 19.0
+     */
+    public static native Object getMembers(Object receiver, boolean includeInternal) throws UnsupportedMessageException;
+
+    /**
+     * Short-cut for {@link #getMembers(Object) getMembers(receiver, false)}. Invoking this message
+     * does not cause any observable side-effects.
+     *
+     * @throws UnsupportedMessageException if and only if the receiver has no
+     *             {@link #hasMembers(Object) members}.
+     * @see #getMembers(Object, boolean)
+     * @since 19.0
+     */
+    public static Object getMembers(Object receiver) throws UnsupportedMessageException {
+        return getMembers(receiver, false);
+    }
+
+    /**
+     * Returns <code>true</code> if a given member is {@link #readMember(Object, String) readable}.
+     * This method may only return <code>true</code> if {@link #hasMembers(Object)} returns
+     * <code>true</code> as well and {@link #isMemberInsertable(Object, String)} returns
+     * <code>false</code>. Invoking this message does not cause any observable side-effects. Returns
+     * <code>false</code> by default.
+     *
+     * @see #readMember(Object, String)
+     * @since 19.0
+     */
+    public static native boolean isMemberReadable(Object receiver, String member);
+
+    /**
+     * Reads the value of a given member. If the member is {@link #isMemberReadable(Object, String)
+     * readable} and {@link #isMemberInvocable(Object, String) invocable} then the result of reading
+     * the member is {@link #isExecutable(Object) executable} and is bound to this receiver. This
+     * method must have not observable side-effects unless
+     * {@link #hasMemberReadSideEffects(Object, String)} returns <code>true</code>.
+     *
+     * @throws UnsupportedMessageException if when the receiver does not support reading at all. An
+     *             empty receiver with no readable members supports the read operation (even though
+     *             there is nothing to read), therefore it throws {@link UnknownIdentifierException}
+     *             for all arguments instead.
+     * @throws UnknownIdentifierException if the given member is not
+     *             {@link #isMemberReadable(Object, String) readable}, e.g. when the member with the
+     *             given name does not exist.
+     * @see #hasMemberReadSideEffects(Object, String)
+     * @since 19.0
+     */
+    public static native Object readMember(Object receiver, String member) throws UnsupportedMessageException, UnknownIdentifierException;
+
+    /**
+     * Returns <code>true</code> if a given member is existing and
+     * {@link #writeMember(Object, String, Object) writable}. This method may only return
+     * <code>true</code> if {@link #hasMembers(Object)} returns <code>true</code> as well and
+     * {@link #isMemberInsertable(Object, String)} returns <code>false</code>. Invoking this message
+     * does not cause any observable side-effects. Returns <code>false</code> by default.
+     *
+     * @see #writeMember(Object, String, Object)
+     * @since 19.0
+     */
+    public static native boolean isMemberModifiable(Object receiver, String member);
+
+    /**
+     * Returns <code>true</code> if a given member is not existing and
+     * {@link #writeMember(Object, String, Object) writable}. This method may only return
+     * <code>true</code> if {@link #hasMembers(Object)} returns <code>true</code> as well and
+     * {@link #isMemberExisting(Object, String)} returns <code>false</code>. Invoking this message
+     * does not cause any observable side-effects. Returns <code>false</code> by default.
+     *
+     * @see #writeMember(Object, String, Object)
+     * @since 19.0
+     */
+    public static native boolean isMemberInsertable(Object receiver, String member);
+
+    /**
+     * Writes the value of a given member. Writing a member is allowed if is existing and
+     * {@link #isMemberModifiable(Object, String) modifiable}, or not existing and
+     * {@link #isMemberInsertable(Object, String) insertable}.
+     *
+     * This method must have not observable side-effects other than the changed member unless
+     * {@link #hasMemberWriteSideEffects(Object, String) side-effects} are allowed.
+     *
+     * @throws UnsupportedMessageException when the receiver does not support writing at all, e.g.
+     *             when it is immutable.
+     * @throws UnknownIdentifierException if the given member is not
+     *             {@link #isMemberModifiable(Object, String) modifiable} nor
+     *             {@link #isMemberInsertable(Object, String) insertable}.
+     * @throws UnsupportedTypeException if the provided value type is not allowed to be written.
+     * @see #hasMemberWriteSideEffects(Object, String)
+     * @since 19.0
+     */
+    public static native void writeMember(Object receiver, String member, Object value) throws UnsupportedMessageException, UnknownIdentifierException, UnsupportedTypeException;
+
+    /**
+     * Returns <code>true</code> if a given member is existing and removable. This method may only
+     * return <code>true</code> if {@link #hasMembers(Object)} returns <code>true</code> as well and
+     * {@link #isMemberInsertable(Object, String)} returns <code>false</code>. Invoking this message
+     * does not cause any observable side-effects. Returns <code>false</code> by default.
+     *
+     * @see #removeMember(Object, String)
+     * @since 19.0
+     */
+    public static native boolean isMemberRemovable(Object receiver, String member);
+
+    /**
+     * Removes a member from the receiver object. Removing member is allowed if is
+     * {@link #isMemberRemovable(Object, String) removable}.
+     *
+     * This method does not have not observable side-effects other than the removed member.
+     *
+     * @throws UnsupportedMessageException when the receiver does not support removing at all, e.g.
+     *             when it is immutable.
+     * @throws UnknownIdentifierException if the given member is not
+     *             {@link #isMemberRemovable(Object, String)} removable}, e.g. the receiver does not
+     *             have a member with the given name.
+     * @see #isMemberRemovable(Object, String)
+     * @since 19.0
+     */
+    public static native void removeMember(Object receiver, String member) throws UnsupportedMessageException, UnknownIdentifierException;
+
+    /**
+     * Returns <code>true</code> if a given member is invocable. This method may only return
+     * <code>true</code> if {@link #hasMembers(Object)} returns <code>true</code> as well and
+     * {@link #isMemberInsertable(Object, String)} returns <code>false</code>. Invoking this message
+     * does not cause any observable side-effects. Returns <code>false</code> by default.
+     *
+     * @see #invokeMember(Object, String, Object...)
+     * @since 19.0
+     */
+    public static native boolean isMemberInvocable(Object receiver, String member);
+
+    /**
+     * Invokes a member for a given receiver and arguments.
+     *
+     * @throws UnknownIdentifierException if the given member does not exist or is not
+     *             {@link #isMemberInvocable(Object, String) invocable}.
+     * @throws UnsupportedTypeException if one of the arguments is not compatible to the executable
+     *             signature. The exception is thrown on best effort basis, dynamic languages may
+     *             throw their own exceptions if the arguments are wrong.
+     * @throws ArityException if the number of expected arguments does not match the number of
+     *             actual arguments.
+     * @throws UnsupportedMessageException when the receiver does not support invoking at all, e.g.
+     *             when storing executable members is not allowed.
+     * @see #isMemberInvocable(Object, String)
+     * @since 19.0
+     */
+    public static native Object invokeMember(Object receiver, String member, Object... arguments)
+            throws UnsupportedMessageException, ArityException, UnknownIdentifierException, UnsupportedTypeException;
+
+    /**
+     * Returns true if a member is internal. Internal members are not enumerated by
+     * {@link #getMembers(Object, boolean)} by default. Internal members are only relevant to guest
+     * language implementations and tools, but not to guest applications or embedders. An example of
+     * internal members are internal slots in ECMAScript. Invoking this message does not cause any
+     * observable side-effects. Returns <code>false</code> by default.
+     *
+     * @see #getMembers(Object, boolean)
+     * @since 19.0
+     */
+    public static native boolean isMemberInternal(Object receiver, String member);
+
+    /**
+     * Returns true if the member is {@link #isMemberModifiable(Object, String) modifiable} or
+     * {@link #isMemberInsertable(Object, String) insertable}.
+     *
+     * @since 19.0
+     */
+    public static boolean isMemberWritable(Object receiver, String member) {
+        return isMemberModifiable(receiver, member) || isMemberInsertable(receiver, member);
+    }
+
+    /**
+     * Returns true if the member is existing. A member is existing if it is
+     * {@link #isMemberModifiable(Object, String) modifiable},
+     * {@link #isMemberReadable(Object, String) readable}, {@link #isMemberRemovable(Object, String)
+     * removable} or {@link #isMemberInvocable(Object, String) invocable}.
+     *
+     * @since 19.0
+     */
+    public static boolean isMemberExisting(Object receiver, String member) {
+        return isMemberReadable(receiver, member) || isMemberModifiable(receiver, member) || isMemberRemovable(receiver, member) || isMemberInvocable(receiver, member);
+    }
+
+    /**
+     * Returns <code>true</code> if reading a member may cause a side-effect. Invoking this message
+     * does not cause any observable side-effects. A member read does not cause any side-effects by
+     * default.
+     * <p>
+     * For instance in JavaScript a property read may have side-effects if the property has a getter
+     * function.
+     *
+     * @see #readMember(Object, String)
+     * @since 19.0
+     */
+    public static native boolean hasMemberReadSideEffects(Object receiver, String member);
+
+    /**
+     * Returns <code>true</code> if writing a member may cause a side-effect, besides the write
+     * operation of the member. Invoking this message does not cause any observable side-effects. A
+     * member write does not cause any side-effects by default.
+     * <p>
+     * For instance in JavaScript a property write may have side-effects if the property has a
+     * setter function.
+     *
+     * @see #writeMember(Object, String, Object)
+     * @since 19.0
+     */
+    public static native boolean hasMemberWriteSideEffects(Object receiver, String member);
+
+    // endregion Member Messages
 }
