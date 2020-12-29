@@ -17,6 +17,7 @@ import com.oracle.truffle.espresso.meta.EspressoError;
 import com.oracle.truffle.espresso.meta.Meta;
 import com.oracle.truffle.espresso.runtime.EspressoException;
 import com.oracle.truffle.espresso.runtime.StaticObject;
+import com.oracle.truffle.espresso.vm.InterpreterToVM;
 
 @EspressoSubstitutions
 public final class Target_com_oracle_truffle_espresso_polyglot_Interop {
@@ -982,6 +983,334 @@ public final class Target_com_oracle_truffle_espresso_polyglot_Interop {
     }
 
     // endregion Identity Messages
+
+
+    // region Member Messages
+
+    /**
+     * Returns <code>true</code> if the receiver may have members. Therefore, at least one of
+     * {@link #readMember(Object, String)}, {@link #writeMember(Object, String, Object)},
+     * {@link #removeMember(Object, String)}, {@link #invokeMember(Object, String, Object...)} must
+     * not throw {@link UnsupportedMessageException}. Members are structural elements of a class.
+     * For example, a method or field is a member of a class. Invoking this message does not cause
+     * any observable side-effects. Returns <code>false</code> by default.
+     *
+     * @see #getMembers(Object, boolean)
+     * @see #isMemberReadable(Object, String)
+     * @see #isMemberModifiable(Object, String)
+     * @see #isMemberInvocable(Object, String)
+     * @see #isMemberInsertable(Object, String)
+     * @see #isMemberRemovable(Object, String)
+     * @see #readMember(Object, String)
+     * @see #writeMember(Object, String, Object)
+     * @see #removeMember(Object, String)
+     * @see #invokeMember(Object, String, Object...)
+     * @since 19.0
+     */
+    @Substitution
+    public static boolean hasMembers(@Host(Object.class) StaticObject receiver) {
+        return UNCACHED.hasMembers(unwrap(receiver));
+    }
+
+    /**
+     * Returns an array of member name strings. The returned value must return <code>true</code> for
+     * {@link #hasArrayElements(Object)} and every array element must be of type
+     * {@link #isString(Object) string}. The member elements may also provide additional information
+     * like {@link #getSourceLocation(Object) source location} in case of {@link #isScope(Object)
+     * scope} variables, etc.
+     * <p>
+     * If the includeInternal argument is <code>true</code> then internal member names are returned
+     * as well. Internal members are implementation specific and should not be exposed to guest
+     * language application. An example of internal members are internal slots in ECMAScript.
+     *
+     * @see InteropLibrary#hasMembers(Object)
+     * @since 19.0
+     */
+    @Substitution
+    @Throws(UnsupportedMessageException.class)
+    public static @Host(Object.class) StaticObject getMembers(@Host(Object.class) StaticObject receiver, boolean includeInternal, @InjectMeta Meta meta) {
+        try {
+            Object value = UNCACHED.getMembers(unwrap(receiver), includeInternal);
+            if (value instanceof StaticObject) {
+                return (StaticObject) value;
+            }
+            return StaticObject.createForeign(meta.java_lang_Object, value, UNCACHED);
+        } catch (InteropException e) {
+            throw throwInteropException(e, meta);
+        }
+    }
+
+    /**
+     * Short-cut for {@link #getMembers(Object) getMembers(receiver, false)}. Invoking this message
+     * does not cause any observable side-effects.
+     *
+     * @throws UnsupportedMessageException if and only if the receiver has no
+     *             {@link #hasMembers(Object) members}.
+     * @see #getMembers(Object, boolean)
+     * @since 19.0
+     */
+    @Substitution
+    @Throws(UnsupportedMessageException.class)
+    public static @Host(Object.class) StaticObject getMembers(@Host(Object.class) StaticObject receiver, @InjectMeta Meta meta)  {
+        return getMembers(receiver, false, meta);
+    }
+
+    /**
+     * Returns <code>true</code> if a given member is {@link #readMember(Object, String) readable}.
+     * This method may only return <code>true</code> if {@link #hasMembers(Object)} returns
+     * <code>true</code> as well and {@link #isMemberInsertable(Object, String)} returns
+     * <code>false</code>. Invoking this message does not cause any observable side-effects. Returns
+     * <code>false</code> by default.
+     *
+     * @see #readMember(Object, String)
+     * @since 19.0
+     */
+    @Substitution
+    public static boolean isMemberReadable(@Host(Object.class) StaticObject receiver, @Host(String.class) StaticObject member) {
+        String hostMember = Meta.toHostStringStatic(member);
+        return UNCACHED.isMemberReadable(unwrap(receiver), hostMember);
+    }
+
+    /**
+     * Reads the value of a given member. If the member is {@link #isMemberReadable(Object, String)
+     * readable} and {@link #isMemberInvocable(Object, String) invocable} then the result of reading
+     * the member is {@link #isExecutable(Object) executable} and is bound to this receiver. This
+     * method must have not observable side-effects unless
+     * {@link #hasMemberReadSideEffects(Object, String)} returns <code>true</code>.
+     *
+     * @throws UnsupportedMessageException if when the receiver does not support reading at all. An
+     *             empty receiver with no readable members supports the read operation (even though
+     *             there is nothing to read), therefore it throws {@link UnknownIdentifierException}
+     *             for all arguments instead.
+     * @throws UnknownIdentifierException if the given member is not
+     *             {@link #isMemberReadable(Object, String) readable}, e.g. when the member with the
+     *             given name does not exist.
+     * @see #hasMemberReadSideEffects(Object, String)
+     * @since 19.0
+     */
+    @Substitution
+    @Throws({UnsupportedMessageException.class, UnknownIdentifierException.class})
+    public static @Host(Object.class) StaticObject readMember(@Host(Object.class) StaticObject receiver, @Host(String.class) StaticObject member, @InjectMeta Meta meta) {
+        try {
+            String hostMember = Meta.toHostStringStatic(member);
+            Object value = UNCACHED.readMember(unwrap(receiver), hostMember);
+            if (value instanceof StaticObject) {
+                return (StaticObject) value;
+            }
+            return StaticObject.createForeign(meta.java_lang_Object, value, UNCACHED);
+        } catch (InteropException e) {
+            throw throwInteropException(e, meta);
+        }
+    }
+
+    /**
+     * Returns <code>true</code> if a given member is existing and
+     * {@link #writeMember(Object, String, Object) writable}. This method may only return
+     * <code>true</code> if {@link #hasMembers(Object)} returns <code>true</code> as well and
+     * {@link #isMemberInsertable(Object, String)} returns <code>false</code>. Invoking this message
+     * does not cause any observable side-effects. Returns <code>false</code> by default.
+     *
+     * @see #writeMember(Object, String, Object)
+     * @since 19.0
+     */
+    Substitution
+    public static boolean isMemberModifiable(@Host(Object.class) StaticObject receiver, @Host(String.class) StaticObject member) {
+        String hostMember = Meta.toHostStringStatic(member);
+        return UNCACHED.isMemberModifiable(unwrap(receiver), hostMember);
+    }
+
+    /**
+     * Returns <code>true</code> if a given member is not existing and
+     * {@link #writeMember(Object, String, Object) writable}. This method may only return
+     * <code>true</code> if {@link #hasMembers(Object)} returns <code>true</code> as well and
+     * {@link #isMemberExisting(Object, String)} returns <code>false</code>. Invoking this message
+     * does not cause any observable side-effects. Returns <code>false</code> by default.
+     *
+     * @see #writeMember(Object, String, Object)
+     * @since 19.0
+     */
+    @Substitution
+    public static boolean isMemberInsertable(@Host(Object.class) StaticObject receiver, @Host(String.class) StaticObject member) {
+        String hostMember = Meta.toHostStringStatic(member);
+        return UNCACHED.isMemberInsertable(unwrap(receiver), hostMember);
+    }
+
+    /**
+     * Writes the value of a given member. Writing a member is allowed if is existing and
+     * {@link InteropLibrary#isMemberModifiable(Object, String) modifiable}, or not existing and
+     * {@link InteropLibrary#isMemberInsertable(Object, String) insertable}.
+     *
+     * This method must have not observable side-effects other than the changed member unless
+     * {@link #hasMemberWriteSideEffects(Object, String) side-effects} are allowed.
+     *
+     * @see InteropLibrary#writeMember(Object, String, Object)
+     * @since 19.0
+     */
+    @Substitution
+    @Throws({UnsupportedMessageException.class, UnknownIdentifierException.class, UnsupportedTypeException.class})
+    public static void writeMember(@Host(Object.class) StaticObject receiver, @Host(String.class) StaticObject member, @Host(Object.class) StaticObject value,
+                                   @InjectMeta Meta meta) {
+        String hostMember = Meta.toHostStringStatic(value);
+        try {
+            if (receiver.isForeignObject()) {
+                UNCACHED.writeMember(unwrap(receiver), hostMember, unwrap(value));
+            } else {
+                // Preserve the value type.
+                UNCACHED.writeMember(receiver, hostMember, value);
+            }
+        } catch (InteropException e) {
+            throw throwInteropException(e, meta);
+        }
+    }
+
+    /**
+     * Returns <code>true</code> if a given member is existing and removable. This method may only
+     * return <code>true</code> if {@link InteropLibrary#hasMembers(Object)} returns <code>true</code> as well and
+     * {@link InteropLibrary#isMemberInsertable(Object, String)} returns <code>false</code>. Invoking this message
+     * does not cause any observable side-effects. Returns <code>false</code> by default.
+     *
+     * @see InteropLibrary#isMemberRemovable(Object, String)
+     * @since 19.0
+     */
+    @Substitution
+    public static boolean isMemberRemovable(@Host(Object.class) StaticObject receiver, @Host(String.class) StaticObject member) {
+        String hostMember = Meta.toHostStringStatic(member);
+        return UNCACHED.isMemberRemovable(unwrap(receiver), hostMember);
+    }
+
+    /**
+     * Removes a member from the receiver object. Removing member is allowed if is
+     * {@link InteropLibrary#isMemberRemovable(Object, String) removable}.
+     *
+     * This method does not have not observable side-effects other than the removed member.
+     *
+     * @see InteropLibrary#removeMember(Object, String)
+     * @since 19.0
+     */
+    @Substitution
+    @Throws({UnsupportedMessageException.class, UnknownIdentifierException.class})
+    public static void removeMember(@Host(Object.class) StaticObject receiver, @Host(String.class) StaticObject member, @InjectMeta Meta meta) {
+        String hostMember = Meta.toHostStringStatic(member);
+        try {
+            UNCACHED.removeMember(unwrap(receiver), hostMember);
+        } catch (InteropException e) {
+            throw throwInteropException(e, meta);
+        }
+    }
+
+    /**
+     * Returns <code>true</code> if a given member is invocable. This method may only return
+     * <code>true</code> if {@link InteropLibrary#hasMembers(Object)} returns <code>true</code> as well and
+     * {@link InteropLibrary#isMemberInsertable(Object, String)} returns <code>false</code>. Invoking this message
+     * does not cause any observable side-effects. Returns <code>false</code> by default.
+     *
+     * @see InteropLibrary#isMemberInvocable(Object, String)
+     * @see #invokeMember(Object, String, Object...)
+     * @since 19.0
+     */
+    @Substitution
+    public static boolean isMemberInvocable(@Host(Object.class) StaticObject receiver, @Host(String.class) StaticObject member) {
+        String hostMember = Meta.toHostStringStatic(member);
+        return UNCACHED.isMemberInvocable(unwrap(receiver), hostMember);
+    }
+
+    /**
+     * Invokes a member for a given receiver and arguments.
+     *
+     * @see InteropLibrary#invokeMember(Object, String, Object...)
+     * @since 19.0
+     */
+    @Substitution
+    @Throws({UnsupportedMessageException.class, ArityException.class, UnknownIdentifierException.class, UnsupportedTypeException.class})
+    public static @Host(Object.class) StaticObject invokeMember(@Host(Object.class) StaticObject receiver, @Host(String.class) StaticObject member,
+                                                                @Host(Object[].class) StaticObject arguments,
+                                                                @InjectMeta Meta meta) {
+        String hostMember = Meta.toHostStringStatic(member);
+        try {
+            Object[] args = null;
+            Object result = null;
+
+            if (receiver.isForeignObject()) {
+                // Unwrap arguments.
+                args = new Object[arguments.length()];
+                for (int i = 0; i < args.length; i++) {
+                    args[i] = unwrap(meta.getInterpreterToVM().getArrayObject(i, arguments));
+                }
+                result = UNCACHED.invokeMember(unwrap(receiver), hostMember, args);
+            } else {
+                // Preserve argument types.
+                if (arguments.isEspressoObject()) {
+                    // Avoid copying, use the underlying array.
+                    args = arguments.unwrap();
+                } else {
+                    args = new Object[arguments.length()];
+                    for (int i = 0; i < args.length; i++) {
+                        args[i] = meta.getInterpreterToVM().getArrayObject(i, arguments);
+                    }
+                }
+                result = UNCACHED.invokeMember(receiver, hostMember, args);
+            }
+
+            if (result instanceof StaticObject) {
+                return (StaticObject) result;
+            }
+            return StaticObject.createForeign(meta.java_lang_Object, result, UNCACHED);
+        } catch (InteropException e) {
+            throw throwInteropException(e, meta);
+        }
+    }
+
+    /**
+     * Returns true if a member is internal. Internal members are not enumerated by
+     * {@link InteropLibrary#getMembers(Object, boolean)} by default. Internal members are only relevant to guest
+     * language implementations and tools, but not to guest applications or embedders. An example of
+     * internal members are internal slots in ECMAScript. Invoking this message does not cause any
+     * observable side-effects. Returns <code>false</code> by default.
+     *
+     * @see InteropLibrary#isMemberInternal(Object, String)
+     * @since 19.0
+     */
+    @Substitution
+    public static boolean isMemberInternal(@Host(Object.class) StaticObject receiver, @Host(String.class) StaticObject member) {
+        String hostMember = Meta.toHostStringStatic(member);
+        return UNCACHED.isMemberInternal(unwrap(receiver), hostMember);
+    }
+
+    /**
+     * Returns <code>true</code> if reading a member may cause a side-effect. Invoking this message
+     * does not cause any observable side-effects. A member read does not cause any side-effects by
+     * default.
+     * <p>
+     * For instance in JavaScript a property read may have side-effects if the property has a getter
+     * function.
+     *
+     * @see InteropLibrary#hasMemberReadSideEffects(Object, String)
+     * @since 19.0
+     */
+    @Substitution
+    public static boolean hasMemberReadSideEffects(@Host(Object.class) StaticObject receiver, @Host(String.class) StaticObject member) {
+        String hostMember = Meta.toHostStringStatic(member);
+        return UNCACHED.hasMemberReadSideEffects(unwrap(receiver), hostMember);
+    }
+
+    /**
+     * Returns <code>true</code> if writing a member may cause a side-effect, besides the write
+     * operation of the member. Invoking this message does not cause any observable side-effects. A
+     * member write does not cause any side-effects by default.
+     * <p>
+     * For instance in JavaScript a property write may have side-effects if the property has a
+     * setter function.
+     *
+     * @see InteropLibrary#hasMemberWriteSideEffects(Object, String)
+     * @since 19.0
+     */
+    @Substitution
+    public static boolean hasMemberWriteSideEffects(@Host(Object.class) StaticObject receiver, @Host(String.class) StaticObject member) {
+        String hostMember = Meta.toHostStringStatic(member);
+        return UNCACHED.hasMemberWriteSideEffects(unwrap(receiver), hostMember);
+    }
+
+    // endregion Member Messages
 
     private static Object unwrap(StaticObject receiver) {
         return receiver.isForeignObject() ? receiver.rawForeignObject() : receiver;
