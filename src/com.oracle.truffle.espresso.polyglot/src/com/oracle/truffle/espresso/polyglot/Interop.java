@@ -268,15 +268,12 @@ public final class Interop {
     // region Exception Messages
 
     /**
-     * Returns <code>true</code> if the receiver value represents a throwable exception/error}.
+     * Returns <code>true</code> if the receiver value represents a throwable exception/error.
      * Invoking this message does not cause any observable side-effects. Returns <code>false</code>
      * by default.
      * <p>
      * Objects must only return <code>true</code> if they support {@link #throwException} as well.
      * If this method is implemented then also {@link #throwException(Object)} must be implemented.
-     *
-     * The following simplified {@code TryCatchNode} shows how the exceptions should be handled by
-     * languages.
      *
      * @see #throwException(Object)
      * @since 19.3
@@ -301,9 +298,6 @@ public final class Interop {
      * Returns {@link ExceptionType exception type} of the receiver. Throws
      * {@code UnsupportedMessageException} when the receiver is not an {@link #isException(Object)
      * exception}.
-     * <p>
-     * For a sample {@code TryCatchNode} implementation see {@link #isException(Object)
-     * isException}.
      *
      * @see #isException(Object)
      * @see ExceptionType
@@ -712,6 +706,8 @@ public final class Interop {
 
     // region Identity Messages
 
+    // isIdenticalOrUndefined is not exposed to keep the API tidy.
+
     /**
      * Returns <code>true</code> if two values represent the the identical value, else
      * <code>false</code>. Two values are identical if and only if they have specified identity
@@ -724,19 +720,19 @@ public final class Interop {
      * This method has the following properties:
      * <ul>
      * <li>It is <b>not</b> <i>reflexive</i>: for any value {@code x},
-     * {@code lib.isIdentical(x, x, lib)} may return {@code false} if the object does not support
+     * {@code Interop.isIdentical(x, x)} may return {@code false} if the object does not support
      * identity, else <code>true</code>. This method is reflexive if {@code x} supports identity. A
-     * value supports identity if {@code lib.isIdentical(x, x, lib)} returns <code>true</code>. The
+     * value supports identity if {@code Interop.isIdentical(x, x)} returns <code>true</code>. The
      * method {@link #hasIdentity(Object)} may be used to document this intent explicitly.
      * <li>It is <i>symmetric</i>: for any values {@code x} and {@code y},
-     * {@code lib.isIdentical(x, y, yLib)} returns {@code true} if and only if
-     * {@code lib.isIdentical(y, x, xLib)} returns {@code true}.
+     * {@code Interop.isIdentical(x, y)} returns {@code true} if and only if
+     * {@code Interop.isIdentical(y, x)} returns {@code true}.
      * <li>It is <i>transitive</i>: for any values {@code x}, {@code y}, and {@code z}, if
-     * {@code lib.isIdentical(x, y, yLib)} returns {@code true} and
-     * {@code lib.isIdentical(y, z, zLib)} returns {@code true}, then
-     * {@code lib.isIdentical(x, z, zLib)} returns {@code true}.
+     * {@code Interop.isIdentical(x, y)} returns {@code true} and
+     * {@code Interop.isIdentical(y, z)} returns {@code true}, then
+     * {@code Interop.isIdentical(x, z)} returns {@code true}.
      * <li>It is <i>consistent</i>: for any values {@code x} and {@code y}, multiple invocations of
-     * {@code lib.isIdentical(x, y, yLib)} consistently returns {@code true} or consistently return
+     * {@code Interop.isIdentical(x, y)} consistently returns {@code true} or consistently return
      * {@code false}.
      * </ul>
      * <p>
@@ -750,43 +746,11 @@ public final class Interop {
      * violate the symmetric property.
      * <p>
      * This method performs double dispatch by forwarding calls to
-     * {@link #isIdenticalOrUndefined(Object, Object)} with receiver and other value first and then
+     * isIdenticalOrUndefined with receiver and other value first and then
      * with reversed parameters if the result was undefined. This allows the receiver and the other
-     * value to negotiate identity semantics. This method is supposed to be exported only if the
-     * receiver represents a wrapper that forwards messages. In such a case the isIdentical message
-     * should be forwarded to the delegate value. Otherwise, the {isIdenticalOrUndefined(Object,
-     * Object)} should be exported instead.
+     * value to negotiate identity semantics.
      * <p>
      * This method must not cause any observable side-effects.
-     * <p>
-     * Cached usage example:
-     *
-     * <pre>
-     * abstract class IsIdenticalUsage extends Node {
-     *
-     *     abstract boolean execute(Object left, Object right);
-     *
-     *     &#64;Specialization(limit = "3")
-     *     public boolean isIdentical(Object left, Object right,
-     *                     &#64;CachedLibrary("left") InteropLibrary leftInterop,
-     *                     &#64;CachedLibrary("right") InteropLibrary rightInterop) {
-     *         return leftInterop.isIdentical(left, right, rightInterop);
-     *     }
-     * }
-     * </pre>
-     * <p>
-     * Uncached usage example:
-     *
-     * <pre>
-     * &#64;TruffleBoundary
-     * public static boolean isIdentical(Object left, Object right) {
-     *     return InteropLibrary.getUncached(left).isIdentical(left, right,
-     *                     InteropLibrary.getUncached(right));
-     * }
-     * </pre>
-     *
-     * For a full example please refer to the SLEqualNode of the SimpleLanguage example
-     * implementation.
      *
      * @since 20.2
      */
@@ -796,10 +760,9 @@ public final class Interop {
      * Returns <code>true</code> if and only if the receiver specifies identity, else
      * <code>false</code>. This method is a short-cut for
      * <code>isIdentical(receiver, receiver)</code>. This message cannot be exported. To add
-     * identity support to the receiver export {@link #isIdenticalOrUndefined(Object, Object)}
+     * identity support to the receiver export isIdenticalOrUndefined(Object, Object)
      * instead.
      *
-     * @see #isIdenticalOrUndefined(Object, Object)
      * @since 20.2
      */
     public static boolean hasIdentity(Object receiver) {
@@ -824,11 +787,10 @@ public final class Interop {
      * integers for objects that are not the same.
      * </ul>
      * This method must not cause any observable side-effects. If this method is implemented then
-     * also {@link #isIdenticalOrUndefined(Object, Object)} must be implemented.
+     * also isIdenticalOrUndefined(Object, Object) must be implemented.
      *
      * @throws UnsupportedMessageException if and only if {@link #hasIdentity(Object)} returns
      *             <code>false</code> for the same receiver.
-     * @see #isIdenticalOrUndefined(Object, Object)
      * @see #isIdentical(Object, Object)
      * @since 20.2
      */
