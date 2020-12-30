@@ -1467,10 +1467,10 @@ public final class Target_com_oracle_truffle_espresso_polyglot_Interop {
             Throwable cause = e.getCause();
             StaticObject exception = (cause == null || !(cause instanceof AbstractTruffleException))
                             // ArityException.create(int expectedArity, int actualArity)
-                            ? (StaticObject) meta.polyglot.UnknownIdentifierException_create_String.invokeDirect(null, expectedArity, actualArity)
+                            ? (StaticObject) meta.polyglot.ArityException_create_int_int.invokeDirect(null, expectedArity, actualArity)
                             // ArityException.create(int expectedArity, int actualArity, Throwable
                             // cause)
-                            : (StaticObject) meta.polyglot.UnknownIdentifierException_create_String_Throwable.invokeDirect(null, expectedArity, actualArity, wrapForeignException(cause, meta));
+                            : (StaticObject) meta.polyglot.ArityException_create_int_int_Throwable.invokeDirect(null, expectedArity, actualArity, wrapForeignException(cause, meta));
             throw EspressoException.wrap(exception);
         }
 
