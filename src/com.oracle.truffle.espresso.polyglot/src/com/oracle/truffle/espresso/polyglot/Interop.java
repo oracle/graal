@@ -1041,4 +1041,47 @@ public final class Interop {
     public static native boolean hasMemberWriteSideEffects(Object receiver, String member);
 
     // endregion Member Messages
+
+    // region Pointer Messages
+
+    /**
+     * Returns <code>true</code> if the receiver value represents a native pointer. Native pointers
+     * are represented as 64 bit pointers. Invoking this message does not cause any observable
+     * side-effects. Returns <code>false</code> by default.
+     * <p>
+     * It is expected that objects should only return <code>true</code> if the native pointer value
+     * corresponding to this object already exists, and obtaining it is a cheap operation. If an
+     * object can be transformed to a pointer representation, but this hasn't happened yet, the
+     * object is expected to return <code>false</code> with {@link #isPointer(Object)}, and wait for
+     * the {@link #toNative(Object)} message to trigger the transformation.
+     *
+     * @see #asPointer(Object)
+     * @see #toNative(Object)
+     * @since 19.0
+     */
+    public static native boolean isPointer(Object receiver);
+
+    /**
+     * Returns the pointer value as long value if the receiver represents a pointer like value.
+     *
+     * @throws UnsupportedMessageException if and only if {@link #isPointer(Object)} returns
+     *             <code>false</code> for the same receiver.
+     * @see #isPointer(Object)
+     * @since 19.0
+     */
+    public static native long asPointer(Object receiver) throws UnsupportedMessageException;
+
+    /**
+     * Attempts to transform a receiver to a value that represents a raw
+     * native pointer. After a successful transformation, the provided receiver returns true for
+     * {@link #isPointer(Object)} and can be unwrapped using the {@link #asPointer(Object)} message.
+     * If transformation cannot be done {@link #isPointer(Object)} will keep returning false.
+     *
+     * @see #isPointer(Object)
+     * @see #asPointer(Object)
+     * @since 19.0
+     */
+    public static native void toNative(Object receiver);
+
+    // endregion Pointer Messages
 }
