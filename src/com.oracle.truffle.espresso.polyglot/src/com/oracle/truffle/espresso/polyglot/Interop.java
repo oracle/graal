@@ -728,9 +728,8 @@ public final class Interop {
      * {@code Interop.isIdentical(x, y)} returns {@code true} if and only if
      * {@code Interop.isIdentical(y, x)} returns {@code true}.
      * <li>It is <i>transitive</i>: for any values {@code x}, {@code y}, and {@code z}, if
-     * {@code Interop.isIdentical(x, y)} returns {@code true} and
-     * {@code Interop.isIdentical(y, z)} returns {@code true}, then
-     * {@code Interop.isIdentical(x, z)} returns {@code true}.
+     * {@code Interop.isIdentical(x, y)} returns {@code true} and {@code Interop.isIdentical(y, z)}
+     * returns {@code true}, then {@code Interop.isIdentical(x, z)} returns {@code true}.
      * <li>It is <i>consistent</i>: for any values {@code x} and {@code y}, multiple invocations of
      * {@code Interop.isIdentical(x, y)} consistently returns {@code true} or consistently return
      * {@code false}.
@@ -745,10 +744,9 @@ public final class Interop {
      * {@link Integer} can never be interop identical to other boxed language integers as this would
      * violate the symmetric property.
      * <p>
-     * This method performs double dispatch by forwarding calls to
-     * isIdenticalOrUndefined with receiver and other value first and then
-     * with reversed parameters if the result was undefined. This allows the receiver and the other
-     * value to negotiate identity semantics.
+     * This method performs double dispatch by forwarding calls to isIdenticalOrUndefined with
+     * receiver and other value first and then with reversed parameters if the result was undefined.
+     * This allows the receiver and the other value to negotiate identity semantics.
      * <p>
      * This method must not cause any observable side-effects.
      *
@@ -760,8 +758,7 @@ public final class Interop {
      * Returns <code>true</code> if and only if the receiver specifies identity, else
      * <code>false</code>. This method is a short-cut for
      * <code>isIdentical(receiver, receiver)</code>. This message cannot be exported. To add
-     * identity support to the receiver export isIdenticalOrUndefined(Object, Object)
-     * instead.
+     * identity support to the receiver export isIdenticalOrUndefined(Object, Object) instead.
      *
      * @since 20.2
      */
@@ -981,7 +978,7 @@ public final class Interop {
      * @since 19.0
      */
     public static native Object invokeMember(Object receiver, String member, Object... arguments)
-            throws UnsupportedMessageException, ArityException, UnknownIdentifierException, UnsupportedTypeException;
+                    throws UnsupportedMessageException, ArityException, UnknownIdentifierException, UnsupportedTypeException;
 
     /**
      * Returns true if a member is internal. Internal members are not enumerated by
