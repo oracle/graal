@@ -1309,6 +1309,59 @@ public final class Target_com_oracle_truffle_espresso_polyglot_Interop {
 
     // endregion Member Messages
 
+    // region Pointer Messages
+
+    /**
+     * Returns <code>true</code> if the receiver value represents a native pointer. Native pointers
+     * are represented as 64 bit pointers. Invoking this message does not cause any observable
+     * side-effects. Returns <code>false</code> by default.
+     * <p>
+     * It is expected that objects should only return <code>true</code> if the native pointer value
+     * corresponding to this object already exists, and obtaining it is a cheap operation. If an
+     * object can be transformed to a pointer representation, but this hasn't happened yet, the
+     * object is expected to return <code>false</code> with {@link InteropLibrary#isPointer(Object)}, and wait for
+     * the {@link InteropLibrary#toNative(Object)} message to trigger the transformation.
+     *
+     * @see InteropLibrary#isPointer(Object)
+     * @since 19.0
+     */
+    @Substitution
+    public static boolean isPointer(@Host(Object.class) StaticObject receiver) {
+        return UNCACHED.isPointer(unwrap(receiver));
+    }
+
+    /**
+     * Returns the pointer value as long value if the receiver represents a pointer like value.
+     *
+     * @see InteropLibrary#asPointer(Object)
+     * @since 19.0
+     */
+    @Substitution
+    @Throws(UnsupportedMessageException.class)
+    public static long asPointer(@Host(Object.class) StaticObject receiver, @InjectMeta Meta meta)  {
+        try {
+            return UNCACHED.asPointer(unwrap(receiver));
+        } catch (InteropException e) {
+            throw throwInteropException(e, meta);
+        }
+    }
+
+    /**
+     * Attempts to transform a receiver to a value that represents a raw
+     * native pointer. After a successful transformation, the provided receiver returns true for
+     * {@link InteropLibrary#isPointer(Object)} and can be unwrapped using the {@link InteropLibrary#asPointer(Object)} message.
+     * If transformation cannot be done {@link InteropLibrary#isPointer(Object)} will keep returning false.
+     *
+     * @see InteropLibrary#toNative(Object)
+     * @since 19.0
+     */
+    @Substitution
+    public static void toNative(@Host(Object.class) StaticObject receiver) {
+        UNCACHED.toNative(unwrap(receiver));
+    }
+
+    // endregion Pointer Messages
+
     private static Object unwrap(StaticObject receiver) {
         return receiver.isForeignObject() ? receiver.rawForeignObject() : receiver;
     }
