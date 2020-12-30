@@ -1072,10 +1072,10 @@ public final class Interop {
     public static native long asPointer(Object receiver) throws UnsupportedMessageException;
 
     /**
-     * Attempts to transform a receiver to a value that represents a raw
-     * native pointer. After a successful transformation, the provided receiver returns true for
-     * {@link #isPointer(Object)} and can be unwrapped using the {@link #asPointer(Object)} message.
-     * If transformation cannot be done {@link #isPointer(Object)} will keep returning false.
+     * Attempts to transform a receiver to a value that represents a raw native pointer. After a
+     * successful transformation, the provided receiver returns true for {@link #isPointer(Object)}
+     * and can be unwrapped using the {@link #asPointer(Object)} message. If transformation cannot
+     * be done {@link #isPointer(Object)} will keep returning false.
      *
      * @see #isPointer(Object)
      * @see #asPointer(Object)
