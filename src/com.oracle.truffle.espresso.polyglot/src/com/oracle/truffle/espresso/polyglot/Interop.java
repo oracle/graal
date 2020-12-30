@@ -1084,4 +1084,35 @@ public final class Interop {
     public static native void toNative(Object receiver);
 
     // endregion Pointer Messages
+
+    // region Executable Messages
+
+    /**
+     * Returns <code>true</code> if the receiver represents an <code>executable</code> value, else
+     * <code>false</code>. Functions, methods or closures are common examples of executable values.
+     * Invoking this message does not cause any observable side-effects. Note that receiver values
+     * which are {@link #isExecutable(Object) executable} might also be
+     * {@link #isInstantiable(Object) instantiable}.
+     *
+     * @see #execute(Object, Object...)
+     * @since 19.0
+     */
+    public static native boolean isExecutable(Object receiver);
+
+    /**
+     * Executes an executable value with the given arguments.
+     *
+     * @throws UnsupportedTypeException if one of the arguments is not compatible to the executable
+     *             signature. The exception is thrown on best effort basis, dynamic languages may
+     *             throw their own exceptions if the arguments are wrong.
+     * @throws ArityException if the number of expected arguments does not match the number of
+     *             actual arguments.
+     * @throws UnsupportedMessageException if and only if {@link #isExecutable(Object)} returns
+     *             <code>false</code> for the same receiver.
+     * @see #isExecutable(Object)
+     * @since 19.0
+     */
+    public static native Object execute(Object receiver, Object... arguments) throws UnsupportedTypeException, ArityException, UnsupportedMessageException;
+
+    // endregion Executable Messages
 }
