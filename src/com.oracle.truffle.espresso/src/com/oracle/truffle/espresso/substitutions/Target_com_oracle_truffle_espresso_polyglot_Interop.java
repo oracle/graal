@@ -550,11 +550,12 @@ public final class Target_com_oracle_truffle_espresso_polyglot_Interop {
             if (value instanceof StaticObject) {
                 return (StaticObject) value;
             }
-            // The foreign object *could* be wrapped into a more precise Java type, but inferring
-            // this Java type
-            // from the interop "kind" (string, primitive, exception, array...) is ambiguous and
-            // inefficient.
-            // The caller is responsible to re-wrap or convert the result as needed.
+            /*
+             * The foreign object *could* be wrapped into a more precise Java type, but inferring
+             * this Java type from the interop "kind" (string, primitive, exception, array...) is
+             * ambiguous and inefficient. The caller is responsible to re-wrap or convert the result
+             * as needed.
+             */
             return StaticObject.createForeign(meta.java_lang_Object, value, UNCACHED);
         } catch (InteropException e) {
             throw throwInteropException(e, meta);
