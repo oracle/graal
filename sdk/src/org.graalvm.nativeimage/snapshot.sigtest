@@ -764,6 +764,7 @@ innr public abstract interface static AfterRegistrationAccess
 innr public abstract interface static BeforeAnalysisAccess
 innr public abstract interface static BeforeCompilationAccess
 innr public abstract interface static BeforeImageWriteAccess
+innr public abstract interface static BeforeUniverseBuildingAccess
 innr public abstract interface static CompilationAccess
 innr public abstract interface static DuringAnalysisAccess
 innr public abstract interface static DuringSetupAccess
@@ -781,6 +782,7 @@ meth public void afterRegistration(org.graalvm.nativeimage.hosted.Feature$AfterR
 meth public void beforeAnalysis(org.graalvm.nativeimage.hosted.Feature$BeforeAnalysisAccess)
 meth public void beforeCompilation(org.graalvm.nativeimage.hosted.Feature$BeforeCompilationAccess)
 meth public void beforeImageWrite(org.graalvm.nativeimage.hosted.Feature$BeforeImageWriteAccess)
+meth public void beforeUniverseBuilding(org.graalvm.nativeimage.hosted.Feature$BeforeUniverseBuildingAccess)
 meth public void cleanup()
 meth public void duringAnalysis(org.graalvm.nativeimage.hosted.Feature$DuringAnalysisAccess)
 meth public void duringSetup(org.graalvm.nativeimage.hosted.Feature$DuringSetupAccess)
@@ -823,6 +825,10 @@ CLSS public abstract interface static org.graalvm.nativeimage.hosted.Feature$Bef
 intf org.graalvm.nativeimage.hosted.Feature$CompilationAccess
 
 CLSS public abstract interface static org.graalvm.nativeimage.hosted.Feature$BeforeImageWriteAccess
+ outer org.graalvm.nativeimage.hosted.Feature
+intf org.graalvm.nativeimage.hosted.Feature$FeatureAccess
+
+CLSS public abstract interface static org.graalvm.nativeimage.hosted.Feature$BeforeUniverseBuildingAccess
  outer org.graalvm.nativeimage.hosted.Feature
 intf org.graalvm.nativeimage.hosted.Feature$FeatureAccess
 

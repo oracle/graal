@@ -30,10 +30,22 @@ import jdk.vm.ci.meta.ResolvedJavaType;
 
 public abstract class SubstitutionProcessor {
 
+    /**
+     * Get the substitution of an original type.
+     * 
+     * @param type the original type
+     * @return the substitution type, or the original type if it isn't covered by this substitution
+     */
     public ResolvedJavaType lookup(ResolvedJavaType type) {
         return type;
     }
 
+    /**
+     * Get the original type.
+     * 
+     * @param type the result of a substitution
+     * @return the original type of the substitution
+     */
     public ResolvedJavaType resolve(ResolvedJavaType type) {
         return type;
     }

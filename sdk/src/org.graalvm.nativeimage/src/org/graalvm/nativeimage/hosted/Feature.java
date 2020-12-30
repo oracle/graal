@@ -340,6 +340,15 @@ public interface Feature {
     }
 
     /**
+     * Access methods available for {@link Feature#beforeUniverseBuilding}.
+     * 
+     * @since 21.1
+     */
+    @Platforms(Platform.HOSTED_ONLY.class)
+    interface BeforeUniverseBuildingAccess extends FeatureAccess {
+    }
+
+    /**
      * Access methods available for {@link Feature#beforeCompilation} and
      * {@link Feature#afterCompilation}.
      *
@@ -513,6 +522,17 @@ public interface Feature {
      * @since 19.0
      */
     default void onAnalysisExit(OnAnalysisExitAccess access) {
+    }
+
+    /**
+     * Handler for code that needs to run before universe building, but after hosted meta-access has
+     * been created.
+     * 
+     * @param access The supported operations that the feature can perform at this time
+     * 
+     * @since 21.1
+     */
+    default void beforeUniverseBuilding(BeforeUniverseBuildingAccess access) {
     }
 
     /**

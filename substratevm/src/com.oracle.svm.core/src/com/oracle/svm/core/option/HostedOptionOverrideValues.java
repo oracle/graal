@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2019, 2020, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2020, 2020, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -22,14 +22,35 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package org.graalvm.compiler.replacements;
+package com.oracle.svm.core.option;
 
-import org.graalvm.compiler.nodes.graphbuilderconf.GraphBuilderConfiguration.Plugins;
-import org.graalvm.compiler.nodes.spi.Replacements;
-import org.graalvm.compiler.options.OptionValues;
+import org.graalvm.collections.EconomicMap;
+import org.graalvm.nativeimage.ImageSingletons;
 
-import jdk.vm.ci.code.Architecture;
+/**
+ * The singleton holder of hosted options overrides. The values held by this object override those
+ * in {@link HostedOptionValues}.
+ * <p>
+ * Unlike {@link HostedOptionValues}, this object is mutable. This allows for options to be
+ * overridden programmatically in later phases.
+ */
+public class HostedOptionOverrideValues {
+    private final EconomicMap<HostedOptionKey<?>, Object> overrides;
 
-public interface TargetGraphBuilderPlugins {
-    void register(Plugins plugins, Replacements replacements, Architecture arch, boolean explicitUnsafeNullChecks, boolean registerForeignCallMath, boolean useFMAIntrinsics, OptionValues options);
+    public HostedOptionOverrideValues() {
+        this.overrides = EconomicMap.create();
+    }
+
+    public static HostedOptionOverrideValues singleton() {
+        return ImageSingletons.lookup(HostedOptionOverrideValues.class);
+    }
+
+    @SuppressWarnings("unchecked")
+    public <T> T get(HostedOptionKey<T> key) {
+        return (T) this.overrides.get(key);
+    }
+
+    public <T> void set(HostedOptionKey<T> key, T value) {
+        this.overrides.put(key, value);
+    }
 }

@@ -50,20 +50,25 @@ public class AMD64ArrayIndexOfNode extends FixedWithNextNode implements LIRLower
 
     public static final NodeClass<AMD64ArrayIndexOfNode> TYPE = NodeClass.create(AMD64ArrayIndexOfNode.class);
 
-    private final JavaKind arrayKind;
-    private final JavaKind valueKind;
-    private final boolean findTwoConsecutive;
+    protected final JavaKind arrayKind;
+    protected final JavaKind valueKind;
+    protected final boolean findTwoConsecutive;
 
-    @Input private ValueNode arrayPointer;
-    @Input private ValueNode arrayLength;
-    @Input private ValueNode fromIndex;
-    @Input private NodeInputList<ValueNode> searchValues;
+    @Input protected ValueNode arrayPointer;
+    @Input protected ValueNode arrayLength;
+    @Input protected ValueNode fromIndex;
+    @Input protected NodeInputList<ValueNode> searchValues;
 
     @OptionalInput(InputType.Memory) private MemoryKill lastLocationAccess;
 
     public AMD64ArrayIndexOfNode(@ConstantNodeParameter JavaKind arrayKind, @ConstantNodeParameter JavaKind valueKind, @ConstantNodeParameter boolean findTwoConsecutive,
                     ValueNode arrayPointer, ValueNode arrayLength, ValueNode fromIndex, ValueNode... searchValues) {
-        super(TYPE, StampFactory.forKind(JavaKind.Int));
+        this(TYPE, arrayKind, valueKind, findTwoConsecutive, arrayPointer, arrayLength, fromIndex, searchValues);
+    }
+
+    protected AMD64ArrayIndexOfNode(NodeClass<? extends AMD64ArrayIndexOfNode> c, @ConstantNodeParameter JavaKind arrayKind, @ConstantNodeParameter JavaKind valueKind,
+                    @ConstantNodeParameter boolean findTwoConsecutive, ValueNode arrayPointer, ValueNode arrayLength, ValueNode fromIndex, ValueNode... searchValues) {
+        super(c, StampFactory.forKind(JavaKind.Int));
         this.arrayKind = arrayKind;
         this.valueKind = valueKind;
         this.findTwoConsecutive = findTwoConsecutive;
@@ -71,11 +76,6 @@ public class AMD64ArrayIndexOfNode extends FixedWithNextNode implements LIRLower
         this.arrayLength = arrayLength;
         this.fromIndex = fromIndex;
         this.searchValues = new NodeInputList<>(this, searchValues);
-    }
-
-    public AMD64ArrayIndexOfNode(@ConstantNodeParameter JavaKind arrayKind, @ConstantNodeParameter JavaKind valueKind,
-                    ValueNode arrayPointer, ValueNode arrayLength, ValueNode fromIndex, ValueNode... searchValues) {
-        this(arrayKind, valueKind, false, arrayPointer, arrayLength, fromIndex, searchValues);
     }
 
     @Override
@@ -89,7 +89,8 @@ public class AMD64ArrayIndexOfNode extends FixedWithNextNode implements LIRLower
         for (int i = 0; i < searchValues.size(); i++) {
             searchValueOperands[i] = gen.operand(searchValues.get(i));
         }
-        Value result = gen.getLIRGeneratorTool().emitArrayIndexOf(arrayKind, valueKind, findTwoConsecutive,
+        int arrayBaseOffset = gen.getLIRGeneratorTool().getMetaAccess().getArrayBaseOffset(arrayKind);
+        Value result = gen.getLIRGeneratorTool().emitArrayIndexOf(arrayBaseOffset, valueKind, findTwoConsecutive,
                         gen.operand(arrayPointer), gen.operand(arrayLength), gen.operand(fromIndex), searchValueOperands);
         gen.setResult(this, result);
     }

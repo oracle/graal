@@ -90,12 +90,11 @@ final class GenScavengeAllocationSnippets extends SubstrateAllocationSnippets {
     }
 
     @Snippet
-    public Object formatArraySnippet(Word memory, DynamicHub hub, int length, boolean rememberedSet, boolean unaligned, boolean fillContents, boolean emitMemoryBarrier,
+    public Object formatArraySnippet(Word memory, DynamicHub hub, int length, boolean rememberedSet, boolean unaligned, boolean fillContents, int fillStartOffset, boolean emitMemoryBarrier,
                     @ConstantParameter boolean supportsBulkZeroing, @ConstantParameter boolean supportsOptimizedFilling, @ConstantParameter AllocationSnippetCounters snippetCounters) {
         DynamicHub hubNonNull = (DynamicHub) PiNode.piCastNonNull(hub, SnippetAnchorNode.anchor());
         int layoutEncoding = hubNonNull.getLayoutEncoding();
         UnsignedWord size = LayoutEncoding.getArraySize(layoutEncoding, length);
-        int fillStartOffset = (int) LayoutEncoding.getArrayBaseOffset(layoutEncoding).rawValue();
         Word objectHeader = encodeAsObjectHeader(hubNonNull, rememberedSet, unaligned);
         return formatArray(objectHeader, WordFactory.nullPointer(), size, length, memory, fillContents, fillStartOffset,
                         emitMemoryBarrier, false, supportsBulkZeroing, supportsOptimizedFilling, snippetCounters);
@@ -205,6 +204,7 @@ final class GenScavengeAllocationSnippets extends SubstrateAllocationSnippets {
                 args.add("rememberedSet", node.getRememberedSet());
                 args.add("unaligned", node.getUnaligned());
                 args.add("fillContents", node.getFillContents());
+                args.add("fillStartOffset", node.getFillStartOffset());
                 args.add("emitMemoryBarrier", node.getEmitMemoryBarrier());
                 args.addConst("supportsBulkZeroing", tool.getLowerer().supportsBulkZeroing());
                 args.addConst("supportsOptimizedFilling", tool.getLowerer().supportsOptimizedFilling(graph.getOptions()));

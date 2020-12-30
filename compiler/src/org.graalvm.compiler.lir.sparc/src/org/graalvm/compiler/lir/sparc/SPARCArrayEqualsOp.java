@@ -61,7 +61,8 @@ public final class SPARCArrayEqualsOp extends SPARCLIRInstruction {
     public static final SizeEstimate SIZE = SizeEstimate.create(32);
 
     private final JavaKind kind;
-    private final int arrayBaseOffset;
+    private final int array1BaseOffset;
+    private final int array2BaseOffset;
     private final int arrayIndexScale;
 
     @Def({REG}) protected AllocatableValue resultValue;
@@ -74,13 +75,20 @@ public final class SPARCArrayEqualsOp extends SPARCLIRInstruction {
     @Temp({REG}) protected AllocatableValue temp4;
     @Temp({REG}) protected AllocatableValue temp5;
 
-    public SPARCArrayEqualsOp(LIRGeneratorTool tool, JavaKind kind, AllocatableValue result, AllocatableValue array1, AllocatableValue array2, AllocatableValue length, boolean directPointers) {
+    public SPARCArrayEqualsOp(LIRGeneratorTool tool, JavaKind kind, int array1BaseOffset, int array2BaseOffset, AllocatableValue result, AllocatableValue array1, AllocatableValue array2,
+                    AllocatableValue length, boolean directPointers) {
         super(TYPE, SIZE);
 
         assert !kind.isNumericFloat() : "Float arrays comparison (bitwise_equal || both_NaN) isn't supported";
         this.kind = kind;
 
-        this.arrayBaseOffset = directPointers ? 0 : tool.getProviders().getMetaAccess().getArrayBaseOffset(kind);
+        /*
+         * The arrays are expected to have the same kind and thus the same index scale. For
+         * primitive arrays, this will mean the same array base offset as well; but if we compare a
+         * regular array with a hybrid object, they may have two different offsets.
+         */
+        this.array1BaseOffset = directPointers ? 0 : array1BaseOffset;
+        this.array2BaseOffset = directPointers ? 0 : array2BaseOffset;
         this.arrayIndexScale = tool.getProviders().getMetaAccess().getArrayIndexScale(kind);
 
         this.resultValue = result;
@@ -108,8 +116,8 @@ public final class SPARCArrayEqualsOp extends SPARCLIRInstruction {
         Label done = new Label();
 
         // Load array base addresses.
-        masm.add(asRegister(array1Value), arrayBaseOffset, array1);
-        masm.add(asRegister(array2Value), arrayBaseOffset, array2);
+        masm.add(asRegister(array1Value), array1BaseOffset, array1);
+        masm.add(asRegister(array2Value), array2BaseOffset, array2);
 
         // Get array length in bytes.
         masm.mulx(asRegister(lengthValue, WORD), arrayIndexScale, length);

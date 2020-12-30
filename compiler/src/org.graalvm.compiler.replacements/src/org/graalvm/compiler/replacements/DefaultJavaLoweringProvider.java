@@ -487,9 +487,12 @@ public abstract class DefaultJavaLoweringProvider implements LoweringProvider {
      * Create a PiNode on the index proving that the index is positive. On some platforms this is
      * important to allow the index to be used as an int in the address mode.
      */
+    protected ValueNode createPositiveIndex(StructuredGraph graph, ValueNode index, GuardingNode boundsCheck) {
+        return graph.maybeAddOrUnique(PiNode.create(index, POSITIVE_ARRAY_INDEX_STAMP, boundsCheck != null ? boundsCheck.asNode() : null));
+    }
+
     public AddressNode createArrayIndexAddress(StructuredGraph graph, ValueNode array, JavaKind elementKind, ValueNode index, GuardingNode boundsCheck) {
-        ValueNode positiveIndex = graph.maybeAddOrUnique(PiNode.create(index, POSITIVE_ARRAY_INDEX_STAMP, boundsCheck != null ? boundsCheck.asNode() : null));
-        return createArrayAddress(graph, array, elementKind, positiveIndex);
+        return createArrayAddress(graph, array, elementKind, createPositiveIndex(graph, index, boundsCheck));
     }
 
     public AddressNode createArrayAddress(StructuredGraph graph, ValueNode array, JavaKind elementKind, ValueNode index) {
@@ -497,6 +500,11 @@ public abstract class DefaultJavaLoweringProvider implements LoweringProvider {
     }
 
     public AddressNode createArrayAddress(StructuredGraph graph, ValueNode array, JavaKind arrayKind, JavaKind elementKind, ValueNode index) {
+        int base = metaAccess.getArrayBaseOffset(arrayKind);
+        return createArrayAddress(graph, array, base, elementKind, index);
+    }
+
+    public AddressNode createArrayAddress(StructuredGraph graph, ValueNode array, int arrayBaseOffset, JavaKind elementKind, ValueNode index) {
         ValueNode wordIndex;
         if (target.wordSize > 4) {
             wordIndex = graph.unique(new SignExtendNode(index, target.wordSize * 8));
@@ -504,13 +512,9 @@ public abstract class DefaultJavaLoweringProvider implements LoweringProvider {
             assert target.wordSize == 4 : "unsupported word size";
             wordIndex = index;
         }
-
         int shift = CodeUtil.log2(metaAccess.getArrayIndexScale(elementKind));
         ValueNode scaledIndex = graph.unique(new LeftShiftNode(wordIndex, ConstantNode.forInt(shift, graph)));
-
-        int base = metaAccess.getArrayBaseOffset(arrayKind);
-        ValueNode offset = graph.unique(new AddNode(scaledIndex, ConstantNode.forIntegerKind(target.wordJavaKind, base, graph)));
-
+        ValueNode offset = graph.unique(new AddNode(scaledIndex, ConstantNode.forIntegerKind(target.wordJavaKind, arrayBaseOffset, graph)));
         return graph.unique(new OffsetAddressNode(array, offset));
     }
 
@@ -519,7 +523,12 @@ public abstract class DefaultJavaLoweringProvider implements LoweringProvider {
         indexAddress.replaceAndDelete(lowered);
     }
 
-    protected void lowerLoadIndexedNode(LoadIndexedNode loadIndexed, LoweringTool tool) {
+    public void lowerLoadIndexedNode(LoadIndexedNode loadIndexed, LoweringTool tool) {
+        int arrayBaseOffset = metaAccess.getArrayBaseOffset(loadIndexed.elementKind());
+        lowerLoadIndexedNode(loadIndexed, tool, arrayBaseOffset);
+    }
+
+    public void lowerLoadIndexedNode(LoadIndexedNode loadIndexed, LoweringTool tool, int arrayBaseOffset) {
         StructuredGraph graph = loadIndexed.graph();
         ValueNode array = loadIndexed.array();
         array = createNullCheckedValue(array, loadIndexed, tool);
@@ -531,7 +540,8 @@ public abstract class DefaultJavaLoweringProvider implements LoweringProvider {
         if (SpectrePHTIndexMasking.getValue(graph.getOptions())) {
             index = graph.addOrUniqueWithInputs(proxyIndex(loadIndexed, index, array, tool));
         }
-        AddressNode address = createArrayIndexAddress(graph, array, elementKind, index, boundsCheck);
+        ValueNode positiveIndex = createPositiveIndex(graph, index, boundsCheck);
+        AddressNode address = createArrayAddress(graph, array, arrayBaseOffset, elementKind, positiveIndex);
 
         ReadNode memoryRead = graph.add(new ReadNode(address, NamedLocationIdentity.getArrayLocation(elementKind), loadStamp, BarrierType.NONE));
         memoryRead.setGuard(boundsCheck);
@@ -541,7 +551,12 @@ public abstract class DefaultJavaLoweringProvider implements LoweringProvider {
         graph.replaceFixed(loadIndexed, memoryRead);
     }
 
-    protected void lowerStoreIndexedNode(StoreIndexedNode storeIndexed, LoweringTool tool) {
+    public void lowerStoreIndexedNode(StoreIndexedNode storeIndexed, LoweringTool tool) {
+        int arrayBaseOffset = metaAccess.getArrayBaseOffset(storeIndexed.elementKind());
+        lowerStoreIndexedNode(storeIndexed, tool, arrayBaseOffset);
+    }
+
+    public void lowerStoreIndexedNode(StoreIndexedNode storeIndexed, LoweringTool tool, int arrayBaseOffset) {
         StructuredGraph graph = storeIndexed.graph();
 
         ValueNode value = storeIndexed.value();
@@ -576,7 +591,8 @@ public abstract class DefaultJavaLoweringProvider implements LoweringProvider {
             }
         }
         BarrierType barrierType = barrierSet.arrayStoreBarrierType(storageKind);
-        AddressNode address = createArrayIndexAddress(graph, array, storageKind, storeIndexed.index(), boundsCheck);
+        ValueNode positiveIndex = createPositiveIndex(graph, storeIndexed.index(), boundsCheck);
+        AddressNode address = createArrayAddress(graph, array, arrayBaseOffset, storageKind, positiveIndex);
         WriteNode memoryWrite = graph.add(new WriteNode(address, NamedLocationIdentity.getArrayLocation(storageKind), implicitStoreConvert(graph, storageKind, value),
                         barrierType));
         memoryWrite.setGuard(boundsCheck);

@@ -69,6 +69,7 @@ import org.graalvm.compiler.nodes.calc.IntegerNormalizeCompareNode;
 import org.graalvm.compiler.nodes.calc.IsNullNode;
 import org.graalvm.compiler.nodes.calc.ObjectEqualsNode;
 import org.graalvm.compiler.nodes.cfg.Block;
+import org.graalvm.compiler.nodes.debug.ControlFlowAnchored;
 import org.graalvm.compiler.nodes.extended.UnboxNode;
 import org.graalvm.compiler.nodes.java.InstanceOfNode;
 import org.graalvm.compiler.nodes.java.LoadFieldNode;
@@ -591,9 +592,15 @@ public final class IfNode extends ControlSplitNode implements Simplifiable, LIRL
                 FixedWithNextNode falseNext = (FixedWithNextNode) falseSucc.next();
                 NodeClass<?> nodeClass = trueNext.getNodeClass();
                 if (trueNext.getClass() == falseNext.getClass()) {
-                    if (trueNext instanceof AbstractBeginNode) {
-                        // Cannot do this optimization for begin nodes, because it could
-                        // move guards above the if that need to stay below a branch.
+                    if (trueNext instanceof AbstractBeginNode || trueNext instanceof ControlFlowAnchored) {
+                        /*
+                         * Cannot do this optimization for begin nodes, because it could move guards
+                         * above the if that need to stay below a branch.
+                         *
+                         * Cannot do this optimization for ControlFlowAnchored nodes, because these
+                         * are anchored in their control-flow position, and should not be moved
+                         * upwards.
+                         */
                     } else if (nodeClass.equalInputs(trueNext, falseNext) && trueNext.valueEquals(falseNext)) {
                         falseNext.replaceAtUsages(trueNext);
                         graph().removeFixed(falseNext);

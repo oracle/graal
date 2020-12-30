@@ -86,101 +86,135 @@ import jdk.vm.ci.meta.ResolvedJavaField;
 import jdk.vm.ci.meta.ResolvedJavaMethod;
 import jdk.vm.ci.meta.ResolvedJavaType;
 
-public final class ReflectionSubstitutionType extends CustomSubstitutionType<CustomSubstitutionField, ReflectionSubstitutionMethod> {
+/**
+ * Represents the {@link java.lang.reflect.Member} of a type.
+ * 
+ * A {@link java.lang.reflect.Member} is one of the following reflection classes:
+ * 
+ * <ul>
+ * <li>{@link java.lang.reflect.Constructor}</li>
+ * <li>{@link java.lang.reflect.Method}</li>
+ * <li>{@link java.lang.reflect.Field}</li>
+ * </ul>
+ */
+public class ReflectionSubstitutionType extends CustomSubstitutionType<CustomSubstitutionField, ReflectionSubstitutionMethod> {
 
-    private String stableName;
+    private final String stableName;
 
-    public ReflectionSubstitutionType(ResolvedJavaType original, Member member) {
+    public static class Factory {
+        public ReflectionSubstitutionType create(ResolvedJavaType original, Member member) {
+            return new ReflectionSubstitutionType(original, member);
+        }
+    }
+
+    /**
+     * Build a substitution for a reflective call.
+     * 
+     * @param original The {@link ResolvedJavaType} of the {@linkplain Member} class (i.e. a
+     *            {@link ResolvedJavaType} representing {@link Field}, {@link Constructor} or
+     *            {@link Method}).
+     * @param member The {@link Member} which we are reflectively accessing.
+     */
+    protected ReflectionSubstitutionType(ResolvedJavaType original, Member member) {
         super(original);
         stableName = "L" + getStableProxyName(member).replace(".", "/") + ";";
+        inspectMemberBeforeSubstitutionCreation(member);
         for (ResolvedJavaMethod method : original.getDeclaredMethods()) {
-            switch (method.getName()) {
-                case "invoke":
-                    addSubstitutionMethod(method, new ReflectiveInvokeMethod(method, (Method) member, false));
-                    break;
-                case "invokeSpecial":
-                    addSubstitutionMethod(method, new ReflectiveInvokeMethod(method, (Method) member, true));
-                    break;
-                case "get":
-                    addSubstitutionMethod(method, new ReflectiveReadMethod(method, (Field) member, JavaKind.Object));
-                    break;
-                case "getBoolean":
-                    addSubstitutionMethod(method, new ReflectiveReadMethod(method, (Field) member, JavaKind.Boolean));
-                    break;
-                case "getByte":
-                    addSubstitutionMethod(method, new ReflectiveReadMethod(method, (Field) member, JavaKind.Byte));
-                    break;
-                case "getShort":
-                    addSubstitutionMethod(method, new ReflectiveReadMethod(method, (Field) member, JavaKind.Short));
-                    break;
-                case "getChar":
-                    addSubstitutionMethod(method, new ReflectiveReadMethod(method, (Field) member, JavaKind.Char));
-                    break;
-                case "getInt":
-                    addSubstitutionMethod(method, new ReflectiveReadMethod(method, (Field) member, JavaKind.Int));
-                    break;
-                case "getLong":
-                    addSubstitutionMethod(method, new ReflectiveReadMethod(method, (Field) member, JavaKind.Long));
-                    break;
-                case "getFloat":
-                    addSubstitutionMethod(method, new ReflectiveReadMethod(method, (Field) member, JavaKind.Float));
-                    break;
-                case "getDouble":
-                    addSubstitutionMethod(method, new ReflectiveReadMethod(method, (Field) member, JavaKind.Double));
-                    break;
-                case "set":
-                    addSubstitutionMethod(method, createWriteMethod(method, (Field) member, JavaKind.Object));
-                    break;
-                case "setBoolean":
-                    addSubstitutionMethod(method, createWriteMethod(method, (Field) member, JavaKind.Boolean));
-                    break;
-                case "setByte":
-                    addSubstitutionMethod(method, createWriteMethod(method, (Field) member, JavaKind.Byte));
-                    break;
-                case "setShort":
-                    addSubstitutionMethod(method, createWriteMethod(method, (Field) member, JavaKind.Short));
-                    break;
-                case "setChar":
-                    addSubstitutionMethod(method, createWriteMethod(method, (Field) member, JavaKind.Char));
-                    break;
-                case "setInt":
-                    addSubstitutionMethod(method, createWriteMethod(method, (Field) member, JavaKind.Int));
-                    break;
-                case "setLong":
-                    addSubstitutionMethod(method, createWriteMethod(method, (Field) member, JavaKind.Long));
-                    break;
-                case "setFloat":
-                    addSubstitutionMethod(method, createWriteMethod(method, (Field) member, JavaKind.Float));
-                    break;
-                case "setDouble":
-                    addSubstitutionMethod(method, createWriteMethod(method, (Field) member, JavaKind.Double));
-                    break;
-                case "newInstance":
-                    Class<?> holder = member.getDeclaringClass();
-                    if (Modifier.isAbstract(holder.getModifiers()) || holder.isInterface() || holder.isPrimitive() || holder.isArray()) {
-                        /*
-                         * Invoking the constructor of an abstract class always throws an
-                         * InstantiationException. It should not be possible to get a Constructor
-                         * object for an interface, array, or primitive type, but we are defensive
-                         * and throw the exception in that case too.
-                         */
-                        addSubstitutionMethod(method, new ThrowingMethod(method, InstantiationException.class, "Cannot instantiate " + holder));
-                    } else {
-                        addSubstitutionMethod(method, new ReflectiveNewInstanceMethod(method, (Constructor<?>) member));
-                    }
-                    break;
-                case "toString":
-                    addSubstitutionMethod(method, new ToStringMethod(method, member.getName()));
-                    break;
-                case "hashCode":
-                    addSubstitutionMethod(method, new HashCodeMethod(method, member.hashCode()));
-                    break;
-                case "equals":
-                    addSubstitutionMethod(method, new EqualsMethod(method));
-                    break;
-                default:
-                    throw VMError.shouldNotReachHere("unexpected method: " + method.getName());
-            }
+            createAndAddSubstitutionMethod(method, member);
+        }
+    }
+
+    protected void inspectMemberBeforeSubstitutionCreation(@SuppressWarnings("unused") Member member) {
+        /* Do nothing. */
+    }
+
+    protected void createAndAddSubstitutionMethod(ResolvedJavaMethod method, Member member) {
+        switch (method.getName()) {
+            case "invoke":
+                addSubstitutionMethod(method, new ReflectiveInvokeMethod(method, (Method) member, false));
+                break;
+            case "invokeSpecial":
+                addSubstitutionMethod(method, new ReflectiveInvokeMethod(method, (Method) member, true));
+                break;
+            case "get":
+                addSubstitutionMethod(method, new ReflectiveReadMethod(method, (Field) member, JavaKind.Object));
+                break;
+            case "getBoolean":
+                addSubstitutionMethod(method, new ReflectiveReadMethod(method, (Field) member, JavaKind.Boolean));
+                break;
+            case "getByte":
+                addSubstitutionMethod(method, new ReflectiveReadMethod(method, (Field) member, JavaKind.Byte));
+                break;
+            case "getShort":
+                addSubstitutionMethod(method, new ReflectiveReadMethod(method, (Field) member, JavaKind.Short));
+                break;
+            case "getChar":
+                addSubstitutionMethod(method, new ReflectiveReadMethod(method, (Field) member, JavaKind.Char));
+                break;
+            case "getInt":
+                addSubstitutionMethod(method, new ReflectiveReadMethod(method, (Field) member, JavaKind.Int));
+                break;
+            case "getLong":
+                addSubstitutionMethod(method, new ReflectiveReadMethod(method, (Field) member, JavaKind.Long));
+                break;
+            case "getFloat":
+                addSubstitutionMethod(method, new ReflectiveReadMethod(method, (Field) member, JavaKind.Float));
+                break;
+            case "getDouble":
+                addSubstitutionMethod(method, new ReflectiveReadMethod(method, (Field) member, JavaKind.Double));
+                break;
+            case "set":
+                addSubstitutionMethod(method, createWriteMethod(method, (Field) member, JavaKind.Object));
+                break;
+            case "setBoolean":
+                addSubstitutionMethod(method, createWriteMethod(method, (Field) member, JavaKind.Boolean));
+                break;
+            case "setByte":
+                addSubstitutionMethod(method, createWriteMethod(method, (Field) member, JavaKind.Byte));
+                break;
+            case "setShort":
+                addSubstitutionMethod(method, createWriteMethod(method, (Field) member, JavaKind.Short));
+                break;
+            case "setChar":
+                addSubstitutionMethod(method, createWriteMethod(method, (Field) member, JavaKind.Char));
+                break;
+            case "setInt":
+                addSubstitutionMethod(method, createWriteMethod(method, (Field) member, JavaKind.Int));
+                break;
+            case "setLong":
+                addSubstitutionMethod(method, createWriteMethod(method, (Field) member, JavaKind.Long));
+                break;
+            case "setFloat":
+                addSubstitutionMethod(method, createWriteMethod(method, (Field) member, JavaKind.Float));
+                break;
+            case "setDouble":
+                addSubstitutionMethod(method, createWriteMethod(method, (Field) member, JavaKind.Double));
+                break;
+            case "newInstance":
+                Class<?> holder = member.getDeclaringClass();
+                if (Modifier.isAbstract(holder.getModifiers()) || holder.isInterface() || holder.isPrimitive() || holder.isArray()) {
+                    /*
+                     * Invoking the constructor of an abstract class always throws an
+                     * InstantiationException. It should not be possible to get a Constructor object
+                     * for an interface, array, or primitive type, but we are defensive and throw
+                     * the exception in that case too.
+                     */
+                    addSubstitutionMethod(method, new ThrowingMethod(method, InstantiationException.class, "Cannot instantiate " + holder));
+                } else {
+                    addSubstitutionMethod(method, new ReflectiveNewInstanceMethod(method, (Constructor<?>) member));
+                }
+                break;
+            case "toString":
+                addSubstitutionMethod(method, new ToStringMethod(method, member.getName()));
+                break;
+            case "hashCode":
+                addSubstitutionMethod(method, new HashCodeMethod(method, member.hashCode()));
+                break;
+            case "equals":
+                addSubstitutionMethod(method, new EqualsMethod(method));
+                break;
+            default:
+                throw VMError.shouldNotReachHere("unexpected method: " + method.getName());
         }
     }
 
@@ -588,11 +622,11 @@ public final class ReflectionSubstitutionType extends CustomSubstitutionType<Cus
         }
     }
 
-    private static class ReflectiveNewInstanceMethod extends ReflectionSubstitutionMethod {
+    protected static class ReflectiveNewInstanceMethod extends ReflectionSubstitutionMethod {
 
         private final Constructor<?> constructor;
 
-        ReflectiveNewInstanceMethod(ResolvedJavaMethod original, Constructor<?> constructor) {
+        protected ReflectiveNewInstanceMethod(ResolvedJavaMethod original, Constructor<?> constructor) {
             super(original);
             this.constructor = constructor;
         }
@@ -608,7 +642,7 @@ public final class ReflectionSubstitutionType extends CustomSubstitutionType<Cus
             ResolvedJavaMethod cons = providers.getMetaAccess().lookupJavaMethod(constructor);
             Class<?>[] argTypes = constructor.getParameterTypes();
 
-            ValueNode ret = graphKit.append(new NewInstanceNode(type, true));
+            ValueNode ret = graphKit.append(createNewInstanceNode(type));
 
             ValueNode[] args = new ValueNode[argTypes.length + 1];
             args[0] = ret;
@@ -616,6 +650,12 @@ public final class ReflectionSubstitutionType extends CustomSubstitutionType<Cus
             ValueNode argumentArray = graphKit.loadLocal(1, JavaKind.Object);
             fillArgsArray(graphKit, argumentArray, 1, args, argTypes);
 
+            createJavaCall(graphKit, cons, ret, args);
+
+            return graphKit.finalizeGraph();
+        }
+
+        protected void createJavaCall(HostedGraphKit graphKit, ResolvedJavaMethod cons, ValueNode ret, ValueNode[] args) {
             graphKit.createJavaCallWithException(InvokeKind.Special, cons, args);
 
             graphKit.noExceptionPart();
@@ -625,8 +665,10 @@ public final class ReflectionSubstitutionType extends CustomSubstitutionType<Cus
             graphKit.throwInvocationTargetException(graphKit.exceptionObject());
 
             graphKit.endInvokeWithException();
+        }
 
-            return graphKit.finalizeGraph();
+        protected ValueNode createNewInstanceNode(ResolvedJavaType type) {
+            return new NewInstanceNode(type, true);
         }
     }
 

@@ -171,7 +171,7 @@ public final class ThreadLocalAllocation {
     }
 
     @SubstrateForeignCallTarget(stubCallingConvention = false)
-    private static Object slowPathNewArray(Word objectHeader, int length) {
+    private static Object slowPathNewArray(Word objectHeader, int length, int fillStartOffset) {
         if (length < 0) { // must be done before allocation-restricted code
             throw new NegativeArraySizeException();
         }
@@ -188,7 +188,7 @@ public final class ThreadLocalAllocation {
         }
 
         UnsignedWord gcEpoch = HeapImpl.getHeapImpl().getGCImpl().possibleCollectionPrologue();
-        Object result = slowPathNewArrayWithoutAllocating(hub, length, size);
+        Object result = slowPathNewArrayWithoutAllocating(hub, length, size, fillStartOffset);
         /* If a collection happened, do follow-up tasks now that allocation, etc., is allowed. */
         HeapImpl.getHeapImpl().getGCImpl().possibleCollectionEpilogue(gcEpoch);
         runSlowPathHooks();
@@ -196,7 +196,7 @@ public final class ThreadLocalAllocation {
     }
 
     @RestrictHeapAccess(access = RestrictHeapAccess.Access.NO_ALLOCATION, reason = "Must not allocate in the implementation of allocation.")
-    private static Object slowPathNewArrayWithoutAllocating(DynamicHub hub, int length, UnsignedWord size) {
+    private static Object slowPathNewArrayWithoutAllocating(DynamicHub hub, int length, UnsignedWord size, int fillStartOffset) {
         DeoptTester.disableDeoptTesting();
         try {
             HeapImpl.exitIfAllocationDisallowed("Heap.allocateNewArray", DynamicHub.toClass(hub).getName());
@@ -205,11 +205,11 @@ public final class ThreadLocalAllocation {
             if (size.aboveOrEqual(HeapPolicy.getLargeArrayThreshold())) {
                 /* Large arrays go into their own unaligned chunk. */
                 UnalignedHeapChunk.UnalignedHeader newTlabChunk = HeapImpl.getChunkProvider().produceUnalignedChunk(size);
-                return allocateLargeArrayInNewTlab(hub, length, size, newTlabChunk);
+                return allocateLargeArrayInNewTlab(hub, length, size, fillStartOffset, newTlabChunk);
             } else {
                 /* Small arrays go into the regular aligned chunk. */
                 AlignedHeader newTlabChunk = HeapImpl.getChunkProvider().produceAlignedChunk();
-                return allocateSmallArrayInNewTlab(hub, length, size, newTlabChunk);
+                return allocateSmallArrayInNewTlab(hub, length, size, fillStartOffset, newTlabChunk);
             }
         } finally {
             DeoptTester.enableDeoptTesting();
@@ -224,13 +224,13 @@ public final class ThreadLocalAllocation {
     }
 
     @Uninterruptible(reason = "Holds uninitialized memory.")
-    private static Object allocateSmallArrayInNewTlab(DynamicHub hub, int length, UnsignedWord size, AlignedHeader newTlabChunk) {
+    private static Object allocateSmallArrayInNewTlab(DynamicHub hub, int length, UnsignedWord size, int fillStartOffset, AlignedHeader newTlabChunk) {
         Pointer memory = allocateRawMemoryInNewTlab(size, newTlabChunk);
-        return FormatArrayNode.formatArray(memory, DynamicHub.toClass(hub), length, false, false, true, true);
+        return FormatArrayNode.formatArray(memory, DynamicHub.toClass(hub), length, false, false, true, fillStartOffset, true);
     }
 
     @Uninterruptible(reason = "Holds uninitialized memory, modifies TLAB")
-    private static Object allocateLargeArrayInNewTlab(DynamicHub hub, int length, UnsignedWord size, UnalignedHeapChunk.UnalignedHeader newTlabChunk) {
+    private static Object allocateLargeArrayInNewTlab(DynamicHub hub, int length, UnsignedWord size, int fillStartOffset, UnalignedHeapChunk.UnalignedHeader newTlabChunk) {
         ThreadLocalAllocation.Descriptor tlab = getTlab();
 
         HeapChunk.setNext(newTlabChunk, tlab.getUnalignedChunk());
@@ -240,7 +240,7 @@ public final class ThreadLocalAllocation {
         assert memory.isNonNull();
 
         /* Install the DynamicHub and length, and zero the elements. */
-        return FormatArrayNode.formatArray(memory, DynamicHub.toClass(hub), length, false, true, true, true);
+        return FormatArrayNode.formatArray(memory, DynamicHub.toClass(hub), length, false, true, true, fillStartOffset, true);
     }
 
     @Uninterruptible(reason = "Returns uninitialized memory, modifies TLAB", callerMustBe = true)

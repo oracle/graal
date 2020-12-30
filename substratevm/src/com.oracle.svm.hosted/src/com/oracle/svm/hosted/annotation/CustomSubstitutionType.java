@@ -41,6 +41,12 @@ import jdk.vm.ci.meta.ResolvedJavaField;
 import jdk.vm.ci.meta.ResolvedJavaMethod;
 import jdk.vm.ci.meta.ResolvedJavaType;
 
+/**
+ * A type used as a substitution for an original type.
+ * 
+ * @param <F> The type of fields in the substitution type
+ * @param <M> The type of methods in the substitution type
+ */
 public abstract class CustomSubstitutionType<F extends CustomSubstitutionField, M extends CustomSubstitutionMethod> implements ResolvedJavaType, OriginalClassProvider {
 
     protected final ResolvedJavaType original;
@@ -54,14 +60,17 @@ public abstract class CustomSubstitutionType<F extends CustomSubstitutionField, 
         methods = new HashMap<>();
     }
 
+    /** Get the type that this is a substitution for. */
     public ResolvedJavaType getOriginal() {
         return original;
     }
 
+    /** Get the substitution for a method on the original type. */
     public M getSubstitutionMethod(ResolvedJavaMethod method) {
         return methods.get(method);
     }
 
+    /** Get the substitution for a field on the original type. */
     public F getSubstitutionField(ResolvedJavaField field) {
         assert fields.size() > 0;
 

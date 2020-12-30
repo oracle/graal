@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2019, 2020, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2020, 2020, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -22,14 +22,33 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package org.graalvm.compiler.replacements;
 
-import org.graalvm.compiler.nodes.graphbuilderconf.GraphBuilderConfiguration.Plugins;
-import org.graalvm.compiler.nodes.spi.Replacements;
-import org.graalvm.compiler.options.OptionValues;
+package com.oracle.svm.core.annotate;
 
-import jdk.vm.ci.code.Architecture;
+import java.lang.annotation.ElementType;
+import java.lang.annotation.Retention;
+import java.lang.annotation.RetentionPolicy;
+import java.lang.annotation.Target;
 
-public interface TargetGraphBuilderPlugins {
-    void register(Plugins plugins, Replacements replacements, Architecture arch, boolean explicitUnsafeNullChecks, boolean registerForeignCallMath, boolean useFMAIntrinsics, OptionValues options);
+/**
+ * In a method annotated with this, the methods specified in {@link #callees} are inlined, unless
+ * they are annotated with {@link NeverInline}.
+ * 
+ * This annotation exists primarily for testing purposes.
+ */
+@Retention(RetentionPolicy.RUNTIME)
+@Target({ElementType.METHOD, ElementType.CONSTRUCTOR})
+public @interface AlwaysInlineSelectCallees {
+
+    /**
+     * Documents the reason why the annotated code must have all callees inlined.
+     */
+    String reason();
+
+    /**
+     * List of callee methods to always inline. These should be qualified names, e.g.
+     * {@code "java.lang.String.length()"} or
+     * {@code "java.lang.StringBuilder.append(java.lang.String)"}
+     */
+    String[] callees();
 }

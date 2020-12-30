@@ -258,6 +258,12 @@ public class SubstrateUtil {
         return assertionsEnabled;
     }
 
+    /**
+     * Emits a node that triggers a breakpoint in debuggers.
+     * 
+     * @param arg0 value to inspect when the breakpoint hits
+     * @see BreakpointNode how to use breakpoints and inspect breakpoint values in the debugger
+     */
     @NodeIntrinsic(BreakpointNode.class)
     public static native void breakpoint(Object arg0);
 

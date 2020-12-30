@@ -89,7 +89,7 @@ import com.oracle.svm.util.ReflectionUtil.ReflectionUtilError;
 import jdk.vm.ci.meta.JavaKind;
 import sun.security.util.SecurityConstants;
 
-@Hybrid
+@Hybrid(canHybridFieldsBeDuplicated = false)
 @Substitute
 @TargetClass(java.lang.Class.class)
 @SuppressWarnings({"static-method", "serial"})

@@ -100,7 +100,7 @@ public class AArch64HotSpotBackendFactory extends HotSpotBackendFactory {
                         options,
                         target);
         AArch64GraphBuilderPlugins.register(plugins, replacements, false, //
-                        /* registerForeignCallMath */true, /* emitJDK9StringSubstitutions */true, config.useFMAIntrinsics);
+                        /* registerForeignCallMath */true, config.useFMAIntrinsics, options);
         return plugins;
     }
 
