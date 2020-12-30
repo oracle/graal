@@ -1334,8 +1334,7 @@ public final class Target_com_oracle_truffle_espresso_polyglot_Interop {
         if (e instanceof UnknownIdentifierException) {
             StaticObject unknownIdentifier = meta.toGuestString(((UnknownIdentifierException) e).getUnknownIdentifier());
             Throwable cause = e.getCause();
-            assert cause == null || cause instanceof AbstractTruffleException;
-            StaticObject exception = (cause == null)
+            StaticObject exception = (cause == null || !(cause instanceof AbstractTruffleException))
                             // UnknownIdentifierException.create(String unknownIdentifier)
                             ? (StaticObject) meta.polyglot.UnknownIdentifierException_create_String.invokeDirect(null, unknownIdentifier)
                             // UnknownIdentifierException.create(String unknownIdentifier, Throwable
@@ -1348,8 +1347,7 @@ public final class Target_com_oracle_truffle_espresso_polyglot_Interop {
             int expectedArity = ((ArityException) e).getExpectedArity();
             int actualArity = ((ArityException) e).getActualArity();
             Throwable cause = e.getCause();
-            assert cause == null || cause instanceof AbstractTruffleException;
-            StaticObject exception = (cause == null)
+            StaticObject exception = (cause == null || !(cause instanceof AbstractTruffleException))
                             // ArityException.create(int expectedArity, int actualArity)
                             ? (StaticObject) meta.polyglot.UnknownIdentifierException_create_String.invokeDirect(null, expectedArity, actualArity)
                             // ArityException.create(int expectedArity, int actualArity, Throwable
@@ -1374,8 +1372,7 @@ public final class Target_com_oracle_truffle_espresso_polyglot_Interop {
             StaticObject suppliedValues = StaticObject.wrap(backingArray, meta);
             StaticObject hint = meta.toGuestString(e.getMessage());
             Throwable cause = e.getCause();
-            assert cause == null || cause instanceof AbstractTruffleException;
-            StaticObject exception = (cause == null)
+            StaticObject exception = (cause == null || !(cause instanceof AbstractTruffleException))
                             // UnsupportedTypeException.create(Object[] suppliedValues, String hint)
                             ? (StaticObject) meta.polyglot.UnsupportedTypeException_create_Object_array_String.invokeDirect(null, suppliedValues, hint)
                             // UnsupportedTypeException.create(Object[] suppliedValues, String hint,
@@ -1387,8 +1384,7 @@ public final class Target_com_oracle_truffle_espresso_polyglot_Interop {
         if (e instanceof InvalidArrayIndexException) {
             long invalidIndex = ((InvalidArrayIndexException) e).getInvalidIndex();
             Throwable cause = e.getCause();
-            assert cause == null || cause instanceof AbstractTruffleException;
-            StaticObject exception = (cause == null)
+            StaticObject exception = (cause == null || !(cause instanceof AbstractTruffleException))
                             // InvalidArrayIndexException.create(long invalidIndex)
                             ? (StaticObject) meta.polyglot.InvalidArrayIndexException_create_long.invokeDirect(null, invalidIndex)
                             // InvalidArrayIndexException.create(long invalidIndex, Throwable cause)
