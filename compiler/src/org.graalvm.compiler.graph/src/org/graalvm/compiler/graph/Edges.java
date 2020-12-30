@@ -33,9 +33,7 @@ import java.util.Iterator;
 import org.graalvm.compiler.core.common.Fields;
 import org.graalvm.compiler.core.common.FieldsScanner;
 import org.graalvm.compiler.graph.NodeClass.EdgeInfo;
-import org.graalvm.compiler.serviceprovider.GraalUnsafeAccess;
 
-import sun.misc.Unsafe;
 
 /**
  * Describes {@link Node} fields representing the set of inputs for the node or the set of the
@@ -43,7 +41,6 @@ import sun.misc.Unsafe;
  */
 public abstract class Edges extends Fields {
 
-    private static final Unsafe UNSAFE = GraalUnsafeAccess.getUnsafe();
 
     /**
      * Constants denoting whether a set of edges are inputs or successors.
@@ -69,20 +66,20 @@ public abstract class Edges extends Fields {
     }
 
     public static Node getNodeUnsafe(Node node, long offset) {
-        return (Node) UNSAFE.getObject(node, offset);
+        return (Node) Node.UNSAFE.getObject(node, offset);
     }
 
     @SuppressWarnings("unchecked")
     public static NodeList<Node> getNodeListUnsafe(Node node, long offset) {
-        return (NodeList<Node>) UNSAFE.getObject(node, offset);
+        return (NodeList<Node>) Node.UNSAFE.getObject(node, offset);
     }
 
     public static void putNodeUnsafe(Node node, long offset, Node value) {
-        UNSAFE.putObject(node, offset, value);
+        Node.UNSAFE.putObject(node, offset, value);
     }
 
     public static void putNodeListUnsafe(Node node, long offset, NodeList<?> value) {
-        UNSAFE.putObject(node, offset, value);
+        Node.UNSAFE.putObject(node, offset, value);
     }
 
     /**
@@ -124,14 +121,16 @@ public abstract class Edges extends Fields {
      * @param node the node whose edges are to be cleared
      */
     public void clear(Node node) {
-        final long[] curOffsets = this.offsets;
-        final Type curType = this.type;
+
         int index = 0;
         int curDirectCount = getDirectCount();
         while (index < curDirectCount) {
             initializeNode(node, index++, null);
         }
+
         int curCount = getCount();
+        final Type curType = this.type;
+        final long[] curOffsets = this.offsets;
         while (index < curCount) {
             NodeList<Node> list = getNodeList(node, curOffsets, index);
             if (list != null) {
@@ -247,12 +246,14 @@ public abstract class Edges extends Fields {
 
     public boolean contains(Node node, Node value) {
         final long[] curOffsets = this.offsets;
+        final int directCount = this.directCount;
         for (int i = 0; i < directCount; i++) {
             if (getNode(node, curOffsets, i) == value) {
                 return true;
             }
         }
-        for (int i = directCount; i < getCount(); i++) {
+        final int count = getCount();
+        for (int i = directCount; i < count; i++) {
             NodeList<?> curList = getNodeList(node, curOffsets, i);
             if (curList != null && curList.contains(value)) {
                 return true;

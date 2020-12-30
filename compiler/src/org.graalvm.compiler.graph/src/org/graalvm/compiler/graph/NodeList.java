@@ -86,12 +86,11 @@ public abstract class NodeList<T extends Node> extends AbstractList<T> implement
 
     protected NodeList(Node self, List<? extends T> elements) {
         this.self = self;
-        if (elements == null || elements.isEmpty()) {
-            this.size = 0;
+        int newSize;
+        if (elements == null || ((newSize = elements.size())==0)) {
             this.nodes = EMPTY_NODE_ARRAY;
             this.initialSize = 0;
         } else {
-            int newSize = elements.size();
             checkMaxSize(newSize);
             this.size = newSize;
             this.initialSize = newSize;
@@ -207,12 +206,12 @@ public abstract class NodeList<T extends Node> extends AbstractList<T> implement
     }
 
     private boolean assertInRange(int index) {
-        assert index >= 0 && index < size() : index + " < " + size();
+        assert index >= 0 && index < size : index + " < " + size;
         return true;
     }
 
     public T last() {
-        return get(size() - 1);
+        return get(size - 1);
     }
 
     /**
@@ -231,7 +230,7 @@ public abstract class NodeList<T extends Node> extends AbstractList<T> implement
 
     public void initialize(int index, Node node) {
         incModCount();
-        assert index < size();
+        assert index < size;
         nodes[index] = node;
     }
 
@@ -338,9 +337,8 @@ public abstract class NodeList<T extends Node> extends AbstractList<T> implement
     @Override
     public boolean contains(T other) {
         for (int i = 0; i < size; i++) {
-            if (nodes[i] == other) {
+            if (nodes[i] == other)
                 return true;
-            }
         }
         return false;
     }
@@ -352,9 +350,10 @@ public abstract class NodeList<T extends Node> extends AbstractList<T> implement
     }
 
     @Override
+    @SuppressWarnings("unchecked")
     public void snapshotTo(Collection<? super T> to) {
         for (int i = 0; i < size; i++) {
-            to.add(get(i));
+            to.add((T)nodes[i]);
         }
     }
 
@@ -362,13 +361,13 @@ public abstract class NodeList<T extends Node> extends AbstractList<T> implement
     public void setAll(NodeList<T> values) {
         self.incModCount();
         incModCount();
-        for (int i = 0; i < size(); i++) {
+        for (int i = 0; i < size; i++) {
             update((T) nodes[i], null);
         }
-        nodes = Arrays.copyOf(values.nodes, values.size());
-        size = values.size();
+        nodes = Arrays.copyOf(values.nodes, values.size);
+        size = values.size;
 
-        for (int i = 0; i < size(); i++) {
+        for (int i = 0; i < size; i++) {
             update(null, (T) nodes[i]);
         }
     }
@@ -390,7 +389,7 @@ public abstract class NodeList<T extends Node> extends AbstractList<T> implement
 
     protected void replace(T node, T other) {
         incModCount();
-        for (int i = 0; i < size(); i++) {
+        for (int i = 0; i < size; i++) {
             if (nodes[i] == node) {
                 nodes[i] = other;
                 update(node, other);
@@ -449,7 +448,7 @@ public abstract class NodeList<T extends Node> extends AbstractList<T> implement
 
     @Override
     public T first() {
-        if (size() > 0) {
+        if (size > 0) {
             return get(0);
         }
         return null;
@@ -477,7 +476,7 @@ public abstract class NodeList<T extends Node> extends AbstractList<T> implement
 
         @Override
         public int size() {
-            return list.size() - offset;
+            return list.size - offset;
         }
 
         public SubList<R> subList(int startIndex) {

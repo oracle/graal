@@ -24,8 +24,6 @@
  */
 package org.graalvm.compiler.core.common;
 
-import static org.graalvm.compiler.serviceprovider.GraalUnsafeAccess.getUnsafe;
-
 import java.lang.reflect.Field;
 import java.lang.reflect.Modifier;
 import java.util.ArrayList;
@@ -50,11 +48,9 @@ public class FieldsScanner {
      */
     public static class DefaultCalcOffset implements CalcOffset {
 
-        private static final Unsafe UNSAFE = getUnsafe();
-
         @Override
         public long getOffset(Field field) {
-            return UNSAFE.objectFieldOffset(field);
+            return Fields.UNSAFE.objectFieldOffset(field);
         }
     }
 
@@ -79,7 +75,7 @@ public class FieldsScanner {
          */
         @Override
         public int compareTo(FieldInfo o) {
-            return offset < o.offset ? -1 : (offset > o.offset ? 1 : 0);
+            return Long.compare(offset, o.offset);
         }
 
         @Override

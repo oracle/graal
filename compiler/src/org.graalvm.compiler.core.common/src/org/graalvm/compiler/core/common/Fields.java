@@ -40,7 +40,7 @@ import sun.misc.Unsafe;
  */
 public class Fields {
 
-    private static final Unsafe UNSAFE = getUnsafe();
+    static final Unsafe UNSAFE = getUnsafe();
     private static final Fields EMPTY_FIELDS = new Fields(Collections.emptyList());
 
     /**
@@ -83,10 +83,7 @@ public class Fields {
     }
 
     public static Fields create(ArrayList<? extends FieldsScanner.FieldInfo> fields) {
-        if (fields.size() == 0) {
-            return EMPTY_FIELDS;
-        }
-        return new Fields(fields);
+        return fields.size() == 0 ? EMPTY_FIELDS : new Fields(fields);
     }
 
     /**
@@ -97,9 +94,50 @@ public class Fields {
     }
 
     public static void translateInto(Fields fields, ArrayList<FieldsScanner.FieldInfo> infos) {
-        for (int index = 0; index < fields.getCount(); index++) {
+        final int n = fields.getCount();
+        for (int index = 0; index < n; index++)
             infos.add(new FieldsScanner.FieldInfo(fields.offsets[index], fields.names[index], fields.types[index], fields.declaringClasses[index]));
-        }
+    }
+
+    public boolean equalInt(int i, Object a, Object b) {
+        assert types[i] == int.class;
+        final long offset = offsets[i];
+        return UNSAFE.getInt(a, offset) == UNSAFE.getInt(b, offset);
+    }
+    public boolean equalBoolean(int i, Object a, Object b) {
+        assert types[i] == boolean.class;
+        final long offset = offsets[i];
+        return UNSAFE.getBoolean(a, offset) == UNSAFE.getBoolean(b, offset);
+    }
+    public boolean equalLong(int i, Object a, Object b) {
+        assert types[i] == long.class;
+        final long offset = offsets[i];
+        return UNSAFE.getLong(a, offset) == UNSAFE.getLong(b, offset);
+    }
+    public boolean equalFloat(int i, Object a, Object b) {
+        assert types[i] == float.class;
+        final long offset = offsets[i];
+        return UNSAFE.getFloat(a, offset) == UNSAFE.getFloat(b, offset);
+    }
+    public boolean equalDouble(int i, Object a, Object b) {
+        assert types[i] == double.class;
+        final long offset = offsets[i];
+        return UNSAFE.getDouble(a, offset) == UNSAFE.getDouble(b, offset);
+    }
+    public boolean equalShort(int i, Object a, Object b) {
+        assert types[i] == short.class;
+        final long offset = offsets[i];
+        return UNSAFE.getShort(a, offset) == UNSAFE.getShort(b, offset);
+    }
+    public boolean equalChar(int i, Object a, Object b) {
+        assert types[i] == char.class;
+        final long offset = offsets[i];
+        return UNSAFE.getChar(a, offset) == UNSAFE.getChar(b, offset);
+    }
+    public boolean equalByte(int i, Object a, Object b) {
+        assert types[i] == byte.class;
+        final long offset = offsets[i];
+        return UNSAFE.getByte(a, offset) == UNSAFE.getByte(b, offset);
     }
 
     /**
