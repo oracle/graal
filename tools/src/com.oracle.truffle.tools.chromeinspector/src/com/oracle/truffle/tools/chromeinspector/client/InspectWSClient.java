@@ -47,8 +47,8 @@ import com.oracle.truffle.tools.chromeinspector.instrument.Token;
 import org.graalvm.polyglot.io.MessageEndpoint;
 import com.oracle.truffle.api.TruffleOptions;
 
-import org.java_websocket.client.WebSocketClient;
-import org.java_websocket.handshake.ServerHandshake;
+import com.oracle.truffle.tools.utils.java_websocket.client.WebSocketClient;
+import com.oracle.truffle.tools.utils.java_websocket.handshake.ServerHandshake;
 
 import com.oracle.truffle.tools.chromeinspector.InspectorExecutionContext;
 import com.oracle.truffle.tools.chromeinspector.instrument.InspectorWSConnection;
