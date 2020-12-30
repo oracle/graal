@@ -1364,6 +1364,68 @@ public final class Target_com_oracle_truffle_espresso_polyglot_Interop {
 
     // endregion Pointer Messages
 
+    // region Executable Messages
+
+    /**
+     * Returns <code>true</code> if the receiver represents an <code>executable</code> value, else
+     * <code>false</code>. Functions, methods or closures are common examples of executable values.
+     * Invoking this message does not cause any observable side-effects. Note that receiver values
+     * which are {@link InteropLibrary#isExecutable(Object) executable} might also be
+     * {@link InteropLibrary#isInstantiable(Object) instantiable}.
+     *
+     * @see InteropLibrary#isExecutable(Object)
+     * @since 19.0
+     */
+    @Substitution
+    public static boolean isExecutable(@Host(Object.class) StaticObject receiver) {
+        return UNCACHED.isExecutable(unwrap(receiver));
+    }
+
+    /**
+     * Executes an executable value with the given arguments.
+     *
+     * @see InteropLibrary#execute(Object, Object...)
+     * @since 19.0
+     */
+    @Substitution
+    @Throws({UnsupportedTypeException.class, ArityException.class, UnsupportedMessageException.class})
+    public static @Host(Object.class) StaticObject execute(@Host(Object.class) StaticObject receiver, @Host(Object[].class) StaticObject arguments, @InjectMeta Meta meta) {
+        try {
+            Object[] args = null;
+            Object result = null;
+
+            if (receiver.isForeignObject()) {
+                // Unwrap arguments.
+                args = new Object[arguments.length()];
+                for (int i = 0; i < args.length; i++) {
+                    args[i] = unwrap(meta.getInterpreterToVM().getArrayObject(i, arguments));
+                }
+                result = UNCACHED.execute(unwrap(receiver), args);
+            } else {
+                // Preserve argument types.
+                if (arguments.isEspressoObject()) {
+                    // Avoid copying, use the underlying array.
+                    args = arguments.unwrap();
+                } else {
+                    args = new Object[arguments.length()];
+                    for (int i = 0; i < args.length; i++) {
+                        args[i] = meta.getInterpreterToVM().getArrayObject(i, arguments);
+                    }
+                }
+                result = UNCACHED.execute(receiver, args);
+            }
+
+            if (result instanceof StaticObject) {
+                return (StaticObject) result;
+            }
+            return StaticObject.createForeign(meta.java_lang_Object, result, UNCACHED);
+        } catch (InteropException e) {
+            throw throwInteropException(e, meta);
+        }
+    }
+
+    // endregion Executable Messages
+
     private static Object unwrap(StaticObject receiver) {
         return receiver.isForeignObject() ? receiver.rawForeignObject() : receiver;
     }
