@@ -269,7 +269,7 @@ public abstract class Klass implements ModifiersProvider, ContextAccess, KlassRe
 
         @Specialization(guards = "receiver.isArray()")
         static boolean doArray(Klass receiver) {
-            return (receiver.getElementalType().isPrimitive() && receiver.getElementalType().getJavaKind() != JavaKind.Void) || receiver.getElementalType().isConcrete();
+            return receiver.getElementalType().getJavaKind() != JavaKind.Void;
         }
     }
 
