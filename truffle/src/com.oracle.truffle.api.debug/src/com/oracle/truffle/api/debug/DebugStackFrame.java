@@ -50,6 +50,7 @@ import com.oracle.truffle.api.frame.Frame;
 import com.oracle.truffle.api.frame.FrameInstance;
 import com.oracle.truffle.api.frame.FrameInstance.FrameAccess;
 import com.oracle.truffle.api.instrumentation.InstrumentableNode;
+import com.oracle.truffle.api.interop.InteropLibrary;
 import com.oracle.truffle.api.interop.NodeLibrary;
 import com.oracle.truffle.api.nodes.LanguageInfo;
 import com.oracle.truffle.api.nodes.Node;
@@ -82,12 +83,23 @@ public final class DebugStackFrame {
     private final FrameInstance currentFrame;
     private final StackTraceElement hostTraceElement;
     private final int depth;    // The frame depth on guest stack. 0 is the top frame
+    private final String name;
+    private final DebugException nameEx;
 
     DebugStackFrame(SuspendedEvent session, FrameInstance instance, int depth) {
         this.event = session;
         this.currentFrame = instance;
         this.hostTraceElement = null;
         this.depth = depth;
+        String frameName = null;
+        DebugException frameNameEx = null;
+        try {
+            frameName = initName();
+        } catch (DebugException ex) {
+            frameNameEx = ex;
+        }
+        this.name = frameName;
+        this.nameEx = frameNameEx;
     }
 
     DebugStackFrame(SuspendedEvent session, StackTraceElement hostElement, int depth) {
@@ -95,6 +107,44 @@ public final class DebugStackFrame {
         this.currentFrame = null;
         this.hostTraceElement = hostElement;
         this.depth = depth;
+        this.name = hostElement.getClassName() + '.' + hostElement.getMethodName();
+        this.nameEx = null;
+    }
+
+    // Initialize the stack frame name while we're on the execution thread
+    private String initName() throws DebugException {
+        verifyValidState(false);
+        Node node;
+        if (currentFrame == null) {
+            node = getContext().getInstrumentedNode();
+        } else {
+            node = currentFrame.getCallNode();
+            node = InstrumentableNode.findInstrumentableParent(node);
+        }
+        try {
+            if (node != null) {
+                Frame frame = findTruffleFrame(FrameAccess.READ_ONLY);
+                NodeLibrary nodeLibrary = NodeLibrary.getUncached();
+                if (nodeLibrary.hasRootInstance(node, frame)) {
+                    Object instance = nodeLibrary.getRootInstance(node, frame);
+                    InteropLibrary interop = InteropLibrary.getUncached();
+                    if (interop.hasExecutableName(instance)) {
+                        return interop.asString(interop.getExecutableName(instance));
+                    }
+                }
+            }
+            RootNode root = findCurrentRoot();
+            if (root == null) {
+                return null;
+            }
+            return root.getName();
+        } catch (ThreadDeath td) {
+            throw td;
+        } catch (Throwable ex) {
+            RootNode root = findCurrentRoot();
+            LanguageInfo languageInfo = root != null ? root.getLanguageInfo() : null;
+            throw DebugException.create(event.getSession(), ex, languageInfo);
+        }
     }
 
     /**
@@ -173,20 +223,10 @@ public final class DebugStackFrame {
      */
     public String getName() throws DebugException {
         verifyValidState(true);
-        if (hostTraceElement != null) {
-            return hostTraceElement.getClassName() + '.' + hostTraceElement.getMethodName();
+        if (nameEx != null) {
+            throw nameEx;
         }
-        RootNode root = findCurrentRoot();
-        if (root == null) {
-            return null;
-        }
-        try {
-            return root.getName();
-        } catch (ThreadDeath td) {
-            throw td;
-        } catch (Throwable ex) {
-            throw DebugException.create(event.getSession(), ex, root.getLanguageInfo());
-        }
+        return name;
     }
 
     /**
