@@ -1224,30 +1224,7 @@ public final class Target_com_oracle_truffle_espresso_polyglot_Interop {
                     @InjectMeta Meta meta) {
         String hostMember = Meta.toHostStringStatic(member);
         try {
-            Object[] args = null;
-            Object result = null;
-
-            if (receiver.isForeignObject()) {
-                // Unwrap arguments.
-                args = new Object[arguments.length()];
-                for (int i = 0; i < args.length; i++) {
-                    args[i] = unwrap(meta.getInterpreterToVM().getArrayObject(i, arguments));
-                }
-                result = UNCACHED.invokeMember(unwrap(receiver), hostMember, args);
-            } else {
-                // Preserve argument types.
-                if (arguments.isEspressoObject()) {
-                    // Avoid copying, use the underlying array.
-                    args = arguments.unwrap();
-                } else {
-                    args = new Object[arguments.length()];
-                    for (int i = 0; i < args.length; i++) {
-                        args[i] = meta.getInterpreterToVM().getArrayObject(i, arguments);
-                    }
-                }
-                result = UNCACHED.invokeMember(receiver, hostMember, args);
-            }
-
+            Object result = UNCACHED.invokeMember(unwrap(receiver), hostMember, getArguments(arguments, receiver.isForeignObject(), meta));
             if (result instanceof StaticObject) {
                 return (StaticObject) result;
             }
@@ -1391,30 +1368,7 @@ public final class Target_com_oracle_truffle_espresso_polyglot_Interop {
     @Throws({UnsupportedTypeException.class, ArityException.class, UnsupportedMessageException.class})
     public static @Host(Object.class) StaticObject execute(@Host(Object.class) StaticObject receiver, @Host(Object[].class) StaticObject arguments, @InjectMeta Meta meta) {
         try {
-            Object[] args = null;
-            Object result = null;
-
-            if (receiver.isForeignObject()) {
-                // Unwrap arguments.
-                args = new Object[arguments.length()];
-                for (int i = 0; i < args.length; i++) {
-                    args[i] = unwrap(meta.getInterpreterToVM().getArrayObject(i, arguments));
-                }
-                result = UNCACHED.execute(unwrap(receiver), args);
-            } else {
-                // Preserve argument types.
-                if (arguments.isEspressoObject()) {
-                    // Avoid copying, use the underlying array.
-                    args = arguments.unwrap();
-                } else {
-                    args = new Object[arguments.length()];
-                    for (int i = 0; i < args.length; i++) {
-                        args[i] = meta.getInterpreterToVM().getArrayObject(i, arguments);
-                    }
-                }
-                result = UNCACHED.execute(receiver, args);
-            }
-
+            Object result = UNCACHED.execute(unwrap(receiver), getArguments(arguments, receiver.isForeignObject(), meta));
             if (result instanceof StaticObject) {
                 return (StaticObject) result;
             }
@@ -1425,6 +1379,47 @@ public final class Target_com_oracle_truffle_espresso_polyglot_Interop {
     }
 
     // endregion Executable Messages
+
+    // region Instantiable Messages
+
+    /**
+     * Returns <code>true</code> if the receiver represents an <code>instantiable</code> value, else
+     * <code>false</code>. Contructors or {@link InteropLibrary#isMetaObject(Object) metaobjects} are typical
+     * examples of instantiable values. Invoking this message does not cause any observable
+     * side-effects. Note that receiver values which are {@link InteropLibrary#isExecutable(Object) executable}
+     * might also be {@link InteropLibrary#isInstantiable(Object) instantiable}.
+     *
+     * @see InteropLibrary#isInstantiable(Object)
+     * @since 19.0
+     */
+    @Substitution
+    public static boolean isInstantiable(@Host(Object.class) StaticObject receiver) {
+        return UNCACHED.isInstantiable(unwrap(receiver));
+    }
+
+    /**
+     * Instantiates the receiver value with the given arguments. The returned object must be
+     * initialized correctly according to the language specification (e.g. by calling the
+     * constructor or initialization routine).
+     *
+     * @see InteropLibrary#instantiate(Object, Object...)
+     * @since 19.0
+     */
+    @Substitution
+    @Throws({UnsupportedTypeException.class, ArityException.class, UnsupportedMessageException.class})
+    public static @Host(Object.class) StaticObject instantiate(@Host(Object.class) StaticObject receiver, @Host(Object[].class) StaticObject arguments, @InjectMeta Meta meta) {
+        try {
+            Object result = UNCACHED.instantiate(unwrap(receiver), getArguments(arguments, receiver.isForeignObject(), meta));
+            if (result instanceof StaticObject) {
+                return (StaticObject) result;
+            }
+            return StaticObject.createForeign(meta.java_lang_Object, result, UNCACHED);
+        } catch (InteropException e) {
+            throw throwInteropException(e, meta);
+        }
+    }
+
+    // endregion Instantiable Messages
 
     private static Object unwrap(StaticObject receiver) {
         return receiver.isForeignObject() ? receiver.rawForeignObject() : receiver;
@@ -1512,5 +1507,38 @@ public final class Target_com_oracle_truffle_espresso_polyglot_Interop {
 
         CompilerDirectives.transferToInterpreter();
         throw EspressoError.unexpected("Unexpected interop exception: ", e);
+    }
+
+    /**
+     * Converts a guest arguments array to a host Object[].
+     *
+     * <p>
+     * In some cases, preserving the guest Java types of the arguments is preferred e.g. interop with an Espresso object.
+     * As an optimization, this method may return the underlying array of the guest arguments Object[].
+     *
+     * @param unwrap if true, all arguments,
+     * @return a host Object[] with "converted" arguments
+     */
+    private static Object[] getArguments(@Host(Object[].class) StaticObject arguments, boolean unwrap, Meta meta) {
+        Object[] args = null;
+        if (unwrap) {
+            // Unwrap arguments.
+            args = new Object[arguments.length()];
+            for (int i = 0; i < args.length; i++) {
+                args[i] = unwrap(meta.getInterpreterToVM().getArrayObject(i, arguments));
+            }
+        } else {
+            // Preserve argument types.
+            if (arguments.isEspressoObject()) {
+                // Avoid copying, use the underlying array.
+                args = arguments.unwrap();
+            } else {
+                args = new Object[arguments.length()];
+                for (int i = 0; i < args.length; i++) {
+                    args[i] = meta.getInterpreterToVM().getArrayObject(i, arguments);
+                }
+            }
+        }
+        return args;
     }
 }
