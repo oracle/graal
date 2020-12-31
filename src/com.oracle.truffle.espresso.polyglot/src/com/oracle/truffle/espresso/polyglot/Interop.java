@@ -1115,4 +1115,37 @@ public final class Interop {
     public static native Object execute(Object receiver, Object... arguments) throws UnsupportedTypeException, ArityException, UnsupportedMessageException;
 
     // endregion Executable Messages
+
+    // region Instantiable Messages
+
+    /**
+     * Returns <code>true</code> if the receiver represents an <code>instantiable</code> value, else
+     * <code>false</code>. Contructors or {@link #isMetaObject(Object) metaobjects} are typical
+     * examples of instantiable values. Invoking this message does not cause any observable
+     * side-effects. Note that receiver values which are {@link #isExecutable(Object) executable}
+     * might also be {@link #isInstantiable(Object) instantiable}.
+     *
+     * @see #instantiate(Object, Object...)
+     * @see #isMetaObject(Object)
+     * @since 19.0
+     */
+    public static native boolean isInstantiable(Object receiver);
+
+    /**
+     * Instantiates the receiver value with the given arguments. The returned object must be
+     * initialized correctly according to the language specification (e.g. by calling the
+     * constructor or initialization routine).
+     *
+     * @throws UnsupportedTypeException if one of the arguments is not compatible to the executable
+     *             signature
+     * @throws ArityException if the number of expected arguments does not match the number of
+     *             actual arguments.
+     * @throws UnsupportedMessageException if and only if {@link #isInstantiable(Object)} returns
+     *             <code>false</code> for the same receiver.
+     * @see #isExecutable(Object)
+     * @since 19.0
+     */
+    public static native Object instantiate(Object receiver, Object... arguments) throws UnsupportedTypeException, ArityException, UnsupportedMessageException;
+
+    // endregion Instantiable Messages
 }
