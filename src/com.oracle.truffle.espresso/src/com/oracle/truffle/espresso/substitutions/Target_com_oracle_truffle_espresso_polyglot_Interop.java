@@ -1145,7 +1145,7 @@ public final class Target_com_oracle_truffle_espresso_polyglot_Interop {
     @Throws({UnsupportedMessageException.class, UnknownIdentifierException.class, UnsupportedTypeException.class})
     public static void writeMember(@Host(Object.class) StaticObject receiver, @Host(String.class) StaticObject member, @Host(Object.class) StaticObject value,
                     @InjectMeta Meta meta) {
-        String hostMember = Meta.toHostStringStatic(value);
+        String hostMember = Meta.toHostStringStatic(member);
         try {
             if (receiver.isForeignObject()) {
                 UNCACHED.writeMember(unwrap(receiver), hostMember, unwrap(value));
