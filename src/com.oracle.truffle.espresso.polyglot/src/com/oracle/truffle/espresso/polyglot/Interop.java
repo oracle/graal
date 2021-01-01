@@ -1148,4 +1148,50 @@ public final class Interop {
     public static native Object instantiate(Object receiver, Object... arguments) throws UnsupportedTypeException, ArityException, UnsupportedMessageException;
 
     // endregion Instantiable Messages
+
+    // region StackFrame Messages
+
+    /**
+     * Returns {@code true} if the receiver has an executable name. Invoking this message does not
+     * cause any observable side-effects. Returns {@code false} by default.
+     *
+     * @see #getExecutableName(Object)
+     * @since 20.3
+     */
+    public static native boolean hasExecutableName(Object receiver);
+
+    /**
+     * Returns executable name of the receiver. Throws {@code UnsupportedMessageException} when the
+     * receiver is has no {@link #hasExecutableName(Object) executable name}. The return value is an
+     * interop value that is guaranteed to return <code>true</code> for {@link #isString(Object)}.
+     *
+     * @see #hasExecutableName(Object)
+     * @since 20.3
+     */
+    public static native Object getExecutableName(Object receiver) throws UnsupportedMessageException;
+
+    /**
+     * Returns {@code true} if the receiver has a declaring meta object. The declaring meta object
+     * is the meta object of the executable or meta object that declares the receiver value.
+     * Invoking this message does not cause any observable side-effects. Returns {@code false} by
+     * default.
+     *
+     * @see #getDeclaringMetaObject(Object)
+     * @since 20.3
+     */
+    public static native boolean hasDeclaringMetaObject(Object receiver);
+
+    /**
+     * Returns declaring meta object. The declaring meta object is the meta object of declaring
+     * executable or meta object. Throws {@code UnsupportedMessageException} when the receiver is
+     * has no {@link #hasDeclaringMetaObject(Object) declaring meta object}. The return value is an
+     * interop value that is guaranteed to return <code>true</code> for
+     * {@link #isMetaObject(Object)}.
+     *
+     * @see #hasDeclaringMetaObject(Object)
+     * @since 20.3
+     */
+    public static native Object getDeclaringMetaObject(Object receiver) throws UnsupportedMessageException;
+
+    // endregion StackFrame Messages
 }
