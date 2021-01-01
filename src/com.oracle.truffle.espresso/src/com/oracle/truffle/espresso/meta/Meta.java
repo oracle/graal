@@ -27,7 +27,6 @@ import java.util.logging.Level;
 import com.oracle.truffle.api.CompilerAsserts;
 import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
-import com.oracle.truffle.api.interop.UnsupportedTypeException;
 import com.oracle.truffle.espresso.EspressoOptions;
 import com.oracle.truffle.espresso.descriptors.Symbol;
 import com.oracle.truffle.espresso.descriptors.Symbol.Name;
@@ -551,8 +550,8 @@ public final class Meta implements ContextAccess {
         assert java_time_ZoneId_of.isStatic();
 
         // Interop support.
-        boolean polyglot = getContext().getEnv().getOptions().get(EspressoOptions.Polyglot);
-        this.polyglot = polyglot ? new PolyglotSupport() : null;
+        boolean polyglotSupport = getContext().getEnv().getOptions().get(EspressoOptions.Polyglot);
+        this.polyglot = polyglotSupport ? new PolyglotSupport() : null;
     }
 
     public void postSystemInit() {
@@ -1040,8 +1039,8 @@ public final class Meta implements ContextAccess {
         public final Field ExceptionType_PARSE_ERROR;
 
         private PolyglotSupport() {
-            boolean polyglot = getContext().getEnv().getOptions().get(EspressoOptions.Polyglot);
-            EspressoError.guarantee(polyglot, "--java.Polyglot must be enabled");
+            boolean polyglotSupport = getContext().getEnv().getOptions().get(EspressoOptions.Polyglot);
+            EspressoError.guarantee(polyglotSupport, "--java.Polyglot must be enabled");
             EspressoError.guarantee(knownKlass(Type.com_oracle_truffle_espresso_polyglot_Polyglot) != null,
                             "polyglot.jar (Polyglot API) is not accessible");
             ArityException = knownKlass(Type.com_oracle_truffle_espresso_polyglot_ArityException);

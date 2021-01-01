@@ -49,7 +49,7 @@ public final class Target_com_oracle_truffle_espresso_polyglot_Interop {
 
     /**
      * Returns the Java boolean value if the receiver represents a
-     * {@link InteropLibrary#isBoolean(StaticObject) boolean} like value.
+     * {@link InteropLibrary#isBoolean(Object) boolean} like value.
      *
      * @see InteropLibrary#asBoolean(Object)
      */
@@ -80,7 +80,7 @@ public final class Target_com_oracle_truffle_espresso_polyglot_Interop {
 
     /**
      * Returns the Java string value if the receiver represents a
-     * {@link InteropLibrary#isString(StaticObject) string} like value.
+     * {@link InteropLibrary#isString(Object) string} like value.
      *
      * @see InteropLibrary#asString(Object)
      */
@@ -928,12 +928,12 @@ public final class Target_com_oracle_truffle_espresso_polyglot_Interop {
      * violate the symmetric property.
      * <p>
      * This method performs double dispatch by forwarding calls to
-     * {@link InteropLibrary#isIdenticalOrUndefined(Object, Object)} with receiver and other value
+     * isIdenticalOrUndefined with receiver and other value
      * first and then with reversed parameters if the result was {@link TriState#UNDEFINED
      * undefined}. This allows the receiver and the other value to negotiate identity semantics.
      * This method is supposed to be exported only if the receiver represents a wrapper that
      * forwards messages. In such a case the isIdentical message should be forwarded to the delegate
-     * value. Otherwise, the {@link InteropLibrary#isIdenticalOrUndefined(Object, Object)} should be
+     * value. Otherwise, the isIdenticalOrUndefined should be
      * exported instead.
      * <p>
      * This method must not cause any observable side-effects.
@@ -965,8 +965,7 @@ public final class Target_com_oracle_truffle_espresso_polyglot_Interop {
      * <li>As much as is reasonably practical, the identityHashCode message does return distinct
      * integers for objects that are not the same.
      * </ul>
-     * This method must not cause any observable side-effects. If this method is implemented then
-     * also {@link InteropLibrary#isIdenticalOrUndefined(Object, Object)} must be implemented.
+     * This method must not cause any observable side-effects.
      *
      * @see InteropLibrary#identityHashCode(Object)
      * @since 20.2

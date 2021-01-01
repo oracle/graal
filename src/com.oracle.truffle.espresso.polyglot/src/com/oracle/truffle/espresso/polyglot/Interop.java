@@ -389,11 +389,11 @@ public final class Interop {
     /**
      * Returns the exception stack trace of the receiver that is of type exception. Returns an
      * {@link #hasArrayElements(Object) array} of objects with potentially
-     * {@link #hasExecutableName(Object) executable name}, {@link #hasDeclaringMetaObject(Object)
-     * declaring meta object} and {@link #hasSourceLocation(Object) source location} of the caller.
-     * Throws {@code UnsupportedMessageException} when the receiver is not an
-     * {@link #isException(Object) exception} or has no stack trace. Invoking this message or
-     * accessing the stack trace elements array must not cause any observable side-effects.
+     * {@link #hasExecutableName(Object) executable name} and {@link #hasDeclaringMetaObject(Object)
+     * declaring meta object} of the caller. Throws {@code UnsupportedMessageException} when the
+     * receiver is not an {@link #isException(Object) exception} or has no stack trace. Invoking
+     * this message or accessing the stack trace elements array must not cause any observable
+     * side-effects.
      *
      * @see #isException(Object)
      * @see #hasExceptionStackTrace(Object)
@@ -822,9 +822,8 @@ public final class Interop {
     /**
      * Returns an array of member name strings. The returned value must return <code>true</code> for
      * {@link #hasArrayElements(Object)} and every array element must be of type
-     * {@link #isString(Object) string}. The member elements may also provide additional information
-     * like {@link #getSourceLocation(Object) source location} in case of {@link #isScope(Object)
-     * scope} variables, etc.
+     * {@link #isString(Object) string}.
+     *
      * <p>
      * If the includeInternal argument is <code>true</code> then internal member names are returned
      * as well. Internal members are implementation specific and should not be exposed to guest
