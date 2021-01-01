@@ -1384,10 +1384,11 @@ public final class Target_com_oracle_truffle_espresso_polyglot_Interop {
 
     /**
      * Returns <code>true</code> if the receiver represents an <code>instantiable</code> value, else
-     * <code>false</code>. Contructors or {@link InteropLibrary#isMetaObject(Object) metaobjects} are typical
-     * examples of instantiable values. Invoking this message does not cause any observable
-     * side-effects. Note that receiver values which are {@link InteropLibrary#isExecutable(Object) executable}
-     * might also be {@link InteropLibrary#isInstantiable(Object) instantiable}.
+     * <code>false</code>. Contructors or {@link InteropLibrary#isMetaObject(Object) metaobjects}
+     * are typical examples of instantiable values. Invoking this message does not cause any
+     * observable side-effects. Note that receiver values which are
+     * {@link InteropLibrary#isExecutable(Object) executable} might also be
+     * {@link InteropLibrary#isInstantiable(Object) instantiable}.
      *
      * @see InteropLibrary#isInstantiable(Object)
      * @since 19.0
@@ -1437,8 +1438,9 @@ public final class Target_com_oracle_truffle_espresso_polyglot_Interop {
 
     /**
      * Returns executable name of the receiver. Throws {@code UnsupportedMessageException} when the
-     * receiver is has no {@link InteropLibrary#hasExecutableName(Object) executable name}. The return value is an
-     * interop value that is guaranteed to return <code>true</code> for {@link InteropLibrary#isString(Object)}.
+     * receiver is has no {@link InteropLibrary#hasExecutableName(Object) executable name}. The
+     * return value is an interop value that is guaranteed to return <code>true</code> for
+     * {@link InteropLibrary#isString(Object)}.
      *
      * @see InteropLibrary#hasExecutableName(Object)
      * @since 20.3
@@ -1474,8 +1476,8 @@ public final class Target_com_oracle_truffle_espresso_polyglot_Interop {
     /**
      * Returns declaring meta object. The declaring meta object is the meta object of declaring
      * executable or meta object. Throws {@code UnsupportedMessageException} when the receiver is
-     * has no {@link InteropLibrary#hasDeclaringMetaObject(Object) declaring meta object}. The return value is an
-     * interop value that is guaranteed to return <code>true</code> for
+     * has no {@link InteropLibrary#hasDeclaringMetaObject(Object) declaring meta object}. The
+     * return value is an interop value that is guaranteed to return <code>true</code> for
      * {@link InteropLibrary#isMetaObject(Object)}.
      *
      * @see InteropLibrary#getDeclaringMetaObject(Object)
@@ -1590,8 +1592,9 @@ public final class Target_com_oracle_truffle_espresso_polyglot_Interop {
      * Converts a guest arguments array to a host Object[].
      *
      * <p>
-     * In some cases, preserving the guest Java types of the arguments is preferred e.g. interop with an Espresso object.
-     * As an optimization, this method may return the underlying array of the guest arguments Object[].
+     * In some cases, preserving the guest Java types of the arguments is preferred e.g. interop
+     * with an Espresso object. As an optimization, this method may return the underlying array of
+     * the guest arguments Object[].
      *
      * @param unwrap if true, all arguments,
      * @return a host Object[] with "converted" arguments
