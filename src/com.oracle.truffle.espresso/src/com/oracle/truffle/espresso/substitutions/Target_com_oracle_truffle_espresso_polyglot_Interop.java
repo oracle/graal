@@ -1421,6 +1421,83 @@ public final class Target_com_oracle_truffle_espresso_polyglot_Interop {
 
     // endregion Instantiable Messages
 
+    // region StackFrame Messages
+
+    /**
+     * Returns {@code true} if the receiver has an executable name. Invoking this message does not
+     * cause any observable side-effects. Returns {@code false} by default.
+     *
+     * @see InteropLibrary#getExecutableName(Object)
+     * @since 20.3
+     */
+    @Substitution
+    public static boolean hasExecutableName(@Host(Object.class) StaticObject receiver) {
+        return UNCACHED.hasExecutableName(unwrap(receiver));
+    }
+
+    /**
+     * Returns executable name of the receiver. Throws {@code UnsupportedMessageException} when the
+     * receiver is has no {@link InteropLibrary#hasExecutableName(Object) executable name}. The return value is an
+     * interop value that is guaranteed to return <code>true</code> for {@link InteropLibrary#isString(Object)}.
+     *
+     * @see InteropLibrary#hasExecutableName(Object)
+     * @since 20.3
+     */
+    @Substitution
+    @Throws(UnsupportedMessageException.class)
+    public static @Host(Object.class) StaticObject getExecutableName(@Host(Object.class) StaticObject receiver, @InjectMeta Meta meta) {
+        try {
+            Object result = UNCACHED.getExecutableName(unwrap(receiver));
+            if (result instanceof StaticObject) {
+                return (StaticObject) result;
+            }
+            return StaticObject.createForeign(meta.java_lang_Object, result, UNCACHED);
+        } catch (InteropException e) {
+            throw throwInteropException(e, meta);
+        }
+    }
+
+    /**
+     * Returns {@code true} if the receiver has a declaring meta object. The declaring meta object
+     * is the meta object of the executable or meta object that declares the receiver value.
+     * Invoking this message does not cause any observable side-effects. Returns {@code false} by
+     * default.
+     *
+     * @see InteropLibrary#hasDeclaringMetaObject(Object)
+     * @since 20.3
+     */
+    @Substitution
+    public static boolean hasDeclaringMetaObject(@Host(Object.class) StaticObject receiver) {
+        return UNCACHED.hasDeclaringMetaObject(unwrap(receiver));
+    }
+
+    /**
+     * Returns declaring meta object. The declaring meta object is the meta object of declaring
+     * executable or meta object. Throws {@code UnsupportedMessageException} when the receiver is
+     * has no {@link InteropLibrary#hasDeclaringMetaObject(Object) declaring meta object}. The return value is an
+     * interop value that is guaranteed to return <code>true</code> for
+     * {@link InteropLibrary#isMetaObject(Object)}.
+     *
+     * @see InteropLibrary#getDeclaringMetaObject(Object)
+     * @see InteropLibrary#hasDeclaringMetaObject(Object)
+     * @since 20.3
+     */
+    @Substitution
+    @Throws(UnsupportedMessageException.class)
+    public static @Host(Object.class) StaticObject getDeclaringMetaObject(@Host(Object.class) StaticObject receiver, @InjectMeta Meta meta) {
+        try {
+            Object result = UNCACHED.getDeclaringMetaObject(unwrap(receiver));
+            if (result instanceof StaticObject) {
+                return (StaticObject) result;
+            }
+            return StaticObject.createForeign(meta.java_lang_Object, result, UNCACHED);
+        } catch (InteropException e) {
+            throw throwInteropException(e, meta);
+        }
+    }
+
+    // endregion StackFrame Messages
+
     private static Object unwrap(StaticObject receiver) {
         return receiver.isForeignObject() ? receiver.rawForeignObject() : receiver;
     }
