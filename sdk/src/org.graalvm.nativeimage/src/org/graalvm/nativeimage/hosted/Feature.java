@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2013, 2020, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2013, 2021, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -252,6 +252,14 @@ public interface Feature {
          * @since 19.3
          */
         void registerSubtypeReachabilityHandler(BiConsumer<DuringAnalysisAccess, Class<?>> callback, Class<?> baseClass);
+
+        /**
+         * Registers a callback that is invoked once {@link Feature#duringAnalysis during analysis}
+         * when the class initializer for the given type is determined to be reachable at run time.
+         *
+         * @since 21.0
+         */
+        void registerClassInitializerReachabilityHandler(Consumer<DuringAnalysisAccess> callback, Class<?> clazz);
     }
 
     /**

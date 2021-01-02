@@ -425,6 +425,11 @@ public class FeatureImpl {
         public void registerSubtypeReachabilityHandler(BiConsumer<DuringAnalysisAccess, Class<?>> callback, Class<?> baseClass) {
             ReachabilityHandlerFeature.singleton().registerSubtypeReachabilityHandler(this, callback, baseClass);
         }
+
+        @Override
+        public void registerClassInitializerReachabilityHandler(Consumer<DuringAnalysisAccess> callback, Class<?> clazz) {
+            ReachabilityHandlerFeature.singleton().registerClassInitializerReachabilityHandler(this, callback, clazz);
+        }
     }
 
     public static class DuringAnalysisAccessImpl extends BeforeAnalysisAccessImpl implements Feature.DuringAnalysisAccess {
