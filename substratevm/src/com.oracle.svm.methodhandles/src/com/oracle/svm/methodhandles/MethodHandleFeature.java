@@ -108,7 +108,7 @@ public class MethodHandleFeature implements Feature {
         access.registerReachabilityHandler(MethodHandleFeature::registerValueConversionIgnoreForReflection,
                         ReflectionUtil.lookupMethod(ValueConversions.class, "ignore"));
 
-        access.registerReachabilityHandler(MethodHandleFeature::registerDelegatingMHFunctionsForReflection,
+        access.registerClassInitializerReachabilityHandler(MethodHandleFeature::registerDelegatingMHFunctionsForReflection,
                         access.findClassByName("java.lang.invoke.DelegatingMethodHandle"));
 
         access.registerReachabilityHandler(MethodHandleFeature::registerCallSiteGetTargetForReflection,
