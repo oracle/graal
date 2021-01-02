@@ -53,7 +53,7 @@ public final class Interop {
      *
      * @since 19.0
      */
-    public native static boolean isNull(Object receiver);
+    public static native boolean isNull(Object receiver);
 
     // region Boolean Messages
 
@@ -64,7 +64,7 @@ public final class Interop {
      * @see #asBoolean(Object)
      * @since 19.0
      */
-    public native static boolean isBoolean(Object receiver);
+    public static native boolean isBoolean(Object receiver);
 
     /**
      * Returns the Java boolean value if the receiver represents a {@link #isBoolean(Object)
@@ -75,7 +75,7 @@ public final class Interop {
      * @see #isBoolean(Object)
      * @since 19.0
      */
-    public native static boolean asBoolean(Object receiver) throws UnsupportedMessageException;
+    public static native boolean asBoolean(Object receiver) throws UnsupportedMessageException;
 
     // endregion Boolean Messages
 
@@ -88,7 +88,7 @@ public final class Interop {
      * @see #asString(Object)
      * @since 19.0
      */
-    public native static boolean isString(Object receiver);
+    public static native boolean isString(Object receiver);
 
     /**
      * Returns the Java string value if the receiver represents a {@link #isString(Object) string}
@@ -99,7 +99,7 @@ public final class Interop {
      * @see #isString(Object)
      * @since 19.0
      */
-    public native static String asString(Object receiver) throws UnsupportedMessageException;
+    public static native String asString(Object receiver) throws UnsupportedMessageException;
 
     // endregion String Messages
 
@@ -123,7 +123,7 @@ public final class Interop {
      * @see #asDouble(Object)
      * @since 19.0
      */
-    public native static boolean isNumber(Object receiver);
+    public static native boolean isNumber(Object receiver);
 
     /**
      * Returns <code>true</code> if the receiver represents a <code>number</code> and its value fits
@@ -134,7 +134,7 @@ public final class Interop {
      * @see #asByte(Object)
      * @since 19.0
      */
-    public native static boolean fitsInByte(Object receiver);
+    public static native boolean fitsInByte(Object receiver);
 
     /**
      * Returns <code>true</code> if the receiver represents a <code>number</code> and its value fits
@@ -145,7 +145,7 @@ public final class Interop {
      * @see #asShort(Object)
      * @since 19.0
      */
-    public native static boolean fitsInShort(Object receiver);
+    public static native boolean fitsInShort(Object receiver);
 
     /**
      * Returns <code>true</code> if the receiver represents a <code>number</code> and its value fits
@@ -156,7 +156,7 @@ public final class Interop {
      * @see #asInt(Object)
      * @since 19.0
      */
-    public native static boolean fitsInInt(Object receiver);
+    public static native boolean fitsInInt(Object receiver);
 
     /**
      * Returns <code>true</code> if the receiver represents a <code>number</code> and its value fits
@@ -167,7 +167,7 @@ public final class Interop {
      * @see #asLong(Object)
      * @since 19.0
      */
-    public native static boolean fitsInLong(Object receiver);
+    public static native boolean fitsInLong(Object receiver);
 
     /**
      * Returns <code>true</code> if the receiver represents a <code>number</code> and its value fits
@@ -178,7 +178,7 @@ public final class Interop {
      * @see #asFloat(Object)
      * @since 19.0
      */
-    public native static boolean fitsInFloat(Object receiver);
+    public static native boolean fitsInFloat(Object receiver);
 
     /**
      * Returns <code>true</code> if the receiver represents a <code>number</code> and its value fits
@@ -189,7 +189,7 @@ public final class Interop {
      * @see #asDouble(Object)
      * @since 19.0
      */
-    public native static boolean fitsInDouble(Object receiver);
+    public static native boolean fitsInDouble(Object receiver);
 
     /**
      * Returns the receiver value as Java byte primitive if the number fits without loss of
@@ -201,7 +201,7 @@ public final class Interop {
      * @see #fitsInByte(Object)
      * @since 19.0
      */
-    public native static byte asByte(Object receiver) throws UnsupportedMessageException;
+    public static native byte asByte(Object receiver) throws UnsupportedMessageException;
 
     /**
      * Returns the receiver value as Java short primitive if the number fits without loss of
@@ -213,7 +213,7 @@ public final class Interop {
      * @see #fitsInShort(Object)
      * @since 19.0
      */
-    public native static short asShort(Object receiver) throws UnsupportedMessageException;
+    public static native short asShort(Object receiver) throws UnsupportedMessageException;
 
     /**
      * Returns the receiver value as Java int primitive if the number fits without loss of
@@ -225,7 +225,7 @@ public final class Interop {
      * @see #fitsInInt(Object)
      * @since 19.0
      */
-    public native static int asInt(Object receiver) throws UnsupportedMessageException;
+    public static native int asInt(Object receiver) throws UnsupportedMessageException;
 
     /**
      * Returns the receiver value as Java long primitive if the number fits without loss of
@@ -237,7 +237,7 @@ public final class Interop {
      * @see #fitsInLong(Object)
      * @since 19.0
      */
-    public native static long asLong(Object receiver) throws UnsupportedMessageException;
+    public static native long asLong(Object receiver) throws UnsupportedMessageException;
 
     /**
      * Returns the receiver value as Java float primitive if the number fits without loss of
@@ -249,7 +249,7 @@ public final class Interop {
      * @see #fitsInFloat(Object)
      * @since 19.0
      */
-    public native static float asFloat(Object receiver) throws UnsupportedMessageException;
+    public static native float asFloat(Object receiver) throws UnsupportedMessageException;
 
     /**
      * Returns the receiver value as Java double primitive if the number fits without loss of
@@ -261,7 +261,7 @@ public final class Interop {
      * @see #fitsInDouble(Object)
      * @since 19.0
      */
-    public native static double asDouble(Object receiver) throws UnsupportedMessageException;
+    public static native double asDouble(Object receiver) throws UnsupportedMessageException;
 
     // endregion Number Messages
 
