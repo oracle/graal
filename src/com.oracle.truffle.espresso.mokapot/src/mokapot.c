@@ -73,8 +73,8 @@ JNIEXPORT MokapotEnv* JNICALL initializeMokapotContext(TruffleEnv *truffle_env, 
   VM_METHOD_LIST(INIT__)
   #undef INIT_
 
-  // Persist Moka env in JNI env.
-  //(*env)->reserved1 = moka_env;
+  // Persist Moka env in TLS.
+  // would be better in the jni env but some methods don't get a jni env as argument
   tls_moka_env = moka_env;
 
   #define INIT_VM__(name) \
@@ -1459,43 +1459,230 @@ _JNI_IMPORT_OR_EXPORT_ jint JNICALL JNI_GetDefaultJavaVMInitArgs(void *args) {
 static graal_create_isolate_fn_t create_isolate = NULL;
 static graal_attach_thread_fn_t attach_thread = NULL;
 static graal_detach_thread_fn_t detach_thread = NULL;
+static graal_get_current_thread_fn_t get_current_thread = NULL;
 static graal_tear_down_isolate_fn_t tear_down_isolate = NULL;
+static graal_detach_all_threads_and_tear_down_isolate_fn_t detach_all_threads_and_tear_down_isolate = NULL;
+static Espresso_CreateJavaVM_fn_t Espresso_CreateJavaVM = NULL;
+
+char *last_sep(const char *start, const char *end) {
+    const char *p = end;
+    while (p >= start) {
+        if (*p == OS_PATHSEP) {
+            return (char*)p;
+        }
+        p--;
+    }
+    return NULL;
+}
+
+#define LIB_ESPRESSO_PATH "languages" OS_PATHSEP_STR "java" OS_PATHSEP_STR "lib" OS_PATHSEP_STR OS_LIB("espresso")
 
 jint ensure_libespresso_loaded() {
     if (create_isolate == NULL ) {
         const char *mokapot_path = os_current_library_path();
-        char* last_sep = strrchr(mokapot_path, OS_PATHSEP);
-        if (last_sep == NULL) {
+        if (mokapot_path == NULL) {
             return JNI_ERR;
         }
-        unsigned long prefix_len = last_sep - mokapot_path + 1;
-        size_t lib_name_len = strlen(OS_LIB("espresso"));
+        // mokapot is in
+        // .../lib/truffle/libjvm.so or .../lib/<arch>/truffle/libjvm.so
+        // espresso is in
+        // .../languages/java/lib/libespresso.so
+        const char* mokapot_path_end = mokapot_path + strlen(mokapot_path);
+        char* pos = last_sep(mokapot_path, mokapot_path_end);
+        if (pos == NULL) {
+            return JNI_ERR;
+        }
+        // .../lib/truffle/libjvm.so or .../lib/<arch>/truffle/libjvm.so
+        //                ^                                   ^
+        pos = last_sep(mokapot_path, pos - 1);
+        if (pos == NULL) {
+            return JNI_ERR;
+        }
+        // .../lib/truffle/libjvm.so or .../lib/<arch>/truffle/libjvm.so
+        //        ^                                   ^
+        if (pos - mokapot_path < 3) {
+            return JNI_ERR;
+        }
+        if (strncmp(pos - 3, "lib", 3) != 0) {
+            pos = last_sep(mokapot_path, pos - 1);
+            if (pos == NULL) {
+                return JNI_ERR;
+            }
+            // .../lib/<arch>/truffle/libjvm.so
+            //        ^
+            if (pos - mokapot_path < 3 || strncmp(pos - 3, "lib", 3) != 0) {
+                return JNI_ERR;
+            }
+        }
+        unsigned long prefix_len = pos - 3 - mokapot_path;
+        size_t lib_name_len = strlen(LIB_ESPRESSO_PATH);
         if (prefix_len + lib_name_len + 1 > MAX_PATH) {
             return JNI_ERR;
         }
         char espresso_path[MAX_PATH];
         strncpy(espresso_path, mokapot_path, prefix_len);
-        strncpy(espresso_path + prefix_len, OS_LIB("espresso"), lib_name_len);
+        strncpy(espresso_path + prefix_len, LIB_ESPRESSO_PATH, lib_name_len);
 
         OS_DL_HANDLE libespresso = os_dl_open(espresso_path);
+        if (libespresso == NULL) {
+            fprintf(stderr, "Failed to open " OS_LIB("espresso") ": %s" OS_NEWLINE_STR, os_dl_error());
+            return JNI_ERR;
+        }
 
         create_isolate = os_dl_sym(libespresso, "graal_create_isolate");
         attach_thread = os_dl_sym(libespresso, "graal_attach_thread");
         detach_thread = os_dl_sym(libespresso, "graal_detach_thread");
+        get_current_thread = os_dl_sym(libespresso, "graal_get_current_thread");
         tear_down_isolate = os_dl_sym(libespresso, "graal_tear_down_isolate");
+        detach_all_threads_and_tear_down_isolate = os_dl_sym(libespresso, "graal_detach_all_threads_and_tear_down_isolate");
+        Espresso_CreateJavaVM = os_dl_sym(libespresso, "Espresso_CreateJavaVM");
+        if (create_isolate == NULL ||
+            attach_thread == NULL ||
+            detach_thread == NULL ||
+            get_current_thread == NULL ||
+            tear_down_isolate == NULL ||
+            Espresso_CreateJavaVM == NULL ||
+            detach_all_threads_and_tear_down_isolate == NULL) {
+            return JNI_ERR;
+        }
     }
     return JNI_OK;
 }
 
-_JNI_IMPORT_OR_EXPORT_ jint JNICALL JNI_CreateJavaVM(JavaVM **vm_ptr, void **penv, void *args) {
+jint AttachCurrentThread(JavaVM *vm, void **penv, void *args) {
+    if ((*vm)->reserved1 != MOKA_LATTE) {
+        return JNI_ERR;
+    }
+    JavaVM *espressoJavaVM = (*vm)->reserved2;
+    graal_isolate_t *isolate = (*vm)->reserved0;
+    graal_isolatethread_t *thread;
+    if (attach_thread(isolate, &thread) != 0) {
+        return JNI_ERR;
+    }
+    jint ret = (*espressoJavaVM)->AttachCurrentThread(espressoJavaVM, penv, args);
+    if (ret != JNI_OK) {
+        detach_thread(thread);
+    }
+    return ret;
+}
 
-//    JavaVMInitArgs *initArgs = args;
-//
-//    JavaVM * vm;
-//
-//    add_java_vm(vm);
-//    return JNI_OK;
-    return JNI_ERR;
+jint DestroyJavaVM(JavaVM *vm) {
+    if ((*vm)->reserved1 != MOKA_LATTE) {
+        return JNI_ERR;
+    }
+    JavaVM *espressoJavaVM = (*vm)->reserved2;
+    graal_isolate_t *isolate = (*vm)->reserved0;
+    graal_isolatethread_t *thread = get_current_thread(isolate);
+    if (thread == NULL) {
+        void* env;
+        JavaVMAttachArgs args;
+        args.version = JNI_VERSION_1_2;
+        args.name = "Destroy VM";
+        args.group = NULL;
+        jint result = AttachCurrentThread(vm, &env, &args);
+        if (result != JNI_OK) {
+            return result;
+        }
+    }
+    return (*espressoJavaVM)->DestroyJavaVM(espressoJavaVM);
+}
+
+jint DetachCurrentThread(JavaVM *vm) {
+    if ((*vm)->reserved1 != MOKA_LATTE) {
+        return JNI_ERR;
+    }
+    JavaVM *espressoJavaVM = (*vm)->reserved2;
+    graal_isolate_t *isolate = (*vm)->reserved0;
+    graal_isolatethread_t *thread = get_current_thread(isolate);
+    if (thread == NULL) {
+        return JNI_OK;
+    }
+    jint ret = (*espressoJavaVM)->DetachCurrentThread(espressoJavaVM);
+    if (detach_thread(thread) != 0) {
+        ret = JNI_ERR;
+    }
+    return ret;
+}
+
+jint GetEnv(JavaVM *vm, void **penv, jint version) {
+    if ((*vm)->reserved1 != MOKA_LATTE) {
+        return JNI_ERR;
+    }
+    JavaVM *espressoJavaVM = (*vm)->reserved2;
+    graal_isolate_t *isolate = (*vm)->reserved0;
+    if (get_current_thread(isolate) == NULL) {
+        return JNI_EDETACHED;
+    }
+    return (*espressoJavaVM)->GetEnv(espressoJavaVM, penv, version);
+}
+
+jint AttachCurrentThreadAsDaemon(JavaVM *vm, void **penv, void *args) {
+    if ((*vm)->reserved1 != MOKA_LATTE) {
+        return JNI_ERR;
+    }
+    JavaVM *espressoJavaVM = (*vm)->reserved2;
+    graal_isolate_t *isolate = (*vm)->reserved0;
+    graal_isolatethread_t *thread;
+    if (attach_thread(isolate, &thread) != 0) {
+        return JNI_ERR;
+    }
+    jint ret = (*espressoJavaVM)->AttachCurrentThreadAsDaemon(espressoJavaVM, penv, args);
+    if (ret != JNI_OK) {
+        detach_thread(thread);
+    }
+    return ret;
+}
+
+_JNI_IMPORT_OR_EXPORT_ jint JNICALL JNI_CreateJavaVM(JavaVM **vm_ptr, void **penv, void *args) {
+    JavaVMInitArgs *initArgs = args;
+    jint ret = ensure_libespresso_loaded();
+    if (ret != JNI_OK) {
+        return ret;
+    }
+    graal_isolate_t *isolate;
+    graal_isolatethread_t *thread;
+    graal_create_isolate_params_t params;
+    params.version = 0;
+    params.reserved_address_space_size = 0;
+
+    if (create_isolate(&params, &isolate, &thread) != 0) {
+        return JNI_ERR;
+    }
+    struct JavaVM_ *espressoJavaVM;
+    struct JNIEnv_ *espressoJNIEnv;
+    ret = Espresso_CreateJavaVM(thread, &espressoJavaVM, &espressoJNIEnv, initArgs);
+    if (ret != JNI_OK) {
+        detach_all_threads_and_tear_down_isolate(thread);
+        return ret;
+    }
+    ((struct JNIInvokeInterface_ *) espressoJavaVM->functions)->reserved1 = MOKA_AMERICANO;
+
+    JavaVM *vm = malloc(sizeof(JavaVM));
+    if (vm == NULL) {
+        detach_all_threads_and_tear_down_isolate(thread);
+        return JNI_ENOMEM;
+    }
+    struct JNIInvokeInterface_ *vmInterface = malloc(sizeof(struct JNIInvokeInterface_));
+    if (vmInterface == NULL) {
+        free(vm);
+        detach_all_threads_and_tear_down_isolate(thread);
+        return JNI_ENOMEM;
+    }
+    vmInterface->reserved0 = isolate;
+    vmInterface->reserved1 = MOKA_LATTE;
+    vmInterface->reserved2 = espressoJavaVM;
+    vmInterface->DestroyJavaVM = DestroyJavaVM;
+    vmInterface->AttachCurrentThread = AttachCurrentThread;
+    vmInterface->DetachCurrentThread = DetachCurrentThread;
+    vmInterface->GetEnv = GetEnv;
+    vmInterface->AttachCurrentThreadAsDaemon = AttachCurrentThreadAsDaemon;
+
+    *vm = vmInterface;
+
+    add_java_vm(vm);
+    *vm_ptr = vm;
+    *penv = espressoJNIEnv;
+    return JNI_OK;
 }
 
 _JNI_IMPORT_OR_EXPORT_ jint JNICALL JNI_GetCreatedJavaVMs(JavaVM **vm_buf, jsize buf_len, jsize *num_vms) {
@@ -1540,17 +1727,18 @@ void add_java_vm(JavaVM* vm) {
             uint32_t new_capacity = capacity == 0 ? 8 : capacity * 2;
             current = calloc(1, sizeof(VMList) + new_capacity * sizeof(VMList*));
             current->capacity = new_capacity;
+            current->vms[0] = vm;
             // assume NULL == 0
-            VMList** value = NULL;
-            if (atomic_compare_exchange_weak(next_ptr, value, current)) {
+            VMList* value = NULL;
+            if (atomic_compare_exchange_weak(next_ptr, &value, current)) {
                 return;
             }
             free(current);
         } else {
             capacity = current->capacity;
             for (int i = 0; i < capacity; ++i) {
-                JavaVM** value = NULL;
-                if (atomic_compare_exchange_weak(&current->vms[i], value, vm)) {
+                JavaVM* value = NULL;
+                if (atomic_compare_exchange_weak(&current->vms[i], &value, vm)) {
                     return;
                 }
             }

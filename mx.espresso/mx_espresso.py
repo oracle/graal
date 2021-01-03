@@ -156,6 +156,7 @@ mx_sdk_vm.register_graalvm_component(mx_sdk_vm.GraalVmJreComponent(
     suite=_suite,
     name='Espresso libjvm',
     short_name='ejvm',
+    dir_name='truffle',
     license_files=[],
     third_party_license_files=[],
     dependencies=['Espresso'],

@@ -121,17 +121,6 @@ public final class Arguments {
         }
 
         builder.option("java.Classpath", classpath);
-
-// Path libJVMPath = Paths.get(ProcessProperties.getObjectFile(LibEspresso.CREATE_JAVA_VM_SYMBOL));
-// // Get rid of /libjvm.so.
-// Path libJVMDir = libJVMPath.getParent();
-// // Get rid of /{client|server|truffle}.
-// Path libDir = libJVMDir.getParent();
-// builder.option("java.BootLibraryPath", libDir.toString());
-// // Get rid of /lib.
-// Path jreDir = libDir.getParent();
-// builder.option("java.JavaHome", jreDir.toString());
-
         return JNIErrors.JNI_OK();
     }
 

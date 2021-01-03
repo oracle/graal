@@ -27,6 +27,8 @@ import static com.oracle.truffle.espresso.classfile.Constants.ACC_CALLER_SENSITI
 import static com.oracle.truffle.espresso.classfile.Constants.ACC_FINAL;
 import static com.oracle.truffle.espresso.classfile.Constants.ACC_LAMBDA_FORM_COMPILED;
 import static com.oracle.truffle.espresso.classfile.Constants.ACC_PUBLIC;
+import static com.oracle.truffle.espresso.jni.JniEnv.JNI_ERR;
+import static com.oracle.truffle.espresso.jni.JniEnv.JNI_EVERSION;
 import static com.oracle.truffle.espresso.jni.JniEnv.JNI_OK;
 import static com.oracle.truffle.espresso.meta.EspressoError.cat;
 import static com.oracle.truffle.espresso.runtime.Classpath.JAVA_BASE;
@@ -261,7 +263,7 @@ public final class VM extends NativeEnv implements ContextAccess {
             EspressoProperties props = getContext().getVmProperties();
 
             // Load Espresso's libjvm.
-            mokapotLibrary = loadLibraryInternal(Collections.singletonList(props.espressoLibraryPath()), "jvm");
+            mokapotLibrary = loadLibraryInternal(props.jvmLibraryPath(), "jvm");
             assert mokapotLibrary != null;
 
             initializeMokapotContext = NativeLibrary.lookupAndBind(mokapotLibrary,
@@ -715,23 +717,42 @@ public final class VM extends NativeEnv implements ContextAccess {
 
     // region JNI Invocation Interface
     @VmImpl
-    public static int DestroyJavaVM() {
+    public static int DestroyJavaVM(@InjectMeta Meta meta) {
+        meta.getContext().destroyVM();
         return JNI_OK;
     }
+
+    /*
+    struct JavaVMAttachArgs {
+        0      |     4     jint version;
+     XXX  4-byte hole
+        8      |     8     char *name;
+       16      |     8     jobject group;
+    }
+    total size (bytes):   24
+     */
 
     @SuppressWarnings("unused")
     @VmImpl
     @TruffleBoundary
     public int AttachCurrentThread(@Pointer TruffleObject penvPtr, @Pointer TruffleObject argsPtr, @InjectMeta Meta meta) {
-        getLogger().warning("Calling AttachCurrentThread! " + penvPtr + " " + Thread.currentThread());
-        meta.getContext().createThread(Thread.currentThread());
+        LongBuffer buf = directByteBuffer(argsPtr, 8, JavaKind.Long).asLongBuffer();
+        int version = (int) buf.get(0);
+        long namePtr = buf.get(1);
+        long groupHandle = buf.get(2);
+        StaticObject group = null;
+        String name = null;
+        if (JniVersion.isSupported(version, getContext().getJavaVersion())) {
+            group = getHandles().get(Math.toIntExact(groupHandle));
+            // TODO decode name string
+        }
+        meta.getContext().createThread(Thread.currentThread(), group, name);
         return JNI_OK;
     }
 
     @VmImpl
     @TruffleBoundary
     public int DetachCurrentThread(@InjectMeta Meta meta) {
-        getLogger().warning("DetachCurrentThread!!!" + Thread.currentThread());
         meta.getContext().disposeThread(Thread.currentThread());
         return JNI_OK;
     }
@@ -755,14 +776,31 @@ public final class VM extends NativeEnv implements ContextAccess {
     public int GetEnv(@Pointer TruffleObject vmPtr_, @Pointer TruffleObject envPtr, int version) {
         // TODO(peterssen): Check the thread is attached, and that the VM pointer matches.
         assert interopAsPointer(getJavaVM()) == interopAsPointer(vmPtr_);
-        LongBuffer buf = directByteBuffer(envPtr, 1, JavaKind.Long).asLongBuffer();
-        buf.put(interopAsPointer(jniEnv.getNativePointer()));
-        return JNI_OK;
+        if (JniVersion.isSupported(version, getContext().getJavaVersion())) {
+            LongBuffer buf = directByteBuffer(envPtr, 1, JavaKind.Long).asLongBuffer();
+            buf.put(interopAsPointer(jniEnv.getNativePointer()));
+            return JNI_OK;
+        }
+        return JNI_EVERSION;
     }
 
     @SuppressWarnings("unused")
     @VmImpl
-    public static int AttachCurrentThreadAsDaemon(@Pointer TruffleObject penvPtr, @Pointer TruffleObject argsPtr) {
+    @TruffleBoundary
+    public int AttachCurrentThreadAsDaemon(@Pointer TruffleObject penvPtr, @Pointer TruffleObject argsPtr, @InjectMeta Meta meta) {
+        ByteBuffer buf = directByteBuffer(argsPtr, 8, JavaKind.Long);
+        LongBuffer lbuf = buf.asLongBuffer();
+        int version = buf.asIntBuffer().get(0);
+        long namePtr = lbuf.get(1);
+        long groupHandle = lbuf.get(2);
+        StaticObject group = null;
+        String name = null;
+        if (JniVersion.isSupported(version, getContext().getJavaVersion())) {
+            group = getHandles().get(Math.toIntExact(groupHandle));
+            // TODO decode name string
+        }
+        StaticObject thread = meta.getContext().createThread(Thread.currentThread(), group, name);
+        meta.java_lang_Thread_daemon.set(thread, true);
         return JNI_OK;
     }
 

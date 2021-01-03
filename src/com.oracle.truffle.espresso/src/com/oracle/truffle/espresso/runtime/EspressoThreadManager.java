@@ -199,16 +199,21 @@ class EspressoThreadManager implements ContextAccess {
         return guestMainThread;
     }
 
-    public void createGuestThreadFromHost(Thread hostThread, Meta meta, VM vm) {
+    public StaticObject createGuestThreadFromHost(Thread hostThread, Meta meta, VM vm) {
+        return createGuestThreadFromHost(hostThread, meta, vm, null, mainThreadGroup);
+    }
+
+    public StaticObject createGuestThreadFromHost(Thread hostThread, Meta meta, VM vm, String name, StaticObject threadGroup) {
         if (meta == null) {
             // initial thread used to initialize the context and spawn the VM.
             // Don't attempt guest thread creation
-            return;
+            return null;
         }
         synchronized (activeThreadLock) {
-            if (getGuestThreadFromHost(hostThread) != null) {
+            StaticObject exisitingThread = getGuestThreadFromHost(hostThread);
+            if (exisitingThread != null) {
                 // already a live guest thread for this host thread
-                return;
+                return exisitingThread;
             }
             vm.attachThread(hostThread);
             StaticObject guestThread = meta.java_lang_Thread.allocateInstance();
@@ -220,17 +225,27 @@ class EspressoThreadManager implements ContextAccess {
             // register the new guest thread
             registerThread(hostThread, guestThread);
 
-            meta.java_lang_Thread // public Thread(ThreadGroup group, String name)
-                            .lookupDeclaredMethod(Symbol.Name._init_, Symbol.Signature._void_ThreadGroup_Runnable) //
-                            .invokeDirect(guestThread,
-                                            /* group */ mainThreadGroup,
-                                            /* runnable */ StaticObject.NULL);
+            // TODO why the late method lookups?
+            if (name == null) {
+                meta.java_lang_Thread // public Thread(ThreadGroup group, Runnable r)
+                                .lookupDeclaredMethod(Symbol.Name._init_, Symbol.Signature._void_ThreadGroup_Runnable) //
+                                .invokeDirect(guestThread,
+                                                /* group */ mainThreadGroup,
+                                                /* runnable */ StaticObject.NULL);
+            } else {
+                meta.java_lang_Thread // public Thread(ThreadGroup group, String name)
+                                .lookupDeclaredMethod(Symbol.Name._init_, Symbol.Signature._void_ThreadGroup_String) //
+                                .invokeDirect(guestThread,
+                                                /* group */ threadGroup,
+                                                /* name */ meta.toGuestString(name));
+            }
             guestThread.setIntField(meta.java_lang_Thread_threadStatus, Target_java_lang_Thread.State.RUNNABLE.value);
 
             // now add to the main thread group
             meta.java_lang_ThreadGroup // public void add(Thread t)
-                            .lookupDeclaredMethod(Symbol.Name.add, Symbol.Signature._void_Thread).invokeDirect(mainThreadGroup,
+                            .lookupDeclaredMethod(Symbol.Name.add, Symbol.Signature._void_Thread).invokeDirect(threadGroup,
                                             /* thread */ guestThread);
+            return guestThread;
         }
     }
 

@@ -57,6 +57,7 @@ typedef uint64_t julong;
 
 #define MOKA_RISTRETTO ((void *)11)
 #define MOKA_AMERICANO ((void *)22)
+#define MOKA_LATTE ((void *)33)
 
 #define VM_METHOD_LIST(V) \
     V(JVM_Accept) \

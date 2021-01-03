@@ -160,18 +160,6 @@ suite = {
             "checkstyle": "com.oracle.truffle.espresso",
         },
 
-        "com.oracle.truffle.espresso.libjvm": {
-            "subDir": "src",
-            "sourceDirs": ["src"],
-            "dependencies": [
-                # "sdk:GRAAL_SDK",
-                "substratevm:SVM",
-                "sdk:LAUNCHER_COMMON",
-            ],
-            "javaCompliance": "1.8+",
-            "checkstyle": "com.oracle.truffle.espresso",
-        },
-
         "com.oracle.truffle.espresso.libespresso": {
             "subDir": "src",
             "sourceDirs": ["src"],
@@ -478,21 +466,6 @@ suite = {
             "allowsJavadocWarnings": True,
         },
 
-        "ESPRESSO_LIBJVM": {
-            "subDir": "src",
-            "dependencies": [
-                "com.oracle.truffle.espresso.libjvm",
-            ],
-            "distDependencies": [
-                # "sdk:GRAAL_SDK",
-                "substratevm:SVM",
-                "sdk:LAUNCHER_COMMON",
-            ],
-            "license": "UPL",
-            "description": "libjvm using the polyglot API.",
-            "allowsJavadocWarnings": True,
-        },
-
         "LIB_ESPRESSO": {
             "subDir": "src",
             "dependencies": [
@@ -532,7 +505,7 @@ suite = {
                 "lib/": [
                     "dependency:espresso:com.oracle.truffle.espresso.eden/<lib:eden>",
                     "dependency:espresso:com.oracle.truffle.espresso.native/<lib:nespresso>",
-                    "dependency:espresso:com.oracle.truffle.espresso.mokapot/<lib:jvm>",
+                    #"dependency:espresso:com.oracle.truffle.espresso.mokapot/<lib:jvm>",
                 ],
             },
         },
@@ -542,7 +515,7 @@ suite = {
             "description": "Espresso support distribution for the GraalVM (in JRE)",
             "platformDependent": True,
             "layout": {
-                "truffle/": [
+                "./": [
                     "dependency:espresso:com.oracle.truffle.espresso.mokapot/<lib:jvm>",
                 ],
             },

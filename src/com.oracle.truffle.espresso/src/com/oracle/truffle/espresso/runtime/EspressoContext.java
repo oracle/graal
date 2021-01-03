@@ -556,13 +556,18 @@ public final class EspressoContext {
     /**
      * Creates a new guest thread from the host thread, and adds it to the main thread group.
      */
-    public void createThread(Thread hostThread) {
-        threadManager.createGuestThreadFromHost(hostThread, meta, vm);
+    public StaticObject createThread(Thread hostThread) {
+        return threadManager.createGuestThreadFromHost(hostThread, meta, vm);
+    }
+
+    public StaticObject createThread(Thread hostThread, StaticObject group, String name) {
+        return threadManager.createGuestThreadFromHost(hostThread, meta, vm, name, group);
     }
 
     public void disposeThread(@SuppressWarnings("unused") Thread hostThread) {
         // simply calling Thread.exit() will do most of what's needed
         // TODO(Gregersen) - /browse/GR-20077
+        getLogger().warning("unimplemented: disposeThread: " + Thread.currentThread());
     }
 
     public StaticObject getGuestThreadFromHost(Thread host) {

@@ -22,7 +22,6 @@
  */
 package com.oracle.truffle.espresso.libespresso.jniapi;
 
-import org.graalvm.nativeimage.Isolate;
 import org.graalvm.nativeimage.c.CContext;
 import org.graalvm.nativeimage.c.struct.CField;
 import org.graalvm.nativeimage.c.struct.CStruct;

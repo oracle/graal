@@ -55,6 +55,8 @@ public interface EspressoProperties {
 
     Path espressoLibraryPath();
 
+    List<Path> jvmLibraryPath();
+
     List<Path> classpath();
 
     List<Path> bootClasspath();
@@ -69,6 +71,7 @@ public interface EspressoProperties {
         private BootClassPathType version;
         private Path javaHome;
         private Path espressoLibraryPath;
+        private List<Path> jvmLibraryPath;
         private List<Path> classpath;
         private List<Path> bootClasspath;
         private List<Path> javaLibraryPath;
@@ -78,6 +81,8 @@ public interface EspressoProperties {
         abstract Path defaultJavaHome();
 
         abstract Path defaultEspressoLibraryPath();
+
+        abstract List<Path> defaultJvmLibraryPath();
 
         abstract List<Path> defaultClasspath();
 
@@ -161,6 +166,10 @@ public interface EspressoProperties {
             return espressoLibraryPath != null ? espressoLibraryPath : defaultEspressoLibraryPath();
         }
 
+        public List<Path> jvmLibraryPath() {
+            return jvmLibraryPath != null ? jvmLibraryPath : defaultJvmLibraryPath();
+        }
+
         public EspressoProperties build() {
             return new EspressoProperties() {
                 private final BootClassPathType javaVersion = Builder.this.bootClassPathVersion();
@@ -171,6 +180,7 @@ public interface EspressoProperties {
                 private final List<Path> bootLibraryPath = Objects.requireNonNull(Builder.this.bootLibraryPath(), "bootLibraryPath not defined");
                 private final List<Path> extDirs = Objects.requireNonNull(Builder.this.extDirs(), "extDirs not defined");
                 private final Path espressoLibraryPath = Objects.requireNonNull(Builder.this.espressoLibraryPath(), "espressoLibraryPath not defined");
+                private final List<Path> jvmLibraryPath = Objects.requireNonNull(Builder.this.jvmLibraryPath(), "jvmLibraryPath not defined");
 
                 @Override
                 public BootClassPathType bootClassPathType() {
@@ -185,6 +195,11 @@ public interface EspressoProperties {
                 @Override
                 public Path espressoLibraryPath() {
                     return espressoLibraryPath;
+                }
+
+                @Override
+                public List<Path> jvmLibraryPath() {
+                    return jvmLibraryPath;
                 }
 
                 @Override
@@ -441,6 +456,14 @@ final class LinuxBuilder extends PlatformBuilder {
     }
 
     @Override
+    List<Path> defaultJvmLibraryPath() {
+        List<Path> paths = new ArrayList<>();
+        paths.add(javaHome().resolve("lib").resolve(CPU_ARCH).resolve("truffle"));
+        paths.add(javaHome().resolve("lib").resolve("truffle"));
+        return paths;
+    }
+
+    @Override
     List<Path> defaultExtDirs() {
         return Arrays.asList(
                         javaHome().resolve(EXTENSIONS_DIR),
@@ -479,6 +502,11 @@ final class DarwinBuilder extends PlatformBuilder {
     @Override
     List<Path> defaultBootLibraryPath() {
         return Collections.singletonList(javaHome().resolve("lib"));
+    }
+
+    @Override
+    List<Path> defaultJvmLibraryPath() {
+        return Collections.singletonList(javaHome().resolve("lib").resolve("truffle"));
     }
 
     @Override
@@ -540,6 +568,11 @@ final class WindowsBuilder extends PlatformBuilder {
     @Override
     List<Path> defaultBootLibraryPath() {
         return Collections.singletonList(javaHome().resolve("bin"));
+    }
+
+    @Override
+    List<Path> defaultJvmLibraryPath() {
+        return Collections.singletonList(javaHome().resolve("bin").resolve("truffle"));
     }
 
     @Override

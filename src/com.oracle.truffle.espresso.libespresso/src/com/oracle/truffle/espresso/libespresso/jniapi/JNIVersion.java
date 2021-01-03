@@ -63,6 +63,10 @@ public class JNIVersion {
             return "1.6";
         } else if (version == JNI_VERSION_1_8()) {
             return "1.8";
+        } else if (version == JNI_VERSION_9()) {
+            return "9";
+        } else if (version == JNI_VERSION_10()) {
+            return "10";
         }
         return "unknown";
     }

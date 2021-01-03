@@ -24,6 +24,8 @@
 
 #if !defined(_WIN32)
 
+#define _GNU_SOURCE
+
 #include "os.h"
 #include "mokapot.h"
 #include <string.h>
@@ -32,6 +34,7 @@
 #include <sys/ioctl.h>
 #include <sys/poll.h>
 #include <sys/time.h>
+#include <dlfcn.h>
 
 // macros for restartable system calls
 
@@ -237,6 +240,26 @@ int os_set_sock_opt(int fd, int level, int optname,
 
 int os_get_host_name(char* name, int namelen) {
     return gethostname(name, namelen);
+}
+
+const char *os_current_library_path() {
+    Dl_info info;
+    if (dladdr(os_current_library_path, &info) == 0) {
+        return NULL;
+    }
+    return info.dli_fname;
+}
+
+OS_DL_HANDLE os_dl_open(const char * path) {
+    return dlopen(path, RTLD_LAZY | RTLD_LOCAL);
+}
+
+const char *os_dl_error() {
+    return dlerror();
+}
+
+void *os_dl_sym(OS_DL_HANDLE handle, const char *sym) {
+    return dlsym(handle, sym);
 }
 
 #endif // !defined(_WIN32)

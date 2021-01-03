@@ -26,12 +26,8 @@ import org.graalvm.nativeimage.IsolateThread;
 import org.graalvm.nativeimage.c.function.CEntryPoint;
 import org.graalvm.nativeimage.c.function.CEntryPointLiteral;
 import org.graalvm.nativeimage.c.function.CFunctionPointer;
-import org.graalvm.nativeimage.c.struct.SizeOf;
-import org.graalvm.nativeimage.c.type.CCharPointer;
-import org.graalvm.nativeimage.c.type.CTypeConversion;
 import org.graalvm.polyglot.Context;
 import org.graalvm.polyglot.Value;
-import org.graalvm.word.Pointer;
 import org.graalvm.word.WordFactory;
 
 import com.oracle.truffle.espresso.libespresso.jniapi.JNIEnvironmentPointer;
@@ -39,7 +35,6 @@ import com.oracle.truffle.espresso.libespresso.jniapi.JNIErrors;
 import com.oracle.truffle.espresso.libespresso.jniapi.JNIFunctionPointerTypes.GetEnvFunctionPointer;
 import com.oracle.truffle.espresso.libespresso.jniapi.JNIJavaVM;
 import com.oracle.truffle.espresso.libespresso.jniapi.JNIJavaVMInitArgs;
-import com.oracle.truffle.espresso.libespresso.jniapi.JNIJavaVMOption;
 import com.oracle.truffle.espresso.libespresso.jniapi.JNIJavaVMPointer;
 import com.oracle.truffle.espresso.libespresso.jniapi.JNIVersion;
 
@@ -50,22 +45,6 @@ public class LibEspresso {
 
     @CEntryPoint(name = "Espresso_CreateJavaVM")
     static int createJavaVM(IsolateThread thread, JNIJavaVMPointer javaVMPointer, JNIEnvironmentPointer penv, JNIJavaVMInitArgs args) {
-        System.err.println("Espresso_CreateJavaVM");
-        System.err.printf(" version: %s (%d)%n", JNIVersion.versionString(args.getVersion()), args.getVersion());
-        System.err.println(" ignoreUnrecognized:" + args.getIgnoreUnrecognized());
-        System.err.println(" noptions:" + args.getNOptions());
-        Pointer p = (Pointer) args.getOptions();
-        int count = args.getNOptions();
-        for (int i = 0; i < count; i++) {
-            JNIJavaVMOption option = (JNIJavaVMOption) p.add(i * SizeOf.get(JNIJavaVMOption.class));
-            CCharPointer str = option.getOptionString();
-            if (str.isNonNull()) {
-                String optionString = CTypeConversion.toJavaString(option.getOptionString());
-                System.err.printf(" * %s: %016x%n", optionString, option.getExtraInfo().rawValue());
-            } else {
-                System.err.println(" * NULL");
-            }
-        }
         if (args.getVersion() < JNIVersion.JNI_VERSION_1_2() || args.getVersion() > JNIVersion.JNI_VERSION_10()) {
             return JNIErrors.JNI_EVERSION();
         }
@@ -79,13 +58,16 @@ public class LibEspresso {
         context.enter();
         Value java = context.getBindings("java").getMember("<JavaVM>");
         if (!java.isNativePointer()) {
-            System.err.println("Could not retrieve the JavaVM");
             return JNIErrors.JNI_ERR();
         }
         JNIJavaVM espressoJavaVM = WordFactory.pointer(java.asNativePointer());
 
         GetEnvFunctionPointer getEnv = espressoJavaVM.getFunctions().getGetEnv();
-        getEnv.invoke(espressoJavaVM, penv, JNIVersion.JNI_VERSION_1_2());
+        result = getEnv.invoke(espressoJavaVM, penv, JNIVersion.JNI_VERSION_1_2());
+        if (result != JNIErrors.JNI_OK()) {
+            return result;
+        }
+        javaVMPointer.write(espressoJavaVM);
         return JNIErrors.JNI_OK();
     }
 }

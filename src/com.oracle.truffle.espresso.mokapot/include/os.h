@@ -91,6 +91,7 @@ int os_get_host_name(char* name, int namelen);
 // dynamic library
 const char *os_current_library_path();
 OS_DL_HANDLE os_dl_open(const char * path);
+const char *os_dl_error();
 void *os_dl_sym(OS_DL_HANDLE handle, const char *sym);
 
 #endif // _OS_H
