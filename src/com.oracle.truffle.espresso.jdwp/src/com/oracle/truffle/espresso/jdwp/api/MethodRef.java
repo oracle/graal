@@ -31,7 +31,7 @@ public interface MethodRef {
 
     /**
      * Returnes the first code index for a given line within the method.
-     * 
+     *
      * @param line the line number in the source code of the method
      * @return the first bci for the line
      */
@@ -39,14 +39,14 @@ public interface MethodRef {
 
     /**
      * Returns the source for the method.
-     * 
+     *
      * @return the source
      */
     Source getSource();
 
     /**
      * Determines if the input line number is a valid source line for the method.
-     * 
+     *
      * @param lineNumber
      * @return true if line number is present in method, false otherwise
      */
@@ -54,21 +54,21 @@ public interface MethodRef {
 
     /**
      * Returns the name of the source file that declares the method.
-     * 
+     *
      * @return the source file name
      */
     String getSourceFile();
 
     /**
      * Returns a String representation of the name of the method.
-     * 
+     *
      * @return the method name
      */
     String getNameAsString();
 
     /**
      * Returns the String representation of the signature of the method.
-     * 
+     *
      * @return the method signature name
      */
     String getSignatureAsString();
@@ -82,14 +82,14 @@ public interface MethodRef {
 
     /**
      * Returns the method modifiers.
-     * 
+     *
      * @return the bitmask for the modifiers
      */
     int getModifiers();
 
     /**
      * Returns the source line number for the given input code index.
-     * 
+     *
      * @param bci the code index.
      * @return line number at the code index
      */
@@ -102,14 +102,14 @@ public interface MethodRef {
 
     /**
      * Returns the bytecode for the method in the Class file format.
-     * 
+     *
      * @return the byte array for the bytecode of the method
      */
     byte[] getOriginalCode();
 
     /**
      * Returns all declared parameter types of the method.
-     * 
+     *
      * @return an array of parameter types
      */
     KlassRef[] getParameters();
@@ -131,7 +131,7 @@ public interface MethodRef {
 
     /**
      * Invokes the method on the input callee object with input arguments.
-     * 
+     *
      * @param callee guest-language object on which to execute the method
      * @param args guest-language arguments used when calling the method
      * @return the guest-language return value
@@ -140,14 +140,14 @@ public interface MethodRef {
 
     /**
      * Determines if the declaring class has a source file attribute.
-     * 
+     *
      * @return true if a source file attribute is present, false otherwise
      */
     boolean hasSourceFileAttribute();
 
     /**
      * Determines if the code index is located in the source file on the last line of this method.
-     * 
+     *
      * @param codeIndex
      * @return true if last line, false otherwise
      */
@@ -155,7 +155,7 @@ public interface MethodRef {
 
     /**
      * Returns the klass that declares this method.
-     * 
+     *
      * @return the declaring klass
      */
     KlassRef getDeclaringKlass();
@@ -207,19 +207,21 @@ public interface MethodRef {
      * non-equivalent method using the RedefineClasses command. The original and redefined methods
      * are considered equivalent if their bytecodes are the same except for indices into the
      * constant pool and the referenced constants are equal.
-     * 
+     *
      * @return true if the method is obsolete
      */
     boolean isObsolete();
 
     /**
      * Returns the last bci of the method.
+     *
      * @return last bci
      */
     long getLastBCI();
 
     /**
      * Determines if the method was compiled with a variable table.
+     *
      * @return true if the method has a variable table
      */
     boolean hasVariableTable();
