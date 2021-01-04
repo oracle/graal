@@ -47,24 +47,25 @@ import java.lang.reflect.InvocationTargetException;
 import java.lang.reflect.Method;
 import java.lang.reflect.Proxy;
 import java.util.ArrayList;
+import java.util.Collection;
 import java.util.List;
 import java.util.Map;
-import java.util.function.BiConsumer;
+import java.util.function.BiFunction;
 import java.util.function.Function;
 import java.util.function.Supplier;
 import org.graalvm.options.OptionCategory;
 import org.graalvm.options.OptionDescriptors;
 import org.graalvm.options.OptionKey;
 import org.graalvm.options.OptionStability;
-import org.graalvm.polyglot.Value;
 import org.graalvm.tools.insight.Insight;
+import org.graalvm.tools.insight.Insight.SymbolProvider;
 
 // @formatter:off
 @TruffleInstrument.Registration(
     id = Insight.ID,
     name = InsightInstrument.NAME,
     version = Insight.VERSION,
-    services = { Function.class, BiConsumer.class }
+    services = { Function.class }
 )
 // @formatter:on
 public class InsightInstrument extends TruffleInstrument {
@@ -76,9 +77,6 @@ public class InsightInstrument extends TruffleInstrument {
     private Env env;
     private final IgnoreSources ignoreSources = new IgnoreSources();
 
-    private final List<String> symbolNames = new ArrayList<>();
-    private final List<Object> symbols = new ArrayList<>();
-
     @Override
     protected OptionDescriptors getOptionDescriptors() {
         return new InsightInstrumentOptionDescriptors();
@@ -89,8 +87,6 @@ public class InsightInstrument extends TruffleInstrument {
         this.env = tmp;
         final Function<?, ?> registerScripts = registerScriptsAPI(this);
         env.registerService(registerScripts);
-        final BiConsumer<?, ?> registerSymbols = registerSymbolsAPI(this);
-        env.registerService(registerSymbols);
         final String path = env.getOptions().get(option());
         if (path != null && path.length() > 0) {
             registerAgentScript(() -> {
@@ -124,13 +120,6 @@ public class InsightInstrument extends TruffleInstrument {
 
     boolean onlyInsight() {
         return true;
-    }
-
-    final void registerSymbol(String name, Value value) {
-        synchronized (symbolNames) {
-            symbolNames.add(name);
-            symbols.add(RawObjectExtractor.toRaw(value));
-        }
     }
 
     final AutoCloseable registerAgentScript(final Supplier<Source> src) {
@@ -167,10 +156,17 @@ public class InsightInstrument extends TruffleInstrument {
                         args.add(agent);
                     }
 
-                    synchronized (symbolNames) {
-                        argNames.addAll(symbolNames);
-                        args.addAll(symbols);
-                    }
+                    collectGlobalSymbols(
+                                    env.getInstruments().values(),
+                                    (instrument, type) -> NAME.equals(instrument.getName()) ? null : env.lookup(instrument, type),
+                                    argNames,
+                                    args);
+
+                    collectGlobalSymbols(
+                                    env.getLanguages().values(),
+                                    env::lookup,
+                                    argNames,
+                                    args);
 
                     CallTarget target;
                     try {
@@ -250,6 +246,21 @@ public class InsightInstrument extends TruffleInstrument {
                     agentBinding.dispose();
                 }
             }
+
+            private <T> void collectGlobalSymbols(Collection<T> values, BiFunction<T, Class<SymbolProvider>, SymbolProvider> check, List<String> argNames, List<Object> args) {
+                for (T item : values) {
+                    SymbolProvider provider = check.apply(item, SymbolProvider.class);
+                    if (provider == null) {
+                        continue;
+                    }
+                    Object obj = provider.getValue();
+                    if (obj == null) {
+                        continue;
+                    }
+                    argNames.add(provider.getName());
+                    args.add(obj);
+                }
+            }
         }
         final InitializeAgent initializeAgent = new InitializeAgent();
         instrumenter.attachContextsListener(initializeAgent, true);
@@ -271,11 +282,6 @@ public class InsightInstrument extends TruffleInstrument {
             return insight.registerAgentScript(() -> src);
         };
         return maybeProxy(Function.class, f);
-    }
-
-    private static BiConsumer<?, ?> registerSymbolsAPI(InsightInstrument insight) {
-        BiConsumer<String, Value> f = insight::registerSymbol;
-        return maybeProxy(BiConsumer.class, f);
     }
 
     static <Interface> Interface maybeProxy(Class<Interface> type, Interface delegate) {

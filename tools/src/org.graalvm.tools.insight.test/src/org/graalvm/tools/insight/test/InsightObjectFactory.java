@@ -33,7 +33,6 @@ import com.oracle.truffle.api.instrumentation.InstrumentableNode;
 import com.oracle.truffle.api.instrumentation.ProbeNode;
 import com.oracle.truffle.api.instrumentation.StandardTags;
 import com.oracle.truffle.api.instrumentation.Tag;
-import com.oracle.truffle.api.interop.TruffleObject;
 import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.api.nodes.RootNode;
 import com.oracle.truffle.api.source.Source;
@@ -44,13 +43,14 @@ import org.graalvm.polyglot.Context;
 import org.graalvm.polyglot.Value;
 import static org.junit.Assert.assertNotNull;
 import java.io.ByteArrayOutputStream;
+import java.util.List;
 import java.util.function.Predicate;
 import org.graalvm.polyglot.HostAccess;
+import org.graalvm.tools.insight.Insight;
 import org.junit.Assert;
+import static org.junit.Assert.assertFalse;
 
 final class InsightObjectFactory extends ProxyLanguage {
-    static TruffleObject insightObject;
-
     static InsightAPI.OnConfig createConfig(
                     boolean expressions, boolean statements, boolean roots,
                     String rootNameFilter, Predicate<SourceInfo> sourceFilter) {
@@ -65,64 +65,97 @@ final class InsightObjectFactory extends ProxyLanguage {
 
     static Context newContext() {
         ByteArrayOutputStream os = new ByteArrayOutputStream();
-        return newContext(os, os);
+        return newContext(Context.newBuilder(), os, os);
     }
 
-    static Context newContext(ByteArrayOutputStream out, ByteArrayOutputStream err) {
-        return Context.newBuilder().out(out).err(err).allowExperimentalOptions(true).allowHostAccess(HostAccess.ALL).build();
+    static Context newContext(Context.Builder b, ByteArrayOutputStream out, ByteArrayOutputStream err) {
+        return b.out(out).err(err).allowExperimentalOptions(true).allowHostAccess(HostAccess.ALL).build();
     }
+
+    private Object readObject;
 
     @Override
     protected CallTarget parse(ParsingRequest request) throws Exception {
         final Source source = request.getSource();
         String scriptName = source.getName();
-        return Truffle.getRuntime().createCallTarget(new AgentRootNode(ProxyLanguage.getCurrentLanguage(), scriptName, source));
+        final AgentRootNode root = new AgentRootNode(ProxyLanguage.getCurrentLanguage(), this, scriptName, source, request.getArgumentNames());
+        return Truffle.getRuntime().createCallTarget(root);
     }
 
     @SuppressWarnings("try")
-    public static Value createAgentObject(Context context) throws Exception {
+    public static Value readInsight(Context context, Object[] interopValue) throws Exception {
         cleanAgentObject();
-        ProxyLanguage.setDelegate(new InsightObjectFactory());
+        final InsightObjectFactory langImpl = new InsightObjectFactory();
+        Value value;
+        try (AutoCloseable handle = Embedding.enableInsight(InsightObjectFactory.createAgentSource(Insight.ID), context)) {
+            ProxyLanguage.setDelegate(langImpl);
+            value = context.eval(ProxyLanguage.ID, "");
+            assertNotNull("Agent object has been initialized", langImpl.readObject);
+            if (interopValue != null) {
+                interopValue[0] = langImpl.readObject;
+            }
+        } finally {
+            ProxyLanguage.setDelegate(new InsightObjectFactory());
+        }
+        return value;
+    }
+
+    @SuppressWarnings("try")
+    public static Value readObject(Context context, String name) throws Exception {
+        cleanAgentObject();
 
         Value value;
-
-        try (AutoCloseable handle = Embedding.enableInsight(InsightObjectFactory.createAgentSource(), context)) {
+        try (AutoCloseable handle = Embedding.enableInsight(InsightObjectFactory.createAgentSource(name), context)) {
+            final InsightObjectFactory langImpl = new InsightObjectFactory();
+            ProxyLanguage.setDelegate(langImpl);
             value = context.eval(ProxyLanguage.ID, "");
-            assertNotNull("Agent object has been initialized", insightObject);
+            assertFalse("We got our object initialized", value.isNull());
+            assertNotNull("Our object isn't null", langImpl.readObject);
+        } finally {
+            ProxyLanguage.setDelegate(new InsightObjectFactory());
         }
-
         return value;
     }
 
     static void cleanAgentObject() {
-        insightObject = null;
     }
 
-    private static org.graalvm.polyglot.Source createAgentSource() {
-        return org.graalvm.polyglot.Source.newBuilder(ProxyLanguage.ID, "", "agent.px").buildLiteral();
+    private static org.graalvm.polyglot.Source createAgentSource(String name) {
+        return org.graalvm.polyglot.Source.newBuilder(ProxyLanguage.ID, name, "agent.px").buildLiteral();
     }
 
     private static class AgentRootNode extends RootNode {
         @Child private ValueNode node;
         private final String scriptName;
         private final Source source;
+        private final List<String> argNames;
+        private final InsightObjectFactory language;
 
-        AgentRootNode(TruffleLanguage<?> tl, String scriptName, Source source) {
+        AgentRootNode(TruffleLanguage<?> tl, InsightObjectFactory language, String scriptName, Source source, List<String> argNames) {
             super(tl);
+            this.language = language;
             this.scriptName = scriptName;
             this.source = source;
             this.node = new ValueNode();
+            this.argNames = argNames;
         }
 
         @Override
         public Object execute(VirtualFrame frame) {
             if ("agent.px".equals(scriptName)) {
-                Assert.assertNull("No agent object set yet", insightObject);
-                insightObject = (TruffleObject) frame.getArguments()[0];
-                return insightObject;
+                for (int i = 0; i < Math.min(argNames.size(), frame.getArguments().length); i++) {
+                    final String id = argNames.get(i);
+                    final Object v = frame.getArguments()[i];
+                    if (source.getCharacters().toString().equals(id)) {
+                        Assert.assertNull("No observed object set yet", language.readObject);
+                        language.readObject = v;
+                        return v;
+                    }
+                }
+                throw new IllegalStateException();
             } else {
                 node.executeToFinishInitializationOfAgentObject(frame);
-                return insightObject;
+                return language.readObject == null ? 0 : language.readObject;
             }
         }
 

@@ -65,4 +65,24 @@ public final class Insight {
      */
     public static final String VERSION = "1.0";
 
+    /**
+     * Additional provider of symbols for Insight scripts.
+     * 
+     */
+    public abstract static class SymbolProvider {
+        private final String name;
+
+        protected SymbolProvider(String symbolName) {
+            this.name = symbolName;
+        }
+
+        /**
+         * Interop value for this symbol. Interop value XXX: Make protected
+         */
+        public abstract Object getValue();
+
+        public final String getName() {
+            return name;
+        }
+    }
 }
