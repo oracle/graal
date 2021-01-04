@@ -33,6 +33,7 @@ import java.nio.ByteBuffer;
 
 import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.dsl.Cached;
+import com.oracle.truffle.api.dsl.ImportStatic;
 import com.oracle.truffle.api.dsl.NodeChild;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.frame.VirtualFrame;
@@ -106,11 +107,12 @@ public abstract class LLVMPolyglotAsString extends LLVMIntrinsic {
         }
     }
 
+    @ImportStatic(CompilerDirectives.class)
     abstract static class WriteStringNode extends LLVMNode {
 
         protected abstract long execute(VirtualFrame frame, ByteBuffer source, Object target, long targetLen, int zeroTerminatorLen);
 
-        @Specialization(guards = "srcBuffer.getClass() == srcBufferClass")
+        @Specialization(guards = "isExact(srcBufferClass, srcBuffer.getClass())")
         long doWrite(ByteBuffer srcBuffer, LLVMPointer target, long targetLen, int zeroTerminatorLen,
                         @Cached("srcBuffer.getClass()") Class<? extends ByteBuffer> srcBufferClass,
                         @Cached LLVMI8OffsetStoreNode write) {
