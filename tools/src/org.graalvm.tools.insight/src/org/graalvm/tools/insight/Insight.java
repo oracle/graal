@@ -24,6 +24,8 @@
  */
 package org.graalvm.tools.insight;
 
+import com.oracle.truffle.api.interop.TruffleObject;
+import java.util.Map;
 import java.util.function.Function;
 import org.graalvm.polyglot.Engine;
 
@@ -31,13 +33,13 @@ import org.graalvm.polyglot.Engine;
  * Programatic access to the Insight instrument. Obtain an instrument instance via its {@link #ID}:
  * <p>
  * {@codesnippet Embedding#apply}
- * 
+ *
  * and then {@link Function#apply(java.lang.Object) evaluate} {@link org.graalvm.polyglot.Source}
  * scripts written in any language accessing the {@code agent} variable exposed to them. Use
  * {@link #VERSION following API} when dealing with the {@code insight} variable:
  * <p>
  * {@codesnippet InsightAPI}
- * 
+ *
  * @since 20.1
  */
 public final class Insight {
@@ -49,7 +51,7 @@ public final class Insight {
      * {@link Insight} instruments inside of your {@link Engine}:
      * <p>
      * {@codesnippet Embedding#apply}
-     * 
+     *
      * @since 20.1
      */
     public static final String ID = "insight";
@@ -60,29 +62,26 @@ public final class Insight {
      * reference:
      * <p>
      * {@codesnippet InsightAPI}
-     * 
+     *
      * @since 20.1
      */
     public static final String VERSION = "1.0";
 
     /**
-     * Additional provider of symbols for Insight scripts.
-     * 
+     * Additional provider of symbols for Insight scripts. All available instruments are queried for
+     * implementation of this interface. If provided, they can contribute symbols with their values
+     * to be available as globals when executing the {@link #ID Insight scripts}.
+     *
+     * @since 21.0
      */
-    public abstract static class SymbolProvider {
-        private final String name;
-
-        protected SymbolProvider(String symbolName) {
-            this.name = symbolName;
-        }
-
+    public interface SymbolProvider {
         /**
-         * Interop value for this symbol. Interop value XXX: Make protected
+         * Map with symbol names and their interop values.
+         *
+         * @return map mapping names to their primitive, {@link String} or {@link TruffleObject}
+         *         values
+         * @throws an exception is propagated as an internal error
          */
-        public abstract Object getValue();
-
-        public final String getName() {
-            return name;
-        }
+        Map<String, Object> symbolsWithValues() throws Exception;
     }
 }

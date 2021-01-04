@@ -154,19 +154,19 @@ public class InsightInstrument extends TruffleInstrument {
                     if (agent != null) {
                         argNames.add("agent");
                         args.add(agent);
+                    } else {
+                        collectGlobalSymbols(
+                                        env.getInstruments().values(),
+                                        (instrument, type) -> NAME.equals(instrument.getName()) ? null : env.lookup(instrument, type),
+                                        argNames,
+                                        args);
+
+                        // collectGlobalSymbols(
+                        // env.getLanguages().values(),
+                        // env::lookup,
+                        // argNames,
+                        // args);
                     }
-
-                    collectGlobalSymbols(
-                                    env.getInstruments().values(),
-                                    (instrument, type) -> NAME.equals(instrument.getName()) ? null : env.lookup(instrument, type),
-                                    argNames,
-                                    args);
-
-                    collectGlobalSymbols(
-                                    env.getLanguages().values(),
-                                    env::lookup,
-                                    argNames,
-                                    args);
 
                     CallTarget target;
                     try {
@@ -253,12 +253,21 @@ public class InsightInstrument extends TruffleInstrument {
                     if (provider == null) {
                         continue;
                     }
-                    Object obj = provider.getValue();
-                    if (obj == null) {
-                        continue;
+                    try {
+                        for (Map.Entry<String, Object> e : provider.symbolsWithValues().entrySet()) {
+                            if (e.getValue() == null) {
+                                continue;
+                            }
+                            if (argNames.contains(e.getKey())) {
+                                throw InsightException.unknownAttribute(e.getKey());
+                            }
+                            argNames.add(e.getKey());
+                            args.add(e.getValue());
+
+                        }
+                    } catch (Exception ex) {
+                        throw InsightException.raise(ex);
                     }
-                    argNames.add(provider.getName());
-                    args.add(obj);
                 }
             }
         }
