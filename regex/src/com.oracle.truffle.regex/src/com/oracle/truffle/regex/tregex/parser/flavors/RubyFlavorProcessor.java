@@ -239,7 +239,7 @@ public final class RubyFlavorProcessor implements RegexFlavorProcessor {
                 }
                 output.append("}");
             }
-            if (greedy) {
+            if (!greedy) {
                 output.append("?");
             }
             return output.toString();
@@ -1665,6 +1665,7 @@ public final class RubyFlavorProcessor implements RegexFlavorProcessor {
             } else {
                 Optional<BigInteger> lowerBound = Optional.empty();
                 Optional<BigInteger> upperBound = Optional.empty();
+                boolean canBeNonGreedy = true;
                 String lower = getMany(RubyFlavorProcessor::isDecDigit);
                 if (!lower.isEmpty()) {
                     lowerBound = Optional.of(new BigInteger(lower));
@@ -1676,6 +1677,7 @@ public final class RubyFlavorProcessor implements RegexFlavorProcessor {
                     }
                 } else {
                     upperBound = lowerBound;
+                    canBeNonGreedy = false;
                 }
                 if (!match("}")) {
                     // We did not find a complete quantifier, so we should just emit a string of
@@ -1686,9 +1688,13 @@ public final class RubyFlavorProcessor implements RegexFlavorProcessor {
                 if (lowerBound.isPresent() && upperBound.isPresent() && lowerBound.get().compareTo(upperBound.get()) > 0) {
                     throw syntaxErrorAt(RbErrorMessages.MIN_REPEAT_GREATER_THAN_MAX_REPEAT, start);
                 }
+                boolean greedy = true;
+                if (canBeNonGreedy && match("?")) {
+                    greedy = false;
+                }
                 quantifier = new Quantifier(lowerBound.orElse(BigInteger.ZERO).intValue(),
                                 upperBound.orElse(BigInteger.valueOf(Quantifier.INFINITY)).intValue(),
-                                match("?"));
+                                greedy);
             }
         } else {
             int lower;
@@ -1709,14 +1715,11 @@ public final class RubyFlavorProcessor implements RegexFlavorProcessor {
                 default:
                     throw new IllegalStateException("should not reach here");
             }
-            boolean greedy;
+            boolean greedy = true;
             if (match("?")) {
-                greedy = true;
-            } else {
                 greedy = false;
-                if (match("+")) {
-                    bailOut("possessive quantifiers not supported");
-                }
+            } else if (match("+")) {
+                bailOut("possessive quantifiers not supported");
             }
             quantifier = new Quantifier(lower, upper, greedy);
         }
