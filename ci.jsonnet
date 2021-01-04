@@ -260,7 +260,7 @@ local graalvm_installables(ee) = {
   run+: [
     clone_repo(graal_repo),
     base_cmd_line + ['build'],
-    base_cmd_line + ['--suite', 'sdk', 'maven-deploy', '--all-distribution-types', '--with-suite-revisions-metadata', '--tag=installable', '--validate=none', repo_id],
+    base_cmd_line + ['--suite', 'sdk', 'maven-deploy', '--all-distribution-types', '--with-suite-revisions-metadata', '--tag=installable,standalone', '--validate=none', repo_id],
   ],
 };
 
