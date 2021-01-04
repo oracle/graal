@@ -231,6 +231,22 @@ public class ClassInitializationFeature implements GraalFeature {
                 if (hub.getClassInitializationInfo() == null) {
                     buildClassInitializationInfo(access, type, hub);
                     access.requireAnalysisIteration();
+                } else {
+                    /*
+                     * Check in non-first iterations. The class' IniKind might get updated in the
+                     * following up iterations because the uninitialized dependent classes may get
+                     * initialized.
+                     */
+                    Class<?> clazz = type.getJavaClass();
+                    InitKind oldKind = classInitializationSupport.getClassInitKind(clazz);
+                    if (oldKind == RUN_TIME) {
+                        classInitializationSupport.removeClassInitInfo(clazz);
+                        buildClassInitializationInfo(access, type, hub);
+                        InitKind newKind = classInitializationSupport.getClassInitKind(clazz);
+                        if (oldKind != newKind) {
+                            access.requireAnalysisIteration();
+                        }
+                    }
                 }
             }
         }
