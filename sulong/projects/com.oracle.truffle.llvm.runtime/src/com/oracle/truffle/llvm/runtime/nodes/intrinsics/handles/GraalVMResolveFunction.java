@@ -19,12 +19,12 @@ public abstract class GraalVMResolveFunction extends LLVMIntrinsic {
     @Specialization
     protected Object doNativeResolve(LLVMNativePointer pointer,
                     @CachedContext(LLVMLanguage.class) LLVMContext context) {
-        return context.getFunctionDescriptor(pointer);
+        return LLVMManagedPointer.create(context.getFunctionDescriptor(pointer));
     }
 
-    @Specialization(guards = "isFunctionDescriptor(pointer)")
+    @Specialization(guards = "pointertoFunctionDescriptor(pointer)")
     protected Object doManagedResolve(LLVMManagedPointer pointer) {
-        return pointer.getObject();
+        return pointer;
     }
 
     @Fallback
@@ -32,7 +32,7 @@ public abstract class GraalVMResolveFunction extends LLVMIntrinsic {
         throw new LLVMPolyglotException(this, "Cannot resolve pointer %s to a function.", pointer);
     }
 
-    protected boolean isFunctionDescriptor(LLVMManagedPointer pointer) {
+    protected boolean pointertoFunctionDescriptor(LLVMManagedPointer pointer) {
         return pointer.getObject() instanceof LLVMFunctionDescriptor;
     }
 }
