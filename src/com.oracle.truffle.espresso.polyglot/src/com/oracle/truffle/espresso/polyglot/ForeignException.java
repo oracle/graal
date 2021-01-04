@@ -41,6 +41,27 @@
 
 package com.oracle.truffle.espresso.polyglot;
 
+/**
+ * Handy wrapper for foreign exceptions.
+ * 
+ * <p>
+ * Allows foreign exceptions to be caught in guest Java and provides seamless access to the message
+ * and cause. {@link ForeignException} can only catch and wrap foreign exceptions.
+ *
+ * <pre>
+ * assert Interop.isException(foreignException);
+ * try {
+ *     throw Interop.throwException(foreignException);
+ * } catch (ForeignException e) {
+ *     System.err.println(e.getMessage());
+ *     ...
+ *     throw e;
+ * }
+ * </pre>
+ *
+ * @see Interop#throwException(Object)
+ * @since 21.0
+ */
 public final class ForeignException extends RuntimeException {
 
     private static final long serialVersionUID = -765815353576751011L;
@@ -112,6 +133,6 @@ public final class ForeignException extends RuntimeException {
     @SuppressWarnings("sync-override")
     @Override
     public Throwable initCause(Throwable cause) {
-        throw new UnsupportedOperationException("Not supported. Pass in the cause using the constructors instead.");
+        throw new UnsupportedOperationException();
     }
 }
