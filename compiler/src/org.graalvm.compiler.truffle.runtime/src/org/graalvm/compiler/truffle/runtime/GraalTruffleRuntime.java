@@ -693,6 +693,7 @@ public abstract class GraalTruffleRuntime implements TruffleRuntime, TruffleComp
                             // Compile the method (puts dumps in "Graal Graphs" group if dumping is
                             // enabled).
                             compiler.doCompile(debug, compilation, optionsMap, inlining, task, listeners.isEmpty() ? null : listeners);
+                            maybeDumpInlinedASTs(debug, callTarget, inlining);
                         }
                     } finally {
                         if (debug != null) {
@@ -721,6 +722,12 @@ public abstract class GraalTruffleRuntime implements TruffleRuntime, TruffleComp
         } catch (Throwable e) {
             notifyCompilationFailure(callTarget, e, compilationStarted, task.tier());
             throw new InternalError(e);
+        }
+    }
+
+    private static void maybeDumpInlinedASTs(TruffleDebugContext debug, OptimizedCallTarget callTarget, TruffleInlining inlining) throws Exception {
+        if (debug.isDumpEnabled() && inlining.inlinedTargets().length > 1) {
+            TruffleTreeDumper.dump(debug, callTarget, inlining);
         }
     }
 
