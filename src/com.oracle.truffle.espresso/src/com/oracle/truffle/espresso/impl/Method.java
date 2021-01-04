@@ -1261,6 +1261,11 @@ public final class Method extends Member<Signature> implements TruffleObject, Co
         }
 
         @Override
+        public boolean hasVariableTable() {
+            return getLocalVariableTable() != LocalVariableTable.EMPTY;
+        }
+
+        @Override
         public LineNumberTableRef getLineNumberTable() {
             return getMethod().getLineNumberTable();
         }

@@ -274,7 +274,7 @@ public final class VMEventListenerImpl implements VMEventListener {
                 stream.writeByte(RequestedJDWPEvents.CLASS_PREPARE);
                 stream.writeInt(cpr.getRequestId());
                 stream.writeLong(ids.getIdAsLong(prepareThread));
-                stream.writeByte(TypeTag.CLASS);
+                stream.writeByte(TypeTag.getKind(klass));
                 stream.writeLong(ids.getIdAsLong(klass));
                 stream.writeString(klass.getTypeAsString());
                 stream.writeInt(klass.getStatus());
