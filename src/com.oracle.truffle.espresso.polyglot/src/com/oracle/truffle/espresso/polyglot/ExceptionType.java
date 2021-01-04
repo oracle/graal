@@ -46,7 +46,7 @@ package com.oracle.truffle.espresso.polyglot;
  *
  * @see Interop#isException(Object)
  * @see Interop#getExceptionType(Object)
- * @since 20.3
+ * @since 21.0
  */
 public enum ExceptionType {
     /**
@@ -54,21 +54,21 @@ public enum ExceptionType {
      * exit status use {@link Interop#getExceptionExitStatus(Object) getExceptionExitStatus}.
      *
      * @see Interop#getExceptionExitStatus(Object)
-     * @since 20.3
+     * @since 21.0
      */
     EXIT,
 
     /**
      * Indicates that the application thread was interrupted by an {@link InterruptedException}.
      *
-     * @since 20.3
+     * @since 21.0
      */
     INTERRUPT,
 
     /**
      * Indicates a guest language error.
      *
-     * @since 20.3
+     * @since 21.0
      */
     RUNTIME_ERROR,
 
@@ -79,7 +79,7 @@ public enum ExceptionType {
      * source.
      *
      * @see Interop#isExceptionIncompleteSource(Object)
-     * @since 20.3
+     * @since 21.0
      */
     PARSE_ERROR
 }

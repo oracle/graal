@@ -46,7 +46,7 @@ package com.oracle.truffle.espresso.polyglot;
  * supposed to be caught and converted into a guest language error by the caller.
  *
  * @see #getInvalidIndex()
- * @since 19.0
+ * @since 21.0
  */
 public final class InvalidArrayIndexException extends InteropException {
 
@@ -67,7 +67,7 @@ public final class InvalidArrayIndexException extends InteropException {
     /**
      * {@inheritDoc}
      *
-     * @since 19.0
+     * @since 21.0
      */
     @Override
     public String getMessage() {
@@ -77,7 +77,7 @@ public final class InvalidArrayIndexException extends InteropException {
     /**
      * Returns the invalid index that was used.
      *
-     * @since 19.0
+     * @since 21.0
      */
     public long getInvalidIndex() {
         return invalidIndex;
@@ -87,7 +87,7 @@ public final class InvalidArrayIndexException extends InteropException {
      * Creates an {@link InvalidArrayIndexException} to indicate that an array index is invalid.
      *
      * @param invalidIndex the index that could not be accessed
-     * @since 19.0
+     * @since 21.0
      */
     public static InvalidArrayIndexException create(long invalidIndex) {
         return new InvalidArrayIndexException(invalidIndex);
@@ -107,7 +107,7 @@ public final class InvalidArrayIndexException extends InteropException {
      *
      * @param invalidIndex the index that could not be accessed
      * @param cause the guest language exception that caused the error.
-     * @since 20.2
+     * @since 21.0
      */
     public static InvalidArrayIndexException create(long invalidIndex, Throwable cause) {
         return new InvalidArrayIndexException(invalidIndex, cause);

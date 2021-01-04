@@ -45,7 +45,7 @@ package com.oracle.truffle.espresso.polyglot;
  * An exception thrown if a executable or instantiable object was provided with the wrong number of
  * arguments.
  *
- * @since 0.11
+ * @since 21.0
  */
 public final class ArityException extends InteropException {
 
@@ -61,7 +61,7 @@ public final class ArityException extends InteropException {
     }
 
     private ArityException(int expectedArity, int actualArity) {
-        super(null); // GR-23961 - after language adoption we should initialize the cause with null.
+        super(null, null);
         this.expectedArity = expectedArity;
         this.actualArity = actualArity;
     }
@@ -69,7 +69,7 @@ public final class ArityException extends InteropException {
     /**
      * {@inheritDoc}
      *
-     * @since 19.0
+     * @since 21.0
      */
     @Override
     public String getMessage() {
@@ -80,7 +80,7 @@ public final class ArityException extends InteropException {
      * Returns the number of arguments that the foreign object expects.
      *
      * @return the number of expected arguments
-     * @since 0.11
+     * @since 21.0
      */
     public int getExpectedArity() {
         return expectedArity;
@@ -90,7 +90,7 @@ public final class ArityException extends InteropException {
      * Returns the actual number of arguments provided by the foreign access.
      *
      * @return the number of provided arguments
-     * @since 0.11
+     * @since 21.0
      */
     public int getActualArity() {
         return actualArity;
@@ -102,7 +102,7 @@ public final class ArityException extends InteropException {
      *
      * @param expectedArity the number of arguments expected by the foreign object
      * @param actualArity the number of provided by the foreign access
-     * @since 19.0
+     * @since 21.0
      */
     public static ArityException create(int expectedArity, int actualArity) {
         return new ArityException(expectedArity, actualArity);
@@ -124,7 +124,7 @@ public final class ArityException extends InteropException {
      * @param expectedArity the number of arguments expected by the foreign object
      * @param actualArity the number of provided by the foreign access
      * @param cause the guest language exception that caused the error.
-     * @since 20.2
+     * @since 21.0
      */
     public static ArityException create(int expectedArity, int actualArity, Throwable cause) {
         return new ArityException(expectedArity, actualArity, cause);

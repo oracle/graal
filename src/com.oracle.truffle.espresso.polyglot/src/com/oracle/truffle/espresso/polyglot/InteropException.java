@@ -62,7 +62,7 @@ public abstract class InteropException extends Exception {
      *
      * {@inheritDoc}
      *
-     * @since 20.2
+     * @since 21.0
      */
     @SuppressWarnings("sync-override")
     @Override
@@ -73,7 +73,7 @@ public abstract class InteropException extends Exception {
     /**
      * No stack trace for interop exceptions.
      *
-     * @since 20.2
+     * @since 21.0
      */
     @SuppressWarnings("sync-override")
     @Override

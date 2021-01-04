@@ -67,7 +67,7 @@ public final class Interop {
      * <code>false</code>. Most object oriented languages have one or many values representing null
      * values. Invoking this message does not cause any observable side-effects.
      *
-     * @since 19.0
+     * @since 21.0
      */
     public static native boolean isNull(Object receiver);
 
@@ -80,7 +80,7 @@ public final class Interop {
      * <code>false</code>. Invoking this message does not cause any observable side-effects.
      *
      * @see #asBoolean(Object)
-     * @since 19.0
+     * @since 21.0
      */
     public static native boolean isBoolean(Object receiver);
 
@@ -91,7 +91,7 @@ public final class Interop {
      * @throws UnsupportedMessageException if and only if {@link #isBoolean(Object)} returns
      *             <code>false</code> for the same receiver.
      * @see #isBoolean(Object)
-     * @since 19.0
+     * @since 21.0
      */
     public static native boolean asBoolean(Object receiver) throws UnsupportedMessageException;
 
@@ -104,7 +104,7 @@ public final class Interop {
      * <code>false</code>. Invoking this message does not cause any observable side-effects.
      *
      * @see #asString(Object)
-     * @since 19.0
+     * @since 21.0
      */
     public static native boolean isString(Object receiver);
 
@@ -118,7 +118,7 @@ public final class Interop {
      * @throws UnsupportedMessageException if and only if {@link #isString(Object)} returns
      *             <code>false</code> for the same receiver.
      * @see #isString(Object)
-     * @since 19.0
+     * @since 21.0
      */
     public static native String asString(Object receiver) throws UnsupportedMessageException;
 
@@ -142,7 +142,7 @@ public final class Interop {
      * @see #asLong(Object)
      * @see #asFloat(Object)
      * @see #asDouble(Object)
-     * @since 19.0
+     * @since 21.0
      */
     public static native boolean isNumber(Object receiver);
 
@@ -153,7 +153,7 @@ public final class Interop {
      *
      * @see #isNumber(Object)
      * @see #asByte(Object)
-     * @since 19.0
+     * @since 21.0
      */
     public static native boolean fitsInByte(Object receiver);
 
@@ -164,7 +164,7 @@ public final class Interop {
      *
      * @see #isNumber(Object)
      * @see #asShort(Object)
-     * @since 19.0
+     * @since 21.0
      */
     public static native boolean fitsInShort(Object receiver);
 
@@ -175,7 +175,7 @@ public final class Interop {
      *
      * @see #isNumber(Object)
      * @see #asInt(Object)
-     * @since 19.0
+     * @since 21.0
      */
     public static native boolean fitsInInt(Object receiver);
 
@@ -186,7 +186,7 @@ public final class Interop {
      *
      * @see #isNumber(Object)
      * @see #asLong(Object)
-     * @since 19.0
+     * @since 21.0
      */
     public static native boolean fitsInLong(Object receiver);
 
@@ -197,7 +197,7 @@ public final class Interop {
      *
      * @see #isNumber(Object)
      * @see #asFloat(Object)
-     * @since 19.0
+     * @since 21.0
      */
     public static native boolean fitsInFloat(Object receiver);
 
@@ -208,7 +208,7 @@ public final class Interop {
      *
      * @see #isNumber(Object)
      * @see #asDouble(Object)
-     * @since 19.0
+     * @since 21.0
      */
     public static native boolean fitsInDouble(Object receiver);
 
@@ -220,7 +220,7 @@ public final class Interop {
      *             {@link #isNumber(Object)} or it does not fit without less of precision.
      * @see #isNumber(Object)
      * @see #fitsInByte(Object)
-     * @since 19.0
+     * @since 21.0
      */
     public static native byte asByte(Object receiver) throws UnsupportedMessageException;
 
@@ -232,7 +232,7 @@ public final class Interop {
      *             {@link #isNumber(Object)} or it does not fit without less of precision.
      * @see #isNumber(Object)
      * @see #fitsInShort(Object)
-     * @since 19.0
+     * @since 21.0
      */
     public static native short asShort(Object receiver) throws UnsupportedMessageException;
 
@@ -244,7 +244,7 @@ public final class Interop {
      *             {@link #isNumber(Object)} or it does not fit without less of precision.
      * @see #isNumber(Object)
      * @see #fitsInInt(Object)
-     * @since 19.0
+     * @since 21.0
      */
     public static native int asInt(Object receiver) throws UnsupportedMessageException;
 
@@ -256,7 +256,7 @@ public final class Interop {
      *             {@link #isNumber(Object)} or it does not fit without less of precision.
      * @see #isNumber(Object)
      * @see #fitsInLong(Object)
-     * @since 19.0
+     * @since 21.0
      */
     public static native long asLong(Object receiver) throws UnsupportedMessageException;
 
@@ -268,7 +268,7 @@ public final class Interop {
      *             {@link #isNumber(Object)} or it does not fit without less of precision.
      * @see #isNumber(Object)
      * @see #fitsInFloat(Object)
-     * @since 19.0
+     * @since 21.0
      */
     public static native float asFloat(Object receiver) throws UnsupportedMessageException;
 
@@ -280,7 +280,7 @@ public final class Interop {
      *             {@link #isNumber(Object)} or it does not fit without less of precision.
      * @see #isNumber(Object)
      * @see #fitsInDouble(Object)
-     * @since 19.0
+     * @since 21.0
      */
     public static native double asDouble(Object receiver) throws UnsupportedMessageException;
 
@@ -297,7 +297,7 @@ public final class Interop {
      * If this method is implemented then also {@link #throwException(Object)} must be implemented.
      *
      * @see #throwException(Object)
-     * @since 19.3
+     * @since 21.0
      */
     public static native boolean isException(Object receiver);
 
@@ -328,7 +328,7 @@ public final class Interop {
      *             <code>false</code> for the same receiver.
      * @see #isException(Object)
      * @see ForeignException
-     * @since 19.3
+     * @since 21.0
      */
     public static native RuntimeException throwException(Object receiver) throws UnsupportedMessageException;
 
@@ -339,7 +339,7 @@ public final class Interop {
      *
      * @see #isException(Object)
      * @see ExceptionType
-     * @since 20.3
+     * @since 21.0
      */
     public static native ExceptionType getExceptionType(Object receiver) throws UnsupportedMessageException;
 
@@ -350,7 +350,7 @@ public final class Interop {
      *
      * @see #isException(Object)
      * @see #getExceptionType(Object)
-     * @since 20.3
+     * @since 21.0
      */
     public static native boolean isExceptionIncompleteSource(Object receiver) throws UnsupportedMessageException;
 
@@ -364,7 +364,7 @@ public final class Interop {
      * @see #isException(Object)
      * @see #getExceptionType(Object)
      * @see ExceptionType
-     * @since 20.3
+     * @since 21.0
      */
     public static native int getExceptionExitStatus(Object receiver) throws UnsupportedMessageException;
 
@@ -375,7 +375,7 @@ public final class Interop {
      *
      * @see #isException(Object)
      * @see #getExceptionCause(Object)
-     * @since 20.3
+     * @since 21.0
      */
     public static native boolean hasExceptionCause(Object receiver);
 
@@ -391,7 +391,7 @@ public final class Interop {
      *
      * @see #isException(Object)
      * @see #hasExceptionCause(Object)
-     * @since 20.3
+     * @since 21.0
      */
     public static native Object getExceptionCause(Object receiver) throws UnsupportedMessageException;
 
@@ -401,7 +401,7 @@ public final class Interop {
      *
      * @see #isException(Object)
      * @see #getExceptionMessage(Object)
-     * @since 20.3
+     * @since 21.0
      */
     public static native boolean hasExceptionMessage(Object receiver);
 
@@ -427,7 +427,7 @@ public final class Interop {
      *
      * @see #isException(Object)
      * @see #hasExceptionMessage(Object)
-     * @since 20.3
+     * @since 21.0
      */
     public static native Object getExceptionMessage(Object receiver) throws UnsupportedMessageException;
 
@@ -437,7 +437,7 @@ public final class Interop {
      *
      * @see #isException(Object)
      * @see #getExceptionStackTrace(Object)
-     * @since 20.3
+     * @since 21.0
      */
     public static native boolean hasExceptionStackTrace(Object receiver);
 
@@ -456,7 +456,7 @@ public final class Interop {
      *
      * @see #isException(Object)
      * @see #hasExceptionStackTrace(Object)
-     * @since 20.3
+     * @since 21.0
      */
     public static native Object getExceptionStackTrace(Object receiver) throws UnsupportedMessageException;
 
@@ -473,7 +473,7 @@ public final class Interop {
      * any observable side-effects. Returns <code>false</code> by default.
      *
      * @see #getArraySize(Object)
-     * @since 19.0
+     * @since 21.0
      */
     public static native boolean hasArrayElements(Object receiver);
 
@@ -501,7 +501,7 @@ public final class Interop {
      * @throws InvalidArrayIndexException if the given index is not
      *             {@link #isArrayElementReadable(Object, long) readable}, e.g. when the index is
      *             invalid or the index is out of bounds.
-     * @since 19.0
+     * @since 21.0
      */
     public static native Object readArrayElement(Object receiver, long index) throws UnsupportedMessageException, InvalidArrayIndexException;
 
@@ -510,7 +510,7 @@ public final class Interop {
      *
      * @throws UnsupportedMessageException if and only if {@link #hasArrayElements(Object)} returns
      *             <code>false</code>.
-     * @since 19.0
+     * @since 21.0
      */
     public static native long getArraySize(Object receiver) throws UnsupportedMessageException;
 
@@ -521,7 +521,7 @@ public final class Interop {
      * side-effects. Returns <code>false</code> by default.
      *
      * @see #readArrayElement(Object, long)
-     * @since 19.0
+     * @since 21.0
      */
     public static native boolean isArrayElementReadable(Object receiver, long index);
 
@@ -539,7 +539,7 @@ public final class Interop {
      *             {@link #isArrayElementModifiable(Object, long) modifiable}, e.g. when the index
      *             is invalid or the index is out of bounds and the array does not support growing.
      * @throws UnsupportedTypeException if the provided value type is not allowed to be written.
-     * @since 19.0
+     * @since 21.0
      */
     public static native void writeArrayElement(Object receiver, long index, Object value) throws UnsupportedMessageException, UnsupportedTypeException, InvalidArrayIndexException;
 
@@ -560,7 +560,7 @@ public final class Interop {
      *             invalid, the index is out of bounds, or the array does not support shifting of
      *             remaining elements.
      * @see #isArrayElementRemovable(Object, long)
-     * @since 19.0
+     * @since 21.0
      */
     public static native void removeArrayElement(Object receiver, long index) throws UnsupportedMessageException, InvalidArrayIndexException;
 
@@ -573,7 +573,7 @@ public final class Interop {
      *
      * @see #writeArrayElement(Object, long, Object)
      * @see #isArrayElementInsertable(Object, long)
-     * @since 19.0
+     * @since 21.0
      */
     public static native boolean isArrayElementModifiable(Object receiver, long index);
 
@@ -586,7 +586,7 @@ public final class Interop {
      *
      * @see #writeArrayElement(Object, long, Object)
      * @see #isArrayElementModifiable(Object, long)
-     * @since 19.0
+     * @since 21.0
      */
     public static native boolean isArrayElementInsertable(Object receiver, long index);
 
@@ -598,7 +598,7 @@ public final class Interop {
      * message does not cause any observable side-effects. Returns <code>false</code> by default.
      *
      * @see #removeArrayElement(Object, long)
-     * @since 19.0
+     * @since 21.0
      */
     public static native boolean isArrayElementRemovable(Object receiver, long index);
 
@@ -606,7 +606,7 @@ public final class Interop {
      * Returns true if the array element is {@link #isArrayElementModifiable(Object, long)
      * modifiable} or {@link #isArrayElementInsertable(Object, long) insertable}.
      *
-     * @since 19.0
+     * @since 21.0
      */
     public static boolean isArrayElementWritable(Object receiver, long index) {
         return isArrayElementModifiable(receiver, index) || isArrayElementInsertable(receiver, index);
@@ -618,7 +618,7 @@ public final class Interop {
      * {@link #isArrayElementReadable(Object, long) readable} or
      * {@link #isArrayElementRemovable(Object, long) removable}.
      *
-     * @since 19.0
+     * @since 21.0
      */
     public static boolean isArrayElementExisting(Object receiver, long index) {
         return isArrayElementModifiable(receiver, index) || isArrayElementReadable(receiver, index) || isArrayElementRemovable(receiver, index);
@@ -648,7 +648,7 @@ public final class Interop {
      *
      * @see #getMetaObject(Object)
      * @see #isMetaObject(Object)
-     * @since 20.1
+     * @since 21.0
      */
     public static native boolean hasMetaObject(Object receiver);
 
@@ -677,7 +677,7 @@ public final class Interop {
      *             <code>false</code> for the same receiver.
      *
      * @see #hasMetaObject(Object)
-     * @since 20.1
+     * @since 21.0
      */
     public static native Object getMetaObject(Object receiver) throws UnsupportedMessageException;
 
@@ -710,7 +710,7 @@ public final class Interop {
      * </pre>
      * 
      * @param allowSideEffects whether side-effects are allowed in the production of the string.
-     * @since 20.1
+     * @since 21.0
      */
     public static native Object toDisplayString(Object receiver, boolean allowSideEffects);
 
@@ -719,7 +719,7 @@ public final class Interop {
      * Short-cut for <code>{@link #toDisplayString(Object) toDisplayString}(true)</code>.
      *
      * @see #toDisplayString(Object, boolean)
-     * @since 20.1
+     * @since 21.0
      */
     public static Object toDisplayString(Object receiver) {
         return toDisplayString(receiver, true);
@@ -740,7 +740,7 @@ public final class Interop {
      * also {@link #getMetaQualifiedName(Object)}, {@link #getMetaSimpleName(Object)} and
      * {@link #isMetaInstance(Object, Object)} must be implemented as well.
      *
-     * @since 20.1
+     * @since 21.0
      */
     public static native boolean isMetaObject(Object receiver);
 
@@ -771,7 +771,7 @@ public final class Interop {
      * @throws UnsupportedMessageException if and only if {@link #isMetaObject(Object)} returns
      *             <code>false</code> for the same receiver.
      *
-     * @since 20.1
+     * @since 21.0
      */
     public static native Object getMetaQualifiedName(Object metaObject) throws UnsupportedMessageException;
 
@@ -800,7 +800,7 @@ public final class Interop {
      * @throws UnsupportedMessageException if and only if {@link #isMetaObject(Object)} returns
      *             <code>false</code> for the same receiver.
      *
-     * @since 20.1
+     * @since 21.0
      */
     public static native Object getMetaSimpleName(Object metaObject) throws UnsupportedMessageException;
 
@@ -817,7 +817,7 @@ public final class Interop {
      * @param instance the instance object to check.
      * @throws UnsupportedMessageException if and only if {@link #isMetaObject(Object)} returns
      *             <code>false</code> for the same receiver.
-     * @since 20.1
+     * @since 21.0
      */
     public static native boolean isMetaInstance(Object receiver, Object instance) throws UnsupportedMessageException;
 
@@ -869,7 +869,7 @@ public final class Interop {
      * <p>
      * This method must not cause any observable side-effects.
      *
-     * @since 20.2
+     * @since 21.0
      */
     public static native boolean isIdentical(Object receiver, Object other);
 
@@ -879,7 +879,7 @@ public final class Interop {
      * <code>isIdentical(receiver, receiver)</code>. This message cannot be exported. To add
      * identity support to the receiver export isIdenticalOrUndefined(Object, Object) instead.
      *
-     * @since 20.2
+     * @since 21.0
      */
     public static boolean hasIdentity(Object receiver) {
         return isIdentical(receiver, receiver);
@@ -908,7 +908,7 @@ public final class Interop {
      * @throws UnsupportedMessageException if and only if {@link #hasIdentity(Object)} returns
      *             <code>false</code> for the same receiver.
      * @see #isIdentical(Object, Object)
-     * @since 20.2
+     * @since 21.0
      */
     public static native int identityHashCode(Object receiver) throws UnsupportedMessageException;
 
@@ -934,7 +934,7 @@ public final class Interop {
      * @see #writeMember(Object, String, Object)
      * @see #removeMember(Object, String)
      * @see #invokeMember(Object, String, Object...)
-     * @since 19.0
+     * @since 21.0
      */
     public static native boolean hasMembers(Object receiver);
 
@@ -955,7 +955,7 @@ public final class Interop {
      * @throws UnsupportedMessageException if and only if the receiver does not have any
      *             {@link #hasMembers(Object) members}.
      * @see #hasMembers(Object)
-     * @since 19.0
+     * @since 21.0
      */
     public static native Object getMembers(Object receiver, boolean includeInternal) throws UnsupportedMessageException;
 
@@ -966,7 +966,7 @@ public final class Interop {
      * @throws UnsupportedMessageException if and only if the receiver has no
      *             {@link #hasMembers(Object) members}.
      * @see #getMembers(Object, boolean)
-     * @since 19.0
+     * @since 21.0
      */
     public static Object getMembers(Object receiver) throws UnsupportedMessageException {
         return getMembers(receiver, false);
@@ -980,7 +980,7 @@ public final class Interop {
      * <code>false</code> by default.
      *
      * @see #readMember(Object, String)
-     * @since 19.0
+     * @since 21.0
      */
     public static native boolean isMemberReadable(Object receiver, String member);
 
@@ -1003,7 +1003,7 @@ public final class Interop {
      *             {@link #isMemberReadable(Object, String) readable}, e.g. when the member with the
      *             given name does not exist.
      * @see #hasMemberReadSideEffects(Object, String)
-     * @since 19.0
+     * @since 21.0
      */
     public static native Object readMember(Object receiver, String member) throws UnsupportedMessageException, UnknownIdentifierException;
 
@@ -1015,7 +1015,7 @@ public final class Interop {
      * does not cause any observable side-effects. Returns <code>false</code> by default.
      *
      * @see #writeMember(Object, String, Object)
-     * @since 19.0
+     * @since 21.0
      */
     public static native boolean isMemberModifiable(Object receiver, String member);
 
@@ -1027,7 +1027,7 @@ public final class Interop {
      * does not cause any observable side-effects. Returns <code>false</code> by default.
      *
      * @see #writeMember(Object, String, Object)
-     * @since 19.0
+     * @since 21.0
      */
     public static native boolean isMemberInsertable(Object receiver, String member);
 
@@ -1046,7 +1046,7 @@ public final class Interop {
      *             {@link #isMemberInsertable(Object, String) insertable}.
      * @throws UnsupportedTypeException if the provided value type is not allowed to be written.
      * @see #hasMemberWriteSideEffects(Object, String)
-     * @since 19.0
+     * @since 21.0
      */
     public static native void writeMember(Object receiver, String member, Object value) throws UnsupportedMessageException, UnknownIdentifierException, UnsupportedTypeException;
 
@@ -1057,7 +1057,7 @@ public final class Interop {
      * does not cause any observable side-effects. Returns <code>false</code> by default.
      *
      * @see #removeMember(Object, String)
-     * @since 19.0
+     * @since 21.0
      */
     public static native boolean isMemberRemovable(Object receiver, String member);
 
@@ -1073,7 +1073,7 @@ public final class Interop {
      *             {@link #isMemberRemovable(Object, String)} removable}, e.g. the receiver does not
      *             have a member with the given name.
      * @see #isMemberRemovable(Object, String)
-     * @since 19.0
+     * @since 21.0
      */
     public static native void removeMember(Object receiver, String member) throws UnsupportedMessageException, UnknownIdentifierException;
 
@@ -1084,7 +1084,7 @@ public final class Interop {
      * does not cause any observable side-effects. Returns <code>false</code> by default.
      *
      * @see #invokeMember(Object, String, Object...)
-     * @since 19.0
+     * @since 21.0
      */
     public static native boolean isMemberInvocable(Object receiver, String member);
 
@@ -1105,7 +1105,7 @@ public final class Interop {
      * @throws UnsupportedMessageException when the receiver does not support invoking at all, e.g.
      *             when storing executable members is not allowed.
      * @see #isMemberInvocable(Object, String)
-     * @since 19.0
+     * @since 21.0
      */
     public static native Object invokeMember(Object receiver, String member, Object... arguments)
                     throws UnsupportedMessageException, ArityException, UnknownIdentifierException, UnsupportedTypeException;
@@ -1118,7 +1118,7 @@ public final class Interop {
      * observable side-effects. Returns <code>false</code> by default.
      *
      * @see #getMembers(Object, boolean)
-     * @since 19.0
+     * @since 21.0
      */
     public static native boolean isMemberInternal(Object receiver, String member);
 
@@ -1126,7 +1126,7 @@ public final class Interop {
      * Returns true if the member is {@link #isMemberModifiable(Object, String) modifiable} or
      * {@link #isMemberInsertable(Object, String) insertable}.
      *
-     * @since 19.0
+     * @since 21.0
      */
     public static boolean isMemberWritable(Object receiver, String member) {
         return isMemberModifiable(receiver, member) || isMemberInsertable(receiver, member);
@@ -1138,7 +1138,7 @@ public final class Interop {
      * {@link #isMemberReadable(Object, String) readable}, {@link #isMemberRemovable(Object, String)
      * removable} or {@link #isMemberInvocable(Object, String) invocable}.
      *
-     * @since 19.0
+     * @since 21.0
      */
     public static boolean isMemberExisting(Object receiver, String member) {
         return isMemberReadable(receiver, member) || isMemberModifiable(receiver, member) || isMemberRemovable(receiver, member) || isMemberInvocable(receiver, member);
@@ -1153,7 +1153,7 @@ public final class Interop {
      * function.
      *
      * @see #readMember(Object, String)
-     * @since 19.0
+     * @since 21.0
      */
     public static native boolean hasMemberReadSideEffects(Object receiver, String member);
 
@@ -1166,7 +1166,7 @@ public final class Interop {
      * setter function.
      *
      * @see #writeMember(Object, String, Object)
-     * @since 19.0
+     * @since 21.0
      */
     public static native boolean hasMemberWriteSideEffects(Object receiver, String member);
 
@@ -1187,7 +1187,7 @@ public final class Interop {
      *
      * @see #asPointer(Object)
      * @see #toNative(Object)
-     * @since 19.0
+     * @since 21.0
      */
     public static native boolean isPointer(Object receiver);
 
@@ -1197,7 +1197,7 @@ public final class Interop {
      * @throws UnsupportedMessageException if and only if {@link #isPointer(Object)} returns
      *             <code>false</code> for the same receiver.
      * @see #isPointer(Object)
-     * @since 19.0
+     * @since 21.0
      */
     public static native long asPointer(Object receiver) throws UnsupportedMessageException;
 
@@ -1209,7 +1209,7 @@ public final class Interop {
      *
      * @see #isPointer(Object)
      * @see #asPointer(Object)
-     * @since 19.0
+     * @since 21.0
      */
     public static native void toNative(Object receiver);
 
@@ -1225,7 +1225,7 @@ public final class Interop {
      * {@link #isInstantiable(Object) instantiable}.
      *
      * @see #execute(Object, Object...)
-     * @since 19.0
+     * @since 21.0
      */
     public static native boolean isExecutable(Object receiver);
 
@@ -1244,7 +1244,7 @@ public final class Interop {
      * @throws UnsupportedMessageException if and only if {@link #isExecutable(Object)} returns
      *             <code>false</code> for the same receiver.
      * @see #isExecutable(Object)
-     * @since 19.0
+     * @since 21.0
      */
     public static native Object execute(Object receiver, Object... arguments) throws UnsupportedTypeException, ArityException, UnsupportedMessageException;
 
@@ -1261,7 +1261,7 @@ public final class Interop {
      *
      * @see #instantiate(Object, Object...)
      * @see #isMetaObject(Object)
-     * @since 19.0
+     * @since 21.0
      */
     public static native boolean isInstantiable(Object receiver);
 
@@ -1281,7 +1281,7 @@ public final class Interop {
      * @throws UnsupportedMessageException if and only if {@link #isInstantiable(Object)} returns
      *             <code>false</code> for the same receiver.
      * @see #isExecutable(Object)
-     * @since 19.0
+     * @since 21.0
      */
     public static native Object instantiate(Object receiver, Object... arguments) throws UnsupportedTypeException, ArityException, UnsupportedMessageException;
 
@@ -1294,7 +1294,7 @@ public final class Interop {
      * cause any observable side-effects. Returns {@code false} by default.
      *
      * @see #getExecutableName(Object)
-     * @since 20.3
+     * @since 21.0
      */
     public static native boolean hasExecutableName(Object receiver);
 
@@ -1318,7 +1318,7 @@ public final class Interop {
      * </pre>
      *
      * @see #hasExecutableName(Object)
-     * @since 20.3
+     * @since 21.0
      */
     public static native Object getExecutableName(Object receiver) throws UnsupportedMessageException;
 
@@ -1329,7 +1329,7 @@ public final class Interop {
      * default.
      *
      * @see #getDeclaringMetaObject(Object)
-     * @since 20.3
+     * @since 21.0
      */
     public static native boolean hasDeclaringMetaObject(Object receiver);
 
@@ -1345,7 +1345,7 @@ public final class Interop {
      * that the returned value will have a specific Java type.
      *
      * @see #hasDeclaringMetaObject(Object)
-     * @since 20.3
+     * @since 21.0
      */
     public static native Object getDeclaringMetaObject(Object receiver) throws UnsupportedMessageException;
 

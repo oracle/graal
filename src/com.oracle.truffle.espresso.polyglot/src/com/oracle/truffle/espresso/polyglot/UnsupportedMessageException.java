@@ -46,7 +46,7 @@ package com.oracle.truffle.espresso.polyglot;
  * thrown then the receiver does not support the message at all and it is not supported for any
  * arguments given to the message.
  *
- * @since 0.11
+ * @since 21.0
  */
 public final class UnsupportedMessageException extends InteropException {
 
@@ -63,7 +63,7 @@ public final class UnsupportedMessageException extends InteropException {
     /**
      * {@inheritDoc}
      *
-     * @since 19.0
+     * @since 21.0
      */
     @Override
     public String getMessage() {
@@ -76,7 +76,7 @@ public final class UnsupportedMessageException extends InteropException {
      * <p>
      * This method is designed to be used in compiled code paths.
      *
-     * @since 19.0
+     * @since 21.0
      */
     public static UnsupportedMessageException create() {
         return new UnsupportedMessageException();
@@ -96,6 +96,8 @@ public final class UnsupportedMessageException extends InteropException {
      * source language as well.
      *
      * @param cause the guest language exception that caused the error.
+     *
+     * @since 21.0
      */
     public static UnsupportedMessageException create(Throwable cause) {
         return new UnsupportedMessageException(cause);

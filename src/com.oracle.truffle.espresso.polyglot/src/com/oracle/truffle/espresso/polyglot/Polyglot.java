@@ -61,6 +61,8 @@ package com.oracle.truffle.espresso.polyglot;
  * <p>
  * NB: for Java code running in Espresso, these methods will be intrinsified. Otherwise
  * multi-language environment is not available.
+ *
+ * @since 21.0
  */
 public final class Polyglot {
     private Polyglot() {
@@ -69,6 +71,8 @@ public final class Polyglot {
 
     /**
      * Tests if an object is a foreign value, i.e. originates from a different Truffle language.
+     *
+     * @since 21.0
      */
     @SuppressWarnings("unused")
     public static boolean isForeignObject(Object object) {
@@ -114,6 +118,7 @@ public final class Polyglot {
      *             <li>if {@code value} is a regular Espresso object and cannot be cast to
      *             {@code targetClass}
      *             </ul>
+     * @since 21.0
      */
     public static <T> T cast(Class<? extends T> targetClass, Object value) throws ClassCastException {
         return targetClass.cast(value);
@@ -135,6 +140,7 @@ public final class Polyglot {
      *
      * @apiNote To access members of the foreign object, write a corresponding class or interface
      *          stub in Java and cast the eval result to it using {@link #cast Polyglot.cast}.
+     * @since 21.0
      */
     @SuppressWarnings("unused")
     public static Object eval(String languageId, String sourceCode) {
@@ -148,7 +154,7 @@ public final class Polyglot {
      * See {@link Polyglot#cast} for the details of casting.
      *
      * @param languageId id of one of the Truffle languages
-     *
+     * @since 21.0
      */
     public static <T> T eval(String languageId, String sourceCode, Class<? extends T> targetClass) throws ClassCastException {
         return cast(targetClass, eval(languageId, sourceCode));
@@ -162,6 +168,7 @@ public final class Polyglot {
      *
      * @apiNote To access the foreign object's members, write a corresponding class or interface
      *          stub in Java and cast the eval result to it using {@link #cast Polyglot.cast}.
+     * @since 21.0
      */
     @SuppressWarnings("unused")
     public static Object importObject(String name) {
@@ -173,7 +180,7 @@ public final class Polyglot {
      * {@link Polyglot#cast casts} the result to the given class.
      * <p>
      * See {@link Polyglot#cast} for the details of casting.
-     *
+     * @since 21.0
      */
     public static <T> T importObject(String name, Class<? extends T> targetClass) throws ClassCastException {
         return cast(targetClass, importObject(name));
@@ -181,6 +188,7 @@ public final class Polyglot {
 
     /**
      * Exports {@code value} under {@code name} to the Polyglot scope.
+     * @since 21.0
      */
     @SuppressWarnings("unused")
     public static void exportObject(String name, Object value) {

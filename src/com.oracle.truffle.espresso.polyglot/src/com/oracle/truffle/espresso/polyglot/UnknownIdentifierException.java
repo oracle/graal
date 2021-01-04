@@ -46,7 +46,7 @@ package com.oracle.truffle.espresso.polyglot;
  * exceptions are supposed to be caught and converted into a guest language error by the caller.
  *
  * @see #getUnknownIdentifier()
- * @since 0.11
+ * @since 21.0
  */
 public final class UnknownIdentifierException extends InteropException {
 
@@ -67,7 +67,7 @@ public final class UnknownIdentifierException extends InteropException {
     /**
      * {@inheritDoc}
      *
-     * @since 19.0
+     * @since 21.0
      */
     @Override
     public String getMessage() {
@@ -78,7 +78,7 @@ public final class UnknownIdentifierException extends InteropException {
      * Returns the identifier that could not be accessed.
      *
      * @return the unaccessible identifier
-     * @since 0.11
+     * @since 21.0
      */
     public String getUnknownIdentifier() {
         return unknownIdentifier;
@@ -88,7 +88,7 @@ public final class UnknownIdentifierException extends InteropException {
      * Creates an {@link UnknownIdentifierException} to indicate that an identifier is missing.
      *
      * @param unknownIdentifier the identifier that could not be accessed
-     * @since 19.0
+     * @since 21.0
      */
     public static UnknownIdentifierException create(String unknownIdentifier) {
         return new UnknownIdentifierException(unknownIdentifier);
@@ -108,7 +108,7 @@ public final class UnknownIdentifierException extends InteropException {
      *
      * @param unknownIdentifier the identifier that could not be accessed
      * @param cause the guest language exception that caused the error.
-     * @since 20.2
+     * @since 21.0
      */
     public static UnknownIdentifierException create(String unknownIdentifier, Throwable cause) {
         return new UnknownIdentifierException(unknownIdentifier, cause);
