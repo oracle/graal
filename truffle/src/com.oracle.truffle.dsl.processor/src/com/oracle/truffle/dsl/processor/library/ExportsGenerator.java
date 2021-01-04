@@ -638,6 +638,11 @@ public class ExportsGenerator extends CodeTypeElementFactory<ExportsData> {
             builder.startReturn();
             if (acceptsMessage == null || acceptsMessage.isGenerated()) {
                 builder.tree(defaultAccepts);
+                if (useSuperAccepts(libraryExports, messages)) {
+                    // we don't need an accepts method because
+                    // we just call super.accepts
+                    accepts = null;
+                }
             } else {
                 builder.tree(defaultAccepts).string(" && accepts_(receiver)");
             }
@@ -669,7 +674,7 @@ public class ExportsGenerator extends CodeTypeElementFactory<ExportsData> {
         }
 
         cacheClass.addOptional(createCastMethod(libraryExports, messages, exportReceiverType, true));
-        cacheClass.add(accepts);
+        cacheClass.addOptional(accepts);
 
         if (!libraryExports.needsRewrites() && useSingleton(libraryExports, messages, true)) {
             CodeExecutableElement isAdoptable = cacheClass.add(CodeExecutableElement.clone(ElementUtils.findExecutableElement(types.Node, "isAdoptable")));
@@ -1061,8 +1066,7 @@ public class ExportsGenerator extends CodeTypeElementFactory<ExportsData> {
                         builder.string("(").cast(receiverType).string(constructorReceiverName + ").getClass()").end();
                     }
                 }
-
-                acceptsBuilder.string(receiverName, ".getClass() == this.receiverClass_");
+                acceptsBuilder.startStaticCall(types.CompilerDirectives, "isExact").string(receiverName).string("this.receiverClass_").end();
             }
         }
 
