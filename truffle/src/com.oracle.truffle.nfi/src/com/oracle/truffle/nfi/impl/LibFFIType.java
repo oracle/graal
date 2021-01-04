@@ -639,10 +639,10 @@ final class LibFFIType {
 
             @Override
             void execute(NativeArgumentBuffer buffer, Object value) throws UnsupportedTypeException, WrongTypeException {
-                if (arrayClass1 == value.getClass()) {
+                if (CompilerDirectives.isExact(value, arrayClass1)) {
                     assert uncachedLib1.accepts(value);
                     uncachedLib1.putPointer(CompilerDirectives.castExact(value, arrayClass1), buffer, size);
-                } else if (arrayClass2 == value.getClass()) {
+                } else if (CompilerDirectives.isExact(value, arrayClass2)) {
                     assert uncachedLib2.accepts(value);
                     uncachedLib2.putPointer(CompilerDirectives.castExact(value, arrayClass2), buffer, size);
                 } else {
