@@ -179,7 +179,7 @@ class SulongBenchmarkSuite(VmBenchmarkSuite):
                 "metric.unit": "us",
                 "metric.iteration": ("0", int),
             }),
-            mx_benchmark.StdOutRule(r'^Startup of (?P<benchmark>[\S]+): (?P<score>\d+)', {
+            mx_benchmark.StdOutRule(r'^run (?P<run>[\d]+) Startup of (?P<benchmark>[\S]+): (?P<score>\d+)', {
                 "benchmark": ("<benchmark>", str),
                 "metric.name": "startup",
                 "metric.type": "numeric",
@@ -189,7 +189,7 @@ class SulongBenchmarkSuite(VmBenchmarkSuite):
                 "metric.unit": "us",
                 "metric.iteration": ("0", int),
             }),
-            mx_benchmark.StdOutRule(r'^Early-warmup of (?P<benchmark>[\S]+): (?P<score>\d+)', {
+            mx_benchmark.StdOutRule(r'^run (?P<run>[\d]+) Early-warmup of (?P<benchmark>[\S]+): (?P<score>\d+)', {
                 "benchmark": ("<benchmark>", str),
                 "metric.name": "early-warmup",
                 "metric.type": "numeric",
@@ -199,7 +199,7 @@ class SulongBenchmarkSuite(VmBenchmarkSuite):
                 "metric.unit": "us",
                 "metric.iteration": ("0", int),
             }),
-            mx_benchmark.StdOutRule(r'^Late-warmup of (?P<benchmark>[\S]+): (?P<score>\d+)', {
+            mx_benchmark.StdOutRule(r'^run (?P<run>[\d]+) Late-warmup of (?P<benchmark>[\S]+): (?P<score>\d+)', {
                 "benchmark": ("<benchmark>", str),
                 "metric.name": "late-warmup",
                 "metric.type": "numeric",
