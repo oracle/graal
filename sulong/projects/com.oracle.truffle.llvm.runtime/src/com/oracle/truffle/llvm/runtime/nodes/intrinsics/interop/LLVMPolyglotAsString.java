@@ -112,7 +112,7 @@ public abstract class LLVMPolyglotAsString extends LLVMIntrinsic {
 
         protected abstract long execute(VirtualFrame frame, ByteBuffer source, Object target, long targetLen, int zeroTerminatorLen);
 
-        @Specialization(guards = "isExact(srcBufferClass, srcBuffer.getClass())")
+        @Specialization(guards = "isExact(srcBuffer, srcBufferClass)")
         long doWrite(ByteBuffer srcBuffer, LLVMPointer target, long targetLen, int zeroTerminatorLen,
                         @Cached("srcBuffer.getClass()") Class<? extends ByteBuffer> srcBufferClass,
                         @Cached LLVMI8OffsetStoreNode write) {
