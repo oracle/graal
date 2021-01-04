@@ -3,8 +3,13 @@
 Everything is OK!
 >[0] java -ea -cp ${TMP_DIR} EmbeddingDoubled
 Everything is OK!
+> if [ -d $JAVA_HOME/jre ]
+>   export GRAALVM_LIBS=$JAVA_HOME/jre
+> else
+>   export GRAALVM_LIBS=$JAVA_HOME
+> fi
 >[0] mkdir -p ${TMP_DIR}/instrument
->[0] javac -cp $JAVA_HOME/lib/truffle/truffle-api.jar:$JAVA_HOME/lib/truffle/truffle-dsl-processor.jar:$JAVA_HOME/tools/insight/insight.jar -d ${TMP_DIR}/instrument Emb*Instrument.java
+>[0] javac -cp $GRAALVM_LIBS/lib/truffle/truffle-api.jar:$GRAALVM_LIBS/lib/truffle/truffle-dsl-processor.jar:$GRAALVM_LIBS/tools/insight/insight.jar -d ${TMP_DIR}/instrument Emb*Instrument.java
 >[1] java -ea -Dtruffle.class.path.append=${TMP_DIR}/instrument -cp ${TMP_DIR} EmbeddingRegisterSymbols primitives
 
 Exception in thread "main" Stop: 0
