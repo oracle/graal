@@ -254,7 +254,7 @@ public class InsightInstrument extends TruffleInstrument {
                         continue;
                     }
                     try {
-                        for (Map.Entry<String, Object> e : provider.symbolsWithValues().entrySet()) {
+                        for (Map.Entry<String, ?> e : provider.symbolsWithValues().entrySet()) {
                             if (e.getValue() == null) {
                                 continue;
                             }

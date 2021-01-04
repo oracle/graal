@@ -24,6 +24,7 @@
  */
 package org.graalvm.tools.insight;
 
+import com.oracle.truffle.api.instrumentation.TruffleInstrument;
 import com.oracle.truffle.api.interop.TruffleObject;
 import java.util.Map;
 import java.util.function.Function;
@@ -68,10 +69,26 @@ public final class Insight {
     public static final String VERSION = "1.0";
 
     /**
-     * Additional provider of symbols for Insight scripts. All available instruments are queried for
-     * implementation of this interface. If provided, they can contribute symbols with their values
-     * to be available as globals when executing the {@link #ID Insight scripts}.
-     *
+     * Additional provider of symbols for {@link #ID Insight scripts}. All available instruments are
+     * queried for implementation of this interface. If provided, they can contribute symbols with
+     * their values to be available as globals when executing the {@link #ID Insight scripts}.
+     * <p>
+     * {@codesnippet org.graalvm.tools.insight.test.MeaningOfWorldInstrument}
+     * <p>
+     * The previous instrument makes variable {@code meanining} with value {@code 42} available to
+     * every {@link #ID Insight script} when properly registered into the virtual machine. A typical
+     * way is to register your custom instrument is to use property
+     * {@code truffle.class.path.append} when launching the virtual machine:
+     * 
+     * <pre>
+     * graalvm/bin/java -Dtruffle.class.path.append=meaningOfWorld.jar -jar app.jar
+     * </pre>
+     * 
+     * Take care when writing your {@link TruffleInstrument instruments} as they can alter many
+     * aspects of program execution and aren't subject to any security sandbox. See
+     * {@link TruffleInstrument} for more information about developing, using and registering
+     * instruments.
+     * 
      * @since 21.0
      */
     public interface SymbolProvider {
@@ -80,8 +97,9 @@ public final class Insight {
          *
          * @return map mapping names to their primitive, {@link String} or {@link TruffleObject}
          *         values
-         * @throws an exception is propagated as an internal error
+         * @throws Exception any exception is propagated as an internal error
+         * @since 21.0
          */
-        Map<String, Object> symbolsWithValues() throws Exception;
+        Map<String, ? extends Object> symbolsWithValues() throws Exception;
     }
 }

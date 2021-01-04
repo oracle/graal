@@ -801,13 +801,25 @@ public class InsightObjectTest {
     public void exportViaSymbolProvider() throws Exception {
         ByteArrayOutputStream os = new ByteArrayOutputStream();
         Context.Builder b = Context.newBuilder();
-        b.option("count", "42");
+        b.option("count", "41");
         try (Context c = InsightObjectFactory.newContext(b, os, os)) {
             Instrument insight = c.getEngine().getInstruments().get(Insight.ID);
             assertNotNull("found", insight);
 
             Value count = InsightObjectFactory.readObject(c, "count");
-            assertEquals(42, count.asInt());
+            assertEquals(41, count.asInt());
+        }
+    }
+
+    @Test
+    @SuppressWarnings({"unchecked", "rawtypes"})
+    public void meaningViaSymbolProvider() throws Exception {
+        try (Context c = InsightObjectFactory.newContext()) {
+            Instrument insight = c.getEngine().getInstruments().get(Insight.ID);
+            assertNotNull("found", insight);
+
+            Value meaning = InsightObjectFactory.readObject(c, "meaning");
+            assertEquals(42, meaning.asInt());
         }
     }
 

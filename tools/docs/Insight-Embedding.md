@@ -43,21 +43,33 @@ Java application one can make additional objects available to the Insight
 scripts being evaluated:
 
 ```java
-final Engine engine = context.getEngine();
-Instrument instrument = engine.getInstruments().get("insight");
-BiConsumer<String, Value> registerSymbols = instrument.lookup(BiConsumer.class);
-registerSymbols.accept("count", Value.asValue(42));
+@TruffleInstrument.Registration(
+    id = "meaningOfWorld", name = "Meaning Of World", version = "demo",
+    services = { Insight.SymbolProvider.class }
+)
+public final class MeaningOfWorldInstrument extends TruffleInstrument {
+    @Override
+    protected void onCreate(Env env) {
+        Map<String, Integer> symbols = Collections.singletonMap("meaning", 42);
+        Insight.SymbolProvider provider = () -> symbols;
+        env.registerService(provider);
+    }
+}
 ```
 
-The previous Java snippet registers new symbol `count` to every Insight script
-evaluated then. Each script can then reference it and use it for example
+The previous Java code creates an instrument which registers new symbol `meaning` 
+to every Insight script evaluated then. Each script can then reference it and use it for example
 for limiting number of method invocations:
 
 ```js
-insight.on('enter', (ctx, frames) => { if (--count <= 0) throw 'Stop!' }, { roots : true });
+insight.on('enter', (ctx, frames) => { if (--meaning <= 0) throw 'Stop!' }, { roots : true });
 ```
 
-It is possible to expose simple values, as well as complex objects.
+It is possible to expose simple values, as well as complex objects. See the 
+[javadoc](https://www.graalvm.org/tools/javadoc/org/graalvm/tools/insight/Insight.SymbolProvider.html)
+for more detailed information - take care when writing your instruments - they
+can alter many aspects of program execution and aren't subject to any security
+sandbox.
 
 ### Embedding Insight into node.js Application
 
