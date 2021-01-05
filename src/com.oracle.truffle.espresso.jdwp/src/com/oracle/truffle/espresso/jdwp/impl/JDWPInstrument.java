@@ -123,7 +123,7 @@ public final class JDWPInstrument extends TruffleInstrument implements Runnable 
     }
 
     void doConnect(boolean suspend) throws IOException {
-        SocketConnection socketConnection = HandshakeController.createSocketConnection(controller.getListeningPort(), activeThreads);
+        SocketConnection socketConnection = HandshakeController.createSocketConnection(controller.getHost(), controller.getListeningPort(), activeThreads);
         // connection established with handshake. Prepare to process commands from debugger
         connection = new DebuggerConnection(socketConnection, controller);
         controller.getEventListener().setConnection(socketConnection);

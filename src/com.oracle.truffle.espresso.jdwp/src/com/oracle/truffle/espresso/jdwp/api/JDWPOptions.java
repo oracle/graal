@@ -29,14 +29,16 @@ import com.oracle.truffle.espresso.jdwp.impl.JDWPLogger;
  */
 public final class JDWPOptions {
     public final String transport;
-    public final String address;
+    public final String host;
+    public final String port;
     public final boolean server;
     public final boolean suspend;
     public final String logLevel;
 
-    public JDWPOptions(String transport, String address, boolean server, boolean suspend, String logLevel) {
+    public JDWPOptions(String transport, String host, String port, boolean server, boolean suspend, String logLevel) {
         this.transport = transport;
-        this.address = address;
+        this.host = host;
+        this.port = port;
         this.server = server;
         this.suspend = suspend;
         this.logLevel = logLevel;
@@ -47,7 +49,7 @@ public final class JDWPOptions {
     public String toString() {
         return "JDWPOptions{" +
                         "transport=" + transport + "," +
-                        "address=" + address + "," +
+                        "address=" + port + "," +
                         "server=" + server + "," +
                         "suspend=" + suspend + "}";
     }
