@@ -357,17 +357,14 @@ public class TruffleGraphBuilderPlugins {
         r.register2("castExact", Object.class, Class.class, new InvocationPlugin() {
             @Override
             public boolean apply(GraphBuilderContext b, ResolvedJavaMethod targetMethod, Receiver receiver, ValueNode object, ValueNode javaClass) {
-                if (!javaClass.isConstant() && canDelayIntrinsification) {
-                    return false;
-                }
                 ValueNode nullCheckedClass = b.addNonNullCast(javaClass);
-                LogicNode condition = b.append(InstanceOfDynamicNode.create(b.getAssumptions(), b.getConstantReflection(), nullCheckedClass, object, false, true));
+                LogicNode condition = b.append(InstanceOfDynamicNode.create(b.getAssumptions(), b.getConstantReflection(), nullCheckedClass, object, true, true));
                 if (condition.isTautology()) {
                     b.addPush(JavaKind.Object, object);
                 } else {
                     FixedGuardNode fixedGuard = b.add(new FixedGuardNode(condition,
                                     DeoptimizationReason.ClassCastException, DeoptimizationAction.InvalidateReprofile, false));
-                    b.addPush(JavaKind.Object, DynamicPiNode.create(b.getAssumptions(), b.getConstantReflection(), object, fixedGuard, nullCheckedClass, false, true));
+                    b.addPush(JavaKind.Object, DynamicPiNode.create(b.getAssumptions(), b.getConstantReflection(), object, fixedGuard, nullCheckedClass, true, true));
                 }
                 return true;
             }
@@ -376,9 +373,6 @@ public class TruffleGraphBuilderPlugins {
         r.register2("isExact", Object.class, Class.class, new InvocationPlugin() {
             @Override
             public boolean apply(GraphBuilderContext b, ResolvedJavaMethod targetMethod, Receiver receiver, ValueNode object, ValueNode javaClass) {
-                if (!javaClass.isConstant() && canDelayIntrinsification) {
-                    return false;
-                }
                 ValueNode nullCheckedClass = b.addNonNullCast(javaClass);
                 LogicNode condition = b.append(InstanceOfDynamicNode.create(b.getAssumptions(), b.getConstantReflection(), nullCheckedClass, object, false, true));
                 b.addPush(JavaKind.Boolean, b.append(new ConditionalNode(condition)));
