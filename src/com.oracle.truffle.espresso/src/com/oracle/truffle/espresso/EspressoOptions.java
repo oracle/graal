@@ -305,9 +305,72 @@ public final class EspressoOptions {
                         }
                     });
 
-    @Option(help = "JDWP Options. e.g. JDWPOptions=transport=dt_socket,server=y,address=8000,suspend=y", //
+    private static final OptionType<com.oracle.truffle.espresso.jdwp.api.JDWPOptions> JDWP_OPTIONS_OPTION_AGENT_TYPE = new OptionType<>("JDWPOptions",
+            new Function<String, JDWPOptions>() {
+
+                private boolean yesOrNo(String key, String value) {
+                    if (!"y".equals(value) && !"n".equals(value)) {
+                        throw new IllegalArgumentException("Invalid option value: -agentlib:jdwp " + key + " can be only 'y' or 'n'.");
+                    }
+                    return "y".equals(value);
+                }
+
+                @Override
+                public JDWPOptions apply(String s) {
+                    final String[] options = s.split(",");
+                    String transport = null;
+                    String address = null;
+                    String logLevel = null;
+                    boolean server = false;
+                    boolean suspend = true;
+
+                    for (String keyValue : options) {
+                        String[] parts = keyValue.split("=");
+                        if (parts.length != 2) {
+                            throw new IllegalArgumentException("-agentlib:jdwp options must be a comma separated list of key=value pairs.");
+                        }
+                        String key = parts[0];
+                        String value = parts[1];
+                        switch (key) {
+                            case "address":
+                                long realValue;
+                                try {
+                                    realValue = Long.valueOf(value);
+                                    if (realValue < 0 || realValue > 65535) {
+                                        throw new IllegalArgumentException("Invalid option for -agentlib:jwdp, address: " + value + ". Must be in the 0 - 65535 range.");
+                                    }
+                                } catch (NumberFormatException ex) {
+                                    throw new IllegalArgumentException("Invalid option for -agentlib:jwdp, address is not a number. Must be a number in the 0 - 65535 range.");
+                                }
+                                address = value;
+                                break;
+                            case "transport":
+                                transport = value;
+                                break;
+                            case "server":
+                                server = yesOrNo(key, value);
+                                break;
+                            case "suspend":
+                                suspend = yesOrNo(key, value);
+                                break;
+                            case "logLevel":
+                                logLevel = value;
+                                break;
+                            default:
+                                throw new IllegalArgumentException("Invalid option -agentlib:jwdp " + key + ". Supported options: 'transport', 'address', 'server' and 'suspend'.");
+                        }
+                    }
+                    return new JDWPOptions(transport, address, server, suspend, logLevel);
+                }
+            });
+
+    @Option(help = "JDWP Options. e.g. -Xdebug -Xrunjdwp:transport=dt_socket,server=y,address=8000,suspend=y", //
                     category = OptionCategory.EXPERT, stability = OptionStability.STABLE) //
-    public static final OptionKey<JDWPOptions> JDWPOptions = new OptionKey<>(null, JDWP_OPTIONS_OPTION_TYPE);
+    public static final OptionKey<JDWPOptions> JDWPRunOptions = new OptionKey<>(null, JDWP_OPTIONS_OPTION_TYPE);
+
+    @Option(help = "JDWP agent Options. e.g. -agentlib:jdwp=transport=dt_socket,server=y,address=localhost:8000,suspend=y", //
+            category = OptionCategory.EXPERT, stability = OptionStability.STABLE) //
+    public static final OptionKey<JDWPOptions> JDWPAgentOptions = new OptionKey<>(null, JDWP_OPTIONS_OPTION_AGENT_TYPE);
 
     @Option(help = "Enable experimental java.lang.management APIs. Incur a bookkeeping overhead.", //
                     category = OptionCategory.EXPERT, stability = OptionStability.EXPERIMENTAL) //
