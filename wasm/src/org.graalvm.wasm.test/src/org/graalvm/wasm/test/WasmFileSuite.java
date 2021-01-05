@@ -215,7 +215,7 @@ public abstract class WasmFileSuite extends AbstractWasmSuite {
                     final boolean reinitMemory = requiresZeroMemory || iterationNeedsStateCheck(i + 1);
                     if (reinitMemory) {
                         for (int j = 0; j < wasmContext.memories().count(); ++j) {
-                            wasmContext.memories().memory(j).clear();
+                            wasmContext.memories().memory(j).reset();
                         }
                     }
                     for (final WasmInstance instance : wasmContext.moduleInstances().values()) {

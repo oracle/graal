@@ -47,8 +47,6 @@ import org.graalvm.wasm.constants.Sizes;
 import org.graalvm.wasm.exception.Failure;
 import org.graalvm.wasm.exception.WasmException;
 
-import java.util.Arrays;
-
 import static java.lang.Integer.compareUnsigned;
 import static java.lang.StrictMath.addExact;
 import static java.lang.StrictMath.multiplyExact;
@@ -116,11 +114,6 @@ public final class ByteArrayWasmMemory extends WasmMemory {
     }
 
     @Override
-    public void clear() {
-        Arrays.fill(buffer, (byte) 0);
-    }
-
-    @Override
     public int size() {
         return buffer.length / MEMORY_PAGE_SIZE;
     }
@@ -145,7 +138,7 @@ public final class ByteArrayWasmMemory extends WasmMemory {
     public synchronized boolean grow(int extraPageSize) {
         if (extraPageSize == 0) {
             return true;
-        } else if (compareUnsigned(extraPageSize, maxAllowedSize) < 0 && compareUnsigned(size() + extraPageSize, maxAllowedSize) < 0) {
+        } else if (compareUnsigned(extraPageSize, maxAllowedSize) <= 0 && compareUnsigned(size() + extraPageSize, maxAllowedSize) <= 0) {
             // Condition above and limit on maxPageSize (see ModuleLimits#MAX_MEMORY_SIZE) ensure
             // computation of targetByteSize does not overflow.
             final int targetByteSize = multiplyExact(addExact(size(), extraPageSize), MEMORY_PAGE_SIZE);
@@ -156,6 +149,11 @@ public final class ByteArrayWasmMemory extends WasmMemory {
         } else {
             return false;
         }
+    }
+
+    @Override
+    public void reset() {
+        buffer = new byte[declaredMinSize * MEMORY_PAGE_SIZE];
     }
 
     @Override

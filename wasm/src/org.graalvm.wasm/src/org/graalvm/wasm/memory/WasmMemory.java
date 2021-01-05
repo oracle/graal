@@ -92,6 +92,15 @@ public abstract class WasmMemory implements TruffleObject {
 
     public abstract boolean grow(int extraPageSize);
 
+    /**
+     * Shrinks this memory's size to its {@link #declaredMinSize()} initial size}, and sets all
+     * bytes to 0.
+     * <p>
+     * Note: this does not restore content from data section. For this, use
+     * {@link org.graalvm.wasm.BinaryParser#resetMemoryState}.
+     */
+    public abstract void reset();
+
     // Checkstyle: stop
     public abstract int load_i32(Node node, int address);
 
@@ -139,8 +148,6 @@ public abstract class WasmMemory implements TruffleObject {
 
     public abstract void store_i64_32(Node node, int address, int value);
     // Checkstyle: resume
-
-    public abstract void clear();
 
     public abstract WasmMemory duplicate();
 
