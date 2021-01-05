@@ -40,6 +40,11 @@ import com.oracle.svm.core.annotate.AutomaticFeature;
 import com.oracle.svm.hosted.NativeImageOptions;
 import com.oracle.svm.util.ReflectionUtil;
 
+// Checkstyle: stop
+import sun.invoke.util.ValueConversions;
+import sun.invoke.util.Wrapper;
+// Checkstyle: resume
+
 /**
  * Method handles are implemented in Native Image through reflection. A method handle can have one
  * of two forms:
@@ -66,6 +71,7 @@ import com.oracle.svm.util.ReflectionUtil;
  * {@link Target_java_lang_invoke_MethodHandleNatives}).
  */
 @AutomaticFeature
+@SuppressWarnings("unused")
 public class MethodHandleFeature implements Feature {
 
     @Override
@@ -89,6 +95,27 @@ public class MethodHandleFeature implements Feature {
 
         access.registerReachabilityHandler(MethodHandleFeature::registerInvokersFunctionsForReflection,
                         ReflectionUtil.lookupMethod(access.findClassByName("java.lang.invoke.Invokers"), "createFunction", byte.class));
+
+        access.registerReachabilityHandler(MethodHandleFeature::registerValueConversionBoxFunctionsForReflection,
+                        ReflectionUtil.lookupMethod(ValueConversions.class, "boxExact", Wrapper.class));
+
+        access.registerReachabilityHandler(MethodHandleFeature::registerValueConversionUnboxFunctionsForReflection,
+                        ReflectionUtil.lookupMethod(ValueConversions.class, "unbox", Wrapper.class, int.class));
+
+        access.registerReachabilityHandler(MethodHandleFeature::registerValueConversionConvertFunctionsForReflection,
+                        ReflectionUtil.lookupMethod(ValueConversions.class, "convertPrimitive", Wrapper.class, Wrapper.class));
+
+        access.registerReachabilityHandler(MethodHandleFeature::registerValueConversionIgnoreForReflection,
+                        ReflectionUtil.lookupMethod(ValueConversions.class, "ignore"));
+
+        access.registerClassInitializerReachabilityHandler(MethodHandleFeature::registerDelegatingMHFunctionsForReflection,
+                        access.findClassByName("java.lang.invoke.DelegatingMethodHandle"));
+
+        access.registerReachabilityHandler(MethodHandleFeature::registerCallSiteGetTargetForReflection,
+                        ReflectionUtil.lookupMethod(CallSite.class, "getTargetHandle"));
+
+        access.registerReachabilityHandler(MethodHandleFeature::registerUninitializedCallSiteForReflection,
+                        ReflectionUtil.lookupMethod(CallSite.class, "uninitializedCallSiteHandle"));
     }
 
     private static void registerMHImplFunctionsForReflection(DuringAnalysisAccess access) {
@@ -131,6 +158,57 @@ public class MethodHandleFeature implements Feature {
                         access.findClassByName("java.lang.invoke.VarHandle$AccessDescriptor")));
         RuntimeReflection.register(ReflectionUtil.lookupMethod(invokersClazz, "checkVarHandleExactType", access.findClassByName("java.lang.invoke.VarHandle"),
                         access.findClassByName("java.lang.invoke.VarHandle$AccessDescriptor")));
+    }
+
+    private static void registerValueConversionBoxFunctionsForReflection(DuringAnalysisAccess access) {
+        for (Wrapper type : Wrapper.values()) {
+            if (type.primitiveType().isPrimitive() && type != Wrapper.VOID) {
+                RuntimeReflection.register(ReflectionUtil.lookupMethod(ValueConversions.class, "box" + type.wrapperSimpleName(), type.primitiveType()));
+            }
+        }
+    }
+
+    private static void registerValueConversionUnboxFunctionsForReflection(DuringAnalysisAccess access) {
+        for (Wrapper type : Wrapper.values()) {
+            if (type.primitiveType().isPrimitive() && type != Wrapper.VOID) {
+                RuntimeReflection.register(ReflectionUtil.lookupMethod(ValueConversions.class, "unbox" + type.wrapperSimpleName(), type.wrapperType()));
+                RuntimeReflection.register(ReflectionUtil.lookupMethod(ValueConversions.class, "unbox" + type.wrapperSimpleName(), Object.class, boolean.class));
+            }
+        }
+    }
+
+    private static void registerValueConversionConvertFunctionsForReflection(DuringAnalysisAccess access) {
+        for (Wrapper src : Wrapper.values()) {
+            for (Wrapper dest : Wrapper.values()) {
+                if (src != dest && src.primitiveType().isPrimitive() && src != Wrapper.VOID && dest.primitiveType().isPrimitive() && dest != Wrapper.VOID) {
+                    RuntimeReflection.register(ReflectionUtil.lookupMethod(ValueConversions.class, valueConverterName(src, dest), src.primitiveType()));
+                }
+            }
+        }
+    }
+
+    private static String valueConverterName(Wrapper src, Wrapper dest) {
+        String srcType = src.primitiveSimpleName();
+        String destType = dest.primitiveSimpleName();
+        /* Capitalize first letter of destination type */
+        return srcType + "To" + destType.substring(0, 1).toUpperCase() + destType.substring(1);
+    }
+
+    private static void registerValueConversionIgnoreForReflection(DuringAnalysisAccess access) {
+        RuntimeReflection.register(ReflectionUtil.lookupMethod(ValueConversions.class, "ignore", Object.class));
+    }
+
+    private static void registerDelegatingMHFunctionsForReflection(DuringAnalysisAccess access) {
+        Class<?> delegatingMHClazz = access.findClassByName("java.lang.invoke.DelegatingMethodHandle");
+        RuntimeReflection.register(ReflectionUtil.lookupMethod(delegatingMHClazz, "getTarget"));
+    }
+
+    private static void registerCallSiteGetTargetForReflection(DuringAnalysisAccess access) {
+        RuntimeReflection.register(ReflectionUtil.lookupMethod(CallSite.class, "getTarget"));
+    }
+
+    private static void registerUninitializedCallSiteForReflection(DuringAnalysisAccess access) {
+        RuntimeReflection.register(ReflectionUtil.lookupMethod(CallSite.class, "uninitializedCallSite", Object[].class));
     }
 }
 
