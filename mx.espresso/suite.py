@@ -31,6 +31,10 @@ suite = {
             "name": "GNU General Public License, version 2",
             "url": "http://www.gnu.org/licenses/old-licenses/gpl-2.0.html"
         },
+        "UPL": {
+            "name": "Universal Permissive License, Version 1.0",
+            "url": "http://opensource.org/licenses/UPL",
+        },
     },
     "defaultLicense": "GPLv2",
 
@@ -110,12 +114,13 @@ suite = {
     "projects": {
 
         "com.oracle.truffle.espresso.polyglot": {
-                "subDir": "src",
-                "sourceDirs": ["src"],
-                "dependencies": [
-                ],
-                "javaCompliance": "1.8+",
-                "checkstyle": "com.oracle.truffle.espresso",
+            "subDir": "src",
+            "sourceDirs": ["src"],
+            "dependencies": [
+            ],
+            "javaCompliance": "1.8+",
+            "checkstyle": "com.oracle.truffle.espresso",
+            "license": "UPL",
         },
 
         "com.oracle.truffle.espresso": {
@@ -462,9 +467,6 @@ suite = {
             "native": True,
             "description": "Espresso support distribution for the GraalVM",
             "platformDependent": True,
-            "dependencies": [
-                "espresso:POLYGLOT",
-            ],
             "layout": {
                 "./": [
                     "file:mx.espresso/native-image.properties",
@@ -474,9 +476,8 @@ suite = {
                     "dependency:espresso:com.oracle.truffle.espresso.eden/<lib:eden>",
                     "dependency:espresso:com.oracle.truffle.espresso.native/<lib:nespresso>",
                     "dependency:espresso:com.oracle.truffle.espresso.mokapot/<lib:jvm>",
+                    "dependency:espresso:POLYGLOT/*",
                 ],
-                # Espresso's polyglot API.
-                "./": "dependency:espresso:POLYGLOT/*",
             },
         },
 
