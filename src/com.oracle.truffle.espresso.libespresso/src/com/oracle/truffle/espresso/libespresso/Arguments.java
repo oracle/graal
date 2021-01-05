@@ -93,8 +93,11 @@ public final class Arguments {
                             builder.option("java.BootLibraryPath", value);
                             break;
                     }
-
                     builder.option("java.Properties." + key, value);
+                } else if (optionString.equals("-ea") || optionString.equals("-enableassertions")) {
+                    builder.option("java.EnableAssertions", "true");
+                } else if (optionString.equals("-esa") || optionString.equals("-enablesystemassertions")) {
+                    builder.option("java.EnableSystemAssertions", "true");
                 } else {
                     // TODO XX: and X options
                     return JNI_ERR();
