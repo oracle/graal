@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2019, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2019, 2021, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -90,11 +90,7 @@ public class Linker {
         this.resolutionDag = new ResolutionDag();
     }
 
-    // TODO: Many of the following methods should work on all the modules in the context, instead of
-    // a single one. See which ones and update.
     public void tryLink(WasmInstance instance) {
-        // TODO: do something if instance is in failed linking state.
-
         // The first execution of a WebAssembly call target will trigger the linking of the modules
         // that are inside the current context (which will happen behind the call boundary).
         // This linking will set this flag to true.
@@ -103,7 +99,10 @@ public class Linker {
         // compilation, and this check will fold away.
         // If the code is compiled synchronously, then this check will persist in the compiled code.
         // We nevertheless invalidate the compiled code that reaches this point.
-        if (instance.isNonLinked()) {
+        if (instance.isLinkFailed()) {
+            // If the linking of this module failed already, then throw.
+            throw WasmException.create(Failure.UNSPECIFIED_UNLINKABLE, "Linking of module " + instance.module() + " previously failed.");
+        } else if (instance.isNonLinked()) {
             // TODO: Once we support multi-threading, add adequate synchronization here.
             tryLinkOutsidePartialEvaluation(instance);
             CompilerDirectives.transferToInterpreterAndInvalidate();
@@ -117,48 +116,42 @@ public class Linker {
         if (entryPointInstance.isNonLinked()) {
             final WasmContext context = WasmContext.getCurrent();
             Map<String, WasmInstance> instances = context.moduleInstances();
-            for (WasmInstance instance : instances.values()) {
-                if (instance.isNonLinked()) {
-                    instance.setLinkInProgress();
-                    try {
-                        for (BiConsumer<WasmContext, WasmInstance> action : instance.module().linkActions()) {
-                            action.accept(context, instance);
-                        }
-                    } catch (Throwable e) {
-                        instance.setLinkFailed();
-                        throw e;
-                    }
-                }
-            }
-            linkTopologically();
-            // TODO: set instances link state appropriately if linkTopologically fails.
+            ArrayList<Throwable> failures = new ArrayList<>();
+            runLinkActions(context, instances, failures);
+            linkTopologically(context, failures);
             assignTypeEquivalenceClasses();
             for (WasmInstance instance : instances.values()) {
                 if (instance.isLinkInProgress()) {
                     instance.module().setParsed();
                 }
             }
-            for (WasmInstance instance : instances.values()) {
-                if (instance.isLinkInProgress()) {
-                    try {
-                        final WasmFunction start = instance.symbolTable().startFunction();
-                        if (start != null) {
-                            instance.target(start.index()).call();
-                        }
-                        instance.setLinkCompleted();
-                    } catch (Throwable e) {
-                        instance.setLinkFailed();
-                        throw e;
+            runStartFunctions(instances, failures);
+            checkFailures(failures);
+        }
+    }
+
+    private void runLinkActions(WasmContext context, Map<String, WasmInstance> instances, ArrayList<Throwable> failures) {
+        for (WasmInstance instance : instances.values()) {
+            if (instance.isNonLinked()) {
+                instance.setLinkInProgress();
+                try {
+                    for (BiConsumer<WasmContext, WasmInstance> action : instance.module().linkActions()) {
+                        action.accept(context, instance);
                     }
+                } catch (Throwable e) {
+                    // If a link action fails in some instance,
+                    // we still need to try to initialize the other modules.
+                    instance.setLinkFailed();
+                    failures.add(e);
                 }
             }
         }
     }
 
-    private void linkTopologically() {
+    private void linkTopologically(WasmContext context, ArrayList<Throwable> failures) {
         final Resolver[] sortedResolutions = resolutionDag.toposort();
         for (final Resolver resolver : sortedResolutions) {
-            resolver.runActionOnce();
+            resolver.runActionOnce(context, failures);
         }
     }
 
@@ -183,6 +176,36 @@ public class Linker {
                     final WasmFunction function = symtab.function(index);
                     function.setTypeEquivalenceClass(symtab.equivalenceClass(function.typeIndex()));
                 }
+            }
+        }
+    }
+
+    private void runStartFunctions(Map<String, WasmInstance> instances, ArrayList<Throwable> failures) {
+        for (WasmInstance instance : instances.values()) {
+            if (instance.isLinkInProgress()) {
+                try {
+                    final WasmFunction start = instance.symbolTable().startFunction();
+                    if (start != null) {
+                        instance.target(start.index()).call();
+                    }
+                    instance.setLinkCompleted();
+                } catch (Throwable e) {
+                    instance.setLinkFailed();
+                    failures.add(e);
+                }
+            }
+        }
+    }
+
+    private void checkFailures(ArrayList<Throwable> failures) {
+        if (!failures.isEmpty()) {
+            final Throwable first = failures.get(0);
+            if (first instanceof WasmException) {
+                throw (WasmException) first;
+            } else if (first instanceof RuntimeException) {
+                throw (RuntimeException) first;
+            } else {
+                throw new RuntimeException(first);
             }
         }
     }
@@ -441,14 +464,26 @@ public class Linker {
         private static final Sym[] NO_DEPENDENCIES = new Sym[0];
 
         abstract static class Sym {
+            final String moduleName;
+
+            protected Sym(String moduleName) {
+                this.moduleName = moduleName;
+            }
+
+            public String moduleName() {
+                return moduleName;
+            }
+
+            public WasmInstance instance(WasmContext context) {
+                return context.moduleInstances().get(moduleName());
+            }
         }
 
         static class ImportGlobalSym extends Sym {
-            final String moduleName;
             final ImportDescriptor importDescriptor;
 
             ImportGlobalSym(String moduleName, ImportDescriptor importDescriptor) {
-                this.moduleName = moduleName;
+                super(moduleName);
                 this.importDescriptor = importDescriptor;
             }
 
@@ -473,11 +508,10 @@ public class Linker {
         }
 
         static class ExportGlobalSym extends Sym {
-            final String moduleName;
             final String globalName;
 
             ExportGlobalSym(String moduleName, String globalName) {
-                this.moduleName = moduleName;
+                super(moduleName);
                 this.globalName = globalName;
             }
 
@@ -502,11 +536,10 @@ public class Linker {
         }
 
         static class InitializeGlobalSym extends Sym {
-            final String moduleName;
             final int globalIndex;
 
             InitializeGlobalSym(String moduleName, int globalIndex) {
-                this.moduleName = moduleName;
+                super(moduleName);
                 this.globalIndex = globalIndex;
             }
 
@@ -531,13 +564,12 @@ public class Linker {
         }
 
         static class ImportFunctionSym extends Sym {
-            final String moduleName;
             final ImportDescriptor importDescriptor;
             // Disambiguates between multiple imports of the same module and name.
             final int destinationIndex;
 
             ImportFunctionSym(String moduleName, ImportDescriptor importDescriptor, int destinationIndex) {
-                this.moduleName = Objects.requireNonNull(moduleName);
+                super(Objects.requireNonNull(moduleName));
                 this.importDescriptor = Objects.requireNonNull(importDescriptor);
                 this.destinationIndex = destinationIndex;
             }
@@ -556,9 +588,7 @@ public class Linker {
                     return false;
                 }
                 final ImportFunctionSym that = (ImportFunctionSym) o;
-                return destinationIndex == that.destinationIndex &&
-                                moduleName.equals(that.moduleName) &&
-                                importDescriptor.equals(that.importDescriptor);
+                return destinationIndex == that.destinationIndex && moduleName.equals(that.moduleName) && importDescriptor.equals(that.importDescriptor);
             }
 
             @Override
@@ -568,11 +598,10 @@ public class Linker {
         }
 
         static class ExportFunctionSym extends Sym {
-            final String moduleName;
             final String functionName;
 
             ExportFunctionSym(String moduleName, String functionName) {
-                this.moduleName = moduleName;
+                super(moduleName);
                 this.functionName = functionName;
             }
 
@@ -597,12 +626,11 @@ public class Linker {
         }
 
         static class CallsiteSym extends Sym {
-            final String moduleName;
             final int instructionOffset;
             final int controlTableOffset;
 
             CallsiteSym(String moduleName, int instructionOffset, int controlTableOffset) {
-                this.moduleName = moduleName;
+                super(moduleName);
                 this.instructionOffset = instructionOffset;
                 this.controlTableOffset = controlTableOffset;
             }
@@ -628,11 +656,10 @@ public class Linker {
         }
 
         static class CodeEntrySym extends Sym {
-            final String moduleName;
             final int functionIndex;
 
             CodeEntrySym(String moduleName, int functionIndex) {
-                this.moduleName = moduleName;
+                super(moduleName);
                 this.functionIndex = functionIndex;
             }
 
@@ -657,11 +684,10 @@ public class Linker {
         }
 
         static class ImportMemorySym extends Sym {
-            final String moduleName;
             final ImportDescriptor importDescriptor;
 
             ImportMemorySym(String moduleName, ImportDescriptor importDescriptor) {
-                this.moduleName = moduleName;
+                super(moduleName);
                 this.importDescriptor = importDescriptor;
             }
 
@@ -686,11 +712,10 @@ public class Linker {
         }
 
         static class ExportMemorySym extends Sym {
-            final String moduleName;
             final String memoryName;
 
             ExportMemorySym(String moduleName, String memoryName) {
-                this.moduleName = moduleName;
+                super(moduleName);
                 this.memoryName = memoryName;
             }
 
@@ -715,11 +740,10 @@ public class Linker {
         }
 
         static class DataSym extends Sym {
-            final String moduleName;
             final int dataSegmentId;
 
             DataSym(String moduleName, int dataSegmentId) {
-                this.moduleName = moduleName;
+                super(moduleName);
                 this.dataSegmentId = dataSegmentId;
             }
 
@@ -744,11 +768,10 @@ public class Linker {
         }
 
         static class ImportTableSym extends Sym {
-            final String moduleName;
             final ImportDescriptor importDescriptor;
 
             ImportTableSym(String moduleName, ImportDescriptor importDescriptor) {
-                this.moduleName = moduleName;
+                super(moduleName);
                 this.importDescriptor = importDescriptor;
             }
 
@@ -773,11 +796,10 @@ public class Linker {
         }
 
         static class ExportTableSym extends Sym {
-            final String moduleName;
             final String tableName;
 
             ExportTableSym(String moduleName, String tableName) {
-                this.moduleName = moduleName;
+                super(moduleName);
                 this.tableName = tableName;
             }
 
@@ -802,11 +824,10 @@ public class Linker {
         }
 
         static class ElemSym extends Sym {
-            final String moduleName;
             final int elemSegmentId;
 
             ElemSym(String moduleName, int dataSegmentId) {
-                this.moduleName = moduleName;
+                super(moduleName);
                 this.elemSegmentId = dataSegmentId;
             }
 
@@ -846,13 +867,33 @@ public class Linker {
                 return "Resolver(" + element + ")";
             }
 
-            public void runActionOnce() {
+            public void runActionOnce(WasmContext context, ArrayList<Throwable> failures) {
                 if (this.action != null) {
+                    WasmInstance instance = element.instance(context);
                     try {
-                        this.action.run();
+                        // If the instance exists and it is not failed, check the dependencies.
+                        if (instance != null && !instance.isLinkFailed()) {
+                            // Fail the linking of the current module if any of its dependencies are
+                            // failed.
+                            for (Sym dependency : dependencies) {
+                                WasmInstance dependencyInstance = dependency.instance(context);
+                                if (dependencyInstance != null && dependencyInstance.isLinkFailed()) {
+                                    instance.setLinkFailed();
+                                    break;
+                                }
+                            }
+                        }
+                        // If the instance does not exist or if it is not failed, run the action.
+                        // Note: the check in the action will fail if the instance does not exist.
+                        if (instance == null || !instance.isLinkFailed()) {
+                            this.action.run();
+                        }
+                    } catch (Throwable e) {
+                        if (instance != null) {
+                            instance.setLinkFailed();
+                        }
+                        failures.add(e);
                     } finally {
-                        // TODO: do something with remaining actions so that instances do not stay
-                        // in a half-initialized state.
                         this.action = null;
                     }
                 }
@@ -867,10 +908,6 @@ public class Linker {
 
         void resolveLater(Sym element, Sym[] dependencies, Runnable action) {
             resolutions.put(element, new Resolver(element, dependencies, action));
-        }
-
-        void clear() {
-            resolutions.clear();
         }
 
         private static String renderCycle(List<Sym> stack) {
