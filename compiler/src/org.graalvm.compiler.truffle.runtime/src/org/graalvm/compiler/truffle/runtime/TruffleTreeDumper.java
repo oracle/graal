@@ -85,8 +85,6 @@ public final class TruffleTreeDumper {
 
     private static void dumpInlinedASTs(TruffleDebugContext debug, Set<CompilableTruffleAST> inlinedTargets, TruffleNodeSources nodeSources) throws IOException {
         final GraphOutput<AST, ?> astOutput = debug.buildOutput(GraphOutput.newBuilder(AST_DUMP_STRUCTURE).blocks(AST_DUMP_STRUCTURE));
-        // TODO: This is neceseryt because the "Graal Graphs" group is not closed. Should be fixed.
-        astOutput.endGroup();
         astOutput.beginGroup(null, "Inlined", "Inlined", null, 0, debug.getVersionProperties());
         for (CompilableTruffleAST target : inlinedTargets) {
             AST ast = new AST((RootCallTarget) target, nodeSources);

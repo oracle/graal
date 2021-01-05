@@ -693,8 +693,15 @@ public abstract class GraalTruffleRuntime implements TruffleRuntime, TruffleComp
                             // Compile the method (puts dumps in "Graal Graphs" group if dumping is
                             // enabled).
                             compiler.doCompile(debug, compilation, optionsMap, inlining, task, listeners.isEmpty() ? null : listeners);
-                            maybeDumpInlinedASTs(debug, callTarget, inlining);
+                            // maybeDumpInlinedASTs(debug, callTarget, inlining);
+                            // ^ Placing this call here (where it should logically go) causes the
+                            // dumps to be placed inside the "Graal Graphs" group since that
+                            // group is never closed.
                         }
+                        // ^ The implicit "close" call here closes the "Graal Graphs" group instead
+                        // of the "Truffle::methodName" group so the following call, wrongly places,
+                        // does the right thing.
+                        maybeDumpInlinedASTs(debug, callTarget, inlining);
                     } finally {
                         if (debug != null) {
                             /*
