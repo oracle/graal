@@ -247,76 +247,76 @@ public final class EspressoOptions {
     public static final OptionKey<Boolean> UseTruffleNFIIsolatedNamespace = new OptionKey<>(!RUNNING_ON_SVM);
 
     private static final OptionType<com.oracle.truffle.espresso.jdwp.api.JDWPOptions> JDWP_OPTIONS_OPTION_TYPE = new OptionType<>("JDWPOptions",
-        new Function<String, JDWPOptions>() {
+                    new Function<String, JDWPOptions>() {
 
-            private boolean yesOrNo(String key, String value) {
-                if (!"y".equals(value) && !"n".equals(value)) {
-                    throw new IllegalArgumentException("Invalid JDWP option value: " + key + " can be only 'y' or 'n'.");
-                }
-                return "y".equals(value);
-            }
-
-            @Override
-            public JDWPOptions apply(String s) {
-                final String[] options = s.split(",");
-                String transport = null;
-                String host = null;
-                String port = null;
-                String logLevel = null;
-                boolean server = false;
-                boolean suspend = true;
-
-                for (String keyValue : options) {
-                    String[] parts = keyValue.split("=");
-                    if (parts.length != 2) {
-                        throw new IllegalArgumentException("JDWP options must be a comma separated list of key=value pairs.");
-                    }
-                    String key = parts[0];
-                    String value = parts[1];
-                    switch (key) {
-                        case "address":
-                            parts = value.split(":");
-                            String inputHost = null;
-                            String inputPort;
-                            if (parts.length == 1) {
-                                inputPort = parts[0];
-                            } else if (parts.length == 2) {
-                                inputHost = parts[0];
-                                inputPort = parts[1];
-                            } else {
-                                throw new IllegalArgumentException("Invalid JDWP option, address: " + value + ". Not a 'host:port' pair.");
+                        private boolean yesOrNo(String key, String value) {
+                            if (!"y".equals(value) && !"n".equals(value)) {
+                                throw new IllegalArgumentException("Invalid JDWP option value: " + key + " can be only 'y' or 'n'.");
                             }
-                            long realValue;
-                            try {
-                                realValue = Long.valueOf(inputPort);
-                                if (realValue < 0 || realValue > 65535) {
-                                    throw new IllegalArgumentException("Invalid JDWP option, address: " + value + ". Must be in the 0 - 65535 range.");
+                            return "y".equals(value);
+                        }
+
+                        @Override
+                        public JDWPOptions apply(String s) {
+                            final String[] options = s.split(",");
+                            String transport = null;
+                            String host = null;
+                            String port = null;
+                            String logLevel = null;
+                            boolean server = false;
+                            boolean suspend = true;
+
+                            for (String keyValue : options) {
+                                String[] parts = keyValue.split("=");
+                                if (parts.length != 2) {
+                                    throw new IllegalArgumentException("JDWP options must be a comma separated list of key=value pairs.");
                                 }
-                            } catch (NumberFormatException ex) {
-                                throw new IllegalArgumentException("Invalid JDWP option, address is not a number. Must be a number in the 0 - 65535 range.");
+                                String key = parts[0];
+                                String value = parts[1];
+                                switch (key) {
+                                    case "address":
+                                        parts = value.split(":");
+                                        String inputHost = null;
+                                        String inputPort;
+                                        if (parts.length == 1) {
+                                            inputPort = parts[0];
+                                        } else if (parts.length == 2) {
+                                            inputHost = parts[0];
+                                            inputPort = parts[1];
+                                        } else {
+                                            throw new IllegalArgumentException("Invalid JDWP option, address: " + value + ". Not a 'host:port' pair.");
+                                        }
+                                        long realValue;
+                                        try {
+                                            realValue = Long.valueOf(inputPort);
+                                            if (realValue < 0 || realValue > 65535) {
+                                                throw new IllegalArgumentException("Invalid JDWP option, address: " + value + ". Must be in the 0 - 65535 range.");
+                                            }
+                                        } catch (NumberFormatException ex) {
+                                            throw new IllegalArgumentException("Invalid JDWP option, address is not a number. Must be a number in the 0 - 65535 range.");
+                                        }
+                                        host = inputHost;
+                                        port = inputPort;
+                                        break;
+                                    case "transport":
+                                        transport = value;
+                                        break;
+                                    case "server":
+                                        server = yesOrNo(key, value);
+                                        break;
+                                    case "suspend":
+                                        suspend = yesOrNo(key, value);
+                                        break;
+                                    case "logLevel":
+                                        logLevel = value;
+                                        break;
+                                    default:
+                                        throw new IllegalArgumentException("Invalid JDWP option: " + key + ". Supported options: 'transport', 'address', 'server' and 'suspend'.");
+                                }
                             }
-                            host = inputHost;
-                            port = inputPort;
-                            break;
-                        case "transport":
-                            transport = value;
-                            break;
-                        case "server":
-                            server = yesOrNo(key, value);
-                            break;
-                        case "suspend":
-                            suspend = yesOrNo(key, value);
-                            break;
-                        case "logLevel":
-                            logLevel = value;
-                            break;
-                        default:
-                            throw new IllegalArgumentException("Invalid JDWP option: " + key + ". Supported options: 'transport', 'address', 'server' and 'suspend'.");
-                    }
-                }
-                return new JDWPOptions(transport, host, port, server, suspend, logLevel);
-            }
-        });
+                            return new JDWPOptions(transport, host, port, server, suspend, logLevel);
+                        }
+                    });
 
     @Option(help = "JDWP agent Options. e.g. -agentlib:jdwp=transport=dt_socket,server=y,address=localhost:8000,suspend=y", //
                     category = OptionCategory.EXPERT, stability = OptionStability.STABLE) //
