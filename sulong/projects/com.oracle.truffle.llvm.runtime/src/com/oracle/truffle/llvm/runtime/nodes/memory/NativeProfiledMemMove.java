@@ -35,8 +35,10 @@ import com.oracle.truffle.api.dsl.Cached;
 import com.oracle.truffle.api.dsl.CachedLanguage;
 import com.oracle.truffle.api.dsl.GenerateUncached;
 import com.oracle.truffle.api.dsl.Specialization;
+import com.oracle.truffle.api.library.CachedLibrary;
 import com.oracle.truffle.api.profiles.ConditionProfile;
 import com.oracle.truffle.llvm.runtime.LLVMLanguage;
+import com.oracle.truffle.llvm.runtime.library.internal.LLVMCopyTargetLibrary;
 import com.oracle.truffle.llvm.runtime.memory.LLVMMemMoveNode;
 import com.oracle.truffle.llvm.runtime.memory.LLVMMemory;
 import com.oracle.truffle.llvm.runtime.nodes.api.LLVMNode;
@@ -70,16 +72,24 @@ public abstract class NativeProfiledMemMove extends LLVMNode implements LLVMMemM
     @Specialization(limit = "8", guards = {"helper.guard(target, source)", "target.getObject() != source.getObject()"})
     protected void doManagedNonAliasing(LLVMManagedPointer target, LLVMManagedPointer source, long length,
                     @Cached("create(target, source)") ManagedMemMoveHelperNode helper,
-                    @Cached UnitSizeNode unitSizeNode) {
-        copyForward(target, source, length, helper, unitSizeNode);
+                    @Cached UnitSizeNode unitSizeNode,
+                    @CachedLibrary("target.getObject()") LLVMCopyTargetLibrary copyTargetLib) {
+        if (copyTargetLib.canCopyFrom(target.getObject(), source.getObject())) {
+            copyTargetLib.copyFrom(target.getObject(), source.getObject());
+        } else {
+            copyForward(target, source, length, helper, unitSizeNode);
+        }
     }
 
     @Specialization(limit = "8", guards = {"helper.guard(target, source)", "target.getObject() == source.getObject()"})
     protected void doManagedAliasing(LLVMManagedPointer target, LLVMManagedPointer source, long length,
                     @Cached("create(target, source)") ManagedMemMoveHelperNode helper,
                     @Cached UnitSizeNode unitSizeNode,
-                    @Cached("createCountingProfile()") ConditionProfile canCopyForward) {
-        if (canCopyForward.profile(Long.compareUnsigned(target.getOffset() - source.getOffset(), length) >= 0)) {
+                    @Cached("createCountingProfile()") ConditionProfile canCopyForward,
+                    @CachedLibrary("target.getObject()") LLVMCopyTargetLibrary copyTargetLib) {
+        if (copyTargetLib.canCopyFrom(target.getObject(), source.getObject())) {
+            copyTargetLib.copyFrom(target.getObject(), source.getObject());
+        } else if (canCopyForward.profile(Long.compareUnsigned(target.getOffset() - source.getOffset(), length) >= 0)) {
             copyForward(target, source, length, helper, unitSizeNode);
         } else {
             copyBackward(target, source, length, helper, unitSizeNode);
@@ -89,8 +99,13 @@ public abstract class NativeProfiledMemMove extends LLVMNode implements LLVMMemM
     @Specialization(limit = "4", guards = "helper.guard(target, source)")
     protected void doManagedNative(LLVMManagedPointer target, LLVMNativePointer source, long length,
                     @Cached("create(target, source)") ManagedMemMoveHelperNode helper,
-                    @Cached UnitSizeNode unitSizeNode) {
-        copyForward(target, source, length, helper, unitSizeNode);
+                    @Cached UnitSizeNode unitSizeNode,
+                    @CachedLibrary("target.getObject()") LLVMCopyTargetLibrary copyTargetLib) {
+        if (copyTargetLib.canCopyFrom(target.getObject(), source)) {
+            copyTargetLib.copyFrom(target.getObject(), source);
+        } else {
+            copyForward(target, source, length, helper, unitSizeNode);
+        }
     }
 
     @Specialization(limit = "4", guards = "helper.guard(target, source)")
@@ -109,9 +124,12 @@ public abstract class NativeProfiledMemMove extends LLVMNode implements LLVMMemM
     protected void doManagedSlowPath(LLVMPointer target, LLVMPointer source, long length) {
         ManagedMemMoveHelperNode helper = ManagedMemMoveHelperNode.createSlowPath(target, source);
         UnitSizeNode unitSizeNode = UnitSizeNodeGen.create();
+        LLVMCopyTargetLibrary copyTargetLib = LLVMCopyTargetLibrary.getFactory().getUncached();
         if (LLVMManagedPointer.isInstance(target) && LLVMManagedPointer.isInstance(source)) {
             // potentially aliasing
-            doManagedAliasing(LLVMManagedPointer.cast(target), LLVMManagedPointer.cast(source), length, helper, unitSizeNode, ConditionProfile.getUncached());
+            doManagedAliasing(LLVMManagedPointer.cast(target), LLVMManagedPointer.cast(source), length, helper, unitSizeNode, ConditionProfile.getUncached(), copyTargetLib);
+        } else if (LLVMManagedPointer.isInstance(target) && copyTargetLib.canCopyFrom(LLVMManagedPointer.cast(target).getObject(), source)) {
+            copyTargetLib.copyFrom(LLVMManagedPointer.cast(target), source);
         } else {
             copyForward(target, source, length, helper, unitSizeNode);
         }
