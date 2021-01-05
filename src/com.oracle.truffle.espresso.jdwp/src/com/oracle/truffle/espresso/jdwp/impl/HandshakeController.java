@@ -23,6 +23,7 @@
 package com.oracle.truffle.espresso.jdwp.impl;
 
 import java.io.IOException;
+import java.net.InetAddress;
 import java.net.InetSocketAddress;
 import java.net.ServerSocket;
 import java.net.Socket;
@@ -39,11 +40,23 @@ public final class HandshakeController {
      * @param port the listening port that the debugger should attach to
      * @throws IOException
      */
-    public static SocketConnection createSocketConnection(int port, Collection<Thread> activeThreads) throws IOException {
+    public static SocketConnection createSocketConnection(String host, int port, Collection<Thread> activeThreads) throws IOException {
         ServerSocket serverSocket = new ServerSocket();
         serverSocket.setSoTimeout(0); // no timeout
         serverSocket.setReuseAddress(true);
-        serverSocket.bind(new InetSocketAddress(port));
+        if (host == null) {
+            // only allow local host to bind if nothing specified
+            serverSocket.bind(new InetSocketAddress("localhost", port));
+        } else if ("*".equals(host)) {
+            // allow any host to bind
+            serverSocket.bind(new InetSocketAddress((InetAddress) null, port));
+        } else {
+            // allow specific host to bind
+            serverSocket.bind(new InetSocketAddress(host, port));
+        }
+        // print to console that we're listening
+        String address = host != null ? host + ":" + port : "" + port;
+        System.out.println("Listening for transport dt_socket at address: " + address);
         // block until a debugger has accepted the socket
         Socket connectionSocket = serverSocket.accept();
 
