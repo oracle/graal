@@ -3,3 +3,38 @@
 Everything is OK!
 >[0] java -ea -cp ${TMP_DIR} EmbeddingDoubled
 Everything is OK!
+> if [ -d $JAVA_HOME/jre ]
+>   export INSIGHT_LIBS=$JAVA_HOME/jre
+> else
+>   export INSIGHT_LIBS=$JAVA_HOME
+> fi
+>[0] mkdir -p ${TMP_DIR}/instrument
+>[0] javac -cp $INSIGHT_LIBS/lib/truffle/truffle-api.jar:$INSIGHT_LIBS/lib/truffle/truffle-dsl-processor.jar:$INSIGHT_LIBS/tools/insight/insight.jar -d ${TMP_DIR}/instrument Emb*Instrument.java
+>[1] java -ea -Dtruffle.class.path.append=${TMP_DIR}/instrument -cp ${TMP_DIR} EmbeddingRegisterSymbols primitives
+
+Exception in thread "main" Stop: 0
+.*at.*js.*insight.js.*
+.*at.*js.*fib.*Unnamed.*
+.*at.*js.*fib.*Unnamed.*
+.*at.*js.*fib.*Unnamed.*
+.*at.*js.*fib.*Unnamed.*
+.*at.*js.*fib.*Unnamed.*
+.*at.*js.*fib.*Unnamed.*
+.*at.*js.*fib.*Unnamed.*
+.*at.*org.graalvm.polyglot.Value.execute.*
+.*at.*EmbeddingRegisterSymbols.exportAndTest.*
+.*at.*EmbeddingRegisterSymbols.main.*
+>[1] java -ea -Dtruffle.class.path.append=${TMP_DIR}/instrument -cp ${TMP_DIR} EmbeddingRegisterSymbols object
+
+Exception in thread "main" Stop: 0
+.*at.*js.*insight.js.*
+.*at.*js.*fib.*Unnamed.*
+.*at.*js.*fib.*Unnamed.*
+.*at.*js.*fib.*Unnamed.*
+.*at.*js.*fib.*Unnamed.*
+.*at.*js.*fib.*Unnamed.*
+.*at.*js.*fib.*Unnamed.*
+.*at.*js.*fib.*Unnamed.*
+.*at.*org.graalvm.polyglot.Value.execute.*
+.*at.*EmbeddingRegisterSymbols.exportAndTest.*
+.*at.*EmbeddingRegisterSymbols.main.*
