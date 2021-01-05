@@ -47,12 +47,13 @@ public final class DynamicPiNode extends PiNode {
     public static final NodeClass<DynamicPiNode> TYPE = NodeClass.create(DynamicPiNode.class);
     @Input ValueNode typeMirror;
     private final boolean exact;
-    private boolean allowsNull;
+    private final boolean allowsNull;
 
-    protected DynamicPiNode(ValueNode object, GuardingNode guard, ValueNode typeMirror, boolean exact) {
+    protected DynamicPiNode(ValueNode object, GuardingNode guard, ValueNode typeMirror, boolean allowsNull, boolean exact) {
         super(TYPE, object, StampFactory.object(), guard);
         this.typeMirror = typeMirror;
         this.exact = exact;
+        this.allowsNull = allowsNull;
     }
 
     public static ValueNode create(Assumptions assumptions, ConstantReflectionProvider constantReflection, ValueNode object, GuardingNode guard, ValueNode typeMirror, boolean allowsNull,
@@ -61,7 +62,7 @@ public final class DynamicPiNode extends PiNode {
         if (synonym != null) {
             return synonym;
         }
-        return new DynamicPiNode(object, guard, typeMirror, exact);
+        return new DynamicPiNode(object, guard, typeMirror, allowsNull, exact);
     }
 
     public static ValueNode create(Assumptions assumptions, ConstantReflectionProvider constantReflection, ValueNode object, GuardingNode guard, ValueNode typeMirror) {
