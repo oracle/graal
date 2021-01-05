@@ -129,7 +129,8 @@ public final class CallTree extends Graph {
     }
 
     private boolean loggingInlinedTargets() {
-        return request.debug.isDumpEnabled(DebugContext.BASIC_LEVEL) || request.options.get(PolyglotCompilerOptions.CompilationStatistics) || request.options.get(PolyglotCompilerOptions.CompilationStatisticDetails);
+        return request.debug.isDumpEnabled(DebugContext.BASIC_LEVEL) || request.options.get(PolyglotCompilerOptions.CompilationStatistics) ||
+                        request.options.get(PolyglotCompilerOptions.CompilationStatisticDetails);
     }
 
     private boolean tracingCallCounts() {
