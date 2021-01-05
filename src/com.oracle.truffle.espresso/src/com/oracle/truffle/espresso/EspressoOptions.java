@@ -247,17 +247,11 @@ public final class EspressoOptions {
     public static final OptionKey<Boolean> UseTruffleNFIIsolatedNamespace = new OptionKey<>(!RUNNING_ON_SVM);
 
     private static final OptionType<com.oracle.truffle.espresso.jdwp.api.JDWPOptions> JDWP_OPTIONS_OPTION_TYPE = new OptionType<>("JDWPOptions",
-                    jdwpOptionFunction("-Xrunjwdp:"));
-
-    private static final OptionType<com.oracle.truffle.espresso.jdwp.api.JDWPOptions> JDWP_OPTIONS_OPTION_AGENT_TYPE = new OptionType<>("JDWPOptions",
-                    jdwpOptionFunction("-agentlib:jdwp"));
-
-    private static Function<String, JDWPOptions> jdwpOptionFunction(String jdwpType) {
-        return new Function<String, JDWPOptions>() {
+        new Function<String, JDWPOptions>() {
 
             private boolean yesOrNo(String key, String value) {
                 if (!"y".equals(value) && !"n".equals(value)) {
-                    throw new IllegalArgumentException("Invalid option value: " + jdwpType + " " + key + " can be only 'y' or 'n'.");
+                    throw new IllegalArgumentException("Invalid JDWP option value: " + key + " can be only 'y' or 'n'.");
                 }
                 return "y".equals(value);
             }
@@ -275,7 +269,7 @@ public final class EspressoOptions {
                 for (String keyValue : options) {
                     String[] parts = keyValue.split("=");
                     if (parts.length != 2) {
-                        throw new IllegalArgumentException(jdwpType + " options must be a comma separated list of key=value pairs.");
+                        throw new IllegalArgumentException("JDWP options must be a comma separated list of key=value pairs.");
                     }
                     String key = parts[0];
                     String value = parts[1];
@@ -290,16 +284,16 @@ public final class EspressoOptions {
                                 inputHost = parts[0];
                                 inputPort = parts[1];
                             } else {
-                                throw new IllegalArgumentException("Invalid option for " + jdwpType + ", address: " + value + ". Not a 'host:port' pair.");
+                                throw new IllegalArgumentException("Invalid JDWP option, address: " + value + ". Not a 'host:port' pair.");
                             }
                             long realValue;
                             try {
                                 realValue = Long.valueOf(inputPort);
                                 if (realValue < 0 || realValue > 65535) {
-                                    throw new IllegalArgumentException("Invalid option for " + jdwpType + ", address: " + value + ". Must be in the 0 - 65535 range.");
+                                    throw new IllegalArgumentException("Invalid JDWP option, address: " + value + ". Must be in the 0 - 65535 range.");
                                 }
                             } catch (NumberFormatException ex) {
-                                throw new IllegalArgumentException("Invalid option for " + jdwpType + ", address is not a number. Must be a number in the 0 - 65535 range.");
+                                throw new IllegalArgumentException("Invalid JDWP option, address is not a number. Must be a number in the 0 - 65535 range.");
                             }
                             host = inputHost;
                             port = inputPort;
@@ -317,21 +311,16 @@ public final class EspressoOptions {
                             logLevel = value;
                             break;
                         default:
-                            throw new IllegalArgumentException("Invalid option for " + jdwpType + " " + key + ". Supported options: 'transport', 'address', 'server' and 'suspend'.");
+                            throw new IllegalArgumentException("Invalid JDWP option: " + key + ". Supported options: 'transport', 'address', 'server' and 'suspend'.");
                     }
                 }
                 return new JDWPOptions(transport, host, port, server, suspend, logLevel);
             }
-        };
-    }
-
-    @Option(help = "JDWP Options. e.g. -Xdebug -Xrunjdwp:transport=dt_socket,server=y,address=8000,suspend=y", //
-                    category = OptionCategory.EXPERT, stability = OptionStability.STABLE) //
-    public static final OptionKey<JDWPOptions> JDWPRunOptions = new OptionKey<>(null, JDWP_OPTIONS_OPTION_TYPE);
+        });
 
     @Option(help = "JDWP agent Options. e.g. -agentlib:jdwp=transport=dt_socket,server=y,address=localhost:8000,suspend=y", //
                     category = OptionCategory.EXPERT, stability = OptionStability.STABLE) //
-    public static final OptionKey<JDWPOptions> JDWPAgentOptions = new OptionKey<>(null, JDWP_OPTIONS_OPTION_AGENT_TYPE);
+    public static final OptionKey<JDWPOptions> JDWPOptions = new OptionKey<>(null, JDWP_OPTIONS_OPTION_TYPE);
 
     @Option(help = "Enable experimental java.lang.management APIs. Incur a bookkeeping overhead.", //
                     category = OptionCategory.EXPERT, stability = OptionStability.EXPERIMENTAL) //

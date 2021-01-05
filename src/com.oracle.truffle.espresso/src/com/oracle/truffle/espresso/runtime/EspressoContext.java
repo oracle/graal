@@ -36,7 +36,6 @@ import java.util.stream.Collectors;
 
 import com.oracle.truffle.api.interop.TruffleObject;
 import com.oracle.truffle.espresso.EspressoBindings;
-import com.oracle.truffle.espresso.jdwp.api.JDWPOptions;
 import org.graalvm.polyglot.Engine;
 
 import com.oracle.truffle.api.Assumption;
@@ -210,8 +209,7 @@ public final class EspressoContext {
         this.timers = TimerCollection.create(env.getOptions().get(EspressoOptions.EnableTimers));
 
         // null if not specified
-        JDWPOptions jdwpOptions = env.getOptions().get(EspressoOptions.JDWPAgentOptions);
-        this.JDWPOptions = jdwpOptions != null ? jdwpOptions : env.getOptions().get(EspressoOptions.JDWPRunOptions);
+        this.JDWPOptions = env.getOptions().get(EspressoOptions.JDWPOptions);
 
         this.InlineFieldAccessors = JDWPOptions != null ? false : env.getOptions().get(EspressoOptions.InlineFieldAccessors);
         this.InlineMethodHandle = JDWPOptions != null ? false : env.getOptions().get(EspressoOptions.InlineMethodHandle);
