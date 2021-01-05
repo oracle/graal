@@ -687,21 +687,17 @@ public abstract class GraalTruffleRuntime implements TruffleRuntime, TruffleComp
                     try (AutoCloseable s = debug.scope("Truffle", new TruffleDebugJavaMethod(callTarget))) {
                         // Open the "Truffle::methodName" dump group if dumping is enabled.
                         try (TruffleOutputGroup o = !isPrintGraphEnabled() ? null
-                                        : TruffleOutputGroup.open(debug, callTarget, Collections.singletonMap(GROUP_ID, compilation))) {
+                                        : TruffleOutputGroup.openCallTarget(debug, callTarget, Collections.singletonMap(GROUP_ID, compilation))) {
                             // Create "AST" and "Call Tree" groups if dumping is enabled.
                             maybeDumpTruffleTree(debug, callTarget);
                             // Compile the method (puts dumps in "Graal Graphs" group if dumping is
                             // enabled).
-                            compiler.doCompile(debug, compilation, optionsMap, inlining, task, listeners.isEmpty() ? null : listeners);
-                            // maybeDumpInlinedASTs(debug, callTarget, inlining);
-                            // ^ Placing this call here (where it should logically go) causes the
-                            // dumps to be placed inside the "Graal Graphs" group since that
-                            // group is never closed.
+                            try (TruffleOutputGroup o2 = !isPrintGraphEnabled() ? null
+                                    : TruffleOutputGroup.openGraalGraphs(debug)) {
+                                compiler.doCompile(debug, compilation, optionsMap, inlining, task, listeners.isEmpty() ? null : listeners);
+                            }
+                            maybeDumpInlinedASTs(debug, callTarget, inlining);
                         }
-                        // ^ The implicit "close" call here closes the "Graal Graphs" group instead
-                        // of the "Truffle::methodName" group so the following call, wrongly places,
-                        // does the right thing.
-                        maybeDumpInlinedASTs(debug, callTarget, inlining);
                     } finally {
                         if (debug != null) {
                             /*
