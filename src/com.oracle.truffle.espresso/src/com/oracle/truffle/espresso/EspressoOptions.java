@@ -247,10 +247,10 @@ public final class EspressoOptions {
     public static final OptionKey<Boolean> UseTruffleNFIIsolatedNamespace = new OptionKey<>(!RUNNING_ON_SVM);
 
     private static final OptionType<com.oracle.truffle.espresso.jdwp.api.JDWPOptions> JDWP_OPTIONS_OPTION_TYPE = new OptionType<>("JDWPOptions",
-            jdwpOptionFunction("-Xrunjwdp:"));
+                    jdwpOptionFunction("-Xrunjwdp:"));
 
     private static final OptionType<com.oracle.truffle.espresso.jdwp.api.JDWPOptions> JDWP_OPTIONS_OPTION_AGENT_TYPE = new OptionType<>("JDWPOptions",
-            jdwpOptionFunction("-agentlib:jdwp"));
+                    jdwpOptionFunction("-agentlib:jdwp"));
 
     private static Function<String, JDWPOptions> jdwpOptionFunction(String jdwpType) {
         return new Function<String, JDWPOptions>() {
