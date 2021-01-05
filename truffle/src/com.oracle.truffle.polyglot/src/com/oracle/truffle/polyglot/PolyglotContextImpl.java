@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2017, 2020, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2017, 2021, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -437,9 +437,10 @@ final class PolyglotContextImpl extends AbstractContextImpl implements com.oracl
 
     static PolyglotContextImpl currentNotEntered() {
         SingleContextState singleContext = singleContextState;
+        PolyglotContextImpl context = singleContext.singleContext;
         if (singleContext.singleContextAssumption.isValid()) {
             if (singleContext.contextThreadLocal.isSet()) {
-                return singleContext.singleContext;
+                return context;
             } else {
                 CompilerDirectives.transferToInterpreterAndInvalidate();
                 return null;
@@ -453,10 +454,8 @@ final class PolyglotContextImpl extends AbstractContextImpl implements com.oracl
         assert enteredInEngine != null;
         CompilerAsserts.partialEvaluationConstant(enteredInEngine);
         SingleContextState state = singleContextState;
-        Object context;
-        if (state.singleContextAssumption.isValid()) {
-            context = state.singleContext;
-        } else {
+        Object context = state.singleContext;
+        if (!state.singleContextAssumption.isValid()) {
             context = state.contextThreadLocal.getEntered();
         }
         if (CompilerDirectives.inCompiledCode()) {
