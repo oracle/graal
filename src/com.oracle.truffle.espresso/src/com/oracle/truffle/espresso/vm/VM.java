@@ -735,7 +735,7 @@ public final class VM extends NativeEnv implements ContextAccess {
     @SuppressWarnings("unused")
     @VmImpl
     @TruffleBoundary
-    public int AttachCurrentThread(@Pointer TruffleObject penvPtr, @Pointer TruffleObject argsPtr, @InjectMeta Meta meta) {
+    public int AttachCurrentThread(@Pointer TruffleObject penvPtr, @Pointer TruffleObject argsPtr) {
         LongBuffer buf = directByteBuffer(argsPtr, 8, JavaKind.Long).asLongBuffer();
         int version = (int) buf.get(0);
         long namePtr = buf.get(1);
@@ -746,14 +746,52 @@ public final class VM extends NativeEnv implements ContextAccess {
             group = getHandles().get(Math.toIntExact(groupHandle));
             // TODO decode name string
         }
-        meta.getContext().createThread(Thread.currentThread(), group, name);
+        getContext().createThread(Thread.currentThread(), group, name);
         return JNI_OK;
     }
 
     @VmImpl
     @TruffleBoundary
-    public int DetachCurrentThread(@InjectMeta Meta meta) {
-        meta.getContext().disposeThread(Thread.currentThread());
+    public int DetachCurrentThread() {
+        EspressoContext context = getContext();
+        StaticObject currentThread = context.getCurrentThread();
+        if (currentThread == null) {
+            return JNI_OK;
+        }
+        // HotSpot will wait forever if the current VM this thread was attached to has exited
+        // Should we reproduce this behaviour?
+
+        Method lastJavaMethod = Truffle.getRuntime().iterateFrames(
+                new FrameInstanceVisitor<Method>() {
+                    @Override
+                    public Method visitFrame(FrameInstance frameInstance) {
+                        Method method = getMethodFromFrame(frameInstance);
+                        if (method != null && method.getContext() == context) {
+                            return method;
+                        }
+                        return null;
+                    }
+                });
+        if (lastJavaMethod != null) {
+            // this thread is executing
+            return JNI_ERR;
+        }
+        StaticObject pendingException = jniEnv.getPendingException();
+        jniEnv.clearPendingException();
+
+        Meta meta = context.getMeta();
+        if (pendingException != null) {
+            try {
+                meta.java_lang_Thread_dispatchUncaughtException.invokeDirect(currentThread, pendingException);
+            } catch (EspressoException e) {
+                String exception = e.getExceptionObject().getKlass().getExternalName();
+                String threadName = meta.toHostString((StaticObject) meta.java_lang_Thread_name.get(currentThread));
+                context.getLogger().warning(String.format("Exception: %s thrown from the UncaughtExceptionHandler in thread \"%s\"", exception, threadName));
+            }
+        }
+
+        Target_java_lang_Thread.terminate(currentThread, meta);
+
         return JNI_OK;
     }
 
@@ -1319,6 +1357,7 @@ public final class VM extends NativeEnv implements ContextAccess {
 
     @TruffleBoundary
     public static Method getMethodFromFrame(FrameInstance frameInstance) {
+        // TODO this should take a context as argument and only return the method if the context matches
         EspressoRootNode root = getEspressoRootFromFrame(frameInstance);
         if (root != null) {
             return root.getMethod();

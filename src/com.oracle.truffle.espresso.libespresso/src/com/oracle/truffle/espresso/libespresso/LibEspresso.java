@@ -38,10 +38,13 @@ import com.oracle.truffle.espresso.libespresso.jniapi.JNIJavaVMInitArgs;
 import com.oracle.truffle.espresso.libespresso.jniapi.JNIJavaVMPointer;
 import com.oracle.truffle.espresso.libespresso.jniapi.JNIVersion;
 
+import java.io.PrintStream;
+
 public class LibEspresso {
 
     public static final CEntryPointLiteral<CFunctionPointer> CREATE_JAVA_VM_SYMBOL = CEntryPointLiteral.create(LibEspresso.class, "Espresso_CreateJavaVM", JNIJavaVMPointer.class,
                     JNIEnvironmentPointer.class, JNIJavaVMInitArgs.class);
+    public static final PrintStream STDERR = System.err;
 
     @CEntryPoint(name = "Espresso_CreateJavaVM")
     static int createJavaVM(IsolateThread thread, JNIJavaVMPointer javaVMPointer, JNIEnvironmentPointer penv, JNIJavaVMInitArgs args) {
@@ -58,6 +61,7 @@ public class LibEspresso {
         context.enter();
         Value java = context.getBindings("java").getMember("<JavaVM>");
         if (!java.isNativePointer()) {
+            STDERR.println("<JavaVM> is not available in the java bindings");
             return JNIErrors.JNI_ERR();
         }
         JNIJavaVM espressoJavaVM = WordFactory.pointer(java.asNativePointer());
