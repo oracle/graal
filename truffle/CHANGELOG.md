@@ -7,6 +7,7 @@ This changelog summarizes major changes between Truffle versions relevant to lan
 * Added `TruffleContext.isCancelling()` to check whether a truffle context is being cancelled.
 * Added `TruffleInstrument.Env.calculateContextHeapSize(TruffleContext, long, AtomicBoolean)` to calculate the heap size retained by a a context.
 * Added `ContextsListener.onLanguageContextCreate`, `ContextsListener.onLanguageContextCreateFailed`, `ContextsListener.onLanguageContextInitialize`, and `ContextsListener.onLanguageContextInitializeFailed`  to allow instruments to listen to language context creation start events, language context creation failure events, language context initialization start events, and language context initialization failure events, respectively.
+* Added `Frame.clear(FrameSlot)`. This allows the compiler to reason about the liveness of local variables. Languages are recommended to use it when applicable.
 
 ## Version 21.0.0
 * If an `AbstractTruffleException` is thrown from the `ContextLocalFactory`, `ContextThreadLocalFactory` or event listener, which is called during the context enter, the excepion interop messages are executed without a context being entered. The event listeners called during the context enter are:
@@ -22,7 +23,6 @@ This changelog summarizes major changes between Truffle versions relevant to lan
 * Truffle DSL generated nodes are no longer limited to 64 state bits. Use these state bits responsibly.
 * Added support for explicitly selecting a host method overload using the signature in the form of comma-separated fully qualified parameter type names enclosed by parentheses (e.g. `methodName(f.q.TypeName,java.lang.String,int,int[])`).
 * Changed the default value of `--engine.MultiTier` from `false` to `true`. This should significantly improve the warmup time of Truffle interpreters.
-* Added `Frame.clear(FrameSlot)`. This allows the compiler to reason about the liveness of local variables. Languages are recommended to use it when applicable.
 
 ## Version 20.3.0
 * Added `RepeatingNode.initialLoopStatus` and `RepeatingNode.shouldContinue` to allow defining a custom loop continuation condition.

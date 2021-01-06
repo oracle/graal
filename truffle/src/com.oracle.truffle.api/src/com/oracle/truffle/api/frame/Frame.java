@@ -270,7 +270,7 @@ public interface Frame {
      * Liveness analysis implementations are expected to clear unused slots on method entry
      * 
      * @param slot the slot of the local variable
-     * @since 21.0
+     * @since 21.1
      */
     default void clear(FrameSlot slot) {
         throw new UnsupportedOperationException();
