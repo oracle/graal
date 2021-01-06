@@ -54,10 +54,13 @@ bench-llvm-sulong-core: ${bench-llvm-sulong-common} ${bench-llvm-linux} {
 
 bench_vm_ce_linux_base: ${svm-common-linux-amd64} ${sulong_linux} ${custom_vm_linux} ${common_vm_linux} ${openjdk8} { # repeat 'common_vm_linux' to override packages loaded by 'svm-common-linux'
   resultFile: results.json
+  environment: {
+      VM_DIST: ce
+  }
   setup: [
     [set-export, SNAPSHOT_CATALOG, [mx, urlrewrite, "http://www.graalvm.org/catalog"]]
     [cd, vm]
-    [mx, --env, ce, build]
+    [mx, --env, "${VM_DIST}", build]
     [mx, --dynamicimport, "/compiler", hsdis]
   ]
   teardown: [
@@ -77,6 +80,19 @@ bench-llvm-sulong-graalvm-ce: ${bench_vm_ce_linux_base} ${bench-llvm-sulong-comm
   timelimit: "10:00:01"
 }
 
+bench-llvm-sulong-graalvm-ce-llimul: ${bench_vm_ce_linux_base} ${bench-llvm-sulong-common} ${sulong-weekly-notifications} {
+  environment: {
+      VM_DIST: ce-llimul
+  }
+  setup: ${bench_vm_ce_linux_base.setup} [
+    [git, clone, --depth, "1", ${repoBase}"${BENCH_REPO_NAME}.git", "../../${BENCH_REPO_NAME}"]
+  ]
+  run: [
+    [mx, --dynamicimport, sulong-benchmarks, --env, ce-llimul, benchmark, --results-file, ${bench_vm_ce_linux_base.resultFile}, "csuite:*", --, --native-vm, sulong-multi, --native-vm-config, default, --jvm, graalvm-ce, --jvm-config, "${JVM_CONFIG}", "--multi-context-runs=3"]
+  ]
+  timelimit: "10:00:01"
+}
+
 bench-llvm-native: ${bench-llvm-common} ${bench-llvm-linux} ${sulong-weekly-notifications} {
   targets: [weekly, bench]
   run: [
@@ -89,6 +105,8 @@ bench-llvm-native: ${bench-llvm-common} ${bench-llvm-linux} ${sulong-weekly-noti
 builds += [
   ${bench-llvm-sulong-graalvm-ce} {targets: [daily, bench], name: "daily-bench-sulong-graalvm-ce-jvm-csuite", environment: { JVM_CONFIG: jvm } }
   ${bench-llvm-sulong-graalvm-ce} {targets: [daily, bench], name: "daily-bench-sulong-graalvm-ce-native-csuite", environment: { JVM_CONFIG: native } }
+  ${bench-llvm-sulong-graalvm-ce-llimul} {targets: [daily, bench], name: "daily-bench-sulong-graalvm-ce-llimul-jvm-csuite", environment: { JVM_CONFIG: jvm } }
+  ${bench-llvm-sulong-graalvm-ce-llimul} {targets: [daily, bench], name: "daily-bench-sulong-graalvm-ce-llimul-native-csuite", environment: { JVM_CONFIG: native } }
   ${bench-llvm-sulong-core} {name: daily-bench-sulong-graal-core-csuite}
   # sulong reference benchmark
   ${bench-llvm-native} {name: "weekly-bench-clangO3-csuite"}

@@ -1218,6 +1218,27 @@ mx_sdk_vm.register_graalvm_component(mx_sdk_vm.GraalVmLanguage(
     installable=False,
 ))
 
+mx_sdk_vm.register_graalvm_component(mx_sdk_vm.GraalVmLanguage(
+    suite=_suite,
+    name='LLVM Multi-Context Runtime Launcher',
+    short_name='llmulrl',
+    dir_name='llvm',
+    license_files=[],
+    third_party_license_files=[],
+    dependencies=[],
+    truffle_jars=[],
+    support_distributions=[],
+    launcher_configs=[
+        mx_sdk_vm.LanguageLauncherConfig(
+            destination='bin/<exe:llimul>',
+            jar_distributions=['sulong:SULONG_LAUNCHER'],
+            main_class='com.oracle.truffle.llvm.launcher.LLVMMultiContextLauncher',
+            build_args=[],
+            language='llvm',
+        ),
+    ],
+    installable=False,
+))
 
 COPYRIGHT_HEADER_BSD = """\
 /*

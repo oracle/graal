@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2020, Oracle and/or its affiliates.
+ * Copyright (c) 2020, 2021, Oracle and/or its affiliates.
  *
  * All rights reserved.
  *
@@ -268,7 +268,7 @@ public final class LoadModulesNode extends LLVMRootNode {
 
                     if (LLVMLoadingPhase.ALL.isActive(phase)) {
                         while (!que.isEmpty()) {
-                            indirectCall.call(que.poll(), LLVMLoadingPhase.BUILD_SCOPES, visited, localScope, que, resultScope);
+                            indirectCall.call(quePoll(que), LLVMLoadingPhase.BUILD_SCOPES, visited, localScope, que, resultScope);
                         }
                     }
                 }
@@ -434,6 +434,11 @@ public final class LoadModulesNode extends LLVMRootNode {
     @TruffleBoundary
     private static void queAdd(ArrayDeque<CallTarget> que, CallTarget callTarget) {
         que.add(callTarget);
+    }
+
+    @TruffleBoundary
+    private static CallTarget quePoll(ArrayDeque<CallTarget> que) {
+        return que.poll();
     }
 
     @TruffleBoundary
