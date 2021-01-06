@@ -565,6 +565,24 @@ public abstract class PartialEvaluator {
                         nodePlugins,
                         sourceLanguagePosition, graphCache);
         decoder.decode(request.graph.method(), request.graph.isSubstitution(), request.graph.trackNodeSourcePosition());
+
+        truffleTier(request);
+    }
+
+    private void truffleTier(Request request) {
+        try (DebugCloseable a = TruffleConvertDeoptimizeTimer.start(request.debug)) {
+            new ConvertDeoptimizeToGuardPhase().apply(request.graph, request.highTierContext);
+        }
+        inlineReplacements(request);
+        try (DebugCloseable a = TruffleConditionalEliminationTimer.start(request.debug)) {
+            new ConditionalEliminationPhase(false).apply(request.graph, request.highTierContext);
+        }
+        try (DebugCloseable a = TruffleCanonicalizerTimer.start(request.debug)) {
+            canonicalizer.apply(request.graph, request.highTierContext);
+        }
+        try (DebugCloseable a = TruffleEscapeAnalysisTimer.start(request.debug)) {
+            partialEscape(request);
+        }
     }
 
     /**
