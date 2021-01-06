@@ -83,7 +83,7 @@ import com.oracle.truffle.sl.nodes.expression.SLAddNode;
 public class AOTTutorial {
 
     /**
-     * We annotate the our language base node with {@link GenerateAOT} to indicate that we intent to
+     * We annotate our language base node with {@link GenerateAOT} to indicate that we intend to
      * support AOT for all subclasses of this type.
      */
     @GenerateAOT
@@ -222,7 +222,7 @@ public class AOTTutorial {
         }
 
         /**
-         * Even though this a static language we should still support dynamic Truffle interop
+         * Even though this is a static language we should still support dynamic Truffle interop
          * values. Since interop libraries require dynamic parameters to be initialized we need to
          * exclude it from AOT by using the {@link GenerateAOT.Exclude} annotation. This means that
          * the AOT compiled code will deoptimize in case it will encounter this specialization.

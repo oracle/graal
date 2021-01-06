@@ -13,7 +13,7 @@ The goal for implementing a root node for AOT is to prepare all the AST nodes su
 
 Typical actions performed in an implementation of this method are:
 
-* Initialize local variable types in the FrameDescriptor of the root node. If a language uses local variables and their types are known, then this information must be provided to the FrameDescriptor. This step can be often be done already during parsing.
+* Initialize local variable types in the FrameDescriptor of the root node. If a language uses local variables and their types are known, then this information must be provided to the FrameDescriptor. This step can often be done already during parsing.
 * Compute the expected execution signature of a root node and return it. This step requires the parser to infer expected types
 for arguments and return values.
 * Prepare specializing nodes with profiles that do not invalidate on first execution. Truffle DSL supports preparation of specializing nodes for AOT. See the example AOT language for details.
@@ -22,12 +22,12 @@ for arguments and return values.
 
 AOT compilation can be triggered and tested by using the `--engine.CompileAOTOnCreate=true` option.
 This will trigger AOT compilation for every created call target with a root node that supports AOT compilation.
-A root node supports AOT compilation if it returns a non null value in (RootNode.prepareForAOT())[https://www.graalvm.org/truffle/javadoc/com/oracle/truffle/api/nodes/RootNode.html#prepareForAOT--].
+A root node supports AOT compilation if it returns a non null value in [RootNode.prepareForAOT()](https://www.graalvm.org/truffle/javadoc/com/oracle/truffle/api/nodes/RootNode.html#prepareForAOT--).
 Note that enabling this flag will also disable background compilation which makes it not suitable for production usage.
 
 ### Example Usage
 
 Use the following documented and executable Truffle language as inspiration for AOT support:
-(AOT Tutorial)[https://github.com/oracle/graal/blob/master/truffle/src/com.oracle.truffle.api.dsl.test/src/com/oracle/truffle/api/dsl/test/examples/AOTTutorial.java]
+[AOT Tutorial](https://github.com/oracle/graal/blob/master/truffle/src/com.oracle.truffle.api.dsl.test/src/com/oracle/truffle/api/dsl/test/examples/AOTTutorial.java)
 
 The example is executable as mx unittest using `mx unittest AOTTutorial`.
