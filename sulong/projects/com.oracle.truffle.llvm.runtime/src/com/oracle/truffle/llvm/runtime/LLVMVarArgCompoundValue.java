@@ -30,21 +30,24 @@
 package com.oracle.truffle.llvm.runtime;
 
 import com.oracle.truffle.api.CompilerDirectives.ValueType;
+import com.oracle.truffle.llvm.runtime.types.Type;
 
 @ValueType
 public final class LLVMVarArgCompoundValue {
     private final Object addr;
     private final long size;
     private final int alignment;
+    private final Type type;
 
-    private LLVMVarArgCompoundValue(Object val, long size, int alignment) {
+    private LLVMVarArgCompoundValue(Object val, long size, int alignment, Type type) {
         this.addr = val;
         this.size = size;
         this.alignment = alignment;
+        this.type = type;
     }
 
-    public static LLVMVarArgCompoundValue create(Object val, long size, int alignment) {
-        return new LLVMVarArgCompoundValue(val, size, alignment);
+    public static LLVMVarArgCompoundValue create(Object val, long size, int alignment, Type type) {
+        return new LLVMVarArgCompoundValue(val, size, alignment, type);
     }
 
     public Object getAddr() {
@@ -57,6 +60,10 @@ public final class LLVMVarArgCompoundValue {
 
     public int getAlignment() {
         return alignment;
+    }
+
+    public Type getType() {
+        return type;
     }
 
     @Override

@@ -34,17 +34,21 @@ import com.oracle.truffle.api.dsl.NodeField;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.llvm.runtime.LLVMVarArgCompoundValue;
 import com.oracle.truffle.llvm.runtime.nodes.api.LLVMExpressionNode;
+import com.oracle.truffle.llvm.runtime.types.Type;
 
 @NodeChild(type = LLVMExpressionNode.class, value = "source")
 @NodeField(name = "length", type = long.class)
 @NodeField(name = "alignment", type = int.class)
+@NodeField(name = "type", type = Type.class)
 public abstract class LLVMVarArgCompoundAddressNode extends LLVMExpressionNode {
     public abstract long getLength();
 
     public abstract int getAlignment();
 
+    public abstract Type getType();
+
     @Specialization
     protected LLVMVarArgCompoundValue byValue(Object source) {
-        return LLVMVarArgCompoundValue.create(source, getLength(), getAlignment());
+        return LLVMVarArgCompoundValue.create(source, getLength(), getAlignment(), getType());
     }
 }

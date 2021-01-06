@@ -1861,8 +1861,8 @@ public class BasicNodeFactory implements NodeFactory {
     }
 
     @Override
-    public LLVMExpressionNode createVarArgCompoundValue(long length, int alignment, LLVMExpressionNode parameterNode) {
-        return LLVMVarArgCompoundAddressNodeGen.create(parameterNode, length, alignment);
+    public LLVMExpressionNode createVarArgCompoundValue(long length, int alignment, Type type, LLVMExpressionNode parameterNode) {
+        return LLVMVarArgCompoundAddressNodeGen.create(parameterNode, length, alignment, type);
     }
 
     @Override

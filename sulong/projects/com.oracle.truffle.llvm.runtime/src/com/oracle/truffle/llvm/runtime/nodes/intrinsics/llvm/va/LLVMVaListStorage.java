@@ -79,6 +79,7 @@ import com.oracle.truffle.llvm.runtime.nodes.memory.store.LLVMPointerStoreNode.L
 import com.oracle.truffle.llvm.runtime.pointer.LLVMManagedPointer;
 import com.oracle.truffle.llvm.runtime.pointer.LLVMNativePointer;
 import com.oracle.truffle.llvm.runtime.pointer.LLVMPointer;
+import com.oracle.truffle.llvm.runtime.types.ArrayType;
 import com.oracle.truffle.llvm.runtime.types.PointerType;
 import com.oracle.truffle.llvm.runtime.types.PrimitiveType;
 import com.oracle.truffle.llvm.runtime.types.Type;
@@ -143,6 +144,8 @@ public class LLVMVaListStorage implements TruffleObject {
             return VarArgArea.OVERFLOW_AREA;
         } else if (isFloatVectorWithMaxTwoElems(type)) {
             return VarArgArea.FP_AREA;
+        } else if (isFloatArrayWithMaxTwoElems(type)) {
+            return VarArgArea.FP_AREA;
         } else if (type instanceof PointerType) {
             return VarArgArea.GP_AREA;
         } else {
@@ -151,13 +154,53 @@ public class LLVMVaListStorage implements TruffleObject {
     }
 
     @TruffleBoundary
-    private static boolean isFloatVectorWithMaxTwoElems(Type type) {
-        return type instanceof VectorType && getElementType(type) == PrimitiveType.FLOAT && ((VectorType) type).getNumberOfElements() <= 2;
+    public static boolean isFloatVectorWithMaxTwoElems(Type type) {
+        return type instanceof VectorType && getVectorElementType(type) == PrimitiveType.FLOAT && ((VectorType) type).getNumberOfElements() <= 2;
     }
 
     @TruffleBoundary
-    private static Type getElementType(Type type) {
+    public static boolean isFloatArrayWithMaxTwoElems(Type type) {
+        return type instanceof ArrayType && getArrayElementType(type) == PrimitiveType.FLOAT && ((ArrayType) type).getNumberOfElements() <= 2;
+    }
+
+    @TruffleBoundary
+    public static boolean isDoubleVectorWithMaxTwoElems(Type type) {
+        return type instanceof VectorType && getVectorElementType(type) == PrimitiveType.DOUBLE && ((VectorType) type).getNumberOfElements() <= 2;
+    }
+
+    @TruffleBoundary
+    public static boolean isDoubleArrayWithMaxTwoElems(Type type) {
+        return type instanceof ArrayType && getArrayElementType(type) == PrimitiveType.DOUBLE && ((ArrayType) type).getNumberOfElements() <= 2;
+    }
+
+    @TruffleBoundary
+    public static boolean isI64VectorWithMaxTwoElems(Type type) {
+        return type instanceof VectorType && getVectorElementType(type) == PrimitiveType.I64 && ((VectorType) type).getNumberOfElements() <= 2;
+    }
+
+    @TruffleBoundary
+    public static boolean isI64ArrayWithMaxTwoElems(Type type) {
+        return type instanceof ArrayType && getArrayElementType(type) == PrimitiveType.I64 && ((ArrayType) type).getNumberOfElements() <= 2;
+    }
+
+    @TruffleBoundary
+    public static boolean isI32VectorWithMaxTwoElems(Type type) {
+        return type instanceof VectorType && getVectorElementType(type) == PrimitiveType.I32 && ((VectorType) type).getNumberOfElements() <= 2;
+    }
+
+    @TruffleBoundary
+    public static boolean isI32ArrayWithMaxTwoElems(Type type) {
+        return type instanceof ArrayType && getArrayElementType(type) == PrimitiveType.I32 && ((ArrayType) type).getNumberOfElements() <= 2;
+    }
+
+    @TruffleBoundary
+    private static Type getVectorElementType(Type type) {
         return ((VectorType) type).getElementType();
+    }
+
+    @TruffleBoundary
+    private static Type getArrayElementType(Type type) {
+        return ((ArrayType) type).getElementType();
     }
 
     protected static DataLayout getDataLayout() {
@@ -489,6 +532,7 @@ public class LLVMVaListStorage implements TruffleObject {
         protected final long[] offsets;
         public final int overflowAreaSize;
 
+        protected long previousOffset = -1;
         protected long currentOffset;
 
         protected AbstractOverflowArgArea(Object[] args, long[] offsets, int overflowAreaSize) {
@@ -537,12 +581,14 @@ public class LLVMVaListStorage implements TruffleObject {
         }
 
         public void shift(int steps) {
+            previousOffset = currentOffset;
             long n = offsetToIndex(currentOffset);
             int i = (int) ((n << 32) >> 32);
             currentOffset = offsets[i + steps];
         }
 
         public void setOffset(long newOffset) {
+            previousOffset = currentOffset;
             currentOffset = newOffset;
         }
 
@@ -551,8 +597,22 @@ public class LLVMVaListStorage implements TruffleObject {
             return i < 0 ? null : args[i];
         }
 
+        public Object getPreviousArg() {
+            int i = getPreviousArgIndex();
+            return i < 0 ? null : args[i];
+        }
+
         public int getCurrentArgIndex() {
             long n = offsetToIndex(currentOffset);
+            int i = (int) ((n << 32) >> 32);
+            return i;
+        }
+
+        public int getPreviousArgIndex() {
+            if (previousOffset < 0) {
+                return -1;
+            }
+            long n = offsetToIndex(previousOffset);
             int i = (int) ((n << 32) >> 32);
             return i;
         }
@@ -771,7 +831,10 @@ public class LLVMVaListStorage implements TruffleObject {
     @GenerateUncached
     public abstract static class IntegerConversionHelperNode extends NumberConversionHelperNode {
 
-        @Specialization
+        public int executeInteger(Object x, int offset) {
+            return (int) execute(x, offset);
+        }
+
         int byteConversion(Byte x, @SuppressWarnings("unused") int offset) {
             assert offset == 0;
             return x.intValue();
@@ -787,6 +850,11 @@ public class LLVMVaListStorage implements TruffleObject {
         int intConversion(Integer x, @SuppressWarnings("unused") int offset) {
             assert offset == 0;
             return x;
+        }
+
+        @Specialization
+        int floatConversion(Float x, @SuppressWarnings("unused") int offset) {
+            return Float.floatToIntBits(x);
         }
 
         @Specialization
@@ -845,6 +913,10 @@ public class LLVMVaListStorage implements TruffleObject {
 
     @GenerateUncached
     public abstract static class LongConversionHelperNode extends NumberConversionHelperNode {
+
+        public long executeLong(Object x, int offset) {
+            return (long) execute(x, offset);
+        }
 
         @Specialization
         long byteConversion(Byte x, @SuppressWarnings("unused") int offset) {
