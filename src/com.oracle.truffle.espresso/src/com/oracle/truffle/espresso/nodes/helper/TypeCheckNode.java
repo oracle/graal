@@ -136,7 +136,8 @@ public abstract class TypeCheckNode extends Node implements ContextAccess {
     }
 
     @Specialization(replaces = "typeCheckCached", guards = {
-                    "typeToCheck != k" // Re-specialize to add typeCheckEquals
+                    "typeToCheck != k", // Re-specialize to add typeCheckEquals
+                    "!isInterface(typeToCheck)"
     })
     protected boolean typeCheckRegular(Klass typeToCheck, Klass k) {
         return typeToCheck.checkOrdinaryClassSubclassing(k);
