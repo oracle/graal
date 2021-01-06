@@ -278,8 +278,20 @@ final class Target_java_lang_ClassLoader {
 
     @Substitute
     private Class<?> loadClass(String name) throws ClassNotFoundException {
+        if (!checkName(name)) {
+            /*
+             * Names that contain `/` or start with '[' are invalid. Calling `ClassLoader.loadClass`
+             * to create a `Class` object of an array class is invalid and a
+             * `ClassNotFoundException` will be thrown. Instead, `Class.forName` should be used
+             * directly to load array classes.
+             */
+            throw new ClassNotFoundException(name);
+        }
         return ClassForNameSupport.forName(name, false);
     }
+
+    @Alias
+    private native boolean checkName(String name);
 
     @Delete
     native Class<?> loadClass(String name, boolean resolve);
