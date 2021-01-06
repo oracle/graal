@@ -130,7 +130,7 @@ public class Linker {
         }
     }
 
-    private void runLinkActions(WasmContext context, Map<String, WasmInstance> instances, ArrayList<Throwable> failures) {
+    private static void runLinkActions(WasmContext context, Map<String, WasmInstance> instances, ArrayList<Throwable> failures) {
         for (WasmInstance instance : instances.values()) {
             if (instance.isNonLinked()) {
                 instance.setLinkInProgress();
@@ -180,7 +180,7 @@ public class Linker {
         }
     }
 
-    private void runStartFunctions(Map<String, WasmInstance> instances, ArrayList<Throwable> failures) {
+    private static void runStartFunctions(Map<String, WasmInstance> instances, ArrayList<Throwable> failures) {
         for (WasmInstance instance : instances.values()) {
             if (instance.isLinkInProgress()) {
                 try {
@@ -197,7 +197,7 @@ public class Linker {
         }
     }
 
-    private void checkFailures(ArrayList<Throwable> failures) {
+    private static void checkFailures(ArrayList<Throwable> failures) {
         if (!failures.isEmpty()) {
             final Throwable first = failures.get(0);
             if (first instanceof WasmException) {
