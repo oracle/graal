@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2018, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2017, 2017, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -22,11 +22,17 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.svm.reflect.target;
+package com.oracle.svm.reflect.helpers;
 
-import com.oracle.svm.core.annotate.TargetClass;
-import com.oracle.svm.core.jdk.Package_jdk_internal_reflect;
+// Checkstyle: allow reflection
+import java.lang.reflect.InvocationTargetException;
 
-@TargetClass(classNameProvider = Package_jdk_internal_reflect.class, className = "MethodAccessor")
-public final class Target_jdk_internal_reflect_MethodAccessor {
+/**
+ * Interface implemented by reflection proxy classes for concrete methods which allows calling their
+ * target without going through virtual dispatch. This is used to implement invokespecial calls
+ * through method handles (see Target_java_lang_invoke_MethodHandle#invokeBasic).
+ */
+public interface InvokeSpecialReflectionProxy {
+    Object invokeSpecial(Object obj, Object[] args)
+                    throws IllegalArgumentException, InvocationTargetException;
 }

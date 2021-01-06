@@ -51,6 +51,8 @@ public class NativeImageAgentJNIHandleSet extends JNIHandleSet {
 
     final JNIObjectHandle javaLangClassLoader;
 
+    final JNIMethodId javaLangObjectGetClass;
+
     private JNIMethodId javaLangInvokeMethodTypeParameterArray = WordFactory.nullPointer();
 
     private JNIMethodId javaUtilResourceBundleGetBundleImplSLCC;
@@ -83,6 +85,9 @@ public class NativeImageAgentJNIHandleSet extends JNIHandleSet {
         javaUtilEnumerationNextElement = getMethodId(env, javaUtilEnumeration, "nextElement", "()Ljava/lang/Object;", false);
 
         javaLangClassLoader = newClassGlobalRef(env, "java/lang/ClassLoader");
+
+        JNIObjectHandle javaLangObject = findClass(env, "java/lang/Object");
+        javaLangObjectGetClass = getMethodId(env, javaLangObject, "getClass", "()Ljava/lang/Class;", false);
     }
 
     JNIMethodId getJavaLangInvokeMethodTypeParameterArray(JNIEnvironment env) {

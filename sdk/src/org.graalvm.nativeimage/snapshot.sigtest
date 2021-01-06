@@ -817,6 +817,7 @@ meth public abstract void registerAsUnsafeAccessed(java.lang.reflect.Field)
 meth public abstract void registerAsUsed(java.lang.Class<?>)
 meth public abstract void registerMethodOverrideReachabilityHandler(java.util.function.BiConsumer<org.graalvm.nativeimage.hosted.Feature$DuringAnalysisAccess,java.lang.reflect.Executable>,java.lang.reflect.Executable)
 meth public abstract void registerSubtypeReachabilityHandler(java.util.function.BiConsumer<org.graalvm.nativeimage.hosted.Feature$DuringAnalysisAccess,java.lang.Class<?>>,java.lang.Class<?>)
+meth public abstract void registerClassInitializerReachabilityHandler(java.util.function.Consumer<org.graalvm.nativeimage.hosted.Feature$DuringAnalysisAccess>,java.lang.Class<?>)
 
 CLSS public abstract interface static org.graalvm.nativeimage.hosted.Feature$BeforeCompilationAccess
  outer org.graalvm.nativeimage.hosted.Feature

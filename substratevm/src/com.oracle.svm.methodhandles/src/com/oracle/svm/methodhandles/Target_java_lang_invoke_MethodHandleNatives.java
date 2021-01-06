@@ -46,6 +46,7 @@ import com.oracle.svm.core.annotate.Delete;
 import com.oracle.svm.core.annotate.Substitute;
 import com.oracle.svm.core.annotate.TargetClass;
 import com.oracle.svm.core.annotate.TargetElement;
+import com.oracle.svm.core.hub.DynamicHub;
 import com.oracle.svm.core.jdk.JDK11OrLater;
 import com.oracle.svm.core.jdk.JDK8OrEarlier;
 import com.oracle.svm.reflect.target.Target_java_lang_reflect_Field;
@@ -67,10 +68,14 @@ final class Target_java_lang_invoke_MethodHandleNatives {
         Member member = (Member) ref;
         Object type;
         int flags;
+        byte refKind;
         if (member instanceof Field) {
             Field field = (Field) member;
             type = field.getType();
             flags = Target_java_lang_invoke_MethodHandleNatives_Constants.MN_IS_FIELD | field.getModifiers();
+            /* The code calling this expects a getter, and will change it to a setter if needed */
+            refKind = Modifier.isStatic(field.getModifiers()) ? Target_java_lang_invoke_MethodHandleNatives_Constants.REF_getStatic
+                            : Target_java_lang_invoke_MethodHandleNatives_Constants.REF_getField;
         } else if (member instanceof Method) {
             Method method = (Method) member;
             Object[] typeInfo = new Object[2];
@@ -79,24 +84,26 @@ final class Target_java_lang_invoke_MethodHandleNatives {
             type = typeInfo;
             int mods = method.getModifiers();
             flags = Target_java_lang_invoke_MethodHandleNatives_Constants.MN_IS_METHOD | mods;
-            if ((flags >>> Target_java_lang_invoke_MethodHandleNatives_Constants.MN_REFERENCE_KIND_SHIFT & Target_java_lang_invoke_MethodHandleNatives_Constants.MN_REFERENCE_KIND_MASK) == 0) {
-                int refKind;
-                if (Modifier.isStatic(mods)) {
-                    refKind = Target_java_lang_invoke_MethodHandleNatives_Constants.REF_invokeStatic;
-                } else if (Modifier.isInterface(mods)) {
-                    refKind = Target_java_lang_invoke_MethodHandleNatives_Constants.REF_invokeInterface;
-                } else {
-                    refKind = Target_java_lang_invoke_MethodHandleNatives_Constants.REF_invokeVirtual;
-                }
-                flags |= refKind << Target_java_lang_invoke_MethodHandleNatives_Constants.MN_REFERENCE_KIND_SHIFT;
+            if (Modifier.isStatic(mods)) {
+                refKind = Target_java_lang_invoke_MethodHandleNatives_Constants.REF_invokeStatic;
+            } else if (Modifier.isInterface(mods)) {
+                refKind = Target_java_lang_invoke_MethodHandleNatives_Constants.REF_invokeInterface;
+            } else {
+                refKind = Target_java_lang_invoke_MethodHandleNatives_Constants.REF_invokeVirtual;
             }
         } else if (member instanceof Constructor) {
             Constructor<?> constructor = (Constructor<?>) member;
-            type = constructor.getParameterTypes();
+            Object[] typeInfo = new Object[2];
+            typeInfo[0] = void.class;
+            typeInfo[1] = constructor.getParameterTypes();
+            type = typeInfo;
             flags = Target_java_lang_invoke_MethodHandleNatives_Constants.MN_IS_CONSTRUCTOR | constructor.getModifiers();
+            refKind = Target_java_lang_invoke_MethodHandleNatives_Constants.REF_newInvokeSpecial;
         } else {
             throw new InternalError("unknown member type: " + member.getClass());
         }
+        flags |= refKind << Target_java_lang_invoke_MethodHandleNatives_Constants.MN_REFERENCE_KIND_SHIFT;
+
         self.init(member.getDeclaringClass(), member.getName(), type, flags);
         self.reflectAccess = (Member) ref;
     }
@@ -194,7 +201,12 @@ final class Target_java_lang_invoke_MethodHandleNatives {
         /* Fill the member through reflection */
         try {
             if (self.isMethod()) {
-                Method method = declaringClass.getDeclaredMethod(self.name, self.getMethodType().parameterArray());
+                Class<?>[] parameterTypes = self.getMethodType().parameterArray();
+                Method method = Util_java_lang_invoke_MethodHandleNatives.lookupMethod(declaringClass, self.name, parameterTypes);
+                if (method.getReturnType() != self.getMethodType().returnType()) {
+                    /* Method handle lookup also checks return type */
+                    throw new NoSuchMethodException(SubstrateUtil.cast(declaringClass, DynamicHub.class).methodToString(self.name, parameterTypes));
+                }
                 self.reflectAccess = method;
                 self.flags |= method.getModifiers();
             } else if (self.isConstructor()) {
@@ -202,7 +214,11 @@ final class Target_java_lang_invoke_MethodHandleNatives {
                 self.reflectAccess = constructor;
                 self.flags |= constructor.getModifiers();
             } else if (self.isField()) {
-                Field field = declaringClass.getDeclaredField(self.name);
+                Field field = Util_java_lang_invoke_MethodHandleNatives.lookupField(declaringClass, self.name);
+                if (field.getType() != self.getFieldType()) {
+                    /* Method handle lookup also checks field type */
+                    throw new NoSuchFieldException(declaringClass.getName() + "." + self.name);
+                }
                 self.reflectAccess = field;
                 self.flags |= field.getModifiers();
             }
@@ -237,6 +253,52 @@ final class Target_java_lang_invoke_MethodHandleNatives {
 
     @AnnotateOriginal
     static native String refKindName(byte refKind);
+}
+
+/**
+ * The method handles API looks up methods and fields in a diffent way than the reflection API. The
+ * specified member is searched in the given declaring class and its superclasses (like
+ * {@link Class#getMethod(String, Class[])}) but including private members (like
+ * {@link Class#getDeclaredMethod(String, Class[])}). We solve this by recursively looking up the
+ * declared methods of the declaring class and its superclasses.
+ */
+final class Util_java_lang_invoke_MethodHandleNatives {
+
+    static Method lookupMethod(Class<?> declaringClazz, String name, Class<?>[] parameterTypes) throws NoSuchMethodException {
+        return lookupMethod(declaringClazz, name, parameterTypes, null);
+    }
+
+    private static Method lookupMethod(Class<?> declaringClazz, String name, Class<?>[] parameterTypes, NoSuchMethodException originalException) throws NoSuchMethodException {
+        try {
+            return declaringClazz.getDeclaredMethod(name, parameterTypes);
+        } catch (NoSuchMethodException e) {
+            Class<?> superClass = declaringClazz.getSuperclass();
+            NoSuchMethodException newOriginalException = originalException == null ? e : originalException;
+            if (superClass == null) {
+                throw newOriginalException;
+            } else {
+                return lookupMethod(superClass, name, parameterTypes, newOriginalException);
+            }
+        }
+    }
+
+    static Field lookupField(Class<?> declaringClazz, String name) throws NoSuchFieldException {
+        return lookupField(declaringClazz, name, null);
+    }
+
+    private static Field lookupField(Class<?> declaringClazz, String name, NoSuchFieldException originalException) throws NoSuchFieldException {
+        try {
+            return declaringClazz.getDeclaredField(name);
+        } catch (NoSuchFieldException e) {
+            Class<?> superClass = declaringClazz.getSuperclass();
+            NoSuchFieldException newOriginalException = originalException == null ? e : originalException;
+            if (superClass == null) {
+                throw newOriginalException;
+            } else {
+                return lookupField(superClass, name, newOriginalException);
+            }
+        }
+    }
 }
 
 @TargetClass(className = "java.lang.invoke.MethodHandleNatives", innerClass = "Constants", onlyWith = MethodHandlesSupported.class)
