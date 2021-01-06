@@ -453,6 +453,9 @@ public class Linker {
         if (instance.symbolTable().importedTable() != null) {
             dependencies.add(new ImportTableSym(instance.name(), instance.symbolTable().importedTable()));
         }
+        if (elemSegmentId > 0) {
+            dependencies.add(new ElemSym(instance.name(), elemSegmentId - 1));
+        }
         if (offsetGlobalIndex != -1) {
             dependencies.add(new InitializeGlobalSym(instance.name(), offsetGlobalIndex));
         }

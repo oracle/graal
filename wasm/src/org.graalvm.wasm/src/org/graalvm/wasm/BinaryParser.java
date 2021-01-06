@@ -1093,13 +1093,6 @@ public class BinaryParser extends BinaryStreamParser {
                 functionIndices[index] = functionIndex;
             }
             module.addLinkAction((context, instance) -> {
-                // Note: we do not check if the earlier element segments were executed,
-                // and we do not try to execute the element segments in order,
-                // as we do with data sections and the memory.
-                // Instead, if any table element is written more than once, we report an error.
-                // Thus, the order in which the element sections are loaded is not important
-                // (also, I did not notice the toolchains overriding the same element slots,
-                // or anything in the spec about that).
                 WasmFunction[] elements = new WasmFunction[segmentLength];
                 for (int index = 0; index != segmentLength; ++index) {
                     final int functionIndex = functionIndices[index];
