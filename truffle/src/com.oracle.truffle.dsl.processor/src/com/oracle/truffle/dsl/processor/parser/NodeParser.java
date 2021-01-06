@@ -458,21 +458,12 @@ public final class NodeParser extends AbstractParser<NodeData> {
                 }
 
                 if (specialization.isDynamicParameterBound(cache.getDefaultExpression(), true)) {
-
                     /*
                      * We explicitly support cached language references and lookups thereof in AOT.
                      * But the generated code introduces a check to ensure that only the language of
                      * the root node is used.
                      */
-                    boolean onlyLanguageReferences = true;
-                    Set<CacheExpression> boundCaches = specialization.getBoundCaches(cache.getDefaultExpression(), false);
-                    for (CacheExpression bound : boundCaches) {
-                        if (!bound.isCachedLanguage()) {
-                            onlyLanguageReferences = false;
-                            break;
-                        }
-                    }
-                    if (onlyLanguageReferences && cache.getDefaultExpression().findBoundVariableElements().size() == boundCaches.size()) {
+                    if (specialization.isOnlyLanguageReferencesBound(cache.getDefaultExpression())) {
                         continue;
                     }
 

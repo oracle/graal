@@ -802,18 +802,21 @@ public class FlatNodeGenFactory {
                 triple.condition = null;
             }
 
+            // compute guards that can be materialized
             List<GuardExpression> usedGuards = new ArrayList<>();
             for (GuardExpression guard : specialization.getGuards()) {
                 if (guardNeedsStateBit(specialization, guard)) {
                     bulkStateSet.add(guard);
                 }
                 if (specialization.isDynamicParameterBound(guard.getExpression(), true)) {
-                    continue;
+                    if (!specialization.isOnlyLanguageReferencesBound(guard.getExpression())) {
+                        /*
+                         * Guards with only language references can be executed.
+                         */
+                        continue;
+                    }
                 }
                 usedGuards.add(guard);
-                Set<CacheExpression> caches = specialization.getBoundCaches(guard.getExpression(), true);
-                tripples.addAll(initializeCaches(frameState, NodeExecutionMode.SLOW_PATH, specializationGroup, caches, true, false));
-                tripples.add(createMethodGuardCheck(frameState, specialization, guard, NodeExecutionMode.SLOW_PATH));
             }
 
             for (CacheExpression cache : specialization.getCaches()) {
@@ -821,7 +824,6 @@ public class FlatNodeGenFactory {
                     continue;
                 }
                 if (cache.isCachedLanguage()) {
-
                     boolean needsLocal = false;
                     for (GuardExpression guard : usedGuards) {
                         if (specialization.isExpressionBindsCache(guard.getExpression(), cache)) {
@@ -874,6 +876,12 @@ public class FlatNodeGenFactory {
                     }
                     tripples.add(new IfTriple(b.build(), null, null));
                 }
+            }
+
+            for (GuardExpression guard : usedGuards) {
+                Set<CacheExpression> caches = specialization.getBoundCaches(guard.getExpression(), true);
+                tripples.addAll(initializeCaches(frameState, NodeExecutionMode.SLOW_PATH, specializationGroup, caches, true, false));
+                tripples.add(createMethodGuardCheck(frameState, specialization, guard, NodeExecutionMode.SLOW_PATH));
             }
 
             BlockState state = IfTriple.materialize(builder, tripples, false);

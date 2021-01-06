@@ -310,6 +310,18 @@ public final class SpecializationData extends TemplateMethod {
         }
     }
 
+    public boolean isOnlyLanguageReferencesBound(DSLExpression expression) {
+        boolean onlyLanguageReferences = true;
+        Set<CacheExpression> boundCaches = getBoundCaches(expression, false);
+        for (CacheExpression bound : boundCaches) {
+            if (!bound.isCachedLanguage()) {
+                onlyLanguageReferences = false;
+                break;
+            }
+        }
+        return onlyLanguageReferences && expression.findBoundVariableElements().size() == boundCaches.size();
+    }
+
     public boolean isDynamicParameterBound(DSLExpression expression, boolean transitive) {
         Set<VariableElement> boundVariables = expression.findBoundVariableElements();
         for (Parameter parameter : getDynamicParameters()) {
