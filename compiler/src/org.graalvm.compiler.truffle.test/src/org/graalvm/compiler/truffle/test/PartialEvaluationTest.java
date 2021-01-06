@@ -32,6 +32,9 @@ import org.graalvm.compiler.code.CompilationResult;
 import org.graalvm.compiler.core.common.CompilationIdentifier;
 import org.graalvm.compiler.debug.DebugContext;
 import org.graalvm.compiler.debug.DebugDumpScope;
+import org.graalvm.compiler.graph.Node;
+import org.graalvm.compiler.nodes.ConstantNode;
+import org.graalvm.compiler.nodes.DynamicDeoptimizeNode;
 import org.graalvm.compiler.nodes.FrameState;
 import org.graalvm.compiler.nodes.StructuredGraph;
 import org.graalvm.compiler.nodes.StructuredGraph.AllowAssumptions;
@@ -85,6 +88,10 @@ public abstract class PartialEvaluationTest extends TruffleCompilerImplTest {
     }
 
     protected void assertPartialEvalEquals(RootNode expected, RootNode actual, Object[] arguments) {
+        assertPartialEvalEquals(expected, actual, arguments, true);
+    }
+
+    protected void assertPartialEvalEquals(RootNode expected, RootNode actual, Object[] arguments, boolean checkConstants) {
         final OptimizedCallTarget expectedTarget = (OptimizedCallTarget) Truffle.getRuntime().createCallTarget(expected);
         final OptimizedCallTarget actualTarget = (OptimizedCallTarget) Truffle.getRuntime().createCallTarget(actual);
 
@@ -102,7 +109,7 @@ public abstract class PartialEvaluationTest extends TruffleCompilerImplTest {
                 getTruffleCompiler(actualTarget).compilePEGraph(actualGraph, "actualTest", getSuite(actualTarget), actualTarget, asCompilationRequest(actualId), null,
                                 newTask());
                 removeFrameStates(actualGraph);
-                assertEquals(expectedGraph, actualGraph, true, true);
+                assertEquals(expectedGraph, actualGraph, true, checkConstants);
                 return;
             } catch (BailoutException e) {
                 if (e.isPermanent()) {
@@ -236,6 +243,19 @@ public abstract class PartialEvaluationTest extends TruffleCompilerImplTest {
             frameState.replaceAtUsages(null);
             frameState.safeDelete();
         }
+
+        /*
+         * Deoptimize nodes typically contain information about frame states encoded in the action.
+         * However this is not relevant when comparing graphs without frame states so we remove the
+         * action and reason and replace it with zero.
+         */
+        for (Node deopt : graph.getNodes()) {
+            if (deopt instanceof DynamicDeoptimizeNode) {
+                deopt.replaceFirstInput(((DynamicDeoptimizeNode) deopt).getActionAndReason(),
+                                graph.unique(ConstantNode.defaultForKind(((DynamicDeoptimizeNode) deopt).getActionAndReason().getStackKind())));
+            }
+        }
+
         new DeadCodeEliminationPhase().apply(graph);
     }
 

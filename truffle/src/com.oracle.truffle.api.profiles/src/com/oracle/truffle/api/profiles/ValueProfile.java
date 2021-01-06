@@ -320,7 +320,7 @@ public abstract class ValueProfile extends Profile {
             // Field needs to be cached in local variable for thread safety and startup speed.
             Class<?> clazz = cachedClass;
             if (clazz != Object.class) {
-                if (clazz != null && value != null && value.getClass() == clazz) {
+                if (clazz != null && CompilerDirectives.isExact(value, clazz)) {
                     if (CompilerDirectives.inInterpreter()) {
                         return value;
                     } else {

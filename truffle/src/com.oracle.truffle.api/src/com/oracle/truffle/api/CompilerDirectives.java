@@ -344,6 +344,25 @@ public final class CompilerDirectives {
     }
 
     /**
+     * Checks the given object to the exact class represented by {@code clazz}. The method returns
+     * <code>true</code> only if {@code object != null && object.getClass() == clazz} and thus fails
+     * for any subclass.
+     *
+     * @param object the object to be cast
+     * @param clazz the class to check against, must not be null
+     * @throws NullPointerException if the class argument is null
+     *
+     * @since 21.1
+     */
+    public static boolean isExact(Object object, Class<?> clazz) {
+        Objects.requireNonNull(clazz);
+        if (object == null) {
+            return false;
+        }
+        return object.getClass() == clazz;
+    }
+
+    /**
      * Indicates a code path that is not supposed to be reached during compilation or
      * interpretation. Reaching this method is considered a fatal internal error and execution
      * should not continue. Transfers to interpreter and
