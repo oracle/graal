@@ -62,7 +62,10 @@ import jdk.vm.ci.meta.ResolvedJavaType;
 
 public class ReflectionPlugins {
 
-    static class ReflectionPluginRegistry extends IntrinsificationPluginRegistry {
+    public static class ReflectionPluginRegistry extends IntrinsificationPluginRegistry {
+        public static AutoCloseable startThreadLocalRegistry() {
+            return ImageSingletons.lookup(ReflectionPluginRegistry.class).startThreadLocalReflectionRegistry();
+        }
     }
 
     static class Options {
@@ -259,6 +262,12 @@ public class ReflectionPlugins {
             /* We are analyzing the static initializers and should always intrinsify. */
             return element;
         }
+        /*
+         * We don't intrinsify if bci is not unique.
+         */
+        if (context.bciCanBeDuplicated()) {
+            return null;
+        }
         if (analysis) {
             if (isDeleted(element, context.getMetaAccess())) {
                 /*
@@ -270,11 +279,10 @@ public class ReflectionPlugins {
             }
 
             /* We are during analysis, we should intrinsify and cache the intrinsified object. */
-            ImageSingletons.lookup(ReflectionPluginRegistry.class).add(context.getMethod(), context.bci(), element);
-            return element;
+            ImageSingletons.lookup(ReflectionPluginRegistry.class).add(context.getCallingContext(), element);
         }
         /* We are during compilation, we only intrinsify if intrinsified during analysis. */
-        return ImageSingletons.lookup(ReflectionPluginRegistry.class).get(context.getMethod(), context.bci());
+        return ImageSingletons.lookup(ReflectionPluginRegistry.class).get(context.getCallingContext());
     }
 
     private static <T> boolean isDeleted(T element, MetaAccessProvider metaAccess) {
