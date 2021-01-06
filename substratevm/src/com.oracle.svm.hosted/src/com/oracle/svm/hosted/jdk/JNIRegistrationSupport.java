@@ -37,17 +37,20 @@ import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.nativeimage.Platforms;
 import org.graalvm.nativeimage.impl.InternalPlatform;
 
+import com.oracle.svm.core.ParsingReason;
+import com.oracle.svm.core.annotate.AutomaticFeature;
+import com.oracle.svm.core.graal.GraalFeature;
 import com.oracle.svm.core.jdk.NativeLibrarySupport;
 import com.oracle.svm.core.meta.SubstrateObjectConstant;
+import com.oracle.svm.hosted.FeatureImpl.BeforeAnalysisAccessImpl;
 import com.oracle.svm.hosted.c.NativeLibraries;
 
 import jdk.vm.ci.meta.ResolvedJavaMethod;
 
-/**
- * Utility class for Registration of static JNI libraries.
- */
-@Platforms({InternalPlatform.PLATFORM_JNI.class})
-class JNIRegistrationSupport {
+/** Registration of native JDK libraries. */
+@Platforms(InternalPlatform.PLATFORM_JNI.class)
+@AutomaticFeature
+class JNIRegistrationSupport implements GraalFeature {
 
     private final ConcurrentMap<String, Boolean> registeredLibraries = new ConcurrentHashMap<>();
     private NativeLibraries nativeLibraries = null;
@@ -56,32 +59,39 @@ class JNIRegistrationSupport {
         return ImageSingletons.lookup(JNIRegistrationSupport.class);
     }
 
-    public void setNativeLibraries(NativeLibraries nativelibraries) {
-        nativeLibraries = nativelibraries;
+    @Override
+    public void beforeAnalysis(BeforeAnalysisAccess access) {
+        nativeLibraries = ((BeforeAnalysisAccessImpl) access).getNativeLibraries();
     }
 
-    @SuppressWarnings({"unused", "rawtypes"})
-    public void registerNativeLibrary(Providers providers, Plugins plugins, Class clazz, String methodname) {
-        Registration systemRegistration = new Registration(plugins.getInvocationPlugins(), clazz);
-        systemRegistration.register1(methodname, String.class, new InvocationPlugin() {
+    @Override
+    public void registerGraphBuilderPlugins(Providers providers, Plugins plugins, ParsingReason reason) {
+        registerLoadLibraryPlugin(plugins, System.class);
+    }
+
+    void registerLoadLibraryPlugin(Plugins plugins, Class<?> clazz) {
+        Registration r = new Registration(plugins.getInvocationPlugins(), clazz);
+        r.register1("loadLibrary", String.class, new InvocationPlugin() {
             @Override
             public boolean apply(GraphBuilderContext b, ResolvedJavaMethod targetMethod, Receiver receiver, ValueNode libnameNode) {
+                /*
+                 * Support for automatic discovery of standard JDK libraries. This works because all
+                 * of the JDK uses System.loadLibrary or jdk.internal.loader.BootLoader with literal
+                 * String arguments.
+                 */
                 if (libnameNode.isConstant()) {
                     String libname = (String) SubstrateObjectConstant.asObject(libnameNode.asConstant());
-                    if (libname != null && NativeLibrarySupport.singleton().isPreregisteredBuiltinLibrary(libname) && registeredLibraries.putIfAbsent(libname, Boolean.TRUE) != Boolean.TRUE) {
+                    if (libname != null && registeredLibraries.putIfAbsent(libname, Boolean.TRUE) != Boolean.TRUE) {
                         /*
-                         * Support for automatic static linking of standard libraries. This works
-                         * because all of the JDK uses System.loadLibrary or
-                         * jdk.internal.loader.BootLoader with literal String arguments. If such a
-                         * library is in our list of static standard libraries, add the library to
-                         * the linker command.
+                         * If a library is in our list of static standard libraries, add the library
+                         * to the linker command.
                          */
-                        nativeLibraries.addStaticJniLibrary(libname);
+                        if (NativeLibrarySupport.singleton().isPreregisteredBuiltinLibrary(libname)) {
+                            nativeLibraries.addStaticJniLibrary(libname);
+                        }
                     }
                 }
-                /*
-                 * We never want to do any actual intrinsification, process the original invoke.
-                 */
+                /* We never want to do any actual intrinsification, process the original invoke. */
                 return false;
             }
         });
