@@ -352,9 +352,9 @@ public class Linker {
     void resolveDataSegment(WasmContext context, WasmInstance instance, int dataSegmentId, int offsetAddress, int offsetGlobalIndex, int byteLength, byte[] data) {
         assertTrue(instance.symbolTable().memoryExists(), String.format("No memory declared or imported in the module '%s'", instance.name()), Failure.UNSPECIFIED_MALFORMED);
         final Runnable resolveAction = () -> {
-            assert (offsetAddress != -1) ^ (offsetGlobalIndex != -1) : "Both an offset address and a offset global are specified for the data segment.";
             WasmMemory memory = instance.memory();
             Assert.assertNotNull(memory, String.format("No memory declared or imported in the module '%s'", instance.name()), Failure.UNSPECIFIED_MALFORMED);
+
             int baseAddress;
             if (offsetGlobalIndex != -1) {
                 final int offsetGlobalAddress = instance.globalAddress(offsetGlobalIndex);
@@ -364,6 +364,10 @@ public class Linker {
             } else {
                 baseAddress = offsetAddress;
             }
+
+            Assert.assertUnsignedIntLessOrEqual(baseAddress, memory.byteSize(), Failure.DATA_SEGMENT_DOES_NOT_FIT);
+            Assert.assertUnsignedIntLessOrEqual(baseAddress + byteLength, memory.byteSize(), Failure.DATA_SEGMENT_DOES_NOT_FIT);
+
             for (int writeOffset = 0; writeOffset != byteLength; ++writeOffset) {
                 byte b = data[writeOffset];
                 memory.store_i32_8(null, baseAddress + writeOffset, b);
@@ -423,7 +427,6 @@ public class Linker {
     void resolveElemSegment(WasmContext context, WasmInstance instance, int elemSegmentId, int offsetAddress, int offsetGlobalIndex, int segmentLength, WasmFunction[] functions) {
         assertTrue(instance.symbolTable().tableExists(), String.format("No table declared or imported in the module '%s'", instance.name()), Failure.UNSPECIFIED_MALFORMED);
         final Runnable resolveAction = () -> {
-            assert (offsetAddress != -1) ^ (offsetGlobalIndex != -1) : "Both an offset address and a offset global are specified for the elem segment.";
             final WasmTable table = instance.table();
             Assert.assertNotNull(table, String.format("No table declared or imported in the module '%s'", instance.name()), Failure.UNKNOWN_TABLE);
             final int baseAddress;
@@ -436,7 +439,10 @@ public class Linker {
             } else {
                 baseAddress = offsetAddress;
             }
-            table.ensureSizeAtLeast(baseAddress + segmentLength);
+
+            Assert.assertUnsignedIntLessOrEqual(baseAddress, table.size(), Failure.ELEMENTS_SEGMENT_DOES_NOT_FIT);
+            Assert.assertUnsignedIntLessOrEqual(baseAddress + segmentLength, table.size(), Failure.ELEMENTS_SEGMENT_DOES_NOT_FIT);
+
             for (int index = 0; index != segmentLength; ++index) {
                 final WasmFunction function = functions[index];
                 final CallTarget target = instance.target(function.index());
