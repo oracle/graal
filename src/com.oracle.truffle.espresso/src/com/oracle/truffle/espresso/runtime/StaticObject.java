@@ -1450,17 +1450,24 @@ public final class StaticObject implements TruffleObject {
         this.fields = foreignObject;
     }
 
+    private static StaticObject trackAllocation(Klass klass, StaticObject obj) {
+        return klass.getContext().trackAllocation(obj);
+    }
+
     public static StaticObject createNew(ObjectKlass klass) {
         assert !klass.isAbstract() && !klass.isInterface();
-        return new StaticObject(klass);
+        StaticObject newObj = new StaticObject(klass);
+        return trackAllocation(klass, newObj);
     }
 
     public static StaticObject createClass(Klass klass) {
-        return new StaticObject(klass);
+        StaticObject newObj = new StaticObject(klass);
+        return trackAllocation(klass, newObj);
     }
 
     public static StaticObject createStatics(ObjectKlass klass) {
-        return new StaticObject(klass, null);
+        StaticObject newObj = new StaticObject(klass, null);
+        return trackAllocation(klass, newObj);
     }
 
     // Use an explicit method to create array, avoids confusion.
@@ -1468,7 +1475,8 @@ public final class StaticObject implements TruffleObject {
         assert array != null;
         assert !(array instanceof StaticObject);
         assert array.getClass().isArray();
-        return new StaticObject(klass, array);
+        StaticObject newObj = new StaticObject(klass, array);
+        return trackAllocation(klass, newObj);
     }
 
     public static StaticObject createForeign(Klass klass, Object foreignObject, InteropLibrary interopLibrary) {
@@ -1476,7 +1484,8 @@ public final class StaticObject implements TruffleObject {
         if (interopLibrary.isNull(foreignObject)) {
             return createForeignNull(foreignObject);
         }
-        return new StaticObject(klass, foreignObject, null);
+        StaticObject newObj = new StaticObject(klass, foreignObject, null);
+        return trackAllocation(klass, newObj);
     }
 
     public static StaticObject createForeignNull(Object foreignObject) {
@@ -1546,11 +1555,13 @@ public final class StaticObject implements TruffleObject {
             return this;
         }
         checkNotForeign();
+        StaticObject obj;
         if (getKlass().isArray()) {
-            return createArray((ArrayKlass) getKlass(), cloneWrappedArray());
+            obj = createArray((ArrayKlass) getKlass(), cloneWrappedArray());
         } else {
-            return new StaticObject((ObjectKlass) getKlass(), fields == null ? null : ((Object[]) fields).clone(), primitiveFields == null ? null : primitiveFields.clone());
+            obj = new StaticObject((ObjectKlass) getKlass(), fields == null ? null : ((Object[]) fields).clone(), primitiveFields == null ? null : primitiveFields.clone());
         }
+        return trackAllocation(getKlass(), obj);
     }
 
     @ExplodeLoop
