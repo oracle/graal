@@ -308,6 +308,7 @@ public class AOTTutorial {
                         logHandler(log).//
                         allowExperimentalOptions(true).//
                         option("engine.TraceCompilation", "true").//
+                        option("engine.CompileImmediately", "false").//
                         option("engine.CompileAOTOnCreate", "true").build()) {
 
             // Since we set engine.CompileAOTOnCreate to true the sample function will be
