@@ -132,6 +132,9 @@ public abstract class Profile extends NodeCloneable {
      * Disables this profile by setting it to its generic state. After disabling it is guaranteed to
      * never {@link CompilerDirectives#transferToInterpreterAndInvalidate() deoptimize} on any
      * invocation of a profile method.
+     * <p>
+     * This method must not be called on compiled code paths. Note that disabling the profile will
+     * not invalidate existing compiled code that uses this profile.
      *
      * @since 21.1
      */
@@ -141,6 +144,9 @@ public abstract class Profile extends NodeCloneable {
     /**
      * Resets this profile to its uninitialized state. Has no effect if this profile is already in
      * its uninitialized state or a disabled version of this profile is used.
+     * <p>
+     * This method must not be called on compiled code paths. Note that disabling the profile will
+     * not invalidate existing compiled code that uses this profile.
      *
      * @since 21.1
      */
