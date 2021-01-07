@@ -69,6 +69,7 @@ import java.nio.charset.CharsetDecoder;
 import java.nio.charset.CodingErrorAction;
 import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
+import java.util.Objects;
 
 import static org.graalvm.wasm.Assert.assertByteEqual;
 import static org.graalvm.wasm.Assert.assertIntEqual;
@@ -669,43 +670,63 @@ public class BinaryParser extends BinaryStreamParser {
                     break;
                 }
                 case Instructions.F32_LOAD:
-                    load(state, F32_TYPE);
+                    load(state, F32_TYPE, 32);
                     break;
                 case Instructions.F64_LOAD:
-                    load(state, F64_TYPE);
+                    load(state, F64_TYPE, 64);
                     break;
                 case Instructions.I32_LOAD:
+                    load(state, I32_TYPE, 32);
+                    break;
                 case Instructions.I32_LOAD8_S:
                 case Instructions.I32_LOAD8_U:
+                    load(state, I32_TYPE, 8);
+                    break;
                 case Instructions.I32_LOAD16_S:
                 case Instructions.I32_LOAD16_U:
-                    load(state, I32_TYPE);
+                    load(state, I32_TYPE, 16);
                     break;
                 case Instructions.I64_LOAD:
+                    load(state, I64_TYPE, 64);
+                    break;
                 case Instructions.I64_LOAD8_S:
                 case Instructions.I64_LOAD8_U:
+                    load(state, I64_TYPE, 8);
+                    break;
                 case Instructions.I64_LOAD16_S:
                 case Instructions.I64_LOAD16_U:
+                    load(state, I64_TYPE, 16);
+                    break;
                 case Instructions.I64_LOAD32_S:
                 case Instructions.I64_LOAD32_U:
-                    load(state, I64_TYPE);
+                    load(state, I64_TYPE, 32);
                     break;
                 case Instructions.F32_STORE:
-                    store(state, F32_TYPE);
+                    store(state, F32_TYPE, 32);
                     break;
                 case Instructions.F64_STORE:
-                    store(state, F64_TYPE);
+                    store(state, F64_TYPE, 64);
                     break;
                 case Instructions.I32_STORE:
+                    store(state, I32_TYPE, 32);
+                    break;
                 case Instructions.I32_STORE_8:
+                    store(state, I32_TYPE, 8);
+                    break;
                 case Instructions.I32_STORE_16:
-                    store(state, I32_TYPE);
+                    store(state, I32_TYPE, 16);
                     break;
                 case Instructions.I64_STORE:
+                    store(state, I64_TYPE, 64);
+                    break;
                 case Instructions.I64_STORE_8:
+                    store(state, I64_TYPE, 8);
+                    break;
                 case Instructions.I64_STORE_16:
+                    store(state, I64_TYPE, 16);
+                    break;
                 case Instructions.I64_STORE_32:
-                    store(state, I64_TYPE);
+                    store(state, I64_TYPE, 32);
                     break;
                 case Instructions.MEMORY_SIZE: {
                     final int flag = read1();
@@ -974,25 +995,25 @@ public class BinaryParser extends BinaryStreamParser {
         return currentBlock;
     }
 
-    private void store(ExecutionState state, byte type) {
+    private void store(ExecutionState state, byte type, int n) {
         assertTrue(module.symbolTable().memoryExists(), Failure.UNKNOWN_MEMORY);
 
         // We don't store the `align` literal, as our implementation does not make use
         // of it, but we need to store its byte length, so that we can skip it
         // during the execution.
-        readUnsignedInt32(); // align hint
+        readAlignHint(n); // align hint
         readUnsignedInt32(); // store offset
         state.popChecked(type); // value to store
         state.popChecked(I32_TYPE); // base address
     }
 
-    private void load(ExecutionState state, byte type) {
+    private void load(ExecutionState state, byte type, int n) {
         assertTrue(module.symbolTable().memoryExists(), Failure.UNKNOWN_MEMORY);
 
         // We don't store the `align` literal, as our implementation does not make use
         // of it, but we need to store its byte length, so that we can skip it
         // during execution.
-        readUnsignedInt32(); // align hint
+        readAlignHint(n); // align hint
         readUnsignedInt32(); // load offset
         state.popChecked(I32_TYPE); // base address
         state.push(type); // loaded value
@@ -1098,7 +1119,8 @@ public class BinaryParser extends BinaryStreamParser {
             } else {
                 // Reading of the elements segment is called after linking (this happens when this
                 // method is called from #resetTableState()), so initialize the table directly.
-                linkedContext.linker().immediatelyResolveElemSegment(linkedContext, linkedInstance, currentElemSegmentId, currentOffsetAddress, currentOffsetGlobalIndex, functionIndices);
+                final Linker linker = Objects.requireNonNull(linkedContext.linker());
+                linker.immediatelyResolveElemSegment(linkedContext, linkedInstance, currentElemSegmentId, currentOffsetAddress, currentOffsetGlobalIndex, functionIndices);
             }
         }
     }
@@ -1441,6 +1463,12 @@ public class BinaryParser extends BinaryStreamParser {
     protected int readLength() {
         final int value = readUnsignedInt32();
         assertUnsignedIntLessOrEqual(value, data.length, Failure.LENGTH_OUT_OF_BOUNDS);
+        return value;
+    }
+
+    protected int readAlignHint(int n) {
+        final int value = readUnsignedInt32();
+        assertUnsignedIntLessOrEqual(1 << value, n / 8, Failure.ALIGNMENT_LARGER_THAN_NATURAL);
         return value;
     }
 
