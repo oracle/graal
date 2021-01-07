@@ -48,15 +48,6 @@ suite = {
                 ]
             },
             {
-                "name": "substratevm",
-                "subdir": True,
-                "version": "e2ff78d16c18a9d0fc2b60959ece21b65112098f",
-                "urls": [
-                    {"url": "https://github.com/graalvm/graal", "kind": "git"},
-                    {"url": "https://curio.ssw.jku.at/nexus/content/repositories/snapshots", "kind": "binary"},
-                ]
-            },
-            {
                 "name": "tools",
                 "subdir": True,
                 "version": "e2ff78d16c18a9d0fc2b60959ece21b65112098f",
@@ -165,7 +156,6 @@ suite = {
             "sourceDirs": ["src"],
             "dependencies": [
                  "sdk:GRAAL_SDK",
-                #"substratevm:SVM",
                 "sdk:LAUNCHER_COMMON",
             ],
             "javaCompliance": "1.8+",
@@ -473,7 +463,6 @@ suite = {
             ],
             "distDependencies": [
                 "sdk:GRAAL_SDK",
-                # "substratevm:SVM",
                 "sdk:LAUNCHER_COMMON",
             ],
             "license": "UPL",
