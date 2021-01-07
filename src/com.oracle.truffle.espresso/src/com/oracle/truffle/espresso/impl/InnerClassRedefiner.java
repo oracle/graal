@@ -23,13 +23,11 @@
 package com.oracle.truffle.espresso.impl;
 
 import com.oracle.truffle.espresso.classfile.ClassfileParser;
-import com.oracle.truffle.espresso.classfile.ClassfileStream;
 import com.oracle.truffle.espresso.descriptors.Symbol;
 import com.oracle.truffle.espresso.jdwp.api.ErrorCodes;
 import com.oracle.truffle.espresso.jdwp.api.RedefineInfo;
 import com.oracle.truffle.espresso.jdwp.impl.JDWPLogger;
 import com.oracle.truffle.espresso.runtime.EspressoContext;
-import com.oracle.truffle.espresso.runtime.EspressoException;
 import com.oracle.truffle.espresso.runtime.StaticObject;
 
 import java.io.ByteArrayOutputStream;
@@ -88,7 +86,7 @@ public final class InnerClassRedefiner implements DefineKlassListener {
             Iterator<RedefineInfo> it = unhandled.iterator();
             while (it.hasNext()) {
                 RedefineInfo redefineInfo = it.next();
-                Symbol<Symbol.Name> klassName = getClassNameFromBytes(redefineInfo.getClassBytes());
+                Symbol<Symbol.Name> klassName = ClassfileParser.getClassName(redefineInfo.getClassBytes(), context);
                 Matcher matcher = ANON_INNER_CLASS_PATTERN.matcher(klassName.toString());
                 if (matcher.matches()) {
                     // don't assume that associated old klass instance represents this redefineInfo
@@ -141,28 +139,6 @@ public final class InnerClassRedefiner implements DefineKlassListener {
         }
         hotswapState.clear();
         return result.toArray(new HotSwapClassInfo[0]);
-    }
-
-    private Symbol<Symbol.Name> getClassNameFromBytes(byte[] bytes) {
-        try {
-            // pass in a class name we know is not correct only to catch
-            // the NoClassDefFoundError which is known to contain the type
-            // name of the class in the exception message
-            ClassfileParser.parse(new ClassfileStream(bytes, null), "!INVALID!", null, context);
-        } catch (EspressoException ex) {
-            String message = ex.getMessage();
-            if (message != null && message.contains("(wrong name:")) {
-                int typeEndIndex = message.indexOf(';');
-                if (typeEndIndex != -1) {
-                    // name is between 'L' and ';' as the first characters in the message
-                    return context.getNames().getOrCreate(message.substring(1, typeEndIndex));
-                }
-            }
-        }
-        // We only end up here in case the message in the
-        // exception changed format in that case, we fail fast
-        JDWPLogger.log("Critical failure in fetching class name from bytes", JDWPLogger.LogLevel.ALL);
-        throw new RedefintionNotSupportedException(ErrorCodes.INVALID_CLASS);
     }
 
     @SuppressWarnings("unchecked")
