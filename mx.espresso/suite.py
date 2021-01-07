@@ -397,6 +397,7 @@ suite = {
             ],
             "javaProperties": {
                 "org.graalvm.language.java.home": "<path:ESPRESSO_SUPPORT>",
+                "org.graalvm.espresso.jvm.path": "<path:ESPRESSO_JVM_SUPPORT>",
             },
         },
 
@@ -495,7 +496,6 @@ suite = {
                 "lib/": [
                     "dependency:espresso:com.oracle.truffle.espresso.eden/<lib:eden>",
                     "dependency:espresso:com.oracle.truffle.espresso.native/<lib:nespresso>",
-                    #"dependency:espresso:com.oracle.truffle.espresso.mokapot/<lib:jvm>",
                 ],
             },
         },

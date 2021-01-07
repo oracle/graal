@@ -71,7 +71,6 @@ public interface EspressoProperties {
         private BootClassPathType version;
         private Path javaHome;
         private Path espressoLibraryPath;
-        private List<Path> jvmLibraryPath;
         private List<Path> classpath;
         private List<Path> bootClasspath;
         private List<Path> javaLibraryPath;
@@ -167,7 +166,11 @@ public interface EspressoProperties {
         }
 
         public List<Path> jvmLibraryPath() {
-            return jvmLibraryPath != null ? jvmLibraryPath : defaultJvmLibraryPath();
+            String value = System.getProperty("org.graalvm.espresso.jvm.path");
+            if (value != null) {
+                return Utils.parsePaths(value);
+            }
+            return defaultJvmLibraryPath();
         }
 
         public EspressoProperties build() {
