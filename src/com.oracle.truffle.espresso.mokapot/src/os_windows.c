@@ -32,6 +32,7 @@
 #include <sys/types.h>
 #include <sys/stat.h>
 #include <assert.h>
+#include <libloaderapi.h>
 
 #include <errno.h>
 #include <fcntl.h>
@@ -315,6 +316,41 @@ int os_get_sock_opt(int fd, int level, int optname,
 int os_set_sock_opt(int fd, int level, int optname,
                      const char* optval, socklen_t optlen) {
   return setsockopt(fd, level, optname, optval, optlen);
+}
+
+const char *os_current_library_path() {
+    HMODULE info;
+    if (!GetModuleHandleExA(GET_MODULE_HANDLE_EX_FLAG_FROM_ADDRESS | GET_MODULE_HANDLE_EX_FLAG_UNCHANGED_REFCOUNT, os_current_library_path, &info)) {
+        return NULL;
+    }
+    char[MAX_PATH] path;
+    if(!GetModuleFileNameA(info, &path, MAX_PATH)) {
+        return NULL;
+    }
+    return path;
+}
+
+OS_DL_HANDLE os_dl_open(const char * path) {
+    return LoadLibraryA(path);
+}
+
+const char *os_dl_error() {
+    DWORD dw = GetLastError();
+    char* message;
+    FormatMessage(
+        FORMAT_MESSAGE_ALLOCATE_BUFFER |
+        FORMAT_MESSAGE_FROM_SYSTEM |
+        FORMAT_MESSAGE_IGNORE_INSERTS,
+        NULL,
+        dw,
+        MAKELANGID(LANG_NEUTRAL, SUBLANG_DEFAULT),
+        (LPTSTR) &message,
+        0, NULL );
+    return message;
+}
+
+void *os_dl_sym(OS_DL_HANDLE handle, const char *sym) {
+    return GetProcAddress(handle, sym);
 }
 
 #endif // defined(_WIN32)

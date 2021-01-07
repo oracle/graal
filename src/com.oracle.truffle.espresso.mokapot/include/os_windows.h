@@ -20,21 +20,17 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-#ifndef OS_POSIX_H
-#define OS_POSIX_H
+#ifndef OS_WINDOWS_H
+#define OS_WINDOWS_H
 
-#define OS_PATHSEP ('/')
-#define OS_PATHSEP_STR "/"
-#define OS_NEWLINE_STR "\n"
-typedef void* OS_DL_HANDLE;
+#define OS_PATHSEP ('\\')
+#define OS_PATHSEP_STR "\\"
+#define OS_NEWLINE_STR "\r\n"
+typedef HMODULE OS_DL_HANDLE;
 
-#ifdef __APPLE__
-#define OS_LIB(x) "lib" x ".dylib"
-#else
-#define OS_LIB(x) "lib" x ".so"
-#endif
+#define OS_LIB(x) x ".dll"
 
 // thread_local would be preferable but it's not always supported.
-#define OS_THREAD_LOCAL __thread
+#define OS_THREAD_LOCAL __declspec( thread )
 
-#endif //OS_POSIX_H
+#endif //OS_WINDOWS_H
