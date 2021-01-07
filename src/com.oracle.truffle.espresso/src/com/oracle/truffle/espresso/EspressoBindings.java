@@ -26,12 +26,12 @@ import com.oracle.truffle.api.TruffleLanguage;
 import com.oracle.truffle.api.dsl.Cached;
 import com.oracle.truffle.api.dsl.CachedContext;
 import com.oracle.truffle.api.interop.InteropLibrary;
-import com.oracle.truffle.api.interop.InvalidArrayIndexException;
 import com.oracle.truffle.api.interop.TruffleObject;
 import com.oracle.truffle.api.interop.UnknownIdentifierException;
 import com.oracle.truffle.api.library.ExportLibrary;
 import com.oracle.truffle.api.library.ExportMessage;
 import com.oracle.truffle.api.profiles.BranchProfile;
+import com.oracle.truffle.espresso.impl.KeysArray;
 import com.oracle.truffle.espresso.meta.Meta;
 import com.oracle.truffle.espresso.runtime.EspressoContext;
 import com.oracle.truffle.espresso.runtime.EspressoException;
@@ -54,6 +54,7 @@ import com.oracle.truffle.espresso.vm.InterpreterToVM;
  */
 @ExportLibrary(InteropLibrary.class)
 public final class EspressoBindings implements TruffleObject {
+    public static final String JAVA_VM = "<JavaVM>";
 
     final StaticObject loader;
 
@@ -65,7 +66,7 @@ public final class EspressoBindings implements TruffleObject {
     @ExportMessage
     @SuppressWarnings("static-method")
     Object getMembers(@SuppressWarnings("unused") boolean includeInternal) {
-        return EmptyKeysArray.INSTANCE;
+        return new KeysArray(new String[]{JAVA_VM});
     }
 
     @ExportMessage
@@ -89,6 +90,9 @@ public final class EspressoBindings implements TruffleObject {
         if (!isMemberReadable(member)) {
             error.enter();
             throw UnknownIdentifierException.create(member);
+        }
+        if (JAVA_VM.equals(member)) {
+            return context.getVM().getJavaVM();
         }
         Meta meta = context.getMeta();
         try {
@@ -126,35 +130,5 @@ public final class EspressoBindings implements TruffleObject {
     @SuppressWarnings("static-method")
     Object toDisplayString(@SuppressWarnings("unused") boolean allowSideEffects) {
         return "espresso-system-classloader";
-    }
-}
-
-@ExportLibrary(InteropLibrary.class)
-final class EmptyKeysArray implements TruffleObject {
-
-    static final TruffleObject INSTANCE = new EmptyKeysArray();
-
-    @ExportMessage
-    @SuppressWarnings("static-method")
-    boolean hasArrayElements() {
-        return true;
-    }
-
-    @ExportMessage
-    @SuppressWarnings("static-method")
-    long getArraySize() {
-        return 0;
-    }
-
-    @ExportMessage
-    @SuppressWarnings("static-method")
-    boolean isArrayElementReadable(@SuppressWarnings("unused") long index) {
-        return false;
-    }
-
-    @ExportMessage
-    @SuppressWarnings("static-method")
-    Object readArrayElement(long index) throws InvalidArrayIndexException {
-        throw InvalidArrayIndexException.create(index);
     }
 }
