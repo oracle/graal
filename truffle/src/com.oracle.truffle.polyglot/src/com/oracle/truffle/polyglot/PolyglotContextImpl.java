@@ -328,8 +328,17 @@ final class PolyglotContextImpl extends AbstractContextImpl implements com.oracl
 
     @Override
     public void resetLimits() {
-        PolyglotLimits.reset(this);
-        EngineAccessor.INSTRUMENT.notifyContextResetLimit(engine, creatorTruffleContext);
+        PolyglotLanguageContext languageContext = this.getHostContext();
+        assert languageContext != null;
+        Object prev = hostEnter(languageContext);
+        try {
+            PolyglotLimits.reset(this);
+            EngineAccessor.INSTRUMENT.notifyContextResetLimit(engine, creatorTruffleContext);
+        } catch (Throwable e) {
+            throw PolyglotImpl.guestToHostException(languageContext, e, true);
+        } finally {
+            hostLeave(languageContext, prev);
+        }
     }
 
     private PolyglotLanguageContext[] createContextArray() {
