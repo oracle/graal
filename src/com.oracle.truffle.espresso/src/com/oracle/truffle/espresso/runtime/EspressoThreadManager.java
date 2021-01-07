@@ -99,6 +99,12 @@ class EspressoThreadManager implements ContextAccess {
         return activeThreads.toArray(StaticObject.EMPTY_ARRAY);
     }
 
+    private void registerMainThread(Thread thread, StaticObject self) {
+        mainThreadId = thread.getId();
+        guestMainThread = self;
+        activeThreads.add(self);
+    }
+
     final AtomicLong createdThreadCount = new AtomicLong();
     final AtomicLong peakThreadCount = new AtomicLong();
 
@@ -225,26 +231,15 @@ class EspressoThreadManager implements ContextAccess {
             // register the new guest thread
             registerThread(hostThread, guestThread);
 
-            // TODO why the late method lookups?
             if (name == null) {
-                meta.java_lang_Thread // public Thread(ThreadGroup group, Runnable r)
-                                .lookupDeclaredMethod(Symbol.Name._init_, Symbol.Signature._void_ThreadGroup_Runnable) //
-                                .invokeDirect(guestThread,
-                                                /* group */ mainThreadGroup,
-                                                /* runnable */ StaticObject.NULL);
+                meta.java_lang_Thread_init_ThreadGroup_Runnable.invokeDirect(guestThread, mainThreadGroup, StaticObject.NULL);
             } else {
-                meta.java_lang_Thread // public Thread(ThreadGroup group, String name)
-                                .lookupDeclaredMethod(Symbol.Name._init_, Symbol.Signature._void_ThreadGroup_String) //
-                                .invokeDirect(guestThread,
-                                                /* group */ threadGroup,
-                                                /* name */ meta.toGuestString(name));
+                meta.java_lang_Thread_init_ThreadGroup_String.invokeDirect(guestThread, threadGroup, meta.toGuestString(name));
             }
             guestThread.setIntField(meta.java_lang_Thread_threadStatus, Target_java_lang_Thread.State.RUNNABLE.value);
 
             // now add to the main thread group
-            meta.java_lang_ThreadGroup // public void add(Thread t)
-                            .lookupDeclaredMethod(Symbol.Name.add, Symbol.Signature._void_Thread).invokeDirect(threadGroup,
-                                            /* thread */ guestThread);
+            meta.java_lang_ThreadGroup_add.invokeDirect(threadGroup, guestThread);
             return guestThread;
         }
     }
@@ -282,12 +277,6 @@ class EspressoThreadManager implements ContextAccess {
         mainThread.setIntField(meta.java_lang_Thread_threadStatus, Target_java_lang_Thread.State.RUNNABLE.value);
 
         mainThreadCreated = true;
-    }
-
-    private void registerMainThread(Thread thread, StaticObject self) {
-        mainThreadId = thread.getId();
-        guestMainThread = self;
-        activeThreads.add(self);
     }
 
     public boolean isMainThreadCreated() {

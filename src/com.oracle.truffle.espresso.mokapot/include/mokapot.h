@@ -55,9 +55,12 @@ typedef uint16_t jushort;
 typedef uint32_t juint;
 typedef uint64_t julong;
 
+// A VM created from espresso host Java code through through initializeMokapotContext
 #define MOKA_RISTRETTO ((void *)11)
-#define MOKA_AMERICANO ((void *)22)
-#define MOKA_LATTE ((void *)33)
+// A VM created from JNI_CreateJavaVM
+#define MOKA_LATTE ((void *)22)
+// A MOKA_RISTRETTO VM that is used by a MOKA_LATTE VM
+#define MOKA_AMERICANO ((void *)33)
 
 #define VM_METHOD_LIST(V) \
     V(JVM_Accept) \
