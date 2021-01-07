@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2017, 2020, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2017, 2021, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -242,7 +242,7 @@ class MultiLanguageShell implements Closeable {
         reader = LineReaderBuilder.builder().terminal(terminal).appName("GraalVM MultiLanguage Shell " + context.getEngine().getVersion()).history(
                         histories.computeIfAbsent(currentLanguage, language -> new DefaultHistory())).build();
         for (String s : reader.getKeyMaps().keySet()) {
-            reader.getKeyMaps().get(s).bind(new Reference(WIDGET_NAME), KeyMap.alt('l'));
+            reader.getKeyMaps().get(s).bind(new Reference(WIDGET_NAME), KeyMap.ctrl('n'));
             reader.getWidgets().put(WIDGET_NAME, () -> {
                 throw new ChangeLanguageException(null);
             });
@@ -289,7 +289,7 @@ class MultiLanguageShell implements Closeable {
             println("  " + promptsString + "    to switch to a language.");
         } else {
             println("Usage: ");
-            println("  Use Alt+L to switch language and Ctrl+D to exit.");
+            println("  Use Ctrl+n to switch language and Ctrl+d to exit.");
             println("  Enter -usage to get a list of available commands.");
         }
     }
