@@ -44,9 +44,6 @@ public class JfrTypeSet {
     private static JfrCheckpointWriter checkpointWriter;
     private static JfrCheckpointWriter leakWriter;
 
-    // JFR.TODO
-    // Will we ever need to handle class unloading?
-    private static boolean classUnload;
     private static boolean flushpoint;
 
     private static JfrArtifactSet artifactSet;
@@ -57,9 +54,9 @@ public class JfrTypeSet {
     /**
      * Write all "tagged" (in-use) constant artifacts and their dependencies.
      */
-    public static int serialize(JfrCheckpointWriter writer, JfrCheckpointWriter leakWriter, boolean classUnload,
+    public static int serialize(JfrCheckpointWriter writer, JfrCheckpointWriter leakWriter,
             boolean flushpoint) {
-        setup(writer, leakWriter, classUnload, flushpoint);
+        setup(writer, leakWriter, flushpoint);
 
         if (!writeKlasses()) {
             return 0;
@@ -378,7 +375,7 @@ public class JfrTypeSet {
 
         JfrTypeWriter klassWriter = new JfrTypeWriter(JfrTypes.JfrTypeId.TYPE_CLASS.id, checkpointWriter);
 
-        if (leakWriter == null && !classUnload) {
+        if (leakWriter == null) {
             try {
                 klassWriter.begin();
                 Consumer<Class<?>> kc = c -> {
@@ -472,29 +469,25 @@ public class JfrTypeSet {
     }
 
     private static boolean currentEpoch() {
-        return classUnload || flushpoint;
+        return flushpoint;
     }
 
     private static boolean previousEpoch() {
         return !currentEpoch();
     }
 
-    private static void setup(JfrCheckpointWriter writer, JfrCheckpointWriter leakWriter, boolean classUnload,
+    private static void setup(JfrCheckpointWriter writer, JfrCheckpointWriter leakWriter,
             boolean flushpoint) {
         checkpointWriter = writer;
         JfrTypeSet.leakWriter = leakWriter;
-        JfrTypeSet.classUnload = classUnload;
         JfrTypeSet.flushpoint = flushpoint;
 
         if (artifactSet == null) {
-            artifactSet = new JfrArtifactSet(JfrTypeSet.classUnload);
+            artifactSet = new JfrArtifactSet();
         } else {
-            artifactSet.initialize(JfrTypeSet.classUnload, clearArtifacts);
+            artifactSet.initialize(clearArtifacts);
         }
 
-        // if (!_class_unload) {
-        // JfrKlassUnloading::sort(previous_epoch());
-        // }
         clearArtifacts = false;
         assert (artifactSet != null);
         assert (!artifactSet.hasKlassEntries());
@@ -508,7 +501,7 @@ public class JfrTypeSet {
     public static void clear() {
         clearArtifacts();
         clearArtifacts = true;
-        setup(null, null, false, false);
+        setup(null, null, false);
     }
 
     private static void clearArtifacts() {

@@ -48,11 +48,11 @@ public class JfrArtifactSet {
 
     private static final AtomicLong symbolCounter = new AtomicLong(1);
 
-    public JfrArtifactSet(boolean classUnload) {
-        initialize(classUnload, false);
+    public JfrArtifactSet() {
+        initialize(false);
     }
 
-    public void initialize(boolean classUnload, boolean clearArtifacts) {
+    public void initialize(boolean clearArtifacts) {
         this.klassList.clear();
         if (clearArtifacts) {
             this.symbolMap.clear();

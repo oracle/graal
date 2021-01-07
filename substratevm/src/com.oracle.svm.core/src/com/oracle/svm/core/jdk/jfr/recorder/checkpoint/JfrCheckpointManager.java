@@ -100,7 +100,7 @@ public final class JfrCheckpointManager implements JfrCheckpointClient {
         JfrBuffer b = lease(0, true, thread);
         JfrCheckpointWriter writer = new JfrCheckpointWriter(b, thread, this);
         writer.open();
-        JfrTypeSet.serialize(writer, null, false, false);
+        JfrTypeSet.serialize(writer, null, false);
         writer.close();
 
         write();
