@@ -25,6 +25,7 @@ package com.oracle.truffle.espresso.libespresso;
 import static com.oracle.truffle.espresso.libespresso.jniapi.JNIErrors.JNI_ERR;
 
 import java.io.File;
+import java.io.PrintStream;
 
 import org.graalvm.nativeimage.c.struct.SizeOf;
 import org.graalvm.nativeimage.c.type.CCharPointer;
@@ -37,6 +38,7 @@ import com.oracle.truffle.espresso.libespresso.jniapi.JNIJavaVMInitArgs;
 import com.oracle.truffle.espresso.libespresso.jniapi.JNIJavaVMOption;
 
 public final class Arguments {
+    private static final PrintStream STDERR = System.err;
     private Arguments() {
     }
 
@@ -100,6 +102,7 @@ public final class Arguments {
                     builder.option("java.EnableSystemAssertions", "true");
                 } else {
                     // TODO XX: and X options
+                    STDERR.printf("Unrecognized option: %s%n", optionString);
                     return JNI_ERR();
                 }
             }
