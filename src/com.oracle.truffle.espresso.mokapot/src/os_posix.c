@@ -35,6 +35,7 @@
 #include <sys/poll.h>
 #include <sys/time.h>
 #include <dlfcn.h>
+#include <stdatomic.h>
 
 // macros for restartable system calls
 
@@ -260,6 +261,15 @@ const char *os_dl_error() {
 
 void *os_dl_sym(OS_DL_HANDLE handle, const char *sym) {
     return dlsym(handle, sym);
+}
+
+void* os_atomic_load_ptr(void* OS_ATOMIC *ptr) {
+    return atomic_load(ptr);
+}
+
+int os_atomic_compare_exchange_ptr(void* OS_ATOMIC *ptr, void* expected_value, void* new_value) {
+    void* expected = expected_value;
+    return atomic_compare_exchange_weak(ptr, &expected, new_value);
 }
 
 #endif // !defined(_WIN32)

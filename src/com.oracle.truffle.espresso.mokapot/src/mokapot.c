@@ -22,13 +22,11 @@
  */
 #define _JNI_IMPLEMENTATION_
 #include "mokapot.h"
-#include "os.h"
 
 #include <trufflenfi.h>
 #include <stdlib.h>
 #include <stdio.h>
 #include <string.h>
-#include <stdatomic.h>
 
 #include "libespresso_dynamic.h"
 
@@ -1717,10 +1715,10 @@ _JNI_IMPORT_OR_EXPORT_ jint JNICALL JNI_GetCreatedJavaVMs(JavaVM **vm_buf, jsize
     return JNI_OK;
 }
 
-VMList* _Atomic vm_list_head = NULL;
+VMList* OS_ATOMIC vm_list_head = NULL;
 
 void add_java_vm(JavaVM* vm) {
-    VMList* _Atomic* next_ptr = &vm_list_head;
+    VMList* OS_ATOMIC* next_ptr = &vm_list_head;
     uint32_t capacity = 0;
     for (;;) {
         VMList* current = *next_ptr;
@@ -1730,16 +1728,14 @@ void add_java_vm(JavaVM* vm) {
             current->capacity = new_capacity;
             current->vms[0] = vm;
             // assume NULL == 0
-            VMList* value = NULL;
-            if (atomic_compare_exchange_weak(next_ptr, &value, current)) {
+            if (os_atomic_compare_exchange_ptr((void* OS_ATOMIC *)next_ptr, NULL, current)) {
                 return;
             }
             free(current);
         } else {
             capacity = current->capacity;
             for (int i = 0; i < capacity; ++i) {
-                JavaVM* value = NULL;
-                if (atomic_compare_exchange_weak(&current->vms[i], &value, vm)) {
+                if (os_atomic_compare_exchange_ptr((void* OS_ATOMIC *)&current->vms[i], NULL, vm)) {
                     return;
                 }
             }
@@ -1748,7 +1744,7 @@ void add_java_vm(JavaVM* vm) {
     }
 }
 jint remove_java_vm(JavaVM* vm) {
-    VMList *_Atomic current = atomic_load(&vm_list_head);
+    VMList *OS_ATOMIC current = os_atomic_load_ptr((void* OS_ATOMIC *)&vm_list_head);
     while (current != NULL) {
         for (int i = 0; i < current->capacity; ++i) {
             current->vms[i] = NULL;
@@ -1760,7 +1756,7 @@ jint remove_java_vm(JavaVM* vm) {
 }
 void gather_java_vms(JavaVM** buf, jsize buf_size, jsize* numVms) {
     *numVms = 0;
-    VMList *_Atomic current = atomic_load(&vm_list_head);
+    VMList *OS_ATOMIC current = os_atomic_load_ptr((void* OS_ATOMIC *)&vm_list_head);
     while (current != NULL) {
         for (int i = 0; i < current->capacity; ++i) {
             if (*numVms >= buf_size) {

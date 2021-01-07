@@ -33,4 +33,6 @@ typedef HMODULE OS_DL_HANDLE;
 // thread_local would be preferable but it's not always supported.
 #define OS_THREAD_LOCAL __declspec( thread )
 
+#define OS_ATOMIC volatile
+
 #endif //OS_WINDOWS_H

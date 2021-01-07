@@ -30,10 +30,12 @@
 #include <stddef.h>
 #include <stdint.h>
 
-#if !defined(_WIN32)
-#include "os_posix.h"
+#if defined(_WIN32)
+# include "os_windows.h"
+#elif defined(__linux__) || defined(__APPLE__)
+# include "os_posix.h"
 #else
-#include "os_windows.h"
+#error unknown platform
 #endif
 
 // Additional Java basic types
@@ -93,5 +95,9 @@ const char *os_current_library_path();
 OS_DL_HANDLE os_dl_open(const char * path);
 const char *os_dl_error();
 void *os_dl_sym(OS_DL_HANDLE handle, const char *sym);
+
+// atomics
+void* os_atomic_load_ptr(void* OS_ATOMIC *ptr);
+int os_atomic_compare_exchange_ptr(void* OS_ATOMIC *ptr, void* expected_value, void* new_value);
 
 #endif // _OS_H

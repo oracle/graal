@@ -25,6 +25,7 @@
 
 #include "jvm.h"
 #include "jni.h"
+#include "os.h"
 
 #include <trufflenfi.h>
 #include <stddef.h>
@@ -857,12 +858,12 @@ struct MokapotEnv_ {
 
 // An always-growing, lock-free list of JavaVM*
 typedef struct VMList {
-    struct VMList* _Atomic next;
+    struct VMList* OS_ATOMIC next;
     uint32_t capacity;
-    JavaVM* _Atomic vms[];
+    JavaVM* OS_ATOMIC vms[];
 } VMList;
 
-extern VMList* _Atomic vm_list_head;
+extern VMList* OS_ATOMIC vm_list_head;
 
 void add_java_vm(JavaVM* vm);
 jint remove_java_vm(JavaVM* vm);

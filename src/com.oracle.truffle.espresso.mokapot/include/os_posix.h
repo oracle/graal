@@ -37,4 +37,6 @@ typedef void* OS_DL_HANDLE;
 // thread_local would be preferable but it's not always supported.
 #define OS_THREAD_LOCAL __thread
 
+#define OS_ATOMIC _Atomic
+
 #endif //OS_POSIX_H
