@@ -24,6 +24,8 @@
  */
 package org.graalvm.compiler.truffle.compiler.phases.inlining;
 
+import org.graalvm.compiler.nodes.StructuredGraph;
+
 import java.util.Map;
 
 @SuppressWarnings("unused")
@@ -42,7 +44,7 @@ public interface InliningPolicy {
     default void putProperties(CallNode callNode, Map<Object, Object> properties) {
     }
 
-    default void afterPE(CallNode callNode) {
+    default void afterPE(CallNode callNode, StructuredGraph ir) {
     }
 
     default void afterExpand(CallNode callNode) {
