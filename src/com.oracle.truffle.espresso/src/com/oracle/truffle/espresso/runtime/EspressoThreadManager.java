@@ -100,8 +100,10 @@ class EspressoThreadManager implements ContextAccess {
     }
 
     private void registerMainThread(Thread thread, StaticObject self) {
-        mainThreadId = thread.getId();
-        guestMainThread = self;
+        synchronized (activeThreadLock) {
+            mainThreadId = thread.getId();
+            guestMainThread = self;
+        }
         activeThreads.add(self);
     }
 
@@ -135,7 +137,7 @@ class EspressoThreadManager implements ContextAccess {
         if (referenceHandlerThreadId == -1) {
             if (getMeta().java_lang_ref_Reference$ReferenceHandler.isAssignableFrom(guest.getKlass())) {
                 synchronized (activeThreadLock) {
-                    if (finalizerThreadId == -1) {
+                    if (referenceHandlerThreadId == -1) {
                         CompilerDirectives.transferToInterpreterAndInvalidate();
                         referenceHandlerThreadId = host.getId();
                         guestReferenceHandlerThread = guest;
@@ -144,7 +146,7 @@ class EspressoThreadManager implements ContextAccess {
                 }
             }
         }
-        pushThread((int) host.getId(), guest);
+        pushThread(Math.toIntExact(host.getId()), guest);
     }
 
     /**
@@ -154,6 +156,25 @@ class EspressoThreadManager implements ContextAccess {
     @SuppressFBWarnings(value = "NN", justification = "Removing a thread from the active set is the state change we need.")
     public void unregisterThread(StaticObject thread) {
         activeThreads.remove(thread);
+        Thread hostThread = (Thread) thread.getHiddenField(thread.getKlass().getMeta().HIDDEN_HOST_THREAD);
+        int id = Math.toIntExact(hostThread.getId());
+        synchronized (activeThreadLock) {
+            if (id == mainThreadId) {
+                mainThreadId = -1;
+                guestMainThread = null;
+            } else if (id == finalizerThreadId) {
+                guestFinalizerThread = null;
+                finalizerThreadId = -1;
+            } else if (id == referenceHandlerThreadId) {
+                guestReferenceHandlerThread = null;
+                referenceHandlerThreadId = -1;
+            } else {
+                Object[] threads = guestThreads;
+                int threadIndex = getThreadIndex(id, threads);
+                assert threads[threadIndex] == thread;
+                threads[threadIndex] = null;
+            }
+        }
         Object sync = context.getShutdownSynchronizer();
         synchronized (sync) {
             sync.notifyAll();

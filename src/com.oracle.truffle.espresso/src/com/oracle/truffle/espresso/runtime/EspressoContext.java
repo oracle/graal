@@ -73,6 +73,8 @@ import com.oracle.truffle.espresso.substitutions.Target_java_lang_ref_Reference;
 import com.oracle.truffle.espresso.vm.InterpreterToVM;
 import com.oracle.truffle.espresso.vm.VM;
 
+import static com.oracle.truffle.espresso.jni.JniEnv.JNI_OK;
+
 public final class EspressoContext {
 
     public static final int DEFAULT_STACK_SIZE = 32;
@@ -131,7 +133,6 @@ public final class EspressoContext {
     // region JDWP
     private JDWPContextImpl jdwpContext;
     private VMListener eventListener;
-    private boolean contextReady;
     // endregion JDWP
 
     // region Options
@@ -543,14 +544,6 @@ public final class EspressoContext {
         jdwpContext.finalizeContext();
     }
 
-    public void begin() {
-        this.contextReady = true;
-    }
-
-    public boolean canEnterOtherThread() {
-        return contextReady;
-    }
-
     // region Thread management
 
     /**
@@ -565,9 +558,17 @@ public final class EspressoContext {
     }
 
     public void disposeThread(@SuppressWarnings("unused") Thread hostThread) {
-        // simply calling Thread.exit() will do most of what's needed
-        // TODO(Gregersen) - /browse/GR-20077
-        getLogger().warning("unimplemented: disposeThread: " + Thread.currentThread());
+        StaticObject guestThread = getGuestThreadFromHost(hostThread);
+        if (guestThread == null) {
+            return;
+        }
+        if (hostThread != Thread.currentThread()) {
+            getLogger().warning("unimplemented: disposeThread for non-current thread: " + hostThread);
+            return;
+        }
+        if (vm.DetachCurrentThread() != JNI_OK) {
+            throw new RuntimeException("Could not detach thread correctly");
+        }
     }
 
     public StaticObject getGuestThreadFromHost(Thread host) {
