@@ -30,4 +30,7 @@ typedef void* OS_DL_HANDLE;
 
 #define OS_LIB(x) "lib" x ".so"
 
+// thread_local would be preferable but it's not always supported.
+#define OS_THREAD_LOCAL __thread
+
 #endif //OS_POSIX_H

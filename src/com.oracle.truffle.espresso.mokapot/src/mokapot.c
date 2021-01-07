@@ -28,12 +28,11 @@
 #include <stdlib.h>
 #include <stdio.h>
 #include <string.h>
-#include <threads.h>
 #include <stdatomic.h>
 
 #include "libespresso_dynamic.h"
 
-thread_local MokapotEnv* tls_moka_env = NULL;
+OS_THREAD_LOCAL MokapotEnv* tls_moka_env = NULL;
 
 JNIEXPORT JavaVM* JNICALL getJavaVM(MokapotEnv* moka_env) {
   return (*moka_env)->vm;
