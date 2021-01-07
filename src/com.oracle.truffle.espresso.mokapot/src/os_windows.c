@@ -32,7 +32,6 @@
 #include <sys/types.h>
 #include <sys/stat.h>
 #include <assert.h>
-#include <libloaderapi.h>
 
 #include <errno.h>
 #include <fcntl.h>

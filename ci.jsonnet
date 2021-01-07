@@ -291,6 +291,7 @@ local jdk8_weekly_bench_linux     = base.jdk8_ee  + base.weeklyBench   + base.x5
 local jdk8_on_demand_linux        = base.jdk8_ee  + base.onDemand      + base.linux;
 local jdk8_on_demand_bench_linux  = base.jdk8_ee  + base.onDemandBench + base.x52;
 local jdk11_gate_linux            = base.jdk11_ee + base.gate          + base.linux;
+local jdk11_gate_windows          = base.jdk11_ee + base.gate          + base.windows_11;
 
 local jdk8_deploy_windows         = base.jdk8_ee  + deploy_windows + base.windows_8_ee;
 local jdk8_deploy_darwin          = base.jdk8_ee  + deploy_unix    + base.darwin;
@@ -346,6 +347,8 @@ local awfy = 'awfy:*';
     jdk11_gate_linux              + clone_build_run('jvm-ce',    hello_world_args)                        + {name: 'espresso-gate-jvm-ce-hello-world-jdk11-linux-amd64'},
     jdk11_gate_linux              + clone_build_run('native-ce', hello_world_args)                        + {name: 'espresso-gate-native-ce-hello-world-jdk11-linux-amd64'},
     jdk11_gate_linux              + clone_build_run('native-ee', hello_world_args)                        + {name: 'espresso-gate-native-ee-hello-world-jdk11-linux-amd64'},
+    jdk11_gate_windows            + clone_build_run('jvm-ce',    hello_world_args)                        + {name: 'espresso-gate-jvm-ce-hello-world-jdk11-windows-amd64'},
+    jdk11_gate_windows            + clone_build_run('native-ee', hello_world_args)                        + {name: 'espresso-gate-native-ee-hello-world-jdk11-windows-amd64'},
 
     // AWFY peak perf. benchmarks (post-merge)
     jdk8_bench_linux              + espresso_benchmark('jvm-ce', awfy)                                    + {name: 'espresso-bench-jvm-ce-awfy-jdk8-linux-amd64'},
