@@ -201,6 +201,11 @@ public final class ClassfileParser {
         this.constantPoolPatches = constantPoolPatches;
     }
 
+    // Note: only used for reading the class name from class bytes
+    private ClassfileParser(ClassfileStream stream, EspressoContext context) {
+        this(stream, "", null, context, null);
+    }
+
     void handleBadConstant(Tag tag, ClassfileStream s) {
         if (tag == Tag.MODULE || tag == Tag.PACKAGE) {
             if (majorVersion >= JAVA_9_VERSION) {
@@ -401,6 +406,38 @@ public final class ClassfileParser {
         stream.checkEndOfFile();
 
         return new ParserKlass(pool, classFlags, thisKlassName, thisKlassType, superKlass, superInterfaces, methods, fields, attributes, thisKlassIndex);
+    }
+
+    public static Symbol<Symbol.Name> getClassName(byte[] bytes, EspressoContext context) {
+        return new ClassfileParser(new ClassfileStream(bytes, null), context).getClassName();
+    }
+
+    private Symbol<Symbol.Name> getClassName() {
+
+        readMagic();
+
+        minorVersion = stream.readU2();
+        majorVersion = stream.readU2();
+        verifyVersion(majorVersion, minorVersion);
+
+        try (DebugCloseable closeable = CONSTANT_POOL.scope(context.getTimers())) {
+            if (constantPoolPatches == null) {
+                this.pool = ConstantPool.parse(context.getLanguage(), stream, this, majorVersion, minorVersion);
+            } else {
+                this.pool = ConstantPool.parse(context.getLanguage(), stream, this, constantPoolPatches, context, majorVersion, minorVersion);
+            }
+        }
+
+        // JVM_ACC_MODULE is defined in JDK-9 and later.
+        if (majorVersion >= JAVA_9_VERSION) {
+            classFlags = stream.readU2() & (JVM_RECOGNIZED_CLASS_MODIFIERS | ACC_MODULE);
+        } else {
+            classFlags = stream.readU2() & (JVM_RECOGNIZED_CLASS_MODIFIERS);
+        }
+
+        int thisKlassIndex = stream.readU2();
+
+        return pool.classAt(thisKlassIndex).getName(pool);
     }
 
     private ParserMethod[] parseMethods(boolean isInterface) {
