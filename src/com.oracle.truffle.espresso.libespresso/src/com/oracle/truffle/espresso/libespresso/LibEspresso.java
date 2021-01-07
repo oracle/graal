@@ -42,7 +42,7 @@ public class LibEspresso {
     private static final PrintStream STDERR = System.err;
 
     @CEntryPoint(name = "Espresso_CreateJavaVM")
-    static int createJavaVM(IsolateThread thread, JNIJavaVMPointer javaVMPointer, JNIEnvironmentPointer penv, JNIJavaVMInitArgs args) {
+    static int createJavaVM(@SuppressWarnings("unused") IsolateThread thread, JNIJavaVMPointer javaVMPointer, JNIEnvironmentPointer penv, JNIJavaVMInitArgs args) {
         if (args.getVersion() < JNIVersion.JNI_VERSION_1_2() || args.getVersion() > JNIVersion.JNI_VERSION_10()) {
             return JNIErrors.JNI_EVERSION();
         }
