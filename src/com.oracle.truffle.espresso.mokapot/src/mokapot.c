@@ -1583,7 +1583,9 @@ jint DestroyJavaVM(JavaVM *vm) {
             return result;
         }
     }
-    return (*espressoJavaVM)->DestroyJavaVM(espressoJavaVM);
+    jint result = (*espressoJavaVM)->DestroyJavaVM(espressoJavaVM);
+    remove_java_vm(vm);
+    return result;
 }
 
 jint DetachCurrentThread(JavaVM *vm) {
@@ -1715,10 +1717,10 @@ _JNI_IMPORT_OR_EXPORT_ jint JNICALL JNI_GetCreatedJavaVMs(JavaVM **vm_buf, jsize
     return JNI_OK;
 }
 
-VMList* volatile vm_list_head = NULL;
+VMList* _Atomic vm_list_head = NULL;
 
 void add_java_vm(JavaVM* vm) {
-    VMList* volatile* next_ptr = &vm_list_head;
+    VMList* _Atomic* next_ptr = &vm_list_head;
     uint32_t capacity = 0;
     for (;;) {
         VMList* current = *next_ptr;
@@ -1746,7 +1748,7 @@ void add_java_vm(JavaVM* vm) {
     }
 }
 jint remove_java_vm(JavaVM* vm) {
-    VMList *volatile current = atomic_load(&vm_list_head);
+    VMList *_Atomic current = atomic_load(&vm_list_head);
     while (current != NULL) {
         for (int i = 0; i < current->capacity; ++i) {
             current->vms[i] = NULL;
@@ -1758,7 +1760,7 @@ jint remove_java_vm(JavaVM* vm) {
 }
 void gather_java_vms(JavaVM** buf, jsize buf_size, jsize* numVms) {
     *numVms = 0;
-    VMList *volatile current = atomic_load(&vm_list_head);
+    VMList *_Atomic current = atomic_load(&vm_list_head);
     while (current != NULL) {
         for (int i = 0; i < current->capacity; ++i) {
             if (*numVms >= buf_size) {

@@ -857,12 +857,12 @@ struct MokapotEnv_ {
 
 // An always-growing, lock-free list of JavaVM*
 typedef struct VMList {
-    struct VMList* volatile next;
+    struct VMList* _Atomic next;
     uint32_t capacity;
-    JavaVM* volatile vms[];
+    JavaVM* _Atomic vms[];
 } VMList;
 
-extern VMList* volatile vm_list_head;
+extern VMList* _Atomic vm_list_head;
 
 void add_java_vm(JavaVM* vm);
 jint remove_java_vm(JavaVM* vm);
