@@ -22,10 +22,10 @@
  */
 package com.oracle.truffle.espresso.libespresso;
 
+import java.io.PrintStream;
+
 import org.graalvm.nativeimage.IsolateThread;
 import org.graalvm.nativeimage.c.function.CEntryPoint;
-import org.graalvm.nativeimage.c.function.CEntryPointLiteral;
-import org.graalvm.nativeimage.c.function.CFunctionPointer;
 import org.graalvm.polyglot.Context;
 import org.graalvm.polyglot.Value;
 import org.graalvm.word.WordFactory;
@@ -37,8 +37,6 @@ import com.oracle.truffle.espresso.libespresso.jniapi.JNIJavaVM;
 import com.oracle.truffle.espresso.libespresso.jniapi.JNIJavaVMInitArgs;
 import com.oracle.truffle.espresso.libespresso.jniapi.JNIJavaVMPointer;
 import com.oracle.truffle.espresso.libespresso.jniapi.JNIVersion;
-
-import java.io.PrintStream;
 
 public class LibEspresso {
     private static final PrintStream STDERR = System.err;

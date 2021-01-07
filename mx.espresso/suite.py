@@ -189,6 +189,7 @@ suite = {
             "sourceDirs": ["src"],
             "jniHeaders": True,
             "javaCompliance": "11",
+            "checkPackagePrefix" : "false",
         },
 
         "com.oracle.truffle.espresso.playground.native": {
