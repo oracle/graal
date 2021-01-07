@@ -25,7 +25,6 @@
 package org.graalvm.compiler.truffle.compiler.phases.inlining;
 
 import java.util.List;
-import java.util.function.Consumer;
 
 import org.graalvm.collections.EconomicMap;
 import org.graalvm.collections.UnmodifiableEconomicMap;
@@ -61,7 +60,7 @@ final class GraphManager {
         this.graphCacheForInlining = partialEvaluator.getOrCreateEncodedGraphCache();
     }
 
-    Entry pe(CompilableTruffleAST truffleAST, Consumer<StructuredGraph> afterPE) {
+    Entry pe(CompilableTruffleAST truffleAST, Runnable afterPE) {
         Entry entry = irCache.get(truffleAST);
         if (entry == null) {
             final PEAgnosticInlineInvokePlugin plugin = newPlugin();
@@ -69,7 +68,7 @@ final class GraphManager {
             request.graph.getAssumptions().record(new TruffleAssumption(truffleAST.getNodeRewritingAssumptionConstant()));
             partialEvaluator.doGraphPE(request, plugin, graphCacheForInlining);
             if (request.options.get(PolyglotCompilerOptions.InliningOptimizeOnExpand)) {
-                afterPE.accept(request.graph);
+                afterPE.run();
                 partialEvaluator.truffleTier(request);
             }
             entry = new Entry(request.graph, plugin);
