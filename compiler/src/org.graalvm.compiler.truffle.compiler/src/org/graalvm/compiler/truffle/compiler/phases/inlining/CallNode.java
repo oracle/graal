@@ -223,7 +223,7 @@ public final class CallNode extends Node implements Comparable<CallNode> {
         assert ir == null;
         GraphManager.Entry entry;
         try {
-            entry = getCallTree().getGraphManager().pe(truffleAST, () -> getPolicy().afterPE(this));
+            entry = getCallTree().getGraphManager().pe(truffleAST);
         } catch (PermanentBailoutException e) {
             state = State.BailedOut;
             return;

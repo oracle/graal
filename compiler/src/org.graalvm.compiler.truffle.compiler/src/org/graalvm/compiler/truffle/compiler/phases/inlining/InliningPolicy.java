@@ -42,9 +42,6 @@ public interface InliningPolicy {
     default void putProperties(CallNode callNode, Map<Object, Object> properties) {
     }
 
-    default void afterPE(CallNode callNode) {
-    }
-
     default void afterExpand(CallNode callNode) {
     }
 
