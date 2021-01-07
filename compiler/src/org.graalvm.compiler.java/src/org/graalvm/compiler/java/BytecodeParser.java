@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2009, 2020, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2009, 2021, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -2949,6 +2949,14 @@ public class BytecodeParser implements GraphBuilderContext {
         return nextBegin;
     }
 
+    /**
+     * Because LoopExitNodes do not have a unique bci, in some native-image configurations it is not
+     * possible to clear non-live locals before generating these nodes.
+     */
+    protected void clearNonLiveLocalsAtLoopExitCreation(BciBlock block, FrameStateBuilder state) {
+        state.clearNonLiveLocals(block, liveness, true);
+    }
+
     private Target checkLoopExit(Target target, BciBlock targetBlock) {
         if (currentBlock != null) {
             long exits = currentBlock.loops & ~targetBlock.loops;
@@ -2984,6 +2992,8 @@ public class BytecodeParser implements GraphBuilderContext {
                 if (targetBlock != blockMap.getUnwindBlock() && !(targetBlock instanceof ExceptionDispatchBlock)) {
                     newState.setRethrowException(false);
                 }
+                clearNonLiveLocalsAtLoopExitCreation(targetBlock, newState);
+
                 for (BciBlock loop : exitLoops) {
                     LoopBeginNode loopBegin = (LoopBeginNode) getFirstInstruction(loop);
                     LoopExitNode loopExit = graph.add(new LoopExitNode(loopBegin));
@@ -2995,7 +3005,6 @@ public class BytecodeParser implements GraphBuilderContext {
                     }
                     lastLoopExit = loopExit;
                     debug.log("Target %s Exits %s, scanning framestates...", targetBlock, loop);
-                    newState.clearNonLiveLocals(targetBlock, liveness, true);
                     newState.insertLoopProxies(loopExit, getEntryState(loop));
                     loopExit.setStateAfter(newState.create(bci, loopExit));
                 }
@@ -3061,6 +3070,14 @@ public class BytecodeParser implements GraphBuilderContext {
         return firstInstructionArray[block.id];
     }
 
+    /**
+     * In some native-image configurations, it is not legal to clear non-live locals at target
+     * creation.
+     */
+    protected void clearNonLiveLocalsAtTargetCreation(BciBlock block, FrameStateBuilder state) {
+        state.clearNonLiveLocals(block, liveness, true);
+    }
+
     private FixedNode createTarget(double probability, BciBlock block, FrameStateBuilder stateAfter) {
         assert probability >= 0 && probability <= 1.01 : probability;
         if (isNeverExecutedCode(probability)) {
@@ -3108,7 +3125,7 @@ public class BytecodeParser implements GraphBuilderContext {
                 FixedNode result = target.entry;
                 FrameStateBuilder currentEntryState = target.state == state ? (canReuseState ? state : state.copy()) : target.state;
                 setEntryState(block, currentEntryState);
-                currentEntryState.clearNonLiveLocals(block, liveness, true);
+                clearNonLiveLocalsAtTargetCreation(block, currentEntryState);
 
                 debug.log("createTarget %s: first visit, result: %s", block, result);
                 return result;

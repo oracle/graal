@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2013, 2019, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2013, 2021, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -26,7 +26,9 @@ package com.oracle.svm.hosted.phases;
 
 import org.graalvm.compiler.core.common.calc.Condition;
 import org.graalvm.compiler.core.common.type.StampPair;
+import org.graalvm.compiler.java.BciBlockMapping;
 import org.graalvm.compiler.java.BytecodeParser;
+import org.graalvm.compiler.java.FrameStateBuilder;
 import org.graalvm.compiler.java.GraphBuilderPhase;
 import org.graalvm.compiler.nodes.CallTargetNode.InvokeKind;
 import org.graalvm.compiler.nodes.StructuredGraph;
@@ -41,6 +43,9 @@ import org.graalvm.compiler.word.WordTypes;
 
 import com.oracle.graal.pointsto.constraints.TypeInstantiationException;
 import com.oracle.graal.pointsto.constraints.UnresolvedElementException;
+import com.oracle.svm.core.SubstrateUtil;
+import com.oracle.svm.core.deopt.DeoptimizationSupport;
+import com.oracle.svm.core.meta.SharedMethod;
 import com.oracle.svm.core.option.SubstrateOptionsParser;
 import com.oracle.svm.core.util.UserError;
 import com.oracle.svm.core.util.UserError.UserException;
@@ -373,6 +378,38 @@ public abstract class SharedGraphBuilderPhase extends GraphBuilderPhase.Instance
         @Override
         public boolean isPluginEnabled(GraphBuilderPlugin plugin) {
             return true;
+        }
+
+        private static boolean isDeoptimizationEnabled() {
+            return DeoptimizationSupport.enabled() && !SubstrateUtil.isBuildingLibgraal();
+        }
+
+        private boolean isMethodDeoptTarget() {
+            return method instanceof SharedMethod && ((SharedMethod) method).isDeoptTarget();
+        }
+
+        @Override
+        protected void clearNonLiveLocalsAtTargetCreation(BciBlockMapping.BciBlock block, FrameStateBuilder state) {
+            /*
+             * In order to match potential DeoptEntryNodes, within runtime compiled code it is not
+             * possible to clear non-live locals at the start of a exception dispatch block if
+             * deoptimizations can be present, as exception dispatch blocks have the same deopt bci
+             * as the exception.
+             */
+            if ((!(isDeoptimizationEnabled() && block instanceof BciBlockMapping.ExceptionDispatchBlock)) || isMethodDeoptTarget()) {
+                super.clearNonLiveLocalsAtTargetCreation(block, state);
+            }
+        }
+
+        @Override
+        protected void clearNonLiveLocalsAtLoopExitCreation(BciBlockMapping.BciBlock block, FrameStateBuilder state) {
+            /*
+             * In order to match potential DeoptEntryNodes, within runtime compiled code it is not
+             * possible to clear non-live locals when deoptimizations can be present.
+             */
+            if (!isDeoptimizationEnabled() || isMethodDeoptTarget()) {
+                super.clearNonLiveLocalsAtLoopExitCreation(block, state);
+            }
         }
     }
 }
