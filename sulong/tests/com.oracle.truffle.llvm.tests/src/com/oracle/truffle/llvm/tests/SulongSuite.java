@@ -64,6 +64,7 @@ public class SulongSuite extends BaseSuiteHarness {
 
     protected static Set<String> getBlacklist() {
         Set<String> filenameBlacklist = new HashSet<>();
+        Set<String> filenameBlacklistNoDir = new HashSet<>();
 
         if (Platform.isAArch64()) {
             // Tests that cause the JVM to crash.
@@ -78,6 +79,7 @@ public class SulongSuite extends BaseSuiteHarness {
                             "cpp/test051.cpp", "cpp/test052.cpp", "cpp/test053.cpp", "cpp/testRuntimeError.cpp",
                             "libc/memcpy/memcpy-struct-mixed.c", "libc/vfprintf/vfprintf.c", "libc/vprintf/vprintf.c"));
             // Tests that fail.
+            filenameBlacklistNoDir.add("va_arg");
             filenameBlacklist.addAll(Arrays.asList(
                             "c/arrays/intArray.c",
                             "c/builtin_gcc/__builtin_copysign.c", "c/builtin_gcc/__builtin_fabsl.c", "c/builtin_gcc/__builtin_fpclassify.c", "c/builtin_gcc/__builtin_isfinite.c",
@@ -177,7 +179,8 @@ public class SulongSuite extends BaseSuiteHarness {
 
         }
 
-        return filenameBlacklist.stream().map((s) -> s.concat(".dir")).collect(Collectors.toSet());
+        filenameBlacklistNoDir.addAll(filenameBlacklist.stream().map((s) -> s.concat(".dir")).collect(Collectors.toSet()));
+        return filenameBlacklistNoDir;
     }
 
     protected static Collection<Object[]> getData(Path suitesPath, Set<String> blacklist) {
