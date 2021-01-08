@@ -60,7 +60,7 @@ public class RegexValidator {
 
     public RegexValidator(RegexSource source) {
         this.source = source;
-        this.flags = RegexFlags.parseFlags(source.getFlags());
+        this.flags = RegexFlags.parseFlags(source);
         this.lexer = new RegexLexer(source, flags);
     }
 
@@ -245,6 +245,6 @@ public class RegexValidator {
     }
 
     private RegexSyntaxException syntaxError(String msg) {
-        return new RegexSyntaxException(source, msg);
+        return RegexSyntaxException.createPattern(source, msg, lexer.getLastTokenPosition());
     }
 }

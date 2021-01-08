@@ -153,8 +153,8 @@ public final class RegexLanguage extends TruffleLanguage<RegexLanguage.RegexCont
         if (srcStr.length() < 2) {
             throw CompilerDirectives.shouldNotReachHere("malformed regex");
         }
-        RegexOptions.Builder optBuilder = RegexOptions.builder();
-        int firstSlash = optBuilder.parseOptions(srcStr);
+        RegexOptions.Builder optBuilder = RegexOptions.builder(source, srcStr);
+        int firstSlash = optBuilder.parseOptions();
         int lastSlash = srcStr.lastIndexOf('/');
         assert firstSlash >= 0 && firstSlash <= srcStr.length();
         if (lastSlash <= firstSlash) {

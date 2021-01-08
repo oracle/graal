@@ -637,7 +637,7 @@ public final class RubyFlavorProcessor implements RegexFlavorProcessor {
     // Error reporting
 
     private RegexSyntaxException syntaxError(String message) {
-        return new RegexSyntaxException(inSource, message);
+        return RegexSyntaxException.createPattern(inSource, message);
     }
 
     // Character predicates

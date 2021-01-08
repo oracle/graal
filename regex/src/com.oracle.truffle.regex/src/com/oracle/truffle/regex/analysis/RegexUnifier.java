@@ -61,7 +61,7 @@ public final class RegexUnifier {
 
     public RegexUnifier(RegexSource source) {
         this.source = source;
-        this.lexer = new RegexLexer(source, RegexFlags.parseFlags(source.getFlags()));
+        this.lexer = new RegexLexer(source, RegexFlags.parseFlags(source));
         this.dump = new StringBuilder(source.getPattern().length());
     }
 

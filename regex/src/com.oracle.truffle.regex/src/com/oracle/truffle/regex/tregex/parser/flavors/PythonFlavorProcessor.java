@@ -630,7 +630,7 @@ public final class PythonFlavorProcessor implements RegexFlavorProcessor {
     }
 
     private RegexSyntaxException syntaxError(String message, int atPosition) {
-        return new RegexSyntaxException(inSource, message, atPosition);
+        return RegexSyntaxException.createPattern(inSource, message, atPosition);
     }
 
     // Character predicates
@@ -655,7 +655,7 @@ public final class PythonFlavorProcessor implements RegexFlavorProcessor {
 
     private void parse() {
         PythonFlags startFlags;
-        globalFlags = globalFlags.fixFlags(mode);
+        globalFlags = globalFlags.fixFlags(inSource, mode);
 
         // The pattern can contain inline switches for global flags. However, these inline switches
         // need to be taken into account when processing whatever came before them too. Therefore,
@@ -665,7 +665,7 @@ public final class PythonFlavorProcessor implements RegexFlavorProcessor {
 
             disjunction();
 
-            globalFlags = globalFlags.fixFlags(mode);
+            globalFlags = globalFlags.fixFlags(inSource, mode);
         } while (!globalFlags.equals(startFlags));
 
         if (!atEnd()) {

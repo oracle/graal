@@ -47,6 +47,7 @@ import com.oracle.truffle.api.interop.UnknownIdentifierException;
 import com.oracle.truffle.api.library.ExportLibrary;
 import com.oracle.truffle.api.library.ExportMessage;
 import com.oracle.truffle.regex.AbstractConstantKeysObject;
+import com.oracle.truffle.regex.RegexSource;
 import com.oracle.truffle.regex.RegexSyntaxException;
 import com.oracle.truffle.regex.util.TruffleReadOnlyKeysArray;
 
@@ -147,14 +148,14 @@ public final class PythonFlags extends AbstractConstantKeysObject {
      * chosen regular expression mode. If a string pattern is used, ensures that the unicode flag is
      * set by default.
      */
-    public PythonFlags fixFlags(PythonREMode mode) {
+    public PythonFlags fixFlags(RegexSource source, PythonREMode mode) {
         switch (mode) {
             case Str:
                 if (hasFlag('L')) {
-                    throw new RegexSyntaxException("cannot use LOCALE flag with a str pattern");
+                    throw RegexSyntaxException.createFlags(source, "cannot use LOCALE flag with a str pattern");
                 }
                 if (hasFlag('a') && hasFlag('u')) {
-                    throw new RegexSyntaxException("ASCII and UNICODE flags are incompatible");
+                    throw RegexSyntaxException.createFlags(source, "ASCII and UNICODE flags are incompatible");
                 }
                 if (!hasFlag('a')) {
                     return addFlag('u');
@@ -163,10 +164,10 @@ public final class PythonFlags extends AbstractConstantKeysObject {
                 }
             case Bytes:
                 if (hasFlag('u')) {
-                    throw new RegexSyntaxException("cannot use UNICODE flag with a bytes pattern");
+                    throw RegexSyntaxException.createFlags(source, "cannot use UNICODE flag with a bytes pattern");
                 }
                 if (hasFlag('a') && hasFlag('L')) {
-                    throw new RegexSyntaxException("ASCII and LOCALE flags are incompatible");
+                    throw RegexSyntaxException.createFlags(source, "ASCII and LOCALE flags are incompatible");
                 }
                 return this;
             default:

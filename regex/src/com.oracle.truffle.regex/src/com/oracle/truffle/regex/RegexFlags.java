@@ -75,47 +75,45 @@ public final class RegexFlags extends AbstractConstantKeysObject implements Json
     }
 
     @TruffleBoundary
-    public static RegexFlags parseFlags(String source) throws RegexSyntaxException {
-        if (source.isEmpty()) {
+    public static RegexFlags parseFlags(RegexSource source) throws RegexSyntaxException {
+        String flagsStr = source.getFlags();
+        if (flagsStr.isEmpty()) {
             return DEFAULT;
         }
         int flags = NONE;
-        for (int i = 0; i < source.length(); i++) {
-            char ch = source.charAt(i);
-            int repeated = NONE;
+        for (int i = 0; i < flagsStr.length(); i++) {
+            char ch = flagsStr.charAt(i);
             switch (ch) {
                 case 'i':
-                    repeated = flags & IGNORE_CASE;
-                    flags |= IGNORE_CASE;
+                    flags = addFlag(source, flags, i, ch, IGNORE_CASE);
                     break;
                 case 'm':
-                    repeated = flags & MULTILINE;
-                    flags |= MULTILINE;
+                    flags = addFlag(source, flags, i, ch, MULTILINE);
                     break;
                 case 'g':
-                    repeated = flags & GLOBAL;
-                    flags |= GLOBAL;
+                    flags = addFlag(source, flags, i, ch, GLOBAL);
                     break;
                 case 'y':
-                    repeated = flags & STICKY;
-                    flags |= STICKY;
+                    flags = addFlag(source, flags, i, ch, STICKY);
                     break;
                 case 'u':
-                    repeated = flags & UNICODE;
-                    flags |= UNICODE;
+                    flags = addFlag(source, flags, i, ch, UNICODE);
                     break;
                 case 's':
-                    repeated = flags & DOT_ALL;
-                    flags |= DOT_ALL;
+                    flags = addFlag(source, flags, i, ch, DOT_ALL);
                     break;
                 default:
-                    throw new RegexSyntaxException(source, "unsupported regex flag: " + ch);
-            }
-            if (repeated != 0) {
-                throw new RegexSyntaxException(source, "repeated regex flag: " + ch);
+                    throw RegexSyntaxException.createFlags(source, "unsupported regex flag: " + ch, i);
             }
         }
-        return new RegexFlags(source, flags);
+        return new RegexFlags(flagsStr, flags);
+    }
+
+    private static int addFlag(RegexSource source, int flags, int i, char ch, int flag) {
+        if ((flags & flag) != 0) {
+            throw RegexSyntaxException.createFlags(source, "repeated regex flag: " + ch, i);
+        }
+        return flags | flag;
     }
 
     public String getSource() {

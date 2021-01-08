@@ -70,6 +70,7 @@ public final class RegexLexer {
     private final RegexFlags flags;
     private final Encoding encoding;
     private Token lastToken;
+    private int curStartIndex = 0;
     private int index = 0;
     private int nGroups = 1;
     private boolean identifiedAllGroups = false;
@@ -89,11 +90,18 @@ public final class RegexLexer {
     }
 
     public Token next() throws RegexSyntaxException {
-        int startIndex = index;
+        curStartIndex = index;
         Token t = getNext();
-        setSourceSection(t, startIndex, index);
+        setSourceSection(t, curStartIndex, index);
         lastToken = t;
         return t;
+    }
+
+    /**
+     * Returns the last token's position in the pattern string.
+     */
+    public int getLastTokenPosition() {
+        return curStartIndex;
     }
 
     /**
@@ -861,6 +869,6 @@ public final class RegexLexer {
     }
 
     private RegexSyntaxException syntaxError(String msg) {
-        return new RegexSyntaxException(source, msg);
+        return RegexSyntaxException.createPattern(source, msg, curStartIndex);
     }
 }
