@@ -123,73 +123,78 @@ public final class Target_java_lang_System {
          * First, check that both given objects are arrays. This is done before bypassing checks and
          * bounds checks (see JCK api/java_lang/System/index.html#Arraycopy: System2015)
          */
-        if (src.isArray() && dest.isArray()) {
-            profiler.profile(GUEST_PROFILE);
-            if (src == dest) {
-                profiler.profile(SAME_ARRAY_PROFILE);
-                /*
-                 * Let host VM's arrayCopy implementation handle bounds. Guest type checking is
-                 * useless here due to both array being the same.
-                 */
-                System.arraycopy(src.unwrap(), srcPos, dest.unwrap(), destPos, length);
-            } else {
-                profiler.profile(DIFF_ARRAY_PROFILE);
-                ArrayKlass destKlass = (ArrayKlass) dest.getKlass();
-                ArrayKlass srcKlass = (ArrayKlass) src.getKlass();
-                Klass destType = destKlass.getComponentType();
-                Klass srcType = srcKlass.getComponentType();
-                if (destType.isPrimitive() || srcType.isPrimitive()) {
-                    // One of the two arrays is a primitive arrays.
-                    profiler.profile(DIFF_PRIMITIVE_ARRAYS_PROFILE);
-                    if (srcType != destType) {
-                        throw throwArrayStoreEx(meta, profiler);
-                    }
-                    System.arraycopy(src.unwrap(), srcPos, dest.unwrap(), destPos, length);
-                } else {
-                    // Both arrays are reference arrays.
-                    profiler.profile(DIFF_REFERENCE_ARRAYS_PROFILE);
-                    /*
-                     * Perform bounds checks BEFORE checking for length == 0. (see JCK
-                     * api/java_lang/System/index.html#Arraycopy: System1001)
-                     */
-                    boundsCheck(meta, src.length(), srcPos, dest.length(), destPos, length, profiler);
-                    if (length == 0) {
-                        // Shortcut.
-                        profiler.profile(ZERO_LENGTH_PROFILE);
-                        return;
-                    }
-                    if (destType.isAssignableFrom(srcType)) {
-                        // We have guarantee we can copy, as all elements in src conform to dest
-                        // type.
-                        profiler.profile(SUBTYPE_ARRAYS_PROFILE);
-                        System.arraycopy(src.unwrap(), srcPos, dest.unwrap(), destPos, length);
-                    } else {
-                        profiler.profile(UNRELATED_TYPE_ARRAYS_PROFILE);
-                        /*
-                         * Slow path (manual copy) (/ex: copying an Object[] to a String[]) requires
-                         * individual type checks. Should rarely happen ( < 1% of cases).
-                         * 
-                         * Use cases:
-                         * 
-                         * - System startup.
-                         * 
-                         * - MethodHandle and CallSite linking.
-                         */
-                        StaticObject[] s = src.unwrap();
-                        StaticObject[] d = dest.unwrap();
-                        for (int i = 0; i < length; i++) {
-                            StaticObject cpy = s[i + srcPos];
-                            if (StaticObject.isNull(cpy) || destType.isAssignableFrom(cpy.getKlass())) {
-                                d[destPos + i] = cpy;
-                            } else {
-                                throw throwArrayStoreEx(meta, profiler);
-                            }
-                        }
-                    }
-                }
-            }
-        } else {
+        profiler.profile(GUEST_PROFILE);
+        if (!src.isArray() || !dest.isArray()) {
             throw throwArrayStoreEx(meta, profiler);
+        }
+
+        // If both arrays are the same, a lot of checks can be bypassed
+        if (src == dest) {
+            profiler.profile(SAME_ARRAY_PROFILE);
+            /*
+             * Let host VM's arrayCopy implementation handle bounds. Guest type checking is useless
+             * here due to both array being the same.
+             */
+            System.arraycopy(src.unwrap(), srcPos, dest.unwrap(), destPos, length);
+            return;
+        }
+
+        profiler.profile(DIFF_ARRAY_PROFILE);
+        Klass destType = ((ArrayKlass) dest.getKlass()).getComponentType();
+        Klass srcType = ((ArrayKlass) src.getKlass()).getComponentType();
+        if (destType.isPrimitive() || srcType.isPrimitive()) {
+            // One of the two arrays is a primitive array.
+            profiler.profile(DIFF_PRIMITIVE_ARRAYS_PROFILE);
+            if (srcType != destType) {
+                throw throwArrayStoreEx(meta, profiler);
+            }
+            /*
+             * Let host VM's arrayCopy implementation handle bounds. Guest type checking is useless
+             * here due to one of the two arrays being primitives.
+             */
+            System.arraycopy(src.unwrap(), srcPos, dest.unwrap(), destPos, length);
+            return;
+        }
+
+        // Both arrays are reference arrays.
+        profiler.profile(DIFF_REFERENCE_ARRAYS_PROFILE);
+        /*
+         * Perform bounds checks BEFORE checking for length == 0. (see JCK
+         * api/java_lang/System/index.html#Arraycopy: System1001)
+         */
+        boundsCheck(meta, src.length(), srcPos, dest.length(), destPos, length, profiler);
+        if (length == 0) {
+            profiler.profile(ZERO_LENGTH_PROFILE);
+            // All checks have been done, we can take the shortcut.
+            return;
+        }
+        if (destType.isAssignableFrom(srcType)) {
+            // We have guarantee we can copy, as all elements in src conform to dest
+            // type.
+            profiler.profile(SUBTYPE_ARRAYS_PROFILE);
+            System.arraycopy(src.unwrap(), srcPos, dest.unwrap(), destPos, length);
+            return;
+        }
+
+        /*
+         * Slow path (manual copy) (/ex: copying an Object[] to a String[]) requires individual type
+         * checks. Should rarely happen ( < 1% of cases).
+         *
+         * Use cases:
+         *
+         * - System startup.
+         *
+         * - MethodHandle and CallSite linking.
+         */
+        profiler.profile(UNRELATED_TYPE_ARRAYS_PROFILE);
+        StaticObject[] s = src.unwrap();
+        StaticObject[] d = dest.unwrap();
+        for (int i = 0; i < length; i++) {
+            StaticObject cpy = s[i + srcPos];
+            if (!StaticObject.isNull(cpy) && !destType.isAssignableFrom(cpy.getKlass())) {
+                throw throwArrayStoreEx(meta, profiler);
+            }
+            d[destPos + i] = cpy;
         }
     }
 
@@ -212,6 +217,9 @@ public final class Target_java_lang_System {
     private static void handleForeignArray(Object src, int srcPos, Object dest, int destPos, int length, Klass destType, Meta meta, SubstitutionProfiler profiler) {
         InteropLibrary library = InteropLibrary.getUncached();
         ToEspressoNode toEspressoNode = ToEspressoNodeGen.create();
+        if (library.isNull(src) || library.isNull(dest)) {
+            throw throwNullPointerEx(meta, profiler);
+        }
         if (!library.hasArrayElements(src) || !library.hasArrayElements(dest)) {
             throw throwArrayStoreEx(meta, profiler);
         }
