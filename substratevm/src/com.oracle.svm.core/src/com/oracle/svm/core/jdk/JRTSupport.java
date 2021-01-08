@@ -57,7 +57,7 @@ import com.oracle.svm.core.util.VMError;
 public final class JRTSupport {
 
     static class Options {
-        @Option(help = "Enable support for reading Java modules (jimage format) and the jrt:// file system.", type = OptionType.User) //
+        @Option(help = "Enable support for reading Java modules (jimage format) and the jrt:// file system. Requires java.home to be set at runtime.", type = OptionType.Expert) //
         public static final HostedOptionKey<Boolean> AllowJRTFileSystem = new HostedOptionKey<>(false);
     }
 
@@ -87,14 +87,16 @@ final class Target_jdk_internal_module_SystemModuleFinders_SystemImage_JRTEnable
 
     @Substitute
     static Object reader() {
-        Target_jdk_internal_jimage_ImageReader_JRTEnabled reader = READER;
-        if (reader == null) {
+        Target_jdk_internal_jimage_ImageReader_JRTEnabled localRef = READER;
+        if (localRef == null) {
             synchronized (Target_jdk_internal_module_SystemModuleFinders_SystemImage_JRTEnabled.class) {
-                reader = Target_jdk_internal_jimage_ImageReaderFactory_JRTEnabled.getImageReader();
-                READER = reader;
+                localRef = READER;
+                if (localRef == null) {
+                    READER = localRef = Target_jdk_internal_jimage_ImageReaderFactory_JRTEnabled.getImageReader();
+                }
             }
         }
-        return reader;
+        return localRef;
     }
 }
 
