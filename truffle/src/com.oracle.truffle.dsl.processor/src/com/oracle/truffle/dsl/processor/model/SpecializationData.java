@@ -91,6 +91,8 @@ public final class SpecializationData extends TemplateMethod {
     private final boolean reportPolymorphism;
     private final boolean reportMegamorphism;
 
+    private boolean aotReachable;
+
     public SpecializationData(NodeData node, TemplateMethod template, SpecializationKind kind, List<SpecializationThrowsData> exceptions, boolean hasUnexpectedResultRewrite,
                     boolean reportPolymorphism, boolean reportMegamorphism) {
         super(template);
@@ -117,7 +119,16 @@ public final class SpecializationData extends TemplateMethod {
         copy.reachesFallback = reachesFallback;
         copy.index = index;
         copy.limitExpression = limitExpression;
+        copy.aotReachable = aotReachable;
         return copy;
+    }
+
+    public boolean isPrepareForAOT() {
+        return aotReachable;
+    }
+
+    public void setPrepareForAOT(boolean prepareForAOT) {
+        this.aotReachable = prepareForAOT;
     }
 
     public void setUncachedSpecialization(SpecializationData removeCompanion) {
@@ -297,6 +308,18 @@ public final class SpecializationData extends TemplateMethod {
                 }
             }
         }
+    }
+
+    public boolean isOnlyLanguageReferencesBound(DSLExpression expression) {
+        boolean onlyLanguageReferences = true;
+        Set<CacheExpression> boundCaches = getBoundCaches(expression, false);
+        for (CacheExpression bound : boundCaches) {
+            if (!bound.isCachedLanguage()) {
+                onlyLanguageReferences = false;
+                break;
+            }
+        }
+        return onlyLanguageReferences && expression.findBoundVariableElements().size() == boundCaches.size();
     }
 
     public boolean isDynamicParameterBound(DSLExpression expression, boolean transitive) {
@@ -592,6 +615,15 @@ public final class SpecializationData extends TemplateMethod {
 
     public boolean hasMultipleInstances() {
         return getMaximumNumberOfInstances() > 1;
+    }
+
+    public boolean isExpressionBindsCache(DSLExpression expression, CacheExpression cache) {
+        for (CacheExpression otherCache : getBoundCaches(expression, true)) {
+            if (otherCache == cache) {
+                return true;
+            }
+        }
+        return false;
     }
 
     public boolean isGuardBindsCache() {

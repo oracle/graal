@@ -47,6 +47,8 @@ import static com.oracle.truffle.dsl.processor.java.ElementUtils.findAnnotationM
 import static com.oracle.truffle.dsl.processor.java.ElementUtils.firstLetterLowerCase;
 import static com.oracle.truffle.dsl.processor.java.ElementUtils.firstLetterUpperCase;
 import static com.oracle.truffle.dsl.processor.java.ElementUtils.getAnnotationValue;
+import static com.oracle.truffle.dsl.processor.java.ElementUtils.getQualifiedName;
+import static com.oracle.truffle.dsl.processor.java.ElementUtils.getReadableSignature;
 import static com.oracle.truffle.dsl.processor.java.ElementUtils.getSimpleName;
 import static com.oracle.truffle.dsl.processor.java.ElementUtils.getTypeId;
 import static com.oracle.truffle.dsl.processor.java.ElementUtils.getVisibility;
@@ -85,6 +87,7 @@ import java.util.Objects;
 import java.util.Set;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.locks.Lock;
+import java.util.concurrent.locks.ReentrantLock;
 import java.util.function.Function;
 
 import javax.lang.model.element.AnnotationMirror;
@@ -158,6 +161,13 @@ public class FlatNodeGenFactory {
 
     private static final String VARARGS_NAME = "args";
 
+    private static final Object AOT_PREPARED = new Object() {
+        @Override
+        public String toString() {
+            return "AOT-prepared";
+        }
+    };
+
     private final ProcessorContext context;
     private final TruffleTypes types = ProcessorContext.getInstance().getTypes();
     private final NodeData node;
@@ -224,10 +234,15 @@ public class FlatNodeGenFactory {
             boolean primary = stateNode == node;
             if (primary && activeStateStartIndex == -1) {
                 activeStateStartIndex = stateObjects.size();
+
+                if (needsAOTReset()) {
+                    stateObjects.add(AOT_PREPARED);
+                }
             }
             if (!primary && activeStateStartIndex != -1 && activeStateEndIndex == -1) {
                 activeStateEndIndex = stateObjects.size();
             }
+
             boolean needsRewrites = stateNode.needsRewrites(context);
             if (!needsRewrites) {
                 continue;
@@ -261,7 +276,6 @@ public class FlatNodeGenFactory {
         if (activeStateEndIndex == -1) {
             activeStateEndIndex = stateObjects.size();
         }
-
         this.multiState = createMultiStateBitset(stateObjects, activeStateStartIndex, activeStateEndIndex, volatileState);
         this.exclude = new ExcludeBitSet(excludeObjects.toArray(new SpecializationData[0]), volatileState);
         this.executeAndSpecializeType = createExecuteAndSpecializeType();
@@ -327,6 +341,10 @@ public class FlatNodeGenFactory {
 
     private boolean needsRewrites() {
         return node.needsRewrites(context);
+    }
+
+    private boolean needsAOTReset() {
+        return node.isGenerateAOT() && needsRewrites();
     }
 
     private boolean hasMultipleNodes() {
@@ -636,6 +654,10 @@ public class FlatNodeGenFactory {
             generateIntrospectionInfo(clazz);
         }
 
+        if (isGenerateAOT()) {
+            generateAOT(clazz);
+        }
+
         if (node.isUncachable() && node.isGenerateUncached()) {
             CodeTypeElement uncached = GeneratorUtils.createClass(node, null, modifiers(PRIVATE, STATIC, FINAL), "Uncached", node.getTemplateType().asType());
             uncached.getEnclosedElements().addAll(createUncachedFields());
@@ -689,6 +711,265 @@ public class FlatNodeGenFactory {
         }
 
         return clazz;
+    }
+
+    private void generateAOT(CodeTypeElement clazz) {
+        TypeMirror aotProviderType = new GeneratedTypeMirror(ElementUtils.getPackageName(types.GenerateAOT_Provider), "GenerateAOT.Provider");
+        clazz.getImplements().add(aotProviderType);
+
+        CodeExecutableElement prepare = clazz.add(CodeExecutableElement.cloneNoAnnotations(ElementUtils.findMethod(types.GenerateAOT_Provider, "prepareForAOT")));
+        GeneratorUtils.addOverride(prepare);
+        prepare.getModifiers().remove(ABSTRACT);
+        CodeTreeBuilder builder = prepare.createBuilder();
+
+        List<SpecializationData> filteredSpecializations = new ArrayList<>();
+        for (SpecializationData s : reachableSpecializations) {
+            if (s.getMethod() == null || !s.isPrepareForAOT()) {
+                continue;
+            }
+            filteredSpecializations.add(s);
+        }
+        FrameState frameState = FrameState.load(this, NodeExecutionMode.SLOW_PATH, prepare);
+
+        Map<StateBitSet, List<SpecializationData>> stateGroup = new LinkedHashMap<>();
+        Set<TypeGuard> implicitCasts = new LinkedHashSet<>();
+
+        for (SpecializationData specialization : filteredSpecializations) {
+            for (StateBitSet set : multiState.getSets()) {
+                if (set.contains(AOT_PREPARED)) {
+                    // make sure we have an entry for a state bitset
+                    // without any specialization but only with the AOT bit set
+                    stateGroup.computeIfAbsent(set, (s) -> new ArrayList<>());
+                }
+                if (set.contains(specialization)) {
+                    stateGroup.computeIfAbsent(set, (s) -> new ArrayList<>()).add(specialization);
+                    break;
+                }
+            }
+
+            int index = 0;
+            for (Parameter p : specialization.getSignatureParameters()) {
+                TypeMirror targetType = p.getType();
+                List<TypeMirror> sourceTypes = node.getTypeSystem().lookupSourceTypes(targetType);
+                if (sourceTypes.size() > 1) {
+                    implicitCasts.add(new TypeGuard(targetType, index));
+                }
+                index++;
+            }
+        }
+
+        builder.startAssert();
+        builder.string("(").cast(context.getType(ReentrantLock.class), CodeTreeBuilder.singleString("getLock()"));
+        builder.string(").isHeldByCurrentThread()");
+        builder.string(" : ").doubleQuote("During prepare AST lock must be held.");
+        builder.end();
+
+        builder.tree(multiState.createLoad(frameState, AOT_PREPARED));
+        builder.tree(multiState.createLoad(frameState, filteredSpecializations.toArray()));
+
+        for (StateBitSet set : multiState.getSets()) {
+            if (set.contains(AOT_PREPARED)) {
+                builder.startIf();
+                builder.tree(set.createContains(frameState, AOT_PREPARED));
+                builder.end().startBlock();
+                builder.returnDefault();
+                builder.end();
+                break;
+            }
+        }
+
+        List<Object> bulkStateSet = new ArrayList<>();
+        Set<String> languagesChecked = new HashSet<>();
+
+        for (SpecializationData specialization : filteredSpecializations) {
+            SpecializationGroup specializationGroup = SpecializationGroup.create(Arrays.asList(specialization));
+
+            for (CacheExpression cache : specialization.getCaches()) {
+                if (!cache.isAlwaysInitialized()) {
+                    continue;
+                }
+                setCacheInitialized(frameState, specialization, cache, true);
+            }
+
+            List<IfTriple> tripples = new ArrayList<>();
+            for (AssumptionExpression assumption : specialization.getAssumptionExpressions()) {
+                tripples.addAll(createAssumptionSlowPathTriples(frameState, specializationGroup, assumption));
+            }
+
+            /*
+             * We don't need to materialize assumption conditions.
+             */
+            for (IfTriple triple : tripples) {
+                triple.condition = null;
+            }
+
+            // compute guards that can be materialized
+            List<GuardExpression> usedGuards = new ArrayList<>();
+            for (GuardExpression guard : specialization.getGuards()) {
+                if (guardNeedsStateBit(specialization, guard)) {
+                    bulkStateSet.add(guard);
+                }
+                if (specialization.isDynamicParameterBound(guard.getExpression(), true)) {
+                    if (!specialization.isOnlyLanguageReferencesBound(guard.getExpression())) {
+                        /*
+                         * Guards with only language references can be executed.
+                         */
+                        continue;
+                    }
+                }
+                usedGuards.add(guard);
+            }
+
+            for (CacheExpression cache : specialization.getCaches()) {
+                if (!cache.isAlwaysInitialized()) {
+                    continue;
+                }
+                if (cache.isCachedLanguage()) {
+                    boolean needsLocal = false;
+                    for (GuardExpression guard : usedGuards) {
+                        if (specialization.isExpressionBindsCache(guard.getExpression(), cache)) {
+                            needsLocal = true;
+                            break;
+                        }
+                    }
+                    if (!needsLocal) {
+                        for (CacheExpression otherCache : specialization.getCaches()) {
+                            if (cache == otherCache) {
+                                continue;
+                            }
+                            if (specialization.isExpressionBindsCache(otherCache.getDefaultExpression(), cache)) {
+                                needsLocal = true;
+                                break;
+                            }
+                        }
+                    }
+                    TypeMirror languageType = cache.getLanguageType();
+                    boolean needsCheck = true;
+                    if (usedGuards.isEmpty()) {
+                        needsCheck = languagesChecked.add(ElementUtils.getTypeId(languageType));
+                    }
+                    CodeTreeBuilder b = builder.create();
+                    if (needsCheck) {
+                        b.startIf().string("language == null || language.getClass() != ").typeLiteral(languageType).end().startBlock();
+                        b.startStatement().startStaticCall(types.CompilerDirectives, "transferToInterpreterAndInvalidate").end().end();
+                        b.startThrow().startStaticCall(types.CompilerDirectives, "shouldNotReachHere");
+                        b.startStaticCall(context.getType(String.class), "format");
+                        b.doubleQuote(String.format("Specialization '%s' in node class '%s' is enabled for AOT generation. " +
+                                        "The specialization declares a @%s for language class %s but was prepared for AOT with language class '%%s'. " +
+                                        "Match the language used in the language refercence or exclude the specialization from AOT generation with @%s.%s to resolve this problem.",
+                                        getReadableSignature(specialization.getMethod()),
+                                        getQualifiedName(specialization.getNode().getTemplateType()),
+                                        getSimpleName(types.CachedLanguage),
+                                        getQualifiedName(cache.getLanguageType()),
+                                        getSimpleName(types.GenerateAOT),
+                                        getSimpleName(types.GenerateAOT_Exclude)));
+                        b.string("language != null ? language.getClass().getName() : \"null\"");
+                        b.end();
+                        b.end().end(); // static call, throw,
+                        b.end(); // if block
+                    }
+                    if (needsLocal) {
+                        b.startStatement();
+                        b.type(languageType);
+                        b.string(" ", createCacheLocalName(specialization, cache));
+                        b.string(" = ").maybeCast(types.TruffleLanguage, cache.getLanguageType(), "language");
+                        b.end(); // statement
+                    }
+                    tripples.add(new IfTriple(b.build(), null, null));
+                }
+            }
+
+            for (GuardExpression guard : usedGuards) {
+                Set<CacheExpression> caches = specialization.getBoundCaches(guard.getExpression(), true);
+                tripples.addAll(initializeCaches(frameState, NodeExecutionMode.SLOW_PATH, specializationGroup, caches, true, false));
+                tripples.add(createMethodGuardCheck(frameState, specialization, guard, NodeExecutionMode.SLOW_PATH));
+            }
+
+            BlockState state = IfTriple.materialize(builder, tripples, false);
+
+            builder.tree(createSpecialize(builder, frameState, specializationGroup, specialization, true));
+
+            for (CacheExpression cache : specialization.getCaches()) {
+                if (cache.isAlwaysInitialized()) {
+                    continue;
+                }
+                if (NodeCodeGenerator.isSpecializedNode(cache.getParameter().getType())) {
+                    builder.startStatement();
+                    builder.string("(");
+                    builder.cast(aotProviderType);
+                    builder.tree(createCacheReference(frameState, specialization, cache));
+                    builder.string(")");
+                    builder.string(".prepareForAOT(language, root)");
+                    builder.end();
+                }
+            }
+
+            if (usedGuards.isEmpty()) {
+                bulkStateSet.add(specialization);
+            } else {
+                builder.tree(multiState.createSet(frameState, new SpecializationData[]{specialization}, true, false));
+            }
+            builder.end(state.blockCount);
+
+        }
+        List<Object> allElements = new ArrayList<>();
+        allElements.add(AOT_PREPARED);
+        allElements.addAll(bulkStateSet);
+        allElements.addAll(implicitCasts);
+
+        builder.tree(multiState.createSet(frameState, allElements.toArray(), true, true));
+
+        if (!needsAOTReset()) {
+            return;
+        }
+
+        CodeExecutableElement reset = clazz.add(new CodeExecutableElement(modifiers(PRIVATE), context.getType(void.class), "resetAOT_"));
+        frameState = FrameState.load(this, NodeExecutionMode.FAST_PATH, reset);
+        reset.getModifiers().remove(ABSTRACT);
+        builder = reset.createBuilder();
+
+        for (StateBitSet set : multiState.getSets()) {
+            if (set.contains(AOT_PREPARED)) {
+                builder.tree(set.createLoad(frameState));
+                builder.startIf();
+                builder.tree(set.createNotContains(frameState, AOT_PREPARED));
+                builder.end().startBlock();
+                builder.returnDefault();
+                builder.end();
+            }
+            break;
+        }
+
+        for (SpecializationData specialization : filteredSpecializations) {
+            List<CacheExpression> resetCaches = new ArrayList<>();
+            for (CacheExpression cache : specialization.getCaches()) {
+                if (cache.isAlwaysInitialized()) {
+                    continue;
+                }
+                if (types.Profile != null && ElementUtils.isAssignable(cache.getParameter().getType(), types.Profile)) {
+                    resetCaches.add(cache);
+                }
+            }
+            if (resetCaches.size() > 0) {
+                builder.tree(multiState.createLoad(frameState, specialization));
+                builder.startIf().tree(multiState.createContains(frameState, new Object[]{specialization})).end();
+                builder.startBlock();
+                for (CacheExpression cache : resetCaches) {
+                    builder.startStatement();
+                    builder.tree(createCacheReference(frameState, specialization, cache));
+                    builder.string(".reset()");
+                    builder.end();
+                }
+                builder.end();
+            }
+        }
+
+        for (StateBitSet set : multiState.getSets()) {
+            builder.tree(set.createSetZero(frameState, true));
+        }
+        if (requiresExclude()) {
+            builder.tree(exclude.createSetZero(frameState, true));
+        }
     }
 
     public List<CodeVariableElement> createUncachedFields() {
@@ -750,7 +1031,7 @@ public class FlatNodeGenFactory {
     }
 
     private void generateIntrospectionInfo(CodeTypeElement clazz) {
-        clazz.getImplements().add(types.Introspection_Provider);
+        clazz.getImplements().add(new GeneratedTypeMirror(ElementUtils.getPackageName(types.Introspection_Provider), "Introspection.Provider"));
         CodeExecutableElement reflection = new CodeExecutableElement(modifiers(PUBLIC), types.Introspection, "getIntrospectionData");
 
         CodeTreeBuilder builder = reflection.createBuilder();
@@ -1038,6 +1319,10 @@ public class FlatNodeGenFactory {
             b = clazz.add(new CodeVariableElement(modifiers(PRIVATE, FINAL), types.SpecializationStatistics_NodeStatistics, "statistics_")).createInitBuilder();
             b.startStaticCall(types.SpecializationStatistics_NodeStatistics, "create").string("this").string("SPECIALIZATION_NAMES").end();
         }
+    }
+
+    private boolean isGenerateAOT() {
+        return generatorMode == GeneratorMode.DEFAULT && primaryNode && node.isGenerateAOT();
     }
 
     private boolean isGenerateStatistics() {
@@ -1665,6 +1950,14 @@ public class FlatNodeGenFactory {
             builder.statement("lock.lock()");
         }
 
+        if (needsAOTReset()) {
+            builder.startIf();
+            builder.tree(multiState.createContains(frameState, new Object[]{AOT_PREPARED}));
+            builder.end().startBlock();
+            builder.startStatement().startCall("this.resetAOT_").end().end();
+            builder.end();
+        }
+
         builder.tree(multiState.createLoad(frameState));
         if (requiresExclude()) {
             builder.tree(exclude.createLoad(frameState));
@@ -2034,6 +2327,16 @@ public class FlatNodeGenFactory {
                 continue;
             }
             builder.tree(createFastPathExecuteChild(builder, originalFrameState, frameState, currentType, group, execution));
+        }
+
+        if (needsAOTReset()) {
+            builder.startIf();
+            builder.startStaticCall(ElementUtils.findMethod(types.CompilerDirectives, "inInterpreter")).end();
+            builder.string(" && ");
+            builder.tree(multiState.createContains(frameState, new Object[]{AOT_PREPARED}));
+            builder.end().startBlock();
+            builder.tree(createCallExecuteAndSpecialize(currentType, originalFrameState));
+            builder.end();
         }
 
         builder.tree(visitSpecializationGroup(builder, null, group, currentType, frameState, allowedSpecializations));
@@ -3265,7 +3568,7 @@ public class FlatNodeGenFactory {
         } else if (mode.isSlowPath()) {
 
             if (specialization != null && mayBeExcluded(specialization)) {
-                CodeTree excludeCheck = exclude.createNotContains(frameState, specializations);
+                CodeTree excludeCheck = exclude.createNotContains(frameState, (Object[]) specializations);
                 cachedTriples.add(0, new IfTriple(null, excludeCheck, null));
             }
 
@@ -3350,7 +3653,12 @@ public class FlatNodeGenFactory {
                 }
 
                 innerIfCount = innerIfCount.add(IfTriple.materialize(builder, IfTriple.optimize(innerTripples), false));
-                builder.tree(createSpecialize(builder, innerFrameState, group, specialization));
+                builder.tree(createSpecialize(builder, innerFrameState, group, specialization, false));
+                CodeTree updateImplicitCast = createUpdateImplicitCastState(builder, frameState, specialization);
+                if (updateImplicitCast != null) {
+                    builder.tree(updateImplicitCast);
+                }
+                builder.tree(multiState.createSet(frameState, new SpecializationData[]{specialization}, true, true));
 
                 if (needsDuplicationCheck) {
                     hasFallthrough = true;
@@ -3372,7 +3680,6 @@ public class FlatNodeGenFactory {
                     }
 
                     // need to ensure that we update the implicit cast specializations on duplicates
-                    CodeTree updateImplicitCast = createUpdateImplicitCastState(builder, frameState, specialization);
                     if (updateImplicitCast != null) {
                         builder.startElseBlock();
                         builder.tree(createUpdateImplicitCastState(builder, frameState, specialization));
@@ -3656,14 +3963,32 @@ public class FlatNodeGenFactory {
         return builder.build();
     }
 
-    private CodeTree createSpecialize(CodeTreeBuilder parent, FrameState frameState, SpecializationGroup group, SpecializationData specialization) {
+    private CodeTree createSpecialize(CodeTreeBuilder parent, FrameState frameState, SpecializationGroup group, SpecializationData specialization, boolean aotSpecialize) {
         CodeTreeBuilder builder = parent.create();
 
         List<IfTriple> triples = new ArrayList<>();
 
         triples.addAll(initializeSpecializationClass(frameState, specialization));
-        triples.addAll(initializeCaches(frameState, frameState.getMode(), group, specialization.getCaches(), false, true));
+        triples.addAll(initializeCaches(frameState, frameState.getMode(), group,
+                        specialization.getCaches(), false, true));
         triples.addAll(persistAssumptions(frameState, specialization));
+
+        if (aotSpecialize) {
+            for (CacheExpression cache : specialization.getCaches()) {
+                if (cache.isAlwaysInitialized()) {
+                    continue;
+                }
+                if (types.Profile != null && ElementUtils.isAssignable(cache.getParameter().getType(), types.Profile)) {
+                    CodeTreeBuilder b = builder.create();
+                    b.startStatement();
+                    b.tree(createCacheReference(frameState, specialization, cache));
+                    b.string(".disable()");
+                    b.end();
+                    triples.add(new IfTriple(null, null, b.build()));
+                }
+            }
+        }
+
         triples.addAll(persistSpecializationClass(frameState, specialization));
         builder.end(IfTriple.materialize(builder, triples, true).blockCount);
 
@@ -3679,9 +4004,7 @@ public class FlatNodeGenFactory {
 
         if (!excludesSpecializations.isEmpty()) {
             SpecializationData[] excludesArray = excludesSpecializations.toArray(new SpecializationData[0]);
-
             builder.tree(exclude.createSet(frameState, excludesArray, true, true));
-
             for (SpecializationData excludes : excludesArray) {
                 if (useSpecializationClass(excludes)) {
                     builder.statement("this." + createSpecializationFieldName(excludes) + " = null");
@@ -3689,13 +4012,6 @@ public class FlatNodeGenFactory {
             }
             builder.tree((multiState.createSet(frameState, excludesArray, false, false)));
         }
-
-        CodeTree updateImplicitCast = createUpdateImplicitCastState(builder, frameState, specialization);
-        if (updateImplicitCast != null) {
-            builder.tree(createUpdateImplicitCastState(builder, frameState, specialization));
-        }
-
-        builder.tree(multiState.createSet(frameState, new SpecializationData[]{specialization}, true, true));
 
         return builder.build();
     }
@@ -4431,9 +4747,6 @@ public class FlatNodeGenFactory {
             useValue = value;
         }
         if (cache.isAlwaysInitialized() && frameState.getMode().isSlowPath()) {
-            /*
-             * For slow path methods we try to not
-             */
             builder.startStatement().string(refName, " = ").tree(useValue).end();
         } else {
             builder.declaration(type, refName, useValue);
@@ -4497,7 +4810,6 @@ public class FlatNodeGenFactory {
         } else if (cache.isCachedContext() || cache.isCachedLanguage()) {
             String fieldName = createElementReferenceName(cache);
             CodeTreeBuilder builder = CodeTreeBuilder.createBuilder();
-
             LocalVariable var = frameState.get(fieldName);
             if (var != null) {
                 builder.tree(var.createReference());
@@ -4950,6 +5262,8 @@ public class FlatNodeGenFactory {
             throw new AssertionError();
         } else if (object instanceof GuardExpression) {
             return 1;
+        } else if (object == AOT_PREPARED) {
+            return 1;
         } else {
             throw new AssertionError();
         }
@@ -5014,6 +5328,19 @@ public class FlatNodeGenFactory {
             CodeTreeBuilder builder = CodeTreeBuilder.createBuilder();
             for (BitSet bitSet : getSets()) {
                 builder.tree(bitSet.createLoad(frameState));
+            }
+            return builder.build();
+        }
+
+        CodeTree createLoad(FrameState frameState, Object... relevantObjects) {
+            CodeTreeBuilder builder = CodeTreeBuilder.createBuilder();
+            for (BitSet bitSet : getSets()) {
+                for (Object object : relevantObjects) {
+                    if (bitSet.contains(object)) {
+                        builder.tree(bitSet.createLoad(frameState));
+                        break;
+                    }
+                }
             }
             return builder.build();
         }

@@ -65,6 +65,7 @@ public abstract class PartialEvaluationTest extends TruffleCompilerImplTest {
     DebugContext lastDebug;
     private volatile PhaseSuite<HighTierContext> suite;
     private boolean preventDumping = false;
+    protected boolean preventProfileCalls = false;
 
     public PartialEvaluationTest() {
     }
@@ -200,17 +201,19 @@ public abstract class PartialEvaluationTest extends TruffleCompilerImplTest {
     @SuppressWarnings("try")
     protected StructuredGraph partialEval(OptimizedCallTarget compilable, Object[] arguments, CompilationIdentifier compilationId) {
         // Executed AST so that all classes are loaded and initialized.
-        try {
-            compilable.call(arguments);
-        } catch (IgnoreError e) {
-        }
-        try {
-            compilable.call(arguments);
-        } catch (IgnoreError e) {
-        }
-        try {
-            compilable.call(arguments);
-        } catch (IgnoreError e) {
+        if (!preventProfileCalls) {
+            try {
+                compilable.call(arguments);
+            } catch (IgnoreError e) {
+            }
+            try {
+                compilable.call(arguments);
+            } catch (IgnoreError e) {
+            }
+            try {
+                compilable.call(arguments);
+            } catch (IgnoreError e) {
+            }
         }
         OptionValues options = getGraalOptions();
         DebugContext debug = getDebugContext(options);
@@ -219,6 +222,9 @@ public abstract class PartialEvaluationTest extends TruffleCompilerImplTest {
             SpeculationLog speculationLog = compilable.getCompilationSpeculationLog();
             if (speculationLog != null) {
                 speculationLog.collectFailedSpeculations();
+            }
+            if (!compilable.wasExecuted()) {
+                compilable.prepareForAOT();
             }
             final PartialEvaluator partialEvaluator = getTruffleCompiler(compilable).getPartialEvaluator();
             final PartialEvaluator.Request request = partialEvaluator.new Request(compilable.getOptionValues(), debug, compilable, partialEvaluator.rootForCallTarget(compilable),

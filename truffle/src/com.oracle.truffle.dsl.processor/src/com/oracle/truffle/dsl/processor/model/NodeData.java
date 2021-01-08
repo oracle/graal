@@ -82,6 +82,7 @@ public class NodeData extends Template implements Comparable<NodeData> {
     private TypeMirror frameType;
     private boolean generateIntrospection;
     private boolean generateStatistics;
+    private boolean generateAOT;
 
     private boolean reportPolymorphism;
     private boolean isUncachable;
@@ -171,6 +172,14 @@ public class NodeData extends Template implements Comparable<NodeData> {
 
     public void setGenerateIntrospection(boolean reflectable) {
         this.generateIntrospection = reflectable;
+    }
+
+    public boolean isGenerateAOT() {
+        return generateAOT;
+    }
+
+    public void setGenerateAOT(boolean generateAOT) {
+        this.generateAOT = generateAOT;
     }
 
     public boolean isFallbackReachable() {

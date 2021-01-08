@@ -204,6 +204,22 @@ public abstract class LoopConditionProfile extends ConditionProfile {
         }
 
         @Override
+        public void disable() {
+            if (this.trueCount == 0) {
+                this.trueCount = 1;
+            }
+            if (this.falseCount == 0) {
+                this.falseCount = 1;
+            }
+        }
+
+        @Override
+        public void reset() {
+            this.trueCount = 0L;
+            this.falseCount = 0;
+        }
+
+        @Override
         public boolean inject(boolean condition) {
             if (CompilerDirectives.inCompiledCode()) {
                 return CompilerDirectives.injectBranchProbability(calculateProbability(trueCount, falseCount), condition);

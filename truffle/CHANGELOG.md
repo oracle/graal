@@ -9,6 +9,9 @@ This changelog summarizes major changes between Truffle versions relevant to lan
 * Added `ContextsListener.onLanguageContextCreate`, `ContextsListener.onLanguageContextCreateFailed`, `ContextsListener.onLanguageContextInitialize`, and `ContextsListener.onLanguageContextInitializeFailed`  to allow instruments to listen to language context creation start events, language context creation failure events, language context initialization start events, and language context initialization failure events, respectively.
 * Added `CompilerDirectives.isExact(Object, Class)` to check whether a value is of an exact type. This method should be used instead of the `value != null && value.getClass() == exactClass` pattern.
 * Added `Frame.clear(FrameSlot)`. This allows the compiler to reason about the liveness of local variables. Languages are recommended to use it when applicable.
+* Added `@GenerateAOT` to support preparation for AOT specializing nodes. Read the (AOT tutorial)[https://github.com/oracle/graal/blob/master/truffle/docs/AOT.md] to get started with Truffle and AOT compilation.
+* Profiles now can be disabled using `Profile.disable()` and reset using `Profile.reset()`.
+* Added `--engine.CompileAOTOnCreate` option to trigger AOT compilation on call target create.
 
 ## Version 21.0.0
 * If an `AbstractTruffleException` is thrown from the `ContextLocalFactory`, `ContextThreadLocalFactory` or event listener, which is called during the context enter, the excepion interop messages are executed without a context being entered. The event listeners called during the context enter are:

@@ -236,6 +236,16 @@ public abstract class ValueProfile extends Profile {
         }
 
         @Override
+        public void disable() {
+            cachedValue = GENERIC;
+        }
+
+        @Override
+        public void reset() {
+            cachedValue = null;
+        }
+
+        @Override
         public String toString() {
             return toString(ValueProfile.class, isUninitialized(), isGeneric(),
                             String.format("value == %s@%x", cachedValue != null ? cachedValue.getClass().getSimpleName() : "null", Objects.hash(cachedValue)));
@@ -288,6 +298,16 @@ public abstract class ValueProfile extends Profile {
 
         public Object getCachedValue() {
             return cachedValue;
+        }
+
+        @Override
+        public void disable() {
+            cachedValue = GENERIC;
+        }
+
+        @Override
+        public void reset() {
+            cachedValue = UNINITIALIZED;
         }
 
         @Override
@@ -344,6 +364,16 @@ public abstract class ValueProfile extends Profile {
 
         boolean isUninitialized() {
             return cachedClass == null;
+        }
+
+        @Override
+        public void disable() {
+            cachedClass = Object.class;
+        }
+
+        @Override
+        public void reset() {
+            cachedClass = null;
         }
 
         Class<?> getCachedClass() {
