@@ -415,11 +415,9 @@ public class LLVMAarch64VaListStorage extends LLVMVaListStorage {
             switch ((int) offset) {
                 case Aarch64BitVarArgs.GP_OFFSET:
                     vaList.gpOffset = value;
-                    vaList.gpSaveArea.shift();
                     break;
                 case Aarch64BitVarArgs.FP_OFFSET:
                     vaList.fpOffset = value;
-                    vaList.fpSaveArea.shift();
                     break;
                 default:
                     CompilerDirectives.transferToInterpreter();
@@ -591,9 +589,9 @@ public class LLVMAarch64VaListStorage extends LLVMVaListStorage {
                 vaList.fpOffset = 0;
             }
 
-            vaList.gpSaveArea = new RegSaveArea(vaList.realArguments, gpIdx, numOfExpArgs, Aarch64BitVarArgs.GP_STEP, Aarch64BitVarArgs.GP_LIMIT);
+            vaList.gpSaveArea = new RegSaveArea(vaList.realArguments, gpIdx, Aarch64BitVarArgs.GP_STEP, Aarch64BitVarArgs.GP_LIMIT);
             vaList.gpSaveAreaPtr = LLVMManagedPointer.create(vaList.gpSaveArea);
-            vaList.fpSaveArea = new RegSaveArea(vaList.realArguments, fpIdx, numOfExpArgs, Aarch64BitVarArgs.FP_STEP, Aarch64BitVarArgs.FP_LIMIT);
+            vaList.fpSaveArea = new RegSaveArea(vaList.realArguments, fpIdx, Aarch64BitVarArgs.FP_STEP, Aarch64BitVarArgs.FP_LIMIT);
             vaList.fpSaveAreaPtr = LLVMManagedPointer.create(vaList.fpSaveArea);
             vaList.overflowArgArea = new OverflowArgArea(overflowArgs, overflowAreaArgOffsets, overflowArea, oi);
         }
@@ -1178,20 +1176,15 @@ public class LLVMAarch64VaListStorage extends LLVMVaListStorage {
         }
     }
 
-    @ExportLibrary(NativeTypeLibrary.class)
     public static final class RegSaveArea extends ArgsArea {
 
         private final int[] idx;
-        private final int numOfExpArgs;
         private final int step;
         private final int limit;
 
-        private int curArg;
-
-        RegSaveArea(Object[] args, int[] idx, int numOfExpArgs, int step, int limit) {
+        RegSaveArea(Object[] args, int[] idx, int step, int limit) {
             super(args);
             this.idx = idx;
-            this.numOfExpArgs = numOfExpArgs;
             this.step = step;
             this.limit = limit;
         }
@@ -1215,31 +1208,8 @@ public class LLVMAarch64VaListStorage extends LLVMVaListStorage {
             return i >= idx.length ? -1 : idx[(int) i] + (j << 32);
         }
 
-        void shift() {
-            this.curArg++;
-        }
-
-        // NativeTypeLibrary
-
-        @SuppressWarnings("static-method")
-        @ExportMessage
-        public boolean hasNativeType() {
-            return true;
-        }
-
-        @SuppressWarnings("static-method")
-        @ExportMessage
-        public Object getNativeType() {
-            if (curArg < numOfExpArgs) {
-                curArg = numOfExpArgs;
-            }
-            Object arg = curArg < args.length ? args[curArg] : null;
-            return getVarArgType(arg);
-        }
-
     }
 
-    @ExportLibrary(NativeTypeLibrary.class)
     @ExportLibrary(InteropLibrary.class)
     public static final class OverflowArgArea extends AbstractOverflowArgArea {
 
@@ -1258,31 +1228,7 @@ public class LLVMAarch64VaListStorage extends LLVMVaListStorage {
             return cloned;
         }
 
-        // NativeTypeLibrary
-
-        @SuppressWarnings("static-method")
-        @ExportMessage
-        public boolean hasNativeType() {
-            return true;
-        }
-
-        @ExportMessage
-        public Object getNativeType() {
-            // In contrast to to the X86 version, the native type is requested after the pointer to
-            // this area was shifted. Therefore we have to take the previous argument.
-
-            // TODO: Use getPreviousOffset() instead
-            int i = getCurrentArgIndex();
-            assert i != 0;
-            if (i < 0) {
-                // getCurrentArgIndex() returns -1 when the index points after the last element
-                return getVarArgType(args[argsCnt - 1]);
-            } else {
-                return getVarArgType(args[i - 1]);
-            }
-        }
-
-        // LLVMNativeLibrary
+        // InteropLibrary
 
         @ExportMessage
         public boolean isPointer() {

@@ -68,13 +68,9 @@ public class SulongSuite extends BaseSuiteHarness {
         if (Platform.isAArch64()) {
             // Tests that cause the JVM to crash.
             filenameBlacklist.addAll(Arrays.asList(
-                            "c/builtin_gcc/__builtin_va_list.c",
                             "c/truffle-c/structTest/passPerValue9.c", "c/truffle-c/structTest/structTest23.c", "c/truffle-c/structTest/structTest24.c",
                             "c/truffle-c/structTest/structTest25.c", "c/truffle-c/structTest/structTest26.c", "c/truffle-c/structTest/structTest27.c",
-                            "c/varargs/var80bit.c", "c/varargs/varFloatVec.c", "c/varargs/varFunctionPointer.c", "c/varargs/varSmallStruct.c", "c/varargs/varStructBeforePrimitive.c",
-                            "c/varargs/varStructBeforePrimitiveAMD64Explicite.c", "c/varargs/varStructDouble.c", "c/varargs/varStructDoubleAMD64Explicite.c",
-                            "c/varargs/varStructLong.c", "c/varargs/varStructLongAMD64Explicite.c", "c/varargs/varStructModify.c", "c/varargs/varStructModifyPtr.c",
-                            "c/varargs/varStructPtr.c", "c/varargs/varStructStackOnly.c", "c/varargs/varStructStackOnlyAMD64Explicite.c",
+                            "c/varargs/var80bit.c", "c/varargs/varStructBeforePrimitiveAMD64Explicite.c", "c/varargs/varStructStackOnlyAMD64Explicite.c", "c/varargs/varStructModifyPtr.c",
                             "cpp/test005.cpp", "cpp/test015.cpp", "cpp/test017.cpp", "cpp/test018.cpp", "cpp/test019.cpp", "cpp/test020.cpp", "cpp/test022.cpp", "cpp/test023.cpp", "cpp/test024.cpp",
                             "cpp/test028.cpp",
                             "cpp/test031.cpp", "cpp/test033.cpp", "cpp/test034.cpp", "cpp/test036.cpp", "cpp/test039.cpp",

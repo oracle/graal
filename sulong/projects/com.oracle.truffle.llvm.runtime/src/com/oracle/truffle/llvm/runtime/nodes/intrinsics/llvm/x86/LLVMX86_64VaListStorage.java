@@ -934,6 +934,8 @@ public final class LLVMX86_64VaListStorage extends LLVMVaListStorage {
     @ExportLibrary(NativeTypeLibrary.class)
     public static final class RegSaveArea extends ArgsArea {
 
+        // TODO: consider removing NativeTypeLibrary
+
         private final int[] gpIdx;
         private final int[] fpIdx;
         private final int numOfExpArgs;
@@ -991,6 +993,8 @@ public final class LLVMX86_64VaListStorage extends LLVMVaListStorage {
 
     @ExportLibrary(NativeTypeLibrary.class)
     public static final class OverflowArgArea extends AbstractOverflowArgArea {
+
+        // TODO: consider removing NativeTypeLibrary
 
         OverflowArgArea(Object[] args, long[] offsets, int overflowAreaSize) {
             super(args, offsets, overflowAreaSize);
