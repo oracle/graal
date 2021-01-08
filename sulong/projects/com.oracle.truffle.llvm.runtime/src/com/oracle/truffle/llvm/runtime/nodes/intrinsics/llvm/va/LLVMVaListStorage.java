@@ -43,6 +43,7 @@ import com.oracle.truffle.api.interop.InteropLibrary;
 import com.oracle.truffle.api.interop.InvalidArrayIndexException;
 import com.oracle.truffle.api.interop.TruffleObject;
 import com.oracle.truffle.api.interop.UnknownIdentifierException;
+import com.oracle.truffle.api.interop.UnsupportedMessageException;
 import com.oracle.truffle.api.interop.UnsupportedTypeException;
 import com.oracle.truffle.api.library.CachedLibrary;
 import com.oracle.truffle.api.library.ExportLibrary;
@@ -393,12 +394,15 @@ public class LLVMVaListStorage implements TruffleObject {
 
     @ExportMessage
     public boolean isPointer() {
-        return nativized != null && LLVMNativePointer.isInstance(nativized);
+        return nativized != null;
     }
 
     @ExportMessage
-    public long asPointer() {
-        return nativized == null ? 0L : nativized.asNative();
+    public long asPointer() throws UnsupportedMessageException {
+        if (isPointer()) {
+            return nativized.asNative();
+        }
+        throw UnsupportedMessageException.create();
     }
 
     /**
