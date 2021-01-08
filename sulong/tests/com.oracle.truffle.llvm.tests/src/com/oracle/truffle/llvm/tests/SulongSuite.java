@@ -208,7 +208,7 @@ public class SulongSuite extends BaseSuiteHarness {
         return f -> {
             boolean isBC = f.getFileName().toString().endsWith(".bc");
             boolean isOut = f.getFileName().toString().endsWith(".out");
-            return isBC || isOut;
+            return isBC || (isOut && !Platform.isDarwin());
         };
     }
 
