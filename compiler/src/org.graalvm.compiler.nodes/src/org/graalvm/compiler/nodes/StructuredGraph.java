@@ -1033,6 +1033,16 @@ public final class StructuredGraph extends Graph implements JavaMethodContext {
         return AllowAssumptions.ifNonNull(assumptions);
     }
 
+    public void recordAssumptions(StructuredGraph inlineGraph) {
+        if (this != inlineGraph && getAssumptions() != null) {
+            if (inlineGraph.getAssumptions() != null) {
+                getAssumptions().record(inlineGraph.getAssumptions());
+            }
+        } else {
+            assert inlineGraph.getAssumptions() == null : String.format("cannot inline graph (%s) which makes assumptions into a graph (%s) that doesn't", inlineGraph, this);
+        }
+    }
+
     /**
      * Checks that any method referenced from a {@link FrameState} is also in the set of methods
      * parsed while building this graph.
