@@ -314,22 +314,31 @@ local awfy = 'awfy:*';
 {
   builds: [
     // JaCoCo coverage (disabled)
-    // jdk8_weekly_linux             + gate_coverage        + {environment+: {GATE_TAGS: 'build,unittest'}}  + {name: 'espresso-gate-coverage-jdk8-linux-amd64'},
+    // jdk8_weekly_linu           + gate_coverage        + { environment+: {
+    //                                                         GATE_TAGS:       'build,unittest',
+    //                                                         DYNAMIC_IMPORTS: '/vm,truffleruby'
+    //                                                       },
+    //                                                       name: 'espresso-gate-coverage-jdk8-linux-amd64'
+    //                                                     },
 
     // Gates
     jdk8_gate_linux + base.extra_jdk11_ce + gate_espresso   + {environment+: {GATE_TAGS: 'jackpot'}}         + {name: 'espresso-gate-jackpot-jdk8-linux-amd64'},
     jdk8_gate_linux_eclipse_jdt   + gate_espresso        + {environment+: {GATE_TAGS: 'style,fullbuild'}} + {name: 'espresso-gate-style-fullbuild-jdk8-linux-amd64'},
 
-    jdk8_gate_linux               + gate_espresso        + {environment+: {GATE_TAGS: 'build,unittest'}}  + {name: 'espresso-gate-unittest-jdk8-linux-amd64'},
+    jdk8_gate_linux               + gate_espresso        + { environment+: {
+                                                               GATE_TAGS:       'build,unittest',
+                                                               DYNAMIC_IMPORTS: '/vm,truffleruby'
+                                                             },
+                                                             name: 'espresso-gate-unittest-jdk8-linux-amd64'
+                                                           },
 
-    jdk8_gate_linux               + gate_espresso        + {environment+: {GATE_TAGS      : 'build,unittest',
-                                                                           GATE_ARGS: '--no-warning-as-error',
-                                                                           DYNAMIC_IMPORTS: '/truffleruby'},
-                                                            timelimit: '1:00:00'}                         + {name: 'espresso-gate-unittest-with-ruby-jdk8-linux-amd64'},
-
-    jdk8_gate_linux               + gate_espresso        + {environment+: {GATE_TAGS      : 'build,unittest_with_compilation',
-                                                                           DYNAMIC_IMPORTS: '/compiler'},
-                                                            timelimit: '1:00:00'}                         + {name: 'espresso-gate-unittest-compilation-jdk8-linux-amd64'},
+    jdk8_gate_linux               + gate_espresso        + { environment+: {
+                                                               GATE_TAGS:       'build,unittest_with_compilation',
+                                                               DYNAMIC_IMPORTS: '/vm,truffleruby,/compiler'
+                                                             },
+                                                             timelimit:         '1:00:00',
+                                                             name: 'espresso-gate-unittest-compilation-jdk8-linux-amd64'
+                                                           },
 
     // LD_DEBUG=unused is a workaround for: symbol lookup error: jre/lib/amd64/libnio.so: undefined symbol: fstatat64
     jdk8_gate_linux               + gate_espresso        + {environment+: {GATE_TAGS: 'build,meta', LD_DEBUG: 'unused'}}
