@@ -381,21 +381,21 @@ final class TruffleFromLibGraalEntryPoints {
     }
 
     @TruffleFromLibGraal(OnSuccess)
-    static void onSuccess(Object listener, Object compilable, Object plan, long graphInfoHandle, long compilationResultInfoHandle) {
+    static void onSuccess(Object listener, Object compilable, Object plan, long graphInfoHandle, long compilationResultInfoHandle, int tier) {
         try (LibGraalGraphInfo graphInfo = new LibGraalGraphInfo(graphInfoHandle);
                         LibGraalCompilationResultInfo compilationResultInfo = new LibGraalCompilationResultInfo(compilationResultInfoHandle)) {
-            ((TruffleCompilerListener) listener).onSuccess((CompilableTruffleAST) compilable, (TruffleMetaAccessProvider) plan, graphInfo, compilationResultInfo);
+            ((TruffleCompilerListener) listener).onSuccess((CompilableTruffleAST) compilable, (TruffleMetaAccessProvider) plan, graphInfo, compilationResultInfo, tier);
         }
     }
 
     @TruffleFromLibGraal(OnFailure)
-    static void onFailure(Object listener, Object compilable, String reason, boolean bailout, boolean permanentBailout) {
-        ((TruffleCompilerListener) listener).onFailure((CompilableTruffleAST) compilable, reason, bailout, permanentBailout);
+    static void onFailure(Object listener, Object compilable, String reason, boolean bailout, boolean permanentBailout, int tier) {
+        ((TruffleCompilerListener) listener).onFailure((CompilableTruffleAST) compilable, reason, bailout, permanentBailout, tier);
     }
 
     @TruffleFromLibGraal(OnCompilationRetry)
-    static void onCompilationRetry(Object listener, Object compilable) {
-        ((TruffleCompilerListener) listener).onCompilationRetry((CompilableTruffleAST) compilable);
+    static void onCompilationRetry(Object listener, Object compilable, int tier) {
+        ((TruffleCompilerListener) listener).onCompilationRetry((CompilableTruffleAST) compilable, tier);
     }
 
     @TruffleFromLibGraal(OnGraalTierFinished)

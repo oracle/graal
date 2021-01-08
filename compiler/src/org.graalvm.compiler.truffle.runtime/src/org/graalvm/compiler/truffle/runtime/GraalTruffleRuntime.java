@@ -650,10 +650,10 @@ public abstract class GraalTruffleRuntime implements TruffleRuntime, TruffleComp
                 if (blockTarget.isValid()) {
                     continue;
                 }
-                listeners.onCompilationQueued(blockTarget);
+                listeners.onCompilationQueued(blockTarget, task.tier());
                 int nodeCount = blockTarget.getNonTrivialNodeCount();
                 if (nodeCount > callTarget.engine.getEngineOptions().get(PolyglotCompilerOptions.PartialBlockMaximumSize)) {
-                    listeners.onCompilationDequeued(blockTarget, null, "Partial block is too big to be compiled.");
+                    listeners.onCompilationDequeued(blockTarget, null, "Partial block is too big to be compiled.", task.tier());
                     continue;
                 }
                 compileImpl(debug, blockTarget, task);
@@ -664,7 +664,7 @@ public abstract class GraalTruffleRuntime implements TruffleRuntime, TruffleComp
         if (oldBlockCompilations == null && callTarget.blockCompilations != null) {
             // retry with block compilations
             ((CompilationTask) task).reset();
-            listeners.onCompilationQueued(callTarget);
+            listeners.onCompilationQueued(callTarget, task.tier());
             doCompile(callTarget, task);
         }
     }
@@ -682,7 +682,7 @@ public abstract class GraalTruffleRuntime implements TruffleRuntime, TruffleComp
                 }
                 try {
                     compilationStarted = true;
-                    listeners.onCompilationStarted(callTarget);
+                    listeners.onCompilationStarted(callTarget, task.tier());
                     TruffleInlining inlining = new TruffleInlining();
                     try (AutoCloseable s = debug.scope("Truffle", new TruffleDebugJavaMethod(callTarget))) {
                         // Open the "Truffle::methodName" dump group if dumping is enabled.
@@ -716,20 +716,20 @@ public abstract class GraalTruffleRuntime implements TruffleRuntime, TruffleComp
             // Listeners already notified
             throw e;
         } catch (RuntimeException | Error e) {
-            notifyCompilationFailure(callTarget, e, compilationStarted);
+            notifyCompilationFailure(callTarget, e, compilationStarted, task.tier());
             throw e;
         } catch (Throwable e) {
-            notifyCompilationFailure(callTarget, e, compilationStarted);
+            notifyCompilationFailure(callTarget, e, compilationStarted, task.tier());
             throw new InternalError(e);
         }
     }
 
-    private void notifyCompilationFailure(OptimizedCallTarget callTarget, Throwable t, boolean compilationStarted) {
+    private void notifyCompilationFailure(OptimizedCallTarget callTarget, Throwable t, boolean compilationStarted, int tier) {
         try {
             if (compilationStarted) {
-                listeners.onCompilationFailed(callTarget, t.toString(), false, false);
+                listeners.onCompilationFailed(callTarget, t.toString(), false, false, tier);
             } else {
-                listeners.onCompilationDequeued(callTarget, this, String.format("Failed to create Truffle compiler due to %s.", t.getMessage()));
+                listeners.onCompilationDequeued(callTarget, this, String.format("Failed to create Truffle compiler due to %s.", t.getMessage()), tier);
             }
         } finally {
             Supplier<String> serializedException = () -> CompilableTruffleAST.serializeException(t);
