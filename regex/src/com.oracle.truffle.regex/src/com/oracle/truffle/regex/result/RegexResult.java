@@ -93,6 +93,7 @@ public abstract class RegexResult extends AbstractConstantKeysObject {
     public abstract int getEnd(int groupNumber);
 
     @ExportMessage
+    @Override
     public Object getMembers(@SuppressWarnings("unused") boolean includeInternal) {
         return KEYS;
     }
