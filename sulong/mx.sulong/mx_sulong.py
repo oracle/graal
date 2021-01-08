@@ -1,5 +1,5 @@
 #
-# Copyright (c) 2016, 2020, Oracle and/or its affiliates.
+# Copyright (c) 2016, 2021, Oracle and/or its affiliates.
 #
 # All rights reserved.
 #
@@ -47,6 +47,7 @@ import mx_sulong_benchmarks
 import mx_buildtools
 import mx_sulong_fuzz #pylint: disable=unused-import
 import mx_sulong_llvm_config
+import mx_unittest
 
 from mx_gate import Task, add_gate_runner, add_gate_argument
 
@@ -158,6 +159,20 @@ def _sulong_gate_sulongsuite_unittest(title, tasks, args, tags=None, testClasses
     _sulong_gate_unittest(title, test_suite, tasks, args, tags=tags, testClasses=testClasses)
 
 
+def _unittest_config_participant(config):
+    (vmArgs, mainClass, mainClassArgs) = config
+    vmArgs += get_test_distribution_path_properties(_suite)
+    return (vmArgs, mainClass, mainClassArgs)
+
+
+def get_test_distribution_path_properties(suite):
+    return ['-Dsulongtest.path.{}={}'.format(d.name, d.get_output()) for d in suite.dists if
+            d.is_test_distribution() and not d.isClasspathDependency()]
+
+
+mx_unittest.add_config_participant(_unittest_config_participant)
+
+
 class SulongGateEnv(object):
     """"Sets a marker environment variable."""
     def __enter__(self):
@@ -256,6 +271,7 @@ def runLLVMUnittests(unittest_runner):
 
     test_harness_dist = mx.distribution('SULONG_TEST')
     java_run_props = [x for x in mx.get_runtime_jvm_args(test_harness_dist) if x.startswith('-D')]
+    java_run_props += get_test_distribution_path_properties(_suite)
 
     test_suite = 'SULONG_TEST_SUITES'
     mx_testsuites.compileTestSuite(test_suite, extra_build_args=[])

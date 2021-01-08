@@ -1386,8 +1386,6 @@ suite = {
         "SULONG_TEST_NATIVE",
       ],
       "javaProperties" : {
-        "sulongtest.testSuitePath" : "<path:SULONG_TEST_SUITES>",
-        "sulongtest.llTestSuitePath" : "<path:SULONG_LL_TEST_SUITES>",
         "test.sulongtck.path" : "<path:SULONG_TCK_NATIVE>/bin"
       },
       "license" : "BSD-new",
