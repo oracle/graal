@@ -65,8 +65,8 @@ import java.util.Map;
 
 import static java.lang.Integer.compareUnsigned;
 import static org.graalvm.wasm.Assert.assertTrue;
-import static org.graalvm.wasm.WasmUtil.minUnsigned;
-import static org.graalvm.wasm.WasmUtil.unsignedInt32ToLong;
+import static org.graalvm.wasm.WasmMath.minUnsigned;
+import static org.graalvm.wasm.WasmMath.unsignedInt32ToLong;
 
 /**
  * Contains the symbol information of a module.
