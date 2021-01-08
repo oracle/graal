@@ -253,7 +253,7 @@ public final class CallNode extends Node implements Comparable<CallNode> {
                     Invoke replacement = (Invoke) duplicates.get((Node) original);
                     // TODO after performing truffle tier before inlining the replacement
                     // can become null. Is this intentional?
-                    if (replacement != null) {
+                    if (replacement != null && replacement.isAlive()) {
                         replacements.put(replacement, truffleCallNode);
                     }
                 }
