@@ -175,6 +175,12 @@ local run_espresso(env, args) = {
   ],
 };
 
+local run_espresso_java(env, args) = {
+  run+: maybe_set_ld_debug_flag(env) + [
+    _mx(env, ['espresso-java'] + args),
+  ],
+};
+
 local hello_world_args = ['-cp', '$ESPRESSO_PLAYGROUND', 'com.oracle.truffle.espresso.playground.HelloWorld'];
 
 local setup_playground(env) = {
@@ -187,7 +193,8 @@ local clone_build_run(env, args) =
   clone_graal(env) +
   build_espresso(env) +
   setup_playground(env) +
-  run_espresso(env, args);
+  run_espresso(env, args) +
+  run_espresso_java(env, args);
 
 local _host_jvm(env) = 'graalvm-espresso-' + env;
 local _host_jvm_config(env) = if std.startsWith(env, 'jvm') then 'jvm' else 'native';
