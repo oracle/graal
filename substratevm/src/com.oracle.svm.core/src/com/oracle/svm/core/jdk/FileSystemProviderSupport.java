@@ -25,10 +25,13 @@
 
 package com.oracle.svm.core.jdk;
 
+import java.nio.file.Path;
 import java.nio.file.spi.FileSystemProvider;
 import java.util.ArrayList;
 import java.util.Collections;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 
 import org.graalvm.compiler.options.Option;
 import org.graalvm.compiler.serviceprovider.JavaVersionUtil;
@@ -135,8 +138,10 @@ final class FileSystemProviderFeature implements Feature {
         }
         ImageSingletons.add(FileSystemProviderSupport.class, new FileSystemProviderSupport(installedProviders));
 
-        /* Currently we do not support access to Java modules (jimage/jrtfs access) in images */
-        FileSystemProviderSupport.remove("jrt");
+        /* Access to Java modules (jimage/jrtfs access) in images is experimental. */
+        if (!JRTFeature.Options.JRT.getValue()) {
+            FileSystemProviderSupport.remove("jrt");
+        }
     }
 }
 
@@ -148,9 +153,11 @@ final class Target_java_nio_file_spi_FileSystemProvider {
     }
 }
 
-@TargetClass(className = "jdk.internal.jrtfs.JrtFileSystemProvider", onlyWith = JDK11OrLater.class)
-@Delete
-final class Target_jdk_internal_jrtfs_JrtFileSystemProvider {
+@TargetClass(className = "jdk.internal.jimage.ImageReader", innerClass = "SharedImageReader", onlyWith = JDK11OrLater.class)
+final class Target_jdk_internal_jimage_ImageReader_SharedImageReader {
+    @Alias //
+    @RecomputeFieldValue(kind = RecomputeFieldValue.Kind.NewInstance, declClass = HashMap.class, isFinal = true) //
+    static Map<Path, Target_jdk_internal_jimage_ImageReader_SharedImageReader> OPEN_FILES;
 }
 
 /**
