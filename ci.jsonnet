@@ -1,6 +1,7 @@
 local base = {
-
-  local jdks = (import "common.json").jdks,
+  local graal_common = (import "common.json"),
+  local jdks = graal_common.jdks,
+  local devkits = graal_common.devkits,
 
   jdk8_ce: {
     downloads+: {
@@ -90,17 +91,15 @@ local base = {
     capabilities: ['darwin', 'amd64'],
   },
 
-  windows_8 : self.common + {
-    packages : {
-      msvc : "==10.0"
-    },
+  windows_8_ee : devkits["windows-oraclejdk8"] + self.common + {
     capabilities : ['windows', 'amd64']
   },
 
-  windows_11 : self.common + {
-    packages : {
-      "devkit:VS2017-15.9.16+1" : "==0"
-    },
+  windows_8_ce : devkits["windows-openjdk8"] + self.common + {
+    capabilities : ['windows', 'amd64']
+  },
+
+  windows_11 : devkits["windows-jdk11"] + self.common + {
     capabilities : ['windows', 'amd64']
   },
 
@@ -282,7 +281,7 @@ local deploy_windows = deploy_base + {
   },
 };
 
-local jdk8_gate_windows           = base.jdk8_ee  + base.gate          + base.windows_8;
+local jdk8_gate_windows           = base.jdk8_ee  + base.gate          + base.windows_8_ee;
 local jdk8_gate_darwin            = base.jdk8_ee  + base.gate          + base.darwin;
 local jdk8_gate_linux             = base.jdk8_ee  + base.gate          + base.linux;
 local jdk8_gate_linux_eclipse_jdt = base.jdk8_ee  + base.gate          + base.linux + base.eclipse + base.jdt;
@@ -293,14 +292,14 @@ local jdk8_on_demand_linux        = base.jdk8_ee  + base.onDemand      + base.li
 local jdk8_on_demand_bench_linux  = base.jdk8_ee  + base.onDemandBench + base.x52;
 local jdk11_gate_linux            = base.jdk11_ee + base.gate          + base.linux;
 
-local jdk8_deploy_windows         = base.jdk8_ee  + deploy_windows + base.windows_8;
+local jdk8_deploy_windows         = base.jdk8_ee  + deploy_windows + base.windows_8_ee;
 local jdk8_deploy_darwin          = base.jdk8_ee  + deploy_unix    + base.darwin;
 local jdk8_deploy_linux           = base.jdk8_ee  + deploy_unix    + base.linux;
 local jdk11_deploy_windows        = base.jdk11_ee + deploy_windows + base.windows_11;
 local jdk11_deploy_darwin         = base.jdk11_ee + deploy_unix    + base.darwin;
 local jdk11_deploy_linux          = base.jdk11_ee + deploy_unix    + base.linux;
 
-local jdk8_deploy_windows_ce      = base.jdk8_ce  + deploy_windows + base.windows_8;
+local jdk8_deploy_windows_ce      = base.jdk8_ce  + deploy_windows + base.windows_8_ce;
 local jdk8_deploy_darwin_ce       = base.jdk8_ce  + deploy_unix    + base.darwin;
 local jdk8_deploy_linux_ce        = base.jdk8_ce  + deploy_unix    + base.linux;
 local jdk11_deploy_windows_ce     = base.jdk11_ce + deploy_windows + base.windows_11;
