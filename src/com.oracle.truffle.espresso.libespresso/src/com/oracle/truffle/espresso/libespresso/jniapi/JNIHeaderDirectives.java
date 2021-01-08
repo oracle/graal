@@ -22,6 +22,7 @@
  */
 package com.oracle.truffle.espresso.libespresso.jniapi;
 
+import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.util.Collections;
@@ -30,22 +31,34 @@ import java.util.Locale;
 
 import org.graalvm.nativeimage.c.CContext;
 
-import com.oracle.truffle.espresso.libespresso.JavaVersionUtil;
 import com.oracle.truffle.espresso.libespresso.OS;
 
 public class JNIHeaderDirectives implements CContext.Directives {
 
-    private final Path jdkIncludeDir = JavaVersionUtil.JAVA_SPEC <= 8
-                    ? Paths.get(System.getProperty("java.home")).getParent().resolve("include")
-                    : Paths.get(System.getProperty("java.home")).resolve("include");
+    private static Path jdkIncludeDir() {
+        Path javaHome = Paths.get(System.getProperty("java.home"));
+        Path includeFolder = javaHome.resolve("include");
+        if (!Files.exists(includeFolder) && javaHome.endsWith("jre")) {
+            // try parent folder for jdk8 style jdk/jre
+            Path parent = javaHome.getParent();
+            if (parent != null) {
+                javaHome = parent;
+            }
+        }
+        includeFolder = javaHome.resolve("include");
+        if (!Files.exists(includeFolder)) {
+            throw new IllegalStateException("Cannot find 'include' folder in JDK.");
+        }
+        return includeFolder;
+    }
 
     @Override
     public List<String> getHeaderFiles() {
-        return Collections.singletonList("\"" + jdkIncludeDir.resolve("jni.h") + "\"");
+        return Collections.singletonList("\"" + jdkIncludeDir().resolve("jni.h") + "\"");
     }
 
     @Override
     public List<String> getOptions() {
-        return Collections.singletonList("-I" + jdkIncludeDir.resolve(OS.isWindows() ? "win32" : OS.getCurrent().name().toLowerCase(Locale.ROOT)));
+        return Collections.singletonList("-I" + jdkIncludeDir().resolve(OS.isWindows() ? "win32" : OS.getCurrent().name().toLowerCase(Locale.ROOT)));
     }
 }
