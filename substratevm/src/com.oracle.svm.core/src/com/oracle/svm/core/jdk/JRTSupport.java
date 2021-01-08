@@ -124,7 +124,6 @@ final class Target_jdk_internal_jimage_ImageReaderFactory_JRTEnabled {
  */
 @TargetClass(className = "jdk.internal.module.SystemModuleFinders", innerClass = "SystemImage", onlyWith = {JDK11OrLater.class, JRTDisabled.class})
 final class Target_jdk_internal_module_SystemModuleFinders_SystemImage_JRTDisabled {
-
     @Delete
     static native Object reader();
 }
@@ -134,7 +133,7 @@ final class Target_sun_net_www_protocol_jrt_Handler_JRTDisabled {
     @Substitute
     @SuppressWarnings("unused")
     protected URLConnection openConnection(URL url) throws IOException {
-        throw VMError.unsupportedFeature("JavaRuntimeURLConnection not available. Explicitly enable JRT support with -H:+AllowJRTFilesystem .");
+        throw VMError.unsupportedFeature("JavaRuntimeURLConnection not available. Explicitly enable JRT support with -H:+" + JRTSupport.Options.AllowJRTFileSystem + " .");
     }
 }
 
