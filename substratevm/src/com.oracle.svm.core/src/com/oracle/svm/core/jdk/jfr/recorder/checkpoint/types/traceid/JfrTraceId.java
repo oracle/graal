@@ -29,6 +29,7 @@ package com.oracle.svm.core.jdk.jfr.recorder.checkpoint.types.traceid;
 import java.util.Map;
 import java.util.concurrent.atomic.AtomicLong;
 
+import jdk.jfr.internal.JVM;
 import org.graalvm.nativeimage.ImageSingletons;
 
 import com.oracle.svm.core.jdk.jfr.JfrAvailability;
@@ -58,7 +59,6 @@ public class JfrTraceId {
     private static final long JDK_JFR_EVENT_KLASS = 32;
     private static final long EVENT_HOST_KLASS = 64;
 
-    private static final AtomicLong classCounter = new AtomicLong(MaxJfrEventId + 100);
     private static final AtomicLong classLoaderCounter = new AtomicLong(1);
     private static final AtomicLong packageCounter = new AtomicLong(1);
     private static final AtomicLong moduleCounter = new AtomicLong(1);
@@ -158,8 +158,8 @@ public class JfrTraceId {
     public static long assign(Class<?> clazz) {
         assert clazz != null;
         assert getTraceIdMap().getId(clazz) == -1;
-        long nextId = classCounter.getAndIncrement();
-        getTraceIdMap().setId(clazz, nextId << TRACE_ID_SHIFT);
+        long typeId = JVM.getJVM().getTypeId(clazz);
+        getTraceIdMap().setId(clazz, typeId << TRACE_ID_SHIFT);
         if (!setSystemEventClass(clazz)) {
             Class<?> superClazz = clazz.getSuperclass();
             if (superClazz != null) {
@@ -172,7 +172,7 @@ public class JfrTraceId {
             }
         }
 
-        return nextId;
+        return typeId;
     }
 
     public static long assign(ClassLoader classLoader) {

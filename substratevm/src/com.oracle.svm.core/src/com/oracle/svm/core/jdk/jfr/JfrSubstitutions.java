@@ -116,16 +116,6 @@ final class Target_jdk_jfr_internal_Logger {
     }
 }
 
-@TargetClass(className = "jdk.jfr.internal.MetadataRepository", onlyWith = JfrAvailability.WithJfr.class)
-final class Target_jdk_jfr_internal_MetadataRepository {
-    @Substitute
-    private void unregisterUnloaded() {
-        // JFR.TODO: once traceid related work is fixed, this
-        // substitution should be removed in favor of the original
-        // implementation
-    }
-}
-
 @Substitute
 @TargetClass(className = "jdk.jfr.internal.EventWriter", onlyWith = JfrAvailability.WithJfr.class)
 final class Target_jdk_jfr_internal_EventWriter {
