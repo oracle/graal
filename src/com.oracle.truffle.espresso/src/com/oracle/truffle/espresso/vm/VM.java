@@ -255,13 +255,15 @@ public final class VM extends NativeEnv implements ContextAccess {
             EspressoProperties props = getContext().getVmProperties();
 
             // Load Espresso's libjvm:
-            // jvm.dll (Windows) or libjvm.so (Unixes) is the Espresso implementation of the VM
-            // interface (libjvm).
-            // Espresso loads all shared libraries in a private namespace (e.g. using dlmopen on Linux).
-            // Espresso's libjvm must be loaded strictly before any other library in the private namespace
-            // to avoid linking with HotSpot libjvm, then libjava is loaded and further system libraries,
-            // libzip, libnet, libnio ...
-            @Pointer TruffleObject mokapotLibrary = loadLibraryInternal(props.jvmLibraryPath(), "jvm");
+            /*
+             * jvm.dll (Windows) or libjvm.so (Unixes) is the Espresso implementation of the VM
+             * interface (libjvm). Espresso loads all shared libraries in a private namespace (e.g.
+             * using dlmopen on Linux). Espresso's libjvm must be loaded strictly before any other
+             * library in the private namespace to avoid linking with HotSpot libjvm, then libjava
+             * is loaded and further system libraries, libzip, libnet, libnio ...
+             */
+            @Pointer
+            TruffleObject mokapotLibrary = loadLibraryInternal(props.jvmLibraryPath(), "jvm");
             assert mokapotLibrary != null;
 
             initializeMokapotContext = NativeLibrary.lookupAndBind(mokapotLibrary,
@@ -288,8 +290,8 @@ public final class VM extends NativeEnv implements ContextAccess {
                             "(pointer): pointer");
 
             mokapotAttachThread = NativeLibrary.lookupAndBind(mokapotLibrary,
-                    "mokapotAttachThread",
-                    "(pointer): void");
+                            "mokapotAttachThread",
+                            "(pointer): void");
 
             getPackageAt = NativeLibrary.lookupAndBind(mokapotLibrary,
                             "getPackageAt",
@@ -721,6 +723,7 @@ public final class VM extends NativeEnv implements ContextAccess {
     }
 
     /*
+    @formatter:off
     struct JavaVMAttachArgs {
         0      |     4     jint version;
      XXX  4-byte hole
@@ -728,6 +731,7 @@ public final class VM extends NativeEnv implements ContextAccess {
        16      |     8     jobject group;
     }
     total size (bytes):   24
+    @formatter:on
      */
 
     @SuppressWarnings("unused")
@@ -768,16 +772,16 @@ public final class VM extends NativeEnv implements ContextAccess {
         // Should we reproduce this behaviour?
 
         Method lastJavaMethod = Truffle.getRuntime().iterateFrames(
-                new FrameInstanceVisitor<Method>() {
-                    @Override
-                    public Method visitFrame(FrameInstance frameInstance) {
-                        Method method = getMethodFromFrame(frameInstance);
-                        if (method != null && method.getContext() == context) {
-                            return method;
-                        }
-                        return null;
-                    }
-                });
+                        new FrameInstanceVisitor<Method>() {
+                            @Override
+                            public Method visitFrame(FrameInstance frameInstance) {
+                                Method method = getMethodFromFrame(frameInstance);
+                                if (method != null && method.getContext() == context) {
+                                    return method;
+                                }
+                                return null;
+                            }
+                        });
         if (lastJavaMethod != null) {
             // this thread is executing
             return JNI_ERR;
@@ -810,9 +814,9 @@ public final class VM extends NativeEnv implements ContextAccess {
      * @param version The requested JNI version.
      *
      * @return If the current thread is not attached to the VM, sets *env to NULL, and returns
-     *          JNI_EDETACHED. If the specified version is not supported, sets *env to NULL, and
-     *          returns JNI_EVERSION. Otherwise, sets *env to the appropriate interface, and returns
-     *          JNI_OK.
+     *         JNI_EDETACHED. If the specified version is not supported, sets *env to NULL, and
+     *         returns JNI_EVERSION. Otherwise, sets *env to the appropriate interface, and returns
+     *         JNI_OK.
      */
     @SuppressWarnings("unused")
     @VmImpl
@@ -1350,7 +1354,8 @@ public final class VM extends NativeEnv implements ContextAccess {
 
     @TruffleBoundary
     public static Method getMethodFromFrame(FrameInstance frameInstance) {
-        // TODO this should take a context as argument and only return the method if the context matches
+        // TODO this should take a context as argument and only return the method if the context
+        // matches
         EspressoRootNode root = getEspressoRootFromFrame(frameInstance);
         if (root != null) {
             return root.getMethod();

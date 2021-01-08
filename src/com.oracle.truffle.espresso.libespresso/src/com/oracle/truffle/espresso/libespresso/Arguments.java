@@ -39,6 +39,7 @@ import com.oracle.truffle.espresso.libespresso.jniapi.JNIJavaVMOption;
 
 public final class Arguments {
     private static final PrintStream STDERR = System.err;
+
     private Arguments() {
     }
 
