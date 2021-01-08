@@ -347,7 +347,6 @@ local awfy = 'awfy:*';
     jdk11_gate_linux              + clone_build_run('jvm-ce',    hello_world_args)                        + {name: 'espresso-gate-jvm-ce-hello-world-jdk11-linux-amd64'},
     jdk11_gate_linux              + clone_build_run('native-ce', hello_world_args)                        + {name: 'espresso-gate-native-ce-hello-world-jdk11-linux-amd64'},
     jdk11_gate_linux              + clone_build_run('native-ee', hello_world_args)                        + {name: 'espresso-gate-native-ee-hello-world-jdk11-linux-amd64'},
-    jdk11_gate_windows            + clone_build_run('jvm-ce',    hello_world_args)                        + {name: 'espresso-gate-jvm-ce-hello-world-jdk11-windows-amd64'},
     jdk11_gate_windows            + clone_build_run('native-ee', hello_world_args)                        + {name: 'espresso-gate-native-ee-hello-world-jdk11-windows-amd64'},
 
     // AWFY peak perf. benchmarks (post-merge)
