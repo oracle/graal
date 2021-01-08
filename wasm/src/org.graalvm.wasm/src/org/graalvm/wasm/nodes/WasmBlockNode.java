@@ -268,6 +268,36 @@ public final class WasmBlockNode extends WasmNode implements RepeatingNode {
     @CompilationFinal private ContextReference<WasmContext> rawContextReference;
     @Children private Node[] children;
 
+    private static final float MIN_FLOAT_TRUNCATABLE_TO_INT = Integer.MIN_VALUE;
+    private static final float MAX_FLOAT_TRUNCATABLE_TO_INT = 2147483520f;
+    private static final float MIN_FLOAT_TRUNCATABLE_TO_U_INT = -0.99999994f;
+    private static final float MAX_FLOAT_TRUNCATABLE_TO_U_INT = 4294967040f;
+
+    private static final double MIN_DOUBLE_TRUNCATABLE_TO_INT = Integer.MIN_VALUE;
+    private static final double MAX_DOUBLE_TRUNCATABLE_TO_INT = 2147483647.9999998;
+    private static final double MIN_DOUBLE_TRUNCATABLE_TO_U_INT = -0.9999999999999999;
+    private static final double MAX_DOUBLE_TRUNCATABLE_TO_U_INT = 4294967295.9999995;
+
+    private static final float MIN_FLOAT_TRUNCATABLE_TO_LONG = Long.MIN_VALUE;
+    private static final float MAX_FLOAT_TRUNCATABLE_TO_LONG = 9223371487098961900.0f;
+    private static final float MIN_FLOAT_TRUNCATABLE_TO_U_LONG = MIN_FLOAT_TRUNCATABLE_TO_U_INT;
+    private static final float MAX_FLOAT_TRUNCATABLE_TO_U_LONG = 18446742974197924000.0f;
+
+    private static final double MIN_DOUBLE_TRUNCATABLE_TO_LONG = Long.MIN_VALUE;
+    private static final double MAX_DOUBLE_TRUNCATABLE_TO_LONG = 9223372036854774800.0;
+    private static final double MIN_DOUBLE_TRUNCATABLE_TO_U_LONG = MIN_DOUBLE_TRUNCATABLE_TO_U_INT;
+    private static final double MAX_DOUBLE_TRUNCATABLE_TO_U_LONG = 18446744073709550000.0;
+
+    private static final long FLOAT_MANTISSA_WIDTH = 23;
+    private static final long FLOAT_MANTISSA_MASK = 0b00000000_01111111_11111111_11111111;
+    private static final long FLOAT_EXPONENT_MASK = 0b01111111_10000000_00000000_00000000;
+    private static final long FLOAT_EXPONENT_BIAS = 127;
+
+    private static final long DOUBLE_MANTISSA_WIDTH = 52;
+    private static final long DOUBLE_MANTISSA_MASK = 0b00000000_00001111_11111111_11111111_11111111_11111111_11111111_11111111L;
+    private static final long DOUBLE_EXPONENT_MASK = 0b01111111_11110000_00000000_00000000_00000000_00000000_00000000_00000000L;
+    private static final long DOUBLE_EXPONENT_BIAS = 1023;
+
     public WasmBlockNode(WasmInstance wasmInstance, WasmCodeEntry codeEntry, int startOffset, byte returnTypeId, int initialStackPointer, int initialIntConstantOffset,
                     int initialBranchTableOffset, int initialProfileOffset) {
         super(wasmInstance, codeEntry, -1);
@@ -2629,24 +2659,47 @@ public final class WasmBlockNode extends WasmNode implements RepeatingNode {
         pushInt(stack, stackPointer - 1, result);
     }
 
-    private void i32_trunc_f32_u(long[] stack, int stackPointer) {
-        // TODO(mbovel): fix the i32_trunc_f32_u case.
-        i32_trunc_f32_s(stack, stackPointer);
+    private void i32_trunc_f32_s(long[] stack, int stackPointer) {
+        final float x = popAsFloat(stack, stackPointer - 1);
+        if (Float.isNaN(x)) {
+            throw WasmException.create(Failure.INVALID_CONVERSION_TO_INT);
+        } else if (x < MIN_FLOAT_TRUNCATABLE_TO_INT || x > MAX_FLOAT_TRUNCATABLE_TO_INT) {
+            throw WasmException.create(Failure.INT_OVERFLOW);
+        }
+        final int result = (int) x;
+        pushInt(stack, stackPointer - 1, result);
     }
 
-    private void i32_trunc_f32_s(long[] stack, int stackPointer) {
-        float x = popAsFloat(stack, stackPointer - 1);
-        int result = (int) x;
+    private void i32_trunc_f32_u(long[] stack, int stackPointer) {
+        final float x = popAsFloat(stack, stackPointer - 1);
+        if (Float.isNaN(x)) {
+            throw WasmException.create(Failure.INVALID_CONVERSION_TO_INT);
+        } else if (x < MIN_FLOAT_TRUNCATABLE_TO_U_INT || x > MAX_FLOAT_TRUNCATABLE_TO_U_INT) {
+            throw WasmException.create(Failure.INT_OVERFLOW);
+        }
+        final int result = (int)(long) x;
         pushInt(stack, stackPointer - 1, result);
     }
 
     private void i32_trunc_f64_s(long[] stack, int stackPointer) {
-        i32_trunc_f64_u(stack, stackPointer);
+        final double x = popAsDouble(stack, stackPointer - 1);
+        if (Double.isNaN(x)) {
+            throw WasmException.create(Failure.INVALID_CONVERSION_TO_INT);
+        } else if (x < MIN_DOUBLE_TRUNCATABLE_TO_INT || x > MAX_DOUBLE_TRUNCATABLE_TO_INT) {
+            throw WasmException.create(Failure.INT_OVERFLOW);
+        }
+        final int result = (int) x;
+        pushInt(stack, stackPointer - 1, result);
     }
 
     private void i32_trunc_f64_u(long[] stack, int stackPointer) {
-        double x = popAsDouble(stack, stackPointer - 1);
-        int result = (int) x;
+        final double x = popAsDouble(stack, stackPointer - 1);
+        if (Double.isNaN(x)) {
+            throw WasmException.create(Failure.INVALID_CONVERSION_TO_INT);
+        } else if (x < MIN_DOUBLE_TRUNCATABLE_TO_U_INT || x > MAX_DOUBLE_TRUNCATABLE_TO_U_INT) {
+            throw WasmException.create(Failure.INT_OVERFLOW);
+        }
+        final int result = (int)(long) x;
         pushInt(stack, stackPointer - 1, result);
     }
 
@@ -2663,23 +2716,66 @@ public final class WasmBlockNode extends WasmNode implements RepeatingNode {
     }
 
     private void i64_trunc_f32_s(long[] stack, int stackPointer) {
-        float x = popAsFloat(stack, stackPointer - 1);
-        long result = (long) x;
+        final float x = popAsFloat(stack, stackPointer - 1);
+        if (Float.isNaN(x)) {
+            throw WasmException.create(Failure.INVALID_CONVERSION_TO_INT);
+        } else if (x < MIN_FLOAT_TRUNCATABLE_TO_LONG || x > MAX_FLOAT_TRUNCATABLE_TO_LONG) {
+            throw WasmException.create(Failure.INT_OVERFLOW);
+        }
+        final long result = (long) x;
         push(stack, stackPointer - 1, result);
     }
 
     private void i64_trunc_f32_u(long[] stack, int stackPointer) {
-        // TODO(mbovel): fix this case.
-        i64_trunc_f32_s(stack, stackPointer);
+        final float x = popAsFloat(stack, stackPointer - 1);
+        if (Float.isNaN(x)) {
+            throw WasmException.create(Failure.INVALID_CONVERSION_TO_INT);
+        } else if (x < MIN_FLOAT_TRUNCATABLE_TO_U_LONG || x > MAX_FLOAT_TRUNCATABLE_TO_U_LONG) {
+            throw WasmException.create(Failure.INT_OVERFLOW);
+        }
+        final long xBits = Float.floatToRawIntBits(x);
+        final long shift = ((xBits & FLOAT_EXPONENT_MASK) >> FLOAT_MANTISSA_WIDTH) - FLOAT_EXPONENT_BIAS - FLOAT_MANTISSA_WIDTH;
+        final long base = (1 << FLOAT_MANTISSA_WIDTH) | (xBits & FLOAT_MANTISSA_MASK);
+        final long result;
+        if(shift > 0) {
+            result = base << shift;
+        } else if(shift >= -FLOAT_MANTISSA_WIDTH) {
+            result = base >> -shift;
+        } else {
+            result = 0;
+        }
+        push(stack, stackPointer - 1, result);
     }
 
     private void i64_trunc_f64_s(long[] stack, int stackPointer) {
-        i64_trunc_f64_u(stack, stackPointer);
+        final double x = popAsDouble(stack, stackPointer - 1);
+        if (Double.isNaN(x)) {
+            throw WasmException.create(Failure.INVALID_CONVERSION_TO_INT);
+        } else if (x < MIN_DOUBLE_TRUNCATABLE_TO_LONG || x > MAX_DOUBLE_TRUNCATABLE_TO_LONG) {
+            throw WasmException.create(Failure.INT_OVERFLOW);
+        }
+        final long result = (long) x;
+        push(stack, stackPointer - 1, result);
     }
 
     private void i64_trunc_f64_u(long[] stack, int stackPointer) {
-        double x = popAsDouble(stack, stackPointer - 1);
-        long result = (long) x;
+        final double x = popAsDouble(stack, stackPointer - 1);
+        if (Double.isNaN(x)) {
+            throw WasmException.create(Failure.INVALID_CONVERSION_TO_INT);
+        } else if (x < MIN_DOUBLE_TRUNCATABLE_TO_U_LONG || x > MAX_DOUBLE_TRUNCATABLE_TO_U_LONG) {
+            throw WasmException.create(Failure.INT_OVERFLOW);
+        }
+        final long xBits = Double.doubleToRawLongBits(x);
+        final long shift = ((xBits & DOUBLE_EXPONENT_MASK) >> DOUBLE_MANTISSA_WIDTH) - DOUBLE_EXPONENT_BIAS - DOUBLE_MANTISSA_WIDTH;
+        final long base = (1L << DOUBLE_MANTISSA_WIDTH) | (xBits & DOUBLE_MANTISSA_MASK);
+        final long result;
+        if(shift > 0) {
+            result = base << shift;
+        } else if(shift >= -DOUBLE_MANTISSA_WIDTH) {
+            result = base >> -shift;
+        } else {
+            result = 0;
+        }
         push(stack, stackPointer - 1, result);
     }
 

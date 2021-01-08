@@ -109,6 +109,7 @@ public enum Failure {
     UNSPECIFIED_TRAP(Type.TRAP, "unspecified"),
     INT_DIVIDE_BY_ZERO(Type.TRAP, "integer divide by zero"),
     INT_OVERFLOW(Type.TRAP, "integer overflow"),
+    INVALID_CONVERSION_TO_INT(Type.TRAP, "invalid conversion to integer"),
     UNREACHABLE(Type.TRAP, "unreachable"),
     UNDEFINED_ELEMENT(Type.TRAP, "undefined element"),
     UNINITIALIZED_ELEMENT(Type.TRAP, "uninitialized element"),
