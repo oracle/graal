@@ -263,23 +263,45 @@ public final class ClassfileParser {
 
     /**
      * Verifies that the class file version is supported.
-     *
-     * HotSpot comment: A legal major_version.minor_version must be one of the following:
-     * 
-     * <li>Major_version = 45, any minor_version.
-     * <li>Major_version >= 46 and major_version <= current_major_version and minor_version = 0.
-     * <li>Major_version = current_major_version and minor_version = 65535 and --enable-preview is
-     * present.
-     * 
      * 
      * @param major the major version number
      * @param minor the minor version number
      */
     private void verifyVersion(int major, int minor) {
+        if (context.getJavaVersion().java8OrEarlier()) {
+            versionCheck8(context.getJavaVersion().classFileVersion(), major, minor);
+        } else {
+            versionCheck11(context.getJavaVersion().classFileVersion(), major, minor);
+        }
+    }
+
+    /**
+     * HotSpot rules (8): A legal major_version.minor_version must be one of the following:
+     *
+     * <li>Major_version >= 45 and major_version <= current_major_version, any minor version.
+     * <li>Major_version = current_major_version and minor_version <= MAX_SUPPORTED_MINOR (= 0).
+     */
+    private static void versionCheck8(int maxMajor, int major, int minor) {
         if (major < JAVA_MIN_SUPPORTED_VERSION ||
-                        major > context.getJavaVersion().classFileVersion() ||
+                        major > maxMajor ||
+                        (major == maxMajor && minor > JAVA_MAX_SUPPORTED_MINOR_VERSION)) {
+            throw unsupportedClassVersionError("Unsupported major.minor version " + major + "." + minor);
+        }
+    }
+
+    /**
+     * HotSpot comment (11): A legal major_version.minor_version must be one of the following:
+     *
+     * <li>Major_version = 45, any minor_version.
+     * <li>Major_version >= 46 and major_version <= current_major_version and minor_version = 0.
+     * <li>Major_version = current_major_version and minor_version = 65535 and --enable-preview is
+     * present.
+     */
+    private static void versionCheck11(int maxMajor, int major, int minor) {
+        if (major < JAVA_MIN_SUPPORTED_VERSION ||
+                        major > maxMajor ||
                         major != JAVA_1_1_VERSION && minor != 0 ||
-                        (major == JAVA_MAX_SUPPORTED_VERSION) && (minor > JAVA_MAX_SUPPORTED_MINOR_VERSION)) {
+                        (major == maxMajor) && (minor > JAVA_MAX_SUPPORTED_MINOR_VERSION)) {
             throw unsupportedClassVersionError("Unsupported major.minor version " + major + "." + minor);
         }
     }
@@ -1584,4 +1606,5 @@ public final class ClassfileParser {
             return hash;
         }
     }
+
 }
