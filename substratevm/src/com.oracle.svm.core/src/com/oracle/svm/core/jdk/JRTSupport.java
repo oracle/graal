@@ -33,48 +33,47 @@ import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.function.BooleanSupplier;
 
-import com.oracle.svm.core.annotate.Delete;
-import com.oracle.svm.core.jdk.JRTFeature.JRTDisabled;
-import com.oracle.svm.core.jdk.JRTFeature.JRTEnabled;
 import org.graalvm.compiler.options.Option;
 import org.graalvm.compiler.options.OptionType;
-import org.graalvm.nativeimage.ImageSingletons;
-import org.graalvm.nativeimage.hosted.Feature;
 
 import com.oracle.svm.core.annotate.Alias;
-import com.oracle.svm.core.annotate.AutomaticFeature;
+import com.oracle.svm.core.annotate.Delete;
 import com.oracle.svm.core.annotate.RecomputeFieldValue;
 import com.oracle.svm.core.annotate.Substitute;
 import com.oracle.svm.core.annotate.TargetClass;
+import com.oracle.svm.core.jdk.JRTSupport.JRTDisabled;
+import com.oracle.svm.core.jdk.JRTSupport.JRTEnabled;
 import com.oracle.svm.core.option.HostedOptionKey;
 import com.oracle.svm.core.util.VMError;
 
-@AutomaticFeature
-public final class JRTFeature implements Feature {
+/**
+ * Support to access system Java modules and the <b>jrt://</b> file system.
+ *
+ * <p>
+ * <b>jrt://</b> can be used standalone, or to access system modules.
+ *
+ * <b>javac</b> and other tools that access the system modules, depend on the
+ * <b>-Djava.home=/path/to/jdk</b> property to be set e.g. required by
+ * <code>java.lang.module.ModuleFinder#ofSystem()</code>.
+ */
+public final class JRTSupport {
 
     static class Options {
-        @Option(help = "Enable support for reading Java modules (jimage format) and the jrt filesystem.", type = OptionType.User) //
-        public static final HostedOptionKey<Boolean> JRT = new HostedOptionKey<>(false);
+        @Option(help = "Enable support for reading Java modules (jimage format) and the jrt:// file system.", type = OptionType.User) //
+        public static final HostedOptionKey<Boolean> AllowJRTFileSystem = new HostedOptionKey<>(false);
     }
 
-    static class IsEnabled implements BooleanSupplier {
+    static class JRTEnabled implements BooleanSupplier {
         @Override
         public boolean getAsBoolean() {
-            return ImageSingletons.contains(JRTFeature.class);
+            return Options.AllowJRTFileSystem.getValue();
         }
     }
 
     static class JRTDisabled implements BooleanSupplier {
         @Override
         public boolean getAsBoolean() {
-            return !Options.JRT.getValue();
-        }
-    }
-
-    static class JRTEnabled implements BooleanSupplier {
-        @Override
-        public boolean getAsBoolean() {
-            return Options.JRT.getValue();
+            return !Options.AllowJRTFileSystem.getValue();
         }
     }
 }
@@ -82,18 +81,18 @@ public final class JRTFeature implements Feature {
 // region Enable jimage/jrtfs
 
 @TargetClass(className = "jdk.internal.module.SystemModuleFinders", innerClass = "SystemImage", onlyWith = {JDK11OrLater.class, JRTEnabled.class})
-final class Target_jdk_internal_module_SystemModuleFinders_SystemImage {
+final class Target_jdk_internal_module_SystemModuleFinders_SystemImage_JRTEnabled {
 
     @Alias //
     @RecomputeFieldValue(kind = RecomputeFieldValue.Kind.Reset) //
-    static volatile Target_jdk_internal_jimage_ImageReader READER;
+    static volatile Target_jdk_internal_jimage_ImageReader_JRTEnabled READER;
 
     @Substitute
     static Object reader() {
-        Target_jdk_internal_jimage_ImageReader reader = READER;
+        Target_jdk_internal_jimage_ImageReader_JRTEnabled reader = READER;
         if (reader == null) {
-            synchronized (Target_jdk_internal_module_SystemModuleFinders_SystemImage.class) {
-                reader = Target_jdk_internal_jimage_ImageReaderFactory.getImageReader();
+            synchronized (Target_jdk_internal_module_SystemModuleFinders_SystemImage_JRTEnabled.class) {
+                reader = Target_jdk_internal_jimage_ImageReaderFactory_JRTEnabled.getImageReader();
                 READER = reader;
             }
         }
@@ -102,17 +101,17 @@ final class Target_jdk_internal_module_SystemModuleFinders_SystemImage {
 }
 
 @TargetClass(className = "jdk.internal.jimage.ImageReader", onlyWith = {JDK11OrLater.class, JRTEnabled.class})
-final class Target_jdk_internal_jimage_ImageReader {
+final class Target_jdk_internal_jimage_ImageReader_JRTEnabled {
 }
 
 @TargetClass(className = "jdk.internal.jimage.ImageReaderFactory", onlyWith = {JDK11OrLater.class, JRTEnabled.class})
-final class Target_jdk_internal_jimage_ImageReaderFactory {
+final class Target_jdk_internal_jimage_ImageReaderFactory_JRTEnabled {
     @Alias
-    static native Target_jdk_internal_jimage_ImageReader getImageReader();
+    static native Target_jdk_internal_jimage_ImageReader_JRTEnabled getImageReader();
 
     @Alias //
     @RecomputeFieldValue(kind = RecomputeFieldValue.Kind.NewInstance, declClass = ConcurrentHashMap.class, isFinal = true) //
-    static Map<Path, Target_jdk_internal_jimage_ImageReader> readers;
+    static Map<Path, Target_jdk_internal_jimage_ImageReader_JRTEnabled> readers;
 }
 
 // endregion Enable jimage/jrtfs
@@ -124,24 +123,24 @@ final class Target_jdk_internal_jimage_ImageReaderFactory {
  * we just cut away the reader code.
  */
 @TargetClass(className = "jdk.internal.module.SystemModuleFinders", innerClass = "SystemImage", onlyWith = {JDK11OrLater.class, JRTDisabled.class})
-final class Target_jdk_internal_module_SystemModuleFinders_SystemImage_Disable {
+final class Target_jdk_internal_module_SystemModuleFinders_SystemImage_JRTDisabled {
 
     @Delete
     static native Object reader();
 }
 
 @TargetClass(className = "sun.net.www.protocol.jrt.Handler", onlyWith = {JDK11OrLater.class, JRTDisabled.class})
-final class Target_sun_net_www_protocol_jrt_Handler {
+final class Target_sun_net_www_protocol_jrt_Handler_JRTDisabled {
     @Substitute
     @SuppressWarnings("unused")
     protected URLConnection openConnection(URL url) throws IOException {
-        throw VMError.unsupportedFeature("JavaRuntimeURLConnection not available. Explicitly enable JRT support with -H:+JRT .");
+        throw VMError.unsupportedFeature("JavaRuntimeURLConnection not available. Explicitly enable JRT support with -H:+AllowJRTFilesystem .");
     }
 }
 
 @TargetClass(className = "jdk.internal.jrtfs.JrtFileSystemProvider", onlyWith = {JDK11OrLater.class, JRTDisabled.class})
 @Delete
-final class Target_jdk_internal_jrtfs_JrtFileSystemProvider {
+final class Target_jdk_internal_jrtfs_JrtFileSystemProvider_JRTDisabled {
 }
 
 // endregion Disable jimage/jrtfs

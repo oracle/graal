@@ -139,7 +139,7 @@ final class FileSystemProviderFeature implements Feature {
         ImageSingletons.add(FileSystemProviderSupport.class, new FileSystemProviderSupport(installedProviders));
 
         /* Access to Java modules (jimage/jrtfs access) in images is experimental. */
-        if (!JRTFeature.Options.JRT.getValue()) {
+        if (!JRTSupport.Options.AllowJRTFileSystem.getValue()) {
             FileSystemProviderSupport.remove("jrt");
         }
     }
