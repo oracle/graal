@@ -31,7 +31,7 @@ vm_windows_jdk8_devkit_var: "$VS2017_15_5_5_1_0_ROOT"
 
 svm_suite: /substratevm
 vm_extra_suites: "truffleruby,graalpython,fastr,/wasm"
-vm_extra_suites_aarch64: "/wasm,truffleruby"
+vm_extra_suites_aarch64: "/wasm"
 vm_extra_suites_windows: "/wasm"
 custom_vm_linux: {}
 custom_vm_darwin: {}
