@@ -81,7 +81,7 @@ public class SerializationFeature implements Feature {
         SerializationBuilder serializationBuilder = new SerializationBuilder(access);
 
         Map<Class<?>, Boolean> deniedClasses = new HashMap<>();
-        SerializationConfigurationParser denyCollectorParser = new SerializationConfigurationParser((strTargetSerializationClass, checksums) -> {
+        SerializationConfigurationParser denyCollectorParser = new SerializationConfigurationParser((strTargetSerializationClass, strCustomTargetConstructorClass, checksums) -> {
             Class<?> serializationTargetClass = resolveClass(strTargetSerializationClass, access);
             if (serializationTargetClass != null) {
                 deniedClasses.put(serializationTargetClass, true);
@@ -92,7 +92,7 @@ public class SerializationFeature implements Feature {
                         ConfigurationFiles.Options.SerializationDenyConfigurationFiles, ConfigurationFiles.Options.SerializationDenyConfigurationResources,
                         ConfigurationFiles.SERIALIZATION_DENY_NAME);
 
-        SerializationParserFunction serializationAdapter = (strTargetSerializationClass, checksums) -> {
+        SerializationParserFunction serializationAdapter = (strTargetSerializationClass, strCustomTargetConstructorClass, checksums) -> {
             Class<?> serializationTargetClass = resolveClass(strTargetSerializationClass, access);
             UserError.guarantee(serializationTargetClass != null, "Cannot find serialization target class %s. The missing of this class can't be ignored even if -H:+AllowIncompleteClasspath is set." +
                             " Please make sure it is in the classpath", strTargetSerializationClass);
@@ -103,7 +103,18 @@ public class SerializationFeature implements Feature {
                         println("Warning: Serialization deny list contains " + serializationTargetClass.getName() + ". Image will not support serialization/deserialization of this class.");
                     }
                 } else {
-                    Class<?> targetConstructor = serializationBuilder.addConstructorAccessor(serializationTargetClass, checksums);
+                    Class<?> customTargetConstructorClass = null;
+                    if (strCustomTargetConstructorClass != null) {
+                        customTargetConstructorClass = resolveClass(strCustomTargetConstructorClass, access);
+                        UserError.guarantee(customTargetConstructorClass != null,
+                                        "Cannot find targetConstructorClass %s. The missing of this class can't be ignored even if -H:+AllowIncompleteClasspath is set." +
+                                                        " Please make sure it is in the classpath",
+                                        strCustomTargetConstructorClass);
+                        UserError.guarantee(customTargetConstructorClass.isAssignableFrom(serializationTargetClass),
+                                        "The given targetConstructorClass %s is not a subclass of the serialization target class %s.",
+                                        strCustomTargetConstructorClass, strTargetSerializationClass);
+                    }
+                    Class<?> targetConstructor = serializationBuilder.addConstructorAccessor(serializationTargetClass, customTargetConstructorClass, checksums);
                     addReflections(serializationTargetClass, targetConstructor);
                 }
             }
@@ -260,7 +271,8 @@ final class SerializationBuilder {
 
     private final FeatureImpl.BeforeAnalysisAccessImpl access;
     private final Object reflectionFactory;
-    private final Method newConstructorForSerializationMethod;
+    private final Method newConstructorForSerializationMethod1;
+    private final Method newConstructorForSerializationMethod2;
     private final Method getConstructorAccessorMethod;
     private final Method getExternalizableConstructorMethod;
     private final Constructor<?> stubConstructor;
@@ -272,13 +284,14 @@ final class SerializationBuilder {
             Class<?> reflectionFactoryClass = access.findClassByName(Package_jdk_internal_reflect.getQualifiedName() + ".ReflectionFactory");
             Method getReflectionFactoryMethod = ReflectionUtil.lookupMethod(reflectionFactoryClass, "getReflectionFactory");
             reflectionFactory = getReflectionFactoryMethod.invoke(null);
-            newConstructorForSerializationMethod = ReflectionUtil.lookupMethod(reflectionFactoryClass, "newConstructorForSerialization", Class.class);
+            newConstructorForSerializationMethod1 = ReflectionUtil.lookupMethod(reflectionFactoryClass, "newConstructorForSerialization", Class.class);
+            newConstructorForSerializationMethod2 = ReflectionUtil.lookupMethod(reflectionFactoryClass, "newConstructorForSerialization", Class.class, Constructor.class);
             getConstructorAccessorMethod = ReflectionUtil.lookupMethod(Constructor.class, "getConstructorAccessor");
             getExternalizableConstructorMethod = ReflectionUtil.lookupMethod(ObjectStreamClass.class, "getExternalizableConstructor", Class.class);
         } catch (ReflectiveOperationException e) {
             throw VMError.shouldNotReachHere(e);
         }
-        stubConstructor = newConstructorForSerialization(SerializationSupport.StubForAbstractClass.class);
+        stubConstructor = newConstructorForSerialization(SerializationSupport.StubForAbstractClass.class, null);
         this.access = access;
 
         URLClassLoader cl = (URLClassLoader) access.getImageClassLoader().getClassLoader();
@@ -289,9 +302,13 @@ final class SerializationBuilder {
         ImageSingletons.add(SerializationRegistry.class, serializationSupport);
     }
 
-    private Constructor<?> newConstructorForSerialization(Class<?> serializationTargetClass) {
+    private Constructor<?> newConstructorForSerialization(Class<?> serializationTargetClass, Constructor<?> customConstructorToCall) {
         try {
-            return (Constructor<?>) newConstructorForSerializationMethod.invoke(reflectionFactory, serializationTargetClass);
+            if (customConstructorToCall == null) {
+                return (Constructor<?>) newConstructorForSerializationMethod1.invoke(reflectionFactory, serializationTargetClass);
+            } else {
+                return (Constructor<?>) newConstructorForSerializationMethod2.invoke(reflectionFactory, serializationTargetClass, customConstructorToCall);
+            }
         } catch (ReflectiveOperationException e) {
             throw VMError.shouldNotReachHere(e);
         }
@@ -313,7 +330,7 @@ final class SerializationBuilder {
         }
     }
 
-    Class<?> addConstructorAccessor(Class<?> serializationTargetClass, List<String> configuredChecksums) {
+    Class<?> addConstructorAccessor(Class<?> serializationTargetClass, Class<?> customTargetConstructorClass, List<String> configuredChecksums) {
         if (serializationTargetClass.isArray() || Enum.class.isAssignableFrom(serializationTargetClass)) {
             return null;
         }
@@ -339,7 +356,16 @@ final class SerializationBuilder {
             targetConstructor = stubConstructor;
             targetConstructorClass = targetConstructor.getDeclaringClass();
         } else {
-            targetConstructor = newConstructorForSerialization(serializationTargetClass);
+            Constructor<?> customConstructorToCall = null;
+            if (customTargetConstructorClass != null) {
+                try {
+                    customConstructorToCall = customTargetConstructorClass.getDeclaredConstructor();
+                } catch (NoSuchMethodException ex) {
+                    UserError.abort("The given targetConstructorClass %s does not declare a parameterless constructor.",
+                                    customTargetConstructorClass.getTypeName());
+                }
+            }
+            targetConstructor = newConstructorForSerialization(serializationTargetClass, customConstructorToCall);
             targetConstructorClass = targetConstructor.getDeclaringClass();
             verifyBuildTimeChecksum(serializationTargetClass, targetConstructorClass, configuredChecksums);
         }
