@@ -42,6 +42,7 @@ package com.oracle.truffle.nfi;
 
 import com.oracle.truffle.api.Assumption;
 import com.oracle.truffle.api.CallTarget;
+import com.oracle.truffle.api.CompilerAsserts;
 import com.oracle.truffle.api.Truffle;
 import com.oracle.truffle.api.TruffleLanguage;
 import com.oracle.truffle.api.TruffleLanguage.ContextPolicy;
@@ -74,8 +75,13 @@ public class NFILanguage extends TruffleLanguage<NFIContext> {
         singleContextAssumption.invalidate();
     }
 
+    static NFILanguage getCurrentLanguage() {
+        CompilerAsserts.neverPartOfCompilation("getCurrentLanguage");
+        return getCurrentLanguage(NFILanguage.class);
+    }
+
     static Assumption getSingleContextAssumption() {
-        return getCurrentLanguage(NFILanguage.class).singleContextAssumption;
+        return getCurrentLanguage().singleContextAssumption;
     }
 
     @Override

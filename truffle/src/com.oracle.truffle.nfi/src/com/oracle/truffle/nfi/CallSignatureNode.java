@@ -40,7 +40,6 @@
  */
 package com.oracle.truffle.nfi;
 
-import com.oracle.truffle.api.CallTarget;
 import com.oracle.truffle.api.dsl.Cached;
 import com.oracle.truffle.api.dsl.GenerateUncached;
 import com.oracle.truffle.api.dsl.Specialization;
@@ -50,7 +49,6 @@ import com.oracle.truffle.api.interop.InteropLibrary;
 import com.oracle.truffle.api.interop.UnsupportedMessageException;
 import com.oracle.truffle.api.interop.UnsupportedTypeException;
 import com.oracle.truffle.api.library.CachedLibrary;
-import com.oracle.truffle.api.nodes.DirectCallNode;
 import com.oracle.truffle.api.nodes.ExplodeLoop;
 import com.oracle.truffle.api.nodes.IndirectCallNode;
 import com.oracle.truffle.api.nodes.Node;
@@ -62,6 +60,7 @@ import com.oracle.truffle.nfi.ConvertTypeNode.ConvertFromNativeNode;
 import com.oracle.truffle.nfi.ConvertTypeNode.ConvertToNativeNode;
 import com.oracle.truffle.nfi.ConvertTypeNode.OptimizedConvertTypeNode;
 import com.oracle.truffle.nfi.NFISignature.ArgsCachedState;
+import com.oracle.truffle.nfi.NFISignature.SignatureCachedState;
 import com.oracle.truffle.nfi.NFIType.TypeCachedState;
 import com.oracle.truffle.nfi.spi.NFIBackendSignatureLibrary;
 
@@ -72,25 +71,21 @@ abstract class CallSignatureNode extends Node {
     @GenerateUncached
     abstract static class CachedCallSignatureNode extends CallSignatureNode {
 
-        static DirectCallNode createCall(CallTarget target) {
-            DirectCallNode ret = DirectCallNode.create(target);
-            ret.forceInlining();
-            return ret;
-        }
-
-        @Specialization(guards = {"signature.optimizedSignatureCall != null", "signature.optimizedSignatureCall == call.getCallTarget()"})
+        @Specialization(guards = {"cachedState != null", "signature.cachedState == cachedState"})
         Object doOptimizedDirect(NFISignature signature, Object function, Object[] args,
-                        @Cached("createCall(signature.optimizedSignatureCall)") DirectCallNode call) {
-            return call.call(signature, function, args);
+                        @Cached("signature.cachedState") SignatureCachedState cachedState,
+                        @Cached("cachedState.createOptimizedSignatureCall()") CallSignatureNode call) throws ArityException, UnsupportedTypeException, UnsupportedMessageException {
+            assert cachedState == signature.cachedState;
+            return call.execute(signature, function, args);
         }
 
-        @Specialization(replaces = "doOptimizedDirect", guards = "signature.optimizedSignatureCall != null")
+        @Specialization(replaces = "doOptimizedDirect", guards = "signature.cachedState != null")
         Object doOptimizedIndirect(NFISignature signature, Object function, Object[] args,
                         @Cached IndirectCallNode call) {
-            return call.call(signature.optimizedSignatureCall, signature, function, args);
+            return call.call(signature.cachedState.getPolymorphicSignatureCall(), signature, function, args);
         }
 
-        @Specialization(limit = "3", guards = "signature.optimizedSignatureCall == null")
+        @Specialization(limit = "3", guards = "signature.cachedState == null")
         Object doSlowPath(NFISignature signature, Object function, Object[] args,
                         @Cached BranchProfile exception,
                         @Cached ConvertToNativeNode convertArg,
