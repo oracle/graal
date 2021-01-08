@@ -53,7 +53,6 @@ import org.junit.BeforeClass;
 public abstract class RegexTestBase {
 
     private static Context context;
-    private Value engine;
 
     @BeforeClass
     public static void setUp() {
@@ -72,15 +71,8 @@ public abstract class RegexTestBase {
 
     abstract String getEngineOptions();
 
-    Value getEngine() {
-        if (engine == null) {
-            engine = context.eval(TRegexTestDummyLanguage.ID, "").execute("RegressionTestMode=true" + (getEngineOptions().isEmpty() ? "" : ",") + getEngineOptions());
-        }
-        return engine;
-    }
-
     Value compileRegex(String pattern, String flags) {
-        return getEngine().execute(pattern, flags);
+        return context.eval("regexDummyLang", "RegressionTestMode=true" + (getEngineOptions().isEmpty() ? "" : "," + getEngineOptions()) + '/' + pattern + '/' + flags);
     }
 
     Value execRegex(Value compiledRegex, Object input, int fromIndex) {
