@@ -31,6 +31,7 @@ import java.util.Collections;
 import java.util.EnumSet;
 import java.util.Iterator;
 import java.util.List;
+import java.util.Map;
 import java.util.SortedSet;
 import java.util.TreeSet;
 import java.util.concurrent.atomic.AtomicLong;
@@ -525,6 +526,13 @@ public final class StructuredGraph extends Graph implements JavaMethodContext {
 
     public void clearLastSchedule() {
         setLastSchedule(null);
+    }
+
+    @Override
+    public void getDebugProperties(Map<Object, Object> properties) {
+        super.getDebugProperties(properties);
+        properties.put("compilationIdentifier", compilationId());
+        properties.put("assumptions", getAssumptions().toString());
     }
 
     @Override
