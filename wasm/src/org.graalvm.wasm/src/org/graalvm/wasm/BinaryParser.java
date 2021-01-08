@@ -88,7 +88,7 @@ import static org.graalvm.wasm.constants.Sizes.MAX_TABLE_DECLARATION_SIZE;
  * Simple recursive-descend parser for the binary WebAssembly format.
  */
 public class BinaryParser extends BinaryStreamParser {
-    private class ParsingExceptionHandler implements Thread.UncaughtExceptionHandler {
+    private static class ParsingExceptionHandler implements Thread.UncaughtExceptionHandler {
         private Throwable parsingException = null;
 
         @Override
@@ -218,7 +218,7 @@ public class BinaryParser extends BinaryStreamParser {
                     readStartSection();
                     break;
                 case Section.ELEMENT:
-                    readElementSection();
+                    readElementSection(null, null);
                     break;
                 case Section.CODE:
                     skipCodeSection();
@@ -1048,7 +1048,7 @@ public class BinaryParser extends BinaryStreamParser {
         return new WasmIfNode(instance, codeEntry, trueBranchBlock, falseBranchBlock, offset() - startOffset, blockTypeId, stackSizeBeforeCondition);
     }
 
-    private void readElementSection() {
+    private void readElementSection(WasmContext linkedContext, WasmInstance linkedInstance) {
         int numElements = readLength();
         module.limits().checkElementSegmentCount(numElements);
 
@@ -1082,25 +1082,24 @@ public class BinaryParser extends BinaryStreamParser {
             readEnd();
 
             // Copy the contents, or schedule a linker task for this.
-            int segmentLength = readLength();
-            final SymbolTable symbolTable = module.symbolTable();
+            final int segmentLength = readLength();
             final int currentElemSegmentId = elemSegmentId;
             final int currentOffsetAddress = offsetAddress;
             final int currentOffsetGlobalIndex = offsetGlobalIndex;
             final int[] functionIndices = new int[segmentLength];
             for (int index = 0; index != segmentLength; ++index) {
-                final int functionIndex = readDeclaredFunctionIndex();
-                functionIndices[index] = functionIndex;
+                functionIndices[index] = readDeclaredFunctionIndex();
             }
-            module.addLinkAction((context, instance) -> {
-                WasmFunction[] elements = new WasmFunction[segmentLength];
-                for (int index = 0; index != segmentLength; ++index) {
-                    final int functionIndex = functionIndices[index];
-                    final WasmFunction function = symbolTable.function(functionIndex);
-                    elements[index] = function;
-                }
-                context.linker().resolveElemSegment(context, instance, currentElemSegmentId, currentOffsetAddress, currentOffsetGlobalIndex, segmentLength, elements);
-            });
+
+            if (linkedContext == null || linkedInstance == null) {
+                // Reading of the elements segment occurs during parsing, so add a linker action.
+                module.addLinkAction(
+                                (context, instance) -> context.linker().resolveElemSegment(context, instance, currentElemSegmentId, currentOffsetAddress, currentOffsetGlobalIndex, functionIndices));
+            } else {
+                // Reading of the elements segment is called after linking (this happens when this
+                // method is called from #resetTableState()), so initialize the table directly.
+                linkedContext.linker().immediatelyResolveElemSegment(linkedContext, linkedInstance, currentElemSegmentId, currentOffsetAddress, currentOffsetGlobalIndex, functionIndices);
+            }
         }
     }
 
@@ -1568,6 +1567,12 @@ public class BinaryParser extends BinaryStreamParser {
     public void resetMemoryState(WasmContext context, WasmInstance instance) {
         if (tryJumpToSection(Section.DATA)) {
             readDataSection(context, instance);
+        }
+    }
+
+    public void resetTableState(WasmContext context, WasmInstance instance) {
+        if (tryJumpToSection(Section.ELEMENT)) {
+            readElementSection(context, instance);
         }
     }
 }

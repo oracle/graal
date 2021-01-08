@@ -217,6 +217,9 @@ public abstract class WasmFileSuite extends AbstractWasmSuite {
                         for (int j = 0; j < wasmContext.memories().count(); ++j) {
                             wasmContext.memories().memory(j).reset();
                         }
+                        for (int j = 0; j < wasmContext.tables().tableCount(); ++j) {
+                            wasmContext.tables().table(j).reset();
+                        }
                     }
                     for (final WasmInstance instance : wasmContext.moduleInstances().values()) {
                         if (!instance.isBuiltin()) {
