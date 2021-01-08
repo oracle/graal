@@ -101,7 +101,6 @@ import org.graalvm.compiler.phases.common.util.EconomicSetNodeEventListener;
 import org.graalvm.compiler.phases.util.ValueMergeUtil;
 
 import jdk.vm.ci.code.BytecodeFrame;
-import jdk.vm.ci.meta.Assumptions;
 import jdk.vm.ci.meta.DeoptimizationAction;
 import jdk.vm.ci.meta.DeoptimizationReason;
 import jdk.vm.ci.meta.JavaKind;
@@ -472,7 +471,7 @@ public class InliningUtil extends ValueMergeUtil {
             unwindNode = (UnwindNode) duplicates.get(unwindNode);
         }
 
-        finishInlining(invoke, graph, firstCFGNode, returnNodes, unwindNode, inlineGraph.getAssumptions(), inlineGraph);
+        finishInlining(invoke, graph, firstCFGNode, returnNodes, unwindNode, inlineGraph);
         GraphUtil.killCFG(invokeNode);
 
         return duplicates;
@@ -514,7 +513,7 @@ public class InliningUtil extends ValueMergeUtil {
     }
 
     @SuppressWarnings("try")
-    private static ValueNode finishInlining(Invoke invoke, StructuredGraph graph, FixedNode firstNode, List<ReturnNode> returnNodes, UnwindNode unwindNode, Assumptions inlinedAssumptions,
+    private static ValueNode finishInlining(Invoke invoke, StructuredGraph graph, FixedNode firstNode, List<ReturnNode> returnNodes, UnwindNode unwindNode,
                     StructuredGraph inlineGraph) {
         FixedNode invokeNode = invoke.asNode();
         FrameState stateAfter = invoke.stateAfter();
@@ -586,14 +585,7 @@ public class InliningUtil extends ValueMergeUtil {
         }
 
         // Copy assumptions from inlinee to caller
-        Assumptions assumptions = graph.getAssumptions();
-        if (assumptions != null) {
-            if (inlinedAssumptions != null) {
-                assumptions.record(inlinedAssumptions);
-            }
-        } else {
-            assert inlinedAssumptions == null : String.format("cannot inline graph (%s) which makes assumptions into a graph (%s) that doesn't", inlineGraph, graph);
-        }
+        graph.recordAssumptions(inlineGraph);
 
         // Copy inlined methods from inlinee to caller
         graph.updateMethods(inlineGraph);
