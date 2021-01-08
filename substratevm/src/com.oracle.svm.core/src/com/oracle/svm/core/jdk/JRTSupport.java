@@ -48,10 +48,8 @@ import com.oracle.svm.core.util.VMError;
 
 /**
  * Support to access system Java modules and the <b>jrt://</b> file system.
- *
+ * 
  * <p>
- * <b>jrt://</b> can be used standalone, or to access system modules.
- *
  * <b>javac</b> and other tools that access the system modules, depend on the
  * <b>-Djava.home=/path/to/jdk</b> property to be set e.g. required by
  * <code>java.lang.module.ModuleFinder#ofSystem()</code>.
@@ -133,7 +131,7 @@ final class Target_sun_net_www_protocol_jrt_Handler_JRTDisabled {
     @Substitute
     @SuppressWarnings("unused")
     protected URLConnection openConnection(URL url) throws IOException {
-        throw VMError.unsupportedFeature("JavaRuntimeURLConnection not available. Explicitly enable JRT support with -H:+" + JRTSupport.Options.AllowJRTFileSystem + " .");
+        throw VMError.unsupportedFeature("JavaRuntimeURLConnection not available.");
     }
 }
 
