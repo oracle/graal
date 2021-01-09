@@ -74,7 +74,6 @@ import org.graalvm.wasm.memory.WasmMemory;
 import static org.graalvm.wasm.BinaryStreamParser.length;
 import static org.graalvm.wasm.BinaryStreamParser.value;
 import static org.graalvm.wasm.WasmMath.addExactUnsigned;
-import static org.graalvm.wasm.WasmMath.unsignedInt32ToLong;
 import static org.graalvm.wasm.constants.Instructions.BLOCK;
 import static org.graalvm.wasm.constants.Instructions.BR;
 import static org.graalvm.wasm.constants.Instructions.BR_IF;
@@ -2759,7 +2758,7 @@ public final class WasmBlockNode extends WasmNode implements RepeatingNode {
 
     private void f32_convert_i32_u(long[] stack, int stackPointer) {
         final int x = popInt(stack, stackPointer - 1);
-        final float result = unsignedInt32ToLong(x);
+        final float result = WasmMath.unsignedIntToFloat(x);
         pushFloat(stack, stackPointer - 1, result);
     }
 
@@ -2771,7 +2770,7 @@ public final class WasmBlockNode extends WasmNode implements RepeatingNode {
 
     private void f32_convert_i64_u(long[] stack, int stackPointer) {
         long x = pop(stack, stackPointer - 1);
-        float result = x;
+        float result = WasmMath.unsignedLongToFloat(x);
         pushFloat(stack, stackPointer - 1, result);
     }
 
@@ -2782,22 +2781,26 @@ public final class WasmBlockNode extends WasmNode implements RepeatingNode {
     }
 
     private void f64_convert_i32_s(long[] stack, int stackPointer) {
-        f64_convert_i32_u(stack, stackPointer);
+        final int x = popInt(stack, stackPointer - 1);
+        final double result = x;
+        pushDouble(stack, stackPointer - 1, result);
     }
 
     private void f64_convert_i32_u(long[] stack, int stackPointer) {
         int x = popInt(stack, stackPointer - 1);
-        double result = x;
+        double result = WasmMath.unsignedIntToDouble(x);
         pushDouble(stack, stackPointer - 1, result);
     }
 
     private void f64_convert_i64_s(long[] stack, int stackPointer) {
-        f64_convert_i64_u(stack, stackPointer);
+        long x = pop(stack, stackPointer - 1);
+        double result = x;
+        pushDouble(stack, stackPointer - 1, result);
     }
 
     private void f64_convert_i64_u(long[] stack, int stackPointer) {
         long x = pop(stack, stackPointer - 1);
-        double result = x;
+        double result = WasmMath.unsignedLongToDouble(x);
         pushDouble(stack, stackPointer - 1, result);
     }
 

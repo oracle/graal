@@ -41,14 +41,16 @@
 
 package org.graalvm.wasm;
 
+import sun.misc.DoubleConsts;
+
 import static java.lang.Integer.compareUnsigned;
 
 public final class WasmMath {
-
-    private static final long DOUBLE_MANTISSA_WIDTH = 52;
-    private static final long DOUBLE_MANTISSA_MASK = 0b00000000_00001111_11111111_11111111_11111111_11111111_11111111_11111111L;
-    private static final long DOUBLE_EXPONENT_MASK = 0b01111111_11110000_00000000_00000000_00000000_00000000_00000000_00000000L;
-    private static final long DOUBLE_EXPONENT_BIAS = 1023;
+    /**
+     * The number of logical bits in the significand of a <code>double</code> number,
+     * <strong>excluding</strong> the implicit bit.
+     */
+    private static final long DOUBLE_SIGNIFICAND_WIDTH = DoubleConsts.SIGNIFICAND_WIDTH - 1;
 
     private WasmMath() {
     }
@@ -65,13 +67,37 @@ public final class WasmMath {
         return compareUnsigned(a, b) < 0 ? a : b;
     }
 
-    public static long unsignedInt32ToLong(int n) {
-        // See https://stackoverflow.com/a/22938125.
-        return n & 0xFFFFFFFFL;
+    public static float unsignedIntToFloat(int x) {
+        return unsignedIntToLong(x);
     }
 
-    public static long roundFloatUnsigned(float x) {
-        return roundDoubleUnsigned(x);
+    public static double unsignedIntToDouble(int x) {
+        return unsignedIntToLong(x);
+    }
+
+    public static long unsignedIntToLong(int x) {
+        // See https://stackoverflow.com/a/22938125.
+        return x & 0xFFFFFFFFL;
+    }
+
+    public static float unsignedLongToFloat(long x) {
+        if (x >= 0) {
+            return x;
+        }
+        final long shiftedX = x + Long.MIN_VALUE;
+        final boolean roundUp = shiftedX % (long) Math.ulp(0x1p63f) > (long) Math.ulp(0x1p63f) / 2;
+        final long offset = (shiftedX / (long) Math.ulp(0x1p63f)) + (roundUp ? 1 : 0);
+        return 0x1p63f + offset * Math.ulp(0x1p63f);
+    }
+
+    public static double unsignedLongToDouble(long x) {
+        if (x >= 0) {
+            return x;
+        }
+        final long shiftedX = x + Long.MIN_VALUE;
+        final boolean roundUp = shiftedX % (long) Math.ulp(0x1p63) > (long) Math.ulp(0x1p63) / 2;
+        final long offset = (shiftedX / (long) Math.ulp(0x1p63)) + (roundUp ? 1 : 0);
+        return 0x1p63 + offset * Math.ulp(0x1p63);
     }
 
     public static long roundDoubleUnsigned(double x) {
@@ -94,14 +120,14 @@ public final class WasmMath {
         if (x < Long.MAX_VALUE) {
             return truncDouble(x);
         }
+        final long shift = Math.getExponent(x) - DOUBLE_SIGNIFICAND_WIDTH;
         final long xBits = Double.doubleToRawLongBits(x);
-        final long shift = ((xBits & DOUBLE_EXPONENT_MASK) >> DOUBLE_MANTISSA_WIDTH) - DOUBLE_EXPONENT_BIAS - DOUBLE_MANTISSA_WIDTH;
-        final long base = (1L << DOUBLE_MANTISSA_WIDTH) | (xBits & DOUBLE_MANTISSA_MASK);
-        if (shift >= Long.SIZE - DOUBLE_MANTISSA_WIDTH) {
+        final long base = (1L << DOUBLE_SIGNIFICAND_WIDTH) | (xBits & DoubleConsts.SIGNIF_BIT_MASK);
+        if (shift >= Long.SIZE - DOUBLE_SIGNIFICAND_WIDTH) {
             return Long.MAX_VALUE;
         } else if (shift > 0) {
             return base << shift;
-        } else if (shift >= -DOUBLE_MANTISSA_WIDTH) {
+        } else if (shift >= -DOUBLE_SIGNIFICAND_WIDTH) {
             return base >> -shift;
         } else {
             return 0;
