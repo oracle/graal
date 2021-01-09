@@ -43,7 +43,7 @@ public class LibEspresso {
 
     @CEntryPoint(name = "Espresso_CreateJavaVM")
     static int createJavaVM(@SuppressWarnings("unused") IsolateThread thread, JNIJavaVMPointer javaVMPointer, JNIEnvironmentPointer penv, JNIJavaVMInitArgs args) {
-        if (args.getVersion() < JNIVersion.JNI_VERSION_1_2() || args.getVersion() > JNIVersion.JNI_VERSION_10()) {
+        if (args.getVersion() < JNIVersion.JNI_VERSION_1_2() || args.getVersion() > JNIVersion.JNI_VERSION_10) {
             return JNIErrors.JNI_EVERSION();
         }
         // TODO use Launcher infra to parse graalvm specific options
