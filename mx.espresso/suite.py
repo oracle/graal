@@ -42,7 +42,7 @@ suite = {
                 "name": "truffle",
                 "subdir": True,
                 # Custom changes in Truffle (NFI) for Espresso (branch slimbeans).
-                "version": "f9c53dad354fe21c92bef623a9ef82c544e973f6",
+                "version": "e2ff78d16c18a9d0fc2b60959ece21b65112098f",
                 "urls": [
                     {"url": "https://github.com/graalvm/graal", "kind": "git"},
                     {"url": "https://curio.ssw.jku.at/nexus/content/repositories/snapshots", "kind": "binary"},
@@ -52,7 +52,7 @@ suite = {
                 "name": "tools",
                 "subdir": True,
                 # Custom changes in Truffle (NFI) for Espresso (branch slimbeans).
-                "version": "f9c53dad354fe21c92bef623a9ef82c544e973f6",
+                "version": "e2ff78d16c18a9d0fc2b60959ece21b65112098f",
                 "urls": [
                     {"url": "https://github.com/graalvm/graal", "kind": "git"},
                     {"url": "https://curio.ssw.jku.at/nexus/content/repositories/snapshots", "kind": "binary"},
@@ -61,7 +61,7 @@ suite = {
             {
                 "name" : "java-benchmarks",
                 "subdir": True,
-                "version": "f9c53dad354fe21c92bef623a9ef82c544e973f6",
+                "version": "e2ff78d16c18a9d0fc2b60959ece21b65112098f",
                 "urls": [
                     {"url": "https://github.com/graalvm/graal", "kind": "git"},
                     {"url": "https://curio.ssw.jku.at/nexus/content/repositories/snapshots", "kind": "binary"},

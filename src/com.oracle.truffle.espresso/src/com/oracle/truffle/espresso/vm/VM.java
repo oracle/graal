@@ -737,6 +737,7 @@ public final class VM extends NativeEnv implements ContextAccess {
      */
     @SuppressWarnings("unused")
     @VmImpl
+    @TruffleBoundary
     public int GetEnv(@Pointer TruffleObject vmPtr_, @Pointer TruffleObject envPtr, int version) {
         // TODO(peterssen): Check the thread is attached, and that the VM pointer matches.
         assert interopAsPointer(getJavaVM()) == interopAsPointer(vmPtr_);
@@ -933,6 +934,7 @@ public final class VM extends NativeEnv implements ContextAccess {
 
     @VmImpl
     @JniImpl
+    @TruffleBoundary
     public @Host(Class.class) StaticObject JVM_DefineClass(@Pointer TruffleObject namePtr, @Host(ClassLoader.class) StaticObject loader, @Pointer TruffleObject bufPtr, int len,
                     @Host(ProtectionDomain.class) StaticObject pd, @InjectProfile SubstitutionProfiler profiler) {
         String name = interopPointerToString(namePtr);
@@ -2035,6 +2037,7 @@ public final class VM extends NativeEnv implements ContextAccess {
     // region Invocation API
 
     @VmImpl
+    @TruffleBoundary
     public int JNI_GetCreatedJavaVMs(@Pointer TruffleObject vmBufPtr, int bufLen, @Pointer TruffleObject numVMsPtr) {
         if (bufLen > 0) {
             getContext().getJNI().GetJavaVM(vmBufPtr);
