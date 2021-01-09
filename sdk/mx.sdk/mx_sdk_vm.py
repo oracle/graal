@@ -89,7 +89,7 @@ _graalvm_hostvm_configs = [
 
 
 class AbstractNativeImageConfig(_with_metaclass(ABCMeta, object)):
-    def __init__(self, destination, jar_distributions, build_args, links=None, is_polyglot=False, dir_jars=False):  # pylint: disable=super-init-not-called
+    def __init__(self, destination, jar_distributions, build_args, links=None, is_polyglot=False, dir_jars=False, home_finder=False):  # pylint: disable=super-init-not-called
         """
         :type destination: str
         :type jar_distributions: list[str]
@@ -103,6 +103,7 @@ class AbstractNativeImageConfig(_with_metaclass(ABCMeta, object)):
         self.links = [mx_subst.path_substitutions.substitute(link) for link in links] if links else []
         self.is_polyglot = is_polyglot
         self.dir_jars = dir_jars
+        self.home_finder = home_finder
 
         assert isinstance(self.jar_distributions, list)
         assert isinstance(self.build_args, list)
@@ -133,7 +134,7 @@ class AbstractNativeImageConfig(_with_metaclass(ABCMeta, object)):
 class LauncherConfig(AbstractNativeImageConfig):
     def __init__(self, destination, jar_distributions, main_class, build_args, is_main_launcher=True,
                  default_symlinks=True, is_sdk_launcher=False, custom_launcher_script=None, extra_jvm_args=None,
-                 option_vars=None, **kwargs):
+                 option_vars=None, home_finder=True, **kwargs):
         """
         :param str main_class
         :param bool is_main_launcher
@@ -141,7 +142,7 @@ class LauncherConfig(AbstractNativeImageConfig):
         :param bool is_sdk_launcher: Whether it uses org.graalvm.launcher.Launcher
         :param str custom_launcher_script: Custom launcher script, to be used when not compiled as a native image
         """
-        super(LauncherConfig, self).__init__(destination, jar_distributions, build_args, **kwargs)
+        super(LauncherConfig, self).__init__(destination, jar_distributions, build_args, home_finder=home_finder, **kwargs)
         self.main_class = main_class
         self.is_main_launcher = is_main_launcher
         self.default_symlinks = default_symlinks
@@ -774,7 +775,7 @@ grant codeBase "file:${java.home}/languages/-" {
         # Allow older JDK versions to work
         else:
             lib_prefix = mx.add_lib_prefix('')
-            lib_suffix = '.lib' if mx.is_windows() else '.a'
+            lib_suffix = mx.add_static_lib_suffix('')
             lib_directory = join(jdk.home, 'lib')
             dst_lib_directory = join(dst_jdk_dir, 'lib')
             for f in os.listdir(lib_directory):

@@ -1273,6 +1273,12 @@ class NativePropertiesBuildTask(mx.ProjectBuildTask):
             source_type = 'skip' if isinstance(image_config, mx_sdk.LibraryConfig) and _skip_libraries(image_config) else 'dependency'
             graalvm_image_destination = graalvm_dist.find_single_source_location(source_type + ':' + project_name_f(image_config))
 
+            if image_config.home_finder:
+                build_args += [
+                    '--features=org.graalvm.home.HomeFinderFeature',
+                    '-Dorg.graalvm.launcher.relative.home=' + relpath(graalvm_image_destination, graalvm_home),
+                ]
+
             if isinstance(image_config, mx_sdk.LauncherConfig):
                 if image_config.is_sdk_launcher:
                     build_args += [
@@ -1281,8 +1287,6 @@ class NativePropertiesBuildTask(mx.ProjectBuildTask):
                     ]
 
                 build_args += [
-                    '--features=org.graalvm.home.HomeFinderFeature',
-                    '-Dorg.graalvm.launcher.relative.home=' + relpath(graalvm_image_destination, graalvm_home),
                     '--install-exit-handlers'
                 ]
 
