@@ -1518,7 +1518,8 @@ jint ensure_libespresso_loaded() {
         }
         char espresso_path[MAX_PATH];
         strncpy(espresso_path, mokapot_path, prefix_len);
-        strncpy(espresso_path + prefix_len, LIB_ESPRESSO_PATH, lib_name_len);
+        strncpy(espresso_path + prefix_len, LIB_ESPRESSO_PATH, MAX_PATH - prefix_len);
+        espresso_path[prefix_len + lib_name_len] = '\0';
 
         OS_DL_HANDLE libespresso = os_dl_open(espresso_path);
         if (libespresso == NULL) {
