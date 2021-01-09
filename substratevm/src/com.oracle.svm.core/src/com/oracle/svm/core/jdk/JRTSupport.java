@@ -29,6 +29,7 @@ import java.io.IOException;
 import java.net.URL;
 import java.net.URLConnection;
 import java.nio.file.Path;
+import java.util.HashMap;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.function.BooleanSupplier;
@@ -77,6 +78,13 @@ public final class JRTSupport {
 }
 
 // region Enable jimage/jrtfs
+
+@TargetClass(className = "jdk.internal.jimage.ImageReader", innerClass = "SharedImageReader", onlyWith = {JDK11OrLater.class, JRTEnabled.class})
+final class Target_jdk_internal_jimage_ImageReader_SharedImageReader_JRTEnabled {
+    @Alias //
+    @RecomputeFieldValue(kind = RecomputeFieldValue.Kind.NewInstance, declClass = HashMap.class, isFinal = true) //
+    static Map<Path, Target_jdk_internal_jimage_ImageReader_SharedImageReader_JRTEnabled> OPEN_FILES;
+}
 
 @TargetClass(className = "jdk.internal.module.SystemModuleFinders", innerClass = "SystemImage", onlyWith = {JDK11OrLater.class, JRTEnabled.class})
 final class Target_jdk_internal_module_SystemModuleFinders_SystemImage_JRTEnabled {
