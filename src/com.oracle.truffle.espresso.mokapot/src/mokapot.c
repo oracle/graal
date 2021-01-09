@@ -1474,6 +1474,12 @@ char *last_sep(const char *start, const char *end) {
 
 #define LIB_ESPRESSO_PATH "languages" OS_PATHSEP_STR "java" OS_PATHSEP_STR "lib" OS_PATHSEP_STR OS_LIB("espresso")
 
+#if defined(_WIN32)
+#define EXPECT_LIB "bin"
+#else
+#define EXPECT_LIB "lib"
+#endif
+
 jint ensure_libespresso_loaded() {
     if (create_isolate == NULL ) {
         const char *mokapot_path = os_current_library_path();
@@ -1482,6 +1488,7 @@ jint ensure_libespresso_loaded() {
         }
         // mokapot is in
         // .../lib/truffle/libjvm.so or .../lib/<arch>/truffle/libjvm.so
+        // "lib" is replaced by "bin" on windows (EXPECT_LIB)
         // espresso is in
         // .../languages/java/lib/libespresso.so
         const char* mokapot_path_end = mokapot_path + strlen(mokapot_path);
@@ -1500,14 +1507,14 @@ jint ensure_libespresso_loaded() {
         if (pos - mokapot_path < 3) {
             return JNI_ERR;
         }
-        if (strncmp(pos - 3, "lib", 3) != 0) {
+        if (strncmp(pos - 3, EXPECT_LIB, 3) != 0) {
             pos = last_sep(mokapot_path, pos - 1);
             if (pos == NULL) {
                 return JNI_ERR;
             }
             // .../lib/<arch>/truffle/libjvm.so
             //        ^
-            if (pos - mokapot_path < 3 || strncmp(pos - 3, "lib", 3) != 0) {
+            if (pos - mokapot_path < 3 || strncmp(pos - 3, EXPECT_LIB, 3) != 0) {
                 return JNI_ERR;
             }
         }
