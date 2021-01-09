@@ -543,6 +543,10 @@ class BaseGraalVmLayoutDistribution(_with_metaclass(ABCMeta, mx.LayoutDistributi
             else:
                 hsdis = '/jre/lib/' + mx.get_arch() + '/' + mx.add_lib_suffix('hsdis-' + mx.get_arch())
             if _src_jdk_version == 8:
+                if mx.get_os() == 'darwin':
+                    jvm_cfg = '/lib/jvm.cfg'
+                else:
+                    jvm_cfg = '/lib/' + mx.get_arch() + '/jvm.cfg'
                 _escaping_links = _find_escaping_links(_src_jdk_dir)
                 _add(layout, base_dir, {
                     'source_type': 'file',
@@ -559,6 +563,7 @@ class BaseGraalVmLayoutDistribution(_with_metaclass(ABCMeta, mx.LayoutDistributi
                         exclude_base + '/bin/jvisualvm.exe',
                         exclude_base + '/lib/visualvm',
                         exclude_base + hsdis,
+                        exclude_base + '/jre' + jvm_cfg,
                     ] + ([
                         exclude_base + '/bin/jmc',
                         exclude_base + '/lib/missioncontrol',
@@ -566,13 +571,18 @@ class BaseGraalVmLayoutDistribution(_with_metaclass(ABCMeta, mx.LayoutDistributi
                 })
                 if exists(join(exclude_base, "THIRD_PARTY_README")):
                     _add(layout, "THIRD_PARTY_README_JDK" if base_dir == '.' else base_dir + '/THIRD_PARTY_README_JDK', "file:" + exclude_base + "/THIRD_PARTY_README")
+                _add(layout, "<jre_base>" + jvm_cfg, "string:" + _get_jvm_cfg_contents())
             else:
                 # TODO(GR-8329): add exclusions
                 _add(layout, self.jdk_base + '/', {
                     'source_type': 'dependency',
                     'dependency': 'graalvm-jimage',
                     'path': '*',
+                    'exclude': [
+                        'lib/jvm.cfg'
+                    ],
                 })
+                _add(layout, "<jre_base>/lib/jvm.cfg", "string:" + _get_jvm_cfg_contents())
 
             # Add vm.properties
             vm_name = graalvm_vm_name(self, _src_jdk)
@@ -2213,6 +2223,47 @@ class GraalVmStandaloneComponent(LayoutSuper):  # pylint: disable=R0901
             path_substitutions=graalvm.path_substitutions,
             string_substitutions=graalvm.string_substitutions,
             **kw_args)
+
+
+mx_subst.string_substitutions.register_with_arg('esc', lambda s: '<' + s + '>')
+
+
+def _get_jvm_cfg_contents():
+    if _src_jdk.javaCompliance < '9':
+        if mx.get_os() == 'darwin':
+            jvm_cfg = join(_src_jdk.home, 'jre', 'lib', 'jvm.cfg')
+        else:
+            jvm_cfg = join(_src_jdk.home, 'jre', 'lib', mx.get_arch(), 'jvm.cfg')
+    else:
+        jvm_cfg = join(_src_jdk.home, 'lib', 'jvm.cfg')
+    if not exists(jvm_cfg):
+        raise mx.abort("Could not find jvm.cfg from source JDK at " + jvm_cfg)
+    with open(jvm_cfg, 'r') as orig_f:
+        orig_lines = orig_f.readlines()
+    new_lines = []
+    vms_to_add = set(mx_sdk_vm._known_vms)
+    for line in orig_lines:
+        if line.startswith('#'):
+            new_lines.append(line)
+            continue
+        if not line.startswith('-'):
+            raise mx.abort("Invalid line in {}:\n{}".format(jvm_cfg, line))
+        parts = re.split('[ \t]', line)
+        if len(parts) < 2:
+            raise mx.abort("Invalid line in {}:\n{}".format(jvm_cfg, line))
+        vm_name = parts[0][1:]
+        type = parts[1]
+        if vm_name in vms_to_add:
+            if type == "KNOWN":
+                vms_to_add.remove(vm_name)
+                new_lines.append(line)
+            # else skip the line that would remove this VM
+        else:
+            new_lines.append(line)
+    for vm_to_add in vms_to_add:
+        new_lines.append('-' + vm_to_add + ' KNOWN' + os.linesep)
+    # escape things that look like string substitutions
+    return re.sub(r'<[\w\-]+?(:(.+?))?>', lambda m: '<esc:' + m.group(0)[1:], ''.join(new_lines))
 
 
 _vm_suite = 'uninitialized'
