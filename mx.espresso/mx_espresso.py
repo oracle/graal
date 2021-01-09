@@ -76,7 +76,7 @@ def _run_espresso_standalone(args=None, cwd=None):
 
 def _run_espresso_java(args=None, cwd=None):
     """Run espresso through the standard java launcher within a GraalVM"""
-    mx.run_java(_espresso_java_command(args), cwd=cwd)
+    mx.run(_espresso_java_command(args), cwd=cwd)
 
 
 def _run_espresso_meta(args):
@@ -177,7 +177,7 @@ mx_sdk_vm.register_graalvm_component(mx_sdk_vm.GraalVmJreComponent(
     license_files=[],
     third_party_license_files=[],
     dependencies=['Espresso'],
-    support_distributions=['espresso:ESPRESSO_JVM_SUPPORT'],
+    support_libraries_distributions=['espresso:ESPRESSO_JVM_SUPPORT'],
     installable_id='espresso',
 ))
 
@@ -199,3 +199,5 @@ mx_sdk_vm.register_vm_config('espresso-jvm-ce',    ['java', 'ejvm', 'nfi', 'sdk'
 mx_sdk_vm.register_vm_config('espresso-jvm-ee',    ['java', 'ejvm', 'nfi', 'sdk', 'tfl', 'cmp', 'cmpee'                        ], _suite, env_file='jvm-ee')
 mx_sdk_vm.register_vm_config('espresso-native-ce', ['java', 'ejvm', 'nfi', 'sdk', 'tfl', 'cmp'         , 'svm'         , 'tflm'], _suite, env_file='native-ce')
 mx_sdk_vm.register_vm_config('espresso-native-ee', ['java', 'ejvm', 'nfi', 'sdk', 'tfl', 'cmp', 'cmpee', 'svm', 'svmee', 'tflm'], _suite, env_file='native-ee')
+
+mx_sdk_vm.register_known_vm('truffle')

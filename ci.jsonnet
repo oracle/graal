@@ -194,7 +194,7 @@ local clone_build_run(env, args) =
   build_espresso(env) +
   setup_playground(env) +
   run_espresso(env, args) +
-  run_espresso_java(env, args);
+  if std.startsWith(env, 'jvm') then {} else run_espresso_java(env, args);
 
 local _host_jvm(env) = 'graalvm-espresso-' + env;
 local _host_jvm_config(env) = if std.startsWith(env, 'jvm') then 'jvm' else 'native';
