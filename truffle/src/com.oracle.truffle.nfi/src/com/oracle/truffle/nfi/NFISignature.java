@@ -41,9 +41,10 @@
 package com.oracle.truffle.nfi;
 
 import com.oracle.truffle.api.CallTarget;
+import com.oracle.truffle.api.CompilerAsserts;
+import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.Truffle;
 import com.oracle.truffle.api.dsl.Cached;
-import com.oracle.truffle.api.dsl.CachedLanguage;
 import com.oracle.truffle.api.dsl.Fallback;
 import com.oracle.truffle.api.dsl.ImportStatic;
 import com.oracle.truffle.api.dsl.Specialization;
@@ -66,8 +67,7 @@ import com.oracle.truffle.nfi.util.ProfiledArrayBuilder;
 final class NFISignature implements TruffleObject {
 
     final String backendId;
-    final CallTarget optimizedSignatureCall;
-    final CallTarget optimizedClosureCall;
+    final SignatureCachedState cachedState;
 
     final Object nativeSignature;
 
@@ -77,11 +77,9 @@ final class NFISignature implements TruffleObject {
     final int nativeArgCount;
     final int managedArgCount;
 
-    NFISignature(String backendId, CallTarget optimizedSignatureCall, CallTarget optimizedClosureCall, Object nativeSignature, NFIType retType, NFIType[] argTypes, int nativeArgCount,
-                    int managedArgCount) {
+    NFISignature(String backendId, SignatureCachedState cachedState, Object nativeSignature, NFIType retType, NFIType[] argTypes, int nativeArgCount, int managedArgCount) {
         this.backendId = backendId;
-        this.optimizedSignatureCall = optimizedSignatureCall;
-        this.optimizedClosureCall = optimizedClosureCall;
+        this.cachedState = cachedState;
         this.nativeSignature = nativeSignature;
         this.retType = retType;
         this.argTypes = argTypes;
@@ -160,6 +158,68 @@ final class NFISignature implements TruffleObject {
         }
     }
 
+    static final class SignatureCachedState {
+
+        final TypeCachedState retType;
+        final ArgsCachedState args;
+
+        private CallTarget polymorphicSignatureCall;
+        private CallTarget polymorphicClosureCall;
+
+        private SignatureCachedState(TypeCachedState retType, ArgsCachedState args) {
+            this.retType = retType;
+            this.args = args;
+        }
+
+        static SignatureCachedState create(SignatureBuilder builder) {
+            return new SignatureCachedState(builder.retTypeState, builder.argsState);
+        }
+
+        CallSignatureNode createOptimizedSignatureCall() {
+            CompilerAsserts.neverPartOfCompilation("createOptimizedSignatureCall");
+            return CallSignatureNode.createOptimizedCall(retType, args);
+        }
+
+        CallSignatureNode createOptimizedClosureCall() {
+            CompilerAsserts.neverPartOfCompilation("createOptimizedClosureCall");
+            return CallSignatureNode.createOptimizedClosure(retType, args);
+        }
+
+        @TruffleBoundary
+        private synchronized void initPolymorphicSignatureCall() {
+            if (polymorphicSignatureCall == null) {
+                CallSignatureNode call = createOptimizedSignatureCall();
+                CallSignatureRootNode rootNode = new CallSignatureRootNode(NFILanguage.getCurrentLanguage(), call);
+                polymorphicSignatureCall = Truffle.getRuntime().createCallTarget(rootNode);
+            }
+        }
+
+        CallTarget getPolymorphicSignatureCall() {
+            if (polymorphicSignatureCall == null) {
+                initPolymorphicSignatureCall();
+            }
+            assert polymorphicSignatureCall != null;
+            return polymorphicSignatureCall;
+        }
+
+        @TruffleBoundary
+        private synchronized void initPolymorphicClosureCall() {
+            if (polymorphicClosureCall == null) {
+                CallSignatureNode call = createOptimizedClosureCall();
+                CallSignatureRootNode rootNode = new CallSignatureRootNode(NFILanguage.getCurrentLanguage(), call);
+                polymorphicClosureCall = Truffle.getRuntime().createCallTarget(rootNode);
+            }
+        }
+
+        CallTarget getPolymorphicClosureCall() {
+            if (polymorphicClosureCall == null) {
+                initPolymorphicClosureCall();
+            }
+            assert polymorphicClosureCall != null;
+            return polymorphicClosureCall;
+        }
+    }
+
     @ExportLibrary(NFIBackendSignatureBuilderLibrary.class)
     static final class SignatureBuilder {
 
@@ -230,35 +290,21 @@ final class NFISignature implements TruffleObject {
         @ExportMessage
         static class Build {
 
-            static CallTarget prepareOptimizedSignatureCall(TypeCachedState retTypeState, ArgsCachedState argsState, NFILanguage language) {
-                CallSignatureNode callSignature = CallSignatureNode.createOptimizedCall(retTypeState, argsState);
-                return Truffle.getRuntime().createCallTarget(new CallSignatureRootNode(language, callSignature));
-            }
-
-            static CallTarget prepareOptimizedClosureCall(TypeCachedState retTypeState, ArgsCachedState argsState, NFILanguage language) {
-                CallSignatureNode callClosure = CallSignatureNode.createOptimizedClosure(retTypeState, argsState);
-                return Truffle.getRuntime().createCallTarget(new CallSignatureRootNode(language, callClosure));
-            }
-
-            @Specialization(guards = {"builder.argsState == argsState", "builder.retTypeState == retTypeState"})
+            @Specialization(guards = {"builder.argsState == cachedState.args", "builder.retTypeState == cachedState.retType"})
             static NFISignature doCached(SignatureBuilder builder,
-                            @SuppressWarnings("unused") @Cached("builder.retTypeState") TypeCachedState retTypeState,
-                            @Cached("builder.argsState") ArgsCachedState argsState,
-                            @SuppressWarnings("unused") @CachedLanguage NFILanguage language,
-                            @Cached("prepareOptimizedSignatureCall(retTypeState, argsState, language)") CallTarget optimizedSignatureCall,
-                            @Cached("prepareOptimizedClosureCall(retTypeState, argsState, language)") CallTarget optimizedClosureCall,
+                            @Cached("create(builder)") SignatureCachedState cachedState,
                             @CachedLibrary("builder.backendBuilder") NFIBackendSignatureBuilderLibrary backendLibrary) {
                 Object nativeSignature = backendLibrary.build(builder.backendBuilder);
-                return new NFISignature(builder.backendId, optimizedSignatureCall, optimizedClosureCall, nativeSignature, builder.retType, builder.argTypes.getFinalArray(), argsState.nativeArgCount,
-                                argsState.managedArgCount);
+                return new NFISignature(builder.backendId, cachedState, nativeSignature, builder.retType,
+                                builder.argTypes.getFinalArray(), cachedState.args.nativeArgCount, cachedState.args.managedArgCount);
             }
 
             @Specialization(replaces = "doCached")
             static NFISignature doGeneric(SignatureBuilder builder,
                             @CachedLibrary("builder.backendBuilder") NFIBackendSignatureBuilderLibrary backendLibrary) {
                 Object nativeSignature = backendLibrary.build(builder.backendBuilder);
-                return new NFISignature(builder.backendId, null, null, nativeSignature, builder.retType, builder.argTypes.getFinalArray(), builder.argsState.nativeArgCount,
-                                builder.argsState.managedArgCount);
+                return new NFISignature(builder.backendId, null, nativeSignature, builder.retType,
+                                builder.argTypes.getFinalArray(), builder.argsState.nativeArgCount, builder.argsState.managedArgCount);
             }
         }
     }
