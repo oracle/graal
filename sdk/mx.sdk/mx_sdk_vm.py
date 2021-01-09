@@ -86,6 +86,7 @@ _graalvm_hostvm_configs = [
     ('native', [], ['--native'], 100),
     ('native-no-truffle-compilation', [], ['--native', '--experimental-options', '--engine.Compilation=false'], 39)
 ]
+_known_vms = set()
 
 
 class AbstractNativeImageConfig(_with_metaclass(ABCMeta, object)):
@@ -437,6 +438,12 @@ def register_vm_config(config_name, components, suite, dist_name=None, env_file=
 
 def get_graalvm_hostvm_configs():
     return _graalvm_hostvm_configs
+
+
+def register_known_vm(name):
+    if name in _known_vms:
+        raise mx.abort("VM '{}' already registered".format(name))
+    _known_vms.add(name)
 
 
 _base_jdk = None
