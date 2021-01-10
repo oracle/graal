@@ -22,15 +22,15 @@
  */
 package com.oracle.truffle.espresso.jdwp.impl;
 
-import com.oracle.truffle.espresso.jdwp.api.ErrorCodes;
-import com.oracle.truffle.espresso.jdwp.api.JDWPContext;
-
 import java.io.IOException;
 import java.util.Collection;
 import java.util.Collections;
 import java.util.concurrent.ArrayBlockingQueue;
 import java.util.concurrent.BlockingQueue;
 import java.util.concurrent.Callable;
+
+import com.oracle.truffle.espresso.jdwp.api.ErrorCodes;
+import com.oracle.truffle.espresso.jdwp.api.JDWPContext;
 
 public final class DebuggerConnection implements Commands {
 
@@ -75,6 +75,7 @@ public final class DebuggerConnection implements Commands {
     public void close() {
         try {
             connection.close();
+            controller.getEventListener().setConnection(null);
         } catch (IOException e) {
             throw new RuntimeException("Closing socket connection failed", e);
         }
@@ -207,7 +208,7 @@ public final class DebuggerConnection implements Commands {
     }
 
     private class JDWPTransportThread implements Runnable {
-        private RequestedJDWPEvents requestedJDWPEvents = new RequestedJDWPEvents(connection, controller);
+        private RequestedJDWPEvents requestedJDWPEvents = new RequestedJDWPEvents(controller);
 
         @Override
         public void run() {
