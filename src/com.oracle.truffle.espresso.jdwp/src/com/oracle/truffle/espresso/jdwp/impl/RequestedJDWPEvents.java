@@ -22,17 +22,17 @@
  */
 package com.oracle.truffle.espresso.jdwp.impl;
 
+import java.util.ArrayList;
+import java.util.concurrent.Callable;
+import java.util.regex.Pattern;
+import java.util.regex.PatternSyntaxException;
+
 import com.oracle.truffle.espresso.jdwp.api.ErrorCodes;
 import com.oracle.truffle.espresso.jdwp.api.FieldRef;
 import com.oracle.truffle.espresso.jdwp.api.Ids;
 import com.oracle.truffle.espresso.jdwp.api.JDWPContext;
 import com.oracle.truffle.espresso.jdwp.api.KlassRef;
 import com.oracle.truffle.espresso.jdwp.api.MethodRef;
-
-import java.util.ArrayList;
-import java.util.concurrent.Callable;
-import java.util.regex.Pattern;
-import java.util.regex.PatternSyntaxException;
 
 public final class RequestedJDWPEvents {
 
@@ -64,11 +64,10 @@ public final class RequestedJDWPEvents {
     private final DebuggerController controller;
     private final Ids<Object> ids;
 
-    RequestedJDWPEvents(SocketConnection connection, DebuggerController controller) {
+    RequestedJDWPEvents(DebuggerController controller) {
         this.controller = controller;
         this.eventListener = controller.getEventListener();
         this.ids = controller.getContext().getIds();
-        eventListener.setConnection(connection);
     }
 
     public CommandResult registerEvent(Packet packet, Commands callback) {
