@@ -263,6 +263,10 @@ void *os_dl_sym(OS_DL_HANDLE handle, const char *sym) {
     return dlsym(handle, sym);
 }
 
+OS_DL_HANDLE os_get_RTLD_DEFAULT() {
+    return RTLD_DEFAULT;
+}
+
 void* os_atomic_load_ptr(void* OS_ATOMIC *ptr) {
     return atomic_load(ptr);
 }

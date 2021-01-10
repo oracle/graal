@@ -359,6 +359,10 @@ void *os_dl_sym(OS_DL_HANDLE handle, const char *sym) {
     return GetProcAddress(handle, sym);
 }
 
+OS_DL_HANDLE os_get_RTLD_DEFAULT() {
+    return GetModuleHandleA(NULL);
+}
+
 void* os_atomic_load_ptr(void* OS_ATOMIC *ptr) {
 #ifdef _WIN64
     return (void*) InterlockedOr64((LONGLONG volatile *)ptr, 0);

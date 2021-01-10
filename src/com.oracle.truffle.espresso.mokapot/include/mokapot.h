@@ -327,6 +327,8 @@ JNIEXPORT JavaVM* JNICALL getJavaVM(MokapotEnv* moka_env);
 
 JNIEXPORT void JNICALL mokapotAttachThread(MokapotEnv* moka_env);
 
+JNIEXPORT OS_DL_HANDLE JNICALL mokapotGetRTLD_DEFAULT();
+
 JNIEXPORT const char* JNICALL getPackageAt(const char* const* packages, int at);
 
 #ifdef __cplusplus
