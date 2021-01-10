@@ -59,6 +59,7 @@ public final class SocketConnection implements Runnable {
             socketOutput.close();
             socketInput.close();
             socket.close();
+            queue.clear();
             closed = true;
         }
     }
@@ -87,7 +88,9 @@ public final class SocketConnection implements Runnable {
     }
 
     public void queuePacket(PacketStream stream) {
-        queue.add(stream);
+        if (isOpen()) {
+            queue.add(stream);
+        }
     }
 
     public byte[] readPacket() throws IOException, ConnectionClosedException {
