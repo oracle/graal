@@ -38,9 +38,11 @@
  * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
  * SOFTWARE.
  */
-package com.oracle.truffle.regex.tregex.parser;
+package com.oracle.truffle.regex.errors;
 
-interface ErrorMessages {
+public interface ErrorMessages {
+
+    /* syntax errors */
 
     String CHAR_CLASS_RANGE_OUT_OF_ORDER = "Range out of order in character class";
     String EMPTY_GROUP_NAME = "Empty named capture group name";
@@ -68,4 +70,9 @@ interface ErrorMessages {
     String UNMATCHED_RIGHT_BRACE = "Unmatched '}'";
     String UNTERMINATED_GROUP = "Unterminated group";
     String UNTERMINATED_GROUP_NAME = "Unterminated group name";
+
+    /* flag related errors */
+
+    String REPEATED_FLAG = "Repeated regex flag";
+    String UNSUPPORTED_FLAG = "Unsupported regex flag";
 }

@@ -46,6 +46,7 @@ import com.oracle.truffle.api.interop.InteropLibrary;
 import com.oracle.truffle.api.interop.UnknownIdentifierException;
 import com.oracle.truffle.api.library.ExportLibrary;
 import com.oracle.truffle.api.library.ExportMessage;
+import com.oracle.truffle.regex.errors.ErrorMessages;
 import com.oracle.truffle.regex.tregex.util.json.Json;
 import com.oracle.truffle.regex.tregex.util.json.JsonConvertible;
 import com.oracle.truffle.regex.tregex.util.json.JsonValue;
@@ -85,33 +86,33 @@ public final class RegexFlags extends AbstractConstantKeysObject implements Json
             char ch = flagsStr.charAt(i);
             switch (ch) {
                 case 'i':
-                    flags = addFlag(source, flags, i, ch, IGNORE_CASE);
+                    flags = addFlag(source, flags, i, IGNORE_CASE);
                     break;
                 case 'm':
-                    flags = addFlag(source, flags, i, ch, MULTILINE);
+                    flags = addFlag(source, flags, i, MULTILINE);
                     break;
                 case 'g':
-                    flags = addFlag(source, flags, i, ch, GLOBAL);
+                    flags = addFlag(source, flags, i, GLOBAL);
                     break;
                 case 'y':
-                    flags = addFlag(source, flags, i, ch, STICKY);
+                    flags = addFlag(source, flags, i, STICKY);
                     break;
                 case 'u':
-                    flags = addFlag(source, flags, i, ch, UNICODE);
+                    flags = addFlag(source, flags, i, UNICODE);
                     break;
                 case 's':
-                    flags = addFlag(source, flags, i, ch, DOT_ALL);
+                    flags = addFlag(source, flags, i, DOT_ALL);
                     break;
                 default:
-                    throw RegexSyntaxException.createFlags(source, "unsupported regex flag: " + ch, i);
+                    throw RegexSyntaxException.createFlags(source, ErrorMessages.UNSUPPORTED_FLAG, i);
             }
         }
         return new RegexFlags(flagsStr, flags);
     }
 
-    private static int addFlag(RegexSource source, int flags, int i, char ch, int flag) {
+    private static int addFlag(RegexSource source, int flags, int i, int flag) {
         if ((flags & flag) != 0) {
-            throw RegexSyntaxException.createFlags(source, "repeated regex flag: " + ch, i);
+            throw RegexSyntaxException.createFlags(source, ErrorMessages.REPEATED_FLAG, i);
         }
         return flags | flag;
     }
