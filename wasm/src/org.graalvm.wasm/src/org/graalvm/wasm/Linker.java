@@ -352,9 +352,9 @@ public class Linker {
     void resolveDataSegment(WasmContext context, WasmInstance instance, int dataSegmentId, int offsetAddress, int offsetGlobalIndex, int byteLength, byte[] data) {
         assertTrue(instance.symbolTable().memoryExists(), String.format("No memory declared or imported in the module '%s'", instance.name()), Failure.UNSPECIFIED_MALFORMED);
         final Runnable resolveAction = () -> {
-            assert (offsetAddress != -1) ^ (offsetGlobalIndex != -1) : "Both an offset address and a offset global are specified for the data segment.";
             WasmMemory memory = instance.memory();
             Assert.assertNotNull(memory, String.format("No memory declared or imported in the module '%s'", instance.name()), Failure.UNSPECIFIED_MALFORMED);
+
             int baseAddress;
             if (offsetGlobalIndex != -1) {
                 final int offsetGlobalAddress = instance.globalAddress(offsetGlobalIndex);
@@ -364,6 +364,10 @@ public class Linker {
             } else {
                 baseAddress = offsetAddress;
             }
+
+            Assert.assertUnsignedIntLessOrEqual(baseAddress, memory.byteSize(), Failure.DATA_SEGMENT_DOES_NOT_FIT);
+            Assert.assertUnsignedIntLessOrEqual(baseAddress + byteLength, memory.byteSize(), Failure.DATA_SEGMENT_DOES_NOT_FIT);
+
             for (int writeOffset = 0; writeOffset != byteLength; ++writeOffset) {
                 byte b = data[writeOffset];
                 memory.store_i32_8(null, baseAddress + writeOffset, b);
@@ -420,42 +424,51 @@ public class Linker {
         resolutionDag.resolveLater(new ExportTableSym(module.name(), exportedTableName), dependencies, NO_RESOLVE_ACTION);
     }
 
-    void resolveElemSegment(WasmContext context, WasmInstance instance, int elemSegmentId, int offsetAddress, int offsetGlobalIndex, int segmentLength, WasmFunction[] functions) {
-        assertTrue(instance.symbolTable().tableExists(), String.format("No table declared or imported in the module '%s'", instance.name()), Failure.UNSPECIFIED_MALFORMED);
-        final Runnable resolveAction = () -> {
-            assert (offsetAddress != -1) ^ (offsetGlobalIndex != -1) : "Both an offset address and a offset global are specified for the elem segment.";
-            final WasmTable table = instance.table();
-            Assert.assertNotNull(table, String.format("No table declared or imported in the module '%s'", instance.name()), Failure.UNKNOWN_TABLE);
-            final int baseAddress;
-            if (offsetGlobalIndex != -1) {
-                final int offsetGlobalAddress = instance.globalAddress(offsetGlobalIndex);
-                assertTrue(offsetGlobalAddress != -1,
-                                String.format("The global variable '%d' for the offset of the elem segment %d in module '%s' was not initialized.", offsetGlobalIndex, elemSegmentId, instance.name()),
-                                Failure.UNSPECIFIED_INTERNAL);
-                baseAddress = context.globals().loadAsInt(offsetGlobalAddress);
-            } else {
-                baseAddress = offsetAddress;
-            }
-            table.ensureSizeAtLeast(baseAddress + segmentLength);
-            for (int index = 0; index != segmentLength; ++index) {
-                final WasmFunction function = functions[index];
-                final CallTarget target = instance.target(function.index());
-                table.initialize(baseAddress + index, new WasmFunctionInstance(function, target));
-            }
-        };
+    void resolveElemSegment(WasmContext context, WasmInstance instance, int elemSegmentId, int offsetAddress, int offsetGlobalIndex, int[] functionsIndices) {
+        final Runnable resolveAction = () -> immediatelyResolveElemSegment(context, instance, elemSegmentId, offsetAddress, offsetGlobalIndex, functionsIndices);
         final ArrayList<Sym> dependencies = new ArrayList<>();
         if (instance.symbolTable().importedTable() != null) {
             dependencies.add(new ImportTableSym(instance.name(), instance.symbolTable().importedTable()));
         }
+        if (elemSegmentId > 0) {
+            dependencies.add(new ElemSym(instance.name(), elemSegmentId - 1));
+        }
         if (offsetGlobalIndex != -1) {
             dependencies.add(new InitializeGlobalSym(instance.name(), offsetGlobalIndex));
         }
-        for (WasmFunction function : functions) {
+        for (final int functionIndex : functionsIndices) {
+            final WasmFunction function = instance.module().function(functionIndex);
             if (function.importDescriptor() != null) {
                 dependencies.add(new ImportFunctionSym(instance.name(), function.importDescriptor(), function.index()));
             }
         }
         resolutionDag.resolveLater(new ElemSym(instance.name(), elemSegmentId), dependencies.toArray(new Sym[dependencies.size()]), resolveAction);
+    }
+
+    void immediatelyResolveElemSegment(WasmContext context, WasmInstance instance, int elemSegmentId, int offsetAddress, int offsetGlobalIndex, int[] functionsIndices) {
+        assertTrue(instance.symbolTable().tableExists(), String.format("No table declared or imported in the module '%s'", instance.name()), Failure.UNSPECIFIED_MALFORMED);
+        final WasmTable table = instance.table();
+        Assert.assertNotNull(table, String.format("No table declared or imported in the module '%s'", instance.name()), Failure.UNKNOWN_TABLE);
+        final int baseAddress;
+        if (offsetGlobalIndex != -1) {
+            final int offsetGlobalAddress = instance.globalAddress(offsetGlobalIndex);
+            assertTrue(offsetGlobalAddress != -1,
+                            String.format("The global variable '%d' for the offset of the elem segment %d in module '%s' was not initialized.", offsetGlobalIndex, elemSegmentId, instance.name()),
+                            Failure.UNSPECIFIED_INTERNAL);
+            baseAddress = context.globals().loadAsInt(offsetGlobalAddress);
+        } else {
+            baseAddress = offsetAddress;
+        }
+
+        Assert.assertUnsignedIntLessOrEqual(baseAddress, table.size(), Failure.ELEMENTS_SEGMENT_DOES_NOT_FIT);
+        Assert.assertUnsignedIntLessOrEqual(baseAddress + functionsIndices.length, table.size(), Failure.ELEMENTS_SEGMENT_DOES_NOT_FIT);
+
+        for (int index = 0; index != functionsIndices.length; ++index) {
+            final int functionIndex = functionsIndices[index];
+            final WasmFunction function = instance.module().function(functionIndex);
+            final CallTarget target = instance.target(function.index());
+            table.initialize(baseAddress + index, new WasmFunctionInstance(function, target));
+        }
     }
 
     static class ResolutionDag {

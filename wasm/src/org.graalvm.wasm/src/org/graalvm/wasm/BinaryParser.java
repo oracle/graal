@@ -88,7 +88,7 @@ import static org.graalvm.wasm.constants.Sizes.MAX_TABLE_DECLARATION_SIZE;
  * Simple recursive-descend parser for the binary WebAssembly format.
  */
 public class BinaryParser extends BinaryStreamParser {
-    private class ParsingExceptionHandler implements Thread.UncaughtExceptionHandler {
+    private static class ParsingExceptionHandler implements Thread.UncaughtExceptionHandler {
         private Throwable parsingException = null;
 
         @Override
@@ -218,7 +218,7 @@ public class BinaryParser extends BinaryStreamParser {
                     readStartSection();
                     break;
                 case Section.ELEMENT:
-                    readElementSection();
+                    readElementSection(null, null);
                     break;
                 case Section.CODE:
                     skipCodeSection();
@@ -1048,7 +1048,7 @@ public class BinaryParser extends BinaryStreamParser {
         return new WasmIfNode(instance, codeEntry, trueBranchBlock, falseBranchBlock, offset() - startOffset, blockTypeId, stackSizeBeforeCondition);
     }
 
-    private void readElementSection() {
+    private void readElementSection(WasmContext linkedContext, WasmInstance linkedInstance) {
         int numElements = readLength();
         module.limits().checkElementSegmentCount(numElements);
 
@@ -1064,57 +1064,48 @@ public class BinaryParser extends BinaryStreamParser {
 
             // Read the offset expression.
             byte instruction = read1();
+
+            // Read the offset expression.
             int offsetAddress = -1;
             int offsetGlobalIndex = -1;
             switch (instruction) {
-                case Instructions.I32_CONST: {
+                case Instructions.I32_CONST:
                     offsetAddress = readSignedInt32();
                     break;
-                }
-                case Instructions.GLOBAL_GET: {
+                case Instructions.GLOBAL_GET:
                     offsetGlobalIndex = readGlobalIndex();
                     break;
-                }
-                default: {
-                    fail(Failure.MALFORMED_VALUE_TYPE, "Invalid instruction for table offset expression: 0x%02X", instruction);
-                }
+                default:
+                    throw WasmException.format(Failure.TYPE_MISMATCH, "Invalid instruction for table offset expression: 0x%02X", instruction);
             }
 
             readEnd();
 
             // Copy the contents, or schedule a linker task for this.
-            int segmentLength = readLength();
-            final SymbolTable symbolTable = module.symbolTable();
+            final int segmentLength = readLength();
             final int currentElemSegmentId = elemSegmentId;
             final int currentOffsetAddress = offsetAddress;
             final int currentOffsetGlobalIndex = offsetGlobalIndex;
             final int[] functionIndices = new int[segmentLength];
             for (int index = 0; index != segmentLength; ++index) {
-                final int functionIndex = readDeclaredFunctionIndex();
-                functionIndices[index] = functionIndex;
+                functionIndices[index] = readDeclaredFunctionIndex();
             }
-            module.addLinkAction((context, instance) -> {
-                // Note: we do not check if the earlier element segments were executed,
-                // and we do not try to execute the element segments in order,
-                // as we do with data sections and the memory.
-                // Instead, if any table element is written more than once, we report an error.
-                // Thus, the order in which the element sections are loaded is not important
-                // (also, I did not notice the toolchains overriding the same element slots,
-                // or anything in the spec about that).
-                WasmFunction[] elements = new WasmFunction[segmentLength];
-                for (int index = 0; index != segmentLength; ++index) {
-                    final int functionIndex = functionIndices[index];
-                    final WasmFunction function = symbolTable.function(functionIndex);
-                    elements[index] = function;
-                }
-                context.linker().resolveElemSegment(context, instance, currentElemSegmentId, currentOffsetAddress, currentOffsetGlobalIndex, segmentLength, elements);
-            });
+
+            if (linkedContext == null || linkedInstance == null) {
+                // Reading of the elements segment occurs during parsing, so add a linker action.
+                module.addLinkAction(
+                                (context, instance) -> context.linker().resolveElemSegment(context, instance, currentElemSegmentId, currentOffsetAddress, currentOffsetGlobalIndex, functionIndices));
+            } else {
+                // Reading of the elements segment is called after linking (this happens when this
+                // method is called from #resetTableState()), so initialize the table directly.
+                linkedContext.linker().immediatelyResolveElemSegment(linkedContext, linkedInstance, currentElemSegmentId, currentOffsetAddress, currentOffsetGlobalIndex, functionIndices);
+            }
         }
     }
 
     private void readEnd() {
         final byte instruction = read1();
-        assertByteEqual(instruction, (byte) Instructions.END, Failure.INITIALIZER_NO_END);
+        assertByteEqual(instruction, (byte) Instructions.END, Failure.TYPE_MISMATCH);
     }
 
     private void readStartSection() {
@@ -1198,25 +1189,11 @@ public class BinaryParser extends BinaryStreamParser {
                     assertByteEqual(type, module.symbolTable().globalValueType(existingIndex), Failure.TYPE_MISMATCH);
                     isInitialized = false;
                     break;
-                case Instructions.END:
-                    throw WasmException.create(Failure.TYPE_MISMATCH);
                 default:
-                    throw WasmException.format(Failure.GLOBAL_INIT_NON_CONSTANT, "Invalid instruction for global initialization: 0x%02X", instruction);
-            }
-            final byte endInstruction = read1();
-            switch (endInstruction) {
-                case Instructions.END:
-                    // This is what we want
-                    break;
-                case Instructions.I32_CONST:
-                case Instructions.I64_CONST:
-                case Instructions.F32_CONST:
-                case Instructions.F64_CONST:
-                case Instructions.GLOBAL_GET:
                     throw WasmException.create(Failure.TYPE_MISMATCH);
-                default:
-                    throw WasmException.format(Failure.GLOBAL_INIT_NON_CONSTANT, "Invalid instruction for global initialization: 0x%02X", instruction);
             }
+            readEnd();
+
             module.symbolTable().declareGlobal(globalIndex, type, mutability);
             final int currentGlobalIndex = globalIndex;
             final int currentExistingIndex = existingIndex;
@@ -1245,15 +1222,18 @@ public class BinaryParser extends BinaryStreamParser {
         module.limits().checkDataSegmentCount(numDataSegments);
         for (int dataSegmentId = 0; dataSegmentId != numDataSegments; ++dataSegmentId) {
             readMemoryIndex();
-            final byte instruction = read1();
 
             // Data dataOffset expression must be a constant expression with result type i32.
             // https://webassembly.github.io/spec/core/syntax/modules.html#data-segments
             // https://webassembly.github.io/spec/core/valid/instructions.html#constant-expressions
 
             // Read the offset expression.
+            byte instruction = read1();
+
+            // Read the offset expression.
             int offsetAddress = -1;
             int offsetGlobalIndex = -1;
+
             switch (instruction) {
                 case Instructions.I32_CONST:
                     offsetAddress = readSignedInt32();
@@ -1262,7 +1242,7 @@ public class BinaryParser extends BinaryStreamParser {
                     offsetGlobalIndex = readGlobalIndex();
                     break;
                 default:
-                    fail(Failure.MALFORMED_VALUE_TYPE, String.format("Invalid instruction for data offset expression: 0x%02X", instruction));
+                    throw WasmException.format(Failure.TYPE_MISMATCH, "Invalid instruction for table offset expression: 0x%02X", instruction);
             }
 
             readEnd();
@@ -1278,6 +1258,10 @@ public class BinaryParser extends BinaryStreamParser {
                 // Reading of the data segment is called after linking, so initialize the memory
                 // directly.
                 final WasmMemory memory = linkedInstance.memory();
+
+                Assert.assertUnsignedIntLessOrEqual(offsetAddress, memory.byteSize(), Failure.DATA_SEGMENT_DOES_NOT_FIT);
+                Assert.assertUnsignedIntLessOrEqual(offsetAddress + byteLength, memory.byteSize(), Failure.DATA_SEGMENT_DOES_NOT_FIT);
+
                 for (int writeOffset = 0; writeOffset != byteLength; ++writeOffset) {
                     final byte b = read1();
                     memory.store_i32_8(null, offsetAddress + writeOffset, b);
@@ -1583,6 +1567,12 @@ public class BinaryParser extends BinaryStreamParser {
     public void resetMemoryState(WasmContext context, WasmInstance instance) {
         if (tryJumpToSection(Section.DATA)) {
             readDataSection(context, instance);
+        }
+    }
+
+    public void resetTableState(WasmContext context, WasmInstance instance) {
+        if (tryJumpToSection(Section.ELEMENT)) {
+            readElementSection(context, instance);
         }
     }
 }

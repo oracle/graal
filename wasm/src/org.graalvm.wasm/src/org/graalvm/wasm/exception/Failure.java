@@ -59,7 +59,6 @@ public enum Failure {
     MALFORMED_MUTABILITY(Type.MALFORMED, "malformed mutability"),
     LENGTH_OUT_OF_BOUNDS(Type.MALFORMED, "length out of bounds"),
     // GraalWasm-specific:
-    INITIALIZER_NO_END(Type.MALFORMED, "initialization expression must end with an END instruction"),
     DUPLICATED_SECTION(Type.MALFORMED, "duplicated section"),
     INVALID_SECTION_ORDER(Type.MALFORMED, "invalid section order"),
 
@@ -82,7 +81,7 @@ public enum Failure {
     LIMIT_MINIMUM_GREATER_THAN_MAXIMUM(Type.INVALID, "size minimum must not be greater than maximum"),
     DUPLICATE_EXPORT(Type.INVALID, "duplicate export name"),
     IMMUTABLE_GLOBAL_WRITE(Type.INVALID, "global is immutable"),
-    GLOBAL_INIT_NON_CONSTANT(Type.INVALID, "constant expression required"),
+    CONSTANT_EXPRESSION_REQUIRED(Type.INVALID, "constant expression required"),
     LIMIT_EXCEEDED(Type.INVALID, "limit exceeded"),
     MEMORY_SIZE_LIMIT_EXCEEDED(Type.INVALID, "memory size must be at most 65536 pages (4GiB)"),
     // GraalWasm-specific:
@@ -102,6 +101,8 @@ public enum Failure {
     UNSPECIFIED_UNLINKABLE(Type.UNLINKABLE, "unspecified"),
     UNKNOWN_IMPORT(Type.UNLINKABLE, "unknown import"),
     INCOMPATIBLE_IMPORT_TYPE(Type.UNLINKABLE, "incompatible import type"),
+    ELEMENTS_SEGMENT_DOES_NOT_FIT(Type.UNLINKABLE, "elements segment does not fit"),
+    DATA_SEGMENT_DOES_NOT_FIT(Type.UNLINKABLE, "data segment does not fit"),
 
     // TODO(mbovel): replace UNSPECIFIED_TRAP usages with appropriate errors.
     UNSPECIFIED_TRAP(Type.TRAP, "unspecified"),
