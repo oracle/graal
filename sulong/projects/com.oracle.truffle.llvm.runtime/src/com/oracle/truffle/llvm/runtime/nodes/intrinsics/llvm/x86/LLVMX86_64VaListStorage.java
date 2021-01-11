@@ -663,7 +663,7 @@ public final class LLVMX86_64VaListStorage extends LLVMVaListStorage {
             return;
         }
 
-        nativized = LLVMNativePointer.cast(stackAllocationNode.executeWithTarget(vaListTypeSize));
+        nativized = stackAllocationNode.executeWithTarget(vaListTypeSize);
 
         if (overflowArgArea == null) {
             // toNative is called before the va_list is initialized by va_start. It happens in

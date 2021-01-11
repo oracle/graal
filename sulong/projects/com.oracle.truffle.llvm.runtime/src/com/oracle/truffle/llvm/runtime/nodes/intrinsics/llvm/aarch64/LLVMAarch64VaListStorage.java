@@ -627,7 +627,7 @@ public class LLVMAarch64VaListStorage extends LLVMVaListStorage {
             return;
         }
 
-        nativized = LLVMNativePointer.cast(stackAllocationNode.executeWithTarget(vaListTypeSize));
+        nativized = stackAllocationNode.executeWithTarget(vaListTypeSize);
 
         if (overflowArgArea == null) {
             // toNative is called before the va_list is initialized by va_start. It happens in
@@ -1049,7 +1049,7 @@ public class LLVMAarch64VaListStorage extends LLVMVaListStorage {
             // FP area pointer points to the top
             fpSaveAreaNativePtr = fpSaveAreaNativePtr.increment(Aarch64BitVarArgs.FP_LIMIT);
 
-            LLVMPointer overflowArgAreaBaseNativePtr = LLVMNativePointer.cast(stackAllocationNode.executeWithTarget(overflowArea));
+            LLVMPointer overflowArgAreaBaseNativePtr = stackAllocationNode.executeWithTarget(overflowArea);
 
             gpOffsetStore.executeWithTarget(nativeVAListPtr, Aarch64BitVarArgs.GP_OFFSET, initGPOffset);
             fpOffsetStore.executeWithTarget(nativeVAListPtr, Aarch64BitVarArgs.FP_OFFSET, initFPOffset);
@@ -1077,9 +1077,10 @@ public class LLVMAarch64VaListStorage extends LLVMVaListStorage {
                             @Shared("allocaNode") @Cached StackAllocationNode allocaNode,
                             @CachedLibrary("source") LLVMVaListLibrary vaListLibrary,
                             @Cached(value = "getVAListTypeSize()", allowUncached = true) long vaListTypeSize) {
-                LLVMNativePointer nativeDestPtr = LLVMNativePointer.cast(allocaNode.executeWithTarget(vaListTypeSize));
+                LLVMPointer nativeDestPtr = allocaNode.executeWithTarget(vaListTypeSize);
                 dest.nativized = nativeDestPtr;
-                vaListLibrary.copy(source, nativeDestPtr);
+
+                vaListLibrary.copy(source, new NativeVAListWrapper(nativeDestPtr));
             }
 
             @Specialization

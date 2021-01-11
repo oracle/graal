@@ -63,7 +63,6 @@ import com.oracle.truffle.llvm.runtime.interop.access.LLVMInteropType.Array;
 import com.oracle.truffle.llvm.runtime.library.internal.LLVMManagedReadLibrary;
 import com.oracle.truffle.llvm.runtime.library.internal.LLVMNativeLibrary;
 import com.oracle.truffle.llvm.runtime.memory.LLVMMemMoveNode;
-import com.oracle.truffle.llvm.runtime.memory.LLVMStack.LLVMStackAccess;
 import com.oracle.truffle.llvm.runtime.memory.VarargsAreaStackAllocationNode;
 import com.oracle.truffle.llvm.runtime.nodes.api.LLVMHasDatalayoutNode;
 import com.oracle.truffle.llvm.runtime.nodes.api.LLVMNode;
@@ -72,8 +71,6 @@ import com.oracle.truffle.llvm.runtime.nodes.intrinsics.llvm.va.LLVMVaListStorag
 import com.oracle.truffle.llvm.runtime.nodes.intrinsics.llvm.va.LLVMVaListStorageFactory.LongConversionHelperNodeGen;
 import com.oracle.truffle.llvm.runtime.nodes.intrinsics.llvm.va.LLVMVaListStorageFactory.PointerConversionHelperNodeGen;
 import com.oracle.truffle.llvm.runtime.nodes.intrinsics.llvm.va.LLVMVaListStorageFactory.ShortConversionHelperNodeGen;
-import com.oracle.truffle.llvm.runtime.nodes.memory.LLVMNativeVarargsAreaStackAllocationNode;
-import com.oracle.truffle.llvm.runtime.nodes.memory.LLVMNativeVarargsAreaStackAllocationNodeGen;
 import com.oracle.truffle.llvm.runtime.nodes.memory.load.LLVMI32LoadNode;
 import com.oracle.truffle.llvm.runtime.nodes.memory.load.LLVMI64LoadNode;
 import com.oracle.truffle.llvm.runtime.nodes.memory.load.LLVMI8LoadNode;
@@ -426,6 +423,11 @@ public class LLVMVaListStorage implements TruffleObject {
                         @SuppressWarnings("unused") @CachedLanguage LLVMLanguage language,
                         @Cached(value = "createVAListPointerWrapperFactory(language, true)", uncached = "createVAListPointerWrapperFactory(language, false)") VAListPointerWrapperFactory wrapperFactory) {
             return wrapperFactory.execute(pointer);
+        }
+
+        @Fallback
+        Object createWrapper(Object o) {
+            return o;
         }
 
         public static VAListPointerWrapperFactory createVAListPointerWrapperFactory(LLVMLanguage language, boolean cached) {

@@ -170,7 +170,7 @@ double testGlobalVACopy3(vahandler vaHandler1, vahandler vaHandler2, int count, 
 }
 
 int main(void) {
-	printf("Sum of doubles (LLVM) (Global VAList)   : %f\n",
+    printf("Sum of doubles (LLVM) (Global VAList)   : %f\n",
            callVAHandlerWithGlobalVAList(sumDoublesLLVM, 8, 1., 2, 3., 4, 5., 6, 7., 8, 9., 10, 11., 12, 13., 14, 15., 16));
     printf("Sum of doubles (LLVM) (Allocated VAList): %f\n",
            callVAHandlerWithGlobalVAList(sumDoublesLLVM, 8, 1., 2, 3., 4, 5., 6, 7., 8, 9., 10, 11., 12, 13., 14, 15., 16));

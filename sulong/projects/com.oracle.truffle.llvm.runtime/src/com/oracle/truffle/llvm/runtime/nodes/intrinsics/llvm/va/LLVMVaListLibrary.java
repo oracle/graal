@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2020, Oracle and/or its affiliates.
+ * Copyright (c) 2020, 2021, Oracle and/or its affiliates.
  *
  * All rights reserved.
  *
@@ -32,8 +32,6 @@ package com.oracle.truffle.llvm.runtime.nodes.intrinsics.llvm.va;
 import com.oracle.truffle.api.library.GenerateLibrary;
 import com.oracle.truffle.api.library.Library;
 import com.oracle.truffle.api.library.LibraryFactory;
-import com.oracle.truffle.api.library.GenerateLibrary.DefaultExport;
-import com.oracle.truffle.llvm.runtime.library.internal.LLVMAsForeignLibraryDefaults;
 import com.oracle.truffle.llvm.runtime.types.Type;
 
 /**
