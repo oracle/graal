@@ -252,6 +252,7 @@ public class ComponentPackageLoader implements Closeable, MetadataLoader {
                             info.addRequiredValues(parseHeader(BundleConstants.BUNDLE_REQUIRED).parseRequiredCapabilities());
                             info.addProvidedValues(parseHeader(BundleConstants.BUNDLE_PROVIDED, "").parseProvidedCapabilities());
                             info.setDependencies(parseHeader(BundleConstants.BUNDLE_DEPENDENCY, "").parseDependencies());
+                            info.setStability(parseHeader(BundleConstants.BUNDLE_STABILITY, "").parseStability());
                         });
         supplyComponentTag();
         return info;
