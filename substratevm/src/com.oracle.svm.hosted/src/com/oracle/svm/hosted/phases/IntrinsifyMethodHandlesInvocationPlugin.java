@@ -236,7 +236,7 @@ public class IntrinsifyMethodHandlesInvocationPlugin implements NodePlugin {
          * We want to process invokes that have a constant MethodHandle parameter. And we need a
          * direct call, otherwise we do not have a single target method.
          */
-        if (b.getInvokeKind().isDirect() && (hasMethodHandleArgument(args) || isVarHandleMethod(method, args)) && !ignoreMethod(method)) {
+        if (b.getInvokeKind().isDirect() && (hasMethodHandleArgument(args) || isVarHandleMethod(b, method, args)) && !ignoreMethod(method)) {
             if (b.bciCanBeDuplicated()) {
                 /*
                  * If we capture duplication of the bci, we don't process invoke.
@@ -278,7 +278,7 @@ public class IntrinsifyMethodHandlesInvocationPlugin implements NodePlugin {
      * See the documentation in {@link VarHandleFeature} for more information on the overall
      * VarHandle support.
      */
-    private boolean isVarHandleMethod(ResolvedJavaMethod method, ValueNode[] args) {
+    private boolean isVarHandleMethod(GraphBuilderContext b, ResolvedJavaMethod method, ValueNode[] args) {
         /*
          * We do the check by class name because then we 1) do not need an explicit Java version
          * check (VarHandle was introduced with JDK 9), 2) VarHandleGuards is a non-public class
@@ -288,7 +288,7 @@ public class IntrinsifyMethodHandlesInvocationPlugin implements NodePlugin {
          */
         if (method.getDeclaringClass().toJavaName(true).equals("java.lang.invoke.VarHandleGuards")) {
             if (args.length < 1 || !args[0].isJavaConstant() || !isVarHandle(args[0])) {
-                throw new UnsupportedFeatureException("VarHandle object must be a compile time constant");
+                return reportUnsupportedFeature(b, method);
             }
 
             try {
@@ -583,20 +583,7 @@ public class IntrinsifyMethodHandlesInvocationPlugin implements NodePlugin {
             if (oNode.getClass() == InvokeNode.class) {
                 InvokeNode oInvoke = (InvokeNode) oNode;
                 MethodCallTargetNode oCallTarget = (MethodCallTargetNode) oInvoke.callTarget();
-
-                ResolvedJavaMethod tTargetMethod = lookup(oCallTarget.targetMethod());
-                maybeEmitClassInitialization(b, oCallTarget.invokeKind() == InvokeKind.Static, tTargetMethod.getDeclaringClass());
-                b.handleReplacedInvoke(oCallTarget.invokeKind(), tTargetMethod, nodes(oCallTarget.arguments()), false);
-
-                JavaKind invokeResultKind = oInvoke.getStackKind();
-                if (invokeResultKind != JavaKind.Void) {
-                    /*
-                     * The invoke was pushed by handleReplacedInvoke, pop it again. Note that the
-                     * popped value is not necessarily an Invoke, because inlining during parsing
-                     * and intrinsification can happen.
-                     */
-                    transplanted.put(oInvoke, b.pop(invokeResultKind));
-                }
+                transplantInvoke(oInvoke, lookup(oCallTarget.targetMethod()), oCallTarget.invokeKind(), nodes(oCallTarget.arguments()), oCallTarget.returnKind());
                 return true;
 
             } else if (oNode.getClass() == FixedGuardNode.class) {
@@ -727,6 +714,20 @@ public class IntrinsifyMethodHandlesInvocationPlugin implements NodePlugin {
             tNode = b.add((ValueNode) tNode);
             transplanted.put(oNode, tNode);
             return (ValueNode) tNode;
+        }
+
+        private void transplantInvoke(FixedWithNextNode oNode, ResolvedJavaMethod tTargetMethod, InvokeKind invokeKind, ValueNode[] arguments, JavaKind invokeResultKind) {
+            maybeEmitClassInitialization(b, invokeKind == InvokeKind.Static, tTargetMethod.getDeclaringClass());
+            b.handleReplacedInvoke(invokeKind, tTargetMethod, arguments, false);
+
+            if (invokeResultKind != JavaKind.Void) {
+                /*
+                 * The invoke was pushed by handleReplacedInvoke, pop it again. Note that the popped
+                 * value is not necessarily an Invoke, because inlining during parsing and
+                 * intrinsification can happen.
+                 */
+                transplanted.put(oNode, b.pop(invokeResultKind));
+            }
         }
 
         @SuppressWarnings("unchecked")
