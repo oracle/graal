@@ -71,7 +71,7 @@ public final class HeapPolicyOptions {
     public static final RuntimeOptionKey<Boolean> TraceHeapChunks = new RuntimeOptionKey<>(false);
 
     @Option(help = "Maximum number of survivor spaces.") //
-    public static final HostedOptionKey<Integer> MaxSurvivorSpaces = new HostedOptionKey<>(1);
+    public static final HostedOptionKey<Integer> MaxSurvivorSpaces = new HostedOptionKey<>(0);
 
     @Option(help = "Determines if a full GC collects the young generation separately or together with the old generation.") //
     public static final RuntimeOptionKey<Boolean> CollectYoungGenerationSeparately = new RuntimeOptionKey<>(false);
