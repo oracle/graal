@@ -189,13 +189,13 @@ public abstract class QueryCommandBase implements InstallerCommand {
         if (printTable) {
             String fmt = simpleFormat ? "LIST_ComponentShortList_Simple@" : "LIST_ComponentShortList";
             String line = String.format(feedback.l10n(fmt),
-                            shortenComponentId(info), info.getVersion().displayString(), info.getName(), org, info.getId());
+                            shortenComponentId(info), info.getVersion().displayString(), info.getName(), org, info.getId(), info.getStability().displayName(feedback));
             feedback.verbatimOut(line, false);
         } else {
             String fmt = simpleFormat ? "LIST_ComponentBasicInfo_Simple@" : "LIST_ComponentBasicInfo";
             feedback.output(fmt,
                             shortenComponentId(info), info.getVersion().displayString(), info.getName(),
-                            findRequiredGraalVMVersion(info), u == null ? "" : u, info.getId());
+                            findRequiredGraalVMVersion(info), u == null ? "" : u, info.getId(), info.getStability().displayName(feedback));
         }
     }
 
