@@ -79,11 +79,11 @@ public final class PythonFlavorProcessor implements RegexFlavorProcessor {
      * Characters that are considered special in ECMAScript regexes. To match these characters, they
      * need to be escaped using a backslash.
      */
-    private static final TBitSet SYNTAX_CHARACTERS = TBitSet.valueOf('^', '$', '\\', '.', '*', '+', '?', '(', ')', '[', ']', '{', '}', '|');
+    private static final TBitSet SYNTAX_CHARACTERS = TBitSet.valueOf('$', '(', ')', '*', '+', '.', '?', '[', '\\', ']', '^', '{', '|', '}');
     /**
      * Characters that are considered special in ECMAScript regex character classes.
      */
-    private static final TBitSet CHAR_CLASS_SYNTAX_CHARACTERS = TBitSet.valueOf('\\', ']', '-', '^');
+    private static final TBitSet CHAR_CLASS_SYNTAX_CHARACTERS = TBitSet.valueOf('-', '\\', ']', '^');
 
     /**
      * Maps Python's predefined Unicode character classes (d, D, s, S, w, W) to equivalent
@@ -236,7 +236,7 @@ public final class PythonFlavorProcessor implements RegexFlavorProcessor {
     /**
      * Characters considered as whitespace in Python's regex verbose mode.
      */
-    private static final TBitSet WHITESPACE = TBitSet.valueOf(' ', '\t', '\n', '\r', '\u000b', '\f');
+    private static final TBitSet WHITESPACE = TBitSet.valueOf('\t', '\n', '\u000b', '\f', '\r', ' ');
 
     /**
      * The (slightly modified) version of the XID_Start Unicode property used to check names of
@@ -1562,7 +1562,7 @@ public final class PythonFlavorProcessor implements RegexFlavorProcessor {
                 PythonFlags negativeFlags = PythonFlags.EMPTY_INSTANCE;
                 while (PythonFlags.isValidFlagChar(ch)) {
                     negativeFlags = negativeFlags.addFlag(ch);
-                    if (PythonFlags.TYPE_FLAGS_INSTANCE.hasFlag(ch)) {
+                    if (PythonFlags.isTypeFlagChar(ch)) {
                         throw syntaxErrorHere(PyErrorMessages.INLINE_FLAGS_CANNOT_TURN_OFF_FLAGS_A_U_AND_L);
                     }
                     if (atEnd()) {

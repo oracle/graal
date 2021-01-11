@@ -59,9 +59,8 @@ import com.oracle.truffle.regex.util.TBitSet;
 
 public final class RegexLexer {
 
-    private static final TBitSet PREDEFINED_CHAR_CLASSES = TBitSet.valueOf('s', 'S', 'd', 'D', 'w', 'W');
-    private static final TBitSet SYNTAX_CHARS = TBitSet.valueOf(
-                    '^', '$', '/', '\\', '.', '*', '+', '?', '(', ')', '[', ']', '{', '}', '|');
+    private static final TBitSet PREDEFINED_CHAR_CLASSES = TBitSet.valueOf('D', 'S', 'W', 'd', 's', 'w');
+    private static final TBitSet SYNTAX_CHARS = TBitSet.valueOf('$', '(', ')', '*', '+', '.', '/', '?', '[', '\\', ']', '^', '{', '|', '}');
 
     private static final CodePointSet ID_START = UnicodeProperties.getProperty("ID_Start");
     private static final CodePointSet ID_CONTINUE = UnicodeProperties.getProperty("ID_Continue");

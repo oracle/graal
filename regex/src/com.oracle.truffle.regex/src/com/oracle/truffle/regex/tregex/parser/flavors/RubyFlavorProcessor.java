@@ -79,11 +79,11 @@ public final class RubyFlavorProcessor implements RegexFlavorProcessor {
      * Characters that are considered special in ECMAScript regexes. To match these characters, they
      * need to be escaped using a backslash.
      */
-    private static final TBitSet SYNTAX_CHARACTERS = TBitSet.valueOf('^', '$', '\\', '.', '*', '+', '?', '(', ')', '[', ']', '{', '}', '|');
+    private static final TBitSet SYNTAX_CHARACTERS = TBitSet.valueOf('$', '(', ')', '*', '+', '.', '?', '[', '\\', ']', '^', '{', '|', '}');
     /**
      * Characters that are considered special in ECMAScript regex character classes.
      */
-    private static final TBitSet CHAR_CLASS_SYNTAX_CHARACTERS = TBitSet.valueOf('\\', ']', '-', '^');
+    private static final TBitSet CHAR_CLASS_SYNTAX_CHARACTERS = TBitSet.valueOf('-', '\\', ']', '^');
 
     // Ruby's predefined character classes.
     // This one is for classes like \w, \s or \d...
@@ -269,7 +269,7 @@ public final class RubyFlavorProcessor implements RegexFlavorProcessor {
     /**
      * Characters considered as whitespace in Ruby's regex verbose mode.
      */
-    private static final TBitSet WHITESPACE = TBitSet.valueOf(' ', '\t', '\n', '\r', '\f');
+    private static final TBitSet WHITESPACE = TBitSet.valueOf('\t', '\n', '\f', '\r', ' ');
 
     /**
      * The source object of the input pattern.
@@ -464,7 +464,7 @@ public final class RubyFlavorProcessor implements RegexFlavorProcessor {
 
     private void advance() {
         if (atEnd()) {
-            throw syntaxError(RbErrorMessages.UNEXPECTED_END_OF_PATTERN);
+            throw syntaxErrorAtEnd(RbErrorMessages.UNEXPECTED_END_OF_PATTERN);
         }
         advance(1);
     }
@@ -638,8 +638,8 @@ public final class RubyFlavorProcessor implements RegexFlavorProcessor {
 
     // Error reporting
 
-    private RegexSyntaxException syntaxError(String message) {
-        return RegexSyntaxException.createPattern(inSource, message);
+    private RegexSyntaxException syntaxErrorAtEnd(String message) {
+        return RegexSyntaxException.createPattern(inSource, message, inPattern.length() - 1);
     }
 
     private RegexSyntaxException syntaxErrorHere(String message) {
@@ -1774,7 +1774,7 @@ public final class RubyFlavorProcessor implements RegexFlavorProcessor {
      */
     private void parens() {
         if (atEnd()) {
-            throw syntaxError(RbErrorMessages.UNTERMINATED_SUBPATTERN);
+            throw syntaxErrorAtEnd(RbErrorMessages.UNTERMINATED_SUBPATTERN);
         }
         if (match("?")) {
             final int ch1 = consumeChar();
@@ -1863,9 +1863,10 @@ public final class RubyFlavorProcessor implements RegexFlavorProcessor {
      * Parses a parenthesized comment, assuming that the '(#' prefix was already parsed.
      */
     private void parenComment() {
+        int beginPos = position - 2;
         while (true) {
             if (atEnd()) {
-                throw syntaxError(RbErrorMessages.UNTERMINATED_COMMENT);
+                throw syntaxErrorAt(RbErrorMessages.UNTERMINATED_COMMENT, beginPos);
             }
             int ch = consumeChar();
             if (ch == '\\' && !atEnd()) {
@@ -2022,7 +2023,7 @@ public final class RubyFlavorProcessor implements RegexFlavorProcessor {
             }
 
             if (atEnd()) {
-                throw syntaxError(RbErrorMessages.MISSING_FLAG_DASH_COLON_PAREN);
+                throw syntaxErrorAtEnd(RbErrorMessages.MISSING_FLAG_DASH_COLON_PAREN);
             }
             ch = consumeChar();
         }

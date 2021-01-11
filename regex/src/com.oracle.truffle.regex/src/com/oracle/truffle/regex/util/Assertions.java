@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2019, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2021, 2021, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -40,22 +40,16 @@
  */
 package com.oracle.truffle.regex.util;
 
-import java.util.LinkedHashMap;
+public interface Assertions {
 
-/**
- * An implementation of a cache with a least-recently-used policy via LinkedHashMap.
- */
-public final class LRUCache<K, V> extends LinkedHashMap<K, V> {
-    private static final long serialVersionUID = 7813848977534444613L;
-    private final int maxCacheSize;
-
-    public LRUCache(int maxCacheSize) {
-        super(16, 0.75F, true);
-        this.maxCacheSize = maxCacheSize;
-    }
-
-    @Override
-    protected boolean removeEldestEntry(java.util.Map.Entry<K, V> eldest) {
-        return size() > maxCacheSize;
+    static boolean isSorted(int[] array) {
+        int prev = Integer.MIN_VALUE;
+        for (int i : array) {
+            if (prev > i) {
+                return false;
+            }
+            prev = i;
+        }
+        return true;
     }
 }

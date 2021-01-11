@@ -64,6 +64,7 @@ public class TBitSet implements Iterable<Integer> {
 
     public static TBitSet valueOf(int... values) {
         assert values.length > 0;
+        assert Assertions.isSorted(values);
         TBitSet bs = new TBitSet(values[values.length - 1]);
         for (int v : values) {
             bs.set(v);
