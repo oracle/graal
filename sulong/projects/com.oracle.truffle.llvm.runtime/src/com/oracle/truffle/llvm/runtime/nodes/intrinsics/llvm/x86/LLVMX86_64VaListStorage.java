@@ -34,6 +34,7 @@ import java.util.Arrays;
 
 import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
+import com.oracle.truffle.api.Truffle;
 import com.oracle.truffle.api.dsl.Cached;
 import com.oracle.truffle.api.dsl.Cached.Exclusive;
 import com.oracle.truffle.api.dsl.Cached.Shared;
@@ -41,6 +42,8 @@ import com.oracle.truffle.api.dsl.CachedLanguage;
 import com.oracle.truffle.api.dsl.GenerateUncached;
 import com.oracle.truffle.api.dsl.ImportStatic;
 import com.oracle.truffle.api.dsl.Specialization;
+import com.oracle.truffle.api.frame.FrameInstance.FrameAccess;
+import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.interop.InteropLibrary;
 import com.oracle.truffle.api.library.CachedLibrary;
 import com.oracle.truffle.api.library.ExportLibrary;
@@ -52,12 +55,15 @@ import com.oracle.truffle.llvm.runtime.LLVMLanguage;
 import com.oracle.truffle.llvm.runtime.LLVMVarArgCompoundValue;
 import com.oracle.truffle.llvm.runtime.NodeFactory;
 import com.oracle.truffle.llvm.runtime.PlatformCapability;
+import com.oracle.truffle.llvm.runtime.datalayout.DataLayout;
 import com.oracle.truffle.llvm.runtime.debug.value.LLVMSourceTypeFactory;
 import com.oracle.truffle.llvm.runtime.except.LLVMMemoryException;
 import com.oracle.truffle.llvm.runtime.floating.LLVM80BitFloat;
 import com.oracle.truffle.llvm.runtime.library.internal.LLVMManagedReadLibrary;
 import com.oracle.truffle.llvm.runtime.library.internal.LLVMManagedWriteLibrary;
 import com.oracle.truffle.llvm.runtime.memory.LLVMMemMoveNode;
+import com.oracle.truffle.llvm.runtime.memory.LLVMStack.LLVMGetStackSpaceInstruction;
+import com.oracle.truffle.llvm.runtime.nodes.api.LLVMExpressionNode;
 import com.oracle.truffle.llvm.runtime.nodes.api.LLVMTypes;
 import com.oracle.truffle.llvm.runtime.nodes.func.LLVMRootNode;
 import com.oracle.truffle.llvm.runtime.nodes.intrinsics.llvm.va.LLVMVAEnd;
@@ -554,9 +560,12 @@ public final class LLVMX86_64VaListStorage extends LLVMVaListStorage {
         LLVMPointer overflowAreaPtr = readLib.readPointer(srcVaList, X86_64BitVarArgs.OVERFLOW_ARG_AREA);
         if (LLVMNativePointer.isInstance(overflowAreaPtr)) {
             curAddr = LLVMNativePointer.cast(overflowAreaPtr).asNative();
-            baseAddr = LLVMNativePointer.cast(srcVaList.overflowArgAreaBaseNativePtr).asNative();
         } else {
             curAddr = LLVMManagedPointer.cast(overflowAreaPtr).getOffset();
+        }
+        if (LLVMNativePointer.isInstance(srcVaList.overflowArgAreaBaseNativePtr)) {
+            baseAddr = LLVMNativePointer.cast(srcVaList.overflowArgAreaBaseNativePtr).asNative();
+        } else {
             baseAddr = LLVMManagedPointer.cast(srcVaList.overflowArgAreaBaseNativePtr).getOffset();
         }
         return curAddr - baseAddr;
@@ -638,9 +647,25 @@ public final class LLVMX86_64VaListStorage extends LLVMVaListStorage {
     }
 
     @SuppressWarnings("static-method")
+    LLVMExpressionNode createAllocaNode(LLVMLanguage language) {
+        DataLayout dataLayout = getDataLayout();
+        return language.getActiveConfiguration().createNodeFactory(language, dataLayout).createAlloca(VA_LIST_TYPE, 16);
+    }
+
+    LLVMExpressionNode createAllocaNodeUncached(LLVMLanguage language) {
+        DataLayout dataLayout = getDataLayout();
+        LLVMExpressionNode alloca = language.getActiveConfiguration().createNodeFactory(language, dataLayout).createAlloca(VA_LIST_TYPE, 16);
+        if (alloca instanceof LLVMGetStackSpaceInstruction) {
+            ((LLVMGetStackSpaceInstruction) alloca).setStackAccess(rootNode.getStackAccess());
+        }
+        return alloca;
+    }
+
+    @SuppressWarnings("static-method")
     @ExportMessage
     @TruffleBoundary
     void toNative(@SuppressWarnings("unused") @CachedLanguage() LLVMLanguage language,
+                    @Cached(value = "this.createAllocaNode(language)", uncached = "this.createAllocaNodeUncached(language)") LLVMExpressionNode allocaNode,
                     @Cached StackAllocationNode stackAllocationNode,
                     @Cached LLVMI64OffsetStoreNode i64RegSaveAreaStore,
                     @Cached LLVMI32OffsetStoreNode i32RegSaveAreaStore,
@@ -655,15 +680,15 @@ public final class LLVMX86_64VaListStorage extends LLVMVaListStorage {
                     @Cached LLVMPointerOffsetStoreNode overflowArgAreaStore,
                     @Cached LLVMPointerOffsetStoreNode regSaveAreaStore,
                     @Cached NativeProfiledMemMove memMove,
-                    @Cached BranchProfile nativizedProfile,
-                    @Cached(value = "getVAListTypeSize()", allowUncached = true) long vaListTypeSize) {
+                    @Cached BranchProfile nativizedProfile) {
 
         if (nativized != null) {
             nativizedProfile.enter();
             return;
         }
 
-        nativized = stackAllocationNode.executeWithTarget(vaListTypeSize);
+        VirtualFrame frame = (VirtualFrame) Truffle.getRuntime().getCurrentFrame().getFrame(FrameAccess.MATERIALIZE);
+        nativized = LLVMNativePointer.cast(allocaNode.executeGeneric(frame));
 
         if (overflowArgArea == null) {
             // toNative is called before the va_list is initialized by va_start. It happens in
