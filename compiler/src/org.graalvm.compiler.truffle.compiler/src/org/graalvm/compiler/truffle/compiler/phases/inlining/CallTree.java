@@ -123,13 +123,14 @@ public final class CallTree extends Graph {
             inliningPlan.setCallCount(inlinedWithoutRoot + frontierSize);
             inliningPlan.setInlinedCallCount(inlinedWithoutRoot);
         }
-        if (tracingInlinedTargets()) {
+        if (loggingInlinedTargets()) {
             root.collectInlinedTargets(inliningPlan);
         }
     }
 
-    private boolean tracingInlinedTargets() {
-        return request.options.get(PolyglotCompilerOptions.CompilationStatistics) || request.options.get(PolyglotCompilerOptions.CompilationStatisticDetails);
+    private boolean loggingInlinedTargets() {
+        return request.debug.isDumpEnabled(DebugContext.BASIC_LEVEL) || request.options.get(PolyglotCompilerOptions.CompilationStatistics) ||
+                        request.options.get(PolyglotCompilerOptions.CompilationStatisticDetails);
     }
 
     private boolean tracingCallCounts() {

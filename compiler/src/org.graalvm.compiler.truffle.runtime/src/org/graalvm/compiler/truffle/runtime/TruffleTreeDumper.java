@@ -29,12 +29,15 @@ import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collection;
 import java.util.Collections;
+import java.util.HashSet;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 
 import org.graalvm.collections.EconomicMap;
 import org.graalvm.collections.Equivalence;
+import org.graalvm.compiler.truffle.common.CompilableTruffleAST;
 import org.graalvm.compiler.truffle.common.TruffleDebugContext;
 import org.graalvm.compiler.truffle.common.TruffleSourceLanguagePosition;
 import org.graalvm.graphio.GraphBlocks;
@@ -59,20 +62,43 @@ public final class TruffleTreeDumper {
     public static void dump(TruffleDebugContext debug, OptimizedCallTarget callTarget) {
         if (GraalTruffleRuntime.getRuntime().isPrintGraphEnabled()) {
             try {
-                dumpASTAndCallTrees(debug, callTarget, new TruffleNodeSources());
+                dumpAST(debug, callTarget, new TruffleNodeSources());
             } catch (IOException ex) {
                 throw new RuntimeException("Failed to dump AST: " + callTarget, ex);
             }
         }
     }
 
-    private static void dumpASTAndCallTrees(TruffleDebugContext debug, OptimizedCallTarget callTarget, TruffleNodeSources nodeSources) throws IOException {
+    public static void dump(TruffleDebugContext debug, OptimizedCallTarget root, TruffleInlining inlining) {
+        if (GraalTruffleRuntime.getRuntime().isPrintGraphEnabled()) {
+            try {
+
+                CompilableTruffleAST[] inlinedTargets = inlining.inlinedTargets();
+                Set<CompilableTruffleAST> uniqueTargets = new HashSet<>(Arrays.asList(inlinedTargets));
+                uniqueTargets.remove(root);
+                dumpInlinedASTs(debug, uniqueTargets, new TruffleNodeSources());
+            } catch (IOException ex) {
+                throw new RuntimeException("Failed to dump Inlined ASTs: ", ex);
+            }
+        }
+    }
+
+    private static void dumpInlinedASTs(TruffleDebugContext debug, Set<CompilableTruffleAST> inlinedTargets, TruffleNodeSources nodeSources) throws IOException {
+        final GraphOutput<AST, ?> astOutput = debug.buildOutput(GraphOutput.newBuilder(AST_DUMP_STRUCTURE).blocks(AST_DUMP_STRUCTURE));
+        astOutput.beginGroup(null, "Inlined ASTs", "Inlined", null, 0, debug.getVersionProperties());
+        for (CompilableTruffleAST target : inlinedTargets) {
+            AST ast = new AST((RootCallTarget) target, nodeSources);
+            astOutput.print(ast, Collections.emptyMap(), 0, target.getName());
+        }
+        astOutput.endGroup(); // Inlined
+        astOutput.close();
+    }
+
+    private static void dumpAST(TruffleDebugContext debug, OptimizedCallTarget callTarget, TruffleNodeSources nodeSources) throws IOException {
         if (callTarget.getRootNode() != null) {
             AST ast = new AST(callTarget, nodeSources);
             final GraphOutput<AST, ?> astOutput = debug.buildOutput(GraphOutput.newBuilder(AST_DUMP_STRUCTURE).blocks(AST_DUMP_STRUCTURE));
-
             astOutput.beginGroup(ast, "AST", "AST", null, 0, debug.getVersionProperties());
-
             astOutput.print(ast, Collections.emptyMap(), 0, AFTER_PROFILING);
             astOutput.endGroup(); // AST
             astOutput.close();
