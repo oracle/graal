@@ -2252,9 +2252,9 @@ def _get_jvm_cfg_contents():
         if len(parts) < 2:
             raise mx.abort("Invalid line in {}:\n{}".format(jvm_cfg, line))
         vm_name = parts[0][1:]
-        type = parts[1]
+        vm_type = parts[1]
         if vm_name in vms_to_add:
-            if type == "KNOWN":
+            if vm_type == "KNOWN":
                 vms_to_add.remove(vm_name)
                 new_lines.append(line)
             # else skip the line that would remove this VM
