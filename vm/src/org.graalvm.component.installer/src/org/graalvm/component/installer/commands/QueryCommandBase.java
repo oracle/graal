@@ -194,8 +194,8 @@ public abstract class QueryCommandBase implements InstallerCommand {
         } else {
             String fmt = simpleFormat ? "LIST_ComponentBasicInfo_Simple@" : "LIST_ComponentBasicInfo";
             feedback.output(fmt,
-                            info.getId(), shortenComponentId(info), info.getVersion().displayString(), info.getName(),
-                            findRequiredGraalVMVersion(info), u == null ? "" : u);
+                            shortenComponentId(info), info.getVersion().displayString(), info.getName(),
+                            findRequiredGraalVMVersion(info), u == null ? "" : u, info.getId());
         }
     }
 
