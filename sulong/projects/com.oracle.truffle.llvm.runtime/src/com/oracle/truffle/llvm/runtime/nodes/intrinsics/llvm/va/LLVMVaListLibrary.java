@@ -32,6 +32,8 @@ package com.oracle.truffle.llvm.runtime.nodes.intrinsics.llvm.va;
 import com.oracle.truffle.api.library.GenerateLibrary;
 import com.oracle.truffle.api.library.Library;
 import com.oracle.truffle.api.library.LibraryFactory;
+import com.oracle.truffle.api.library.GenerateLibrary.DefaultExport;
+import com.oracle.truffle.llvm.runtime.library.internal.LLVMAsForeignLibraryDefaults;
 import com.oracle.truffle.llvm.runtime.types.Type;
 
 /**

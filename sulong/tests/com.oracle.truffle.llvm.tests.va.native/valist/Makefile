@@ -33,11 +33,11 @@ default: valist/libvahandler$(SO_EXT) valist/ref.bc valist/ref.out
 
 valist/libvahandler$(SO_EXT): valist/vahandler.c valist/Makefile
 	@mkdir -p $(shell dirname $@)
-	$(QUIETLY) $(CC) $(CPPFLAGS) $(CFLAGS) $(LDFLAGS) $(SO_LDFLAGS) -fPIC -shared -o $@ $<
+	$(QUIETLY) $(CC) $(CPPFLAGS) $(CFLAGS) $(VA_TESTS_CFLAGS) $(LDFLAGS) $(SO_LDFLAGS) -fPIC -shared -o $@ $<
 
 valist/ref.out: valist/main.c valist/libvahandler$(SO_EXT) valist/Makefile
 	@mkdir -p $(shell dirname $@)
-	$(QUIETLY) $(CLANG) $(CPPFLAGS) $(CFLAGS) $(LDFLAGS) -rpath $(ORIGIN_TOKEN) -Lvalist -lvahandler -fPIC -o $@ $<
+	$(QUIETLY) $(CLANG) $(CPPFLAGS) $(CFLAGS) $(VA_TESTS_CFLAGS) $(LDFLAGS) -rpath $(ORIGIN_TOKEN) -Lvalist -lvahandler -fPIC -o $@ $<
 
 %.bc: %.out
 	$(QUIETLY) cp $< $@

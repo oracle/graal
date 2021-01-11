@@ -36,6 +36,7 @@ import com.oracle.truffle.llvm.runtime.config.LLVMCapability;
 import com.oracle.truffle.llvm.runtime.memory.LLVMSyscallOperationNode;
 import com.oracle.truffle.llvm.runtime.nodes.intrinsics.llvm.va.LLVMVAStart;
 import com.oracle.truffle.llvm.runtime.nodes.intrinsics.llvm.va.LLVMVaListLibrary;
+import com.oracle.truffle.llvm.runtime.nodes.intrinsics.llvm.va.LLVMVaListStorage.VAListPointerWrapperFactory;
 import com.oracle.truffle.llvm.runtime.pointer.LLVMNativePointer;
 import com.oracle.truffle.llvm.runtime.types.Type;
 
@@ -119,11 +120,11 @@ public abstract class PlatformCapability<S extends Enum<S> & LLVMSyscallEntry> i
     public abstract Type getVAListType();
 
     /**
-     * @return a new instance of a helper object implementing of {@link LLVMVaListLibrary} for
-     *         native pointers. It allows for {@link LLVMVAStart} and others to treat native LLVM
-     *         pointers to <code>va_list</code> just as the managed <code>va_list</code> objects and
-     *         thus to remain platform independent.
+     * @return a helper node creating auxiliary wrappers for native LLVM pointers and managed
+     *         pointers not pointing to a platform specific <code>va_list</code> managed object. It
+     *         allows for {@link LLVMVAStart} and others to treat LLVM pointers just as the managed
+     *         <code>va_list</code> objects and thus to remain platform independent.
      */
-    public abstract Object createNativeVAListWrapper(LLVMNativePointer vaListPtr, RootNode rootNode);
+    public abstract VAListPointerWrapperFactory createNativeVAListWrapper(boolean cached);
 
 }

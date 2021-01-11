@@ -170,7 +170,7 @@ double testGlobalVACopy3(vahandler vaHandler1, vahandler vaHandler2, int count, 
 }
 
 int main(void) {
-    printf("Sum of doubles (LLVM) (Global VAList)   : %f\n",
+	printf("Sum of doubles (LLVM) (Global VAList)   : %f\n",
            callVAHandlerWithGlobalVAList(sumDoublesLLVM, 8, 1., 2, 3., 4, 5., 6, 7., 8, 9., 10, 11., 12, 13., 14, 15., 16));
     printf("Sum of doubles (LLVM) (Allocated VAList): %f\n",
            callVAHandlerWithGlobalVAList(sumDoublesLLVM, 8, 1., 2, 3., 4, 5., 6, 7., 8, 9., 10, 11., 12, 13., 14, 15., 16));
@@ -178,6 +178,7 @@ int main(void) {
     printf("Sum of doubles (LLVM)           : %f\n", callVAHandler(sumDoublesLLVM, 8, 1., 2, 3., 4, 5., 6, 7., 8, 9., 10, 11., 12, 13., 14, 15., 16));
     printf("Sum of ints (LLVM)              : %f\n", callVAHandler(sumIntsLLVM, 8, 1., 2, 3., 4, 5., 6, 7., 8, 9., 10, 11., 12, 13., 14, 15., 16));
 
+#ifndef NO_NATIVE_TESTS
     printf("Sum of doubles (native)         : %f\n",
            callVAHandler(sumDoublesNative, 16, 1., 2., 3., 4., 5., 6., 7., 8., 9., 10., 11., 12., 13., 14., 15., 16.));
     printf("Sum of doubles (LLVM, native)   : %f\n",
@@ -186,6 +187,7 @@ int main(void) {
            callVAHandlers(sumDoublesNative, sumDoublesLLVM, 16, 1., 2., 3., 4., 5., 6., 7., 8., 9., 10., 11., 12., 13., 14., 15., 16.));
     printf("Sum of doubles (native, native) : %f\n",
            callVAHandlers(sumDoublesNative, sumDoublesNative, 16, 1., 2., 3., 4., 5., 6., 7., 8., 9., 10., 11., 12., 13., 14., 15., 16.));
+#endif
     printf("Sum of doubles (LLVM, LLVM)     : %f\n",
            callVAHandlers(sumDoublesLLVM, sumDoublesLLVM, 16, 1., 2., 3., 4., 5., 6., 7., 8., 9., 10., 11., 12., 13., 14., 15., 16.));
 
@@ -195,36 +197,39 @@ int main(void) {
            testGlobalVACopy2(sumDoublesLLVM, sumDoublesLLVM, 16, 1., 2., 3., 4., 5., 6., 7., 8., 9., 10., 11., 12., 13., 14., 15., 16.));
     printf("VACopy test (LLVM, LLVM) (Global VAList 3)  : %f\n",
            testGlobalVACopy3(sumDoublesLLVM, sumDoublesLLVM, 16, 1., 2., 3., 4., 5., 6., 7., 8., 9., 10., 11., 12., 13., 14., 15., 16.));
-
     printf("VACopy test (LLVM, LLVM)     : %f\n",
            testVACopy(sumDoublesLLVM, sumDoublesLLVM, 16, 1., 2., 3., 4., 5., 6., 7., 8., 9., 10., 11., 12., 13., 14., 15., 16.));
+#ifndef NO_NATIVE_TESTS
     printf("VACopy test (native, LLVM)   : %f\n",
            testVACopy(sumDoublesNative, sumDoublesLLVM, 16, 1., 2., 3., 4., 5., 6., 7., 8., 9., 10., 11., 12., 13., 14., 15., 16.));
     printf("VACopy test (LLVM, native)   : %f\n",
            testVACopy(sumDoublesLLVM, sumDoublesNative, 16, 1., 2., 3., 4., 5., 6., 7., 8., 9., 10., 11., 12., 13., 14., 15., 16.));
     printf("VACopy test (native, native) : %f\n",
            testVACopy(sumDoublesNative, sumDoublesNative, 16, 1., 2., 3., 4., 5., 6., 7., 8., 9., 10., 11., 12., 13., 14., 15., 16.));
-
+#endif
     printf("Delayed VACopy test (LLVM, LLVM)     : %f\n",
            testDelayedVACopy(sumDoublesLLVM, sumDoublesLLVM, 16, 1., 2., 3., 4., 5., 6., 7., 8., 9., 10., 11., 12., 13., 14., 15., 16.));
+#ifndef NO_NATIVE_TESTS
     printf("Delayed VACopy test (native, LLVM)   : %f\n",
            testDelayedVACopy(sumDoublesNative, sumDoublesLLVM, 16, 1., 2., 3., 4., 5., 6., 7., 8., 9., 10., 11., 12., 13., 14., 15., 16.));
     printf("Delayed VACopy test (LLVM, native)   : %f\n",
            testDelayedVACopy(sumDoublesLLVM, sumDoublesNative, 16, 1., 2., 3., 4., 5., 6., 7., 8., 9., 10., 11., 12., 13., 14., 15., 16.));
     printf("Delayed VACopy test (native, native) : %f\n",
            testDelayedVACopy(sumDoublesNative, sumDoublesNative, 16, 1., 2., 3., 4., 5., 6., 7., 8., 9., 10., 11., 12., 13., 14., 15., 16.));
-
+#endif
     struct A a;
     a.x = 10;
-    a.y = 3.14;
+    a.y = 3.25;
     struct A b;
     b.x = 11;
-    b.y = 4.14;
+    b.y = 4.25;
     struct A *c = malloc(sizeof(struct A));
     c->x = 12;
-    c->y = 5.14;
+    c->y = 5.25;
     printf("Test various types (LLVM):\n");
-    printf("res=%f\n", callVAHandler(testVariousTypesLLVM, 4, 25.0, 1, 27.3, 2, 26.9, 3, 25.7, 4, "Hello!", a, b, c, 1000, "Hello2!"));
+    printf("res=%f\n", callVAHandler(testVariousTypesLLVM, 4, 25.0, 1, 27.25, 2, 26.75, 3, 25.5, 4, "Hello!", a, b, c, 1000, "Hello2!"));
+#ifndef NO_NATIVE_TESTS
     printf("Test various types (native):\n");
-    printf("res=%f\n", callVAHandler(testVariousTypesNative, 4, 25.0, 1, 27.3, 2, 26.9, 3, 25.7, 4, "Hello!", a, b, c, 1000, "Hello2!"));
+    printf("res=%f\n", callVAHandler(testVariousTypesNative, 4, 25.0, 1, 27.25, 2, 26.75, 3, 25.5, 4, "Hello!", a, b, c, 1000, "Hello2!"));
+#endif
 }
