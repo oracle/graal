@@ -482,7 +482,7 @@ public class UpgradeProcess implements AutoCloseable {
         Set<String> toMigrate = existingComponents.stream().filter((id) -> {
             ComponentInfo ci = input.getLocalRegistry().loadSingleComponent(id, false);
             return ci.getDistributionType() != DistributionType.BUNDLED;
-        }).collect(Collectors.toSet());
+        }).map(this::lowerCaseId).collect(Collectors.toSet());
         toMigrate.removeAll(explicitIds);
 
         Map<ComponentInfo, Set<ComponentInfo>> missingParts = new HashMap<>();
