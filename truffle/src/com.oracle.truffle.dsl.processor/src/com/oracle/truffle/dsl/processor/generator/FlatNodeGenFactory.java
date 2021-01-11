@@ -1033,7 +1033,7 @@ public class FlatNodeGenFactory {
     private void generateIntrospectionInfo(CodeTypeElement clazz) {
         clazz.getImplements().add(new GeneratedTypeMirror(ElementUtils.getPackageName(types.Introspection_Provider), "Introspection.Provider"));
         CodeExecutableElement reflection = new CodeExecutableElement(modifiers(PUBLIC), types.Introspection, "getIntrospectionData");
-
+        GeneratorUtils.addOverride(reflection);
         CodeTreeBuilder builder = reflection.createBuilder();
 
         List<SpecializationData> filteredSpecializations = new ArrayList<>();
