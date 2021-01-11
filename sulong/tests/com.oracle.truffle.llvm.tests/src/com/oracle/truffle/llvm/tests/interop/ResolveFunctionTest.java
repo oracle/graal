@@ -45,28 +45,28 @@ import org.junit.runner.RunWith;
 public class ResolveFunctionTest extends InteropTestBase {
 
     private static Object testLibrary;
-    private static Object fortytwoFunction;
+    private static Object fortyTwoFunction;
     private static Object maxFunction;
 
     @BeforeClass
     public static void loadTestBitcode() {
         testLibrary = loadTestBitcodeInternal("createResolveFunction.c");
         try {
-            fortytwoFunction = InteropLibrary.getFactory().getUncached().readMember(testLibrary, "fortytwo");
+            fortyTwoFunction = InteropLibrary.getFactory().getUncached().readMember(testLibrary, "fortytwo");
             maxFunction = InteropLibrary.getFactory().getUncached().readMember(testLibrary, "max");
         } catch (InteropException ex) {
             throw new AssertionError(ex);
         }
     }
 
-    public static class fortytwoFunctionNode extends SulongTestNode {
-        public fortytwoFunctionNode() {
+    public static class FortyTwoFunctionNode extends SulongTestNode {
+        public FortyTwoFunctionNode() {
             super(testLibrary, "test_native_fortytwo_function");
         }
     }
 
     @Test
-    public void testFunctionFortytwo(@Inject(fortytwoFunctionNode.class) CallTarget function) throws InteropException {
+    public void testFunctionFortytwo(@Inject(FortyTwoFunctionNode.class) CallTarget function) throws InteropException {
         Object ret = function.call();
         if (LLVMManagedPointer.isInstance(ret)) {
             LLVMFunctionDescriptor retFunction = (LLVMFunctionDescriptor) LLVMManagedPointer.cast(ret).getObject();
@@ -84,7 +84,7 @@ public class ResolveFunctionTest extends InteropTestBase {
 
     @Test
     public void testResolveFunctionFortytwo(@Inject(ResolveFunctionNode.class) CallTarget function) throws InteropException {
-        Object ret = function.call(fortytwoFunction);
+        Object ret = function.call(fortyTwoFunction);
         if (LLVMManagedPointer.isInstance(ret)) {
             LLVMFunctionDescriptor retFunction = (LLVMFunctionDescriptor) LLVMManagedPointer.cast(ret).getObject();
             Assert.assertEquals(42, InteropLibrary.getUncached().execute(retFunction));
@@ -93,8 +93,8 @@ public class ResolveFunctionTest extends InteropTestBase {
 
     @Test
     public void testResolveNativeFunctionFortytwo(@Inject(ResolveFunctionNode.class) CallTarget function) throws InteropException {
-        InteropLibrary.getUncached().toNative(fortytwoFunction);
-        long pointer = InteropLibrary.getUncached().asPointer(fortytwoFunction);
+        InteropLibrary.getUncached().toNative(fortyTwoFunction);
+        long pointer = InteropLibrary.getUncached().asPointer(fortyTwoFunction);
         Object ret = function.call(pointer);
         if (LLVMManagedPointer.isInstance(ret)) {
             LLVMFunctionDescriptor retFunction = (LLVMFunctionDescriptor) LLVMManagedPointer.cast(ret).getObject();
