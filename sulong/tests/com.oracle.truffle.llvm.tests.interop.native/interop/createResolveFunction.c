@@ -30,20 +30,20 @@
 #include <graalvm/llvm/handles.h>
 
 int fortytwo() {
-	return 42;
+    return 42;
 }
 
-int max(int a, int b){
-	if (a > b) {
-		return a;
-	}
-	return b;
+int max(int a, int b) {
+    if (a > b) {
+        return a;
+    }
+    return b;
 }
 
-void* test_native_fortytwo_function() {
+void *test_native_fortytwo_function() {
     return resolve_function(fortytwo);
 }
 
-void* test_resolve_function(void* function){
-	return resolve_function(function);
+void *test_resolve_function(void *function) {
+    return resolve_function(function);
 }
