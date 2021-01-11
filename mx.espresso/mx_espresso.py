@@ -168,6 +168,8 @@ mx_sdk_vm.register_graalvm_component(mx_sdk_vm.GraalVmLanguage(
             home_finder=True,
         )
     ],
+    polyglot_lib_jar_dependencies=['espresso:LIB_ESPRESSO'],
+    has_polyglot_lib_entrypoints=True,
 ))
 
 mx_sdk_vm.register_graalvm_component(mx_sdk_vm.GraalVmJreComponent(

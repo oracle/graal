@@ -27,6 +27,8 @@
 #include "jni.h"
 #include "os.h"
 
+#include "libespresso_dynamic.h"
+
 #include <trufflenfi.h>
 #include <stddef.h>
 #include <stdint.h>
@@ -868,5 +870,23 @@ extern VMList* OS_ATOMIC vm_list_head;
 void add_java_vm(JavaVM* vm);
 jint remove_java_vm(JavaVM* vm);
 void gather_java_vms(JavaVM** buf, jsize buf_size, jsize* numVms);
+
+#define LIB_ESPRESSO_PLAIN 0
+#define LIB_ESPRESSO_POLYGLOT 1
+
+typedef struct LibEspresso {
+    graal_create_isolate_fn_t create_isolate;
+    graal_attach_thread_fn_t attach_thread;
+    graal_detach_thread_fn_t detach_thread;
+    graal_get_current_thread_fn_t get_current_thread;
+    graal_tear_down_isolate_fn_t tear_down_isolate;
+    graal_detach_all_threads_and_tear_down_isolate_fn_t detach_all_threads_and_tear_down_isolate;
+    Espresso_CreateJavaVM_fn_t Espresso_CreateJavaVM;
+} LibEspresso;
+
+typedef struct LibEspressoIsolate {
+    LibEspresso *lib;
+    graal_isolate_t *isolate;
+} LibEspressoIsolate;
 
 #endif // _MOKAPOT_H
