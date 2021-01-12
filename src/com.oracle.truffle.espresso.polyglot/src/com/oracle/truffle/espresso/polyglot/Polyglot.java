@@ -180,6 +180,7 @@ public final class Polyglot {
      * {@link Polyglot#cast casts} the result to the given class.
      * <p>
      * See {@link Polyglot#cast} for the details of casting.
+     * 
      * @since 21.0
      */
     public static <T> T importObject(String name, Class<? extends T> targetClass) throws ClassCastException {
@@ -188,6 +189,7 @@ public final class Polyglot {
 
     /**
      * Exports {@code value} under {@code name} to the Polyglot scope.
+     * 
      * @since 21.0
      */
     @SuppressWarnings("unused")

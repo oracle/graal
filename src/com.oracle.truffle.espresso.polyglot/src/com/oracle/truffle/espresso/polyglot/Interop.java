@@ -83,8 +83,8 @@ public final class Interop {
      * <code>false</code>. Invoking this message does not cause any observable side-effects.
      *
      * Foreign objects for which this method returns <code>true</code>, can be
-     * {@link Polyglot#cast(Class, Object) polyglot-casted} as <code>boolean</code> or {@link Boolean}
-     * (casting to a boxed type always preserves identity).
+     * {@link Polyglot#cast(Class, Object) polyglot-casted} as <code>boolean</code> or
+     * {@link Boolean} (casting to a boxed type always preserves identity).
      *
      * @see #asBoolean(Object)
      * @since 21.0
@@ -208,8 +208,8 @@ public final class Interop {
      * message does not cause any observable side-effects.
      *
      * Foreign objects for which this method returns <code>true</code>, can be
-     * {@link Polyglot#cast(Class, Object) polyglot-casted} as <code>long</code> or {@link Long} (casting
-     * to a boxed type always preserves identity).
+     * {@link Polyglot#cast(Class, Object) polyglot-casted} as <code>long</code> or {@link Long}
+     * (casting to a boxed type always preserves identity).
      *
      * @see #isNumber(Object)
      * @see #asLong(Object)
