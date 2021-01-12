@@ -317,4 +317,60 @@ int os_set_sock_opt(int fd, int level, int optname,
   return setsockopt(fd, level, optname, optval, optlen);
 }
 
+const char *os_current_library_path() {
+    HMODULE info;
+    if (!GetModuleHandleExA(GET_MODULE_HANDLE_EX_FLAG_FROM_ADDRESS | GET_MODULE_HANDLE_EX_FLAG_UNCHANGED_REFCOUNT, os_current_library_path, &info)) {
+        return NULL;
+    }
+    char path[MAX_PATH];
+    if(!GetModuleFileNameA(info, &path, MAX_PATH)) {
+        return NULL;
+    }
+    return path;
+}
+
+OS_DL_HANDLE os_dl_open(const char * path) {
+    return LoadLibraryA(path);
+}
+
+const char *os_dl_error() {
+    DWORD dw = GetLastError();
+    char* message;
+    size_t n = (size_t) FormatMessage(
+        FORMAT_MESSAGE_ALLOCATE_BUFFER |
+        FORMAT_MESSAGE_FROM_SYSTEM |
+        FORMAT_MESSAGE_IGNORE_INSERTS,
+        NULL,
+        dw,
+        MAKELANGID(LANG_NEUTRAL, SUBLANG_DEFAULT),
+        (LPTSTR) &message,
+        0, NULL );
+    if (n > 3) {
+      // Drop final '.', CR, LF
+      if (message[n - 1] == '\n') n--;
+      if (message[n - 1] == '\r') n--;
+      if (message[n - 1] == '.') n--;
+        message[n] = '\0';
+    }
+    return message;
+}
+
+void *os_dl_sym(OS_DL_HANDLE handle, const char *sym) {
+    return GetProcAddress(handle, sym);
+}
+
+void* os_atomic_load_ptr(void* OS_ATOMIC *ptr) {
+#ifdef _WIN64
+    return (void*) InterlockedOr64((LONGLONG volatile *)ptr, 0);
+#elif defined(_WIN32)
+    return (void*) InterlockedOr((LONG volatile *)ptr, 0);
+#else
+#error unknown bit width
+#endif
+}
+
+int os_atomic_compare_exchange_ptr(void* OS_ATOMIC *ptr, void* expected_value, void* new_value) {
+    return InterlockedCompareExchangePointer(ptr, new_value, expected_value) == expected_value;
+}
+
 #endif // defined(_WIN32)

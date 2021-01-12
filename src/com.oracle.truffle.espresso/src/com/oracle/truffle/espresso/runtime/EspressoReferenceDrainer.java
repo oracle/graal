@@ -168,6 +168,7 @@ class EspressoReferenceDrainer implements ContextAccess {
         @SuppressWarnings("rawtypes")
         @Override
         public void run() {
+            getVM().attachThread(Thread.currentThread());
             Meta meta = getMeta();
             final StaticObject lock = (StaticObject) meta.java_lang_ref_Reference_lock.get(meta.java_lang_ref_Reference.tryInitializeAndGetStatics());
             while (!Thread.currentThread().isInterrupted()) {

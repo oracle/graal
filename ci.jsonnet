@@ -174,6 +174,12 @@ local run_espresso(env, args) = {
   ],
 };
 
+local run_espresso_java(env, args) = {
+  run+: maybe_set_ld_debug_flag(env) + [
+    _mx(env, ['espresso-java'] + args),
+  ],
+};
+
 local hello_world_args = ['-cp', '$ESPRESSO_PLAYGROUND', 'com.oracle.truffle.espresso.playground.HelloWorld'];
 
 local setup_playground(env) = {
@@ -186,7 +192,8 @@ local clone_build_run(env, args) =
   clone_graal(env) +
   build_espresso(env) +
   setup_playground(env) +
-  run_espresso(env, args);
+  run_espresso(env, args) +
+  if std.startsWith(env, 'jvm') then {} else run_espresso_java(env, args);
 
 local _host_jvm(env) = 'graalvm-espresso-' + env;
 local _host_jvm_config(env) = if std.startsWith(env, 'jvm') then 'jvm' else 'native';
@@ -290,6 +297,7 @@ local jdk8_weekly_bench_linux     = base.jdk8_ee  + base.weeklyBench   + base.x5
 local jdk8_on_demand_linux        = base.jdk8_ee  + base.onDemand      + base.linux;
 local jdk8_on_demand_bench_linux  = base.jdk8_ee  + base.onDemandBench + base.x52;
 local jdk11_gate_linux            = base.jdk11_ee + base.gate          + base.linux;
+local jdk11_gate_windows          = base.jdk11_ee + base.gate          + base.windows_11;
 
 local jdk8_deploy_windows         = base.jdk8_ee  + deploy_windows + base.windows_8_ee;
 local jdk8_deploy_darwin          = base.jdk8_ee  + deploy_unix    + base.darwin;
@@ -367,6 +375,7 @@ local awfy = 'awfy:*';
     jdk11_gate_linux              + clone_build_run('jvm-ce',    hello_world_args)                        + {name: 'espresso-gate-jvm-ce-hello-world-jdk11-linux-amd64'},
     jdk11_gate_linux              + clone_build_run('native-ce', hello_world_args)                        + {name: 'espresso-gate-native-ce-hello-world-jdk11-linux-amd64'},
     jdk11_gate_linux              + clone_build_run('native-ee', hello_world_args)                        + {name: 'espresso-gate-native-ee-hello-world-jdk11-linux-amd64'},
+    jdk11_gate_windows            + clone_build_run('native-ee', hello_world_args)                        + {name: 'espresso-gate-native-ee-hello-world-jdk11-windows-amd64'},
 
     // AWFY peak perf. benchmarks (post-merge)
     jdk8_bench_linux              + espresso_benchmark('jvm-ce', awfy)                                    + {name: 'espresso-bench-jvm-ce-awfy-jdk8-linux-amd64'},

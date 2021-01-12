@@ -55,6 +55,11 @@ public final class EspressoError extends Error {
         throw new EspressoError("should not reach here: %s", cat(msg));
     }
 
+    public static RuntimeException shouldNotReachHere(String message, Throwable cause) {
+        CompilerDirectives.transferToInterpreter();
+        throw new EspressoError(message, cause);
+    }
+
     public static RuntimeException shouldNotReachHere(Throwable cause) {
         CompilerDirectives.transferToInterpreter();
         throw new EspressoError(cause);

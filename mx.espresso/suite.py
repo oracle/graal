@@ -45,8 +45,7 @@ suite = {
             {
                 "name": "truffle",
                 "subdir": True,
-                # Custom changes in Truffle (NFI) for Espresso (branch slimbeans).
-                "version": "e2ff78d16c18a9d0fc2b60959ece21b65112098f",
+                "version": "6aab41a7583f8cfab4f2d672d7703aaa933b0007",
                 "urls": [
                     {"url": "https://github.com/graalvm/graal", "kind": "git"},
                     {"url": "https://curio.ssw.jku.at/nexus/content/repositories/snapshots", "kind": "binary"},
@@ -55,8 +54,7 @@ suite = {
             {
                 "name": "tools",
                 "subdir": True,
-                # Custom changes in Truffle (NFI) for Espresso (branch slimbeans).
-                "version": "e2ff78d16c18a9d0fc2b60959ece21b65112098f",
+                "version": "6aab41a7583f8cfab4f2d672d7703aaa933b0007",
                 "urls": [
                     {"url": "https://github.com/graalvm/graal", "kind": "git"},
                     {"url": "https://curio.ssw.jku.at/nexus/content/repositories/snapshots", "kind": "binary"},
@@ -65,7 +63,7 @@ suite = {
             {
                 "name" : "java-benchmarks",
                 "subdir": True,
-                "version": "e2ff78d16c18a9d0fc2b60959ece21b65112098f",
+                "version": "6aab41a7583f8cfab4f2d672d7703aaa933b0007",
                 "urls": [
                     {"url": "https://github.com/graalvm/graal", "kind": "git"},
                     {"url": "https://curio.ssw.jku.at/nexus/content/repositories/snapshots", "kind": "binary"},
@@ -135,6 +133,17 @@ suite = {
             "checkstyle": "com.oracle.truffle.espresso",
         },
 
+        "com.oracle.truffle.espresso.libespresso": {
+            "subDir": "src",
+            "sourceDirs": ["src"],
+            "dependencies": [
+                 "sdk:GRAAL_SDK",
+                "sdk:LAUNCHER_COMMON",
+            ],
+            "javaCompliance": "1.8+",
+            "checkstyle": "com.oracle.truffle.espresso",
+        },
+
         "com.oracle.truffle.espresso.jdwp": {
             "subDir": "src",
             "sourceDirs": ["src"],
@@ -162,6 +171,7 @@ suite = {
             "sourceDirs": ["src"],
             "jniHeaders": True,
             "javaCompliance": "11",
+            "checkPackagePrefix" : "false",
         },
 
         "com.oracle.truffle.espresso.playground.native": {
@@ -327,7 +337,7 @@ suite = {
                 },
                 "linux": {
                     "<others>": {
-                        "cflags": ["-Wall", "-Werror"],
+                        "cflags": ["-Wall", "-Werror", "-g"],
                         "ldflags": [
                             "-Wl,-soname,libjvm.so",
                             "-Wl,--version-script,<path:espresso:com.oracle.truffle.espresso.mokapot>/mapfile-vers",
@@ -369,6 +379,7 @@ suite = {
             ],
             "javaProperties": {
                 "org.graalvm.language.java.home": "<path:ESPRESSO_SUPPORT>",
+                "org.graalvm.espresso.jvm.path": "<path:ESPRESSO_JVM_SUPPORT>/truffle",
             },
         },
 
@@ -429,6 +440,21 @@ suite = {
             "allowsJavadocWarnings": True,
         },
 
+        "LIB_ESPRESSO": {
+            "subDir": "src",
+            "dependencies": [
+                "com.oracle.truffle.espresso.libespresso",
+            ],
+            "distDependencies": [
+                "sdk:GRAAL_SDK",
+                "sdk:LAUNCHER_COMMON",
+            ],
+            "license": "UPL",
+            "description": "provides native espresso entry points",
+            "allowsJavadocWarnings": True,
+            "maven": False,
+        },
+
         "ESPRESSO_PROCESSOR": {
             "subDir": "src",
             "dependencies": [
@@ -442,7 +468,7 @@ suite = {
 
         "ESPRESSO_SUPPORT": {
             "native": True,
-            "description": "Espresso support distribution for the GraalVM",
+            "description": "Espresso support distribution for the GraalVM (in espresso home)",
             "platformDependent": True,
             "layout": {
                 "./": [
@@ -452,8 +478,18 @@ suite = {
                 "lib/": [
                     "dependency:espresso:com.oracle.truffle.espresso.eden/<lib:eden>",
                     "dependency:espresso:com.oracle.truffle.espresso.native/<lib:nespresso>",
-                    "dependency:espresso:com.oracle.truffle.espresso.mokapot/<lib:jvm>",
                     "dependency:espresso:POLYGLOT/*",
+                ],
+            },
+        },
+
+        "ESPRESSO_JVM_SUPPORT": {
+            "native": True,
+            "description": "Espresso support distribution for the GraalVM (in JRE)",
+            "platformDependent": True,
+            "layout": {
+                "truffle/": [
+                    "dependency:espresso:com.oracle.truffle.espresso.mokapot/<lib:jvm>",
                 ],
             },
         },

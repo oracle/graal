@@ -314,8 +314,11 @@ public final class Meta implements ContextAccess {
         }
 
         java_lang_ThreadGroup = knownKlass(Type.java_lang_ThreadGroup);
+        java_lang_ThreadGroup_add = java_lang_ThreadGroup.lookupDeclaredMethod(Name.add, Signature._void_Thread);
         java_lang_ThreadGroup_remove = java_lang_ThreadGroup.lookupDeclaredMethod(Name.remove, Signature._void_ThreadGroup);
         java_lang_Thread_dispatchUncaughtException = java_lang_Thread.lookupDeclaredMethod(Name.dispatchUncaughtException, Signature._void_Throwable);
+        java_lang_Thread_init_ThreadGroup_Runnable = java_lang_Thread.lookupDeclaredMethod(Name._init_, Signature._void_ThreadGroup_Runnable);
+        java_lang_Thread_init_ThreadGroup_String = java_lang_Thread.lookupDeclaredMethod(Name._init_, Signature._void_ThreadGroup_String);
         java_lang_Thread_exit = java_lang_Thread.lookupDeclaredMethod(Name.exit, Signature._void);
         java_lang_Thread_run = java_lang_Thread.lookupDeclaredMethod(Name.run, Signature._void);
         java_lang_Thread_threadStatus = java_lang_Thread.lookupDeclaredField(Name.threadStatus, Type._int);
@@ -834,12 +837,15 @@ public final class Meta implements ContextAccess {
     public final Method java_nio_DirectByteBuffer_init_long_int;
 
     public final ObjectKlass java_lang_ThreadGroup;
+    public final Method java_lang_ThreadGroup_add;
     public final Method java_lang_ThreadGroup_remove;
     public final Method java_lang_Thread_dispatchUncaughtException;
     public final Field java_lang_ThreadGroup_maxPriority;
     public final ObjectKlass java_lang_Thread;
     public final Field java_lang_Thread_threadStatus;
     public final Field java_lang_Thread_tid;
+    public final Method java_lang_Thread_init_ThreadGroup_Runnable;
+    public final Method java_lang_Thread_init_ThreadGroup_String;
     public final Method java_lang_Thread_exit;
     public final Method java_lang_Thread_run;
     public final Method java_lang_Thread_checkAccess;
