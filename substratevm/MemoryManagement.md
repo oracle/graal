@@ -43,7 +43,7 @@ Since GraalVM 20.3, it is also possible to explicitly enable the Serial GC by pa
 
 ```shell
 # Build a native image that uses the serial GC with default settings
-native-image --gc:serial HelloWorld
+native-image --gc=serial HelloWorld
 ```
 
 ### Overview
@@ -69,17 +69,24 @@ To override this default behavior, either specify a value for `-XX:MaximumHeapSi
 ### Performance Tuning
 
 For tuning the GC performance and the memory footprint, the following options can be used:
-* `-H:AlignedHeapChunkSize` - the size of a heap chunk in bytes. It can only be specified at image build time.
 * `-XX:MaximumHeapSizePercent` - the percentage of the physical memory size that is used as the maximum Java heap size if the maximum Java heap size is not specified otherwise.
-* `-XX:PercentTimeInIncrementalCollection` - determine how much time the GC should spend doing young collections.
+* `-XX:MaximumYoungGenerationSizePercent` - the maximum size of the young generation as a percentage of the maximum Java heap size.
+* `-XX:PercentTimeInIncrementalCollection` - determines how much time the GC should spend doing young collections.
 With the default value of 50, the GC tries to balance the time spent on young and full collections.
 Increasing this value will reduce the number of full GCs, which can improve performance but may worsen the memory footprint.
 Decreasing this value will increase the number of full GCs, which can improve the memory footprint but may decrease performance.
-* `-XX:MaximumYoungGenerationSizePercent` - the maximum size of the young generation as a percentage of the maximum Java heap size.
+* `-XX:±CollectYoungGenerationSeparately` (since GraalVM 21.0) - determines if a full GC collects the young generation separately or together with the old generation.
+If enabled, this may reduce the memory footprint during full GCs.
+However, full GCs may take more time.
+* `-H:AlignedHeapChunkSize` (can only be specified at image build time) - the size of a heap chunk in bytes.
+* `-H:MaxSurvivorSpaces` (since GraalVM 21.1, can only be specified at image build time) - the number of survivor spaces that are used for the young generation.
+With a value of 0, objects that survive a young collection are directly promoted to the old generation.
+* `-H:LargeArrayThreshold` (can only be specified at image build time) - the size at or above which an array will be allocated in its own heap chunk.
+Arrays that are considered as large are more expensive to allocate but they are never copied by the GC, which can reduce the GC overhead.
 
 ```shell
 # Build and execute a native image that uses the serial GC but does less full GCs
-native-image --gc:serial -R:PercentTimeInIncrementalCollection=70 HelloWorld
+native-image --gc=serial -R:PercentTimeInIncrementalCollection=70 HelloWorld
 ./helloworld
 
 # Execute the native image from above but force more full GCs
@@ -124,7 +131,7 @@ The G1 GC is an adaptive garbage collector with defaults that enable it to work 
 However, it can be tuned to the performance needs of a particular application.
 Here is a small subset of the options that can be specified when doing performance tuning:
 
-* `-H:G1HeapRegionSize` - the size of a G1 region. It can only be specified at image build time.
+* `-H:G1HeapRegionSize` (can only be specified at image build time) - the size of a G1 region.
 * `-XX:MaxRAMPercentage` - the percentage of the physical memory size that is used as the maximum heap size if the maximum heap size is not specified otherwise.
 * `-XX:MaxGCPauseMillis` - the goal for the maximum pause time.
 * `-XX:ParallelGCThreads` - the maximum number of threads used for parallel work during garbage collection pauses.
@@ -178,7 +185,7 @@ Compressed references are enabled by default and can have a large impact on the 
 However, they limit the maximum Java heap size to 32 GB of memory.
 If more than 32 GB are needed, compressed references need to be disabled.
 
-* `-H:±UseCompressedReferences` - determines if 32-bit instead of 64-bit references to Java objects are used. It can only be specified at image build time.
+* `-H:±UseCompressedReferences` (can only be specified at image build time) - determines if 32-bit instead of 64-bit references to Java objects are used.
 
 ### Native Memory
 

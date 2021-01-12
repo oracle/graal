@@ -290,18 +290,18 @@ public final class ObjectHeaderImpl extends ObjectHeader {
     }
 
     public static boolean isUnalignedObject(Object obj) {
-        assert !HeapImpl.getHeapImpl().isInImageHeap(obj) : "must not be called for image heap objects";
+        assert HeapImpl.usesImageHeapCardMarking() || !HeapImpl.getHeapImpl().isInImageHeap(obj) : "must not be called for image heap objects";
         UnsignedWord header = ObjectHeaderImpl.readHeaderFromObject(obj);
         return testUnalignedBit(header);
     }
 
     public static boolean isUnalignedHeader(Object obj, UnsignedWord header) {
-        assert !HeapImpl.getHeapImpl().isInImageHeap(obj) : "must not be called for image heap objects";
+        assert HeapImpl.usesImageHeapCardMarking() || !HeapImpl.getHeapImpl().isInImageHeap(obj) : "must not be called for image heap objects";
         return testUnalignedBit(header);
     }
 
     public static boolean isUnalignedHeader(Pointer ptrToObj, UnsignedWord header) {
-        assert !HeapImpl.getHeapImpl().isInImageHeap(ptrToObj) : "must not be called for image heap objects";
+        assert HeapImpl.usesImageHeapCardMarking() || !HeapImpl.getHeapImpl().isInImageHeap(ptrToObj) : "must not be called for image heap objects";
         return testUnalignedBit(header);
     }
 
@@ -343,7 +343,10 @@ public final class ObjectHeaderImpl extends ObjectHeader {
     }
 
     static Object getForwardedObject(Pointer ptr) {
-        UnsignedWord header = readHeaderFromPointer(ptr);
+        return getForwardedObject(ptr, readHeaderFromPointer(ptr));
+    }
+
+    static Object getForwardedObject(Pointer ptr, UnsignedWord header) {
         assert isForwardedHeader(header);
         if (ReferenceAccess.singleton().haveCompressedReferences()) {
             if (ReferenceAccess.singleton().getCompressEncoding().hasShift()) {
