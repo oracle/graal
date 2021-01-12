@@ -539,11 +539,10 @@ public final class Context implements AutoCloseable {
      * applied implicitly whenever {@link Value#execute(Object...) execution} or
      * {@link Value#newInstance(Object...) instantiation} arguments are provided,
      * {@link Value#putMember(String, Object) members}, {@link Value#setArrayElement(long, Object)
-     * array elements} and {@link Value#setIteratorElement(Object) iterator elements} are set or
-     * when a value is returned by a {@link Proxy polyglot proxy}. It is not required nor efficient
-     * to explicitly convert to polyglot values before performing these operations. This method is
-     * useful to convert a {@link Value#as(Class) mapped} host value back to a polyglot value while
-     * preserving the identity.
+     * array elements} are set or when a value is returned by a {@link Proxy polyglot proxy}. It is
+     * not required nor efficient to explicitly convert to polyglot values before performing these
+     * operations. This method is useful to convert a {@link Value#as(Class) mapped} host value back
+     * to a polyglot value while preserving the identity.
      * <p>
      * When a host value is converted to a polyglot value the following rules apply:
      * <ol>
