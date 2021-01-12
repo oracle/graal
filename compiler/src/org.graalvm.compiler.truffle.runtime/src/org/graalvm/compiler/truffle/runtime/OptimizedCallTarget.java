@@ -1063,10 +1063,10 @@ public abstract class OptimizedCallTarget implements CompilableTruffleAST, RootC
     final void initializeUnsafeArgumentTypes(Class<?>[] argumentTypes) {
         CompilerAsserts.neverPartOfCompilation();
         ArgumentsProfile newProfile = new ArgumentsProfile(argumentTypes, "Custom profiled argument types");
-        if (ARGUMENTS_PROFILE_UPDATER.compareAndSet(this, null, newProfile)) {
+        if (updateArgumentsProfile(null, newProfile)) {
             this.callProfiled = true;
         } else {
-            this.argumentsProfile.assumption.invalidate();
+            transitionToInvalidArgumentsProfile();
             throw new AssertionError("Argument types already initialized. initializeArgumentTypes() must be called before any profile is initialized.");
         }
     }
@@ -1103,14 +1103,38 @@ public abstract class OptimizedCallTarget implements CompilableTruffleAST, RootC
         assert !callProfiled;
 
         ArgumentsProfile argumentsProfile = this.argumentsProfile;
-        if (argumentsProfile != null && argumentsProfile.assumption.isValid()) {
+        if (argumentsProfile != ArgumentsProfile.INVALID) {
             // Argument profiling is not possible for targets of indirect calls.
             // The assumption will invalidate the callee but we shouldn't invalidate the caller.
             CompilerDirectives.transferToInterpreter();
 
-            ArgumentsProfile previous = ARGUMENTS_PROFILE_UPDATER.getAndSet(this, ArgumentsProfile.INVALID);
-            previous.assumption.invalidate();
+            transitionToInvalidArgumentsProfile();
         }
+    }
+
+    private void transitionToInvalidArgumentsProfile() {
+        while (true) {
+            ArgumentsProfile oldProfile = argumentsProfile;
+            if (oldProfile == ArgumentsProfile.INVALID) {
+                /* Profile already invalid, nothing to do. */
+                return;
+            }
+            if (updateArgumentsProfile(oldProfile, ArgumentsProfile.INVALID)) {
+                return;
+            }
+            /* We lost the race, try again. */
+        }
+    }
+
+    private boolean updateArgumentsProfile(ArgumentsProfile oldProfile, ArgumentsProfile newProfile) {
+        if (oldProfile != null) {
+            /*
+             * The assumption for the old profile must be invalidated before installing a new
+             * profile.
+             */
+            oldProfile.assumption.invalidate();
+        }
+        return ARGUMENTS_PROFILE_UPDATER.compareAndSet(this, oldProfile, newProfile);
     }
 
     // This should be private but can't be. GR-19397
@@ -1127,8 +1151,7 @@ public abstract class OptimizedCallTarget implements CompilableTruffleAST, RootC
             if (types != null) {
                 if (types.length != args.length) {
                     CompilerDirectives.transferToInterpreterAndInvalidate();
-                    ArgumentsProfile previous = ARGUMENTS_PROFILE_UPDATER.getAndSet(this, ArgumentsProfile.INVALID);
-                    previous.assumption.invalidate();
+                    transitionToInvalidArgumentsProfile();
                 } else if (argumentsProfile.assumption.isValid()) {
                     for (int i = 0; i < types.length; i++) {
                         Class<?> type = types[i];
@@ -1158,7 +1181,7 @@ public abstract class OptimizedCallTarget implements CompilableTruffleAST, RootC
             newProfile = ArgumentsProfile.INVALID;
         }
 
-        if (!ARGUMENTS_PROFILE_UPDATER.compareAndSet(this, null, newProfile)) {
+        if (!updateArgumentsProfile(null, newProfile)) {
             // Another thread initialized the profile, we need to check it
             profileArguments(args);
         }
@@ -1174,9 +1197,7 @@ public abstract class OptimizedCallTarget implements CompilableTruffleAST, RootC
         }
 
         ArgumentsProfile newProfile = new ArgumentsProfile(newTypes, ArgumentsProfile.ARGUMENT_TYPES_ASSUMPTION_NAME);
-        if (ARGUMENTS_PROFILE_UPDATER.compareAndSet(this, oldProfile, newProfile)) {
-            oldProfile.assumption.invalidate();
-        } else {
+        if (!updateArgumentsProfile(oldProfile, newProfile)) {
             // Another thread updated the profile, we need to retry
             profileArguments(args);
         }
@@ -1215,7 +1236,8 @@ public abstract class OptimizedCallTarget implements CompilableTruffleAST, RootC
              * initialized, we have to be conservative and disable profiling.
              */
             CompilerDirectives.transferToInterpreterAndInvalidate();
-            ARGUMENTS_PROFILE_UPDATER.compareAndSet(this, null, ArgumentsProfile.INVALID);
+            updateArgumentsProfile(null, ArgumentsProfile.INVALID);
+            /* It does not matter if we lost the race, any non-null profile is sufficient. */
             assert argumentsProfile != null;
         }
 
@@ -1243,8 +1265,13 @@ public abstract class OptimizedCallTarget implements CompilableTruffleAST, RootC
                 // Immediately go to invalid, do not try to widen the type.
                 // See the comment above the returnProfile field.
                 CompilerDirectives.transferToInterpreterAndInvalidate();
+                /*
+                 * The assumption for the old profile must be invalidated before installing a new
+                 * profile.
+                 */
+                returnProfile.assumption.invalidate();
                 ReturnProfile previous = RETURN_PROFILE_UPDATER.getAndSet(this, ReturnProfile.INVALID);
-                previous.assumption.invalidate();
+                assert previous == returnProfile || previous == ReturnProfile.INVALID;
             }
         }
     }
