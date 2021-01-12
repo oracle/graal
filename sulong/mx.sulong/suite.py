@@ -920,9 +920,10 @@ suite = {
       "defaultBuild" : False,
       "os_arch" : {
         "darwin": {
-          "<other>" : {
+          "<others>" : {
             "buildEnv" : {
               "SUITE_LDFLAGS" : "-lm",
+              "SUITE_CFLAGS" : "-Wno-deprecated-declarations",
             },
           },
         },
