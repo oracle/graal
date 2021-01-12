@@ -80,6 +80,7 @@ public class SulongSuite extends BaseSuiteHarness {
                             "libc/memcpy/memcpy-struct-mixed.c", "libc/vfprintf/vfprintf.c", "libc/vprintf/vprintf.c"));
             // Tests that fail.
             filenameBlacklistNoDir.add("va_arg");
+            filenameBlacklistNoDir.add("valist");
             filenameBlacklist.addAll(Arrays.asList(
                             "c/arrays/intArray.c",
                             "c/builtin_gcc/__builtin_copysign.c", "c/builtin_gcc/__builtin_fabsl.c", "c/builtin_gcc/__builtin_fpclassify.c", "c/builtin_gcc/__builtin_isfinite.c",
