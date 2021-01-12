@@ -88,7 +88,7 @@ final class BreakpointsHandler {
             id = ++lastID;
             scriptListener = script -> {
                 if (url instanceof Pattern ? ((Pattern) url).matcher(script.getUrl()).matches() : ScriptsHandler.compareURLs((String) url, script.getUrl())) {
-                    Breakpoint bp = createBuilder(script.getSource(), line, column).resolveListener(resolvedHandler).build();
+                    Breakpoint bp = createBuilder(script.getSourceLoaded(), line, column).resolveListener(resolvedHandler).build();
                     if (condition != null && !condition.isEmpty()) {
                         bp.setCondition(condition);
                     }
@@ -117,7 +117,7 @@ final class BreakpointsHandler {
         if (script == null) {
             throw new CommandProcessException("No script with id '" + location.getScriptId() + "'");
         }
-        Breakpoint bp = createBuilder(script.getSource(), location.getLine(), location.getColumn()).resolveListener(resolvedHandler).build();
+        Breakpoint bp = createBuilder(script.getSourceLoaded(), location.getLine(), location.getColumn()).resolveListener(resolvedHandler).build();
         if (condition != null && !condition.isEmpty()) {
             bp.setCondition(condition);
         }
@@ -171,7 +171,7 @@ final class BreakpointsHandler {
         if (script == null) {
             throw new CommandProcessException("No script with id '" + location.getScriptId() + "'");
         }
-        Breakpoint bp = createBuilder(script.getSource(), location.getLine(), location.getColumn()).oneShot().build();
+        Breakpoint bp = createBuilder(script.getSourceLoaded(), location.getLine(), location.getColumn()).oneShot().build();
         ds.install(bp);
     }
 
