@@ -2254,19 +2254,20 @@ public final class VM extends NativeEnv implements ContextAccess {
     public static final int JMM_VERSION_1_2 = 0x20010200; // JDK 7
     public static final int JMM_VERSION_1_2_1 = 0x20010201; // JDK 7 GA
     public static final int JMM_VERSION_1_2_2 = 0x20010202;
+    public static final int JMM_VERSION_1_2_3 = 0x20010203;
     public static final int JMM_VERSION_2 = 0x20020000; // JDK 10
-
-    public static final int JMM_VERSION = 0x20010203;
+    public static final int JMM_VERSION_3 = 0x20030000; // JDK 11.7
 
     @CompilerDirectives.CompilationFinal //
     private int managementVersion;
 
+    private static boolean isSupportedManagementVersion(int version) {
+        return version == JMM_VERSION_1 || version == JMM_VERSION_2 || version == JMM_VERSION_3;
+    }
+
     @VmImpl
     public synchronized @Pointer TruffleObject JVM_GetManagement(int version) {
-        if (version != JMM_VERSION_1_0 && getJavaVersion().java8OrEarlier()) {
-            return RawPointer.nullInstance();
-        }
-        if (version != JMM_VERSION_2 && getJavaVersion().java9OrLater()) {
+        if (!isSupportedManagementVersion(version)) {
             return RawPointer.nullInstance();
         }
         EspressoContext context = getContext();
@@ -2291,10 +2292,10 @@ public final class VM extends NativeEnv implements ContextAccess {
     @JniImpl
     @VmImpl
     public int GetVersion() {
-        if (getJavaVersion().java8OrEarlier()) {
-            return JMM_VERSION;
+        if (managementVersion <= JMM_VERSION_1_2_3) {
+            return JMM_VERSION_1_2_3;
         } else {
-            return JMM_VERSION_2;
+            return managementVersion;
         }
     }
 
@@ -2641,6 +2642,28 @@ public final class VM extends NativeEnv implements ContextAccess {
             return StaticObject.NULL;
         }
         return result;
+    }
+
+    @VmImpl
+    @JniImpl
+    public long GetOneThreadAllocatedMemory(
+                    long threadId,
+                    @InjectProfile SubstitutionProfiler profiler) {
+        StaticObject[] activeThreads = getContext().getActiveThreads();
+
+        StaticObject thread = StaticObject.NULL;
+
+        for (int j = 0; j < activeThreads.length; ++j) {
+            if ((long) getMeta().java_lang_Thread_tid.get(activeThreads[j]) == threadId) {
+                thread = activeThreads[j];
+                break;
+            }
+        }
+        if (StaticObject.isNull(thread)) {
+            return -1L;
+        } else {
+            return 0L;
+        }
     }
 
     @VmImpl

@@ -40,12 +40,16 @@ JNIEXPORT void JNICALL disposeManagementContext(TruffleEnv *truffle_env, void *m
  * requested version.
  */
 
-void* initializeManagementContext8(TruffleEnv *truffle_env, void* (*fetch_by_name)(const char *));
+void* initializeManagementContext1(TruffleEnv *truffle_env, void* (*fetch_by_name)(const char *));
 
-void disposeManagementContext8(TruffleEnv *truffle_env, void *management_ptr);
+void disposeManagementContext1(TruffleEnv *truffle_env, void *management_ptr);
 
-void* initializeManagementContext11(TruffleEnv *truffle_env, void* (*fetch_by_name)(const char *));
+void* initializeManagementContext2(TruffleEnv *truffle_env, void* (*fetch_by_name)(const char *));
 
-void disposeManagementContext11(TruffleEnv *truffle_env, void *management_ptr);
+void disposeManagementContext2(TruffleEnv *truffle_env, void *management_ptr);
+
+void* initializeManagementContext3(TruffleEnv *truffle_env, void* (*fetch_by_name)(const char *));
+
+void disposeManagementContext3(TruffleEnv *truffle_env, void *management_ptr);
 
 #endif // _MANAGEMENT_H

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2003, 2020, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2003, 2017, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -20,8 +20,9 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-#ifndef _JAVA_JMM8_H_
-#define _JAVA_JMM8_H_
+
+#ifndef _JAVA_JMM11_H_
+#define _JAVA_JMM11_H_
 
 /*
  * This is a private interface used by JDK for JVM monitoring
@@ -34,6 +35,7 @@
  * 2. There is a change in the contract between VM and Java classes.
  */
 
+
 #include "jni.h"
 #include "jmm_common.h"
 
@@ -41,7 +43,7 @@
 extern "C" {
 #endif
 
-typedef struct jmmInterface_1_8 {
+typedef struct jmmInterface_2 {
   void*        reserved1;
   void*        reserved2;
 
@@ -50,16 +52,10 @@ typedef struct jmmInterface_1_8 {
   jint         (JNICALL *GetOptionalSupport)     (JNIEnv *env,
                                                   jmmOptionalSupport* support_ptr);
 
-  /* This is used by JDK 6 and earlier.
-   * For JDK 7 and after, use GetInputArgumentArray.
-   */
-  jobject      (JNICALL *GetInputArguments)      (JNIEnv *env);
-
   jint         (JNICALL *GetThreadInfo)          (JNIEnv *env,
                                                   jlongArray ids,
                                                   jint maxDepth,
                                                   jobjectArray infoArray);
-  jobjectArray (JNICALL *GetInputArgumentArray)  (JNIEnv *env);
 
   jobjectArray (JNICALL *GetMemoryPools)         (JNIEnv* env, jobject mgr);
 
@@ -145,7 +141,8 @@ typedef struct jmmInterface_1_8 {
   jobjectArray (JNICALL *DumpThreads)            (JNIEnv *env,
                                                   jlongArray ids,
                                                   jboolean lockedMonitors,
-                                                  jboolean lockedSynchronizers);
+                                                  jboolean lockedSynchronizers,
+                                                  jint maxDepth);
   void         (JNICALL *SetGCNotificationEnabled) (JNIEnv *env,
                                                     jobject mgr,
                                                     jboolean enabled);
@@ -170,5 +167,4 @@ typedef struct jmmInterface_1_8 {
 } /* extern "C" */
 #endif /* __cplusplus */
 
-#endif /* !_JAVA_JMM8_H_ */
- 
+#endif /* !_JAVA_JMM11_H_ */

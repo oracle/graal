@@ -31,20 +31,24 @@
 
 
 JNIEXPORT void* JNICALL initializeManagementContext(TruffleEnv *truffle_env, void* (*fetch_by_name)(const char *), int version) {
-	if (version == JMM_VERSION_1_0) {
-		return initializeManagementContext8(truffle_env, fetch_by_name);
+	if (version == JMM_VERSION_1) {
+		return initializeManagementContext1(truffle_env, fetch_by_name);
 	} else if (version == JMM_VERSION_2) {
-		return initializeManagementContext11(truffle_env, fetch_by_name);
+		return initializeManagementContext2(truffle_env, fetch_by_name);
+	} else if (version == JMM_VERSION_3) {
+		return initializeManagementContext2(truffle_env, fetch_by_name);
 	} else {
 		return (void*)0;
 	}
 }
 
 JNIEXPORT void JNICALL disposeManagementContext(TruffleEnv *truffle_env, void* management_ptr, int version) {
-    if (version == JMM_VERSION_1_0) {
-		disposeManagementContext8(truffle_env, management_ptr);
+    if (version == JMM_VERSION_1) {
+		disposeManagementContext1(truffle_env, management_ptr);
 	} else if (version == JMM_VERSION_2) {
-		disposeManagementContext11(truffle_env, management_ptr);
+		disposeManagementContext2(truffle_env, management_ptr);
+	} else if (version == JMM_VERSION_3) {
+		disposeManagementContext2(truffle_env, management_ptr);
 	}
 }
 

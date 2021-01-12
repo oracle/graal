@@ -43,7 +43,7 @@
 extern "C" {
 #endif
 
-typedef struct jmmInterface_1_11 {
+typedef struct jmmInterface_3 {
   void*        reserved1;
   void*        reserved2;
 
@@ -64,6 +64,9 @@ typedef struct jmmInterface_1_11 {
   jobject      (JNICALL *GetMemoryPoolUsage)     (JNIEnv* env, jobject pool);
   jobject      (JNICALL *GetPeakMemoryPoolUsage) (JNIEnv* env, jobject pool);
 
+  jlong        (JNICALL *GetOneThreadAllocatedMemory)
+                                                 (JNIEnv *env,
+                                                  jlong thread_id);
   void         (JNICALL *GetThreadAllocatedMemory)
                                                  (JNIEnv *env,
                                                   jlongArray ids,
