@@ -32,7 +32,6 @@ package com.oracle.truffle.llvm.parser.factories;
 import com.oracle.truffle.api.CompilerAsserts;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.RootCallTarget;
-import com.oracle.truffle.api.Truffle;
 import com.oracle.truffle.api.interop.InteropLibrary;
 import com.oracle.truffle.llvm.runtime.CommonNodeFactory;
 import com.oracle.truffle.llvm.runtime.LLVMIntrinsicProvider;
@@ -206,7 +205,7 @@ public class BasicIntrinsicsProvider implements LLVMIntrinsicProvider {
     }
 
     private RootCallTarget wrap(String functionName, LLVMExpressionNode node) {
-        return Truffle.getRuntime().createCallTarget(LLVMIntrinsicExpressionNodeGen.create(language, functionName, node));
+        return LLVMLanguage.createCallTarget(LLVMIntrinsicExpressionNodeGen.create(language, functionName, node));
     }
 
     protected final LLVMLanguage language;

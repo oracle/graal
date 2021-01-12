@@ -36,7 +36,6 @@ import java.util.List;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
-import com.oracle.truffle.api.Truffle;
 import com.oracle.truffle.api.frame.FrameDescriptor;
 import com.oracle.truffle.api.frame.FrameSlot;
 import com.oracle.truffle.api.nodes.RepeatingNode;
@@ -1192,7 +1191,7 @@ public class BasicNodeFactory implements NodeFactory {
         } catch (AsmParseException e) {
             assemblyRoot = getLazyUnsupportedInlineRootNode(asmExpression, e);
         }
-        LLVMIRFunction function = new LLVMIRFunction(Truffle.getRuntime().createCallTarget(assemblyRoot), null);
+        LLVMIRFunction function = new LLVMIRFunction(LLVMLanguage.createCallTarget(assemblyRoot), null);
         LLVMFunction functionDetail = LLVMFunction.create("<asm>", function, new FunctionType(MetaType.UNKNOWN, 0, false), LLVMSymbol.INVALID_INDEX, LLVMSymbol.INVALID_INDEX,
                         false, assemblyRoot.getName());
         // The function descriptor for the inline assembly does not require a language.
