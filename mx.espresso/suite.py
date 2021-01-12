@@ -95,7 +95,8 @@ suite = {
             "dependencies": [
             ],
             "javaCompliance": "1.8+",
-            "checkstyle": "com.oracle.truffle.espresso",
+            "checkstyle": "com.oracle.truffle.espresso.polyglot",
+            "checkstyleVersion": "8.8",
             "license": "UPL",
         },
 
