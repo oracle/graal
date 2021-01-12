@@ -67,6 +67,7 @@ import org.graalvm.component.installer.Version;
 import org.graalvm.component.installer.model.ComponentInfo;
 import org.graalvm.component.installer.model.DistributionType;
 import org.graalvm.component.installer.model.ManagementStorage;
+import org.graalvm.component.installer.model.StabilityLevel;
 
 /**
  * Directory-based implementation of component storage.
@@ -308,6 +309,10 @@ public class DirectoryStorage implements ManagementStorage {
     }
 
     public static ComponentInfo propertiesToMeta(Properties loaded, ComponentInfo ci, Feedback fb) {
+        String stability = loaded.getProperty(BundleConstants.BUNDLE_STABILITY);
+        if (stability != null) {
+            ci.setStability(StabilityLevel.valueOfMixedCase(stability));
+        }
         String license = loaded.getProperty(BundleConstants.BUNDLE_LICENSE_PATH);
         if (license != null) {
             SystemUtils.checkCommonRelative(null, license);
@@ -565,6 +570,9 @@ public class DirectoryStorage implements ManagementStorage {
         }
         if (info.getLicenseType() != null) {
             p.setProperty(BundleConstants.BUNDLE_LICENSE_TYPE, info.getLicenseType());
+        }
+        if (info.getStability() != StabilityLevel.Undefined) {
+            p.setProperty(BundleConstants.BUNDLE_STABILITY, info.getStability().toString());
         }
         for (String k : info.getRequiredGraalValues().keySet()) {
             String v = info.getRequiredGraalValues().get(k);
