@@ -509,14 +509,16 @@ public class NativeImageGenerator {
             System.out.println("Interrupted!");
             throw new InterruptImageBuilding(e);
         } catch (ExecutionException e) {
-            if (e.getCause() instanceof RuntimeException) {
-                throw (RuntimeException) e.getCause();
-            } else if (e.getCause() instanceof Error) {
-                throw (Error) e.getCause();
-            }
+            rethrow(e.getCause());
         } finally {
             shutdownBuildExecutor();
         }
+    }
+
+    /** A version of "sneaky throw" to relay exceptions. */
+    @SuppressWarnings("unchecked")
+    private static <T extends Throwable> void rethrow(Throwable t) throws T {
+        throw (T) t;
     }
 
     protected static void setSystemPropertiesForImageEarly() {
