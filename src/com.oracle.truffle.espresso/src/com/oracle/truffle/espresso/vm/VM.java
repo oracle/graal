@@ -27,6 +27,7 @@ import static com.oracle.truffle.espresso.classfile.Constants.ACC_CALLER_SENSITI
 import static com.oracle.truffle.espresso.classfile.Constants.ACC_FINAL;
 import static com.oracle.truffle.espresso.classfile.Constants.ACC_LAMBDA_FORM_COMPILED;
 import static com.oracle.truffle.espresso.classfile.Constants.ACC_PUBLIC;
+import static com.oracle.truffle.espresso.jni.JniEnv.JNI_EDETACHED;
 import static com.oracle.truffle.espresso.jni.JniEnv.JNI_ERR;
 import static com.oracle.truffle.espresso.jni.JniEnv.JNI_EVERSION;
 import static com.oracle.truffle.espresso.jni.JniEnv.JNI_OK;
@@ -834,12 +835,14 @@ public final class VM extends NativeEnv implements ContextAccess {
      *         returns JNI_EVERSION. Otherwise, sets *env to the appropriate interface, and returns
      *         JNI_OK.
      */
-    @SuppressWarnings("unused")
     @VmImpl
     @TruffleBoundary
     public int GetEnv(@Pointer TruffleObject vmPtr_, @Pointer TruffleObject envPtr, int version) {
-        // TODO(peterssen): Check the thread is attached, and that the VM pointer matches.
         assert interopAsPointer(getJavaVM()) == interopAsPointer(vmPtr_);
+        StaticObject currentThread = getContext().getGuestThreadFromHost(Thread.currentThread());
+        if (currentThread == null) {
+            return JNI_EDETACHED;
+        }
         if (JniVersion.isSupported(version, getContext().getJavaVersion())) {
             LongBuffer buf = directByteBuffer(envPtr, 1, JavaKind.Long).asLongBuffer();
             buf.put(interopAsPointer(jniEnv.getNativePointer()));

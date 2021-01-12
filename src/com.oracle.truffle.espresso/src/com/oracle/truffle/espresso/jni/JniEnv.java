@@ -98,6 +98,7 @@ public final class JniEnv extends NativeEnv implements ContextAccess {
 
     public static final int JNI_OK = 0; /* success */
     public static final int JNI_ERR = -1; /* unknown error */
+    public static final int JNI_EDETACHED = -2;
     public static final int JNI_EVERSION = -3;
     public static final int JNI_COMMIT = 1;
     public static final int JNI_ABORT = 2;
