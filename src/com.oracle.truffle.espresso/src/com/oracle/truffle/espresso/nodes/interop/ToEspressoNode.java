@@ -145,6 +145,11 @@ public abstract class ToEspressoNode extends Node {
         return klass.getMeta().java_lang_String.array().equals(klass);
     }
 
+    static boolean isForeignException(Klass klass) {
+        Meta meta = klass.getMeta();
+        return meta.polyglot != null /* polyglot enabled */ && meta.polyglot.ForeignException.equals(klass);
+    }
+
     @SuppressWarnings("unused")
     @Specialization(guards = {"!isStaticObject(value)", "interop.isNull(value)", "!klass.isPrimitive()"})
     Object doForeignNull(Object value, Klass klass,
@@ -170,7 +175,16 @@ public abstract class ToEspressoNode extends Node {
         throw UnsupportedTypeException.create(new Object[]{value}, klass.getTypeAsString());
     }
 
-    @Specialization(guards = {"!isStaticObject(value)", "!interop.isNull(value)", "!isString(klass)", "!klass.isAbstract()"})
+    @Specialization(guards = {"!isStaticObject(value)", "!interop.isNull(value)", "isForeignException(klass)"})
+    Object doForeignException(Object value, ObjectKlass klass,
+                    @CachedLibrary(limit = "LIMIT") InteropLibrary interop) throws UnsupportedTypeException {
+        if (!interop.isException(value)) {
+            throw UnsupportedTypeException.create(new Object[]{value}, "Could not cast foreign object to " + klass.getNameAsString());
+        }
+        return StaticObject.createForeign(klass, value, interop);
+    }
+
+    @Specialization(guards = {"!isStaticObject(value)", "!interop.isNull(value)", "!isString(klass)", "!isForeignException(klass)", "!klass.isAbstract()"})
     Object doForeignClass(Object value, ObjectKlass klass,
                     @CachedLibrary(limit = "LIMIT") InteropLibrary interop,
                     @CachedContext(EspressoLanguage.class) EspressoContext context) throws UnsupportedTypeException {

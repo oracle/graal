@@ -98,6 +98,16 @@ public class Target_com_oracle_truffle_espresso_polyglot_Polyglot {
                     }
                 }
 
+                /*
+                 * Casting to ForeignException skip the field checks.
+                 */
+                if (meta.polyglot != null /* polyglot enabled */ && meta.polyglot.ForeignException == targetKlass) {
+                    if (!interopLibrary.isException(value.rawForeignObject())) {
+                        throw Meta.throwExceptionWithMessage(meta.java_lang_ClassCastException, "Cannot cast a non-exception foreign object to ForeignException");
+                    }
+                    return StaticObject.createForeign(meta.polyglot.ForeignException, value.rawForeignObject(), interopLibrary);
+                }
+
                 try {
                     ToEspressoNode.checkHasAllFieldsOrThrow(value.rawForeignObject(), (ObjectKlass) targetKlass, interopLibrary, meta);
                 } catch (ClassCastException e) {
