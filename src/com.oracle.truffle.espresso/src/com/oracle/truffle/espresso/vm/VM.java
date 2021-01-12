@@ -2301,6 +2301,8 @@ public final class VM extends NativeEnv implements ContextAccess {
                 throw EspressoError.shouldNotReachHere(e);
             }
             assert managementPtr != null && !getUncached().isNull(managementPtr);
+        } else if (version != managementVersion) {
+            return RawPointer.nullInstance();
         }
         return managementPtr;
     }
