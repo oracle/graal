@@ -87,7 +87,7 @@ public abstract class NativeProfiledMemMove extends LLVMNode implements LLVMMemM
 
     @Specialization(limit = "8", guards = {"helper.guard(target, source)", "target.getObject() != source.getObject()", "doCustomCopy(target, source, length, copyTargetLib)"})
     protected void doManagedNonAliasingCustomCopy(LLVMManagedPointer target, LLVMManagedPointer source, long length,
-                    @SuppressWarnings("unused") @Cached(value = "create(target, source)", allowUncached = true) ManagedMemMoveHelperNode helper,
+                    @SuppressWarnings("unused") @Cached("create(target, source)") ManagedMemMoveHelperNode helper,
                     @CachedLibrary("target.getObject()") LLVMCopyTargetLibrary copyTargetLib) {
         copyTargetLib.copyFrom(target.getObject(), source.getObject(), length);
     }
@@ -107,7 +107,7 @@ public abstract class NativeProfiledMemMove extends LLVMNode implements LLVMMemM
 
     @Specialization(limit = "8", guards = {"helper.guard(target, source)", "target.getObject() == source.getObject()", "doCustomCopy(target, source, length, copyTargetLib)"})
     protected void doManagedAliasingCustomCopy(LLVMManagedPointer target, LLVMManagedPointer source, long length,
-                    @SuppressWarnings("unused") @Cached(value = "create(target, source)", allowUncached = true) ManagedMemMoveHelperNode helper,
+                    @SuppressWarnings("unused") @Cached("create(target, source)") ManagedMemMoveHelperNode helper,
                     @CachedLibrary("target.getObject()") LLVMCopyTargetLibrary copyTargetLib) {
         copyTargetLib.copyFrom(target.getObject(), source.getObject(), length);
     }
@@ -122,7 +122,7 @@ public abstract class NativeProfiledMemMove extends LLVMNode implements LLVMMemM
 
     @Specialization(limit = "4", guards = {"helper.guard(target, source)", "doCustomCopy(target, source, length, copyTargetLib)"})
     protected void doManagedNativeCustomCopy(LLVMManagedPointer target, LLVMNativePointer source, long length,
-                    @SuppressWarnings("unused") @Cached(value = "create(target, source)", allowUncached = true) ManagedMemMoveHelperNode helper,
+                    @SuppressWarnings("unused") @Cached("create(target, source)") ManagedMemMoveHelperNode helper,
                     @CachedLibrary("target.getObject()") LLVMCopyTargetLibrary copyTargetLib) {
         copyTargetLib.copyFrom(target.getObject(), source, length);
     }
@@ -138,7 +138,8 @@ public abstract class NativeProfiledMemMove extends LLVMNode implements LLVMMemM
         return LLVMManagedPointer.isInstance(ptr);
     }
 
-    @Specialization(guards = "isManaged(target) || isManaged(source)", replaces = {"doManagedNonAliasing", "doManagedAliasing", "doManagedNative", "doNativeManaged"})
+    @Specialization(guards = "isManaged(target) || isManaged(source)", replaces = {"doManagedNonAliasing", "doManagedNonAliasingCustomCopy", "doManagedAliasing", "doManagedAliasingCustomCopy",
+                    "doManagedNative", "doManagedNativeCustomCopy", "doNativeManaged"})
     @TruffleBoundary
     protected void doManagedSlowPath(LLVMPointer target, LLVMPointer source, long length) {
         ManagedMemMoveHelperNode helper = ManagedMemMoveHelperNode.createSlowPath(target, source);

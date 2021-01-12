@@ -1019,25 +1019,37 @@ suite = {
       "native": True,
       "vpath": True,
       "os_arch" : {
-        "linux": {
+		"linux": {
           "aarch64" : {
             "buildEnv" : {
               "PLATFORM" : "aarch64",
             },
           },
-          "<others>": {
+          "amd64": {
             "buildEnv" : {
               "PLATFORM" : "x86_64",
             },
-          }
-        },
-        "<others>": {
+          },
           "<others>": {
+            "buildEnv" : {
+              "PLATFORM" : "unknown_platform",
+            },
+          },
+        },
+        "darwin": {
+          "amd64": {
             "buildEnv" : {
               "PLATFORM" : "x86_64",
             },
           },
         },
+		"<others>": {
+          "<others>": {
+            "buildEnv" : {
+              "PLATFORM" : "unknown_platform",
+            },
+          },
+        }
       },
       "buildEnv" : {
         "OS" : "<os>",
