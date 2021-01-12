@@ -868,7 +868,7 @@ public final class Interop {
     // isIdenticalOrUndefined is not exposed to keep the API tidy.
 
     /**
-     * Returns <code>true</code> if two values represent the the identical value, else
+     * Returns <code>true</code> if two values represent the identical value, else
      * <code>false</code>. Two values are identical if and only if they have specified identity
      * semantics in the target language and refer to the identical instance.
      * <p>

@@ -911,7 +911,7 @@ public final class Target_com_oracle_truffle_espresso_polyglot_Interop {
     // region Identity Messages
 
     /**
-     * Returns <code>true</code> if two values represent the the identical value, else
+     * Returns <code>true</code> if two values represent the identical value, else
      * <code>false</code>. Two values are identical if and only if they have specified identity
      * semantics in the target language and refer to the identical instance.
      * <p>
