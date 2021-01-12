@@ -1578,11 +1578,7 @@ LibEspresso *get_libespresso(int type) {
     return NULL;
 }
 
-jint AttachCurrentThread(JavaVM *vm, void **penv, void *args) {
-    if ((*vm)->reserved1 != MOKA_LATTE) {
-        fprintf(stderr, "AttachCurrentThread: not a MOKA_LATTE" OS_NEWLINE_STR);
-        return JNI_ERR;
-    }
+jint AttachCurrentThread_helper(JavaVM *vm, void **penv, void *args, jint (JNICALL *attach_method)(JavaVM *vm, void **penv, void *args)) {
     JavaVM *espressoJavaVM = (*vm)->reserved2;
     LibEspressoIsolate *espressoIsolate = (*vm)->reserved0;
     graal_isolate_t *isolate = espressoIsolate->isolate;
@@ -1600,12 +1596,21 @@ jint AttachCurrentThread(JavaVM *vm, void **penv, void *args) {
         fprintf(stderr, "AttachCurrentThread: failed to attached to polyglot context" OS_NEWLINE_STR);
         return ret;
     }
-    ret = (*espressoJavaVM)->AttachCurrentThread(espressoJavaVM, penv, args);
+    ret = attach_method(espressoJavaVM, penv, args);
     if (ret != JNI_OK) {
         fprintf(stderr, "AttachCurrentThread: failed to attached to Espresso" OS_NEWLINE_STR);
         libespresso->detach_thread(thread);
     }
     return ret;
+}
+
+jint AttachCurrentThread(JavaVM *vm, void **penv, void *args) {
+    if ((*vm)->reserved1 != MOKA_LATTE) {
+        fprintf(stderr, "AttachCurrentThread: not a MOKA_LATTE" OS_NEWLINE_STR);
+        return JNI_ERR;
+    }
+    JavaVM *espressoJavaVM = (*vm)->reserved2;
+    return AttachCurrentThread_helper(vm, penv, args, (*espressoJavaVM)->AttachCurrentThread);
 }
 
 jint DestroyJavaVM(JavaVM *vm) {
@@ -1685,28 +1690,7 @@ jint AttachCurrentThreadAsDaemon(JavaVM *vm, void **penv, void *args) {
         return JNI_ERR;
     }
     JavaVM *espressoJavaVM = (*vm)->reserved2;
-    LibEspressoIsolate *espressoIsolate = (*vm)->reserved0; 
-    graal_isolate_t *isolate = espressoIsolate->isolate;
-    LibEspresso *libespresso = espressoIsolate->lib;
-    graal_isolatethread_t *thread;
-    if (libespresso->attach_thread(isolate, &thread) != 0) {
-        fprintf(stderr, "AttachCurrentThreadAsDaemon: failed to attached to isolate" OS_NEWLINE_STR);
-        return JNI_ERR;
-    }
-    // we must first attach to the polyglot context:
-    // (*espressoJavaVM)->AttachCurrentThread is a NFI closure from this context
-    // and only works correctly if we are attached.
-    jint ret = libespresso->Espresso_EnterContext(thread, (struct JavaVM_ *)espressoJavaVM);
-    if (ret != JNI_OK) {
-        fprintf(stderr, "AttachCurrentThreadAsDaemon: failed to attached to polyglot context" OS_NEWLINE_STR);
-        return ret;
-    }
-    ret = (*espressoJavaVM)->AttachCurrentThreadAsDaemon(espressoJavaVM, penv, args);
-    if (ret != JNI_OK) {
-        fprintf(stderr, "AttachCurrentThreadAsDaemon: failed to attached to Espresso" OS_NEWLINE_STR);
-        libespresso->detach_thread(thread);
-    }
-    return ret;
+    return AttachCurrentThread_helper(vm, penv, args, (*espressoJavaVM)->AttachCurrentThreadAsDaemon);
 }
 
 _JNI_IMPORT_OR_EXPORT_ jint JNICALL JNI_CreateJavaVM(JavaVM **vm_ptr, void **penv, void *args) {
