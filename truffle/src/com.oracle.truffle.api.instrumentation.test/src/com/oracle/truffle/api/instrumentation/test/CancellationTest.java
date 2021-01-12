@@ -48,6 +48,7 @@ import java.lang.reflect.Field;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.concurrent.Callable;
+import java.util.concurrent.CopyOnWriteArrayList;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.ExecutorService;
@@ -318,7 +319,7 @@ public class CancellationTest {
 
                         }
                     });
-                    context.eval(statements());
+                    context.eval(statements(Integer.MAX_VALUE));
                     fail();
                 } catch (PolyglotException e) {
                     if (!e.isCancelled()) {
@@ -360,7 +361,47 @@ public class CancellationTest {
         }
     }
 
-    private static Source statements() {
-        return Source.newBuilder(InstrumentationTestLanguage.ID, "LOOP(infinity, STATEMENT)", CancellationTest.class.getSimpleName()).buildLiteral();
+    @Test
+    public void testCancelInfiniteCountOfFiniteLoops() throws InterruptedException, ExecutionException {
+        try (Engine engn = Engine.create()) {
+            Context.Builder builder = Context.newBuilder().engine(engn);
+            ExecutorService executorService = Executors.newFixedThreadPool(10);
+            List<Future<?>> futures = new ArrayList<>();
+            CountDownLatch cancelLatch = new CountDownLatch(10);
+            List<Context> contextList = new CopyOnWriteArrayList<>();
+            for (int i = 0; i < 10; i++) {
+                futures.add(executorService.submit(() -> {
+                    try (Context c = builder.build()) {
+                        contextList.add(c);
+                        try {
+                            for (int j = 0; j < 100; j++) {
+                                c.eval(statements(1000));
+                            }
+                            cancelLatch.countDown();
+                            while (true) {
+                                c.eval(statements(1000));
+                            }
+                        } catch (PolyglotException e) {
+                            if (!e.isCancelled()) {
+                                throw e;
+                            }
+                        }
+                    }
+                }));
+            }
+            cancelLatch.await();
+            for (Context c : contextList) {
+                c.close(true);
+            }
+            for (Future<?> future : futures) {
+                future.get();
+            }
+            executorService.shutdown();
+            executorService.awaitTermination(100, TimeUnit.SECONDS);
+        }
+    }
+
+    private static Source statements(int count) {
+        return Source.newBuilder(InstrumentationTestLanguage.ID, "LOOP(" + (count == Integer.MAX_VALUE ? "infinity" : count) + ", STATEMENT)", CancellationTest.class.getSimpleName()).buildLiteral();
     }
 }
