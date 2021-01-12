@@ -748,10 +748,10 @@ public final class VM extends NativeEnv implements ContextAccess {
     @formatter:on
      */
 
-    @SuppressWarnings("unused")
     @VmImpl
     @TruffleBoundary
-    public int AttachCurrentThread(@Pointer TruffleObject penvPtr, @Pointer TruffleObject argsPtr) {
+    public int AttachCurrentThread(@Pointer TruffleObject vmPtr_, @Pointer TruffleObject penvPtr, @Pointer TruffleObject argsPtr) {
+        assert interopAsPointer(getJavaVM()) == interopAsPointer(vmPtr_);
         return attachCurrentThread(penvPtr, argsPtr, false);
     }
 
@@ -765,7 +765,9 @@ public final class VM extends NativeEnv implements ContextAccess {
         String name = null;
         if (JniVersion.isSupported(version, getContext().getJavaVersion())) {
             group = getHandles().get(Math.toIntExact(groupHandle));
-            // TODO decode name string
+            name = fromUTF8Ptr(namePtr);
+        } else {
+            getLogger().warning(String.format("AttachCurrentThread with unsupported JavaVMAttachArgs version: 0x%08x", version));
         }
         StaticObject thread = getContext().createThread(Thread.currentThread(), group, name);
         if (daemon) {
@@ -846,10 +848,10 @@ public final class VM extends NativeEnv implements ContextAccess {
         return JNI_EVERSION;
     }
 
-    @SuppressWarnings("unused")
     @VmImpl
     @TruffleBoundary
-    public int AttachCurrentThreadAsDaemon(@Pointer TruffleObject penvPtr, @Pointer TruffleObject argsPtr) {
+    public int AttachCurrentThreadAsDaemon(@Pointer TruffleObject vmPtr_, @Pointer TruffleObject penvPtr, @Pointer TruffleObject argsPtr) {
+        assert interopAsPointer(getJavaVM()) == interopAsPointer(vmPtr_);
         return attachCurrentThread(penvPtr, argsPtr, true);
     }
 
