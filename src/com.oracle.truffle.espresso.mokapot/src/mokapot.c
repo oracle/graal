@@ -308,14 +308,11 @@ JNIEXPORT void JNICALL JVM_DisableCompiler(JNIEnv *env, jclass compCls) {
 }
 
 JNIEXPORT void JNICALL JVM_StartThread(JNIEnv *env, jobject thread) {
-  IMPLEMENTED(JVM_StartThread);
-  return (*getEnv())->JVM_StartThread(env, thread);
-
+  UNIMPLEMENTED(JVM_StartThread);
 }
 
 JNIEXPORT void JNICALL JVM_StopThread(JNIEnv *env, jobject thread, jobject exception) {
-  IMPLEMENTED(JVM_StopThread);
-  return (*getEnv())->JVM_StopThread(env, thread, exception);
+  UNIMPLEMENTED(JVM_StopThread);
 
 }
 
