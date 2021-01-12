@@ -2,7 +2,7 @@
 
 DYNAMIC_IMPORTS=/vm-enterprise,/substratevm-enterprise
 COMPONENTS=Espresso,SubstrateVM Enterprise
-NATIVE_IMAGES=espresso
+NATIVE_IMAGES=espresso,lib:espresso
 DISABLE_POLYGLOT=true
 DISABLE_LIBPOLYGLOT=true
 FORCE_BASH_LAUNCHERS=native-image

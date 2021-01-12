@@ -235,7 +235,6 @@ public final class EspressoLanguage extends TruffleLanguage<EspressoContext> {
     protected CallTarget parse(final ParsingRequest request) throws Exception {
         final EspressoContext context = getCurrentContext();
         assert context.isInitialized();
-        context.begin();
         String contents = request.getSource().getCharacters().toString();
         if (DestroyVMNode.EVAL_NAME.equals(contents)) {
             RootNode node = new DestroyVMNode(this);

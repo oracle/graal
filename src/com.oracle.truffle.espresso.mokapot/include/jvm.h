@@ -28,8 +28,10 @@
 
 #if defined(_WIN32)
 # include "jvm_windows.h"
-#else
+#elif defined(__linux__) || defined(__APPLE__)
 # include "jvm_posix.h"
+#else
+#error unknown platform
 #endif
 
 #ifdef __cplusplus

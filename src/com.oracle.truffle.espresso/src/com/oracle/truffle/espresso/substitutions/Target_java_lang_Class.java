@@ -50,7 +50,6 @@ import com.oracle.truffle.espresso.impl.Klass;
 import com.oracle.truffle.espresso.impl.Method;
 import com.oracle.truffle.espresso.impl.ObjectKlass;
 import com.oracle.truffle.espresso.meta.Meta;
-import com.oracle.truffle.espresso.meta.MetaUtil;
 import com.oracle.truffle.espresso.runtime.Attribute;
 import com.oracle.truffle.espresso.runtime.EspressoContext;
 import com.oracle.truffle.espresso.runtime.EspressoException;
@@ -160,17 +159,8 @@ public final class Target_java_lang_Class {
     public static @Host(String.class) StaticObject getName0(@Host(Class.class) StaticObject self,
                     @InjectMeta Meta meta) {
         Klass klass = self.getMirrorKlass();
-        String name = klass.getType().toString();
         // Conversion from internal form.
-        String externalName = MetaUtil.internalNameToJava(name, true, true);
-
-        // Reflection relies on anonymous classes including a '/' on the name, to avoid generating
-        // (invalid) fast method accessors. See
-        // sun.reflect.misc.ReflectUtil#isVMAnonymousClass(Class<?>).
-        if (klass.isAnonymous()) {
-            externalName = appendID(klass, externalName);
-        }
-
+        String externalName = klass.getExternalName();
         // Class names must be interned.
         StaticObject guestString = meta.toGuestString(externalName);
         return internString(meta, guestString);
@@ -208,12 +198,6 @@ public final class Target_java_lang_Class {
     public static @Host(String.class) StaticObject initClassName(@Host(Class.class) StaticObject self,
                     @InjectMeta Meta meta) {
         return getName0(self, meta);
-    }
-
-    @TruffleBoundary
-    private static String appendID(Klass klass, String externalName) {
-        // A small improvement over HotSpot here, which uses the class identity hash code.
-        return externalName + "/" + klass.getId(); // VM.JVM_IHashCode(self);
     }
 
     @TruffleBoundary

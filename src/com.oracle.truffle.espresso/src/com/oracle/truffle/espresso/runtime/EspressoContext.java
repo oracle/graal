@@ -73,6 +73,8 @@ import com.oracle.truffle.espresso.substitutions.Target_java_lang_ref_Reference;
 import com.oracle.truffle.espresso.vm.InterpreterToVM;
 import com.oracle.truffle.espresso.vm.VM;
 
+import static com.oracle.truffle.espresso.jni.JniEnv.JNI_OK;
+
 public final class EspressoContext {
 
     public static final int DEFAULT_STACK_SIZE = 32;
@@ -131,7 +133,6 @@ public final class EspressoContext {
     // region JDWP
     private JDWPContextImpl jdwpContext;
     private VMListener eventListener;
-    private boolean contextReady;
     // endregion JDWP
 
     // region Options
@@ -343,6 +344,7 @@ public final class EspressoContext {
             // Spawn JNI first, then the VM.
             try (DebugCloseable vmInit = VM_INIT.scope(timers)) {
                 this.vm = VM.create(getJNI()); // Mokapot is loaded
+                vm.attachThread(Thread.currentThread());
             }
 
             // TODO: link libjimage
@@ -542,26 +544,31 @@ public final class EspressoContext {
         jdwpContext.finalizeContext();
     }
 
-    public void begin() {
-        this.contextReady = true;
-    }
-
-    public boolean canEnterOtherThread() {
-        return contextReady;
-    }
-
     // region Thread management
 
     /**
      * Creates a new guest thread from the host thread, and adds it to the main thread group.
      */
-    public void createThread(Thread hostThread) {
-        threadManager.createGuestThreadFromHost(hostThread, meta);
+    public StaticObject createThread(Thread hostThread) {
+        return threadManager.createGuestThreadFromHost(hostThread, meta, vm);
+    }
+
+    public StaticObject createThread(Thread hostThread, StaticObject group, String name) {
+        return threadManager.createGuestThreadFromHost(hostThread, meta, vm, name, group);
     }
 
     public void disposeThread(@SuppressWarnings("unused") Thread hostThread) {
-        // simply calling Thread.exit() will do most of what's needed
-        // TODO(Gregersen) - /browse/GR-20077
+        StaticObject guestThread = getGuestThreadFromHost(hostThread);
+        if (guestThread == null) {
+            return;
+        }
+        if (hostThread != Thread.currentThread()) {
+            getLogger().warning("unimplemented: disposeThread for non-current thread: " + hostThread);
+            return;
+        }
+        if (vm.DetachCurrentThread() != JNI_OK) {
+            throw new RuntimeException("Could not detach thread correctly");
+        }
     }
 
     public StaticObject getGuestThreadFromHost(Thread host) {

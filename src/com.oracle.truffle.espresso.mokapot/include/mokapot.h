@@ -25,6 +25,7 @@
 
 #include "jvm.h"
 #include "jni.h"
+#include "os.h"
 
 #include <trufflenfi.h>
 #include <stddef.h>
@@ -54,6 +55,13 @@ typedef uint8_t  jubyte;
 typedef uint16_t jushort;
 typedef uint32_t juint;
 typedef uint64_t julong;
+
+// A VM created from espresso host Java code through through initializeMokapotContext
+#define MOKA_RISTRETTO ((void *)11)
+// A VM created from JNI_CreateJavaVM
+#define MOKA_LATTE ((void *)22)
+// A MOKA_RISTRETTO VM that is used by a MOKA_LATTE VM
+#define MOKA_AMERICANO ((void *)33)
 
 #define VM_METHOD_LIST(V) \
     V(JVM_Accept) \
@@ -313,7 +321,9 @@ JNIEXPORT MokapotEnv* JNICALL initializeMokapotContext(TruffleEnv *truffle_env, 
 
 JNIEXPORT void JNICALL disposeMokapotContext(TruffleEnv *truffle_env, MokapotEnv* moka_env);
 
-JNIEXPORT JavaVM* JNICALL getJavaVM();
+JNIEXPORT JavaVM* JNICALL getJavaVM(MokapotEnv* moka_env);
+
+JNIEXPORT void JNICALL mokapotAttachThread(MokapotEnv* moka_env);
 
 JNIEXPORT const char* JNICALL getPackageAt(const char* const* packages, int at);
 
@@ -845,5 +855,18 @@ struct MokapotEnv_ {
 
     #endif
 };
+
+// An always-growing, lock-free list of JavaVM*
+typedef struct VMList {
+    struct VMList* OS_ATOMIC next;
+    uint32_t capacity;
+    JavaVM* OS_ATOMIC vms[];
+} VMList;
+
+extern VMList* OS_ATOMIC vm_list_head;
+
+void add_java_vm(JavaVM* vm);
+jint remove_java_vm(JavaVM* vm);
+void gather_java_vms(JavaVM** buf, jsize buf_size, jsize* numVms);
 
 #endif // _MOKAPOT_H

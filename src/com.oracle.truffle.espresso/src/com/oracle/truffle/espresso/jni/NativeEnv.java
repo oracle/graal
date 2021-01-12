@@ -246,7 +246,7 @@ public abstract class NativeEnv {
             }
         }
         if (notFoundIsFatal) {
-            throw EspressoError.shouldNotReachHere("Cannot load library: " + name);
+            throw EspressoError.shouldNotReachHere("Cannot load library: " + name + "\nSearch path: " + searchPaths);
         }
         return null;
     }
