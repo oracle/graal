@@ -59,6 +59,7 @@ import java.util.function.IntFunction;
 import java.util.function.Supplier;
 import java.util.logging.Level;
 
+import com.oracle.truffle.espresso.runtime.EspressoExitException;
 import org.graalvm.options.OptionValues;
 
 import com.oracle.truffle.api.CompilerDirectives;
@@ -621,8 +622,17 @@ public final class VM extends NativeEnv implements ContextAccess {
                         jniEnv.getThreadLocalPendingException().set(wrappedError.getExceptionObject());
                         return defaultValue(m.returnType());
                     }
+                    printStackTrace(e);
                     throw e;
+                } catch (Throwable t) {
+                    printStackTrace(t);
+                    throw t; // FIXME return an error value, m should provide it
                 }
+            }
+
+            @TruffleBoundary
+            private void printStackTrace(Throwable t) {
+                t.printStackTrace();
             }
         });
     }
@@ -718,7 +728,11 @@ public final class VM extends NativeEnv implements ContextAccess {
     // region JNI Invocation Interface
     @VmImpl
     public int DestroyJavaVM() {
-        getContext().destroyVM();
+        try {
+            getContext().destroyVM();
+        } catch (EspressoExitException exit) {
+            // expected
+        }
         return JNI_OK;
     }
 
