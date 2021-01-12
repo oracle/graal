@@ -24,9 +24,21 @@
  */
 package com.oracle.svm.hosted.jdk;
 
+import static com.oracle.svm.core.BuildArtifacts.ArtifactType;
+import static java.nio.file.StandardCopyOption.REPLACE_EXISTING;
+
+import java.io.IOException;
+import java.nio.file.Files;
+import java.nio.file.NoSuchFileException;
+import java.nio.file.Path;
+import java.nio.file.Paths;
+import java.util.TreeSet;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentMap;
 
+import org.graalvm.compiler.debug.DebugContext;
+import org.graalvm.compiler.debug.DebugContext.Scope;
+import org.graalvm.compiler.debug.Indent;
 import org.graalvm.compiler.nodes.ValueNode;
 import org.graalvm.compiler.nodes.graphbuilderconf.GraphBuilderConfiguration.Plugins;
 import org.graalvm.compiler.nodes.graphbuilderconf.GraphBuilderContext;
@@ -37,11 +49,15 @@ import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.nativeimage.Platforms;
 import org.graalvm.nativeimage.impl.InternalPlatform;
 
+import com.oracle.svm.core.BuildArtifacts;
 import com.oracle.svm.core.ParsingReason;
 import com.oracle.svm.core.annotate.AutomaticFeature;
 import com.oracle.svm.core.graal.GraalFeature;
+import com.oracle.svm.core.jdk.JNIRegistrationUtil;
 import com.oracle.svm.core.jdk.NativeLibrarySupport;
 import com.oracle.svm.core.meta.SubstrateObjectConstant;
+import com.oracle.svm.core.util.VMError;
+import com.oracle.svm.hosted.FeatureImpl.AfterImageWriteAccessImpl;
 import com.oracle.svm.hosted.FeatureImpl.BeforeAnalysisAccessImpl;
 import com.oracle.svm.hosted.c.NativeLibraries;
 
@@ -50,7 +66,7 @@ import jdk.vm.ci.meta.ResolvedJavaMethod;
 /** Registration of native JDK libraries. */
 @Platforms(InternalPlatform.PLATFORM_JNI.class)
 @AutomaticFeature
-class JNIRegistrationSupport implements GraalFeature {
+class JNIRegistrationSupport extends JNIRegistrationUtil implements GraalFeature {
 
     private final ConcurrentMap<String, Boolean> registeredLibraries = new ConcurrentHashMap<>();
     private NativeLibraries nativeLibraries = null;
@@ -95,5 +111,62 @@ class JNIRegistrationSupport implements GraalFeature {
                 return false;
             }
         });
+    }
+
+    private AfterImageWriteAccessImpl accessImpl;
+
+    @Override
+    @SuppressWarnings("try")
+    public void afterImageWrite(AfterImageWriteAccess access) {
+        accessImpl = (AfterImageWriteAccessImpl) access;
+        try (Scope s = accessImpl.getDebugContext().scope("JDKLibs")) {
+            if (isWindows()) {
+                /* On Windows, JDK libraries are in `<java.home>\bin` directory. */
+                Path jdkLibDir = Paths.get(System.getProperty("java.home"), "bin");
+                /* Copy JDK libraries needed to run the native image. */
+                copyJDKLibraries(jdkLibDir);
+            }
+        } finally {
+            accessImpl = null;
+        }
+    }
+
+    /** Copies registered dynamic libraries from the JDK next to the image. */
+    @SuppressWarnings("try")
+    private void copyJDKLibraries(Path jdkLibDir) {
+        DebugContext debug = accessImpl.getDebugContext();
+        try (Scope s = debug.scope("copy");
+                        Indent i = debug.logAndIndent("from: %s", jdkLibDir)) {
+            for (String libname : new TreeSet<>(registeredLibraries.keySet())) {
+                String library = System.mapLibraryName(libname);
+
+                if (NativeLibrarySupport.singleton().isPreregisteredBuiltinLibrary(libname)) {
+                    /* Skip statically linked JDK libraries. */
+                    debug.log(DebugContext.INFO_LEVEL, "%s: SKIPPED", library);
+                    continue;
+                }
+
+                if (libname.equals("sunec")) {
+                    /*
+                     * Ignore `sunec` library if it is not statically linked (we will use `SunEC` in
+                     * mode without full ECC implementation anyway).
+                     */
+                    debug.log(DebugContext.INFO_LEVEL, "%s: IGNORED", library);
+                    continue;
+                }
+
+                try {
+                    Path libraryPath = accessImpl.getImagePath().resolveSibling(library);
+                    Files.copy(jdkLibDir.resolve(library), libraryPath, REPLACE_EXISTING);
+                    BuildArtifacts.singleton().add(ArtifactType.JDK_LIB, libraryPath);
+                    debug.log("%s: OK", library);
+                } catch (NoSuchFileException e) {
+                    /* Ignore libraries that are not present in the JDK. */
+                    debug.log(DebugContext.INFO_LEVEL, "%s: IGNORED", library);
+                } catch (IOException e) {
+                    VMError.shouldNotReachHere(e);
+                }
+            }
+        }
     }
 }
