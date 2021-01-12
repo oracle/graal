@@ -907,9 +907,11 @@ suite = {
     "com.oracle.truffle.llvm.tests.libc.native" : {
       "subDir" : "tests",
       "class" : "SulongTestSuite",
-      "variants" : ["O0_OUT"],
+      "variants" : ["O0_OUT", "plain_toolchain"],
       "buildEnv" : {
         "OS" : "<os>",
+        "TOOLCHAIN_CLANG" : "<toolchainGetToolPath:native,CC>",
+        "TOOLCHAIN_CLANGXX" : "<toolchainGetToolPath:native,CXX>",
       },
       "dependencies" : [
         "SULONG_TEST",
