@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2013, 2019, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2013, 2021, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -25,11 +25,12 @@
 package org.graalvm.compiler.nodes.calc;
 
 import static org.graalvm.compiler.nodeinfo.NodeCycles.CYCLES_1;
-
-import java.nio.ByteBuffer;
-import java.nio.ByteOrder;
+import static org.graalvm.compiler.nodes.calc.BinaryArithmeticNode.getArithmeticOpTable;
 
 import org.graalvm.compiler.core.common.LIRKind;
+import org.graalvm.compiler.core.common.calc.ReinterpretUtils;
+import org.graalvm.compiler.core.common.type.ArithmeticOpTable.ReinterpretOp;
+import org.graalvm.compiler.core.common.type.ArithmeticOpTable;
 import org.graalvm.compiler.core.common.type.ArithmeticStamp;
 import org.graalvm.compiler.core.common.type.FloatStamp;
 import org.graalvm.compiler.core.common.type.IntegerStamp;
@@ -39,14 +40,14 @@ import org.graalvm.compiler.graph.NodeClass;
 import org.graalvm.compiler.graph.spi.CanonicalizerTool;
 import org.graalvm.compiler.lir.gen.ArithmeticLIRGeneratorTool;
 import org.graalvm.compiler.nodeinfo.NodeInfo;
+import org.graalvm.compiler.nodes.ArithmeticOperation;
 import org.graalvm.compiler.nodes.ConstantNode;
 import org.graalvm.compiler.nodes.NodeView;
 import org.graalvm.compiler.nodes.ValueNode;
 import org.graalvm.compiler.nodes.spi.ArithmeticLIRLowerable;
 import org.graalvm.compiler.nodes.spi.NodeLIRBuilderTool;
-import org.graalvm.compiler.serviceprovider.BufferUtil;
 
-import jdk.vm.ci.code.CodeUtil;
+import jdk.vm.ci.meta.Constant;
 import jdk.vm.ci.meta.JavaKind;
 import jdk.vm.ci.meta.SerializableConstant;
 
@@ -56,7 +57,7 @@ import jdk.vm.ci.meta.SerializableConstant;
  * the old stamp.
  */
 @NodeInfo(cycles = CYCLES_1)
-public final class ReinterpretNode extends UnaryNode implements ArithmeticLIRLowerable {
+public final class ReinterpretNode extends UnaryNode implements ArithmeticOperation, ArithmeticLIRLowerable {
 
     public static final NodeClass<ReinterpretNode> TYPE = NodeClass.create(ReinterpretNode.class);
 
@@ -77,18 +78,8 @@ public final class ReinterpretNode extends UnaryNode implements ArithmeticLIRLow
         return canonical(null, to, value, view);
     }
 
-    private static SerializableConstant evalConst(Stamp stamp, SerializableConstant c) {
-        /*
-         * We don't care about byte order here. Either would produce the correct result.
-         */
-        ByteBuffer buffer = ByteBuffer.wrap(new byte[c.getSerializedSize()]).order(ByteOrder.nativeOrder());
-        c.serialize(buffer);
-
-        BufferUtil.asBaseBuffer(buffer).rewind();
-        SerializableConstant ret = ((ArithmeticStamp) stamp).deserialize(buffer);
-
-        assert !buffer.hasRemaining();
-        return ret;
+    private static Constant evalConst(Stamp forStamp, SerializableConstant c) {
+        return ArithmeticOpTable.forStamp(forStamp).getReinterpret().foldConstant(forStamp, c);
     }
 
     @Override
@@ -111,182 +102,20 @@ public final class ReinterpretNode extends UnaryNode implements ArithmeticLIRLow
         return node != null ? node : new ReinterpretNode(forStamp, forValue);
     }
 
-    /**
-     * Compute the {@link IntegerStamp} from a {@link FloatStamp}, losing as little information as
-     * possible.
-     *
-     * Sorting by their bit pattern reinterpreted as signed integers gives the following order of
-     * floating point numbers:
-     *
-     * -0 | negative numbers | -Inf | NaNs | 0 | positive numbers | +Inf | NaNs
-     *
-     * So we can compute a better integer range if we know that the input is positive, negative,
-     * finite, non-zero and/or not NaN.
-     */
-    private static IntegerStamp floatToInt(FloatStamp stamp) {
-        int bits = stamp.getBits();
-
-        long signBit = 1L << (bits - 1);
-        long exponentMask;
-        if (bits == 64) {
-            exponentMask = Double.doubleToRawLongBits(Double.POSITIVE_INFINITY);
-        } else {
-            assert bits == 32;
-            exponentMask = Float.floatToRawIntBits(Float.POSITIVE_INFINITY);
-        }
-
-        long positiveInfinity = exponentMask;
-        long negativeInfinity = CodeUtil.signExtend(signBit | positiveInfinity, bits);
-        long negativeZero = CodeUtil.signExtend(signBit | 0, bits);
-
-        if (stamp.isNaN()) {
-            // special case: in addition to the range, we know NaN has all exponent bits set
-            return IntegerStamp.create(bits, negativeInfinity + 1, CodeUtil.maxValue(bits), exponentMask, CodeUtil.mask(bits));
-        }
-
-        long upperBound;
-        if (stamp.isNonNaN()) {
-            if (stamp.upperBound() < 0.0) {
-                if (stamp.lowerBound() > Double.NEGATIVE_INFINITY) {
-                    upperBound = negativeInfinity - 1;
-                } else {
-                    upperBound = negativeInfinity;
-                }
-            } else if (stamp.upperBound() == 0.0) {
-                upperBound = 0;
-            } else if (stamp.upperBound() < Double.POSITIVE_INFINITY) {
-                upperBound = positiveInfinity - 1;
-            } else {
-                upperBound = positiveInfinity;
-            }
-        } else {
-            upperBound = CodeUtil.maxValue(bits);
-        }
-
-        long lowerBound;
-        if (stamp.lowerBound() > 0.0) {
-            if (stamp.isNonNaN()) {
-                lowerBound = 1;
-            } else {
-                lowerBound = negativeInfinity + 1;
-            }
-        } else if (stamp.upperBound() == Double.NEGATIVE_INFINITY) {
-            lowerBound = negativeInfinity;
-        } else if (stamp.upperBound() < 0.0) {
-            lowerBound = negativeZero + 1;
-        } else {
-            lowerBound = negativeZero;
-        }
-
-        return StampFactory.forInteger(bits, lowerBound, upperBound);
-    }
-
-    /**
-     * Compute the {@link IntegerStamp} from a {@link FloatStamp}, losing as little information as
-     * possible.
-     *
-     * Sorting by their bit pattern reinterpreted as signed integers gives the following order of
-     * floating point numbers:
-     *
-     * -0 | negative numbers | -Inf | NaNs | 0 | positive numbers | +Inf | NaNs
-     *
-     * So from certain integer ranges we may be able to infer something about the sign, finiteness
-     * or NaN-ness of the result.
-     */
-    private static FloatStamp intToFloat(IntegerStamp stamp) {
-        int bits = stamp.getBits();
-
-        double minPositive;
-        double maxPositive;
-
-        long signBit = 1L << (bits - 1);
-        long exponentMask;
-        if (bits == 64) {
-            exponentMask = Double.doubleToRawLongBits(Double.POSITIVE_INFINITY);
-            minPositive = Double.MIN_VALUE;
-            maxPositive = Double.MAX_VALUE;
-        } else {
-            assert bits == 32;
-            exponentMask = Float.floatToRawIntBits(Float.POSITIVE_INFINITY);
-            minPositive = Float.MIN_VALUE;
-            maxPositive = Float.MAX_VALUE;
-        }
-
-        long significandMask = CodeUtil.mask(bits) & ~(signBit | exponentMask);
-
-        long positiveInfinity = exponentMask;
-        long negativeInfinity = CodeUtil.signExtend(signBit | positiveInfinity, bits);
-        long negativeZero = CodeUtil.signExtend(signBit | 0, bits);
-
-        if ((stamp.downMask() & exponentMask) == exponentMask && (stamp.downMask() & significandMask) != 0) {
-            // if all exponent bits and at least one significand bit are set, the result is NaN
-            return new FloatStamp(bits, Double.NaN, Double.NaN, false);
-        }
-
-        double upperBound;
-        if (stamp.upperBound() < negativeInfinity) {
-            if (stamp.lowerBound() > negativeZero) {
-                upperBound = -minPositive;
-            } else {
-                upperBound = -0.0;
-            }
-        } else if (stamp.upperBound() < 0) {
-            if (stamp.lowerBound() > negativeInfinity) {
-                return new FloatStamp(bits, Double.NaN, Double.NaN, false);
-            } else if (stamp.lowerBound() == negativeInfinity) {
-                upperBound = Double.NEGATIVE_INFINITY;
-            } else if (stamp.lowerBound() > negativeZero) {
-                upperBound = -minPositive;
-            } else {
-                upperBound = -0.0;
-            }
-        } else if (stamp.upperBound() == 0) {
-            upperBound = 0.0;
-        } else if (stamp.upperBound() < positiveInfinity) {
-            upperBound = maxPositive;
-        } else {
-            upperBound = Double.POSITIVE_INFINITY;
-        }
-
-        double lowerBound;
-        if (stamp.lowerBound() > positiveInfinity) {
-            return new FloatStamp(bits, Double.NaN, Double.NaN, false);
-        } else if (stamp.lowerBound() == positiveInfinity) {
-            lowerBound = Double.POSITIVE_INFINITY;
-        } else if (stamp.lowerBound() > 0) {
-            lowerBound = minPositive;
-        } else if (stamp.lowerBound() > negativeInfinity) {
-            lowerBound = 0.0;
-        } else {
-            lowerBound = Double.NEGATIVE_INFINITY;
-        }
-
-        boolean nonNaN;
-        if ((stamp.upMask() & exponentMask) != exponentMask) {
-            // NaN has all exponent bits set
-            nonNaN = true;
-        } else {
-            boolean negativeNaNBlock = stamp.lowerBound() < 0 && stamp.upperBound() > negativeInfinity;
-            boolean positiveNaNBlock = stamp.upperBound() > positiveInfinity;
-            nonNaN = !negativeNaNBlock && !positiveNaNBlock;
-        }
-
-        return new FloatStamp(bits, lowerBound, upperBound, nonNaN);
-    }
-
     private static Stamp getReinterpretStamp(Stamp toStamp, Stamp fromStamp) {
         if (toStamp instanceof IntegerStamp && fromStamp instanceof FloatStamp) {
-            return floatToInt((FloatStamp) fromStamp);
+            return ReinterpretUtils.floatToInt((FloatStamp) fromStamp);
         } else if (toStamp instanceof FloatStamp && fromStamp instanceof IntegerStamp) {
-            return intToFloat((IntegerStamp) fromStamp);
+            return ReinterpretUtils.intToFloat((IntegerStamp) fromStamp);
         } else {
             return toStamp;
         }
     }
 
     @Override
-    public boolean inferStamp() {
-        return updateStamp(getReinterpretStamp(stamp(NodeView.DEFAULT), getValue().stamp(NodeView.DEFAULT)));
+    public Stamp foldStamp(Stamp newStamp) {
+        assert newStamp.isCompatible(getValue().stamp(NodeView.DEFAULT));
+        return getOp(getValue()).foldStamp(stamp(NodeView.DEFAULT), newStamp);
     }
 
     @Override
@@ -297,5 +126,14 @@ public final class ReinterpretNode extends UnaryNode implements ArithmeticLIRLow
 
     public static ValueNode reinterpret(JavaKind toKind, ValueNode value) {
         return value.graph().unique(new ReinterpretNode(toKind, value));
+    }
+
+    @Override
+    public ReinterpretOp getArithmeticOp() {
+        return getOp(getValue());
+    }
+
+    private static ReinterpretOp getOp(ValueNode forValue) {
+        return getArithmeticOpTable(forValue).getReinterpret();
     }
 }
