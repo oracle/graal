@@ -125,12 +125,12 @@ local base = {
   }
 };
 
-local gate_coverage = base.eclipse + {
+local gate_coverage(allow_warnings) = base.eclipse + {
   setup+: [
     ['mx', 'sversions'],
   ],
   run+: [
-    ['mx', '--jacoco-whitelist-package', 'com.oracle.truffle.espresso', '--jacoco-exclude-annotation', '@GeneratedBy', '--strict-compliance', 'gate', '--strict-mode', '--tags', '${GATE_TAGS}', '--jacocout', 'html'],
+    ['mx', '--jacoco-whitelist-package', 'com.oracle.truffle.espresso', '--jacoco-exclude-annotation', '@GeneratedBy', '--strict-compliance', 'gate', '--strict-mode', '--tags', '${GATE_TAGS}', '--jacocout', 'html'] + ( if allow_warnings then ['--no-warning-as-error'] else []),
     ['mx', '--jacoco-whitelist-package', 'com.oracle.truffle.espresso', '--jacoco-exclude-annotation', '@GeneratedBy', 'sonarqube-upload', "-Dsonar.host.url=$SONAR_HOST_URL", "-Dsonar.projectKey=com.oracle.truffle.espresso", "-Dsonar.projectName=GraalVM - Espresso", '--exclude-generated'],
     ['mx', '--jacoco-whitelist-package', 'com.oracle.truffle.espresso', '--jacoco-exclude-annotation', '@GeneratedBy', 'coverage-upload']
   ],
@@ -314,12 +314,12 @@ local awfy = 'awfy:*';
 {
   builds: [
     // JaCoCo coverage (disabled)
-    // jdk8_weekly_linu                   + gate_coverage + { environment+: {
-    //                                                          GATE_TAGS:       'build,unittest',
-    //                                                          DYNAMIC_IMPORTS: '/vm,truffleruby'
-    //                                                        },
-    //                                                        name: 'espresso-gate-coverage-jdk8-linux-amd64'
-    //                                                      },
+    // jdk8_weekly_linux                  + gate_coverage(allow_warnings=true)  + { environment+: {
+    //                                                                                GATE_TAGS:       'build,unittest',
+    //                                                                                DYNAMIC_IMPORTS: '/vm,truffleruby'
+    //                                                                              },
+    //                                                                              name: 'espresso-gate-coverage-jdk8-linux-amd64'
+    //                                                                            },
 
     // Gates
     jdk8_gate_linux + base.extra_jdk11_ce + gate_espresso(allow_warnings=false) + { environment+: {
