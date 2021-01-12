@@ -162,14 +162,23 @@ public class LLVMAarch64VaListStorage extends LLVMVaListStorage {
     // LLVMCopyTargetLibrary
 
     @ExportMessage
-    public boolean canCopyFrom(Object source) {
+    public boolean canCopyFrom(Object source, @SuppressWarnings("unused") long length) {
+        // I do not test if the length is the size of va_list as I need that the execution
+        // proceed to copyFrom. I think that an exception should not be thrown here in this
+        // idempotent method, but in the actual attempt to make a copy.
         return source instanceof LLVMAarch64VaListStorage || LLVMNativePointer.isInstance(source);
     }
 
     @ExportMessage
-    public void copyFrom(Object source,
+    public void copyFrom(Object source, @SuppressWarnings("unused") long length,
                     @Cached VAListPointerWrapperFactoryDelegate wrapperFactory,
-                    @CachedLibrary(limit = "1") LLVMVaListLibrary vaListLibrary) {
+                    @CachedLibrary(limit = "1") LLVMVaListLibrary vaListLibrary,
+                    @Cached BranchProfile invalidLengthProfile) {
+        if (length != Aarch64BitVarArgs.SIZE_OF_VALIST) {
+            invalidLengthProfile.enter();
+            CompilerDirectives.transferToInterpreter();
+            throw new UnsupportedOperationException("Invalid length " + length + ". Expected length " + Aarch64BitVarArgs.SIZE_OF_VALIST);
+        }
         vaListLibrary.copy(wrapperFactory.execute(source), this);
     }
 

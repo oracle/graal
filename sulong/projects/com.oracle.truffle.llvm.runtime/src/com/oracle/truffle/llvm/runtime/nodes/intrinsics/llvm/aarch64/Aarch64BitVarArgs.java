@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2020, 2020, Oracle and/or its affiliates.
+ * Copyright (c) 2020, 2021, Oracle and/or its affiliates.
  *
  * All rights reserved.
  *
@@ -45,4 +45,5 @@ class Aarch64BitVarArgs {
 
     public static final int STACK_STEP = 8;
 
+    public static final int SIZE_OF_VALIST = 32;
 }
