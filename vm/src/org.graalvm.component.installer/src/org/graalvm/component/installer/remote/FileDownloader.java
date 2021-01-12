@@ -44,6 +44,7 @@ import java.util.Arrays;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.function.Consumer;
+import org.graalvm.component.installer.CommonConstants;
 import org.graalvm.component.installer.Feedback;
 import org.graalvm.component.installer.SystemUtils;
 import org.graalvm.component.installer.URLConnectionFactory;
@@ -72,6 +73,7 @@ public final class FileDownloader {
     private final Map<String, String> requestHeaders = new HashMap<>();
     private Consumer<SeekableByteChannel> dataInterceptor;
     private URLConnectionFactory connectionFactory;
+    private boolean simpleOutput;
 
     /**
      * Algorithm to compute file digest. By default SHA-256 is used.
@@ -162,6 +164,10 @@ public final class FileDownloader {
     }
 
     void setupProgress() {
+        if (simpleOutput) {
+            feedback.output("MSG_ProgressStart_Simple@", Long.toString(size));
+            return;
+        }
         if (!displayProgress) {
             return;
         }
@@ -187,6 +193,10 @@ public final class FileDownloader {
         received += chunk;
         int next = cnt(received);
         if (now < next) {
+            if (simpleOutput) {
+                feedback.output("MSG_Progress_Simple@", Long.toString(received));
+                return;
+            }
             progressString.setCharAt(next + startPos - 1, signChar);
             signCount = next;
 
@@ -198,13 +208,14 @@ public final class FileDownloader {
     }
 
     void stopProgress(boolean success) {
-        if (displayProgress) {
+        if (displayProgress && !simpleOutput) {
             feedback.verbatimPart(backspaceString, false);
         }
+        String simpleSuffix = simpleOutput ? "_Simple@" : "";
         if (success) {
-            feedback.verboseOutput("MSG_DownloadingDone");
+            feedback.verboseOutput("MSG_DownloadingDone" + simpleSuffix);
         } else {
-            feedback.output("MSG_DownloadingTerminated");
+            feedback.output("MSG_DownloadingTerminated" + simpleSuffix);
         }
     }
 
@@ -279,13 +290,20 @@ public final class FileDownloader {
     }
 
     public void download() throws IOException {
+        simpleOutput = Boolean.TRUE.toString().equals(System.getProperty(CommonConstants.SYSPROP_SIMPLE_OUTPUT));
         boolean fromFile = sourceURL.getProtocol().equals("file");
-        if (fileDescription != null) {
-            if (!feedback.verboseOutput("MSG_DownloadingVerbose", getFileDescription(), getSourceURL())) {
-                feedback.output(fromFile ? "MSG_UsingFile" : "MSG_Downloading", getFileDescription(), getSourceURL().getHost());
-            }
+        if (simpleOutput) {
+            feedback.output(
+                            "MSG_Downloading_Simple@",
+                            getSourceURL(), getFileDescription() == null ? "" : getFileDescription());
         } else {
-            feedback.output("MSG_DownloadingFrom", getSourceURL());
+            if (fileDescription != null) {
+                if (!feedback.verboseOutput("MSG_DownloadingVerbose", getFileDescription(), getSourceURL())) {
+                    feedback.output(fromFile ? "MSG_UsingFile" : "MSG_Downloading", getFileDescription(), getSourceURL().getHost());
+                }
+            } else {
+                feedback.output("MSG_DownloadingFrom", getSourceURL());
+            }
         }
 
         Path localCache = feedback.getLocalCache(sourceURL);
@@ -309,7 +327,11 @@ public final class FileDownloader {
         URLConnection conn = getConnectionFactory().createConnection(sourceURL, this::configureHeaders);
 
         size = conn.getContentLengthLong();
-        verbose = feedback.verbosePart("MSG_DownloadReceivingBytes", toKB(size));
+        if (simpleOutput) {
+            verbose = feedback.verboseOutput(null);
+        } else {
+            verbose = feedback.verbosePart("MSG_DownloadReceivingBytes", toKB(size));
+        }
         if (verbose) {
             displayProgress = true;
         }
@@ -328,7 +350,7 @@ public final class FileDownloader {
                                         StandardOpenOption.WRITE, StandardOpenOption.CREATE, StandardOpenOption.TRUNCATE_EXISTING)) {
             int read;
             while ((read = rbc.read(bb)) >= 0) {
-                if (first) {
+                if (first && !simpleOutput) {
                     feedback.verbatimPart(progressString.toString(), false);
                 }
                 bb.flip();

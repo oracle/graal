@@ -45,6 +45,8 @@ public final class SoftwareChannelSource {
      */
     private String label;
 
+    private int priority;
+
     /**
      * Optional parametrs for the software channel.
      */
@@ -77,5 +79,13 @@ public final class SoftwareChannelSource {
 
     public String getParameter(String key) {
         return params.get(key);
+    }
+
+    public int getPriority() {
+        return priority;
+    }
+
+    public void setPriority(int priority) {
+        this.priority = priority;
     }
 }

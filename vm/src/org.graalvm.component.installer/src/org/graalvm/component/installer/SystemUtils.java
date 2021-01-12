@@ -341,7 +341,8 @@ public class SystemUtils {
     }
 
     public static Path getGraalVMJDKRoot(ComponentRegistry reg) {
-        if ("macos".equals(reg.getGraalCapabilities().get(CommonConstants.CAP_OS_NAME))) {
+        if (CommonConstants.OS_TOKEN_MACOS.equals(
+                        reg.getGraalCapabilities().get(CommonConstants.CAP_OS_NAME))) {
             return Paths.get("Contents", "Home");
         } else {
             return Paths.get("");
@@ -367,7 +368,7 @@ public class SystemUtils {
         return null;
     }
 
-    static boolean licenseTracking = false;
+    static boolean licenseTracking = true;
 
     public static boolean isLicenseTrackingEnabled() {
         return licenseTracking;
@@ -621,6 +622,34 @@ public class SystemUtils {
             return SystemUtils.fingerPrint(digest, delimiters);
         } catch (NoSuchAlgorithmException ex) {
             throw new FailedOperationException(ex.getLocalizedMessage(), ex);
+        }
+    }
+
+    public static String patternOsName(String os) {
+        if (os == null) {
+            return null;
+        }
+        String lc = os.toLowerCase(Locale.ENGLISH);
+        switch (lc) {
+            case CommonConstants.OS_MACOS_DARWIN:
+            case CommonConstants.OS_TOKEN_MACOS:
+                return "(:?" + CommonConstants.OS_MACOS_DARWIN + "|" + CommonConstants.OS_TOKEN_MACOS + ")";
+            default:
+                return lc;
+        }
+    }
+
+    public static String patternOsArch(String arch) {
+        if (arch == null) {
+            return null;
+        }
+        String lc = arch.toLowerCase(Locale.ENGLISH);
+        switch (lc) {
+            case CommonConstants.ARCH_AMD64:
+            case CommonConstants.ARCH_X8664:
+                return "(:?" + CommonConstants.ARCH_AMD64 + "|" + CommonConstants.ARCH_X8664 + ")";
+            default:
+                return lc;
         }
     }
 
