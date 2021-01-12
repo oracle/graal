@@ -225,7 +225,6 @@ public final class Target_java_lang_Thread {
                             self.getKlass().vtableLookup(meta.java_lang_Thread_run.getVTableIndex()).invokeDirect(self);
                             checkDeprecatedState(meta, self);
                         } catch (EspressoException uncaught) {
-                            // TODO why was this using a dedicated lookup?
                             meta.java_lang_Thread_dispatchUncaughtException.invokeDirect(self, uncaught.getExceptionObject());
                         }
                     } catch (EspressoExitException exit) {
