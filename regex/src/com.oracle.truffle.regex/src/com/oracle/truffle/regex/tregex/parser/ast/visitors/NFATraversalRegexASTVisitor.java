@@ -136,7 +136,7 @@ public abstract class NFATraversalRegexASTVisitor {
      * traverse the inner loop, {@code (|[a])*}, without hitting any CharacterClass node by choosing
      * the first alternative and we will then arrive back at the outer loop. There, we detect an
      * infinite loop, which causes us to backtrack and choose the second alternative in the inner
-     * loop, leading us to the CharacterClass node [a].
+     * loop, leading us to the CharacterClass node {@code [a]}.
      */
     private final StateSet<RegexAST, Group> insideLoops;
     /**
