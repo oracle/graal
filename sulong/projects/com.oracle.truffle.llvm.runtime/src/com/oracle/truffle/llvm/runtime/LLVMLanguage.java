@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2016, 2020, Oracle and/or its affiliates.
+ * Copyright (c) 2016, 2021, Oracle and/or its affiliates.
  *
  * All rights reserved.
  *
@@ -74,6 +74,7 @@ import org.graalvm.options.OptionValues;
 import java.util.ArrayList;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.atomic.AtomicInteger;
+import java.util.function.Function;
 
 @TruffleLanguage.Registration(id = LLVMLanguage.ID, name = LLVMLanguage.NAME, internal = false, interactive = false, defaultMimeType = LLVMLanguage.LLVM_BITCODE_MIME_TYPE, //
                 byteMimeTypes = {LLVMLanguage.LLVM_BITCODE_MIME_TYPE, LLVMLanguage.LLVM_ELF_SHARED_MIME_TYPE, LLVMLanguage.LLVM_ELF_EXEC_MIME_TYPE, LLVMLanguage.LLVM_MACHO_MIME_TYPE}, //
@@ -145,7 +146,7 @@ public class LLVMLanguage extends TruffleLanguage<LLVMContext> {
 
     private final LLVMInteropType.InteropTypeRegistry interopTypeRegistry = new LLVMInteropType.InteropTypeRegistry();
 
-    public final ConcurrentHashMap<Class<?>, RootCallTarget> cachedCallTargets = new ConcurrentHashMap<>();
+    private final ConcurrentHashMap<Class<?>, RootCallTarget> cachedCallTargets = new ConcurrentHashMap<>();
 
     @CompilationFinal private LLVMFunctionCode sulongInitContextCode;
     @CompilationFinal private LLVMFunction sulongDisposeContext;
@@ -547,5 +548,9 @@ public class LLVMLanguage extends TruffleLanguage<LLVMContext> {
 
     public static RootCallTarget createCallTarget(RootNode rootNode) {
         return Truffle.getRuntime().createCallTarget(rootNode);
+    }
+
+    public RootCallTarget createCachedCallTarget(Class<?> key, Function<LLVMLanguage, RootNode> create) {
+        return cachedCallTargets.computeIfAbsent(key, k -> createCallTarget(create.apply(LLVMLanguage.this)));
     }
 }

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2019, 2020, Oracle and/or its affiliates.
+ * Copyright (c) 2019, 2021, Oracle and/or its affiliates.
  *
  * All rights reserved.
  *
@@ -71,10 +71,8 @@ public final class LLVMPThreadContext {
         this.pThreadKeyStorage = new ConcurrentHashMap<>();
         this.pThreadDestructorStorage = new ConcurrentHashMap<>();
 
-        this.pthreadCallTarget = language.cachedCallTargets.computeIfAbsent(LLVMPThreadStart.LLVMPThreadFunctionRootNode.class,
-                        c -> LLVMLanguage.createCallTarget(
-                                        new LLVMPThreadStart.LLVMPThreadFunctionRootNode(language, LLVMPThreadStart.LLVMPThreadFunctionRootNode.createFrameDescriptor(),
-                                                        language.getActiveConfiguration().createNodeFactory(language, dataLayout))));
+        this.pthreadCallTarget = language.createCachedCallTarget(LLVMPThreadStart.LLVMPThreadFunctionRootNode.class,
+                        l -> LLVMPThreadStart.LLVMPThreadFunctionRootNode.create(l, l.getActiveConfiguration().createNodeFactory(l, dataLayout)));
         this.isCreateThreadAllowed = true;
     }
 
