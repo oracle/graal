@@ -497,14 +497,14 @@ public abstract class Launcher {
         // no op, no additional help printed.
     }
 
-    private String executableName(String basename) {
+    private String[] executableNames(String basename) {
         switch (OS.current) {
             case Linux:
             case Darwin:
             case Solaris:
-                return basename;
+                return new String[]{basename};
             case Windows:
-                return basename + ".exe";
+                return new String[]{basename + ".exe", basename + ".cmd"};
             default:
                 throw abort("executableName: OS not supported: " + OS.current);
         }
@@ -578,16 +578,23 @@ public abstract class Launcher {
      * @return OS-dependent binary filename.
      */
     protected final Path getGraalVMBinaryPath(String binaryName) {
-        String executableName = executableName(binaryName);
+        String[] executableNames = executableNames(binaryName);
         Path graalVMHome = getGraalVMHome();
         if (graalVMHome == null) {
-            throw abort("Can not exec to GraalVM binary: could not find GraalVM home");
+            throw abort("Cannot exec to GraalVM binary: could not find GraalVM home");
         }
-        Path jdkBin = graalVMHome.resolve("bin").resolve(executableName);
-        if (Files.exists(jdkBin)) {
-            return jdkBin;
+        for (String executableName : executableNames) {
+            Path[] execPaths = new Path[]{
+                            graalVMHome.resolve("bin").resolve(executableName),
+                            graalVMHome.resolve("jre").resolve("bin").resolve(executableName)
+            };
+            for (Path execPath : execPaths) {
+                if (Files.exists(execPath)) {
+                    return execPath;
+                }
+            }
         }
-        return graalVMHome.resolve("jre").resolve("bin").resolve(executableName);
+        throw abort("Cannot exec to GraalVM binary: could not find a '" + binaryName + "' executable");
     }
 
     /**
