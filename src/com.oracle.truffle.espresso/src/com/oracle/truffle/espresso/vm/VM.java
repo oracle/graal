@@ -2261,6 +2261,22 @@ public final class VM extends NativeEnv implements ContextAccess {
     @CompilerDirectives.CompilationFinal //
     private int managementVersion;
 
+    /**
+     * Procedure to support a new management version in Espresso:
+     * <ul>
+     * <li>Add the new version to support in this method.</li>
+     * <li>Add the version to the version enum in <code>jmm_common.h</code> in the mokapot include
+     * directory.</li>
+     * <li>Create and update accordingly with the new changes (most certainly a new function)
+     * <code>jmm_.h</code> and <code>management_.c</code> in the mokapot include and source
+     * directory</li>
+     * <li>Add to <code>management.h</code> the new <code>initializeManagementContext_</code> and
+     * <code>disposeManagementContext_</code> functions.</li>
+     * <li>Update <code>management.c</code> to select these new method depending on the requested
+     * version</li>
+     * <li>Ideally implement the method in this class.</li>
+     * </ul>
+     */
     private static boolean isSupportedManagementVersion(int version) {
         return version == JMM_VERSION_1 || version == JMM_VERSION_2 || version == JMM_VERSION_3;
     }
