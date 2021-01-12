@@ -201,5 +201,3 @@ mx_sdk_vm.register_vm_config('espresso-jvm-ce',    ['java', 'ejvm', 'nfi', 'sdk'
 mx_sdk_vm.register_vm_config('espresso-jvm-ee',    ['java', 'ejvm', 'nfi', 'sdk', 'tfl', 'cmp', 'cmpee'                        ], _suite, env_file='jvm-ee')
 mx_sdk_vm.register_vm_config('espresso-native-ce', ['java', 'ejvm', 'nfi', 'sdk', 'tfl', 'cmp'         , 'svm'         , 'tflm'], _suite, env_file='native-ce')
 mx_sdk_vm.register_vm_config('espresso-native-ee', ['java', 'ejvm', 'nfi', 'sdk', 'tfl', 'cmp', 'cmpee', 'svm', 'svmee', 'tflm'], _suite, env_file='native-ee')
-
-mx_sdk_vm.register_known_vm('truffle')
