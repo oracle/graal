@@ -241,11 +241,10 @@ public class IntrinsifyMethodHandlesInvocationPlugin implements NodePlugin {
                 /*
                  * If we capture duplication of the bci, we don't process invoke.
                  */
-                reportUnsupportedFeature(b, method);
+                return reportUnsupportedFeature(b, method);
             } else {
-                processInvokeWithMethodHandle(b, universeProviders.getReplacements(), method, args);
+                return processInvokeWithMethodHandle(b, universeProviders.getReplacements(), method, args);
             }
-            return true;
 
         } else if (methodHandleType.equals(method.getDeclaringClass()) && methodHandleInvokeMethodNames.contains(method.getName())) {
             /*
@@ -255,11 +254,11 @@ public class IntrinsifyMethodHandlesInvocationPlugin implements NodePlugin {
              * signature polymorphic, i.e., they exist in every possible signature. Therefore, we
              * must only look at the declaring class and the method name here.
              */
-            reportUnsupportedFeature(b, method);
-            return true;
-        }
+            return reportUnsupportedFeature(b, method);
 
-        return false;
+        } else {
+            return false;
+        }
     }
 
     private static boolean hasMethodHandleArgument(ValueNode[] args) {
@@ -460,15 +459,14 @@ public class IntrinsifyMethodHandlesInvocationPlugin implements NodePlugin {
     }
 
     @SuppressWarnings("try")
-    private void processInvokeWithMethodHandle(GraphBuilderContext b, Replacements replacements, ResolvedJavaMethod methodHandleMethod, ValueNode[] methodHandleArguments) {
+    private boolean processInvokeWithMethodHandle(GraphBuilderContext b, Replacements replacements, ResolvedJavaMethod methodHandleMethod, ValueNode[] methodHandleArguments) {
         /*
          * When parsing for compilation, we must not intrinsify method handles that were not
          * intrinsified during analysis. Otherwise new code that was not seen as reachable by the
          * static analysis would be compiled.
          */
         if (!analysis && intrinsificationRegistry.get(b.getCallingContext()) != Boolean.TRUE) {
-            reportUnsupportedFeature(b, methodHandleMethod);
-            return;
+            return reportUnsupportedFeature(b, methodHandleMethod);
         }
         Plugins graphBuilderPlugins = new Plugins(parsingProviders.getReplacements().getGraphBuilderPlugins());
 
@@ -519,11 +517,16 @@ public class IntrinsifyMethodHandlesInvocationPlugin implements NodePlugin {
                      */
                     intrinsificationRegistry.add(b.getCallingContext(), Boolean.TRUE);
                 }
+                return true;
             } catch (AbortTransplantException ex) {
                 /*
-                 * The method handle cannot be intrinsified. The code that throws an error at
-                 * runtime was already appended, so nothing more to do.
+                 * The method handle cannot be intrinsified. If non-constant method handles are not
+                 * supported, the code that throws an error at runtime was already appended, so
+                 * nothing more to do. If non-constant method handles are supported, we return false
+                 * so that the bytecode parser emit a regular invoke bytecode, i.e., the constant
+                 * method handle is treated as if it were non-constant.
                  */
+                return ex.handled;
             }
         } catch (Throwable ex) {
             throw debug.handle(ex);
@@ -766,26 +769,33 @@ public class IntrinsifyMethodHandlesInvocationPlugin implements NodePlugin {
         }
 
         private RuntimeException bailout() throws AbortTransplantException {
-            reportUnsupportedFeature(b, methodHandleMethod);
+            boolean handled = reportUnsupportedFeature(b, methodHandleMethod);
             /*
              * We need to get out of recursive transplant methods. Easier to use an exception than
              * to explicitly check every method invocation for a possible abort.
              */
-            throw new AbortTransplantException();
+            throw new AbortTransplantException(handled);
         }
     }
 
     @SuppressWarnings("serial")
     static class AbortTransplantException extends Exception {
+        private final boolean handled;
+
+        AbortTransplantException(boolean handled) {
+            this.handled = handled;
+        }
     }
 
-    private static void reportUnsupportedFeature(GraphBuilderContext b, ResolvedJavaMethod methodHandleMethod) {
+    private static boolean reportUnsupportedFeature(GraphBuilderContext b, ResolvedJavaMethod methodHandleMethod) {
         String message = "Invoke with MethodHandle argument could not be reduced to at most a single call or single field access. " +
                         "The method handle must be a compile time constant, e.g., be loaded from a `static final` field. " +
                         "Method that contains the method handle invocation: " + methodHandleMethod.format("%H.%n(%p)");
 
         if (NativeImageOptions.areMethodHandlesSupported()) {
             /* Do nothing, the method will be compiled elsewhere */
+            return false;
+
         } else if (NativeImageOptions.ReportUnsupportedElementsAtRuntime.getValue()) {
             /*
              * Ensure that we have space on the expression stack for the (unused) return value of
@@ -796,7 +806,7 @@ public class IntrinsifyMethodHandlesInvocationPlugin implements NodePlugin {
                             new ValueNode[]{ConstantNode.forConstant(SubstrateObjectConstant.forObject(message), b.getMetaAccess(), b.getGraph())}, false);
             /* The invoked method throws an exception and therefore never returns. */
             b.append(new DeadEndNode());
-            return;
+            return true;
 
         } else {
             throw new UnsupportedFeatureException(message + System.lineSeparator() +
