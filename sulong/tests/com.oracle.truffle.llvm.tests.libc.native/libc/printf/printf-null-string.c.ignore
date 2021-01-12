@@ -30,5 +30,6 @@
 #include <stdio.h>
 
 int main() {
+    /* This test simply wrong. `printf` might be optimized to `puts` which cannot deal with NULL. */
     printf("%s\n", NULL);
 }
