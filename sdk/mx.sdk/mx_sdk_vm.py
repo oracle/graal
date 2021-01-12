@@ -86,6 +86,8 @@ _graalvm_hostvm_configs = [
     ('native', [], ['--native'], 100),
     ('native-no-truffle-compilation', [], ['--native', '--experimental-options', '--engine.Compilation=false'], 39)
 ]
+_known_vms = set()
+_base_jdk = None
 
 
 class AbstractNativeImageConfig(_with_metaclass(ABCMeta, object)):
@@ -439,7 +441,10 @@ def get_graalvm_hostvm_configs():
     return _graalvm_hostvm_configs
 
 
-_base_jdk = None
+def register_known_vm(name):
+    if name in _known_vms:
+        raise mx.abort("VM '{}' already registered".format(name))
+    _known_vms.add(name)
 
 
 def base_jdk():
@@ -795,3 +800,6 @@ grant codeBase "file:${java.home}/languages/-" {
     if mx.run([mx.exe_suffix(join(dst_jdk_dir, 'bin', 'java')), '-Xshare:dump', '-Xmx128M', '-Xms128M'], out=out, err=out, nonZeroIsFatal=False) != 0:
         mx.log(out.data)
         mx.abort('Error generating CDS shared archive')
+
+
+register_known_vm('truffle')
