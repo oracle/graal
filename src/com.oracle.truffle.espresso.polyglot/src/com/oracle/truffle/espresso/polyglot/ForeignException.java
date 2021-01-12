@@ -53,7 +53,7 @@ package com.oracle.truffle.espresso.polyglot;
  * try {
  *     throw Interop.throwException(foreignException);
  * } catch (ForeignException e) {
- *     System.err.println(e.getMessage());
+ *     log(e.getClass() + ": " + e.getMessage());
  *     ...
  *     throw e;
  * }

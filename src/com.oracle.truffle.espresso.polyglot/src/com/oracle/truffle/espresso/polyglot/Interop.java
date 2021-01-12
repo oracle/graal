@@ -358,7 +358,7 @@ public final class Interop {
      * try {
      *     throw Interop.throwException(foreignException);
      * } catch (ForeignException e) {
-     *     System.err.println(e.getMessage());
+     *     log(e.getClass() + ": " + e.getMessage());
      *     ...
      *     throw e;
      * }
