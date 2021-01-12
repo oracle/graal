@@ -32,9 +32,7 @@ QUIETLY$(MX_VERBOSE)  = @
 .PHONY: default
 
 default: va_arg/va_arg_test.bc va_arg/ref.out
-#default: va_arg/va_arg_test.out
 
-#PLATFORM?=$(shell uname -p)
 VA_ARG_TEST_LL=va_arg/va_arg_test_$(PLATFORM).ll
 
 va_arg/va_arg_test.bc: $(VA_ARG_TEST_LL) va_arg/Makefile

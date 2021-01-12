@@ -69,42 +69,4 @@ public abstract class LLVMVAStart extends LLVMExpressionNode {
         vaListLibrary.initialize(wrapperFactory.execute(targetAddress), getArgumentsArray(frame), numberOfExplicitArguments);
         return null;
     }
-
-// @Specialization(limit = "2")
-// protected Object vaStart(VirtualFrame frame, LLVMManagedPointer targetAddress,
-// @CachedLibrary("targetAddress.getObject()") LLVMVaListLibrary vaListLibrary) {
-// vaListLibrary.initialize(targetAddress.getObject(), getArgumentsArray(frame),
-// numberOfExplicitArguments);
-// return null;
-// }
-//
-// Object createNativeVAListWrapper(LLVMNativePointer targetAddress, LLVMLanguage lang) {
-// return lang.getCapability(PlatformCapability.class).createNativeVAListWrapper(targetAddress,
-// getRootNode());
-// }
-//
-// @Specialization
-// protected Object vaStart(VirtualFrame frame, LLVMNativePointer targetAddress,
-// @CachedLanguage LLVMLanguage lang,
-// @Cached NativeLLVMVaListHelper nativeLLVMVaListHelper) {
-// return nativeLLVMVaListHelper.execute(frame, createNativeVAListWrapper(targetAddress, lang),
-// numberOfExplicitArguments);
-// }
-//
-// abstract static class NativeLLVMVaListHelper extends LLVMNode {
-//
-// public abstract Object execute(VirtualFrame frame, Object nativeVaListWrapper, int
-// numberOfExplicitArguments);
-//
-// @Specialization(limit = "1")
-// protected Object vaStart(VirtualFrame frame, Object nativeVaListWrapper, int
-// numberOfExplicitArguments,
-// @CachedLibrary("nativeVaListWrapper") LLVMVaListLibrary vaListLibrary) {
-// vaListLibrary.initialize(nativeVaListWrapper, getArgumentsArray(frame),
-// numberOfExplicitArguments);
-// return null;
-// }
-//
-// }
-
 }

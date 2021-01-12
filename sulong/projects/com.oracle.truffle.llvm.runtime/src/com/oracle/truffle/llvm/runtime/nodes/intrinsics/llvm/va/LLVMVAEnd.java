@@ -56,37 +56,4 @@ public abstract class LLVMVAEnd extends LLVMExpressionNode {
         vaListLibrary.cleanup(wrapperFactory.execute(targetAddress));
         return null;
     }
-
-// @Specialization(limit = "2")
-// protected Object vaEnd(LLVMManagedPointer targetAddress,
-// @CachedLibrary("targetAddress.getObject()") LLVMVaListLibrary vaListLibrary) {
-// vaListLibrary.cleanup(targetAddress.getObject());
-// return null;
-// }
-//
-// Object createNativeVAListWrapper(LLVMNativePointer targetAddress, LLVMLanguage lang) {
-// return lang.getCapability(PlatformCapability.class).createNativeVAListWrapper(targetAddress,
-// getRootNode());
-// }
-//
-// @Specialization
-// protected Object vaEnd(LLVMNativePointer targetAddress,
-// @CachedLanguage LLVMLanguage lang,
-// @Cached NativeLLVMVaListHelper nativeLLVMVaListHelper) {
-// return nativeLLVMVaListHelper.execute(createNativeVAListWrapper(targetAddress, lang));
-// }
-//
-// abstract static class NativeLLVMVaListHelper extends LLVMNode {
-//
-// public abstract Object execute(Object nativeVaListWrapper);
-//
-// @Specialization(limit = "1")
-// protected Object vaStart(Object nativeVaListWrapper,
-// @CachedLibrary("nativeVaListWrapper") LLVMVaListLibrary vaListLibrary) {
-// vaListLibrary.cleanup(nativeVaListWrapper);
-// return null;
-// }
-//
-// }
-
 }

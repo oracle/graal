@@ -30,7 +30,6 @@
 
 // DO NOT REMOVE THIS FILE, OTHERWISE THE TEST WILL NOT BE EXECUTED (GR-21946)
 
-//#include <stdio.h>
 #include <stdarg.h>
 
 // Dummy functions whose call sites are manually replaced by va_arg invocations in the LL code
