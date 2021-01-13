@@ -1116,7 +1116,7 @@ public final class VM extends NativeEnv implements ContextAccess {
 
     @VmImpl
     @TruffleBoundary
-    @SuppressFBWarnings(value="AT_OPERATION_SEQUENCE_ON_CONCURRENT_ABSTRACTION", justification = "benign race")
+    @SuppressFBWarnings(value = "AT_OPERATION_SEQUENCE_ON_CONCURRENT_ABSTRACTION", justification = "benign race")
     public @Pointer TruffleObject JVM_FindLibraryEntry(@Pointer TruffleObject libraryPtr, @Pointer TruffleObject namePtr) {
         String name = interopPointerToString(namePtr);
         long nativePtr = interopAsPointer(libraryPtr);
