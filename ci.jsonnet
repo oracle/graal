@@ -38,6 +38,7 @@ local base = {
   postMergeDeploy: {targets+: ['post-merge', 'deploy']},
   bench:           {targets+: ['bench', 'post-merge']},
   dailyBench:      {targets+: ['bench', 'daily']},
+  daily:           {targets+: ['daily']},
   weekly:          {targets+: ['weekly']},
   weeklyBench:     {targets+: ['bench', 'weekly']},
   onDemand:        {targets+: ['on-demand']},
@@ -260,7 +261,7 @@ local scala_dacapo_warmup_benchmark(env, guest_jvm_config='default', extra_args=
 local graalvm_installables(ee) = {
   local dynamic_imports = if ee then '/vm-enterprise,/substratevm-enterprise' else '/vm,/substratevm',
   local repo_id = if ee then 'graal-us' else 'lafo',
-  local base_cmd_line = ['mx', '--dynamicimports=' + dynamic_imports, '--native-images=espresso', '--exclude-components=nju,npi', '--disable-installables=ni,niee,nil,llp'],
+  local base_cmd_line = ['mx', '--dynamicimports=' + dynamic_imports, '--native-images=espresso,lib:espresso', '--exclude-components=nju,npi', '--disable-installables=ni,niee,nil,llp'],
   local graal_repo = if ee then 'graal-enterprise' else 'graal',
   run+: [
     clone_repo(graal_repo),
@@ -293,6 +294,7 @@ local jdk8_gate_linux             = base.jdk8_ee  + base.gate          + base.li
 local jdk8_gate_linux_eclipse_jdt = base.jdk8_ee  + base.gate          + base.linux + base.eclipse + base.jdt;
 local jdk8_bench_linux            = base.jdk8_ee  + base.bench         + base.x52;
 local jdk8_weekly_linux           = base.jdk8_ee  + base.weekly        + base.linux;
+local jdk8_daily_linux            = base.jdk8_ee  + base.daily         + base.linux;
 local jdk8_weekly_bench_linux     = base.jdk8_ee  + base.weeklyBench   + base.x52;
 local jdk8_on_demand_linux        = base.jdk8_ee  + base.onDemand      + base.linux;
 local jdk8_on_demand_bench_linux  = base.jdk8_ee  + base.onDemandBench + base.x52;
@@ -348,7 +350,7 @@ local awfy = 'awfy:*';
                                                                                     name: 'espresso-gate-unittest-jdk8-linux-amd64'
                                                                                   },
 
-    jdk8_gate_linux                       + gate_espresso(allow_warnings=true)  + { environment+: {
+    jdk8_daily_linux                      + gate_espresso(allow_warnings=true)  + { environment+: {
                                                                                       GATE_TAGS:       'build,unittest_with_compilation',
                                                                                       DYNAMIC_IMPORTS: '/vm,truffleruby,/compiler'
                                                                                     },

@@ -155,13 +155,15 @@ public final class VM extends NativeEnv implements ContextAccess {
     private final TruffleLogger logger = TruffleLogger.getLogger(EspressoLanguage.ID, VM.class);
     private final InteropLibrary uncached = InteropLibrary.getFactory().getUncached();
 
-    private final @Pointer TruffleObject initializeMokapotContext;
     private final @Pointer TruffleObject disposeMokapotContext;
     private final @Pointer TruffleObject initializeManagementContext;
     private final @Pointer TruffleObject disposeManagementContext;
     private final @Pointer TruffleObject getJavaVM;
     private final @Pointer TruffleObject mokapotAttachThread;
     private final @Pointer TruffleObject getPackageAt;
+
+    private final long rtldDefaultValue;
+    private final boolean safeRTLDDefaultLookup;
 
     private final JniEnv jniEnv;
 
@@ -266,7 +268,8 @@ public final class VM extends NativeEnv implements ContextAccess {
             TruffleObject mokapotLibrary = loadLibraryInternal(props.jvmLibraryPath(), "jvm");
             assert mokapotLibrary != null;
 
-            initializeMokapotContext = NativeLibrary.lookupAndBind(mokapotLibrary,
+            @Pointer
+            TruffleObject initializeMokapotContext = NativeLibrary.lookupAndBind(mokapotLibrary,
                             "initializeMokapotContext", "(env, pointer, (pointer): pointer): pointer");
 
             disposeMokapotContext = NativeLibrary.lookupAndBind(mokapotLibrary,
@@ -293,11 +296,18 @@ public final class VM extends NativeEnv implements ContextAccess {
                             "mokapotAttachThread",
                             "(pointer): void");
 
+            @Pointer
+            TruffleObject mokapotGetRTLDDefault = NativeLibrary.lookupAndBind(mokapotLibrary,
+                            "mokapotGetRTLD_DEFAULT",
+                            "(): pointer");
+
             getPackageAt = NativeLibrary.lookupAndBind(mokapotLibrary,
                             "getPackageAt",
                             "(pointer, sint32): pointer");
-
+            OptionValues options = EspressoLanguage.getCurrentContext().getEnv().getOptions();
+            this.safeRTLDDefaultLookup = !options.get(EspressoOptions.UseTruffleNFIIsolatedNamespace);
             this.mokapotEnvPtr = (TruffleObject) getUncached().execute(initializeMokapotContext, jniEnv.getNativePointer(), lookupVmImplCallback);
+            this.rtldDefaultValue = getUncached().asPointer(getUncached().execute(mokapotGetRTLDDefault));
             assert getUncached().isPointer(this.mokapotEnvPtr);
             assert !getUncached().isNull(this.mokapotEnvPtr);
 
@@ -1106,20 +1116,26 @@ public final class VM extends NativeEnv implements ContextAccess {
 
     @VmImpl
     @TruffleBoundary
+    @SuppressFBWarnings(value = "AT_OPERATION_SEQUENCE_ON_CONCURRENT_ABSTRACTION", justification = "benign race")
     public @Pointer TruffleObject JVM_FindLibraryEntry(@Pointer TruffleObject libraryPtr, @Pointer TruffleObject namePtr) {
         String name = interopPointerToString(namePtr);
-        if (getUncached().isNull(libraryPtr)) {
-            getLogger().warning(String.format("JVM_FindLibraryEntry from default/global namespace (0): %s", name));
-            return RawPointer.nullInstance();
-        }
-        // TODO(peterssen): Workaround for MacOS flags: RTLD_DEFAULT...
         long nativePtr = interopAsPointer(libraryPtr);
-        if (-6 < nativePtr && nativePtr < 0) {
-            getLogger().warning("JVM_FindLibraryEntry with unsupported flag/handle/namespace (" + libraryPtr + "): " + name);
-            return RawPointer.nullInstance();
+        TruffleObject library = handle2Lib.get(nativePtr);
+        if (library == null) {
+            if (nativePtr == rtldDefaultValue) {
+                if (!safeRTLDDefaultLookup) {
+                    getLogger().warning("JVM_FindLibraryEntry from default/global namespace is not supported in TruffleNFIIsolatedNamespace mode: " + name);
+                    return RawPointer.nullInstance();
+                }
+                library = NativeLibrary.loadDefaultLibrary();
+                handle2Lib.put(nativePtr, library);
+            } else {
+                getLogger().warning("JVM_FindLibraryEntry with unknown handle (" + libraryPtr + " / " + Long.toHexString(nativePtr) + "): " + name);
+                return RawPointer.nullInstance();
+            }
         }
         try {
-            TruffleObject function = NativeLibrary.lookup(handle2Lib.get(nativePtr), name);
+            TruffleObject function = NativeLibrary.lookup(library, name);
             long handle = getUncached().asPointer(function);
             handle2Sym.put(handle, function);
             return function;

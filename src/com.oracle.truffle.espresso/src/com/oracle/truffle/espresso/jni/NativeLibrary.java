@@ -54,7 +54,11 @@ public final class NativeLibrary {
         }
         sb.append(")");
         sb.append(" '").append(lib).append("'");
-        Source source = Source.newBuilder("nfi", sb.toString(), "loadLibrary").build();
+        return loadLibraryHelper(sb.toString());
+    }
+
+    private static TruffleObject loadLibraryHelper(String src) {
+        Source source = Source.newBuilder("nfi", src, "loadLibrary").build();
         CallTarget target = EspressoLanguage.getCurrentContext().getEnv().parseInternal(source);
         try {
             return (TruffleObject) target.call();
@@ -68,6 +72,10 @@ public final class NativeLibrary {
             TruffleLogger.getLogger(EspressoLanguage.ID, NativeLibrary.class).fine(e.getMessage());
             return null;
         }
+    }
+
+    public static @Pointer TruffleObject loadDefaultLibrary() {
+        return loadLibraryHelper("default");
     }
 
     public static @Pointer TruffleObject lookup(TruffleObject library, String method) throws UnknownIdentifierException {

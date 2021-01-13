@@ -38,6 +38,10 @@ JNIEXPORT void JNICALL mokapotAttachThread(MokapotEnv* moka_env) {
   tls_moka_env = moka_env;
 }
 
+JNIEXPORT OS_DL_HANDLE JNICALL mokapotGetRTLD_DEFAULT() {
+    return os_get_RTLD_DEFAULT();
+}
+
 #define JNI_INVOKE_INTERFACE_METHODS(V) \
   V(DestroyJavaVM) \
   V(AttachCurrentThread) \
