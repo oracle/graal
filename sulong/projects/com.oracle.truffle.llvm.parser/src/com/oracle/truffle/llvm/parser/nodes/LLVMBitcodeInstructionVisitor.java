@@ -1264,8 +1264,6 @@ public final class LLVMBitcodeInstructionVisitor implements SymbolVisitor {
 
     private static boolean isArrayByValue(Type type, @SuppressWarnings("unused") LLVMExpressionNode exprNode) {
         return type instanceof ArrayType;
-        // return ((exprNode instanceof LLVMStructLoadNode) || (exprNode instanceof
-        // LLVMArrayLiteralNode) && (type instanceof ArrayType));
     }
 
     private void assignSourceLocation(LLVMInstrumentableNode node, Instruction sourceInstruction) {
