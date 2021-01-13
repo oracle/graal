@@ -46,8 +46,8 @@ import org.graalvm.compiler.nodes.extended.ForeignCallNode;
 import org.graalvm.compiler.nodes.spi.LoweringTool;
 import org.graalvm.compiler.nodes.spi.PlatformConfigurationProvider;
 import org.graalvm.compiler.options.OptionValues;
-import org.graalvm.compiler.replacements.amd64.AMD64ArrayIndexOfDispatchNode;
 import org.graalvm.compiler.replacements.amd64.AMD64ConvertSnippets;
+import org.graalvm.compiler.replacements.amd64.AMD64TruffleArrayUtilsWithMaskSnippets;
 import org.graalvm.compiler.replacements.nodes.UnaryMathIntrinsicNode;
 import org.graalvm.compiler.replacements.nodes.UnaryMathIntrinsicNode.UnaryOperation;
 import org.graalvm.compiler.serviceprovider.JavaVersionUtil;
@@ -78,19 +78,22 @@ public class AMD64HotSpotLoweringProvider extends DefaultHotSpotLoweringProvider
             profileSnippets = new ProbabilisticProfileSnippets.Templates(options, factories, providers, providers.getCodeCache().getTarget());
         }
         mathSnippets = new AMD64X87MathSnippets.Templates(options, factories, providers, providers.getSnippetReflection(), providers.getCodeCache().getTarget());
+        providers.getReplacements().registerSnippetTemplateCache(
+                        new AMD64TruffleArrayUtilsWithMaskSnippets.Templates(options, factories, providers, providers.getSnippetReflection(), providers.getCodeCache().getTarget()));
         super.initialize(options, factories, providers, config, allocationSnippetTemplates);
     }
 
     @Override
     public void lower(Node n, LoweringTool tool) {
+        if (lowerAMD64(n, tool)) {
+            return;
+        }
         if (n instanceof FloatConvertNode) {
             convertSnippets.lower((FloatConvertNode) n, tool);
         } else if (profileSnippets != null && n instanceof ProfileNode) {
             profileSnippets.lower((ProfileNode) n, tool);
         } else if (n instanceof UnaryMathIntrinsicNode) {
             lowerUnaryMath((UnaryMathIntrinsicNode) n, tool);
-        } else if (n instanceof AMD64ArrayIndexOfDispatchNode) {
-            lowerArrayIndexOf((AMD64ArrayIndexOfDispatchNode) n);
         } else {
             super.lower(n, tool);
         }
@@ -130,11 +133,5 @@ public class AMD64HotSpotLoweringProvider extends DefaultHotSpotLoweringProvider
         ForeignCallNode call = graph.add(new ForeignCallNode(foreignCalls, math.getOperation().foreignCallSignature, math.getValue()));
         graph.addAfterFixed(tool.lastFixedNode(), call);
         math.replaceAtUsages(call);
-    }
-
-    private void lowerArrayIndexOf(AMD64ArrayIndexOfDispatchNode dispatchNode) {
-        StructuredGraph graph = dispatchNode.graph();
-        ForeignCallNode call = graph.add(new ForeignCallNode(foreignCalls, dispatchNode.getStubCallDescriptor(), dispatchNode.getStubCallArgs()));
-        graph.replaceFixed(dispatchNode, call);
     }
 }

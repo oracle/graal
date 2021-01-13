@@ -705,7 +705,6 @@ suite = {
       "dependencies" : [
         "org.graalvm.compiler.core.amd64",
         "org.graalvm.compiler.hotspot",
-        "org.graalvm.compiler.replacements.amd64",
       ],
       "checkstyle" : "org.graalvm.compiler.graph",
       "annotationProcessors" : [
@@ -1451,9 +1450,8 @@ suite = {
       "subDir" : "src",
       "sourceDirs" : ["src"],
       "dependencies" : [
+        "org.graalvm.compiler.replacements.amd64",
         "org.graalvm.compiler.core",
-        "org.graalvm.compiler.lir.amd64",
-        "org.graalvm.compiler.java",
       ],
       "checkstyle" : "org.graalvm.compiler.graph",
       "annotationProcessors" : [
