@@ -189,7 +189,7 @@ public final class HostAccess {
         this.allowListAccess = allowListAccess;
         this.allowBufferAccess = allowBufferAccess;
         this.allowIterableAccess = allowListAccess || allowIterableAccess;
-        this.allowIteratorAccess = allowIteratorAccess;
+        this.allowIteratorAccess = allowListAccess || allowIterableAccess || allowIteratorAccess;
     }
 
     /**
@@ -208,6 +208,8 @@ public final class HostAccess {
                         && allowAllClassImplementations == other.allowAllClassImplementations//
                         && allowArrayAccess == other.allowArrayAccess//
                         && allowListAccess == other.allowListAccess//
+                        && allowIterableAccess == other.allowIterableAccess//
+                        && allowIteratorAccess == other.allowIteratorAccess//
                         && equalsMap(excludeTypes, other.excludeTypes)//
                         && equalsSet(members, other.members)//
                         && equalsSet(implementableAnnotations, other.implementableAnnotations)//
@@ -228,6 +230,8 @@ public final class HostAccess {
                         allowAllClassImplementations,
                         allowArrayAccess,
                         allowListAccess,
+                        allowIterableAccess,
+                        allowIteratorAccess,
                         hashMap(excludeTypes),
                         hashSet(members),
                         hashSet(implementableAnnotations),

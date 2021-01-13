@@ -87,6 +87,25 @@ class PolyglotIterable<T> implements Iterable<T>, HostWrapper {
         return (Iterator<T>) cache.getIterator.call(languageContext, guestObject);
     }
 
+    @Override
+    public String toString() {
+        return HostWrapper.toString(this);
+    }
+
+    @Override
+    public int hashCode() {
+        return HostWrapper.hashCode(languageContext, guestObject);
+    }
+
+    @Override
+    public boolean equals(Object o) {
+        if (o instanceof PolyglotIterable) {
+            return HostWrapper.equals(languageContext, guestObject, ((PolyglotIterable<?>) o).guestObject);
+        } else {
+            return false;
+        }
+    }
+
     static final class Cache {
 
         final Class<?> receiverClass;

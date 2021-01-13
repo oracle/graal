@@ -1641,12 +1641,12 @@ final class HostObject implements TruffleObject {
         protected static Object doArray(HostObject receiver,
                         @Shared("isArray") @Cached IsArrayNode isArray,
                         @Shared("toGuest") @Cached ToGuestValueNode toGuest) {
-            return toGuest.execute(receiver.languageContext, arrayIteratorImpl((Object[]) receiver.obj));
+            return toGuest.execute(receiver.languageContext, arrayIteratorImpl(receiver));
         }
 
         @TruffleBoundary
-        private static Object arrayIteratorImpl(Object[] array) {
-            return Arrays.asList(array).iterator();
+        private static Object arrayIteratorImpl(Object receiver) {
+            return EngineAccessor.INTEROP.createDefaultArrayIterator(receiver);
         }
 
         @Specialization(guards = {"isIterable.execute(receiver)"}, limit = "1")
