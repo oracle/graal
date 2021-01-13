@@ -2082,7 +2082,11 @@ class GraalVmInstallableComponent(BaseGraalVmLayoutDistribution, mx.LayoutJARDis
             library_configs += _get_library_configs(component_)
 
         other_involved_components = []
-        if self.main_component.short_name not in ('svm', 'svmee') and _get_svm_support().is_supported() and (launcher_configs or library_configs) and not all(_force_bash_launchers(lc) for lc in launcher_configs):
+        if self.main_component.short_name not in ('svm', 'svmee') \
+                and _get_svm_support().is_supported() \
+                and (
+                    any(not _force_bash_launchers(lc) for lc in launcher_configs) or
+                    any(not _skip_libraries(lc) for lc in library_configs)):
             other_involved_components += [c for c in registered_graalvm_components(stage1=True) if c.short_name in ('svm', 'svmee')]
 
         name = '{}_INSTALLABLE'.format(component.installable_id.replace('-', '_').upper())
