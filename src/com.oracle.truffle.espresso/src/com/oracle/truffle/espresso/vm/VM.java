@@ -623,11 +623,7 @@ public final class VM extends NativeEnv implements ContextAccess {
                         jniEnv.getThreadLocalPendingException().set(wrappedError.getExceptionObject());
                         return defaultValue(m.returnType());
                     }
-                    printStackTrace(e);
                     throw e;
-                } catch (Throwable t) {
-                    printStackTrace(t);
-                    throw t; // FIXME return an error value, m should provide it
                 }
             }
 
