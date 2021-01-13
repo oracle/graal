@@ -346,7 +346,7 @@ public final class EspressoOptions {
     public static final OptionKey<Boolean> Polyglot = new OptionKey<>(true);
 
     @Option(help = "Expose the <JavaVM> binding.", //
-            category = OptionCategory.EXPERT, stability = OptionStability.EXPERIMENTAL) //
+                    category = OptionCategory.EXPERT, stability = OptionStability.EXPERIMENTAL) //
     public static final OptionKey<Boolean> ExposeNativeJavaVM = new OptionKey<>(false);
 
     public static final String INCEPTION_NAME = System.getProperty("espresso.inception.name", "#");
