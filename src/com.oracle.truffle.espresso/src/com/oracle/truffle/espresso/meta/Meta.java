@@ -27,6 +27,7 @@ import java.util.logging.Level;
 import com.oracle.truffle.api.CompilerAsserts;
 import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
+import com.oracle.truffle.espresso.EspressoOptions;
 import com.oracle.truffle.espresso.descriptors.Symbol;
 import com.oracle.truffle.espresso.descriptors.Symbol.Name;
 import com.oracle.truffle.espresso.descriptors.Symbol.Signature;
@@ -550,6 +551,10 @@ public final class Meta implements ContextAccess {
         java_time_ZoneId_getId = java_time_ZoneId.lookupDeclaredMethod(Name.getId, Signature.String);
         java_time_ZoneId_of = java_time_ZoneId.lookupDeclaredMethod(Name.of, Signature.ZoneId_String);
         assert java_time_ZoneId_of.isStatic();
+
+        // Interop support.
+        boolean polyglotSupport = getContext().getEnv().getOptions().get(EspressoOptions.Polyglot);
+        this.polyglot = polyglotSupport ? new PolyglotSupport() : null;
     }
 
     public void postSystemInit() {
@@ -1010,6 +1015,76 @@ public final class Meta implements ContextAccess {
     @CompilationFinal public Method sun_management_ManagementFactory_createMemoryManager;
     @CompilationFinal public Method sun_management_ManagementFactory_createGarbageCollector;
     @CompilationFinal public ObjectKlass java_lang_management_ThreadInfo;
+
+    public final class PolyglotSupport {
+        public final ObjectKlass UnknownIdentifierException;
+        public final Method UnknownIdentifierException_create_String;
+        public final Method UnknownIdentifierException_create_String_Throwable;
+
+        public final ObjectKlass UnsupportedMessageException;
+        public final Method UnsupportedMessageException_create;
+        public final Method UnsupportedMessageException_create_Throwable;
+
+        public final ObjectKlass UnsupportedTypeException;
+        public final Method UnsupportedTypeException_create_Object_array_String;
+        public final Method UnsupportedTypeException_create_Object_array_String_Throwable;
+
+        public final ObjectKlass ArityException;
+        public final Method ArityException_create_int_int;
+        public final Method ArityException_create_int_int_Throwable;
+
+        public final ObjectKlass InvalidArrayIndexException;
+        public final Method InvalidArrayIndexException_create_long;
+        public final Method InvalidArrayIndexException_create_long_Throwable;
+
+        public final ObjectKlass ForeignException;
+        public final ObjectKlass ExceptionType;
+        public final Field ExceptionType_EXIT;
+        public final Field ExceptionType_INTERRUPT;
+        public final Field ExceptionType_RUNTIME_ERROR;
+        public final Field ExceptionType_PARSE_ERROR;
+
+        private PolyglotSupport() {
+            boolean polyglotSupport = getContext().getEnv().getOptions().get(EspressoOptions.Polyglot);
+            EspressoError.guarantee(polyglotSupport, "--java.Polyglot must be enabled");
+            EspressoError.guarantee(knownKlass(Type.com_oracle_truffle_espresso_polyglot_Polyglot) != null,
+                            "polyglot.jar (Polyglot API) is not accessible");
+            ArityException = knownKlass(Type.com_oracle_truffle_espresso_polyglot_ArityException);
+            ArityException_create_int_int = ArityException.lookupDeclaredMethod(Name.create, Signature.ArityException_int_int);
+            ArityException_create_int_int_Throwable = ArityException.lookupDeclaredMethod(Name.create, Signature.ArityException_int_int_Throwable);
+
+            UnknownIdentifierException = knownKlass(Type.com_oracle_truffle_espresso_polyglot_UnknownIdentifierException);
+            UnknownIdentifierException_create_String = UnknownIdentifierException.lookupDeclaredMethod(Name.create, Signature.UnknownIdentifierException_String);
+            UnknownIdentifierException_create_String_Throwable = UnknownIdentifierException.lookupDeclaredMethod(Name.create, Signature.UnknownIdentifierException_String_Throwable);
+
+            UnsupportedMessageException = knownKlass(Type.com_oracle_truffle_espresso_polyglot_UnsupportedMessageException);
+            UnsupportedMessageException_create = UnsupportedMessageException.lookupDeclaredMethod(Name.create, Signature.UnsupportedMessageException);
+            UnsupportedMessageException_create_Throwable = UnsupportedMessageException.lookupDeclaredMethod(Name.create, Signature.UnsupportedMessageException_Throwable);
+
+            UnsupportedTypeException = knownKlass(Type.com_oracle_truffle_espresso_polyglot_UnsupportedTypeException);
+            UnsupportedTypeException_create_Object_array_String = UnsupportedTypeException.lookupDeclaredMethod(Name.create, Signature.UnsupportedTypeException_Object_array_String);
+            UnsupportedTypeException_create_Object_array_String_Throwable = UnsupportedTypeException.lookupDeclaredMethod(Name.create,
+                            Signature.UnsupportedTypeException_Object_array_String_Throwable);
+
+            InvalidArrayIndexException = knownKlass(Type.com_oracle_truffle_espresso_polyglot_InvalidArrayIndexException);
+            InvalidArrayIndexException_create_long = InvalidArrayIndexException.lookupDeclaredMethod(Name.create, Signature.InvalidArrayIndexException_long);
+            InvalidArrayIndexException_create_long_Throwable = InvalidArrayIndexException.lookupDeclaredMethod(Name.create, Signature.InvalidArrayIndexException_long_Throwable);
+
+            ForeignException = knownKlass(Type.com_oracle_truffle_espresso_polyglot_ForeignException);
+            ExceptionType = knownKlass(Type.com_oracle_truffle_espresso_polyglot_ExceptionType);
+
+            ExceptionType_EXIT = ExceptionType.lookupDeclaredField(Name.EXIT,
+                            Type.com_oracle_truffle_espresso_polyglot_ExceptionType);
+            ExceptionType_INTERRUPT = ExceptionType.lookupDeclaredField(Name.INTERRUPT,
+                            Type.com_oracle_truffle_espresso_polyglot_ExceptionType);
+            ExceptionType_RUNTIME_ERROR = ExceptionType.lookupDeclaredField(Name.RUNTIME_ERROR,
+                            Type.com_oracle_truffle_espresso_polyglot_ExceptionType);
+            ExceptionType_PARSE_ERROR = ExceptionType.lookupDeclaredField(Name.PARSE_ERROR,
+                            Type.com_oracle_truffle_espresso_polyglot_ExceptionType);
+        }
+    }
+
+    public final PolyglotSupport polyglot;
 
     @CompilationFinal(dimensions = 1) //
     public final ObjectKlass[] ARRAY_SUPERINTERFACES;

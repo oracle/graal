@@ -474,6 +474,14 @@ public final class Symbol<T> extends ByteSequence {
         public static final Symbol<Name> HIDDEN_THREAD_BLOCKED_OBJECT = StaticSymbols.putName("0HIDDEN_THREAD_BLOCKED_OBJECT");
         public static final Symbol<Name> HIDDEN_THREAD_BLOCKED_COUNT = StaticSymbols.putName("0HIDDEN_THREAD_BLOCKED_COUNT");
         public static final Symbol<Name> HIDDEN_THREAD_WAITED_COUNT = StaticSymbols.putName("0HIDDEN_THREAD_WAITED_COUNT");
+
+        // Polyglot ExceptionType
+        public static final Symbol<Name> EXIT = StaticSymbols.putName("EXIT");
+        public static final Symbol<Name> INTERRUPT = StaticSymbols.putName("INTERRUPT");
+        public static final Symbol<Name> RUNTIME_ERROR = StaticSymbols.putName("RUNTIME_ERROR");
+        public static final Symbol<Name> PARSE_ERROR = StaticSymbols.putName("PARSE_ERROR");
+        public static final Symbol<Name> create = StaticSymbols.putName("create");
+
     }
 
     /**
@@ -714,6 +722,16 @@ public final class Symbol<T> extends ByteSequence {
         public static final Symbol<Type> java_time_ZonedDateTime = StaticSymbols.putType(ZonedDateTime.class);
         public static final Symbol<Type> java_util_Date = StaticSymbols.putType(Date.class);
         public static final Symbol<Type> java_time_ZoneId = StaticSymbols.putType(ZoneId.class);
+
+        // Polyglot/interop API.
+        public static final Symbol<Type> com_oracle_truffle_espresso_polyglot_Polyglot = StaticSymbols.putType("Lcom/oracle/truffle/espresso/polyglot/Polyglot;");
+        public static final Symbol<Type> com_oracle_truffle_espresso_polyglot_ArityException = StaticSymbols.putType("Lcom/oracle/truffle/espresso/polyglot/ArityException;");
+        public static final Symbol<Type> com_oracle_truffle_espresso_polyglot_UnknownIdentifierException = StaticSymbols.putType("Lcom/oracle/truffle/espresso/polyglot/UnknownIdentifierException;");
+        public static final Symbol<Type> com_oracle_truffle_espresso_polyglot_UnsupportedMessageException = StaticSymbols.putType("Lcom/oracle/truffle/espresso/polyglot/UnsupportedMessageException;");
+        public static final Symbol<Type> com_oracle_truffle_espresso_polyglot_UnsupportedTypeException = StaticSymbols.putType("Lcom/oracle/truffle/espresso/polyglot/UnsupportedTypeException;");
+        public static final Symbol<Type> com_oracle_truffle_espresso_polyglot_InvalidArrayIndexException = StaticSymbols.putType("Lcom/oracle/truffle/espresso/polyglot/InvalidArrayIndexException;");
+        public static final Symbol<Type> com_oracle_truffle_espresso_polyglot_ForeignException = StaticSymbols.putType("Lcom/oracle/truffle/espresso/polyglot/ForeignException;");
+        public static final Symbol<Type> com_oracle_truffle_espresso_polyglot_ExceptionType = StaticSymbols.putType("Lcom/oracle/truffle/espresso/polyglot/ExceptionType;");
     }
 
     /**
@@ -851,5 +869,31 @@ public final class Symbol<T> extends ByteSequence {
         public static final Symbol<Signature> MemoryManagerMXBean_String = StaticSymbols.putSignature(Type.java_lang_management_MemoryManagerMXBean, Type.java_lang_String);
         public static final Symbol<Signature> GarbageCollectorMXBean_String_String = StaticSymbols.putSignature(Type.java_lang_management_GarbageCollectorMXBean, Type.java_lang_String,
                         Type.java_lang_String);
+
+        // Polyglot/interop API.
+        public static final Symbol<Signature> UnsupportedMessageException = StaticSymbols.putSignature(Type.com_oracle_truffle_espresso_polyglot_UnsupportedMessageException);
+        public static final Symbol<Signature> UnsupportedMessageException_Throwable = StaticSymbols.putSignature(Type.com_oracle_truffle_espresso_polyglot_UnsupportedMessageException,
+                        Type.java_lang_Throwable);
+
+        public static final Symbol<Signature> UnsupportedTypeException_Object_array_String = StaticSymbols.putSignature(Type.com_oracle_truffle_espresso_polyglot_UnsupportedTypeException,
+                        Type.java_lang_Object_array,
+                        Type.java_lang_String);
+        public static final Symbol<Signature> UnsupportedTypeException_Object_array_String_Throwable = StaticSymbols.putSignature(Type.com_oracle_truffle_espresso_polyglot_UnsupportedTypeException,
+                        Type.java_lang_Object_array,
+                        Type.java_lang_String,
+                        Type.java_lang_Throwable);
+
+        public static final Symbol<Signature> UnknownIdentifierException_String = StaticSymbols.putSignature(Type.com_oracle_truffle_espresso_polyglot_UnknownIdentifierException,
+                        Type.java_lang_String);
+        public static final Symbol<Signature> UnknownIdentifierException_String_Throwable = StaticSymbols.putSignature(Type.com_oracle_truffle_espresso_polyglot_UnknownIdentifierException,
+                        Type.java_lang_String, Type.java_lang_Throwable);
+
+        public static final Symbol<Signature> ArityException_int_int = StaticSymbols.putSignature(Type.com_oracle_truffle_espresso_polyglot_ArityException, Type._int, Type._int);
+        public static final Symbol<Signature> ArityException_int_int_Throwable = StaticSymbols.putSignature(Type.com_oracle_truffle_espresso_polyglot_ArityException, Type._int, Type._int,
+                        Type.java_lang_Throwable);
+
+        public static final Symbol<Signature> InvalidArrayIndexException_long = StaticSymbols.putSignature(Type.com_oracle_truffle_espresso_polyglot_InvalidArrayIndexException, Type._long);
+        public static final Symbol<Signature> InvalidArrayIndexException_long_Throwable = StaticSymbols.putSignature(Type.com_oracle_truffle_espresso_polyglot_InvalidArrayIndexException, Type._long,
+                        Type.java_lang_Throwable);
     }
 }

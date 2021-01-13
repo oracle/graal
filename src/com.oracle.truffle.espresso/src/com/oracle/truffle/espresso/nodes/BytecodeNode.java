@@ -241,6 +241,7 @@ import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.Truffle;
+import com.oracle.truffle.api.exception.AbstractTruffleException;
 import com.oracle.truffle.api.frame.Frame;
 import com.oracle.truffle.api.frame.FrameDescriptor;
 import com.oracle.truffle.api.frame.FrameSlot;
@@ -253,6 +254,7 @@ import com.oracle.truffle.api.instrumentation.ProbeNode;
 import com.oracle.truffle.api.instrumentation.StandardTags;
 import com.oracle.truffle.api.instrumentation.StandardTags.StatementTag;
 import com.oracle.truffle.api.instrumentation.Tag;
+import com.oracle.truffle.api.interop.InteropLibrary;
 import com.oracle.truffle.api.nodes.ExplodeLoop;
 import com.oracle.truffle.api.nodes.LoopNode;
 import com.oracle.truffle.api.nodes.Node;
@@ -1100,7 +1102,7 @@ public final class BytecodeNode extends EspressoMethodNode {
                         throw EspressoError.shouldNotReachHere(Bytecodes.nameOf(curOpcode));
                 }
                 // @formatter:on
-            } catch (EspressoException | StackOverflowError | OutOfMemoryError e) {
+            } catch (EspressoException | AbstractTruffleException | StackOverflowError | OutOfMemoryError e) {
                 if (instrument != null && e instanceof EspressoException) {
                     instrument.notifyExceptionAt(frame, e, statementIndex);
                 }
@@ -1141,10 +1143,13 @@ public final class BytecodeNode extends EspressoMethodNode {
                     }
                     throw wrappedStackOverflowError;
 
-                } else /* EspressoException or OutOfMemoryError */ {
+                } else /* EspressoException or AbstractTruffleException or OutOfMemoryError */ {
                     EspressoException wrappedException;
                     if (e instanceof EspressoException) {
                         wrappedException = (EspressoException) e;
+                    } else if (getContext().Polyglot && e instanceof AbstractTruffleException) {
+                        wrappedException = EspressoException.wrap(
+                                        StaticObject.createForeignException(getMeta(), e, InteropLibrary.getUncached(e)));
                     } else {
                         assert e instanceof OutOfMemoryError;
                         CompilerDirectives.transferToInterpreter();
