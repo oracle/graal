@@ -35,7 +35,7 @@ import com.oracle.truffle.espresso.runtime.EspressoContext;
  * used once the main method has returned, so that the main thread can wait for all other thread to
  * naturally terminate
  * 
- * @see EspressoContext#destroyVM()
+ * @see EspressoContext#destroyVM(boolean)
  */
 public class DestroyVMNode extends RootNode {
     public static final String EVAL_NAME = "<DestroyJavaVM>";
@@ -48,7 +48,7 @@ public class DestroyVMNode extends RootNode {
     public Object execute(VirtualFrame frame) {
         assert frame.getArguments().length == 0;
         EspressoContext context = EspressoLanguage.getCurrentContext();
-        context.destroyVM(); // Throws an exit exception.
+        context.destroyVM(true); // Throws an exit exception.
         throw EspressoError.shouldNotReachHere();
     }
 }

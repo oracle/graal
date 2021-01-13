@@ -25,6 +25,7 @@ package com.oracle.truffle.espresso.runtime;
 
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.espresso.impl.ContextAccess;
+import com.oracle.truffle.espresso.meta.EspressoError;
 import com.oracle.truffle.espresso.substitutions.Target_java_lang_Thread;
 
 class EspressoShutdownHandler implements ContextAccess {
@@ -34,6 +35,8 @@ class EspressoShutdownHandler implements ContextAccess {
     private final EspressoContext context;
     private final EspressoThreadManager threadManager;
     private final EspressoReferenceDrainer referenceDrainer;
+    private final boolean exitHost;
+    private final boolean softExit;
 
     @Override
     public EspressoContext getContext() {
@@ -44,10 +47,12 @@ class EspressoShutdownHandler implements ContextAccess {
 
     EspressoShutdownHandler(EspressoContext context,
                     EspressoThreadManager threadManager,
-                    EspressoReferenceDrainer referenceDrainer) {
+                    EspressoReferenceDrainer referenceDrainer, boolean exitHost, boolean softExit) {
         this.context = context;
         this.threadManager = threadManager;
         this.referenceDrainer = referenceDrainer;
+        this.exitHost = exitHost;
+        this.softExit = softExit;
     }
 
     /**
@@ -99,8 +104,8 @@ class EspressoShutdownHandler implements ContextAccess {
     /**
      * Starts the teardown process of the VM if it was not already started.
      *
-     * Notify any thread waiting for teardown (through {@link #destroyVM()}) to immediately return
-     * and let us do the job.
+     * Notify any thread waiting for teardown (through {@link #destroyVM(boolean)}) to immediately
+     * return and let us do the job.
      */
     @TruffleBoundary
     void doExit(int code) {
@@ -114,11 +119,17 @@ class EspressoShutdownHandler implements ContextAccess {
                 // Wake up spinning main thread.
                 sync.notifyAll();
             }
-            teardown();
+            teardown(!exitHost);
         }
-        // At this point, the exit code given should have been registered. If not, this means that
-        // another closing was started before us, and we should use the previous' exit code.
-        throw new EspressoExitException(getExitStatus());
+        if (exitHost) {
+            System.exit(getExitStatus());
+            throw EspressoError.shouldNotReachHere();
+        } else {
+            // At this point, the exit code given should have been registered. If not, this means
+            // that
+            // another closing was started before us, and we should use the previous' exit code.
+            throw new EspressoExitException(getExitStatus());
+        }
     }
 
     /**
@@ -129,9 +140,11 @@ class EspressoShutdownHandler implements ContextAccess {
      * <li>This calls guest {@code java.lang.Shutdown#shutdown()}
      * <li>Proceeds to teardown leftover daemon threads.
      * </ol>
+     * 
+     * @param killThreads
      */
     @TruffleBoundary
-    void destroyVM() {
+    void destroyVM(boolean killThreads) {
         waitForClose();
         try {
             getMeta().java_lang_reflect_Shutdown_shutdown.invokeDirect(null);
@@ -150,8 +163,8 @@ class EspressoShutdownHandler implements ContextAccess {
             }
             beginClose(0);
         }
-        teardown();
-
+        teardown(killThreads);
+        throw new EspressoExitException(getExitStatus());
     }
 
     private void waitForClose() throws EspressoExitException {
@@ -187,7 +200,7 @@ class EspressoShutdownHandler implements ContextAccess {
         return false;
     }
 
-    private void teardown() {
+    private void teardown(boolean killThreads) {
         assert isClosing();
         getContext().prepareDispose();
         getContext().invalidateNoThreadStop("Killing the VM");
@@ -196,7 +209,7 @@ class EspressoShutdownHandler implements ContextAccess {
         // Phase 0: wait.
         boolean nextPhase = !waitSpin(initiatingThread);
 
-        if (getContext().SoftExit) {
+        if (softExit) {
             if (nextPhase) {
                 // Phase 1: Interrupt threads, and stops daemons.
                 teardownPhase1(initiatingThread);
@@ -210,17 +223,20 @@ class EspressoShutdownHandler implements ContextAccess {
             }
         }
 
-        if (nextPhase) {
-            // Phase 3: Force kill with host EspressoExitException. Obtains the exit code from the
-            // context.
-            teardownPhase3(initiatingThread);
-            nextPhase = !waitSpin(initiatingThread);
-        }
+        if (killThreads) {
+            if (nextPhase) {
+                // Phase 3: Force kill with host EspressoExitException. Obtains the exit code from
+                // the
+                // context.
+                teardownPhase3(initiatingThread);
+                nextPhase = !waitSpin(initiatingThread);
+            }
 
-        if (nextPhase) {
-            getContext().getLogger().severe("Could not gracefully stop executing threads in context closing.");
-            // Phase 4: Forcefully command the context to forget any leftover thread.
-            teardownPhase4(initiatingThread);
+            if (nextPhase) {
+                getContext().getLogger().severe("Could not gracefully stop executing threads in context closing.");
+                // Phase 4: Forcefully command the context to forget any leftover thread.
+                teardownPhase4(initiatingThread);
+            }
         }
 
         Thread hostToGuestReferenceDrainThread = referenceDrainer.referenceDrain();
@@ -236,8 +252,6 @@ class EspressoShutdownHandler implements ContextAccess {
         }
 
         context.getTimers().report(context.getLogger());
-
-        throw new EspressoExitException(getExitStatus());
     }
 
     /**

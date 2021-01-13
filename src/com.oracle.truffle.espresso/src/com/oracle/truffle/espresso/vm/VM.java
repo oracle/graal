@@ -731,7 +731,7 @@ public final class VM extends NativeEnv implements ContextAccess {
     @VmImpl
     public int DestroyJavaVM() {
         try {
-            getContext().destroyVM();
+            getContext().destroyVM(false);
         } catch (EspressoExitException exit) {
             // expected
         }
