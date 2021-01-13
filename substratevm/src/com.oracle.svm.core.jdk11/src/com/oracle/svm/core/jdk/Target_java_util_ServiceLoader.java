@@ -34,14 +34,10 @@ import java.util.ServiceConfigurationError;
 import java.util.ServiceLoader;
 import java.util.Set;
 
-import org.graalvm.compiler.debug.GraalError;
-
 import com.oracle.svm.core.annotate.Alias;
-import com.oracle.svm.core.annotate.RecomputeFieldValue;
 import com.oracle.svm.core.annotate.Substitute;
 import com.oracle.svm.core.annotate.TargetClass;
 import com.oracle.svm.core.annotate.TargetElement;
-import com.oracle.svm.util.ReflectionUtil;
 
 @TargetClass(value = java.util.ServiceLoader.class, onlyWith = JDK11OrLater.class)
 final class Target_java_util_ServiceLoader {
@@ -77,18 +73,16 @@ final class Target_java_util_ServiceLoader_LazyClassPathLookupIterator {
     @Alias//
     ServiceConfigurationError nextError;
 
-    @Alias @RecomputeFieldValue(kind = RecomputeFieldValue.Kind.NewInstance, declClass = HashSet.class)//
-    Set<String> providerNames;
+    @SuppressWarnings("unused") @Alias//
+    Set<String> providerNames = new HashSet<>();
 
     @Alias//
     @TargetElement(name = "this$0")//
     Target_java_util_ServiceLoader outer;
 
-    @SuppressWarnings("unused")
     @Substitute
     Target_java_util_ServiceLoader_LazyClassPathLookupIterator(Target_java_util_ServiceLoader outer) {
         this.outer = outer;
-        this.providerNames = new HashSet<>();
     }
 
     @Alias
@@ -104,27 +98,27 @@ final class Target_java_util_ServiceLoader_LazyClassPathLookupIterator {
                 }
 
                 if (outer.service.isAssignableFrom(clazz)) {
-                    Class<?> providerImplClass = null;
-                    try {
-                        providerImplClass = Class.forName("java.util.ServiceLoader$ProviderImpl");
-                    } catch (ClassNotFoundException e) {
-                        GraalError.shouldNotReachHere(e);
-                    }
-                    Constructor<?> providerImplCtor = ReflectionUtil.lookupConstructor(providerImplClass,
-                                    Class.class, Class.class, Constructor.class, AccessControlContext.class);
-
                     Constructor<?> ctor = outer.getConstructor(clazz);
-                    nextProvider = (ServiceLoader.Provider<?>) providerImplCtor.newInstance(outer.service, clazz,
-                                    ctor, outer.acc);
+                    nextProvider = (ServiceLoader.Provider<?>) ((Object) (new Target_java_util_ServiceLoader_ProviderImpl(outer.service, clazz, ctor, outer.acc)));
                 } else {
-                    outer.fail(outer.service, clazz.getName() + " not a subtype");
+                    Target_java_util_ServiceLoader.fail(outer.service, clazz.getName() + " not a subtype");
                 }
             } catch (ServiceConfigurationError e) {
                 nextError = e;
-            } catch (ReflectiveOperationException e) {
-                GraalError.shouldNotReachHere(e, "Failed in instantiate provider impl");
             }
         }
         return true;
     }
+}
+
+@TargetClass(value = java.util.ServiceLoader.class, innerClass = "ProviderImpl")
+final class Target_java_util_ServiceLoader_ProviderImpl {
+
+    @Alias
+    Target_java_util_ServiceLoader_ProviderImpl(Class<?> service,
+                    Class<?> type,
+                    Constructor<?> ctor,
+                    AccessControlContext acc) {
+    }
+
 }
