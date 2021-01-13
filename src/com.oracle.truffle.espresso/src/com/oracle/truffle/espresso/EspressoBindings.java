@@ -24,11 +24,11 @@ package com.oracle.truffle.espresso;
 
 import com.oracle.truffle.api.TruffleLanguage;
 import com.oracle.truffle.api.dsl.Cached;
+import com.oracle.truffle.api.dsl.Cached.Exclusive;
 import com.oracle.truffle.api.dsl.CachedContext;
 import com.oracle.truffle.api.interop.InteropLibrary;
 import com.oracle.truffle.api.interop.TruffleObject;
 import com.oracle.truffle.api.interop.UnknownIdentifierException;
-import com.oracle.truffle.api.interop.UnsupportedMessageException;
 import com.oracle.truffle.api.library.ExportLibrary;
 import com.oracle.truffle.api.library.ExportMessage;
 import com.oracle.truffle.api.profiles.BranchProfile;
@@ -92,7 +92,7 @@ public final class EspressoBindings implements TruffleObject {
     @ExportMessage
     Object readMember(String member,
                     @CachedContext(EspressoLanguage.class) EspressoContext context,
-                    @Cached BranchProfile error) throws UnknownIdentifierException {
+                    @Exclusive @Cached BranchProfile error) throws UnknownIdentifierException {
         if (!isMemberReadable(member)) {
             error.enter();
             throw UnknownIdentifierException.create(member);
@@ -123,7 +123,8 @@ public final class EspressoBindings implements TruffleObject {
     }
 
     @ExportMessage
-    void removeMember(String member, @Cached BranchProfile error) throws UnknownIdentifierException {
+    void removeMember(String member,
+                    @Exclusive @Cached BranchProfile error) throws UnknownIdentifierException {
         if (!isMemberRemovable(member)) {
             error.enter();
             throw UnknownIdentifierException.create(member);
