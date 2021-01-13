@@ -626,11 +626,6 @@ public final class VM extends NativeEnv implements ContextAccess {
                     throw e;
                 }
             }
-
-            @TruffleBoundary
-            private void printStackTrace(Throwable t) {
-                t.printStackTrace();
-            }
         });
     }
 
