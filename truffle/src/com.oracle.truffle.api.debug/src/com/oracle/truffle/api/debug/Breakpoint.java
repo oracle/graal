@@ -584,7 +584,9 @@ public class Breakpoint {
             if (eb instanceof EventBinding) {
                 ((EventBinding<?>) eb).dispose();
             }
-            resolveBreakpoint(location);
+            if (location != null) {
+                resolveBreakpoint(location);
+            }
             assignBinding(locationKey.createLocationFilter(source, suspendAnchor));
         }
     }

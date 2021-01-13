@@ -116,8 +116,9 @@ public final class ScriptsHandler implements LoadSourceListener {
             }
             id = scripts.size();
             String sourceUrl = getSourceURL(source);
-            scr = new Script(id, sourceUrl, source);
+            scr = new Script(id, sourceUrl, source, sourceLoaded);
             sourceIDs.put(source, id);
+            sourceIDs.put(sourceLoaded, id);
             scripts.add(scr);
             listenersToNotify = listeners.toArray(new LoadScriptListener[listeners.size()]);
         }
