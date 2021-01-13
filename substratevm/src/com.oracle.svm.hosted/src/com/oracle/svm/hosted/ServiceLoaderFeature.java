@@ -28,8 +28,10 @@ import java.io.BufferedReader;
 import java.io.ByteArrayInputStream;
 import java.io.IOException;
 import java.io.InputStreamReader;
+import java.lang.reflect.Constructor;
 import java.net.URL;
 import java.nio.charset.StandardCharsets;
+import java.security.AccessControlContext;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collection;
@@ -43,6 +45,7 @@ import java.util.TreeSet;
 import java.util.concurrent.ConcurrentHashMap;
 
 import org.graalvm.compiler.debug.DebugContext;
+import org.graalvm.compiler.debug.GraalError;
 import org.graalvm.compiler.options.Option;
 import org.graalvm.compiler.options.OptionType;
 import org.graalvm.nativeimage.hosted.Feature;
@@ -58,6 +61,7 @@ import com.oracle.svm.core.option.SubstrateOptionsParser;
 import com.oracle.svm.core.util.UserError;
 import com.oracle.svm.hosted.FeatureImpl.DuringAnalysisAccessImpl;
 import com.oracle.svm.hosted.analysis.Inflation;
+import com.oracle.svm.util.ReflectionUtil;
 
 /**
  * Support for {@link ServiceLoader} on Substrate VM.
@@ -147,11 +151,23 @@ public class ServiceLoaderFeature implements Feature {
 
     @Override
     public void beforeAnalysis(BeforeAnalysisAccess access) {
+        registerProviderImpl();
         serviceProviders = ModuleAccess.lookupServiceProviders(access);
         if (trace) {
             int services = serviceProviders.keySet().size();
             int providers = serviceProviders.values().stream().mapToInt(List::size).sum();
             System.out.println("ServiceLoaderFeature: Discovered " + services + " with " + providers + " service providers registered using modules");
+        }
+    }
+
+    private void registerProviderImpl() {
+        try {
+            Class<?> clazz = Class.forName("java.util.ServiceLoader$ProviderImpl");
+            Constructor<?> constructor = ReflectionUtil.lookupConstructor(clazz, Class.class, Class.class, Constructor.class, AccessControlContext.class);
+            RuntimeReflection.register(clazz);
+            RuntimeReflection.register(constructor);
+        } catch (ClassNotFoundException e) {
+            GraalError.shouldNotReachHere(e);
         }
     }
 
