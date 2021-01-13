@@ -38,6 +38,7 @@ local base = {
   postMergeDeploy: {targets+: ['post-merge', 'deploy']},
   bench:           {targets+: ['bench', 'post-merge']},
   dailyBench:      {targets+: ['bench', 'daily']},
+  daily:           {targets+: ['daily']},
   weekly:          {targets+: ['weekly']},
   weeklyBench:     {targets+: ['bench', 'weekly']},
   onDemand:        {targets+: ['on-demand']},
@@ -293,6 +294,7 @@ local jdk8_gate_linux             = base.jdk8_ee  + base.gate          + base.li
 local jdk8_gate_linux_eclipse_jdt = base.jdk8_ee  + base.gate          + base.linux + base.eclipse + base.jdt;
 local jdk8_bench_linux            = base.jdk8_ee  + base.bench         + base.x52;
 local jdk8_weekly_linux           = base.jdk8_ee  + base.weekly        + base.linux;
+local jdk8_daily_linux            = base.jdk8_ee  + base.daily         + base.linux;
 local jdk8_weekly_bench_linux     = base.jdk8_ee  + base.weeklyBench   + base.x52;
 local jdk8_on_demand_linux        = base.jdk8_ee  + base.onDemand      + base.linux;
 local jdk8_on_demand_bench_linux  = base.jdk8_ee  + base.onDemandBench + base.x52;
@@ -348,7 +350,7 @@ local awfy = 'awfy:*';
                                                                                     name: 'espresso-gate-unittest-jdk8-linux-amd64'
                                                                                   },
 
-    jdk8_gate_linux                       + gate_espresso(allow_warnings=true)  + { environment+: {
+    jdk8_daily_linux                      + gate_espresso(allow_warnings=true)  + { environment+: {
                                                                                       GATE_TAGS:       'build,unittest_with_compilation',
                                                                                       DYNAMIC_IMPORTS: '/vm,truffleruby,/compiler'
                                                                                     },
