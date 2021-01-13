@@ -39,6 +39,10 @@ import com.oracle.svm.core.annotate.Substitute;
 import com.oracle.svm.core.annotate.TargetClass;
 import com.oracle.svm.core.annotate.TargetElement;
 
+/**
+ * Disable the module based iteration in favour of classpath based iteration. See
+ * ServiceLoaderFeature for explanation why.
+ */
 @TargetClass(value = java.util.ServiceLoader.class, onlyWith = JDK11OrLater.class)
 final class Target_java_util_ServiceLoader {
     @Alias Class<?> service;
@@ -74,10 +78,12 @@ final class Target_java_util_ServiceLoader_LazyClassPathLookupIterator {
     ServiceConfigurationError nextError;
 
     @SuppressWarnings("unused") @Alias//
-    Set<String> providerNames = new HashSet<>();
+    Set<String> providerNames = new HashSet<>(); // has to be initialized here, because we're
+                                                 // substituting the constructor
 
     @Alias//
-    @TargetElement(name = "this$0")//
+    @TargetElement(name = "this$0")// manage correct ref to the enclosing object ourselves so that
+                                   // we an access it
     Target_java_util_ServiceLoader outer;
 
     @Substitute
@@ -88,6 +94,10 @@ final class Target_java_util_ServiceLoader_LazyClassPathLookupIterator {
     @Alias
     private native Class<?> nextProviderClass();
 
+    /**
+     * Ugly copy paste of the original method, but without the if (clazz.getModule().isNamed())
+     * check.
+     */
     @Substitute
     private boolean hasNextService() {
         while (nextProvider == null && nextError == null) {
@@ -96,6 +106,8 @@ final class Target_java_util_ServiceLoader_LazyClassPathLookupIterator {
                 if (clazz == null) {
                     return false;
                 }
+
+                // if removed from here
 
                 if (outer.service.isAssignableFrom(clazz)) {
                     Constructor<?> ctor = outer.getConstructor(clazz);

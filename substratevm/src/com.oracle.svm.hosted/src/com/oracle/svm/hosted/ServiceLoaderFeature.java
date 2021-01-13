@@ -78,6 +78,18 @@ import com.oracle.svm.hosted.analysis.Inflation;
  *
  * For each service interface, a single service loader file is added as a resource to the image. The
  * single file combines all the individual files that can come from different .jar files.
+ * 
+ * Unfortunately, state of the art module support in SVM is not sophisticated enough to allow the
+ * original ServiceLoader infrastructure to discover providers registered in modules. Therefore, as
+ * a temporary solution, we're disabling the ModuleServicesLookupIterator in favour of the
+ * LazyClassPathLookupIterator looking for files in META-INF directory. Therefore this feature
+ * writes all services, even the ones from modules, into the corresponding META-INF file. All of
+ * them are then discovered by the LazyClassPathLookupIterator.
+ * 
+ * One possible problem might be inconsistency between JVM and SVM, but since the lookup in JVM is
+ * very dynamic in nature (depends on from which classloader or module you are starting), it might
+ * not be possible for us to deliver services in the exact same order with "flat" single loader
+ * approach.
  */
 @AutomaticFeature
 public class ServiceLoaderFeature implements Feature {
