@@ -101,6 +101,8 @@ public final class Arguments {
                     builder.option("java.EnableAssertions", "true");
                 } else if (optionString.equals("-esa") || optionString.equals("-enablesystemassertions")) {
                     builder.option("java.EnableSystemAssertions", "true");
+                } else if (optionString.equals("--polyglot")) {
+                    // skip: handled by mokapot
                 } else {
                     // TODO XX: and X options
                     STDERR.printf("Unrecognized option: %s%n", optionString);
