@@ -41,6 +41,8 @@ import com.oracle.truffle.espresso.libespresso.jniapi.JNIJavaVMOption;
 public final class Arguments {
     private static final PrintStream STDERR = System.err;
 
+    private static final String JAVA_PROPS = "java.Properties.";
+
     private Arguments() {
     }
 
@@ -78,7 +80,8 @@ public final class Arguments {
         }
 
         void addNumbered(String prop, String value, int count) {
-            builder.option(prop + "." + count, value);
+            String key = JAVA_PROPS + prop + "." + count;
+            builder.option(key, value);
         }
     }
 
@@ -136,7 +139,7 @@ public final class Arguments {
                             builder.option("java.BootLibraryPath", value);
                             break;
                     }
-                    builder.option("java.Properties." + key, value);
+                    builder.option(JAVA_PROPS + key, value);
                 } else if (optionString.equals("-ea") || optionString.equals("-enableassertions")) {
                     builder.option("java.EnableAssertions", "true");
                 } else if (optionString.equals("-esa") || optionString.equals("-enablesystemassertions")) {
@@ -150,11 +153,11 @@ public final class Arguments {
                 } else if (optionString.startsWith("--add-modules=")) {
                     modulePropHandler.addModules(optionString.substring("--add-modules=".length()));
                 } else if (optionString.startsWith("--module-path=")) {
-                    builder.option("jdk.module.path", optionString.substring("--module-path".length()));
+                    builder.option(JAVA_PROPS + "jdk.module.path", optionString.substring("--module-path=".length()));
                 } else if (optionString.startsWith("--upgrade-module-path=")) {
-                    builder.option("jdk.module.upgrade.path", optionString.substring("--upgrade-module-path=".length()));
+                    builder.option(JAVA_PROPS + "jdk.module.upgrade.path", optionString.substring("--upgrade-module-path=".length()));
                 } else if (optionString.startsWith("--limit-modules=")) {
-                    builder.option("jdk.module.limitmods", optionString.substring("--limit-modules=".length()));
+                    builder.option(JAVA_PROPS + "jdk.module.limitmods", optionString.substring("--limit-modules=".length()));
                 } else if (isXOption(optionString)) {
                     RuntimeOptions.set(optionString.substring("-X".length()), null);
                 } else if (optionString.equals("--polyglot")) {
