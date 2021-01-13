@@ -448,7 +448,7 @@ final class PolyglotEngineImpl extends AbstractPolyglotImpl.AbstractEngineImpl i
         }
     }
 
-    boolean patch(DispatchOutputStream newOut,
+    void patch(DispatchOutputStream newOut,
                     DispatchOutputStream newErr,
                     InputStream newIn,
                     OptionValuesImpl engineOptions,
@@ -458,13 +458,11 @@ final class PolyglotEngineImpl extends AbstractPolyglotImpl.AbstractEngineImpl i
                     boolean newAllowExperimentalOptions,
                     ClassLoader newContextClassLoader, boolean newBoundEngine, Handler newLogHandler) {
         CompilerAsserts.neverPartOfCompilation();
-        if (this.boundEngine != newBoundEngine) {
-            return false;
-        }
         this.out = newOut;
         this.err = newErr;
         this.in = newIn;
         this.contextClassLoader = newContextClassLoader;
+        boolean wasBound = this.boundEngine;
         this.boundEngine = newBoundEngine;
         this.logHandler = newLogHandler;
         this.engineOptionValues = engineOptions;
@@ -473,6 +471,10 @@ final class PolyglotEngineImpl extends AbstractPolyglotImpl.AbstractEngineImpl i
         this.storeEngine = RUNTIME.isStoreEnabled(engineOptions);
 
         intitializeStore(wasStore, storeEngine);
+
+        if (wasBound && !newBoundEngine) {
+            initializeMultiContext(null);
+        }
 
         INSTRUMENT.patchInstrumentationHandler(instrumentationHandler, newOut, newErr, newIn);
 
@@ -492,7 +494,6 @@ final class PolyglotEngineImpl extends AbstractPolyglotImpl.AbstractEngineImpl i
             instrument.getEngineOptionValues().putAll(instrumentsOptions.get(instrument), newAllowExperimentalOptions);
         }
         registerShutDownHook();
-        return true;
     }
 
     static Handler createLogHandler(LogConfig logConfig, DispatchOutputStream errDispatchOutputStream) {
