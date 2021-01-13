@@ -59,7 +59,7 @@ import org.graalvm.wasm.exception.WasmException;
 import org.graalvm.wasm.exception.WasmJsApiException;
 
 import static java.lang.Integer.compareUnsigned;
-import static org.graalvm.wasm.WasmUtil.minUnsigned;
+import static org.graalvm.wasm.WasmMath.minUnsigned;
 import static org.graalvm.wasm.api.JsConstants.JS_LIMITS;
 
 @ExportLibrary(InteropLibrary.class)

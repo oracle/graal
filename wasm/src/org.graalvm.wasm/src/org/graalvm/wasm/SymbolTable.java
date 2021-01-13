@@ -65,8 +65,8 @@ import java.util.Map;
 
 import static java.lang.Integer.compareUnsigned;
 import static org.graalvm.wasm.Assert.assertTrue;
-import static org.graalvm.wasm.WasmUtil.minUnsigned;
-import static org.graalvm.wasm.WasmUtil.unsignedInt32ToLong;
+import static org.graalvm.wasm.WasmMath.minUnsigned;
+import static org.graalvm.wasm.WasmMath.unsignedIntToLong;
 
 /**
  * Contains the symbol information of a module.
@@ -355,7 +355,7 @@ public abstract class SymbolTable {
 
     public void checkFunctionIndex(int funcIndex) {
         if (funcIndex < 0 || funcIndex >= numFunctions) {
-            throw WasmException.create(Failure.UNKNOWN_FUNCTION, String.format("Function index out of bounds: %d should be < %d.", unsignedInt32ToLong(funcIndex), numFunctions));
+            throw WasmException.create(Failure.UNKNOWN_FUNCTION, String.format("Function index out of bounds: %d should be < %d.", unsignedIntToLong(funcIndex), numFunctions));
         }
 
     }
@@ -467,7 +467,7 @@ public abstract class SymbolTable {
         checkNotParsed();
         ensureFunctionsCapacity(numFunctions);
         if (typeIndex < 0 || typeIndex >= typeCount) {
-            throw WasmException.create(Failure.UNKNOWN_TYPE, String.format("Function type out of bounds: %d should be < %d.", unsignedInt32ToLong(typeIndex), typeCount));
+            throw WasmException.create(Failure.UNKNOWN_TYPE, String.format("Function type out of bounds: %d should be < %d.", unsignedIntToLong(typeIndex), typeCount));
         }
         final WasmFunction function = new WasmFunction(this, numFunctions, typeIndex, importDescriptor);
         functions[numFunctions] = function;
