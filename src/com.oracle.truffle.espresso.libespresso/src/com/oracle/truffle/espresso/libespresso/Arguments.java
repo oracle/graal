@@ -43,12 +43,51 @@ public final class Arguments {
     private Arguments() {
     }
 
+    private static class ModulePropertyCounter {
+        public ModulePropertyCounter(Context.Builder builder) {
+            this.builder = builder;
+        }
+
+        private static final String ADD_MODULES = "jdk.module.addmods";
+        private static final String ADD_EXPORTS = "jdk.module.addexports";
+        private static final String ADD_OPENS = "jdk.module.addopens";
+        private static final String ADD_READS = "jdk.module.addreads";
+
+        private final Context.Builder builder;
+
+        private int addModules = 0;
+        private int addExports = 0;
+        private int addOpens = 0;
+        private int addReads = 0;
+
+        void addModules(String value) {
+            addNumbered(ADD_MODULES, value, addModules++);
+        }
+
+        void addExports(String value) {
+            addNumbered(ADD_EXPORTS, value, addExports++);
+        }
+
+        void addOpens(String value) {
+            addNumbered(ADD_OPENS, value, addOpens++);
+        }
+
+        void addReads(String value) {
+            addNumbered(ADD_READS, value, addReads++);
+        }
+
+        void addNumbered(String prop, String value, int count) {
+            builder.option(prop + "." + count, value);
+        }
+    }
+
     public static int setupContext(Context.Builder builder, JNIJavaVMInitArgs args) {
         Pointer p = (Pointer) args.getOptions();
         int count = args.getNOptions();
         String classpath = null;
         String bootClasspathPrepend = null;
         String bootClasspathAppend = null;
+        ModulePropertyCounter modulePropHandler = new ModulePropertyCounter(builder);
         for (int i = 0; i < count; i++) {
             JNIJavaVMOption option = (JNIJavaVMOption) p.add(i * SizeOf.get(JNIJavaVMOption.class));
             CCharPointer str = option.getOptionString();
@@ -101,6 +140,28 @@ public final class Arguments {
                     builder.option("java.EnableAssertions", "true");
                 } else if (optionString.equals("-esa") || optionString.equals("-enablesystemassertions")) {
                     builder.option("java.EnableSystemAssertions", "true");
+                } else if (optionString.startsWith("--add-reads=")) {
+                    modulePropHandler.addReads(optionString.substring("--add-reads=".length()));
+                } else if (optionString.startsWith("--add-exports=")) {
+                    modulePropHandler.addExports(optionString.substring("--add-exports=".length()));
+                } else if (optionString.startsWith("--add-opens=")) {
+                    modulePropHandler.addOpens(optionString.substring("--add-opens=".length()));
+                } else if (optionString.startsWith("--add-modules=")) {
+                    modulePropHandler.addModules(optionString.substring("--add-modules=".length()));
+                } else if (optionString.startsWith("--module-path=")) {
+                    builder.option("jdk.module.path", optionString.substring("--module-path".length()));
+                } else if (optionString.startsWith("--upgrade-module-path=")) {
+                    builder.option("jdk.module.upgrade.path", optionString.substring("--upgrade-module-path=".length()));
+                } else if (optionString.startsWith("--limit-modules=")) {
+                    builder.option("jdk.module.limitmods", optionString.substring("--limit-modules=".length()));
+                } else if (optionString.equals("-Xms")) {
+                    // TODO
+                } else if (optionString.equals("-Xmx")) {
+                    // TODO
+                } else if (optionString.equals("-Xmn")) {
+                    // TODO
+                } else if (optionString.equals("-Xss")) {
+                    // TODO
                 } else if (optionString.equals("--polyglot")) {
                     // skip: handled by mokapot
                 } else {
