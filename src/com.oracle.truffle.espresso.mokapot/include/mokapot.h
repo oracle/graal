@@ -58,12 +58,21 @@ typedef uint16_t jushort;
 typedef uint32_t juint;
 typedef uint64_t julong;
 
-// A VM created from espresso host Java code through through initializeMokapotContext
+// A VM created from espresso host Java code through initializeMokapotContext
 #define MOKA_RISTRETTO ((void *)11)
 // A VM created from JNI_CreateJavaVM
 #define MOKA_LATTE ((void *)22)
 // A MOKA_RISTRETTO VM that is used by a MOKA_LATTE VM
 #define MOKA_AMERICANO ((void *)33)
+
+
+/* Usage of the JavaVM reserved fields:
+ * vm type   | MOKA_RISTRETTO | MOKA_LATTE          | MOKA_AMERICANO |
+ * ----------+----------------+---------------------+----------------+
+ * reserved0 | NULL           | LibEspressoIsolate* | context handle |
+ * reserved1 | MOKA_RISTRETTO | MOKA_LATTE          | MOKA_AMERICANO |
+ * reserved2 | NULL           | JavaVM* (americano) | NULL           |
+ */
 
 #define VM_METHOD_LIST(V) \
     V(JVM_Accept) \
@@ -884,6 +893,8 @@ typedef struct LibEspresso {
     graal_tear_down_isolate_fn_t tear_down_isolate;
     graal_detach_all_threads_and_tear_down_isolate_fn_t detach_all_threads_and_tear_down_isolate;
     Espresso_CreateJavaVM_fn_t Espresso_CreateJavaVM;
+    Espresso_EnterContext_fn_t Espresso_EnterContext;
+    Espresso_ReleaseContext_fn_t Espresso_ReleaseContext;
 } LibEspresso;
 
 typedef struct LibEspressoIsolate {

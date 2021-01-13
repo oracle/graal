@@ -22,6 +22,7 @@
  */
 package com.oracle.truffle.espresso.libespresso.jniapi;
 
+import org.graalvm.nativeimage.ObjectHandle;
 import org.graalvm.nativeimage.c.CContext;
 import org.graalvm.nativeimage.c.struct.CField;
 import org.graalvm.nativeimage.c.struct.CStruct;
@@ -35,6 +36,12 @@ import com.oracle.truffle.espresso.libespresso.jniapi.JNIFunctionPointerTypes.Ge
 @CContext(JNIHeaderDirectives.class)
 @CStruct(value = "JNIInvokeInterface_", addStructKeyword = true)
 public interface JNIInvokeInterface extends PointerBase {
+
+    @CField("reserved0")
+    ObjectHandle getContext();
+
+    @CField("reserved0")
+    void setContext(ObjectHandle context);
 
     @CField("AttachCurrentThread")
     void setAttachCurrentThread(AttachCurrentThreadFunctionPointer p);

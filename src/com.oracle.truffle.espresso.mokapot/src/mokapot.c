@@ -312,14 +312,11 @@ JNIEXPORT void JNICALL JVM_DisableCompiler(JNIEnv *env, jclass compCls) {
 }
 
 JNIEXPORT void JNICALL JVM_StartThread(JNIEnv *env, jobject thread) {
-  IMPLEMENTED(JVM_StartThread);
-  return (*getEnv())->JVM_StartThread(env, thread);
-
+  UNIMPLEMENTED(JVM_StartThread);
 }
 
 JNIEXPORT void JNICALL JVM_StopThread(JNIEnv *env, jobject thread, jobject exception) {
-  IMPLEMENTED(JVM_StopThread);
-  return (*getEnv())->JVM_StopThread(env, thread, exception);
+  UNIMPLEMENTED(JVM_StopThread);
 
 }
 
@@ -1531,55 +1528,38 @@ LibEspresso *load_libespresso(const char* lib_path) {
         return NULL;
     }
 
-    graal_create_isolate_fn_t create_isolate = os_dl_sym(libespresso, "graal_create_isolate");
-    graal_attach_thread_fn_t attach_thread = os_dl_sym(libespresso, "graal_attach_thread");
-    graal_detach_thread_fn_t detach_thread = os_dl_sym(libespresso, "graal_detach_thread");
-    graal_get_current_thread_fn_t get_current_thread = os_dl_sym(libespresso, "graal_get_current_thread");
-    graal_tear_down_isolate_fn_t tear_down_isolate = os_dl_sym(libespresso, "graal_tear_down_isolate");
-    graal_detach_all_threads_and_tear_down_isolate_fn_t detach_all_threads_and_tear_down_isolate = os_dl_sym(libespresso, "graal_detach_all_threads_and_tear_down_isolate");
-    Espresso_CreateJavaVM_fn_t Espresso_CreateJavaVM = os_dl_sym(libespresso, "Espresso_CreateJavaVM");
-    if (create_isolate == NULL ||
-        attach_thread == NULL ||
-        detach_thread == NULL ||
-        get_current_thread == NULL ||
-        tear_down_isolate == NULL ||
-        Espresso_CreateJavaVM == NULL ||
-        detach_all_threads_and_tear_down_isolate == NULL) {
-        fprintf(stderr, "%s does not contain the expected libespresso interface:" OS_NEWLINE_STR, lib_path);
-        if (create_isolate == NULL) {
-            fprintf(stderr, "- missing create_isolate" OS_NEWLINE_STR);
-        }
-        if (attach_thread == NULL) {
-            fprintf(stderr, "- missing attach_thread" OS_NEWLINE_STR);
-        }
-        if (detach_thread == NULL) {
-            fprintf(stderr, "- missing detach_thread" OS_NEWLINE_STR);
-        }
-        if (get_current_thread == NULL) {
-            fprintf(stderr, "- missing get_current_thread" OS_NEWLINE_STR);
-        }
-        if (tear_down_isolate == NULL) {
-            fprintf(stderr, "- missing tear_down_isolate" OS_NEWLINE_STR);
-        }
-        if (Espresso_CreateJavaVM == NULL) {
-            fprintf(stderr, "- missing Espresso_CreateJavaVM" OS_NEWLINE_STR);
-        }
-        if (detach_all_threads_and_tear_down_isolate == NULL) {
-            fprintf(stderr, "- missing detach_all_threads_and_tear_down_isolate" OS_NEWLINE_STR);
-        }
-        return NULL;
+#define BIND_LIBESPRESSO(X) \
+    X ## _fn_t X =  os_dl_sym(libespresso, #X); \
+    if (#X == NULL) {                                \
+        fprintf(stderr, "%s does not contain the expected libespresso interface: missing " #X OS_NEWLINE_STR, lib_path); \
+        return NULL; \
     }
+
+    BIND_LIBESPRESSO(graal_create_isolate)
+    BIND_LIBESPRESSO(graal_attach_thread)
+    BIND_LIBESPRESSO(graal_detach_thread)
+    BIND_LIBESPRESSO(graal_get_current_thread)
+    BIND_LIBESPRESSO(graal_tear_down_isolate)
+    BIND_LIBESPRESSO(graal_detach_all_threads_and_tear_down_isolate)
+    BIND_LIBESPRESSO(Espresso_CreateJavaVM)
+    BIND_LIBESPRESSO(Espresso_EnterContext)
+    BIND_LIBESPRESSO(Espresso_ReleaseContext)
+
+#undef BIND_LIBESPRESSO
+
     LibEspresso *result = malloc(sizeof(LibEspresso));
     if (result == NULL) {
         return NULL;
     }
-    result->create_isolate = create_isolate;
-    result->attach_thread = attach_thread;
-    result->detach_thread = detach_thread;
-    result->get_current_thread = get_current_thread;
-    result->tear_down_isolate = tear_down_isolate;
-    result->detach_all_threads_and_tear_down_isolate = detach_all_threads_and_tear_down_isolate;
+    result->create_isolate = graal_create_isolate;
+    result->attach_thread = graal_attach_thread;
+    result->detach_thread = graal_detach_thread;
+    result->get_current_thread = graal_get_current_thread;
+    result->tear_down_isolate = graal_tear_down_isolate;
+    result->detach_all_threads_and_tear_down_isolate = graal_detach_all_threads_and_tear_down_isolate;
     result->Espresso_CreateJavaVM = Espresso_CreateJavaVM;
+    result->Espresso_EnterContext = Espresso_EnterContext;
+    result->Espresso_ReleaseContext = Espresso_ReleaseContext;
     return result;
 }
 
@@ -1599,27 +1579,44 @@ LibEspresso *get_libespresso(int type) {
     return NULL;
 }
 
-jint AttachCurrentThread(JavaVM *vm, void **penv, void *args) {
-    if ((*vm)->reserved1 != MOKA_LATTE) {
-        return JNI_ERR;
-    }
+jint AttachCurrentThread_helper(JavaVM *vm, void **penv, void *args, jint (JNICALL *attach_method)(JavaVM *vm, void **penv, void *args)) {
     JavaVM *espressoJavaVM = (*vm)->reserved2;
     LibEspressoIsolate *espressoIsolate = (*vm)->reserved0;
     graal_isolate_t *isolate = espressoIsolate->isolate;
     LibEspresso *libespresso = espressoIsolate->lib;
     graal_isolatethread_t *thread;
     if (libespresso->attach_thread(isolate, &thread) != 0) {
+        fprintf(stderr, "AttachCurrentThread: failed to attached to isolate" OS_NEWLINE_STR);
         return JNI_ERR;
     }
-    jint ret = (*espressoJavaVM)->AttachCurrentThread(espressoJavaVM, penv, args);
+    // we must first attach to the polyglot context:
+    // (*espressoJavaVM)->AttachCurrentThread is a NFI closure from this context
+    // and only works correctly if we are attached.
+    jint ret = libespresso->Espresso_EnterContext(thread, (struct JavaVM_ *)espressoJavaVM);
     if (ret != JNI_OK) {
+        fprintf(stderr, "AttachCurrentThread: failed to attached to polyglot context" OS_NEWLINE_STR);
+        return ret;
+    }
+    ret = attach_method(espressoJavaVM, penv, args);
+    if (ret != JNI_OK) {
+        fprintf(stderr, "AttachCurrentThread: failed to attached to Espresso" OS_NEWLINE_STR);
         libespresso->detach_thread(thread);
     }
     return ret;
 }
 
+jint AttachCurrentThread(JavaVM *vm, void **penv, void *args) {
+    if ((*vm)->reserved1 != MOKA_LATTE) {
+        fprintf(stderr, "AttachCurrentThread: not a MOKA_LATTE" OS_NEWLINE_STR);
+        return JNI_ERR;
+    }
+    JavaVM *espressoJavaVM = (*vm)->reserved2;
+    return AttachCurrentThread_helper(vm, penv, args, (*espressoJavaVM)->AttachCurrentThread);
+}
+
 jint DestroyJavaVM(JavaVM *vm) {
     if ((*vm)->reserved1 != MOKA_LATTE) {
+        fprintf(stderr, "DestroyJavaVM: not a MOKA_LATTE" OS_NEWLINE_STR);
         return JNI_ERR;
     }
     JavaVM *espressoJavaVM = (*vm)->reserved2;
@@ -1637,15 +1634,25 @@ jint DestroyJavaVM(JavaVM *vm) {
         if (result != JNI_OK) {
             return result;
         }
+        thread = libespresso->get_current_thread(isolate);
     }
     jint result = (*espressoJavaVM)->DestroyJavaVM(espressoJavaVM);
     remove_java_vm(vm);
+    jint result2 = libespresso->Espresso_ReleaseContext(thread, (struct JavaVM_ *)espressoJavaVM);
+    if (result == JNI_OK && result2 != JNI_OK) {
+        result = result2;
+    }
+    result2 = libespresso->detach_thread(thread);
+    if (result == JNI_OK && result2 != JNI_OK) {
+        result = result2;
+    }
     free(espressoIsolate);
     return result;
 }
 
 jint DetachCurrentThread(JavaVM *vm) {
     if ((*vm)->reserved1 != MOKA_LATTE) {
+        fprintf(stderr, "DetachCurrentThread: not a MOKA_LATTE" OS_NEWLINE_STR);
         return JNI_ERR;
     }
     JavaVM *espressoJavaVM = (*vm)->reserved2;
@@ -1665,6 +1672,7 @@ jint DetachCurrentThread(JavaVM *vm) {
 
 jint GetEnv(JavaVM *vm, void **penv, jint version) {
     if ((*vm)->reserved1 != MOKA_LATTE) {
+        fprintf(stderr, "AttachCurrentThread: not a MOKA_LATTE" OS_NEWLINE_STR);
         return JNI_ERR;
     }
     JavaVM *espressoJavaVM = (*vm)->reserved2;
@@ -1679,21 +1687,11 @@ jint GetEnv(JavaVM *vm, void **penv, jint version) {
 
 jint AttachCurrentThreadAsDaemon(JavaVM *vm, void **penv, void *args) {
     if ((*vm)->reserved1 != MOKA_LATTE) {
+        fprintf(stderr, "AttachCurrentThreadAsDaemon: not a MOKA_LATTE" OS_NEWLINE_STR);
         return JNI_ERR;
     }
     JavaVM *espressoJavaVM = (*vm)->reserved2;
-    LibEspressoIsolate *espressoIsolate = (*vm)->reserved0; 
-    graal_isolate_t *isolate = espressoIsolate->isolate;
-    LibEspresso *libespresso = espressoIsolate->lib;
-    graal_isolatethread_t *thread;
-    if (libespresso->attach_thread(isolate, &thread) != 0) {
-        return JNI_ERR;
-    }
-    jint ret = (*espressoJavaVM)->AttachCurrentThreadAsDaemon(espressoJavaVM, penv, args);
-    if (ret != JNI_OK) {
-        libespresso->detach_thread(thread);
-    }
-    return ret;
+    return AttachCurrentThread_helper(vm, penv, args, (*espressoJavaVM)->AttachCurrentThreadAsDaemon);
 }
 
 _JNI_IMPORT_OR_EXPORT_ jint JNICALL JNI_CreateJavaVM(JavaVM **vm_ptr, void **penv, void *args) {
