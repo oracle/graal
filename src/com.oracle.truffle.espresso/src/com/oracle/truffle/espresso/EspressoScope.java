@@ -60,38 +60,22 @@ public class EspressoScope {
         } else if (liveLocals.length == 1) {
             int slot = 0;
             String identifier = "0";
-            Local local = getLocal(liveLocals, slot);
+            Local local = liveLocals[0];
             FrameSlotInfo frameSlotInfo = new FrameSlotInfo(slot, Types.getJavaKind(local.getType().value()));
             slotsMap = Collections.singletonMap(identifier, frameSlotInfo);
             identifiersMap = Collections.singletonMap(local.getNameAsString(), frameSlotInfo);
         } else {
             slotsMap = new LinkedHashMap<>(slotCount);
             identifiersMap = new LinkedHashMap<>(slotCount);
-            for (int slot = 0; slot < slotCount; ++slot) {
-                String slotNumber = String.valueOf(slot);
-                Local local = getLocal(liveLocals, slot);
-                if (local != null) {
-                    String localName = local.getNameAsString();
-                    FrameSlotInfo frameSlotInfo = new FrameSlotInfo(slot, Types.getJavaKind(local.getType().value()));
-                    slotsMap.put(slotNumber, frameSlotInfo);
-                    identifiersMap.put(localName, frameSlotInfo);
-                }
+            for (Local local : liveLocals) {
+                String slotNumber = String.valueOf(local.getSlot());
+                String localName = local.getNameAsString();
+                FrameSlotInfo frameSlotInfo = new FrameSlotInfo(local.getSlot(), Types.getJavaKind(local.getType().value()));
+                slotsMap.put(slotNumber, frameSlotInfo);
+                identifiersMap.put(localName, frameSlotInfo);
             }
         }
         return new VariablesMapObject(slotsMap, identifiersMap, frame);
-    }
-
-    private static Local getLocal(Local[] liveLocals, int slot) {
-        for (Local local : liveLocals) {
-            try {
-                if (local.getSlot() == slot) {
-                    return local;
-                }
-            } catch (NumberFormatException nf) {
-                // ignore
-            }
-        }
-        return null;
     }
 
     // We map both variable names and their slot number to members. However we only expose the
