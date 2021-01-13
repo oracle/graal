@@ -100,6 +100,7 @@ public class JfrOptions {
     private static int stackDepth = 64;
 
     // Delay, Duration, Max Age are time arguments
+    private static boolean startRecordingAutomatically = false;
     private static long delay = 0;
     private static long duration = 0;
     private static long maxAge = 0; // 0 is a special value indicating no limit
@@ -139,6 +140,7 @@ public class JfrOptions {
         protected void onValueUpdate(EconomicMap<OptionKey<?>, Object> values, String oldValue, String newValue) {
             // Substrate parses it into option=value,option2=value,.... We can pass it on to our own parsing methods from here
             parseStartFlightRecordingOption(newValue);
+            startRecordingAutomatically = true;
             // Do the sanity checks to make sure we have valid options
             if (!adjustMemoryOptions()) {
                 throw new IllegalArgumentException("Failed to validate memory arguments");
@@ -339,6 +341,10 @@ public class JfrOptions {
         }
         Target_jdk_jfr_internal_JVM.getJVM().setFileNotification(chunkSize);
         maxChunkSize = chunkSize;
+    }
+
+    public static boolean getStartRecordingAutomatically() {
+        return startRecordingAutomatically;
     }
 
     public static int getGlobalBufferSize() {

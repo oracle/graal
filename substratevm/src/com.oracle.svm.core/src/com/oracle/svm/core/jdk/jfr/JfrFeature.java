@@ -32,12 +32,14 @@ import java.lang.reflect.Method;
 import java.util.HashSet;
 import java.util.Set;
 
+import com.oracle.svm.core.jdk.RuntimeSupport;
 import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.nativeimage.hosted.Feature;
 import org.graalvm.nativeimage.hosted.RuntimeReflection;
 
 import com.oracle.svm.core.annotate.AutomaticFeature;
 import com.oracle.svm.core.jdk.jfr.logging.JfrLogger;
+import com.oracle.svm.core.jdk.jfr.remote.JfrAutoSessionManager;
 import com.oracle.svm.core.jdk.jfr.recorder.checkpoint.types.traceid.JfrTraceId;
 
 import jdk.internal.event.Event;
@@ -47,6 +49,15 @@ public class JfrFeature implements Feature {
     @Override
     public void afterRegistration(AfterRegistrationAccess access) {
         ImageSingletons.add(JfrRuntimeAccess.class, new JfrRuntimeAccessImpl());
+    }
+
+    @Override
+    public void beforeAnalysis(BeforeAnalysisAccess access) {
+        if (JfrAvailability.withJfr) {
+            // JFR-TODO: test command line options for startup timer, file output, etc.
+            RuntimeSupport.getRuntimeSupport().addStartupHook(JfrAutoSessionManager::startupHook);
+            RuntimeSupport.getRuntimeSupport().addShutdownHook(JfrAutoSessionManager::shutdownHook);
+        }
     }
 
     @Override
