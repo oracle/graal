@@ -16,12 +16,12 @@ The development of Espresso happens mostly on HotSpot, but this configuration (E
 **Espresso's native image runs on Linux, MacOS and Windows.**
 
 ## Setup
-Espresso needs some patches (in the graal repo) to run; checkout the `slimbeans` branch on the graal repo (internal branch not available on GitHub):
+Espresso needs some patches (in the graal repo) to run; checkout the `release/graal-vm/21.0` branch on the graal repo:
 ```bash
 cd ../graal
-git checkout slimbeans
+git checkout release/graal-vm/21.0
 ```
-Always use `master` for Espresso and the `slimbeans` branch on the graal repo.
+Always use `master` for Espresso and the `release/graal-vm/21.0` branch on the graal repo.
 
 ### Building _Espresso_
 
