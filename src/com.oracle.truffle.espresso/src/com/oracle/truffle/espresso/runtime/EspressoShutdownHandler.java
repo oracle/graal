@@ -123,10 +123,12 @@ class EspressoShutdownHandler implements ContextAccess {
 
     /**
      * Implements the {@code <DestroyJavaVM>} command of Espresso.
+     * <ol>
      * <li>Waits for all other non-daemon thread to naturally terminate.
      * <li>If all threads have terminated, and no other thread called an exit method, then:
      * <li>This calls guest {@code java.lang.Shutdown#shutdown()}
      * <li>Proceeds to teardown leftover daemon threads.
+     * </ol>
      */
     @TruffleBoundary
     void destroyVM() {

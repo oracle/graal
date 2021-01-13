@@ -807,18 +807,22 @@ public final class VM extends NativeEnv implements ContextAccess {
         StaticObject pendingException = jniEnv.getPendingException();
         jniEnv.clearPendingException();
 
-        Meta meta = context.getMeta();
-        if (pendingException != null) {
-            try {
-                meta.java_lang_Thread_dispatchUncaughtException.invokeDirect(currentThread, pendingException);
-            } catch (EspressoException e) {
-                String exception = e.getExceptionObject().getKlass().getExternalName();
-                String threadName = meta.toHostString((StaticObject) meta.java_lang_Thread_name.get(currentThread));
-                context.getLogger().warning(String.format("Exception: %s thrown from the UncaughtExceptionHandler in thread \"%s\"", exception, threadName));
+        try {
+            Meta meta = context.getMeta();
+            if (pendingException != null) {
+                try {
+                    meta.java_lang_Thread_dispatchUncaughtException.invokeDirect(currentThread, pendingException);
+                } catch (EspressoException e) {
+                    String exception = e.getExceptionObject().getKlass().getExternalName();
+                    String threadName = meta.toHostString((StaticObject) meta.java_lang_Thread_name.get(currentThread));
+                    context.getLogger().warning(String.format("Exception: %s thrown from the UncaughtExceptionHandler in thread \"%s\"", exception, threadName));
+                }
             }
-        }
 
-        Target_java_lang_Thread.terminate(currentThread, meta);
+            Target_java_lang_Thread.terminate(currentThread, meta);
+        } catch (EspressoExitException e) {
+            // ignore
+        }
 
         return JNI_OK;
     }
