@@ -85,8 +85,8 @@ import com.oracle.svm.hosted.analysis.Inflation;
  * a temporary solution, we're disabling the ModuleServicesLookupIterator in favour of the
  * LazyClassPathLookupIterator looking for files in META-INF directory. Therefore this feature
  * writes all services, even the ones from modules, into the corresponding META-INF file. All of
- * them are then discovered by the LazyClassPathLookupIterator.
- * 
+ * them are then discovered by the LazyClassPathLookupIterator. todo fix this once GR-19320 is done
+ *
  * One possible problem might be inconsistency between JVM and SVM, but since the lookup in JVM is
  * very dynamic in nature (depends on from which classloader or module you are starting), it might
  * not be possible for us to deliver services in the exact same order with "flat" single loader
