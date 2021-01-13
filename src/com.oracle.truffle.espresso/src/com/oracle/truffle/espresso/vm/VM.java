@@ -2302,6 +2302,9 @@ public final class VM extends NativeEnv implements ContextAccess {
             }
             assert managementPtr != null && !getUncached().isNull(managementPtr);
         } else if (version != managementVersion) {
+            CompilerDirectives.transferToInterpreterAndInvalidate();
+            context.getLogger().warning("Asking for a different management version that previously requested.\n" +
+                            "Previously requested: " + managementVersion + ", currently requested: " + version);
             return RawPointer.nullInstance();
         }
         return managementPtr;
@@ -2665,8 +2668,7 @@ public final class VM extends NativeEnv implements ContextAccess {
     @VmImpl
     @JniImpl
     public long GetOneThreadAllocatedMemory(
-                    long threadId,
-                    @InjectProfile SubstitutionProfiler profiler) {
+                    long threadId) {
         StaticObject[] activeThreads = getContext().getActiveThreads();
 
         StaticObject thread = StaticObject.NULL;
