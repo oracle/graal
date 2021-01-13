@@ -27,6 +27,7 @@ import static com.oracle.truffle.espresso.libespresso.jniapi.JNIErrors.JNI_ERR;
 import java.io.File;
 import java.io.PrintStream;
 
+import org.graalvm.nativeimage.RuntimeOptions;
 import org.graalvm.nativeimage.c.struct.SizeOf;
 import org.graalvm.nativeimage.c.type.CCharPointer;
 import org.graalvm.nativeimage.c.type.CTypeConversion;
@@ -154,14 +155,8 @@ public final class Arguments {
                     builder.option("jdk.module.upgrade.path", optionString.substring("--upgrade-module-path=".length()));
                 } else if (optionString.startsWith("--limit-modules=")) {
                     builder.option("jdk.module.limitmods", optionString.substring("--limit-modules=".length()));
-                } else if (optionString.equals("-Xms")) {
-                    // TODO
-                } else if (optionString.equals("-Xmx")) {
-                    // TODO
-                } else if (optionString.equals("-Xmn")) {
-                    // TODO
-                } else if (optionString.equals("-Xss")) {
-                    // TODO
+                } else if (isXOption(optionString)) {
+                    RuntimeOptions.set(optionString.substring("-X".length()), null);
                 } else if (optionString.equals("--polyglot")) {
                     // skip: handled by mokapot
                 } else {
@@ -192,6 +187,10 @@ public final class Arguments {
 
         builder.option("java.Classpath", classpath);
         return JNIErrors.JNI_OK();
+    }
+
+    public static boolean isXOption(String optionString) {
+        return optionString.startsWith("-Xms") || optionString.startsWith("-Xmx") || optionString.startsWith("-Xmn") || optionString.startsWith("-Xss");
     }
 
     private static String appendPath(String paths, String toAppend) {
