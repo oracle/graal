@@ -45,7 +45,7 @@ suite = {
             {
                 "name": "truffle",
                 "subdir": True,
-                "version": "6aab41a7583f8cfab4f2d672d7703aaa933b0007",
+                "version": "85ec0a54264d39f5b1b09ac10f04ec938828c53d",
                 "urls": [
                     {"url": "https://github.com/graalvm/graal", "kind": "git"},
                     {"url": "https://curio.ssw.jku.at/nexus/content/repositories/snapshots", "kind": "binary"},
@@ -54,7 +54,7 @@ suite = {
             {
                 "name": "tools",
                 "subdir": True,
-                "version": "6aab41a7583f8cfab4f2d672d7703aaa933b0007",
+                "version": "85ec0a54264d39f5b1b09ac10f04ec938828c53d",
                 "urls": [
                     {"url": "https://github.com/graalvm/graal", "kind": "git"},
                     {"url": "https://curio.ssw.jku.at/nexus/content/repositories/snapshots", "kind": "binary"},
@@ -63,7 +63,7 @@ suite = {
             {
                 "name" : "java-benchmarks",
                 "subdir": True,
-                "version": "6aab41a7583f8cfab4f2d672d7703aaa933b0007",
+                "version": "85ec0a54264d39f5b1b09ac10f04ec938828c53d",
                 "urls": [
                     {"url": "https://github.com/graalvm/graal", "kind": "git"},
                     {"url": "https://curio.ssw.jku.at/nexus/content/repositories/snapshots", "kind": "binary"},
