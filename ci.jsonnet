@@ -150,7 +150,7 @@ local gate_espresso(allow_warnings) = {
 
 local _mx(env, args) = ['mx', '--env', env] + args;
 
-local clone_repo(repo) = ['git', 'clone', '-b', 'slimbeans', '--depth', '1', ['mx', 'urlrewrite', 'https://github.com/oracle/' + repo], '../' + repo];
+local clone_repo(repo) = ['git', 'clone', '-b', 'release/graal-vm/21.0', '--depth', '1', ['mx', 'urlrewrite', 'https://github.com/oracle/' + repo], '../' + repo];
 
 local clone_graal(env) = {
   local maybe_clone_graal_enterprise = if std.endsWith(env, 'ee') then [clone_repo('graal-enterprise')] else [],
