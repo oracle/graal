@@ -42,6 +42,7 @@ package com.oracle.truffle.regex;
 
 import com.oracle.truffle.api.CallTarget;
 import com.oracle.truffle.api.CompilerDirectives;
+import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
 import com.oracle.truffle.api.Truffle;
 import com.oracle.truffle.api.TruffleLanguage;
 import com.oracle.truffle.api.exception.AbstractTruffleException;
@@ -128,8 +129,6 @@ public final class RegexLanguage extends TruffleLanguage<RegexLanguage.RegexCont
     public static final String ID = "regex";
     public static final String MIME_TYPE = "application/tregex";
 
-    public final RegexEngineBuilder engineBuilder = new RegexEngineBuilder(this);
-
     private final GroupBoundaries[] cachedGroupBoundaries;
     public final RegexParserGlobals parserGlobals;
     public final PureNFAIndex emptyNFAIndex;
@@ -146,13 +145,7 @@ public final class RegexLanguage extends TruffleLanguage<RegexLanguage.RegexCont
 
     @Override
     protected CallTarget parse(ParsingRequest parsingRequest) {
-        Source source = parsingRequest.getSource();
-        String mimeType = source.getMimeType();
-        if (mimeType != null) {
-            return Truffle.getRuntime().createCallTarget(RootNode.createConstantNode(createRegexObject(createRegexSource(source))));
-        }
-        // TODO: deprecated
-        return getCurrentContext().getEngineBuilderCT;
+        return Truffle.getRuntime().createCallTarget(RootNode.createConstantNode(createRegexObject(createRegexSource(parsingRequest.getSource()))));
     }
 
     private static RegexSource createRegexSource(Source source) {
@@ -177,33 +170,27 @@ public final class RegexLanguage extends TruffleLanguage<RegexLanguage.RegexCont
     }
 
     private Object createRegexObject(RegexSource source) {
-        RegexFlavor flavor = source.getOptions().getFlavor();
-        try {
+        if (source.getOptions().isValidate()) {
+            RegexFlavor flavor = source.getOptions().getFlavor();
             if (flavor != null) {
                 RegexFlavorProcessor flavorProcessor = flavor.forRegex(source);
                 flavorProcessor.validate();
-                if (!source.getOptions().isValidate()) {
-                    return new RegexObject(TRegexCompiler.compile(this, source), source, flavorProcessor.getFlags(), flavorProcessor.getNumberOfCaptureGroups(),
-                                    flavorProcessor.getNamedCaptureGroups());
-                }
             } else {
                 RegexValidator validator = new RegexValidator(source);
                 validator.validate();
-                if (!source.getOptions().isValidate()) {
-                    return new RegexObject(TRegexCompiler.compile(this, source), source, RegexFlags.parseFlags(source.getFlags()), validator.getNumberOfCaptureGroups(),
-                                    validator.getNamedCaptureGroups());
-                }
             }
+            return TruffleNull.INSTANCE;
+        }
+        try {
+            return TRegexCompiler.compile(this, source);
         } catch (UnsupportedRegexException e) {
             return TruffleNull.INSTANCE;
         }
-        // reached only if source.getOptions().isValidate()
-        return TruffleNull.INSTANCE;
     }
 
     @Override
     protected RegexContext createContext(Env env) {
-        return new RegexContext(env, engineBuilder);
+        return new RegexContext(env);
     }
 
     @Override
@@ -238,12 +225,11 @@ public final class RegexLanguage extends TruffleLanguage<RegexLanguage.RegexCont
     }
 
     public static final class RegexContext {
-        @CompilerDirectives.CompilationFinal private Env env;
-        private final CallTarget getEngineBuilderCT;
 
-        RegexContext(Env env, RegexEngineBuilder builder) {
+        @CompilationFinal private Env env;
+
+        RegexContext(Env env) {
             this.env = env;
-            getEngineBuilderCT = Truffle.getRuntime().createCallTarget(RootNode.createConstantNode(builder));
         }
 
         void patchContext(Env patchedEnv) {

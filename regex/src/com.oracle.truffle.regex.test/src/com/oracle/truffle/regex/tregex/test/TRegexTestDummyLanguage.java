@@ -55,7 +55,8 @@ public class TRegexTestDummyLanguage extends TruffleLanguage<TRegexTestDummyLang
 
     @Override
     protected CallTarget parse(ParsingRequest parsingRequest) {
-        return getCurrentContext(TRegexTestDummyLanguage.class).getEnv().parseInternal(Source.newBuilder(RegexLanguage.ID, "", "TRegex Engine Builder Request").internal(true).build());
+        return getCurrentContext(TRegexTestDummyLanguage.class).getEnv().parseInternal(
+                        Source.newBuilder(RegexLanguage.ID, parsingRequest.getSource().getCharacters(), parsingRequest.getSource().getName()).internal(true).build());
     }
 
     @Override

@@ -51,7 +51,7 @@ import java.util.function.Predicate;
 
 import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
-import com.oracle.truffle.api.interop.TruffleObject;
+import com.oracle.truffle.regex.AbstractRegexObject;
 import com.oracle.truffle.regex.RegexSource;
 import com.oracle.truffle.regex.RegexSyntaxException;
 import com.oracle.truffle.regex.UnsupportedRegexException;
@@ -328,7 +328,7 @@ public final class PythonFlavorProcessor implements RegexFlavorProcessor {
         this.inSource = source;
         this.inPattern = source.getPattern();
         this.inFlags = source.getFlags();
-        this.mode = mode;
+        this.mode = mode == PythonREMode.None ? PythonREMode.fromEncoding(source.getEncoding()) : mode;
         this.position = 0;
         this.outPattern = new StringBuilder(inPattern.length());
         this.globalFlags = new PythonFlags(inFlags);
@@ -352,7 +352,7 @@ public final class PythonFlavorProcessor implements RegexFlavorProcessor {
     }
 
     @Override
-    public TruffleObject getFlags() {
+    public AbstractRegexObject getFlags() {
         return getGlobalFlags();
     }
 
@@ -384,7 +384,7 @@ public final class PythonFlavorProcessor implements RegexFlavorProcessor {
         // patterns, all characters are in the range 0-255 and so the Unicode flag does not
         // interfere with the matching (no surrogates).
         return new RegexSource(outPattern.toString(), getGlobalFlags().isSticky() ? "suy" : "su",
-                        inSource.getOptions().withEncoding(mode == PythonREMode.Bytes ? Encodings.LATIN_1 : Encodings.UTF_16));
+                        inSource.getOptions().withEncoding(mode == PythonREMode.Bytes ? Encodings.LATIN_1 : Encodings.UTF_16), inSource.getSource());
     }
 
     private PythonFlags getLocalFlags() {

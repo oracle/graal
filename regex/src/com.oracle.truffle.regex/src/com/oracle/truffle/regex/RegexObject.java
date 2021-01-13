@@ -45,6 +45,7 @@ import java.util.Map;
 import com.oracle.truffle.api.CallTarget;
 import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
+import com.oracle.truffle.api.Truffle;
 import com.oracle.truffle.api.TruffleLanguage;
 import com.oracle.truffle.api.dsl.Cached;
 import com.oracle.truffle.api.dsl.GenerateUncached;
@@ -57,7 +58,6 @@ import com.oracle.truffle.api.interop.TruffleObject;
 import com.oracle.truffle.api.interop.UnknownIdentifierException;
 import com.oracle.truffle.api.interop.UnsupportedMessageException;
 import com.oracle.truffle.api.interop.UnsupportedTypeException;
-import com.oracle.truffle.api.library.CachedLibrary;
 import com.oracle.truffle.api.library.ExportLibrary;
 import com.oracle.truffle.api.library.ExportMessage;
 import com.oracle.truffle.api.nodes.DirectCallNode;
@@ -122,21 +122,21 @@ public final class RegexObject extends AbstractConstantKeysObject {
     private static final TruffleReadOnlyKeysArray KEYS = new TruffleReadOnlyKeysArray(PROP_EXEC, PROP_PATTERN, PROP_FLAGS, PROP_GROUP_COUNT, PROP_GROUPS);
 
     private final RegexSource source;
-    private final TruffleObject flags;
+    private final AbstractRegexObject flags;
     private final int numberOfCaptureGroups;
-    private final TruffleObject namedCaptureGroups;
-    private final Object compiledRegexObject;
+    private final AbstractRegexObject namedCaptureGroups;
+    private final CallTarget execCallTarget;
 
-    public RegexObject(Object compiledRegexObject, RegexSource source, TruffleObject flags, int numberOfCaptureGroups, Map<String, Integer> namedCaptureGroups) {
+    public RegexObject(RegexExecNode execNode, RegexSource source, AbstractRegexObject flags, int numberOfCaptureGroups, Map<String, Integer> namedCaptureGroups) {
         this.source = source;
         this.flags = flags;
         this.numberOfCaptureGroups = numberOfCaptureGroups;
         this.namedCaptureGroups = namedCaptureGroups != null ? createNamedCaptureGroupMap(namedCaptureGroups) : TruffleNull.INSTANCE;
-        this.compiledRegexObject = compiledRegexObject;
+        this.execCallTarget = Truffle.getRuntime().createCallTarget(new RegexRootNode(execNode.getRegexLanguage(), execNode));
     }
 
     @TruffleBoundary
-    private static TruffleObject createNamedCaptureGroupMap(Map<String, Integer> namedCaptureGroups) {
+    private static AbstractRegexObject createNamedCaptureGroupMap(Map<String, Integer> namedCaptureGroups) {
         if (TruffleSmallReadOnlyStringToIntMap.canCreate(namedCaptureGroups)) {
             return TruffleSmallReadOnlyStringToIntMap.create(namedCaptureGroups);
         }
@@ -159,8 +159,8 @@ public final class RegexObject extends AbstractConstantKeysObject {
         return namedCaptureGroups;
     }
 
-    public Object getCompiledRegexObject() {
-        return compiledRegexObject;
+    public CallTarget getExecCallTarget() {
+        return execCallTarget;
     }
 
     public RegexObjectExecMethod getExecMethod() {
@@ -241,18 +241,19 @@ public final class RegexObject extends AbstractConstantKeysObject {
         if (fromIndex > Integer.MAX_VALUE) {
             return NoMatchResult.getInstance();
         }
-        return invokeCache.execute(member, getCompiledRegexObject(), input, (int) fromIndex);
+        return invokeCache.execute(member, getExecCallTarget(), input, (int) fromIndex);
     }
 
     @ImportStatic(RegexObject.class)
     @GenerateUncached
     abstract static class InvokeCacheNode extends Node {
 
-        abstract Object execute(String symbol, Object receiver, Object input, int fromIndex) throws UnsupportedMessageException, ArityException, UnsupportedTypeException, UnknownIdentifierException;
+        abstract Object execute(String symbol, CallTarget receiver, Object input, int fromIndex)
+                        throws UnsupportedMessageException, ArityException, UnsupportedTypeException, UnknownIdentifierException;
 
         @SuppressWarnings("unused")
         @Specialization(guards = {"symbol == cachedSymbol", "cachedSymbol.equals(PROP_EXEC)"}, limit = N_METHODS)
-        Object getStartIdentity(String symbol, Object receiver, Object input, int fromIndex,
+        Object execIdentity(String symbol, CallTarget receiver, Object input, int fromIndex,
                         @Cached("symbol") String cachedSymbol,
                         @Cached ExpectStringOrTruffleObjectNode expectStringOrTruffleObjectNode,
                         @Cached ExecCompiledRegexNode execNode) throws UnsupportedMessageException, ArityException, UnsupportedTypeException {
@@ -260,8 +261,8 @@ public final class RegexObject extends AbstractConstantKeysObject {
         }
 
         @SuppressWarnings("unused")
-        @Specialization(guards = {"symbol.equals(cachedSymbol)", "cachedSymbol.equals(PROP_EXEC)"}, limit = N_METHODS, replaces = "getStartIdentity")
-        Object getStartEquals(String symbol, Object receiver, Object input, int fromIndex,
+        @Specialization(guards = {"symbol.equals(cachedSymbol)", "cachedSymbol.equals(PROP_EXEC)"}, limit = N_METHODS, replaces = "execIdentity")
+        Object execEquals(String symbol, CallTarget receiver, Object input, int fromIndex,
                         @Cached("symbol") String cachedSymbol,
                         @Cached ExpectStringOrTruffleObjectNode expectStringOrTruffleObjectNode,
                         @Cached ExecCompiledRegexNode execNode) throws UnsupportedMessageException, ArityException, UnsupportedTypeException {
@@ -271,7 +272,7 @@ public final class RegexObject extends AbstractConstantKeysObject {
         // EXPERIMENTAL
         @SuppressWarnings("unused")
         @Specialization(guards = {"symbol == cachedSymbol", "cachedSymbol.equals(PROP_EXEC_BYTES)"}, limit = N_METHODS)
-        Object getEndIdentity(String symbol, Object receiver, Object input, int fromIndex,
+        Object execBytesIdentity(String symbol, CallTarget receiver, Object input, int fromIndex,
                         @Cached("symbol") String cachedSymbol,
                         @Cached ExpectByteArrayHostObjectNode expectByteArrayHostObjectNode,
                         @Cached ExecCompiledRegexNode execNode) throws UnsupportedMessageException, ArityException, UnsupportedTypeException {
@@ -280,8 +281,8 @@ public final class RegexObject extends AbstractConstantKeysObject {
 
         // EXPERIMENTAL
         @SuppressWarnings("unused")
-        @Specialization(guards = {"symbol.equals(cachedSymbol)", "cachedSymbol.equals(PROP_EXEC_BYTES)"}, limit = N_METHODS, replaces = "getEndIdentity")
-        Object getEndEquals(String symbol, Object receiver, Object input, int fromIndex,
+        @Specialization(guards = {"symbol.equals(cachedSymbol)", "cachedSymbol.equals(PROP_EXEC_BYTES)"}, limit = N_METHODS, replaces = "execBytesIdentity")
+        Object execBytesEquals(String symbol, CallTarget receiver, Object input, int fromIndex,
                         @Cached("symbol") String cachedSymbol,
                         @Cached ExpectByteArrayHostObjectNode expectByteArrayHostObjectNode,
                         @Cached ExecCompiledRegexNode execNode) throws UnsupportedMessageException, ArityException, UnsupportedTypeException {
@@ -289,8 +290,8 @@ public final class RegexObject extends AbstractConstantKeysObject {
         }
 
         @ReportPolymorphism.Megamorphic
-        @Specialization(replaces = {"getStartEquals", "getEndEquals"})
-        static Object invokeGeneric(String symbol, Object receiver, Object input, int fromIndex,
+        @Specialization(replaces = {"execEquals", "execBytesEquals"})
+        static Object invokeGeneric(String symbol, CallTarget receiver, Object input, int fromIndex,
                         @Cached ExpectStringOrTruffleObjectNode expectStringOrTruffleObjectNode,
                         @Cached ExpectByteArrayHostObjectNode expectByteArrayHostObjectNode,
                         @Cached ExecCompiledRegexNode execNode) throws UnsupportedMessageException, ArityException, UnsupportedTypeException, UnknownIdentifierException {
@@ -339,7 +340,7 @@ public final class RegexObject extends AbstractConstantKeysObject {
             if (fromIndex > Integer.MAX_VALUE) {
                 return NoMatchResult.getInstance();
             }
-            return execNode.execute(getRegexObject().getCompiledRegexObject(), input, (int) fromIndex);
+            return execNode.execute(getRegexObject().getExecCallTarget(), input, (int) fromIndex);
         }
 
         @TruffleBoundary
@@ -388,7 +389,7 @@ public final class RegexObject extends AbstractConstantKeysObject {
             if (fromIndex > Integer.MAX_VALUE) {
                 return NoMatchResult.getInstance();
             }
-            return execNode.execute(regexObj.getCompiledRegexObject(), input, (int) fromIndex);
+            return execNode.execute(regexObj.getExecCallTarget(), input, (int) fromIndex);
         }
 
         @TruffleBoundary
@@ -402,32 +403,21 @@ public final class RegexObject extends AbstractConstantKeysObject {
     @GenerateUncached
     abstract static class ExecCompiledRegexNode extends Node {
 
-        abstract Object execute(Object receiver, Object input, int fromIndex) throws UnsupportedMessageException, ArityException, UnsupportedTypeException;
+        abstract Object execute(CallTarget receiver, Object input, int fromIndex) throws UnsupportedMessageException, ArityException, UnsupportedTypeException;
 
         @SuppressWarnings("unused")
-        @Specialization(guards = "receiver.getCallTarget() == cachedCallTarget", limit = "4")
-        static Object executeTRegexFixed(CompiledRegexObject receiver, Object input, int fromIndex,
-                        @Cached("receiver.getCallTarget()") CallTarget cachedCallTarget,
+        @Specialization(guards = "receiver == cachedCallTarget", limit = "4")
+        static Object executeDirectCall(CallTarget receiver, Object input, int fromIndex,
+                        @Cached("receiver") CallTarget cachedCallTarget,
                         @Cached("create(cachedCallTarget)") DirectCallNode directCallNode) {
             return directCallNode.call(input, fromIndex);
         }
 
         @ReportPolymorphism.Megamorphic
-        @Specialization(replaces = "executeTRegexFixed")
-        static Object executeTRegexVarying(CompiledRegexObject receiver, Object input, int fromIndex,
+        @Specialization(replaces = "executeDirectCall")
+        static Object executeIndirectCall(CallTarget receiver, Object input, int fromIndex,
                         @Cached IndirectCallNode indirectCallNode) {
-            return indirectCallNode.call(receiver.getCallTarget(), input, fromIndex);
-        }
-
-        @SuppressWarnings("unused")
-        @Specialization(guards = "receivers.isMemberInvocable(receiver, PROP_EXEC)", limit = "4")
-        static Object executeForeign(TruffleObject receiver, Object input, int fromIndex,
-                        @CachedLibrary("receiver") InteropLibrary receivers) throws UnsupportedMessageException, ArityException, UnsupportedTypeException {
-            try {
-                return receivers.invokeMember(receiver, "exec", input, fromIndex);
-            } catch (UnknownIdentifierException e) {
-                throw CompilerDirectives.shouldNotReachHere("fallback compiled regex does not have an invocable \"exec\" method");
-            }
+            return indirectCallNode.call(receiver, input, fromIndex);
         }
     }
 

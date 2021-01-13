@@ -42,6 +42,7 @@ package com.oracle.truffle.regex;
 
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.regex.tregex.TRegexOptions;
+import com.oracle.truffle.regex.tregex.nodes.TRegexExecNode;
 import com.oracle.truffle.regex.tregex.parser.Counter;
 
 /**
@@ -50,7 +51,7 @@ import com.oracle.truffle.regex.tregex.parser.Counter;
  * profiling information is used by TRegex for deciding whether a regular expression should match
  * capture groups in a lazy or eager way.
  *
- * @see com.oracle.truffle.regex.tregex.nodes.TRegexExecRootNode
+ * @see TRegexExecNode
  * @see com.oracle.truffle.regex.tregex.nodes.dfa.TRegexLazyCaptureGroupsRootNode
  */
 public final class RegexProfile {

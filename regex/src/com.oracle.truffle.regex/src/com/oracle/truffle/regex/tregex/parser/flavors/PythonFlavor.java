@@ -67,6 +67,8 @@ import com.oracle.truffle.regex.RegexSource;
  */
 public final class PythonFlavor implements RegexFlavor {
 
+    public static final PythonFlavor INSTANCE = new PythonFlavor(PythonREMode.None);
+
     public static final PythonFlavor STR_INSTANCE = new PythonFlavor(PythonREMode.Str);
     public static final PythonFlavor BYTES_INSTANCE = new PythonFlavor(PythonREMode.Bytes);
 
