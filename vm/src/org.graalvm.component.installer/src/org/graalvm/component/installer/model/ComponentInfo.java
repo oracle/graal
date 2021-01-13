@@ -121,6 +121,8 @@ public final class ComponentInfo {
      */
     private int priority;
 
+    private StabilityLevel stability = StabilityLevel.Undefined;
+
     public ComponentInfo(String id, String name, String versionString, String tag) {
         this.id = id;
         this.versionString = versionString;
@@ -471,5 +473,17 @@ public final class ComponentInfo {
 
     public void setPriority(int priority) {
         this.priority = priority;
+    }
+
+    public StabilityLevel getStability() {
+        return stability;
+    }
+
+    public void setStability(StabilityLevel stab) {
+        if (stab == null) {
+            this.stability = StabilityLevel.Undefined;
+        } else {
+            this.stability = stab;
+        }
     }
 }
