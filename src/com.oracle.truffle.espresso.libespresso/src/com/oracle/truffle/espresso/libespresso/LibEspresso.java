@@ -54,14 +54,17 @@ public class LibEspresso {
         if (result != JNIErrors.JNI_OK()) {
             return result;
         }
+        builder.option("java.ExposeNativeJavaVM", "true");
         Context context = builder.build();
         context.enter();
-        Value java = context.getBindings("java").getMember("<JavaVM>");
+        Value bindings = context.getBindings("java");
+        Value java = bindings.getMember("<JavaVM>");
         if (!java.isNativePointer()) {
             STDERR.println("<JavaVM> is not available in the java bindings");
             return JNIErrors.JNI_ERR();
         }
         JNIJavaVM espressoJavaVM = WordFactory.pointer(java.asNativePointer());
+        bindings.removeMember("<JavaVM>");
         ObjectHandle contextHandle = ObjectHandles.getGlobal().create(context);
         espressoJavaVM.getFunctions().setContext(contextHandle);
 

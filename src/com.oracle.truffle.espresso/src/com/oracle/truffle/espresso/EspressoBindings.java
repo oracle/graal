@@ -28,6 +28,7 @@ import com.oracle.truffle.api.dsl.CachedContext;
 import com.oracle.truffle.api.interop.InteropLibrary;
 import com.oracle.truffle.api.interop.TruffleObject;
 import com.oracle.truffle.api.interop.UnknownIdentifierException;
+import com.oracle.truffle.api.interop.UnsupportedMessageException;
 import com.oracle.truffle.api.library.ExportLibrary;
 import com.oracle.truffle.api.library.ExportMessage;
 import com.oracle.truffle.api.profiles.BranchProfile;
@@ -57,8 +58,10 @@ public final class EspressoBindings implements TruffleObject {
     public static final String JAVA_VM = "<JavaVM>";
 
     final StaticObject loader;
+    boolean withNativeJavaVM;
 
-    public EspressoBindings(@Host(ClassLoader.class) StaticObject loader) {
+    public EspressoBindings(@Host(ClassLoader.class) StaticObject loader, boolean withNativeJavaVM) {
+        this.withNativeJavaVM = withNativeJavaVM;
         assert StaticObject.notNull(loader) : "boot classloader (null) not supported";
         this.loader = loader;
     }
@@ -79,6 +82,9 @@ public final class EspressoBindings implements TruffleObject {
     @ExportMessage(name = "hasMemberReadSideEffects")
     @SuppressWarnings("static-method")
     boolean isMemberReadable(@SuppressWarnings("unused") String member) {
+        if (JAVA_VM.equals(member)) {
+            return withNativeJavaVM;
+        }
         // TODO(peterssen): Validate proper class name.
         return true;
     }
@@ -91,7 +97,7 @@ public final class EspressoBindings implements TruffleObject {
             error.enter();
             throw UnknownIdentifierException.create(member);
         }
-        if (JAVA_VM.equals(member)) {
+        if (withNativeJavaVM && JAVA_VM.equals(member)) {
             return context.getVM().getJavaVM();
         }
         Meta meta = context.getMeta();
@@ -105,6 +111,25 @@ public final class EspressoBindings implements TruffleObject {
                 throw UnknownIdentifierException.create(member, e);
             }
             throw e; // exception during class loading
+        }
+    }
+
+    @ExportMessage
+    boolean isMemberRemovable(String member) {
+        if (withNativeJavaVM && JAVA_VM.equals(member)) {
+            return true;
+        }
+        return false;
+    }
+
+    @ExportMessage
+    void removeMember(String member, @Cached BranchProfile error) throws UnknownIdentifierException {
+        if (!isMemberRemovable(member)) {
+            error.enter();
+            throw UnknownIdentifierException.create(member);
+        }
+        if (withNativeJavaVM && JAVA_VM.equals(member)) {
+            withNativeJavaVM = false;
         }
     }
 

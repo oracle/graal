@@ -433,7 +433,7 @@ public final class EspressoContext {
             try (DebugCloseable systemLoader = SYSTEM_CLASSLOADER.scope(timers)) {
                 systemClassLoader = (StaticObject) meta.java_lang_ClassLoader_getSystemClassLoader.invokeDirect(null);
             }
-            topBindings = new EspressoBindings(systemClassLoader);
+            topBindings = new EspressoBindings(systemClassLoader, getEnv().getOptions().get(EspressoOptions.ExposeNativeJavaVM));
 
             initDoneTimeNanos = System.nanoTime();
             long elapsedNanos = initDoneTimeNanos - initStartTimeNanos;
