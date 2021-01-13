@@ -77,6 +77,7 @@ import com.oracle.truffle.espresso.meta.Meta;
 import com.oracle.truffle.espresso.nodes.BytecodeNode;
 import com.oracle.truffle.espresso.nodes.interop.InvokeEspressoNode;
 import com.oracle.truffle.espresso.nodes.interop.LookupVirtualMethodNode;
+import com.oracle.truffle.espresso.substitutions.Host;
 import com.oracle.truffle.espresso.vm.UnsafeAccess;
 import com.oracle.truffle.espresso.vm.VM;
 
@@ -1477,6 +1478,18 @@ public final class StaticObject implements TruffleObject {
         assert array.getClass().isArray();
         StaticObject newObj = new StaticObject(klass, array);
         return trackAllocation(klass, newObj);
+    }
+
+    /**
+     * Wraps a foreign {@link InteropLibrary#isException(Object) exception} as a guest
+     * ForeignException.
+     */
+    public static @Host(typeName = "Lcom/oracle/truffle/espresso/polyglot/ForeignException;") StaticObject createForeignException(Meta meta, Object foreignObject, InteropLibrary interopLibrary) {
+        assert meta.polyglot != null;
+        assert meta.getContext().Polyglot;
+        assert interopLibrary.isException(foreignObject);
+        assert !(foreignObject instanceof StaticObject);
+        return createForeign(meta.polyglot.ForeignException, foreignObject, interopLibrary);
     }
 
     public static StaticObject createForeign(Klass klass, Object foreignObject, InteropLibrary interopLibrary) {

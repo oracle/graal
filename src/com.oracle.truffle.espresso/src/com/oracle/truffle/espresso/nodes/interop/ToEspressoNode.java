@@ -181,7 +181,7 @@ public abstract class ToEspressoNode extends Node {
         if (!interop.isException(value)) {
             throw UnsupportedTypeException.create(new Object[]{value}, "Could not cast foreign object to " + klass.getNameAsString());
         }
-        return StaticObject.createForeign(klass, value, interop);
+        return StaticObject.createForeignException(klass.getMeta(), value, interop);
     }
 
     @Specialization(guards = {"!isStaticObject(value)", "!interop.isNull(value)", "!isString(klass)", "!isForeignException(klass)", "!klass.isAbstract()"})

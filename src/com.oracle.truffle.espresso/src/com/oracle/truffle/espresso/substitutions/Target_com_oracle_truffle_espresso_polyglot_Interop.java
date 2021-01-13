@@ -450,7 +450,7 @@ public final class Target_com_oracle_truffle_espresso_polyglot_Interop {
                 return (StaticObject) cause; // Already typed, do not re-type.
             }
             // The cause must be an exception, wrap it as ForeignException.
-            return StaticObject.createForeign(meta.polyglot.ForeignException, cause, UNCACHED);
+            return StaticObject.createForeignException(meta, cause, UNCACHED);
         } catch (InteropException e) {
             throw throwInteropException(e, meta);
         }
@@ -1527,7 +1527,7 @@ public final class Target_com_oracle_truffle_espresso_polyglot_Interop {
     private static StaticObject wrapForeignException(Throwable throwable, Meta meta) {
         assert UNCACHED.isException(throwable);
         assert throwable instanceof AbstractTruffleException;
-        return StaticObject.createForeign(meta.polyglot.ForeignException, throwable, UNCACHED);
+        return StaticObject.createForeignException(meta, throwable, UNCACHED);
     }
 
     @TruffleBoundary

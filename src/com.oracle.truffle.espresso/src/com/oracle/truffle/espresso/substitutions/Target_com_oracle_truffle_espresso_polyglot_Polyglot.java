@@ -105,7 +105,7 @@ public class Target_com_oracle_truffle_espresso_polyglot_Polyglot {
                     if (!interopLibrary.isException(value.rawForeignObject())) {
                         throw Meta.throwExceptionWithMessage(meta.java_lang_ClassCastException, "Cannot cast a non-exception foreign object to ForeignException");
                     }
-                    return StaticObject.createForeign(meta.polyglot.ForeignException, value.rawForeignObject(), interopLibrary);
+                    return StaticObject.createForeignException(meta, value.rawForeignObject(), interopLibrary);
                 }
 
                 try {
