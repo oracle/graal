@@ -26,12 +26,17 @@ import static com.oracle.truffle.espresso.libespresso.jniapi.JNIErrors.JNI_ERR;
 
 import java.io.File;
 import java.io.PrintStream;
+import java.util.logging.Level;
 
 import org.graalvm.nativeimage.RuntimeOptions;
 import org.graalvm.nativeimage.c.struct.SizeOf;
 import org.graalvm.nativeimage.c.type.CCharPointer;
 import org.graalvm.nativeimage.c.type.CTypeConversion;
+import org.graalvm.options.OptionDescriptor;
+import org.graalvm.options.OptionDescriptors;
+import org.graalvm.options.OptionStability;
 import org.graalvm.polyglot.Context;
+import org.graalvm.polyglot.Engine;
 import org.graalvm.word.Pointer;
 
 import com.oracle.truffle.espresso.libespresso.jniapi.JNIErrors;
@@ -92,6 +97,8 @@ public final class Arguments {
         String bootClasspathPrepend = null;
         String bootClasspathAppend = null;
         ModulePropertyCounter modulePropHandler = new ModulePropertyCounter(builder);
+        boolean experimentalOptions = checkExperimental(args);
+        boolean ignoreUnrecognized = false;
         for (int i = 0; i < count; i++) {
             JNIJavaVMOption option = (JNIJavaVMOption) p.add(i * SizeOf.get(JNIJavaVMOption.class));
             CCharPointer str = option.getOptionString();
@@ -160,7 +167,13 @@ public final class Arguments {
                     builder.option(JAVA_PROPS + "jdk.module.limitmods", optionString.substring("--limit-modules=".length()));
                 } else if (isXOption(optionString)) {
                     RuntimeOptions.set(optionString.substring("-X".length()), null);
+                } else if (optionString.equals("-XX:+IgnoreUnrecognizedVMOptions")) {
+                    ignoreUnrecognized = true;
+                } else if (optionString.equals("-XX:-IgnoreUnrecognizedVMOptions")) {
+                    ignoreUnrecognized = false;
                 } else if (optionString.startsWith("--vm.")) {
+                    // TODO: more precise handling (see
+                    // org.graalvm.launcher.Launcher.Native.setNativeOption)
                     int eqIx = optionString.indexOf('=');
                     if (eqIx > 0) {
                         String key = optionString.substring("--vm.".length(), eqIx);
@@ -173,14 +186,19 @@ public final class Arguments {
                 } else if (optionString.equals("--polyglot")) {
                     // skip: handled by mokapot
                 } else {
-                    // TODO XX: and X options
-                    STDERR.printf("Unrecognized option: %s%n", optionString);
-                    return JNI_ERR();
+                    String err = parsePolyglotOption(builder, optionString, experimentalOptions);
+                    if (!ignoreUnrecognized && err != null) {
+                        // Failed to parse
+                        STDERR.printf(err);
+                        return JNI_ERR();
+                    }
                 }
             }
         }
 
-        if (bootClasspathPrepend != null) {
+        if (bootClasspathPrepend != null)
+
+        {
             builder.option("java.BootClasspathPrepend", bootClasspathPrepend);
         }
         if (bootClasspathAppend != null) {
@@ -202,8 +220,112 @@ public final class Arguments {
         return JNIErrors.JNI_OK();
     }
 
-    public static boolean isXOption(String optionString) {
+    private static boolean checkExperimental(JNIJavaVMInitArgs args) {
+        Pointer p = (Pointer) args.getOptions();
+        for (int i = 0; i < args.getNOptions(); i++) {
+            JNIJavaVMOption option = (JNIJavaVMOption) p.add(i * SizeOf.get(JNIJavaVMOption.class));
+            CCharPointer str = option.getOptionString();
+            if (str.isNonNull()) {
+                String optionString = CTypeConversion.toJavaString(option.getOptionString());
+                switch (optionString) {
+                    case "--experimental-options":
+                    case "--experimental-options=true":
+                        return true;
+                    case "--experimental-options=false":
+                        return false;
+                    default:
+                }
+            }
+        }
+        return false;
+    }
+
+    private static boolean isXOption(String optionString) {
         return optionString.startsWith("-Xms") || optionString.startsWith("-Xmx") || optionString.startsWith("-Xmn") || optionString.startsWith("-Xss");
+    }
+
+    private static String parsePolyglotOption(Context.Builder builder, String arg, boolean experimentalOptions) {
+        int eqIdx = arg.indexOf('=');
+        String key;
+        String value;
+        if (eqIdx < 0) {
+            key = arg.substring(2);
+            value = null;
+        } else {
+            key = arg.substring(2, eqIdx);
+            value = arg.substring(eqIdx + 1);
+        }
+
+        if (value == null) {
+            value = "true";
+        }
+        int index = key.indexOf('.');
+        String group = key;
+        if (index >= 0) {
+            group = group.substring(0, index);
+        }
+        if ("log".equals(group)) {
+            if (key.endsWith(".level")) {
+                try {
+                    Level.parse(value);
+                    builder.option(key, value);
+                } catch (IllegalArgumentException e) {
+                    return String.format("Invalid log level %s specified. %s'", arg, e.getMessage());
+                }
+                return null;
+            } else if (key.equals("log.file")) {
+                return "Unsupported log.file option";
+            }
+        }
+        OptionDescriptor descriptor = findOptionDescriptor(group, key);
+        if (descriptor == null) {
+            descriptor = findOptionDescriptor("java", "java" + "." + key);
+            if (descriptor == null) {
+                return String.format("Unrecognized option: %s%n", arg);
+            }
+        }
+        try {
+            descriptor.getKey().getType().convert(value);
+        } catch (IllegalArgumentException e) {
+            return String.format("Invalid argument %s specified. %s'", arg, e.getMessage());
+        }
+        if (!experimentalOptions && descriptor.getStability() == OptionStability.EXPERIMENTAL) {
+            return String.format("Option '%s' is experimental and must be enabled via '--experimental-options'%n" +
+                            "Do not use experimental options in production environments.", arg);
+        }
+        // use the full name of the found descriptor
+        builder.option(descriptor.getName(), value);
+        return null;
+    }
+
+    private static OptionDescriptor findOptionDescriptor(String group, String key) {
+        OptionDescriptors descriptors = null;
+        switch (group) {
+            case "engine":
+                descriptors = getTempEngine().getOptions();
+                break;
+            default:
+                Engine engine = getTempEngine();
+                if (engine.getLanguages().containsKey(group)) {
+                    descriptors = engine.getLanguages().get(group).getOptions();
+                } else if (engine.getInstruments().containsKey(group)) {
+                    descriptors = engine.getInstruments().get(group).getOptions();
+                }
+                break;
+        }
+        if (descriptors == null) {
+            return null;
+        }
+        return descriptors.get(key);
+    }
+
+    private static Engine tempEngine;
+
+    static Engine getTempEngine() {
+        if (tempEngine == null) {
+            tempEngine = Engine.newBuilder().useSystemProperties(false).build();
+        }
+        return tempEngine;
     }
 
     private static String appendPath(String paths, String toAppend) {
