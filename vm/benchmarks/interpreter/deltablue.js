@@ -486,38 +486,9 @@ Random.prototype.next = function () {
   return this.seed;
 };
 
-function Benchmark() {}
-
-Benchmark.prototype.innerBenchmarkLoop = function (innerIterations) {
-  for (var i = 0; i < innerIterations; i++) {
-    if (!this.verifyResult(this.benchmark())) {
-      return false;
-    }
-  }
-  return true;
-};
-
-Benchmark.prototype.benchmark = function () {
-  throw "subclass responsibility";
-};
-
-Benchmark.prototype.verifyResult = function () {
-  throw "subclass responsibility";
-};
-
 function Planner() {
   this.currentMark = 1;
 }
-
-//function DeltaBlue() {
-//  Benchmark.call(this);
-//
-//  this.innerBenchmarkLoop = function (innerIterations) {
-//    Planner.chainTest(innerIterations);
-//    Planner.projectionTest(innerIterations);
-//    return true;
-//  };
-//}
 
 function Sym(hash) {
   this.hash = hash;
@@ -1154,5 +1125,5 @@ function run() {
   var innerIterations = 1000;
   Planner.chainTest(innerIterations);
   Planner.projectionTest(innerIterations);
-  return Planner
+  return Planner;
 };
