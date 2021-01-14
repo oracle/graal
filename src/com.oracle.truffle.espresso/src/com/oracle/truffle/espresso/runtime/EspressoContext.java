@@ -147,7 +147,6 @@ public final class EspressoContext {
     // Behavior control
     public final boolean EnableManagement;
     public final boolean MultiThreaded;
-    public final boolean SoftExit;
     public final EspressoOptions.VerifyMode Verify;
     public final EspressoOptions.SpecCompliancyMode SpecCompliancyMode;
     public final boolean IsolatedNamespace;
@@ -210,7 +209,10 @@ public final class EspressoContext {
 
         this.threadManager = new EspressoThreadManager(this);
         this.referenceDrainer = new EspressoReferenceDrainer(this);
-        this.shutdownManager = new EspressoShutdownHandler(this, threadManager, referenceDrainer);
+
+        boolean softExit = env.getOptions().get(EspressoOptions.SoftExit);
+        boolean exitHost = env.getOptions().get(EspressoOptions.ExitHost);
+        this.shutdownManager = new EspressoShutdownHandler(this, threadManager, referenceDrainer, exitHost, softExit);
 
         this.timers = TimerCollection.create(env.getOptions().get(EspressoOptions.EnableTimers));
         this.allocationReporter = env.lookup(AllocationReporter.class);
@@ -218,15 +220,14 @@ public final class EspressoContext {
         // null if not specified
         this.JDWPOptions = env.getOptions().get(EspressoOptions.JDWPOptions);
 
-        this.InlineFieldAccessors = JDWPOptions != null ? false : env.getOptions().get(EspressoOptions.InlineFieldAccessors);
-        this.InlineMethodHandle = JDWPOptions != null ? false : env.getOptions().get(EspressoOptions.InlineMethodHandle);
-        this.SplitMethodHandles = JDWPOptions != null ? false : env.getOptions().get(EspressoOptions.SplitMethodHandles);
+        this.InlineFieldAccessors = JDWPOptions == null && env.getOptions().get(EspressoOptions.InlineFieldAccessors);
+        this.InlineMethodHandle = JDWPOptions == null && env.getOptions().get(EspressoOptions.InlineMethodHandle);
+        this.SplitMethodHandles = JDWPOptions == null && env.getOptions().get(EspressoOptions.SplitMethodHandles);
         this.Verify = env.getOptions().get(EspressoOptions.Verify);
         this.SpecCompliancyMode = env.getOptions().get(EspressoOptions.SpecCompliancy);
         this.livenessAnalysisMode = env.getOptions().get(EspressoOptions.LivenessAnalysis);
         this.EnableManagement = env.getOptions().get(EspressoOptions.EnableManagement);
         this.MultiThreaded = env.getOptions().get(EspressoOptions.MultiThreaded);
-        this.SoftExit = env.getOptions().get(EspressoOptions.SoftExit);
         this.Polyglot = env.getOptions().get(EspressoOptions.Polyglot);
 
         // Isolated (native) namespaces via dlmopen is only supported on Linux.
@@ -660,8 +661,8 @@ public final class EspressoContext {
         shutdownManager.doExit(code);
     }
 
-    public void destroyVM() {
-        shutdownManager.destroyVM();
+    public void destroyVM(boolean killThreads) {
+        shutdownManager.destroyVM(killThreads);
     }
 
     public boolean isClosing() {
