@@ -26,4 +26,3 @@ package com.oracle.truffle.espresso;
 import java.lang.reflect.Method;
 
 import com.oracle.truffle.espresso.runtime.StaticObject;
-
