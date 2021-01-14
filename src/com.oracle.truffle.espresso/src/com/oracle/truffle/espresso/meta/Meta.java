@@ -551,16 +551,15 @@ public final class Meta implements ContextAccess {
         java_time_ZoneId_getId = java_time_ZoneId.lookupDeclaredMethod(Name.getId, Signature.String);
         java_time_ZoneId_of = java_time_ZoneId.lookupDeclaredMethod(Name.of, Signature.ZoneId_String);
         assert java_time_ZoneId_of.isStatic();
-
-        // Interop support.
-        boolean polyglotSupport = getContext().getEnv().getOptions().get(EspressoOptions.Polyglot);
-        this.polyglot = polyglotSupport ? new PolyglotSupport() : null;
     }
 
+    /**
+     * Espresso's Polyglot API (polyglot.jar) is injected on the boot CP, must be loaded after
+     * modules initialization.
+     * 
+     * The classes in module java.management become known after modules initialization.
+     */
     public void postSystemInit() {
-        // these classes are in module java.management. These become known after modules
-        // initialization.
-
         // java.management
         java_lang_management_MemoryUsage = knownKlass(Type.java_lang_management_MemoryUsage);
 
@@ -583,6 +582,10 @@ public final class Meta implements ContextAccess {
             // GarbageCollectorMXBean createGarbageCollector(String var0, String var1)
             sun_management_ManagementFactory_createGarbageCollector = null;
         }
+
+        // Load Espresso's Polyglot API.
+        boolean polyglotSupport = getContext().getEnv().getOptions().get(EspressoOptions.Polyglot);
+        this.polyglot = polyglotSupport ? new PolyglotSupport() : null;
     }
 
     private Field lookupFieldDiffVersion(ObjectKlass klass, Symbol<Name> n1, Symbol<Type> t1, Symbol<Name> n2, Symbol<Type> t2) {
@@ -1044,7 +1047,7 @@ public final class Meta implements ContextAccess {
         public final Field ExceptionType_RUNTIME_ERROR;
         public final Field ExceptionType_PARSE_ERROR;
 
-        private PolyglotSupport() {
+        public PolyglotSupport() {
             boolean polyglotSupport = getContext().getEnv().getOptions().get(EspressoOptions.Polyglot);
             EspressoError.guarantee(polyglotSupport, "--java.Polyglot must be enabled");
             EspressoError.guarantee(knownKlass(Type.com_oracle_truffle_espresso_polyglot_Polyglot) != null,
@@ -1084,7 +1087,8 @@ public final class Meta implements ContextAccess {
         }
     }
 
-    public final PolyglotSupport polyglot;
+    @CompilationFinal //
+    public PolyglotSupport polyglot;
 
     @CompilationFinal(dimensions = 1) //
     public final ObjectKlass[] ARRAY_SUPERINTERFACES;
