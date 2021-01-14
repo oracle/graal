@@ -1276,6 +1276,12 @@ public final class VM extends NativeEnv implements ContextAccess {
         setProperty.invokeWithConversions(properties, "java.vm.vendor", EspressoLanguage.VM_VENDOR);
         setProperty.invokeWithConversions(properties, "java.vm.info", EspressoLanguage.VM_INFO);
 
+        if (options.hasBeenSet(EspressoOptions.MaxDirectMemorySize)) {
+            setProperty.invokeWithConversions(properties, "sun.nio.MaxDirectMemorySize", Long.toString(options.get(EspressoOptions.MaxDirectMemorySize)));
+        } else {
+            setProperty.invokeWithConversions(properties, "sun.nio.MaxDirectMemorySize", "-1");
+        }
+
         return properties;
     }
 

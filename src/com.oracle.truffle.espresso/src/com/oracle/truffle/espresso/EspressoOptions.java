@@ -353,5 +353,52 @@ public final class EspressoOptions {
                     category = OptionCategory.EXPERT, stability = OptionStability.EXPERIMENTAL) //
     public static final OptionKey<Boolean> ExposeNativeJavaVM = new OptionKey<>(false);
 
+    private static final OptionType<Long> SIZE_OPTION_TYPE = new OptionType<>("Size",
+            new Function<String, Long>() {
+                private static final int K = 1024;
+                @Override
+                public Long apply(String size) {
+                    int idx = 0;
+                    int len = size.length();
+                    for (int i = 0; i < len; i++) {
+                        if (Character.isDigit(size.charAt(i))) {
+                            idx++;
+                        } else {
+                            break;
+                        }
+                    }
+
+                    if (idx == 0) {
+                        throw new IllegalArgumentException("No digits detected: " + size);
+                    }
+                    if (len - idx > 1) {
+                        throw new IllegalArgumentException("Prefix can be at most one character: " + size);
+                    }
+
+                    long result = Long.parseLong(size.substring(0, idx));
+
+                    if (idx < len) {
+                        switch(size.charAt(idx)) {
+                            case 'T': // fallthrough
+                            case 't': return result * K * K * K * K;
+                            case 'G': // fallthrough
+                            case 'g': return result * K * K * K;
+                            case 'M': // fallthrough
+                            case 'm': return result * K * K;
+                            case 'K': // fallthrough
+                            case 'k': return result * K;
+                            default:
+                                throw new IllegalArgumentException("Unrecognized prefix: " + size);
+                        }
+                    }
+                    return result;
+
+                }
+            });
+
+    @Option(help = "Maximum total size of NIO direct-buffer allocations.", //
+            category = OptionCategory.EXPERT, stability = OptionStability.STABLE) //
+    public static final OptionKey<Long> MaxDirectMemorySize = new OptionKey<>(0L, SIZE_OPTION_TYPE);
+
     public static final String INCEPTION_NAME = System.getProperty("espresso.inception.name", "#");
 }

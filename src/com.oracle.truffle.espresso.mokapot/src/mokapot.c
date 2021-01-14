@@ -1374,8 +1374,8 @@ JNIEXPORT jobjectArray JNICALL JVM_GetVmArguments(JNIEnv *env) {
 }
 
 JNIEXPORT jboolean JNICALL JVM_HasReferencePendingList(JNIEnv *env) {
-  UNIMPLEMENTED(JVM_HasReferencePendingList);
-  return 0;
+  IMPLEMENTED(JVM_HasReferencePendingList);
+  return (*getEnv())->JVM_HasReferencePendingList(env);
 }
 
 JNIEXPORT jstring JNICALL JVM_InitClassName(JNIEnv *env, jclass cls) {
