@@ -470,7 +470,7 @@ final class EngineAccessor extends Accessor {
                 // be conservative
                 return true;
             }
-            return context.singleThreaded.isValid();
+            return !context.singleThreaded.isValid();
         }
 
         @Override
