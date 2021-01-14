@@ -32,6 +32,7 @@ import com.oracle.truffle.api.interop.UnknownIdentifierException;
 import com.oracle.truffle.api.library.ExportLibrary;
 import com.oracle.truffle.api.library.ExportMessage;
 import com.oracle.truffle.api.profiles.BranchProfile;
+import com.oracle.truffle.espresso.impl.EmptyKeysArray;
 import com.oracle.truffle.espresso.impl.KeysArray;
 import com.oracle.truffle.espresso.meta.Meta;
 import com.oracle.truffle.espresso.runtime.EspressoContext;
@@ -69,7 +70,11 @@ public final class EspressoBindings implements TruffleObject {
     @ExportMessage
     @SuppressWarnings("static-method")
     Object getMembers(@SuppressWarnings("unused") boolean includeInternal) {
-        return new KeysArray(new String[]{JAVA_VM});
+        if (withNativeJavaVM) {
+            return new KeysArray(new String[]{JAVA_VM});
+        } else {
+            return EmptyKeysArray.INSTANCE;
+        }
     }
 
     @ExportMessage

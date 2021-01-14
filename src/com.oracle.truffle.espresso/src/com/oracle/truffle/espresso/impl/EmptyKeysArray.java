@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2020, 2020, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2021, 2021, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -22,46 +22,37 @@
  */
 package com.oracle.truffle.espresso.impl;
 
-import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
-import com.oracle.truffle.api.dsl.Cached;
 import com.oracle.truffle.api.interop.InteropLibrary;
 import com.oracle.truffle.api.interop.InvalidArrayIndexException;
 import com.oracle.truffle.api.interop.TruffleObject;
 import com.oracle.truffle.api.library.ExportLibrary;
 import com.oracle.truffle.api.library.ExportMessage;
-import com.oracle.truffle.api.profiles.BranchProfile;
 
 @ExportLibrary(InteropLibrary.class)
-public final class KeysArray implements TruffleObject {
-    @CompilationFinal(dimensions = 1) private final String[] keys;
+public class EmptyKeysArray implements TruffleObject {
+    public static final EmptyKeysArray INSTANCE = new EmptyKeysArray();
 
-    public KeysArray(String[] keys) {
-        this.keys = keys;
-    }
-
-    @SuppressWarnings("static-method")
     @ExportMessage
+    @SuppressWarnings("static-method")
     boolean hasArrayElements() {
         return true;
     }
 
     @ExportMessage
+    @SuppressWarnings("static-method")
     long getArraySize() {
-        return keys.length;
+        return 0;
     }
 
     @ExportMessage
-    boolean isArrayElementReadable(long idx) {
-        return 0 <= idx && idx < keys.length;
+    @SuppressWarnings("static-method")
+    boolean isArrayElementReadable(@SuppressWarnings("unused") long index) {
+        return false;
     }
 
     @ExportMessage
-    String readArrayElement(long idx,
-                    @Cached BranchProfile exception) throws InvalidArrayIndexException {
-        if (!isArrayElementReadable(idx)) {
-            exception.enter();
-            throw InvalidArrayIndexException.create(idx);
-        }
-        return keys[(int) idx];
+    @SuppressWarnings("static-method")
+    Object readArrayElement(long index) throws InvalidArrayIndexException {
+        throw InvalidArrayIndexException.create(index);
     }
 }

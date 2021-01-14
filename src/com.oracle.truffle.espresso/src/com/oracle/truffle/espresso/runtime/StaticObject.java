@@ -65,6 +65,7 @@ import com.oracle.truffle.api.utilities.TriState;
 import com.oracle.truffle.espresso.EspressoLanguage;
 import com.oracle.truffle.espresso.descriptors.Symbol.Type;
 import com.oracle.truffle.espresso.impl.ArrayKlass;
+import com.oracle.truffle.espresso.impl.EmptyKeysArray;
 import com.oracle.truffle.espresso.impl.Field;
 import com.oracle.truffle.espresso.impl.KeysArray;
 import com.oracle.truffle.espresso.impl.Klass;
@@ -935,7 +936,7 @@ public final class StaticObject implements TruffleObject {
     Object getMembers(@SuppressWarnings("unused") boolean includeInternal) {
         checkNotForeign();
         if (isNull(this)) {
-            return KeysArray.EMPTY;
+            return EmptyKeysArray.INSTANCE;
         }
         ArrayList<String> members = new ArrayList<>();
         if (getKlass() == getKlass().getMeta().java_lang_Class) {
