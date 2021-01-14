@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2017, 2020, Oracle and/or its affiliates.
+ * Copyright (c) 2017, 2021, Oracle and/or its affiliates.
  *
  * All rights reserved.
  *
@@ -32,16 +32,16 @@
 #include <stdio.h>
 #include <stdlib.h>
 
-struct timeval begin, end;
+struct timeval my_begin, my_end;
 
 int main() {
-    if (gettimeofday(&begin, (struct timezone *) 0)) {
+    if (gettimeofday(&my_begin, (struct timezone *) 0)) {
         fprintf(stderr, "cannot get time\n");
         exit(1);
     }
     for (volatile int i = 0; i < 10000000; i++)
         ;
-    if (gettimeofday(&end, (struct timezone *) 0)) {
+    if (gettimeofday(&my_end, (struct timezone *) 0)) {
         fprintf(stderr, "cannot get time\n");
         exit(1);
     }

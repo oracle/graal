@@ -917,9 +917,11 @@ suite = {
     "com.oracle.truffle.llvm.tests.libc.native" : {
       "subDir" : "tests",
       "class" : "SulongTestSuite",
-      "variants" : ["O0_OUT"],
+      "variants" : ["O0_OUT", "plain_toolchain"],
       "buildEnv" : {
         "OS" : "<os>",
+        "TOOLCHAIN_CLANG" : "<toolchainGetToolPath:native,CC>",
+        "TOOLCHAIN_CLANGXX" : "<toolchainGetToolPath:native,CXX>",
       },
       "dependencies" : [
         "SULONG_TEST",
@@ -928,9 +930,10 @@ suite = {
       "defaultBuild" : False,
       "os_arch" : {
         "darwin": {
-          "<other>" : {
+          "<others>" : {
             "buildEnv" : {
               "SUITE_LDFLAGS" : "-lm",
+              "SUITE_CFLAGS" : "-Wno-deprecated-declarations",
             },
           },
         },
@@ -1393,8 +1396,6 @@ suite = {
         "SULONG_TEST_NATIVE",
       ],
       "javaProperties" : {
-        "sulongtest.testSuitePath" : "<path:SULONG_TEST_SUITES>",
-        "sulongtest.llTestSuitePath" : "<path:SULONG_LL_TEST_SUITES>",
         "test.sulongtck.path" : "<path:SULONG_TCK_NATIVE>/bin"
       },
       "license" : "BSD-new",

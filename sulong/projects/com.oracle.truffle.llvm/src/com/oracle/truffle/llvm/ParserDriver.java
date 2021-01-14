@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2017, 2020, Oracle and/or its affiliates.
+ * Copyright (c) 2017, 2021, Oracle and/or its affiliates.
  *
  * All rights reserved.
  *
@@ -367,9 +367,17 @@ final class ParserDriver {
         final LLVMSourceContext sourceContext = context.getSourceContext();
 
         model.getSourceGlobals().forEach((symbol, irValue) -> {
-            final LLVMExpressionNode node = symbolResolver.resolve(irValue);
-            final LLVMDebugObjectBuilder value = CommonNodeFactory.createDebugStaticValue(node, irValue instanceof GlobalVariable);
-            sourceContext.registerStatic(symbol, value);
+            try {
+                final LLVMExpressionNode node = symbolResolver.resolve(irValue);
+                final LLVMDebugObjectBuilder value = CommonNodeFactory.createDebugStaticValue(node, irValue instanceof GlobalVariable);
+                sourceContext.registerStatic(symbol, value);
+            } catch (IllegalStateException e) {
+                /*
+                 * Cannot resolve symbol for global. Some optimization replace an unused global with
+                 * an (unresolved) external to avoid initialization. The external still has debug
+                 * info but cannot be resolved. We can safely ignore this here.
+                 */
+            }
         });
 
         model.getSourceStaticMembers().forEach(((type, symbol) -> {
