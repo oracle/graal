@@ -369,7 +369,7 @@ public final class EspressoOptions {
                     }
 
                     if (idx == 0) {
-                        throw new IllegalArgumentException("No digits detected: " + size);
+                        throw new IllegalArgumentException("Not starting with digits: " + size);
                     }
                     if (len - idx > 1) {
                         throw new IllegalArgumentException("Prefix can be at most one character: " + size);
