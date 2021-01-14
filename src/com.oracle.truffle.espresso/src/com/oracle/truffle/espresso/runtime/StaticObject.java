@@ -882,18 +882,10 @@ public final class StaticObject implements TruffleObject {
     }
 
     @ExportMessage
+    @ExportMessage(name = "isArrayElementModifiable")
     boolean isArrayElementReadable(long index) {
         checkNotForeign();
-        if (isArray()) {
-            return index >= 0 && index < length();
-        }
-        return false;
-    }
-
-    @ExportMessage
-    boolean isArrayElementModifiable(long index) {
-        checkNotForeign();
-        return isPrimitiveArray(this) && index >= 0 && index < length();
+        return isArray() && 0 <= index && index < length();
     }
 
     @SuppressWarnings({"unused", "static-method"})
