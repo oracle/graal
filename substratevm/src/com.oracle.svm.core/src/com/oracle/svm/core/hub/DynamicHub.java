@@ -50,6 +50,7 @@ import java.security.CodeSource;
 import java.security.ProtectionDomain;
 import java.security.cert.Certificate;
 import java.util.List;
+import java.util.Optional;
 import java.util.Set;
 import java.util.StringJoiner;
 
@@ -94,7 +95,8 @@ import sun.security.util.SecurityConstants;
 @TargetClass(java.lang.Class.class)
 @SuppressWarnings({"static-method", "serial"})
 @SuppressFBWarnings(value = "Se", justification = "DynamicHub must implement Serializable for compatibility with java.lang.Class, not because of actual serialization")
-public final class DynamicHub implements JavaKind.FormatWithToString, AnnotatedElement, java.lang.reflect.Type, GenericDeclaration, Serializable {
+public final class DynamicHub implements JavaKind.FormatWithToString, AnnotatedElement, java.lang.reflect.Type, GenericDeclaration, Serializable,
+                Target_java_lang_invoke_TypeDescriptor_OfField<DynamicHub>, Target_java_lang_constant_Constable {
 
     @Substitute //
     @TargetElement(onlyWith = JDK11OrLater.class) //
@@ -208,6 +210,8 @@ public final class DynamicHub implements JavaKind.FormatWithToString, AnnotatedE
      *
      * @see Class#getComponentType()
      */
+    @Substitute //
+    @TargetElement(name = "componentType") //
     private final DynamicHub componentHub;
 
     /**
@@ -618,7 +622,8 @@ public final class DynamicHub implements JavaKind.FormatWithToString, AnnotatedE
     }
 
     @Substitute
-    private boolean isArray() {
+    @Override
+    public boolean isArray() {
         throw VMError.shouldNotReachHere("Intrinsified in StandardGraphBuilderPlugins.");
     }
 
@@ -632,6 +637,7 @@ public final class DynamicHub implements JavaKind.FormatWithToString, AnnotatedE
     }
 
     @Substitute
+    @Override
     public boolean isPrimitive() {
         return LayoutEncoding.isPrimitive(getLayoutEncoding());
     }
@@ -1395,6 +1401,46 @@ public final class DynamicHub implements JavaKind.FormatWithToString, AnnotatedE
         throw VMError.unsupportedFeature("Class.getNestMembers is not supported yet");
     }
 
+    @Substitute
+    @TargetElement(onlyWith = JDK15OrLater.class)
+    @Override
+    public DynamicHub componentType() {
+        return componentHub;
+    }
+
+    @Substitute
+    @TargetElement(onlyWith = JDK15OrLater.class)
+    @Override
+    public DynamicHub arrayType() {
+        return arrayHub;
+    }
+
+    /*
+     * The following methods were introduced after JDK 11, so they should be unreachable in JDK
+     * versions beforehand. But we still do not want to declare them as native to avoid strange
+     * linkage errors, but throw an error instead.
+     */
+
+    @KeepOriginal
+    @TargetElement(onlyWith = JDK15OrLater.class)
+    private Class<?> elementType() {
+        throw VMError.unsupportedFeature("Method is not available in JDK 8 or JDK 11");
+    }
+
+    @KeepOriginal
+    @TargetElement(onlyWith = JDK15OrLater.class)
+    @Override
+    public String descriptorString() {
+        throw VMError.unsupportedFeature("Method is not available in JDK 8 or JDK 11");
+    }
+
+    @KeepOriginal
+    @TargetElement(onlyWith = JDK15OrLater.class)
+    @Override
+    public Optional<?> describeConstable() {
+        throw VMError.unsupportedFeature("Method is not available in JDK 8 or JDK 11");
+    }
+
     /*
      * We are defensive and also handle private native methods by marking them as deleted. If they
      * are reachable, the user is certainly doing something wrong. But we do not want to fail with a
@@ -1460,6 +1506,49 @@ public final class DynamicHub implements JavaKind.FormatWithToString, AnnotatedE
     @Delete
     @TargetElement(onlyWith = JDK11OrLater.class)
     private native String initClassName();
+}
+
+/**
+ * In JDK versions after 11, {@link java.lang.Class} implements more interfaces: Constable and
+ * TypeDescriptor.OfField. Since these interfaces do not exist in older JDK versions, we cannot just
+ * have DynamicHub implement them, the code would not compile. But the substitution mechanism also
+ * requires the class {@link DynamicHub} to be final, so we cannot use inheritance to have a
+ * subclass that implements the additional interfaces.
+ *
+ * So we use JDK-specific substitution interfaces. When the target interfaces exist, they are like
+ * an alias of the original interface. For older JDK versions, they are just normal interfaces
+ * without any substitution target. This means they really show up as implemented interfaces of
+ * java.lang.Class at run time. This is a benign side effect.
+ */
+
+@Substitute
+@TargetClass(className = "java.lang.constant.Constable", onlyWith = JDK15OrLater.class)
+interface Target_java_lang_constant_Constable {
+    @KeepOriginal
+    Optional<?> describeConstable();
+}
+
+@Substitute
+@TargetClass(className = "java.lang.invoke.TypeDescriptor", onlyWith = JDK15OrLater.class)
+interface Target_java_lang_invoke_TypeDescriptor {
+    @KeepOriginal
+    String descriptorString();
+}
+
+@Substitute
+@TargetClass(className = "java.lang.invoke.TypeDescriptor", innerClass = "OfField", onlyWith = JDK15OrLater.class)
+interface Target_java_lang_invoke_TypeDescriptor_OfField<F extends Target_java_lang_invoke_TypeDescriptor_OfField<F>> extends Target_java_lang_invoke_TypeDescriptor {
+    @KeepOriginal
+    boolean isArray();
+
+    @KeepOriginal
+    boolean isPrimitive();
+
+    @KeepOriginal
+    F componentType();
+
+    @KeepOriginal
+    F arrayType();
 }
 
 /** FIXME: How to handle java.lang.Class.ReflectionData? */
