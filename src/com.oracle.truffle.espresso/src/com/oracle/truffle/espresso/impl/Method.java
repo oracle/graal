@@ -1109,11 +1109,13 @@ public final class Method extends Member<Signature> implements TruffleObject, Co
                         return callTarget;
                     }
 
-                    // TODO(peterssen): GR-28704 Make substitutions only available for methods on
-                    // the boot class loader.
-                    EspressoRootNode redirectedMethod = getSubstitutions().get(getMethod());
-                    if (redirectedMethod != null) {
-                        callTarget = Truffle.getRuntime().createCallTarget(redirectedMethod);
+                    // Substitutions only apply for classes on the boot class loader.
+                    StaticObject loader = getMethod().getDeclaringKlass().getDefiningClassLoader();
+                    if (StaticObject.isNull(loader)) {
+                        EspressoRootNode redirectedMethod = getSubstitutions().get(getMethod());
+                        if (redirectedMethod != null) {
+                            callTarget = Truffle.getRuntime().createCallTarget(redirectedMethod);
+                        }
                     }
 
                     if (callTarget == null) {
