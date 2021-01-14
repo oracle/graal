@@ -106,12 +106,12 @@ public class SerializationFeature implements Feature {
                     Class<?> customTargetConstructorClass = null;
                     if (strCustomTargetConstructorClass != null) {
                         customTargetConstructorClass = resolveClass(strCustomTargetConstructorClass, access);
-                        UserError.guarantee(customTargetConstructorClass != null,
-                                        "Cannot find targetConstructorClass %s. The missing of this class can't be ignored even if -H:+AllowIncompleteClasspath is set." +
-                                                        " Please make sure it is in the classpath",
+                        UserError.guarantee(customTargetConstructorClass != null, "Cannot find " + SerializationConfigurationParser.CUSTOM_TARGET_CONSTRUCTOR_CLASS_KEY + " %s that was specified in" +
+                                        " the serialization configuration. The missing of this class can't be ignored even if -H:+AllowIncompleteClasspath is set. Please make sure it is in the classpath",
                                         strCustomTargetConstructorClass);
                         UserError.guarantee(customTargetConstructorClass.isAssignableFrom(serializationTargetClass),
-                                        "The given targetConstructorClass %s is not a subclass of the serialization target class %s.",
+                                        "The given " + SerializationConfigurationParser.CUSTOM_TARGET_CONSTRUCTOR_CLASS_KEY +
+                                                        " %s that was specified in the serialization configuration is not a subclass of the serialization target class %s.",
                                         strCustomTargetConstructorClass, strTargetSerializationClass);
                     }
                     Class<?> targetConstructor = serializationBuilder.addConstructorAccessor(serializationTargetClass, customTargetConstructorClass, checksums);
