@@ -50,7 +50,7 @@ local base = {
       '01:pip:astroid': '==1.1.0',
       'pip:pylint': '==1.1.0',
       'pip:ninja_syntax': '==1.7.2',
-      'mx': 'HEAD',
+      'mx': '5.280.5',
     },
     environment+: {
       GRAALVM_CHECK_EXPERIMENTAL_OPTIONS: "true",
