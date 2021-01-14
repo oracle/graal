@@ -1095,7 +1095,7 @@ class CMakeBuildTask(mx.NativeBuildTask):
         return os.path.join(self.subject.dir, 'mx.cmake.rebuild.guard')
 
 
-class CMakeProject(mx.NativeProject):  # pylint: disable=too-many-ancestors
+class AbstractSulongNativeProject(mx.NativeProject):  # pylint: disable=too-many-ancestors
     def __init__(self, suite, name, deps, workingSets, subDir, results=None, output=None, **args):
         projectDir = args.pop('dir', None)
         if projectDir:
@@ -1108,10 +1108,14 @@ class CMakeProject(mx.NativeProject):  # pylint: disable=too-many-ancestors
         if not srcDir:
             mx.abort("Exactly one 'sourceDir' is required")
         srcDir = mx_subst.path_substitutions.substitute(srcDir)
+        super(AbstractSulongNativeProject, self).__init__(suite, name, subDir, [srcDir], deps, workingSets, results, output, d, **args)
+
+
+class CMakeProject(AbstractSulongNativeProject):  # pylint: disable=too-many-ancestors
+    def __init__(self, suite, name, deps, workingSets, subDir, results=None, output=None, **args):
+        super(CMakeProject, self).__init__(suite, name, deps, workingSets, subDir, results=results, output=output, **args)
         cmake_config = args.pop('cmakeConfig', {})
         self.cmake_config = lambda: ['-D{}={}'.format(k, mx_subst.path_substitutions.substitute(v).replace('{{}}', '$')) for k, v in sorted(cmake_config.items())]
-
-        super(CMakeProject, self).__init__(suite, name, subDir, [srcDir], deps, workingSets, results, output, d, **args)
         self.dir = self.getOutput()
 
     def getBuildTask(self, args):
@@ -1132,24 +1136,36 @@ class DocumentationBuildTask(mx.AbstractNativeBuildTask):
         pass
 
 
-class DocumentationProject(mx.NativeProject):  # pylint: disable=too-many-ancestors
+class DocumentationProject(AbstractSulongNativeProject):  # pylint: disable=too-many-ancestors
     def __init__(self, suite, name, deps, workingSets, subDir, results=None, output=None, **args):
-        projectDir = args.pop('dir', None)
-        if projectDir:
-            d = join(suite.dir, projectDir)
-        elif subDir is None:
-            d = join(suite.dir, name)
-        else:
-            d = join(suite.dir, subDir, name)
-        srcDir = args.pop('sourceDir', d)
-        if not srcDir:
-            mx.abort("Exactly one 'sourceDir' is required")
-        srcDir = mx_subst.path_substitutions.substitute(srcDir)
-        super(DocumentationProject, self).__init__(suite, name, subDir, [srcDir], deps, workingSets, results, output, d, **args)
-        self.dir = d
+        super(DocumentationProject, self).__init__(suite, name, deps, workingSets, subDir, results, output, **args)
+        self.dir = self.source_dirs()[0]
 
     def getBuildTask(self, args):
         return DocumentationBuildTask(args, self)
+
+
+class HeaderBuildTask(mx.NativeBuildTask):
+    def __str__(self):
+        return 'Building {} with Header Build Task'.format(self.subject.name)
+
+    def build(self):
+        self._newestOutput = None
+
+    def needsBuild(self, newestInput):
+        return (False, "up to date according to GNU Make")
+
+    def clean(self, forBuild=False):
+        pass
+
+
+class HeaderProject(AbstractSulongNativeProject):  # pylint: disable=too-many-ancestors
+    def __init__(self, suite, name, deps, workingSets, subDir, results=None, output=None, **args):
+        super(HeaderProject, self).__init__(suite, name, deps, workingSets, subDir, results, output, **args)
+        self.dir = self.source_dirs()[0]
+
+    def getBuildTask(self, args):
+        return HeaderBuildTask(args, self)
 
 
 _suite.toolchain = ToolchainConfig('native', 'SULONG_TOOLCHAIN_LAUNCHERS', 'SULONG_BOOTSTRAP_TOOLCHAIN',

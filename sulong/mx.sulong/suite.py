@@ -589,12 +589,11 @@ suite = {
       "license" : "BSD-new",
     },
     "com.oracle.truffle.llvm.libraries.graalvm.llvm" : {
+      "class" : "HeaderProject",
       "subDir" : "projects",
       "native" : True,
       "vpath" : True,
-      "results" : [
-        "bin/<libv:graalvm-llvm.1>",
-      ],
+      "results" : [],
       "headers" : [
         "include/graalvm/llvm/handles.h",
         "include/graalvm/llvm/polyglot.h",
@@ -605,13 +604,24 @@ suite = {
         "include/polyglot.h",
         "include/llvm/api/toolchain.h",
       ],
+      "license" : "BSD-new",
+    },
+    "com.oracle.truffle.llvm.libraries.graalvm.llvm.libs" : {
+      "subDir" : "projects",
+      "native" : True,
+      "vpath" : True,
+      "results" : [
+        "bin/<libv:graalvm-llvm.1>",
+      ],
       "buildDependencies" : [
         "SULONG_TOOLCHAIN_LAUNCHERS",
         "SULONG_BOOTSTRAP_TOOLCHAIN",
+        "com.oracle.truffle.llvm.libraries.graalvm.llvm",
       ],
       "buildEnv" : {
         "SONAME" : "<libv:graalvm-llvm.1>",
         "CLANG" : "<toolchainGetToolPath:native,CC>",
+        "CPPFLAGS" : "-I<path:com.oracle.truffle.llvm.libraries.graalvm.llvm>/include",
         "OS" : "<os>",
       },
       "license" : "BSD-new",
@@ -1218,7 +1228,6 @@ suite = {
       "distDependencies" : [
         "truffle:TRUFFLE_API",
         "truffle:ANTLR4",
-        "SULONG_HOME",
         "SULONG_API",
         "SULONG_TOOLCHAIN_CONFIG",
       ],
@@ -1292,7 +1301,7 @@ suite = {
           "dependency:com.oracle.truffle.llvm.libraries.bitcode/bin/<lib:sulong>",
           "dependency:com.oracle.truffle.llvm.libraries.bitcode/bin/<lib:sulong++>",
           "dependency:com.oracle.truffle.llvm.libraries.native/bin/*",
-          "dependency:com.oracle.truffle.llvm.libraries.graalvm.llvm/bin/*",
+          "dependency:com.oracle.truffle.llvm.libraries.graalvm.llvm.libs/bin/*",
         ],
         "./native/lib/<lib:graalvm-llvm>": "link:<libv:graalvm-llvm.1>",
         # for source compatibility
