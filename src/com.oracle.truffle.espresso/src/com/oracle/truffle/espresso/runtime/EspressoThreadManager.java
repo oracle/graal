@@ -171,7 +171,8 @@ class EspressoThreadManager implements ContextAccess {
             } else {
                 Object[] threads = guestThreads;
                 int threadIndex = getThreadIndex(id, threads);
-                assert threads[threadIndex] == thread;
+                Object prevEntry = threads[threadIndex];
+                assert prevEntry == null || prevEntry == thread;
                 threads[threadIndex] = null;
             }
         }
