@@ -160,6 +160,16 @@ public final class Arguments {
                     builder.option(JAVA_PROPS + "jdk.module.limitmods", optionString.substring("--limit-modules=".length()));
                 } else if (isXOption(optionString)) {
                     RuntimeOptions.set(optionString.substring("-X".length()), null);
+                } else if (optionString.startsWith("--vm.")) {
+                    int eqIx = optionString.indexOf('=');
+                    if (eqIx > 0) {
+                        String key = optionString.substring("--vm.".length(), eqIx);
+                        String value = optionString.substring(eqIx + 1);
+                        RuntimeOptions.set(key, value);
+                    } else {
+                        String key = optionString.substring("--vm.".length());
+                        RuntimeOptions.set(key, null);
+                    }
                 } else if (optionString.equals("--polyglot")) {
                     // skip: handled by mokapot
                 } else {
