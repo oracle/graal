@@ -1047,7 +1047,7 @@ public final class Meta implements ContextAccess {
         public final Field ExceptionType_RUNTIME_ERROR;
         public final Field ExceptionType_PARSE_ERROR;
 
-        public PolyglotSupport() {
+        private PolyglotSupport() {
             boolean polyglotSupport = getContext().getEnv().getOptions().get(EspressoOptions.Polyglot);
             EspressoError.guarantee(polyglotSupport, "--java.Polyglot must be enabled");
             EspressoError.guarantee(knownKlass(Type.com_oracle_truffle_espresso_polyglot_Polyglot) != null,
