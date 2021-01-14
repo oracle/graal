@@ -70,11 +70,17 @@ public abstract class NativeProfiledMemMove extends LLVMNode implements LLVMMemM
     }
 
     static boolean doCustomCopy(LLVMManagedPointer target, LLVMManagedPointer source, long length, LLVMCopyTargetLibrary copyTargetLib) {
-        return copyTargetLib.canCopyFrom(target.getObject(), source.getObject(), length);
+        return source.getOffset() == 0 && target.getOffset() == 0 && copyTargetLib.canCopyFrom(target.getObject(), source.getObject(), length);
     }
 
     static boolean doCustomCopy(LLVMManagedPointer target, LLVMNativePointer source, long length, LLVMCopyTargetLibrary copyTargetLib) {
-        return copyTargetLib.canCopyFrom(target.getObject(), source, length);
+        return target.getOffset() == 0 && copyTargetLib.canCopyFrom(target.getObject(), source, length);
+    }
+
+    @Specialization(limit = "8", guards = {"target.getObject() != source.getObject()", "doCustomCopy(target, source, length, copyTargetLib)"})
+    protected void doManagedCustomCopy(LLVMManagedPointer target, LLVMManagedPointer source, long length,
+                    @CachedLibrary("target.getObject()") LLVMCopyTargetLibrary copyTargetLib) {
+        copyTargetLib.copyFrom(target.getObject(), source.getObject(), length);
     }
 
     @Specialization(limit = "8", guards = {"helper.guard(target, source)", "target.getObject() != source.getObject()", "!doCustomCopy(target, source, length, copyTargetLib)"})
@@ -83,13 +89,6 @@ public abstract class NativeProfiledMemMove extends LLVMNode implements LLVMMemM
                     @Cached UnitSizeNode unitSizeNode,
                     @SuppressWarnings("unused") @CachedLibrary("target.getObject()") LLVMCopyTargetLibrary copyTargetLib) {
         copyForward(target, source, length, helper, unitSizeNode);
-    }
-
-    @Specialization(limit = "8", guards = {"helper.guard(target, source)", "target.getObject() != source.getObject()", "doCustomCopy(target, source, length, copyTargetLib)"})
-    protected void doManagedNonAliasingCustomCopy(LLVMManagedPointer target, LLVMManagedPointer source, long length,
-                    @SuppressWarnings("unused") @Cached("create(target, source)") ManagedMemMoveHelperNode helper,
-                    @CachedLibrary("target.getObject()") LLVMCopyTargetLibrary copyTargetLib) {
-        copyTargetLib.copyFrom(target.getObject(), source.getObject(), length);
     }
 
     @Specialization(limit = "8", guards = {"helper.guard(target, source)", "target.getObject() == source.getObject()", "!doCustomCopy(target, source, length, copyTargetLib)"})
@@ -105,13 +104,6 @@ public abstract class NativeProfiledMemMove extends LLVMNode implements LLVMMemM
         }
     }
 
-    @Specialization(limit = "8", guards = {"helper.guard(target, source)", "target.getObject() == source.getObject()", "doCustomCopy(target, source, length, copyTargetLib)"})
-    protected void doManagedAliasingCustomCopy(LLVMManagedPointer target, LLVMManagedPointer source, long length,
-                    @SuppressWarnings("unused") @Cached("create(target, source)") ManagedMemMoveHelperNode helper,
-                    @CachedLibrary("target.getObject()") LLVMCopyTargetLibrary copyTargetLib) {
-        copyTargetLib.copyFrom(target.getObject(), source.getObject(), length);
-    }
-
     @Specialization(limit = "4", guards = {"helper.guard(target, source)", "!doCustomCopy(target, source, length, copyTargetLib)"})
     protected void doManagedNative(LLVMManagedPointer target, LLVMNativePointer source, long length,
                     @Cached("create(target, source)") ManagedMemMoveHelperNode helper,
@@ -120,9 +112,8 @@ public abstract class NativeProfiledMemMove extends LLVMNode implements LLVMMemM
         copyForward(target, source, length, helper, unitSizeNode);
     }
 
-    @Specialization(limit = "4", guards = {"helper.guard(target, source)", "doCustomCopy(target, source, length, copyTargetLib)"})
+    @Specialization(limit = "4", guards = {"doCustomCopy(target, source, length, copyTargetLib)"})
     protected void doManagedNativeCustomCopy(LLVMManagedPointer target, LLVMNativePointer source, long length,
-                    @SuppressWarnings("unused") @Cached("create(target, source)") ManagedMemMoveHelperNode helper,
                     @CachedLibrary("target.getObject()") LLVMCopyTargetLibrary copyTargetLib) {
         copyTargetLib.copyFrom(target.getObject(), source, length);
     }
@@ -138,8 +129,8 @@ public abstract class NativeProfiledMemMove extends LLVMNode implements LLVMMemM
         return LLVMManagedPointer.isInstance(ptr);
     }
 
-    @Specialization(guards = "isManaged(target) || isManaged(source)", replaces = {"doManagedNonAliasing", "doManagedNonAliasingCustomCopy", "doManagedAliasing", "doManagedAliasingCustomCopy",
-                    "doManagedNative", "doManagedNativeCustomCopy", "doNativeManaged"})
+    @Specialization(guards = "isManaged(target) || isManaged(source)", replaces = {"doManagedNonAliasing", "doManagedCustomCopy", "doManagedAliasing", "doManagedNative", "doManagedNativeCustomCopy",
+                    "doNativeManaged"})
     @TruffleBoundary
     protected void doManagedSlowPath(LLVMPointer target, LLVMPointer source, long length) {
         ManagedMemMoveHelperNode helper = ManagedMemMoveHelperNode.createSlowPath(target, source);
@@ -148,8 +139,12 @@ public abstract class NativeProfiledMemMove extends LLVMNode implements LLVMMemM
         if (LLVMManagedPointer.isInstance(target) && LLVMManagedPointer.isInstance(source)) {
             // potentially aliasing
             doManagedAliasing(LLVMManagedPointer.cast(target), LLVMManagedPointer.cast(source), length, helper, unitSizeNode, ConditionProfile.getUncached(), copyTargetLib);
-        } else if (LLVMManagedPointer.isInstance(target) && copyTargetLib.canCopyFrom(LLVMManagedPointer.cast(target).getObject(), source, length)) {
-            copyTargetLib.copyFrom(LLVMManagedPointer.cast(target), source, length);
+        } else if (LLVMManagedPointer.isInstance(target) && LLVMManagedPointer.isInstance(source) &&
+                        doCustomCopy(LLVMManagedPointer.cast(target), LLVMManagedPointer.cast(source), length, copyTargetLib)) {
+            copyTargetLib.copyFrom(LLVMManagedPointer.cast(target).getObject(), LLVMManagedPointer.cast(source).getObject(), length);
+        } else if (LLVMManagedPointer.isInstance(target) && LLVMNativePointer.isInstance(source) &&
+                        doCustomCopy(LLVMManagedPointer.cast(target), LLVMNativePointer.cast(source), length, copyTargetLib)) {
+            copyTargetLib.copyFrom(LLVMManagedPointer.cast(target).getObject(), source, length);
         } else {
             copyForward(target, source, length, helper, unitSizeNode);
         }

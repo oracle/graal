@@ -104,6 +104,7 @@ import com.oracle.truffle.llvm.parser.nodes.LLVMRuntimeDebugInformation.SimpleLo
 import com.oracle.truffle.llvm.parser.util.LLVMBitcodeTypeHelper;
 import com.oracle.truffle.llvm.runtime.CommonNodeFactory;
 import com.oracle.truffle.llvm.runtime.LLVMContext;
+import com.oracle.truffle.llvm.runtime.LLVMVarArgCompoundValue;
 import com.oracle.truffle.llvm.runtime.NodeFactory;
 import com.oracle.truffle.llvm.runtime.datalayout.DataLayout;
 import com.oracle.truffle.llvm.runtime.debug.scope.LLVMSourceLocation;
@@ -119,6 +120,7 @@ import com.oracle.truffle.llvm.runtime.nodes.api.LLVMInstrumentableNode;
 import com.oracle.truffle.llvm.runtime.nodes.api.LLVMNode;
 import com.oracle.truffle.llvm.runtime.nodes.api.LLVMStatementNode;
 import com.oracle.truffle.llvm.runtime.nodes.api.LLVMVoidStatementNodeGen;
+import com.oracle.truffle.llvm.runtime.nodes.intrinsics.llvm.va.LLVMVaListStorage;
 import com.oracle.truffle.llvm.runtime.nodes.vars.LLVMWriteNode;
 import com.oracle.truffle.llvm.runtime.options.SulongEngineOption;
 import com.oracle.truffle.llvm.runtime.types.AggregateType;
@@ -1238,6 +1240,37 @@ public final class LLVMBitcodeInstructionVisitor implements SymbolVisitor {
         }
     }
 
+    /**
+     * To encapsulate a pointer into {@link LLVMVarArgCompoundValue} is needed when a small struct
+     * is being passed by value as a
+     *
+     * <pre>
+     * struct A { int x; double y; };
+     * </pre>
+     *
+     * On Aarch64, clang masks the struct by <code>[2 x i64]</code> array value:
+     *
+     * <pre>
+     *
+     * %15 = bitcast %struct.A* %2 to [2 x i64]* %16 = load [2 x i64], [2 x i64]* %15, align 8
+     * %19 = call i32 (i32, ...) @calc(i32 1, [2 x i64] %16)
+     * </pre>
+     *
+     * or in an optimized constant folded variant:
+     *
+     * <pre>
+     * %1 = call i32 (i32, ...) @calc(i32 1, [2 x i64] [i64 1, i64 0]), !dbg !71
+     * </pre>
+     *
+     * As the array argument is semantically passed by value, the <code>va_list</code> management
+     * needs to know its size so that it can correctly populate the <code>va_list</code> struct.
+     * Therefore the array pointer must be wrapped into {@link LLVMVarArgCompoundValue} that
+     * preserves the argument's size and alignment. In contrast to other arguments passed by value
+     * this "struct-masked-by-array" argument is not marked by the <code>byval</code> attribute in
+     * the call instruction and thus it would be passed otherwise as a normal pointer without being
+     * wrapped into {@link LLVMVarArgCompoundValue}, which would cause a mishandling in the
+     * {@link LLVMVaListStorage va_list} management code.
+     **/
     private LLVMExpressionNode capsuleArrayByValue(LLVMExpressionNode child, Type type) {
         try {
             final long size = type.getSize(dataLayout);

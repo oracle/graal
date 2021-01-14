@@ -163,9 +163,11 @@ public class LLVMAarch64VaListStorage extends LLVMVaListStorage {
 
     @ExportMessage
     public boolean canCopyFrom(Object source, @SuppressWarnings("unused") long length) {
-        // I do not test if the length is the size of va_list as I need that the execution
-        // proceed to copyFrom. I think that an exception should not be thrown here in this
-        // idempotent method, but in the actual attempt to make a copy.
+        /*
+         * I do not test if the length is the size of va_list as I need that the execution proceed
+         * to copyFrom. I think that an exception should not be thrown here in this idempotent
+         * method, but in the actual attempt to make a copy.
+         */
         return source instanceof LLVMAarch64VaListStorage || LLVMNativePointer.isInstance(source);
     }
 
@@ -427,8 +429,10 @@ public class LLVMAarch64VaListStorage extends LLVMVaListStorage {
         static void writeManaged(LLVMAarch64VaListStorage vaList, long offset, @SuppressWarnings("unused") LLVMPointer value) {
             switch ((int) offset) {
                 case Aarch64BitVarArgs.OVERFLOW_ARG_AREA:
-                    // Assume that updating the overflowArea pointer means shifting the current
-                    // argument, according to abi
+                    /*
+                     * Assume that updating the overflowArea pointer means shifting the current
+                     * argument, according to abi
+                     */
                     if (!LLVMManagedPointer.isInstance(value) || LLVMManagedPointer.cast(value).getObject() != vaList.overflowArgArea) {
                         CompilerDirectives.transferToInterpreter();
                         throw new LLVMMemoryException(null, "updates to VA_LIST overflowArea pointer can only shift the current argument");
