@@ -811,7 +811,7 @@ public final class StaticObject implements TruffleObject {
             }
         }
 
-        @Specialization(guards = {"receiver.isArray()", "receiver.isEspressoObject()", "!isPrimitiveArray(receiver)"})
+        @Specialization(guards = {"receiver.isArray()", "!isStringArray(receiver)", "receiver.isEspressoObject()", "!isPrimitiveArray(receiver)"})
         static void doEspressoObject(StaticObject receiver, long index, StaticObject value,
                         @Shared("error") @Cached BranchProfile error) throws InvalidArrayIndexException, UnsupportedTypeException {
             if (index < 0 || index > Integer.MAX_VALUE) {
