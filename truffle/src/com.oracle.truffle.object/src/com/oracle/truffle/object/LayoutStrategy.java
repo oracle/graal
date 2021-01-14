@@ -102,12 +102,10 @@ public abstract class LayoutStrategy {
 
     protected ShapeImpl defineProperty(ShapeImpl oldShape, Object key, Object value, int propertyFlags, LocationFactory locationFactory, Property existing, long putFlags) {
         if (existing == null) {
-            Location location = locationFactory.createLocation(oldShape, value);
-            Property property = Property.create(key, location, propertyFlags);
             if (Flags.isSeparateShape(putFlags)) {
-                return createSeparateShape(oldShape).addProperty(property);
+                return definePropertySeparateShape(oldShape, key, value, propertyFlags, locationFactory);
             } else {
-                return oldShape.addProperty(property);
+                return defineNewProperty(oldShape, key, value, propertyFlags, locationFactory, putFlags);
             }
         } else {
             if (existing.getFlags() == propertyFlags) {
@@ -117,18 +115,29 @@ public abstract class LayoutStrategy {
                     return definePropertyGeneralize(oldShape, existing, value, locationFactory, putFlags);
                 }
             } else {
-                Location oldLocation = existing.getLocation();
-                Location newLocation;
-                if (oldLocation.canSet(value)) {
-                    newLocation = oldLocation;
-                } else {
-                    newLocation = oldShape.allocator().locationForValueUpcast(value, oldLocation, putFlags);
-                }
-                Property newProperty = Property.create(existing.getKey(), newLocation, propertyFlags);
-                oldShape.onPropertyTransition(existing);
-                return replaceProperty(oldShape, existing, newProperty);
+                return definePropertyChangeFlags(oldShape, value, propertyFlags, existing, putFlags);
             }
         }
+    }
+
+    private ShapeImpl defineNewProperty(ShapeImpl oldShape, Object key, Object value, int propertyFlags, LocationFactory locationFactory, long putFlags) {
+        Location location = locationFactory.createLocation(oldShape, value);
+        Property property = Property.create(key, location, propertyFlags);
+        return oldShape.addProperty(property);
+    }
+
+    private ShapeImpl definePropertyChangeFlags(ShapeImpl oldShape, Object value, int propertyFlags, Property existing, long putFlags) {
+        assert existing != null && propertyFlags != existing.getFlags();
+        Location oldLocation = existing.getLocation();
+        Location newLocation;
+        if (oldLocation.canSet(value)) {
+            newLocation = oldLocation;
+        } else {
+            newLocation = oldShape.allocator().locationForValueUpcast(value, oldLocation, putFlags);
+        }
+        Property newProperty = Property.create(existing.getKey(), newLocation, propertyFlags);
+        oldShape.onPropertyTransition(existing);
+        return replaceProperty(oldShape, existing, newProperty);
     }
 
     /** @since 1.0 */
@@ -189,6 +198,12 @@ public abstract class LayoutStrategy {
             Property newProperty = newShape.getProperty(key);
             newProperty.setSafe(object, value, oldShape, newShape);
         }
+    }
+
+    private ShapeImpl definePropertySeparateShape(ShapeImpl oldShape, Object key, Object value, int propertyFlags, LocationFactory locationFactory) {
+        Location location = locationFactory.createLocation(oldShape, value);
+        Property property = Property.create(key, location, propertyFlags);
+        return createSeparateShape(oldShape).addProperty(property);
     }
 
     /** @since 0.17 or earlier */

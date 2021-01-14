@@ -53,6 +53,7 @@ import java.util.Map;
 import java.util.Objects;
 import java.util.concurrent.atomic.AtomicReferenceFieldUpdater;
 import java.util.function.BiConsumer;
+import java.util.function.BiFunction;
 import java.util.function.IntPredicate;
 import java.util.function.Predicate;
 
@@ -140,8 +141,8 @@ public abstract class ShapeImpl extends Shape {
      * Shape transition map; lazily initialized. One of:
      * <ol>
      * <li>{@code null}: empty map
-     * <li>{@link Map.Entry}: immutable single entry map
-     * <li>{@link Map}: mutable multiple entry map
+     * <li>{@link StrongKeyWeakValueEntry}: immutable single entry map
+     * <li>{@link TransitionMap}: mutable multiple entry map
      * </ol>
      *
      * @see #queryTransition(Transition)
@@ -405,7 +406,7 @@ public abstract class ShapeImpl extends Shape {
     }
 
     private static Object newTransitionMap(Transition firstTransition, ShapeImpl firstShape, Transition secondTransition, ShapeImpl secondShape) {
-        Map<Transition, ShapeImpl> map = newTransitionMap();
+        TransitionMap<Transition, ShapeImpl> map = newTransitionMap();
         map.put(firstTransition, firstShape);
         map.put(secondTransition, secondShape);
         return map;
@@ -413,22 +414,22 @@ public abstract class ShapeImpl extends Shape {
 
     private static Object addToTransitionMap(Transition transition, ShapeImpl successor, Object prevMap) {
         assert isTransitionMap(prevMap);
-        Map<Transition, ShapeImpl> map = asTransitionMap(prevMap);
+        TransitionMap<Transition, ShapeImpl> map = asTransitionMap(prevMap);
         map.put(transition, successor);
         return map;
     }
 
-    private static Map<Transition, ShapeImpl> newTransitionMap() {
+    private static TransitionMap<Transition, ShapeImpl> newTransitionMap() {
         return new TransitionMap<>();
     }
 
     @SuppressWarnings("unchecked")
-    private static Map<Transition, ShapeImpl> asTransitionMap(Object map) {
-        return (Map<Transition, ShapeImpl>) map;
+    private static TransitionMap<Transition, ShapeImpl> asTransitionMap(Object map) {
+        return (TransitionMap<Transition, ShapeImpl>) map;
     }
 
     private static boolean isTransitionMap(Object trans) {
-        return trans instanceof Map<?, ?>;
+        return trans instanceof TransitionMap<?, ?>;
     }
 
     private static Object newSingleEntry(Transition transition, ShapeImpl successor) {
@@ -473,7 +474,7 @@ public abstract class ShapeImpl extends Shape {
             }
         } else {
             assert isTransitionMap(trans);
-            Map<Transition, ShapeImpl> map = asTransitionMap(trans);
+            TransitionMap<Transition, ShapeImpl> map = asTransitionMap(trans);
             map.forEach(consumer);
         }
     }
@@ -492,7 +493,7 @@ public abstract class ShapeImpl extends Shape {
             }
         } else {
             assert isTransitionMap(trans);
-            Map<Transition, ShapeImpl> map = asTransitionMap(trans);
+            TransitionMap<Transition, ShapeImpl> map = asTransitionMap(trans);
             return map.get(transition);
         }
     }
@@ -507,6 +508,37 @@ public abstract class ShapeImpl extends Shape {
         shapeCacheMissCount.inc();
 
         return null;
+    }
+
+    public final <R> R iterateTransitions(BiFunction<Transition, ShapeImpl, R> consumer) {
+        Object trans = transitionMap;
+        if (trans == null) {
+            return null;
+        } else if (isSingleEntry(trans)) {
+            StrongKeyWeakValueEntry<Transition, ShapeImpl> entry = asSingleEntry(trans);
+            ShapeImpl shape = entry.getValue();
+            if (shape != null) {
+                Transition key = entry.getKey();
+                return consumer.apply(key, shape);
+            }
+            return null;
+        } else {
+            assert isTransitionMap(trans);
+            TransitionMap<Transition, ShapeImpl> map = asTransitionMap(trans);
+            return map.iterateEntries(consumer);
+        }
+    }
+
+    final StrongKeyWeakValueEntry<Transition, ShapeImpl> getSingleTransition() {
+        Object trans = transitionMap;
+        if (trans == null) {
+            return null;
+        } else if (isSingleEntry(trans)) {
+            StrongKeyWeakValueEntry<Transition, ShapeImpl> entry = asSingleEntry(trans);
+            return entry;
+        } else {
+            return null;
+        }
     }
 
     /**
