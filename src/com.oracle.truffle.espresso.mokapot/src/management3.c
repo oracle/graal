@@ -21,7 +21,7 @@
  * questions.
  */
 #include "management.h"
-#include "jmm11.h"
+#include "jmm3.h"
 
 #include <trufflenfi.h>
 #include <jni.h>
@@ -29,7 +29,7 @@
 #include <stdio.h>
 #include <string.h>
 
-#define MANAGEMENT_METHOD_LIST_11(V) \
+#define MANAGEMENT_METHOD_LIST_3(V) \
     V(GetVersion) \
     V(GetOptionalSupport) \
     V(GetThreadInfo) \
@@ -37,6 +37,7 @@
     V(GetMemoryManagers) \
     V(GetMemoryPoolUsage) \
     V(GetPeakMemoryPoolUsage) \
+    V(GetOneThreadAllocatedMemory) /* Since JDK 11.0.9 */ \
     V(GetThreadAllocatedMemory) \
     V(GetMemoryUsage) \
     V(GetLongAttribute) \
@@ -74,9 +75,9 @@
 // V(GetInputArgumentArray)
 
 
-void* initializeManagementContext11(TruffleEnv *truffle_env, void* (*fetch_by_name)(const char *)) {
+void* initializeManagementContext3(TruffleEnv *truffle_env, void* (*fetch_by_name)(const char *)) {
 
-  struct jmmInterface_1_11 *management = (JmmInterface*) malloc(sizeof(struct jmmInterface_1_11));
+  struct jmmInterface_3 *management = (JmmInterface*) malloc(sizeof(struct jmmInterface_3));
 
   void *fn_ptr = NULL;
   #define INIT__(name) \
@@ -84,20 +85,20 @@ void* initializeManagementContext11(TruffleEnv *truffle_env, void* (*fetch_by_na
       (*truffle_env)->newClosureRef(truffle_env, fn_ptr); \
       management->name = fn_ptr;
 
-  MANAGEMENT_METHOD_LIST_11(INIT__)
+  MANAGEMENT_METHOD_LIST_3(INIT__)
   #undef INIT_
 
   return management;
 }
 
-void disposeManagementContext11(TruffleEnv *truffle_env, void *management_ptr) {
-  struct jmmInterface_1_11 *management = (struct jmmInterface_1_11*) management_ptr;
+void disposeManagementContext3(TruffleEnv *truffle_env, void *management_ptr) {
+  struct jmmInterface_3 *management = (struct jmmInterface_3*) management_ptr;
 
   #define DISPOSE__(name) \
        (*truffle_env)->releaseClosureRef(truffle_env, management->name); \
        management->name = NULL;
 
-  MANAGEMENT_METHOD_LIST_11(DISPOSE__)
+  MANAGEMENT_METHOD_LIST_3(DISPOSE__)
   #undef DISPOSE__
  
   free(management);

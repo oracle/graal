@@ -21,7 +21,7 @@
  * questions.
  */
 #include "management.h"
-#include "jmm8.h"
+#include "jmm2.h"
 
 #include <trufflenfi.h>
 #include <jni.h>
@@ -29,12 +29,10 @@
 #include <stdio.h>
 #include <string.h>
 
-#define MANAGEMENT_METHOD_LIST_8(V) \
+#define MANAGEMENT_METHOD_LIST_2(V) \
     V(GetVersion) \
     V(GetOptionalSupport) \
-    V(GetInputArguments) \
     V(GetThreadInfo) \
-    V(GetInputArgumentArray) \
     V(GetMemoryPools) \
     V(GetMemoryManagers) \
     V(GetMemoryPoolUsage) \
@@ -68,12 +66,17 @@
     V(GetDiagnosticCommandArgumentsInfo) \
     V(ExecuteDiagnosticCommand) \
     V(SetDiagnosticFrameworkNotificationEnabled)
-   
+    
+/**
+ * These two methods are removed from the API since JDK 9
+ */
+// V(GetInputArguments)
+// V(GetInputArgumentArray)
 
 
-void* initializeManagementContext8(TruffleEnv *truffle_env, void* (*fetch_by_name)(const char *)) {
+void* initializeManagementContext2(TruffleEnv *truffle_env, void* (*fetch_by_name)(const char *)) {
 
-  struct jmmInterface_1_8 *management = (JmmInterface*) malloc(sizeof(struct jmmInterface_1_8));
+  struct jmmInterface_2 *management = (JmmInterface*) malloc(sizeof(struct jmmInterface_2));
 
   void *fn_ptr = NULL;
   #define INIT__(name) \
@@ -81,20 +84,20 @@ void* initializeManagementContext8(TruffleEnv *truffle_env, void* (*fetch_by_nam
       (*truffle_env)->newClosureRef(truffle_env, fn_ptr); \
       management->name = fn_ptr;
 
-  MANAGEMENT_METHOD_LIST_8(INIT__)
+  MANAGEMENT_METHOD_LIST_2(INIT__)
   #undef INIT_
 
   return management;
 }
 
-void disposeManagementContext8(TruffleEnv *truffle_env, void *management_ptr) {
-  struct jmmInterface_1_8 *management = (struct jmmInterface_1_8*) management_ptr;
+void disposeManagementContext2(TruffleEnv *truffle_env, void *management_ptr) {
+  struct jmmInterface_2 *management = (struct jmmInterface_2*) management_ptr;
 
   #define DISPOSE__(name) \
        (*truffle_env)->releaseClosureRef(truffle_env, management->name); \
        management->name = NULL;
 
-  MANAGEMENT_METHOD_LIST_8(DISPOSE__)
+  MANAGEMENT_METHOD_LIST_2(DISPOSE__)
   #undef DISPOSE__
  
   free(management);

@@ -31,21 +31,28 @@ JNIEXPORT void* JNICALL initializeManagementContext(TruffleEnv *truffle_env, voi
 JNIEXPORT void JNICALL disposeManagementContext(TruffleEnv *truffle_env, void *management_ptr, int version);
 
 /* 
- * JMM interface changes dramatically between 8 and 11, changing
+ * JMM interface changes dramatically between versions, changing
  * functions offset, thus breaking compatibility. 
  * 
- * Since the differentiation between an espresso 8 or espresso 11 is 
+ * Since the differentiation between which version we will use is 
  * done at runtime, we need to provide the native part of espresso with
  * a way to choose which of the interface to create, depending on the 
  * requested version.
+ * 
+ * See com.oracle.truffle.espresso.vm.VM#isSupportedManagementVersion
+ * documentation for a guide on how to support a new version.
  */
 
-void* initializeManagementContext8(TruffleEnv *truffle_env, void* (*fetch_by_name)(const char *));
+void* initializeManagementContext1(TruffleEnv *truffle_env, void* (*fetch_by_name)(const char *));
 
-void disposeManagementContext8(TruffleEnv *truffle_env, void *management_ptr);
+void disposeManagementContext1(TruffleEnv *truffle_env, void *management_ptr);
 
-void* initializeManagementContext11(TruffleEnv *truffle_env, void* (*fetch_by_name)(const char *));
+void* initializeManagementContext2(TruffleEnv *truffle_env, void* (*fetch_by_name)(const char *));
 
-void disposeManagementContext11(TruffleEnv *truffle_env, void *management_ptr);
+void disposeManagementContext2(TruffleEnv *truffle_env, void *management_ptr);
+
+void* initializeManagementContext3(TruffleEnv *truffle_env, void* (*fetch_by_name)(const char *));
+
+void disposeManagementContext3(TruffleEnv *truffle_env, void *management_ptr);
 
 #endif // _MANAGEMENT_H

@@ -2280,19 +2280,36 @@ public final class VM extends NativeEnv implements ContextAccess {
     public static final int JMM_VERSION_1_2 = 0x20010200; // JDK 7
     public static final int JMM_VERSION_1_2_1 = 0x20010201; // JDK 7 GA
     public static final int JMM_VERSION_1_2_2 = 0x20010202;
+    public static final int JMM_VERSION_1_2_3 = 0x20010203;
     public static final int JMM_VERSION_2 = 0x20020000; // JDK 10
-
-    public static final int JMM_VERSION = 0x20010203;
+    public static final int JMM_VERSION_3 = 0x20030000; // JDK 11.7
 
     @CompilerDirectives.CompilationFinal //
     private int managementVersion;
 
+    /**
+     * Procedure to support a new management version in Espresso:
+     * <ul>
+     * <li>Add the new version to support in this method.</li>
+     * <li>Add the version to the version enum in <code>jmm_common.h</code> in the mokapot include
+     * directory.</li>
+     * <li>Create and update accordingly with the new changes (most certainly a new function)
+     * <code>jmm_.h</code> and <code>management_.c</code> in the mokapot include and source
+     * directory</li>
+     * <li>Add to <code>management.h</code> the new <code>initializeManagementContext_</code> and
+     * <code>disposeManagementContext_</code> functions.</li>
+     * <li>Update <code>management.c</code> to select these new method depending on the requested
+     * version</li>
+     * <li>Ideally implement the method in this class.</li>
+     * </ul>
+     */
+    private static boolean isSupportedManagementVersion(int version) {
+        return version == JMM_VERSION_1 || version == JMM_VERSION_2 || version == JMM_VERSION_3;
+    }
+
     @VmImpl
     public synchronized @Pointer TruffleObject JVM_GetManagement(int version) {
-        if (version != JMM_VERSION_1_0 && getJavaVersion().java8OrEarlier()) {
-            return RawPointer.nullInstance();
-        }
-        if (version != JMM_VERSION_2 && getJavaVersion().java9OrLater()) {
+        if (!isSupportedManagementVersion(version)) {
             return RawPointer.nullInstance();
         }
         EspressoContext context = getContext();
@@ -2310,6 +2327,11 @@ public final class VM extends NativeEnv implements ContextAccess {
                 throw EspressoError.shouldNotReachHere(e);
             }
             assert managementPtr != null && !getUncached().isNull(managementPtr);
+        } else if (version != managementVersion) {
+            CompilerDirectives.transferToInterpreterAndInvalidate();
+            context.getLogger().warning("Asking for a different management version that previously requested.\n" +
+                            "Previously requested: " + managementVersion + ", currently requested: " + version);
+            return RawPointer.nullInstance();
         }
         return managementPtr;
     }
@@ -2317,10 +2339,10 @@ public final class VM extends NativeEnv implements ContextAccess {
     @JniImpl
     @VmImpl
     public int GetVersion() {
-        if (getJavaVersion().java8OrEarlier()) {
-            return JMM_VERSION;
+        if (managementVersion <= JMM_VERSION_1_2_3) {
+            return JMM_VERSION_1_2_3;
         } else {
-            return JMM_VERSION_2;
+            return managementVersion;
         }
     }
 
@@ -2667,6 +2689,27 @@ public final class VM extends NativeEnv implements ContextAccess {
             return StaticObject.NULL;
         }
         return result;
+    }
+
+    @VmImpl
+    @JniImpl
+    public long GetOneThreadAllocatedMemory(
+                    long threadId) {
+        StaticObject[] activeThreads = getContext().getActiveThreads();
+
+        StaticObject thread = StaticObject.NULL;
+
+        for (int j = 0; j < activeThreads.length; ++j) {
+            if ((long) getMeta().java_lang_Thread_tid.get(activeThreads[j]) == threadId) {
+                thread = activeThreads[j];
+                break;
+            }
+        }
+        if (StaticObject.isNull(thread)) {
+            return -1L;
+        } else {
+            return 0L;
+        }
     }
 
     @VmImpl
