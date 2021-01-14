@@ -811,6 +811,28 @@ public final class StaticObject implements TruffleObject {
             }
         }
 
+        @Specialization(guards = {"receiver.isArray()", "receiver.isEspressoObject()", "!isPrimitiveArray(receiver)"})
+        static void doEspressoObject(StaticObject receiver, long index, StaticObject value,
+                                     @Shared("error") @Cached BranchProfile error) throws InvalidArrayIndexException, UnsupportedTypeException {
+            if (index < 0 || index > Integer.MAX_VALUE) {
+                error.enter();
+                throw InvalidArrayIndexException.create(index);
+            }
+            int intIndex = (int) index;
+            if (intIndex < receiver.length()) {
+                Klass componentType = ((ArrayKlass) receiver.klass).getComponentType();
+                if (StaticObject.isNull(value) || instanceOf(value, componentType)) {
+                    receiver.<StaticObject[]> unwrap()[intIndex] = value;
+                } else {
+                    error.enter();
+                    throw UnsupportedTypeException.create(new Object[]{value}, "Incompatible types");
+                }
+            } else {
+                error.enter();
+                throw InvalidArrayIndexException.create(index);
+            }
+        }
+
         @SuppressWarnings("unused")
         @Fallback
         static void doOther(StaticObject receiver, long index, Object value) throws UnsupportedMessageException {
