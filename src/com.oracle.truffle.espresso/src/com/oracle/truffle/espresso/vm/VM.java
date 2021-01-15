@@ -60,7 +60,6 @@ import java.util.function.IntFunction;
 import java.util.function.Supplier;
 import java.util.logging.Level;
 
-import com.oracle.truffle.espresso.runtime.EspressoExitException;
 import org.graalvm.options.OptionValues;
 
 import com.oracle.truffle.api.CompilerDirectives;
@@ -124,6 +123,7 @@ import com.oracle.truffle.espresso.nodes.interop.ToEspressoNodeGen;
 import com.oracle.truffle.espresso.runtime.Classpath;
 import com.oracle.truffle.espresso.runtime.EspressoContext;
 import com.oracle.truffle.espresso.runtime.EspressoException;
+import com.oracle.truffle.espresso.runtime.EspressoExitException;
 import com.oracle.truffle.espresso.runtime.EspressoProperties;
 import com.oracle.truffle.espresso.runtime.MethodHandleIntrinsics;
 import com.oracle.truffle.espresso.runtime.StaticObject;
@@ -1276,11 +1276,7 @@ public final class VM extends NativeEnv implements ContextAccess {
         setProperty.invokeWithConversions(properties, "java.vm.vendor", EspressoLanguage.VM_VENDOR);
         setProperty.invokeWithConversions(properties, "java.vm.info", EspressoLanguage.VM_INFO);
 
-        if (options.hasBeenSet(EspressoOptions.MaxDirectMemorySize)) {
-            setProperty.invokeWithConversions(properties, "sun.nio.MaxDirectMemorySize", Long.toString(options.get(EspressoOptions.MaxDirectMemorySize)));
-        } else {
-            setProperty.invokeWithConversions(properties, "sun.nio.MaxDirectMemorySize", "-1");
-        }
+        setProperty.invokeWithConversions(properties, "sun.nio.MaxDirectMemorySize", Long.toString(options.get(EspressoOptions.MaxDirectMemorySize)));
 
         return properties;
     }

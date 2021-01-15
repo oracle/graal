@@ -403,7 +403,7 @@ public final class EspressoOptions {
 
     @Option(help = "Maximum total size of NIO direct-buffer allocations.", //
                     category = OptionCategory.EXPERT, stability = OptionStability.STABLE) //
-    public static final OptionKey<Long> MaxDirectMemorySize = new OptionKey<>(0L, SIZE_OPTION_TYPE);
+    public static final OptionKey<Long> MaxDirectMemorySize = new OptionKey<>(-1L, SIZE_OPTION_TYPE);
 
     public static final String INCEPTION_NAME = System.getProperty("espresso.inception.name", "#");
 }
