@@ -29,7 +29,7 @@ vm_bench_polybench_linux_common: ${vm_bench_common} ${svm-common-linux-amd64} ${
   }
   setup: ${common_vm.setup} [
     ${vm_bench_polybench_linux_common.base_cmd} [build]
-    ${vm_bench_polybench_linux_common.base_cmd} [build, "--projects=benchmarks.interpreter.wasm"]
+    ${vm_bench_polybench_linux_common.base_cmd} [build, "--dependencies=POLYBENCH_BENCHMARKS"]
   ]
   notify_emails: [ "aleksandar.prokopec@oracle.com" ]
   targets: [bench, daily]

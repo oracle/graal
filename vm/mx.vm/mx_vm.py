@@ -160,6 +160,12 @@ def mx_register_dynamic_suite_constituents(register_project, register_distributi
     if register_project:
         register_project(GraalVmSymlinks())
 
+        benchmark_dist = _suite.dependency("POLYBENCH_BENCHMARKS")
+
+        def _add_project_to_dist(name):
+            benchmark_dist.layout['./interpreter/'].append('dependency:{}/*'.format(name))
+            benchmark_dist.buildDependencies.append(name)
+
         if mx_sdk_vm_impl.has_component('GraalWasm'):
             import mx_wasm
 
@@ -167,47 +173,8 @@ def mx_register_dynamic_suite_constituents(register_project, register_distributi
                 def getSourceDir(self):
                     return self.subDir
 
-                def getBuildTask(self, args):
-                    output_base = self.get_output_base()
-                    return GraalVmWatBuildTask(self, args, output_base)
-
                 def isBenchmarkProject(self):
                     return self.name.startswith("benchmarks.")
-
-            class GraalVmWatBuildTask(mx_wasm.WatBuildTask):
-                def needsBuild(self, newestInput):
-                    is_needed, reason = super(GraalVmWatBuildTask, self).needsBuild(newestInput)
-                    if is_needed:
-                        return is_needed, reason
-                    for root, filename in self.subject.getProgramSources():
-                        f = join(root, mx_wasm.remove_extension(filename) + ".wasm")
-                        if not os.path.exists(f):
-                            return True, "symlink '{}' does not exist".format(f)
-                    return False, ''
-
-                def build(self):
-                    super(GraalVmWatBuildTask, self).build()
-                    output_dir = self.subject.getOutputDir()
-                    for root, filename in self.subject.getProgramSources():
-                        src = join(output_dir, mx_wasm.remove_extension(filename) + ".wasm")
-                        dst = join(root, mx_wasm.remove_extension(filename) + ".wasm")
-                        if mx.is_windows():
-                            mx.copyfile(src, dst)
-                        else:
-                            os.symlink(src, dst)
-
-                def clean(self, forBuild=False):
-                    super(GraalVmWatBuildTask, self).build()
-                    for root, filename in self.subject.getProgramSources():
-                        f = join(root, mx_wasm.remove_extension(filename) + ".wasm")
-                        if os.path.exists(f):
-                            if os.path.islink(f):
-                                os.unlink(f)
-                            else:
-                                mx.rmtree(f)
-                    output_dir = self.subject.getOutputDir()
-                    if not forBuild and os.path.exists(output_dir):
-                        mx.rmtree(output_dir)
 
             register_project(GraalVmWatProject(
                 suite=_suite,
@@ -219,6 +186,8 @@ def mx_register_dynamic_suite_constituents(register_project, register_distributi
                 testProject=True,
                 defaultBuild=False,
             ))
+            # add wasm to the layout of the benchmark distribution
+            _add_project_to_dist('benchmarks.interpreter.wasm')
 
 
 class GraalVmSymlinks(mx.Project):

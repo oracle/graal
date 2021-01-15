@@ -194,5 +194,20 @@ suite = {
             ],
             "maven" : False,
         },
+        "POLYBENCH_BENCHMARKS": {
+            "native": True,
+            "description": "Distribution for polybench benchmarks",
+            "layout": {
+                # The layout may be modified via mx_vm.mx_register_dynamic_suite_constituents() to include dynamic projects.
+                "./interpreter/": [
+                    "file:benchmarks/interpreter/*.js",
+                    "file:benchmarks/interpreter/*.rb",
+                ],
+                "./compiler/": [
+                    "file:benchmarks/compiler/*",
+                ],
+            },
+            "defaultBuild": False,
+        },
     },
 }

@@ -666,12 +666,18 @@ class PolyBenchBenchmarkSuite(mx_benchmark.VmBenchmarkSuite):
     def __init__(self):
         super(PolyBenchBenchmarkSuite, self).__init__()
         self._extensions = [".js", ".rb", ".wasm"]
-        self._benchmarks = []
-        for group in ["interpreter", "compiler"]:
-            for (_, _, files) in os.walk(os.path.join(_suite.dir, "benchmarks", group)):
-                for f in files:
-                    if os.path.splitext(f)[1] in self._extensions:
-                        self._benchmarks.append(group + "/" + f)
+
+    def _get_benchmark_root(self):
+        if not hasattr(self, '_benchmark_root'):
+            dist_name = "POLYBENCH_BENCHMARKS"
+            distribution = mx.distribution(dist_name)
+            _root = distribution.get_output()
+            if not os.path.exists(_root):
+                msg = "The distribution {} does not exist: {}{}".format(dist_name, _root, os.linesep)
+                msg += "This might be solved by running: mx build --dependencies={}".format(dist_name)
+                mx.abort(msg)
+            self._benchmark_root = _root
+        return self._benchmark_root
 
     def group(self):
         return "Graal"
@@ -686,13 +692,20 @@ class PolyBenchBenchmarkSuite(mx_benchmark.VmBenchmarkSuite):
         return "0.1.0"
 
     def benchmarkList(self, bmSuiteArgs):
+        if not hasattr(self, "_benchmarks"):
+            self._benchmarks = []
+            for group in ["interpreter", "compiler"]:
+                for (_, _, files) in os.walk(os.path.join(self._get_benchmark_root(), group)):
+                    for f in files:
+                        if os.path.splitext(f)[1] in self._extensions:
+                            self._benchmarks.append(group + "/" + f)
         return self._benchmarks
 
     def createCommandLineArgs(self, benchmarks, bmSuiteArgs):
         if len(benchmarks) != 1:
             mx.abort("Can only specify one benchmark at a time.")
         vmArgs = self.vmArgs(bmSuiteArgs)
-        benchmark_path = os.path.join(_suite.dir, "benchmarks", benchmarks[0])
+        benchmark_path = os.path.join(self._get_benchmark_root(), benchmarks[0])
         return ["--path=" + benchmark_path] + vmArgs
 
     def get_vm_registry(self):
