@@ -46,7 +46,7 @@ vm_setup: {
   short_name: ce
   setup: [
     [set-export, VM_ENV, ce]
-    [set-export, RELEASE_CATALOG, "https://www.graalvm.org/component-catalog/graal-updater-component-catalog-java${BASE_JDK_SHORT_VERSION}.properties"]
+    [set-export, RELEASE_CATALOG, "https://www.graalvm.org/component-catalog/v2/graal-updater-component-catalog-java${BASE_JDK_SHORT_VERSION}.properties|{ee=GraalVM Enterprise Edition}gds://oca.opensource.oracle.com/gds/meta-data.json"]
     [set-export, SNAPSHOT_CATALOG, [mx, urlrewrite, "http://www.graalvm.org/catalog/ce/java${BASE_JDK_SHORT_VERSION}"]]
     [cd, ${vm_subdir}]
   ]
