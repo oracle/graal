@@ -197,6 +197,8 @@ suite = {
         "POLYBENCH_BENCHMARKS": {
             "native": True,
             "description": "Distribution for polybench benchmarks",
+            # llvm bitcode is platform dependent
+            "platformDependent": True,
             "layout": {
                 # The layout may be modified via mx_vm.mx_register_dynamic_suite_constituents() to include dynamic projects.
                 "./interpreter/": [

@@ -31,6 +31,7 @@ from __future__ import print_function
 import mx
 import mx_gate
 import mx_sdk_vm, mx_sdk_vm_impl
+import mx_subst
 import mx_vm_benchmark
 import mx_vm_gate
 
@@ -188,6 +189,31 @@ def mx_register_dynamic_suite_constituents(register_project, register_distributi
             ))
             # add wasm to the layout of the benchmark distribution
             _add_project_to_dist('benchmarks.interpreter.wasm')
+
+        if mx_sdk_vm_impl.has_component('LLVM Runtime Native'):
+            register_project(mx.NativeProject(
+                suite=_suite,
+                name='benchmarks.interpreter.llvm.native',
+                results=[
+                    'sieve.c.native.bc',
+                    'fibonacci.c.native.bc',
+                ],
+                buildEnv={
+                    'NATIVE_LLVM_CC': mx_subst.path_substitutions.substitute('<toolchainGetToolPath:native,CC>'),
+                },
+                vpath=True,
+                deps=[],
+                workingSets=None,
+                d=join(_suite.dir, 'benchmarks', 'interpreter'),
+                subDir=None,
+                srcDirs=[''],
+                output=None,
+                theLicense=None,
+                testProject=True,
+                defaultBuild=False,
+            ))
+            # add wasm to the layout of the benchmark distribution
+            _add_project_to_dist('benchmarks.interpreter.llvm.native')
 
 
 class GraalVmSymlinks(mx.Project):
