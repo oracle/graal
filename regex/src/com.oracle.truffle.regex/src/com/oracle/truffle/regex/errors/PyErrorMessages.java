@@ -44,6 +44,7 @@ import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 
 public interface PyErrorMessages {
 
+    String BAD_ESCAPE_END_OF_PATTERN = "bad escape (end of pattern)";
     String CANNOT_REFER_TO_AN_OPEN_GROUP = "cannot refer to an open group";
     String CANNOT_REFER_TO_GROUP_DEFINED_IN_THE_SAME_LOOKBEHIND_SUBPATTERN = "cannot refer to group defined in the same lookbehind subpattern";
     String CONDITIONAL_BACKREF_WITH_MORE_THAN_TWO_BRANCHES = "conditional backref with more than two branches";
@@ -73,12 +74,12 @@ public interface PyErrorMessages {
 
     @TruffleBoundary
     static String badCharacterInGroupName(String name) {
-        return "bad character in group name " + name;
+        return "bad character in group name '" + name + "'";
     }
 
     @TruffleBoundary
     static String badCharacterRange(String range) {
-        return "bad character in range " + range;
+        return "bad character range " + range;
     }
 
     @TruffleBoundary
@@ -103,7 +104,7 @@ public interface PyErrorMessages {
 
     @TruffleBoundary
     static String invalidOctalEscape(String code) {
-        return "octal escape value \\" + code + " outside of range 0-o377";
+        return "octal escape value \\" + code + " outside of range 0-0o377";
     }
 
     @TruffleBoundary
@@ -133,6 +134,6 @@ public interface PyErrorMessages {
 
     @TruffleBoundary
     static String unknownGroupName(String name) {
-        return "unknown group name " + name;
+        return "unknown group name '" + name + "'";
     }
 }
