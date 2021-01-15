@@ -234,17 +234,20 @@ public final class Arguments {
     }
 
     public static void handleXXArg(Context.Builder builder, String optionString, boolean experimental, Native nativeAccess) {
-        String arg = optionString.substring("-XX:".length());
-        String toPolyglot;
-        if (arg.length() >= 1 && (arg.charAt(0) == '+' || arg.charAt(0) == '-')) {
-            String value = Boolean.toString(arg.charAt(0) == '+');
-            toPolyglot = "--java." + arg.substring(1) + "=" + value;
+        String toPolyglot = optionString.substring("-XX:".length());
+        if (toPolyglot.length() >= 1 && (toPolyglot.charAt(0) == '+' || toPolyglot.charAt(0) == '-')) {
+            String value = Boolean.toString(toPolyglot.charAt(0) == '+');
+            toPolyglot = "--java." + toPolyglot.substring(1) + "=" + value;
         } else {
-            toPolyglot = "--java." + arg;
+            toPolyglot = "--java." + toPolyglot;
         }
         try {
             parsePolyglotOption(builder, toPolyglot, experimental);
+            return;
         } catch (ArgumentException e) {
+            if (e.isExperimental()) {
+                throw abort(e.getMessage().replace(toPolyglot, optionString));
+            }
             /* Ignore, and try to pass it as a vm arg */
         }
         // Pass as host vm arg
@@ -330,7 +333,7 @@ public final class Arguments {
             throw abort(String.format("Invalid argument %s specified. %s'", arg, e.getMessage()));
         }
         if (!experimentalOptions && descriptor.getStability() == OptionStability.EXPERIMENTAL) {
-            throw abort(String.format("Option '%s' is experimental and must be enabled via '--experimental-options'%n" +
+            throw abortExperimental(String.format("Option '%s' is experimental and must be enabled via '--experimental-options'%n" +
                             "Do not use experimental options in production environments.", arg));
         }
         // use the full name of the found descriptor
@@ -391,12 +394,25 @@ public final class Arguments {
     }
 
     static class ArgumentException extends RuntimeException {
-        ArgumentException(String message) {
+        private static final long serialVersionUID = 5430103471994299046L;
+
+        private final boolean isExperimental;
+
+        ArgumentException(String message, boolean isExperimental) {
             super(message);
+            this.isExperimental = isExperimental;
+        }
+
+        public boolean isExperimental() {
+            return isExperimental;
         }
     }
 
     static ArgumentException abort(String message) {
-        throw new Arguments.ArgumentException(message);
+        throw new Arguments.ArgumentException(message, false);
+    }
+
+    static ArgumentException abortExperimental(String message) {
+        throw new Arguments.ArgumentException(message, true);
     }
 }
