@@ -71,7 +71,7 @@ class Native {
             if (isXOption(arg)) {
                 setXOption(arg.substring("X".length()));
             } else {
-                throw abort("Unrecognized option: " + formatArg(arg) + "'. Some VM options may be only supported in --jvm mode.");
+                throw abort("Unrecognized option: " + formatArg(arg) + "'.");
             }
         } else {
             throw abort("Unrecognized option: " + formatArg(arg) + "'.");
