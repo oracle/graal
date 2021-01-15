@@ -32,6 +32,7 @@ package com.oracle.truffle.llvm.runtime.interop.access;
 import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.dsl.Cached;
 import com.oracle.truffle.api.dsl.CachedLanguage;
+import com.oracle.truffle.api.dsl.GenerateAOT;
 import com.oracle.truffle.api.dsl.GenerateUncached;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.interop.InteropLibrary;
@@ -136,14 +137,15 @@ public abstract class LLVMAccessForeignObjectNode extends LLVMNode {
             return null;
         }
 
-        @Specialization(limit = "3", guards = "types.hasNativeType(pointer.getObject())")
+        @Specialization(guards = "types.hasNativeType(pointer.getObject())")
         Object doManagedWithType(LLVMManagedPointer pointer,
-                        @CachedLibrary("pointer.getObject()") NativeTypeLibrary types) {
+                        @CachedLibrary(limit = "3") NativeTypeLibrary types) {
             // known type, either from the object or user-specified
             return types.getNativeType(pointer.getObject());
         }
 
         @Specialization(limit = "3", guards = {"!types.hasNativeType(pointer.getObject())", "interop.hasBufferElements(pointer.getObject())"})
+        @GenerateAOT.Exclude
         LLVMInteropType.Buffer doManagedBuffer(@SuppressWarnings("unused") LLVMManagedPointer pointer,
                         @SuppressWarnings("unused") @CachedLibrary("pointer.getObject()") NativeTypeLibrary types,
                         @SuppressWarnings("unused") @CachedLibrary("pointer.getObject()") InteropLibrary interop) {
@@ -152,6 +154,7 @@ public abstract class LLVMAccessForeignObjectNode extends LLVMNode {
         }
 
         @Specialization(limit = "3", guards = {"!types.hasNativeType(pointer.getObject())", "!interop.hasBufferElements(pointer.getObject())"})
+        @GenerateAOT.Exclude
         Object doManagedUnknown(@SuppressWarnings("unused") LLVMManagedPointer pointer,
                         @SuppressWarnings("unused") @CachedLibrary("pointer.getObject()") NativeTypeLibrary types,
                         @SuppressWarnings("unused") @CachedLibrary("pointer.getObject()") InteropLibrary interop) {

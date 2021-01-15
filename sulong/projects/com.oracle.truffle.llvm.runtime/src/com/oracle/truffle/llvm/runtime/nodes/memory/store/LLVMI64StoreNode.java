@@ -31,6 +31,7 @@ package com.oracle.truffle.llvm.runtime.nodes.memory.store;
 
 import com.oracle.truffle.api.dsl.Cached;
 import com.oracle.truffle.api.dsl.CachedLanguage;
+import com.oracle.truffle.api.dsl.GenerateAOT;
 import com.oracle.truffle.api.dsl.GenerateUncached;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.library.CachedLibrary;
@@ -69,6 +70,7 @@ public abstract class LLVMI64StoreNode extends LLVMStoreNode {
         }
 
         @Specialization(guards = "isAutoDerefHandle(language, addr)")
+        @GenerateAOT.Exclude
         protected static void doOpDerefHandleI64(LLVMNativePointer addr, long offset, long value,
                         @CachedLanguage @SuppressWarnings("unused") LLVMLanguage language,
                         @Cached LLVMDerefHandleGetReceiverNode getReceiver,
@@ -77,6 +79,7 @@ public abstract class LLVMI64StoreNode extends LLVMStoreNode {
         }
 
         @Specialization(guards = "isAutoDerefHandle(language, addr)", replaces = "doOpDerefHandleI64")
+        @GenerateAOT.Exclude
         protected static void doOpDerefHandle(LLVMNativePointer addr, long offset, Object value,
                         @CachedLanguage @SuppressWarnings("unused") LLVMLanguage language,
                         @Cached LLVMDerefHandleGetReceiverNode getReceiver,
@@ -98,12 +101,14 @@ public abstract class LLVMI64StoreNode extends LLVMStoreNode {
         }
 
         @Specialization(limit = "3")
+        @GenerateAOT.Exclude
         protected static void doOpManagedI64(LLVMManagedPointer address, long offset, long value,
                         @CachedLibrary("address.getObject()") LLVMManagedWriteLibrary nativeWrite) {
             nativeWrite.writeI64(address.getObject(), address.getOffset() + offset, value);
         }
 
         @Specialization(limit = "3", replaces = "doOpManagedI64")
+        @GenerateAOT.Exclude
         protected static void doOpManaged(LLVMManagedPointer address, long offset, Object value,
                         @CachedLibrary("address.getObject()") LLVMManagedWriteLibrary nativeWrite) {
             nativeWrite.writeGenericI64(address.getObject(), address.getOffset() + offset, value);
@@ -117,6 +122,7 @@ public abstract class LLVMI64StoreNode extends LLVMStoreNode {
     }
 
     @Specialization(guards = "isAutoDerefHandle(language, addr)")
+    @GenerateAOT.Exclude
     protected static void doOpDerefHandleI64(LLVMNativePointer addr, long value,
                     @CachedLanguage @SuppressWarnings("unused") LLVMLanguage language,
                     @Cached LLVMDerefHandleGetReceiverNode getReceiver,
@@ -125,6 +131,7 @@ public abstract class LLVMI64StoreNode extends LLVMStoreNode {
     }
 
     @Specialization(guards = "isAutoDerefHandle(language, addr)", replaces = "doOpDerefHandleI64")
+    @GenerateAOT.Exclude
     protected static void doOpDerefHandle(LLVMNativePointer addr, Object value,
                     @CachedLanguage @SuppressWarnings("unused") LLVMLanguage language,
                     @Cached LLVMDerefHandleGetReceiverNode getReceiver,
@@ -146,12 +153,14 @@ public abstract class LLVMI64StoreNode extends LLVMStoreNode {
     }
 
     @Specialization(limit = "3")
+    @GenerateAOT.Exclude
     protected static void doOpManagedI64(LLVMManagedPointer address, long value,
                     @CachedLibrary("address.getObject()") LLVMManagedWriteLibrary nativeWrite) {
         nativeWrite.writeI64(address.getObject(), address.getOffset(), value);
     }
 
     @Specialization(limit = "3", replaces = "doOpManagedI64")
+    @GenerateAOT.Exclude
     protected static void doOpManaged(LLVMManagedPointer address, Object value,
                     @CachedLibrary("address.getObject()") LLVMManagedWriteLibrary nativeWrite) {
         nativeWrite.writeGenericI64(address.getObject(), address.getOffset(), value);

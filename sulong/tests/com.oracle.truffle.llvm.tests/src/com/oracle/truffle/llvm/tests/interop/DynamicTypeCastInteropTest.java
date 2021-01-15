@@ -62,7 +62,7 @@ public class DynamicTypeCastInteropTest extends InteropTestBase {
     }
 
     @ExportLibrary(InteropLibrary.class)
-    @ExportLibrary(NativeTypeLibrary.class)
+    @ExportLibrary(value = NativeTypeLibrary.class, useForAOT = false)
     static class DynamicStructlikeObject implements TruffleObject {
         final HashMap<String, Object> map = new HashMap<>();
 

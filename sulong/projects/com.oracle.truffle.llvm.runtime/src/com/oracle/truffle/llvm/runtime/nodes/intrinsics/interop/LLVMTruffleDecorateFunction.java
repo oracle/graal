@@ -38,6 +38,7 @@ import com.oracle.truffle.api.TruffleLanguage.ContextReference;
 import com.oracle.truffle.api.TruffleLanguage.LanguageReference;
 import com.oracle.truffle.api.dsl.Cached;
 import com.oracle.truffle.api.dsl.Fallback;
+import com.oracle.truffle.api.dsl.GenerateAOT;
 import com.oracle.truffle.api.dsl.NodeChild;
 import com.oracle.truffle.api.dsl.NodeChildren;
 import com.oracle.truffle.api.dsl.Specialization;
@@ -164,6 +165,7 @@ public abstract class LLVMTruffleDecorateFunction extends LLVMIntrinsic {
     }
 
     @Specialization(guards = {"isAutoDerefHandle(func)", "isFunctionDescriptor(wrapper.getObject())"})
+    @GenerateAOT.Exclude
     protected Object decorateDerefHandle(LLVMNativePointer func, LLVMManagedPointer wrapper,
                     @Cached LLVMDerefHandleGetReceiverNode getReceiver,
                     @Cached ConditionProfile isFunctionDescriptorProfile,

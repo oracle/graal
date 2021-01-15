@@ -31,6 +31,7 @@ package com.oracle.truffle.llvm.runtime.nodes.memory.store;
 
 import com.oracle.truffle.api.dsl.Cached;
 import com.oracle.truffle.api.dsl.CachedLanguage;
+import com.oracle.truffle.api.dsl.GenerateAOT;
 import com.oracle.truffle.api.dsl.GenerateUncached;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.library.CachedLibrary;
@@ -74,6 +75,7 @@ public abstract class LLVM80BitFloatStoreNode extends LLVMStoreNode {
         }
 
         @Specialization(guards = "isAutoDerefHandle(language, addr)")
+        @GenerateAOT.Exclude
         protected static void doOpDerefHandle(LLVMNativePointer addr, long offset, LLVM80BitFloat value,
                         @CachedLanguage @SuppressWarnings("unused") LLVMLanguage language,
                         @Cached LLVMDerefHandleGetReceiverNode getReceiver,
@@ -82,6 +84,7 @@ public abstract class LLVM80BitFloatStoreNode extends LLVMStoreNode {
         }
 
         @Specialization(limit = "3")
+        @GenerateAOT.Exclude
         protected static void doOpManaged(LLVMManagedPointer address, long offset, LLVM80BitFloat value,
                         @CachedLibrary("address.getObject()") LLVMManagedWriteLibrary nativeWrite) {
             byte[] bytes = value.getBytes();
@@ -112,6 +115,7 @@ public abstract class LLVM80BitFloatStoreNode extends LLVMStoreNode {
     // TODO (fredmorcos) When GR-26485 is fixed, use limit = "3" here.
     @Specialization
     @ExplodeLoop
+    @GenerateAOT.Exclude
     protected static void doForeign(LLVMManagedPointer address, LLVM80BitFloat value,
                     // TODO (fredmorcos) When GR-26485 is fixed, use
                     // @CachedLibrary("address.getObject()") here.

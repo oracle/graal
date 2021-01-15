@@ -32,6 +32,7 @@ package com.oracle.truffle.llvm.runtime.nodes.memory.load;
 import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.dsl.Cached;
 import com.oracle.truffle.api.dsl.CachedLanguage;
+import com.oracle.truffle.api.dsl.GenerateAOT;
 import com.oracle.truffle.api.dsl.NodeField;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.library.CachedLibrary;
@@ -103,6 +104,7 @@ public abstract class LLVMLoadVectorNode extends LLVMLoadNode {
 
         @Specialization(limit = "3")
         @ExplodeLoop
+        @GenerateAOT.Exclude
         protected LLVMI1Vector doForeign(LLVMManagedPointer addr,
                         @CachedLibrary("addr.getObject()") LLVMManagedReadLibrary nativeRead) {
             boolean[] vector = new boolean[getVectorLength()];
@@ -147,6 +149,7 @@ public abstract class LLVMLoadVectorNode extends LLVMLoadNode {
 
         @Specialization(limit = "3")
         @ExplodeLoop
+        @GenerateAOT.Exclude
         protected LLVMI8Vector doForeign(LLVMManagedPointer addr,
                         @CachedLibrary("addr.getObject()") LLVMManagedReadLibrary nativeRead) {
             byte[] vector = new byte[getVectorLength()];
@@ -191,6 +194,7 @@ public abstract class LLVMLoadVectorNode extends LLVMLoadNode {
 
         @Specialization(limit = "3")
         @ExplodeLoop
+        @GenerateAOT.Exclude
         protected LLVMI16Vector doForeign(LLVMManagedPointer addr,
                         @CachedLibrary("addr.getObject()") LLVMManagedReadLibrary nativeRead) {
             short[] vector = new short[getVectorLength()];
@@ -235,6 +239,7 @@ public abstract class LLVMLoadVectorNode extends LLVMLoadNode {
 
         @Specialization(limit = "3")
         @ExplodeLoop
+        @GenerateAOT.Exclude
         protected LLVMI32Vector doForeign(LLVMManagedPointer addr,
                         @CachedLibrary("addr.getObject()") LLVMManagedReadLibrary nativeRead) {
             int[] vector = new int[getVectorLength()];
@@ -355,6 +360,7 @@ public abstract class LLVMLoadVectorNode extends LLVMLoadNode {
 
         @Specialization(limit = "3")
         @ExplodeLoop
+        @GenerateAOT.Exclude
         protected LLVMPointerVector doForeignPointers(LLVMManagedPointer addr,
                         @CachedLibrary("addr.getObject()") LLVMManagedReadLibrary nativeRead) {
             LLVMPointer[] vector = new LLVMPointer[getVectorLength()];
@@ -399,6 +405,7 @@ public abstract class LLVMLoadVectorNode extends LLVMLoadNode {
 
         @Specialization(limit = "3")
         @ExplodeLoop
+        @GenerateAOT.Exclude
         protected LLVMFloatVector doForeign(LLVMManagedPointer addr,
                         @CachedLibrary("addr.getObject()") LLVMManagedReadLibrary nativeRead) {
             float[] vector = new float[getVectorLength()];
@@ -443,6 +450,7 @@ public abstract class LLVMLoadVectorNode extends LLVMLoadNode {
 
         @Specialization(limit = "3")
         @ExplodeLoop
+        @GenerateAOT.Exclude
         protected LLVMDoubleVector doForeign(LLVMManagedPointer addr,
                         @CachedLibrary("addr.getObject()") LLVMManagedReadLibrary nativeRead) {
             double[] vector = new double[getVectorLength()];

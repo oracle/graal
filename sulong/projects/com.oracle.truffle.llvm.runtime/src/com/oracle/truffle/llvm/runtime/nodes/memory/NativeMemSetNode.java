@@ -32,6 +32,7 @@ package com.oracle.truffle.llvm.runtime.nodes.memory;
 import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.dsl.Cached;
 import com.oracle.truffle.api.dsl.CachedLanguage;
+import com.oracle.truffle.api.dsl.GenerateAOT;
 import com.oracle.truffle.api.dsl.GenerateUncached;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.library.CachedLibrary;
@@ -88,6 +89,7 @@ public abstract class NativeMemSetNode extends LLVMMemSetNode {
     }
 
     @Specialization(limit = "3", guards = {"nativeWrite.isWritable(object.getObject())", "getAccessLength(object, length, nativeTypes) == 1"})
+    @GenerateAOT.Exclude
     protected void memsetManagedI8(LLVMManagedPointer object, byte value, long length,
                     @SuppressWarnings("unused") @CachedLibrary("object.getObject()") NativeTypeLibrary nativeTypes,
                     @CachedLibrary("object.getObject()") LLVMManagedWriteLibrary nativeWrite) {
@@ -97,6 +99,7 @@ public abstract class NativeMemSetNode extends LLVMMemSetNode {
     }
 
     @Specialization(limit = "3", guards = {"nativeWrite.isWritable(object.getObject())", "getAccessLength(object, length, nativeTypes) == 2"})
+    @GenerateAOT.Exclude
     protected void memsetManagedI16(LLVMManagedPointer object, byte value, long length,
                     @SuppressWarnings("unused") @CachedLibrary("object.getObject()") NativeTypeLibrary nativeTypes,
                     @CachedLibrary("object.getObject()") LLVMManagedWriteLibrary nativeWrite) {
@@ -108,6 +111,7 @@ public abstract class NativeMemSetNode extends LLVMMemSetNode {
     }
 
     @Specialization(limit = "3", guards = {"nativeWrite.isWritable(object.getObject())", "getAccessLength(object, length, nativeTypes) == 4"})
+    @GenerateAOT.Exclude
     protected void memsetManagedI32(LLVMManagedPointer object, byte value, long length,
                     @SuppressWarnings("unused") @CachedLibrary("object.getObject()") NativeTypeLibrary nativeTypes,
                     @CachedLibrary("object.getObject()") LLVMManagedWriteLibrary nativeWrite) {
@@ -120,6 +124,7 @@ public abstract class NativeMemSetNode extends LLVMMemSetNode {
     }
 
     @Specialization(limit = "3", guards = {"nativeWrite.isWritable(object.getObject())", "getAccessLength(object, length, nativeTypes) == 8"})
+    @GenerateAOT.Exclude
     protected void memsetManagedI64(LLVMManagedPointer object, byte value, long length,
                     @SuppressWarnings("unused") @CachedLibrary("object.getObject()") NativeTypeLibrary nativeTypes,
                     @CachedLibrary("object.getObject()") LLVMManagedWriteLibrary nativeWrite) {

@@ -30,6 +30,7 @@
 package com.oracle.truffle.llvm.runtime.nodes.op;
 
 import com.oracle.truffle.api.dsl.Cached;
+import com.oracle.truffle.api.dsl.GenerateAOT;
 import com.oracle.truffle.api.dsl.NodeChild;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.frame.VirtualFrame;
@@ -66,6 +67,7 @@ public abstract class LLVMPointerCompareNode extends LLVMAbstractCompareNode {
     }
 
     @Specialization(guards = {"libA.isPointer(a)", "libB.isPointer(b)"}, limit = "3", rewriteOn = UnsupportedMessageException.class)
+    @GenerateAOT.Exclude
     protected boolean doPointerPointer(Object a, Object b,
                     @CachedLibrary("a") LLVMNativeLibrary libA,
                     @CachedLibrary("b") LLVMNativeLibrary libB) throws UnsupportedMessageException {
@@ -73,6 +75,7 @@ public abstract class LLVMPointerCompareNode extends LLVMAbstractCompareNode {
     }
 
     @Specialization(guards = {"libA.isPointer(a)", "libB.isPointer(b)"}, limit = "3")
+    @GenerateAOT.Exclude
     protected boolean doPointerPointerException(Object a, Object b,
                     @CachedLibrary("a") LLVMNativeLibrary libA,
                     @CachedLibrary("b") LLVMNativeLibrary libB,
@@ -87,6 +90,7 @@ public abstract class LLVMPointerCompareNode extends LLVMAbstractCompareNode {
     }
 
     @Specialization(guards = "!libA.isPointer(a) || !libB.isPointer(b)", limit = "3")
+    @GenerateAOT.Exclude
     protected boolean doOther(Object a, Object b,
                     @CachedLibrary("a") LLVMNativeLibrary libA,
                     @CachedLibrary("b") LLVMNativeLibrary libB,

@@ -31,6 +31,7 @@ package com.oracle.truffle.llvm.runtime.nodes.memory;
 
 import com.oracle.truffle.api.dsl.Bind;
 import com.oracle.truffle.api.dsl.CachedContext;
+import com.oracle.truffle.api.dsl.GenerateAOT;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.interop.InteropException;
 import com.oracle.truffle.api.interop.InteropLibrary;
@@ -47,12 +48,13 @@ public abstract class ProtectReadOnlyGlobalsBlockNode extends LLVMNode implement
     }
 
     @Specialization(limit = "1")
+    @GenerateAOT.Exclude
     public void execute(LLVMPointer ptr,
                     @SuppressWarnings("unused") @CachedContext(LLVMLanguage.class) LLVMContext ctx,
-                    @Bind("ctx.getProtectReadOnlyGlobalsBlockFunction()") Object protextGlobalsBlock,
-                    @CachedLibrary("protextGlobalsBlock") InteropLibrary interop) {
+                    @Bind("ctx.getProtectReadOnlyGlobalsBlockFunction()") Object protectGlobalsBlock,
+                    @CachedLibrary("protectGlobalsBlock") InteropLibrary interop) {
         try {
-            interop.execute(protextGlobalsBlock, ptr);
+            interop.execute(protectGlobalsBlock, ptr);
         } catch (InteropException ex) {
             assert false; // should never happen, but probably also safe to ignore
         }

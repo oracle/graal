@@ -31,6 +31,7 @@ package com.oracle.truffle.llvm.runtime.nodes.memory.store;
 
 import com.oracle.truffle.api.dsl.Cached;
 import com.oracle.truffle.api.dsl.CachedLanguage;
+import com.oracle.truffle.api.dsl.GenerateAOT;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.library.CachedLibrary;
 import com.oracle.truffle.llvm.runtime.LLVMIVarBit;
@@ -75,6 +76,7 @@ public abstract class LLVMIVarBitStoreNode extends LLVMStoreNode {
         }
 
         @Specialization(limit = "3")
+        @GenerateAOT.Exclude
         protected static void doOpManaged(LLVMManagedPointer address, long offset, LLVMIVarBit value,
                         @CachedLibrary("address.getObject()") LLVMManagedWriteLibrary nativeWrite) {
             byte[] bytes = value.getBytes();
@@ -101,6 +103,7 @@ public abstract class LLVMIVarBitStoreNode extends LLVMStoreNode {
     }
 
     @Specialization(limit = "3")
+    @GenerateAOT.Exclude
     protected static void doOpManaged(LLVMManagedPointer address, LLVMIVarBit value,
                     @CachedLibrary("address.getObject()") LLVMManagedWriteLibrary nativeWrite) {
         byte[] bytes = value.getBytes();

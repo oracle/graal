@@ -42,7 +42,7 @@ import com.oracle.truffle.api.profiles.ConditionProfile;
 import com.oracle.truffle.llvm.runtime.interop.access.LLVMInteropType;
 
 @ValueType
-@ExportLibrary(DynamicDispatchLibrary.class)
+@ExportLibrary(value = DynamicDispatchLibrary.class, useForAOT = true)
 final class LLVMPointerImpl implements LLVMManagedPointer, LLVMNativePointer {
 
     static final LLVMPointerImpl NULL = new LLVMPointerImpl(null, 0, null);

@@ -61,7 +61,7 @@ import com.oracle.truffle.llvm.runtime.pointer.LLVMPointer;
 
 abstract class LLVMManagedAccessDefaults {
 
-    @ExportLibrary(value = LLVMManagedReadLibrary.class, receiverType = Object.class)
+    @ExportLibrary(value = LLVMManagedReadLibrary.class, receiverType = Object.class, useForAOT = false)
     static class FallbackRead {
 
         @ExportMessage
@@ -120,7 +120,7 @@ abstract class LLVMManagedAccessDefaults {
         }
     }
 
-    @ExportLibrary(value = LLVMManagedWriteLibrary.class, receiverType = Object.class)
+    @ExportLibrary(value = LLVMManagedWriteLibrary.class, receiverType = Object.class, useForAOT = false)
     static class FallbackWrite {
 
         @ExportMessage
@@ -179,8 +179,8 @@ abstract class LLVMManagedAccessDefaults {
         }
     }
 
-    @ExportLibrary(value = LLVMManagedReadLibrary.class, receiverType = byte[].class)
-    @ExportLibrary(value = LLVMManagedWriteLibrary.class, receiverType = byte[].class)
+    @ExportLibrary(value = LLVMManagedReadLibrary.class, receiverType = byte[].class, useForAOTPriority = 0)
+    @ExportLibrary(value = LLVMManagedWriteLibrary.class, receiverType = byte[].class, useForAOTPriority = 1)
     static class VirtualAlloc {
 
         private static int checkOffset(long offset) throws IndexOutOfBoundsException {
@@ -383,9 +383,9 @@ abstract class LLVMManagedAccessDefaults {
                 writeLong(obj, offset, value, self, exception, language);
             }
 
-            @Specialization(limit = "3")
+            @Specialization
             static void writePointer(byte[] obj, long offset, LLVMPointer value,
-                            @CachedLibrary("value") LLVMNativeLibrary nativeLib,
+                            @CachedLibrary(limit = "3") LLVMNativeLibrary nativeLib,
                             @Exclusive @Cached BranchProfile exception,
                             @CachedLanguage LLVMLanguage language) {
                 LLVMNativePointer nativeValue = nativeLib.toNativePointer(value);

@@ -30,6 +30,7 @@
 package com.oracle.truffle.llvm.runtime.nodes.cast;
 
 import com.oracle.truffle.api.dsl.Cached;
+import com.oracle.truffle.api.dsl.GenerateAOT;
 import com.oracle.truffle.api.dsl.NodeChild;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.interop.InteropLibrary;
@@ -63,6 +64,7 @@ public abstract class LLVMToFloatNode extends LLVMExpressionNode {
     }
 
     @Specialization(guards = {"isForeignNumber(from, foreigns, interop)"})
+    @GenerateAOT.Exclude
     protected float doManagedPointer(LLVMManagedPointer from,
                     @Cached("createForeignToLLVM()") ForeignToLLVM toLLVM,
                     @Cached("createRecursive()") LLVMToFloatNode recursive,

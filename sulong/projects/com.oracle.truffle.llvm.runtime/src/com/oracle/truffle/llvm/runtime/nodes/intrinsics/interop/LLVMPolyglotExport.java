@@ -31,6 +31,7 @@ package com.oracle.truffle.llvm.runtime.nodes.intrinsics.interop;
 
 import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.dsl.CachedContext;
+import com.oracle.truffle.api.dsl.GenerateAOT;
 import com.oracle.truffle.api.dsl.NodeChild;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.interop.InteropException;
@@ -52,6 +53,7 @@ public abstract class LLVMPolyglotExport extends LLVMIntrinsic {
     @Child LLVMDataEscapeNode escape = LLVMPointerDataEscapeNodeGen.create();
 
     @Specialization
+    @GenerateAOT.Exclude
     protected Object doExport(Object name, Object value,
                     @CachedLibrary(limit = "3") InteropLibrary interop,
                     @CachedContext(LLVMLanguage.class) LLVMContext ctx) {

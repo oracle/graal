@@ -31,6 +31,7 @@ package com.oracle.truffle.llvm.runtime.nodes.intrinsics.interop;
 
 import com.oracle.truffle.api.dsl.Cached;
 import com.oracle.truffle.api.dsl.Fallback;
+import com.oracle.truffle.api.dsl.GenerateAOT;
 import com.oracle.truffle.api.dsl.NodeChild;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.interop.InteropLibrary;
@@ -57,6 +58,7 @@ public abstract class LLVMPolyglotBoxedPredicate extends LLVMIntrinsic {
     }
 
     @Specialization
+    @GenerateAOT.Exclude
     boolean matchManaged(LLVMManagedPointer object,
                     @Cached("createOptional()") LLVMAsForeignNode asForeign,
                     @Cached ConditionProfile isForeign,
@@ -70,6 +72,7 @@ public abstract class LLVMPolyglotBoxedPredicate extends LLVMIntrinsic {
     }
 
     @Specialization(limit = "1")
+    @GenerateAOT.Exclude
     boolean matchString(String str,
                     @CachedLibrary("str") InteropLibrary interop) {
         return predicate.match(interop, str);

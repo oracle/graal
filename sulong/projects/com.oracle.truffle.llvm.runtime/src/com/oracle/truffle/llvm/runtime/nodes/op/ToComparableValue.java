@@ -31,6 +31,7 @@ package com.oracle.truffle.llvm.runtime.nodes.op;
 
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.dsl.Cached;
+import com.oracle.truffle.api.dsl.GenerateAOT;
 import com.oracle.truffle.api.dsl.ImportStatic;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.interop.UnsupportedMessageException;
@@ -48,12 +49,14 @@ public abstract class ToComparableValue extends LLVMNode {
     public abstract long executeWithTarget(Object obj);
 
     @Specialization(guards = "lib.isPointer(obj)", limit = "3", rewriteOn = UnsupportedMessageException.class)
+    @GenerateAOT.Exclude
     protected long doPointer(Object obj,
                     @CachedLibrary("obj") LLVMNativeLibrary lib) throws UnsupportedMessageException {
         return lib.asPointer(obj);
     }
 
     @Specialization(guards = "lib.isPointer(obj)", limit = "3")
+    @GenerateAOT.Exclude
     protected long doPointerException(Object obj,
                     @CachedLibrary("obj") LLVMNativeLibrary lib,
                     @Cached("createUseOffset()") ManagedToComparableValue toComparable) {
@@ -65,6 +68,7 @@ public abstract class ToComparableValue extends LLVMNode {
     }
 
     @Specialization(guards = "!lib.isPointer(obj)", limit = "3")
+    @GenerateAOT.Exclude
     protected long doManaged(Object obj,
                     @CachedLibrary("obj") @SuppressWarnings("unused") LLVMNativeLibrary lib,
                     @Cached("createUseOffset()") ManagedToComparableValue toComparable) {

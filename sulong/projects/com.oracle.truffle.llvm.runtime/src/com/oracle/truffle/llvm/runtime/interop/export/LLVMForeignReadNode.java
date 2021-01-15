@@ -30,6 +30,7 @@
 package com.oracle.truffle.llvm.runtime.interop.export;
 
 import com.oracle.truffle.api.dsl.Cached;
+import com.oracle.truffle.api.dsl.GenerateAOT;
 import com.oracle.truffle.api.dsl.GenerateUncached;
 import com.oracle.truffle.api.dsl.ImportStatic;
 import com.oracle.truffle.api.dsl.Specialization;
@@ -55,6 +56,7 @@ public abstract class LLVMForeignReadNode extends LLVMNode {
     }
 
     @Specialization(guards = "type.kind == cachedKind", limit = "VALUE_KIND_COUNT")
+    @GenerateAOT.Exclude
     static Object doValue(LLVMPointer ptr, LLVMInteropType.Value type,
                     @Cached(value = "type.kind", allowUncached = true) @SuppressWarnings(value = "unused") LLVMInteropType.ValueKind cachedKind,
                     @Cached(parameters = "cachedKind") LLVMOffsetLoadNode load,

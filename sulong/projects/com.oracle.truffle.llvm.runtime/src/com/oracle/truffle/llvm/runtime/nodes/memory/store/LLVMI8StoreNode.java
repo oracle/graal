@@ -31,6 +31,7 @@ package com.oracle.truffle.llvm.runtime.nodes.memory.store;
 
 import com.oracle.truffle.api.dsl.Cached;
 import com.oracle.truffle.api.dsl.CachedLanguage;
+import com.oracle.truffle.api.dsl.GenerateAOT;
 import com.oracle.truffle.api.dsl.GenerateUncached;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.library.CachedLibrary;
@@ -68,6 +69,7 @@ public abstract class LLVMI8StoreNode extends LLVMStoreNode {
         }
 
         @Specialization(guards = "isAutoDerefHandle(language, addr)")
+        @GenerateAOT.Exclude
         protected static void doOpDerefHandle(LLVMNativePointer addr, long offset, byte value,
                         @CachedLanguage @SuppressWarnings("unused") LLVMLanguage language,
                         @Cached LLVMDerefHandleGetReceiverNode getReceiver,
@@ -76,6 +78,7 @@ public abstract class LLVMI8StoreNode extends LLVMStoreNode {
         }
 
         @Specialization(limit = "3")
+        @GenerateAOT.Exclude
         protected static void doOpManaged(LLVMManagedPointer address, long offset, byte value,
                         @CachedLibrary("address.getObject()") LLVMManagedWriteLibrary nativeWrite) {
             nativeWrite.writeI8(address.getObject(), address.getOffset() + offset, value);
@@ -89,6 +92,7 @@ public abstract class LLVMI8StoreNode extends LLVMStoreNode {
     }
 
     @Specialization(guards = "isAutoDerefHandle(language, addr)")
+    @GenerateAOT.Exclude
     protected static void doOpDerefHandle(LLVMNativePointer addr, byte value,
                     @CachedLanguage @SuppressWarnings("unused") LLVMLanguage language,
                     @Cached LLVMDerefHandleGetReceiverNode getReceiver,
@@ -97,6 +101,7 @@ public abstract class LLVMI8StoreNode extends LLVMStoreNode {
     }
 
     @Specialization(limit = "3")
+    @GenerateAOT.Exclude
     protected static void doOpManaged(LLVMManagedPointer address, byte value,
                     @CachedLibrary("address.getObject()") LLVMManagedWriteLibrary nativeWrite) {
         nativeWrite.writeI8(address.getObject(), address.getOffset(), value);
