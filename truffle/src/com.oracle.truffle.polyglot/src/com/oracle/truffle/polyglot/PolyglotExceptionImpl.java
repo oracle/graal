@@ -156,7 +156,12 @@ final class PolyglotExceptionImpl extends AbstractExceptionImpl {
             }
         } else {
             this.cancelled = (exception instanceof CancelExecution) || isLegacyTruffleExceptionCancelled(exception);
-            this.interrupted = exception != null && exception.getCause() instanceof InterruptedException;
+            /*
+             * When polyglot context is invalid, we cannot obtain the exception type from
+             * InterruptExecution exception via interop. Please note that in this case the
+             * InterruptExecution was thrown before the context was made invalid.
+             */
+            this.interrupted = (exception instanceof PolyglotEngineImpl.InterruptExecution) || (exception != null && exception.getCause() instanceof InterruptedException);
             this.internal = !interrupted && !cancelled && !resourceExhausted;
             this.syntaxError = false;
             this.incompleteSource = false;
