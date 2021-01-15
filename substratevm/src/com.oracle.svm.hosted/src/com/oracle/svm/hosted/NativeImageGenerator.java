@@ -502,6 +502,11 @@ public class NativeImageGenerator {
             ReportUtils.report("build artifacts", buildDir.resolve(imageName + ".build_artifacts.txt"),
                             writer -> buildArtifacts.forEach((artifactType, paths) -> {
                                 writer.println("[" + artifactType + "]");
+                                if (artifactType == ArtifactType.JDK_LIB_SHIM) {
+                                    writer.println("# Note that shim JDK libraries depend on this");
+                                    writer.println("# particular native image (including its name)");
+                                    writer.println("# and therefore cannot be used with others.");
+                                }
                                 paths.stream().map(buildDir::relativize).forEach(writer::println);
                                 writer.println();
                             }));

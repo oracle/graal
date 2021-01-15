@@ -34,6 +34,7 @@ public interface BuildArtifacts {
         EXECUTABLE,
         SHARED_LIB,
         JDK_LIB,
+        JDK_LIB_SHIM,
         HEADER,
         IMPORT_LIB,
         DEBUG_INFO,
