@@ -387,7 +387,7 @@ public final class PolyglotCompilerOptions {
     public static final OptionKey<Integer> InliningRecursionDepth = new OptionKey<>(2);
 
     @Option(help = "TODO", category = OptionCategory.EXPERT)
-    public static final OptionKey<Boolean> InliningOptimizeOnExpand = new OptionKey<>(false);
+    public static final OptionKey<Boolean> InliningOptimizeOnExpand = new OptionKey<>(true);
 
     // Splitting
 
@@ -507,10 +507,10 @@ public final class PolyglotCompilerOptions {
     public static final OptionKey<String> InliningPolicy = new OptionKey<>("");
 
     @Option(help = "The base expansion budget for language-agnostic inlining.", category = OptionCategory.EXPERT)
-    public static final OptionKey<Integer> InliningExpansionBudget = new OptionKey<>(30_000);
+    public static final OptionKey<Integer> InliningExpansionBudget = new OptionKey<>(12_000);
 
     @Option(help = "The base inlining budget for language-agnostic inlining", category = OptionCategory.EXPERT)
-    public static final OptionKey<Integer> InliningInliningBudget = new OptionKey<>(30_000);
+    public static final OptionKey<Integer> InliningInliningBudget = new OptionKey<>(12_000);
 
     // @formatter:on
 
