@@ -56,10 +56,26 @@ public final class Arguments {
             this.builder = builder;
         }
 
-        private static final String ADD_MODULES = "jdk.module.addmods";
-        private static final String ADD_EXPORTS = "jdk.module.addexports";
-        private static final String ADD_OPENS = "jdk.module.addopens";
-        private static final String ADD_READS = "jdk.module.addreads";
+        private static final String JDK_MODULES_PREFIX = "jdk.module.";
+
+        private static final String ADD_MODULES = JDK_MODULES_PREFIX + "addmods";
+        private static final String ADD_EXPORTS = JDK_MODULES_PREFIX + "addexports";
+        private static final String ADD_OPENS = JDK_MODULES_PREFIX + "addopens";
+        private static final String ADD_READS = JDK_MODULES_PREFIX + "addreads";
+
+        private static final String MODULE_PATH = JDK_MODULES_PREFIX + "path";
+        private static final String UPGRADE_PATH = JDK_MODULES_PREFIX + "upgrade.path";
+        private static final String LIMIT_MODS = JDK_MODULES_PREFIX + "limitmods";
+
+        private static final String[] KNOWN_OPTIONS = new String[]{
+                        ADD_MODULES,
+                        ADD_EXPORTS,
+                        ADD_OPENS,
+                        ADD_READS,
+                        MODULE_PATH,
+                        UPGRADE_PATH,
+                        LIMIT_MODS,
+        };
 
         private final Context.Builder builder;
 
@@ -88,6 +104,17 @@ public final class Arguments {
             String key = JAVA_PROPS + prop + "." + count;
             builder.option(key, value);
         }
+
+        boolean isModulesOption(String prop) {
+            if (prop.startsWith(JDK_MODULES_PREFIX)) {
+                for (String known : KNOWN_OPTIONS) {
+                    if (prop.equals(known)) {
+                        return true;
+                    }
+                }
+            }
+            return false;
+        }
     }
 
     public static int setupContext(Context.Builder builder, JNIJavaVMInitArgs args) {
@@ -96,109 +123,109 @@ public final class Arguments {
         String classpath = null;
         String bootClasspathPrepend = null;
         String bootClasspathAppend = null;
+
+        Native nativeAccess = new Native();
         ModulePropertyCounter modulePropHandler = new ModulePropertyCounter(builder);
         boolean experimentalOptions = checkExperimental(args);
         boolean ignoreUnrecognized = false;
+
         for (int i = 0; i < count; i++) {
             JNIJavaVMOption option = (JNIJavaVMOption) p.add(i * SizeOf.get(JNIJavaVMOption.class));
             CCharPointer str = option.getOptionString();
-            if (str.isNonNull()) {
-                String optionString = CTypeConversion.toJavaString(option.getOptionString());
-                if (optionString.startsWith("-Xbootclasspath:")) {
-                    bootClasspathPrepend = null;
-                    bootClasspathAppend = null;
-                    builder.option("java.BootClasspath", optionString.substring("-Xbootclasspath:".length()));
-                } else if (optionString.startsWith("-Xbootclasspath/a:")) {
-                    bootClasspathAppend = appendPath(bootClasspathAppend, optionString.substring("-Xbootclasspath/a:".length()));
-                } else if (optionString.startsWith("-Xbootclasspath/p:")) {
-                    bootClasspathPrepend = prependPath(optionString.substring("-Xbootclasspath/p:".length()), bootClasspathPrepend);
-                } else if (optionString.startsWith("-Xverify:")) {
-                    String mode = optionString.substring("-Xverify:".length());
-                    builder.option("java.Verify", mode);
-                } else if (optionString.startsWith("-Xrunjdwp:")) {
-                    String value = optionString.substring("-Xrunjdwp:".length());
-                    builder.option("java.JDWPOptions", value);
-                } else if (optionString.startsWith("-XX:MaxDirectMemorySize=")) {
-                    String value = optionString.substring("-XX:MaxDirectMemorySize=".length());
-                    builder.option("java.MaxDirectMemorySize", value);
-                } else if (optionString.startsWith("-D")) {
-                    // TODO: prevent using -D flags to set some properties (/ex: module properties
-                    // with a reserved flag)
-                    String key = optionString.substring("-D".length());
-                    int splitAt = key.indexOf("=");
-                    String value = "";
-                    if (splitAt >= 0) {
-                        value = key.substring(splitAt + 1);
-                        key = key.substring(0, splitAt);
-                    }
-                    switch (key) {
-                        case "espresso.library.path":
-                            builder.option("java.EspressoLibraryPath", value);
-                            break;
-                        case "java.library.path":
-                            builder.option("java.JavaLibraryPath", value);
-                            break;
-                        case "java.class.path":
-                            classpath = value;
-                            break;
-                        case "java.ext.dirs":
-                            builder.option("java.ExtDirs", value);
-                            break;
-                        case "sun.boot.class.path":
-                            builder.option("java.BootClasspath", value);
-                            break;
-                        case "sun.boot.library.path":
-                            builder.option("java.BootLibraryPath", value);
-                            break;
-                    }
-                    builder.option(JAVA_PROPS + key, value);
-                } else if (optionString.equals("-ea") || optionString.equals("-enableassertions")) {
-                    builder.option("java.EnableAssertions", "true");
-                } else if (optionString.equals("-esa") || optionString.equals("-enablesystemassertions")) {
-                    builder.option("java.EnableSystemAssertions", "true");
-                } else if (optionString.startsWith("--add-reads=")) {
-                    modulePropHandler.addReads(optionString.substring("--add-reads=".length()));
-                } else if (optionString.startsWith("--add-exports=")) {
-                    modulePropHandler.addExports(optionString.substring("--add-exports=".length()));
-                } else if (optionString.startsWith("--add-opens=")) {
-                    modulePropHandler.addOpens(optionString.substring("--add-opens=".length()));
-                } else if (optionString.startsWith("--add-modules=")) {
-                    modulePropHandler.addModules(optionString.substring("--add-modules=".length()));
-                } else if (optionString.startsWith("--module-path=")) {
-                    builder.option(JAVA_PROPS + "jdk.module.path", optionString.substring("--module-path=".length()));
-                } else if (optionString.startsWith("--upgrade-module-path=")) {
-                    builder.option(JAVA_PROPS + "jdk.module.upgrade.path", optionString.substring("--upgrade-module-path=".length()));
-                } else if (optionString.startsWith("--limit-modules=")) {
-                    builder.option(JAVA_PROPS + "jdk.module.limitmods", optionString.substring("--limit-modules=".length()));
-                } else if (isXOption(optionString)) {
-                    RuntimeOptions.set(optionString.substring("-X".length()), null);
-                } else if (optionString.equals("-XX:+IgnoreUnrecognizedVMOptions")) {
-                    ignoreUnrecognized = true;
-                } else if (optionString.equals("-XX:-IgnoreUnrecognizedVMOptions")) {
-                    ignoreUnrecognized = false;
-                } else if (optionString.startsWith("--vm.")) {
-                    // TODO: more precise handling (see
-                    // org.graalvm.launcher.Launcher.Native.setNativeOption)
-                    int eqIx = optionString.indexOf('=');
-                    if (eqIx > 0) {
-                        String key = optionString.substring("--vm.".length(), eqIx);
-                        String value = optionString.substring(eqIx + 1);
-                        RuntimeOptions.set(key, value);
+            try {
+                if (str.isNonNull()) {
+                    String optionString = CTypeConversion.toJavaString(option.getOptionString());
+                    if (optionString.startsWith("-Xbootclasspath:")) {
+                        bootClasspathPrepend = null;
+                        bootClasspathAppend = null;
+                        builder.option("java.BootClasspath", optionString.substring("-Xbootclasspath:".length()));
+                    } else if (optionString.startsWith("-Xbootclasspath/a:")) {
+                        bootClasspathAppend = appendPath(bootClasspathAppend, optionString.substring("-Xbootclasspath/a:".length()));
+                    } else if (optionString.startsWith("-Xbootclasspath/p:")) {
+                        bootClasspathPrepend = prependPath(optionString.substring("-Xbootclasspath/p:".length()), bootClasspathPrepend);
+                    } else if (optionString.startsWith("-Xverify:")) {
+                        String mode = optionString.substring("-Xverify:".length());
+                        builder.option("java.Verify", mode);
+                    } else if (optionString.startsWith("-Xrunjdwp:")) {
+                        String value = optionString.substring("-Xrunjdwp:".length());
+                        builder.option("java.JDWPOptions", value);
+                    } else if (optionString.startsWith("-agentlib:jdwp=")) {
+                        String value = optionString.substring("-agentlib:jdwp=".length());
+                        builder.option("java.JDWPOptions", value);
+                    } else if (optionString.startsWith("-D")) {
+                        String key = optionString.substring("-D".length());
+                        int splitAt = key.indexOf("=");
+                        String value = "";
+                        if (splitAt >= 0) {
+                            value = key.substring(splitAt + 1);
+                            key = key.substring(0, splitAt);
+                        }
+                        if (modulePropHandler.isModulesOption(key)) {
+                            warn("Ignoring system property -D" + key + " that is reserved for internal use.");
+                            continue;
+                        }
+                        switch (key) {
+                            case "espresso.library.path":
+                                builder.option("java.EspressoLibraryPath", value);
+                                break;
+                            case "java.library.path":
+                                builder.option("java.JavaLibraryPath", value);
+                                break;
+                            case "java.class.path":
+                                classpath = value;
+                                break;
+                            case "java.ext.dirs":
+                                builder.option("java.ExtDirs", value);
+                                break;
+                            case "sun.boot.class.path":
+                                builder.option("java.BootClasspath", value);
+                                break;
+                            case "sun.boot.library.path":
+                                builder.option("java.BootLibraryPath", value);
+                                break;
+                        }
+                        builder.option(JAVA_PROPS + key, value);
+                    } else if (optionString.equals("-ea") || optionString.equals("-enableassertions")) {
+                        builder.option("java.EnableAssertions", "true");
+                    } else if (optionString.equals("-esa") || optionString.equals("-enablesystemassertions")) {
+                        builder.option("java.EnableSystemAssertions", "true");
+                    } else if (optionString.startsWith("--add-reads=")) {
+                        modulePropHandler.addReads(optionString.substring("--add-reads=".length()));
+                    } else if (optionString.startsWith("--add-exports=")) {
+                        modulePropHandler.addExports(optionString.substring("--add-exports=".length()));
+                    } else if (optionString.startsWith("--add-opens=")) {
+                        modulePropHandler.addOpens(optionString.substring("--add-opens=".length()));
+                    } else if (optionString.startsWith("--add-modules=")) {
+                        modulePropHandler.addModules(optionString.substring("--add-modules=".length()));
+                    } else if (optionString.startsWith("--module-path=")) {
+                        builder.option(JAVA_PROPS + "jdk.module.path", optionString.substring("--module-path=".length()));
+                    } else if (optionString.startsWith("--upgrade-module-path=")) {
+                        builder.option(JAVA_PROPS + "jdk.module.upgrade.path", optionString.substring("--upgrade-module-path=".length()));
+                    } else if (optionString.startsWith("--limit-modules=")) {
+                        builder.option(JAVA_PROPS + "jdk.module.limitmods", optionString.substring("--limit-modules=".length()));
+                    } else if (isXOption(optionString)) {
+                        RuntimeOptions.set(optionString.substring("-X".length()), null);
+                    } else if (optionString.equals("-XX:+IgnoreUnrecognizedVMOptions")) {
+                        ignoreUnrecognized = true;
+                    } else if (optionString.equals("-XX:-IgnoreUnrecognizedVMOptions")) {
+                        ignoreUnrecognized = false;
+                    } else if (optionString.startsWith("--vm.")) {
+                        handleVMOption(nativeAccess, optionString);
+                    } else if (optionString.startsWith("-XX:")) {
+                        handleXXArg(builder, optionString, experimentalOptions, nativeAccess);
+                    } else if (isExperimentalFlag(optionString)) {
+                        // skip: previously handled
+                    } else if (optionString.equals("--polyglot")) {
+                        // skip: handled by mokapot
                     } else {
-                        String key = optionString.substring("--vm.".length());
-                        RuntimeOptions.set(key, null);
+                        parsePolyglotOption(builder, optionString, experimentalOptions);
                     }
-                } else if (isExperimentalFlag(optionString)) {
-                    // skip: previously handled
-                } else if (optionString.equals("--polyglot")) {
-                    // skip: handled by mokapot
-                } else {
-                    String err = parsePolyglotOption(builder, optionString, experimentalOptions);
-                    if (!ignoreUnrecognized && err != null) {
-                        // Failed to parse
-                        STDERR.printf(err);
-                        return JNI_ERR();
-                    }
+                }
+            } catch (ArgumentException e) {
+                if (!ignoreUnrecognized) {
+                    // Failed to parse
+                    warn(e.getMessage());
+                    return JNI_ERR();
                 }
             }
         }
@@ -224,6 +251,33 @@ public final class Arguments {
         builder.option("java.Classpath", classpath);
         argumentProcessingDone();
         return JNIErrors.JNI_OK();
+    }
+
+    public static void handleVMOption(Native nativeAccess, String optionString) {
+        nativeAccess.init(false);
+        nativeAccess.setNativeOption(optionString.substring("--vm.".length()));
+    }
+
+    public static void handleXXArg(Context.Builder builder, String optionString, boolean experimental, Native nativeAccess) {
+        String toPolyglot = optionString.substring("-XX:".length());
+        if (toPolyglot.length() >= 1 && (toPolyglot.charAt(0) == '+' || toPolyglot.charAt(0) == '-')) {
+            String value = Boolean.toString(toPolyglot.charAt(0) == '+');
+            toPolyglot = "--java." + toPolyglot.substring(1) + "=" + value;
+        } else {
+            toPolyglot = "--java." + toPolyglot;
+        }
+        try {
+            parsePolyglotOption(builder, toPolyglot, experimental);
+            return;
+        } catch (ArgumentException e) {
+            if (e.isExperimental()) {
+                throw abort(e.getMessage().replace(toPolyglot, optionString));
+            }
+            /* Ignore, and try to pass it as a vm arg */
+        }
+        // Pass as host vm arg
+        nativeAccess.init(true);
+        nativeAccess.setNativeOption(optionString.substring(1));
     }
 
     private static boolean checkExperimental(JNIJavaVMInitArgs args) {
@@ -255,9 +309,9 @@ public final class Arguments {
         return optionString.startsWith("-Xms") || optionString.startsWith("-Xmx") || optionString.startsWith("-Xmn") || optionString.startsWith("-Xss");
     }
 
-    private static String parsePolyglotOption(Context.Builder builder, String arg, boolean experimentalOptions) {
+    private static void parsePolyglotOption(Context.Builder builder, String arg, boolean experimentalOptions) {
         if (arg.length() <= 2 || !arg.startsWith("--")) {
-            return String.format("Unrecognized option: %s%n", arg);
+            throw abort(String.format("Unrecognized option: %s%n", arg));
         }
         int eqIdx = arg.indexOf('=');
         String key;
@@ -284,32 +338,31 @@ public final class Arguments {
                     Level.parse(value);
                     builder.option(key, value);
                 } catch (IllegalArgumentException e) {
-                    return String.format("Invalid log level %s specified. %s'", arg, e.getMessage());
+                    throw abort(String.format("Invalid log level %s specified. %s'", arg, e.getMessage()));
                 }
-                return null;
+                return;
             } else if (key.equals("log.file")) {
-                return "Unsupported log.file option";
+                throw abort("Unsupported log.file option");
             }
         }
         OptionDescriptor descriptor = findOptionDescriptor(group, key);
         if (descriptor == null) {
             descriptor = findOptionDescriptor("java", "java" + "." + key);
             if (descriptor == null) {
-                return String.format("Unrecognized option: %s%n", arg);
+                throw abort(String.format("Unrecognized option: %s%n", arg));
             }
         }
         try {
             descriptor.getKey().getType().convert(value);
         } catch (IllegalArgumentException e) {
-            return String.format("Invalid argument %s specified. %s'", arg, e.getMessage());
+            throw abort(String.format("Invalid argument %s specified. %s'", arg, e.getMessage()));
         }
         if (!experimentalOptions && descriptor.getStability() == OptionStability.EXPERIMENTAL) {
-            return String.format("Option '%s' is experimental and must be enabled via '--experimental-options'%n" +
-                            "Do not use experimental options in production environments.", arg);
+            throw abortExperimental(String.format("Option '%s' is experimental and must be enabled via '--experimental-options'%n" +
+                            "Do not use experimental options in production environments.", arg));
         }
         // use the full name of the found descriptor
         builder.option(descriptor.getName(), value);
-        return null;
     }
 
     private static OptionDescriptor findOptionDescriptor(String group, String key) {
@@ -335,7 +388,7 @@ public final class Arguments {
 
     private static Engine tempEngine;
 
-    static Engine getTempEngine() {
+    private static Engine getTempEngine() {
         if (tempEngine == null) {
             tempEngine = Engine.newBuilder().useSystemProperties(false).build();
         }
@@ -363,5 +416,37 @@ public final class Arguments {
         } else {
             return toPrepend;
         }
+    }
+
+    static class ArgumentException extends RuntimeException {
+        private static final long serialVersionUID = 5430103471994299046L;
+
+        private final boolean isExperimental;
+
+        ArgumentException(String message, boolean isExperimental) {
+            super(message);
+            this.isExperimental = isExperimental;
+        }
+
+        public boolean isExperimental() {
+            return isExperimental;
+        }
+
+        @Override
+        public synchronized Throwable fillInStackTrace() {
+            return this;
+        }
+    }
+
+    static ArgumentException abort(String message) {
+        throw new Arguments.ArgumentException(message, false);
+    }
+
+    static ArgumentException abortExperimental(String message) {
+        throw new Arguments.ArgumentException(message, true);
+    }
+
+    static void warn(String message) {
+        STDERR.println(message);
     }
 }
