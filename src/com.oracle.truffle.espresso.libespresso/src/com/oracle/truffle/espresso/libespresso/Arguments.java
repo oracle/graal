@@ -119,6 +119,8 @@ public final class Arguments {
                     String value = optionString.substring("-Xrunjdwp:".length());
                     builder.option("java.JDWPOptions", value);
                 } else if (optionString.startsWith("-D")) {
+                    // TODO: prevent using -D flags to set some properties (/ex: module properties
+                    // with a reserved flag)
                     String key = optionString.substring("-D".length());
                     int splitAt = key.indexOf("=");
                     String value = "";
@@ -183,6 +185,8 @@ public final class Arguments {
                         String key = optionString.substring("--vm.".length());
                         RuntimeOptions.set(key, null);
                     }
+                } else if (isExperimentalFlag(optionString)) {
+                    // skip: previously handled
                 } else if (optionString.equals("--polyglot")) {
                     // skip: handled by mokapot
                 } else {
@@ -237,6 +241,11 @@ public final class Arguments {
             }
         }
         return false;
+    }
+
+    private static boolean isExperimentalFlag(String optionString) {
+        // return false for "--experimental-options=[garbage]
+        return optionString.equals("--experimental-options") || optionString.equals("--experimental-options=true") || optionString.equals("--experimental-options=false");
     }
 
     private static boolean isXOption(String optionString) {
