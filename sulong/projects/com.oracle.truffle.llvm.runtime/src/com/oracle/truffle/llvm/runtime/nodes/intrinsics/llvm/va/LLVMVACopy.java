@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2016, 2020, Oracle and/or its affiliates.
+ * Copyright (c) 2016, 2021, Oracle and/or its affiliates.
  *
  * All rights reserved.
  *
@@ -29,13 +29,16 @@
  */
 package com.oracle.truffle.llvm.runtime.nodes.intrinsics.llvm.va;
 
+import com.oracle.truffle.api.dsl.Cached;
+import com.oracle.truffle.api.dsl.ImportStatic;
 import com.oracle.truffle.api.dsl.NodeChild;
 import com.oracle.truffle.api.dsl.NodeField;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.library.CachedLibrary;
 import com.oracle.truffle.llvm.runtime.nodes.api.LLVMExpressionNode;
 import com.oracle.truffle.llvm.runtime.nodes.intrinsics.llvm.LLVMBuiltin;
-import com.oracle.truffle.llvm.runtime.pointer.LLVMManagedPointer;
+import com.oracle.truffle.llvm.runtime.nodes.intrinsics.llvm.va.LLVMVaListStorage.VAListPointerWrapperFactoryDelegate;
+import com.oracle.truffle.llvm.runtime.pointer.LLVMPointer;
 
 /**
  * The node handling the <code>va_copy</code> instruction. It just delegates to
@@ -44,6 +47,7 @@ import com.oracle.truffle.llvm.runtime.pointer.LLVMManagedPointer;
 @NodeChild(type = LLVMExpressionNode.class)
 @NodeChild(type = LLVMExpressionNode.class)
 @NodeField(type = int.class, name = "numberExplicitArguments")
+@ImportStatic(LLVMVaListStorage.class)
 public abstract class LLVMVACopy extends LLVMBuiltin {
 
     public LLVMVACopy() {
@@ -51,10 +55,12 @@ public abstract class LLVMVACopy extends LLVMBuiltin {
 
     public abstract int getNumberExplicitArguments();
 
-    @Specialization(limit = "1")
-    protected Object doVoid(LLVMManagedPointer dest, LLVMManagedPointer source,
-                    @CachedLibrary("source.getObject()") LLVMVaListLibrary vaListLibrary) {
-        vaListLibrary.copy(source.getObject(), dest.getObject(), getNumberExplicitArguments());
+    @Specialization
+    protected Object copyVAList(LLVMPointer dest, LLVMPointer source,
+                    @Cached VAListPointerWrapperFactoryDelegate sourceWrapperFactory,
+                    @Cached VAListPointerWrapperFactoryDelegate destWrapperFactory,
+                    @CachedLibrary(limit = "3") LLVMVaListLibrary vaListLibrary) {
+        vaListLibrary.copy(sourceWrapperFactory.execute(source), destWrapperFactory.execute(dest));
         return null;
     }
 }

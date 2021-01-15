@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2019, 2020, Oracle and/or its affiliates.
+ * Copyright (c) 2019, 2021, Oracle and/or its affiliates.
  *
  * All rights reserved.
  *
@@ -28,6 +28,14 @@
  * OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 package com.oracle.truffle.llvm.parser.nodes;
+
+import java.util.ArrayList;
+import java.util.HashMap;
+import java.util.HashSet;
+import java.util.Iterator;
+import java.util.List;
+import java.util.Map.Entry;
+import java.util.Objects;
 
 import com.oracle.truffle.api.frame.FrameDescriptor;
 import com.oracle.truffle.api.frame.FrameSlot;
@@ -96,6 +104,7 @@ import com.oracle.truffle.llvm.parser.nodes.LLVMRuntimeDebugInformation.SimpleLo
 import com.oracle.truffle.llvm.parser.util.LLVMBitcodeTypeHelper;
 import com.oracle.truffle.llvm.runtime.CommonNodeFactory;
 import com.oracle.truffle.llvm.runtime.LLVMContext;
+import com.oracle.truffle.llvm.runtime.LLVMVarArgCompoundValue;
 import com.oracle.truffle.llvm.runtime.NodeFactory;
 import com.oracle.truffle.llvm.runtime.datalayout.DataLayout;
 import com.oracle.truffle.llvm.runtime.debug.scope.LLVMSourceLocation;
@@ -111,6 +120,7 @@ import com.oracle.truffle.llvm.runtime.nodes.api.LLVMInstrumentableNode;
 import com.oracle.truffle.llvm.runtime.nodes.api.LLVMNode;
 import com.oracle.truffle.llvm.runtime.nodes.api.LLVMStatementNode;
 import com.oracle.truffle.llvm.runtime.nodes.api.LLVMVoidStatementNodeGen;
+import com.oracle.truffle.llvm.runtime.nodes.intrinsics.llvm.va.LLVMVaListStorage;
 import com.oracle.truffle.llvm.runtime.nodes.vars.LLVMWriteNode;
 import com.oracle.truffle.llvm.runtime.options.SulongEngineOption;
 import com.oracle.truffle.llvm.runtime.types.AggregateType;
@@ -124,14 +134,6 @@ import com.oracle.truffle.llvm.runtime.types.Type;
 import com.oracle.truffle.llvm.runtime.types.Type.TypeArrayBuilder;
 import com.oracle.truffle.llvm.runtime.types.Type.TypeOverflowException;
 import com.oracle.truffle.llvm.runtime.types.symbols.SSAValue;
-
-import java.util.ArrayList;
-import java.util.HashMap;
-import java.util.HashSet;
-import java.util.Iterator;
-import java.util.List;
-import java.util.Map.Entry;
-import java.util.Objects;
 
 public final class LLVMBitcodeInstructionVisitor implements SymbolVisitor {
 
@@ -399,13 +401,20 @@ public final class LLVMBitcodeInstructionVisitor implements SymbolVisitor {
             argNodes[argIndex] = nodeFactory.createGetUniqueStackSpace(targetType, uniquesRegion, frame);
             argIndex++;
         }
+
+        // realArgumentCount = argumentCount - varArgCount
+        int realArgumentCount = call.getCallTarget().getType() instanceof FunctionType ? ((FunctionType) call.getCallTarget().getType()).getNumberOfArguments() : argumentCount;
+
         final SymbolImpl target = call.getCallTarget();
         for (int i = call.getArgumentCount() - 1; i >= 0; i--) {
             argNodes[argIndex + i] = resolveOptimized(call.getArgument(i), i, target, call.getArguments());
             argTypes.set(argIndex + i, call.getArgument(i).getType());
+            boolean isVarArg = i >= realArgumentCount;
             final AttributesGroup paramAttr = call.getParameterAttributesGroup(i);
             if (isByValue(paramAttr)) {
                 argNodes[argIndex + i] = capsuleAddressByValue(argNodes[argIndex + i], argTypes.get(argIndex + i), paramAttr);
+            } else if (isVarArg && isArrayByValue(argTypes.get(argIndex + i), argNodes[argIndex + i])) {
+                argNodes[argIndex + i] = capsuleArrayByValue(argNodes[argIndex + i], argTypes.get(argIndex + i));
             }
         }
 
@@ -578,12 +587,17 @@ public final class LLVMBitcodeInstructionVisitor implements SymbolVisitor {
 
         SymbolImpl target = call.getCallTarget();
 
+        int realArgumentCount = call.getCallTarget().getType() instanceof FunctionType ? ((FunctionType) call.getCallTarget().getType()).getNumberOfArguments() : argumentCount;
+
         for (int i = call.getArgumentCount() - 1; i >= 0; i--) {
             argNodes[argIndex + i] = resolveOptimized(call.getArgument(i), i, target, call.getArguments());
             argTypes.set(argIndex + i, call.getArgument(i).getType());
             final AttributesGroup paramAttr = call.getParameterAttributesGroup(i);
+            boolean isVarArg = i >= realArgumentCount;
             if (isByValue(paramAttr)) {
                 argNodes[argIndex + i] = capsuleAddressByValue(argNodes[argIndex + i], argTypes.get(argIndex + i), paramAttr);
+            } else if (isVarArg && isArrayByValue(argTypes.get(argIndex + i), argNodes[argIndex + i])) {
+                argNodes[argIndex + i] = capsuleArrayByValue(argNodes[argIndex + i], argTypes.get(argIndex + i));
             }
         }
 
@@ -625,12 +639,18 @@ public final class LLVMBitcodeInstructionVisitor implements SymbolVisitor {
             argNodes[argIndex] = nodeFactory.createGetUniqueStackSpace(targetType, uniquesRegion, frame);
             argIndex++;
         }
+
+        int realArgumentCount = call.getCallTarget().getType() instanceof FunctionType ? ((FunctionType) call.getCallTarget().getType()).getNumberOfArguments() : argumentCount;
+
         for (int i = call.getArgumentCount() - 1; i >= 0; i--) {
             argNodes[argIndex + i] = resolveOptimized(call.getArgument(i), i, target, call.getArguments());
             argTypes.set(argIndex + i, call.getArgument(i).getType());
             final AttributesGroup paramAttr = call.getParameterAttributesGroup(i);
+            boolean isVarArg = i >= realArgumentCount;
             if (isByValue(paramAttr)) {
                 argNodes[argIndex + i] = capsuleAddressByValue(argNodes[argIndex + i], argTypes.get(argIndex + i), paramAttr);
+            } else if (isVarArg && isArrayByValue(argTypes.get(argIndex + i), argNodes[argIndex + i])) {
+                argNodes[argIndex + i] = capsuleArrayByValue(argNodes[argIndex + i], argTypes.get(argIndex + i));
             }
         }
 
@@ -673,12 +693,17 @@ public final class LLVMBitcodeInstructionVisitor implements SymbolVisitor {
         argsType.set(argIndex, new PointerType(null));
         argIndex++;
 
+        int realArgumentCount = call.getCallTarget().getType() instanceof FunctionType ? ((FunctionType) call.getCallTarget().getType()).getNumberOfArguments() : argumentCount;
+
         for (int i = call.getArgumentCount() - 1; i >= 0; i--) {
             args[argIndex + i] = symbols.resolve(call.getArgument(i));
             argsType.set(argIndex + i, call.getArgument(i).getType());
             final AttributesGroup paramAttr = call.getParameterAttributesGroup(i);
+            boolean isVarArg = i >= realArgumentCount;
             if (isByValue(paramAttr)) {
                 args[argIndex + i] = capsuleAddressByValue(args[argIndex + i], argsType.get(argIndex + i), paramAttr);
+            } else if (isVarArg && isArrayByValue(argsType.get(argIndex + i), args[argIndex + i])) {
+                args[argIndex + i] = capsuleArrayByValue(args[argIndex + i], argsType.get(argIndex + i));
             }
         }
 
@@ -1209,7 +1234,48 @@ public final class LLVMBitcodeInstructionVisitor implements SymbolVisitor {
                 }
             }
 
-            return nodeFactory.createVarArgCompoundValue(size, alignment, child);
+            return nodeFactory.createVarArgCompoundValue(size, alignment, type, child);
+        } catch (TypeOverflowException e) {
+            return Type.handleOverflowExpression(e);
+        }
+    }
+
+    /**
+     * To encapsulate a pointer into {@link LLVMVarArgCompoundValue} is needed when a small struct
+     * is being passed by value as a
+     *
+     * <pre>
+     * struct A { int x; double y; };
+     * </pre>
+     *
+     * On Aarch64, clang masks the struct by <code>[2 x i64]</code> array value:
+     *
+     * <pre>
+     *
+     * %15 = bitcast %struct.A* %2 to [2 x i64]* %16 = load [2 x i64], [2 x i64]* %15, align 8
+     * %19 = call i32 (i32, ...) @calc(i32 1, [2 x i64] %16)
+     * </pre>
+     *
+     * or in an optimized constant folded variant:
+     *
+     * <pre>
+     * %1 = call i32 (i32, ...) @calc(i32 1, [2 x i64] [i64 1, i64 0]), !dbg !71
+     * </pre>
+     *
+     * As the array argument is semantically passed by value, the <code>va_list</code> management
+     * needs to know its size so that it can correctly populate the <code>va_list</code> struct.
+     * Therefore the array pointer must be wrapped into {@link LLVMVarArgCompoundValue} that
+     * preserves the argument's size and alignment. In contrast to other arguments passed by value
+     * this "struct-masked-by-array" argument is not marked by the <code>byval</code> attribute in
+     * the call instruction and thus it would be passed otherwise as a normal pointer without being
+     * wrapped into {@link LLVMVarArgCompoundValue}, which would cause a mishandling in the
+     * {@link LLVMVaListStorage va_list} management code.
+     **/
+    private LLVMExpressionNode capsuleArrayByValue(LLVMExpressionNode child, Type type) {
+        try {
+            final long size = type.getSize(dataLayout);
+            int alignment = type.getAlignment(dataLayout);
+            return nodeFactory.createVarArgCompoundValue(size, alignment, type, child);
         } catch (TypeOverflowException e) {
             return Type.handleOverflowExpression(e);
         }
@@ -1227,6 +1293,10 @@ public final class LLVMBitcodeInstructionVisitor implements SymbolVisitor {
         }
 
         return false;
+    }
+
+    private static boolean isArrayByValue(Type type, @SuppressWarnings("unused") LLVMExpressionNode exprNode) {
+        return type instanceof ArrayType;
     }
 
     private void assignSourceLocation(LLVMInstrumentableNode node, Instruction sourceInstruction) {

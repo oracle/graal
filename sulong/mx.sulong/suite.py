@@ -1031,14 +1031,45 @@ suite = {
       "subDir" : "tests",
       "native": True,
       "vpath": True,
+      "os_arch" : {
+		"linux": {
+          "aarch64" : {
+            "buildEnv" : {
+              "PLATFORM" : "aarch64",
+            },
+          },
+          "amd64": {
+            "buildEnv" : {
+              "PLATFORM" : "x86_64",
+            },
+          },
+          "<others>": {
+            "buildEnv" : {
+              "PLATFORM" : "unknown_platform",
+            },
+          },
+        },
+        "darwin": {
+          "amd64": {
+            "buildEnv" : {
+              "PLATFORM" : "x86_64",
+            },
+          },
+        },
+		"<others>": {
+          "<others>": {
+            "buildEnv" : {
+              "PLATFORM" : "unknown_platform",
+            },
+          },
+        }
+      },
       "buildEnv" : {
         "OS" : "<os>",
         "CLANG": "<toolchainGetToolPath:native,CC>",
         "SRC_DIR": "<path:com.oracle.truffle.llvm.tests.va.native>",
       },
-      "buildDependencies" : [
-        "AMD64_SUPPORT",
-      ],
+      "buildDependencies" : [],
       "dependencies" : [
         "SULONG_TEST",
         "SULONG_TOOLCHAIN_LAUNCHERS",

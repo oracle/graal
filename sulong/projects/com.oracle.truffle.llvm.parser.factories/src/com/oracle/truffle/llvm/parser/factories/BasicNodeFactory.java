@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2016, 2020, Oracle and/or its affiliates.
+ * Copyright (c) 2016, 2021, Oracle and/or its affiliates.
  *
  * All rights reserved.
  *
@@ -1860,8 +1860,8 @@ public class BasicNodeFactory implements NodeFactory {
     }
 
     @Override
-    public LLVMExpressionNode createVarArgCompoundValue(long length, int alignment, LLVMExpressionNode parameterNode) {
-        return LLVMVarArgCompoundAddressNodeGen.create(parameterNode, length, alignment);
+    public LLVMExpressionNode createVarArgCompoundValue(long length, int alignment, Type type, LLVMExpressionNode parameterNode) {
+        return LLVMVarArgCompoundAddressNodeGen.create(parameterNode, length, alignment, type);
     }
 
     @Override

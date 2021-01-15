@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2020, Oracle and/or its affiliates.
+ * Copyright (c) 2021, Oracle and/or its affiliates.
  *
  * All rights reserved.
  *
@@ -27,50 +27,36 @@
  * NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED
  * OF THE POSSIBILITY OF SUCH DAMAGE.
  */
-package com.oracle.truffle.llvm.tests;
+package com.oracle.truffle.llvm.runtime.library.internal;
 
-import java.nio.file.Path;
-import java.nio.file.Paths;
-import java.util.Arrays;
-import java.util.Collection;
-import java.util.function.Predicate;
+import com.oracle.truffle.api.library.GenerateLibrary;
+import com.oracle.truffle.api.library.Library;
+import com.oracle.truffle.api.library.LibraryFactory;
+import com.oracle.truffle.llvm.runtime.except.LLVMException;
 
-import org.junit.runner.RunWith;
-import org.junit.runners.Parameterized;
-import org.junit.runners.Parameterized.Parameter;
-import org.junit.runners.Parameterized.Parameters;
+@GenerateLibrary
+public abstract class LLVMCopyTargetLibrary extends Library {
 
-import com.oracle.truffle.llvm.tests.options.TestOptions;
+    static final LibraryFactory<LLVMCopyTargetLibrary> FACTORY = LibraryFactory.resolve(LLVMCopyTargetLibrary.class);
 
-@RunWith(Parameterized.class)
-public final class VAListTest extends BaseSuiteHarness {
-
-    private static final Path VALIST_SUITE_DIR = Paths.get(TestOptions.TEST_SUITE_PATH, "valist");
-    private static final Path VA_ARG_SUITE_DIR = Paths.get(TestOptions.TEST_SUITE_PATH, "va_arg");
-
-    @Parameter(value = 0) public Path path;
-    @Parameter(value = 1) public String testName;
-
-    @Parameters(name = "{1}")
-    public static Collection<Object[]> data() {
-        return Arrays.asList(new Object[]{VALIST_SUITE_DIR, "valist"}, new Object[]{VA_ARG_SUITE_DIR, "va_arg"});
+    public static LibraryFactory<LLVMCopyTargetLibrary> getFactory() {
+        return FACTORY;
     }
 
-    @Override
-    protected Predicate<? super Path> getIsSulongFilter() {
-        return f -> {
-            boolean isOut = f.getFileName().toString().endsWith(".out");
-            return isOut;
-        };
+    public boolean canCopyFrom(@SuppressWarnings("unused") Object receiver, @SuppressWarnings("unused") Object source, @SuppressWarnings("unused") long length) {
+        return false;
     }
 
-    @Override
-    protected Path getTestDirectory() {
-        return path;
+    public void copyFrom(@SuppressWarnings("unused") Object receiver, @SuppressWarnings("unused") Object source, @SuppressWarnings("unused") long length) {
+        throw new InvalidSourceException();
     }
 
-    @Override
-    protected String getTestName() {
-        return testName;
+    public class InvalidSourceException extends LLVMException {
+        private static final long serialVersionUID = 3841115158039117295L;
+
+        public InvalidSourceException() {
+            super(null);
+        }
     }
+
 }

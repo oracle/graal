@@ -27,33 +27,23 @@
  * NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED
  * OF THE POSSIBILITY OF SUCH DAMAGE.
  */
-package com.oracle.truffle.llvm.runtime.nodes.intrinsics.llvm.va;
+package com.oracle.truffle.llvm.runtime.nodes.intrinsics.llvm.aarch64;
 
-import com.oracle.truffle.api.dsl.Cached;
-import com.oracle.truffle.api.dsl.NodeChild;
-import com.oracle.truffle.api.dsl.Specialization;
-import com.oracle.truffle.api.library.CachedLibrary;
-import com.oracle.truffle.llvm.runtime.nodes.api.LLVMExpressionNode;
-import com.oracle.truffle.llvm.runtime.nodes.intrinsics.llvm.va.LLVMVaListStorage.VAListPointerWrapperFactoryDelegate;
-import com.oracle.truffle.llvm.runtime.pointer.LLVMManagedPointer;
-import com.oracle.truffle.llvm.runtime.types.Type;
+class Aarch64BitVarArgs {
+    // see https://static.docs.arm.com/100986/0000/abi_sve_aapcs64_100986_0000_00_en.pdf
 
-/**
- * The node handling the <code>va_arg</code> instruction. N.B. This instruction is rarely emitted.
- */
-@NodeChild
-public abstract class LLVMVAArg extends LLVMExpressionNode {
+    public static final int OVERFLOW_ARG_AREA = 0;
+    public static final int GP_SAVE_AREA = 16;
+    public static final int FP_SAVE_AREA = 32;
+    public static final int GP_OFFSET = 40;
+    public static final int FP_OFFSET = 44;
 
-    private final Type type;
+    public static final int GP_LIMIT = 64;
+    public static final int GP_STEP = 8;
+    public static final int FP_LIMIT = 128;
+    public static final int FP_STEP = 16;
 
-    public LLVMVAArg(Type type) {
-        this.type = type;
-    }
+    public static final int STACK_STEP = 8;
 
-    @Specialization
-    protected Object vaArg(LLVMManagedPointer targetAddress,
-                    @Cached VAListPointerWrapperFactoryDelegate wrapperFactory,
-                    @CachedLibrary(limit = "3") LLVMVaListLibrary vaListLibrary) {
-        return vaListLibrary.shift(wrapperFactory.execute(targetAddress), type);
-    }
+    public static final int SIZE_OF_VALIST = 32;
 }

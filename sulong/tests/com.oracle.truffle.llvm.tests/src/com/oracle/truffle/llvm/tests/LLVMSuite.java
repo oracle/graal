@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2016, 2020, Oracle and/or its affiliates.
+ * Copyright (c) 2016, 2021, Oracle and/or its affiliates.
  *
  * All rights reserved.
  *
@@ -67,13 +67,7 @@ public final class LLVMSuite extends BaseSuiteHarness {
 
         if (Platform.isAArch64()) {
             // Tests that cause the JVM to crash.
-            filenameBlacklist.addAll(Arrays.asList(
-                            "test-suite-3.2.src/SingleSource/Regression/C/PR640.c",
-                            "test-suite-3.2.src/SingleSource/UnitTests/2003-05-07-VarArgs.c",
-                            "test-suite-3.2.src/SingleSource/UnitTests/2003-07-09-SignedArgs.c",
-                            "test-suite-3.2.src/SingleSource/UnitTests/2003-08-11-VaListArg.c",
-                            "test-suite-3.2.src/SingleSource/UnitTests/2007-03-02-VaCopy.c",
-                            "test-suite-3.2.src/SingleSource/UnitTests/2009-12-07-StructReturn.c"));
+            filenameBlacklist.addAll(Arrays.asList("test-suite-3.2.src/SingleSource/UnitTests/2009-12-07-StructReturn.c"));
             // Tests that fail.
             filenameBlacklist.addAll(Arrays.asList(
                             "test-suite-3.2.src/SingleSource/Regression/C++/2008-01-29-ParamAliasesReturn.cpp",

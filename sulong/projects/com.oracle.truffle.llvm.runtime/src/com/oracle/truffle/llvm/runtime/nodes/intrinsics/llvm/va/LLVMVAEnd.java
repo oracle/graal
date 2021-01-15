@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2016, 2020, Oracle and/or its affiliates.
+ * Copyright (c) 2016, 2021, Oracle and/or its affiliates.
  *
  * All rights reserved.
  *
@@ -30,55 +30,30 @@
 package com.oracle.truffle.llvm.runtime.nodes.intrinsics.llvm.va;
 
 import com.oracle.truffle.api.dsl.Cached;
-import com.oracle.truffle.api.dsl.CachedLanguage;
+import com.oracle.truffle.api.dsl.ImportStatic;
 import com.oracle.truffle.api.dsl.NodeChild;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.library.CachedLibrary;
-import com.oracle.truffle.llvm.runtime.LLVMLanguage;
-import com.oracle.truffle.llvm.runtime.PlatformCapability;
 import com.oracle.truffle.llvm.runtime.nodes.api.LLVMExpressionNode;
-import com.oracle.truffle.llvm.runtime.nodes.api.LLVMNode;
-import com.oracle.truffle.llvm.runtime.pointer.LLVMManagedPointer;
-import com.oracle.truffle.llvm.runtime.pointer.LLVMNativePointer;
+import com.oracle.truffle.llvm.runtime.nodes.intrinsics.llvm.va.LLVMVaListStorage.VAListPointerWrapperFactoryDelegate;
+import com.oracle.truffle.llvm.runtime.pointer.LLVMPointer;
 
 /**
  * The node handling the <code>va_end</code> instruction. It basically just delegates to
  * {@link LLVMVaListLibrary}.
  */
 @NodeChild
+@ImportStatic(LLVMVaListStorage.class)
 public abstract class LLVMVAEnd extends LLVMExpressionNode {
 
     public LLVMVAEnd() {
     }
 
-    @Specialization(limit = "1")
-    protected Object vaEnd(LLVMManagedPointer targetAddress, @CachedLibrary("targetAddress.getObject()") LLVMVaListLibrary vaListLibrary) {
-        vaListLibrary.cleanup(targetAddress.getObject());
+    @Specialization
+    protected Object cleanVAList(LLVMPointer targetAddress,
+                    @Cached VAListPointerWrapperFactoryDelegate wrapperFactory,
+                    @CachedLibrary(limit = "3") LLVMVaListLibrary vaListLibrary) {
+        vaListLibrary.cleanup(wrapperFactory.execute(targetAddress));
         return null;
     }
-
-    Object createNativeVAListWrapper(LLVMNativePointer targetAddress, LLVMLanguage lang) {
-        return lang.getCapability(PlatformCapability.class).createNativeVAListWrapper(targetAddress, getRootNode());
-    }
-
-    @Specialization
-    protected Object vaEnd(LLVMNativePointer targetAddress,
-                    @CachedLanguage LLVMLanguage lang,
-                    @Cached NativeLLVMVaListHelper nativeLLVMVaListHelper) {
-        return nativeLLVMVaListHelper.execute(createNativeVAListWrapper(targetAddress, lang));
-    }
-
-    abstract static class NativeLLVMVaListHelper extends LLVMNode {
-
-        public abstract Object execute(Object nativeVaListWrapper);
-
-        @Specialization(limit = "1")
-        protected Object vaStart(Object nativeVaListWrapper,
-                        @CachedLibrary("nativeVaListWrapper") LLVMVaListLibrary vaListLibrary) {
-            vaListLibrary.cleanup(nativeVaListWrapper);
-            return null;
-        }
-
-    }
-
 }

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2020, Oracle and/or its affiliates.
+ * Copyright (c) 2020, 2021, Oracle and/or its affiliates.
  *
  * All rights reserved.
  *
@@ -76,9 +76,8 @@ public abstract class LLVMVaListLibrary extends Library {
      *
      * @param srcVaList
      * @param destVaList
-     * @param numberOfExplicitArguments
      */
-    public abstract void copy(Object srcVaList, Object destVaList, int numberOfExplicitArguments);
+    public abstract void copy(Object srcVaList, Object destVaList);
 
     /**
      * Shift the va_list argument to the next argument. It corresponds to the <code>va_arg</code>

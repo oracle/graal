@@ -48,11 +48,10 @@ import com.oracle.truffle.api.interop.UnsupportedTypeException;
 import com.oracle.truffle.api.library.ExportLibrary;
 import com.oracle.truffle.api.library.ExportMessage;
 import com.oracle.truffle.llvm.runtime.pointer.LLVMPointer;
-import com.oracle.truffle.llvm.tests.Platform;
 import com.oracle.truffle.tck.TruffleRunner;
 
 @RunWith(TruffleRunner.class)
-public class VaListTest extends InteropTestBase {
+public class VAListInteropTest extends InteropTestBase {
 
     static Value testLibrary;
     static Value testVaListCallback3;
@@ -111,11 +110,6 @@ public class VaListTest extends InteropTestBase {
 
     @Test
     public void testVaListCallback() {
-        if (Platform.isAArch64()) {
-            // TODO: enable when the managed va_list for AArch64 implemented
-            return;
-        }
-
         Value sa = newStructA.execute(10, 20);
         Value res = testVaListCallback3.execute(new VaListCallback(), testLibrary, 1, 2, 3, sa);
         Assert.assertEquals(6, res.asInt());
