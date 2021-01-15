@@ -1431,7 +1431,7 @@ abstract class DynamicObjectLibraryImpl {
                 } else {
                     int propertyFlags = Flags.getPropertyFlags(putFlags);
                     LayoutStrategy strategy = oldShape.getLayout().getStrategy();
-                    return oldShape.defineProperty(cachedKey, value, propertyFlags, getLocationFactory(strategy, putFlags));
+                    return strategy.defineProperty(oldShape, cachedKey, value, propertyFlags, getLocationFactory(strategy, putFlags));
                 }
             }
 
@@ -1439,7 +1439,7 @@ abstract class DynamicObjectLibraryImpl {
                 if (Flags.getPropertyFlags(putFlags) != property.getFlags()) {
                     int propertyFlags = Flags.getPropertyFlags(putFlags);
                     LayoutStrategy strategy = oldShape.getLayout().getStrategy();
-                    return oldShape.defineProperty(cachedKey, value, propertyFlags, getLocationFactory(strategy, putFlags));
+                    return strategy.defineProperty(oldShape, cachedKey, value, propertyFlags, getLocationFactory(strategy, putFlags));
                 }
             }
 
@@ -1453,7 +1453,8 @@ abstract class DynamicObjectLibraryImpl {
                 return newShape;
             } else if (location.isDeclared()) {
                 // redefine declared
-                return oldShape.defineProperty(cachedKey, value, property.getFlags());
+                LayoutStrategy strategy = oldShape.layout.getStrategy();
+                return strategy.defineProperty(oldShape, cachedKey, value, property.getFlags(), strategy.getDefaultLocationFactory());
             } else {
                 // set existing
                 assert location.canSet(value);
