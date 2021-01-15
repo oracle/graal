@@ -35,7 +35,6 @@ class EspressoShutdownHandler implements ContextAccess {
     private final EspressoContext context;
     private final EspressoThreadManager threadManager;
     private final EspressoReferenceDrainer referenceDrainer;
-    private final boolean exitHost;
     private final boolean softExit;
 
     @Override
@@ -47,11 +46,10 @@ class EspressoShutdownHandler implements ContextAccess {
 
     EspressoShutdownHandler(EspressoContext context,
                     EspressoThreadManager threadManager,
-                    EspressoReferenceDrainer referenceDrainer, boolean exitHost, boolean softExit) {
+                    EspressoReferenceDrainer referenceDrainer, boolean softExit) {
         this.context = context;
         this.threadManager = threadManager;
         this.referenceDrainer = referenceDrainer;
-        this.exitHost = exitHost;
         this.softExit = softExit;
     }
 
@@ -119,9 +117,9 @@ class EspressoShutdownHandler implements ContextAccess {
                 // Wake up spinning main thread.
                 sync.notifyAll();
             }
-            teardown(!exitHost);
+            teardown(!context.ExitHost);
         }
-        if (exitHost) {
+        if (context.ExitHost) {
             System.exit(getExitStatus());
             throw EspressoError.shouldNotReachHere();
         } else {
