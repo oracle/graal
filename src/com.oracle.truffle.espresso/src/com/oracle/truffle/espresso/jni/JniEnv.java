@@ -24,6 +24,7 @@ package com.oracle.truffle.espresso.jni;
 
 import static com.oracle.truffle.espresso.EspressoOptions.SpecCompliancyMode.STRICT;
 
+import java.io.PrintWriter;
 import java.nio.ByteBuffer;
 import java.nio.ByteOrder;
 import java.nio.CharBuffer;
@@ -1893,9 +1894,16 @@ public final class JniEnv extends NativeEnv implements ContextAccess {
      * @param msgPtr an error message. The string is encoded in modified UTF-8.
      */
     @JniImpl
-    public static void FatalError(@Pointer TruffleObject msgPtr) {
+    @TruffleBoundary
+    public void FatalError(@Pointer TruffleObject msgPtr) {
         String msg = interopPointerToString(msgPtr);
-        CompilerDirectives.transferToInterpreter();
+        PrintWriter writer = new PrintWriter(context.getEnv().err(), true);
+        writer.println("FATAL ERROR in native method: " + msg);
+        // TODO print stack trace
+        if (context.ExitHost) {
+            System.exit(1);
+            throw EspressoError.shouldNotReachHere();
+        }
         throw new EspressoError(msg);
     }
 

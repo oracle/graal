@@ -22,6 +22,8 @@
  */
 package com.oracle.truffle.espresso.runtime;
 
+import static com.oracle.truffle.espresso.jni.JniEnv.JNI_OK;
+
 import java.io.File;
 import java.io.InputStream;
 import java.io.OutputStream;
@@ -34,9 +36,6 @@ import java.util.function.Function;
 import java.util.logging.Level;
 import java.util.stream.Collectors;
 
-import com.oracle.truffle.api.instrumentation.AllocationReporter;
-import com.oracle.truffle.api.interop.TruffleObject;
-import com.oracle.truffle.espresso.EspressoBindings;
 import org.graalvm.polyglot.Engine;
 
 import com.oracle.truffle.api.Assumption;
@@ -47,7 +46,10 @@ import com.oracle.truffle.api.Truffle;
 import com.oracle.truffle.api.TruffleFile;
 import com.oracle.truffle.api.TruffleLanguage;
 import com.oracle.truffle.api.TruffleLogger;
+import com.oracle.truffle.api.instrumentation.AllocationReporter;
+import com.oracle.truffle.api.interop.TruffleObject;
 import com.oracle.truffle.api.source.Source;
+import com.oracle.truffle.espresso.EspressoBindings;
 import com.oracle.truffle.espresso.EspressoLanguage;
 import com.oracle.truffle.espresso.EspressoOptions;
 import com.oracle.truffle.espresso.descriptors.Names;
@@ -72,8 +74,6 @@ import com.oracle.truffle.espresso.substitutions.Substitutions;
 import com.oracle.truffle.espresso.substitutions.Target_java_lang_ref_Reference;
 import com.oracle.truffle.espresso.vm.InterpreterToVM;
 import com.oracle.truffle.espresso.vm.VM;
-
-import static com.oracle.truffle.espresso.jni.JniEnv.JNI_OK;
 
 public final class EspressoContext {
 
@@ -151,6 +151,7 @@ public final class EspressoContext {
     public final EspressoOptions.SpecCompliancyMode SpecCompliancyMode;
     public final boolean IsolatedNamespace;
     public final boolean Polyglot;
+    public final boolean ExitHost;
 
     // Debug option
     public final com.oracle.truffle.espresso.jdwp.api.JDWPOptions JDWPOptions;
@@ -211,8 +212,8 @@ public final class EspressoContext {
         this.referenceDrainer = new EspressoReferenceDrainer(this);
 
         boolean softExit = env.getOptions().get(EspressoOptions.SoftExit);
-        boolean exitHost = env.getOptions().get(EspressoOptions.ExitHost);
-        this.shutdownManager = new EspressoShutdownHandler(this, threadManager, referenceDrainer, exitHost, softExit);
+        this.ExitHost = env.getOptions().get(EspressoOptions.ExitHost);
+        this.shutdownManager = new EspressoShutdownHandler(this, threadManager, referenceDrainer, softExit);
 
         this.timers = TimerCollection.create(env.getOptions().get(EspressoOptions.EnableTimers));
         this.allocationReporter = env.lookup(AllocationReporter.class);
