@@ -55,6 +55,7 @@ import org.graalvm.compiler.asm.amd64.AVXKind.AVXSize;
 import org.graalvm.compiler.core.common.LIRKind;
 import org.graalvm.compiler.core.common.NumUtil;
 import org.graalvm.compiler.core.common.calc.Condition;
+import org.graalvm.compiler.core.common.memory.MemoryOrderMode;
 import org.graalvm.compiler.core.common.spi.ForeignCallLinkage;
 import org.graalvm.compiler.core.common.spi.LIRKindTool;
 import org.graalvm.compiler.debug.GraalError;
@@ -232,22 +233,22 @@ public abstract class AMD64LIRGenerator extends LIRGenerator {
         assert kind.equals(expectedValue.getValueKind());
 
         AMD64AddressValue addressValue = asAddressValue(address);
-        LIRKind integralAccessKind = accessKind;
+        LIRKind integerAccessKind = accessKind;
         Value reinterpretedExpectedValue = expectedValue;
         Value reinterpretedNewValue = newValue;
         boolean isXmm = ((AMD64Kind) accessKind.getPlatformKind()).isXMM();
         if (isXmm) {
             if (accessKind.getPlatformKind().equals(AMD64Kind.SINGLE)) {
-                integralAccessKind = LIRKind.fromJavaKind(target().arch, JavaKind.Int);
+                integerAccessKind = LIRKind.fromJavaKind(target().arch, JavaKind.Int);
             } else {
-                integralAccessKind = LIRKind.fromJavaKind(target().arch, JavaKind.Long);
+                integerAccessKind = LIRKind.fromJavaKind(target().arch, JavaKind.Long);
             }
-            reinterpretedExpectedValue = arithmeticLIRGen.emitReinterpret(integralAccessKind, expectedValue);
-            reinterpretedNewValue = arithmeticLIRGen.emitReinterpret(integralAccessKind, newValue);
+            reinterpretedExpectedValue = arithmeticLIRGen.emitReinterpret(integerAccessKind, expectedValue);
+            reinterpretedNewValue = arithmeticLIRGen.emitReinterpret(integerAccessKind, newValue);
         }
-        AMD64Kind memKind = (AMD64Kind) integralAccessKind.getPlatformKind();
-        RegisterValue aRes = AMD64.rax.asValue(integralAccessKind);
-        AllocatableValue allocatableNewValue = asAllocatable(reinterpretedNewValue, integralAccessKind);
+        AMD64Kind memKind = (AMD64Kind) integerAccessKind.getPlatformKind();
+        RegisterValue aRes = AMD64.rax.asValue(integerAccessKind);
+        AllocatableValue allocatableNewValue = asAllocatable(reinterpretedNewValue, integerAccessKind);
         emitMove(aRes, reinterpretedExpectedValue);
         append(new CompareAndSwapOp(memKind, aRes, addressValue, aRes, allocatableNewValue));
 
@@ -266,12 +267,12 @@ public abstract class AMD64LIRGenerator extends LIRGenerator {
     }
 
     @Override
-    public Variable emitLogicCompareAndSwap(LIRKind accessKind, Value address, Value expectedValue, Value newValue, Value trueValue, Value falseValue, boolean useBarriers) {
+    public Variable emitLogicCompareAndSwap(LIRKind accessKind, Value address, Value expectedValue, Value newValue, Value trueValue, Value falseValue, MemoryOrderMode memoryOrder) {
         return LIRValueUtil.asVariable(emitCompareAndSwap(true, accessKind, address, expectedValue, newValue, trueValue, falseValue));
     }
 
     @Override
-    public Value emitValueCompareAndSwap(LIRKind accessKind, Value address, Value expectedValue, Value newValue, boolean useBarriers) {
+    public Value emitValueCompareAndSwap(LIRKind accessKind, Value address, Value expectedValue, Value newValue, MemoryOrderMode memoryOrder) {
         return emitCompareAndSwap(false, accessKind, address, expectedValue, newValue, null, null);
     }
 

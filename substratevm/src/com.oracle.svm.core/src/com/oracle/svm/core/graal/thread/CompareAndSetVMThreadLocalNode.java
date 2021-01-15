@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2015, 2017, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2015, 2020, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -26,6 +26,7 @@ package com.oracle.svm.core.graal.thread;
 
 import static org.graalvm.compiler.nodeinfo.NodeCycles.CYCLES_8;
 
+import org.graalvm.compiler.core.common.memory.MemoryOrderMode;
 import org.graalvm.compiler.core.common.type.StampFactory;
 import org.graalvm.compiler.graph.NodeClass;
 import org.graalvm.compiler.nodeinfo.NodeInfo;
@@ -63,7 +64,8 @@ public class CompareAndSetVMThreadLocalNode extends AbstractStateSplit implement
         assert threadLocalInfo.offset >= 0;
 
         ConstantNode offset = ConstantNode.forLong(threadLocalInfo.offset, holder.graph());
-        UnsafeCompareAndSwapNode atomic = graph().add(new UnsafeCompareAndSwapNode(holder, offset, expect, update, threadLocalInfo.storageKind, threadLocalInfo.locationIdentity));
+        UnsafeCompareAndSwapNode atomic = graph()
+                        .add(new UnsafeCompareAndSwapNode(holder, offset, expect, update, threadLocalInfo.storageKind, threadLocalInfo.locationIdentity, MemoryOrderMode.VOLATILE));
         atomic.setStateAfter(stateAfter());
         graph().replaceFixedWithFixed(this, atomic);
         tool.getLowerer().lower(atomic, tool);

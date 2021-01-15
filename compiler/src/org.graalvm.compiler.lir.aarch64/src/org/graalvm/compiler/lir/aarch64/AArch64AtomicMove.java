@@ -24,6 +24,10 @@
  */
 package org.graalvm.compiler.lir.aarch64;
 
+import static jdk.vm.ci.code.MemoryBarriers.LOAD_LOAD;
+import static jdk.vm.ci.code.MemoryBarriers.LOAD_STORE;
+import static jdk.vm.ci.code.MemoryBarriers.STORE_LOAD;
+import static jdk.vm.ci.code.MemoryBarriers.STORE_STORE;
 import static jdk.vm.ci.code.ValueUtil.asRegister;
 import static org.graalvm.compiler.lir.LIRInstruction.OperandFlag.CONST;
 import static org.graalvm.compiler.lir.LIRInstruction.OperandFlag.REG;
@@ -32,6 +36,7 @@ import org.graalvm.compiler.asm.Label;
 import org.graalvm.compiler.asm.aarch64.AArch64Assembler;
 import org.graalvm.compiler.asm.aarch64.AArch64MacroAssembler;
 import org.graalvm.compiler.asm.aarch64.AArch64MacroAssembler.ScratchRegister;
+import org.graalvm.compiler.core.common.memory.MemoryOrderMode;
 import org.graalvm.compiler.lir.LIRInstructionClass;
 import org.graalvm.compiler.lir.LIRValueUtil;
 import org.graalvm.compiler.lir.Opcode;
@@ -56,61 +61,78 @@ public class AArch64AtomicMove {
     public static class CompareAndSwapOp extends AArch64LIRInstruction {
         public static final LIRInstructionClass<CompareAndSwapOp> TYPE = LIRInstructionClass.create(CompareAndSwapOp.class);
 
+        private final AArch64Kind accessKind;
+        private final MemoryOrderMode memoryOrder;
+
         @Def protected AllocatableValue resultValue;
         @Alive protected Value expectedValue;
         @Alive protected AllocatableValue newValue;
         @Alive protected AllocatableValue addressValue;
         @Temp protected AllocatableValue scratchValue;
 
-        private final boolean useBarriers;
-
-        public CompareAndSwapOp(AllocatableValue result, Value expectedValue, AllocatableValue newValue,
-                        AllocatableValue addressValue, AllocatableValue scratch, boolean useBarriers) {
+        public CompareAndSwapOp(AArch64Kind accessKind, AllocatableValue result, Value expectedValue, AllocatableValue newValue, AllocatableValue addressValue, AllocatableValue scratch,
+                        MemoryOrderMode memoryOrder) {
             super(TYPE);
+            this.accessKind = accessKind;
             this.resultValue = result;
             this.expectedValue = expectedValue;
             this.newValue = newValue;
             this.addressValue = addressValue;
             this.scratchValue = scratch;
-            this.useBarriers = useBarriers;
+            this.memoryOrder = memoryOrder;
         }
 
         @Override
         public void emitCode(CompilationResultBuilder crb, AArch64MacroAssembler masm) {
-            AArch64Kind kind = (AArch64Kind) expectedValue.getPlatformKind();
-            assert kind.isInteger();
-            final int size = kind.getSizeInBytes() * Byte.SIZE;
+            assert accessKind.isInteger();
+            final int memAccessSize = accessKind.getSizeInBytes() * Byte.SIZE;
 
             Register address = asRegister(addressValue);
             Register result = asRegister(resultValue);
             Register newVal = asRegister(newValue);
-            if (useBarriers) {
-                masm.dmb(AArch64Assembler.BarrierKind.ANY_ANY);
-                emitCompareAndSwap(masm, size, address, result, newVal, false, false);
-                masm.dmb(AArch64Assembler.BarrierKind.ANY_ANY);
-            } else {
-                emitCompareAndSwap(masm, size, address, result, newVal, true, true);
-            }
-        }
+            Register expected = asRegister(expectedValue);
 
-        private void emitCompareAndSwap(AArch64MacroAssembler masm, int size, Register address, Register result, Register newVal, boolean acquire, boolean release) {
+            /*
+             * Determining whether acquire and/or release semantics are needed.
+             */
+            boolean acquire = ((memoryOrder.postWriteBarriers & (STORE_LOAD | STORE_STORE)) != 0) || ((memoryOrder.postReadBarriers & (LOAD_LOAD | LOAD_STORE)) != 0);
+            boolean release = ((memoryOrder.preWriteBarriers & (LOAD_STORE | STORE_STORE)) != 0) || ((memoryOrder.preReadBarriers & (LOAD_LOAD | STORE_LOAD)) != 0);
+
             if (AArch64LIRFlagsVersioned.useLSE(masm.target.arch)) {
-                Register expected = asRegister(expectedValue);
-                masm.mov(size, result, expected);
-                masm.cas(size, result, newVal, address, acquire, release);
+                masm.mov(Math.max(memAccessSize, 32), result, expected);
+                masm.cas(memAccessSize, result, newVal, address, acquire, release);
                 AArch64Compare.gpCompare(masm, resultValue, expectedValue);
             } else {
                 // We could avoid using a scratch register here, by reusing resultValue for the
                 // stlxr success flag and issue a mov resultValue, expectedValue in case of success
                 // before returning.
+
+                /*
+                 * Because the store is only conditionally emitted, a dmb is needed for performing a
+                 * release.
+                 *
+                 * Furthermore, even if the stlxr is emitted, if both acquire and release semantics
+                 * are required, then a dmb is anyways needed to ensure that the instruction
+                 * sequence:
+                 *
+                 * A -> ldaxr -> stlxr -> B
+                 *
+                 * can not be executed as:
+                 *
+                 * ldaxr -> B -> A -> stlxr
+                 */
+                if (release) {
+                    masm.dmb(AArch64Assembler.BarrierKind.ANY_ANY);
+                }
+
                 Register scratch = asRegister(scratchValue);
                 Label retry = new Label();
                 Label fail = new Label();
                 masm.bind(retry);
-                masm.loadExclusive(size, result, address, acquire);
+                masm.loadExclusive(memAccessSize, result, address, acquire);
                 AArch64Compare.gpCompare(masm, resultValue, expectedValue);
                 masm.branchConditionally(AArch64Assembler.ConditionFlag.NE, fail);
-                masm.storeExclusive(size, scratch, newVal, address, release);
+                masm.storeExclusive(memAccessSize, scratch, newVal, address, false);
                 // if scratch == 0 then write successful, else retry.
                 masm.cbnz(32, scratch, retry);
                 masm.bind(fail);
@@ -147,25 +169,26 @@ public class AArch64AtomicMove {
         @Override
         public void emitCode(CompilationResultBuilder crb, AArch64MacroAssembler masm) {
             assert accessKind.isInteger();
-            final int size = accessKind.getSizeInBytes() * Byte.SIZE;
+            final int memAccessSize = accessKind.getSizeInBytes() * Byte.SIZE;
+            final int addSize = Math.max(memAccessSize, 32);
 
             Register address = asRegister(addressValue);
             Register result = asRegister(resultValue);
 
             Label retry = new Label();
             masm.bind(retry);
-            masm.ldaxr(size, result, address);
+            masm.ldaxr(memAccessSize, result, address);
             try (ScratchRegister scratchRegister1 = masm.getScratchRegister()) {
                 Register scratch1 = scratchRegister1.getRegister();
                 if (LIRValueUtil.isConstantValue(deltaValue)) {
                     long delta = LIRValueUtil.asConstantValue(deltaValue).getJavaConstant().asLong();
-                    masm.add(size, scratch1, result, delta);
+                    masm.add(addSize, scratch1, result, delta);
                 } else { // must be a register then
-                    masm.add(size, scratch1, result, asRegister(deltaValue));
+                    masm.add(addSize, scratch1, result, asRegister(deltaValue));
                 }
                 try (ScratchRegister scratchRegister2 = masm.getScratchRegister()) {
                     Register scratch2 = scratchRegister2.getRegister();
-                    masm.stlxr(size, scratch2, scratch1, address);
+                    masm.stlxr(memAccessSize, scratch2, scratch1, address);
                     // if scratch2 == 0 then write successful, else retry
                     masm.cbnz(32, scratch2, retry);
                 }
@@ -210,12 +233,12 @@ public class AArch64AtomicMove {
         @Override
         public void emitCode(CompilationResultBuilder crb, AArch64MacroAssembler masm) {
             assert accessKind.isInteger();
-            final int size = accessKind.getSizeInBytes() * Byte.SIZE;
+            final int memAccessSize = accessKind.getSizeInBytes() * Byte.SIZE;
 
             Register address = asRegister(addressValue);
             Register delta = asRegister(deltaValue);
             Register result = asRegister(resultValue);
-            masm.ldadd(size, delta, result, address, true, true);
+            masm.ldadd(memAccessSize, delta, result, address, true, true);
         }
     }
 
@@ -250,20 +273,20 @@ public class AArch64AtomicMove {
         @Override
         public void emitCode(CompilationResultBuilder crb, AArch64MacroAssembler masm) {
             assert accessKind.isInteger();
-            final int size = accessKind.getSizeInBytes() * Byte.SIZE;
+            final int memAccessSize = accessKind.getSizeInBytes() * Byte.SIZE;
 
             Register address = asRegister(addressValue);
             Register value = asRegister(newValue);
             Register result = asRegister(resultValue);
 
             if (AArch64LIRFlagsVersioned.useLSE(masm.target.arch)) {
-                masm.swp(size, value, result, address, true, true);
+                masm.swp(memAccessSize, value, result, address, true, true);
             } else {
                 Register scratch = asRegister(scratchValue);
                 Label retry = new Label();
                 masm.bind(retry);
-                masm.ldaxr(size, result, address);
-                masm.stlxr(size, scratch, value, address);
+                masm.ldaxr(memAccessSize, result, address);
+                masm.stlxr(memAccessSize, scratch, value, address);
                 // if scratch == 0 then write successful, else retry
                 masm.cbnz(32, scratch, retry);
             }

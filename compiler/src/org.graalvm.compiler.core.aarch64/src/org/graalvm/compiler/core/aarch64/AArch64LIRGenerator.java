@@ -26,6 +26,7 @@ package org.graalvm.compiler.core.aarch64;
 
 import static jdk.vm.ci.aarch64.AArch64.sp;
 import static org.graalvm.compiler.lir.LIRValueUtil.asJavaConstant;
+import static org.graalvm.compiler.lir.LIRValueUtil.asVariable;
 import static org.graalvm.compiler.lir.LIRValueUtil.isIntConstant;
 import static org.graalvm.compiler.lir.LIRValueUtil.isJavaConstant;
 
@@ -35,6 +36,7 @@ import org.graalvm.compiler.asm.aarch64.AArch64Assembler.ConditionFlag;
 import org.graalvm.compiler.asm.aarch64.AArch64MacroAssembler;
 import org.graalvm.compiler.core.common.LIRKind;
 import org.graalvm.compiler.core.common.calc.Condition;
+import org.graalvm.compiler.core.common.memory.MemoryOrderMode;
 import org.graalvm.compiler.core.common.spi.LIRKindTool;
 import org.graalvm.compiler.debug.GraalError;
 import org.graalvm.compiler.lir.LIRFrameState;
@@ -152,8 +154,8 @@ public abstract class AArch64LIRGenerator extends LIRGenerator {
     }
 
     @Override
-    public Variable emitLogicCompareAndSwap(LIRKind accessKind, Value address, Value expectedValue, Value newValue, Value trueValue, Value falseValue, boolean useBarriers) {
-        emitCompareAndSwap(address, expectedValue, newValue, useBarriers);
+    public Variable emitLogicCompareAndSwap(LIRKind accessKind, Value address, Value expectedValue, Value newValue, Value trueValue, Value falseValue, MemoryOrderMode memoryOrder) {
+        emitCompareAndSwap(false, accessKind, address, expectedValue, newValue, memoryOrder);
         assert trueValue.getValueKind().equals(falseValue.getValueKind());
         assert isIntConstant(trueValue, 1) && isIntConstant(falseValue, 0);
         Variable result = newVariable(trueValue.getValueKind());
@@ -162,15 +164,40 @@ public abstract class AArch64LIRGenerator extends LIRGenerator {
     }
 
     @Override
-    public Variable emitValueCompareAndSwap(LIRKind accessKind, Value address, Value expectedValue, Value newValue, boolean useBarriers) {
-        return emitCompareAndSwap(address, expectedValue, newValue, useBarriers);
+    public Variable emitValueCompareAndSwap(LIRKind accessKind, Value address, Value expectedValue, Value newValue, MemoryOrderMode memoryOrder) {
+        return emitCompareAndSwap(true, accessKind, address, expectedValue, newValue, memoryOrder);
     }
 
-    private Variable emitCompareAndSwap(Value address, Value expectedValue, Value newValue, boolean useBarriers) {
-        Variable result = newVariable(expectedValue.getValueKind());
+    private Variable emitCompareAndSwap(boolean isValue, LIRKind accessKind, Value address, Value expectedValue, Value newValue, MemoryOrderMode memoryOrder) {
+        /*
+         * Atomic instructions only operate on the general (CPU) registers. Hence, float and double
+         * values must temporarily use general registers of the equivalent size.
+         */
+        LIRKind integerAccessKind = accessKind;
+        Value reinterpretedExpectedValue = expectedValue;
+        Value reinterpretedNewValue = newValue;
+        boolean reinterpretFP = ((AArch64Kind) integerAccessKind.getPlatformKind()).isSIMD();
+        if (reinterpretFP) {
+            if (accessKind.getPlatformKind().equals(AArch64Kind.SINGLE)) {
+                integerAccessKind = LIRKind.fromJavaKind(target().arch, JavaKind.Int);
+            } else {
+                assert accessKind.getPlatformKind().equals(AArch64Kind.DOUBLE);
+                integerAccessKind = LIRKind.fromJavaKind(target().arch, JavaKind.Long);
+            }
+            reinterpretedExpectedValue = arithmeticLIRGen.emitReinterpret(integerAccessKind, expectedValue);
+            reinterpretedNewValue = arithmeticLIRGen.emitReinterpret(integerAccessKind, newValue);
+        }
+        AArch64Kind memKind = (AArch64Kind) integerAccessKind.getPlatformKind();
+        Variable result = newVariable(reinterpretedExpectedValue.getValueKind());
         Variable scratch = newVariable(LIRKind.value(AArch64Kind.DWORD));
-        append(new CompareAndSwapOp(result, loadReg(expectedValue), loadReg(newValue), asAllocatable(address), scratch, useBarriers));
-        return result;
+        AllocatableValue allocatableExpectedValue = loadReg(reinterpretedExpectedValue);
+        AllocatableValue allocatableNewValue = loadReg(reinterpretedNewValue);
+        append(new CompareAndSwapOp(memKind, result, allocatableExpectedValue, allocatableNewValue, asAllocatable(address), scratch, memoryOrder));
+        if (isValue && reinterpretFP) {
+            return asVariable(arithmeticLIRGen.emitReinterpret(accessKind, result));
+        } else {
+            return result;
+        }
     }
 
     @Override
