@@ -163,6 +163,7 @@ mx_sdk_vm.register_graalvm_component(mx_sdk_vm.GraalVmLanguage(
             jar_distributions=['espresso:LIB_ESPRESSO'],
             build_args=[
                 '--language:java',
+                '--tool:all',
                 '-H:-JNIExportSymbols',
             ],
             home_finder=True,
