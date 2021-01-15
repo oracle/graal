@@ -171,8 +171,21 @@ class EspressoThreadManager implements ContextAccess {
             } else {
                 Object[] threads = guestThreads;
                 int threadIndex = getThreadIndex(id, threads);
-                assert threads[threadIndex] == thread;
-                threads[threadIndex] = null;
+                if (Target_java_lang_Thread.isAlive(thread)) {
+                    assert threads[threadIndex] == thread;
+                    threads[threadIndex] = null;
+                } else {
+                    /*
+                     * Non-alive threads may have been removed from guestThreads by
+                     * refactorGuestThreads => threadIndex may be invalid/outdated and the slot
+                     * could be populated by another thread.
+                     */
+                    if (0 <= threadIndex && threadIndex < threads.length) {
+                        if (threads[threadIndex] == thread) {
+                            threads[threadIndex] = null;
+                        }
+                    }
+                }
             }
         }
         Object sync = context.getShutdownSynchronizer();

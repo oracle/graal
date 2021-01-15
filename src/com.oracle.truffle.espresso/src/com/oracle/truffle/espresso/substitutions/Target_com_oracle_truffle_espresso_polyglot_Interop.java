@@ -1038,19 +1038,15 @@ public final class Target_com_oracle_truffle_espresso_polyglot_Interop {
      * {@link InteropLibrary#isString(Object) string}. The member elements may also provide
      * additional information like {@link InteropLibrary#getSourceLocation(Object) source location}
      * in case of {@link InteropLibrary#isScope(Object) scope} variables, etc.
-     * <p>
-     * If the includeInternal argument is <code>true</code> then internal member names are returned
-     * as well. Internal members are implementation specific and should not be exposed to guest
-     * language application. An example of internal members are internal slots in ECMAScript.
      *
      * @see InteropLibrary#getMembers(Object)
      * @since 19.0
      */
     @Substitution
     @Throws(UnsupportedMessageException.class)
-    public static @Host(Object.class) StaticObject getMembers(@Host(Object.class) StaticObject receiver, boolean includeInternal, @InjectMeta Meta meta) {
+    public static @Host(Object.class) StaticObject getMembers(@Host(Object.class) StaticObject receiver, @InjectMeta Meta meta) {
         try {
-            Object value = UNCACHED.getMembers(unwrap(receiver), includeInternal);
+            Object value = UNCACHED.getMembers(unwrap(receiver));
             if (value instanceof StaticObject) {
                 return (StaticObject) value;
             }
@@ -1058,19 +1054,6 @@ public final class Target_com_oracle_truffle_espresso_polyglot_Interop {
         } catch (InteropException e) {
             throw throwInteropException(e, meta);
         }
-    }
-
-    /**
-     * Short-cut for {@link InteropLibrary#getMembers(Object) getMembers(receiver, false)}. Invoking
-     * this message does not cause any observable side-effects.
-     *
-     * @see InteropLibrary#getMembers(Object, boolean)
-     * @since 19.0
-     */
-    @Substitution
-    @Throws(UnsupportedMessageException.class)
-    public static @Host(Object.class) StaticObject getMembers(@Host(Object.class) StaticObject receiver, @InjectMeta Meta meta) {
-        return getMembers(receiver, false, meta);
     }
 
     /**
@@ -1252,22 +1235,6 @@ public final class Target_com_oracle_truffle_espresso_polyglot_Interop {
         } catch (InteropException e) {
             throw throwInteropException(e, meta);
         }
-    }
-
-    /**
-     * Returns true if a member is internal. Internal members are not enumerated by
-     * {@link InteropLibrary#getMembers(Object, boolean)} by default. Internal members are only
-     * relevant to guest language implementations and tools, but not to guest applications or
-     * embedders. An example of internal members are internal slots in ECMAScript. Invoking this
-     * message does not cause any observable side-effects. Returns <code>false</code> by default.
-     *
-     * @see InteropLibrary#isMemberInternal(Object, String)
-     * @since 19.0
-     */
-    @Substitution
-    public static boolean isMemberInternal(@Host(Object.class) StaticObject receiver, @Host(String.class) StaticObject member) {
-        String hostMember = Meta.toHostStringStatic(member);
-        return UNCACHED.isMemberInternal(unwrap(receiver), hostMember);
     }
 
     /**

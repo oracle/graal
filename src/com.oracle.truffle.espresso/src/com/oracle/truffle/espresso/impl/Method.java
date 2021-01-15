@@ -547,7 +547,7 @@ public final class Method extends Member<Signature> implements TruffleObject, Co
 
     @Override
     public String toString() {
-        return "EspressoMethod<" + getDeclaringKlass().getType() + "." + getName() + " -> " + getRawSignature() + ">";
+        return "EspressoMethod<" + getDeclaringKlass().getType() + "." + getName() + getRawSignature() + ">";
     }
 
     public JavaKind getReturnKind() {
@@ -1109,8 +1109,11 @@ public final class Method extends Member<Signature> implements TruffleObject, Co
                         return callTarget;
                     }
 
-                    // TODO(peterssen): GR-28704 Make substitutions only available for methods on
-                    // the boot class loader.
+                    /*
+                     * The substitution factory does the validation e.g. some substitutions only
+                     * apply for classes/methods in the boot or platform class loaders. A warning is
+                     * logged is the validation fails.
+                     */
                     EspressoRootNode redirectedMethod = getSubstitutions().get(getMethod());
                     if (redirectedMethod != null) {
                         callTarget = Truffle.getRuntime().createCallTarget(redirectedMethod);

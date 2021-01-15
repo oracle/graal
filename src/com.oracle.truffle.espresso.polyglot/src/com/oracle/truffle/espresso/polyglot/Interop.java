@@ -964,7 +964,7 @@ public final class Interop {
      * For example, a method or field is a member of a class. Invoking this message does not cause
      * any observable side-effects. Returns <code>false</code> by default.
      *
-     * @see #getMembers(Object, boolean)
+     * @see #getMembers(Object)
      * @see #isMemberReadable(Object, String)
      * @see #isMemberModifiable(Object, String)
      * @see #isMemberInvocable(Object, String)
@@ -984,11 +984,6 @@ public final class Interop {
      * {@link #isString(Object) string}.
      *
      * <p>
-     * If the includeInternal argument is <code>true</code> then internal member names are returned
-     * as well. Internal members are implementation specific and should not be exposed to guest
-     * language application. An example of internal members are internal slots in ECMAScript.
-     *
-     * <p>
      * The identity of the returned value is guaranteed to be preserved but it cannot be assumed
      * that the returned value will have a specific Java type.
      *
@@ -997,20 +992,7 @@ public final class Interop {
      * @see #hasMembers(Object)
      * @since 21.0
      */
-    public static native Object getMembers(Object receiver, boolean includeInternal) throws UnsupportedMessageException;
-
-    /**
-     * Short-cut for {@link #getMembers(Object) getMembers(receiver, false)}. Invoking this message
-     * does not cause any observable side-effects.
-     *
-     * @throws UnsupportedMessageException if and only if the receiver has no
-     *             {@link #hasMembers(Object) members}.
-     * @see #getMembers(Object, boolean)
-     * @since 21.0
-     */
-    public static Object getMembers(Object receiver) throws UnsupportedMessageException {
-        return getMembers(receiver, false);
-    }
+    public static native Object getMembers(Object receiver) throws UnsupportedMessageException;
 
     /**
      * Returns <code>true</code> if a given member is {@link #readMember(Object, String) readable}.
@@ -1149,18 +1131,6 @@ public final class Interop {
      */
     public static native Object invokeMember(Object receiver, String member, Object... arguments)
                     throws UnsupportedMessageException, ArityException, UnknownIdentifierException, UnsupportedTypeException;
-
-    /**
-     * Returns true if a member is internal. Internal members are not enumerated by
-     * {@link #getMembers(Object, boolean)} by default. Internal members are only relevant to guest
-     * language implementations and tools, but not to guest applications or embedders. An example of
-     * internal members are internal slots in ECMAScript. Invoking this message does not cause any
-     * observable side-effects. Returns <code>false</code> by default.
-     *
-     * @see #getMembers(Object, boolean)
-     * @since 21.0
-     */
-    public static native boolean isMemberInternal(Object receiver, String member);
 
     /**
      * Returns true if the member is {@link #isMemberModifiable(Object, String) modifiable} or

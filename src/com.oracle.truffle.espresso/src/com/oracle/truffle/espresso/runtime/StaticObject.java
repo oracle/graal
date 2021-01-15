@@ -1334,7 +1334,7 @@ public final class StaticObject implements TruffleObject {
 
     @ExportMessage
     @TruffleBoundary
-    Object toDisplayString(boolean allowSideEffects) {
+    public Object toDisplayString(boolean allowSideEffects) {
         if (isForeignObject()) {
             InteropLibrary interopLibrary = InteropLibrary.getUncached();
             try {

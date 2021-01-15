@@ -37,6 +37,7 @@ import java.util.Collections;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
+import java.util.function.Supplier;
 import java.util.logging.Level;
 
 import com.oracle.truffle.api.CompilerDirectives;
@@ -2266,10 +2267,10 @@ public final class JniEnv extends NativeEnv implements ContextAccess {
             return JNI_ERR;
         }
 
-        Method m = clazz.getMirrorKlass().lookupDeclaredMethod(name, signature);
-        if (m != null && m.isNative()) {
-            m.unregisterNative();
-            getSubstitutions().removeRuntimeSubstitution(m);
+        Method targetMethod = clazz.getMirrorKlass().lookupDeclaredMethod(name, signature);
+        if (targetMethod != null && targetMethod.isNative()) {
+            targetMethod.unregisterNative();
+            getSubstitutions().removeRuntimeSubstitution(targetMethod);
         } else {
             setPendingException(Meta.initException(meta.java_lang_NoSuchMethodError));
             return JNI_ERR;
@@ -2278,8 +2279,23 @@ public final class JniEnv extends NativeEnv implements ContextAccess {
         final TruffleObject boundNative = NativeLibrary.bind(closure, nfiSignature(getSignatures().parsed(signature), true));
         Substitutions.EspressoRootNodeFactory factory = new Substitutions.EspressoRootNodeFactory() {
             @Override
-            public EspressoRootNode spawnNode(Method method) {
-                return EspressoRootNode.create(null, new NativeMethodNode(boundNative, method.getMethodVersion(), true));
+            public EspressoRootNode createNodeIfValid(Method methodToSubstitute, boolean forceValid) {
+                if (forceValid || methodToSubstitute == targetMethod) {
+                    // Runtime substitutions apply only to the given method.
+                    return EspressoRootNode.create(null, new NativeMethodNode(boundNative, methodToSubstitute.getMethodVersion(), true));
+                }
+
+                Substitutions.getLogger().warning(new Supplier<String>() {
+                    @Override
+                    public String get() {
+                        StaticObject expectedLoader = targetMethod.getDeclaringKlass().getDefiningClassLoader();
+                        StaticObject givenLoader = methodToSubstitute.getDeclaringKlass().getDefiningClassLoader();
+                        return "Runtime substitution for " + targetMethod + " does not apply.\n" +
+                                        "\tExpected class loader: " + expectedLoader.toDisplayString(false) + "\n" +
+                                        "\tGiven class loader: " + givenLoader.toDisplayString(false) + "\n";
+                    }
+                });
+                return null;
             }
         };
         Symbol<Type> classType = clazz.getMirrorKlass().getType();

@@ -113,7 +113,7 @@ public final class Field extends Member<Type> implements FieldRef {
 
     @Override
     public String toString() {
-        return "EspressoField<" + getDeclaringKlass() + "." + getName() + " -> " + getType() + ">";
+        return "EspressoField<" + getDeclaringKlass() + "." + getName() + ":" + getType() + ">";
     }
 
     public Object get(StaticObject self) {
