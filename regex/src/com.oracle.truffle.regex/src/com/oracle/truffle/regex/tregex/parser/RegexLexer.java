@@ -53,14 +53,14 @@ import com.oracle.truffle.regex.charset.CodePointSet;
 import com.oracle.truffle.regex.charset.CodePointSetAccumulator;
 import com.oracle.truffle.regex.charset.Constants;
 import com.oracle.truffle.regex.charset.UnicodeProperties;
+import com.oracle.truffle.regex.errors.ErrorMessages;
 import com.oracle.truffle.regex.tregex.string.Encodings.Encoding;
 import com.oracle.truffle.regex.util.TBitSet;
 
 public final class RegexLexer {
 
-    private static final TBitSet PREDEFINED_CHAR_CLASSES = TBitSet.valueOf('s', 'S', 'd', 'D', 'w', 'W');
-    private static final TBitSet SYNTAX_CHARS = TBitSet.valueOf(
-                    '^', '$', '/', '\\', '.', '*', '+', '?', '(', ')', '[', ']', '{', '}', '|');
+    private static final TBitSet PREDEFINED_CHAR_CLASSES = TBitSet.valueOf('D', 'S', 'W', 'd', 's', 'w');
+    private static final TBitSet SYNTAX_CHARS = TBitSet.valueOf('$', '(', ')', '*', '+', '.', '/', '?', '[', '\\', ']', '^', '{', '|', '}');
 
     private static final CodePointSet ID_START = UnicodeProperties.getProperty("ID_Start");
     private static final CodePointSet ID_CONTINUE = UnicodeProperties.getProperty("ID_Continue");
@@ -70,6 +70,7 @@ public final class RegexLexer {
     private final RegexFlags flags;
     private final Encoding encoding;
     private Token lastToken;
+    private int curStartIndex = 0;
     private int index = 0;
     private int nGroups = 1;
     private boolean identifiedAllGroups = false;
@@ -89,11 +90,18 @@ public final class RegexLexer {
     }
 
     public Token next() throws RegexSyntaxException {
-        int startIndex = index;
+        curStartIndex = index;
         Token t = getNext();
-        setSourceSection(t, startIndex, index);
+        setSourceSection(t, curStartIndex, index);
         lastToken = t;
         return t;
+    }
+
+    /**
+     * Returns the last token's position in the pattern string.
+     */
+    public int getLastTokenPosition() {
+        return curStartIndex;
     }
 
     /**
@@ -861,6 +869,6 @@ public final class RegexLexer {
     }
 
     private RegexSyntaxException syntaxError(String msg) {
-        return new RegexSyntaxException(source, msg);
+        return RegexSyntaxException.createPattern(source, msg, curStartIndex);
     }
 }

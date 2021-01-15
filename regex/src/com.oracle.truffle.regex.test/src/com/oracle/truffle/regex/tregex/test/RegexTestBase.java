@@ -45,6 +45,7 @@ import static org.junit.Assert.assertEquals;
 import java.util.Arrays;
 
 import org.graalvm.polyglot.Context;
+import org.graalvm.polyglot.PolyglotException;
 import org.graalvm.polyglot.Value;
 import org.junit.AfterClass;
 import org.junit.Assert;
@@ -92,6 +93,16 @@ public abstract class RegexTestBase {
                 }
             }
         }
+    }
+
+    void expectSyntaxError(String pattern, String flags, String expectedMessage) {
+        try {
+            compileRegex(pattern, flags);
+        } catch (PolyglotException e) {
+            Assert.assertTrue(e.getMessage().contains(expectedMessage));
+            return;
+        }
+        Assert.fail();
     }
 
     private static void fail(Value result, int... captureGroupBounds) {

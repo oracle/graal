@@ -51,8 +51,7 @@ import com.oracle.truffle.regex.util.TBitSet;
 
 public class DebugUtil {
 
-    private static final TBitSet validSpecialCharsForFileNames = TBitSet.valueOf(
-                    '^', '$', '.', '*', '+', '-', '?', '(', ')', '[', ']', '{', '}', '|');
+    private static final TBitSet validSpecialCharsForFileNames = TBitSet.valueOf('$', '(', ')', '*', '+', '-', '.', '?', '[', ']', '^', '{', '|', '}');
 
     @TruffleBoundary
     public static String charToString(int c) {

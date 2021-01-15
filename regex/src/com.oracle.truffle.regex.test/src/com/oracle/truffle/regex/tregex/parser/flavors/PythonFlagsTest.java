@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2019, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2021, 2021, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -38,54 +38,28 @@
  * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
  * SOFTWARE.
  */
-package com.oracle.truffle.regex.tregex.test;
+package com.oracle.truffle.regex.tregex.parser.flavors;
 
-import com.oracle.truffle.regex.errors.PyErrorMessages;
-import org.graalvm.polyglot.PolyglotException;
-import org.junit.Assert;
+import static org.junit.Assert.assertTrue;
+
 import org.junit.Test;
 
-public class PythonTests extends RegexTestBase {
+public class PythonFlagsTest {
 
-    @Override
-    String getEngineOptions() {
-        return "Flavor=PythonStr";
+    private static PythonFlags parse(String flags) {
+        return new PythonFlags(flags);
     }
 
     @Test
-    public void gr14950() {
-        test("[\\^\\\\\\]]", "", "p", 0, false);
-    }
-
-    @Test
-    public void gr15012() {
-        test("(-*[A-]*)", "", "A", 0, true, 0, 1, 0, 1);
-    }
-
-    @Test
-    public void gr15243() {
-        test("^(\\s*)([rRuUbB]{,2})(\"\"\"(?:.|\\n)*?\"\"\")", "", "R\"\"\"\"\"\"", 0, true, 0, 7, 0, 0, 0, 1, 1, 7);
-        test("A{,}", "", "AAAA", 0, true, 0, 4);
-    }
-
-    @Test
-    public void gr23871() {
-        test("[^ ]+?(?:-(?:(?<=[a-z]{2}-)|(?<=[a-z]-[a-z]-)))", "su", "this-is-a-useful-feature", 8, true, 8, 10);
-    }
-
-    @Test
-    public void gr26246() {
-        try {
-            test(".*", "", "abc", 4, false);
-        } catch (PolyglotException e) {
-            Assert.assertTrue(e.getMessage().contains("illegal fromIndex"));
-            return;
-        }
-        Assert.fail();
-    }
-
-    @Test
-    public void gr28787() {
-        expectSyntaxError("\\", "", PyErrorMessages.BAD_ESCAPE_END_OF_PATTERN);
+    public void testParseFlags() {
+        assertTrue(parse("L").isLocale());
+        assertTrue(parse("a").isAscii());
+        assertTrue(parse("i").isIgnoreCase());
+        assertTrue(parse("m").isMultiLine());
+        assertTrue(parse("s").isDotAll());
+        assertTrue(parse("t").isTemplate());
+        assertTrue(parse("u").isUnicode());
+        assertTrue(parse("x").isVerbose());
+        assertTrue(parse("y").isSticky());
     }
 }
