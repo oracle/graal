@@ -232,8 +232,8 @@ public final class Substitutions implements ContextAccess {
                     public String get() {
                         StaticObject givenLoader = methodToSubstitute.getDeclaringKlass().getDefiningClassLoader();
                         return "Static substitution for " + methodToSubstitute + " does not apply.\n" +
-                                "\tExpected class loader: Boot (null) or platform class loader\n" +
-                                "\tGiven class loader: " + givenLoader.toDisplayString(false) + "\n";
+                                        "\tExpected class loader: Boot (null) or platform class loader\n" +
+                                        "\tGiven class loader: " + givenLoader.toDisplayString(false) + "\n";
                     }
                 });
                 return null;
