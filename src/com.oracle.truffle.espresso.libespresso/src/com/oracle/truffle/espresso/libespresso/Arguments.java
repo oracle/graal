@@ -180,17 +180,9 @@ public final class Arguments {
                 } else if (optionString.equals("-XX:-IgnoreUnrecognizedVMOptions")) {
                     ignoreUnrecognized = false;
                 } else if (optionString.startsWith("--vm.")) {
-                    // TODO: more precise handling (see
-                    // org.graalvm.launcher.Launcher.Native.setNativeOption)
-                    int eqIx = optionString.indexOf('=');
-                    if (eqIx > 0) {
-                        String key = optionString.substring("--vm.".length(), eqIx);
-                        String value = optionString.substring(eqIx + 1);
-                        RuntimeOptions.set(key, value);
-                    } else {
-                        String key = optionString.substring("--vm.".length());
-                        RuntimeOptions.set(key, null);
-                    }
+                    handleVMArg(builder, optionString, experimentalOptions);
+                } else if (optionString.startsWith("-XX:")) {
+                    handleXXArg(builder, optionString, experimentalOptions);
                 } else if (isExperimentalFlag(optionString)) {
                     // skip: previously handled
                 } else if (optionString.equals("--polyglot")) {
@@ -227,6 +219,26 @@ public final class Arguments {
         builder.option("java.Classpath", classpath);
         argumentProcessingDone();
         return JNIErrors.JNI_OK();
+    }
+
+    public static void handleXXArg(Context.Builder builder, String optionString, boolean experimental) {
+        String arg = optionString.substring("-XX:".length());
+        String toPolyglot;
+        if (arg.length() >= 1 && (arg.charAt(0) == '+' || arg.charAt(0) == '-')) {
+            String value = Boolean.toString(arg.charAt(0) == '+');
+            toPolyglot = "--java." + arg.substring(1) + "=" + value;
+        } else {
+            toPolyglot = "--java." + arg;
+        }
+        String err = parsePolyglotOption(builder, toPolyglot, experimental);
+        if (err == null) {
+            return;
+        }
+        // Pass as host vm arg
+        handleVMArg(builder, "--vm." + optionString.substring(1), experimental);
+    }
+
+    private static void handleVMArg(Context.Builder builder, String optionString, boolean experimental) {
     }
 
     private static boolean checkExperimental(JNIJavaVMInitArgs args) {
