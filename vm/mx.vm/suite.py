@@ -2,7 +2,7 @@ suite = {
     "name": "vm",
     "version" : "20.3.1",
     "mxversion" : "5.256.0",
-    "release" : False,
+    "release" : True,
     "groupId" : "org.graalvm",
 
     "url" : "http://www.graalvm.org/",
@@ -39,7 +39,7 @@ suite = {
                 "name": "graal-nodejs",
                 "subdir": True,
                 "dynamic": True,
-                "version": "a6e3cd7cd7be81c36ea29a939489c0804589a7c3",
+                "version": "e9674d66240c45da565473c9903233bd0a8637d7",
                 "urls" : [
                     {"url" : "https://github.com/graalvm/graaljs.git", "kind" : "git"},
                     {"url": "https://curio.ssw.jku.at/nexus/content/repositories/snapshots", "kind": "binary"},
@@ -49,7 +49,7 @@ suite = {
                 "name": "graal-js",
                 "subdir": True,
                 "dynamic": True,
-                "version": "a6e3cd7cd7be81c36ea29a939489c0804589a7c3",
+                "version": "e9674d66240c45da565473c9903233bd0a8637d7",
                 "urls": [
                     {"url": "https://github.com/graalvm/graaljs.git", "kind" : "git"},
                     {"url": "https://curio.ssw.jku.at/nexus/content/repositories/snapshots", "kind": "binary"},
@@ -75,7 +75,7 @@ suite = {
             },
             {
                 "name": "graalpython",
-                "version": "da45477c8e3edd1094fe017452947fc6413bbea2",
+                "version": "cce298dcdbb85e3aab24a7b177a86b6e461b79ac",
                 "dynamic": True,
                 "urls": [
                     {"url": "https://github.com/graalvm/graalpython.git", "kind": "git"},
