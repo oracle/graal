@@ -56,10 +56,26 @@ public final class Arguments {
             this.builder = builder;
         }
 
-        private static final String ADD_MODULES = "jdk.module.addmods";
-        private static final String ADD_EXPORTS = "jdk.module.addexports";
-        private static final String ADD_OPENS = "jdk.module.addopens";
-        private static final String ADD_READS = "jdk.module.addreads";
+        private static final String JDK_MODULES_PREFIX = "jdk.module.";
+
+        private static final String ADD_MODULES = JDK_MODULES_PREFIX + "addmods";
+        private static final String ADD_EXPORTS = JDK_MODULES_PREFIX + "addexports";
+        private static final String ADD_OPENS = JDK_MODULES_PREFIX + "addopens";
+        private static final String ADD_READS = JDK_MODULES_PREFIX + "addreads";
+
+        private static final String MODULE_PATH = JDK_MODULES_PREFIX + "path";
+        private static final String UPGRADE_PATH = JDK_MODULES_PREFIX + "upgrade.path";
+        private static final String LIMIT_MODS = JDK_MODULES_PREFIX + "limitmods";
+
+        private static final String[] KNOWN_OPTIONS = new String[]{
+                        ADD_MODULES,
+                        ADD_EXPORTS,
+                        ADD_OPENS,
+                        ADD_READS,
+                        MODULE_PATH,
+                        UPGRADE_PATH,
+                        LIMIT_MODS,
+        };
 
         private final Context.Builder builder;
 
@@ -87,6 +103,17 @@ public final class Arguments {
         void addNumbered(String prop, String value, int count) {
             String key = JAVA_PROPS + prop + "." + count;
             builder.option(key, value);
+        }
+
+        boolean isModulesOption(String prop) {
+            if (prop.startsWith(JDK_MODULES_PREFIX)) {
+                for (String known : KNOWN_OPTIONS) {
+                    if (prop.equals(known)) {
+                        return true;
+                    }
+                }
+            }
+            return false;
         }
     }
 
@@ -129,15 +156,16 @@ public final class Arguments {
                         String value = optionString.substring("-agentlib:jdwp=".length());
                         builder.option("java.JDWPOptions", value);
                     } else if (optionString.startsWith("-D")) {
-                        // TODO: prevent using -D flags to set some properties (/ex: module
-                        // properties
-                        // with a reserved flag)
                         String key = optionString.substring("-D".length());
                         int splitAt = key.indexOf("=");
                         String value = "";
                         if (splitAt >= 0) {
                             value = key.substring(splitAt + 1);
                             key = key.substring(0, splitAt);
+                        }
+                        if (modulePropHandler.isModulesOption(key)) {
+                            warn("Ignoring system property -D" + key + " that is reserved for internal use.");
+                            continue;
                         }
                         switch (key) {
                             case "espresso.library.path":
@@ -199,7 +227,7 @@ public final class Arguments {
             } catch (ArgumentException e) {
                 if (!ignoreUnrecognized) {
                     // Failed to parse
-                    STDERR.printf(e.getMessage());
+                    warn(e.getMessage());
                     return JNI_ERR();
                 }
             }
@@ -414,5 +442,9 @@ public final class Arguments {
 
     static ArgumentException abortExperimental(String message) {
         throw new Arguments.ArgumentException(message, true);
+    }
+
+    static void warn(String message) {
+        STDERR.println(message);
     }
 }
