@@ -372,7 +372,7 @@ public final class EspressoOptions {
                         throw new IllegalArgumentException("Not starting with digits: " + size);
                     }
                     if (len - idx > 1) {
-                        throw new IllegalArgumentException("Prefix can be at most one character: " + size);
+                        throw new IllegalArgumentException("Unit prefix can be at most one character: " + size);
                     }
 
                     long result = Long.parseLong(size.substring(0, idx));
@@ -388,7 +388,7 @@ public final class EspressoOptions {
                             case 'K': // fallthrough
                             case 'k': return result * K;
                             default:
-                                throw new IllegalArgumentException("Unrecognized prefix: " + size);
+                                throw new IllegalArgumentException("Unrecognized unit prefix: " + size + " use `T`, `G`, `M`, or `k`.");
                         }
                     }
                     return result;
