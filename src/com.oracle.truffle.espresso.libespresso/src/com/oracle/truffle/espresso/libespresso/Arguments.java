@@ -118,6 +118,9 @@ public final class Arguments {
                 } else if (optionString.startsWith("-Xrunjdwp:")) {
                     String value = optionString.substring("-Xrunjdwp:".length());
                     builder.option("java.JDWPOptions", value);
+                } else if (optionString.startsWith("-XX:MaxDirectMemorySize=")) {
+                    String value = optionString.substring("-XX:MaxDirectMemorySize=".length());
+                    builder.option("java.MaxDirectMemorySize", value);
                 } else if (optionString.startsWith("-D")) {
                     // TODO: prevent using -D flags to set some properties (/ex: module properties
                     // with a reserved flag)
