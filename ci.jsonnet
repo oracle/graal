@@ -259,7 +259,7 @@ local scala_dacapo_warmup_benchmark(env, guest_jvm_config='default', extra_args=
 
 # GraalVM Installables
 local graalvm_installables(ee) = {
-  local dynamic_imports = if ee then '/vm-enterprise,/substratevm-enterprise' else '/vm,/substratevm',
+  local dynamic_imports = if ee then '/vm-enterprise,/substratevm-enterprise,/tools-enterprise' else '/vm,/substratevm,/tools',
   local repo_id = if ee then 'graal-us' else 'lafo',
   local base_cmd_line = ['mx', '--dynamicimports=' + dynamic_imports, '--native-images=espresso,lib:espresso', '--exclude-components=nju,npi', '--disable-installables=ni,niee,nil,llp'],
   local graal_repo = if ee then 'graal-enterprise' else 'graal',
