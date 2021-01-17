@@ -282,8 +282,8 @@ public final class Meta implements ContextAccess {
         java_lang_reflect_Field_name = java_lang_reflect_Field.lookupDeclaredField(Name.name, Type.java_lang_String);
         java_lang_reflect_Field_type = java_lang_reflect_Field.lookupDeclaredField(Name.type, Type.java_lang_Class);
 
-        java_lang_reflect_Shutdown = knownKlass(Type.java_lang_Shutdown);
-        java_lang_reflect_Shutdown_shutdown = java_lang_reflect_Shutdown.lookupDeclaredMethod(Name.shutdown, Signature._void);
+        java_lang_Shutdown = knownKlass(Type.java_lang_Shutdown);
+        java_lang_Shutdown_shutdown = java_lang_Shutdown.lookupDeclaredMethod(Name.shutdown, Signature._void);
 
         java_nio_Buffer = knownKlass(Type.java_nio_Buffer);
         sun_nio_ch_DirectBuffer = knownKlass(Type.sun_nio_ch_DirectBuffer);
@@ -753,8 +753,8 @@ public final class Meta implements ContextAccess {
     public final Field java_lang_reflect_Field_name;
     public final Field java_lang_reflect_Field_type;
 
-    public final ObjectKlass java_lang_reflect_Shutdown;
-    public final Method java_lang_reflect_Shutdown_shutdown;
+    public final ObjectKlass java_lang_Shutdown;
+    public final Method java_lang_Shutdown_shutdown;
 
     public final ObjectKlass java_lang_Exception;
     public final ObjectKlass java_lang_reflect_InvocationTargetException;

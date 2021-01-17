@@ -31,6 +31,8 @@ import java.util.function.LongUnaryOperator;
 
 import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
+import com.oracle.truffle.api.TruffleLogger;
+import com.oracle.truffle.espresso.EspressoLanguage;
 import com.oracle.truffle.espresso.descriptors.Symbol;
 import com.oracle.truffle.espresso.impl.ContextAccess;
 import com.oracle.truffle.espresso.meta.Meta;
@@ -39,6 +41,8 @@ import com.oracle.truffle.espresso.substitutions.Target_java_lang_Thread;
 import com.oracle.truffle.espresso.vm.VM;
 
 class EspressoThreadManager implements ContextAccess {
+
+    private final TruffleLogger logger = TruffleLogger.getLogger(EspressoLanguage.ID, EspressoThreadManager.class);
 
     private final EspressoContext context;
 
@@ -155,6 +159,11 @@ class EspressoThreadManager implements ContextAccess {
      */
     @SuppressFBWarnings(value = "NN", justification = "Removing a thread from the active set is the state change we need.")
     public void unregisterThread(StaticObject thread) {
+        logger.fine(() -> {
+            String guestName = Target_java_lang_Thread.getThreadName(getMeta(), thread);
+            long guestId = Target_java_lang_Thread.getThreadId(getMeta(), thread);
+            return String.format("unregisterThread([GUEST:%s, %d])", guestName, guestId);
+        });
         activeThreads.remove(thread);
         Thread hostThread = (Thread) thread.getHiddenField(thread.getKlass().getMeta().HIDDEN_HOST_THREAD);
         int id = Math.toIntExact(hostThread.getId());
@@ -274,6 +283,13 @@ class EspressoThreadManager implements ContextAccess {
 
             // now add to the main thread group
             meta.java_lang_ThreadGroup_add.invokeDirect(threadGroup, guestThread);
+
+            logger.fine(() -> {
+                String guestName = Target_java_lang_Thread.getThreadName(getMeta(), guestThread);
+                long guestId = Target_java_lang_Thread.getThreadId(getMeta(), guestThread);
+                return String.format("createGuestThreadFromHost: [HOST:%s, %d], [GUEST:%s, %d]", hostThread.getName(), hostThread.getId(), guestName, guestId);
+            });
+
             return guestThread;
         }
     }
@@ -287,14 +303,15 @@ class EspressoThreadManager implements ContextAccess {
         meta.java_lang_ThreadGroup.lookupDeclaredMethod(Symbol.Name._init_, Symbol.Signature._void) // private
                         // ThreadGroup()
                         .invokeDirect(systemThreadGroup);
+        Thread hostThread = Thread.currentThread();
         StaticObject mainThread = meta.java_lang_Thread.allocateInstance();
         // Allow guest Thread.currentThread() to work.
         mainThread.setIntField(meta.java_lang_Thread_priority, Thread.NORM_PRIORITY);
-        mainThread.setHiddenField(meta.HIDDEN_HOST_THREAD, Thread.currentThread());
+        mainThread.setHiddenField(meta.HIDDEN_HOST_THREAD, hostThread);
         mainThread.setHiddenField(meta.HIDDEN_DEATH, Target_java_lang_Thread.KillStatus.NORMAL);
         mainThreadGroup = meta.java_lang_ThreadGroup.allocateInstance();
 
-        registerMainThread(Thread.currentThread(), mainThread);
+        registerMainThread(hostThread, mainThread);
 
         // Guest Thread.currentThread() must work as this point.
         meta.java_lang_ThreadGroup // public ThreadGroup(ThreadGroup parent, String name)
@@ -311,6 +328,11 @@ class EspressoThreadManager implements ContextAccess {
         mainThread.setIntField(meta.java_lang_Thread_threadStatus, Target_java_lang_Thread.State.RUNNABLE.value);
 
         mainThreadCreated = true;
+        logger.fine(() -> {
+            String guestName = Target_java_lang_Thread.getThreadName(getMeta(), mainThread);
+            long guestId = Target_java_lang_Thread.getThreadId(getMeta(), mainThread);
+            return String.format("createMainThread: [HOST:%s, %d], [GUEST:%s, %d]", hostThread.getName(), hostThread.getId(), guestName, guestId);
+        });
     }
 
     public boolean isMainThreadCreated() {

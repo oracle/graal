@@ -1543,7 +1543,10 @@ LibEspresso *load_libespresso(const char* lib_path) {
     BIND_LIBESPRESSO(graal_detach_all_threads_and_tear_down_isolate)
     BIND_LIBESPRESSO(Espresso_CreateJavaVM)
     BIND_LIBESPRESSO(Espresso_EnterContext)
+    BIND_LIBESPRESSO(Espresso_LeaveContext)
     BIND_LIBESPRESSO(Espresso_ReleaseContext)
+    BIND_LIBESPRESSO(Espresso_CloseContext)
+    BIND_LIBESPRESSO(Espresso_Exit)
 
 #undef BIND_LIBESPRESSO
 
@@ -1559,7 +1562,10 @@ LibEspresso *load_libespresso(const char* lib_path) {
     result->detach_all_threads_and_tear_down_isolate = graal_detach_all_threads_and_tear_down_isolate;
     result->Espresso_CreateJavaVM = Espresso_CreateJavaVM;
     result->Espresso_EnterContext = Espresso_EnterContext;
+    result->Espresso_LeaveContext = Espresso_LeaveContext;
     result->Espresso_ReleaseContext = Espresso_ReleaseContext;
+    result->Espresso_CloseContext = Espresso_CloseContext;
+    result->Espresso_Exit = Espresso_Exit;
     return result;
 }
 
@@ -1638,13 +1644,23 @@ jint DestroyJavaVM(JavaVM *vm) {
     }
     jint result = (*espressoJavaVM)->DestroyJavaVM(espressoJavaVM);
     remove_java_vm(vm);
-    jint result2 = libespresso->Espresso_ReleaseContext(thread, (struct JavaVM_ *)espressoJavaVM);
+    jint result2;
+    if (espressoIsolate->is_sun_standard_launcher == JNI_TRUE) {
+        libespresso->Espresso_Exit(thread, (struct JavaVM_ *) espressoJavaVM);
+        fprintf(stderr, "Error: Espresso_Exit didn't exit");
+        result2 = JNI_ERR;
+    } else {
+        result2 = libespresso->Espresso_CloseContext(thread, (struct JavaVM_ *) espressoJavaVM);
+    }
     if (result == JNI_OK && result2 != JNI_OK) {
         result = result2;
     }
     result2 = libespresso->detach_thread(thread);
     if (result == JNI_OK && result2 != JNI_OK) {
         result = result2;
+    }
+    if (libespresso->tear_down_isolate(thread) != 0 && result == JNI_OK) {
+        result = JNI_ERR;
     }
     free(espressoIsolate);
     return result;
@@ -1664,7 +1680,11 @@ jint DetachCurrentThread(JavaVM *vm) {
         return JNI_OK;
     }
     jint ret = (*espressoJavaVM)->DetachCurrentThread(espressoJavaVM);
-    if (libespresso->detach_thread(thread) != 0) {
+    jint ret2 = libespresso->Espresso_LeaveContext(thread, (struct JavaVM_ *) espressoJavaVM);
+    if (ret == JNI_OK && ret2 != JNI_OK) {
+        ret = ret2;
+    }
+    if (libespresso->detach_thread(thread) != 0 && ret == JNI_OK) {
         ret = JNI_ERR;
     }
     return ret;
@@ -1697,11 +1717,13 @@ jint AttachCurrentThreadAsDaemon(JavaVM *vm, void **penv, void *args) {
 _JNI_IMPORT_OR_EXPORT_ jint JNICALL JNI_CreateJavaVM(JavaVM **vm_ptr, void **penv, void *args) {
     JavaVMInitArgs *initArgs = args;
     int lib_espresso_type = LIB_ESPRESSO_PLAIN;
+    jboolean is_sun_standard_launcher = JNI_FALSE;
     for (int i = 0; i < initArgs->nOptions; i++) {
         const JavaVMOption* option = initArgs->options + i;
         if (strcmp("--polyglot", option->optionString) == 0) {
             lib_espresso_type = LIB_ESPRESSO_POLYGLOT;
-            break;
+        } else if (strcmp("-Dsun.java.launcher=SUN_STANDARD", option->optionString) == 0) {
+            is_sun_standard_launcher = JNI_TRUE;
         }
     }
     LibEspresso *libespresso = get_libespresso(lib_espresso_type);
@@ -1740,6 +1762,7 @@ _JNI_IMPORT_OR_EXPORT_ jint JNICALL JNI_CreateJavaVM(JavaVM **vm_ptr, void **pen
     LibEspressoIsolate *espressoIsolate = malloc(sizeof(LibEspressoIsolate));
     espressoIsolate->lib = libespresso;
     espressoIsolate->isolate = isolate;
+    espressoIsolate->is_sun_standard_launcher = is_sun_standard_launcher;
     vmInterface->reserved0 = espressoIsolate;
     vmInterface->reserved1 = MOKA_LATTE;
     vmInterface->reserved2 = espressoJavaVM;

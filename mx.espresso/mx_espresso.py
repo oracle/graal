@@ -64,24 +64,24 @@ def _espresso_standalone_command(args):
     )
 
 
-def _run_espresso_launcher(args=None, cwd=None):
+def _run_espresso_launcher(args=None, cwd=None, nonZeroIsFatal=True):
     """Run Espresso launcher within a GraalVM"""
-    mx.run(_espresso_launcher_command(args), cwd=cwd)
+    return mx.run(_espresso_launcher_command(args), cwd=cwd, nonZeroIsFatal=nonZeroIsFatal)
 
 
-def _run_espresso_standalone(args=None, cwd=None):
+def _run_espresso_standalone(args=None, cwd=None, nonZeroIsFatal=True):
     """Run standalone Espresso (not as part of GraalVM) from distribution jars"""
-    mx.run_java(_espresso_standalone_command(args), cwd=cwd)
+    return mx.run_java(_espresso_standalone_command(args), cwd=cwd, nonZeroIsFatal=nonZeroIsFatal)
 
 
-def _run_espresso_java(args=None, cwd=None):
+def _run_espresso_java(args=None, cwd=None, nonZeroIsFatal=True):
     """Run espresso through the standard java launcher within a GraalVM"""
-    mx.run(_espresso_java_command(args), cwd=cwd)
+    return mx.run(_espresso_java_command(args), cwd=cwd, nonZeroIsFatal=nonZeroIsFatal)
 
 
-def _run_espresso_meta(args):
+def _run_espresso_meta(args, nonZeroIsFatal=True):
     """Run Espresso (standalone) on Espresso (launcher)"""
-    _run_espresso_launcher(['--vm.Xss4m'] + _espresso_standalone_command(args))
+    return _run_espresso_launcher(['--vm.Xss4m'] + _espresso_standalone_command(args), nonZeroIsFatal=nonZeroIsFatal)
 
 
 def _run_espresso_playground(args):
@@ -100,6 +100,7 @@ class EspressoDefaultTags:
     unittest_with_compilation = 'unittest_with_compilation'
     jackpot = 'jackpot'
     meta = 'meta'
+    exit = 'exit'
 
 
 def _espresso_gate_runner(args, tasks):
@@ -126,6 +127,32 @@ def _espresso_gate_runner(args, tasks):
     with Task('Meta', tasks, tags=[EspressoDefaultTags.meta]) as t:
         if t:
             _run_espresso_meta(args=['-cp', mx.classpath('ESPRESSO_PLAYGROUND'), 'com.oracle.truffle.espresso.playground.HelloWorld'])
+
+    with Task('Exit', tasks, tags=[EspressoDefaultTags.exit]) as t:
+        if t:
+            def _run_exit(case, expected, daemon=False, wait='infinite-listen'):
+                if isinstance(expected, int):
+                    expected = [expected]
+                mx.log("Exit test [{}, daemon={}, wait={}]...".format(case, daemon, wait))
+                rc = _run_espresso_java(args=['-cp', mx.classpath('ESPRESSO_PLAYGROUND'),
+                                              '-Despresso.playground.exit.daemon=' + ('true' if daemon else 'false'),
+                                              '-Despresso.playground.exit.static=' + ('true' if case == 'STATIC' else 'false'),
+                                              '-Despresso.playground.exit.wait=' + wait,
+                                              'com.oracle.truffle.espresso.playground.Exit', case], nonZeroIsFatal=False)
+                if rc not in expected:
+                    raise mx.abort("Exit[{}, daemon={}, wait={}] Expected exit code in {}, got {}".format(case, daemon, wait, expected, rc))
+
+            _run_exit('STATIC', 11)
+            _run_exit('MAIN', 12)
+            _run_exit('MAIN_FALL', 0)
+            _run_exit('OTHER_FALL', 13)
+            _run_exit('OTHER_FALL', [13, 0], daemon=True)
+            _run_exit('OTHER_WAIT', 14)
+            _run_exit('OTHER_WAIT', 14, daemon=True)
+            _run_exit('OTHER_WAIT', 14, wait='infinite-park')
+            _run_exit('MAIN_OTHER', 15)
+            _run_exit('MAIN_OTHER', 15, daemon=True)
+            _run_exit('MAIN_OTHER', 15, wait='infinite-park')
 
 
 def verify_ci(args):

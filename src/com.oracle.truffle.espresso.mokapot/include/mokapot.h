@@ -892,14 +892,18 @@ typedef struct LibEspresso {
     graal_get_current_thread_fn_t get_current_thread;
     graal_tear_down_isolate_fn_t tear_down_isolate;
     graal_detach_all_threads_and_tear_down_isolate_fn_t detach_all_threads_and_tear_down_isolate;
-    Espresso_CreateJavaVM_fn_t Espresso_CreateJavaVM;
-    Espresso_EnterContext_fn_t Espresso_EnterContext;
-    Espresso_ReleaseContext_fn_t Espresso_ReleaseContext;
+    Espresso_CreateJavaVM_fn_t Espresso_CreateJavaVM;       // create + enter
+    Espresso_EnterContext_fn_t Espresso_EnterContext;       // enter
+    Espresso_LeaveContext_fn_t Espresso_LeaveContext;       // leave
+    Espresso_ReleaseContext_fn_t Espresso_ReleaseContext;   // release
+    Espresso_CloseContext_fn_t Espresso_CloseContext;       // release + leave + close
+    Espresso_Exit_fn_t Espresso_Exit;                       // leave + close + exit
 } LibEspresso;
 
 typedef struct LibEspressoIsolate {
     LibEspresso *lib;
     graal_isolate_t *isolate;
+    jboolean is_sun_standard_launcher; // -Dsun.java.launcher=SUN_STANDARD
 } LibEspressoIsolate;
 
 #endif // _MOKAPOT_H

@@ -344,7 +344,7 @@ local awfy = 'awfy:*';
                                                                                   },
 
     jdk8_gate_linux                       + gate_espresso(allow_warnings=true)  + { environment+: {
-                                                                                      GATE_TAGS:       'build,unittest',
+                                                                                      GATE_TAGS:       'build,unittest,exit',
                                                                                       DYNAMIC_IMPORTS: '/vm,truffleruby'
                                                                                     },
                                                                                     name: 'espresso-gate-unittest-jdk8-linux-amd64'

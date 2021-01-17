@@ -168,43 +168,51 @@ class EspressoReferenceDrainer implements ContextAccess {
         @SuppressWarnings("rawtypes")
         @Override
         public void run() {
-            getVM().attachThread(Thread.currentThread());
             Meta meta = getMeta();
-            final StaticObject lock = (StaticObject) meta.java_lang_ref_Reference_lock.get(meta.java_lang_ref_Reference.tryInitializeAndGetStatics());
-            while (!Thread.currentThread().isInterrupted()) {
-                try {
-                    // Based on HotSpot's ReferenceProcessor::enqueue_discovered_reflist.
-                    // HotSpot's "new behavior": Walk down the list, self-looping the next field
-                    // so that the References are not considered active.
-                    EspressoReference head;
-                    do {
-                        head = (EspressoReference) referenceQueue.remove();
-                        assert head != null;
-                    } while (StaticObject.notNull((StaticObject) meta.java_lang_ref_Reference_next.get(head.getGuestReference())));
-
-                    lock.getLock().lock();
+            try {
+                getVM().attachThread(Thread.currentThread());
+                final StaticObject lock = (StaticObject) meta.java_lang_ref_Reference_lock.get(meta.java_lang_ref_Reference.tryInitializeAndGetStatics());
+                while (!Thread.currentThread().isInterrupted()) {
                     try {
-                        assert Target_java_lang_Thread.holdsLock(lock, meta) : "must hold Reference.lock at the guest level";
-                        casNextIfNullAndMaybeClear(head);
+                        // Based on HotSpot's ReferenceProcessor::enqueue_discovered_reflist.
+                        // HotSpot's "new behavior": Walk down the list, self-looping the next field
+                        // so that the References are not considered active.
+                        EspressoReference head;
+                        do {
+                            head = (EspressoReference) referenceQueue.remove();
+                            assert head != null;
+                        } while (StaticObject.notNull((StaticObject) meta.java_lang_ref_Reference_next.get(head.getGuestReference())));
 
-                        EspressoReference prev = head;
-                        EspressoReference ref;
-                        while ((ref = (EspressoReference) referenceQueue.poll()) != null) {
-                            if (StaticObject.notNull((StaticObject) meta.java_lang_ref_Reference_next.get(ref.getGuestReference()))) {
-                                continue;
+                        lock.getLock().lock();
+                        try {
+                            assert Target_java_lang_Thread.holdsLock(lock, meta) : "must hold Reference.lock at the guest level";
+                            casNextIfNullAndMaybeClear(head);
+
+                            EspressoReference prev = head;
+                            EspressoReference ref;
+                            while ((ref = (EspressoReference) referenceQueue.poll()) != null) {
+                                if (StaticObject.notNull((StaticObject) meta.java_lang_ref_Reference_next.get(ref.getGuestReference()))) {
+                                    continue;
+                                }
+                                meta.java_lang_ref_Reference_discovered.set(prev.getGuestReference(), ref.getGuestReference());
+                                casNextIfNullAndMaybeClear(ref);
+                                prev = ref;
                             }
-                            meta.java_lang_ref_Reference_discovered.set(prev.getGuestReference(), ref.getGuestReference());
-                            casNextIfNullAndMaybeClear(ref);
-                            prev = ref;
-                        }
 
-                        meta.java_lang_ref_Reference_discovered.set(prev.getGuestReference(), prev.getGuestReference());
-                        updateReferencePendingList(head, prev, lock);
-                    } finally {
-                        lock.getLock().unlock();
+                            meta.java_lang_ref_Reference_discovered.set(prev.getGuestReference(), prev.getGuestReference());
+                            updateReferencePendingList(head, prev, lock);
+                        } finally {
+                            lock.getLock().unlock();
+                        }
+                    } catch (InterruptedException e) {
+                        // ignore
+                        return;
                     }
-                } catch (InterruptedException e) {
-                    // ignore
+                }
+            } finally {
+                Target_java_lang_Thread.terminate(context.getCurrentThread(), meta);
+                if (context.isClosing()) {
+                    // Ignore exceptions that arise during closing.
                     return;
                 }
             }

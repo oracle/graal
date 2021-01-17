@@ -71,6 +71,7 @@ import com.oracle.truffle.espresso.perf.DebugCloseable;
 import com.oracle.truffle.espresso.perf.DebugTimer;
 import com.oracle.truffle.espresso.perf.TimerCollection;
 import com.oracle.truffle.espresso.substitutions.Substitutions;
+import com.oracle.truffle.espresso.substitutions.Target_java_lang_Thread;
 import com.oracle.truffle.espresso.substitutions.Target_java_lang_ref_Reference;
 import com.oracle.truffle.espresso.vm.InterpreterToVM;
 import com.oracle.truffle.espresso.vm.VM;
@@ -568,7 +569,8 @@ public final class EspressoContext {
             return;
         }
         if (hostThread != Thread.currentThread()) {
-            getLogger().warning("unimplemented: disposeThread for non-current thread: " + hostThread);
+            String guestName = Target_java_lang_Thread.getThreadName(meta, guestThread);
+            getLogger().warning("unimplemented: disposeThread for non-current thread: " + hostThread + " / " + guestName);
             return;
         }
         if (vm.DetachCurrentThread() != JNI_OK) {

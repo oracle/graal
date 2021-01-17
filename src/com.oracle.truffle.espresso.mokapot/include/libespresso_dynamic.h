@@ -12,7 +12,13 @@ typedef int (*Espresso_CreateJavaVM_fn_t)(graal_isolatethread_t* thread, struct 
 
 typedef int (*Espresso_EnterContext_fn_t)(graal_isolatethread_t* thread, struct JavaVM_* javaVM);
 
+typedef int (*Espresso_LeaveContext_fn_t)(graal_isolatethread_t* thread, struct JavaVM_* javaVM);
+
 typedef int (*Espresso_ReleaseContext_fn_t)(graal_isolatethread_t* thread, struct JavaVM_* javaVM);
+
+typedef int (*Espresso_CloseContext_fn_t)(graal_isolatethread_t* thread, struct JavaVM_* javaVM);
+
+typedef void (*Espresso_Exit_fn_t)(graal_isolatethread_t* thread, struct JavaVM_* javaVM);
 
 typedef void (*vmLocatorSymbol_fn_t)(graal_isolatethread_t* thread);
 

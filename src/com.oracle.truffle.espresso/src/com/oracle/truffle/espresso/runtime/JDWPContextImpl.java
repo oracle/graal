@@ -360,7 +360,7 @@ public final class JDWPContextImpl implements JDWPContext {
 
     @Override
     public String getThreadName(Object thread) {
-        return context.getMeta().java_lang_Thread_name.get(((StaticObject) thread)).toString();
+        return Target_java_lang_Thread.getThreadName(context.getMeta(), (StaticObject) thread);
     }
 
     @Override
