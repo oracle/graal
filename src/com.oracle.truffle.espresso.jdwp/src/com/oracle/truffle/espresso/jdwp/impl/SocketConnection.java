@@ -55,7 +55,9 @@ public final class SocketConnection implements Runnable {
             if (closed) {
                 return;
             }
-            serverSocket.close();
+            if (serverSocket != null) {
+                serverSocket.close();
+            }
             socketOutput.close();
             socketInput.close();
             socket.close();
