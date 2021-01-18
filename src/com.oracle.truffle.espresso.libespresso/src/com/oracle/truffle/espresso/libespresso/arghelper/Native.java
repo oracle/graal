@@ -37,6 +37,9 @@ import org.graalvm.options.OptionDescriptors;
 
 import com.oracle.truffle.espresso.libespresso.Arguments;
 
+/**
+ * Handles communication with the host VM for passing arguments from the command line.
+ */
 class Native {
 
     Native(ArgumentsHandler handler) {

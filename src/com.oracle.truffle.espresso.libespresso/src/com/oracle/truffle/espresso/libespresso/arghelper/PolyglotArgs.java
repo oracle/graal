@@ -35,6 +35,9 @@ import org.graalvm.options.OptionStability;
 import org.graalvm.polyglot.Context;
 import org.graalvm.polyglot.Engine;
 
+/**
+ * Handles communicating options to polyglot.
+ */
 class PolyglotArgs {
     private final Context.Builder builder;
 

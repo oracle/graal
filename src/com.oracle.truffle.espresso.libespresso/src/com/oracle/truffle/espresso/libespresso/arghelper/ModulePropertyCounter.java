@@ -27,6 +27,9 @@ import org.graalvm.polyglot.Context;
 
 import com.oracle.truffle.espresso.libespresso.Arguments;
 
+/**
+ * Handles numbered System properties, which may require keeping track of some counters.
+ */
 class ModulePropertyCounter {
     ModulePropertyCounter(Context.Builder builder) {
         this.builder = builder;

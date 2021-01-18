@@ -39,6 +39,10 @@ import com.oracle.truffle.espresso.libespresso.Arguments;
 import com.oracle.truffle.espresso.libespresso.jniapi.JNIJavaVMInitArgs;
 import com.oracle.truffle.espresso.libespresso.jniapi.JNIJavaVMOption;
 
+/**
+ * A helper class that centralizes different ways of handling option parsing for the java -truffle
+ * launcher.
+ */
 public class ArgumentsHandler {
     /**
      * Default option description indentation.
@@ -102,6 +106,25 @@ public class ArgumentsHandler {
         modulePropertyCounter.addReads(option);
     }
 
+    /**
+     * <code>-XX:</code> arguments are handled specially: If there is an espresso option with the
+     * same name as the option passed, it will set it for the guest VM. Otherwise, it is forwarded
+     * to the host vm.
+     *
+     * As such,
+     * <ul>
+     * <li>Specifying <code>-XX:+InlineFieldAccessors</code> will match with the InlineFieldAccessor
+     * option in EspressoOptions, and set it to true.</li>
+     * <li>Specifying <code>--vm.XX:MaxDirectMemorySize=1024k</code> will pass the
+     * <code>-XX:MaxDirectMemorySize</code> option to the host VM, and bypass the matching option in
+     * espresso</li>
+     * <li>Specifying <code>-XX:MaxDirectMemorySize=1024k</code> will match with the
+     * MaxDirectMemorySize option in EspressoOptions, and set it accordingly, but will NOT set this
+     * flag for the host VM.</li>
+     * <li>Specifying <code>-XX:+PrintGC</code> will pass it directly to the host VM, as it does not
+     * match with any of the Espresso options.</li>
+     * </ul>
+     */
     public void handleXXArg(String optionString) {
         String toPolyglot = optionString.substring("-XX:".length());
         if (toPolyglot.length() >= 1 && (toPolyglot.charAt(0) == '+' || toPolyglot.charAt(0) == '-')) {
@@ -124,13 +147,13 @@ public class ArgumentsHandler {
         nativeAccess.setNativeOption(optionString.substring(1));
     }
 
+    public void parsePolyglotOption(String optionString) {
+        polyglotAccess.parsePolyglotOption(optionString, experimental);
+    }
+
     public void handleVMOption(String optionString) {
         nativeAccess.init(false);
         nativeAccess.setNativeOption(optionString.substring("--vm.".length()));
-    }
-
-    public void parsePolyglotOption(String optionString) {
-        polyglotAccess.parsePolyglotOption(optionString, experimental);
     }
 
     public void argumentProcessingDone() {
