@@ -1387,6 +1387,9 @@ public class InvocationPlugins {
             int arguments = parseParameters(binding.argumentsDescriptor).size();
             assert arguments < SIGS.length : format("need to extend %s to support method with %d arguments: %s", InvocationPlugin.class.getSimpleName(), arguments, binding);
             for (Method m : plugin.getClass().getDeclaredMethods()) {
+                if (m.getName().equals("defaultHandler")) {
+                    return true;
+                }
                 if (m.getName().equals("apply")) {
                     Class<?>[] parameterTypes = m.getParameterTypes();
                     if (Arrays.equals(SIGS[arguments], parameterTypes)) {

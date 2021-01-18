@@ -63,6 +63,7 @@ import org.graalvm.compiler.nodes.InvokeNode;
 import org.graalvm.compiler.nodes.LogicNode;
 import org.graalvm.compiler.nodes.NodeView;
 import org.graalvm.compiler.nodes.ParameterNode;
+import org.graalvm.compiler.nodes.PhiNode;
 import org.graalvm.compiler.nodes.PiNode;
 import org.graalvm.compiler.nodes.ReturnNode;
 import org.graalvm.compiler.nodes.StructuredGraph;
@@ -231,7 +232,25 @@ public class IntrinsifyMethodHandlesInvocationPlugin implements NodePlugin {
     }
 
     @Override
-    public boolean handleInvoke(GraphBuilderContext b, ResolvedJavaMethod method, ValueNode[] args) {
+    public boolean handleInvoke(GraphBuilderContext b, ResolvedJavaMethod method, ValueNode[] originalArgs) {
+        ValueNode receiverForNullCheck = null;
+        ValueNode[] args = originalArgs;
+        if ((!method.isStatic() || isVarHandleGuards(method)) && args.length > 0 && args[0] instanceof PhiNode) {
+            PhiNode phi = (PhiNode) args[0];
+            /*
+             * For loop phis, not all inputs are available yet since we have not parsed the loop
+             * body yet.
+             */
+            if (!phi.isLoopPhi()) {
+                ValueNode filteredReceiver = filterNullPhiInputs(phi);
+                if (filteredReceiver != phi && filteredReceiver.isJavaConstant()) {
+                    receiverForNullCheck = phi;
+                    args = Arrays.copyOf(args, args.length);
+                    args[0] = filteredReceiver;
+                }
+            }
+        }
+
         /*
          * We want to process invokes that have a constant MethodHandle parameter. And we need a
          * direct call, otherwise we do not have a single target method.
@@ -243,6 +262,9 @@ public class IntrinsifyMethodHandlesInvocationPlugin implements NodePlugin {
                  */
                 return reportUnsupportedFeature(b, method);
             } else {
+                if (receiverForNullCheck != null) {
+                    b.nullCheckedValue(receiverForNullCheck);
+                }
                 return processInvokeWithMethodHandle(b, universeProviders.getReplacements(), method, args);
             }
 
@@ -259,6 +281,22 @@ public class IntrinsifyMethodHandlesInvocationPlugin implements NodePlugin {
         } else {
             return false;
         }
+    }
+
+    private static ValueNode filterNullPhiInputs(PhiNode phi) {
+        ValueNode notAlwaysNullPhiInput = null;
+        for (ValueNode phiInput : phi.values()) {
+            if (StampTool.isPointerAlwaysNull(phiInput)) {
+                /* Ignore always null phi inputs. */
+            } else if (notAlwaysNullPhiInput != null) {
+                /* More than one not-always-null phi inputs. Nothing more to optimize. */
+                return phi;
+            } else {
+                /* First not-always-null phi input. */
+                notAlwaysNullPhiInput = phiInput;
+            }
+        }
+        return notAlwaysNullPhiInput;
     }
 
     private static boolean hasMethodHandleArgument(ValueNode[] args) {
@@ -286,7 +324,7 @@ public class IntrinsifyMethodHandlesInvocationPlugin implements NodePlugin {
          * vs. hosted types. If the VarHandle implementation changes, we need to update our whole
          * handling anyway.
          */
-        if (method.getDeclaringClass().toJavaName(true).equals("java.lang.invoke.VarHandleGuards")) {
+        if (isVarHandleGuards(method)) {
             if (args.length < 1 || !args[0].isJavaConstant() || !isVarHandle(args[0])) {
                 throw new UnsupportedFeatureException("VarHandle object must be a compile time constant");
             }
@@ -309,6 +347,10 @@ public class IntrinsifyMethodHandlesInvocationPlugin implements NodePlugin {
         } else {
             return false;
         }
+    }
+
+    private static boolean isVarHandleGuards(ResolvedJavaMethod method) {
+        return method.getDeclaringClass().toJavaName(true).equals("java.lang.invoke.VarHandleGuards");
     }
 
     private boolean isVarHandle(ValueNode arg) {
@@ -379,7 +421,7 @@ public class IntrinsifyMethodHandlesInvocationPlugin implements NodePlugin {
                  * covered by this rule.
                  */
                 return null;
-            } else if (className.startsWith("java.lang.invoke")) {
+            } else if (className.startsWith("java.lang.invoke") && !className.contains("InvokerBytecodeGenerator")) {
                 /*
                  * Inline all helper methods used by method handles. We do not know exactly which
                  * ones they are, but they are all be from the same package.

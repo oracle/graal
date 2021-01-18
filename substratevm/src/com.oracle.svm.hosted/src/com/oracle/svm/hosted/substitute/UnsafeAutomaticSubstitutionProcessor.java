@@ -255,7 +255,7 @@ public class UnsafeAutomaticSubstitutionProcessor extends SubstitutionProcessor 
         plugins.appendInlineInvokePlugin(inlineInvokePlugin);
         plugins.setClassInitializationPlugin(new NoClassInitializationPlugin());
 
-        ReflectionPlugins.registerInvocationPlugins(loader, snippetReflection, annotationSubstitutions, plugins.getInvocationPlugins(), hostVM, false, false);
+        ReflectionPlugins.registerInvocationPlugins(loader, snippetReflection, annotationSubstitutions, plugins.getInvocationPlugins(), hostVM, null, false, false);
 
         /*
          * Analyzing certain classes leads to false errors. We disable reporting for those classes
