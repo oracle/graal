@@ -27,7 +27,7 @@ QUIETLY$(MX_VERBOSE) = @
 
 SOURCE_FILES=$(wildcard ${VPATH}/*.c)
 SOURCES=${SOURCE_FILES:${VPATH}/%=%}
-BC_NATIVE_FILES=${SOURCES:%.c=%.c.native.bc}
+BC_NATIVE_FILES=${SOURCES:%.c=interpreter/%.c.native.bc}
 
 default: ${BC_NATIVE_FILES}
 
@@ -35,5 +35,6 @@ ifndef NATIVE_LLVM_CC
 $(error NATIVE_LLVM_CC not set)
 endif
 
-%.c.native.bc: %.c Makefile
+interpreter/%.c.native.bc: %.c Makefile
+	@mkdir -p $(shell dirname $@)
 	$(QUIETLY) $(NATIVE_LLVM_CC) -o $@ $<
