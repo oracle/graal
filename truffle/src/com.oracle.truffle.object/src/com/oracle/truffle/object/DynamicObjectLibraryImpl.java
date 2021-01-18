@@ -358,14 +358,12 @@ abstract class DynamicObjectLibraryImpl {
                     return false;
                 } else {
                     LayoutStrategy strategy = oldShape.getLayout().getStrategy();
-                    LocationFactory locationFactory = getLocationFactory(strategy, putFlags);
-                    newShape = strategy.defineProperty(oldShape, key, value, Flags.getPropertyFlags(putFlags), locationFactory, existingProperty, putFlags);
+                    newShape = strategy.defineProperty(oldShape, key, value, Flags.getPropertyFlags(putFlags), null, existingProperty, putFlags);
                     property = newShape.getProperty(key);
                 }
             } else if (Flags.isUpdateFlags(putFlags) && Flags.getPropertyFlags(putFlags) != existingProperty.getFlags()) {
                 LayoutStrategy strategy = oldShape.getLayout().getStrategy();
-                LocationFactory locationFactory = getLocationFactory(strategy, putFlags);
-                newShape = strategy.defineProperty(oldShape, key, value, Flags.getPropertyFlags(putFlags), locationFactory, existingProperty, putFlags);
+                newShape = strategy.defineProperty(oldShape, key, value, Flags.getPropertyFlags(putFlags), null, existingProperty, putFlags);
                 property = newShape.getProperty(key);
             } else {
                 if (existingProperty.getLocation().canSet(value)) {
@@ -373,8 +371,7 @@ abstract class DynamicObjectLibraryImpl {
                     property = existingProperty;
                 } else {
                     LayoutStrategy strategy = oldShape.getLayout().getStrategy();
-                    LocationFactory locationFactory = getLocationFactory(strategy, putFlags);
-                    newShape = strategy.defineProperty(oldShape, key, value, existingProperty.getFlags(), locationFactory, existingProperty, putFlags);
+                    newShape = strategy.defineProperty(oldShape, key, value, existingProperty.getFlags(), null, existingProperty, putFlags);
                     property = newShape.getProperty(key);
                 }
             }
@@ -1431,7 +1428,7 @@ abstract class DynamicObjectLibraryImpl {
                 } else {
                     int propertyFlags = Flags.getPropertyFlags(putFlags);
                     LayoutStrategy strategy = oldShape.getLayout().getStrategy();
-                    return strategy.defineProperty(oldShape, cachedKey, value, propertyFlags, getLocationFactory(strategy, putFlags));
+                    return strategy.defineProperty(oldShape, cachedKey, value, propertyFlags, null, putFlags);
                 }
             }
 
@@ -1439,7 +1436,7 @@ abstract class DynamicObjectLibraryImpl {
                 if (Flags.getPropertyFlags(putFlags) != property.getFlags()) {
                     int propertyFlags = Flags.getPropertyFlags(putFlags);
                     LayoutStrategy strategy = oldShape.getLayout().getStrategy();
-                    return strategy.defineProperty(oldShape, cachedKey, value, propertyFlags, getLocationFactory(strategy, putFlags));
+                    return strategy.defineProperty(oldShape, cachedKey, value, propertyFlags, null, putFlags);
                 }
             }
 
@@ -1448,13 +1445,13 @@ abstract class DynamicObjectLibraryImpl {
                 // generalize
                 assert oldShape == ACCESS.getShape(object);
                 LayoutStrategy strategy = oldShape.getLayout().getStrategy();
-                ShapeImpl newShape = strategy.definePropertyGeneralize(oldShape, property, value, getLocationFactory(strategy, putFlags), putFlags);
+                ShapeImpl newShape = strategy.definePropertyGeneralize(oldShape, property, value, null, putFlags);
                 assert newShape != oldShape;
                 return newShape;
             } else if (location.isDeclared()) {
                 // redefine declared
                 LayoutStrategy strategy = oldShape.layout.getStrategy();
-                return strategy.defineProperty(oldShape, cachedKey, value, property.getFlags(), strategy.getDefaultLocationFactory());
+                return strategy.defineProperty(oldShape, cachedKey, value, property.getFlags(), null, putFlags);
             } else {
                 // set existing
                 assert location.canSet(value);
