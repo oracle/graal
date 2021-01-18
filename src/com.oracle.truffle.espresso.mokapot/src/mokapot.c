@@ -1524,14 +1524,14 @@ LibEspresso *load_libespresso(const char* lib_path) {
 
     OS_DL_HANDLE libespresso = os_dl_open(espresso_path);
     if (libespresso == NULL) {
-        fprintf(stderr, "Failed to open %s: %s" OS_NEWLINE_STR, lib_path, os_dl_error());
+        fprintf(stderr, "Failed to open %s: %s" OS_NEWLINE_STR, espresso_path, os_dl_error());
         return NULL;
     }
 
 #define BIND_LIBESPRESSO(X) \
     X ## _fn_t X =  os_dl_sym(libespresso, #X); \
     if (X == NULL) {                                \
-        fprintf(stderr, "%s does not contain the expected libespresso interface: missing " #X OS_NEWLINE_STR, lib_path); \
+        fprintf(stderr, "%s does not contain the expected libespresso interface: missing " #X OS_NEWLINE_STR, espresso_path); \
         return NULL; \
     }
 
