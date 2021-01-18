@@ -546,79 +546,95 @@ public class BytecodeParser implements GraphBuilderContext {
         protected void processPlaceholderFrameStates(boolean isCompilationRoot) {
             StructuredGraph graph = parser.getGraph();
             graph.getDebug().dump(DebugContext.DETAILED_LEVEL, graph, "Before processPlaceholderFrameStates in %s", parser.method);
-            for (Node node : graph.getNewNodes(mark)) {
-                if (node instanceof FrameState) {
-                    FrameState frameState = (FrameState) node;
-                    if (BytecodeFrame.isPlaceholderBci(frameState.bci)) {
-                        if (frameState.bci == BytecodeFrame.AFTER_BCI) {
-                            if (parser.getInvokeReturnType() == null) {
-                                // A frame state in a root compiled intrinsic.
-                                assert isCompilationRoot;
-                                FrameState newFrameState = graph.add(new FrameState(BytecodeFrame.INVALID_FRAMESTATE_BCI));
-                                frameState.replaceAndDelete(newFrameState);
-                            } else {
-                                JavaKind returnKind = parser.getInvokeReturnType().getJavaKind();
-                                FrameStateBuilder frameStateBuilder = parser.frameState;
-                                assert !frameState.rethrowException();
-                                if (frameState.stackSize() != 0) {
-                                    ValueNode returnVal = frameState.stackAt(0);
-                                    if (!ReturnToCallerData.containsReturnValue(returnDataList, returnVal)) {
-                                        throw new GraalError("AFTER_BCI frame state within a sub-parse has a non-return value on the stack: %s", returnVal);
-                                    }
-
-                                    // Swap the top-of-stack value with the return value
-                                    ValueNode tos = frameStateBuilder.pop(returnKind);
-                                    assert tos.getStackKind() == returnVal.getStackKind();
-                                    FrameState newFrameState = frameStateBuilder.create(parser.stream.nextBCI(), parser.getNonIntrinsicAncestor(), false, new JavaKind[]{returnKind},
-                                                    new ValueNode[]{returnVal});
-                                    frameState.replaceAndDelete(newFrameState);
-                                    newFrameState.setNodeSourcePosition(frameState.getNodeSourcePosition());
-                                    frameStateBuilder.push(returnKind, tos);
-                                } else if (returnKind != JavaKind.Void) {
-                                    handleReturnMismatch(graph, frameState);
-                                } else {
-                                    // An intrinsic for a void method.
-                                    FrameState newFrameState = frameStateBuilder.create(parser.stream.nextBCI(), null);
-                                    newFrameState.setNodeSourcePosition(frameState.getNodeSourcePosition());
-                                    frameState.replaceAndDelete(newFrameState);
+            for (FrameState frameState : graph.getNewNodes(mark).filter(FrameState.class)) {
+                if (BytecodeFrame.isPlaceholderBci(frameState.bci)) {
+                    if (frameState.bci == BytecodeFrame.AFTER_BCI) {
+                        if (parser.getInvokeReturnType() == null) {
+                            // A frame state in a root compiled intrinsic.
+                            assert isCompilationRoot;
+                            FrameState newFrameState = graph.add(new FrameState(BytecodeFrame.INVALID_FRAMESTATE_BCI));
+                            frameState.replaceAndDelete(newFrameState);
+                        } else {
+                            JavaKind returnKind = parser.getInvokeReturnType().getJavaKind();
+                            FrameStateBuilder frameStateBuilder = parser.frameState;
+                            assert !frameState.rethrowException();
+                            if (frameState.stackSize() != 0) {
+                                ValueNode returnVal = frameState.stackAt(0);
+                                if (!ReturnToCallerData.containsReturnValue(returnDataList, returnVal)) {
+                                    throw new GraalError("AFTER_BCI frame state within a sub-parse has a non-return value on the stack: %s", returnVal);
                                 }
-                            }
-                        } else if (frameState.bci == BytecodeFrame.BEFORE_BCI) {
-                            if (stateBefore == null) {
-                                stateBefore = graph.start().stateAfter();
-                            }
-                            if (stateBefore != frameState) {
-                                frameState.replaceAndDelete(stateBefore);
-                            }
-                        } else if (frameState.bci == BytecodeFrame.AFTER_EXCEPTION_BCI || (frameState.bci == BytecodeFrame.UNWIND_BCI && !callee.isSynchronized())) {
-                            // This is a frame state for the entry point to an exception
-                            // dispatcher in an intrinsic. For example, the invoke denoting
-                            // a partial intrinsic exit will have an edge to such a
-                            // dispatcher if the profile for the original invoke being
-                            // intrinsified indicates an exception was seen. As per JVM
-                            // bytecode semantics, the interpreter expects a single
-                            // value on the stack on entry to an exception handler,
-                            // namely the exception object.
-                            assert frameState.rethrowException();
-                            ValueNode exceptionValue = frameState.stackAt(0);
-                            FrameStateBuilder dispatchState = parser.frameState.copy();
-                            dispatchState.clearStack();
-                            dispatchState.push(JavaKind.Object, exceptionValue);
-                            dispatchState.setRethrowException(true);
-                            for (Node usage : frameState.usages()) {
-                                FrameState newFrameState = dispatchState.create(parser.bci(), (StateSplit) usage);
+
+                                // Swap the top-of-stack value with the return value
+                                ValueNode tos = frameStateBuilder.pop(returnKind);
+                                assert tos.getStackKind() == returnVal.getStackKind();
+                                FrameState newFrameState = frameStateBuilder.create(parser.stream.nextBCI(), parser.getNonIntrinsicAncestor(), false, new JavaKind[]{returnKind},
+                                                new ValueNode[]{returnVal});
                                 frameState.replaceAndDelete(newFrameState);
                                 newFrameState.setNodeSourcePosition(frameState.getNodeSourcePosition());
+                                frameStateBuilder.push(returnKind, tos);
+                            } else if (returnKind != JavaKind.Void) {
+                                handleReturnMismatch(graph, frameState);
+                            } else {
+                                // An intrinsic for a void method.
+                                FrameState newFrameState = frameStateBuilder.create(parser.stream.nextBCI(), null);
+                                newFrameState.setNodeSourcePosition(frameState.getNodeSourcePosition());
+                                frameState.replaceAndDelete(newFrameState);
                             }
-                        } else if (frameState.bci == BytecodeFrame.UNWIND_BCI) {
-                            if (graph.getGuardsStage().allowsFloatingGuards()) {
-                                throw GraalError.shouldNotReachHere("Cannot handle this UNWIND_BCI");
-                            }
-                            // hope that by construction, there are no fixed guard after this unwind
-                            // and before an other state split
-                        } else {
-                            assert frameState.bci == BytecodeFrame.INVALID_FRAMESTATE_BCI : frameState.bci;
                         }
+                    } else if (frameState.bci == BytecodeFrame.BEFORE_BCI) {
+                        if (stateBefore == null) {
+                            stateBefore = graph.start().stateAfter();
+                        }
+                        if (stateBefore != frameState) {
+                            frameState.replaceAndDelete(stateBefore);
+                        }
+                    } else if (frameState.bci == BytecodeFrame.AFTER_EXCEPTION_BCI || (frameState.bci == BytecodeFrame.UNWIND_BCI && !callee.isSynchronized())) {
+                        // This is a frame state for the entry point to an exception
+                        // dispatcher in an intrinsic. For example, the invoke denoting
+                        // a partial intrinsic exit will have an edge to such a
+                        // dispatcher if the profile for the original invoke being
+                        // intrinsified indicates an exception was seen. As per JVM
+                        // bytecode semantics, the interpreter expects a single
+                        // value on the stack on entry to an exception handler,
+                        // namely the exception object.
+                        assert frameState.rethrowException();
+                        ValueNode exceptionValue = frameState.stackAt(0);
+                        ExceptionObjectNode exceptionNode = (ExceptionObjectNode) GraphUtil.unproxify(exceptionValue);
+                        FrameStateBuilder dispatchState = parser.frameState.copy();
+                        dispatchState.clearStack();
+                        dispatchState.push(JavaKind.Object, exceptionValue);
+                        dispatchState.setRethrowException(true);
+
+                        if (frameState.hasExactlyOneUsage()) {
+                            FrameState newFrameState = dispatchState.create(parser.bci(), exceptionNode);
+                            newFrameState.setNodeSourcePosition(frameState.getNodeSourcePosition());
+                            frameState.replaceAndDelete(newFrameState);
+                        } else {
+                            for (Node usage : frameState.usages().snapshot()) {
+                                FrameState newFrameState = dispatchState.create(parser.bci(), (StateSplit) usage);
+                                newFrameState.setNodeSourcePosition(frameState.getNodeSourcePosition());
+                                usage.replaceAllInputs(frameState, newFrameState);
+                            }
+                            frameState.safeDelete();
+                        }
+
+                        /*
+                         * To enable any needed modifications for the exception object with its new
+                         * state, finishInstruction must be called.
+                         */
+                        FixedNode originalNext = exceptionNode.next();
+                        exceptionNode.setNext(null);
+                        FixedWithNextNode lastInstruction = parser.finishInstruction(exceptionNode, dispatchState);
+                        lastInstruction.setNext(originalNext);
+
+                    } else if (frameState.bci == BytecodeFrame.UNWIND_BCI) {
+                        if (graph.getGuardsStage().allowsFloatingGuards()) {
+                            throw GraalError.shouldNotReachHere("Cannot handle this UNWIND_BCI");
+                        }
+                        // hope that by construction, there are no fixed guard after this unwind
+                        // and before an other state split
+                    } else {
+                        assert frameState.bci == BytecodeFrame.INVALID_FRAMESTATE_BCI : frameState.bci;
                     }
                 }
             }
