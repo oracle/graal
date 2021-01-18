@@ -257,6 +257,14 @@ local scala_dacapo_warmup_benchmark(env, guest_jvm_config='default', extra_args=
     extra_args=extra_args
   );
 
+local smoke_tests(env) =
+  clone_build_run(env, hello_world_args) +
+  if std.startsWith(env, 'jvm') then {} else {
+    run+: [
+      _mx(env, ['--strict-compliance', 'gate', '--strict-mode', '--tags', 'exit']),
+    ],
+  };
+
 # GraalVM Installables
 local graalvm_installables(ee) = {
   local dynamic_imports = if ee then '/vm-enterprise,/substratevm-enterprise,/tools-enterprise' else '/vm,/substratevm,/tools',
@@ -344,7 +352,7 @@ local awfy = 'awfy:*';
                                                                                   },
 
     jdk8_gate_linux                       + gate_espresso(allow_warnings=true)  + { environment+: {
-                                                                                      GATE_TAGS:       'build,unittest,exit',
+                                                                                      GATE_TAGS:       'build,unittest',
                                                                                       DYNAMIC_IMPORTS: '/vm,truffleruby'
                                                                                     },
                                                                                     name: 'espresso-gate-unittest-jdk8-linux-amd64'
@@ -367,17 +375,17 @@ local awfy = 'awfy:*';
                                                                                   },
 
     // Hello World! should run in all supported configurations.
-    jdk8_gate_linux               + clone_build_run('jvm-ce',    hello_world_args)                        + {name: 'espresso-gate-jvm-ce-hello-world-jdk8-linux-amd64'},
-    jdk8_gate_linux               + clone_build_run('native-ce', hello_world_args)                        + {name: 'espresso-gate-native-ce-hello-world-jdk8-linux-amd64'},
-    jdk8_gate_linux               + clone_build_run('native-ee', hello_world_args)                        + {name: 'espresso-gate-native-ee-hello-world-jdk8-linux-amd64'},
-    jdk8_gate_darwin              + clone_build_run('native-ce', hello_world_args)                        + {name: 'espresso-gate-native-ce-hello-world-jdk8-darwin-amd64'},
-    jdk8_gate_darwin              + clone_build_run('native-ee', hello_world_args)                        + {name: 'espresso-gate-native-ee-hello-world-jdk8-darwin-amd64'},
-    jdk8_gate_windows             + clone_build_run('native-ce', hello_world_args)                        + {name: 'espresso-gate-native-ce-hello-world-jdk8-windows-amd64'},
-    jdk8_gate_windows             + clone_build_run('native-ee', hello_world_args)                        + {name: 'espresso-gate-native-ee-hello-world-jdk8-windows-amd64'},
-    jdk11_gate_linux              + clone_build_run('jvm-ce',    hello_world_args)                        + {name: 'espresso-gate-jvm-ce-hello-world-jdk11-linux-amd64'},
-    jdk11_gate_linux              + clone_build_run('native-ce', hello_world_args)                        + {name: 'espresso-gate-native-ce-hello-world-jdk11-linux-amd64'},
-    jdk11_gate_linux              + clone_build_run('native-ee', hello_world_args)                        + {name: 'espresso-gate-native-ee-hello-world-jdk11-linux-amd64'},
-    jdk11_gate_windows            + clone_build_run('native-ee', hello_world_args)                        + {name: 'espresso-gate-native-ee-hello-world-jdk11-windows-amd64'},
+    jdk8_gate_linux               + smoke_tests('jvm-ce')                                                 + {name: 'espresso-gate-jvm-ce-hello-world-jdk8-linux-amd64'},
+    jdk8_gate_linux               + smoke_tests('native-ce')                                              + {name: 'espresso-gate-native-ce-hello-world-jdk8-linux-amd64'},
+    jdk8_gate_linux               + smoke_tests('native-ee')                                              + {name: 'espresso-gate-native-ee-hello-world-jdk8-linux-amd64'},
+    jdk8_gate_darwin              + smoke_tests('native-ce')                                              + {name: 'espresso-gate-native-ce-hello-world-jdk8-darwin-amd64'},
+    jdk8_gate_darwin              + smoke_tests('native-ee')                                              + {name: 'espresso-gate-native-ee-hello-world-jdk8-darwin-amd64'},
+    jdk8_gate_windows             + smoke_tests('native-ce')                                              + {name: 'espresso-gate-native-ce-hello-world-jdk8-windows-amd64'},
+    jdk8_gate_windows             + smoke_tests('native-ee')                                              + {name: 'espresso-gate-native-ee-hello-world-jdk8-windows-amd64'},
+    jdk11_gate_linux              + smoke_tests('jvm-ce')                                                 + {name: 'espresso-gate-jvm-ce-hello-world-jdk11-linux-amd64'},
+    jdk11_gate_linux              + smoke_tests('native-ce')                                              + {name: 'espresso-gate-native-ce-hello-world-jdk11-linux-amd64'},
+    jdk11_gate_linux              + smoke_tests('native-ee')                                              + {name: 'espresso-gate-native-ee-hello-world-jdk11-linux-amd64'},
+    jdk11_gate_windows            + smoke_tests('native-ee')                                              + {name: 'espresso-gate-native-ee-hello-world-jdk11-windows-amd64'},
 
     // AWFY peak perf. benchmarks (post-merge)
     jdk8_bench_linux              + espresso_benchmark('jvm-ce', awfy)                                    + {name: 'espresso-bench-jvm-ce-awfy-jdk8-linux-amd64'},
