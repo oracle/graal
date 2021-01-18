@@ -142,8 +142,8 @@ public final class Arguments {
                         handler.handleVMOption(optionString);
                     } else if (optionString.startsWith("-XX:")) {
                         handler.handleXXArg(optionString);
-                    } else if (optionString.equals("--help:vm")) {
-                        handler.helpVM();
+                    } else if (optionString.startsWith("--help:")) {
+                        handler.help(optionString);
                     } else if (isExperimentalFlag(optionString)) {
                         // skip: previously handled
                     } else if (optionString.equals("--polyglot")) {

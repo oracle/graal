@@ -90,7 +90,7 @@ class Native {
     }
 
     void printNativeHelp() {
-        handler.printOptionCategory("Native VM options:");
+        handler.printRaw("Native VM options:");
         SortedMap<String, OptionDescriptor> sortedOptions = new TreeMap<>();
         for (OptionDescriptor descriptor : getVMOptions()) {
             if (!descriptor.isDeprecated()) {
@@ -210,7 +210,7 @@ class Native {
     }
 
     private void printCompilerOptions() {
-        handler.printOptionCategory("Compiler options:");
+        handler.printRaw("Compiler options:");
         SortedMap<String, OptionDescriptor> sortedOptions = new TreeMap<>();
         for (OptionDescriptor descriptor : getCompilerOptions()) {
             if (!descriptor.isDeprecated()) {
