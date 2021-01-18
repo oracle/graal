@@ -824,6 +824,16 @@ public abstract class Shape {
     public abstract Layout getLayout();
 
     /**
+     * Get the shape's layout class.
+     *
+     * @see Shape.Builder#layout(Class)
+     * @since 21.1
+     */
+    public Class<? extends DynamicObject> getLayoutClass() {
+        return getLayout().getType();
+    }
+
+    /**
      * Get the shape's shared data.
      *
      * @see Shape.Builder#sharedData(Object)
