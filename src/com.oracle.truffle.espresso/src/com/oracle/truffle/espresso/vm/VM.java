@@ -730,12 +730,14 @@ public final class VM extends NativeEnv implements ContextAccess {
     // region JNI Invocation Interface
     @VmImpl
     public int DestroyJavaVM() {
+        int result = DetachCurrentThread();
         try {
-            getContext().destroyVM(false);
+            EspressoContext context = getContext();
+            context.destroyVM(!context.ExitHost);
         } catch (EspressoExitException exit) {
             // expected
         }
-        return JNI_OK;
+        return result;
     }
 
     /*
@@ -786,6 +788,11 @@ public final class VM extends NativeEnv implements ContextAccess {
         if (currentThread == null) {
             return JNI_OK;
         }
+        getLogger().fine(() -> {
+            Meta meta = getMeta();
+            String guestName = Target_java_lang_Thread.getThreadName(meta, currentThread);
+            return "DetachCurrentThread: " + guestName;
+        });
         // HotSpot will wait forever if the current VM this thread was attached to has exited
         // Should we reproduce this behaviour?
 
@@ -814,8 +821,10 @@ public final class VM extends NativeEnv implements ContextAccess {
                     meta.java_lang_Thread_dispatchUncaughtException.invokeDirect(currentThread, pendingException);
                 } catch (EspressoException e) {
                     String exception = e.getExceptionObject().getKlass().getExternalName();
-                    String threadName = meta.toHostString((StaticObject) meta.java_lang_Thread_name.get(currentThread));
+                    String threadName = Target_java_lang_Thread.getThreadName(meta, currentThread);
                     context.getLogger().warning(String.format("Exception: %s thrown from the UncaughtExceptionHandler in thread \"%s\"", exception, threadName));
+                } catch (EspressoExitException e) {
+                    // ignore
                 }
             }
 
@@ -2428,7 +2437,7 @@ public final class VM extends NativeEnv implements ContextAccess {
             StaticObject thread = StaticObject.NULL;
 
             for (int j = 0; j < activeThreads.length; ++j) {
-                if ((long) meta.java_lang_Thread_tid.get(activeThreads[j]) == id) {
+                if (Target_java_lang_Thread.getThreadId(meta, activeThreads[j]) == id) {
                     thread = activeThreads[j];
                     break;
                 }
@@ -2686,7 +2695,7 @@ public final class VM extends NativeEnv implements ContextAccess {
             StaticObject[] activeThreads = getContext().getActiveThreads();
             threadIds = InterpreterToVM.allocatePrimitiveArray((byte) JavaKind.Long.getBasicType(), activeThreads.length, getMeta());
             for (int j = 0; j < activeThreads.length; ++j) {
-                long tid = (long) getMeta().java_lang_Thread_tid.get(activeThreads[j]);
+                long tid = Target_java_lang_Thread.getThreadId(getMeta(), activeThreads[j]);
                 getInterpreterToVM().setArrayLong(tid, j, threadIds);
             }
         }
@@ -2706,7 +2715,7 @@ public final class VM extends NativeEnv implements ContextAccess {
         StaticObject thread = StaticObject.NULL;
 
         for (int j = 0; j < activeThreads.length; ++j) {
-            if ((long) getMeta().java_lang_Thread_tid.get(activeThreads[j]) == threadId) {
+            if (Target_java_lang_Thread.getThreadId(getMeta(), activeThreads[j]) == threadId) {
                 thread = activeThreads[j];
                 break;
             }
@@ -2740,7 +2749,7 @@ public final class VM extends NativeEnv implements ContextAccess {
             StaticObject thread = StaticObject.NULL;
 
             for (int j = 0; j < activeThreads.length; ++j) {
-                if ((long) getMeta().java_lang_Thread_tid.get(activeThreads[j]) == id) {
+                if (Target_java_lang_Thread.getThreadId(getMeta(), activeThreads[j]) == id) {
                     thread = activeThreads[j];
                     break;
                 }

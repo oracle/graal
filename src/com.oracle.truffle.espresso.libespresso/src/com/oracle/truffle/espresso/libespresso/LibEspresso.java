@@ -84,9 +84,22 @@ public class LibEspresso {
         ObjectHandle contextHandle = javaVM.getFunctions().getContext();
         Context context = ObjectHandles.getGlobal().get(contextHandle);
         if (context == null) {
+            STDERR.println("Cannot enter context: no context found");
             return JNIErrors.JNI_ERR();
         }
         context.enter();
+        return JNIErrors.JNI_OK();
+    }
+
+    @CEntryPoint(name = "Espresso_LeaveContext")
+    static int leaveContext(@SuppressWarnings("unused") IsolateThread thread, JNIJavaVM javaVM) {
+        ObjectHandle contextHandle = javaVM.getFunctions().getContext();
+        Context context = ObjectHandles.getGlobal().get(contextHandle);
+        if (context == null) {
+            STDERR.println("Cannot leave context: no context found");
+            return JNIErrors.JNI_ERR();
+        }
+        context.leave();
         return JNIErrors.JNI_OK();
     }
 
@@ -95,5 +108,29 @@ public class LibEspresso {
         ObjectHandle contextHandle = javaVM.getFunctions().getContext();
         ObjectHandles.getGlobal().destroy(contextHandle);
         return JNIErrors.JNI_OK();
+    }
+
+    @CEntryPoint(name = "Espresso_Exit")
+    static void exit(@SuppressWarnings("unused") IsolateThread thread, JNIJavaVM javaVM) {
+        ObjectHandle contextHandle = javaVM.getFunctions().getContext();
+        Context context = ObjectHandles.getGlobal().get(contextHandle);
+        Value exitValue = context.eval("java", "<ExitCode>");
+        int exitCode;
+        if (!exitValue.fitsInInt()) {
+            STDERR.println("Cannot retrieve exit code");
+            exitCode = 1;
+        } else {
+            exitCode = exitValue.asInt();
+        }
+        context.leave();
+        try {
+            context.close();
+        } catch (Throwable t) {
+            t.printStackTrace();
+            if (exitCode == 0) {
+                exitCode = 1;
+            }
+        }
+        System.exit(exitCode);
     }
 }

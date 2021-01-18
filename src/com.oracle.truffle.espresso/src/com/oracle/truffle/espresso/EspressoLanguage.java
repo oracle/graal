@@ -55,6 +55,7 @@ import com.oracle.truffle.espresso.nodes.BytecodeNode;
 import com.oracle.truffle.espresso.nodes.EspressoRootNode;
 import com.oracle.truffle.espresso.nodes.EspressoStatementNode;
 import com.oracle.truffle.espresso.nodes.interop.DestroyVMNode;
+import com.oracle.truffle.espresso.nodes.interop.ExitCodeNode;
 import com.oracle.truffle.espresso.nodes.quick.QuickNode;
 import com.oracle.truffle.espresso.runtime.EspressoContext;
 import com.oracle.truffle.espresso.runtime.EspressoExitException;
@@ -238,6 +239,10 @@ public final class EspressoLanguage extends TruffleLanguage<EspressoContext> {
         String contents = request.getSource().getCharacters().toString();
         if (DestroyVMNode.EVAL_NAME.equals(contents)) {
             RootNode node = new DestroyVMNode(this);
+            return Truffle.getRuntime().createCallTarget(node);
+        }
+        if (ExitCodeNode.EVAL_NAME.equals(contents)) {
+            RootNode node = new ExitCodeNode(this);
             return Truffle.getRuntime().createCallTarget(node);
         }
         throw new UnsupportedOperationException("Unsupported operation. Use the language bindings to load classes e.g. context.getBindings(\"" + ID + "\").getMember(\"java.lang.Integer\")");

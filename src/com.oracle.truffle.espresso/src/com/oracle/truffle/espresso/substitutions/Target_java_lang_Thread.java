@@ -247,6 +247,11 @@ public final class Target_java_lang_Thread {
                 hostThread.interrupt();
             }
             context.registerThread(hostThread, self);
+            context.getLogger().fine(() -> {
+                String guestName = Target_java_lang_Thread.getThreadName(meta, self);
+                long guestId = Target_java_lang_Thread.getThreadId(meta, self);
+                return String.format("Thread.start0: [HOST:%s, %d], [GUEST:%s, %d]", hostThread.getName(), hostThread.getId(), guestName, guestId);
+            });
             hostThread.start();
         } else {
             EspressoLanguage.getCurrentContext().getLogger().warning(
@@ -266,7 +271,7 @@ public final class Target_java_lang_Thread {
             } else {
                 meta.java_lang_Thread_exit.invokeDirect(self);
             }
-        } catch (EspressoException e) {
+        } catch (EspressoException | EspressoExitException e) {
             // just drop it
         }
         self.getLock().lock();
@@ -281,6 +286,22 @@ public final class Target_java_lang_Thread {
         EspressoContext context = meta.getContext();
         // Cleanup.
         context.unregisterThread(self);
+    }
+
+    public static String getThreadName(Meta meta, StaticObject thread) {
+        if (thread == null) {
+            return "<unknown>";
+        } else {
+            return meta.toHostString((StaticObject) meta.java_lang_Thread_name.get(thread));
+        }
+    }
+
+    public static long getThreadId(Meta meta, StaticObject thread) {
+        if (thread == null) {
+            return -1;
+        } else {
+            return (long) meta.java_lang_Thread_tid.get(thread);
+        }
     }
 
     @TruffleBoundary
