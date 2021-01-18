@@ -43,6 +43,7 @@ import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentMap;
 
 import org.graalvm.compiler.debug.DebugContext;
+import org.graalvm.compiler.debug.DebugContext.Activation;
 import org.graalvm.compiler.debug.DebugContext.Scope;
 import org.graalvm.compiler.debug.Indent;
 import org.graalvm.compiler.nodes.ValueNode;
@@ -238,7 +239,8 @@ class JNIRegistrationSupport extends JNIRegistrationUtil implements GraalFeature
         }
 
         DebugContext debug = accessImpl.getDebugContext();
-        try (Scope s = debug.scope("link")) {
+        try (Scope s = debug.scope("link");
+                        Activation a = debug.activate()) {
             if (FileUtils.executeCommand(linkerCommand) != 0) {
                 VMError.shouldNotReachHere();
             }
