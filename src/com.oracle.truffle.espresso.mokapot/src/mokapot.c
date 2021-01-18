@@ -1530,7 +1530,7 @@ LibEspresso *load_libespresso(const char* lib_path) {
 
 #define BIND_LIBESPRESSO(X) \
     X ## _fn_t X =  os_dl_sym(libespresso, #X); \
-    if (#X == NULL) {                                \
+    if (X == NULL) {                                \
         fprintf(stderr, "%s does not contain the expected libespresso interface: missing " #X OS_NEWLINE_STR, lib_path); \
         return NULL; \
     }
