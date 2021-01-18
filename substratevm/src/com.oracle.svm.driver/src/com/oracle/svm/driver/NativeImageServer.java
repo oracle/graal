@@ -24,6 +24,15 @@
  */
 package com.oracle.svm.driver;
 
+import com.oracle.svm.core.SubstrateUtil;
+import com.oracle.svm.core.option.SubstrateOptionsParser;
+import com.oracle.svm.core.util.ClasspathUtils;
+import com.oracle.svm.hosted.server.NativeImageBuildClient;
+import com.oracle.svm.hosted.server.NativeImageBuildServer;
+import com.oracle.svm.hosted.server.SubstrateServerMessage.ServerCommand;
+import org.graalvm.nativeimage.ProcessProperties;
+import org.graalvm.word.WordFactory;
+
 import java.io.BufferedReader;
 import java.io.ByteArrayOutputStream;
 import java.io.File;
@@ -55,16 +64,6 @@ import java.util.Properties;
 import java.util.concurrent.TimeUnit;
 import java.util.function.Consumer;
 import java.util.stream.Collectors;
-
-import org.graalvm.nativeimage.ProcessProperties;
-import org.graalvm.word.WordFactory;
-
-import com.oracle.svm.core.SubstrateUtil;
-import com.oracle.svm.core.option.SubstrateOptionsParser;
-import com.oracle.svm.core.util.ClasspathUtils;
-import com.oracle.svm.hosted.server.NativeImageBuildClient;
-import com.oracle.svm.hosted.server.NativeImageBuildServer;
-import com.oracle.svm.hosted.server.SubstrateServerMessage.ServerCommand;
 
 final class NativeImageServer extends NativeImage {
 
@@ -171,7 +170,7 @@ final class NativeImageServer extends NativeImage {
             return exitCode;
         }
 
-        int sendBuildRequest(LinkedHashSet<Path> imageCP, LinkedHashSet<String> imageArgs) {
+        int sendBuildRequest(LinkedHashSet<Path> imageCP, ArrayList<String> imageArgs) {
             int[] requestStatus = {1};
             withLockDirFileChannel(serverDir, lockFileChannel -> {
                 boolean abortedOnce = false;
@@ -738,7 +737,7 @@ final class NativeImageServer extends NativeImage {
     }
 
     @Override
-    protected int buildImage(List<String> javaArgs, LinkedHashSet<Path> bcp, LinkedHashSet<Path> cp, LinkedHashSet<String> imageArgs, LinkedHashSet<Path> imagecp) {
+    protected int buildImage(List<String> javaArgs, LinkedHashSet<Path> bcp, LinkedHashSet<Path> cp, ArrayList<String> imageArgs, LinkedHashSet<Path> imagecp) {
         boolean printFlags = imageArgs.stream().anyMatch(arg -> arg.contains(enablePrintFlags) || arg.contains(enablePrintFlagsWithExtraHelp));
         if (useServer && !printFlags && !useDebugAttach()) {
             AbortBuildSignalHandler signalHandler = new AbortBuildSignalHandler();
