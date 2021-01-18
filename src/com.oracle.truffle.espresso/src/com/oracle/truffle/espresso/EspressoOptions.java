@@ -126,7 +126,7 @@ public final class EspressoOptions {
     public static final OptionKey<Path> EspressoHome = new OptionKey<>(EMPTY, PATH_OPTION_TYPE);
 
     @Option(help = "A \" + java.io.File.pathSeparator + \" separated list of directories to search for Espresso's (lib)?jvm.(so|dll|dylib).", //
-            category = OptionCategory.EXPERT, stability = OptionStability.EXPERIMENTAL) //
+                    category = OptionCategory.EXPERT, stability = OptionStability.EXPERIMENTAL) //
     public static final OptionKey<List<Path>> JVMLibraryPath = new OptionKey<>(Collections.emptyList(), PATHS_OPTION_TYPE);
 
     @Option(help = "A \" + java.io.File.pathSeparator + \" separated list of directories, JAR files, and ZIP archives to search for boot class files. These are used in place of the boot class files included in the JDK.", //
