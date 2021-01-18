@@ -12,6 +12,7 @@ This changelog summarizes major changes between Truffle versions relevant to lan
 * Added `@GenerateAOT` to support preparation for AOT specializing nodes. Read the (AOT tutorial)[https://github.com/oracle/graal/blob/master/truffle/docs/AOT.md] to get started with Truffle and AOT compilation.
 * Profiles now can be disabled using `Profile.disable()` and reset using `Profile.reset()`.
 * Added `--engine.CompileAOTOnCreate` option to trigger AOT compilation on call target create.
+* Added `Shape.getLayoutClass()` as a replacement for `Shape.getLayout().getType()`. Returns the DynamicObject subclass provided to `Shape.Builder.layout`.
 
 ## Version 21.0.0
 * If an `AbstractTruffleException` is thrown from the `ContextLocalFactory`, `ContextThreadLocalFactory` or event listener, which is called during the context enter, the excepion interop messages are executed without a context being entered. The event listeners called during the context enter are:
