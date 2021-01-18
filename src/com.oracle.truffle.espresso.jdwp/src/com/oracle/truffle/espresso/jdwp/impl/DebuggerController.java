@@ -127,6 +127,10 @@ public final class DebuggerController implements ContextsListener {
         return options.suspend;
     }
 
+    public boolean isServer() {
+        return options.server;
+    }
+
     public int getListeningPort() {
         return Integer.parseInt(options.port);
     }

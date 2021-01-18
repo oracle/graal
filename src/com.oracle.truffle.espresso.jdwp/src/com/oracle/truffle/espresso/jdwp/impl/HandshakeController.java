@@ -40,25 +40,33 @@ public final class HandshakeController {
      * @param port the listening port that the debugger should attach to
      * @throws IOException
      */
-    public static SocketConnection createSocketConnection(String host, int port, Collection<Thread> activeThreads) throws IOException {
-        ServerSocket serverSocket = new ServerSocket();
-        serverSocket.setSoTimeout(0); // no timeout
-        serverSocket.setReuseAddress(true);
-        if (host == null) {
-            // only allow local host to bind if nothing specified
-            serverSocket.bind(new InetSocketAddress("localhost", port));
-        } else if ("*".equals(host)) {
-            // allow any host to bind
-            serverSocket.bind(new InetSocketAddress((InetAddress) null, port));
-        } else {
-            // allow specific host to bind
-            serverSocket.bind(new InetSocketAddress(host, port));
+    public static SocketConnection createSocketConnection(boolean server, String host, int port, Collection<Thread> activeThreads) throws IOException {
+        String connectionHost = host;
+        if (connectionHost == null) {
+            // only allow local host if nothing specified
+            connectionHost = "localhost";
         }
-        // print to console that we're listening
-        String address = host != null ? host + ":" + port : "" + port;
-        System.out.println("Listening for transport dt_socket at address: " + address);
-        // block until a debugger has accepted the socket
-        Socket connectionSocket = serverSocket.accept();
+        Socket connectionSocket;
+        ServerSocket serverSocket = null;
+        if (server) {
+            serverSocket = new ServerSocket();
+            serverSocket.setSoTimeout(0); // no timeout
+            serverSocket.setReuseAddress(true);
+            if ("*".equals(host)) {
+                // allow any host to bind
+                serverSocket.bind(new InetSocketAddress((InetAddress) null, port));
+            } else {
+                // allow specific host to bind
+                serverSocket.bind(new InetSocketAddress(connectionHost, port));
+            }
+            // print to console that we're listening
+            String address = host != null ? host + ":" + port : "" + port;
+            System.out.println("Listening for transport dt_socket at address: " + address);
+            // block until a debugger has accepted the socket
+            connectionSocket = serverSocket.accept();
+        } else {
+            connectionSocket = new Socket(connectionHost, port);
+        }
 
         if (!handshake(connectionSocket)) {
             throw new IOException("Unable to handshake with debubgger");
