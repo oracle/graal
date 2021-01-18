@@ -180,7 +180,7 @@ public abstract class DynamicObject implements TruffleObject {
     }
 
     private static void verifyShape(Shape shape, Class<? extends DynamicObject> subclass) {
-        Class<? extends DynamicObject> shapeType = shape.getLayout().getType();
+        Class<? extends DynamicObject> shapeType = shape.getLayoutClass();
         if (!(shapeType == subclass || (shapeType.isAssignableFrom(subclass) && DynamicObject.class.isAssignableFrom(shapeType)))) {
             CompilerDirectives.transferToInterpreterAndInvalidate();
             throw illegalShapeType(shapeType, subclass);
@@ -192,7 +192,7 @@ public abstract class DynamicObject implements TruffleObject {
     }
 
     private static void verifyShapeLegacy(Shape shape, Class<? extends DynamicObject> subclass) {
-        Class<? extends DynamicObject> shapeType = shape.getLayout().getType();
+        Class<? extends DynamicObject> shapeType = shape.getLayoutClass();
         if (!(shapeType == subclass || (shapeType.isAssignableFrom(subclass) && DynamicObject.class.isAssignableFrom(shapeType)))) {
             CompilerDirectives.transferToInterpreterAndInvalidate();
             throw illegalShapeType(shapeType, subclass);
@@ -235,7 +235,7 @@ public abstract class DynamicObject implements TruffleObject {
     }
 
     private boolean assertSetShape(Shape s) {
-        Class<? extends DynamicObject> layoutType = s.getLayout().getType();
+        Class<? extends DynamicObject> layoutType = s.getLayoutClass();
         assert layoutType.isInstance(this) : illegalShapeType(layoutType, this.getClass());
         return true;
     }
