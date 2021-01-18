@@ -21,18 +21,33 @@
  * questions.
  */
 
-package com.oracle.truffle.espresso.libespresso;
+package com.oracle.truffle.espresso.libespresso.arghelper;
 
 import static com.oracle.truffle.espresso.libespresso.Arguments.abort;
+import static com.oracle.truffle.espresso.libespresso.arghelper.ArgumentsHandler.isBooleanOption;
 
 import java.util.EnumSet;
+import java.util.Map;
+import java.util.SortedMap;
+import java.util.TreeMap;
 
 import org.graalvm.nativeimage.RuntimeOptions;
 import org.graalvm.options.OptionDescriptor;
 import org.graalvm.options.OptionDescriptors;
-import org.graalvm.options.OptionType;
 
+import com.oracle.truffle.espresso.libespresso.Arguments;
+
+/**
+ * Handles communication with the host VM for passing arguments from the command line.
+ */
 class Native {
+
+    Native(ArgumentsHandler handler) {
+        this.handler = handler;
+    }
+
+    private final ArgumentsHandler handler;
+
     private String argPrefix;
 
     private OptionDescriptors compilerOptionDescriptors;
@@ -56,10 +71,6 @@ class Native {
         argPrefix = fromXXHandling ? "-" : "--vm.";
     }
 
-    private String formatArg(String arg) {
-        return argPrefix + arg;
-    }
-
     void setNativeOption(String arg) {
         if (arg.startsWith("Dgraal.")) {
             setGraalStyleRuntimeOption(arg.substring("Dgraal.".length()));
@@ -76,6 +87,48 @@ class Native {
         } else {
             throw abort("Unrecognized option: " + formatArg(arg) + "'.");
         }
+    }
+
+    void printNativeHelp() {
+        handler.printOptionCategory("Native VM options:");
+        SortedMap<String, OptionDescriptor> sortedOptions = new TreeMap<>();
+        for (OptionDescriptor descriptor : getVMOptions()) {
+            if (!descriptor.isDeprecated()) {
+                sortedOptions.put(descriptor.getName(), descriptor);
+            }
+        }
+        for (Map.Entry<String, OptionDescriptor> entry : sortedOptions.entrySet()) {
+            OptionDescriptor descriptor = entry.getValue();
+            String helpMsg = descriptor.getHelp();
+            if (isBooleanOption(descriptor)) {
+                Boolean val = (Boolean) descriptor.getKey().getDefaultValue();
+                if (helpMsg.length() != 0) {
+                    helpMsg += ' ';
+                }
+                if (val == null || !val) {
+                    helpMsg += "Default: - (disabled).";
+                } else {
+                    helpMsg += "Default: + (enabled).";
+                }
+                launcherOption("--vm.XX:\u00b1" + entry.getKey(), helpMsg);
+            } else {
+                Object def = descriptor.getKey().getDefaultValue();
+                if (def instanceof String) {
+                    def = "\"" + def + "\"";
+                }
+                launcherOption("--vm.XX:" + entry.getKey() + "=" + def, helpMsg);
+            }
+        }
+        printCompilerOptions();
+        printBasicNativeHelp();
+    }
+
+    private void launcherOption(String s, String helpMsg) {
+        handler.printLauncherOption(s, helpMsg);
+    }
+
+    private String formatArg(String arg) {
+        return argPrefix + arg;
     }
 
     private void setGraalStyleRuntimeOption(String arg) {
@@ -103,7 +156,7 @@ class Native {
         }
     }
 
-    public void setSystemProperty(String arg) {
+    private static void setSystemProperty(String arg) {
         int eqIdx = arg.indexOf('=');
         String key;
         String value;
@@ -117,7 +170,7 @@ class Native {
         System.setProperty(key, value);
     }
 
-    public void setRuntimeOption(String arg) {
+    private void setRuntimeOption(String arg) {
         int eqIdx = arg.indexOf('=');
         String key;
         Object value;
@@ -156,6 +209,34 @@ class Native {
         return descriptor;
     }
 
+    private void printCompilerOptions() {
+        handler.printOptionCategory("Compiler options:");
+        SortedMap<String, OptionDescriptor> sortedOptions = new TreeMap<>();
+        for (OptionDescriptor descriptor : getCompilerOptions()) {
+            if (!descriptor.isDeprecated()) {
+                sortedOptions.put(descriptor.getName(), descriptor);
+            }
+        }
+        for (Map.Entry<String, OptionDescriptor> entry : sortedOptions.entrySet()) {
+            OptionDescriptor descriptor = entry.getValue();
+            String helpMsg = descriptor.getHelp();
+            Object def = descriptor.getKey().getDefaultValue();
+            if (def instanceof String) {
+                def = '"' + (String) def + '"';
+            }
+            launcherOption("--vm.Dgraal." + entry.getKey() + "=" + def, helpMsg);
+        }
+    }
+
+    private void printBasicNativeHelp() {
+        launcherOption("--vm.D<property>=<value>", "Sets a system property in the host VM.");
+        /* The default values are *copied* from com.oracle.svm.core.genscavenge.HeapPolicy */
+        launcherOption("--vm.Xmn<value>", "Sets the maximum size of the young generation, in bytes. Default: 256MB.");
+        launcherOption("--vm.Xmx<value>", "Sets the maximum size of the heap, in bytes. Default: MaximumHeapSizePercent * physical memory.");
+        launcherOption("--vm.Xms<value>", "Sets the minimum size of the heap, in bytes. Default: 2 * maximum young generation size.");
+        launcherOption("--vm.Xss<value>", "Sets the size of each thread stack, in bytes. Default: OS-dependent.");
+    }
+
     /* Is an option that starts with an 'X' one of the recognized X options? */
     private static boolean isXOption(String arg) {
         return (arg.startsWith("Xmn") || arg.startsWith("Xms") || arg.startsWith("Xmx") || arg.startsWith("Xss"));
@@ -170,12 +251,7 @@ class Native {
         }
     }
 
-    private static boolean isBooleanOption(OptionDescriptor descriptor) {
-        return descriptor.getKey().getType().equals(OptionType.defaultType(Boolean.class));
-    }
-
     private static Arguments.ArgumentException unknownOption(String key) {
-        throw abort("Unknown native option: " + key + "."
-        /* + "Use --help:vm to list available options." */);
+        throw abort("Unknown native option: " + key + "." + "Use --help:vm to list available options.");
     }
 }
