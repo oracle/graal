@@ -1,5 +1,6 @@
-# mx --dy /vm,/compiler --components="Espresso,GraalVM compiler" --disable-polyglot graalvm-show
+# mx --dy /vm,/compiler --components="Espresso,GraalVM compiler" --disable-polyglot --disable-libpolyglot graalvm-show
 
 DYNAMIC_IMPORTS=/vm,/compiler
 COMPONENTS=Espresso,GraalVM compiler
 DISABLE_POLYGLOT=true
+DISABLE_LIBPOLYGLOT=true
