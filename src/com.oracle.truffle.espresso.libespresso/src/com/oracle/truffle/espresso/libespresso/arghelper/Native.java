@@ -87,7 +87,7 @@ class Native {
     }
 
     void printNativeHelp() {
-        System.out.println("Native VM options:");
+        handler.printOptionCategory("Native VM options:");
         SortedMap<String, OptionDescriptor> sortedOptions = new TreeMap<>();
         for (OptionDescriptor descriptor : getVMOptions()) {
             if (!descriptor.isDeprecated()) {
@@ -121,7 +121,7 @@ class Native {
     }
 
     private void launcherOption(String s, String helpMsg) {
-        handler.launcherOption(s, helpMsg);
+        handler.printLauncherOption(s, helpMsg);
     }
 
     private String formatArg(String arg) {
@@ -153,7 +153,7 @@ class Native {
         }
     }
 
-    private void setSystemProperty(String arg) {
+    private static void setSystemProperty(String arg) {
         int eqIdx = arg.indexOf('=');
         String key;
         String value;
@@ -207,7 +207,7 @@ class Native {
     }
 
     private void printCompilerOptions() {
-        System.out.println("Compiler options:");
+        handler.printOptionCategory("Compiler options:");
         SortedMap<String, OptionDescriptor> sortedOptions = new TreeMap<>();
         for (OptionDescriptor descriptor : getCompilerOptions()) {
             if (!descriptor.isDeprecated()) {

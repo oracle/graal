@@ -46,22 +46,16 @@ public class ArgumentsHandler {
     public static final int LAUNCHER_OPTIONS_INDENT = 45;
 
     private PrintStream out = System.out;
-    private PrintStream err = System.err;
-
-    private final Context.Builder builder;
 
     private final Native nativeAccess;
     private final PolyglotArgs polyglotAccess;
     private final ModulePropertyCounter modulePropertyCounter;
-
-    private final StringBuilder helpMsg = new StringBuilder();
 
     private final boolean experimental;
 
     private boolean helpVM = false;
 
     public ArgumentsHandler(Context.Builder builder, JNIJavaVMInitArgs args) {
-        this.builder = builder;
         this.nativeAccess = new Native(this);
         this.modulePropertyCounter = new ModulePropertyCounter(builder);
         this.polyglotAccess = new PolyglotArgs(builder);
@@ -148,7 +142,11 @@ public class ArgumentsHandler {
         helpVM = true;
     }
 
-    void launcherOption(String option, String description) {
+    void printOptionCategory(String category) {
+        out.println(category);
+    }
+
+    void printLauncherOption(String option, String description) {
         out.println(getHelpLine(option, description));
     }
 
