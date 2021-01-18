@@ -1182,6 +1182,8 @@ class HeaderProject(AbstractSulongNativeProject):  # pylint: disable=too-many-an
     def getBuildTask(self, args):
         return HeaderBuildTask(args, self)
 
+    def isPlatformDependent(self):
+        return False
 
 _suite.toolchain = ToolchainConfig('native', 'SULONG_TOOLCHAIN_LAUNCHERS', 'SULONG_BOOTSTRAP_TOOLCHAIN',
                                    # unfortunately, we cannot define those in the suite.py because graalvm component
