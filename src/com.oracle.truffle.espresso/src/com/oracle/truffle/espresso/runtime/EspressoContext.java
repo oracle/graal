@@ -30,6 +30,8 @@ import java.io.OutputStream;
 import java.lang.ref.ReferenceQueue;
 import java.nio.file.Path;
 import java.util.Arrays;
+import java.util.HashSet;
+import java.util.Set;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.function.Function;
@@ -48,6 +50,7 @@ import com.oracle.truffle.api.TruffleLanguage;
 import com.oracle.truffle.api.TruffleLogger;
 import com.oracle.truffle.api.instrumentation.AllocationReporter;
 import com.oracle.truffle.api.interop.TruffleObject;
+import com.oracle.truffle.api.nodes.LanguageInfo;
 import com.oracle.truffle.api.source.Source;
 import com.oracle.truffle.espresso.EspressoBindings;
 import com.oracle.truffle.espresso.EspressoLanguage;
@@ -229,12 +232,10 @@ public final class EspressoContext {
         this.SpecCompliancyMode = env.getOptions().get(EspressoOptions.SpecCompliancy);
         this.livenessAnalysisMode = env.getOptions().get(EspressoOptions.LivenessAnalysis);
         this.EnableManagement = env.getOptions().get(EspressoOptions.EnableManagement);
-        if (!env.isCreateThreadAllowed()) {
-            if (env.getOptions().hasBeenSet(EspressoOptions.MultiThreaded)) {
-                throw new IllegalStateException("Creating threads is not allowed by the env; cannot set 'MultiThreaded=true'");
-            } else {
-                this.MultiThreaded = false;
-            }
+        Set<String> singleThreadedLanguages = knownSingleThreadedLanguages(env);
+        if (!env.getOptions().hasBeenSet(EspressoOptions.MultiThreaded) && !singleThreadedLanguages.isEmpty()) {
+            logger.warning(() -> "Disabling multi-threading since the context seems to contain single-threaded languages: " + singleThreadedLanguages);
+            this.MultiThreaded = false;
         } else {
             this.MultiThreaded = env.getOptions().get(EspressoOptions.MultiThreaded);
         }
@@ -243,6 +244,20 @@ public final class EspressoContext {
         // Isolated (native) namespaces via dlmopen is only supported on Linux.
         this.IsolatedNamespace = env.getOptions().get(EspressoOptions.UseTruffleNFIIsolatedNamespace) && OS.getCurrent() == OS.Linux;
 
+    }
+
+    private static Set<String> knownSingleThreadedLanguages(TruffleLanguage.Env env) {
+        Set<String> singleThreaded = new HashSet<>();
+        for (LanguageInfo languageInfo : env.getPublicLanguages().values()) {
+            switch (languageInfo.getId()) {
+                case "wasm":    // fallthrough
+                case "js":      // fallthrough
+                case "R":       // fallthrough
+                case "python":  // it's configurable for python, be shy
+                    singleThreaded.add(languageInfo.getId());
+            }
+        }
+        return singleThreaded;
     }
 
     public ClassRegistries getRegistries() {

@@ -253,7 +253,7 @@ class EspressoShutdownHandler implements ContextAccess {
                 // ignore
             }
         } else {
-            assert !hostToGuestReferenceDrainThread.isAlive();
+            assert hostToGuestReferenceDrainThread == null || !hostToGuestReferenceDrainThread.isAlive();
         }
 
         context.getTimers().report(context.getLogger());

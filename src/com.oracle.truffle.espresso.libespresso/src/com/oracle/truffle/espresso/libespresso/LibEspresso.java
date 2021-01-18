@@ -110,6 +110,16 @@ public class LibEspresso {
         return JNIErrors.JNI_OK();
     }
 
+    @CEntryPoint(name = "Espresso_CloseContext")
+    static int closeContext(@SuppressWarnings("unused") IsolateThread thread, JNIJavaVM javaVM) {
+        ObjectHandle contextHandle = javaVM.getFunctions().getContext();
+        Context context = ObjectHandles.getGlobal().get(contextHandle);
+        ObjectHandles.getGlobal().destroy(contextHandle);
+        context.leave();
+        context.close();
+        return JNIErrors.JNI_OK();
+    }
+
     @CEntryPoint(name = "Espresso_Exit")
     static void exit(@SuppressWarnings("unused") IsolateThread thread, JNIJavaVM javaVM) {
         ObjectHandle contextHandle = javaVM.getFunctions().getContext();
