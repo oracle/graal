@@ -269,7 +269,7 @@ local smoke_tests(env) =
 local graalvm_installables(ee) = {
   local dynamic_imports = if ee then '/vm-enterprise,/substratevm-enterprise,/tools-enterprise' else '/vm,/substratevm,/tools',
   local repo_id = if ee then 'graal-us' else 'lafo',
-  local base_cmd_line = ['mx', '--dynamicimports=' + dynamic_imports, '--native-images=espresso,lib:espresso', '--exclude-components=nju,npi', '--disable-installables=ni,niee,nil,llp'],
+  local base_cmd_line = ['mx', '--dynamicimports=' + dynamic_imports, '--native-images=espresso,lib:espresso', '--exclude-components=elau,nju,npi', '--disable-installables=ni,niee,nil,llp'],
   local maybe_clone_graal_enterprise = if ee then [ clone_repo('graal-enterprise') ] else [],
   run+: [
     clone_repo('graal'),
