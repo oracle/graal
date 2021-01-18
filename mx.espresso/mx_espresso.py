@@ -201,6 +201,7 @@ mx_sdk_vm.register_graalvm_component(mx_sdk_vm.GraalVmLanguage(
     ],
     polyglot_lib_jar_dependencies=['espresso:LIB_ESPRESSO'],
     has_polyglot_lib_entrypoints=True,
+    priority=1,
     post_install_msg="""
 This version of Java on Truffle is experimental. We do not recommended it for production use.
 
@@ -224,6 +225,7 @@ mx_sdk_vm.register_graalvm_component(mx_sdk_vm.GraalVmJreComponent(
     third_party_license_files=[],
     dependencies=['Espresso'],
     support_libraries_distributions=['espresso:ESPRESSO_JVM_SUPPORT'],
+    priority=2,
 ))
 
 mx_sdk_vm.register_graalvm_component(mx_sdk_vm.GraalVmLanguage(
