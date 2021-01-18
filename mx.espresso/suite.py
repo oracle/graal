@@ -542,6 +542,7 @@ suite = {
             ],
             "description": "Espresso polyglot API",
             "license": "UPL",
+            "javadocType": "api",
         },
 
         "DACAPO_SCALA_WARMUP": {
