@@ -31,7 +31,6 @@ from __future__ import print_function
 import mx
 import mx_gate
 import mx_sdk_vm, mx_sdk_vm_impl
-import mx_subst
 import mx_vm_benchmark
 import mx_vm_gate
 
@@ -198,8 +197,11 @@ def mx_register_dynamic_suite_constituents(register_project, register_distributi
                 name='benchmarks.interpreter.llvm.native',
                 results=['interpreter/'],
                 buildEnv={
-                    'NATIVE_LLVM_CC': mx_subst.path_substitutions.substitute('<toolchainGetToolPath:native,CC>'),
+                    'NATIVE_LLVM_CC': '<toolchainGetToolPath:native,CC>',
                 },
+                buildDependencies=[
+                    'sulong:SULONG_BOOTSTRAP_TOOLCHAIN',
+                ],
                 vpath=True,
                 deps=[],
                 workingSets=None,
