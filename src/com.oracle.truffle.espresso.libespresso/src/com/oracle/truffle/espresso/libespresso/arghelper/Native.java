@@ -24,6 +24,7 @@
 package com.oracle.truffle.espresso.libespresso.arghelper;
 
 import static com.oracle.truffle.espresso.libespresso.Arguments.abort;
+import static com.oracle.truffle.espresso.libespresso.arghelper.ArgumentsHandler.isBooleanOption;
 
 import java.util.EnumSet;
 import java.util.Map;
@@ -33,7 +34,6 @@ import java.util.TreeMap;
 import org.graalvm.nativeimage.RuntimeOptions;
 import org.graalvm.options.OptionDescriptor;
 import org.graalvm.options.OptionDescriptors;
-import org.graalvm.options.OptionType;
 
 import com.oracle.truffle.espresso.libespresso.Arguments;
 
@@ -246,10 +246,6 @@ class Native {
         } catch (RuntimeException re) {
             throw abort("Invalid argument: '" + argPrefix + "X" + arg + "' does not specify a valid number.");
         }
-    }
-
-    private static boolean isBooleanOption(OptionDescriptor descriptor) {
-        return descriptor.getKey().getType().equals(OptionType.defaultType(Boolean.class));
     }
 
     private static Arguments.ArgumentException unknownOption(String key) {

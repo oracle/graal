@@ -30,6 +30,8 @@ import java.io.PrintStream;
 import org.graalvm.nativeimage.c.struct.SizeOf;
 import org.graalvm.nativeimage.c.type.CCharPointer;
 import org.graalvm.nativeimage.c.type.CTypeConversion;
+import org.graalvm.options.OptionDescriptor;
+import org.graalvm.options.OptionType;
 import org.graalvm.polyglot.Context;
 import org.graalvm.word.Pointer;
 
@@ -148,6 +150,10 @@ public class ArgumentsHandler {
 
     void launcherOption(String option, String description) {
         out.println(getHelpLine(option, description));
+    }
+
+    static boolean isBooleanOption(OptionDescriptor descriptor) {
+        return descriptor.getKey().getType().equals(OptionType.defaultType(Boolean.class));
     }
 
     private void printHelp() {

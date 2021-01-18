@@ -25,6 +25,7 @@ package com.oracle.truffle.espresso.libespresso.arghelper;
 
 import static com.oracle.truffle.espresso.libespresso.Arguments.abort;
 import static com.oracle.truffle.espresso.libespresso.Arguments.abortExperimental;
+import static com.oracle.truffle.espresso.libespresso.arghelper.ArgumentsHandler.isBooleanOption;
 
 import java.util.logging.Level;
 
@@ -72,9 +73,6 @@ class PolyglotArgs {
             value = arg.substring(eqIdx + 1);
         }
 
-        if (value == null) {
-            value = "true";
-        }
         int index = key.indexOf('.');
         String group = key;
         if (index >= 0) {
@@ -83,6 +81,9 @@ class PolyglotArgs {
         if ("log".equals(group)) {
             if (key.endsWith(".level")) {
                 try {
+                    if (value == null) {
+                        value = "";
+                    }
                     Level.parse(value);
                     builder.option(key, value);
                 } catch (IllegalArgumentException e) {
@@ -98,6 +99,13 @@ class PolyglotArgs {
             descriptor = findOptionDescriptor("java", "java" + "." + key);
             if (descriptor == null) {
                 throw abort(String.format("Unrecognized option: %s%n", arg));
+            }
+        }
+        if (value == null) {
+            if (isBooleanOption(descriptor)) {
+                value = "true";
+            } else {
+                value = "";
             }
         }
         try {
