@@ -32,6 +32,7 @@ import java.util.Collections;
 import java.util.List;
 import java.util.Objects;
 
+import org.graalvm.home.HomeFinder;
 import org.graalvm.options.OptionValues;
 
 import com.oracle.truffle.api.TruffleLogger;
@@ -71,7 +72,6 @@ public interface EspressoProperties {
     abstract class Builder {
         private BootClassPathType version;
         private Path javaHome;
-        private Path espressoHome;
         private List<Path> jvmLibraryPath;
         private List<Path> classpath;
         private List<Path> bootClasspath;
@@ -158,13 +158,8 @@ public interface EspressoProperties {
             return extDirs != null ? extDirs : defaultExtDirs();
         }
 
-        public Builder espressoHome(Path newEspressoHome) {
-            this.espressoHome = newEspressoHome;
-            return this;
-        }
-
         public Path espressoHome() {
-            return espressoHome != null ? espressoHome : defaultEspressoHome();
+            return defaultEspressoHome();
         }
 
         public List<Path> jvmLibraryPath() {
@@ -260,12 +255,6 @@ public interface EspressoProperties {
             javaHome = java8Home;
         }
         builder.javaHome(javaHome);
-
-        if (options.hasBeenSet(EspressoOptions.EspressoHome)) {
-            builder.espressoHome(options.get(EspressoOptions.EspressoHome));
-        } else {
-            builder.espressoHome(Paths.get(language.getEspressoHome()));
-        }
 
         if (options.hasBeenSet(EspressoOptions.JVMLibraryPath)) {
             builder.jvmLibraryPath(options.get(EspressoOptions.JVMLibraryPath));
@@ -414,7 +403,7 @@ abstract class PlatformBuilder extends EspressoProperties.Builder {
 
     @Override
     Path defaultEspressoHome() {
-        throw EspressoError.shouldNotReachHere("Espresso home not defined, use --java.EspressoHome=/path/to/espresso/home");
+        return HomeFinder.getInstance().getLanguageHomes().get(EspressoLanguage.ID);
     }
 }
 

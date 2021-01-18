@@ -121,10 +121,6 @@ public final class EspressoOptions {
                     category = OptionCategory.EXPERT, stability = OptionStability.STABLE) //
     public static final OptionKey<Path> JavaHome = new OptionKey<>(EMPTY, PATH_OPTION_TYPE);
 
-    @Option(help = "Installation directory for Java on Truffle (Espresso) inside a GraalVM.", //
-                    category = OptionCategory.EXPERT, stability = OptionStability.EXPERIMENTAL) //
-    public static final OptionKey<Path> EspressoHome = new OptionKey<>(EMPTY, PATH_OPTION_TYPE);
-
     @Option(help = "A \" + java.io.File.pathSeparator + \" separated list of directories to search for Espresso's (lib)?jvm.(so|dll|dylib).", //
                     category = OptionCategory.EXPERT, stability = OptionStability.EXPERIMENTAL) //
     public static final OptionKey<List<Path>> JVMLibraryPath = new OptionKey<>(Collections.emptyList(), PATHS_OPTION_TYPE);
