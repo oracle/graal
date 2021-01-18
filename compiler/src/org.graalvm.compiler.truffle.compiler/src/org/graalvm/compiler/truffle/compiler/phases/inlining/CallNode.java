@@ -249,6 +249,9 @@ public final class CallNode extends Node implements Comparable<CallNode> {
             public void accept(UnmodifiableEconomicMap<Node, Node> duplicates) {
                 final EconomicMap<Invoke, TruffleCallNode> replacements = EconomicMap.create();
                 for (Invoke original : entry.invokeToTruffleCallNode.getKeys()) {
+                    if (!original.isAlive()) {
+                        continue;
+                    }
                     final TruffleCallNode truffleCallNode = entry.invokeToTruffleCallNode.get(original);
                     Invoke replacement = (Invoke) duplicates.get((Node) original);
                     // TODO after performing truffle tier before inlining the replacement
