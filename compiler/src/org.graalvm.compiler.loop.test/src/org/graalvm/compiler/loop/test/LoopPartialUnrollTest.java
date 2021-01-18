@@ -69,12 +69,15 @@ public class LoopPartialUnrollTest extends GraalCompilerTest {
     @Override
     protected void checkMidTierGraph(StructuredGraph graph) {
         NodeIterable<LoopBeginNode> loops = graph.getNodes().filter(LoopBeginNode.class);
-        for (LoopBeginNode loop : loops) {
-            if (loop.isMainLoop()) {
-                return;
+        // Loops might be optimizable after partial unrolling
+        if (!loops.isEmpty()) {
+            for (LoopBeginNode loop : loops) {
+                if (loop.isMainLoop()) {
+                    return;
+                }
             }
+            fail("expected a main loop");
         }
-        fail("expected a main loop");
     }
 
     public static long sumWithEqualityLimit(int[] text) {

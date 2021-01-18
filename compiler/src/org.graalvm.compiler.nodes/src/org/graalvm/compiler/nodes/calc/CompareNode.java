@@ -33,6 +33,7 @@ import org.graalvm.compiler.core.common.calc.Condition;
 import org.graalvm.compiler.core.common.type.AbstractObjectStamp;
 import org.graalvm.compiler.core.common.type.AbstractPointerStamp;
 import org.graalvm.compiler.core.common.type.IntegerStamp;
+import org.graalvm.compiler.debug.GraalError;
 import org.graalvm.compiler.graph.Node;
 import org.graalvm.compiler.graph.NodeClass;
 import org.graalvm.compiler.graph.Position;
@@ -325,6 +326,111 @@ public abstract class CompareNode extends BinaryOpLogicNode implements Canonical
                     CanonicalCondition condition, ValueNode x, ValueNode y, NodeView view) {
         LogicNode result = createCompareNode(constantReflection, metaAccess, options, smallestCompareWidth, condition, x, y, view);
         return (result.graph() == null ? graph.addOrUniqueWithInputs(result) : result);
+    }
+
+    public static LogicNode createAnyCompareNode(Condition condition, ValueNode x, ValueNode y, ConstantReflectionProvider constantReflection) {
+        ValueNode xx = x;
+        ValueNode yy = y;
+        Condition canonicalCondition = condition;
+        if (canonicalCondition.canonicalMirror()) {
+            xx = y;
+            yy = x;
+            canonicalCondition = condition.mirror();
+        }
+        boolean negate = false;
+        if (canonicalCondition.canonicalNegate()) {
+            negate = true;
+            canonicalCondition = canonicalCondition.negate();
+        }
+        CanonicalCondition canon = null;
+        switch (canonicalCondition) {
+            case EQ:
+                canon = CanonicalCondition.EQ;
+                break;
+            case LT:
+                canon = CanonicalCondition.LT;
+                break;
+            case BT:
+                canon = CanonicalCondition.BT;
+                break;
+            default:
+                throw GraalError.shouldNotReachHere();
+        }
+        LogicNode logic = createCompareNode(canon, xx, yy, constantReflection, NodeView.DEFAULT);
+        if (negate) {
+            return LogicNegationNode.create(logic);
+        } else {
+            return logic;
+        }
+    }
+
+    public boolean implies(LogicNode otherLogicNode, boolean thisNegated) {
+        boolean otherNegated = false;
+        LogicNode otherLogic = otherLogicNode;
+        while (otherLogic instanceof LogicNegationNode) {
+            otherLogic = ((LogicNegationNode) otherLogic).getValue();
+            otherNegated = !otherNegated;
+        }
+        if (otherLogic instanceof CompareNode) {
+            CompareNode otherCompare = (CompareNode) otherLogic;
+            return implies(otherCompare, thisNegated, otherNegated);
+        } else {
+            return false;
+        }
+    }
+
+    public boolean implies(CompareNode otherCompare, boolean otherNegated, boolean thisNegated) {
+        CanonicalCondition otherCondition = otherCompare.condition();
+        ValueNode otherX = otherCompare.getX();
+        ValueNode otherY = otherCompare.getY();
+        if (condition() == otherCondition && sameValue(getX(), otherX) && sameValue(getY(), otherY) && thisNegated == otherNegated) {
+            return true;
+        }
+        if ((sameValue(getX(), otherX) && sameValue(getY(), otherY)) || (sameValue(getX(), otherY) && sameValue(getY(), otherX))) {
+            if (condition() == CanonicalCondition.EQ && (otherCondition == CanonicalCondition.LT || otherCondition == CanonicalCondition.BT)) {
+                if (!thisNegated && otherNegated) {
+                    // a == b => !(a < b)
+                    return true;
+                }
+            }
+            if (otherCondition == CanonicalCondition.EQ && (condition() == CanonicalCondition.LT || condition() == CanonicalCondition.BT)) {
+                if (thisNegated && !otherNegated) {
+                    // a < b => a != b
+                    return true;
+                }
+            }
+        }
+        if (sameValue(getX(), otherX) && getY().isJavaConstant() && otherY.isJavaConstant()) {
+            long thisYLong = getY().asJavaConstant().asLong();
+            long otherYLong = otherY.asJavaConstant().asLong();
+            if (condition() == CanonicalCondition.EQ && !thisNegated) {
+                if (otherCondition == CanonicalCondition.EQ) {
+                    if (thisYLong != otherYLong && otherNegated) {
+                        // a == c1 & c1 != c2 => a != c2
+                        return true;
+                    }
+                } else if (otherCondition == CanonicalCondition.LT) {
+                    if (!otherNegated && thisYLong < otherYLong) {
+                        // a == c1 & c1 < c2 => a < c2
+                        return true;
+                    } else if (otherNegated && otherYLong < thisYLong) {
+                        // a == c1 & c2 < c1 => !(a < c2)
+                        return true;
+                    }
+                }
+            }
+        }
+        return false;
+    }
+
+    private static boolean sameValue(ValueNode v1, ValueNode v2) {
+        if (v1 == v2) {
+            return true;
+        }
+        if (v1.isConstant() && v2.isConstant()) {
+            return v1.asConstant().equals(v2.asConstant());
+        }
+        return false;
     }
 
     public static LogicNode createCompareNode(ConstantReflectionProvider constantReflection, MetaAccessProvider metaAccess, OptionValues options, Integer smallestCompareWidth,

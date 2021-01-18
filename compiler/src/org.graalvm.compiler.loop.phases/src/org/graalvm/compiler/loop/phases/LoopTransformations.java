@@ -128,7 +128,7 @@ public abstract class LoopTransformations {
                 }
                 graph.getDebug().dump(DebugContext.VERY_DETAILED_LEVEL, graph, "After peeling loop %s", loop);
                 c.applyIncremental(graph, context, peeledListener.getNodes());
-                loop.invalidateFragments();
+                loop.invalidateFragmentsAndIVs();
                 for (Node n : graph.getNewNodes(newNodes)) {
                     if (n.isAlive() && (n instanceof IfNode || n instanceof SwitchNode || n instanceof FixedGuardNode || n instanceof BeginNode)) {
                         Simplifiable s = (Simplifiable) n;
@@ -618,7 +618,7 @@ public abstract class LoopTransformations {
 
     public static boolean isUnrollableLoop(LoopEx loop) {
         if (!loop.isCounted() || !loop.counted().getCounter().isConstantStride() || !loop.loop().getChildren().isEmpty() || loop.loopBegin().loopEnds().count() != 1 ||
-                        loop.loopBegin().loopExits().count() > 1) {
+                        loop.loopBegin().loopExits().count() > 1 || !loop.counted().canUnrollWithoutProtection()) {
             // loops without exits can be unrolled
             return false;
         }

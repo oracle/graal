@@ -45,10 +45,10 @@ import org.graalvm.compiler.nodes.calc.SubNode;
 
 public class BasicInductionVariable extends InductionVariable {
 
-    private final ValuePhiNode phi;
-    private final ValueNode init;
-    private ValueNode rawStride;
-    private BinaryArithmeticNode<?> op;
+    protected final ValuePhiNode phi;
+    protected final ValueNode init;
+    protected ValueNode rawStride;
+    protected BinaryArithmeticNode<?> op;
 
     public BasicInductionVariable(LoopEx loop, ValuePhiNode phi, ValueNode init, ValueNode rawStride, BinaryArithmeticNode<?> op) {
         super(loop);
@@ -111,7 +111,7 @@ public class BasicInductionVariable extends InductionVariable {
             return rawStride;
         }
         if (op instanceof SubNode) {
-            return graph().unique(new NegateNode(rawStride));
+            return graph().addOrUniqueWithInputs(NegateNode.create(rawStride, NodeView.DEFAULT));
         }
         throw GraalError.shouldNotReachHere();
     }

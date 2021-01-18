@@ -37,8 +37,8 @@ import org.graalvm.compiler.nodes.util.GraphUtil;
 
 public class DerivedScaledInductionVariable extends DerivedInductionVariable {
 
-    private final ValueNode scale;
-    private final ValueNode value;
+    protected final ValueNode scale;
+    protected final ValueNode value;
 
     public DerivedScaledInductionVariable(LoopEx loop, InductionVariable base, ValueNode scale, ValueNode value) {
         super(loop, base);

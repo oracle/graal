@@ -55,17 +55,17 @@ import jdk.vm.ci.meta.ResolvedJavaMethod;
 public class CountedLoopTest extends GraalCompilerTest {
 
     @FunctionalInterface
-    private interface IVProperty {
+    protected interface IVProperty {
         ValueNode get(InductionVariable iv);
     }
 
     @FunctionalInterface
-    private interface StaticIVProperty {
+    protected interface StaticIVProperty {
         long get(InductionVariable iv);
     }
 
     @FunctionalInterface
-    private interface IVPredicate {
+    protected interface IVPredicate {
         boolean test(InductionVariable iv);
     }
 
@@ -73,27 +73,27 @@ public class CountedLoopTest extends GraalCompilerTest {
      * Get a property of an induction variable.
      */
     @SuppressWarnings("unused")
-    private static int get(IVProperty property, StaticIVProperty staticProperty, IVPredicate constantCheck, int iv) {
+    protected static int get(IVProperty property, StaticIVProperty staticProperty, IVPredicate constantCheck, int iv) {
         return iv;
     }
 
     @SuppressWarnings("unused")
-    private static int get(IVProperty property, int iv) {
+    protected static int get(IVProperty property, int iv) {
         return iv;
     }
 
     @SuppressWarnings("unused")
-    private static long get(IVProperty property, StaticIVProperty staticProperty, IVPredicate constantCheck,
+    protected static long get(IVProperty property, StaticIVProperty staticProperty, IVPredicate constantCheck,
                     long iv) {
         return iv;
     }
 
     @SuppressWarnings("unused")
-    private static long get(IVProperty property, long iv) {
+    protected static long get(IVProperty property, long iv) {
         return iv;
     }
 
-    private static class Result {
+    public static class Result {
         public long extremum;
         public long exitValue;
 

@@ -57,13 +57,13 @@ import jdk.vm.ci.meta.SpeculationLog;
 
 public class CountedLoopInfo {
 
-    private final LoopEx loop;
-    private InductionVariable iv;
-    private ValueNode end;
-    private boolean oneOff;
-    private AbstractBeginNode body;
-    private IfNode ifNode;
-    private final boolean unsigned;
+    protected final LoopEx loop;
+    protected InductionVariable iv;
+    protected ValueNode end;
+    protected boolean oneOff;
+    protected AbstractBeginNode body;
+    protected IfNode ifNode;
+    protected final boolean unsigned;
 
     protected CountedLoopInfo(LoopEx loop, InductionVariable iv, IfNode ifNode, ValueNode end, boolean oneOff, AbstractBeginNode body, boolean unsigned) {
         assert iv.direction() != null;
@@ -420,5 +420,9 @@ public class CountedLoopInfo {
 
     public IntegerStamp getStamp() {
         return (IntegerStamp) iv.valueNode().stamp(NodeView.DEFAULT);
+    }
+
+    public boolean canUnrollWithoutProtection() {
+        return true;
     }
 }
