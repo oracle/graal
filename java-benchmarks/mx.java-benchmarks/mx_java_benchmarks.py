@@ -85,6 +85,10 @@ mx.update_commands(_suite, {
         lambda args: createBenchmarkShortcut("renaissance", args),
         '[<benchmarks>|*] [-- [VM options] [-- [Renaissance options]]]'
     ],
+    'shopcart': [
+        lambda args: createBenchmarkShortcut("shopcart", args),
+        '[-- [VM options] [-- [ShopCart options]]]'
+    ],
     'awfy': [
         lambda args: createBenchmarkShortcut("awfy", args),
         '[<benchmarks>|*] [-- [VM options] ] [-- [AWFY options] ]]'
@@ -164,6 +168,38 @@ class TemporaryWorkdirMixin(mx_benchmark.VmBenchmarkSuite):
 
     def parserNames(self):
         return super(TemporaryWorkdirMixin, self).parserNames() + ["temporary_workdir_parser"]
+
+
+class ShopCartBenchmarkSuite(mx_benchmark.JMeterBenchmarkSuite):
+    """Benchmark suite for the ShopCart benchmark."""
+
+    def name(self):
+        return "shopcart"
+
+    def group(self):
+        return "Graal"
+
+    def subgroup(self):
+        return "graal-compiler"
+
+    def version(self):
+        return "0.1"
+
+    def benchmarkList(self, bmSuiteArgs):
+        return ["tiny", "small", "large"]
+
+    def applicationDist(self):
+        shopcartCache = mx.library("SHOPCART_" + self.version(), True).get_path(True)
+        return os.path.join(shopcartCache, "shopcart-" + self.version())
+
+    def applicationPath(self):
+        return os.path.join(self.applicationDist(), "shopcart-" + self.version() + "-all.jar")
+
+    def workloadPath(self, benchmark):
+        return os.path.join(self.applicationDist(), "workloads", benchmark + ".jmx")
+
+
+mx_benchmark.add_bm_suite(ShopCartBenchmarkSuite())
 
 
 class BaseDaCapoBenchmarkSuite(mx_benchmark.JavaBenchmarkSuite, mx_benchmark.AveragingBenchmarkMixin, TemporaryWorkdirMixin):
