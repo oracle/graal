@@ -164,6 +164,19 @@ def verify_ci(args):
 #########################
 add_gate_runner(_suite, _espresso_gate_runner)
 
+
+if mx_sdk_vm.base_jdk_version() > 8:
+    if mx.is_windows():
+        lib_espresso_cp = '%GRAALVM_HOME%\lib\graalvm\lib-espresso.jar'
+    else:
+        lib_espresso_cp = '${GRAALVM_HOME}/lib/graalvm/lib-espresso.jar'
+else:
+    if mx.is_windows():
+        lib_espresso_cp = '%GRAALVM_HOME%\jre\lib\graalvm\lib-espresso.jar'
+    else:
+        lib_espresso_cp = '${GRAALVM_HOME}/jre/lib/graalvm/lib-espresso.jar'
+
+
 mx_sdk_vm.register_graalvm_component(mx_sdk_vm.GraalVmLanguage(
     suite=_suite,
     name='Espresso',
@@ -188,6 +201,16 @@ mx_sdk_vm.register_graalvm_component(mx_sdk_vm.GraalVmLanguage(
     ],
     polyglot_lib_jar_dependencies=['espresso:LIB_ESPRESSO'],
     has_polyglot_lib_entrypoints=True,
+    post_install_msg="""
+This version of Espresso is experimental. We do not recommended it for production use.
+
+Usage: java -truffle [-options] class [args...]
+           (to execute a class)
+    or java -truffle [-options] -jar jarfile [args...]
+           (to execute a jar file)
+
+To rebuild the polyglot library:
+    gu rebuild-images libpolyglot -cp """ + lib_espresso_cp,
 ))
 
 mx_sdk_vm.register_graalvm_component(mx_sdk_vm.GraalVmJreComponent(
