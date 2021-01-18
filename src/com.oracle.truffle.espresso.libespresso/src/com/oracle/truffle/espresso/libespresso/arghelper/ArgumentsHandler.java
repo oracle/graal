@@ -49,7 +49,7 @@ public class ArgumentsHandler {
      */
     public static final int LAUNCHER_OPTIONS_INDENT = 45;
 
-    private PrintStream out = System.out;
+    private static final PrintStream out = System.out;
 
     private final Native nativeAccess;
     private final PolyglotArgs polyglotAccess;
@@ -180,6 +180,7 @@ public class ArgumentsHandler {
     private void printHelp() {
         if (helpVM) {
             nativeAccess.printNativeHelp();
+            System.exit(0);
         }
     }
 

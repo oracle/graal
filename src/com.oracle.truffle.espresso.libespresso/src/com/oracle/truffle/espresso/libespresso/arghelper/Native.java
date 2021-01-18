@@ -229,7 +229,7 @@ class Native {
     }
 
     private void printBasicNativeHelp() {
-        launcherOption("--vm.D<property>=<value>", "Sets a system property");
+        launcherOption("--vm.D<property>=<value>", "Sets a system property in the host VM.");
         /* The default values are *copied* from com.oracle.svm.core.genscavenge.HeapPolicy */
         launcherOption("--vm.Xmn<value>", "Sets the maximum size of the young generation, in bytes. Default: 256MB.");
         launcherOption("--vm.Xmx<value>", "Sets the maximum size of the heap, in bytes. Default: MaximumHeapSizePercent * physical memory.");
