@@ -25,6 +25,8 @@ package com.oracle.truffle.espresso.libespresso.arghelper;
 
 import static com.oracle.truffle.espresso.libespresso.Arguments.abort;
 
+import java.io.PrintStream;
+
 import org.graalvm.nativeimage.c.struct.SizeOf;
 import org.graalvm.nativeimage.c.type.CCharPointer;
 import org.graalvm.nativeimage.c.type.CTypeConversion;
@@ -36,16 +38,29 @@ import com.oracle.truffle.espresso.libespresso.jniapi.JNIJavaVMInitArgs;
 import com.oracle.truffle.espresso.libespresso.jniapi.JNIJavaVMOption;
 
 public class ArgumentsHandler {
+    /**
+     * Default option description indentation.
+     */
+    public static final int LAUNCHER_OPTIONS_INDENT = 45;
+
+    private PrintStream out = System.out;
+    private PrintStream err = System.err;
+
     private final Context.Builder builder;
 
-    private final Native nativeAccess = new Native();
+    private final Native nativeAccess;
     private final PolyglotArgs polyglotAccess;
     private final ModulePropertyCounter modulePropertyCounter;
 
+    private final StringBuilder helpMsg = new StringBuilder();
+
     private final boolean experimental;
+
+    private boolean helpVM = false;
 
     public ArgumentsHandler(Context.Builder builder, JNIJavaVMInitArgs args) {
         this.builder = builder;
+        this.nativeAccess = new Native(this);
         this.modulePropertyCounter = new ModulePropertyCounter(builder);
         this.polyglotAccess = new PolyglotArgs(builder);
         this.experimental = checkExperimental(args);
@@ -123,6 +138,65 @@ public class ArgumentsHandler {
     }
 
     public void argumentProcessingDone() {
+        printHelp();
         polyglotAccess.argumentProcessingDone();
+    }
+
+    public void helpVM() {
+        helpVM = true;
+    }
+
+    void launcherOption(String option, String description) {
+        out.println(getHelpLine(option, description));
+    }
+
+    private void printHelp() {
+        if (helpVM) {
+            nativeAccess.printNativeHelp();
+        }
+    }
+
+    private static String getHelpLine(String option, String description) {
+        return getHelpLine(option, description, 2, LAUNCHER_OPTIONS_INDENT);
+    }
+
+    private static String getHelpLine(String option, String description, int indentStart, int optionWidth) {
+        String indent = spaces(indentStart);
+        String desc = wrap(description != null ? description : "");
+        String nl = System.lineSeparator();
+        String[] descLines = desc.split(nl);
+        StringBuilder toPrint = new StringBuilder();
+        if (option.length() >= optionWidth && description != null) {
+            toPrint.append(indent).append(option).append(nl).append(indent).append(spaces(optionWidth)).append(descLines[0]);
+        } else {
+            toPrint.append(indent).append(option).append(spaces(optionWidth - option.length())).append(descLines[0]);
+        }
+        for (int i = 1; i < descLines.length; i++) {
+            toPrint.append('\n').append(indent).append(spaces(optionWidth)).append(descLines[i]);
+        }
+        return toPrint.toString();
+    }
+
+    private static String spaces(int length) {
+        return new String(new char[length]).replace('\0', ' ');
+    }
+
+    private static String wrap(String s) {
+        final int width = 120;
+        StringBuilder sb = new StringBuilder(s);
+        int cursor = 0;
+        while (cursor + width < sb.length()) {
+            int i = sb.lastIndexOf(" ", cursor + width);
+            if (i == -1 || i < cursor) {
+                i = sb.indexOf(" ", cursor + width);
+            }
+            if (i != -1) {
+                sb.replace(i, i + 1, System.lineSeparator());
+                cursor = i;
+            } else {
+                break;
+            }
+        }
+        return sb.toString();
     }
 }

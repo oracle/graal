@@ -142,6 +142,8 @@ public final class Arguments {
                         handler.handleVMOption(optionString);
                     } else if (optionString.startsWith("-XX:")) {
                         handler.handleXXArg(optionString);
+                    } else if (optionString.equals("--help:vm")) {
+                        handler.helpVM();
                     } else if (isExperimentalFlag(optionString)) {
                         // skip: previously handled
                     } else if (optionString.equals("--polyglot")) {
@@ -178,6 +180,7 @@ public final class Arguments {
         }
 
         builder.option("java.Classpath", classpath);
+
         handler.argumentProcessingDone();
         return JNIErrors.JNI_OK();
     }
