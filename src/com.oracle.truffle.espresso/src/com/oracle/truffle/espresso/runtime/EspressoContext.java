@@ -229,7 +229,15 @@ public final class EspressoContext {
         this.SpecCompliancyMode = env.getOptions().get(EspressoOptions.SpecCompliancy);
         this.livenessAnalysisMode = env.getOptions().get(EspressoOptions.LivenessAnalysis);
         this.EnableManagement = env.getOptions().get(EspressoOptions.EnableManagement);
-        this.MultiThreaded = env.getOptions().get(EspressoOptions.MultiThreaded);
+        if (!env.isCreateThreadAllowed()) {
+            if (env.getOptions().hasBeenSet(EspressoOptions.MultiThreaded)) {
+                throw new IllegalStateException("Creating threads is not allowed by the env; cannot set 'MultiThreaded=true'");
+            } else {
+                this.MultiThreaded = false;
+            }
+        } else {
+            this.MultiThreaded = env.getOptions().get(EspressoOptions.MultiThreaded);
+        }
         this.Polyglot = env.getOptions().get(EspressoOptions.Polyglot);
 
         // Isolated (native) namespaces via dlmopen is only supported on Linux.
