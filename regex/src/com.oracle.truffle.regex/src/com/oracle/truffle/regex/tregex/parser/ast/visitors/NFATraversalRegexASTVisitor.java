@@ -127,18 +127,21 @@ public abstract class NFATraversalRegexASTVisitor {
      */
     private final LongArrayBuffer curPath = new LongArrayBuffer(8);
     /**
-     * insideLoops is the set of looping groups that we are currently inside of. We need to maintain
-     * this in order to detect infinite loops in the NFA traversal. If we enter a looping group,
-     * traverse it without encountering a CharacterClass node or a MatchFound node and arrive back
-     * at the same group, then we are bound to loop like this forever. Using insideLoops, we can
-     * detect this situation and proceed with the search using another alternative. For example, in
-     * the RegexAST {@code ((|[a])*|)*}, which corresponds to the regex {@code /(a*?)* /}, we can
+     * insideLoops is the multiset of looping groups that we are currently inside of. We need to
+     * maintain this in order to detect infinite loops in the NFA traversal. If we enter a looping
+     * group, traverse it without encountering a CharacterClass node or a MatchFound node and arrive
+     * back at the same group, then we are bound to loop like this forever. Using insideLoops, we
+     * can detect this situation and proceed with the search using another alternative. For example,
+     * in the RegexAST {@code ((|[a])*|)*}, which corresponds to the regex {@code /(a*?)* /}, we can
      * traverse the inner loop, {@code (|[a])*}, without hitting any CharacterClass node by choosing
      * the first alternative and we will then arrive back at the outer loop. There, we detect an
      * infinite loop, which causes us to backtrack and choose the second alternative in the inner
-     * loop, leading us to the CharacterClass node {@code [a]}.
+     * loop, leading us to the CharacterClass node {@code [a]}. <br>
+     * This is a multiset, because in some cases, we want to admit one empty traversal through a
+     * loop, but still disallow any further iterations to prevent infinite loops. The value stored
+     * in this map tells us how many times we have entered the current search.
      */
-    private final StateSet<RegexAST, Group> insideLoops;
+    private final EconomicMap<RegexASTNode, Integer> insideLoops;
     /**
      * This set is needed to make sure that a quantified term cannot match the empty string, as is
      * specified in step 2a of RepeatMatcher from ECMAScript draft 2018, chapter 21.2.2.5.1.
@@ -173,7 +176,7 @@ public abstract class NFATraversalRegexASTVisitor {
 
     protected NFATraversalRegexASTVisitor(RegexAST ast) {
         this.ast = ast;
-        this.insideLoops = StateSet.create(ast);
+        this.insideLoops = EconomicMap.create();
         this.insideEmptyGuardGroup = StateSet.create(ast);
         this.targetsVisited = StateSet.create(ast);
         this.lookAroundsOnPath = StateSet.create(ast);
@@ -381,7 +384,11 @@ public abstract class NFATraversalRegexASTVisitor {
     }
 
     private boolean doAdvance() {
-        if (cur.isDead() || insideLoops.contains(cur)) {
+        // emptyLoopIterations tells us how many extra empty iterations of a loop do we admit.
+        // In Ruby, we admit 1, while in other dialects, we admit 0. This extra iteration
+        // will not match any characters, but it might store an empty string in a capture group.
+        int extraEmptyLoopIterations = ast.getOptions().getFlavor() == RubyFlavor.INSTANCE ? 1 : 0;
+        if (cur.isDead() || insideLoops.get(cur, 0) > extraEmptyLoopIterations) {
             return retreat();
         }
         if (cur.isSequence()) {
@@ -405,7 +412,7 @@ public abstract class NFATraversalRegexASTVisitor {
                 } else {
                     pushGroupExit(parent);
                 }
-                insideLoops.remove(parent);
+                unregisterInsideLoop(parent);
                 return advanceTerm(parent);
             } else {
                 cur = forward ? sequence.getFirstTerm() : sequence.getLastTerm();
@@ -418,7 +425,7 @@ public abstract class NFATraversalRegexASTVisitor {
                 insideEmptyGuardGroup.add(group);
             }
             if (group.isLoop()) {
-                insideLoops.add(group);
+                registerInsideLoop(group);
             }
             // This path will only be hit when visiting a group for the first time. All groups
             // must have at least one child sequence, so no check is needed here.
@@ -468,6 +475,19 @@ public abstract class NFATraversalRegexASTVisitor {
 
     private boolean isGroupExitOnPath(Group group) {
         return !curPath.isEmpty() && pathIsGroupExit(curPath.peek()) && pathGetNode(curPath.peek()) == group;
+    }
+
+    private void registerInsideLoop(Group group) {
+        insideLoops.put(group, insideLoops.get(group, 0) + 1);
+    }
+
+    private void unregisterInsideLoop(Group group) {
+        int depth = insideLoops.get(group, 0);
+        if (depth == 1) {
+            insideLoops.removeKey(group);
+        } else if (depth > 1) {
+            insideLoops.put(group, depth - 1);
+        }
     }
 
     private void addToVisitedSet(StateSet<RegexAST, RegexASTNode> visitedSet) {
@@ -546,7 +566,7 @@ public abstract class NFATraversalRegexASTVisitor {
                         return true;
                     } else {
                         assert noEmptyGuardGroupEnterOnPath(group);
-                        insideLoops.remove(group);
+                        unregisterInsideLoop(group);
                         insideEmptyGuardGroup.remove(group);
                     }
                 }
