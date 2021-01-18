@@ -34,4 +34,9 @@ final class TrivialOnlyInliningPolicy implements InliningPolicy {
             }
         }
     }
+
+    @Override
+    public boolean optimizeOnExpand() {
+        return false;
+    }
 }

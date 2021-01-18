@@ -104,7 +104,7 @@ public final class CallNode extends Node implements Comparable<CallNode> {
         callTree.add(root);
         root.ir = request.graph;
         root.policyData = callTree.getPolicy().newCallNodeData(root);
-        final GraphManager.Entry entry = callTree.getGraphManager().peRoot();
+        final GraphManager.Entry entry = callTree.getGraphManager().peRoot(callTree.getPolicy().optimizeOnExpand());
         EconomicMap<Invoke, TruffleCallNode> invokeToTruffleCallNode = entry.invokeToTruffleCallNode;
         root.verifyTrivial(entry);
         addChildren(root, invokeToTruffleCallNode);
@@ -223,7 +223,7 @@ public final class CallNode extends Node implements Comparable<CallNode> {
         assert ir == null;
         GraphManager.Entry entry;
         try {
-            entry = getCallTree().getGraphManager().pe(truffleAST);
+            entry = getCallTree().getGraphManager().pe(truffleAST, getPolicy().optimizeOnExpand());
         } catch (PermanentBailoutException e) {
             state = State.BailedOut;
             return;

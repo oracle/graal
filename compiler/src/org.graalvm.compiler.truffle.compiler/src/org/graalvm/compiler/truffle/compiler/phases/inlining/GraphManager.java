@@ -60,13 +60,16 @@ final class GraphManager {
         this.graphCacheForInlining = partialEvaluator.getOrCreateEncodedGraphCache();
     }
 
-    Entry pe(CompilableTruffleAST truffleAST) {
+    Entry pe(CompilableTruffleAST truffleAST, boolean optimizeOnExpand) {
         Entry entry = irCache.get(truffleAST);
         if (entry == null) {
             final PEAgnosticInlineInvokePlugin plugin = newPlugin();
             final PartialEvaluator.Request request = newRequest(truffleAST, false);
             request.graph.getAssumptions().record(new TruffleAssumption(truffleAST.getNodeRewritingAssumptionConstant()));
             partialEvaluator.doGraphPE(request, plugin, graphCacheForInlining);
+            if (optimizeOnExpand) {
+                partialEvaluator.truffleTier(request);
+            }
             entry = new Entry(request.graph, plugin);
             irCache.put(truffleAST, entry);
         }
@@ -89,9 +92,12 @@ final class GraphManager {
         return new PEAgnosticInlineInvokePlugin(rootRequest.inliningPlan, partialEvaluator);
     }
 
-    Entry peRoot() {
+    Entry peRoot(boolean optimizeOnExpand) {
         final PEAgnosticInlineInvokePlugin plugin = newPlugin();
         partialEvaluator.doGraphPE(rootRequest, plugin, graphCacheForInlining);
+        if (optimizeOnExpand) {
+            partialEvaluator.truffleTier(rootRequest);
+        }
         return new Entry(rootRequest.graph, plugin);
     }
 

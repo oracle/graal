@@ -47,4 +47,8 @@ public interface InliningPolicy {
 
     default void run(CallTree tree) {
     }
+
+    default boolean optimizeOnExpand() {
+        return true;
+    }
 }

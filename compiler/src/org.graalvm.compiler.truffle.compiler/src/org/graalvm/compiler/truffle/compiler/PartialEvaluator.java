@@ -554,12 +554,9 @@ public abstract class PartialEvaluator {
                         new TruffleSourceLanguagePositionProvider(request.inliningPlan),
                         graphCache);
         decoder.decode(request.graph.method(), request.graph.isSubstitution(), request.graph.trackNodeSourcePosition());
-        if (request.options.get(PolyglotCompilerOptions.InliningOptimizeOnExpand)) {
-            truffleTier(request);
-        }
     }
 
-    private void truffleTier(Request request) {
+    public void truffleTier(Request request) {
         try (DebugCloseable a = TruffleConvertDeoptimizeTimer.start(request.debug)) {
             new ConvertDeoptimizeToGuardPhase().apply(request.graph, request.highTierContext);
         }

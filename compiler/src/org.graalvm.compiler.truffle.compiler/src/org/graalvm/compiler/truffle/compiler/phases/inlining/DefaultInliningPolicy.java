@@ -49,9 +49,16 @@ final class DefaultInliningPolicy implements InliningPolicy {
     };
     private final OptionValues options;
     private int expandedCount;
+    private final boolean optimizeOnExpand;
 
     DefaultInliningPolicy(OptionValues options) {
         this.options = options;
+        optimizeOnExpand = options.get(PolyglotCompilerOptions.InliningOptimizeOnExpand);
+    }
+
+    @Override
+    public boolean optimizeOnExpand() {
+        return optimizeOnExpand;
     }
 
     private static PriorityQueue<CallNode> getQueue(CallTree tree, CallNode.State state) {
