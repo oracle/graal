@@ -227,14 +227,15 @@ public class TruffleFileTest extends AbstractPolyglotTest {
     @Test
     public void testDetectEncoding() {
         TruffleFile file = languageEnv.getPublicTruffleFile("/folder/filename.duplicate");
-        Charset encoding = TestAPIAccessor.languageAccess().detectEncoding(file, null);
+        assertFails(() -> TestAPIAccessor.languageAccess().detectEncoding(file, null), IllegalArgumentException.class);
+        String mimeType = "text/x-duplicate-mime";
+        Charset encoding = TestAPIAccessor.languageAccess().detectEncoding(file, mimeType);
         assertNull(encoding);
         Language1Detector detector1 = Language1Detector.getInstance();
         Language2Detector detector2 = Language2Detector.getInstance();
-        String mimeType = "text/x-duplicate-mime";
         detector1.reset();
         detector2.reset().mimeType(mimeType);
-        encoding = TestAPIAccessor.languageAccess().detectEncoding(file, null);
+        encoding = TestAPIAccessor.languageAccess().detectEncoding(file, mimeType);
         assertNull(encoding);
         detector1.reset().mimeType(mimeType);
         detector2.reset().mimeType(mimeType).encoding(UTF_16);

@@ -738,13 +738,15 @@ public class SourceBuilderTest extends AbstractPolyglotTest {
         TruffleFile file = languageEnv.getPublicTruffleFile(testFile.getPath());
         Source src = Source.newBuilder("lang", file).encoding(StandardCharsets.UTF_16LE).build();
         assertEquals(content, src.getCharacters().toString());
+        src = Source.newBuilder("TestTxt", file).encoding(StandardCharsets.UTF_16LE).build();
+        assertEquals(content, src.getCharacters().toString());
 
         testFile = File.createTempFile("test", ".xml").getAbsoluteFile();
         try (FileOutputStream out = new FileOutputStream(testFile)) {
             out.write(xmlContent.getBytes(Charset.forName("windows-1250")));
         }
         file = languageEnv.getPublicTruffleFile(testFile.getPath());
-        src = Source.newBuilder("lang", file).build();
+        src = Source.newBuilder("TestFooXML", file).build();
         assertEquals(xmlContent, src.getCharacters().toString());
 
         testFile = File.createTempFile("test", ".txt").getAbsoluteFile();
@@ -752,7 +754,7 @@ public class SourceBuilderTest extends AbstractPolyglotTest {
             out.write(content.getBytes(StandardCharsets.UTF_8));
         }
         file = languageEnv.getPublicTruffleFile(testFile.getPath());
-        src = Source.newBuilder("lang", file).build();
+        src = Source.newBuilder("TestTxt", file).build();
         assertEquals(content, src.getCharacters().toString());
     }
 
@@ -769,19 +771,21 @@ public class SourceBuilderTest extends AbstractPolyglotTest {
         }
         Source src = Source.newBuilder("lang", testFile.toURI().toURL()).encoding(StandardCharsets.UTF_16LE).build();
         assertEquals(content, src.getCharacters().toString());
+        src = Source.newBuilder("TestTxt", testFile.toURI().toURL()).encoding(StandardCharsets.UTF_16LE).build();
+        assertEquals(content, src.getCharacters().toString());
 
         testFile = File.createTempFile("test", ".xml").getAbsoluteFile();
         try (FileOutputStream out = new FileOutputStream(testFile)) {
             out.write(xmlContent.getBytes(Charset.forName("windows-1250")));
         }
-        src = Source.newBuilder("lang", testFile.toURI().toURL()).build();
+        src = Source.newBuilder("TestFooXML", testFile.toURI().toURL()).build();
         assertEquals(xmlContent, src.getCharacters().toString());
 
         testFile = File.createTempFile("test", ".txt").getAbsoluteFile();
         try (FileOutputStream out = new FileOutputStream(testFile)) {
             out.write(content.getBytes(StandardCharsets.UTF_8));
         }
-        src = Source.newBuilder("lang", testFile.toURI().toURL()).build();
+        src = Source.newBuilder("TestTxt", testFile.toURI().toURL()).build();
         assertEquals(content, src.getCharacters().toString());
     }
 
@@ -926,7 +930,7 @@ public class SourceBuilderTest extends AbstractPolyglotTest {
     public static class TestJSLanguage extends ProxyLanguage {
     }
 
-    @Registration(id = "TestTxt", name = "", byteMimeTypes = "text/plain", fileTypeDetectors = CommonMIMETypeTestDetector.class)
+    @Registration(id = "TestTxt", name = "", characterMimeTypes = "text/plain", fileTypeDetectors = CommonMIMETypeTestDetector.class)
     public static class TestTxtLanguage extends ProxyLanguage {
     }
 

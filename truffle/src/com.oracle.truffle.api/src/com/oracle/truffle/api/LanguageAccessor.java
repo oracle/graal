@@ -511,8 +511,10 @@ final class LanguageAccessor extends Accessor {
 
         @Override
         public Charset detectEncoding(TruffleFile file, String mimeType) {
-            String useMimeType = mimeType == null ? file.detectMimeType() : mimeType;
-            return useMimeType == null ? null : file.detectEncoding(useMimeType);
+            if (mimeType == null) {
+                throw new IllegalArgumentException("MimeType must be non null.");
+            }
+            return file.detectEncoding(mimeType);
         }
 
         @Override
