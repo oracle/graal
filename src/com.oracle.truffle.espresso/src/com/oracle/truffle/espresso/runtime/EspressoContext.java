@@ -30,6 +30,8 @@ import java.io.OutputStream;
 import java.lang.ref.ReferenceQueue;
 import java.nio.file.Path;
 import java.util.Arrays;
+import java.util.HashSet;
+import java.util.Set;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.function.Function;
@@ -230,8 +232,9 @@ public final class EspressoContext {
         this.SpecCompliancyMode = env.getOptions().get(EspressoOptions.SpecCompliancy);
         this.livenessAnalysisMode = env.getOptions().get(EspressoOptions.LivenessAnalysis);
         this.EnableManagement = env.getOptions().get(EspressoOptions.EnableManagement);
-        if (!env.getOptions().hasBeenSet(EspressoOptions.MultiThreaded) && hasKnownSingleThreadedLanguage(env)) {
-            logger.warning("Disabling multi-threading since the context seems to contain single-threaded languages");
+        Set<String> singleThreadedLanguages = knownSingleThreadedLanguages(env);
+        if (!env.getOptions().hasBeenSet(EspressoOptions.MultiThreaded) && !singleThreadedLanguages.isEmpty()) {
+            logger.warning(() -> "Disabling multi-threading since the context seems to contain single-threaded languages: " + singleThreadedLanguages);
             this.MultiThreaded = false;
         } else {
             this.MultiThreaded = env.getOptions().get(EspressoOptions.MultiThreaded);
@@ -243,18 +246,18 @@ public final class EspressoContext {
 
     }
 
-    private static boolean hasKnownSingleThreadedLanguage(TruffleLanguage.Env env) {
+    private static Set<String> knownSingleThreadedLanguages(TruffleLanguage.Env env) {
+        Set<String> singleThreaded = new HashSet<>();
         for (LanguageInfo languageInfo : env.getPublicLanguages().values()) {
             switch (languageInfo.getId()) {
                 case "wasm":    // fallthrough
                 case "js":      // fallthrough
                 case "R":       // fallthrough
-                case "sl":      // fallthrough
                 case "python":  // it's configurable for python, be shy
-                    return true;
+                    singleThreaded.add(languageInfo.getId());
             }
         }
-        return false;
+        return singleThreaded;
     }
 
     public ClassRegistries getRegistries() {
