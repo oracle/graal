@@ -117,13 +117,17 @@ public final class EspressoOptions {
                     category = OptionCategory.USER, stability = OptionStability.STABLE) //
     public static final OptionKey<List<String>> AddOpens = new OptionKey<>(Collections.emptyList(), STRINGS_OPTION_TYPE);
 
-    @Option(help = "Installation directory for Java Runtime Environment (JRE)", //
+    @Option(help = "Installation directory for Java Runtime Environment (JRE).", //
                     category = OptionCategory.EXPERT, stability = OptionStability.STABLE) //
     public static final OptionKey<Path> JavaHome = new OptionKey<>(EMPTY, PATH_OPTION_TYPE);
 
-    @Option(help = "A \" + java.io.File.pathSeparator + \" separated list of directories to search for user Espresso native libraries.", //
+    @Option(help = "Installation directory for Java on Truffle (Espresso) inside a GraalVM.", //
                     category = OptionCategory.EXPERT, stability = OptionStability.EXPERIMENTAL) //
-    public static final OptionKey<Path> EspressoLibraryPath = new OptionKey<>(EMPTY, PATH_OPTION_TYPE);
+    public static final OptionKey<Path> EspressoHome = new OptionKey<>(EMPTY, PATH_OPTION_TYPE);
+
+    @Option(help = "A \" + java.io.File.pathSeparator + \" separated list of directories to search for Espresso's (lib)?jvm.(so|dll|dylib).", //
+            category = OptionCategory.EXPERT, stability = OptionStability.EXPERIMENTAL) //
+    public static final OptionKey<List<Path>> JVMLibraryPath = new OptionKey<>(Collections.emptyList(), PATHS_OPTION_TYPE);
 
     @Option(help = "A \" + java.io.File.pathSeparator + \" separated list of directories, JAR files, and ZIP archives to search for boot class files. These are used in place of the boot class files included in the JDK.", //
                     category = OptionCategory.EXPERT) //
