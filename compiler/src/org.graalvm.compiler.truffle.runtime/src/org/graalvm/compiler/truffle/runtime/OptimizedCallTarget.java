@@ -859,6 +859,14 @@ public abstract class OptimizedCallTarget implements CompilableTruffleAST, RootC
         return false;
     }
 
+    public final boolean onInvalidate(Object source, CharSequence reason, boolean wasActive) {
+        cachedNonTrivialNodeCount = -1;
+        if (wasActive) {
+            GraalTruffleRuntime.getRuntime().getListener().onCompilationInvalidated(this, source, reason);
+        }
+        return cancelCompilation(reason) || wasActive;
+    }
+
     @Override
     public final void onCompilationFailed(Supplier<String> serializedException, boolean silent, boolean bailout, boolean permanentBailout, boolean graphTooBig) {
         if (graphTooBig) {
