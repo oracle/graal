@@ -164,9 +164,22 @@ def verify_ci(args):
 #########################
 add_gate_runner(_suite, _espresso_gate_runner)
 
+
+if mx_sdk_vm.base_jdk_version() > 8:
+    if mx.is_windows():
+        lib_espresso_cp = '%GRAALVM_HOME%\\lib\\graalvm\\lib-espresso.jar'
+    else:
+        lib_espresso_cp = '${GRAALVM_HOME}/lib/graalvm/lib-espresso.jar'
+else:
+    if mx.is_windows():
+        lib_espresso_cp = '%GRAALVM_HOME%\\jre\\lib\\graalvm\\lib-espresso.jar'
+    else:
+        lib_espresso_cp = '${GRAALVM_HOME}/jre/lib/graalvm/lib-espresso.jar'
+
+
 mx_sdk_vm.register_graalvm_component(mx_sdk_vm.GraalVmLanguage(
     suite=_suite,
-    name='Espresso',
+    name='Java on Truffle',
     short_name='java',
     installable_id='espresso',
     installable=True,
@@ -175,15 +188,6 @@ mx_sdk_vm.register_graalvm_component(mx_sdk_vm.GraalVmLanguage(
     dependencies=['Truffle', 'Truffle NFI', 'ejvm'],
     truffle_jars=['espresso:ESPRESSO'],
     support_distributions=['espresso:ESPRESSO_SUPPORT'],
-    launcher_configs=[
-        mx_sdk_vm.LanguageLauncherConfig(
-            destination='bin/<exe:espresso>',
-            jar_distributions=['espresso:ESPRESSO_LAUNCHER'],
-            main_class='com.oracle.truffle.espresso.launcher.EspressoLauncher',
-            build_args=[],
-            language='java',
-        )
-    ],
     library_configs=[
         mx_sdk_vm.LibraryConfig(
             destination='lib/<lib:espresso>',
@@ -191,13 +195,23 @@ mx_sdk_vm.register_graalvm_component(mx_sdk_vm.GraalVmLanguage(
             build_args=[
                 '--language:java',
                 '--tool:all',
-                '-H:-JNIExportSymbols',
             ],
             home_finder=True,
         )
     ],
     polyglot_lib_jar_dependencies=['espresso:LIB_ESPRESSO'],
     has_polyglot_lib_entrypoints=True,
+    priority=1,
+    post_install_msg="""
+This version of Java on Truffle is experimental. We do not recommended it for production use.
+
+Usage: java -truffle [-options] class [args...]
+           (to execute a class)
+    or java -truffle [-options] -jar jarfile [args...]
+           (to execute a jar file)
+
+To rebuild the polyglot library:
+    gu rebuild-images libpolyglot -cp """ + lib_espresso_cp,
 ))
 
 mx_sdk_vm.register_graalvm_component(mx_sdk_vm.GraalVmJreComponent(
@@ -209,8 +223,29 @@ mx_sdk_vm.register_graalvm_component(mx_sdk_vm.GraalVmJreComponent(
     installable=True,
     license_files=[],
     third_party_license_files=[],
-    dependencies=['Espresso'],
+    dependencies=['Java on Truffle'],
     support_libraries_distributions=['espresso:ESPRESSO_JVM_SUPPORT'],
+    priority=2,
+))
+
+mx_sdk_vm.register_graalvm_component(mx_sdk_vm.GraalVmLanguage(
+    suite=_suite,
+    name='Espresso Launcher',
+    short_name='elau',
+    installable=False,
+    license_files=[],
+    third_party_license_files=[],
+    dependencies=['Java on Truffle'],
+    truffle_jars=[],
+    launcher_configs=[
+        mx_sdk_vm.LanguageLauncherConfig(
+            destination='bin/<exe:espresso>',
+            jar_distributions=['espresso:ESPRESSO_LAUNCHER'],
+            main_class='com.oracle.truffle.espresso.launcher.EspressoLauncher',
+            build_args=[],
+            language='java',
+        )
+    ],
 ))
 
 
@@ -226,8 +261,8 @@ mx.update_commands(_suite, {
 
 # Build configs
 # pylint: disable=bad-whitespace
-mx_sdk_vm.register_vm_config('espresso-jvm',       ['java', 'ejvm', 'nfi', 'sdk', 'tfl'                                        ], _suite, env_file='jvm')
-mx_sdk_vm.register_vm_config('espresso-jvm-ce',    ['java', 'ejvm', 'nfi', 'sdk', 'tfl', 'cmp'                                 ], _suite, env_file='jvm-ce')
-mx_sdk_vm.register_vm_config('espresso-jvm-ee',    ['java', 'ejvm', 'nfi', 'sdk', 'tfl', 'cmp', 'cmpee'                        ], _suite, env_file='jvm-ee')
-mx_sdk_vm.register_vm_config('espresso-native-ce', ['java', 'ejvm', 'nfi', 'sdk', 'tfl', 'cmp'         , 'svm'         , 'tflm'], _suite, env_file='native-ce')
-mx_sdk_vm.register_vm_config('espresso-native-ee', ['java', 'ejvm', 'nfi', 'sdk', 'tfl', 'cmp', 'cmpee', 'svm', 'svmee', 'tflm'], _suite, env_file='native-ee')
+mx_sdk_vm.register_vm_config('espresso-jvm',       ['java', 'ejvm', 'elau', 'nfi', 'sdk', 'tfl'                                        ], _suite, env_file='jvm')
+mx_sdk_vm.register_vm_config('espresso-jvm-ce',    ['java', 'ejvm', 'elau', 'nfi', 'sdk', 'tfl', 'cmp'                                 ], _suite, env_file='jvm-ce')
+mx_sdk_vm.register_vm_config('espresso-jvm-ee',    ['java', 'ejvm', 'elau', 'nfi', 'sdk', 'tfl', 'cmp', 'cmpee'                        ], _suite, env_file='jvm-ee')
+mx_sdk_vm.register_vm_config('espresso-native-ce', ['java', 'ejvm', 'elau', 'nfi', 'sdk', 'tfl', 'cmp'         , 'svm'         , 'tflm'], _suite, env_file='native-ce')
+mx_sdk_vm.register_vm_config('espresso-native-ee', ['java', 'ejvm', 'elau', 'nfi', 'sdk', 'tfl', 'cmp', 'cmpee', 'svm', 'svmee', 'tflm'], _suite, env_file='native-ee')
