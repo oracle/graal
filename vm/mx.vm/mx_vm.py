@@ -162,8 +162,10 @@ def mx_register_dynamic_suite_constituents(register_project, register_distributi
 
         benchmark_dist = _suite.dependency("POLYBENCH_BENCHMARKS")
 
-        def _add_project_to_dist(name):
-            benchmark_dist.layout['./interpreter/'].append('dependency:{}/*'.format(name))
+        def _add_project_to_dist(destination, name, source='dependency:{name}/*'):
+            if destination not in benchmark_dist.layout:
+                benchmark_dist.layout[destination] = []
+            benchmark_dist.layout[destination].append(source.format(name=name))
             benchmark_dist.buildDependencies.append(name)
 
         if mx_sdk_vm_impl.has_component('GraalWasm'):
@@ -187,7 +189,32 @@ def mx_register_dynamic_suite_constituents(register_project, register_distributi
                 defaultBuild=False,
             ))
             # add wasm to the layout of the benchmark distribution
-            _add_project_to_dist('benchmarks.interpreter.wasm')
+            _add_project_to_dist('./interpreter/', 'benchmarks.interpreter.wasm')
+
+        if mx_sdk_vm_impl.has_component('LLVM Runtime Native'):
+            register_project(mx.NativeProject(
+                suite=_suite,
+                name='benchmarks.interpreter.llvm.native',
+                results=['interpreter/'],
+                buildEnv={
+                    'NATIVE_LLVM_CC': '<toolchainGetToolPath:native,CC>',
+                },
+                buildDependencies=[
+                    'sulong:SULONG_BOOTSTRAP_TOOLCHAIN',
+                ],
+                vpath=True,
+                deps=[],
+                workingSets=None,
+                d=join(_suite.dir, 'benchmarks', 'interpreter'),
+                subDir=None,
+                srcDirs=[''],
+                output=None,
+                theLicense=None,
+                testProject=True,
+                defaultBuild=False,
+            ))
+            # add bitcode to the layout of the benchmark distribution
+            _add_project_to_dist('./', 'benchmarks.interpreter.llvm.native')
 
 
 class GraalVmSymlinks(mx.Project):
