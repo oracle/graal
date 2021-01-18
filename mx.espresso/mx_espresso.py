@@ -179,7 +179,7 @@ else:
 
 mx_sdk_vm.register_graalvm_component(mx_sdk_vm.GraalVmLanguage(
     suite=_suite,
-    name='Espresso',
+    name='Java on Truffle',
     short_name='java',
     installable_id='espresso',
     installable=True,
@@ -223,7 +223,7 @@ mx_sdk_vm.register_graalvm_component(mx_sdk_vm.GraalVmJreComponent(
     installable=True,
     license_files=[],
     third_party_license_files=[],
-    dependencies=['Espresso'],
+    dependencies=['Java on Truffle'],
     support_libraries_distributions=['espresso:ESPRESSO_JVM_SUPPORT'],
     priority=2,
 ))
@@ -235,7 +235,7 @@ mx_sdk_vm.register_graalvm_component(mx_sdk_vm.GraalVmLanguage(
     installable=False,
     license_files=[],
     third_party_license_files=[],
-    dependencies=['Espresso'],
+    dependencies=['Java on Truffle'],
     truffle_jars=[],
     launcher_configs=[
         mx_sdk_vm.LanguageLauncherConfig(
