@@ -780,14 +780,28 @@ public final class RegexParser {
             replaceCurTermWithDeadNode();
             return;
         }
-        boolean curTermIsZeroWidthGroup = curTerm.isGroup() && curTerm.asGroup().isAlwaysZeroWidth();
-        if (quantifier.getMax() == 0 || quantifier.getMin() == 0 && (curTerm.isLookAroundAssertion() || curTermIsZeroWidthGroup ||
-                        curTerm.isCharacterClass() && curTerm.asCharacterClass().getCharSet().matchesNothing())) {
+        if (quantifier.getMax() == 0) {
             removeCurTerm();
             return;
         }
+        boolean curTermIsZeroWidthGroup = curTerm.isGroup() && curTerm.asGroup().isAlwaysZeroWidth();
+        if (source.getOptions().getFlavor() == RubyFlavor.INSTANCE) {
+            // In Ruby, we cannot remove optional zero-width groups or lookaround assertions as Ruby
+            // will admit executing them even though they match the empty string, because they can
+            // change the state of capture groups.
+            if (quantifier.getMin() == 0 && curTerm.isCharacterClass() && curTerm.asCharacterClass().getCharSet().matchesNothing()) {
+                removeCurTerm();
+                return;
+            }
+        } else {
+            if (quantifier.getMin() == 0 && (curTerm.isLookAroundAssertion() || curTermIsZeroWidthGroup ||
+                            curTerm.isCharacterClass() && curTerm.asCharacterClass().getCharSet().matchesNothing())) {
+                removeCurTerm();
+                return;
+            }
+        }
         ast.addSourceSection(curTerm, quantifier);
-        if (curTerm.isLookAroundAssertion() || curTermIsZeroWidthGroup) {
+        if (quantifier.getMin() > 0 && (curTerm.isLookAroundAssertion() || curTermIsZeroWidthGroup)) {
             // quantifying LookAroundAssertions doesn't do anything if quantifier.getMin() > 0, so
             // ignore.
             return;
