@@ -127,6 +127,10 @@ public final class Polyglot {
     /**
      * Evaluates the given code in the given language.
      *
+     * <p>
+     * To access members of the foreign object, write a corresponding class or interface stub in
+     * Java and cast the eval result to it using {@link #cast Polyglot.cast}.
+     * 
      * @param languageId the id of one of the Truffle languages
      * @param sourceCode the source code in the language, identified by {@code languageId}
      *
@@ -137,9 +141,6 @@ public final class Polyglot {
      *             <li>if the language is not available
      *             <li>if parsing of the code fails
      *             </ul>
-     *
-     * @apiNote To access members of the foreign object, write a corresponding class or interface
-     *          stub in Java and cast the eval result to it using {@link #cast Polyglot.cast}.
      * @since 21.0
      */
     @SuppressWarnings("unused")
@@ -166,8 +167,10 @@ public final class Polyglot {
      *
      * The foreign value is returned as {@link Object}.
      *
-     * @apiNote To access the foreign object's members, write a corresponding class or interface
-     *          stub in Java and cast the eval result to it using {@link #cast Polyglot.cast}.
+     * <p>
+     * To access the foreign object's members, write a corresponding class or interface stub in Java
+     * and cast the eval result to it using {@link #cast Polyglot.cast}.
+     * 
      * @since 21.0
      */
     @SuppressWarnings("unused")

@@ -379,7 +379,7 @@ suite = {
             ],
             "javaProperties": {
                 "org.graalvm.language.java.home": "<path:ESPRESSO_SUPPORT>",
-                "org.graalvm.espresso.jvm.path": "<path:ESPRESSO_JVM_SUPPORT>/truffle",
+                "polyglot.java.JVMLibraryPath": "<path:ESPRESSO_JVM_SUPPORT>/truffle",
             },
         },
 
@@ -542,6 +542,7 @@ suite = {
             ],
             "description": "Espresso polyglot API",
             "license": "UPL",
+            "javadocType": "api",
         },
 
         "DACAPO_SCALA_WARMUP": {

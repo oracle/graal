@@ -33,6 +33,7 @@ import java.nio.FloatBuffer;
 import java.nio.IntBuffer;
 import java.nio.LongBuffer;
 import java.nio.ShortBuffer;
+import java.nio.file.Path;
 import java.util.Arrays;
 import java.util.Collections;
 import java.util.HashMap;
@@ -382,16 +383,17 @@ public final class JniEnv extends NativeEnv implements ContextAccess {
         EspressoProperties props = context.getVmProperties();
         this.context = context;
         try {
+            Path espressoLibraryPath = props.espressoHome().resolve("lib");
             if (context.IsolatedNamespace) {
                 // libeden.so must be the first library loaded in the isolated namespace.
-                TruffleObject edenLibrary = loadLibraryInternal(Collections.singletonList(props.espressoLibraryPath()), "eden", true);
+                TruffleObject edenLibrary = loadLibraryInternal(Collections.singletonList(espressoLibraryPath), "eden", true);
                 ctypeInit = NativeLibrary.lookupAndBind(edenLibrary, "ctypeInit",
                                 "(): void");
             } else {
                 ctypeInit = null;
             }
 
-            nespressoLibrary = loadLibraryInternal(Collections.singletonList(props.espressoLibraryPath()), "nespresso");
+            nespressoLibrary = loadLibraryInternal(Collections.singletonList(espressoLibraryPath), "nespresso");
             dupClosureRef = NativeLibrary.lookup(nespressoLibrary, "dupClosureRef");
             initializeNativeContext = NativeLibrary.lookupAndBind(nespressoLibrary,
                             "initializeNativeContext", "(env, (pointer): pointer): pointer");

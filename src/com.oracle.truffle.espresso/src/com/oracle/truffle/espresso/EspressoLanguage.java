@@ -26,6 +26,7 @@ import java.util.Collections;
 import java.util.concurrent.TimeUnit;
 import java.util.logging.Level;
 
+import org.graalvm.home.Version;
 import org.graalvm.options.OptionDescriptors;
 
 import com.oracle.truffle.api.CallTarget;
@@ -72,7 +73,7 @@ public final class EspressoLanguage extends TruffleLanguage<EspressoContext> {
     // Espresso VM info
     public static final String VM_SPECIFICATION_NAME = "Java Virtual Machine Specification";
     public static final String VM_SPECIFICATION_VENDOR = "Oracle Corporation";
-    public static final String VM_VERSION = /* 1.8|11 */ "espresso-20.3-b01";
+    public static final String VM_VERSION = /* 1.8|11 */ "espresso-" + Version.getCurrent();
     public static final String VM_VENDOR = "Oracle Corporation";
     public static final String VM_NAME = "Espresso 64-Bit VM";
     public static final String VM_INFO = "mixed mode";
