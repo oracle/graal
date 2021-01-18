@@ -604,6 +604,15 @@ public class AnnotationSubstitutionProcessor extends SubstitutionProcessor {
     }
 
     private void handleAnnotatedMethodInSubstitutionClass(Executable annotatedMethod, Class<?> originalClass) {
+        if (annotatedMethod.isSynthetic()) {
+            /*
+             * Synthetic bridge methods for co-variant return types inherit the annotations. We
+             * ignore such methods here, and handleOriginalMethodInSubstitutionClass keeps the
+             * original implementation of such methods.
+             */
+            return;
+        }
+
         Substitute substituteAnnotation = lookupAnnotation(annotatedMethod, Substitute.class);
         KeepOriginal keepOriginalAnnotation = lookupAnnotation(annotatedMethod, KeepOriginal.class);
 
@@ -659,6 +668,9 @@ public class AnnotationSubstitutionProcessor extends SubstitutionProcessor {
                  * methods as if they were annotated with @KeepOriginal. If the method/field that
                  * the synthetic method is forwarding to is not available, an error message for that
                  * method/field will be produced anyway.
+                 * 
+                 * This also treats synthetic bridge methods as @KeepOriginal, so that
+                 * handleAnnotatedMethodInSubstitutionClass does not need to handle them.
                  */
                 register(methodSubstitutions, null, method, method);
             } else {
