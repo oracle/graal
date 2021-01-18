@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2015, 2018, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2015, 2020, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -22,28 +22,30 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package org.graalvm.compiler.loop;
+package org.graalvm.compiler.nodes.loop;
 
-import org.graalvm.compiler.nodes.StructuredGraph;
+import java.util.List;
 
-/**
- * Base class of the derived induction variables.
- */
-public abstract class DerivedInductionVariable extends InductionVariable {
+import org.graalvm.compiler.nodes.ControlSplitNode;
+import org.graalvm.compiler.nodes.cfg.ControlFlowGraph;
+import org.graalvm.compiler.nodes.spi.CoreProviders;
+import org.graalvm.compiler.options.Option;
+import org.graalvm.compiler.options.OptionKey;
+import org.graalvm.compiler.options.OptionType;
 
-    protected final InductionVariable base;
+public interface LoopPolicies {
 
-    public DerivedInductionVariable(LoopEx loop, InductionVariable base) {
-        super(loop);
-        this.base = base;
+    class Options {
+        @Option(help = "", type = OptionType.Expert) public static final OptionKey<Boolean> PeelALot = new OptionKey<>(false);
     }
 
-    @Override
-    public StructuredGraph graph() {
-        return base.graph();
-    }
+    boolean shouldPeel(LoopEx loop, ControlFlowGraph cfg, CoreProviders providers);
 
-    public InductionVariable getBase() {
-        return base;
-    }
+    boolean shouldFullUnroll(LoopEx loop);
+
+    boolean shouldPartiallyUnroll(LoopEx loop, CoreProviders providers);
+
+    boolean shouldTryUnswitch(LoopEx loop);
+
+    boolean shouldUnswitch(LoopEx loop, List<ControlSplitNode> controlSplits);
 }

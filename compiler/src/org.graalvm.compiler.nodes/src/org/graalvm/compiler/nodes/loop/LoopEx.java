@@ -22,7 +22,7 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package org.graalvm.compiler.loop;
+package org.graalvm.compiler.nodes.loop;
 
 import java.util.Collection;
 import java.util.LinkedList;
@@ -41,7 +41,6 @@ import org.graalvm.compiler.graph.Graph;
 import org.graalvm.compiler.graph.Node;
 import org.graalvm.compiler.graph.NodeBitMap;
 import org.graalvm.compiler.graph.iterators.NodePredicate;
-import org.graalvm.compiler.loop.InductionVariable.Direction;
 import org.graalvm.compiler.nodes.AbstractBeginNode;
 import org.graalvm.compiler.nodes.AbstractEndNode;
 import org.graalvm.compiler.nodes.ConstantNode;
@@ -73,19 +72,20 @@ import org.graalvm.compiler.nodes.cfg.Block;
 import org.graalvm.compiler.nodes.cfg.ControlFlowGraph;
 import org.graalvm.compiler.nodes.debug.ControlFlowAnchored;
 import org.graalvm.compiler.nodes.extended.ValueAnchorNode;
+import org.graalvm.compiler.nodes.loop.InductionVariable.Direction;
 import org.graalvm.compiler.nodes.util.GraphUtil;
 
 public class LoopEx {
-    private final Loop<Block> loop;
-    private LoopFragmentInside inside;
-    private LoopFragmentWhole whole;
-    private CountedLoopInfo counted;
-    private LoopsData data;
-    private EconomicMap<Node, InductionVariable> ivs;
-    private boolean countedLoopChecked;
-    private int size = -1;
+    protected final Loop<Block> loop;
+    protected LoopFragmentInside inside;
+    protected LoopFragmentWhole whole;
+    protected CountedLoopInfo counted;
+    protected LoopsData data;
+    protected EconomicMap<Node, InductionVariable> ivs;
+    protected boolean countedLoopChecked;
+    protected int size = -1;
 
-    LoopEx(Loop<Block> loop, LoopsData data) {
+    protected LoopEx(Loop<Block> loop, LoopsData data) {
         this.loop = loop;
         this.data = data;
     }

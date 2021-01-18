@@ -22,19 +22,18 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package org.graalvm.compiler.loop;
+package org.graalvm.compiler.nodes.loop;
 
 import static java.lang.Math.abs;
-import static org.graalvm.compiler.loop.MathUtil.unsignedDivBefore;
 import static org.graalvm.compiler.nodes.calc.BinaryArithmeticNode.add;
 import static org.graalvm.compiler.nodes.calc.BinaryArithmeticNode.sub;
+import static org.graalvm.compiler.nodes.loop.MathUtil.unsignedDivBefore;
 
 import org.graalvm.compiler.core.common.type.IntegerStamp;
 import org.graalvm.compiler.core.common.type.Stamp;
 import org.graalvm.compiler.core.common.util.UnsignedLong;
 import org.graalvm.compiler.debug.DebugCloseable;
 import org.graalvm.compiler.debug.GraalError;
-import org.graalvm.compiler.loop.InductionVariable.Direction;
 import org.graalvm.compiler.nodes.AbstractBeginNode;
 import org.graalvm.compiler.nodes.ConstantNode;
 import org.graalvm.compiler.nodes.GuardNode;
@@ -47,6 +46,7 @@ import org.graalvm.compiler.nodes.ValueNode;
 import org.graalvm.compiler.nodes.calc.ConditionalNode;
 import org.graalvm.compiler.nodes.calc.NegateNode;
 import org.graalvm.compiler.nodes.extended.GuardingNode;
+import org.graalvm.compiler.nodes.loop.InductionVariable.Direction;
 import org.graalvm.compiler.nodes.util.IntegerHelper;
 import org.graalvm.compiler.nodes.util.SignedIntegerHelper;
 import org.graalvm.compiler.nodes.util.UnsignedIntegerHelper;
@@ -65,7 +65,7 @@ public class CountedLoopInfo {
     private IfNode ifNode;
     private final boolean unsigned;
 
-    CountedLoopInfo(LoopEx loop, InductionVariable iv, IfNode ifNode, ValueNode end, boolean oneOff, AbstractBeginNode body, boolean unsigned) {
+    protected CountedLoopInfo(LoopEx loop, InductionVariable iv, IfNode ifNode, ValueNode end, boolean oneOff, AbstractBeginNode body, boolean unsigned) {
         assert iv.direction() != null;
         this.loop = loop;
         this.iv = iv;

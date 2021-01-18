@@ -30,6 +30,7 @@ import org.graalvm.compiler.api.replacements.SnippetReflectionProvider;
 import org.graalvm.compiler.bytecode.BytecodeProvider;
 import org.graalvm.compiler.bytecode.ResolvedJavaMethodBytecodeProvider;
 import org.graalvm.compiler.core.common.spi.ConstantFieldProvider;
+import org.graalvm.compiler.nodes.spi.LoopsDataProvider;
 import org.graalvm.compiler.nodes.spi.Replacements;
 import org.graalvm.compiler.options.OptionValues;
 import org.graalvm.compiler.phases.util.Providers;
@@ -60,8 +61,8 @@ public class SubstrateRuntimeConfigurationBuilder extends SharedRuntimeConfigura
 
     public SubstrateRuntimeConfigurationBuilder(OptionValues options, SVMHost hostVM, AnalysisUniverse aUniverse, MetaAccessProvider metaAccess,
                     ConstantReflectionProvider originalReflectionProvider, Function<Providers, SubstrateBackend> backendProvider, NativeLibraries nativeLibraries,
-                    ClassInitializationSupport classInitializationSupport) {
-        super(options, hostVM, metaAccess, backendProvider, nativeLibraries, classInitializationSupport);
+                    ClassInitializationSupport classInitializationSupport, LoopsDataProvider loopsDataProvider) {
+        super(options, hostVM, metaAccess, backendProvider, nativeLibraries, classInitializationSupport, loopsDataProvider);
         this.aUniverse = aUniverse;
         this.originalReflectionProvider = originalReflectionProvider;
     }
@@ -89,4 +90,5 @@ public class SubstrateRuntimeConfigurationBuilder extends SharedRuntimeConfigura
         }
         return new SubstrateCodeCacheProvider(ConfigurationValues.getTarget(), registerConfig);
     }
+
 }

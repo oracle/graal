@@ -31,8 +31,6 @@ import org.graalvm.compiler.graph.Graph.NodeEvent;
 import org.graalvm.compiler.graph.Graph.NodeEventScope;
 import org.graalvm.compiler.graph.Node;
 import org.graalvm.compiler.graph.NodeBitMap;
-import org.graalvm.compiler.loop.LoopEx;
-import org.graalvm.compiler.loop.LoopsData;
 import org.graalvm.compiler.nodes.ConstantNode;
 import org.graalvm.compiler.nodes.NodeView;
 import org.graalvm.compiler.nodes.StructuredGraph;
@@ -42,6 +40,8 @@ import org.graalvm.compiler.nodes.calc.BinaryArithmeticNode;
 import org.graalvm.compiler.nodes.calc.LeftShiftNode;
 import org.graalvm.compiler.nodes.calc.MulNode;
 import org.graalvm.compiler.nodes.calc.SubNode;
+import org.graalvm.compiler.nodes.loop.LoopEx;
+import org.graalvm.compiler.nodes.loop.LoopsData;
 import org.graalvm.compiler.nodes.spi.CoreProviders;
 import org.graalvm.compiler.nodes.util.GraphUtil;
 import org.graalvm.compiler.phases.BasePhase;
@@ -67,8 +67,8 @@ public class ReassociationPhase extends BasePhase<CoreProviders> {
         EconomicSetNodeEventListener changedNodes = new EconomicSetNodeEventListener(EnumSet.of(NodeEvent.NODE_ADDED));
         try (NodeEventScope news = graph.trackNodeEvents(changedNodes)) {
             prepareGraphForReassociation(graph);
-            reassociateConstants(graph);
-            reassociateInvariants(graph);
+            reassociateConstants(graph, context);
+            reassociateInvariants(graph, context);
         }
         canonicalizer.applyIncremental(graph, context, changedNodes.getNodes());
     }
@@ -85,9 +85,9 @@ public class ReassociationPhase extends BasePhase<CoreProviders> {
      */
     //@formatter:on
     @SuppressWarnings("try")
-    private static void reassociateInvariants(StructuredGraph graph) {
+    private static void reassociateInvariants(StructuredGraph graph, CoreProviders context) {
         DebugContext debug = graph.getDebug();
-        LoopsData loopsData = new LoopsData(graph);
+        LoopsData loopsData = context.getLoopsDataProvider().getLoopsData(graph);
         int iterations = 0;
         try (DebugContext.Scope s = debug.scope("ReassociateInvariants")) {
             boolean changed = true;
@@ -116,8 +116,8 @@ public class ReassociationPhase extends BasePhase<CoreProviders> {
      * and only applied to expressions outside a loop.
      */
     @SuppressWarnings("try")
-    private static void reassociateConstants(StructuredGraph graph) {
-        LoopsData loopsData = new LoopsData(graph);
+    private static void reassociateConstants(StructuredGraph graph, CoreProviders context) {
+        LoopsData loopsData = context.getLoopsDataProvider().getLoopsData(graph);
         NodeBitMap loopNodes = graph.createNodeBitMap();
         for (LoopEx loop : loopsData.loops()) {
             loopNodes.union(loop.whole().nodes());

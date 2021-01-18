@@ -27,12 +27,12 @@ package org.graalvm.compiler.loop.phases;
 import org.graalvm.collections.EconomicMap;
 import org.graalvm.collections.Equivalence;
 import org.graalvm.compiler.graph.Graph;
-import org.graalvm.compiler.loop.LoopEx;
-import org.graalvm.compiler.loop.LoopPolicies;
-import org.graalvm.compiler.loop.LoopsData;
 import org.graalvm.compiler.nodes.LoopBeginNode;
 import org.graalvm.compiler.nodes.StructuredGraph;
 import org.graalvm.compiler.nodes.extended.OpaqueNode;
+import org.graalvm.compiler.nodes.loop.LoopEx;
+import org.graalvm.compiler.nodes.loop.LoopPolicies;
+import org.graalvm.compiler.nodes.loop.LoopsData;
 import org.graalvm.compiler.nodes.spi.CoreProviders;
 import org.graalvm.compiler.phases.common.CanonicalizerPhase;
 import org.graalvm.compiler.phases.common.util.EconomicSetNodeEventListener;
@@ -56,7 +56,7 @@ public class LoopPartialUnrollPhase extends LoopPhase<LoopPolicies> {
             while (changed) {
                 changed = false;
                 try (Graph.NodeEventScope nes = graph.trackNodeEvents(listener)) {
-                    LoopsData dataCounted = new LoopsData(graph);
+                    LoopsData dataCounted = context.getLoopsDataProvider().getLoopsData(graph);
                     dataCounted.detectedCountedLoops();
                     Graph.Mark mark = graph.getMark();
                     boolean prePostInserted = false;
@@ -86,7 +86,7 @@ public class LoopPartialUnrollPhase extends LoopPhase<LoopPolicies> {
                         listener.getNodes().clear();
                     }
 
-                    assert !prePostInserted || checkCounted(graph, mark);
+                    assert !prePostInserted || checkCounted(graph, context, mark);
                 }
             }
             if (opaqueUnrolledStrides != null) {
@@ -102,9 +102,9 @@ public class LoopPartialUnrollPhase extends LoopPhase<LoopPolicies> {
         }
     }
 
-    private static boolean checkCounted(StructuredGraph graph, Graph.Mark mark) {
+    private static boolean checkCounted(StructuredGraph graph, CoreProviders context, Graph.Mark mark) {
         LoopsData dataCounted;
-        dataCounted = new LoopsData(graph);
+        dataCounted = context.getLoopsDataProvider().getLoopsData(graph);
         dataCounted.detectedCountedLoops();
         for (LoopEx anyLoop : dataCounted.loops()) {
             if (graph.isNew(mark, anyLoop.loopBegin())) {

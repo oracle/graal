@@ -36,8 +36,6 @@ import org.graalvm.compiler.debug.DebugContext;
 import org.graalvm.compiler.debug.GraalError;
 import org.graalvm.compiler.graph.Node;
 import org.graalvm.compiler.graph.iterators.NodeIterable;
-import org.graalvm.compiler.loop.LoopEx;
-import org.graalvm.compiler.loop.LoopsData;
 import org.graalvm.compiler.loop.phases.LoopTransformations;
 import org.graalvm.compiler.nodeinfo.InputType;
 import org.graalvm.compiler.nodeinfo.Verbosity;
@@ -64,12 +62,15 @@ import org.graalvm.compiler.nodes.java.InstanceOfNode;
 import org.graalvm.compiler.nodes.java.MonitorEnterNode;
 import org.graalvm.compiler.nodes.java.MonitorExitNode;
 import org.graalvm.compiler.nodes.java.MonitorIdNode;
+import org.graalvm.compiler.nodes.loop.LoopEx;
+import org.graalvm.compiler.nodes.loop.LoopsData;
+import org.graalvm.compiler.nodes.spi.CoreProviders;
 import org.graalvm.compiler.nodes.util.GraphUtil;
 import org.graalvm.compiler.options.Option;
 import org.graalvm.compiler.options.OptionKey;
 import org.graalvm.compiler.options.OptionType;
 import org.graalvm.compiler.options.OptionValues;
-import org.graalvm.compiler.phases.Phase;
+import org.graalvm.compiler.phases.BasePhase;
 import org.graalvm.compiler.phases.common.DeadCodeEliminationPhase;
 import org.graalvm.compiler.serviceprovider.SpeculationReasonGroup;
 
@@ -80,7 +81,7 @@ import jdk.vm.ci.meta.SpeculationLog;
 import jdk.vm.ci.meta.SpeculationLog.SpeculationReason;
 import jdk.vm.ci.runtime.JVMCICompiler;
 
-public class OnStackReplacementPhase extends Phase {
+public class OnStackReplacementPhase extends BasePhase<CoreProviders> {
 
     public static class Options {
         // @formatter:off
@@ -104,7 +105,7 @@ public class OnStackReplacementPhase extends Phase {
 
     @Override
     @SuppressWarnings("try")
-    protected void run(StructuredGraph graph) {
+    protected void run(StructuredGraph graph, CoreProviders providers) {
         DebugContext debug = graph.getDebug();
         if (graph.getEntryBCI() == JVMCICompiler.INVOCATION_ENTRY_BCI) {
             // This happens during inlining in a OSR method, because the same phase plan will be
@@ -119,7 +120,7 @@ public class OnStackReplacementPhase extends Phase {
         int iterations = 0;
 
         final EntryMarkerNode originalOSRNode = getEntryMarker(graph);
-        final LoopBeginNode originalOSRLoop = osrLoop(originalOSRNode);
+        final LoopBeginNode originalOSRLoop = osrLoop(originalOSRNode, providers);
         final boolean currentOSRWithLocks = osrWithLocks(originalOSRNode);
 
         if (originalOSRLoop == null) {
@@ -137,7 +138,7 @@ public class OnStackReplacementPhase extends Phase {
 
         do {
             osr = getEntryMarker(graph);
-            LoopsData loops = new LoopsData(graph);
+            LoopsData loops = providers.getLoopsDataProvider().getLoopsData(graph);
             // Find the loop that contains the EntryMarker
             Loop<Block> l = loops.getCFG().getNodeToBlock().get(osr).getLoop();
             if (l == null) {
@@ -291,9 +292,9 @@ public class OnStackReplacementPhase extends Phase {
         return osr;
     }
 
-    private static LoopBeginNode osrLoop(EntryMarkerNode osr) {
+    private static LoopBeginNode osrLoop(EntryMarkerNode osr, CoreProviders providers) {
         // Check that there is an OSR loop for the OSR begin
-        LoopsData loops = new LoopsData(osr.graph());
+        LoopsData loops = providers.getLoopsDataProvider().getLoopsData(osr.graph());
         Loop<Block> l = loops.getCFG().getNodeToBlock().get(osr).getLoop();
         if (l == null) {
             return null;

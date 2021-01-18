@@ -87,4 +87,9 @@ public class CoreProvidersDelegate implements CoreProviders {
     public MetaAccessExtensionProvider getMetaAccessExtensionProvider() {
         return providers.getMetaAccessExtensionProvider();
     }
+
+    @Override
+    public LoopsDataProvider getLoopsDataProvider() {
+        return providers.getLoopsDataProvider();
+    }
 }

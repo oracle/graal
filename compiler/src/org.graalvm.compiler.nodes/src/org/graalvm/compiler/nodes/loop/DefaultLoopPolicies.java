@@ -22,7 +22,7 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package org.graalvm.compiler.loop;
+package org.graalvm.compiler.nodes.loop;
 
 import static org.graalvm.compiler.core.common.GraalOptions.LoopMaxUnswitch;
 import static org.graalvm.compiler.core.common.GraalOptions.MaximumDesiredSize;

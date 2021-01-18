@@ -26,10 +26,10 @@ package org.graalvm.compiler.core.test;
 
 import org.graalvm.compiler.debug.DebugContext;
 import org.graalvm.compiler.debug.DebugDumpScope;
-import org.graalvm.compiler.loop.DefaultLoopPolicies;
 import org.graalvm.compiler.loop.phases.LoopUnswitchingPhase;
 import org.graalvm.compiler.nodes.StructuredGraph;
 import org.graalvm.compiler.nodes.StructuredGraph.AllowAssumptions;
+import org.graalvm.compiler.nodes.loop.DefaultLoopPolicies;
 import org.junit.Test;
 
 public class LoopUnswitchTest extends GraalCompilerTest {
@@ -126,7 +126,7 @@ public class LoopUnswitchTest extends GraalCompilerTest {
         final StructuredGraph graph = parseEager(snippet, AllowAssumptions.NO);
         final StructuredGraph referenceGraph = parseEager(referenceSnippet, AllowAssumptions.NO);
 
-        new LoopUnswitchingPhase(new DefaultLoopPolicies()).apply(graph);
+        new LoopUnswitchingPhase(new DefaultLoopPolicies()).apply(graph, getDefaultHighTierContext());
 
         // Framestates create comparison problems
         graph.clearAllStateAfter();

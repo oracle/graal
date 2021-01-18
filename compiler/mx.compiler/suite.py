@@ -1294,7 +1294,6 @@ suite = {
       "subDir" : "src",
       "sourceDirs" : ["src"],
       "dependencies" : [
-        "org.graalvm.compiler.loop",
         "org.graalvm.compiler.phases"
       ],
       "annotationProcessors" : [
@@ -1360,21 +1359,11 @@ suite = {
       "testProject" : True,
     },
 
-    "org.graalvm.compiler.loop" : {
-      "subDir" : "src",
-      "sourceDirs" : ["src"],
-      "dependencies" : ["org.graalvm.compiler.nodes"],
-      "annotationProcessors" : ["GRAAL_PROCESSOR"],
-      "checkstyle" : "org.graalvm.compiler.graph",
-      "javaCompliance" : "8+",
-      "workingSets" : "Graal",
-    },
-
     "org.graalvm.compiler.loop.test" : {
       "subDir" : "src",
       "sourceDirs" : ["src"],
       "dependencies" : [
-        "org.graalvm.compiler.loop",
+        "org.graalvm.compiler.nodes",
         "org.graalvm.compiler.core.test"
       ],
       "checkstyle" : "org.graalvm.compiler.graph",

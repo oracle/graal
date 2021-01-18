@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2015, 2019, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2020, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -22,30 +22,15 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package org.graalvm.compiler.loop.phases;
+package org.graalvm.compiler.nodes.spi;
 
 import org.graalvm.compiler.nodes.StructuredGraph;
-import org.graalvm.compiler.nodes.loop.LoopPolicies;
-import org.graalvm.compiler.nodes.spi.CoreProviders;
+import org.graalvm.compiler.nodes.loop.LoopsData;
 
-public abstract class ContextlessLoopPhase<P extends LoopPolicies> extends LoopPhase<P> {
+/**
+ * Provides capabilities for loop detection in a {@linkplain StructuredGraph}.
+ */
+public interface LoopsDataProvider {
 
-    public ContextlessLoopPhase(P policies) {
-        super(policies);
-    }
-
-    public final void apply(final StructuredGraph graph) {
-        apply(graph, true);
-    }
-
-    public final void apply(final StructuredGraph graph, final boolean dumpGraph) {
-        apply(graph, null, dumpGraph);
-    }
-
-    protected abstract void run(StructuredGraph graph);
-
-    @Override
-    protected final void run(StructuredGraph graph, CoreProviders context) {
-        run(graph);
-    }
+    LoopsData getLoopsData(StructuredGraph graph);
 }

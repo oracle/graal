@@ -24,7 +24,7 @@
  */
 package org.graalvm.compiler.loop.phases;
 
-import org.graalvm.compiler.loop.LoopPolicies;
+import org.graalvm.compiler.nodes.loop.LoopPolicies;
 import org.graalvm.compiler.nodes.spi.CoreProviders;
 import org.graalvm.compiler.phases.BasePhase;
 
