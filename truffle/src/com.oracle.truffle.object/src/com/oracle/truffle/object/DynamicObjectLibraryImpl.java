@@ -75,7 +75,6 @@ import com.oracle.truffle.api.object.FinalLocationException;
 import com.oracle.truffle.api.object.HiddenKey;
 import com.oracle.truffle.api.object.IncompatibleLocationException;
 import com.oracle.truffle.api.object.Location;
-import com.oracle.truffle.api.object.LocationFactory;
 import com.oracle.truffle.api.object.Property;
 import com.oracle.truffle.api.object.Shape;
 import com.oracle.truffle.api.utilities.AlwaysValidAssumption;
@@ -395,30 +394,6 @@ abstract class DynamicObjectLibraryImpl {
             }
         }
         return true;
-    }
-
-    private static final LocationFactory CONSTANT_LOCATION_FACTORY = new LocationFactory() {
-        @Override
-        public Location createLocation(Shape s, Object v) {
-            return s.allocator().constantLocation(v);
-        }
-    };
-
-    private static final LocationFactory DECLARED_LOCATION_FACTORY = new LocationFactory() {
-        @Override
-        public Location createLocation(Shape s, Object v) {
-            return s.allocator().declaredLocation(v);
-        }
-    };
-
-    static LocationFactory getLocationFactory(LayoutStrategy strategy, long putFlags) {
-        if (Flags.isConstant(putFlags)) {
-            return CONSTANT_LOCATION_FACTORY;
-        } else if (Flags.isDeclaration(putFlags)) {
-            return DECLARED_LOCATION_FACTORY;
-        } else {
-            return strategy.getDefaultLocationFactory(putFlags);
-        }
     }
 
     private static void shiftPropertyValuesAfterRemove(DynamicObject object, ShapeImpl shapeBefore, ShapeImpl shapeAfter) {
