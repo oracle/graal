@@ -21,7 +21,7 @@
  * questions.
  */
 
-package com.oracle.truffle.espresso.libespresso;
+package com.oracle.truffle.espresso.libespresso.arghelper;
 
 import static com.oracle.truffle.espresso.libespresso.Arguments.abort;
 
@@ -31,6 +31,8 @@ import org.graalvm.nativeimage.RuntimeOptions;
 import org.graalvm.options.OptionDescriptor;
 import org.graalvm.options.OptionDescriptors;
 import org.graalvm.options.OptionType;
+
+import com.oracle.truffle.espresso.libespresso.Arguments;
 
 class Native {
     private String argPrefix;
@@ -56,10 +58,6 @@ class Native {
         argPrefix = fromXXHandling ? "-" : "--vm.";
     }
 
-    private String formatArg(String arg) {
-        return argPrefix + arg;
-    }
-
     void setNativeOption(String arg) {
         if (arg.startsWith("Dgraal.")) {
             setGraalStyleRuntimeOption(arg.substring("Dgraal.".length()));
@@ -76,6 +74,10 @@ class Native {
         } else {
             throw abort("Unrecognized option: " + formatArg(arg) + "'.");
         }
+    }
+
+    private String formatArg(String arg) {
+        return argPrefix + arg;
     }
 
     private void setGraalStyleRuntimeOption(String arg) {
@@ -103,7 +105,7 @@ class Native {
         }
     }
 
-    public void setSystemProperty(String arg) {
+    private void setSystemProperty(String arg) {
         int eqIdx = arg.indexOf('=');
         String key;
         String value;
@@ -117,7 +119,7 @@ class Native {
         System.setProperty(key, value);
     }
 
-    public void setRuntimeOption(String arg) {
+    private void setRuntimeOption(String arg) {
         int eqIdx = arg.indexOf('=');
         String key;
         Object value;
