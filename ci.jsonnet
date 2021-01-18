@@ -266,10 +266,11 @@ local smoke_tests(env) =
   };
 
 # GraalVM Installables
-local graalvm_installables(ee) = {
+local graalvm_installables(ee, windows) = {
   local dynamic_imports = if ee then '/vm-enterprise,/substratevm-enterprise,/tools-enterprise' else '/vm,/substratevm,/tools',
   local repo_id = if ee then 'graal-us' else 'lafo',
-  local base_cmd_line = ['mx', '--dynamicimports=' + dynamic_imports, '--native-images=lib:espresso', '--exclude-components=elau,nju,npi', '--disable-installables=ni,niee,nil,llp'],
+  local excluded_components = 'nju,nic,dis,pbm' + if windows then ',llp,agt' else '',
+  local base_cmd_line = ['mx', '--dynamicimports=' + dynamic_imports, '--native-images=lib:espresso', '--exclude-components=' + excluded_components, '--disable-installables=ni,niee,nil,llp'],
   local maybe_clone_graal_enterprise = if ee then [ clone_repo('graal-enterprise') ] else [],
   run+: [
     clone_repo('graal'),
@@ -417,21 +418,21 @@ local awfy = 'awfy:*';
     jdk8_on_demand_bench_linux           + graal_benchmark('jvm-ee', scala_dacapo_jvm_fast(warmup=true))  + {name: 'bench-graal-ee-scala_dacapo_warmup-jdk8-linux-amd64'},
 
     // Post-merge deploy
-    jdk8_deploy_linux_ce    + graalvm_installables(ee=false)                                              + {name: 'espresso-deploy-installables-ce-jdk8-linux-amd64'},
-    jdk8_deploy_darwin_ce   + graalvm_installables(ee=false)                                              + {name: 'espresso-deploy-installables-ce-jdk8-darwin-amd64'},
-    jdk8_deploy_windows_ce  + graalvm_installables(ee=false)                                              + {name: 'espresso-deploy-installables-ce-jdk8-windows-amd64'},
+    jdk8_deploy_linux_ce    + graalvm_installables(ee=false, windows=false)                               + {name: 'espresso-deploy-installables-ce-jdk8-linux-amd64'},
+    jdk8_deploy_darwin_ce   + graalvm_installables(ee=false, windows=false)                               + {name: 'espresso-deploy-installables-ce-jdk8-darwin-amd64'},
+    jdk8_deploy_windows_ce  + graalvm_installables(ee=false, windows=true)                                + {name: 'espresso-deploy-installables-ce-jdk8-windows-amd64'},
 
-    jdk8_deploy_linux       + graalvm_installables(ee=true)                                               + {name: 'espresso-deploy-installables-ee-jdk8-linux-amd64'},
-    jdk8_deploy_darwin      + graalvm_installables(ee=true)                                               + {name: 'espresso-deploy-installables-ee-jdk8-darwin-amd64'},
-    jdk8_deploy_windows     + graalvm_installables(ee=true)                                               + {name: 'espresso-deploy-installables-ee-jdk8-windows-amd64'},
+    jdk8_deploy_linux       + graalvm_installables(ee=true, windows=false)                                + {name: 'espresso-deploy-installables-ee-jdk8-linux-amd64'},
+    jdk8_deploy_darwin      + graalvm_installables(ee=true, windows=false)                                + {name: 'espresso-deploy-installables-ee-jdk8-darwin-amd64'},
+    jdk8_deploy_windows     + graalvm_installables(ee=true, windows=true)                                 + {name: 'espresso-deploy-installables-ee-jdk8-windows-amd64'},
 
-    jdk11_deploy_linux_ce   + graalvm_installables(ee=false)                                              + {name: 'espresso-deploy-installables-ce-jdk11-linux-amd64'},
-    jdk11_deploy_darwin_ce  + graalvm_installables(ee=false)                                              + {name: 'espresso-deploy-installables-ce-jdk11-darwin-amd64'},
-    jdk11_deploy_windows_ce + graalvm_installables(ee=false)                                              + {name: 'espresso-deploy-installables-ce-jdk11-windows-amd64'},
+    jdk11_deploy_linux_ce   + graalvm_installables(ee=false, windows=false)                               + {name: 'espresso-deploy-installables-ce-jdk11-linux-amd64'},
+    jdk11_deploy_darwin_ce  + graalvm_installables(ee=false, windows=false)                               + {name: 'espresso-deploy-installables-ce-jdk11-darwin-amd64'},
+    jdk11_deploy_windows_ce + graalvm_installables(ee=false, windows=true)                                + {name: 'espresso-deploy-installables-ce-jdk11-windows-amd64'},
 
-    jdk11_deploy_linux      + graalvm_installables(ee=true)                                               + {name: 'espresso-deploy-installables-ee-jdk11-linux-amd64'},
-    jdk11_deploy_darwin     + graalvm_installables(ee=true)                                               + {name: 'espresso-deploy-installables-ee-jdk11-darwin-amd64'},
-    jdk11_deploy_windows    + graalvm_installables(ee=true)                                               + {name: 'espresso-deploy-installables-ee-jdk11-windows-amd64'},
+    jdk11_deploy_linux      + graalvm_installables(ee=true, windows=false)                                + {name: 'espresso-deploy-installables-ee-jdk11-linux-amd64'},
+    jdk11_deploy_darwin     + graalvm_installables(ee=true, windows=false)                                + {name: 'espresso-deploy-installables-ee-jdk11-darwin-amd64'},
+    jdk11_deploy_windows    + graalvm_installables(ee=true, windows=true)                                 + {name: 'espresso-deploy-installables-ee-jdk11-windows-amd64'},
 
     // On-demand
     jdk8_on_demand_linux          + espresso_minheap_benchmark('jvm-ce', awfy, 'infinite-overhead')       + {name: 'espresso-jvm-ce-awfy-minheap-infinite-ovh-jdk8-linux-amd64'},
