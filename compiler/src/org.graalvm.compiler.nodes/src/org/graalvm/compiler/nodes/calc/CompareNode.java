@@ -373,7 +373,7 @@ public abstract class CompareNode extends BinaryOpLogicNode implements Canonical
         }
         if (otherLogic instanceof CompareNode) {
             CompareNode otherCompare = (CompareNode) otherLogic;
-            return implies(otherCompare, thisNegated, otherNegated);
+            return implies(otherCompare, otherNegated, thisNegated);
         } else {
             return false;
         }
@@ -400,7 +400,8 @@ public abstract class CompareNode extends BinaryOpLogicNode implements Canonical
                 }
             }
         }
-        if (sameValue(getX(), otherX) && getY().isJavaConstant() && otherY.isJavaConstant()) {
+        if (sameValue(getX(), otherX) && getY().isJavaConstant() && otherY.isJavaConstant() && getY().stamp(NodeView.DEFAULT) instanceof IntegerStamp &&
+                        otherY.stamp(NodeView.DEFAULT) instanceof IntegerStamp) {
             long thisYLong = getY().asJavaConstant().asLong();
             long otherYLong = otherY.asJavaConstant().asLong();
             if (condition() == CanonicalCondition.EQ && !thisNegated) {

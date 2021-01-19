@@ -823,7 +823,7 @@ class StdoutUnstripping:
                         retraceOut = dedupOut
                 if data != retraceOut:
                     mx.log('>>>> BEGIN UNSTRIPPED OUTPUT')
-                    mx.log(retraceOut.data)
+                    mx.log(retraceOut)
                     mx.log('<<<< END UNSTRIPPED OUTPUT')
             except BaseException as e:
                 mx.log('Error unstripping output from VM execution with stripped jars: ' + str(e))

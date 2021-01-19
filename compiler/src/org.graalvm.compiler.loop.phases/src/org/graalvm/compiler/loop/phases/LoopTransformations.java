@@ -618,7 +618,7 @@ public abstract class LoopTransformations {
 
     public static boolean isUnrollableLoop(LoopEx loop) {
         if (!loop.isCounted() || !loop.counted().getCounter().isConstantStride() || !loop.loop().getChildren().isEmpty() || loop.loopBegin().loopEnds().count() != 1 ||
-                        loop.loopBegin().loopExits().count() > 1 || !loop.counted().canUnrollWithoutProtection()) {
+                        loop.loopBegin().loopExits().count() > 1 || loop.counted().isInverted()) {
             // loops without exits can be unrolled
             return false;
         }
