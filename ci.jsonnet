@@ -125,18 +125,6 @@ local base = {
   }
 };
 
-local gate_coverage(allow_warnings) = base.eclipse + {
-  setup+: [
-    ['mx', 'sversions'],
-  ],
-  run+: [
-    ['mx', '--jacoco-whitelist-package', 'com.oracle.truffle.espresso', '--jacoco-exclude-annotation', '@GeneratedBy', '--strict-compliance', 'gate', '--strict-mode', '--tags', '${GATE_TAGS}', '--jacocout', 'html'] + ( if allow_warnings then ['--no-warning-as-error'] else []),
-    ['mx', '--jacoco-whitelist-package', 'com.oracle.truffle.espresso', '--jacoco-exclude-annotation', '@GeneratedBy', 'sonarqube-upload', "-Dsonar.host.url=$SONAR_HOST_URL", "-Dsonar.projectKey=com.oracle.truffle.espresso", "-Dsonar.projectName=GraalVM - Espresso", '--exclude-generated'],
-    ['mx', '--jacoco-whitelist-package', 'com.oracle.truffle.espresso', '--jacoco-exclude-annotation', '@GeneratedBy', 'coverage-upload']
-  ],
-  timelimit: '30:00',
-};
-
 local gate_cmd = ['mx', '--strict-compliance', 'gate', '--strict-mode', '--tags', '${GATE_TAGS}'];
 
 local gate_espresso(allow_warnings) = {
@@ -257,14 +245,6 @@ local scala_dacapo_warmup_benchmark(env, guest_jvm_config='default', extra_args=
     extra_args=extra_args
   );
 
-local smoke_tests(env) =
-  clone_build_run(env, hello_world_args) +
-  if std.startsWith(env, 'jvm') then {} else {
-    run+: [
-      _mx(env, ['--strict-compliance', 'gate', '--strict-mode', '--tags', 'exit']),
-    ],
-  };
-
 # GraalVM Installables
 local graalvm_installables(ee, windows) = {
   local dynamic_imports = if ee then '/vm-enterprise,/substratevm-enterprise,/tools-enterprise' else '/vm,/substratevm,/tools',
@@ -332,14 +312,6 @@ local awfy = 'awfy:*';
 
 {
   builds: [
-    // JaCoCo coverage (disabled)
-    // jdk8_weekly_linux                  + gate_coverage(allow_warnings=true)  + { environment+: {
-    //                                                                                GATE_TAGS:       'build,unittest',
-    //                                                                                DYNAMIC_IMPORTS: '/vm,truffleruby'
-    //                                                                              },
-    //                                                                              name: 'espresso-gate-coverage-jdk8-linux-amd64'
-    //                                                                            },
-
     // Gates
     jdk8_gate_linux + base.extra_jdk11_ce + gate_espresso(allow_warnings=false) + { environment+: {
                                                                                       GATE_TAGS: 'jackpot'
@@ -352,42 +324,6 @@ local awfy = 'awfy:*';
                                                                                     },
                                                                                     name: 'espresso-gate-style-fullbuild-jdk8-linux-amd64'
                                                                                   },
-
-    jdk8_gate_linux                       + gate_espresso(allow_warnings=true)  + { environment+: {
-                                                                                      GATE_TAGS:       'build,unittest',
-                                                                                      DYNAMIC_IMPORTS: '/vm,truffleruby'
-                                                                                    },
-                                                                                    name: 'espresso-gate-unittest-jdk8-linux-amd64'
-                                                                                  },
-
-    jdk8_daily_linux                      + gate_espresso(allow_warnings=true)  + { environment+: {
-                                                                                      GATE_TAGS:       'build,unittest_with_compilation',
-                                                                                      DYNAMIC_IMPORTS: '/vm,truffleruby,/compiler'
-                                                                                    },
-                                                                                    timelimit:         '1:00:00',
-                                                                                    name: 'espresso-gate-unittest-compilation-jdk8-linux-amd64'
-                                                                                  },
-
-    // LD_DEBUG=unused is a workaround for: symbol lookup error: jre/lib/amd64/libnio.so: undefined symbol: fstatat64
-    jdk8_gate_linux                       + gate_espresso(allow_warnings=false) + { environment+: {
-                                                                                      GATE_TAGS: 'build,meta',
-                                                                                      LD_DEBUG: 'unused'
-                                                                                    },
-                                                                                    name: 'espresso-meta-hello-world-linux-amd64'
-                                                                                  },
-
-    // Hello World! should run in all supported configurations.
-    jdk8_gate_linux               + smoke_tests('jvm-ce')                                                 + {name: 'espresso-gate-jvm-ce-hello-world-jdk8-linux-amd64'},
-    jdk8_gate_linux               + smoke_tests('native-ce')                                              + {name: 'espresso-gate-native-ce-hello-world-jdk8-linux-amd64'},
-    jdk8_gate_linux               + smoke_tests('native-ee')                                              + {name: 'espresso-gate-native-ee-hello-world-jdk8-linux-amd64'},
-    jdk8_gate_darwin              + smoke_tests('native-ce')                                              + {name: 'espresso-gate-native-ce-hello-world-jdk8-darwin-amd64'},
-    jdk8_gate_darwin              + smoke_tests('native-ee')                                              + {name: 'espresso-gate-native-ee-hello-world-jdk8-darwin-amd64'},
-    jdk8_gate_windows             + smoke_tests('native-ce')                                              + {name: 'espresso-gate-native-ce-hello-world-jdk8-windows-amd64'},
-    jdk8_gate_windows             + smoke_tests('native-ee')                                              + {name: 'espresso-gate-native-ee-hello-world-jdk8-windows-amd64'},
-    jdk11_gate_linux              + smoke_tests('jvm-ce')                                                 + {name: 'espresso-gate-jvm-ce-hello-world-jdk11-linux-amd64'},
-    jdk11_gate_linux              + smoke_tests('native-ce')                                              + {name: 'espresso-gate-native-ce-hello-world-jdk11-linux-amd64'},
-    jdk11_gate_linux              + smoke_tests('native-ee')                                              + {name: 'espresso-gate-native-ee-hello-world-jdk11-linux-amd64'},
-    jdk11_gate_windows            + smoke_tests('native-ee')                                              + {name: 'espresso-gate-native-ee-hello-world-jdk11-windows-amd64'},
 
     // AWFY peak perf. benchmarks (post-merge)
     jdk8_bench_linux              + espresso_benchmark('jvm-ce', awfy)                                    + {name: 'espresso-bench-jvm-ce-awfy-jdk8-linux-amd64'},
