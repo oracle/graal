@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2019, 2021, Oracle and/or its affiliates.
+ * Copyright (c) 2021, Oracle and/or its affiliates.
  *
  * All rights reserved.
  *
@@ -27,32 +27,23 @@
  * NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED
  * OF THE POSSIBILITY OF SUCH DAMAGE.
  */
-
 #include <graalvm/llvm/handles.h>
-#include "common.h"
 
-void *_graalvm_llvm_create_handle(void *managedObject) {
-    should_not_reach();
-    return NULL;
+int fortytwo() {
+    return 42;
 }
-void *_graalvm_llvm_resolve_handle(void *nativeHandle) {
-    should_not_reach();
-    return NULL;
+
+int max(int a, int b) {
+    if (a > b) {
+        return a;
+    }
+    return b;
 }
-void _graalvm_llvm_release_handle(void *nativeHandle) {
-    should_not_reach();
+
+void *test_native_fortytwo_function() {
+    return resolve_function(fortytwo);
 }
-void *_graalvm_llvm_create_deref_handle(void *managedObject) {
-    should_not_reach();
-    return NULL;
-}
-bool _graalvm_llvm_is_handle(void *nativeHandle) {
-    return false;
-}
-bool _graalvm_llvm_points_to_handle_space(void *nativeHandle) {
-    return false;
-}
-void *_graalvm_llvm_resolve_function(void *nativeHandle) {
-    should_not_reach();
-    return NULL;
+
+void *test_resolve_function(void *function) {
+    return resolve_function(function);
 }
