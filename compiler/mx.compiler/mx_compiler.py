@@ -691,6 +691,12 @@ def _unittest_config_participant(config):
     if _get_XX_option_value(vmArgs, 'UseJVMCICompiler', None) is None:
         vmArgs.append('-XX:-UseJVMCICompiler')
 
+    # The type-profile width 8 is the default when using the JVMCI compiler.
+    # This value must be forced, because we do not used the JVMCI compiler
+    # in the unit tests by default.
+    if _get_XX_option_value(vmArgs, 'TypeProfileWidth', None) is None:
+        vmArgs.append('-XX:TypeProfileWidth=8')
+
     return (vmArgs, mainClass, mainClassArgs)
 
 mx_unittest.add_config_participant(_unittest_config_participant)
