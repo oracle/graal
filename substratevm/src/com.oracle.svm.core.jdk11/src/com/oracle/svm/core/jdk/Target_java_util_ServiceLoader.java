@@ -95,8 +95,7 @@ final class Target_java_util_ServiceLoader_LazyClassPathLookupIterator {
     private native Class<?> nextProviderClass();
 
     /**
-     * Ugly copy paste of the original method, but without the if (clazz.getModule().isNamed())
-     * check.
+     * Modified version of java.util.ServiceLoader.LazyClassPathLookupIterator#hasNextService.
      */
     @Substitute
     private boolean hasNextService() {
@@ -107,7 +106,10 @@ final class Target_java_util_ServiceLoader_LazyClassPathLookupIterator {
                     return false;
                 }
 
-                // if removed from here
+// if (clazz.getModule().isNamed()) {
+// // ignore class if in named module
+// continue;
+// }
 
                 if (outer.service.isAssignableFrom(clazz)) {
                     Constructor<?> ctor = outer.getConstructor(clazz);
