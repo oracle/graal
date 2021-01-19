@@ -913,6 +913,28 @@ final class PolyglotContextImpl extends AbstractContextImpl implements com.oracl
         return context;
     }
 
+    void initializeInternalLanguage(String languageId) {
+        PolyglotLanguage language = engine.idToLanguage.get(languageId);
+        if (language == null) {
+            engine.requirePublicLanguage(languageId);
+            assert false;
+            return;
+        }
+        PolyglotLanguageContext languageContext = getContext(language);
+        assert languageContext != null;
+        Object prev = hostEnter(languageContext);
+        try {
+            languageContext.checkAccess(null);
+            if (!languageContext.isInitialized()) {
+                languageContext.ensureInitialized(null);
+            }
+        } catch (Throwable t) {
+            throw PolyglotImpl.guestToHostException(languageContext, t, true);
+        } finally {
+            hostLeave(languageContext, prev);
+        }
+    }
+
     @Override
     public boolean initializeLanguage(String languageId) {
         PolyglotLanguage language = requirePublicLanguage(languageId);
