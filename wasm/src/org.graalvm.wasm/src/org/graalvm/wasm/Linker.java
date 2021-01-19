@@ -287,6 +287,9 @@ public class Linker {
                                 "', does not exist in the imported module '" + function.importedModuleName() + "'.");
             }
             final CallTarget target = importedInstance.target(importedFunction.index());
+            if(!function.type().equals(importedFunction.type())) {
+                throw WasmException.create(Failure.INCOMPATIBLE_IMPORT_TYPE);
+            }
             instance.setTarget(function.index(), target);
         };
         final Sym[] dependencies = new Sym[]{new ExportFunctionSym(function.importDescriptor().moduleName, function.importDescriptor().memberName)};
