@@ -259,7 +259,7 @@ public class BinaryParser extends BinaryStreamParser {
     }
 
     private void readImportSection() {
-        assertIntEqual(module.symbolTable().maxGlobalIndex(), -1,
+        assertIntEqual(module.symbolTable().numGlobals(), 0,
                         "The global index should be -1 when the import section is first read.", Failure.UNSPECIFIED_INVALID);
         int numImports = readLength();
 
@@ -289,7 +289,7 @@ public class BinaryParser extends BinaryStreamParser {
                 case ImportIdentifier.GLOBAL: {
                     byte type = readValueType();
                     byte mutability = readMutability();
-                    int index = module.symbolTable().maxGlobalIndex() + 1;
+                    int index = module.symbolTable().numGlobals();
                     module.symbolTable().importGlobal(moduleName, memberName, index, type, mutability);
                     break;
                 }
@@ -1173,7 +1173,7 @@ public class BinaryParser extends BinaryStreamParser {
     private void readGlobalSection() {
         final int numGlobals = readLength();
         module.limits().checkGlobalCount(numGlobals);
-        final int startingGlobalIndex = module.symbolTable().maxGlobalIndex() + 1;
+        final int startingGlobalIndex = module.symbolTable().numGlobals();
         for (int globalIndex = startingGlobalIndex; globalIndex != startingGlobalIndex + numGlobals; globalIndex++) {
             final byte type = readValueType();
             // 0x00 means const, 0x01 means var
@@ -1384,7 +1384,7 @@ public class BinaryParser extends BinaryStreamParser {
 
     private int readGlobalIndex() {
         final int index = readUnsignedInt32();
-        assertUnsignedIntLessOrEqual(index, module.symbolTable().maxGlobalIndex(), Failure.UNKNOWN_GLOBAL);
+        assertUnsignedIntLess(index, module.symbolTable().numGlobals(), Failure.UNKNOWN_GLOBAL);
         return index;
     }
 

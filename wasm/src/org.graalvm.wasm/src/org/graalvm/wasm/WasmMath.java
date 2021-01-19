@@ -104,6 +104,13 @@ public final class WasmMath {
     }
 
     /**
+     * Returns the maximum of two unsigned ints.
+     */
+    public static int maxUnsigned(int a, int b) {
+        return compareUnsigned(a, b) > 0 ? a : b;
+    }
+
+    /**
      * Converts the given unsigned {@code int} to the closest {@code float} value.
      */
     public static float unsignedIntToFloat(int x) {

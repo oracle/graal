@@ -65,6 +65,8 @@ import java.util.Map;
 
 import static java.lang.Integer.compareUnsigned;
 import static org.graalvm.wasm.Assert.assertTrue;
+import static org.graalvm.wasm.Assert.assertUnsignedIntLess;
+import static org.graalvm.wasm.WasmMath.maxUnsigned;
 import static org.graalvm.wasm.WasmMath.minUnsigned;
 import static org.graalvm.wasm.WasmMath.unsignedIntToLong;
 
@@ -267,9 +269,9 @@ public abstract class SymbolTable {
     @CompilationFinal private final LinkedHashMap<String, Integer> exportedGlobals;
 
     /**
-     * The greatest index of a global in the module.
+     * Number of globals in the module.
      */
-    @CompilationFinal private int maxGlobalIndex;
+    @CompilationFinal private int numGlobals;
 
     /**
      * The descriptor of the table of this module.
@@ -330,7 +332,7 @@ public abstract class SymbolTable {
         this.globalTypes = new short[INITIAL_GLOBALS_SIZE];
         this.importedGlobals = new LinkedHashMap<>();
         this.exportedGlobals = new LinkedHashMap<>();
-        this.maxGlobalIndex = -1;
+        this.numGlobals = 0;
         this.table = null;
         this.importedTableDescriptor = null;
         this.exportedTableNames = new ArrayList<>();
@@ -652,7 +654,7 @@ public abstract class SymbolTable {
         assert (valueType & 0xff) == valueType;
         checkNotParsed();
         ensureGlobalsCapacity(index);
-        maxGlobalIndex = Math.max(maxGlobalIndex, index);
+        numGlobals = maxUnsigned(index + 1, numGlobals);
         final int mutabilityBit;
         if (mutability == GlobalModifier.CONSTANT) {
             mutabilityBit = 0;
@@ -712,8 +714,8 @@ public abstract class SymbolTable {
         return reverseMap;
     }
 
-    public int maxGlobalIndex() {
-        return maxGlobalIndex;
+    public int numGlobals() {
+        return numGlobals;
     }
 
     @SuppressWarnings("unused")
