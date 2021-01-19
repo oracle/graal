@@ -91,8 +91,12 @@ public class Assert {
     }
 
     public static void assertUnsignedIntLess(int n1, int n2, Failure failure) throws WasmException {
+        assertUnsignedIntLess(n1, n2, failure, failure.name);
+    }
+
+    public static void assertUnsignedIntLess(int n1, int n2, Failure failure, String message) throws WasmException {
         if (Integer.compareUnsigned(n1, n2) >= 0) {
-            fail(failure, format("%s: %s should be < %s", failure.name, Integer.toUnsignedString(n1), Integer.toUnsignedString(n2)));
+            fail(failure, format("%s: %s should be < %s", message, Integer.toUnsignedString(n1), Integer.toUnsignedString(n2)));
         }
     }
 

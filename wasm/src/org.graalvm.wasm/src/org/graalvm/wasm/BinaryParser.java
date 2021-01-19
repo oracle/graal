@@ -578,7 +578,7 @@ public class BinaryParser extends BinaryStreamParser {
                     break;
                 }
                 case Instructions.CALL: {
-                    final int functionIndex = readFunctionIndex();
+                    final int functionIndex = readDeclaredFunctionIndex();
 
                     // Pop arguments
                     final WasmFunction function = module.symbolTable().function(functionIndex);
