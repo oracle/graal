@@ -437,7 +437,9 @@ public class BinaryParser extends BinaryStreamParser {
 
     private WasmBlockNode readBlock(WasmInstance instance, WasmCodeEntry codeEntry, ExecutionState state) {
         byte blockTypeId = readBlockType();
-        return readBlockBody(instance, codeEntry, state, blockTypeId, false);
+        final WasmBlockNode block = readBlockBody(instance, codeEntry, state, blockTypeId, false);
+        Assert.assertIntLessOrEqual(block.returnLength(), 1, "A block cannot return more than one value", Failure.INVALID_RESULT_ARITY);
+        return block;
     }
 
     private LoopNode readLoop(WasmInstance instance, WasmCodeEntry codeEntry, ExecutionState state) {
@@ -456,6 +458,7 @@ public class BinaryParser extends BinaryStreamParser {
                         startBranchTableOffset, startProfileCount);
 
         state.startBlock(currentBlock, isLoopBody);
+        state.setReachable(true);
 
         int opcode;
         do {
@@ -495,22 +498,6 @@ public class BinaryParser extends BinaryStreamParser {
                 case Instructions.ELSE:
                     // We handle the else instruction in the same way as the end instruction.
                 case Instructions.END:
-                    // If the end instruction is reachable, then we check that the correct number of
-                    // operands are stored on the stack. Otherwise then the stack size must be
-                    // adjusted to match the stack size at the continuation point.
-                    if (state.isReachable()) {
-                        final int actualReturnLength = state.stackSize() - state.getStackSize(0);
-                        assertIntEqual(actualReturnLength, currentBlock.returnLength(), "Wrong number of values on the stack on the end of the block", Failure.TYPE_MISMATCH);
-                        if (currentBlock.returnLength() == 1) {
-                            state.popChecked(currentBlock.returnTypeId());
-                            state.push(currentBlock.returnTypeId());
-                        }
-                    } else {
-                        state.unwindStack(state.getStackSize(0));
-                        if (currentBlock.returnLength() == 1) {
-                            state.push(currentBlock.returnTypeId());
-                        }
-                    }
                     break;
                 case Instructions.BR: {
                     final int unwindLevel = readTargetOffset();
@@ -1027,18 +1014,8 @@ public class BinaryParser extends BinaryStreamParser {
     }
 
     private LoopNode readLoop(WasmInstance instance, WasmCodeEntry codeEntry, ExecutionState state, byte returnTypeId) {
-        final int initialStackPointer = state.stackSize();
-
         WasmBlockNode loopBlock = readBlockBody(instance, codeEntry, state, returnTypeId, true);
-
-        // TODO: Hack to correctly set the stack pointer for abstract interpretation.
-        // If a block has branch instructions that target "shallower" blocks which return no value,
-        // then it can leave no values in the stack, which is invalid for our abstract
-        // interpretation.
-        // Correct the stack pointer to the value it would have in case there were no branch
-        // instructions.
-        state.unwindStack(returnTypeId != WasmType.VOID_TYPE ? initialStackPointer + 1 : initialStackPointer);
-
+        Assert.assertIntEqual(loopBlock.inputLength(), 0, "A loop should not have parameters", Failure.LOOP_INPUT);
         return Truffle.getRuntime().createLoopNode(loopBlock);
     }
 
@@ -1051,11 +1028,7 @@ public class BinaryParser extends BinaryStreamParser {
         int startOffset = offset();
         WasmBlockNode trueBranchBlock = readBlockBody(instance, codeEntry, state, blockTypeId, false);
 
-        // If a block has branch instructions that target "shallower" blocks which return no value,
-        // then it can leave no values in the stack, which is invalid for our abstract
-        // interpretation.
-        // Correct the stack pointer to the value it would have in case there were no branch
-        // instructions.
+        // Discard values returned by the then branch if any.
         state.unwindStack(stackSizeAfterCondition);
 
         // Read false branch, if it exists.
