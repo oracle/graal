@@ -45,42 +45,25 @@ suite = {
             {
                 "name": "truffle",
                 "subdir": True,
-                "version": "85ec0a54264d39f5b1b09ac10f04ec938828c53d",
                 "urls": [
-                    {"url": "https://github.com/graalvm/graal", "kind": "git"},
                     {"url": "https://curio.ssw.jku.at/nexus/content/repositories/snapshots", "kind": "binary"},
                 ]
             },
             {
                 "name": "tools",
                 "subdir": True,
-                "version": "85ec0a54264d39f5b1b09ac10f04ec938828c53d",
                 "urls": [
-                    {"url": "https://github.com/graalvm/graal", "kind": "git"},
                     {"url": "https://curio.ssw.jku.at/nexus/content/repositories/snapshots", "kind": "binary"},
                 ]
             },
             {
                 "name" : "java-benchmarks",
                 "subdir": True,
-                "version": "85ec0a54264d39f5b1b09ac10f04ec938828c53d",
                 "urls": [
-                    {"url": "https://github.com/graalvm/graal", "kind": "git"},
                     {"url": "https://curio.ssw.jku.at/nexus/content/repositories/snapshots", "kind": "binary"},
                 ]
             },
         ],
-    },
-    "libraries": {
-        # ------------- Libraries -------------
-
-        "LIBFFI": {
-            "urls": [
-                "https://lafo.ssw.uni-linz.ac.at/pub/graal-external-deps/libffi-3.2.1.tar.gz",
-                "https://sourceware.org/pub/libffi/libffi-3.2.1.tar.gz",
-            ],
-            "sha1": "280c265b789e041c02e5c97815793dfc283fb1e6",
-        },
     },
 
     # ------------- projects
