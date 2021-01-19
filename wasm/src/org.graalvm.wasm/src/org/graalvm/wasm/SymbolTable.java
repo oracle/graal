@@ -117,6 +117,9 @@ public abstract class SymbolTable {
             if (this.returnType != that.returnType) {
                 return false;
             }
+            if (this.paramTypes.length != that.paramTypes.length) {
+                return false;
+            }
             for (int i = 0; i < paramTypes.length; i++) {
                 if (this.paramTypes[i] != that.paramTypes[i]) {
                     return false;
