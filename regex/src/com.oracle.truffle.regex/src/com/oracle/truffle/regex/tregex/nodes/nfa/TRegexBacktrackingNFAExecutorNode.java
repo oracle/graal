@@ -65,6 +65,7 @@ import com.oracle.truffle.regex.tregex.parser.Token.Quantifier;
 import com.oracle.truffle.regex.tregex.parser.ast.InnerLiteral;
 import com.oracle.truffle.regex.tregex.parser.ast.LookBehindAssertion;
 import com.oracle.truffle.regex.tregex.parser.ast.RegexASTSubtreeRootNode;
+import com.oracle.truffle.regex.tregex.parser.flavors.RubyFlavor;
 
 /**
  * This regex executor uses a backtracking algorithm on the NFA. It is used for all expressions that
@@ -82,6 +83,7 @@ public final class TRegexBacktrackingNFAExecutorNode extends TRegexExecutorNode 
     private final boolean forward;
     private final boolean ignoreCase;
     private final boolean unicode;
+    private final boolean backrefWithNullTargetSucceeds;
     private final boolean loneSurrogates;
     private final boolean loopbackInitialState;
     private final InnerLiteral innerLiteral;
@@ -99,6 +101,7 @@ public final class TRegexBacktrackingNFAExecutorNode extends TRegexExecutorNode 
         this.forward = !(subtree instanceof LookBehindAssertion);
         this.ignoreCase = nfaMap.getAst().getFlags().isIgnoreCase();
         this.unicode = nfaMap.getAst().getFlags().isUnicode();
+        this.backrefWithNullTargetSucceeds = nfaMap.getAst().getOptions().getFlavor() != RubyFlavor.INSTANCE;
         this.loneSurrogates = nfaMap.getAst().getProperties().hasLoneSurrogates();
         this.nQuantifiers = nfaMap.getAst().getQuantifierCount().getCount();
         this.nZeroWidthQuantifiers = nfaMap.getAst().getZeroWidthQuantifierCount().getCount();
@@ -530,7 +533,7 @@ public final class TRegexBacktrackingNFAExecutorNode extends TRegexExecutorNode 
                     int start = getBackRefBoundary(locals, transition, target.getBackRefNumber() * 2, index);
                     int end = getBackRefBoundary(locals, transition, target.getBackRefNumber() * 2 + 1, index);
                     if (start < 0 || end < 0) {
-                        return true;
+                        return backrefWithNullTargetSucceeds;
                     }
                     return matchBackReferenceSimple(locals, start, end, index);
                 } else {
@@ -599,6 +602,7 @@ public final class TRegexBacktrackingNFAExecutorNode extends TRegexExecutorNode 
                     int end = locals.getCaptureGroupEnd(target.getBackRefNumber());
                     int start = locals.getCaptureGroupStart(target.getBackRefNumber());
                     if (start < 0 || end < 0) {
+                        // only can happen when backrefWithNullTargetSucceeds == true
                         return index;
                     }
                     int length = end - start;
