@@ -33,7 +33,6 @@ import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collection;
-import java.util.Collections;
 import java.util.Enumeration;
 import java.util.HashSet;
 import java.util.List;
@@ -85,7 +84,7 @@ import com.oracle.svm.hosted.analysis.Inflation;
  * a temporary solution, we're disabling the ModuleServicesLookupIterator in favour of the
  * LazyClassPathLookupIterator looking for files in META-INF directory. Therefore this feature
  * writes all services, even the ones from modules, into the corresponding META-INF file. All of
- * them are then discovered by the LazyClassPathLookupIterator. todo fix this once GR-19320 is done
+ * them are then discovered by the LazyClassPathLookupIterator. TODO fix this once GR-19320 is done
  *
  * One possible problem might be inconsistency between JVM and SVM, but since the lookup in JVM is
  * very dynamic in nature (depends on from which classloader or module you are starting), it might
