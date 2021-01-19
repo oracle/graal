@@ -348,12 +348,6 @@ public abstract class PartialEvaluator {
                 inliningGraphPE(request);
                 assert GraphOrder.assertSchedulableGraph(request.graph) : "PE result must be schedulable in order to apply subsequent phases";
                 truffleTier(request);
-                boolean performFrameClear = request.options.get(ForceFrameLivenessAnalysis) || request.graph.hasNode(VirtualFrameClearNode.TYPE);
-                if (performFrameClear) {
-                    try (DebugCloseable a = TruffleFrameClearTimer.start(request.debug)) {
-                        new FrameClearPhase(knownTruffleTypes, canonicalizer, request.compilable).apply(request.graph, request.highTierContext);
-                    }
-                }
                 // recompute loop frequencies now that BranchProbabilities have been canonicalized
                 ComputeLoopFrequenciesClosure.compute(request.graph);
                 applyInstrumentationPhases(request);
@@ -567,8 +561,14 @@ public abstract class PartialEvaluator {
         try (DebugCloseable a = TruffleCanonicalizerTimer.start(request.debug)) {
             canonicalizer.apply(request.graph, request.highTierContext);
         }
+        boolean performFrameClear = request.options.get(ForceFrameLivenessAnalysis) || request.graph.hasNode(VirtualFrameClearNode.TYPE);
         try (DebugCloseable a = TruffleEscapeAnalysisTimer.start(request.debug)) {
             partialEscape(request);
+        }
+        if (performFrameClear) {
+            try (DebugCloseable a = TruffleFrameClearTimer.start(request.debug)) {
+                new FrameClearPhase(knownTruffleTypes, canonicalizer, request.compilable).apply(request.graph, request.highTierContext);
+            }
         }
     }
 
