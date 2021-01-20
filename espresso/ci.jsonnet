@@ -24,11 +24,11 @@
     },
   },
 
-  windows_8 : devkits["windows-openjdk8"] + self.common + {
+  windows_8 : devkits["windows-openjdk8"] + common.common + {
     capabilities : ['windows', 'amd64']
   },
 
-  windows_11 : devkits["windows-jdk11"] + self.common + {
+  windows_11 : devkits["windows-jdk11"] + common.common + {
     capabilities : ['windows', 'amd64']
   },
 

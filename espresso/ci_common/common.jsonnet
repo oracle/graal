@@ -1,52 +1,5 @@
 local base = import '../ci.jsonnet';
 
-local _mx(env, args) = ['mx', '--env', env] + args;
-
-local clone_repo(repo) = ['git', 'clone', '-b', 'espresso_release_branch', '--depth', '1', ['mx', 'urlrewrite', 'https://github.com/oracle/' + repo], '../' + repo];
-
-local clone_graal(env) = {
-  local maybe_clone_graal_enterprise = if std.endsWith(env, 'ee') then [clone_repo('graal-enterprise')] else [],
-  setup+: [
-    clone_repo('graal'),
-  ] + maybe_clone_graal_enterprise,
-};
-
-local build_espresso(env) = {
-  run+: [
-    ['mx', 'sversions'],
-    _mx(env, ['build']),
-  ],
-};
-
-local maybe_set_ld_debug_flag(env) = if std.startsWith(env, 'jvm') then [['set-export', 'LD_DEBUG', 'unused']] else [];
-
-local run_espresso(env, args) = {
-  run+: maybe_set_ld_debug_flag(env) + [
-    _mx(env, ['espresso'] + args),
-  ],
-};
-
-local run_espresso_java(env, args) = {
-  run+: maybe_set_ld_debug_flag(env) + [
-    _mx(env, ['espresso-java'] + args),
-  ],
-};
-
-local hello_world_args = ['-cp', '$ESPRESSO_PLAYGROUND', 'com.oracle.truffle.espresso.playground.HelloWorld'];
-
-local setup_playground(env) = {
-  run+: [
-    ['set-export', 'ESPRESSO_PLAYGROUND', _mx(env, ['path', 'ESPRESSO_PLAYGROUND'])],
-  ],
-};
-
-local clone_build_run(env, args) =
-  clone_graal(env) +
-  build_espresso(env) +
-  setup_playground(env) +
-  run_espresso(env, args) +
-  if std.startsWith(env, 'jvm') then {} else run_espresso_java(env, args);
-
 local _host_jvm(env) = 'graalvm-espresso-' + env;
 local _host_jvm_config(env) = if std.startsWith(env, 'jvm') then 'jvm' else 'native';
 
@@ -55,8 +8,9 @@ local _graal_host_jvm_config(env) = if std.endsWith(env, '-ce') then 'graal-core
 local espresso_configs = ['jvm-ce', 'jvm-ee', 'native-ce', 'native-ee'];
 local benchmark_suites = ['dacapo', 'renaissance', 'scala-dacapo'];
 
-
 {
+  local that = self,
+
   // platform-specific snippets
   common: {
     packages+: {
@@ -120,17 +74,54 @@ local benchmark_suites = ['dacapo', 'renaissance', 'scala-dacapo'];
   onDemandBench:   {targets+: ['bench', 'on-demand']},
 
   // precise targets and capabilities
-  jdk8_gate_windows           : base.jdk8  + self.gate          + base.windows_8,
-  jdk8_gate_darwin            : base.jdk8  + self.gate          + self.darwin,
-  jdk8_gate_linux             : base.jdk8  + self.gate          + self.linux,
-  jdk8_bench_linux            : base.jdk8  + self.bench         + self.x52,
-  jdk8_weekly_linux           : base.jdk8  + self.weekly        + self.linux,
-  jdk8_daily_linux            : base.jdk8  + self.daily         + self.linux,
-  jdk8_weekly_bench_linux     : base.jdk8  + self.weeklyBench   + self.x52,
-  jdk8_on_demand_linux        : base.jdk8  + self.onDemand      + self.linux,
-  jdk8_on_demand_bench_linux  : base.jdk8  + self.onDemandBench + self.x52,
-  jdk11_gate_linux            : base.jdk11 + self.gate          + self.linux,
-  jdk11_gate_windows          : base.jdk11 + self.gate          + base.windows_11,
+  jdk8_gate_linux               : base.jdk8   + self.gate          + self.linux,
+  jdk8_gate_darwin              : base.jdk8   + self.gate          + self.darwin,
+  jdk8_gate_windows             : base.jdk8   + self.gate          + base.windows_8,
+  jdk8_bench_linux              : base.jdk8   + self.bench         + self.x52,
+  jdk8_bench_darwin             : base.jdk8   + self.bench         + self.darwin,
+  jdk8_bench_windows            : base.jdk8   + self.bench         + base.windows_8,
+  jdk8_daily_linux              : base.jdk8   + self.daily         + self.linux,
+  jdk8_daily_darwin             : base.jdk8   + self.daily         + self.darwin,
+  jdk8_daily_windows            : base.jdk8   + self.daily         + base.windows_8,
+  jdk8_daily_bench_linux        : base.jdk8   + self.dailyBench    + self.x52,
+  jdk8_daily_bench_darwin       : base.jdk8   + self.dailyBench    + self.darwin,
+  jdk8_daily_bench_windows      : base.jdk8   + self.dailyBench    + base.windows_8,
+  jdk8_weekly_linux             : base.jdk8   + self.weekly        + self.linux,
+  jdk8_weekly_darwin            : base.jdk8   + self.weekly        + self.darwin,
+  jdk8_weekly_windows           : base.jdk8   + self.weekly        + base.windows_8,
+  jdk8_weekly_bench_linux       : base.jdk8   + self.weeklyBench   + self.x52,
+  jdk8_weekly_bench_darwin      : base.jdk8   + self.weeklyBench   + self.darwin,
+  jdk8_weekly_bench_windows     : base.jdk8   + self.weeklyBench   + base.windows_8,
+  jdk8_on_demand_linux          : base.jdk8   + self.onDemand      + self.linux,
+  jdk8_on_demand_darwin         : base.jdk8   + self.onDemand      + self.darwin,
+  jdk8_on_demand_windows        : base.jdk8   + self.onDemand      + base.windows_8,
+  jdk8_on_demand_bench_linux    : base.jdk8   + self.onDemandBench + self.x52,
+  jdk8_on_demand_bench_darwin   : base.jdk8   + self.onDemandBench + self.darwin,
+  jdk8_on_demand_bench_windows  : base.jdk8   + self.onDemandBench + base.windows_8,
+  jdk11_gate_linux              : base.jdk11  + self.gate          + self.linux,
+  jdk11_gate_darwin             : base.jdk11  + self.gate          + self.darwin,
+  jdk11_gate_windows            : base.jdk11  + self.gate          + base.windows_11,
+  jdk11_bench_linux             : base.jdk11  + self.bench         + self.x52,
+  jdk11_bench_darwin            : base.jdk11  + self.bench         + self.darwin,
+  jdk11_bench_windows           : base.jdk11  + self.bench         + base.windows_11,
+  jdk11_daily_linux             : base.jdk11  + self.daily         + self.linux,
+  jdk11_daily_darwin            : base.jdk11  + self.daily         + self.darwin,
+  jdk11_daily_windows           : base.jdk11  + self.daily         + base.windows_11,
+  jdk11_daily_bench_linux       : base.jdk11  + self.dailyBench    + self.x52,
+  jdk11_daily_bench_darwin      : base.jdk11  + self.dailyBench    + self.darwin,
+  jdk11_daily_bench_windows     : base.jdk11  + self.dailyBench    + base.windows_11,
+  jdk11_weekly_linux            : base.jdk11  + self.weekly        + self.linux,
+  jdk11_weekly_darwin           : base.jdk11  + self.weekly        + self.darwin,
+  jdk11_weekly_windows          : base.jdk11  + self.weekly        + base.windows_11,
+  jdk11_weekly_bench_linux      : base.jdk11  + self.weeklyBench   + self.x52,
+  jdk11_weekly_bench_darwin     : base.jdk11  + self.weeklyBench   + self.darwin,
+  jdk11_weekly_bench_windows    : base.jdk11  + self.weeklyBench   + base.windows_11,
+  jdk11_on_demand_linux         : base.jdk11  + self.onDemand      + self.linux,
+  jdk11_on_demand_darwin        : base.jdk11  + self.onDemand      + self.darwin,
+  jdk11_on_demand_windows       : base.jdk11  + self.onDemand      + base.windows_11,
+  jdk11_on_demand_bench_linux   : base.jdk11  + self.onDemandBench + self.x52,
+  jdk11_on_demand_bench_darwin  : base.jdk11  + self.onDemandBench + self.darwin,
+  jdk11_on_demand_bench_windows : base.jdk11  + self.onDemandBench + base.windows_11,
 
   // shared snippets
   eclipse: {
@@ -155,23 +146,46 @@ local benchmark_suites = ['dacapo', 'renaissance', 'scala-dacapo'];
   },
 
   // shared functions
-  espresso_gate(allow_warnings, tags, name, timelimit='15:00'): {
+  clone_repo(repo): ['git', 'clone', '-b', 'espresso_release_branch', '--depth', '1', ['mx', 'urlrewrite', 'https://github.com/oracle/' + repo], '../' + repo],
+
+  clone_graal(env): {
+    local maybe_clone_graal_enterprise = if std.endsWith(env, 'ee') then [that.clone_repo('graal-enterprise')] else [],
     setup+: [
+      that.clone_repo('graal'),
+    ] + maybe_clone_graal_enterprise,
+  },
+
+  _mx(env, args): ['mx', '--env', env] + args,
+
+  build_espresso(env): {
+    run+: [
       ['mx', 'sversions'],
+      that._mx(env, ['build']),
+    ],
+  },
+
+  // LD_DEBUG=unused is a workaround for: symbol lookup error: jre/lib/amd64/libnio.so: undefined symbol: fstatat64
+  maybe_set_ld_debug_flag(env): if std.startsWith(env, 'jvm') then [['set-export', 'LD_DEBUG', 'unused']] else [],
+
+  espresso_gate(allow_warnings, tags, name, ld_debug=false, imports=null, timelimit='15:00'): {
+    local mx_cmd = ['mx'] + if imports != null then ['--dynamicimports=' + imports] else [],
+    setup+: [
+      if ld_debug then ['set-export', 'LD_DEBUG', 'unused'] else ['unset', 'LD_DEBUG'],
+      mx_cmd + ['sversions'],
     ],
     run+: [
-      ['mx', '--strict-compliance', 'gate', '--strict-mode', '--tags', tags] + ( if allow_warnings then ['--no-warning-as-error'] else []),
+      mx_cmd + ['--strict-compliance', 'gate', '--strict-mode', '--tags', tags] + ( if allow_warnings then ['--no-warning-as-error'] else []),
     ],
     timelimit: timelimit,
     name: name,
   },
 
   espresso_benchmark(env, suite, host_jvm=_host_jvm(env), host_jvm_config=_host_jvm_config(env), guest_jvm='espresso', guest_jvm_config='default', fork_file=null, extra_args=[]):
-    clone_graal(env) +
-    build_espresso(env) +
+    self.clone_graal(env) +
+    self.build_espresso(env) +
     {
-      run+: maybe_set_ld_debug_flag(env) + [
-          _mx(env, ['benchmark', '--results-file', 'bench-results.json'] +
+      run+: that.maybe_set_ld_debug_flag(env) + [
+          that._mx(env, ['benchmark', '--results-file', 'bench-results.json'] +
               (if (fork_file != null) then ['--fork-count-file', fork_file] else []) +
               [suite,
               '--',
@@ -202,11 +216,11 @@ local benchmark_suites = ['dacapo', 'renaissance', 'scala-dacapo'];
     ),
 
   graal_benchmark(env, suite, host_jvm='server', host_jvm_config=_graal_host_jvm_config(env), extra_args=[]):
-    clone_graal(env) +
-    build_espresso(env) +
+    self.clone_graal(env) +
+    self.build_espresso(env) +
     {
       run+: [
-          _mx(env, ['benchmark',
+          that._mx(env, ['benchmark',
               '--results-file', 'bench-results.json',
               suite,
               '--',
@@ -221,8 +235,6 @@ local benchmark_suites = ['dacapo', 'renaissance', 'scala-dacapo'];
   # Scala DaCapo benchmarks that run in both JVM and native modes,
   # Excluding factorie (too slow). kiama and scalariform have transient issues with compilation enabled.
   scala_dacapo_jvm_fast(warmup=false): 'scala-dacapo' + (if warmup then '-warmup' else '') + ':*[scalap,scalac,scaladoc,scalaxb]',
-
-  local that = self,
 
   builds: [
         // Gates
