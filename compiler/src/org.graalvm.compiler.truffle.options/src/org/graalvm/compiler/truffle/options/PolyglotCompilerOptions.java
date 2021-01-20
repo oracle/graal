@@ -386,8 +386,8 @@ public final class PolyglotCompilerOptions {
     @Option(help = "Maximum depth for recursive inlining.", category = OptionCategory.EXPERT)
     public static final OptionKey<Integer> InliningRecursionDepth = new OptionKey<>(2);
 
-    @Option(help = "TODO", category = OptionCategory.EXPERT)
-    public static final OptionKey<Boolean> InliningOptimizeOnExpand = new OptionKey<>(true);
+    @Option(help = "Perform a set of optimizations on each explored call target during inlining.", category = OptionCategory.INTERNAL)
+    public static final OptionKey<Boolean> InliningTruffleTierOnExpand = new OptionKey<>(true);
 
     // Splitting
 
