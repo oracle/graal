@@ -40,7 +40,7 @@
 ;;
 (module
   (type (;0;) (func (result i32)))
-  (type (;1;) (func (param i32 i32)))
+  (type (;1;) (func (param i32 i32) (result i32)))
   (import "wasi_snapshot_preview1" "args_sizes_get" (func $__wasi_args_sizes_get (type 1)))
   (memory (;0;) 4)
   (export "memory" (memory 0))
@@ -48,6 +48,7 @@
     i32.const 0
     i32.const 4
     call $__wasi_args_sizes_get
+    drop
     i32.const 0
     i32.load
     i32.const 4

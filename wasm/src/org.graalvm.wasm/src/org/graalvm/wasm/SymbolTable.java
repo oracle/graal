@@ -80,7 +80,7 @@ public abstract class SymbolTable {
     private static final int INITIAL_FUNCTION_TYPES_SIZE = 128;
     private static final int GLOBAL_MUTABLE_BIT = 0x0100;
     private static final int GLOBAL_EXPORT_BIT = 0x0200;
-    private static final int UNINITIALIZED_GLOBAL_ADDRESS = -1;
+    static final int UNINITIALIZED_GLOBAL_ADDRESS = Integer.MIN_VALUE;
     private static final int NO_EQUIVALENCE_CLASS = 0;
     static final int FIRST_EQUIVALENCE_CLASS = NO_EQUIVALENCE_CLASS + 1;
 
