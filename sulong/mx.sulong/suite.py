@@ -311,6 +311,9 @@ suite = {
         "truffle:TRUFFLE_NFI",
         "SULONG_CORE"
       ],
+      "buildDependencies" : [
+        "NATIVE_MODE_SUPPORT",
+      ],
       "checkstyle" : "com.oracle.truffle.llvm.runtime",
       "annotationProcessors" : ["truffle:TRUFFLE_DSL_PROCESSOR"],
       "javaCompliance" : "1.8+",
