@@ -94,11 +94,6 @@ def _espresso_gate_runner(args, tasks):
             jackpot(['--fail-on-warnings'], suite=None, nonZeroIsFatal=True)
 
 
-def verify_ci(args):
-    """Verify CI configuration"""
-    mx.verify_ci(args, mx.suite('truffle'), _suite, 'common.json')
-
-
 # REGISTER MX GATE RUNNER
 #########################
 add_gate_runner(_suite, _espresso_gate_runner)
@@ -194,7 +189,6 @@ mx.update_commands(_suite, {
     'espresso-standalone': [_run_espresso_standalone, '[args]'],
     'espresso-java': [_run_espresso_java, '[args]'],
     'espresso-meta': [_run_espresso_meta, '[args]'],
-    'verify-ci' : [verify_ci, '[options]'],
 })
 
 # Build configs
