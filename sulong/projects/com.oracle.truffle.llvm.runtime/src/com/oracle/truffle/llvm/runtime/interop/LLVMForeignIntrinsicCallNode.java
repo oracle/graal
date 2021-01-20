@@ -56,7 +56,7 @@ public class LLVMForeignIntrinsicCallNode extends RootNode {
             args[i] = new ForeignIntrinsicArgNode(i - 1, argType);
         }
 
-        LLVMExpressionNode intrinsicNode = intrinsic.createIntrinsicNode(args, argTypes);
+        LLVMExpressionNode intrinsicNode = intrinsic.createIntrinsicNode(args, Type.getRawTypeArray(argTypes));
         return new LLVMForeignIntrinsicCallNode(language, intrinsicNode, (LLVMInteropType.Value) type.getReturnType());
     }
 

@@ -111,7 +111,7 @@ public final class LLVMFunctionCode {
             }
         }
 
-        public LLVMExpressionNode createIntrinsicNode(LLVMExpressionNode[] arguments, Type.TypeArrayBuilder argTypes) {
+        public LLVMExpressionNode createIntrinsicNode(LLVMExpressionNode[] arguments, Type[] argTypes) {
             return provider.generateIntrinsicNode(intrinsicName, arguments, argTypes, nodeFactory);
         }
 
