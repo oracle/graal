@@ -169,4 +169,8 @@ builds += [
   ${x52.default-g1gc} ${bench-specjbb2005-hwloc}         ${oraclejdk8} { targets: [weekly, bench], name: "bench-compiler-specjbb2005-g1gc-linux-x52"}
   ${x52.tmpfs10g-g1gc} ${bench-specjbb2015-hwloc}        ${oraclejdk8} { targets: [weekly, bench], name: "bench-compiler-specjbb2015-g1gc-linux-x52" }
   ${x52.default-g1gc} ${bench-renaissance-legacy-hwloc}  ${oraclejdk8} { targets: [weekly, bench], name: "bench-compiler-renaissance-legacy-g1gc-linux-x52" }
+
+  # Run on the full machine instead of a single socket
+  ${x52.default-libgraal} ${bench-specjbb2015}           ${oraclejdk8} { targets: [weekly, bench], name: "bench-compiler-specjbb2015-libgraal-linux-allcpus-x52" }
+  ${x52.default-libgraal} ${bench-specjbb2015}           ${labsjdk11}  { targets: [weekly, bench], name: "bench-compiler-specjbb2015-libgraal-11-linux-allcpus-x52" }
 ]

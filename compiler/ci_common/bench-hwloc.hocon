@@ -19,9 +19,9 @@ hwloc.bench-common : {
 }
 
 hwloc.cmd.nobackground.suffix : ["|","tee", "-a", "${LOGDIR}/node${MACHINE_NODE}${LOG_FILE_NAME}"]
-hwloc.cmd.suffix : ${hwloc.cmd.nobackground.suffix} ["&"]
+hwloc.cmd.background : ${hwloc.cmd.nobackground.suffix} ["&"]
 
-hwloc.node : ["hwloc-bind", "--cpubind", "node:${MACHINE_NODE}", "--membind", "node:${MACHINE_NODE}", "--", "isolate-network.sh"]
+hwloc.node : ["hwloc-bind", "--cpubind", "node:${MACHINE_NODE}", "--membind", "node:${MACHINE_NODE}", "--"]
 
 export.node0: [export, "MACHINE_NODE=0", "BENCH_RESULTS_FILE_PATH=node0-${BASE_BENCH_RESULTS_FILE_NAME}"]
 export.node1: [export, "MACHINE_NODE=1", "BENCH_RESULTS_FILE_PATH=node1-${BASE_BENCH_RESULTS_FILE_NAME}"]
@@ -33,9 +33,9 @@ bench-micros-graal-whitebox-hwloc: ${bench-micros-graal-whitebox} ${hwloc.bench-
   run: [
     [export, "LOGDIR=${PWD}"]
     ${export.node0}
-    ${hwloc.node} ${bench-jvmci.mx-micros-graal-whitebox} ${bench-arguments} ${hwloc.cmd.suffix}
+    ${hwloc.node} ${bench-jvmci.mx-micros-graal-whitebox} ${bench-arguments} ${hwloc.cmd.background}
     ${export.node1}
-    ${hwloc.node} ${bench-jvmci.mx-micros-graal-whitebox} ${bench-arguments} ${hwloc.cmd.suffix}
+    ${hwloc.node} ${bench-jvmci.mx-micros-graal-whitebox} ${bench-arguments} ${hwloc.cmd.background}
     [wait]
   ]
 }
@@ -45,9 +45,9 @@ bench-micros-graal-dist-hwloc: ${bench-micros-graal-dist} ${hwloc.bench-common} 
   run: [
     [export, "LOGDIR=${PWD}"]
     ${export.node0}
-    ${hwloc.node} ${bench-jvmci.mx-micros-graal-dist} ${bench-arguments} ${hwloc.cmd.suffix}
+    ${hwloc.node} ${bench-jvmci.mx-micros-graal-dist} ${bench-arguments} ${hwloc.cmd.background}
     ${export.node1}
-    ${hwloc.node} ${bench-jvmci.mx-micros-graal-dist} ${bench-arguments} ${hwloc.cmd.suffix}
+    ${hwloc.node} ${bench-jvmci.mx-micros-graal-dist} ${bench-arguments} ${hwloc.cmd.background}
     [wait]
   ]
 }
@@ -57,9 +57,9 @@ bench-awfy-hwloc: ${bench-awfy} ${hwloc.bench-common} {
   run: [
     [export, "LOGDIR=${PWD}"]
     ${export.node0}
-    ${hwloc.node} ${bench-jvmci.mx-awfy} ${bench-arguments} ${hwloc.cmd.suffix}
+    ${hwloc.node} ${bench-jvmci.mx-awfy} ${bench-arguments} ${hwloc.cmd.background}
     ${export.node1}
-    ${hwloc.node} ${bench-jvmci.mx-awfy} ${bench-arguments} ${hwloc.cmd.suffix}
+    ${hwloc.node} ${bench-jvmci.mx-awfy} ${bench-arguments} ${hwloc.cmd.background}
     [wait]
   ]
 }
@@ -69,9 +69,9 @@ bench-dacapo-hwloc: ${bench-dacapo} ${hwloc.bench-common} {
   run: [
     [export, "LOGDIR=${PWD}"]
     ${export.node0}
-    ${hwloc.node} ${bench-jvmci.mx-dacapo} ${bench-arguments} ${hwloc.cmd.suffix}
+    ${hwloc.node} ${bench-jvmci.mx-dacapo} ${bench-arguments} ${hwloc.cmd.background}
     ${export.node1}
-    ${hwloc.node} ${bench-jvmci.mx-dacapo} ${bench-arguments} ${hwloc.cmd.suffix}
+    ${hwloc.node} ${bench-jvmci.mx-dacapo} ${bench-arguments} ${hwloc.cmd.background}
     [wait]
   ]
 }
@@ -81,9 +81,9 @@ bench-dacapo-timing-hwloc: ${bench-dacapo-timing} ${hwloc.bench-common} {
   run: [
     [export, "LOGDIR=${PWD}"]
     ${export.node0}
-    ${hwloc.node} ${bench-jvmci.mx-dacapo-timing} ${bench-arguments} ${hwloc.cmd.suffix}
+    ${hwloc.node} ${bench-jvmci.mx-dacapo-timing} ${bench-arguments} ${hwloc.cmd.background}
     ${export.node1}
-    ${hwloc.node} ${bench-jvmci.mx-dacapo-timing} ${bench-arguments} ${hwloc.cmd.suffix}
+    ${hwloc.node} ${bench-jvmci.mx-dacapo-timing} ${bench-arguments} ${hwloc.cmd.background}
     [wait]
   ]
 }
@@ -93,9 +93,9 @@ bench-scala-dacapo-hwloc: ${bench-scala-dacapo} ${hwloc.bench-common} {
   run: [
     [export, "LOGDIR=${PWD}"]
     ${export.node0}
-    ${hwloc.node} ${bench-jvmci.mx-scala-dacapo} ${bench-arguments} ${hwloc.cmd.suffix}
+    ${hwloc.node} ${bench-jvmci.mx-scala-dacapo} ${bench-arguments} ${hwloc.cmd.background}
     ${export.node1}
-    ${hwloc.node} ${bench-jvmci.mx-scala-dacapo} ${bench-arguments} ${hwloc.cmd.suffix}
+    ${hwloc.node} ${bench-jvmci.mx-scala-dacapo} ${bench-arguments} ${hwloc.cmd.background}
     [wait]
   ]
 }
@@ -105,9 +105,9 @@ bench-scala-dacapo-timing-hwloc: ${bench-scala-dacapo-timing} ${hwloc.bench-comm
   run: [
     [export, "LOGDIR=${PWD}"]
     ${export.node0}
-    ${hwloc.node} ${bench-jvmci.mx-scala-dacapo-timing} ${bench-arguments} ${hwloc.cmd.suffix}
+    ${hwloc.node} ${bench-jvmci.mx-scala-dacapo-timing} ${bench-arguments} ${hwloc.cmd.background}
     ${export.node1}
-    ${hwloc.node} ${bench-jvmci.mx-scala-dacapo-timing} ${bench-arguments} ${hwloc.cmd.suffix}
+    ${hwloc.node} ${bench-jvmci.mx-scala-dacapo-timing} ${bench-arguments} ${hwloc.cmd.background}
     [wait]
   ]
 }
@@ -115,28 +115,19 @@ bench-scala-dacapo-timing-hwloc: ${bench-scala-dacapo-timing} ${hwloc.bench-comm
 bench-renaissance-hwloc: ${bench-renaissance} ${hwloc.bench-common} {
   setup: ${bench-renaissance.setup} ${hwloc.bench-common.setup}
   run: [
-    [export, "SPARK_LOCAL_IP=127.0.0.1"]
     [export, "LOGDIR=${PWD}"]
     ${export.node0}
-    ${hwloc.node} ${bench-jvmci.mx-renaissance} ${bench-arguments} ${hwloc.cmd.suffix}
-    ${export.node1}
-    ${hwloc.node} ${bench-jvmci.mx-renaissance} ${bench-arguments} ${hwloc.cmd.suffix}
-    [wait]
+    ${hwloc.node} ${bench-jvmci.mx-renaissance} ${bench-arguments}
   ]
 }
 
 
-bench-renaissance-0-10-0-hwloc: ${bench-renaissance} ${hwloc.bench-common} {
+bench-renaissance-0-10-0-hwloc: ${bench-renaissance-0-10-0} ${hwloc.bench-common} {
   setup: ${bench-renaissance.setup} ${hwloc.bench-common.setup}
   run: [
-    [export, "RENAISSANCE_VERSION=0.10.0"]
-    [export, "SPARK_LOCAL_IP=127.0.0.1"]
     [export, "LOGDIR=${PWD}"]
     ${export.node0}
-    ${hwloc.node} ${bench-jvmci.mx-renaissance} ["--bench-suite-version=$RENAISSANCE_VERSION"] ${bench-arguments} ${hwloc.cmd.suffix}
-    ${export.node1}
-    ${hwloc.node} ${bench-jvmci.mx-renaissance} ["--bench-suite-version=$RENAISSANCE_VERSION"] ${bench-arguments} ${hwloc.cmd.suffix}
-    [wait]
+    ${hwloc.node} ${bench-jvmci.mx-renaissance} ${bench-arguments}
   ]
 }
 
@@ -144,12 +135,11 @@ bench-renaissance-0-10-0-hwloc: ${bench-renaissance} ${hwloc.bench-common} {
 bench-renaissance-legacy-hwloc: ${bench-renaissance-legacy} ${hwloc.bench-common} {
   setup: ${bench-renaissance-legacy.setup} ${hwloc.bench-common.setup}
   run: [
-    [export, "SPARK_LOCAL_IP=127.0.0.1"]
     [export, "LOGDIR=${PWD}"]
     ${export.node0}
-    ${hwloc.node} ${bench-jvmci.mx-renaissance-legacy} ${bench-arguments} ${hwloc.cmd.suffix}
+    ${hwloc.node} ${bench-jvmci.mx-renaissance-legacy} ${bench-arguments} ${hwloc.cmd.background}
     ${export.node1}
-    ${hwloc.node} ${bench-jvmci.mx-renaissance-legacy} ${bench-arguments} ${hwloc.cmd.suffix}
+    ${hwloc.node} ${bench-jvmci.mx-renaissance-legacy} ${bench-arguments} ${hwloc.cmd.background}
     [wait]
   ]
 }
@@ -160,9 +150,9 @@ bench-specjvm2008-Single-hwloc: ${bench-specjvm2008-Single} ${hwloc.bench-common
   run: [
     [export, "LOGDIR=${PWD}"]
     ${export.node0}
-    ${hwloc.node} ${bench-jvmci.mx-specjvm2008-Single} ${bench-arguments} ${hwloc.cmd.suffix}
+    ${hwloc.node} ${bench-jvmci.mx-specjvm2008-Single} ${bench-arguments} ${hwloc.cmd.background}
     ${export.node1}
-    ${hwloc.node} ${bench-jvmci.mx-specjvm2008-Single} ${bench-arguments} ${hwloc.cmd.suffix}
+    ${hwloc.node} ${bench-jvmci.mx-specjvm2008-Single} ${bench-arguments} ${hwloc.cmd.background}
     [wait]
   ]
 }
@@ -173,9 +163,9 @@ bench-specjvm2008-OneVM-hwloc: ${bench-specjvm2008-OneVM} ${hwloc.bench-common} 
   run: [
     [export, "LOGDIR=${PWD}"]
     ${export.node0}
-    ${hwloc.node} ${bench-jvmci.mx-specjvm2008-OneVM} ${bench-arguments} ${hwloc.cmd.suffix}
+    ${hwloc.node} ${bench-jvmci.mx-specjvm2008-OneVM} ${bench-arguments} ${hwloc.cmd.background}
     ${export.node1}
-    ${hwloc.node} ${bench-jvmci.mx-specjvm2008-OneVM} ${bench-arguments} ${hwloc.cmd.suffix}
+    ${hwloc.node} ${bench-jvmci.mx-specjvm2008-OneVM} ${bench-arguments} ${hwloc.cmd.background}
     [wait]
   ]
 }
@@ -186,22 +176,15 @@ bench-specjbb2005-hwloc: ${bench-specjbb2005} ${hwloc.bench-common} {
   run: [
     [export, "LOGDIR=${PWD}"]
     ${export.node0}
-    ${hwloc.node} ${bench-jvmci.mx-specjbb2005} ${bench-arguments} ["input.ending_number_warehouses=77"] ${hwloc.cmd.suffix}
-    ${export.node1}
-    ${hwloc.node} ${bench-jvmci.mx-specjbb2005} ${bench-arguments} ["input.ending_number_warehouses=77"] ${hwloc.cmd.suffix}
-    [wait]
+    ${hwloc.node} ${bench-jvmci.mx-specjbb2005} ${bench-arguments} ["input.ending_number_warehouses=77"] ${hwloc.cmd.background}
   ]
 }
-
 
 bench-specjbb2015-hwloc: ${bench-specjbb2015} ${hwloc.bench-common} {
   setup: ${bench-specjbb2015.setup} ${hwloc.bench-common.setup}
   run: [
     [export, "LOGDIR=${PWD}"]
     ${export.node0}
-    ${hwloc.node} ${bench-jvmci.mx-specjbb2015} ${bench-arguments} ${hwloc.cmd.suffix}
-    ${export.node1}
-    ${hwloc.node} ${bench-jvmci.mx-specjbb2015} ${bench-arguments} ${hwloc.cmd.suffix}
-    [wait]
+    ${hwloc.node} ${bench-jvmci.mx-specjbb2015} ${bench-arguments}
   ]
 }

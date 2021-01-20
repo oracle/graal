@@ -13,8 +13,8 @@ bench-jvmci : {
   mx-specjvm2008-OneVM: ${bench-jvmci.mx-benchmark} ["specjvm2008"]
   mx-specjbb2005: ${bench-jvmci.mx-benchmark} ["specjbb2005"]
   mx-specjbb2015: ${bench-jvmci.mx-benchmark} ["specjbb2015"]
-  mx-renaissance: ${bench-jvmci.mx-benchmark} ["renaissance:*"]
-  mx-renaissance-no-db-shootout: ${bench-jvmci.mx-benchmark} ["renaissance:~db-shootout"]
+  mx-renaissance: ${bench-jvmci.mx-benchmark} ["renaissance:*", "--bench-suite-version=$RENAISSANCE_VERSION"]
+  mx-renaissance-no-db-shootout: ${bench-jvmci.mx-benchmark} ["renaissance:~db-shootout", "--bench-suite-version=$RENAISSANCE_VERSION"]
   mx-renaissance-legacy: ${bench-jvmci.mx-benchmark} ["renaissance-legacy:*"]
   mx-spark-sql-perf: ${bench-jvmci.mx-benchmark} ["spark-sql-perf"]
   mx-micros-graal-whitebox: ${bench-jvmci.mx-benchmark} ["jmh-whitebox:*"]
@@ -177,6 +177,9 @@ bench-micros-graal-dist: ${bench-common} ${default-heap} ${micros-bench-notifica
 # Renaissance-related targets
 
 bench-renaissance: ${bench-common} ${default-heap} ${renaissance-bench-notifications} {
+  environment: {
+    SPARK_LOCAL_IP: "127.0.0.1"
+  }
   targets: [bench, post-merge]
   run: [
     ${bench-jvmci.mx-renaissance} ${bench-arguments}
@@ -184,15 +187,14 @@ bench-renaissance: ${bench-common} ${default-heap} ${renaissance-bench-notificat
   timelimit: "3:00:00"
 }
 
-bench-renaissance-0-10-0: ${bench-common} ${default-heap} ${renaissance-bench-notifications} {
+bench-renaissance-0-10-0: ${bench-renaissance} {
+  environment: ${bench-renaissance.environment} {
+    RENAISSANCE_VERSION: "0.10.0"
+  }
   targets: [bench, weekly]
-  run: [
-    ${bench-jvmci.mx-renaissance} ["--bench-suite-version=0.10.0"] ${bench-arguments}
-  ]
-  timelimit: "3:00:00"
 }
 
-bench-renaissance-no-db-shootout: ${bench-common} ${default-heap} ${renaissance-bench-notifications} {
+bench-renaissance-no-db-shootout: ${bench-renaissance} {
   targets: [bench, post-merge]
   run: [
     ${bench-jvmci.mx-renaissance-no-db-shootout} ${bench-arguments}
@@ -201,6 +203,9 @@ bench-renaissance-no-db-shootout: ${bench-common} ${default-heap} ${renaissance-
 }
 
 bench-renaissance-legacy: ${bench-common} ${default-heap} ${renaissance-bench-notifications} {
+  environment: {
+    SPARK_LOCAL_IP: "127.0.0.1"
+  }
   targets: [bench, post-merge]
   run: [
     ${bench-jvmci.mx-renaissance-legacy} ${bench-arguments}
