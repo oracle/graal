@@ -35,7 +35,6 @@ local base = {
 
   gate:            {targets+: ['gate']},
   postMerge:       {targets+: ['post-merge']},
-  postMergeDeploy: {targets+: ['post-merge', 'deploy']},
   bench:           {targets+: ['bench', 'post-merge']},
   dailyBench:      {targets+: ['bench', 'daily']},
   daily:           {targets+: ['daily']},
@@ -245,39 +244,6 @@ local scala_dacapo_warmup_benchmark(env, guest_jvm_config='default', extra_args=
     extra_args=extra_args
   );
 
-# GraalVM Installables
-local graalvm_installables(ee, windows) = {
-  local dynamic_imports = if ee then '/vm-enterprise,/substratevm-enterprise,/tools-enterprise' else '/vm,/substratevm,/tools',
-  local repo_id = if ee then 'graal-us' else 'lafo',
-  local excluded_components = 'nju,nic,dis,pbm,npi' + if windows then ',llp,agt' else '',
-  local base_cmd_line = ['mx', '--dynamicimports=' + dynamic_imports, '--native-images=lib:espresso', '--exclude-components=' + excluded_components, '--disable-installables=ni,niee,nil,llp'],
-  local maybe_clone_graal_enterprise = if ee then [ clone_repo('graal-enterprise') ] else [],
-  run+: [
-    clone_repo('graal'),
-  ] + maybe_clone_graal_enterprise + [
-    base_cmd_line + ['build'],
-    base_cmd_line + ['--suite', 'sdk', 'maven-deploy', '--all-distribution-types', '--with-suite-revisions-metadata', '--tag=installable', '--validate=none', repo_id],
-  ],
-};
-
-local deploy_base = base.postMergeDeploy + {
-  downloads+: {
-    MAVEN_HOME: {name: "maven", version: "3.3.9", platformspecific: false}
-  },
-};
-
-local deploy_unix = deploy_base + {
-  environment+: {
-    PATH : "$MAVEN_HOME/bin:$JAVA_HOME/bin:$PATH"
-  },
-};
-
-local deploy_windows = deploy_base + {
-  environment+: {
-    PATH : "$MAVEN_HOME\\bin;$JAVA_HOME\\bin;$PATH"
-  },
-};
-
 local jdk8_gate_windows           = base.jdk8_ee  + base.gate          + base.windows_8_ee;
 local jdk8_gate_darwin            = base.jdk8_ee  + base.gate          + base.darwin;
 local jdk8_gate_linux             = base.jdk8_ee  + base.gate          + base.linux;
@@ -290,20 +256,6 @@ local jdk8_on_demand_linux        = base.jdk8_ee  + base.onDemand      + base.li
 local jdk8_on_demand_bench_linux  = base.jdk8_ee  + base.onDemandBench + base.x52;
 local jdk11_gate_linux            = base.jdk11_ee + base.gate          + base.linux;
 local jdk11_gate_windows          = base.jdk11_ee + base.gate          + base.windows_11;
-
-local jdk8_deploy_windows         = base.jdk8_ee  + deploy_windows + base.windows_8_ee;
-local jdk8_deploy_darwin          = base.jdk8_ee  + deploy_unix    + base.darwin;
-local jdk8_deploy_linux           = base.jdk8_ee  + deploy_unix    + base.linux;
-local jdk11_deploy_windows        = base.jdk11_ee + deploy_windows + base.windows_11;
-local jdk11_deploy_darwin         = base.jdk11_ee + deploy_unix    + base.darwin;
-local jdk11_deploy_linux          = base.jdk11_ee + deploy_unix    + base.linux;
-
-local jdk8_deploy_windows_ce      = base.jdk8_ce  + deploy_windows + base.windows_8_ce;
-local jdk8_deploy_darwin_ce       = base.jdk8_ce  + deploy_unix    + base.darwin;
-local jdk8_deploy_linux_ce        = base.jdk8_ce  + deploy_unix    + base.linux;
-local jdk11_deploy_windows_ce     = base.jdk11_ce + deploy_windows + base.windows_11;
-local jdk11_deploy_darwin_ce      = base.jdk11_ce + deploy_unix    + base.darwin;
-local jdk11_deploy_linux_ce       = base.jdk11_ce + deploy_unix    + base.linux;
 
 local espresso_configs = ['jvm-ce', 'jvm-ee', 'native-ce', 'native-ee'];
 local benchmark_suites = ['dacapo', 'renaissance', 'scala-dacapo'];
@@ -346,23 +298,6 @@ local awfy = 'awfy:*';
     // Scala DaCapo warmup benchmarks (Graal CE/EE baseline) (on-demand)
     jdk8_on_demand_bench_linux           + graal_benchmark('jvm-ce', scala_dacapo_jvm_fast(warmup=true))  + {name: 'bench-graal-ce-scala_dacapo_warmup-jdk8-linux-amd64'},
     jdk8_on_demand_bench_linux           + graal_benchmark('jvm-ee', scala_dacapo_jvm_fast(warmup=true))  + {name: 'bench-graal-ee-scala_dacapo_warmup-jdk8-linux-amd64'},
-
-    // Post-merge deploy
-    jdk8_deploy_linux_ce    + graalvm_installables(ee=false, windows=false)                               + {name: 'espresso-deploy-installables-ce-jdk8-linux-amd64'},
-    jdk8_deploy_darwin_ce   + graalvm_installables(ee=false, windows=false)                               + {name: 'espresso-deploy-installables-ce-jdk8-darwin-amd64'},
-    jdk8_deploy_windows_ce  + graalvm_installables(ee=false, windows=true)                                + {name: 'espresso-deploy-installables-ce-jdk8-windows-amd64'},
-
-    jdk8_deploy_linux       + graalvm_installables(ee=true, windows=false)                                + {name: 'espresso-deploy-installables-ee-jdk8-linux-amd64'},
-    jdk8_deploy_darwin      + graalvm_installables(ee=true, windows=false)                                + {name: 'espresso-deploy-installables-ee-jdk8-darwin-amd64'},
-    jdk8_deploy_windows     + graalvm_installables(ee=true, windows=true)                                 + {name: 'espresso-deploy-installables-ee-jdk8-windows-amd64'},
-
-    jdk11_deploy_linux_ce   + graalvm_installables(ee=false, windows=false)                               + {name: 'espresso-deploy-installables-ce-jdk11-linux-amd64'},
-    jdk11_deploy_darwin_ce  + graalvm_installables(ee=false, windows=false)                               + {name: 'espresso-deploy-installables-ce-jdk11-darwin-amd64'},
-    jdk11_deploy_windows_ce + graalvm_installables(ee=false, windows=true)                                + {name: 'espresso-deploy-installables-ce-jdk11-windows-amd64'},
-
-    jdk11_deploy_linux      + graalvm_installables(ee=true, windows=false)                                + {name: 'espresso-deploy-installables-ee-jdk11-linux-amd64'},
-    jdk11_deploy_darwin     + graalvm_installables(ee=true, windows=false)                                + {name: 'espresso-deploy-installables-ee-jdk11-darwin-amd64'},
-    jdk11_deploy_windows    + graalvm_installables(ee=true, windows=true)                                 + {name: 'espresso-deploy-installables-ee-jdk11-windows-amd64'},
 
     // On-demand
     jdk8_on_demand_linux          + espresso_minheap_benchmark('jvm-ce', awfy, 'infinite-overhead')       + {name: 'espresso-jvm-ce-awfy-minheap-infinite-ovh-jdk8-linux-amd64'},
