@@ -176,7 +176,7 @@ bench-specjbb2005-hwloc: ${bench-specjbb2005} ${hwloc.bench-common} {
   run: [
     [export, "LOGDIR=${PWD}"]
     ${export.node0}
-    ${hwloc.node} ${bench-jvmci.mx-specjbb2005} ${bench-arguments} ["input.ending_number_warehouses=77"] ${hwloc.cmd.background}
+    ${hwloc.node} ${bench-jvmci.mx-specjbb2005} ${bench-arguments} ["input.ending_number_warehouses=77"]
   ]
 }
 
