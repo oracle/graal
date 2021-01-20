@@ -1235,21 +1235,22 @@ mx_sdk_vm.register_graalvm_component(mx_sdk_vm.GraalVmLanguage(
     installable=False,
 ))
 
-mx_sdk_vm.register_graalvm_component(mx_sdk_vm.GraalVmLanguage(
-    suite=_suite,
-    name='LLVM Runtime Native',
-    short_name='llrn',
-    dir_name='llvm',
-    license_files=[],
-    third_party_license_files=[],
-    dependencies=['LLVM Runtime Core'],
-    truffle_jars=['sulong:SULONG_NATIVE'],
-    support_distributions=[
-        'sulong:SULONG_NATIVE_HOME',
-    ],
-    launcher_configs=_suite.toolchain.get_launcher_configs(),
-    installable=False,
-))
+if not mx.is_windows():
+    mx_sdk_vm.register_graalvm_component(mx_sdk_vm.GraalVmLanguage(
+        suite=_suite,
+        name='LLVM Runtime Native',
+        short_name='llrn',
+        dir_name='llvm',
+        license_files=[],
+        third_party_license_files=[],
+        dependencies=['LLVM Runtime Core'],
+        truffle_jars=['sulong:SULONG_NATIVE'],
+        support_distributions=[
+            'sulong:SULONG_NATIVE_HOME',
+        ],
+        launcher_configs=_suite.toolchain.get_launcher_configs(),
+        installable=False,
+    ))
 
 mx_sdk_vm.register_graalvm_component(mx_sdk_vm.GraalVmLanguage(
     suite=_suite,
