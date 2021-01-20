@@ -366,6 +366,7 @@ public abstract class LayoutStrategy {
     /** @since 0.17 or earlier */
     protected ShapeImpl addProperty(ShapeImpl shape, Property property, boolean ensureValid) {
         assert !(shape.hasProperty(property.getKey())) : "duplicate property " + property.getKey();
+        shape.onPropertyTransition(property);
 
         AddPropertyTransition addTransition = new AddPropertyTransition(property);
         ShapeImpl cachedShape = shape.queryTransition(addTransition);
@@ -392,7 +393,6 @@ public abstract class LayoutStrategy {
             if (append) {
                 newShape = shape.append(property);
             } else {
-                shape.onPropertyTransition(property);
                 newShape = addProperty(shape, property, false);
             }
             return newShape;

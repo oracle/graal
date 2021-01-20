@@ -553,7 +553,6 @@ public abstract class ShapeImpl extends Shape {
     @Override
     public ShapeImpl addProperty(Property property) {
         assert isValid();
-        onPropertyTransition(property);
 
         return layout.getStrategy().addProperty(this, property);
     }
