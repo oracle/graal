@@ -1,5 +1,5 @@
 local base = {
-  local graal_common = (import "common.json"),
+  local graal_common = (import "../common.json"),
   local jdks = graal_common.jdks,
   local devkits = graal_common.devkits,
 
