@@ -1,14 +1,8 @@
-bench-perftag : {
-  environment : {
-    BENCH_SERVER_EXTRAS : "target:weekly-perf"
-  }
-}
-
 bench-dacapo-hwloc-forks : ${bench-dacapo-hwloc} ${weeklys-bench-notifications} {
   targets: [bench, weekly],
   setup: ${fork-counts.setup} ${bench-dacapo-hwloc.setup}
   timelimit: "02:45:00"
-  environment : ${bench-dacapo-hwloc.environment} ${fork-counts.environment} ${bench-perftag.environment} {
+  environment : ${bench-dacapo-hwloc.environment} ${fork-counts.environment} {
     FORK_COUNT_FILE: "${FORK_COUNTS_DIRECTORY}/compiler/dacapo_forks.json"
   }
 }
@@ -17,7 +11,7 @@ bench-scala-dacapo-hwloc-forks : ${bench-scala-dacapo-hwloc} ${weeklys-bench-not
   targets: [bench, weekly],
   setup: ${fork-counts.setup} ${bench-scala-dacapo-hwloc.setup}
   timelimit: "03:30:00"
-  environment : ${bench-scala-dacapo-hwloc.environment} ${fork-counts.environment} ${bench-perftag.environment} {
+  environment : ${bench-scala-dacapo-hwloc.environment} ${fork-counts.environment} {
     FORK_COUNT_FILE: "${FORK_COUNTS_DIRECTORY}/compiler/scala_dacapo_forks.json"
   }
 }
@@ -26,7 +20,7 @@ bench-specjvm2008-Single-hwloc-forks-batch0 : ${bench-specjvm2008-Single-hwloc} 
   targets: [bench, weekly],
   setup: ${fork-counts.setup} ${bench-specjvm2008-Single-hwloc.setup}
   timelimit: "06:00:00"
-  environment : ${bench-specjvm2008-Single-hwloc.environment} ${fork-counts.environment} ${bench-perftag.environment} {
+  environment : ${bench-specjvm2008-Single-hwloc.environment} ${fork-counts.environment} {
     FORK_COUNT_FILE: "${FORK_COUNTS_DIRECTORY}/compiler/specjvm2008_forks_batch0.json"
   }
 }
@@ -35,7 +29,7 @@ bench-specjvm2008-Single-hwloc-forks-batch1 : ${bench-specjvm2008-Single-hwloc} 
   targets: [bench, weekly],
   setup: ${fork-counts.setup} ${bench-specjvm2008-Single-hwloc.setup}
   timelimit: "06:00:00"
-  environment : ${bench-specjvm2008-Single-hwloc.environment} ${fork-counts.environment} ${bench-perftag.environment} {
+  environment : ${bench-specjvm2008-Single-hwloc.environment} ${fork-counts.environment} {
     FORK_COUNT_FILE: "${FORK_COUNTS_DIRECTORY}/compiler/specjvm2008_forks_batch1.json"
   }
 }
@@ -44,7 +38,7 @@ bench-specjvm2008-Single-hwloc-forks-batch2 : ${bench-specjvm2008-Single-hwloc} 
   targets: [bench, weekly],
   setup: ${fork-counts.setup} ${bench-specjvm2008-Single-hwloc.setup}
   timelimit: "06:00:00"
-  environment : ${bench-specjvm2008-Single-hwloc.environment} ${fork-counts.environment} ${bench-perftag.environment} {
+  environment : ${bench-specjvm2008-Single-hwloc.environment} ${fork-counts.environment} {
     FORK_COUNT_FILE: "${FORK_COUNTS_DIRECTORY}/compiler/specjvm2008_forks_batch2.json"
   }
 }
@@ -53,7 +47,7 @@ bench-specjvm2008-Single-hwloc-forks-batch3 : ${bench-specjvm2008-Single-hwloc} 
   targets: [bench, weekly],
   setup: ${fork-counts.setup} ${bench-specjvm2008-Single-hwloc.setup}
   timelimit: "06:00:00"
-  environment : ${bench-specjvm2008-Single-hwloc.environment} ${fork-counts.environment} ${bench-perftag.environment} {
+  environment : ${bench-specjvm2008-Single-hwloc.environment} ${fork-counts.environment} {
     FORK_COUNT_FILE: "${FORK_COUNTS_DIRECTORY}/compiler/specjvm2008_forks_batch3.json"
   }
 }
@@ -62,7 +56,7 @@ bench-specjvm2008-Single-hwloc-forks-batch4 : ${bench-specjvm2008-Single-hwloc} 
   targets: [bench, weekly],
   setup: ${fork-counts.setup} ${bench-specjvm2008-Single-hwloc.setup}
   timelimit: "06:00:00"
-  environment : ${bench-specjvm2008-Single-hwloc.environment} ${fork-counts.environment} ${bench-perftag.environment} {
+  environment : ${bench-specjvm2008-Single-hwloc.environment} ${fork-counts.environment} {
     FORK_COUNT_FILE: "${FORK_COUNTS_DIRECTORY}/compiler/specjvm2008_forks_batch4.json"
   }
 }
@@ -71,7 +65,7 @@ bench-renaissance-hwloc-forks-batch0 : ${bench-renaissance-hwloc} ${weeklys-benc
   targets: [bench, weekly],
   setup: ${fork-counts.setup} ${bench-renaissance-hwloc.setup}
   timelimit: "06:30:00"
-  environment : ${bench-renaissance-hwloc.environment} ${fork-counts.environment} ${bench-perftag.environment} {
+  environment : ${bench-renaissance-hwloc.environment} ${fork-counts.environment} {
     FORK_COUNT_FILE: "${FORK_COUNTS_DIRECTORY}/compiler/renaissance_forks_batch0.json"
   }
 }
@@ -80,7 +74,7 @@ bench-renaissance-hwloc-forks-batch1 : ${bench-renaissance-hwloc} ${weeklys-benc
   targets: [bench, weekly],
   setup: ${fork-counts.setup} ${bench-renaissance-hwloc.setup}
   timelimit: "06:30:00"
-  environment : ${bench-renaissance-hwloc.environment} ${fork-counts.environment} ${bench-perftag.environment} {
+  environment : ${bench-renaissance-hwloc.environment} ${fork-counts.environment} {
     FORK_COUNT_FILE: "${FORK_COUNTS_DIRECTORY}/compiler/renaissance_forks_batch1.json"
   }
 }
@@ -89,7 +83,7 @@ bench-renaissance-hwloc-forks-batch2 : ${bench-renaissance-hwloc} ${weeklys-benc
   targets: [bench, weekly],
   setup: ${fork-counts.setup} ${bench-renaissance-hwloc.setup}
   timelimit: "06:30:00"
-  environment : ${bench-renaissance-hwloc.environment} ${fork-counts.environment} ${bench-perftag.environment} {
+  environment : ${bench-renaissance-hwloc.environment} ${fork-counts.environment} {
     FORK_COUNT_FILE: "${FORK_COUNTS_DIRECTORY}/compiler/renaissance_forks_batch2.json"
   }
 }
@@ -98,7 +92,7 @@ bench-renaissance-hwloc-forks-batch3 : ${bench-renaissance-hwloc} ${weeklys-benc
   targets: [bench, weekly],
   setup: ${fork-counts.setup} ${bench-renaissance-hwloc.setup}
   timelimit: "06:30:00"
-  environment : ${bench-renaissance-hwloc.environment} ${fork-counts.environment} ${bench-perftag.environment} {
+  environment : ${bench-renaissance-hwloc.environment} ${fork-counts.environment} {
     FORK_COUNT_FILE: "${FORK_COUNTS_DIRECTORY}/compiler/renaissance_forks_batch3.json"
   }
 }
@@ -107,7 +101,7 @@ bench-renaissance-legacy-hwloc-forks-batch0 : ${bench-renaissance-legacy-hwloc} 
   targets: [bench, weekly],
   setup: ${fork-counts.setup} ${bench-renaissance-legacy-hwloc.setup}
   timelimit: "06:30:00"
-  environment : ${bench-renaissance-legacy-hwloc.environment} ${fork-counts.environment} ${bench-perftag.environment} {
+  environment : ${bench-renaissance-legacy-hwloc.environment} ${fork-counts.environment} {
     FORK_COUNT_FILE: "${FORK_COUNTS_DIRECTORY}/compiler/renaissance_legacy_forks_batch0.json"
   }
 }
@@ -115,7 +109,7 @@ bench-renaissance-legacy-hwloc-forks-batch1 : ${bench-renaissance-legacy-hwloc} 
   targets: [bench, weekly],
   setup: ${fork-counts.setup} ${bench-renaissance-legacy-hwloc.setup}
   timelimit: "06:30:00"
-  environment : ${bench-renaissance-legacy-hwloc.environment} ${fork-counts.environment} ${bench-perftag.environment} {
+  environment : ${bench-renaissance-legacy-hwloc.environment} ${fork-counts.environment} {
     FORK_COUNT_FILE: "${FORK_COUNTS_DIRECTORY}/compiler/renaissance_legacy_forks_batch1.json"
   }
 }
@@ -123,7 +117,7 @@ bench-renaissance-legacy-hwloc-forks-batch2 : ${bench-renaissance-legacy-hwloc} 
   targets: [bench, weekly],
   setup: ${fork-counts.setup} ${bench-renaissance-legacy-hwloc.setup}
   timelimit: "06:30:00"
-  environment : ${bench-renaissance-legacy-hwloc.environment} ${fork-counts.environment} ${bench-perftag.environment} {
+  environment : ${bench-renaissance-legacy-hwloc.environment} ${fork-counts.environment} {
     FORK_COUNT_FILE: "${FORK_COUNTS_DIRECTORY}/compiler/renaissance_legacy_forks_batch2.json"
   }
 }
@@ -131,7 +125,7 @@ bench-renaissance-legacy-hwloc-forks-batch3 : ${bench-renaissance-legacy-hwloc} 
   targets: [bench, weekly],
   setup: ${fork-counts.setup} ${bench-renaissance-legacy-hwloc.setup}
   timelimit: "06:30:00"
-  environment : ${bench-renaissance-legacy-hwloc.environment} ${fork-counts.environment} ${bench-perftag.environment} {
+  environment : ${bench-renaissance-legacy-hwloc.environment} ${fork-counts.environment} {
     FORK_COUNT_FILE: "${FORK_COUNTS_DIRECTORY}/compiler/renaissance_legacy_forks_batch3.json"
   }
 }
@@ -140,7 +134,7 @@ bench-specjbb2005-hwloc-forks : ${bench-specjbb2005-hwloc} ${weeklys-bench-notif
   targets: [bench, weekly],
   setup: ${fork-counts.setup} ${bench-specjbb2005-hwloc.setup}
   timelimit: "20:00:00"
-  environment : ${bench-specjbb2005-hwloc.environment} ${fork-counts.environment} ${bench-perftag.environment} {
+  environment : ${bench-specjbb2005-hwloc.environment} ${fork-counts.environment} {
     FORK_COUNT_FILE: "${FORK_COUNTS_DIRECTORY}/compiler/specjbb2005_forks.json"
   }
 }
@@ -149,7 +143,7 @@ bench-specjbb2015-hwloc-forks : ${bench-specjbb2015-hwloc} ${weeklys-bench-notif
   targets: [bench, weekly],
   setup: ${fork-counts.setup} ${bench-specjbb2015-hwloc.setup}
   timelimit: "20:00:00"
-  environment : ${bench-specjbb2015-hwloc.environment} ${fork-counts.environment} ${bench-perftag.environment} {
+  environment : ${bench-specjbb2015-hwloc.environment} ${fork-counts.environment} {
     FORK_COUNT_FILE: "${FORK_COUNTS_DIRECTORY}/compiler/specjbb2015_forks.json"
   }
 }
