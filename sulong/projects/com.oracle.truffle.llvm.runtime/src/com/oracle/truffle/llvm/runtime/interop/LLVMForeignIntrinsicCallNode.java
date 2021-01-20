@@ -37,27 +37,25 @@ import com.oracle.truffle.llvm.runtime.LLVMLanguage;
 import com.oracle.truffle.llvm.runtime.interop.access.LLVMInteropType;
 import com.oracle.truffle.llvm.runtime.interop.convert.ForeignToLLVM;
 import com.oracle.truffle.llvm.runtime.nodes.api.LLVMExpressionNode;
+import com.oracle.truffle.llvm.runtime.types.FunctionType;
 import com.oracle.truffle.llvm.runtime.types.Type;
 
 public class LLVMForeignIntrinsicCallNode extends RootNode {
 
-    public static LLVMForeignIntrinsicCallNode create(LLVMLanguage language, Intrinsic intrinsic, LLVMInteropType.Function type) {
-        int argCount = type.getNumberOfParameters() + 1;
+    public static LLVMForeignIntrinsicCallNode create(LLVMLanguage language, Intrinsic intrinsic, FunctionType type, LLVMInteropType.Function interopType) {
+        int argCount = interopType.getNumberOfParameters() + 1;
         LLVMExpressionNode[] args = new LLVMExpressionNode[argCount];
-        Type.TypeArrayBuilder argTypes = new Type.TypeArrayBuilder(argCount);
 
         // intrinsics shouldn't need the stack argument
         args[0] = null;
-        argTypes.set(0, null);
 
         for (int i = 1; i < argCount; i++) {
-            LLVMInteropType.Value argType = (LLVMInteropType.Value) type.getParameter(i - 1);
-            // TODO argTypes.set(i, ...)
+            LLVMInteropType.Value argType = (LLVMInteropType.Value) interopType.getParameter(i - 1);
             args[i] = new ForeignIntrinsicArgNode(i - 1, argType);
         }
 
-        LLVMExpressionNode intrinsicNode = intrinsic.createIntrinsicNode(args, Type.getRawTypeArray(argTypes));
-        return new LLVMForeignIntrinsicCallNode(language, intrinsicNode, (LLVMInteropType.Value) type.getReturnType());
+        LLVMExpressionNode intrinsicNode = intrinsic.createIntrinsicNode(args, type.getArgumentTypes().toArray(Type.EMPTY_ARRAY));
+        return new LLVMForeignIntrinsicCallNode(language, intrinsicNode, (LLVMInteropType.Value) interopType.getReturnType());
     }
 
     @Child LLVMExpressionNode intrinsicNode;

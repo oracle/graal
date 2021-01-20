@@ -394,7 +394,8 @@ public final class LLVMFunctionCode {
 
             RootNode foreignCall;
             if (isIntrinsicFunctionSlowPath()) {
-                foreignCall = LLVMForeignIntrinsicCallNode.create(language, getIntrinsicSlowPath(), (LLVMInteropType.Function) interopType);
+                FunctionType type = functionDescriptor.getLLVMFunction().getType();
+                foreignCall = LLVMForeignIntrinsicCallNode.create(language, getIntrinsicSlowPath(), type, (LLVMInteropType.Function) interopType);
             } else {
                 foreignCall = LLVMForeignFunctionCallNode.create(language, functionDescriptor, interopType, sourceType);
             }
