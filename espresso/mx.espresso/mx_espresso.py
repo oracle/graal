@@ -83,8 +83,6 @@ def _run_espresso_meta(args, nonZeroIsFatal=True):
 
 class EspressoDefaultTags:
     jackpot = 'jackpot'
-    meta = 'meta'
-    exit = 'exit'
 
 
 def _espresso_gate_runner(args, tasks):
