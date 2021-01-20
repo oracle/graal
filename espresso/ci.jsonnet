@@ -313,16 +313,10 @@ local awfy = 'awfy:*';
 {
   builds: [
     // Gates
-    jdk8_gate_linux + base.extra_jdk11_ce + gate_espresso(allow_warnings=false) + { environment+: {
-                                                                                      GATE_TAGS: 'jackpot'
-                                                                                    },
-                                                                                    name: 'espresso-gate-jackpot-jdk8-linux-amd64'
-                                                                                  },
-
     jdk8_gate_linux_eclipse_jdt           + gate_espresso(allow_warnings=false) + { environment+: {
-                                                                                      GATE_TAGS: 'style,fullbuild'
+                                                                                      GATE_TAGS: 'style,fullbuild,jackpot'
                                                                                     },
-                                                                                    name: 'espresso-gate-style-fullbuild-jdk8-linux-amd64'
+                                                                                    name: 'espresso-gate-style-fullbuild-jackpot-jdk8-linux-amd64'
                                                                                   },
 
     // AWFY peak perf. benchmarks (post-merge)
