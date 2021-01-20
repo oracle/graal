@@ -920,24 +920,10 @@ final class PolyglotContextImpl extends AbstractContextImpl implements com.oracl
             assert false;
             return;
         }
-        PolyglotLanguageContext languageContext = getContext(language);
-        assert languageContext != null;
-        Object prev = hostEnter(languageContext);
-        try {
-            languageContext.checkAccess(null);
-            if (!languageContext.isInitialized()) {
-                languageContext.ensureInitialized(null);
-            }
-        } catch (Throwable t) {
-            throw PolyglotImpl.guestToHostException(languageContext, t, true);
-        } finally {
-            hostLeave(languageContext, prev);
-        }
+        initializeLanguage(language);
     }
 
-    @Override
-    public boolean initializeLanguage(String languageId) {
-        PolyglotLanguage language = requirePublicLanguage(languageId);
+    private boolean initializeLanguage(PolyglotLanguage language) {
         PolyglotLanguageContext languageContext = getContext(language);
         assert languageContext != null;
         Object prev = hostEnter(languageContext);
@@ -952,6 +938,12 @@ final class PolyglotContextImpl extends AbstractContextImpl implements com.oracl
             hostLeave(languageContext, prev);
         }
         return false;
+    }
+
+    @Override
+    public boolean initializeLanguage(String languageId) {
+        PolyglotLanguage language = requirePublicLanguage(languageId);
+        return initializeLanguage(language);
     }
 
     @Override
