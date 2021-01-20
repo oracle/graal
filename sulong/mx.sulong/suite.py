@@ -225,6 +225,12 @@ suite = {
         "mx:JUNIT",
         "sdk:POLYGLOT_TCK",
       ],
+      "buildDependencies" : [
+        "NATIVE_MODE_SUPPORT",
+      ],
+      "javaProperties" : {
+        "test.sulongtck.path" : "<path:SULONG_TCK_NATIVE>/bin"
+      },
       "checkstyle" : "com.oracle.truffle.llvm.runtime",
       "javaCompliance" : "1.8+",
       "workingSets" : "Truffle, LLVM",
@@ -1453,9 +1459,6 @@ suite = {
         "sulong:SULONG_LEGACY",
         "SULONG_TEST_NATIVE",
       ],
-      "javaProperties" : {
-        "test.sulongtck.path" : "<path:SULONG_TCK_NATIVE>/bin"
-      },
       "license" : "BSD-new",
       "testDistribution" : True,
     },
