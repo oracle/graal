@@ -5,7 +5,7 @@ A Java bytecode interpreter at its core, turned Just-In-Time (JIT) compiler by l
 It highlights the sublime potential of the GraalVM as a platform for implementing high-performance languages and runtimes.
 
 ## Status
-Espresso is still an early prototype, but it already passes **>99.99%** of the *Java Compatibility Kit* (a.k.a. the JCK or TCK for Java SE) 8c and 11 runtime suite.  
+Espresso is still an early prototype, but it already passes the *Java Compatibility Kit* (a.k.a. the JCK or TCK for Java SE) 8c and 11 runtime suite.  
 Espresso can compile itself with both `javac` and (the Eclipse Java Compiler) `ecj`.  
 It features complete meta-circularity: it can run itself any amount of layers deep, preserving all the capabilities (Unsafe, JNI, Reflection...) of the base layer. Running HelloWorld on three nested layers of Espresso takes **~15 minutes**.  
 
@@ -14,14 +14,6 @@ Espresso is similar to *HotSpot Express*, the same codebase can run either an 8 
 The development of Espresso happens mostly on HotSpot, but this configuration (Espresso on HotSpot) is only supported on Linux, see [Limitations](#1--limitations.)
 .  
 **Espresso's native image runs on Linux, MacOS and Windows.**
-
-## Setup
-Espresso needs some patches (in the graal repo) to run; checkout the `release/graal-vm/21.0` branch on the graal repo:
-```bash
-cd ../graal
-git checkout release/graal-vm/21.0
-```
-Always use `master` for Espresso and the `release/graal-vm/21.0` branch on the graal repo.
 
 ### Building _Espresso_
 
@@ -39,34 +31,32 @@ Other configurations are provided:
 mx --env jvm build       # GraalVM CE + Espresso jars (interpreter only)
 mx --env jvm-ce build    # GraalVM CE + Espresso jars (JIT)
 mx --env native-ce build # GraalVM CE + Espresso native (JIT)
-mx --env jvm-ee build    # GraalVM EE + Espresso jars (JIT)
-mx --env native-ee build # GraalVM EE + Espresso native (JIT)
 
 # Use the same --env argument used to build.
 export ESPRESSO=`mx --env native-ce graalvm-home`/bin/espresso
 ```
 
-Configuration files: `mx.espresso/{jvm,jvm-ce,native-ce,jvm-ee,native-ee}` and `mx.espresso/native-image.properties`
+Configuration files: `mx.espresso/{jvm,jvm-ce,native-ce}` and `mx.espresso/native-image.properties`
 
 ### Running Espresso
 `mx espresso` runs Espresso (from jars or native) from within a GraalVM. It mimics the `java` (8|11) command. Bare `mx espresso` runs Espresso on interpreter-only mode.
 
 ```bash
 mx --env jvm-ce build # Always build first
-mx --env jvm-ce espresso -cp mxbuild/dists/jdk1.8/espresso-playground.jar com.oracle.truffle.espresso.playground.HelloWorld
+mx --env jvm-ce espresso -cp my.jar HelloWorld
 ```
 
 To build and run Espresso native image:
 ```bash
 mx --env native-ce build # Always build first
-mx --env native-ce espresso -cp mxbuild/dists/jdk1.8/espresso-playground.jar com.oracle.truffle.espresso.playground.HelloWorld
+mx --env native-ce espresso -cp my.jar HelloWorld
 ```
 
 The `mx espresso` launcher adds some overhead, to execute Espresso native image directly use:
 ```bash
 mx --env native-ce build # Always build first
 export ESPRESSO=`mx --env native-ce graalvm-home`/bin/espresso
-time $ESPRESSO -cp mxbuild/dists/jdk1.8/espresso-playground.jar com.oracle.truffle.espresso.playground.HelloWorld
+time $ESPRESSO -cp my.jar HelloWorld
 ```
 
 ### `mx espresso-standalone ...`
@@ -81,27 +71,7 @@ mx -d espresso-standalone -cp mxbuild/dists/jdk1.8/espresso-playground.jar com.o
 It can also run on a GraalVM with JIT compilation:
 ```bash
 mx build
-mx --dy /compiler espresso-standalone -cp mxbuild/dists/jdk1.8/espresso-playground.jar com.oracle.truffle.espresso.playground.HelloWorld
-```
-
-### Running _Espresso_ unit tests
-Espresso runs a sub-set of the Graal compiler tests. For performance reasons, most unit tests are executed in the same context.
-```bash
-mx build
-mx unittest --suite espresso
-```
-
-### Terminal tetris
-`mx espresso-playground` is a handy shortcut to run test programs bundled with Espresso (espresso-playground distribution).
-```bash
-mx build
-mx espresso-playground Tetris
-# Or also
-mx espresso -cp mxbuild/dists/jdk1.8/espresso-playground.jar com.oracle.truffle.espresso.playground.Tetris
-
-# MacOS does not support Espresso on HotSpot, use the native image instead.
-mx --env native-ce build
-mx --env native-ce espresso -cp mxbuild/dists/jdk1.8/espresso-playground.jar com.oracle.truffle.espresso.playground.Tetris
+mx --dy /compiler espresso-standalone -cp my.jar HelloWorld
 ```
 
 ### Dumping IGV graphs
@@ -127,9 +97,9 @@ LD_DEBUG=unused mx espresso -cp mxbuild/dists/jdk1.8/espresso-playground.jar com
 ## _Espressoⁿ_ Java-ception
 **Self-hosting requires a Linux distribution with an up-to-date glibc.**
 Use `mx espresso-meta` to run programs on Espresso². Ensure to prepend `LD_DEBUG=unused` to overcome a known **glibc** bug.  
-To run Tetris on Espresso² execute the following:
+To run HelloWorld on Espresso² execute the following:
 ```bash
 mx build
-LD_DEBUG=unused mx --dy /compiler espresso-meta -cp mxbuild/dists/jdk1.8/espresso-playground.jar com.oracle.truffle.espresso.playground.Tetris
+LD_DEBUG=unused mx --dy /compiler espresso-meta -cp my.jar HelloWorld
 ```
 It takes some time for both (nested) VMs to boot, only the base layer is blessed with JIT compilation. Enjoy!
