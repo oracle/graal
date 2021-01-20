@@ -89,5 +89,7 @@ public interface HostVM {
 
     void checkType(ResolvedJavaType type, AnalysisUniverse universe);
 
-    void checkMethod(BigBang bb, AnalysisMethod method, StructuredGraph graph);
+    void methodAfterParsingHook(BigBang bb, AnalysisMethod method, StructuredGraph graph);
+
+    void methodBeforeTypeFlowCreationHook(BigBang bb, AnalysisMethod method, StructuredGraph graph);
 }
