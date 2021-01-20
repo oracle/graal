@@ -326,9 +326,11 @@ builds += [
   # Linux/AMD64
   ${vm_java_8} ${full_vm_build_linux} ${linux-deploy} ${deploy_vm_linux} {
     run: [
+      ${mx_vm_installables} [--dynamicimports, ${vm_extra_suites}, "--exclude-components="${non-product-vm-components}, graalvm-show]
       ${mx_vm_installables} [--dynamicimports, ${vm_extra_suites}, "--exclude-components="${non-product-vm-components}, build]
       ${mx_vm_installables} [--dynamicimports, ${vm_extra_suites}, "--exclude-components="${non-product-vm-components}] ${maven_deploy_sdk_components}
     ] ${collect_profiles} [
+      ${mx_vm_common} ${vm_profiles} [graalvm-show]
       ${mx_vm_common} ${vm_profiles} [build]
       ${mx_vm_common} ${vm_profiles} ${maven_deploy_sdk_base}
       ${notify-nexus-deploy}
@@ -340,9 +342,11 @@ builds += [
   }
   ${vm_java_11} ${full_vm_build_linux} ${linux-deploy} ${deploy_vm_linux} {
     run: [
+      ${mx_vm_installables} [--dynamicimports, ${vm_extra_suites}, "--exclude-components="${non-product-vm-components}, graalvm-show]
       ${mx_vm_installables} [--dynamicimports, ${vm_extra_suites}, "--exclude-components="${non-product-vm-components}, build]
       ${mx_vm_installables} [--dynamicimports, ${vm_extra_suites}, "--exclude-components="${non-product-vm-components}] ${maven_deploy_sdk_components}
     ] ${collect_profiles} [
+      ${mx_vm_common} ${vm_profiles} [graalvm-show]
       ${mx_vm_common} ${vm_profiles} [build]
       ${mx_vm_common} ${vm_profiles} ${maven_deploy_sdk_base}
       ${notify-nexus-deploy}
@@ -355,9 +359,11 @@ builds += [
   ${vm_java_11} ${full_vm_build_linux_aarch64} ${linux-deploy} ${deploy_vm_linux_aarch64} {
     run: [
       [set-export, VM_ENV, "${VM_ENV}-aarch64"]
+      ${mx_vm_installables} [--dynamicimports, ${vm_extra_suites_aarch64}, "--exclude-components="${non-product-vm-components}, graalvm-show]
       ${mx_vm_installables} [--dynamicimports, ${vm_extra_suites_aarch64}, "--exclude-components="${non-product-vm-components}, build]
       ${mx_vm_installables} [--dynamicimports, ${vm_extra_suites_aarch64}, "--exclude-components="${non-product-vm-components}] ${maven_deploy_sdk_components}
     ] ${collect_profiles} [
+      ${mx_vm_common} ${vm_profiles} [graalvm-show]
       ${mx_vm_common} ${vm_profiles} [build]
       ${mx_vm_common} ${vm_profiles} ${maven_deploy_sdk_base}
       ${notify-nexus-deploy}
@@ -369,6 +375,7 @@ builds += [
   # Darwin/AMD64
   ${vm_java_8} ${full_vm_build_darwin} ${darwin-deploy} ${deploy_daily_vm_darwin} {
     run: ${collect_profiles} [
+      ${mx_vm_common} ${vm_profiles} [graalvm-show]
       ${mx_vm_common} ${vm_profiles} [build]
       ${mx_vm_common} ${vm_profiles} ${maven_deploy_sdk_base}
       ${notify-nexus-deploy}
@@ -379,6 +386,7 @@ builds += [
   }
   ${vm_java_8} ${full_vm_build_darwin} ${darwin-deploy} ${deploy_daily_vm_darwin} {
     run: [
+      ${mx_vm_installables} [--dynamicimports, ${vm_extra_suites}, "--exclude-components="${non-product-vm-components}, graalvm-show]
       ${mx_vm_installables} [--dynamicimports, ${vm_extra_suites}, "--exclude-components="${non-product-vm-components}, build]
       ${mx_vm_installables} [--dynamicimports, ${vm_extra_suites}, "--exclude-components="${non-product-vm-components}] ${maven_deploy_sdk_components}
       ${notify-nexus-deploy}
@@ -388,6 +396,7 @@ builds += [
   }
   ${vm_java_11} ${full_vm_build_darwin} ${darwin-deploy} ${deploy_daily_vm_darwin} {
     run: ${collect_profiles} [
+      ${mx_vm_common} ${vm_profiles} [graalvm-show]
       ${mx_vm_common} ${vm_profiles} [build]
       ${mx_vm_common} ${vm_profiles} ${maven_deploy_sdk_base}
       ${notify-nexus-deploy}
@@ -397,6 +406,7 @@ builds += [
   }
   ${vm_java_11} ${full_vm_build_darwin} ${darwin-deploy} ${deploy_daily_vm_darwin} {
     run: [
+      ${mx_vm_installables} [--dynamicimports, ${vm_extra_suites}, "--exclude-components="${non-product-vm-components}, graalvm-show]
       ${mx_vm_installables} [--dynamicimports, ${vm_extra_suites}, "--exclude-components="${non-product-vm-components}, build]
       ${mx_vm_installables} [--dynamicimports, ${vm_extra_suites}, "--exclude-components="${non-product-vm-components}] ${maven_deploy_sdk_components}
       ${notify-nexus-deploy}
@@ -408,6 +418,7 @@ builds += [
   ${vm_java_8} ${deploy_daily_vm_windows} ${js_windows} ${vm_common_windows_jdk8} {
     run: [
       [set-export, VM_ENV, "${VM_ENV}-win"]
+      ${mx_vm_common} [graalvm-show]
       ${mx_vm_common} [build]
       ${mx_vm_common} ${maven_deploy_sdk_base}
       ${notify-nexus-deploy}
@@ -418,6 +429,7 @@ builds += [
   ${vm_java_11} ${deploy_daily_vm_windows-jdk11} ${svm-common-windows-jdk11} ${js_windows_jdk11} {
     run: [
       [set-export, VM_ENV, "${VM_ENV}-win"]
+      ${mx_vm_common} [graalvm-show]
       ${mx_vm_common} [build]
       ${mx_vm_common} ${maven_deploy_sdk_base}
       ${notify-nexus-deploy}
@@ -428,6 +440,7 @@ builds += [
   ${vm_java_8} ${deploy_daily_vm_windows} ${js_windows} ${vm_common_windows_jdk8} {
     run: [
       [set-export, VM_ENV, "${VM_ENV}-win"]
+      ${mx_vm_installables} [--dynamicimports, ${vm_extra_suites_windows}, "--exclude-components="${non-product-vm-components-windows}, graalvm-show]
       ${mx_vm_installables} [--dynamicimports, ${vm_extra_suites_windows}, "--exclude-components="${non-product-vm-components-windows}, build]
       ${mx_vm_installables} [--dynamicimports, ${vm_extra_suites_windows}, "--exclude-components="${non-product-vm-components-windows}] ${maven_deploy_sdk_components}
       ${notify-nexus-deploy}
@@ -438,6 +451,7 @@ builds += [
   ${vm_java_11} ${deploy_daily_vm_windows-jdk11} ${svm-common-windows-jdk11} ${js_windows_jdk11} {
     run: [
       [set-export, VM_ENV, "${VM_ENV}-win"]
+      ${mx_vm_installables} [--dynamicimports, ${vm_extra_suites_windows}, "--exclude-components="${non-product-vm-components-windows}, graalvm-show]
       ${mx_vm_installables} [--dynamicimports, ${vm_extra_suites_windows}, "--exclude-components="${non-product-vm-components-windows}, build]
       ${mx_vm_installables} [--dynamicimports, ${vm_extra_suites_windows}, "--exclude-components="${non-product-vm-components-windows}] ${maven_deploy_sdk_components}
       ${notify-nexus-deploy}
@@ -452,6 +466,7 @@ builds += [
   ${vm_java_8} ${full_vm_build_linux} ${linux-deploy} ${deploy_vm_linux} {
     run: [
       [set-export, VM_ENV, "${VM_ENV}-complete"]
+      ${mx_vm_common} [graalvm-show]
       ${mx_vm_common} [build]
       ${mx_vm_common} ${maven_deploy_sdk_base}
       ${notify-nexus-deploy}
@@ -462,6 +477,7 @@ builds += [
   ${vm_java_11} ${full_vm_build_linux} ${linux-deploy} ${deploy_vm_linux} {
     run: [
       [set-export, VM_ENV, "${VM_ENV}-complete"]
+      ${mx_vm_common} [graalvm-show]
       ${mx_vm_common} [build]
       ${mx_vm_common} ${maven_deploy_sdk_base}
       ${notify-nexus-deploy}
@@ -473,6 +489,7 @@ builds += [
   ${vm_java_8} ${full_vm_build_darwin} ${darwin-deploy} ${deploy_daily_vm_darwin} {
     run: [
       [set-export, VM_ENV, "${VM_ENV}-complete"]
+      ${mx_vm_common} [graalvm-show]
       ${mx_vm_common} [build]
       ${mx_vm_common} ${maven_deploy_sdk_base}
       ${notify-nexus-deploy}
@@ -483,6 +500,7 @@ builds += [
   ${vm_java_11} ${full_vm_build_darwin} ${darwin-deploy} ${deploy_daily_vm_darwin} {
     run: [
       [set-export, VM_ENV, "${VM_ENV}-complete"]
+      ${mx_vm_common} [graalvm-show]
       ${mx_vm_common} [build]
       ${mx_vm_common} ${maven_deploy_sdk_base}
       ${notify-nexus-deploy}
