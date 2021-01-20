@@ -146,15 +146,6 @@ local benchmark_suites = ['dacapo', 'renaissance', 'scala-dacapo'];
   },
 
   // shared functions
-  clone_repo(repo): ['git', 'clone', '-b', 'espresso_release_branch', '--depth', '1', ['mx', 'urlrewrite', 'https://github.com/oracle/' + repo], '../' + repo],
-
-  clone_graal(env): {
-    local maybe_clone_graal_enterprise = if std.endsWith(env, 'ee') then [that.clone_repo('graal-enterprise')] else [],
-    setup+: [
-      that.clone_repo('graal'),
-    ] + maybe_clone_graal_enterprise,
-  },
-
   _mx(env, args): ['mx', '--env', env] + args,
 
   build_espresso(env): {
@@ -181,7 +172,6 @@ local benchmark_suites = ['dacapo', 'renaissance', 'scala-dacapo'];
   },
 
   espresso_benchmark(env, suite, host_jvm=_host_jvm(env), host_jvm_config=_host_jvm_config(env), guest_jvm='espresso', guest_jvm_config='default', fork_file=null, extra_args=[]):
-    self.clone_graal(env) +
     self.build_espresso(env) +
     {
       run+: that.maybe_set_ld_debug_flag(env) + [
@@ -216,7 +206,6 @@ local benchmark_suites = ['dacapo', 'renaissance', 'scala-dacapo'];
     ),
 
   graal_benchmark(env, suite, host_jvm='server', host_jvm_config=_graal_host_jvm_config(env), extra_args=[]):
-    self.clone_graal(env) +
     self.build_espresso(env) +
     {
       run+: [
