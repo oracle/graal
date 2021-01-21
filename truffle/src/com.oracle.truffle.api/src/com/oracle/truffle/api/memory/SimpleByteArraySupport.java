@@ -42,91 +42,91 @@
 package com.oracle.truffle.api.memory;
 
 /**
- * Implementation of {@link ByteArraySupport} by indexing individual bytes.
+ * Implementation of {@link ByteArraySupport} by byteOffseting individual bytes.
  * <p>
  * Bytes ordering is big-endian.
  */
 @SuppressWarnings("PointlessArithmeticExpression")
 final class SimpleByteArraySupport extends ByteArraySupport {
     @Override
-    public byte getByte(byte[] buffer, int index) throws IndexOutOfBoundsException {
-        return buffer[index];
+    public byte getByte(byte[] buffer, int byteOffset) throws IndexOutOfBoundsException {
+        return buffer[byteOffset];
     }
 
     @Override
-    public void putByte(byte[] buffer, int index, byte value) throws IndexOutOfBoundsException {
-        buffer[index] = value;
+    public void putByte(byte[] buffer, int byteOffset, byte value) throws IndexOutOfBoundsException {
+        buffer[byteOffset] = value;
     }
 
     @Override
-    public short getShort(byte[] buffer, int index) throws IndexOutOfBoundsException {
-        return (short) (((buffer[index] & 0xFF) << Byte.SIZE) |
-                        (buffer[index + 1] & 0xFF));
+    public short getShort(byte[] buffer, int byteOffset) throws IndexOutOfBoundsException {
+        return (short) (((buffer[byteOffset] & 0xFF) << Byte.SIZE) |
+                        (buffer[byteOffset + 1] & 0xFF));
     }
 
     @Override
-    public void putShort(byte[] buffer, int index, short value) throws IndexOutOfBoundsException {
-        buffer[index + 0] = (byte) (value >> Byte.SIZE);
-        buffer[index + 1] = (byte) (value);
+    public void putShort(byte[] buffer, int byteOffset, short value) throws IndexOutOfBoundsException {
+        buffer[byteOffset + 0] = (byte) (value >> Byte.SIZE);
+        buffer[byteOffset + 1] = (byte) (value);
     }
 
     @Override
-    public int getInt(byte[] buffer, int index) throws IndexOutOfBoundsException {
-        return ((buffer[index + 0] & 0xFF) << Byte.SIZE * 3) |
-                        ((buffer[index + 1] & 0xFF) << Byte.SIZE * 2) |
-                        ((buffer[index + 2] & 0xFF) << Byte.SIZE) |
-                        ((buffer[index + 3] & 0xFF));
+    public int getInt(byte[] buffer, int byteOffset) throws IndexOutOfBoundsException {
+        return ((buffer[byteOffset + 0] & 0xFF) << Byte.SIZE * 3) |
+                        ((buffer[byteOffset + 1] & 0xFF) << Byte.SIZE * 2) |
+                        ((buffer[byteOffset + 2] & 0xFF) << Byte.SIZE) |
+                        ((buffer[byteOffset + 3] & 0xFF));
     }
 
     @Override
-    public void putInt(byte[] buffer, int index, int value) throws IndexOutOfBoundsException {
-        buffer[index + 0] = (byte) (value >> Byte.SIZE * 3);
-        buffer[index + 1] = (byte) (value >> Byte.SIZE * 2);
-        buffer[index + 2] = (byte) (value >> Byte.SIZE);
-        buffer[index + 3] = (byte) (value);
+    public void putInt(byte[] buffer, int byteOffset, int value) throws IndexOutOfBoundsException {
+        buffer[byteOffset + 0] = (byte) (value >> Byte.SIZE * 3);
+        buffer[byteOffset + 1] = (byte) (value >> Byte.SIZE * 2);
+        buffer[byteOffset + 2] = (byte) (value >> Byte.SIZE);
+        buffer[byteOffset + 3] = (byte) (value);
     }
 
     @Override
-    public long getLong(byte[] buffer, int index) throws IndexOutOfBoundsException {
-        return ((buffer[index + 0] & 0xFFL) << (Byte.SIZE * 7)) |
-                        ((buffer[index + 1] & 0xFFL) << (Byte.SIZE * 6)) |
-                        ((buffer[index + 2] & 0xFFL) << (Byte.SIZE * 5)) |
-                        ((buffer[index + 3] & 0xFFL) << (Byte.SIZE * 4)) |
-                        ((buffer[index + 4] & 0xFFL) << (Byte.SIZE * 3)) |
-                        ((buffer[index + 5] & 0xFFL) << (Byte.SIZE * 2)) |
-                        ((buffer[index + 6] & 0xFFL) << (Byte.SIZE)) |
-                        ((buffer[index + 7] & 0xFFL));
+    public long getLong(byte[] buffer, int byteOffset) throws IndexOutOfBoundsException {
+        return ((buffer[byteOffset + 0] & 0xFFL) << (Byte.SIZE * 7)) |
+                        ((buffer[byteOffset + 1] & 0xFFL) << (Byte.SIZE * 6)) |
+                        ((buffer[byteOffset + 2] & 0xFFL) << (Byte.SIZE * 5)) |
+                        ((buffer[byteOffset + 3] & 0xFFL) << (Byte.SIZE * 4)) |
+                        ((buffer[byteOffset + 4] & 0xFFL) << (Byte.SIZE * 3)) |
+                        ((buffer[byteOffset + 5] & 0xFFL) << (Byte.SIZE * 2)) |
+                        ((buffer[byteOffset + 6] & 0xFFL) << (Byte.SIZE)) |
+                        ((buffer[byteOffset + 7] & 0xFFL));
     }
 
     @Override
-    public void putLong(byte[] buffer, int index, long value) throws IndexOutOfBoundsException {
-        buffer[index + 0] = (byte) (value >> (Byte.SIZE * 7));
-        buffer[index + 1] = (byte) (value >> (Byte.SIZE * 6));
-        buffer[index + 2] = (byte) (value >> (Byte.SIZE * 5));
-        buffer[index + 3] = (byte) (value >> (Byte.SIZE * 4));
-        buffer[index + 4] = (byte) (value >> (Byte.SIZE * 3));
-        buffer[index + 5] = (byte) (value >> (Byte.SIZE * 2));
-        buffer[index + 6] = (byte) (value >> (Byte.SIZE));
-        buffer[index + 7] = (byte) (value);
+    public void putLong(byte[] buffer, int byteOffset, long value) throws IndexOutOfBoundsException {
+        buffer[byteOffset + 0] = (byte) (value >> (Byte.SIZE * 7));
+        buffer[byteOffset + 1] = (byte) (value >> (Byte.SIZE * 6));
+        buffer[byteOffset + 2] = (byte) (value >> (Byte.SIZE * 5));
+        buffer[byteOffset + 3] = (byte) (value >> (Byte.SIZE * 4));
+        buffer[byteOffset + 4] = (byte) (value >> (Byte.SIZE * 3));
+        buffer[byteOffset + 5] = (byte) (value >> (Byte.SIZE * 2));
+        buffer[byteOffset + 6] = (byte) (value >> (Byte.SIZE));
+        buffer[byteOffset + 7] = (byte) (value);
     }
 
     @Override
-    public float getFloat(byte[] buffer, int index) throws IndexOutOfBoundsException {
-        return Float.intBitsToFloat(getInt(buffer, index));
+    public float getFloat(byte[] buffer, int byteOffset) throws IndexOutOfBoundsException {
+        return Float.intBitsToFloat(getInt(buffer, byteOffset));
     }
 
     @Override
-    public void putFloat(byte[] buffer, int index, float value) throws IndexOutOfBoundsException {
-        putInt(buffer, index, Float.floatToRawIntBits(value));
+    public void putFloat(byte[] buffer, int byteOffset, float value) throws IndexOutOfBoundsException {
+        putInt(buffer, byteOffset, Float.floatToRawIntBits(value));
     }
 
     @Override
-    public double getDouble(byte[] buffer, int index) throws IndexOutOfBoundsException {
-        return Double.longBitsToDouble(getLong(buffer, index));
+    public double getDouble(byte[] buffer, int byteOffset) throws IndexOutOfBoundsException {
+        return Double.longBitsToDouble(getLong(buffer, byteOffset));
     }
 
     @Override
-    public void putDouble(byte[] buffer, int index, double value) throws IndexOutOfBoundsException {
-        putLong(buffer, index, Double.doubleToRawLongBits(value));
+    public void putDouble(byte[] buffer, int byteOffset, double value) throws IndexOutOfBoundsException {
+        putLong(buffer, byteOffset, Double.doubleToRawLongBits(value));
     }
 }
