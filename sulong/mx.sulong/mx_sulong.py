@@ -295,21 +295,21 @@ def clangformat(args=None):
     parser.add_argument('--with-projects', action='store_true', help='check native projects. Defaults to true unless a path is specified.')
     parser.add_argument('paths', metavar='path', nargs='*', help='check given paths')
     args = parser.parse_args(args)
-    paths = args.paths
+    paths = [(p, "<cmd-line-argument>") for p in args.paths]
 
     if not paths or args.with_projects:
-        paths += [p.dir for p in mx.projects(limit_to_primary=True) if p.isNativeProject() and getattr(p, "clangFormat", True)]
+        paths += [(p.dir, p.name) for p in mx.projects(limit_to_primary=True) if p.isNativeProject() and getattr(p, "clangFormat", True)]
 
     error = False
-    for f in paths:
-        if not checkCFiles(f):
+    for f, reason in paths:
+        if not checkCFiles(f, reason):
             error = True
     if error:
         mx.log_error("found formatting errors!")
         exit(-1)
 
 
-def checkCFiles(target):
+def checkCFiles(target, reason):
     error = False
     files_to_check = []
     if os.path.isfile(target):
@@ -320,9 +320,9 @@ def checkCFiles(target):
                 if f.endswith('.c') or f.endswith('.cpp') or f.endswith('.h') or f.endswith('.hpp'):
                     files_to_check.append(join(path, f))
     if not files_to_check:
-        mx.logv("clang-format: no files found {}".format(target))
+        mx.logv("clang-format: no files found {} ({})".format(target, reason))
         return True
-    mx.logv("clang-format: checking {} ({} files)".format(target, len(files_to_check)))
+    mx.logv("clang-format: checking {} ({}, {} files)".format(target, reason, len(files_to_check)))
     for f in files_to_check:
         if not checkCFile(f):
             error = True
