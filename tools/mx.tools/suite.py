@@ -4,7 +4,7 @@ suite = {
     "defaultLicense" : "GPLv2-CPE",
 
     "groupId" : "org.graalvm.tools",
-    "version" : "21.1.0",
+    "version" : "21.0.0.1",
     "release" : False,
     "url" : "http://openjdk.java.net/projects/graal",
     "developer" : {
