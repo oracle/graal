@@ -268,6 +268,7 @@ public final class LLVMFunctionDescriptor extends LLVMInternalTruffleObject impl
     }
 
     @ExportMessage
+    @CompilerDirectives.TruffleBoundary
     public SourceSection getSourceLocation() throws UnsupportedMessageException {
         if (hasSourceLocation()) {
             return llvmFunction.getSourceLocation().getSourceSection();

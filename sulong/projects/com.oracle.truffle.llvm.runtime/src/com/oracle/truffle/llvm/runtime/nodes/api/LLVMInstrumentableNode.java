@@ -159,7 +159,7 @@ public abstract class LLVMInstrumentableNode extends LLVMNode implements Instrum
             if (LLVMManagedPointer.isInstance(pointer)) {
                 return LLVMManagedPointer.cast(pointer).getObject();
             }
-            throw new IllegalStateException("Current LLVM context does not have a root instance.");
+            throw new IllegalStateException();
         }
         throw UnsupportedMessageException.create();
     }
