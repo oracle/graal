@@ -88,7 +88,7 @@ import org.graalvm.polyglot.Context;
 import org.graalvm.polyglot.TypeLiteral;
 import org.graalvm.polyglot.Value;
 import org.graalvm.polyglot.proxy.ProxyArray;
-import org.graalvm.polyglot.proxy.ProxyArrayIterable;
+import org.graalvm.polyglot.proxy.ProxyIterable;
 import org.graalvm.polyglot.proxy.ProxyExecutable;
 import org.graalvm.polyglot.proxy.ProxyIterator;
 import org.junit.Before;
@@ -212,7 +212,7 @@ public class IteratorTest extends AbstractPolyglotTest {
         Collection<Object> valuesIterable = new HashSet<>();
         Collections.addAll(valuesIterable, values);
         setupEnv(Context.newBuilder().allowAllAccess(true).build());
-        Value iterable = context.asValue(ProxyArrayIterable.from(valuesIterable));
+        Value iterable = context.asValue(ProxyIterable.from(valuesIterable));
         verifyIterable(iterable, values);
     }
 
@@ -222,7 +222,7 @@ public class IteratorTest extends AbstractPolyglotTest {
         List<Object> valuesList = new ArrayList<>();
         Collections.addAll(valuesList, values);
         setupEnv(Context.newBuilder().allowAllAccess(true).build());
-        Value iterable = context.asValue(ProxyArrayIterable.from(valuesList));
+        Value iterable = context.asValue(ProxyIterable.from(valuesList));
         verifyIterable(iterable, values);
     }
 
@@ -263,15 +263,15 @@ public class IteratorTest extends AbstractPolyglotTest {
     }
 
     private static void verifyIterable(Value iterable, Object[] values) {
-        assertTrue(iterable.hasArrayIterator());
+        assertTrue(iterable.hasIterator());
         assertFalse(iterable.isIterator());
-        verifyIterator(iterable.getArrayIterator(), values);
-        verifyIterator(iterable.getArrayIterator().as(Iterator.class), values);
+        verifyIterator(iterable.getIterator(), values);
+        verifyIterator(iterable.getIterator().as(Iterator.class), values);
         verifyIterator(iterable.as(Iterable.class).iterator(), values);
     }
 
     private static void verifyIterator(Value iterator, Object[] values) {
-        assertFalse(iterator.hasArrayIterator());
+        assertFalse(iterator.hasIterator());
         assertTrue(iterator.isIterator());
         for (int i = 0; i < values.length; i++) {
             assertTrue(iterator.hasIteratorNextElement());
@@ -320,12 +320,12 @@ public class IteratorTest extends AbstractPolyglotTest {
         }
 
         @ExportMessage
-        boolean hasArrayIterator() {
+        boolean hasIterator() {
             return true;
         }
 
         @ExportMessage
-        Object getArrayIterator() {
+        Object getIterator() {
             return new SimpleIterator(items);
         }
     }
@@ -360,7 +360,7 @@ public class IteratorTest extends AbstractPolyglotTest {
         }
     }
 
-    private static final class ExecutableProxyIterableImpl implements ProxyArrayIterable, ProxyExecutable {
+    private static final class ExecutableProxyIterableImpl implements ProxyIterable, ProxyExecutable {
 
         private final List<Object> storage;
 
@@ -370,7 +370,7 @@ public class IteratorTest extends AbstractPolyglotTest {
         }
 
         @Override
-        public Object getArrayIterator() {
+        public Object getIterator() {
             return new ExecutableProxyIteratorImpl(storage.iterator());
         }
 
@@ -610,11 +610,11 @@ public class IteratorTest extends AbstractPolyglotTest {
         @Override
         void executeVoid(VirtualFrame frame) {
             Object iterable = readIterable.execute(frame);
-            if (!iterables.hasArrayIterator(iterable)) {
+            if (!iterables.hasIterator(iterable)) {
                 throw new TypeError("iterable", this);
             }
             try {
-                iterate.execute(frame, iterables.getArrayIterator(iterable));
+                iterate.execute(frame, iterables.getIterator(iterable));
             } catch (UnsupportedMessageException | StopIterationException e) {
                 throw CompilerDirectives.shouldNotReachHere(e);
             }

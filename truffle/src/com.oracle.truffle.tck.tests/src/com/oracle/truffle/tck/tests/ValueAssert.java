@@ -456,8 +456,8 @@ public class ValueAssert {
                     assertFails(() -> value.isMetaInstance(""), UnsupportedOperationException.class);
                     break;
                 case ITERABLE:
-                    assertFalse(value.hasArrayIterator());
-                    assertFails(() -> value.getArrayIterator(), UnsupportedOperationException.class);
+                    assertFalse(value.hasIterator());
+                    assertFails(() -> value.getIterator(), UnsupportedOperationException.class);
                     break;
                 case ITERATOR:
                     assertFalse(value.isIterator());
@@ -669,7 +669,7 @@ public class ValueAssert {
                     value.isMetaInstance("");
                     break;
                 case ITERABLE:
-                    assertTrue(msg, value.hasArrayIterator());
+                    assertTrue(msg, value.hasIterator());
                     assertValueIterable(value, depth, hasHostAccess);
                     break;
                 case ITERATOR:
@@ -846,9 +846,9 @@ public class ValueAssert {
     }
 
     private static void assertValueIterable(Value value, int depth, boolean hasHostAccess) {
-        assertTrue(value.hasArrayIterator());
+        assertTrue(value.hasIterator());
         List<Object> receivedObjects = new ArrayList<>();
-        Value iterator = value.getArrayIterator();
+        Value iterator = value.getIterator();
         while (iterator.hasIteratorNextElement()) {
             Value element = iterator.getIteratorNextElement();
             receivedObjects.add(element.as(Object.class));
@@ -862,7 +862,7 @@ public class ValueAssert {
 
         Iterator<Object> receivedIterator = receivedObjects.iterator();
         Iterator<Object> objectIterator1 = objectIterable.iterator();
-        Iterator<Object> objectIterator2 = value.getArrayIterator().as(OBJECT_ITERATOR);
+        Iterator<Object> objectIterator2 = value.getIterator().as(OBJECT_ITERATOR);
         while (objectIterator1.hasNext() && objectIterator1.hasNext() && receivedIterator.hasNext()) {
             Object expected = receivedIterator.next();
             assertEqualValues(expected, objectIterator1.next());
@@ -1073,7 +1073,7 @@ public class ValueAssert {
         if (value.isMetaObject()) {
             valueTypes.add(META);
         }
-        if (value.hasArrayIterator()) {
+        if (value.hasIterator()) {
             valueTypes.add(ITERABLE);
         }
         if (value.isIterator()) {

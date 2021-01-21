@@ -770,11 +770,11 @@ public final class HostAccess {
 
         /**
          * Allows the guest application to access lists as values with
-         * {@link Value#hasArrayElements() array elements} and {@link Value#hasArrayIterator()} ()
-         * array iterators}. By default no array access is allowed.
+         * {@link Value#hasArrayElements() array elements} and {@link Value#hasIterator()} () array
+         * iterators}. By default no array access is allowed.
          *
          * @see Value#hasArrayElements()
-         * @see Value#hasArrayIterator()
+         * @see Value#hasIterator()
          * @since 19.0
          */
         public Builder allowListAccess(boolean listAccess) {
@@ -784,10 +784,10 @@ public final class HostAccess {
 
         /**
          * Allows the guest application to access {@link Iterable iterables} as values with
-         * {@link Value#hasArrayIterator()} () array iterators}. By default no iterable access is
+         * {@link Value#hasIterator()} () array iterators}. By default no iterable access is
          * allowed.
          *
-         * @see Value#hasArrayIterator()
+         * @see Value#hasIterator()
          * @since 21.1
          */
         public Builder allowIterableAccess(boolean iterableAccess) {

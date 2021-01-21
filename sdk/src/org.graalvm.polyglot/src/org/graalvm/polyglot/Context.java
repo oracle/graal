@@ -570,7 +570,7 @@ public final class Context implements AutoCloseable {
      * {@link Value#getMember(String) members}. In addition, Java arrays and subtypes of
      * {@link List} will be interpreted as a value with {@link Value#hasArrayElements() array
      * elements}. The subtypes of {@link Iterable} will be interpreted as a value with
-     * {@link Value#hasArrayIterator()} array iterator}. The subtypes of {@link Iterator} will be
+     * {@link Value#hasIterator()} array iterator}. The subtypes of {@link Iterator} will be
      * interpreted as an {@link Value#isIterator() iterator} value. And single method interfaces
      * annotated with {@link FunctionalInterface} are {@link Value#execute(Object...) executable}
      * directly. Java {@link Class} instances are interpreted as {@link Value#canInstantiate()

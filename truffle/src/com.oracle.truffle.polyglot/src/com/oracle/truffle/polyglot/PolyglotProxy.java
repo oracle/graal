@@ -58,7 +58,7 @@ import org.graalvm.polyglot.proxy.ProxyDuration;
 import org.graalvm.polyglot.proxy.ProxyExecutable;
 import org.graalvm.polyglot.proxy.ProxyInstant;
 import org.graalvm.polyglot.proxy.ProxyInstantiable;
-import org.graalvm.polyglot.proxy.ProxyArrayIterable;
+import org.graalvm.polyglot.proxy.ProxyIterable;
 import org.graalvm.polyglot.proxy.ProxyIterator;
 import org.graalvm.polyglot.proxy.ProxyNativeObject;
 import org.graalvm.polyglot.proxy.ProxyObject;
@@ -578,18 +578,18 @@ final class PolyglotProxy implements TruffleObject {
     }
 
     @ExportMessage
-    boolean hasArrayIterator() {
-        return proxy instanceof ProxyArrayIterable;
+    boolean hasIterator() {
+        return proxy instanceof ProxyIterable;
     }
 
     @ExportMessage
     @TruffleBoundary
-    Object getArrayIterator(@CachedLibrary("this") InteropLibrary library,
+    Object getIterator(@CachedLibrary("this") InteropLibrary library,
                     @CachedContext(HostLanguage.class) ContextReference<HostContext> context,
                     @CachedLanguage HostLanguage language) throws UnsupportedMessageException {
-        if (proxy instanceof ProxyArrayIterable) {
+        if (proxy instanceof ProxyIterable) {
             PolyglotLanguageContext languageContext = context.get().internalContext;
-            Object result = guestToHostCall(library, language.getHostToGuestCache().getArrayIterator, languageContext, proxy);
+            Object result = guestToHostCall(library, language.getHostToGuestCache().getIterator, languageContext, proxy);
             return languageContext.toGuestValue(library, result);
         } else {
             throw UnsupportedMessageException.create();

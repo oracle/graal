@@ -1629,13 +1629,13 @@ final class HostObject implements TruffleObject {
     }
 
     @ExportMessage
-    boolean hasArrayIterator(@Shared("isIterable") @Cached IsIterableNode isIterable,
+    boolean hasIterator(@Shared("isIterable") @Cached IsIterableNode isIterable,
                     @Shared("isArray") @Cached IsArrayNode isArray) {
         return isIterable.execute(this) || isArray.execute(this);
     }
 
     @ExportMessage
-    abstract static class GetArrayIterator {
+    abstract static class GetIterator {
 
         @Specialization(guards = {"isArray.execute(receiver)"}, limit = "1")
         protected static Object doArray(HostObject receiver,
@@ -1646,18 +1646,18 @@ final class HostObject implements TruffleObject {
 
         @TruffleBoundary
         private static Object arrayIteratorImpl(Object receiver) {
-            return EngineAccessor.INTEROP.createDefaultArrayIterator(receiver);
+            return EngineAccessor.INTEROP.createDefaultIterator(receiver);
         }
 
         @Specialization(guards = {"isIterable.execute(receiver)"}, limit = "1")
         protected static Object doIterable(HostObject receiver,
                         @Shared("isIterable") @Cached IsIterableNode isIterable,
                         @Shared("toGuest") @Cached ToGuestValueNode toGuest) {
-            return toGuest.execute(receiver.languageContext, iteratorImpl((Iterable<?>) receiver.obj));
+            return toGuest.execute(receiver.languageContext, iterableIteratorImpl((Iterable<?>) receiver.obj));
         }
 
         @TruffleBoundary
-        private static Object iteratorImpl(Iterable<?> iterable) {
+        private static Object iterableIteratorImpl(Iterable<?> iterable) {
             return iterable.iterator();
         }
 

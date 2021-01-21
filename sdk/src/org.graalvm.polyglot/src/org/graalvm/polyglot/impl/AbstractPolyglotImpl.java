@@ -804,11 +804,11 @@ public abstract class AbstractPolyglotImpl {
 
         public abstract int hashCodeImpl(Object receiver);
 
-        public boolean hasArrayIterator(Object receiver) {
+        public boolean hasIterator(Object receiver) {
             return false;
         }
 
-        public abstract Value getArrayIterator(Object receiver);
+        public abstract Value getIterator(Object receiver);
 
         public boolean isIterator(Object receiver) {
             return false;

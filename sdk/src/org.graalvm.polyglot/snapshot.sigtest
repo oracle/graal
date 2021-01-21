@@ -492,7 +492,7 @@ meth public boolean fitsInLong()
 meth public boolean fitsInShort()
 meth public boolean hasArrayElements()
 meth public boolean hasBufferElements()
-meth public boolean hasArrayIterator()
+meth public boolean hasIterator()
 meth public boolean hasIteratorNextElement()
 meth public boolean hasMember(java.lang.String)
 meth public boolean hasMembers()
@@ -543,7 +543,7 @@ meth public long readBufferLong(java.nio.ByteOrder,long)
 meth public org.graalvm.polyglot.Context getContext()
 meth public org.graalvm.polyglot.SourceSection getSourceLocation()
 meth public org.graalvm.polyglot.Value getArrayElement(long)
-meth public org.graalvm.polyglot.Value getArrayIterator()
+meth public org.graalvm.polyglot.Value getIterator()
 meth public org.graalvm.polyglot.Value getIteratorNextElement()
 meth public org.graalvm.polyglot.Value getMember(java.lang.String)
 meth public org.graalvm.polyglot.Value getMetaObject()
@@ -680,19 +680,14 @@ hfds collectExceptions,collectInputValues,collectReturnValues,expressions,onEnte
 CLSS public abstract interface org.graalvm.polyglot.proxy.Proxy
 
 CLSS public abstract interface org.graalvm.polyglot.proxy.ProxyArray
-intf org.graalvm.polyglot.proxy.ProxyArrayIterable
+intf org.graalvm.polyglot.proxy.ProxyIterable
 meth public !varargs static org.graalvm.polyglot.proxy.ProxyArray fromArray(java.lang.Object[])
 meth public abstract java.lang.Object get(long)
 meth public abstract long getSize()
 meth public abstract void set(long,org.graalvm.polyglot.Value)
 meth public boolean remove(long)
-meth public java.lang.Object getArrayIterator()
+meth public java.lang.Object getIterator()
 meth public static org.graalvm.polyglot.proxy.ProxyArray fromList(java.util.List<java.lang.Object>)
-
-CLSS public abstract interface org.graalvm.polyglot.proxy.ProxyArrayIterable
-intf org.graalvm.polyglot.proxy.Proxy
-meth public abstract java.lang.Object getArrayIterator()
-meth public static org.graalvm.polyglot.proxy.ProxyArrayIterable from(java.lang.Iterable<java.lang.Object>)
 
 CLSS public abstract interface org.graalvm.polyglot.proxy.ProxyDate
 intf org.graalvm.polyglot.proxy.Proxy
@@ -723,6 +718,11 @@ CLSS public abstract interface org.graalvm.polyglot.proxy.ProxyInstantiable
  anno 0 java.lang.FunctionalInterface()
 intf org.graalvm.polyglot.proxy.Proxy
 meth public abstract !varargs java.lang.Object newInstance(org.graalvm.polyglot.Value[])
+
+CLSS public abstract interface org.graalvm.polyglot.proxy.ProxyIterable
+intf org.graalvm.polyglot.proxy.Proxy
+meth public abstract java.lang.Object getIterator()
+meth public static org.graalvm.polyglot.proxy.ProxyIterable from(java.lang.Iterable<java.lang.Object>)
 
 CLSS public abstract interface org.graalvm.polyglot.proxy.ProxyIterator
 intf org.graalvm.polyglot.proxy.Proxy

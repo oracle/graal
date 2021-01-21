@@ -44,12 +44,12 @@ meth public boolean fitsInLong(java.lang.Object)
 meth public boolean fitsInShort(java.lang.Object)
 meth public boolean hasArrayElements(java.lang.Object)
 meth public boolean hasBufferElements(java.lang.Object)
-meth public boolean hasArrayIterator(java.lang.Object)
 meth public boolean hasDeclaringMetaObject(java.lang.Object)
 meth public boolean hasExceptionCause(java.lang.Object)
 meth public boolean hasExceptionMessage(java.lang.Object)
 meth public boolean hasExceptionStackTrace(java.lang.Object)
 meth public boolean hasExecutableName(java.lang.Object)
+meth public boolean hasIterator(java.lang.Object)
 meth public boolean hasIteratorNextElement(java.lang.Object) throws com.oracle.truffle.api.interop.UnsupportedMessageException
 meth public boolean hasLanguage(java.lang.Object)
 meth public boolean hasMemberReadSideEffects(java.lang.Object,java.lang.String)
@@ -108,12 +108,12 @@ meth public int getExceptionExitStatus(java.lang.Object) throws com.oracle.truff
 meth public int identityHashCode(java.lang.Object) throws com.oracle.truffle.api.interop.UnsupportedMessageException
 meth public int readBufferInt(java.lang.Object,java.nio.ByteOrder,long) throws com.oracle.truffle.api.interop.InvalidBufferOffsetException,com.oracle.truffle.api.interop.UnsupportedMessageException
 meth public java.lang.Class<? extends com.oracle.truffle.api.TruffleLanguage<?>> getLanguage(java.lang.Object) throws com.oracle.truffle.api.interop.UnsupportedMessageException
-meth public java.lang.Object getArrayIterator(java.lang.Object) throws com.oracle.truffle.api.interop.UnsupportedMessageException
 meth public java.lang.Object getDeclaringMetaObject(java.lang.Object) throws com.oracle.truffle.api.interop.UnsupportedMessageException
 meth public java.lang.Object getExceptionCause(java.lang.Object) throws com.oracle.truffle.api.interop.UnsupportedMessageException
 meth public java.lang.Object getExceptionMessage(java.lang.Object) throws com.oracle.truffle.api.interop.UnsupportedMessageException
 meth public java.lang.Object getExceptionStackTrace(java.lang.Object) throws com.oracle.truffle.api.interop.UnsupportedMessageException
 meth public java.lang.Object getExecutableName(java.lang.Object) throws com.oracle.truffle.api.interop.UnsupportedMessageException
+meth public java.lang.Object getIterator(java.lang.Object) throws com.oracle.truffle.api.interop.UnsupportedMessageException
 meth public java.lang.Object getIteratorNextElement(java.lang.Object) throws com.oracle.truffle.api.interop.StopIterationException,com.oracle.truffle.api.interop.UnsupportedMessageException
 meth public java.lang.Object getMembers(java.lang.Object,boolean) throws com.oracle.truffle.api.interop.UnsupportedMessageException
 meth public java.lang.Object getMetaObject(java.lang.Object) throws com.oracle.truffle.api.interop.UnsupportedMessageException

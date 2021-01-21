@@ -620,13 +620,13 @@ public class InteropDefaultsTest extends InteropLibraryBaseTest {
         Object empty = new TruffleObject() {
         };
         InteropLibrary emptyLib = createLibrary(InteropLibrary.class, empty);
-        assertFalse(emptyLib.hasArrayIterator(empty));
-        assertFails(() -> emptyLib.getArrayIterator(empty), UnsupportedMessageException.class);
+        assertFalse(emptyLib.hasIterator(empty));
+        assertFails(() -> emptyLib.getIterator(empty), UnsupportedMessageException.class);
 
         Array array = new Array(1, 2, 3);
         InteropLibrary arrayLib = createLibrary(InteropLibrary.class, array);
-        assertTrue(arrayLib.hasArrayIterator(array));
-        arrayLib.getArrayIterator(array);
+        assertTrue(arrayLib.hasIterator(array));
+        arrayLib.getIterator(array);
     }
 
     @Test
@@ -644,7 +644,7 @@ public class InteropDefaultsTest extends InteropLibraryBaseTest {
         assertFails(() -> arrayLib.hasIteratorNextElement(array), UnsupportedMessageException.class);
         assertFails(() -> arrayLib.getIteratorNextElement(array), UnsupportedMessageException.class);
 
-        Object iterator = arrayLib.getArrayIterator(array);
+        Object iterator = arrayLib.getIterator(array);
         InteropLibrary iteratorLib = createLibrary(InteropLibrary.class, iterator);
         assertTrue(iteratorLib.isIterator(iterator));
         assertTrue(iteratorLib.hasIteratorNextElement(iterator));

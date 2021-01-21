@@ -888,12 +888,12 @@ public class InteropAssertionsTest extends InteropLibraryBaseTest {
         }
 
         @ExportMessage
-        boolean hasArrayIterator() {
+        boolean hasIterator() {
             return hasIterator;
         }
 
         @ExportMessage
-        Object getArrayIterator() throws UnsupportedMessageException {
+        Object getIterator() throws UnsupportedMessageException {
             if (iterator == null) {
                 throw UnsupportedMessageException.create();
             }
@@ -1057,21 +1057,21 @@ public class InteropAssertionsTest extends InteropLibraryBaseTest {
     }
 
     @Test
-    public void getArrayIterable() throws UnsupportedMessageException {
+    public void getIterator() throws UnsupportedMessageException {
         IterableTest iterableTest = new IterableTest(new IteratorTest(1));
         InteropLibrary iterableLib = createLibrary(InteropLibrary.class, iterableTest);
-        assertEquals(iterableTest.iterator.get(), iterableLib.getArrayIterator(iterableTest));
+        assertEquals(iterableTest.iterator.get(), iterableLib.getIterator(iterableTest));
         iterableTest.hasIterator = false;
-        assertFails(() -> iterableLib.getArrayIterator(iterableTest), AssertionError.class);
+        assertFails(() -> iterableLib.getIterator(iterableTest), AssertionError.class);
         iterableTest.hasIterator = true;
         iterableTest.iterator = null;
-        assertFails(() -> iterableLib.getArrayIterator(iterableTest), AssertionError.class);
+        assertFails(() -> iterableLib.getIterator(iterableTest), AssertionError.class);
         iterableTest.iterator = () -> null;
-        assertFails(() -> iterableLib.getArrayIterator(iterableTest), AssertionError.class);
+        assertFails(() -> iterableLib.getIterator(iterableTest), AssertionError.class);
         TruffleObject empty = new TruffleObject() {
         };
         iterableTest.iterator = () -> empty;
-        assertFails(() -> iterableLib.getArrayIterator(iterableTest), AssertionError.class);
+        assertFails(() -> iterableLib.getIterator(iterableTest), AssertionError.class);
     }
 
     @Test

@@ -50,7 +50,7 @@ import java.util.Objects;
  * Interface to be implemented to mimic guest language iterators.
  *
  * @see Proxy
- * @see ProxyArrayIterable
+ * @see ProxyIterable
  * @since 21.1
  */
 public interface ProxyIterator extends Proxy {

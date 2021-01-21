@@ -133,7 +133,7 @@ final class InteropAccessor extends Accessor {
         }
 
         @Override
-        public Object createDefaultArrayIterator(Object receiver) {
+        public Object createDefaultIterator(Object receiver) {
             return new ArrayIterator(receiver);
         }
     }

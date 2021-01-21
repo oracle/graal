@@ -1846,32 +1846,30 @@ public abstract class InteropLibrary extends Library {
     }
 
     /**
-     * Returns {@code true} if the receiver provides an array iterator. For example, an array or a
-     * list provide an iterator over their content. Invoking this message does not cause any
-     * observable side-effects. By default returns {@code true} for receivers that have
+     * Returns {@code true} if the receiver provides an iterator. For example, an array or a list
+     * provide an iterator over their content. Invoking this message does not cause any observable
+     * side-effects. By default returns {@code true} for receivers that have
      * {@link #hasArrayElements(Object) array elements}.
      *
-     * @see #getArrayIterator(Object)
+     * @see #getIterator(Object)
      * @since 21.1
      */
-    @Abstract(ifExported = {"getArrayIterator"})
-    public boolean hasArrayIterator(Object receiver) {
+    @Abstract(ifExported = {"getIterator"})
+    public boolean hasIterator(Object receiver) {
         return hasArrayElements(receiver);
     }
 
     /**
      * Returns the iterator for the receiver. The return value is guaranteed to return {@code true}
      * for {@link #isIterator(Object)}.
-     * <p>
-     * This method must not cause any observable side-effects.
      *
-     * @throws UnsupportedMessageException if and only if {@link #hasArrayIterator(Object)} returns
+     * @throws UnsupportedMessageException if and only if {@link #hasIterator(Object)} returns
      *             {@code false} for the same receiver.
      * @since 21.1
      */
-    @Abstract(ifExported = {"hasArrayIterator"})
-    public Object getArrayIterator(Object receiver) throws UnsupportedMessageException {
-        if (!hasArrayIterator(receiver)) {
+    @Abstract(ifExported = {"hasIterator"})
+    public Object getIterator(Object receiver) throws UnsupportedMessageException {
+        if (!hasIterator(receiver)) {
             throw UnsupportedMessageException.create();
         }
         return new ArrayIterator(receiver);
@@ -1881,8 +1879,8 @@ public abstract class InteropLibrary extends Library {
      * Returns {@code true} if the receiver represents an iterator. Invoking this message does not
      * cause any observable side-effects. Returns {@code false} by default.
      *
-     * @see #hasArrayIterator(Object)
-     * @see #getArrayIterator(Object)
+     * @see #hasIterator(Object)
+     * @see #getIterator(Object)
      * @since 21.1
      */
     @Abstract(ifExported = {"hasIteratorNextElement", "getIteratorNextElement"})
@@ -4082,27 +4080,27 @@ public abstract class InteropLibrary extends Library {
         }
 
         @Override
-        public boolean hasArrayIterator(Object receiver) {
+        public boolean hasIterator(Object receiver) {
             assert preCondition(receiver);
-            boolean result = delegate.hasArrayIterator(receiver);
+            boolean result = delegate.hasIterator(receiver);
             return result;
         }
 
         @Override
-        public Object getArrayIterator(Object receiver) throws UnsupportedMessageException {
+        public Object getIterator(Object receiver) throws UnsupportedMessageException {
             if (CompilerDirectives.inCompiledCode()) {
-                return delegate.getArrayIterator(receiver);
+                return delegate.getIterator(receiver);
             }
             assert preCondition(receiver);
-            boolean wasHasArrayIterator = delegate.hasArrayIterator(receiver);
+            boolean wasHasIterator = delegate.hasIterator(receiver);
             try {
-                Object result = delegate.getArrayIterator(receiver);
-                assert wasHasArrayIterator : violationInvariant(receiver);
+                Object result = delegate.getIterator(receiver);
+                assert wasHasIterator : violationInvariant(receiver);
                 assert assertIterator(receiver, result);
                 return result;
             } catch (InteropException e) {
                 assert e instanceof UnsupportedMessageException : violationInvariant(receiver);
-                assert !wasHasArrayIterator : violationInvariant(receiver);
+                assert !wasHasIterator : violationInvariant(receiver);
                 throw e;
             }
         }

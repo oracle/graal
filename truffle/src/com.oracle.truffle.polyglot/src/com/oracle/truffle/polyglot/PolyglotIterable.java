@@ -49,7 +49,7 @@ import com.oracle.truffle.api.interop.TruffleObject;
 import com.oracle.truffle.api.interop.UnsupportedMessageException;
 import com.oracle.truffle.api.library.CachedLibrary;
 import com.oracle.truffle.api.profiles.BranchProfile;
-import com.oracle.truffle.polyglot.PolyglotIterableFactory.CacheFactory.GetArrayIteratorNodeGen;
+import com.oracle.truffle.polyglot.PolyglotIterableFactory.CacheFactory.GetIteratorNodeGen;
 
 import java.lang.reflect.Type;
 import java.util.Iterator;
@@ -118,7 +118,7 @@ class PolyglotIterable<T> implements Iterable<T>, HostWrapper {
             this.receiverClass = receiverClass;
             this.valueClass = valueClass;
             this.valueType = valueType;
-            this.getIterator = HostToGuestRootNode.createTarget(GetArrayIteratorNodeGen.create(this));
+            this.getIterator = HostToGuestRootNode.createTarget(GetIteratorNodeGen.create(this));
             this.apply = HostToGuestRootNode.createTarget(new Apply(this));
         }
 
@@ -193,9 +193,9 @@ class PolyglotIterable<T> implements Iterable<T>, HostWrapper {
 
         }
 
-        abstract static class GetArrayIteratorNode extends PolyglotIterableNode {
+        abstract static class GetIteratorNode extends PolyglotIterableNode {
 
-            GetArrayIteratorNode(Cache cache) {
+            GetIteratorNode(Cache cache) {
                 super(cache);
             }
 
@@ -211,7 +211,7 @@ class PolyglotIterable<T> implements Iterable<T>, HostWrapper {
                             @Cached ToHostNode toHost,
                             @Cached BranchProfile error) {
                 try {
-                    return toHost.execute(iterables.getArrayIterator(receiver), cache.valueClass, cache.valueType, languageContext, true);
+                    return toHost.execute(iterables.getIterator(receiver), cache.valueClass, cache.valueType, languageContext, true);
                 } catch (UnsupportedMessageException e) {
                     error.enter();
                     throw HostInteropErrors.iterableUnsupported(languageContext, receiver, cache.valueType, "iterator()");

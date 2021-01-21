@@ -409,8 +409,8 @@ public class HostAccessTest {
         setupEnv(HostAccess.newBuilder().allowIterableAccess(true));
         Iterable<Integer> iterable = new IterableImpl<>(1, 2, 3);
         Value value = context.asValue(iterable);
-        assertTrue(value.hasArrayIterator());
-        Value iterator = value.getArrayIterator();
+        assertTrue(value.hasIterator());
+        Value iterator = value.getIterator();
         assertTrue(iterator.hasIteratorNextElement());
         assertEquals(1, iterator.getIteratorNextElement().asInt());
         assertTrue(iterator.hasIteratorNextElement());

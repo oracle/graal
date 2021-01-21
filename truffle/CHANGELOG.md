@@ -21,6 +21,12 @@ This changelog summarizes major changes between Truffle versions relevant to lan
 * Added `Shape.getLayoutClass()` as a replacement for `Shape.getLayout().getType()`. Returns the DynamicObject subclass provided to `Shape.Builder.layout`.
 * Changed the default value of `--engine.MultiTier` from `false` to `true`. This should significantly improve the warmup time of Truffle interpreters.
 * The native image build fails if a method known as not suitable for partial evaluation is reachable for runtime compilation. The check can be disabled by the `-H:-TruffleCheckBlackListedMethods` native image option.
+* Added new messages to the `InteropLibrary` to support iterables and iterators:
+	* Added `hasIterator(Object)` that allows to specify that the receiver is an iterable.
+    * Added `getIterator(Object)` to return the iterator for an interable receiver.
+    * Added `isIterator(Object)` that allows to specify that the receiver is an iterator.
+    * Added `hasIteratorNextElement(Object)`  that allows to specify that the iterator receiver has element(s) to return by calling the `getIteratorNextElement(Object)` method.
+    * Added `getIteratorNextElement(Object)` to return the current iterator element.
 
 ## Version 21.0.0
 * If an `AbstractTruffleException` is thrown from the `ContextLocalFactory`, `ContextThreadLocalFactory` or event listener, which is called during the context enter, the excepion interop messages are executed without a context being entered. The event listeners called during the context enter are:
@@ -36,12 +42,6 @@ This changelog summarizes major changes between Truffle versions relevant to lan
 * Truffle DSL generated nodes are no longer limited to 64 state bits. Use these state bits responsibly.
 * Added support for explicitly selecting a host method overload using the signature in the form of comma-separated fully qualified parameter type names enclosed by parentheses (e.g. `methodName(f.q.TypeName,java.lang.String,int,int[])`).
 * Changed the default value of `--engine.MultiTier` from `false` to `true`. This should significantly improve the warmup time of Truffle interpreters.
-* Added new messages to the `InteropLibrary` to support iterables and iterators:
-	* Added `hasArrayIterator(Object)` that allows to specify that the receiver is an iterable.
-    * Added `getArrayIterator(Object)` to return the iterator for an interable receiver.
-    * Added `isIterator(Object)` that allows to specify that the receiver is an iterator.
-    * Added `hasIteratorNextElement(Object)`  that allows to specify that the iterator receiver has element(s) to return by calling the `getIteratorNextElement(Object)` method.
-    * Added `getIteratorNextElement(Object)` to return the current iterator element.
 
 ## Version 20.3.0
 * Added `RepeatingNode.initialLoopStatus` and `RepeatingNode.shouldContinue` to allow defining a custom loop continuation condition.

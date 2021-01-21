@@ -53,7 +53,7 @@ import org.graalvm.polyglot.Value;
  * @see Proxy
  * @since 19.0
  */
-public interface ProxyArray extends ProxyArrayIterable {
+public interface ProxyArray extends ProxyIterable {
 
     /**
      * Returns the element at the given index.
@@ -102,7 +102,7 @@ public interface ProxyArray extends ProxyArrayIterable {
      * @since 20.1
      */
     @Override
-    default Object getArrayIterator() {
+    default Object getIterator() {
         return new DefaultProxyArrayIterator(this);
     }
 

@@ -49,7 +49,7 @@ import java.util.Objects;
  * @see ProxyIterator
  * @since 21.1
  */
-public interface ProxyArrayIterable extends Proxy {
+public interface ProxyIterable extends Proxy {
 
     /**
      * Returns an iterator object.
@@ -57,18 +57,18 @@ public interface ProxyArrayIterable extends Proxy {
      * @see ProxyIterator
      * @since 21.1
      */
-    Object getArrayIterator();
+    Object getIterator();
 
     /**
      * Creates a proxy iterable backed by a Java {@link Iterable}.
      *
      * @since 21.1
      */
-    static ProxyArrayIterable from(Iterable<Object> iterable) {
+    static ProxyIterable from(Iterable<Object> iterable) {
         Objects.requireNonNull(iterable, "Iterable must be non null.");
-        return new ProxyArrayIterable() {
+        return new ProxyIterable() {
             @Override
-            public Object getArrayIterator() {
+            public Object getIterator() {
                 return ProxyIterator.from(iterable.iterator());
             }
         };

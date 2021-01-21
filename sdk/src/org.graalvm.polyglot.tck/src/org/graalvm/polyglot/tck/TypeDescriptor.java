@@ -100,7 +100,7 @@ public final class TypeDescriptor {
      *
      * @see #isAssignable(org.graalvm.polyglot.tck.TypeDescriptor).
      * @see #iterable(TypeDescriptor).
-     * @see Value#hasArrayIterator().
+     * @see Value#hasIterator().
      * @since 21.1
      */
     public static final TypeDescriptor ITERABLE = new TypeDescriptor(new IterableImpl(null));
@@ -766,10 +766,10 @@ public final class TypeDescriptor {
         if (value.canInstantiate()) {
             descs.add(INSTANTIABLE);
         }
-        if (value.hasArrayIterator()) {
+        if (value.hasIterator()) {
             descs.add(iterable(detectContentType(new Iterator<Value>() {
 
-                private final Value delegate = value.getArrayIterator();
+                private final Value delegate = value.getIterator();
 
                 @Override
                 public boolean hasNext() {

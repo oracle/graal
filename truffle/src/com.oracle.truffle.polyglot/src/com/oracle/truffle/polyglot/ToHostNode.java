@@ -408,7 +408,7 @@ abstract class ToHostNode extends Node {
                 return asJavaObject(value, Map.class, null, false, languageContext);
             } else if (interop.hasArrayElements(value)) {
                 return asJavaObject(value, List.class, null, false, languageContext);
-            } else if (interop.hasArrayIterator(value)) {
+            } else if (interop.hasIterator(value)) {
                 return asJavaObject(value, Iterable.class, null, false, languageContext);
             } else if (interop.isIterator(value)) {
                 return asJavaObject(value, Iterator.class, null, false, languageContext);
@@ -582,7 +582,7 @@ abstract class ToHostNode extends Node {
                 throw HostInteropErrors.cannotConvert(languageContext, value, targetType, "Value must be an exception.");
             }
         } else if (targetType == Iterable.class) {
-            if (interop.hasArrayIterator(value)) {
+            if (interop.hasIterator(value)) {
                 boolean implementsFunction = shouldImplementFunction(value, interop);
                 TypeAndClass<?> elementType = getGenericParameterType(genericType, 0);
                 obj = PolyglotIterable.create(languageContext, value, implementsFunction, elementType.clazz, elementType.type);
