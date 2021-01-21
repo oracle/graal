@@ -3,6 +3,7 @@ package com.oracle.svm.core.posix.processor;
 import javax.annotation.processing.AbstractProcessor;
 import javax.annotation.processing.RoundEnvironment;
 import javax.annotation.processing.SupportedAnnotationTypes;
+import javax.lang.model.SourceVersion;
 import javax.lang.model.element.Element;
 import javax.lang.model.element.PackageElement;
 import javax.lang.model.element.TypeElement;
@@ -20,6 +21,11 @@ import java.util.Set;
 public class HostLibCProcessor extends AbstractProcessor {
 
     private static final String CLASS_NAME = "HostLibCImpl";
+
+    @Override
+    public SourceVersion getSupportedSourceVersion() {
+        return SourceVersion.latest();
+    }
 
     @Override
     public boolean process(Set<? extends TypeElement> annotations, RoundEnvironment roundEnvironment) {
@@ -66,7 +72,7 @@ public class HostLibCProcessor extends AbstractProcessor {
         return true;
     }
 
-    private String detectLibc() throws IOException {
+    private static String detectLibc() throws IOException {
         if (!System.getProperty("os.name").startsWith("Linux")) {
             return "NoLibC";
         }
