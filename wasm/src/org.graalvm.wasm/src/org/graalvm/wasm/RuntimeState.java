@@ -182,7 +182,9 @@ public class RuntimeState {
     }
 
     public int globalAddress(int index) {
-        return globalAddresses[index];
+        final int result = globalAddresses[index];
+        assert result != SymbolTable.UNINITIALIZED_GLOBAL_ADDRESS : "Uninitialized global at index: " + index;
+        return result;
     }
 
     void setGlobalAddress(int globalIndex, int address) {

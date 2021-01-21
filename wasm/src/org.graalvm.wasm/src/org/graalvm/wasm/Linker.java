@@ -229,13 +229,13 @@ public class Linker {
             }
             int exportedValueType = importedInstance.symbolTable().globalValueType(exportedGlobalIndex);
             if (exportedValueType != valueType) {
-                throw WasmException.create(Failure.UNSPECIFIED_UNLINKABLE, "Global variable '" + importedGlobalName + "' is imported into module '" + instance.name() +
+                throw WasmException.create(Failure.INCOMPATIBLE_IMPORT_TYPE, "Global variable '" + importedGlobalName + "' is imported into module '" + instance.name() +
                                 "' with the type " + WasmType.toString(valueType) + ", " +
                                 "'but it was exported in the module '" + importedModuleName + "' with the type " + WasmType.toString(exportedValueType) + ".");
             }
             int exportedMutability = importedInstance.symbolTable().globalMutability(exportedGlobalIndex);
             if (exportedMutability != mutability) {
-                throw WasmException.create(Failure.UNSPECIFIED_UNLINKABLE, "Global variable '" + importedGlobalName + "' is imported into module '" + instance.name() +
+                throw WasmException.create(Failure.INCOMPATIBLE_IMPORT_TYPE, "Global variable '" + importedGlobalName + "' is imported into module '" + instance.name() +
                                 "' with the modifier " + GlobalModifier.asString(mutability) + ", " +
                                 "'but it was exported in the module '" + importedModuleName + "' with the modifier " + GlobalModifier.asString(exportedMutability) + ".");
             }
@@ -243,7 +243,7 @@ public class Linker {
             int address = importedInstance.globalAddress(exportedGlobalIndex);
             instance.setGlobalAddress(globalIndex, address);
         };
-        final ImportGlobalSym importGlobalSym = new ImportGlobalSym(instance.name(), importDescriptor);
+        final ImportGlobalSym importGlobalSym = new ImportGlobalSym(instance.name(), importDescriptor, globalIndex);
         final Sym[] dependencies = new Sym[]{new ExportGlobalSym(importedModuleName, importedGlobalName)};
         resolutionDag.resolveLater(importGlobalSym, dependencies, resolveAction);
         resolutionDag.resolveLater(new InitializeGlobalSym(instance.name(), globalIndex), new Sym[]{importGlobalSym}, NO_RESOLVE_ACTION);
@@ -287,6 +287,9 @@ public class Linker {
                                 "', does not exist in the imported module '" + function.importedModuleName() + "'.");
             }
             final CallTarget target = importedInstance.target(importedFunction.index());
+            if (!function.type().equals(importedFunction.type())) {
+                throw WasmException.create(Failure.INCOMPATIBLE_IMPORT_TYPE);
+            }
             instance.setTarget(function.index(), target);
         };
         final Sym[] dependencies = new Sym[]{new ExportFunctionSym(function.importDescriptor().moduleName, function.importDescriptor().memberName)};
@@ -494,10 +497,12 @@ public class Linker {
 
         static class ImportGlobalSym extends Sym {
             final ImportDescriptor importDescriptor;
+            final int destinationIndex;
 
-            ImportGlobalSym(String moduleName, ImportDescriptor importDescriptor) {
+            ImportGlobalSym(String moduleName, ImportDescriptor importDescriptor, int destinationIndex) {
                 super(moduleName);
                 this.importDescriptor = importDescriptor;
+                this.destinationIndex = destinationIndex;
             }
 
             @Override
@@ -506,17 +511,20 @@ public class Linker {
             }
 
             @Override
-            public int hashCode() {
-                return moduleName.hashCode() ^ importDescriptor.hashCode();
+            public boolean equals(Object o) {
+                if (this == o) {
+                    return true;
+                }
+                if (o == null || getClass() != o.getClass()) {
+                    return false;
+                }
+                final ImportGlobalSym that = (ImportGlobalSym) o;
+                return destinationIndex == that.destinationIndex && Objects.equals(moduleName, that.moduleName) && Objects.equals(importDescriptor, that.importDescriptor);
             }
 
             @Override
-            public boolean equals(Object object) {
-                if (!(object instanceof ImportGlobalSym)) {
-                    return false;
-                }
-                final ImportGlobalSym that = (ImportGlobalSym) object;
-                return this.moduleName.equals(that.moduleName) && this.importDescriptor.equals(that.importDescriptor);
+            public int hashCode() {
+                return moduleName.hashCode() ^ importDescriptor.hashCode() ^ destinationIndex;
             }
         }
 
@@ -606,7 +614,7 @@ public class Linker {
 
             @Override
             public int hashCode() {
-                return Objects.hash(moduleName, importDescriptor, destinationIndex);
+                return moduleName.hashCode() ^ importDescriptor.hashCode() ^ destinationIndex;
             }
         }
 
