@@ -695,7 +695,7 @@ class PolyBenchBenchmarkSuite(mx_benchmark.VmBenchmarkSuite):
         if not hasattr(self, "_benchmarks"):
             self._benchmarks = []
             for group in ["interpreter", "compiler"]:
-                dir_path = os.path.join(_suite.dir, "benchmarks", group)
+                dir_path = os.path.join(self._get_benchmark_root(), group)
                 for f in os.listdir(dir_path):
                     f_path = os.path.join(dir_path, f)
                     if os.path.isfile(f_path) and os.path.splitext(f_path)[1] in self._extensions:
