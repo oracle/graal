@@ -174,6 +174,7 @@ final class PolyglotContextImpl extends AbstractContextImpl implements com.oracl
      * closed state.
      */
     volatile boolean cancelling;
+    volatile boolean cancelled;
     volatile String invalidMessage;
     volatile boolean invalidResourceLimit;
     volatile Thread closingThread;
@@ -1277,6 +1278,80 @@ final class PolyglotContextImpl extends AbstractContextImpl implements com.oracl
         }
     }
 
+    long calculateHeapSize(long stopAtBytes, AtomicBoolean calculationCancelled) {
+        try {
+            ObjectSizeCalculator localObjectSizeCalculator;
+            synchronized (this) {
+                localObjectSizeCalculator = objectSizeCalculator;
+                if (localObjectSizeCalculator == null) {
+                    localObjectSizeCalculator = new ObjectSizeCalculator();
+                    objectSizeCalculator = localObjectSizeCalculator;
+                }
+            }
+            return localObjectSizeCalculator.calculateObjectSize(getContextHeapRoots(), stopAtBytes, calculationCancelled);
+        } catch (UnsupportedOperationException e) {
+            throw new UnsupportedOperationException("Polyglot context heap size calculation is not supported on current Truffle runtime.", e);
+        }
+    }
+
+    Object[] getContextHeapRoots() {
+        List<Object> heapRoots = new ArrayList<>();
+        addRootPointersForContext(heapRoots);
+        addRootPointersForStackFrames(heapRoots);
+        return heapRoots.toArray();
+    }
+
+    private synchronized void addRootPointersForStackFrames(List<Object> heapRoots) {
+        Thread[] seenThreads = getSeenThreads().keySet().toArray(new Thread[0]);
+        if (seenThreads.length > 0) {
+            FrameInstance[][] frameInstances = PolyglotStackFramesRetriever.getStackFrames(seenThreads, -1);
+            for (int i = 0; i < frameInstances.length; i++) {
+                for (int j = 0; j < frameInstances[i].length; j++) {
+                    heapRoots.add(frameInstances[i][j].getFrame(FrameInstance.FrameAccess.READ_ONLY));
+                }
+            }
+        }
+    }
+
+    private void addRootPointersForContext(List<Object> heapRoots) {
+        heapRoots.add(contextImpls);
+        if (polyglotBindings != null) {
+            synchronized (this) {
+                if (polyglotBindings != null) {
+                    for (Map.Entry<String, Value> binding : polyglotBindings.entrySet()) {
+                        heapRoots.add(binding.getKey());
+                        if (binding.getValue() != null) {
+                            heapRoots.add(getAPIAccess().getReceiver(binding.getValue()));
+                        }
+                    }
+                }
+            }
+        }
+        heapRoots.add(contextLocals);
+        PolyglotContextImpl[] childContextStartPoints;
+        synchronized (this) {
+            for (PolyglotThreadInfo info : threads.values()) {
+                heapRoots.add(info.getContextThreadLocals());
+            }
+            childContextStartPoints = childContexts.toArray(new PolyglotContextImpl[childContexts.size()]);
+        }
+        for (PolyglotContextImpl childCtx : childContextStartPoints) {
+            childCtx.addRootPointersForContext(heapRoots);
+        }
+    }
+
+    private void cancelChildContexts() {
+        PolyglotContextImpl[] childContextsToCancel;
+        synchronized (this) {
+            this.cancelling = true;
+            childContextsToCancel = childContexts.toArray(new PolyglotContextImpl[childContexts.size()]);
+        }
+        for (PolyglotContextImpl childCtx : childContextsToCancel) {
+            childCtx.cancelChildContexts();
+        }
+    }
+
+    @SuppressFBWarnings("UL_UNRELEASED_LOCK_EXCEPTION_PATH")
     boolean closeImpl(boolean cancelIfExecuting, boolean waitForPolyglotThreads, boolean notifyInstruments) {
 
         /*
@@ -1390,6 +1465,9 @@ final class PolyglotContextImpl extends AbstractContextImpl implements com.oracl
                     engine.leave(prev, this);
                     if (success) {
                         remainingThreads = threads.keySet().toArray(new Thread[0]);
+                    }
+                    if (success && cancelling) {
+                        cancelled = true;
                     }
                     cancelling = false;
                     if (success) {
