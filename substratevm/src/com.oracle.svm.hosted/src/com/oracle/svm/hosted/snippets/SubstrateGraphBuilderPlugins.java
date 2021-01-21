@@ -338,7 +338,7 @@ public class SubstrateGraphBuilderPlugins {
     static Class<?>[] extractClassArray(AnnotationSubstitutionProcessor annotationSubstitutions, SnippetReflectionProvider snippetReflection, ValueNode arrayNode, boolean exact) {
         /* Use the original value in case we are in a deopt target method. */
         ValueNode originalArrayNode = getDeoptProxyOriginalValue(arrayNode);
-        if (originalArrayNode.isConstant() && !exact) {
+        if (originalArrayNode.isJavaConstant() && !exact) {
             /*
              * The array is a constant, however that doesn't make the array immutable, i.e., its
              * elements can still be changed. We assume that will not happen.

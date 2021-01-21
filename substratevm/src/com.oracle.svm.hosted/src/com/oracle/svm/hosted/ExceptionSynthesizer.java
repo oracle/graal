@@ -98,9 +98,13 @@ public final class ExceptionSynthesizer {
     }
 
     public static Method throwExceptionMethod(Class<?>... methodDescriptor) {
-        Method method = exceptionMethods.get(Key.from(methodDescriptor));
+        Method method = throwExceptionMethodOrNull(methodDescriptor);
         VMError.guarantee(method != null, "Exception synthesizer method " + Arrays.toString(methodDescriptor) + " not found.");
         return method;
+    }
+
+    public static Method throwExceptionMethodOrNull(Class<?>... methodDescriptor) {
+        return exceptionMethods.get(Key.from(methodDescriptor));
     }
 
     public static void throwException(GraphBuilderContext b, Class<?> exceptionClass, String message) {
