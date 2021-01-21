@@ -338,4 +338,8 @@ public abstract class LocationImpl extends Location {
         }
         throw new UnexpectedResultException(value);
     }
+
+    public Class<?> getType() {
+        return null;
+    }
 }
