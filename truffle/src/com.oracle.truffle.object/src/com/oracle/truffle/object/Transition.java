@@ -80,25 +80,21 @@ public abstract class Transition {
 
     /** @since 0.17 or earlier */
     public abstract static class PropertyTransition extends Transition {
-        private final Property property;
-        private final Object key;
-        private final int flags;
-        /** A {@link Location} or the value's erased type. */
-        private final Object locationOrType;
+        protected final Property property;
+        protected final Object key;
+        protected final int flags;
 
         /** @since 0.17 or earlier */
         protected PropertyTransition(Property property) {
             this.property = property;
             this.key = property.getKey();
             this.flags = property.getFlags();
-            this.locationOrType = getLocationOrType(property);
         }
 
-        protected PropertyTransition(Object key, int flags, Object locationType) {
+        protected PropertyTransition(Object key, int flags) {
             this.property = null;
             this.key = key;
             this.flags = flags;
-            this.locationOrType = locationType;
         }
 
         /** @since 0.17 or earlier */
@@ -108,7 +104,6 @@ public abstract class Transition {
             int result = super.hashCode();
             result = prime * result + ((key == null) ? 0 : key.hashCode());
             result = prime * result + flags;
-            result = prime * result + ((locationOrType == null) ? 0 : locationOrType.hashCode());
             return result;
         }
 
@@ -123,9 +118,6 @@ public abstract class Transition {
                 return false;
             }
             if (this.flags != other.flags) {
-                return false;
-            }
-            if (!Objects.equals(this.locationOrType, other.locationOrType)) {
                 return false;
             }
             return true;
@@ -143,29 +135,44 @@ public abstract class Transition {
         public int getPropertyFlags() {
             return flags;
         }
+    }
 
-        public boolean isPropertyEquals(Property other) {
-            if (this.flags != other.getFlags()) {
+    protected abstract static class TypedPropertyTransition extends PropertyTransition {
+        /** A {@link Location} or the value's erased type. */
+        private final Object locationOrType;
+
+        protected TypedPropertyTransition(Property property, Object locationOrType) {
+            super(property);
+            this.locationOrType = locationOrType;
+        }
+
+        protected TypedPropertyTransition(Object key, int flags, Object locationType) {
+            super(key, flags);
+            this.locationOrType = locationType;
+        }
+
+        @Override
+        public int hashCode() {
+            final int prime = 31;
+            int result = super.hashCode();
+            result = prime * result + ((locationOrType == null) ? 0 : locationOrType.hashCode());
+            return result;
+        }
+
+        @Override
+        public boolean equals(Object obj) {
+            if (!super.equals(obj)) {
                 return false;
             }
-            if (!Objects.equals(this.key, other.getKey())) {
-                return false;
-            }
-            if (!Objects.equals(this.locationOrType, getLocationOrType(other))) {
+            TypedPropertyTransition other = (TypedPropertyTransition) obj;
+            if (!Objects.equals(this.locationOrType, other.locationOrType)) {
                 return false;
             }
             return true;
         }
 
-        static Object getLocationOrType(Property property) {
-            Location location = property.getLocation();
-            if (location instanceof LocationImpl) {
-                Class<?> type = ((LocationImpl) location).getType();
-                if (type != null) {
-                    return type;
-                }
-            }
-            return property.getLocation();
+        public Object getLocationOrType() {
+            return locationOrType;
         }
 
         protected final String propertyToString() {
@@ -174,10 +181,10 @@ public abstract class Transition {
     }
 
     /** @since 0.17 or earlier */
-    public static final class AddPropertyTransition extends PropertyTransition {
+    public static final class AddPropertyTransition extends TypedPropertyTransition {
         /** @since 0.17 or earlier */
-        public AddPropertyTransition(Property property) {
-            super(property);
+        public AddPropertyTransition(Property property, Object locationOrType) {
+            super(property, locationOrType);
         }
 
         public AddPropertyTransition(Object key, int flags, Object locationType) {
@@ -198,11 +205,11 @@ public abstract class Transition {
     }
 
     /** @since 0.17 or earlier */
-    public static final class RemovePropertyTransition extends PropertyTransition {
+    public static final class RemovePropertyTransition extends TypedPropertyTransition {
         private final boolean direct;
 
-        public RemovePropertyTransition(Property property, boolean direct) {
-            super(property);
+        public RemovePropertyTransition(Property property, Object locationOrType, boolean direct) {
+            super(property, locationOrType);
             this.direct = direct;
         }
 
@@ -284,7 +291,17 @@ public abstract class Transition {
         /** @since 0.17 or earlier */
         @Override
         public boolean equals(Object obj) {
-            return super.equals(obj) && this.after.equals(((AbstractReplacePropertyTransition) obj).after);
+            if (!super.equals(obj)) {
+                return false;
+            }
+            AbstractReplacePropertyTransition other = (AbstractReplacePropertyTransition) obj;
+            if (!Objects.equals(this.property, other.property)) {
+                return false;
+            }
+            if (!Objects.equals(this.after, other.after)) {
+                return false;
+            }
+            return true;
         }
 
         /** @since 0.17 or earlier */
@@ -292,6 +309,7 @@ public abstract class Transition {
         public int hashCode() {
             final int prime = 31;
             int result = super.hashCode();
+            result = prime * result + property.hashCode();
             result = prime * result + after.hashCode();
             return result;
         }
@@ -299,7 +317,7 @@ public abstract class Transition {
         /** @since 0.17 or earlier */
         @Override
         public String toString() {
-            return String.format("replace(%s,%s)", propertyToString(), getPropertyAfter());
+            return String.format("replace(%s,%s)", getPropertyBefore(), getPropertyAfter());
         }
     }
 

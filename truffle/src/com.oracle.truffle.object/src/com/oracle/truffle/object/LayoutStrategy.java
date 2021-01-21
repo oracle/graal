@@ -269,7 +269,7 @@ public abstract class LayoutStrategy {
     /** @since 0.17 or earlier */
     protected ShapeImpl removeProperty(ShapeImpl shape, Property property) {
         boolean direct = shape.isShared();
-        RemovePropertyTransition transition = new RemovePropertyTransition(property, direct);
+        RemovePropertyTransition transition = newRemovePropertyTransition(property, direct);
         ShapeImpl cachedShape = shape.queryTransition(transition);
         if (cachedShape != null) {
             return ensureValid(cachedShape);
@@ -280,6 +280,10 @@ public abstract class LayoutStrategy {
         }
 
         return indirectRemoveProperty(shape, property, transition);
+    }
+
+    protected RemovePropertyTransition newRemovePropertyTransition(Property property, boolean direct) {
+        return new RemovePropertyTransition(property, toLocationOrType(property.getLocation()), direct);
     }
 
     /**
@@ -393,7 +397,7 @@ public abstract class LayoutStrategy {
         assert !(shape.hasProperty(property.getKey())) : "duplicate property " + property.getKey();
         shape.onPropertyTransition(property);
 
-        AddPropertyTransition addTransition = new AddPropertyTransition(property);
+        AddPropertyTransition addTransition = newAddPropertyTransition(property);
         ShapeImpl cachedShape = shape.queryTransition(addTransition);
         if (cachedShape != null) {
             return ensureValid ? ensureValid(cachedShape) : cachedShape;
@@ -408,6 +412,20 @@ public abstract class LayoutStrategy {
             return ensureValid ? ensureValid(newShape) : newShape;
         }
         return newShape;
+    }
+
+    protected AddPropertyTransition newAddPropertyTransition(Property property) {
+        return new AddPropertyTransition(property, toLocationOrType(property.getLocation()));
+    }
+
+    protected Object toLocationOrType(Location location) {
+        if (location instanceof LocationImpl) {
+            Class<?> type = ((LocationImpl) location).getType();
+            if (type != null) {
+                return type;
+            }
+        }
+        return location;
     }
 
     /** @since 0.17 or earlier */

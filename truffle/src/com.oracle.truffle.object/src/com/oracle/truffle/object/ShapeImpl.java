@@ -68,6 +68,7 @@ import com.oracle.truffle.api.Truffle;
 import com.oracle.truffle.api.nodes.ExplodeLoop;
 import com.oracle.truffle.api.object.DynamicObject;
 import com.oracle.truffle.api.object.DynamicObjectFactory;
+import com.oracle.truffle.api.object.HiddenKey;
 import com.oracle.truffle.api.object.Layout;
 import com.oracle.truffle.api.object.Location;
 import com.oracle.truffle.api.object.LocationFactory;
@@ -247,7 +248,7 @@ public abstract class ShapeImpl extends Shape {
                 return parent.propertyCount + 1;
             }
         } else if (thisSize < parentSize && transitionFromParent instanceof RemovePropertyTransition) {
-            if (!((RemovePropertyTransition) transitionFromParent).getProperty().isHidden()) {
+            if (!(((RemovePropertyTransition) transitionFromParent).getPropertyKey() instanceof HiddenKey)) {
                 return parent.propertyCount - 1;
             }
         }
