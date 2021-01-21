@@ -77,13 +77,14 @@ final class Target_java_util_ServiceLoader_LazyClassPathLookupIterator {
     @Alias//
     ServiceConfigurationError nextError;
 
-    @SuppressWarnings("unused") @Alias//
-    Set<String> providerNames = new HashSet<>(); // has to be initialized here, because we're
-                                                 // substituting the constructor
-
+    /* Has to be initialized here, because we're substituting the constructor. */
+    @SuppressWarnings("unused")//
     @Alias//
-    @TargetElement(name = "this$0")// manage correct ref to the enclosing object ourselves so that
-                                   // we an access it
+    Set<String> providerNames = new HashSet<>();
+
+    /* Manage correct ref to the enclosing object ourselves so that we can access it. */
+    @Alias//
+    @TargetElement(name = "this$0")//
     Target_java_util_ServiceLoader outer;
 
     @Substitute
@@ -107,7 +108,7 @@ final class Target_java_util_ServiceLoader_LazyClassPathLookupIterator {
                 }
 
 // if (clazz.getModule().isNamed()) {
-// // ignore class if in named module
+// ignore class if in named module
 // continue;
 // }
 
