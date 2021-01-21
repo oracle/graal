@@ -235,6 +235,7 @@ public final class LLVMFunctionCode {
             final RootCallTarget callTarget = converter.convert();
             final LLVMSourceFunctionType sourceType = converter.getSourceType();
             descriptor.setFunction(new LLVMIRFunction(callTarget, sourceType));
+            descriptor.getLLVMFunction().setOriginalName(callTarget.getRootNode().getName());
         }
 
         @Override
