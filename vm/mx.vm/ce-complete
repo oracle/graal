@@ -1,4 +1,4 @@
 DYNAMIC_IMPORTS=/substratevm,/tools,/sulong,/graal-nodejs,truffleruby,graalpython,/wasm,/espresso
 DISABLE_INSTALLABLES=true
-EXCLUDE_COMPONENTS=nju,nic,dis,pbm,llmulrl
+EXCLUDE_COMPONENTS=nju,nic,dis,pbm,llmulrl,elau
 FORCE_BASH_LAUNCHERS=polyglot
