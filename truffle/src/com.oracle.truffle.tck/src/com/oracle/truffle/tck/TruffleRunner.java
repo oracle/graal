@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2017, 2019, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2017, 2021, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -76,6 +76,7 @@ import org.junit.runners.parameterized.TestWithParameters;
 
 import com.oracle.truffle.api.CallTarget;
 import com.oracle.truffle.api.CompilerDirectives;
+import com.oracle.truffle.api.TruffleLanguage;
 import com.oracle.truffle.api.TruffleLanguage.Env;
 import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.interop.InteropException;
@@ -234,6 +235,7 @@ public final class TruffleRunner extends BlockJUnit4ClassRunner {
         Context.Builder contextBuilder;
 
         Context context = null;
+        TruffleLanguage<?> testLanguage = null;
         Env testEnv = null;
 
         /**
@@ -288,6 +290,17 @@ public final class TruffleRunner extends BlockJUnit4ClassRunner {
         public Env getTruffleTestEnv() {
             assert testEnv != null;
             return testEnv;
+        }
+
+        /**
+         * Get an instance of the {@link TruffleLanguage} that this test is running under. Nodes
+         * that are used with {@link Inject} should pass this instance to their super constructor.
+         *
+         * @since 21.1
+         */
+        public TruffleLanguage<?> getTestLanguage() {
+            assert testLanguage != null;
+            return testLanguage;
         }
     }
 
@@ -371,6 +384,8 @@ public final class TruffleRunner extends BlockJUnit4ClassRunner {
 
 class TruffleRunnerSnippets {
 
+    @Rule RunWithPolyglotRule runWithPolyglot;
+
     // Checkstyle: stop
     // BEGIN: TruffleRunnerSnippets#TestExecuteNode
     public class TestExecuteNode extends RootNode {
@@ -378,7 +393,7 @@ class TruffleRunnerSnippets {
         @Child InteropLibrary interop;
 
         public TestExecuteNode() {
-            super(null);
+            super(runWithPolyglot.getTestLanguage());
             interop = InteropLibrary.getFactory().createDispatched(5);
         }
 

@@ -182,13 +182,13 @@ public class BasicIntrinsicsProvider implements LLVMIntrinsicProvider {
     }
 
     @Override
-    public final LLVMExpressionNode generateIntrinsicNode(String name, LLVMExpressionNode[] arguments, Type.TypeArrayBuilder argTypes, NodeFactory nodeFactory) {
+    public final LLVMExpressionNode generateIntrinsicNode(String name, LLVMExpressionNode[] arguments, Type[] argTypes, NodeFactory nodeFactory) {
         CompilerAsserts.neverPartOfCompilation();
         LLVMTypedIntrinsicFactory factory = getFactory(name);
         if (factory == null) {
             return null;
         }
-        return factory.generate(Arrays.asList(arguments), nodeFactory, language, Type.getRawTypeArray(argTypes));
+        return factory.generate(Arrays.asList(arguments), nodeFactory, language, argTypes);
     }
 
     private LLVMTypedIntrinsicFactory getFactory(String name) {
