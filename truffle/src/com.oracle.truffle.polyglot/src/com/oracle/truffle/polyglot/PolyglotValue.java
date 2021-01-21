@@ -1145,16 +1145,8 @@ abstract class PolyglotValue extends AbstractValueImpl {
     }
 
     @TruffleBoundary
-    protected static RuntimeException invalidIterator(PolyglotLanguageContext context, Object receiver) {
-        String message = String.format("GetNext method has not yet been called on the iterator %s.", getValueInfo(context, receiver));
-        throw PolyglotEngineException.illegalState(message);
-    }
-
-    @TruffleBoundary
-    protected static RuntimeException invalidIteratorValue(PolyglotLanguageContext context, Object receiver, Object value) {
-        throw PolyglotEngineException.classCast(
-                        String.format("Invalid value %s for iterator %s.",
-                                        getValueInfo(context, value), getValueInfo(context, receiver)));
+    protected static RuntimeException nonReadableIteratorElement() {
+        throw PolyglotEngineException.unsupported("Iterator element is not readable.");
     }
 
     @TruffleBoundary
@@ -3448,7 +3440,7 @@ abstract class PolyglotValue extends AbstractValueImpl {
                     return toHost.execute(context, iterators.getIteratorNextElement(receiver));
                 } catch (UnsupportedMessageException e) {
                     unsupported.enter();
-                    return getIteratorNextElementUnsupported(context, receiver);
+                    throw nonReadableIteratorElement();
                 } catch (StopIterationException e) {
                     stop.enter();
                     throw stopIteration(context, receiver);

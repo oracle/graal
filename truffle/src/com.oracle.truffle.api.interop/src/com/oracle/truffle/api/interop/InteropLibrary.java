@@ -1861,7 +1861,8 @@ public abstract class InteropLibrary extends Library {
 
     /**
      * Returns the iterator for the receiver. The return value is guaranteed to return {@code true}
-     * for {@link #isIterator(Object)}.
+     * for {@link #isIterator(Object)}. Invoking this message does not cause any observable
+     * side-effects.
      *
      * @throws UnsupportedMessageException if and only if {@link #hasIterator(Object)} returns
      *             {@code false} for the same receiver.
@@ -1963,8 +1964,9 @@ public abstract class InteropLibrary extends Library {
     /**
      * Returns the next element in the iteration.
      *
-     * @throws UnsupportedMessageException if and only if {@link #isIterator(Object)} returns
-     *             {@code false} for the same receiver.
+     * @throws UnsupportedMessageException if {@link #isIterator(Object)} returns {@code false} for
+     *             the same receiver or when the underlying iterator element exists but is not
+     *             readable.
      * @throws StopIterationException if the iteration has no more elements, the
      *             {@link #hasIteratorNextElement(Object)} returns {@code false} for the same
      *             receiver.
@@ -4158,7 +4160,6 @@ public abstract class InteropLibrary extends Library {
                 }
             } catch (InteropException e) {
                 assert e instanceof UnsupportedMessageException || e instanceof StopIterationException : violationPost(receiver, e);
-                assert !(e instanceof UnsupportedMessageException) || !wasIterator : violationInvariant(receiver);
                 throw e;
             }
         }

@@ -1825,7 +1825,8 @@ public final class Value {
     /**
      * Returns the next element in the iteration.
      *
-     * @throws UnsupportedOperationException if the value is not an {@link #isIterator() iterator}.
+     * @throws UnsupportedOperationException if the value is not an {@link #isIterator() iterator}
+     *             or when the underlying iterator element exists but is not readable.
      * @throws NoSuchElementException if the iteration has no more elements, the
      *             {@link #hasIteratorNextElement()} returns <code>false</code>.
      * @throws IllegalStateException if the context is already closed.

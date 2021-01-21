@@ -371,11 +371,13 @@ final class HostToGuestCodeCache {
 
         @Override
         @TruffleBoundary
-        protected Object executeImpl(Object proxy, Object[] arguments) throws StopIterationException {
+        protected Object executeImpl(Object proxy, Object[] arguments) throws StopIterationException, UnsupportedMessageException {
             try {
                 return ((ProxyIterator) proxy).getNext();
             } catch (NoSuchElementException e) {
                 throw StopIterationException.create();
+            } catch (UnsupportedOperationException e) {
+                throw UnsupportedMessageException.create();
             }
         }
     });

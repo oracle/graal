@@ -73,6 +73,7 @@ import com.oracle.truffle.api.test.polyglot.ProxyLanguage;
 import java.util.ArrayDeque;
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.BitSet;
 import java.util.Collection;
 import java.util.Collections;
 import java.util.HashSet;
@@ -122,6 +123,28 @@ public class IteratorTest extends AbstractPolyglotTest {
             }
         });
         verifyingHandler.expect(items);
+        context.eval(ProxyLanguage.ID, "Test");
+    }
+
+    @Test
+    public void testArrayWithUnreadableElements() {
+        String[] items = new String[10];
+        String[] expected = new String[items.length / 2];
+        BitSet readable = new BitSet(items.length);
+        for (int i = 0; i < items.length; i++) {
+            items[i] = Integer.toString(i);
+            if (i % 2 == 0) {
+                readable.set(i);
+                expected[i / 2] = items[i];
+            }
+        }
+        setupEnv(createContext(verifyingHandler), new ProxyLanguage() {
+            @Override
+            protected CallTarget parse(TruffleLanguage.ParsingRequest request) throws Exception {
+                return createAST(languageInstance, new Array(items, readable));
+            }
+        });
+        verifyingHandler.expect(expected);
         context.eval(ProxyLanguage.ID, "Test");
     }
 
@@ -413,10 +436,16 @@ public class IteratorTest extends AbstractPolyglotTest {
     @ExportLibrary(InteropLibrary.class)
     static class Array implements TruffleObject {
 
-        private Object[] items;
+        private final Object[] items;
+        private final BitSet readable;
 
         Array(Object... items) {
+            this(items, null);
+        }
+
+        Array(Object[] items, BitSet readable) {
             this.items = items;
+            this.readable = readable;
         }
 
         @ExportMessage
@@ -431,12 +460,12 @@ public class IteratorTest extends AbstractPolyglotTest {
 
         @ExportMessage
         boolean isArrayElementReadable(long index) {
-            return index >= 0 && index < items.length;
+            return index >= 0 && index < items.length && (readable == null || readable.get((int) index));
         }
 
         @ExportMessage
         Object readArrayElement(long index) throws InvalidArrayIndexException {
-            if (index < 0 || index >= items.length) {
+            if (!isArrayElementReadable(index)) {
                 throw InvalidArrayIndexException.create(index);
             }
             return items[(int) index];
@@ -588,9 +617,13 @@ public class IteratorTest extends AbstractPolyglotTest {
                 throw new TypeError("iterator", this);
             }
             while (iterators.hasIteratorNextElement(iterator)) {
-                Object item = iterators.getIteratorNextElement(iterator);
-                setLocal.write(frame, item);
-                repeat.executeVoid(frame);
+                try {
+                    Object item = iterators.getIteratorNextElement(iterator);
+                    setLocal.write(frame, item);
+                    repeat.executeVoid(frame);
+                } catch (UnsupportedMessageException ume) {
+                    continue;
+                }
             }
         }
     }

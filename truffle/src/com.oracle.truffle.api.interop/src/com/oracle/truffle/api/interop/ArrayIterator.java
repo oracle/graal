@@ -48,14 +48,13 @@ import com.oracle.truffle.api.library.ExportMessage;
 @ExportLibrary(InteropLibrary.class)
 final class ArrayIterator implements TruffleObject {
 
-    private static final Object STOP = new Object();
-
     final Object array;
     private int currentItemIndex;
-    private Object next;
+    private boolean stopped;
 
     ArrayIterator(Object array) {
         this.array = array;
+        assert InteropLibrary.getUncached().hasArrayElements(array) : "Array must have array elements.";
     }
 
     @ExportMessage
@@ -66,43 +65,39 @@ final class ArrayIterator implements TruffleObject {
 
     @ExportMessage
     boolean hasIteratorNextElement(@CachedLibrary("this.array") InteropLibrary arrays) {
-        init(arrays);
-        return next != STOP;
+        if (stopped) {
+            return false;
+        }
+        try {
+            boolean hasNext = currentItemIndex < arrays.getArraySize(array);
+            if (!hasNext) {
+                stopped = true;
+            }
+            return hasNext;
+        } catch (UnsupportedMessageException ume) {
+            throw CompilerDirectives.shouldNotReachHere(ume);
+        }
     }
 
     @ExportMessage
-    Object getIteratorNextElement(@CachedLibrary("this.array") InteropLibrary arrays) throws StopIterationException {
-        init(arrays);
-        Object res = next;
-        if (res == STOP) {
+    Object getIteratorNextElement(@CachedLibrary("this.array") InteropLibrary arrays) throws UnsupportedMessageException, StopIterationException {
+        if (stopped) {
             throw StopIterationException.create();
         }
-        advance(arrays);
-        return res;
-    }
-
-    private void init(InteropLibrary arrays) {
-        if (next == null) {
-            advance(arrays);
-        }
-    }
-
-    private void advance(InteropLibrary arrays) {
-        next = STOP;
         try {
-            while (currentItemIndex < arrays.getArraySize(array)) {
-                if (arrays.isArrayElementReadable(array, currentItemIndex)) {
-                    next = arrays.readArrayElement(array, currentItemIndex);
-                    currentItemIndex++;
-                    break;
-                } else {
-                    currentItemIndex++;
-                }
-            }
+            Object res = arrays.readArrayElement(array, currentItemIndex);
+            currentItemIndex++;
+            return res;
         } catch (UnsupportedMessageException ume) {
-            CompilerDirectives.shouldNotReachHere(ume);
+            throw CompilerDirectives.shouldNotReachHere(ume);
         } catch (InvalidArrayIndexException iaie) {
-            // Pass with next set to STOP
+            if (hasIteratorNextElement(arrays)) {
+                currentItemIndex++;
+                throw UnsupportedMessageException.create();
+            } else {
+                stopped = true;
+                throw StopIterationException.create();
+            }
         }
     }
 }

@@ -1094,9 +1094,6 @@ public class InteropAssertionsTest extends InteropLibraryBaseTest {
         assertEquals(iteratorTest.next.get(), iteratorLib.getIteratorNextElement(iteratorTest));
         iteratorTest.isIterator = false;
         assertFails(() -> iteratorLib.getIteratorNextElement(iteratorTest), AssertionError.class);
-        iteratorTest.isIterator = true;
-        iteratorTest.next = null;
-        assertFails(() -> iteratorLib.getIteratorNextElement(iteratorTest), AssertionError.class);
 
         iteratorTest.next = () -> null;
         assertFails(() -> iteratorLib.getIteratorNextElement(iteratorTest), AssertionError.class);

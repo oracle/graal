@@ -68,11 +68,13 @@ public interface ProxyIterator extends Proxy {
      *
      * @throws NoSuchElementException if the iteration has no more elements, the {@link #hasNext()}
      *             returns <code>false</code>.
+     * @throws UnsupportedOperationException when the underlying iterator element exists but is not
+     *             readable.
      *
      * @see #hasNext()
      * @since 21.1
      */
-    Object getNext();
+    Object getNext() throws NoSuchElementException, UnsupportedOperationException;
 
     /**
      * Creates a proxy iterator backed by a Java {@link Iterator}. If the set values are host values
@@ -107,41 +109,41 @@ final class DefaultProxyIterator implements ProxyIterator {
 
 final class DefaultProxyArrayIterator implements ProxyIterator {
 
-    private static final Object STOP = new Object();
-
     private final ProxyArray array;
     private int index;
-    private Object next;
+    private boolean stopped;
 
     DefaultProxyArrayIterator(ProxyArray array) {
         this.array = array;
-        advance();
     }
 
     @Override
     public boolean hasNext() {
-        return next != STOP;
+        if (stopped) {
+            return false;
+        }
+        boolean hasNext = index < array.getSize();
+        if (!hasNext) {
+            stopped = true;
+        }
+        return hasNext;
     }
 
     @Override
     public Object getNext() {
-        Object res = next;
-        if (res == STOP) {
+        if (stopped) {
             throw new NoSuchElementException();
         }
-        advance();
-        return res;
-    }
-
-    private void advance() {
-        next = STOP;
-        if (index < array.getSize()) {
-            try {
-                next = array.get(index);
-                index++;
-            } catch (ArrayIndexOutOfBoundsException | UnsupportedOperationException e) {
-                // Pass with next set to STOP
-            }
+        try {
+            Object res = array.get(index);
+            index++;
+            return res;
+        } catch (UnsupportedOperationException e) {
+            index++;
+            throw e;
+        } catch (ArrayIndexOutOfBoundsException e) {
+            stopped = true;
+            throw new NoSuchElementException();
         }
     }
 }
