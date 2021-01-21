@@ -1,7 +1,6 @@
 # hwloc (Hardware Locality) provides means to bind a process to NUMA nodes
 hwloc.bench-common : {
   environment: {
-    BASE_BENCH_RESULTS_FILE_NAME: "bench-results.json"
     LOG_FILE_NAME : "-output.log"
     MACHINE_NODE: undefined
     BENCH_RESULTS_FILE_PATH: undefined

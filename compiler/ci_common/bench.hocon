@@ -29,6 +29,7 @@ bench-common : ${compilerCommon} {
   }
   environment: {
     MX_PYTHON_VERSION : "3",
+    BASE_BENCH_RESULTS_FILE_NAME: "bench-results.json",
     BENCH_RESULTS_FILE_PATH : "bench-results.json"
   }
   setup: ${compilerCommon.setup} [
