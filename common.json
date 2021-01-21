@@ -29,6 +29,11 @@
         "packages": {
           "cmake": "==3.15.2"
         }
+      },
+      "windows": {
+        "packages": {
+          "msvc": "==10.0"
+        }
       }
     }
   }
