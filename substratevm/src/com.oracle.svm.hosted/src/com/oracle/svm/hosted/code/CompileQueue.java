@@ -142,6 +142,7 @@ import com.oracle.svm.hosted.meta.HostedMethod;
 import com.oracle.svm.hosted.meta.HostedUniverse;
 import com.oracle.svm.hosted.phases.DevirtualizeCallsPhase;
 import com.oracle.svm.hosted.phases.HostedGraphBuilderPhase;
+import com.oracle.svm.hosted.phases.ImplicitAssertionsPhase;
 import com.oracle.svm.hosted.phases.StrengthenStampsPhase;
 import com.oracle.svm.hosted.substitute.DeletedMethod;
 
@@ -390,6 +391,7 @@ public class CompileQueue {
 
     protected PhaseSuite<HighTierContext> afterParseCanonicalization() {
         PhaseSuite<HighTierContext> phaseSuite = new PhaseSuite<>();
+        phaseSuite.appendPhase(new ImplicitAssertionsPhase());
         phaseSuite.appendPhase(new DeadStoreRemovalPhase());
         phaseSuite.appendPhase(new DevirtualizeCallsPhase());
         phaseSuite.appendPhase(CanonicalizerPhase.create());
