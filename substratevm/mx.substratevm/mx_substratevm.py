@@ -1333,10 +1333,9 @@ class SubstrateCompilerFlagsBuilder(mx.ArchivableProject):
     def getResults(self):
         graal_compiler_flags_map = self.compute_graal_compiler_flags_map()
         mx.ensure_dir_exists(self.output_dir())
-        yield self.config_file_update(self.result_file_path("versions"), self.config_file_versions())
-        for version in self.config_file_versions():
-            if version not in graal_compiler_flags_map:
-                mx.abort('Missing support for generating ' + self.config_file(version))
+        versions = sorted(graal_compiler_flags_map.keys())
+        yield self.config_file_update(self.result_file_path("versions"), versions)
+        for version in versions:
             yield self.config_file_update(self.result_file_path(version), graal_compiler_flags_map[version])
 
     def config_file_update(self, file_path, lines):
@@ -1356,12 +1355,8 @@ class SubstrateCompilerFlagsBuilder(mx.ArchivableProject):
 
         return file_path
 
-    def config_file_versions(self):
-        versions = [8, 11, 13, 14, 15]
-        if svm_java8():
-            return versions[:1]
-        return versions
-
+    # If renaming or moving this method, please update the error message in
+    # com.oracle.svm.driver.NativeImage.BuildConfiguration.getBuilderJavaArgs().
     def compute_graal_compiler_flags_map(self):
         graal_compiler_flags_map = dict()
         graal_compiler_flags_map[8] = [
@@ -1440,6 +1435,7 @@ class SubstrateCompilerFlagsBuilder(mx.ArchivableProject):
             graal_compiler_flags_map[13] = graal_compiler_flags_map[11]
             graal_compiler_flags_map[14] = graal_compiler_flags_map[11]
             graal_compiler_flags_map[15] = graal_compiler_flags_map[11]
+            graal_compiler_flags_map[16] = graal_compiler_flags_map[11]
 
         graal_compiler_flags_base = [
             '-XX:+UseParallelGC',  # native image generation is a throughput-oriented task

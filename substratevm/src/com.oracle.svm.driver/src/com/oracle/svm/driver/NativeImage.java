@@ -330,10 +330,16 @@ public class NativeImage {
             String javaVersion = String.valueOf(JavaVersionUtil.JAVA_SPEC);
             String[] flagsForVersion = graalCompilerFlags.get(javaVersion);
             if (flagsForVersion == null) {
-                showError(String.format("Image building not supported for Java version %s in %s with VM configuration \"%s\"",
+                String suffix = "";
+                if (System.getProperty("java.home").contains("-dev")) {
+                    suffix = " Update SubstrateCompilerFlagsBuilder.compute_graal_compiler_flags_map() in " +
+                                    "mx_substratevm.py to add a configuration for a new Java version.";
+                }
+                showError(String.format("Image building not supported for Java version %s in %s with VM configuration \"%s\".%s",
                                 System.getProperty("java.version"),
                                 System.getProperty("java.home"),
-                                System.getProperty("java.vm.name")));
+                                System.getProperty("java.vm.name"),
+                                suffix));
             }
 
             if (useJVMCINativeLibrary == null) {
