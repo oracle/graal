@@ -72,11 +72,11 @@ public final class LLVMFunction extends LLVMSymbol {
         return sourceLocation;
     }
 
-    public void setOriginalName(String originalName){
+    public void setOriginalName(String originalName) {
         this.originalName = originalName;
     }
 
-    public String getOriginalName(){
+    public String getOriginalName() {
         return originalName;
     }
 
