@@ -62,8 +62,8 @@ public class ChildContextTest extends AbstractPolyglotTest {
 
     @TruffleLanguage.Registration(name = PublicLang.NAME, id = PublicLang.ID, dependentLanguages = {InternalLang.ID})
     public static class PublicLang extends TruffleLanguage<LanguageContext> {
-        public static final String ID = "pl";
-        public static final String NAME = "public-lang";
+        public static final String ID = "ChildContextTest_PublicLang";
+        public static final String NAME = "ChildContextTest_PublicLang";
 
         @Override
         protected LanguageContext createContext(Env env) {
@@ -81,8 +81,8 @@ public class ChildContextTest extends AbstractPolyglotTest {
 
     @TruffleLanguage.Registration(name = InternalLang.NAME, id = InternalLang.ID, internal = true)
     public static class InternalLang extends TruffleLanguage<LanguageContext> {
-        public static final String ID = "il";
-        public static final String NAME = "internal-lang";
+        public static final String ID = "ChildContextTest_InternalLang";
+        public static final String NAME = "ChildContextTest_InternalLang";
 
         @Override
         protected LanguageContext createContext(Env env) {
