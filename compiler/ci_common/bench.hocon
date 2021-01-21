@@ -188,11 +188,16 @@ bench-renaissance: ${bench-common} ${default-heap} ${renaissance-bench-notificat
   timelimit: "3:00:00"
 }
 
-bench-renaissance-0-10-0: ${bench-renaissance} {
-  environment: ${bench-renaissance.environment} {
+bench-renaissance-0-10-0: ${bench-common} ${default-heap} ${renaissance-bench-notifications} {
+  environment: {
+    SPARK_LOCAL_IP: "127.0.0.1"
     RENAISSANCE_VERSION: "0.10.0"
   }
   targets: [bench, weekly]
+  run: [
+    ${bench-jvmci.mx-renaissance} ${bench-arguments}
+  ]
+  timelimit: "3:00:00"
 }
 
 bench-renaissance-no-db-shootout: ${bench-renaissance} {
