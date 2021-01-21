@@ -55,7 +55,7 @@ public class PredefinedClassesConfigurationParser extends ConfigurationParser {
     @SuppressFBWarnings(value = "NP_NULL_ON_SOME_PATH_FROM_RETURN_VALUE", justification = "getParent() returning null for a valid file path is almost impossible and a NullPointerException would be acceptable")
     public void parseAndRegister(Path path) throws IOException {
         try (Reader reader = Files.newBufferedReader(path)) {
-            Path basePath = path.getParent().resolve(ConfigurationFiles.PREDEFINED_CLASSES_AGENT_EXTRACTED_SUBDIR);
+            Path basePath = path.getParent().resolve(ConfigurationFile.PREDEFINED_CLASSES_AGENT_EXTRACTED_SUBDIR);
             parseAndRegister(reader, basePath);
         }
     }

@@ -30,10 +30,12 @@ import java.util.List;
 import java.util.Map;
 
 import com.oracle.svm.configure.config.PredefinedClassesConfiguration;
+import com.oracle.svm.configure.ConfigurationBase;
 import com.oracle.svm.configure.config.ProxyConfiguration;
 import com.oracle.svm.configure.config.ResourceConfiguration;
 import com.oracle.svm.configure.config.SerializationConfiguration;
 import com.oracle.svm.configure.config.TypeConfiguration;
+import com.oracle.svm.core.configure.ConfigurationFile;
 import com.oracle.svm.core.util.json.JSONParser;
 
 public class TraceProcessor extends AbstractProcessor {
@@ -75,6 +77,27 @@ public class TraceProcessor extends AbstractProcessor {
 
     public PredefinedClassesConfiguration getPredefinedClassesConfiguration() {
         return classLoadingProcessor.getPredefinedClassesConfiguration();
+    }
+
+    public ConfigurationBase getConfiguration(ConfigurationFile configFile) {
+        assert configFile.canBeGeneratedByAgent();
+        switch (configFile) {
+            case DYNAMIC_PROXY:
+                return getProxyConfiguration();
+            case JNI:
+                return getJniConfiguration();
+            case REFLECTION:
+                return getReflectionConfiguration();
+            case RESOURCES:
+                return getResourceConfiguration();
+            case SERIALIZATION:
+                return getSerializationConfiguration();
+            case PREDEFINED_CLASSES_NAME:
+                return getPredefinedClassesConfiguration();
+            default:
+                assert false; // should never reach here
+        }
+        return null;
     }
 
     @SuppressWarnings("unchecked")
