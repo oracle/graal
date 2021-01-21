@@ -55,6 +55,7 @@ public class ArgumentsHandler {
     private final Native nativeAccess;
     private final PolyglotArgs polyglotAccess;
     private final ModulePropertyCounter modulePropertyCounter;
+    private final AgentAccumulator agents;
 
     private final boolean experimental;
 
@@ -69,6 +70,7 @@ public class ArgumentsHandler {
         this.nativeAccess = new Native(this);
         this.modulePropertyCounter = new ModulePropertyCounter(builder);
         this.polyglotAccess = new PolyglotArgs(builder, this);
+        this.agents = new AgentAccumulator(builder);
         this.experimental = checkExperimental(args);
     }
 
@@ -165,6 +167,10 @@ public class ArgumentsHandler {
     public void argumentProcessingDone() {
         printHelp();
         polyglotAccess.argumentProcessingDone();
+    }
+
+    public void handleAgent(String value, boolean isAbsolutePath) {
+        agents.handleAgent(value, isAbsolutePath);
     }
 
     public void help(String arg) {

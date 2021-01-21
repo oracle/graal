@@ -31,6 +31,7 @@ import java.lang.ref.ReferenceQueue;
 import java.nio.file.Path;
 import java.util.Arrays;
 import java.util.HashSet;
+import java.util.Map;
 import java.util.Set;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicInteger;
@@ -173,6 +174,7 @@ public final class EspressoContext {
     @CompilationFinal private JImageLibrary jimageLibrary;
     @CompilationFinal private EspressoProperties vmProperties;
     @CompilationFinal private JavaVersion javaVersion;
+    @CompilationFinal private AgentLibrairies agents;
     // endregion VM
 
     @CompilationFinal private EspressoException stackOverflow;
@@ -385,6 +387,8 @@ public final class EspressoContext {
 
             this.interpreterToVM = new InterpreterToVM(this);
 
+            initializeAgents();
+
             try (DebugCloseable knownClassInit = KNOWN_CLASS_INIT.scope(timers)) {
                 initializeKnownClass(Type.java_lang_Object);
 
@@ -465,6 +469,16 @@ public final class EspressoContext {
             long elapsedNanos = initDoneTimeNanos - initStartTimeNanos;
             getLogger().log(Level.FINE, "VM booted in {0} ms", TimeUnit.NANOSECONDS.toMillis(elapsedNanos));
         }
+    }
+
+    private void initializeAgents() {
+        agents = new AgentLibrairies(this);
+        Set<Map.Entry<String, String>> entries = getEnv().getOptions().get(EspressoOptions.Agents).entrySet();
+        for (Map.Entry<String, String> entry : entries) {
+            String value = entry.getValue();
+            agents.registerAgent(value);
+        }
+        agents.initialize();
     }
 
     private void initVmProperties() {
@@ -572,6 +586,14 @@ public final class EspressoContext {
     public void prepareDispose() {
         jdwpContext.finalizeContext();
     }
+
+    // region Agents
+
+    public TruffleObject bindToAgent(Method method, String mangledName) {
+        return agents.bind(method, mangledName);
+    }
+
+    // endregion Agents
 
     // region Thread management
 

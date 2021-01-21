@@ -405,5 +405,9 @@ public final class EspressoOptions {
                     category = OptionCategory.EXPERT, stability = OptionStability.STABLE) //
     public static final OptionKey<Long> MaxDirectMemorySize = new OptionKey<>(-1L, SIZE_OPTION_TYPE);
 
+    @Option(help = "Stores command-line defined agents.", //
+                    category = OptionCategory.INTERNAL, stability = OptionStability.STABLE) //
+    public static final OptionKey<OptionMap<String>> Agents = OptionKey.mapOf(String.class);
+
     public static final String INCEPTION_NAME = System.getProperty("espresso.inception.name", "#");
 }

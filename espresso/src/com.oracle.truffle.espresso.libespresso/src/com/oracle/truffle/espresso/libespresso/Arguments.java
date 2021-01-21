@@ -81,6 +81,16 @@ public final class Arguments {
                     } else if (optionString.startsWith("-agentlib:jdwp=")) {
                         String value = optionString.substring("-agentlib:jdwp=".length());
                         builder.option("java.JDWPOptions", value);
+                    } else if (optionString.startsWith("-javaagent:")) {
+                        String value = optionString.substring("-javaagent:jdwp=".length());
+                        handler.handleAgent("instrument=" + value, false);
+                        handler.addModules("java.instrument");
+                    } else if (optionString.startsWith("-agentlib:")) {
+                        String value = optionString.substring("-agentlib:".length());
+                        handler.handleAgent(optionString, false);
+                    } else if (optionString.startsWith("-agentpath:")) {
+                        String value = optionString.substring("-agentpath:".length());
+                        handler.handleAgent(optionString, true);
                     } else if (optionString.startsWith("-D")) {
                         String key = optionString.substring("-D".length());
                         int splitAt = key.indexOf("=");
