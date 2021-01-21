@@ -204,7 +204,7 @@ void schedule()
     }
 }
 
-struct task *wait(void)
+struct task *wait_task(void)
 {
     tcb->t_state |= WAITBIT;
     return (tcb);
@@ -285,7 +285,7 @@ struct task *idlefn(struct packet *pkt)
 
 struct task *workfn(struct packet *pkt)
 {
-    if ( pkt==0 ) return ( wait() );
+    if ( pkt==0 ) return ( wait_task() );
     else
     {
         int i;
@@ -330,14 +330,14 @@ struct task *handlerfn(struct packet *pkt)
       return( qpkt(devpkt) );
     }
   }
-  return wait();
+  return wait_task();
 }
 
 struct task *devfn(struct packet *pkt)
 {
     if ( pkt==0 )
     {
-        if ( v1==0 ) return ( wait() );
+        if ( v1==0 ) return ( wait_task() );
         pkt = (struct packet *)v1;
         v1 = 0;
         return ( qpkt(pkt) );
