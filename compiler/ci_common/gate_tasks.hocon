@@ -42,7 +42,7 @@ builds += [
   ${gateMathStubsListener}                                                {name: "daily-hotspot-mathstubs-listener"}
 
   # Solaris SPARC
-  ${gateTest}          ${oraclejdk8Only}      ${gateSolarisSPARC}                {name: "gate-compiler-test-8-solaris-sparcv9",                     timelimit: "1:00:00"}
+  ${gateTest}          ${oraclejdk8Only}      ${gateSolarisSPARC} ${graalDaily}  {name: "gate-compiler-test-8-solaris-sparcv9",                     timelimit: "1:00:00"} # Remove sparcv9 from gate GR-28885
   ${gateTestCTW}       ${oraclejdk8Only}      ${gateSolarisSPARC} ${graalDaily}  {name: "daily-compiler-ctw-8-solaris-sparcv9",                     timelimit: "1:00:00"}
   ${gateTest}          ${oraclejdk8OnlyDebug} ${gateSolarisSPARC} ${graalWeekly} {name: "weekly-test-compiler-test-8-solaris-sparcv9-fastdebug",    timelimit: "1:50:00"}
   ${gateTestBenchmark} ${oraclejdk8Only}      ${gateSolarisSPARC} ${graalDaily}  {name: "daily-compiler-benchmarktest-8-solaris-sparcv9",           timelimit: "1:00:00"}
