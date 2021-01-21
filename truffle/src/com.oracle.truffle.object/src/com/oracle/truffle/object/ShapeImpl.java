@@ -486,7 +486,7 @@ public abstract class ShapeImpl extends Shape {
         } else if (isSingleEntry(trans)) {
             StrongKeyWeakValueEntry<Transition, ShapeImpl> entry = asSingleEntry(trans);
             Transition key = entry.getKey();
-            if (key.equals(transition)) {
+            if (transition.equals(key)) {
                 return entry.getValue();
             } else {
                 return null;
