@@ -324,6 +324,15 @@ suite = {
             "workingSets": "SVM",
         },
 
+        "com.oracle.svm.core.posix.processor": {
+            "subDir": "src",
+            "sourceDirs": [
+                "src",
+            ],
+            "javaCompliance": "8+",
+            "workingSets": "SVM",
+        },
+
         "com.oracle.svm.core.posix": {
             "subDir": "src",
             "sourceDirs": ["src"],
@@ -335,6 +344,7 @@ suite = {
             "javaCompliance": "8+",
             "annotationProcessors": [
                 "compiler:GRAAL_PROCESSOR",
+                "HOST_LIBC_PROCESSOR",
             ],
             "workingSets": "SVM",
             "spotbugs": "false",
@@ -1131,6 +1141,14 @@ suite = {
         #
         # Internal Distributions
         #
+        "HOST_LIBC_PROCESSOR" : {
+            "subDir": "src",
+            "dependencies" : [
+                "com.oracle.svm.core.posix.processor",
+            ],
+            "maven": False,
+        },
+
         "SVM_DRIVER": {
             "subDir": "src",
             "description" : "SubstrateVM native-image building tool",

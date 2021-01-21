@@ -124,6 +124,12 @@ suite = {
             "sha1" : "772d729ae66105ceeb647e8e69b3b6204dc9ff7b",
           }
         },
+        "linux-musl" : {
+          "amd64" : {
+            "urls" : ["https://download.bell-sw.com/graalvm/llvm-llvmorg-{version}-linux-musl-amd64.tar.gz"],
+            "sha1" : "a59af06ea5b5d189421dd77444895ea1ac9f68f5",
+          },
+        },
         "darwin" : {
           "amd64" : {
             "urls" : ["{host}/llvm-llvmorg-{version}-darwin-amd64.tar.gz"],

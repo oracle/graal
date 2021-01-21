@@ -128,7 +128,7 @@ JNIEXPORT int JNICALL JVM_Listen(int fd, int count) {
     return listen(fd, count);
 }
 
-JNIEXPORT int JNICALL JVM_Send(int fd, char* buf, size_t nBytes, uint flags) {
+JNIEXPORT int JNICALL JVM_Send(int fd, char* buf, size_t nBytes, unsigned int flags) {
     RESTARTABLE_RETURN_INT(send(fd, buf, nBytes, flags));
 }
 

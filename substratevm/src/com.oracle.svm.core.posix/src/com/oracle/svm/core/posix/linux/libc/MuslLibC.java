@@ -28,6 +28,7 @@ import java.util.Collections;
 import java.util.List;
 
 import com.oracle.svm.core.SubstrateOptions;
+import com.oracle.svm.core.c.libc.HostLibC;
 import com.oracle.svm.core.c.libc.LibCBase;
 import com.oracle.svm.core.util.UserError;
 import org.graalvm.compiler.serviceprovider.JavaVersionUtil;
@@ -44,12 +45,14 @@ public class MuslLibC implements LibCBase {
     @Override
     public List<String> getAdditionalQueryCodeCompilerOptions() {
         /* Avoid the dependency to muslc for builds cross compiling to muslc. */
-        return Collections.singletonList("--static");
+        return isCrossCompiling()
+                ? Collections.singletonList("--static")
+                : Collections.emptyList();
     }
 
     @Override
     public String getTargetCompiler() {
-        return "musl-gcc";
+        return isCrossCompiling() ? "musl-gcc" : "gcc";
     }
 
     @Override
@@ -59,16 +62,20 @@ public class MuslLibC implements LibCBase {
 
     @Override
     public boolean requiresLibCSpecificStaticJDKLibraries() {
-        return true;
+        return isCrossCompiling();
     }
 
     @Override
     public void checkIfLibCSupported() {
-        if (!SubstrateOptions.StaticExecutable.getValue()) {
+        if (isCrossCompiling() && !SubstrateOptions.StaticExecutable.getValue()) {
             throw UserError.abort("Musl can only be used for statically linked executables.");
         }
         if (JavaVersionUtil.JAVA_SPEC != 11) {
             throw UserError.abort("Musl can only be used with labsjdk 11.");
         }
+    }
+
+    private boolean isCrossCompiling() {
+        return !HostLibC.is(MuslLibC.class);
     }
 }

@@ -711,10 +711,12 @@ suite = {
         "LIBCXX_CXX_ABI_INCLUDE_PATHS" : "<path:sdk:LLVM_ORG_SRC>/libcxxabi/include",
         "LIBCXX_ENABLE_STATIC" : "NO",
         "LIBCXX_ENABLE_EXPERIMENTAL_LIBRARY" : "NO",
+        # '{{musl}}' is replaced with YES or NO in the CMakeProject.
+        "LIBCXX_HAS_MUSL_LIBC" : "{{musl}}",
         "CMAKE_C_COMPILER" : "<toolchainGetToolPath:native,CC>",
         "CMAKE_CXX_COMPILER" :  "<toolchainGetToolPath:native,CXX>",
-        # Work around for mx not liking $ signs. We use '{{}}' as a placeholder and replace that in the CMakeProject.
-        "CMAKE_SHARED_LINKER_FLAGS" : "-Wl,-rpath,{{}}ORIGIN",
+        # Work around for mx not liking $ signs. We use '{{dollarsign}}' as a placeholder and replace that in the CMakeProject.
+        "CMAKE_SHARED_LINKER_FLAGS" : "-Wl,-rpath,{{dollarsign}}ORIGIN",
         "CMAKE_INSTALL_PREFIX" : "native",
       },
       "buildDependencies" : [
