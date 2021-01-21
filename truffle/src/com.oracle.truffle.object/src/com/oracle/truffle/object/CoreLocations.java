@@ -420,6 +420,7 @@ abstract class CoreLocations {
             return true;
         }
 
+        @Override
         public Class<? extends Object> getType() {
             return Object.class;
         }
@@ -456,6 +457,7 @@ abstract class CoreLocations {
             return true;
         }
 
+        @Override
         public Class<? extends Object> getType() {
             return Object.class;
         }
@@ -536,6 +538,7 @@ abstract class CoreLocations {
             return value instanceof Long || (allowInt && value instanceof Integer);
         }
 
+        @Override
         public final Class<Long> getType() {
             return long.class;
         }
@@ -790,6 +793,7 @@ abstract class CoreLocations {
             return value instanceof Integer;
         }
 
+        @Override
         public Class<Integer> getType() {
             return int.class;
         }
