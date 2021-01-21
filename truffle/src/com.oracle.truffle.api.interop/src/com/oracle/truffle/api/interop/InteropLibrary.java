@@ -3511,7 +3511,6 @@ public abstract class InteropLibrary extends Library {
             assert meta != null : violationPost(receiver, meta);
             InteropLibrary metaLib = InteropLibrary.getFactory().getUncached(meta);
             assert metaLib.isMetaObject(meta) : violationPost(receiver, meta);
-            assert metaLib.isMetaInstance(meta, receiver) : violationPost(receiver, meta);
             assert metaLib.getMetaSimpleName(meta) != null : violationPost(receiver, meta);
             assert metaLib.getMetaQualifiedName(meta) != null : violationPost(receiver, meta);
             return true;
