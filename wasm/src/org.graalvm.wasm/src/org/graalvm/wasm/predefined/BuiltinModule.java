@@ -94,13 +94,13 @@ public abstract class BuiltinModule {
     }
 
     protected int defineExternalGlobal(WasmInstance instance, String globalName, Object global) {
-        int index = instance.symbolTable().maxGlobalIndex() + 1;
+        int index = instance.symbolTable().numGlobals();
         instance.symbolTable().declareExportedExternalGlobal(globalName, index, global);
         return index;
     }
 
     protected int defineGlobal(WasmInstance instance, String name, byte valueType, byte mutability, long value) {
-        int index = instance.symbolTable().maxGlobalIndex() + 1;
+        int index = instance.symbolTable().numGlobals();
         instance.symbolTable().declareExportedGlobalWithValue(name, index, valueType, mutability, value);
         return index;
     }

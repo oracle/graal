@@ -81,10 +81,10 @@ public class ValidationSuite extends WasmFileSuite {
 
                         binaryCase(
                                         "Incorrect order of sections",
-                                        "Section 6 defined after section 7",
-                                        // (global (export "g1") i32 (i32.const 1)) but with export
-                                        // section defined before global section
-                                        "0061 736d 0100 0000 0706 0102 6731 0300 0606 017f 0041 010b",
+                                        "Section 5 defined after section 6",
+                                        // Global and memory sections in reverse order:
+                                        // (memory 1) (global i32 (i32.const 1))
+                                        "0061 736d 0100 0000 0606 017f 0041 010b 0503 0100 01",
                                         Failure.Type.MALFORMED),
 
                         binaryCase(
@@ -272,7 +272,7 @@ public class ValidationSuite extends WasmFileSuite {
                         // Validated in: SymbolTable#function
                         stringCase(
                                         "Element segments - invalid function index",
-                                        "Function index out of bounds: 1 should be < 1.",
+                                        "unknown function: 1 should be < 1",
                                         "(table 1 funcref) (elem (i32.const 0) 1)",
                                         Failure.Type.INVALID),
 
@@ -301,7 +301,7 @@ public class ValidationSuite extends WasmFileSuite {
                         // Validated in: SymbolTable#function
                         stringCase(
                                         "Start function - invalid index",
-                                        "Function index out of bounds: 1 should be < 1.",
+                                        "unknown function: 1 should be < 1",
                                         "(start 1)",
                                         Failure.Type.INVALID),
 
@@ -397,7 +397,7 @@ public class ValidationSuite extends WasmFileSuite {
             Assert.assertNotNull(actualFailureObject);
             Assert.assertTrue(actualFailureObject.hasMember("failureType"));
 
-            Assert.assertEquals("unexpected error message", e.getMessage(), expectedErrorMessage);
+            Assert.assertEquals("unexpected error message", expectedErrorMessage, e.getMessage());
             final String failureType = actualFailureObject.getMember("failureType").asString();
             Assert.assertEquals("unexpected failure type", expectedFailureType.name, failureType);
             return;
