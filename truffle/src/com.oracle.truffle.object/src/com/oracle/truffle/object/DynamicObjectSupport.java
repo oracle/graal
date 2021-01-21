@@ -52,7 +52,7 @@ import com.oracle.truffle.api.object.DynamicObjectLibrary;
 import com.oracle.truffle.api.object.Property;
 import com.oracle.truffle.api.object.Shape;
 
-@SuppressWarnings("static-method")
+@SuppressWarnings({"static-method", "deprecation"})
 final class DynamicObjectSupport {
 
     private DynamicObjectSupport() {

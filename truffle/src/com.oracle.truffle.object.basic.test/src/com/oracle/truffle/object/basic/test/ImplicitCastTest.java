@@ -54,18 +54,19 @@ import org.junit.runners.Parameterized.Parameters;
 
 import com.oracle.truffle.api.object.DynamicObject;
 import com.oracle.truffle.api.object.DynamicObjectLibrary;
-import com.oracle.truffle.api.object.Layout;
-import com.oracle.truffle.api.object.Layout.ImplicitCast;
 import com.oracle.truffle.api.object.Location;
 import com.oracle.truffle.api.object.ObjectType;
 import com.oracle.truffle.api.object.Shape;
 import com.oracle.truffle.api.test.AbstractParametrizedLibraryTest;
 
+@SuppressWarnings("deprecation")
 @RunWith(Parameterized.class)
 public class ImplicitCastTest extends AbstractParametrizedLibraryTest {
 
-    static final Layout longLayout = Layout.newLayout().addAllowedImplicitCast(ImplicitCast.IntToLong).build();
-    static final Layout doubleLayout = Layout.newLayout().addAllowedImplicitCast(ImplicitCast.IntToDouble).build();
+    static final com.oracle.truffle.api.object.Layout longLayout = com.oracle.truffle.api.object.Layout.newLayout().addAllowedImplicitCast(
+                    com.oracle.truffle.api.object.Layout.ImplicitCast.IntToLong).build();
+    static final com.oracle.truffle.api.object.Layout doubleLayout = com.oracle.truffle.api.object.Layout.newLayout().addAllowedImplicitCast(
+                    com.oracle.truffle.api.object.Layout.ImplicitCast.IntToDouble).build();
 
     @Parameters
     public static Collection<Object[]> data() {
@@ -79,7 +80,7 @@ public class ImplicitCastTest extends AbstractParametrizedLibraryTest {
         return Collections.unmodifiableList(params);
     }
 
-    @Parameter(1) public Layout layout;
+    @Parameter(1) public com.oracle.truffle.api.object.Layout layout;
     @Parameter(2) public int intVal;
     @Parameter(3) public Object otherVal;
     @Parameter(4) public Class<?> otherPrimClass;
@@ -180,7 +181,7 @@ public class ImplicitCastTest extends AbstractParametrizedLibraryTest {
 
     @Test
     public void testLocationDecoratorEquals() {
-        Layout defaultLayout = Layout.newLayout().build();
+        com.oracle.truffle.api.object.Layout defaultLayout = com.oracle.truffle.api.object.Layout.newLayout().build();
         Shape defaultRootShape = defaultLayout.createShape(new ObjectType());
         Shape implicitCastRootShape = layout.createShape(new ObjectType());
 

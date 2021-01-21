@@ -62,7 +62,9 @@ import com.oracle.truffle.api.object.Shape.Allocator;
  * Planned to be deprecated.
  *
  * @since 0.8 or earlier
+ * @deprecated since 21.1. Use {@link Shape.Builder} instead.
  */
+@Deprecated
 public abstract class Layout {
     /** @since 0.8 or earlier */
     public static final String OPTION_PREFIX = "truffle.object.";
@@ -81,7 +83,10 @@ public abstract class Layout {
      * Specifies the allowed implicit casts between primitive types without losing type information.
      *
      * @since 0.8 or earlier
+     * @deprecated since 21.1. Use {@link Shape.Builder#allowImplicitCastIntToDouble(boolean)} and
+     *             {@link Shape.Builder#allowImplicitCastIntToLong(boolean)} instead.
      */
+    @Deprecated
     public enum ImplicitCast {
         /**
          * Enables values be implicitly cast from int to double.
@@ -102,7 +107,9 @@ public abstract class Layout {
      *
      * @see Layout.Builder
      * @since 0.8 or earlier
+     * @deprecated since 21.1. Use {@link Shape.Builder} instead.
      */
+    @Deprecated
     public static Builder newLayout() {
         CompilerAsserts.neverPartOfCompilation();
         return new Builder();
@@ -113,7 +120,9 @@ public abstract class Layout {
      *
      * @see Layout.Builder#build()
      * @since 0.8 or earlier
+     * @deprecated since 21.1. Use {@link Shape.Builder} instead.
      */
+    @Deprecated
     public static Layout createLayout() {
         return newLayout().build();
     }
@@ -215,7 +224,9 @@ public abstract class Layout {
      *
      * @see Layout
      * @since 0.8 or earlier
+     * @deprecated since 21.1. Use {@link Shape.Builder} instead.
      */
+    @Deprecated
     public static final class Builder {
         private EnumSet<ImplicitCast> allowedImplicitCasts;
         private boolean polymorphicUnboxing;

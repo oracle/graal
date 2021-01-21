@@ -67,7 +67,6 @@ import com.oracle.truffle.api.Truffle;
 import com.oracle.truffle.api.nodes.ExplodeLoop;
 import com.oracle.truffle.api.object.DynamicObject;
 import com.oracle.truffle.api.object.DynamicObjectFactory;
-import com.oracle.truffle.api.object.Layout;
 import com.oracle.truffle.api.object.Location;
 import com.oracle.truffle.api.object.LocationFactory;
 import com.oracle.truffle.api.object.ObjectType;
@@ -171,11 +170,11 @@ public abstract class ShapeImpl extends Shape {
      * @param parent predecessor shape
      * @param transitionFromParent direct transition from parent shape
      *
-     * @see #ShapeImpl(Layout, ShapeImpl, Object, Object, PropertyMap, Transition, BaseAllocator,
-     *      int)
+     * @see #ShapeImpl(com.oracle.truffle.api.object.Layout, ShapeImpl, Object, Object, PropertyMap,
+     *      Transition, BaseAllocator, int)
      */
-    private ShapeImpl(Layout layout, ShapeImpl parent, Object objectType, Object sharedData, PropertyMap propertyMap, Transition transitionFromParent, int objectArraySize, int objectFieldSize,
-                    int primitiveFieldSize, int primitiveArraySize, boolean hasPrimitiveArray, int flags, Assumption singleContextAssumption) {
+    private ShapeImpl(com.oracle.truffle.api.object.Layout layout, ShapeImpl parent, Object objectType, Object sharedData, PropertyMap propertyMap, Transition transitionFromParent,
+                    int objectArraySize, int objectFieldSize, int primitiveFieldSize, int primitiveArraySize, boolean hasPrimitiveArray, int flags, Assumption singleContextAssumption) {
         this.layout = (LayoutImpl) layout;
         this.objectType = Objects.requireNonNull(objectType);
         this.propertyMap = Objects.requireNonNull(propertyMap);
@@ -223,17 +222,19 @@ public abstract class ShapeImpl extends Shape {
     }
 
     /** @since 0.17 or earlier */
-    protected ShapeImpl(Layout layout, ShapeImpl parent, Object objectType, Object sharedData, PropertyMap propertyMap, Transition transition, Allocator allocator, int flags) {
+    protected ShapeImpl(com.oracle.truffle.api.object.Layout layout, ShapeImpl parent, Object objectType, Object sharedData, PropertyMap propertyMap,
+                    Transition transition, Allocator allocator, int flags) {
         this(layout, parent, objectType, sharedData, propertyMap, transition, ((BaseAllocator) allocator).objectArraySize, ((BaseAllocator) allocator).objectFieldSize,
                         ((BaseAllocator) allocator).primitiveFieldSize, ((BaseAllocator) allocator).primitiveArraySize, ((BaseAllocator) allocator).hasPrimitiveArray, flags, null);
     }
 
     /** @since 0.17 or earlier */
     @SuppressWarnings("hiding")
-    protected abstract ShapeImpl createShape(Layout layout, Object sharedData, ShapeImpl parent, Object objectType, PropertyMap propertyMap, Transition transition, Allocator allocator, int id);
+    protected abstract ShapeImpl createShape(com.oracle.truffle.api.object.Layout layout, Object sharedData, ShapeImpl parent, Object objectType, PropertyMap propertyMap,
+                    Transition transition, Allocator allocator, int id);
 
     /** @since 0.17 or earlier */
-    protected ShapeImpl(Layout layout, Object dynamicType, Object sharedData, int flags, Assumption constantObjectAssumption) {
+    protected ShapeImpl(com.oracle.truffle.api.object.Layout layout, Object dynamicType, Object sharedData, int flags, Assumption constantObjectAssumption) {
         this(layout, null, dynamicType, sharedData, PropertyMap.empty(), null, 0, 0, 0, 0, true, flags, constantObjectAssumption);
     }
 
