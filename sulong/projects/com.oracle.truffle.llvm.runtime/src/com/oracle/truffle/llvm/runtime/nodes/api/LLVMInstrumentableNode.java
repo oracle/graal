@@ -153,13 +153,14 @@ public abstract class LLVMInstrumentableNode extends LLVMNode implements Instrum
     }
 
     @ExportMessage
+    @CompilerDirectives.TruffleBoundary
     public Object getRootInstance(Frame frame, @CachedContext(LLVMLanguage.class) LLVMContext ctx) throws UnsupportedMessageException {
         if (hasRootInstance(frame)) {
             LLVMPointer pointer = ctx.getSymbol(((LLVMFunctionStartNode) this.getRootNode()).getRootFunction());
             if (LLVMManagedPointer.isInstance(pointer)) {
                 return LLVMManagedPointer.cast(pointer).getObject();
             }
-            throw new IllegalStateException();
+            throw new IllegalStateException("The root function is not enclosed within a managed pointer.");
         }
         throw UnsupportedMessageException.create();
     }
