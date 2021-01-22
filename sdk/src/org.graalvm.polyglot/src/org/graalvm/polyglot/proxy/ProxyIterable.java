@@ -40,7 +40,9 @@
  */
 package org.graalvm.polyglot.proxy;
 
+import java.util.Iterator;
 import java.util.Objects;
+import org.graalvm.polyglot.Context;
 
 /**
  * Interface to be implemented to mimic guest language iterables.
@@ -52,7 +54,14 @@ import java.util.Objects;
 public interface ProxyIterable extends Proxy {
 
     /**
-     * Returns an iterator object.
+     * Returns an iterator. The returned object must be interpreted as an iterator using the
+     * semantics of {@link Context#asValue(Object)} otherwise and {@link IllegalStateException} is
+     * thrown. Examples for valid return values are:
+     * <ul>
+     * <li>{@link ProxyIterator}
+     * <li>{@link Iterator}
+     * <li>A guest language object representing an iterator
+     * </ul>
      *
      * @see ProxyIterator
      * @since 21.1

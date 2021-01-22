@@ -590,7 +590,13 @@ final class PolyglotProxy implements TruffleObject {
         if (proxy instanceof ProxyIterable) {
             PolyglotLanguageContext languageContext = context.get().internalContext;
             Object result = guestToHostCall(library, language.getHostToGuestCache().getIterator, languageContext, proxy);
-            return languageContext.toGuestValue(library, result);
+            Object guestValue = languageContext.toGuestValue(library, result);
+            InteropLibrary interop = InteropLibrary.getFactory().getUncached();
+            if (!interop.isIterator(guestValue)) {
+                throw illegalProxy(languageContext, "getIterator() returned an invalid value %s but must return an iterator.",
+                                languageContext.asValue(guestValue).toString());
+            }
+            return guestValue;
         } else {
             throw UnsupportedMessageException.create();
         }

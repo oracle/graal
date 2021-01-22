@@ -74,9 +74,7 @@ import java.util.ArrayDeque;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.BitSet;
-import java.util.Collection;
 import java.util.Collections;
-import java.util.HashSet;
 import java.util.Iterator;
 import java.util.List;
 import java.util.NoSuchElementException;
@@ -86,12 +84,14 @@ import java.util.logging.Handler;
 import java.util.logging.LogRecord;
 
 import org.graalvm.polyglot.Context;
+import org.graalvm.polyglot.PolyglotException;
 import org.graalvm.polyglot.TypeLiteral;
 import org.graalvm.polyglot.Value;
 import org.graalvm.polyglot.proxy.ProxyArray;
 import org.graalvm.polyglot.proxy.ProxyIterable;
 import org.graalvm.polyglot.proxy.ProxyExecutable;
 import org.graalvm.polyglot.proxy.ProxyIterator;
+import org.graalvm.polyglot.proxy.ProxyObject;
 import org.junit.Before;
 import org.junit.Test;
 
@@ -231,12 +231,39 @@ public class IteratorTest extends AbstractPolyglotTest {
 
     @Test
     public void testProxyIterable() {
-        String[] values = {"a", "b"};
-        Collection<Object> valuesIterable = new HashSet<>();
-        Collections.addAll(valuesIterable, values);
+        Object[] values = {"a", "b"};
         setupEnv(Context.newBuilder().allowAllAccess(true).build());
-        Value iterable = context.asValue(ProxyIterable.from(valuesIterable));
+        Value iterable = context.asValue(ProxyIterable.from(Arrays.asList(values)));
         verifyIterable(iterable, values);
+        iterable = context.asValue(new ProxyIterable() {
+            @Override
+            public Object getIterator() {
+                return Arrays.asList(values).iterator();
+            }
+        });
+        verifyIterable(iterable, values);
+        iterable = context.asValue(new ProxyIterable() {
+            @Override
+            public Object getIterator() {
+                return ProxyIterator.from(Arrays.asList(values).iterator());
+            }
+        });
+        verifyIterable(iterable, values);
+        iterable = context.asValue(new ProxyIterable() {
+            @Override
+            public Object getIterator() {
+                return new SimpleIterator(Arrays.asList(values));
+            }
+        });
+        verifyIterable(iterable, values);
+        Value invalidIterable = context.asValue(new ProxyIterable() {
+            @Override
+            public Object getIterator() {
+                return ProxyObject.fromMap(Collections.emptyMap());
+            }
+        });
+        assertFails(() -> invalidIterable.getIterator(), PolyglotException.class,
+                        (pe) -> assertTrue(pe.asHostException() instanceof IllegalStateException));
     }
 
     @Test
@@ -259,6 +286,17 @@ public class IteratorTest extends AbstractPolyglotTest {
         assertEquals(42, iterable.execute(42).asInt());
         assertEquals(42, iterable.as(new TypeLiteral<Function<Object, Object>>() {
         }).apply(42));
+    }
+
+    @Test
+    public void testIterator() {
+        String[] values = {"a", "b", "c", "d"};
+        setupEnv(Context.newBuilder().allowAllAccess(true).build());
+        Value iterator = context.asValue(new InteropIterator(new GuestLanguageIteratorImpl(values)));
+        verifyIterator(iterator, values);
+        values = new String[0];
+        iterator = context.asValue(new InteropIterator(new GuestLanguageIteratorImpl(values)));
+        verifyIterator(iterator, values);
     }
 
     @Test
@@ -430,6 +468,81 @@ public class IteratorTest extends AbstractPolyglotTest {
                 throw new UnsupportedOperationException();
             }
             return arguments[0];
+        }
+    }
+
+    interface GuestLanguageIterator {
+
+        @SuppressWarnings("serial")
+        final class Stop extends Exception {
+        }
+
+        Object next() throws Stop;
+    }
+
+    @ExportLibrary(InteropLibrary.class)
+    static final class InteropIterator implements TruffleObject {
+
+        private static final Object STOP = new Object();
+
+        final GuestLanguageIterator iterator;
+        private Object next;
+
+        InteropIterator(GuestLanguageIterator iterator) {
+            this.iterator = iterator;
+        }
+
+        @ExportMessage
+        @SuppressWarnings("static-method")
+        boolean isIterator() {
+            return true;
+        }
+
+        @ExportMessage
+        boolean hasIteratorNextElement() {
+            fetchNext();
+            return next != STOP;
+        }
+
+        @ExportMessage
+        Object getIteratorNextElement() throws StopIterationException {
+            fetchNext();
+            Object res = next;
+            if (res == STOP) {
+                throw StopIterationException.create();
+            } else {
+                next = null;
+            }
+            return res;
+        }
+
+        private void fetchNext() {
+            if (next == null) {
+                try {
+                    next = iterator.next();
+                } catch (GuestLanguageIterator.Stop stop) {
+                    next = STOP;
+                }
+            }
+        }
+    }
+
+    private static final class GuestLanguageIteratorImpl implements GuestLanguageIterator {
+
+        private final Object[] values;
+        private int index;
+
+        GuestLanguageIteratorImpl(Object[] values) {
+            this.values = values;
+        }
+
+        @Override
+        public Object next() throws Stop {
+            if (index < values.length) {
+                return values[index++];
+            } else {
+                throw new Stop();
+            }
         }
     }
 

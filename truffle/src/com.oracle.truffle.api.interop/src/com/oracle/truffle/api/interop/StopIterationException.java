@@ -59,6 +59,8 @@ public final class StopIterationException extends InteropException {
 
     private static final long serialVersionUID = 1857745390734085182L;
 
+    private static final StopIterationException INSTANCE = new StopIterationException();
+
     private StopIterationException() {
         super(null);
     }
@@ -86,7 +88,7 @@ public final class StopIterationException extends InteropException {
      * @since 21.1
      */
     public static StopIterationException create() {
-        return new StopIterationException();
+        return INSTANCE;
     }
 
     /**
