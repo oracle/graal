@@ -25,6 +25,7 @@
 package org.graalvm.compiler.nodes.loop;
 
 import org.graalvm.compiler.nodes.StructuredGraph;
+import org.graalvm.compiler.nodes.ValueNode;
 
 /**
  * Base class of the derived induction variables.
@@ -46,4 +47,8 @@ public abstract class DerivedInductionVariable extends InductionVariable {
     public InductionVariable getBase() {
         return base;
     }
+
+    public abstract ValueNode copyValue(InductionVariable newBase);
+
+    public abstract InductionVariable copy(InductionVariable newBase, ValueNode newValue);
 }

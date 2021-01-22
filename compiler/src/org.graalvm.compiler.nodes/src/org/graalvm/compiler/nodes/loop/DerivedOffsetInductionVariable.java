@@ -190,4 +190,14 @@ public class DerivedOffsetInductionVariable extends DerivedInductionVariable {
     public String toString() {
         return String.format("DerivedOffsetInductionVariable base (%s) %s %s", base, value.getNodeClass().shortName(), offset);
     }
+
+    @Override
+    public ValueNode copyValue(InductionVariable newBase) {
+        return op(newBase.valueNode(), offset);
+    }
+
+    @Override
+    public InductionVariable copy(InductionVariable newBase, ValueNode newValue) {
+        return new DerivedOffsetInductionVariable(loop, newBase, offset, (BinaryArithmeticNode<?>) newValue);
+    }
 }

@@ -166,4 +166,14 @@ public class DerivedScaledInductionVariable extends DerivedInductionVariable {
     public String toString() {
         return String.format("DerivedScaleInductionVariable base (%s) %s %s", base, value.getNodeClass().shortName(), scale);
     }
+
+    @Override
+    public ValueNode copyValue(InductionVariable newBase) {
+        return MathUtil.mul(graph(), newBase.valueNode(), scale);
+    }
+
+    @Override
+    public InductionVariable copy(InductionVariable newBase, ValueNode newValue) {
+        return new DerivedScaledInductionVariable(loop, newBase, scale, newValue);
+    }
 }
