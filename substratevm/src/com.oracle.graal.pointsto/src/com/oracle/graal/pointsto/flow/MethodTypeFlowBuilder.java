@@ -651,44 +651,6 @@ public class MethodTypeFlowBuilder {
             }
         }
 
-        /**
-         * Get the type flow of a dynamic type. If the type results from a GetClassNode or a
-         * JavaConstant this method will return accurate type information. Otherwise it will return
-         * all instantiated types or, if it is an array, all instantiated array types.
-         */
-        protected TypeFlowBuilder<?> getDynamicTypeFlow(ValueNode node, ValueNode typeSource, boolean isArrayType) {
-
-            TypeFlowBuilder<?> dynamicTypeBuilder;
-            if (typeSource instanceof GetClassNode) {
-                GetClassNode getClassNode = (GetClassNode) typeSource;
-                dynamicTypeBuilder = state.lookup(getClassNode.getObject());
-
-            } else if (typeSource.isConstant()) {
-                assert state.lookup(typeSource).getFlowClass() == SourceTypeFlow.class;
-
-                Constant constant = typeSource.asJavaConstant();
-                AnalysisType exactType = (AnalysisType) bb.getProviders().getConstantReflection().asJavaType(constant);
-                exactType.registerAsAllocated(node);
-
-                dynamicTypeBuilder = TypeFlowBuilder.create(bb, node, SourceTypeFlow.class, () -> {
-                    SourceTypeFlow dynamicTypeFlow = new SourceTypeFlow(node, TypeState.forExactType(bb, exactType, false));
-                    methodFlow.addMiscEntry(dynamicTypeFlow);
-                    return dynamicTypeFlow;
-                });
-            } else {
-                /*
-                 * Without precise type information either the type flow corresponding to all
-                 * instantiated object types or all instantiated array types will be returned.
-                 */
-                AnalysisType arrayType = isArrayType ? bb.getObjectArrayType() : bb.getObjectType();
-                dynamicTypeBuilder = TypeFlowBuilder.create(bb, node, AllInstantiatedTypeFlow.class, () -> {
-                    return arrayType.getTypeFlow(bb, false);
-                });
-            }
-
-            return dynamicTypeBuilder;
-        }
-
         @Override
         protected void node(FixedNode n) {
             processedNodes.mark(n);
@@ -1170,68 +1132,7 @@ public class MethodTypeFlowBuilder {
 
             } else if (n instanceof AnalysisArraysCopyOfNode) {
                 AnalysisArraysCopyOfNode node = (AnalysisArraysCopyOfNode) n;
-                ValueNode original = node.getOriginal();
-                ValueNode newArrayType = node.getNewArrayType();
-
-                TypeFlowBuilder<?> originalArrayBuilder = state.lookup(original);
-
-                Object key = uniqueKey(node);
-                BytecodeLocation newArrayLabel = bb.analysisPolicy().createAllocationSite(bb, key, methodFlow.getMethod());
-
-                /*
-                 * Arrays.copyOf is essentially a dynamic new instance plus a System.arrayCopy.
-                 */
-
-                /*
-                 * First we determine the type of the new array and create a dynamic new instance
-                 * flow to allocate it.
-                 */
-                TypeFlowBuilder<?> newArrayTypeBuilder;
-                if (newArrayType == null) {
-                    /*
-                     * The type of the new array and that of the original are the same. The dynamic
-                     * new instance flow will create a new heap object for each incoming type and
-                     * for each different heap context.
-                     */
-                    newArrayTypeBuilder = originalArrayBuilder;
-                } else {
-                    /*
-                     * The type of the new array and that of the original are different. The
-                     * elements are copied from the original array but the type of the resulting
-                     * objects are given by the new type. Both the original 'values' and the 'new
-                     * type' are needed for a proper intercept when the analysis is context
-                     * sensitive.
-                     */
-                    newArrayTypeBuilder = getDynamicTypeFlow(node, newArrayType, true);
-                }
-
-                TypeFlowBuilder<?> newArrayBuilder = TypeFlowBuilder.create(bb, node, DynamicNewInstanceTypeFlow.class, () -> {
-                    DynamicNewInstanceTypeFlow newArrayFlow = new DynamicNewInstanceTypeFlow(newArrayTypeBuilder.get(), bb.getObjectArrayType(), node, newArrayLabel);
-                    methodFlow.addDynamicAllocation(newArrayFlow);
-                    return newArrayFlow;
-                });
-
-                if (newArrayType != null && (newArrayType instanceof GetClassNode || newArrayType.isConstant())) {
-                    newArrayBuilder.addObserverDependency(newArrayTypeBuilder);
-                }
-
-                state.add(node, newArrayBuilder);
-
-                /*
-                 * Then we use an array copy type flow to propagate the elements type state from the
-                 * original array into the copy.
-                 */
-                TypeFlowBuilder<?> arrayCopyBuilder = TypeFlowBuilder.create(bb, node, ArrayCopyTypeFlow.class, () -> {
-                    ArrayCopyTypeFlow arrayCopyFlow = new ArrayCopyTypeFlow(node, null, originalArrayBuilder.get(), newArrayBuilder.get());
-                    methodFlow.addMiscEntry(arrayCopyFlow);
-                    return arrayCopyFlow;
-                });
-
-                arrayCopyBuilder.addObserverDependency(originalArrayBuilder);
-                arrayCopyBuilder.addObserverDependency(newArrayBuilder);
-
-                /* Array copies must not be removed. */
-                typeFlowGraphBuilder.registerSinkBuilder(arrayCopyBuilder);
+                processArraysCopyOf(node, node.getOriginal(), node.getNewArrayType(), state);
 
             } else if (n instanceof InvokeNode || n instanceof InvokeWithExceptionNode) {
                 Invoke invoke = (Invoke) n;
@@ -1532,4 +1433,101 @@ public class MethodTypeFlowBuilder {
     protected void checkUnsafeOffset(@SuppressWarnings("unused") ValueNode base, @SuppressWarnings("unused") ValueNode offset) {
     }
 
+    protected void processArraysCopyOf(ValueNode node, ValueNode original, ValueNode newArrayType, TypeFlowsOfNodes state) {
+        TypeFlowBuilder<?> originalArrayBuilder = state.lookup(original);
+
+        Object key = uniqueKey(node);
+        BytecodeLocation newArrayLabel = bb.analysisPolicy().createAllocationSite(bb, key, methodFlow.getMethod());
+
+        /*
+         * Arrays.copyOf is essentially a dynamic new instance plus a System.arrayCopy.
+         */
+
+        /*
+         * First we determine the type of the new array and create a dynamic new instance flow to
+         * allocate it.
+         */
+        TypeFlowBuilder<?> newArrayTypeBuilder;
+        if (newArrayType == null) {
+            /*
+             * The type of the new array and that of the original are the same. The dynamic new
+             * instance flow will create a new heap object for each incoming type and for each
+             * different heap context.
+             */
+            newArrayTypeBuilder = originalArrayBuilder;
+        } else {
+            /*
+             * The type of the new array and that of the original are different. The elements are
+             * copied from the original array but the type of the resulting objects are given by the
+             * new type. Both the original 'values' and the 'new type' are needed for a proper
+             * intercept when the analysis is context sensitive.
+             */
+            newArrayTypeBuilder = getDynamicTypeFlow(node, newArrayType, true, state);
+        }
+
+        TypeFlowBuilder<?> newArrayBuilder = TypeFlowBuilder.create(bb, node, DynamicNewInstanceTypeFlow.class, () -> {
+            DynamicNewInstanceTypeFlow newArrayFlow = new DynamicNewInstanceTypeFlow(newArrayTypeBuilder.get(), bb.getObjectArrayType(), node, newArrayLabel);
+            methodFlow.addDynamicAllocation(newArrayFlow);
+            return newArrayFlow;
+        });
+
+        if (newArrayType != null && (newArrayType instanceof GetClassNode || newArrayType.isConstant())) {
+            newArrayBuilder.addObserverDependency(newArrayTypeBuilder);
+        }
+
+        state.add(node, newArrayBuilder);
+
+        /*
+         * Then we use an array copy type flow to propagate the elements type state from the
+         * original array into the copy.
+         */
+        TypeFlowBuilder<?> arrayCopyBuilder = TypeFlowBuilder.create(bb, node, ArrayCopyTypeFlow.class, () -> {
+            ArrayCopyTypeFlow arrayCopyFlow = new ArrayCopyTypeFlow(node, null, originalArrayBuilder.get(), newArrayBuilder.get());
+            methodFlow.addMiscEntry(arrayCopyFlow);
+            return arrayCopyFlow;
+        });
+
+        arrayCopyBuilder.addObserverDependency(originalArrayBuilder);
+        arrayCopyBuilder.addObserverDependency(newArrayBuilder);
+
+        /* Array copies must not be removed. */
+        typeFlowGraphBuilder.registerSinkBuilder(arrayCopyBuilder);
+    }
+
+    /**
+     * Get the type flow of a dynamic type. If the type results from a GetClassNode or a
+     * JavaConstant this method will return accurate type information. Otherwise it will return all
+     * instantiated types or, if it is an array, all instantiated array types.
+     */
+    protected TypeFlowBuilder<?> getDynamicTypeFlow(ValueNode node, ValueNode typeSource, boolean isArrayType, TypeFlowsOfNodes state) {
+        TypeFlowBuilder<?> dynamicTypeBuilder;
+        if (typeSource instanceof GetClassNode) {
+            GetClassNode getClassNode = (GetClassNode) typeSource;
+            dynamicTypeBuilder = state.lookup(getClassNode.getObject());
+
+        } else if (typeSource.isConstant()) {
+            assert state.lookup(typeSource).getFlowClass() == SourceTypeFlow.class;
+
+            Constant constant = typeSource.asJavaConstant();
+            AnalysisType exactType = (AnalysisType) bb.getProviders().getConstantReflection().asJavaType(constant);
+            exactType.registerAsAllocated(node);
+
+            dynamicTypeBuilder = TypeFlowBuilder.create(bb, node, SourceTypeFlow.class, () -> {
+                SourceTypeFlow dynamicTypeFlow = new SourceTypeFlow(node, TypeState.forExactType(bb, exactType, false));
+                methodFlow.addMiscEntry(dynamicTypeFlow);
+                return dynamicTypeFlow;
+            });
+        } else {
+            /*
+             * Without precise type information either the type flow corresponding to all
+             * instantiated object types or all instantiated array types will be returned.
+             */
+            AnalysisType arrayType = isArrayType ? bb.getObjectArrayType() : bb.getObjectType();
+            dynamicTypeBuilder = TypeFlowBuilder.create(bb, node, AllInstantiatedTypeFlow.class, () -> {
+                return arrayType.getTypeFlow(bb, false);
+            });
+        }
+
+        return dynamicTypeBuilder;
+    }
 }
