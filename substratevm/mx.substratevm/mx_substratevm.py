@@ -472,7 +472,6 @@ def javac_image_command(javac_path):
 
 
 def _native_junit(native_image, unittest_args, build_args=None, run_args=None, blacklist=None, whitelist=None, preserve_image=False):
-    unittest_args = unittest_args
     build_args = build_args or []
 
     javaProperties = {}
@@ -1330,15 +1329,30 @@ class SubstrateCompilerFlagsBuilder(mx.ArchivableProject):
     def archive_prefix(self):
         return ''
 
-    def getResults(self):
-        graal_compiler_flags_map = self.compute_graal_compiler_flags_map()
-        mx.ensure_dir_exists(self.output_dir())
-        versions = sorted(graal_compiler_flags_map.keys())
-        yield self.config_file_update(self.result_file_path("versions"), versions)
-        for version in versions:
-            yield self.config_file_update(self.result_file_path(version), graal_compiler_flags_map[version])
+    def _computeResults(self):
+        """
+        Returns a lazily computed tuple of the paths for the files storing the configuration
+        managed by this builder and a bool denoting whether any of the files were updated
+        as their paths were computed.
+        """
+        if not hasattr(self, '.results'):
+            graal_compiler_flags_map = self.compute_graal_compiler_flags_map()
+            mx.ensure_dir_exists(self.output_dir())
+            versions = sorted(graal_compiler_flags_map.keys())
+            file_paths = []
+            changed = self.config_file_update(self.result_file_path("versions"), versions, file_paths)
+            for version in versions:
+                changed = self.config_file_update(self.result_file_path(version), graal_compiler_flags_map[version], file_paths) or changed
+            setattr(self, '.results', (file_paths, changed))
+        return getattr(self, '.results')
 
-    def config_file_update(self, file_path, lines):
+    def getResults(self):
+        return self._computeResults()[0]
+
+    def getBuildTask(self, args):
+        return SubstrateCompilerFlagsBuildTask(self, args)
+
+    def config_file_update(self, file_path, lines, file_paths):
         changed = True
         file_contents = '\n'.join(str(line) for line in lines)
         try:
@@ -1353,7 +1367,8 @@ class SubstrateCompilerFlagsBuilder(mx.ArchivableProject):
                 print('Write file ' + file_path)
                 f.write(file_contents)
 
-        return file_path
+        file_paths.append(file_path)
+        return changed
 
     # If renaming or moving this method, please update the error message in
     # com.oracle.svm.driver.NativeImage.BuildConfiguration.getBuilderJavaArgs().
@@ -1435,7 +1450,18 @@ class SubstrateCompilerFlagsBuilder(mx.ArchivableProject):
             graal_compiler_flags_map[13] = graal_compiler_flags_map[11]
             graal_compiler_flags_map[14] = graal_compiler_flags_map[11]
             graal_compiler_flags_map[15] = graal_compiler_flags_map[11]
-            graal_compiler_flags_map[16] = graal_compiler_flags_map[11]
+
+            add_opens_packages_jdk16 = [
+                'java.base/jdk.internal.org.objectweb.asm',
+                'java.base/sun.util.locale.provider',
+                'java.base/sun.util.resources',
+                'java.base/sun.security.util',
+                'java.base/sun.security.provider',
+                'java.base/sun.reflect.generics.repository',
+                'java.base/sun.invoke.util',
+                'java.xml.crypto/org.jcp.xml.dsig.internal.dom'
+            ]
+            graal_compiler_flags_map[16] = graal_compiler_flags_map[11] + ['--add-opens=' + entry + '=' + target_module for entry in add_opens_packages_jdk16]
 
         graal_compiler_flags_base = [
             '-XX:+UseParallelGC',  # native image generation is a throughput-oriented task
@@ -1451,6 +1477,21 @@ class SubstrateCompilerFlagsBuilder(mx.ArchivableProject):
 
         return graal_compiler_flags_map
 
+
+class SubstrateCompilerFlagsBuildTask(mx.ArchivableBuildTask):
+    def __init__(self, subject, args):
+        mx.ArchivableBuildTask.__init__(self, subject, args, 1)
+
+    def __str__(self):
+        return 'Building SVM compiler flags'
+
+    def needsBuild(self, newestInput):
+        if self.subject._computeResults()[1]:
+            return (True, 'SVM compiler flags configuration changed')
+        return (False, None)
+
+    def build(self):
+        self.subject._computeResults()
 
 def _ensure_vm_built(config):
     # build "jvm" config used by native-image and native-image-configure commands
