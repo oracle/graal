@@ -40,31 +40,12 @@
  */
 package com.oracle.truffle.api.interop;
 
-import static com.oracle.truffle.api.CompilerDirectives.shouldNotReachHere;
-import static com.oracle.truffle.api.interop.AssertUtils.assertString;
-import static com.oracle.truffle.api.interop.AssertUtils.preCondition;
-import static com.oracle.truffle.api.interop.AssertUtils.validArgument;
-import static com.oracle.truffle.api.interop.AssertUtils.validArguments;
-import static com.oracle.truffle.api.interop.AssertUtils.validNonInteropArgument;
-import static com.oracle.truffle.api.interop.AssertUtils.validReturn;
-import static com.oracle.truffle.api.interop.AssertUtils.validScope;
-import static com.oracle.truffle.api.interop.AssertUtils.violationInvariant;
-import static com.oracle.truffle.api.interop.AssertUtils.violationPost;
-
-import java.time.Duration;
-import java.time.Instant;
-import java.time.LocalDate;
-import java.time.LocalTime;
-import java.time.ZoneId;
-import java.time.ZonedDateTime;
-import java.time.zone.ZoneRules;
-
 import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.TruffleLanguage;
-import com.oracle.truffle.api.TruffleStackTrace;
 import com.oracle.truffle.api.TruffleLanguage.Env;
 import com.oracle.truffle.api.TruffleLanguage.Registration;
+import com.oracle.truffle.api.TruffleStackTrace;
 import com.oracle.truffle.api.TruffleStackTraceElement;
 import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.impl.Accessor.EngineSupport;
@@ -82,6 +63,26 @@ import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.api.profiles.BranchProfile;
 import com.oracle.truffle.api.source.SourceSection;
 import com.oracle.truffle.api.utilities.TriState;
+
+import java.nio.ByteOrder;
+import java.time.Duration;
+import java.time.Instant;
+import java.time.LocalDate;
+import java.time.LocalTime;
+import java.time.ZoneId;
+import java.time.ZonedDateTime;
+import java.time.zone.ZoneRules;
+
+import static com.oracle.truffle.api.CompilerDirectives.shouldNotReachHere;
+import static com.oracle.truffle.api.interop.AssertUtils.assertString;
+import static com.oracle.truffle.api.interop.AssertUtils.preCondition;
+import static com.oracle.truffle.api.interop.AssertUtils.validArgument;
+import static com.oracle.truffle.api.interop.AssertUtils.validArguments;
+import static com.oracle.truffle.api.interop.AssertUtils.validNonInteropArgument;
+import static com.oracle.truffle.api.interop.AssertUtils.validReturn;
+import static com.oracle.truffle.api.interop.AssertUtils.validScope;
+import static com.oracle.truffle.api.interop.AssertUtils.violationInvariant;
+import static com.oracle.truffle.api.interop.AssertUtils.violationPost;
 
 /**
  * Represents the library that specifies the interoperability message protocol between Truffle
@@ -133,6 +134,7 @@ import com.oracle.truffle.api.utilities.TriState;
  * <li>{@link #isPointer(Object) pointer}
  * <li>{@link #hasMembers(Object) members}
  * <li>{@link #hasArrayElements(Object) array elements}
+ * <li>{@link #hasBufferElements(Object) buffer elements}
  * <li>{@link #hasLanguage(Object) language}
  * <li>{@link #hasMetaObject(Object) associated metaobject}
  * <li>{@link #hasDeclaringMetaObject(Object) declaring meta object}
@@ -143,8 +145,7 @@ import com.oracle.truffle.api.utilities.TriState;
  * <li>{@link #hasExceptionMessage(Object) exception message}
  * <li>{@link #hasExceptionCause(Object) exception cause}
  * <li>{@link #hasExceptionStackTrace(Object) exception stack trace}
- * <ul>
- * <p>
+ * </ul>
  * <h3>Naive and aware dates and times</h3>
  * <p>
  * If a date or time value has a {@link #isTimeZone(Object) timezone} then it is called <i>aware</i>
@@ -623,8 +624,8 @@ public abstract class InteropLibrary extends Library {
     }
 
     /**
-     * Short-cut for {@link #getMembers(Object) getMembers(receiver, false)}. Invoking this message
-     * does not cause any observable side-effects.
+     * Short-cut for {@link #getMembers(Object, boolean) getMembers(receiver, false)}. Invoking this
+     * message does not cause any observable side-effects.
      *
      * @throws UnsupportedMessageException if and only if the receiver has no
      *             {@link #hasMembers(Object) members}.
@@ -707,7 +708,7 @@ public abstract class InteropLibrary extends Library {
      * {@link #isMemberModifiable(Object, String) modifiable}, or not existing and
      * {@link #isMemberInsertable(Object, String) insertable}.
      *
-     * This method must have not observable side-effects other than the changed member unless
+     * This method must have no observable side-effects other than the changed member unless
      * {@link #hasMemberWriteSideEffects(Object, String) side-effects} are allowed.
      *
      * @throws UnsupportedMessageException when the receiver does not support writing at all, e.g.
@@ -1033,6 +1034,331 @@ public abstract class InteropLibrary extends Library {
     public final boolean isArrayElementExisting(Object receiver, long index) {
         return isArrayElementModifiable(receiver, index) || isArrayElementReadable(receiver, index) || isArrayElementRemovable(receiver, index);
     }
+
+    // region Buffer Messages
+
+    /**
+     * Returns {@code true} if the receiver may have buffer elements.
+     * <p>
+     * If this message returns {@code true}, then {@link #getBufferSize(Object)},
+     * {@link #readBufferByte(Object, long)}, {@link #readBufferShort(Object, ByteOrder, long)},
+     * {@link #readBufferInt(Object, ByteOrder, long)},
+     * {@link #readBufferLong(Object, ByteOrder, long)},
+     * {@link #readBufferFloat(Object, ByteOrder, long)} and
+     * {@link #readBufferDouble(Object, ByteOrder, long)} must not throw
+     * {@link UnsupportedMessageException}.
+     * <p>
+     * Invoking this message does not cause any observable side-effects.
+     * <p>
+     * By default, it returns {@code false}.
+     *
+     * @since 21.1
+     */
+    @Abstract(ifExported = {"getBufferSize", "isBufferWritable", "readBufferByte", "readBufferShort", "readBufferInt", "readBufferLong", "readBufferFloat", "readBufferDouble", "writeBufferByte",
+                    "writeBufferShort", "writeBufferInt", "writeBufferLong", "writeBufferFloat", "writeBufferDouble"})
+    public boolean hasBufferElements(Object receiver) {
+        return false;
+    }
+
+    /**
+     * Returns {@code true} if the receiver is a modifiable buffer.
+     * <p>
+     * If this message returns {@code true}, then {@link #getBufferSize(Object)},
+     * {@link #writeBufferByte(Object, long, byte)},
+     * {@link #writeBufferShort(Object, ByteOrder, long, short)},
+     * {@link #writeBufferInt(Object, ByteOrder, long, int)},
+     * {@link #writeBufferLong(Object, ByteOrder, long, long)},
+     * {@link #writeBufferFloat(Object, ByteOrder, long, float)} and
+     * {@link #writeBufferDouble(Object, ByteOrder, long, double)} must not throw
+     * {@link UnsupportedMessageException}.
+     * <p>
+     * Invoking this message does not cause any observable side-effects.
+     * <p>
+     * By default, it returns {@code false} if {@link #hasBufferElements(Object)} return
+     * {@code true}, and throws {@link UnsupportedMessageException} otherwise.
+     *
+     * @throws UnsupportedMessageException if and only if {@link #hasBufferElements(Object)} returns
+     *             {@code false}
+     * @since 21.1
+     */
+    @Abstract(ifExported = {"writeBufferByte", "writeBufferShort", "writeBufferInt", "writeBufferLong", "writeBufferFloat", "writeBufferDouble"})
+    public boolean isBufferWritable(Object receiver) throws UnsupportedMessageException {
+        if (hasBufferElements(receiver)) {
+            return false;
+        } else {
+            throw UnsupportedMessageException.create();
+        }
+    }
+
+    /**
+     * Returns the buffer size of the receiver, in bytes.
+     * <p>
+     * Invoking this message does not cause any observable side-effects.
+     *
+     * @throws UnsupportedMessageException if and only if {@link #hasBufferElements(Object)} returns
+     *             {@code false}
+     * @since 21.1
+     */
+    @Abstract(ifExported = {"hasBufferElements"})
+    public long getBufferSize(Object receiver) throws UnsupportedMessageException {
+        throw UnsupportedMessageException.create();
+    }
+
+    /**
+     * Reads the byte from the receiver object at the given byte offset from the start of the
+     * buffer.
+     * <p>
+     * The access is <em>not</em> guaranteed to be atomic. Therefore, this message is <em>not</em>
+     * thread-safe.
+     * <p>
+     * Invoking this message does not cause any observable side-effects.
+     *
+     * @return the byte at the given index
+     * @throws InvalidBufferOffsetException if and only if
+     *             <code>byteOffset < 0 || byteOffset >= </code>{@link #getBufferSize(Object)}
+     * @throws UnsupportedMessageException if and only if either {@link #hasBufferElements(Object)}
+     *             returns {@code false} returns {@code false}
+     * @since 21.1
+     */
+    @Abstract(ifExported = {"hasBufferElements"})
+    public byte readBufferByte(Object receiver, long byteOffset) throws UnsupportedMessageException, InvalidBufferOffsetException {
+        throw UnsupportedMessageException.create();
+    }
+
+    /**
+     * Writes the given byte from the receiver object at the given byte offset from the start of the
+     * buffer.
+     * <p>
+     * The access is <em>not</em> guaranteed to be atomic. Therefore, this message is <em>not</em>
+     * thread-safe.
+     *
+     * @throws InvalidBufferOffsetException if and only if
+     *             <code>byteOffset < 0 || byteOffset >= </code>{@link #getBufferSize(Object)}
+     * @throws UnsupportedMessageException if and only if either {@link #hasBufferElements(Object)}
+     *             or {@link #isBufferWritable} returns {@code false}
+     * @since 21.1
+     */
+    @Abstract(ifExported = {"isBufferWritable"})
+    public void writeBufferByte(Object receiver, long byteOffset, byte value) throws UnsupportedMessageException, InvalidBufferOffsetException {
+        throw UnsupportedMessageException.create();
+    }
+
+    /**
+     * Reads the short from the receiver object in the given byte order at the given byte offset
+     * from the start of the buffer.
+     * <p>
+     * Unaligned accesses are supported.
+     * <p>
+     * The access is <em>not</em> guaranteed to be atomic. Therefore, this message is <em>not</em>
+     * thread-safe.
+     * <p>
+     * Invoking this message does not cause any observable side-effects.
+     *
+     * @return the short at the given byte offset from the start of the buffer
+     * @throws InvalidBufferOffsetException if and only if
+     *             <code>byteOffset < 0 || byteOffset >= {@link #getBufferSize(Object)} - 1</code>
+     * @throws UnsupportedMessageException if and only if {@link #hasBufferElements(Object)} returns
+     *             {@code false}
+     * @since 21.1
+     */
+    @Abstract(ifExported = {"hasBufferElements"})
+    public short readBufferShort(Object receiver, ByteOrder order, long byteOffset) throws UnsupportedMessageException, InvalidBufferOffsetException {
+        throw UnsupportedMessageException.create();
+    }
+
+    /**
+     * Writes the given short from the receiver object in the given byte order at the given byte
+     * offset from the start of the buffer.
+     * <p>
+     * Unaligned accesses are supported.
+     * <p>
+     * The access is <em>not</em> guaranteed to be atomic. Therefore, this message is <em>not</em>
+     * thread-safe.
+     *
+     * @throws InvalidBufferOffsetException if and only if
+     *             <code>byteOffset < 0 || byteOffset >= {@link #getBufferSize(Object)} - 1</code>
+     * @throws UnsupportedMessageException if and only if either {@link #hasBufferElements(Object)}
+     *             or {@link #isBufferWritable} returns {@code false}
+     * @since 21.1
+     */
+    @Abstract(ifExported = {"isBufferWritable"})
+    public void writeBufferShort(Object receiver, ByteOrder order, long byteOffset, short value) throws UnsupportedMessageException, InvalidBufferOffsetException {
+        throw UnsupportedMessageException.create();
+    }
+
+    /**
+     * Reads the int from the receiver object in the given byte order at the given byte offset from
+     * the start of the buffer.
+     * <p>
+     * Unaligned accesses are supported.
+     * <p>
+     * The access is <em>not</em> guaranteed to be atomic. Therefore, this message is <em>not</em>
+     * thread-safe.
+     * <p>
+     * Invoking this message does not cause any observable side-effects.
+     *
+     * @return the int at the given byte offset from the start of the buffer
+     * @throws InvalidBufferOffsetException if and only if
+     *             <code>byteOffset < 0 || byteOffset >= {@link #getBufferSize(Object)} - 3</code>
+     * @throws UnsupportedMessageException if and only if {@link #hasBufferElements(Object)} returns
+     *             {@code false}
+     * @since 21.1
+     */
+    @Abstract(ifExported = {"hasBufferElements"})
+    public int readBufferInt(Object receiver, ByteOrder order, long byteOffset) throws UnsupportedMessageException, InvalidBufferOffsetException {
+        throw UnsupportedMessageException.create();
+    }
+
+    /**
+     * Writes the given int from the receiver object in the given byte order at the given byte
+     * offset from the start of the buffer.
+     * <p>
+     * Unaligned accesses are supported.
+     * <p>
+     * The access is <em>not</em> guaranteed to be atomic. Therefore, this message is <em>not</em>
+     * thread-safe.
+     *
+     * @throws InvalidBufferOffsetException if and only if
+     *             <code>byteOffset < 0 || byteOffset >= {@link #getBufferSize(Object)} - 3</code>
+     * @throws UnsupportedMessageException if and only if either {@link #hasBufferElements(Object)}
+     *             or {@link #isBufferWritable} returns {@code false}
+     * @since 21.1
+     */
+    @Abstract(ifExported = {"isBufferWritable"})
+    public void writeBufferInt(Object receiver, ByteOrder order, long byteOffset, int value) throws UnsupportedMessageException, InvalidBufferOffsetException {
+        throw UnsupportedMessageException.create();
+    }
+
+    /**
+     * Reads the long from the receiver object in the given byte order at the given byte offset from
+     * the start of the buffer.
+     * <p>
+     * Unaligned accesses are supported.
+     * <p>
+     * The access is <em>not</em> guaranteed to be atomic. Therefore, this message is <em>not</em>
+     * thread-safe.
+     * <p>
+     * Invoking this message does not cause any observable side-effects.
+     *
+     * @return the int at the given byte offset from the start of the buffer
+     * @throws InvalidBufferOffsetException if and only if
+     *             <code>byteOffset < 0 || byteOffset >= {@link #getBufferSize(Object)} - 7</code>
+     * @throws UnsupportedMessageException if and only if {@link #hasBufferElements(Object)} returns
+     *             {@code false}
+     * @since 21.1
+     */
+    @Abstract(ifExported = {"hasBufferElements"})
+    public long readBufferLong(Object receiver, ByteOrder order, long byteOffset) throws UnsupportedMessageException, InvalidBufferOffsetException {
+        throw UnsupportedMessageException.create();
+    }
+
+    /**
+     * Writes the given long from the receiver object in the given byte order at the given byte
+     * offset from the start of the buffer.
+     * <p>
+     * Unaligned accesses are supported.
+     * <p>
+     * The access is <em>not</em> guaranteed to be atomic. Therefore, this message is <em>not</em>
+     * thread-safe.
+     *
+     * @throws InvalidBufferOffsetException if and only if
+     *             <code>byteOffset < 0 || byteOffset >= {@link #getBufferSize(Object)} - 7</code>
+     * @throws UnsupportedMessageException if and only if either {@link #hasBufferElements(Object)}
+     *             or {@link #isBufferWritable} returns {@code false}
+     * @since 21.1
+     */
+    @Abstract(ifExported = {"isBufferWritable"})
+    public void writeBufferLong(Object receiver, ByteOrder order, long byteOffset, long value) throws UnsupportedMessageException, InvalidBufferOffsetException {
+        throw UnsupportedMessageException.create();
+    }
+
+    /**
+     * Reads the float from the receiver object in the given byte order at the given byte offset
+     * from the start of the buffer.
+     * <p>
+     * Unaligned accesses are supported.
+     * <p>
+     * The access is <em>not</em> guaranteed to be atomic. Therefore, this message is <em>not</em>
+     * thread-safe.
+     * <p>
+     * Invoking this message does not cause any observable side-effects.
+     *
+     * @return the float at the given byte offset from the start of the buffer
+     * @throws InvalidBufferOffsetException if and only if
+     *             <code>byteOffset < 0 || byteOffset >= {@link #getBufferSize(Object)} - 3</code>
+     * @throws UnsupportedMessageException if and only if {@link #hasBufferElements(Object)} returns
+     *             {@code false}
+     * @since 21.1
+     */
+    @Abstract(ifExported = {"hasBufferElements"})
+    public float readBufferFloat(Object receiver, ByteOrder order, long byteOffset) throws UnsupportedMessageException, InvalidBufferOffsetException {
+        throw UnsupportedMessageException.create();
+    }
+
+    /**
+     * Writes the given float from the receiver object in the given byte order at the given byte
+     * offset from the start of the buffer.
+     * <p>
+     * Unaligned accesses are supported.
+     * <p>
+     * The access is <em>not</em> guaranteed to be atomic. Therefore, this message is <em>not</em>
+     * thread-safe.
+     *
+     * @throws InvalidBufferOffsetException if and only if
+     *             <code>byteOffset < 0 || byteOffset >= {@link #getBufferSize(Object)} - 3</code>
+     * @throws UnsupportedMessageException if and only if either {@link #hasBufferElements(Object)}
+     *             or {@link #isBufferWritable} returns {@code false}
+     * @since 21.1
+     */
+    @Abstract(ifExported = {"isBufferWritable"})
+    public void writeBufferFloat(Object receiver, ByteOrder order, long byteOffset, float value) throws UnsupportedMessageException, InvalidBufferOffsetException {
+        throw UnsupportedMessageException.create();
+    }
+
+    /**
+     * Reads the double from the receiver object in the given byte order at the given byte offset
+     * from the start of the buffer.
+     * <p>
+     * Unaligned accesses are supported.
+     * <p>
+     * The access is <em>not</em> guaranteed to be atomic. Therefore, this message is <em>not</em>
+     * thread-safe.
+     * <p>
+     * Invoking this message does not cause any observable side-effects.
+     *
+     * @return the double at the given byte offset from the start of the buffer
+     * @throws InvalidBufferOffsetException if and only if
+     *             <code>byteOffset < 0 || byteOffset >= {@link #getBufferSize(Object)} - 7</code>
+     * @throws UnsupportedMessageException if and only if {@link #hasBufferElements(Object)} returns
+     *             {@code false}
+     * @since 21.1
+     */
+    @Abstract(ifExported = {"hasBufferElements"})
+    public double readBufferDouble(Object receiver, ByteOrder order, long byteOffset) throws UnsupportedMessageException, InvalidBufferOffsetException {
+        throw UnsupportedMessageException.create();
+    }
+
+    /**
+     * Writes the given double from the receiver object in the given byte order at the given byte
+     * offset from the start of the buffer.
+     * <p>
+     * Unaligned accesses are supported.
+     * <p>
+     * The access is <em>not</em> guaranteed to be atomic. Therefore, this message is <em>not</em>
+     * thread-safe.
+     *
+     * @throws InvalidBufferOffsetException if and only if
+     *             <code>byteOffset < 0 || byteOffset >= {@link #getBufferSize(Object)} - 7</code>
+     * @throws UnsupportedMessageException if and only if either {@link #hasBufferElements(Object)}
+     *             or {@link #isBufferWritable} returns {@code false}
+     * @since 21.1
+     */
+    @Abstract(ifExported = {"isBufferWritable"})
+    public void writeBufferDouble(Object receiver, ByteOrder order, long byteOffset, double value) throws UnsupportedMessageException, InvalidBufferOffsetException {
+        throw UnsupportedMessageException.create();
+    }
+
+    // endregion
 
     /**
      * Returns <code>true</code> if the receiver value represents a native pointer. Native pointers
@@ -1749,7 +2075,8 @@ public abstract class InteropLibrary extends Library {
 
     /**
      * Converts the receiver to a human readable {@link #isString(Object) string} of the language.
-     * Short-cut for <code>{@link #toDisplayString(Object) toDisplayString}(true)</code>.
+     * Short-cut for
+     * <code>{@link #toDisplayString(Object, boolean) toDisplayString(Object, true)}</code>.
      *
      * @see #toDisplayString(Object, boolean)
      * @since 20.1
@@ -2956,6 +3283,234 @@ public abstract class InteropLibrary extends Library {
             assert !result || delegate.hasArrayElements(receiver) && !delegate.isArrayElementInsertable(receiver, identifier) : violationInvariant(receiver, identifier);
             return result;
         }
+
+        // region Buffer Messages
+
+        @Override
+        public boolean hasBufferElements(Object receiver) {
+            assert preCondition(receiver);
+            return delegate.hasBufferElements(receiver);
+        }
+
+        @Override
+        public boolean isBufferWritable(Object receiver) throws UnsupportedMessageException {
+            assert preCondition(receiver);
+            try {
+                final boolean result = delegate.isBufferWritable(receiver);
+                assert delegate.hasBufferElements(receiver) : violationInvariant(receiver);
+                return result;
+            } catch (InteropException e) {
+                assert e instanceof UnsupportedMessageException : violationPost(receiver, e);
+                throw e;
+            }
+        }
+
+        @Override
+        public long getBufferSize(Object receiver) throws UnsupportedMessageException {
+            assert preCondition(receiver);
+            try {
+                final long result = delegate.getBufferSize(receiver);
+                assert delegate.hasBufferElements(receiver) : violationInvariant(receiver);
+                return result;
+            } catch (InteropException e) {
+                assert e instanceof UnsupportedMessageException : violationPost(receiver, e);
+                throw e;
+            }
+        }
+
+        @Override
+        public byte readBufferByte(Object receiver, long byteOffset) throws UnsupportedMessageException, InvalidBufferOffsetException {
+            assert preCondition(receiver);
+            try {
+                final byte result = delegate.readBufferByte(receiver, byteOffset);
+                assert delegate.hasBufferElements(receiver) : violationInvariant(receiver, byteOffset);
+                return result;
+            } catch (UnsupportedMessageException e) {
+                assert !delegate.hasBufferElements(receiver) : violationPost(receiver, e);
+                throw e;
+            } catch (InteropException e) {
+                assert e instanceof InvalidBufferOffsetException : violationPost(receiver, e);
+                throw e;
+            }
+        }
+
+        @Override
+        public void writeBufferByte(Object receiver, long byteOffset, byte value) throws UnsupportedMessageException, InvalidBufferOffsetException {
+            assert preCondition(receiver);
+            try {
+                delegate.writeBufferByte(receiver, byteOffset, value);
+                assert delegate.hasBufferElements(receiver) : violationInvariant(receiver, byteOffset);
+                assert delegate.isBufferWritable(receiver) : violationInvariant(receiver, byteOffset);
+            } catch (UnsupportedMessageException e) {
+                assert !delegate.isBufferWritable(receiver) : violationPost(receiver, e);
+                throw e;
+            } catch (InteropException e) {
+                assert e instanceof InvalidBufferOffsetException : violationPost(receiver, e);
+                throw e;
+            }
+        }
+
+        @Override
+        public short readBufferShort(Object receiver, ByteOrder order, long byteOffset) throws UnsupportedMessageException, InvalidBufferOffsetException {
+            assert preCondition(receiver);
+            try {
+                final short result = delegate.readBufferShort(receiver, order, byteOffset);
+                assert delegate.hasBufferElements(receiver) : violationInvariant(receiver, byteOffset);
+                return result;
+            } catch (UnsupportedMessageException e) {
+                assert !delegate.hasBufferElements(receiver) : violationPost(receiver, e);
+                throw e;
+            } catch (InteropException e) {
+                assert e instanceof InvalidBufferOffsetException : violationPost(receiver, e);
+                throw e;
+            }
+        }
+
+        @Override
+        public void writeBufferShort(Object receiver, ByteOrder order, long byteOffset, short value) throws UnsupportedMessageException, InvalidBufferOffsetException {
+            assert preCondition(receiver);
+            try {
+                delegate.writeBufferShort(receiver, order, byteOffset, value);
+                assert delegate.hasBufferElements(receiver) : violationInvariant(receiver, byteOffset);
+                assert delegate.isBufferWritable(receiver) : violationInvariant(receiver, byteOffset);
+            } catch (UnsupportedMessageException e) {
+                assert !delegate.isBufferWritable(receiver) : violationPost(receiver, e);
+                throw e;
+            } catch (InteropException e) {
+                assert e instanceof InvalidBufferOffsetException : violationPost(receiver, e);
+                throw e;
+            }
+        }
+
+        @Override
+        public int readBufferInt(Object receiver, ByteOrder order, long byteOffset) throws UnsupportedMessageException, InvalidBufferOffsetException {
+            assert preCondition(receiver);
+            try {
+                final int result = delegate.readBufferInt(receiver, order, byteOffset);
+                assert delegate.hasBufferElements(receiver) : violationInvariant(receiver, byteOffset);
+                return result;
+            } catch (UnsupportedMessageException e) {
+                assert !delegate.hasBufferElements(receiver) : violationPost(receiver, e);
+                throw e;
+            } catch (InteropException e) {
+                assert e instanceof InvalidBufferOffsetException : violationPost(receiver, e);
+                throw e;
+            }
+        }
+
+        @Override
+        public void writeBufferInt(Object receiver, ByteOrder order, long byteOffset, int value) throws UnsupportedMessageException, InvalidBufferOffsetException {
+            assert preCondition(receiver);
+            try {
+                delegate.writeBufferInt(receiver, order, byteOffset, value);
+                assert delegate.hasBufferElements(receiver) : violationInvariant(receiver, byteOffset);
+                assert delegate.isBufferWritable(receiver) : violationInvariant(receiver, byteOffset);
+            } catch (UnsupportedMessageException e) {
+                assert !delegate.isBufferWritable(receiver) : violationPost(receiver, e);
+                throw e;
+            } catch (InteropException e) {
+                assert e instanceof InvalidBufferOffsetException : violationPost(receiver, e);
+                throw e;
+            }
+        }
+
+        @Override
+        public long readBufferLong(Object receiver, ByteOrder order, long byteOffset) throws UnsupportedMessageException, InvalidBufferOffsetException {
+            assert preCondition(receiver);
+            try {
+                final long result = delegate.readBufferLong(receiver, order, byteOffset);
+                assert delegate.hasBufferElements(receiver) : violationInvariant(receiver, byteOffset);
+                return result;
+            } catch (UnsupportedMessageException e) {
+                assert !delegate.hasBufferElements(receiver) : violationPost(receiver, e);
+                throw e;
+            } catch (InteropException e) {
+                assert e instanceof InvalidBufferOffsetException : violationPost(receiver, e);
+                throw e;
+            }
+        }
+
+        @Override
+        public void writeBufferLong(Object receiver, ByteOrder order, long byteOffset, long value) throws UnsupportedMessageException, InvalidBufferOffsetException {
+            assert preCondition(receiver);
+            try {
+                delegate.writeBufferLong(receiver, order, byteOffset, value);
+                assert delegate.hasBufferElements(receiver) : violationInvariant(receiver, byteOffset);
+                assert delegate.isBufferWritable(receiver) : violationInvariant(receiver, byteOffset);
+            } catch (UnsupportedMessageException e) {
+                assert !delegate.isBufferWritable(receiver) : violationPost(receiver, e);
+                throw e;
+            } catch (InteropException e) {
+                assert e instanceof InvalidBufferOffsetException : violationPost(receiver, e);
+                throw e;
+            }
+        }
+
+        @Override
+        public float readBufferFloat(Object receiver, ByteOrder order, long byteOffset) throws UnsupportedMessageException, InvalidBufferOffsetException {
+            assert preCondition(receiver);
+            try {
+                final float result = delegate.readBufferFloat(receiver, order, byteOffset);
+                assert delegate.hasBufferElements(receiver) : violationInvariant(receiver, byteOffset);
+                return result;
+            } catch (UnsupportedMessageException e) {
+                assert !delegate.hasBufferElements(receiver) : violationPost(receiver, e);
+                throw e;
+            } catch (InteropException e) {
+                assert e instanceof InvalidBufferOffsetException : violationPost(receiver, e);
+                throw e;
+            }
+        }
+
+        @Override
+        public void writeBufferFloat(Object receiver, ByteOrder order, long byteOffset, float value) throws UnsupportedMessageException, InvalidBufferOffsetException {
+            assert preCondition(receiver);
+            try {
+                delegate.writeBufferFloat(receiver, order, byteOffset, value);
+                assert delegate.hasBufferElements(receiver) : violationInvariant(receiver, byteOffset);
+                assert delegate.isBufferWritable(receiver) : violationInvariant(receiver, byteOffset);
+            } catch (UnsupportedMessageException e) {
+                assert !delegate.isBufferWritable(receiver) : violationPost(receiver, e);
+                throw e;
+            } catch (InteropException e) {
+                assert e instanceof InvalidBufferOffsetException : violationPost(receiver, e);
+                throw e;
+            }
+        }
+
+        @Override
+        public double readBufferDouble(Object receiver, ByteOrder order, long byteOffset) throws UnsupportedMessageException, InvalidBufferOffsetException {
+            assert preCondition(receiver);
+            try {
+                final double result = delegate.readBufferDouble(receiver, order, byteOffset);
+                assert delegate.hasBufferElements(receiver) : violationInvariant(receiver, byteOffset);
+                return result;
+            } catch (UnsupportedMessageException e) {
+                assert !delegate.hasBufferElements(receiver) : violationPost(receiver, e);
+                throw e;
+            } catch (InteropException e) {
+                assert e instanceof InvalidBufferOffsetException : violationPost(receiver, e);
+                throw e;
+            }
+        }
+
+        @Override
+        public void writeBufferDouble(Object receiver, ByteOrder order, long byteOffset, double value) throws UnsupportedMessageException, InvalidBufferOffsetException {
+            assert preCondition(receiver);
+            try {
+                delegate.writeBufferDouble(receiver, order, byteOffset, value);
+                assert delegate.hasBufferElements(receiver) : violationInvariant(receiver, byteOffset);
+                assert delegate.isBufferWritable(receiver) : violationInvariant(receiver, byteOffset);
+            } catch (UnsupportedMessageException e) {
+                assert !delegate.isBufferWritable(receiver) : violationPost(receiver, e);
+                throw e;
+            } catch (InteropException e) {
+                assert e instanceof InvalidBufferOffsetException : violationPost(receiver, e);
+                throw e;
+            }
+        }
+
+        // endregion
 
         @Override
         public boolean isPointer(Object receiver) {

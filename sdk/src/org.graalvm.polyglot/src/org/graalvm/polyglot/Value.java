@@ -40,8 +40,13 @@
  */
 package org.graalvm.polyglot;
 
+import org.graalvm.polyglot.HostAccess.TargetMappingPrecedence;
+import org.graalvm.polyglot.impl.AbstractPolyglotImpl.AbstractValueImpl;
+import org.graalvm.polyglot.proxy.Proxy;
+
 import java.math.BigDecimal;
 import java.math.BigInteger;
+import java.nio.ByteOrder;
 import java.time.Duration;
 import java.time.Instant;
 import java.time.LocalDate;
@@ -55,10 +60,6 @@ import java.util.Map;
 import java.util.Objects;
 import java.util.Set;
 import java.util.function.Function;
-
-import org.graalvm.polyglot.HostAccess.TargetMappingPrecedence;
-import org.graalvm.polyglot.impl.AbstractPolyglotImpl.AbstractValueImpl;
-import org.graalvm.polyglot.proxy.Proxy;
 
 /**
  * Represents a polyglot value that can be accessed using a set of language agnostic operations.
@@ -106,6 +107,8 @@ import org.graalvm.polyglot.proxy.Proxy;
  * for executable elements are functions, methods, closures or promises.
  * <li>{@link #canInstantiate() Instantiable}: This value can be {@link #newInstance(Object...)
  * instantiated}. For example, Java classes are instantiable.
+ * <li>{@link #hasBufferElements() Buffer Elements}: This value may contain buffer elements. The
+ * buffer indices always start with <code>0</code>, also if the language uses a different style.
  * </ul>
  * <p>
  * In addition to the language agnostic types, the language specific type can be accessed using
@@ -321,6 +324,369 @@ public final class Value {
     public long getArraySize() {
         return impl.getArraySize(receiver);
     }
+
+    // region Buffer Methods
+
+    /**
+     * Returns {@code true} if the receiver may have buffer elements. In this case, the buffer size
+     * can be queried using {@link #getBufferSize()} and elements can be read using
+     * {@link #readBufferByte(long)}, {@link #readBufferShort(ByteOrder, long)},
+     * {@link #readBufferInt(ByteOrder, long)}, {@link #readBufferLong(ByteOrder, long)},
+     * {@link #readBufferFloat(ByteOrder, long)} and {@link #readBufferDouble(ByteOrder, long)}. If
+     * {@link #isBufferWritable()} returns {@code true}, then buffer elements can also be written
+     * using {@link #writeBufferByte(long, byte)},
+     * {@link #writeBufferShort(ByteOrder, long, short)},
+     * {@link #writeBufferInt(ByteOrder, long, int)},
+     * {@link #writeBufferLong(ByteOrder, long, long)},
+     * {@link #writeBufferFloat(ByteOrder, long, float)} and
+     * {@link #writeBufferDouble(ByteOrder, long, double)}.
+     * <p>
+     * Invoking this method does not cause any observable side-effects.
+     *
+     * @throws IllegalStateException if the context is already closed.
+     * @throws PolyglotException if a guest language error occurred during execution.
+     * @see #hasBufferElements()
+     * @since 21.1
+     */
+    public boolean hasBufferElements() {
+        return impl.hasBufferElements(receiver);
+    }
+
+    /**
+     * Returns true if the receiver object is a modifiable buffer. In this case, elements can be
+     * written using {@link #writeBufferByte(long, byte)},
+     * {@link #writeBufferShort(ByteOrder, long, short)},
+     * {@link #writeBufferInt(ByteOrder, long, int)},
+     * {@link #writeBufferLong(ByteOrder, long, long)},
+     * {@link #writeBufferFloat(ByteOrder, long, float)} and
+     * {@link #writeBufferDouble(ByteOrder, long, double)}.
+     * <p>
+     * Invoking this method does not cause any observable side-effects.
+     *
+     * @throws UnsupportedOperationException if the value does not have {@link #hasBufferElements
+     *             buffer elements}.
+     * @since 21.1
+     */
+    public boolean isBufferWritable() throws UnsupportedOperationException {
+        return impl.isBufferWritable(receiver);
+    }
+
+    /**
+     * Returns the buffer size in bytes for values with buffer elements.
+     * <p>
+     * Invoking this method does not cause any observable side-effects.
+     *
+     * @throws UnsupportedOperationException if the value does not have {@link #hasBufferElements
+     *             buffer elements}.
+     * @since 21.1
+     */
+    public long getBufferSize() throws UnsupportedOperationException {
+        return impl.getBufferSize(receiver);
+    }
+
+    /**
+     * Reads the byte at the given byte offset from the start of the buffer.
+     * <p>
+     * The access is <em>not</em> guaranteed to be atomic. Therefore, this method is <em>not</em>
+     * thread-safe.
+     * <p>
+     * Invoking this method does not cause any observable side-effects.
+     *
+     * @param byteOffset the offset, in bytes, from the start of the buffer at which the byte will
+     *            be read.
+     * @return the byte at the given byte offset from the start of the buffer.
+     * @throws IndexOutOfBoundsException if and only if
+     *             <code>byteOffset < 0 || byteOffset >= </code>{@link #getBufferSize()}.
+     * @throws UnsupportedOperationException if the value does not have {@link #hasBufferElements
+     *             buffer elements}.
+     * @throws IllegalStateException if the context is already closed.
+     * @throws PolyglotException if a guest language error occurred during execution.
+     * @since 21.1
+     */
+    public byte readBufferByte(long byteOffset) throws UnsupportedOperationException, IndexOutOfBoundsException {
+        return impl.readBufferByte(receiver, byteOffset);
+    }
+
+    /**
+     * Writes the given byte at the given byte offset from the start of the buffer.
+     * <p>
+     * The access is <em>not</em> guaranteed to be atomic. Therefore, this method is <em>not</em>
+     * thread-safe.
+     *
+     * @param byteOffset the offset, in bytes, from the start of the buffer at which the byte will
+     *            be written.
+     * @param value the byte value to be written.
+     * @throws IndexOutOfBoundsException if and only if
+     *             <code>byteOffset < 0 || byteOffset >= </code>{@link #getBufferSize()}.
+     * @throws UnsupportedOperationException if the value does not have {@link #hasBufferElements
+     *             buffer elements} or is not {@link #isBufferWritable() modifiable}.
+     * @throws IllegalStateException if the context is already closed.
+     * @throws PolyglotException if a guest language error occurred during execution.
+     * @since 21.1
+     */
+    public void writeBufferByte(long byteOffset, byte value) throws UnsupportedOperationException, IndexOutOfBoundsException {
+        impl.writeBufferByte(receiver, byteOffset, value);
+    }
+
+    /**
+     * Reads the short at the given byte offset from the start of the buffer in the given byte
+     * order.
+     * <p>
+     * Unaligned accesses are supported.
+     * <p>
+     * The access is <em>not</em> guaranteed to be atomic. Therefore, this method is <em>not</em>
+     * thread-safe.
+     * <p>
+     * Invoking this method does not cause any observable side-effects.
+     *
+     * @param order the order in which to read the individual bytes of the short.
+     * @param byteOffset the offset, in bytes, from the start of the buffer from which the short
+     *            will be read.
+     * @return the short at the given byte offset from the start of the buffer.
+     * @throws IndexOutOfBoundsException if and only if
+     *             <code>byteOffset < 0 || byteOffset >= {@link #getBufferSize()} - 1</code>.
+     * @throws UnsupportedOperationException if the value does not have {@link #hasBufferElements
+     *             buffer elements}.
+     * @throws IllegalStateException if the context is already closed.
+     * @throws PolyglotException if a guest language error occurred during execution.
+     * @since 21.1
+     */
+    public short readBufferShort(ByteOrder order, long byteOffset) throws UnsupportedOperationException, IndexOutOfBoundsException {
+        return impl.readBufferShort(receiver, order, byteOffset);
+    }
+
+    /**
+     * Writes the given short in the given byte order at the given byte offset from the start of the
+     * buffer.
+     * <p>
+     * Unaligned accesses are supported.
+     * <p>
+     * The access is <em>not</em> guaranteed to be atomic. Therefore, this method is <em>not</em>
+     * thread-safe.
+     *
+     * @param order the order in which to write the individual bytes of the short.
+     * @param byteOffset the offset, in bytes, from the start of the buffer from which the short
+     *            will be written.
+     * @param value the short value to be written.
+     * @throws IndexOutOfBoundsException if and only if
+     *             <code>byteOffset < 0 || byteOffset >= {@link #getBufferSize()} - 1</code>.
+     * @throws UnsupportedOperationException if the value does not have {@link #hasBufferElements
+     *             buffer elements} or is not {@link #isBufferWritable() modifiable}.
+     * @throws IllegalStateException if the context is already closed.
+     * @throws PolyglotException if a guest language error occurred during execution.
+     * @since 21.1
+     */
+    public void writeBufferShort(ByteOrder order, long byteOffset, short value) throws UnsupportedOperationException, IndexOutOfBoundsException {
+        impl.writeBufferShort(receiver, order, byteOffset, value);
+    }
+
+    /**
+     * Reads the int at the given byte offset from the start of the buffer in the given byte order.
+     * <p>
+     * Unaligned accesses are supported.
+     * <p>
+     * The access is <em>not</em> guaranteed to be atomic. Therefore, this method is <em>not</em>
+     * thread-safe.
+     * <p>
+     * Invoking this method does not cause any observable side-effects.
+     *
+     * @param order the order in which to read the individual bytes of the int.
+     * @param byteOffset the offset, in bytes, from the start of the buffer from which the int will
+     *            be read.
+     * @return the int at the given byte offset from the start of the buffer.
+     * @throws IndexOutOfBoundsException if and only if
+     *             <code>byteOffset < 0 || byteOffset >= {@link #getBufferSize()} - 3</code>.
+     * @throws UnsupportedOperationException if the value does not have {@link #hasBufferElements
+     *             buffer elements}.
+     * @throws IllegalStateException if the context is already closed.
+     * @throws PolyglotException if a guest language error occurred during execution.
+     * @since 21.1
+     */
+    public int readBufferInt(ByteOrder order, long byteOffset) throws UnsupportedOperationException, IndexOutOfBoundsException {
+        return impl.readBufferInt(receiver, order, byteOffset);
+    }
+
+    /**
+     * Writes the given int in the given byte order at the given byte offset from the start of the
+     * buffer.
+     * <p>
+     * Unaligned accesses are supported.
+     * <p>
+     * The access is <em>not</em> guaranteed to be atomic. Therefore, this method is <em>not</em>
+     * thread-safe.
+     *
+     * @param order the order in which to write the individual bytes of the int.
+     * @param byteOffset the offset, in bytes, from the start of the buffer from which the int will
+     *            be written.
+     * @param value the int value to be written.
+     * @throws IndexOutOfBoundsException if and only if
+     *             <code>byteOffset < 0 || byteOffset >= {@link #getBufferSize()} - 3</code>.
+     * @throws UnsupportedOperationException if the value does not have {@link #hasBufferElements
+     *             buffer elements} or is not {@link #isBufferWritable() modifiable}.
+     * @throws IllegalStateException if the context is already closed.
+     * @throws PolyglotException if a guest language error occurred during execution.
+     * @since 21.1
+     */
+    public void writeBufferInt(ByteOrder order, long byteOffset, int value) throws UnsupportedOperationException, IndexOutOfBoundsException {
+        impl.writeBufferInt(receiver, order, byteOffset, value);
+    }
+
+    /**
+     * Reads the long at the given byte offset from the start of the buffer in the given byte order.
+     * <p>
+     * Unaligned accesses are supported.
+     * <p>
+     * The access is <em>not</em> guaranteed to be atomic. Therefore, this method is <em>not</em>
+     * thread-safe.
+     * <p>
+     * Invoking this method does not cause any observable side-effects.
+     *
+     * @param order the order in which to read the individual bytes of the long.
+     * @param byteOffset the offset, in bytes, from the start of the buffer from which the int will
+     *            be read.
+     * @return the int at the given byte offset from the start of the buffer.
+     * @throws IndexOutOfBoundsException if and only if
+     *             <code>byteOffset < 0 || byteOffset >= {@link #getBufferSize()} - 7</code>.
+     * @throws UnsupportedOperationException if the value does not have {@link #hasBufferElements
+     *             buffer elements}.
+     * @throws IllegalStateException if the context is already closed.
+     * @throws PolyglotException if a guest language error occurred during execution.
+     * @since 21.1
+     */
+    public long readBufferLong(ByteOrder order, long byteOffset) throws UnsupportedOperationException, IndexOutOfBoundsException {
+        return impl.readBufferLong(receiver, order, byteOffset);
+    }
+
+    /**
+     * Writes the given long in the given byte order at the given byte offset from the start of the
+     * buffer.
+     * <p>
+     * Unaligned accesses are supported.
+     * <p>
+     * The access is <em>not</em> guaranteed to be atomic. Therefore, this method is <em>not</em>
+     * thread-safe.
+     *
+     * @param order the order in which to write the individual bytes of the long.
+     * @param byteOffset the offset, in bytes, from the start of the buffer from which the int will
+     *            be written.
+     * @param value the int value to be written.
+     * @throws IndexOutOfBoundsException if and only if
+     *             <code>byteOffset < 0 || byteOffset >= {@link #getBufferSize()} - 7</code>.
+     * @throws UnsupportedOperationException if the value does not have {@link #hasBufferElements
+     *             buffer elements} or is not {@link #isBufferWritable() modifiable}.
+     * @throws IllegalStateException if the context is already closed.
+     * @throws PolyglotException if a guest language error occurred during execution.
+     * @since 21.1
+     */
+    public void writeBufferLong(ByteOrder order, long byteOffset, long value) throws UnsupportedOperationException, IndexOutOfBoundsException {
+        impl.writeBufferLong(receiver, order, byteOffset, value);
+    }
+
+    /**
+     * Reads the float at the given byte offset from the start of the buffer in the given byte
+     * order.
+     * <p>
+     * Unaligned accesses are supported.
+     * <p>
+     * The access is <em>not</em> guaranteed to be atomic. Therefore, this method is <em>not</em>
+     * thread-safe.
+     * <p>
+     * Invoking this method does not cause any observable side-effects.
+     *
+     * @param order the order in which to read the individual bytes of the float.
+     * @param byteOffset the offset, in bytes, from the start of the buffer from which the float
+     *            will be read.
+     * @return the float at the given byte offset from the start of the buffer.
+     * @throws IndexOutOfBoundsException if and only if
+     *             <code>byteOffset < 0 || byteOffset >= {@link #getBufferSize()} - 3</code>.
+     * @throws UnsupportedOperationException if the value does not have {@link #hasBufferElements
+     *             buffer elements}.
+     * @throws IllegalStateException if the context is already closed.
+     * @throws PolyglotException if a guest language error occurred during execution.
+     * @since 21.1
+     */
+    public float readBufferFloat(ByteOrder order, long byteOffset) throws UnsupportedOperationException, IndexOutOfBoundsException {
+        return impl.readBufferFloat(receiver, order, byteOffset);
+    }
+
+    /**
+     * Writes the given float in the given byte order at the given byte offset from the start of the
+     * buffer.
+     * <p>
+     * Unaligned accesses are supported.
+     * <p>
+     * The access is <em>not</em> guaranteed to be atomic. Therefore, this method is <em>not</em>
+     * thread-safe.
+     *
+     * @param order the order in which to read the individual bytes of the float.
+     * @param byteOffset the offset, in bytes, from the start of the buffer from which the float
+     *            will be written.
+     * @param value the float value to be written.
+     * @throws IndexOutOfBoundsException if and only if
+     *             <code>byteOffset < 0 || byteOffset >= {@link #getBufferSize()} - 3</code>.
+     * @throws UnsupportedOperationException if the value does not have {@link #hasBufferElements
+     *             buffer elements} or is not {@link #isBufferWritable() modifiable}.
+     * @throws IllegalStateException if the context is already closed.
+     * @throws PolyglotException if a guest language error occurred during execution.
+     * @since 21.1
+     */
+    public void writeBufferFloat(ByteOrder order, long byteOffset, float value) throws UnsupportedOperationException, IndexOutOfBoundsException {
+        impl.writeBufferFloat(receiver, order, byteOffset, value);
+    }
+
+    /**
+     * Reads the double at the given byte offset from the start of the buffer in the given byte
+     * order.
+     * <p>
+     * Unaligned accesses are supported.
+     * <p>
+     * The access is <em>not</em> guaranteed to be atomic. Therefore, this method is <em>not</em>
+     * thread-safe.
+     * <p>
+     * Invoking this method does not cause any observable side-effects.
+     *
+     * @param order the order in which to write the individual bytes of the double.
+     * @param byteOffset the offset, in bytes, from the start of the buffer from which the double
+     *            will be read.
+     * @return the double at the given byte offset from the start of the buffer.
+     * @throws IndexOutOfBoundsException if and only if
+     *             <code>byteOffset < 0 || byteOffset >= {@link #getBufferSize()} - 7</code>.
+     * @throws UnsupportedOperationException if the value does not have {@link #hasBufferElements
+     *             buffer elements}.
+     * @throws IllegalStateException if the context is already closed.
+     * @throws PolyglotException if a guest language error occurred during execution.
+     * @since 21.1
+     */
+    public double readBufferDouble(ByteOrder order, long byteOffset) throws UnsupportedOperationException, IndexOutOfBoundsException {
+        return impl.readBufferDouble(receiver, order, byteOffset);
+    }
+
+    /**
+     * Writes the given double in the given byte order at the given byte offset from the start of
+     * the buffer.
+     * <p>
+     * Unaligned accesses are supported.
+     * <p>
+     * The access is <em>not</em> guaranteed to be atomic. Therefore, this method is <em>not</em>
+     * thread-safe.
+     *
+     * @param order the order in which to write the individual bytes of the double.
+     * @param byteOffset the offset, in bytes, from the start of the buffer from which the double
+     *            will be written.
+     * @param value the double value to be written.
+     * @throws IndexOutOfBoundsException if and only if
+     *             <code>byteOffset < 0 || byteOffset >= {@link #getBufferSize()} - 7</code>.
+     * @throws UnsupportedOperationException if the value does not have {@link #hasBufferElements
+     *             buffer elements} or is not {@link #isBufferWritable() modifiable}.
+     * @throws IllegalStateException if the context is already closed.
+     * @throws PolyglotException if a guest language error occurred during execution.
+     * @since 21.1
+     */
+    public void writeBufferDouble(ByteOrder order, long byteOffset, double value) throws UnsupportedOperationException, IndexOutOfBoundsException {
+        impl.writeBufferDouble(receiver, order, byteOffset, value);
+    }
+
+    // endregion
 
     /**
      * Returns <code>true</code> if this value generally supports containing members. To check

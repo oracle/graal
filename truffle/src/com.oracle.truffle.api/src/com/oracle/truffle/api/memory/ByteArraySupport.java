@@ -46,6 +46,16 @@ package com.oracle.truffle.api.memory;
  * from {@link #littleEndian()} or {@link #bigEndian()} respectively to access byte arrays in
  * little-endian or big-endian order.
  *
+ * <h2>Thread safety</h2>
+ * <p>
+ * The methods of this class are <em>not</em> safe for use by multiple concurrent threads. If a byte
+ * array is to be used by more than one thread then access to the byte array should be controlled by
+ * appropriate synchronization.
+ *
+ * <h2>Alignment</h2>
+ * <p>
+ * Unaligned accesses are allowed.
+ *
  * @since 20.3
  */
 public abstract class ByteArraySupport {
@@ -102,157 +112,157 @@ public abstract class ByteArraySupport {
      * interpreter mode) to use this method to check for them than catching
      * {@link IndexOutOfBoundsException}s.
      *
-     * @param buffer The byte array
-     * @param startIndex The start index of the access
-     * @param length The number of bytes accessed
+     * @param buffer the byte array
+     * @param startByteOffset the start byte offset of the access
+     * @param length the number of bytes accessed
      * @return True if if the access is in bounds, false otherwise
      * @since 20.3
      */
-    public final boolean inBounds(byte[] buffer, int startIndex, int length) {
-        return length >= 1 && startIndex >= 0 && startIndex <= buffer.length - length;
+    public final boolean inBounds(byte[] buffer, int startByteOffset, int length) {
+        return length >= 1 && startByteOffset >= 0 && startByteOffset <= buffer.length - length;
     }
 
     /**
-     * Reads the byte at the given index.
+     * Reads the byte at the given byte offset from the start of the buffer.
      *
-     * @param buffer The byte array to read from
-     * @param index The index from which the byte will be read
-     * @return The byte at the given index
-     * @throws IndexOutOfBoundsException If <tt>index</tt> is negative or not smaller than the
-     *             buffer's size
+     * @param buffer the byte array to read from
+     * @param byteOffset the byte offset at which the byte will be read
+     * @return the byte at the given byte offset from the start of the buffer
+     * @throws IndexOutOfBoundsException if and only if
+     *             {@code byteOffset < 0 || byteOffset >= buffer.length}
      * @since 20.3
      */
-    public abstract byte getByte(byte[] buffer, int index) throws IndexOutOfBoundsException;
+    public abstract byte getByte(byte[] buffer, int byteOffset) throws IndexOutOfBoundsException;
 
     /**
-     * Writes the given byte at the given index.
+     * Writes the given byte at the given byte offset from the start of the buffer.
      *
-     * @param buffer The byte array to write in
-     * @param index The index at which the byte will be written
-     * @param value The byte value to be written
-     * @throws IndexOutOfBoundsException If <tt>index</tt> is negative or not smaller than the
-     *             buffer's size
+     * @param buffer the byte array to write in
+     * @param byteOffset the byte offset at which the byte will be written
+     * @param value the byte value to be written
+     * @throws IndexOutOfBoundsException if and only if
+     *             {@code byteOffset < 0 || byteOffset >= buffer.length}
      * @since 20.3
      */
-    public abstract void putByte(byte[] buffer, int index, byte value) throws IndexOutOfBoundsException;
+    public abstract void putByte(byte[] buffer, int byteOffset, byte value) throws IndexOutOfBoundsException;
 
     /**
-     * Reads the short at the given index.
+     * Reads the short at the given byte offset from the start of the buffer.
      *
-     * @param buffer The byte array to read from
-     * @param index The index from which the short will be read
-     * @return The short at the given index
-     * @throws IndexOutOfBoundsException If <tt>index</tt> is negative or not smaller than the
-     *             buffer's size minus one
+     * @param buffer the byte array to read from
+     * @param byteOffset the byte offset from which the short will be read
+     * @return the short at the given byte offset from the start of the buffer
+     * @throws IndexOutOfBoundsException if and only if
+     *             {@code byteOffset < 0 || byteOffset >= buffer.length - 1}
      * @since 20.3
      */
-    public abstract short getShort(byte[] buffer, int index) throws IndexOutOfBoundsException;
+    public abstract short getShort(byte[] buffer, int byteOffset) throws IndexOutOfBoundsException;
 
     /**
-     * Writes the given short at the given index.
+     * Writes the given short at the given byte offset from the start of the buffer.
      *
-     * @param buffer The byte array to write in
-     * @param index The index at which the short will be written
-     * @param value The short value to be written
-     * @throws IndexOutOfBoundsException If <tt>index</tt> is negative or not smaller than the
-     *             buffer's size minus one
+     * @param buffer the byte array to write in
+     * @param byteOffset the byte offset from which the short will be written
+     * @param value the short value to be written
+     * @throws IndexOutOfBoundsException if and only if
+     *             {@code byteOffset < 0 || byteOffset >= buffer.length - 1}
      * @since 20.3
      */
-    public abstract void putShort(byte[] buffer, int index, short value) throws IndexOutOfBoundsException;
+    public abstract void putShort(byte[] buffer, int byteOffset, short value) throws IndexOutOfBoundsException;
 
     /**
-     * Reads the int at the given index.
+     * Reads the int at the given byte offset from the start of the buffer.
      *
-     * @param buffer The byte array to read from
-     * @param index The index from which the int will be read
-     * @return The int at the given index
-     * @throws IndexOutOfBoundsException If <tt>index</tt> is negative or not smaller than the
-     *             buffer's size minus three
+     * @param buffer the byte array to read from
+     * @param byteOffset the byte offset from which the int will be read
+     * @return the int at the given byte offset from the start of the buffer
+     * @throws IndexOutOfBoundsException if and only if
+     *             {@code byteOffset < 0 || byteOffset >= buffer.length - 3}
      * @since 20.3
      */
-    public abstract int getInt(byte[] buffer, int index) throws IndexOutOfBoundsException;
+    public abstract int getInt(byte[] buffer, int byteOffset) throws IndexOutOfBoundsException;
 
     /**
-     * Writes the given int at the given index.
+     * Writes the given int at the given byte offset from the start of the buffer.
      *
-     * @param buffer The byte array to write in
-     * @param index The index at which the int will be written
-     * @param value The int value to be written
-     * @throws IndexOutOfBoundsException If <tt>index</tt> is negative or not smaller than the
-     *             buffer's size minus three
+     * @param buffer the byte array to write in
+     * @param byteOffset the byte offset from which the int will be written
+     * @param value the int value to be written
+     * @throws IndexOutOfBoundsException if and only if
+     *             {@code byteOffset < 0 || byteOffset >= buffer.length - 3}
      * @since 20.3
      */
-    public abstract void putInt(byte[] buffer, int index, int value) throws IndexOutOfBoundsException;
+    public abstract void putInt(byte[] buffer, int byteOffset, int value) throws IndexOutOfBoundsException;
 
     /**
-     * Reads the int at the given index.
+     * Reads the long at the given byte offset from the start of the buffer.
      *
-     * @param buffer The byte array to read from
-     * @param index The index from which the int will be read
-     * @return The int at the given index
-     * @throws IndexOutOfBoundsException If <tt>index</tt> is negative or not smaller than the
-     *             buffer's size minus seven
+     * @param buffer the byte array to read from
+     * @param byteOffset the byte offset from which the int will be read
+     * @return the int at the given byte offset from the start of the buffer
+     * @throws IndexOutOfBoundsException if and only if
+     *             {@code byteOffset < 0 || byteOffset >= buffer.length - 7}
      * @since 20.3
      */
-    public abstract long getLong(byte[] buffer, int index) throws IndexOutOfBoundsException;
+    public abstract long getLong(byte[] buffer, int byteOffset) throws IndexOutOfBoundsException;
 
     /**
-     * Writes the given int at the given index.
+     * Writes the given long at the given byte offset from the start of the buffer.
      *
-     * @param buffer The byte array to write in
-     * @param index The index at which the int will be written
-     * @param value The int value to be written
-     * @throws IndexOutOfBoundsException If <tt>index</tt> is negative or not smaller than the
-     *             buffer's size minus seven
+     * @param buffer the byte array to write in
+     * @param byteOffset the byte offset from which the int will be written
+     * @param value the int value to be written
+     * @throws IndexOutOfBoundsException if and only if
+     *             {@code byteOffset < 0 || byteOffset >= buffer.length - 7}
      * @since 20.3
      */
-    public abstract void putLong(byte[] buffer, int index, long value) throws IndexOutOfBoundsException;
+    public abstract void putLong(byte[] buffer, int byteOffset, long value) throws IndexOutOfBoundsException;
 
     /**
-     * Reads the float at the given index.
+     * Reads the float at the given byte offset from the start of the buffer.
      *
-     * @param buffer The byte array to read from
-     * @param index The index from which the float will be read
-     * @return The float at the given index
-     * @throws IndexOutOfBoundsException If <tt>index</tt> is negative or not smaller than the
-     *             buffer's size minus three
+     * @param buffer the byte array to read from
+     * @param byteOffset the byte offset from which the float will be read
+     * @return the float at the given byte offset from the start of the buffer
+     * @throws IndexOutOfBoundsException if and only if
+     *             {@code byteOffset < 0 || byteOffset >= buffer.length - 3}
      * @since 20.3
      */
-    public abstract float getFloat(byte[] buffer, int index) throws IndexOutOfBoundsException;
+    public abstract float getFloat(byte[] buffer, int byteOffset) throws IndexOutOfBoundsException;
 
     /**
-     * Writes the given float at the given index.
+     * Writes the given float at the given byte offset from the start of the buffer.
      *
-     * @param buffer The byte array to write in
-     * @param index The index at which the float will be written
-     * @param value The float value to be written
-     * @throws IndexOutOfBoundsException If <tt>index</tt> is negative or not smaller than the
-     *             buffer's size minus three
+     * @param buffer the byte array to write in
+     * @param byteOffset the byte offset from which the float will be written
+     * @param value the float value to be written
+     * @throws IndexOutOfBoundsException if and only if
+     *             {@code byteOffset < 0 || byteOffset >= buffer.length - 3}
      * @since 20.3
      */
-    public abstract void putFloat(byte[] buffer, int index, float value) throws IndexOutOfBoundsException;
+    public abstract void putFloat(byte[] buffer, int byteOffset, float value) throws IndexOutOfBoundsException;
 
     /**
-     * Reads the double at the given index.
+     * Reads the double at the given byte offset from the start of the buffer.
      *
-     * @param buffer The byte array to read from
-     * @param index The index from which the double will be read
-     * @return The double at the given index
-     * @throws IndexOutOfBoundsException If <tt>index</tt> is negative or not smaller than the
-     *             buffer's size minus seven
+     * @param buffer the byte array to read from
+     * @param byteOffset the byte offset from which the double will be read
+     * @return the double at the given byte offset from the start of the buffer
+     * @throws IndexOutOfBoundsException if and only if
+     *             {@code byteOffset < 0 || byteOffset >= buffer.length - 7}
      * @since 20.3
      */
-    public abstract double getDouble(byte[] buffer, int index) throws IndexOutOfBoundsException;
+    public abstract double getDouble(byte[] buffer, int byteOffset) throws IndexOutOfBoundsException;
 
     /**
-     * Writes the given double at the given index.
+     * Writes the given double at the given byte offset from the start of the buffer.
      *
-     * @param buffer The byte array to write in
-     * @param index The index at which the double will be written
-     * @param value The double value to be written
-     * @throws IndexOutOfBoundsException If <tt>index</tt> is negative or not smaller than the
-     *             buffer's size minus seven
+     * @param buffer the byte array to write in
+     * @param byteOffset the byte offset from which the double will be written
+     * @param value the double value to be written
+     * @throws IndexOutOfBoundsException if and only if
+     *             {@code byteOffset < 0 || byteOffset >= buffer.length - 7}
      * @since 20.3
      */
-    public abstract void putDouble(byte[] buffer, int index, double value) throws IndexOutOfBoundsException;
+    public abstract void putDouble(byte[] buffer, int byteOffset, double value) throws IndexOutOfBoundsException;
 }
