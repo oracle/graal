@@ -24,18 +24,34 @@
  */
 package org.graalvm.compiler.phases.common;
 
+import static org.graalvm.compiler.options.OptionType.Debug;
+
+import java.util.EnumSet;
+
 import org.graalvm.compiler.core.common.GraalOptions;
+import org.graalvm.compiler.core.common.cfg.AbstractControlFlowGraph;
+import org.graalvm.compiler.debug.DebugContext;
+import org.graalvm.compiler.graph.Graph;
+import org.graalvm.compiler.graph.Node;
 import org.graalvm.compiler.nodeinfo.InputType;
 import org.graalvm.compiler.nodes.ConstantNode;
+import org.graalvm.compiler.nodes.FixedNode;
 import org.graalvm.compiler.nodes.StructuredGraph;
 import org.graalvm.compiler.nodes.ValueNode;
 import org.graalvm.compiler.nodes.calc.FloatingNode;
+import org.graalvm.compiler.nodes.cfg.Block;
+import org.graalvm.compiler.nodes.cfg.ControlFlowGraph;
 import org.graalvm.compiler.nodes.extended.BoxNode;
+import org.graalvm.compiler.nodes.extended.BoxNode.OptimizedAllocatingBoxNode;
+import org.graalvm.compiler.nodes.extended.UnboxNode;
 import org.graalvm.compiler.nodes.spi.CoreProviders;
+import org.graalvm.compiler.options.Option;
+import org.graalvm.compiler.options.OptionKey;
 import org.graalvm.compiler.phases.BasePhase;
 
 import jdk.vm.ci.meta.ConstantReflectionProvider;
 import jdk.vm.ci.meta.JavaConstant;
+import jdk.vm.ci.meta.JavaKind;
 import jdk.vm.ci.meta.MetaAccessProvider;
 
 /**
@@ -45,14 +61,95 @@ import jdk.vm.ci.meta.MetaAccessProvider;
  */
 public class BoxNodeCanonicalizationPhase extends BasePhase<CoreProviders> {
 
+    public static class Options {
+        //@formatter:off
+        @Option(help = "", type = Debug)
+        public static final OptionKey<Boolean> ReuseOufOutOfCacheBoxes = new OptionKey<>(true);
+        //@formatter:on
+    }
+
+    public static final EnumSet<JavaKind> OptimizedBoxVersions = EnumSet.of(JavaKind.Int, JavaKind.Long, JavaKind.Char, JavaKind.Short);
+
     @Override
     protected void run(StructuredGraph graph, CoreProviders context) {
-        for (BoxNode box : graph.getNodes(BoxNode.TYPE)) {
+        ControlFlowGraph cfg = null;
+        Graph.Mark before = graph.getMark();
+        boxLoop: for (BoxNode box : graph.getNodes(BoxNode.TYPE)) {
             FloatingNode canonical = canonicalizeBoxing(box, context.getMetaAccess(), context.getConstantReflection());
             if (canonical != null) {
                 box.replaceAtUsages((ValueNode) box.getLastLocationAccess(), InputType.Memory);
                 graph.replaceFixedWithFloating(box, canonical);
             }
+            if (box.isAlive() && OptimizedBoxVersions.contains(box.getBoxingKind())) {
+                if (box instanceof OptimizedAllocatingBoxNode) {
+                    continue;
+                }
+                if (Options.ReuseOufOutOfCacheBoxes.getValue(graph.getOptions())) {
+
+                    ValueNode boxedVal = box.getValue();
+                    assert boxedVal != null : "Box " + box + " has no value";
+
+                    // try to optimize with dominating unbox of the same value
+                    if (boxedVal instanceof UnboxNode && ((UnboxNode) boxedVal).getBoxingKind() == box.getBoxingKind()) {
+                        optimziBoxed(box, ((UnboxNode) boxedVal).getValue());
+                        continue boxLoop;
+                    }
+
+                    // try to optimize with dominating box of the same value
+                    if (box.isAlive()) {
+                        boxedValUsageLoop: for (Node usage : boxedVal.usages().snapshot()) {
+                            if (usage == box) {
+                                continue;
+                            }
+                            if (usage instanceof OptimizedAllocatingBoxNode) {
+                                continue;
+                            }
+                            if (usage instanceof BoxNode) {
+                                final BoxNode boxUsageOnBoxedVal = (BoxNode) usage;
+                                if (boxUsageOnBoxedVal.getBoxingKind() == box.getBoxingKind()) {
+                                    if (cfg == null) {
+                                        cfg = ControlFlowGraph.compute(graph, true, true, true, false);
+                                    }
+                                    if (graph.isNew(before, boxUsageOnBoxedVal) || graph.isNew(before, box)) {
+                                        continue boxedValUsageLoop;
+                                    }
+                                    Block boxUsageOnBoxedValBlock = cfg.blockFor(boxUsageOnBoxedVal);
+                                    Block originalBoxBlock = cfg.blockFor(box);
+                                    if (AbstractControlFlowGraph.dominates(boxUsageOnBoxedValBlock, originalBoxBlock)) {
+                                        if (boxUsageOnBoxedValBlock == originalBoxBlock) {
+                                            // check dominance within one block
+                                            for (FixedNode f : boxUsageOnBoxedValBlock.getNodes()) {
+                                                if (f == boxUsageOnBoxedVal) {
+                                                    // we found the usage first, it dominates "box"
+                                                    break;
+                                                } else if (f == box) {
+                                                    // they are within the same block but the
+                                                    // usage block does not dominate the box
+                                                    // block, that scenario will still be
+                                                    // optimizable but for the usage block node
+                                                    // later in the outer box loop
+                                                    continue boxedValUsageLoop;
+                                                }
+                                            }
+                                        }
+                                        optimziBoxed(box, boxUsageOnBoxedVal);
+                                        continue boxLoop;
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        }
+    }
+
+    private static void optimziBoxed(BoxNode toBeOptimzied, ValueNode boxedDominatingValueToUse) {
+        ValueNode other = toBeOptimzied.createOptimizedBox(boxedDominatingValueToUse);
+        if (other != toBeOptimzied) {
+            final StructuredGraph graph = toBeOptimzied.graph();
+            graph.replaceFixed(toBeOptimzied, graph.add(other));
+            graph.getDebug().dump(DebugContext.VERY_DETAILED_LEVEL, graph, "After replacing %s with %s", toBeOptimzied, other);
         }
     }
 
