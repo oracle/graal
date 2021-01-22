@@ -695,15 +695,16 @@ class PolyBenchBenchmarkSuite(mx_benchmark.VmBenchmarkSuite):
         if not hasattr(self, "_benchmarks"):
             self._benchmarks = []
             for group in ["interpreter", "compiler"]:
-                for (_, _, files) in os.walk(os.path.join(self._get_benchmark_root(), group)):
-                    for f in files:
-                        if os.path.splitext(f)[1] in self._extensions:
-                            self._benchmarks.append(group + "/" + f)
+                dir_path = os.path.join(self._get_benchmark_root(), group)
+                for f in os.listdir(dir_path):
+                    f_path = os.path.join(dir_path, f)
+                    if os.path.isfile(f_path) and os.path.splitext(f_path)[1] in self._extensions:
+                        self._benchmarks.append(os.path.join(group, f))
         return self._benchmarks
 
     def createCommandLineArgs(self, benchmarks, bmSuiteArgs):
-        if len(benchmarks) != 1:
-            mx.abort("Can only specify one benchmark at a time.")
+        if benchmarks is None or len(benchmarks) != 1:
+            mx.abort("Must specify one benchmark at a time.")
         vmArgs = self.vmArgs(bmSuiteArgs)
         benchmark_path = os.path.join(self._get_benchmark_root(), benchmarks[0])
         return ["--path=" + benchmark_path] + vmArgs

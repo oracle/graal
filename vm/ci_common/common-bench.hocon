@@ -36,7 +36,7 @@ vm_bench_polybench_linux_common: ${vm_bench_common} ${svm-common-linux-amd64} ${
 }
 
 vm_bench_polybench_linux_interpreter: ${vm_bench_polybench_linux_common} ${vm_java_8} {
-  bench_cmd: ${vm_bench_polybench_linux_common.base_cmd} [benchmark, "polybench:*[interpreter/fibonacci.wasm,interpreter/fibonacci.js,interpreter/fibonacci.rb,interpreter/fibonacci.c.native.bc,interpreter/sieve.wasm,interpreter/sieve.js,interpreter/sieve.rb,interpreter/sieve.c.native.bc]", --results-file, ${vm_bench_polybench_linux_interpreter.result_file}, --, "--polybench-vm=graalvm-${VM_ENV}"]
+  bench_cmd: ${vm_bench_polybench_linux_common.base_cmd} [benchmark, "polybench:~compiler/dispatch.js", --results-file, ${vm_bench_polybench_linux_interpreter.result_file}, --, "--polybench-vm=graalvm-${VM_ENV}"]
   run: [
     ${vm_bench_polybench_linux_interpreter.bench_cmd} ["--polybench-vm-config=jvm-interpreter"]
     ${vm_bench_common.upload}
