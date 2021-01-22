@@ -73,6 +73,11 @@ public class Dictionary implements TruffleObject {
     @SuppressWarnings({"unused"})
     @ExportMessage
     public Object readMember(String member) throws UnknownIdentifierException {
+        return get(member);
+    }
+
+    @TruffleBoundary
+    private Object get(String member) throws UnknownIdentifierException {
         final Object x = members.get(member);
         if (x != null) {
             return x;
@@ -104,6 +109,11 @@ public class Dictionary implements TruffleObject {
     @SuppressWarnings({"unused", "static-method"})
     @ExportMessage
     public boolean isMemberReadable(String member) {
+        return containsKey(member);
+    }
+
+    @TruffleBoundary
+    private boolean containsKey(String member) {
         return members.containsKey(member);
     }
 
@@ -116,6 +126,11 @@ public class Dictionary implements TruffleObject {
     @SuppressWarnings("unused")
     @ExportMessage(name = "toDisplayString")
     public Object toDisplayString(boolean allowSideEffects) {
+        return format();
+    }
+
+    @TruffleBoundary
+    private Object format() {
         return this.getClass().getName() + "[" + members + "]";
     }
 }
