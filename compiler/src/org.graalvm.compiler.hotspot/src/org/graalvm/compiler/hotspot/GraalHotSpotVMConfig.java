@@ -663,8 +663,12 @@ public class GraalHotSpotVMConfig extends GraalHotSpotVMConfigAccess {
         // JDK-8237497
         if (JDK < 15) {
             threadPollingPageOffset = getFieldOffset("Thread::_polling_page", Integer.class, "address", -1, JDK >= 10);
-        } else {
+        } else if (JDK < 16) {
             threadPollingPageOffset = getFieldOffset("Thread::_polling_page", Integer.class, "volatile void*");
+        } else {
+            // JDK-8253180
+            threadPollingPageOffset = getFieldOffset("Thread::_poll_data", Integer.class, "SafepointMechanism::ThreadData") +
+                            getFieldOffset("SafepointMechanism::ThreadData::_polling_page", Integer.class, "volatile uintptr_t");
         }
     }
 
