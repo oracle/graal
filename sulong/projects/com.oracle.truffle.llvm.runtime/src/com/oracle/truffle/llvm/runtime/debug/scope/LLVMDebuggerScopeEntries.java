@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2020, Oracle and/or its affiliates.
+ * Copyright (c) 2018, 2021, Oracle and/or its affiliates.
  *
  * All rights reserved.
  *
@@ -47,13 +47,13 @@ public final class LLVMDebuggerScopeEntries extends LLVMDebuggerValue {
 
     static final LLVMDebuggerScopeEntries EMPTY_SCOPE = new LLVMDebuggerScopeEntries();
 
-    @CompilerDirectives.CompilationFinal private LLVMDebuggerScopeEntries parentScope;
+    private LLVMDebuggerScopeEntries parentScope;
     private final ArrayList<String> flattenedScopeEntries;
     private final Map<String, Object> flattenedScopeMap;
 
     private final Map<String, Object> entries;
-    @CompilerDirectives.CompilationFinal private String scopeName;
-    @CompilerDirectives.CompilationFinal private boolean isScopeFlattened;
+    private String scopeName;
+    private boolean isScopeFlattened;
 
     LLVMDebuggerScopeEntries() {
         this.entries = new HashMap<>();
