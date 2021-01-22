@@ -45,9 +45,10 @@ import com.oracle.truffle.llvm.runtime.LLVMContext;
 import com.oracle.truffle.llvm.runtime.LLVMLanguage;
 import com.oracle.truffle.llvm.runtime.debug.scope.LLVMDebuggerScopeFactory;
 import com.oracle.truffle.llvm.runtime.debug.scope.LLVMSourceLocation;
+import com.oracle.truffle.llvm.runtime.interop.LLVMDataEscapeNode;
+import com.oracle.truffle.llvm.runtime.interop.convert.ForeignToLLVM.ForeignToLLVMType;
 import com.oracle.truffle.llvm.runtime.nodes.func.LLVMFunctionStartNode;
 import com.oracle.truffle.llvm.runtime.options.SulongEngineOption;
-import com.oracle.truffle.llvm.runtime.pointer.LLVMManagedPointer;
 import com.oracle.truffle.llvm.runtime.pointer.LLVMPointer;
 
 @ExportLibrary(NodeLibrary.class)
@@ -157,10 +158,7 @@ public abstract class LLVMInstrumentableNode extends LLVMNode implements Instrum
     public Object getRootInstance(Frame frame, @CachedContext(LLVMLanguage.class) LLVMContext ctx) throws UnsupportedMessageException {
         if (hasRootInstance(frame)) {
             LLVMPointer pointer = ctx.getSymbol(((LLVMFunctionStartNode) this.getRootNode()).getRootFunction());
-            if (LLVMManagedPointer.isInstance(pointer)) {
-                return LLVMManagedPointer.cast(pointer).getObject();
-            }
-            throw new IllegalStateException("The root function is not enclosed within a managed pointer.");
+            return LLVMDataEscapeNode.create(ForeignToLLVMType.POINTER).executeWithTarget(pointer);
         }
         throw UnsupportedMessageException.create();
     }
