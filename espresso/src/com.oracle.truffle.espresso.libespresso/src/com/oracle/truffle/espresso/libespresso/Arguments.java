@@ -82,15 +82,15 @@ public final class Arguments {
                         String value = optionString.substring("-agentlib:jdwp=".length());
                         builder.option("java.JDWPOptions", value);
                     } else if (optionString.startsWith("-javaagent:")) {
-                        String value = optionString.substring("-javaagent:jdwp=".length());
+                        String value = optionString.substring("-javaagent:".length());
                         handler.handleAgent("instrument=" + value, false);
                         handler.addModules("java.instrument");
                     } else if (optionString.startsWith("-agentlib:")) {
                         String value = optionString.substring("-agentlib:".length());
-                        handler.handleAgent(optionString, false);
+                        handler.handleAgent(value, false);
                     } else if (optionString.startsWith("-agentpath:")) {
                         String value = optionString.substring("-agentpath:".length());
-                        handler.handleAgent(optionString, true);
+                        handler.handleAgent(value, true);
                     } else if (optionString.startsWith("-D")) {
                         String key = optionString.substring("-D".length());
                         int splitAt = key.indexOf("=");

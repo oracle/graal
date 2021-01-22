@@ -68,19 +68,18 @@ class AgentLibrairies {
     void initialize() {
         Object ret;
         for (AgentLibrary agent : agents) {
+
             TruffleObject onLoad = lookupOnLoad(agent);
             if (onLoad == null || interop.isNull(onLoad)) {
                 throw abort();
             }
             try (RawBuffer optionBuffer = RawBuffer.getNativeString(agent.options)) {
-                try {
-                    ret = interop.execute(onLoad, context.getVM().getJavaVM(), optionBuffer.pointer(), NativeEnv.RawPointer.nullInstance());
-                    if (!interop.fitsInInt(ret) || interop.asInt(ret) != JNI_OK) {
-                        throw abort();
-                    }
-                } catch (UnsupportedTypeException | ArityException | UnsupportedMessageException e) {
+                ret = interop.execute(onLoad, context.getVM().getJavaVM(), optionBuffer.pointer(), NativeEnv.RawPointer.nullInstance());
+                if (!interop.fitsInInt(ret) || interop.asInt(ret) != JNI_OK) {
                     throw abort();
                 }
+            } catch (UnsupportedTypeException | ArityException | UnsupportedMessageException e) {
+                throw abort();
             }
         }
     }
@@ -96,7 +95,7 @@ class AgentLibrairies {
             options = agent.substring(eqIdx + 1);
         } else {
             name = agent.substring(1);
-            options = null;
+            options = "";
         }
         agents.add(new AgentLibrary(name, options, isAbsolutePath));
     }
@@ -118,7 +117,6 @@ class AgentLibrairies {
             throw abort();
         }
         agent.lib = library;
-        agent.isValid = true;
 
         TruffleObject onLoad;
         try {
@@ -129,7 +127,7 @@ class AgentLibrairies {
         return onLoad;
     }
 
-    private EspressoExitException abort() {
+    private static EspressoExitException abort() {
         throw new EspressoExitException(1);
     }
 
@@ -139,12 +137,10 @@ class AgentLibrairies {
         final String options;
 
         final boolean isAbsolutePath;
-        boolean isValid = false;
-        boolean isStaticLib;
 
         TruffleObject lib;
 
-        public AgentLibrary(String name, String options, boolean isAbsolutePath) {
+        AgentLibrary(String name, String options, boolean isAbsolutePath) {
             this.name = name;
             this.options = options;
             this.isAbsolutePath = isAbsolutePath;

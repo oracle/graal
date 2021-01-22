@@ -27,7 +27,7 @@ import org.graalvm.polyglot.Context;
 
 public class AgentAccumulator {
 
-    private static final String JAVA_AGENT = "java.Agent.";
+    private static final String JAVA_AGENT = "java.Agents.";
 
     private final Context.Builder builder;
     private int count = 0;
@@ -38,6 +38,6 @@ public class AgentAccumulator {
 
     public void handleAgent(String value, boolean isAbsolutePath) {
         char prepend = isAbsolutePath ? '+' : '-';
-        builder.option(JAVA_AGENT + count, prepend + value);
+        builder.option(JAVA_AGENT + count++, prepend + value);
     }
 }
