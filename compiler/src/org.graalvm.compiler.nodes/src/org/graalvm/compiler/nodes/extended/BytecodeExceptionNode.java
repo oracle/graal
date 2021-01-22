@@ -92,6 +92,15 @@ public final class BytecodeExceptionNode extends AbstractMemoryCheckpoint implem
          */
         ARRAY_STORE(1, ArrayStoreException.class),
 
+        /** Represents a {@link AssertionError} without arguments. */
+        ASSERTION_ERROR_NULLARY(0, AssertionError.class),
+
+        /**
+         * Represents a {@link AssertionError} with one required Object argument for the error
+         * message.
+         */
+        ASSERTION_ERROR_OBJECT(1, AssertionError.class),
+
         /**
          * Represents a {@link IllegalArgumentException} with a fixed message. No additional
          * arguments are allowed.

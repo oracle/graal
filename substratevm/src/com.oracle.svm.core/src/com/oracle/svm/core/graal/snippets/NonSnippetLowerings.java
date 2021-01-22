@@ -121,6 +121,8 @@ public abstract class NonSnippetLowerings {
         getCachedExceptionDescriptors.put(BytecodeExceptionKind.ILLEGAL_ARGUMENT_EXCEPTION_NEGATIVE_LENGTH, ImplicitExceptions.GET_CACHED_ILLEGAL_ARGUMENT_EXCEPTION);
         getCachedExceptionDescriptors.put(BytecodeExceptionKind.ILLEGAL_ARGUMENT_EXCEPTION_ARGUMENT_IS_NOT_AN_ARRAY, ImplicitExceptions.GET_CACHED_ILLEGAL_ARGUMENT_EXCEPTION);
         getCachedExceptionDescriptors.put(BytecodeExceptionKind.DIVISION_BY_ZERO, ImplicitExceptions.GET_CACHED_ARITHMETIC_EXCEPTION);
+        getCachedExceptionDescriptors.put(BytecodeExceptionKind.ASSERTION_ERROR_NULLARY, ImplicitExceptions.GET_CACHED_ASSERTION_ERROR);
+        getCachedExceptionDescriptors.put(BytecodeExceptionKind.ASSERTION_ERROR_OBJECT, ImplicitExceptions.GET_CACHED_ASSERTION_ERROR);
 
         createExceptionDescriptors = new EnumMap<>(BytecodeExceptionKind.class);
         createExceptionDescriptors.put(BytecodeExceptionKind.NULL_POINTER, ImplicitExceptions.CREATE_NULL_POINTER_EXCEPTION);
@@ -130,6 +132,8 @@ public abstract class NonSnippetLowerings {
         createExceptionDescriptors.put(BytecodeExceptionKind.ILLEGAL_ARGUMENT_EXCEPTION_NEGATIVE_LENGTH, ImplicitExceptions.CREATE_ILLEGAL_ARGUMENT_EXCEPTION);
         createExceptionDescriptors.put(BytecodeExceptionKind.ILLEGAL_ARGUMENT_EXCEPTION_ARGUMENT_IS_NOT_AN_ARRAY, ImplicitExceptions.CREATE_ILLEGAL_ARGUMENT_EXCEPTION);
         createExceptionDescriptors.put(BytecodeExceptionKind.DIVISION_BY_ZERO, ImplicitExceptions.CREATE_DIVISION_BY_ZERO_EXCEPTION);
+        createExceptionDescriptors.put(BytecodeExceptionKind.ASSERTION_ERROR_NULLARY, ImplicitExceptions.CREATE_ASSERTION_ERROR_NULLARY);
+        createExceptionDescriptors.put(BytecodeExceptionKind.ASSERTION_ERROR_OBJECT, ImplicitExceptions.CREATE_ASSERTION_ERROR_OBJECT);
 
         throwCachedExceptionDescriptors = new EnumMap<>(BytecodeExceptionKind.class);
         throwCachedExceptionDescriptors.put(BytecodeExceptionKind.NULL_POINTER, ImplicitExceptions.THROW_CACHED_NULL_POINTER_EXCEPTION);
@@ -139,6 +143,8 @@ public abstract class NonSnippetLowerings {
         throwCachedExceptionDescriptors.put(BytecodeExceptionKind.ILLEGAL_ARGUMENT_EXCEPTION_NEGATIVE_LENGTH, ImplicitExceptions.THROW_CACHED_ILLEGAL_ARGUMENT_EXCEPTION);
         throwCachedExceptionDescriptors.put(BytecodeExceptionKind.ILLEGAL_ARGUMENT_EXCEPTION_ARGUMENT_IS_NOT_AN_ARRAY, ImplicitExceptions.THROW_CACHED_ILLEGAL_ARGUMENT_EXCEPTION);
         throwCachedExceptionDescriptors.put(BytecodeExceptionKind.DIVISION_BY_ZERO, ImplicitExceptions.THROW_CACHED_ARITHMETIC_EXCEPTION);
+        throwCachedExceptionDescriptors.put(BytecodeExceptionKind.ASSERTION_ERROR_NULLARY, ImplicitExceptions.THROW_CACHED_ASSERTION_ERROR);
+        throwCachedExceptionDescriptors.put(BytecodeExceptionKind.ASSERTION_ERROR_OBJECT, ImplicitExceptions.THROW_CACHED_ASSERTION_ERROR);
 
         throwNewExceptionDescriptors = new EnumMap<>(BytecodeExceptionKind.class);
         throwNewExceptionDescriptors.put(BytecodeExceptionKind.NULL_POINTER, ImplicitExceptions.THROW_NEW_NULL_POINTER_EXCEPTION);
@@ -148,6 +154,8 @@ public abstract class NonSnippetLowerings {
         throwNewExceptionDescriptors.put(BytecodeExceptionKind.ILLEGAL_ARGUMENT_EXCEPTION_NEGATIVE_LENGTH, ImplicitExceptions.THROW_NEW_ILLEGAL_ARGUMENT_EXCEPTION_WITH_ARGS);
         throwNewExceptionDescriptors.put(BytecodeExceptionKind.ILLEGAL_ARGUMENT_EXCEPTION_ARGUMENT_IS_NOT_AN_ARRAY, ImplicitExceptions.THROW_NEW_ILLEGAL_ARGUMENT_EXCEPTION_WITH_ARGS);
         throwNewExceptionDescriptors.put(BytecodeExceptionKind.DIVISION_BY_ZERO, ImplicitExceptions.THROW_NEW_DIVISION_BY_ZERO_EXCEPTION);
+        throwNewExceptionDescriptors.put(BytecodeExceptionKind.ASSERTION_ERROR_NULLARY, ImplicitExceptions.THROW_NEW_ASSERTION_ERROR_NULLARY);
+        throwNewExceptionDescriptors.put(BytecodeExceptionKind.ASSERTION_ERROR_OBJECT, ImplicitExceptions.THROW_NEW_ASSERTION_ERROR_OBJECT);
     }
 
     private ForeignCallDescriptor lookupBytecodeException(BytecodeExceptionKind exceptionKind, NodeInputList<ValueNode> exceptionArguments, StructuredGraph graph,
