@@ -30,40 +30,38 @@
 
 package com.oracle.truffle.llvm.runtime.interop;
 
-import com.oracle.truffle.api.dsl.Cached;
-import com.oracle.truffle.api.dsl.CachedContext;
+import java.lang.reflect.InvocationTargetException;
+
 import com.oracle.truffle.api.dsl.Specialization;
-import com.oracle.truffle.api.interop.ArityException;
-import com.oracle.truffle.api.interop.InteropLibrary;
-import com.oracle.truffle.api.interop.UnsupportedMessageException;
-import com.oracle.truffle.api.interop.UnsupportedTypeException;
-import com.oracle.truffle.api.library.CachedLibrary;
-import com.oracle.truffle.llvm.runtime.LLVMContext;
-import com.oracle.truffle.llvm.runtime.LLVMFunction;
-import com.oracle.truffle.llvm.runtime.LLVMLanguage;
+import com.oracle.truffle.api.exception.AbstractTruffleException;
 import com.oracle.truffle.llvm.runtime.nodes.api.LLVMNode;
 import com.oracle.truffle.llvm.runtime.nodes.func.LLVMTypeIdForExceptionNode;
-import com.oracle.truffle.llvm.runtime.nodes.others.LLVMDynAccessSymbolNode;
+import com.oracle.truffle.llvm.runtime.pointer.LLVMManagedPointer;
 import com.oracle.truffle.llvm.runtime.pointer.LLVMPointer;
 
 public abstract class LLVMForeignCreateUnwindHeaderNode extends LLVMNode {
     @Child LLVMTypeIdForExceptionNode typeIdForExceptionNode;
 
-    public abstract LLVMPointer execute(RuntimeException e) throws UnsupportedTypeException, ArityException, UnsupportedMessageException;
+    public abstract LLVMPointer execute(AbstractTruffleException e);
 
     @Specialization
-    public LLVMPointer doRuntimeException(RuntimeException e,
-                    @CachedContext(LLVMLanguage.class) LLVMContext context,
-                    @CachedLibrary(limit = "5") InteropLibrary interop,
-                    @Cached LLVMDynAccessSymbolNode accessSymbolNode)
-                    throws UnsupportedTypeException, ArityException, UnsupportedMessageException {
-        LLVMFunction allocateExceptionFunction = context.getGlobalScope().getFunction("__cxa_allocate_exception");
-        LLVMPointer fnAllocExPointer = accessSymbolNode.execute(allocateExceptionFunction);
-        Object unwindHeader = interop.execute(fnAllocExPointer, LLVMNode.ADDRESS_SIZE_IN_BYTES);
-        return LLVMPointer.cast(unwindHeader);
+    public LLVMPointer doRuntimeException(AbstractTruffleException e) {
+        Object thrownObject = e.getMessage();
+
+        if (e.getClass().getName().contains("UserScriptException")) {
+            // TODO replace by more generic version
+            try {
+                thrownObject = e.getClass().getDeclaredMethod("getErrorObject").invoke(e);
+            } catch (NoSuchMethodException | IllegalAccessException | IllegalArgumentException | InvocationTargetException | SecurityException e1) {
+            }
+        }
+
+        return LLVMManagedPointer.create(new LLVMManagedExceptionObject(thrownObject));
+
     }
 
     public static LLVMForeignCreateUnwindHeaderNode create() {
         return LLVMForeignCreateUnwindHeaderNodeGen.create();
     }
+
 }

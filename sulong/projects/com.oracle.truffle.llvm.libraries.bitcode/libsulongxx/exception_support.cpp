@@ -29,9 +29,21 @@
  */
 
 #include <cstdio>
+//#include "../../com.oracle.truffle.llvm.libraries.graalvm.llvm/include/graalvm/llvm/polyglot.h"
+//#include <graalvm/llvm/polyglot.h>
 
 #include "cxa_exception.h"
 #include "private_typeinfo.h"
+#include<iostream>
+namespace __extern_C {
+namespace ___sulong_import_base64 {
+
+namespace bGliYysrYWJp {
+static void* __cxa_begin_catch(void* unwind);
+static void __cxa_end_catch();
+}
+}
+}
 
 namespace __cxxabiv1 {
 
@@ -44,23 +56,22 @@ static __cxa_exception *cxa_exception_from_exception_unwind_exception(_Unwind_Ex
 
 static void *thrown_object_from_cxa_exception(__cxa_exception *exception_header);
 
-static void* __cxa_begin_catch(void* unwind);
+//static void* __cxa_begin_catch(void* unwind);
 
 } // namespace bGliYysrYWJp
 } // namespace ___sulong_import_base64
 
 extern "C" {
 
-unsigned int sulong_eh_canCatch(_Unwind_Exception *unwindHeader, std::type_info *catchType) {
+//static void* _SULONG_IMPORT_SYMBOL();
 
-	if(polyglot_is_value(unwindHeader)) {
-		...
-	}
+unsigned int sulong_eh_canCatch(_Unwind_Exception *unwindHeader, std::type_info *catchType) {
 
     __cxa_exception *ex = ___sulong_import_base64::bGliYysrYWJp::cxa_exception_from_exception_unwind_exception(unwindHeader);
     void *p = ___sulong_import_base64::bGliYysrYWJp::thrown_object_from_cxa_exception(ex);
     __shim_type_info *et = dynamic_cast<__shim_type_info *>(ex->exceptionType);
     __shim_type_info *ct = dynamic_cast<__shim_type_info *>(catchType);
+
     if (et == NULL || ct == NULL) {
         fprintf(stderr, "libsulong: Type error in sulong_eh_canCatch(...).\n");
         abort();
@@ -73,9 +84,28 @@ unsigned int sulong_eh_canCatch(_Unwind_Exception *unwindHeader, std::type_info 
     }
 }
 
-void* __cxa_begin_catch(void* unwind) {
+struct Foreign_unwind_header {
+	int64_t exception_class;
+	void *foreign_object;
+};
 
-	___sulong_import_base64::bGliYysrYWJp::__cxa_begin_catch(unwind);
+void* __cxa_begin_catch(void* unwind) {
+	Foreign_unwind_header* v = (Foreign_unwind_header*) unwind;
+	if(v->exception_class == 98765) {//TODO
+		return v->foreign_object;
+	} 
+	return __extern_C::___sulong_import_base64::bGliYysrYWJp::__cxa_begin_catch(unwind);
+}
+
+void __cxa_end_catch() {
+	//for foreign exceptions via the interop library, globals/headers are nullptr
+	__cxa_eh_globals* globals = __cxa_get_globals_fast(); 
+	if(globals) {	
+    	__cxa_exception* exception_header = globals->caughtExceptions;
+    	if(exception_header) {
+			__extern_C::___sulong_import_base64::bGliYysrYWJp::__cxa_end_catch();
+		}
+	}
 }
 
 } // extern "C"

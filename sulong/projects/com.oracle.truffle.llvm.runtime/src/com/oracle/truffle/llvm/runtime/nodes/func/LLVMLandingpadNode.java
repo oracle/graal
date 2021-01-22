@@ -30,6 +30,8 @@
 package com.oracle.truffle.llvm.runtime.nodes.func;
 
 import com.oracle.truffle.api.CompilerDirectives;
+import com.oracle.truffle.api.dsl.Cached;
+import com.oracle.truffle.api.dsl.CachedContext;
 import com.oracle.truffle.api.dsl.NodeChild;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.frame.FrameSlot;
@@ -42,7 +44,10 @@ import com.oracle.truffle.api.nodes.UnexpectedResultException;
 import com.oracle.truffle.llvm.runtime.LLVMBitcodeLibraryFunctions;
 import com.oracle.truffle.llvm.runtime.LLVMContext;
 import com.oracle.truffle.llvm.runtime.LLVMLanguage;
+import com.oracle.truffle.llvm.runtime.LLVMSymbol;
 import com.oracle.truffle.llvm.runtime.except.LLVMUserException;
+import com.oracle.truffle.llvm.runtime.interop.LLVMManagedExceptionObject;
+import com.oracle.truffle.llvm.runtime.interop.LLVMManagedLandingpadValue;
 import com.oracle.truffle.llvm.runtime.memory.LLVMStack;
 import com.oracle.truffle.llvm.runtime.nodes.api.LLVMExpressionNode;
 import com.oracle.truffle.llvm.runtime.nodes.api.LLVMInstrumentableNode;
@@ -54,6 +59,8 @@ import com.oracle.truffle.llvm.runtime.nodes.memory.store.LLVMPointerStoreNode;
 import com.oracle.truffle.llvm.runtime.nodes.memory.store.LLVMPointerStoreNodeGen;
 import com.oracle.truffle.llvm.runtime.nodes.op.ToComparableValue;
 import com.oracle.truffle.llvm.runtime.nodes.op.ToComparableValueNodeGen;
+import com.oracle.truffle.llvm.runtime.nodes.others.LLVMDynAccessSymbolNode;
+import com.oracle.truffle.llvm.runtime.pointer.LLVMManagedPointer;
 import com.oracle.truffle.llvm.runtime.pointer.LLVMPointer;
 
 public abstract class LLVMLandingpadNode extends LLVMExpressionNode {
@@ -88,12 +95,10 @@ public abstract class LLVMLandingpadNode extends LLVMExpressionNode {
             if (clauseId == 0 && !cleanup) {
                 throw exception;
             } else {
-                LLVMPointer landingPadValue = allocateLandingPadValue.executeLLVMPointer(frame);
-                writePointer.executeWithTarget(landingPadValue, unwindHeader);
-                writeI32.executeWithTarget(landingPadValue.increment(LLVMExpressionNode.ADDRESS_SIZE_IN_BYTES), clauseId);
-                return landingPadValue;
+                LLVMManagedLandingpadValue landingpadValue = new LLVMManagedLandingpadValue(unwindHeader, clauseId);
+                return LLVMManagedPointer.create(landingpadValue);
             }
-        } catch (FrameSlotTypeException | UnexpectedResultException e) {
+        } catch (FrameSlotTypeException e) {
             CompilerDirectives.transferToInterpreter();
             throw new IllegalStateException(e);
         }
@@ -159,13 +164,24 @@ public abstract class LLVMLandingpadNode extends LLVMExpressionNode {
         }
 
         @Specialization
-        int getIdentifier(LLVMStack stack, LLVMPointer unwindHeader, LLVMPointer catchType) {
+        int getIdentifier(LLVMStack stack, LLVMPointer unwindHeader, LLVMPointer catchType,
+                        @Cached LLVMDynAccessSymbolNode accessSymbolNode,
+                        @CachedContext(LLVMLanguage.class) LLVMContext context) {
             if (catchType.isNull()) {
                 /*
                  * If ExcType is null, any exception matches, so the landing pad should always be
                  * entered. catch (...)
                  */
                 return 1;
+            }
+            if (LLVMManagedPointer.isInstance(unwindHeader)) {
+                Object eObj = LLVMManagedPointer.cast(unwindHeader).getObject();
+                if (eObj instanceof LLVMManagedExceptionObject) {
+                    // return (catchtype==void*) ? 1 : 0
+                    LLVMSymbol ti = context.getGlobalScope().get("_ZTIPv");
+                    LLVMPointer resolved = accessSymbolNode.execute(ti);
+                    return resolved.isSame(catchType) ? 1 : 0;
+                }
             }
             if (getCanCatch().canCatch(stack, unwindHeader, catchType) != 0) {
                 return (int) toComparableValue.executeWithTarget(catchType);

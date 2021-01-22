@@ -429,13 +429,15 @@ final class ParserDriver {
                 TruffleFile file = createTruffleFile(lib, null, binaryParserResult.getLocator(), "<dependency library>");
                 CallTarget calls = language.getCachedLibrary(file.getPath());
                 if (calls != null && !dependencies.contains(calls)) {
-                    dependencies.add(calls);
+                    // TODO (pichristoph) add (0, obj)
+                    dependencies.add(0, calls);
                 } else {
                     Object sourceOrCallTarget = createDependencySource(lib, lib, true, file);
                     // A source is null if it's a native library, which will be added to the NFI
                     // context extension instead.
                     if (sourceOrCallTarget != null && !dependencies.contains(sourceOrCallTarget)) {
-                        dependencies.add(sourceOrCallTarget);
+                        // TODO (pichristoph) add (0, obj)
+                        dependencies.add(0, sourceOrCallTarget);
                     }
                 }
             }

@@ -167,6 +167,11 @@ final class CXXDemangler {
     }
 
     static String encodeNamespace(ArrayList<String> namespaces) {
+        if (namespaces.get(0).equals("__extern_C")) {
+            // TODO
+            return encodeExternC(namespaces.get(namespaces.size() - 1));
+        }
+
         StringBuilder sb = new StringBuilder();
         sb.append(NAMESPACE_PREFIX);
         // the last entry is the remaining symbol
@@ -180,6 +185,24 @@ final class CXXDemangler {
         }
         sb.append(namespaces.get(numNamespaces));
         return sb.toString();
+    }
+
+    static String encodeExternC(String string) {
+        int idx = 1;
+        int number = 0;
+        while (idx < string.length()) {
+            char c = string.charAt(idx);
+            if (c >= '0' && c <= '9') {
+                int d = c - '0';
+                number *= 10;
+                number += d;
+                idx++;
+            } else {
+                break;
+            }
+        }
+        String ret = string.substring(idx, idx + number);
+        return ret;
     }
 
 }
