@@ -26,6 +26,9 @@ vm_java_15Debug: ${labsjdk-ce-15Debug} {
     BASE_JDK_SHORT_VERSION: "15"
   }
 }
+vm_common_windows_jdk8: ${svm-common-windows-openjdk8}
+vm_windows_jdk8_devkit_var: "$VS2017_15_5_5_1_0_ROOT"
+
 svm_suite: /substratevm
 vm_extra_suites: "truffleruby,graalpython,fastr,/wasm"
 vm_extra_suites_aarch64: "/wasm"
@@ -156,14 +159,14 @@ builds += [
     ]
     name: deploy-vm-maven-darwin-amd64
   }
-  ${deploy_daily_vm_windows} ${svm-common-windows} ${maven_base_8_native} {
+  ${deploy_daily_vm_windows} ${vm_common_windows_jdk8} ${maven_base_8_native} {
     run: [
       ${maven_base_8_native.build}
       ${maven_base_8_native.deploy} [--dry-run, "lafo-maven"]
     ]
     name: gate-vm-maven-dry-run-windows-amd64
   }
-  ${deploy_daily_vm_windows} ${svm-common-windows} ${maven_base_8_native} {
+  ${deploy_daily_vm_windows} ${vm_common_windows_jdk8} ${maven_base_8_native} {
     run: [
       ${maven_base_8_native.build}
       ${maven_base_8_native.deploy} ["lafo-maven"]

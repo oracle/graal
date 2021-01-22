@@ -154,6 +154,7 @@ public class JNIRegistrationAwt extends JNIRegistrationUtil implements Feature {
 
         NativeLibrarySupport.singleton().preregisterUninitializedBuiltinLibrary("fontmanager");
         nativeLibraries.addStaticJniLibrary("fontmanager", isHeadless() ? "awt_headless" : "awt_xawt");
+        nativeLibraries.addStaticJniLibrary("harfbuzz");
 
         PlatformNativeLibrarySupport.singleton().addBuiltinPkgNativePrefix("sun_font");
 

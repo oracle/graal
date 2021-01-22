@@ -127,16 +127,13 @@ builds += [
   ${darwin-amd64} ${oraclejdk11} ${gateLite} ${truffleWeekly} {
     name: "gate-truffle-mac-lite-oraclejdk-11"
   },
-  ${windows-amd64} ${oraclejdk8} ${truffleCommon} {
+  ${windows-amd64} ${oraclejdk8} ${truffleCommon} ${devkits.windows-oraclejdk8} {
     # TODO make that a full gate run
     # currently, some truffle unittests fail on windows
     run : [
       ["mx", "build" ],
       ["mx", "unittest", "--verbose" ]
     ]
-    packages : {
-      msvc : "==10.0"
-    }
     targets : [gate],
     name: "gate-truffle-nfi-windows-8",
   },
