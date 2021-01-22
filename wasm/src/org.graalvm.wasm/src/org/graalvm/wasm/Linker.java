@@ -101,7 +101,7 @@ public class Linker {
         // We nevertheless invalidate the compiled code that reaches this point.
         if (instance.isLinkFailed()) {
             // If the linking of this module failed already, then throw.
-            throw WasmException.create(Failure.UNSPECIFIED_UNLINKABLE, "Linking of module " + instance.module() + " previously failed.");
+            throw WasmException.format(Failure.UNSPECIFIED_UNLINKABLE, "Linking of module %s previously failed.", instance.module());
         } else if (instance.isNonLinked()) {
             // TODO: Once we support multi-threading, add adequate synchronization here.
             tryLinkOutsidePartialEvaluation(instance);
