@@ -51,12 +51,18 @@ import com.oracle.truffle.api.nodes.SlowPathException;
  */
 public final class FinalLocationException extends SlowPathException {
     private static final long serialVersionUID = -30188494510914293L;
+    private static final FinalLocationException INSTANCE = new FinalLocationException();
 
     /**
      * Default constructor.
      *
      * @since 0.8 or earlier
      */
+    @Deprecated
     public FinalLocationException() {
+    }
+
+    static FinalLocationException instance() {
+        return INSTANCE;
     }
 }

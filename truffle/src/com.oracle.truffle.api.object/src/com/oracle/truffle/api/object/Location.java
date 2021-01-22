@@ -66,13 +66,13 @@ public abstract class Location {
     /** @since 0.8 or earlier */
     protected static IncompatibleLocationException incompatibleLocation() throws IncompatibleLocationException {
         CompilerDirectives.transferToInterpreterAndInvalidate();
-        throw new IncompatibleLocationException();
+        throw IncompatibleLocationException.instance();
     }
 
     /** @since 0.8 or earlier */
     protected static FinalLocationException finalLocation() throws FinalLocationException {
         CompilerDirectives.transferToInterpreterAndInvalidate();
-        throw new FinalLocationException();
+        throw FinalLocationException.instance();
     }
 
     /**

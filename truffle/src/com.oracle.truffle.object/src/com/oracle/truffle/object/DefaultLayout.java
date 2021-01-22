@@ -56,7 +56,6 @@ import org.graalvm.nativeimage.ImageInfo;
 import com.oracle.truffle.api.Assumption;
 import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.object.DynamicObject;
-import com.oracle.truffle.api.object.Layout;
 import com.oracle.truffle.api.object.Shape;
 import com.oracle.truffle.api.object.Shape.Allocator;
 import com.oracle.truffle.object.CoreLocations.LongLocation;
@@ -64,6 +63,7 @@ import com.oracle.truffle.object.CoreLocations.ObjectLocation;
 
 import sun.misc.Unsafe;
 
+@SuppressWarnings("deprecation")
 class DefaultLayout extends LayoutImpl {
     private final ObjectLocation[] objectFields;
     private final LongLocation[] primitiveFields;
@@ -99,7 +99,7 @@ class DefaultLayout extends LayoutImpl {
         }
     }
 
-    public static LayoutImpl createCoreLayout(Layout.Builder builder) {
+    public static LayoutImpl createCoreLayout(com.oracle.truffle.api.object.Layout.Builder builder) {
         Class<? extends DynamicObject> type = getType(builder);
         EnumSet<ImplicitCast> allowedImplicitCasts = getAllowedImplicitCasts(builder);
         int implicitCastFlags = implicitCastFlags(allowedImplicitCasts);

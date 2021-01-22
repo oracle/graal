@@ -51,12 +51,12 @@ import org.junit.Test;
 
 import com.oracle.truffle.api.object.DynamicObject;
 import com.oracle.truffle.api.object.DynamicObjectLibrary;
-import com.oracle.truffle.api.object.Layout;
 import com.oracle.truffle.api.object.ObjectType;
 import com.oracle.truffle.api.object.Shape;
 
+@SuppressWarnings("deprecation")
 public class LeakCheckTest {
-    private static final Layout LAYOUT = Layout.createLayout();
+    private static final com.oracle.truffle.api.object.Layout LAYOUT = com.oracle.truffle.api.object.Layout.createLayout();
     private static final DynamicObjectLibrary LIBRARY = DynamicObjectLibrary.getUncached();
 
     @Test

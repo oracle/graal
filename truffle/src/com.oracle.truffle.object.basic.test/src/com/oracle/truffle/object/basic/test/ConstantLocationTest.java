@@ -53,13 +53,13 @@ import com.oracle.truffle.api.object.DynamicObject;
 import com.oracle.truffle.api.object.DynamicObjectLibrary;
 import com.oracle.truffle.api.object.FinalLocationException;
 import com.oracle.truffle.api.object.IncompatibleLocationException;
-import com.oracle.truffle.api.object.Layout;
 import com.oracle.truffle.api.object.Location;
 import com.oracle.truffle.api.object.ObjectType;
 import com.oracle.truffle.api.object.Property;
 import com.oracle.truffle.api.object.Shape;
 import com.oracle.truffle.api.test.AbstractParametrizedLibraryTest;
 
+@SuppressWarnings("deprecation")
 @RunWith(Parameterized.class)
 public class ConstantLocationTest extends AbstractParametrizedLibraryTest {
 
@@ -68,7 +68,7 @@ public class ConstantLocationTest extends AbstractParametrizedLibraryTest {
         return Arrays.asList(TestRun.values());
     }
 
-    final Layout layout = Layout.newLayout().build();
+    final com.oracle.truffle.api.object.Layout layout = com.oracle.truffle.api.object.Layout.newLayout().build();
     final Shape rootShape = layout.createShape(new ObjectType());
     final Object value = new Object();
     final Location constantLocation = rootShape.allocator().constantLocation(value);

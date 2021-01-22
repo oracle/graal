@@ -44,8 +44,6 @@ import org.junit.Assert;
 import org.junit.Test;
 
 import com.oracle.truffle.api.object.DynamicObject;
-import com.oracle.truffle.api.object.Layout;
-import com.oracle.truffle.api.object.Layout.ImplicitCast;
 import com.oracle.truffle.api.object.Location;
 import com.oracle.truffle.api.object.ObjectType;
 import com.oracle.truffle.api.object.Shape;
@@ -53,7 +51,7 @@ import com.oracle.truffle.api.object.Shape;
 @SuppressWarnings("deprecation")
 public class LegacySharedShapeTest {
 
-    final Layout layout = Layout.newLayout().addAllowedImplicitCast(ImplicitCast.IntToLong).build();
+    final com.oracle.truffle.api.object.Layout layout = com.oracle.truffle.api.object.Layout.newLayout().addAllowedImplicitCast(com.oracle.truffle.api.object.Layout.ImplicitCast.IntToLong).build();
     final Shape rootShape = layout.createShape(new ObjectType());
     final Shape sharedShape = rootShape.makeSharedShape();
 

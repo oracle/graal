@@ -127,8 +127,8 @@ import com.oracle.svm.hosted.FeatureImpl.BeforeCompilationAccessImpl;
 import com.oracle.svm.hosted.FeatureImpl.DuringAnalysisAccessImpl;
 import com.oracle.svm.hosted.SVMHost;
 import com.oracle.svm.hosted.meta.HostedType;
-import com.oracle.svm.hosted.phases.IntrinsifyMethodHandlesInvocationPlugin;
 import com.oracle.svm.hosted.phases.ExperimentalNativeImageInlineDuringParsingSupport;
+import com.oracle.svm.hosted.phases.IntrinsifyMethodHandlesInvocationPlugin;
 import com.oracle.svm.hosted.snippets.ReflectionPlugins;
 import com.oracle.svm.hosted.snippets.SubstrateGraphBuilderPlugins;
 import com.oracle.svm.truffle.api.SubstrateOptimizedCallTarget;
@@ -156,7 +156,6 @@ import com.oracle.truffle.api.library.LibraryFactory;
 import com.oracle.truffle.api.nodes.ExplodeLoop;
 import com.oracle.truffle.api.nodes.RootNode;
 import com.oracle.truffle.api.object.DynamicObject;
-import com.oracle.truffle.api.object.Layout;
 import com.oracle.truffle.api.profiles.Profile;
 import com.oracle.truffle.api.utilities.TriState;
 
@@ -696,12 +695,13 @@ public final class TruffleFeature implements com.oracle.svm.core.graal.GraalFeat
 
     private final Set<Class<?>> dynamicObjectClasses = new HashSet<>();
 
+    @SuppressWarnings("deprecation")
     private void initializeDynamicObjectLayouts(AnalysisType type) {
         if (type.isInstantiated()) {
             Class<?> javaClass = type.getJavaClass();
             if (DynamicObject.class.isAssignableFrom(javaClass) && dynamicObjectClasses.add(javaClass)) {
                 // Force layout initialization.
-                Layout.newLayout().type(javaClass.asSubclass(DynamicObject.class)).build();
+                com.oracle.truffle.api.object.Layout.newLayout().type(javaClass.asSubclass(DynamicObject.class)).build();
             }
         }
     }
