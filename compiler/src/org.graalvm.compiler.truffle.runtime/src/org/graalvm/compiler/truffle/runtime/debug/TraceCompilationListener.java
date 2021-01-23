@@ -84,7 +84,7 @@ public final class TraceCompilationListener extends AbstractGraalTruffleRuntimeL
     private Map<String, Object> queueProperties(OptimizedCallTarget target, int tier) {
         Map<String, Object> properties = new LinkedHashMap<>();
         GraalTruffleRuntimeListener.addASTSizeProperty(target, properties);
-        properties.put("Tier", tier);
+        properties.put("Tier", Integer.toString(tier)); // to avoid padding
         properties.put("Calls/Thres", String.format("%7d/%5d", target.getCallCount(), target.engine.callThresholdInInterpreter));
         properties.put("CallsAndLoop/Thres", String.format("%7d/%5d", target.getCallAndLoopCount(), target.engine.callAndLoopThresholdInInterpreter));
         properties.put("Src", formatSourceSection(target.getRootNode().getSourceSection()));
@@ -162,7 +162,7 @@ public final class TraceCompilationListener extends AbstractGraalTruffleRuntimeL
         int dispatchedCalls = calls - inlinedCalls;
         Map<String, Object> properties = new LinkedHashMap<>();
         GraalTruffleRuntimeListener.addASTSizeProperty(target, properties);
-        properties.put("Tier", tier);
+        properties.put("Tier", Integer.toString(tier)); // to avoid padding
         properties.put("Time", String.format("%4.0f(%4.0f+%-4.0f)ms", //
                         (timeCompilationFinished - compilation.timeCompilationStarted) / 1e6, //
                         (compilation.timePartialEvaluationFinished - compilation.timeCompilationStarted) / 1e6, //
