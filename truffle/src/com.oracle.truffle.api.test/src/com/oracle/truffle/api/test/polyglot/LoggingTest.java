@@ -1165,7 +1165,7 @@ public class LoggingTest {
             // Expected
         }
         try {
-            r.setThreadID(10);
+            setLoggerRecordThreadID(r);
             Assert.fail("Should not reach here.");
         } catch (UnsupportedOperationException e) {
             // Expected
@@ -1176,6 +1176,11 @@ public class LoggingTest {
         } catch (UnsupportedOperationException e) {
             // Expected
         }
+    }
+
+    @SuppressWarnings("deprecation")
+    private static void setLoggerRecordThreadID(final LogRecord r) {
+        r.setThreadID(10);
     }
 
     @SuppressWarnings("deprecation")

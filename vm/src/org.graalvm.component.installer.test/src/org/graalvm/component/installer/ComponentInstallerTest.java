@@ -545,7 +545,7 @@ public class ComponentInstallerTest extends CommandTestBase {
 
         Class<?> testClazz = Class.forName(InstallerExecHelper.class.getName(), true, ldr);
 
-        Object inst = testClazz.newInstance();
+        Object inst = testClazz.getDeclaredConstructor().newInstance();
         Method m = testClazz.getMethod("performGraalVMHomeAutodetection");
         String res = (String) m.invoke(inst);
 
