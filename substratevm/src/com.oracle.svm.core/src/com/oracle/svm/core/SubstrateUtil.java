@@ -783,10 +783,10 @@ public class SubstrateUtil {
     public static class NativeImageLoadingShield {
         @Platforms(Platform.HOSTED_ONLY.class)
         public static boolean isNeverInline(ResolvedJavaMethod method) {
-            String[] neverInline = SubstrateOptions.NeverInline.getValue();
+            List<String> neverInline = SubstrateOptions.NeverInline.getValue().values();
 
             return GuardedAnnotationAccess.isAnnotationPresent(method, com.oracle.svm.core.annotate.NeverInline.class) ||
-                            (neverInline != null && Arrays.stream(neverInline).anyMatch(re -> MethodFilter.parse(re).matches(method)));
+                            (neverInline != null && neverInline.stream().anyMatch(re -> MethodFilter.parse(re).matches(method)));
         }
     }
 }

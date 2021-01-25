@@ -173,11 +173,9 @@ public class OptionKey<T> {
      * @param values map of option values
      * @param v the value to set for this key in {@code values}
      */
-    @SuppressWarnings("unchecked")
     public void putIfAbsent(EconomicMap<OptionKey<?>, Object> values, Object v) {
         if (!values.containsKey(this)) {
-            T oldValue = (T) values.put(this, v);
-            onValueUpdate(values, oldValue, (T) v);
+            update(values, v);
         }
     }
 

@@ -377,7 +377,9 @@ public class NativeImageGeneratorRunner implements ImageBuildTask {
                 compilationExecutor.shutdownNow();
             }
             if (e.getReason().isPresent()) {
-                NativeImageGeneratorRunner.info(e.getReason().get());
+                if (!e.getReason().get().isEmpty()) {
+                    NativeImageGeneratorRunner.info(e.getReason().get());
+                }
                 return 0;
             } else {
                 /* InterruptImageBuilding without explicit reason is exit code 3 */

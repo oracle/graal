@@ -33,7 +33,6 @@ import java.net.URISyntaxException;
 import java.net.URL;
 import java.net.URLClassLoader;
 import java.util.ArrayList;
-import java.util.Arrays;
 import java.util.Collections;
 import java.util.Comparator;
 import java.util.Enumeration;
@@ -62,6 +61,7 @@ import com.oracle.svm.core.configure.ResourcesRegistry;
 import com.oracle.svm.core.jdk.LocalizationFeature;
 import com.oracle.svm.core.jdk.Resources;
 import com.oracle.svm.core.option.HostedOptionKey;
+import com.oracle.svm.core.option.LocatableMultiOptionValue;
 import com.oracle.svm.core.util.UserError;
 import com.oracle.svm.hosted.FeatureImpl.BeforeAnalysisAccessImpl;
 import com.oracle.svm.hosted.FeatureImpl.DuringAnalysisAccessImpl;
@@ -73,10 +73,10 @@ public final class ResourcesFeature implements Feature {
 
     public static class Options {
         @Option(help = "Regexp to match names of resources to be included in the image.", type = OptionType.User)//
-        public static final HostedOptionKey<String[]> IncludeResources = new HostedOptionKey<>(new String[0]);
+        public static final HostedOptionKey<LocatableMultiOptionValue.Strings> IncludeResources = new HostedOptionKey<>(new LocatableMultiOptionValue.Strings());
 
         @Option(help = "Regexp to match names of resources to be excluded from the image.", type = OptionType.User)//
-        public static final HostedOptionKey<String[]> ExcludeResources = new HostedOptionKey<>(new String[0]);
+        public static final HostedOptionKey<LocatableMultiOptionValue.Strings> ExcludeResources = new HostedOptionKey<>(new LocatableMultiOptionValue.Strings());
     }
 
     private boolean sealed = false;
@@ -116,8 +116,8 @@ public final class ResourcesFeature implements Feature {
                         ConfigurationFiles.Options.ResourceConfigurationFiles, ConfigurationFiles.Options.ResourceConfigurationResources,
                         ConfigurationFiles.RESOURCES_NAME);
 
-        newResources.addAll(Arrays.asList(Options.IncludeResources.getValue()));
-        ignoredResources.addAll(Arrays.asList(Options.ExcludeResources.getValue()));
+        newResources.addAll(Options.IncludeResources.getValue().values());
+        ignoredResources.addAll(Options.ExcludeResources.getValue().values());
     }
 
     @Override
@@ -197,7 +197,7 @@ public final class ResourcesFeature implements Feature {
             return;
         }
         FallbackFeature.FallbackImageRequest resourceFallback = ImageSingletons.lookup(FallbackFeature.class).resourceFallback;
-        if (resourceFallback != null && Options.IncludeResources.getValue().length == 0 && loadedConfigurations == 0) {
+        if (resourceFallback != null && Options.IncludeResources.getValue().values().isEmpty() && loadedConfigurations == 0) {
             throw resourceFallback;
         }
     }

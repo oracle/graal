@@ -337,20 +337,22 @@ def native_image_context(common_args=None, hosted_assertions=True, native_image_
             else:
                 return val
 
+        result = None
         for line in stdoutdata:
             arg = remove_quotes(line.rstrip('\\').strip())
-            _, sep, after = arg.partition(option)
-            if sep:
-                return after.split(' ')[0].rstrip()
-        return None
+            m = re.match(option, arg)
+            if m:
+                result = arg[m.end():]
+
+        return result
 
     server_use = set()
     def native_image_func(args, **kwargs):
         all_args = base_args + common_args + args
         if '--experimental-build-server' in all_args:
             server_use.add(True)
-        path = query_native_image(all_args, '-H:Path=')
-        name = query_native_image(all_args, '-H:Name=')
+        path = query_native_image(all_args, r'^-H:Path(@[^=]*)?=')
+        name = query_native_image(all_args, r'^-H:Name(@[^=]*)?=')
         image = join(path, name)
         if not has_server and '--no-server' in all_args:
             all_args = [arg for arg in all_args if arg != '--no-server']
