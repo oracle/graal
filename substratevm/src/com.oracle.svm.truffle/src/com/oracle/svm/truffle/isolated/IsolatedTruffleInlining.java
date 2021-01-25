@@ -158,7 +158,7 @@ final class IsolatedTruffleInlining<T extends TruffleMetaAccessProvider> extends
 
     @CEntryPoint
     @CEntryPointOptions(include = CEntryPointOptions.NotIncludedAutomatically.class, publishAs = CEntryPointOptions.Publish.NotPublished)
-    private int countInlinedCalls0(@SuppressWarnings("unused") ClientIsolateThread client, ClientHandle<? extends TruffleMetaAccessProvider> handle) {
+    private static int countInlinedCalls0(@SuppressWarnings("unused") ClientIsolateThread client, ClientHandle<? extends TruffleMetaAccessProvider> handle) {
         TruffleMetaAccessProvider truffleMetaAccessProvider = IsolatedCompileClient.get().unhand(handle);
         return truffleMetaAccessProvider.countInlinedCalls();
     }
