@@ -158,8 +158,11 @@ local benchmark_suites = ['dacapo', 'renaissance', 'scala-dacapo'];
   // LD_DEBUG=unused is a workaround for: symbol lookup error: jre/lib/amd64/libnio.so: undefined symbol: fstatat64
   maybe_set_ld_debug_flag(env): if std.startsWith(env, 'jvm') then [['set-export', 'LD_DEBUG', 'unused']] else [],
 
-  espresso_gate(allow_warnings, tags, name, ld_debug=false, imports=null, timelimit='15:00'): {
-    local mx_cmd = ['mx'] + if imports != null then ['--dynamicimports=' + imports] else [],
+  espresso_gate(allow_warnings, tags, name, ld_debug=false, mx_args=[], imports=null, timelimit='15:00'): {
+    local mx_cmd =
+      ['mx']
+      + mx_args
+      + (if imports != null then ['--dynamicimports=' + imports] else []),
     setup+: [
       if ld_debug then ['set-export', 'LD_DEBUG', 'unused'] else ['unset', 'LD_DEBUG'],
       mx_cmd + ['sversions'],
