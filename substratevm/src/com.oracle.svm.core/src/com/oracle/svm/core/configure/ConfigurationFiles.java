@@ -96,6 +96,9 @@ public final class ConfigurationFiles {
 
         @Option(help = "Comma-separated list of file names with declarative substitutions", type = OptionType.User)//
         public static final HostedOptionKey<String[]> SubstitutionFiles = new HostedOptionKey<>(null);
+
+        @Option(help = "Skip processing configuration files", type = OptionType.Expert)
+        public static final HostedOptionKey<Boolean> SkipConfigurationFiles = new HostedOptionKey<>(false);
     }
 
     public static List<Path> findConfigurationFiles(String fileName) {

@@ -191,6 +191,7 @@ public class NativeImage {
     final String oHJNIConfigurationFiles = oH(ConfigurationFiles.Options.JNIConfigurationFiles);
     final String oHSerializationConfigurationFiles = oH(ConfigurationFiles.Options.SerializationConfigurationFiles);
     final String oHSerializationDenyConfigurationFiles = oH(ConfigurationFiles.Options.SerializationDenyConfigurationFiles);
+    final String oHSkipConfigurationFilesFlag = oH + "+" + ConfigurationFiles.Options.SkipConfigurationFiles.getName();
 
     final String oHInspectServerContentPath = oH(PointstoOptions.InspectServerContentPath);
     final String oHDeadlockWatchdogInterval = oH(SubstrateOptions.DeadlockWatchdogInterval);
@@ -928,7 +929,8 @@ public class NativeImage {
     }
 
     private void processNativeImageMetaInf(Path classpathEntry, Path nativeImageMetaInfBase, NativeImageMetaInfResourceProcessor metaInfProcessor) throws IOException {
-        if (Files.isDirectory(nativeImageMetaInfBase)) {
+        boolean skipConfigurationFiles = config.getBuildArgs().contains(oHSkipConfigurationFilesFlag);
+        if (!skipConfigurationFiles && Files.isDirectory(nativeImageMetaInfBase)) {
             for (MetaInfFileType fileType : MetaInfFileType.values()) {
                 List<Path> nativeImageMetaInfFiles = Files.walk(nativeImageMetaInfBase)
                                 .filter(p -> p.endsWith(fileType.fileName))
