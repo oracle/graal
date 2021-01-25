@@ -231,7 +231,7 @@ public class SubstrateGraphBuilderPlugins {
                      */
                     return false;
                 }
-                b.addPush(JavaKind.Object, new SubstrateReflectionGetCallerClassNode(b.getMetaAccess(), MacroParams.of(b, targetMethod)));
+                b.addPush(JavaKind.Object, new SubstrateReflectionGetCallerClassNode(MacroParams.of(b, targetMethod)));
                 return true;
             }
 

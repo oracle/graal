@@ -98,7 +98,7 @@ public abstract class ReflectionGetCallerClassNode extends MacroStateSplitNode i
                     }
                     break;
                 default:
-                    if (!ignoredBySecurityStackWalk(method)) {
+                    if (!ignoredBySecurityStackWalk(metaAccess, method)) {
                         // We have reached the desired frame; return the holder class.
                         ResolvedJavaType callerClass = method.getDeclaringClass();
                         return ConstantNode.forConstant(constantReflection.asJavaClass(callerClass), metaAccess);
@@ -111,5 +111,5 @@ public abstract class ReflectionGetCallerClassNode extends MacroStateSplitNode i
 
     protected abstract boolean isCallerSensitive(ResolvedJavaMethod method);
 
-    protected abstract boolean ignoredBySecurityStackWalk(ResolvedJavaMethod method);
+    protected abstract boolean ignoredBySecurityStackWalk(MetaAccessProvider metaAccess, ResolvedJavaMethod method);
 }
