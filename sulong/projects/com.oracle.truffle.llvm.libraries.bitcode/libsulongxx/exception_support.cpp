@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2019, 2020, Oracle and/or its affiliates.
+ * Copyright (c) 2019, 2021, Oracle and/or its affiliates.
  *
  * All rights reserved.
  *
@@ -91,9 +91,17 @@ struct Foreign_unwind_header {
 
 void* __cxa_begin_catch(void* unwind) {
 	Foreign_unwind_header* v = (Foreign_unwind_header*) unwind;
-	if(v->exception_class == 98765) {//TODO
+	if(v->exception_class == 0x504c594754455843) {
+		/*
+		 * 0x504c594754455843 = (char-encoded) PLYGTEXC = polyglot exception. 
+		 * denotes that the exception has not been thrown by LLVM itself, 
+		 * but via foreign language and the polyglot interop API. 
+		 * See com.oracle.truffle.llvm.runtime.interop.LLVMManagedExceptionObject[.java]
+		 */
 		return v->foreign_object;
-	} 
+	} else {
+		std::cout << v->exception_class << std::endl;
+	}
 	return __extern_C::___sulong_import_base64::bGliYysrYWJp::__cxa_begin_catch(unwind);
 }
 

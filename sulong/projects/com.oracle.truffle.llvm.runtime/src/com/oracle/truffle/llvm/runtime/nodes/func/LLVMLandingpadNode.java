@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2016, 2020, Oracle and/or its affiliates.
+ * Copyright (c) 2016, 2021, Oracle and/or its affiliates.
  *
  * All rights reserved.
  *
@@ -61,6 +61,7 @@ import com.oracle.truffle.llvm.runtime.nodes.op.ToComparableValue;
 import com.oracle.truffle.llvm.runtime.nodes.op.ToComparableValueNodeGen;
 import com.oracle.truffle.llvm.runtime.nodes.others.LLVMDynAccessSymbolNode;
 import com.oracle.truffle.llvm.runtime.pointer.LLVMManagedPointer;
+import com.oracle.truffle.llvm.runtime.pointer.LLVMNativePointer;
 import com.oracle.truffle.llvm.runtime.pointer.LLVMPointer;
 
 public abstract class LLVMLandingpadNode extends LLVMExpressionNode {
@@ -163,10 +164,24 @@ public abstract class LLVMLandingpadNode extends LLVMExpressionNode {
             return canCatch;
         }
 
+        protected static final String voidPointerType = "_ZTIPv";
+
+        protected static final int nativePointerToI32(LLVMPointer pointer) {
+            return (int) LLVMNativePointer.cast(pointer).asNative();
+        }
+
+        /**
+         * @param accessSymbolNode
+         * @param context
+         * @param typeInfo
+         */
         @Specialization
         int getIdentifier(LLVMStack stack, LLVMPointer unwindHeader, LLVMPointer catchType,
                         @Cached LLVMDynAccessSymbolNode accessSymbolNode,
-                        @CachedContext(LLVMLanguage.class) LLVMContext context) {
+                        @CachedContext(LLVMLanguage.class) LLVMContext context,
+                        @Cached(value = "context.getGlobalScope().get(voidPointerType)") LLVMSymbol typeInfo,
+                        @Cached(value = "accessSymbolNode.execute(typeInfo)") LLVMPointer resolvedVoidTypePtr,
+                        @Cached(value = "nativePointerToI32(resolvedVoidTypePtr)") int resolvedReturnValue) {
             if (catchType.isNull()) {
                 /*
                  * If ExcType is null, any exception matches, so the landing pad should always be
@@ -175,12 +190,13 @@ public abstract class LLVMLandingpadNode extends LLVMExpressionNode {
                 return 1;
             }
             if (LLVMManagedPointer.isInstance(unwindHeader)) {
-                Object eObj = LLVMManagedPointer.cast(unwindHeader).getObject();
+                final Object eObj = LLVMManagedPointer.cast(unwindHeader).getObject();
                 if (eObj instanceof LLVMManagedExceptionObject) {
-                    // return (catchtype==void*) ? 1 : 0
-                    LLVMSymbol ti = context.getGlobalScope().get("_ZTIPv");
-                    LLVMPointer resolved = accessSymbolNode.execute(ti);
-                    return resolved.isSame(catchType) ? 1 : 0;
+                    /*
+                     * for foreign objects (thrown via polyglot interop), catching in LLVM is
+                     * possible for 'void*', i.e. _ZTIPv
+                     */
+                    return resolvedVoidTypePtr.isSame(catchType) ? resolvedReturnValue : 0;
                 }
             }
             if (getCanCatch().canCatch(stack, unwindHeader, catchType) != 0) {

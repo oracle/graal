@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2020, Oracle and/or its affiliates.
+ * Copyright (c) 2020, 2021, Oracle and/or its affiliates.
  *
  * All rights reserved.
  *
@@ -49,7 +49,7 @@ public abstract class LLVMForeignCreateUnwindHeaderNode extends LLVMNode {
         Object thrownObject = e.getMessage();
 
         if (e.getClass().getName().contains("UserScriptException")) {
-            // TODO replace by more generic version
+            // TODO (pichristoph) replace by more generic version
             try {
                 thrownObject = e.getClass().getDeclaredMethod("getErrorObject").invoke(e);
             } catch (NoSuchMethodException | IllegalAccessException | IllegalArgumentException | InvocationTargetException | SecurityException e1) {
