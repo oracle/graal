@@ -243,7 +243,6 @@ def registered_graalvm_components(stage1=False):
                         destination='<lib:polyglot>',
                         jar_distributions=libpoly_jar_dependencies,
                         build_args=[
-                               '-H:+IncludeAllTimeZones',
                                '-Dgraalvm.libpolyglot=true',
                                '-Dorg.graalvm.polyglot.install_name_id=@rpath/jre/lib/polyglot/<lib:polyglot>',
                                '--tool:all',
