@@ -61,6 +61,7 @@ public class TruffleInlining implements TruffleMetaAccessProvider {
         return callCount;
     }
 
+    @Override
     public int countInlinedCalls() {
         return inlinedCallCount;
     }

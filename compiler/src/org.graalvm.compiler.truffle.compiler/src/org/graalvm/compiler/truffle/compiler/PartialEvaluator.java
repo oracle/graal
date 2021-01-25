@@ -27,6 +27,7 @@ package org.graalvm.compiler.truffle.compiler;
 import static org.graalvm.compiler.truffle.options.PolyglotCompilerOptions.ExcludeAssertions;
 import static org.graalvm.compiler.truffle.options.PolyglotCompilerOptions.ForceFrameLivenessAnalysis;
 import static org.graalvm.compiler.truffle.options.PolyglotCompilerOptions.InlineAcrossTruffleBoundary;
+import static org.graalvm.compiler.truffle.options.PolyglotCompilerOptions.InliningTruffleTierOnExpand;
 import static org.graalvm.compiler.truffle.options.PolyglotCompilerOptions.IterativePartialEscape;
 import static org.graalvm.compiler.truffle.options.PolyglotCompilerOptions.MaximumGraalNodeCount;
 import static org.graalvm.compiler.truffle.options.PolyglotCompilerOptions.NodeSourcePositions;
@@ -347,7 +348,7 @@ public abstract class PartialEvaluator {
                             Indent indent = request.debug.logAndIndent("evaluate %s", request.graph);) {
                 inliningGraphPE(request);
                 assert GraphOrder.assertSchedulableGraph(request.graph) : "PE result must be schedulable in order to apply subsequent phases";
-                truffleTier(request);
+                maybeTruffleTier(request);
                 // recompute loop frequencies now that BranchProbabilities have been canonicalized
                 ComputeLoopFrequenciesClosure.compute(request.graph);
                 applyInstrumentationPhases(request);
@@ -361,11 +362,16 @@ public abstract class PartialEvaluator {
                 TruffleCompilerRuntime rt = TruffleCompilerRuntime.getRuntime();
                 setIdentityForValueTypes(request, rt);
                 handleInliningAcrossTruffleBoundary(request, rt);
-
             } catch (Throwable e) {
                 throw request.debug.handle(e);
             }
             return request.graph;
+        }
+    }
+
+    private void maybeTruffleTier(Request request) {
+        if (!request.options.get(InliningTruffleTierOnExpand) || request.inliningPlan.countInlinedCalls() > 0) {
+            truffleTier(request);
         }
     }
 
