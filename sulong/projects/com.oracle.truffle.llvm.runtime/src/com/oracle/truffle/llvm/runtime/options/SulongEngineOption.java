@@ -79,11 +79,6 @@ public final class SulongEngineOption {
             help = "Enables using C++ code and features via interop.")
     public static final OptionKey<Boolean> CXX_INTEROP = new OptionKey<>(false);
 
-    @Option(name = "llvm.enableExternalNativeAccess",
-            category = OptionCategory.INTERNAL,
-            help = "Enable Sulongs native interface.")
-    public static final OptionKey<Boolean> ENABLE_NFI = new OptionKey<>(true);
-
     @Option(name = "llvm.debugSysCalls",
             category = OptionCategory.INTERNAL,
             help = "Turns syscall debugging on/off. " +

@@ -31,9 +31,9 @@ package com.oracle.truffle.llvm.nativemode;
 
 import com.oracle.truffle.llvm.nativemode.NativeConfigurationFactory.Key;
 
-import java.util.Collections;
 import java.util.List;
 
+import com.oracle.truffle.llvm.nativemode.runtime.SulongNativeOption;
 import org.graalvm.options.OptionDescriptor;
 
 import com.oracle.truffle.llvm.runtime.ContextExtension;
@@ -52,7 +52,7 @@ public class NativeConfigurationFactory implements ConfigurationFactory<Key> {
 
         public Key(OptionValues options) {
             this.loadCxxLibraries = options.get(SulongEngineOption.LOAD_CXX_LIBRARIES);
-            this.enableNFI = options.get(SulongEngineOption.ENABLE_NFI);
+            this.enableNFI = options.get(SulongNativeOption.ENABLE_NFI);
         }
 
         @Override
@@ -85,7 +85,7 @@ public class NativeConfigurationFactory implements ConfigurationFactory<Key> {
 
     @Override
     public List<OptionDescriptor> getOptionDescriptors() {
-        return Collections.emptyList();
+        return SulongNativeOption.describeOptions();
     }
 
     @Override

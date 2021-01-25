@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2017, 2020, Oracle and/or its affiliates.
+ * Copyright (c) 2017, 2021, Oracle and/or its affiliates.
  *
  * All rights reserved.
  *
@@ -55,7 +55,6 @@ import com.oracle.truffle.llvm.runtime.ContextExtension;
 import com.oracle.truffle.llvm.runtime.except.LLVMLinkerException;
 import com.oracle.truffle.llvm.runtime.interop.nfi.LLVMNativeWrapper;
 import com.oracle.truffle.llvm.runtime.nodes.func.LLVMCallNode;
-import com.oracle.truffle.llvm.runtime.options.SulongEngineOption;
 import com.oracle.truffle.llvm.runtime.pointer.LLVMNativePointer;
 import com.oracle.truffle.llvm.runtime.types.FunctionType;
 import com.oracle.truffle.llvm.runtime.types.PointerType;
@@ -202,7 +201,7 @@ public final class NFIContextExtension extends NativeContextExtension {
     private Object[] wellKnownFunctionCache;
 
     private NFIContextExtension(Env env, SignatureSourceCache signatureSourceCache) {
-        assert env.getOptions().get(SulongEngineOption.ENABLE_NFI);
+        assert env.getOptions().get(SulongNativeOption.ENABLE_NFI);
         this.env = env;
         this.signatureSourceCache = signatureSourceCache;
         this.wellKnownFunctionCache = new Object[WELL_KNOWN_CACHE_INITIAL_SIZE];
