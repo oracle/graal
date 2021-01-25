@@ -56,14 +56,9 @@ public abstract class LLVMInstrumentableNode extends LLVMNode implements Instrum
 
     private LLVMSourceLocation sourceLocation;
     private boolean statement;
-    @Child private LLVMDataEscapeNode dataEscapeNode;
 
     private LLVMInstrumentableNode unwrap() {
         return this instanceof WrapperNode ? (LLVMInstrumentableNode) ((WrapperNode) this).getDelegateNode() : this;
-    }
-
-    public LLVMInstrumentableNode() {
-        dataEscapeNode = LLVMDataEscapeNode.create(ForeignToLLVMType.POINTER);
     }
 
     /**
@@ -163,7 +158,7 @@ public abstract class LLVMInstrumentableNode extends LLVMNode implements Instrum
     public Object getRootInstance(Frame frame, @CachedContext(LLVMLanguage.class) LLVMContext ctx) throws UnsupportedMessageException {
         if (hasRootInstance(frame)) {
             LLVMPointer pointer = ctx.getSymbol(((LLVMFunctionStartNode) this.getRootNode()).getRootFunction());
-            return dataEscapeNode.executeWithTarget(pointer);
+            return LLVMDataEscapeNode.getUncached(ForeignToLLVMType.POINTER).executeWithTarget(pointer);
         }
         throw UnsupportedMessageException.create();
     }

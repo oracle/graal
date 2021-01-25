@@ -51,7 +51,6 @@ public final class LLVMFunction extends LLVMSymbol {
     private final Function function;
     private final String path;
     private LLVMSourceLocation sourceLocation;
-    private String originalName;
 
     private final Assumption fixedCodeAssumption = Truffle.getRuntime().createAssumption();
     @CompilationFinal private LLVMFunctionCode fixedCode;
@@ -65,19 +64,10 @@ public final class LLVMFunction extends LLVMSymbol {
         this.type = type;
         this.function = function;
         this.path = path;
-        originalName = null;
     }
 
     public LLVMSourceLocation getSourceLocation() {
         return sourceLocation;
-    }
-
-    public void setOriginalName(String originalName) {
-        this.originalName = originalName;
-    }
-
-    public String getOriginalName() {
-        return originalName;
     }
 
     public void setSourceLocation(LLVMSourceLocation sourceLocation) {
