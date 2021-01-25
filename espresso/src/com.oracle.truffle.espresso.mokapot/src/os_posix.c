@@ -23,8 +23,6 @@
 
 #if !defined(_WIN32)
 
-#define _GNU_SOURCE
-
 #include "os.h"
 #include "mokapot.h"
 #include <string.h>

@@ -201,7 +201,7 @@ suite = {
             "os_arch": {
                 "darwin": {
                     "<others>": {
-                        "cflags": ["-Wall", "-Werror"],
+                        "cflags": ["-Wall", "-Werror", "-std=c11"],
                         "ldflags": [
                             "-Wl,-install_name,@rpath/libjvm.dylib",
                             "-Wl,-rpath,@loader_path/.",
@@ -213,7 +213,7 @@ suite = {
                 },
                 "linux": {
                     "<others>": {
-                        "cflags": ["-Wall", "-Werror", "-g"],
+                        "cflags": ["-Wall", "-Werror", "-g", "-std=c11", "-D_GNU_SOURCE"],
                         "ldflags": [
                             "-Wl,-soname,libjvm.so",
                             "-Wl,--version-script,<path:espresso:com.oracle.truffle.espresso.mokapot>/mapfile-vers",
