@@ -41,6 +41,7 @@ import org.graalvm.compiler.debug.DebugContext;
 import org.graalvm.compiler.graph.Node;
 import org.graalvm.compiler.graph.Node.NodeIntrinsic;
 import org.graalvm.compiler.graph.NodeBitMap;
+import org.graalvm.compiler.graph.NodeInputList;
 import org.graalvm.compiler.graph.NodeSourcePosition;
 import org.graalvm.compiler.nodes.AbstractEndNode;
 import org.graalvm.compiler.nodes.AbstractMergeNode;
@@ -94,6 +95,7 @@ import org.graalvm.compiler.phases.graph.PostOrderNodeIterator;
 import org.graalvm.compiler.printer.GraalDebugHandlersFactory;
 import org.graalvm.compiler.replacements.arraycopy.ArrayCopy;
 import org.graalvm.compiler.replacements.nodes.BinaryMathIntrinsicNode;
+import org.graalvm.compiler.replacements.nodes.MacroNode;
 import org.graalvm.compiler.replacements.nodes.ObjectClone;
 import org.graalvm.compiler.replacements.nodes.UnaryMathIntrinsicNode;
 import org.graalvm.compiler.word.WordCastNode;
@@ -1241,103 +1243,7 @@ public class MethodTypeFlowBuilder {
                                     invoke.stateAfter(), invoke.stateAfter().outerFrameState());
                     MethodCallTargetNode target = (MethodCallTargetNode) invoke.callTarget();
 
-                    // check if the call is allowed
-                    AnalysisMethod callerMethod = methodFlow.getMethod();
-                    AnalysisMethod targetMethod = (AnalysisMethod) target.targetMethod();
-                    bb.isCallAllowed(bb, callerMethod, targetMethod, target.getNodeSourcePosition());
-
-                    Object key = uniqueKey(n);
-                    BytecodeLocation location = BytecodeLocation.create(key, methodFlow.getMethod());
-
-                    /*
-                     * Collect the parameters builders into an array so that we don't capture the
-                     * `state` reference in the closure.
-                     */
-                    boolean targetIsStatic = Modifier.isStatic(targetMethod.getModifiers());
-
-                    TypeFlowBuilder<?>[] actualParametersBuilders = new TypeFlowBuilder<?>[target.arguments().size()];
-                    for (int i = 0; i < actualParametersBuilders.length; i++) {
-                        ValueNode actualParam = target.arguments().get(i);
-                        if (actualParam.getStackKind() == JavaKind.Object) {
-                            TypeFlowBuilder<?> paramBuilder = state.lookup(actualParam);
-                            actualParametersBuilders[i] = paramBuilder;
-                            paramBuilder.markAsBuildingAnActualParameter();
-                            if (i == 0 && !targetIsStatic) {
-                                paramBuilder.markAsBuildingAnActualReceiver();
-                            }
-                            /*
-                             * Actual parameters must not be removed. They are linked when the
-                             * callee is analyzed, hence, although they might not have any uses,
-                             * cannot be removed during parsing.
-                             */
-                            typeFlowGraphBuilder.registerSinkBuilder(paramBuilder);
-                        }
-                    }
-
-                    TypeFlowBuilder<InvokeTypeFlow> invokeBuilder = TypeFlowBuilder.create(bb, invoke, InvokeTypeFlow.class, () -> {
-
-                        TypeFlow<?>[] actualParameters = new TypeFlow<?>[actualParametersBuilders.length];
-                        for (int i = 0; i < actualParameters.length; i++) {
-                            actualParameters[i] = actualParametersBuilders[i] != null ? actualParametersBuilders[i].get() : null;
-                        }
-
-                        /*
-                         * Initially the actual return is null. It will be set by the actual return
-                         * builder below only when the returned value is actually used, i.e., the
-                         * actual return builder is materialized.
-                         */
-                        ActualReturnTypeFlow actualReturn = null;
-                        /*
-                         * Get the receiver type from the invoke, it may be more precise than the
-                         * method declaring class.
-                         */
-                        AnalysisType receiverType = invoke.getInvokeKind().hasReceiver() ? (AnalysisType) invoke.getReceiverType() : null;
-                        BytecodePosition invokeLocation = InvokeTypeFlow.findBytecodePosition(invoke);
-                        InvokeTypeFlow invokeFlow = null;
-                        switch (target.invokeKind()) {
-                            case Static:
-                                invokeFlow = new StaticInvokeTypeFlow(invokeLocation, receiverType, targetMethod, actualParameters, actualReturn, location);
-                                break;
-                            case Special:
-                                invokeFlow = bb.analysisPolicy().createSpecialInvokeTypeFlow(invokeLocation, receiverType, targetMethod, actualParameters, actualReturn, location);
-                                break;
-                            case Virtual:
-                            case Interface:
-                                invokeFlow = bb.analysisPolicy().createVirtualInvokeTypeFlow(invokeLocation, receiverType, targetMethod, actualParameters, actualReturn, location);
-                                break;
-                            default:
-                                throw shouldNotReachHere();
-                        }
-
-                        methodFlow.addInvoke(key, invokeFlow);
-                        return invokeFlow;
-                    });
-
-                    if (target.invokeKind() == InvokeKind.Special || target.invokeKind() == InvokeKind.Virtual || target.invokeKind() == InvokeKind.Interface) {
-                        invokeBuilder.addObserverDependency(actualParametersBuilders[0]);
-                    }
-
-                    if (invoke.asNode().getStackKind() == JavaKind.Object) {
-                        /* Create the actual return builder. */
-                        AnalysisType returnType = (AnalysisType) target.targetMethod().getSignature().getReturnType(null);
-                        TypeFlowBuilder<?> actualReturnBuilder = TypeFlowBuilder.create(bb, invoke.asNode(), ActualReturnTypeFlow.class, () -> {
-                            ActualReturnTypeFlow actualReturn = new ActualReturnTypeFlow(invoke.asNode(), returnType);
-                            methodFlow.addMiscEntry(actualReturn);
-                            /*
-                             * Only set the actual return in the invoke when it is materialized,
-                             * i.e., it is used by other flows.
-                             */
-                            InvokeTypeFlow invokeFlow = invokeBuilder.get();
-                            invokeFlow.setActualReturn(actualReturn);
-                            actualReturn.setInvokeFlow(invokeFlow);
-                            return actualReturn;
-                        });
-                        state.add(invoke.asNode(), actualReturnBuilder);
-                    }
-
-                    /* Invokes must not be removed. */
-                    typeFlowGraphBuilder.registerSinkBuilder(invokeBuilder);
-                    state.add(target, invokeBuilder);
+                    processMethodInvocation(invoke.asFixedNode(), target.invokeKind(), invoke.bci(), (AnalysisMethod) target.targetMethod(), target.arguments());
                 }
 
             } else if (n instanceof ObjectClone) {
@@ -1381,9 +1287,135 @@ public class MethodTypeFlowBuilder {
                 });
 
                 state.add(node, resultBuilder);
+
+            } else if (n instanceof MacroNode) {
+                /*
+                 * Macro nodes can either be constant folded during compilation, or lowered back to
+                 * invocations if constant folding is not possible. So the static analysis needs to
+                 * treat them as possible invocations.
+                 * 
+                 * Note that some macro nodes, like for object cloning, are handled separately
+                 * above.
+                 */
+                MacroNode node = (MacroNode) n;
+                processMethodInvocation(node, node.getInvokeKind(), node.bci(), (AnalysisMethod) node.getTargetMethod(), node.getArguments());
+
             } else {
                 delegateNodeProcessing(n, state);
             }
+        }
+
+        private void processMethodInvocation(ValueNode invoke, InvokeKind invokeKind, int bci, AnalysisMethod targetMethod, NodeInputList<ValueNode> arguments) {
+            // check if the call is allowed
+            AnalysisMethod callerMethod = methodFlow.getMethod();
+            bb.isCallAllowed(bb, callerMethod, targetMethod, invoke.getNodeSourcePosition());
+
+            Object key = uniqueKey(invoke);
+            BytecodeLocation location = BytecodeLocation.create(key, methodFlow.getMethod());
+
+            /*
+             * Collect the parameters builders into an array so that we don't capture the `state`
+             * reference in the closure.
+             */
+            boolean targetIsStatic = Modifier.isStatic(targetMethod.getModifiers());
+
+            TypeFlowBuilder<?>[] actualParametersBuilders = new TypeFlowBuilder<?>[arguments.size()];
+            for (int i = 0; i < actualParametersBuilders.length; i++) {
+                ValueNode actualParam = arguments.get(i);
+                if (actualParam.getStackKind() == JavaKind.Object) {
+                    TypeFlowBuilder<?> paramBuilder = state.lookup(actualParam);
+                    actualParametersBuilders[i] = paramBuilder;
+                    paramBuilder.markAsBuildingAnActualParameter();
+                    if (i == 0 && !targetIsStatic) {
+                        paramBuilder.markAsBuildingAnActualReceiver();
+                    }
+                    /*
+                     * Actual parameters must not be removed. They are linked when the callee is
+                     * analyzed, hence, although they might not have any uses, cannot be removed
+                     * during parsing.
+                     */
+                    typeFlowGraphBuilder.registerSinkBuilder(paramBuilder);
+                }
+            }
+
+            TypeFlowBuilder<InvokeTypeFlow> invokeBuilder = TypeFlowBuilder.create(bb, invoke, InvokeTypeFlow.class, () -> {
+
+                TypeFlow<?>[] actualParameters = new TypeFlow<?>[actualParametersBuilders.length];
+                for (int i = 0; i < actualParameters.length; i++) {
+                    actualParameters[i] = actualParametersBuilders[i] != null ? actualParametersBuilders[i].get() : null;
+                }
+
+                /*
+                 * Initially the actual return is null. It will be set by the actual return builder
+                 * below only when the returned value is actually used, i.e., the actual return
+                 * builder is materialized.
+                 */
+                ActualReturnTypeFlow actualReturn = null;
+                /*
+                 * Get the receiver type from the invoke, it may be more precise than the method
+                 * declaring class.
+                 */
+                AnalysisType receiverType = null;
+                if (invokeKind.hasReceiver()) {
+                    receiverType = (AnalysisType) StampTool.typeOrNull(arguments.get(0));
+                    if (receiverType == null) {
+                        receiverType = targetMethod.getDeclaringClass();
+                    }
+                }
+
+                /*
+                 * The invokeLocation is used for all sorts of call stack printing (for error
+                 * messages and diagnostics), so we must have a non-null BytecodePosition.
+                 */
+                BytecodePosition invokeLocation = invoke.getNodeSourcePosition();
+                if (invokeLocation == null) {
+                    invokeLocation = new BytecodePosition(null, invoke.graph().method(), bci);
+                }
+
+                InvokeTypeFlow invokeFlow = null;
+                switch (invokeKind) {
+                    case Static:
+                        invokeFlow = new StaticInvokeTypeFlow(invokeLocation, receiverType, targetMethod, actualParameters, actualReturn, location);
+                        break;
+                    case Special:
+                        invokeFlow = bb.analysisPolicy().createSpecialInvokeTypeFlow(invokeLocation, receiverType, targetMethod, actualParameters, actualReturn, location);
+                        break;
+                    case Virtual:
+                    case Interface:
+                        invokeFlow = bb.analysisPolicy().createVirtualInvokeTypeFlow(invokeLocation, receiverType, targetMethod, actualParameters, actualReturn, location);
+                        break;
+                    default:
+                        throw shouldNotReachHere();
+                }
+
+                methodFlow.addInvoke(key, invokeFlow);
+                return invokeFlow;
+            });
+
+            if (invokeKind == InvokeKind.Special || invokeKind == InvokeKind.Virtual || invokeKind == InvokeKind.Interface) {
+                invokeBuilder.addObserverDependency(actualParametersBuilders[0]);
+            }
+
+            if (invoke.asNode().getStackKind() == JavaKind.Object) {
+                /* Create the actual return builder. */
+                AnalysisType returnType = (AnalysisType) targetMethod.getSignature().getReturnType(null);
+                TypeFlowBuilder<?> actualReturnBuilder = TypeFlowBuilder.create(bb, invoke.asNode(), ActualReturnTypeFlow.class, () -> {
+                    ActualReturnTypeFlow actualReturn = new ActualReturnTypeFlow(invoke.asNode(), returnType);
+                    methodFlow.addMiscEntry(actualReturn);
+                    /*
+                     * Only set the actual return in the invoke when it is materialized, i.e., it is
+                     * used by other flows.
+                     */
+                    InvokeTypeFlow invokeFlow = invokeBuilder.get();
+                    invokeFlow.setActualReturn(actualReturn);
+                    actualReturn.setInvokeFlow(invokeFlow);
+                    return actualReturn;
+                });
+                state.add(invoke.asNode(), actualReturnBuilder);
+            }
+
+            /* Invokes must not be removed. */
+            typeFlowGraphBuilder.registerSinkBuilder(invokeBuilder);
         }
 
         /**
