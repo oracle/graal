@@ -31,6 +31,7 @@ package com.oracle.truffle.llvm.runtime.nodes.api;
 
 import com.oracle.truffle.api.CompilerAsserts;
 import com.oracle.truffle.api.CompilerDirectives;
+import com.oracle.truffle.api.dsl.Cached;
 import com.oracle.truffle.api.dsl.CachedContext;
 import com.oracle.truffle.api.frame.Frame;
 import com.oracle.truffle.api.instrumentation.InstrumentableNode;
@@ -45,8 +46,7 @@ import com.oracle.truffle.llvm.runtime.LLVMContext;
 import com.oracle.truffle.llvm.runtime.LLVMLanguage;
 import com.oracle.truffle.llvm.runtime.debug.scope.LLVMDebuggerScopeFactory;
 import com.oracle.truffle.llvm.runtime.debug.scope.LLVMSourceLocation;
-import com.oracle.truffle.llvm.runtime.interop.LLVMDataEscapeNode;
-import com.oracle.truffle.llvm.runtime.interop.convert.ForeignToLLVM.ForeignToLLVMType;
+import com.oracle.truffle.llvm.runtime.interop.LLVMDataEscapeNode.LLVMPointerDataEscapeNode;
 import com.oracle.truffle.llvm.runtime.nodes.func.LLVMFunctionStartNode;
 import com.oracle.truffle.llvm.runtime.options.SulongEngineOption;
 import com.oracle.truffle.llvm.runtime.pointer.LLVMPointer;
@@ -140,7 +140,8 @@ public abstract class LLVMInstrumentableNode extends LLVMNode implements Instrum
     }
 
     @ExportMessage
-    public Object getScope(Frame frame, @SuppressWarnings("unused") boolean nodeEnter, @CachedContext(LLVMLanguage.class) LLVMContext ctx) {
+    public Object getScope(Frame frame, @SuppressWarnings("unused") boolean nodeEnter,
+                           @CachedContext(LLVMLanguage.class) LLVMContext ctx) {
         if (isLLDebugEnabled(ctx)) {
             return LLVMDebuggerScopeFactory.createIRLevelScope(this, frame, ctx);
         } else {
@@ -154,11 +155,12 @@ public abstract class LLVMInstrumentableNode extends LLVMNode implements Instrum
     }
 
     @ExportMessage
-    @CompilerDirectives.TruffleBoundary
-    public Object getRootInstance(Frame frame, @CachedContext(LLVMLanguage.class) LLVMContext ctx) throws UnsupportedMessageException {
+    public Object getRootInstance(Frame frame,
+                                  @CachedContext(LLVMLanguage.class) LLVMContext ctx,
+                                  @Cached LLVMPointerDataEscapeNode dataEscapeNode) throws UnsupportedMessageException {
         if (hasRootInstance(frame)) {
             LLVMPointer pointer = ctx.getSymbol(((LLVMFunctionStartNode) this.getRootNode()).getRootFunction());
-            return LLVMDataEscapeNode.getUncached(ForeignToLLVMType.POINTER).executeWithTarget(pointer);
+            return dataEscapeNode.executeWithTarget(pointer);
         }
         throw UnsupportedMessageException.create();
     }
