@@ -50,8 +50,6 @@ import org.graalvm.compiler.truffle.compiler.PartialEvaluator;
 import org.graalvm.compiler.truffle.compiler.PerformanceInformationHandler;
 import org.graalvm.compiler.truffle.options.PolyglotCompilerOptions;
 
-import static org.graalvm.compiler.truffle.options.PolyglotCompilerOptions.InliningTruffleTierOnExpand;
-
 @NodeInfo(nameTemplate = "{p#truffleAST}", cycles = NodeCycles.CYCLES_IGNORED, size = NodeSize.SIZE_IGNORED)
 public final class CallNode extends Node implements Comparable<CallNode> {
 
