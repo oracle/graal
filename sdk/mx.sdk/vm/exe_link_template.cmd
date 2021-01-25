@@ -2,7 +2,7 @@
 
 call :getScriptLocation location
 "%location%<target>" %*
-goto :eof
+exit /b %errorlevel%
 
 :: If this script is in `%PATH%` and called quoted without a full path (e.g., `"js"`), `%~dp0` is expanded to `cwd`
 :: rather than the path to the script.

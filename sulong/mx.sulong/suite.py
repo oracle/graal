@@ -132,6 +132,22 @@ suite = {
         },
       },
     },
+    # This is a dummy library for marking sulong native mode support.
+    "NATIVE_MODE_SUPPORT" : {
+      "os_arch" : {
+        "<others>" : {
+          "<others>" : {
+            "path": "tests/support.txt",
+            "sha1": "81177e981eeb52730854e3d763e96015881c3bab",
+          },
+        },
+        "windows" : {
+          "<others>": {
+            "optional": True,
+          }
+        },
+      },
+    },
   },
 
   "projects" : {
@@ -177,6 +193,7 @@ suite = {
       ],
       "buildDependencies" : [
         "sdk:LLVM_TOOLCHAIN",
+        "NATIVE_MODE_SUPPORT",
       ],
       "buildEnv" : {
         "LIBSULONGTEST" : "<lib:sulongtest>",
@@ -208,6 +225,12 @@ suite = {
         "mx:JUNIT",
         "sdk:POLYGLOT_TCK",
       ],
+      "buildDependencies" : [
+        "NATIVE_MODE_SUPPORT",
+      ],
+      "javaProperties" : {
+        "test.sulongtck.path" : "<path:SULONG_TCK_NATIVE>/bin"
+      },
       "checkstyle" : "com.oracle.truffle.llvm.runtime",
       "javaCompliance" : "1.8+",
       "workingSets" : "Truffle, LLVM",
@@ -225,6 +248,7 @@ suite = {
       "buildDependencies" : [
         "SULONG_BOOTSTRAP_TOOLCHAIN",
         "SULONG_HOME",
+        "NATIVE_MODE_SUPPORT",
       ],
       "buildEnv" : {
         "SULONGTCKTEST" : "<lib:sulongtck>",
@@ -292,6 +316,9 @@ suite = {
       "dependencies" : [
         "truffle:TRUFFLE_NFI",
         "SULONG_CORE"
+      ],
+      "buildDependencies" : [
+        "NATIVE_MODE_SUPPORT",
       ],
       "checkstyle" : "com.oracle.truffle.llvm.runtime",
       "annotationProcessors" : ["truffle:TRUFFLE_DSL_PROCESSOR"],
@@ -475,6 +502,7 @@ suite = {
       ],
       "buildDependencies" : [
         "sdk:LLVM_TOOLCHAIN_FULL",
+        "NATIVE_MODE_SUPPORT",
       ],
       "buildEnv" : {
         "LLVM_CONFIG" : "<path:LLVM_TOOLCHAIN_FULL>/bin/llvm-config",
@@ -549,6 +577,7 @@ suite = {
       ],
       "buildDependencies" : [
         "com.oracle.truffle.llvm.tests.pipe",
+        "NATIVE_MODE_SUPPORT",
       ],
       "buildEnv" : {
         "CPPFLAGS" : "-I<jnigen:com.oracle.truffle.llvm.tests.pipe>",
@@ -572,6 +601,7 @@ suite = {
         "com.oracle.truffle.llvm.libraries.graalvm.llvm",
         "sdk:LLVM_TOOLCHAIN",
         "sdk:LLVM_ORG_SRC",
+        "NATIVE_MODE_SUPPORT",
       ],
       "buildEnv" : {
         "CFLAGS" : "-Xclang -disable-O0-optnone",
@@ -617,6 +647,7 @@ suite = {
         "SULONG_TOOLCHAIN_LAUNCHERS",
         "SULONG_BOOTSTRAP_TOOLCHAIN",
         "com.oracle.truffle.llvm.libraries.graalvm.llvm",
+        "NATIVE_MODE_SUPPORT",
       ],
       "buildEnv" : {
         "SONAME" : "<libv:graalvm-llvm.1>",
@@ -637,6 +668,7 @@ suite = {
         "truffle:TRUFFLE_NFI_NATIVE",
         "com.oracle.truffle.llvm.libraries.bitcode",
         "sdk:LLVM_TOOLCHAIN",
+        "NATIVE_MODE_SUPPORT",
       ],
       "buildEnv" : {
         "CLANG" : "<path:LLVM_TOOLCHAIN>/bin/clang",
@@ -681,6 +713,7 @@ suite = {
         "sdk:LLVM_ORG_SRC",
         "SULONG_BOOTSTRAP_TOOLCHAIN",
         "sdk:LLVM_TOOLCHAIN",
+        "NATIVE_MODE_SUPPORT",
       ],
       "clangFormat" : False,
     },
@@ -1426,9 +1459,6 @@ suite = {
         "sulong:SULONG_LEGACY",
         "SULONG_TEST_NATIVE",
       ],
-      "javaProperties" : {
-        "test.sulongtck.path" : "<path:SULONG_TCK_NATIVE>/bin"
-      },
       "license" : "BSD-new",
       "testDistribution" : True,
     },
