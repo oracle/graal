@@ -381,19 +381,28 @@ public class LoopEx {
         Collection<AbstractBeginNode> exits = new LinkedList<>();
         Queue<Block> work = new LinkedList<>();
         ControlFlowGraph cfg = loopsData().getCFG();
-        work.add(cfg.blockFor(branch));
-        while (!work.isEmpty()) {
-            Block b = work.remove();
-            if (loop().isLoopExit(b)) {
-                assert !exits.contains(b.getBeginNode());
-                exits.add(b.getBeginNode());
-            } else if (blocks.add(b.getBeginNode())) {
-                Block d = b.getDominatedSibling();
-                while (d != null) {
-                    if (loop.getBlocks().contains(d)) {
+        blocks.add(branch);
+        final Block branchBlock = cfg.blockFor(branch);
+        Block d = branchBlock.getFirstDominated();
+        if (d != null) {
+            work.add(d);
+            while (!work.isEmpty()) {
+                Block b = work.remove();
+                if (loop().isLoopExit(b)) {
+                    assert !exits.contains(b.getBeginNode());
+                    exits.add(b.getBeginNode());
+                } else if (blocks.add(b.getBeginNode())) {
+                    d = b.getDominatedSibling();
+                    while (d != null) {
+                        if (loop.getBlocks().contains(d)) {
+                            work.add(d);
+                        }
+                        d = d.getDominatedSibling();
+                    }
+                    d = b.getFirstDominated();
+                    if (b != null && loop.getBlocks().contains(d)) {
                         work.add(d);
                     }
-                    d = d.getDominatedSibling();
                 }
             }
         }
