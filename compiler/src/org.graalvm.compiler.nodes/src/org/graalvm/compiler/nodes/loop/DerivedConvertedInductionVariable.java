@@ -22,7 +22,7 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package org.graalvm.compiler.loop;
+package org.graalvm.compiler.nodes.loop;
 
 import org.graalvm.compiler.core.common.type.Stamp;
 import org.graalvm.compiler.nodes.NodeView;
@@ -31,8 +31,8 @@ import org.graalvm.compiler.nodes.calc.IntegerConvertNode;
 
 public class DerivedConvertedInductionVariable extends DerivedInductionVariable {
 
-    private final Stamp stamp;
-    private final ValueNode value;
+    protected final Stamp stamp;
+    protected final ValueNode value;
 
     public DerivedConvertedInductionVariable(LoopEx loop, InductionVariable base, Stamp stamp, ValueNode value) {
         super(loop, base);
@@ -52,12 +52,12 @@ public class DerivedConvertedInductionVariable extends DerivedInductionVariable 
 
     @Override
     public ValueNode initNode() {
-        return IntegerConvertNode.convert(base.initNode(), stamp, graph(), NodeView.DEFAULT);
+        return op(base.initNode());
     }
 
     @Override
     public ValueNode strideNode() {
-        return IntegerConvertNode.convert(base.strideNode(), stamp, graph(), NodeView.DEFAULT);
+        return op(base.strideNode());
     }
 
     @Override
@@ -87,7 +87,7 @@ public class DerivedConvertedInductionVariable extends DerivedInductionVariable 
 
     @Override
     public ValueNode exitValueNode() {
-        return IntegerConvertNode.convert(base.exitValueNode(), stamp, graph(), NodeView.DEFAULT);
+        return op(base.exitValueNode());
     }
 
     @Override
@@ -104,8 +104,23 @@ public class DerivedConvertedInductionVariable extends DerivedInductionVariable 
     public void deleteUnusedNodes() {
     }
 
+    private ValueNode op(ValueNode v) {
+        return IntegerConvertNode.convert(v, stamp, graph(), NodeView.DEFAULT);
+    }
+
     @Override
     public String toString() {
         return String.format("DerivedConvertedInductionVariable base (%s) %s %s", base, value.getNodeClass().shortName(), stamp);
     }
+
+    @Override
+    public InductionVariable copy(InductionVariable newBase, ValueNode newValue) {
+        return new DerivedConvertedInductionVariable(loop, newBase, stamp, newValue);
+    }
+
+    @Override
+    public ValueNode copyValue(InductionVariable newBase) {
+        return op(newBase.valueNode());
+    }
+
 }

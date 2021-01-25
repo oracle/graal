@@ -22,22 +22,22 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package org.graalvm.compiler.loop;
+package org.graalvm.compiler.nodes.loop;
 
 import org.graalvm.compiler.graph.NodeBitMap;
 import org.graalvm.compiler.nodes.FixedNode;
 
-public class LoopFragmentInsideFrom extends LoopFragmentInside {
+public class LoopFragmentInsideBefore extends LoopFragmentInside {
 
     private final FixedNode point;
 
-    public LoopFragmentInsideFrom(LoopEx loop, FixedNode point) {
+    public LoopFragmentInsideBefore(LoopEx loop, FixedNode point) {
         super(loop);
         this.point = point;
     }
 
     // duplicates lazily
-    public LoopFragmentInsideFrom(LoopFragmentInsideFrom original) {
+    public LoopFragmentInsideBefore(LoopFragmentInsideBefore original) {
         super(original);
         this.point = original.point();
     }
@@ -47,8 +47,8 @@ public class LoopFragmentInsideFrom extends LoopFragmentInside {
     }
 
     @Override
-    public LoopFragmentInsideFrom duplicate() {
-        return new LoopFragmentInsideFrom(this);
+    public LoopFragmentInsideBefore duplicate() {
+        return new LoopFragmentInsideBefore(this);
     }
 
     @Override

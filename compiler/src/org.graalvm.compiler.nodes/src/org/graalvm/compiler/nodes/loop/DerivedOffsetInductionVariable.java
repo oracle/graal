@@ -22,10 +22,10 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package org.graalvm.compiler.loop;
+package org.graalvm.compiler.nodes.loop;
 
-import static org.graalvm.compiler.loop.MathUtil.add;
-import static org.graalvm.compiler.loop.MathUtil.sub;
+import static org.graalvm.compiler.nodes.loop.MathUtil.add;
+import static org.graalvm.compiler.nodes.loop.MathUtil.sub;
 
 import org.graalvm.compiler.core.common.type.Stamp;
 import org.graalvm.compiler.debug.GraalError;
@@ -39,8 +39,8 @@ import org.graalvm.compiler.nodes.calc.SubNode;
 
 public class DerivedOffsetInductionVariable extends DerivedInductionVariable {
 
-    private final ValueNode offset;
-    private final BinaryArithmeticNode<?> value;
+    protected final ValueNode offset;
+    protected final BinaryArithmeticNode<?> value;
 
     public DerivedOffsetInductionVariable(LoopEx loop, InductionVariable base, ValueNode offset, BinaryArithmeticNode<?> value) {
         super(loop, base);
@@ -54,6 +54,9 @@ public class DerivedOffsetInductionVariable extends DerivedInductionVariable {
 
     @Override
     public Direction direction() {
+        if (value instanceof SubNode && base.valueNode() == value.getY()) {
+            return base.direction().opposite();
+        }
         return base.direction();
     }
 
@@ -133,7 +136,7 @@ public class DerivedOffsetInductionVariable extends DerivedInductionVariable {
         throw GraalError.shouldNotReachHere();
     }
 
-    private ValueNode op(ValueNode b, ValueNode o) {
+    public ValueNode op(ValueNode b, ValueNode o) {
         if (value instanceof AddNode) {
             return add(graph(), b, o);
         }
@@ -186,5 +189,15 @@ public class DerivedOffsetInductionVariable extends DerivedInductionVariable {
     @Override
     public String toString() {
         return String.format("DerivedOffsetInductionVariable base (%s) %s %s", base, value.getNodeClass().shortName(), offset);
+    }
+
+    @Override
+    public ValueNode copyValue(InductionVariable newBase) {
+        return op(newBase.valueNode(), offset);
+    }
+
+    @Override
+    public InductionVariable copy(InductionVariable newBase, ValueNode newValue) {
+        return new DerivedOffsetInductionVariable(loop, newBase, offset, (BinaryArithmeticNode<?>) newValue);
     }
 }

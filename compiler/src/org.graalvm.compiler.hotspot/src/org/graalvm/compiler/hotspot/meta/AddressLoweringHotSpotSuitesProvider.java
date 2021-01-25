@@ -29,9 +29,9 @@ import java.util.ListIterator;
 
 import org.graalvm.compiler.hotspot.GraalHotSpotVMConfig;
 import org.graalvm.compiler.hotspot.HotSpotGraalRuntimeProvider;
+import org.graalvm.compiler.nodes.spi.CoreProviders;
 import org.graalvm.compiler.options.OptionValues;
 import org.graalvm.compiler.phases.BasePhase;
-import org.graalvm.compiler.phases.Phase;
 import org.graalvm.compiler.phases.common.UseTrappingNullChecksPhase;
 import org.graalvm.compiler.phases.schedule.SchedulePhase;
 import org.graalvm.compiler.phases.tiers.LowTierContext;
@@ -43,10 +43,10 @@ import org.graalvm.compiler.phases.tiers.SuitesCreator;
  */
 public class AddressLoweringHotSpotSuitesProvider extends HotSpotSuitesProvider {
 
-    private final Phase addressLowering;
+    private final BasePhase<CoreProviders> addressLowering;
 
     public AddressLoweringHotSpotSuitesProvider(SuitesCreator defaultSuitesCreator, GraalHotSpotVMConfig config, HotSpotGraalRuntimeProvider runtime,
-                    Phase addressLowering) {
+                    BasePhase<CoreProviders> addressLowering) {
         super(defaultSuitesCreator, config, runtime);
         this.addressLowering = addressLowering;
     }

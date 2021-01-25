@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2015, 2019, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2012, 2018, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -22,30 +22,37 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package org.graalvm.compiler.loop.phases;
+package org.graalvm.compiler.nodes.loop;
 
-import org.graalvm.compiler.nodes.StructuredGraph;
-import org.graalvm.compiler.nodes.loop.LoopPolicies;
-import org.graalvm.compiler.nodes.spi.CoreProviders;
+import org.graalvm.compiler.graph.NodeBitMap;
+import org.graalvm.compiler.nodes.FixedNode;
 
-public abstract class ContextlessLoopPhase<P extends LoopPolicies> extends LoopPhase<P> {
+public class LoopFragmentInsideFrom extends LoopFragmentInside {
 
-    public ContextlessLoopPhase(P policies) {
-        super(policies);
+    private final FixedNode point;
+
+    public LoopFragmentInsideFrom(LoopEx loop, FixedNode point) {
+        super(loop);
+        this.point = point;
     }
 
-    public final void apply(final StructuredGraph graph) {
-        apply(graph, true);
+    // duplicates lazily
+    public LoopFragmentInsideFrom(LoopFragmentInsideFrom original) {
+        super(original);
+        this.point = original.point();
     }
 
-    public final void apply(final StructuredGraph graph, final boolean dumpGraph) {
-        apply(graph, null, dumpGraph);
+    public FixedNode point() {
+        return point;
     }
-
-    protected abstract void run(StructuredGraph graph);
 
     @Override
-    protected final void run(StructuredGraph graph, CoreProviders context) {
-        run(graph);
+    public LoopFragmentInsideFrom duplicate() {
+        return new LoopFragmentInsideFrom(this);
+    }
+
+    @Override
+    public NodeBitMap nodes() {
+        return null;
     }
 }

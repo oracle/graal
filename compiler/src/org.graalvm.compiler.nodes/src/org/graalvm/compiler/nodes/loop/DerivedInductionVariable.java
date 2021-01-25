@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2012, 2018, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2015, 2018, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -22,37 +22,33 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package org.graalvm.compiler.loop;
+package org.graalvm.compiler.nodes.loop;
 
-import org.graalvm.compiler.graph.NodeBitMap;
-import org.graalvm.compiler.nodes.FixedNode;
+import org.graalvm.compiler.nodes.StructuredGraph;
+import org.graalvm.compiler.nodes.ValueNode;
 
-public class LoopFragmentInsideBefore extends LoopFragmentInside {
+/**
+ * Base class of the derived induction variables.
+ */
+public abstract class DerivedInductionVariable extends InductionVariable {
 
-    private final FixedNode point;
+    protected final InductionVariable base;
 
-    public LoopFragmentInsideBefore(LoopEx loop, FixedNode point) {
+    public DerivedInductionVariable(LoopEx loop, InductionVariable base) {
         super(loop);
-        this.point = point;
-    }
-
-    // duplicates lazily
-    public LoopFragmentInsideBefore(LoopFragmentInsideBefore original) {
-        super(original);
-        this.point = original.point();
-    }
-
-    public FixedNode point() {
-        return point;
+        this.base = base;
     }
 
     @Override
-    public LoopFragmentInsideBefore duplicate() {
-        return new LoopFragmentInsideBefore(this);
+    public StructuredGraph graph() {
+        return base.graph();
     }
 
-    @Override
-    public NodeBitMap nodes() {
-        return null;
+    public InductionVariable getBase() {
+        return base;
     }
+
+    public abstract ValueNode copyValue(InductionVariable newBase);
+
+    public abstract InductionVariable copy(InductionVariable newBase, ValueNode newValue);
 }

@@ -22,9 +22,9 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package org.graalvm.compiler.loop;
+package org.graalvm.compiler.nodes.loop;
 
-import static org.graalvm.compiler.loop.MathUtil.mul;
+import static org.graalvm.compiler.nodes.loop.MathUtil.mul;
 
 import org.graalvm.compiler.core.common.type.IntegerStamp;
 import org.graalvm.compiler.core.common.type.Stamp;
@@ -37,8 +37,8 @@ import org.graalvm.compiler.nodes.util.GraphUtil;
 
 public class DerivedScaledInductionVariable extends DerivedInductionVariable {
 
-    private final ValueNode scale;
-    private final ValueNode value;
+    protected final ValueNode scale;
+    protected final ValueNode value;
 
     public DerivedScaledInductionVariable(LoopEx loop, InductionVariable base, ValueNode scale, ValueNode value) {
         super(loop, base);
@@ -165,5 +165,15 @@ public class DerivedScaledInductionVariable extends DerivedInductionVariable {
     @Override
     public String toString() {
         return String.format("DerivedScaleInductionVariable base (%s) %s %s", base, value.getNodeClass().shortName(), scale);
+    }
+
+    @Override
+    public ValueNode copyValue(InductionVariable newBase) {
+        return MathUtil.mul(graph(), newBase.valueNode(), scale);
+    }
+
+    @Override
+    public InductionVariable copy(InductionVariable newBase, ValueNode newValue) {
+        return new DerivedScaledInductionVariable(loop, newBase, scale, newValue);
     }
 }

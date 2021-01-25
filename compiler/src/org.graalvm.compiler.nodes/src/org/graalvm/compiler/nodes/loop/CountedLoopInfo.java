@@ -22,19 +22,18 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package org.graalvm.compiler.loop;
+package org.graalvm.compiler.nodes.loop;
 
 import static java.lang.Math.abs;
-import static org.graalvm.compiler.loop.MathUtil.unsignedDivBefore;
 import static org.graalvm.compiler.nodes.calc.BinaryArithmeticNode.add;
 import static org.graalvm.compiler.nodes.calc.BinaryArithmeticNode.sub;
+import static org.graalvm.compiler.nodes.loop.MathUtil.unsignedDivBefore;
 
 import org.graalvm.compiler.core.common.type.IntegerStamp;
 import org.graalvm.compiler.core.common.type.Stamp;
 import org.graalvm.compiler.core.common.util.UnsignedLong;
 import org.graalvm.compiler.debug.DebugCloseable;
 import org.graalvm.compiler.debug.GraalError;
-import org.graalvm.compiler.loop.InductionVariable.Direction;
 import org.graalvm.compiler.nodes.AbstractBeginNode;
 import org.graalvm.compiler.nodes.ConstantNode;
 import org.graalvm.compiler.nodes.GuardNode;
@@ -47,6 +46,7 @@ import org.graalvm.compiler.nodes.ValueNode;
 import org.graalvm.compiler.nodes.calc.ConditionalNode;
 import org.graalvm.compiler.nodes.calc.NegateNode;
 import org.graalvm.compiler.nodes.extended.GuardingNode;
+import org.graalvm.compiler.nodes.loop.InductionVariable.Direction;
 import org.graalvm.compiler.nodes.util.IntegerHelper;
 import org.graalvm.compiler.nodes.util.SignedIntegerHelper;
 import org.graalvm.compiler.nodes.util.UnsignedIntegerHelper;
@@ -57,15 +57,15 @@ import jdk.vm.ci.meta.SpeculationLog;
 
 public class CountedLoopInfo {
 
-    private final LoopEx loop;
-    private InductionVariable iv;
-    private ValueNode end;
-    private boolean oneOff;
-    private AbstractBeginNode body;
-    private IfNode ifNode;
-    private final boolean unsigned;
+    protected final LoopEx loop;
+    protected InductionVariable iv;
+    protected ValueNode end;
+    protected boolean oneOff;
+    protected AbstractBeginNode body;
+    protected IfNode ifNode;
+    protected final boolean unsigned;
 
-    CountedLoopInfo(LoopEx loop, InductionVariable iv, IfNode ifNode, ValueNode end, boolean oneOff, AbstractBeginNode body, boolean unsigned) {
+    protected CountedLoopInfo(LoopEx loop, InductionVariable iv, IfNode ifNode, ValueNode end, boolean oneOff, AbstractBeginNode body, boolean unsigned) {
         assert iv.direction() != null;
         this.loop = loop;
         this.iv = iv;
@@ -93,6 +93,10 @@ public class CountedLoopInfo {
         return this.unsigned;
     }
 
+    public ValueNode maxTripCountNode(boolean assumeLoopEntered) {
+        return maxTripCountNode(assumeLoopEntered, getCounterIntegerHelper());
+    }
+
     /**
      * Returns a node that computes the maximum trip count of this loop. That is the trip count of
      * this loop assuming it is not exited by an other exit than the {@linkplain #getLimitTest()
@@ -104,7 +108,7 @@ public class CountedLoopInfo {
      *
      * @param assumeLoopEntered if true the check that the loop is entered at all will be omitted.
      */
-    public ValueNode maxTripCountNode(boolean assumeLoopEntered) {
+    protected ValueNode maxTripCountNode(boolean assumeLoopEntered, IntegerHelper integerHelper) {
         StructuredGraph graph = iv.valueNode().graph();
         Stamp stamp = iv.valueNode().stamp(NodeView.DEFAULT);
 
@@ -138,7 +142,7 @@ public class CountedLoopInfo {
         // This check is "wide": it looks like min <= max
         // That's OK even if the loop is strict (`!isLimitIncluded()`)
         // because in this case, `div` will be zero when min == max
-        LogicNode noEntryCheck = getCounterIntegerHelper().createCompareNode(max, min, NodeView.DEFAULT);
+        LogicNode noEntryCheck = integerHelper.createCompareNode(max, min, NodeView.DEFAULT);
         return graph.addOrUniqueWithInputs(ConditionalNode.create(noEntryCheck, zero, div, NodeView.DEFAULT));
     }
 
@@ -420,5 +424,9 @@ public class CountedLoopInfo {
 
     public IntegerStamp getStamp() {
         return (IntegerStamp) iv.valueNode().stamp(NodeView.DEFAULT);
+    }
+
+    public boolean isInverted() {
+        return false;
     }
 }

@@ -36,13 +36,13 @@ import org.graalvm.compiler.core.test.GraalCompilerTest;
 import org.graalvm.compiler.debug.DebugContext;
 import org.graalvm.compiler.graph.iterators.NodeIterable;
 import org.graalvm.compiler.java.ComputeLoopFrequenciesClosure;
-import org.graalvm.compiler.loop.DefaultLoopPolicies;
-import org.graalvm.compiler.loop.LoopEx;
-import org.graalvm.compiler.loop.LoopFragmentInside;
-import org.graalvm.compiler.loop.LoopsData;
 import org.graalvm.compiler.loop.phases.LoopPartialUnrollPhase;
 import org.graalvm.compiler.nodes.LoopBeginNode;
 import org.graalvm.compiler.nodes.StructuredGraph;
+import org.graalvm.compiler.nodes.loop.DefaultLoopPolicies;
+import org.graalvm.compiler.nodes.loop.LoopEx;
+import org.graalvm.compiler.nodes.loop.LoopFragmentInside;
+import org.graalvm.compiler.nodes.loop.LoopsData;
 import org.graalvm.compiler.nodes.spi.LoweringTool;
 import org.graalvm.compiler.options.OptionValues;
 import org.graalvm.compiler.phases.BasePhase;
@@ -69,12 +69,15 @@ public class LoopPartialUnrollTest extends GraalCompilerTest {
     @Override
     protected void checkMidTierGraph(StructuredGraph graph) {
         NodeIterable<LoopBeginNode> loops = graph.getNodes().filter(LoopBeginNode.class);
-        for (LoopBeginNode loop : loops) {
-            if (loop.isMainLoop()) {
-                return;
+        // Loops might be optimizable after partial unrolling
+        if (!loops.isEmpty()) {
+            for (LoopBeginNode loop : loops) {
+                if (loop.isMainLoop()) {
+                    return;
+                }
             }
+            fail("expected a main loop");
         }
-        fail("expected a main loop");
     }
 
     public static long sumWithEqualityLimit(int[] text) {
@@ -320,7 +323,7 @@ public class LoopPartialUnrollTest extends GraalCompilerTest {
             canonicalizer.apply(graph, context);
             new ConditionalEliminationPhase(true).apply(graph, context);
             if (partialUnroll) {
-                LoopsData dataCounted = new LoopsData(graph);
+                LoopsData dataCounted = getDefaultMidTierContext().getLoopsDataProvider().getLoopsData(graph);
                 dataCounted.detectedCountedLoops();
                 assertTrue(!dataCounted.countedLoops().isEmpty(), "must have counted loops");
                 for (LoopEx loop : dataCounted.countedLoops()) {

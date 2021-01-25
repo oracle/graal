@@ -27,11 +27,11 @@ package org.graalvm.compiler.core.test;
 import org.graalvm.compiler.api.directives.GraalDirectives;
 import org.graalvm.compiler.graph.Node;
 import org.graalvm.compiler.graph.iterators.FilteredNodeIterable;
-import org.graalvm.compiler.loop.LoopEx;
-import org.graalvm.compiler.loop.LoopsData;
 import org.graalvm.compiler.nodes.DeoptimizingNode;
 import org.graalvm.compiler.nodes.StructuredGraph;
 import org.graalvm.compiler.nodes.StructuredGraph.AllowAssumptions;
+import org.graalvm.compiler.nodes.loop.LoopEx;
+import org.graalvm.compiler.nodes.loop.LoopsData;
 import org.junit.Assert;
 import org.junit.Test;
 
@@ -113,14 +113,14 @@ public class CountedLoopTest2 extends GraalCompilerTest {
 
     private void test(String methodName, int nLoops) {
         StructuredGraph graph = parseEager(methodName, AllowAssumptions.YES);
-        LoopsData loops = new LoopsData(graph);
+        LoopsData loops = getDefaultHighTierContext().getLoopsDataProvider().getLoopsData(graph);
         Assert.assertEquals(nLoops, loops.loops().size());
         for (LoopEx loop : loops.loops()) {
             Assert.assertTrue(loop.detectCounted());
         }
 
         StructuredGraph finalGraph = getFinalGraph(methodName);
-        loops = new LoopsData(finalGraph);
+        loops = getDefaultHighTierContext().getLoopsDataProvider().getLoopsData(finalGraph);
         Assert.assertEquals(nLoops, loops.loops().size());
         FilteredNodeIterable<Node> nonStartDeopts = finalGraph.getNodes().filter(n -> {
             return n instanceof DeoptimizingNode.DeoptBefore && ((DeoptimizingNode.DeoptBefore) n).stateBefore().bci > 0;

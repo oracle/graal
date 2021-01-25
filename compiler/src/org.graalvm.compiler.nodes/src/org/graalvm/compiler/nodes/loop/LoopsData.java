@@ -22,7 +22,7 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package org.graalvm.compiler.loop;
+package org.graalvm.compiler.nodes.loop;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -39,12 +39,24 @@ import org.graalvm.compiler.nodes.cfg.Block;
 import org.graalvm.compiler.nodes.cfg.ControlFlowGraph;
 
 public class LoopsData {
-    private final EconomicMap<LoopBeginNode, LoopEx> loopBeginToEx = EconomicMap.create(Equivalence.IDENTITY);
+    private final EconomicMap<LoopBeginNode, LoopEx> loopBeginToEx;
     private final ControlFlowGraph cfg;
     private final List<LoopEx> loops;
 
+    static LoopsData compute(final StructuredGraph graph) {
+        return new LoopsData(graph);
+    }
+
+    protected LoopsData(ControlFlowGraph cfg, List<LoopEx> loops, EconomicMap<LoopBeginNode, LoopEx> loopBeginToEx) {
+        super();
+        this.cfg = cfg;
+        this.loops = loops;
+        this.loopBeginToEx = loopBeginToEx;
+    }
+
     @SuppressWarnings("try")
-    public LoopsData(final StructuredGraph graph) {
+    protected LoopsData(final StructuredGraph graph) {
+        loopBeginToEx = EconomicMap.create(Equivalence.IDENTITY);
         DebugContext debug = graph.getDebug();
         try (DebugContext.Scope s = debug.scope("ControlFlowGraph")) {
             cfg = ControlFlowGraph.compute(graph, true, true, true, true);
@@ -63,7 +75,7 @@ public class LoopsData {
     /**
      * Checks that loops are ordered such that outer loops appear first.
      */
-    private static boolean checkLoopOrder(Iterable<Loop<Block>> loops) {
+    protected static boolean checkLoopOrder(Iterable<Loop<Block>> loops) {
         EconomicSet<Loop<Block>> seen = EconomicSet.create(Equivalence.IDENTITY);
         for (Loop<Block> loop : loops) {
             if (loop.getParent() != null && !seen.contains(loop.getParent())) {
