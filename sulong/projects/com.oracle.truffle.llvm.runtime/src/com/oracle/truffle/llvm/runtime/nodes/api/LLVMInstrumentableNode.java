@@ -141,7 +141,7 @@ public abstract class LLVMInstrumentableNode extends LLVMNode implements Instrum
 
     @ExportMessage
     public Object getScope(Frame frame, @SuppressWarnings("unused") boolean nodeEnter,
-                           @CachedContext(LLVMLanguage.class) LLVMContext ctx) {
+                    @CachedContext(LLVMLanguage.class) LLVMContext ctx) {
         if (isLLDebugEnabled(ctx)) {
             return LLVMDebuggerScopeFactory.createIRLevelScope(this, frame, ctx);
         } else {
@@ -156,8 +156,8 @@ public abstract class LLVMInstrumentableNode extends LLVMNode implements Instrum
 
     @ExportMessage
     public Object getRootInstance(Frame frame,
-                                  @CachedContext(LLVMLanguage.class) LLVMContext ctx,
-                                  @Cached LLVMPointerDataEscapeNode dataEscapeNode) throws UnsupportedMessageException {
+                    @CachedContext(LLVMLanguage.class) LLVMContext ctx,
+                    @Cached LLVMPointerDataEscapeNode dataEscapeNode) throws UnsupportedMessageException {
         if (hasRootInstance(frame)) {
             LLVMPointer pointer = ctx.getSymbol(((LLVMFunctionStartNode) this.getRootNode()).getRootFunction());
             return dataEscapeNode.executeWithTarget(pointer);
