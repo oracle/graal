@@ -93,6 +93,22 @@ public final class BytecodeStream {
     }
 
     /**
+     * Gets the current opcode in a volatile fashion. This method will never return the
+     * {@link Bytecodes#WIDE WIDE} opcode, but will instead return the opcode that is modified by
+     * the {@code WIDE} opcode.
+     *
+     * @return the current opcode; {@link Bytecodes#END} if at or beyond the end of the code
+     */
+    public int currentVolatileBC(int curBCI) {
+        int opcode = volatileOpcode(curBCI);
+        if (opcode == Bytecodes.WIDE) {
+            return Bytes.volatileBeU1(code, curBCI + 1);
+        } else {
+            return opcode;
+        }
+    }
+
+    /**
      * Reads the index of a local variable for one of the load or store instructions. The WIDE
      * modifier is handled internally.
      *
@@ -168,6 +184,18 @@ public final class BytecodeStream {
     }
 
     /**
+     * Volatile reads a constant pool index for the current instruction.
+     *
+     * @return the constant pool index
+     */
+    public char volatileReadCPI(int curBCI) {
+        if (volatileOpcode(curBCI) == Bytecodes.LDC) {
+            return (char) Bytes.beU1(code, curBCI + 1);
+        }
+        return (char) Bytes.beU2(code, curBCI + 1);
+    }
+
+    /**
      * Reads a constant pool index for an invokedynamic instruction.
      *
      * @return the constant pool index
@@ -199,6 +227,15 @@ public final class BytecodeStream {
         if (curBCI < code.length) {
             // opcode validity is performed at verification time.
             return Bytes.beU1(code, curBCI);
+        } else {
+            return Bytecodes.END;
+        }
+    }
+
+    public int volatileOpcode(int curBCI) {
+        if (curBCI < code.length) {
+            // opcode validity is performed at verification time.
+            return Bytes.volatileBeU1(code, curBCI);
         } else {
             return Bytecodes.END;
         }
