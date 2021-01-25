@@ -188,8 +188,8 @@ public abstract class LayoutImpl extends Layout {
             DynamicObjectSupport.invalidateAllPropertyAssumptions(shape);
         }
 
-        public final void trimToSize(DynamicObject object, Shape thisShape) {
-            DynamicObjectSupport.trimToSize(object, thisShape);
+        public final void trimToSize(DynamicObject object, Shape thisShape, Shape otherShape) {
+            DynamicObjectSupport.trimToSize(object, thisShape, otherShape);
         }
 
         public final Map<Object, Object> archive(DynamicObject object) {
