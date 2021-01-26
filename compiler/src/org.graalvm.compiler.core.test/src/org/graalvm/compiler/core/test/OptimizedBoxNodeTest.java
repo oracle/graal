@@ -30,7 +30,7 @@ import org.graalvm.compiler.nodes.StructuredGraph;
 import org.graalvm.compiler.nodes.StructuredGraph.AllowAssumptions;
 import org.graalvm.compiler.nodes.extended.BoxNode;
 import org.graalvm.compiler.options.OptionValues;
-import org.graalvm.compiler.phases.common.BoxNodeCanonicalizationPhase;
+import org.graalvm.compiler.phases.common.BoxNodeOptimizationPhase;
 import org.graalvm.compiler.phases.util.GraphOrder;
 import org.junit.Assert;
 import org.junit.Test;
@@ -38,11 +38,6 @@ import org.junit.Test;
 import jdk.vm.ci.code.InstalledCode;
 import jdk.vm.ci.code.InvalidInstalledCodeException;
 
-/**
- * In the following tests, the usages of local variable "a" are replaced with the integer constant
- * 0. Then boxing elimination is applied and it is verified that the resulting graph is equal to the
- * graph of the method that just has a "return 1" statement in it.
- */
 public class OptimizedBoxNodeTest extends GraalCompilerTest {
 
     public static Object S;
@@ -79,7 +74,7 @@ public class OptimizedBoxNodeTest extends GraalCompilerTest {
     private void parseOptimizeCheck(String boxSnippet, int nrOptimizedAfter) {
         StructuredGraph g = parseEager(getResolvedJavaMethod(boxSnippet), AllowAssumptions.NO);
         createCanonicalizerPhase().apply(g, getDefaultHighTierContext());
-        new BoxNodeCanonicalizationPhase().apply(g, getDefaultHighTierContext());
+        new BoxNodeOptimizationPhase().apply(g, getDefaultHighTierContext());
         Assert.assertTrue(GraphOrder.assertNonCyclicGraph(g));
         Assert.assertEquals("must have one optimized box node", nrOptimizedAfter, g.getNodes().filter(BoxNode.OptimizedAllocatingBoxNode.class).count());
     }
@@ -175,7 +170,7 @@ public class OptimizedBoxNodeTest extends GraalCompilerTest {
         }
 
         InstalledCode codeReuseExistingBox = getCode(getResolvedJavaMethod(typePrefix + "BoxOptimized"),
-                        new OptionValues(getInitialOptions(), BoxNodeCanonicalizationPhase.Options.ReuseOufOutOfCacheBoxes, true));
+                        new OptionValues(getInitialOptions(), BoxNodeOptimizationPhase.Options.ReuseOutOfCacheBoxedValues, true));
         ArrayList<Object> integersReuse = new ArrayList<>();
         for (int i = -listLength; i < listLength; i++) {
             Object boxed = integersInterpreter.get(i + listLength);
@@ -187,7 +182,7 @@ public class OptimizedBoxNodeTest extends GraalCompilerTest {
 
         ArrayList<Object> integersNoReuse = new ArrayList<>();
         InstalledCode codeNoReuse = getCode(getResolvedJavaMethod(typePrefix + "BoxOptimized"),
-                        new OptionValues(getInitialOptions(), BoxNodeCanonicalizationPhase.Options.ReuseOufOutOfCacheBoxes, false));
+                        new OptionValues(getInitialOptions(), BoxNodeOptimizationPhase.Options.ReuseOutOfCacheBoxedValues, false));
         for (int i = -listLength; i < listLength; i++) {
             Object boxed = integersInterpreter.get(i + listLength);
             // cache values in range, re-use if out of range

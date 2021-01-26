@@ -342,6 +342,7 @@ public final class GraalFeature implements Feature {
     public void beforeAnalysis(BeforeAnalysisAccess c) {
         DebugContext debug = DebugContext.forCurrentThread();
 
+        // box lowering accesses the caches for those classes and thus needs reflective access
         for (JavaKind kind : new JavaKind[]{JavaKind.Boolean, JavaKind.Byte, JavaKind.Char,
                         JavaKind.Double, JavaKind.Float, JavaKind.Int, JavaKind.Long, JavaKind.Short}) {
             RuntimeReflection.register(kind.toBoxedJavaClass());

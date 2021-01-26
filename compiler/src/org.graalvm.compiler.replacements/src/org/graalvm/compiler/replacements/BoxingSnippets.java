@@ -27,7 +27,6 @@ package org.graalvm.compiler.replacements;
 import static org.graalvm.compiler.replacements.SnippetTemplate.DEFAULT_REPLACER;
 
 import java.util.EnumMap;
-import java.util.EnumSet;
 
 import org.graalvm.compiler.api.replacements.Snippet;
 import org.graalvm.compiler.api.replacements.Snippet.ConstantParameter;
@@ -45,8 +44,7 @@ import org.graalvm.compiler.nodes.extended.UnboxNode;
 import org.graalvm.compiler.nodes.spi.CoreProviders;
 import org.graalvm.compiler.nodes.spi.LoweringTool;
 import org.graalvm.compiler.options.OptionValues;
-import org.graalvm.compiler.phases.common.Bo;
-import org.graalvm.compiler.phases.common.BoxNodeCanonicalizationPhase;
+import org.graalvm.compiler.phases.common.BoxNodeOptimizationPhase;
 import org.graalvm.compiler.phases.util.Providers;
 import org.graalvm.compiler.replacements.SnippetCounter.Group;
 import org.graalvm.compiler.replacements.SnippetTemplate.AbstractTemplates;
@@ -111,7 +109,7 @@ public class BoxingSnippets implements Snippets {
 
     /**
      * Note: This list of optimized box versions should be kept in sync with
-     * {@link BoxNodeCanonicalizationPhase#OptimizedBoxVersions}.
+     * {@link BoxNodeOptimizationPhase#OptimizedBoxVersions}.
      */
 
     @Snippet
@@ -245,13 +243,11 @@ public class BoxingSnippets implements Snippets {
                     // does no allocation
                     boxSnippets.put(kind, snippet(BoxingSnippets.class, kind.getJavaName() + "ValueOf", trueField, falseField));
                 } else {
-                    if (mustHaveCacheField) {
-                        GraalError.guarantee(cacheLocation != null, "Must have a cache location for kind %s", kind);
-                    }
+                    GraalError.guarantee(!mustHaveCacheField || cacheLocation != null, "Must have a cache location for kind %s", kind);
                     if (cacheLocation != null) {
                         boxSnippets.put(kind, snippet(BoxingSnippets.class, kind.getJavaName() + "ValueOf", LocationIdentity.INIT_LOCATION, accessedLocation, cacheLocation,
                                         NamedLocationIdentity.getArrayLocation(JavaKind.Object)));
-                        if (BoxNodeCanonicalizationPhase.OptimizedBoxVersions.contains(kind)) {
+                        if (BoxNodeOptimizationPhase.Options.ReuseOutOfCacheBoxedValues.getValue(options) && BoxNodeOptimizationPhase.OptimizedBoxVersions.contains(kind)) {
                             boxSnippetsOptimized.put(kind, snippet(BoxingSnippets.class, kind.getJavaName() + "ValueOfOptimized", LocationIdentity.INIT_LOCATION, accessedLocation, cacheLocation,
                                             NamedLocationIdentity.getArrayLocation(JavaKind.Object)));
                         }
@@ -296,7 +292,7 @@ public class BoxingSnippets implements Snippets {
         public void lower(BoxNode box, LoweringTool tool) {
             Arguments args = null;
             if (box instanceof OptimizedAllocatingBoxNode) {
-                assert BoxNodeCanonicalizationPhase.OptimizedBoxVersions.contains(box.getBoxingKind());
+                assert BoxNodeOptimizationPhase.OptimizedBoxVersions.contains(box.getBoxingKind());
                 SnippetInfo info = boxSnippetsOptimized.get(box.getBoxingKind());
                 GraalError.guarantee(info != null, "Snippet info for boxing kind %s must not be null", box.getBoxingKind());
                 args = new Arguments(info, box.graph().getGuardsStage(), tool.getLoweringStage());

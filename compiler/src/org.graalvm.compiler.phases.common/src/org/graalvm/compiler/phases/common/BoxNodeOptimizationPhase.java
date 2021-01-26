@@ -55,16 +55,73 @@ import jdk.vm.ci.meta.JavaKind;
 import jdk.vm.ci.meta.MetaAccessProvider;
 
 /**
- * Utility phase to perform canonicalization of box nodes before lowering. We do not perform box
- * canonicalization directly in the node since want virtualization of box nodes. Creating a boxed
- * constant early on inhibits PEA so we do it after PEA but before lowering.
+ * Phase that tries to optimize Java boxing (auto-boxing of primitive values) operations.
+ *
+ * This phase performs to distinct optimizations that are grouped into one phase for simplicity.
+ *
+ * (1) First Transformation: Box node canonicalization
+ *
+ * Perform canonicalization of box nodes before lowering. We do not perform box canonicalization
+ * directly in the node since want virtualization of box nodes. Creating a boxed constant early on
+ * inhibits PEA so we do it after PEA but before lowering.
+ *
+ *
+ * (2) Second Transformation: Out-of-cache boxed value reuse
+ *
+ * Try to replace box operations with dominating box/unbox values. There are two distinct cases
+ * covered in this phase (they are marked in the code of the phase below)
+ *
+ * case 1:
+ *
+ * <pre>
+ * unboxedVal = unbox(a)
+ * ...
+ * boxedVal = box(unboxedVal)
+ * </pre>
+ *
+ * can be rewritten to
+ *
+ * <pre>
+ * unboxedVal = unbox(a)
+ * ...
+ * boxedVal;
+ * if (primitiveCacheHit(unboxedVal)) { // e.g. unboxed>=IntegerCache.low && unboxed <= IntegerCache.high
+ *     boxedVal = queryPrimitiveCache(unboxedVal); // e.g. Integer.valueOf(unboxedVal)
+ * } else {
+ *     boxedVal = a; // previously boxed value, no identity needed
+ * }
+ * </pre>
+ *
+ *
+ *
+ * case 2:
+ *
+ * <pre>
+ * boxedVal1 = box(primitiveVal)
+ * ...
+ * boxedVal2 = box(primitiveVal)
+ * </pre>
+ *
+ * can be rewritten to (if one box strictly dominates the other)
+ *
+ * <pre>
+ * boxedVal1 = box(primitiveVal)
+ * ...
+ * boxedVal2;
+ * if (primitiveCacheHit(primitiveVal)) {
+ *     boxedVal2 = queryPrimitiveCache(unboxedVal);
+ * } else {
+ *     boxedVal2 = boxedVal1;
+ * }
+ * </pre>
+ *
  */
-public class BoxNodeCanonicalizationPhase extends BasePhase<CoreProviders> {
+public class BoxNodeOptimizationPhase extends BasePhase<CoreProviders> {
 
     public static class Options {
         //@formatter:off
         @Option(help = "", type = Debug)
-        public static final OptionKey<Boolean> ReuseOufOutOfCacheBoxes = new OptionKey<>(true);
+        public static final OptionKey<Boolean> ReuseOutOfCacheBoxedValues = new OptionKey<>(true);
         //@formatter:on
     }
 
@@ -77,24 +134,23 @@ public class BoxNodeCanonicalizationPhase extends BasePhase<CoreProviders> {
         boxLoop: for (BoxNode box : graph.getNodes(BoxNode.TYPE)) {
             FloatingNode canonical = canonicalizeBoxing(box, context.getMetaAccess(), context.getConstantReflection());
             if (canonical != null) {
+                // case 1 from javadoc
                 box.replaceAtUsages((ValueNode) box.getLastLocationAccess(), InputType.Memory);
                 graph.replaceFixedWithFloating(box, canonical);
             }
             if (box.isAlive() && OptimizedBoxVersions.contains(box.getBoxingKind())) {
+                // case 2 from javadoc
                 if (box instanceof OptimizedAllocatingBoxNode) {
                     continue;
                 }
-                if (Options.ReuseOufOutOfCacheBoxes.getValue(graph.getOptions())) {
-
-                    ValueNode boxedVal = box.getValue();
+                if (Options.ReuseOutOfCacheBoxedValues.getValue(graph.getOptions())) {
+                    final ValueNode boxedVal = box.getValue();
                     assert boxedVal != null : "Box " + box + " has no value";
-
                     // try to optimize with dominating unbox of the same value
                     if (boxedVal instanceof UnboxNode && ((UnboxNode) boxedVal).getBoxingKind() == box.getBoxingKind()) {
                         optimziBoxed(box, ((UnboxNode) boxedVal).getValue());
                         continue boxLoop;
                     }
-
                     // try to optimize with dominating box of the same value
                     if (box.isAlive()) {
                         boxedValUsageLoop: for (Node usage : boxedVal.usages().snapshot()) {
@@ -102,6 +158,7 @@ public class BoxNodeCanonicalizationPhase extends BasePhase<CoreProviders> {
                                 continue;
                             }
                             if (usage instanceof OptimizedAllocatingBoxNode) {
+                                // already an optimized usage
                                 continue;
                             }
                             if (usage instanceof BoxNode) {
