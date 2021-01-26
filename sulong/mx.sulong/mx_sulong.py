@@ -1266,7 +1266,7 @@ if not mx.is_windows():
         dir_name='llvm',
         license_files=[],
         third_party_license_files=[],
-        dependencies=['LLVM Runtime Core'],
+        dependencies=['Truffle NFI', 'LLVM Runtime Core'],
         truffle_jars=['sulong:SULONG_NATIVE'],
         support_distributions=[
             'sulong:SULONG_NATIVE_HOME',
