@@ -32,6 +32,7 @@ import java.lang.reflect.Field;
 import java.util.function.BooleanSupplier;
 
 import org.graalvm.compiler.api.directives.GraalDirectives;
+import org.graalvm.compiler.word.ObjectAccess;
 import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;
 
@@ -56,6 +57,7 @@ import com.oracle.svm.util.ReflectionUtil;
 
 import jdk.vm.ci.meta.MetaAccessProvider;
 import jdk.vm.ci.meta.ResolvedJavaField;
+import org.graalvm.word.WordFactory;
 
 /**
  * Substitution of {@link Reference}, which is the abstract base class of all non-strong reference
@@ -131,20 +133,20 @@ public final class Target_java_lang_ref_Reference<T> {
 
     @Substitute
     @TargetElement(onlyWith = JDK16OrLater.class)
+    @Uninterruptible(reason = "Must be atomic with regard to garbage collection.")
     private void clear0() {
         /*
-         * This (native) method was added to fix two issues:
+         * This (native) method was added to fix following issues:
          * 
          * JDK-8256517: This issue only affects GCs that do the reference processing concurrently
          * (i.e., Shenandoah and ZGC). G1 only processes references at safepoints, so this shouldn't
          * be an issue for Native Image
          * 
-         * JDK-8240696: This issue affects G1.
+         * JDK-8240696: These issues affect G1.
          *
-         * This substitution was copied from old OpenJDK. We still need to resolve the second issue
-         * above.
+         * This barrier-less write is to resolve JDK-8240696.
          */
-        this.referent = null;
+        ObjectAccess.writeObject(this, WordFactory.signed(referentFieldOffset), null);
     }
 
     @KeepOriginal
@@ -153,10 +155,10 @@ public final class Target_java_lang_ref_Reference<T> {
 
     @Substitute
     @TargetElement(onlyWith = JDK16OrLater.class)
+    @Uninterruptible(reason = "Must be atomic with regard to garbage collection.")
     boolean refersTo0(Object o) {
-        // Can delay or prevent collection of the referent with some GCs, see JDK-8256167 and
-        // comments
-        return o == this.get();
+        // JDK-8188055
+        return o == ObjectAccess.readObject(this, WordFactory.signed(referentFieldOffset));
     }
 
     @KeepOriginal
