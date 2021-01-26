@@ -105,7 +105,7 @@ final class GreyToBlackObjRefVisitor implements ObjectReferenceVisitor {
             if (ObjectHeaderImpl.isForwardedHeader(header)) {
                 counters.noteForwardedReferent();
                 // Update the reference to point to the forwarded Object.
-                Object obj = ObjectHeaderImpl.getForwardedObject(p);
+                Object obj = ObjectHeaderImpl.getForwardedObject(p, header);
                 Object offsetObj = (innerOffset == 0) ? obj : Word.objectToUntrackedPointer(obj).add(innerOffset).toObject();
                 ReferenceAccess.singleton().writeObjectAt(objRef, offsetObj, compressed);
                 HeapImpl.getHeapImpl().dirtyCardIfNecessary(holderObject, obj);

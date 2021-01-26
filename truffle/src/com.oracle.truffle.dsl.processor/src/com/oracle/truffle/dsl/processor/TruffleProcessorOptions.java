@@ -41,6 +41,9 @@
 package com.oracle.truffle.dsl.processor;
 
 import javax.annotation.processing.ProcessingEnvironment;
+
+import com.oracle.truffle.dsl.processor.generator.FlatNodeGenFactory;
+
 import java.util.HashSet;
 import java.util.Set;
 
@@ -53,6 +56,7 @@ public class TruffleProcessorOptions {
     private static final String GenerateSlowPathOnlyOptionName = "GenerateSlowPathOnly";
     private static final String GenerateSlowPathOnlyFilterOptionName = "GenerateSlowPathOnlyFilter";
     private static final String CacheSharingWarningsEnabledOptionName = "cacheSharingWarningsEnabled";
+    private static final String StateBitWidth = "StateBitWidth";
 
     public static Boolean generateSpecializationStatistics(ProcessingEnvironment env) {
         String value = env.getOptions().get(OptionsPrefix + GenerateSpecializationStatisticsOptionName);
@@ -71,12 +75,22 @@ public class TruffleProcessorOptions {
         return Boolean.parseBoolean(env.getOptions().get(OptionsPrefix + CacheSharingWarningsEnabledOptionName));
     }
 
+    public static int stateBitWidth(ProcessingEnvironment env) {
+        String value = env.getOptions().get(OptionsPrefix + StateBitWidth);
+        if (value == null) {
+            return FlatNodeGenFactory.DEFAULT_MAX_BIT_WIDTH;
+        } else {
+            return Integer.parseInt(value);
+        }
+    }
+
     public static Set<String> getSupportedOptions() {
         HashSet<String> result = new HashSet<>();
         result.add(OptionsPrefix + GenerateSpecializationStatisticsOptionName);
         result.add(OptionsPrefix + GenerateSlowPathOnlyOptionName);
         result.add(OptionsPrefix + GenerateSlowPathOnlyFilterOptionName);
         result.add(OptionsPrefix + CacheSharingWarningsEnabledOptionName);
+        result.add(OptionsPrefix + StateBitWidth);
         return result;
     }
 }

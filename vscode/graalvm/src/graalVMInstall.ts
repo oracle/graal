@@ -30,6 +30,11 @@ export async function installGraalVM(context: vscode.ExtensionContext): Promise<
     try {
         const selected = await selectGraalVMRelease(context);
         if (selected) {
+            try {
+                fs.accessSync(selected.location, fs.constants.W_OK);
+            } catch (e) {
+                throw new Error(`Permission denied: no write access to ${selected.location}`);
+            }
             const downloadedFile = await dowloadGraalVMRelease(selected.url, selected.location);
             const targetDir = dirname(downloadedFile);
             const name = await extractGraalVM(downloadedFile, targetDir);
@@ -101,7 +106,7 @@ export async function selectActiveGraalVM(graalVMHome?: string, nonInteractive?:
     if (graalVMHome) {
         const graalVMVersion = await getGraalVMVersion(graalVMHome);
         if (graalVMVersion) {
-            configureGraalVMHome(graalVMHome, nonInteractive);
+            await configureGraalVMHome(graalVMHome, nonInteractive);
         }
     }
 }
@@ -414,7 +419,6 @@ async function dowloadGraalVMRelease(releaseURL: string, storagePath: string | u
     }, (progress, token) => {
         return new Promise<string>((resolve, reject) => {
             if (storagePath) {
-                fs.mkdirSync(storagePath, {recursive: true});
                 const filePath: string = join(storagePath, base);
                 const file: fs.WriteStream = fs.createWriteStream(filePath);
                 const request = function (url: string) {
@@ -603,7 +607,13 @@ async function getGraalVMCEReleases(): Promise<any> {
             if (version && version.length > 0) {
                 const graalvmVarsion: string = version[0];
                 let releasesVersion = releases[graalvmVarsion];
-                if (!Object.keys(releases).find(key => graalvmVarsion.endsWith('-dev') ? key.endsWith('-dev') : graalvmVarsion.slice(0, 2) === key.slice(0, 2))) {
+                let key = Object.keys(releases).find(key => graalvmVarsion.endsWith('-dev') ? key.endsWith('-dev') : graalvmVarsion.slice(0, 2) === key.slice(0, 2));
+                if (key) {
+                    if (graalvmVarsion > key) {
+                        delete releases[key];
+                        releases[graalvmVarsion] = releasesVersion = {};
+                    }
+                } else {
                     releases[graalvmVarsion] = releasesVersion = {};
                 }
                 if (releasesVersion) {
@@ -637,7 +647,13 @@ async function getGraalVMEEReleases(): Promise<any> {
         .forEach((releaseInfo: any) => {
             if (releaseInfo.version && releaseInfo.java && releaseInfo.license) {
                 let releaseVersion = releases[releaseInfo.version];
-                if (!Object.keys(releases).find(key => releaseInfo.version.endsWith('-dev') ? key.endsWith('-dev') : releaseInfo.version.slice(0, 2) === key.slice(0, 2))) {
+                let key = Object.keys(releases).find(key => releaseInfo.version.endsWith('-dev') ? key.endsWith('-dev') : releaseInfo.version.slice(0, 2) === key.slice(0, 2));
+                if (key) {
+                    if (releaseInfo.version > key) {
+                        delete releases[key];
+                        releases[releaseInfo.version] = releaseVersion = {};
+                    }
+                } else {
                     releases[releaseInfo.version] = releaseVersion = {};
                 }
                 if (releaseVersion) {

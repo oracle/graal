@@ -24,6 +24,7 @@
  */
 package org.graalvm.compiler.truffle.runtime.hotspot;
 
+import java.lang.ref.Reference;
 import java.lang.reflect.Field;
 import java.lang.reflect.InvocationTargetException;
 import java.lang.reflect.Method;
@@ -60,13 +61,19 @@ import com.oracle.truffle.api.source.SourceSection;
 
 import jdk.vm.ci.code.InstalledCode;
 import jdk.vm.ci.code.stack.StackIntrospection;
+import jdk.vm.ci.common.JVMCIError;
 import jdk.vm.ci.hotspot.HotSpotConstantReflectionProvider;
 import jdk.vm.ci.hotspot.HotSpotJVMCIRuntime;
+import jdk.vm.ci.hotspot.HotSpotMetaAccessProvider;
 import jdk.vm.ci.hotspot.HotSpotObjectConstant;
 import jdk.vm.ci.hotspot.HotSpotResolvedJavaMethod;
+import jdk.vm.ci.hotspot.HotSpotResolvedObjectType;
 import jdk.vm.ci.hotspot.HotSpotSpeculationLog;
+import jdk.vm.ci.hotspot.HotSpotVMConfigAccess;
 import jdk.vm.ci.meta.JavaConstant;
+import jdk.vm.ci.meta.JavaKind;
 import jdk.vm.ci.meta.MetaAccessProvider;
+import jdk.vm.ci.meta.ResolvedJavaField;
 import jdk.vm.ci.meta.ResolvedJavaMethod;
 import jdk.vm.ci.meta.ResolvedJavaType;
 import jdk.vm.ci.meta.SpeculationLog;
@@ -81,11 +88,9 @@ import sun.misc.Unsafe;
  * native-image shared library).
  */
 public abstract class AbstractHotSpotTruffleRuntime extends GraalTruffleRuntime implements HotSpotTruffleCompilerRuntime {
-    private static final sun.misc.Unsafe UNSAFE;
 
-    static {
-        UNSAFE = getUnsafe();
-    }
+    private static final sun.misc.Unsafe UNSAFE = getUnsafe();
+    private static volatile HotSpotVMConfigAccess vmConfigAccess;
 
     private static Unsafe getUnsafe() {
         try {
@@ -433,6 +438,104 @@ public abstract class AbstractHotSpotTruffleRuntime extends GraalTruffleRuntime 
     protected JavaConstant forObject(final Object object) {
         final HotSpotConstantReflectionProvider constantReflection = (HotSpotConstantReflectionProvider) HotSpotJVMCIRuntime.runtime().getHostJVMCIBackend().getConstantReflection();
         return constantReflection.forObject(object);
+    }
+
+    @Override
+    protected int getBaseInstanceSize(Class<?> type) {
+        if (type.isArray() || type.isPrimitive()) {
+            throw new IllegalArgumentException("Class " + type.getName() + " is a primitive type or an array class!");
+        }
+
+        HotSpotMetaAccessProvider meta = (HotSpotMetaAccessProvider) getMetaAccess();
+        HotSpotResolvedObjectType resolvedType = (HotSpotResolvedObjectType) meta.lookupJavaType(type);
+        return resolvedType.instanceSize();
+    }
+
+    private static boolean fieldIsNotEligible(Class<?> clazz, ResolvedJavaField f) {
+        /*
+         * "discovered" field of Reference class may reference unrelated objects that should not be
+         * included. The condition is structured with the intention to minimize performance impact.
+         * In any case, we have to check that the field is declared in the Reference class, because
+         * the "discovered" field is private and so subclasses can have field of the same name.
+         */
+        return (Reference.class.isAssignableFrom(clazz) &&
+                        f.getName().equals("discovered") && f.getDeclaringClass().isAssignableFrom(getMetaAccess().lookupJavaType(Reference.class)));
+    }
+
+    @Override
+    protected Object[] getNonPrimitiveResolvedFields(Class<?> type) {
+        if (type.isArray() || type.isPrimitive()) {
+            throw new IllegalArgumentException("Class " + type.getName() + " is a primitive type or an array class!");
+        }
+        HotSpotMetaAccessProvider meta = (HotSpotMetaAccessProvider) getMetaAccess();
+        ResolvedJavaType javaType = meta.lookupJavaType(type);
+        ResolvedJavaField[] fields = javaType.getInstanceFields(true);
+        ResolvedJavaField[] fieldsToReturn = new ResolvedJavaField[fields.length];
+        int fieldsCount = 0;
+        for (int i = 0; i < fields.length; i++) {
+            final ResolvedJavaField f = fields[i];
+            if (!f.getJavaKind().isPrimitive() && !fieldIsNotEligible(type, f)) {
+                fieldsToReturn[fieldsCount++] = f;
+            }
+        }
+        return Arrays.copyOf(fieldsToReturn, fieldsCount);
+    }
+
+    @SuppressWarnings("deprecation")
+    @Override
+    protected Object getFieldValue(ResolvedJavaField resolvedJavaField, Object obj) {
+        assert obj != null;
+        assert !resolvedJavaField.isStatic();
+        assert resolvedJavaField.getJavaKind() == JavaKind.Object;
+        assert resolvedJavaField.getDeclaringClass().isAssignableFrom(getMetaAccess().lookupJavaType(obj.getClass()));
+
+        /*
+         * The following code is extracted from
+         * jdk.vm.ci.hotspot.HotSpotJDKReflection#readFieldValue(HotSpotResolvedJavaField, Object,
+         * boolean) for this special case.
+         */
+        Object value;
+        if (resolvedJavaField.isVolatile()) {
+            value = UNSAFE.getObjectVolatile(obj, resolvedJavaField.getOffset());
+        } else {
+            value = UNSAFE.getObject(obj, resolvedJavaField.getOffset());
+        }
+        return value;
+    }
+
+    private static <T> T getVMOptionValue(String name, Class<T> type) {
+        HotSpotVMConfigAccess vmConfig = vmConfigAccess;
+        if (vmConfig == null) {
+            vmConfig = new HotSpotVMConfigAccess(HotSpotJVMCIRuntime.runtime().getConfigStore());
+            vmConfigAccess = vmConfig;
+        }
+        try {
+            return vmConfig.getFlag(name, type);
+        } catch (JVMCIError jvmciError) {
+            // The option was not found. Throw rather IllegalArgumentException than JVMCIError
+            throw new IllegalArgumentException(jvmciError);
+        }
+    }
+
+    @Override
+    protected int getObjectAlignment() {
+        return getVMOptionValue("ObjectAlignmentInBytes", Integer.class);
+    }
+
+    @Override
+    protected int getArrayIndexScale(Class<?> componentType) {
+        MetaAccessProvider meta = getMetaAccess();
+        ResolvedJavaType resolvedType = meta.lookupJavaType(componentType);
+
+        return ((HotSpotJVMCIRuntime) JVMCI.getRuntime()).getArrayIndexScale(resolvedType.getJavaKind());
+    }
+
+    @Override
+    protected int getArrayBaseOffset(Class<?> componentType) {
+        MetaAccessProvider meta = getMetaAccess();
+        ResolvedJavaType resolvedType = meta.lookupJavaType(componentType);
+
+        return ((HotSpotJVMCIRuntime) JVMCI.getRuntime()).getArrayBaseOffset(resolvedType.getJavaKind());
     }
 
     @Override

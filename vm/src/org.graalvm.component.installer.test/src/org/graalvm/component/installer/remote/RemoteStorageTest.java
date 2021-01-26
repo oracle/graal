@@ -61,14 +61,16 @@ public class RemoteStorageTest extends TestBase {
     private ComponentRegistry localRegistry;
     private Properties catalogProps = new Properties();
 
+    private String graalVersion = "0.33-dev";
+    private String graalSelector = TEST_GRAAL_FLAVOUR;
+
     @Rule public ExpectedException exception = ExpectedException.none();
 
     @Before
     public void setUp() throws Exception {
         storage = new MockStorage();
-        localRegistry = new ComponentRegistry(this, storage);
-        remStorage = new RemotePropertiesStorage(this, localRegistry, catalogProps, TEST_GRAAL_FLAVOUR,
-                        Version.fromString("0.33-dev"), new URL(TEST_BASE_URL));
+        remStorage = new RemotePropertiesStorage(this, localRegistry, catalogProps, graalSelector,
+                        Version.fromString(graalVersion), new URL(TEST_BASE_URL));
         try (InputStream is = getClass().getResourceAsStream("catalog.properties")) {
             catalogProps.load(is);
         }
@@ -76,9 +78,16 @@ public class RemoteStorageTest extends TestBase {
 
     private void loadCatalog(String s) throws IOException {
         catalogProps.clear();
+        localRegistry = new ComponentRegistry(this, storage);
         try (InputStream is = getClass().getResourceAsStream(s)) {
             catalogProps.load(is);
         }
+    }
+
+    private void forceLoadCatalog(String s) throws IOException {
+        loadCatalog(s);
+        remStorage = new RemotePropertiesStorage(this, localRegistry, catalogProps, graalSelector,
+                        Version.fromString(graalVersion), new URL(TEST_BASE_URL));
     }
 
     @Test
@@ -257,6 +266,60 @@ public class RemoteStorageTest extends TestBase {
         assertEquals("ruby", ci.getId());
         assertEquals("8", ci.getRequiredGraalValues().get(CommonConstants.CAP_JAVA_VERSION));
 
+    }
+
+    private void setSelector(String os, String arch) {
+        String s = SystemUtils.patternOsName(os) + "_" + SystemUtils.patternOsArch(arch);
+        graalSelector = s;
+    }
+
+    private void assertComponentHasNormalizedValues(String cid) throws IOException {
+        Set<ComponentInfo> infos = remStorage.loadComponentMetadata(cid);
+        assertEquals(1, infos.size());
+        ComponentInfo ci = infos.iterator().next();
+
+        String os = ci.getRequiredGraalValues().get(CommonConstants.CAP_OS_NAME);
+        String arch = ci.getRequiredGraalValues().get(CommonConstants.CAP_OS_ARCH);
+
+        String nos = SystemUtils.normalizeOSName(os, arch);
+        String narch = SystemUtils.normalizeArchitecture(os, arch);
+
+        assertEquals(nos, os);
+        assertEquals(narch, arch);
+    }
+
+    private void assertAllComponentsLoaded() throws IOException {
+        Set<String> ids = remStorage.listComponentIDs();
+        assertEquals(2, ids.size());
+        assertTrue(ids.contains("ruby"));
+        assertTrue(ids.contains("r"));
+
+        // assertComponentHasNormalizedValues("ruby");
+        assertComponentHasNormalizedValues("r");
+    }
+
+    @Test
+    public void testMixedLinuxArchitetures() throws Exception {
+        storage.graalInfo.put(CommonConstants.CAP_GRAALVM_VERSION, "0.33-dev");
+        // selector is opposite to what's in the catalog file.
+        setSelector("linux", "x86_64");
+        forceLoadCatalog("catalogWithDifferentOsArch.properties");
+        assertAllComponentsLoaded();
+
+        graalVersion = "0.34-dev";
+        setSelector("Linux", "amd64");
+        forceLoadCatalog("catalogWithDifferentOsArch.properties");
+        assertAllComponentsLoaded();
+
+        graalVersion = "0.35-dev";
+        setSelector("Darwin", "amd64");
+        forceLoadCatalog("catalogWithDifferentOsArch.properties");
+        assertAllComponentsLoaded();
+
+        storage.graalInfo.put(CommonConstants.CAP_GRAALVM_VERSION, "0.35-dev");
+        setSelector("macos", "x86_64");
+        forceLoadCatalog("catalogWithDifferentOsArch.properties");
+        assertAllComponentsLoaded();
     }
 
     static int compare(String a, String b) {

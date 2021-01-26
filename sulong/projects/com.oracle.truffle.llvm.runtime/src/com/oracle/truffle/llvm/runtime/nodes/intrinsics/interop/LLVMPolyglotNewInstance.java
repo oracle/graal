@@ -69,7 +69,6 @@ public abstract class LLVMPolyglotNewInstance extends LLVMIntrinsic {
         this.foreignNewInstance = InteropLibrary.getFactory().createDispatched(5);
     }
 
-    @SuppressWarnings("try")
     @Specialization
     @ExplodeLoop
     protected Object doNew(VirtualFrame frame, LLVMManagedPointer value,
@@ -87,7 +86,7 @@ public abstract class LLVMPolyglotNewInstance extends LLVMIntrinsic {
             return toLLVM.executeWithTarget(rawValue);
         } catch (UnsupportedMessageException e) {
             CompilerDirectives.transferToInterpreter();
-            throw new LLVMPolyglotException(this, "Polyglot value can not be instantiated.");
+            throw new LLVMPolyglotException(this, "Polyglot value cannot be instantiated.");
         } catch (UnsupportedTypeException e) {
             CompilerDirectives.transferToInterpreter();
             throw new LLVMPolyglotException(this, "Wrong argument type passed to polyglot_new_instance.");

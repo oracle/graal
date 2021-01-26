@@ -1,5 +1,5 @@
 #
-# Copyright (c) 2016, 2020, Oracle and/or its affiliates.
+# Copyright (c) 2016, 2021, Oracle and/or its affiliates.
 #
 # All rights reserved.
 #
@@ -47,6 +47,7 @@ import mx_sulong_benchmarks
 import mx_buildtools
 import mx_sulong_fuzz #pylint: disable=unused-import
 import mx_sulong_llvm_config
+import mx_unittest
 
 from mx_gate import Task, add_gate_runner, add_gate_argument
 
@@ -158,6 +159,20 @@ def _sulong_gate_sulongsuite_unittest(title, tasks, args, tags=None, testClasses
     _sulong_gate_unittest(title, test_suite, tasks, args, tags=tags, testClasses=testClasses)
 
 
+def _unittest_config_participant(config):
+    (vmArgs, mainClass, mainClassArgs) = config
+    vmArgs += get_test_distribution_path_properties(_suite)
+    return (vmArgs, mainClass, mainClassArgs)
+
+
+def get_test_distribution_path_properties(suite):
+    return ['-Dsulongtest.path.{}={}'.format(d.name, d.get_output()) for d in suite.dists if
+            d.is_test_distribution() and not d.isClasspathDependency()]
+
+
+mx_unittest.add_config_participant(_unittest_config_participant)
+
+
 class SulongGateEnv(object):
     """"Sets a marker environment variable."""
     def __enter__(self):
@@ -200,7 +215,6 @@ def _sulong_gate_runner(args, tasks):
     _sulong_gate_testsuite('Args', 'other', tasks, args, tags=['args', 'sulongMisc', 'sulongCoverage'], testClasses=['com.oracle.truffle.llvm.tests.MainArgsTest'])
     _sulong_gate_testsuite('Callback', 'other', tasks, args, tags=['callback', 'sulongMisc', 'sulongCoverage'], testClasses=['com.oracle.truffle.llvm.tests.CallbackTest'])
     _sulong_gate_testsuite('Varargs', 'other', tasks, args, tags=['vaargs', 'sulongMisc', 'sulongCoverage'], testClasses=['com.oracle.truffle.llvm.tests.VAArgsTest'])
-    _sulong_gate_sulongsuite_unittest('VAList', tasks, args, testClasses='VAListTest', tags=['vaargs', 'sulongMisc', 'sulongCoverage'])
     with Task('TestToolchain', tasks, tags=['toolchain', 'sulongMisc', 'sulongCoverage']) as t:
         if t:
             with SulongGateEnv():
@@ -256,6 +270,7 @@ def runLLVMUnittests(unittest_runner):
 
     test_harness_dist = mx.distribution('SULONG_TEST')
     java_run_props = [x for x in mx.get_runtime_jvm_args(test_harness_dist) if x.startswith('-D')]
+    java_run_props += get_test_distribution_path_properties(_suite)
 
     test_suite = 'SULONG_TEST_SUITES'
     mx_testsuites.compileTestSuite(test_suite, extra_build_args=[])
@@ -280,21 +295,21 @@ def clangformat(args=None):
     parser.add_argument('--with-projects', action='store_true', help='check native projects. Defaults to true unless a path is specified.')
     parser.add_argument('paths', metavar='path', nargs='*', help='check given paths')
     args = parser.parse_args(args)
-    paths = args.paths
+    paths = [(p, "<cmd-line-argument>") for p in args.paths]
 
     if not paths or args.with_projects:
-        paths += [p.dir for p in mx.projects(limit_to_primary=True) if p.isNativeProject() and getattr(p, "clangFormat", True)]
+        paths += [(p.dir, p.name) for p in mx.projects(limit_to_primary=True) if p.isNativeProject() and getattr(p, "clangFormat", True)]
 
     error = False
-    for f in paths:
-        if not checkCFiles(f):
+    for f, reason in paths:
+        if not checkCFiles(f, reason):
             error = True
     if error:
         mx.log_error("found formatting errors!")
         exit(-1)
 
 
-def checkCFiles(target):
+def checkCFiles(target, reason):
     error = False
     files_to_check = []
     if os.path.isfile(target):
@@ -305,9 +320,9 @@ def checkCFiles(target):
                 if f.endswith('.c') or f.endswith('.cpp') or f.endswith('.h') or f.endswith('.hpp'):
                     files_to_check.append(join(path, f))
     if not files_to_check:
-        mx.logv("clang-format: no files found {}".format(target))
+        mx.logv("clang-format: no files found {} ({})".format(target, reason))
         return True
-    mx.logv("clang-format: checking {} ({} files)".format(target, len(files_to_check)))
+    mx.logv("clang-format: checking {} ({}, {} files)".format(target, reason, len(files_to_check)))
     for f in files_to_check:
         if not checkCFile(f):
             error = True
@@ -721,7 +736,7 @@ def llvm_extra_tool(args=None, out=None, **kwargs):
 
 def getClasspathOptions(extra_dists=None):
     """gets the classpath of the Sulong distributions"""
-    return mx.get_runtime_jvm_args(['SULONG', 'SULONG_LAUNCHER', 'TRUFFLE_NFI'] + (extra_dists or []))
+    return mx.get_runtime_jvm_args(['SULONG_CORE', 'SULONG_NATIVE', 'SULONG_LAUNCHER', 'TRUFFLE_NFI'] + (extra_dists or []))
 
 def ensureLLVMBinariesExist():
     """downloads the LLVM binaries if they have not been downloaded yet"""
@@ -854,6 +869,10 @@ def create_toolchain_root_provider(name, dist):
     return provider
 
 
+def _exe_sub(program):
+    return mx_subst.path_substitutions.substitute("<exe:{}>".format(program))
+
+
 class ToolchainConfig(object):
     # Please keep this list in sync with Toolchain.java (method documentation) and ToolchainImpl.java (lookup switch block).
     _llvm_tool_map = ["ar", "nm", "objcopy", "objdump", "ranlib", "readelf", "readobj", "strip"]
@@ -871,8 +890,8 @@ class ToolchainConfig(object):
         self.tools = tools
         self.suite = suite
         self.mx_command = self.name + '-toolchain'
-        self.tool_map = {tool: [alias.format(name=name) for alias in aliases] for tool, aliases in ToolchainConfig._tool_map.items()}
-        self.exe_map = {exe: tool for tool, aliases in self.tool_map.items() for exe in aliases}
+        self.tool_map = {tool: [_exe_sub(alias.format(name=name)) for alias in aliases] for tool, aliases in ToolchainConfig._tool_map.items()}
+        self.exe_map = {_exe_sub(exe): tool for tool, aliases in self.tool_map.items() for exe in aliases}
         # register mx command
         mx.update_commands(_suite, {
             self.mx_command: [self._toolchain_helper, 'launch {} toolchain commands'.format(self.name)],
@@ -947,15 +966,24 @@ class BootstrapToolchainLauncherProject(mx.Project):  # pylint: disable=too-many
     def launchers(self):
         for tool in self.suite.toolchain._supported_tools():
             for exe in self.suite.toolchain._tool_to_aliases(tool):
+                if mx.is_windows() and exe.endswith('.exe'):
+                    exe = exe[:-4] + ".cmd"
                 result = join(self.get_output_root(), exe)
-                yield result, tool, join('bin', exe)
+                yield result, tool, exe
 
     def getArchivableResults(self, use_relpath=True, single=False):
-        for result, _, prefixed in self.launchers():
-            yield result, prefixed
+        for result, _, exe in self.launchers():
+            yield result, join('bin', exe)
 
     def getBuildTask(self, args):
         return BootstrapToolchainLauncherBuildTask(self, args, 1)
+
+    def isPlatformDependent(self):
+        return True
+
+
+def _quote_windows(arg):
+    return '"{}"'.format(arg)
 
 
 class BootstrapToolchainLauncherBuildTask(mx.BuildTask):
@@ -970,35 +998,43 @@ class BootstrapToolchainLauncherBuildTask(mx.BuildTask):
         if sup[0]:
             return sup
 
-        for result, tool, _ in self.subject.launchers():
+        for result, tool, exe in self.subject.launchers():
             if not exists(result):
                 return True, result + ' does not exist'
             with open(result, "r") as f:
                 on_disk = f.read()
-            if on_disk != self.contents(tool):
+            if on_disk != self.contents(tool, exe):
                 return True, 'command line changed for ' + basename(result)
 
         return False, 'up to date'
 
     def build(self):
         mx.ensure_dir_exists(self.subject.get_output_root())
-        for result, tool, _ in self.subject.launchers():
+        for result, tool, exe in self.subject.launchers():
             with open(result, "w") as f:
-                f.write(self.contents(tool))
+                f.write(self.contents(tool, exe))
             os.chmod(result, 0o755)
 
     def clean(self, forBuild=False):
         if exists(self.subject.get_output_root()):
             mx.rmtree(self.subject.get_output_root())
 
-    def contents(self, tool):
+    def contents(self, tool, exe):
+        # platform support
+        all_params = '"%*"' if mx.is_windows() else '"$@"'
+        _quote = _quote_windows if mx.is_windows() else pipes.quote
+        # build command line
         java = mx.get_jdk().java
         classpath_deps = [dep for dep in self.subject.buildDependencies if isinstance(dep, mx.ClasspathDependency)]
-        jvm_args = [pipes.quote(arg) for arg in mx.get_runtime_jvm_args(classpath_deps)]
-        extra_props = ['-Dorg.graalvm.launcher.executablename="$0"']
+        extra_props = ['-Dorg.graalvm.launcher.executablename="{}"'.format(exe)]
         main_class = self.subject.suite.toolchain._tool_to_main(tool)
-        command = [java] + jvm_args + extra_props + [main_class, '"$@"']
-        return "#!/usr/bin/env bash\n" + "exec " + " ".join(command) + "\n"
+        jvm_args = [_quote(arg) for arg in mx.get_runtime_jvm_args(classpath_deps)]
+        command = [java] + jvm_args + extra_props + [main_class, all_params]
+        # create script
+        if mx.is_windows():
+            return "@echo off\n" + " ".join(command) + "\n"
+        else:
+            return "#!/usr/bin/env bash\n" + "exec " + " ".join(command) + "\n"
 
 
 class CMakeBuildTask(mx.NativeBuildTask):
@@ -1095,23 +1131,28 @@ class CMakeBuildTask(mx.NativeBuildTask):
         return os.path.join(self.subject.dir, 'mx.cmake.rebuild.guard')
 
 
-class CMakeProject(mx.NativeProject):  # pylint: disable=too-many-ancestors
+class AbstractSulongNativeProject(mx.NativeProject):  # pylint: disable=too-many-ancestors
     def __init__(self, suite, name, deps, workingSets, subDir, results=None, output=None, **args):
         projectDir = args.pop('dir', None)
         if projectDir:
-            d = join(suite.dir, projectDir)
+            d_rel = projectDir
         elif subDir is None:
-            d = join(suite.dir, name)
+            d_rel = name
         else:
-            d = join(suite.dir, subDir, name)
+            d_rel = os.path.join(subDir, name)
+        d = os.path.join(suite.dir, d_rel.replace('/', os.sep))
         srcDir = args.pop('sourceDir', d)
         if not srcDir:
             mx.abort("Exactly one 'sourceDir' is required")
         srcDir = mx_subst.path_substitutions.substitute(srcDir)
+        super(AbstractSulongNativeProject, self).__init__(suite, name, subDir, [srcDir], deps, workingSets, results, output, d, **args)
+
+
+class CMakeProject(AbstractSulongNativeProject):  # pylint: disable=too-many-ancestors
+    def __init__(self, suite, name, deps, workingSets, subDir, results=None, output=None, **args):
+        super(CMakeProject, self).__init__(suite, name, deps, workingSets, subDir, results=results, output=output, **args)
         cmake_config = args.pop('cmakeConfig', {})
         self.cmake_config = lambda: ['-D{}={}'.format(k, mx_subst.path_substitutions.substitute(v).replace('{{}}', '$')) for k, v in sorted(cmake_config.items())]
-
-        super(CMakeProject, self).__init__(suite, name, subDir, [srcDir], deps, workingSets, results, output, d, **args)
         self.dir = self.getOutput()
 
     def getBuildTask(self, args):
@@ -1132,25 +1173,39 @@ class DocumentationBuildTask(mx.AbstractNativeBuildTask):
         pass
 
 
-class DocumentationProject(mx.NativeProject):  # pylint: disable=too-many-ancestors
+class DocumentationProject(AbstractSulongNativeProject):  # pylint: disable=too-many-ancestors
     def __init__(self, suite, name, deps, workingSets, subDir, results=None, output=None, **args):
-        projectDir = args.pop('dir', None)
-        if projectDir:
-            d = join(suite.dir, projectDir)
-        elif subDir is None:
-            d = join(suite.dir, name)
-        else:
-            d = join(suite.dir, subDir, name)
-        srcDir = args.pop('sourceDir', d)
-        if not srcDir:
-            mx.abort("Exactly one 'sourceDir' is required")
-        srcDir = mx_subst.path_substitutions.substitute(srcDir)
-        super(DocumentationProject, self).__init__(suite, name, subDir, [srcDir], deps, workingSets, results, output, d, **args)
-        self.dir = d
+        super(DocumentationProject, self).__init__(suite, name, deps, workingSets, subDir, results, output, **args)
+        self.dir = self.source_dirs()[0]
 
     def getBuildTask(self, args):
         return DocumentationBuildTask(args, self)
 
+
+class HeaderBuildTask(mx.NativeBuildTask):
+    def __str__(self):
+        return 'Building {} with Header Build Task'.format(self.subject.name)
+
+    def build(self):
+        self._newestOutput = None
+
+    def needsBuild(self, newestInput):
+        return (False, "up to date according to GNU Make")
+
+    def clean(self, forBuild=False):
+        pass
+
+
+class HeaderProject(AbstractSulongNativeProject):  # pylint: disable=too-many-ancestors
+    def __init__(self, suite, name, deps, workingSets, subDir, results=None, output=None, **args):
+        super(HeaderProject, self).__init__(suite, name, deps, workingSets, subDir, results, output, **args)
+        self.dir = self.source_dirs()[0]
+
+    def getBuildTask(self, args):
+        return HeaderBuildTask(args, self)
+
+    def isPlatformDependent(self):
+        return False
 
 _suite.toolchain = ToolchainConfig('native', 'SULONG_TOOLCHAIN_LAUNCHERS', 'SULONG_BOOTSTRAP_TOOLCHAIN',
                                    # unfortunately, we cannot define those in the suite.py because graalvm component
@@ -1166,17 +1221,47 @@ _suite.toolchain = ToolchainConfig('native', 'SULONG_TOOLCHAIN_LAUNCHERS', 'SULO
 
 mx_sdk_vm.register_graalvm_component(mx_sdk_vm.GraalVmLanguage(
     suite=_suite,
-    name='Sulong',
-    short_name='slg',
+    name='LLVM Runtime Core',
+    short_name='llrc',
     dir_name='llvm',
     license_files=[],
     third_party_license_files=[],
-    dependencies=['Truffle', 'Truffle NFI'],
-    truffle_jars=['sulong:SULONG', 'sulong:SULONG_API'],
+    dependencies=['Truffle'],
+    truffle_jars=['sulong:SULONG_CORE', 'sulong:SULONG_API'],
     support_distributions=[
-        'sulong:SULONG_HOME',
+        'sulong:SULONG_CORE_HOME',
         'sulong:SULONG_GRAALVM_DOCS',
     ],
+    installable=False,
+))
+
+if not mx.is_windows():
+    mx_sdk_vm.register_graalvm_component(mx_sdk_vm.GraalVmLanguage(
+        suite=_suite,
+        name='LLVM Runtime Native',
+        short_name='llrn',
+        dir_name='llvm',
+        license_files=[],
+        third_party_license_files=[],
+        dependencies=['LLVM Runtime Core'],
+        truffle_jars=['sulong:SULONG_NATIVE'],
+        support_distributions=[
+            'sulong:SULONG_NATIVE_HOME',
+        ],
+        launcher_configs=_suite.toolchain.get_launcher_configs(),
+        installable=False,
+    ))
+
+mx_sdk_vm.register_graalvm_component(mx_sdk_vm.GraalVmLanguage(
+    suite=_suite,
+    name='LLVM Runtime Launcher',
+    short_name='llrl',
+    dir_name='llvm',
+    license_files=[],
+    third_party_license_files=[],
+    dependencies=[],
+    truffle_jars=[],
+    support_distributions=[],
     launcher_configs=[
         mx_sdk_vm.LanguageLauncherConfig(
             destination='bin/<exe:lli>',
@@ -1185,10 +1270,31 @@ mx_sdk_vm.register_graalvm_component(mx_sdk_vm.GraalVmLanguage(
             build_args=[],
             language='llvm',
         ),
-    ] + _suite.toolchain.get_launcher_configs(),
+    ],
     installable=False,
 ))
 
+mx_sdk_vm.register_graalvm_component(mx_sdk_vm.GraalVmLanguage(
+    suite=_suite,
+    name='LLVM Multi-Context Runtime Launcher',
+    short_name='llmulrl',
+    dir_name='llvm',
+    license_files=[],
+    third_party_license_files=[],
+    dependencies=[],
+    truffle_jars=[],
+    support_distributions=[],
+    launcher_configs=[
+        mx_sdk_vm.LanguageLauncherConfig(
+            destination='bin/<exe:llimul>',
+            jar_distributions=['sulong:SULONG_LAUNCHER'],
+            main_class='com.oracle.truffle.llvm.launcher.LLVMMultiContextLauncher',
+            build_args=[],
+            language='llvm',
+        ),
+    ],
+    installable=False,
+))
 
 COPYRIGHT_HEADER_BSD = """\
 /*

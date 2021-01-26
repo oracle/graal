@@ -24,21 +24,21 @@
  */
 package org.graalvm.compiler.truffle.runtime;
 
-import org.graalvm.compiler.truffle.options.PolyglotCompilerOptions;
 import java.lang.ref.WeakReference;
 import java.util.function.Consumer;
+import java.util.logging.Level;
 
 import org.graalvm.compiler.truffle.common.OptimizedAssumptionDependency;
+import org.graalvm.compiler.truffle.options.PolyglotCompilerOptions;
+import org.graalvm.options.OptionValues;
 
 import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.TruffleLogger;
 import com.oracle.truffle.api.impl.AbstractAssumption;
 import com.oracle.truffle.api.nodes.InvalidAssumptionException;
-import java.util.logging.Level;
 
 import jdk.vm.ci.meta.JavaKind.FormatWithToString;
-import org.graalvm.options.OptionValues;
 
 /**
  * An assumption that when {@linkplain #invalidate() invalidated} will cause all
@@ -191,9 +191,10 @@ public final class OptimizedAssumption extends AbstractAssumption implements For
                         reason = new LazyReason(useName, useMessage);
                     }
                 }
-                OptimizedCallTarget callTarget = invalidateWithReason(dependency, reason);
+                dependency.onAssumptionInvalidated(this, reason);
 
                 if (engineOptions == null) {
+                    OptimizedCallTarget callTarget = (OptimizedCallTarget) dependency.getCompilable();
                     if (callTarget != null) {
                         engineOptions = callTarget.getOptionValues();
                         logger = callTarget.engine.getEngineLogger();
@@ -280,17 +281,6 @@ public final class OptimizedAssumption extends AbstractAssumption implements For
             size++;
             return e;
         } else {
-            return null;
-        }
-    }
-
-    private OptimizedCallTarget invalidateWithReason(OptimizedAssumptionDependency dependency, CharSequence reason) {
-        if (dependency.getCompilable() != null) {
-            OptimizedCallTarget callTarget = (OptimizedCallTarget) dependency.getCompilable();
-            callTarget.invalidate(this, reason);
-            return callTarget;
-        } else {
-            dependency.invalidate();
             return null;
         }
     }

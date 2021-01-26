@@ -54,62 +54,62 @@ final class ReversedByteArraySupport extends ByteArraySupport {
     }
 
     @Override
-    public byte getByte(byte[] buffer, int index) throws IndexOutOfBoundsException {
-        return access.getByte(buffer, index);
+    public byte getByte(byte[] buffer, int byteOffset) throws IndexOutOfBoundsException {
+        return access.getByte(buffer, byteOffset);
     }
 
     @Override
-    public void putByte(byte[] buffer, int index, byte value) throws IndexOutOfBoundsException {
-        access.putByte(buffer, index, value);
+    public void putByte(byte[] buffer, int byteOffset, byte value) throws IndexOutOfBoundsException {
+        access.putByte(buffer, byteOffset, value);
     }
 
     @Override
-    public short getShort(byte[] buffer, int index) throws IndexOutOfBoundsException {
-        return Short.reverseBytes(access.getShort(buffer, index));
+    public short getShort(byte[] buffer, int byteOffset) throws IndexOutOfBoundsException {
+        return Short.reverseBytes(access.getShort(buffer, byteOffset));
     }
 
     @Override
-    public void putShort(byte[] buffer, int index, short value) throws IndexOutOfBoundsException {
-        access.putShort(buffer, index, Short.reverseBytes(value));
+    public void putShort(byte[] buffer, int byteOffset, short value) throws IndexOutOfBoundsException {
+        access.putShort(buffer, byteOffset, Short.reverseBytes(value));
     }
 
     @Override
-    public int getInt(byte[] buffer, int index) throws IndexOutOfBoundsException {
-        return Integer.reverseBytes(access.getInt(buffer, index));
+    public int getInt(byte[] buffer, int byteOffset) throws IndexOutOfBoundsException {
+        return Integer.reverseBytes(access.getInt(buffer, byteOffset));
     }
 
     @Override
-    public void putInt(byte[] buffer, int index, int value) throws IndexOutOfBoundsException {
-        access.putInt(buffer, index, Integer.reverseBytes(value));
+    public void putInt(byte[] buffer, int byteOffset, int value) throws IndexOutOfBoundsException {
+        access.putInt(buffer, byteOffset, Integer.reverseBytes(value));
     }
 
     @Override
-    public long getLong(byte[] buffer, int index) throws IndexOutOfBoundsException {
-        return Long.reverseBytes(access.getLong(buffer, index));
+    public long getLong(byte[] buffer, int byteOffset) throws IndexOutOfBoundsException {
+        return Long.reverseBytes(access.getLong(buffer, byteOffset));
     }
 
     @Override
-    public void putLong(byte[] buffer, int index, long value) throws IndexOutOfBoundsException {
-        access.putLong(buffer, index, Long.reverseBytes(value));
+    public void putLong(byte[] buffer, int byteOffset, long value) throws IndexOutOfBoundsException {
+        access.putLong(buffer, byteOffset, Long.reverseBytes(value));
     }
 
     @Override
-    public float getFloat(byte[] buffer, int index) throws IndexOutOfBoundsException {
-        return Float.intBitsToFloat(Integer.reverseBytes(access.getInt(buffer, index)));
+    public float getFloat(byte[] buffer, int byteOffset) throws IndexOutOfBoundsException {
+        return Float.intBitsToFloat(Integer.reverseBytes(access.getInt(buffer, byteOffset)));
     }
 
     @Override
-    public void putFloat(byte[] buffer, int index, float value) throws IndexOutOfBoundsException {
-        access.putInt(buffer, index, Integer.reverseBytes(Float.floatToIntBits(value)));
+    public void putFloat(byte[] buffer, int byteOffset, float value) throws IndexOutOfBoundsException {
+        access.putInt(buffer, byteOffset, Integer.reverseBytes(Float.floatToIntBits(value)));
     }
 
     @Override
-    public double getDouble(byte[] buffer, int index) throws IndexOutOfBoundsException {
-        return Double.longBitsToDouble(Long.reverseBytes(access.getLong(buffer, index)));
+    public double getDouble(byte[] buffer, int byteOffset) throws IndexOutOfBoundsException {
+        return Double.longBitsToDouble(Long.reverseBytes(access.getLong(buffer, byteOffset)));
     }
 
     @Override
-    public void putDouble(byte[] buffer, int index, double value) throws IndexOutOfBoundsException {
-        access.putLong(buffer, index, Long.reverseBytes(Double.doubleToLongBits(value)));
+    public void putDouble(byte[] buffer, int byteOffset, double value) throws IndexOutOfBoundsException {
+        access.putLong(buffer, byteOffset, Long.reverseBytes(Double.doubleToLongBits(value)));
     }
 }

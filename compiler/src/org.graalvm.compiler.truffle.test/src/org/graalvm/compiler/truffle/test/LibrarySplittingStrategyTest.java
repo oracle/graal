@@ -42,13 +42,13 @@ import com.oracle.truffle.api.library.ExportMessage;
 import com.oracle.truffle.api.library.GenerateLibrary;
 import com.oracle.truffle.api.library.Library;
 import com.oracle.truffle.api.object.DynamicObject;
-import com.oracle.truffle.api.object.Layout;
 import com.oracle.truffle.api.object.ObjectType;
 
 public class LibrarySplittingStrategyTest extends AbstractSplittingStrategyTest {
 
+    @SuppressWarnings("deprecation")
     private static DynamicObject newInstance() {
-        return Layout.createLayout().createShape(new SplittingObjectType()).newInstance();
+        return com.oracle.truffle.api.object.Layout.createLayout().createShape(new SplittingObjectType()).newInstance();
     }
 
     @Before

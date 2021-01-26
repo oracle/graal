@@ -48,9 +48,7 @@ import java.lang.annotation.Annotation;
 import java.lang.reflect.Array;
 import java.util.ArrayList;
 import java.util.Arrays;
-import java.util.Iterator;
 import java.util.List;
-import java.util.NoSuchElementException;
 import java.util.Objects;
 
 import com.oracle.truffle.api.CompilerAsserts;
@@ -66,79 +64,6 @@ import com.oracle.truffle.api.source.SourceSection;
 public final class NodeUtil {
 
     private NodeUtil() {
-    }
-
-    static Iterator<Node> makeIterator(Node node) {
-        return node.getNodeClass().makeIterator(node);
-    }
-
-    /** @since 0.8 or earlier */
-    public static Iterator<Node> makeRecursiveIterator(Node node) {
-        return new RecursiveNodeIterator(node);
-    }
-
-    private static final class RecursiveNodeIterator implements Iterator<Node> {
-        private final List<Iterator<Node>> iteratorStack = new ArrayList<>();
-
-        RecursiveNodeIterator(final Node node) {
-            iteratorStack.add(new Iterator<Node>() {
-
-                private boolean visited;
-
-                public void remove() {
-                    throw new UnsupportedOperationException();
-                }
-
-                public Node next() {
-                    if (visited) {
-                        throw new NoSuchElementException();
-                    }
-                    visited = true;
-                    return node;
-                }
-
-                public boolean hasNext() {
-                    return !visited;
-                }
-            });
-        }
-
-        public boolean hasNext() {
-            return peekIterator() != null;
-        }
-
-        public Node next() {
-            Iterator<Node> iterator = peekIterator();
-            if (iterator == null) {
-                throw new NoSuchElementException();
-            }
-
-            Node node = iterator.next();
-            if (node != null) {
-                Iterator<Node> childIterator = makeIterator(node);
-                if (childIterator.hasNext()) {
-                    iteratorStack.add(childIterator);
-                }
-            }
-            return node;
-        }
-
-        private Iterator<Node> peekIterator() {
-            int tos = iteratorStack.size() - 1;
-            while (tos >= 0) {
-                Iterator<Node> iterable = iteratorStack.get(tos);
-                if (iterable.hasNext()) {
-                    return iterable;
-                } else {
-                    iteratorStack.remove(tos--);
-                }
-            }
-            return null;
-        }
-
-        public void remove() {
-            throw new UnsupportedOperationException();
-        }
     }
 
     /** @since 0.8 or earlier */

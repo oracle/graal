@@ -194,9 +194,12 @@ public class SecurityServicesFeature extends JNIRegistrationUtil implements Feat
 
         access.registerReachabilityHandler(SecurityServicesFeature::registerServicesForReflection, method(access, "java.security.Provider$Service", "newInstance", Object.class));
 
-        access.registerReachabilityHandler(SecurityServicesFeature::linkSunEC,
-                        method(access, "sun.security.ec.ECDSASignature", "signDigest", byte[].class, byte[].class, byte[].class, byte[].class, int.class),
-                        method(access, "sun.security.ec.ECDSASignature", "verifySignedDigest", byte[].class, byte[].class, byte[].class, byte[].class));
+        if (JavaVersionUtil.JAVA_SPEC < 16) {
+            // https://bugs.openjdk.java.net/browse/JDK-8235710
+            access.registerReachabilityHandler(SecurityServicesFeature::linkSunEC,
+                            method(access, "sun.security.ec.ECDSASignature", "signDigest", byte[].class, byte[].class, byte[].class, byte[].class, int.class),
+                            method(access, "sun.security.ec.ECDSASignature", "verifySignedDigest", byte[].class, byte[].class, byte[].class, byte[].class));
+        }
 
         if (isPosix()) {
             access.registerReachabilityHandler(SecurityServicesFeature::linkJaas, method(access, "com.sun.security.auth.module.UnixSystem", "getUnixInfo"));

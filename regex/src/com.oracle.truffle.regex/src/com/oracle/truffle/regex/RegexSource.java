@@ -52,15 +52,16 @@ public final class RegexSource implements JsonConvertible {
 
     private final String pattern;
     private final String flags;
-    private final Encoding encoding;
-    private Source source;
+    private final RegexOptions options;
+    private final Source source;
     private boolean hashComputed = false;
     private int cachedHash;
 
-    public RegexSource(String pattern, String flags, Encoding encoding) {
+    public RegexSource(String pattern, String flags, RegexOptions options, Source source) {
         this.pattern = pattern;
         this.flags = flags;
-        this.encoding = encoding;
+        this.options = options;
+        this.source = source;
     }
 
     public String getPattern() {
@@ -71,15 +72,15 @@ public final class RegexSource implements JsonConvertible {
         return flags;
     }
 
+    public RegexOptions getOptions() {
+        return options;
+    }
+
     public Encoding getEncoding() {
-        return encoding;
+        return options.getEncoding();
     }
 
     public Source getSource() {
-        if (source == null) {
-            String text = toString();
-            source = Source.newBuilder(RegexLanguage.ID, text, text).internal(true).name(text).mimeType(RegexLanguage.MIME_TYPE).build();
-        }
         return source;
     }
 
@@ -90,7 +91,7 @@ public final class RegexSource implements JsonConvertible {
             int hash = 1;
             hash = prime * hash + pattern.hashCode();
             hash = prime * hash + flags.hashCode();
-            hash = prime * hash + encoding.hashCode();
+            hash = prime * hash + options.hashCode();
             cachedHash = hash;
             hashComputed = true;
         }
@@ -102,9 +103,10 @@ public final class RegexSource implements JsonConvertible {
         return this == obj || obj instanceof RegexSource &&
                         pattern.equals(((RegexSource) obj).pattern) &&
                         flags.equals(((RegexSource) obj).flags) &&
-                        encoding.equals(((RegexSource) obj).encoding);
+                        options.equals(((RegexSource) obj).options);
     }
 
+    @TruffleBoundary
     @Override
     public String toString() {
         return "/" + pattern + "/" + flags;

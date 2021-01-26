@@ -1,4 +1,4 @@
->[7] js --jvm --experimental-options --insight=agent-exception.js -f log.js -e "howAreYou()"
+>[7] js --jvm --insight=agent-exception.js -f log.js -e "howAreYou()"
 Hello GraalVM Insight!
 How
 great you are!
@@ -6,7 +6,7 @@ great you are!
 .*at <js> log.log.js:1-6:18-.*
 .*at <js> howAreYou.log.js:11:.*.
 .*at <js> :program.<eval_script>:1:0-10.
->[7] js --experimental-options --insight=agent-exception.js -f log.js -e "howAreYou()"
+>[7] js --insight=agent-exception.js -f log.js -e "howAreYou()"
 Hello GraalVM Insight!
 How
 great you are!
@@ -14,7 +14,7 @@ great you are!
 .*at <js> log.log.js:1-6:18-.*
 .*at <js> howAreYou.log.js:11:.*
 .*at <js> :program.<eval_script>:1:0-10.
->[7] js --experimental-options --insight=agent-exception.js -f log.js -e "howDoYouDo()"
+>[7] js --insight=agent-exception.js -f log.js -e "howDoYouDo()"
 Hello GraalVM Insight!
 How
 do
@@ -23,7 +23,7 @@ you feel?
 .*at <js> log.log.js:1-6:18-.*
 .*at <js> howDoYouDo.log.js:18:.*
 .*at <js> :program.<eval_script>:1:0-11.
->[7] js --experimental-options --insight=agent-exception.js -f log.js -e "areYouBad()"
+>[7] js --insight=agent-exception.js -f log.js -e "areYouBad()"
 Hello GraalVM Insight!
 How
 good you are?
@@ -31,22 +31,29 @@ good you are?
 .*at <js> log.log.js:1-6:.*
 .*at <js> areYouBad.log.js:26:.*
 .*at <js> :program.<eval_script>:1:0-10.
->[1] js --jvm --experimental-options --insight=agent-error2.js log.js
+>[1] js --jvm --insight=agent-error2.js log.js
 insight: Unknown attribute misnamedAttribute
->[1] js --jvm --experimental-options --insight=agent-error3.js log.js
+>[1] js --jvm --insight=agent-error3.js log.js
 insight: Unknown event type 'enterOrLeave'.*
->[7] js --jvm --experimental-options --insight=agent-error.js log.js
-Error while initializing {id: "insight", version: "0.7"}
+>[7] js --jvm --insight=agent-error.js log.js
+Error while initializing {id: "insight", version: "1.0"}
 .*at <js> :.*agent-error.js.*
->[7] js --experimental-options --insight=agent-error.js log.js
-Error while initializing {id: "insight", version: "0.7"}
+>[7] js --insight=agent-error.js log.js
+Error while initializing {id: "insight", version: "1.0"}
 .*at <js> :.*agent-error.js.*
->[7] js --jvm --experimental-options --insight=agent-error4.js -f log.js
+>[7] js --jvm --insight=agent-error4.js -f log.js
 Error loading of source log.js.*
 .*at <js>.*agent-error4.js:.*
->[7] js --experimental-options --insight=agent-error4.js -f log.js
+>[7] js --insight=agent-error4.js -f log.js
 Error loading of source log.js.*
 .*at <js>.*agent-error4.js:.*
->[7] js --experimental-options --insight=agent-error5.js -f log.js
+>[7] js --insight=agent-error5.js -f log.js
 insight: Unclosed group near index.*: .unclosed
+.*at <js> :.*
+>[7] js --insight=agent-error6.js -f log.js
+Insight: object Agent: undefined
+.*at <js> :.*
+>[7] js --agentscript=agent-error6.js --experimental-options -f log.js
+Warning.*deprecated.*
+Insight: object Agent: object
 .*at <js> :.*

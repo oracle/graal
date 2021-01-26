@@ -1,0 +1,171 @@
+{
+    "Releases": {
+        "19.3.3-ee-jdk8": {
+            "name": "GraalVM Enterprise Edition 19.3.3 on jdk8",
+            "license": "https://acme.org/GRAALVM_EE_JAVA8_19_3_3/license.txt",
+            "licenseLabel": "GraalVM Enterprise Edition License",
+            "edition": "ee",
+            "java": "jdk8",
+            "version": "19.3.3",
+            "catalog": "https://acme.org/GRAALVM_EE_JAVA8_19_3_3/19_3_3_EE_Java8_component-catalog.properties",
+            "base": {
+                "linux-amd64": {
+                    "os": "linux",
+                    "arch": "amd64",
+                    "url": "https://acme.org/GRAALVM_EE_JAVA8_19_3_3/graalvm-ee-java8-linux-amd64-19.3.3.tar.gz"
+                },
+                "darwin-amd64": {
+                    "os": "darwin",
+                    "arch": "amd64",
+                    "url": "https://acme.org/GRAALVM_EE_JAVA8_19_3_3/graalvm-ee-java8-darwin-amd64-19.3.3.tar.gz"
+                },
+                "windows-amd64": {
+                    "os": "windows",
+                    "arch": "amd64",
+                    "url": "https://acme.org/GRAALVM_EE_JAVA8_19_3_3/graalvm-ee-java8-windows-amd64-19.3.3.zip"
+                }
+            }
+        },
+        "19.3.3-ee-jdk11": {
+            "name": "GraalVM Enterprise Edition 19.3.3 on jdk11",
+            "license": "https://acme.org/GRAALVM_EE_JAVA11_19_3_3/license.txt",
+            "licenseLabel": "GraalVM Enterprise Edition License",
+            "edition": "ee",
+            "java": "jdk11",
+            "version": "19.3.3",
+            "catalog": "https://acme.org/GRAALVM_EE_JAVA11_19_3_3/19_3_3_EE_Java11_component-catalog.properties",
+            "base": {
+                "linux-amd64": {
+                    "os": "linux",
+                    "arch": "amd64",
+                    "url": "https://acme.org/GRAALVM_EE_JAVA11_19_3_3/graalvm-ee-java11-linux-amd64-19.3.3.tar.gz"
+                },
+                "darwin-amd64": {
+                    "os": "darwin",
+                    "arch": "x86_64",
+                    "url": "https://acme.org/GRAALVM_EE_JAVA11_19_3_3/graalvm-ee-java11-darwin-amd64-19.3.3.tar.gz"
+                },
+                "windows-amd64": {
+                    "os": "windows",
+                    "arch": "amd64",
+                    "url": "https://acme.org/GRAALVM_EE_JAVA11_19_3_3/graalvm-ee-java11-windows-amd64-19.3.3.zip"
+                }
+            }
+        },
+        "19.3.2-ee-jdk8": {
+            "name": "GraalVM Enterprise Edition 19.3.2 on jdk8",
+            "license": "https://acme.org/GRAALVM_EE_JAVA8_19_3_2/license.txt",
+            "licenseLabel": "GraalVM Enterprise Edition License",
+            "edition": "ee",
+            "java": "jdk8",
+            "version": "19.3.2",
+            "catalog": "https://oca.opensource.oracle.com/olds/GRAALVM_EE_JAVA8_19_3_2/19.3.2_EE_Java8_component-catalog.properties",
+            "base": {
+                "linux-amd64": {
+                    "os": "linux",
+                    "arch": "amd64",
+                    "url": "https://acme.org/GRAALVM_EE_JAVA8_19_3_2/graalvm-ee-java8-linux-amd64-19.3.2.tar.gz"
+                },
+                "darwin-amd64": {
+                    "os": "darwin",
+                    "arch": "amd64",
+                    "url": "https://acme.org/GRAALVM_EE_JAVA8_19_3_2/graalvm-ee-java8-darwin-amd64-19.3.2.tar.gz"
+                },
+                "windows-amd64": {
+                    "os": "windows",
+                    "arch": "amd64",
+                    "url": "https://acme.org/GRAALVM_EE_JAVA8_19_3_2/graalvm-ee-java8-windows-amd64-19.3.2.zip"
+                }
+            }
+        },
+        "19.3.2-ee-jdk11": {
+            "name": "GraalVM Enterprise Edition 19.3.2 on jdk11",
+            "license": "https://acme.org/GRAALVM_EE_JAVA11_19_3_2/license.txt",
+            "licenseLabel": "GraalVM Enterprise Edition License",
+            "edition": "ee",
+            "java": "jdk11",
+            "version": "19.3.2",
+            "catalog": "https://acme.org/GRAALVM_EE_JAVA11_19_3_2/19.3.2_EE_Java11_component-catalog.properties",
+            "base": {
+                "linux-amd64": {
+                    "os": "Linux",
+                    "arch": "x86_64",
+                    "url": "https://acme.org/GRAALVM_EE_JAVA11_19_3_2/graalvm-ee-java11-linux-amd64-19.3.2.tar.gz"
+                },
+                "macos-amd64": {
+                    "os": "macos",
+                    "arch": "amd64",
+                    "url": "https://acme.org/GRAALVM_EE_JAVA11_19_3_2/graalvm-ee-java11-darwin-amd64-19.3.2.tar.gz"
+                },
+                "windows-amd64": {
+                    "os": "windows",
+                    "arch": "x86_64",
+                    "url": "https://acme.org/GRAALVM_EE_JAVA11_19_3_2/graalvm-ee-java11-windows-amd64-19.3.2.zip"
+                }
+            }
+        },
+    
+        "19.3.2-ce-jdk8": {
+            "name": "GraalVM Enterprise Edition 19.3.2 on jdk8",
+            "license": "https://acme.org/GRAALVM_EE_JAVA11_19_3_2/license.txt",
+            "licenseLabel": "GraalVM Enterprise Edition License",
+            "edition": "ce",
+            "java": "jdk8",
+            "version": "19.3.2",
+            "catalog": "https://oca.opensource.oracle.com/olds/GRAALVM_EE_JAVA8_19_3_2/19.3.2_EE_Java8_component-catalog.properties",
+            "base": {
+                "linux-amd64": {
+                    "os": "linux",
+                    "arch": "amd64",
+                    "url": "https://acme.org/GRAALVM_EE_JAVA8_19_3_2/graalvm-ee-java8-linux-amd64-19.3.2.tar.gz"
+                },
+                "darwin-amd64": {
+                    "os": "darwin",
+                    "arch": "amd64",
+                    "url": "https://acme.org/GRAALVM_EE_JAVA8_19_3_2/graalvm-ee-java8-darwin-amd64-19.3.2.tar.gz"
+                },
+                "windows-amd64": {
+                    "os": "windows",
+                    "arch": "amd64",
+                    "url": "https://acme.org/GRAALVM_EE_JAVA8_19_3_2/graalvm-ee-java8-windows-amd64-19.3.2.zip"
+                }
+            }
+        },
+        
+        "19.3.2-ee2-jdk8": {
+            "name": "GraalVM Enterprise Edition 19.3.2 on jdk8",
+            "license": "https://acme.org/GRAALVM_EE_JAVA11_19_3_2/license.txt",
+            "licenseLabel": "GraalVM Enterprise Edition License",
+            "edition": "ee2",
+            "java": "jdk8",
+            "version": "19.3.2",
+            "base": {
+                "linux-amd64": {
+                    "os": "linux",
+                    "arch": "amd64",
+                    "url": "https://acme.org/GRAALVM_EE_JAVA8_19_3_2/graalvm-ee-java8-linux-amd64-19.3.2.tar.gz"
+                },
+                "darwin-amd64": {
+                    "os": "darwin",
+                    "arch": "amd64",
+                    "url": "https://acme.org/GRAALVM_EE_JAVA8_19_3_2/graalvm-ee-java8-darwin-amd64-19.3.2.tar.gz"
+                },
+                "windows-amd64": {
+                    "os": "windows",
+                    "arch": "amd64",
+                    "url": "https://acme.org/GRAALVM_EE_JAVA8_19_3_2/graalvm-ee-java8-windows-amd64-19.3.2.zip"
+                }
+            }
+        },
+
+        "19.3.2-ee3-jdk8": {
+            "name": "GraalVM Enterprise Edition 19.3.2 on jdk8",
+            "license": "https://acme.org/GRAALVM_EE_JAVA11_19_3_2/license.txt",
+            "licenseLabel": "GraalVM Enterprise Edition License",
+            "edition": "ee3",
+            "java": "jdk8",
+            "version": "19.3.2",
+            "catalog": "https://acme.org/GRAALVM_EE_JAVA8_19_3_2/19.3.2_EE_Java8_component-catalog.properties"
+        }
+    }
+}

@@ -42,6 +42,7 @@ import java.util.Optional;
 import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentMap;
+import java.util.concurrent.CopyOnWriteArrayList;
 import java.util.concurrent.ForkJoinPool;
 import java.util.function.BiConsumer;
 
@@ -148,7 +149,7 @@ public final class SVMHost implements HostVM {
     }
 
     private static Map<String, EnumSet<AnalysisType.UsageKind>> setupForbiddenTypes(OptionValues options) {
-        String[] forbiddenTypesOptionValues = SubstrateOptions.ReportAnalysisForbiddenType.getValue(options);
+        List<String> forbiddenTypesOptionValues = SubstrateOptions.ReportAnalysisForbiddenType.getValue(options).values();
         Map<String, EnumSet<AnalysisType.UsageKind>> forbiddenTypes = new HashMap<>();
         for (String forbiddenTypesOptionValue : forbiddenTypesOptionValues) {
             String[] typeNameUsageKind = forbiddenTypesOptionValue.split(":", 2);
@@ -376,8 +377,8 @@ public final class SVMHost implements HostVM {
 
         boolean assertionStatus = RuntimeAssertionsSupport.singleton().desiredAssertionStatus(javaClass);
 
-        final DynamicHub dynamicHub = new DynamicHub(className, computeHubType(type), computeReferenceType(type), type.isLocal(), isAnonymousClass(javaClass), superHub, componentHub, sourceFileName,
-                        modifiers, hubClassLoader, isHidden, isRecord, nestHost, assertionStatus);
+        final DynamicHub dynamicHub = new DynamicHub(javaClass, className, computeHubType(type), computeReferenceType(type), type.isLocal(), isAnonymousClass(javaClass), superHub, componentHub,
+                        sourceFileName, modifiers, hubClassLoader, isHidden, isRecord, nestHost, assertionStatus);
         if (JavaVersionUtil.JAVA_SPEC > 8) {
             ModuleAccess.extractAndSetModule(dynamicHub, javaClass);
         }
@@ -385,22 +386,22 @@ public final class SVMHost implements HostVM {
     }
 
     /**
-     * @return boolean if class is available or NoClassDefFoundError if class' parents are not on
-     *         the classpath or InternalError if the class is invalid.
+     * @return boolean if class is available or LinkageError if class' parents are not on the
+     *         classpath or InternalError if the class is invalid.
      */
     private static Object isAnonymousClass(Class<?> javaClass) {
         try {
             return javaClass.isAnonymousClass();
         } catch (InternalError e) {
             return e;
-        } catch (NoClassDefFoundError e) {
+        } catch (LinkageError e) {
             if (NativeImageOptions.AllowIncompleteClasspath.getValue()) {
                 return e;
             } else {
                 String message = "Discovered a type for which isAnonymousClass can't be called: " + javaClass.getTypeName() +
                                 ". To avoid this issue at build time use the " +
                                 SubstrateOptionsParser.commandArgument(NativeImageOptions.AllowIncompleteClasspath, "+") +
-                                " option. The NoClassDefFoundError will then be reported at run time when this method is called for the first time.";
+                                " option. The LinkageError will then be reported at run time when this method is called for the first time.";
                 throw new UnsupportedFeatureException(message);
             }
         }
@@ -489,8 +490,21 @@ public final class SVMHost implements HostVM {
         }
     }
 
+    private final List<BiConsumer<AnalysisMethod, StructuredGraph>> methodAfterParsingHooks = new CopyOnWriteArrayList<>();
+
+    public void addMethodAfterParsingHook(BiConsumer<AnalysisMethod, StructuredGraph> methodAfterParsingHook) {
+        methodAfterParsingHooks.add(methodAfterParsingHook);
+    }
+
     @Override
-    public void checkMethod(BigBang bb, AnalysisMethod method, StructuredGraph graph) {
+    public void methodAfterParsingHook(BigBang bb, AnalysisMethod method, StructuredGraph graph) {
+        for (BiConsumer<AnalysisMethod, StructuredGraph> methodAfterParsingHook : methodAfterParsingHooks) {
+            methodAfterParsingHook.accept(method, graph);
+        }
+    }
+
+    @Override
+    public void methodBeforeTypeFlowCreationHook(BigBang bb, AnalysisMethod method, StructuredGraph graph) {
         if (method.isEntryPoint() && !Modifier.isStatic(graph.method().getModifiers())) {
             ValueNode receiver = graph.start().stateAfter().localAt(0);
             if (receiver != null && receiver.hasUsages()) {

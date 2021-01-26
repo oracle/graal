@@ -53,7 +53,8 @@ import com.oracle.truffle.api.nodes.Node;
  * A {@link NodeField} element defines a field for the generated {@link Node}. A {@link Node}
  * contains multiple {@link NodeFields} specified in linear declaration order. The field can be
  * accessed by declaring an abstract getter or setter named
- * <code>"get" + firstLetterUpperCase({@link #name()})()</code> and
+ * <code>"get" + firstLetterUpperCase({@link #name()})()</code> (or
+ * <code>"is" + firstLetterUpperCase({@link #name()})()</code> in case of a boolean node field) and
  * <code>"set" + firstLetterUpperCase({@link #name()})()</code>. If no setter is specified then the
  * resulting field will be final and passed in as constructor argument to the create factory method.
  * If an abstract setter was specified then the field will be mutable and not passed in as

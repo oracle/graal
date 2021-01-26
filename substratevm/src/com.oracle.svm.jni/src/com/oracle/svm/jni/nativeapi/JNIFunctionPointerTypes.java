@@ -212,6 +212,36 @@ public final class JNIFunctionPointerTypes {
         CCharPointer invoke(JNIEnvironment env, JNIObjectHandle byteArray, CCharPointer elements, int mode);
     }
 
+    public interface GetObjectFieldFunctionPointer extends CFunctionPointer {
+        @InvokeCFunctionPointer
+        JNIObjectHandle invoke(JNIEnvironment env, JNIObjectHandle obj, JNIFieldId fieldId);
+    }
+
+    public interface GetBooleanFieldFunctionPointer extends CFunctionPointer {
+        @InvokeCFunctionPointer
+        boolean invoke(JNIEnvironment env, JNIObjectHandle obj, JNIFieldId fieldId);
+    }
+
+    public interface CallStaticObjectMethodAFunctionPointer extends CFunctionPointer {
+        @InvokeCFunctionPointer
+        JNIObjectHandle invoke(JNIEnvironment env, JNIObjectHandle clazz, JNIMethodId methodID, JNIValue args);
+    }
+
+    public interface GetStaticObjectFieldFunctionPointer extends CFunctionPointer {
+        @InvokeCFunctionPointer
+        JNIObjectHandle invoke(JNIEnvironment env, JNIObjectHandle clazz, JNIFieldId fieldID);
+    }
+
+    public interface CallStaticLongMethodAFunctionPointer extends CFunctionPointer {
+        @InvokeCFunctionPointer
+        long invoke(JNIEnvironment env, JNIObjectHandle clazz, JNIMethodId methodID, JNIValue args);
+    }
+
+    public interface IsSameObjectFunctionPointer extends CFunctionPointer {
+        @InvokeCFunctionPointer
+        boolean invoke(JNIEnvironment env, JNIObjectHandle obj1, JNIObjectHandle obj2);
+    }
+
     private JNIFunctionPointerTypes() {
     }
 }

@@ -33,7 +33,6 @@ import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collection;
-import java.util.Collections;
 import java.util.Enumeration;
 import java.util.HashSet;
 import java.util.List;
@@ -54,6 +53,7 @@ import com.oracle.graal.pointsto.meta.AnalysisType;
 import com.oracle.svm.core.annotate.AutomaticFeature;
 import com.oracle.svm.core.jdk.Resources;
 import com.oracle.svm.core.option.HostedOptionKey;
+import com.oracle.svm.core.option.LocatableMultiOptionValue;
 import com.oracle.svm.core.option.SubstrateOptionsParser;
 import com.oracle.svm.core.util.UserError;
 import com.oracle.svm.hosted.FeatureImpl.DuringAnalysisAccessImpl;
@@ -90,10 +90,10 @@ public class ServiceLoaderFeature implements Feature {
         public static final HostedOptionKey<Boolean> TraceServiceLoaderFeature = new HostedOptionKey<>(false);
 
         @Option(help = "Comma-separated list of services that should be excluded", type = OptionType.Expert) //
-        public static final HostedOptionKey<String[]> ServiceLoaderFeatureExcludeServices = new HostedOptionKey<>(new String[0]);
+        public static final HostedOptionKey<LocatableMultiOptionValue.Strings> ServiceLoaderFeatureExcludeServices = new HostedOptionKey<>(new LocatableMultiOptionValue.Strings());
 
         @Option(help = "Comma-separated list of service providers that should be excluded", type = OptionType.Expert) //
-        public static final HostedOptionKey<String[]> ServiceLoaderFeatureExcludeServiceProviders = new HostedOptionKey<>(new String[0]);
+        public static final HostedOptionKey<LocatableMultiOptionValue.Strings> ServiceLoaderFeatureExcludeServiceProviders = new HostedOptionKey<>(new LocatableMultiOptionValue.Strings());
 
     }
 
@@ -101,12 +101,20 @@ public class ServiceLoaderFeature implements Feature {
      * Services that should not be processes here, for example because they are handled by
      * specialized features.
      */
-    private static final Set<String> SERVICES_TO_SKIP = new HashSet<>(Arrays.asList(
+    private final Set<String> servicesToSkip = new HashSet<>(Arrays.asList(
                     "java.security.Provider",                       // see SecurityServicesFeature
-                    "sun.util.locale.provider.LocaleDataMetaInfo"   // see LocaleSubstitutions
+                    "sun.util.locale.provider.LocaleDataMetaInfo",  // see LocaleSubstitutions
+                    "org.graalvm.nativeimage.Platform"  // shouldn't be reachable after
+                                                        // intrinsification
     ));
 
-    private static final Set<String> SERVICE_PROVIDERS_TO_SKIP = new HashSet<>(Arrays.asList(
+    // NOTE: Platform class had to be added to this list since our analysis discovers that
+    // Platform.includedIn is reachable regardless of fact that it is constant folded at
+    // registerPlatformPlugins method of SubstrateGraphBuilderPlugins. This issue hasn't manifested
+    // before because implementation classes were instantiated using runtime reflection instead of
+    // ServiceLoader (and thus weren't reachable in analysis).
+
+    private final Set<String> serviceProvidersToSkip = new HashSet<>(Arrays.asList(
                     "com.sun.jndi.rmi.registry.RegistryContextFactory"      // GR-26547
     ));
 
@@ -133,8 +141,8 @@ public class ServiceLoaderFeature implements Feature {
 
     @Override
     public void afterRegistration(AfterRegistrationAccess access) {
-        Collections.addAll(SERVICES_TO_SKIP, Options.ServiceLoaderFeatureExcludeServices.getValue());
-        Collections.addAll(SERVICE_PROVIDERS_TO_SKIP, Options.ServiceLoaderFeatureExcludeServiceProviders.getValue());
+        servicesToSkip.addAll(Options.ServiceLoaderFeatureExcludeServices.getValue().values());
+        serviceProvidersToSkip.addAll(Options.ServiceLoaderFeatureExcludeServiceProviders.getValue().values());
     }
 
     @Override
@@ -185,7 +193,7 @@ public class ServiceLoaderFeature implements Feature {
         String serviceClassName = type.toClassName();
         String serviceResourceLocation = LOCATION_PREFIX + serviceClassName;
 
-        if (SERVICES_TO_SKIP.contains(serviceClassName)) {
+        if (servicesToSkip.contains(serviceClassName)) {
             if (trace) {
                 System.out.println("ServiceLoaderFeature: Skipping service " + serviceClassName);
             }
@@ -254,7 +262,7 @@ public class ServiceLoaderFeature implements Feature {
                 continue;
             }
 
-            if (SERVICE_PROVIDERS_TO_SKIP.contains(implementationClassName)) {
+            if (serviceProvidersToSkip.contains(implementationClassName)) {
                 if (trace) {
                     System.out.println("  ignoring implementation class: " + implementationClassName);
                 }

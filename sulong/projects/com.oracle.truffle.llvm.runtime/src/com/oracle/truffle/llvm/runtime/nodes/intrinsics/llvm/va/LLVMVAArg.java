@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2020, Oracle and/or its affiliates.
+ * Copyright (c) 2020, 2021, Oracle and/or its affiliates.
  *
  * All rights reserved.
  *
@@ -29,10 +29,12 @@
  */
 package com.oracle.truffle.llvm.runtime.nodes.intrinsics.llvm.va;
 
+import com.oracle.truffle.api.dsl.Cached;
 import com.oracle.truffle.api.dsl.NodeChild;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.library.CachedLibrary;
 import com.oracle.truffle.llvm.runtime.nodes.api.LLVMExpressionNode;
+import com.oracle.truffle.llvm.runtime.nodes.intrinsics.llvm.va.LLVMVaListStorage.VAListPointerWrapperFactoryDelegate;
 import com.oracle.truffle.llvm.runtime.pointer.LLVMManagedPointer;
 import com.oracle.truffle.llvm.runtime.types.Type;
 
@@ -48,8 +50,10 @@ public abstract class LLVMVAArg extends LLVMExpressionNode {
         this.type = type;
     }
 
-    @Specialization(limit = "1")
-    protected Object vaArg(LLVMManagedPointer targetAddress, @CachedLibrary("targetAddress.getObject()") LLVMVaListLibrary vaListLibrary) {
-        return vaListLibrary.shift(targetAddress.getObject(), type);
+    @Specialization
+    protected Object vaArg(LLVMManagedPointer targetAddress,
+                    @Cached VAListPointerWrapperFactoryDelegate wrapperFactory,
+                    @CachedLibrary(limit = "3") LLVMVaListLibrary vaListLibrary) {
+        return vaListLibrary.shift(wrapperFactory.execute(targetAddress), type);
     }
 }

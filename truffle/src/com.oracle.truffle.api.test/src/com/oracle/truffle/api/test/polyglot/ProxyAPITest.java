@@ -47,7 +47,6 @@ import static com.oracle.truffle.tck.tests.ValueAssert.Trait.PROXY_OBJECT;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertNotEquals;
-import static org.junit.Assert.assertNull;
 import static org.junit.Assert.assertSame;
 import static org.junit.Assert.assertTrue;
 
@@ -453,7 +452,10 @@ public class ProxyAPITest {
             return new Object[]{42};
         };
 
-        assertNull(value.getMemberKeys().iterator().next());
+        assertFails(() -> value.getMemberKeys(), PolyglotException.class, (e) -> {
+            assertTrue(e.isHostException());
+            assertTrue(e.asHostException() instanceof IllegalStateException);
+        });
         assertEquals(6, proxy.getMemberKeysCounter);
 
         proxy.getMemberKeys = () -> {

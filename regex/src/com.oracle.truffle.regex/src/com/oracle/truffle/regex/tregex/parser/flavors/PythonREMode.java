@@ -40,6 +40,8 @@
  */
 package com.oracle.truffle.regex.tregex.parser.flavors;
 
+import com.oracle.truffle.regex.tregex.string.Encodings;
+
 /**
  * The enumeration of different flavors of Python regular expressions.
  * <p>
@@ -50,6 +52,10 @@ package com.oracle.truffle.regex.tregex.parser.flavors;
  */
 public enum PythonREMode {
     /**
+     * Derive from encoding.
+     */
+    None,
+    /**
      * String-based patterns, where the Python regular expression was given as a 'str' object.
      */
     Str,
@@ -57,5 +63,9 @@ public enum PythonREMode {
      * Bytes-based (binary) patterns, where the Python regular expression was given as a 'bytes'
      * object.
      */
-    Bytes
+    Bytes;
+
+    public static PythonREMode fromEncoding(Encodings.Encoding encoding) {
+        return encoding == Encodings.LATIN_1 ? Bytes : Str;
+    }
 }

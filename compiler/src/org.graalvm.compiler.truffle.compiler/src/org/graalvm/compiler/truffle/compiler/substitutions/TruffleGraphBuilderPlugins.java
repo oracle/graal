@@ -60,6 +60,7 @@ import org.graalvm.compiler.nodes.StructuredGraph;
 import org.graalvm.compiler.nodes.ValueNode;
 import org.graalvm.compiler.nodes.ValuePhiNode;
 import org.graalvm.compiler.nodes.calc.CompareNode;
+import org.graalvm.compiler.nodes.calc.ConditionalNode;
 import org.graalvm.compiler.nodes.calc.IntegerMulHighNode;
 import org.graalvm.compiler.nodes.extended.BoxNode;
 import org.graalvm.compiler.nodes.extended.BranchProbabilityNode;
@@ -89,6 +90,7 @@ import org.graalvm.compiler.truffle.compiler.nodes.asserts.NeverPartOfCompilatio
 import org.graalvm.compiler.truffle.compiler.nodes.frame.AllowMaterializeNode;
 import org.graalvm.compiler.truffle.compiler.nodes.frame.ForceMaterializeNode;
 import org.graalvm.compiler.truffle.compiler.nodes.frame.NewFrameNode;
+import org.graalvm.compiler.truffle.compiler.nodes.frame.VirtualFrameClearNode;
 import org.graalvm.compiler.truffle.compiler.nodes.frame.VirtualFrameGetNode;
 import org.graalvm.compiler.truffle.compiler.nodes.frame.VirtualFrameIsNode;
 import org.graalvm.compiler.truffle.compiler.nodes.frame.VirtualFrameSetNode;
@@ -360,9 +362,20 @@ public class TruffleGraphBuilderPlugins {
                 if (condition.isTautology()) {
                     b.addPush(JavaKind.Object, object);
                 } else {
-                    FixedGuardNode fixedGuard = b.add(new FixedGuardNode(condition, DeoptimizationReason.ClassCastException, DeoptimizationAction.InvalidateReprofile, false));
-                    b.addPush(JavaKind.Object, DynamicPiNode.create(b.getAssumptions(), b.getConstantReflection(), object, fixedGuard, nullCheckedClass, true));
+                    FixedGuardNode fixedGuard = b.add(new FixedGuardNode(condition,
+                                    DeoptimizationReason.ClassCastException, DeoptimizationAction.InvalidateReprofile, false));
+                    b.addPush(JavaKind.Object, DynamicPiNode.create(b.getAssumptions(), b.getConstantReflection(), object, fixedGuard, nullCheckedClass, true, true));
                 }
+                return true;
+            }
+        });
+
+        r.register2("isExact", Object.class, Class.class, new InvocationPlugin() {
+            @Override
+            public boolean apply(GraphBuilderContext b, ResolvedJavaMethod targetMethod, Receiver receiver, ValueNode object, ValueNode javaClass) {
+                ValueNode nullCheckedClass = b.addNonNullCast(javaClass);
+                LogicNode condition = b.append(InstanceOfDynamicNode.create(b.getAssumptions(), b.getConstantReflection(), nullCheckedClass, object, false, true));
+                b.addPush(JavaKind.Boolean, b.append(new ConditionalNode(condition)));
                 return true;
             }
         });
@@ -440,7 +453,7 @@ public class TruffleGraphBuilderPlugins {
                     KnownTruffleTypes types) {
         ResolvedJavaType frameWithoutBoxingType = getRuntime().resolveType(metaAccess, "org.graalvm.compiler.truffle.runtime.FrameWithoutBoxing");
         Registration r = new Registration(plugins, new ResolvedJavaSymbol(frameWithoutBoxingType));
-        registerFrameMethods(r);
+        registerFrameMethods(r, constantReflection, types);
         registerUnsafeCast(r, canDelayIntrinsification);
         registerUnsafeLoadStorePlugins(r, canDelayIntrinsification, null, JavaKind.Int, JavaKind.Long, JavaKind.Float, JavaKind.Double, JavaKind.Object);
         registerFrameAccessors(r, JavaKind.Object, constantReflection, types);
@@ -528,7 +541,7 @@ public class TruffleGraphBuilderPlugins {
         return -1;
     }
 
-    private static void registerFrameMethods(Registration r) {
+    private static void registerFrameMethods(Registration r, ConstantReflectionProvider constantReflection, KnownTruffleTypes types) {
         r.register1("getArguments", Receiver.class, new InvocationPlugin() {
             @Override
             public boolean apply(GraphBuilderContext b, ResolvedJavaMethod targetMethod, Receiver frame) {
@@ -563,6 +576,19 @@ public class TruffleGraphBuilderPlugins {
 
                 b.addPush(JavaKind.Object, new AllowMaterializeNode(frame));
                 return true;
+            }
+        });
+
+        r.register2("clear", Receiver.class, new ResolvedJavaSymbol(types.classFrameSlot), new InvocationPlugin() {
+            @Override
+            public boolean apply(GraphBuilderContext b, ResolvedJavaMethod targetMethod, Receiver receiver, ValueNode frameSlot) {
+                int frameSlotIndex = maybeGetConstantFrameSlotIndex(receiver, frameSlot, constantReflection, types);
+                if (frameSlotIndex >= 0) {
+                    TruffleCompilerRuntime runtime = getRuntime();
+                    b.add(new VirtualFrameClearNode(receiver, frameSlotIndex, runtime.getFrameSlotKindTagForJavaKind(JavaKind.Illegal)));
+                    return true;
+                }
+                return false;
             }
         });
     }

@@ -41,6 +41,7 @@ import org.graalvm.compiler.debug.DebugCloseable;
 import org.graalvm.compiler.debug.DebugContext;
 import org.graalvm.compiler.debug.GraalError;
 import org.graalvm.compiler.graph.Graph;
+import org.graalvm.compiler.graph.Node;
 import org.graalvm.compiler.graph.Node.ValueNumberable;
 import org.graalvm.compiler.graph.NodeSourcePosition;
 import org.graalvm.compiler.java.FrameStateBuilder;
@@ -53,6 +54,7 @@ import org.graalvm.compiler.nodes.EndNode;
 import org.graalvm.compiler.nodes.FixedNode;
 import org.graalvm.compiler.nodes.FixedWithNextNode;
 import org.graalvm.compiler.nodes.IfNode;
+import org.graalvm.compiler.nodes.Invoke;
 import org.graalvm.compiler.nodes.InvokeNode;
 import org.graalvm.compiler.nodes.InvokeWithExceptionNode;
 import org.graalvm.compiler.nodes.KillingBeginNode;
@@ -74,7 +76,6 @@ import org.graalvm.compiler.nodes.spi.StampProvider;
 import org.graalvm.compiler.nodes.type.StampTool;
 import org.graalvm.compiler.phases.OptimisticOptimizations;
 import org.graalvm.compiler.phases.common.DeadCodeEliminationPhase;
-import org.graalvm.compiler.phases.common.DeadCodeEliminationPhase.Optionality;
 import org.graalvm.compiler.phases.common.inlining.InliningUtil;
 import org.graalvm.compiler.phases.util.Providers;
 import org.graalvm.compiler.word.WordTypes;
@@ -208,7 +209,7 @@ public class GraphKit implements GraphBuilderTool {
 
     private void updateLastFixed(FixedNode result) {
         assert lastFixedNode != null;
-        assert result.predecessor() == null;
+        assert result.predecessor() == null : "Expected the predecessor of " + result + " to be null, but it was " + result.predecessor();
         graph.addAfterFixed(lastFixedNode, result);
         if (result instanceof FixedWithNextNode) {
             lastFixedNode = (FixedWithNextNode) result;
@@ -325,6 +326,10 @@ public class GraphKit implements GraphBuilderTool {
      *             {@code method}
      */
     public boolean checkArgs(ResolvedJavaMethod method, ValueNode... args) {
+        if (IS_IN_NATIVE_IMAGE) {
+            // The dynamic lookup needed for this code is unsupported
+            return true;
+        }
         Signature signature = method.getSignature();
         boolean isStatic = method.isStatic();
         if (signature.getParameterCount(!isStatic) != args.length) {
@@ -347,12 +352,14 @@ public class GraphKit implements GraphBuilderTool {
     }
 
     /**
-     * Recursively {@linkplain #inline inlines} all invocations currently in the graph.
+     * Recursively {@linkplain #inlineAsIntrinsic inlines} all invocations currently in the graph.
+     * The graph of the inlined method is processed in the same manner as for snippets and method
+     * substitutions (e.g. intrinsics).
      */
-    public void inlineInvokes(String reason, String phase) {
+    public void inlineInvokesAsIntrinsics(String reason, String phase) {
         while (!graph.getNodes().filter(InvokeNode.class).isEmpty()) {
             for (InvokeNode invoke : graph.getNodes().filter(InvokeNode.class).snapshot()) {
-                inline(invoke, reason, phase);
+                inlineAsIntrinsic(invoke, reason, phase);
             }
         }
 
@@ -362,27 +369,49 @@ public class GraphKit implements GraphBuilderTool {
 
     /**
      * Inlines a given invocation to a method. The graph of the inlined method is processed in the
-     * same manner as for snippets and method substitutions.
+     * same manner as for snippets and method substitutions (e.g. intrinsics).
      */
-    public void inline(InvokeNode invoke, String reason, String phase) {
-        ResolvedJavaMethod method = ((MethodCallTargetNode) invoke.callTarget()).targetMethod();
+    public void inlineAsIntrinsic(Invoke invoke, String reason, String phase) {
+        assert invoke instanceof Node;
+        Node invokeNode = (Node) invoke;
+        ResolvedJavaMethod method = invoke.callTarget().targetMethod();
 
         Plugins plugins = new Plugins(graphBuilderPlugins);
         GraphBuilderConfiguration config = GraphBuilderConfiguration.getSnippetDefault(plugins);
 
         StructuredGraph calleeGraph;
         if (IS_IN_NATIVE_IMAGE) {
-            calleeGraph = providers.getReplacements().getSnippet(method, null, null, false, null, invoke.getOptions());
+            calleeGraph = providers.getReplacements().getSnippet(method, null, null, false, null, invokeNode.getOptions());
         } else {
-            calleeGraph = new StructuredGraph.Builder(invoke.getOptions(), invoke.getDebug()).method(method).trackNodeSourcePosition(invoke.graph().trackNodeSourcePosition()).setIsSubstitution(
-                            true).build();
+            calleeGraph = new StructuredGraph.Builder(invokeNode.getOptions(), invokeNode.getDebug()).method(method).trackNodeSourcePosition(
+                            invokeNode.graph().trackNodeSourcePosition()).setIsSubstitution(true).build();
             IntrinsicContext initialReplacementContext = new IntrinsicContext(method, method, providers.getReplacements().getDefaultReplacementBytecodeProvider(), INLINE_AFTER_PARSING);
             GraphBuilderPhase.Instance instance = createGraphBuilderInstance(providers, config, OptimisticOptimizations.NONE, initialReplacementContext);
             instance.apply(calleeGraph);
         }
-        new DeadCodeEliminationPhase(Optionality.Required).apply(calleeGraph);
+        new DeadCodeEliminationPhase().apply(calleeGraph);
 
         InliningUtil.inline(invoke, calleeGraph, false, method, reason, phase);
+    }
+
+    public void inline(Invoke invoke, String reason, String phase) {
+        assert invoke instanceof Node;
+        Node invokeNode = (Node) invoke;
+        ResolvedJavaMethod methodToInline = invoke.callTarget().targetMethod();
+        Plugins plugins = new Plugins(graphBuilderPlugins);
+        GraphBuilderConfiguration config = GraphBuilderConfiguration.getDefault(plugins);
+        StructuredGraph calleeGraph = new StructuredGraph.Builder(invokeNode.getOptions(), invokeNode.getDebug()).method(methodToInline).trackNodeSourcePosition(
+                        invokeNode.graph().trackNodeSourcePosition()).setIsSubstitution(false).build();
+        /*
+         * Using null as the intrinsic context makes the ByteCodeParser inline invokes using
+         * InliningScope instead of IntrinsicScope. This allows exceptions to be a part of the
+         * inlined method.
+         */
+        GraphBuilderPhase.Instance instance = createGraphBuilderInstance(providers, config, OptimisticOptimizations.NONE, null);
+        instance.apply(calleeGraph);
+
+        new DeadCodeEliminationPhase().apply(calleeGraph);
+        InliningUtil.inline(invoke, calleeGraph, false, methodToInline, reason, phase);
     }
 
     protected GraphBuilderPhase.Instance createGraphBuilderInstance(Providers theProviders, GraphBuilderConfiguration graphBuilderConfig, OptimisticOptimizations optimisticOpts,

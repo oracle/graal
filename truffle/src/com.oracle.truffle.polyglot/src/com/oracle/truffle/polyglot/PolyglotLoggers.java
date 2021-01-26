@@ -404,6 +404,7 @@ final class PolyglotLoggers {
             throw new UnsupportedOperationException("Setting Source Method Name is not supported.");
         }
 
+        @SuppressWarnings("deprecation")
         @Override
         public void setThreadID(int threadID) {
             throw new UnsupportedOperationException("Setting Thread ID is not supported.");

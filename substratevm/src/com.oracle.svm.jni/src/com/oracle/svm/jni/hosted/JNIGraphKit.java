@@ -41,7 +41,7 @@ import jdk.vm.ci.meta.ResolvedJavaMethod;
 /**
  * {@link HostedGraphKit} implementation with extensions that are specific to generated JNI code.
  */
-class JNIGraphKit extends HostedGraphKit {
+public class JNIGraphKit extends HostedGraphKit {
 
     JNIGraphKit(DebugContext debug, HostedProviders providers, ResolvedJavaMethod method) {
         super(debug, providers, method);

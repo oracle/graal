@@ -40,32 +40,6 @@
  */
 package org.graalvm.polyglot.impl;
 
-import java.io.File;
-import java.io.IOException;
-import java.io.InputStream;
-import java.io.OutputStream;
-import java.io.PrintStream;
-import java.io.PrintWriter;
-import java.io.Reader;
-import java.lang.reflect.AnnotatedElement;
-import java.net.URI;
-import java.net.URL;
-import java.nio.charset.Charset;
-import java.time.Duration;
-import java.time.Instant;
-import java.time.LocalDate;
-import java.time.LocalTime;
-import java.time.ZoneId;
-import java.util.Collection;
-import java.util.Collections;
-import java.util.List;
-import java.util.Map;
-import java.util.Objects;
-import java.util.Set;
-import java.util.function.Consumer;
-import java.util.function.Function;
-import java.util.function.Predicate;
-
 import org.graalvm.collections.UnmodifiableEconomicSet;
 import org.graalvm.options.OptionDescriptors;
 import org.graalvm.polyglot.Context;
@@ -89,6 +63,33 @@ import org.graalvm.polyglot.io.FileSystem;
 import org.graalvm.polyglot.io.MessageTransport;
 import org.graalvm.polyglot.io.ProcessHandler;
 import org.graalvm.polyglot.management.ExecutionEvent;
+
+import java.io.File;
+import java.io.IOException;
+import java.io.InputStream;
+import java.io.OutputStream;
+import java.io.PrintStream;
+import java.io.PrintWriter;
+import java.io.Reader;
+import java.lang.reflect.AnnotatedElement;
+import java.net.URI;
+import java.net.URL;
+import java.nio.ByteOrder;
+import java.nio.charset.Charset;
+import java.time.Duration;
+import java.time.Instant;
+import java.time.LocalDate;
+import java.time.LocalTime;
+import java.time.ZoneId;
+import java.util.Collection;
+import java.util.Collections;
+import java.util.List;
+import java.util.Map;
+import java.util.Objects;
+import java.util.Set;
+import java.util.function.Consumer;
+import java.util.function.Function;
+import java.util.function.Predicate;
 
 @SuppressWarnings("unused")
 public abstract class AbstractPolyglotImpl {
@@ -178,6 +179,8 @@ public abstract class AbstractPolyglotImpl {
         public abstract boolean isArrayAccessible(HostAccess access);
 
         public abstract boolean isListAccessible(HostAccess access);
+
+        public abstract boolean isBufferAccessible(HostAccess access);
 
         public abstract Object getHostAccessImpl(HostAccess conf);
 
@@ -582,6 +585,42 @@ public abstract class AbstractPolyglotImpl {
         public abstract boolean removeArrayElement(Object receiver, long index);
 
         public abstract long getArraySize(Object receiver);
+
+        // region Buffer Methods
+
+        public boolean hasBufferElements(Object receiver) {
+            return false;
+        }
+
+        public abstract boolean isBufferWritable(Object receiver);
+
+        public abstract long getBufferSize(Object receiver);
+
+        public abstract byte readBufferByte(Object receiver, long byteOffset);
+
+        public abstract void writeBufferByte(Object receiver, long byteOffset, byte value);
+
+        public abstract short readBufferShort(Object receiver, ByteOrder order, long byteOffset);
+
+        public abstract void writeBufferShort(Object receiver, ByteOrder order, long byteOffset, short value);
+
+        public abstract int readBufferInt(Object receiver, ByteOrder order, long byteOffset);
+
+        public abstract void writeBufferInt(Object receiver, ByteOrder order, long byteOffset, int value);
+
+        public abstract long readBufferLong(Object receiver, ByteOrder order, long byteOffset);
+
+        public abstract void writeBufferLong(Object receiver, ByteOrder order, long byteOffset, long value);
+
+        public abstract float readBufferFloat(Object receiver, ByteOrder order, long byteOffset);
+
+        public abstract void writeBufferFloat(Object receiver, ByteOrder order, long byteOffset, float value);
+
+        public abstract double readBufferDouble(Object receiver, ByteOrder order, long byteOffset);
+
+        public abstract void writeBufferDouble(Object receiver, ByteOrder order, long byteOffset, double value);
+
+        // endregion
 
         public boolean hasMembers(Object receiver) {
             return false;

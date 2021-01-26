@@ -8,30 +8,60 @@
 import * as vscode from 'vscode';
 import * as cp from 'child_process';
 import * as path from 'path';
-import { getJavaHome } from "./utils";
+import { getJavaHome, findExecutable } from "./utils";
 
 const MICRONAUT: string = 'Micronaut';
+const NATIVE_IMAGE: string = 'native-image';
+let goals: vscode.QuickPickItem[] = [];
+
+export async function builderInit() {
+    goals = await buildWrapper(getAvailableGradleGoals, getAvailableMavenGoals) || [];
+}
 
 export async function build(goal?: string) {
     if (!goal) {
-        const goals = await getAvailableGoals();
-        const selected = goals.length > 1 ? await vscode.window.showQuickPick(goals, { placeHolder: 'Select build goal to invoke' }) : goals.length === 1 ? goals[0] : undefined;
-        if (selected) {
-            goal = selected.label;
-        } else {
+        if (goals.length === 0) {
             goal = 'build';
+        } else {
+            const selected = goals.length > 1 ? await vscode.window.showQuickPick(goals, { placeHolder: 'Select build goal to invoke' }) : goals.length === 1 ? goals[0] : undefined;
+            if (selected) {
+                goal = selected.label;
+            }
         }
     }
-    const command = await terminalCommandFor(goal);
-    if (command) {
-        let terminal: vscode.Terminal | undefined = vscode.window.terminals.find(terminal => terminal.name === MICRONAUT);
-        if (!terminal) {
-            terminal = vscode.window.createTerminal({ name: MICRONAUT, env: { JAVA_HOME: getJavaHome() }});
+    if (goal) {
+        const javaHome = getJavaHome();
+        if (javaHome && (goal === 'nativeImage' || goal === 'dockerBuildNative')) {
+            const nativeImage = findExecutable(NATIVE_IMAGE, javaHome);
+            if (!nativeImage) {
+                const gu = findExecutable('gu', javaHome);
+                if (gu) {
+                    const selected = await vscode.window.showInformationMessage(`${NATIVE_IMAGE} is not installed in your GraalVM`, `Install ${NATIVE_IMAGE}`);
+                    if (selected === `Install ${NATIVE_IMAGE}`) {
+                        await vscode.commands.executeCommand('extension.graalvm.installGraalVMComponent', NATIVE_IMAGE, javaHome);
+                        return;
+                    }
+                } else {
+                    vscode.window.showWarningMessage(`native-image is missing in ${javaHome}`);
+                }
+            }
         }
-        terminal.show();
-        terminal.sendText(command);
-    } else {
-        throw new Error(`No terminal command for ${goal}`);
+        const command = await terminalCommandFor(goal);
+        if (command) {
+            let terminal: vscode.Terminal | undefined = vscode.window.terminals.find(terminal => terminal.name === MICRONAUT);
+            if (!terminal) {
+                const env: any = {};
+                if (javaHome) {
+                    env.JAVA_HOME = javaHome;
+                    env.PATH = `${path.join(javaHome, 'bin')}${path.delimiter}${process.env.PATH}`;
+                }
+                terminal = vscode.window.createTerminal({ name: MICRONAUT, env });
+            }
+            terminal.show();
+            terminal.sendText(command);
+        } else {
+            throw new Error(`No terminal command for ${goal}`);
+        }
     }
 }
 
@@ -54,7 +84,7 @@ async function terminalCommandFor(goal: string): Promise<string | undefined> {
 function terminalGradleCommandFor(wrapper: vscode.Uri, goal: string): string | undefined {
     const exec = wrapper.fsPath.replace(/(\s+)/g, '\\$1');
     if (exec) {
-        return `${exec} ${goal}`;
+        return `${exec} ${goal} --no-daemon`;
     }
     return undefined;
 }
@@ -68,7 +98,13 @@ function terminalMavenCommandFor(wrapper: vscode.Uri, goal: string): string | un
                 command = 'compile';
                 break;
             case 'nativeImage':
-                command = 'mn:nativeImage';
+                command = 'package -Dpackaging=native-image';
+                break;
+            case 'dockerBuild':
+                command = 'package -Dpackaging=docker';
+                break;
+            case 'dockerBuildNative':
+                command = 'package -Dpackaging=docker-native';
                 break;
             default:
                 command = goal;
@@ -81,15 +117,11 @@ function terminalMavenCommandFor(wrapper: vscode.Uri, goal: string): string | un
     return undefined;
 }
 
-async function getAvailableGoals(): Promise<vscode.QuickPickItem[]> {
-    return await buildWrapper(getAvailableGradleGoals, getAvailableMavenGoals) || [];
-}
-
 function getAvailableGradleGoals(wrapper: vscode.Uri): vscode.QuickPickItem[] {
     const goals: vscode.QuickPickItem[] = [];
-    const out = cp.execFileSync(wrapper.fsPath, ['tasks', '--group=build', `--project-dir=${path.dirname(wrapper.fsPath)}`]);
+    const out = cp.execFileSync(wrapper.fsPath, ['tasks', '--no-daemon', '--group=build', `--project-dir=${path.dirname(wrapper.fsPath)}`]);
     let process: boolean = false;
-    out.toString().split('\n').forEach(line => {
+    out.toString().split('\n').map(line => line.trim()).forEach(line => {
         if (process) {
             if (line.length === 0) {
                 process = false;
@@ -113,7 +145,10 @@ function getAvailableMavenGoals(): vscode.QuickPickItem[] {
     const goals: vscode.QuickPickItem[] = [
         { label: 'clean', detail: 'Cleans the project' },
         { label: 'compile', detail: 'Compiles the source code of the project' },
-        { label: 'package', detail: 'Packages the compiled code it in its distributable format' }
+        { label: 'package', detail: 'Packages the compiled code in its distributable format' },
+        { label: 'nativeImage', detail: 'Packages the compiled code as a GraalVM native image'},
+        { label: 'dockerBuild', detail: 'Builds a Docker image with the application artifacts'},
+        { label: 'dockerBuildNative', detail: 'Builds a Docker image with a GraalVM native image inside'}
     ];
     return goals;
 }

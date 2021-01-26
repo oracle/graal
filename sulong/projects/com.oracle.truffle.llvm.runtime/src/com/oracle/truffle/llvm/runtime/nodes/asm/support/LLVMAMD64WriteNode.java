@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2017, 2019, Oracle and/or its affiliates.
+ * Copyright (c) 2017, 2020, Oracle and/or its affiliates.
  *
  * All rights reserved.
  *
@@ -29,6 +29,7 @@
  */
 package com.oracle.truffle.llvm.runtime.nodes.asm.support;
 
+import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.dsl.Cached;
 import com.oracle.truffle.api.dsl.Fallback;
 import com.oracle.truffle.api.dsl.Specialization;
@@ -36,14 +37,14 @@ import com.oracle.truffle.api.frame.FrameSlot;
 import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.llvm.runtime.nodes.api.LLVMExpressionNode;
 import com.oracle.truffle.llvm.runtime.nodes.api.LLVMNode;
-import com.oracle.truffle.llvm.runtime.nodes.api.LLVMStoreNode;
 import com.oracle.truffle.llvm.runtime.nodes.asm.support.LLVMAMD64WriteNodeGen.LLVMAMD64MemWriteNodeGen;
-import com.oracle.truffle.llvm.runtime.nodes.memory.store.LLVMI16StoreNodeGen;
-import com.oracle.truffle.llvm.runtime.nodes.memory.store.LLVMI32StoreNodeGen;
-import com.oracle.truffle.llvm.runtime.nodes.memory.store.LLVMI64StoreNodeGen;
-import com.oracle.truffle.llvm.runtime.nodes.memory.store.LLVMI8StoreNodeGen;
-import com.oracle.truffle.llvm.runtime.nodes.memory.store.LLVMPointerStoreNodeGen;
+import com.oracle.truffle.llvm.runtime.nodes.memory.store.LLVMI16StoreNode;
+import com.oracle.truffle.llvm.runtime.nodes.memory.store.LLVMI32StoreNode;
+import com.oracle.truffle.llvm.runtime.nodes.memory.store.LLVMI64StoreNode;
+import com.oracle.truffle.llvm.runtime.nodes.memory.store.LLVMI8StoreNode;
+import com.oracle.truffle.llvm.runtime.nodes.memory.store.LLVMPointerStoreNode;
 import com.oracle.truffle.llvm.runtime.pointer.LLVMNativePointer;
+import com.oracle.truffle.llvm.runtime.pointer.LLVMPointer;
 
 public abstract class LLVMAMD64WriteNode extends LLVMNode {
     public static final long MASK_16 = 0xFFFFFFFFFFFF0000L;
@@ -97,7 +98,7 @@ public abstract class LLVMAMD64WriteNode extends LLVMNode {
     }
 
     @Specialization(guards = "!isFrameSlot(addr)")
-    protected void doMemoryWrite(Object addr, Object value,
+    protected void doMemoryWrite(LLVMPointer addr, Object value,
                     @Cached("createMemoryWriteNode()") LLVMAMD64MemWriteNode writeNode) {
         writeNode.executeWithTarget(addr, value);
     }
@@ -111,37 +112,42 @@ public abstract class LLVMAMD64WriteNode extends LLVMNode {
     }
 
     abstract static class LLVMAMD64MemWriteNode extends LLVMNode {
-        @Child private LLVMStoreNode storeAddress = LLVMPointerStoreNodeGen.create(null, null);
-        @Child private LLVMStoreNode storeI8 = LLVMI8StoreNodeGen.create(null, null);
-        @Child private LLVMStoreNode storeI16 = LLVMI16StoreNodeGen.create(null, null);
-        @Child private LLVMStoreNode storeI32 = LLVMI32StoreNodeGen.create(null, null);
-        @Child private LLVMStoreNode storeI64 = LLVMI64StoreNodeGen.create(null, null);
 
-        public abstract void executeWithTarget(Object addr, Object value);
+        @Child private LLVMPointerStoreNode storePointer;
+
+        public abstract void executeWithTarget(LLVMPointer addr, Object value);
 
         @Specialization
-        protected void doI8(Object addr, byte value) {
-            storeI8.executeWithTarget(addr, value);
+        protected void doI8(LLVMPointer addr, byte value,
+                        @Cached LLVMI8StoreNode store) {
+            store.executeWithTarget(addr, value);
         }
 
         @Specialization
-        protected void doI16(Object addr, short value) {
-            storeI16.executeWithTarget(addr, value);
+        protected void doI16(LLVMPointer addr, short value,
+                        @Cached LLVMI16StoreNode store) {
+            store.executeWithTarget(addr, value);
         }
 
         @Specialization
-        protected void doI32(Object addr, int value) {
-            storeI32.executeWithTarget(addr, value);
+        protected void doI32(LLVMPointer addr, int value,
+                        @Cached LLVMI32StoreNode store) {
+            store.executeWithTarget(addr, value);
         }
 
         @Specialization
-        protected void doI64(Object addr, long value) {
-            storeI64.executeWithTarget(addr, value);
+        protected void doI64(LLVMPointer addr, long value,
+                        @Cached LLVMI64StoreNode store) {
+            store.executeWithTarget(addr, value);
         }
 
         @Fallback
-        protected void doObject(Object addr, Object value) {
-            storeAddress.executeWithTarget(addr, value);
+        protected void doObject(LLVMPointer addr, Object value) {
+            if (storePointer == null) {
+                CompilerDirectives.transferToInterpreterAndInvalidate();
+                storePointer = insert(LLVMPointerStoreNode.create());
+            }
+            storePointer.executeWithTarget(addr, value);
         }
     }
 }

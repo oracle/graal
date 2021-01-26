@@ -46,61 +46,115 @@ import org.graalvm.wasm.exception.WasmException;
 
 public class Assert {
 
-    public static void assertByteEqual(byte b1, byte b2, String message, Failure failure) throws WasmException {
+    public static void assertByteEqual(byte b1, byte b2, Failure failure) throws WasmException {
         if (b1 != b2) {
-            fail(format("%s: 0x%02X should = 0x%02X.", message, b1, b2), failure);
+            fail(failure, format("%s: 0x%02X should = 0x%02X", failure.name, b1, b2));
         }
     }
 
-    public static void assertIntEqual(int n1, int n2, String message, Failure failure) throws WasmException {
-        if (n1 != n2) {
-            fail(format("%s: %d should = %d.", message, n1, n2), failure);
+    public static void assertByteEqual(byte b1, byte b2, String message, Failure failure) throws WasmException {
+        if (b1 != b2) {
+            fail(failure, format("%s: 0x%02X should = 0x%02X", message, b1, b2));
+        }
+    }
+
+    public static void assertIntEqual(int actual, int expected, Failure failure) throws WasmException {
+        assertIntEqual(actual, expected, failure.name, failure);
+    }
+
+    public static void assertIntEqual(int actual, int expected, String message, Failure failure) throws WasmException {
+        if (actual != expected) {
+            fail(failure, format("%s: %d should = %d", message, actual, expected));
+        }
+    }
+
+    public static void assertIntGreaterOrEqual(int n1, int n2, Failure failure) throws WasmException {
+        if (n1 < n2) {
+            fail(failure, format("%s: %d should be > %d", failure.name, n1, n2));
         }
     }
 
     public static void assertIntGreater(int n1, int n2, String message, Failure failure) throws WasmException {
         if (n1 <= n2) {
-            fail(format("%s: %d should be > %d.", message, n1, n2), failure);
+            fail(failure, format("%s: %d should be > %d", message, n1, n2));
         }
     }
 
-    public static void assertIntGreaterOrEqual(int n1, int n2, String message, Failure failure) throws WasmException {
-        if (n1 < n2) {
-            fail(format("%s: %d should be >= %d.", message, n1, n2), failure);
+    public static void assertIntLessOrEqual(int n1, int n2, Failure failure) throws WasmException {
+        assertIntLessOrEqual(n1, n2, failure.name, failure);
+    }
+
+    public static void assertIntLess(int n1, int n2, Failure failure) throws WasmException {
+        if (n1 >= n2) {
+            fail(failure, format("%s: %d should be <= %d", failure.name, n1, n2));
+        }
+    }
+
+    public static void assertUnsignedIntLess(int n1, int n2, Failure failure) throws WasmException {
+        assertUnsignedIntLess(n1, n2, failure, failure.name);
+    }
+
+    public static void assertUnsignedIntLess(int n1, int n2, Failure failure, String message) throws WasmException {
+        if (Integer.compareUnsigned(n1, n2) >= 0) {
+            fail(failure, format("%s: %s should be < %s", message, Integer.toUnsignedString(n1), Integer.toUnsignedString(n2)));
         }
     }
 
     public static void assertIntLessOrEqual(int n1, int n2, String message, Failure failure) throws WasmException {
         if (n1 > n2) {
-            fail(format("%s: %d should be <= %d.", message, n1, n2), failure);
+            fail(failure, format("%s: %d should be <= %d", message, n1, n2));
         }
     }
 
-    public static void assertLongLessOrEqual(long n1, long n2, String message, Failure failure) throws WasmException {
+    public static void assertUnsignedIntLessOrEqual(int n1, int n2, Failure failure) throws WasmException {
+        assertUnsignedIntLessOrEqual(n1, n2, failure, failure.name);
+    }
+
+    public static void assertUnsignedIntLessOrEqual(int n1, int n2, Failure failure, String message) throws WasmException {
+        if (Integer.compareUnsigned(n1, n2) > 0) {
+            fail(failure, format("%s: %s should be <= %s", message, Integer.toUnsignedString(n1), Integer.toUnsignedString(n2)));
+        }
+    }
+
+    public static void assertUnsignedIntGreaterOrEqual(int n1, int n2, Failure failure) throws WasmException {
+        assertUnsignedIntGreaterOrEqual(n1, n2, failure, failure.name);
+    }
+
+    public static void assertUnsignedIntGreaterOrEqual(int n1, int n2, Failure failure, String message) throws WasmException {
+        if (Integer.compareUnsigned(n1, n2) < 0) {
+            fail(failure, format("%s: %s should be >= %s", message, Integer.toUnsignedString(n1), Integer.toUnsignedString(n2)));
+        }
+    }
+
+    public static void assertLongLessOrEqual(long n1, long n2, Failure failure) throws WasmException {
         if (n1 > n2) {
-            fail(format("%s: %d should be <= %d.", message, n1, n2), failure);
+            fail(failure, format("%s: %d should be <= %d", failure.name, n1, n2));
         }
     }
 
     public static void assertNotNull(Object object, String message, Failure failure) throws WasmException {
         if (object == null) {
-            fail(format("%s: expected a non-null value.", message), failure);
+            fail(failure, format("%s: expected a non-null value", message));
         }
+    }
+
+    public static void assertTrue(boolean condition, Failure failure) throws WasmException {
+        assertTrue(condition, failure.name, failure);
     }
 
     public static void assertTrue(boolean condition, String message, Failure failure) throws WasmException {
         if (!condition) {
-            fail(format("%s: condition is supposed to be true.", message), failure);
+            fail(failure, message);
         }
     }
 
     @TruffleBoundary
-    public static RuntimeException fail(String message, Failure failure) throws WasmException {
-        throw WasmException.create(failure, message);
+    public static RuntimeException fail(Failure failure, String message, Object... args) throws WasmException {
+        throw WasmException.format(failure, message, args);
     }
 
     @TruffleBoundary
-    public static String format(String format, Object... args) {
+    private static String format(String format, Object... args) {
         return String.format(format, args);
     }
 

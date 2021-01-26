@@ -24,6 +24,7 @@
  */
 package com.oracle.svm.agent;
 
+import static com.oracle.svm.jni.JNIObjectHandles.nullHandle;
 import static com.oracle.svm.jvmtiagentbase.Support.check;
 import static com.oracle.svm.jvmtiagentbase.Support.checkJni;
 import static com.oracle.svm.jvmtiagentbase.Support.checkNoException;
@@ -37,8 +38,6 @@ import static com.oracle.svm.jvmtiagentbase.Support.jniFunctions;
 import static com.oracle.svm.jvmtiagentbase.Support.jvmtiEnv;
 import static com.oracle.svm.jvmtiagentbase.Support.jvmtiFunctions;
 import static com.oracle.svm.jvmtiagentbase.Support.testException;
-import static com.oracle.svm.jvmtiagentbase.Support.toCString;
-import static com.oracle.svm.jni.JNIObjectHandles.nullHandle;
 import static org.graalvm.word.WordFactory.nullPointer;
 
 import org.graalvm.nativeimage.StackValue;
@@ -46,15 +45,8 @@ import org.graalvm.nativeimage.c.function.CEntryPoint;
 import org.graalvm.nativeimage.c.function.CEntryPointLiteral;
 import org.graalvm.nativeimage.c.type.CCharPointer;
 import org.graalvm.nativeimage.c.type.CCharPointerPointer;
-import org.graalvm.nativeimage.c.type.CTypeConversion.CCharPointerHolder;
 import org.graalvm.nativeimage.c.type.WordPointer;
 
-import com.oracle.svm.jvmtiagentbase.AgentIsolate;
-import com.oracle.svm.jvmtiagentbase.Support;
-import com.oracle.svm.jvmtiagentbase.jvmti.JvmtiEnv;
-import com.oracle.svm.jvmtiagentbase.jvmti.JvmtiError;
-import com.oracle.svm.agent.restrict.JniAccessVerifier;
-import com.oracle.svm.configure.config.ConfigurationMethod;
 import com.oracle.svm.core.c.function.CEntryPointOptions;
 import com.oracle.svm.jni.nativeapi.JNIEnvironment;
 import com.oracle.svm.jni.nativeapi.JNIErrors;
@@ -72,11 +64,14 @@ import com.oracle.svm.jni.nativeapi.JNIFunctionPointerTypes.ToReflectedMethodFun
 import com.oracle.svm.jni.nativeapi.JNIMethodId;
 import com.oracle.svm.jni.nativeapi.JNINativeInterface;
 import com.oracle.svm.jni.nativeapi.JNIObjectHandle;
+import com.oracle.svm.jvmtiagentbase.AgentIsolate;
+import com.oracle.svm.jvmtiagentbase.Support;
+import com.oracle.svm.jvmtiagentbase.jvmti.JvmtiEnv;
+import com.oracle.svm.jvmtiagentbase.jvmti.JvmtiError;
 
 final class JniCallInterceptor {
     private static TraceWriter traceWriter;
 
-    private static JniAccessVerifier accessVerifier;
     private static NativeImageAgent agent;
 
     private static boolean shouldTrace() {
@@ -105,10 +100,7 @@ final class JniCallInterceptor {
     @CEntryPointOptions(prologue = AgentIsolate.Prologue.class)
     private static JNIObjectHandle defineClass(JNIEnvironment env, CCharPointer name, JNIObjectHandle loader, CCharPointer buf, int bufLen) {
         JNIObjectHandle callerClass = getCallerClass(env);
-        JNIObjectHandle result = nullHandle();
-        if (accessVerifier == null || accessVerifier.verifyDefineClass(env, name, loader, buf, bufLen, callerClass)) {
-            result = jniFunctions().getDefineClass().invoke(env, name, loader, buf, bufLen);
-        }
+        JNIObjectHandle result = jniFunctions().getDefineClass().invoke(env, name, loader, buf, bufLen);
         if (shouldTrace()) {
             traceCall(env, "DefineClass", nullHandle(), nullHandle(), callerClass, result.notEqual(nullHandle()), fromCString(name));
         }
@@ -127,9 +119,9 @@ final class JniCallInterceptor {
     @CEntryPointOptions(prologue = AgentIsolate.Prologue.class)
     private static JNIObjectHandle findClass(JNIEnvironment env, CCharPointer name) {
         JNIObjectHandle callerClass = getCallerClass(env);
-        JNIObjectHandle result = nullHandle();
-        if (accessVerifier == null || accessVerifier.verifyFindClass(env, name, callerClass)) {
-            result = jniFunctions().getFindClass().invoke(env, name);
+        JNIObjectHandle result = jniFunctions().getFindClass().invoke(env, name);
+        if (nullHandle().equal(result) || clearException(env)) {
+            result = nullHandle();
         }
         if (shouldTrace()) {
             traceCall(env, "FindClass", nullHandle(), nullHandle(), callerClass, result.notEqual(nullHandle()), fromCString(name));
@@ -142,10 +134,6 @@ final class JniCallInterceptor {
     private static JNIMethodId getMethodID(JNIEnvironment env, JNIObjectHandle clazz, CCharPointer name, CCharPointer signature) {
         JNIObjectHandle callerClass = getCallerClass(env);
         JNIMethodId result = jniFunctions().getGetMethodID().invoke(env, clazz, name, signature);
-        if (result.isNonNull() && accessVerifier != null && !accessVerifier.verifyGetMethodID(env, clazz, name, signature, result, callerClass)) {
-            // NOTE: GetMethodID() above can have initialized `clazz` as a side effect
-            result = nullPointer();
-        }
         if (shouldTrace()) {
             traceCall(env, "GetMethodID", clazz, getMethodDeclaringClass(result), callerClass, result.isNonNull(), fromCString(name), fromCString(signature));
         }
@@ -157,10 +145,7 @@ final class JniCallInterceptor {
     private static JNIMethodId getStaticMethodID(JNIEnvironment env, JNIObjectHandle clazz, CCharPointer name, CCharPointer signature) {
         JNIObjectHandle callerClass = getCallerClass(env);
         JNIMethodId result = jniFunctions().getGetStaticMethodID().invoke(env, clazz, name, signature);
-        if (result.isNonNull() && accessVerifier != null && !accessVerifier.verifyGetMethodID(env, clazz, name, signature, result, callerClass)) {
-            // NOTE: GetStaticMethodID() above can have initialized `clazz` as a side effect
-            result = nullPointer();
-        }
+        result.isNonNull();
         if (shouldTrace()) {
             traceCall(env, "GetStaticMethodID", clazz, getMethodDeclaringClass(result), callerClass, result.isNonNull(), fromCString(name), fromCString(signature));
         }
@@ -172,10 +157,6 @@ final class JniCallInterceptor {
     private static JNIFieldId getFieldID(JNIEnvironment env, JNIObjectHandle clazz, CCharPointer name, CCharPointer signature) {
         JNIObjectHandle callerClass = getCallerClass(env);
         JNIFieldId result = jniFunctions().getGetFieldID().invoke(env, clazz, name, signature);
-        if (result.isNonNull() && accessVerifier != null && !accessVerifier.verifyGetFieldID(env, clazz, name, signature, result, callerClass)) {
-            // NOTE: GetFieldID() above can have initialized `clazz` as a side effect
-            result = nullPointer();
-        }
         if (shouldTrace()) {
             traceCall(env, "GetFieldID", clazz, getFieldDeclaringClass(clazz, result), callerClass, result.isNonNull(), fromCString(name), fromCString(signature));
         }
@@ -187,10 +168,6 @@ final class JniCallInterceptor {
     private static JNIFieldId getStaticFieldID(JNIEnvironment env, JNIObjectHandle clazz, CCharPointer name, CCharPointer signature) {
         JNIObjectHandle callerClass = getCallerClass(env);
         JNIFieldId result = jniFunctions().getGetStaticFieldID().invoke(env, clazz, name, signature);
-        if (result.isNonNull() && accessVerifier != null && !accessVerifier.verifyGetFieldID(env, clazz, name, signature, result, callerClass)) {
-            // NOTE: GetStaticFieldID() above can have initialized `clazz` as a side effect
-            result = nullPointer();
-        }
         if (shouldTrace()) {
             traceCall(env, "GetStaticFieldID", clazz, getFieldDeclaringClass(clazz, result), callerClass, result.isNonNull(), fromCString(name), fromCString(signature));
         }
@@ -201,17 +178,7 @@ final class JniCallInterceptor {
     @CEntryPointOptions(prologue = AgentIsolate.Prologue.class)
     private static int throwNew(JNIEnvironment env, JNIObjectHandle clazz, CCharPointer message) {
         JNIObjectHandle callerClass = getCallerClass(env);
-        int result;
-        if (accessVerifier == null || accessVerifier.verifyThrowNew(env, clazz, callerClass)) {
-            result = jniFunctions().getThrowNew().invoke(env, clazz, message);
-        } else { // throw NoSuchMethodError like HotSpot
-            try (CCharPointerHolder errorMessage = toCString(NativeImageAgent.MESSAGE_PREFIX + "configuration does not permit access to method: " +
-                            getClassNameOr(env, clazz, "(null)", "(?)") + "." + ConfigurationMethod.CONSTRUCTOR_NAME + "(Ljava/lang/String;)V")) {
-
-                jniFunctions().getThrowNew().invoke(env, agent.handles().javaLangNoSuchMethodError, errorMessage.get());
-            }
-            result = JNIErrors.JNI_ERR();
-        }
+        int result = jniFunctions().getThrowNew().invoke(env, clazz, message);
         if (shouldTrace()) {
             traceCall(env, "ThrowNew", clazz, nullHandle(), callerClass, (result == JNIErrors.JNI_OK()), TraceWriter.UNKNOWN_VALUE);
         }
@@ -236,10 +203,6 @@ final class JniCallInterceptor {
                 jvmtiFunctions().Deallocate().invoke(jvmtiEnv(), namePtr.read());
                 jvmtiFunctions().Deallocate().invoke(jvmtiEnv(), signaturePtr.read());
             }
-
-            if (accessVerifier != null && !accessVerifier.verifyFromReflectedMethod(env, declaring, name, signature, result, callerClass)) {
-                result = nullPointer();
-            }
         }
         if (shouldTrace()) {
             traceCall(env, "FromReflectedMethod", declaring, nullHandle(), callerClass, result.isNonNull(), name, signature);
@@ -257,9 +220,6 @@ final class JniCallInterceptor {
         if (result.isNonNull()) {
             declaring = Support.callObjectMethod(env, field, agent.handles().javaLangReflectMemberGetDeclaringClass);
             name = getFieldName(declaring, result);
-            if (accessVerifier != null && !accessVerifier.verifyFromReflectedField(env, declaring, name, result, callerClass)) {
-                result = nullPointer();
-            }
         }
         if (shouldTrace()) {
             traceCall(env, "FromReflectedField", declaring, nullHandle(), callerClass, result.isNonNull(), name);
@@ -282,10 +242,7 @@ final class JniCallInterceptor {
             jvmtiFunctions().Deallocate().invoke(jvmtiEnv(), namePtr.read());
             jvmtiFunctions().Deallocate().invoke(jvmtiEnv(), signaturePtr.read());
         }
-        JNIObjectHandle result = nullHandle();
-        if (accessVerifier == null || accessVerifier.verifyToReflectedMethod(env, clazz, declaring, method, name, signature, callerClass)) {
-            result = jniFunctions().getToReflectedMethod().invoke(env, clazz, method, isStatic);
-        }
+        JNIObjectHandle result = jniFunctions().getToReflectedMethod().invoke(env, clazz, method, isStatic);
         if (shouldTrace()) {
             traceCall(env, "ToReflectedMethod", clazz, declaring, callerClass, result.notEqual(nullHandle()), name, signature);
         }
@@ -298,10 +255,7 @@ final class JniCallInterceptor {
         JNIObjectHandle callerClass = getCallerClass(env);
         JNIObjectHandle declaring = getFieldDeclaringClass(clazz, field);
         String name = getFieldName(clazz, field);
-        JNIObjectHandle result = nullHandle();
-        if (accessVerifier == null || accessVerifier.verifyToReflectedField(env, clazz, declaring, name, field, callerClass)) {
-            result = jniFunctions().getToReflectedField().invoke(env, clazz, field, isStatic);
-        }
+        JNIObjectHandle result = jniFunctions().getToReflectedField().invoke(env, clazz, field, isStatic);
         if (shouldTrace()) {
             traceCall(env, "ToReflectedField", clazz, declaring, callerClass, result.notEqual(nullHandle()), name);
         }
@@ -320,17 +274,13 @@ final class JniCallInterceptor {
                 resultClass = nullHandle();
             }
         }
-        if (accessVerifier != null && !accessVerifier.verifyNewObjectArray(env, resultClass, callerClass)) {
-            result = nullHandle();
-        }
         if (shouldTrace()) {
             traceCall(env, "NewObjectArray", resultClass, nullHandle(), callerClass, result.notEqual(nullHandle()));
         }
         return result;
     }
 
-    public static void onLoad(TraceWriter writer, JniAccessVerifier verifier, NativeImageAgent nativeImageTracingAgent) {
-        accessVerifier = verifier;
+    public static void onLoad(TraceWriter writer, NativeImageAgent nativeImageTracingAgent) {
         traceWriter = writer;
         JniCallInterceptor.agent = nativeImageTracingAgent;
     }
@@ -358,7 +308,6 @@ final class JniCallInterceptor {
     public static void onUnload() {
         jvmtiFunctions().SetJNIFunctionTable().invoke(jvmtiEnv(), jniFunctions()); // restore
 
-        accessVerifier = null;
         traceWriter = null;
     }
 

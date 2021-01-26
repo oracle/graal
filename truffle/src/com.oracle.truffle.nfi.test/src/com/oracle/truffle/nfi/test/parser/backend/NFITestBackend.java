@@ -42,29 +42,71 @@ package com.oracle.truffle.nfi.test.parser.backend;
 
 import com.oracle.truffle.api.CallTarget;
 import com.oracle.truffle.api.CompilerDirectives;
+import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.Truffle;
 import com.oracle.truffle.api.TruffleLanguage;
 import com.oracle.truffle.api.TruffleLanguage.Env;
 import com.oracle.truffle.api.TruffleLanguage.Registration;
 import com.oracle.truffle.api.frame.VirtualFrame;
+import com.oracle.truffle.api.library.ExportLibrary;
+import com.oracle.truffle.api.library.ExportMessage;
 import com.oracle.truffle.api.nodes.RootNode;
 import com.oracle.truffle.nfi.spi.NFIBackend;
 import com.oracle.truffle.nfi.spi.NFIBackendFactory;
+import com.oracle.truffle.nfi.spi.NFIBackendLibrary;
 import com.oracle.truffle.nfi.spi.NFIBackendTools;
 import com.oracle.truffle.nfi.spi.types.NativeLibraryDescriptor;
+import com.oracle.truffle.nfi.spi.types.NativeSimpleType;
 
 @Registration(id = "test/nfi-backend", name = "NFITestBackend", internal = true, services = NFIBackendFactory.class)
 public class NFITestBackend extends TruffleLanguage<Env> {
 
     NFIBackendTools tools;
 
-    NFIBackend backend = new NFIBackend() {
+    NFIBackend backend = new NFITestBackendImpl();
+
+    public static final class ArrayType {
+
+        public final NativeSimpleType base;
+
+        ArrayType(NativeSimpleType base) {
+            this.base = base;
+        }
+    }
+
+    public static final class EnvType {
+    }
+
+    @ExportLibrary(NFIBackendLibrary.class)
+    @SuppressWarnings("static-method")
+    static final class NFITestBackendImpl implements NFIBackend {
 
         @Override
         public CallTarget parse(NativeLibraryDescriptor descriptor) {
             return Truffle.getRuntime().createCallTarget(RootNode.createConstantNode(new TestLibrary(descriptor)));
         }
-    };
+
+        @ExportMessage
+        Object getSimpleType(NativeSimpleType type) {
+            return type;
+        }
+
+        @ExportMessage
+        Object getArrayType(NativeSimpleType type) {
+            return new ArrayType(type);
+        }
+
+        @ExportMessage
+        Object getEnvType() {
+            return new EnvType();
+        }
+
+        @ExportMessage
+        @TruffleBoundary
+        Object createSignatureBuilder() {
+            return new TestSignature();
+        }
+    }
 
     @Override
     protected Env createContext(Env env) {

@@ -526,7 +526,7 @@ class TestProtectedAssembler extends AArch64Assembler {
     }
 
     @Override
-    public AbstractAddress makeAddress(Register base, int displacement) {
+    public AbstractAddress makeAddress(int transferSize, Register base, int displacement) {
         throw new UnsupportedOperationException();
     }
 

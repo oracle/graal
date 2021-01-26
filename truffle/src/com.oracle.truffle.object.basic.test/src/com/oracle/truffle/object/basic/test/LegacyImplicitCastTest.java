@@ -50,8 +50,6 @@ import org.junit.runners.Parameterized;
 import org.junit.runners.Parameterized.Parameters;
 
 import com.oracle.truffle.api.object.DynamicObject;
-import com.oracle.truffle.api.object.Layout;
-import com.oracle.truffle.api.object.Layout.ImplicitCast;
 import com.oracle.truffle.api.object.Location;
 import com.oracle.truffle.api.object.ObjectType;
 import com.oracle.truffle.api.object.Shape;
@@ -61,8 +59,10 @@ import com.oracle.truffle.object.basic.DefaultLayoutFactory;
 @RunWith(Parameterized.class)
 public class LegacyImplicitCastTest {
 
-    static final Layout longLayout = new DefaultLayoutFactory().createLayout(Layout.newLayout().addAllowedImplicitCast(ImplicitCast.IntToLong));
-    static final Layout doubleLayout = new DefaultLayoutFactory().createLayout(Layout.newLayout().addAllowedImplicitCast(ImplicitCast.IntToDouble));
+    static final com.oracle.truffle.api.object.Layout longLayout = new DefaultLayoutFactory().createLayout(
+                    com.oracle.truffle.api.object.Layout.newLayout().addAllowedImplicitCast(com.oracle.truffle.api.object.Layout.ImplicitCast.IntToLong));
+    static final com.oracle.truffle.api.object.Layout doubleLayout = new DefaultLayoutFactory().createLayout(
+                    com.oracle.truffle.api.object.Layout.newLayout().addAllowedImplicitCast(com.oracle.truffle.api.object.Layout.ImplicitCast.IntToDouble));
 
     @Parameters
     public static Collection<Object[]> data() {
@@ -72,12 +72,12 @@ public class LegacyImplicitCastTest {
         });
     }
 
-    final Layout layout;
+    final com.oracle.truffle.api.object.Layout layout;
     final int intVal;
     final Object otherVal;
     final Class<?> otherPrimClass;
 
-    public LegacyImplicitCastTest(Layout layout, int intVal, Object otherVal, Class<?> otherPrimClass) {
+    public LegacyImplicitCastTest(com.oracle.truffle.api.object.Layout layout, int intVal, Object otherVal, Class<?> otherPrimClass) {
         this.layout = layout;
         this.intVal = intVal;
         this.otherVal = otherVal;
@@ -164,7 +164,7 @@ public class LegacyImplicitCastTest {
 
     @Test
     public void testLocationDecoratorEquals() {
-        Layout defaultLayout = new DefaultLayoutFactory().createLayout(Layout.newLayout());
+        com.oracle.truffle.api.object.Layout defaultLayout = new DefaultLayoutFactory().createLayout(com.oracle.truffle.api.object.Layout.newLayout());
         Shape defaultRootShape = defaultLayout.createShape(new ObjectType());
         Shape implicitCastRootShape = layout.createShape(new ObjectType());
 

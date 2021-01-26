@@ -92,7 +92,7 @@ public abstract class LLVMInteropReadNode extends LLVMNode {
                 throw new LLVMPolyglotException(this, "Member '%s' not found", name);
             } catch (UnknownIdentifierException ex) {
                 exception.enter();
-                throw new LLVMPolyglotException(this, "Can not read member '%s'", name);
+                throw new LLVMPolyglotException(this, "Cannot read member '%s'", name);
             }
         }
 

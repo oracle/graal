@@ -40,6 +40,12 @@
  */
 package com.oracle.truffle.polyglot;
 
+import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
+import com.oracle.truffle.api.TruffleOptions;
+import org.graalvm.polyglot.HostAccess;
+import org.graalvm.polyglot.impl.AbstractPolyglotImpl;
+import org.graalvm.polyglot.impl.AbstractPolyglotImpl.APIAccess;
+
 import java.lang.reflect.Constructor;
 import java.lang.reflect.Field;
 import java.lang.reflect.Member;
@@ -51,13 +57,6 @@ import java.util.List;
 import java.util.Map;
 import java.util.Map.Entry;
 
-import org.graalvm.polyglot.HostAccess;
-import org.graalvm.polyglot.impl.AbstractPolyglotImpl;
-import org.graalvm.polyglot.impl.AbstractPolyglotImpl.APIAccess;
-
-import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
-import com.oracle.truffle.api.TruffleOptions;
-
 final class HostClassCache {
 
     static final PolyglotTargetMapping[] EMPTY_MAPPINGS = new PolyglotTargetMapping[0];
@@ -66,6 +65,7 @@ final class HostClassCache {
     final HostAccess hostAccess;
     private final boolean arrayAccess;
     private final boolean listAccess;
+    private final boolean bufferAccess;
     private final Map<Class<?>, Object> targetMappings;
     private final Object unnamedModule;
 
@@ -73,6 +73,7 @@ final class HostClassCache {
         this.hostAccess = conf;
         this.arrayAccess = apiAccess.isArrayAccessible(hostAccess);
         this.listAccess = apiAccess.isListAccessible(hostAccess);
+        this.bufferAccess = apiAccess.isBufferAccessible(hostAccess);
         this.apiAccess = apiAccess;
         this.targetMappings = groupMappings(apiAccess, conf);
         this.unnamedModule = EngineAccessor.JDKSERVICES.getUnnamedModule(classLoader);
@@ -224,8 +225,11 @@ final class HostClassCache {
         return listAccess;
     }
 
+    boolean isBufferAccess() {
+        return bufferAccess;
+    }
+
     boolean allowsImplementation(Class<?> type) {
         return apiAccess.allowsImplementation(hostAccess, type);
     }
-
 }

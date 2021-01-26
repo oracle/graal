@@ -258,6 +258,12 @@ public class SubstrateUtil {
         return assertionsEnabled;
     }
 
+    /**
+     * Emits a node that triggers a breakpoint in debuggers.
+     * 
+     * @param arg0 value to inspect when the breakpoint hits
+     * @see BreakpointNode how to use breakpoints and inspect breakpoint values in the debugger
+     */
     @NodeIntrinsic(BreakpointNode.class)
     public static native void breakpoint(Object arg0);
 
@@ -777,10 +783,10 @@ public class SubstrateUtil {
     public static class NativeImageLoadingShield {
         @Platforms(Platform.HOSTED_ONLY.class)
         public static boolean isNeverInline(ResolvedJavaMethod method) {
-            String[] neverInline = SubstrateOptions.NeverInline.getValue();
+            List<String> neverInline = SubstrateOptions.NeverInline.getValue().values();
 
             return GuardedAnnotationAccess.isAnnotationPresent(method, com.oracle.svm.core.annotate.NeverInline.class) ||
-                            (neverInline != null && Arrays.stream(neverInline).anyMatch(re -> MethodFilter.parse(re).matches(method)));
+                            (neverInline != null && neverInline.stream().anyMatch(re -> MethodFilter.parse(re).matches(method)));
         }
     }
 }

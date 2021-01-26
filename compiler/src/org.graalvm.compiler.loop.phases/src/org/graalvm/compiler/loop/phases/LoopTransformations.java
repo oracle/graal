@@ -40,13 +40,6 @@ import org.graalvm.compiler.graph.Node;
 import org.graalvm.compiler.graph.Position;
 import org.graalvm.compiler.graph.spi.Simplifiable;
 import org.graalvm.compiler.graph.spi.SimplifierTool;
-import org.graalvm.compiler.loop.CountedLoopInfo;
-import org.graalvm.compiler.loop.DefaultLoopPolicies;
-import org.graalvm.compiler.loop.InductionVariable.Direction;
-import org.graalvm.compiler.loop.LoopEx;
-import org.graalvm.compiler.loop.LoopFragment;
-import org.graalvm.compiler.loop.LoopFragmentInside;
-import org.graalvm.compiler.loop.LoopFragmentWhole;
 import org.graalvm.compiler.nodeinfo.InputType;
 import org.graalvm.compiler.nodes.AbstractBeginNode;
 import org.graalvm.compiler.nodes.AbstractEndNode;
@@ -75,6 +68,13 @@ import org.graalvm.compiler.nodes.calc.CompareNode;
 import org.graalvm.compiler.nodes.calc.ConditionalNode;
 import org.graalvm.compiler.nodes.extended.OpaqueNode;
 import org.graalvm.compiler.nodes.extended.SwitchNode;
+import org.graalvm.compiler.nodes.loop.CountedLoopInfo;
+import org.graalvm.compiler.nodes.loop.DefaultLoopPolicies;
+import org.graalvm.compiler.nodes.loop.LoopEx;
+import org.graalvm.compiler.nodes.loop.LoopFragment;
+import org.graalvm.compiler.nodes.loop.LoopFragmentInside;
+import org.graalvm.compiler.nodes.loop.LoopFragmentWhole;
+import org.graalvm.compiler.nodes.loop.InductionVariable.Direction;
 import org.graalvm.compiler.nodes.spi.CoreProviders;
 import org.graalvm.compiler.nodes.util.GraphUtil;
 import org.graalvm.compiler.nodes.util.IntegerHelper;
@@ -128,7 +128,7 @@ public abstract class LoopTransformations {
                 }
                 graph.getDebug().dump(DebugContext.VERY_DETAILED_LEVEL, graph, "After peeling loop %s", loop);
                 c.applyIncremental(graph, context, peeledListener.getNodes());
-                loop.invalidateFragments();
+                loop.invalidateFragmentsAndIVs();
                 for (Node n : graph.getNewNodes(newNodes)) {
                     if (n.isAlive() && (n instanceof IfNode || n instanceof SwitchNode || n instanceof FixedGuardNode || n instanceof BeginNode)) {
                         Simplifiable s = (Simplifiable) n;
@@ -207,6 +207,16 @@ public abstract class LoopTransformations {
         LoopFragmentInside newSegment = loop.inside().duplicate();
         newSegment.insertWithinAfter(loop, opaqueUnrolledStrides);
 
+        // Try to update the corresponding post loop's frequency.
+        for (LoopExitNode exit : loop.loopBegin().loopExits()) {
+            if (exit.next().hasExactlyOneUsage() && exit.next().usages().first() instanceof LoopBeginNode) {
+                LoopBeginNode possiblePostLoopBegin = (LoopBeginNode) exit.next().usages().first();
+                if (possiblePostLoopBegin.isPostLoop()) {
+                    possiblePostLoopBegin.setLoopFrequency(Math.max(1.0, loop.loopBegin().getUnrollFactor() - 1));
+                    break;
+                }
+            }
+        }
     }
 
     // This function splits candidate loops into pre, main and post loops,
@@ -373,9 +383,13 @@ public abstract class LoopTransformations {
         } else {
             updatePreLoopLimit(preCounted);
         }
+        double originalFrequency = loop.loopBegin().loopFrequency();
         preLoopBegin.setLoopFrequency(1.0);
         mainLoopBegin.setLoopFrequency(Math.max(1.0, mainLoopBegin.loopFrequency() - 2));
-        postLoopBegin.setLoopFrequency(Math.max(1.0, postLoopBegin.loopFrequency() - 1));
+        postLoopBegin.setLoopFrequency(1.0);
+        preLoopBegin.setLoopOrigFrequency(originalFrequency);
+        mainLoopBegin.setLoopOrigFrequency(originalFrequency);
+        postLoopBegin.setLoopOrigFrequency(originalFrequency);
 
         if (!graph.hasValueProxies()) {
             // The pre and post loops don't require safepoints at all
@@ -604,7 +618,7 @@ public abstract class LoopTransformations {
 
     public static boolean isUnrollableLoop(LoopEx loop) {
         if (!loop.isCounted() || !loop.counted().getCounter().isConstantStride() || !loop.loop().getChildren().isEmpty() || loop.loopBegin().loopEnds().count() != 1 ||
-                        loop.loopBegin().loopExits().count() > 1) {
+                        loop.loopBegin().loopExits().count() > 1 || loop.counted().isInverted()) {
             // loops without exits can be unrolled
             return false;
         }

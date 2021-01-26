@@ -81,6 +81,7 @@ import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.api.nodes.RootNode;
 import com.oracle.truffle.api.source.SourceSection;
 import com.oracle.truffle.api.test.polyglot.ProxyLanguage;
+import java.util.Arrays;
 
 import org.graalvm.polyglot.Source;
 
@@ -333,6 +334,61 @@ public class DebugStackFrameTest extends AbstractDebugTest {
                     // O.K.
                 }
             });
+        }
+        expectDone();
+    }
+
+    @Test
+    public void testDynamicNames() {
+        TestExecutableNamesLanguage language = new TestExecutableNamesLanguage(0, "staticName", "dynamicName1");
+        ProxyLanguage.setDelegate(language);
+        try (DebuggerSession session = tester.startSession()) {
+            session.suspendNextExecution();
+            Source source = Source.create(ProxyLanguage.ID, "");
+            tester.startEval(source);
+            expectSuspended((SuspendedEvent event) -> {
+                DebugStackFrame frame = event.getTopStackFrame();
+                assertEquals("dynamicName1", frame.getName());
+            });
+        }
+        expectDone();
+    }
+
+    @Test
+    public void testDynamicNamesInDepth() {
+        for (int depth = 0; depth < 5; depth++) {
+            checkDynamicNames(depth, "staticName");
+            checkDynamicNames(depth, "staticName", "dynamicName");
+            checkDynamicNames(depth, "staticName", "dynamicName1", "dynamicName2");
+        }
+    }
+
+    private void checkDynamicNames(int depth, String rootName, String... executableNames) {
+        TestExecutableNamesLanguage language = new TestExecutableNamesLanguage(depth, rootName, executableNames);
+        ProxyLanguage.setDelegate(language);
+        try (DebuggerSession session = tester.startSession()) {
+            session.suspendNextExecution();
+            Source source = Source.create(ProxyLanguage.ID, depth + rootName + Arrays.toString(executableNames));
+            tester.startEval(source);
+            if (executableNames.length == 0) {
+                expectSuspended((SuspendedEvent event) -> {
+                    DebugStackFrame frame = event.getTopStackFrame();
+                    assertEquals("depth = " + depth, rootName, frame.getName());
+                });
+            } else {
+                for (String executableName : executableNames) {
+                    final String name = executableName;
+                    expectSuspended((SuspendedEvent event) -> {
+                        Iterator<DebugStackFrame> framesIterator = event.getStackFrames().iterator();
+                        for (int d = depth; d > 0; d--) {
+                            framesIterator.next();
+                        }
+                        DebugStackFrame frame = framesIterator.next();
+                        assertEquals("depth = " + depth, name, frame.getName());
+                        session.suspendNextExecution();
+                    });
+                }
+            }
         }
         expectDone();
     }

@@ -30,13 +30,14 @@
 package com.oracle.truffle.llvm.runtime.pointer;
 
 import com.oracle.truffle.api.CompilerDirectives;
-import com.oracle.truffle.api.TruffleLanguage;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
+import com.oracle.truffle.api.TruffleLanguage;
 import com.oracle.truffle.api.dsl.Cached;
 import com.oracle.truffle.api.dsl.Cached.Exclusive;
 import com.oracle.truffle.api.dsl.Cached.Shared;
 import com.oracle.truffle.api.dsl.CachedContext;
 import com.oracle.truffle.api.dsl.Fallback;
+import com.oracle.truffle.api.dsl.ImportStatic;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.interop.ArityException;
 import com.oracle.truffle.api.interop.InteropLibrary;
@@ -62,15 +63,107 @@ import com.oracle.truffle.llvm.runtime.interop.export.LLVMForeignGetIndexPointer
 import com.oracle.truffle.llvm.runtime.interop.export.LLVMForeignGetMemberPointerNode;
 import com.oracle.truffle.llvm.runtime.interop.export.LLVMForeignReadNode;
 import com.oracle.truffle.llvm.runtime.interop.export.LLVMForeignWriteNode;
+import com.oracle.truffle.llvm.runtime.library.internal.LLVMManagedReadLibrary;
+import com.oracle.truffle.llvm.runtime.library.internal.LLVMManagedWriteLibrary;
 import com.oracle.truffle.llvm.runtime.nodes.op.LLVMAddressEqualsNode;
-import com.oracle.truffle.llvm.runtime.nodes.others.LLVMAccessSymbolNode;
 import com.oracle.truffle.llvm.runtime.nodes.others.LLVMDynAccessSymbolNode;
 
 @ExportLibrary(value = InteropLibrary.class, receiverType = LLVMPointerImpl.class)
+@ExportLibrary(value = LLVMManagedWriteLibrary.class, receiverType = LLVMPointerImpl.class)
+@ExportLibrary(value = LLVMManagedReadLibrary.class, receiverType = LLVMPointerImpl.class)
 @ExportLibrary(value = com.oracle.truffle.llvm.spi.ReferenceLibrary.class, receiverType = LLVMPointerImpl.class)
 @SuppressWarnings({"static-method", "deprecation"})
 // implements deprecated ReferenceLibrary for backwards compatibility
 abstract class CommonPointerLibraries {
+    @ExportMessage
+    static boolean isReadable(@SuppressWarnings("unused") LLVMPointerImpl receiver) {
+        return false;
+    }
+
+    @ExportMessage
+    static byte readI8(@SuppressWarnings("unused") LLVMPointerImpl receiver, @SuppressWarnings("unused") long offset) {
+        throw CompilerDirectives.shouldNotReachHere("Cannot read a value of type I8 directly from a pointer. Perhaps a getObject() call is missing.");
+    }
+
+    @ExportMessage
+    static short readI16(@SuppressWarnings("unused") LLVMPointerImpl receiver, @SuppressWarnings("unused") long offset) {
+        throw CompilerDirectives.shouldNotReachHere("Cannot read a value of type I16 directly from a pointer. Perhaps a getObject() call is missing.");
+    }
+
+    @ExportMessage
+    static int readI32(@SuppressWarnings("unused") LLVMPointerImpl receiver, @SuppressWarnings("unused") long offset) {
+        throw CompilerDirectives.shouldNotReachHere("Cannot read a value of type I32 directly from a pointer. Perhaps a getObject() call is missing.");
+    }
+
+    @ExportMessage
+    static float readFloat(@SuppressWarnings("unused") LLVMPointerImpl receiver, @SuppressWarnings("unused") long offset) {
+        throw CompilerDirectives.shouldNotReachHere("Cannot read a value of type Float directly from a pointer. Perhaps a getObject() call is missing.");
+    }
+
+    @ExportMessage
+    static long readI64(@SuppressWarnings("unused") LLVMPointerImpl receiver, @SuppressWarnings("unused") long offset) {
+        throw CompilerDirectives.shouldNotReachHere("Cannot read a value of type I64 directly from a pointer. Perhaps a getObject() call is missing.");
+    }
+
+    @ExportMessage
+    static double readDouble(@SuppressWarnings("unused") LLVMPointerImpl receiver, @SuppressWarnings("unused") long offset) {
+        throw CompilerDirectives.shouldNotReachHere("Cannot read a value of type Double directly from a pointer. Perhaps a getObject() call is missing.");
+    }
+
+    @ExportMessage
+    static LLVMPointer readPointer(@SuppressWarnings("unused") LLVMPointerImpl receiver, @SuppressWarnings("unused") long offset) {
+        throw CompilerDirectives.shouldNotReachHere("Cannot read a value of type Pointer directly from a pointer. Perhaps a getObject() call is missing.");
+    }
+
+    @ExportMessage
+    static Object readGenericI64(@SuppressWarnings("unused") LLVMPointerImpl receiver, @SuppressWarnings("unused") long offset) {
+        throw CompilerDirectives.shouldNotReachHere("Cannot read a value of type Object directly from a pointer. Perhaps a getObject() call is missing.");
+    }
+
+    @ExportMessage
+    static boolean isWritable(@SuppressWarnings("unused") LLVMPointerImpl receiver) {
+        return false;
+    }
+
+    @ExportMessage
+    static void writeI8(@SuppressWarnings("unused") LLVMPointerImpl receiver, @SuppressWarnings("unused") long offset, @SuppressWarnings("unused") byte value) {
+        throw CompilerDirectives.shouldNotReachHere("Cannot write a value of type I8 directly to a pointer. Perhaps a getObject() call is missing.");
+    }
+
+    @ExportMessage
+    static void writeI16(@SuppressWarnings("unused") LLVMPointerImpl receiver, @SuppressWarnings("unused") long offset, @SuppressWarnings("unused") short value) {
+        throw CompilerDirectives.shouldNotReachHere("Cannot write a value of type I16 directly to a pointer. Perhaps a getObject() call is missing.");
+    }
+
+    @ExportMessage
+    static void writeI32(@SuppressWarnings("unused") LLVMPointerImpl receiver, @SuppressWarnings("unused") long offset, @SuppressWarnings("unused") int value) {
+        throw CompilerDirectives.shouldNotReachHere("Cannot write a value of type I32 directly to a pointer. Perhaps a getObject() call is missing.");
+    }
+
+    @ExportMessage
+    static void writeFloat(@SuppressWarnings("unused") LLVMPointerImpl receiver, @SuppressWarnings("unused") long offset, @SuppressWarnings("unused") float value) {
+        throw CompilerDirectives.shouldNotReachHere("Cannot write a value of type Float directly to a pointer. Perhaps a getObject() call is missing.");
+    }
+
+    @ExportMessage
+    static void writeI64(@SuppressWarnings("unused") LLVMPointerImpl receiver, @SuppressWarnings("unused") long offset, @SuppressWarnings("unused") long value) {
+        throw CompilerDirectives.shouldNotReachHere("Cannot write a value of type I64 directly to a pointer. Perhaps a getObject() call is missing.");
+    }
+
+    @ExportMessage
+    static void writeGenericI64(@SuppressWarnings("unused") LLVMPointerImpl receiver, @SuppressWarnings("unused") long offset, @SuppressWarnings("unused") Object value) {
+        throw CompilerDirectives.shouldNotReachHere("Cannot write a value of type Object directly to a pointer. Perhaps a getObject() call is missing.");
+    }
+
+    @ExportMessage
+    static void writeDouble(@SuppressWarnings("unused") LLVMPointerImpl receiver, @SuppressWarnings("unused") long offset, @SuppressWarnings("unused") double value) {
+        throw CompilerDirectives.shouldNotReachHere("Cannot write a value of type Double directly to a pointer. Perhaps a getObject() call is missing.");
+    }
+
+    @ExportMessage
+    static void writePointer(@SuppressWarnings("unused") LLVMPointerImpl receiver, @SuppressWarnings("unused") long offset, @SuppressWarnings("unused") LLVMPointer value) {
+        throw CompilerDirectives.shouldNotReachHere("Cannot write a value of type Pointer directly to a pointer. Perhaps a getObject() call is missing.");
+    }
 
     @ExportMessage
     static boolean hasMembers(LLVMPointerImpl receiver) {
@@ -162,6 +255,7 @@ abstract class CommonPointerLibraries {
     }
 
     @ExportMessage
+    @ImportStatic(LLVMLanguage.class)
     static class InvokeMember {
         /**
          * @param member
@@ -173,23 +267,24 @@ abstract class CommonPointerLibraries {
          * @param llvmFunction
          * @see InteropLibrary#invokeMember(Object, String, Object[])
          */
-        @Specialization(guards = {"asClazz(receiver)==clazz", "member.equals(methodName)", "argCount==arguments.length"})
+        @Specialization(guards = {"asClazz(receiver)==clazz", "member.equals(methodName)", "argCount==arguments.length"}, assumptions = "getLanguage().singleContextAssumption")
         static Object doCached(LLVMPointerImpl receiver, String member, Object[] arguments,
-                        @CachedContext(LLVMLanguage.class) LLVMContext context, @CachedLibrary(limit = "5") InteropLibrary interop,
+                        @CachedContext(LLVMLanguage.class) LLVMContext context,
+                        @CachedLibrary(limit = "5") InteropLibrary interop,
                         @Cached(value = "asClazz(receiver)") LLVMInteropType.Clazz clazz,
                         @Cached(value = "clazz.findMethodByArguments(receiver, member, arguments)") Method method,
                         @Cached(value = "arguments.length") int argCount,
                         @Cached(value = "method.getName()") String methodName,
-                        @Cached(value = "getLLVMFunction(context, method, clazz, member)") LLVMFunction llvmFunction,
-                        @Cached(value = "create(llvmFunction)") LLVMAccessSymbolNode accessSymbolNode)
+                        @Cached(value = "getLLVMFunction(context, method, clazz, member)") LLVMFunction llvmFunction)
                         throws UnsupportedMessageException, ArityException, UnsupportedTypeException {
             Object[] newArguments = addSelfObject(receiver, arguments);
-            return interop.execute(accessSymbolNode.execute(), newArguments);
+            return interop.execute(context.getSymbol(llvmFunction), newArguments);
         }
 
         @Specialization(replaces = "doCached")
         static Object doResolve(LLVMPointerImpl receiver, String member, Object[] arguments,
-                        @CachedContext(LLVMLanguage.class) LLVMContext context, @CachedLibrary(limit = "5") InteropLibrary interop,
+                        @CachedContext(LLVMLanguage.class) LLVMContext context,
+                        @CachedLibrary(limit = "5") InteropLibrary interop,
                         @Cached LLVMDynAccessSymbolNode dynAccessSymbolNode)
                         throws UnsupportedMessageException, ArityException, UnsupportedTypeException, UnknownIdentifierException {
             Object[] newArguments = addSelfObject(receiver, arguments);
@@ -401,7 +496,7 @@ abstract class CommonPointerLibraries {
 
         @Specialization
         static boolean doNative(LLVMPointerImpl receiver, LLVMPointerImpl other,
-                        @Cached LLVMAddressEqualsNode equals) {
+                        @Cached LLVMAddressEqualsNode.Operation equals) {
             return equals.executeWithTarget(receiver, other);
         }
 
@@ -454,7 +549,7 @@ abstract class CommonPointerLibraries {
 
         @Specialization
         static TriState doPointer(LLVMPointerImpl receiver, LLVMPointerImpl other,
-                        @Cached LLVMAddressEqualsNode equals) {
+                        @Cached LLVMAddressEqualsNode.Operation equals) {
             return TriState.valueOf(equals.executeWithTarget(receiver, other));
         }
 

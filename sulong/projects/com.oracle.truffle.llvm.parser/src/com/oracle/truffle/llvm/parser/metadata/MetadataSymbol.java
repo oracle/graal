@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2017, 2018, Oracle and/or its affiliates.
+ * Copyright (c) 2017, 2020, Oracle and/or its affiliates.
  *
  * All rights reserved.
  *
@@ -31,8 +31,13 @@ package com.oracle.truffle.llvm.parser.metadata;
 
 import com.oracle.truffle.llvm.parser.model.symbols.constants.Constant;
 import com.oracle.truffle.llvm.parser.model.visitors.SymbolVisitor;
+import com.oracle.truffle.llvm.runtime.CommonNodeFactory;
+import com.oracle.truffle.llvm.runtime.GetStackSpaceFactory;
+import com.oracle.truffle.llvm.runtime.datalayout.DataLayout;
+import com.oracle.truffle.llvm.runtime.nodes.api.LLVMExpressionNode;
 import com.oracle.truffle.llvm.runtime.types.MetaType;
 import com.oracle.truffle.llvm.runtime.types.Type;
+import com.oracle.truffle.llvm.parser.LLVMParserRuntime;
 import com.oracle.truffle.llvm.parser.model.SymbolImpl;
 
 public final class MetadataSymbol implements Constant {
@@ -70,4 +75,25 @@ public final class MetadataSymbol implements Constant {
         return symbol;
     }
 
+    private static final class CollectMetadataVisitor implements MetadataVisitor {
+
+        LLVMExpressionNode resolvedNode;
+
+        @Override
+        public void visit(MDString md) {
+            resolvedNode = CommonNodeFactory.createLiteral(md.getString(), MetaType.UNKNOWN);
+        }
+
+        @Override
+        public void defaultAction(MDBaseNode v) {
+            resolvedNode = CommonNodeFactory.createLiteral(null, MetaType.UNKNOWN);
+        }
+    }
+
+    @Override
+    public LLVMExpressionNode createNode(LLVMParserRuntime runtime, DataLayout dataLayout, GetStackSpaceFactory stackFactory) {
+        CollectMetadataVisitor visitor = new CollectMetadataVisitor();
+        node.accept(visitor);
+        return visitor.resolvedNode;
+    }
 }

@@ -40,13 +40,13 @@
  */
 package com.oracle.truffle.object.basic;
 
-import com.oracle.truffle.api.object.Layout;
 import com.oracle.truffle.object.BasicLayout;
 import com.oracle.truffle.object.CoreLayoutFactory;
 
+@SuppressWarnings("deprecation")
 public class DefaultLayoutFactory extends CoreLayoutFactory {
     @Override
-    public Layout createLayout(Layout.Builder layoutBuilder) {
+    public com.oracle.truffle.api.object.Layout createLayout(com.oracle.truffle.api.object.Layout.Builder layoutBuilder) {
         return BasicLayout.createLayoutImpl(layoutBuilder);
     }
 }

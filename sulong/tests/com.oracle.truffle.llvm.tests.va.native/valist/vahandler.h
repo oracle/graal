@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2020, Oracle and/or its affiliates.
+ * Copyright (c) 2020, 2021, Oracle and/or its affiliates.
  *
  * All rights reserved.
  *
@@ -32,15 +32,15 @@
 
 #include <stdarg.h>
 
-typedef double (*vahandler)(int, va_list *);
+typedef double (*vahandler)(int, va_list);
 
 struct A {
     int x;
     double y;
 };
 
-double sumDoublesNative(int count, va_list *args);
+double sumDoublesNative(int count, va_list args);
 
-double testVariousTypesNative(int count, va_list *args);
+double testVariousTypesNative(int count, va_list args);
 
 #endif // VAHANDLER_H

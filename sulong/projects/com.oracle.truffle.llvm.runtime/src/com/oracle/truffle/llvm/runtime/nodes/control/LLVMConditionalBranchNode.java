@@ -65,18 +65,6 @@ public abstract class LLVMConditionalBranchNode extends LLVMControlFlowNode {
 
     public abstract int getFalseSuccessor();
 
-    /**
-     * Override to allow access from generated wrapper.
-     */
-    @Override
-    protected abstract boolean isStatement();
-
-    /**
-     * Override to allow access from generated wrapper.
-     */
-    @Override
-    protected abstract void setStatement(boolean statementTag);
-
     abstract static class LLVMConditionalBranchNodeImpl extends LLVMConditionalBranchNode {
 
         @Child private LLVMStatementNode truePhi;

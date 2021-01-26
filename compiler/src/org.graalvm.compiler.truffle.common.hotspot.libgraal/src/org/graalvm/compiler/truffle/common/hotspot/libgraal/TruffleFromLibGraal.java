@@ -31,6 +31,7 @@ import java.lang.annotation.RetentionPolicy;
 import java.lang.annotation.Target;
 import java.util.function.Consumer;
 import java.util.function.Supplier;
+
 import org.graalvm.libgraal.jni.annotation.FromLibGraalId;
 
 /**
@@ -57,20 +58,17 @@ public @interface TruffleFromLibGraal {
     enum Id implements FromLibGraalId {
         // @formatter:off
         AddTargetToDequeue(void.class, Object.class, Object.class),
+        AddInlinedTarget(void.class, Object.class, Object.class),
         AsCompilableTruffleAST(Object.class, Object.class, long.class),
         AsJavaConstant(long.class, Object.class),
         CallNodeHashCode(int.class, Object.class),
         CancelCompilation(boolean.class, Object.class, String.class),
         CompilableToString(String.class, Object.class),
         ConsumeOptimizedAssumptionDependency(void.class, Consumer.class, Object.class),
-        CountCalls(int.class, Object.class),
-        CountInlinedCalls(int.class, Object.class),
-        CreateInliningPlan(Object.class, Object.class, Object.class, Object.class),
+        CreateInliningPlan(Object.class, Object.class),
         CreateStringSupplier(Supplier.class, long.class),
         DequeueInlined(void.class, Object.class),
-        DequeueTargets(void.class, Object.class),
         FindCallNode(Object.class, Object.class, long.class),
-        FindDecision(Object.class, Object.class, long.class),
         GetCallCount(int.class, Object.class),
         GetCallNodes(Object[].class, Object.class),
         GetCallTargetForCallNode(long.class, Object.class, long.class),
@@ -88,8 +86,8 @@ public @interface TruffleFromLibGraal {
         GetLanguage(String.class, Object.class),
         GetLineNumber(int.class, Object.class),
         GetLoopExplosionKind(int.class, Object.class, long.class),
-        GetNodeRewritingAssumption(long.class, Object.class),
         GetNodeRewritingAssumptionConstant(long.class, Object.class),
+        GetValidRootAssumptionConstant(long.class, Object.class),
         GetNodeId(int.class, Object.class),
         GetNodeClassName(String.class, Object.class),
         GetNonTrivialNodeCount(int.class, Object.class),
@@ -97,30 +95,30 @@ public @interface TruffleFromLibGraal {
         GetOffsetStart(int.class, Object.class),
         GetPosition(Object.class, Object.class, long.class),
         GetSuppliedString(String.class, Supplier.class),
-        GetTargetName(String.class, Object.class),
         GetTruffleCallBoundaryMethods(long[].class, Object.class),
         GetURI(String.class, Object.class),
+        IsBytecodeInterpreterSwitch(boolean.class, Object.class, long.class),
+        IsBytecodeInterpreterSwitchBoundary(boolean.class, Object.class, long.class),
         IsCancelled(boolean.class, Object.class),
         IsInliningForced(boolean.class, Object.class),
         IsLastTier(boolean.class, Object.class),
         IsSameOrSplit(boolean.class, Object.class, Object.class),
-        IsTargetStable(boolean.class, Object.class),
+        IsSpecializationMethod(boolean.class, Object.class, long.class),
+        IsSuppressedFailure(boolean.class, Object.class, Object.class, Supplier.class),
         IsTrivial(boolean.class, Object.class),
         IsTruffleBoundary(boolean.class, Object.class, long.class),
-        IsSpecializationMethod(boolean.class, Object.class, long.class),
         IsValueType(boolean.class, Object.class, long.class),
         Log(void.class, Object.class, String.class, Object.class, String.class),
         OnCodeInstallation(void.class, Object.class, Object.class, long.class),
-        OnCompilationFailed(void.class, Object.class, Supplier.class, boolean.class, boolean.class, boolean.class),
-        OnCompilationRetry(void.class, Object.class, Object.class),
-        OnFailure(void.class, Object.class, Object.class, String.class, boolean.class, boolean.class),
+        OnCompilationFailed(void.class, Object.class, Supplier.class, boolean.class, boolean.class, boolean.class, boolean.class),
+        OnCompilationRetry(void.class, Object.class, Object.class, int.class),
+        OnFailure(void.class, Object.class, Object.class, String.class, boolean.class, boolean.class, int.class),
         OnGraalTierFinished(void.class, Object.class, Object.class, long.class),
-        OnSuccess(void.class, Object.class, Object.class, Object.class, long.class, long.class),
+        OnSuccess(void.class, Object.class, Object.class, Object.class, long.class, long.class, int.class),
         OnTruffleTierFinished(void.class, Object.class, Object.class, Object.class, long.class),
         RegisterOptimizedAssumptionDependency(Consumer.class, Object.class, long.class),
         SetCallCount(void.class, Object.class, int.class),
-        SetInlinedCallCount(void.class, Object.class, int.class),
-        ShouldInline(boolean.class, Object.class);
+        SetInlinedCallCount(void.class, Object.class, int.class);
         // @formatter:on
 
         private final String signature;

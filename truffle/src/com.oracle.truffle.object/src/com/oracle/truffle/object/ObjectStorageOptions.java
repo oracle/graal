@@ -40,11 +40,11 @@
  */
 package com.oracle.truffle.object;
 
-import static com.oracle.truffle.api.object.Layout.OPTION_PREFIX;
-
 /** @since 0.17 or earlier */
 @Deprecated
 public final class ObjectStorageOptions {
+    @SuppressWarnings("deprecation") private static final String OPTION_PREFIX = com.oracle.truffle.api.object.Layout.OPTION_PREFIX;
+
     private ObjectStorageOptions() {
     }
 

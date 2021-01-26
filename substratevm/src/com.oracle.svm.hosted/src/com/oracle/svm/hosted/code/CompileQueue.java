@@ -101,8 +101,8 @@ import org.graalvm.compiler.phases.util.GraphOrder;
 import org.graalvm.compiler.phases.util.Providers;
 import org.graalvm.compiler.replacements.SnippetTemplate;
 import org.graalvm.compiler.replacements.nodes.MacroNode;
-import org.graalvm.compiler.virtual.phases.ea.ReadEliminationPhase;
 import org.graalvm.compiler.virtual.phases.ea.PartialEscapePhase;
+import org.graalvm.compiler.virtual.phases.ea.ReadEliminationPhase;
 import org.graalvm.nativeimage.ImageSingletons;
 
 import com.oracle.graal.pointsto.infrastructure.GraphProvider.Purpose;
@@ -114,6 +114,7 @@ import com.oracle.graal.pointsto.util.Timer;
 import com.oracle.graal.pointsto.util.Timer.StopTimer;
 import com.oracle.svm.core.SubstrateOptions;
 import com.oracle.svm.core.annotate.AlwaysInlineAllCallees;
+import com.oracle.svm.core.annotate.AlwaysInlineSelectCallees;
 import com.oracle.svm.core.annotate.DeoptTest;
 import com.oracle.svm.core.annotate.NeverInlineTrivial;
 import com.oracle.svm.core.annotate.RestrictHeapAccess;
@@ -141,6 +142,7 @@ import com.oracle.svm.hosted.meta.HostedMethod;
 import com.oracle.svm.hosted.meta.HostedUniverse;
 import com.oracle.svm.hosted.phases.DevirtualizeCallsPhase;
 import com.oracle.svm.hosted.phases.HostedGraphBuilderPhase;
+import com.oracle.svm.hosted.phases.ImplicitAssertionsPhase;
 import com.oracle.svm.hosted.phases.StrengthenStampsPhase;
 import com.oracle.svm.hosted.substitute.DeletedMethod;
 
@@ -387,8 +389,9 @@ public class CompileQueue {
     protected void modifyRegularSuites(@SuppressWarnings("unused") Suites suites) {
     }
 
-    public static PhaseSuite<HighTierContext> afterParseCanonicalization() {
+    protected PhaseSuite<HighTierContext> afterParseCanonicalization() {
         PhaseSuite<HighTierContext> phaseSuite = new PhaseSuite<>();
+        phaseSuite.appendPhase(new ImplicitAssertionsPhase());
         phaseSuite.appendPhase(new DeadStoreRemovalPhase());
         phaseSuite.appendPhase(new DevirtualizeCallsPhase());
         phaseSuite.appendPhase(CanonicalizerPhase.create());
@@ -635,6 +638,10 @@ public class CompileQueue {
         if (callee.compilationInfo.isTrivialMethod()) {
             return true;
         }
+        AlwaysInlineSelectCallees selectCallees = getCallerAnnotation(invoke, AlwaysInlineSelectCallees.class);
+        if (selectCallees != null && Arrays.stream(selectCallees.callees()).anyMatch(c -> c.equals(callee.getQualifiedName()))) {
+            return true;
+        }
         return false;
     }
 
@@ -656,12 +663,18 @@ public class CompileQueue {
     }
 
     public static boolean callerAnnotatedWith(Invoke invoke, Class<? extends Annotation> annotationClass) {
+        return getCallerAnnotation(invoke, annotationClass) != null;
+    }
+
+    private static <T extends Annotation> T getCallerAnnotation(Invoke invoke, Class<T> annotationClass) {
         for (FrameState state = invoke.stateAfter(); state != null; state = state.outerFrameState()) {
-            if (state.getMethod().getAnnotation(annotationClass) != null) {
-                return true;
+            assert state.getMethod() != null : state;
+            T annotation = state.getMethod().getAnnotation(annotationClass);
+            if (annotation != null) {
+                return annotation;
             }
         }
-        return false;
+        return null;
     }
 
     protected void compileAll() throws InterruptedException {

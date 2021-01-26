@@ -47,15 +47,9 @@ import com.oracle.truffle.api.CallTarget;
 import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.TruffleLanguage.Env;
-import com.oracle.truffle.nfi.impl.LibFFIType.ClosureType;
 import com.oracle.truffle.nfi.impl.LibFFIType.EnvType;
 import com.oracle.truffle.nfi.impl.NativeAllocation.FreeDestructor;
-import com.oracle.truffle.nfi.spi.types.NativeArrayTypeMirror;
-import com.oracle.truffle.nfi.spi.types.NativeFunctionTypeMirror;
 import com.oracle.truffle.nfi.spi.types.NativeSimpleType;
-import com.oracle.truffle.nfi.spi.types.NativeSimpleTypeMirror;
-import com.oracle.truffle.nfi.spi.types.NativeTypeMirror;
-import com.oracle.truffle.nfi.spi.types.NativeTypeMirror.Kind;
 
 class NFIContext {
 
@@ -67,6 +61,7 @@ class NFIContext {
 
     @CompilationFinal(dimensions = 1) final LibFFIType[] simpleTypeMap = new LibFFIType[NativeSimpleType.values().length];
     @CompilationFinal(dimensions = 1) final LibFFIType[] arrayTypeMap = new LibFFIType[NativeSimpleType.values().length];
+    @CompilationFinal LibFFIType cachedEnvType;
 
     private final HashMap<Long, ClosureNativePointer> nativePointerMap = new HashMap<>();
 
@@ -169,6 +164,7 @@ class NFIContext {
         return LibFFIClosure.newClosureWrapper(getClosureNativePointer(codePointer));
     }
 
+    @TruffleBoundary
     LibFFILibrary loadLibrary(String name, int flags) {
         return LibFFILibrary.create(loadLibrary(nativeContext, name, flags));
     }
@@ -177,57 +173,37 @@ class NFIContext {
         return LibFFISymbol.create(language, library, name, lookup(nativeContext, library.handle, name));
     }
 
-    LibFFIType lookupArgType(NativeTypeMirror type) {
-        return lookup(type, false);
-    }
-
-    LibFFIType lookupRetType(NativeTypeMirror type) {
-        return lookup(type, true);
-    }
-
     LibFFIType lookupSimpleType(NativeSimpleType type) {
         return simpleTypeMap[type.ordinal()];
     }
 
-    private LibFFIType lookup(NativeTypeMirror type, boolean asRetType) {
-        switch (type.getKind()) {
-            case SIMPLE:
-                NativeSimpleTypeMirror simpleType = (NativeSimpleTypeMirror) type;
-                return lookupSimpleType(simpleType.getSimpleType());
+    LibFFIType lookupArrayType(NativeSimpleType type) {
+        return arrayTypeMap[type.ordinal()];
+    }
 
-            case ARRAY:
-                NativeArrayTypeMirror arrayType = (NativeArrayTypeMirror) type;
-                NativeTypeMirror elementType = arrayType.getElementType();
-
-                LibFFIType ret = null;
-                if (elementType.getKind() == Kind.SIMPLE) {
-                    ret = arrayTypeMap[((NativeSimpleTypeMirror) elementType).getSimpleType().ordinal()];
-                }
-
-                if (ret == null) {
-                    throw new AssertionError("unsupported array type");
-                } else {
-                    return ret;
-                }
-
-            case FUNCTION:
-                NativeFunctionTypeMirror functionType = (NativeFunctionTypeMirror) type;
-                LibFFISignature signature = LibFFISignature.create(this, functionType.getSignature());
-                return new ClosureType(lookupSimpleType(NativeSimpleType.POINTER), signature, asRetType);
-
-            case ENV:
-                if (asRetType) {
-                    throw new AssertionError("environment pointer can not be used as return type");
-                }
-                return new EnvType(lookupSimpleType(NativeSimpleType.POINTER));
-        }
-        throw new AssertionError("unsupported type");
+    @TruffleBoundary
+    LibFFIType lookupEnvType() {
+        return cachedEnvType;
     }
 
     protected void initializeSimpleType(NativeSimpleType simpleType, int size, int alignment, long ffiType) {
-        assert simpleTypeMap[simpleType.ordinal()] == null : "initializeSimpleType called twice for " + simpleType;
-        simpleTypeMap[simpleType.ordinal()] = LibFFIType.createSimpleType(this, simpleType, size, alignment, ffiType);
-        arrayTypeMap[simpleType.ordinal()] = LibFFIType.createArrayType(this, simpleType);
+        int idx = simpleType.ordinal();
+        int pointerIdx = NativeSimpleType.POINTER.ordinal();
+
+        assert simpleTypeMap[idx] == null : "initializeSimpleType called twice for " + simpleType;
+        if (language.simpleTypeMap[idx] == null) {
+            assert language.arrayTypeMap[idx] == null;
+            language.simpleTypeMap[idx] = LibFFIType.createSimpleTypeInfo(language, simpleType, size, alignment);
+            language.arrayTypeMap[idx] = LibFFIType.createArrayTypeInfo(language.simpleTypeMap[pointerIdx], simpleType);
+            if (idx == pointerIdx) {
+                language.cachedEnvType = new EnvType(language.simpleTypeMap[pointerIdx]);
+            }
+        }
+        simpleTypeMap[idx] = new LibFFIType(language.simpleTypeMap[idx], ffiType);
+        arrayTypeMap[idx] = new LibFFIType(language.arrayTypeMap[idx], simpleTypeMap[pointerIdx].type);
+        if (idx == pointerIdx) {
+            cachedEnvType = new LibFFIType(language.cachedEnvType, simpleTypeMap[pointerIdx].type);
+        }
     }
 
     private native long initializeNativeContext();
@@ -269,17 +245,19 @@ class NFIContext {
 
     private static native ClosureNativePointer allocateClosureVoidRet(long nativeContext, LibFFISignature signature, CallTarget callTarget);
 
-    long prepareSignature(LibFFIType retType, LibFFIType... args) {
-        return prepareSignature(nativeContext, retType, args);
+    long prepareSignature(LibFFIType retType, int argCount, LibFFIType... args) {
+        assert args.length >= argCount;
+        return prepareSignature(nativeContext, retType, argCount, args);
     }
 
-    long prepareSignatureVarargs(LibFFIType retType, int nFixedArgs, LibFFIType... args) {
-        return prepareSignatureVarargs(nativeContext, retType, nFixedArgs, args);
+    long prepareSignatureVarargs(LibFFIType retType, int argCount, int nFixedArgs, LibFFIType... args) {
+        assert args.length >= argCount;
+        return prepareSignatureVarargs(nativeContext, retType, argCount, nFixedArgs, args);
     }
 
-    private static native long prepareSignature(long nativeContext, LibFFIType retType, LibFFIType... args);
+    private static native long prepareSignature(long nativeContext, LibFFIType retType, int argCount, LibFFIType... args);
 
-    private static native long prepareSignatureVarargs(long nativeContext, LibFFIType retType, int nFixedArgs, LibFFIType... args);
+    private static native long prepareSignatureVarargs(long nativeContext, LibFFIType retType, int argCount, int nFixedArgs, LibFFIType... args);
 
     void executeNative(long cif, long functionPointer, byte[] primArgs, int patchCount, int[] patchOffsets, Object[] objArgs, byte[] ret) {
         executeNative(nativeContext, cif, functionPointer, primArgs, patchCount, patchOffsets, objArgs, ret);

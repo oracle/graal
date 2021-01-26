@@ -32,7 +32,7 @@ package com.oracle.truffle.llvm.runtime.nodes.func;
 import java.util.HashMap;
 import java.util.Map;
 
-import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
+import com.oracle.truffle.api.CompilerAsserts;
 import com.oracle.truffle.api.frame.FrameDescriptor;
 import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.source.Source;
@@ -118,8 +118,8 @@ public final class LLVMFunctionStartNode extends LLVMRootNode implements LLVMHas
     }
 
     @Override
-    @TruffleBoundary
     public Map<String, Object> getDebugProperties() {
+        CompilerAsserts.neverPartOfCompilation();
         final HashMap<String, Object> properties = new HashMap<>();
         if (originalName != null) {
             properties.put("originalName", originalName);

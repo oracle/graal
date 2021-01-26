@@ -1,0 +1,46 @@
+One or several (comma-separated) paths to JSON files that specify lists of serialization configurations.
+The structure is an array of elements specifying the target serialization/deserialization class and an MD5 checksum
+automatically calculated from its class contents and hierarchy by native-image-agent. The checksum is used to verify
+if a serialization target class is consistent at configuration collecting time, image build time and image run time.
+The use of checksum is optional, there will be no verification when the checksum is absent. The checksum algorithm
+(MD5) is not collision-resistant and should thus not be used for security purposes.
+
+Example:
+
+    [
+     {
+      "name":"java.util.ArrayList",
+      "checksum":"dcb00fdae89a4bd5ce2eff4af95d1f0e"
+      }
+    ]
+
+It is also possible to provide multiple checksums. This is useful to support building on different JDK versions.
+E.g. to support serialization of java.util.ArrayList on Java 8 and Java 11 we can use:
+
+    [
+     {
+      "name":"java.util.ArrayList",
+      "checksum":["c6beb425e88bf37cac00d214c582de51","dcb00fdae89a4bd5ce2eff4af95d1f0e"]
+      }
+    ]
+
+Here the checksum needed for ArrayList on Java 8 is "c6beb425e88bf37cac00d214c582de51".
+
+This JSON file format is also used for the serialization deny list. In this case the checksum field is always ignored.
+
+In rare cases an application might explicitly make calls to
+
+    ReflectionFactory.newConstructorForSerialization(Class<?> cl, Constructor<?> constructorToCall)
+
+where the passed `constructorToCall` differs from what would automatically be used if regular serialization of `cl`
+would happen. To also support such serialization usecases it is possible to register serialization for a class with a
+custom constructorToCall. For example, to allow serialization of `org.apache.spark.SparkContext$$anonfun$hadoopFile$1`
+using the DeclaredConstructor of java.lang.Object as custom targetConstructor the following can be used in
+serialization-config.json:
+
+    [
+      {
+      "name":"org.apache.spark.SparkContext$$anonfun$hadoopFile$1",
+      "customTargetConstructorClass":"java.lang.Object"
+      }
+    ]

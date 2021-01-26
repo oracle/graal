@@ -31,7 +31,6 @@ package com.oracle.truffle.llvm.parser;
 
 import com.oracle.truffle.api.CompilerAsserts;
 import com.oracle.truffle.api.RootCallTarget;
-import com.oracle.truffle.api.Truffle;
 import com.oracle.truffle.api.frame.FrameDescriptor;
 import com.oracle.truffle.api.frame.FrameSlot;
 import com.oracle.truffle.api.frame.FrameSlotKind;
@@ -211,7 +210,7 @@ public class LazyToTruffleConverterImpl implements LazyToTruffleConverter {
         info.setBlocks(blockNodes);
 
         FrameSlot loopSuccessorSlot = null;
-        if (context.getEnv().getOptions().get(SulongEngineOption.ENABLE_OSR)) {
+        if (options.get(SulongEngineOption.ENABLE_OSR)) {
             LLVMControlFlowGraph cfg = new LLVMControlFlowGraph(method.getBlocks().toArray(FunctionDefinition.EMPTY));
             cfg.build();
 
@@ -232,7 +231,7 @@ public class LazyToTruffleConverterImpl implements LazyToTruffleConverter {
             System.out.println();
         }
 
-        return Truffle.getRuntime().createCallTarget(rootNode);
+        return LLVMLanguage.createCallTarget(rootNode);
     }
 
     private HashSet<Integer> getDebugValues() {
@@ -401,7 +400,7 @@ public class LazyToTruffleConverterImpl implements LazyToTruffleConverter {
         int i = indicesSize - 1;
         for (Long idx : indices) {
             indicesArr[i] = idx;
-            indexNodes[i] = nf.createLiteral(idx.longValue(), PrimitiveType.I64);
+            indexNodes[i] = CommonNodeFactory.createLiteral(idx.longValue(), PrimitiveType.I64);
             i--;
         }
         assert i == -1;
@@ -456,7 +455,7 @@ public class LazyToTruffleConverterImpl implements LazyToTruffleConverter {
              */
             LLVMExpressionNode argMaybeUnpack = LLVMUnpackVarargsNodeGen.create(nodeFactory.createFunctionArgNode(argIndex, topLevelPointerType));
             LLVMExpressionNode sourceAddress = getTargetAddress(argMaybeUnpack, topLevelPointerType.getPointeeType(), indices);
-            LLVMExpressionNode sourceLoadNode = CommonNodeFactory.createLoad(currentType, sourceAddress);
+            LLVMExpressionNode sourceLoadNode = nodeFactory.createLoad(currentType, sourceAddress);
             LLVMStatementNode storeNode = nodeFactory.createStore(targetAddress, sourceLoadNode, currentType);
             initializers.add(storeNode);
         }

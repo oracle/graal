@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2013, 2018, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2013, 2020, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -24,12 +24,16 @@
  */
 package org.graalvm.compiler.lir.aarch64;
 
+import static org.graalvm.compiler.asm.aarch64.AArch64Address.isImmediateScaled;
+import static org.graalvm.compiler.asm.aarch64.AArch64Address.AddressingMode.IMMEDIATE_SIGNED_UNSCALED;
+import static org.graalvm.compiler.asm.aarch64.AArch64Address.AddressingMode.IMMEDIATE_UNSIGNED_SCALED;
+
 import java.util.EnumSet;
 
 import org.graalvm.compiler.asm.aarch64.AArch64Address;
 import org.graalvm.compiler.asm.aarch64.AArch64Address.AddressingMode;
-import org.graalvm.compiler.asm.aarch64.AArch64Assembler;
-import org.graalvm.compiler.asm.aarch64.AArch64Assembler.ExtendType;
+import org.graalvm.compiler.core.common.NumUtil;
+import org.graalvm.compiler.debug.GraalError;
 import org.graalvm.compiler.lir.CompositeValue;
 import org.graalvm.compiler.lir.InstructionValueConsumer;
 import org.graalvm.compiler.lir.InstructionValueProcedure;
@@ -65,6 +69,40 @@ public final class AArch64AddressValue extends CompositeValue {
         this.addressingMode = addressingMode;
     }
 
+    /**
+     * Generates an AArch64AddressValue of the form {@code base}.
+     */
+    public static AArch64AddressValue makeAddress(ValueKind<?> kind, int size, AllocatableValue base) {
+        return makeAddress(kind, size, base, 0);
+    }
+
+    /**
+     * Generates an AArch64AddressValue of the form {@code base + displacement}.
+     *
+     * Will fail if displacement cannot be represented directly as an immediate address.
+     */
+    public static AArch64AddressValue makeAddress(ValueKind<?> kind, int size, AllocatableValue base, int displacement) {
+        assert size == 8 || size == 16 || size == 32 || size == 64 || size == 128;
+
+        if (displacement == 0) {
+            return new AArch64AddressValue(kind, base, Value.ILLEGAL, 0, 1, AddressingMode.BASE_REGISTER_ONLY);
+
+        } else {
+            int byteSize = size / 8;
+            int log2TransferSize = NumUtil.log2Ceil(byteSize);
+            /* Addresses using IMMEDIATE_UNSIGNED_SCALED must be non-negative and shiftable. */
+            boolean canScale = displacement >= 0 &&
+                            (displacement & (NumUtil.getNbitNumberInt(log2TransferSize))) == 0;
+            AArch64Address.AddressingMode mode = canScale ? IMMEDIATE_UNSIGNED_SCALED : IMMEDIATE_SIGNED_UNSCALED;
+            if (AArch64Address.isValidImmediateAddress(size, mode, displacement)) {
+                int scalingFactor = isImmediateScaled(mode) ? byteSize : 1;
+                return new AArch64AddressValue(kind, base, Value.ILLEGAL, displacement, scalingFactor, mode);
+            } else {
+                throw GraalError.shouldNotReachHere("Could not create AddressValue with requested displacement.");
+            }
+        }
+    }
+
     private static Register toRegister(AllocatableValue value) {
         if (value.equals(Value.ILLEGAL)) {
             return AArch64.zr;
@@ -98,10 +136,10 @@ public final class AArch64AddressValue extends CompositeValue {
     }
 
     public AArch64Address toAddress() {
+        assert addressingMode != AddressingMode.EXTENDED_REGISTER_OFFSET;
         Register baseReg = toRegister(base);
         Register offsetReg = toRegister(offset);
-        AArch64Assembler.ExtendType extendType = addressingMode == AddressingMode.EXTENDED_REGISTER_OFFSET ? ExtendType.SXTW : null;
-        return AArch64Address.createAddress(addressingMode, baseReg, offsetReg, displacement / scaleFactor, isScaled(), extendType);
+        return AArch64Address.createAddress(addressingMode, baseReg, offsetReg, displacement / scaleFactor, isScaled(), null);
     }
 
     @Override

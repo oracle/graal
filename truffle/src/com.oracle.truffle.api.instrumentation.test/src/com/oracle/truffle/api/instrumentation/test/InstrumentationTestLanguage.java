@@ -214,9 +214,6 @@ public class InstrumentationTestLanguage extends TruffleLanguage<InstrumentConte
                     "MATERIALIZE_CHILD_STMT_AND_EXPR", "MATERIALIZE_CHILD_STMT_AND_EXPR_NC", "MATERIALIZE_CHILD_STMT_AND_EXPR_SEPARATELY", "MATERIALIZE_CHILD_STATEMENT", "BLOCK_NO_SOURCE_SECTION",
                     "TRY", "CATCH", "THROW", "UNEXPECTED_RESULT", "MULTIPLE"};
 
-    // used to test that no getSourceSection calls happen in certain situations
-    private static int rootSourceSectionQueryCount;
-
     public InstrumentationTestLanguage() {
     }
 
@@ -644,7 +641,6 @@ public class InstrumentationTestLanguage extends TruffleLanguage<InstrumentConte
 
         @Override
         public SourceSection getSourceSection() {
-            rootSourceSectionQueryCount++;
             return sourceSection;
         }
 
@@ -912,15 +908,21 @@ public class InstrumentationTestLanguage extends TruffleLanguage<InstrumentConte
         }
 
         @ExportMessage
+        @TruffleBoundary
         final boolean hasRootInstance(@SuppressWarnings("unused") Frame frame) {
-            return true;
+            InstrumentContext context = lookupContextReference(InstrumentationTestLanguage.class).get();
+            return context.callFunctions.callTargets.containsKey(getRootNode().getName());
         }
 
         @ExportMessage
         @TruffleBoundary
-        final Object getRootInstance(@SuppressWarnings("unused") Frame frame) {
+        final Object getRootInstance(@SuppressWarnings("unused") Frame frame) throws UnsupportedMessageException {
             InstrumentContext context = lookupContextReference(InstrumentationTestLanguage.class).get();
-            return context.callFunctions.findFunction(getRootNode().getName());
+            Object function = context.callFunctions.findFunction(getRootNode().getName());
+            if (function != null) {
+                return function;
+            }
+            throw UnsupportedMessageException.create();
         }
 
         @ExportLibrary(InteropLibrary.class)
@@ -1489,6 +1491,9 @@ public class InstrumentationTestLanguage extends TruffleLanguage<InstrumentConte
 
     static class ContextNode extends BaseNode {
 
+        /**
+         * Children are only allowed because of the shared context policy.
+         */
         @Children private final BaseNode[] children;
 
         ContextNode(BaseNode[] children) {
@@ -2790,10 +2795,6 @@ public class InstrumentationTestLanguage extends TruffleLanguage<InstrumentConte
     @Override
     protected Object getLanguageView(InstrumentContext context, Object value) {
         return new InstrumentationLanguageView(value);
-    }
-
-    public static int getRootSourceSectionQueryCount() {
-        return rootSourceSectionQueryCount;
     }
 
     @SuppressWarnings("static-method")

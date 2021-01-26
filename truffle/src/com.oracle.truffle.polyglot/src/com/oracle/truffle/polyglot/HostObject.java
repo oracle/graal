@@ -40,18 +40,6 @@
  */
 package com.oracle.truffle.polyglot;
 
-import java.lang.reflect.Array;
-import java.time.Duration;
-import java.time.Instant;
-import java.time.LocalDate;
-import java.time.LocalDateTime;
-import java.time.LocalTime;
-import java.time.ZoneId;
-import java.time.ZonedDateTime;
-import java.util.Date;
-import java.util.List;
-import java.util.Objects;
-
 import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
@@ -66,6 +54,7 @@ import com.oracle.truffle.api.interop.ArityException;
 import com.oracle.truffle.api.interop.ExceptionType;
 import com.oracle.truffle.api.interop.InteropLibrary;
 import com.oracle.truffle.api.interop.InvalidArrayIndexException;
+import com.oracle.truffle.api.interop.InvalidBufferOffsetException;
 import com.oracle.truffle.api.interop.TruffleObject;
 import com.oracle.truffle.api.interop.UnknownIdentifierException;
 import com.oracle.truffle.api.interop.UnsupportedMessageException;
@@ -78,11 +67,32 @@ import com.oracle.truffle.api.profiles.BranchProfile;
 import com.oracle.truffle.api.utilities.TriState;
 import com.oracle.truffle.polyglot.PolyglotLanguageContext.ToGuestValueNode;
 
+import java.lang.reflect.Array;
+import java.nio.ByteBuffer;
+import java.nio.ByteOrder;
+import java.nio.ReadOnlyBufferException;
+import java.time.Duration;
+import java.time.Instant;
+import java.time.LocalDate;
+import java.time.LocalDateTime;
+import java.time.LocalTime;
+import java.time.ZoneId;
+import java.time.ZonedDateTime;
+import java.util.Date;
+import java.util.List;
+import java.util.Objects;
+
 @ExportLibrary(InteropLibrary.class)
 @SuppressWarnings("unused")
 final class HostObject implements TruffleObject {
 
     static final int LIMIT = 5;
+
+    // PE-friendly ByteBuffer's implementations:
+    private static final Class<? extends ByteBuffer> HEAP_BYTE_BUFFER_CLASS = ByteBuffer.allocate(0).getClass();
+    private static final Class<? extends ByteBuffer> HEAP_BYTE_BUFFER_R_CLASS = ByteBuffer.allocate(0).asReadOnlyBuffer().getClass();
+    private static final Class<? extends ByteBuffer> DIRECT_BYTE_BUFFER_CLASS = ByteBuffer.allocateDirect(0).getClass();
+    private static final Class<? extends ByteBuffer> DIRECT_BYTE_BUFFER_R_CLASS = ByteBuffer.allocateDirect(0).asReadOnlyBuffer().getClass();
 
     private static final ZoneId UTC = ZoneId.of("UTC");
     static final HostObject NULL = new HostObject(null, null, null);
@@ -431,7 +441,7 @@ final class HostObject implements TruffleObject {
         @Specialization(guards = "isArray.execute(receiver)", limit = "1")
         static boolean doArray(HostObject receiver, long index,
                         @Shared("isArray") @Cached IsArrayNode isArray) {
-            long size = getArrayLength(receiver.obj);
+            long size = Array.getLength(receiver.obj);
             return index >= 0 && index < size;
         }
 
@@ -646,34 +656,449 @@ final class HostObject implements TruffleObject {
 
     }
 
-    /**
-     * java.lang.reflect.Array.getLength is not PE-safe if the error conditions (null or not an
-     * array) can happen. In our case, we know the error conditions can't happen because we check
-     * them manually. This helper function is here to help the static analysis of native-image
-     * figure out that the error condition can not happen.
-     *
-     * TODO: Remove when Array.getLength is made PE-safe on native-image (GR-23860).
-     */
-    private static int getArrayLength(Object array) {
-        if (array == null || !array.getClass().isArray()) {
-            CompilerDirectives.transferToInterpreterAndInvalidate();
-            throw new IllegalStateException("should not reach here");
-        }
-        return Array.getLength(array);
-    }
-
     @ExportMessage
     long getArraySize(@Shared("isArray") @Cached IsArrayNode isArray,
                     @Shared("isList") @Cached IsListNode isList,
                     @Shared("error") @Cached BranchProfile error) throws UnsupportedMessageException {
         if (isArray.execute(this)) {
-            return getArrayLength(obj);
+            return Array.getLength(obj);
         } else if (isList.execute(this)) {
             return getListSize();
         }
         error.enter();
         throw UnsupportedMessageException.create();
     }
+
+    // region Buffer Messages
+
+    @ExportMessage
+    boolean hasBufferElements(@Shared("isBuffer") @Cached IsBufferNode isBuffer) {
+        return isBuffer.execute(this);
+    }
+
+    @ExportMessage
+    boolean isBufferWritable(@Shared("isBuffer") @Cached IsBufferNode isBuffer, @Shared("error") @Cached BranchProfile error) throws UnsupportedMessageException {
+        if (isBuffer.execute(this)) {
+            final ByteBuffer buffer = (ByteBuffer) obj;
+            return isPEFriendlyBuffer(buffer) ? !buffer.isReadOnly() : isBufferWritableBoundary(buffer);
+        }
+        error.enter();
+        throw UnsupportedMessageException.create();
+    }
+
+    @TruffleBoundary
+    private static boolean isBufferWritableBoundary(ByteBuffer buffer) {
+        return !buffer.isReadOnly();
+    }
+
+    @ExportMessage
+    long getBufferSize(@Shared("isBuffer") @Cached IsBufferNode isBuffer, @Shared("error") @Cached BranchProfile error) throws UnsupportedMessageException {
+        if (isBuffer.execute(this)) {
+            final ByteBuffer buffer = (ByteBuffer) obj;
+            return isPEFriendlyBuffer(buffer) ? buffer.limit() : getBufferSizeBoundary(buffer);
+        }
+        error.enter();
+        throw UnsupportedMessageException.create();
+    }
+
+    @TruffleBoundary
+    private static long getBufferSizeBoundary(ByteBuffer buffer) {
+        return buffer.limit();
+    }
+
+    private static boolean isPEFriendlyBuffer(ByteBuffer buffer) {
+        final Class<? extends ByteBuffer> clazz = buffer.getClass();
+        final boolean result = CompilerDirectives.isPartialEvaluationConstant(clazz) &&
+                        clazz == HEAP_BYTE_BUFFER_CLASS || clazz == HEAP_BYTE_BUFFER_R_CLASS ||
+                        clazz == DIRECT_BYTE_BUFFER_CLASS || clazz == DIRECT_BYTE_BUFFER_R_CLASS;
+        assert result : "Unexpected Buffer subclass";
+        return result;
+    }
+
+    @ExportMessage
+    public byte readBufferByte(long index,
+                    @Shared("isBuffer") @Cached IsBufferNode isBuffer,
+                    @Shared("error") @Cached BranchProfile error) throws UnsupportedMessageException, InvalidBufferOffsetException {
+        if (!isBuffer.execute(this)) {
+            error.enter();
+            throw UnsupportedMessageException.create();
+        }
+        if (index < 0 || Integer.MAX_VALUE < index) {
+            error.enter();
+            throw InvalidBufferOffsetException.create(index, Byte.BYTES);
+        }
+        try {
+            final ByteBuffer buffer = (ByteBuffer) obj;
+            return isPEFriendlyBuffer(buffer) ? buffer.get((int) index) : getBufferByteBoundary(buffer, (int) index);
+        } catch (IndexOutOfBoundsException e) {
+            error.enter();
+            throw InvalidBufferOffsetException.create(index, Byte.BYTES);
+        }
+    }
+
+    @TruffleBoundary
+    private static byte getBufferByteBoundary(ByteBuffer buffer, int index) {
+        return buffer.get(index);
+    }
+
+    @ExportMessage
+    public void writeBufferByte(long index, byte value,
+                    @Shared("isBuffer") @Cached IsBufferNode isBuffer,
+                    @Shared("error") @Cached BranchProfile error) throws InvalidBufferOffsetException, UnsupportedMessageException {
+        if (!isBuffer.execute(this)) {
+            error.enter();
+            throw UnsupportedMessageException.create();
+        }
+        if (index < 0 || Integer.MAX_VALUE < index) {
+            error.enter();
+            throw InvalidBufferOffsetException.create(index, Byte.BYTES);
+        }
+        try {
+            final ByteBuffer buffer = (ByteBuffer) obj;
+            if (isPEFriendlyBuffer(buffer)) {
+                buffer.put((int) index, value);
+            } else {
+                putBufferByteBoundary(buffer, (int) index, value);
+            }
+        } catch (IndexOutOfBoundsException e) {
+            error.enter();
+            throw InvalidBufferOffsetException.create(index, Byte.BYTES);
+        } catch (ReadOnlyBufferException e) {
+            throw UnsupportedMessageException.create();
+        }
+    }
+
+    @TruffleBoundary
+    private static void putBufferByteBoundary(ByteBuffer buffer, int index, byte value) {
+        buffer.put(index, value);
+    }
+
+    @ExportMessage
+    public short readBufferShort(ByteOrder order, long index,
+                    @Shared("isBuffer") @Cached IsBufferNode isBuffer,
+                    @Shared("error") @Cached BranchProfile error) throws UnsupportedMessageException, InvalidBufferOffsetException {
+        if (!isBuffer.execute(this)) {
+            error.enter();
+            throw UnsupportedMessageException.create();
+        }
+        if (index < 0 || Integer.MAX_VALUE < index) {
+            error.enter();
+            throw InvalidBufferOffsetException.create(index, Short.BYTES);
+        }
+        try {
+            final ByteBuffer buffer = (ByteBuffer) obj;
+            final ByteOrder originalOrder = buffer.order();
+            buffer.order(order);
+            final short result = isPEFriendlyBuffer(buffer) ? buffer.getShort((int) index) : getBufferShortBoundary(buffer, (int) index);
+            buffer.order(originalOrder);
+            return result;
+        } catch (IndexOutOfBoundsException e) {
+            error.enter();
+            throw InvalidBufferOffsetException.create(index, Short.BYTES);
+        }
+    }
+
+    @TruffleBoundary
+    private static short getBufferShortBoundary(ByteBuffer buffer, int index) {
+        return buffer.getShort(index);
+    }
+
+    @ExportMessage
+    public void writeBufferShort(ByteOrder order, long index, short value,
+                    @Shared("isBuffer") @Cached IsBufferNode isBuffer,
+                    @Shared("error") @Cached BranchProfile error) throws InvalidBufferOffsetException, UnsupportedMessageException {
+        if (!isBuffer.execute(this)) {
+            error.enter();
+            throw UnsupportedMessageException.create();
+        }
+        if (index < 0 || Integer.MAX_VALUE < index) {
+            error.enter();
+            throw InvalidBufferOffsetException.create(index, Short.BYTES);
+        }
+        try {
+            final ByteBuffer buffer = (ByteBuffer) obj;
+            final ByteOrder originalOrder = buffer.order();
+            buffer.order(order);
+            if (isPEFriendlyBuffer(buffer)) {
+                buffer.putShort((int) index, value);
+            } else {
+                putBufferShortBoundary(buffer, (int) index, value);
+            }
+            buffer.order(originalOrder);
+        } catch (IndexOutOfBoundsException e) {
+            error.enter();
+            throw InvalidBufferOffsetException.create(index, Short.BYTES);
+        } catch (ReadOnlyBufferException e) {
+            throw UnsupportedMessageException.create();
+        }
+    }
+
+    @TruffleBoundary
+    private static void putBufferShortBoundary(ByteBuffer buffer, int index, short value) {
+        buffer.putShort(index, value);
+    }
+
+    @ExportMessage
+    public int readBufferInt(ByteOrder order, long index,
+                    @Shared("isBuffer") @Cached IsBufferNode isBuffer,
+                    @Shared("error") @Cached BranchProfile error) throws UnsupportedMessageException, InvalidBufferOffsetException {
+        if (!isBuffer.execute(this)) {
+            error.enter();
+            throw UnsupportedMessageException.create();
+        }
+        if (index < 0 || Integer.MAX_VALUE < index) {
+            error.enter();
+            throw InvalidBufferOffsetException.create(index, Integer.BYTES);
+        }
+        try {
+            final ByteBuffer buffer = (ByteBuffer) obj;
+            final ByteOrder originalOrder = buffer.order();
+            buffer.order(order);
+            final int result = isPEFriendlyBuffer(buffer) ? buffer.getInt((int) index) : getBufferIntBoundary(buffer, (int) index);
+            buffer.order(originalOrder);
+            return result;
+        } catch (IndexOutOfBoundsException e) {
+            error.enter();
+            throw InvalidBufferOffsetException.create(index, Integer.BYTES);
+        }
+    }
+
+    @TruffleBoundary
+    private static int getBufferIntBoundary(ByteBuffer buffer, int index) {
+        return buffer.getInt(index);
+    }
+
+    @ExportMessage
+    public void writeBufferInt(ByteOrder order, long index, int value,
+                    @Shared("isBuffer") @Cached IsBufferNode isBuffer,
+                    @Shared("error") @Cached BranchProfile error) throws InvalidBufferOffsetException, UnsupportedMessageException {
+        if (!isBuffer.execute(this)) {
+            error.enter();
+            throw UnsupportedMessageException.create();
+        }
+        if (index < 0 || Integer.MAX_VALUE < index) {
+            error.enter();
+            throw InvalidBufferOffsetException.create(index, Integer.BYTES);
+        }
+        try {
+            final ByteBuffer buffer = (ByteBuffer) obj;
+            final ByteOrder originalOrder = buffer.order();
+            buffer.order(order);
+            if (isPEFriendlyBuffer(buffer)) {
+                buffer.putInt((int) index, value);
+            } else {
+                putBufferIntBoundary(buffer, (int) index, value);
+            }
+            buffer.order(originalOrder);
+        } catch (IndexOutOfBoundsException e) {
+            error.enter();
+            throw InvalidBufferOffsetException.create(index, Integer.BYTES);
+        } catch (ReadOnlyBufferException e) {
+            throw UnsupportedMessageException.create();
+        }
+    }
+
+    @TruffleBoundary
+    private static void putBufferIntBoundary(ByteBuffer buffer, int index, int value) {
+        buffer.putInt(index, value);
+    }
+
+    @ExportMessage
+    public long readBufferLong(ByteOrder order, long index,
+                    @Shared("isBuffer") @Cached IsBufferNode isBuffer,
+                    @Shared("error") @Cached BranchProfile error) throws UnsupportedMessageException, InvalidBufferOffsetException {
+        if (!isBuffer.execute(this)) {
+            error.enter();
+            throw UnsupportedMessageException.create();
+        }
+        if (index < 0 || Integer.MAX_VALUE < index) {
+            error.enter();
+            throw InvalidBufferOffsetException.create(index, Long.BYTES);
+        }
+        try {
+            final ByteBuffer buffer = (ByteBuffer) obj;
+            final ByteOrder originalOrder = buffer.order();
+            buffer.order(order);
+            final long result = isPEFriendlyBuffer(buffer) ? buffer.getLong((int) index) : getBufferLongBoundary(buffer, (int) index);
+            buffer.order(originalOrder);
+            return result;
+        } catch (IndexOutOfBoundsException e) {
+            error.enter();
+            throw InvalidBufferOffsetException.create(index, Long.BYTES);
+        }
+    }
+
+    @TruffleBoundary
+    private static long getBufferLongBoundary(ByteBuffer buffer, int index) {
+        return buffer.getLong(index);
+    }
+
+    @ExportMessage
+    public void writeBufferLong(ByteOrder order, long index, long value,
+                    @Shared("isBuffer") @Cached IsBufferNode isBuffer,
+                    @Shared("error") @Cached BranchProfile error) throws InvalidBufferOffsetException, UnsupportedMessageException {
+        if (!isBuffer.execute(this)) {
+            error.enter();
+            throw UnsupportedMessageException.create();
+        }
+        if (index < 0 || Integer.MAX_VALUE < index) {
+            error.enter();
+            throw InvalidBufferOffsetException.create(index, Long.BYTES);
+        }
+        try {
+            final ByteBuffer buffer = (ByteBuffer) obj;
+            final ByteOrder originalOrder = buffer.order();
+            buffer.order(order);
+            if (isPEFriendlyBuffer(buffer)) {
+                buffer.putLong((int) index, value);
+            } else {
+                putBufferLongBoundary(buffer, (int) index, value);
+            }
+            buffer.order(originalOrder);
+        } catch (IndexOutOfBoundsException e) {
+            error.enter();
+            throw InvalidBufferOffsetException.create(index, Long.BYTES);
+        } catch (ReadOnlyBufferException e) {
+            throw UnsupportedMessageException.create();
+        }
+    }
+
+    @TruffleBoundary
+    private static void putBufferLongBoundary(ByteBuffer buffer, int index, long value) {
+        buffer.putLong(index, value);
+    }
+
+    @ExportMessage
+    public float readBufferFloat(ByteOrder order, long index,
+                    @Shared("isBuffer") @Cached IsBufferNode isBuffer,
+                    @Shared("error") @Cached BranchProfile error) throws UnsupportedMessageException, InvalidBufferOffsetException {
+        if (!isBuffer.execute(this)) {
+            error.enter();
+            throw UnsupportedMessageException.create();
+        }
+        if (index < 0 || Integer.MAX_VALUE < index) {
+            error.enter();
+            throw InvalidBufferOffsetException.create(index, Float.BYTES);
+        }
+        try {
+            final ByteBuffer buffer = (ByteBuffer) obj;
+            final ByteOrder originalOrder = buffer.order();
+            buffer.order(order);
+            final float result = isPEFriendlyBuffer(buffer) ? buffer.getFloat((int) index) : getBufferFloatBoundary(buffer, (int) index);
+            buffer.order(originalOrder);
+            return result;
+        } catch (IndexOutOfBoundsException e) {
+            error.enter();
+            throw InvalidBufferOffsetException.create(index, Float.BYTES);
+        }
+    }
+
+    @CompilerDirectives.TruffleBoundary
+    private static float getBufferFloatBoundary(ByteBuffer buffer, int index) {
+        return buffer.getFloat(index);
+    }
+
+    @ExportMessage
+    public void writeBufferFloat(ByteOrder order, long index, float value,
+                    @Shared("isBuffer") @Cached IsBufferNode isBuffer,
+                    @Shared("error") @Cached BranchProfile error) throws InvalidBufferOffsetException, UnsupportedMessageException {
+        if (!isBuffer.execute(this)) {
+            error.enter();
+            throw UnsupportedMessageException.create();
+        }
+        if (index < 0 || Integer.MAX_VALUE < index) {
+            error.enter();
+            throw InvalidBufferOffsetException.create(index, Float.BYTES);
+        }
+        try {
+            final ByteBuffer buffer = (ByteBuffer) obj;
+            final ByteOrder originalOrder = buffer.order();
+            buffer.order(order);
+            if (isPEFriendlyBuffer(buffer)) {
+                buffer.putFloat((int) index, value);
+            } else {
+                putBufferFloatBoundary(buffer, (int) index, value);
+            }
+            buffer.order(originalOrder);
+        } catch (IndexOutOfBoundsException e) {
+            error.enter();
+            throw InvalidBufferOffsetException.create(index, Float.BYTES);
+        } catch (ReadOnlyBufferException e) {
+            throw UnsupportedMessageException.create();
+        }
+    }
+
+    @CompilerDirectives.TruffleBoundary
+    private static void putBufferFloatBoundary(ByteBuffer buffer, int index, float value) {
+        buffer.putFloat(index, value);
+    }
+
+    @ExportMessage
+    public double readBufferDouble(ByteOrder order, long index,
+                    @Shared("isBuffer") @Cached IsBufferNode isBuffer,
+                    @Shared("error") @Cached BranchProfile error) throws UnsupportedMessageException, InvalidBufferOffsetException {
+        if (!isBuffer.execute(this)) {
+            error.enter();
+            throw UnsupportedMessageException.create();
+        }
+        if (index < 0 || Integer.MAX_VALUE < index) {
+            error.enter();
+            throw InvalidBufferOffsetException.create(index, Double.BYTES);
+        }
+        try {
+            final ByteBuffer buffer = (ByteBuffer) obj;
+            final ByteOrder originalOrder = buffer.order();
+            buffer.order(order);
+            final double result = isPEFriendlyBuffer(buffer) ? buffer.getDouble((int) index) : getBufferDoubleBoundary(buffer, (int) index);
+            buffer.order(originalOrder);
+            return result;
+        } catch (IndexOutOfBoundsException e) {
+            error.enter();
+            throw InvalidBufferOffsetException.create(index, Double.BYTES);
+        }
+    }
+
+    @CompilerDirectives.TruffleBoundary
+    private static double getBufferDoubleBoundary(ByteBuffer buffer, int index) {
+        return buffer.getDouble(index);
+    }
+
+    @ExportMessage
+    public void writeBufferDouble(ByteOrder order, long index, double value,
+                    @Shared("isBuffer") @Cached IsBufferNode isBuffer,
+                    @Shared("error") @Cached BranchProfile error) throws InvalidBufferOffsetException, UnsupportedMessageException {
+        if (!isBuffer.execute(this)) {
+            error.enter();
+            throw UnsupportedMessageException.create();
+        }
+        if (index < 0 || Integer.MAX_VALUE < index) {
+            error.enter();
+            throw InvalidBufferOffsetException.create(index, Double.BYTES);
+        }
+        try {
+            final ByteBuffer buffer = (ByteBuffer) obj;
+            final ByteOrder originalOrder = buffer.order();
+            buffer.order(order);
+            if (isPEFriendlyBuffer(buffer)) {
+                buffer.putDouble((int) index, value);
+            } else {
+                putBufferDoubleBoundary(buffer, (int) index, value);
+            }
+            buffer.order(originalOrder);
+        } catch (IndexOutOfBoundsException e) {
+            error.enter();
+            throw InvalidBufferOffsetException.create(index, Double.BYTES);
+        } catch (ReadOnlyBufferException e) {
+            throw UnsupportedMessageException.create();
+        }
+    }
+
+    @CompilerDirectives.TruffleBoundary
+    private static void putBufferDoubleBoundary(ByteBuffer buffer, int index, double value) {
+        buffer.putDouble(index, value);
+    }
+
+    // endregion
 
     @TruffleBoundary(allowInlining = true)
     int getListSize() {
@@ -1314,7 +1739,6 @@ final class HostObject implements TruffleObject {
     }
 
     @ExportMessage
-    @TruffleBoundary
     static int identityHashCode(HostObject receiver) {
         return System.identityHashCode(receiver.obj);
     }
@@ -1669,4 +2093,19 @@ final class HostObject implements TruffleObject {
         }
 
     }
+
+    @GenerateUncached
+    abstract static class IsBufferNode extends Node {
+
+        public abstract boolean execute(HostObject receiver);
+
+        @Specialization
+        public boolean doDefault(HostObject receiver,
+                        @Cached(value = "receiver.getHostClassCache().isBufferAccess()", allowUncached = true) boolean isBufferAccess) {
+            assert receiver.getHostClassCache().isBufferAccess() == isBufferAccess;
+            return isBufferAccess && receiver.obj != null && ByteBuffer.class.isAssignableFrom(receiver.obj.getClass());
+        }
+
+    }
+
 }

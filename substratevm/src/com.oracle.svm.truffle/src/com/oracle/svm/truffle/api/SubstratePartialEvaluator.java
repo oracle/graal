@@ -24,8 +24,9 @@
  */
 package com.oracle.svm.truffle.api;
 
+import java.util.concurrent.ConcurrentHashMap;
+
 import org.graalvm.collections.EconomicMap;
-import org.graalvm.compiler.api.replacements.SnippetReflectionProvider;
 import org.graalvm.compiler.graph.SourceLanguagePositionProvider;
 import org.graalvm.compiler.nodes.EncodedGraph;
 import org.graalvm.compiler.nodes.StructuredGraph;
@@ -40,16 +41,15 @@ import org.graalvm.compiler.phases.util.Providers;
 import org.graalvm.compiler.replacements.PEGraphDecoder;
 import org.graalvm.compiler.replacements.PEGraphDecoder.SpecialCallTargetCacheKey;
 import org.graalvm.compiler.truffle.compiler.PartialEvaluator;
+import org.graalvm.compiler.truffle.compiler.PartialEvaluatorConfiguration;
+import org.graalvm.compiler.truffle.compiler.TruffleCompilerConfiguration;
 import org.graalvm.compiler.truffle.compiler.substitutions.TruffleDecodingPlugins;
 import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;
 
 import com.oracle.svm.core.graal.phases.DeadStoreRemovalPhase;
 
-import jdk.vm.ci.code.Architecture;
 import jdk.vm.ci.meta.ResolvedJavaMethod;
-
-import java.util.concurrent.ConcurrentHashMap;
 
 public class SubstratePartialEvaluator extends PartialEvaluator {
 
@@ -57,8 +57,8 @@ public class SubstratePartialEvaluator extends PartialEvaluator {
     private final ConcurrentHashMap<SpecialCallTargetCacheKey, Object> specialCallTargetCache;
 
     @Platforms(Platform.HOSTED_ONLY.class)
-    public SubstratePartialEvaluator(Providers providers, GraphBuilderConfiguration configForRoot, SnippetReflectionProvider snippetReflection, Architecture architecture) {
-        super(providers, configForRoot, snippetReflection, architecture, new SubstrateKnownTruffleTypes(providers.getMetaAccess()));
+    public SubstratePartialEvaluator(TruffleCompilerConfiguration config, GraphBuilderConfiguration graphBuilderConfigForRoot) {
+        super(config, graphBuilderConfigForRoot, new SubstrateKnownTruffleTypes(config.lastTier().providers().getMetaAccess()));
         this.invocationPluginsCache = new ConcurrentHashMap<>();
         this.specialCallTargetCache = new ConcurrentHashMap<>();
     }
@@ -91,17 +91,18 @@ public class SubstratePartialEvaluator extends PartialEvaluator {
     }
 
     @Override
-    protected void registerTruffleInvocationPlugins(InvocationPlugins invocationPlugins, boolean canDelayIntrinsification) {
-        super.registerTruffleInvocationPlugins(invocationPlugins, canDelayIntrinsification);
-        SubstrateTruffleGraphBuilderPlugins.registerCompilationFinalReferencePlugins(invocationPlugins, canDelayIntrinsification, (SubstrateKnownTruffleTypes) getKnownTruffleTypes());
+    protected void registerGraphBuilderInvocationPlugins(InvocationPlugins invocationPlugins, boolean canDelayIntrinsification) {
+        super.registerGraphBuilderInvocationPlugins(invocationPlugins, canDelayIntrinsification);
+        SubstrateTruffleGraphBuilderPlugins.registerInvocationPlugins(invocationPlugins, canDelayIntrinsification, (SubstrateKnownTruffleTypes) getKnownTruffleTypes());
     }
 
     @Platforms(Platform.HOSTED_ONLY.class)
     @Override
-    protected InvocationPlugins createDecodingInvocationPlugins(Plugins parent) {
+    protected InvocationPlugins createDecodingInvocationPlugins(PartialEvaluatorConfiguration peConfig, Plugins parent, Providers tierProviders) {
         InvocationPlugins decodingInvocationPlugins = new InvocationPlugins();
-        registerTruffleInvocationPlugins(decodingInvocationPlugins, false);
-        TruffleDecodingPlugins.registerInvocationPlugins(decodingInvocationPlugins, providers);
+        registerGraphBuilderInvocationPlugins(decodingInvocationPlugins, false);
+        TruffleDecodingPlugins.registerInvocationPlugins(decodingInvocationPlugins, tierProviders);
+        peConfig.registerDecodingInvocationPlugins(decodingInvocationPlugins, false, providers, config.architecture());
         decodingInvocationPlugins.closeRegistration();
         return decodingInvocationPlugins;
     }

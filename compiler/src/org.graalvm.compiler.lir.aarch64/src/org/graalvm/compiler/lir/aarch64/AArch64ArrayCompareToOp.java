@@ -72,14 +72,15 @@ public final class AArch64ArrayCompareToOp extends AArch64LIRInstruction {
     @Temp({REG}) protected Value temp5;
     @Temp({REG}) protected Value temp6;
 
-    public AArch64ArrayCompareToOp(LIRGeneratorTool tool, JavaKind kind1, JavaKind kind2, Value result, Value array1, Value array2, Value length1, Value length2) {
+    public AArch64ArrayCompareToOp(LIRGeneratorTool tool, JavaKind kind1, JavaKind kind2, int array1BaseOffset, int array2BaseOffset, Value result, Value array1, Value array2, Value length1,
+                    Value length2) {
         super(TYPE);
         this.kind1 = kind1;
         this.kind2 = kind2;
 
         // Both offsets should be the same but better be safe than sorry.
-        this.array1BaseOffset = tool.getProviders().getMetaAccess().getArrayBaseOffset(kind1);
-        this.array2BaseOffset = tool.getProviders().getMetaAccess().getArrayBaseOffset(kind2);
+        this.array1BaseOffset = array1BaseOffset;
+        this.array2BaseOffset = array2BaseOffset;
 
         this.resultValue = result;
 

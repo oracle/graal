@@ -29,7 +29,6 @@ import static com.oracle.svm.core.util.VMError.shouldNotReachHere;
 import java.lang.reflect.Array;
 import java.lang.reflect.Modifier;
 import java.nio.ByteBuffer;
-import java.util.BitSet;
 
 import org.graalvm.compiler.core.common.CompressEncoding;
 import org.graalvm.compiler.core.common.NumUtil;
@@ -51,7 +50,6 @@ import com.oracle.svm.core.heap.ObjectHeader;
 import com.oracle.svm.core.hub.DynamicHub;
 import com.oracle.svm.core.image.ImageHeapLayoutInfo;
 import com.oracle.svm.core.meta.SubstrateObjectConstant;
-import com.oracle.svm.core.util.VMError;
 import com.oracle.svm.hosted.config.HybridLayout;
 import com.oracle.svm.hosted.image.NativeImageHeap.ObjectInfo;
 import com.oracle.svm.hosted.meta.HostedClass;
@@ -307,7 +305,6 @@ public final class NativeImageHeapWriter {
 
             HybridLayout<?> hybridLayout = heap.getHybridLayout(clazz);
             HostedField hybridArrayField = null;
-            HostedField hybridBitsetField = null;
             HostedField hybridTypeIDSlotsField = null;
             int maxBitIndex = -1;
             int maxTypeIDSlotIndex = -1;
@@ -316,37 +313,13 @@ public final class NativeImageHeapWriter {
                 hybridArrayField = hybridLayout.getArrayField();
                 hybridArray = readObjectField(hybridArrayField, con);
 
-                boolean wroteBitSet = false;
-                hybridBitsetField = hybridLayout.getBitsetField();
-                if (hybridBitsetField != null) {
-                    BitSet bitSet = (BitSet) readObjectField(hybridBitsetField, con);
-                    if (bitSet != null) {
-                        wroteBitSet = true;
-                        /*
-                         * Write the bits of the hybrid bit field. The bits are located between the
-                         * array length and the instance fields.
-                         */
-                        int bitsPerByte = Byte.SIZE;
-                        for (int bit = bitSet.nextSetBit(0); bit >= 0; bit = bitSet.nextSetBit(bit + 1)) {
-                            final int index = info.getIndexInBuffer(HybridLayout.getBitFieldOrTypeIDSlotsFieldOffset(objectLayout)) + bit / bitsPerByte;
-                            if (index > maxBitIndex) {
-                                maxBitIndex = index;
-                            }
-                            int mask = 1 << (bit % bitsPerByte);
-                            assert mask < (1 << bitsPerByte);
-                            bufferBytes.put(index, (byte) (bufferBytes.get(index) | mask));
-                        }
-                    }
-                }
-
                 hybridTypeIDSlotsField = hybridLayout.getTypeIDSlotsField();
                 if (hybridTypeIDSlotsField != null) {
                     short[] typeIDSlots = (short[]) readObjectField(hybridTypeIDSlotsField, con);
                     if (typeIDSlots != null) {
-                        VMError.guarantee(!wroteBitSet, "Hub cannot contain both a bitset and typeID slots.");
                         int length = typeIDSlots.length;
                         for (int i = 0; i < length; i++) {
-                            final int index = info.getIndexInBuffer(HybridLayout.getBitFieldOrTypeIDSlotsFieldOffset(objectLayout)) + (i * 2);
+                            final int index = info.getIndexInBuffer(HybridLayout.getTypeIDSlotsFieldOffset(objectLayout)) + (i * 2);
                             if (index + 1 > maxTypeIDSlotIndex) {
                                 maxTypeIDSlotIndex = index + 1; // Takes two bytes...
                             }
@@ -354,7 +327,6 @@ public final class NativeImageHeapWriter {
                             bufferBytes.putShort(index, value);
                         }
                     }
-
                 }
             }
 
@@ -363,7 +335,6 @@ public final class NativeImageHeapWriter {
              */
             for (HostedField field : clazz.getInstanceFields(true)) {
                 if (!field.equals(hybridArrayField) &&
-                                !field.equals(hybridBitsetField) &&
                                 !field.equals(hybridTypeIDSlotsField) &&
                                 field.isInImageHeap()) {
                     assert field.getLocation() >= 0;
@@ -372,10 +343,7 @@ public final class NativeImageHeapWriter {
                     writeField(buffer, info, field, con, info);
                 }
             }
-            DynamicHub hub = clazz.getHub();
-            if (hub.getHashCodeOffset() != 0) {
-                bufferBytes.putInt(info.getIndexInBuffer(hub.getHashCodeOffset()), info.getIdentityHashCode());
-            }
+            bufferBytes.putInt(info.getIndexInBuffer(objectLayout.getIdentityHashCodeOffset()), info.getIdentityHashCode());
             if (hybridArray != null) {
                 /*
                  * Write the hybrid array length and the array elements.
@@ -395,7 +363,7 @@ public final class NativeImageHeapWriter {
             Object array = info.getObject();
             int length = Array.getLength(array);
             bufferBytes.putInt(info.getIndexInBuffer(objectLayout.getArrayLengthOffset()), length);
-            bufferBytes.putInt(info.getIndexInBuffer(objectLayout.getArrayIdentityHashcodeOffset()), info.getIdentityHashCode());
+            bufferBytes.putInt(info.getIndexInBuffer(objectLayout.getIdentityHashCodeOffset()), info.getIdentityHashCode());
             if (array instanceof Object[]) {
                 Object[] oarray = (Object[]) array;
                 assert oarray.length == length;

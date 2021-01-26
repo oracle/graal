@@ -46,6 +46,7 @@ import com.oracle.truffle.api.CompilerAsserts;
 import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.nodes.ExplodeLoop;
+import com.oracle.truffle.regex.RegexLanguage;
 import com.oracle.truffle.regex.result.PreCalculatedResultFactory;
 import com.oracle.truffle.regex.tregex.nfa.ASTTransition;
 import com.oracle.truffle.regex.tregex.nfa.NFAStateTransition;
@@ -53,7 +54,7 @@ import com.oracle.truffle.regex.tregex.util.json.Json;
 import com.oracle.truffle.regex.tregex.util.json.JsonArray;
 import com.oracle.truffle.regex.tregex.util.json.JsonConvertible;
 import com.oracle.truffle.regex.tregex.util.json.JsonValue;
-import com.oracle.truffle.regex.util.CompilationFinalBitSet;
+import com.oracle.truffle.regex.util.TBitSet;
 
 /**
  * Objects of this class represent the capture group boundaries traversed in a single
@@ -72,26 +73,18 @@ import com.oracle.truffle.regex.util.CompilationFinalBitSet;
  */
 public class GroupBoundaries implements JsonConvertible {
 
-    private static final GroupBoundaries[] STATIC_INSTANCES = new GroupBoundaries[CompilationFinalBitSet.getNumberOfStaticInstances()];
-
-    static {
-        for (int i = 0; i < CompilationFinalBitSet.getNumberOfStaticInstances(); i++) {
-            STATIC_INSTANCES[i] = new GroupBoundaries(CompilationFinalBitSet.getStaticInstance(i), CompilationFinalBitSet.getEmptyInstance());
-        }
-    }
-
     private static final byte[] EMPTY_BYTE_ARRAY = {};
     private static final short[] EMPTY_SHORT_ARRAY = {};
 
-    private final CompilationFinalBitSet updateIndices;
-    private final CompilationFinalBitSet clearIndices;
+    private final TBitSet updateIndices;
+    private final TBitSet clearIndices;
     private final int cachedHash;
     @CompilationFinal(dimensions = 1) private byte[] updateArrayByte;
     @CompilationFinal(dimensions = 1) private byte[] clearArrayByte;
     @CompilationFinal(dimensions = 1) private short[] updateArray;
     @CompilationFinal(dimensions = 1) private short[] clearArray;
 
-    GroupBoundaries(CompilationFinalBitSet updateIndices, CompilationFinalBitSet clearIndices) {
+    GroupBoundaries(TBitSet updateIndices, TBitSet clearIndices) {
         this.updateIndices = updateIndices;
         this.clearIndices = clearIndices;
         // both bit sets are immutable, and the hash is always needed immediately in
@@ -99,21 +92,29 @@ public class GroupBoundaries implements JsonConvertible {
         this.cachedHash = Objects.hashCode(updateIndices) * 31 + Objects.hashCode(clearIndices);
     }
 
+    public static GroupBoundaries[] createCachedGroupBoundaries() {
+        GroupBoundaries[] instances = new GroupBoundaries[TBitSet.getNumberOfStaticInstances()];
+        for (int i = 0; i < instances.length; i++) {
+            instances[i] = new GroupBoundaries(TBitSet.getStaticInstance(i), TBitSet.getEmptyInstance());
+        }
+        return instances;
+    }
+
     /**
      * Used for deduplication of very common instances of this class.
      */
-    public static GroupBoundaries getStaticInstance(CompilationFinalBitSet updateIndices, CompilationFinalBitSet clearIndices) {
+    public static GroupBoundaries getStaticInstance(RegexLanguage language, TBitSet updateIndices, TBitSet clearIndices) {
         if (clearIndices.isEmpty()) {
             int key = updateIndices.getStaticCacheKey();
             if (key >= 0) {
-                return STATIC_INSTANCES[key];
+                return language.getCachedGroupBoundaries()[key];
             }
         }
         return null;
     }
 
-    public static GroupBoundaries getEmptyInstance() {
-        return STATIC_INSTANCES[0];
+    public static GroupBoundaries getEmptyInstance(RegexLanguage language) {
+        return language.getCachedGroupBoundaries()[0];
     }
 
     public boolean isEmpty() {
@@ -134,7 +135,7 @@ public class GroupBoundaries implements JsonConvertible {
         return clearArrayByte;
     }
 
-    private static byte[] indicesToByteArray(CompilationFinalBitSet indices) {
+    private static byte[] indicesToByteArray(TBitSet indices) {
         if (indices.isEmpty()) {
             return EMPTY_BYTE_ARRAY;
         }
@@ -154,7 +155,7 @@ public class GroupBoundaries implements JsonConvertible {
         }
     }
 
-    private static short[] indicesToShortArray(CompilationFinalBitSet indices) {
+    private static short[] indicesToShortArray(TBitSet indices) {
         if (indices.isEmpty()) {
             return EMPTY_SHORT_ARRAY;
         }
@@ -163,7 +164,7 @@ public class GroupBoundaries implements JsonConvertible {
         return array;
     }
 
-    private static void writeIndicesToArray(CompilationFinalBitSet indices, final short[] array, int offset) {
+    private static void writeIndicesToArray(TBitSet indices, final short[] array, int offset) {
         int i = offset;
         for (int j : indices) {
             assert j < (1 << 16);
@@ -172,20 +173,20 @@ public class GroupBoundaries implements JsonConvertible {
     }
 
     /**
-     * Directly returns the {@link CompilationFinalBitSet} used to store the indices of all capture
-     * group boundaries that should be updated when traversed. <br>
+     * Directly returns the {@link TBitSet} used to store the indices of all capture group
+     * boundaries that should be updated when traversed. <br>
      * CAUTION: Do not alter the returned object!
      */
-    public CompilationFinalBitSet getUpdateIndices() {
+    public TBitSet getUpdateIndices() {
         return updateIndices;
     }
 
     /**
-     * Directly returns the {@link CompilationFinalBitSet} used to store the indices of all capture
-     * group boundaries that should be cleared when traversed. <br>
+     * Directly returns the {@link TBitSet} used to store the indices of all capture group
+     * boundaries that should be cleared when traversed. <br>
      * CAUTION: Do not alter the returned object!
      */
-    public CompilationFinalBitSet getClearIndices() {
+    public TBitSet getClearIndices() {
         return clearIndices;
     }
 
@@ -198,10 +199,10 @@ public class GroupBoundaries implements JsonConvertible {
     }
 
     /**
-     * Updates the given {@link CompilationFinalBitSet}s with the values contained in this
-     * {@link GroupBoundaries} object.
+     * Updates the given {@link TBitSet}s with the values contained in this {@link GroupBoundaries}
+     * object.
      */
-    public void updateBitSets(CompilationFinalBitSet foreignUpdateIndices, CompilationFinalBitSet foreignClearIndices) {
+    public void updateBitSets(TBitSet foreignUpdateIndices, TBitSet foreignClearIndices) {
         foreignUpdateIndices.union(updateIndices);
         foreignClearIndices.subtract(updateIndices);
         foreignClearIndices.union(clearIndices);
@@ -276,7 +277,7 @@ public class GroupBoundaries implements JsonConvertible {
     }
 
     @TruffleBoundary
-    private static StringBuilder appendBitSet(StringBuilder sb, CompilationFinalBitSet gbBitSet, boolean entries) {
+    private static StringBuilder appendBitSet(StringBuilder sb, TBitSet gbBitSet, boolean entries) {
         boolean first = true;
         if (gbBitSet != null) {
             for (int i : gbBitSet) {
@@ -303,17 +304,17 @@ public class GroupBoundaries implements JsonConvertible {
     }
 
     @TruffleBoundary
-    private static JsonArray gbBitSetGroupEntriesToJsonArray(CompilationFinalBitSet gbArray) {
+    private static JsonArray gbBitSetGroupEntriesToJsonArray(TBitSet gbArray) {
         return gbBitSetGroupPartToJsonArray(gbArray, true);
     }
 
     @TruffleBoundary
-    private static JsonArray gbBitSetGroupExitsToJsonArray(CompilationFinalBitSet gbArray) {
+    private static JsonArray gbBitSetGroupExitsToJsonArray(TBitSet gbArray) {
         return gbBitSetGroupPartToJsonArray(gbArray, false);
     }
 
     @TruffleBoundary
-    private static JsonArray gbBitSetGroupPartToJsonArray(CompilationFinalBitSet gbBitSet, boolean entries) {
+    private static JsonArray gbBitSetGroupPartToJsonArray(TBitSet gbBitSet, boolean entries) {
         JsonArray array = Json.array();
         if (gbBitSet != null) {
             for (int i : gbBitSet) {

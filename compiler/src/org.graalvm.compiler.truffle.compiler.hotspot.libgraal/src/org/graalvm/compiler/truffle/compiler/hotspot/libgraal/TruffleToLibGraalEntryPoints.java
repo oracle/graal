@@ -97,7 +97,7 @@ import org.graalvm.compiler.truffle.common.TruffleCompilerRuntime;
 import org.graalvm.compiler.truffle.common.TruffleCompilerRuntimeInstance;
 import org.graalvm.compiler.truffle.common.TruffleDebugContext;
 import org.graalvm.compiler.truffle.common.TruffleDebugJavaMethod;
-import org.graalvm.compiler.truffle.common.TruffleInliningPlan;
+import org.graalvm.compiler.truffle.common.TruffleMetaAccessProvider;
 import org.graalvm.compiler.truffle.common.VoidGraphStructure;
 import org.graalvm.compiler.truffle.common.hotspot.libgraal.TruffleToLibGraal;
 import org.graalvm.compiler.truffle.compiler.TruffleCompilationIdentifier;
@@ -125,6 +125,7 @@ import org.graalvm.nativeimage.c.type.VoidPointer;
 import org.graalvm.util.OptionsEncoder;
 import org.graalvm.word.WordFactory;
 
+import jdk.vm.ci.hotspot.HotSpotJVMCIRuntime;
 import jdk.vm.ci.meta.ResolvedJavaType;
 import org.graalvm.compiler.serviceprovider.GraalServices;
 
@@ -191,7 +192,8 @@ final class TruffleToLibGraalEntryPoints {
             HSTruffleCompilerRuntime hsTruffleRuntime = LibGraalObjectHandles.resolve(truffleRuntimeHandle, HSTruffleCompilerRuntime.class);
             assert TruffleCompilerRuntime.getRuntime() == hsTruffleRuntime;
             OptionValues graalOptions = hsTruffleRuntime.getGraalOptions(OptionValues.class);
-            CompilerConfigurationFactory compilerConfigurationFactory = CompilerConfigurationFactory.selectFactory(Options.TruffleCompilerConfiguration.getValue(graalOptions), graalOptions);
+            String compConfig = Options.TruffleCompilerConfiguration.getValue(graalOptions);
+            CompilerConfigurationFactory compilerConfigurationFactory = CompilerConfigurationFactory.selectFactory(compConfig, graalOptions, HotSpotJVMCIRuntime.runtime());
             String name = compilerConfigurationFactory.getName();
             scope.setObjectResult(createHSString(env, name));
         } catch (Throwable t) {
@@ -253,7 +255,7 @@ final class TruffleToLibGraalEntryPoints {
                 HotSpotTruffleCompilerImpl compiler = LibGraalObjectHandles.resolve(compilerHandle, HotSpotTruffleCompilerImpl.class);
                 TruffleDebugContext debugContext = LibGraalObjectHandles.resolve(debugContextHandle, TruffleDebugContext.class);
                 Map<String, Object> options = decodeOptions(env, hsOptions);
-                TruffleInliningPlan inlining = new HSTruffleInliningPlan(scope, hsInlining);
+                TruffleMetaAccessProvider inlining = new HSTruffleInliningPlan(scope, hsInlining);
                 TruffleCompilationTask task = hsTask.isNull() ? null : new HSTruffleCompilationTask(scope, hsTask);
                 TruffleCompilerListener listener = hsListener.isNull() ? null : new HSTruffleCompilerListener(scope, hsListener);
                 compiler.doCompile(debugContext, compilation, options, inlining, task, listener);

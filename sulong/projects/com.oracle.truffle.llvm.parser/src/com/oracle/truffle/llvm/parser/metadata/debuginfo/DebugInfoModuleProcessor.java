@@ -29,10 +29,17 @@
  */
 package com.oracle.truffle.llvm.parser.metadata.debuginfo;
 
+import static com.oracle.truffle.llvm.parser.metadata.debuginfo.DebugInfoCache.getDebugInfo;
+
+import java.math.BigInteger;
+import java.util.List;
+import java.util.Map;
+
 import com.oracle.truffle.llvm.parser.metadata.DwarfOpcode;
 import com.oracle.truffle.llvm.parser.metadata.MDBaseNode;
 import com.oracle.truffle.llvm.parser.metadata.MDCompileUnit;
 import com.oracle.truffle.llvm.parser.metadata.MDExpression;
+import com.oracle.truffle.llvm.parser.metadata.MDFile;
 import com.oracle.truffle.llvm.parser.metadata.MDGlobalVariable;
 import com.oracle.truffle.llvm.parser.metadata.MDGlobalVariableExpression;
 import com.oracle.truffle.llvm.parser.metadata.MDLocalVariable;
@@ -45,16 +52,11 @@ import com.oracle.truffle.llvm.parser.model.ModelModule;
 import com.oracle.truffle.llvm.parser.model.SymbolImpl;
 import com.oracle.truffle.llvm.parser.model.symbols.constants.integer.BigIntegerConstant;
 import com.oracle.truffle.llvm.parser.model.symbols.globals.GlobalValueSymbol;
+import com.oracle.truffle.llvm.runtime.debug.scope.LLVMSourceFileReference;
 import com.oracle.truffle.llvm.runtime.debug.scope.LLVMSourceSymbol;
 import com.oracle.truffle.llvm.runtime.debug.type.LLVMSourceStaticMemberType;
 import com.oracle.truffle.llvm.runtime.debug.type.LLVMSourceType;
 import com.oracle.truffle.llvm.runtime.types.VariableBitWidthType;
-
-import java.math.BigInteger;
-import java.util.List;
-import java.util.Map;
-
-import static com.oracle.truffle.llvm.parser.metadata.debuginfo.DebugInfoCache.getDebugInfo;
 
 public final class DebugInfoModuleProcessor {
 
@@ -81,6 +83,9 @@ public final class DebugInfoModuleProcessor {
         }
 
         irModel.setFunctionProcessor(new DebugInfoFunctionProcessor(cache));
+
+        FileProcessor fileProcessor = new FileProcessor(irModel);
+        metadata.accept(fileProcessor);
     }
 
     private static void processSymbols(List<? extends GlobalValueSymbol> list, DebugInfoCache cache, ModelModule irModel) {
@@ -191,6 +196,25 @@ public final class DebugInfoModuleProcessor {
             }
             return null;
         }
+
     }
 
+    /**
+     * Extracts all {@link MDFile} from the metadata and stores it as
+     * {@link LLVMSourceFileReference} in the {@link ModelModule}.
+     */
+    private static final class FileProcessor implements MetadataVisitor {
+
+        private final ModelModule module;
+
+        FileProcessor(ModelModule module) {
+            this.module = module;
+        }
+
+        @Override
+        public void visit(MDFile md) {
+            module.addSourceFileReference(md.toSourceFileReference());
+        }
+
+    }
 }

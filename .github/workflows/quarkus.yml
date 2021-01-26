@@ -16,28 +16,36 @@ env:
   DB_USER: hibernate_orm_test
   DB_PASSWORD: hibernate_orm_test
   DB_NAME: hibernate_orm_test
-  NATIVE_TEST_MAVEN_OPTS: "-B --settings ${GITHUB_WORKSPACE}/quarkus/.github/mvn-settings.xml --fail-at-end -Dquarkus.native.container-build=true -Dtest-postgresql -Dtest-elasticsearch -Delasticsearch.hosts='localhost:9200' -Dtest-keycloak -Dtest-amazon-services -Dtest-db2 -Dtest-mysql -Dtest-mariadb -Dmariadb.base_url='jdbc:mariadb://localhost:3308' -Dmariadb.url='jdbc:mariadb://localhost:3308/hibernate_orm_test'  -Dtest-mssql -Dtest-vault -Dtest-neo4j -Dtest-kafka -Dtest-redis -Dnative-image.xmx=5g -Dnative -Dnative.surefire.skip -Dformat.skip -Dno-descriptor-tests install"
+  NATIVE_TEST_MAVEN_OPTS: "-B --settings ${QUARKUS_PATH}/.github/mvn-settings.xml --fail-at-end -Dtest-containers -Dstart-containers -Dnative-image.xmx=5g -Dnative -Dnative.surefire.skip -Dformat.skip -Dno-descriptor-tests install -DskipDocs"
   MX_GIT_CACHE: refcache
+  MX_PATH: ${{ github.workspace }}/mx
+  JAVA_HOME: ${{ github.workspace }}/jdk
+  QUARKUS_PATH: ${{ github.workspace }}/quarkus
+  GRAALVM_HOME: ${{ github.workspace }}/graalvm
 
 jobs:
   build-quarkus-and-graalvm:
     name: Nightly quarkus and GraalVM build
     runs-on: ubuntu-18.04
+    outputs:
+      matrix: ${{ steps.read.outputs.matrix }}
     steps:
-    - uses: actions/checkout@v1
+    - uses: actions/checkout@v2
       with:
         fetch-depth: 1
-        path: graal
-    - uses: actions/checkout@v1
+    - uses: actions/checkout@v2
       with:
         repository: graalvm/mx.git
+        fetch-depth: 1
         ref: master
-        path: mx
+        path: ${{ env.MX_PATH }}
     - name: Get latest quarkus release
       run: |
-        curl --output quarkus.tgz -sL $(curl -sL https://api.github.com/repos/quarkusio/quarkus/releases/latest | jq -r .tarball_url)
-        mkdir ${GITHUB_WORKSPACE}/quarkus
-        tar xf quarkus.tgz -C ${GITHUB_WORKSPACE}/quarkus --strip-components=1
+        export QUARKUS_VERSION=$(curl https://repo1.maven.org/maven2/io/quarkus/quarkus-bom/maven-metadata.xml | awk -F"[<>]" '/latest/ {print $3}')
+        echo Getting Quarkus $QUARKUS_VERSION
+        curl --output quarkus.tgz -sL https://api.github.com/repos/quarkusio/quarkus/tarball/$QUARKUS_VERSION
+        mkdir ${QUARKUS_PATH}
+        tar xf quarkus.tgz -C ${QUARKUS_PATH} --strip-components=1
     - uses: actions/cache@v1
       with:
         path: ~/.m2/repository
@@ -50,40 +58,34 @@ jobs:
         key: ${{ runner.os }}-mx-${{ hashFiles('**/suite.py') }}
         restore-keys: |
           ${{ runner.os }}-mx-
-    - name: Get labsJDK11 version
+    - name: Get JDK
       run: |
-        export LABSJDK_VERSION=$(jq -r '.jdks."labsjdk-ce-11".version' common.json)
-        echo "::set-env name=JDK_VERSION::$(echo $LABSJDK_VERSION | cut -d- -f 2 | cut -d+ -f 1)"
-        echo "::set-env name=JDK_VERSION_SUFFIX::+$(echo $LABSJDK_VERSION | cut -d- -f 2 | cut -d+ -f 2)"
-        echo "::set-env name=JVMCI_VERSION::$(echo $LABSJDK_VERSION | cut -d- -f 3,4,5)"
-    - name: Get labsJDK11
-      run: |
-        export JDK_VERSION=${{ env.JDK_VERSION }}
-        export JDK_VERSION_SUFFIX=${{ env.JDK_VERSION_SUFFIX }}
-        export JVMCI_VERSION=${{ env.JVMCI_VERSION }}
-        wget --no-verbose "https://github.com/graalvm/labs-openjdk-11/releases/download/${JVMCI_VERSION}/labsjdk-ce-${JDK_VERSION}${JDK_VERSION_SUFFIX}-${JVMCI_VERSION}-linux-amd64.tar.gz"
-        tar xf labsjdk-ce-${JDK_VERSION}${JDK_VERSION_SUFFIX}-${JVMCI_VERSION}-linux-amd64.tar.gz
-        labsjdk-ce-${JDK_VERSION}-${JVMCI_VERSION}/bin/java --version
+        mkdir jdk-dl
+        ${MX_PATH}/mx fetch-jdk --java-distribution labsjdk-ce-11 --to jdk-dl --alias ${JAVA_HOME}
     - name: Build graalvm native-image
       run: |
-        export JAVA_HOME=${GITHUB_WORKSPACE}/labsjdk-ce-${{ env.JDK_VERSION }}-${{ env.JVMCI_VERSION }}
         cd substratevm
-        ../../mx/mx --components="Native Image" build
-        mv $(../../mx/mx --components="Native Image" graalvm-home) ~/graaljdk
-        ~/graaljdk/bin/native-image --version
+        ${MX_PATH}/mx --native=native-image --components="Native Image" build
+        mv $(${MX_PATH}/mx --native=native-image --components="Native Image" graalvm-home) ${GRAALVM_HOME}
+        ${GRAALVM_HOME}/bin/native-image --version
     - name: Tar GraalVM
       shell: bash
-      run: tar -czvf graaljdk.tgz -C ~ graaljdk
+      run: tar -czvf graalvm.tgz -C $(dirname ${GRAALVM_HOME}) $(basename ${GRAALVM_HOME})
     - name: Persist GraalVM build
       uses: actions/upload-artifact@v1
       with:
-        name: graaljdk
-        path: graaljdk.tgz
+        name: graalvm
+        path: graalvm.tgz
     - name: Build quarkus
       run: |
-        export JAVA_HOME=${GITHUB_WORKSPACE}/labsjdk-ce-${{ env.JDK_VERSION }}-${{ env.JVMCI_VERSION }}
-        cd ${GITHUB_WORKSPACE}/quarkus
-        eval ./mvnw -e -B -DskipTests -DskipDocs clean install
+        cd ${QUARKUS_PATH}
+        eval ./mvnw -e -B -Dquickly
+    - name: Read json file with native-tests matrix
+      id: read
+      run: |
+        json=$(tr -d '\n' < ${QUARKUS_PATH}/.github/native-tests.json )
+        echo $json
+        echo "::set-output name=matrix::${json}"
     - name: Tar Maven Repo
       shell: bash
       run: tar -czvf maven-repo.tgz -C ~ .m2/repository
@@ -102,254 +104,25 @@ jobs:
     strategy:
       max-parallel: 8
       fail-fast: false
-      matrix:
-        category: [Main, Data1, Data2, Data3, Data4, Data5, Data6, Security1, Security2, Security3, Amazon, Messaging, Cache, HTTP, Misc1, Misc2, Misc3, Misc4, Spring, gRPC]
-        include:
-          - category: Main
-            postgres: "true"
-            timeout: 40
-            test-modules: main
-          - category: Data1
-            mariadb: "true"
-            mssql: "true"
-            timeout: 65
-            test-modules: >
-              jpa-h2
-              jpa-mariadb
-              jpa-mssql
-              jpa-derby
-              jpa-without-entity
-              hibernate-tenancy
-          - category: Data2
-            db2: "true"
-            mysql: "true"
-            mariadb: "true"
-            timeout: 65
-            test-modules: >
-              jpa
-              jpa-mysql
-              jpa-db2
-              reactive-mysql-client
-              reactive-db2-client
-              hibernate-reactive-db2
-              hibernate-reactive-mysql
-          - category: Data3
-            postgres: "true"
-            timeout: 70
-            test-modules: >
-              flyway
-              hibernate-orm-panache
-              hibernate-orm-panache-kotlin
-              hibernate-orm-envers
-              liquibase
-          - category: Data4
-            neo4j: "true"
-            redis: "true"
-            timeout: 55
-            test-modules: >
-              mongodb-client
-              mongodb-panache
-              redis-client
-              neo4j
-              hibernate-orm-rest-data-panache
-          - category: Data5
-            postgres: "true"
-            timeout: 65
-            test-modules: >
-              jpa-postgresql
-              narayana-stm
-              narayana-jta
-              reactive-pg-client
-              hibernate-reactive-postgresql
-          - category: Data6
-            postgres: "true"
-            elasticsearch: "true"
-            timeout: 40
-            test-modules: >
-              elasticsearch-rest-client
-              elasticsearch-rest-high-level-client
-              hibernate-search-elasticsearch
-          - category: Amazon
-            amazonServices: "true"
-            timeout: 45
-            test-modules: >
-              amazon-services
-              amazon-lambda
-              amazon-lambda-http
-          - category: Messaging
-            timeout: 75
-            test-modules: >
-              artemis-core
-              artemis-jms
-              kafka
-              kafka-streams
-              reactive-messaging-amqp
-          - category: Security1
-            timeout: 50
-            keycloak: "true"
-            test-modules: >
-              elytron-security-oauth2
-              elytron-security
-              elytron-security-jdbc
-              elytron-undertow
-              elytron-security-ldap
-          - category: Security2
-            timeout: 70
-            keycloak: "true"
-            test-modules: >
-              elytron-resteasy
-              oidc
-              oidc-code-flow
-              oidc-tenancy
-              keycloak-authorization
-          - category: Security3
-            timeout: 50
-            test-modules: >
-              vault
-              vault-app
-              vault-agroal
-          - category: Cache
-            timeout: 55
-            test-modules: >
-              infinispan-cache-jpa
-              infinispan-client
-              cache
-          - category: HTTP
-            timeout: 60
-            test-modules: >
-              resteasy-jackson
-              resteasy-mutiny
-              vertx
-              vertx-http
-              vertx-web
-              vertx-graphql
-              virtual-http
-              rest-client
-          - category: Misc1
-            timeout: 60
-            test-modules: >
-              maven
-              jackson
-              jsonb
-              jsch
-              jgit
-              quartz
-              qute
-              consul-config
-          - category: Misc2
-            timeout: 55
-            test-modules: >
-              tika
-              hibernate-validator
-              test-extension
-              logging-gelf
-              bootstrap-config
-          # kubernetes-client alone takes 30mn+
-          - category: Misc3
-            timeout: 60
-            test-modules: >
-              kubernetes-client
-          - category: Misc4
-            timeout: 30
-            test-modules: >
-              smallrye-graphql
-              picocli-native
-              gradle
-          - category: Spring
-            timeout: 50
-            test-modules: >
-              spring-di
-              spring-web
-              spring-data-jpa
-              spring-boot-properties
-              spring-cloud-config-client
-          - category: gRPC
-            timeout: 65
-            test-modules: >
-              grpc-health
-              grpc-interceptors
-              grpc-mutual-auth
-              grpc-plain-text
-              grpc-proto-v2
-              grpc-streaming
-              grpc-tls
+      matrix: ${{ fromJson(needs.build-quarkus-and-graalvm.outputs.matrix) }}
     steps:
-      # These should be services, but services do not (yet) allow conditional execution
-      - name: Postgres Service
-        run: |
-          docker run --rm --publish 5432:5432 --name build-postgres \
-          -e POSTGRES_USER=$DB_USER -e POSTGRES_PASSWORD=$DB_PASSWORD -e POSTGRES_DB=$DB_NAME \
-          -d postgres:10.5
-        if: matrix.postgres
-      - name: MySQL Service
-        run: |
-          sudo service mysql stop || true
-          docker run --rm --publish 3306:3306 --name build-mysql  \
-            -e MYSQL_USER=$DB_USER -e MYSQL_PASSWORD=$DB_PASSWORD -e MYSQL_DATABASE=$DB_NAME -e MYSQL_RANDOM_ROOT_PASSWORD=true \
-            -d mysql:5 --skip-ssl
-        if: matrix.mysql
-      - name: DB2 Service
-        run: |
-          docker run --rm --publish 50000:50000 --name build-db2 --privileged=true \
-            -e DB2INSTANCE=hreact -e DB2INST1_PASSWORD=hreact -e DBNAME=hreact -e LICENSE=accept -e AUTOCONFIG=false -e ARCHIVE_LOGS=false \
-            -d ibmcom/db2:11.5.0.0a
-        if: matrix.db2
-      - name: Maria DB Service
-        run: |
-          docker run --rm --publish 3308:3306 --name build-mariadb \
-            -e MYSQL_USER=$DB_USER -e MYSQL_PASSWORD=$DB_PASSWORD -e MYSQL_DATABASE=$DB_NAME -e MYSQL_ROOT_PASSWORD=secret \
-            -d mariadb:10.4
-        if: matrix.mariadb
-      - name: MS-SQL Service
-        run: |
-          docker run --rm --publish 1433:1433 --name build-mssql \
-            -e ACCEPT_EULA=Y -e SA_PASSWORD=ActuallyRequired11Complexity \
-            -d microsoft/mssql-server-linux:2017-CU13
-        if: matrix.mssql
-      - name: Amazon Services
-        run: |
-          docker run --rm --publish 8000:4569 --publish 8008:4572 --publish 8009:4575 --publish 8010:4576 --publish 8011:4599 --publish 8012:4566 --name build-amazon-service-clients -e SERVICES=s3,dynamodb,sns,sqs,kms,ses -e START_WEB=0 \
-            -d localstack/localstack:0.11.1
-        if: matrix.amazonServices
-      - name: Neo4j Service
-        run: |
-          docker run --rm --publish 7687:7687 --name build-neo4j \
-            -e NEO4J_AUTH=neo4j/secret -e NEO4J_dbms_memory_pagecache_size=10M -e NEO4J_dbms_memory_heap_initial__size=10M \
-            -d neo4j/neo4j-experimental:4.0.0-rc01
-        if: matrix.neo4j
-      - name: Redis Service
-        run: docker run --rm --publish 6379:6379 --name build-redis -d redis:5.0.8-alpine
-        if: matrix.redis
-      - name: Keycloak Service
-        run: |
-          docker run --rm --publish 8180:8080 --publish 8543:8443 --name build-keycloak \
-            -e KEYCLOAK_USER=admin -e KEYCLOAK_PASSWORD=admin -e JAVA_OPTS=" \
-              -server -Xms64m -Xmx512m -XX:MetaspaceSize=96M \
-              -XX:MaxMetaspaceSize=256m -Djava.net.preferIPv4Stack=true -Djava.awt.headless=true \
-              -Dkeycloak.profile.feature.upload_scripts=enabled" \
-            -d quay.io/keycloak/keycloak:11.0.0
-        if: matrix.keycloak
-      - name: Elasticsearch Service
-        run: |
-          docker run --rm --publish 9200:9200 --name build-elasticsearch \
-          -e discovery.type=single-node \
-          -d docker.elastic.co/elasticsearch/elasticsearch-oss:7.8.0
-        if: matrix.elasticsearch
       - name: Download GraalVM build
         uses: actions/download-artifact@v1
         with:
-          name: graaljdk
+          name: graalvm
           path: .
       - name: Extract GraalVM build
         shell: bash
-        run: tar -xzvf graaljdk.tgz -C ${GITHUB_WORKSPACE}
+        run: tar -xzvf graalvm.tgz -C $(dirname ${GRAALVM_HOME})
       - name: Get latest quarkus release
         run: |
-          curl --output quarkus.tgz -sL $(curl -sL https://api.github.com/repos/quarkusio/quarkus/releases/latest | jq -r .tarball_url)
-          mkdir ${GITHUB_WORKSPACE}/quarkus
-          tar xf quarkus.tgz -C ${GITHUB_WORKSPACE}/quarkus --strip-components=1
+          export QUARKUS_VERSION=$(curl https://repo1.maven.org/maven2/io/quarkus/quarkus-bom/maven-metadata.xml | awk -F"[<>]" '/latest/ {print $3}')
+          echo Getting Quarkus $QUARKUS_VERSION
+          curl --output quarkus.tgz -sL https://api.github.com/repos/quarkusio/quarkus/tarball/$QUARKUS_VERSION
+          mkdir ${QUARKUS_PATH}
+          tar xf quarkus.tgz -C ${QUARKUS_PATH} --strip-components=1
       - name: Reclaim Disk Space
-        run: ${GITHUB_WORKSPACE}/quarkus/.github/ci-prerequisites.sh
+        run: ${QUARKUS_PATH}/.github/ci-prerequisites.sh
       - name: Download Maven Repo
         uses: actions/download-artifact@v1
         with:
@@ -363,9 +136,8 @@ jobs:
           TEST_MODULES: ${{matrix.test-modules}}
           CATEGORY: ${{matrix.category}}
         run: |
-          cd ${GITHUB_WORKSPACE}/quarkus
-          export JAVA_HOME=${GITHUB_WORKSPACE}/graaljdk
-          export GRAALVM_HOME=${GITHUB_WORKSPACE}/graaljdk
+          cd ${QUARKUS_PATH}
+          export JAVA_HOME=${GRAALVM_HOME}
           ${GRAALVM_HOME}/bin/native-image --version
           for i in $TEST_MODULES
           do modules+=("integration-tests/$i"); done

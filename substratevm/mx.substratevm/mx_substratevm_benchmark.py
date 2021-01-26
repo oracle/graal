@@ -331,6 +331,10 @@ class BaseDaCapoNativeImageBenchmarkSuite():
         return deps
 
 
+# Note: If you wish to preserve the underlying benchmark stderr and stdout files after a run, you can pass the following argument: -preserve
+# This argument can be added to either:
+# 1. The agent stage: -Dnative-image.benchmark.extra-agent-run-arg=-preserve
+# 2. The image run stage: -Dnative-image.benchmark.extra-run-arg=-preserve
 _DACAPO_EXTRA_VM_ARGS = {
     'h2':         ['-Dnative-image.benchmark.extra-image-build-argument=--allow-incomplete-classpath'],
     'pmd':        ['-Dnative-image.benchmark.extra-image-build-argument=--allow-incomplete-classpath', '-Dnative-image.benchmark.skip-agent-assertions=true'],
@@ -338,7 +342,18 @@ _DACAPO_EXTRA_VM_ARGS = {
     # org.apache.crimson.parser.Parser2 is force initialized at build-time due to non-determinism in class initialization
     # order that can lead to runtime issues. See GR-26324.
     'xalan':      ['-Dnative-image.benchmark.extra-image-build-argument=--report-unsupported-elements-at-runtime', '-Dnative-image.benchmark.extra-image-build-argument=--initialize-at-build-time=org.apache.crimson.parser.Parser2'],
-    'fop':        ['-Dnative-image.benchmark.extra-image-build-argument=--allow-incomplete-classpath', '-Dnative-image.benchmark.skip-agent-assertions=true', '-Dnative-image.benchmark.extra-image-build-argument=--report-unsupported-elements-at-runtime'],
+    # There are two main issues with fop:
+    # 1. LoggingFeature is enabled by default, causing the LogManager configuration to be parsed at build-time. However, DaCapo Harness sets the logging config file path system property at runtime.
+    #    This causes us to incorrectly parse the default log configuration, leading to output on stderr.
+    # 2. Native-image picks a different service provider than the JVM for javax.xml.transform.TransformerFactory.
+    #    We can simply remove the jar containing that provider as it is not required for the benchmark to run.
+    'fop':        [
+                    '-Dnative-image.benchmark.skip-agent-assertions=true',
+                    '-Dnative-image.benchmark.extra-image-build-argument=--allow-incomplete-classpath',
+                    '-Dnative-image.benchmark.extra-image-build-argument=--report-unsupported-elements-at-runtime',
+                    '-Dnative-image.benchmark.extra-image-build-argument=-H:-EnableLoggingFeature',
+                    '-Dnative-image.benchmark.extra-image-build-argument=--initialize-at-run-time=org.apache.fop.render.rtf.rtflib.rtfdoc.RtfList'
+                  ],
     'batik':      ['-Dnative-image.benchmark.extra-image-build-argument=--allow-incomplete-classpath']
 }
 
@@ -398,7 +413,9 @@ _daCapo_iterations = {
 }
 
 _daCapo_exclude_lib = {
-    'h2'          : ['derbytools.jar', 'derbyclient.jar', 'derbynet.jar']  # multiple derby classes occurrences on the classpath can cause a security error
+    'h2'          : ['derbytools.jar', 'derbyclient.jar', 'derbynet.jar'],  # multiple derby classes occurrences on the classpath can cause a security error
+    'pmd'         : ['derbytools.jar', 'derbyclient.jar', 'derbynet.jar'],  # multiple derby classes occurrences on the classpath can cause a security error
+    'fop'         : ['saxon-9.1.0.8.jar', 'saxon-9.1.0.8-dom.jar'],  # Native-image picks the wrong service provider from these jars
 }
 
 class DaCapoNativeImageBenchmarkSuite(mx_java_benchmarks.DaCapoBenchmarkSuite, BaseDaCapoNativeImageBenchmarkSuite): #pylint: disable=too-many-ancestors

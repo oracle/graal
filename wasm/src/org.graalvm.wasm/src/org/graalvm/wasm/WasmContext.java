@@ -144,9 +144,8 @@ public final class WasmContext {
     }
 
     public WasmModule readModule(String moduleName, byte[] data, ModuleLimits moduleLimits) {
-        final WasmOptions.StoreConstantsPolicyEnum storeConstantsPolicy = WasmOptions.StoreConstantsPolicy.getValue(this.environment().getOptions());
-        final WasmModule module = new WasmModule(moduleName, data, storeConstantsPolicy);
-        final BinaryParser reader = new BinaryParser(language, module, moduleLimits);
+        final WasmModule module = new WasmModule(moduleName, data, moduleLimits);
+        final BinaryParser reader = new BinaryParser(language, module);
         reader.readModule();
         return module;
     }
@@ -155,7 +154,7 @@ public final class WasmContext {
         if (moduleInstances.containsKey(module.name())) {
             throw WasmException.create(Failure.UNSPECIFIED_INVALID, null, "Module " + module.name() + " is already instantiated in this context.");
         }
-        final WasmInstance instance = new WasmInstance(module, module.storeConstantsPolicy());
+        final WasmInstance instance = new WasmInstance(module);
         final BinaryParser reader = new BinaryParser(language, module);
         reader.readInstance(this, instance);
         this.register(instance);
@@ -170,6 +169,7 @@ public final class WasmContext {
         reader.resetGlobalState(this, instance);
         if (reinitMemory) {
             reader.resetMemoryState(this, instance);
+            reader.resetTableState(this, instance);
             final WasmFunction startFunction = instance.symbolTable().startFunction();
             if (startFunction != null) {
                 instance.target(startFunction.index()).call();

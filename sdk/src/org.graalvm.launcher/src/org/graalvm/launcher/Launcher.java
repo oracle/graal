@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2017, 2020, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2017, 2021, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -138,7 +138,7 @@ public abstract class Launcher {
     }
 
     protected Launcher() {
-        verbose = STATIC_VERBOSE || Boolean.valueOf(System.getenv("VERBOSE_GRAALVM_LAUNCHERS"));
+        verbose = STATIC_VERBOSE || Boolean.parseBoolean(System.getenv("VERBOSE_GRAALVM_LAUNCHERS"));
         if (IS_AOT) {
             nativeAccess = new Native();
         } else {
@@ -497,14 +497,14 @@ public abstract class Launcher {
         // no op, no additional help printed.
     }
 
-    private String executableName(String basename) {
+    private String[] executableNames(String basename) {
         switch (OS.current) {
             case Linux:
             case Darwin:
             case Solaris:
-                return basename;
+                return new String[]{basename};
             case Windows:
-                return basename + ".exe";
+                return new String[]{basename + ".exe", basename + ".cmd"};
             default:
                 throw abort("executableName: OS not supported: " + OS.current);
         }
@@ -578,16 +578,23 @@ public abstract class Launcher {
      * @return OS-dependent binary filename.
      */
     protected final Path getGraalVMBinaryPath(String binaryName) {
-        String executableName = executableName(binaryName);
+        String[] executableNames = executableNames(binaryName);
         Path graalVMHome = getGraalVMHome();
         if (graalVMHome == null) {
-            throw abort("Can not exec to GraalVM binary: could not find GraalVM home");
+            throw abort("Cannot exec to GraalVM binary: could not find GraalVM home");
         }
-        Path jdkBin = graalVMHome.resolve("bin").resolve(executableName);
-        if (Files.exists(jdkBin)) {
-            return jdkBin;
+        for (String executableName : executableNames) {
+            Path[] execPaths = new Path[]{
+                            graalVMHome.resolve("bin").resolve(executableName),
+                            graalVMHome.resolve("jre").resolve("bin").resolve(executableName)
+            };
+            for (Path execPath : execPaths) {
+                if (Files.exists(execPath)) {
+                    return execPath;
+                }
+            }
         }
-        return graalVMHome.resolve("jre").resolve("bin").resolve(executableName);
+        throw abort("Cannot exec to GraalVM binary: could not find a '" + binaryName + "' executable");
     }
 
     /**
@@ -1495,7 +1502,7 @@ public abstract class Launcher {
                 }
                 for (String entry : CLASSPATH.split(File.pathSeparator)) {
                     Path resolved = graalVMHome.resolve(entry);
-                    if (isVerbose() && !Files.exists(resolved)) {
+                    if (!entry.endsWith("*") && isVerbose() && !Files.exists(resolved)) {
                         warn("%s does not exist", resolved);
                     }
                     sb.append(resolved);

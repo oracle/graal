@@ -1,7 +1,7 @@
 suite = {
     "name": "vm",
-    "version" : "21.0.0",
-    "mxversion" : "5.256.0",
+    "version" : "21.1.0",
+    "mxversion" : "5.280.0",
     "release" : False,
     "groupId" : "org.graalvm",
 
@@ -39,7 +39,7 @@ suite = {
                 "name": "graal-nodejs",
                 "subdir": True,
                 "dynamic": True,
-                "version": "4b91b7ee013092aeb1f76e3203653705d9205e0d",
+                "version": "9cb60c5a0f7f4cf9f1769b90ad9e3125d1977b63",
                 "urls" : [
                     {"url" : "https://github.com/graalvm/graaljs.git", "kind" : "git"},
                     {"url": "https://curio.ssw.jku.at/nexus/content/repositories/snapshots", "kind": "binary"},
@@ -49,7 +49,7 @@ suite = {
                 "name": "graal-js",
                 "subdir": True,
                 "dynamic": True,
-                "version": "4b91b7ee013092aeb1f76e3203653705d9205e0d",
+                "version": "9cb60c5a0f7f4cf9f1769b90ad9e3125d1977b63",
                 "urls": [
                     {"url": "https://github.com/graalvm/graaljs.git", "kind" : "git"},
                     {"url": "https://curio.ssw.jku.at/nexus/content/repositories/snapshots", "kind": "binary"},
@@ -57,7 +57,7 @@ suite = {
             },
             {
                 "name": "truffleruby",
-                "version": "338b3d6d47eff820697fc5a3924f431336487102",
+                "version": "2378f646a3c0e96884273fc1a0f5f7d597d7a3bd",
                 "dynamic": True,
                 "urls": [
                     {"url": "https://github.com/oracle/truffleruby.git", "kind": "git"},
@@ -66,7 +66,7 @@ suite = {
             },
             {
                 "name": "fastr",
-                "version": "662fce9af8ecc5dcc0c3e3b58eca479f33e33dda",
+                "version": "369741e3972688cd782a7e57ddb5b23257f07315",
                 "dynamic": True,
                 "urls": [
                     {"url": "https://github.com/oracle/fastr.git", "kind": "git"},
@@ -75,7 +75,7 @@ suite = {
             },
             {
                 "name": "graalpython",
-                "version": "6f6484dec6576be9873b371457c504c439a5064c",
+                "version": "ff707d5332fc01e157e23b0ff50be41f44ac5270",
                 "dynamic": True,
                 "urls": [
                     {"url": "https://github.com/graalvm/graalpython.git", "kind": "git"},
@@ -94,6 +94,7 @@ suite = {
             "checkstyleVersion" : "8.8",
             "dependencies": [
                 "sdk:LAUNCHER_COMMON",
+                "truffle:TruffleJSON",
             ],
         },
         "org.graalvm.component.installer.test" : {
@@ -117,6 +118,23 @@ suite = {
                 "sdk:LAUNCHER_COMMON",
             ],
         },
+        "org.graalvm.polybench.jdk11" : {
+            "subDir" : "src",
+            "sourceDirs" : ["src"],
+            "dependencies" : [
+                "org.graalvm.polybench",
+            ],
+            "requires" : [
+                "java.logging",
+                "jdk.jfr",
+            ],
+            "javaCompliance" : "11+",
+            "license" : "GPLv2-CPE",
+            "checkstyle": "org.graalvm.component.installer",
+            "checkPackagePrefix" : "false",
+      		"overlayTarget" : "org.graalvm.polybench",
+      		"multiReleaseJarVersion" : "11",
+        },
     },
 
     "distributions": {
@@ -128,6 +146,9 @@ suite = {
             ],
             "distDependencies": [
                 "sdk:LAUNCHER_COMMON",
+            ],
+            "exclude" : [
+                "truffle:TruffleJSON"
             ],
             "maven" : False,
         },
@@ -172,6 +193,26 @@ suite = {
                 "sdk:LAUNCHER_COMMON",
             ],
             "maven" : False,
+        },
+        "POLYBENCH_BENCHMARKS": {
+            "native": True,
+            "description": "Distribution for polybench benchmarks",
+            # llvm bitcode is platform dependent
+            "platformDependent": True,
+            "layout": {
+                # The layout may be modified via mx_vm.mx_register_dynamic_suite_constituents() to include dynamic projects.
+                "./interpreter/": [
+                    "file:benchmarks/interpreter/*.js",
+                    "file:benchmarks/interpreter/*.rb",
+                ],
+                "./interpreter/dependencies/": [
+                    "file:benchmarks/interpreter/dependencies/*",
+                ],
+                "./compiler/": [
+                    "file:benchmarks/compiler/*",
+                ],
+            },
+            "defaultBuild": False,
         },
     },
 }

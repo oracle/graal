@@ -41,9 +41,8 @@
 package org.graalvm.wasm;
 
 import com.oracle.truffle.api.CallTarget;
+import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
-import org.graalvm.wasm.exception.Failure;
-import org.graalvm.wasm.exception.WasmException;
 import org.graalvm.wasm.memory.WasmMemory;
 
 /**
@@ -116,22 +115,29 @@ public class RuntimeState {
     private void checkNotLinked() {
         // The symbol table must be read-only after the module gets linked.
         if (linkState == Linker.LinkState.linked) {
-            throw WasmException.create(Failure.UNSPECIFIED_INVALID, "The engine tried to modify the instance after linking.");
+            throw CompilerDirectives.shouldNotReachHere("The engine tried to modify the instance after linking.");
         }
     }
 
     public void setLinkInProgress() {
         if (linkState != Linker.LinkState.nonLinked) {
-            throw WasmException.create(Failure.UNSPECIFIED_UNLINKABLE, "Can only switch to in-progress state when not linked.");
+            throw CompilerDirectives.shouldNotReachHere("Can only switch to in-progress state when not linked.");
         }
         this.linkState = Linker.LinkState.inProgress;
     }
 
     public void setLinkCompleted() {
         if (linkState != Linker.LinkState.inProgress) {
-            throw WasmException.create(Failure.UNSPECIFIED_UNLINKABLE, "Can only switch to linked state when linking is in-progress.");
+            throw CompilerDirectives.shouldNotReachHere("Can only switch to linked state when linking is in-progress.");
         }
         this.linkState = Linker.LinkState.linked;
+    }
+
+    public void setLinkFailed() {
+        if (linkState != Linker.LinkState.inProgress) {
+            throw CompilerDirectives.shouldNotReachHere("Can only switch to failed state when linking is in-progress.");
+        }
+        this.linkState = Linker.LinkState.failed;
     }
 
     public boolean isNonLinked() {
@@ -144,6 +150,10 @@ public class RuntimeState {
 
     public boolean isLinkCompleted() {
         return linkState == Linker.LinkState.linked;
+    }
+
+    public boolean isLinkFailed() {
+        return linkState == Linker.LinkState.failed;
     }
 
     public SymbolTable symbolTable() {
@@ -172,7 +182,9 @@ public class RuntimeState {
     }
 
     public int globalAddress(int index) {
-        return globalAddresses[index];
+        final int result = globalAddresses[index];
+        assert result != SymbolTable.UNINITIALIZED_GLOBAL_ADDRESS : "Uninitialized global at index: " + index;
+        return result;
     }
 
     void setGlobalAddress(int globalIndex, int address) {

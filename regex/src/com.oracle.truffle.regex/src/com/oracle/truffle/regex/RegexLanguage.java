@@ -42,30 +42,66 @@ package com.oracle.truffle.regex;
 
 import com.oracle.truffle.api.CallTarget;
 import com.oracle.truffle.api.CompilerDirectives;
+import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
 import com.oracle.truffle.api.Truffle;
 import com.oracle.truffle.api.TruffleLanguage;
+import com.oracle.truffle.api.exception.AbstractTruffleException;
 import com.oracle.truffle.api.instrumentation.ProvidedTags;
 import com.oracle.truffle.api.instrumentation.StandardTags;
+import com.oracle.truffle.api.interop.ExceptionType;
 import com.oracle.truffle.api.nodes.RootNode;
+import com.oracle.truffle.api.source.Source;
+import com.oracle.truffle.regex.tregex.TRegexCompiler;
+import com.oracle.truffle.regex.tregex.nfa.PureNFAIndex;
+import com.oracle.truffle.regex.tregex.parser.RegexParserGlobals;
+import com.oracle.truffle.regex.tregex.parser.RegexValidator;
+import com.oracle.truffle.regex.tregex.parser.ast.GroupBoundaries;
+import com.oracle.truffle.regex.tregex.parser.flavors.RegexFlavor;
+import com.oracle.truffle.regex.tregex.parser.flavors.RegexFlavorProcessor;
+import com.oracle.truffle.regex.tregex.string.Encodings;
+import com.oracle.truffle.regex.util.TruffleNull;
 
 /**
  * Truffle Regular Expression Language
  * <p>
- * This language represents classic regular expressions. By evaluating any source, you get access to
- * the {@link RegexEngineBuilder}. By calling this builder, you can build your custom
- * {@link RegexEngine} which implements your flavor of regular expressions and uses your fallback
- * compiler for expressions not covered. The {@link RegexEngine} accepts regular expression patterns
- * and flags and compiles them to {@link RegexObject}s, which you can use to match the regular
- * expressions against strings.
+ * This language represents classic regular expressions. It accepts regular expressions in the
+ * following format: {@code options/regex/flags}, where {@code options} is a comma-separated list of
+ * key-value pairs which affect how the regex is interpreted (see {@link RegexOptions}), and
+ * {@code /regex/flags} is equivalent to the popular regular expression literal format found in e.g.
+ * JavaScript or Ruby.
  * <p>
+ * When parsing a regular expression, TRegex will return a {@link CallTarget}, which, when called,
+ * will yield one of the following results:
+ * <ul>
+ * <li>a {@link TruffleNull} object, indicating that TRegex cannot handle the given regex</li>
+ * <li>a {@link RegexObject}, which can be used to match the given regex</li>
+ * <li>a {@link RegexSyntaxException} may be thrown to indicate a syntax error. This exception is an
+ * {@link AbstractTruffleException} with exception type {@link ExceptionType#PARSE_ERROR}.</li>
+ * </ul>
  *
+ * An example of how to parse a regular expression:
+ * 
  * <pre>
- * Usage example in pseudocode:
- * {@code
- * engineBuilder = <eval any source in the "regex" language>
- * engine = engineBuilder("Flavor=ECMAScript", optionalFallbackCompiler)
+ * Object regex;
+ * try {
+ *     regex = getContext().getEnv().parseInternal(Source.newBuilder("regex", "Flavor=ECMAScript/(a|(b))c/i", "myRegex").mimeType("application/tregex").internal(true).build()).call();
+ * } catch (AbstractTruffleException e) {
+ *     if (InteropLibrary.getUncached().getExceptionType(e) == ExceptionType.PARSE_ERROR) {
+ *         // handle parser error
+ *     } else {
+ *         // fatal error, this should never happen
+ *     }
+ * }
+ * if (InteropLibrary.getUncached().isNull(regex)) {
+ *     // regex is not supported by TRegex, fall back to a different regex engine
+ * }
+ * </pre>
  *
- * regex = engine("(a|(b))c", "i")
+ * Regex matcher usage example in pseudocode:
+ * 
+ * <pre>
+ * {@code
+ * regex = <matcher from previous example>
  * assert(regex.pattern == "(a|(b))c")
  * assert(regex.flags.ignoreCase == true)
  * assert(regex.groupCount == 3)
@@ -81,8 +117,10 @@ import com.oracle.truffle.api.nodes.RootNode;
  * // result2.getStart(...) and result2.getEnd(...) are undefined
  * }
  * </pre>
+ *
+ * @see RegexOptions
+ * @see RegexObject
  */
-
 @TruffleLanguage.Registration(name = RegexLanguage.NAME, id = RegexLanguage.ID, characterMimeTypes = RegexLanguage.MIME_TYPE, version = "0.1", contextPolicy = TruffleLanguage.ContextPolicy.SHARED, internal = true, interactive = false)
 @ProvidedTags(StandardTags.RootTag.class)
 public final class RegexLanguage extends TruffleLanguage<RegexLanguage.RegexContext> {
@@ -91,16 +129,68 @@ public final class RegexLanguage extends TruffleLanguage<RegexLanguage.RegexCont
     public static final String ID = "regex";
     public static final String MIME_TYPE = "application/tregex";
 
-    public final RegexEngineBuilder engineBuilder = new RegexEngineBuilder(this);
+    private final GroupBoundaries[] cachedGroupBoundaries;
+    public final RegexParserGlobals parserGlobals;
+    public final PureNFAIndex emptyNFAIndex;
+
+    public RegexLanguage() {
+        this.cachedGroupBoundaries = GroupBoundaries.createCachedGroupBoundaries();
+        this.parserGlobals = new RegexParserGlobals(this);
+        this.emptyNFAIndex = new PureNFAIndex(0);
+    }
+
+    public GroupBoundaries[] getCachedGroupBoundaries() {
+        return cachedGroupBoundaries;
+    }
 
     @Override
     protected CallTarget parse(ParsingRequest parsingRequest) {
-        return getCurrentContext().getEngineBuilderCT;
+        return Truffle.getRuntime().createCallTarget(RootNode.createConstantNode(createRegexObject(createRegexSource(parsingRequest.getSource()))));
+    }
+
+    private static RegexSource createRegexSource(Source source) {
+        String srcStr = source.getCharacters().toString();
+        if (srcStr.length() < 2) {
+            throw CompilerDirectives.shouldNotReachHere("malformed regex");
+        }
+        RegexOptions.Builder optBuilder = RegexOptions.builder(source, srcStr);
+        int firstSlash = optBuilder.parseOptions();
+        int lastSlash = srcStr.lastIndexOf('/');
+        assert firstSlash >= 0 && firstSlash <= srcStr.length();
+        if (lastSlash <= firstSlash) {
+            throw CompilerDirectives.shouldNotReachHere("malformed regex");
+        }
+        String pattern = srcStr.substring(firstSlash + 1, lastSlash);
+        String flags = srcStr.substring(lastSlash + 1);
+        // ECMAScript-specific: the 'u' flag changes the encoding
+        if (optBuilder.getFlavor() == null && !optBuilder.isUtf16ExplodeAstralSymbols() && optBuilder.getEncoding() == Encodings.UTF_16_RAW && flags.indexOf('u') >= 0) {
+            optBuilder.encoding(Encodings.UTF_16);
+        }
+        return new RegexSource(pattern, flags, optBuilder.build(), source);
+    }
+
+    private Object createRegexObject(RegexSource source) {
+        if (source.getOptions().isValidate()) {
+            RegexFlavor flavor = source.getOptions().getFlavor();
+            if (flavor != null) {
+                RegexFlavorProcessor flavorProcessor = flavor.forRegex(source);
+                flavorProcessor.validate();
+            } else {
+                RegexValidator validator = new RegexValidator(source);
+                validator.validate();
+            }
+            return TruffleNull.INSTANCE;
+        }
+        try {
+            return TRegexCompiler.compile(this, source);
+        } catch (UnsupportedRegexException e) {
+            return TruffleNull.INSTANCE;
+        }
     }
 
     @Override
     protected RegexContext createContext(Env env) {
-        return new RegexContext(env, engineBuilder);
+        return new RegexContext(env);
     }
 
     @Override
@@ -117,8 +207,8 @@ public final class RegexLanguage extends TruffleLanguage<RegexLanguage.RegexCont
     /**
      * {@link RegexLanguage} is thread-safe - it supports parallel parsing requests as well as
      * parallel access to all {@link AbstractRegexObject}s. Parallel access to
-     * {@link com.oracle.truffle.regex.result.LazyCaptureGroupsResult} objects may lead to duplicate
-     * execution of code, but no wrong results.
+     * {@link com.oracle.truffle.regex.result.LazyResult}s objects may lead to duplicate execution
+     * of code, but no wrong results.
      *
      * @param thread the thread that accesses the context for the first time.
      * @param singleThreaded {@code true} if the access is considered single-threaded, {@code false}
@@ -135,12 +225,11 @@ public final class RegexLanguage extends TruffleLanguage<RegexLanguage.RegexCont
     }
 
     public static final class RegexContext {
-        @CompilerDirectives.CompilationFinal private Env env;
-        private final CallTarget getEngineBuilderCT;
 
-        RegexContext(Env env, RegexEngineBuilder builder) {
+        @CompilationFinal private Env env;
+
+        RegexContext(Env env) {
             this.env = env;
-            getEngineBuilderCT = Truffle.getRuntime().createCallTarget(RootNode.createConstantNode(builder));
         }
 
         void patchContext(Env patchedEnv) {

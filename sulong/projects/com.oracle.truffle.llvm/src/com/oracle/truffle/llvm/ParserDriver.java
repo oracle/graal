@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2017, 2020, Oracle and/or its affiliates.
+ * Copyright (c) 2017, 2021, Oracle and/or its affiliates.
  *
  * All rights reserved.
  *
@@ -30,9 +30,9 @@
 package com.oracle.truffle.llvm;
 
 import com.oracle.truffle.api.CallTarget;
-import com.oracle.truffle.api.CompilerDirectives;
-import com.oracle.truffle.api.Truffle;
+import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.TruffleFile;
+import com.oracle.truffle.api.TruffleLanguage;
 import com.oracle.truffle.api.frame.FrameDescriptor;
 import com.oracle.truffle.api.nodes.RootNode;
 import com.oracle.truffle.api.source.Source;
@@ -59,11 +59,12 @@ import com.oracle.truffle.llvm.runtime.LLVMFunctionCode;
 import com.oracle.truffle.llvm.runtime.LLVMLanguage;
 import com.oracle.truffle.llvm.runtime.LLVMScope;
 import com.oracle.truffle.llvm.runtime.LibraryLocator;
-import com.oracle.truffle.llvm.runtime.NFIContextExtension;
+import com.oracle.truffle.llvm.runtime.NativeContextExtension;
 import com.oracle.truffle.llvm.runtime.NodeFactory;
 import com.oracle.truffle.llvm.runtime.PlatformCapability;
 import com.oracle.truffle.llvm.runtime.datalayout.DataLayout;
 import com.oracle.truffle.llvm.runtime.debug.LLVMSourceContext;
+import com.oracle.truffle.llvm.runtime.debug.scope.LLVMSourceFileReference;
 import com.oracle.truffle.llvm.runtime.debug.value.LLVMDebugObjectBuilder;
 import com.oracle.truffle.llvm.runtime.except.LLVMLinkerException;
 import com.oracle.truffle.llvm.runtime.except.LLVMParserException;
@@ -80,6 +81,7 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.ListIterator;
 import java.util.concurrent.atomic.AtomicInteger;
+import java.util.stream.Collectors;
 
 /**
  * Drives a parsing request.
@@ -145,9 +147,9 @@ final class ParserDriver {
             TruffleFile file = createNativeTruffleFile(source.getName(), source.getPath());
             // An empty call target is returned for native libraries.
             if (file == null) {
-                return Truffle.getRuntime().createCallTarget(RootNode.createConstantNode(0));
+                return LLVMLanguage.createCallTarget(RootNode.createConstantNode(0));
             }
-            return createNativeLibraryCallTarget(source.getName(), file);
+            return createNativeLibraryCallTarget(file);
         }
         // ensures the library of the source is not native
         if (context.isInternalLibraryFile(result.getRuntime().getFile())) {
@@ -164,10 +166,10 @@ final class ParserDriver {
         return createLibraryCallTarget(source.getName(), result, source);
     }
 
-    @CompilerDirectives.TruffleBoundary
+    @TruffleBoundary
     private TruffleFile createNativeTruffleFile(String libName, String libPath) {
-        NFIContextExtension nfiContextExtension = context.getContextExtensionOrNull(NFIContextExtension.class);
-        if (nfiContextExtension != null) {
+        NativeContextExtension nativeContextExtension = context.getContextExtensionOrNull(NativeContextExtension.class);
+        if (nativeContextExtension != null) {
             TruffleFile file = DefaultLibraryLocator.INSTANCE.locate(context, libName, "<native library>");
             if (file == null) {
                 // Unable to locate the library -> will go to native
@@ -343,20 +345,39 @@ final class ParserDriver {
         NodeFactory nodeFactory = context.getLanguage().getActiveConfiguration().createNodeFactory(language, targetDataLayout);
         LLVMScope fileScope = new LLVMScope();
         int bitcodeID = nextFreeBitcodeID.getAndIncrement();
-        LLVMParserRuntime runtime = new LLVMParserRuntime(fileScope, nodeFactory, bitcodeID, file, source.getName());
+        LLVMParserRuntime runtime = new LLVMParserRuntime(fileScope, nodeFactory, bitcodeID, file, source.getName(), getSourceFilesWithChecksums(context.getEnv(), module));
         LLVMParser parser = new LLVMParser(source, runtime);
         LLVMParserResult result = parser.parse(module, targetDataLayout);
         createDebugInfo(module, new LLVMSymbolReadResolver(runtime, new FrameDescriptor(), GetStackSpaceFactory.createAllocaFactory(), targetDataLayout, false));
         return result;
     }
 
+    private static List<LLVMSourceFileReference> getSourceFilesWithChecksums(TruffleLanguage.Env env, ModelModule module) {
+        if (SulongEngineOption.shouldVerifyCompileUnitChecksums(env)) {
+            List<LLVMSourceFileReference> sourceWithChecksum = module.getSourceFileReferences().stream().filter(f -> f.getChecksumKind() != LLVMSourceFileReference.ChecksumKind.CSK_None).collect(
+                            Collectors.toList());
+            if (!sourceWithChecksum.isEmpty()) {
+                return sourceWithChecksum;
+            }
+        }
+        return null;
+    }
+
     private void createDebugInfo(ModelModule model, LLVMSymbolReadResolver symbolResolver) {
         final LLVMSourceContext sourceContext = context.getSourceContext();
 
         model.getSourceGlobals().forEach((symbol, irValue) -> {
-            final LLVMExpressionNode node = symbolResolver.resolve(irValue);
-            final LLVMDebugObjectBuilder value = CommonNodeFactory.createDebugStaticValue(node, irValue instanceof GlobalVariable);
-            sourceContext.registerStatic(symbol, value);
+            try {
+                final LLVMExpressionNode node = symbolResolver.resolve(irValue);
+                final LLVMDebugObjectBuilder value = CommonNodeFactory.createDebugStaticValue(node, irValue instanceof GlobalVariable);
+                sourceContext.registerStatic(symbol, value);
+            } catch (IllegalStateException e) {
+                /*
+                 * Cannot resolve symbol for global. Some optimization replace an unused global with
+                 * an (unresolved) external to avoid initialization. The external still has debug
+                 * info but cannot be resolved. We can safely ignore this here.
+                 */
+            }
         });
 
         model.getSourceStaticMembers().forEach(((type, symbol) -> {
@@ -439,7 +460,7 @@ final class ParserDriver {
                 if (nativeFile == null) {
                     return null;
                 }
-                return createNativeLibraryCallTarget(libName, nativeFile);
+                return createNativeLibraryCallTarget(nativeFile);
             }
         }
 
@@ -486,28 +507,27 @@ final class ParserDriver {
      */
     private CallTarget createLibraryCallTarget(String name, LLVMParserResult parserResult, Source source) {
         if (context.getEnv().getOptions().get(SulongEngineOption.PARSE_ONLY)) {
-            return Truffle.getRuntime().createCallTarget(RootNode.createConstantNode(0));
+            return LLVMLanguage.createCallTarget(RootNode.createConstantNode(0));
         } else {
             // check if the functions should be resolved eagerly or lazily.
             boolean lazyParsing = context.getEnv().getOptions().get(SulongEngineOption.LAZY_PARSING);
             LoadModulesNode loadModules = LoadModulesNode.create(name, parserResult, lazyParsing, context.isInternalLibraryFile(parserResult.getRuntime().getFile()), dependencies, source, language);
-            return Truffle.getRuntime().createCallTarget(loadModules);
+            return LLVMLanguage.createCallTarget(loadModules);
         }
     }
 
     /**
      * Creates the call target of the load native module node, which initialise the native library.
      *
-     * @param name the name of the library
      * @return the call target for initialising the library.
      */
-    private CallTarget createNativeLibraryCallTarget(String name, TruffleFile file) {
+    private CallTarget createNativeLibraryCallTarget(TruffleFile file) {
         if (context.getEnv().getOptions().get(SulongEngineOption.PARSE_ONLY)) {
-            return Truffle.getRuntime().createCallTarget(RootNode.createConstantNode(0));
+            return LLVMLanguage.createCallTarget(RootNode.createConstantNode(0));
         } else {
             // check if the functions should be resolved eagerly or lazyly.
-            LoadNativeNode loadNative = LoadNativeNode.create(name, new FrameDescriptor(), language, file);
-            return Truffle.getRuntime().createCallTarget(loadNative);
+            LoadNativeNode loadNative = LoadNativeNode.create(new FrameDescriptor(), language, file);
+            return LLVMLanguage.createCallTarget(loadNative);
         }
     }
 }

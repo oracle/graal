@@ -121,10 +121,9 @@ public class AArch64HotSpotBackend extends HotSpotHostBackend implements LIRGene
     @Override
     protected void bangStackWithOffset(CompilationResultBuilder crb, int bangOffset) {
         AArch64MacroAssembler masm = (AArch64MacroAssembler) crb.asm;
-        boolean allowOverwrite = false;
         try (ScratchRegister sc = masm.getScratchRegister()) {
             Register scratch = sc.getRegister();
-            AArch64Address address = masm.makeAddress(sp, -bangOffset, scratch, 8, allowOverwrite);
+            AArch64Address address = masm.makeAddress(64, sp, -bangOffset, scratch);
             masm.str(64, zr, address);
         }
     }
@@ -189,19 +188,16 @@ public class AArch64HotSpotBackend extends HotSpotHostBackend implements LIRGene
 
             try (ScratchRegister sc = masm.getScratchRegister()) {
                 int wordSize = 8;
-                Register rscratch1 = sc.getRegister();
+                Register scratch = sc.getRegister();
                 assert totalFrameSize > 0;
-                if (frameSize < 1 << 9) {
+                AArch64Address.AddressingMode addressingMode = AArch64Address.AddressingMode.IMMEDIATE_PAIR_SIGNED_SCALED;
+                if (AArch64Address.isValidImmediateAddress(64, addressingMode, frameSize)) {
                     masm.sub(64, sp, sp, totalFrameSize);
-                    masm.stp(64, fp, lr, AArch64Address.createImmediateAddress(64, AArch64Address.AddressingMode.IMMEDIATE_PAIR_SIGNED_SCALED, sp, frameSize));
+                    masm.stp(64, fp, lr, AArch64Address.createImmediateAddress(64, addressingMode, sp, frameSize));
                 } else {
-                    masm.stp(64, fp, lr, AArch64Address.createImmediateAddress(64, AArch64Address.AddressingMode.IMMEDIATE_PAIR_PRE_INDEXED, sp, -2 * wordSize));
-                    if (frameSize < 1 << 12) {
-                        masm.sub(64, sp, sp, totalFrameSize - 2 * wordSize);
-                    } else {
-                        masm.mov(rscratch1, totalFrameSize - 2 * wordSize);
-                        masm.sub(64, sp, sp, rscratch1);
-                    }
+                    int frameRecordSize = 2 * wordSize;
+                    masm.stp(64, fp, lr, AArch64Address.createImmediateAddress(64, AArch64Address.AddressingMode.IMMEDIATE_PAIR_PRE_INDEXED, sp, -frameRecordSize));
+                    masm.sub(64, sp, sp, totalFrameSize - frameRecordSize, scratch);
                 }
             }
             if (HotSpotMarkId.FRAME_COMPLETE.isAvailable()) {
@@ -235,20 +231,17 @@ public class AArch64HotSpotBackend extends HotSpotHostBackend implements LIRGene
             crb.blockComment("[method epilogue]");
             try (ScratchRegister sc = masm.getScratchRegister()) {
                 int wordSize = 8;
-                Register rscratch1 = sc.getRegister();
+                Register scratch = sc.getRegister();
                 final int frameSize = frameMap.frameSize();
                 assert totalFrameSize > 0;
-                if (frameSize < 1 << 9) {
-                    masm.ldp(64, fp, lr, AArch64Address.createImmediateAddress(64, AArch64Address.AddressingMode.IMMEDIATE_PAIR_SIGNED_SCALED, sp, frameSize));
+                AArch64Address.AddressingMode addressingMode = AArch64Address.AddressingMode.IMMEDIATE_PAIR_SIGNED_SCALED;
+                if (AArch64Address.isValidImmediateAddress(64, addressingMode, frameSize)) {
+                    masm.ldp(64, fp, lr, AArch64Address.createImmediateAddress(64, addressingMode, sp, frameSize));
                     masm.add(64, sp, sp, totalFrameSize);
                 } else {
-                    if (frameSize < 1 << 12) {
-                        masm.add(64, sp, sp, totalFrameSize - 2 * wordSize);
-                    } else {
-                        masm.mov(rscratch1, totalFrameSize - 2 * wordSize);
-                        masm.add(64, sp, sp, rscratch1);
-                    }
-                    masm.ldp(64, fp, lr, AArch64Address.createImmediateAddress(64, AArch64Address.AddressingMode.IMMEDIATE_PAIR_POST_INDEXED, sp, 2 * wordSize));
+                    int frameRecordSize = 2 * wordSize;
+                    masm.add(64, sp, sp, totalFrameSize - frameRecordSize, scratch);
+                    masm.ldp(64, fp, lr, AArch64Address.createImmediateAddress(64, AArch64Address.AddressingMode.IMMEDIATE_PAIR_POST_INDEXED, sp, frameRecordSize));
                 }
             }
 
@@ -327,8 +320,8 @@ public class AArch64HotSpotBackend extends HotSpotHostBackend implements LIRGene
             // equal to scratch(1) careful!
             Register inlineCacheKlass = AArch64HotSpotRegisterConfig.inlineCacheRegister;
             Register receiver = asRegister(cc.getArgument(0));
-            int transferSize = config.useCompressedClassPointers ? 4 : 8;
-            AArch64Address klassAddress = masm.makeAddress(receiver, config.hubOffset, transferSize);
+            int size = config.useCompressedClassPointers ? 32 : 64;
+            AArch64Address klassAddress = masm.makeAddress(size, receiver, config.hubOffset);
 
             // Are r10 and r11 available scratch registers here? One would hope so.
             Register klass = r10;

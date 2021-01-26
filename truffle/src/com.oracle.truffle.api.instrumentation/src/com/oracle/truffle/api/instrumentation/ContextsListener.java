@@ -69,6 +69,16 @@ public interface ContextsListener {
     void onContextCreated(TruffleContext context);
 
     /**
+     * Notifies before creation of a language-specific context in an existing polyglot context.
+     *
+     * @param context the polyglot context
+     * @param language the language for which a language-specific context is being created
+     * @since 21.1
+     */
+    default void onLanguageContextCreate(TruffleContext context, LanguageInfo language) {
+    }
+
+    /**
      * Notifies about creation of a language-specific context in an existing polyglot context.
      *
      * @param context the polyglot context
@@ -78,6 +88,28 @@ public interface ContextsListener {
     void onLanguageContextCreated(TruffleContext context, LanguageInfo language);
 
     /**
+     * Notifies after failed creation of a language-specific context in an existing polyglot
+     * context.
+     *
+     * @param context the polyglot context
+     * @param language the language for which a language-specific context creation failed
+     * @since 21.1
+     */
+    default void onLanguageContextCreateFailed(TruffleContext context, LanguageInfo language) {
+    }
+
+    /**
+     * Notifies before initialization of a language-specific context in an existing polyglot
+     * context.
+     *
+     * @param context the polyglot context
+     * @param language the language for which a language-specific context is being initialized
+     * @since 21.1
+     */
+    default void onLanguageContextInitialize(TruffleContext context, LanguageInfo language) {
+    }
+
+    /**
      * Notifies about initialization of a language-specific context in an existing polyglot context.
      *
      * @param context the polyglot context
@@ -85,6 +117,17 @@ public interface ContextsListener {
      * @since 0.30
      */
     void onLanguageContextInitialized(TruffleContext context, LanguageInfo language);
+
+    /**
+     * Notifies after failed initialization of a language-specific context in an existing polyglot
+     * context.
+     *
+     * @param context the polyglot context
+     * @param language the language for which a language-specific context initialization failed
+     * @since 21.1
+     */
+    default void onLanguageContextInitializeFailed(TruffleContext context, LanguageInfo language) {
+    }
 
     /**
      * Notifies about finalization of a language-specific context in an existing polyglot context.

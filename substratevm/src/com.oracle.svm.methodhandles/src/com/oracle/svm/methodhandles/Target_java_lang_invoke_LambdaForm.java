@@ -25,20 +25,11 @@
 package com.oracle.svm.methodhandles;
 
 import com.oracle.svm.core.annotate.Alias;
-import com.oracle.svm.core.annotate.RecomputeFieldValue;
 import com.oracle.svm.core.annotate.Substitute;
 import com.oracle.svm.core.annotate.TargetClass;
 
-import jdk.vm.ci.meta.MetaAccessProvider;
-import jdk.vm.ci.meta.ResolvedJavaField;
-
 @TargetClass(className = "java.lang.invoke.LambdaForm", onlyWith = MethodHandlesSupported.class)
 public final class Target_java_lang_invoke_LambdaForm {
-    /*
-     * Setting this value to -1 forces interpretation of method handles instead of compiling them to
-     * bytecode at runtime.
-     */
-    @Alias @RecomputeFieldValue(kind = RecomputeFieldValue.Kind.Custom, declClass = LambdaFormInvocationCounterComputer.class) private int invocationCounter;
 
     @Alias Target_java_lang_invoke_MemberName vmentry;
 
@@ -47,25 +38,39 @@ public final class Target_java_lang_invoke_LambdaForm {
 
     @Substitute
     void compileToBytecode() {
-        if (lambdaName().equals("invoke")) {
-            return;
-        }
-
         /*
          * Those lambda form types are required to be precompiled to bytecode during method handles
-         * bootstrapping. They are only used during interpretation of lambda forms however, so we
-         * simply emit a dummy MemberName for now.
+         * bootstrapping to avoid a cyclic dependency. No further initialization is required since
+         * these forms are executed as intrinsics (@see MethodHandleIntrinsic)
          */
         if (lambdaName().equals("zero") || lambdaName().equals("identity")) {
             vmentry = new Target_java_lang_invoke_MemberName();
         }
     }
+
+    /*
+     * We do not want invokers for lambda forms to be generated at runtime.
+     */
+    @Substitute
+    @SuppressWarnings("static-method")
+    private boolean forceInterpretation() {
+        return true;
+    }
+
+    @Alias
+    native Object interpretWithArguments(Object... argumentValues) throws Throwable;
 }
 
-final class LambdaFormInvocationCounterComputer implements RecomputeFieldValue.CustomFieldValueComputer {
+@TargetClass(className = "java.lang.invoke.LambdaForm", innerClass = "NamedFunction", onlyWith = MethodHandlesSupported.class)
+final class Target_java_lang_invoke_LambdaForm_NamedFunction {
+    @Alias
+    native Target_java_lang_invoke_MethodHandle resolvedHandle();
 
-    @Override
-    public Object compute(MetaAccessProvider metaAccess, ResolvedJavaField original, ResolvedJavaField annotated, Object receiver) {
-        return -1;
+    /*
+     * Avoid triggering the generation of an optimized invoker.
+     */
+    @Substitute
+    Object invokeWithArguments(Object... arguments) throws Throwable {
+        return resolvedHandle().invokeBasic(arguments);
     }
 }

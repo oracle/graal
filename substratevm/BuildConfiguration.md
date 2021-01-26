@@ -48,6 +48,7 @@ Other options that are known to work in this context are:
 * `-H:ReflectionConfigurationResources`
 * `-H:ResourceConfigurationResources`
 * `-H:SubstitutionResources`
+* `-H:SerializationConfigurationResources`
 
 By having such a composable _native-image.properties_ file, building an image
 does not require any additional arguments specified on command line. It is

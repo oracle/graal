@@ -140,6 +140,17 @@ extern "C" void flipPoint(void *value) {
     point->y = tmp;
 }
 
+extern "C" polyglot_typeid getPointType() {
+    return polyglot_Point_typeid();
+}
+
+extern "C" void flipPointDynamic(void *value, polyglot_typeid typeId) {
+    struct Point *point = (struct Point *) polyglot_as_typed(value, typeId);
+    int tmp = point->x;
+    point->x = point->y;
+    point->y = tmp;
+}
+
 extern "C" int sumPoints(void *pointArray) {
     int sum = 0;
 

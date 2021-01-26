@@ -40,6 +40,7 @@
  */
 package com.oracle.truffle.regex.tregex.test;
 
+import com.oracle.truffle.regex.errors.PyErrorMessages;
 import org.graalvm.polyglot.PolyglotException;
 import org.junit.Assert;
 import org.junit.Test;
@@ -81,5 +82,10 @@ public class PythonTests extends RegexTestBase {
             return;
         }
         Assert.fail();
+    }
+
+    @Test
+    public void gr28787() {
+        expectSyntaxError("\\", "", PyErrorMessages.BAD_ESCAPE_END_OF_PATTERN);
     }
 }

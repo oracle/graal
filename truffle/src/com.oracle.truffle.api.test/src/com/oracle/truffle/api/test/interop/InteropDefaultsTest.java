@@ -42,16 +42,6 @@ package com.oracle.truffle.api.test.interop;
 
 import com.oracle.truffle.api.exception.AbstractTruffleException;
 import com.oracle.truffle.api.interop.ExceptionType;
-import static org.junit.Assert.assertEquals;
-import static org.junit.Assert.assertSame;
-import static org.junit.Assert.assertFalse;
-import static org.junit.Assert.assertTrue;
-
-import java.util.concurrent.atomic.AtomicBoolean;
-
-import org.graalvm.polyglot.Context;
-import org.junit.Test;
-
 import com.oracle.truffle.api.interop.InteropException;
 import com.oracle.truffle.api.interop.InteropLibrary;
 import com.oracle.truffle.api.interop.TruffleObject;
@@ -60,6 +50,15 @@ import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.api.source.Source;
 import com.oracle.truffle.api.source.SourceSection;
 import com.oracle.truffle.api.test.polyglot.ProxyLanguage;
+import org.graalvm.polyglot.Context;
+import org.junit.Test;
+
+import java.util.concurrent.atomic.AtomicBoolean;
+
+import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertFalse;
+import static org.junit.Assert.assertSame;
+import static org.junit.Assert.assertTrue;
 
 @SuppressWarnings("deprecation")
 public class InteropDefaultsTest extends InteropLibraryBaseTest {
@@ -83,6 +82,7 @@ public class InteropDefaultsTest extends InteropLibraryBaseTest {
         assertNotNull(v);
         assertNoObject(v);
         assertNoArray(v);
+        assertNoBuffer(v);
         assertNoString(v);
         assertNoNumber(v);
         assertNoNative(v);
@@ -229,6 +229,7 @@ public class InteropDefaultsTest extends InteropLibraryBaseTest {
         assertNotNull(v);
         assertNoObject(v);
         assertNoArray(v);
+        assertNoBuffer(v);
         // assert string
         assertNoNumber(v);
         assertNoNative(v);
@@ -297,6 +298,7 @@ public class InteropDefaultsTest extends InteropLibraryBaseTest {
         assertNotNull(v);
         assertNoObject(v);
         assertNoArray(v);
+        assertNoBuffer(v);
         assertNoString(v);
         // assert number
         assertNoNative(v);
@@ -406,6 +408,7 @@ public class InteropDefaultsTest extends InteropLibraryBaseTest {
         assertNotNull(v1);
         assertNoObject(v1);
         assertNoArray(v1);
+        assertNoBuffer(v1);
         assertNoString(v1);
         assertNoNumber(v1);
         assertNoNative(v1);
@@ -434,6 +437,7 @@ public class InteropDefaultsTest extends InteropLibraryBaseTest {
         assertNotNull(v2);
         assertNoObject(v2);
         assertNoArray(v2);
+        assertNoBuffer(v2);
         assertNoString(v2);
         assertNoNumber(v2);
         assertNoNative(v2);
@@ -454,6 +458,7 @@ public class InteropDefaultsTest extends InteropLibraryBaseTest {
         assertNotNull(v);
         assertNoObject(v);
         assertNoArray(v);
+        assertNoBuffer(v);
         assertNoString(v);
         assertNoNumber(v);
         assertNoNative(v);

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2019, 2020, Oracle and/or its affiliates.
+ * Copyright (c) 2019, 2021, Oracle and/or its affiliates.
  *
  * All rights reserved.
  *
@@ -31,11 +31,8 @@ package com.oracle.truffle.llvm.runtime.pthread;
 
 import com.oracle.truffle.api.CallTarget;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
-import com.oracle.truffle.api.Truffle;
 import com.oracle.truffle.api.TruffleLanguage;
-import com.oracle.truffle.api.frame.FrameDescriptor;
 import com.oracle.truffle.llvm.runtime.LLVMLanguage;
-import com.oracle.truffle.llvm.runtime.NodeFactory;
 import com.oracle.truffle.llvm.runtime.datalayout.DataLayout;
 import com.oracle.truffle.llvm.runtime.nodes.intrinsics.multithreading.LLVMPThreadStart;
 import com.oracle.truffle.llvm.runtime.pointer.LLVMPointer;
@@ -73,10 +70,9 @@ public final class LLVMPThreadContext {
         this.pThreadKeyLock = new Object();
         this.pThreadKeyStorage = new ConcurrentHashMap<>();
         this.pThreadDestructorStorage = new ConcurrentHashMap<>();
-        NodeFactory nodeFactory = language.getActiveConfiguration().createNodeFactory(language, dataLayout);
-        FrameDescriptor descriptor = LLVMPThreadStart.LLVMPThreadFunctionRootNode.createFrameDescriptor();
-        this.pthreadCallTarget = Truffle.getRuntime().createCallTarget(
-                        new LLVMPThreadStart.LLVMPThreadFunctionRootNode(language, descriptor, nodeFactory));
+
+        this.pthreadCallTarget = language.createCachedCallTarget(LLVMPThreadStart.LLVMPThreadFunctionRootNode.class,
+                        l -> LLVMPThreadStart.LLVMPThreadFunctionRootNode.create(l, l.getActiveConfiguration().createNodeFactory(l, dataLayout)));
         this.isCreateThreadAllowed = true;
     }
 

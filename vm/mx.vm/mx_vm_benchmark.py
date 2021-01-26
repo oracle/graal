@@ -315,14 +315,15 @@ class NativeImageVM(GraalVm):
                     mx.log(mx.current_mx_command())
 
                     if len(self.stages_till_now[:-1]) > 0:
-                        mx.log(mx.colorize('--------- To only prepare the benchmark add the following to the previous command: ', 'green'))
+                        mx.log(mx.colorize('--------- To only prepare the benchmark add the following to the end of the previous command: ', 'green'))
                         mx.log('-Dnative-image.benchmark.stages=' + ','.join(self.stages_till_now[:-1]))
 
-                    mx.log(mx.colorize('--------- To only run the failed stage add the following to the previous command: ', 'green'))
+                    mx.log(mx.colorize('--------- To only run the failed stage add the following to the end of the previous command: ', 'green'))
                     mx.log('-Dnative-image.benchmark.stages=' + self.current_stage)
 
-                    mx.log(mx.colorize('--------- Additional params that can be used for the benchmark are with -Dnative-image.benchmark.<param>: ', 'green'))
-                    mx.log(', '.join(self.config.params))
+                    mx.log(mx.colorize('--------- Additional arguments that can be used for debugging the benchmark go after the final --: ', 'green'))
+                    for param in self.config.params:
+                        mx.log('-Dnative-image.benchmark.' + param + '=')
 
                 self.separator_line()
                 if self.non_zero_is_fatal:
@@ -457,7 +458,6 @@ class NativeImageVM(GraalVm):
             if self.is_llvm:
                 base_image_build_args += ['-H:CompilerBackend=llvm', '-H:Features=org.graalvm.home.HomeFinderFeature', '-H:DeadlockWatchdogInterval=0']
             base_image_build_args += config.extra_image_build_arguments
-
             if not self.hotspot_pgo:
                 # Native Image profile collection
                 i = 0
@@ -608,6 +608,9 @@ class AgentScriptJsBenchmarkSuite(mx_benchmark.VmBenchmarkSuite):
     def name(self):
         return 'agentscript'
 
+    def version(self):
+        return '0.1.0'
+
     def benchmarkList(self, bmSuiteArgs):
         return self._benchmarks.keys()
 
@@ -662,13 +665,19 @@ class AgentScriptJsBenchmarkSuite(mx_benchmark.VmBenchmarkSuite):
 class PolyBenchBenchmarkSuite(mx_benchmark.VmBenchmarkSuite):
     def __init__(self):
         super(PolyBenchBenchmarkSuite, self).__init__()
-        self._extensions = [".js", ".rb", ".wasm"]
-        self._benchmarks = []
-        for group in ["interpreter"]:
-            for (_, _, files) in os.walk(os.path.join(_suite.dir, "benchmarks", group)):
-                for f in files:
-                    if os.path.splitext(f)[1] in self._extensions:
-                        self._benchmarks.append(group + "/" + f)
+        self._extensions = [".js", ".rb", ".wasm", ".bc"]
+
+    def _get_benchmark_root(self):
+        if not hasattr(self, '_benchmark_root'):
+            dist_name = "POLYBENCH_BENCHMARKS"
+            distribution = mx.distribution(dist_name)
+            _root = distribution.get_output()
+            if not os.path.exists(_root):
+                msg = "The distribution {} does not exist: {}{}".format(dist_name, _root, os.linesep)
+                msg += "This might be solved by running: mx build --dependencies={}".format(dist_name)
+                mx.abort(msg)
+            self._benchmark_root = _root
+        return self._benchmark_root
 
     def group(self):
         return "Graal"
@@ -679,24 +688,37 @@ class PolyBenchBenchmarkSuite(mx_benchmark.VmBenchmarkSuite):
     def name(self):
         return "polybench"
 
+    def version(self):
+        return "0.1.0"
+
     def benchmarkList(self, bmSuiteArgs):
+        if not hasattr(self, "_benchmarks"):
+            self._benchmarks = []
+            for group in ["interpreter", "compiler"]:
+                dir_path = os.path.join(self._get_benchmark_root(), group)
+                for f in os.listdir(dir_path):
+                    f_path = os.path.join(dir_path, f)
+                    if os.path.isfile(f_path) and os.path.splitext(f_path)[1] in self._extensions:
+                        self._benchmarks.append(os.path.join(group, f))
         return self._benchmarks
 
     def createCommandLineArgs(self, benchmarks, bmSuiteArgs):
-        if len(benchmarks) != 1:
-            mx.abort("Can only specify one benchmark at a time.")
-        benchmark_path = os.path.join(_suite.dir, "benchmarks", benchmarks[0])
-        return ["--path=" + benchmark_path]
+        if benchmarks is None or len(benchmarks) != 1:
+            mx.abort("Must specify one benchmark at a time.")
+        vmArgs = self.vmArgs(bmSuiteArgs)
+        benchmark_path = os.path.join(self._get_benchmark_root(), benchmarks[0])
+        return ["--path=" + benchmark_path] + vmArgs
 
     def get_vm_registry(self):
         return _polybench_vm_registry
 
     def rules(self, output, benchmarks, bmSuiteArgs):
+        metric_name = self._get_metric_name(bmSuiteArgs)
         return [
             mx_benchmark.StdOutRule(r"\[(?P<name>.*)\] after run: (?P<value>.*) (?P<unit>.*)", {
                 "benchmark": ("<name>", str),
                 "metric.better": "lower",
-                "metric.name": "time",
+                "metric.name": metric_name,
                 "metric.unit": ("<unit>", str),
                 "metric.value": ("<value>", float),
                 "metric.type": "numeric",
@@ -705,6 +727,18 @@ class PolyBenchBenchmarkSuite(mx_benchmark.VmBenchmarkSuite):
             })
         ]
 
+    def _get_metric_name(self, bmSuiteArgs):
+        metric = None
+        for arg in bmSuiteArgs:
+            if arg.startswith("--metric="):
+                metric = arg[len("--metric="):]
+                break
+        if metric == "compilation-time":
+            return "compile-time"
+        elif metric == "partial-evaluation-time":
+            return "pe-time"
+        else:
+            return "time"
 
 class PolyBenchVm(GraalVm):
     def run(self, cwd, args):
@@ -732,6 +766,7 @@ def register_graalvm_vms():
     for short_name, config_suffix in [('niee', 'ee'), ('ni', 'ce')]:
         if any(component.short_name == short_name for component in mx_sdk_vm_impl.registered_graalvm_components(stage1=False)):
             mx_benchmark.add_java_vm(NativeImageVM('native-image', 'default-' + config_suffix, None, None, 0, False, False, False), _suite, 10)
+            mx_benchmark.add_java_vm(NativeImageVM('native-image', 'gate-' + config_suffix, None, None, 0, False, False, True), _suite, 10)
             mx_benchmark.add_java_vm(NativeImageVM('native-image', 'llvm-' + config_suffix, None, None, 0, False, False, False, True), _suite, 10)
             break
 

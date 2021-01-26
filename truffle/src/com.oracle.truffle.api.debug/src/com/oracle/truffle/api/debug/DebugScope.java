@@ -61,11 +61,13 @@ import com.oracle.truffle.api.nodes.RootNode;
 import com.oracle.truffle.api.source.SourceSection;
 
 /**
- * Representation of guest language scope at the current suspension point. It contains a set of
- * declared and valid variables as well as arguments, if any. The scope is only valid as long as the
- * associated {@link DebugStackFrame frame} is valid.
+ * Representation of guest language scope at the current suspension point, or a top scope. It
+ * contains a set of declared and valid variables, if any. The scope associated with a
+ * {@link DebugStackFrame frame} is only valid as long as the associated {@link DebugStackFrame
+ * frame} is valid and methods on such scope need to be called on the frame's thread.
  *
  * @see DebugStackFrame#getScope()
+ * @see DebuggerSession#getTopScope(String)
  * @since 0.26
  */
 public final class DebugScope {
@@ -114,7 +116,7 @@ public final class DebugScope {
         try {
             return INTEROP.asString(INTEROP.toDisplayString(scope));
         } catch (UnsupportedMessageException ex) {
-            throw new DebugException(session, ex, language, node, true, null);
+            throw DebugException.create(session, ex, language, node, true, null);
         }
     }
 
@@ -134,7 +136,7 @@ public final class DebugScope {
         } catch (ThreadDeath td) {
             throw td;
         } catch (Throwable ex) {
-            throw new DebugException(session, ex, language, null, true, null);
+            throw DebugException.create(session, ex, language);
         }
         return parent;
     }
@@ -202,7 +204,7 @@ public final class DebugScope {
         } catch (ThreadDeath td) {
             throw td;
         } catch (Throwable ex) {
-            throw new DebugException(session, ex, language, null, true, null);
+            throw DebugException.create(session, ex, language);
         }
     }
 
@@ -258,7 +260,7 @@ public final class DebugScope {
         } catch (ThreadDeath td) {
             throw td;
         } catch (Throwable ex) {
-            throw new DebugException(session, ex, language, null, true, null);
+            throw DebugException.create(session, ex, language);
         }
         return null;
     }
@@ -292,7 +294,7 @@ public final class DebugScope {
         } catch (ThreadDeath td) {
             throw td;
         } catch (Throwable ex) {
-            throw new DebugException(session, ex, language, null, true, null);
+            throw DebugException.create(session, ex, language);
         }
         return receiverValue;
     }
@@ -313,12 +315,18 @@ public final class DebugScope {
             }
             Object function = NODE.hasRootInstance(node, frame);
             if (function != null) {
-                functionValue = new DebugValue.HeapValue(session, getLanguage(), root.getName(), function);
+                String name;
+                if (INTEROP.hasExecutableName(function)) {
+                    name = INTEROP.asString(INTEROP.getExecutableName(function));
+                } else {
+                    name = root.getName();
+                }
+                functionValue = new DebugValue.HeapValue(session, getLanguage(), name, function);
             }
         } catch (ThreadDeath td) {
             throw td;
         } catch (Throwable ex) {
-            throw new DebugException(session, ex, language, null, true, null);
+            throw DebugException.create(session, ex, language);
         }
         return functionValue;
     }
@@ -384,7 +392,7 @@ public final class DebugScope {
         } catch (ThreadDeath td) {
             throw td;
         } catch (Throwable ex) {
-            throw new DebugException(session, ex, language, null, true, null);
+            throw DebugException.create(session, ex, language);
         }
         return variables;
     }

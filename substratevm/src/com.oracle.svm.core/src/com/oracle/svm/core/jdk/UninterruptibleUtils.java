@@ -439,5 +439,17 @@ public class UninterruptibleUtils {
             // @formatter:on
         }
         // Checkstyle: resume
+
+        /** Uninterruptible version of {@link java.lang.Integer#compare(int, int)}. */
+        @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
+        public static int compare(int x, int y) {
+            return (x < y) ? -1 : ((x == y) ? 0 : 1);
+        }
+
+        /** Uninterruptible version of {@link java.lang.Integer#compareUnsigned(int, int)}. */
+        @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
+        public static int compareUnsigned(int x, int y) {
+            return compare(x + java.lang.Integer.MIN_VALUE, y + java.lang.Integer.MIN_VALUE);
+        }
     }
 }

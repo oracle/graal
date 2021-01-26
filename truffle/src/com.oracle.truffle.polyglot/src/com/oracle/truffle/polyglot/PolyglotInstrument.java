@@ -67,6 +67,7 @@ class PolyglotInstrument extends AbstractInstrumentImpl implements com.oracle.tr
     private volatile OptionValuesImpl optionValues;
     private volatile boolean initialized;
     private volatile boolean created;
+    private volatile boolean closed;
     int requestedAsyncStackDepth = 0;
     LocalLocation[] contextLocalLocations;
     LocalLocation[] contextThreadLocalLocations;
@@ -176,7 +177,9 @@ class PolyglotInstrument extends AbstractInstrumentImpl implements com.oracle.tr
                     }
                     if (contextLocalLocations.length > 0) {
                         // trigger initialization of locals under context lock.
-                        contexts = engine.collectAliveContexts().toArray(new PolyglotContextImpl[0]);
+                        synchronized (engine.lock) {
+                            contexts = engine.collectAliveContexts().toArray(new PolyglotContextImpl[0]);
+                        }
                     }
                     INSTRUMENT.createInstrument(engine.instrumentationHandler, this, cache.services(), getEngineOptionValues());
                     created = true;
@@ -185,8 +188,18 @@ class PolyglotInstrument extends AbstractInstrumentImpl implements com.oracle.tr
             if (contexts != null) {
                 for (PolyglotContextImpl context : contexts) {
                     synchronized (context) {
-                        context.invokeContextLocalsFactory(context.contextLocals, contextLocalLocations);
-                        context.invokeContextThreadLocalFactory(contextThreadLocalLocations);
+                        if (context.localsCleared) {
+                            continue;
+                        }
+                        /*
+                         * contextLocals might not be initialized yet, in which case the context
+                         * local factory for this instrument will be invoked during contextLocals
+                         * initialization.
+                         */
+                        if (context.contextLocals != null) {
+                            context.invokeContextLocalsFactory(context.contextLocals, contextLocalLocations);
+                            context.invokeContextThreadLocalFactory(contextThreadLocalLocations);
+                        }
                     }
                 }
             }
@@ -194,9 +207,9 @@ class PolyglotInstrument extends AbstractInstrumentImpl implements com.oracle.tr
     }
 
     void notifyClosing() {
-        if (created) {
+        if (created && !closed) {
             synchronized (instrumentLock) {
-                if (created) {
+                if (created && !closed) {
                     INSTRUMENT.finalizeInstrument(engine.instrumentationHandler, this);
                 }
             }
@@ -205,13 +218,12 @@ class PolyglotInstrument extends AbstractInstrumentImpl implements com.oracle.tr
 
     void ensureClosed() {
         assert Thread.holdsLock(engine.lock);
-        if (created) {
+        if (created && !closed) {
             synchronized (instrumentLock) {
-                if (created) {
+                if (created && !closed) {
                     INSTRUMENT.disposeInstrument(engine.instrumentationHandler, this, false);
                 }
-                created = false;
-                initialized = false;
+                closed = true;
                 engineOptions = null;
                 optionValues = null;
             }

@@ -441,7 +441,7 @@ public class SymbolicSnippetEncoder {
         HotSpotProviders newProviders = new HotSpotProviders(originalProvider.getMetaAccess(), originalProvider.getCodeCache(), constantReflection,
                         originalProvider.getConstantFieldProvider(), originalProvider.getForeignCalls(), originalProvider.getLowerer(), null, originalProvider.getSuites(),
                         originalProvider.getRegisters(), snippetReflection, originalProvider.getWordTypes(), originalProvider.getGraphBuilderPlugins(),
-                        originalProvider.getPlatformConfigurationProvider(), originalProvider.getMetaAccessExtensionProvider(), originalProvider.getConfig());
+                        originalProvider.getPlatformConfigurationProvider(), originalProvider.getMetaAccessExtensionProvider(), originalProvider.getLoopsDataProvider(), originalProvider.getConfig());
         HotSpotSnippetReplacementsImpl filteringReplacements = new HotSpotSnippetReplacementsImpl(newProviders, snippetReflection,
                         originalProvider.getReplacements().getDefaultReplacementBytecodeProvider(), originalProvider.getCodeCache().getTarget());
         filteringReplacements.setGraphBuilderPlugins(originalProvider.getReplacements().getGraphBuilderPlugins());
@@ -872,7 +872,7 @@ public class SymbolicSnippetEncoder {
                     }
                     type = getSnippetType(type);
                     assert type != null : type;
-                    cached = new ObjectStamp(type, objectStamp.isExactType(), objectStamp.nonNull(), objectStamp.alwaysNull());
+                    cached = new ObjectStamp(type, objectStamp.isExactType(), objectStamp.nonNull(), objectStamp.alwaysNull(), objectStamp.isAlwaysArray());
                 } else {
                     cached = stamp.makeSymbolic();
                 }
@@ -1041,7 +1041,7 @@ public class SymbolicSnippetEncoder {
         @Override
         protected void finalizeGraph(StructuredGraph graph) {
             if (substitutedMethod != null) {
-                for (MethodCallTargetNode target : graph.getNodes().filter(MethodCallTargetNode.class)) {
+                for (MethodCallTargetNode target : graph.getNodes(MethodCallTargetNode.TYPE)) {
                     if (substitutedMethod.equals(target.targetMethod())) {
                         // Replace call to original method with a placeholder
                         PartialIntrinsicCallTargetNode partial = graph.add(

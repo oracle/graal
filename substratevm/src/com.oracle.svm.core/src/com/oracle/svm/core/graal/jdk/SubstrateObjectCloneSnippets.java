@@ -40,6 +40,7 @@ import org.graalvm.compiler.nodes.NodeView;
 import org.graalvm.compiler.nodes.StructuredGraph;
 import org.graalvm.compiler.nodes.extended.ForeignCallNode;
 import org.graalvm.compiler.nodes.extended.ForeignCallWithExceptionNode;
+import org.graalvm.compiler.nodes.java.ArrayLengthNode;
 import org.graalvm.compiler.nodes.spi.LoweringTool;
 import org.graalvm.compiler.options.OptionValues;
 import org.graalvm.compiler.phases.util.Providers;
@@ -49,7 +50,6 @@ import org.graalvm.compiler.replacements.SnippetTemplate.SnippetInfo;
 import org.graalvm.compiler.replacements.Snippets;
 import org.graalvm.compiler.serviceprovider.GraalUnsafeAccess;
 import org.graalvm.compiler.word.BarrieredAccess;
-import org.graalvm.compiler.word.ObjectAccess;
 import org.graalvm.word.LocationIdentity;
 import org.graalvm.word.WordFactory;
 
@@ -62,7 +62,6 @@ import com.oracle.svm.core.heap.InstanceReferenceMapEncoder;
 import com.oracle.svm.core.hub.DynamicHub;
 import com.oracle.svm.core.hub.DynamicHubSupport;
 import com.oracle.svm.core.hub.LayoutEncoding;
-import com.oracle.svm.core.jdk.IdentityHashCodeSupport;
 import com.oracle.svm.core.snippets.KnownIntrinsics;
 import com.oracle.svm.core.snippets.SnippetRuntime;
 import com.oracle.svm.core.snippets.SnippetRuntime.SubstrateForeignCallDescriptor;
@@ -89,7 +88,7 @@ public final class SubstrateObjectCloneSnippets extends SubstrateTemplates imple
         DynamicHub hub = KnownIntrinsics.readHub(thisObj);
         int layoutEncoding = hub.getLayoutEncoding();
         if (LayoutEncoding.isArray(layoutEncoding)) {
-            int length = KnownIntrinsics.readArrayLength(thisObj);
+            int length = ArrayLengthNode.arrayLength(thisObj);
             return SubstrateArraysCopyOfSnippets.doArraysCopyOf(hub, thisObj, length, length);
         } else {
             sun.misc.Unsafe unsafe = GraalUnsafeAccess.getUnsafe();
@@ -129,11 +128,7 @@ public final class SubstrateObjectCloneSnippets extends SubstrateTemplates imple
             ArraycopySnippets.primitiveCopyForward(thisObj, WordFactory.unsigned(curOffset), result, WordFactory.unsigned(curOffset), WordFactory.unsigned(primitiveDataSize));
             curOffset += primitiveDataSize;
 
-            // reset hash code and monitor to uninitialized values
-            int hashCodeOffset = IdentityHashCodeSupport.getHashCodeOffset(result);
-            if (hashCodeOffset != 0) {
-                ObjectAccess.writeInt(result, hashCodeOffset, 0, IdentityHashCodeSupport.IDENTITY_HASHCODE_LOCATION);
-            }
+            // reset monitor to uninitialized values
             int monitorOffset = hub.getMonitorOffset();
             if (monitorOffset != 0) {
                 BarrieredAccess.writeObject(result, monitorOffset, null);

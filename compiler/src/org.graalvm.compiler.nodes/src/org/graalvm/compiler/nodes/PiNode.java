@@ -340,7 +340,7 @@ public class PiNode extends FloatingGuardedNode implements LIRLowerable, Virtual
         }
 
         private PlaceholderStamp() {
-            super(null, false, false, false);
+            super(null, false, false, false, false);
         }
 
         @Override

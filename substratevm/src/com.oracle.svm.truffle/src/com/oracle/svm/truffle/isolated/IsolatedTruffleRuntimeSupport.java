@@ -25,6 +25,7 @@
 package com.oracle.svm.truffle.isolated;
 
 import java.util.function.Consumer;
+import java.util.function.Supplier;
 
 import org.graalvm.compiler.truffle.common.CompilableTruffleAST;
 import org.graalvm.compiler.truffle.common.OptimizedAssumptionDependency;
@@ -34,8 +35,11 @@ import org.graalvm.compiler.truffle.runtime.OptimizedDirectCallNode;
 import org.graalvm.nativeimage.c.function.CEntryPoint;
 
 import com.oracle.svm.core.c.function.CEntryPointOptions;
+import com.oracle.svm.core.deopt.SubstrateInstalledCode;
 import com.oracle.svm.graal.isolated.ClientHandle;
 import com.oracle.svm.graal.isolated.ClientIsolateThread;
+import com.oracle.svm.graal.isolated.CompilerHandle;
+import com.oracle.svm.graal.isolated.CompilerIsolateThread;
 import com.oracle.svm.graal.isolated.IsolatedCodeInstallBridge;
 import com.oracle.svm.graal.isolated.IsolatedCompileClient;
 import com.oracle.svm.graal.isolated.IsolatedCompileContext;
@@ -43,6 +47,7 @@ import com.oracle.svm.graal.isolated.IsolatedHandles;
 import com.oracle.svm.graal.isolated.IsolatedObjectConstant;
 import com.oracle.svm.truffle.api.SubstrateCompilableTruffleAST;
 import com.oracle.svm.truffle.api.SubstrateTruffleRuntime;
+import com.oracle.truffle.api.utilities.TriState;
 
 import jdk.vm.ci.meta.JavaConstant;
 
@@ -54,12 +59,15 @@ public final class IsolatedTruffleRuntimeSupport {
         if (consumerHandle.equal(IsolatedHandles.nullHandle())) {
             return null;
         }
-        return arg -> {
-            ClientHandle<? extends OptimizedAssumptionDependency.Access> dependencyAccessHandle = IsolatedHandles.nullHandle();
-            if (arg != null) {
-                IsolatedCodeInstallBridge accessor = (IsolatedCodeInstallBridge) arg;
-                dependencyAccessHandle = accessor.getDependencyAccessHandle();
+        return codeInstallBridge -> {
+            ClientHandle<? extends SubstrateInstalledCode> installedCodeHandle = IsolatedHandles.nullHandle();
+            if (codeInstallBridge != null) {
+                installedCodeHandle = ((IsolatedCodeInstallBridge) codeInstallBridge).getSubstrateInstalledCodeHandle();
             }
+
+            @SuppressWarnings("unchecked")
+            ClientHandle<? extends OptimizedAssumptionDependency> dependencyAccessHandle = (ClientHandle<? extends OptimizedAssumptionDependency>) installedCodeHandle;
+
             notifyAssumption0(IsolatedCompileContext.get().getClient(), consumerHandle, dependencyAccessHandle);
         };
     }
@@ -78,11 +86,11 @@ public final class IsolatedTruffleRuntimeSupport {
     @CEntryPointOptions(include = CEntryPointOptions.NotIncludedAutomatically.class, publishAs = CEntryPointOptions.Publish.NotPublished)
     private static void notifyAssumption0(@SuppressWarnings("unused") ClientIsolateThread client,
                     ClientHandle<Consumer<OptimizedAssumptionDependency>> consumerHandle,
-                    ClientHandle<? extends OptimizedAssumptionDependency.Access> dependencyAccessHandle) {
+                    ClientHandle<? extends OptimizedAssumptionDependency> dependencyHandle) {
 
         OptimizedAssumptionDependency dependency = null;
-        if (dependencyAccessHandle.notEqual(IsolatedHandles.nullHandle())) {
-            dependency = IsolatedCompileClient.get().unhand(dependencyAccessHandle).getDependency();
+        if (dependencyHandle.notEqual(IsolatedHandles.nullHandle())) {
+            dependency = IsolatedCompileClient.get().unhand(dependencyHandle);
         }
         IsolatedCompileClient.get().unhand(consumerHandle).accept(dependency);
     }
@@ -128,6 +136,33 @@ public final class IsolatedTruffleRuntimeSupport {
         OptimizedCallTarget callTarget = (OptimizedCallTarget) IsolatedCompileClient.get().unhand(ast);
         String message = IsolatedCompileClient.get().unhand(msg);
         runtime.log(loggerId, callTarget, message);
+    }
+
+    public static TriState tryIsSuppressedFailure(CompilableTruffleAST compilable, Supplier<String> serializedException) {
+        if (compilable instanceof IsolatedCompilableTruffleAST) {
+            ClientHandle<SubstrateCompilableTruffleAST> handle = ((IsolatedCompilableTruffleAST) compilable).getHandle();
+            return isSuppressedFailure0(IsolatedCompileContext.get().getClient(), handle, IsolatedCompileContext.get().hand(serializedException)) ? TriState.TRUE : TriState.FALSE;
+        }
+        return TriState.UNDEFINED;
+    }
+
+    @CEntryPoint
+    @CEntryPointOptions(include = CEntryPointOptions.NotIncludedAutomatically.class, publishAs = CEntryPointOptions.Publish.NotPublished)
+    private static boolean isSuppressedFailure0(@SuppressWarnings("unused") ClientIsolateThread client, ClientHandle<SubstrateCompilableTruffleAST> ast,
+                    CompilerHandle<Supplier<String>> serializedExceptionHandle) {
+        Supplier<String> serializedException = () -> {
+            ClientHandle<String> resultHandle = getReasonAndStackTrace0(IsolatedCompileClient.get().getCompiler(), serializedExceptionHandle);
+            return IsolatedCompileClient.get().unhand(resultHandle);
+        };
+        SubstrateTruffleRuntime runtime = (SubstrateTruffleRuntime) SubstrateTruffleRuntime.getRuntime();
+        return runtime.isSuppressedFailure(IsolatedCompileClient.get().unhand(ast), serializedException);
+    }
+
+    @CEntryPoint
+    @CEntryPointOptions(include = CEntryPointOptions.NotIncludedAutomatically.class, publishAs = CEntryPointOptions.Publish.NotPublished)
+    private static ClientHandle<String> getReasonAndStackTrace0(@SuppressWarnings("unused") CompilerIsolateThread compiler, CompilerHandle<Supplier<String>> reasonAndStackTraceHandle) {
+        Supplier<String> supplier = IsolatedCompileContext.get().unhand(reasonAndStackTraceHandle);
+        return IsolatedCompileContext.get().createStringInClient(supplier.get());
     }
 
     private IsolatedTruffleRuntimeSupport() {

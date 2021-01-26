@@ -24,16 +24,15 @@
  */
 package org.graalvm.compiler.nodes.test;
 
-import jdk.vm.ci.meta.JavaKind;
-
-import org.junit.Assert;
-import org.junit.Test;
-
 import org.graalvm.compiler.core.common.type.ObjectStamp;
 import org.graalvm.compiler.core.common.type.Stamp;
 import org.graalvm.compiler.core.common.type.StampFactory;
 import org.graalvm.compiler.core.common.type.TypeReference;
 import org.graalvm.compiler.nodes.type.StampTool;
+import org.junit.Assert;
+import org.junit.Test;
+
+import jdk.vm.ci.meta.JavaKind;
 
 public class ObjectStampJoinTest extends AbstractObjectStampTest {
 
@@ -181,4 +180,76 @@ public class ObjectStampJoinTest extends AbstractObjectStampTest {
         Assert.assertEquals(bExact, join);
     }
 
+    @Test
+    public void testAlwaysArray() {
+        Stamp object = StampFactory.object(getType(Object.class));
+        Stamp objectExact = StampFactory.object(getType(Object.class).asExactReference());
+        Stamp objectArray = StampFactory.object(getType(Object[].class));
+        Stamp a = StampFactory.object(getType(A.class));
+        Stamp aArray = StampFactory.object(getType(A[].class));
+
+        Stamp alwaysArray = ((ObjectStamp) StampFactory.object()).asAlwaysArray();
+
+        Assert.assertFalse(((ObjectStamp) object).isAlwaysArray());
+        Assert.assertFalse(((ObjectStamp) objectExact).isAlwaysArray());
+        Assert.assertTrue(((ObjectStamp) objectArray).isAlwaysArray());
+        Assert.assertFalse(((ObjectStamp) a).isAlwaysArray());
+        Assert.assertTrue(((ObjectStamp) aArray).isAlwaysArray());
+        Assert.assertTrue(((ObjectStamp) alwaysArray).isAlwaysArray());
+
+        /*
+         * Test a representative sample of joins. Note that all input stamps allow the null value.
+         * Therefore, no join can result in an "empty" stamp yet.
+         */
+        Assert.assertTrue(((ObjectStamp) object.join(alwaysArray)).isAlwaysArray());
+        Assert.assertTrue(((ObjectStamp) objectExact.join(alwaysArray)).alwaysNull());
+        Assert.assertTrue(objectArray.join(alwaysArray) == objectArray);
+        Assert.assertTrue(((ObjectStamp) a.join(alwaysArray)).alwaysNull());
+        Assert.assertTrue(aArray.join(alwaysArray) == aArray);
+        Assert.assertTrue(alwaysArray.join(alwaysArray) == alwaysArray);
+
+        Assert.assertTrue(object.join(objectArray) == objectArray);
+        Assert.assertTrue(((ObjectStamp) objectExact.join(objectArray)).alwaysNull());
+        Assert.assertTrue(objectArray.join(objectArray) == objectArray);
+        Assert.assertTrue(((ObjectStamp) a.join(objectArray)).alwaysNull());
+        Assert.assertTrue(aArray.join(objectArray) == aArray);
+        Assert.assertTrue(alwaysArray.join(objectArray) == objectArray);
+
+        Assert.assertTrue(object.join(a) == a);
+        Assert.assertTrue(((ObjectStamp) objectExact.join(a)).alwaysNull());
+        Assert.assertTrue(((ObjectStamp) objectArray.join(a)).alwaysNull());
+        Assert.assertTrue(a.join(a) == a);
+        Assert.assertTrue(((ObjectStamp) aArray.join(a)).alwaysNull());
+        Assert.assertTrue(((ObjectStamp) alwaysArray.join(a)).alwaysNull());
+
+        /*
+         * Now make all stamps non-null and test the joins again.
+         */
+        object = ((ObjectStamp) object).asNonNull();
+        objectExact = ((ObjectStamp) objectExact).asNonNull();
+        objectArray = ((ObjectStamp) objectArray).asNonNull();
+        a = ((ObjectStamp) a).asNonNull();
+        aArray = ((ObjectStamp) aArray).asNonNull();
+
+        Assert.assertTrue(((ObjectStamp) object.join(alwaysArray)).isAlwaysArray());
+        Assert.assertTrue(objectExact.join(alwaysArray).isEmpty());
+        Assert.assertTrue(objectArray.join(alwaysArray) == objectArray);
+        Assert.assertTrue(a.join(alwaysArray).isEmpty());
+        Assert.assertTrue(aArray.join(alwaysArray) == aArray);
+        Assert.assertTrue(alwaysArray.join(alwaysArray) == alwaysArray);
+
+        Assert.assertTrue(object.join(objectArray) == objectArray);
+        Assert.assertTrue(objectExact.join(objectArray).isEmpty());
+        Assert.assertTrue(objectArray.join(objectArray) == objectArray);
+        Assert.assertTrue(a.join(objectArray).isEmpty());
+        Assert.assertTrue(aArray.join(objectArray) == aArray);
+        Assert.assertTrue(alwaysArray.join(objectArray) == objectArray);
+
+        Assert.assertTrue(object.join(a) == a);
+        Assert.assertTrue(objectExact.join(a).isEmpty());
+        Assert.assertTrue(objectArray.join(a).isEmpty());
+        Assert.assertTrue(a.join(a) == a);
+        Assert.assertTrue(aArray.join(a).isEmpty());
+        Assert.assertTrue(alwaysArray.join(a).isEmpty());
+    }
 }

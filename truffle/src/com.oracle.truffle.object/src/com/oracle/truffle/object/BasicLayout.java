@@ -41,15 +41,15 @@
 package com.oracle.truffle.object;
 
 import com.oracle.truffle.api.object.DynamicObject;
-import com.oracle.truffle.api.object.Layout;
 import com.oracle.truffle.api.object.Shape;
 
+@SuppressWarnings("deprecation")
 public class BasicLayout extends DefaultLayout {
     BasicLayout(LayoutStrategy strategy, int allowedImplicitCasts) {
         super(DynamicObjectBasic.class, strategy, allowedImplicitCasts, DynamicObjectBasic.OBJECT_FIELD_LOCATIONS, DynamicObjectBasic.PRIMITIVE_FIELD_LOCATIONS);
     }
 
-    public static LayoutImpl createLayoutImpl(Layout.Builder builder) {
+    public static LayoutImpl createLayoutImpl(com.oracle.truffle.api.object.Layout.Builder builder) {
         Class<? extends DynamicObject> dynamicObjectClass = getType(builder);
         if (dynamicObjectClass != null) {
             return DefaultLayout.createCoreLayout(builder);

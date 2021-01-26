@@ -42,6 +42,7 @@ import com.oracle.truffle.api.frame.FrameSlotKind;
 import com.oracle.truffle.api.frame.FrameSlotTypeException;
 import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.nodes.Node;
+import com.oracle.truffle.llvm.runtime.LLVMContext;
 import com.oracle.truffle.llvm.runtime.except.LLVMAllocationFailureException;
 import com.oracle.truffle.llvm.runtime.except.LLVMMemoryException;
 import com.oracle.truffle.llvm.runtime.except.LLVMStackOverflowError;
@@ -65,6 +66,7 @@ public final class LLVMStack {
 
     public static final int NO_ALIGNMENT_REQUIREMENTS = 1;
 
+    private final LLVMContext context;
     private final long stackSize;
 
     private long lowerBounds;
@@ -72,7 +74,8 @@ public final class LLVMStack {
 
     private long stackPointer; // == 0 means no allocated yet
 
-    public LLVMStack(long stackSize) {
+    public LLVMStack(long stackSize, LLVMContext context) {
+        this.context = context;
         this.stackSize = stackSize;
 
         lowerBounds = 0;
@@ -80,11 +83,15 @@ public final class LLVMStack {
         stackPointer = 0;
     }
 
+    public LLVMContext getContext() {
+        return context;
+    }
+
     private boolean isAllocated() {
         return stackPointer != 0;
     }
 
-    private static FrameSlot getStackSlot(FrameDescriptor frameDescriptor) {
+    public static FrameSlot getStackSlot(FrameDescriptor frameDescriptor) {
         return frameDescriptor.findOrAddFrameSlot(STACK_ID, PointerType.VOID, FrameSlotKind.Object);
     }
 
@@ -192,7 +199,7 @@ public final class LLVMStack {
         /**
          * Get the stack instance that was provided to {@link #executeEnter}.
          */
-        public abstract Object executeGetStack(VirtualFrame frame);
+        public abstract LLVMStack executeGetStack(VirtualFrame frame);
     }
 
     /**
@@ -205,18 +212,21 @@ public final class LLVMStack {
         private final FrameSlot stackSlot;
         private final Assumption noBasePointerAssumption;
         @CompilationFinal private FrameSlot basePointerSlot;
+        @CompilationFinal private boolean hasAllocatedStack;
 
         public LLVMNativeStackAccess(FrameDescriptor frameDescriptor, LLVMMemory memory) {
             this.memory = memory;
             this.stackSlot = getStackSlot(frameDescriptor);
             this.basePointerSlot = getBasePointerSlot(frameDescriptor, false);
             this.noBasePointerAssumption = basePointerSlot == null ? frameDescriptor.getNotInFrameAssumption(BASE_POINTER_ID) : null;
+            this.hasAllocatedStack = false;
         }
 
         protected FrameSlot ensureBasePointerSlot(VirtualFrame frame, LLVMStack llvmStack, boolean createSlot) {
             // whenever we access the base pointer, we ensure that the stack was allocated
             if (!llvmStack.isAllocated()) {
-                CompilerDirectives.transferToInterpreter(); // happens at most once per thread
+                CompilerDirectives.transferToInterpreterAndInvalidate();
+                hasAllocatedStack = true;
                 llvmStack.allocate(this, memory);
             }
             if (basePointerSlot == null) {
@@ -236,6 +246,15 @@ public final class LLVMStack {
         @Override
         public void executeEnter(VirtualFrame frame, LLVMStack llvmStack) {
             frame.setObject(stackSlot, llvmStack);
+            if (hasAllocatedStack && !llvmStack.isAllocated()) {
+                /*
+                 * If we've ever seen a stack being allocated in this method, then we do an explicit
+                 * check on entry. This way, all other checks can remain
+                 * transferToInterpreterAndInvalidate.
+                 */
+                CompilerDirectives.transferToInterpreter();
+                llvmStack.allocate(this, memory);
+            }
             if (noBasePointerAssumption != null && noBasePointerAssumption.isValid()) {
                 // stack pointer was never modified, only store the stack itself
             } else {
@@ -270,8 +289,8 @@ public final class LLVMStack {
             try {
                 LLVMStack llvmStack = (LLVMStack) frame.getObject(stackSlot);
                 if (!llvmStack.isAllocated()) {
-                    CompilerDirectives.transferToInterpreter();
-                    // happens at most once per thread
+                    CompilerDirectives.transferToInterpreterAndInvalidate();
+                    hasAllocatedStack = true;
                     llvmStack.allocate(this, memory);
                 }
                 return llvmStack;

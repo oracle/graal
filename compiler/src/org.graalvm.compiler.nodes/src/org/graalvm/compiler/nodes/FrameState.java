@@ -101,6 +101,13 @@ public final class FrameState extends VirtualState implements IterableNodeType {
 
     protected final boolean duringCall;
 
+    /**
+     * When a method {@code y()} has been inlined into a method {@code x()}, the frame states from
+     * {@code y()} reference an <em>outer</em> frame state in the surrounding method {@code x()}.
+     * <p>
+     * Multiple inner frame states can refer to the same outer frame state, which leads to trees of
+     * frame states in the IR.
+     */
     @OptionalInput(value = InputType.State) FrameState outerFrameState;
 
     /**

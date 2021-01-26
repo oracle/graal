@@ -40,67 +40,93 @@
  */
 package com.oracle.truffle.regex.tregex;
 
+import java.util.logging.Level;
+
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
-import com.oracle.truffle.regex.CompiledRegexObject;
-import com.oracle.truffle.regex.RegexCompiler;
+import com.oracle.truffle.regex.RegexExecNode;
 import com.oracle.truffle.regex.RegexLanguage;
-import com.oracle.truffle.regex.RegexOptions;
+import com.oracle.truffle.regex.RegexObject;
 import com.oracle.truffle.regex.RegexSource;
 import com.oracle.truffle.regex.RegexSyntaxException;
+import com.oracle.truffle.regex.UnsupportedRegexException;
 import com.oracle.truffle.regex.tregex.nfa.NFA;
-import com.oracle.truffle.regex.tregex.nodes.TRegexExecRootNode;
-import com.oracle.truffle.regex.tregex.nodes.TRegexExecRootNode.LazyCaptureGroupRegexSearchNode;
+import com.oracle.truffle.regex.tregex.nodes.TRegexExecNode;
+import com.oracle.truffle.regex.tregex.nodes.TRegexExecNode.LazyCaptureGroupRegexSearchNode;
 import com.oracle.truffle.regex.tregex.nodes.dfa.TRegexDFAExecutorNode;
 import com.oracle.truffle.regex.tregex.nodes.nfa.TRegexBacktrackingNFAExecutorNode;
-import com.oracle.truffle.regex.tregex.parser.flavors.RegexFlavor;
 import com.oracle.truffle.regex.tregex.parser.flavors.RegexFlavorProcessor;
+import com.oracle.truffle.regex.tregex.util.DebugUtil;
+import com.oracle.truffle.regex.tregex.util.Loggers;
 
-public final class TRegexCompiler implements RegexCompiler {
+public final class TRegexCompiler {
 
-    private final RegexLanguage language;
-    private final RegexOptions options;
-
-    public TRegexCompiler(RegexLanguage language, RegexOptions options) {
-        this.language = language;
-        this.options = options;
-    }
-
-    public RegexLanguage getLanguage() {
-        return language;
-    }
-
-    public RegexOptions getOptions() {
-        return options;
+    /**
+     * Try and compile the regular expression described in {@code source}.
+     *
+     * @throws RegexSyntaxException if the engine discovers a syntax error in the regular expression
+     * @throws UnsupportedRegexException if the regular expression is not supported by the engine
+     */
+    @TruffleBoundary
+    public static RegexObject compile(RegexLanguage language, RegexSource source) throws RegexSyntaxException {
+        DebugUtil.Timer timer = shouldLogCompilationTime() ? new DebugUtil.Timer() : null;
+        if (timer != null) {
+            timer.start();
+        }
+        try {
+            RegexObject regex = doCompile(language, source);
+            logCompilationTime(source, timer);
+            Loggers.LOG_COMPILER_FALLBACK.finer(() -> "TRegex compiled: " + source);
+            return regex;
+        } catch (UnsupportedRegexException bailout) {
+            logCompilationTime(source, timer);
+            Loggers.LOG_BAILOUT_MESSAGES.fine(() -> bailout.getReason() + ": " + source);
+            throw bailout;
+        }
     }
 
     @TruffleBoundary
-    @Override
-    public CompiledRegexObject compile(RegexSource source) throws RegexSyntaxException {
-        RegexFlavor flavor = options.getFlavor();
+    private static RegexObject doCompile(RegexLanguage language, RegexSource source) throws RegexSyntaxException {
         RegexSource ecmascriptSource = source;
-        if (flavor != null) {
-            /*
-             * We rewrite the pattern here, to avoid rewriting again when switching to other
-             * matching strategies via the other compile* methods below.
-             */
-            RegexFlavorProcessor flavorProcessor = flavor.forRegex(source);
+        RegexFlavorProcessor flavorProcessor = source.getOptions().getFlavor() == null ? null : source.getOptions().getFlavor().forRegex(source);
+        if (flavorProcessor != null) {
             ecmascriptSource = flavorProcessor.toECMAScriptRegex();
         }
-        return new TRegexCompilationRequest(this, ecmascriptSource).compile();
+        TRegexCompilationRequest compReq = new TRegexCompilationRequest(language, ecmascriptSource);
+        RegexExecNode execNode = compReq.compile();
+        if (flavorProcessor == null) {
+            return new RegexObject(execNode, source, compReq.getAst().getFlags(), compReq.getAst().getNumberOfCaptureGroups(), compReq.getAst().getNamedCaputureGroups());
+        } else {
+            return new RegexObject(execNode, source, flavorProcessor.getFlags(), flavorProcessor.getNumberOfCaptureGroups(), flavorProcessor.getNamedCaptureGroups());
+        }
     }
 
     @TruffleBoundary
-    public TRegexDFAExecutorNode compileEagerDFAExecutor(RegexSource source) {
-        return new TRegexCompilationRequest(this, source).compileEagerDFAExecutor();
+    public static TRegexDFAExecutorNode compileEagerDFAExecutor(RegexLanguage language, RegexSource source) {
+        return new TRegexCompilationRequest(language, source).compileEagerDFAExecutor();
     }
 
     @TruffleBoundary
-    public LazyCaptureGroupRegexSearchNode compileLazyDFAExecutor(NFA nfa, TRegexExecRootNode rootNode, boolean allowSimpleCG) {
-        return new TRegexCompilationRequest(this, nfa).compileLazyDFAExecutor(rootNode, allowSimpleCG);
+    public static LazyCaptureGroupRegexSearchNode compileLazyDFAExecutor(RegexLanguage language, NFA nfa, TRegexExecNode rootNode, boolean allowSimpleCG) {
+        return new TRegexCompilationRequest(language, nfa).compileLazyDFAExecutor(rootNode, allowSimpleCG);
     }
 
     @TruffleBoundary
-    public TRegexBacktrackingNFAExecutorNode compileBacktrackingExecutor(NFA nfa) {
-        return new TRegexCompilationRequest(this, nfa).compileBacktrackingExecutor();
+    public static TRegexBacktrackingNFAExecutorNode compileBacktrackingExecutor(RegexLanguage language, NFA nfa) {
+        return new TRegexCompilationRequest(language, nfa).compileBacktrackingExecutor();
+    }
+
+    @TruffleBoundary
+    private static boolean shouldLogCompilationTime() {
+        return Loggers.LOG_TOTAL_COMPILATION_TIME.isLoggable(Level.FINE);
+    }
+
+    @TruffleBoundary
+    private static void logCompilationTime(RegexSource regexSource, DebugUtil.Timer timer) {
+        if (timer != null) {
+            Loggers.LOG_TOTAL_COMPILATION_TIME.log(Level.FINE, "{0}, {1}", new Object[]{
+                            timer.elapsedToString(),
+                            DebugUtil.jsStringEscape(regexSource.toString())
+            });
+        }
     }
 }

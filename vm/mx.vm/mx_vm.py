@@ -50,12 +50,18 @@ mx_sdk_vm.register_graalvm_component(mx_sdk_vm.GraalVmJdkComponent(
     license_files=[],
     third_party_license_files=[],
     dependencies=['sdk'],
-    jar_distributions=['vm:INSTALLER'],
+    jar_distributions=[
+        'vm:INSTALLER',
+        'truffle:TruffleJSON'
+    ],
     support_distributions=['vm:INSTALLER_GRAALVM_SUPPORT'],
     launcher_configs=[
         mx_sdk_vm.LauncherConfig(
             destination="bin/<exe:gu>",
-            jar_distributions=['vm:INSTALLER'],
+            jar_distributions=[
+                'vm:INSTALLER',
+                'truffle:TruffleJSON'
+            ],
             dir_jars=True,
             main_class="org.graalvm.component.installer.ComponentInstaller",
             build_args=[],
@@ -107,21 +113,23 @@ polybench_benchmark_methods = ["_run"]
 
 
 # pylint: disable=line-too-long
-ce_components = ['cmp', 'cov', 'dap', 'gu', 'gvm', 'ins', 'insight', 'js', 'lg', 'lsp', 'nfi', 'njs', 'polynative', 'pro', 'rgx', 'sdk', 'slg', 'svm', 'svml', 'tfl', 'tflm', 'libpoly', 'poly', 'bpolyglot', 'vvm']
-ce_complete_components = ['cmp', 'cov', 'dap', 'gu', 'gvm', 'gwa', 'ins', 'insight', 'js', 'lg', 'llp', 'lsp', 'nfi', 'ni', 'nil', 'njs', 'polynative', 'pro', 'pyn', 'pynl', 'rby', 'rbyl', 'rgx', 'sdk', 'slg', 'svm', 'svml', 'tfl', 'tflm', 'libpoly', 'poly', 'bpolyglot', 'vvm']
-ce_python_components = ['cmp', 'cov', 'dap', 'dis', 'gu', 'gvm', 'ins', 'insight', 'js', 'lg', 'llp', 'lsp', 'nfi', 'ni', 'nil', 'njs', 'nju', 'nic', 'polynative', 'pyn', 'pynl', 'pro', 'rgx', 'sdk', 'slg', 'svm', 'svml', 'tfl', 'tflm', 'libpoly', 'poly', 'pbm', 'bpolyglot', 'bpolybench', 'vvm']
-ce_no_native_components = ['bgu', 'bjs', 'blli', 'bgraalvm-native-clang', 'bgraalvm-native-clang++', 'bgraalvm-native-ld', 'bgraalvm-native-binutil', 'bnative-image', 'bpolyglot', 'cmp', 'cov', 'dap', 'gu', 'gvm', 'ins', 'insight', 'js', 'lsp', 'nfi', 'ni', 'nil', 'njs', 'polynative', 'pro', 'rgx', 'sdk', 'slg', 'snative-image-agent', 'snative-image-diagnostics-agent', 'spolyglot', 'svm', 'svml', 'tfl', 'tflm', 'libpoly', 'poly', 'vvm']
+ce_components = ['cmp', 'cov', 'dap', 'gu', 'gvm', 'ins', 'insight', 'js', 'lg', 'lsp', 'nfi', 'njs', 'polynative', 'pro', 'rgx', 'sdk', 'llrc', 'llrn', 'llrl', 'svm', 'svml', 'tfl', 'tflm', 'libpoly', 'poly', 'bpolyglot', 'vvm']
+ce_complete_components = ['cmp', 'cov', 'dap', 'gu', 'gvm', 'gwa', 'ins', 'insight', 'js', 'lg', 'llp', 'lsp', 'nfi', 'ni', 'nil', 'njs', 'polynative', 'pro', 'pyn', 'pynl', 'rby', 'rbyl', 'rgx', 'sdk', 'llrc', 'llrn', 'llrl', 'svm', 'svml', 'tfl', 'tflm', 'libpoly', 'poly', 'bpolyglot', 'vvm']
+ce_python_components = ['cmp', 'cov', 'dap', 'dis', 'gu', 'gvm', 'ins', 'insight', 'js', 'lg', 'llmulrl', 'llp', 'lsp', 'nfi', 'ni', 'nil', 'njs', 'nju', 'nic', 'polynative', 'pyn', 'pynl', 'pro', 'rgx', 'sdk', 'llrc', 'llrn', 'llrl', 'svm', 'svml', 'tfl', 'tflm', 'libpoly', 'poly', 'pbm', 'bpolyglot', 'bpolybench', 'vvm']
+ce_no_native_components = ['bgu', 'bjs', 'blli', 'bgraalvm-native-clang', 'bgraalvm-native-clang++', 'bgraalvm-native-ld', 'bgraalvm-native-binutil', 'bnative-image', 'bpolyglot', 'cmp', 'cov', 'dap', 'gu', 'gvm', 'ins', 'insight', 'js', 'lsp', 'nfi', 'ni', 'nil', 'njs', 'polynative', 'pro', 'rgx', 'sdk', 'llrc', 'llrn', 'llrl', 'snative-image-agent', 'snative-image-diagnostics-agent', 'spolyglot', 'svm', 'svml', 'tfl', 'tflm', 'libpoly', 'poly', 'vvm']
 
 mx_sdk_vm.register_vm_config('ce', ['insight', 'cmp', 'cov', 'dap', 'gu', 'gvm', 'ins', 'js', 'lg', 'libpoly', 'lsp', 'nfi', 'njs', 'poly', 'bpolyglot', 'polynative', 'pro', 'rgx', 'sdk', 'svm', 'tfl', 'tflm', 'vvm'], _suite, env_file='ce-win')
+mx_sdk_vm.register_vm_config('ce', ['bpolyglot', 'cmp', 'cov', 'dap', 'gu', 'gvm', 'ins', 'insight', 'js', 'lg', 'libpoly', 'lsp', 'nfi', 'njs', 'poly', 'polynative', 'pro', 'rgx', 'sdk', 'svm', 'svml', 'tfl', 'tflm', 'vvm'], _suite, env_file='ce-aarch64')
 mx_sdk_vm.register_vm_config('ce', ce_components, _suite)
 mx_sdk_vm.register_vm_config('ce', ce_complete_components, _suite, dist_name='ce-complete')
 mx_sdk_vm.register_vm_config('ce-python', ce_python_components, _suite)
 mx_sdk_vm.register_vm_config('ce-no_native', ce_no_native_components, _suite)
 mx_sdk_vm.register_vm_config('libgraal', ['bgu', 'cmp', 'dis', 'gu', 'gvm', 'lg', 'nfi', 'poly', 'polynative', 'sdk', 'svm', 'svml', 'tfl', 'tflm', 'bpolyglot'], _suite)
-mx_sdk_vm.register_vm_config('toolchain-only', ['sdk', 'tfl', 'tflm', 'nfi', 'cmp', 'svm', 'llp', 'slg', 'blli'], _suite)
+mx_sdk_vm.register_vm_config('toolchain-only', ['sdk', 'tfl', 'tflm', 'nfi', 'cmp', 'svm', 'llp', 'llrc', 'llrn'], _suite)
 mx_sdk_vm.register_vm_config('libgraal-bash', ['bgraalvm-native-clang', 'bgraalvm-native-clang++', 'bgraalvm-native-ld', 'bgraalvm-native-binutil', 'bgu', 'cmp', 'gu', 'gvm', 'lg', 'nfi', 'poly', 'polynative', 'sdk', 'svm', 'svml', 'tfl', 'tflm', 'bpolyglot'], _suite, env_file=False)
-mx_sdk_vm.register_vm_config('toolchain-only-bash', ['bgraalvm-native-clang', 'bgraalvm-native-clang++', 'bgraalvm-native-ld', 'bgraalvm-native-binutil', 'tfl', 'tflm', 'gu', 'svm', 'gvm', 'polynative', 'llp', 'nfi', 'svml', 'bgu', 'blli', 'sdk', 'slg', 'cmp'], _suite, env_file=False)
-mx_sdk_vm.register_vm_config('ce', ['bgraalvm-native-binutil', 'bgraalvm-native-clang', 'bgraalvm-native-clang++', 'bgraalvm-native-ld', 'bjs', 'blli', 'bnative-image', 'btruffleruby', 'bwasm', 'cmp', 'gwa', 'js', 'llp', 'nfi', 'ni', 'nil', 'pbm', 'rby', 'rbyl', 'rgx', 'sdk', 'slg', 'snative-image-agent', 'snative-image-diagnostics-agent', 'svm', 'tfl', 'tflm'], _suite, env_file='polybench-ce')
+mx_sdk_vm.register_vm_config('toolchain-only-bash', ['bgraalvm-native-clang', 'bgraalvm-native-clang++', 'bgraalvm-native-ld', 'bgraalvm-native-binutil', 'tfl', 'tflm', 'gu', 'svm', 'gvm', 'polynative', 'llp', 'nfi', 'svml', 'bgu', 'sdk', 'llrc', 'llrn', 'cmp'], _suite, env_file=False)
+mx_sdk_vm.register_vm_config('ce', ['bgraalvm-native-binutil', 'bgraalvm-native-clang', 'bgraalvm-native-clang++', 'bgraalvm-native-ld', 'bjs', 'blli', 'bnative-image', 'btruffleruby', 'bwasm', 'cmp', 'gwa', 'js', 'lg', 'llp', 'nfi', 'ni', 'nil', 'pbm', 'rby', 'rbyl', 'rgx', 'sdk', 'llrc', 'llrn', 'llrl', 'snative-image-agent', 'snative-image-diagnostics-agent', 'svm', 'tfl', 'tflm'], _suite, env_file='polybench-ce')
+mx_sdk_vm.register_vm_config('ce', ce_components + ['llmulrl'], _suite, env_file='ce-llimul')
 # pylint: enable=line-too-long
 
 if mx.get_os() == 'windows':
@@ -152,6 +160,14 @@ def mx_register_dynamic_suite_constituents(register_project, register_distributi
     if register_project:
         register_project(GraalVmSymlinks())
 
+        benchmark_dist = _suite.dependency("POLYBENCH_BENCHMARKS")
+
+        def _add_project_to_dist(destination, name, source='dependency:{name}/*'):
+            if destination not in benchmark_dist.layout:
+                benchmark_dist.layout[destination] = []
+            benchmark_dist.layout[destination].append(source.format(name=name))
+            benchmark_dist.buildDependencies.append(name)
+
         if mx_sdk_vm_impl.has_component('GraalWasm'):
             import mx_wasm
 
@@ -159,47 +175,8 @@ def mx_register_dynamic_suite_constituents(register_project, register_distributi
                 def getSourceDir(self):
                     return self.subDir
 
-                def getBuildTask(self, args):
-                    output_base = self.get_output_base()
-                    return GraalVmWatBuildTask(self, args, output_base)
-
                 def isBenchmarkProject(self):
                     return self.name.startswith("benchmarks.")
-
-            class GraalVmWatBuildTask(mx_wasm.WatBuildTask):
-                def needsBuild(self, newestInput):
-                    is_needed, reason = super(GraalVmWatBuildTask, self).needsBuild(newestInput)
-                    if is_needed:
-                        return is_needed, reason
-                    for root, filename in self.subject.getProgramSources():
-                        f = join(root, mx_wasm.remove_extension(filename) + ".wasm")
-                        if not os.path.exists(f):
-                            return True, "symlink '{}' does not exist".format(f)
-                    return False, ''
-
-                def build(self):
-                    super(GraalVmWatBuildTask, self).build()
-                    output_dir = self.subject.getOutputDir()
-                    for root, filename in self.subject.getProgramSources():
-                        src = join(output_dir, mx_wasm.remove_extension(filename) + ".wasm")
-                        dst = join(root, mx_wasm.remove_extension(filename) + ".wasm")
-                        if mx.is_windows():
-                            mx.copyfile(src, dst)
-                        else:
-                            os.symlink(src, dst)
-
-                def clean(self, forBuild=False):
-                    super(GraalVmWatBuildTask, self).build()
-                    for root, filename in self.subject.getProgramSources():
-                        f = join(root, mx_wasm.remove_extension(filename) + ".wasm")
-                        if os.path.exists(f):
-                            if os.path.islink(f):
-                                os.unlink(f)
-                            else:
-                                mx.rmtree(f)
-                    output_dir = self.subject.getOutputDir()
-                    if not forBuild and os.path.exists(output_dir):
-                        mx.rmtree(output_dir)
 
             register_project(GraalVmWatProject(
                 suite=_suite,
@@ -211,6 +188,33 @@ def mx_register_dynamic_suite_constituents(register_project, register_distributi
                 testProject=True,
                 defaultBuild=False,
             ))
+            # add wasm to the layout of the benchmark distribution
+            _add_project_to_dist('./interpreter/', 'benchmarks.interpreter.wasm')
+
+        if mx_sdk_vm_impl.has_component('LLVM Runtime Native'):
+            register_project(mx.NativeProject(
+                suite=_suite,
+                name='benchmarks.interpreter.llvm.native',
+                results=['interpreter/'],
+                buildEnv={
+                    'NATIVE_LLVM_CC': '<toolchainGetToolPath:native,CC>',
+                },
+                buildDependencies=[
+                    'sulong:SULONG_BOOTSTRAP_TOOLCHAIN',
+                ],
+                vpath=True,
+                deps=[],
+                workingSets=None,
+                d=join(_suite.dir, 'benchmarks', 'interpreter'),
+                subDir=None,
+                srcDirs=[''],
+                output=None,
+                theLicense=None,
+                testProject=True,
+                defaultBuild=False,
+            ))
+            # add bitcode to the layout of the benchmark distribution
+            _add_project_to_dist('./', 'benchmarks.interpreter.llvm.native')
 
 
 class GraalVmSymlinks(mx.Project):

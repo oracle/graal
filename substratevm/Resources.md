@@ -50,7 +50,7 @@ Then:
    (or alternatively with a single `.*/(Resource0|Resource1).txt$`).
 *  Also, if we want to include everything except the `Resource2.txt` file, we can simply exclude it with `-H:IncludeResources='.*/Resource.*txt$'` followed by `-H:ExcludeResources='.*/Resource2.txt$'`.
 
-See also the [guide on assisted configuration of Java resources and other dynamic features](Configuration.md#assisted-configuration-of-native-image-builds).
+See also the [guide on assisted configuration of Java resources and other dynamic features](BuildConfiguration.md#assisted-configuration-of-native-image-builds).
 
 ## Resource Bundles in Native Image
 

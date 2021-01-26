@@ -26,6 +26,7 @@ package com.oracle.svm.core.jdk;
 
 import java.io.ByteArrayInputStream;
 import java.io.Closeable;
+import java.io.File;
 import java.io.IOException;
 import java.io.InputStream;
 import java.net.URL;
@@ -266,14 +267,31 @@ final class Target_java_lang_ClassLoader {
     @Substitute
     @SuppressWarnings("unused")
     @TargetElement(onlyWith = JDK14OrEarlier.class) //
+    /* Substitution for JDK 15 and later is in Target_java_lang_ClassLoader_JDK15OrLater. */
     static void loadLibrary(Class<?> fromClass, String name, boolean isAbsolute) {
-        NativeLibrarySupport.singleton().loadLibrary(name, isAbsolute);
+        if (isAbsolute) {
+            NativeLibrarySupport.singleton().loadLibraryAbsolute(new File(name));
+        } else {
+            NativeLibrarySupport.singleton().loadLibraryRelative(name);
+        }
     }
 
     @Substitute
     private Class<?> loadClass(String name) throws ClassNotFoundException {
+        if (!checkName(name)) {
+            /*
+             * Names that contain `/` or start with '[' are invalid. Calling `ClassLoader.loadClass`
+             * to create a `Class` object of an array class is invalid and a
+             * `ClassNotFoundException` will be thrown. Instead, `Class.forName` should be used
+             * directly to load array classes.
+             */
+            throw new ClassNotFoundException(name);
+        }
         return ClassForNameSupport.forName(name, false);
     }
+
+    @Alias
+    private native boolean checkName(String name);
 
     @Delete
     native Class<?> loadClass(String name, boolean resolve);

@@ -43,7 +43,7 @@ public class NoSuchFileTest {
         Assume.assumeFalse("File is missing", nonExisting.exists());
 
         try (Context c = Context.newBuilder().allowIO(true).allowExperimentalOptions(true).option("agentscript", nonExisting.getAbsolutePath()).build()) {
-            Object initializeTheAgent = InsightObjectFactory.createAgentObject(c);
+            Object initializeTheAgent = InsightObjectFactory.readInsight(c, null);
             assertNotNull(initializeTheAgent);
             fail("Error: Expecting exception");
         } catch (PolyglotException t) {

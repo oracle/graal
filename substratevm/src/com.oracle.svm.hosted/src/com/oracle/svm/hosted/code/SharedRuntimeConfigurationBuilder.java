@@ -32,6 +32,7 @@ import org.graalvm.compiler.core.common.spi.ConstantFieldProvider;
 import org.graalvm.compiler.core.common.spi.ForeignCallsProvider;
 import org.graalvm.compiler.core.common.spi.MetaAccessExtensionProvider;
 import org.graalvm.compiler.nodes.gc.BarrierSet;
+import org.graalvm.compiler.nodes.spi.LoopsDataProvider;
 import org.graalvm.compiler.nodes.spi.LoweringProvider;
 import org.graalvm.compiler.nodes.spi.PlatformConfigurationProvider;
 import org.graalvm.compiler.nodes.spi.Replacements;
@@ -66,6 +67,7 @@ import com.oracle.svm.hosted.SVMHost;
 import com.oracle.svm.hosted.c.NativeLibraries;
 import com.oracle.svm.hosted.c.info.AccessorInfo;
 import com.oracle.svm.hosted.c.info.StructFieldInfo;
+import com.oracle.svm.hosted.classinitialization.ClassInitializationSupport;
 import com.oracle.svm.hosted.config.HybridLayout;
 import com.oracle.svm.hosted.meta.HostedMetaAccess;
 import com.oracle.svm.hosted.thread.VMThreadMTFeature;
@@ -85,35 +87,42 @@ public abstract class SharedRuntimeConfigurationBuilder {
     protected WordTypes wordTypes;
     protected final Function<Providers, SubstrateBackend> backendProvider;
     protected final NativeLibraries nativeLibraries;
+    protected final ClassInitializationSupport classInitializationSupport;
+    protected final LoopsDataProvider originalLoopsDataProvider;
 
     public SharedRuntimeConfigurationBuilder(OptionValues options, SVMHost hostVM, MetaAccessProvider metaAccess, Function<Providers, SubstrateBackend> backendProvider,
-                    NativeLibraries nativeLibraries) {
+                    NativeLibraries nativeLibraries, ClassInitializationSupport classInitializationSupport, LoopsDataProvider originalLoopsDataProvider) {
         this.options = options;
         this.hostVM = hostVM;
         this.metaAccess = metaAccess;
         this.backendProvider = backendProvider;
         this.nativeLibraries = nativeLibraries;
+        this.classInitializationSupport = classInitializationSupport;
+        this.originalLoopsDataProvider = originalLoopsDataProvider;
     }
 
     public SharedRuntimeConfigurationBuilder build() {
         wordTypes = new SubstrateWordTypes(metaAccess, FrameAccess.getWordKind());
-        Providers p = createProviders(null, null, null, null, null, null, null, null, null, null);
+        Providers p = createProviders(null, null, null, null, null, null, null, null, null, null, null);
         StampProvider stampProvider = createStampProvider(p);
-        p = createProviders(null, null, null, null, null, null, stampProvider, null, null, null);
+        p = createProviders(null, null, null, null, null, null, stampProvider, null, null, null, null);
         ConstantReflectionProvider constantReflection = createConstantReflectionProvider(p);
-        p = createProviders(null, constantReflection, null, null, null, null, stampProvider, null, null, null);
+        p = createProviders(null, constantReflection, null, null, null, null, stampProvider, null, null, null, null);
         ConstantFieldProvider constantFieldProvider = createConstantFieldProvider(p);
         SnippetReflectionProvider snippetReflection = createSnippetReflectionProvider();
         ForeignCallsProvider foreignCalls = createForeignCallsProvider();
-        p = createProviders(null, constantReflection, constantFieldProvider, foreignCalls, null, null, stampProvider, snippetReflection, null, null);
+        p = createProviders(null, constantReflection, constantFieldProvider, foreignCalls, null, null, stampProvider, snippetReflection, null, null, null);
         BarrierSet barrierSet = ImageSingletons.lookup(Heap.class).createBarrierSet(metaAccess);
         PlatformConfigurationProvider platformConfig = new SubstratePlatformConfigurationProvider(barrierSet);
         MetaAccessExtensionProvider metaAccessExtensionProvider = new SubstrateMetaAccessExtensionProvider();
-        p = createProviders(null, constantReflection, constantFieldProvider, foreignCalls, null, null, stampProvider, snippetReflection, platformConfig, metaAccessExtensionProvider);
+        p = createProviders(null, constantReflection, constantFieldProvider, foreignCalls, null, null, stampProvider, snippetReflection, platformConfig, metaAccessExtensionProvider, null);
         LoweringProvider lowerer = createLoweringProvider(p);
-        p = createProviders(null, constantReflection, constantFieldProvider, foreignCalls, lowerer, null, stampProvider, snippetReflection, platformConfig, metaAccessExtensionProvider);
+        p = createProviders(null, constantReflection, constantFieldProvider, foreignCalls, lowerer, null, stampProvider, snippetReflection, platformConfig, metaAccessExtensionProvider, null);
         Replacements replacements = createReplacements(p, snippetReflection);
-        p = createProviders(null, constantReflection, constantFieldProvider, foreignCalls, lowerer, replacements, stampProvider, snippetReflection, platformConfig, metaAccessExtensionProvider);
+        p = createProviders(null, constantReflection, constantFieldProvider, foreignCalls, lowerer, replacements, stampProvider, snippetReflection, platformConfig, metaAccessExtensionProvider, null);
+        LoopsDataProvider loopsDataProvider = originalLoopsDataProvider;
+        p = createProviders(null, constantReflection, constantFieldProvider, foreignCalls, lowerer, replacements, stampProvider, snippetReflection, platformConfig, metaAccessExtensionProvider,
+                        loopsDataProvider);
 
         EnumMap<ConfigKind, SubstrateBackend> backends = new EnumMap<>(ConfigKind.class);
         for (ConfigKind config : ConfigKind.values()) {
@@ -122,7 +131,7 @@ public abstract class SharedRuntimeConfigurationBuilder {
             CodeCacheProvider codeCacheProvider = createCodeCacheProvider(registerConfig);
 
             Providers newProviders = createProviders(codeCacheProvider, constantReflection, constantFieldProvider, foreignCalls, lowerer, replacements, stampProvider,
-                            snippetReflection, platformConfig, metaAccessExtensionProvider);
+                            snippetReflection, platformConfig, metaAccessExtensionProvider, loopsDataProvider);
             backends.put(config, GraalConfiguration.instance().createBackend(newProviders));
         }
 
@@ -136,9 +145,9 @@ public abstract class SharedRuntimeConfigurationBuilder {
 
     protected Providers createProviders(CodeCacheProvider codeCache, ConstantReflectionProvider constantReflection, ConstantFieldProvider constantFieldProvider, ForeignCallsProvider foreignCalls,
                     LoweringProvider lowerer, Replacements replacements, StampProvider stampProvider, @SuppressWarnings("unused") SnippetReflectionProvider snippetReflection,
-                    PlatformConfigurationProvider platformConfigurationProvider, MetaAccessExtensionProvider metaAccessExtensionProvider) {
+                    PlatformConfigurationProvider platformConfigurationProvider, MetaAccessExtensionProvider metaAccessExtensionProvider, LoopsDataProvider loopsDataProvider) {
         return new Providers(metaAccess, codeCache, constantReflection, constantFieldProvider, foreignCalls, lowerer, replacements, stampProvider, platformConfigurationProvider,
-                        metaAccessExtensionProvider, snippetReflection, wordTypes);
+                        metaAccessExtensionProvider, snippetReflection, wordTypes, loopsDataProvider);
     }
 
     public RuntimeConfiguration getRuntimeConfig() {
@@ -173,7 +182,7 @@ public abstract class SharedRuntimeConfigurationBuilder {
         HybridLayout<DynamicHub> hubLayout = new HybridLayout<>(DynamicHub.class, ConfigurationValues.getObjectLayout(), hMetaAccess);
         int vtableBaseOffset = hubLayout.getArrayBaseOffset();
         int vtableEntrySize = ConfigurationValues.getObjectLayout().sizeInBytes(hubLayout.getArrayElementStorageKind());
-        int instanceOfBitsOrTypeIDSlotsOffset = HybridLayout.getBitFieldOrTypeIDSlotsFieldOffset(ConfigurationValues.getObjectLayout());
+        int typeIDSlotsOffset = HybridLayout.getTypeIDSlotsFieldOffset(ConfigurationValues.getObjectLayout());
 
         int componentHubOffset = hMetaAccess.lookupJavaField(ReflectionUtil.lookupField(DynamicHub.class, "componentHub")).getLocation();
 
@@ -187,7 +196,7 @@ public abstract class SharedRuntimeConfigurationBuilder {
 
         int imageCodeInfoCodeStartOffset = hMetaAccess.lookupJavaField(ReflectionUtil.lookupField(ImageCodeInfo.class, "codeStart")).getLocation();
 
-        runtimeConfig.setLazyState(vtableBaseOffset, vtableEntrySize, instanceOfBitsOrTypeIDSlotsOffset, componentHubOffset,
+        runtimeConfig.setLazyState(vtableBaseOffset, vtableEntrySize, typeIDSlotsOffset, componentHubOffset,
                         javaFrameAnchorLastSPOffset, javaFrameAnchorLastIPOffset, vmThreadStatusOffset, imageCodeInfoCodeStartOffset);
     }
 

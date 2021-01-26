@@ -30,9 +30,8 @@ import org.graalvm.compiler.core.common.CompilationIdentifier;
 import org.graalvm.compiler.debug.DebugCloseable;
 import org.graalvm.compiler.debug.DebugContext;
 import org.graalvm.compiler.debug.DebugContext.Builder;
+import org.graalvm.compiler.options.OptionValues;
 import org.graalvm.compiler.serviceprovider.GraalServices;
-import org.graalvm.compiler.truffle.common.TruffleInliningPlan;
-import org.graalvm.compiler.truffle.runtime.DefaultInliningPolicy;
 import org.graalvm.compiler.truffle.runtime.GraalCompilerDirectives;
 import org.graalvm.compiler.truffle.runtime.GraalTruffleRuntime;
 import org.graalvm.compiler.truffle.runtime.OptimizedCallTarget;
@@ -44,9 +43,10 @@ import org.junit.Before;
 import org.junit.Test;
 
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
+import com.oracle.truffle.api.frame.FrameDescriptor;
+import com.oracle.truffle.api.frame.FrameSlot;
 import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.nodes.RootNode;
-import org.graalvm.compiler.options.OptionValues;
 
 public class PerformanceWarningTest extends TruffleCompilerImplTest {
 
@@ -117,9 +117,13 @@ public class PerformanceWarningTest extends TruffleCompilerImplTest {
         testHelper(new RootNodeDeepClass(), false, "perf info", L8.class.getSimpleName(), "foo", "execute");
     }
 
+    @Test
+    public void testFrameClear() {
+        testHelper(new RootNodeClearFrameClass(new FrameDescriptor("test")), true, "perf warn");
+    }
+
     @SuppressWarnings("try")
     private void testHelper(RootNode rootNode, boolean expectException, String... outputStrings) {
-
         // Compile and capture output to logger's stream.
         boolean seenException = false;
         try {
@@ -129,8 +133,7 @@ public class PerformanceWarningTest extends TruffleCompilerImplTest {
             try (DebugCloseable d = debug.disableIntercept(); DebugContext.Scope s = debug.scope("PerformanceWarningTest")) {
                 final OptimizedCallTarget compilable = target;
                 CompilationIdentifier compilationId = getTruffleCompiler(target).createCompilationIdentifier(compilable);
-                TruffleInliningPlan inliningPlan = new TruffleInlining(compilable, new DefaultInliningPolicy());
-                getTruffleCompiler(target).compileAST(compilable.getOptionValues(), debug, compilable, inliningPlan, compilationId, null, null);
+                getTruffleCompiler(target).compileAST(compilable.getOptionValues(), debug, compilable, new TruffleInlining(), compilationId, null, null);
                 assertTrue(compilable.isValid());
             }
         } catch (AssertionError e) {
@@ -235,6 +238,10 @@ public class PerformanceWarningTest extends TruffleCompilerImplTest {
 
         private TestRootNode() {
             super(null);
+        }
+
+        private TestRootNode(FrameDescriptor fd) {
+            super(null, fd);
         }
     }
 
@@ -378,6 +385,30 @@ public class PerformanceWarningTest extends TruffleCompilerImplTest {
         @SuppressWarnings("unused")
         private void foo() {
             L8 c = (L8) obj;
+        }
+    }
+
+    private final class RootNodeClearFrameClass extends TestRootNode {
+        final FrameSlot slot;
+
+        RootNodeClearFrameClass(FrameDescriptor fd) {
+            super(fd);
+            this.slot = fd.addFrameSlot("test");
+        }
+
+        @Override
+        public Object execute(VirtualFrame frame) {
+            Object[] args = frame.getArguments();
+            if ((boolean) args[0]) {
+                frame.clear(slot);
+            }
+            // Expected Perf warn
+            boundary();
+            return null;
+        }
+
+        @TruffleBoundary
+        private void boundary() {
         }
     }
 

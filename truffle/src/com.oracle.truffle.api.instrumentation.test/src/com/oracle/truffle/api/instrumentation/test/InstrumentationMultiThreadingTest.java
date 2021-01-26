@@ -42,14 +42,18 @@ package com.oracle.truffle.api.instrumentation.test;
 
 import java.util.ArrayList;
 import java.util.List;
+import java.util.concurrent.CopyOnWriteArrayList;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.Future;
+import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.atomic.AtomicReference;
 
+import org.graalvm.polyglot.Context;
+import org.graalvm.polyglot.Source;
 import org.junit.Assert;
 import org.junit.Test;
 
@@ -66,9 +70,6 @@ import com.oracle.truffle.api.instrumentation.SourceFilter;
 import com.oracle.truffle.api.instrumentation.SourceSectionFilter;
 import com.oracle.truffle.api.instrumentation.TruffleInstrument.Registration;
 
-import org.graalvm.polyglot.Context;
-import org.graalvm.polyglot.Source;
-
 public class InstrumentationMultiThreadingTest {
 
     @Test
@@ -76,6 +77,7 @@ public class InstrumentationMultiThreadingTest {
         // unfortunately we don't support multiple evals yet
         int nEvals = 1;
         int nInstruments = 10;
+        CopyOnWriteArrayList<Context> createdContexts = new CopyOnWriteArrayList<>();
 
         for (int j = 0; j < 5; j++) {
             ExecutorService executorService = Executors.newFixedThreadPool(nEvals + nInstruments);
@@ -86,6 +88,7 @@ public class InstrumentationMultiThreadingTest {
                 futures.add(executorService.submit(new Runnable() {
                     public void run() {
                         final Context engine = Context.create();
+                        createdContexts.add(engine);
                         engineRef.set(engine);
                         while (!terminated.get()) {
                             try {
@@ -117,12 +120,19 @@ public class InstrumentationMultiThreadingTest {
             for (Future<?> future : futures) {
                 future.get();
             }
+
+            executorService.shutdownNow();
+            executorService.awaitTermination(100, TimeUnit.SECONDS);
+
             engineRef.get().getEngine().getInstruments().get("testAsyncAttachement1").lookup(EnableableInstrument.class).setEnabled(false);
             engineRef.get().getEngine().getInstruments().get("testAsyncAttachement2").lookup(EnableableInstrument.class).setEnabled(false);
         }
 
         Assert.assertEquals(0, createDisposeCount.get());
 
+        for (Context context : createdContexts) {
+            context.close();
+        }
     }
 
     @Registration(id = "testAsyncAttachement1", services = EnableableInstrument.class)

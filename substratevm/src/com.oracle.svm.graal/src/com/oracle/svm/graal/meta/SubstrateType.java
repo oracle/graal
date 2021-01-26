@@ -38,7 +38,6 @@ import org.graalvm.word.WordBase;
 
 import com.oracle.svm.core.FrameAccess;
 import com.oracle.svm.core.annotate.UnknownObjectField;
-import com.oracle.svm.core.annotate.UnknownPrimitiveField;
 import com.oracle.svm.core.hub.DynamicHub;
 import com.oracle.svm.core.meta.SharedType;
 import com.oracle.svm.core.meta.SubstrateObjectConstant;
@@ -75,9 +74,6 @@ public class SubstrateType extends NodeClass implements SharedType {
     @UnknownObjectField(types = SubstrateField[].class, canBeNull = true)//
     SubstrateField[] rawAllInstanceFields;
 
-    @UnknownPrimitiveField private int instanceOfFromTypeID;
-    @UnknownPrimitiveField private int instanceOfNumTypeIDs;
-
     @UnknownObjectField(types = {DynamicHub.class}) protected DynamicHub uniqueConcreteImplementation;
 
     public SubstrateType(JavaKind kind, DynamicHub hub) {
@@ -86,9 +82,6 @@ public class SubstrateType extends NodeClass implements SharedType {
 
         this.kind = kind;
         this.hub = hub;
-
-        /* Marker value that we do not have information for instanceOf checks. */
-        this.instanceOfFromTypeID = -1;
     }
 
     @Platforms(Platform.HOSTED_ONLY.class)
@@ -107,13 +100,6 @@ public class SubstrateType extends NodeClass implements SharedType {
     @Platforms(Platform.HOSTED_ONLY.class)
     public SubstrateField[] getRawAllInstanceFields() {
         return rawAllInstanceFields;
-    }
-
-    @Platforms(Platform.HOSTED_ONLY.class)
-    public void setLegacyTypeCheckData(int instanceOfFromTypeID, int instanceOfNumTypeIDs, DynamicHub uniqueConcreteImplementation) {
-        this.instanceOfFromTypeID = instanceOfFromTypeID;
-        this.instanceOfNumTypeIDs = instanceOfNumTypeIDs;
-        this.uniqueConcreteImplementation = uniqueConcreteImplementation;
     }
 
     @Platforms(Platform.HOSTED_ONLY.class)
@@ -138,16 +124,6 @@ public class SubstrateType extends NodeClass implements SharedType {
     @Override
     public DynamicHub getHub() {
         return hub;
-    }
-
-    @Override
-    public int getInstanceOfFromTypeID() {
-        return instanceOfFromTypeID;
-    }
-
-    @Override
-    public int getInstanceOfNumTypeIDs() {
-        return instanceOfNumTypeIDs;
     }
 
     @Override
@@ -188,7 +164,7 @@ public class SubstrateType extends NodeClass implements SharedType {
 
     @Override
     public boolean isArray() {
-        return hub.isArray();
+        return DynamicHub.toClass(hub).isArray();
     }
 
     @Override

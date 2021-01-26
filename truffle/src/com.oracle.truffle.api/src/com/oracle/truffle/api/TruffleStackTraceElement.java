@@ -106,8 +106,8 @@ public final class TruffleStackTraceElement {
     }
 
     /**
-     * Returns the materialized frame. Returns <code>null</code> if the initial {@link RootNode}
-     * that filled in the stack trace did not request frames to be captured by overriding
+     * Returns the read-only frame. Returns <code>null</code> if the initial {@link RootNode} that
+     * filled in the stack trace did not request frames to be captured by overriding
      * {@link RootNode#isCaptureFramesForTrace()}.
      *
      * @since 0.31

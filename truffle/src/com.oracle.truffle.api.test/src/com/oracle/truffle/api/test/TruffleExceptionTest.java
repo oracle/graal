@@ -66,14 +66,19 @@ import com.oracle.truffle.api.nodes.ExplodeLoop;
 import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.api.nodes.RootNode;
 import com.oracle.truffle.api.profiles.BranchProfile;
+import com.oracle.truffle.api.source.SourceSection;
 import com.oracle.truffle.api.test.polyglot.AbstractPolyglotTest;
 import com.oracle.truffle.api.test.polyglot.ProxyLanguage;
 import java.io.PrintWriter;
 import java.io.StringWriter;
 import java.util.ArrayDeque;
 import java.util.Arrays;
+import java.util.Collections;
+import java.util.EnumSet;
 import java.util.List;
 import java.util.Queue;
+import java.util.Set;
+import java.util.function.Consumer;
 import java.util.logging.Handler;
 import java.util.logging.LogRecord;
 import java.util.regex.Pattern;
@@ -229,6 +234,30 @@ public class TruffleExceptionTest extends AbstractPolyglotTest {
             Pattern pattern = Pattern.compile(patterns[i]);
             Assert.assertTrue("Expected " + patterns[i] + " but got " + line, pattern.matcher(line).matches());
         }
+    }
+
+    @Test
+    public void testExceptionFromPolyglotExceptionConstructor() {
+        testExceptionFromPolyglotExceptionConstructorImpl(ExceptionType.RUNTIME_ERROR, false);
+        testExceptionFromPolyglotExceptionConstructorImpl(ExceptionType.RUNTIME_ERROR, true, TruffleExceptionImpl.MessageKind.IS_EXCEPTION);
+        testExceptionFromPolyglotExceptionConstructorImpl(ExceptionType.RUNTIME_ERROR, true, TruffleExceptionImpl.MessageKind.GET_EXCEPTION_TYPE);
+        testExceptionFromPolyglotExceptionConstructorImpl(ExceptionType.EXIT, true, TruffleExceptionImpl.MessageKind.GET_EXCEPTION_EXIT_STATUS);
+        testExceptionFromPolyglotExceptionConstructorImpl(ExceptionType.PARSE_ERROR, true, TruffleExceptionImpl.MessageKind.IS_EXCEPTION_INCOMPLETE_SOURCE);
+        testExceptionFromPolyglotExceptionConstructorImpl(ExceptionType.RUNTIME_ERROR, true, TruffleExceptionImpl.MessageKind.HAS_SOURCE_LOCATION);
+        testExceptionFromPolyglotExceptionConstructorImpl(ExceptionType.RUNTIME_ERROR, true, TruffleExceptionImpl.MessageKind.GET_SOURCE_LOCATION);
+    }
+
+    private void testExceptionFromPolyglotExceptionConstructorImpl(ExceptionType type, boolean internal, TruffleExceptionImpl.MessageKind... failOn) {
+        setupEnv(Context.create(), new ProxyLanguage() {
+            @Override
+            protected CallTarget parse(TruffleLanguage.ParsingRequest request) throws Exception {
+                ThrowNode throwNode = new ThrowNode((n) -> new TruffleExceptionImpl("test", n, type, new InjectException(failOn)));
+                return Truffle.getRuntime().createCallTarget(new TestRootNode(languageInstance, "test", "unnamed", throwNode));
+            }
+        });
+        assertFails(() -> context.eval(ProxyLanguage.ID, "Test"), PolyglotException.class, (pe) -> {
+            Assert.assertEquals(internal, pe.isInternalError());
+        });
     }
 
     static Context createContext(VerifyingHandler handler) {
@@ -571,14 +600,112 @@ public class TruffleExceptionTest extends AbstractPolyglotTest {
     @ExportLibrary(InteropLibrary.class)
     static final class TruffleExceptionImpl extends AbstractTruffleException {
 
-        TruffleExceptionImpl(String message, Node location) {
-            super(message, location);
+        enum MessageKind {
+            IS_EXCEPTION,
+            THROW_EXCEPTION,
+            GET_EXCEPTION_TYPE,
+            GET_EXCEPTION_EXIT_STATUS,
+            IS_EXCEPTION_INCOMPLETE_SOURCE,
+            HAS_SOURCE_LOCATION,
+            GET_SOURCE_LOCATION
         }
 
-        @SuppressWarnings("static-method")
+        private final ExceptionType exceptionType;
+        private final Consumer<MessageKind> exceptionInjection;
+
+        TruffleExceptionImpl(String message, Node location) {
+            this(message, location, ExceptionType.RUNTIME_ERROR, null);
+        }
+
+        TruffleExceptionImpl(
+                        String message,
+                        Node location,
+                        ExceptionType exceptionType,
+                        Consumer<MessageKind> exceptionInjection) {
+            super(message, location);
+            this.exceptionType = exceptionType;
+            this.exceptionInjection = exceptionInjection;
+        }
+
+        @ExportMessage
+        boolean isException() {
+            injectException(MessageKind.IS_EXCEPTION);
+            return true;
+        }
+
+        @ExportMessage
+        RuntimeException throwException() {
+            injectException(MessageKind.THROW_EXCEPTION);
+            throw this;
+        }
+
         @ExportMessage
         ExceptionType getExceptionType() {
-            return ExceptionType.RUNTIME_ERROR;
+            injectException(MessageKind.GET_EXCEPTION_TYPE);
+            return exceptionType;
+        }
+
+        @ExportMessage
+        int getExceptionExitStatus() throws UnsupportedMessageException {
+            injectException(MessageKind.GET_EXCEPTION_EXIT_STATUS);
+            if (exceptionType != ExceptionType.EXIT) {
+                throw UnsupportedMessageException.create();
+            } else {
+                return 0;
+            }
+        }
+
+        @ExportMessage
+        boolean isExceptionIncompleteSource() throws UnsupportedMessageException {
+            injectException(MessageKind.IS_EXCEPTION_INCOMPLETE_SOURCE);
+            if (exceptionType != ExceptionType.PARSE_ERROR) {
+                throw UnsupportedMessageException.create();
+            } else {
+                return true;
+            }
+        }
+
+        @ExportMessage
+        boolean hasSourceLocation() {
+            injectException(MessageKind.HAS_SOURCE_LOCATION);
+            Node location = getLocation();
+            return location != null && location.getEncapsulatingSourceSection() != null;
+        }
+
+        @ExportMessage(name = "getSourceLocation")
+        SourceSection getSource() throws UnsupportedMessageException {
+            injectException(MessageKind.GET_SOURCE_LOCATION);
+            Node location = getLocation();
+            SourceSection section = location == null ? null : location.getEncapsulatingSourceSection();
+            if (section == null) {
+                throw UnsupportedMessageException.create();
+            } else {
+                return section;
+            }
+        }
+
+        @TruffleBoundary
+        private void injectException(MessageKind messageKind) {
+            if (exceptionInjection != null) {
+                exceptionInjection.accept(messageKind);
+            }
+        }
+    }
+
+    private static final class InjectException implements Consumer<TruffleExceptionImpl.MessageKind> {
+
+        private final Set<TruffleExceptionImpl.MessageKind> messages;
+
+        private InjectException(TruffleExceptionImpl.MessageKind... messages) {
+            this.messages = EnumSet.noneOf(TruffleExceptionImpl.MessageKind.class);
+            Collections.addAll(this.messages, messages);
+        }
+
+        @Override
+        public void accept(TruffleExceptionImpl.MessageKind kind) {
+            if (messages.contains(kind)) {
+                throw new RuntimeException();
+            }
         }
     }
 

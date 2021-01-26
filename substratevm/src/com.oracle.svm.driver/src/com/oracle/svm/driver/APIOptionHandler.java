@@ -32,7 +32,6 @@ import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
-import java.util.Queue;
 import java.util.ServiceLoader;
 import java.util.SortedMap;
 import java.util.TreeMap;
@@ -52,8 +51,10 @@ import com.oracle.svm.core.annotate.AutomaticFeature;
 import com.oracle.svm.core.option.APIOption;
 import com.oracle.svm.core.option.APIOption.APIOptionKind;
 import com.oracle.svm.core.option.APIOptionGroup;
+import com.oracle.svm.core.option.HostedOptionKey;
 import com.oracle.svm.core.option.SubstrateOptionsParser;
 import com.oracle.svm.core.util.VMError;
+import com.oracle.svm.driver.NativeImage.ArgumentQueue;
 import com.oracle.svm.hosted.FeatureImpl;
 import com.oracle.svm.hosted.option.HostedOptionParser;
 import com.oracle.svm.util.ReflectionUtil;
@@ -143,7 +144,12 @@ class APIOptionHandler extends NativeImage.OptionHandler<NativeImage> {
                 String defaultValue = null;
 
                 boolean booleanOption = false;
-                if (optionDescriptor.getOptionValueType().equals(Boolean.class)) {
+                Class<?> optionValueType = optionDescriptor.getOptionValueType();
+                if (optionValueType.isArray()) {
+                    VMError.guarantee(optionDescriptor.getOptionKey() instanceof HostedOptionKey, "Only HostedOptionKeys are allowed to have array type key values.");
+                    optionValueType = optionValueType.getComponentType();
+                }
+                if (optionValueType.equals(Boolean.class)) {
                     if (!apiAnnotation.group().equals(APIOption.NullGroup.class)) {
                         try {
                             Class<? extends APIOptionGroup> groupClass = apiAnnotation.group();
@@ -240,12 +246,12 @@ class APIOptionHandler extends NativeImage.OptionHandler<NativeImage> {
     }
 
     @Override
-    boolean consume(Queue<String> args) {
+    boolean consume(ArgumentQueue args) {
         String headArg = args.peek();
         String translatedOption = translateOption(headArg);
         if (translatedOption != null) {
             args.poll();
-            nativeImage.addPlainImageBuilderArg(translatedOption);
+            nativeImage.addPlainImageBuilderArg(NativeImage.injectHostedOptionOrigin(translatedOption, args.argumentOrigin));
             return true;
         }
         return false;

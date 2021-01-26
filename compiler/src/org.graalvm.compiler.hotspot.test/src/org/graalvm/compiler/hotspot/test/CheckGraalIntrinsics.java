@@ -302,41 +302,42 @@ public class CheckGraalIntrinsics extends GraalTest {
              * explicitly as the more generic method might be more restrictive and therefore slower
              * than necessary.
              */
+            if (!(arch instanceof AArch64)) {
+                add(toBeInvestigated,
+                                // Mapped to compareAndExchange*
+                                "jdk/internal/misc/Unsafe.compareAndExchangeByteAcquire(Ljava/lang/Object;JBB)B",
+                                "jdk/internal/misc/Unsafe.compareAndExchangeByteRelease(Ljava/lang/Object;JBB)B",
+                                "jdk/internal/misc/Unsafe.compareAndExchangeIntAcquire(Ljava/lang/Object;JII)I",
+                                "jdk/internal/misc/Unsafe.compareAndExchangeIntRelease(Ljava/lang/Object;JII)I",
+                                "jdk/internal/misc/Unsafe.compareAndExchangeLongAcquire(Ljava/lang/Object;JJJ)J",
+                                "jdk/internal/misc/Unsafe.compareAndExchangeLongRelease(Ljava/lang/Object;JJJ)J",
+                                "jdk/internal/misc/Unsafe.compareAndExchange" + oopName + "Acquire(Ljava/lang/Object;JLjava/lang/Object;Ljava/lang/Object;)Ljava/lang/Object;",
+                                "jdk/internal/misc/Unsafe.compareAndExchange" + oopName + "Release(Ljava/lang/Object;JLjava/lang/Object;Ljava/lang/Object;)Ljava/lang/Object;",
+                                "jdk/internal/misc/Unsafe.compareAndExchangeShortAcquire(Ljava/lang/Object;JSS)S",
+                                "jdk/internal/misc/Unsafe.compareAndExchangeShortRelease(Ljava/lang/Object;JSS)S",
 
-            add(toBeInvestigated,
-                            // Mapped to compareAndExchange*
-                            "jdk/internal/misc/Unsafe.compareAndExchangeByteAcquire(Ljava/lang/Object;JBB)B",
-                            "jdk/internal/misc/Unsafe.compareAndExchangeByteRelease(Ljava/lang/Object;JBB)B",
-                            "jdk/internal/misc/Unsafe.compareAndExchangeIntAcquire(Ljava/lang/Object;JII)I",
-                            "jdk/internal/misc/Unsafe.compareAndExchangeIntRelease(Ljava/lang/Object;JII)I",
-                            "jdk/internal/misc/Unsafe.compareAndExchangeLongAcquire(Ljava/lang/Object;JJJ)J",
-                            "jdk/internal/misc/Unsafe.compareAndExchangeLongRelease(Ljava/lang/Object;JJJ)J",
-                            "jdk/internal/misc/Unsafe.compareAndExchange" + oopName + "Acquire(Ljava/lang/Object;JLjava/lang/Object;Ljava/lang/Object;)Ljava/lang/Object;",
-                            "jdk/internal/misc/Unsafe.compareAndExchange" + oopName + "Release(Ljava/lang/Object;JLjava/lang/Object;Ljava/lang/Object;)Ljava/lang/Object;",
-                            "jdk/internal/misc/Unsafe.compareAndExchangeShortAcquire(Ljava/lang/Object;JSS)S",
-                            "jdk/internal/misc/Unsafe.compareAndExchangeShortRelease(Ljava/lang/Object;JSS)S",
-
-                            // Mapped to compareAndSet*
-                            "jdk/internal/misc/Unsafe.weakCompareAndSetByte(Ljava/lang/Object;JBB)Z",
-                            "jdk/internal/misc/Unsafe.weakCompareAndSetByteAcquire(Ljava/lang/Object;JBB)Z",
-                            "jdk/internal/misc/Unsafe.weakCompareAndSetBytePlain(Ljava/lang/Object;JBB)Z",
-                            "jdk/internal/misc/Unsafe.weakCompareAndSetByteRelease(Ljava/lang/Object;JBB)Z",
-                            "jdk/internal/misc/Unsafe.weakCompareAndSetInt(Ljava/lang/Object;JII)Z",
-                            "jdk/internal/misc/Unsafe.weakCompareAndSetIntAcquire(Ljava/lang/Object;JII)Z",
-                            "jdk/internal/misc/Unsafe.weakCompareAndSetIntPlain(Ljava/lang/Object;JII)Z",
-                            "jdk/internal/misc/Unsafe.weakCompareAndSetIntRelease(Ljava/lang/Object;JII)Z",
-                            "jdk/internal/misc/Unsafe.weakCompareAndSetLong(Ljava/lang/Object;JJJ)Z",
-                            "jdk/internal/misc/Unsafe.weakCompareAndSetLongAcquire(Ljava/lang/Object;JJJ)Z",
-                            "jdk/internal/misc/Unsafe.weakCompareAndSetLongPlain(Ljava/lang/Object;JJJ)Z",
-                            "jdk/internal/misc/Unsafe.weakCompareAndSetLongRelease(Ljava/lang/Object;JJJ)Z",
-                            "jdk/internal/misc/Unsafe.weakCompareAndSet" + oopName + "(Ljava/lang/Object;JLjava/lang/Object;Ljava/lang/Object;)Z",
-                            "jdk/internal/misc/Unsafe.weakCompareAndSet" + oopName + "Acquire(Ljava/lang/Object;JLjava/lang/Object;Ljava/lang/Object;)Z",
-                            "jdk/internal/misc/Unsafe.weakCompareAndSet" + oopName + "Plain(Ljava/lang/Object;JLjava/lang/Object;Ljava/lang/Object;)Z",
-                            "jdk/internal/misc/Unsafe.weakCompareAndSet" + oopName + "Release(Ljava/lang/Object;JLjava/lang/Object;Ljava/lang/Object;)Z",
-                            "jdk/internal/misc/Unsafe.weakCompareAndSetShort(Ljava/lang/Object;JSS)Z",
-                            "jdk/internal/misc/Unsafe.weakCompareAndSetShortAcquire(Ljava/lang/Object;JSS)Z",
-                            "jdk/internal/misc/Unsafe.weakCompareAndSetShortPlain(Ljava/lang/Object;JSS)Z",
-                            "jdk/internal/misc/Unsafe.weakCompareAndSetShortRelease(Ljava/lang/Object;JSS)Z");
+                                // Mapped to compareAndSet*
+                                "jdk/internal/misc/Unsafe.weakCompareAndSetByte(Ljava/lang/Object;JBB)Z",
+                                "jdk/internal/misc/Unsafe.weakCompareAndSetByteAcquire(Ljava/lang/Object;JBB)Z",
+                                "jdk/internal/misc/Unsafe.weakCompareAndSetBytePlain(Ljava/lang/Object;JBB)Z",
+                                "jdk/internal/misc/Unsafe.weakCompareAndSetByteRelease(Ljava/lang/Object;JBB)Z",
+                                "jdk/internal/misc/Unsafe.weakCompareAndSetInt(Ljava/lang/Object;JII)Z",
+                                "jdk/internal/misc/Unsafe.weakCompareAndSetIntAcquire(Ljava/lang/Object;JII)Z",
+                                "jdk/internal/misc/Unsafe.weakCompareAndSetIntPlain(Ljava/lang/Object;JII)Z",
+                                "jdk/internal/misc/Unsafe.weakCompareAndSetIntRelease(Ljava/lang/Object;JII)Z",
+                                "jdk/internal/misc/Unsafe.weakCompareAndSetLong(Ljava/lang/Object;JJJ)Z",
+                                "jdk/internal/misc/Unsafe.weakCompareAndSetLongAcquire(Ljava/lang/Object;JJJ)Z",
+                                "jdk/internal/misc/Unsafe.weakCompareAndSetLongPlain(Ljava/lang/Object;JJJ)Z",
+                                "jdk/internal/misc/Unsafe.weakCompareAndSetLongRelease(Ljava/lang/Object;JJJ)Z",
+                                "jdk/internal/misc/Unsafe.weakCompareAndSet" + oopName + "(Ljava/lang/Object;JLjava/lang/Object;Ljava/lang/Object;)Z",
+                                "jdk/internal/misc/Unsafe.weakCompareAndSet" + oopName + "Acquire(Ljava/lang/Object;JLjava/lang/Object;Ljava/lang/Object;)Z",
+                                "jdk/internal/misc/Unsafe.weakCompareAndSet" + oopName + "Plain(Ljava/lang/Object;JLjava/lang/Object;Ljava/lang/Object;)Z",
+                                "jdk/internal/misc/Unsafe.weakCompareAndSet" + oopName + "Release(Ljava/lang/Object;JLjava/lang/Object;Ljava/lang/Object;)Z",
+                                "jdk/internal/misc/Unsafe.weakCompareAndSetShort(Ljava/lang/Object;JSS)Z",
+                                "jdk/internal/misc/Unsafe.weakCompareAndSetShortAcquire(Ljava/lang/Object;JSS)Z",
+                                "jdk/internal/misc/Unsafe.weakCompareAndSetShortPlain(Ljava/lang/Object;JSS)Z",
+                                "jdk/internal/misc/Unsafe.weakCompareAndSetShortRelease(Ljava/lang/Object;JSS)Z");
+            }
 
             // Compact string support - HotSpot MacroAssembler-based intrinsic or complex C2 logic.
             add(toBeInvestigated,
@@ -451,6 +452,22 @@ public class CheckGraalIntrinsics extends GraalTest {
             add(ignore, "java/lang/Object.notifyAll()V");
         }
 
+        if (!(arch instanceof AMD64 || arch instanceof AArch64)) {
+            add(toBeInvestigated,
+                            "jdk/internal/misc/Unsafe.compareAndExchangeByte(Ljava/lang/Object;JBB)B",
+                            "jdk/internal/misc/Unsafe.compareAndExchangeShort(Ljava/lang/Object;JSS)S",
+                            "jdk/internal/misc/Unsafe.compareAndSetByte(Ljava/lang/Object;JBB)Z",
+                            "jdk/internal/misc/Unsafe.compareAndSetShort(Ljava/lang/Object;JSS)Z",
+                            "jdk/internal/misc/Unsafe.getAndAddByte(Ljava/lang/Object;JB)B",
+                            "jdk/internal/misc/Unsafe.getAndAddShort(Ljava/lang/Object;JS)S",
+                            "jdk/internal/misc/Unsafe.getAndSetByte(Ljava/lang/Object;JB)B",
+                            "jdk/internal/misc/Unsafe.getAndSetShort(Ljava/lang/Object;JS)S",
+                            "sun/misc/Unsafe.getAndAddInt(Ljava/lang/Object;JI)I",
+                            "sun/misc/Unsafe.getAndAddLong(Ljava/lang/Object;JJ)J",
+                            "sun/misc/Unsafe.getAndSetInt(Ljava/lang/Object;JI)I",
+                            "sun/misc/Unsafe.getAndSetLong(Ljava/lang/Object;JJ)J");
+        }
+
         if (!(arch instanceof AMD64)) {
             // Can we implement these on non-AMD64 platforms? C2 seems to.
             add(toBeInvestigated,
@@ -466,18 +483,6 @@ public class CheckGraalIntrinsics extends GraalTest {
                             "java/lang/StringUTF16.indexOfChar([BIII)I",
                             "java/lang/StringUTF16.indexOfLatin1([BI[BII)I",
                             "java/lang/StringUTF16.indexOfLatin1([B[B)I",
-                            "jdk/internal/misc/Unsafe.compareAndExchangeByte(Ljava/lang/Object;JBB)B",
-                            "jdk/internal/misc/Unsafe.compareAndExchangeShort(Ljava/lang/Object;JSS)S",
-                            "jdk/internal/misc/Unsafe.compareAndSetByte(Ljava/lang/Object;JBB)Z",
-                            "jdk/internal/misc/Unsafe.compareAndSetShort(Ljava/lang/Object;JSS)Z",
-                            "jdk/internal/misc/Unsafe.getAndAddByte(Ljava/lang/Object;JB)B",
-                            "jdk/internal/misc/Unsafe.getAndAddShort(Ljava/lang/Object;JS)S",
-                            "jdk/internal/misc/Unsafe.getAndSetByte(Ljava/lang/Object;JB)B",
-                            "jdk/internal/misc/Unsafe.getAndSetShort(Ljava/lang/Object;JS)S",
-                            "sun/misc/Unsafe.getAndAddInt(Ljava/lang/Object;JI)I",
-                            "sun/misc/Unsafe.getAndAddLong(Ljava/lang/Object;JJ)J",
-                            "sun/misc/Unsafe.getAndSetInt(Ljava/lang/Object;JI)I",
-                            "sun/misc/Unsafe.getAndSetLong(Ljava/lang/Object;JJ)J",
                             "sun/misc/Unsafe.getAndSet" + oopName + "(Ljava/lang/Object;JLjava/lang/Object;)Ljava/lang/Object;");
 
             if (isJDK9OrHigher()) {

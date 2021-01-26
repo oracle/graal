@@ -31,6 +31,7 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.Collection;
 import java.util.Collections;
 import java.util.Formatter;
 import java.util.HashSet;
@@ -43,6 +44,7 @@ import java.util.stream.Collectors;
 
 import org.graalvm.compiler.debug.DebugContext;
 import org.graalvm.compiler.debug.Indent;
+import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.nativeimage.Platform;
 
 import com.oracle.objectfile.ObjectFile;
@@ -51,6 +53,7 @@ import com.oracle.svm.core.LinkerInvocation;
 import com.oracle.svm.core.OS;
 import com.oracle.svm.core.SubstrateOptions;
 import com.oracle.svm.core.SubstrateUtil;
+import com.oracle.svm.core.c.libc.LibCBase;
 import com.oracle.svm.core.option.OptionUtils;
 import com.oracle.svm.core.util.InterruptImageBuilding;
 import com.oracle.svm.core.util.UserError;
@@ -88,7 +91,7 @@ public abstract class NativeBootImageViaCC extends NativeBootImage {
     class BinutilsCCLinkerInvocation extends CCLinkerInvocation {
 
         private final boolean staticExecWithDynamicallyLinkLibC = SubstrateOptions.StaticExecutableWithDynamicLibC.getValue();
-        private final Set<String> libCLibaries = new HashSet<>(Arrays.asList("pthread", "dl", "rt"));
+        private final Set<String> libCLibaries = new HashSet<>(Arrays.asList("pthread", "dl", "rt", "m"));
 
         BinutilsCCLinkerInvocation() {
             additionalPreOptions.add("-z");
@@ -312,7 +315,7 @@ public abstract class NativeBootImageViaCC extends NativeBootImage {
             cmd.add("iphlpapi.lib");
             cmd.add("userenv.lib");
 
-            Collections.addAll(cmd, Options.NativeLinkerOption.getValue());
+            cmd.addAll(Options.NativeLinkerOption.getValue().values());
             return cmd;
         }
     }
@@ -333,6 +336,10 @@ public abstract class NativeBootImageViaCC extends NativeBootImage {
                 break;
         }
 
+        if (SubstrateOptions.AdditionalLinkerOptions.hasBeenSet()) {
+            inv.additionalPreOptions.add(SubstrateOptions.AdditionalLinkerOptions.getValue());
+        }
+
         Path outputFile = outputDirectory.resolve(imageName + getBootImageKind().getFilenameSuffix());
         UserError.guarantee(!Files.isDirectory(outputFile), "Cannot write image to %s. Path exists as directory. (Use -H:Name=<image name>)", outputFile);
         inv.setOutputFile(outputFile);
@@ -348,9 +355,13 @@ public abstract class NativeBootImageViaCC extends NativeBootImage {
             inv.addRPath(rPath);
         }
 
-        for (String library : nativeLibs.getLibraries()) {
-            inv.addLinkedLibrary(library);
+        Collection<String> libraries = nativeLibs.getLibraries();
+        if (Platform.includedIn(Platform.LINUX.class) && ImageSingletons.lookup(LibCBase.class).getName().equals("bionic")) {
+            // on Bionic LibC pthread.h and rt.h are included in standard library and adding them in
+            // linker call produces error
+            libraries = libraries.stream().filter(library -> !Arrays.asList("pthread", "rt").contains(library)).collect(Collectors.toList());
         }
+        libraries.forEach(inv::addLinkedLibrary);
 
         for (Path filename : codeCache.getCCInputFiles(tempDirectory, imageName)) {
             inv.addInputFile(filename);

@@ -32,6 +32,9 @@ import org.graalvm.compiler.code.CompilationResult;
 import org.graalvm.compiler.core.common.CompilationIdentifier;
 import org.graalvm.compiler.debug.DebugContext;
 import org.graalvm.compiler.debug.DebugDumpScope;
+import org.graalvm.compiler.graph.Node;
+import org.graalvm.compiler.nodes.ConstantNode;
+import org.graalvm.compiler.nodes.DynamicDeoptimizeNode;
 import org.graalvm.compiler.nodes.FrameState;
 import org.graalvm.compiler.nodes.StructuredGraph;
 import org.graalvm.compiler.nodes.StructuredGraph.AllowAssumptions;
@@ -44,7 +47,6 @@ import org.graalvm.compiler.truffle.common.TruffleCompilationTask;
 import org.graalvm.compiler.truffle.common.TruffleCompilerRuntime;
 import org.graalvm.compiler.truffle.common.TruffleDebugJavaMethod;
 import org.graalvm.compiler.truffle.compiler.PartialEvaluator;
-import org.graalvm.compiler.truffle.runtime.DefaultInliningPolicy;
 import org.graalvm.compiler.truffle.runtime.OptimizedCallTarget;
 import org.graalvm.compiler.truffle.runtime.TruffleInlining;
 import org.junit.Assert;
@@ -63,6 +65,7 @@ public abstract class PartialEvaluationTest extends TruffleCompilerImplTest {
     DebugContext lastDebug;
     private volatile PhaseSuite<HighTierContext> suite;
     private boolean preventDumping = false;
+    protected boolean preventProfileCalls = false;
 
     public PartialEvaluationTest() {
     }
@@ -86,6 +89,10 @@ public abstract class PartialEvaluationTest extends TruffleCompilerImplTest {
     }
 
     protected void assertPartialEvalEquals(RootNode expected, RootNode actual, Object[] arguments) {
+        assertPartialEvalEquals(expected, actual, arguments, true);
+    }
+
+    protected void assertPartialEvalEquals(RootNode expected, RootNode actual, Object[] arguments, boolean checkConstants) {
         final OptimizedCallTarget expectedTarget = (OptimizedCallTarget) Truffle.getRuntime().createCallTarget(expected);
         final OptimizedCallTarget actualTarget = (OptimizedCallTarget) Truffle.getRuntime().createCallTarget(actual);
 
@@ -103,7 +110,7 @@ public abstract class PartialEvaluationTest extends TruffleCompilerImplTest {
                 getTruffleCompiler(actualTarget).compilePEGraph(actualGraph, "actualTest", getSuite(actualTarget), actualTarget, asCompilationRequest(actualId), null,
                                 newTask());
                 removeFrameStates(actualGraph);
-                assertEquals(expectedGraph, actualGraph, true, true);
+                assertEquals(expectedGraph, actualGraph, true, checkConstants);
                 return;
             } catch (BailoutException e) {
                 if (e.isPermanent()) {
@@ -194,29 +201,34 @@ public abstract class PartialEvaluationTest extends TruffleCompilerImplTest {
     @SuppressWarnings("try")
     protected StructuredGraph partialEval(OptimizedCallTarget compilable, Object[] arguments, CompilationIdentifier compilationId) {
         // Executed AST so that all classes are loaded and initialized.
-        try {
-            compilable.call(arguments);
-        } catch (IgnoreError e) {
-        }
-        try {
-            compilable.call(arguments);
-        } catch (IgnoreError e) {
-        }
-        try {
-            compilable.call(arguments);
-        } catch (IgnoreError e) {
+        if (!preventProfileCalls) {
+            try {
+                compilable.call(arguments);
+            } catch (IgnoreError e) {
+            }
+            try {
+                compilable.call(arguments);
+            } catch (IgnoreError e) {
+            }
+            try {
+                compilable.call(arguments);
+            } catch (IgnoreError e) {
+            }
         }
         OptionValues options = getGraalOptions();
         DebugContext debug = getDebugContext(options);
         lastDebug = debug;
         try (DebugContext.Scope s = debug.scope("TruffleCompilation", new TruffleDebugJavaMethod(compilable))) {
-            TruffleInlining inliningDecision = new TruffleInlining(compilable, new DefaultInliningPolicy());
             SpeculationLog speculationLog = compilable.getCompilationSpeculationLog();
             if (speculationLog != null) {
                 speculationLog.collectFailedSpeculations();
             }
+            if (!compilable.wasExecuted()) {
+                compilable.prepareForAOT();
+            }
             final PartialEvaluator partialEvaluator = getTruffleCompiler(compilable).getPartialEvaluator();
-            final PartialEvaluator.Request request = partialEvaluator.new Request(compilable.getOptionValues(), debug, compilable, partialEvaluator.rootForCallTarget(compilable), inliningDecision,
+            final PartialEvaluator.Request request = partialEvaluator.new Request(compilable.getOptionValues(), debug, compilable, partialEvaluator.rootForCallTarget(compilable),
+                            new TruffleInlining(),
                             compilationId, speculationLog, null);
             return partialEvaluator.evaluate(request);
         } catch (Throwable e) {
@@ -237,7 +249,19 @@ public abstract class PartialEvaluationTest extends TruffleCompilerImplTest {
             frameState.replaceAtUsages(null);
             frameState.safeDelete();
         }
-        createCanonicalizerPhase().apply(graph, getProviders());
+
+        /*
+         * Deoptimize nodes typically contain information about frame states encoded in the action.
+         * However this is not relevant when comparing graphs without frame states so we remove the
+         * action and reason and replace it with zero.
+         */
+        for (Node deopt : graph.getNodes()) {
+            if (deopt instanceof DynamicDeoptimizeNode) {
+                deopt.replaceFirstInput(((DynamicDeoptimizeNode) deopt).getActionAndReason(),
+                                graph.unique(ConstantNode.defaultForKind(((DynamicDeoptimizeNode) deopt).getActionAndReason().getStackKind())));
+            }
+        }
+
         new DeadCodeEliminationPhase().apply(graph);
     }
 

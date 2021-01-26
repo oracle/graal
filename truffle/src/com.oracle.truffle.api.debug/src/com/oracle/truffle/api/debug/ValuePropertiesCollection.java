@@ -137,7 +137,7 @@ final class ValuePropertiesCollection extends AbstractCollection<DebugValue> {
             } catch (ThreadDeath td) {
                 throw td;
             } catch (Throwable ex) {
-                throw new DebugException(session, ex, language, null, true, null);
+                throw DebugException.create(session, ex, language);
             }
         }
 

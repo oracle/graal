@@ -56,6 +56,7 @@ import com.oracle.truffle.api.library.ExportMessage;
 import com.oracle.truffle.api.library.GenerateLibrary;
 import com.oracle.truffle.api.library.Library;
 import com.oracle.truffle.api.test.AbstractParametrizedLibraryTest;
+import com.oracle.truffle.api.test.ExpectError;
 
 @SuppressWarnings({"static-method", "unused"})
 public class MultiExportTest extends AbstractParametrizedLibraryTest {
@@ -86,6 +87,7 @@ public class MultiExportTest extends AbstractParametrizedLibraryTest {
         }
     }
 
+    @ExpectError("Exported library InteropLibrary does not export any messages and therefore has no effect. Remove the export declaration to resolve this.")
     @ExportLibrary(MultiExportTestLibrary.class)
     @ExportLibrary(InteropLibrary.class)
     static final class MultiExportTestObject0 implements TruffleObject {
@@ -96,6 +98,7 @@ public class MultiExportTest extends AbstractParametrizedLibraryTest {
         }
     }
 
+    @ExpectError("Exported library InteropLibrary does not export any messages and therefore has no effect. Remove the export declaration to resolve this.")
     @ExportLibrary(MultiExportTestLibrary.class)
     @ExportLibrary(InteropLibrary.class)
     static final class MultiExportTestObject1 implements TruffleObject {

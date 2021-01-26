@@ -24,24 +24,36 @@
  */
 package com.oracle.svm.methodhandles;
 
-import static com.oracle.svm.core.util.VMError.unsupportedFeature;
-
+import java.lang.invoke.MethodHandle;
+import java.lang.invoke.MethodType;
 // Checkstyle: stop
+import java.lang.reflect.Constructor;
+import java.lang.reflect.Field;
+import java.lang.reflect.InvocationTargetException;
 import java.lang.reflect.Method;
 import java.lang.reflect.Modifier;
 // Checkstyle: resume
-
 import java.util.Arrays;
-
-import org.graalvm.compiler.debug.GraalError;
 
 import com.oracle.svm.core.SubstrateUtil;
 import com.oracle.svm.core.annotate.Alias;
 import com.oracle.svm.core.annotate.Substitute;
 import com.oracle.svm.core.annotate.TargetClass;
+import com.oracle.svm.core.util.VMError;
+import com.oracle.svm.reflect.helpers.InvokeSpecialReflectionProxy;
+import com.oracle.svm.reflect.target.Target_java_lang_reflect_AccessibleObject;
+import com.oracle.svm.reflect.target.Target_java_lang_reflect_Method;
+import com.oracle.svm.reflect.target.Target_jdk_internal_reflect_MethodAccessor;
+
+// Checkstyle: stop
+import sun.invoke.util.ValueConversions;
+import sun.invoke.util.Wrapper;
+// Checkstyle: resume
 
 @TargetClass(className = "java.lang.invoke.MethodHandle", onlyWith = MethodHandlesSupported.class)
 final class Target_java_lang_invoke_MethodHandle {
+
+    @Alias private MethodType type;
 
     @Alias
     native Target_java_lang_invoke_MemberName internalMemberName();
@@ -49,35 +61,169 @@ final class Target_java_lang_invoke_MethodHandle {
     @Alias
     native Target_java_lang_invoke_LambdaForm internalForm();
 
+    /* All MethodHandle.invoke* methods funnel through here. */
     @Substitute(polymorphicSignature = true)
-    private Object invokeBasic(Object... args) {
-        Target_java_lang_invoke_MemberName memberName = internalMemberName() != null ? internalMemberName() : internalForm().vmentry;
-        if (memberName == null) { /* Interpretation mode */
-            throw unsupportedFeature("Method handles requiring lambda form interpretation (e.g through a bindTo() call) are not supported. " +
-                            "See https://github.com/oracle/graal/issues/2939.");
-        }
-
-        try {
-            Method method = SubstrateUtil.cast(memberName.reflectAccess, Method.class);
-            if (Modifier.isStatic(method.getModifiers())) {
-                return method.invoke(null, args);
-            } else {
-                return method.invoke(args[0], Arrays.copyOfRange(args, 1, args.length));
-            }
-        } catch (Exception e) {
-            throw new GraalError(e);
+    Object invokeBasic(Object... args) throws Throwable {
+        Target_java_lang_invoke_MemberName memberName = internalMemberName();
+        if (memberName != null) { /* Direct method handle */
+            return Util_java_lang_invoke_MethodHandle.invokeInternal(memberName, type, args);
+        } else { /* Interpretation mode */
+            Target_java_lang_invoke_LambdaForm form = internalForm();
+            Object[] interpreterArguments = new Object[args.length + 1];
+            interpreterArguments[0] = this;
+            System.arraycopy(args, 0, interpreterArguments, 1, args.length);
+            return form.interpretWithArguments(interpreterArguments);
         }
     }
 
-    @SuppressWarnings("unused")
+    @Substitute(polymorphicSignature = true)
+    Object invoke(Object... args) throws Throwable {
+        MethodHandle self = SubstrateUtil.cast(this, MethodHandle.class);
+        return self.asType(self.type()).invokeExact(args);
+    }
+
+    @Substitute(polymorphicSignature = true)
+    Object invokeExact(Object... args) throws Throwable {
+        return invokeBasic(args);
+    }
+
     @Substitute(polymorphicSignature = true)
     static Object linkToVirtual(Object... args) throws Throwable {
-        throw unsupportedFeature("MethodHandle.linkToVirtual()");
+        return Util_java_lang_invoke_MethodHandle.linkTo(true, args);
     }
 
-    @SuppressWarnings("unused")
     @Substitute(polymorphicSignature = true)
     static Object linkToStatic(Object... args) throws Throwable {
-        throw unsupportedFeature("MethodHandle.linkToStatic()");
+        return Util_java_lang_invoke_MethodHandle.linkTo(false, args);
     }
+
+    @Substitute(polymorphicSignature = true)
+    static Object linkToInterface(Object... args) throws Throwable {
+        return Util_java_lang_invoke_MethodHandle.linkTo(true, args);
+    }
+
+    @Substitute(polymorphicSignature = true)
+    static Object linkToSpecial(Object... args) throws Throwable {
+        return Util_java_lang_invoke_MethodHandle.linkTo(true, args);
+    }
+}
+
+final class Util_java_lang_invoke_MethodHandle {
+    static Object linkTo(boolean hasReceiver, Object... args) throws Throwable {
+        assert args.length > 0;
+        Target_java_lang_invoke_MemberName memberName = (Target_java_lang_invoke_MemberName) args[args.length - 1];
+        MethodType methodType = memberName.getMethodType();
+        if (hasReceiver) {
+            methodType = methodType.insertParameterTypes(0, memberName.getDeclaringClass());
+        }
+        return invokeInternal(memberName, methodType, Arrays.copyOf(args, args.length - 1));
+    }
+
+    static Object invokeInternal(Target_java_lang_invoke_MemberName memberName, MethodType methodType, Object... args) throws Throwable {
+        /*
+         * The method handle may have been resolved at build time. If that is the case, the
+         * SVM-specific information needed to perform the invoke is not stored in the handle yet, so
+         * we perform the resolution again.
+         */
+        if (memberName.reflectAccess == null && memberName.intrinsic == null) {
+            Target_java_lang_invoke_MethodHandleNatives.resolve(memberName, null, false);
+        }
+
+        if (memberName.intrinsic != null) { /* Intrinsic call */
+            assert memberName.reflectAccess == null;
+            return memberName.intrinsic.execute(args);
+        } else if (memberName.isField()) { /* Field access */
+            Target_java_lang_reflect_AccessibleObject executable = SubstrateUtil.cast(memberName.reflectAccess, Target_java_lang_reflect_AccessibleObject.class);
+
+            /* Access control was already performed by the JDK code calling invokeBasic */
+            boolean oldOverride = executable.override;
+            executable.override = true;
+            try {
+                Field field = (Field) memberName.reflectAccess;
+                byte refKind = memberName.getReferenceKind();
+                if (Modifier.isStatic(field.getModifiers())) {
+                    if (refKind == Target_java_lang_invoke_MethodHandleNatives_Constants.REF_getStatic) {
+                        assert args == null || args.length == 0;
+                        return field.get(null);
+                    } else if (refKind == Target_java_lang_invoke_MethodHandleNatives_Constants.REF_putStatic) {
+                        assert args.length == 1;
+                        Object value = args[0];
+                        field.set(null, value);
+                        return null;
+                    } else {
+                        throw VMError.shouldNotReachHere("Wrong reference kind for static field access: " + memberName.getReferenceKind());
+                    }
+                } else {
+                    if (refKind == Target_java_lang_invoke_MethodHandleNatives_Constants.REF_getField) {
+                        assert args.length == 1;
+                        Object receiver = args[0];
+                        return field.get(receiver);
+                    } else if (refKind == Target_java_lang_invoke_MethodHandleNatives_Constants.REF_putField) {
+                        assert args.length == 2;
+                        Object receiver = args[0];
+                        Object value = args[1];
+                        field.set(receiver, value);
+                        return null;
+                    } else {
+                        throw VMError.shouldNotReachHere("Wrong reference kind for instance field access: " + memberName.getReferenceKind());
+                    }
+                }
+            } finally {
+                executable.override = oldOverride;
+            }
+        } else { /* Method or constructor invocation */
+            assert args.length == methodType.parameterCount();
+            for (int i = 0; i < args.length; ++i) {
+                Class<?> expectedParamType = methodType.parameterType(i);
+                if (expectedParamType.isPrimitive()) {
+                    Wrapper destWrapper = Wrapper.forPrimitiveType(expectedParamType);
+                    Wrapper srcWrapper = Wrapper.forWrapperType(args[i].getClass());
+                    if (destWrapper != srcWrapper) {
+                        /* We can't rely on automatic casting for the argument */
+                        Target_java_lang_invoke_MethodHandle typeConverter = SubstrateUtil.cast(ValueConversions.convertPrimitive(srcWrapper, destWrapper),
+                                        Target_java_lang_invoke_MethodHandle.class);
+                        args[i] = typeConverter.invokeBasic(args[i]);
+                    }
+                }
+            }
+
+            Target_java_lang_reflect_AccessibleObject executable = SubstrateUtil.cast(memberName.reflectAccess, Target_java_lang_reflect_AccessibleObject.class);
+
+            /* Access control was already performed by the JDK code calling invokeBasic */
+            boolean oldOverride = executable.override;
+            executable.override = true;
+            try {
+                if (memberName.isConstructor()) {
+                    return ((Constructor<?>) memberName.reflectAccess).newInstance(args);
+                } else {
+                    Method method = (Method) memberName.reflectAccess;
+                    if (Modifier.isStatic(method.getModifiers())) {
+                        return method.invoke(null, args);
+                    } else {
+                        Object receiver = args[0];
+                        Object[] invokeArgs = Arrays.copyOfRange(args, 1, args.length);
+                        if (memberName.getReferenceKind() == Target_java_lang_invoke_MethodHandleNatives_Constants.REF_invokeSpecial) {
+                            Target_jdk_internal_reflect_MethodAccessor accessor = SubstrateUtil.cast(method, Target_java_lang_reflect_Method.class).acquireMethodAccessor();
+                            return SubstrateUtil.cast(accessor, InvokeSpecialReflectionProxy.class).invokeSpecial(receiver, invokeArgs);
+                        } else {
+                            return method.invoke(receiver, invokeArgs);
+                        }
+                    }
+                }
+            } catch (InvocationTargetException e) {
+                /* Exceptions are thrown unchanged from method handles */
+                throw e.getCause();
+            } finally {
+                executable.override = oldOverride;
+            }
+        }
+    }
+}
+
+@TargetClass(className = "java.lang.invoke.MethodHandleImpl", onlyWith = MethodHandlesSupported.class)
+final class Target_java_lang_invoke_MethodHandleImpl {
+}
+
+@TargetClass(className = "java.lang.invoke.MethodHandleImpl", innerClass = "ArrayAccessor", onlyWith = MethodHandlesSupported.class)
+final class Target_java_lang_invoke_MethodHandleImpl_ArrayAccessor {
 }

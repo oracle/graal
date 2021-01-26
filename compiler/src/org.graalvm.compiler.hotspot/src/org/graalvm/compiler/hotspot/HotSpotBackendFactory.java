@@ -42,6 +42,8 @@ import org.graalvm.compiler.hotspot.meta.HotSpotStampProvider;
 import org.graalvm.compiler.hotspot.meta.HotSpotSuitesProvider;
 import org.graalvm.compiler.hotspot.word.HotSpotWordTypes;
 import org.graalvm.compiler.nodes.graphbuilderconf.GraphBuilderConfiguration;
+import org.graalvm.compiler.nodes.loop.LoopsDataProviderImpl;
+import org.graalvm.compiler.nodes.spi.LoopsDataProvider;
 import org.graalvm.compiler.options.OptionValues;
 import org.graalvm.compiler.phases.tiers.CompilerConfiguration;
 import org.graalvm.compiler.replacements.classfile.ClassfileBytecodeProvider;
@@ -104,6 +106,10 @@ public abstract class HotSpotBackendFactory {
      */
     public abstract Class<? extends Architecture> getArchitecture();
 
+    protected LoopsDataProvider createLoopsDataProvider() {
+        return new LoopsDataProviderImpl();
+    }
+
     @SuppressWarnings("try")
     public final HotSpotBackend createBackend(HotSpotGraalRuntimeProvider graalRuntime, CompilerConfiguration compilerConfiguration, HotSpotJVMCIRuntime jvmciRuntime, HotSpotBackend host) {
         assert host == null;
@@ -128,6 +134,7 @@ public abstract class HotSpotBackendFactory {
         HotSpotPlatformConfigurationProvider platformConfigurationProvider;
         HotSpotMetaAccessExtensionProvider metaAccessExtensionProvider;
         HotSpotSnippetReflectionProvider snippetReflection;
+        LoopsDataProvider loopsDataProvider;
         HotSpotReplacementsImpl replacements;
         HotSpotSuitesProvider suites;
         HotSpotWordTypes wordTypes;
@@ -158,9 +165,12 @@ public abstract class HotSpotBackendFactory {
             try (InitTimer rt = timer("create Lowerer provider")) {
                 lowerer = createLowerer(graalRuntime, metaAccess, foreignCalls, registers, constantReflection, platformConfigurationProvider, metaAccessExtensionProvider, target);
             }
+            try (InitTimer rt = timer("create loopsdata provider")) {
+                loopsDataProvider = createLoopsDataProvider();
+            }
 
             HotSpotProviders p = new HotSpotProviders(metaAccess, codeCache, constantReflection, constantFieldProvider, foreignCalls, lowerer, null, stampProvider, platformConfigurationProvider,
-                            metaAccessExtensionProvider);
+                            metaAccessExtensionProvider, loopsDataProvider);
 
             try (InitTimer rt = timer("create SnippetReflection provider")) {
                 snippetReflection = createSnippetReflection(graalRuntime, constantReflection, wordTypes);
@@ -180,7 +190,7 @@ public abstract class HotSpotBackendFactory {
                 suites = createSuites(config, graalRuntime, compilerConfiguration, plugins, registers, replacements, options);
             }
             providers = new HotSpotProviders(metaAccess, codeCache, constantReflection, constantFieldProvider, foreignCalls, lowerer, replacements, suites, registers,
-                            snippetReflection, wordTypes, plugins, platformConfigurationProvider, metaAccessExtensionProvider, config);
+                            snippetReflection, wordTypes, plugins, platformConfigurationProvider, metaAccessExtensionProvider, loopsDataProvider, config);
             replacements.setProviders(providers);
             replacements.maybeInitializeEncoder(options);
         }

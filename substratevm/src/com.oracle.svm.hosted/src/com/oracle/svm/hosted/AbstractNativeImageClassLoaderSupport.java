@@ -176,30 +176,28 @@ public abstract class AbstractNativeImageClassLoaderSupport {
         }
 
         private void loadClassesFromPath(Path path) {
-            if (Files.exists(path)) {
-                if (Files.isRegularFile(path)) {
+            if (ClasspathUtils.isJar(path)) {
+                try {
+                    URI jarURI = new URI("jar:" + path.toAbsolutePath().toUri());
+                    FileSystem probeJarFileSystem;
                     try {
-                        URI jarURI = new URI("jar:" + path.toAbsolutePath().toUri());
-                        FileSystem probeJarFileSystem;
-                        try {
-                            probeJarFileSystem = FileSystems.newFileSystem(jarURI, Collections.emptyMap());
-                        } catch (UnsupportedOperationException e) {
-                            /* Silently ignore invalid jar-files on image-classpath */
-                            probeJarFileSystem = null;
-                        }
-                        if (probeJarFileSystem != null) {
-                            try (FileSystem jarFileSystem = probeJarFileSystem) {
-                                loadClassesFromPath(jarFileSystem.getPath("/"), Collections.emptySet());
-                            }
-                        }
-                    } catch (ClosedByInterruptException ignored) {
-                        throw new InterruptImageBuilding();
-                    } catch (IOException | URISyntaxException e) {
-                        throw shouldNotReachHere(e);
+                        probeJarFileSystem = FileSystems.newFileSystem(jarURI, Collections.emptyMap());
+                    } catch (UnsupportedOperationException e) {
+                        /* Silently ignore invalid jar-files on image-classpath */
+                        probeJarFileSystem = null;
                     }
-                } else {
-                    loadClassesFromPath(path, excludeDirectories);
+                    if (probeJarFileSystem != null) {
+                        try (FileSystem jarFileSystem = probeJarFileSystem) {
+                            loadClassesFromPath(jarFileSystem.getPath("/"), Collections.emptySet());
+                        }
+                    }
+                } catch (ClosedByInterruptException ignored) {
+                    throw new InterruptImageBuilding();
+                } catch (IOException | URISyntaxException e) {
+                    throw shouldNotReachHere(e);
                 }
+            } else {
+                loadClassesFromPath(path, excludeDirectories);
             }
         }
 

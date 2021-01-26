@@ -261,7 +261,9 @@ public class BuggyLanguageInspectDebugLegacyTest {
                         "{\"method\":\"Debugger.scriptParsed\",\"params\":{\"endLine\":" + endLine + ",\"scriptId\":\"1\",\"endColumn\":" + endColumn + ",\"startColumn\":0,\"startLine\":0,\"length\":" +
                                         source.getLength() + ",\"executionContextId\":" + id + ",\"url\":\"" + sourceURI + "\",\"hash\":\"" + hash + "\"}}\n"));
         skipConsoleMessages(tester);
-        assertPaused(prefix + "2", haveScope, haveScope ? 4 : 2, sourceURI, 1);
+        // When we have a buggy scope, getName fails as well because we ask for the root instance,
+        // which is a part of legacy scope.
+        assertPaused(haveScope ? prefix + "2" : "A TruffleException", haveScope, haveScope ? 4 : 2, sourceURI, 1);
         bugVerifier.verifyMessages(tester, 2);
         tester.sendMessage("{\"id\":100,\"method\":\"Debugger.resume\"}");
         assertTrue(tester.compareReceivedMessages(

@@ -70,6 +70,7 @@ import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
 import static junit.framework.TestCase.fail;
+import static org.graalvm.wasm.WasmUtil.prepend;
 
 public abstract class WasmFileSuite extends AbstractWasmSuite {
 
@@ -214,7 +215,10 @@ public abstract class WasmFileSuite extends AbstractWasmSuite {
                     final boolean reinitMemory = requiresZeroMemory || iterationNeedsStateCheck(i + 1);
                     if (reinitMemory) {
                         for (int j = 0; j < wasmContext.memories().count(); ++j) {
-                            wasmContext.memories().memory(j).clear();
+                            wasmContext.memories().memory(j).reset();
+                        }
+                        for (int j = 0; j < wasmContext.tables().tableCount(); ++j) {
+                            wasmContext.tables().table(j).reset();
                         }
                     }
                     for (final WasmInstance instance : wasmContext.moduleInstances().values()) {
@@ -279,7 +283,8 @@ public abstract class WasmFileSuite extends AbstractWasmSuite {
             contextBuilder.option("wasm.Builtins", includedExternalModules());
             String commandLineArgs = testCase.options().getProperty("command-line-args");
             if (commandLineArgs != null) {
-                contextBuilder.arguments("wasm", commandLineArgs.split(" "));
+                // The first argument is the program name. We set it to the empty string in tests.
+                contextBuilder.arguments("wasm", prepend(commandLineArgs.split(" "), ""));
             }
 
             Context context;

@@ -28,14 +28,10 @@ import jdk.vm.ci.aarch64.AArch64;
 import jdk.vm.ci.amd64.AMD64;
 import jdk.vm.ci.code.TargetDescription;
 import org.graalvm.compiler.api.test.Graal;
-import org.graalvm.compiler.core.phases.HighTier;
-import org.graalvm.compiler.options.OptionValues;
 import org.graalvm.compiler.replacements.test.MethodSubstitutionTest;
 import org.graalvm.compiler.runtime.RuntimeProvider;
 import org.graalvm.compiler.test.AddExports;
 import org.junit.Test;
-
-import java.lang.reflect.Field;
 
 @AddExports("java.base/jdk.internal.misc")
 public class UnsafeReplacementsTest extends MethodSubstitutionTest {
@@ -44,9 +40,9 @@ public class UnsafeReplacementsTest extends MethodSubstitutionTest {
 
     static class Container {
         public volatile boolean booleanField;
-        public volatile byte byteField = 17;
+        public volatile byte byteField = -17;
         public volatile char charField = 1025;
-        public volatile short shortField = 2232;
+        public volatile short shortField = -2232;
         public volatile int intField = 0xcafebabe;
         public volatile long longField = 0xdedababafafaL;
         public volatile float floatField = 0.125f;
@@ -66,6 +62,8 @@ public class UnsafeReplacementsTest extends MethodSubstitutionTest {
     static long floatOffset;
     static long doubleOffset;
     static long byteArrayBaseOffset;
+
+    static final int WEAK_ATTEMPTS = 10;
 
     static {
         try {
@@ -90,7 +88,7 @@ public class UnsafeReplacementsTest extends MethodSubstitutionTest {
 
     public static boolean unsafeCompareAndSetByte() {
         Container container = new Container();
-        return unsafe.compareAndSetByte(container, byteOffset, (byte) 17, (byte) 121);
+        return unsafe.compareAndSetByte(container, byteOffset, (byte) -17, (byte) 121);
     }
 
     public static boolean unsafeCompareAndSetChar() {
@@ -100,7 +98,7 @@ public class UnsafeReplacementsTest extends MethodSubstitutionTest {
 
     public static boolean unsafeCompareAndSetShort() {
         Container container = new Container();
-        return unsafe.compareAndSetShort(container, shortOffset, (short) 2232, (short) 12111);
+        return unsafe.compareAndSetShort(container, shortOffset, (short) -2232, (short) 12111);
     }
 
     public static boolean unsafeCompareAndSetInt() {
@@ -123,65 +121,19 @@ public class UnsafeReplacementsTest extends MethodSubstitutionTest {
         return unsafe.compareAndSetDouble(container, doubleOffset, 0.125, 0.25);
     }
 
-    public static boolean unsafeCompareAndExchangeBoolean() {
-        Container container = new Container();
-        return unsafe.compareAndExchangeBoolean(container, booleanOffset, false, true);
-    }
-
-    public static byte unsafeCompareAndExchangeByte() {
-        Container container = new Container();
-        return unsafe.compareAndExchangeByte(container, byteOffset, (byte) 17, (byte) 31);
-    }
-
-    public static char unsafeCompareAndExchangeChar() {
-        Container container = new Container();
-        return unsafe.compareAndExchangeChar(container, charOffset, (char) 1025, (char) 4502);
-    }
-
-    public static short unsafeCompareAndExchangeShort() {
-        Container container = new Container();
-        return unsafe.compareAndExchangeShort(container, shortOffset, (short) 2232, (short) 8121);
-    }
-
-    public static int unsafeCompareAndExchangeInt() {
-        Container container = new Container();
-        return unsafe.compareAndExchangeInt(container, intOffset, 0xcafebabe, 0xbabefafa);
-    }
-
-    public static long unsafeCompareAndExchangeLong() {
-        Container container = new Container();
-        return unsafe.compareAndExchangeLong(container, longOffset, 0xdedababafafaL, 0xfafacecafafadedaL);
-    }
-
-    public static float unsafeCompareAndExchangeFloat() {
-        Container container = new Container();
-        return unsafe.compareAndExchangeFloat(container, floatOffset, 0.125f, 0.25f);
-    }
-
-    public static double unsafeCompareAndExchangeDouble() {
-        Container container = new Container();
-        return unsafe.compareAndExchangeDouble(container, doubleOffset, 0.125, 0.25);
-    }
-
     @Test
     public void testCompareAndSet() {
         if (target.arch instanceof AMD64) {
+            testGraph("unsafeCompareAndSetFloat");
+            testGraph("unsafeCompareAndSetDouble");
+        }
+        if (target.arch instanceof AMD64 || target.arch instanceof AArch64) {
             testGraph("unsafeCompareAndSetBoolean");
             testGraph("unsafeCompareAndSetByte");
             testGraph("unsafeCompareAndSetChar");
             testGraph("unsafeCompareAndSetShort");
             testGraph("unsafeCompareAndSetInt");
             testGraph("unsafeCompareAndSetLong");
-            testGraph("unsafeCompareAndSetFloat");
-            testGraph("unsafeCompareAndSetDouble");
-            testGraph("unsafeCompareAndExchangeBoolean");
-            testGraph("unsafeCompareAndExchangeByte");
-            testGraph("unsafeCompareAndExchangeChar");
-            testGraph("unsafeCompareAndExchangeShort");
-            testGraph("unsafeCompareAndExchangeInt");
-            testGraph("unsafeCompareAndExchangeLong");
-            testGraph("unsafeCompareAndExchangeFloat");
-            testGraph("unsafeCompareAndExchangeDouble");
         }
         test("unsafeCompareAndSetBoolean");
         test("unsafeCompareAndSetByte");
@@ -191,14 +143,543 @@ public class UnsafeReplacementsTest extends MethodSubstitutionTest {
         test("unsafeCompareAndSetLong");
         test("unsafeCompareAndSetFloat");
         test("unsafeCompareAndSetDouble");
+    }
+
+    public static boolean unsafeWeakCompareAndSetBoolean() {
+        Container container = new Container();
+        boolean success = false;
+        for (int c = 0; c < WEAK_ATTEMPTS && !success; c++) {
+            success = unsafe.weakCompareAndSetBoolean(container, booleanOffset, false, true);
+        }
+        return success;
+    }
+
+    public static boolean unsafeWeakCompareAndSetBooleanAcquire() {
+        Container container = new Container();
+        boolean success = false;
+        for (int c = 0; c < WEAK_ATTEMPTS && !success; c++) {
+            success = unsafe.weakCompareAndSetBooleanAcquire(container, booleanOffset, false, true);
+        }
+        return success;
+    }
+
+    public static boolean unsafeWeakCompareAndSetBooleanPlain() {
+        Container container = new Container();
+        boolean success = false;
+        for (int c = 0; c < WEAK_ATTEMPTS && !success; c++) {
+            success = unsafe.weakCompareAndSetBooleanPlain(container, booleanOffset, false, true);
+        }
+        return success;
+    }
+
+    public static boolean unsafeWeakCompareAndSetBooleanRelease() {
+        Container container = new Container();
+        boolean success = false;
+        for (int c = 0; c < WEAK_ATTEMPTS && !success; c++) {
+            unsafe.weakCompareAndSetBooleanRelease(container, booleanOffset, false, true);
+        }
+        return success;
+    }
+
+    public static boolean unsafeWeakCompareAndSetByte() {
+        Container container = new Container();
+        boolean success = false;
+        for (int c = 0; c < WEAK_ATTEMPTS && !success; c++) {
+            success = unsafe.weakCompareAndSetByte(container, byteOffset, (byte) -17, (byte) 121);
+        }
+        return success;
+    }
+
+    public static boolean unsafeWeakCompareAndSetByteAcquire() {
+        Container container = new Container();
+        boolean success = false;
+        for (int c = 0; c < WEAK_ATTEMPTS && !success; c++) {
+            success = unsafe.weakCompareAndSetByteAcquire(container, byteOffset, (byte) -17, (byte) 121);
+        }
+        return success;
+    }
+
+    public static boolean unsafeWeakCompareAndSetBytePlain() {
+        Container container = new Container();
+        boolean success = false;
+        for (int c = 0; c < WEAK_ATTEMPTS && !success; c++) {
+            success = unsafe.weakCompareAndSetBytePlain(container, byteOffset, (byte) -17, (byte) 121);
+        }
+        return success;
+    }
+
+    public static boolean unsafeWeakCompareAndSetByteRelease() {
+        Container container = new Container();
+        boolean success = false;
+        for (int c = 0; c < WEAK_ATTEMPTS && !success; c++) {
+            success = unsafe.weakCompareAndSetByteRelease(container, byteOffset, (byte) -17, (byte) 121);
+        }
+        return success;
+    }
+
+    public static boolean unsafeWeakCompareAndSetChar() {
+        Container container = new Container();
+        boolean success = false;
+        for (int c = 0; c < WEAK_ATTEMPTS && !success; c++) {
+            success = unsafe.weakCompareAndSetChar(container, charOffset, (char) 1025, (char) 1777);
+        }
+        return success;
+    }
+
+    public static boolean unsafeWeakCompareAndSetCharAcquire() {
+        Container container = new Container();
+        boolean success = false;
+        for (int c = 0; c < WEAK_ATTEMPTS && !success; c++) {
+            success = unsafe.weakCompareAndSetCharAcquire(container, charOffset, (char) 1025, (char) 1777);
+        }
+        return success;
+    }
+
+    public static boolean unsafeWeakCompareAndSetCharPlain() {
+        Container container = new Container();
+        boolean success = false;
+        for (int c = 0; c < WEAK_ATTEMPTS && !success; c++) {
+            success = unsafe.weakCompareAndSetCharPlain(container, charOffset, (char) 1025, (char) 1777);
+        }
+        return success;
+    }
+
+    public static boolean unsafeWeakCompareAndSetCharRelease() {
+        Container container = new Container();
+        boolean success = false;
+        for (int c = 0; c < WEAK_ATTEMPTS && !success; c++) {
+            success = unsafe.weakCompareAndSetCharRelease(container, charOffset, (char) 1025, (char) 1777);
+        }
+        return success;
+    }
+
+    public static boolean unsafeWeakCompareAndSetShort() {
+        Container container = new Container();
+        boolean success = false;
+        for (int c = 0; c < WEAK_ATTEMPTS && !success; c++) {
+            success = unsafe.weakCompareAndSetShort(container, shortOffset, (short) -2232, (short) 12111);
+        }
+        return success;
+    }
+
+    public static boolean unsafeWeakCompareAndSetShortAcquire() {
+        Container container = new Container();
+        boolean success = false;
+        for (int c = 0; c < WEAK_ATTEMPTS && !success; c++) {
+            success = unsafe.weakCompareAndSetShortAcquire(container, shortOffset, (short) -2232, (short) 12111);
+        }
+        return success;
+    }
+
+    public static boolean unsafeWeakCompareAndSetShortPlain() {
+        Container container = new Container();
+        boolean success = false;
+        for (int c = 0; c < WEAK_ATTEMPTS && !success; c++) {
+            success = unsafe.weakCompareAndSetShortPlain(container, shortOffset, (short) -2232, (short) 12111);
+        }
+        return success;
+    }
+
+    public static boolean unsafeWeakCompareAndSetShortRelease() {
+        Container container = new Container();
+        boolean success = false;
+        for (int c = 0; c < WEAK_ATTEMPTS && !success; c++) {
+            success = unsafe.weakCompareAndSetShortRelease(container, shortOffset, (short) -2232, (short) 12111);
+        }
+        return success;
+    }
+
+    public static boolean unsafeWeakCompareAndSetInt() {
+        Container container = new Container();
+        boolean success = false;
+        for (int c = 0; c < WEAK_ATTEMPTS && !success; c++) {
+            success = unsafe.weakCompareAndSetInt(container, intOffset, 0xcafebabe, 0xbabefafa);
+        }
+        return success;
+    }
+
+    public static boolean unsafeWeakCompareAndSetIntAcquire() {
+        Container container = new Container();
+        boolean success = false;
+        for (int c = 0; c < WEAK_ATTEMPTS && !success; c++) {
+            success = unsafe.weakCompareAndSetIntAcquire(container, intOffset, 0xcafebabe, 0xbabefafa);
+        }
+        return success;
+    }
+
+    public static boolean unsafeWeakCompareAndSetIntPlain() {
+        Container container = new Container();
+        boolean success = false;
+        for (int c = 0; c < WEAK_ATTEMPTS && !success; c++) {
+            success = unsafe.weakCompareAndSetIntPlain(container, intOffset, 0xcafebabe, 0xbabefafa);
+        }
+        return success;
+    }
+
+    public static boolean unsafeWeakCompareAndSetIntRelease() {
+        Container container = new Container();
+        boolean success = false;
+        for (int c = 0; c < WEAK_ATTEMPTS && !success; c++) {
+            success = unsafe.weakCompareAndSetIntRelease(container, intOffset, 0xcafebabe, 0xbabefafa);
+        }
+        return success;
+    }
+
+    public static boolean unsafeWeakCompareAndSetLong() {
+        Container container = new Container();
+        boolean success = false;
+        for (int c = 0; c < WEAK_ATTEMPTS && !success; c++) {
+            success = unsafe.weakCompareAndSetLong(container, longOffset, 0xdedababafafaL, 0xfafacecafafadedaL);
+        }
+        return success;
+    }
+
+    public static boolean unsafeWeakCompareAndSetLongAcquire() {
+        Container container = new Container();
+        boolean success = false;
+        for (int c = 0; c < WEAK_ATTEMPTS && !success; c++) {
+            success = unsafe.weakCompareAndSetLongAcquire(container, longOffset, 0xdedababafafaL, 0xfafacecafafadedaL);
+        }
+        return success;
+    }
+
+    public static boolean unsafeWeakCompareAndSetLongPlain() {
+        Container container = new Container();
+        boolean success = false;
+        for (int c = 0; c < WEAK_ATTEMPTS && !success; c++) {
+            success = unsafe.weakCompareAndSetLongPlain(container, longOffset, 0xdedababafafaL, 0xfafacecafafadedaL);
+        }
+        return success;
+    }
+
+    public static boolean unsafeWeakCompareAndSetLongRelease() {
+        Container container = new Container();
+        boolean success = false;
+        for (int c = 0; c < WEAK_ATTEMPTS && !success; c++) {
+            success = unsafe.weakCompareAndSetLongRelease(container, longOffset, 0xdedababafafaL, 0xfafacecafafadedaL);
+        }
+        return success;
+    }
+
+    public static boolean unsafeWeakCompareAndSetFloat() {
+        Container container = new Container();
+        boolean success = false;
+        for (int c = 0; c < WEAK_ATTEMPTS && !success; c++) {
+            success = unsafe.weakCompareAndSetFloat(container, floatOffset, 0.125f, 0.25f);
+        }
+        return success;
+    }
+
+    public static boolean unsafeWeakCompareAndSetFloatAcquire() {
+        Container container = new Container();
+        boolean success = false;
+        for (int c = 0; c < WEAK_ATTEMPTS && !success; c++) {
+            success = unsafe.weakCompareAndSetFloatAcquire(container, floatOffset, 0.125f, 0.25f);
+        }
+        return success;
+    }
+
+    public static boolean unsafeWeakCompareAndSetFloatPlain() {
+        Container container = new Container();
+        boolean success = false;
+        for (int c = 0; c < WEAK_ATTEMPTS && !success; c++) {
+            success = unsafe.weakCompareAndSetFloatPlain(container, floatOffset, 0.125f, 0.25f);
+        }
+        return success;
+    }
+
+    public static boolean unsafeWeakCompareAndSetFloatRelease() {
+        Container container = new Container();
+        boolean success = false;
+        for (int c = 0; c < WEAK_ATTEMPTS && !success; c++) {
+            success = unsafe.weakCompareAndSetFloatRelease(container, floatOffset, 0.125f, 0.25f);
+        }
+        return success;
+    }
+
+    public static boolean unsafeWeakCompareAndSetDouble() {
+        Container container = new Container();
+        boolean success = false;
+        for (int c = 0; c < WEAK_ATTEMPTS && !success; c++) {
+            success = unsafe.weakCompareAndSetDouble(container, doubleOffset, 0.125, 0.25);
+        }
+        return success;
+    }
+
+    public static boolean unsafeWeakCompareAndSetDoubleAcquire() {
+        Container container = new Container();
+        boolean success = false;
+        for (int c = 0; c < WEAK_ATTEMPTS && !success; c++) {
+            success = unsafe.weakCompareAndSetDoubleAcquire(container, doubleOffset, 0.125, 0.25);
+        }
+        return success;
+    }
+
+    public static boolean unsafeWeakCompareAndSetDoublePlain() {
+        Container container = new Container();
+        boolean success = false;
+        for (int c = 0; c < WEAK_ATTEMPTS && !success; c++) {
+            success = unsafe.weakCompareAndSetDoublePlain(container, doubleOffset, 0.125, 0.25);
+        }
+        return success;
+    }
+
+    public static boolean unsafeWeakCompareAndSetDoubleRelease() {
+        Container container = new Container();
+        boolean success = false;
+        for (int c = 0; c < WEAK_ATTEMPTS && !success; c++) {
+            success = unsafe.weakCompareAndSetDoubleRelease(container, doubleOffset, 0.125, 0.25);
+        }
+        return success;
+    }
+
+    @Test
+    public void testWeakCompareAndSet() {
+        if (target.arch instanceof AMD64) {
+            testGraph("unsafeWeakCompareAndSetFloat");
+            testGraph("unsafeWeakCompareAndSetFloatAcquire");
+            testGraph("unsafeWeakCompareAndSetFloatPlain");
+            testGraph("unsafeWeakCompareAndSetFloatRelease");
+            testGraph("unsafeWeakCompareAndSetDouble");
+            testGraph("unsafeWeakCompareAndSetDoubleAcquire");
+            testGraph("unsafeWeakCompareAndSetDoublePlain");
+            testGraph("unsafeWeakCompareAndSetDoubleRelease");
+        }
+        if (target.arch instanceof AMD64 || target.arch instanceof AArch64) {
+            testGraph("unsafeWeakCompareAndSetBoolean");
+            testGraph("unsafeWeakCompareAndSetBooleanAcquire");
+            testGraph("unsafeWeakCompareAndSetBooleanPlain");
+            testGraph("unsafeWeakCompareAndSetBooleanRelease");
+            testGraph("unsafeWeakCompareAndSetByte");
+            testGraph("unsafeWeakCompareAndSetByteAcquire");
+            testGraph("unsafeWeakCompareAndSetBytePlain");
+            testGraph("unsafeWeakCompareAndSetByteRelease");
+            testGraph("unsafeWeakCompareAndSetChar");
+            testGraph("unsafeWeakCompareAndSetCharAcquire");
+            testGraph("unsafeWeakCompareAndSetCharPlain");
+            testGraph("unsafeWeakCompareAndSetCharRelease");
+            testGraph("unsafeWeakCompareAndSetShort");
+            testGraph("unsafeWeakCompareAndSetShortAcquire");
+            testGraph("unsafeWeakCompareAndSetShortPlain");
+            testGraph("unsafeWeakCompareAndSetShortRelease");
+            testGraph("unsafeWeakCompareAndSetInt");
+            testGraph("unsafeWeakCompareAndSetIntAcquire");
+            testGraph("unsafeWeakCompareAndSetIntPlain");
+            testGraph("unsafeWeakCompareAndSetIntRelease");
+            testGraph("unsafeWeakCompareAndSetLong");
+            testGraph("unsafeWeakCompareAndSetLongAcquire");
+            testGraph("unsafeWeakCompareAndSetLongPlain");
+            testGraph("unsafeWeakCompareAndSetLongRelease");
+        }
+        test("unsafeWeakCompareAndSetFloat");
+        test("unsafeWeakCompareAndSetFloatAcquire");
+        test("unsafeWeakCompareAndSetFloatPlain");
+        test("unsafeWeakCompareAndSetFloatRelease");
+        test("unsafeWeakCompareAndSetDouble");
+        test("unsafeWeakCompareAndSetDoubleAcquire");
+        test("unsafeWeakCompareAndSetDoublePlain");
+        test("unsafeWeakCompareAndSetDoubleRelease");
+        test("unsafeWeakCompareAndSetBoolean");
+        test("unsafeWeakCompareAndSetBooleanAcquire");
+        test("unsafeWeakCompareAndSetBooleanPlain");
+        test("unsafeWeakCompareAndSetBooleanRelease");
+        test("unsafeWeakCompareAndSetByte");
+        test("unsafeWeakCompareAndSetByteAcquire");
+        test("unsafeWeakCompareAndSetBytePlain");
+        test("unsafeWeakCompareAndSetByteRelease");
+        test("unsafeWeakCompareAndSetChar");
+        test("unsafeWeakCompareAndSetCharAcquire");
+        test("unsafeWeakCompareAndSetCharPlain");
+        test("unsafeWeakCompareAndSetCharRelease");
+        test("unsafeWeakCompareAndSetShort");
+        test("unsafeWeakCompareAndSetShortAcquire");
+        test("unsafeWeakCompareAndSetShortPlain");
+        test("unsafeWeakCompareAndSetShortRelease");
+        test("unsafeWeakCompareAndSetInt");
+        test("unsafeWeakCompareAndSetIntAcquire");
+        test("unsafeWeakCompareAndSetIntPlain");
+        test("unsafeWeakCompareAndSetIntRelease");
+        test("unsafeWeakCompareAndSetLong");
+        test("unsafeWeakCompareAndSetLongAcquire");
+        test("unsafeWeakCompareAndSetLongPlain");
+        test("unsafeWeakCompareAndSetLongRelease");
+    }
+
+    public static boolean unsafeCompareAndExchangeBoolean() {
+        Container container = new Container();
+        return unsafe.compareAndExchangeBoolean(container, booleanOffset, false, true);
+    }
+
+    public static boolean unsafeCompareAndExchangeBooleanAcquire() {
+        Container container = new Container();
+        return unsafe.compareAndExchangeBooleanAcquire(container, booleanOffset, false, true);
+    }
+
+    public static boolean unsafeCompareAndExchangeBooleanRelease() {
+        Container container = new Container();
+        return unsafe.compareAndExchangeBooleanRelease(container, booleanOffset, false, true);
+    }
+
+    public static byte unsafeCompareAndExchangeByte() {
+        Container container = new Container();
+        return unsafe.compareAndExchangeByte(container, byteOffset, (byte) -17, (byte) 31);
+    }
+
+    public static int unsafeCompareAndExchangeByteAcquire() {
+        Container container = new Container();
+        return unsafe.compareAndExchangeByteAcquire(container, byteOffset, (byte) -17, (byte) 31);
+    }
+
+    public static int unsafeCompareAndExchangeByteRelease() {
+        Container container = new Container();
+        return unsafe.compareAndExchangeByteRelease(container, byteOffset, (byte) -17, (byte) 31);
+    }
+
+    public static char unsafeCompareAndExchangeChar() {
+        Container container = new Container();
+        return unsafe.compareAndExchangeChar(container, charOffset, (char) 1025, (char) 4502);
+    }
+
+    public static int unsafeCompareAndExchangeCharAcquire() {
+        Container container = new Container();
+        return unsafe.compareAndExchangeCharAcquire(container, charOffset, (char) 1025, (char) 4502);
+    }
+
+    public static int unsafeCompareAndExchangeCharRelease() {
+        Container container = new Container();
+        return unsafe.compareAndExchangeCharRelease(container, charOffset, (char) 1025, (char) 4502);
+    }
+
+    public static short unsafeCompareAndExchangeShort() {
+        Container container = new Container();
+        return unsafe.compareAndExchangeShort(container, shortOffset, (short) -2232, (short) 8121);
+    }
+
+    public static int unsafeCompareAndExchangeShortAcquire() {
+        Container container = new Container();
+        return unsafe.compareAndExchangeShortAcquire(container, shortOffset, (short) -2232, (short) 8121);
+    }
+
+    public static int unsafeCompareAndExchangeShortRelease() {
+        Container container = new Container();
+        return unsafe.compareAndExchangeShortRelease(container, shortOffset, (short) -2232, (short) 8121);
+    }
+
+    public static int unsafeCompareAndExchangeInt() {
+        Container container = new Container();
+        return unsafe.compareAndExchangeInt(container, intOffset, 0xcafebabe, 0xbabefafa);
+    }
+
+    public static int unsafeCompareAndExchangeIntAcquire() {
+        Container container = new Container();
+        return unsafe.compareAndExchangeIntAcquire(container, intOffset, 0xcafebabe, 0xbabefafa);
+    }
+
+    public static int unsafeCompareAndExchangeIntRelease() {
+        Container container = new Container();
+        return unsafe.compareAndExchangeIntRelease(container, intOffset, 0xcafebabe, 0xbabefafa);
+    }
+
+    public static long unsafeCompareAndExchangeLong() {
+        Container container = new Container();
+        return unsafe.compareAndExchangeLong(container, longOffset, 0xdedababafafaL, 0xfafacecafafadedaL);
+    }
+
+    public static long unsafeCompareAndExchangeLongAcquire() {
+        Container container = new Container();
+        return unsafe.compareAndExchangeLongAcquire(container, longOffset, 0xdedababafafaL, 0xfafacecafafadedaL);
+    }
+
+    public static long unsafeCompareAndExchangeLongRelease() {
+        Container container = new Container();
+        return unsafe.compareAndExchangeLongRelease(container, longOffset, 0xdedababafafaL, 0xfafacecafafadedaL);
+    }
+
+    public static float unsafeCompareAndExchangeFloat() {
+        Container container = new Container();
+        return unsafe.compareAndExchangeFloat(container, floatOffset, 0.125f, 0.25f);
+    }
+
+    public static float unsafeCompareAndExchangeFloatAcquire() {
+        Container container = new Container();
+        return unsafe.compareAndExchangeFloatAcquire(container, floatOffset, 0.125f, 0.25f);
+    }
+
+    public static float unsafeCompareAndExchangeFloatRelease() {
+        Container container = new Container();
+        return unsafe.compareAndExchangeFloatRelease(container, floatOffset, 0.125f, 0.25f);
+    }
+
+    public static double unsafeCompareAndExchangeDouble() {
+        Container container = new Container();
+        return unsafe.compareAndExchangeDouble(container, doubleOffset, 0.125, 0.25);
+    }
+
+    public static double unsafeCompareAndExchangeDoubleAcquire() {
+        Container container = new Container();
+        return unsafe.compareAndExchangeDoubleAcquire(container, doubleOffset, 0.125, 0.25);
+    }
+
+    public static double unsafeCompareAndExchangeDoubleRelease() {
+        Container container = new Container();
+        return unsafe.compareAndExchangeDoubleRelease(container, doubleOffset, 0.125, 0.25);
+    }
+
+    @Test
+    public void testCompareAndExchange() {
+        if (target.arch instanceof AMD64) {
+            testGraph("unsafeCompareAndExchangeFloat");
+            testGraph("unsafeCompareAndExchangeFloatAcquire");
+            testGraph("unsafeCompareAndExchangeFloatRelease");
+            testGraph("unsafeCompareAndExchangeDouble");
+            testGraph("unsafeCompareAndExchangeDoubleAcquire");
+            testGraph("unsafeCompareAndExchangeDoubleRelease");
+        }
+        if (target.arch instanceof AMD64 || target.arch instanceof AArch64) {
+            testGraph("unsafeCompareAndExchangeBoolean");
+            testGraph("unsafeCompareAndExchangeBooleanAcquire");
+            testGraph("unsafeCompareAndExchangeBooleanRelease");
+            testGraph("unsafeCompareAndExchangeByte");
+            testGraph("unsafeCompareAndExchangeByteAcquire");
+            testGraph("unsafeCompareAndExchangeByteRelease");
+            testGraph("unsafeCompareAndExchangeChar");
+            testGraph("unsafeCompareAndExchangeCharAcquire");
+            testGraph("unsafeCompareAndExchangeCharRelease");
+            testGraph("unsafeCompareAndExchangeShort");
+            testGraph("unsafeCompareAndExchangeShortAcquire");
+            testGraph("unsafeCompareAndExchangeShortRelease");
+            testGraph("unsafeCompareAndExchangeInt");
+            testGraph("unsafeCompareAndExchangeIntAcquire");
+            testGraph("unsafeCompareAndExchangeIntRelease");
+            testGraph("unsafeCompareAndExchangeLong");
+            testGraph("unsafeCompareAndExchangeLongAcquire");
+            testGraph("unsafeCompareAndExchangeLongRelease");
+        }
+
         test("unsafeCompareAndExchangeBoolean");
+        test("unsafeCompareAndExchangeBooleanAcquire");
+        test("unsafeCompareAndExchangeBooleanRelease");
         test("unsafeCompareAndExchangeByte");
+        test("unsafeCompareAndExchangeByteAcquire");
+        test("unsafeCompareAndExchangeByteRelease");
         test("unsafeCompareAndExchangeChar");
+        test("unsafeCompareAndExchangeCharAcquire");
+        test("unsafeCompareAndExchangeCharRelease");
         test("unsafeCompareAndExchangeShort");
+        test("unsafeCompareAndExchangeShortAcquire");
+        test("unsafeCompareAndExchangeShortRelease");
         test("unsafeCompareAndExchangeInt");
+        test("unsafeCompareAndExchangeIntAcquire");
+        test("unsafeCompareAndExchangeIntRelease");
         test("unsafeCompareAndExchangeLong");
+        test("unsafeCompareAndExchangeLongAcquire");
+        test("unsafeCompareAndExchangeLongRelease");
         test("unsafeCompareAndExchangeFloat");
+        test("unsafeCompareAndExchangeFloatAcquire");
+        test("unsafeCompareAndExchangeFloatRelease");
         test("unsafeCompareAndExchangeDouble");
+        test("unsafeCompareAndExchangeDoubleAcquire");
+        test("unsafeCompareAndExchangeDoubleRelease");
     }
 
     public static int unsafeGetAndAddByte() {
@@ -234,12 +715,10 @@ public class UnsafeReplacementsTest extends MethodSubstitutionTest {
 
     @Test
     public void testGetAndAdd() {
-        if (target.arch instanceof AMD64) {
+        if (target.arch instanceof AMD64 || target.arch instanceof AArch64) {
             testGraph("unsafeGetAndAddByte");
             testGraph("unsafeGetAndAddChar");
             testGraph("unsafeGetAndAddShort");
-        }
-        if (target.arch instanceof AMD64 || target.arch instanceof AArch64) {
             testGraph("unsafeGetAndAddInt");
             testGraph("unsafeGetAndAddLong");
         }
@@ -289,13 +768,11 @@ public class UnsafeReplacementsTest extends MethodSubstitutionTest {
 
     @Test
     public void testGetAndSet() {
-        if (target.arch instanceof AMD64) {
+        if (target.arch instanceof AMD64 || target.arch instanceof AArch64) {
             testGraph("unsafeGetAndSetBoolean");
             testGraph("unsafeGetAndSetByte");
             testGraph("unsafeGetAndSetChar");
             testGraph("unsafeGetAndSetShort");
-        }
-        if (target.arch instanceof AMD64 || target.arch instanceof AArch64) {
             testGraph("unsafeGetAndSetInt");
             testGraph("unsafeGetAndSetLong");
         }
@@ -308,200 +785,10 @@ public class UnsafeReplacementsTest extends MethodSubstitutionTest {
         test("unsafeGetAndSetLong");
     }
 
-    public static void fieldInstance() {
-        JdkInternalMiscUnsafeAccessTestBoolean.testFieldInstance();
-    }
-
-    @Test
-    public void testFieldInstance() {
-        test(new OptionValues(getInitialOptions(), HighTier.Options.Inline, false), "fieldInstance");
-    }
-
-    public static void array() {
-        JdkInternalMiscUnsafeAccessTestBoolean.testArray();
-    }
-
-    @Test
-    public void testArray() {
-        test(new OptionValues(getInitialOptions(), HighTier.Options.Inline, false), "array");
-    }
-
-    public static void fieldStatic() {
-        JdkInternalMiscUnsafeAccessTestBoolean.testFieldStatic();
-    }
-
-    @Test
-    public void testFieldStatic() {
-        test(new OptionValues(getInitialOptions(), HighTier.Options.Inline, false), "fieldStatic");
-    }
-
     public static void assertEquals(Object seen, Object expected, String message) {
         if (seen != expected) {
             throw new AssertionError(message + " - seen: " + seen + ", expected: " + expected);
         }
-    }
-
-    public static class JdkInternalMiscUnsafeAccessTestBoolean {
-        static final int ITERATIONS = 100000;
-
-        static final int WEAK_ATTEMPTS = 10;
-
-        static final long V_OFFSET;
-
-        static final Object STATIC_V_BASE;
-
-        static final long STATIC_V_OFFSET;
-
-        static final int ARRAY_OFFSET;
-
-        static final int ARRAY_SHIFT;
-
-        static {
-            try {
-                Field staticVField = UnsafeReplacementsTest.JdkInternalMiscUnsafeAccessTestBoolean.class.getDeclaredField("staticV");
-                STATIC_V_BASE = unsafe.staticFieldBase(staticVField);
-                STATIC_V_OFFSET = unsafe.staticFieldOffset(staticVField);
-            } catch (Exception e) {
-                throw new RuntimeException(e);
-            }
-
-            try {
-                Field vField = UnsafeReplacementsTest.JdkInternalMiscUnsafeAccessTestBoolean.class.getDeclaredField("v");
-                V_OFFSET = unsafe.objectFieldOffset(vField);
-            } catch (Exception e) {
-                throw new RuntimeException(e);
-            }
-
-            ARRAY_OFFSET = unsafe.arrayBaseOffset(boolean[].class);
-            int ascale = unsafe.arrayIndexScale(boolean[].class);
-            ARRAY_SHIFT = 31 - Integer.numberOfLeadingZeros(ascale);
-        }
-
-        static boolean staticV;
-
-        boolean v;
-
-        @BytecodeParserForceInline
-        public static void testFieldInstance() {
-            JdkInternalMiscUnsafeAccessTestBoolean t = new JdkInternalMiscUnsafeAccessTestBoolean();
-            for (int c = 0; c < ITERATIONS; c++) {
-                testAccess(t, V_OFFSET);
-            }
-        }
-
-        public static void testFieldStatic() {
-            for (int c = 0; c < ITERATIONS; c++) {
-                testAccess(STATIC_V_BASE, STATIC_V_OFFSET);
-            }
-        }
-
-        public static void testArray() {
-            boolean[] array = new boolean[10];
-            for (int c = 0; c < ITERATIONS; c++) {
-                for (int i = 0; i < array.length; i++) {
-                    testAccess(array, (((long) i) << ARRAY_SHIFT) + ARRAY_OFFSET);
-                }
-            }
-        }
-
-        // Checkstyle: stop
-        @BytecodeParserForceInline
-        public static void testAccess(Object base, long offset) {
-            // Advanced compare
-            {
-                boolean r = unsafe.compareAndExchangeBoolean(base, offset, false, true);
-                assertEquals(r, false, "success compareAndExchange boolean");
-                boolean x = unsafe.getBoolean(base, offset);
-                assertEquals(x, true, "success compareAndExchange boolean value");
-            }
-
-            {
-                boolean r = unsafe.compareAndExchangeBoolean(base, offset, false, false);
-                assertEquals(r, true, "failing compareAndExchange boolean");
-                boolean x = unsafe.getBoolean(base, offset);
-                assertEquals(x, true, "failing compareAndExchange boolean value");
-            }
-
-            {
-                boolean r = unsafe.compareAndExchangeBooleanAcquire(base, offset, true, false);
-                assertEquals(r, true, "success compareAndExchangeAcquire boolean");
-                boolean x = unsafe.getBoolean(base, offset);
-                assertEquals(x, false, "success compareAndExchangeAcquire boolean value");
-            }
-
-            {
-                boolean r = unsafe.compareAndExchangeBooleanAcquire(base, offset, true, false);
-                assertEquals(r, false, "failing compareAndExchangeAcquire boolean");
-                boolean x = unsafe.getBoolean(base, offset);
-                assertEquals(x, false, "failing compareAndExchangeAcquire boolean value");
-            }
-
-            {
-                boolean r = unsafe.compareAndExchangeBooleanRelease(base, offset, false, true);
-                assertEquals(r, false, "success compareAndExchangeRelease boolean");
-                boolean x = unsafe.getBoolean(base, offset);
-                assertEquals(x, true, "success compareAndExchangeRelease boolean value");
-            }
-
-            {
-                boolean r = unsafe.compareAndExchangeBooleanRelease(base, offset, false, false);
-                assertEquals(r, true, "failing compareAndExchangeRelease boolean");
-                boolean x = unsafe.getBoolean(base, offset);
-                assertEquals(x, true, "failing compareAndExchangeRelease boolean value");
-            }
-
-            {
-                boolean success = false;
-                for (int c = 0; c < WEAK_ATTEMPTS && !success; c++) {
-                    success = unsafe.weakCompareAndSetBooleanPlain(base, offset, true, false);
-                }
-                assertEquals(success, true, "weakCompareAndSetPlain boolean");
-                boolean x = unsafe.getBoolean(base, offset);
-                assertEquals(x, false, "weakCompareAndSetPlain boolean value");
-            }
-
-            {
-                boolean success = false;
-                for (int c = 0; c < WEAK_ATTEMPTS && !success; c++) {
-                    success = unsafe.weakCompareAndSetBooleanAcquire(base, offset, false, true);
-                }
-                assertEquals(success, true, "weakCompareAndSetAcquire boolean");
-                boolean x = unsafe.getBoolean(base, offset);
-                assertEquals(x, true, "weakCompareAndSetAcquire boolean");
-            }
-
-            {
-                boolean success = false;
-                for (int c = 0; c < WEAK_ATTEMPTS && !success; c++) {
-                    success = unsafe.weakCompareAndSetBooleanRelease(base, offset, true, false);
-                }
-                assertEquals(success, true, "weakCompareAndSetRelease boolean");
-                boolean x = unsafe.getBoolean(base, offset);
-                assertEquals(x, false, "weakCompareAndSetRelease boolean");
-            }
-
-            {
-                boolean success = false;
-                for (int c = 0; c < WEAK_ATTEMPTS && !success; c++) {
-                    success = unsafe.weakCompareAndSetBoolean(base, offset, false, true);
-                }
-                assertEquals(success, true, "weakCompareAndSet boolean");
-                boolean x = unsafe.getBoolean(base, offset);
-                assertEquals(x, true, "weakCompareAndSet boolean");
-            }
-
-            unsafe.putBoolean(base, offset, false);
-
-            // Compare set and get
-            {
-                boolean o = unsafe.getAndSetBoolean(base, offset, true);
-                assertEquals(o, false, "getAndSet boolean");
-                boolean x = unsafe.getBoolean(base, offset);
-                assertEquals(x, true, "getAndSet boolean value");
-            }
-
-        }
-        // Checkstyle: resume
     }
 
     public static boolean unsafeGetPutBoolean() {

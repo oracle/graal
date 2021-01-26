@@ -344,7 +344,7 @@ public class EncodedSnippets {
 
     private static void postDecode(DebugContext debug, StructuredGraph result, ResolvedJavaMethod original) {
         debug.dump(DebugContext.VERBOSE_LEVEL, result, "Before PartialIntrinsicCallTargetNode replacement");
-        for (PartialIntrinsicCallTargetNode partial : result.getNodes().filter(PartialIntrinsicCallTargetNode.class)) {
+        for (PartialIntrinsicCallTargetNode partial : result.getNodes(PartialIntrinsicCallTargetNode.TYPE)) {
             // Ensure the orignal method matches
             assert partial.checkName(original);
             ValueNode[] arguments = partial.arguments().toArray(new ValueNode[partial.arguments().size()]);

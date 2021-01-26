@@ -30,10 +30,12 @@ import jdk.jfr.Description;
 import jdk.jfr.DataAmount;
 import jdk.jfr.Label;
 import jdk.jfr.MemoryAddress;
+import jdk.jfr.Name;
 import jdk.jfr.StackTrace;
 import jdk.jfr.Unsigned;
 import org.graalvm.compiler.truffle.jfr.CompilationEvent;
 
+@Name("org.graalvm.compiler.truffle.Compilation")
 @Category("Truffle Compiler")
 @Label("Compilation")
 @Description("Truffe Compilation")
@@ -53,6 +55,8 @@ class CompilationEventImpl extends RootFunctionEventImpl implements CompilationE
     @Label("Graal Nodes") @Description("Graal Node Count") @Unsigned public int graalNodeCount;
 
     @Label("Truffle Nodes") @Description("Truffle Node Count") @Unsigned public int peNodeCount;
+
+    @Label("Partial Evaluation Time") @Description("Partial Evaluation Time in Milliseconds") @Unsigned public long peTime;
 
     private transient CompilationFailureEventImpl failure;
 
@@ -102,6 +106,11 @@ class CompilationEventImpl extends RootFunctionEventImpl implements CompilationE
     @Override
     public void setPartialEvaluationNodeCount(int count) {
         this.peNodeCount = count;
+    }
+
+    @Override
+    public void setPartialEvaluationTime(long time) {
+        this.peTime = time;
     }
 
     @Override

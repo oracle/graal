@@ -30,6 +30,7 @@ import org.graalvm.compiler.phases.util.Providers;
 import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.nativeimage.impl.RuntimeReflectionSupport;
 
+import com.oracle.graal.pointsto.meta.AnalysisUniverse;
 import com.oracle.svm.core.annotate.AutomaticFeature;
 import com.oracle.svm.core.configure.ConfigurationFiles;
 import com.oracle.svm.core.configure.ReflectionConfigurationParser;
@@ -51,12 +52,14 @@ public final class ReflectionFeature implements GraalFeature {
     private ReflectionDataBuilder reflectionData;
     private ImageClassLoader loader;
     private SVMHost hostVM;
+    private AnalysisUniverse aUniverse;
     private int loadedConfigurations;
 
     @Override
     public void duringSetup(DuringSetupAccess a) {
         DuringSetupAccessImpl access = (DuringSetupAccessImpl) a;
         hostVM = access.getHostVM();
+        aUniverse = access.getUniverse();
 
         ReflectionSubstitution subst = new ReflectionSubstitution(access.getMetaAccess().getWrapped(), access.getHostVM().getClassInitializationSupport(), access.getImageClassLoader());
         access.registerSubstitutionProcessor(subst);
@@ -64,6 +67,10 @@ public final class ReflectionFeature implements GraalFeature {
 
         reflectionData = new ReflectionDataBuilder(access);
         ImageSingletons.add(RuntimeReflectionSupport.class, reflectionData);
+
+        if (!ImageSingletons.contains(ReflectionSubstitutionType.Factory.class)) {
+            ImageSingletons.add(ReflectionSubstitutionType.Factory.class, new ReflectionSubstitutionType.Factory());
+        }
 
         ReflectionConfigurationParser<Class<?>> parser = ConfigurationParserUtils.create(reflectionData, access.getImageClassLoader());
         loadedConfigurations = ConfigurationParserUtils.parseAndRegisterConfigurations(parser, access.getImageClassLoader(), "reflection",
@@ -101,6 +108,6 @@ public final class ReflectionFeature implements GraalFeature {
          * The reflection invocation plugins need to be registered only when reflection is enabled
          * since it adds Field and Method objects to the image heap which otherwise are not allowed.
          */
-        ReflectionPlugins.registerInvocationPlugins(loader, snippetReflection, annotationSubstitutions, invocationPlugins, hostVM, analysis, hosted);
+        ReflectionPlugins.registerInvocationPlugins(loader, snippetReflection, annotationSubstitutions, invocationPlugins, hostVM, aUniverse, analysis, hosted);
     }
 }

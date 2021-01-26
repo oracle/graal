@@ -24,6 +24,7 @@
  */
 package com.oracle.svm.core.option;
 
+import org.graalvm.collections.EconomicMap;
 import org.graalvm.compiler.api.replacements.Fold;
 import org.graalvm.compiler.options.Option;
 import org.graalvm.compiler.options.OptionKey;
@@ -68,5 +69,20 @@ public class HostedOptionKey<T> extends OptionKey<T> {
     @Override
     protected boolean checkDescriptorExists() {
         return true;
+    }
+
+    @Override
+    public void update(EconomicMap<OptionKey<?>, Object> values, Object boxedValue) {
+        Object defaultValue = getDefaultValue();
+        if (defaultValue instanceof MultiOptionValue) {
+            MultiOptionValue<?> value = (MultiOptionValue<?>) values.get(this);
+            if (value == null) {
+                value = ((MultiOptionValue<?>) defaultValue).createCopy();
+                values.put(this, value);
+            }
+            value.valueUpdate(boxedValue);
+        } else {
+            super.update(values, LocatableOption.rawValue(boxedValue));
+        }
     }
 }

@@ -33,6 +33,7 @@ import java.util.Set;
 import jdk.vm.ci.services.Services;
 import org.graalvm.compiler.debug.TTY;
 import org.graalvm.compiler.serviceprovider.IsolateUtil;
+import org.graalvm.compiler.serviceprovider.JavaVersionUtil;
 import org.graalvm.libgraal.jni.JNI.JArray;
 import org.graalvm.libgraal.jni.JNI.JByteArray;
 import org.graalvm.libgraal.jni.JNI.JClass;
@@ -359,28 +360,33 @@ public final class JNIUtil {
      * Returns a ClassLoader used to load the compiler classes.
      */
     public static JNI.JObject getJVMCIClassLoader(JNI.JNIEnv env) {
-        JNI.JClass clazz;
-        try (CTypeConversion.CCharPointerHolder className = CTypeConversion.toCString(CLASS_SERVICES)) {
-            clazz = JNIUtil.FindClass(env, className.get());
-        }
-        if (clazz.isNull()) {
-            throw new InternalError("No such class " + CLASS_SERVICES);
-        }
-        JNI.JMethodID getClassLoaderId = findMethod(env, clazz, true, true, METHOD_GET_JVMCI_CLASS_LOADER[0], METHOD_GET_JVMCI_CLASS_LOADER[1]);
-        if (getClassLoaderId.isNonNull()) {
+        if (JavaVersionUtil.JAVA_SPEC <= 8) {
+            JNI.JClass clazz;
+            try (CTypeConversion.CCharPointerHolder className = CTypeConversion.toCString(CLASS_SERVICES)) {
+                clazz = JNIUtil.FindClass(env, className.get());
+            }
+            if (clazz.isNull()) {
+                throw new InternalError("No such class " + CLASS_SERVICES);
+            }
+            JNI.JMethodID getClassLoaderId = findMethod(env, clazz, true, true, METHOD_GET_JVMCI_CLASS_LOADER[0], METHOD_GET_JVMCI_CLASS_LOADER[1]);
+            if (getClassLoaderId.isNull()) {
+                throw new InternalError(String.format("Cannot find method %s in class %s.", METHOD_GET_JVMCI_CLASS_LOADER[0], CLASS_SERVICES));
+            }
+            return env.getFunctions().getCallStaticObjectMethodA().call(env, clazz, getClassLoaderId, nullPointer());
+        } else {
+            JNI.JClass clazz;
+            try (CTypeConversion.CCharPointerHolder className = CTypeConversion.toCString(JNIUtil.getBinaryName(ClassLoader.class.getName()))) {
+                clazz = JNIUtil.FindClass(env, className.get());
+            }
+            if (clazz.isNull()) {
+                throw new InternalError("No such class " + ClassLoader.class.getName());
+            }
+            JNI.JMethodID getClassLoaderId = findMethod(env, clazz, true, true, METHOD_GET_PLATFORM_CLASS_LOADER[0], METHOD_GET_PLATFORM_CLASS_LOADER[1]);
+            if (getClassLoaderId.isNull()) {
+                throw new InternalError(String.format("Cannot find method %s in class %s.", METHOD_GET_PLATFORM_CLASS_LOADER[0], ClassLoader.class.getName()));
+            }
             return env.getFunctions().getCallStaticObjectMethodA().call(env, clazz, getClassLoaderId, nullPointer());
         }
-        try (CTypeConversion.CCharPointerHolder className = CTypeConversion.toCString(JNIUtil.getBinaryName(ClassLoader.class.getName()))) {
-            clazz = JNIUtil.FindClass(env, className.get());
-        }
-        if (clazz.isNull()) {
-            throw new InternalError("No such class " + ClassLoader.class.getName());
-        }
-        getClassLoaderId = findMethod(env, clazz, true, true, METHOD_GET_PLATFORM_CLASS_LOADER[0], METHOD_GET_PLATFORM_CLASS_LOADER[1]);
-        if (getClassLoaderId.isNonNull()) {
-            return env.getFunctions().getCallStaticObjectMethodA().call(env, clazz, getClassLoaderId, nullPointer());
-        }
-        return WordFactory.nullPointer();
     }
 
     public static JNI.JMethodID findMethod(JNI.JNIEnv env, JNI.JClass clazz, boolean staticMethod, String methodName, String methodSignature) {

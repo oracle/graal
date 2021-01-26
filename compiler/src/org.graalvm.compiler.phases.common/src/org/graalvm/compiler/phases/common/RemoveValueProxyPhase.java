@@ -46,7 +46,7 @@ public class RemoveValueProxyPhase extends Phase {
                 GraphUtil.tryKillUnused(frameState);
             }
         }
-        graph.setHasValueProxies(false);
+        graph.setAfterValueProxyRemoval();
         graph.weakenFrameStateVerification(FrameStateVerification.ALL_EXCEPT_LOOP_EXIT);
     }
 }

@@ -309,6 +309,7 @@ define TOOLCHAIN_OPT_RULES
 endef
 
 $(eval $(call TOOLCHAIN_OPT_RULES,plain,))
+$(eval $(call TOOLCHAIN_OPT_RULES,O0,-O0 ${SULONG_MAKE_CLANG_IMPLICIT_ARGS}))
 $(eval $(call TOOLCHAIN_OPT_RULES,O1,-O1))
 $(eval $(call TOOLCHAIN_OPT_RULES,O2,-O2))
 $(eval $(call TOOLCHAIN_OPT_RULES,O3,-O3))

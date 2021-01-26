@@ -70,3 +70,12 @@ final class Target_java_lang_invoke_Invokers {
         }
     }
 }
+
+@TargetClass(className = "java.lang.invoke.InvokerBytecodeGenerator", onlyWith = MethodHandlesSupported.class)
+final class Target_java_lang_invoke_InvokerBytecodeGenerator {
+    @SuppressWarnings("unused")
+    @Substitute
+    static Target_java_lang_invoke_MemberName generateLambdaFormInterpreterEntryPoint(MethodType mt) {
+        return null; /* Prevent runtime compilation of invokers */
+    }
+}

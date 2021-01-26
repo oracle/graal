@@ -27,9 +27,11 @@ package org.graalvm.compiler.truffle.jfr.impl;
 import jdk.jfr.Category;
 import jdk.jfr.Description;
 import jdk.jfr.Label;
+import jdk.jfr.Name;
 import jdk.jfr.StackTrace;
 import org.graalvm.compiler.truffle.jfr.DeoptimizationEvent;
 
+@Name("org.graalvm.compiler.truffle.Deoptimization")
 @Category("Truffle Compiler")
 @Label("Deoptimization")
 @Description("Truffle Call Target Deoptimization")

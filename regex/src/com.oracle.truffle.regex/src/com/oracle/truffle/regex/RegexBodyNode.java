@@ -72,6 +72,10 @@ public abstract class RegexBodyNode extends ExecutableNode implements Instrument
         return source;
     }
 
+    public RegexLanguage getRegexLanguage() {
+        return language;
+    }
+
     @CompilerDirectives.TruffleBoundary
     @Override
     public SourceSection getSourceSection() {

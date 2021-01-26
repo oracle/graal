@@ -236,6 +236,16 @@ public abstract class ValueProfile extends Profile {
         }
 
         @Override
+        public void disable() {
+            cachedValue = GENERIC;
+        }
+
+        @Override
+        public void reset() {
+            cachedValue = null;
+        }
+
+        @Override
         public String toString() {
             return toString(ValueProfile.class, isUninitialized(), isGeneric(),
                             String.format("value == %s@%x", cachedValue != null ? cachedValue.getClass().getSimpleName() : "null", Objects.hash(cachedValue)));
@@ -291,6 +301,16 @@ public abstract class ValueProfile extends Profile {
         }
 
         @Override
+        public void disable() {
+            cachedValue = GENERIC;
+        }
+
+        @Override
+        public void reset() {
+            cachedValue = UNINITIALIZED;
+        }
+
+        @Override
         public String toString() {
             return toString(ValueProfile.class, isUninitialized(), isGeneric(),
                             String.format("value == %s@%x", cachedValue != null ? cachedValue.getClass().getSimpleName() : "null", Objects.hash(cachedValue)));
@@ -320,7 +340,7 @@ public abstract class ValueProfile extends Profile {
             // Field needs to be cached in local variable for thread safety and startup speed.
             Class<?> clazz = cachedClass;
             if (clazz != Object.class) {
-                if (clazz != null && value != null && value.getClass() == clazz) {
+                if (clazz != null && CompilerDirectives.isExact(value, clazz)) {
                     if (CompilerDirectives.inInterpreter()) {
                         return value;
                     } else {
@@ -344,6 +364,16 @@ public abstract class ValueProfile extends Profile {
 
         boolean isUninitialized() {
             return cachedClass == null;
+        }
+
+        @Override
+        public void disable() {
+            cachedClass = Object.class;
+        }
+
+        @Override
+        public void reset() {
+            cachedClass = null;
         }
 
         Class<?> getCachedClass() {

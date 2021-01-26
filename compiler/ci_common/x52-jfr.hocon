@@ -3,7 +3,8 @@ bench-dacapo-jfr: ${bench-common} ${default-heap} ${jfr-bench-notifications} {
     BENCH_SUITE : "dacapo"
   }
   run: [
-    ${bench-jvmci.mx-dacapo} ${bench-arguments} ${JFR.jvm-opts}
+    ${export.node0}
+    ${hwloc.node} ${bench-jvmci.mx-dacapo} ${bench-arguments} ${JFR.jvm-opts}
   ]
   setup: ${bench-common.setup} ${JFR.setup}
   teardown: ${JFR.teardown}
@@ -14,7 +15,8 @@ bench-scala-dacapo-jfr: ${bench-common} ${default-heap} ${jfr-bench-notification
     BENCH_SUITE : "scala-dacapo"
   }
   run: [
-    ${bench-jvmci.mx-scala-dacapo} ${bench-arguments} ${JFR.jvm-opts}
+    ${export.node0}
+    ${hwloc.node} ${bench-jvmci.mx-scala-dacapo} ${bench-arguments} ${JFR.jvm-opts}
   ]
   setup: ${bench-common.setup} ${JFR.setup}
   teardown: ${JFR.teardown}
@@ -25,7 +27,8 @@ bench-specjvm2008-Single-jfr: ${bench-common} ${large-heap} ${jfr-bench-notifica
     BENCH_SUITE : "specjvm2008"
   }
   run: [
-    ${bench-jvmci.mx-specjvm2008-Single} ${bench-arguments} ${JFR.jvm-opts} [
+    ${export.node0}
+    ${hwloc.node} ${bench-jvmci.mx-specjvm2008-Single} ${bench-arguments} ${JFR.jvm-opts} [
       "--", "-ikv", "-it", "240s", "-wt", "120s"
     ]
   ]
@@ -44,7 +47,8 @@ bench-specjbb2015-jfr: ${bench-common} ${specjbb-large-heap} ${jfr-bench-notific
     BENCH_SUITE : "specjbb2015"
   }
   run: [
-    ${bench-jvmci.mx-specjbb2015} ${bench-arguments} ${JFR.jvm-opts}
+    ${export.node0}
+    ${hwloc.node} ${bench-jvmci.mx-specjbb2015} ${bench-arguments} ${JFR.jvm-opts}
   ]
   setup: ${bench-common.setup} ${JFR.setup}
   teardown: ${JFR.teardown}
@@ -59,7 +63,8 @@ bench-renaissance-jfr: ${bench-common} ${default-heap} ${jfr-bench-notifications
     BENCH_SUITE : "renaissance"
   }
   run: [
-    ${bench-jvmci.mx-renaissance} ${bench-arguments} ${JFR.jvm-opts}
+    ${export.node0}
+    ${hwloc.node} ${bench-jvmci.mx-renaissance} ${bench-arguments} ${JFR.jvm-opts}
   ]
   setup: ${bench-common.setup} ${JFR.setup}
   teardown: ${JFR.teardown}
@@ -72,7 +77,8 @@ bench-renaissance-legacy-jfr: ${bench-common} ${default-heap} ${jfr-bench-notifi
     BENCH_SUITE : "renaissance-legacy"
   }
   run: [
-    ${bench-jvmci.mx-renaissance-legacy} ${bench-arguments} ${JFR.jvm-opts}
+    ${export.node0}
+    ${hwloc.node} ${bench-jvmci.mx-renaissance-legacy} ${bench-arguments} ${JFR.jvm-opts}
   ]
   setup: ${bench-common.setup} ${JFR.setup}
   teardown: ${JFR.teardown}
@@ -89,7 +95,6 @@ x52.default-jfr : ${linux-amd64} {
     JVM_CONFIG  : ${jvm-config.default}
     JVM         : "server"
     MACHINE_NAME: "x52"
-    BENCH_SERVER_EXTRAS : "target:weekly-jfr"
   }
   targets: [bench, weekly]
 }

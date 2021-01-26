@@ -72,7 +72,7 @@ final class LLVMPointerImpl implements LLVMManagedPointer, LLVMNativePointer {
 
     @Override
     public boolean isSame(LLVMPointer o) {
-        LLVMPointerImpl other = (LLVMPointerImpl) o; // can not fail, there is only one subclass
+        LLVMPointerImpl other = (LLVMPointerImpl) o; // cannot fail, there is only one subclass
         return this.object == other.object && this.offset == other.offset;
     }
 

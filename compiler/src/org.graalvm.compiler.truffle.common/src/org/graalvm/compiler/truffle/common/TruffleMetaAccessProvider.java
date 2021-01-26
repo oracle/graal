@@ -49,30 +49,22 @@ public interface TruffleMetaAccessProvider {
     void addTargetToDequeue(CompilableTruffleAST target);
 
     /**
-     * Dequeue from the compilation queue the targets
-     * {@link #addTargetToDequeue(CompilableTruffleAST) added}.
-     */
-    void dequeueTargets();
-
-    /**
-     * Sets how many calls in total are in the related compilation unit. Includes both calls that
-     * were inlined and calls that were not (ie. remained calls after inlining).
+     * To be used from the compiler side. Sets how many calls in total are in the related
+     * compilation unit. Includes both calls that were inlined and calls that were not (ie. remained
+     * calls after inlining).
      */
     void setCallCount(int count);
 
     /**
-     * @return How many calls in total are in the related compilation unit. Includes both calls that
-     *         were inlined and calls that were not (ie. remained calls after inlining).
-     */
-    int countCalls();
-
-    /**
-     * Sets how many calls in total were inlined into the compilation unit.
+     * To be used from the compiler side. Sets how many calls in total were inlined into the
+     * compilation unit.
      */
     void setInlinedCallCount(int count);
 
     /**
-     * @return How many calls in total were inlined into the compilation unit.
+     * To be used from the compiler side.
+     *
+     * @param target register this target as inlined.
      */
-    int countInlinedCalls();
+    void addInlinedTarget(CompilableTruffleAST target);
 }

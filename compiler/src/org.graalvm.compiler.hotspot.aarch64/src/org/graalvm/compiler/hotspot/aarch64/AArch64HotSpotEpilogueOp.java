@@ -76,7 +76,7 @@ abstract class AArch64HotSpotEpilogueOp extends AArch64BlockEndOp {
             Label noReserved = new Label();
             try (ScratchRegister sc = masm.getScratchRegister()) {
                 Register scratch = sc.getRegister();
-                masm.ldr(64, scratch, masm.makeAddress(thread, config.javaThreadReservedStackActivationOffset, 8));
+                masm.ldr(64, scratch, masm.makeAddress(64, thread, config.javaThreadReservedStackActivationOffset));
                 masm.subs(64, zr, sp, scratch);
             }
             masm.branchConditionally(AArch64Assembler.ConditionFlag.LO, noReserved);

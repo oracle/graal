@@ -29,10 +29,10 @@ import java.lang.ref.ReferenceQueue;
 import java.lang.ref.WeakReference;
 
 import org.graalvm.compiler.graph.Node;
-import org.graalvm.compiler.loop.LoopEx;
-import org.graalvm.compiler.loop.LoopsData;
 import org.graalvm.compiler.nodes.FieldLocationIdentity;
 import org.graalvm.compiler.nodes.StructuredGraph;
+import org.graalvm.compiler.nodes.loop.LoopEx;
+import org.graalvm.compiler.nodes.loop.LoopsData;
 import org.graalvm.compiler.nodes.memory.MemoryAccess;
 import org.graalvm.word.LocationIdentity;
 import org.junit.Test;
@@ -43,7 +43,7 @@ public class ReferenceGetLoopTest extends GraalCompilerTest {
 
     @Override
     protected void checkMidTierGraph(StructuredGraph graph) {
-        final LoopsData loops = new LoopsData(graph);
+        final LoopsData loops = getDefaultMidTierContext().getLoopsDataProvider().getLoopsData(graph);
         boolean found = false;
         for (LoopEx loop : loops.loops()) {
             for (Node node : loop.inside().nodes()) {

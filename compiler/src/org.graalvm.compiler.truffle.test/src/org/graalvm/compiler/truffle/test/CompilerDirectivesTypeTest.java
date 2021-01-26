@@ -24,23 +24,26 @@
  */
 package org.graalvm.compiler.truffle.test;
 
-import org.graalvm.compiler.core.test.GraalCompilerTest;
 import org.graalvm.compiler.nodes.graphbuilderconf.InvocationPlugins;
 import org.graalvm.compiler.serviceprovider.GraalServices;
+import org.graalvm.compiler.truffle.compiler.substitutions.GraphBuilderInvocationPluginProvider;
 import org.graalvm.compiler.truffle.compiler.substitutions.KnownTruffleTypes;
 import org.graalvm.compiler.truffle.compiler.substitutions.TruffleGraphBuilderPlugins;
-import org.graalvm.compiler.truffle.compiler.substitutions.TruffleInvocationPluginProvider;
 import org.junit.Test;
 
 import com.oracle.truffle.api.CompilerDirectives;
+import com.oracle.truffle.api.frame.VirtualFrame;
+import com.oracle.truffle.api.nodes.RootNode;
 
 /**
  * Test to verify that {@linkplain CompilerDirectives#castExact(Object, Class)} throws a
  * {@linkplain ClassCastException} for invalid subtype casts.
  */
-public class CompilerDirectivesTypeTest extends GraalCompilerTest {
+public class CompilerDirectivesTypeTest extends PartialEvaluationTest {
 
     static class A {
+
+        boolean value = true;
 
     }
 
@@ -86,9 +89,71 @@ public class CompilerDirectivesTypeTest extends GraalCompilerTest {
     @Override
     protected void registerInvocationPlugins(InvocationPlugins invocationPlugins) {
         TruffleGraphBuilderPlugins.registerInvocationPlugins(invocationPlugins, true, getProviders(), new KnownTruffleTypes(getMetaAccess()));
-        for (TruffleInvocationPluginProvider p : GraalServices.load(TruffleInvocationPluginProvider.class)) {
+        for (GraphBuilderInvocationPluginProvider p : GraalServices.load(GraphBuilderInvocationPluginProvider.class)) {
             p.registerInvocationPlugins(getProviders(), getBackend().getTarget().arch, invocationPlugins, true);
         }
         super.registerInvocationPlugins(invocationPlugins);
+    }
+
+    static final class IsExactTestNode extends RootNode {
+
+        protected final Class<? extends B> type;
+        private final boolean useExact;
+
+        IsExactTestNode(boolean useExact) {
+            super(null);
+            this.type = B.class;
+            this.useExact = useExact;
+        }
+
+        @Override
+        public Object execute(VirtualFrame frame) {
+            // read from an array to skip truffle argument profiles.
+            Object v = ((Object[]) frame.getArguments()[0])[0];
+
+            if (useExact) {
+                if (CompilerDirectives.isExact(v, type)) {
+                    if (CompilerDirectives.isExact(v, type)) {
+                        if (CompilerDirectives.isExact(v, type)) {
+                            B castValue0 = CompilerDirectives.castExact(v, type);
+                            B castValue1 = CompilerDirectives.castExact(v, type);
+                            B castValue2 = CompilerDirectives.castExact(v, type);
+                            return castValue0.value & castValue1.value & castValue2.value;
+                        }
+                    }
+                }
+            } else {
+                if (v instanceof B) {
+                    if (v instanceof B) {
+                        if (v instanceof B) {
+                            B castValue0 = (B) (v);
+                            B castValue1 = (B) (v);
+                            B castValue2 = (B) (v);
+                            return castValue0.value & castValue1.value & castValue2.value;
+                        }
+                    }
+                }
+            }
+            return v;
+
+        }
+
+        @Override
+        public String getName() {
+            return "isExactTest";
+        }
+
+    }
+
+    /*
+     * Tests that using isExact and castExact with a final type produces the same code as with
+     * regular type checks.
+     */
+    @Test
+    public void testExactWithFinalType() {
+        IsExactTestNode cast = new IsExactTestNode(false);
+        IsExactTestNode isExact = new IsExactTestNode(true);
+
+        assertPartialEvalEquals(cast, isExact, new Object[]{new Object[]{new B()}});
     }
 }

@@ -32,7 +32,6 @@ import java.util.Collection;
 import java.util.Comparator;
 import java.util.HashMap;
 import java.util.IntSummaryStatistics;
-import java.util.List;
 import java.util.LongSummaryStatistics;
 import java.util.Map;
 import java.util.Objects;
@@ -41,17 +40,16 @@ import java.util.TreeSet;
 import java.util.function.Function;
 import java.util.logging.Level;
 
+import com.oracle.truffle.api.nodes.NodeVisitor;
+import org.graalvm.compiler.truffle.common.CompilableTruffleAST;
 import org.graalvm.compiler.truffle.common.TruffleCompilerListener.CompilationResultInfo;
 import org.graalvm.compiler.truffle.common.TruffleCompilerListener.GraphInfo;
-import org.graalvm.compiler.truffle.options.PolyglotCompilerOptions;
 import org.graalvm.compiler.truffle.runtime.AbstractGraalTruffleRuntimeListener;
 import org.graalvm.compiler.truffle.runtime.EngineData;
 import org.graalvm.compiler.truffle.runtime.GraalTruffleRuntime;
 import org.graalvm.compiler.truffle.runtime.OptimizedCallTarget;
 import org.graalvm.compiler.truffle.runtime.OptimizedDirectCallNode;
 import org.graalvm.compiler.truffle.runtime.TruffleInlining;
-import org.graalvm.compiler.truffle.runtime.TruffleInlining.CallTreeNodeVisitor;
-import org.graalvm.compiler.truffle.runtime.TruffleInliningDecision;
 
 import com.oracle.truffle.api.TruffleLogger;
 import com.oracle.truffle.api.nodes.DirectCallNode;
@@ -143,7 +141,7 @@ public final class StatisticsListener extends AbstractGraalTruffleRuntimeListene
     }
 
     @Override
-    public synchronized void onCompilationQueued(OptimizedCallTarget target) {
+    public synchronized void onCompilationQueued(OptimizedCallTarget target, int tier) {
         queues++;
         long currentTime = System.nanoTime();
         if (firstCompilation == 0) {
@@ -157,7 +155,7 @@ public final class StatisticsListener extends AbstractGraalTruffleRuntimeListene
     }
 
     @Override
-    public synchronized void onCompilationDequeued(OptimizedCallTarget target, Object source, CharSequence reason) {
+    public synchronized void onCompilationDequeued(OptimizedCallTarget target, Object source, CharSequence reason, int tier) {
         dequeues++;
         dequeuedReasons.accept(Arrays.asList(Objects.toString(reason)), target);
         timeQueued.remove(target);
@@ -170,7 +168,7 @@ public final class StatisticsListener extends AbstractGraalTruffleRuntimeListene
     }
 
     @Override
-    public synchronized void onCompilationStarted(OptimizedCallTarget target) {
+    public synchronized void onCompilationStarted(OptimizedCallTarget target, int tier) {
         compilations++;
         final Times times = new Times();
         compilationTimes.set(times);
@@ -185,9 +183,9 @@ public final class StatisticsListener extends AbstractGraalTruffleRuntimeListene
     public synchronized void onCompilationTruffleTierFinished(OptimizedCallTarget target, TruffleInlining inliningDecision, GraphInfo graph) {
         final Times times = compilationTimes.get();
         times.truffleTierFinished = System.nanoTime();
-        nodeStatistics.accept(nodeClasses(target, inliningDecision), target);
+        nodeStatistics.accept(nodeClasses(inliningDecision), target);
 
-        CallTargetNodeStatistics callTargetStat = new CallTargetNodeStatistics(target, inliningDecision);
+        CallTargetNodeStatistics callTargetStat = new CallTargetNodeStatistics(inliningDecision);
         nodeCount.accept(callTargetStat.getNodeCount(), target);
         nodeCountTrivial.accept(callTargetStat.getNodeCountTrivial(), target);
         nodeCountNonTrivial.accept(callTargetStat.getNodeCountNonTrivial(), target);
@@ -210,12 +208,18 @@ public final class StatisticsListener extends AbstractGraalTruffleRuntimeListene
         }
     }
 
-    private static Collection<Class<?>> nodeClasses(OptimizedCallTarget target, TruffleInlining inliningDecision) {
+    private static Collection<Class<?>> nodeClasses(TruffleInlining inliningDecision) {
         Collection<Class<?>> nodeClasses = new ArrayList<>();
-        for (Node node : target.nodeIterable(inliningDecision)) {
-            if (node != null) {
-                nodeClasses.add(node.getClass());
-            }
+        for (CompilableTruffleAST ast : inliningDecision.inlinedTargets()) {
+            ((OptimizedCallTarget) ast).accept(new NodeVisitor() {
+                @Override
+                public boolean visit(Node node) {
+                    if (node != null) {
+                        nodeClasses.add(node.getClass());
+                    }
+                    return true;
+                }
+            });
         }
         return nodeClasses;
     }
@@ -231,7 +235,7 @@ public final class StatisticsListener extends AbstractGraalTruffleRuntimeListene
     }
 
     @Override
-    public synchronized void onCompilationSuccess(OptimizedCallTarget target, TruffleInlining inliningDecision, GraphInfo graph, CompilationResultInfo result) {
+    public synchronized void onCompilationSuccess(OptimizedCallTarget target, TruffleInlining inliningDecision, GraphInfo graph, CompilationResultInfo result, int tier) {
         success++;
         long compilationDone = System.nanoTime();
 
@@ -252,7 +256,7 @@ public final class StatisticsListener extends AbstractGraalTruffleRuntimeListene
     }
 
     @Override
-    public void onCompilationFailed(OptimizedCallTarget target, String reason, boolean bailout, boolean permanentBailout) {
+    public void onCompilationFailed(OptimizedCallTarget target, String reason, boolean bailout, boolean permanentBailout, int tier) {
         if (bailout) {
             if (permanentBailout) {
                 permanentBailouts++;
@@ -307,23 +311,21 @@ public final class StatisticsListener extends AbstractGraalTruffleRuntimeListene
             printStatisticTime(out, "  Code Installation", compilationTimeCodeInstallation);
 
             // GR-25014 Truffle node count statistics are broken with language agnostic inlining
-            if (!runtimeData.getEngineOptions().get(PolyglotCompilerOptions.LanguageAgnosticInlining)) {
-                printStatistic(out, "Truffle node count", nodeCount);
-                printStatistic(out, "  Trivial", nodeCountTrivial);
-                printStatistic(out, "  Non Trivial", nodeCountNonTrivial);
-                printStatistic(out, "    Monomorphic", nodeCountMonomorphic);
-                printStatistic(out, "    Polymorphic", nodeCountPolymorphic);
-                printStatistic(out, "    Megamorphic", nodeCountMegamorphic);
-                printStatistic(out, "Truffle call count", callCount);
-                printStatistic(out, "  Indirect", callCountIndirect);
-                printStatistic(out, "  Direct", callCountDirect);
-                printStatistic(out, "    Dispatched", callCountDirectDispatched);
-                printStatistic(out, "    Inlined", callCountDirectInlined);
-                printStatistic(out, "    ----------");
-                printStatistic(out, "    Cloned", callCountDirectCloned);
-                printStatistic(out, "    Not Cloned", callCountDirectNotCloned);
-                printStatistic(out, "Truffle loops", loopCount);
-            }
+            printStatistic(out, "Truffle node count", nodeCount);
+            printStatistic(out, "  Trivial", nodeCountTrivial);
+            printStatistic(out, "  Non Trivial", nodeCountNonTrivial);
+            printStatistic(out, "    Monomorphic", nodeCountMonomorphic);
+            printStatistic(out, "    Polymorphic", nodeCountPolymorphic);
+            printStatistic(out, "    Megamorphic", nodeCountMegamorphic);
+            printStatistic(out, "Truffle call count", callCount);
+            printStatistic(out, "  Indirect", callCountIndirect);
+            printStatistic(out, "  Direct", callCountDirect);
+            printStatistic(out, "    Dispatched", callCountDirectDispatched);
+            printStatistic(out, "    Inlined", callCountDirectInlined);
+            printStatistic(out, "    ----------");
+            printStatistic(out, "    Cloned", callCountDirectCloned);
+            printStatistic(out, "    Not Cloned", callCountDirectNotCloned);
+            printStatistic(out, "Truffle loops", loopCount);
 
             printStatistic(out, "Graal node count");
             printStatistic(out, "  After Truffle Tier", truffleTierNodeCount);
@@ -339,11 +341,8 @@ public final class StatisticsListener extends AbstractGraalTruffleRuntimeListene
             printStatistic(out, "  Data references", compilationResultDataPatches);
 
             if (runtimeData.callTargetStatisticDetails) {
-                // GR-25014 Truffle node count statistics are broken with language agnostic inlining
-                if (!runtimeData.getEngineOptions().get(PolyglotCompilerOptions.LanguageAgnosticInlining)) {
-                    printStatistic(out, "Truffle nodes");
-                    nodeStatistics.printStatistics(out, Class::getSimpleName, false, true);
-                }
+                printStatistic(out, "Truffle nodes");
+                nodeStatistics.printStatistics(out, Class::getSimpleName, false, true);
                 printStatistic(out, "Graal nodes after Truffle tier");
                 truffleTierNodeStatistics.printStatistics(out, Function.identity(), false, true);
                 printStatistic(out, "Graal nodes after Graal tier");
@@ -503,12 +502,15 @@ public final class StatisticsListener extends AbstractGraalTruffleRuntimeListene
         private int callCountDirectNotCloned;
         private int loopCount;
 
-        CallTargetNodeStatistics(OptimizedCallTarget target, TruffleInlining inliningDecision) {
-            target.accept((CallTreeNodeVisitor) this::visitNode, inliningDecision);
-
+        CallTargetNodeStatistics(TruffleInlining inliningDecision) {
+            for (CompilableTruffleAST ast : inliningDecision.inlinedTargets()) {
+                ((OptimizedCallTarget) ast).accept(this::visitNode);
+            }
+            callCountDirectInlined = inliningDecision.countInlinedCalls();
+            callCountDirectDispatched = inliningDecision.countCalls() - callCountDirectInlined;
         }
 
-        private boolean visitNode(List<TruffleInlining> stack, Node node) {
+        private boolean visitNode(Node node) {
             if (node == null) {
                 return true;
             }
@@ -528,13 +530,8 @@ public final class StatisticsListener extends AbstractGraalTruffleRuntimeListene
             }
 
             if (node instanceof DirectCallNode) {
-                TruffleInliningDecision decision = CallTreeNodeVisitor.getCurrentInliningDecision(stack);
-                if (decision != null && decision.getProfile().getCallNode() == node && decision.shouldInline()) {
-                    callCountDirectInlined++;
-                } else {
-                    callCountDirectDispatched++;
-                }
-                if (decision != null && decision.getProfile().getCallNode().isCallTargetCloned()) {
+                OptimizedDirectCallNode optimizedDirectCallNode = node instanceof OptimizedDirectCallNode ? ((OptimizedDirectCallNode) node) : null;
+                if (optimizedDirectCallNode != null && optimizedDirectCallNode.getCallTarget().isSplit()) {
                     callCountDirectCloned++;
                 } else {
                     callCountDirectNotCloned++;
@@ -618,18 +615,18 @@ public final class StatisticsListener extends AbstractGraalTruffleRuntimeListene
         }
 
         @Override
-        public void onCompilationQueued(OptimizedCallTarget target) {
+        public void onCompilationQueued(OptimizedCallTarget target, int tier) {
             StatisticsListener listener = target.engine.statisticsListener;
             if (listener != null) {
-                listener.onCompilationQueued(target);
+                listener.onCompilationQueued(target, tier);
             }
         }
 
         @Override
-        public void onCompilationStarted(OptimizedCallTarget target) {
+        public void onCompilationStarted(OptimizedCallTarget target, int tier) {
             StatisticsListener listener = target.engine.statisticsListener;
             if (listener != null) {
-                listener.onCompilationStarted(target);
+                listener.onCompilationStarted(target, tier);
             }
         }
 
@@ -650,10 +647,10 @@ public final class StatisticsListener extends AbstractGraalTruffleRuntimeListene
         }
 
         @Override
-        public void onCompilationDequeued(OptimizedCallTarget target, Object source, CharSequence reason) {
+        public void onCompilationDequeued(OptimizedCallTarget target, Object source, CharSequence reason, int tier) {
             StatisticsListener listener = target.engine.statisticsListener;
             if (listener != null) {
-                listener.onCompilationDequeued(target, source, reason);
+                listener.onCompilationDequeued(target, source, reason, tier);
             }
         }
 
@@ -682,18 +679,18 @@ public final class StatisticsListener extends AbstractGraalTruffleRuntimeListene
         }
 
         @Override
-        public void onCompilationSuccess(OptimizedCallTarget target, TruffleInlining inliningDecision, GraphInfo graph, CompilationResultInfo result) {
+        public void onCompilationSuccess(OptimizedCallTarget target, TruffleInlining inliningDecision, GraphInfo graph, CompilationResultInfo result, int tier) {
             StatisticsListener listener = target.engine.statisticsListener;
             if (listener != null) {
-                listener.onCompilationSuccess(target, inliningDecision, graph, result);
+                listener.onCompilationSuccess(target, inliningDecision, graph, result, tier);
             }
         }
 
         @Override
-        public void onCompilationFailed(OptimizedCallTarget target, String reason, boolean bailout, boolean permanentBailout) {
+        public void onCompilationFailed(OptimizedCallTarget target, String reason, boolean bailout, boolean permanentBailout, int tier) {
             StatisticsListener listener = target.engine.statisticsListener;
             if (listener != null) {
-                listener.onCompilationFailed(target, reason, bailout, permanentBailout);
+                listener.onCompilationFailed(target, reason, bailout, permanentBailout, tier);
             }
         }
 

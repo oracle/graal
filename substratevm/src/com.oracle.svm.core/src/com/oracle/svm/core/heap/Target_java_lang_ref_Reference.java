@@ -49,6 +49,7 @@ import com.oracle.svm.core.annotate.TargetElement;
 import com.oracle.svm.core.annotate.Uninterruptible;
 import com.oracle.svm.core.annotate.UnknownClass;
 import com.oracle.svm.core.jdk.JDK11OrLater;
+import com.oracle.svm.core.jdk.JDK16OrLater;
 import com.oracle.svm.core.jdk.JDK8OrEarlier;
 import com.oracle.svm.core.util.VMError;
 import com.oracle.svm.util.ReflectionUtil;
@@ -92,6 +93,8 @@ public final class Target_java_lang_ref_Reference<T> {
      * the garbage collection support manually. The garbage collector performs Pointer-level access
      * to the field. This is fine from the point of view of the static analysis, because the field
      * stores by the garbage collector do not change the type of the referent.
+     *
+     * {@link Target_java_lang_ref_Reference#clear0()} may set this field to null.
      */
     @Alias @RecomputeFieldValue(kind = RecomputeFieldValue.Kind.Custom, declClass = ComputeReferenceValue.class) //
     @ExcludeFromReferenceMap(reason = "Field is manually processed by the garbage collector.") //
@@ -125,6 +128,36 @@ public final class Target_java_lang_ref_Reference<T> {
 
     @KeepOriginal
     native void clear();
+
+    @Substitute
+    @TargetElement(onlyWith = JDK16OrLater.class)
+    private void clear0() {
+        /*
+         * This (native) method was added to fix two issues:
+         * 
+         * JDK-8256517: This issue only affects GCs that do the reference processing concurrently
+         * (i.e., Shenandoah and ZGC). G1 only processes references at safepoints, so this shouldn't
+         * be an issue for Native Image
+         * 
+         * JDK-8240696: This issue affects G1.
+         *
+         * This substitution was copied from old OpenJDK. We still need to resolve the second issue
+         * above.
+         */
+        this.referent = null;
+    }
+
+    @KeepOriginal
+    @TargetElement(onlyWith = JDK16OrLater.class)
+    public native boolean refersTo(T obj);
+
+    @Substitute
+    @TargetElement(onlyWith = JDK16OrLater.class)
+    boolean refersTo0(Object o) {
+        // Can delay or prevent collection of the referent with some GCs, see JDK-8256167 and
+        // comments
+        return o == this.get();
+    }
 
     @KeepOriginal
     native boolean enqueue();

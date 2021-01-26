@@ -132,17 +132,19 @@ mx --dy truffleruby --components='TruffleRuby' build
 
 ### Example: build only the TruffleRuby launcher
 ```bash
-mx --dy truffleruby,/substratevm --components='TruffleRuby,Native Image' --native-images=truffleruby build
+mx --dy truffleruby,/substratevm,/tools --components='TruffleRuby,Native Image,suite:tools' --native-images=truffleruby build
 ```
 or as env file (e.g., in `mx.vm/ruby`):
 ```
-DYNAMIC_IMPORTS=truffleruby,/substratevm
-COMPONENTS=TruffleRuby,Native Image
+DYNAMIC_IMPORTS=truffleruby,/substratevm,/tools
+COMPONENTS=TruffleRuby,Native Image,suite:tools
 NATIVE_IMAGES=truffleruby
 ```
 ```bash
 $ mx --env ruby build
 ```
+
+This also include all tools, which is of course optional.
 
 ## Versioned dynamic imports
 Dynamic imports typically require the user to locate and clone the dynamically imported suites.

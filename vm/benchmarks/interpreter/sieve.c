@@ -35,7 +35,7 @@ int run() {
   i = 2;
   while ((i * i) <= number) {
     if (primes[i] != 0) {
-      for(int j = 2; j < number; j++) {
+      for (int j = 2; j < number; j++) {
         if (primes[i] * j > number)
           break;
         else
@@ -45,7 +45,13 @@ int run() {
     i++;
   }
 
-  return primes[number];
+  int count = 0;
+  for (int c = 2; c <= number; c++) {
+    if (primes[c] != 0) {
+      count++;
+    }
+  }
+  return count;
 }
 
 int main() {

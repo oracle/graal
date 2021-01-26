@@ -47,7 +47,6 @@ import org.graalvm.wasm.WasmFunction;
 import org.graalvm.wasm.WasmInstance;
 import org.graalvm.wasm.WasmLanguage;
 import org.graalvm.wasm.WasmModule;
-import org.graalvm.wasm.WasmOptions;
 import org.graalvm.wasm.predefined.BuiltinModule;
 
 import java.util.HashMap;
@@ -68,8 +67,7 @@ public class ImportModule extends BuiltinModule {
 
     @Override
     protected WasmInstance createInstance(WasmLanguage language, WasmContext context, String name) {
-        final WasmOptions.StoreConstantsPolicyEnum storeConstantsPolicy = WasmOptions.StoreConstantsPolicy.getValue(context.environment().getOptions());
-        WasmInstance instance = new WasmInstance(new WasmModule(name, null, storeConstantsPolicy), storeConstantsPolicy);
+        WasmInstance instance = new WasmInstance(new WasmModule(name, null));
         for (Map.Entry<String, Pair<WasmFunction, Object>> entry : functions.entrySet()) {
             final String functionName = entry.getKey();
             final Pair<WasmFunction, Object> info = entry.getValue();

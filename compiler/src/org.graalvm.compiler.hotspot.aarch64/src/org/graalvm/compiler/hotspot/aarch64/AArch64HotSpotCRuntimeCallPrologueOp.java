@@ -64,10 +64,10 @@ public class AArch64HotSpotCRuntimeCallPrologueOp extends AArch64LIRInstruction 
         // We cannot save the SP directly so use a temporary register.
         Register scratchRegister = asRegister(scratch);
         masm.movx(scratchRegister, sp);
-        masm.str(64, scratchRegister, masm.makeAddress(thread, threadLastJavaSpOffset, 8));
+        masm.str(64, scratchRegister, masm.makeAddress(64, thread, threadLastJavaSpOffset));
 
         // Get the current PC. Use a label to patch the return address.
         masm.adr(scratchRegister, label);
-        masm.str(64, scratchRegister, masm.makeAddress(thread, threadLastJavaPcOffset, 8));
+        masm.str(64, scratchRegister, masm.makeAddress(64, thread, threadLastJavaPcOffset));
     }
 }

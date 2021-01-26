@@ -36,6 +36,7 @@ import static org.graalvm.compiler.truffle.options.PolyglotCompilerOptions.Compi
 import static org.graalvm.compiler.truffle.options.PolyglotCompilerOptions.CompilationThreshold;
 import static org.graalvm.compiler.truffle.options.PolyglotCompilerOptions.CompileImmediately;
 import static org.graalvm.compiler.truffle.options.PolyglotCompilerOptions.CompileOnly;
+import static org.graalvm.compiler.truffle.options.PolyglotCompilerOptions.CompileAOTOnCreate;
 import static org.graalvm.compiler.truffle.options.PolyglotCompilerOptions.FirstTierCompilationThreshold;
 import static org.graalvm.compiler.truffle.options.PolyglotCompilerOptions.FirstTierMinInvokeThreshold;
 import static org.graalvm.compiler.truffle.options.PolyglotCompilerOptions.Inlining;
@@ -79,6 +80,7 @@ import org.graalvm.options.OptionValues;
 import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
 import com.oracle.truffle.api.TruffleLogger;
 import com.oracle.truffle.api.nodes.RootNode;
+import com.oracle.truffle.api.source.Source;
 
 /**
  * Class used to store data used by the compiler in the Engine. Enables "global" compiler state per
@@ -128,6 +130,7 @@ public final class EngineData {
     @CompilationFinal public boolean callTargetStatisticDetails;
     @CompilationFinal public boolean profilingEnabled;
     @CompilationFinal public boolean traceTransferToInterpreter;
+    @CompilationFinal public boolean compileAOTOnCreate;
 
     // computed fields.
     @CompilationFinal public int callThresholdInInterpreter;
@@ -247,13 +250,14 @@ public final class EngineData {
         this.compilation = options.get(Compilation);
         this.compileOnly = options.get(CompileOnly);
         this.compileImmediately = options.get(CompileImmediately);
-        this.multiTier = options.get(MultiTier);
+        this.multiTier = !compileImmediately && options.get(MultiTier);
+        this.compileAOTOnCreate = options.get(CompileAOTOnCreate);
 
         this.returnTypeSpeculation = options.get(ReturnTypeSpeculation);
         this.argumentTypeSpeculation = options.get(ArgumentTypeSpeculation);
         this.traceCompilation = options.get(TraceCompilation);
         this.traceCompilationDetails = options.get(TraceCompilationDetails);
-        this.backgroundCompilation = options.get(BackgroundCompilation);
+        this.backgroundCompilation = options.get(BackgroundCompilation) && !compileAOTOnCreate;
         this.callThresholdInInterpreter = computeCallThresholdInInterpreter(options);
         this.callAndLoopThresholdInInterpreter = computeCallAndLoopThresholdInInterpreter(options);
         this.callThresholdInFirstTier = computeCallThresholdInFirstTier(options);
@@ -409,6 +413,11 @@ public final class EngineData {
 
     public TruffleLogger getLogger(String loggerId) {
         return loggerFactory.apply(loggerId);
+    }
+
+    @SuppressWarnings("static-method")
+    public void mergeLoadedSources(Source[] sources) {
+        GraalRuntimeAccessor.SOURCE.mergeLoadedSources(sources);
     }
 
 }

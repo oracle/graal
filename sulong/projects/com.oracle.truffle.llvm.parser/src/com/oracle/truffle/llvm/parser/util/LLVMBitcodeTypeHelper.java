@@ -99,8 +99,8 @@ public final class LLVMBitcodeTypeHelper {
             case SIGNED_INT_TO_FP:
                 return CommonNodeFactory.createSignedCast(fromNode, targetType);
             case BITCAST:
-                // Bitcast still uses nodeFactory as it is implemeneted for managed.
-                // Note: managed is not avaliable for expression debugging.
+                // Bitcast still uses nodeFactory as it is implemented for managed.
+                // Note: managed is not available for expression debugging.
                 return nodeFactory.createBitcast(fromNode, targetType, fromType);
             case ADDRESS_SPACE_CAST:
             default:

@@ -133,10 +133,11 @@ public class AArch64MoveConstantTest extends GraalTest {
     }
 
     @Test
-    public void testMoveLongSignExtendedLogicalImm() {
-        masm.mov(dst, 0xFFFF_FFFF_8888_8888L); // 0x88888888 is a 32-bit logical immediate.
-        asm.orr(32, dst, zr, 0x8888_8888);
-        asm.sbfm(64, dst, dst, 0, 31);
+    public void testMoveLongSignExtendedImm() {
+        // (int) 0xFFFF_FFFF_8888_8888L == 0x8888_8888
+        masm.mov(dst, 0xFFFF_FFFF_8888_8888L);
+        asm.movn(64, dst, 0x7777, 0);
+        asm.movk(64, dst, 0x8888, 16);
         compareAssembly();
     }
 

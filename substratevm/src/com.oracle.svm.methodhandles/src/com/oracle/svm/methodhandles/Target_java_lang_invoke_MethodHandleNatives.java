@@ -24,39 +24,90 @@
  */
 package com.oracle.svm.methodhandles;
 
+import static com.oracle.svm.core.util.VMError.unimplemented;
 import static com.oracle.svm.core.util.VMError.unsupportedFeature;
 
 import java.lang.invoke.CallSite;
 import java.lang.invoke.MethodHandle;
-import java.lang.invoke.MethodType;
 // Checkstyle: stop
 import java.lang.reflect.Constructor;
 import java.lang.reflect.Field;
 import java.lang.reflect.Member;
 import java.lang.reflect.Method;
+import java.lang.reflect.Modifier;
 // Checkstyle: resume
-import java.util.Arrays;
-import java.util.List;
 
 import org.graalvm.compiler.serviceprovider.GraalUnsafeAccess;
 
 import com.oracle.svm.core.SubstrateUtil;
+import com.oracle.svm.core.annotate.Alias;
 import com.oracle.svm.core.annotate.AnnotateOriginal;
 import com.oracle.svm.core.annotate.Delete;
 import com.oracle.svm.core.annotate.Substitute;
 import com.oracle.svm.core.annotate.TargetClass;
 import com.oracle.svm.core.annotate.TargetElement;
+import com.oracle.svm.core.hub.DynamicHub;
 import com.oracle.svm.core.jdk.JDK11OrLater;
+import com.oracle.svm.core.jdk.JDK15OrEarlier;
+import com.oracle.svm.core.jdk.JDK16OrLater;
 import com.oracle.svm.core.jdk.JDK8OrEarlier;
 import com.oracle.svm.reflect.target.Target_java_lang_reflect_Field;
 
+/**
+ * Native Image implementation of the parts of the JDK method handles engine implemented in C++. We
+ * try to stay as close as the original implementation unless required by some design decision.
+ */
 @SuppressWarnings("unused")
 @TargetClass(className = "java.lang.invoke.MethodHandleNatives", onlyWith = MethodHandlesSupported.class)
 final class Target_java_lang_invoke_MethodHandleNatives {
 
+    /*
+     * MemberName native constructor. We need to resolve the actual type and flags of the member and
+     * specify its invocation type if needed.
+     */
     @Substitute
     private static void init(Target_java_lang_invoke_MemberName self, Object ref) {
-        throw unsupportedFeature("MethodHandleNatives.init()");
+        Member member = (Member) ref;
+        Object type;
+        int flags;
+        byte refKind;
+        if (member instanceof Field) {
+            Field field = (Field) member;
+            type = field.getType();
+            flags = Target_java_lang_invoke_MethodHandleNatives_Constants.MN_IS_FIELD | field.getModifiers();
+            /* The code calling this expects a getter, and will change it to a setter if needed */
+            refKind = Modifier.isStatic(field.getModifiers()) ? Target_java_lang_invoke_MethodHandleNatives_Constants.REF_getStatic
+                            : Target_java_lang_invoke_MethodHandleNatives_Constants.REF_getField;
+        } else if (member instanceof Method) {
+            Method method = (Method) member;
+            Object[] typeInfo = new Object[2];
+            typeInfo[0] = method.getReturnType();
+            typeInfo[1] = method.getParameterTypes();
+            type = typeInfo;
+            int mods = method.getModifiers();
+            flags = Target_java_lang_invoke_MethodHandleNatives_Constants.MN_IS_METHOD | mods;
+            if (Modifier.isStatic(mods)) {
+                refKind = Target_java_lang_invoke_MethodHandleNatives_Constants.REF_invokeStatic;
+            } else if (Modifier.isInterface(mods)) {
+                refKind = Target_java_lang_invoke_MethodHandleNatives_Constants.REF_invokeInterface;
+            } else {
+                refKind = Target_java_lang_invoke_MethodHandleNatives_Constants.REF_invokeVirtual;
+            }
+        } else if (member instanceof Constructor) {
+            Constructor<?> constructor = (Constructor<?>) member;
+            Object[] typeInfo = new Object[2];
+            typeInfo[0] = void.class;
+            typeInfo[1] = constructor.getParameterTypes();
+            type = typeInfo;
+            flags = Target_java_lang_invoke_MethodHandleNatives_Constants.MN_IS_CONSTRUCTOR | constructor.getModifiers();
+            refKind = Target_java_lang_invoke_MethodHandleNatives_Constants.REF_newInvokeSpecial;
+        } else {
+            throw new InternalError("unknown member type: " + member.getClass());
+        }
+        flags |= refKind << Target_java_lang_invoke_MethodHandleNatives_Constants.MN_REFERENCE_KIND_SHIFT;
+
+        self.init(member.getDeclaringClass(), member.getName(), type, flags);
+        self.reflectAccess = (Member) ref;
     }
 
     @Substitute
@@ -69,14 +120,18 @@ final class Target_java_lang_invoke_MethodHandleNatives {
 
     @Substitute
     private static long objectFieldOffset(Target_java_lang_invoke_MemberName self) {
+        if (self.reflectAccess == null && self.intrinsic == null) {
+            throw new InternalError("unresolved field");
+        }
         if (!self.isField() || self.isStatic()) {
             throw new InternalError("non-static field required");
         }
-        try {
-            return GraalUnsafeAccess.getUnsafe().objectFieldOffset(self.getDeclaringClass().getDeclaredField(self.name));
-        } catch (NoSuchFieldException e) {
-            throw new InternalError(e);
+
+        /* Intrinsic arguments are not accessed through their offset. */
+        if (self.intrinsic != null) {
+            return -1L;
         }
+        return GraalUnsafeAccess.getUnsafe().objectFieldOffset((Field) self.reflectAccess);
     }
 
     @Substitute
@@ -84,7 +139,7 @@ final class Target_java_lang_invoke_MethodHandleNatives {
         if (!self.isField() || !self.isStatic()) {
             throw new InternalError("static field required");
         }
-        return 0L;
+        return 0L; /* Static fields are accessed through their base */
     }
 
     @Substitute
@@ -127,9 +182,85 @@ final class Target_java_lang_invoke_MethodHandleNatives {
 
     // JDK 11
 
-    @TargetElement(onlyWith = JDK11OrLater.class)
     @Substitute
-    private static Target_java_lang_invoke_MemberName resolve(Target_java_lang_invoke_MemberName self, Class<?> caller, boolean speculativeResolve) throws LinkageError, ClassNotFoundException {
+    @TargetElement(onlyWith = {JDK11OrLater.class, JDK15OrEarlier.class})
+    static Target_java_lang_invoke_MemberName resolve(Target_java_lang_invoke_MemberName self, Class<?> caller, boolean speculativeResolve) throws LinkageError, ClassNotFoundException {
+        return Util_java_lang_invoke_MethodHandleNatives.resolve(self, caller, speculativeResolve);
+    }
+
+    @Delete
+    @TargetElement(onlyWith = JDK11OrLater.class)
+    private static native void copyOutBootstrapArguments(Class<?> caller, int[] indexInfo, int start, int end, Object[] buf, int pos, boolean resolve, Object ifNotAvailable);
+
+    @Substitute
+    @TargetElement(onlyWith = JDK11OrLater.class)
+    private static void clearCallSiteContext(Target_java_lang_invoke_MethodHandleNatives_CallSiteContext context) {
+        throw unimplemented("CallSiteContext not supported");
+    }
+
+    @AnnotateOriginal
+    static native boolean refKindIsMethod(byte refKind);
+
+    @AnnotateOriginal
+    static native String refKindName(byte refKind);
+
+    // JDK 16
+    @Substitute
+    @TargetElement(onlyWith = JDK16OrLater.class)
+    static Target_java_lang_invoke_MemberName resolve(Target_java_lang_invoke_MemberName self, Class<?> caller, int lookupMode, boolean speculativeResolve)
+                    throws LinkageError, ClassNotFoundException {
+        // todo: no constraint check here
+        return Util_java_lang_invoke_MethodHandleNatives.resolve(self, caller, speculativeResolve);
+    }
+}
+
+/**
+ * The method handles API looks up methods and fields in a diffent way than the reflection API. The
+ * specified member is searched in the given declaring class and its superclasses (like
+ * {@link Class#getMethod(String, Class[])}) but including private members (like
+ * {@link Class#getDeclaredMethod(String, Class[])}). We solve this by recursively looking up the
+ * declared methods of the declaring class and its superclasses.
+ */
+final class Util_java_lang_invoke_MethodHandleNatives {
+
+    static Method lookupMethod(Class<?> declaringClazz, String name, Class<?>[] parameterTypes) throws NoSuchMethodException {
+        return lookupMethod(declaringClazz, name, parameterTypes, null);
+    }
+
+    private static Method lookupMethod(Class<?> declaringClazz, String name, Class<?>[] parameterTypes, NoSuchMethodException originalException) throws NoSuchMethodException {
+        try {
+            return declaringClazz.getDeclaredMethod(name, parameterTypes);
+        } catch (NoSuchMethodException e) {
+            Class<?> superClass = declaringClazz.getSuperclass();
+            NoSuchMethodException newOriginalException = originalException == null ? e : originalException;
+            if (superClass == null) {
+                throw newOriginalException;
+            } else {
+                return lookupMethod(superClass, name, parameterTypes, newOriginalException);
+            }
+        }
+    }
+
+    static Field lookupField(Class<?> declaringClazz, String name) throws NoSuchFieldException {
+        return lookupField(declaringClazz, name, null);
+    }
+
+    private static Field lookupField(Class<?> declaringClazz, String name, NoSuchFieldException originalException) throws NoSuchFieldException {
+        try {
+            return declaringClazz.getDeclaredField(name);
+        } catch (NoSuchFieldException e) {
+            Class<?> superClass = declaringClazz.getSuperclass();
+            NoSuchFieldException newOriginalException = originalException == null ? e : originalException;
+            if (superClass == null) {
+                throw newOriginalException;
+            } else {
+                return lookupField(superClass, name, newOriginalException);
+            }
+        }
+    }
+
+    public static Target_java_lang_invoke_MemberName resolve(Target_java_lang_invoke_MemberName self, Class<?> caller, boolean speculativeResolve)
+                    throws LinkageError, ClassNotFoundException {
         if (self.reflectAccess != null) {
             return self;
         }
@@ -138,76 +269,87 @@ final class Target_java_lang_invoke_MethodHandleNatives {
             return null;
         }
 
-        Member member = null;
+        /* Intrinsic methods */
+        self.intrinsic = MethodHandleIntrinsic.resolve(self);
+        if (self.intrinsic != null) {
+            self.flags |= self.intrinsic.variant.flags;
+            return self;
+        }
+
+        /* Fill the member through reflection */
         try {
             if (self.isMethod()) {
-                try {
-                    member = declaringClass.getDeclaredMethod(self.name, ((MethodType) self.type).parameterArray());
-                } catch (NoSuchMethodException e) {
-                    if (MethodHandleUtils.isPolymorphicSignatureMethod(declaringClass, self.name)) {
-                        try {
-                            member = declaringClass.getDeclaredMethod(self.name, Object[].class);
-                        } catch (NoSuchMethodException ex) {
-                            throw e;
-                        }
-                    } else {
-                        throw e;
-                    }
+                Class<?>[] parameterTypes = self.getMethodType().parameterArray();
+                Method method = Util_java_lang_invoke_MethodHandleNatives.lookupMethod(declaringClass, self.name, parameterTypes);
+                if (method.getReturnType() != self.getMethodType().returnType()) {
+                    /* Method handle lookup also checks return type */
+                    throw new NoSuchMethodException(SubstrateUtil.cast(declaringClass, DynamicHub.class).methodToString(self.name, parameterTypes));
                 }
-                self.flags |= SubstrateUtil.cast(member, Method.class).getModifiers();
+                self.reflectAccess = method;
+                self.flags |= method.getModifiers();
             } else if (self.isConstructor()) {
-                member = declaringClass.getDeclaredConstructor(((MethodType) self.type).parameterArray());
-                self.flags |= SubstrateUtil.cast(member, Constructor.class).getModifiers();
+                Constructor<?> constructor = declaringClass.getDeclaredConstructor(self.getMethodType().parameterArray());
+                self.reflectAccess = constructor;
+                self.flags |= constructor.getModifiers();
             } else if (self.isField()) {
-                member = declaringClass.getDeclaredField(self.name);
-                self.flags |= SubstrateUtil.cast(member, Field.class).getModifiers();
+                Field field = Util_java_lang_invoke_MethodHandleNatives.lookupField(declaringClass, self.name);
+                if (field.getType() != self.getFieldType()) {
+                    /* Method handle lookup also checks field type */
+                    throw new NoSuchFieldException(declaringClass.getName() + "." + self.name);
+                }
+                self.reflectAccess = field;
+                self.flags |= field.getModifiers();
             }
-        } catch (NoSuchMethodException | NoSuchFieldException e) {
+            return self;
+        } catch (NoSuchMethodException e) {
             if (speculativeResolve) {
                 return null;
             } else {
-                throw new InternalError(e);
+                throw new NoSuchMethodError(e.getMessage());
+            }
+        } catch (NoSuchFieldException e) {
+            if (speculativeResolve) {
+                return null;
+            } else {
+                throw new NoSuchFieldError(e.getMessage());
             }
         }
-        self.reflectAccess = member;
-        return self;
     }
+}
 
-    @Delete
-    @TargetElement(onlyWith = JDK11OrLater.class)
-    private static native void copyOutBootstrapArguments(Class<?> caller, int[] indexInfo, int start, int end, Object[] buf, int pos, boolean resolve, Object ifNotAvailable);
+@TargetClass(className = "java.lang.invoke.MethodHandleNatives", innerClass = "Constants", onlyWith = MethodHandlesSupported.class)
+final class Target_java_lang_invoke_MethodHandleNatives_Constants {
+    // Checkstyle: stop
+    @Alias static int MN_IS_METHOD;
+    @Alias static int MN_IS_CONSTRUCTOR;
+    @Alias static int MN_IS_FIELD;
+    @Alias static int MN_IS_TYPE;
+    @Alias static int MN_CALLER_SENSITIVE;
+    @Alias static int MN_REFERENCE_KIND_SHIFT;
+    @Alias static int MN_REFERENCE_KIND_MASK;
+    // The SEARCH_* bits are not for MN.flags but for the matchFlags argument of MHN.getMembers:
+    @Alias static int MN_SEARCH_SUPERCLASSES;
+    @Alias static int MN_SEARCH_INTERFACES;
 
-    @Delete
-    @TargetElement(onlyWith = JDK11OrLater.class)
-    private static native void clearCallSiteContext(Target_java_lang_invoke_MethodHandleNatives_CallSiteContext context);
-
-    @AnnotateOriginal
-    static native boolean refKindIsMethod(byte refKind);
-
-    @AnnotateOriginal
-    static native String refKindName(byte refKind);
+    /**
+     * Constant pool reference-kind codes, as used by CONSTANT_MethodHandle CP entries.
+     */
+    @Alias static byte REF_NONE;  // null value
+    @Alias static byte REF_getField;
+    @Alias static byte REF_getStatic;
+    @Alias static byte REF_putField;
+    @Alias static byte REF_putStatic;
+    @Alias static byte REF_invokeVirtual;
+    @Alias static byte REF_invokeStatic;
+    @Alias static byte REF_invokeSpecial;
+    @Alias static byte REF_newInvokeSpecial;
+    @Alias static byte REF_invokeInterface;
+    @Alias static byte REF_LIMIT;
+    // Checkstyle: resume
 }
 
 @TargetClass(className = "java.lang.invoke.MethodHandleNatives", innerClass = "CallSiteContext", onlyWith = JDK11OrLater.class)
 final class Target_java_lang_invoke_MethodHandleNatives_CallSiteContext {
-}
-
-@TargetClass(className = "java.lang.invoke.InvokerBytecodeGenerator", onlyWith = JDK11OrLater.class)
-final class Target_java_lang_invoke_InvokerBytecodeGenerator {
-    @SuppressWarnings("unused")
-    @Substitute
-    static Target_java_lang_invoke_MemberName generateLambdaFormInterpreterEntryPoint(MethodType mt) {
-        return null;
-    }
-}
-
-class MethodHandleUtils {
-    static final String methodHandleClass = "java.lang.invoke.MethodHandle";
-    static final List<String> polymorphicSignatureMethods = Arrays.asList("invokeBasic", "linkToVirtual", "linkToStatic");
-
-    static boolean isPolymorphicSignatureMethod(Class<?> declaringClass, String name) {
-        return declaringClass.getName().equals(MethodHandleUtils.methodHandleClass) && MethodHandleUtils.polymorphicSignatureMethods.contains(name);
-    }
 }
 
 @TargetClass(className = "java.lang.invoke.MethodHandleNatives", onlyWith = MethodHandlesNotSupported.class)
@@ -264,7 +406,7 @@ final class Target_java_lang_invoke_MethodHandleNatives_NotSupported {
     // JDK 11
 
     @Delete
-    @TargetElement(onlyWith = JDK11OrLater.class)
+    @TargetElement(onlyWith = {JDK11OrLater.class, JDK15OrEarlier.class})
     private static native Target_java_lang_invoke_MemberName_NotSupported resolve(Target_java_lang_invoke_MemberName_NotSupported self, Class<?> caller, boolean speculativeResolve)
                     throws LinkageError, ClassNotFoundException;
 
@@ -275,4 +417,11 @@ final class Target_java_lang_invoke_MethodHandleNatives_NotSupported {
     @Delete
     @TargetElement(onlyWith = JDK11OrLater.class)
     private static native void clearCallSiteContext(Target_java_lang_invoke_MethodHandleNatives_CallSiteContext context);
+
+    // JDK 16
+
+    @Delete
+    @TargetElement(onlyWith = JDK16OrLater.class)
+    private static native Target_java_lang_invoke_MemberName_NotSupported resolve(Target_java_lang_invoke_MemberName_NotSupported self, Class<?> caller, int lookupMode, boolean speculativeResolve)
+                    throws LinkageError, ClassNotFoundException;
 }

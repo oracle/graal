@@ -100,10 +100,11 @@ import org.graalvm.compiler.nodes.LogicNode;
 import org.graalvm.compiler.nodes.NodeView;
 import org.graalvm.compiler.nodes.SafepointNode;
 import org.graalvm.compiler.nodes.StructuredGraph;
+import org.graalvm.compiler.nodes.spi.CoreProviders;
 import org.graalvm.compiler.nodes.spi.NodeLIRBuilderTool;
 import org.graalvm.compiler.nodes.spi.NodeValueMap;
 import org.graalvm.compiler.options.OptionValues;
-import org.graalvm.compiler.phases.Phase;
+import org.graalvm.compiler.phases.BasePhase;
 import org.graalvm.compiler.phases.common.AddressLoweringByUsePhase;
 import org.graalvm.compiler.phases.tiers.SuitesProvider;
 import org.graalvm.compiler.phases.util.Providers;
@@ -327,12 +328,13 @@ public class SubstrateAArch64Backend extends SubstrateBackend implements LIRGene
             SubstrateForeignCallLinkage callTarget = (SubstrateForeignCallLinkage) linkage;
             SharedMethod targetMethod = (SharedMethod) callTarget.getMethod();
 
-            Value codeOffsetInImage = emitConstant(getLIRKindTool().getWordKind(), JavaConstant.forInt(targetMethod.getCodeOffsetInImage()));
+            LIRKind wordKind = getLIRKindTool().getWordKind();
+            Value codeOffsetInImage = emitConstant(wordKind, JavaConstant.forInt(targetMethod.getCodeOffsetInImage()));
             Value codeInfo = emitJavaConstant(SubstrateObjectConstant.forObject(CodeInfoTable.getImageCodeCache()));
+            int size = wordKind.getPlatformKind().getSizeInBytes() * Byte.SIZE;
             int codeStartFieldOffset = getRuntimeConfiguration().getImageCodeInfoCodeStartOffset();
-            Value codeStartField = new AArch64AddressValue(getLIRKindTool().getWordKind(), asAllocatable(codeInfo),
-                            Value.ILLEGAL, codeStartFieldOffset, 1, AArch64Address.AddressingMode.IMMEDIATE_SIGNED_UNSCALED);
-            Value codeStart = getArithmetic().emitLoad(getLIRKindTool().getWordKind(), codeStartField, null);
+            Value codeStartField = AArch64AddressValue.makeAddress(wordKind, size, asAllocatable(codeInfo), codeStartFieldOffset);
+            Value codeStart = getArithmetic().emitLoad(wordKind, codeStartField, null);
             return getArithmetic().emitAdd(codeStart, codeOffsetInImage, false);
         }
 
@@ -539,19 +541,16 @@ public class SubstrateAArch64Backend extends SubstrateBackend implements LIRGene
 
             try (ScratchRegister sc = masm.getScratchRegister()) {
                 int wordSize = 8;
-                Register rscratch1 = sc.getRegister();
+                Register scratch = sc.getRegister();
                 assert totalFrameSize > 0;
-                if (frameSize < 1 << 9) {
+                AArch64Address.AddressingMode addressingMode = AArch64Address.AddressingMode.IMMEDIATE_PAIR_SIGNED_SCALED;
+                if (AArch64Address.isValidImmediateAddress(64, addressingMode, frameSize)) {
                     masm.sub(64, sp, sp, totalFrameSize);
-                    masm.stp(64, r29, lr, AArch64Address.createImmediateAddress(64, AArch64Address.AddressingMode.IMMEDIATE_PAIR_SIGNED_SCALED, sp, frameSize));
+                    masm.stp(64, r29, lr, AArch64Address.createImmediateAddress(64, addressingMode, sp, frameSize));
                 } else {
-                    masm.stp(64, r29, lr, AArch64Address.createImmediateAddress(64, AArch64Address.AddressingMode.IMMEDIATE_PAIR_PRE_INDEXED, sp, -2 * wordSize));
-                    if (frameSize < 1 << 12) {
-                        masm.sub(64, sp, sp, totalFrameSize - 2 * wordSize);
-                    } else {
-                        masm.mov(rscratch1, totalFrameSize - 2 * wordSize);
-                        masm.sub(64, sp, sp, rscratch1);
-                    }
+                    int frameRecordSize = 2 * wordSize;
+                    masm.stp(64, r29, lr, AArch64Address.createImmediateAddress(64, AArch64Address.AddressingMode.IMMEDIATE_PAIR_PRE_INDEXED, sp, -frameRecordSize));
+                    masm.sub(64, sp, sp, totalFrameSize - frameRecordSize, scratch);
                 }
             }
             if (ZapStackOnMethodEntry.getValue(crb.getOptions())) {
@@ -576,29 +575,25 @@ public class SubstrateAArch64Backend extends SubstrateBackend implements LIRGene
 
         @Override
         public void leave(CompilationResultBuilder crb) {
-            int frameSize = crb.frameMap.frameSize();
-
             crb.recordMark(SubstrateMarkId.EPILOGUE_START);
             AArch64MacroAssembler masm = (AArch64MacroAssembler) crb.asm;
             FrameMap frameMap = crb.frameMap;
+            int frameSize = frameMap.frameSize();
             final int totalFrameSize = frameMap.totalFrameSize();
 
             crb.blockComment("[method epilogue]");
             try (ScratchRegister sc = masm.getScratchRegister()) {
                 int wordSize = 8;
-                Register rscratch1 = sc.getRegister();
+                Register scratch = sc.getRegister();
                 assert totalFrameSize > 0;
-                if (frameSize < 1 << 9) {
-                    masm.ldp(64, r29, lr, AArch64Address.createImmediateAddress(64, AArch64Address.AddressingMode.IMMEDIATE_PAIR_SIGNED_SCALED, sp, frameSize));
+                AArch64Address.AddressingMode addressingMode = AArch64Address.AddressingMode.IMMEDIATE_PAIR_SIGNED_SCALED;
+                if (AArch64Address.isValidImmediateAddress(64, addressingMode, frameSize)) {
+                    masm.ldp(64, r29, lr, AArch64Address.createImmediateAddress(64, addressingMode, sp, frameSize));
                     masm.add(64, sp, sp, totalFrameSize);
                 } else {
-                    if (frameSize < 1 << 12) {
-                        masm.add(64, sp, sp, totalFrameSize - 2 * wordSize);
-                    } else {
-                        masm.mov(rscratch1, totalFrameSize - 2 * wordSize);
-                        masm.add(64, sp, sp, rscratch1);
-                    }
-                    masm.ldp(64, r29, lr, AArch64Address.createImmediateAddress(64, AArch64Address.AddressingMode.IMMEDIATE_PAIR_POST_INDEXED, sp, 2 * wordSize));
+                    int frameRecordSize = 2 * wordSize;
+                    masm.add(64, sp, sp, totalFrameSize - frameRecordSize, scratch);
+                    masm.ldp(64, r29, lr, AArch64Address.createImmediateAddress(64, AArch64Address.AddressingMode.IMMEDIATE_PAIR_POST_INDEXED, sp, frameRecordSize));
                 }
             }
             if (frameSize != 0) {
@@ -763,7 +758,7 @@ public class SubstrateAArch64Backend extends SubstrateBackend implements LIRGene
             if (masm.target.inlineObjects) {
                 crb.recordInlineDataInCode(inputConstant);
                 if (referenceSize == 4) {
-                    masm.mov(resultReg, 0xDEADDEADL, true);
+                    masm.mov(resultReg, 0xDEADDEAD, true);
                 } else {
                     masm.mov(resultReg, 0xDEADDEADDEADDEADL, true);
                 }
@@ -945,7 +940,7 @@ public class SubstrateAArch64Backend extends SubstrateBackend implements LIRGene
     }
 
     @Override
-    public Phase newAddressLoweringPhase(CodeCacheProvider codeCache) {
+    public BasePhase<CoreProviders> newAddressLoweringPhase(CodeCacheProvider codeCache) {
         return new AddressLoweringByUsePhase(new AArch64AddressLoweringByUse(createLirKindTool(), false));
     }
 }

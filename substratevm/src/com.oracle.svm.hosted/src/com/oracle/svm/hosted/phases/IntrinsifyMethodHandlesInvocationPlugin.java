@@ -36,6 +36,7 @@ import java.util.List;
 import java.util.Objects;
 import java.util.Set;
 
+import org.graalvm.collections.Pair;
 import org.graalvm.collections.UnmodifiableEconomicMap;
 import org.graalvm.compiler.api.replacements.SnippetReflectionProvider;
 import org.graalvm.compiler.core.common.spi.MetaAccessExtensionProvider;
@@ -62,6 +63,7 @@ import org.graalvm.compiler.nodes.InvokeNode;
 import org.graalvm.compiler.nodes.LogicNode;
 import org.graalvm.compiler.nodes.NodeView;
 import org.graalvm.compiler.nodes.ParameterNode;
+import org.graalvm.compiler.nodes.PhiNode;
 import org.graalvm.compiler.nodes.PiNode;
 import org.graalvm.compiler.nodes.ReturnNode;
 import org.graalvm.compiler.nodes.StructuredGraph;
@@ -82,6 +84,7 @@ import org.graalvm.compiler.nodes.graphbuilderconf.InvocationPlugins;
 import org.graalvm.compiler.nodes.graphbuilderconf.InvocationPlugins.Registration;
 import org.graalvm.compiler.nodes.graphbuilderconf.NodePlugin;
 import org.graalvm.compiler.nodes.graphbuilderconf.ParameterPlugin;
+import org.graalvm.compiler.nodes.java.FinalFieldBarrierNode;
 import org.graalvm.compiler.nodes.java.InstanceOfNode;
 import org.graalvm.compiler.nodes.java.LoadFieldNode;
 import org.graalvm.compiler.nodes.java.MethodCallTargetNode;
@@ -160,7 +163,10 @@ import jdk.vm.ci.meta.ResolvedJavaType;
  */
 public class IntrinsifyMethodHandlesInvocationPlugin implements NodePlugin {
 
-    static class IntrinsificationRegistry extends IntrinsificationPluginRegistry {
+    public static class IntrinsificationRegistry extends IntrinsificationPluginRegistry {
+        public static AutoCloseable startThreadLocalnRegistry() {
+            return ImageSingletons.lookup(IntrinsificationRegistry.class).startThreadLocalIntrinsificationRegistry();
+        }
     }
 
     private final boolean analysis;
@@ -202,9 +208,9 @@ public class IntrinsifyMethodHandlesInvocationPlugin implements NodePlugin {
         }
 
         methodHandleType = universeProviders.getMetaAccess().lookupJavaType(java.lang.invoke.MethodHandle.class);
-        methodHandleInvokeMethodNames = new HashSet<>(Arrays.asList("invokeExact", "invoke", "invokeBasic", "linkToVirtual", "linkToStatic", "linkToSpecial", "linkToInterface"));
-        if (NativeImageOptions.areMethodHandlesSupported()) {
-            methodHandleInvokeMethodNames.remove("invokeBasic");
+        methodHandleInvokeMethodNames = new HashSet<>();
+        if (!NativeImageOptions.areMethodHandlesSupported()) {
+            methodHandleInvokeMethodNames.addAll(Arrays.asList("invokeExact", "invoke", "invokeBasic", "linkToVirtual", "linkToStatic", "linkToSpecial", "linkToInterface"));
         }
 
         if (JavaVersionUtil.JAVA_SPEC >= 11) {
@@ -226,14 +232,41 @@ public class IntrinsifyMethodHandlesInvocationPlugin implements NodePlugin {
     }
 
     @Override
-    public boolean handleInvoke(GraphBuilderContext b, ResolvedJavaMethod method, ValueNode[] args) {
+    public boolean handleInvoke(GraphBuilderContext b, ResolvedJavaMethod method, ValueNode[] originalArgs) {
+        ValueNode receiverForNullCheck = null;
+        ValueNode[] args = originalArgs;
+        if ((!method.isStatic() || isVarHandleGuards(method)) && args.length > 0 && args[0] instanceof PhiNode) {
+            PhiNode phi = (PhiNode) args[0];
+            /*
+             * For loop phis, not all inputs are available yet since we have not parsed the loop
+             * body yet.
+             */
+            if (!phi.isLoopPhi()) {
+                ValueNode filteredReceiver = filterNullPhiInputs(phi);
+                if (filteredReceiver != phi && filteredReceiver.isJavaConstant()) {
+                    receiverForNullCheck = phi;
+                    args = Arrays.copyOf(args, args.length);
+                    args[0] = filteredReceiver;
+                }
+            }
+        }
+
         /*
          * We want to process invokes that have a constant MethodHandle parameter. And we need a
          * direct call, otherwise we do not have a single target method.
          */
-        if (b.getInvokeKind().isDirect() && (hasMethodHandleArgument(args) || isVarHandleMethod(method, args))) {
-            processInvokeWithMethodHandle(b, universeProviders.getReplacements(), method, args);
-            return true;
+        if (b.getInvokeKind().isDirect() && (hasMethodHandleArgument(args) || isVarHandleMethod(b, method, args)) && !ignoreMethod(method)) {
+            if (b.bciCanBeDuplicated()) {
+                /*
+                 * If we capture duplication of the bci, we don't process invoke.
+                 */
+                return reportUnsupportedFeature(b, method);
+            } else {
+                if (receiverForNullCheck != null) {
+                    b.nullCheckedValue(receiverForNullCheck);
+                }
+                return processInvokeWithMethodHandle(b, universeProviders.getReplacements(), method, args);
+            }
 
         } else if (methodHandleType.equals(method.getDeclaringClass()) && methodHandleInvokeMethodNames.contains(method.getName())) {
             /*
@@ -243,11 +276,27 @@ public class IntrinsifyMethodHandlesInvocationPlugin implements NodePlugin {
              * signature polymorphic, i.e., they exist in every possible signature. Therefore, we
              * must only look at the declaring class and the method name here.
              */
-            reportUnsupportedFeature(b, method);
-            return true;
-        }
+            return reportUnsupportedFeature(b, method);
 
-        return false;
+        } else {
+            return false;
+        }
+    }
+
+    private static ValueNode filterNullPhiInputs(PhiNode phi) {
+        ValueNode notAlwaysNullPhiInput = null;
+        for (ValueNode phiInput : phi.values()) {
+            if (StampTool.isPointerAlwaysNull(phiInput)) {
+                /* Ignore always null phi inputs. */
+            } else if (notAlwaysNullPhiInput != null) {
+                /* More than one not-always-null phi inputs. Nothing more to optimize. */
+                return phi;
+            } else {
+                /* First not-always-null phi input. */
+                notAlwaysNullPhiInput = phiInput;
+            }
+        }
+        return notAlwaysNullPhiInput;
     }
 
     private static boolean hasMethodHandleArgument(ValueNode[] args) {
@@ -267,7 +316,7 @@ public class IntrinsifyMethodHandlesInvocationPlugin implements NodePlugin {
      * See the documentation in {@link VarHandleFeature} for more information on the overall
      * VarHandle support.
      */
-    private boolean isVarHandleMethod(ResolvedJavaMethod method, ValueNode[] args) {
+    private boolean isVarHandleMethod(GraphBuilderContext b, ResolvedJavaMethod method, ValueNode[] args) {
         /*
          * We do the check by class name because then we 1) do not need an explicit Java version
          * check (VarHandle was introduced with JDK 9), 2) VarHandleGuards is a non-public class
@@ -275,9 +324,9 @@ public class IntrinsifyMethodHandlesInvocationPlugin implements NodePlugin {
          * vs. hosted types. If the VarHandle implementation changes, we need to update our whole
          * handling anyway.
          */
-        if (method.getDeclaringClass().toJavaName(true).equals("java.lang.invoke.VarHandleGuards")) {
+        if (isVarHandleGuards(method)) {
             if (args.length < 1 || !args[0].isJavaConstant() || !isVarHandle(args[0])) {
-                throw new UnsupportedFeatureException("VarHandle object must be a compile time constant");
+                return reportUnsupportedFeature(b, method);
             }
 
             try {
@@ -300,8 +349,27 @@ public class IntrinsifyMethodHandlesInvocationPlugin implements NodePlugin {
         }
     }
 
+    private static boolean isVarHandleGuards(ResolvedJavaMethod method) {
+        return method.getDeclaringClass().toJavaName(true).equals("java.lang.invoke.VarHandleGuards");
+    }
+
     private boolean isVarHandle(ValueNode arg) {
         return varHandleType.isAssignableFrom(universeProviders.getMetaAccess().lookupJavaType(arg.asJavaConstant()));
+    }
+
+    private static final List<Pair<String, List<String>>> IGNORE_FILTER = Arrays.asList(
+                    Pair.create("java.lang.invoke.MethodHandles", Arrays.asList("dropArguments", "filterReturnValue", "foldArguments", "insertArguments")),
+                    Pair.create("java.lang.invoke.Invokers", Collections.singletonList("spreadInvoker")));
+
+    private static boolean ignoreMethod(ResolvedJavaMethod method) {
+        String className = method.getDeclaringClass().toJavaName(true);
+        String methodName = method.getName();
+        for (Pair<String, List<String>> ignored : IGNORE_FILTER) {
+            if (ignored.getLeft().equals(className) && ignored.getRight().contains(methodName)) {
+                return true;
+            }
+        }
+        return false;
     }
 
     class MethodHandlesParameterPlugin implements ParameterPlugin {
@@ -353,7 +421,7 @@ public class IntrinsifyMethodHandlesInvocationPlugin implements NodePlugin {
                  * covered by this rule.
                  */
                 return null;
-            } else if (className.startsWith("java.lang.invoke")) {
+            } else if (className.startsWith("java.lang.invoke") && !className.contains("InvokerBytecodeGenerator")) {
                 /*
                  * Inline all helper methods used by method handles. We do not know exactly which
                  * ones they are, but they are all be from the same package.
@@ -433,17 +501,15 @@ public class IntrinsifyMethodHandlesInvocationPlugin implements NodePlugin {
     }
 
     @SuppressWarnings("try")
-    private void processInvokeWithMethodHandle(GraphBuilderContext b, Replacements replacements, ResolvedJavaMethod methodHandleMethod, ValueNode[] methodHandleArguments) {
+    private boolean processInvokeWithMethodHandle(GraphBuilderContext b, Replacements replacements, ResolvedJavaMethod methodHandleMethod, ValueNode[] methodHandleArguments) {
         /*
          * When parsing for compilation, we must not intrinsify method handles that were not
          * intrinsified during analysis. Otherwise new code that was not seen as reachable by the
          * static analysis would be compiled.
          */
-        if (!analysis && intrinsificationRegistry.get(b.getMethod(), b.bci()) != Boolean.TRUE) {
-            reportUnsupportedFeature(b, methodHandleMethod);
-            return;
+        if (!analysis && intrinsificationRegistry.get(b.getCallingContext()) != Boolean.TRUE) {
+            return reportUnsupportedFeature(b, methodHandleMethod);
         }
-
         Plugins graphBuilderPlugins = new Plugins(parsingProviders.getReplacements().getGraphBuilderPlugins());
 
         registerInvocationPlugins(graphBuilderPlugins.getInvocationPlugins(), replacements);
@@ -491,13 +557,18 @@ public class IntrinsifyMethodHandlesInvocationPlugin implements NodePlugin {
                      * Successfully intrinsified during analysis, remember that we can intrinsify
                      * when parsing for compilation.
                      */
-                    intrinsificationRegistry.add(b.getMethod(), b.bci(), Boolean.TRUE);
+                    intrinsificationRegistry.add(b.getCallingContext(), Boolean.TRUE);
                 }
+                return true;
             } catch (AbortTransplantException ex) {
                 /*
-                 * The method handle cannot be intrinsified. The code that throws an error at
-                 * runtime was already appended, so nothing more to do.
+                 * The method handle cannot be intrinsified. If non-constant method handles are not
+                 * supported, the code that throws an error at runtime was already appended, so
+                 * nothing more to do. If non-constant method handles are supported, we return false
+                 * so that the bytecode parser emit a regular invoke bytecode, i.e., the constant
+                 * method handle is treated as if it were non-constant.
                  */
+                return ex.handled;
             }
         } catch (Throwable ex) {
             throw debug.handle(ex);
@@ -507,12 +578,12 @@ public class IntrinsifyMethodHandlesInvocationPlugin implements NodePlugin {
     /**
      * Transplants the graph parsed in the HotSpot universe into the currently parsed method. This
      * requires conversion of all types, methods, fields, and constants.
-     * 
+     *
      * Currently, only linear control flow in the original graph is supported. Nodes in the original
      * graph that have implicit exception edges ({@link InvokeNode}, {@link FixedGuardNode} are
      * converted to nodes with explicit exception edges. So the transplanted graph has a limited
      * amount of control flow for exception handling, but still no control flow merges.
-     * 
+     *
      * All necessary frame states use the same bci from the caller, i.e., all transplanted method
      * calls, field stores, exceptions, ... look as if they are coming from the original invocation
      * site of the method handle. This means the static analysis is not storing any analysis results
@@ -554,20 +625,7 @@ public class IntrinsifyMethodHandlesInvocationPlugin implements NodePlugin {
             if (oNode.getClass() == InvokeNode.class) {
                 InvokeNode oInvoke = (InvokeNode) oNode;
                 MethodCallTargetNode oCallTarget = (MethodCallTargetNode) oInvoke.callTarget();
-
-                ResolvedJavaMethod tTargetMethod = lookup(oCallTarget.targetMethod());
-                maybeEmitClassInitialization(b, oCallTarget.invokeKind() == InvokeKind.Static, tTargetMethod.getDeclaringClass());
-                b.handleReplacedInvoke(oCallTarget.invokeKind(), tTargetMethod, nodes(oCallTarget.arguments()), false);
-
-                JavaKind invokeResultKind = oInvoke.getStackKind();
-                if (invokeResultKind != JavaKind.Void) {
-                    /*
-                     * The invoke was pushed by handleReplacedInvoke, pop it again. Note that the
-                     * popped value is not necessarily an Invoke, because inlining during parsing
-                     * and intrinsification can happen.
-                     */
-                    transplanted.put(oInvoke, b.pop(invokeResultKind));
-                }
+                transplantInvoke(oInvoke, lookup(oCallTarget.targetMethod()), oCallTarget.invokeKind(), nodes(oCallTarget.arguments()), oCallTarget.returnKind());
                 return true;
 
             } else if (oNode.getClass() == FixedGuardNode.class) {
@@ -633,6 +691,12 @@ public class IntrinsifyMethodHandlesInvocationPlugin implements NodePlugin {
                 transplanted.put(oNew, tNew);
                 return true;
 
+            } else if (oNode.getClass() == FinalFieldBarrierNode.class) {
+                FinalFieldBarrierNode oNew = (FinalFieldBarrierNode) oNode;
+                FinalFieldBarrierNode tNew = b.add(new FinalFieldBarrierNode(node(oNew.getValue())));
+                transplanted.put(oNew, tNew);
+                return true;
+
             } else {
                 return false;
             }
@@ -694,12 +758,26 @@ public class IntrinsifyMethodHandlesInvocationPlugin implements NodePlugin {
             return (ValueNode) tNode;
         }
 
+        private void transplantInvoke(FixedWithNextNode oNode, ResolvedJavaMethod tTargetMethod, InvokeKind invokeKind, ValueNode[] arguments, JavaKind invokeResultKind) {
+            maybeEmitClassInitialization(b, invokeKind == InvokeKind.Static, tTargetMethod.getDeclaringClass());
+            b.handleReplacedInvoke(invokeKind, tTargetMethod, arguments, false);
+
+            if (invokeResultKind != JavaKind.Void) {
+                /*
+                 * The invoke was pushed by handleReplacedInvoke, pop it again. Note that the popped
+                 * value is not necessarily an Invoke, because inlining during parsing and
+                 * intrinsification can happen.
+                 */
+                transplanted.put(oNode, b.pop(invokeResultKind));
+            }
+        }
+
         @SuppressWarnings("unchecked")
         private <T extends Stamp> T stamp(T oStamp) throws AbortTransplantException {
             Stamp result;
             if (((Stamp) oStamp).getClass() == ObjectStamp.class) {
                 ObjectStamp oObjectStamp = (ObjectStamp) oStamp;
-                result = new ObjectStamp(lookup(oObjectStamp.type()), oObjectStamp.isExactType(), oObjectStamp.nonNull(), oObjectStamp.alwaysNull());
+                result = new ObjectStamp(lookup(oObjectStamp.type()), oObjectStamp.isExactType(), oObjectStamp.nonNull(), oObjectStamp.alwaysNull(), oObjectStamp.isAlwaysArray());
             } else if (oStamp instanceof PrimitiveStamp) {
                 result = oStamp;
             } else {
@@ -734,25 +812,34 @@ public class IntrinsifyMethodHandlesInvocationPlugin implements NodePlugin {
         }
 
         private RuntimeException bailout() throws AbortTransplantException {
-            reportUnsupportedFeature(b, methodHandleMethod);
+            boolean handled = reportUnsupportedFeature(b, methodHandleMethod);
             /*
              * We need to get out of recursive transplant methods. Easier to use an exception than
              * to explicitly check every method invocation for a possible abort.
              */
-            throw new AbortTransplantException();
+            throw new AbortTransplantException(handled);
         }
     }
 
     @SuppressWarnings("serial")
     static class AbortTransplantException extends Exception {
+        private final boolean handled;
+
+        AbortTransplantException(boolean handled) {
+            this.handled = handled;
+        }
     }
 
-    private static void reportUnsupportedFeature(GraphBuilderContext b, ResolvedJavaMethod methodHandleMethod) {
+    private static boolean reportUnsupportedFeature(GraphBuilderContext b, ResolvedJavaMethod methodHandleMethod) {
         String message = "Invoke with MethodHandle argument could not be reduced to at most a single call or single field access. " +
                         "The method handle must be a compile time constant, e.g., be loaded from a `static final` field. " +
                         "Method that contains the method handle invocation: " + methodHandleMethod.format("%H.%n(%p)");
 
-        if (NativeImageOptions.ReportUnsupportedElementsAtRuntime.getValue()) {
+        if (NativeImageOptions.areMethodHandlesSupported()) {
+            /* Do nothing, the method will be compiled elsewhere */
+            return false;
+
+        } else if (NativeImageOptions.ReportUnsupportedElementsAtRuntime.getValue()) {
             /*
              * Ensure that we have space on the expression stack for the (unused) return value of
              * the invoke.
@@ -762,7 +849,7 @@ public class IntrinsifyMethodHandlesInvocationPlugin implements NodePlugin {
                             new ValueNode[]{ConstantNode.forConstant(SubstrateObjectConstant.forObject(message), b.getMetaAccess(), b.getGraph())}, false);
             /* The invoked method throws an exception and therefore never returns. */
             b.append(new DeadEndNode());
-            return;
+            return true;
 
         } else {
             throw new UnsupportedFeatureException(message + System.lineSeparator() +

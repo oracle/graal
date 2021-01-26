@@ -48,7 +48,7 @@ public class JNIRegistrationAwt extends JNIRegistrationUtil implements Feature {
 
     @Override
     public void beforeAnalysis(BeforeAnalysisAccess access) {
-        if (JavaVersionUtil.JAVA_SPEC >= 11 && Platform.includedIn(Platform.LINUX_AMD64.class)) {
+        if (JavaVersionUtil.JAVA_SPEC >= 11 && Platform.includedIn(Platform.LINUX.class)) {
             access.registerReachabilityHandler(JNIRegistrationAwt::handlePreferencesClassReachable,
                             clazz(access, "java.awt.Toolkit"),
                             clazz(access, "sun.java2d.cmm.lcms.LCMS"),
@@ -126,6 +126,9 @@ public class JNIRegistrationAwt extends JNIRegistrationUtil implements Feature {
     }
 
     private static void registerJPEG(DuringAnalysisAccess access) {
+
+        PlatformNativeLibrarySupport.singleton().addBuiltinPkgNativePrefix("com_sun_imageio_plugins_jpeg");
+
         NativeLibraries nativeLibraries = getNativeLibraries(access);
 
         NativeLibrarySupport.singleton().preregisterUninitializedBuiltinLibrary("javajpeg");
@@ -151,6 +154,7 @@ public class JNIRegistrationAwt extends JNIRegistrationUtil implements Feature {
 
         NativeLibrarySupport.singleton().preregisterUninitializedBuiltinLibrary("fontmanager");
         nativeLibraries.addStaticJniLibrary("fontmanager", isHeadless() ? "awt_headless" : "awt_xawt");
+        nativeLibraries.addStaticJniLibrary("harfbuzz");
 
         PlatformNativeLibrarySupport.singleton().addBuiltinPkgNativePrefix("sun_font");
 

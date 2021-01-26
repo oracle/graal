@@ -49,6 +49,7 @@ import java.time.LocalTime;
 import java.time.ZoneId;
 import java.time.ZonedDateTime;
 
+import com.oracle.truffle.api.CompilerDirectives;
 import org.graalvm.polyglot.Value;
 import org.graalvm.polyglot.proxy.Proxy;
 import org.graalvm.polyglot.proxy.ProxyArray;
@@ -292,9 +293,24 @@ final class PolyglotProxy implements TruffleObject {
                 result = EMPTY;
             }
             Object guestValue = languageContext.toGuestValue(library, result);
-            if (!InteropLibrary.getFactory().getUncached().hasArrayElements(guestValue)) {
+            InteropLibrary interop = InteropLibrary.getFactory().getUncached();
+            if (!interop.hasArrayElements(guestValue)) {
                 throw illegalProxy(languageContext, "getMemberKeys() returned invalid value %s but must return an array of member key Strings.",
                                 languageContext.asValue(guestValue).toString());
+            }
+            // Todo: Use interop to determine an array element type when the GR-5737 is resolved.
+            for (int i = 0; i < interop.getArraySize(guestValue); i++) {
+                try {
+                    Object element = interop.readArrayElement(guestValue, i);
+                    if (!interop.isString(element)) {
+                        throw illegalProxy(languageContext, "getMemberKeys() returned invalid value %s but must return an array of member key Strings.",
+                                        languageContext.asValue(guestValue).toString());
+                    }
+                } catch (UnsupportedOperationException e) {
+                    CompilerDirectives.shouldNotReachHere(e);
+                } catch (InvalidArrayIndexException e) {
+                    continue;
+                }
             }
             return guestValue;
         } else {

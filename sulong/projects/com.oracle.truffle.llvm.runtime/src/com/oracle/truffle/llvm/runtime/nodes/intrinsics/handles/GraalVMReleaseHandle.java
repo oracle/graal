@@ -37,7 +37,7 @@ import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.llvm.runtime.LLVMContext;
 import com.oracle.truffle.llvm.runtime.LLVMLanguage;
 import com.oracle.truffle.llvm.runtime.except.LLVMMemoryException;
-import com.oracle.truffle.llvm.runtime.memory.LLVMNativeMemory;
+import com.oracle.truffle.llvm.runtime.memory.LLVMHandleMemoryBase;
 import com.oracle.truffle.llvm.runtime.nodes.api.LLVMExpressionNode;
 import com.oracle.truffle.llvm.runtime.nodes.intrinsics.llvm.LLVMIntrinsic;
 import com.oracle.truffle.llvm.runtime.pointer.LLVMNativePointer;
@@ -50,7 +50,7 @@ public abstract class GraalVMReleaseHandle extends LLVMIntrinsic {
                     @CachedContext(LLVMLanguage.class) LLVMContext context,
                     @CachedLanguage LLVMLanguage language) {
         long address = handle.asNative();
-        if (!language.getNoDerefHandleAssumption().isValid() && LLVMNativeMemory.isDerefHandleMemory(address)) {
+        if (!language.getNoDerefHandleAssumption().isValid() && LLVMHandleMemoryBase.isDerefHandleMemory(address)) {
             context.getDerefHandleContainer().free(this, address);
         } else {
             context.getHandleContainer().free(this, address);

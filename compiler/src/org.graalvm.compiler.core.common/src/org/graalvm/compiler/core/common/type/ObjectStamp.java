@@ -35,13 +35,13 @@ import jdk.vm.ci.meta.UnresolvedJavaType;
 
 public class ObjectStamp extends AbstractObjectStamp {
 
-    public ObjectStamp(ResolvedJavaType type, boolean exactType, boolean nonNull, boolean alwaysNull) {
-        super(type, exactType, nonNull, alwaysNull);
+    public ObjectStamp(ResolvedJavaType type, boolean exactType, boolean nonNull, boolean alwaysNull, boolean alwaysArray) {
+        super(type, exactType, nonNull, alwaysNull, alwaysArray);
     }
 
     @Override
-    protected ObjectStamp copyWith(ResolvedJavaType type, boolean exactType, boolean nonNull, boolean alwaysNull) {
-        return new ObjectStamp(type, exactType, nonNull, alwaysNull);
+    protected ObjectStamp copyWith(ResolvedJavaType type, boolean exactType, boolean nonNull, boolean alwaysNull, boolean alwaysArray) {
+        return new ObjectStamp(type, exactType, nonNull, alwaysNull, alwaysArray);
     }
 
     @Override
@@ -108,9 +108,10 @@ public class ObjectStamp extends AbstractObjectStamp {
 
     static class SymbolicObjectStamp implements SymbolicJVMCIReference<ObjectStamp> {
         UnresolvedJavaType type;
-        private boolean exactType;
-        private boolean nonNull;
-        private boolean alwaysNull;
+        private final boolean exactType;
+        private final boolean nonNull;
+        private final boolean alwaysNull;
+        private final boolean alwaysArray;
 
         SymbolicObjectStamp(ObjectStamp stamp) {
             if (stamp.type() != null) {
@@ -119,6 +120,7 @@ public class ObjectStamp extends AbstractObjectStamp {
             exactType = stamp.isExactType();
             nonNull = stamp.nonNull();
             alwaysNull = stamp.alwaysNull();
+            alwaysArray = stamp.isAlwaysArray();
         }
 
         @Override
@@ -130,7 +132,7 @@ public class ObjectStamp extends AbstractObjectStamp {
                     throw new NoClassDefFoundError("Can't resolve " + type.getName() + " with " + accessingClass.getName());
                 }
             }
-            return new ObjectStamp(resolvedType, exactType, nonNull, alwaysNull);
+            return new ObjectStamp(resolvedType, exactType, nonNull, alwaysNull, alwaysArray);
         }
 
         @Override
@@ -140,6 +142,7 @@ public class ObjectStamp extends AbstractObjectStamp {
                             ", exactType=" + exactType +
                             ", nonNull=" + nonNull +
                             ", alwaysNull=" + alwaysNull +
+                            ", alwaysArray=" + alwaysArray +
                             '}';
         }
     }

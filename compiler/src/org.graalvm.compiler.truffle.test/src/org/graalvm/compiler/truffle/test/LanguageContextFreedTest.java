@@ -58,16 +58,22 @@ public class LanguageContextFreedTest {
     @Test
     public void testLanguageContexFreedNoSharing() {
         doTest(() -> {
-            return Context.newBuilder().allowAllAccess(true).allowExperimentalOptions(true).option("engine.BackgroundCompilation", Boolean.FALSE.toString()).option("engine.CompilationThreshold",
-                            String.valueOf(COMPILATION_THRESHOLD)).option("engine.CompileImmediately", Boolean.FALSE.toString()).build();
+            return Context.newBuilder().allowAllAccess(true).allowExperimentalOptions(true).//
+            option("engine.BackgroundCompilation", Boolean.FALSE.toString()).//
+            option("engine.MultiTier", Boolean.FALSE.toString()).//
+            option("engine.CompilationThreshold", String.valueOf(COMPILATION_THRESHOLD)).//
+            option("engine.CompileImmediately", Boolean.FALSE.toString()).build();
         });
     }
 
     @Test
     public void testLanguageContexFreedSharedEngine() {
         doTest(() -> {
-            Engine engine = Engine.newBuilder().allowExperimentalOptions(true).option("engine.BackgroundCompilation", Boolean.FALSE.toString()).option("engine.CompilationThreshold",
-                            String.valueOf(COMPILATION_THRESHOLD)).option("engine.CompileImmediately", Boolean.FALSE.toString()).build();
+            Engine engine = Engine.newBuilder().allowExperimentalOptions(true).//
+            option("engine.BackgroundCompilation", Boolean.FALSE.toString()).//
+            option("engine.MultiTier", Boolean.FALSE.toString()).//
+            option("engine.CompilationThreshold", String.valueOf(COMPILATION_THRESHOLD)).//
+            option("engine.CompileImmediately", Boolean.FALSE.toString()).build();
             return Context.newBuilder().engine(engine).allowAllAccess(true).build();
         });
     }

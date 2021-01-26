@@ -28,8 +28,10 @@ import com.oracle.truffle.api.exception.AbstractTruffleException;
 import com.oracle.truffle.api.instrumentation.test.InstrumentationTestLanguage;
 import com.oracle.truffle.api.interop.InteropLibrary;
 import com.oracle.truffle.api.test.polyglot.ProxyLanguage;
+import java.io.ByteArrayOutputStream;
 import static org.graalvm.tools.insight.test.InsightObjectFactory.createConfig;
 import java.net.URI;
+import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
 import java.util.LinkedList;
@@ -42,8 +44,10 @@ import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.Executor;
 import java.util.concurrent.Executors;
 import java.util.concurrent.TimeUnit;
+import java.util.function.Function;
 import java.util.function.Predicate;
 import org.graalvm.polyglot.Context;
+import org.graalvm.polyglot.Instrument;
 import org.graalvm.polyglot.PolyglotException;
 import org.graalvm.polyglot.Source;
 import org.graalvm.polyglot.Value;
@@ -68,7 +72,7 @@ public class InsightObjectTest {
     @Test
     public void versionOfTheAgent() throws Exception {
         try (Context c = InsightObjectFactory.newContext()) {
-            Value agent = InsightObjectFactory.createAgentObject(c);
+            Value agent = InsightObjectFactory.readInsight(c, null);
             InsightAPI agentAPI = agent.as(InsightAPI.class);
             Assert.assertNotNull("Agent API obtained", agentAPI);
             assertEquals(Insight.VERSION, agentAPI.version());
@@ -78,15 +82,16 @@ public class InsightObjectTest {
     @Test
     public void versionOfTheAgentDirect() throws Exception {
         try (Context c = InsightObjectFactory.newContext()) {
-            Value agent = InsightObjectFactory.createAgentObject(c);
+            Object[] insightObject = {null};
+            Value agent = InsightObjectFactory.readInsight(c, insightObject);
             assertNotNull("agent created", agent);
-            assertNotNull("we have agent's truffle object", InsightObjectFactory.insightObject);
+            assertNotNull("we have agent's truffle object", insightObject[0]);
 
             InteropLibrary iop = InteropLibrary.getFactory().getUncached();
 
-            assertTrue("Yes, it has members", iop.hasMembers(InsightObjectFactory.insightObject));
+            assertTrue("Yes, it has members", iop.hasMembers(insightObject[0]));
 
-            Object members = iop.getMembers(InsightObjectFactory.insightObject);
+            Object members = iop.getMembers(insightObject[0]);
             long membersCount = iop.getArraySize(members);
             assertEquals(2, membersCount);
 
@@ -98,7 +103,7 @@ public class InsightObjectTest {
     @Test
     public void onErrorneousCallbackRegistration() throws Exception {
         try (Context c = InsightObjectFactory.newContext()) {
-            Value agent = InsightObjectFactory.createAgentObject(c);
+            Value agent = InsightObjectFactory.readInsight(c, null);
             InsightAPI agentAPI = agent.as(InsightAPI.class);
             Assert.assertNotNull("Agent API obtained", agentAPI);
 
@@ -114,7 +119,7 @@ public class InsightObjectTest {
     @Test
     public void onSourceCallback() throws Exception {
         try (Context c = InsightObjectFactory.newContext()) {
-            Value agent = InsightObjectFactory.createAgentObject(c);
+            Value agent = InsightObjectFactory.readInsight(c, null);
             InsightAPI agentAPI = agent.as(InsightAPI.class);
             Assert.assertNotNull("Agent API obtained", agentAPI);
 
@@ -151,7 +156,7 @@ public class InsightObjectTest {
     @Test
     public void nullMimeType() throws Exception {
         try (Context c = InsightObjectFactory.newContext()) {
-            Value agent = InsightObjectFactory.createAgentObject(c);
+            Value agent = InsightObjectFactory.readInsight(c, null);
             InsightAPI agentAPI = agent.as(InsightAPI.class);
             Assert.assertNotNull("Agent API obtained", agentAPI);
 
@@ -179,7 +184,7 @@ public class InsightObjectTest {
     @Test
     public void onEnterCallback() throws Exception {
         try (Context c = InsightObjectFactory.newContext()) {
-            Value agent = InsightObjectFactory.createAgentObject(c);
+            Value agent = InsightObjectFactory.readInsight(c, null);
             InsightAPI agentAPI = agent.as(InsightAPI.class);
             Assert.assertNotNull("Agent API obtained", agentAPI);
 
@@ -262,7 +267,7 @@ public class InsightObjectTest {
             // @formatter:on
             c.eval(sampleScript);
 
-            Value agent = InsightObjectFactory.createAgentObject(c);
+            Value agent = InsightObjectFactory.readInsight(c, null);
             InsightAPI agentAPI = agent.as(InsightAPI.class);
             Assert.assertNotNull("Agent API obtained", agentAPI);
 
@@ -318,7 +323,7 @@ public class InsightObjectTest {
     public void onEnterCallbackWithFilterOnRootName() throws Exception {
         boolean[] finished = {false};
         try (Context c = InsightObjectFactory.newContext()) {
-            Value agent = InsightObjectFactory.createAgentObject(c);
+            Value agent = InsightObjectFactory.readInsight(c, null);
             InsightAPI agentAPI = agent.as(InsightAPI.class);
             Assert.assertNotNull("Agent API obtained", agentAPI);
 
@@ -359,7 +364,7 @@ public class InsightObjectTest {
     public void onEnterCallbackWithFilterOnSourceName() throws Exception {
         boolean[] finished = {false};
         try (Context c = InsightObjectFactory.newContext()) {
-            Value agent = InsightObjectFactory.createAgentObject(c);
+            Value agent = InsightObjectFactory.readInsight(c, null);
             InsightAPI agentAPI = agent.as(InsightAPI.class);
             Assert.assertNotNull("Agent API obtained", agentAPI);
 
@@ -409,7 +414,7 @@ public class InsightObjectTest {
     @Test
     public void onStatementCallback() throws Exception {
         try (Context c = InsightObjectFactory.newContext()) {
-            Value agent = InsightObjectFactory.createAgentObject(c);
+            Value agent = InsightObjectFactory.readInsight(c, null);
             InsightAPI agentAPI = agent.as(InsightAPI.class);
             Assert.assertNotNull("Agent API obtained", agentAPI);
 
@@ -440,7 +445,7 @@ public class InsightObjectTest {
     @Test
     public void onExpressionCallback() throws Exception {
         try (Context c = InsightObjectFactory.newContext()) {
-            Value agent = InsightObjectFactory.createAgentObject(c);
+            Value agent = InsightObjectFactory.readInsight(c, null);
             InsightAPI agentAPI = agent.as(InsightAPI.class);
             Assert.assertNotNull("Agent API obtained", agentAPI);
 
@@ -475,7 +480,7 @@ public class InsightObjectTest {
     public void internalScriptsAreIgnored() throws Exception {
         int[] closeCounter = {0};
         try (Context c = InsightObjectFactory.newContext()) {
-            Value agent = InsightObjectFactory.createAgentObject(c);
+            Value agent = InsightObjectFactory.readInsight(c, null);
             InsightAPI agentAPI = agent.as(InsightAPI.class);
             Assert.assertNotNull("Agent API obtained", agentAPI);
 
@@ -520,7 +525,7 @@ public class InsightObjectTest {
     @Test
     public void onEnterAndReturn() throws Exception {
         try (Context c = InsightObjectFactory.newContext()) {
-            Value agent = InsightObjectFactory.createAgentObject(c);
+            Value agent = InsightObjectFactory.readInsight(c, null);
             InsightAPI agentAPI = agent.as(InsightAPI.class);
             Assert.assertNotNull("Agent API obtained", agentAPI);
 
@@ -566,7 +571,7 @@ public class InsightObjectTest {
     @Test
     public void accessFrameVariables() throws Exception {
         try (Context c = InsightObjectFactory.newContext()) {
-            Value agent = InsightObjectFactory.createAgentObject(c);
+            Value agent = InsightObjectFactory.readInsight(c, null);
             InsightAPI agentAPI = agent.as(InsightAPI.class);
             Assert.assertNotNull("Agent API obtained", agentAPI);
 
@@ -648,7 +653,7 @@ public class InsightObjectTest {
     @Test
     public void changeReturnValue() throws Exception {
         try (Context c = InsightObjectFactory.newContext()) {
-            Value agent = InsightObjectFactory.createAgentObject(c);
+            Value agent = InsightObjectFactory.readInsight(c, null);
             InsightAPI agentAPI = agent.as(InsightAPI.class);
             Assert.assertNotNull("Agent API obtained", agentAPI);
 
@@ -680,7 +685,7 @@ public class InsightObjectTest {
     @Test
     public void doubleReturnValue() throws Exception {
         try (Context c = InsightObjectFactory.newContext()) {
-            Value agent = InsightObjectFactory.createAgentObject(c);
+            Value agent = InsightObjectFactory.readInsight(c, null);
             InsightAPI agentAPI = agent.as(InsightAPI.class);
             Assert.assertNotNull("Agent API obtained", agentAPI);
 
@@ -718,7 +723,7 @@ public class InsightObjectTest {
     @Test
     public void wrongReturnValueCall() throws Exception {
         try (Context c = InsightObjectFactory.newContext()) {
-            Value agent = InsightObjectFactory.createAgentObject(c);
+            Value agent = InsightObjectFactory.readInsight(c, null);
             InsightAPI agentAPI = agent.as(InsightAPI.class);
             Assert.assertNotNull("Agent API obtained", agentAPI);
 
@@ -750,6 +755,137 @@ public class InsightObjectTest {
             agentAPI.off("return", return42);
 
             assertEquals(42, fourtyTwo.asInt());
+        }
+    }
+
+    @Test
+    public void unknownLanguageCall() throws Exception {
+        try (Context c = InsightObjectFactory.newContext()) {
+            Instrument insight = c.getEngine().getInstruments().get(Insight.ID);
+            assertNotNull("found", insight);
+
+            // @formatter:off
+            Source sampleScript = Source.newBuilder(InstrumentationTestLanguage.ID,
+                "ROOT(\n" +
+                "  DEFINE(meaning,\n" +
+                "    EXPRESSION(\n" +
+                "      CONSTANT(6),\n" +
+                "      CONSTANT(7)\n" +
+                "    )\n" +
+                "  ),\n" +
+                "  CALL(meaning)\n" +
+                ")",
+                "sample.px"
+            ).build();
+
+            Source insightScript = Source.newBuilder("unknownInsightLanguage",
+                "anything",
+                "insightScript.uil"
+            ).build();
+            // @formatter:on
+
+            @SuppressWarnings("unchecked")
+            Object script = insight.lookup(Function.class).apply(insightScript);
+
+            try {
+                Value fourtyTwo = c.eval(sampleScript);
+                assertEquals("Unlikely to happen, expect exception", 42, fourtyTwo.asInt());
+            } catch (PolyglotException ex) {
+                assertNotEquals("Missing language error reported", -1, ex.getMessage().indexOf("No language for id unknownInsightLanguage found"));
+            }
+        }
+    }
+
+    @Test
+    @SuppressWarnings({"unchecked", "rawtypes"})
+    public void exportViaSymbolProvider() throws Exception {
+        ByteArrayOutputStream os = new ByteArrayOutputStream();
+        Context.Builder b = Context.newBuilder();
+        b.option("count", "41");
+        try (Context c = InsightObjectFactory.newContext(b, os, os)) {
+            Instrument insight = c.getEngine().getInstruments().get(Insight.ID);
+            assertNotNull("found", insight);
+
+            Value count = InsightObjectFactory.readObject(c, "count");
+            assertEquals(41, count.asInt());
+        }
+    }
+
+    @Test
+    @SuppressWarnings({"unchecked", "rawtypes"})
+    public void meaningViaSymbolProvider() throws Exception {
+        try (Context c = InsightObjectFactory.newContext()) {
+            Instrument insight = c.getEngine().getInstruments().get(Insight.ID);
+            assertNotNull("found", insight);
+
+            Value meaning = InsightObjectFactory.readObject(c, "meaning");
+            assertEquals(42, meaning.asInt());
+        }
+    }
+
+    @Test
+    public void iterateFrames() throws Exception {
+        try (Context c = InsightObjectFactory.newContext()) {
+            Value insight = InsightObjectFactory.readInsight(c, null);
+            InsightAPI insightAPI = insight.as(InsightAPI.class);
+            Assert.assertNotNull("Agent API obtained", insightAPI);
+
+            // @formatter:off
+            Source s1 = Source.newBuilder(InstrumentationTestLanguage.ID,
+                "ROOT(\n" +
+                "  DEFINE(s1,\n" +
+                "    EXPRESSION(\n" +
+                "      CONSTANT(6),\n" +
+                "      CONSTANT(7)\n" +
+                "    )\n" +
+                "  )\n" +
+                ")",
+                "s1.px"
+            ).build();
+
+            Source s2internal = Source.newBuilder(InstrumentationTestLanguage.ID,
+                "ROOT(\n" +
+                "  DEFINE(s2,\n" +
+                "    CALL(s1)\n" +
+                "  )\n" +
+                ")",
+                "s2.px"
+            ).internal(true).build();
+
+            Source s3 = Source.newBuilder(InstrumentationTestLanguage.ID,
+                "ROOT(\n" +
+                "  CALL(s2)\n" +
+                ")",
+                "s3.px"
+            ).build();
+            // @formatter:on
+
+            String[] firstSourceName = {"ignore"};
+            List<InsightAPI.SourceSectionInfo> stackTraces = new ArrayList<>();
+            final InsightAPI.OnEventHandler threadDump = (ctx, frame) -> {
+                InsightAPI.FramesIterator<String> it = (loc, vars) -> {
+                    stackTraces.add(loc);
+                    return firstSourceName[0] == null ? loc.source().name() : null;
+                };
+                String value = ctx.iterateFrames(it);
+                if (firstSourceName[0] == null) {
+                    firstSourceName[0] = value;
+                }
+            };
+            insightAPI.on("return", threadDump, createConfig(true, false, false, "s1", null));
+
+            c.eval(s1);
+            c.eval(s2internal);
+            c.eval(s3);
+
+            assertEquals("Two frames", 2, stackTraces.size());
+            assertEquals("s1.px", stackTraces.get(0).source().name());
+            assertEquals("s3.px", stackTraces.get(1).source().name());
+
+            firstSourceName[0] = null;
+            c.eval(s3);
+            assertEquals("Third added", 3, stackTraces.size());
+            assertEquals("s1.px", stackTraces.get(2).source().name());
         }
     }
 

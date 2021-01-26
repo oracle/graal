@@ -163,10 +163,11 @@ cons public init()
 cons public init(org.graalvm.polyglot.Context$Builder)
 intf org.junit.rules.TestRule
 meth public com.oracle.truffle.api.TruffleLanguage$Env getTruffleTestEnv()
+meth public com.oracle.truffle.api.TruffleLanguage<?> getTestLanguage()
 meth public org.graalvm.polyglot.Context getPolyglotContext()
 meth public org.junit.runners.model.Statement apply(org.junit.runners.model.Statement,org.junit.runner.Description)
 supr java.lang.Object
-hfds context,contextBuilder,testEnv
+hfds context,contextBuilder,testEnv,testLanguage
 
 CLSS public abstract interface static !annotation com.oracle.truffle.tck.TruffleRunner$Warmup
  outer com.oracle.truffle.tck.TruffleRunner

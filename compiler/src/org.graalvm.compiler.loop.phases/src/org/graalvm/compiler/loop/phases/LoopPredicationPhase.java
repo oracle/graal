@@ -36,11 +36,6 @@ import org.graalvm.compiler.core.common.type.StampFactory;
 import org.graalvm.compiler.debug.DebugContext;
 import org.graalvm.compiler.graph.Node;
 import org.graalvm.compiler.graph.iterators.NodeIterable;
-import org.graalvm.compiler.loop.CountedLoopInfo;
-import org.graalvm.compiler.loop.InductionVariable;
-import org.graalvm.compiler.loop.LoopEx;
-import org.graalvm.compiler.loop.LoopsData;
-import org.graalvm.compiler.loop.MathUtil;
 import org.graalvm.compiler.nodes.AbstractBeginNode;
 import org.graalvm.compiler.nodes.ConstantNode;
 import org.graalvm.compiler.nodes.FrameState;
@@ -59,6 +54,11 @@ import org.graalvm.compiler.nodes.cfg.ControlFlowGraph;
 import org.graalvm.compiler.nodes.extended.AnchoringNode;
 import org.graalvm.compiler.nodes.extended.GuardingNode;
 import org.graalvm.compiler.nodes.extended.MultiGuardNode;
+import org.graalvm.compiler.nodes.loop.CountedLoopInfo;
+import org.graalvm.compiler.nodes.loop.InductionVariable;
+import org.graalvm.compiler.nodes.loop.LoopEx;
+import org.graalvm.compiler.nodes.loop.LoopsData;
+import org.graalvm.compiler.nodes.loop.MathUtil;
 import org.graalvm.compiler.phases.BasePhase;
 import org.graalvm.compiler.phases.tiers.MidTierContext;
 import org.graalvm.compiler.serviceprovider.SpeculationReasonGroup;
@@ -79,7 +79,7 @@ public class LoopPredicationPhase extends BasePhase<MidTierContext> {
         DebugContext debug = graph.getDebug();
         final SpeculationLog speculationLog = graph.getSpeculationLog();
         if (graph.hasLoops() && graph.getGuardsStage().allowsFloatingGuards() && context.getOptimisticOptimizations().useLoopLimitChecks(graph.getOptions()) && speculationLog != null) {
-            LoopsData data = new LoopsData(graph);
+            LoopsData data = context.getLoopsDataProvider().getLoopsData(graph);
             final ControlFlowGraph cfg = data.getCFG();
             try (DebugContext.Scope s = debug.scope("predication", cfg)) {
                 for (LoopEx loop : data.loops()) {

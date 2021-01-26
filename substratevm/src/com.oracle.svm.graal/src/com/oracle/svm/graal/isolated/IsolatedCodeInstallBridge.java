@@ -34,40 +34,33 @@ import jdk.vm.ci.code.InstalledCode;
 
 /**
  * A helper to pass information for installing code in the compilation client through a Truffle
- * compilation. It does not implement {@link InstalledCode} in any meaningful way, just like
- * {@code SubstrateTruffleInstalledCodeBridge}.
+ * compilation. It does not implement {@link InstalledCode} or {@link OptimizedAssumptionDependency}
+ * in any meaningful way.
  */
 public final class IsolatedCodeInstallBridge extends InstalledCode implements OptimizedAssumptionDependency {
-    private final ClientHandle<? extends SubstrateInstalledCode.Access> installedCodeAccessHandle;
-    private final ClientHandle<? extends OptimizedAssumptionDependency.Access> dependencyAccessHandle;
+    private final ClientHandle<? extends SubstrateInstalledCode.Factory> factoryHandle;
+    private ClientHandle<? extends SubstrateInstalledCode> installedCodeHandle;
 
-    public IsolatedCodeInstallBridge(ClientHandle<? extends SubstrateInstalledCode.Access> installedCodeAccessHandle,
-                    ClientHandle<? extends OptimizedAssumptionDependency.Access> dependencyAccessHandle) {
+    public IsolatedCodeInstallBridge(ClientHandle<? extends SubstrateInstalledCode.Factory> factoryHandle) {
         super(IsolatedCodeInstallBridge.class.getSimpleName());
-        this.installedCodeAccessHandle = installedCodeAccessHandle;
-        this.dependencyAccessHandle = dependencyAccessHandle;
+        this.factoryHandle = factoryHandle;
     }
 
-    public ClientHandle<? extends SubstrateInstalledCode.Access> getInstalledCodeAccessHandle() {
-        return installedCodeAccessHandle;
+    public ClientHandle<? extends SubstrateInstalledCode.Factory> getSubstrateInstalledCodeFactoryHandle() {
+        return factoryHandle;
     }
 
-    public ClientHandle<? extends Access> getDependencyAccessHandle() {
-        return dependencyAccessHandle;
+    public void setSubstrateInstalledCodeHandle(ClientHandle<? extends SubstrateInstalledCode> installedCodeHandle) {
+        this.installedCodeHandle = installedCodeHandle;
+    }
+
+    public ClientHandle<? extends SubstrateInstalledCode> getSubstrateInstalledCodeHandle() {
+        assert installedCodeHandle.notEqual(IsolatedHandles.nullHandle()) : "must have been initialized";
+        return installedCodeHandle;
     }
 
     private static final String DO_NOT_CALL_REASON = IsolatedCodeInstallBridge.class.getSimpleName() +
                     " only acts as an accessor for cross-isolate data. None of the implemented methods may be called.";
-
-    @Override
-    public long getAddress() {
-        throw VMError.shouldNotReachHere(DO_NOT_CALL_REASON);
-    }
-
-    @Override
-    public long getEntryPoint() {
-        throw VMError.shouldNotReachHere(DO_NOT_CALL_REASON);
-    }
 
     @Override
     public String getName() {
@@ -95,7 +88,7 @@ public final class IsolatedCodeInstallBridge extends InstalledCode implements Op
     }
 
     @Override
-    public void invalidate() {
+    public void onAssumptionInvalidated(Object source, CharSequence reason) {
         throw VMError.shouldNotReachHere(DO_NOT_CALL_REASON);
     }
 

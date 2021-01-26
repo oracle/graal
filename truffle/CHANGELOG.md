@@ -2,7 +2,38 @@
 
 This changelog summarizes major changes between Truffle versions relevant to languages implementors building upon the Truffle framework. The main focus is on APIs exported by Truffle.
 
+## Version 21.1.0
+* Added methods into `Instrumenter` that create bindings to be attached later on. Added `EventBinding.attach()` method.
+* Added `TruffleContext.isCancelling()` to check whether a truffle context is being cancelled.
+* Added `TruffleInstrument.Env.calculateContextHeapSize(TruffleContext, long, AtomicBoolean)` to calculate the heap size retained by a a context.
+* Added `ContextsListener.onLanguageContextCreate`, `ContextsListener.onLanguageContextCreateFailed`, `ContextsListener.onLanguageContextInitialize`, and `ContextsListener.onLanguageContextInitializeFailed`  to allow instruments to listen to language context creation start events, language context creation failure events, language context initialization start events, and language context initialization failure events, respectively.
+* Added `CompilerDirectives.isExact(Object, Class)` to check whether a value is of an exact type. This method should be used instead of the `value != null && value.getClass() == exactClass` pattern.
+* Added `Frame.clear(FrameSlot)`. This allows the compiler to reason about the liveness of local variables. Languages are recommended to use it when applicable.
+* Added `@GenerateAOT` to support preparation for AOT specializing nodes. Read the (AOT tutorial)[https://github.com/oracle/graal/blob/master/truffle/docs/AOT.md] to get started with Truffle and AOT compilation.
+* Profiles now can be disabled using `Profile.disable()` and reset using `Profile.reset()`.
+* Added `--engine.CompileAOTOnCreate` option to trigger AOT compilation on call target create.
+* Added new messages to `InteropLibrary` for interacting with buffer-like objects:
+    * Added `hasBufferElements(Object)` that returns  `true` if this object supports buffer messages.
+    * Added `isBufferWritable(Object)` that returns `true` if this object supports writing buffer elements.
+    * Added `getBufferSize(Object)` to return the size of this buffer.
+    * Added `readBufferByte(Object, long)`, `readBufferShort(Object, ByteOrder, long)`, `readBufferInt(Object, ByteOrder, long)`, `readBufferLong(Object, ByteOrder, long)`, `readBufferFloat(Object, ByteOrder, long)`  and `readBufferDouble(Object, ByteOrder, long)` to read a primitive from this buffer at the given index.
+    * Added `writeBufferByte(Object, long, byte)`, `writeBufferShort(Object, ByteOrder, long, short)`, `writeBufferInt(Object, ByteOrder, long, int)`, `writeBufferLong(Object, ByteOrder, long, long)`, `writeBufferFloat(Object, ByteOrder, long, float)`  and `writeBufferDouble(Object, ByteOrder, long, double)` to write a primitive in this buffer at the given index (supported only if `isBufferWritable(Object)` returns `true`).
+* Added `Shape.getLayoutClass()` as a replacement for `Shape.getLayout().getType()`. Returns the DynamicObject subclass provided to `Shape.Builder.layout`.
+* Changed the default value of `--engine.MultiTier` from `false` to `true`. This should significantly improve the warmup time of Truffle interpreters.
+
 ## Version 21.0.0
+* If an `AbstractTruffleException` is thrown from the `ContextLocalFactory`, `ContextThreadLocalFactory` or event listener, which is called during the context enter, the excepion interop messages are executed without a context being entered. The event listeners called during the context enter are:
+    * `ThreadsActivationListener.onEnterThread(TruffleContext)`
+    * `ThreadsListener.onThreadInitialized(TruffleContext, Thread)`
+    * `TruffleInstrument.onCreate(Env)`
+    * `TruffleLanguage.isThreadAccessAllowed(Thread, boolean)`
+    * `TruffleLanguage.initializeMultiThreading(Object)`
+    * `TruffleLanguage.initializeThread(Object, Thread)`
+* Added `HostCompilerDirectives` for directives that guide the host compilations of Truffle interpreters.
+    * `HostCompilerDirectives.BytecodeInterpreterSwitch` - to denote methods that contain the instruction-dispatch switch in bytecode interpreters
+    * `HostCompilerDirectives.BytecodeInterpreterSwitchBoundary` - to denote methods that do not need to be inlined into the bytecode interpreter switch
+* Truffle DSL generated nodes are no longer limited to 64 state bits. Use these state bits responsibly.
+* Added support for explicitly selecting a host method overload using the signature in the form of comma-separated fully qualified parameter type names enclosed by parentheses (e.g. `methodName(f.q.TypeName,java.lang.String,int,int[])`).
 
 ## Version 20.3.0
 * Added `RepeatingNode.initialLoopStatus` and `RepeatingNode.shouldContinue` to allow defining a custom loop continuation condition.
@@ -51,7 +82,6 @@ This changelog summarizes major changes between Truffle versions relevant to lan
     * Attention: Since [AbstractTruffleException](https://www.graalvm.org/truffle/javadoc/com/oracle/truffle/api/exception/AbstractTruffleException.html) is an abstract base class, not an interface, the exceptions the Truffle NFI throws do not extend UnsatisfiedLinkError anymore. This is an incompatible change for guest languages that relied on the exact exception class. The recommended fix is to catch AbstractTruffleException instead of UnsatisfiedLinkError.
 * Added [TruffleInstrument.Env.getEnteredContext](https://www.graalvm.org/truffle/javadoc/com/oracle/truffle/api/instrumentation/TruffleInstrument.Env.html#getEnteredContext--) returning the entered `TruffleContext`.
 * Added [DebuggerSession.setShowHostStackFrames](https://www.graalvm.org/truffle/javadoc/com/oracle/truffle/api/debug/DebuggerSession.html#setShowHostStackFrames-boolean-) and host `DebugStackFrame` and `DebugStackTraceElement`. This is useful for debugging of applications that use host interop.
-
 * All Truffle Graal runtime options (-Dgraal.) which were deprecated in GraalVM 20.1 are removed. The Truffle runtime options are no longer specified as Graal options (-Dgraal.). The Graal options must be replaced by corresponding engine options specified using [polyglot API](https://www.graalvm.org/truffle/javadoc/org/graalvm/polyglot/Engine.Builder.html#option-java.lang.String-java.lang.String-).
 * Deprecated the `com.oracle.truffle.api.object.dsl` API without replacement. The migration path is to use `DynamicObject` subclasses with the `com.oracle.truffle.api.object` API.
 * A node parameter now needs to be provided to TruffleContext.enter() and TruffleContext.leave(Object). The overloads without node parameter are deprecated. This is useful to allow the runtime to compile the enter and leave code better if a node is passed as argument. 

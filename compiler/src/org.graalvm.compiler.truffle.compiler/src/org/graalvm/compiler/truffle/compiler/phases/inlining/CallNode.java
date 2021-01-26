@@ -402,6 +402,15 @@ public final class CallNode extends Node implements Comparable<CallNode> {
         }
     }
 
+    public void collectInlinedTargets(TruffleMetaAccessProvider inliningPlan) {
+        if (state == State.Inlined) {
+            inliningPlan.addInlinedTarget(truffleAST);
+            for (CallNode child : children) {
+                child.collectInlinedTargets(inliningPlan);
+            }
+        }
+    }
+
     public enum State {
         Cutoff,
         Expanded,

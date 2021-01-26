@@ -34,6 +34,8 @@ import org.graalvm.word.SignedWord;
 import com.oracle.svm.core.Isolates;
 import com.oracle.svm.core.StaticFieldsSupport;
 import com.oracle.svm.core.annotate.Alias;
+import com.oracle.svm.core.annotate.RecomputeFieldValue;
+import com.oracle.svm.core.annotate.RecomputeFieldValue.Kind;
 import com.oracle.svm.core.annotate.TargetClass;
 import com.oracle.svm.core.graal.meta.SharedConstantReflectionProvider;
 import com.oracle.svm.core.heap.Heap;
@@ -176,6 +178,6 @@ public class SubstrateConstantReflectionProvider extends SharedConstantReflectio
 
 @TargetClass(className = "java.lang.Integer$IntegerCache")
 final class Target_java_lang_Integer_IntegerCache {
-    @Alias //
+    @Alias @RecomputeFieldValue(kind = Kind.None, isFinal = true) //
     static int high;
 }

@@ -287,10 +287,6 @@ public abstract class VMThreads {
         assert !ThreadingSupportImpl.isRecurringCallbackRegistered(thread);
         Safepoint.setSafepointRequested(thread, Safepoint.THREAD_REQUEST_RESET);
 
-        /*
-         * Not using try-with-resources to avoid implicitly calling addSuppressed(), which is not
-         * uninterruptible.
-         */
         VMThreads.THREAD_MUTEX.lockNoTransition();
         try {
             nextTL.set(thread, head);
@@ -693,6 +689,11 @@ public abstract class VMThreads {
         @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
         public static boolean isStatusJava() {
             return (statusTL.getVolatile() == STATUS_IN_JAVA);
+        }
+
+        @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
+        public static boolean isStatusIgnoreSafepoints() {
+            return safepointsDisabledTL.getVolatile() == 1;
         }
 
         @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)

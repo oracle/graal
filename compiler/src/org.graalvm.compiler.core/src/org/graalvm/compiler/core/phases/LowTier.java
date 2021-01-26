@@ -71,9 +71,9 @@ public class LowTier extends BaseTier<LowTierContext> {
                         new SchedulePhase(GraalOptions.StressTestEarlyReads.getValue(options) ? SchedulingStrategy.EARLIEST : SchedulingStrategy.LATEST_OUT_OF_LOOPS_IMPLICIT_NULL_CHECKS),
                         canonicalizerWithoutGVN));
 
-        appendPhase(canonicalizerWithoutGVN);
-
         appendPhase(new UseTrappingNullChecksPhase());
+
+        appendPhase(canonicalizerWithoutGVN.copyWithoutFurtherCanonicalizations());
 
         appendPhase(new DeadCodeEliminationPhase(Required));
 

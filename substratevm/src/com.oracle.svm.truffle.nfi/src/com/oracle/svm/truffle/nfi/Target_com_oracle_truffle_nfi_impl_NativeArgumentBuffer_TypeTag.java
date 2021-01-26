@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2017, 2017, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2017, 2020, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -33,7 +33,7 @@ final class Target_com_oracle_truffle_nfi_impl_NativeArgumentBuffer_TypeTag {
 
     @Alias static Target_com_oracle_truffle_nfi_impl_NativeArgumentBuffer_TypeTag STRING;
 
-    @Alias static Target_com_oracle_truffle_nfi_impl_NativeArgumentBuffer_TypeTag CLOSURE;
+    @Alias static Target_com_oracle_truffle_nfi_impl_NativeArgumentBuffer_TypeTag KEEPALIVE;
 
     @Alias static Target_com_oracle_truffle_nfi_impl_NativeArgumentBuffer_TypeTag ENV;
 

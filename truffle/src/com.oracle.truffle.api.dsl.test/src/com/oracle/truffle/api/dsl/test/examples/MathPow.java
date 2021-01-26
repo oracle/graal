@@ -159,5 +159,4 @@ public class MathPow extends Node {
             return Math.pow(base, exponent);
         }
     }
-
 }

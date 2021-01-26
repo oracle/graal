@@ -140,13 +140,15 @@ def is_musl_supported():
 
 
 class GraalVMConfig(object):
-    def __init__(self, primary_suite_dir, dynamicimports=None, disable_libpolyglot=False, force_bash_launchers=None, skip_libraries=None, exclude_components=None):
+    def __init__(self, primary_suite_dir, dynamicimports=None, disable_libpolyglot=False, force_bash_launchers=None, skip_libraries=None,
+            exclude_components=None, native_images=None):
         self._primary_suite_dir = primary_suite_dir
         self.dynamicimports = dynamicimports or []
         self.disable_libpolyglot = disable_libpolyglot
         self.force_bash_launchers = force_bash_launchers or []
         self.skip_libraries = skip_libraries or []
         self.exclude_components = exclude_components or []
+        self.native_images = native_images or []
         for x, _ in mx.get_dynamic_imports():
             self.dynamicimports.append(x)
 
@@ -171,12 +173,14 @@ class GraalVMConfig(object):
                 args += ['--skip-libraries=' + ','.join(self.skip_libraries)]
         if self.exclude_components:
             args += ['--exclude-components=' + ','.join(self.exclude_components)]
+        if self.native_images:
+            args += ['--native-images=' + ','.join(self.native_images)]
         return args
 
     def _tuple(self):
         _force_bash_launchers = tuple(self.force_bash_launchers) if isinstance(self.force_bash_launchers, list) else self.force_bash_launchers
         _skip_libraries = tuple(self.skip_libraries) if isinstance(self.skip_libraries, list) else self.skip_libraries
-        return tuple(self.dynamicimports), self.disable_libpolyglot, _force_bash_launchers, _skip_libraries, tuple(self.exclude_components)
+        return tuple(self.dynamicimports), self.disable_libpolyglot, _force_bash_launchers, _skip_libraries, tuple(self.exclude_components), tuple(self.native_images)
 
     def __hash__(self):
         return hash(self._tuple())
@@ -333,20 +337,22 @@ def native_image_context(common_args=None, hosted_assertions=True, native_image_
             else:
                 return val
 
+        result = None
         for line in stdoutdata:
             arg = remove_quotes(line.rstrip('\\').strip())
-            _, sep, after = arg.partition(option)
-            if sep:
-                return after.split(' ')[0].rstrip()
-        return None
+            m = re.match(option, arg)
+            if m:
+                result = arg[m.end():]
+
+        return result
 
     server_use = set()
     def native_image_func(args, **kwargs):
         all_args = base_args + common_args + args
         if '--experimental-build-server' in all_args:
             server_use.add(True)
-        path = query_native_image(all_args, '-H:Path=')
-        name = query_native_image(all_args, '-H:Name=')
+        path = query_native_image(all_args, r'^-H:Path(@[^=]*)?=')
+        name = query_native_image(all_args, r'^-H:Name(@[^=]*)?=')
         image = join(path, name)
         if not has_server and '--no-server' in all_args:
             all_args = [arg for arg in all_args if arg != '--no-server']
@@ -405,24 +411,14 @@ def svm_gate_body(args, tasks):
 
         with Task('native unittests', tasks, tags=[GraalTags.test]) as t:
             if t:
-                with tempfile.NamedTemporaryFile(mode='w') as blacklist:
-                    if svm_java8():
-                        blacklist_args = []
-                    else:
-                        # Currently not working on Java > 8
-                        blacklist.write('com.oracle.svm.test.ServiceLoaderTest')
-                        blacklist.flush()
-                        blacklist_args = ['--blacklist', blacklist.name]
-
-                    # We need the -H:+EnableAllSecurityServices for com.oracle.svm.test.SecurityServiceTest
-                    native_unittest(['--build-args', _native_unittest_features, '-H:+EnableAllSecurityServices'] + blacklist_args)
+                native_unittests_task()
 
         with Task('Run Truffle NFI unittests with SVM image', tasks, tags=["svmjunit"]) as t:
             if t:
                 testlib = mx_subst.path_substitutions.substitute('-Dnative.test.lib=<path:truffle:TRUFFLE_TEST_NATIVE>/<lib:nativetest>')
                 native_unittest_args = ['com.oracle.truffle.nfi.test', '--build-args', '--language:nfi',
                                         '-H:MaxRuntimeCompileMethods=2000',
-                                        '-H:+RemoveSaturatedTypeFlows', '-H:+TruffleCheckBlackListedMethods',
+                                        '-H:+TruffleCheckBlackListedMethods',
                                         '--run-args', testlib, '--very-verbose', '--enable-timing']
                 native_unittest(native_unittest_args)
 
@@ -460,13 +456,24 @@ def svm_gate_body(args, tasks):
             maven_plugin_test([])
 
 
+def native_unittests_task():
+    if not svm_java8():
+        # Currently not working on Java > 8
+        mx_unittest.add_global_ignore_glob('com.oracle.svm.test.ServiceLoaderTest')
+    if mx.is_windows():
+        # GR-24075
+        mx_unittest.add_global_ignore_glob('com.oracle.svm.test.ProcessPropertiesTest')
+
+    # We need the -H:+EnableAllSecurityServices for com.oracle.svm.test.SecurityServiceTest
+    native_unittest(['--build-args', _native_unittest_features, '-H:+EnableAllSecurityServices'])
+
+
 def javac_image_command(javac_path):
     return [join(javac_path, 'javac'), "-proc:none", "-bootclasspath",
             join(mx_compiler.jdk.home, "jre", "lib", "rt.jar")]
 
 
 def _native_junit(native_image, unittest_args, build_args=None, run_args=None, blacklist=None, whitelist=None, preserve_image=False):
-    unittest_args = unittest_args
     build_args = build_args or []
 
     javaProperties = {}
@@ -1324,16 +1331,30 @@ class SubstrateCompilerFlagsBuilder(mx.ArchivableProject):
     def archive_prefix(self):
         return ''
 
-    def getResults(self):
-        graal_compiler_flags_map = self.compute_graal_compiler_flags_map()
-        mx.ensure_dir_exists(self.output_dir())
-        yield self.config_file_update(self.result_file_path("versions"), self.config_file_versions())
-        for version in self.config_file_versions():
-            if version not in graal_compiler_flags_map:
-                mx.abort('Missing support for generating ' + self.config_file(version))
-            yield self.config_file_update(self.result_file_path(version), graal_compiler_flags_map[version])
+    def _computeResults(self):
+        """
+        Returns a lazily computed tuple of the paths for the files storing the configuration
+        managed by this builder and a bool denoting whether any of the files were updated
+        as their paths were computed.
+        """
+        if not hasattr(self, '.results'):
+            graal_compiler_flags_map = self.compute_graal_compiler_flags_map()
+            mx.ensure_dir_exists(self.output_dir())
+            versions = sorted(graal_compiler_flags_map.keys())
+            file_paths = []
+            changed = self.config_file_update(self.result_file_path("versions"), versions, file_paths)
+            for version in versions:
+                changed = self.config_file_update(self.result_file_path(version), graal_compiler_flags_map[version], file_paths) or changed
+            setattr(self, '.results', (file_paths, changed))
+        return getattr(self, '.results')
 
-    def config_file_update(self, file_path, lines):
+    def getResults(self):
+        return self._computeResults()[0]
+
+    def getBuildTask(self, args):
+        return SubstrateCompilerFlagsBuildTask(self, args)
+
+    def config_file_update(self, file_path, lines, file_paths):
         changed = True
         file_contents = '\n'.join(str(line) for line in lines)
         try:
@@ -1348,14 +1369,11 @@ class SubstrateCompilerFlagsBuilder(mx.ArchivableProject):
                 print('Write file ' + file_path)
                 f.write(file_contents)
 
-        return file_path
+        file_paths.append(file_path)
+        return changed
 
-    def config_file_versions(self):
-        versions = [8, 11, 13, 14, 15]
-        if svm_java8():
-            return versions[:1]
-        return versions
-
+    # If renaming or moving this method, please update the error message in
+    # com.oracle.svm.driver.NativeImage.BuildConfiguration.getBuilderJavaArgs().
     def compute_graal_compiler_flags_map(self):
         graal_compiler_flags_map = dict()
         graal_compiler_flags_map[8] = [
@@ -1435,6 +1453,18 @@ class SubstrateCompilerFlagsBuilder(mx.ArchivableProject):
             graal_compiler_flags_map[14] = graal_compiler_flags_map[11]
             graal_compiler_flags_map[15] = graal_compiler_flags_map[11]
 
+            add_opens_packages_jdk16 = [
+                'java.base/jdk.internal.org.objectweb.asm',
+                'java.base/sun.util.locale.provider',
+                'java.base/sun.util.resources',
+                'java.base/sun.security.util',
+                'java.base/sun.security.provider',
+                'java.base/sun.reflect.generics.repository',
+                'java.base/sun.invoke.util',
+                'java.xml.crypto/org.jcp.xml.dsig.internal.dom'
+            ]
+            graal_compiler_flags_map[16] = graal_compiler_flags_map[11] + ['--add-opens=' + entry + '=' + target_module for entry in add_opens_packages_jdk16]
+
         graal_compiler_flags_base = [
             '-XX:+UseParallelGC',  # native image generation is a throughput-oriented task
             '-XX:+UnlockExperimentalVMOptions',
@@ -1449,6 +1479,21 @@ class SubstrateCompilerFlagsBuilder(mx.ArchivableProject):
 
         return graal_compiler_flags_map
 
+
+class SubstrateCompilerFlagsBuildTask(mx.ArchivableBuildTask):
+    def __init__(self, subject, args):
+        mx.ArchivableBuildTask.__init__(self, subject, args, 1)
+
+    def __str__(self):
+        return 'Building SVM compiler flags'
+
+    def needsBuild(self, newestInput):
+        if self.subject._computeResults()[1]:
+            return (True, 'SVM compiler flags configuration changed')
+        return (False, None)
+
+    def build(self):
+        self.subject._computeResults()
 
 def _ensure_vm_built(config):
     # build "jvm" config used by native-image and native-image-configure commands
@@ -1610,8 +1655,8 @@ def maven_plugin_test(args):
         maven_opts.append('-XX:+EnableJVMCI')
         maven_opts.append('--add-exports=java.base/jdk.internal.module=ALL-UNNAMED')
     env['MAVEN_OPTS'] = ' '.join(maven_opts)
-    config = graalvm_config()
-    with native_image_context(IMAGE_ASSERTION_FLAGS, config=config):
+    config = GraalVMConfig(primary_suite_dir=svm_suite().dir, native_images=['native-image'])
+    with native_image_context(IMAGE_ASSERTION_FLAGS, config=config, build_if_missing=True):
         env['JAVA_HOME'] = _vm_home(config)
         mx.run_maven(['-e', 'package'], cwd=proj_dir, env=env)
     mx.run([join(proj_dir, 'target', 'com.oracle.substratevm.nativeimagemojotest')])

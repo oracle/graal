@@ -1,5 +1,5 @@
 #
-# Copyright (c) 2020, Oracle and/or its affiliates.
+# Copyright (c) 2020, 2021, Oracle and/or its affiliates.
 #
 # All rights reserved.
 #
@@ -29,11 +29,16 @@
 #
 QUIETLY$(MX_VERBOSE)  = @
 
-default: va_arg/va_arg_test.out
+.PHONY: default
 
-va_arg/va_arg_test.out: va_arg/va_arg_test.ll va_arg/Makefile
+default: va_arg/va_arg_test.bc va_arg/ref.out
+
+VA_ARG_TEST_LL=va_arg/va_arg_test_$(PLATFORM).ll
+
+va_arg/va_arg_test.bc: $(VA_ARG_TEST_LL) va_arg/Makefile
 	@mkdir -p $(shell dirname $@)
-	$(QUIETLY) $(CLANG) $(CPPFLAGS) $(CFLAGS) $(LDFLAGS) -fPIC -o $@ $<
-	
-%.bc: %.out
-	cp $< $@
+	$(QUIETLY) $(CLANG) $(VA_TESTS_CFLAGS) -emit-llvm -o $@ -c $<
+
+va_arg/ref.out: $(VA_ARG_TEST_LL) va_arg/Makefile
+	@mkdir -p $(shell dirname $@)
+	$(QUIETLY) $(CLANG) $(CPPFLAGS) $(CFLAGS) $(VA_TESTS_CFLAGS) $(LDFLAGS) -fPIC -o $@ $<

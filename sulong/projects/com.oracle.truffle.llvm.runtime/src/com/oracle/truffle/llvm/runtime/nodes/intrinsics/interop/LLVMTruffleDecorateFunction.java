@@ -55,7 +55,7 @@ import com.oracle.truffle.llvm.runtime.LLVMLanguage;
 import com.oracle.truffle.llvm.runtime.LLVMSymbol;
 import com.oracle.truffle.llvm.runtime.except.LLVMPolyglotException;
 import com.oracle.truffle.llvm.runtime.library.internal.LLVMAsForeignLibrary;
-import com.oracle.truffle.llvm.runtime.memory.LLVMNativeMemory;
+import com.oracle.truffle.llvm.runtime.memory.LLVMHandleMemoryBase;
 import com.oracle.truffle.llvm.runtime.nodes.api.LLVMExpressionNode;
 import com.oracle.truffle.llvm.runtime.nodes.func.LLVMDispatchNode;
 import com.oracle.truffle.llvm.runtime.nodes.func.LLVMDispatchNodeGen;
@@ -81,7 +81,7 @@ public abstract class LLVMTruffleDecorateFunction extends LLVMIntrinsic {
         if (CompilerDirectives.inCompiledCode() && languageRef.get().getNoDerefHandleAssumption().isValid()) {
             return false;
         }
-        return LLVMNativeMemory.isDerefHandleMemory(addr.asNative());
+        return LLVMHandleMemoryBase.isDerefHandleMemory(addr.asNative());
     }
 
     protected abstract static class DecoratedRoot extends RootNode {
@@ -214,7 +214,7 @@ public abstract class LLVMTruffleDecorateFunction extends LLVMIntrinsic {
     }
 
     private static Object registerRoot(String path, FunctionType newFunctionType, DecoratedRoot decoratedRoot) {
-        LLVMIRFunction function = new LLVMIRFunction(Truffle.getRuntime().createCallTarget(decoratedRoot), null);
+        LLVMIRFunction function = new LLVMIRFunction(LLVMLanguage.createCallTarget(decoratedRoot), null);
         LLVMFunction functionDetail = LLVMFunction.create("<wrapper>", function, newFunctionType, LLVMSymbol.INVALID_INDEX, LLVMSymbol.INVALID_INDEX, false, path);
         LLVMFunctionDescriptor wrappedFunction = new LLVMFunctionDescriptor(functionDetail, new LLVMFunctionCode(functionDetail));
         return LLVMManagedPointer.create(wrappedFunction);

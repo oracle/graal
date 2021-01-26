@@ -56,7 +56,7 @@ public final class RuntimeConfiguration {
 
     private int vtableBaseOffset;
     private int vtableEntrySize;
-    private int instanceOfBitsOrTypeIDSlotsOffset;
+    private int typeIDSlotsOffset;
     private int componentHubOffset;
     private int javaFrameAnchorLastSPOffset;
     private int javaFrameAnchorLastIPOffset;
@@ -77,13 +77,13 @@ public final class RuntimeConfiguration {
     }
 
     @Platforms(Platform.HOSTED_ONLY.class)
-    public void setLazyState(int vtableBaseOffset, int vtableEntrySize, int instanceofBitsOrTypeIDSlotsOffset, int componentHubOffset,
+    public void setLazyState(int vtableBaseOffset, int vtableEntrySize, int typeIDSlotsOffset, int componentHubOffset,
                     int javaFrameAnchorLastSPOffset, int javaFrameAnchorLastIPOffset, int vmThreadStatusOffset, int imageCodeInfoCodeStartOffset) {
         assert !isFullyInitialized();
 
         this.vtableBaseOffset = vtableBaseOffset;
         this.vtableEntrySize = vtableEntrySize;
-        this.instanceOfBitsOrTypeIDSlotsOffset = instanceofBitsOrTypeIDSlotsOffset;
+        this.typeIDSlotsOffset = typeIDSlotsOffset;
         this.componentHubOffset = componentHubOffset;
         this.javaFrameAnchorLastSPOffset = javaFrameAnchorLastSPOffset;
         this.javaFrameAnchorLastIPOffset = javaFrameAnchorLastIPOffset;
@@ -126,16 +126,9 @@ public final class RuntimeConfiguration {
         return vtableBaseOffset + vTableIndex * vtableEntrySize;
     }
 
-    public int getInstanceOfBitOffset(int bitIndex) {
+    public int getTypeIDSlotsOffset() {
         assert isFullyInitialized();
-        assert SubstrateOptions.UseLegacyTypeCheck.getValue();
-        return instanceOfBitsOrTypeIDSlotsOffset + bitIndex / 8;
-    }
-
-    public int getInstanceOfTypeIDSlotsOffset() {
-        assert isFullyInitialized();
-        assert !SubstrateOptions.UseLegacyTypeCheck.getValue();
-        return instanceOfBitsOrTypeIDSlotsOffset;
+        return typeIDSlotsOffset;
     }
 
     public int getComponentHubOffset() {

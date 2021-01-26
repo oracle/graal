@@ -54,7 +54,6 @@ import com.oracle.svm.core.annotate.Uninterruptible;
 import com.oracle.svm.core.config.ConfigurationValues;
 import com.oracle.svm.core.genscavenge.graal.SubstrateCardTableBarrierSet;
 import com.oracle.svm.core.heap.GC;
-import com.oracle.svm.core.heap.GCCause;
 import com.oracle.svm.core.heap.Heap;
 import com.oracle.svm.core.heap.NoAllocationVerifier;
 import com.oracle.svm.core.heap.ObjectHeader;
@@ -116,7 +115,7 @@ public final class HeapImpl extends Heap {
     public HeapImpl(FeatureAccess access) {
         this.gcImpl = new GCImpl(access);
         this.runtimeCodeInfoGcSupport = new RuntimeCodeInfoGCSupportImpl();
-        this.heapPolicy = new HeapPolicy(access);
+        this.heapPolicy = new HeapPolicy();
         if (getVerifyHeapBeforeGC() || getVerifyHeapAfterGC() || getVerifyStackBeforeGC() || getVerifyStackAfterGC() || getVerifyDirtyCardBeforeGC() || getVerifyDirtyCardAfterGC()) {
             this.heapVerifier = new HeapVerifier();
             this.stackVerifier = new StackVerifier();
@@ -262,7 +261,7 @@ public final class HeapImpl extends Heap {
 
     @AlwaysInline("GC performance")
     void dirtyCardIfNecessary(Object holderObject, Object object) {
-        if (HeapPolicy.getMaxSurvivorSpaces() == 0 || holderObject == null || GCImpl.getGCImpl().isCompleteCollection() || !youngGeneration.contains(object)) {
+        if (HeapPolicy.getMaxSurvivorSpaces() == 0 || holderObject == null || object == null || GCImpl.getGCImpl().isCompleteCollection() || !youngGeneration.contains(object)) {
             return;
         }
 
@@ -281,6 +280,7 @@ public final class HeapImpl extends Heap {
         return heapPolicy;
     }
 
+    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
     YoungGeneration getYoungGeneration() {
         return youngGeneration;
     }
@@ -525,14 +525,11 @@ public final class HeapImpl extends Heap {
         if (enabled == Boolean.FALSE) {
             return false;
         } else if (enabled == null) {
-            return CommittedMemoryProvider.get().guaranteesHeapPreferredAddressSpaceAlignment() &&
-                            HeapPolicyOptions.MaxSurvivorSpaces.getValue() == 0;
+            return CommittedMemoryProvider.get().guaranteesHeapPreferredAddressSpaceAlignment();
         }
         UserError.guarantee(CommittedMemoryProvider.get().guaranteesHeapPreferredAddressSpaceAlignment(),
                         "Enabling option %s requires a custom image heap alignment at runtime, which cannot be ensured with the current configuration (option %s might be disabled)",
                         HeapOptions.ImageHeapCardMarking, SubstrateOptions.SpawnIsolates);
-        UserError.guarantee(HeapPolicyOptions.MaxSurvivorSpaces.getValue() == 0,
-                        "Enabling option %s is currently not supported together with non-zero %s", HeapOptions.ImageHeapCardMarking, HeapPolicyOptions.MaxSurvivorSpaces);
         return true;
     }
 
@@ -741,6 +738,6 @@ final class Target_java_lang_Runtime {
 
     @Substitute
     private void gc() {
-        HeapImpl.getHeapImpl().getHeapPolicy().getUserRequestedGCPolicy().maybeCauseCollection(GCCause.JavaLangSystemGC);
+        HeapPolicy.maybeCauseUserRequestedCollection();
     }
 }

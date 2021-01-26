@@ -25,6 +25,7 @@
 package com.oracle.svm.methodhandles;
 
 // Checkstyle: stop
+import java.lang.invoke.MethodType;
 import java.lang.reflect.Member;
 // Checkstyle: resume
 
@@ -32,6 +33,7 @@ import com.oracle.svm.core.annotate.Alias;
 import com.oracle.svm.core.annotate.Delete;
 import com.oracle.svm.core.annotate.Inject;
 import com.oracle.svm.core.annotate.RecomputeFieldValue;
+import com.oracle.svm.core.annotate.Substitute;
 import com.oracle.svm.core.annotate.TargetClass;
 
 @TargetClass(className = "java.lang.invoke.MemberName", onlyWith = MethodHandlesSupported.class)
@@ -39,42 +41,19 @@ public final class Target_java_lang_invoke_MemberName {
     @Inject @RecomputeFieldValue(kind = RecomputeFieldValue.Kind.Reset)//
     Member reflectAccess;
 
+    @Inject @RecomputeFieldValue(kind = RecomputeFieldValue.Kind.Reset)//
+    MethodHandleIntrinsic intrinsic;
+
     @Alias public String name;
-    @Alias public Object type;
     @Alias public int flags;
+    @Alias public Object resolution;
+
+    @Alias
+    @SuppressWarnings("hiding")
+    native void init(Class<?> defClass, String name, Object type, int flags);
 
     @Alias
     public native boolean isStatic();
-
-    @Alias
-    public native boolean isPublic();
-
-    @Alias
-    public native boolean isPrivate();
-
-    @Alias
-    public native boolean isProtected();
-
-    @Alias
-    public native boolean isFinal();
-
-    @Alias
-    public native boolean canBeStaticallyBound();
-
-    @Alias
-    public native boolean isVolatile();
-
-    @Alias
-    public native boolean isAbstract();
-
-    @Alias
-    public native boolean isNative();
-
-    @Alias
-    public native boolean isInvocable();
-
-    @Alias
-    public native boolean isFieldOrMethod();
 
     @Alias
     public native boolean isMethod();
@@ -86,19 +65,22 @@ public final class Target_java_lang_invoke_MemberName {
     public native boolean isField();
 
     @Alias
-    public native boolean isType();
-
-    @Alias
-    public native boolean isPackage();
-
-    @Alias
-    public native boolean isCallerSensitive();
-
-    @Alias
     public native Class<?> getDeclaringClass();
 
     @Alias
+    public native MethodType getMethodType();
+
+    @Alias
+    public native Class<?> getFieldType();
+
+    @Alias
     public native byte getReferenceKind();
+
+    @SuppressWarnings("static-method")
+    @Substitute
+    private boolean vminfoIsConsistent() {
+        return true; /* The substitution class doesn't use the same internals as the JDK */
+    }
 }
 
 @TargetClass(className = "java.lang.invoke.MemberName", onlyWith = MethodHandlesNotSupported.class)

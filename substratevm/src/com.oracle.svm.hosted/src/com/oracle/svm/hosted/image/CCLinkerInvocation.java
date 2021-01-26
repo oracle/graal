@@ -34,13 +34,14 @@ import org.graalvm.nativeimage.ImageSingletons;
 
 import com.oracle.svm.core.LinkerInvocation;
 import com.oracle.svm.core.option.HostedOptionKey;
+import com.oracle.svm.core.option.LocatableMultiOptionValue;
 import com.oracle.svm.hosted.c.codegen.CCompilerInvoker;
 
 public abstract class CCLinkerInvocation implements LinkerInvocation {
 
     public static class Options {
         @Option(help = "Pass the provided raw option that will be appended to the linker command to produce the final binary. The possible options are platform specific and passed through without any validation.")//
-        public static final HostedOptionKey<String[]> NativeLinkerOption = new HostedOptionKey<>(new String[0]);
+        public static final HostedOptionKey<LocatableMultiOptionValue.Strings> NativeLinkerOption = new HostedOptionKey<>(new LocatableMultiOptionValue.Strings());
     }
 
     protected final List<String> additionalPreOptions = new ArrayList<>();
@@ -170,7 +171,7 @@ public abstract class CCLinkerInvocation implements LinkerInvocation {
         }
 
         cmd.addAll(getLibrariesCommand());
-        Collections.addAll(cmd, Options.NativeLinkerOption.getValue());
+        cmd.addAll(Options.NativeLinkerOption.getValue().values());
         return cmd;
     }
 

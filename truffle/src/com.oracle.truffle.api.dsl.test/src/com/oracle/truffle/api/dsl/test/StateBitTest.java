@@ -42,25 +42,35 @@ package com.oracle.truffle.api.dsl.test;
 
 import static org.junit.Assert.assertEquals;
 
+import java.lang.reflect.Field;
+import java.util.BitSet;
+
 import org.junit.Test;
 
 import com.oracle.truffle.api.dsl.Cached;
-import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.dsl.Cached.Exclusive;
+import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.dsl.test.StateBitTestFactory.Test16BitsNodeGen;
 import com.oracle.truffle.api.dsl.test.StateBitTestFactory.Test32BitsNodeGen;
 import com.oracle.truffle.api.dsl.test.StateBitTestFactory.Test64BitsNodeGen;
 import com.oracle.truffle.api.nodes.Node;
+import com.oracle.truffle.api.test.ReflectionUtils;
+import com.oracle.truffle.api.test.polyglot.AbstractPolyglotTest;
 
 public class StateBitTest {
+
+    /*
+     * If this field is updated also update FlatNodeGenFactory#FlatNodeGenFactory.
+     */
+    private static final int DEFAULT_MAX_BIT_WIDTH = 32;
 
     abstract static class Test16Bits extends Node {
         abstract Object execute(Object arg);
 
-        @Specialization(guards = "arg == 0")
-        int s0(int arg, @Exclusive @Cached("arg") int cachedArg) {
+        @Specialization(guards = "arg.equals(0)")
+        int s0(Object arg, @Exclusive @Cached("arg") Object cachedArg) {
             assertEquals(arg, cachedArg);
-            return arg;
+            return (int) arg;
         }
 
         @Specialization(guards = "arg == 1")
@@ -451,30 +461,81 @@ public class StateBitTest {
     }
 
     @Test
-    public void test16() throws NoSuchFieldException, SecurityException {
+    public void test16() {
         Test16Bits node = Test16BitsNodeGen.create();
         for (int i = 0; i < 16; i++) {
             node.execute(i);
         }
-        assertEquals(int.class, node.getClass().getDeclaredField("state_").getType());
+        int expectedWidth = 16;
+        assertStateFields(node, expectedWidth);
+    }
+
+    public static BitSet assertStateFields(Node node, int expectedWidth) {
+        int stateBitWidth = getStateBitWidth();
+
+        // div round up positive: x.roundUpDiv(y) = (x + y - 1) / y
+        int expectedNumberOfFields = (expectedWidth + stateBitWidth - 1) / stateBitWidth;
+
+        BitSet set = new BitSet(expectedWidth);
+        int i = 0;
+        int bitIndex = 0;
+        for (; i < expectedNumberOfFields; i++) {
+            Field f;
+            try {
+                f = node.getClass().getDeclaredField("state_" + i + "_");
+            } catch (NoSuchFieldException | SecurityException e1) {
+                throw new AssertionError(e1);
+            }
+            ReflectionUtils.setAccessible(f, true);
+            long value;
+            if (stateBitWidth > 32 && expectedWidth > 32) {
+                assertEquals(long.class, f.getType());
+                try {
+                    value = f.getLong(node);
+                } catch (IllegalArgumentException | IllegalAccessException e) {
+                    throw new AssertionError(e);
+                }
+            } else {
+                assertEquals(int.class, f.getType());
+                try {
+                    value = f.getInt(node) & 0xFFFF_FFFF_FFFF_FFFFL;
+                } catch (IllegalArgumentException | IllegalAccessException e) {
+                    throw new AssertionError(e);
+                }
+            }
+
+            long mask = 1;
+            for (int j = 0; j < stateBitWidth; j++) {
+                set.set(bitIndex++, (value & mask) != 0);
+                mask = mask << 1;
+            }
+        }
+        AbstractPolyglotTest.assertFails(() -> node.getClass().getDeclaredField("state_" + expectedNumberOfFields + "_"), NoSuchFieldException.class);
+        return set;
+    }
+
+    public static int getStateBitWidth() {
+        Integer width = Integer.getInteger("truffle.dsl.StateBitWidth");
+        int stateBitWidth = width == null ? DEFAULT_MAX_BIT_WIDTH : width;
+        return stateBitWidth;
     }
 
     @Test
-    public void test32() throws NoSuchFieldException, SecurityException {
+    public void test32() {
         Test32Bits node = Test32BitsNodeGen.create();
         for (int i = 0; i < 32; i++) {
             node.execute(i);
         }
-        assertEquals(int.class, node.getClass().getDeclaredField("state_").getType());
+        assertStateFields(node, 32);
     }
 
     @Test
-    public void test64() throws NoSuchFieldException, SecurityException {
+    public void test64() {
         Test64Bits node = Test64BitsNodeGen.create();
         for (int i = 0; i < 64; i++) {
             node.execute(i);
         }
-        assertEquals(long.class, node.getClass().getDeclaredField("state_").getType());
+        assertStateFields(node, 64);
     }
 
 }

@@ -50,4 +50,7 @@ public interface CoreProviders {
     PlatformConfigurationProvider getPlatformConfigurationProvider();
 
     MetaAccessExtensionProvider getMetaAccessExtensionProvider();
+
+    LoopsDataProvider getLoopsDataProvider();
+
 }

@@ -246,6 +246,22 @@ public final class TruffleContext implements AutoCloseable {
     }
 
     /**
+     * Returns <code>true</code> if the context is being cancelled else <code>false</code>. A
+     * context may be in the process of cancelling if {@link #closeCancelled(Node, String)} was
+     * called previously.
+     *
+     * @since 21.1
+     */
+    @TruffleBoundary
+    public boolean isCancelling() {
+        try {
+            return LanguageAccessor.engineAccess().isContextCancelling(polyglotContext);
+        } catch (Throwable t) {
+            throw Env.engineToLanguageException(t);
+        }
+    }
+
+    /**
      * @since 0.27
      * @deprecated use {@link #leave(Node, Object)} instead and pass in the node context if
      *             possible.

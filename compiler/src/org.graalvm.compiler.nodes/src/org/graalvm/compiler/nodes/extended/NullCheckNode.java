@@ -28,11 +28,18 @@ import static org.graalvm.compiler.nodeinfo.InputType.Guard;
 import static org.graalvm.compiler.nodeinfo.NodeCycles.CYCLES_2;
 import static org.graalvm.compiler.nodeinfo.NodeSize.SIZE_2;
 
+import org.graalvm.compiler.core.common.type.AbstractPointerStamp;
+import org.graalvm.compiler.core.common.type.Stamp;
 import org.graalvm.compiler.core.common.type.StampFactory;
+import org.graalvm.compiler.graph.Graph;
+import org.graalvm.compiler.graph.Node;
 import org.graalvm.compiler.graph.NodeClass;
 import org.graalvm.compiler.nodeinfo.NodeInfo;
+import org.graalvm.compiler.nodes.CompressionNode;
 import org.graalvm.compiler.nodes.ImplicitNullCheckNode;
+import org.graalvm.compiler.nodes.NodeView;
 import org.graalvm.compiler.nodes.ValueNode;
+import org.graalvm.compiler.nodes.memory.address.OffsetAddressNode;
 import org.graalvm.compiler.nodes.spi.LIRLowerable;
 import org.graalvm.compiler.nodes.spi.NodeLIRBuilderTool;
 
@@ -54,6 +61,46 @@ public final class NullCheckNode extends ImplicitNullCheckNode implements LIRLow
         assert (deoptReasonAndAction == null) == (deoptSpeculation == null);
         this.deoptReasonAndAction = deoptReasonAndAction;
         this.deoptSpeculation = deoptSpeculation;
+    }
+
+    public static NullCheckNode create(ValueNode object, JavaConstant deoptReasonAndAction, JavaConstant deoptSpeculation) {
+        // Try to uncompress a compressed object before applying null check.
+        NullCheckNode nullCheck = tryUseUncompressedNullCheck(object);
+        if (nullCheck != null) {
+            return nullCheck;
+        }
+        return new NullCheckNode(object, deoptReasonAndAction, deoptSpeculation);
+    }
+
+    private static NullCheckNode tryUseUncompressedNullCheck(ValueNode value) {
+        Stamp stamp = value.stamp(NodeView.DEFAULT);
+        // Do nothing if the value is not a compressed pointer.
+        if (!(stamp instanceof AbstractPointerStamp) || !((AbstractPointerStamp) stamp).isCompressed()) {
+            return null;
+        }
+
+        // Copy an uncompressing node from one of the existed uncompressing usages.
+        CompressionNode uncompressed = null;
+        for (Node usage : value.usages()) {
+            if (usage instanceof CompressionNode) {
+                if (((CompressionNode) usage).getOp() == CompressionNode.CompressionOp.Uncompress) {
+                    uncompressed = (CompressionNode) usage;
+                    break;
+                }
+            }
+        }
+        // Do nothing if there is not an uncompressing usage. The uncompressing operation will be
+        // handled at back-end.
+        if (uncompressed == null) {
+            return null;
+        }
+
+        assert uncompressed.getValue().equals(value);
+        Graph graph = value.graph();
+        CompressionNode compression = (CompressionNode) uncompressed.copyWithInputs(false);
+        compression = graph.addOrUniqueWithInputs(compression);
+        OffsetAddressNode address = graph.addOrUniqueWithInputs(OffsetAddressNode.create(compression));
+        return new NullCheckNode(address);
     }
 
     public ValueNode getObject() {

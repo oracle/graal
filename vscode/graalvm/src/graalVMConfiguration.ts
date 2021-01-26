@@ -96,7 +96,24 @@ export async function checkGraalVMconfiguration(graalVMHome: string) {
     }
 }
 
+export async function configureGraalVMHome(graalVMHome: string, nonInteractive?: boolean) {
+    const gr = getGVMConfig();
+    const oldGVM = getGVMHome(gr);
+    if (graalVMHome !== oldGVM) {
+        await removeConfigurations(oldGVM);
+        await defaultConfig(graalVMHome, gr);
+    }
+    if (!nonInteractive) {
+        await configureInteractive(graalVMHome);
+    }
+}
+
 export async function removeGraalVMconfiguration(graalVMHome: string) {
+    await removeDefaultConfigurations(graalVMHome);
+    await removeConfigurations(graalVMHome);
+}
+
+async function removeDefaultConfigurations(graalVMHome: string) {
     const gr = getGVMConfig();
     const installations = getGVMInsts(gr);
     const index = installations.indexOf(graalVMHome);
@@ -122,6 +139,9 @@ export async function removeGraalVMconfiguration(graalVMHome: string) {
             await nbConf.update('jdkhome', undefined, true);
         }
     } catch(_err) {}
+}
+
+async function removeConfigurations(graalVMHome: string) {
     gatherConfigurations();
     for (const conf of configurations) {
         if (conf.setted(graalVMHome)) {
@@ -129,16 +149,6 @@ export async function removeGraalVMconfiguration(graalVMHome: string) {
                 await conf.unset(graalVMHome);
             } catch (_err) {}
         }
-    }
-}
-
-export async function configureGraalVMHome(graalVMHome: string, nonInteractive?: boolean) {
-    const gr = getGVMConfig();
-    if (graalVMHome !== getGVMHome(gr)) {
-        await defaultConfig(graalVMHome, gr);
-    }
-    if (!nonInteractive) {
-        await configureInteractive(graalVMHome);
     }
 }
 
@@ -153,21 +163,22 @@ async function configureInteractive(graalVMHome: string) {
         return show;
     });
     if (toShow.length > 0) {
-        const selected: ConfigurationPickItem[] = await vscode.window.showQuickPick(
+        const selected: ConfigurationPickItem[] | undefined = await vscode.window.showQuickPick(
             toShow, {
                 canPickMany: true,
                 placeHolder: 'Configure active GraalVM'
-            }) || [];
-        
-        for (const shown of toShow) {
-            try {
-                if (selected.includes(shown)) {
-                    await shown.set(graalVMHome);
-                } else {
-                    await shown.unset(graalVMHome);
+            });
+        if (selected) {
+            for (const shown of toShow) {
+                try {
+                    if (selected.includes(shown)) {
+                        await shown.set(graalVMHome);
+                    } else {
+                        await shown.unset(graalVMHome);
+                    }
+                } catch (error) {
+                    vscode.window.showErrorMessage(error?.message);
                 }
-            } catch (error) {
-                vscode.window.showErrorMessage(error?.message);
             }
         }
     }

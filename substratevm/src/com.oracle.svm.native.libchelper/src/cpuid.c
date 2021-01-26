@@ -92,6 +92,7 @@ int get_cpuid (unsigned int leaf, unsigned int *eax, unsigned int *ebx, unsigned
 #define bit_AVX512ER_compat      0x08000000
 #define bit_AVX512CD_compat      0x10000000
 #define bit_AVX512BW_compat      0x40000000
+#define bit_AVX512VL_compat      0x80000000
 #define bit_RTM_compat           0x00000800
 #define bit_ADX_compat           0x00080000
 #define bit_SSE4a_compat         0x00000040
@@ -161,6 +162,7 @@ void determineCPUFeatures(CPUFeatures* features) {
     features->fAVX512ER = !!(ebx & bit_AVX512ER_compat);
     features->fAVX512CD = !!(ebx & bit_AVX512CD_compat);
     features->fAVX512BW = !!(ebx & bit_AVX512BW_compat);
+    features->fAVX512VL = !!(ebx & bit_AVX512VL_compat);
     features->fSHA      = !!(ebx & bit_SHA_compat);
   }
 

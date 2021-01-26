@@ -78,6 +78,7 @@ public final class AccessAdvisor {
 
         internalCallerFilter.addOrGetChildren("org.graalvm.compiler.**", RuleNode.Inclusion.Exclude);
         internalCallerFilter.addOrGetChildren("org.graalvm.libgraal.**", RuleNode.Inclusion.Exclude);
+
         internalCallerFilter.removeRedundantNodes();
 
         accessWithoutCallerFilter = RuleNode.createRoot();

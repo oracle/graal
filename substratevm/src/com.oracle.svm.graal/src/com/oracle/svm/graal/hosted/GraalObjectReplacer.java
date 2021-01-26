@@ -33,6 +33,7 @@ import java.util.function.Function;
 
 import org.graalvm.compiler.api.replacements.SnippetReflectionProvider;
 import org.graalvm.compiler.api.runtime.GraalRuntime;
+import org.graalvm.compiler.core.common.spi.ConstantFieldProvider;
 import org.graalvm.compiler.core.common.spi.ForeignCallsProvider;
 import org.graalvm.compiler.debug.MetricKey;
 import org.graalvm.compiler.hotspot.GraalHotSpotVMConfig;
@@ -49,7 +50,6 @@ import com.oracle.graal.pointsto.meta.AnalysisMetaAccess;
 import com.oracle.graal.pointsto.meta.AnalysisMethod;
 import com.oracle.graal.pointsto.meta.AnalysisType;
 import com.oracle.graal.pointsto.meta.AnalysisUniverse;
-import com.oracle.svm.core.SubstrateOptions;
 import com.oracle.svm.core.SubstrateUtil;
 import com.oracle.svm.core.graal.nodes.SubstrateFieldLocationIdentity;
 import com.oracle.svm.core.hub.DynamicHub;
@@ -64,6 +64,7 @@ import com.oracle.svm.hosted.SVMHost;
 import com.oracle.svm.hosted.ameta.AnalysisConstantFieldProvider;
 import com.oracle.svm.hosted.ameta.AnalysisConstantReflectionProvider;
 import com.oracle.svm.hosted.analysis.Inflation;
+import com.oracle.svm.hosted.meta.HostedConstantFieldProvider;
 import com.oracle.svm.hosted.meta.HostedField;
 import com.oracle.svm.hosted.meta.HostedMethod;
 import com.oracle.svm.hosted.meta.HostedType;
@@ -76,6 +77,7 @@ import jdk.vm.ci.hotspot.HotSpotResolvedJavaField;
 import jdk.vm.ci.hotspot.HotSpotResolvedJavaMethod;
 import jdk.vm.ci.hotspot.HotSpotResolvedJavaType;
 import jdk.vm.ci.hotspot.HotSpotSignature;
+import jdk.vm.ci.meta.JavaConstant;
 import jdk.vm.ci.meta.JavaType;
 import jdk.vm.ci.meta.MetaAccessProvider;
 import jdk.vm.ci.meta.ResolvedJavaField;
@@ -393,7 +395,7 @@ public class GraalObjectReplacer implements Function<Object, Object> {
      * universe.
      */
     @SuppressWarnings("try")
-    public void updateSubstrateDataAfterCompilation(HostedUniverse hUniverse) {
+    public void updateSubstrateDataAfterCompilation(HostedUniverse hUniverse, ConstantFieldProvider constantFieldProvider) {
 
         for (Map.Entry<AnalysisType, SubstrateType> entry : types.entrySet()) {
             AnalysisType aType = entry.getKey();
@@ -404,15 +406,10 @@ public class GraalObjectReplacer implements Function<Object, Object> {
             }
             HostedType hType = hUniverse.lookup(aType);
 
-            DynamicHub uniqueImplementation = null;
             if (hType.getUniqueConcreteImplementation() != null) {
-                uniqueImplementation = hType.getUniqueConcreteImplementation().getHub();
+                sType.setTypeCheckData(hType.getUniqueConcreteImplementation().getHub());
             }
-            if (SubstrateOptions.UseLegacyTypeCheck.getValue()) {
-                sType.setLegacyTypeCheckData(hType.getInstanceOfFromTypeID(), hType.getInstanceOfNumTypeIDs(), uniqueImplementation);
-            } else {
-                sType.setTypeCheckData(uniqueImplementation);
-            }
+
             if (sType.getInstanceFieldCount() > 1) {
                 /*
                  * What we do here is just a reordering of the instance fields array. The fields
@@ -430,7 +427,8 @@ public class GraalObjectReplacer implements Function<Object, Object> {
             SubstrateField sField = entry.getValue();
             HostedField hField = hUniverse.lookup(aField);
 
-            sField.setSubstrateData(hField.getLocation(), hField.isAccessed(), hField.isWritten(), hField.getConstantValue());
+            JavaConstant constantValue = hField.isStatic() && ((HostedConstantFieldProvider) constantFieldProvider).isFinalField(hField, null) ? hField.readValue(null) : null;
+            sField.setSubstrateData(hField.getLocation(), hField.isAccessed(), hField.isWritten(), constantValue);
         }
     }
 

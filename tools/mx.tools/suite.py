@@ -4,7 +4,7 @@ suite = {
     "defaultLicense" : "GPLv2-CPE",
 
     "groupId" : "org.graalvm.tools",
-    "version" : "21.0.0",
+    "version" : "21.1.0",
     "release" : False,
     "url" : "http://openjdk.java.net/projects/graal",
     "developer" : {
@@ -37,13 +37,11 @@ suite = {
             "sourceDirs" : ["src"],
             "dependencies" : [
                 "truffle:TRUFFLE_API",
-                "TRUFFLE_COVERAGE",
                 "TRUFFLE_PROFILER",
                 "NanoHTTPD",
                 "NanoHTTPD-WebSocket",
-                "TruffleJSON",
-                "SLF4J_SIMPLE",
-                "Java-WebSocket",
+                "truffle:TruffleJSON",
+                "TruffleJWS",
             ],
             "exports" : [
               "<package-info>", # exports all packages containing package-info.java
@@ -115,7 +113,7 @@ suite = {
             "sourceDirs" : ["src"],
             "dependencies" : [
                 "truffle:TRUFFLE_API",
-                "TruffleJSON",
+                "truffle:TruffleJSON",
                 ],
             "exports" : [
               "<package-info>", # exports all packages containing package-info.java
@@ -144,7 +142,7 @@ suite = {
             "sourceDirs" : ["src"],
             "dependencies" : [
                 "truffle:TRUFFLE_API",
-                "TruffleJSON",
+                "truffle:TruffleJSON",
                 ],
             "exports" : [
               "<package-info>", # exports all packages containing package-info.java
@@ -173,7 +171,7 @@ suite = {
             "sourceDirs" : ["src"],
             "dependencies" : [
                 "truffle:TRUFFLE_API",
-                "TruffleJSON",
+                "truffle:TruffleJSON",
             ],
             "exports" : [
               "<package-info>", # exports all packages containing package-info.java
@@ -202,7 +200,7 @@ suite = {
             "sourceDirs" : ["src"],
             "dependencies" : [
                 "truffle:TRUFFLE_API",
-                "TruffleJSON",
+                "truffle:TruffleJSON",
             ],
             "exports" : [
               "<package-info>", # exports all packages containing package-info.java
@@ -242,7 +240,7 @@ suite = {
             "sourceDirs": ["src"],
             "dependencies": [
                 "org.graalvm.tools.api.lsp",
-                "TruffleJSON"
+                "truffle:TruffleJSON"
             ],
             "checkstyle": "com.oracle.truffle.tools.chromeinspector",
             "javaCompliance": "8+",
@@ -273,62 +271,38 @@ suite = {
             "urls" : ["https://lafo.ssw.uni-linz.ac.at/pub/graal-external-deps/nanohttpd-websocket-2.3.2-efb2ebf85a2b06f7c508aba9eaad5377e3a01e81.jar"],
             "sha1" : "a8f5b9e7387e00a57d31be320a8246a7c8128aa4",
         },
-        "TruffleJSON" : {
-          "urls" : ["https://lafo.ssw.uni-linz.ac.at/pub/graal-external-deps/trufflejson-20180813.jar"],
-          "sha1" : "c556821b83878d3a327bc07dedc1bf2998f99a8f",
-        },
-        "Java-WebSocket" : {
-            "sha1" : "382b302303c830a7edb20c9ed61c4ac2cdf7a7a4",
-            "maven" : {
-                "groupId" : "org.java-websocket",
-                "artifactId" : "Java-WebSocket",
-                "version" : "1.5.1",
-            },
-            "dependencies" : ["SLF4J_API"],
-        },
-        "SLF4J_API" : {
-            "sha1" : "b5a4b6d16ab13e34a88fae84c35cd5d68cac922c",
-            "maven" : {
-                "groupId" : "org.slf4j",
-                "artifactId" : "slf4j-api",
-                "version" : "1.7.30",
-            }
-        },
-        "SLF4J_SIMPLE" : {
-            "sha1" : "e606eac955f55ecf1d8edcccba04eb8ac98088dd",
-            "maven" : {
-                "groupId" : "org.slf4j",
-                "artifactId" : "slf4j-simple",
-                "version" : "1.7.30",
-            },
-            "dependencies" : ["SLF4J_API"]
+        "TruffleJWS" : {
+          "urls" : ["https://lafo.ssw.uni-linz.ac.at/pub/graal-external-deps/trufflejws-1.5.1.jar"],
+          "sha1" : "5576fc4a93fe0fc01d236e92803543906d690c5f",
+          "sourceUrls": ["https://lafo.ssw.uni-linz.ac.at/pub/graal-external-deps/trufflejws-1.5.1-src.jar"],
+          "sourceSha1" : "298db2b3c573f9e76a5a7a60a49c7ceb5ddd35f7",
         },
         "VISUALVM_COMMON" : {
-            "urls" : ["https://lafo.ssw.uni-linz.ac.at/pub/graal-external-deps/visualvm/visualvm-871.tar.gz"],
-            "sha1" : "d334b6149f8080f4e3a42baa0fe2e93c479c0536",
+            "urls" : ["https://lafo.ssw.uni-linz.ac.at/pub/graal-external-deps/visualvm/visualvm-908.tar.gz"],
+            "sha1" : "46c6ac4db3c4a42a3272380aec6f59396fc14969",
         },
         "VISUALVM_PLATFORM_SPECIFIC" : {
             "os_arch" : {
                 "linux" : {
                     "amd64" : {
-                        "urls" : ["https://lafo.ssw.uni-linz.ac.at/pub/graal-external-deps/visualvm/visualvm-871-linux-amd64.tar.gz"],
-                        "sha1" : "5befdcb1f42b083b2350735fd62517862f93ffed",
+                        "urls" : ["https://lafo.ssw.uni-linz.ac.at/pub/graal-external-deps/visualvm/visualvm-908-linux-amd64.tar.gz"],
+                        "sha1" : "c9927d2c6785deabacfd5bfdf252e337fb8172ea",
                     },
                     "aarch64" : {
-                        "urls" : ["https://lafo.ssw.uni-linz.ac.at/pub/graal-external-deps/visualvm/visualvm-871-linux-aarch64.tar.gz"],
-                        "sha1" : "547f90164f135e80b748655240d658a6c4b15727",
+                        "urls" : ["https://lafo.ssw.uni-linz.ac.at/pub/graal-external-deps/visualvm/visualvm-908-linux-aarch64.tar.gz"],
+                        "sha1" : "73abc901815cec8026f2c143995237bc6740010a",
                     }
                 },
                 "darwin" : {
                     "amd64" : {
-                        "urls" : ["https://lafo.ssw.uni-linz.ac.at/pub/graal-external-deps/visualvm/visualvm-871-macosx-x86_64.tar.gz"],
-                        "sha1" : "4eee8208e884eba8631d482ed31e05c1b9c96925",
+                        "urls" : ["https://lafo.ssw.uni-linz.ac.at/pub/graal-external-deps/visualvm/visualvm-908-macosx-x86_64.tar.gz"],
+                        "sha1" : "cdc986cbac488845c5230b1dcca323dada0745d3",
                     }
                 },
                 "windows" : {
                     "amd64" : {
-                        "urls" : ["https://lafo.ssw.uni-linz.ac.at/pub/graal-external-deps/visualvm/visualvm-871-windows-amd64.tar.gz"],
-                        "sha1" : "6abe5f8cf9ab5d2d64ec5f89f04257b671ae50e5",
+                        "urls" : ["https://lafo.ssw.uni-linz.ac.at/pub/graal-external-deps/visualvm/visualvm-908-windows-amd64.tar.gz"],
+                        "sha1" : "128bd57f0bcda7ef34590d0b35457b1fd3d8efd1",
                     }
                 },
             }
@@ -350,7 +324,6 @@ suite = {
             "dependencies": ["com.oracle.truffle.tools.chromeinspector"],
             "distDependencies" : [
                 "truffle:TRUFFLE_API",
-                "TRUFFLE_COVERAGE",
                 "TRUFFLE_PROFILER",
             ],
             "maven" : {

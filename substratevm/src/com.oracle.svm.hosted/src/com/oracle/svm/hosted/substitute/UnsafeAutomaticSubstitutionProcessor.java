@@ -174,7 +174,7 @@ public class UnsafeAutomaticSubstitutionProcessor extends SubstitutionProcessor 
                  * intrinsified to simple array and field access nodes in
                  * IntrinsifyMethodHandlesInvocationPlugin.
                  */
-                for (Method method : loader.findClassByName("java.lang.invoke.VarHandles", true).getDeclaredMethods()) {
+                for (Method method : loader.findClassOrFail("java.lang.invoke.VarHandles").getDeclaredMethods()) {
                     neverInlineSet.add(originalMetaAccess.lookupJavaMethod(method));
                 }
             }
@@ -255,7 +255,7 @@ public class UnsafeAutomaticSubstitutionProcessor extends SubstitutionProcessor 
         plugins.appendInlineInvokePlugin(inlineInvokePlugin);
         plugins.setClassInitializationPlugin(new NoClassInitializationPlugin());
 
-        ReflectionPlugins.registerInvocationPlugins(loader, snippetReflection, annotationSubstitutions, plugins.getInvocationPlugins(), hostVM, false, false);
+        ReflectionPlugins.registerInvocationPlugins(loader, snippetReflection, annotationSubstitutions, plugins.getInvocationPlugins(), hostVM, null, false, false);
 
         /*
          * Analyzing certain classes leads to false errors. We disable reporting for those classes
@@ -1048,7 +1048,7 @@ public class UnsafeAutomaticSubstitutionProcessor extends SubstitutionProcessor 
          * We know that the Unsafe methods that we look for don't throw any checked exceptions.
          * Replace the InvokeWithExceptionNode with InvokeNode.
          */
-        for (InvokeWithExceptionNode invoke : graph.getNodes().filter(InvokeWithExceptionNode.class)) {
+        for (InvokeWithExceptionNode invoke : graph.getNodes(InvokeWithExceptionNode.TYPE)) {
             if (noCheckedExceptionsSet.contains(invoke.callTarget().targetMethod())) {
                 invoke.replaceWithInvoke();
             }

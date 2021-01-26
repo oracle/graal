@@ -37,7 +37,7 @@ import org.graalvm.compiler.truffle.common.TruffleCompilation;
 import org.graalvm.compiler.truffle.common.TruffleCompilationTask;
 import org.graalvm.compiler.truffle.common.TruffleCompilerListener;
 import org.graalvm.compiler.truffle.common.TruffleDebugContext;
-import org.graalvm.compiler.truffle.common.TruffleInliningPlan;
+import org.graalvm.compiler.truffle.common.TruffleMetaAccessProvider;
 import org.graalvm.compiler.truffle.compiler.PartialEvaluator;
 import org.graalvm.compiler.truffle.compiler.TruffleCompilationIdentifier;
 import org.graalvm.nativeimage.CurrentIsolate;
@@ -47,6 +47,7 @@ import org.graalvm.nativeimage.Isolates;
 import org.graalvm.nativeimage.PinnedObject;
 import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;
+import org.graalvm.nativeimage.VMRuntime;
 import org.graalvm.nativeimage.c.function.CEntryPoint;
 import org.graalvm.nativeimage.c.type.CTypeConversion;
 import org.graalvm.util.OptionsEncoder;
@@ -102,7 +103,7 @@ public class IsolateAwareTruffleCompiler implements SubstrateTruffleCompiler {
     @Override
     @SuppressFBWarnings(value = "DLS_DEAD_LOCAL_STORE", justification = "False positive.")
     public void doCompile(TruffleDebugContext debug, TruffleCompilation compilation, Map<String, Object> options,
-                    TruffleInliningPlan inlining, TruffleCompilationTask task, TruffleCompilerListener listener) {
+                    TruffleMetaAccessProvider inlining, TruffleCompilationTask task, TruffleCompilerListener listener) {
 
         if (!SubstrateOptions.shouldCompileInIsolates()) {
             delegate.doCompile(null, compilation, options, inlining, task, listener);
@@ -152,6 +153,7 @@ public class IsolateAwareTruffleCompiler implements SubstrateTruffleCompiler {
             CompilerIsolateThread thread = IsolatedGraalUtils.createCompilationIsolate();
             isolate = Isolates.getIsolate(thread);
             if (sharedIsolate.compareAndSet(WordFactory.nullPointer(), isolate)) {
+                Runtime.getRuntime().addShutdownHook(new Thread(this::sharedIsolateShutdown));
                 return thread; // (already attached)
             }
             Isolates.tearDownIsolate(thread); // lost the race
@@ -159,6 +161,19 @@ public class IsolateAwareTruffleCompiler implements SubstrateTruffleCompiler {
             assert isolate.isNonNull();
         }
         return (CompilerIsolateThread) Isolates.attachCurrentThread(isolate);
+    }
+
+    private void sharedIsolateShutdown() {
+        Isolate isolate = sharedIsolate.get();
+        CompilerIsolateThread context = (CompilerIsolateThread) Isolates.attachCurrentThread(isolate);
+        compilerIsolateThreadShutdown(context);
+        Isolates.detachThread(context);
+    }
+
+    @CEntryPoint
+    @CEntryPointOptions(include = CEntryPointOptions.NotIncludedAutomatically.class, publishAs = CEntryPointOptions.Publish.NotPublished)
+    protected static void compilerIsolateThreadShutdown(@SuppressWarnings("unused") @CEntryPoint.IsolateThreadContext CompilerIsolateThread context) {
+        VMRuntime.shutdown();
     }
 
     protected void afterCompilation(CompilerIsolateThread context) {
@@ -175,7 +190,7 @@ public class IsolateAwareTruffleCompiler implements SubstrateTruffleCompiler {
                     ClientHandle<SubstrateCompilableTruffleAST> compilableHandle,
                     ClientHandle<byte[]> encodedOptionsHandle,
                     int encodedOptionsLength,
-                    ClientHandle<TruffleInliningPlan> inliningHandle,
+                    ClientHandle<TruffleMetaAccessProvider> inliningHandle,
                     ClientHandle<TruffleCompilationTask> taskHandle,
                     ClientHandle<IsolatedEventContext> eventContextHandle,
                     ClientHandle<byte[]> encodedRuntimeOptionsHandle,
@@ -190,7 +205,7 @@ public class IsolateAwareTruffleCompiler implements SubstrateTruffleCompiler {
             IsolatedCompilableTruffleAST compilable = new IsolatedCompilableTruffleAST(compilableHandle);
             delegate.initialize(options, compilable, firstCompilation);
             TruffleCompilation compilation = new IsolatedCompilationIdentifier(compilationIdentifierHandle, compilable);
-            IsolatedTruffleInliningPlan inlining = new IsolatedTruffleInliningPlan(inliningHandle);
+            IsolatedTruffleInlining<TruffleMetaAccessProvider> inlining = new IsolatedTruffleInlining<>(inliningHandle);
             TruffleCompilationTask task = null;
             if (taskHandle.notEqual(IsolatedHandles.nullHandle())) {
                 task = new IsolatedTruffleCompilationTask(taskHandle);

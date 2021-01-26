@@ -35,26 +35,71 @@ import com.oracle.truffle.api.dsl.GenerateUncached;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.library.CachedLibrary;
 import com.oracle.truffle.api.nodes.UnexpectedResultException;
-import com.oracle.truffle.api.profiles.LongValueProfile;
 import com.oracle.truffle.llvm.runtime.LLVMLanguage;
 import com.oracle.truffle.llvm.runtime.library.internal.LLVMManagedReadLibrary;
 import com.oracle.truffle.llvm.runtime.nodes.api.LLVMExpressionNode;
 import com.oracle.truffle.llvm.runtime.nodes.api.LLVMLoadNode;
+import com.oracle.truffle.llvm.runtime.nodes.memory.load.LLVMI64LoadNodeGen.LLVMI64OffsetLoadNodeGen;
 import com.oracle.truffle.llvm.runtime.pointer.LLVMManagedPointer;
 import com.oracle.truffle.llvm.runtime.pointer.LLVMNativePointer;
+import com.oracle.truffle.llvm.runtime.pointer.LLVMPointer;
 
-@GenerateUncached
 public abstract class LLVMI64LoadNode extends LLVMLoadNode {
 
     public static LLVMI64LoadNode create() {
         return LLVMI64LoadNodeGen.create((LLVMExpressionNode) null);
     }
 
+    public abstract long executeWithTarget(Object address) throws UnexpectedResultException;
+
+    @GenerateUncached
+    public abstract static class LLVMI64OffsetLoadNode extends LLVMOffsetLoadNode {
+
+        public static LLVMI64OffsetLoadNode create() {
+            return LLVMI64OffsetLoadNodeGen.create();
+        }
+
+        public abstract long executeWithTarget(LLVMPointer receiver, long offset) throws UnexpectedResultException;
+
+        @Specialization(guards = "!isAutoDerefHandle(language, addr)")
+        protected long doI64Native(LLVMNativePointer addr, long offset,
+                        @CachedLanguage LLVMLanguage language) {
+            return language.getLLVMMemory().getI64(this, addr.asNative() + offset);
+        }
+
+        @Specialization(guards = "isAutoDerefHandle(language, addr)", rewriteOn = UnexpectedResultException.class)
+        protected long doI64DerefHandle(LLVMNativePointer addr, long offset,
+                        @Cached LLVMDerefHandleGetReceiverNode getReceiver,
+                        @CachedLanguage @SuppressWarnings("unused") LLVMLanguage language,
+                        @CachedLibrary(limit = "3") LLVMManagedReadLibrary nativeRead) throws UnexpectedResultException {
+            return doI64Managed(getReceiver.execute(addr), offset, nativeRead);
+        }
+
+        @Specialization(guards = "isAutoDerefHandle(language, addr)", replaces = "doI64DerefHandle")
+        protected Object doGenericI64DerefHandle(LLVMNativePointer addr, long offset,
+                        @Cached LLVMDerefHandleGetReceiverNode getReceiver,
+                        @CachedLanguage @SuppressWarnings("unused") LLVMLanguage language,
+                        @CachedLibrary(limit = "3") LLVMManagedReadLibrary nativeRead) {
+            return doGenericI64Managed(getReceiver.execute(addr), offset, nativeRead);
+        }
+
+        @Specialization(limit = "3", rewriteOn = UnexpectedResultException.class)
+        protected long doI64Managed(LLVMManagedPointer addr, long offset,
+                        @CachedLibrary("addr.getObject()") LLVMManagedReadLibrary nativeRead) throws UnexpectedResultException {
+            return nativeRead.readI64(addr.getObject(), addr.getOffset() + offset);
+        }
+
+        @Specialization(limit = "3", replaces = "doI64Managed")
+        protected Object doGenericI64Managed(LLVMManagedPointer addr, long offset,
+                        @CachedLibrary("addr.getObject()") LLVMManagedReadLibrary nativeRead) {
+            return nativeRead.readGenericI64(addr.getObject(), addr.getOffset() + offset);
+        }
+    }
+
     @Specialization(guards = "!isAutoDerefHandle(language, addr)")
     protected long doI64Native(LLVMNativePointer addr,
-                    @Cached("createIdentityProfile()") LongValueProfile profile,
                     @CachedLanguage LLVMLanguage language) {
-        return profile.profile(language.getLLVMMemory().getI64(this, addr));
+        return language.getLLVMMemory().getI64(this, addr);
     }
 
     @Specialization(guards = "isAutoDerefHandle(language, addr)", rewriteOn = UnexpectedResultException.class)

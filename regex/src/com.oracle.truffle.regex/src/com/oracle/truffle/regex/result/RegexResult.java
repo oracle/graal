@@ -41,8 +41,8 @@
 package com.oracle.truffle.regex.result;
 
 import com.oracle.truffle.api.CompilerDirectives;
+import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.dsl.Cached;
-import com.oracle.truffle.api.dsl.Cached.Shared;
 import com.oracle.truffle.api.dsl.GenerateUncached;
 import com.oracle.truffle.api.dsl.ImportStatic;
 import com.oracle.truffle.api.dsl.ReportPolymorphism;
@@ -55,7 +55,6 @@ import com.oracle.truffle.api.interop.UnsupportedTypeException;
 import com.oracle.truffle.api.library.ExportLibrary;
 import com.oracle.truffle.api.library.ExportMessage;
 import com.oracle.truffle.api.nodes.Node;
-import com.oracle.truffle.api.profiles.ValueProfile;
 import com.oracle.truffle.regex.AbstractConstantKeysObject;
 import com.oracle.truffle.regex.AbstractRegexObject;
 import com.oracle.truffle.regex.RegexObject;
@@ -68,8 +67,6 @@ import com.oracle.truffle.regex.util.TruffleReadOnlyKeysArray;
  * {@code exec} method and has the following properties:
  * <ol>
  * <li>{@code boolean isMatch}: {@code true} if a match was found, {@code false} otherwise.</li>
- * <li>{@code int groupCount}: number of capture groups present in the regular expression, including
- * group 0. If the result is no match, this property is undefined.</li>
  * <li>{@link TruffleObject} {@code getStart(int groupNumber)}: returns the position where the
  * beginning of the capture group with the given number was found. If the result is no match, the
  * returned value is undefined. Capture group number {@code 0} denotes the boundaries of the entire
@@ -95,6 +92,100 @@ public abstract class RegexResult extends AbstractConstantKeysObject {
 
     public abstract int getEnd(int groupNumber);
 
+    @ExportMessage
+    @Override
+    public Object getMembers(@SuppressWarnings("unused") boolean includeInternal) {
+        return KEYS;
+    }
+
+    @ExportMessage
+    abstract static class ReadMember {
+
+        @SuppressWarnings("unused")
+        @Specialization(guards = {"symbol == cachedSymbol", "cachedSymbol.equals(PROP_IS_MATCH)"}, limit = "2")
+        static boolean isMatchIdentity(RegexResult receiver, String symbol,
+                        @Cached("symbol") String cachedSymbol) {
+            return receiver != NoMatchResult.getInstance();
+        }
+
+        @SuppressWarnings("unused")
+        @Specialization(guards = {"symbol.equals(cachedSymbol)", "cachedSymbol.equals(PROP_IS_MATCH)"}, limit = "2", replaces = "isMatchIdentity")
+        static boolean isMatchEquals(RegexResult receiver, String symbol,
+                        @Cached("symbol") String cachedSymbol) {
+            return receiver != NoMatchResult.getInstance();
+        }
+
+        @SuppressWarnings("unused")
+        @Specialization(guards = {"symbol == cachedSymbol", "cachedSymbol.equals(PROP_GET_START)"}, limit = "2")
+        static RegexResultGetStartMethod getStartIdentity(RegexResult receiver, String symbol,
+                        @Cached("symbol") String cachedSymbol) {
+            return new RegexResultGetStartMethod(receiver);
+        }
+
+        @SuppressWarnings("unused")
+        @Specialization(guards = {"symbol.equals(cachedSymbol)", "cachedSymbol.equals(PROP_GET_START)"}, limit = "2", replaces = "getStartIdentity")
+        static RegexResultGetStartMethod getStartEquals(RegexResult receiver, String symbol,
+                        @Cached("symbol") String cachedSymbol) {
+            return new RegexResultGetStartMethod(receiver);
+        }
+
+        @SuppressWarnings("unused")
+        @Specialization(guards = {"symbol == cachedSymbol", "cachedSymbol.equals(PROP_GET_END)"}, limit = "2")
+        static RegexResultGetEndMethod getEndIdentity(RegexResult receiver, String symbol,
+                        @Cached("symbol") String cachedSymbol) {
+            return new RegexResultGetEndMethod(receiver);
+        }
+
+        @SuppressWarnings("unused")
+        @Specialization(guards = {"symbol.equals(cachedSymbol)", "cachedSymbol.equals(PROP_GET_END)"}, limit = "2", replaces = "getEndIdentity")
+        static RegexResultGetEndMethod getEndEquals(RegexResult receiver, String symbol,
+                        @Cached("symbol") String cachedSymbol) {
+            return new RegexResultGetEndMethod(receiver);
+        }
+
+        @ReportPolymorphism.Megamorphic
+        @Specialization(replaces = {"isMatchEquals", "getStartEquals", "getEndEquals"})
+        static Object readGeneric(RegexResult receiver, String symbol) throws UnknownIdentifierException {
+            switch (symbol) {
+                case PROP_IS_MATCH:
+                    return receiver != NoMatchResult.getInstance();
+                case PROP_GET_START:
+                    return new RegexResultGetStartMethod(receiver);
+                case PROP_GET_END:
+                    return new RegexResultGetEndMethod(receiver);
+                default:
+                    CompilerDirectives.transferToInterpreterAndInvalidate();
+                    throw UnknownIdentifierException.create(symbol);
+            }
+        }
+    }
+
+    @ExportMessage
+    abstract static class IsMemberReadable {
+
+        @SuppressWarnings("unused")
+        @Specialization(guards = {"symbol == cachedSymbol", "result"}, limit = "3")
+        static boolean cacheIdentity(RegexResult receiver, String symbol,
+                        @Cached("symbol") String cachedSymbol,
+                        @Cached("isReadable(receiver, cachedSymbol)") boolean result) {
+            return result;
+        }
+
+        @SuppressWarnings("unused")
+        @Specialization(guards = {"symbol.equals(cachedSymbol)", "result"}, limit = "3", replaces = "cacheIdentity")
+        static boolean cacheEquals(RegexResult receiver, String symbol,
+                        @Cached("symbol") String cachedSymbol,
+                        @Cached("isReadable(receiver, cachedSymbol)") boolean result) {
+            return result;
+        }
+
+        @SuppressWarnings("unused")
+        @Specialization(replaces = "cacheEquals")
+        static boolean isReadable(RegexResult receiver, String symbol) {
+            return KEYS.contains(symbol);
+        }
+    }
+
     @Override
     public TruffleReadOnlyKeysArray getKeys() {
         return KEYS;
@@ -116,11 +207,11 @@ public abstract class RegexResult extends AbstractConstantKeysObject {
     }
 
     @ExportLibrary(InteropLibrary.class)
-    public final class RegexResultGetStartMethod extends AbstractRegexObject {
+    static final class RegexResultGetStartMethod extends AbstractRegexObject {
 
         private final RegexResult result;
 
-        public RegexResultGetStartMethod(RegexResult result) {
+        RegexResultGetStartMethod(RegexResult result) {
             this.result = result;
         }
 
@@ -141,14 +232,20 @@ public abstract class RegexResult extends AbstractConstantKeysObject {
             }
             return getStartNode.execute(result, toIntNode.execute(args[0]));
         }
+
+        @TruffleBoundary
+        @Override
+        public String toString() {
+            return "TRegexResultGetStartMethod{" + "result=" + result + '}';
+        }
     }
 
     @ExportLibrary(InteropLibrary.class)
-    public final class RegexResultGetEndMethod extends AbstractRegexObject {
+    static final class RegexResultGetEndMethod extends AbstractRegexObject {
 
         private final RegexResult result;
 
-        public RegexResultGetEndMethod(RegexResult result) {
+        RegexResultGetEndMethod(RegexResult result) {
             this.result = result;
         }
 
@@ -169,34 +266,19 @@ public abstract class RegexResult extends AbstractConstantKeysObject {
             }
             return getEndNode.execute(result, toIntNode.execute(args[1]));
         }
-    }
 
-    @ExportMessage
-    boolean isMemberInvocable(String member,
-                    @Cached IsInvocableCacheNode cache,
-                    @Shared("receiverProfile") @Cached("createIdentityProfile()") ValueProfile receiverProfile) {
-        return cache.execute(receiverProfile.profile(this), member);
-    }
-
-    @ExportMessage
-    Object invokeMember(String member, Object[] args,
-                    @Cached ToIntNode toIntNode,
-                    @Cached InvokeCacheNode invokeCache,
-                    @Shared("receiverProfile") @Cached("createIdentityProfile()") ValueProfile receiverProfile) throws UnknownIdentifierException, ArityException, UnsupportedTypeException {
-        if (args.length != 1) {
-            CompilerDirectives.transferToInterpreterAndInvalidate();
-            throw ArityException.create(1, args.length);
+        @TruffleBoundary
+        @Override
+        public String toString() {
+            return "TRegexResultGetEndMethod{" + "result=" + result + '}';
         }
-        return invokeCache.execute(receiverProfile.profile(this), member, toIntNode.execute(args[0]));
     }
 
-    @GenerateUncached
-    abstract static class IsInvocableCacheNode extends Node {
-
-        abstract boolean execute(RegexResult receiver, String symbol);
+    @ExportMessage
+    abstract static class IsMemberInvocable {
 
         @SuppressWarnings("unused")
-        @Specialization(guards = "symbol == cachedSymbol", limit = "2")
+        @Specialization(guards = {"symbol == cachedSymbol", "result"}, limit = "2")
         static boolean cacheIdentity(RegexResult receiver, String symbol,
                         @Cached("symbol") String cachedSymbol,
                         @Cached("isInvocable(receiver, cachedSymbol)") boolean result) {
@@ -204,7 +286,7 @@ public abstract class RegexResult extends AbstractConstantKeysObject {
         }
 
         @SuppressWarnings("unused")
-        @Specialization(guards = "symbol.equals(cachedSymbol)", limit = "2", replaces = "cacheIdentity")
+        @Specialization(guards = {"symbol.equals(cachedSymbol)", "result"}, limit = "2", replaces = "cacheIdentity")
         static boolean cacheEquals(RegexResult receiver, String symbol,
                         @Cached("symbol") String cachedSymbol,
                         @Cached("isInvocable(receiver, cachedSymbol)") boolean result) {
@@ -216,6 +298,17 @@ public abstract class RegexResult extends AbstractConstantKeysObject {
         static boolean isInvocable(RegexResult receiver, String symbol) {
             return PROP_GET_START.equals(symbol) || PROP_GET_END.equals(symbol);
         }
+    }
+
+    @ExportMessage
+    Object invokeMember(String member, Object[] args,
+                    @Cached ToIntNode toIntNode,
+                    @Cached InvokeCacheNode invokeCache) throws UnknownIdentifierException, ArityException, UnsupportedTypeException {
+        if (args.length != 1) {
+            CompilerDirectives.transferToInterpreterAndInvalidate();
+            throw ArityException.create(1, args.length);
+        }
+        return invokeCache.execute(this, member, toIntNode.execute(args[0]));
     }
 
     @ImportStatic(RegexResult.class)

@@ -71,7 +71,7 @@ static void initializeFlag(JNIEnv *env, jclass NFIContext, jobject context, cons
 JNIEXPORT jlong JNICALL Java_com_oracle_truffle_nfi_impl_NFIContext_initializeNativeContext(JNIEnv *env, jobject context) {
     struct __TruffleContextInternal *ret = (struct __TruffleContextInternal *) malloc(sizeof(*ret));
 
-    jclass CallTarget, LibFFISignature, LibFFIType, NFIContext, LibFFIClosure_RetPatches, NativeSimpleType;
+    jclass CallTarget, LibFFISignature, LibFFIType, NFIContext, LibFFIClosure_RetPatches, NativeSimpleType, CachedSignatureInfo;
     jmethodID initializeSimpleType;
 
     (*env)->GetJavaVM(env, &ret->javaVM);
@@ -83,7 +83,10 @@ JNIEXPORT jlong JNICALL Java_com_oracle_truffle_nfi_impl_NFIContext_initializeNa
 
     LibFFISignature = (*env)->FindClass(env, "com/oracle/truffle/nfi/impl/LibFFISignature");
     ret->LibFFISignature_cif = (*env)->GetFieldID(env, LibFFISignature, "cif", "J");
-    ret->LibFFISignature_argTypes = (*env)->GetFieldID(env, LibFFISignature, "argTypes", "[Lcom/oracle/truffle/nfi/impl/LibFFIType;");
+    ret->LibFFISignature_signatureInfo = (*env)->GetFieldID(env, LibFFISignature, "signatureInfo", "Lcom/oracle/truffle/nfi/impl/LibFFISignature$CachedSignatureInfo;");
+
+    CachedSignatureInfo = (*env)->FindClass(env, "com/oracle/truffle/nfi/impl/LibFFISignature$CachedSignatureInfo");
+    ret->CachedSignatureInfo_argTypes = (*env)->GetFieldID(env, CachedSignatureInfo, "argTypes", "[Lcom/oracle/truffle/nfi/impl/LibFFIType$CachedTypeInfo;");
 
     LibFFIType = (*env)->FindClass(env, "com/oracle/truffle/nfi/impl/LibFFIType");
     ret->LibFFIType_type = (*env)->GetFieldID(env, LibFFIType, "type", "J");

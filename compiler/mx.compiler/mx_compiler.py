@@ -65,7 +65,6 @@ import mx_graal_tools #pylint: disable=unused-import
 
 import argparse
 import shlex
-import glob
 
 # Temporary imports and (re)definitions while porting mx from Python 2 to Python 3
 if sys.version_info[0] < 3:
@@ -299,64 +298,6 @@ def ctw(args, extraVMarguments=None):
 
     run_vm(vmargs + mainClassAndArgs)
 
-def verify_jvmci_ci_versions(args):
-    """
-    Checks that the jvmci versions used in various ci files agree.
-
-    If the ci.hocon files use a -dev version, it allows the travis ones to use the previous version.
-    For example, if ci.hocon uses jvmci-0.24-dev, travis may use either jvmci-0.24-dev or jvmci-0.23
-    """
-    version_pattern = re.compile(r'^(?!\s*#).*jvmci-(?P<major>\d*)(?:\.|-b)(?P<minor>\d*)(?P<dev>-dev)?')
-
-    def _grep_version(files, msg):
-        version = None
-        dev = None
-        last = None
-        linenr = 0
-        for filename in files:
-            for line in open(filename):
-                m = version_pattern.search(line)
-                if m:
-                    new_major = m.group('major')
-                    new_minor = m.group('minor')
-                    new_version = (new_major, new_minor)
-                    new_dev = bool(m.group('dev'))
-                    if (version and version != new_version) or (dev is not None and dev != new_dev):
-                        mx.abort(
-                            os.linesep.join([
-                                "Multiple JVMCI versions found in {0} files:".format(msg),
-                                "  {0} in {1}:{2}:    {3}".format(version + ('-dev' if dev else ''), *last), # pylint: disable=not-an-iterable
-                                "  {0} in {1}:{2}:    {3}".format(new_version + ('-dev' if new_dev else ''), filename, linenr, line),
-                            ]))
-                    last = (filename, linenr, line.rstrip())
-                    version = new_version
-                    dev = new_dev
-                linenr += 1
-        if not version:
-            mx.abort("No JVMCI version found in {0} files!".format(msg))
-        return version, dev
-
-    primary_suite = mx.primary_suite()
-    hocon_version, hocon_dev = _grep_version(
-        [join(primary_suite.vc_dir, 'common.json')] +
-        glob.glob(join(primary_suite.vc_dir, '*.hocon')) +
-        glob.glob(join(primary_suite.dir, 'ci*.hocon')) +
-        glob.glob(join(primary_suite.dir, 'ci*/*.hocon')), 'hocon')
-    travis_version, travis_dev = _grep_version([join(primary_suite.vc_dir, '.travis.yml')], 'TravisCI')
-
-    if hocon_version != travis_version or hocon_dev != travis_dev:
-        versions_ok = False
-        if not travis_dev and hocon_dev:
-            travis_major, travis_minor = travis_version # pylint: disable=unpacking-non-sequence
-            next_travis_minor = str(int(travis_minor) + 1)
-            next_travis_version = (travis_major, next_travis_minor)
-            if next_travis_version == hocon_version:
-                versions_ok = True
-        if not versions_ok:
-            mx.abort("Travis and ci.hocon JVMCI versions do not match: {0} vs. {1}".format(str(travis_version) + ('-dev' if travis_dev else ''), str(hocon_version) + ('-dev' if hocon_dev else '')))
-    mx.log('JVMCI versions are ok!')
-
-
 class UnitTestRun:
     def __init__(self, name, args, tags):
         self.name = name
@@ -370,7 +311,7 @@ class UnitTestRun:
                     extra_args = ['--verbose', '--enable-timing']
                 else:
                     extra_args = []
-                if Task.tags is None or 'coverage' not in Task.tags:
+                if Task.tags is None or 'coverage' not in Task.tags: # pylint: disable=unsupported-membership-test
                     # If this is a coverage execution, we want maximal coverage
                     # and thus must not fail fast.
                     extra_args += ['--fail-fast']
@@ -470,11 +411,6 @@ def _gate_scala_dacapo(name, iterations, extraVMarguments=None):
     scalaDacapoJar = mx.library('DACAPO_SCALA').get_path(True)
     _gate_java_benchmark(vmargs + ['-jar', scalaDacapoJar, name, '-n', str(iterations)], r'^===== DaCapo 0\.1\.0(-SNAPSHOT)? ([a-zA-Z0-9_]+) PASSED in ([0-9]+) msec =====')
 
-
-def jvmci_ci_version_gate_runner(tasks):
-    # Check that travis and ci.hocon use the same JVMCI version
-    with Task('JVMCI_CI_VersionSyncCheck', tasks, tags=[mx_gate.Tags.style]) as t:
-        if t: verify_jvmci_ci_versions([])
 
 def compiler_gate_runner(suites, unit_test_runs, bootstrap_tests, tasks, extraVMarguments=None, extraUnitTestArguments=None):
     if jdk.javaCompliance >= '9':
@@ -670,7 +606,6 @@ def _is_jaotc_supported():
 def _graal_gate_runner(args, tasks):
     compiler_gate_runner(['compiler', 'truffle'], graal_unit_test_runs, graal_bootstrap_tests, tasks, args.extra_vm_argument, args.extra_unittest_argument)
     compiler_gate_benchmark_runner(tasks, args.extra_vm_argument)
-    jvmci_ci_version_gate_runner(tasks)
     if _is_jaotc_supported():
         mx_jaotc.jaotc_gate_runner(tasks)
 
@@ -870,22 +805,30 @@ class StdoutUnstripping:
         return self
 
     def __exit__(self, exc_type, exc_value, traceback):
-        if self.mapFiles and self.capture:
+        if self.mapFiles and self.capture and len(self.capture.data):
+            data = self.capture.data
+            tmp_fd, tmp_file = tempfile.mkstemp(suffix='.txt', prefix='unstrip')
+            os.close(tmp_fd) # Don't leak file descriptors
             try:
-                with tempfile.NamedTemporaryFile(mode='w') as inputFile:
-                    data = self.capture.data
-                    if len(data) != 0:
-                        inputFile.write(data)
-                        inputFile.flush()
-                        retraceOut = mx.OutputCapture()
-                        unstrip_args = [m for m in set(self.mapFiles)] + [inputFile.name]
-                        mx.unstrip(unstrip_args, out=retraceOut)
-                        if data != retraceOut.data:
-                            mx.log('>>>> BEGIN UNSTRIPPED OUTPUT')
-                            mx.log(retraceOut.data)
-                            mx.log('<<<< END UNSTRIPPED OUTPUT')
+                with open(tmp_file, 'w') as fp:
+                    fp.write(data)
+                retraceOut = mx.OutputCapture()
+                unstrip_args = list(set(self.mapFiles)) + [tmp_file]
+                mx.unstrip(unstrip_args, out=retraceOut)
+                retraceOut = retraceOut.data
+                if data != retraceOut and mx.is_windows():
+                    # On Windows, ReTrace might duplicate line endings
+                    dedupOut = retraceOut.replace(os.linesep + os.linesep, os.linesep)
+                    if data == dedupOut:
+                        retraceOut = dedupOut
+                if data != retraceOut:
+                    mx.log('>>>> BEGIN UNSTRIPPED OUTPUT')
+                    mx.log(retraceOut)
+                    mx.log('<<<< END UNSTRIPPED OUTPUT')
             except BaseException as e:
                 mx.log('Error unstripping output from VM execution with stripped jars: ' + str(e))
+            finally:
+                os.remove(tmp_file)
 
 _graaljdk_override = None
 
@@ -1496,7 +1439,6 @@ mx.update_commands(_suite, {
     'collate-metrics': [collate_metrics, 'filename'],
     'ctw': [ctw, '[-vmoptions|noinline|nocomplex|full]'],
     'nodecostdump' : [_nodeCostDump, ''],
-    'verify_jvmci_ci_versions': [verify_jvmci_ci_versions, ''],
     'java_base_unittest' : [java_base_unittest, 'Runs unittest on JDK java.base "only" module(s)'],
     'updategraalinopenjdk' : [updategraalinopenjdk, '[options]'],
     'renamegraalpackages' : [renamegraalpackages, '[options]'],

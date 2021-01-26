@@ -40,46 +40,85 @@
  */
 package org.graalvm.wasm.memory;
 
-import com.oracle.truffle.api.CompilerDirectives;
+import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.nodes.Node;
-import com.oracle.truffle.api.profiles.ConditionProfile;
+import org.graalvm.wasm.constants.Sizes;
 import org.graalvm.wasm.exception.Failure;
 import org.graalvm.wasm.exception.WasmException;
 import sun.misc.Unsafe;
 
 import java.lang.reflect.Field;
 
+import static java.lang.Integer.compareUnsigned;
+import static java.lang.StrictMath.addExact;
+import static java.lang.StrictMath.multiplyExact;
+import static org.graalvm.wasm.constants.Sizes.MAX_MEMORY_DECLARATION_SIZE;
+import static org.graalvm.wasm.constants.Sizes.MAX_MEMORY_INSTANCE_SIZE;
+import static org.graalvm.wasm.constants.Sizes.MEMORY_PAGE_SIZE;
+
 public class UnsafeWasmMemory extends WasmMemory implements AutoCloseable {
+    /**
+     * @see #declaredMinSize()
+     */
+    private final int declaredMinSize;
+
+    /**
+     * @see #declaredMaxSize()
+     */
+    private final int declaredMaxSize;
     private final Unsafe unsafe;
     private long startAddress;
-    private int pageSize;
-    private final int maxPageSize;
-    private final ConditionProfile outOfBoundsAccesses = ConditionProfile.create();
+    private int size;
 
-    public UnsafeWasmMemory(int initPageSize, int maxPageSize) {
+    /**
+     * The maximum practical size of this memory instance (measured in number of
+     * {@link Sizes#MEMORY_PAGE_SIZE pages}).
+     * <p>
+     * It is the minimum between {@link #declaredMaxSize the limit defined in the module binary},
+     * {@link Sizes#MAX_MEMORY_INSTANCE_SIZE the GraalWasm limit} and any additional limit (the JS
+     * API for example has lower limits).
+     * <p>
+     * This is different from {@link #declaredMaxSize()}, which can be higher.
+     */
+    private final int maxAllowedSize;
+
+    private UnsafeWasmMemory(int declaredMinSize, int declaredMaxSize, int initialSize, int maxAllowedSize) {
+        assert compareUnsigned(declaredMinSize, initialSize) <= 0;
+        assert compareUnsigned(declaredMaxSize, MAX_MEMORY_DECLARATION_SIZE) <= 0;
+        assert compareUnsigned(initialSize, maxAllowedSize) <= 0;
+        assert compareUnsigned(maxAllowedSize, MAX_MEMORY_INSTANCE_SIZE) <= 0;
+        assert compareUnsigned(maxAllowedSize, declaredMaxSize) <= 0;
+
         try {
-            Field f = Unsafe.class.getDeclaredField("theUnsafe");
+            final Field f = Unsafe.class.getDeclaredField("theUnsafe");
             f.setAccessible(true);
             unsafe = (Unsafe) f.get(null);
         } catch (Exception e) {
             throw new RuntimeException(e);
         }
-        this.pageSize = initPageSize;
-        this.maxPageSize = maxPageSize;
-        long byteSize = byteSize();
+
+        this.declaredMinSize = declaredMinSize;
+        this.declaredMaxSize = declaredMaxSize;
+        this.size = declaredMinSize;
+        this.maxAllowedSize = maxAllowedSize;
+        final long byteSize = byteSize();
         this.startAddress = unsafe.allocateMemory(byteSize);
         unsafe.setMemory(startAddress, byteSize, (byte) 0);
     }
 
+    public UnsafeWasmMemory(int declaredMinSize, int declaredMaxSize, int maxAllowedSize) {
+        this(declaredMinSize, declaredMaxSize, declaredMinSize, maxAllowedSize);
+    }
+
     public void validateAddress(Node node, int address, int offset) {
-        if (outOfBoundsAccesses.profile(address < 0 || address + offset > this.byteSize())) {
-            trapOutOfBounds(node, address, offset);
+        if (address < 0 || address + offset > this.byteSize()) {
+            throw trapOutOfBounds(node, address, offset);
         }
     }
 
-    @CompilerDirectives.TruffleBoundary
-    private void trapOutOfBounds(Node node, int address, int offset) {
-        throw WasmException.format(Failure.UNSPECIFIED_TRAP, node, "%d-byte memory access at address 0x%016X (%d) is out-of-bounds (memory size %d bytes).",
+    @TruffleBoundary
+    private WasmException trapOutOfBounds(Node node, int address, int offset) {
+        throw WasmException.format(Failure.OUT_OF_BOUNDS_MEMORY_ACCESS, node, "%d-byte memory access at address 0x%016X (%d) is out-of-bounds (memory size %d bytes).",
                         offset, address, address, byteSize());
     }
 
@@ -91,142 +130,148 @@ public class UnsafeWasmMemory extends WasmMemory implements AutoCloseable {
     }
 
     @Override
-    public void clear() {
-        unsafe.setMemory(startAddress, byteSize(), (byte) 0);
+    public void reset() {
+        size = declaredMinSize;
+        unsafe.freeMemory(startAddress);
+        startAddress = unsafe.allocateMemory(byteSize());
     }
 
     @Override
-    public int pageSize() {
-        return pageSize;
+    public int size() {
+        return size;
     }
 
     @Override
     public int byteSize() {
-        return pageSize * PAGE_SIZE;
+        return size * MEMORY_PAGE_SIZE;
     }
 
     @Override
-    public int maxPageSize() {
-        return maxPageSize;
+    public int declaredMinSize() {
+        return declaredMinSize;
     }
 
     @Override
+    public int declaredMaxSize() {
+        return declaredMaxSize;
+    }
+
+    @Override
+    @TruffleBoundary
     public boolean grow(int extraPageSize) {
-        if (extraPageSize < 0) {
-            throw WasmException.create(Failure.UNSPECIFIED_TRAP, null, "Extra size cannot be negative.");
-        }
-        long targetSize = byteSize() + extraPageSize * PAGE_SIZE;
-        if (maxPageSize >= 0 && targetSize > maxPageSize * PAGE_SIZE) {
-            // Cannot grow the memory beyond maxPageSize bytes.
+        if (extraPageSize == 0) {
+            return true;
+        } else if (compareUnsigned(extraPageSize, maxAllowedSize) <= 0 && compareUnsigned(size() + extraPageSize, maxAllowedSize) <= 0) {
+            // Condition above and limit on maxPageSize (see ModuleLimits#MAX_MEMORY_SIZE) ensure
+            // computation of targetByteSize does not overflow.
+            final int targetByteSize = multiplyExact(addExact(size(), extraPageSize), MEMORY_PAGE_SIZE);
+            final long updatedStartAddress = unsafe.allocateMemory(targetByteSize);
+            unsafe.copyMemory(startAddress, updatedStartAddress, byteSize());
+            unsafe.setMemory(updatedStartAddress + byteSize(), targetByteSize - byteSize(), (byte) 0);
+            unsafe.freeMemory(startAddress);
+            startAddress = updatedStartAddress;
+            size += extraPageSize;
+            return true;
+        } else {
             return false;
         }
-        if (targetSize * PAGE_SIZE == byteSize()) {
-            return true;
-        }
-        long updatedStartAddress = unsafe.allocateMemory(targetSize);
-        unsafe.copyMemory(startAddress, updatedStartAddress, byteSize());
-        unsafe.setMemory(updatedStartAddress + byteSize(), targetSize - byteSize(), (byte) 0);
-        unsafe.freeMemory(startAddress);
-        startAddress = updatedStartAddress;
-        pageSize += extraPageSize;
-        return true;
     }
 
     @Override
     public int load_i32(Node node, int address) {
         validateAddress(node, address, 4);
-        int value = unsafe.getInt(startAddress + address);
+        final int value = unsafe.getInt(startAddress + address);
         return value;
     }
 
     @Override
     public long load_i64(Node node, int address) {
         validateAddress(node, address, 8);
-        long value = unsafe.getLong(startAddress + address);
+        final long value = unsafe.getLong(startAddress + address);
         return value;
     }
 
     @Override
     public float load_f32(Node node, int address) {
         validateAddress(node, address, 4);
-        float value = unsafe.getFloat(startAddress + address);
+        final float value = unsafe.getFloat(startAddress + address);
         return value;
     }
 
     @Override
     public double load_f64(Node node, int address) {
         validateAddress(node, address, 8);
-        double value = unsafe.getDouble(startAddress + address);
+        final double value = unsafe.getDouble(startAddress + address);
         return value;
     }
 
     @Override
     public int load_i32_8s(Node node, int address) {
         validateAddress(node, address, 1);
-        int value = unsafe.getByte(startAddress + address);
+        final int value = unsafe.getByte(startAddress + address);
         return value;
     }
 
     @Override
     public int load_i32_8u(Node node, int address) {
         validateAddress(node, address, 1);
-        int value = 0x0000_00ff & unsafe.getByte(startAddress + address);
+        final int value = 0x0000_00ff & unsafe.getByte(startAddress + address);
         return value;
     }
 
     @Override
     public int load_i32_16s(Node node, int address) {
         validateAddress(node, address, 2);
-        int value = unsafe.getShort(startAddress + address);
+        final int value = unsafe.getShort(startAddress + address);
         return value;
     }
 
     @Override
     public int load_i32_16u(Node node, int address) {
         validateAddress(node, address, 2);
-        int value = 0x0000_ffff & unsafe.getShort(startAddress + address);
+        final int value = 0x0000_ffff & unsafe.getShort(startAddress + address);
         return value;
     }
 
     @Override
     public long load_i64_8s(Node node, int address) {
         validateAddress(node, address, 1);
-        long value = unsafe.getByte(startAddress + address);
+        final long value = unsafe.getByte(startAddress + address);
         return value;
     }
 
     @Override
     public long load_i64_8u(Node node, int address) {
         validateAddress(node, address, 1);
-        long value = 0x0000_0000_0000_00ffL & unsafe.getByte(startAddress + address);
+        final long value = 0x0000_0000_0000_00ffL & unsafe.getByte(startAddress + address);
         return value;
     }
 
     @Override
     public long load_i64_16s(Node node, int address) {
         validateAddress(node, address, 2);
-        long value = unsafe.getShort(startAddress + address);
+        final long value = unsafe.getShort(startAddress + address);
         return value;
     }
 
     @Override
     public long load_i64_16u(Node node, int address) {
         validateAddress(node, address, 2);
-        long value = 0x0000_0000_0000_ffffL & unsafe.getShort(startAddress + address);
+        final long value = 0x0000_0000_0000_ffffL & unsafe.getShort(startAddress + address);
         return value;
     }
 
     @Override
     public long load_i64_32s(Node node, int address) {
         validateAddress(node, address, 4);
-        long value = unsafe.getInt(startAddress + address);
+        final long value = unsafe.getInt(startAddress + address);
         return value;
     }
 
     @Override
     public long load_i64_32u(Node node, int address) {
         validateAddress(node, address, 4);
-        long value = 0x0000_0000_ffff_ffffL & unsafe.getInt(startAddress + address);
+        final long value = 0x0000_0000_ffff_ffffL & unsafe.getInt(startAddress + address);
         return value;
     }
 
@@ -288,7 +333,7 @@ public class UnsafeWasmMemory extends WasmMemory implements AutoCloseable {
 
     @Override
     public WasmMemory duplicate() {
-        final UnsafeWasmMemory other = new UnsafeWasmMemory(pageSize, maxPageSize);
+        final UnsafeWasmMemory other = new UnsafeWasmMemory(declaredMinSize, declaredMaxSize, size, maxAllowedSize);
         unsafe.copyMemory(this.startAddress, other.startAddress, this.byteSize());
         return other;
     }
@@ -296,7 +341,7 @@ public class UnsafeWasmMemory extends WasmMemory implements AutoCloseable {
     public void free() {
         unsafe.freeMemory(this.startAddress);
         startAddress = 0;
-        pageSize = 0;
+        size = 0;
     }
 
     public boolean freed() {

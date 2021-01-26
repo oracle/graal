@@ -236,7 +236,7 @@ public class FloatingReadPhase extends Phase {
         }
         if (createFloatingReads) {
             assert !graph.isAfterFloatingReadPhase();
-            graph.setAfterFloatingReadPhase(true);
+            graph.setAfterFloatingReadPhase();
         }
     }
 

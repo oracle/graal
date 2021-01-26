@@ -27,6 +27,7 @@ package com.oracle.svm.core.genscavenge;
 import java.nio.ByteBuffer;
 
 import org.graalvm.compiler.nodes.NamedLocationIdentity;
+import org.graalvm.compiler.nodes.java.ArrayLengthNode;
 import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;
 import org.graalvm.word.LocationIdentity;
@@ -40,7 +41,6 @@ import com.oracle.svm.core.heap.ReferenceAccess;
 import com.oracle.svm.core.hub.InteriorObjRefWalker;
 import com.oracle.svm.core.hub.LayoutEncoding;
 import com.oracle.svm.core.log.Log;
-import com.oracle.svm.core.snippets.KnownIntrinsics;
 import com.oracle.svm.core.thread.VMOperation;
 import com.oracle.svm.core.util.HostedByteBufferPointer;
 import com.oracle.svm.core.util.PointerUtils;
@@ -268,7 +268,7 @@ public final class CardTable {
                 Object obj = ptr.toObject();
                 trace.string("  obj: ").object(obj);
                 if (LayoutEncoding.isArray(obj)) {
-                    trace.string("  length: ").signed(KnownIntrinsics.readArrayLength(obj));
+                    trace.string("  length: ").signed(ArrayLengthNode.arrayLength(obj));
                 }
                 boolean containsYoung = getReferenceToYoungObjectVisitor().containsReferenceToYoungObject(obj);
                 if (containsYoung) {
@@ -285,12 +285,12 @@ public final class CardTable {
                     Object crossingOntoObject = crossingOntoPointer.toObject();
                     witness.string("  crossingOntoObject: ").object(crossingOntoObject).string("  end: ").hex(LayoutEncoding.getObjectEnd(crossingOntoObject));
                     if (LayoutEncoding.isArray(crossingOntoObject)) {
-                        witness.string("  array length: ").signed(KnownIntrinsics.readArrayLength(crossingOntoObject));
+                        witness.string("  array length: ").signed(ArrayLengthNode.arrayLength(crossingOntoObject));
                     }
                     witness.string("  impreciseStart: ").hex(impreciseStart).newline();
                     witness.string("  obj: ").object(obj).string("  end: ").hex(LayoutEncoding.getObjectEnd(obj));
                     if (LayoutEncoding.isArray(obj)) {
-                        witness.string("  array length: ").signed(KnownIntrinsics.readArrayLength(obj));
+                        witness.string("  array length: ").signed(ArrayLengthNode.arrayLength(obj));
                     }
                     witness.newline();
                     HeapChunk.Header<?> objChunk = AlignedHeapChunk.getEnclosingChunk(obj);

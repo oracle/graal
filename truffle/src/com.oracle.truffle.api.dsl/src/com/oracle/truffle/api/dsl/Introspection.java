@@ -200,6 +200,16 @@ public final class Introspection {
             return cachedData.get(instanceIndex);
         }
 
+        /**
+         * {@inheritDoc}
+         * 
+         * @since 21.1
+         */
+        @Override
+        public String toString() {
+            return "SpecializationInfo[name=" + methodName + ", active=" + isActive() + ", excluded" + isExcluded() + ", instances=" + getInstances() + "]";
+        }
+
     }
 
     /**

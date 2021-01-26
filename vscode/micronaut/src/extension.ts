@@ -6,10 +6,10 @@
  */
 
 import * as vscode from 'vscode';
-import { micronautProjectExists, getJavaHome, findExecutable } from "./utils";
+import { micronautProjectExists, getJavaHome } from "./utils";
 import { WelcomePanel } from './welcome';
-import { createProject } from './projectCreate';
-import { build } from './projectBuild';
+import { creatorInit, createProject } from './projectCreate';
+import { builderInit, build } from './projectBuild';
 
 export function activate(context: vscode.ExtensionContext) {
 	if (vscode.workspace.getConfiguration().get<boolean>('micronaut.showWelcomePage')) {
@@ -24,20 +24,21 @@ export function activate(context: vscode.ExtensionContext) {
 	context.subscriptions.push(vscode.commands.registerCommand('extension.micronaut.build', (goal?: string) => {
 		build(goal);
 	}));
-	context.subscriptions.push(vscode.commands.registerCommand('extension.micronaut.buildProject', () => {
-		vscode.commands.executeCommand('extension.micronaut.build', 'build');
-	}));
 	context.subscriptions.push(vscode.commands.registerCommand('extension.micronaut.buildNativeImage', () => {
 		vscode.commands.executeCommand('extension.micronaut.build', 'nativeImage');
 	}));
+	context.subscriptions.push(vscode.workspace.onDidChangeConfiguration(e => {
+		if (e.affectsConfiguration('micronaut.home')) {
+			creatorInit();
+		}
+	}));
+	creatorInit();
 	if (micronautProjectExists()) {
 		vscode.commands.executeCommand('setContext', 'micronautProjectExists', true);
+		builderInit();
 		const javaHome = getJavaHome();
 		if (javaHome) {
 			vscode.commands.executeCommand('setContext', 'javaHomeSet', true);
-			if (findExecutable('native-image', javaHome)) {
-				vscode.commands.executeCommand('setContext', 'graalVMHomeSet', true);
-			}
 		}
 	}
 }

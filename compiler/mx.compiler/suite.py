@@ -1,10 +1,10 @@
 suite = {
-  "mxversion" : "5.275.4",
+  "mxversion" : "5.280.0",
   "name" : "compiler",
   "sourceinprojectwhitelist" : [],
 
   "groupId" : "org.graalvm.compiler",
-  "version" : "21.0.0",
+  "version" : "21.1.0",
   "release" : False,
   "url" : "http://www.graalvm.org/",
   "developer" : {
@@ -566,24 +566,6 @@ suite = {
       "workingSets" : "Graal,HotSpot",
     },
 
-    "org.graalvm.compiler.hotspot.jdk12" : {
-      "subDir" : "src",
-      "sourceDirs" : ["src"],
-      "dependencies": ["org.graalvm.compiler.hotspot"],
-      "requiresConcealed" : {
-        "jdk.internal.vm.ci" : [
-          "jdk.vm.ci.hotspot",
-          "jdk.vm.ci.services",
-          "jdk.vm.ci.meta",
-        ],
-      },
-      "overlayTarget" : "org.graalvm.compiler.hotspot",
-      "multiReleaseJarVersion" : "12",
-      "checkstyle" : "org.graalvm.compiler.graph",
-      "javaCompliance" : "12+",
-      "workingSets" : "Graal,HotSpot",
-    },
-
     "org.graalvm.compiler.hotspot.jdk13" : {
       "subDir" : "src",
       "sourceDirs" : ["src"],
@@ -591,7 +573,8 @@ suite = {
       "requiresConcealed" : {
         "jdk.internal.vm.ci" : [
           "jdk.vm.ci.hotspot",
-          "jdk.vm.ci.meta"
+          "jdk.vm.ci.meta",
+          "jdk.vm.ci.services",
         ],
       },
       "overlayTarget" : "org.graalvm.compiler.hotspot",
@@ -1311,7 +1294,6 @@ suite = {
       "subDir" : "src",
       "sourceDirs" : ["src"],
       "dependencies" : [
-        "org.graalvm.compiler.loop",
         "org.graalvm.compiler.phases"
       ],
       "annotationProcessors" : [
@@ -1377,21 +1359,11 @@ suite = {
       "testProject" : True,
     },
 
-    "org.graalvm.compiler.loop" : {
-      "subDir" : "src",
-      "sourceDirs" : ["src"],
-      "dependencies" : ["org.graalvm.compiler.nodes"],
-      "annotationProcessors" : ["GRAAL_PROCESSOR"],
-      "checkstyle" : "org.graalvm.compiler.graph",
-      "javaCompliance" : "8+",
-      "workingSets" : "Graal",
-    },
-
     "org.graalvm.compiler.loop.test" : {
       "subDir" : "src",
       "sourceDirs" : ["src"],
       "dependencies" : [
-        "org.graalvm.compiler.loop",
+        "org.graalvm.compiler.nodes",
         "org.graalvm.compiler.core.test"
       ],
       "checkstyle" : "org.graalvm.compiler.graph",
@@ -1755,7 +1727,7 @@ suite = {
         "org.graalvm.compiler.replacements",
       ],
       "uses" : [
-        "org.graalvm.compiler.truffle.compiler.substitutions.TruffleInvocationPluginProvider",
+        "org.graalvm.compiler.truffle.compiler.substitutions.GraphBuilderInvocationPluginProvider",
         "org.graalvm.compiler.truffle.compiler.phases.inlining.InliningPolicyProvider"
       ],
       "checkstyle" : "org.graalvm.compiler.graph",
@@ -1895,7 +1867,8 @@ suite = {
         "java.logging",
       ],
       "uses" : [
-        "org.graalvm.compiler.truffle.jfr.EventFactory.Provider"
+        "org.graalvm.compiler.truffle.jfr.EventFactory.Provider",
+        "org.graalvm.compiler.truffle.runtime.FloodControlHandler",
       ],
       "checkstyle" : "org.graalvm.compiler.graph",
       "annotationProcessors" : [
@@ -2349,7 +2322,7 @@ suite = {
           "org.graalvm.compiler.phases.common.jmx.HotSpotMBeanOperationProvider",
           "org.graalvm.compiler.serviceprovider.JMXService",
           "org.graalvm.compiler.truffle.compiler.hotspot.TruffleCallBoundaryInstrumentationFactory",
-          "org.graalvm.compiler.truffle.compiler.substitutions.TruffleInvocationPluginProvider",
+          "org.graalvm.compiler.truffle.compiler.substitutions.GraphBuilderInvocationPluginProvider",
           "org.graalvm.compiler.truffle.runtime.LoopNodeFactory",
           "org.graalvm.compiler.truffle.runtime.TruffleTypes",
           "org.graalvm.compiler.truffle.runtime.EngineCacheSupport",

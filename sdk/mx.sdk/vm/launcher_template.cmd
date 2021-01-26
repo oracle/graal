@@ -78,9 +78,9 @@ if "%VERBOSE_GRAALVM_LAUNCHERS%"=="true" echo on
 
 "%location%<jre_bin>\java" <extra_jvm_args> %jvm_args% -cp "%absolute_cp%" <main_class> %launcher_args%
 
+exit /b %errorlevel%
 :: Function are defined via labels, so have to be defined at the end of the file and skipped
-:: in order not to be executed. :eof is implicitly defined.
-goto :eof
+:: in order not to be executed.
 
 :escape_args
     set "args=%*"

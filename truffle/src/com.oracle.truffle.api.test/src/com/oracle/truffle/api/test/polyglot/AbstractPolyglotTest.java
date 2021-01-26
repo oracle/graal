@@ -210,6 +210,9 @@ public abstract class AbstractPolyglotTest {
             context.close();
             context = null;
         }
+        // restore static state
+        ProxyLanguage.setDelegate(new ProxyLanguage());
+        ProxyInstrument.setDelegate(new ProxyInstrument());
     }
 
     public static void assertFails(Runnable callable, Class<?> exceptionType) {

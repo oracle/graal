@@ -604,6 +604,15 @@ public class AnnotationSubstitutionProcessor extends SubstitutionProcessor {
     }
 
     private void handleAnnotatedMethodInSubstitutionClass(Executable annotatedMethod, Class<?> originalClass) {
+        if (annotatedMethod.isSynthetic()) {
+            /*
+             * Synthetic bridge methods for co-variant return types inherit the annotations. We
+             * ignore such methods here, and handleOriginalMethodInSubstitutionClass keeps the
+             * original implementation of such methods.
+             */
+            return;
+        }
+
         Substitute substituteAnnotation = lookupAnnotation(annotatedMethod, Substitute.class);
         KeepOriginal keepOriginalAnnotation = lookupAnnotation(annotatedMethod, KeepOriginal.class);
 
@@ -659,6 +668,9 @@ public class AnnotationSubstitutionProcessor extends SubstitutionProcessor {
                  * methods as if they were annotated with @KeepOriginal. If the method/field that
                  * the synthetic method is forwarding to is not available, an error message for that
                  * method/field will be produced anyway.
+                 * 
+                 * This also treats synthetic bridge methods as @KeepOriginal, so that
+                 * handleAnnotatedMethodInSubstitutionClass does not need to handle them.
                  */
                 register(methodSubstitutions, null, method, method);
             } else {
@@ -709,7 +721,7 @@ public class AnnotationSubstitutionProcessor extends SubstitutionProcessor {
 
         } catch (NoSuchMethodException ex) {
             throw UserError.abort("Could not find target method: %s", annotatedMethod);
-        } catch (NoClassDefFoundError error) {
+        } catch (LinkageError error) {
             throw UserError.abort("Cannot find %s.%s, %s can not be loaded, due to %s not being available in the classpath. Are you missing a dependency in your classpath?",
                             originalClass.getName(), originalName, originalClass.getName(), error.getMessage());
         }
@@ -826,7 +838,7 @@ public class AnnotationSubstitutionProcessor extends SubstitutionProcessor {
                 guarantee(recomputeAnnotation.declClassName().isEmpty(), "Both class and class name specified");
                 targetClass = recomputeAnnotation.declClass();
             } else if (!recomputeAnnotation.declClassName().isEmpty()) {
-                targetClass = imageClassLoader.findClassByName(recomputeAnnotation.declClassName());
+                targetClass = imageClassLoader.findClassOrFail(recomputeAnnotation.declClassName());
             }
         }
         return new ComputedValueField(original, annotated, kind, targetClass, targetName, isFinal);
@@ -905,7 +917,7 @@ public class AnnotationSubstitutionProcessor extends SubstitutionProcessor {
             }
         }
 
-        Class<?> holder = imageClassLoader.findClassByName(className, false);
+        Class<?> holder = imageClassLoader.findClass(className).get();
         if (holder == null) {
             throw UserError.abort("Substitution target for %s is not loaded. Use field `onlyWith` in the `TargetClass` annotation to make substitution only active when needed.",
                             annotatedBaseClass.getName());
