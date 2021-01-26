@@ -1,0 +1,557 @@
+/*
+ * Copyright (c) 2017, 2019, Oracle and/or its affiliates. All rights reserved.
+ * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
+ *
+ * This code is free software; you can redistribute it and/or modify it
+ * under the terms of the GNU General Public License version 2 only, as
+ * published by the Free Software Foundation.
+ *
+ * This code is distributed in the hope that it will be useful, but WITHOUT
+ * ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or
+ * FITNESS FOR A PARTICULAR PURPOSE.  See the GNU General Public License
+ * version 2 for more details (a copy is included in the LICENSE file that
+ * accompanied this code).
+ *
+ * You should have received a copy of the GNU General Public License version
+ * 2 along with this work; if not, write to the Free Software Foundation,
+ * Inc., 51 Franklin St, Fifth Floor, Boston, MA 02110-1301 USA.
+ *
+ * Please contact Oracle, 500 Oracle Parkway, Redwood Shores, CA 94065 USA
+ * or visit www.oracle.com if you need additional information or have any
+ * questions.
+ */
+package com.oracle.truffle.espresso.launcher;
+
+import java.io.File;
+import java.io.IOException;
+import java.util.ArrayList;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
+import java.util.Set;
+import java.util.function.BiFunction;
+import java.util.jar.JarFile;
+import java.util.jar.Manifest;
+
+import org.graalvm.launcher.AbstractLanguageLauncher;
+import org.graalvm.options.OptionCategory;
+import org.graalvm.polyglot.Context;
+import org.graalvm.polyglot.Context.Builder;
+import org.graalvm.polyglot.PolyglotException;
+import org.graalvm.polyglot.Value;
+
+public class EspressoLauncher extends AbstractLanguageLauncher {
+    public static void main(String[] args) {
+        new EspressoLauncher().launch(args);
+    }
+
+    private final ArrayList<String> mainClassArgs = new ArrayList<>();
+    private String mainClassName = null;
+    private LaunchMode launchMode = LaunchMode.LM_CLASS;
+    private boolean pauseOnExit = false;
+    private VersionAction versionAction = VersionAction.None;
+    private final Map<String, String> espressoOptions = new HashMap<>();
+
+    private final class Arguments {
+        private final List<String> arguments;
+        private int index = -1;
+        private String currentKey;
+        private String currentArgument;
+
+        private boolean skip = false;
+
+        Arguments(List<String> arguments) {
+            this.arguments = arguments;
+        }
+
+        /**
+         * Returns the raw argument at the current position.
+         * <p>
+         * If the option given is not of the form {@code --[option]=[value]}, then the value
+         * returned by {@code getArg} is equal to the value returned by {@link #getKey()}. Else,
+         * unlike {@link #getKey()}, this method does not strip the option at the {@code "="}.
+         * <p>
+         * For example:
+         * <li>{@code -ea}:
+         * <p>
+         * both {@code getKey} and {@code getArg} returns "-ea".
+         * <li>{@code --module=path}:
+         * <p>
+         * {@code getKey} returns "--module", while {@code getArg} returns "--module=path".
+         */
+        String getArg() {
+            String val = arguments.get(index);
+            assert val.startsWith(getKey());
+            return val;
+        }
+
+        /**
+         * Returns the key associated with the argument at the current position.
+         * <p>
+         * If the argument is of the form {@code --[option]=[value]} or {@code --[option] [value]},
+         * returns {@code --[option]}.
+         */
+        String getKey() {
+            if (currentKey == null) {
+                String arg = arguments.get(index);
+                if (arg.startsWith("--")) {
+                    int eqIdx = arg.indexOf('=');
+                    if (eqIdx >= 0) {
+                        currentKey = arg.substring(0, eqIdx);
+                        currentArgument = arg.substring(eqIdx + 1);
+                    }
+                }
+                if (currentKey == null) {
+                    currentKey = arg;
+                }
+            }
+            return currentKey;
+        }
+
+        /**
+         * Returns the value associated with the argument at the current position.
+         * <p>
+         * If the argument is of the form {@code --[option]=[value]} or {@code --[option] [value]},
+         * returns {@code [value]}.
+         */
+        String getValue(String arg, String type) {
+            if (currentArgument == null) {
+                if (index + 1 < arguments.size()) {
+                    currentArgument = arguments.get(index + 1);
+                    skip = true;
+                } else {
+                    throw abort("Error: " + arg + " requires " + type + " specification");
+                }
+            }
+            return currentArgument;
+        }
+
+        /**
+         * Advances the position, skipping over the value associated with an option if needed.
+         * 
+         * @return true if there are still arguments to process, false otherwise.
+         */
+        boolean next() {
+            index++;
+            if (skip) {
+                index++;
+            }
+            currentKey = null;
+            currentArgument = null;
+            skip = false;
+            return index < arguments.size();
+        }
+
+        void pushLeftoversArgs() {
+            if (currentKey != null) {
+                // Arg in processing: start from the next one.
+                next();
+            }
+            if (index < arguments.size()) {
+                mainClassArgs.addAll(arguments.subList(index, arguments.size()));
+            }
+            // Finish processing args.
+            index = arguments.size();
+        }
+    }
+
+    @Override
+    protected List<String> preprocessArguments(List<String> arguments, Map<String, String> unused) {
+        String classpath = null;
+        String jarFileName = null;
+        ArrayList<String> unrecognized = new ArrayList<>();
+        Arguments args = new Arguments(arguments);
+        while (args.next()) {
+            String arg = args.getKey();
+            switch (arg) {
+                case "-cp":
+                case "-classpath":
+                    classpath = args.getValue(arg, "class path");
+                    break;
+                case "-p":
+                case "--module-path":
+                    parseSpecifiedOption(args, "java.ModulePath", "module path");
+                    break;
+                case "--add-modules":
+                    parseNumberedOption(args, "java.AddModules", "module");
+                    break;
+                case "--add-exports":
+                    parseNumberedOption(args, "java.AddExports", "module");
+                    break;
+                case "--add-opens":
+                    parseNumberedOption(args, "java.AddOpens", "module");
+                    break;
+                case "--add-reads":
+                    parseNumberedOption(args, "java.AddReads", "module");
+                    break;
+                case "-m":
+                case "--module":
+                    /* This arguments specifies in which module we find the main class. */
+                    mainClassName = args.getValue(arg, "module path");
+                    espressoOptions.put("java.Module", mainClassName);
+                    launchMode = LaunchMode.LM_MODULE;
+                    break;
+                case "-jar":
+                    jarFileName = args.getValue(arg, "jar file");
+                    break;
+                case "-version":
+                    versionAction = VersionAction.PrintAndExit;
+                    break;
+                case "-showversion":
+                    versionAction = VersionAction.PrintAndContinue;
+                    break;
+
+                case "-ea":
+                case "-enableassertions":
+                    espressoOptions.put("java.EnableAssertions", "true");
+                    break;
+
+                case "-esa":
+                case "-enablesystemassertions":
+                    espressoOptions.put("java.EnableSystemAssertions", "true");
+                    break;
+
+                case "-?":
+                case "-help":
+                    unrecognized.add("--help");
+                    break;
+
+                case "-client":
+                case "-server":
+                case "-d64":
+                case "-Xdebug": // only for backward compatibility
+                    // ignore
+                    break;
+
+                case "-XX:+PauseOnExit":
+                    pauseOnExit = true;
+                    break;
+
+                default:
+                    if (arg.startsWith("-Xbootclasspath:")) {
+                        espressoOptions.remove("java.BootClasspathPrepend");
+                        espressoOptions.remove("java.BootClasspathAppend");
+                        espressoOptions.put("java.BootClasspath", arg.substring("-Xbootclasspath:".length()));
+                    } else if (arg.startsWith("-Xbootclasspath/a:")) {
+                        espressoOptions.put("java.BootClasspathAppend", appendPath(espressoOptions.get("java.BootClasspathAppend"), arg.substring("-Xbootclasspath/a:".length())));
+                    } else if (arg.startsWith("-Xbootclasspath/p:")) {
+                        espressoOptions.put("java.BootClasspathPrepend", prependPath(arg.substring("-Xbootclasspath/p:".length()), espressoOptions.get("java.BootClasspathPrepend")));
+                    } else if (arg.startsWith("-Xverify:")) {
+                        String mode = arg.substring("-Xverify:".length());
+                        espressoOptions.put("java.Verify", mode);
+                    } else if (arg.startsWith("-Xrunjdwp:")) {
+                        String value = arg.substring("-Xrunjdwp:".length());
+                        espressoOptions.put("java.JDWPOptions", value);
+                    } else if (arg.startsWith("-agentlib:jdwp=")) {
+                        String value = arg.substring("-agentlib:jdwp=".length());
+                        espressoOptions.put("java.JDWPOptions", value);
+                    } else if (arg.startsWith("-Xmn") || arg.startsWith("-Xms") || arg.startsWith("-Xmx") || arg.startsWith("-Xss")) {
+                        unrecognized.add("--vm." + arg.substring(1));
+                    } else
+                    // -Dsystem.property=value
+                    if (arg.startsWith("-D")) {
+                        String key = arg.substring("-D".length());
+                        int splitAt = key.indexOf("=");
+                        String value = "";
+                        if (splitAt >= 0) {
+                            value = key.substring(splitAt + 1);
+                            key = key.substring(0, splitAt);
+                        }
+
+                        switch (key) {
+                            case "espresso.library.path":
+                                espressoOptions.put("java.EspressoLibraryPath", value);
+                                break;
+                            case "java.library.path":
+                                espressoOptions.put("java.JavaLibraryPath", value);
+                                break;
+                            case "java.class.path":
+                                classpath = value;
+                                break;
+                            case "java.ext.dirs":
+                                espressoOptions.put("java.ExtDirs", value);
+                                break;
+                            case "sun.boot.class.path":
+                                espressoOptions.put("java.BootClasspath", value);
+                                break;
+                            case "sun.boot.library.path":
+                                espressoOptions.put("java.BootLibraryPath", value);
+                                break;
+                        }
+
+                        espressoOptions.put("java.Properties." + key, value);
+                    } else if (!arg.startsWith("-")) {
+                        mainClassName = arg;
+                    } else {
+                        unrecognized.add(args.getArg());
+                    }
+                    break;
+            }
+            if (mainClassName != null || jarFileName != null) {
+                if (jarFileName != null) {
+                    // Overwrite class path. For compatibility with the standard java launcher,
+                    // this is done silently.
+                    classpath = jarFileName;
+
+                    mainClassName = getMainClassName(jarFileName);
+                }
+                args.pushLeftoversArgs();
+                break;
+            }
+        }
+
+        // classpath provenance order:
+        // (1) the -cp/-classpath command line option
+        if (classpath == null) {
+            // (2) the property java.class.path
+            classpath = espressoOptions.get("java.Properties.java.class.path");
+            if (classpath == null) {
+                // (3) the environment variable CLASSPATH
+                classpath = System.getenv("CLASSPATH");
+                if (classpath == null) {
+                    // (4) the current working directory only
+                    classpath = ".";
+                }
+            }
+        }
+
+        espressoOptions.put("java.Classpath", classpath);
+
+        return unrecognized;
+    }
+
+    private void parseNumberedOption(Arguments arguments, String property, String type) {
+        espressoOptions.merge(property, arguments.getValue(arguments.getKey(), type), new BiFunction<String, String, String>() {
+            @Override
+            public String apply(String a, String b) {
+                return a + File.pathSeparator + b;
+            }
+        });
+    }
+
+    private void parseSpecifiedOption(Arguments arguments, String property, String type) {
+        espressoOptions.put(property, arguments.getValue(arguments.getKey(), type));
+    }
+
+    private static String usage() {
+        String nl = System.lineSeparator();
+        // @formatter:off
+        return "Usage: java [options] <mainclass> [args...]" + nl +
+               "           (to execute a class)" + nl +
+               "   or  java [options] -jar <jarfile> [args...]" + nl +
+               "           (to execute a jar file)" + nl +
+               "   or  java [options] -m <module>[/<mainclass>] [args...]" + nl +
+               "       java [options] --module <module>[/<mainclass>] [args...]" + nl +
+               "           (to execute the main class in a module)" + nl +
+               "   or  java [options] <sourcefile> [args]" + nl +
+               "           (to execute a single source-file program)" + nl + nl +
+               " Arguments following the main class, source file, -jar <jarfile>," + nl +
+               " -m or --module <module>/<mainclass> are passed as the arguments to" + nl +
+               " main class." + nl + nl +
+               " where options include:" + nl +
+               "    -cp <class search path of directories and zip/jar files>" + nl +
+               "    -classpath <class search path of directories and zip/jar files>" + nl +
+               "                  A " + File.pathSeparator + " separated list of directories, JAR archives," + nl +
+               "                  and ZIP archives to search for class files." + nl +
+               "    -p <module path>" + nl +
+               "    --module-path <module path>..." + nl +
+               "                  A : separated list of directories, each directory" + nl +
+               "                  is a directory of modules." + nl +
+               "    --add-modules <module name>[,<module name>...]" + nl +
+               "                  root modules to resolve in addition to the initial module." + nl +
+               "                  <module name> can also be ALL-DEFAULT, ALL-SYSTEM," + nl +
+               "                  ALL-MODULE-PATH." + nl +
+               "    -D<name>=<value>" + nl +
+               "                  set a system property" + nl +
+               "    -version      print product version and exit" + nl +
+               "    -showversion  print product version and continue" + nl +
+               "    -ea | -enableassertions" + nl +
+               "                  enable assertions" + nl +
+               "    -esa | -enablesystemassertions" + nl +
+               "                  enable system assertions" + nl +
+               "    -? -help      print this help message";
+        // @formatter:on
+    }
+
+    /**
+     * Gets the values of the attribute {@code name} from the manifest in {@code jarFile}.
+     *
+     * @return the value of the attribute of null if not found
+     * @throws IOException if error reading jar file
+     */
+    public static String getManifestValue(JarFile jarFile, String name) throws IOException {
+        final Manifest manifest = jarFile.getManifest();
+        if (manifest == null) {
+            return null;
+        }
+        return manifest.getMainAttributes().getValue(name);
+    }
+
+    /**
+     * Finds the main class name from the command line either explicitly or via the jar file.
+     */
+    private String getMainClassName(String jarFileName) {
+        try {
+            final JarFile jarFile = new JarFile(jarFileName);
+            String value = getManifestValue(jarFile, "Main-Class");
+            if (value == null) {
+                throw abort("Could not find main class in jarfile: " + jarFileName);
+            }
+            return value;
+        } catch (IOException e) {
+            throw abort("Could not find main class in jarfile: " + jarFileName + " [cause: " + e + "]");
+        }
+    }
+
+    // cf. sun.launcher.LauncherHelper
+    private enum LaunchMode {
+        LM_UNKNOWN,
+        LM_CLASS,
+        LM_JAR,
+        LM_MODULE,
+        // LM_SOURCE
+    }
+
+    @Override
+    protected void launch(Builder contextBuilder) {
+        contextBuilder.arguments(getLanguageId(), mainClassArgs.toArray(new String[0])).in(System.in).out(System.out).err(System.err);
+
+        for (Map.Entry<String, String> entry : espressoOptions.entrySet()) {
+            contextBuilder.option(entry.getKey(), entry.getValue());
+        }
+
+        int rc = 1;
+
+        contextBuilder.allowCreateThread(true);
+
+        try (Context context = contextBuilder.build()) {
+
+            // TODO: Ensure consistency between option "java.Version" and the given "java.JavaHome".
+
+            // runVersionAction(versionAction, context.getEngine());
+            if (versionAction != VersionAction.None) {
+                // The Java version is not known yet, try 8 first.
+                Value version = context.getBindings("java").getMember("sun.misc.Version");
+                if (version != null && !version.isNull()) {
+                    // Java 8
+                    version.invokeMember("print");
+                } else {
+                    // > Java 8
+                    version = context.getBindings("java").getMember("java.lang.VersionProps");
+                    version.invokeMember("print", /* print to stderr = */false);
+                }
+                if (versionAction == VersionAction.PrintAndExit) {
+                    throw exit(0);
+                }
+            }
+
+            if (mainClassName == null) {
+                throw abort(usage());
+            }
+            try {
+                Value launcherHelper = context.getBindings("java").getMember("sun.launcher.LauncherHelper");
+                Value mainKlass = launcherHelper //
+                                .invokeMember("checkAndLoadMain", true, launchMode.ordinal(), mainClassName) //
+                                .getMember("static");
+                mainKlass.invokeMember("main/([Ljava/lang/String;)V", (Object) mainClassArgs.toArray(new String[0]));
+                if (pauseOnExit) {
+                    getError().print("Press any key to continue...");
+                    try {
+                        System.in.read();
+                    } catch (IOException e) {
+                        e.printStackTrace();
+                    }
+                }
+            } catch (PolyglotException e) {
+                if (!e.isExit()) {
+                    handleMainUncaught(context, e);
+                }
+            } finally {
+                try {
+                    context.eval("java", "<DestroyJavaVM>").execute();
+                } catch (PolyglotException e) {
+                    /*
+                     * If everything went well, an exit exception is expected here. Failure to see
+                     * an exit exception most likely means something went wrong during context
+                     * initialization.
+                     */
+                    if (e.isExit()) {
+                        rc = e.getExitStatus();
+                    } else {
+                        throw handleUnexpectedDestroy(e);
+                    }
+                }
+            }
+            /*
+             * We abruptly exit the host system for compatibility with the reference implementation,
+             * and because we have no control over un-registering thread from Truffle, which
+             * sometimes leads to getting an exception on exit when trying to close a context with a
+             * rogue thread in native.
+             * 
+             * Note that since the launcher thread and the main thread are the same, a rogue native
+             * main means we may never return.
+             */
+            System.exit(rc);
+        }
+    }
+
+    private AbortException handleUnexpectedDestroy(PolyglotException e) {
+        String message = e.getMessage();
+        if (message != null) {
+            int colonIdx = message.indexOf(':');
+            if (colonIdx >= 0 && colonIdx + 1 < message.length()) {
+                throw abort(message.substring(colonIdx + 1));
+            }
+        }
+        throw abort(message);
+    }
+
+    private static void handleMainUncaught(Context context, PolyglotException e) {
+        Value threadClass = context.getBindings("java").getMember("java.lang.Thread");
+        Value currentThread = threadClass.invokeMember("currentThread");
+        Value handler = currentThread.invokeMember("getUncaughtExceptionHandler");
+        handler.invokeMember("uncaughtException", currentThread, e.getGuestObject());
+    }
+
+    @Override
+    protected String getLanguageId() {
+        return "java";
+    }
+
+    @Override
+    protected void printHelp(OptionCategory maxCategory) {
+        getOutput().println(usage());
+    }
+
+    @Override
+    protected void collectArguments(Set<String> options) {
+        // This list of arguments is used when we are launched through the Polyglot
+        // launcher
+        options.add("-cp");
+        options.add("-classpath");
+        options.add("-version");
+        options.add("-showversion");
+        options.add("-ea");
+        options.add("-enableassertions");
+        options.add("-esa");
+        options.add("-enablesystemassertions");
+        options.add("-?");
+        options.add("-help");
+    }
+
+    private static String appendPath(String paths, String toAppend) {
+        if (paths != null && paths.length() != 0) {
+            return toAppend != null && toAppend.length() != 0 ? paths + File.pathSeparator + toAppend : paths;
+        } else {
+            return toAppend;
+        }
+    }
+
+    private static String prependPath(String toPrepend, String paths) {
+        if (paths != null && paths.length() != 0) {
+            return toPrepend != null && toPrepend.length() != 0 ? toPrepend + File.pathSeparator + paths : paths;
+        } else {
+            return toPrepend;
+        }
+    }
+}
