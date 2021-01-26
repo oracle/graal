@@ -219,7 +219,7 @@ public class ComponentPackageLoader implements Closeable, MetadataLoader {
         }
         try (StringWriter wr = new StringWriter()) {
             props.store(wr, ""); // NOI18N
-            info.setTag(SystemUtils.digestString(wr.toString().replaceAll("#.*\n", ""), false)); // NOI18N
+            info.setTag(SystemUtils.digestString(wr.toString().replaceAll("#.*\r?\n\r?", ""), false)); // NOI18N
         } catch (IOException ex) {
             throw new FailedOperationException(ex.getLocalizedMessage(), ex);
         }
