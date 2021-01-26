@@ -35,8 +35,8 @@ import tempfile
 from glob import glob
 from contextlib import contextmanager
 from distutils.dir_util import mkpath, remove_tree  # pylint: disable=no-name-in-module
-from os.path import join, exists, basename, dirname, isdir
-from shutil import move, rmtree
+from os.path import join, exists, basename, dirname
+from shutil import move
 import pipes
 from xml.dom.minidom import parse
 from argparse import ArgumentParser
@@ -1138,8 +1138,7 @@ class JvmFuncsFallbacksBuildTask(mx.BuildTask):
         try:
             for entry in os.listdir(native_project_src_gen_dir):
                 if entry != java_version:
-                    entry_path = join(native_project_src_gen_dir, entry)
-                    (rmtree if isdir(entry_path) else os.remove)(entry_path)
+                    mx.rmtree(join(native_project_src_gen_dir, entry))
         except OSError:
             pass
         self.jvm_fallbacks_path = join(native_project_src_gen_dir, java_version, 'JvmFuncsFallbacks.c')
