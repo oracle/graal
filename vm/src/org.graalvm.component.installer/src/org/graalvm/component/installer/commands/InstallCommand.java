@@ -249,8 +249,10 @@ public class InstallCommand implements InstallerCommand {
     private void addLicenseToAccept(Installer inst, MetadataLoader ldr) {
         if (ldr.getLicenseType() != null) {
             String path = ldr.getLicensePath();
-            if (path != null) {
-                inst.setLicenseRelativePath(SystemUtils.fromCommonRelative(ldr.getLicensePath()));
+            if (inst != null && path != null) {
+                if (!SystemUtils.isRemotePath(path)) {
+                    inst.setLicenseRelativePath(SystemUtils.fromCommonRelative(ldr.getLicensePath()));
+                }
             }
             String licId = ldr.getLicenseID();
             if (licId == null) {

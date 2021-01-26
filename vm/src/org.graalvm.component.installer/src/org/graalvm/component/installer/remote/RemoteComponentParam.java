@@ -36,6 +36,7 @@ import org.graalvm.component.installer.Archive;
 import org.graalvm.component.installer.ComponentParam;
 import org.graalvm.component.installer.Feedback;
 import org.graalvm.component.installer.InstallerStopException;
+import org.graalvm.component.installer.SystemUtils;
 import org.graalvm.component.installer.model.ComponentInfo;
 import org.graalvm.component.installer.persist.MetadataLoader;
 
@@ -304,7 +305,7 @@ public abstract class RemoteComponentParam implements ComponentParam, MetadataLo
     @Override
     public String getLicenseID() {
         String s = getLicensePath();
-        if (s != null && s.contains("://")) {
+        if (s != null && SystemUtils.isRemotePath(s)) {
             // special case, so that the package will not be downloaded, if the
             // catalog specifies HTTP remote path.
             return s;

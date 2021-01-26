@@ -40,6 +40,7 @@ import java.util.regex.Pattern;
 import java.util.stream.Collectors;
 import org.graalvm.component.installer.Archive;
 import org.graalvm.component.installer.Feedback;
+import org.graalvm.component.installer.SystemUtils;
 import org.graalvm.component.installer.UserAbortException;
 import org.graalvm.component.installer.model.ComponentInfo;
 import org.graalvm.component.installer.model.ComponentRegistry;
@@ -275,7 +276,7 @@ public class LicensePresenter {
     boolean isLicenseRemote(String licenseId) {
         MetadataLoader ldr = licensesToAccept.get(licenseId).get(0);
         String licPath = ldr.getLicensePath();
-        return licPath.contains("://"); // NOI18N
+        return SystemUtils.isRemotePath(licPath); // NOI18N
     }
 
     /**

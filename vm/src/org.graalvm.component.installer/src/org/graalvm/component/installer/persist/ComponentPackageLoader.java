@@ -312,7 +312,7 @@ public class ComponentPackageLoader implements Closeable, MetadataLoader {
         String licPath = getLicensePath();
         if (licPath == null) {
             return null;
-        } else if (licPath.contains("://")) { // NOI18N
+        } else if (SystemUtils.isRemotePath(licPath)) { // NOI18N
             return licPath;
         }
         Archive.FileEntry foundEntry = null;

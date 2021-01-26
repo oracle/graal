@@ -28,6 +28,7 @@ import java.io.File;
 import java.io.IOException;
 import java.io.UnsupportedEncodingException;
 import java.net.MalformedURLException;
+import java.net.URL;
 import java.net.URLDecoder;
 import java.nio.ByteBuffer;
 import java.nio.channels.FileChannel;
@@ -692,5 +693,31 @@ public class SystemUtils {
         } catch (NoSuchAlgorithmException ex) {
             throw new IOException(ex);
         }
+    }
+
+    /**
+     * Determines if the path is a remote URL. If the passed string is not an absolute URL, attempts
+     * to interpret as relative path, which checks 'bad characters' and avoids paths that traverse
+     * above the root. Disallows absolute file:// URLs, URLs from file-based catalogs must be given
+     * as relative.
+     * 
+     * @param pathOrURL path or URL to check.
+     * @return true, if the path is actually an URL.
+     */
+    public static boolean isRemotePath(String pathOrURL) {
+        try {
+            URL u = new URL(pathOrURL);
+            String proto = u.getProtocol();
+            if ("file".equals(proto)) { // NOI18N
+                throw new IllegalArgumentException("Absolute file:// URLs are not permitted.");
+            } else {
+                return true;
+            }
+        } catch (MalformedURLException ex) {
+            // expected
+        }
+        // will fail with an exception if the relative path contains bad chars or traverses up
+        fromCommonRelative(pathOrURL);
+        return false;
     }
 }
