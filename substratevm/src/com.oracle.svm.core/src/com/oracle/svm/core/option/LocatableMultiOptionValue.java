@@ -77,6 +77,11 @@ public abstract class LocatableMultiOptionValue<T> implements MultiOptionValue<T
         return values.stream();
     }
 
+    @Override
+    public String toString() {
+        return "<" + valueType.getSimpleName().toLowerCase() + ">*";
+    }
+
     public static class Strings extends LocatableMultiOptionValue<String> {
 
         private Strings(Strings other) {
