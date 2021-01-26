@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2013, 2020, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2013, 2021, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -734,7 +734,7 @@ public final class GraalFeature implements Feature {
              */
             for (FrameState inlineState = frameState; inlineState != null; inlineState = inlineState.outerFrameState()) {
                 if (inlineState.bci >= 0) {
-                    CompilationInfoSupport.singleton().registerDeoptEntry(inlineState.getMethod(), inlineState.bci, inlineState.duringCall(), inlineState.rethrowException());
+                    CompilationInfoSupport.singleton().registerDeoptEntry(inlineState);
                 }
             }
         }
@@ -757,7 +757,9 @@ public final class GraalFeature implements Feature {
                  * different: the Invoke has the bci of the invocation bytecode, the FrameState has
                  * the bci of the next bytecode after the invoke.
                  */
-                CompilationInfoSupport.singleton().registerDeoptEntry(invoke.stateAfter().getMethod(), invoke.bci(), true, false);
+                FrameState stateDuring = invoke.stateAfter().duplicateModifiedDuringCall(invoke.bci(), invoke.asNode().getStackKind());
+                assert stateDuring.duringCall() && !stateDuring.rethrowException();
+                CompilationInfoSupport.singleton().registerDeoptEntry(stateDuring);
             }
         }
     }
