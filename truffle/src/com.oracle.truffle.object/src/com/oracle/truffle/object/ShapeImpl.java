@@ -530,18 +530,6 @@ public abstract class ShapeImpl extends Shape {
         }
     }
 
-    final StrongKeyWeakValueEntry<Transition, ShapeImpl> getSingleTransition() {
-        Object trans = transitionMap;
-        if (trans == null) {
-            return null;
-        } else if (isSingleEntry(trans)) {
-            StrongKeyWeakValueEntry<Transition, ShapeImpl> entry = asSingleEntry(trans);
-            return entry;
-        } else {
-            return null;
-        }
-    }
-
     /**
      * Add a new property in the map, yielding a new or cached Shape object.
      *
