@@ -500,6 +500,9 @@ public class Environment implements Feedback, CommandInput, Config {
                 sb.append(c);
             }
         }
+        if (sb.length() > 0 && sb.charAt(sb.length() - 1) == '\r') {
+            sb.delete(sb.length() - 1, sb.length());
+        }
         return sb.toString();
     }
 

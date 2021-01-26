@@ -271,7 +271,7 @@ public class DirectoryStorage implements ManagementStorage {
             // properties store date/time into the stream as a comment. Cannot be disabled
             // programmatically,
             // must filter out.
-            return SystemUtils.digestString(wr.toString().replaceAll("#.*\n", ""), false); // NOI18N
+            return SystemUtils.digestString(wr.toString().replaceAll("#.*\r?\n\r?", ""), false); // NOI18N
         }
     }
 
