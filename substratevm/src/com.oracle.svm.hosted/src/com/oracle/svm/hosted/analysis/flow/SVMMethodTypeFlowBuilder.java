@@ -46,6 +46,7 @@ import com.oracle.graal.pointsto.flow.builder.TypeFlowBuilder;
 import com.oracle.graal.pointsto.meta.AnalysisField;
 import com.oracle.graal.pointsto.meta.AnalysisType;
 import com.oracle.graal.pointsto.typestate.TypeState;
+import com.oracle.svm.core.graal.jdk.SubstrateArraysCopyOf;
 import com.oracle.svm.core.graal.thread.LoadVMThreadLocalNode;
 import com.oracle.svm.core.meta.SubstrateObjectConstant;
 import com.oracle.svm.core.util.UserError.UserException;
@@ -198,6 +199,10 @@ public class SVMMethodTypeFlowBuilder extends MethodTypeFlowBuilder {
                 }
                 state.add(node, result);
             }
+
+        } else if (n instanceof SubstrateArraysCopyOf) {
+            SubstrateArraysCopyOf node = (SubstrateArraysCopyOf) n;
+            processArraysCopyOf(n, node.getOriginal(), node.getNewArrayType(), state);
         }
     }
 }

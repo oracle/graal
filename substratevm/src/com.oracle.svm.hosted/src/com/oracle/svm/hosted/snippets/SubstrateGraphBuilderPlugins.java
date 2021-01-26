@@ -101,7 +101,6 @@ import com.oracle.graal.pointsto.infrastructure.UniverseMetaAccess;
 import com.oracle.graal.pointsto.meta.AnalysisField;
 import com.oracle.graal.pointsto.meta.AnalysisType;
 import com.oracle.graal.pointsto.meta.AnalysisUniverse;
-import com.oracle.graal.pointsto.nodes.AnalysisArraysCopyOfNode;
 import com.oracle.graal.pointsto.nodes.AnalysisUnsafePartitionLoadNode;
 import com.oracle.graal.pointsto.nodes.AnalysisUnsafePartitionStoreNode;
 import com.oracle.graal.pointsto.nodes.ConvertUnknownValueNode;
@@ -184,7 +183,7 @@ public class SubstrateGraphBuilderPlugins {
         registerUnsafePlugins(metaAccess, plugins, snippetReflection, analysis);
         registerKnownIntrinsicsPlugins(plugins, analysis);
         registerStackValuePlugins(snippetReflection, plugins);
-        registerArraysPlugins(plugins, analysis);
+        registerArraysPlugins(plugins);
         registerArrayPlugins(plugins, snippetReflection, analysis);
         registerClassPlugins(plugins, snippetReflection);
         registerEdgesPlugins(metaAccess, plugins, analysis);
@@ -661,24 +660,20 @@ public class SubstrateGraphBuilderPlugins {
         });
     }
 
-    private static void registerArraysPlugins(InvocationPlugins plugins, boolean analysis) {
+    private static void registerArraysPlugins(InvocationPlugins plugins) {
 
         Registration r = new Registration(plugins, Arrays.class).setAllowOverwrite(true);
 
         r.register2("copyOf", Object[].class, int.class, new InvocationPlugin() {
             @Override
             public boolean apply(GraphBuilderContext b, ResolvedJavaMethod targetMethod, Receiver receiver, ValueNode original, ValueNode newLength) {
-                if (analysis) {
-                    b.addPush(JavaKind.Object, new AnalysisArraysCopyOfNode(b.getInvokeReturnStamp(b.getAssumptions()).getTrustedStamp(), original, newLength));
-                } else {
-                    /* Get the class from the original node. */
-                    GetClassNode originalArrayType = b.add(new GetClassNode(original.stamp(NodeView.DEFAULT), b.nullCheckedValue(original)));
+                /* Get the class from the original node. */
+                GetClassNode originalArrayType = b.add(new GetClassNode(original.stamp(NodeView.DEFAULT), b.nullCheckedValue(original)));
 
-                    ValueNode originalLength = b.add(ArrayLengthNode.create(original, b.getConstantReflection()));
-                    Stamp stamp = b.getInvokeReturnStamp(b.getAssumptions()).getTrustedStamp().join(original.stamp(NodeView.DEFAULT));
+                ValueNode originalLength = b.add(ArrayLengthNode.create(original, b.getConstantReflection()));
+                Stamp stamp = b.getInvokeReturnStamp(b.getAssumptions()).getTrustedStamp().join(original.stamp(NodeView.DEFAULT));
 
-                    b.addPush(JavaKind.Object, new SubstrateArraysCopyOfWithExceptionNode(stamp, original, originalLength, newLength, originalArrayType, b.bci()));
-                }
+                b.addPush(JavaKind.Object, new SubstrateArraysCopyOfWithExceptionNode(stamp, original, originalLength, newLength, originalArrayType, b.bci()));
                 return true;
             }
         });
@@ -686,25 +681,16 @@ public class SubstrateGraphBuilderPlugins {
         r.register3("copyOf", Object[].class, int.class, Class.class, new InvocationPlugin() {
             @Override
             public boolean apply(GraphBuilderContext b, ResolvedJavaMethod targetMethod, Receiver receiver, ValueNode original, ValueNode newLength, ValueNode newArrayType) {
-                if (analysis) {
-                    /*
-                     * If the new array type comes from a GetClassNode or is a constant we can infer
-                     * the concrete type of the new array, otherwise we conservatively assume that
-                     * the new array can have any of the instantiated array types.
-                     */
-                    b.addPush(JavaKind.Object, new AnalysisArraysCopyOfNode(b.getInvokeReturnStamp(b.getAssumptions()).getTrustedStamp(), original, newLength, newArrayType));
+                Stamp stamp;
+                if (newArrayType.isConstant()) {
+                    ResolvedJavaType newType = b.getConstantReflection().asJavaType(newArrayType.asConstant());
+                    stamp = StampFactory.objectNonNull(TypeReference.createExactTrusted(newType));
                 } else {
-                    Stamp stamp;
-                    if (newArrayType.isConstant()) {
-                        ResolvedJavaType newType = b.getConstantReflection().asJavaType(newArrayType.asConstant());
-                        stamp = StampFactory.objectNonNull(TypeReference.createExactTrusted(newType));
-                    } else {
-                        stamp = b.getInvokeReturnStamp(b.getAssumptions()).getTrustedStamp();
-                    }
-
-                    ValueNode originalLength = b.add(ArrayLengthNode.create(original, b.getConstantReflection()));
-                    b.addPush(JavaKind.Object, new SubstrateArraysCopyOfWithExceptionNode(stamp, original, originalLength, newLength, newArrayType, b.bci()));
+                    stamp = b.getInvokeReturnStamp(b.getAssumptions()).getTrustedStamp();
                 }
+
+                ValueNode originalLength = b.add(ArrayLengthNode.create(original, b.getConstantReflection()));
+                b.addPush(JavaKind.Object, new SubstrateArraysCopyOfWithExceptionNode(stamp, original, originalLength, newLength, newArrayType, b.bci()));
                 return true;
             }
         });
