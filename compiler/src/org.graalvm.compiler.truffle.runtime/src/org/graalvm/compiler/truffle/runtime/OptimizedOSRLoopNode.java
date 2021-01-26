@@ -139,6 +139,7 @@ public abstract class OptimizedOSRLoopNode extends LoopNode implements ReplaceOb
                         // compiled method got invalidated. We might need OSR again.
                         return execute(frame);
                     }
+                    CompilerDirectives.safepoint();
                 }
             } finally {
                 if (firstTierBackedgeCounts && iterationsCompleted > 1) {
@@ -153,6 +154,7 @@ public abstract class OptimizedOSRLoopNode extends LoopNode implements ReplaceOb
                     // compiled method got invalidated. We might need OSR again.
                     return execute(frame);
                 }
+                CompilerDirectives.safepoint();
             }
             return status;
         }
@@ -173,6 +175,7 @@ public abstract class OptimizedOSRLoopNode extends LoopNode implements ReplaceOb
                     // The status returned here is CONTINUE_LOOP_STATUS.
                     return status;
                 }
+                CompilerDirectives.safepoint();
             }
             // The status returned here is different than CONTINUE_LOOP_STATUS.
             return status;
@@ -227,7 +230,7 @@ public abstract class OptimizedOSRLoopNode extends LoopNode implements ReplaceOb
                     return repeatableNode.initialLoopStatus();
                 }
                 iterations++;
-
+                CompilerDirectives.safepoint();
             } while (repeatableNode.shouldContinue(status = repeatableNode.executeRepeatingWithValue(frame)));
             return status;
         } finally {
@@ -477,6 +480,7 @@ public abstract class OptimizedOSRLoopNode extends LoopNode implements ReplaceOb
                 if (CompilerDirectives.inInterpreter()) {
                     return loopNode.repeatableNode.initialLoopStatus();
                 }
+                CompilerDirectives.safepoint();
             }
             return status;
         }

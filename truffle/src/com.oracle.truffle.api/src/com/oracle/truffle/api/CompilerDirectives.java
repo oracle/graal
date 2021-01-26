@@ -47,6 +47,10 @@ import java.lang.annotation.Target;
 import java.util.Objects;
 import java.util.concurrent.Callable;
 
+import com.oracle.truffle.api.TruffleLanguage.Env;
+import com.oracle.truffle.api.impl.ThreadLocalHandshake;
+import com.oracle.truffle.api.nodes.LoopNode;
+
 /**
  * Directives that influence the optimizations of the Truffle compiler. All of the operations have
  * no effect when executed in the Truffle interpreter.
@@ -319,6 +323,57 @@ public final class CompilerDirectives {
      * @since 0.8 or earlier
      */
     public static void ensureVirtualizedHere(@SuppressWarnings("unused") Object object) {
+    }
+
+    private static final ThreadLocalHandshake HANDSHAKE = LanguageAccessor.ACCESSOR.runtimeSupport().getThreadLocalHandshake();
+
+    /**
+     * Temporarily disables thread location notifications on this thread. This method may be used to
+     * determine critical sections in the guest language application during which the execution must
+     * not be interrupted or exited. The guest language implementation must make sure that
+     * safepoints are only disabled for a constant amount of time. It is required to disable
+     * safepoints only for as little time as possible as during this synchronous thread local
+     * notification needs to wait. Because of these restrictions disabling safepoints must not be
+     * exposed to guest applications. Exceptions may be made for known trusted guest code parts,
+     * like lock implementations.
+     * <p>
+     * Example usage:
+     *
+     * <pre>
+     * boolean prev = setSafepointsDisabled(false);
+     * try {
+     *    // criticial section
+     * } finally {
+     *     setSafepointsDisabled(prev)
+     * }
+     * </pre>
+     *
+     *
+     * @see Env#runThreadLocalAsynchronous(Thread[], java.util.function.Consumer)
+     * @see Env#runThreadLocalSynchronous(Thread[], java.util.function.Consumer)
+     * @see #safepoint()
+     *
+     * @since 21.1
+     */
+    public static boolean setSafepointsDisabled(boolean disabled) {
+        return HANDSHAKE.setDisabled(disabled);
+    }
+
+    /**
+     * Allows to run thread local execution at this location in the interpreter. Guest language
+     * implementations must call this method repeatedly within a constant amount of time. Any guest
+     * language call {@link CallTarget} or loop iteration with {@link LoopNode} automatically
+     * notifies this method. In compiled code paths invocations of this method are ignored and the
+     * compiler may insert its own guest language safepoint locations, typically method exits and
+     * loop ends.
+     *
+     * @see Env#runThreadLocalAsynchronous(Thread[], java.util.function.Consumer)
+     * @see Env#runThreadLocalSynchronous(Thread[], java.util.function.Consumer)
+     *
+     * @since 21.1
+     */
+    public static void safepoint() {
+        HANDSHAKE.poll();
     }
 
     /**

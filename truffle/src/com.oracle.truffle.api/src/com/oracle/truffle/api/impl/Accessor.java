@@ -55,8 +55,10 @@ import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
+import java.util.concurrent.Future;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.locks.Lock;
+import java.util.function.Consumer;
 import java.util.function.Function;
 import java.util.function.Supplier;
 import java.util.logging.Handler;
@@ -546,6 +548,8 @@ public abstract class Accessor {
         public abstract Object getEngineLock(Object polyglotEngine);
 
         public abstract long calculateContextHeapSize(Object polyglotContext, long stopAtBytes, AtomicBoolean cancelled);
+
+        public abstract Future<Void> runThreadLocal(Object polyglotLanguageContext, Thread[] threads, Consumer<Thread> action, boolean async);
     }
 
     public abstract static class LanguageSupport extends Support {
@@ -870,6 +874,10 @@ public abstract class Accessor {
             if (permission != PERMISSION) {
                 throw new AssertionError("Invalid permission to create runtime support.");
             }
+        }
+
+        public ThreadLocalHandshake getThreadLocalHandshake() {
+            return DefaultThreadLocalHandshake.INSTANCE;
         }
 
         /**

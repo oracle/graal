@@ -121,6 +121,7 @@ import com.oracle.truffle.api.library.ExportLibrary;
 import com.oracle.truffle.api.library.ExportMessage;
 import com.oracle.truffle.api.nodes.LanguageInfo;
 import com.oracle.truffle.api.nodes.Node;
+import com.oracle.truffle.api.nodes.RootNode;
 import com.oracle.truffle.api.source.SourceSection;
 import com.oracle.truffle.polyglot.PolyglotContextImpl.ContextWeakReference;
 import com.oracle.truffle.polyglot.PolyglotLimits.EngineLimits;
@@ -218,6 +219,17 @@ final class PolyglotEngineImpl extends AbstractPolyglotImpl.AbstractEngineImpl i
 
     @CompilationFinal volatile StableLocalLocations contextLocalLocations = new StableLocalLocations(EMPTY_LOCATIONS);
     @CompilationFinal volatile StableLocalLocations contextThreadLocalLocations = new StableLocalLocations(EMPTY_LOCATIONS);
+
+    /*
+     * Dummy call target used to call runtime methods associated with an engine. Graal truffle
+     * runtime currently requires a call target for initilization. Whenever initialization needs to
+     * be forced we pass this dummy call target. In the future, the runtime will no longer require a
+     * call target but directly take the runtimeData object, then this dummyCallTarget can be
+     * removed.
+     *
+     * See GR-25471.
+     */
+    private volatile CallTarget dummyCallTarget;
 
     PolyglotEngineImpl(PolyglotImpl impl, DispatchOutputStream out, DispatchOutputStream err, InputStream in, OptionValuesImpl engineOptions,
                     Map<String, Level> logLevels,
@@ -665,6 +677,23 @@ final class PolyglotEngineImpl extends AbstractPolyglotImpl.AbstractEngineImpl i
     @Override
     public PolyglotEngineImpl getEngine() {
         return this;
+    }
+
+    CallTarget getDummyCallTarget(PolyglotContextImpl context) {
+        if (dummyCallTarget == null) {
+            synchronized (lock) {
+                if (dummyCallTarget == null) {
+                    CallTarget target = Truffle.getRuntime().createCallTarget(new RootNode(context.getHostContext().getLanguageInstance().spi) {
+                        @Override
+                        public Object execute(VirtualFrame frame) {
+                            return 42;
+                        }
+                    });
+                    dummyCallTarget = target;
+                }
+            }
+        }
+        return dummyCallTarget;
     }
 
     PolyglotLanguage findLanguage(PolyglotLanguageContext accessingLanguage, String languageId, String mimeType, boolean failIfNotFound, boolean allowInternalAndDependent) {
@@ -1520,6 +1549,14 @@ final class PolyglotEngineImpl extends AbstractPolyglotImpl.AbstractEngineImpl i
                 return cancelMessage;
             }
         }
+
+    }
+
+    /*
+     * Used in safepoint tests.
+     */
+    static ThreadDeath createTestCancelExecution() {
+        return new CancelExecution(null, "", false);
     }
 
     @ExportLibrary(InteropLibrary.class)

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2011, 2018, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2020, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -22,45 +22,29 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package org.graalvm.compiler.nodes;
+package org.graalvm.compiler.truffle.compiler.nodes;
 
-import static org.graalvm.compiler.nodeinfo.NodeCycles.CYCLES_2;
-import static org.graalvm.compiler.nodeinfo.NodeSize.SIZE_1;
+import static org.graalvm.compiler.nodeinfo.NodeSize.SIZE_4;
 
 import org.graalvm.compiler.core.common.type.StampFactory;
 import org.graalvm.compiler.graph.NodeClass;
+import org.graalvm.compiler.nodeinfo.NodeCycles;
 import org.graalvm.compiler.nodeinfo.NodeInfo;
-import org.graalvm.compiler.nodes.spi.LIRLowerable;
+import org.graalvm.compiler.nodes.DeoptimizingFixedWithNextNode;
 import org.graalvm.compiler.nodes.spi.Lowerable;
-import org.graalvm.compiler.nodes.spi.NodeLIRBuilderTool;
 
-/**
- * Marks a position in the graph where a safepoint should be emitted.
- */
-// @formatter:off
-@NodeInfo(cycles = CYCLES_2,
-          cyclesRationale = "read",
-          size = SIZE_1)
-// @formatter:on
-public final class SafepointNode extends DeoptimizingFixedWithNextNode implements Lowerable, LIRLowerable {
+@NodeInfo(cycles = NodeCycles.CYCLES_4, cyclesRationale = "read + call", size = SIZE_4)
+public final class TruffleSafepointNode extends DeoptimizingFixedWithNextNode implements Lowerable {
 
-    public static final NodeClass<SafepointNode> TYPE = NodeClass.create(SafepointNode.class);
+    public static final NodeClass<TruffleSafepointNode> TYPE = NodeClass.create(TruffleSafepointNode.class);
 
-    public SafepointNode() {
+    public TruffleSafepointNode() {
         super(TYPE, StampFactory.forVoid());
-    }
-
-    protected SafepointNode(NodeClass<? extends SafepointNode> nodeClass) {
-        super(nodeClass, StampFactory.forVoid());
-    }
-
-    @Override
-    public void generate(NodeLIRBuilderTool gen) {
-        gen.visitSafepointNode(this);
     }
 
     @Override
     public boolean canDeoptimize() {
         return true;
     }
+
 }

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2014, 2020, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2021, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -40,36 +40,69 @@
  */
 package com.oracle.truffle.api.impl;
 
-import com.oracle.truffle.api.CompilerDirectives;
-import com.oracle.truffle.api.frame.VirtualFrame;
-import com.oracle.truffle.api.nodes.LoopNode;
-import com.oracle.truffle.api.nodes.RepeatingNode;
+import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.atomic.AtomicInteger;
 
-public final class DefaultLoopNode extends LoopNode {
+final class DefaultThreadLocalHandshake extends ThreadLocalHandshake {
 
-    @Child private RepeatingNode repeatNode;
+    static final DefaultThreadLocalHandshake INSTANCE = new DefaultThreadLocalHandshake();
+    private static final ThreadLocal<Boolean> DISABLED = ThreadLocal.withInitial(() -> Boolean.FALSE);
+    private static final ConcurrentHashMap<Thread, Boolean> PENDING = new ConcurrentHashMap<>();
 
-    public DefaultLoopNode(RepeatingNode repeatNode) {
-        this.repeatNode = repeatNode;
+    private static final AtomicInteger PENDING_COUNT = new AtomicInteger();
+    private static final AtomicInteger DISABLED_COUNT = new AtomicInteger();
+
+    private DefaultThreadLocalHandshake() {
     }
 
     @Override
-    public RepeatingNode getRepeatingNode() {
-        return repeatNode;
-    }
-
-    @SuppressWarnings("deprecation")
-    @Override
-    public void executeLoop(VirtualFrame frame) {
-        execute(frame);
-    }
-
-    @Override
-    public Object execute(VirtualFrame frame) {
-        Object status;
-        while (repeatNode.shouldContinue((status = repeatNode.executeRepeatingWithValue(frame)))) {
-            CompilerDirectives.safepoint();
+    public void poll() {
+        int count = PENDING_COUNT.get();
+        assert count >= 0 : "inconsistent pending state " + count;
+        if (count > 0) {
+            pollSlowPath(count);
         }
-        return status;
     }
+
+    private void pollSlowPath(int count) {
+        int disabledCount = DISABLED_COUNT.get();
+        assert disabledCount >= 0 : "inconsistent disabled state " + count;
+        if (disabledCount > 0 && DISABLED.get()) {
+            return;
+        }
+        if (PENDING.get(Thread.currentThread()) != null) {
+            processHandshake();
+        }
+    }
+
+    @Override
+    protected void setPending(Thread t) {
+        PENDING.compute(t, (k, p) -> {
+            if (p == null) {
+                PENDING_COUNT.incrementAndGet();
+            }
+            return Boolean.TRUE;
+        });
+    }
+
+    @Override
+    protected void clearPending() {
+        PENDING.compute(Thread.currentThread(), (k, p) -> {
+            if (p != null) {
+                PENDING_COUNT.decrementAndGet();
+            }
+            return null;
+        });
+    }
+
+    @Override
+    public boolean setDisabled(boolean value) {
+        boolean b = DISABLED.get();
+        if (b != value) {
+            DISABLED_COUNT.addAndGet(value ? 1 : -1);
+            DISABLED.set(value);
+        }
+        return b;
+    }
+
 }

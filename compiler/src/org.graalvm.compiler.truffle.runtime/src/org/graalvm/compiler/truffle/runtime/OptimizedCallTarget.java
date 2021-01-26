@@ -622,6 +622,7 @@ public abstract class OptimizedCallTarget implements CompilableTruffleAST, RootC
             if (CompilerDirectives.inInterpreter() && inCompiled) {
                 notifyDeoptimized(frame);
             }
+            CompilerDirectives.safepoint();
         }
     }
 
@@ -662,7 +663,7 @@ public abstract class OptimizedCallTarget implements CompilableTruffleAST, RootC
     }
 
     public final OptionValues getOptionValues() {
-        return engine.engineOptions;
+        return engine.getEngineOptions();
     }
 
     public final <T> T getOptionValue(OptionKey<T> key) {
