@@ -29,6 +29,7 @@ import org.graalvm.compiler.nodeinfo.NodeInfo;
 import org.graalvm.compiler.replacements.nodes.ReflectionGetCallerClassNode;
 
 import jdk.vm.ci.hotspot.HotSpotResolvedJavaMethod;
+import jdk.vm.ci.meta.MetaAccessProvider;
 import jdk.vm.ci.meta.ResolvedJavaMethod;
 
 @NodeInfo
@@ -46,7 +47,7 @@ public final class HotSpotReflectionGetCallerClassNode extends ReflectionGetCall
     }
 
     @Override
-    protected boolean ignoredBySecurityStackWalk(ResolvedJavaMethod method) {
+    protected boolean ignoredBySecurityStackWalk(MetaAccessProvider metaAccess, ResolvedJavaMethod method) {
         return ((HotSpotResolvedJavaMethod) method).ignoredBySecurityStackWalk();
     }
 }
