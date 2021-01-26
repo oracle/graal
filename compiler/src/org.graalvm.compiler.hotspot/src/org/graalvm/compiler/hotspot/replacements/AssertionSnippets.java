@@ -74,6 +74,13 @@ public class AssertionSnippets implements Snippets {
     }
 
     @Snippet
+    public static void printAssertion(boolean condition, @ConstantParameter Word message, long l1, long l2) {
+        if (injectBranchProbability(SLOWPATH_PROBABILITY, !condition)) {
+            vmMessageC(ASSERTION_VM_MESSAGE_C, false, message, l1, l2, 0L);
+        }
+    }
+
+    @Snippet
     public static void stubAssertion(boolean condition, @ConstantParameter Word message, long l1, long l2) {
         if (injectBranchProbability(SLOWPATH_PROBABILITY, !condition)) {
             vmMessageStub(ASSERTION_VM_MESSAGE_C, true, message, l1, l2, 0L);
@@ -89,6 +96,7 @@ public class AssertionSnippets implements Snippets {
     public static class Templates extends AbstractTemplates {
 
         private final SnippetInfo assertion = snippet(AssertionSnippets.class, "assertion");
+        private final SnippetInfo assertionWPrint = snippet(AssertionSnippets.class, "printAssertion");
         private final SnippetInfo stubAssertion = snippet(AssertionSnippets.class, "stubAssertion");
 
         public Templates(OptionValues options, Iterable<DebugHandlersFactory> factories, HotSpotProviders providers, TargetDescription target) {
@@ -97,7 +105,11 @@ public class AssertionSnippets implements Snippets {
 
         public void lower(AssertionNode assertionNode, LoweringTool tool) {
             StructuredGraph graph = assertionNode.graph();
-            Arguments args = new Arguments(graph.start() instanceof StubStartNode ? stubAssertion : assertion, graph.getGuardsStage(), tool.getLoweringStage());
+            SnippetInfo info = graph.start() instanceof StubStartNode ? stubAssertion : assertion;
+            if (assertionNode.isPrintAssertionAlways()) {
+                info = assertionWPrint;
+            }
+            Arguments args = new Arguments(info, graph.getGuardsStage(), tool.getLoweringStage());
             args.add("condition", assertionNode.condition());
             args.addConst("message",
                             graph.unique(new ConstantNode(new CStringConstant("failed runtime assertion in snippet/stub: " + assertionNode.message() + " (" + graph.method() + ")"),

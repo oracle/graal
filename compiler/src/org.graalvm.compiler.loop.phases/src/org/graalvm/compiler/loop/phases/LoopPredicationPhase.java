@@ -26,8 +26,10 @@
 
 package org.graalvm.compiler.loop.phases;
 
-import jdk.vm.ci.code.BytecodePosition;
-import jdk.vm.ci.meta.SpeculationLog;
+import static org.graalvm.compiler.core.common.GraalOptions.LoopPredicationMainPath;
+import static org.graalvm.compiler.core.common.calc.Condition.EQ;
+import static org.graalvm.compiler.core.common.calc.Condition.NE;
+
 import org.graalvm.collections.EconomicMap;
 import org.graalvm.compiler.core.common.calc.Condition;
 import org.graalvm.compiler.core.common.cfg.AbstractControlFlowGraph;
@@ -63,9 +65,8 @@ import org.graalvm.compiler.phases.BasePhase;
 import org.graalvm.compiler.phases.tiers.MidTierContext;
 import org.graalvm.compiler.serviceprovider.SpeculationReasonGroup;
 
-import static org.graalvm.compiler.core.common.GraalOptions.LoopPredicationMainPath;
-import static org.graalvm.compiler.core.common.calc.Condition.EQ;
-import static org.graalvm.compiler.core.common.calc.Condition.NE;
+import jdk.vm.ci.code.BytecodePosition;
+import jdk.vm.ci.meta.SpeculationLog;
 
 public class LoopPredicationPhase extends BasePhase<MidTierContext> {
     private static final SpeculationReasonGroup LOOP_PREDICATION = new SpeculationReasonGroup("Loop Predication", BytecodePosition.class);
@@ -97,6 +98,7 @@ public class LoopPredicationPhase extends BasePhase<MidTierContext> {
                         final CountedLoopInfo counted = loop.counted();
                         final InductionVariable counter = counted.getCounter();
                         final Condition condition = ((CompareNode) counted.getLimitTest().condition()).condition().asCondition();
+                        final boolean inverted = loop.counted().isInverted();
                         if ((((IntegerStamp) counter.valueNode().stamp(NodeView.DEFAULT)).getBits() == 32) &&
                                         !counted.isUnsignedCheck() &&
                                         ((condition != NE && condition != EQ) || (counter.isConstantStride() && Math.abs(counter.constantStride()) == 1)) &&
@@ -116,11 +118,15 @@ public class LoopPredicationPhase extends BasePhase<MidTierContext> {
                             }
                             final AbstractBeginNode body = loop.counted().getBody();
                             final Block bodyBlock = cfg.getNodeToBlock().get(body);
+
                             for (GuardNode guard : guards) {
                                 final AnchoringNode anchor = guard.getAnchor();
                                 final Block anchorBlock = cfg.getNodeToBlock().get(anchor.asNode());
-                                if (!AbstractControlFlowGraph.dominates(bodyBlock, anchorBlock)) {
-                                    continue;
+                                // for inverted loop the anchor can dominate the body
+                                if (!inverted) {
+                                    if (!AbstractControlFlowGraph.dominates(bodyBlock, anchorBlock)) {
+                                        continue;
+                                    }
                                 }
                                 processGuard(loop, guard);
                             }

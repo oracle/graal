@@ -616,6 +616,9 @@ public final class ControlFlowGraph implements AbstractControlFlowGraph<Block> {
                 if (beginNode instanceof LoopBeginNode) {
                     Loop<Block> parent = block.getLoop();
                     Loop<Block> loop = new HIRLoop(parent, loops.size(), block);
+                    if (((LoopBeginNode) beginNode).getInversionCount() > 0) {
+                        loop.setInverted(true);
+                    }
                     if (parent != null) {
                         parent.getChildren().add(loop);
                     }

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2014, 2020, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2014, 2021, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -57,8 +57,9 @@ public final class AssertionNode extends FixedWithNextNode implements Lowerable,
 
     protected final boolean compileTimeAssertion;
     protected final String message;
+    private boolean printAssertionAlways;
 
-    protected AssertionNode(@ConstantNodeParameter boolean compileTimeAssertion, ValueNode condition, @ConstantNodeParameter String message, @ConstantNodeParameter Object msgArg1,
+    public AssertionNode(@ConstantNodeParameter boolean compileTimeAssertion, ValueNode condition, @ConstantNodeParameter String message, @ConstantNodeParameter Object msgArg1,
                     @ConstantNodeParameter Object msgArg2,
                     ValueNode l1, ValueNode l2) {
         super(TYPE, StampFactory.forVoid());
@@ -67,6 +68,14 @@ public final class AssertionNode extends FixedWithNextNode implements Lowerable,
         this.message = message + msgArg1 + msgArg2;
         this.l1 = l1;
         this.l2 = l2;
+    }
+
+    public void setPrintAssertionAlways(boolean printAssertionAlways) {
+        this.printAssertionAlways = printAssertionAlways;
+    }
+
+    public boolean isPrintAssertionAlways() {
+        return printAssertionAlways;
     }
 
     public ValueNode getL1() {
