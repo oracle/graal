@@ -74,6 +74,11 @@ final class DefaultRuntimeAccessor extends Accessor {
         }
 
         @Override
+        public ThreadLocalHandshake getThreadLocalHandshake() {
+            return DefaultThreadLocalHandshake.INSTANCE;
+        }
+
+        @Override
         public void onLoopCount(Node source, int iterations) {
             // do nothing
         }

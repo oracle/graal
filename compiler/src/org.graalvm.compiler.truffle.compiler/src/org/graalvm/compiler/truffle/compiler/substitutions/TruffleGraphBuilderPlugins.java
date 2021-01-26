@@ -394,6 +394,17 @@ public class TruffleGraphBuilderPlugins {
                 return true;
             }
         });
+
+        // TODO uncomment this to remove safepoints from graphs disappear
+// r.register0("safepoint", new InvocationPlugin() {
+// @Override
+// public boolean apply(GraphBuilderContext b, ResolvedJavaMethod targetMethod, Receiver receiver) {
+// /*
+// * Compiled code on does not need safepoints they are inserted in an extra phase.
+// */
+// return true;
+// }
+// });
     }
 
     public static void registerCompilerAssertsPlugins(InvocationPlugins plugins, MetaAccessProvider metaAccess, boolean canDelayIntrinsification) {

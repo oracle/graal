@@ -101,6 +101,7 @@ import com.oracle.truffle.api.frame.MaterializedFrame;
 import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.impl.AbstractAssumption;
 import com.oracle.truffle.api.impl.TVMCI;
+import com.oracle.truffle.api.impl.ThreadLocalHandshake;
 import com.oracle.truffle.api.nodes.DirectCallNode;
 import com.oracle.truffle.api.nodes.ExplodeLoop;
 import com.oracle.truffle.api.nodes.IndirectCallNode;
@@ -184,6 +185,8 @@ public abstract class GraalTruffleRuntime implements TruffleRuntime, TruffleComp
     public TruffleMetaAccessProvider createInliningPlan() {
         return new TruffleInlining();
     }
+
+    public abstract ThreadLocalHandshake getThreadLocalHandshake();
 
     @Override
     public String getName() {
@@ -1105,9 +1108,9 @@ public abstract class GraalTruffleRuntime implements TruffleRuntime, TruffleComp
      * Returns OptimizedCallTarget's {@link PolyglotCompilerOptions} as a {@link Map}. The returned
      * map can be passed as a {@code options} to the {@link TruffleCompiler} methods.
      */
-    public static Map<String, Object> getOptionsForCompiler(OptimizedCallTarget callTarget) {
+    public static Map<String, Object> getOptionsForCompiler(OptimizedCallTarget target) {
         Map<String, Object> map = new HashMap<>();
-        OptionValues values = callTarget == null ? null : callTarget.getOptionValues();
+        OptionValues values = target.engine.getEngineOptions();
 
         for (OptionDescriptor desc : PolyglotCompilerOptions.getDescriptors()) {
             final OptionKey<?> key = desc.getKey();

@@ -199,6 +199,30 @@ public abstract class JavaThreads {
         return toTarget(thread).isVirtual();
     }
 
+    @Uninterruptible(reason = "Calls uninterruptible code.", mayBeInlined = true)
+    public static IsolateThread fromJavaThread(Thread t) {
+        if (t == Thread.currentThread()) {
+            // fast path
+            return CurrentIsolate.getCurrentThread();
+        } else {
+            return findIsolateThread(t);
+        }
+    }
+
+    @Uninterruptible(reason = "Calls uninterruptible code.", mayBeInlined = true)
+    private static IsolateThread findIsolateThread(Thread search) {
+        // TODO this is is unsafe. we need a better solution
+        // running this in a safepoint seems too slow and
+        // locking the thread mutex may lead to deadlocks.
+        for (IsolateThread vmThread = VMThreads.firstThreadUnsafe(); vmThread.isNonNull(); vmThread = VMThreads.nextThread(vmThread)) {
+            Thread current = currentThread.get(vmThread);
+            if (current == search) {
+                return vmThread;
+            }
+        }
+        throw VMError.shouldNotReachHere("Java thread not alive.");
+    }
+
     @SuppressFBWarnings(value = "BC", justification = "Cast for @TargetClass")
     static Target_java_lang_ThreadGroup toTarget(ThreadGroup threadGroup) {
         return Target_java_lang_ThreadGroup.class.cast(threadGroup);
