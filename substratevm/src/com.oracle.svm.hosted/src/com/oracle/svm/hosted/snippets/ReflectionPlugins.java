@@ -69,6 +69,7 @@ import com.oracle.svm.hosted.ImageClassLoader;
 import com.oracle.svm.hosted.c.GraalAccess;
 import com.oracle.svm.hosted.substitute.AnnotationSubstitutionProcessor;
 import com.oracle.svm.hosted.substitute.DeletedElementException;
+import com.oracle.svm.util.ModuleSupport;
 import com.oracle.svm.util.ReflectionUtil;
 
 import jdk.vm.ci.meta.JavaConstant;
@@ -294,6 +295,7 @@ public final class ReflectionPlugins {
      */
     private void registerFoldInvocationPlugins(InvocationPlugins plugins, Class<?> declaringClass, String... methodNames) {
         Set<String> methodNamesSet = new HashSet<>(Arrays.asList(methodNames));
+        ModuleSupport.openModuleByClass(declaringClass, ReflectionPlugins.class);
         for (Method method : declaringClass.getDeclaredMethods()) {
             if (methodNamesSet.contains(method.getName()) && !method.isSynthetic()) {
                 registerFoldInvocationPlugin(plugins, method);

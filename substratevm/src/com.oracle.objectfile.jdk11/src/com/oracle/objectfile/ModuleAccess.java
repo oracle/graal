@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2019, 2019, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2021, 2021, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -22,10 +22,22 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.svm.core.jdk;
 
-public class AnnotationSupportConfig {
-    public static void initialize() {
-        ModuleUtils.addOpensToAllUnnamed("java.base", "jdk.internal.vm.annotation");
+package com.oracle.objectfile;
+
+import jdk.internal.module.Modules;
+
+public class ModuleAccess {
+    public static void openModuleByClass(Class<?> declaringClass, Class<?> accessingClass) {
+        Module declaringModule = declaringClass.getModule();
+        String packageName = declaringClass.getPackageName();
+        Module accessingModule = accessingClass == null ? null : accessingClass.getModule();
+        if (accessingModule != null && accessingModule.isNamed()) {
+            if (!declaringModule.isOpen(packageName, accessingModule)) {
+                Modules.addOpens(declaringModule, packageName, accessingModule);
+            }
+        } else {
+            Modules.addOpensToAllUnnamed(declaringModule, packageName);
+        }
     }
 }

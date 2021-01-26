@@ -61,7 +61,7 @@ public final class ModuleSupport {
          * Open up module that contains the bundleClass so that ResourceBundle.getBundle can
          * succeed.
          */
-        ModuleSupport.openModule(bundleClass, ModuleSupport.class);
+        ModuleSupport.openModuleByClass(bundleClass, ModuleSupport.class);
         return ResourceBundle.getBundle(bundleName, locale, bundleClass.getModule());
     }
 
@@ -114,7 +114,7 @@ public final class ModuleSupport {
         return result;
     }
 
-    public static void openModule(Class<?> declaringClass, Class<?> accessingClass) {
+    public static void openModuleByClass(Class<?> declaringClass, Class<?> accessingClass) {
         Module declaringModule = declaringClass.getModule();
         String packageName = declaringClass.getPackageName();
         Module accessingModule = accessingClass == null ? null : accessingClass.getModule();
@@ -127,8 +127,29 @@ public final class ModuleSupport {
         }
     }
 
-    public static ClassLoader getPlatformClassLoader() {
-        return ClassLoader.getPlatformClassLoader();
+    /**
+     * Exports and opens a single package {@code packageName} in the module named {@code name} to
+     * all unnamed modules.
+     */
+    @SuppressWarnings("unused")
+    public static void exportAndOpenPackageToClass(String name, String packageName, boolean optional, Class<?> accessingClass) {
+        Optional<Module> value = ModuleLayer.boot().findModule(name);
+        if (value.isEmpty()) {
+            if (!optional) {
+                throw new NoSuchElementException(name);
+            }
+            return;
+        }
+        Module declaringModule = value.get();
+        Module accessingModule = accessingClass == null ? null : accessingClass.getModule();
+        if (accessingModule != null && accessingModule.isNamed()) {
+            if (!declaringModule.isOpen(packageName, accessingModule)) {
+                Modules.addOpens(declaringModule, packageName, accessingModule);
+            }
+        } else {
+            Modules.addOpensToAllUnnamed(declaringModule, packageName);
+        }
+
     }
 
     /**

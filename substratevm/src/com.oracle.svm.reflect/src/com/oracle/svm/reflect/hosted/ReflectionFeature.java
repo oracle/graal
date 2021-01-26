@@ -42,6 +42,8 @@ import com.oracle.svm.hosted.analysis.Inflation;
 import com.oracle.svm.hosted.config.ConfigurationParserUtils;
 import com.oracle.svm.hosted.snippets.ReflectionPlugins;
 import com.oracle.svm.hosted.substitute.AnnotationSubstitutionProcessor;
+import com.oracle.svm.reflect.helpers.ReflectionProxy;
+import com.oracle.svm.util.ModuleSupport;
 
 @AutomaticFeature
 public final class ReflectionFeature implements GraalFeature {
@@ -52,6 +54,12 @@ public final class ReflectionFeature implements GraalFeature {
     private ImageClassLoader loader;
     private AnalysisUniverse aUniverse;
     private int loadedConfigurations;
+
+    @Override
+    public void afterRegistration(AfterRegistrationAccess access) {
+        ModuleSupport.exportAndOpenPackageToUnnamed("java.base", "jdk.internal.reflect", false);
+        ModuleSupport.openModuleByClass(ReflectionProxy.class, null);
+    }
 
     @Override
     public void duringSetup(DuringSetupAccess a) {

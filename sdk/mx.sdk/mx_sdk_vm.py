@@ -126,27 +126,23 @@ class AbstractNativeImageConfig(_with_metaclass(ABCMeta, object)):
             add_exports.append('--add-exports=' + required_module_name + '/' + required_package_name + "=" + target_modules_str)
         return sorted(add_exports)
 
-    def get_add_exports(self):
-        distributions = self.jar_distributions
-        distributions_transitive = mx.classpath_entries(distributions)
-        required_exports = mx_javamodules.requiredExports(distributions_transitive, base_jdk())
-        return ' '.join(AbstractNativeImageConfig.get_add_exports_list(required_exports))
-
 
 class LauncherConfig(AbstractNativeImageConfig):
     def __init__(self, destination, jar_distributions, main_class, build_args, is_main_launcher=True,
                  default_symlinks=True, is_sdk_launcher=False, custom_launcher_script=None, extra_jvm_args=None,
-                 option_vars=None, home_finder=True, **kwargs):
+                 is_module_launcher=False, option_vars=None, home_finder=True, **kwargs):
         """
         :param str main_class
         :param bool is_main_launcher
         :param bool default_symlinks
         :param bool is_sdk_launcher: Whether it uses org.graalvm.launcher.Launcher
+        :param bool is_module_launcher: Whether it uses classpath or module-path for the application
         :param str custom_launcher_script: Custom launcher script, to be used when not compiled as a native image
         """
         super(LauncherConfig, self).__init__(destination, jar_distributions, build_args, home_finder=home_finder, **kwargs)
         self.main_class = main_class
         self.is_main_launcher = is_main_launcher
+        self.module_launcher = is_module_launcher
         self.default_symlinks = default_symlinks
         self.is_sdk_launcher = is_sdk_launcher
         self.custom_launcher_script = custom_launcher_script
@@ -160,6 +156,15 @@ class LauncherConfig(AbstractNativeImageConfig):
             raise Exception('the relative home path of {} is already set to {} and cannot also be set to {} for {}'.format(
                 language, self.relative_home_paths[language], path, self.destination))
         self.relative_home_paths[language] = path
+
+    def get_add_exports(self, missing_jars):
+        if not self.module_launcher:
+            return ''
+        distributions = self.jar_distributions
+        distributions_transitive = mx.classpath_entries(distributions)
+        distributions_transitive_clean = [entry for entry in distributions_transitive if str(entry) not in missing_jars]
+        required_exports = mx_javamodules.requiredExports(distributions_transitive_clean, base_jdk())
+        return ' '.join(AbstractNativeImageConfig.get_add_exports_list(required_exports))
 
 
 class LanguageLauncherConfig(LauncherConfig):
@@ -207,6 +212,7 @@ class GraalVmComponent(object):
                  has_polyglot_lib_entrypoints=False,
                  boot_jars=None,
                  jvmci_parent_jars=None,
+                 jlink=True,
                  priority=None,
                  installable=None,
                  post_install_msg=None,
@@ -294,6 +300,8 @@ class GraalVmComponent(object):
             else:
                 stability = "experimental"
         self.stability = stability
+
+        self.jlink = jlink
 
         assert isinstance(self.jar_distributions, list)
         assert isinstance(self.builder_jar_distributions, list)
@@ -532,7 +540,7 @@ def jdk_omits_warning_for_jlink_set_ThreadPriorityPolicy(jdk): # pylint: disable
         setattr(jdk, '.omits_ThreadPriorityPolicy_warning', '-XX:ThreadPriorityPolicy=1 may require system level permission' not in out.data)
     return getattr(jdk, '.omits_ThreadPriorityPolicy_warning')
 
-def jlink_new_jdk(jdk, dst_jdk_dir, module_dists,
+def jlink_new_jdk(jdk, dst_jdk_dir, module_dists, ignore_dists,
                   root_module_names=None,
                   missing_export_target_action='create',
                   with_source=lambda x: True,
@@ -545,10 +553,11 @@ def jlink_new_jdk(jdk, dst_jdk_dir, module_dists,
     :param JDKConfig jdk: source JDK
     :param str dst_jdk_dir: path to use for the jlink --output option
     :param list module_dists: list of distributions defining modules
+    :param list ignore_dists: list of distributions that should be ignored for missing_export_target_action
     :param list root_module_names: list of strings naming the module root set for the new JDK image.
                      The named modules must either be in `module_dists` or in `jdk`. If None, then
                      the root set will be all the modules in ``module_dists` and `jdk`.
-    :param str missing_export_target_action: the action to perform for a qualifed export target that
+    :param str missing_export_target_action: the action to perform for a qualified export target that
                      is not present in `module_dists` and does not have a hash stored in java.base.
                      The choices are:
                        "create" - an empty module is created
@@ -594,13 +603,14 @@ def jlink_new_jdk(jdk, dst_jdk_dir, module_dists,
 
     synthetic_modules = []
     try:
+        ignore_module_names = set(mx_javamodules.get_module_name(mx.dependency(ignore_dist)) for ignore_dist in ignore_dists)
         # Synthesize modules for targets of qualified exports that are not present in `modules`.
         # Without this, runtime module resolution will fail due to missing modules.
         target_requires = {}
         for jmd in modules:
             for targets in jmd.exports.values():
                 for target in targets:
-                    if target not in all_module_names and target not in hashes:
+                    if target not in all_module_names and target not in ignore_module_names and target not in hashes:
                         target_requires.setdefault(target, set()).add(jmd.name)
         if target_requires and missing_export_target_action is not None:
             if missing_export_target_action == 'error':
