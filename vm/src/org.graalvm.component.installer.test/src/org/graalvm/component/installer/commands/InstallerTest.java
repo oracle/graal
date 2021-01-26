@@ -698,7 +698,11 @@ public class InstallerTest extends TestBase {
     public void testCheckFileReplacementSame() throws Exception {
         setupComponentInstall("truffleruby2.jar");
 
-        Path existing = dataFile("ruby");
+        Path existingOrig = dataFile("ruby");
+
+        Path existing = expandedFolder.newFile("testCheckFileReplacementSame-ruby").toPath();
+        // regardless of CRLF, join lines with \n, write as bytes to bypass CRLF conversion.
+        Files.write(existing, (String.join("\n", Files.readAllLines(existingOrig)) + "\n").getBytes("UTF-8"));
 
         Archive.FileEntry je = componentJarFile.getJarEntry("jre/bin/ruby");
 
