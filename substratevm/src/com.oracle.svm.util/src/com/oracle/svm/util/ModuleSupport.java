@@ -77,22 +77,19 @@ public final class ModuleSupport {
      * Add the proper module opening to allow accesses from accessingClass to declaringClass.
      */
     @SuppressWarnings("unused")
-    public static void openModule(Class<?> declaringClass, Class<?> accessingClass) {
+    public static void openModuleByClass(Class<?> declaringClass, Class<?> accessingClass) {
         /* Nothing to do in JDK 8 version. JDK 11 version provides a proper implementation. */
         assert JavaVersionUtil.JAVA_SPEC <= 8;
     }
 
     /**
-     * Register the PlatformClassLoader.
+     * Exports and opens a single package {@code packageName} in the module named {@code name} to
+     * all unnamed modules.
      */
     @SuppressWarnings("unused")
-    public static void registerPlatformClassLoader() {
+    public static void exportAndOpenPackageToClass(String name, String packageName, boolean optional, Class<?> accessingClass) {
         /* Nothing to do in JDK 8 version. JDK 11 version provides a proper implementation. */
         assert JavaVersionUtil.JAVA_SPEC <= 8;
-    }
-
-    public static ClassLoader getPlatformClassLoader() {
-        return ClassLoader.getSystemClassLoader();
     }
 
     /**

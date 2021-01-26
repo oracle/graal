@@ -89,6 +89,7 @@ import com.oracle.svm.core.util.VMError;
 import com.oracle.svm.hosted.FeatureImpl.DuringAnalysisAccessImpl;
 import com.oracle.svm.hosted.FeatureImpl.DuringSetupAccessImpl;
 import com.oracle.svm.hosted.c.NativeLibraries;
+import com.oracle.svm.util.ModuleSupport;
 import com.oracle.svm.util.ReflectionUtil;
 
 import sun.security.provider.NativePRNG;
@@ -146,6 +147,12 @@ public class SecurityServicesFeature extends JNIRegistrationUtil implements Feat
     @Override
     public boolean isInConfiguration(IsInConfigurationAccess access) {
         return Options.EnableSecurityServicesFeature.getValue();
+    }
+
+    @Override
+    public void afterRegistration(AfterRegistrationAccess a) {
+        ModuleSupport.exportAndOpenPackageToClass("java.base", "sun.security.x509", false, getClass());
+        ModuleSupport.openModuleByClass(Security.class, getClass());
     }
 
     @Override

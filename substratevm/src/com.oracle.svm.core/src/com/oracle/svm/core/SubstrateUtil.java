@@ -152,15 +152,13 @@ public class SubstrateUtil {
 
     public static String getShellCommandString(List<String> cmd, boolean multiLine) {
         StringBuilder sb = new StringBuilder();
-        for (String arg : cmd) {
-            sb.append(quoteShellArg(arg));
-            if (multiLine) {
-                sb.append(" \\\n");
-            } else {
-                sb.append(' ');
+        for (int i = 0; i < cmd.size(); i++) {
+            if (i > 0) {
+                sb.append(multiLine ? " \\\n" : " ");
             }
+            sb.append(quoteShellArg(cmd.get(i)));
         }
-        return sb.toString().trim();
+        return sb.toString();
     }
 
     @TargetClass(com.oracle.svm.core.SubstrateUtil.class)

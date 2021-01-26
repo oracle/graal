@@ -56,6 +56,9 @@ import com.oracle.svm.core.util.UserError;
 
 public class SubstrateOptions {
 
+    @Option(help = "Module containing the class that contains the main entry point. Optional if --shared is used.", type = OptionType.User)//
+    public static final HostedOptionKey<String> Module = new HostedOptionKey<>("");
+
     @Option(help = "Class containing the default entry point method. Optional if --shared is used.", type = OptionType.User)//
     public static final HostedOptionKey<String> Class = new HostedOptionKey<>("");
 
@@ -104,6 +107,7 @@ public class SubstrateOptions {
     public static final HostedOptionKey<Integer> FallbackThreshold = new HostedOptionKey<>(Automatic);
 
     public static final String IMAGE_CLASSPATH_PREFIX = "-imagecp";
+    public static final String IMAGE_MODULEPATH_PREFIX = "-imagemp";
     public static final String WATCHPID_PREFIX = "-watchpid";
     private static ValueUpdateHandler optimizeValueUpdateHandler;
     private static ValueUpdateHandler debugInfoValueUpdateHandler = SubstrateOptions::defaultDebugInfoValueUpdateHandler;

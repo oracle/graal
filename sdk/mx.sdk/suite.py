@@ -340,6 +340,7 @@ suite = {
           "org.graalvm.word",
           "org.graalvm.polyglot.impl to org.graalvm.truffle",
           "org.graalvm.word.impl to jdk.internal.vm.compiler",
+          "org.graalvm.nativeimage.impl to org.graalvm.nativeimage.builder",
         ],
         "uses" : [
           "org.graalvm.polyglot.impl.AbstractPolyglotImpl"

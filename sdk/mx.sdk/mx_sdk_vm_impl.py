@@ -366,11 +366,19 @@ class BaseGraalVmLayoutDistribution(_with_metaclass(ABCMeta, mx.LayoutDistributi
         self._post_build_warnings = []
 
         self.jimage_jars = set()
+        self.jimage_ignore_jars = set()
         if is_graalvm and _src_jdk_version >= 9:
             for component in self.components:
-                self.jimage_jars.update(component.boot_jars + component.jvmci_parent_jars)
-                if isinstance(component, mx_sdk.GraalVmJvmciComponent):
-                    self.jimage_jars.update(component.jvmci_jars)
+                if component.jlink:
+                    self.jimage_jars.update(component.boot_jars + component.jvmci_parent_jars)
+                    if isinstance(component, mx_sdk.GraalVmJvmciComponent):
+                        self.jimage_jars.update(component.jvmci_jars)
+                else:
+                    self.jimage_ignore_jars.update(component.jar_distributions)
+                    self.jimage_ignore_jars.update(component.builder_jar_distributions)
+                    for launcher_config in component.launcher_configs:
+                        if launcher_config.jar_distributions:
+                            self.jimage_ignore_jars.update(launcher_config.jar_distributions)
 
         def _add(_layout, dest, src, component=None, with_sources=False):
             """
@@ -663,6 +671,7 @@ class BaseGraalVmLayoutDistribution(_with_metaclass(ABCMeta, mx.LayoutDistributi
 
             for _launcher_config in sorted(_get_launcher_configs(_component), key=lambda c: c.destination):
                 graalvm_dists.update(_launcher_config.jar_distributions)
+                self.jimage_ignore_jars.update(_launcher_config.jar_distributions)
                 _launcher_dest = _component_base + GraalVmLauncher.get_launcher_destination(_launcher_config, stage1)
                 # add `LauncherConfig.destination` to the layout
                 launcher_project = GraalVmLauncher.launcher_project_name(_launcher_config, stage1)
@@ -1409,10 +1418,11 @@ class GraalVmJImage(mx.Project):
     """
     __metaclass__ = ABCMeta
 
-    def __init__(self, suite, jimage_jars, workingSets, theLicense=None, **kw_args):
+    def __init__(self, suite, jimage_jars, jimage_ignore_jars, workingSets, theLicense=None, **kw_args):
         super(GraalVmJImage, self).__init__(suite=suite, name='graalvm-jimage', subDir=None, srcDirs=[], deps=jimage_jars,
                                             workingSets=workingSets, d=_suite.dir, theLicense=theLicense,
                                             **kw_args)
+        self.jimage_ignore_jars = jimage_ignore_jars or []
 
     def isPlatformDependent(self):
         return True
@@ -1447,7 +1457,7 @@ class GraalVmJImageBuildTask(mx.ProjectBuildTask):
         vendor_info = {'vendor-version': graalvm_vendor_version(get_final_graalvm_distribution())}
 
         if _jlink_libraries():
-            mx_sdk.jlink_new_jdk(_src_jdk, self.subject.output_directory(), self.subject.deps, with_source=with_source, vendor_info=vendor_info)
+            mx_sdk.jlink_new_jdk(_src_jdk, self.subject.output_directory(), self.subject.deps, self.subject.jimage_ignore_jars, with_source=with_source, vendor_info=vendor_info)
         else:
             mx.warn("--no-jlinking flag used. The resulting VM will be HotSpot, not GraalVM")
             shutil.copytree(_src_jdk.home, self.subject.output_directory(), symlinks=True)
@@ -1778,6 +1788,9 @@ class GraalVmBashLauncherBuildTask(GraalVmNativeImageBuildTask):
         def _get_main_class():
             return self.subject.native_image_config.main_class
 
+        def _is_module_launcher():
+            return str(self.subject.native_image_config.module_launcher)
+
         def _get_extra_jvm_args():
             image_config = self.subject.native_image_config
             extra_jvm_args = mx.list_to_cmd_line(image_config.extra_jvm_args)
@@ -1801,7 +1814,12 @@ class GraalVmBashLauncherBuildTask(GraalVmNativeImageBuildTask):
                 return '-J--add-exports=jdk.internal.vm.ci/jdk.vm.ci.code=jdk.internal.vm.compiler'
             return ''
 
+        def _get_add_exports():
+            return self.subject.native_image_config.get_add_exports(_known_missing_jars)
+
         _template_subst = mx_subst.SubstitutionEngine(mx_subst.string_substitutions)
+        _template_subst.register_no_arg('module_launcher', _is_module_launcher)
+        _template_subst.register_no_arg('add_exports', _get_add_exports)
         _template_subst.register_no_arg('classpath', _get_classpath)
         _template_subst.register_no_arg('jre_bin', _get_jre_bin)
         _template_subst.register_no_arg('main_class', _get_main_class)
@@ -2317,6 +2335,11 @@ def get_stage1_graalvm_distribution():
         _stage1_graalvm_distribution = GraalVmLayoutDistribution(_graalvm_base_name, stage1=True)
         _stage1_graalvm_distribution.description = "GraalVM distribution (stage1)"
         _stage1_graalvm_distribution.maven = False
+        global _final_graalvm_distribution
+        assert _final_graalvm_distribution
+        # Ensure final_graalvm_distribution knows about jars that must not be jlinked that were added during stage1
+        # (this ensures we are not jlinking of SVM_DRIVER component)
+        _final_graalvm_distribution.jimage_ignore_jars.update(_stage1_graalvm_distribution.jimage_ignore_jars)
     return _stage1_graalvm_distribution
 
 
@@ -2469,13 +2492,6 @@ def mx_register_dynamic_suite_constituents(register_project, register_distributi
         if _src_jdk_version == 8 and jvmci_parent_jars:
             register_project(GraalVmJvmciParentClasspath(jvmci_parent_jars))
 
-        if _src_jdk.javaCompliance >= '9':
-            register_project(GraalVmJImage(
-                suite=_suite,
-                jimage_jars=sorted(get_final_graalvm_distribution().jimage_jars),
-                workingSets=None,
-            ))
-
     if needs_stage1:
         if register_project:
             for component in registered_graalvm_components(stage1=True):
@@ -2486,6 +2502,15 @@ def mx_register_dynamic_suite_constituents(register_project, register_distributi
                 for launcher_config in _get_launcher_configs(component):
                     register_project(config_class(component, launcher_config, stage1=True))
         register_distribution(get_stage1_graalvm_distribution())
+
+    if register_project:
+        if _src_jdk.javaCompliance >= '9':
+            register_project(GraalVmJImage(
+                suite=_suite,
+                jimage_jars=sorted(get_final_graalvm_distribution().jimage_jars),
+                jimage_ignore_jars=sorted(get_final_graalvm_distribution().jimage_ignore_jars),
+                workingSets=None,
+            ))
 
     if _with_debuginfo():
         if _get_svm_support().is_debug_supported() or mx.get_opts().strip_jars:
