@@ -142,7 +142,7 @@ public final class Target_java_lang_ref_Reference<T> {
          * (i.e., Shenandoah and ZGC). G1 only processes references at safepoints, so this shouldn't
          * be an issue for Native Image
          * 
-         * JDK-8240696: These issues affect G1.
+         * JDK-8240696: This issue affects G1.
          *
          * This barrier-less write is to resolve JDK-8240696.
          */
