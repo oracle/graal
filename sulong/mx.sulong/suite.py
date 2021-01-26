@@ -515,7 +515,7 @@ suite = {
       "checkstyle" : "com.oracle.truffle.llvm.runtime",
       "license" : "BSD-new",
       "testProject" : True,
-      "jacoco" : "exclude",
+      "defaultBuild" : False,
     },
 
     "com.oracle.truffle.llvm.tests.pipe" : {
@@ -1437,6 +1437,7 @@ suite = {
         "./": "dependency:com.oracle.truffle.llvm.tools.fuzzing.native/*",
       },
       "license": "BSD-new",
+      "defaultBuild" : False,
     },
 
     "SULONG_TEST" : {

@@ -732,7 +732,13 @@ def llvm_extra_tool(args=None, out=None, **kwargs):
     program = args[0]
     dep = mx.dependency(_LLVM_EXTRA_TOOL_DIST, fatalIfMissing=True)
     llvm_program = os.path.join(dep.get_output(), 'bin', program)
-    mx.run([llvm_program] + args[1:], out=out, **kwargs)
+    try:
+        mx.run([llvm_program] + args[1:], out=out, nonZeroIsFatal=False, **kwargs)
+    except BaseException as e:
+        msg = "{}\n".format(e)
+        msg += "This might be solved by running: mx build --dependencies={}".format(_LLVM_EXTRA_TOOL_DIST)
+        mx.abort(msg)
+
 
 def getClasspathOptions(extra_dists=None):
     """gets the classpath of the Sulong distributions"""
