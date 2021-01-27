@@ -80,7 +80,7 @@ class AgentLibrairies {
                     throw context.abort(AGENT_ONLOAD + " call for agent " + agent.name + " returned with error: " + interop.asInt(ret));
                 }
             } catch (UnsupportedTypeException | ArityException | UnsupportedMessageException e) {
-                throw EspressoError.shouldNotReachHere();
+                throw EspressoError.shouldNotReachHere(e);
             }
         }
     }
@@ -104,8 +104,7 @@ class AgentLibrairies {
         } else if (ch == '-') {
             isAbsolutePath = false;
         } else {
-            // String starting with + or - should have been enforced by option parsing.
-            throw EspressoError.shouldNotReachHere();
+            throw EspressoError.shouldNotReachHere("Option parsing should have enforced the string to start with '+' or '-': ", agent);
         }
         int eqIdx = agent.indexOf('=');
         if (eqIdx > 0) {
@@ -120,7 +119,7 @@ class AgentLibrairies {
 
     private TruffleObject lookupOnLoad(AgentLibrary agent) {
         TruffleObject library;
-        // TODO: handle statically linked librairies
+        // TODO: handle statically linked libraries
         if (agent.isAbsolutePath) {
             library = NativeLibrary.loadLibrary(Paths.get(agent.name));
         } else {
