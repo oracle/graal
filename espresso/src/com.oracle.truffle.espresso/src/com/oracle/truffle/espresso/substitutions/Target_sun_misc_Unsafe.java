@@ -60,16 +60,23 @@ import sun.misc.Unsafe;
 @EspressoSubstitutions(nameProvider = Target_sun_misc_Unsafe.SharedUnsafe.class)
 public final class Target_sun_misc_Unsafe {
 
+    /** The value of {@code addressSize()}. */
+    public static final int ADDRESS_SIZE;
     static final int SAFETY_FIELD_OFFSET = 123456789;
 
-    private static final Unsafe UNSAFE = UnsafeAccess.get();
+    private static final Unsafe UNSAFE;
+    private static final long PARK_BLOCKER_OFFSET;
+    private static final String TARGET_JDK_INTERNAL_MISC_UNSAFE = "Target_jdk_internal_misc_Unsafe";
+    private static final String TARGET_SUN_MISC_UNSAFE = "Target_sun_misc_Unsafe";
 
     static {
+        UNSAFE = UnsafeAccess.get();
         try {
-            parkBlockerOffset = UNSAFE.objectFieldOffset(Thread.class.getDeclaredField("parkBlocker"));
+            PARK_BLOCKER_OFFSET = UNSAFE.objectFieldOffset(Thread.class.getDeclaredField("parkBlocker"));
         } catch (NoSuchFieldException e) {
             throw EspressoError.shouldNotReachHere(e);
         }
+        ADDRESS_SIZE = UNSAFE.addressSize();
     }
 
     @TruffleBoundary
@@ -187,9 +194,6 @@ public final class Target_sun_misc_Unsafe {
             return UNSAFE.arrayIndexScale(Object[].class);
         }
     }
-
-    /** The value of {@code addressSize()}. */
-    public static final int ADDRESS_SIZE = UNSAFE.addressSize();
 
     /**
      * Report the size in bytes of a native pointer, as stored via {@link #putAddress}. This value
@@ -1286,21 +1290,19 @@ public final class Target_sun_misc_Unsafe {
         StaticObject guestBlocker = thread.getField(parkBlocker);
         // LockSupport.park(/* guest blocker */);
         if (!StaticObject.isNull(guestBlocker)) {
-            UNSAFE.putObject(hostThread, parkBlockerOffset, guestBlocker);
+            UNSAFE.putObject(hostThread, PARK_BLOCKER_OFFSET, guestBlocker);
         }
 
         parkBoundary(isAbsolute, time);
 
         Target_java_lang_Thread.toRunnable(thread, meta, State.RUNNABLE);
-        UNSAFE.putObject(hostThread, parkBlockerOffset, blocker);
+        UNSAFE.putObject(hostThread, PARK_BLOCKER_OFFSET, blocker);
     }
 
     @TruffleBoundary(allowInlining = true)
     public static void parkBoundary(boolean isAbsolute, long time) {
         UNSAFE.park(isAbsolute, time);
     }
-
-    private static final long parkBlockerOffset;
 
     /**
      * Unblock the given thread blocked on <tt>park</tt>, or, if it is not blocked, cause the
@@ -1524,7 +1526,4 @@ public final class Target_sun_misc_Unsafe {
             return NAMES;
         }
     }
-
-    private static final String TARGET_SUN_MISC_UNSAFE = "Target_sun_misc_Unsafe";
-    private static final String TARGET_JDK_INTERNAL_MISC_UNSAFE = "Target_jdk_internal_misc_Unsafe";
 }
