@@ -28,6 +28,9 @@ import static com.oracle.truffle.espresso.jni.JniEnv.JNI_OK;
 import java.nio.file.Paths;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Map;
+
+import org.graalvm.options.OptionMap;
 
 import com.oracle.truffle.api.interop.ArityException;
 import com.oracle.truffle.api.interop.InteropLibrary;
@@ -85,36 +88,16 @@ class AgentLibrairies {
         }
     }
 
-    void registerAgent(String agent) {
-        /*
-         * The agent string given should be of the form:
-         * 
-         * {+/-}<name><=options>
-         * 
-         * If the string starts with a `+`, then the name is an absolute path to the agent library,
-         * otherwise, it is a library name to be loaded from standard library directories.
-         */
-        assert agent.length() > 0;
-        String name;
-        String options;
-        boolean isAbsolutePath;
-        char ch = agent.charAt(0);
-        if (ch == '+') {
-            isAbsolutePath = true;
-        } else if (ch == '-') {
-            isAbsolutePath = false;
-        } else {
-            throw EspressoError.shouldNotReachHere("Option parsing should have enforced the string to start with '+' or '-': ", agent);
+    void registerAgents(OptionMap<String> map, boolean isAbsolutePath) {
+        for (Map.Entry<String, String> entry : map.entrySet()) {
+            String name = entry.getKey();
+            String value = entry.getValue();
+            registerAgent(name, value, isAbsolutePath);
         }
-        int eqIdx = agent.indexOf('=');
-        if (eqIdx > 0) {
-            name = agent.substring(1, eqIdx);
-            options = agent.substring(eqIdx + 1);
-        } else {
-            name = agent.substring(1);
-            options = "";
-        }
-        agents.add(new AgentLibrary(name, options, isAbsolutePath));
+    }
+
+    void registerAgent(String name, String value, boolean isAbsolutePath) {
+        agents.add(new AgentLibrary(name, value, isAbsolutePath));
     }
 
     private TruffleObject lookupOnLoad(AgentLibrary agent) {

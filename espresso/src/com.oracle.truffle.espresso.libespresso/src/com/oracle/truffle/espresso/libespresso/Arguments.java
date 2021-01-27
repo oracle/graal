@@ -44,6 +44,10 @@ public final class Arguments {
 
     public static final String JAVA_PROPS = "java.Properties.";
 
+    private static final String AGENT_LIB = "java.AgentLib.";
+    private static final String AGENT_PATH = "java.AgentPath.";
+    private static final String JAVA_AGENT = "java.JavaAgent";
+
     private Arguments() {
     }
 
@@ -83,14 +87,14 @@ public final class Arguments {
                         builder.option("java.JDWPOptions", value);
                     } else if (optionString.startsWith("-javaagent:")) {
                         String value = optionString.substring("-javaagent:".length());
-                        handler.handleAgent("instrument=" + value, false);
+                        builder.option(JAVA_AGENT, value);
                         handler.addModules("java.instrument");
                     } else if (optionString.startsWith("-agentlib:")) {
-                        String value = optionString.substring("-agentlib:".length());
-                        handler.handleAgent(value, false);
+                        String[] split = splitEquals(optionString.substring("-agentlib:".length()));
+                        builder.option(AGENT_LIB + split[0], split[1]);
                     } else if (optionString.startsWith("-agentpath:")) {
-                        String value = optionString.substring("-agentpath:".length());
-                        handler.handleAgent(value, true);
+                        String[] split = splitEquals(optionString.substring("-agentpath:".length()));
+                        builder.option(AGENT_PATH + split[0], split[1]);
                     } else if (optionString.startsWith("-D")) {
                         String key = optionString.substring("-D".length());
                         int splitAt = key.indexOf("=");
@@ -218,6 +222,20 @@ public final class Arguments {
         } else {
             return toPrepend;
         }
+    }
+
+    private static String[] splitEquals(String value) {
+        int eqIdx = value.indexOf('=');
+        String k;
+        String v;
+        if (eqIdx >= 0) {
+            k = value.substring(0, eqIdx);
+            v = value.substring(eqIdx + 1);
+        } else {
+            k = value;
+            v = "";
+        }
+        return new String[]{k, v};
     }
 
     public static class ArgumentException extends RuntimeException {

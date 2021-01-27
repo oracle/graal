@@ -31,7 +31,6 @@ import java.lang.ref.ReferenceQueue;
 import java.nio.file.Path;
 import java.util.Arrays;
 import java.util.HashSet;
-import java.util.Map;
 import java.util.Set;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicInteger;
@@ -473,10 +472,14 @@ public final class EspressoContext {
 
     private void initializeAgents() {
         agents = new AgentLibrairies(this);
-        Set<Map.Entry<String, String>> entries = getEnv().getOptions().get(EspressoOptions.Agents).entrySet();
-        for (Map.Entry<String, String> entry : entries) {
-            String value = entry.getValue();
-            agents.registerAgent(value);
+        if (getEnv().getOptions().hasBeenSet(EspressoOptions.AgentLib)) {
+            agents.registerAgents(getEnv().getOptions().get(EspressoOptions.AgentLib), false);
+        }
+        if (getEnv().getOptions().hasBeenSet(EspressoOptions.AgentPath)) {
+            agents.registerAgents(getEnv().getOptions().get(EspressoOptions.AgentPath), true);
+        }
+        if (getEnv().getOptions().hasBeenSet(EspressoOptions.JavaAgent)) {
+            agents.registerAgent("instrument", getEnv().getOptions().get(EspressoOptions.JavaAgent), false);
         }
         agents.initialize();
     }

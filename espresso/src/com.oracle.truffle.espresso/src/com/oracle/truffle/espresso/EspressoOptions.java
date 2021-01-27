@@ -405,11 +405,23 @@ public final class EspressoOptions {
                     category = OptionCategory.EXPERT, stability = OptionStability.STABLE) //
     public static final OptionKey<Long> MaxDirectMemorySize = new OptionKey<>(-1L, SIZE_OPTION_TYPE);
 
-    @Option(help = "Stores command-line defined agents.\\n" +
-                    "This option should not be set directly (through --java.Agents).\\n" +
-                    "Rather, this option is used internally as a way to pass java agent arguments (-agentlib, -agentpath and -javaagent) to the espresso context.", //
+    @Option(help = "Equivalent to `-agentlib:<name><=options>`.\\n" +
+                    "Usage: \\n" +
+                    "\\t--java.AgentLib.<name>=<options>", //
                     category = OptionCategory.INTERNAL, stability = OptionStability.EXPERIMENTAL) //
-    public static final OptionKey<OptionMap<String>> Agents = OptionKey.mapOf(String.class);
+    public static final OptionKey<OptionMap<String>> AgentLib = OptionKey.mapOf(String.class);
+
+    @Option(help = "Equivalent to `-agentpath:<name><=options>`.\\n" +
+                    "Usage: \\n" +
+                    "\\t--java.AgentPath.<name>=<options>", //
+                    category = OptionCategory.INTERNAL, stability = OptionStability.EXPERIMENTAL) //
+    public static final OptionKey<OptionMap<String>> AgentPath = OptionKey.mapOf(String.class);
+
+    @Option(help = "Equivalent to `-javaagent:<name><=options>`.\\n" +
+                    "Usage: \\n" +
+                    "\\t--java.JavaAgent=<name><=options>", //
+                    category = OptionCategory.INTERNAL, stability = OptionStability.EXPERIMENTAL) //
+    public static final OptionKey<String> JavaAgent = new OptionKey<>("");
 
     public static final String INCEPTION_NAME = System.getProperty("espresso.inception.name", "#");
 }
