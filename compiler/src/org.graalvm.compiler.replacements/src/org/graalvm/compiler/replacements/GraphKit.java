@@ -24,7 +24,9 @@
  */
 package org.graalvm.compiler.replacements;
 
+import static jdk.vm.ci.code.BytecodeFrame.UNKNOWN_BCI;
 import static jdk.vm.ci.services.Services.IS_IN_NATIVE_IMAGE;
+import static org.graalvm.compiler.nodes.CallTargetNode.InvokeKind.Static;
 import static org.graalvm.compiler.nodes.graphbuilderconf.IntrinsicContext.CompilationContext.INLINE_AFTER_PARSING;
 
 import java.lang.reflect.Method;
@@ -290,6 +292,10 @@ public class GraphKit implements GraphBuilderTool {
             }
             return invoke;
         }
+    }
+
+    public InvokeNode createIntrinsicInvoke(ResolvedJavaMethod method, ValueNode... args) {
+        return createInvoke(method, Static, null, UNKNOWN_BCI, args);
     }
 
     @SuppressWarnings("try")
