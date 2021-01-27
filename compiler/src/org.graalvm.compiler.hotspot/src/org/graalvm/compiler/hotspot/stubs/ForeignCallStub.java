@@ -24,54 +24,27 @@
  */
 package org.graalvm.compiler.hotspot.stubs;
 
-import static jdk.vm.ci.code.BytecodeFrame.UNKNOWN_BCI;
-import static jdk.vm.ci.hotspot.HotSpotCallingConventionType.JavaCall;
-import static jdk.vm.ci.hotspot.HotSpotCallingConventionType.JavaCallee;
-import static jdk.vm.ci.hotspot.HotSpotCallingConventionType.NativeCall;
-import static jdk.vm.ci.services.Services.IS_BUILDING_NATIVE_IMAGE;
-import static org.graalvm.compiler.hotspot.HotSpotForeignCallLinkage.RegisterEffect.COMPUTES_REGISTERS_KILLED;
-import static org.graalvm.compiler.hotspot.HotSpotForeignCallLinkage.RegisterEffect.DESTROYS_ALL_CALLER_SAVE_REGISTERS;
-import static org.graalvm.compiler.nodes.CallTargetNode.InvokeKind.Static;
-import static org.graalvm.compiler.nodes.ConstantNode.forBoolean;
-
-import org.graalvm.compiler.core.common.CompilationIdentifier;
 import org.graalvm.compiler.core.common.LIRKind;
 import org.graalvm.compiler.core.common.spi.ForeignCallDescriptor;
 import org.graalvm.compiler.core.common.type.Stamp;
 import org.graalvm.compiler.core.common.type.StampFactory;
 import org.graalvm.compiler.core.common.type.StampPair;
-import org.graalvm.compiler.debug.DebugContext;
-import org.graalvm.compiler.debug.GraalError;
-import org.graalvm.compiler.debug.JavaMethodContext;
-import org.graalvm.compiler.hotspot.HotSpotForeignCallLinkage;
-import org.graalvm.compiler.hotspot.HotSpotForeignCallLinkageImpl;
 import org.graalvm.compiler.hotspot.HotSpotReplacementsImpl;
 import org.graalvm.compiler.hotspot.meta.HotSpotForeignCallDescriptor;
 import org.graalvm.compiler.hotspot.meta.HotSpotForeignCallDescriptor.Transition;
-import org.graalvm.compiler.hotspot.meta.HotSpotLoweringProvider;
 import org.graalvm.compiler.hotspot.meta.HotSpotProviders;
 import org.graalvm.compiler.hotspot.nodes.StubForeignCallNode;
-import org.graalvm.compiler.hotspot.stubs.ForeignCallSnippets.Templates;
-import org.graalvm.compiler.nodes.InvokeNode;
 import org.graalvm.compiler.nodes.ParameterNode;
-import org.graalvm.compiler.nodes.ReturnNode;
-import org.graalvm.compiler.nodes.StructuredGraph;
 import org.graalvm.compiler.nodes.ValueNode;
 import org.graalvm.compiler.options.OptionValues;
 import org.graalvm.compiler.replacements.GraphKit;
 import org.graalvm.compiler.replacements.nodes.ReadRegisterNode;
 import org.graalvm.compiler.word.Word;
-import org.graalvm.compiler.word.WordTypes;
 
 import jdk.vm.ci.hotspot.HotSpotJVMCIRuntime;
-import jdk.vm.ci.hotspot.HotSpotSignature;
 import jdk.vm.ci.meta.JavaKind;
-import jdk.vm.ci.meta.JavaMethod;
-import jdk.vm.ci.meta.JavaType;
 import jdk.vm.ci.meta.MetaAccessProvider;
-import jdk.vm.ci.meta.ResolvedJavaMethod;
 import jdk.vm.ci.meta.ResolvedJavaType;
-import jdk.vm.ci.meta.Signature;
 
 /**
  * A {@linkplain #getGraph generated} stub for a {@link Transition non-leaf} foreign call from
@@ -82,20 +55,7 @@ import jdk.vm.ci.meta.Signature;
  * {@linkplain ForeignCallSnippets#handlePendingException handles} any exceptions raised during the
  * foreign call.
  */
-public class ForeignCallStub extends Stub {
-
-    private final HotSpotJVMCIRuntime jvmciRuntime;
-
-    /**
-     * The target of the call.
-     */
-    private final HotSpotForeignCallLinkage target;
-
-    /**
-     * Specifies if the JavaThread value for the current thread is to be prepended to the arguments
-     * for the call to {@link #target}.
-     */
-    protected final boolean prependThread;
+public class ForeignCallStub extends AbstractForeignCallStub {
 
     /**
      * Creates a stub for a call to code at a given address.
@@ -106,26 +66,11 @@ public class ForeignCallStub extends Stub {
      *            to the arguments for the call to {@code address}
      */
     public ForeignCallStub(OptionValues options, HotSpotJVMCIRuntime runtime, HotSpotProviders providers, long address, HotSpotForeignCallDescriptor descriptor, boolean prependThread) {
-        super(options, providers, HotSpotForeignCallLinkageImpl.create(providers.getMetaAccess(), providers.getCodeCache(), providers.getWordTypes(), providers.getForeignCalls(), descriptor, 0L,
-                        COMPUTES_REGISTERS_KILLED, JavaCall, JavaCallee));
-        this.jvmciRuntime = runtime;
-        this.prependThread = prependThread;
-        MetaAccessProvider metaAccess = providers.getMetaAccess();
-        Class<?>[] targetParameterTypes = createTargetParameters(descriptor);
-        HotSpotForeignCallDescriptor targetSig = new HotSpotForeignCallDescriptor(descriptor.getTransition(), descriptor.getReexecutability(), descriptor.getKilledLocations(),
-                        descriptor.getName() + ":C", descriptor.getResultType(), targetParameterTypes);
-        target = HotSpotForeignCallLinkageImpl.create(metaAccess, providers.getCodeCache(), providers.getWordTypes(), providers.getForeignCalls(), targetSig, address,
-                        DESTROYS_ALL_CALLER_SAVE_REGISTERS, NativeCall, NativeCall);
+        super(options, runtime, providers, address, descriptor, prependThread);
     }
 
-    /**
-     * Gets the linkage information for the call from this stub.
-     */
-    public HotSpotForeignCallLinkage getTargetLinkage() {
-        return target;
-    }
-
-    private Class<?>[] createTargetParameters(ForeignCallDescriptor descriptor) {
+    @Override
+    protected Class<?>[] createTargetParameters(ForeignCallDescriptor descriptor) {
         Class<?>[] parameters = descriptor.getArgumentTypes();
         if (prependThread) {
             Class<?>[] newParameters = new Class<?>[parameters.length + 1];
@@ -137,156 +82,13 @@ public class ForeignCallStub extends Stub {
     }
 
     @Override
-    protected ResolvedJavaMethod getInstalledCodeOwner() {
-        return null;
-    }
-
-    private class DebugScopeContext implements JavaMethod, JavaMethodContext {
-        @Override
-        public JavaMethod asJavaMethod() {
-            return this;
-        }
-
-        @Override
-        public Signature getSignature() {
-            ForeignCallDescriptor d = linkage.getDescriptor();
-            MetaAccessProvider metaAccess = providers.getMetaAccess();
-            Class<?>[] arguments = d.getArgumentTypes();
-            ResolvedJavaType[] parameters = new ResolvedJavaType[arguments.length];
-            for (int i = 0; i < arguments.length; i++) {
-                parameters[i] = metaAccess.lookupJavaType(arguments[i]);
-            }
-            return new HotSpotSignature(jvmciRuntime, metaAccess.lookupJavaType(d.getResultType()), parameters);
-        }
-
-        @Override
-        public String getName() {
-            return linkage.getDescriptor().getName();
-        }
-
-        @Override
-        public JavaType getDeclaringClass() {
-            return providers.getMetaAccess().lookupJavaType(ForeignCallStub.class);
-        }
-
-        @Override
-        public String toString() {
-            return format("ForeignCallStub<%n(%p)>");
-        }
+    protected boolean returnsObject() {
+        return !LIRKind.isValue(linkage.getOutgoingCallingConvention().getReturn());
     }
 
     @Override
-    protected Object debugScopeContext() {
-        return new DebugScopeContext() {
-
-        };
-    }
-
-    /**
-     * Creates a graph for this stub.
-     * <p>
-     * If the stub returns an object, the graph created corresponds to this pseudo code:
-     *
-     * <pre>
-     *     Object foreignFunctionStub(args...) {
-     *         foreignFunction(currentThread,  args);
-     *         if ((shouldClearException && clearPendingException(thread())) || (!shouldClearException && hasPendingException(thread)) {
-     *             getAndClearObjectResult(thread());
-     *             DeoptimizeCallerNode.deopt(None, RuntimeConstraint);
-     *         }
-     *         return verifyObject(getAndClearObjectResult(thread()));
-     *     }
-     * </pre>
-     *
-     * If the stub returns a primitive or word, the graph created corresponds to this pseudo code
-     * (using {@code int} as the primitive return type):
-     *
-     * <pre>
-     *     int foreignFunctionStub(args...) {
-     *         int result = foreignFunction(currentThread,  args);
-     *         if ((shouldClearException && clearPendingException(thread())) || (!shouldClearException && hasPendingException(thread)) {
-     *             DeoptimizeCallerNode.deopt(None, RuntimeConstraint);
-     *         }
-     *         return result;
-     *     }
-     * </pre>
-     *
-     * If the stub is void, the graph created corresponds to this pseudo code:
-     *
-     * <pre>
-     *     void foreignFunctionStub(args...) {
-     *         foreignFunction(currentThread,  args);
-     *         if ((shouldClearException && clearPendingException(thread())) || (!shouldClearException && hasPendingException(thread)) {
-     *             DeoptimizeCallerNode.deopt(None, RuntimeConstraint);
-     *         }
-     *     }
-     * </pre>
-     *
-     * In each example above, the {@code currentThread} argument is the C++ JavaThread value (i.e.,
-     * %r15 on AMD64) and is only prepended if {@link #prependThread} is true.
-     */
-    @Override
-    @SuppressWarnings("try")
-    protected StructuredGraph getGraph(DebugContext debug, CompilationIdentifier compilationId) {
-        WordTypes wordTypes = providers.getWordTypes();
-        Class<?>[] args = linkage.getDescriptor().getArgumentTypes();
-        boolean isObjectResult = !LIRKind.isValue(linkage.getOutgoingCallingConvention().getReturn());
-        // Do we want to clear the pending exception?
-        boolean shouldClearException = linkage.getDescriptor().isReexecutable();
-        try {
-            HotSpotLoweringProvider lowerer = (HotSpotLoweringProvider) providers.getLowerer();
-            Templates foreignCallSnippets = lowerer.getForeignCallSnippets();
-            ResolvedJavaMethod handlePendingException = foreignCallSnippets.handlePendingException.getMethod();
-            ResolvedJavaMethod getAndClearObjectResult = foreignCallSnippets.getAndClearObjectResult.getMethod();
-            ResolvedJavaMethod verifyObject = foreignCallSnippets.verifyObject.getMethod();
-            ResolvedJavaMethod thisMethod = getGraphMethod();
-            GraphKit kit = new GraphKit(debug, thisMethod, providers, wordTypes, providers.getGraphBuilderPlugins(), compilationId, toString());
-            StructuredGraph graph = kit.getGraph();
-            graph.disableFrameStateVerification();
-            ParameterNode[] params = createParameters(kit, args);
-            ReadRegisterNode thread = kit.append(new ReadRegisterNode(providers.getRegisters().getThreadRegister(), wordTypes.getWordKind(), true, false));
-            ValueNode result = createTargetCall(kit, params, thread);
-            createStaticInvoke(kit, handlePendingException, thread, forBoolean(shouldClearException, graph), forBoolean(isObjectResult, graph));
-            if (isObjectResult) {
-                InvokeNode object = createStaticInvoke(kit, getAndClearObjectResult, thread);
-                result = createStaticInvoke(kit, verifyObject, object);
-            }
-            kit.append(new ReturnNode(linkage.getDescriptor().getResultType() == void.class ? null : result));
-            debug.dump(DebugContext.VERBOSE_LEVEL, graph, "Initial stub graph");
-
-            kit.inlineInvokesAsIntrinsics("Foreign call stub.", "Backend");
-
-            debug.dump(DebugContext.VERBOSE_LEVEL, graph, "Stub graph before compilation");
-            return graph;
-        } catch (Exception e) {
-            throw GraalError.shouldNotReachHere(e);
-        }
-    }
-
-    private static InvokeNode createStaticInvoke(GraphKit kit, ResolvedJavaMethod method, ValueNode... args) {
-        return kit.createInvoke(method, Static, null, UNKNOWN_BCI, args);
-    }
-
-    private ResolvedJavaMethod getGraphMethod() {
-        ResolvedJavaMethod thisMethod = null;
-        MetaAccessProvider metaAccess = providers.getMetaAccess();
-        for (ResolvedJavaMethod method : metaAccess.lookupJavaType(ForeignCallStub.class).getDeclaredMethods()) {
-            if (method.getName().equals("getGraph")) {
-                if (thisMethod == null) {
-                    thisMethod = method;
-                } else {
-                    throw new InternalError("getGraph is ambiguous");
-                }
-            }
-        }
-        if (thisMethod == null) {
-            throw new InternalError("Can't find ForeignCallStub.getGraph");
-        }
-        if (IS_BUILDING_NATIVE_IMAGE) {
-            HotSpotReplacementsImpl replacements = (HotSpotReplacementsImpl) providers.getReplacements();
-            replacements.findSnippetMethod(thisMethod);
-        }
-        return thisMethod;
+    protected boolean shouldClearException() {
+        return linkage.getDescriptor().isReexecutable();
     }
 
     private ParameterNode[] createParameters(GraphKit kit, Class<?>[] args) {
@@ -302,7 +104,10 @@ public class ForeignCallStub extends Stub {
         return params;
     }
 
-    private StubForeignCallNode createTargetCall(GraphKit kit, ParameterNode[] params, ReadRegisterNode thread) {
+    @Override
+    protected StubForeignCallNode createTargetCall(GraphKit kit, ReadRegisterNode thread) {
+        Class<?>[] args = linkage.getDescriptor().getArgumentTypes();
+        ParameterNode[] params = createParameters(kit, args);
         Stamp stamp = StampFactory.forKind(JavaKind.fromJavaClass(target.getDescriptor().getResultType()));
         if (prependThread) {
             ValueNode[] targetArguments = new ValueNode[1 + params.length];
