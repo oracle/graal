@@ -516,6 +516,7 @@ suite = {
         "org.graalvm.compiler.replacements",
         "org.graalvm.compiler.printer",
         "org.graalvm.compiler.runtime",
+        "org.graalvm.compiler.truffle.compiler",
       ],
 
       "checkstyle" : "org.graalvm.compiler.graph",
@@ -1927,6 +1928,7 @@ suite = {
       "dependencies" : [
         "org.graalvm.compiler.truffle.runtime",
         "org.graalvm.compiler.truffle.common.hotspot",
+        "org.graalvm.compiler.hotspot",
         "JVMCI_HOTSPOT",
       ],
       "checkstyle" : "org.graalvm.compiler.graph",

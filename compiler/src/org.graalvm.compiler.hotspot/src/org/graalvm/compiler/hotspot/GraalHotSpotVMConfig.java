@@ -816,6 +816,8 @@ public class GraalHotSpotVMConfig extends GraalHotSpotVMConfigAccess {
     public final long newMultiArrayOrNullAddress = getAddress("JVMCIRuntime::new_multi_array_or_null", 0L, JVMCI || JDK >= 12 || (!IS_OPENJDK && JDK == 11 && JDK_UPDATE >= 7));
     public final long dynamicNewInstanceOrNullAddress = getAddress("JVMCIRuntime::dynamic_new_instance_or_null", 0L, JVMCI || JDK >= 12 || (!IS_OPENJDK && JDK == 11 && JDK_UPDATE >= 7));
 
+    public final long invokeJavaMethodAddress = getAddress("JVMCIRuntime::invoke_java_method", 0L, false);
+
     public boolean areNullAllocationStubsAvailable() {
         return newInstanceOrNullAddress != 0L;
     }

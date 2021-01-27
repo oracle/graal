@@ -55,6 +55,14 @@ final class HotSpotThreadLocalHandshake extends ThreadLocalHandshake {
         }
     }
 
+    static void doHandshake() {
+        INSTANCE.processHandshake();
+    }
+
+    static void doPoll() {
+        INSTANCE.poll();
+    }
+
     @Override
     protected void setPending(Thread t) {
         setVolatile(t, PENDING_OFFSET, 1);

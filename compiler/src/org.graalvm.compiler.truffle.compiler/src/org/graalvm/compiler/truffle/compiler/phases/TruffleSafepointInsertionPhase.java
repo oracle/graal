@@ -45,6 +45,7 @@ public final class TruffleSafepointInsertionPhase extends Phase {
         return false;
     }
 
+    @SuppressWarnings("try")
     @Override
     protected void run(StructuredGraph graph) {
         /*
