@@ -25,6 +25,7 @@
 package org.graalvm.compiler.hotspot.meta;
 
 import static jdk.vm.ci.hotspot.HotSpotCallingConventionType.NativeCall;
+import static jdk.vm.ci.services.Services.IS_BUILDING_NATIVE_IMAGE;
 import static org.graalvm.compiler.core.common.GraalOptions.GeneratePIC;
 import static org.graalvm.compiler.core.target.Backend.ARITHMETIC_DREM;
 import static org.graalvm.compiler.core.target.Backend.ARITHMETIC_FREM;
@@ -63,7 +64,6 @@ import static org.graalvm.compiler.hotspot.HotSpotBackend.SHA5_IMPL_COMPRESS_MB;
 import static org.graalvm.compiler.hotspot.HotSpotBackend.SHA_IMPL_COMPRESS;
 import static org.graalvm.compiler.hotspot.HotSpotBackend.SHA_IMPL_COMPRESS_MB;
 import static org.graalvm.compiler.hotspot.HotSpotBackend.SQUARE_TO_LEN;
-import static org.graalvm.compiler.hotspot.HotSpotBackend.THREAD_LOCAL_HANDSHAKE_POLL;
 import static org.graalvm.compiler.hotspot.HotSpotBackend.UNWIND_EXCEPTION_TO_CALLER;
 import static org.graalvm.compiler.hotspot.HotSpotBackend.VECTORIZED_MISMATCH;
 import static org.graalvm.compiler.hotspot.HotSpotBackend.VM_ERROR;
@@ -79,7 +79,6 @@ import static org.graalvm.compiler.hotspot.meta.HotSpotForeignCallDescriptor.Ree
 import static org.graalvm.compiler.hotspot.meta.HotSpotForeignCallDescriptor.Transition.LEAF;
 import static org.graalvm.compiler.hotspot.meta.HotSpotForeignCallDescriptor.Transition.LEAF_NO_VZERO;
 import static org.graalvm.compiler.hotspot.meta.HotSpotForeignCallDescriptor.Transition.SAFEPOINT;
-import static org.graalvm.compiler.hotspot.meta.HotSpotHostForeignCallsProvider.Options.HandshakeFastpath;
 import static org.graalvm.compiler.hotspot.replacements.AssertionSnippets.ASSERTION_VM_MESSAGE_C;
 import static org.graalvm.compiler.hotspot.replacements.HotSpotAllocationSnippets.DYNAMIC_NEW_INSTANCE;
 import static org.graalvm.compiler.hotspot.replacements.HotSpotAllocationSnippets.DYNAMIC_NEW_INSTANCE_OR_NULL;
@@ -129,11 +128,9 @@ import org.graalvm.compiler.hotspot.stubs.UnwindExceptionToCallerStub;
 import org.graalvm.compiler.hotspot.stubs.VerifyOopStub;
 import org.graalvm.compiler.nodes.NamedLocationIdentity;
 import org.graalvm.compiler.nodes.extended.BytecodeExceptionNode.BytecodeExceptionKind;
-import org.graalvm.compiler.options.Option;
-import org.graalvm.compiler.options.OptionKey;
-import org.graalvm.compiler.options.OptionType;
 import org.graalvm.compiler.options.OptionValues;
 import org.graalvm.compiler.replacements.arraycopy.ArrayCopyForeignCalls;
+import org.graalvm.compiler.serviceprovider.GraalServices;
 import org.graalvm.compiler.serviceprovider.JavaVersionUtil;
 import org.graalvm.compiler.word.Word;
 import org.graalvm.compiler.word.WordTypes;
@@ -149,11 +146,6 @@ import jdk.vm.ci.meta.ResolvedJavaMethod;
  * HotSpot implementation of {@link ForeignCallsProvider}.
  */
 public abstract class HotSpotHostForeignCallsProvider extends HotSpotForeignCallsProviderImpl implements ArrayCopyForeignCalls {
-
-    public static class Options {
-        @Option(help = "Controls emission of the fast path for ThreadLocalHandle.poll", type = OptionType.Expert)//
-        public static final OptionKey<Boolean> HandshakeFastpath = new OptionKey<>(true);
-    }
 
     public static final HotSpotForeignCallDescriptor JAVA_TIME_MILLIS = new HotSpotForeignCallDescriptor(LEAF_NO_VZERO, REEXECUTABLE, NO_LOCATIONS, "javaTimeMillis", long.class);
     public static final HotSpotForeignCallDescriptor JAVA_TIME_NANOS = new HotSpotForeignCallDescriptor(LEAF_NO_VZERO, REEXECUTABLE, NO_LOCATIONS, "javaTimeNanos", long.class);
@@ -359,10 +351,6 @@ public abstract class HotSpotHostForeignCallsProvider extends HotSpotForeignCall
             linkForeignCall(options, providers, DYNAMIC_NEW_INSTANCE_OR_NULL, c.dynamicNewInstanceOrNullAddress, PREPEND_THREAD);
         }
 
-        if (c.invokeJavaMethodAddress != 0) {
-            invokeJavaMethodStub(options, providers, THREAD_LOCAL_HANDSHAKE_POLL, c.invokeJavaMethodAddress, HandshakeFastpath.getValue(options) ? doHandshakeMethod : doPollMethod);
-        }
-
         link(new ExceptionHandlerStub(options, providers, foreignCalls.get(EXCEPTION_HANDLER.getSignature())));
         link(new UnwindExceptionToCallerStub(options, providers,
                         registerStubCall(UNWIND_EXCEPTION_TO_CALLER, DESTROYS_ALL_CALLER_SAVE_REGISTERS)));
@@ -508,8 +496,25 @@ public abstract class HotSpotHostForeignCallsProvider extends HotSpotForeignCall
         if (c.useVectorizedMismatchIntrinsic) {
             assert (c.vectorizedMismatch != 0L);
             registerForeignCall(VECTORIZED_MISMATCH, c.vectorizedMismatch, NativeCall);
-
         }
+
+        for (ForeignCallsPlugin p : GraalServices.load(ForeignCallsPlugin.class)) {
+            p.initialize(providers, options, this);
+        }
+    }
+
+    static {
+        if (IS_BUILDING_NATIVE_IMAGE) {
+            // Force loading of this service since services can't be loaded lazily in libgraal.
+            GraalServices.load(ForeignCallsPlugin.class);
+        }
+    }
+
+    /**
+     * A service API for defining extra foreign calls (e.g. Truffle specific foreign calls).
+     */
+    public static interface ForeignCallsPlugin {
+        void initialize(HotSpotProviders providers, OptionValues options, HotSpotForeignCallsProviderImpl foreignCalls);
     }
 
     @SuppressWarnings("unused")

@@ -1927,7 +1927,6 @@ suite = {
       "dependencies" : [
         "org.graalvm.compiler.truffle.runtime",
         "org.graalvm.compiler.truffle.common.hotspot",
-        "org.graalvm.compiler.hotspot",
         "JVMCI_HOTSPOT",
       ],
       "checkstyle" : "org.graalvm.compiler.graph",

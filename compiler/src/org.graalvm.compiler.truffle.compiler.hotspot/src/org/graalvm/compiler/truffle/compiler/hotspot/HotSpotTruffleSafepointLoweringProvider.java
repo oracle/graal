@@ -24,8 +24,7 @@
  */
 package org.graalvm.compiler.truffle.compiler.hotspot;
 
-import static org.graalvm.compiler.hotspot.HotSpotBackend.THREAD_LOCAL_HANDSHAKE_POLL;
-import static org.graalvm.compiler.hotspot.meta.HotSpotHostForeignCallsProvider.Options.HandshakeFastpath;
+import static org.graalvm.compiler.truffle.compiler.hotspot.HotSpotTruffleSafepointForeignCalls.THREAD_LOCAL_HANDSHAKE_POLL;
 import static org.graalvm.word.LocationIdentity.any;
 
 import org.graalvm.compiler.core.common.calc.CanonicalCondition;
@@ -81,7 +80,7 @@ public final class HotSpotTruffleSafepointLoweringProvider implements TruffleSaf
                 throw new JVMCIError("Can't implement TruffleSafepointNode");
             }
 
-            if (!HandshakeFastpath.getValue(n.getOptions())) {
+            if (!HotSpotTruffleSafepointForeignCalls.Options.HandshakeFastpath.getValue(n.getOptions())) {
                 ForeignCallNode foreignCallNode = graph.add(new ForeignCallNode(THREAD_LOCAL_HANDSHAKE_POLL, n.stamp(NodeView.DEFAULT)));
                 foreignCallNode.setStateDuring(n.stateBefore());
                 graph.replaceFixedWithFixed(n, foreignCallNode);
