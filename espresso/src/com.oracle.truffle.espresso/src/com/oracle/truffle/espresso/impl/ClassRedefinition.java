@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2020, 2020, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2020, 2021, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -84,11 +84,35 @@ public final class ClassRedefinition {
         INVALID;
     }
 
+    public static void lock() {
+        synchronized (redefineLock) {
+            check();
+            locked = true;
+        }
+    }
+
+    public static void unlock() {
+        synchronized (redefineLock) {
+            check();
+            locked = false;
+            redefineLock.notifyAll();
+        }
+    }
+
     public static void begin() {
-        // the redefine thread is privileged
-        redefineThread = Thread.currentThread();
-        locked = true;
-        current.assumption.invalidate();
+        synchronized (redefineLock) {
+            if (locked) {
+                try {
+                    redefineLock.wait();
+                } catch (InterruptedException e) {
+                    Thread.interrupted();
+                }
+            }
+            // the redefine thread is privileged
+            redefineThread = Thread.currentThread();
+            locked = true;
+            current.assumption.invalidate();
+        }
     }
 
     public static void end() {

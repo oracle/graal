@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2020, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2021, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -27,8 +27,11 @@ import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
 import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.nodes.DirectCallNode;
 import com.oracle.truffle.espresso.descriptors.Signatures;
+import com.oracle.truffle.espresso.impl.ClassRedefinition;
+import com.oracle.truffle.espresso.impl.Klass;
 import com.oracle.truffle.espresso.impl.Method;
 import com.oracle.truffle.espresso.impl.Method.MethodVersion;
+import com.oracle.truffle.espresso.meta.Meta;
 import com.oracle.truffle.espresso.nodes.BytecodeNode;
 import com.oracle.truffle.espresso.nodes.quick.QuickNode;
 import com.oracle.truffle.espresso.runtime.StaticObject;
@@ -51,7 +54,30 @@ public final class InvokeSpecialNode extends QuickNode {
         if (!method.getAssumption().isValid()) {
             // update to the latest method version and grab a new direct call target
             CompilerDirectives.transferToInterpreterAndInvalidate();
-            method = method.getMethod().getMethodVersion();
+            if (removedByRedefintion()) {
+                try {
+                    ClassRedefinition.lock();
+
+                    Method resolutionSeed = method.getMethod();
+                    Klass accessingKlass = resolutionSeed.getDeclaringKlass();
+                    Method replacementMethod = resolutionSeed.getDeclaringKlass().lookupMethod(resolutionSeed.getName(), resolutionSeed.getRawSignature(), accessingKlass);
+                    Meta meta = replacementMethod.getMeta();
+                    if (replacementMethod == null) {
+                        throw Meta.throwExceptionWithMessage(meta.java_lang_NoSuchMethodError,
+                                        meta.toGuestString(resolutionSeed.getDeclaringKlass().getNameAsString() + "." + resolutionSeed.getName() + resolutionSeed.getRawSignature()));
+                    } else if (replacementMethod.isStatic()) {
+                        throw Meta.throwExceptionWithMessage(meta.java_lang_IncompatibleClassChangeError, "expected non-static method: " + replacementMethod.getName());
+                    } else {
+                        // Update to the latest version of the replacement method
+                        method = replacementMethod.getMethodVersion();
+                    }
+                } finally {
+                    ClassRedefinition.unlock();
+                }
+            } else {
+                method = method.getMethod().getMethodVersion();
+            }
+
             directCallNode = DirectCallNode.create(method.getCallTarget());
             adoptChildren();
         }

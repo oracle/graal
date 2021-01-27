@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2020, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2021, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -29,6 +29,7 @@ import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.nodes.DirectCallNode;
 import com.oracle.truffle.api.nodes.IndirectCallNode;
 import com.oracle.truffle.espresso.descriptors.Signatures;
+import com.oracle.truffle.espresso.impl.ClassRedefinition;
 import com.oracle.truffle.espresso.impl.Klass;
 import com.oracle.truffle.espresso.impl.Method;
 import com.oracle.truffle.espresso.impl.Method.MethodVersion;
@@ -80,6 +81,32 @@ public abstract class InvokeInterfaceNode extends QuickNode {
 
     protected static MethodVersion methodLookup(StaticObject receiver, Method resolutionSeed, Klass declaringKlass) {
         assert !receiver.getKlass().isArray();
+        if (resolutionSeed.isRemovedByRedefition()) {
+            // OK, the method was marked removed
+            CompilerDirectives.transferToInterpreterAndInvalidate();
+            // do not run while a redefinition is in progress
+            try {
+                ClassRedefinition.lock();
+                // first check to see if there's a compatible new method before
+                // bailing out with a NoSuchMethodError
+                Klass receiverKlass = receiver.getKlass();
+                Method method = receiverKlass.lookupMethod(resolutionSeed.getName(), resolutionSeed.getRawSignature(), receiverKlass);
+                Meta meta = resolutionSeed.getMeta();
+                if (method == null) {
+                    throw Meta.throwExceptionWithMessage(meta.java_lang_NoSuchMethodError,
+                            meta.toGuestString(resolutionSeed.getDeclaringKlass().getNameAsString() + "." + resolutionSeed.getName() + resolutionSeed.getRawSignature()));
+                } else if (method.isStatic()) {
+                    throw Meta.throwExceptionWithMessage(meta.java_lang_IncompatibleClassChangeError, "expected non-static method: " + method.getName());
+                } else if (!method.isPublic()) {
+                    throw Meta.throwException(meta.java_lang_IllegalAccessError);
+                } else {
+                    return method.getMethodVersion();
+                }
+            } finally {
+                ClassRedefinition.unlock();
+            }
+        }
+
         int iTableIndex = resolutionSeed.getITableIndex();
         Method method = ((ObjectKlass) receiver.getKlass()).itableLookup(declaringKlass, iTableIndex);
         if (!method.isPublic()) {
