@@ -61,6 +61,13 @@ public class TestinsightInstrument extends TruffleInstrument {
                     return Collections.singletonMap("count", initialCount);
                 }
             });
+        } else {
+            env.registerService(new Insight.SymbolProvider() {
+                @Override
+                public Map<String, ? extends Object> symbolsWithValues() throws Exception {
+                    return Collections.emptyMap();
+                }
+            });
         }
     }
 }

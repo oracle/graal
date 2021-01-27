@@ -50,7 +50,10 @@ import org.graalvm.tools.insight.Insight;
 import org.junit.Assert;
 import static org.junit.Assert.assertFalse;
 
-final class InsightObjectFactory extends ProxyLanguage {
+public final class InsightObjectFactory extends ProxyLanguage {
+    private InsightObjectFactory() {
+    }
+
     static InsightAPI.OnConfig createConfig(
                     boolean expressions, boolean statements, boolean roots,
                     String rootNameFilter, Predicate<SourceInfo> sourceFilter) {
@@ -64,8 +67,12 @@ final class InsightObjectFactory extends ProxyLanguage {
     }
 
     static Context newContext() {
+        return newContext(Context.newBuilder());
+    }
+
+    public static Context newContext(Context.Builder b) {
         ByteArrayOutputStream os = new ByteArrayOutputStream();
-        return newContext(Context.newBuilder(), os, os);
+        return newContext(b, os, os);
     }
 
     static Context newContext(Context.Builder b, ByteArrayOutputStream out, ByteArrayOutputStream err) {
