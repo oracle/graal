@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2016, 2020, Oracle and/or its affiliates.
+ * Copyright (c) 2016, 2021, Oracle and/or its affiliates.
  *
  * All rights reserved.
  *
@@ -78,11 +78,6 @@ public final class SulongEngineOption {
             category = OptionCategory.EXPERT,
             help = "Enables using C++ code and features via interop.")
     public static final OptionKey<Boolean> CXX_INTEROP = new OptionKey<>(false);
-
-    @Option(name = "llvm.enableExternalNativeAccess",
-            category = OptionCategory.INTERNAL,
-            help = "Enable Sulongs native interface.")
-    public static final OptionKey<Boolean> ENABLE_NFI = new OptionKey<>(true);
 
     @Option(name = "llvm.debugSysCalls",
             category = OptionCategory.INTERNAL,

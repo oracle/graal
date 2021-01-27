@@ -175,13 +175,13 @@ public class SubstrateGraphBuilderPlugins {
 
         // register the substratevm plugins
         registerSystemPlugins(metaAccess, plugins);
-        registerReflectionPlugins(plugins, replacements, analysis);
+        registerReflectionPlugins(plugins, replacements);
         registerImageInfoPlugins(metaAccess, plugins);
         registerProxyPlugins(snippetReflection, annotationSubstitutions, plugins, analysis);
         registerAtomicUpdaterPlugins(metaAccess, snippetReflection, plugins, analysis);
         registerObjectPlugins(plugins);
         registerUnsafePlugins(metaAccess, plugins, snippetReflection, analysis);
-        registerKnownIntrinsicsPlugins(plugins, analysis);
+        registerKnownIntrinsicsPlugins(plugins);
         registerStackValuePlugins(snippetReflection, plugins);
         registerArraysPlugins(plugins);
         registerArrayPlugins(plugins, snippetReflection, analysis);
@@ -218,19 +218,12 @@ public class SubstrateGraphBuilderPlugins {
         });
     }
 
-    private static void registerReflectionPlugins(InvocationPlugins plugins, Replacements replacements, boolean analysis) {
+    private static void registerReflectionPlugins(InvocationPlugins plugins, Replacements replacements) {
         Registration r = new Registration(plugins, reflectionClass, replacements);
         r.register0("getCallerClass", new InvocationPlugin() {
             @Override
             public boolean apply(GraphBuilderContext b, ResolvedJavaMethod targetMethod, Receiver receiver) {
-                if (analysis) {
-                    /*
-                     * During static analysis, we do not intrinsify so that we see the method and
-                     * its callees as invoked.
-                     */
-                    return false;
-                }
-                b.addPush(JavaKind.Object, new SubstrateReflectionGetCallerClassNode(b.getMetaAccess(), MacroParams.of(b, targetMethod)));
+                b.addPush(JavaKind.Object, new SubstrateReflectionGetCallerClassNode(MacroParams.of(b, targetMethod)));
                 return true;
             }
 
@@ -697,7 +690,7 @@ public class SubstrateGraphBuilderPlugins {
 
     }
 
-    private static void registerKnownIntrinsicsPlugins(InvocationPlugins plugins, boolean analysis) {
+    private static void registerKnownIntrinsicsPlugins(InvocationPlugins plugins) {
         Registration r = new Registration(plugins, KnownIntrinsics.class);
         r.register0("heapBase", new InvocationPlugin() {
             @Override
@@ -790,11 +783,14 @@ public class SubstrateGraphBuilderPlugins {
                 ResolvedJavaType type = typeValue(b.getConstantReflection(), b, targetMethod, typeNode, "type");
                 TypeReference typeRef = TypeReference.createTrustedWithoutAssumptions(type);
                 Stamp stamp = StampFactory.object(typeRef);
-                if (analysis) {
-                    b.addPush(JavaKind.Object, new ConvertUnknownValueNode(object, stamp));
-                } else {
-                    b.addPush(JavaKind.Object, PiNode.create(object, stamp));
-                }
+
+                /* The type cast for Graal optimization phases. */
+                ValueNode piNode = PiNode.create(object, stamp);
+                /*
+                 * The special handling node for static analysis. This node removes itself during
+                 * compilation.
+                 */
+                b.addPush(JavaKind.Object, new ConvertUnknownValueNode(piNode, stamp));
                 return true;
             }
         });

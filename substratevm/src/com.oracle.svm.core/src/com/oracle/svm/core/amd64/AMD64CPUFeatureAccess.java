@@ -144,7 +144,7 @@ public class AMD64CPUFeatureAccess implements CPUFeatureAccess {
 
         AMD64LibCHelper.CPUFeatures cpuFeatures = StackValue.get(AMD64LibCHelper.CPUFeatures.class);
 
-        MemoryUtil.fillToMemoryAtomic((Pointer) cpuFeatures, SizeOf.unsigned(AMD64LibCHelper.CPUFeatures.class), (byte) 0);
+        MemoryUtil.fill((Pointer) cpuFeatures, SizeOf.unsigned(AMD64LibCHelper.CPUFeatures.class), (byte) 0);
 
         AMD64LibCHelper.determineCPUFeatures(cpuFeatures);
 

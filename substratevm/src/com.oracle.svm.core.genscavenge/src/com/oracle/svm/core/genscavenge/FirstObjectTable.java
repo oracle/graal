@@ -26,12 +26,14 @@ package com.oracle.svm.core.genscavenge;
 
 import java.nio.ByteBuffer;
 
+import org.graalvm.compiler.core.common.NumUtil;
 import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;
 import org.graalvm.word.Pointer;
 import org.graalvm.word.UnsignedWord;
 import org.graalvm.word.WordFactory;
 
+import com.oracle.svm.core.MemoryUtil;
 import com.oracle.svm.core.config.ConfigurationValues;
 import com.oracle.svm.core.hub.LayoutEncoding;
 import com.oracle.svm.core.log.Log;
@@ -176,9 +178,8 @@ public final class FirstObjectTable {
     private FirstObjectTable() {
     }
 
-    static Pointer initializeTableToLimit(Pointer table, Pointer tableLimit) {
-        UnsignedWord indexLimit = FirstObjectTable.tableOffsetToIndex(tableLimit.subtract(table));
-        return FirstObjectTable.initializeTableToIndex(table, indexLimit);
+    static void initializeTableToLimit(Pointer table, Pointer tableLimit) {
+        assert FirstObjectTable.doInitializeTableToLimit(table, tableLimit);
     }
 
     static boolean isUninitializedIndex(Pointer table, UnsignedWord index) {
@@ -261,7 +262,9 @@ public final class FirstObjectTable {
 
     @Platforms(Platform.HOSTED_ONLY.class)
     static void initializeTableInBuffer(ByteBuffer buffer, int bufferTableOffset, UnsignedWord tableSize) {
-        doInitializeTableToLimit(new HostedByteBufferPointer(buffer, bufferTableOffset), tableSize);
+        for (int i = 0; tableSize.aboveThan(i); i++) {
+            buffer.put(bufferTableOffset + i, NumUtil.safeToByte(UNINITIALIZED_ENTRY));
+        }
     }
 
     /**
@@ -413,29 +416,17 @@ public final class FirstObjectTable {
         return ConfigurationValues.getObjectLayout().getAlignment();
     }
 
-    private static Pointer initializeTableToIndex(Pointer table, UnsignedWord indexLimit) {
-        /*
-         * The table doesn't really need to be initialized, but if I'm making assertions, then I
-         * should initialize the entries to the uninitialized value.
-         */
-        assert doInitializeTableToLimit(table, indexLimit);
-        return table;
-    }
-
-    private static void doInitializeTableToLimit(Pointer table, Pointer tableLimit) {
-        UnsignedWord indexLimit = FirstObjectTable.tableOffsetToIndex(tableLimit.subtract(table));
-        doInitializeTableToLimit(table, indexLimit);
-    }
-
-    private static boolean doInitializeTableToLimit(Pointer table, UnsignedWord indexLimit) {
-        for (UnsignedWord index = WordFactory.unsigned(0); index.belowThan(indexLimit); index = index.add(1)) {
-            initializeEntryAtIndex(table, index);
-        }
+    private static boolean doInitializeTableToLimit(Pointer table, Pointer tableLimit) {
+        doInitializeTableToLimitOffset(table, tableLimit.subtract(table));
         return true;
     }
 
-    private static void initializeEntryAtIndex(Pointer table, UnsignedWord index) {
-        table.writeByte(indexToTableOffset(index), (byte) UNINITIALIZED_ENTRY);
+    private static void doInitializeTableToLimitOffset(Pointer table, UnsignedWord tableLimitOffset) {
+        MemoryUtil.fill(table, tableLimitOffset, (byte) UNINITIALIZED_ENTRY);
+    }
+
+    private static void doInitializeTableToIndex(Pointer table, UnsignedWord indexLimit) {
+        doInitializeTableToLimitOffset(table, FirstObjectTable.indexToTableOffset(indexLimit));
     }
 
     private static int getEntryAtIndex(Pointer table, UnsignedWord index) {
@@ -511,10 +502,6 @@ public final class FirstObjectTable {
         return index.multiply(ENTRY_SIZE_BYTES);
     }
 
-    private static UnsignedWord tableOffsetToIndex(UnsignedWord offset) {
-        return offset.unsignedDivide(ENTRY_SIZE_BYTES);
-    }
-
     private static UnsignedWord indexToMemoryOffset(UnsignedWord index) {
         return index.multiply(BYTES_COVERED_BY_ENTRY);
     }
@@ -561,12 +548,12 @@ public final class FirstObjectTable {
         private TestingBackDoor() {
         }
 
-        public static void initializeTableToLimitForAsserts(Pointer table, Pointer tableLimit) {
+        public static void initializeTableToLimit(Pointer table, Pointer tableLimit) {
             FirstObjectTable.doInitializeTableToLimit(table, tableLimit);
         }
 
-        public static void initializeTableToIndexForAsserts(Pointer table, UnsignedWord indexLimit) {
-            FirstObjectTable.doInitializeTableToLimit(table, indexLimit);
+        public static void initializeTableToIndex(Pointer table, UnsignedWord indexLimit) {
+            FirstObjectTable.doInitializeTableToIndex(table, indexLimit);
         }
 
         public static void setTableForObject(Pointer table, Pointer memory, Pointer start, Pointer end) {

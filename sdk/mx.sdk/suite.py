@@ -490,6 +490,7 @@ suite = {
       "platformDependent" : True,
       "maven": False,
       "license" : "Apache-2.0-LLVM",
+      "defaultBuild" : False,
     },
   },
 }
