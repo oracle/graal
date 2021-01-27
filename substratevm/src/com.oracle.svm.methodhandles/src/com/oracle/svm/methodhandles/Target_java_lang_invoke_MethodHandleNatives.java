@@ -209,7 +209,7 @@ final class Target_java_lang_invoke_MethodHandleNatives {
     @TargetElement(onlyWith = JDK16OrLater.class)
     static Target_java_lang_invoke_MemberName resolve(Target_java_lang_invoke_MemberName self, Class<?> caller, int lookupMode, boolean speculativeResolve)
                     throws LinkageError, ClassNotFoundException {
-        // JDK-8244090 introduces constraint check
+        // GR-29019: check the member can be accessed based on lookupMode.
         return Util_java_lang_invoke_MethodHandleNatives.resolve(self, caller, speculativeResolve);
     }
 }
