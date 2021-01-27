@@ -801,6 +801,7 @@ public class ReflectionSubstitutionType extends CustomSubstitutionType<CustomSub
 
     private static final class ProxyClassLookupMethod extends ReflectionSubstitutionMethod {
 
+        @SuppressWarnings("unused")//
         private final Member member;
 
         ProxyClassLookupMethod(ResolvedJavaMethod original, Member member) {
