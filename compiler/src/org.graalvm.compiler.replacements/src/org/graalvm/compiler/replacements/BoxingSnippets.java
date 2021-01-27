@@ -51,11 +51,13 @@ import org.graalvm.compiler.replacements.SnippetCounter.Group;
 import org.graalvm.compiler.replacements.SnippetTemplate.AbstractTemplates;
 import org.graalvm.compiler.replacements.SnippetTemplate.Arguments;
 import org.graalvm.compiler.replacements.SnippetTemplate.SnippetInfo;
+import org.graalvm.compiler.serviceprovider.GraalUnsafeAccess;
 import org.graalvm.word.LocationIdentity;
 
 import jdk.vm.ci.code.TargetDescription;
 import jdk.vm.ci.meta.JavaKind;
 import jdk.vm.ci.meta.ResolvedJavaField;
+import sun.misc.Unsafe;
 
 public class BoxingSnippets implements Snippets {
 
@@ -116,8 +118,8 @@ public class BoxingSnippets implements Snippets {
         try {
             Class<?>[] innerClasses = Integer.class.getDeclaredClasses();
             Field f = innerClasses[0].getDeclaredField("cache");
-            f.setAccessible(true);
-            Integer[] cache = (Integer[]) f.get(null);
+            Unsafe unsafe = GraalUnsafeAccess.getUnsafe();
+            Integer[] cache = (Integer[]) unsafe.getObject(unsafe.staticFieldBase(f), unsafe.staticFieldOffset(f));
             return cache[0];
         } catch (Throwable t) {
             throw GraalError.shouldNotReachHere(t);
@@ -129,8 +131,8 @@ public class BoxingSnippets implements Snippets {
         try {
             Class<?>[] innerClasses = Integer.class.getDeclaredClasses();
             Field f = innerClasses[0].getDeclaredField("cache");
-            f.setAccessible(true);
-            Integer[] cache = (Integer[]) f.get(null);
+            Unsafe unsafe = GraalUnsafeAccess.getUnsafe();
+            Integer[] cache = (Integer[]) unsafe.getObject(unsafe.staticFieldBase(f), unsafe.staticFieldOffset(f));
             return cache[cache.length - 1];
         } catch (Throwable t) {
             throw GraalError.shouldNotReachHere(t);
@@ -150,8 +152,8 @@ public class BoxingSnippets implements Snippets {
         try {
             Class<?>[] innerClasses = Long.class.getDeclaredClasses();
             Field f = innerClasses[0].getDeclaredField("cache");
-            f.setAccessible(true);
-            Long[] cache = (Long[]) f.get(null);
+            Unsafe unsafe = GraalUnsafeAccess.getUnsafe();
+            Long[] cache = (Long[]) unsafe.getObject(unsafe.staticFieldBase(f), unsafe.staticFieldOffset(f));
             return cache[0];
         } catch (Throwable t) {
             throw GraalError.shouldNotReachHere(t);
@@ -163,8 +165,8 @@ public class BoxingSnippets implements Snippets {
         try {
             Class<?>[] innerClasses = Long.class.getDeclaredClasses();
             Field f = innerClasses[0].getDeclaredField("cache");
-            f.setAccessible(true);
-            Long[] cache = (Long[]) f.get(null);
+            Unsafe unsafe = GraalUnsafeAccess.getUnsafe();
+            Long[] cache = (Long[]) unsafe.getObject(unsafe.staticFieldBase(f), unsafe.staticFieldOffset(f));
             return cache[cache.length - 1];
         } catch (Throwable t) {
             throw GraalError.shouldNotReachHere(t);
@@ -184,8 +186,8 @@ public class BoxingSnippets implements Snippets {
         try {
             Class<?>[] innerClasses = Short.class.getDeclaredClasses();
             Field f = innerClasses[0].getDeclaredField("cache");
-            f.setAccessible(true);
-            Short[] cache = (Short[]) f.get(null);
+            Unsafe unsafe = GraalUnsafeAccess.getUnsafe();
+            Short[] cache = (Short[]) unsafe.getObject(unsafe.staticFieldBase(f), unsafe.staticFieldOffset(f));
             return cache[0];
         } catch (Throwable t) {
             throw GraalError.shouldNotReachHere(t);
@@ -197,8 +199,8 @@ public class BoxingSnippets implements Snippets {
         try {
             Class<?>[] innerClasses = Short.class.getDeclaredClasses();
             Field f = innerClasses[0].getDeclaredField("cache");
-            f.setAccessible(true);
-            Short[] cache = (Short[]) f.get(null);
+            Unsafe unsafe = GraalUnsafeAccess.getUnsafe();
+            Short[] cache = (Short[]) unsafe.getObject(unsafe.staticFieldBase(f), unsafe.staticFieldOffset(f));
             return cache[cache.length - 1];
         } catch (Throwable t) {
             throw GraalError.shouldNotReachHere(t);
@@ -221,8 +223,8 @@ public class BoxingSnippets implements Snippets {
         try {
             Class<?>[] innerClasses = Character.class.getDeclaredClasses();
             Field f = innerClasses[0].getDeclaredField("cache");
-            f.setAccessible(true);
-            Character[] cache = (Character[]) f.get(null);
+            Unsafe unsafe = GraalUnsafeAccess.getUnsafe();
+            Character[] cache = (Character[]) unsafe.getObject(unsafe.staticFieldBase(f), unsafe.staticFieldOffset(f));
             return cache[0];
         } catch (Throwable t) {
             throw GraalError.shouldNotReachHere(t);
@@ -234,8 +236,8 @@ public class BoxingSnippets implements Snippets {
         try {
             Class<?>[] innerClasses = Character.class.getDeclaredClasses();
             Field f = innerClasses[0].getDeclaredField("cache");
-            f.setAccessible(true);
-            Character[] cache = (Character[]) f.get(null);
+            Unsafe unsafe = GraalUnsafeAccess.getUnsafe();
+            Character[] cache = (Character[]) unsafe.getObject(unsafe.staticFieldBase(f), unsafe.staticFieldOffset(f));
             return cache[cache.length - 1];
         } catch (Throwable t) {
             throw GraalError.shouldNotReachHere(t);
