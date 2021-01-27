@@ -22,19 +22,19 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package org.graalvm.compiler.truffle.test;
+package org.graalvm.compiler.truffle.test.collection;
 
-import org.graalvm.compiler.truffle.runtime.ArrayPriorityBlockingQueue;
+import org.graalvm.compiler.truffle.runtime.collection.CustomBlockingQueue;
 import org.junit.Assert;
 import org.junit.Test;
 
 import java.util.ArrayList;
 
-public class ArrayPriorityBlockingQueueTest {
+public class CustomBlockingQueueTest {
 
     @Test
     public void testAddItems() {
-        ArrayPriorityBlockingQueue<Integer> queue = new ArrayPriorityBlockingQueue<>();
+        CustomBlockingQueue<Integer> queue = new CustomBlockingQueue<>();
         for (int i = 100; i < 1000; i++) {
             Assert.assertEquals(i - 100, queue.size());
             Assert.assertTrue(queue.add(i));
@@ -48,7 +48,7 @@ public class ArrayPriorityBlockingQueueTest {
 
     @Test
     public void testRemoveItems() {
-        ArrayPriorityBlockingQueue<Integer> queue = new ArrayPriorityBlockingQueue<>();
+        CustomBlockingQueue<Integer> queue = new CustomBlockingQueue<>();
         for (int i = 0; i < 1000; i++) {
             Assert.assertEquals(i, queue.size());
             Assert.assertTrue(queue.add(i));
@@ -65,7 +65,7 @@ public class ArrayPriorityBlockingQueueTest {
 
     @Test
     public void testAddRemove() {
-        ArrayPriorityBlockingQueue<Integer> queue = new ArrayPriorityBlockingQueue<>();
+        CustomBlockingQueue<Integer> queue = new CustomBlockingQueue<>();
         for (int i = 0; i < 10000; i++) {
             queue.add(i);
             queue.add(i + 1);

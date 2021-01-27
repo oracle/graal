@@ -22,7 +22,7 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package org.graalvm.compiler.truffle.runtime;
+package org.graalvm.compiler.truffle.runtime.collection;
 
 import java.util.Arrays;
 import java.util.Collection;
@@ -33,54 +33,28 @@ import java.util.concurrent.TimeUnit;
 import java.util.concurrent.locks.Condition;
 import java.util.concurrent.locks.ReentrantLock;
 
-public class ArrayPriorityBlockingQueue<E> implements BlockingQueue<E> {
-    private static final int INITIAL_SIZE = 128;
-
+public class CustomBlockingQueue<E> implements BlockingQueue<E> {
     private ReentrantLock lock;
 
     private final Condition notEmpty;
 
-    private Object[] items;
+    private ArrayQueue<E> data;
 
-    private int start;
-
-    private int tail;
-
-    public ArrayPriorityBlockingQueue() {
-        this.items = new Object[INITIAL_SIZE];
+    public CustomBlockingQueue() {
         this.lock = new ReentrantLock();
         this.notEmpty = this.lock.newCondition();
-        this.start = 0;
-        this.tail = 0;
-    }
-
-    private void ensureIndex(int n) {
-        if (n >= items.length) {
-            int factor = 1;
-            if (tail - start > items.length / 2) {
-                factor = 2;
-            }
-            final Object[] nitems = new Object[items.length * factor];
-            System.arraycopy(items, start, nitems, 0, tail - start);
-            items = nitems;
-            tail = tail - start;
-            start = 0;
-        }
+        this.data = new ArrayQueue<>();
     }
 
     @Override
     public boolean add(E x) {
-        if (x == null) {
-            throw new NullPointerException();
-        }
         lock.lock();
         try {
-            ensureIndex(tail);
-            items[tail] = x;
-            if (start == tail) {
+            boolean wasEmpty = isEmpty();
+            data.add(x);
+            if (wasEmpty) {
                 notEmpty.signalAll();
             }
-            tail++;
             return true;
         } finally {
             lock.unlock();
@@ -104,12 +78,7 @@ public class ArrayPriorityBlockingQueue<E> implements BlockingQueue<E> {
 
     @SuppressWarnings("unchecked")
     private E lockedPoll() {
-        if (start == tail) {
-            return null;
-        }
-        E result = (E) items[start];
-        start++;
-        return result;
+        return data.poll();
     }
 
     @Override
@@ -162,7 +131,7 @@ public class ArrayPriorityBlockingQueue<E> implements BlockingQueue<E> {
     public E peek() {
         lock.lock();
         try {
-            return (E) this.items[start];
+            return data.peek();
         } finally {
             lock.unlock();
         }
@@ -219,10 +188,8 @@ public class ArrayPriorityBlockingQueue<E> implements BlockingQueue<E> {
     public void clear() {
         lock.lock();
         try {
-            this.items = new Object[INITIAL_SIZE];
-            this.start = 0;
-            this.tail = 0;
-            // Note: no need to awake waiting threads.
+            data.clear();
+            // Note: no need to awake waiting threads, because no item was added.
         } finally {
             lock.unlock();
         }
@@ -232,7 +199,7 @@ public class ArrayPriorityBlockingQueue<E> implements BlockingQueue<E> {
     public int size() {
         lock.lock();
         try {
-            return tail - start;
+            return data.size();
         } finally {
             lock.unlock();
         }
@@ -259,21 +226,17 @@ public class ArrayPriorityBlockingQueue<E> implements BlockingQueue<E> {
     public Object[] toArray() {
         lock.lock();
         try {
-            Object[] result = new Object[tail - start];
-            System.arraycopy(items, start, result, 0, tail - start);
-            return result;
+            return data.toArray();
         } finally {
             lock.unlock();
         }
     }
 
-    @SuppressWarnings("unchecked")
     @Override
     public <T> T[] toArray(T[] a) {
         lock.lock();
         try {
-            T[] result = (T[]) Arrays.copyOf(items, tail - start, a.getClass());
-            return result;
+            return data.toArray(a);
         } finally {
             lock.unlock();
         }
@@ -298,7 +261,7 @@ public class ArrayPriorityBlockingQueue<E> implements BlockingQueue<E> {
     public int internalCapacity() {
         lock.lock();
         try {
-            return items.length - size();
+            return data.internalCapacity();
         } finally {
             lock.unlock();
         }
