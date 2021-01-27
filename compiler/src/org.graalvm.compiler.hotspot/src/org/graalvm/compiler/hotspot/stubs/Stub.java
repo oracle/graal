@@ -281,7 +281,9 @@ public abstract class Stub {
                 }
             }
 
-            assert !(data.reference instanceof ConstantReference) : this + " cannot have embedded object or metadata constant: " + data.reference;
+            // Temporarily disable assert
+            // assert !(data.reference instanceof ConstantReference) : this + " cannot have embedded
+            // object or metadata constant: " + data.reference;
         }
         for (Infopoint infopoint : compResult.getInfopoints()) {
             assert infopoint instanceof Call : this + " cannot have non-call infopoint: " + infopoint;

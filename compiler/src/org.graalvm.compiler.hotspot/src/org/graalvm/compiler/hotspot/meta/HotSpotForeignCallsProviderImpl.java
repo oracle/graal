@@ -49,6 +49,7 @@ import org.graalvm.compiler.hotspot.HotSpotGraalRuntimeProvider;
 import org.graalvm.compiler.hotspot.meta.HotSpotForeignCallDescriptor.Reexecutability;
 import org.graalvm.compiler.hotspot.meta.HotSpotForeignCallDescriptor.Transition;
 import org.graalvm.compiler.hotspot.stubs.ForeignCallStub;
+import org.graalvm.compiler.hotspot.stubs.InvokeJavaMethodStub;
 import org.graalvm.compiler.hotspot.stubs.Stub;
 import org.graalvm.compiler.options.OptionValues;
 import org.graalvm.compiler.word.Word;
@@ -60,6 +61,7 @@ import jdk.vm.ci.code.CodeCacheProvider;
 import jdk.vm.ci.hotspot.HotSpotJVMCIRuntime;
 import jdk.vm.ci.meta.JavaKind;
 import jdk.vm.ci.meta.MetaAccessProvider;
+import jdk.vm.ci.meta.ResolvedJavaMethod;
 
 /**
  * HotSpot implementation of {@link HotSpotForeignCallsProvider}.
@@ -183,6 +185,22 @@ public abstract class HotSpotForeignCallsProviderImpl implements HotSpotForeignC
             throw new IllegalArgumentException("Can't link foreign call with zero address");
         }
         ForeignCallStub stub = new ForeignCallStub(options, jvmciRuntime, providers, address, descriptor, prependThread);
+        HotSpotForeignCallLinkage linkage = stub.getLinkage();
+        HotSpotForeignCallLinkage targetLinkage = stub.getTargetLinkage();
+        linkage.setCompiledStub(stub);
+        register(linkage);
+        register(targetLinkage);
+    }
+
+    public void invokeJavaMethodStub(OptionValues options,
+                    HotSpotProviders providers,
+                    HotSpotForeignCallDescriptor descriptor,
+                    long address,
+                    ResolvedJavaMethod staticMethod) {
+        if (address == 0) {
+            throw new IllegalArgumentException("Can't link foreign call with zero address");
+        }
+        InvokeJavaMethodStub stub = new InvokeJavaMethodStub(options, jvmciRuntime, providers, address, descriptor, staticMethod);
         HotSpotForeignCallLinkage linkage = stub.getLinkage();
         HotSpotForeignCallLinkage targetLinkage = stub.getTargetLinkage();
         linkage.setCompiledStub(stub);
