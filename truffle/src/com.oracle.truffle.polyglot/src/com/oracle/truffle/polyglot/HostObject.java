@@ -64,6 +64,7 @@ import com.oracle.truffle.api.library.ExportLibrary;
 import com.oracle.truffle.api.library.ExportMessage;
 import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.api.profiles.BranchProfile;
+import com.oracle.truffle.api.profiles.ValueProfile;
 import com.oracle.truffle.api.utilities.TriState;
 import com.oracle.truffle.polyglot.PolyglotLanguageContext.ToGuestValueNode;
 
@@ -1196,17 +1197,19 @@ final class HostObject implements TruffleObject {
     }
 
     @ExportMessage
-    boolean isNumber() {
+    boolean isNumber(@Shared("classProfile") @Cached("createClassProfile()") ValueProfile classProfile) {
         if (isNull()) {
             return false;
         }
-        Class<?> c = obj.getClass();
+
+        Class<?> c = classProfile.profile(obj).getClass();
         return c == Byte.class || c == Short.class || c == Integer.class || c == Long.class || c == Float.class || c == Double.class;
     }
 
     @ExportMessage
-    boolean fitsInByte(@Shared("numbers") @CachedLibrary(limit = "LIMIT") InteropLibrary numbers) {
-        if (isNumber()) {
+    boolean fitsInByte(@CachedLibrary("this") InteropLibrary thisLibrary,
+                    @Shared("numbers") @CachedLibrary(limit = "LIMIT") InteropLibrary numbers) {
+        if (thisLibrary.isNumber(this)) {
             return numbers.fitsInByte(obj);
         } else {
             return false;
@@ -1214,8 +1217,9 @@ final class HostObject implements TruffleObject {
     }
 
     @ExportMessage
-    boolean fitsInShort(@Shared("numbers") @CachedLibrary(limit = "LIMIT") InteropLibrary numbers) {
-        if (isNumber()) {
+    boolean fitsInShort(@CachedLibrary("this") InteropLibrary thisLibrary,
+                    @Shared("numbers") @CachedLibrary(limit = "LIMIT") InteropLibrary numbers) {
+        if (thisLibrary.isNumber(this)) {
             return numbers.fitsInShort(obj);
         } else {
             return false;
@@ -1223,8 +1227,9 @@ final class HostObject implements TruffleObject {
     }
 
     @ExportMessage
-    boolean fitsInInt(@Shared("numbers") @CachedLibrary(limit = "LIMIT") InteropLibrary numbers) {
-        if (isNumber()) {
+    boolean fitsInInt(@CachedLibrary("this") InteropLibrary thisLibrary,
+                    @Shared("numbers") @CachedLibrary(limit = "LIMIT") InteropLibrary numbers) {
+        if (thisLibrary.isNumber(this)) {
             return numbers.fitsInInt(obj);
         } else {
             return false;
@@ -1232,8 +1237,9 @@ final class HostObject implements TruffleObject {
     }
 
     @ExportMessage
-    boolean fitsInLong(@Shared("numbers") @CachedLibrary(limit = "LIMIT") InteropLibrary numbers) {
-        if (isNumber()) {
+    boolean fitsInLong(@CachedLibrary("this") InteropLibrary thisLibrary,
+                    @Shared("numbers") @CachedLibrary(limit = "LIMIT") InteropLibrary numbers) {
+        if (thisLibrary.isNumber(this)) {
             return numbers.fitsInLong(obj);
         } else {
             return false;
@@ -1241,8 +1247,9 @@ final class HostObject implements TruffleObject {
     }
 
     @ExportMessage
-    boolean fitsInFloat(@Shared("numbers") @CachedLibrary(limit = "LIMIT") InteropLibrary numbers) {
-        if (isNumber()) {
+    boolean fitsInFloat(@CachedLibrary("this") InteropLibrary thisLibrary,
+                    @Shared("numbers") @CachedLibrary(limit = "LIMIT") InteropLibrary numbers) {
+        if (thisLibrary.isNumber(this)) {
             return numbers.fitsInFloat(obj);
         } else {
             return false;
@@ -1250,8 +1257,9 @@ final class HostObject implements TruffleObject {
     }
 
     @ExportMessage
-    boolean fitsInDouble(@Shared("numbers") @CachedLibrary(limit = "LIMIT") InteropLibrary numbers) {
-        if (isNumber()) {
+    boolean fitsInDouble(@CachedLibrary("this") InteropLibrary thisLibrary,
+                    @Shared("numbers") @CachedLibrary(limit = "LIMIT") InteropLibrary numbers) {
+        if (thisLibrary.isNumber(this)) {
             return numbers.fitsInDouble(obj);
         } else {
             return false;
@@ -1259,9 +1267,10 @@ final class HostObject implements TruffleObject {
     }
 
     @ExportMessage
-    byte asByte(@Shared("numbers") @CachedLibrary(limit = "LIMIT") InteropLibrary numbers,
+    byte asByte(@CachedLibrary("this") InteropLibrary thisLibrary,
+                    @Shared("numbers") @CachedLibrary(limit = "LIMIT") InteropLibrary numbers,
                     @Shared("error") @Cached BranchProfile error) throws UnsupportedMessageException {
-        if (isNumber()) {
+        if (thisLibrary.isNumber(this)) {
             return numbers.asByte(obj);
         } else {
             error.enter();
@@ -1270,9 +1279,10 @@ final class HostObject implements TruffleObject {
     }
 
     @ExportMessage
-    short asShort(@Shared("numbers") @CachedLibrary(limit = "LIMIT") InteropLibrary numbers,
+    short asShort(@CachedLibrary("this") InteropLibrary thisLibrary,
+                    @Shared("numbers") @CachedLibrary(limit = "LIMIT") InteropLibrary numbers,
                     @Shared("error") @Cached BranchProfile error) throws UnsupportedMessageException {
-        if (isNumber()) {
+        if (thisLibrary.isNumber(this)) {
             return numbers.asShort(obj);
         } else {
             error.enter();
@@ -1281,9 +1291,10 @@ final class HostObject implements TruffleObject {
     }
 
     @ExportMessage
-    int asInt(@Shared("numbers") @CachedLibrary(limit = "LIMIT") InteropLibrary numbers,
+    int asInt(@CachedLibrary("this") InteropLibrary thisLibrary,
+                    @Shared("numbers") @CachedLibrary(limit = "LIMIT") InteropLibrary numbers,
                     @Shared("error") @Cached BranchProfile error) throws UnsupportedMessageException {
-        if (isNumber()) {
+        if (thisLibrary.isNumber(this)) {
             return numbers.asInt(obj);
         } else {
             error.enter();
@@ -1292,9 +1303,10 @@ final class HostObject implements TruffleObject {
     }
 
     @ExportMessage
-    long asLong(@Shared("numbers") @CachedLibrary(limit = "LIMIT") InteropLibrary numbers,
+    long asLong(@CachedLibrary("this") InteropLibrary thisLibrary,
+                    @Shared("numbers") @CachedLibrary(limit = "LIMIT") InteropLibrary numbers,
                     @Shared("error") @Cached BranchProfile error) throws UnsupportedMessageException {
-        if (isNumber()) {
+        if (thisLibrary.isNumber(this)) {
             return numbers.asLong(obj);
         } else {
             error.enter();
@@ -1303,9 +1315,10 @@ final class HostObject implements TruffleObject {
     }
 
     @ExportMessage
-    float asFloat(@Shared("numbers") @CachedLibrary(limit = "LIMIT") InteropLibrary numbers,
+    float asFloat(@CachedLibrary("this") InteropLibrary thisLibrary,
+                    @Shared("numbers") @CachedLibrary(limit = "LIMIT") InteropLibrary numbers,
                     @Shared("error") @Cached BranchProfile error) throws UnsupportedMessageException {
-        if (isNumber()) {
+        if (thisLibrary.isNumber(this)) {
             return numbers.asFloat(obj);
         } else {
             error.enter();
@@ -1314,9 +1327,10 @@ final class HostObject implements TruffleObject {
     }
 
     @ExportMessage
-    double asDouble(@Shared("numbers") @CachedLibrary(limit = "LIMIT") InteropLibrary numbers,
+    double asDouble(@CachedLibrary("this") InteropLibrary thisLibrary,
+                    @Shared("numbers") @CachedLibrary(limit = "LIMIT") InteropLibrary numbers,
                     @Shared("error") @Cached BranchProfile error) throws UnsupportedMessageException {
-        if (isNumber()) {
+        if (thisLibrary.isNumber(this)) {
             return numbers.asDouble(obj);
         } else {
             error.enter();
@@ -1325,18 +1339,19 @@ final class HostObject implements TruffleObject {
     }
 
     @ExportMessage
-    boolean isString() {
+    boolean isString(@Shared("classProfile") @Cached("createClassProfile()") ValueProfile classProfile) {
         if (isNull()) {
             return false;
         }
-        Class<?> c = obj.getClass();
+        Class<?> c = classProfile.profile(obj).getClass();
         return c == String.class || c == Character.class;
     }
 
     @ExportMessage
-    String asString(@Shared("numbers") @CachedLibrary(limit = "LIMIT") InteropLibrary strings,
+    String asString(@CachedLibrary("this") InteropLibrary thisLibrary,
+                    @Shared("numbers") @CachedLibrary(limit = "LIMIT") InteropLibrary strings,
                     @Shared("error") @Cached BranchProfile error) throws UnsupportedMessageException {
-        if (isString()) {
+        if (thisLibrary.isString(this)) {
             return strings.asString(obj);
         } else {
             error.enter();
