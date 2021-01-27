@@ -39,6 +39,7 @@ import com.oracle.truffle.espresso.impl.Method;
 import com.oracle.truffle.espresso.jni.NativeEnv;
 import com.oracle.truffle.espresso.jni.NativeLibrary;
 import com.oracle.truffle.espresso.jni.RawBuffer;
+import com.oracle.truffle.espresso.meta.EspressoError;
 
 class AgentLibrairies {
 
@@ -48,14 +49,14 @@ class AgentLibrairies {
     private final EspressoContext context;
 
     private final List<AgentLibrary> agents = new ArrayList<>();
-    private InteropLibrary interop = InteropLibrary.getUncached();
+    private final InteropLibrary interop = InteropLibrary.getUncached();
 
     TruffleObject bind(Method method, String mangledName) {
         for (AgentLibrary agent : agents) {
             try {
                 return Method.bind(agent.lib, method, mangledName);
             } catch (UnknownIdentifierException e) {
-                /* Safe to ignore */
+                /* Not found in this library: Safe to ignore and check for the next one */
             }
         }
         return null;
@@ -68,15 +69,15 @@ class AgentLibrairies {
     void initialize() {
         Object ret;
         for (AgentLibrary agent : agents) {
-
             TruffleObject onLoad = lookupOnLoad(agent);
             if (onLoad == null || interop.isNull(onLoad)) {
-                throw abort();
+                throw abort("Unable to locate " + AGENT_ONLOAD + " in agent " + agent.name);
             }
             try (RawBuffer optionBuffer = RawBuffer.getNativeString(agent.options)) {
                 ret = interop.execute(onLoad, context.getVM().getJavaVM(), optionBuffer.pointer(), NativeEnv.RawPointer.nullInstance());
-                if (!interop.fitsInInt(ret) || interop.asInt(ret) != JNI_OK) {
-                    throw abort();
+                assert interop.fitsInInt(ret);
+                if (interop.asInt(ret) != JNI_OK) {
+                    throw abort(AGENT_ONLOAD + " call for agent " + agent.name + " returned with error: " + interop.asInt(ret));
                 }
             } catch (UnsupportedTypeException | ArityException | UnsupportedMessageException e) {
                 throw abort();
@@ -85,10 +86,27 @@ class AgentLibrairies {
     }
 
     void registerAgent(String agent) {
+        /*
+         * The agent string given should be of the form:
+         * 
+         * {+/-}<name><=options>
+         * 
+         * If the string starts with a `+`, then the name is an absolute path to the agent library,
+         * otherwise, it is a library name to be loaded from standard library directories.
+         */
         assert agent.length() > 0;
         String name;
         String options;
-        boolean isAbsolutePath = (agent.charAt(0) == '+');
+        boolean isAbsolutePath;
+        char ch = agent.charAt(0);
+        if (ch == '+') {
+            isAbsolutePath = true;
+        } else if (ch == '-') {
+            isAbsolutePath = false;
+        } else {
+            // String starting with + or - should have been enforced by option parsing.
+            throw abort();
+        }
         int eqIdx = agent.indexOf('=');
         if (eqIdx > 0) {
             name = agent.substring(1, eqIdx);
@@ -106,7 +124,7 @@ class AgentLibrairies {
         if (agent.isAbsolutePath) {
             library = NativeLibrary.loadLibrary(Paths.get(agent.name));
         } else {
-            // Lookup standard dll directory
+            // Lookup standard directory
             library = NativeEnv.loadLibraryInternal(context.getVmProperties().bootLibraryPath(), agent.name);
             if (interop.isNull(library)) {
                 // Try library path directory
@@ -114,7 +132,7 @@ class AgentLibrairies {
             }
         }
         if (interop.isNull(library)) {
-            throw abort();
+            throw abort("Could not locate library for agent " + agent.name);
         }
         agent.lib = library;
 
@@ -127,8 +145,17 @@ class AgentLibrairies {
         return onLoad;
     }
 
-    private static EspressoExitException abort() {
+    private EspressoError abort() {
+        if (context.ExitHost) {
+            System.exit(1);
+            throw EspressoError.shouldNotReachHere();
+        }
         throw new EspressoExitException(1);
+    }
+
+    private EspressoError abort(String message) {
+        context.getLogger().severe(message);
+        throw abort();
     }
 
     private static class AgentLibrary {
