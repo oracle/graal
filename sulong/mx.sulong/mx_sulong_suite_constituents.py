@@ -396,7 +396,7 @@ class BootstrapToolchainLauncherBuildTask(mx.BuildTask):
 
     def contents(self, tool, exe):
         # platform support
-        all_params = '"%*"' if mx.is_windows() else '"$@"'
+        all_params = '%*' if mx.is_windows() else '"$@"'
         _quote = _quote_windows if mx.is_windows() else pipes.quote
         # build command line
         java = mx.get_jdk().java
