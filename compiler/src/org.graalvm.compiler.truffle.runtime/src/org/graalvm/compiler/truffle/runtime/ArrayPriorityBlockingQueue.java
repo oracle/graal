@@ -78,7 +78,7 @@ public class ArrayPriorityBlockingQueue<E> implements BlockingQueue<E> {
             ensureIndex(tail);
             items[tail] = x;
             if (start == tail) {
-                notEmpty.notifyAll();
+                notEmpty.signalAll();
             }
             tail++;
             return true;
@@ -102,12 +102,14 @@ public class ArrayPriorityBlockingQueue<E> implements BlockingQueue<E> {
         return add(x);
     }
 
+    @SuppressWarnings("unchecked")
     private E lockedPoll() {
         if (start == tail) {
             return null;
         }
-        // TODO
-        return null;
+        E result = (E) items[start];
+        start++;
+        return result;
     }
 
     @Override
@@ -291,5 +293,14 @@ public class ArrayPriorityBlockingQueue<E> implements BlockingQueue<E> {
     @Override
     public int drainTo(Collection<? super E> collection, int i) {
         throw new UnsupportedOperationException();
+    }
+
+    public int internalCapacity() {
+        lock.lock();
+        try {
+            return items.length - size();
+        } finally {
+            lock.unlock();
+        }
     }
 }
