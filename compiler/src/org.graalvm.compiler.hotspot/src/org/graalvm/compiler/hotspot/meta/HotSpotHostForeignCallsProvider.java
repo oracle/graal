@@ -513,7 +513,7 @@ public abstract class HotSpotHostForeignCallsProvider extends HotSpotForeignCall
     /**
      * A service API for defining extra foreign calls (e.g. Truffle specific foreign calls).
      */
-    public static interface ForeignCallsPlugin {
+    public interface ForeignCallsPlugin {
         void initialize(HotSpotProviders providers, OptionValues options, HotSpotForeignCallsProviderImpl foreignCalls);
     }
 
