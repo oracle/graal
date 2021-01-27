@@ -29,9 +29,7 @@ import static org.graalvm.compiler.core.common.GraalOptions.AlwaysInlineVTableSt
 import static org.graalvm.compiler.core.common.GraalOptions.GeneratePIC;
 import static org.graalvm.compiler.core.common.GraalOptions.InlineVTableStubs;
 import static org.graalvm.compiler.core.common.GraalOptions.OmitHotExceptionStacktrace;
-import static org.graalvm.compiler.hotspot.HotSpotBackend.THREAD_LOCAL_HANDSHAKE_POLL;
 import static org.graalvm.compiler.hotspot.meta.HotSpotForeignCallsProviderImpl.OSR_MIGRATION_END;
-import static org.graalvm.compiler.hotspot.meta.HotSpotHostForeignCallsProvider.Options.HandshakeFastpath;
 import static org.graalvm.compiler.hotspot.replacements.HotSpotReplacementsUtil.CLASS_KLASS_LOCATION;
 import static org.graalvm.compiler.hotspot.replacements.HotSpotReplacementsUtil.CLASS_MIRROR_LOCATION;
 import static org.graalvm.compiler.hotspot.replacements.HotSpotReplacementsUtil.COMPRESSED_HUB_LOCATION;
@@ -50,7 +48,6 @@ import java.util.List;
 import org.graalvm.compiler.api.directives.GraalDirectives;
 import org.graalvm.compiler.core.common.CompressEncoding;
 import org.graalvm.compiler.core.common.GraalOptions;
-import org.graalvm.compiler.core.common.calc.CanonicalCondition;
 import org.graalvm.compiler.core.common.spi.ForeignCallDescriptor;
 import org.graalvm.compiler.core.common.spi.ForeignCallSignature;
 import org.graalvm.compiler.core.common.spi.ForeignCallsProvider;
@@ -110,15 +107,11 @@ import org.graalvm.compiler.nodes.AbstractDeoptimizeNode;
 import org.graalvm.compiler.nodes.CompressionNode.CompressionOp;
 import org.graalvm.compiler.nodes.ComputeObjectAddressNode;
 import org.graalvm.compiler.nodes.ConstantNode;
-import org.graalvm.compiler.nodes.EndNode;
 import org.graalvm.compiler.nodes.FixedNode;
-import org.graalvm.compiler.nodes.FixedWithNextNode;
 import org.graalvm.compiler.nodes.GetObjectAddressNode;
-import org.graalvm.compiler.nodes.IfNode;
 import org.graalvm.compiler.nodes.Invoke;
 import org.graalvm.compiler.nodes.LogicNode;
 import org.graalvm.compiler.nodes.LoweredCallTargetNode;
-import org.graalvm.compiler.nodes.MergeNode;
 import org.graalvm.compiler.nodes.NodeView;
 import org.graalvm.compiler.nodes.ParameterNode;
 import org.graalvm.compiler.nodes.SafepointNode;
@@ -128,7 +121,6 @@ import org.graalvm.compiler.nodes.StructuredGraph.GuardsStage;
 import org.graalvm.compiler.nodes.UnwindNode;
 import org.graalvm.compiler.nodes.ValueNode;
 import org.graalvm.compiler.nodes.calc.AddNode;
-import org.graalvm.compiler.nodes.calc.CompareNode;
 import org.graalvm.compiler.nodes.calc.FloatingNode;
 import org.graalvm.compiler.nodes.calc.IntegerDivRemNode;
 import org.graalvm.compiler.nodes.calc.IsNullNode;
@@ -190,13 +182,9 @@ import org.graalvm.compiler.replacements.nodes.AssertionNode;
 import org.graalvm.compiler.replacements.nodes.LogNode;
 import org.graalvm.compiler.replacements.nodes.ReadRegisterNode;
 import org.graalvm.compiler.serviceprovider.JavaVersionUtil;
-import org.graalvm.compiler.truffle.compiler.nodes.TruffleSafepointNode;
 import org.graalvm.word.LocationIdentity;
 
-import com.oracle.truffle.api.CompilerDirectives;
-
 import jdk.vm.ci.code.TargetDescription;
-import jdk.vm.ci.common.JVMCIError;
 import jdk.vm.ci.hotspot.HotSpotCallingConventionType;
 import jdk.vm.ci.hotspot.HotSpotConstantReflectionProvider;
 import jdk.vm.ci.hotspot.HotSpotResolvedJavaField;
@@ -242,6 +230,18 @@ public abstract class DefaultHotSpotLoweringProvider extends DefaultJavaLowering
         this.runtime = runtime;
         this.registers = registers;
         this.constantReflection = constantReflection;
+    }
+
+    public HotSpotGraalRuntimeProvider getRuntime() {
+        return runtime;
+    }
+
+    public HotSpotRegistersProvider getRegisters() {
+        return registers;
+    }
+
+    public HotSpotConstantReflectionProvider getConstantReflection() {
+        return constantReflection;
     }
 
     @Override
@@ -470,79 +470,11 @@ public abstract class DefaultHotSpotLoweringProvider extends DefaultJavaLowering
                 }
             } else if (n instanceof RegisterFinalizerNode) {
                 lowerRegisterFinalizer((RegisterFinalizerNode) n, tool);
-            } else if (n instanceof TruffleSafepointNode) {
-                lowerTruffleSafepointNode((TruffleSafepointNode) n, tool);
             } else {
                 super.lower(n, tool);
             }
         }
 
-    }
-
-    private void lowerTruffleSafepointNode(TruffleSafepointNode n, LoweringTool tool) {
-        if (tool.getLoweringStage() == LoweringTool.StandardLoweringStage.LOW_TIER) {
-            StructuredGraph graph = n.graph();
-            assert n.stateBefore() != null;
-
-            if (runtime.getVMConfig().invokeJavaMethodAddress == 0) {
-                throw new JVMCIError("Can't implement TruffleSafepointNode");
-            }
-
-            if (!HandshakeFastpath.getValue(n.getOptions())) {
-                ForeignCallNode foreignCallNode = graph.add(new ForeignCallNode(THREAD_LOCAL_HANDSHAKE_POLL, n.stamp(NodeView.DEFAULT)));
-                foreignCallNode.setStateDuring(n.stateBefore());
-                graph.replaceFixedWithFixed(n, foreignCallNode);
-                return;
-            }
-
-            FixedWithNextNode predecessor = tool.lastFixedNode();
-            FixedNode oldNext = predecessor.next();
-
-            JavaKind wordKind = runtime.getTarget().wordJavaKind;
-            Stamp stamp = StampFactory.forKind(wordKind);
-            ReadRegisterNode thread = graph.add(new ReadRegisterNode(stamp, registers.getThreadRegister(), true, false));
-            predecessor.setNext(thread);
-
-            int pendingOFfset = runtime.getVMConfig().jvmciCountersThreadOffset; // HotSpotThreadLocalHandshake.PENDING_OFFSET;
-            AddressNode pendingAddress = createOffsetAddress(graph, thread, pendingOFfset);
-            ReadNode pendingRead = graph.add(new ReadNode(pendingAddress, any(), StampFactory.forKind(JavaKind.Int), BarrierType.NONE));
-            thread.setNext(pendingRead);
-
-            ValueNode zero = ConstantNode.defaultForKind(JavaKind.Int);
-            LogicNode pendingEqualsZero = graph.addOrUniqueWithInputs(CompareNode.createCompareNode(CanonicalCondition.EQ, pendingRead, zero, constantReflection, NodeView.DEFAULT));
-            EndNode pendingZeroEnd = graph.add(new EndNode());
-            EndNode pendingNotZeroEnd = graph.add(new EndNode());
-
-            int disabledOffset = runtime.getVMConfig().jvmciCountersThreadOffset + Integer.BYTES; // HotSpotThreadLocalHandshake.DISABLED_OFFSET;
-            AddressNode disabledAddress = createOffsetAddress(graph, thread, disabledOffset);
-            ReadNode disabledRead = graph.add(new ReadNode(disabledAddress, any(), StampFactory.forKind(JavaKind.Int), BarrierType.NONE));
-
-            LogicNode disabledEqualsZero = graph.addOrUniqueWithInputs(CompareNode.createCompareNode(CanonicalCondition.EQ, disabledRead, zero, constantReflection, NodeView.DEFAULT));
-            EndNode disabledZeroEnd = graph.add(new EndNode());
-            EndNode disabledNotZeroEnd = graph.add(new EndNode());
-
-            ForeignCallNode foreignCallNode = graph.add(new ForeignCallNode(THREAD_LOCAL_HANDSHAKE_POLL, n.stamp(NodeView.DEFAULT)));
-            foreignCallNode.setStateDuring(n.stateBefore());
-            foreignCallNode.setNext(disabledZeroEnd);
-
-            IfNode disabledIf = graph.add(new IfNode(disabledEqualsZero, foreignCallNode, disabledNotZeroEnd, CompilerDirectives.FASTPATH_PROBABILITY));
-            disabledRead.setNext(disabledIf);
-            MergeNode disabledMerge = graph.add(new MergeNode());
-            disabledMerge.addForwardEnd(disabledZeroEnd);
-            disabledMerge.addForwardEnd(disabledNotZeroEnd);
-            disabledMerge.setNext(pendingNotZeroEnd);
-            disabledMerge.setStateAfter(n.stateBefore());
-
-            IfNode pendingIf = graph.add(new IfNode(pendingEqualsZero, pendingZeroEnd, disabledRead, CompilerDirectives.FASTPATH_PROBABILITY));
-            pendingRead.setNext(pendingIf);
-            MergeNode pendingMerge = graph.add(new MergeNode());
-            pendingMerge.addForwardEnd(pendingZeroEnd);
-            pendingMerge.addForwardEnd(pendingNotZeroEnd);
-            pendingMerge.setNext(oldNext);
-            pendingMerge.setStateAfter(n.stateBefore());
-
-            graph.removeFixed(n);
-        }
     }
 
     protected void loadHubForMonitorEnterNode(MonitorEnterNode monitor, LoweringTool tool, StructuredGraph graph) {
