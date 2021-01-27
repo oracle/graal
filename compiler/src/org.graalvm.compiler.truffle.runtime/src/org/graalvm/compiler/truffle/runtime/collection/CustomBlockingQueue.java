@@ -38,12 +38,12 @@ public class CustomBlockingQueue<E> implements BlockingQueue<E> {
 
     private final Condition notEmpty;
 
-    private ArrayQueue<E> data;
+    private Pool<E> pool;
 
-    public CustomBlockingQueue() {
+    public CustomBlockingQueue(Pool<E> pool) {
         this.lock = new ReentrantLock();
         this.notEmpty = this.lock.newCondition();
-        this.data = new ArrayQueue<>();
+        this.pool = pool;
     }
 
     @Override
@@ -51,7 +51,7 @@ public class CustomBlockingQueue<E> implements BlockingQueue<E> {
         lock.lock();
         try {
             boolean wasEmpty = isEmpty();
-            data.add(x);
+            pool.add(x);
             if (wasEmpty) {
                 notEmpty.signalAll();
             }
@@ -78,7 +78,7 @@ public class CustomBlockingQueue<E> implements BlockingQueue<E> {
 
     @SuppressWarnings("unchecked")
     private E lockedPoll() {
-        return data.poll();
+        return pool.poll();
     }
 
     @Override
@@ -131,7 +131,7 @@ public class CustomBlockingQueue<E> implements BlockingQueue<E> {
     public E peek() {
         lock.lock();
         try {
-            return data.peek();
+            return pool.peek();
         } finally {
             lock.unlock();
         }
@@ -188,7 +188,7 @@ public class CustomBlockingQueue<E> implements BlockingQueue<E> {
     public void clear() {
         lock.lock();
         try {
-            data.clear();
+            pool.clear();
             // Note: no need to awake waiting threads, because no item was added.
         } finally {
             lock.unlock();
@@ -199,7 +199,7 @@ public class CustomBlockingQueue<E> implements BlockingQueue<E> {
     public int size() {
         lock.lock();
         try {
-            return data.size();
+            return pool.size();
         } finally {
             lock.unlock();
         }
@@ -226,7 +226,7 @@ public class CustomBlockingQueue<E> implements BlockingQueue<E> {
     public Object[] toArray() {
         lock.lock();
         try {
-            return data.toArray();
+            return pool.toArray();
         } finally {
             lock.unlock();
         }
@@ -236,7 +236,7 @@ public class CustomBlockingQueue<E> implements BlockingQueue<E> {
     public <T> T[] toArray(T[] a) {
         lock.lock();
         try {
-            return data.toArray(a);
+            return pool.toArray(a);
         } finally {
             lock.unlock();
         }
@@ -261,7 +261,7 @@ public class CustomBlockingQueue<E> implements BlockingQueue<E> {
     public int internalCapacity() {
         lock.lock();
         try {
-            return data.internalCapacity();
+            return pool.internalCapacity();
         } finally {
             lock.unlock();
         }

@@ -26,7 +26,7 @@ package org.graalvm.compiler.truffle.runtime.collection;
 
 import java.util.Arrays;
 
-public class ArrayQueue<E> {
+public class ArrayQueue<E> implements Pool<E> {
     private static final int INITIAL_SIZE = 128;
 
     private Object[] items;
@@ -55,6 +55,7 @@ public class ArrayQueue<E> {
         }
     }
 
+    @Override
     public void add(E x) {
         if (x == null) {
             throw new NullPointerException();
@@ -64,6 +65,7 @@ public class ArrayQueue<E> {
         tail++;
     }
 
+    @Override
     @SuppressWarnings("unchecked")
     public E poll() {
         if (start == tail) {
@@ -74,33 +76,39 @@ public class ArrayQueue<E> {
         return result;
     }
 
+    @Override
     @SuppressWarnings("unchecked")
     public E peek() {
         return (E) this.items[start];
     }
 
+    @Override
     public void clear() {
         this.items = new Object[INITIAL_SIZE];
         this.start = 0;
         this.tail = 0;
     }
 
+    @Override
     public int size() {
         return tail - start;
     }
 
+    @Override
     public Object[] toArray() {
         Object[] result = new Object[tail - start];
         System.arraycopy(items, start, result, 0, tail - start);
         return result;
     }
 
+    @Override
     @SuppressWarnings("unchecked")
     public <T> T[] toArray(T[] a) {
         T[] result = (T[]) Arrays.copyOf(items, tail - start, a.getClass());
         return result;
     }
 
+    @Override
     public int internalCapacity() {
         return items.length - size();
     }
