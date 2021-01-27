@@ -32,6 +32,8 @@ import org.graalvm.compiler.nodeinfo.NodeCycles;
 import org.graalvm.compiler.nodeinfo.NodeInfo;
 import org.graalvm.compiler.nodes.DeoptimizingFixedWithNextNode;
 import org.graalvm.compiler.nodes.spi.Lowerable;
+import org.graalvm.compiler.nodes.spi.LoweringTool;
+import org.graalvm.compiler.serviceprovider.GraalServices;
 
 @NodeInfo(cycles = NodeCycles.CYCLES_4, cyclesRationale = "read + call", size = SIZE_4)
 public final class TruffleSafepointNode extends DeoptimizingFixedWithNextNode implements Lowerable {
@@ -47,4 +49,21 @@ public final class TruffleSafepointNode extends DeoptimizingFixedWithNextNode im
         return true;
     }
 
+    /**
+     * Service API for lowering a {@link TruffleSafepointNode}.
+     */
+    public interface TruffleSafepointLoweringProvider {
+        void lower(TruffleSafepointNode node, LoweringTool tool);
+    }
+
+    private static final TruffleSafepointLoweringProvider lowerer = GraalServices.loadSingle(TruffleSafepointLoweringProvider.class, false);
+
+    @Override
+    public void lower(LoweringTool tool) {
+        if (lowerer != null) {
+            lowerer.lower(this, tool);
+        } else {
+            tool.getLowerer().lower(this, tool);
+        }
+    }
 }

@@ -516,7 +516,6 @@ suite = {
         "org.graalvm.compiler.replacements",
         "org.graalvm.compiler.printer",
         "org.graalvm.compiler.runtime",
-        "org.graalvm.compiler.truffle.compiler",
       ],
 
       "checkstyle" : "org.graalvm.compiler.graph",
