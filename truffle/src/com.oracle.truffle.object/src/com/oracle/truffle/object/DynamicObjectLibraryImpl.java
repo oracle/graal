@@ -41,9 +41,11 @@
 package com.oracle.truffle.object;
 
 import static com.oracle.truffle.object.LayoutImpl.ACCESS;
+import static com.oracle.truffle.object.LocationImpl.alwaysValidAssumption;
 import static com.oracle.truffle.object.LocationImpl.expectDouble;
 import static com.oracle.truffle.object.LocationImpl.expectInteger;
 import static com.oracle.truffle.object.LocationImpl.expectLong;
+import static com.oracle.truffle.object.LocationImpl.neverValidAssumption;
 
 import java.util.ArrayList;
 import java.util.Collections;
@@ -77,8 +79,6 @@ import com.oracle.truffle.api.object.IncompatibleLocationException;
 import com.oracle.truffle.api.object.Location;
 import com.oracle.truffle.api.object.Property;
 import com.oracle.truffle.api.object.Shape;
-import com.oracle.truffle.api.utilities.AlwaysValidAssumption;
-import com.oracle.truffle.api.utilities.NeverValidAssumption;
 
 /**
  * The implementation of {@link DynamicObjectLibrary}.
@@ -1640,9 +1640,9 @@ abstract class DynamicObjectLibraryImpl {
 
         private static Assumption getShapeValidAssumption(Shape oldShape, Shape newShape) {
             if (oldShape == newShape) {
-                return AlwaysValidAssumption.INSTANCE;
+                return alwaysValidAssumption();
             }
-            return newShape.isValid() ? newShape.getValidAssumption() : NeverValidAssumption.INSTANCE;
+            return newShape.isValid() ? newShape.getValidAssumption() : neverValidAssumption();
         }
     }
 
@@ -1695,11 +1695,11 @@ abstract class DynamicObjectLibraryImpl {
 
         @Override
         protected boolean isValid() {
-            return newShapeValidAssumption == NeverValidAssumption.INSTANCE || newShapeValidAssumption.isValid();
+            return newShapeValidAssumption == neverValidAssumption() || newShapeValidAssumption == alwaysValidAssumption() || newShapeValidAssumption.isValid();
         }
 
         protected void maybeUpdateShape(DynamicObject store) {
-            if (newShapeValidAssumption == NeverValidAssumption.INSTANCE) {
+            if (newShapeValidAssumption == neverValidAssumption()) {
                 updateShapeImpl(store);
             }
         }
