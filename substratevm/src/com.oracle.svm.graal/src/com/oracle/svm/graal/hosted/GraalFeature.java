@@ -351,9 +351,6 @@ public final class GraalFeature implements Feature {
                 RuntimeReflection.register(innerClasses[0]);
                 try {
                     RuntimeReflection.register(innerClasses[0].getDeclaredField("cache"));
-                    if (kind == JavaKind.Int) {
-                        RuntimeReflection.register(innerClasses[0].getDeclaredField("high"));
-                    }
                 } catch (Throwable t) {
                     throw debug.handle(t);
                 }
