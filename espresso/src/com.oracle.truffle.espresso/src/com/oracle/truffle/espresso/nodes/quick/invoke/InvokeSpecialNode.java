@@ -61,7 +61,7 @@ public final class InvokeSpecialNode extends QuickNode {
                     Method resolutionSeed = method.getMethod();
                     Klass accessingKlass = resolutionSeed.getDeclaringKlass();
                     Method replacementMethod = resolutionSeed.getDeclaringKlass().lookupMethod(resolutionSeed.getName(), resolutionSeed.getRawSignature(), accessingKlass);
-                    Meta meta = replacementMethod.getMeta();
+                    Meta meta = resolutionSeed.getMeta();
                     if (replacementMethod == null) {
                         throw Meta.throwExceptionWithMessage(meta.java_lang_NoSuchMethodError,
                                         meta.toGuestString(resolutionSeed.getDeclaringKlass().getNameAsString() + "." + resolutionSeed.getName() + resolutionSeed.getRawSignature()));

@@ -70,7 +70,7 @@ public final class InvokeStaticNode extends QuickNode {
                     // bailing out with an Error, e.g. due to changed modifiers
                     Klass accessingKlass = getBytecodesNode().getMethod().getDeclaringKlass();
                     Method replacementMethod = resolutionSeed.getDeclaringKlass().lookupMethod(resolutionSeed.getName(), resolutionSeed.getRawSignature(), accessingKlass);
-                    Meta meta = replacementMethod.getMeta();
+                    Meta meta = resolutionSeed.getMeta();
                     if (replacementMethod == null) {
                         throw Meta.throwExceptionWithMessage(meta.java_lang_NoSuchMethodError,
                                         meta.toGuestString(resolutionSeed.getDeclaringKlass().getNameAsString() + "." + resolutionSeed.getName() + resolutionSeed.getRawSignature()));
