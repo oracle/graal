@@ -65,9 +65,9 @@ public final class HotSpotTruffleSafepointForeignCalls implements ForeignCallsPl
             ResolvedJavaMethod staticMethod;
             ResolvedJavaType handshakeType = TruffleCompilerRuntime.getRuntime().resolveType(providers.getMetaAccess(), "org.graalvm.compiler.truffle.runtime.hotspot.HotSpotThreadLocalHandshake");
             HotSpotSignature noArgsVoidSig = new HotSpotSignature(foreignCalls.getJVMCIRuntime(), "()V");
-            if (HandshakeFastpath.getValue(options))
+            if (HandshakeFastpath.getValue(options)) {
                 staticMethod = handshakeType.findMethod("doHandshake", noArgsVoidSig);
-            else {
+            } else {
                 staticMethod = handshakeType.findMethod("doPoll", noArgsVoidSig);
             }
             foreignCalls.invokeJavaMethodStub(options, providers, THREAD_LOCAL_HANDSHAKE_POLL, invokeJavaMethodAddress, staticMethod);
