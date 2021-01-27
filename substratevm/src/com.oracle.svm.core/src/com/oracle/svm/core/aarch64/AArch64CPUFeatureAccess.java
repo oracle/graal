@@ -97,7 +97,7 @@ public class AArch64CPUFeatureAccess implements CPUFeatureAccess {
 
         AArch64LibCHelper.CPUFeatures cpuFeatures = StackValue.get(AArch64LibCHelper.CPUFeatures.class);
 
-        MemoryUtil.fillToMemoryAtomic((Pointer) cpuFeatures, SizeOf.unsigned(AArch64LibCHelper.CPUFeatures.class), (byte) 0);
+        MemoryUtil.fill((Pointer) cpuFeatures, SizeOf.unsigned(AArch64LibCHelper.CPUFeatures.class), (byte) 0);
 
         AArch64LibCHelper.determineCPUFeatures(cpuFeatures);
 

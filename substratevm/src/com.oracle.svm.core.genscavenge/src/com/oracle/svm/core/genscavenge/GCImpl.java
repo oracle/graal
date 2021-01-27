@@ -138,7 +138,7 @@ public final class GCImpl implements GC {
     void collectWithoutAllocating(GCCause cause, boolean forceFullGC) {
         int size = SizeOf.get(CollectionVMOperationData.class);
         CollectionVMOperationData data = StackValue.get(size);
-        MemoryUtil.fillToMemoryAtomic((Pointer) data, WordFactory.unsigned(size), (byte) 0);
+        MemoryUtil.fill((Pointer) data, WordFactory.unsigned(size), (byte) 0);
         data.setNativeVMOperation(collectOperation);
         data.setCauseId(cause.getId());
         data.setRequestingEpoch(getCollectionEpoch());

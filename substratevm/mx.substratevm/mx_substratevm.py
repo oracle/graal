@@ -1136,7 +1136,14 @@ class JvmFuncsFallbacksBuildTask(mx.BuildTask):
         self.jvm_funcs_path = join(self.native_project_dir, 'JvmFuncs.c')
 
         native_project_src_gen_dir = join(self.native_project_dir, 'src_gen')
-        self.jvm_fallbacks_path = join(native_project_src_gen_dir, 'JvmFuncsFallbacks.c')
+        java_version = str(svm_java_compliance().value)
+        try:
+            for entry in os.listdir(native_project_src_gen_dir):
+                if entry != java_version:
+                    mx.rmtree(join(native_project_src_gen_dir, entry))
+        except OSError:
+            pass
+        self.jvm_fallbacks_path = join(native_project_src_gen_dir, java_version, 'JvmFuncsFallbacks.c')
 
         if svm_java8():
             staticlib_path = ['jre', 'lib']

@@ -26,9 +26,6 @@ package com.oracle.svm.core.jdk;
 
 import java.util.concurrent.atomic.AtomicLong;
 
-import org.graalvm.compiler.word.Word;
-import org.graalvm.word.WordFactory;
-
 import com.oracle.svm.core.MemoryUtil;
 import com.oracle.svm.core.annotate.Alias;
 import com.oracle.svm.core.annotate.RecomputeFieldValue;
@@ -47,10 +44,7 @@ final class Target_java_nio_Bits_JDK8 {
      */
     @Substitute
     private static void copySwapMemory0(Object srcBase, long srcOffset, Object destBase, long destOffset, long bytes, long elemSize) {
-        MemoryUtil.copyConjointSwap(
-                        Word.objectToUntrackedPointer(srcBase).add(WordFactory.unsigned(srcOffset)),
-                        Word.objectToUntrackedPointer(destBase).add(WordFactory.unsigned(destOffset)),
-                        WordFactory.unsigned(bytes), WordFactory.unsigned(elemSize));
+        MemoryUtil.unsafeCopySwapMemory(srcBase, srcOffset, destBase, destOffset, bytes, elemSize);
     }
 
     /* Ensure lazy initialization of page size happens at image runtime. */

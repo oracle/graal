@@ -159,6 +159,10 @@ public abstract class MacroNode extends FixedWithNextNode implements Lowerable, 
         assert method.getSignature().getParameterCount(!method.isStatic()) == args.length;
     }
 
+    public NodeInputList<ValueNode> getArguments() {
+        return arguments;
+    }
+
     public ValueNode getArgument(int i) {
         return arguments.get(i);
     }

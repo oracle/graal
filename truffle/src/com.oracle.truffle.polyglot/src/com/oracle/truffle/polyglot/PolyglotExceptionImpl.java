@@ -137,8 +137,8 @@ final class PolyglotExceptionImpl extends AbstractExceptionImpl {
                     this.sourceLocation = null;
                 }
                 Object exceptionObject;
-                if (entered && languageContext != null && !(exception instanceof HostException) &&
-                                (exceptionObject = ((com.oracle.truffle.api.TruffleException) exception).getExceptionObject()) != null) {
+                if (entered && languageContext != null && languageContext.isCreated() &&
+                                !(exception instanceof HostException) && (exceptionObject = ((com.oracle.truffle.api.TruffleException) exception).getExceptionObject()) != null) {
                     /*
                      * Allow proxies in guest language objects. This is for legacy support. Ideally
                      * we should get rid of this if it is no longer relied upon.
