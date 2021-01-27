@@ -42,10 +42,14 @@ package com.oracle.truffle.api.test;
 
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
+import static org.junit.Assert.assertNotNull;
+import static org.junit.Assert.assertNull;
 import static org.junit.Assert.assertTrue;
 
+import com.oracle.truffle.api.Assumption;
 import com.oracle.truffle.api.CallTarget;
 import com.oracle.truffle.api.CompilerDirectives;
+import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
 import com.oracle.truffle.api.Truffle;
 import com.oracle.truffle.api.TruffleLanguage;
 import com.oracle.truffle.api.TruffleLogger;
@@ -75,6 +79,7 @@ import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.BitSet;
 import java.util.Collections;
+import java.util.ConcurrentModificationException;
 import java.util.Iterator;
 import java.util.List;
 import java.util.NoSuchElementException;
@@ -141,7 +146,7 @@ public class IteratorTest extends AbstractPolyglotTest {
         setupEnv(createContext(verifyingHandler), new ProxyLanguage() {
             @Override
             protected CallTarget parse(TruffleLanguage.ParsingRequest request) throws Exception {
-                return createAST(languageInstance, new Array(items, readable));
+                return createAST(languageInstance, new Array(items, readable, Array.UNLIMITED));
             }
         });
         verifyingHandler.expect(expected);
@@ -151,19 +156,30 @@ public class IteratorTest extends AbstractPolyglotTest {
     @Test
     public void testValues() {
         String[] values = {"a", "b"};
-        setupEnv(Context.create(), new ProxyLanguage() {
-            @Override
-            protected CallTarget parse(TruffleLanguage.ParsingRequest request) throws Exception {
-                return Truffle.getRuntime().createCallTarget(new RootNode(languageInstance) {
-                    @Override
-                    public Object execute(VirtualFrame frame) {
-                        return new SimpleIterable((Object[]) values);
-                    }
-                });
-            }
-        });
-        Value iterable = context.eval(ProxyLanguage.ID, "Test");
+        setupEnv(Context.create());
+        Value iterable = context.asValue(new SimpleIterable((Object[]) values));
         verifyIterable(iterable, values);
+    }
+
+    @Test
+    public void testValuesWithUnreadableElements() {
+        Object[] items = new String[10];
+        Object[] expected = new String[items.length];
+        BitSet readable = new BitSet(items.length);
+        for (int i = 0; i < items.length; i++) {
+            items[i] = Integer.toString(i);
+            if (i % 2 == 0) {
+                readable.set(i);
+                expected[i] = items[i];
+            } else {
+                expected[i] = null;
+            }
+        }
+        setupEnv(Context.create());
+        Value iterable = context.asValue(new Array(items, readable, Array.UNLIMITED));
+        verifyIterable(iterable, expected);
+        iterable = context.asValue(new ExecutableProxyIterableImpl(items, readable));
+        verifyIterable(iterable, expected);
     }
 
     @Test
@@ -252,7 +268,7 @@ public class IteratorTest extends AbstractPolyglotTest {
         iterable = context.asValue(new ProxyIterable() {
             @Override
             public Object getIterator() {
-                return new SimpleIterator(Arrays.asList(values));
+                return new SimpleIterator(values);
             }
         });
         verifyIterable(iterable, values);
@@ -292,10 +308,10 @@ public class IteratorTest extends AbstractPolyglotTest {
     public void testIterator() {
         String[] values = {"a", "b", "c", "d"};
         setupEnv(Context.newBuilder().allowAllAccess(true).build());
-        Value iterator = context.asValue(new InteropIterator(new GuestLanguageIteratorImpl(values)));
+        Value iterator = context.asValue(new GuestLanguageIteratorImpl(values));
         verifyIterator(iterator, values);
         values = new String[0];
-        iterator = context.asValue(new InteropIterator(new GuestLanguageIteratorImpl(values)));
+        iterator = context.asValue(new GuestLanguageIteratorImpl(values));
         verifyIterator(iterator, values);
     }
 
@@ -313,14 +329,90 @@ public class IteratorTest extends AbstractPolyglotTest {
     public void testExecutableProxyIterator() {
         Object[] values = {"a", "b"};
         setupEnv(Context.newBuilder().allowAllAccess(true).build());
-        Value iterator = context.asValue(new ExecutableProxyIteratorImpl(Arrays.asList(values).iterator()));
+        Value iterator = context.asValue(new ExecutableProxyIteratorImpl(values));
         verifyIterator(iterator, values);
         assertTrue(iterator.canExecute());
         assertEquals(42, iterator.execute(42).asInt());
-        iterator = context.asValue(new ExecutableProxyIteratorImpl(Arrays.asList(values).iterator()));
+        iterator = context.asValue(new ExecutableProxyIteratorImpl(values));
         verifyIterator(iterator.as(Iterator.class), values);
         assertEquals(42, iterator.as(new TypeLiteral<Function<Object, Object>>() {
         }).apply(42));
+    }
+
+    @Test
+    public void testConcurrentModifications() {
+        setupEnv(Context.newBuilder().allowAllAccess(true).build());
+        Object[] values = {"1", "2", "3"};
+        Array array = new Array(values, null, 1);
+        Value iterable = context.asValue(array);
+        Value iterator = iterable.getIterator();
+        assertTrue(iterator.hasIteratorNextElement());
+        assertEquals(values[0], iterator.getIteratorNextElement().asString());
+        assertFalse(iterator.hasIteratorNextElement());
+        array.setLimit(Array.UNLIMITED);
+        assertTrue(iterator.hasIteratorNextElement());
+        assertEquals(values[1], iterator.getIteratorNextElement().asString());
+        assertTrue(iterator.hasIteratorNextElement());
+        assertEquals(values[2], iterator.getIteratorNextElement().asString());
+        assertFalse(iterator.hasIteratorNextElement());
+
+        array.setLimit(1);
+        Iterator<?> javaIterator = iterable.getIterator().as(Iterator.class);
+        assertTrue(javaIterator.hasNext());
+        assertEquals(values[0], javaIterator.next());
+        assertFalse(javaIterator.hasNext());
+        array.setLimit(Array.UNLIMITED);
+        assertFails(() -> javaIterator.next(), ConcurrentModificationException.class);
+        assertFalse(javaIterator.hasNext());
+        assertFails(() -> javaIterator.next(), ConcurrentModificationException.class);
+        assertFalse(javaIterator.hasNext());
+
+        array.setLimit(1);
+        Iterator<?> javaIterator2 = iterable.getIterator().as(Iterator.class);
+        assertTrue(javaIterator2.hasNext());
+        assertEquals(values[0], javaIterator2.next());
+        array.setLimit(Array.UNLIMITED);
+        assertTrue(javaIterator2.hasNext());
+        assertEquals(values[1], javaIterator2.next());
+        assertTrue(javaIterator2.hasNext());
+        assertEquals(values[2], javaIterator2.next());
+        assertFails(() -> javaIterator2.next(), NoSuchElementException.class);
+        assertFalse(javaIterator2.hasNext());
+        assertFails(() -> javaIterator2.next(), NoSuchElementException.class);
+
+        array.setLimit(Array.UNLIMITED);
+        Iterator<?> javaIterator3 = iterable.getIterator().as(Iterator.class);
+        assertTrue(javaIterator3.hasNext());
+        assertEquals(values[0], javaIterator3.next());
+        array.setLimit(1);
+        assertFalse(javaIterator3.hasNext());
+        assertFails(() -> javaIterator3.next(), NoSuchElementException.class);
+
+        array.setLimit(Array.UNLIMITED);
+        Iterator<?> javaIterator4 = iterable.getIterator().as(Iterator.class);
+        assertTrue(javaIterator4.hasNext());
+        assertEquals(values[0], javaIterator4.next());
+        assertTrue(javaIterator4.hasNext());
+        array.setLimit(1);
+        assertFails(() -> javaIterator4.next(), ConcurrentModificationException.class);
+        assertFalse(javaIterator4.hasNext());
+        assertFails(() -> javaIterator4.next(), ConcurrentModificationException.class);
+
+        List<Object> javaList = new ArrayList<>(Arrays.asList("1", "2", "3"));
+        iterable = context.asValue(javaList);
+        Value iterator2 = iterable.getIterator();
+        javaList.add("4");
+        assertFails(() -> iterator2.getIteratorNextElement(), PolyglotException.class);
+        Iterator<?> javaIterator5 = iterable.getIterator().as(Iterator.class);
+        javaList.add("5");
+        assertFails(() -> javaIterator5.next(), ConcurrentModificationException.class);
+        iterable = context.asValue(ProxyArray.fromList(javaList));
+        Value iterator3 = iterable.getIterator();
+        javaList.add("6");
+        assertFails(() -> iterator3.getIteratorNextElement(), PolyglotException.class);
+        Iterator<?> javaIterator6 = iterable.getIterator().as(Iterator.class);
+        javaList.add("7");
+        assertFails(() -> javaIterator6.next(), PolyglotException.class);
     }
 
     private static void verifyIterable(Value iterable, Object[] values) {
@@ -337,8 +429,13 @@ public class IteratorTest extends AbstractPolyglotTest {
         for (int i = 0; i < values.length; i++) {
             assertTrue(iterator.hasIteratorNextElement());
             assertTrue(iterator.hasIteratorNextElement());
-            Value element = iterator.getIteratorNextElement();
-            assertEquals(values[i], element.asString());
+            try {
+                Value element = iterator.getIteratorNextElement();
+                assertNotNull("Iterator should not have an element.", values[i]);
+                assertEquals(values[i], element.asString());
+            } catch (UnsupportedOperationException uoe) {
+                assertNull("Iterator should have an element.", values[i]);
+            }
         }
         assertFalse(iterator.hasIteratorNextElement());
         assertFails(() -> iterator.getIteratorNextElement(), NoSuchElementException.class);
@@ -348,8 +445,13 @@ public class IteratorTest extends AbstractPolyglotTest {
         for (int i = 0; i < values.length; i++) {
             assertTrue(iterator.hasNext());
             assertTrue(iterator.hasNext());
-            Object element = iterator.next();
-            assertEquals(values[i], element);
+            try {
+                Object element = iterator.next();
+                assertNotNull("Iterator should not have an element.", values[i]);
+                assertEquals(values[i], element);
+            } catch (UnsupportedOperationException uoe) {
+                assertNull("Iterator should have an element.", values[i]);
+            }
         }
         assertFalse(iterator.hasNext());
         assertFails(() -> iterator.next(), NoSuchElementException.class);
@@ -373,11 +475,10 @@ public class IteratorTest extends AbstractPolyglotTest {
     @ExportLibrary(InteropLibrary.class)
     static class SimpleIterable implements TruffleObject {
 
-        private final List<Object> items;
+        private final Object[] items;
 
         SimpleIterable(Object... items) {
-            this.items = new ArrayList<>(items.length);
-            Collections.addAll(this.items, items);
+            this.items = items;
         }
 
         @ExportMessage
@@ -394,10 +495,10 @@ public class IteratorTest extends AbstractPolyglotTest {
     @ExportLibrary(InteropLibrary.class)
     static class SimpleIterator implements TruffleObject {
 
-        private final List<Object> items;
+        private final Object[] items;
         private int index;
 
-        SimpleIterator(List<Object> items) {
+        SimpleIterator(Object[] items) {
             this.items = items;
             this.index = 0;
         }
@@ -409,7 +510,7 @@ public class IteratorTest extends AbstractPolyglotTest {
 
         @ExportMessage
         boolean hasIteratorNextElement() {
-            return index < items.size();
+            return index < items.length;
         }
 
         @ExportMessage
@@ -417,22 +518,27 @@ public class IteratorTest extends AbstractPolyglotTest {
             if (!hasIteratorNextElement()) {
                 throw StopIterationException.create();
             }
-            return items.get(index++);
+            return items[index++];
         }
     }
 
     private static final class ExecutableProxyIterableImpl implements ProxyIterable, ProxyExecutable {
 
-        private final List<Object> storage;
+        private final Object[] storage;
+        private final BitSet readable;
 
         ExecutableProxyIterableImpl(Object[] data) {
-            this.storage = new ArrayList<>();
-            Collections.addAll(this.storage, data);
+            this(data, null);
+        }
+
+        ExecutableProxyIterableImpl(Object[] data, BitSet readable) {
+            this.storage = data;
+            this.readable = readable;
         }
 
         @Override
         public Object getIterator() {
-            return new ExecutableProxyIteratorImpl(storage.iterator());
+            return new ExecutableProxyIteratorImpl(storage, readable);
         }
 
         @Override
@@ -446,20 +552,36 @@ public class IteratorTest extends AbstractPolyglotTest {
 
     private static final class ExecutableProxyIteratorImpl implements ProxyIterator, ProxyExecutable {
 
-        private final Iterator<Object> delegate;
+        private final Object[] storage;
+        private final BitSet readable;
+        private int index;
 
-        ExecutableProxyIteratorImpl(Iterator<Object> delegate) {
-            this.delegate = delegate;
+        ExecutableProxyIteratorImpl(Object[] data) {
+            this(data, null);
+        }
+
+        ExecutableProxyIteratorImpl(Object[] data, BitSet readable) {
+            this.storage = data;
+            this.readable = readable;
+            this.index = 0;
         }
 
         @Override
         public boolean hasNext() {
-            return delegate.hasNext();
+            return index < storage.length;
         }
 
         @Override
         public Object getNext() {
-            return delegate.next();
+            if (index >= storage.length) {
+                throw new NoSuchElementException();
+            }
+            if (readable == null || readable.get(index)) {
+                return storage[index++];
+            } else {
+                index++;
+                throw new UnsupportedOperationException();
+            }
         }
 
         @Override
@@ -471,26 +593,20 @@ public class IteratorTest extends AbstractPolyglotTest {
         }
     }
 
-    interface GuestLanguageIterator {
+    @ExportLibrary(InteropLibrary.class)
+    abstract static class InteropIterator implements TruffleObject {
 
         @SuppressWarnings("serial")
-        final class Stop extends AbstractTruffleException {
+        public static final class Stop extends AbstractTruffleException {
         }
-
-        Object next() throws Stop;
-    }
-
-    @ExportLibrary(InteropLibrary.class)
-    static final class InteropIterator implements TruffleObject {
 
         private static final Object STOP = new Object();
-
-        final GuestLanguageIterator iterator;
         private Object next;
 
-        InteropIterator(GuestLanguageIterator iterator) {
-            this.iterator = iterator;
+        protected InteropIterator() {
         }
+
+        protected abstract Object next() throws Stop;
 
         @ExportMessage
         @SuppressWarnings("static-method")
@@ -519,15 +635,15 @@ public class IteratorTest extends AbstractPolyglotTest {
         private void fetchNext() {
             if (next == null) {
                 try {
-                    next = iterator.next();
-                } catch (GuestLanguageIterator.Stop stop) {
+                    next = next();
+                } catch (Stop stop) {
                     next = STOP;
                 }
             }
         }
     }
 
-    private static final class GuestLanguageIteratorImpl implements GuestLanguageIterator {
+    private static final class GuestLanguageIteratorImpl extends InteropIterator {
 
         private final Object[] values;
         private int index;
@@ -549,16 +665,32 @@ public class IteratorTest extends AbstractPolyglotTest {
     @ExportLibrary(InteropLibrary.class)
     static class Array implements TruffleObject {
 
+        static final int UNLIMITED = -1;
+
         private final Object[] items;
         private final BitSet readable;
+        @CompilationFinal private int limit;
+        @CompilationFinal private Assumption limitValid;
 
-        Array(Object... items) {
-            this(items, null);
+        Array(Object[] items) {
+            this(items, null, UNLIMITED);
         }
 
-        Array(Object[] items, BitSet readable) {
+        Array(Object[] items, BitSet readable, int limit) {
             this.items = items;
             this.readable = readable;
+            this.limit = limit;
+            this.limitValid = Truffle.getRuntime().createAssumption();
+        }
+
+        void setLimit(int newLimit) {
+            if (newLimit < UNLIMITED || newLimit > items.length) {
+                throw new IllegalArgumentException(String.valueOf(newLimit));
+            }
+            this.limit = newLimit;
+            Assumption oldAssumption = limitValid;
+            limitValid = Truffle.getRuntime().createAssumption();
+            oldAssumption.invalidate();
         }
 
         @ExportMessage
@@ -568,12 +700,15 @@ public class IteratorTest extends AbstractPolyglotTest {
 
         @ExportMessage
         long getArraySize() {
-            return items.length;
+            if (!limitValid.isValid()) {
+                CompilerDirectives.transferToInterpreterAndInvalidate();
+            }
+            return limit == UNLIMITED ? items.length : limit;
         }
 
         @ExportMessage
         boolean isArrayElementReadable(long index) {
-            return index >= 0 && index < items.length && (readable == null || readable.get((int) index));
+            return index >= 0 && index < getArraySize() && (readable == null || readable.get((int) index));
         }
 
         @ExportMessage

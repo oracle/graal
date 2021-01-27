@@ -587,7 +587,7 @@ abstract class ToHostNode extends Node {
                 TypeAndClass<?> elementType = getGenericParameterType(genericType, 0);
                 obj = PolyglotIterable.create(languageContext, value, implementsFunction, elementType.clazz, elementType.type);
             } else {
-                throw HostInteropErrors.cannotConvert(languageContext, value, targetType, "Value must have array iterator.");
+                throw HostInteropErrors.cannotConvert(languageContext, value, targetType, "Value must have an iterator.");
             }
         } else if (targetType == Iterator.class) {
             if (interop.isIterator(value)) {
@@ -595,7 +595,7 @@ abstract class ToHostNode extends Node {
                 TypeAndClass<?> elementType = getGenericParameterType(genericType, 0);
                 obj = PolyglotIterator.create(languageContext, value, implementsFunction, elementType.clazz, elementType.type);
             } else {
-                throw HostInteropErrors.cannotConvert(languageContext, value, targetType, "Value must be array iterator.");
+                throw HostInteropErrors.cannotConvert(languageContext, value, targetType, "Value must be an iterator.");
             }
         } else if (allowsImplementation && HostInteropReflect.isAbstractType(targetType)) {
             if (HostInteropReflect.isFunctionalInterface(targetType) && (interop.isExecutable(value) || interop.isInstantiable(value))) {

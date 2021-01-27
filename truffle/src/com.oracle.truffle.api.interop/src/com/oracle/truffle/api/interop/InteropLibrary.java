@@ -1891,33 +1891,30 @@ public abstract class InteropLibrary extends Library {
 
     /**
      * Returns {@code true} if the receiver is an iterator which has more elements, else
-     * {@code false}.
+     * {@code false}. When the underlying iterable is modified yhe next
+     * {@link #hasIteratorNextElement(Object)} invocation may return a different value.
      * <p>
      * An implementation of an iterator delegating to guest language iterator which does not support
      * {@code hasNext} looks like:
      * 
      * <pre>
-     * interface GuestLanguageIterator {
-     *
-     *     final class Stop extends AbstractTruffleException {
-     *     }
-     *
-     *     Object next() throws Stop;
-     * }
-     *
      * &#64;ExportLibrary(InteropLibrary.class)
-     * final class InteropIterator implements TruffleObject {
+     * abstract class InteropIterator implements TruffleObject {
+     *
+     *     &#64;SuppressWarnings("serial")
+     *     public static final class Stop extends AbstractTruffleException {
+     *     }
      *
      *     private static final Object STOP = new Object();
-     *
-     *     final GuestLanguageIterator iterator;
      *     private Object next;
      *
-     *     InteropIterator(GuestLanguageIterator iterator) {
-     *         this.iterator = iterator;
+     *     protected InteropIterator() {
      *     }
      *
+     *     protected abstract Object next() throws Stop;
+     *
      *     &#64;ExportMessage
+     *     &#64;SuppressWarnings("static-method")
      *     boolean isIterator() {
      *         return true;
      *     }
@@ -1943,8 +1940,8 @@ public abstract class InteropLibrary extends Library {
      *     private void fetchNext() {
      *         if (next == null) {
      *             try {
-     *                 next = iterator.next();
-     *             } catch (GuestLanguageIterator.Stop stop) {
+     *                 next = next();
+     *             } catch (Stop stop) {
      *                 next = STOP;
      *             }
      *         }
@@ -1969,9 +1966,10 @@ public abstract class InteropLibrary extends Library {
      * @throws UnsupportedMessageException if {@link #isIterator(Object)} returns {@code false} for
      *             the same receiver or when the underlying iterator element exists but is not
      *             readable.
-     * @throws StopIterationException if the iteration has no more elements, the
-     *             {@link #hasIteratorNextElement(Object)} returns {@code false} for the same
-     *             receiver.
+     * @throws StopIterationException if the iteration has no more elements. Even if the
+     *             {@link StopIterationException} was thrown it might not be thrown again by a next
+     *             {@link #getIteratorNextElement(Object)} invocation on the same receiver due to a
+     *             modification of an underlying iterable.
      *
      * @see #isIterator(Object)
      * @see #hasIteratorNextElement(Object)

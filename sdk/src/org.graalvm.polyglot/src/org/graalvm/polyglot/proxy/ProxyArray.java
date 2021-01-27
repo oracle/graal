@@ -180,6 +180,11 @@ public interface ProxyArray extends ProxyIterable {
             public long getSize() {
                 return values.size();
             }
+
+            @Override
+            public Object getIterator() {
+                return ProxyIterator.from(values.iterator());
+            }
         };
     }
 

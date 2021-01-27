@@ -49,8 +49,7 @@ import com.oracle.truffle.api.library.ExportMessage;
 final class ArrayIterator implements TruffleObject {
 
     final Object array;
-    private int currentItemIndex;
-    private boolean stopped;
+    private long currentItemIndex;
 
     ArrayIterator(Object array) {
         this.array = array;
@@ -65,15 +64,8 @@ final class ArrayIterator implements TruffleObject {
 
     @ExportMessage
     boolean hasIteratorNextElement(@CachedLibrary("this.array") InteropLibrary arrays) {
-        if (stopped) {
-            return false;
-        }
         try {
-            boolean hasNext = currentItemIndex < arrays.getArraySize(array);
-            if (!hasNext) {
-                stopped = true;
-            }
-            return hasNext;
+            return currentItemIndex < arrays.getArraySize(array);
         } catch (UnsupportedMessageException ume) {
             throw CompilerDirectives.shouldNotReachHere(ume);
         }
@@ -81,23 +73,20 @@ final class ArrayIterator implements TruffleObject {
 
     @ExportMessage
     Object getIteratorNextElement(@CachedLibrary("this.array") InteropLibrary arrays) throws UnsupportedMessageException, StopIterationException {
-        if (stopped) {
-            throw StopIterationException.create();
-        }
         try {
+            long size = arrays.getArraySize(array);
+            if (currentItemIndex >= size) {
+                throw StopIterationException.create();
+            }
             Object res = arrays.readArrayElement(array, currentItemIndex);
             currentItemIndex++;
             return res;
         } catch (UnsupportedMessageException ume) {
             throw CompilerDirectives.shouldNotReachHere(ume);
         } catch (InvalidArrayIndexException iaie) {
-            if (hasIteratorNextElement(arrays)) {
-                currentItemIndex++;
-                throw UnsupportedMessageException.create();
-            } else {
-                stopped = true;
-                throw StopIterationException.create();
-            }
+            // Non readable array element, increase cursor and throw an UnsupportedMessageException
+            currentItemIndex++;
+            throw UnsupportedMessageException.create();
         }
     }
 }

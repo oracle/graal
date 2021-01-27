@@ -55,6 +55,7 @@ import java.time.LocalTime;
 import java.time.ZoneId;
 import java.time.ZonedDateTime;
 import java.time.zone.ZoneRules;
+import java.util.ConcurrentModificationException;
 import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
@@ -1314,8 +1315,10 @@ public final class Value {
      * component type. With type literals the value type can be restricted to any supported target
      * type, for example to <code>Iterator&lt;Integer&gt;</code>. If the raw
      * <code>{@link Iterator}.class</code> or an Object component type is used, then the return
-     * types of the the iterator are recursively subject to Object target type mapping rules.
-     *
+     * types of the the iterator are recursively subject to Object target type mapping rules. The
+     * returned iterator's {@link Iterator#next() next} method may throw a
+     * {@link ConcurrentModificationException} when an underlying iterable has changed or
+     * {@link UnsupportedOperationException} when the iterator's current element is not readable.
      * <li>Any {@link FunctionalInterface functional} interface if the value can be
      * {@link #canExecute() executed} or {@link #canInstantiate() instantiated} and the interface
      * type is {@link HostAccess implementable}. Note that {@link FunctionalInterface} are
@@ -1808,7 +1811,9 @@ public final class Value {
     }
 
     /**
-     * Returns <code>true</code> if the value represents an iterator which has more elements.
+     * Returns <code>true</code> if the value represents an iterator which has more elements, else
+     * {@code false}. When the underlying iterable is modified the next call of the
+     * {@link #hasIteratorNextElement()} may return a different value.
      *
      * @throws UnsupportedOperationException if the value is not an {@link #isIterator() iterator}.
      * @throws IllegalStateException if the context is already closed.
@@ -1827,12 +1832,14 @@ public final class Value {
      *
      * @throws UnsupportedOperationException if the value is not an {@link #isIterator() iterator}
      *             or when the underlying iterator element exists but is not readable.
-     * @throws NoSuchElementException if the iteration has no more elements, the
-     *             {@link #hasIteratorNextElement()} returns <code>false</code>.
+     * @throws NoSuchElementException if the iteration has no more elements. Even if the
+     *             {@link NoSuchElementException} was thrown it might not be thrown again by a next
+     *             call of the {@link #getIteratorNextElement()} due to a modification of an
+     *             underlying iterable.
      * @throws IllegalStateException if the context is already closed.
      * @throws PolyglotException if a guest language error occurred during execution.
      *
-     *             * @see #isIterator()
+     * @see #isIterator()
      * @see #hasIteratorNextElement()
      * @since 21.1
      */

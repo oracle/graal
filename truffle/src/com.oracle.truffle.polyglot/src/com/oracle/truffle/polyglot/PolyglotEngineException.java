@@ -44,6 +44,7 @@ import com.oracle.truffle.api.TruffleLanguage;
 import com.oracle.truffle.api.TruffleLanguage.Env;
 import org.graalvm.polyglot.Context;
 
+import java.util.ConcurrentModificationException;
 import java.util.NoSuchElementException;
 
 /**
@@ -163,5 +164,9 @@ final class PolyglotEngineException extends RuntimeException {
 
     static PolyglotEngineException noSuchElement(String message) {
         return new PolyglotEngineException(new NoSuchElementException(message));
+    }
+
+    static PolyglotEngineException concurrentModificationException(String message) {
+        return new PolyglotEngineException((new ConcurrentModificationException(message)));
     }
 }

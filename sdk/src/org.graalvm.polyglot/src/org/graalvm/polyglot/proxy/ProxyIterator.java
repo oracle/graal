@@ -110,8 +110,7 @@ final class DefaultProxyIterator implements ProxyIterator {
 final class DefaultProxyArrayIterator implements ProxyIterator {
 
     private final ProxyArray array;
-    private int index;
-    private boolean stopped;
+    private long index;
 
     DefaultProxyArrayIterator(ProxyArray array) {
         this.array = array;
@@ -119,19 +118,12 @@ final class DefaultProxyArrayIterator implements ProxyIterator {
 
     @Override
     public boolean hasNext() {
-        if (stopped) {
-            return false;
-        }
-        boolean hasNext = index < array.getSize();
-        if (!hasNext) {
-            stopped = true;
-        }
-        return hasNext;
+        return index < array.getSize();
     }
 
     @Override
     public Object getNext() {
-        if (stopped) {
+        if (index >= array.getSize()) {
             throw new NoSuchElementException();
         }
         try {
@@ -142,7 +134,6 @@ final class DefaultProxyArrayIterator implements ProxyIterator {
             index++;
             throw e;
         } catch (ArrayIndexOutOfBoundsException e) {
-            stopped = true;
             throw new NoSuchElementException();
         }
     }
