@@ -391,8 +391,6 @@ public abstract class HotSpotBackend extends Backend implements FrameMap.Referen
     public static final HotSpotForeignCallDescriptor BACKEDGE_EVENT = new HotSpotForeignCallDescriptor(SAFEPOINT, REEXECUTABLE, NO_LOCATIONS, "backedge_event", void.class, MethodCountersPointer.class,
                     int.class, int.class);
 
-    public static final HotSpotForeignCallDescriptor THREAD_LOCAL_HANDSHAKE_POLL = new HotSpotForeignCallDescriptor(SAFEPOINT, REEXECUTABLE, NO_LOCATIONS, "ThreadLocalHandshake.poll", void.class);
-
     public HotSpotBackend(HotSpotGraalRuntimeProvider runtime, HotSpotProviders providers) {
         super(providers);
         this.runtime = runtime;

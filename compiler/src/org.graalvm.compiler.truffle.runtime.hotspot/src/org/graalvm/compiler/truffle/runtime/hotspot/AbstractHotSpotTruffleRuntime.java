@@ -37,8 +37,6 @@ import java.util.Objects;
 import java.util.function.Consumer;
 import java.util.stream.Collectors;
 
-import org.graalvm.compiler.hotspot.meta.HotSpotHostForeignCallsProvider;
-import org.graalvm.compiler.replacements.SnippetTemplate;
 import org.graalvm.compiler.truffle.common.CompilableTruffleAST;
 import org.graalvm.compiler.truffle.common.TruffleCompiler;
 import org.graalvm.compiler.truffle.common.hotspot.HotSpotTruffleCompiler;
@@ -158,7 +156,7 @@ public abstract class AbstractHotSpotTruffleRuntime extends GraalTruffleRuntime 
     private final int threadLocalDisabledHandshakeOffset;
 
     public AbstractHotSpotTruffleRuntime() {
-        super(Arrays.asList(HotSpotOptimizedCallTarget.class, InstalledCode.class));
+        super(Arrays.asList(HotSpotOptimizedCallTarget.class, InstalledCode.class, HotSpotThreadLocalHandshake.class));
 
         List<ResolvedJavaMethod> boundaryMethods = new ArrayList<>();
         MetaAccessProvider metaAccess = getMetaAccess();
@@ -175,10 +173,6 @@ public abstract class AbstractHotSpotTruffleRuntime extends GraalTruffleRuntime 
         int counters = vmConfigAccess.getFieldOffset("JavaThread::_jvmci_counters", Integer.class, "jlong*");
         this.threadLocalPendingHandshakeOffset = counters;
         this.threadLocalDisabledHandshakeOffset = counters + Integer.BYTES;
-
-        ResolvedJavaMethod doPoll = SnippetTemplate.AbstractTemplates.findMethod(getMetaAccess(), HotSpotThreadLocalHandshake.class, "doPoll");
-        ResolvedJavaMethod doHandshake = SnippetTemplate.AbstractTemplates.findMethod(getMetaAccess(), HotSpotThreadLocalHandshake.class, "doHandshake");
-        HotSpotHostForeignCallsProvider.setHandshakeFunctions(doPoll, doHandshake);
     }
 
     final int getThreadLocalPendingHandshakeOffset() {

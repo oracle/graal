@@ -98,6 +98,14 @@ public abstract class HotSpotForeignCallsProviderImpl implements HotSpotForeignC
         this.wordTypes = wordTypes;
     }
 
+    public HotSpotGraalRuntimeProvider getRuntime() {
+        return runtime;
+    }
+
+    public HotSpotJVMCIRuntime getJVMCIRuntime() {
+        return jvmciRuntime;
+    }
+
     /**
      * Registers the linkage for a foreign call.
      */
