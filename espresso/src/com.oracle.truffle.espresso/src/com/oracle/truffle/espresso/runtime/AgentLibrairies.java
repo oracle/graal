@@ -51,6 +51,10 @@ class AgentLibrairies {
     private final List<AgentLibrary> agents = new ArrayList<>();
     private final InteropLibrary interop = InteropLibrary.getUncached();
 
+    AgentLibrairies(EspressoContext context) {
+        this.context = context;
+    }
+
     TruffleObject bind(Method method, String mangledName) {
         for (AgentLibrary agent : agents) {
             try {
@@ -62,25 +66,21 @@ class AgentLibrairies {
         return null;
     }
 
-    AgentLibrairies(EspressoContext context) {
-        this.context = context;
-    }
-
     void initialize() {
         Object ret;
         for (AgentLibrary agent : agents) {
             TruffleObject onLoad = lookupOnLoad(agent);
             if (onLoad == null || interop.isNull(onLoad)) {
-                throw abort("Unable to locate " + AGENT_ONLOAD + " in agent " + agent.name);
+                throw context.abort("Unable to locate " + AGENT_ONLOAD + " in agent " + agent.name);
             }
             try (RawBuffer optionBuffer = RawBuffer.getNativeString(agent.options)) {
                 ret = interop.execute(onLoad, context.getVM().getJavaVM(), optionBuffer.pointer(), NativeEnv.RawPointer.nullInstance());
                 assert interop.fitsInInt(ret);
                 if (interop.asInt(ret) != JNI_OK) {
-                    throw abort(AGENT_ONLOAD + " call for agent " + agent.name + " returned with error: " + interop.asInt(ret));
+                    throw context.abort(AGENT_ONLOAD + " call for agent " + agent.name + " returned with error: " + interop.asInt(ret));
                 }
             } catch (UnsupportedTypeException | ArityException | UnsupportedMessageException e) {
-                throw abort();
+                throw EspressoError.shouldNotReachHere();
             }
         }
     }
@@ -105,7 +105,7 @@ class AgentLibrairies {
             isAbsolutePath = false;
         } else {
             // String starting with + or - should have been enforced by option parsing.
-            throw abort();
+            throw EspressoError.shouldNotReachHere();
         }
         int eqIdx = agent.indexOf('=');
         if (eqIdx > 0) {
@@ -132,7 +132,7 @@ class AgentLibrairies {
             }
         }
         if (interop.isNull(library)) {
-            throw abort("Could not locate library for agent " + agent.name);
+            throw context.abort("Could not locate library for agent " + agent.name);
         }
         agent.lib = library;
 
@@ -143,19 +143,6 @@ class AgentLibrairies {
             return null;
         }
         return onLoad;
-    }
-
-    private EspressoError abort() {
-        if (context.ExitHost) {
-            System.exit(1);
-            throw EspressoError.shouldNotReachHere();
-        }
-        throw new EspressoExitException(1);
-    }
-
-    private EspressoError abort(String message) {
-        context.getLogger().severe(message);
-        throw abort();
     }
 
     private static class AgentLibrary {

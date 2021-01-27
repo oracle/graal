@@ -721,6 +721,19 @@ public final class EspressoContext {
         return shutdownManager.getExitStatus();
     }
 
+    public EspressoError abort() {
+        if (ExitHost) {
+            System.exit(1);
+            throw EspressoError.shouldNotReachHere();
+        }
+        throw new EspressoExitException(1);
+    }
+
+    public EspressoError abort(String message) {
+        getLogger().severe(message);
+        throw abort();
+    }
+
     // endregion Shutdown
 
     // region ReferenceDrain
