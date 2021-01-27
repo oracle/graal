@@ -99,7 +99,7 @@ public final class CommonMIMETypeTestDetector implements TruffleFile.FileTypeDet
         return null;
     }
 
-    @TruffleLanguage.Registration(id = "TestFooXML", name = "", byteMimeTypes = "text/foo+xml", fileTypeDetectors = {CommonMIMETypeTestDetector.class})
+    @TruffleLanguage.Registration(id = "TestFooXML", name = "", characterMimeTypes = "text/foo+xml", fileTypeDetectors = {CommonMIMETypeTestDetector.class})
     public static class TestFooXMLLanguage extends ProxyLanguage {
     }
 }
