@@ -26,6 +26,7 @@ package com.oracle.svm.core.genscavenge;
 
 import java.nio.ByteBuffer;
 
+import org.graalvm.compiler.core.common.NumUtil;
 import org.graalvm.compiler.nodes.NamedLocationIdentity;
 import org.graalvm.compiler.nodes.java.ArrayLengthNode;
 import org.graalvm.nativeimage.Platform;
@@ -35,6 +36,7 @@ import org.graalvm.word.Pointer;
 import org.graalvm.word.UnsignedWord;
 import org.graalvm.word.WordFactory;
 
+import com.oracle.svm.core.MemoryUtil;
 import com.oracle.svm.core.heap.ObjectReferenceVisitor;
 import com.oracle.svm.core.heap.ObjectVisitor;
 import com.oracle.svm.core.heap.ReferenceAccess;
@@ -42,7 +44,6 @@ import com.oracle.svm.core.hub.InteriorObjRefWalker;
 import com.oracle.svm.core.hub.LayoutEncoding;
 import com.oracle.svm.core.log.Log;
 import com.oracle.svm.core.thread.VMOperation;
-import com.oracle.svm.core.util.HostedByteBufferPointer;
 import com.oracle.svm.core.util.PointerUtils;
 import com.oracle.svm.core.util.UnsignedUtils;
 
@@ -107,22 +108,23 @@ public final class CardTable {
         return referenceToYoungObjectVisitor.containsReferenceToYoungObject(obj);
     }
 
-    static Pointer cleanTableToPointer(Pointer tableStart, Pointer tableLimit) {
-        UnsignedWord tableOffset = tableLimit.subtract(tableStart);
-        UnsignedWord indexLimit = CardTable.tableOffsetToIndex(tableOffset);
-        return CardTable.cleanTableToIndex(tableStart, indexLimit);
+    static void cleanTableToPointer(Pointer tableStart, Pointer tableLimit) {
+        cleanTableToLimitOffset(tableStart, tableLimit.subtract(tableStart));
     }
 
-    static Pointer cleanTableToIndex(Pointer table, UnsignedWord indexLimit) {
-        for (UnsignedWord index = WordFactory.unsigned(0); index.belowThan(indexLimit); index = index.add(1)) {
-            cleanEntryAtIndex(table, index);
-        }
-        return table;
+    static void cleanTableToIndex(Pointer table, UnsignedWord indexLimit) {
+        cleanTableToLimitOffset(table, indexToTableOffset(indexLimit));
+    }
+
+    private static void cleanTableToLimitOffset(Pointer tableStart, UnsignedWord tableLimitOffset) {
+        MemoryUtil.fill(tableStart, tableLimitOffset, (byte) CLEAN_ENTRY);
     }
 
     @Platforms(Platform.HOSTED_ONLY.class)
     static void cleanTableInBuffer(ByteBuffer buffer, int bufferTableOffset, UnsignedWord tableSize) {
-        cleanTableToIndex(new HostedByteBufferPointer(buffer, bufferTableOffset), tableSize);
+        for (int i = 0; tableSize.aboveThan(i); i++) {
+            buffer.put(bufferTableOffset + i, NumUtil.safeToByte(CLEAN_ENTRY));
+        }
     }
 
     static void cleanEntryAtIndex(Pointer table, UnsignedWord index) {
@@ -204,10 +206,6 @@ public final class CardTable {
 
     private static boolean isCleanEntryAtIndex(Pointer table, UnsignedWord index) {
         return isCleanEntry(readEntryAtIndex(table, index));
-    }
-
-    private static UnsignedWord tableOffsetToIndex(UnsignedWord offset) {
-        return offset.unsignedDivide(ENTRY_SIZE_BYTES);
     }
 
     private static UnsignedWord indexToTableOffset(UnsignedWord index) {
@@ -487,8 +485,8 @@ public final class CardTable {
             return CardTable.tableSizeForMemorySize(memorySize);
         }
 
-        public static Pointer cleanTableToIndex(Pointer table, UnsignedWord maxIndex) {
-            return CardTable.cleanTableToIndex(table, maxIndex);
+        public static void cleanTableToIndex(Pointer table, UnsignedWord maxIndex) {
+            CardTable.cleanTableToIndex(table, maxIndex);
         }
     }
 }
