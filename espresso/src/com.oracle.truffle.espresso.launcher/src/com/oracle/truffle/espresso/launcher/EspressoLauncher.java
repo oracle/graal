@@ -41,6 +41,10 @@ import org.graalvm.polyglot.PolyglotException;
 import org.graalvm.polyglot.Value;
 
 public class EspressoLauncher extends AbstractLanguageLauncher {
+    private static final String AGENT_LIB = "java.AgentLib.";
+    private static final String AGENT_PATH = "java.AgentPath.";
+    private static final String JAVA_AGENT = "java.JavaAgent";
+
     public static void main(String[] args) {
         new EspressoLauncher().launch(args);
     }
@@ -245,6 +249,16 @@ public class EspressoLauncher extends AbstractLanguageLauncher {
                     } else if (arg.startsWith("-agentlib:jdwp=")) {
                         String value = arg.substring("-agentlib:jdwp=".length());
                         espressoOptions.put("java.JDWPOptions", value);
+                    } else if (arg.startsWith("-javaagent:")) {
+                        String value = arg.substring("-javaagent:".length());
+                        espressoOptions.put(JAVA_AGENT, value);
+                        mergeOption("java.AddModules", "java.instrument");
+                    } else if (arg.startsWith("-agentlib:")) {
+                        String[] split = splitEquals(arg.substring("-agentlib:".length()));
+                        espressoOptions.put(AGENT_LIB + split[0], split[1]);
+                    } else if (arg.startsWith("-agentpath:")) {
+                        String[] split = splitEquals(arg.substring("-agentpath:".length()));
+                        espressoOptions.put(AGENT_PATH + split[0], split[1]);
                     } else if (arg.startsWith("-Xmn") || arg.startsWith("-Xms") || arg.startsWith("-Xmx") || arg.startsWith("-Xss")) {
                         unrecognized.add("--vm." + arg.substring(1));
                     } else
@@ -321,7 +335,16 @@ public class EspressoLauncher extends AbstractLanguageLauncher {
     }
 
     private void parseNumberedOption(Arguments arguments, String property, String type) {
-        espressoOptions.merge(property, arguments.getValue(arguments.getKey(), type), new BiFunction<String, String, String>() {
+        String value = arguments.getValue(arguments.getKey(), type);
+        mergeOption(property, value);
+    }
+
+    private void parseSpecifiedOption(Arguments arguments, String property, String type) {
+        espressoOptions.put(property, arguments.getValue(arguments.getKey(), type));
+    }
+
+    private void mergeOption(String property, String value) {
+        espressoOptions.merge(property, value, new BiFunction<String, String, String>() {
             @Override
             public String apply(String a, String b) {
                 return a + File.pathSeparator + b;
@@ -329,8 +352,18 @@ public class EspressoLauncher extends AbstractLanguageLauncher {
         });
     }
 
-    private void parseSpecifiedOption(Arguments arguments, String property, String type) {
-        espressoOptions.put(property, arguments.getValue(arguments.getKey(), type));
+    private static String[] splitEquals(String value) {
+        int eqIdx = value.indexOf('=');
+        String k;
+        String v;
+        if (eqIdx >= 0) {
+            k = value.substring(0, eqIdx);
+            v = value.substring(eqIdx + 1);
+        } else {
+            k = value;
+            v = "";
+        }
+        return new String[]{k, v};
     }
 
     private static String usage() {
