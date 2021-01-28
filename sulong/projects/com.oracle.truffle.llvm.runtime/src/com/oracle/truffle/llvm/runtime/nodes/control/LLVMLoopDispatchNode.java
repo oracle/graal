@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2020, Oracle and/or its affiliates.
+ * Copyright (c) 2018, 2021, Oracle and/or its affiliates.
  *
  * All rights reserved.
  *
@@ -76,7 +76,7 @@ public final class LLVMLoopDispatchNode extends LLVMNode implements RepeatingNod
 
     @Override
     public boolean executeRepeating(VirtualFrame frame) {
-        throw new IllegalStateException();
+        throw CompilerDirectives.shouldNotReachHere();
     }
 
     /**
