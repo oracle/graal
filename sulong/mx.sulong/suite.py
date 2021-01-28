@@ -228,9 +228,6 @@ suite = {
       "buildDependencies" : [
         "NATIVE_MODE_SUPPORT",
       ],
-      "javaProperties" : {
-        "test.sulongtck.path" : "<path:SULONG_TCK_NATIVE>/bin"
-      },
       "checkstyle" : "com.oracle.truffle.llvm.runtime",
       "javaCompliance" : "1.8+",
       "workingSets" : "Truffle, LLVM",
@@ -1468,6 +1465,20 @@ suite = {
         "sulong:SULONG_LEGACY",
         "SULONG_TEST_NATIVE",
       ],
+      "os_arch" : {
+        "windows" : {
+          "<others>": {
+              # not SULONG_TCK_NATIVE on windows
+          }
+        },
+        "<others>" : {
+          "<others>" : {
+            "javaProperties" : {
+              "test.sulongtck.path" : "<path:SULONG_TCK_NATIVE>/bin"
+            },
+          },
+        },
+      },
       "license" : "BSD-new",
       "testDistribution" : True,
     },
