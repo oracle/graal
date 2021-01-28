@@ -474,6 +474,8 @@ abstract class DynamicObjectLibraryImpl {
     }
 
     private static final class RemovePlan {
+        private static final int MAX_UNROLL = 32;
+
         @CompilationFinal(dimensions = 1) private final Move[] moves;
         private final boolean canMoveInPlace;
         private final Shape shapeBefore;
@@ -486,8 +488,17 @@ abstract class DynamicObjectLibraryImpl {
             this.shapeAfter = shapeAfter;
         }
 
-        @ExplodeLoop
         void execute(DynamicObject object) {
+            CompilerAsserts.partialEvaluationConstant(moves.length);
+            if (CompilerDirectives.inCompiledCode() && moves.length <= MAX_UNROLL) {
+                perform(object);
+            } else {
+                performBoundary(object);
+            }
+        }
+
+        @ExplodeLoop
+        void perform(DynamicObject object) {
             CompilerAsserts.partialEvaluationConstant(moves.length);
             if (canMoveInPlace) {
                 // perform the moves in inverse order
@@ -507,6 +518,11 @@ abstract class DynamicObjectLibraryImpl {
                     moves[i].performSet(object, tempValues[i], true);
                 }
             }
+        }
+
+        @TruffleBoundary
+        void performBoundary(DynamicObject object) {
+            perform(object);
         }
     }
 
