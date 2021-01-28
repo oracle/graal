@@ -309,9 +309,6 @@ suite = {
         "truffle:TRUFFLE_NFI",
         "SULONG_CORE"
       ],
-      "buildDependencies" : [
-        "NATIVE_MODE_SUPPORT",
-      ],
       "checkstyle" : "com.oracle.truffle.llvm.runtime",
       "annotationProcessors" : ["truffle:TRUFFLE_DSL_PROCESSOR"],
       "javaCompliance" : "1.8+",
@@ -1455,21 +1452,45 @@ suite = {
       "native" : True,
       "relpath" : False,
       "platformDependent" : True,
-      "layout" : {
-        "./": [
-          "dependency:com.oracle.truffle.llvm.libraries.bitcode.libcxx/*",
-        ],
-        "./native/lib/" : [
-          "dependency:com.oracle.truffle.llvm.libraries.bitcode/bin/<lib:sulong>",
-          "dependency:com.oracle.truffle.llvm.libraries.bitcode/bin/<lib:sulong++>",
-          "dependency:com.oracle.truffle.llvm.libraries.native/bin/*",
-          "dependency:com.oracle.truffle.llvm.libraries.graalvm.llvm.libs/bin/*",
-        ],
-        "./native/lib/<lib:graalvm-llvm>": "link:<libv:graalvm-llvm.1>",
-        # for source compatibility
-        "./native/lib/<lib:polyglot-mock>": "link:<lib:graalvm-llvm>",
-      },
       "license" : "BSD-new",
+      "os_arch" : {
+        "windows" : {
+          "<others>": {
+            "layout" : {
+              "./": [
+                #"dependency:com.oracle.truffle.llvm.libraries.bitcode.libcxx/*",
+              ],
+              "./native/lib/" : [
+                "dependency:com.oracle.truffle.llvm.libraries.bitcode/bin/<lib:sulong>",
+                #"dependency:com.oracle.truffle.llvm.libraries.bitcode/bin/<lib:sulong++>",
+                "dependency:com.oracle.truffle.llvm.libraries.native/bin/*",
+                "dependency:com.oracle.truffle.llvm.libraries.graalvm.llvm.libs/bin/*",
+              ],
+              #"./native/lib/<lib:graalvm-llvm>": "link:<libv:graalvm-llvm.1>",
+              # for source compatibility
+              #"./native/lib/<lib:polyglot-mock>": "link:<lib:graalvm-llvm>",
+            },
+          },
+        },
+        "<others>" : {
+          "<others>": {
+            "layout" : {
+              "./": [
+                "dependency:com.oracle.truffle.llvm.libraries.bitcode.libcxx/*",
+              ],
+              "./native/lib/" : [
+                "dependency:com.oracle.truffle.llvm.libraries.bitcode/bin/<lib:sulong>",
+                "dependency:com.oracle.truffle.llvm.libraries.bitcode/bin/<lib:sulong++>",
+                "dependency:com.oracle.truffle.llvm.libraries.native/bin/*",
+                "dependency:com.oracle.truffle.llvm.libraries.graalvm.llvm.libs/bin/*",
+              ],
+              "./native/lib/<lib:graalvm-llvm>": "link:<libv:graalvm-llvm.1>",
+              # for source compatibility
+              "./native/lib/<lib:polyglot-mock>": "link:<lib:graalvm-llvm>",
+            },
+          },
+        },
+      },
     },
 
     "SULONG_CORE_HOME" : {
