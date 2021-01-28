@@ -27,6 +27,7 @@ package com.oracle.svm.core.jdk;
 // Checkstyle: allow reflection
 
 import java.io.ByteArrayInputStream;
+import java.io.FileNotFoundException;
 import java.io.IOException;
 import java.io.InputStream;
 import java.net.MalformedURLException;
@@ -197,7 +198,7 @@ public final class JavaNetSubstitutions {
                         String resName = url.toString().substring(1 + JavaNetSubstitutions.RESOURCE_PROTOCOL.length());
                         final List<byte[]> bytes = support.resources.get(resName);
                         if (bytes == null || bytes.size() < 1) {
-                            return null;
+                            throw new FileNotFoundException(url.toString());
                         } else {
                             return new ByteArrayInputStream(bytes.get(0));
                         }
