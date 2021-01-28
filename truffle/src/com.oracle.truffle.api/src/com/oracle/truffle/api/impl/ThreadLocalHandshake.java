@@ -43,6 +43,7 @@ package com.oracle.truffle.api.impl;
 import java.util.concurrent.ConcurrentHashMap;
 
 import com.oracle.truffle.api.CallTarget;
+import com.oracle.truffle.api.CompilerDirectives.Interruptable;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 
 public abstract class ThreadLocalHandshake {
@@ -58,7 +59,9 @@ public abstract class ThreadLocalHandshake {
 
     protected abstract void clearPending();
 
-    public abstract boolean setDisabled(boolean value);
+    public abstract void disable();
+
+    public abstract void enable();
 
     /**
      * If this method is invoked the thread must be guaranteed to be polled. If the thread dies and
@@ -75,12 +78,16 @@ public abstract class ThreadLocalHandshake {
             if (!t.isAlive()) {
                 throw new IllegalStateException("Thread no longer alive with pending handshake.");
             }
-            PENDING.compute(t, (thread, p) -> {
-                return new Handshake(run, p);
+            PENDING.compute(t, (thread, prev) -> {
+                return new Handshake(run, prev);
             });
             setPending(t);
         }
     }
+
+    public abstract void setBlocked(Interruptable unblockingAction);
+
+    public abstract Interruptable clearBlocked();
 
     @TruffleBoundary
     protected final void processHandshake() {
@@ -103,8 +110,13 @@ public abstract class ThreadLocalHandshake {
         if (current == null) {
             return t;
         }
-        t.addSuppressed(current);
-        return t;
+        if (t instanceof ThreadDeath) {
+            t.addSuppressed(current);
+            return t;
+        } else {
+            current.addSuppressed(t);
+            return current;
+        }
     }
 
     @SuppressWarnings("unchecked")
@@ -153,7 +165,6 @@ public abstract class ThreadLocalHandshake {
             }
             return ex;
         }
-
     }
 
 }

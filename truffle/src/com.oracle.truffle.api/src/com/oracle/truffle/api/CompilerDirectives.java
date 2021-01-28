@@ -327,6 +327,62 @@ public final class CompilerDirectives {
 
     private static final ThreadLocalHandshake HANDSHAKE = LanguageAccessor.ACCESSOR.runtimeSupport().getThreadLocalHandshake();
 
+    public interface Interruptable {
+
+        void interrupt(Thread t);
+
+        /**
+         * Will be invoked when a safepoint was called during unblocking.
+         */
+        void interrupted();
+    }
+
+    public static final Interruptable THREAD_INTERRUPTION = new Interruptable() {
+
+        @Override
+        public void interrupted() {
+            /*
+             * Clear interrupted status.
+             */
+            Thread.interrupted();
+        }
+
+        @Override
+        public void interrupt(Thread t) {
+            t.interrupt();
+        }
+    };
+
+    /**
+     * Cooperative blocking.
+     *
+     * <pre>
+     * setSafepointsBlocked(THREAD_INTERRUPTABLE);
+     * try {
+     *     while (true) {
+     *         try {
+     *             lock.lockInterruptibly();
+     *             break;
+     *         } catch (InterruptedException e) {
+     *             CompilerDirectives.safepoint();
+     *         }
+     *     }
+     * } finally {
+     *     clearSafepointsBlocked();
+     * }
+     * </pre>
+     *
+     * @param unblockingAction
+     */
+    public static void setSafepointsBlocked(Interruptable unblockingAction) {
+        Objects.requireNonNull(unblockingAction);
+        HANDSHAKE.setBlocked(unblockingAction);
+    }
+
+    public static void clearSafepointsBlocked() {
+        HANDSHAKE.clearBlocked();
+    }
+
     /**
      * Temporarily disables thread location notifications on this thread. This method may be used to
      * determine critical sections in the guest language application during which the execution must
@@ -340,11 +396,11 @@ public final class CompilerDirectives {
      * Example usage:
      *
      * <pre>
-     * boolean prev = setSafepointsDisabled(false);
+     * CompilerDirectives.disableSafepoints();
      * try {
      *    // criticial section
      * } finally {
-     *     setSafepointsDisabled(prev)
+     *     CompilerDirectives.enableSafepoints()
      * }
      * </pre>
      *
@@ -355,8 +411,13 @@ public final class CompilerDirectives {
      *
      * @since 21.1
      */
-    public static boolean setSafepointsDisabled(boolean disabled) {
-        return HANDSHAKE.setDisabled(disabled);
+    // TODO get rid of return value
+    public static void disableSafepoints() {
+        HANDSHAKE.disable();
+    }
+
+    public static void enableSafepoints() {
+        HANDSHAKE.enable();
     }
 
     /**

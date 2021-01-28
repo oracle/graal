@@ -24,7 +24,11 @@
  */
 package org.graalvm.compiler.truffle.runtime.hotspot;
 
+import java.util.concurrent.ConcurrentHashMap;
+
 import com.oracle.truffle.api.CompilerDirectives;
+import com.oracle.truffle.api.CompilerDirectives.Interruptable;
+import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.impl.ThreadLocalHandshake;
 
 final class HotSpotThreadLocalHandshake extends ThreadLocalHandshake {
@@ -34,6 +38,8 @@ final class HotSpotThreadLocalHandshake extends ThreadLocalHandshake {
     static final HotSpotThreadLocalHandshake INSTANCE = new HotSpotThreadLocalHandshake();
     private static final int PENDING_OFFSET = AbstractHotSpotTruffleRuntime.getRuntime().getThreadLocalPendingHandshakeOffset();
     private static final int DISABLED_OFFSET = AbstractHotSpotTruffleRuntime.getRuntime().getThreadLocalDisabledHandshakeOffset();
+
+    private static final ConcurrentHashMap<Thread, Interruptable> INTERRUPTABLE = new ConcurrentHashMap<>();
 
     private static final long THREAD_EETOP_OFFSET;
     static {
@@ -65,12 +71,24 @@ final class HotSpotThreadLocalHandshake extends ThreadLocalHandshake {
 
     @Override
     protected void setPending(Thread t) {
-        setVolatile(t, PENDING_OFFSET, 1);
+        int prev = setVolatile(t, PENDING_OFFSET, 1);
+        if (prev == 0) {
+            Interruptable action = INTERRUPTABLE.get(Thread.currentThread());
+            if (action != null) {
+                action.interrupt(null);
+            }
+        }
     }
 
     @Override
     protected void clearPending() {
-        setVolatile(Thread.currentThread(), PENDING_OFFSET, 0);
+        int prev = setVolatile(Thread.currentThread(), PENDING_OFFSET, 0);
+        if (prev != 0) {
+            Interruptable action = INTERRUPTABLE.get(Thread.currentThread());
+            if (action != null) {
+                action.interrupted();
+            }
+        }
     }
 
     private static int setVolatile(Thread t, int offset, int value) {
@@ -83,11 +101,30 @@ final class HotSpotThreadLocalHandshake extends ThreadLocalHandshake {
     }
 
     @Override
-    public boolean setDisabled(boolean value) {
+    public void disable() {
         long eetop = UNSAFE.getLong(Thread.currentThread(), THREAD_EETOP_OFFSET);
         int prev = UNSAFE.getInt(null, eetop + DISABLED_OFFSET);
-        UNSAFE.putInt(null, eetop + DISABLED_OFFSET, value ? 1 : 0);
-        return prev != 0;
+        UNSAFE.putInt(null, eetop + DISABLED_OFFSET, prev + 1);
+    }
+
+    @Override
+    public void enable() {
+        long eetop = UNSAFE.getLong(Thread.currentThread(), THREAD_EETOP_OFFSET);
+        int prev = UNSAFE.getInt(null, eetop + DISABLED_OFFSET);
+        UNSAFE.putInt(null, eetop + DISABLED_OFFSET, prev - 1);
+    }
+
+    // TODO a thread local lookup should be done here.
+    @Override
+    @TruffleBoundary
+    public Interruptable clearBlocked() {
+        return INTERRUPTABLE.remove(Thread.currentThread());
+    }
+
+    @Override
+    @TruffleBoundary
+    public void setBlocked(Interruptable unblockingAction) {
+        INTERRUPTABLE.put(Thread.currentThread(), unblockingAction);
     }
 
 }
