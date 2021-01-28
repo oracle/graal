@@ -254,7 +254,7 @@ public class JNIAccessFeature implements Feature {
     }
 
     private static JNIAccessibleClass addClass(Class<?> classObj, DuringAnalysisAccessImpl access) {
-        if (SubstitutionReflectivityFilter.shouldExclude(classObj, access.getMetaAccess())) {
+        if (SubstitutionReflectivityFilter.shouldExclude(classObj, access.getMetaAccess(), access.getUniverse())) {
             return null;
         }
         return JNIReflectionDictionary.singleton().addClassIfAbsent(classObj, c -> {
@@ -269,7 +269,7 @@ public class JNIAccessFeature implements Feature {
     }
 
     private void addMethod(Executable method, DuringAnalysisAccessImpl access) {
-        if (SubstitutionReflectivityFilter.shouldExclude(method, access.getMetaAccess())) {
+        if (SubstitutionReflectivityFilter.shouldExclude(method, access.getMetaAccess(), access.getUniverse())) {
             return;
         }
         JNIAccessibleClass jniClass = addClass(method.getDeclaringClass(), access);
@@ -306,7 +306,7 @@ public class JNIAccessFeature implements Feature {
 
     private static void addField(Field reflField, boolean writable, DuringAnalysisAccessImpl access) {
         access.getMetaAccess().lookupJavaType(reflField.getDeclaringClass()).registerAsReachable();
-        if (SubstitutionReflectivityFilter.shouldExclude(reflField, access.getMetaAccess())) {
+        if (SubstitutionReflectivityFilter.shouldExclude(reflField, access.getMetaAccess(), access.getUniverse())) {
             return;
         }
         JNIAccessibleClass jniClass = addClass(reflField.getDeclaringClass(), access);

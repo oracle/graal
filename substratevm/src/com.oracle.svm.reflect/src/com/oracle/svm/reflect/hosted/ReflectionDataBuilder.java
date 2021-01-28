@@ -47,16 +47,13 @@ import java.util.function.Predicate;
 import org.graalvm.nativeimage.hosted.Feature.DuringAnalysisAccess;
 import org.graalvm.nativeimage.impl.RuntimeReflectionSupport;
 
-import com.oracle.graal.pointsto.meta.AnalysisMetaAccess;
 import com.oracle.graal.pointsto.meta.AnalysisType;
-import com.oracle.svm.core.annotate.Delete;
 import com.oracle.svm.core.hub.ClassForNameSupport;
 import com.oracle.svm.core.hub.DynamicHub;
 import com.oracle.svm.core.util.UserError;
 import com.oracle.svm.core.util.VMError;
 import com.oracle.svm.hosted.FeatureImpl.DuringAnalysisAccessImpl;
 import com.oracle.svm.hosted.FeatureImpl.DuringSetupAccessImpl;
-import com.oracle.svm.hosted.substitute.DeletedElementException;
 import com.oracle.svm.hosted.substitute.SubstitutionReflectivityFilter;
 import com.oracle.svm.util.ReflectionUtil;
 
@@ -237,6 +234,10 @@ public class ReflectionDataBuilder implements RuntimeReflectionSupport {
     }
 
     private void processClass(DuringAnalysisAccessImpl access, Class<?> clazz) {
+        if (SubstitutionReflectivityFilter.shouldExclude(clazz, access.getMetaAccess(), access.getUniverse())) {
+            return;
+        }
+
         AnalysisType type = access.getMetaAccess().lookupJavaType(clazz);
         /*
          * Make sure the class is registered as reachable before its fields are accessed below to
@@ -286,18 +287,18 @@ public class ReflectionDataBuilder implements RuntimeReflectionSupport {
             reflectionData = arrayReflectionData;
         } else {
             reflectionData = new DynamicHub.ReflectionData(
-                            filterFields(accessors.getDeclaredFields(originalReflectionData), reflectionFields.keySet(), access.getMetaAccess()),
-                            filterFields(accessors.getPublicFields(originalReflectionData), reflectionFields.keySet(), access.getMetaAccess()),
-                            filterFields(accessors.getPublicFields(originalReflectionData), f -> reflectionFields.containsKey(f) && !isHiddenIn(f, clazz), access.getMetaAccess()),
-                            filterMethods(accessors.getDeclaredMethods(originalReflectionData), reflectionMethods, access.getMetaAccess()),
-                            filterMethods(accessors.getPublicMethods(originalReflectionData), reflectionMethods, access.getMetaAccess()),
-                            filterConstructors(accessors.getDeclaredConstructors(originalReflectionData), reflectionMethods, access.getMetaAccess()),
-                            filterConstructors(accessors.getPublicConstructors(originalReflectionData), reflectionMethods, access.getMetaAccess()),
-                            nullaryConstructor(accessors.getDeclaredConstructors(originalReflectionData), reflectionMethods),
-                            filterFields(accessors.getDeclaredPublicFields(originalReflectionData), reflectionFields.keySet(), access.getMetaAccess()),
-                            filterMethods(accessors.getDeclaredPublicMethods(originalReflectionData), reflectionMethods, access.getMetaAccess()),
-                            catchLinkingErrors(clazz, reflectionClasses, access.getMetaAccess(), Class::getDeclaredClasses),
-                            catchLinkingErrors(clazz, reflectionClasses, access.getMetaAccess(), Class::getClasses),
+                            filterFields(accessors.getDeclaredFields(originalReflectionData), reflectionFields.keySet(), access),
+                            filterFields(accessors.getPublicFields(originalReflectionData), reflectionFields.keySet(), access),
+                            filterFields(accessors.getPublicFields(originalReflectionData), f -> reflectionFields.containsKey(f) && !isHiddenIn(f, clazz), access),
+                            filterMethods(accessors.getDeclaredMethods(originalReflectionData), reflectionMethods, access),
+                            filterMethods(accessors.getPublicMethods(originalReflectionData), reflectionMethods, access),
+                            filterConstructors(accessors.getDeclaredConstructors(originalReflectionData), reflectionMethods, access),
+                            filterConstructors(accessors.getPublicConstructors(originalReflectionData), reflectionMethods, access),
+                            nullaryConstructor(accessors.getDeclaredConstructors(originalReflectionData), reflectionMethods, access),
+                            filterFields(accessors.getDeclaredPublicFields(originalReflectionData), reflectionFields.keySet(), access),
+                            filterMethods(accessors.getDeclaredPublicMethods(originalReflectionData), reflectionMethods, access),
+                            catchLinkingErrors(clazz, reflectionClasses, access, Class::getDeclaredClasses),
+                            catchLinkingErrors(clazz, reflectionClasses, access, Class::getClasses),
                             enclosingMethodOrConstructor(clazz));
         }
         hub.setReflectionData(reflectionData);
@@ -310,7 +311,7 @@ public class ReflectionDataBuilder implements RuntimeReflectionSupport {
      * @param innerClassAccessor method that extracts the inner classes
      * @return filtered inner classes or empty array in case of a linking/verification error
      */
-    private static Class<?>[] catchLinkingErrors(Class<?> clazz, Set<Class<?>> filter, AnalysisMetaAccess access, Function<Class<?>, Class<?>[]> innerClassAccessor) {
+    private static Class<?>[] catchLinkingErrors(Class<?> clazz, Set<Class<?>> filter, DuringAnalysisAccessImpl access, Function<Class<?>, Class<?>[]> innerClassAccessor) {
         try {
             return filterClasses(innerClassAccessor.apply(clazz), filter, access);
         } catch (TypeNotPresentException | LinkageError e) {
@@ -333,9 +334,10 @@ public class ReflectionDataBuilder implements RuntimeReflectionSupport {
         }
     }
 
-    private static Constructor<?> nullaryConstructor(Object constructors, Set<?> reflectionMethods) {
+    private static Constructor<?> nullaryConstructor(Object constructors, Set<?> reflectionMethods, DuringAnalysisAccessImpl access) {
         for (Constructor<?> constructor : (Constructor<?>[]) constructors) {
-            if (constructor.getParameterCount() == 0 && reflectionMethods.contains(constructor)) {
+            if (constructor.getParameterCount() == 0 && reflectionMethods.contains(constructor) &&
+                            !SubstitutionReflectivityFilter.shouldExclude(constructor, access.getMetaAccess(), access.getUniverse())) {
                 return constructor;
             }
         }
@@ -379,8 +381,8 @@ public class ReflectionDataBuilder implements RuntimeReflectionSupport {
         }
     }
 
-    private static Field[] filterFields(Object fields, Set<Field> filterSet, AnalysisMetaAccess metaAccess) {
-        return filterFields(fields, filterSet::contains, metaAccess);
+    private static Field[] filterFields(Object fields, Set<Field> filterSet, DuringAnalysisAccessImpl access) {
+        return filterFields(fields, filterSet::contains, access);
     }
 
     private static boolean isHiddenIn(Field field, Class<?> clazz) {
@@ -391,44 +393,39 @@ public class ReflectionDataBuilder implements RuntimeReflectionSupport {
         }
     }
 
-    private static Field[] filterFields(Object fields, Predicate<Field> filter, AnalysisMetaAccess metaAccess) {
+    private static Field[] filterFields(Object fields, Predicate<Field> filter, DuringAnalysisAccessImpl access) {
         List<Field> result = new ArrayList<>();
         for (Field field : (Field[]) fields) {
-            if (filter.test(field) && !SubstitutionReflectivityFilter.shouldExclude(field, metaAccess)) {
-                try {
-                    if (!metaAccess.lookupJavaField(field).isAnnotationPresent(Delete.class)) {
-                        result.add(field);
-                    }
-                } catch (DeletedElementException ignored) { // filter
-                }
+            if (filter.test(field) && !SubstitutionReflectivityFilter.shouldExclude(field, access.getMetaAccess(), access.getUniverse())) {
+                result.add(field);
             }
         }
         return result.toArray(EMPTY_FIELDS);
     }
 
-    private static Constructor<?>[] filterConstructors(Object methods, Set<Executable> filter, AnalysisMetaAccess metaAccess) {
-        return filterMethods(methods, filter, metaAccess, EMPTY_CONSTRUCTORS);
+    private static Constructor<?>[] filterConstructors(Object methods, Set<Executable> filter, DuringAnalysisAccessImpl access) {
+        return filterMethods(methods, filter, access, EMPTY_CONSTRUCTORS);
     }
 
-    private static Method[] filterMethods(Object methods, Set<Executable> filter, AnalysisMetaAccess metaAccess) {
-        return filterMethods(methods, filter, metaAccess, EMPTY_METHODS);
+    private static Method[] filterMethods(Object methods, Set<Executable> filter, DuringAnalysisAccessImpl access) {
+        return filterMethods(methods, filter, access, EMPTY_METHODS);
     }
 
     @SuppressWarnings("unchecked")
-    private static <T extends Executable> T[] filterMethods(Object methods, Set<Executable> filter, AnalysisMetaAccess metaAccess, T[] prototypeArray) {
+    private static <T extends Executable> T[] filterMethods(Object methods, Set<Executable> filter, DuringAnalysisAccessImpl access, T[] prototypeArray) {
         List<T> result = new ArrayList<>();
         for (T method : (T[]) methods) {
-            if (filter.contains(method) && !SubstitutionReflectivityFilter.shouldExclude(method, metaAccess)) {
+            if (filter.contains(method) && !SubstitutionReflectivityFilter.shouldExclude(method, access.getMetaAccess(), access.getUniverse())) {
                 result.add(method);
             }
         }
         return result.toArray(prototypeArray);
     }
 
-    private static Class<?>[] filterClasses(Object classes, Set<Class<?>> filter, AnalysisMetaAccess metaAccess) {
+    private static Class<?>[] filterClasses(Object classes, Set<Class<?>> filter, DuringAnalysisAccessImpl access) {
         List<Class<?>> result = new ArrayList<>();
         for (Class<?> clazz : (Class<?>[]) classes) {
-            if (filter.contains(clazz) && !SubstitutionReflectivityFilter.shouldExclude(clazz, metaAccess)) {
+            if (filter.contains(clazz) && !SubstitutionReflectivityFilter.shouldExclude(clazz, access.getMetaAccess(), access.getUniverse())) {
                 result.add(clazz);
             }
         }
