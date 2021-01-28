@@ -481,7 +481,15 @@ public class GraalTest {
         Runtime.getRuntime().addShutdownHook(new Thread("GlobalMetricsPrinter") {
             @Override
             public void run() {
-                globalMetrics.print(new OptionValues(OptionValues.newOptionMap()));
+                try {
+                    Path path = globalMetrics.print(new OptionValues(OptionValues.newOptionMap()), GraalTest.class.getSimpleName() + "Metrics.log");
+                    if (path != null) {
+                        System.out.println("Printed global metrics to " + path.toAbsolutePath());
+                    }
+                } catch (Exception e) {
+                    System.err.println("Error printing global metrics:");
+                    e.printStackTrace(System.err);
+                }
             }
         });
     }
