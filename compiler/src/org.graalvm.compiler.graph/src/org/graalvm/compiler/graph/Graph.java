@@ -239,6 +239,16 @@ public class Graph {
     }
 
     /**
+     * This is called before nodes are transferred to {@code sourceGraph} by
+     * {@link NodeClass#addGraphDuplicate} to allow the transfer of any other state which should
+     * also be transferred.
+     *
+     * @param sourceGraph the source of the nodes that were duplicated
+     */
+    public void beforeNodeDuplication(Graph sourceGraph) {
+    }
+
+    /**
      * Creates an empty Graph with no name.
      */
     public Graph(OptionValues options, DebugContext debug) {

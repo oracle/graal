@@ -536,6 +536,12 @@ public final class StructuredGraph extends Graph implements JavaMethodContext {
     }
 
     @Override
+    public void beforeNodeDuplication(Graph sourceGraph) {
+        super.beforeNodeDuplication(sourceGraph);
+        recordAssumptions((StructuredGraph) sourceGraph);
+    }
+
+    @Override
     public boolean maybeCompress() {
         if (super.maybeCompress()) {
             /*
@@ -1053,8 +1059,8 @@ public final class StructuredGraph extends Graph implements JavaMethodContext {
     }
 
     public void recordAssumptions(StructuredGraph inlineGraph) {
-        if (this != inlineGraph && getAssumptions() != null) {
-            if (inlineGraph.getAssumptions() != null) {
+        if (getAssumptions() != null) {
+            if (this != inlineGraph && inlineGraph.getAssumptions() != null) {
                 getAssumptions().record(inlineGraph.getAssumptions());
             }
         } else {

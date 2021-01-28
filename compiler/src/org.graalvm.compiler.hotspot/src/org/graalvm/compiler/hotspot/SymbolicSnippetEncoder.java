@@ -423,6 +423,7 @@ public class SymbolicSnippetEncoder {
             }
             assert verifySnippetEncodeDecode(debug, method, original, originalMethodString, args, trackNodeSourcePosition, graph);
             debug.dump(DebugContext.VERBOSE_LEVEL, graph, "After buildGraph");
+            assert graph.getAssumptions() == null : graph;
             return graph;
         }
     }
