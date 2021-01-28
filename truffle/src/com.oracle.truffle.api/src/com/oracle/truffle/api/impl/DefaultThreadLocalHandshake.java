@@ -40,17 +40,29 @@
  */
 package com.oracle.truffle.api.impl;
 
-import java.util.concurrent.ConcurrentHashMap;
+import java.util.Collections;
+import java.util.Map;
+import java.util.WeakHashMap;
 import java.util.concurrent.atomic.AtomicInteger;
+
+import com.oracle.truffle.api.CompilerDirectives.Interruptable;
 
 final class DefaultThreadLocalHandshake extends ThreadLocalHandshake {
 
     static final DefaultThreadLocalHandshake INSTANCE = new DefaultThreadLocalHandshake();
-    private static final ThreadLocal<Boolean> DISABLED = ThreadLocal.withInitial(() -> Boolean.FALSE);
-    private static final ConcurrentHashMap<Thread, Boolean> PENDING = new ConcurrentHashMap<>();
 
+    /*
+     * This map contains all state objects for all threads accessible for other threads. Since the
+     * thread needs to be weak and synchronized is less efficient to access and is only used when
+     * accessing the state of other threads.
+     */
+    private static final Map<Thread, ThreadLocalState> STATE_OBJECTS = Collections.synchronizedMap(new WeakHashMap<>());
+    private static final ThreadLocal<ThreadLocalState> STATE = ThreadLocal.withInitial(() -> getThreadState(Thread.currentThread()));
+
+    /*
+     * Number of active pending threads. Allows to check the active threads more efficiently.
+     */
     private static final AtomicInteger PENDING_COUNT = new AtomicInteger();
-    private static final AtomicInteger DISABLED_COUNT = new AtomicInteger();
 
     private DefaultThreadLocalHandshake() {
     }
@@ -60,49 +72,95 @@ final class DefaultThreadLocalHandshake extends ThreadLocalHandshake {
         int count = PENDING_COUNT.get();
         assert count >= 0 : "inconsistent pending state " + count;
         if (count > 0) {
-            pollSlowPath(count);
+            pollSlowPath();
         }
     }
 
-    private void pollSlowPath(int count) {
-        int disabledCount = DISABLED_COUNT.get();
-        assert disabledCount >= 0 : "inconsistent disabled state " + count;
-        if (disabledCount > 0 && DISABLED.get()) {
-            return;
+    private static void pollSlowPath() {
+        ThreadLocalState s = STATE.get();
+        if (s.pending && s.disabledCount == 0) {
+            INSTANCE.processHandshake();
         }
-        if (PENDING.get(Thread.currentThread()) != null) {
-            processHandshake();
-        }
+    }
+
+    private static ThreadLocalState getThreadState(Thread thread) {
+        return STATE_OBJECTS.computeIfAbsent(thread, (t) -> new ThreadLocalState());
     }
 
     @Override
     protected void setPending(Thread t) {
-        PENDING.compute(t, (k, p) -> {
-            if (p == null) {
-                PENDING_COUNT.incrementAndGet();
+        ThreadLocalState s = getThreadState(t);
+        if (!s.pending) {
+            Interruptable action = null;
+            synchronized (s) {
+                if (!s.pending) {
+                    s.pending = true;
+                    PENDING_COUNT.incrementAndGet();
+                    action = s.interruptableAction;
+                }
             }
-            return Boolean.TRUE;
-        });
+            if (action != null) {
+                action.interrupt(t);
+            }
+        }
+
     }
 
     @Override
     protected void clearPending() {
-        PENDING.compute(Thread.currentThread(), (k, p) -> {
-            if (p != null) {
-                PENDING_COUNT.decrementAndGet();
+        ThreadLocalState r = STATE.get();
+        if (r.pending) {
+            Interruptable action = null;
+            synchronized (r) {
+                if (r.pending) {
+                    r.pending = false;
+                    PENDING_COUNT.decrementAndGet();
+                    action = r.interruptableAction;
+                }
             }
-            return null;
-        });
+            if (action != null) {
+                action.interrupted();
+            }
+        }
     }
 
     @Override
-    public boolean setDisabled(boolean value) {
-        boolean b = DISABLED.get();
-        if (b != value) {
-            DISABLED_COUNT.addAndGet(value ? 1 : -1);
-            DISABLED.set(value);
-        }
-        return b;
+    public void setBlocked(Interruptable interruptable) {
+        ThreadLocalState r = STATE.get();
+        poll();
+        assert r.interruptableAction == null : "Thread is already blocked. Call CompilerDirectives.clearSafepointsBlocked() first.";
+        r.interruptableAction = interruptable;
+    }
+
+    @Override
+    public Interruptable clearBlocked() {
+        ThreadLocalState r = STATE.get();
+        Interruptable interruptable = r.interruptableAction;
+        assert interruptable != null : "Thread is not blocked. Call CompilerDirectives.setSafepointsBlocked first.";
+        r.interruptableAction = null;
+        poll();
+        return interruptable;
+    }
+
+    @Override
+    public void disable() {
+        ThreadLocalState s = STATE.get();
+        s.disabledCount++;
+    }
+
+    @Override
+    public void enable() {
+        ThreadLocalState s = STATE.get();
+        s.disabledCount--;
+        assert s.disabledCount >= 0 : "cannot enable if not disabled";
+    }
+
+    static final class ThreadLocalState {
+
+        volatile boolean pending;
+        int disabledCount;
+        volatile Interruptable interruptableAction;
+
     }
 
 }

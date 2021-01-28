@@ -214,6 +214,8 @@ public abstract class JavaThreads {
         // TODO this is is unsafe. we need a better solution
         // running this in a safepoint seems too slow and
         // locking the thread mutex may lead to deadlocks.
+        // TODO backlink from java.lang.Thread to IsolateThread
+        // TODO file issue
         for (IsolateThread vmThread = VMThreads.firstThreadUnsafe(); vmThread.isNonNull(); vmThread = VMThreads.nextThread(vmThread)) {
             Thread current = currentThread.get(vmThread);
             if (current == search) {

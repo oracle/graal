@@ -64,6 +64,8 @@ import java.util.concurrent.TimeoutException;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.atomic.AtomicReference;
+import java.util.concurrent.locks.Lock;
+import java.util.concurrent.locks.ReentrantLock;
 import java.util.function.Consumer;
 
 import org.graalvm.polyglot.Context;
@@ -142,7 +144,7 @@ public class TruffleSafepointTest extends AbstractPolyglotTest {
     public void testSynchronousRecursiveError() throws InterruptedException, AssertionError {
         TestSetup<Object> setup = setupSafepointLoop(1, () -> {
             CompilerDirectives.safepoint();
-            return null; // run in a loop
+            return false;
         });
         Future<Object> future = setup.futures.get(0);
 
@@ -163,7 +165,9 @@ public class TruffleSafepointTest extends AbstractPolyglotTest {
             future.get();
             fail();
         } catch (ExecutionException e) {
-            assertTrue(e.getCause() instanceof AssertionError);
+            if (!(e.getCause() instanceof AssertionError)) {
+                throw new AssertionError(e);
+            }
             assertEquals("Recursive synchronous safepoint detected.", e.getCause().getMessage());
         }
     }
@@ -175,12 +179,7 @@ public class TruffleSafepointTest extends AbstractPolyglotTest {
 
             TestSetup<Object> setup = setupSafepointLoop(threads, () -> {
                 CompilerDirectives.safepoint();
-                if (isStopped(stopped)) {
-                    CompilerDirectives.safepoint();
-                    return 42;
-                } else {
-                    return null;
-                }
+                return stopped.get();
             });
 
             List<Future<Object>> futures = setup.futures;
@@ -199,7 +198,7 @@ public class TruffleSafepointTest extends AbstractPolyglotTest {
 
             for (int i = 0; i < collectors.length; i++) {
                 ActionCollector runnable = collectors[i];
-                awaitFutures(futures, 42);
+                awaitFutures(futures);
 
                 // verify that events were happening in the right order#
                 assertEquals(threads, runnable.ids.size());
@@ -233,12 +232,7 @@ public class TruffleSafepointTest extends AbstractPolyglotTest {
 
             TestSetup<Object> setup = setupSafepointLoop(threads, () -> {
                 CompilerDirectives.safepoint();
-                if (isStopped(stopped)) {
-                    CompilerDirectives.safepoint();
-                    return 42;
-                } else {
-                    return null;
-                }
+                return stopped.get();
             });
 
             List<Future<Object>> futures = setup.futures;
@@ -250,7 +244,7 @@ public class TruffleSafepointTest extends AbstractPolyglotTest {
                 setup.env.runThreadLocalSynchronous(null, runnable);
             }
             stopped.set(true);
-            awaitFutures(futures, 42);
+            awaitFutures(futures);
             // events can happen in any order
             assertActionsAnyOrder(threads, events, runnable);
         });
@@ -291,16 +285,16 @@ public class TruffleSafepointTest extends AbstractPolyglotTest {
             AtomicBoolean disabled = new AtomicBoolean(true);
 
             TestSetup<Object> setup = setupSafepointLoop(threads, () -> {
-                boolean prev = CompilerDirectives.setSafepointsDisabled(isStopped(disabled));
+                CompilerDirectives.disableSafepoints();
                 try {
                     while (true) {
                         CompilerDirectives.safepoint();
                         if (isStopped(stopped)) {
-                            return 42;
+                            return true;
                         }
                     }
                 } finally {
-                    CompilerDirectives.setSafepointsDisabled(prev);
+                    CompilerDirectives.enableSafepoints();
                 }
             });
 
@@ -320,7 +314,7 @@ public class TruffleSafepointTest extends AbstractPolyglotTest {
             disabled.set(false);
             stopped.set(true);
 
-            awaitFutures(futures, 42);
+            awaitFutures(futures);
             assertActionsAnyOrder(threads, events, runnable);
         });
     }
@@ -336,12 +330,8 @@ public class TruffleSafepointTest extends AbstractPolyglotTest {
             AtomicBoolean stopped = new AtomicBoolean(false);
 
             TestSetup<Object> setup = setupSafepointLoop(threads, () -> {
-                Object res = null;
-                if (stopped.get()) {
-                    res = 42;
-                }
                 CompilerDirectives.safepoint();
-                return res;
+                return stopped.get();
             });
 
             List<Future<Object>> futures = setup.futures;
@@ -360,7 +350,7 @@ public class TruffleSafepointTest extends AbstractPolyglotTest {
             }
             assertEquals(0, eventCounter.get());
             stopped.set(true);
-            awaitFutures(futures, 42);
+            awaitFutures(futures);
 
             for (List<List<TruffleStackTraceElement>> eventList : lists) {
                 assertEquals(threads, eventList.size());
@@ -374,30 +364,16 @@ public class TruffleSafepointTest extends AbstractPolyglotTest {
         });
     }
 
-    static final ThreadDeath CANCEL_EXCEPTION;
-
-    static {
-        try {
-            CANCEL_EXCEPTION = (ThreadDeath) ReflectionUtils.invokeStatic(Class.forName("com.oracle.truffle.polyglot.PolyglotEngineImpl"), "createTestCancelExecution");
-        } catch (ClassNotFoundException e) {
-            throw new AssertionError(e);
-        }
-    }
-
     @Test
     public void testException() {
         forEachConfig((threads, events) -> {
             AtomicBoolean stopped = new AtomicBoolean(false);
 
-            AtomicReference<CountDownLatch> latchRef = new AtomicReference<>(new CountDownLatch(threads));
+            AtomicReference<CountDownLatch> latchRef = new AtomicReference<>(null);
             List<Throwable> exceptions = Collections.synchronizedList(new ArrayList<>());
             TestSetup<Object> setup = setupSafepointLoop(threads, () -> {
-                Object res = null;
-                if (isStopped(stopped)) {
-                    res = 42;
-                }
                 CompilerDirectives.safepoint();
-                return res;
+                return stopped.get();
             }, (e) -> {
                 exceptions.add(e);
                 latchRef.get().countDown();
@@ -408,9 +384,11 @@ public class TruffleSafepointTest extends AbstractPolyglotTest {
                 CountDownLatch latch = new CountDownLatch(threads);
                 latchRef.set(latch);
 
-                setup.env.runThreadLocalAsynchronous(null, (t) -> {
+                String testId = "test " + i + " of " + events;
+
+                setup.env.runThreadLocalSynchronous(null, (t) -> {
                     // the only exception that is allowed to be thrown and not just logged
-                    throw CANCEL_EXCEPTION;
+                    throw new RuntimeException(testId);
                 });
 
                 try {
@@ -422,13 +400,62 @@ public class TruffleSafepointTest extends AbstractPolyglotTest {
                 }
                 assertEquals(threads, exceptions.size());
                 for (Throwable t : exceptions) {
-                    assertSame(CANCEL_EXCEPTION, t);
+                    assertTrue(t instanceof RuntimeException);
+                    assertEquals(testId, t.getMessage());
                 }
                 exceptions.clear();
             }
             stopped.set(true);
-            awaitFutures(futures, 42);
+            awaitFutures(futures);
         });
+    }
+
+    @Test
+    public void testInterrupting() {
+        forEachConfig((threads, events) -> {
+            AtomicBoolean stopped = new AtomicBoolean(false);
+
+            Lock lock = new ReentrantLock();
+            TestSetup<Object> setup = setupSafepointLoop(threads, () -> {
+                CompilerDirectives.setSafepointsBlocked(CompilerDirectives.THREAD_INTERRUPTION);
+                try {
+                    lockCooperatively(lock);
+                } finally {
+                    CompilerDirectives.clearSafepointsBlocked();
+                }
+                assert !Thread.interrupted() : "not interrupted";
+                return stopped.get();
+            });
+
+            AtomicInteger eventCounter = new AtomicInteger();
+            ActionCollector runnable = new ActionCollector(eventCounter);
+
+            for (int i = 0; i < events; i++) {
+                setup.env.runThreadLocalSynchronous(null, runnable);
+            }
+
+            stopped.set(true);
+            awaitFutures(setup.futures);
+            // events can happen in any order
+            assertActionsAnyOrder(threads, events, runnable);
+        });
+    }
+
+    @TruffleBoundary
+    private static void lockCooperatively(Lock lock) {
+        try {
+            while (true) {
+                try {
+                    lock.lockInterruptibly();
+                    break;
+                } catch (InterruptedException e) {
+                    CompilerDirectives.safepoint();
+                    continue;
+                }
+            }
+        } finally {
+            lock.unlock();
+        }
     }
 
     @FunctionalInterface
@@ -500,12 +527,12 @@ public class TruffleSafepointTest extends AbstractPolyglotTest {
         throw new AssertionError("Timed out waiting for threads", e);
     }
 
-    private <T> TestSetup<T> setupSafepointLoop(int threads, Callable<T> callable) {
+    private <T> TestSetup<T> setupSafepointLoop(int threads, Callable<Boolean> callable) {
         return setupSafepointLoop(threads, callable, null);
     }
 
     @SuppressWarnings("unchecked")
-    private <T> TestSetup<T> setupSafepointLoop(int threads, Callable<T> callable, Consumer<Throwable> exHandler) {
+    private <T> TestSetup<T> setupSafepointLoop(int threads, Callable<Boolean> callable, Consumer<Throwable> exHandler) {
         Env env = createTestContext();
         CountDownLatch latch = new CountDownLatch(threads);
         CallTarget target = createSafepointLoopTarget(env, callable, latch);
@@ -535,12 +562,12 @@ public class TruffleSafepointTest extends AbstractPolyglotTest {
                 throw new AssertionError();
             }
         } catch (InterruptedException e) {
-            throw CompilerDirectives.shouldNotReachHere(e);
+            throw new AssertionError(e);
         }
         return new TestSetup<>(env, futures, target);
     }
 
-    private static CallTarget createSafepointLoopTarget(Env env, Callable<?> callable, CountDownLatch latch) {
+    private static CallTarget createSafepointLoopTarget(Env env, Callable<Boolean> callable, CountDownLatch latch) {
         Object targetEnter = env.getContext().enter(null);
         CallTarget target = Truffle.getRuntime().createCallTarget(new RootNode(null) {
             @SuppressWarnings("unchecked")
@@ -549,17 +576,17 @@ public class TruffleSafepointTest extends AbstractPolyglotTest {
                 waitForLatch(latch);
                 while (true) {
                     if (isCancelled()) {
-                        throw CompilerDirectives.shouldNotReachHere();
+                        return null;
                     }
-                    Object result;
+                    Boolean result;
                     try {
                         result = callable.call();
                     } catch (RuntimeException e) {
                         throw e;
                     } catch (Exception e) {
-                        throw CompilerDirectives.shouldNotReachHere(e);
+                        throw new AssertionError(e);
                     }
-                    if (result != null) {
+                    if (result) {
                         return result;
                     }
                 }
@@ -613,13 +640,11 @@ public class TruffleSafepointTest extends AbstractPolyglotTest {
         }
     }
 
-    private static void awaitFutures(List<Future<Object>> futures, Object expectedResult) {
+    private static void awaitFutures(List<Future<Object>> futures) {
         for (Future<?> future : futures) {
             try {
                 Object result = future.get(20, TimeUnit.SECONDS);
-                if (expectedResult != null) {
-                    assertEquals(expectedResult, result);
-                }
+                assertEquals(Boolean.TRUE, result);
             } catch (ExecutionException e) {
                 throw new AssertionError(e.getCause());
             } catch (InterruptedException e) {

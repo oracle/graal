@@ -51,16 +51,12 @@ import java.util.concurrent.Future;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.TimeoutException;
 import java.util.function.Consumer;
-import java.util.logging.Level;
 
-import com.oracle.truffle.api.TruffleLogger;
 import com.oracle.truffle.api.impl.ThreadLocalHandshake;
-import com.oracle.truffle.polyglot.PolyglotEngineImpl.CancelExecution;
 
 final class PolyglotSafepointManager {
 
     private static final ThreadLocalHandshake TL_HANDSHAKE = EngineAccessor.ACCESSOR.runtimeSupport().getThreadLocalHandshake();
-    private static final TruffleLogger LOGGER = TruffleLogger.getLogger("engine");
 
     @SuppressWarnings("unchecked")
     private static <T extends Throwable> void sneakyThrow(Throwable ex) throws T {
@@ -125,7 +121,8 @@ final class PolyglotSafepointManager {
      * this context can be used from now on.
      */
     private static boolean isAllowedException(Throwable t) {
-        return t instanceof CancelExecution;
+        return true;
+// return t instanceof CancelExecution;
     }
 
     private static class ThreadLocalFuture implements Future<Void> {
@@ -237,11 +234,7 @@ final class PolyglotSafepointManager {
             try {
                 action.accept(Thread.currentThread());
             } catch (Throwable t) {
-                if (isAllowedException(t)) {
-                    LOGGER.log(Level.WARNING, "Unhandled exception thrown in thread local event.", t);
-                } else {
-                    currentEx = handleEx(currentEx, t);
-                }
+                currentEx = t;
             } finally {
                 thread.setSafepointActive(false);
             }

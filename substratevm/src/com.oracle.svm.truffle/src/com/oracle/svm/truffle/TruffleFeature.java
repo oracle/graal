@@ -393,6 +393,7 @@ public final class TruffleFeature implements com.oracle.svm.core.graal.GraalFeat
         // TODO why do I need to force compilation here? Shouldn't foreign calls be picked up as
         // entry points? If I don't do this then any foreign call will just be silently ignored.
         // maybe change the default behavior to throw?
+        // TODO ImplicitExceptionsFeature
         CompilationInfoSupport.singleton().registerForcedCompilation(SubstrateThreadLocalHandshake.FOREIGN_POLL.findMethod(providers.getMetaAccess()));
     }
 
