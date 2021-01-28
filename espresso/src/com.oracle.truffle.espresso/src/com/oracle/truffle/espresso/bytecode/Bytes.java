@@ -85,17 +85,6 @@ public final class Bytes {
     }
 
     /**
-     * Gets an unsigned 2-byte big-endian value.
-     *
-     * @param data the array containing the data
-     * @param bci the start index of the value to retrieve
-     * @return the unsigned 2-byte, big-endian, value at index {@code bci} in array {@code data}
-     */
-    public static int volatileBeU2(byte[] data, int bci) {
-        return ((VolatileArrayAccess.volatileRead(data, bci) & 0xff) << 8) | (VolatileArrayAccess.volatileRead(data, bci + 1) & 0xff);
-    }
-
-    /**
      * Gets a signed 4-byte big-endian value.
      *
      * @param data the array containing the data

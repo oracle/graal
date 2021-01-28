@@ -50,6 +50,11 @@ public class RawVolatileLoadNode extends RawLoadNode implements SingleMemoryKill
     }
 
     @Override
+    public LocationIdentity getLocationIdentity() {
+        return getKilledLocationIdentity();
+    }
+
+    @Override
     public boolean isVolatile() {
         return true;
     }

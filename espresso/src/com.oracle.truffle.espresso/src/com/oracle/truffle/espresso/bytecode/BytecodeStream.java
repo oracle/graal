@@ -184,18 +184,6 @@ public final class BytecodeStream {
     }
 
     /**
-     * Volatile reads a constant pool index for the current instruction.
-     *
-     * @return the constant pool index
-     */
-    public char volatileReadCPI(int curBCI) {
-        if (volatileOpcode(curBCI) == Bytecodes.LDC) {
-            return (char) Bytes.beU1(code, curBCI + 1);
-        }
-        return (char) Bytes.beU2(code, curBCI + 1);
-    }
-
-    /**
      * Reads a constant pool index for an invokedynamic instruction.
      *
      * @return the constant pool index
