@@ -184,6 +184,18 @@ public final class BytecodeStream {
     }
 
     /**
+     * Reads a constant pool index for the current instruction.
+     *
+     * @return the constant pool index
+     */
+    public static char readCPI(byte[] code, int curBCI) {
+        if (opcode(code, curBCI) == Bytecodes.LDC) {
+            return (char) Bytes.beU1(code, curBCI + 1);
+        }
+        return (char) Bytes.beU2(code, curBCI + 1);
+    }
+
+    /**
      * Reads a constant pool index for an invokedynamic instruction.
      *
      * @return the constant pool index
@@ -212,6 +224,15 @@ public final class BytecodeStream {
     }
 
     public int opcode(int curBCI) {
+        if (curBCI < code.length) {
+            // opcode validity is performed at verification time.
+            return Bytes.beU1(code, curBCI);
+        } else {
+            return Bytecodes.END;
+        }
+    }
+
+    private static int opcode(byte[] code, int curBCI) {
         if (curBCI < code.length) {
             // opcode validity is performed at verification time.
             return Bytes.beU1(code, curBCI);
