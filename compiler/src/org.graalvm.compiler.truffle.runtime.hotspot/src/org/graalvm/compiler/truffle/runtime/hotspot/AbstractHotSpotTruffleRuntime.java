@@ -175,11 +175,13 @@ public abstract class AbstractHotSpotTruffleRuntime extends GraalTruffleRuntime 
         this.threadLocalDisabledHandshakeOffset = counters + Integer.BYTES;
     }
 
-    final int getThreadLocalPendingHandshakeOffset() {
+    @Override
+    public final int getThreadLocalPendingHandshakeOffset() {
         return threadLocalPendingHandshakeOffset;
     }
 
-    final int getThreadLocalDisabledHandshakeOffset() {
+    @Override
+    public final int getThreadLocalDisabledHandshakeOffset() {
         return threadLocalDisabledHandshakeOffset;
     }
 

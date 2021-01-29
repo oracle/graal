@@ -24,14 +24,12 @@
  */
 package org.graalvm.compiler.truffle.compiler.hotspot;
 
-import static org.graalvm.compiler.hotspot.GraalHotSpotVMConfig.INJECTED_VMCONFIG;
 import static org.graalvm.compiler.hotspot.meta.HotSpotForeignCallDescriptor.Reexecutability.REEXECUTABLE;
 import static org.graalvm.compiler.hotspot.meta.HotSpotForeignCallDescriptor.Transition.SAFEPOINT;
 import static org.graalvm.compiler.hotspot.meta.HotSpotForeignCallsProviderImpl.NO_LOCATIONS;
 import static org.graalvm.compiler.replacements.SnippetTemplate.DEFAULT_REPLACER;
 
 import org.graalvm.compiler.api.replacements.Fold;
-import org.graalvm.compiler.api.replacements.Fold.InjectedParameter;
 import org.graalvm.compiler.api.replacements.Snippet;
 import org.graalvm.compiler.core.common.spi.ForeignCallDescriptor;
 import org.graalvm.compiler.debug.DebugHandlersFactory;
@@ -58,7 +56,9 @@ import org.graalvm.compiler.replacements.SnippetTemplate.SnippetInfo;
 import org.graalvm.compiler.replacements.Snippets;
 import org.graalvm.compiler.serviceprovider.ServiceProvider;
 import org.graalvm.compiler.truffle.common.TruffleCompilerRuntime;
+import org.graalvm.compiler.truffle.common.hotspot.HotSpotTruffleCompilerRuntime;
 import org.graalvm.compiler.truffle.compiler.nodes.TruffleSafepointNode;
+import org.graalvm.compiler.word.Word;
 import org.graalvm.word.LocationIdentity;
 
 import jdk.vm.ci.code.TargetDescription;
@@ -82,11 +82,22 @@ public final class HotSpotTruffleSafepointLoweringSnippets implements DefaultHot
     static final HotSpotForeignCallDescriptor THREAD_LOCAL_HANDSHAKE = new HotSpotForeignCallDescriptor(SAFEPOINT, REEXECUTABLE, NO_LOCATIONS, "HotSpotThreadLocalHandshake.doHandshake",
                     void.class);
 
-    static final LocationIdentity JVMCI_COUNTERS_LOCATION = NamedLocationIdentity.mutable("JavaThread::_jvmci_counters");
+    // The names of these location identifies are invalid C++ identifies to represent
+    // that the names of the actual fields are only known by HotSpotTruffleCompilerRuntime
+    // implementations.
+    static final LocationIdentity PENDING_HANDSHAKE_LOCATION = NamedLocationIdentity.mutable("JavaThread::<pending_handshake>");
+    static final LocationIdentity DISABLED_HANDSHAKE_LOCATION = NamedLocationIdentity.mutable("JavaThread::<disabled_handshake>");
 
     @Fold
-    public static int jvmciCountersOffset(@InjectedParameter GraalHotSpotVMConfig config) {
-        return config.jvmciCountersThreadOffset;
+    public static int pendingHandshakeOffset() {
+        HotSpotTruffleCompilerRuntime runtime = (HotSpotTruffleCompilerRuntime) TruffleCompilerRuntime.getRuntime();
+        return runtime.getThreadLocalPendingHandshakeOffset();
+    }
+
+    @Fold
+    public static int disabledHandshakeOffset() {
+        HotSpotTruffleCompilerRuntime runtime = (HotSpotTruffleCompilerRuntime) TruffleCompilerRuntime.getRuntime();
+        return runtime.getThreadLocalDisabledHandshakeOffset();
     }
 
     /**
@@ -95,9 +106,12 @@ public final class HotSpotTruffleSafepointLoweringSnippets implements DefaultHot
      */
     @Snippet
     private static void pollSnippet() {
+        Word thread = CurrentJavaThreadNode.get();
         if (BranchProbabilityNode.probability(BranchProbabilityNode.VERY_SLOW_PATH_PROBABILITY,//
-                        CurrentJavaThreadNode.get().readInt(jvmciCountersOffset(INJECTED_VMCONFIG), JVMCI_COUNTERS_LOCATION) != 0)) {
-            foreignPoll(THREAD_LOCAL_HANDSHAKE);
+                        thread.readInt(pendingHandshakeOffset(), PENDING_HANDSHAKE_LOCATION) != 0)) {
+            if (thread.readInt(disabledHandshakeOffset(), DISABLED_HANDSHAKE_LOCATION) == 0) {
+                foreignPoll(THREAD_LOCAL_HANDSHAKE);
+            }
         }
     }
 
@@ -106,7 +120,7 @@ public final class HotSpotTruffleSafepointLoweringSnippets implements DefaultHot
 
     static class Templates extends AbstractTemplates {
 
-        private final SnippetInfo pollSnippet = snippet(HotSpotTruffleSafepointLoweringSnippets.class, "pollSnippet", JVMCI_COUNTERS_LOCATION);
+        private final SnippetInfo pollSnippet = snippet(HotSpotTruffleSafepointLoweringSnippets.class, "pollSnippet", PENDING_HANDSHAKE_LOCATION, DISABLED_HANDSHAKE_LOCATION);
 
         public Templates(OptionValues options,
                         Iterable<DebugHandlersFactory> factories,
@@ -132,7 +146,7 @@ public final class HotSpotTruffleSafepointLoweringSnippets implements DefaultHot
     public void lower(Node n, LoweringTool tool) {
         if (tool.getLoweringStage() == LoweringTool.StandardLoweringStage.LOW_TIER) {
             if (templates == null) {
-                throw new GraalError("Cannot lower %s nodes as JVMCIRuntime::invoke_java_method is missing", n);
+                throw new GraalError("Cannot lower %s as JVMCIRuntime::invoke_java_method is missing", n);
             }
             templates.lower((TruffleSafepointNode) n, tool);
         }
