@@ -209,6 +209,24 @@ public class TruffleExceptionTest extends AbstractPolyglotTest {
                         "(org.graalvm.sdk/)?org.graalvm.polyglot.Context.eval");
     }
 
+    @Test
+    public void testExceptionFromCreateContext() {
+        String message = "Failed to create";
+        ExceptionType type = ExceptionType.EXIT;
+        assertFails(() -> setupEnv(Context.create(), new ProxyLanguage() {
+            @Override
+            protected LanguageContext createContext(Env env) {
+                throw new TruffleExceptionImpl(message, null, type, null);
+            }
+        }), PolyglotException.class, (pe) -> {
+            Assert.assertEquals(message, pe.getMessage());
+            Assert.assertTrue(pe.isExit());
+            Assert.assertFalse(pe.isInternalError());
+            Assert.assertEquals(0, pe.getExitStatus());
+            Assert.assertNull(pe.getGuestObject());
+        });
+    }
+
     private void testStackTraceImpl(ProxyLanguage proxy, String... patterns) {
         setupEnv(Context.create(), proxy);
         assertFails(() -> context.eval(ProxyLanguage.ID, "Test"), PolyglotException.class, (pe) -> {
