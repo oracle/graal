@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2020, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2021, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -62,8 +62,8 @@ import jdk.vm.ci.meta.MetaAccessProvider;
  * (PART 1) First Transformation: Box node canonicalization
  *
  * Perform canonicalization of box nodes before lowering. We do not perform box canonicalization
- * directly in the node since want virtualization of box nodes. Creating a boxed constant early on
- * inhibits PEA so we do it after PEA but before lowering.
+ * directly in the node since we want virtualization of box nodes. Creating a boxed constant early
+ * on inhibits PEA so we do it after PEA but before lowering.
  *
  *
  * (PART 2) Second Transformation: Out-of-cache boxed value reuse
@@ -102,17 +102,12 @@ import jdk.vm.ci.meta.MetaAccessProvider;
  * boxedVal2 = box(primitiveVal)
  * </pre>
  *
- * can be rewritten to (if one box strictly dominates the other)
+ * can be rewritten to (if the assignment to boxedVal1 dominates the assignment to boxedVal2)
  *
  * <pre>
  * boxedVal1 = box(primitiveVal)
  * ...
- * boxedVal2;
- * if (primitiveCacheHit(primitiveVal)) {
- *     boxedVal2 = queryPrimitiveCache(unboxedVal);
- * } else {
- *     boxedVal2 = boxedVal1;
- * }
+ * boxedVal2 = boxedVal1;
  * </pre>
  *
  */
@@ -148,7 +143,7 @@ public class BoxNodeOptimizationPhase extends BasePhase<CoreProviders> {
                     assert boxedVal != null : "Box " + box + " has no value";
                     // try to optimize with dominating unbox of the same value
                     if (boxedVal instanceof UnboxNode && ((UnboxNode) boxedVal).getBoxingKind() == box.getBoxingKind()) {
-                        // PART 2.2
+                        // PART 2.1
                         optimziBoxed(box, ((UnboxNode) boxedVal).getValue());
                         continue boxLoop;
                     }
