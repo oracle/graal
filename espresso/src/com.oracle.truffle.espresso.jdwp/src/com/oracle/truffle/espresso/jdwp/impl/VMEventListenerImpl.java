@@ -55,10 +55,6 @@ public final class VMEventListenerImpl implements VMEventListener {
     private final HashMap<Integer, RequestFilter> monitorContendedEnteredRequests = new HashMap<>();
     private final HashMap<Integer, RequestFilter> monitorWaitRequests = new HashMap<>();
     private final HashMap<Integer, RequestFilter> monitorWaitedRequests = new HashMap<>();
-    private final StableBoolean fieldBreakpointsActive = new StableBoolean(false);
-    private static volatile int fieldBreakpointCount;
-    private final StableBoolean methodBreakpointsActive = new StableBoolean(false);
-    private static volatile int methodBreakpointCount;
     private SocketConnection connection;
     private volatile boolean holdEvents;
 
@@ -70,7 +66,6 @@ public final class VMEventListenerImpl implements VMEventListener {
     private int vmStartRequestId;
     private final List<PacketStream> heldEvents = new ArrayList<>();
     private final Map<Object, Object> currentContendedMonitor = new HashMap<>();
-    private final ThreadLocal<Object> earlyReturns = new ThreadLocal<>();
     private final Map<Object, Map<Object, MonitorInfo>> monitorInfos = new HashMap<>();
     private final Object initialThread;
 
@@ -119,121 +114,46 @@ public final class VMEventListenerImpl implements VMEventListener {
     }
 
     @Override
-    public void increaseFieldBreakpointCount() {
-        fieldBreakpointCount++;
-        fieldBreakpointsActive.set(true);
-    }
-
-    @Override
-    public void decreaseFieldBreakpointCount() {
-        fieldBreakpointCount--;
-        if (fieldBreakpointCount <= 0) {
-            fieldBreakpointCount = 0;
-            fieldBreakpointsActive.set(false);
-        }
-    }
-
-    @Override
-    public void increaseMethodBreakpointCount() {
-        methodBreakpointCount++;
-        methodBreakpointsActive.set(true);
-    }
-
-    @Override
-    public void decreaseMethodBreakpointCount() {
-        methodBreakpointCount--;
-        if (methodBreakpointCount <= 0) {
-            methodBreakpointCount = 0;
-            methodBreakpointsActive.set(false);
-        }
-    }
-
-    @Override
-    public boolean hasFieldModificationBreakpoint(FieldRef field, Object receiver, Object value) {
-        if (!fieldBreakpointsActive.get()) {
-            return false;
-        } else {
-            return checkFieldModificationBreakpoint(field, receiver, value);
-        }
-    }
-
-    private boolean checkFieldModificationBreakpoint(FieldRef field, Object receiver, Object value) {
-        if (!field.hasActiveBreakpoint()) {
-            return false;
-        } else {
-            return checkFieldModificationSlowPath(field, receiver, value);
-        }
-    }
-
     @TruffleBoundary
-    private boolean checkFieldModificationSlowPath(FieldRef field, Object receiver, Object value) {
+    public boolean onFieldModification(FieldRef field, Object receiver, Object value) {
+        boolean active = false;
         for (FieldBreakpoint info : field.getFieldBreakpointInfos()) {
             if (info.isModificationBreakpoint()) {
                 // OK, tell the Debug API to suspend the thread now
                 debuggerController.prepareFieldBreakpoint(new FieldBreakpointEvent((FieldBreakpointInfo) info, receiver, value));
                 debuggerController.suspend(context.asGuestThread(Thread.currentThread()));
-                return true;
+                active = true;
             }
         }
-        return false;
+        return active;
     }
 
     @Override
-    public boolean hasFieldAccessBreakpoint(FieldRef field, Object receiver) {
-        if (!fieldBreakpointsActive.get()) {
-            return false;
-        } else {
-            return checkFieldAccessBreakpoint(field, receiver);
-        }
-    }
-
-    private boolean checkFieldAccessBreakpoint(FieldRef field, Object receiver) {
-        if (!field.hasActiveBreakpoint()) {
-            return false;
-        } else {
-            return checkFieldAccessSlowPath(field, receiver);
-        }
-    }
-
     @TruffleBoundary
-    private boolean checkFieldAccessSlowPath(FieldRef field, Object receiver) {
+    public boolean onFieldAccess(FieldRef field, Object receiver) {
+        boolean active = false;
         for (FieldBreakpoint info : field.getFieldBreakpointInfos()) {
             if (info.isAccessBreakpoint()) {
                 // OK, tell the Debug API to suspend the thread now
                 debuggerController.prepareFieldBreakpoint(new FieldBreakpointEvent((FieldBreakpointInfo) info, receiver));
                 debuggerController.suspend(context.asGuestThread(Thread.currentThread()));
-                return true;
+                active = true;
             }
         }
-        return false;
+        return active;
     }
 
     @Override
-    public boolean hasMethodBreakpoint(MethodRef method, Object returnValue) {
-        if (!methodBreakpointsActive.get()) {
-            return false;
-        } else {
-            return checkMethodBreakpoint(method, returnValue);
-        }
-    }
-
-    private boolean checkMethodBreakpoint(MethodRef method, Object returnValue) {
-        if (!method.hasActiveBreakpoint()) {
-            return false;
-        } else {
-            return checkMethodSlowPath(method, returnValue);
-        }
-    }
-
     @TruffleBoundary
-    private boolean checkMethodSlowPath(MethodRef method, Object returnValue) {
+    public boolean onMethodReturn(MethodRef method, Object returnValue) {
+        boolean active = false;
         for (MethodBreakpoint info : method.getMethodBreakpointInfos()) {
             // OK, tell the Debug API to suspend the thread now
             debuggerController.prepareMethodBreakpoint(new MethodBreakpointEvent((MethodBreakpointInfo) info, returnValue));
             debuggerController.suspend(context.asGuestThread(Thread.currentThread()));
-            return true;
+            active = true;
         }
-        return false;
+        return active;
     }
 
     @Override
@@ -885,26 +805,6 @@ public final class VMEventListenerImpl implements VMEventListener {
             return monitorInfoMap.get(monitor);
         }
         return null;
-    }
-
-    public void forceEarlyReturn(Object returnValue) {
-        earlyReturns.set(returnValue);
-    }
-
-    @Override
-    @TruffleBoundary
-    public Object getEarlyReturnValue() {
-        return earlyReturns.get();
-    }
-
-    @Override
-    @TruffleBoundary
-    public Object getAndRemoveEarlyReturnValue() {
-        Object earlyReturnValue = earlyReturns.get();
-        if (earlyReturnValue != null) {
-            earlyReturns.remove();
-        }
-        return earlyReturnValue;
     }
 
     @Override

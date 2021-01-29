@@ -291,6 +291,7 @@ import com.oracle.truffle.espresso.impl.Field;
 import com.oracle.truffle.espresso.impl.Klass;
 import com.oracle.truffle.espresso.impl.Method;
 import com.oracle.truffle.espresso.impl.Method.MethodVersion;
+import com.oracle.truffle.espresso.jdwp.impl.StableBoolean;
 import com.oracle.truffle.espresso.meta.EspressoError;
 import com.oracle.truffle.espresso.meta.ExceptionHandler;
 import com.oracle.truffle.espresso.meta.JavaKind;
@@ -390,6 +391,9 @@ public final class BytecodeNode extends EspressoMethodNode {
     @CompilationFinal private EspressoRootNode rootNode;
 
     @Child private volatile InstrumentationSupport instrumentation;
+
+    private final StableBoolean earlyReturnsActive = new StableBoolean(false);
+    private final ThreadLocal<Object> earlyReturns = new ThreadLocal<>();
 
     private final Assumption noForeignObjects;
 
@@ -680,9 +684,11 @@ public final class BytecodeNode extends EspressoMethodNode {
                     statementIndex = nextStatementIndex;
 
                     // check for early return
-                    Object earlyReturnValue = getContext().getJDWPListener().getEarlyReturnValue();
-                    if (earlyReturnValue != null) {
-                        return notifyReturn(frame, statementIndex, exitMethodEarlyAndReturn(earlyReturnValue));
+                    if (earlyReturnsActive.get()) {
+                        Object earlyReturnValue = getEarlyReturnValue();
+                        if (earlyReturnValue != null) {
+                            return notifyReturn(frame, statementIndex, exitMethodEarlyAndReturn(earlyReturnValue));
+                        }
                     }
                 }
 
@@ -1219,6 +1225,24 @@ public final class BytecodeNode extends EspressoMethodNode {
             edgeLocalAnalysis(primitives, refs, curBCI, targetBCI);
             curBCI = targetBCI;
         }
+    }
+
+    public void forceEarlyReturn(Object returnValue) {
+        earlyReturnsActive.set(true);
+        earlyReturns.set(returnValue);
+    }
+
+    @TruffleBoundary
+    private Object getEarlyReturnValue() {
+        // check for early return value
+        if (earlyReturnsActive.get()) {
+            Object earlyReturnValue = earlyReturns.get();
+            if (earlyReturnValue != null) {
+                earlyReturns.set(null);
+                return earlyReturnValue;
+            }
+        }
+        return null;
     }
 
     @ExplodeLoop
@@ -2540,8 +2564,10 @@ public final class BytecodeNode extends EspressoMethodNode {
         }
 
         public void notifyReturn(VirtualFrame frame, int statementIndex, Object returnValue) {
-            if (context.getJDWPListener().hasMethodBreakpoint(method, returnValue)) {
-                enterAt(frame, statementIndex);
+            if (method.hasActiveBreakpoint()) {
+                if (context.getJDWPListener().onMethodReturn(method, returnValue)) {
+                    enterAt(frame, statementIndex);
+                }
             }
         }
 
@@ -2555,14 +2581,18 @@ public final class BytecodeNode extends EspressoMethodNode {
         }
 
         public void notifyFieldModification(VirtualFrame frame, int index, Field field, StaticObject receiver, Object value) {
-            if (context.getJDWPListener().hasFieldModificationBreakpoint(field, receiver, value)) {
-                enterAt(frame, index);
+            if (field.hasActiveBreakpoint()) {
+                if (context.getJDWPListener().onFieldModification(field, receiver, value)) {
+                    enterAt(frame, index);
+                }
             }
         }
 
         public void notifyFieldAccess(VirtualFrame frame, int index, Field field, StaticObject receiver) {
-            if (context.getJDWPListener().hasFieldAccessBreakpoint(field, receiver)) {
-                enterAt(frame, index);
+            if (field.hasActiveBreakpoint()) {
+                if (context.getJDWPListener().onFieldAccess(field, receiver)) {
+                    enterAt(frame, index);
+                }
             }
         }
 

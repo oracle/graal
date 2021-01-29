@@ -49,37 +49,35 @@ public interface VMListener {
     void threadDied(Object thread);
 
     /**
-     * Determines if the field has a field modification breakpoint set. If true, the caller of the
-     * method is expected to enter a probe node to allow for the Truffle Debug API to suspend the
-     * execution.
+     * This method will be called when a field value is about to be modified. The method will
+     * determine if there is an active field modification breakpoint that will be triggered.
      *
      * @param field the field
-     * @param receiver the receiving object in the field instruction
-     * @param value the value about to be set on the receiver for the field
-     * @return true only if the field has a modification breakpoint, false otherwise
+     * @param receiver owner of the field
+     * @param value the new field value
+     * @return true if a breakpoint should be hit due to the modification
      */
-    boolean hasFieldModificationBreakpoint(FieldRef field, Object receiver, Object value);
+    boolean onFieldModification(FieldRef field, Object receiver, Object value);
 
     /**
-     * Determines if the field has a field access breakpoint set. If true, the caller of the method
-     * is expected to enter a probe node to allow for the Truffle Debug API to suspend the
-     * execution.
+     * This method will be called when a field is about to be accessed. The method will determine if
+     * there is an active field access breakpoint that will be triggered.
      *
      * @param field the field
-     * @param receiver the receiving object in the field instruction
-     * @return true only if the field has a access breakpoint, false otherwise
+     * @param receiver owner of the field
+     * @return true if a breakpoint should be hit due to the modification
      */
-    boolean hasFieldAccessBreakpoint(FieldRef field, Object receiver);
+    boolean onFieldAccess(FieldRef field, Object receiver);
 
     /**
-     * Determines if the method has a method breakpoint set. If true, the caller of this method is
-     * expected to enter a probe node to allow for the Truffle Debug API to suspend the execution.
+     * This method will be called when a method is about to return. If will determine if there is an
+     * active method exit breakpoint that will be triggered.
      *
-     * @param method the method
-     * @param returnValue the object to be returned from the method if any
-     * @return true only if the method has a method breakpoint, false otherwise
+     * @param method the field
+     * @param returnValue owner of the field
+     * @return true if a breakpoint should be hit due to the modification
      */
-    boolean hasMethodBreakpoint(MethodRef method, Object returnValue);
+    boolean onMethodReturn(MethodRef method, Object returnValue);
 
     /**
      * This method should be called when when the monitor wait(timeout) method is invoked in the
@@ -123,28 +121,6 @@ public interface VMListener {
      * @return the current contended monitor object
      */
     Object getCurrentContendedMonitor(Object guestThread);
-
-    /**
-     * Returns the value of a force early return value or <code>null</code> if not set.
-     *
-     * @return the return value for a force early return
-     */
-    Object getEarlyReturnValue();
-
-    /**
-     * Returns the value of a force early return value or <code>null</code> if not set. This method
-     * also removes the early return value.
-     *
-     * @return the return value for a force early return
-     */
-    Object getAndRemoveEarlyReturnValue();
-
-    /**
-     * Sets the force early return value.
-     *
-     * @param returnValue the value
-     */
-    void forceEarlyReturn(Object returnValue);
 
     /**
      * Callback method when a monitor has been taken.

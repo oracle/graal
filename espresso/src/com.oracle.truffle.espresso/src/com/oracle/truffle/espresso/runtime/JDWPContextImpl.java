@@ -634,13 +634,23 @@ public final class JDWPContextImpl implements JDWPContext {
 
     @Override
     public boolean forceEarlyReturn(Object returnValue, CallFrame topFrame) {
-        // exit all monitors on the current top frame
-        MonitorStackInfo[] ownedMonitors = getOwnedMonitors(new CallFrame[]{topFrame});
-        for (MonitorStackInfo ownedMonitor : ownedMonitors) {
-            InterpreterToVM.monitorExit((StaticObject) ownedMonitor.getMonitor(), context.getMeta());
+        RootNode rootNode = topFrame.getRootNode();
+        boolean success = false;
+        if (rootNode instanceof EspressoRootNode) {
+            EspressoRootNode espressoRootNode = (EspressoRootNode) rootNode;
+            if (espressoRootNode.isBytecodeNode()) {
+                espressoRootNode.getBytecodeNode().forceEarlyReturn(returnValue);
+                success = true;
+            }
         }
-        eventListener.forceEarlyReturn(returnValue);
-        return true;
+        if (success) {
+            // exit all monitors on the current top frame
+            MonitorStackInfo[] ownedMonitors = getOwnedMonitors(new CallFrame[]{topFrame});
+            for (MonitorStackInfo ownedMonitor : ownedMonitors) {
+                InterpreterToVM.monitorExit((StaticObject) ownedMonitor.getMonitor(), context.getMeta());
+            }
+        }
+        return success;
     }
 
     @Override
