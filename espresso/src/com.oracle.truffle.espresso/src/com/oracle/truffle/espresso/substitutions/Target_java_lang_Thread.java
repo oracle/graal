@@ -250,11 +250,12 @@ public final class Target_java_lang_Thread {
                 hostThread.interrupt();
             }
             context.registerThread(hostThread, self);
+            String guestName = Target_java_lang_Thread.getThreadName(meta, self);
             context.getLogger().fine(() -> {
-                String guestName = Target_java_lang_Thread.getThreadName(meta, self);
                 long guestId = Target_java_lang_Thread.getThreadId(meta, self);
                 return String.format("Thread.start0: [HOST:%s, %d], [GUEST:%s, %d]", hostThread.getName(), hostThread.getId(), guestName, guestId);
             });
+            hostThread.setName(guestName);
             hostThread.start();
         } else {
             String reason = context.getMultiThreadingDisabledReason();
