@@ -139,7 +139,7 @@ public class RawLoadNode extends UnsafeAccessNode implements Lowerable, Virtuali
 
     @Override
     public Node canonical(CanonicalizerTool tool) {
-        if (!isAnyLocationForced() && getLocationIdentity().isAny()) {
+        if (!isAnyLocationForced()) {
             ValueNode targetObject = object();
             if (offset().isConstant() && targetObject.isConstant() && !targetObject.isNullConstant()) {
                 ConstantNode objectConstant = (ConstantNode) targetObject;
