@@ -46,8 +46,8 @@ public class MuslLibC implements LibCBase {
     public List<String> getAdditionalQueryCodeCompilerOptions() {
         /* Avoid the dependency to muslc for builds cross compiling to muslc. */
         return isCrossCompiling()
-                ? Collections.singletonList("--static")
-                : Collections.emptyList();
+                        ? Collections.singletonList("--static")
+                        : Collections.emptyList();
     }
 
     @Override
@@ -75,7 +75,7 @@ public class MuslLibC implements LibCBase {
         }
     }
 
-    private boolean isCrossCompiling() {
+    private static boolean isCrossCompiling() {
         return !HostLibC.is(MuslLibC.class);
     }
 }

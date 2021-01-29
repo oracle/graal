@@ -58,8 +58,8 @@ public class LibCFeature implements Feature {
             public String getValueOrDefault(UnmodifiableEconomicMap<OptionKey<?>, Object> values) {
                 if (!values.containsKey(this)) {
                     return Platform.includedIn(Platform.ANDROID.class)
-                            ? "bionic"
-                            : HostLibC.getName();
+                                    ? "bionic"
+                                    : HostLibC.getName();
                 }
                 return (String) values.get(this);
             }
