@@ -935,8 +935,8 @@ final class BreakpointInterceptor {
             return true;
         }
 
-        List<SerializationInfo> traceCandidates = new ArrayList<>();
-        traceCandidates.add(new SerializationInfo(serializeTargetClassName, null));
+        List<String> transitiveSerializeTargets = new ArrayList<>();
+        transitiveSerializeTargets.add(serializeTargetClassName);
 
         /*
          * When the ObjectStreamClass instance is created for the given serializeTargetClass, some
@@ -961,13 +961,13 @@ final class BreakpointInterceptor {
                         if (!jniFunctions().getIsSameObject().invoke(jni, oscInstanceInSlot, objectStreamClassInstance)) {
                             JNIObjectHandle oscClazz = callObjectMethod(jni, oscInstanceInSlot, javaIoObjectStreamClassForClassMId);
                             String oscClassName = getClassNameOrNull(jni, oscClazz);
-                            traceCandidates.add(new SerializationInfo(oscClassName, null));
+                            transitiveSerializeTargets.add(oscClassName);
                         }
                     }
                 }
             }
         }
-        for (SerializationInfo serializationInfo : traceCandidates) {
+        for (String className : transitiveSerializeTargets) {
             if (traceWriter != null) {
                 traceWriter.traceCall("serialization",
                                 "ObjectStreamClass.<init>",
@@ -975,8 +975,8 @@ final class BreakpointInterceptor {
                                 null,
                                 null,
                                 validObjectStreamClassInstance,
-                                // serializeTargetClassName, checksum);
-                                serializationInfo.className, serializationInfo.checksum);
+                                /*- String serializationTargetClass, String customTargetConstructorClass */
+                                className, null);
                 guarantee(!testException(jni));
             }
         }
@@ -1470,16 +1470,6 @@ final class BreakpointInterceptor {
         @Override
         public int hashCode() {
             return 31 * Long.hashCode(method.rawValue()) + bci;
-        }
-    }
-
-    private static final class SerializationInfo {
-        private final String className;
-        private final String checksum;
-
-        SerializationInfo(String serializeTargetClassName, String checksum) {
-            this.className = serializeTargetClassName;
-            this.checksum = checksum;
         }
     }
 
