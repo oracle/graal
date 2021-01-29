@@ -45,6 +45,7 @@ import org.graalvm.compiler.nodes.extended.BoxNode;
 import org.graalvm.compiler.nodes.extended.BoxNode.OptimizedAllocatingBoxNode;
 import org.graalvm.compiler.nodes.extended.UnboxNode;
 import org.graalvm.compiler.nodes.spi.CoreProviders;
+import org.graalvm.compiler.nodes.util.GraphUtil;
 import org.graalvm.compiler.options.Option;
 import org.graalvm.compiler.options.OptionKey;
 import org.graalvm.compiler.phases.BasePhase;
@@ -144,7 +145,7 @@ public class BoxNodeOptimizationPhase extends BasePhase<CoreProviders> {
                     // try to optimize with dominating unbox of the same value
                     if (boxedVal instanceof UnboxNode && ((UnboxNode) boxedVal).getBoxingKind() == box.getBoxingKind()) {
                         // PART 2.1
-                        optimziBoxed(box, ((UnboxNode) boxedVal).getValue());
+                        optimizeBoxed(box, ((UnboxNode) boxedVal).getValue());
                         continue boxLoop;
                     }
                     // try to optimize with dominating box of the same value
@@ -186,7 +187,9 @@ public class BoxNodeOptimizationPhase extends BasePhase<CoreProviders> {
                                                 }
                                             }
                                         }
-                                        optimziBoxed(box, boxUsageOnBoxedVal);
+                                        box.replaceAtUsages(boxUsageOnBoxedVal);
+                                        graph.getDebug().dump(DebugContext.VERY_DETAILED_LEVEL, graph, "After replacing %s with %s", box, boxUsageOnBoxedVal);
+                                        GraphUtil.removeFixedWithUnusedInputs(box);
                                         continue boxLoop;
                                     }
                                 }
@@ -198,7 +201,7 @@ public class BoxNodeOptimizationPhase extends BasePhase<CoreProviders> {
         }
     }
 
-    private static void optimziBoxed(BoxNode toBeOptimzied, ValueNode boxedDominatingValueToUse) {
+    private static void optimizeBoxed(BoxNode toBeOptimzied, ValueNode boxedDominatingValueToUse) {
         ValueNode other = toBeOptimzied.createOptimizedBox(boxedDominatingValueToUse);
         if (other != toBeOptimzied) {
             final StructuredGraph graph = toBeOptimzied.graph();

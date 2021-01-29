@@ -43,40 +43,45 @@ public class OptimizedBoxNodeTest extends GraalCompilerTest {
     public static Object S;
 
     public static Integer boxStructural1(Object o) {
+        // unbox
         int i = (Integer) o;
+        // re-use unbox
         Object o1 = i;
         S = o1;
-        // box again, reuse if existing
+        // re-use unbox
         return i;
     }
 
     public static Integer boxStructural2(Object o) {
+        // unbox here dominates box below
         int i = (Integer) o;
         S = o;
-        // box again, reuse if existing
+        // box again with optimized box
         return i;
     }
 
     public static Integer boxStructural3(int i) {
         Integer box1 = i;
         S = box1;
+        // second box can be removed completely
         Integer box2 = i;
         return box2;
     }
 
     @Test
     public void testStructure() {
-        parseOptimizeCheck("boxStructural1", 2);
-        parseOptimizeCheck("boxStructural2", 1);
-        parseOptimizeCheck("boxStructural3", 1);
+        parseOptimizeCheck("boxStructural1", 2, 0);
+        parseOptimizeCheck("boxStructural2", 1, 0);
+        parseOptimizeCheck("boxStructural3", 0, 1);
     }
 
-    private void parseOptimizeCheck(String boxSnippet, int nrOptimizedAfter) {
+    private void parseOptimizeCheck(String boxSnippet, int nrOptimizedAfter, int nrBoxAfter) {
         StructuredGraph g = parseEager(getResolvedJavaMethod(boxSnippet), AllowAssumptions.NO);
         createCanonicalizerPhase().apply(g, getDefaultHighTierContext());
         new BoxNodeOptimizationPhase().apply(g, getDefaultHighTierContext());
         Assert.assertTrue(GraphOrder.assertNonCyclicGraph(g));
-        Assert.assertEquals("must have one optimized box node", nrOptimizedAfter, g.getNodes().filter(BoxNode.OptimizedAllocatingBoxNode.class).count());
+        Assert.assertEquals("expected number optimized box nodes", nrOptimizedAfter, g.getNodes().filter(BoxNode.OptimizedAllocatingBoxNode.class).count());
+        Assert.assertEquals("expected number of regular box nodes", nrBoxAfter + nrOptimizedAfter, g.getNodes().filter(BoxNode.class).count());
     }
 
     public static Integer intBoxOptimized(Object o) {
