@@ -92,6 +92,7 @@ public final class TRegexBacktrackingNFAExecutorLocals extends TRegexExecutorLoc
                         BitSets.createBitSetArray(maxNTransitions));
         setIndex(fromIndex);
         clearCaptureGroups();
+        clearZeroWidthQuantifierCG();
     }
 
     private TRegexBacktrackingNFAExecutorLocals(Object input, int fromIndex, int index, int maxIndex, int nCaptureGroups, int nQuantifiers, int nZeroWidthQuantifiers, Stack stack, int stackBase,
@@ -112,7 +113,7 @@ public final class TRegexBacktrackingNFAExecutorLocals extends TRegexExecutorLoc
     }
 
     private static int getStackFrameSize(int nCaptureGroups, int nQuantifiers, int nZeroWidthQuantifiers) {
-        return 2 + nCaptureGroups * 2 + nQuantifiers + nZeroWidthQuantifiers;
+        return 2 + nCaptureGroups * 2 + nQuantifiers + nZeroWidthQuantifiers + nZeroWidthQuantifiers * nCaptureGroups * 2;
     }
 
     public TRegexBacktrackingNFAExecutorLocals createSubNFALocals() {
@@ -147,6 +148,10 @@ public final class TRegexBacktrackingNFAExecutorLocals extends TRegexExecutorLoc
         return sp + 2 + result.length + nQuantifierCounts;
     }
 
+    private int offsetZeroWidthQuantifierCG() {
+        return sp + 2 + result.length + nQuantifierCounts + nZeroWidthQuantifiers;
+    }
+
     private int offsetQuantifierCount(Quantifier q) {
         CompilerDirectives.isPartialEvaluationConstant(q.getIndex());
         return offsetQuantifierCounts() + q.getIndex();
@@ -155,6 +160,11 @@ public final class TRegexBacktrackingNFAExecutorLocals extends TRegexExecutorLoc
     private int offsetZeroWidthQuantifierIndex(Quantifier q) {
         CompilerDirectives.isPartialEvaluationConstant(q.getZeroWidthIndex());
         return offsetZeroWidthQuantifierIndices() + q.getZeroWidthIndex();
+    }
+
+    private int offsetZeroWidthQuantifierCG(Quantifier q) {
+        CompilerDirectives.isPartialEvaluationConstant(q.getZeroWidthIndex());
+        return offsetZeroWidthQuantifierCG() + q.getZeroWidthIndex() * result.length;
     }
 
     public void apply(PureNFATransition t, int index) {
@@ -174,6 +184,10 @@ public final class TRegexBacktrackingNFAExecutorLocals extends TRegexExecutorLoc
 
     protected void clearQuantifierCounts() {
         Arrays.fill(stack(), offsetQuantifierCounts(), offsetQuantifierCounts() + nQuantifierCounts, 0);
+    }
+
+    protected void clearZeroWidthQuantifierCG() {
+        Arrays.fill(stack(), offsetZeroWidthQuantifierCG(), offsetZeroWidthQuantifierCG() + result.length * nZeroWidthQuantifiers, -1);
     }
 
     public void push() {
@@ -287,8 +301,24 @@ public final class TRegexBacktrackingNFAExecutorLocals extends TRegexExecutorLoc
         return stack()[offsetZeroWidthQuantifierIndex(q)];
     }
 
+    public boolean isResultUnmodifiedByZeroWidthQuantifier(Quantifier q, PureNFATransition transition, int index) {
+        int[] buffer = new int[result.length];
+        System.arraycopy(stack(), offsetCaptureGroups(), buffer, 0, result.length);
+        transition.getGroupBoundaries().applyExploded(buffer, 0, index);
+        for (int i = 0; i < result.length; i++) {
+            if (stack()[offsetZeroWidthQuantifierCG(q) + i] != buffer[i]) {
+                return false;
+            }
+        }
+        return true;
+    }
+
     public void setZeroWidthQuantifierGuardIndex(Quantifier q) {
         stack()[offsetZeroWidthQuantifierIndex(q)] = getIndex();
+    }
+
+    public void setZeroWidthQuantifierResults(Quantifier q) {
+        System.arraycopy(stack(), offsetCaptureGroups(), stack(), offsetZeroWidthQuantifierCG(q), result.length);
     }
 
     public long[] getTransitionBitSet() {

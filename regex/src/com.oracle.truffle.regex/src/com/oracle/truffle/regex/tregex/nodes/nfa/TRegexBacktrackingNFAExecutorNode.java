@@ -66,6 +66,7 @@ import com.oracle.truffle.regex.tregex.parser.ast.InnerLiteral;
 import com.oracle.truffle.regex.tregex.parser.ast.LookBehindAssertion;
 import com.oracle.truffle.regex.tregex.parser.ast.RegexASTSubtreeRootNode;
 import com.oracle.truffle.regex.tregex.parser.flavors.RubyFlavor;
+import com.oracle.truffle.regex.util.TBitSet;
 
 /**
  * This regex executor uses a backtracking algorithm on the NFA. It is used for all expressions that
@@ -483,6 +484,8 @@ public final class TRegexBacktrackingNFAExecutorNode extends TRegexExecutorNode 
             return false;
         }
         int nGuards = transition.getQuantifierGuards().length;
+        TBitSet enteredZeroWidthQuantifier = new TBitSet(nZeroWidthQuantifiers);
+        int[] extraQuantifierPasses = new int[nQuantifiers];
         for (int i = isForward() ? 0 : nGuards - 1; isForward() ? i < nGuards : i >= 0; i = inputIncRaw(i)) {
             QuantifierGuard guard = transition.getQuantifierGuards()[i];
             CompilerDirectives.isPartialEvaluationConstant(guard);
@@ -491,24 +494,28 @@ public final class TRegexBacktrackingNFAExecutorNode extends TRegexExecutorNode 
             switch (isForward() ? guard.getKind() : guard.getKindReverse()) {
                 case loop:
                     // retreat if quantifier count is at maximum
-                    if (locals.getQuantifierCount(q) == q.getMax()) {
+                    if (locals.getQuantifierCount(q) + extraQuantifierPasses[q.getIndex()] == q.getMax()) {
                         return false;
                     }
+                    extraQuantifierPasses[q.getIndex()]++;
                     break;
                 case exit:
                     // retreat if quantifier count is less than minimum
-                    if (locals.getQuantifierCount(q) < q.getMin()) {
+                    if (locals.getQuantifierCount(q) + extraQuantifierPasses[q.getIndex()] < q.getMin()) {
                         return false;
                     }
                     break;
+                case enterZeroWidth:
+                    enteredZeroWidthQuantifier.set(q.getZeroWidthIndex());
+                    break;
                 case exitZeroWidth:
-                    if (locals.getZeroWidthQuantifierGuardIndex(q) == index && (!q.hasIndex() || locals.getQuantifierCount(q) > q.getMin())) {
+                    if (enteredZeroWidthQuantifier.get(q.getZeroWidthIndex()) || (locals.getZeroWidthQuantifierGuardIndex(q) == index && locals.isResultUnmodifiedByZeroWidthQuantifier(q, transition, index) && (!q.hasIndex() || locals.getQuantifierCount(q) + extraQuantifierPasses[q.getIndex()] > q.getMin()))) {
                         return false;
                     }
                     break;
                 case enterEmptyMatch:
                     // retreat if quantifier count is greater or equal to minimum
-                    if (locals.getQuantifierCount(q) >= q.getMin()) {
+                    if (locals.getQuantifierCount(q) + extraQuantifierPasses[q.getIndex()] >= q.getMin()) {
                         return false;
                     }
                     break;
@@ -573,6 +580,7 @@ public final class TRegexBacktrackingNFAExecutorNode extends TRegexExecutorNode 
                     break;
                 case enterZeroWidth:
                     locals.setZeroWidthQuantifierGuardIndex(q);
+                    locals.setZeroWidthQuantifierResults(q);
                     break;
                 case enterEmptyMatch:
                     if (!transition.hasCaretGuard() && !transition.hasDollarGuard()) {
