@@ -62,6 +62,7 @@ import org.graalvm.compiler.word.Word;
 import org.graalvm.word.LocationIdentity;
 
 import jdk.vm.ci.code.TargetDescription;
+import jdk.vm.ci.common.NativeImageReinitialize;
 import jdk.vm.ci.hotspot.HotSpotSignature;
 import jdk.vm.ci.meta.ResolvedJavaMethod;
 import jdk.vm.ci.meta.ResolvedJavaType;
@@ -72,7 +73,7 @@ import jdk.vm.ci.meta.ResolvedJavaType;
 @ServiceProvider(DefaultHotSpotLoweringProvider.Extension.class)
 public final class HotSpotTruffleSafepointLoweringSnippets implements DefaultHotSpotLoweringProvider.Extension, Snippets {
 
-    private Templates templates;
+    @NativeImageReinitialize private Templates templates;
 
     /**
      * Description for a call to
