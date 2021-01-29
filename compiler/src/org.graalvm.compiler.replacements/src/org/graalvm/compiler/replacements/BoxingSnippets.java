@@ -305,7 +305,6 @@ public class BoxingSnippets implements Snippets {
                 ResolvedJavaField cacheField = kindToCache.get(box.getBoxingKind());
                 assert cacheField != null;
                 JavaConstant cacheConstant = constantReflection.readFieldValue(cacheField, null);
-                constantReflection.readArrayElement(cacheConstant, 0);
                 args.add("cacheLow", ConstantNode.forConstant(constantReflection.unboxPrimitive(constantReflection.readArrayElement(cacheConstant, 0)), getMetaAccess(), box.graph()));
                 args.add("cacheHigh",
                                 ConstantNode.forConstant(constantReflection.unboxPrimitive(constantReflection.readArrayElement(cacheConstant, constantReflection.readArrayLength(cacheConstant) - 1)),
