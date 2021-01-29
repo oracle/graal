@@ -765,6 +765,7 @@ public abstract class NFATraversalRegexASTVisitor {
 
     @SuppressWarnings("unused")
     private void dumpPath() {
+        System.out.println("NEW PATH");
         for (int i = 0; i < curPath.length(); i++) {
             long element = curPath.get(i);
             if (pathIsGroup(element)) {

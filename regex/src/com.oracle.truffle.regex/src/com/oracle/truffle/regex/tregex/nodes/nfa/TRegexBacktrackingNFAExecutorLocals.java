@@ -343,12 +343,36 @@ public final class TRegexBacktrackingNFAExecutorLocals extends TRegexExecutorLoc
 
     @TruffleBoundary
     public void printStack(int curPc) {
+        System.out.println("STACK SNAPSHOT");
+        System.out.println("==============");
         for (int i = sp; i >= 0; i -= stackFrameSize) {
-            System.out.print(String.format("pc: %3d, i: %3d, cg: [", (i == sp ? curPc : stack()[i + 1]), stack()[i]));
-            for (int j = i + 2; j < i + stackFrameSize - 1; j++) {
-                System.out.print(String.format("%2d, ", stack()[j]));
+            int read = i;
+            System.out.print(String.format("pc: %d, i: %d,\n  cg: [", (i == sp ? curPc : stack()[i + 1]), stack()[i]));
+            read += 2;
+            for (int j = read; j < read + result.length; j++) {
+                System.out.print(String.format("%d, ", stack()[j]));
             }
-            System.out.println(String.format("%2d ]", stack()[i + stackFrameSize - 1]));
+            read += result.length;
+            System.out.print(String.format("],\n  quant: ["));
+            for (int j = read; j < read + nQuantifierCounts; j++) {
+                System.out.print(String.format("%d, ", stack()[j]));
+            }
+            read += nQuantifierCounts;
+            System.out.print(String.format("],\n  zwq-indices: ["));
+            for (int j = read; j < read + nZeroWidthQuantifiers; j++) {
+                System.out.print(String.format("%d, ", stack()[j]));
+            }
+            read += nZeroWidthQuantifiers;
+            System.out.print(String.format("],\n  zwq-cg: {\n"));
+            for (int zwq = 0; zwq < nZeroWidthQuantifiers; zwq++) {
+                System.out.print(String.format("    %d: [", zwq));
+                for (int j = read; j < read + result.length; j++) {
+                    System.out.print(String.format("%d, ", stack()[j]));
+                }
+                read += result.length;
+                System.out.print("],\n");
+            }
+            System.out.println("}\n");
         }
     }
 
