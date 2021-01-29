@@ -131,7 +131,7 @@ public final class Method extends Member<Signature> implements TruffleObject, Co
 
     // the parts of the method that can change when it's redefined
     // are encapsulated within the methodVersion
-    @CompilationFinal volatile MethodVersion methodVersion;
+    @CompilationFinal private volatile MethodVersion methodVersion;
 
     private final Assumption removedByRedefinition = Truffle.getRuntime().createAssumption();
 
