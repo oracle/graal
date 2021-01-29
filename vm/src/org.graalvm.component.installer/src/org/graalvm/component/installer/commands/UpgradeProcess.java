@@ -83,6 +83,8 @@ public class UpgradeProcess implements AutoCloseable {
     private boolean allowMissing;
     private ComponentRegistry newGraalRegistry;
     private Version minVersion = Version.NO_VERSION;
+    private String editionUpgrade;
+    private Set<String> acceptedLicenseIDs = new HashSet<>();
 
     public UpgradeProcess(CommandInput input, Feedback feedback, ComponentCollection catalog) {
         this.input = input;
@@ -224,6 +226,17 @@ public class UpgradeProcess implements AutoCloseable {
         // there's a slight chance this will be different from the final name ...
         feedback.output("UPGRADE_PreparingInstall", info.getVersion().displayString(), reported);
         failIfDirectotyExistsNotEmpty(reported);
+
+        ComponentParam coreParam = createGraalComponentParam(info);
+        // reuse License logic from the installer command:
+        InstallCommand cmd = new InstallCommand();
+        cmd.init(input, feedback);
+
+        // ask the InstallCommand to process/accept the licenses, if there are any.
+        MetadataLoader ldr = coreParam.createMetaLoader();
+        cmd.addLicenseToAccept(ldr);
+        cmd.acceptLicenses();
+        acceptedLicenseIDs = cmd.getProcessedLicenses();
 
         // force download
         ComponentParam param = input.existingFiles().createParam("core", info);
@@ -483,6 +496,7 @@ public class UpgradeProcess implements AutoCloseable {
         instCommand.init(new InputDelegate(params), feedback);
         instCommand.setAllowUpgrades(true);
         instCommand.setForce(true);
+        instCommand.markLicensesProcessed(acceptedLicenseIDs);
         return instCommand;
     }
 
