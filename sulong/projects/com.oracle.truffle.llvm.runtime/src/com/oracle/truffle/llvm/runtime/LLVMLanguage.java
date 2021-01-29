@@ -88,6 +88,7 @@ public class LLVMLanguage extends TruffleLanguage<LLVMContext> {
     static final String LLVM_ELF_LINUX_EXTENSION = "so";
 
     static final String LLVM_MACHO_MIME_TYPE = "application/x-mach-binary";
+    static final String LLVM_MS_DOS_MIME_TYPE = "application/x-dosexec";
 
     static final String MAIN_ARGS_KEY = "Sulong Main Args";
     static final String PARSE_ONLY_KEY = "Parse only";

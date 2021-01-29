@@ -34,6 +34,7 @@ import java.nio.file.Paths;
 import java.util.ArrayList;
 import java.util.List;
 
+import com.oracle.truffle.llvm.parser.coff.PEFile;
 import org.graalvm.polyglot.io.ByteSequence;
 
 import com.oracle.truffle.api.source.Source;
@@ -168,6 +169,14 @@ public final class BinaryParser {
                     return null;
                 }
                 return parseBitcode(coffBcSection.getData(), source);
+            case MS_DOS:
+                PEFile peFile = PEFile.create(bytes);
+                ImageSectionHeader peBcSection = peFile.getCoffFile().getSection(".llvmbc");
+                if (peBcSection == null) {
+                    // PE/COFF File does not contain an .llvmbc section
+                    return null;
+                }
+                return parseBitcode(peBcSection.getData(), source);
             default:
                 return null;
         }

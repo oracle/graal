@@ -49,6 +49,7 @@ public enum Magic {
      *      structure (winnt.h)</a>
      */
     COFF_INTEL_AMD64(0x8664L, null, Short.SIZE),
+    MS_DOS(0x5A4DL /* MZ */, LLVMLanguage.LLVM_MS_DOS_MIME_TYPE, Short.SIZE),
     XAR_MAGIC(0x21726178L, null),
     UNKNOWN(0, null);
 

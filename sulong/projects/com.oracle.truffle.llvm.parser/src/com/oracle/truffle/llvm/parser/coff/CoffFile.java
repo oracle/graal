@@ -80,7 +80,10 @@ public final class CoffFile {
     }
 
     public static CoffFile create(ByteSequence bytes) {
-        ObjectFileReader reader = new ObjectFileReader(bytes, true);
+        return create(bytes, new ObjectFileReader(bytes, true));
+    }
+
+    static CoffFile create(ByteSequence bytes, ObjectFileReader reader) {
         ImageFileHeader header = ImageFileHeader.createImageFileHeader(reader);
         CoffFile coffFile = new CoffFile(bytes, header);
         coffFile.initializeSections(reader);
@@ -112,12 +115,13 @@ public final class CoffFile {
         static final int IMAGE_SIZEOF_FILE_HEADER = 20;
 
         private static ImageFileHeader createImageFileHeader(ObjectFileReader reader) {
+            int headerStartOffset = reader.getPosition();
             short machine = reader.getShort();
             checkIdent(machine);
             short numberOfSections = reader.getShort();
-            reader.setPosition(ImageFileHeader.SIZE_OF_OPTIONAL_HEADER_OFFSET);
+            reader.setPosition(headerStartOffset + ImageFileHeader.SIZE_OF_OPTIONAL_HEADER_OFFSET);
             short sizeOfOptionalHeader = reader.getShort();
-            int firstSection = ImageFileHeader.IMAGE_SIZEOF_FILE_HEADER + Short.toUnsignedInt(sizeOfOptionalHeader);
+            int firstSection = headerStartOffset + ImageFileHeader.IMAGE_SIZEOF_FILE_HEADER + Short.toUnsignedInt(sizeOfOptionalHeader);
             return new ImageFileHeader(numberOfSections, firstSection);
         }
 
