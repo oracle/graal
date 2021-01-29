@@ -29,16 +29,13 @@ package com.oracle.svm.reflect.serialize.hosted;
 
 import java.io.Externalizable;
 import java.io.ObjectStreamClass;
-import java.io.ObjectStreamField;
 import java.io.Serializable;
 import java.lang.reflect.Constructor;
 import java.lang.reflect.Field;
 import java.lang.reflect.Method;
 import java.lang.reflect.Modifier;
 import java.util.HashMap;
-import java.util.HashSet;
 import java.util.Map;
-import java.util.Set;
 
 import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.nativeimage.hosted.Feature;
@@ -145,27 +142,11 @@ public class SerializationFeature implements Feature {
     }
 
     private static void registerFields(Class<?> serializationTargetClass) {
-        int staticFinalMask = Modifier.STATIC | Modifier.FINAL;
-        int privateStaticFinalMask = Modifier.PRIVATE | staticFinalMask;
-
-        Set<String> serialPersistentFieldNames = new HashSet<>();
-        try {
-            /* FIXME serialPersistentFieldNames is write-only. What is the point of this code? */
-            Field f = ReflectionUtil.lookupField(serializationTargetClass, "serialPersistentFields");
-            if ((f.getModifiers() & privateStaticFinalMask) == privateStaticFinalMask) {
-                ObjectStreamField[] serialPersistentFields = (ObjectStreamField[]) f.get(null);
-                for (ObjectStreamField serialPersistentField : serialPersistentFields) {
-                    serialPersistentFieldNames.add(serialPersistentField.getName());
-                }
-            }
-        } catch (ReflectionUtil.ReflectionUtilError | IllegalAccessException e) {
-            // No serialPersistentFields field or failed to get the field value, continue
-        }
-
         for (Field f : serializationTargetClass.getDeclaredFields()) {
             int modifiers = f.getModifiers();
             boolean allowWrite = false;
             boolean allowUnsafeAccess = false;
+            int staticFinalMask = Modifier.STATIC | Modifier.FINAL;
             if ((modifiers & staticFinalMask) != staticFinalMask) {
                 allowWrite = Modifier.isFinal(f.getModifiers());
                 allowUnsafeAccess = !Modifier.isStatic(f.getModifiers());
