@@ -44,4 +44,16 @@ public interface HotSpotTruffleCompilerRuntime extends TruffleCompilerRuntime {
      * @param installedCode code that has just been installed in the code cache
      */
     void onCodeInstallation(CompilableTruffleAST compilable, InstalledCode installedCode);
+
+    /**
+     * Gets the offset in a {@code JavaThread*} object of the int field used to denote that a
+     * safepoint has been requested for the thread (i.e. its value is non-zero).
+     */
+    int getThreadLocalPendingHandshakeOffset();
+
+    /**
+     * Gets the offset in a {@code JavaThread*} object of the int field used to denote that
+     * safepoints have been disabled for the thread (i.e. its value is non-zero).
+     */
+    int getThreadLocalDisabledHandshakeOffset();
 }
