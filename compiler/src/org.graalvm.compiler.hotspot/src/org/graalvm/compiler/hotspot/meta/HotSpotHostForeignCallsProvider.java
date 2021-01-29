@@ -25,7 +25,6 @@
 package org.graalvm.compiler.hotspot.meta;
 
 import static jdk.vm.ci.hotspot.HotSpotCallingConventionType.NativeCall;
-import static jdk.vm.ci.services.Services.IS_BUILDING_NATIVE_IMAGE;
 import static org.graalvm.compiler.core.common.GraalOptions.GeneratePIC;
 import static org.graalvm.compiler.core.target.Backend.ARITHMETIC_DREM;
 import static org.graalvm.compiler.core.target.Backend.ARITHMETIC_FREM;
@@ -130,7 +129,6 @@ import org.graalvm.compiler.nodes.NamedLocationIdentity;
 import org.graalvm.compiler.nodes.extended.BytecodeExceptionNode.BytecodeExceptionKind;
 import org.graalvm.compiler.options.OptionValues;
 import org.graalvm.compiler.replacements.arraycopy.ArrayCopyForeignCalls;
-import org.graalvm.compiler.serviceprovider.GraalServices;
 import org.graalvm.compiler.serviceprovider.JavaVersionUtil;
 import org.graalvm.compiler.word.Word;
 import org.graalvm.compiler.word.WordTypes;
@@ -497,24 +495,6 @@ public abstract class HotSpotHostForeignCallsProvider extends HotSpotForeignCall
             assert (c.vectorizedMismatch != 0L);
             registerForeignCall(VECTORIZED_MISMATCH, c.vectorizedMismatch, NativeCall);
         }
-
-        for (ForeignCallsPlugin p : GraalServices.load(ForeignCallsPlugin.class)) {
-            p.initialize(providers, options, this);
-        }
-    }
-
-    static {
-        if (IS_BUILDING_NATIVE_IMAGE) {
-            // Force loading of this service since services can't be loaded lazily in libgraal.
-            GraalServices.load(ForeignCallsPlugin.class);
-        }
-    }
-
-    /**
-     * A service API for defining extra foreign calls (e.g. Truffle specific foreign calls).
-     */
-    public interface ForeignCallsPlugin {
-        void initialize(HotSpotProviders providers, OptionValues options, HotSpotForeignCallsProviderImpl foreignCalls);
     }
 
     @SuppressWarnings("unused")
