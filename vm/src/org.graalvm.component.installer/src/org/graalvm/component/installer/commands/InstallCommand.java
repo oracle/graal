@@ -770,9 +770,19 @@ public class InstallCommand implements InstallerCommand {
         if (licensesToAccept.isEmpty()) {
             return;
         }
+        Set<String> processed = new HashSet<>(licensesToAccept.keySet());
         createLicensePresenter().run();
-        processedLicenses.addAll(licensesToAccept.keySet());
+        processed.removeAll(licensesToAccept.keySet());
+        markLicensesProcessed(processed);
         licensesToAccept.clear();
+    }
+
+    public Set<String> getProcessedLicenses() {
+        return new HashSet<>(processedLicenses);
+    }
+
+    public void markLicensesProcessed(Collection<String> licenseIDs) {
+        processedLicenses.addAll(licenseIDs);
     }
 
     public Set<String> getUnresolvedDependencies() {
