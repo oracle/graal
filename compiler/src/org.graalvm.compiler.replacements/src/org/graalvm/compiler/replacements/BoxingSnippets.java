@@ -29,12 +29,12 @@ import static org.graalvm.compiler.replacements.SnippetTemplate.DEFAULT_REPLACER
 import java.lang.reflect.Field;
 import java.util.EnumMap;
 
-import org.graalvm.compiler.api.replacements.Fold;
 import org.graalvm.compiler.api.replacements.Snippet;
 import org.graalvm.compiler.api.replacements.Snippet.ConstantParameter;
 import org.graalvm.compiler.api.replacements.SnippetReflectionProvider;
 import org.graalvm.compiler.debug.DebugHandlersFactory;
 import org.graalvm.compiler.debug.GraalError;
+import org.graalvm.compiler.nodes.ConstantNode;
 import org.graalvm.compiler.nodes.FieldLocationIdentity;
 import org.graalvm.compiler.nodes.NamedLocationIdentity;
 import org.graalvm.compiler.nodes.PiNode;
@@ -51,13 +51,13 @@ import org.graalvm.compiler.replacements.SnippetCounter.Group;
 import org.graalvm.compiler.replacements.SnippetTemplate.AbstractTemplates;
 import org.graalvm.compiler.replacements.SnippetTemplate.Arguments;
 import org.graalvm.compiler.replacements.SnippetTemplate.SnippetInfo;
-import org.graalvm.compiler.serviceprovider.GraalUnsafeAccess;
 import org.graalvm.word.LocationIdentity;
 
 import jdk.vm.ci.code.TargetDescription;
+import jdk.vm.ci.meta.ConstantReflectionProvider;
+import jdk.vm.ci.meta.JavaConstant;
 import jdk.vm.ci.meta.JavaKind;
 import jdk.vm.ci.meta.ResolvedJavaField;
-import sun.misc.Unsafe;
 
 public class BoxingSnippets implements Snippets {
 
@@ -113,140 +113,36 @@ public class BoxingSnippets implements Snippets {
      * Note: This list of optimized box versions should be kept in sync with
      * {@link BoxNodeOptimizationPhase#OptimizedBoxVersions}.
      */
-    @Fold
-    static int iCacheLow() {
-        try {
-            Class<?>[] innerClasses = Integer.class.getDeclaredClasses();
-            Field f = innerClasses[0].getDeclaredField("cache");
-            Unsafe unsafe = GraalUnsafeAccess.getUnsafe();
-            Integer[] cache = (Integer[]) unsafe.getObject(unsafe.staticFieldBase(f), unsafe.staticFieldOffset(f));
-            return cache[0];
-        } catch (Throwable t) {
-            throw GraalError.shouldNotReachHere(t);
-        }
-    }
-
-    @Fold
-    static int iCacheHigh() {
-        try {
-            Class<?>[] innerClasses = Integer.class.getDeclaredClasses();
-            Field f = innerClasses[0].getDeclaredField("cache");
-            Unsafe unsafe = GraalUnsafeAccess.getUnsafe();
-            Integer[] cache = (Integer[]) unsafe.getObject(unsafe.staticFieldBase(f), unsafe.staticFieldOffset(f));
-            return cache[cache.length - 1];
-        } catch (Throwable t) {
-            throw GraalError.shouldNotReachHere(t);
-        }
-    }
-
     @Snippet
-    public static Object intValueOfOptimized(int value, Integer boxedVersion) {
-        if (value >= iCacheLow() && value <= iCacheHigh()) {
+    public static Object intValueOfOptimized(int value, Integer boxedVersion, int cacheLow, int cacheHigh) {
+        if (value >= cacheLow && value <= cacheHigh) {
             return PiNode.piCastToSnippetReplaceeStamp(Integer.valueOf(value));
         }
         return boxedVersion;
     }
 
-    @Fold
-    static long lCacheLow() {
-        try {
-            Class<?>[] innerClasses = Long.class.getDeclaredClasses();
-            Field f = innerClasses[0].getDeclaredField("cache");
-            Unsafe unsafe = GraalUnsafeAccess.getUnsafe();
-            Long[] cache = (Long[]) unsafe.getObject(unsafe.staticFieldBase(f), unsafe.staticFieldOffset(f));
-            return cache[0];
-        } catch (Throwable t) {
-            throw GraalError.shouldNotReachHere(t);
-        }
-    }
-
-    @Fold
-    static long lCacheHigh() {
-        try {
-            Class<?>[] innerClasses = Long.class.getDeclaredClasses();
-            Field f = innerClasses[0].getDeclaredField("cache");
-            Unsafe unsafe = GraalUnsafeAccess.getUnsafe();
-            Long[] cache = (Long[]) unsafe.getObject(unsafe.staticFieldBase(f), unsafe.staticFieldOffset(f));
-            return cache[cache.length - 1];
-        } catch (Throwable t) {
-            throw GraalError.shouldNotReachHere(t);
-        }
-    }
-
     @Snippet
-    public static Object longValueOfOptimized(long value, Long boxedVersion) {
-        if (value >= lCacheLow() && value <= lCacheHigh()) {
+    public static Object longValueOfOptimized(long value, Long boxedVersion, long cacheLow, long cacheHigh) {
+        if (value >= cacheLow && value <= cacheHigh) {
             return PiNode.piCastToSnippetReplaceeStamp(Long.valueOf(value));
         }
         return boxedVersion;
     }
 
-    @Fold
-    static short sCacheLow() {
-        try {
-            Class<?>[] innerClasses = Short.class.getDeclaredClasses();
-            Field f = innerClasses[0].getDeclaredField("cache");
-            Unsafe unsafe = GraalUnsafeAccess.getUnsafe();
-            Short[] cache = (Short[]) unsafe.getObject(unsafe.staticFieldBase(f), unsafe.staticFieldOffset(f));
-            return cache[0];
-        } catch (Throwable t) {
-            throw GraalError.shouldNotReachHere(t);
-        }
-    }
-
-    @Fold
-    static short sCacheHigh() {
-        try {
-            Class<?>[] innerClasses = Short.class.getDeclaredClasses();
-            Field f = innerClasses[0].getDeclaredField("cache");
-            Unsafe unsafe = GraalUnsafeAccess.getUnsafe();
-            Short[] cache = (Short[]) unsafe.getObject(unsafe.staticFieldBase(f), unsafe.staticFieldOffset(f));
-            return cache[cache.length - 1];
-        } catch (Throwable t) {
-            throw GraalError.shouldNotReachHere(t);
-        }
-    }
-
     @Snippet
-    public static Object shortValueOfOptimized(short value, Short boxedVersion) {
+    public static Object shortValueOfOptimized(short value, Short boxedVersion, short cacheLow, short cacheHigh) {
         int sAsInt = value;
-        int iCacheLow = sCacheLow();
-        int iCacheHigh = sCacheHigh();
+        int iCacheLow = cacheLow;
+        int iCacheHigh = cacheHigh;
         if (sAsInt >= iCacheLow && sAsInt <= iCacheHigh) {
             return PiNode.piCastToSnippetReplaceeStamp(Short.valueOf(value));
         }
         return boxedVersion;
     }
 
-    @Fold
-    static char cCacheLow() {
-        try {
-            Class<?>[] innerClasses = Character.class.getDeclaredClasses();
-            Field f = innerClasses[0].getDeclaredField("cache");
-            Unsafe unsafe = GraalUnsafeAccess.getUnsafe();
-            Character[] cache = (Character[]) unsafe.getObject(unsafe.staticFieldBase(f), unsafe.staticFieldOffset(f));
-            return cache[0];
-        } catch (Throwable t) {
-            throw GraalError.shouldNotReachHere(t);
-        }
-    }
-
-    @Fold
-    static char cCacheHigh() {
-        try {
-            Class<?>[] innerClasses = Character.class.getDeclaredClasses();
-            Field f = innerClasses[0].getDeclaredField("cache");
-            Unsafe unsafe = GraalUnsafeAccess.getUnsafe();
-            Character[] cache = (Character[]) unsafe.getObject(unsafe.staticFieldBase(f), unsafe.staticFieldOffset(f));
-            return cache[cache.length - 1];
-        } catch (Throwable t) {
-            throw GraalError.shouldNotReachHere(t);
-        }
-    }
-
     @Snippet
-    public static Object charValueOfOptimized(char value, Character boxedVersion) {
-        if (value >= cCacheLow() && value <= cCacheHigh()) {
+    public static Object charValueOfOptimized(char value, Character boxedVersion, char cacheLow, char cacheHigh) {
+        if (value >= cacheLow && value <= cacheHigh) {
             return PiNode.piCastToSnippetReplaceeStamp(Character.valueOf(value));
         }
         return boxedVersion;
@@ -305,6 +201,7 @@ public class BoxingSnippets implements Snippets {
         private final EnumMap<JavaKind, SnippetInfo> boxSnippets = new EnumMap<>(JavaKind.class);
         private final EnumMap<JavaKind, SnippetInfo> boxSnippetsOptimized = new EnumMap<>(JavaKind.class);
         private final EnumMap<JavaKind, SnippetInfo> unboxSnippets = new EnumMap<>(JavaKind.class);
+        private final EnumMap<JavaKind, ResolvedJavaField> kindToCache = new EnumMap<>(JavaKind.class);
 
         private final SnippetCounter valueOfCounter;
         private final SnippetCounter valueCounter;
@@ -359,6 +256,16 @@ public class BoxingSnippets implements Snippets {
                         if (BoxNodeOptimizationPhase.Options.ReuseOutOfCacheBoxedValues.getValue(options) && BoxNodeOptimizationPhase.OptimizedBoxVersions.contains(kind)) {
                             boxSnippetsOptimized.put(kind, snippet(BoxingSnippets.class, kind.getJavaName() + "ValueOfOptimized", LocationIdentity.INIT_LOCATION, accessedLocation, cacheLocation,
                                             NamedLocationIdentity.getArrayLocation(JavaKind.Object)));
+                            Class<?> boxingClass = kind.toBoxedJavaClass();
+                            Class<?> cacheClass = boxingClass.getDeclaredClasses()[0];
+                            Field f = null;
+                            try {
+                                f = cacheClass.getDeclaredField("cache");
+                            } catch (Throwable t) {
+                                throw GraalError.shouldNotReachHere(t);
+                            }
+                            ResolvedJavaField cacheField = metaAccess.lookupJavaField(f);
+                            kindToCache.put(kind, cacheField);
                         }
                     } else {
                         boxSnippets.put(kind, snippet(BoxingSnippets.class, kind.getJavaName() + "ValueOf", LocationIdentity.INIT_LOCATION, accessedLocation,
@@ -386,6 +293,7 @@ public class BoxingSnippets implements Snippets {
         }
 
         public void lower(BoxNode box, LoweringTool tool) {
+            final ConstantReflectionProvider constantReflection = tool.getConstantReflection();
             Arguments args = null;
             if (box instanceof OptimizedAllocatingBoxNode) {
                 assert BoxNodeOptimizationPhase.OptimizedBoxVersions.contains(box.getBoxingKind());
@@ -394,6 +302,14 @@ public class BoxingSnippets implements Snippets {
                 args = new Arguments(info, box.graph().getGuardsStage(), tool.getLoweringStage());
                 args.add("value", box.getValue());
                 args.add("boxedVersion", ((OptimizedAllocatingBoxNode) box).getDominatingBoxedValue());
+                ResolvedJavaField cacheField = kindToCache.get(box.getBoxingKind());
+                assert cacheField != null;
+                JavaConstant cacheConstant = constantReflection.readFieldValue(cacheField, null);
+                constantReflection.readArrayElement(cacheConstant, 0);
+                args.add("cacheLow", ConstantNode.forConstant(constantReflection.unboxPrimitive(constantReflection.readArrayElement(cacheConstant, 0)), getMetaAccess(), box.graph()));
+                args.add("cacheHigh",
+                                ConstantNode.forConstant(constantReflection.unboxPrimitive(constantReflection.readArrayElement(cacheConstant, constantReflection.readArrayLength(cacheConstant) - 1)),
+                                                getMetaAccess(), box.graph()));
             } else {
                 args = new Arguments(boxSnippets.get(box.getBoxingKind()), box.graph().getGuardsStage(), tool.getLoweringStage());
                 args.add("value", box.getValue());
