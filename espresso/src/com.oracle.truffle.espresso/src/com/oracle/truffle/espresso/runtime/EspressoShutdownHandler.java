@@ -244,16 +244,10 @@ class EspressoShutdownHandler implements ContextAccess {
             }
         }
 
-        Thread hostToGuestReferenceDrainThread = referenceDrainer.referenceDrain();
-        if (getContext().MultiThreaded) {
-            hostToGuestReferenceDrainThread.interrupt();
-            try {
-                hostToGuestReferenceDrainThread.join();
-            } catch (InterruptedException e) {
-                // ignore
-            }
-        } else {
-            assert hostToGuestReferenceDrainThread == null || !hostToGuestReferenceDrainThread.isAlive();
+        try {
+            referenceDrainer.joinReferenceDrain();
+        } catch (InterruptedException e) {
+            // ignore
         }
 
         context.getTimers().report(context.getLogger());

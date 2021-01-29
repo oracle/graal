@@ -56,55 +56,52 @@ class EspressoReferenceDrainer implements ContextAccess {
     void initReferenceDrain() {
         TruffleLanguage.Env env = getContext().getEnv();
         Meta meta = getMeta();
-        boolean multiThreaded = getContext().MultiThreaded;
-        if (getJavaVersion().java8OrEarlier()) {
-            // Initialize reference queue
-            if (multiThreaded) {
-                this.hostToGuestReferenceDrainThread = env.createThread(new ReferenceDrain() {
-                    @SuppressWarnings("rawtypes")
-                    @Override
-                    protected void updateReferencePendingList(EspressoReference head, EspressoReference prev, StaticObject lock) {
-                        StaticObject obj = meta.java_lang_ref_Reference_pending.getAndSetObject(meta.java_lang_ref_Reference.getStatics(), head.getGuestReference());
-                        meta.java_lang_ref_Reference_discovered.set(prev.getGuestReference(), obj);
-                        getVM().JVM_MonitorNotify(lock, profiler);
-
-                    }
-                });
-            }
-        } else if (getJavaVersion().java9OrLater()) {
-            // Initialize reference queue
-            if (multiThreaded) {
-                this.hostToGuestReferenceDrainThread = env.createThread(new ReferenceDrain() {
-                    @SuppressWarnings("rawtypes")
-                    @Override
-                    protected void updateReferencePendingList(EspressoReference head, EspressoReference prev, StaticObject lock) {
-                        synchronized (pendingLock) {
-                            StaticObject obj = referencePendingList;
-                            referencePendingList = head.getGuestReference();
+        if (getContext().multiThreadingEnabled()) {
+            if (getJavaVersion().java8OrEarlier()) {
+                // Initialize reference queue
+                    this.hostToGuestReferenceDrainThread = env.createThread(new ReferenceDrain() {
+                        @SuppressWarnings("rawtypes")
+                        @Override
+                        protected void updateReferencePendingList(EspressoReference head, EspressoReference prev, StaticObject lock) {
+                            StaticObject obj = meta.java_lang_ref_Reference_pending.getAndSetObject(meta.java_lang_ref_Reference.getStatics(), head.getGuestReference());
                             meta.java_lang_ref_Reference_discovered.set(prev.getGuestReference(), obj);
                             getVM().JVM_MonitorNotify(lock, profiler);
-                            pendingLock.notifyAll();
+
                         }
-                    }
-                });
+                    });
+            } else if (getJavaVersion().java9OrLater()) {
+                // Initialize reference queue
+                    this.hostToGuestReferenceDrainThread = env.createThread(new ReferenceDrain() {
+                        @SuppressWarnings("rawtypes")
+                        @Override
+                        protected void updateReferencePendingList(EspressoReference head, EspressoReference prev, StaticObject lock) {
+                            synchronized (pendingLock) {
+                                StaticObject obj = referencePendingList;
+                                referencePendingList = head.getGuestReference();
+                                meta.java_lang_ref_Reference_discovered.set(prev.getGuestReference(), obj);
+                                getVM().JVM_MonitorNotify(lock, profiler);
+                                pendingLock.notifyAll();
+                            }
+                        }
+                    });
+            } else {
+                throw EspressoError.shouldNotReachHere();
             }
         }
-
-        // Truffle considers a language to be multi-threaded if it creates at least one
-        // polyglot thread, even if the thread is never started.
-        EspressoError.guarantee(multiThreaded || hostToGuestReferenceDrainThread == null,
-                        "The reference drain thread cannot be created with --java.MultiThreaded=false");
     }
 
     void startReferenceDrain() {
-        if (getContext().MultiThreaded) {
+        if (hostToGuestReferenceDrainThread != null) {
             hostToGuestReferenceDrainThread.setDaemon(true);
             hostToGuestReferenceDrainThread.start();
         }
     }
 
-    Thread referenceDrain() {
-        return hostToGuestReferenceDrainThread;
+    void joinReferenceDrain() throws InterruptedException {
+        if (hostToGuestReferenceDrainThread != null) {
+            hostToGuestReferenceDrainThread.interrupt();
+            hostToGuestReferenceDrainThread.join();
+        }
     }
 
     ReferenceQueue<StaticObject> getReferenceQueue() {
