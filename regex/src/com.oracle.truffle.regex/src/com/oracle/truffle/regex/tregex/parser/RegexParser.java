@@ -461,9 +461,7 @@ public final class RegexParser {
         curTerm.setExpandedQuantifier(false);
         ((QuantifiableTerm) curTerm).setQuantifier(null);
         curTerm.setEmptyGuard(emptyGuard);
-        // While the empty guard might have been turned off for the first optional expansion in
-        // Ruby, we want the empty guard to be present on all subsequent expansions.
-        createOptional(term, quantifier, true, unroll, recurse - 1, true);
+        createOptional(term, quantifier, true, unroll, recurse - 1, emptyGuard);
     }
 
     private void createOptional(QuantifiableTerm term, Quantifier quantifier, boolean copy, boolean unroll, int recurse, boolean emptyGuard) throws RegexSyntaxException {
