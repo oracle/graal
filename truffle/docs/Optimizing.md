@@ -529,4 +529,4 @@ Combine with `--vm.XX:TieredStopAtLevel=0` to disable compilation of runtime rou
 
 Note: You can also look at assembly code in the C1 Visualizer.
 
-These have been the most commot and powerful ways to optimize or debug Truffle interpreters.
+These have been the most common and powerful ways to optimize or debug Truffle interpreters.
