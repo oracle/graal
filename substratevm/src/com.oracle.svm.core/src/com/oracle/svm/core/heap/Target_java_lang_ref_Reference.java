@@ -31,6 +31,7 @@ import java.lang.ref.Reference;
 import java.lang.reflect.Field;
 import java.util.function.BooleanSupplier;
 
+import com.oracle.svm.core.SubstrateUtil;
 import org.graalvm.compiler.api.directives.GraalDirectives;
 import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;
@@ -49,6 +50,7 @@ import com.oracle.svm.core.annotate.TargetElement;
 import com.oracle.svm.core.annotate.Uninterruptible;
 import com.oracle.svm.core.annotate.UnknownClass;
 import com.oracle.svm.core.jdk.JDK11OrLater;
+import com.oracle.svm.core.jdk.JDK16OrLater;
 import com.oracle.svm.core.jdk.JDK8OrEarlier;
 import com.oracle.svm.core.util.VMError;
 import com.oracle.svm.util.ReflectionUtil;
@@ -92,6 +94,8 @@ public final class Target_java_lang_ref_Reference<T> {
      * the garbage collection support manually. The garbage collector performs Pointer-level access
      * to the field. This is fine from the point of view of the static analysis, because the field
      * stores by the garbage collector do not change the type of the referent.
+     *
+     * {@link Target_java_lang_ref_Reference#clear0()} may set this field to null.
      */
     @Alias @RecomputeFieldValue(kind = RecomputeFieldValue.Kind.Custom, declClass = ComputeReferenceValue.class) //
     @ExcludeFromReferenceMap(reason = "Field is manually processed by the garbage collector.") //
@@ -123,8 +127,24 @@ public final class Target_java_lang_ref_Reference<T> {
     @KeepOriginal
     native T get();
 
-    @KeepOriginal
-    native void clear();
+    @Substitute
+    public void clear() {
+        ReferenceInternals.clear(SubstrateUtil.cast(this, Reference.class));
+    }
+
+    @Delete
+    @TargetElement(onlyWith = JDK16OrLater.class)
+    private native void clear0();
+
+    @Substitute
+    @TargetElement(onlyWith = JDK16OrLater.class)
+    public boolean refersTo(T obj) {
+        return ReferenceInternals.refersTo(SubstrateUtil.cast(this, Reference.class), obj);
+    }
+
+    @Delete
+    @TargetElement(onlyWith = JDK16OrLater.class)
+    native boolean refersTo0(Object o);
 
     @KeepOriginal
     native boolean enqueue();

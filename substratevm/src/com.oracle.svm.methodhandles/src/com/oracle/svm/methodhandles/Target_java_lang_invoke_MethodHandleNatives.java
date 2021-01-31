@@ -30,6 +30,7 @@ import static com.oracle.svm.core.util.VMError.unsupportedFeature;
 import java.lang.invoke.CallSite;
 import java.lang.invoke.MethodHandle;
 // Checkstyle: stop
+import java.lang.invoke.MethodHandles;
 import java.lang.reflect.Constructor;
 import java.lang.reflect.Field;
 import java.lang.reflect.Member;
@@ -37,6 +38,7 @@ import java.lang.reflect.Method;
 import java.lang.reflect.Modifier;
 // Checkstyle: resume
 
+import com.oracle.svm.core.util.VMError;
 import org.graalvm.compiler.serviceprovider.GraalUnsafeAccess;
 
 import com.oracle.svm.core.SubstrateUtil;
@@ -182,9 +184,90 @@ final class Target_java_lang_invoke_MethodHandleNatives {
 
     // JDK 11
 
-    @TargetElement(onlyWith = {JDK11OrLater.class, JDK15OrEarlier.class})
     @Substitute
+    @TargetElement(onlyWith = {JDK11OrLater.class, JDK15OrEarlier.class})
     static Target_java_lang_invoke_MemberName resolve(Target_java_lang_invoke_MemberName self, Class<?> caller, boolean speculativeResolve) throws LinkageError, ClassNotFoundException {
+        return Util_java_lang_invoke_MethodHandleNatives.resolve(self, caller, speculativeResolve);
+    }
+
+    @Delete
+    @TargetElement(onlyWith = JDK11OrLater.class)
+    private static native void copyOutBootstrapArguments(Class<?> caller, int[] indexInfo, int start, int end, Object[] buf, int pos, boolean resolve, Object ifNotAvailable);
+
+    @Substitute
+    @TargetElement(onlyWith = JDK11OrLater.class)
+    private static void clearCallSiteContext(Target_java_lang_invoke_MethodHandleNatives_CallSiteContext context) {
+        throw unimplemented("CallSiteContext not supported");
+    }
+
+    @AnnotateOriginal
+    static native boolean refKindIsMethod(byte refKind);
+
+    @AnnotateOriginal
+    static native String refKindName(byte refKind);
+
+    // JDK 16
+    @Substitute
+    @TargetElement(onlyWith = JDK16OrLater.class)
+    static Target_java_lang_invoke_MemberName resolve(Target_java_lang_invoke_MemberName self, Class<?> caller, int lookupMode, boolean speculativeResolve)
+                    throws LinkageError, ClassNotFoundException {
+        if (lookupMode != Target_java_lang_invoke_MethodHandles_Lookup.ORIGINAL) {
+            // GR-29019: check the member can be accessed based on lookupMode.
+            throw VMError.unsupportedFeature(
+                            "JDK16OrLater: MethodHandleNatives.resolve(MemberName _, java.lang.Class<?> _, int lookupMode, boolean _) where lookupMode != Lookup.Original");
+        }
+        return Util_java_lang_invoke_MethodHandleNatives.resolve(self, caller, speculativeResolve);
+    }
+}
+
+/**
+ * The method handles API looks up methods and fields in a diffent way than the reflection API. The
+ * specified member is searched in the given declaring class and its superclasses (like
+ * {@link Class#getMethod(String, Class[])}) but including private members (like
+ * {@link Class#getDeclaredMethod(String, Class[])}). We solve this by recursively looking up the
+ * declared methods of the declaring class and its superclasses.
+ */
+final class Util_java_lang_invoke_MethodHandleNatives {
+
+    static Method lookupMethod(Class<?> declaringClazz, String name, Class<?>[] parameterTypes) throws NoSuchMethodException {
+        return lookupMethod(declaringClazz, name, parameterTypes, null);
+    }
+
+    private static Method lookupMethod(Class<?> declaringClazz, String name, Class<?>[] parameterTypes, NoSuchMethodException originalException) throws NoSuchMethodException {
+        try {
+            return declaringClazz.getDeclaredMethod(name, parameterTypes);
+        } catch (NoSuchMethodException e) {
+            Class<?> superClass = declaringClazz.getSuperclass();
+            NoSuchMethodException newOriginalException = originalException == null ? e : originalException;
+            if (superClass == null) {
+                throw newOriginalException;
+            } else {
+                return lookupMethod(superClass, name, parameterTypes, newOriginalException);
+            }
+        }
+    }
+
+    static Field lookupField(Class<?> declaringClazz, String name) throws NoSuchFieldException {
+        return lookupField(declaringClazz, name, null);
+    }
+
+    private static Field lookupField(Class<?> declaringClazz, String name, NoSuchFieldException originalException) throws NoSuchFieldException {
+        try {
+            return declaringClazz.getDeclaredField(name);
+        } catch (NoSuchFieldException e) {
+            Class<?> superClass = declaringClazz.getSuperclass();
+            NoSuchFieldException newOriginalException = originalException == null ? e : originalException;
+            if (superClass == null) {
+                throw newOriginalException;
+            } else {
+                return lookupField(superClass, name, newOriginalException);
+            }
+        }
+    }
+
+    @SuppressWarnings("unused")
+    public static Target_java_lang_invoke_MemberName resolve(Target_java_lang_invoke_MemberName self, Class<?> caller, boolean speculativeResolve)
+                    throws LinkageError, ClassNotFoundException {
         if (self.reflectAccess != null) {
             return self;
         }
@@ -236,75 +319,6 @@ final class Target_java_lang_invoke_MethodHandleNatives {
                 return null;
             } else {
                 throw new NoSuchFieldError(e.getMessage());
-            }
-        }
-    }
-
-    @Delete
-    @TargetElement(onlyWith = JDK11OrLater.class)
-    private static native void copyOutBootstrapArguments(Class<?> caller, int[] indexInfo, int start, int end, Object[] buf, int pos, boolean resolve, Object ifNotAvailable);
-
-    @Substitute
-    @TargetElement(onlyWith = JDK11OrLater.class)
-    private static void clearCallSiteContext(Target_java_lang_invoke_MethodHandleNatives_CallSiteContext context) {
-        throw unimplemented("CallSiteContext not supported");
-    }
-
-    // JDK 16
-
-    @Delete
-    @TargetElement(onlyWith = JDK16OrLater.class)
-    private static native Target_java_lang_invoke_MemberName resolve(Target_java_lang_invoke_MemberName self, Class<?> caller, int lookupMode, boolean speculativeResolve)
-                    throws LinkageError, ClassNotFoundException;
-
-    @AnnotateOriginal
-    static native boolean refKindIsMethod(byte refKind);
-
-    @AnnotateOriginal
-    static native String refKindName(byte refKind);
-}
-
-/**
- * The method handles API looks up methods and fields in a diffent way than the reflection API. The
- * specified member is searched in the given declaring class and its superclasses (like
- * {@link Class#getMethod(String, Class[])}) but including private members (like
- * {@link Class#getDeclaredMethod(String, Class[])}). We solve this by recursively looking up the
- * declared methods of the declaring class and its superclasses.
- */
-final class Util_java_lang_invoke_MethodHandleNatives {
-
-    static Method lookupMethod(Class<?> declaringClazz, String name, Class<?>[] parameterTypes) throws NoSuchMethodException {
-        return lookupMethod(declaringClazz, name, parameterTypes, null);
-    }
-
-    private static Method lookupMethod(Class<?> declaringClazz, String name, Class<?>[] parameterTypes, NoSuchMethodException originalException) throws NoSuchMethodException {
-        try {
-            return declaringClazz.getDeclaredMethod(name, parameterTypes);
-        } catch (NoSuchMethodException e) {
-            Class<?> superClass = declaringClazz.getSuperclass();
-            NoSuchMethodException newOriginalException = originalException == null ? e : originalException;
-            if (superClass == null) {
-                throw newOriginalException;
-            } else {
-                return lookupMethod(superClass, name, parameterTypes, newOriginalException);
-            }
-        }
-    }
-
-    static Field lookupField(Class<?> declaringClazz, String name) throws NoSuchFieldException {
-        return lookupField(declaringClazz, name, null);
-    }
-
-    private static Field lookupField(Class<?> declaringClazz, String name, NoSuchFieldException originalException) throws NoSuchFieldException {
-        try {
-            return declaringClazz.getDeclaredField(name);
-        } catch (NoSuchFieldException e) {
-            Class<?> superClass = declaringClazz.getSuperclass();
-            NoSuchFieldException newOriginalException = originalException == null ? e : originalException;
-            if (superClass == null) {
-                throw newOriginalException;
-            } else {
-                return lookupField(superClass, name, newOriginalException);
             }
         }
     }
@@ -399,7 +413,7 @@ final class Target_java_lang_invoke_MethodHandleNatives_NotSupported {
     // JDK 11
 
     @Delete
-    @TargetElement(onlyWith = JDK11OrLater.class)
+    @TargetElement(onlyWith = {JDK11OrLater.class, JDK15OrEarlier.class})
     private static native Target_java_lang_invoke_MemberName_NotSupported resolve(Target_java_lang_invoke_MemberName_NotSupported self, Class<?> caller, boolean speculativeResolve)
                     throws LinkageError, ClassNotFoundException;
 
@@ -410,4 +424,11 @@ final class Target_java_lang_invoke_MethodHandleNatives_NotSupported {
     @Delete
     @TargetElement(onlyWith = JDK11OrLater.class)
     private static native void clearCallSiteContext(Target_java_lang_invoke_MethodHandleNatives_CallSiteContext context);
+
+    // JDK 16
+
+    @Delete
+    @TargetElement(onlyWith = JDK16OrLater.class)
+    private static native Target_java_lang_invoke_MemberName_NotSupported resolve(Target_java_lang_invoke_MemberName_NotSupported self, Class<?> caller, int lookupMode, boolean speculativeResolve)
+                    throws LinkageError, ClassNotFoundException;
 }
