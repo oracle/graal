@@ -303,14 +303,15 @@ public class ClassInitializationFeature implements GraalFeature {
         Map<Class<?>, StackTraceElement[]> initializedClasses = ConfigurableClassInitialization.getInitializedClasses();
         int size = initializedClasses.size();
         if (size > 0) {
-            ReportUtils.report(size + " class initialization trace(s) of class(es) traced by " + SubstrateOptions.TraceClassInitialization.getName(), path, "traced_class_initialization", "txt", writer -> {
-                initializedClasses.forEach((k, v) -> {
-                    writer.println(k.getName());
-                    writer.println("---------------------------------------------");
-                    writer.println(ConfigurableClassInitialization.getTraceString(v));
-                    writer.println();
-                });
-            });
+            ReportUtils.report(size + " class initialization trace(s) of class(es) traced by " + SubstrateOptions.TraceClassInitialization.getName(), path, "traced_class_initialization", "txt",
+                            writer -> {
+                                initializedClasses.forEach((k, v) -> {
+                                    writer.println(k.getName());
+                                    writer.println("---------------------------------------------");
+                                    writer.println(ConfigurableClassInitialization.getTraceString(v));
+                                    writer.println();
+                                });
+                            });
         }
     }
 
