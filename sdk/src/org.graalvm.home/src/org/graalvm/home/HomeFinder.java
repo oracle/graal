@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2019, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2021, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -47,7 +47,6 @@ import java.util.NoSuchElementException;
 import java.util.ServiceLoader;
 
 import org.graalvm.home.impl.DefaultHomeFinder;
-import org.graalvm.nativeimage.ImageInfo;
 import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.nativeimage.hosted.Feature;
 
@@ -95,16 +94,12 @@ public abstract class HomeFinder {
      * @since 19.3
      */
     public static HomeFinder getInstance() {
-        if (ImageInfo.inImageCode()) {
-            return ImageSingletons.lookup(HomeFinder.class);
-        } else {
-            final ServiceLoader<HomeFinder> serviceLoader = ServiceLoader.load(HomeFinder.class);
-            final Iterator<HomeFinder> iterator = serviceLoader.iterator();
-            try {
-                return iterator.next();
-            } catch (NoSuchElementException e) {
-                throw new IllegalStateException("No implementation of " + HomeFinder.class.getName() + " could be found");
-            }
+        final ServiceLoader<HomeFinder> serviceLoader = ServiceLoader.load(HomeFinder.class);
+        final Iterator<HomeFinder> iterator = serviceLoader.iterator();
+        try {
+            return iterator.next();
+        } catch (NoSuchElementException e) {
+            throw new IllegalStateException("No implementation of " + HomeFinder.class.getName() + " could be found");
         }
     }
 }
