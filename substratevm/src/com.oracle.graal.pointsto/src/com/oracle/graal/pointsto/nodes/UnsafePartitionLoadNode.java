@@ -24,58 +24,29 @@
  */
 package com.oracle.graal.pointsto.nodes;
 
-import org.graalvm.compiler.core.common.type.StampFactory;
 import org.graalvm.compiler.graph.NodeClass;
 import org.graalvm.compiler.nodeinfo.NodeInfo;
-import org.graalvm.compiler.nodes.FixedWithNextNode;
 import org.graalvm.compiler.nodes.ValueNode;
+import org.graalvm.compiler.nodes.extended.RawLoadNode;
 import org.graalvm.word.LocationIdentity;
 
 import com.oracle.graal.pointsto.api.UnsafePartitionKind;
 
 import jdk.vm.ci.meta.JavaKind;
-
-import static org.graalvm.compiler.nodeinfo.NodeCycles.CYCLES_IGNORED;
-import static org.graalvm.compiler.nodeinfo.NodeSize.SIZE_IGNORED;
-
 import jdk.vm.ci.meta.ResolvedJavaType;
 
-@NodeInfo(size = SIZE_IGNORED, cycles = CYCLES_IGNORED)
-public class AnalysisUnsafePartitionLoadNode extends FixedWithNextNode {
-    public static final NodeClass<AnalysisUnsafePartitionLoadNode> TYPE = NodeClass.create(AnalysisUnsafePartitionLoadNode.class);
+@NodeInfo
+public class UnsafePartitionLoadNode extends RawLoadNode {
+    public static final NodeClass<UnsafePartitionLoadNode> TYPE = NodeClass.create(UnsafePartitionLoadNode.class);
 
-    @Input ValueNode object;
-    @Input ValueNode offset;
-    protected final JavaKind accessKind;
-    protected final LocationIdentity locationIdentity;
     protected final UnsafePartitionKind partitionKind;
     protected final ResolvedJavaType partitionType;
 
-    public AnalysisUnsafePartitionLoadNode(ValueNode object, ValueNode offset, JavaKind accessKind, LocationIdentity locationIdentity, UnsafePartitionKind partitionKind,
+    public UnsafePartitionLoadNode(ValueNode object, ValueNode offset, JavaKind accessKind, LocationIdentity locationIdentity, UnsafePartitionKind partitionKind,
                     ResolvedJavaType partitionType) {
-        super(TYPE, StampFactory.forKind(accessKind.getStackKind()));
-        this.object = object;
-        this.offset = offset;
-        this.accessKind = accessKind;
-        this.locationIdentity = locationIdentity;
+        super(TYPE, object, offset, accessKind, locationIdentity);
         this.partitionKind = partitionKind;
         this.partitionType = partitionType;
-    }
-
-    public LocationIdentity getLocationIdentity() {
-        return locationIdentity;
-    }
-
-    public ValueNode object() {
-        return object;
-    }
-
-    public ValueNode offset() {
-        return offset;
-    }
-
-    public JavaKind accessKind() {
-        return accessKind;
     }
 
     public UnsafePartitionKind unsafePartitionKind() {
