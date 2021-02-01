@@ -38,7 +38,7 @@ public class SerializationConfiguration implements JsonPrintable {
 
     private static final String KEY_SEPARATOR = "|";
 
-    private final Set<String> serializations = new ConcurrentHashMap<>().newKeySet();
+    private final Set<String> serializations = ConcurrentHashMap.newKeySet();
 
     public void add(String serializationTargetClass, String customTargetConstructorClass) {
         serializations.add(serializationTargetClass + (customTargetConstructorClass != null ? KEY_SEPARATOR + customTargetConstructorClass : ""));

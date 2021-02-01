@@ -40,7 +40,6 @@ import static com.oracle.svm.jvmtiagentbase.Support.getClassNameOrNull;
 import static com.oracle.svm.jvmtiagentbase.Support.getDirectCallerClass;
 import static com.oracle.svm.jvmtiagentbase.Support.getMethodDeclaringClass;
 import static com.oracle.svm.jvmtiagentbase.Support.getObjectArgument;
-import static com.oracle.svm.jvmtiagentbase.Support.getObjectField;
 import static com.oracle.svm.jvmtiagentbase.Support.jniFunctions;
 import static com.oracle.svm.jvmtiagentbase.Support.jvmtiEnv;
 import static com.oracle.svm.jvmtiagentbase.Support.jvmtiFunctions;
@@ -981,16 +980,6 @@ final class BreakpointInterceptor {
             }
         }
         return true;
-    }
-
-    private static String getConsClassName(JNIEnvironment jni, JNIObjectHandle objectStreamClassClazz, JNIObjectHandle objectStreamClassInstance) {
-        JNIObjectHandle cons = getObjectField(jni, objectStreamClassClazz, objectStreamClassInstance, "cons", "Ljava/lang/reflect/Constructor;");
-        String targetConstructorClassName = "";
-        if (nullHandle().notEqual(cons)) {
-            // Compute hashcode from the first unserializable superclass
-            targetConstructorClassName = getClassNameOrNull(jni, callObjectMethod(jni, cons, agent.handles().javaLangReflectMemberGetDeclaringClass));
-        }
-        return targetConstructorClassName;
     }
 
     @CEntryPoint
