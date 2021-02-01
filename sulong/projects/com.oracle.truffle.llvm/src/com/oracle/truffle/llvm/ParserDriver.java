@@ -95,7 +95,7 @@ final class ParserDriver {
     /**
      * Parses a {@code source} and all its (explicit and implicit) dependencies.
      *
-     * @return a {@link CallTarget} that on execute initializes (i.e., initalize globals, run
+     * @return a {@link CallTarget} that on execute initializes (i.e., initialize globals, run
      *         constructors, etc.) the module represented by {@code source} and all dependencies.
      */
     public static CallTarget parse(LLVMContext context, BitcodeID bitcodeID, Source source) {
