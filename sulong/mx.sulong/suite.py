@@ -228,9 +228,6 @@ suite = {
       "buildDependencies" : [
         "NATIVE_MODE_SUPPORT",
       ],
-      "javaProperties" : {
-        "test.sulongtck.path" : "<path:SULONG_TCK_NATIVE>/bin"
-      },
       "checkstyle" : "com.oracle.truffle.llvm.runtime",
       "javaCompliance" : "1.8+",
       "workingSets" : "Truffle, LLVM",
@@ -570,24 +567,32 @@ suite = {
 
     "com.oracle.truffle.llvm.tests.pipe.native" : {
       "subDir" : "tests",
-      "native" : True,
-      "vpath" : True,
-      "results" : [
-        "bin/<lib:pipe>",
-      ],
+      "native" : "shared_lib",
+      "deliverable" : "pipe",
+      "use_jdk_headers" : True,
       "buildDependencies" : [
         "com.oracle.truffle.llvm.tests.pipe",
-        "NATIVE_MODE_SUPPORT",
       ],
-      "buildEnv" : {
-        "CPPFLAGS" : "-I<jnigen:com.oracle.truffle.llvm.tests.pipe>",
-        "LIBPIPE" : "<lib:pipe>",
-        "OS" : "<os>",
-      },
-      "checkstyle" : "com.oracle.truffle.llvm.runtime",
       "license" : "BSD-new",
       "testProject" : True,
-      "jacoco" : "exclude",
+      "os_arch" : {
+        "windows" : {
+          "<others>" : {
+            "cflags" : []
+          }
+        },
+        "solaris" : {
+          "<others>" : {
+            "cflags" : ["-g", "-Wall", "-Werror", "-m64"],
+            "ldflags" : ["-m64"],
+          },
+        },
+        "<others>" : {
+          "<others>" : {
+            "cflags" : ["-g", "-Wall", "-Werror"],
+          },
+        },
+      },
     },
     "com.oracle.truffle.llvm.libraries.bitcode" : {
       "subDir" : "projects",
@@ -1460,6 +1465,20 @@ suite = {
         "sulong:SULONG_LEGACY",
         "SULONG_TEST_NATIVE",
       ],
+      "os_arch" : {
+        "windows" : {
+          "<others>": {
+              # not SULONG_TCK_NATIVE on windows
+          }
+        },
+        "<others>" : {
+          "<others>" : {
+            "javaProperties" : {
+              "test.sulongtck.path" : "<path:SULONG_TCK_NATIVE>/bin"
+            },
+          },
+        },
+      },
       "license" : "BSD-new",
       "testDistribution" : True,
     },
@@ -1467,11 +1486,12 @@ suite = {
     "SULONG_TEST_NATIVE" : {
       "native" : True,
       "platformDependent" : True,
-      "output" : "mxbuild/<os>-<arch>/sulong-test-native",
-      "dependencies" : [
-        "com.oracle.truffle.llvm.tests.pipe.native",
-        "com.oracle.truffle.llvm.tests.native",
-      ],
+      "layout" : {
+          "./": [
+            "dependency:com.oracle.truffle.llvm.tests.pipe.native",
+            "dependency:com.oracle.truffle.llvm.tests.native/bin/*",
+          ],
+      },
       "license" : "BSD-new",
       "testDistribution" : True,
     },

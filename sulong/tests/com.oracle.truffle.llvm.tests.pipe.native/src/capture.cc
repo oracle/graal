@@ -30,7 +30,12 @@
 #include <jni.h>
 #include "com_oracle_truffle_llvm_tests_pipe_CaptureNativeOutput.h"
 
+#if defined(_WIN32)
+#include <io.h>
+#elif defined(__unix__) || defined(__APPLE__)
 #include <unistd.h>
+#endif
+
 #include <fcntl.h>
 #include <sys/stat.h>
 #include <string.h>
