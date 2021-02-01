@@ -28,7 +28,9 @@ import org.graalvm.compiler.truffle.runtime.collection.BTree;
 import org.junit.Assert;
 import org.junit.Test;
 
+import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.Collections;
 import java.util.Random;
 
 public class BTreeTest {
@@ -193,6 +195,54 @@ public class BTreeTest {
     public void pollMany() {
         for (int i = 1561; i < 128000; i += 1000) {
             testPoll(testAddRandom(i, false), false);
+        }
+    }
+
+    @Test
+    public void addAndPoll() {
+        testAddAndPoll(64, 4);
+        testAddAndPoll(96, 7);
+        testAddAndPoll(128, 4);
+        testAddAndPoll(128, 10);
+        testAddAndPoll(256, 12);
+        testAddAndPoll(256, 32);
+        testAddAndPoll(256, 64);
+        testAddAndPoll(544, 6);
+        testAddAndPoll(782, 10);
+        testAddAndPoll(2560, 16);
+        testAddAndPoll(32161, 32);
+        testAddAndPoll(15400, 64);
+        testAddAndPoll(44500, 128);
+    }
+
+    private void testAddAndPoll(int until, int batchSize) {
+        final ArrayList<Integer> observed = new ArrayList<>();
+        final ArrayList<Integer> inserted = new ArrayList<>();
+        final BTree<Integer> tree = new BTree<>();
+        Random rand = new Random(until * batchSize);
+        for (int i = 0; i < until; i += batchSize - 1) {
+            for (int j = 0; j < i % (batchSize / 2); j++) {
+                if (rand.nextBoolean()) {
+                    int x = i + j + batchSize / 2;
+                    tree.add(x);
+                    inserted.add(x);
+                } else {
+                    int x = i + j;
+                    tree.add(x);
+                    inserted.add(x);
+                }
+            }
+            for (int j = 0; j < i * i % (batchSize / 2) && tree.size() > 0; j++) {
+                observed.add(tree.poll());
+            }
+        }
+        while (tree.size() > 0) {
+            observed.add(tree.poll());
+        }
+        Collections.sort(inserted);
+        Assert.assertEquals(inserted.size(), observed.size());
+        for (int i = 0; i < inserted.size(); i++) {
+            Assert.assertEquals(inserted.get(i), observed.get(i));
         }
     }
 }
