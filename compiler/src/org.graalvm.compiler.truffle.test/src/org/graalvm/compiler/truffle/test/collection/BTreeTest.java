@@ -61,25 +61,25 @@ public class BTreeTest {
         }
     }
 
-    private void testAddRandomOrder(int total, boolean alwaysCheckInvariants) {
+    private BTree<Integer> testAddRandom(int total, boolean alwaysCheckInvariants) {
         Random rand = new Random(total * 141);
         int[] numbers = rand.ints().map(x -> x % (4 * total)).distinct().limit(total).toArray();
-        test(total, alwaysCheckInvariants, numbers);
+        return test(total, alwaysCheckInvariants, numbers);
     }
 
-    private void testAddSorted(int total, boolean alwaysCheckInvariants) {
+    private BTree<Integer> testAddSorted(int total, boolean alwaysCheckInvariants) {
         Random rand = new Random(total * 141);
         int[] numbers = rand.ints().map(x -> x % (4 * total)).distinct().limit(total).sorted().toArray();
-        test(total, alwaysCheckInvariants, numbers);
+        return test(total, alwaysCheckInvariants, numbers);
     }
 
-    private void testAddReverseSorted(int total, boolean alwaysCheckInvariants) {
+    private BTree<Integer> testAddReverseSorted(int total, boolean alwaysCheckInvariants) {
         Random rand = new Random(total * 141);
         int[] numbers = rand.ints().map(x -> x % (4 * total)).distinct().limit(total).sorted().map(x -> x * -1).toArray();
-        test(total, alwaysCheckInvariants, numbers);
+        return test(total, alwaysCheckInvariants, numbers);
     }
 
-    private void test(int total, boolean alwaysCheckInvariants, int[] numbers) {
+    private BTree<Integer> test(int total, boolean alwaysCheckInvariants, int[] numbers) {
         int smallest = Integer.MAX_VALUE;
         final BTree<Integer> tree = new BTree<>();
         for (int i = 0; i < total; i++) {
@@ -97,42 +97,43 @@ public class BTreeTest {
             Assert.assertEquals(numbers[i], elements[i]);
         }
         Assert.assertEquals((Integer) numbers[0], tree.peek());
+        return tree;
     }
 
     @Test
     public void addMoreThanSingleNodeRandomOrder() {
-        testAddRandomOrder(20, true);
+        testAddRandom(20, true);
     }
 
     @Test
     public void addOneLevel() {
-        testAddRandomOrder(31, true);
-        testAddRandomOrder(44, true);
-        testAddRandomOrder(61, true);
-        testAddRandomOrder(72, true);
-        testAddRandomOrder(96, true);
-        testAddRandomOrder(101, true);
-        testAddRandomOrder(125, true);
-        testAddRandomOrder(131, true);
-        testAddRandomOrder(139, true);
+        testAddRandom(31, true);
+        testAddRandom(44, true);
+        testAddRandom(61, true);
+        testAddRandom(72, true);
+        testAddRandom(96, true);
+        testAddRandom(101, true);
+        testAddRandom(125, true);
+        testAddRandom(131, true);
+        testAddRandom(139, true);
         testAddSorted(79, true);
         testAddReverseSorted(51, true);
     }
 
     @Test
     public void addTwoLevels() {
-        testAddRandomOrder(199, true);
-        testAddRandomOrder(256, true);
-        testAddRandomOrder(384, true);
-        testAddRandomOrder(421, true);
-        testAddRandomOrder(512, true);
-        testAddRandomOrder(525, true);
-        testAddRandomOrder(599, true);
-        testAddRandomOrder(614, true);
-        testAddRandomOrder(731, true);
-        testAddRandomOrder(777, true);
-        testAddRandomOrder(852, true);
-        testAddRandomOrder(941, true);
+        testAddRandom(199, true);
+        testAddRandom(256, true);
+        testAddRandom(384, true);
+        testAddRandom(421, true);
+        testAddRandom(512, true);
+        testAddRandom(525, true);
+        testAddRandom(599, true);
+        testAddRandom(614, true);
+        testAddRandom(731, true);
+        testAddRandom(777, true);
+        testAddRandom(852, true);
+        testAddRandom(941, true);
         testAddSorted(414, true);
         testAddSorted(714, true);
         testAddSorted(814, true);
@@ -146,9 +147,52 @@ public class BTreeTest {
     @Test
     public void addMany() {
         for (int i = 1024; i < 128000; i += 1000) {
-            testAddRandomOrder(i, false);
+            testAddRandom(i, false);
             testAddSorted(i + 1, false);
             testAddReverseSorted(i + 2, false);
+        }
+    }
+
+    private void testPoll(BTree<Integer> tree, boolean alwaysCheckInvariants) {
+        final Object[] elements = tree.toArray();
+        int i = 0;
+        tree.checkInvariants();
+        while (tree.size() > 0) {
+            Integer cur = tree.poll();
+            Assert.assertEquals(elements[i], cur);
+            if (alwaysCheckInvariants) {
+                tree.checkInvariants();
+            }
+            i++;
+        }
+    }
+
+    @Test
+    public void pollFew() {
+        testPoll(testAddRandom(11, true), true);
+        testPoll(testAddSorted(12, true), true);
+        testPoll(testAddReverseSorted(14, true), true);
+    }
+
+    @Test
+    public void pollOneLevel() {
+        testPoll(testAddRandom(43, true), true);
+        testPoll(testAddReverseSorted(56, true), true);
+    }
+
+    @Test
+    public void pollTwoLevels() {
+        testPoll(testAddRandom(384, true), true);
+        testPoll(testAddRandom(453, true), true);
+        testPoll(testAddRandom(518, true), true);
+        testPoll(testAddRandom(761, true), true);
+        testPoll(testAddRandom(914, true), true);
+    }
+
+    @Test
+    public void pollMany() {
+        for (int i = 1561; i < 128000; i += 1000) {
+            testPoll(testAddRandom(i, false), false);
         }
     }
 }

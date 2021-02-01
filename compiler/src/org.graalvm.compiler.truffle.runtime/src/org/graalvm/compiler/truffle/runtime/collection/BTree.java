@@ -86,6 +86,16 @@ public class BTree<E extends Comparable<E>> implements Pool<E> {
         }
     }
 
+    private class Compress {
+        final E removedValue;
+        Node<E> target;
+
+        public Compress(E removedValue, Leaf<E> target) {
+            this.removedValue = removedValue;
+            this.target = target;
+        }
+    }
+
     private Node<E> root;
 
     public BTree() {
@@ -312,7 +322,98 @@ public class BTree<E extends Comparable<E>> implements Pool<E> {
 
     @Override
     public E poll() {
-        return null;
+        return removeFirstRoot();
+    }
+
+    @SuppressWarnings("unchecked")
+    private E removeFirstRoot() {
+        final Object result = removeFirst(root);
+        if (result instanceof BTree<?>.Compress) {
+            Compress compress = (Compress) result;
+            if (compress.target == root) {
+                root = new Leaf<E>(MAX_ELEMENT);
+            }
+            insertAll(compress.target);
+            return compress.removedValue;
+        } else {
+            return (E) result;
+        }
+    }
+
+    @SuppressWarnings("unchecked")
+    private void insertAll(Node<E> node) {
+        if (node.isLeaf()) {
+            for (int pos = 0; pos < BRANCHING_FACTOR; pos++) {
+                E element = (E) node.children[pos];
+                if (element == null) {
+                    break;
+                }
+                insertRoot(element);
+            }
+        } else {
+            for (int pos = 0; pos < BRANCHING_FACTOR; pos++) {
+                Node<E> child = (Node<E>) node.children[pos];
+                if (child == null) {
+                    break;
+                }
+                insertAll(child);
+            }
+        }
+    }
+
+    @SuppressWarnings("unchecked")
+    private Object removeFirst(Node<E> node) {
+        if (node instanceof Leaf<?>) {
+            final E result = (E) node.children[0];
+            int pos = 0;
+            while (pos < BRANCHING_FACTOR) {
+                final Object next = pos + 1 < node.children.length ? node.children[pos + 1] : null;
+                node.children[pos] = next;
+                if (next == null) {
+                    break;
+                }
+                pos++;
+            }
+            node.count--;
+            if (node.count == 1 && node != root) {
+                return new Compress(result, (Leaf<E>) node);
+            } else {
+                return result;
+            }
+        } else {
+            final Node<E> child = (Node<E>) node.children[0];
+            final Object result = removeFirst(child);
+            node.count--;
+            if (result instanceof BTree<?>.Compress) {
+                final Inner<E> inner = (Inner<E>) node;
+                final Compress compress = (Compress) result;
+                if (compress.target == child) {
+                    if (inner.childCount == 2) {
+                        // If the child is supposed to be compressed and the current child count is 2,
+                        // then we must also recycle this node.
+                        compress.target = inner;
+                    } else {
+                        // We need to remove this child (because its contents will be reinserted).
+                        int pos = 0;
+                        while (pos < BRANCHING_FACTOR) {
+                            final Node<E> next = pos + 1 < node.children.length ? ((Node<E>) node.children[pos + 1]) : null;
+                            node.children[pos] = next;
+                            if (next == null) {
+                                break;
+                            }
+                            pos++;
+                        }
+                        inner.childCount--;
+                        inner.count -= child.count;
+                    }
+                } else {
+                    // If the compression target is not the immediate child,
+                    // we must still decrease the count.
+                    inner.count -= compress.target.count;
+                }
+            }
+            return result;
+        }
     }
 
     @Override
@@ -376,7 +477,6 @@ public class BTree<E extends Comparable<E>> implements Pool<E> {
 
     @Override
     public int internalCapacity() {
-        // TODO
         return -1;
     }
 
