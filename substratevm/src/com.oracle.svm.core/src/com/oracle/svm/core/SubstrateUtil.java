@@ -163,7 +163,7 @@ public class SubstrateUtil {
                 sb.append(' ');
             }
         }
-        return sb.toString();
+        return sb.toString().trim();
     }
 
     @TargetClass(com.oracle.svm.core.SubstrateUtil.class)
