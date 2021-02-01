@@ -95,10 +95,10 @@ public final class InvokeStaticNode extends QuickNode {
     }
 
     @TruffleBoundary
-    private void handleRemovedMethod(MethodVersion method) {
+    private void handleRemovedMethod(MethodVersion methodVersion) {
         try {
             ClassRedefinition.lock();
-            Method resolutionSeed = method.getMethod();
+            Method resolutionSeed = methodVersion.getMethod();
             // first check to see if there's a compatible new method before
             // bailing out with an Error, e.g. due to changed modifiers
             Klass accessingKlass = getBytecodesNode().getMethod().getDeclaringKlass();
