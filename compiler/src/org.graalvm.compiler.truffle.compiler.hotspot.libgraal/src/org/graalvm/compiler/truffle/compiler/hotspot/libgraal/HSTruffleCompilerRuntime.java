@@ -461,12 +461,12 @@ final class HSTruffleCompilerRuntime extends HSObject implements HotSpotTruffleC
     @TruffleFromLibGraal(GetThreadLocalPendingHandshakeOffset)
     @Override
     public int getThreadLocalPendingHandshakeOffset() {
-        return callGetThreadLocalPendingHandshakeOffset(env());
+        return callGetThreadLocalPendingHandshakeOffset(env(), getHandle());
     }
 
     @TruffleFromLibGraal(GetThreadLocalDisabledHandshakeOffset)
     @Override
     public int getThreadLocalDisabledHandshakeOffset() {
-        return callGetThreadLocalDisabledHandshakeOffset(env());
+        return callGetThreadLocalDisabledHandshakeOffset(env(), getHandle());
     }
 }
