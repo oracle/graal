@@ -3,6 +3,10 @@ package org.graalvm.compiler.truffle.runtime.collection;
 public interface Pool<E> {
     void add(E x);
 
+    default int addIndexOf(E x) {
+        throw new UnsupportedOperationException();
+    }
+
     @SuppressWarnings("unchecked")
     E poll();
 

@@ -66,22 +66,22 @@ public class BTreeTest {
     private BTree<Integer> testAddRandom(int total, boolean alwaysCheckInvariants) {
         Random rand = new Random(total * 141);
         int[] numbers = rand.ints().map(x -> x % (4 * total)).distinct().limit(total).toArray();
-        return test(total, alwaysCheckInvariants, numbers);
+        return testAdd(total, alwaysCheckInvariants, numbers);
     }
 
     private BTree<Integer> testAddSorted(int total, boolean alwaysCheckInvariants) {
         Random rand = new Random(total * 141);
         int[] numbers = rand.ints().map(x -> x % (4 * total)).distinct().limit(total).sorted().toArray();
-        return test(total, alwaysCheckInvariants, numbers);
+        return testAdd(total, alwaysCheckInvariants, numbers);
     }
 
     private BTree<Integer> testAddReverseSorted(int total, boolean alwaysCheckInvariants) {
         Random rand = new Random(total * 141);
         int[] numbers = rand.ints().map(x -> x % (4 * total)).distinct().limit(total).sorted().map(x -> x * -1).toArray();
-        return test(total, alwaysCheckInvariants, numbers);
+        return testAdd(total, alwaysCheckInvariants, numbers);
     }
 
-    private BTree<Integer> test(int total, boolean alwaysCheckInvariants, int[] numbers) {
+    private BTree<Integer> testAdd(int total, boolean alwaysCheckInvariants, int[] numbers) {
         int smallest = Integer.MAX_VALUE;
         final BTree<Integer> tree = new BTree<>();
         for (int i = 0; i < total; i++) {
@@ -97,6 +97,7 @@ public class BTreeTest {
         final Object[] elements = tree.toArray();
         for (int i = 0; i < total; i++) {
             Assert.assertEquals(numbers[i], elements[i]);
+            Assert.assertEquals(i, tree.indexBefore(numbers[i]));
         }
         Assert.assertEquals((Integer) numbers[0], tree.peek());
         return tree;
@@ -243,6 +244,24 @@ public class BTreeTest {
         Assert.assertEquals(inserted.size(), observed.size());
         for (int i = 0; i < inserted.size(); i++) {
             Assert.assertEquals(inserted.get(i), observed.get(i));
+        }
+    }
+
+    @Test
+    public void addIndexOf() {
+        final BTree<Integer> tree = new BTree<>();
+        for (int i = 0; i < 1024; i++) {
+            Assert.assertEquals(i, tree.addIndexOf(i));
+        }
+    }
+
+    @Test
+    public void indexBefore() {
+        final BTree<Integer> tree = new BTree<>();
+        for (int i = 0; i < 1411; i++) {
+            Assert.assertEquals(i, tree.addIndexOf(i * 2));
+            Assert.assertEquals(i, tree.indexBefore(i * 2 - 1));
+            Assert.assertEquals(i + 1, tree.indexBefore(i * 2 + 1));
         }
     }
 }

@@ -120,7 +120,7 @@ public class BTree<E extends Comparable<E>> implements Pool<E> {
                         // The item is already in the queue.
                         return FAILURE_DUPLICATE;
                     }
-                    if (compare(cur, x) >= 0) {
+                    if (compareUnique(cur, x) >= 0) {
                         break;
                     }
                     pos++;
@@ -161,7 +161,7 @@ public class BTree<E extends Comparable<E>> implements Pool<E> {
                     node.children[npos] = null;
                     node.count--;
                 }
-                if (compare(x, midElement) < 0) {
+                if (compareUnique(x, midElement) < 0) {
                     insert(node, x);
                 } else {
                     insert(sibling, x);
@@ -177,7 +177,7 @@ public class BTree<E extends Comparable<E>> implements Pool<E> {
                 if (candidate == null) {
                     throw new IllegalStateException("Child not found for: " + x);
                 }
-                if (compare(candidate.pivot, x) > 0) {
+                if (compareUnique(candidate.pivot, x) > 0) {
                     child = candidate;
                     break;
                 }
@@ -203,7 +203,7 @@ public class BTree<E extends Comparable<E>> implements Pool<E> {
                     int siblingStart = BRANCHING_FACTOR / 2;
                     E midElement = (E) ((Node<E>) inner.children[siblingStart - 1]).pivot;
                     Inner<E> sibling = new Inner<E>(inner.pivot);
-                    if (comparePivot(sibling.pivot, nchild.pivot) < 0) {
+                    if (compare(sibling.pivot, nchild.pivot) < 0) {
                         sibling.pivot = nchild.pivot;
                     }
                     inner.pivot = midElement;
@@ -217,7 +217,7 @@ public class BTree<E extends Comparable<E>> implements Pool<E> {
                         inner.count -= c.count;
                     }
                     // Insert the new child node into the appropriate node.
-                    final Inner<E> target = compare(nchild.pivot, inner.pivot) <= 0 ? inner : sibling;
+                    final Inner<E> target = compareUnique(nchild.pivot, inner.pivot) <= 0 ? inner : sibling;
                     int tpos = 0;
                     while (tpos < BRANCHING_FACTOR) {
                         Node<E> c = (Node<E>) target.children[tpos];
@@ -227,7 +227,7 @@ public class BTree<E extends Comparable<E>> implements Pool<E> {
                             target.childCount++;
                             target.count += nchild.count;
                             return sibling;
-                        } else if (comparePivot(nchild.pivot, c.pivot) <= 0) {
+                        } else if (compare(nchild.pivot, c.pivot) <= 0) {
                             insertChildAt(target, tpos, nchild);
                             return sibling;
                         }
@@ -262,7 +262,7 @@ public class BTree<E extends Comparable<E>> implements Pool<E> {
             // Need to add one more level of the tree.
             final Node<E> sibling = (Node<E>) result;
             final Inner<E> nroot = new Inner<E>(null);
-            if (compare(root.pivot, sibling.pivot) < 0) {
+            if (compareUnique(root.pivot, sibling.pivot) < 0) {
                 nroot.children[0] = root;
                 nroot.children[1] = sibling;
                 nroot.pivot = sibling.pivot;
@@ -283,7 +283,7 @@ public class BTree<E extends Comparable<E>> implements Pool<E> {
     }
 
     @SuppressWarnings("unchecked")
-    private int compare(Object a, Object b) {
+    private int compareUnique(Object a, Object b) {
         if (a == MAX_ELEMENT) {
             if (b == MAX_ELEMENT) {
                 return 0;
@@ -302,7 +302,7 @@ public class BTree<E extends Comparable<E>> implements Pool<E> {
     }
 
     @SuppressWarnings("unchecked")
-    private int comparePivot(Object a, Object b) {
+    private int compare(Object a, Object b) {
         if (a == MAX_ELEMENT) {
             if (b == MAX_ELEMENT) {
                 return 0;
@@ -318,6 +318,47 @@ public class BTree<E extends Comparable<E>> implements Pool<E> {
     @Override
     public void add(E x) {
         insertRoot(x);
+    }
+
+    @Override
+    public int addIndexOf(E x) {
+        add(x);
+        return indexBefore(x);
+    }
+
+    @SuppressWarnings("unchecked")
+    public int indexBefore(E x) {
+        int count = 0;
+        Node<E> node = root;
+        while (!node.isLeaf()) {
+            int pos = 0;
+            while (pos < BRANCHING_FACTOR) {
+                final Node<E> child = (Node<E>) node.children[pos];
+                if (compare(x, child.pivot) <= 0) {
+                    node = child;
+                    break;
+                }
+                count += child.count;
+                pos++;
+            }
+            if (pos == BRANCHING_FACTOR) {
+                throw new IllegalStateException("Key " + x + " cannot be found in node: " + node);
+            }
+        }
+        int pos = 0;
+        while (pos < BRANCHING_FACTOR) {
+            final E cur = (E) node.children[pos];
+            if (cur == null) {
+                return count;
+            }
+            final int comparison = compare(x, cur);
+            if (comparison <= 0) {
+                return count;
+            }
+            count++;
+            pos++;
+        }
+        return count;
     }
 
     @Override
@@ -499,7 +540,7 @@ public class BTree<E extends Comparable<E>> implements Pool<E> {
                     } else {
                         count++;
                         if (max != null) {
-                            ensure(compare(max, x) < 0, "Elements must be ordered: %s", node);
+                            ensure(compareUnique(max, x) < 0, "Elements must be ordered: %s", node);
                         }
                         max = x;
                     }
@@ -524,7 +565,7 @@ public class BTree<E extends Comparable<E>> implements Pool<E> {
                         childCount++;
                         count += child.count;
                         if (max != null) {
-                            ensure(compare(max, child.pivot) < 0, "Elements must be ordered: %s", inner);
+                            ensure(compareUnique(max, child.pivot) < 0, "Elements must be ordered: %s", inner);
                         }
                         max = child.pivot;
                     }

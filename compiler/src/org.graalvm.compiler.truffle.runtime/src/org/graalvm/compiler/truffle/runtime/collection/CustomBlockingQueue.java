@@ -50,12 +50,26 @@ public class CustomBlockingQueue<E> implements BlockingQueue<E> {
     public boolean add(E x) {
         lock.lock();
         try {
-            boolean wasEmpty = isEmpty();
+            final boolean wasEmpty = isEmpty();
             pool.add(x);
             if (wasEmpty) {
                 notEmpty.signalAll();
             }
             return true;
+        } finally {
+            lock.unlock();
+        }
+    }
+
+    public int addIndexOf(E x) {
+        lock.lock();
+        try {
+            final boolean wasEmpty = isEmpty();
+            final int index = pool.addIndexOf(x);
+            if (wasEmpty) {
+                notEmpty.signalAll();
+            }
+            return index;
         } finally {
             lock.unlock();
         }
