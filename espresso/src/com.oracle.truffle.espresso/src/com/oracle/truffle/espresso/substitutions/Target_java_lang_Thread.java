@@ -30,6 +30,7 @@ import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.nodes.DirectCallNode;
 import com.oracle.truffle.espresso.EspressoLanguage;
 import com.oracle.truffle.espresso.impl.Field;
+import com.oracle.truffle.espresso.impl.Klass;
 import com.oracle.truffle.espresso.meta.EspressoError;
 import com.oracle.truffle.espresso.meta.Meta;
 import com.oracle.truffle.espresso.runtime.EspressoContext;
@@ -190,7 +191,7 @@ public final class Target_java_lang_Thread {
                     // Checkstyle: resume
                     @InjectMeta Meta meta) {
         EspressoContext context = meta.getContext();
-        if (context.MultiThreaded) {
+        if (context.multiThreadingEnabled()) {
             // Thread.start() is synchronized.
             KillStatus killStatus = getKillStatus(self);
             if (killStatus != null || context.isClosing()) {
@@ -247,15 +248,26 @@ public final class Target_java_lang_Thread {
                 hostThread.interrupt();
             }
             context.registerThread(hostThread, self);
+            String guestName = Target_java_lang_Thread.getThreadName(meta, self);
             context.getLogger().fine(() -> {
-                String guestName = Target_java_lang_Thread.getThreadName(meta, self);
                 long guestId = Target_java_lang_Thread.getThreadId(meta, self);
                 return String.format("Thread.start0: [HOST:%s, %d], [GUEST:%s, %d]", hostThread.getName(), hostThread.getId(), guestName, guestId);
             });
+            hostThread.setName(guestName);
             hostThread.start();
         } else {
-            EspressoLanguage.getCurrentContext().getLogger().warning(
-                            "Thread.start() called on " + self.getKlass() + " but thread support is disabled. Use --java.MultiThreaded=true to enable thread support.");
+            String reason = context.getMultiThreadingDisabledReason();
+            Klass threadKlass = self.getKlass();
+            if (threadKlass == meta.java_lang_ref_Finalizer$FinalizerThread || threadKlass == meta.java_lang_ref_Reference$ReferenceHandler) {
+                // no exception: bootstrap code cannot recover from this
+                EspressoLanguage.getCurrentContext().getLogger().warning(() -> {
+                    String guestName = Target_java_lang_Thread.getThreadName(meta, self);
+                    String className = threadKlass.getExternalName();
+                    return "Thread.start() called on " + className + " / " + guestName + " but thread support is disabled: " + reason;
+                });
+            } else {
+                Meta.throwExceptionWithMessage(meta.java_lang_OutOfMemoryError, "Thread support is disabled: " + reason);
+            }
         }
     }
 
