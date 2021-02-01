@@ -203,12 +203,9 @@ import jdk.vm.ci.meta.ResolvedJavaType;
 public abstract class DefaultHotSpotLoweringProvider extends DefaultJavaLoweringProvider implements HotSpotLoweringProvider {
 
     /**
-     * Implemented by a service that lowers a node outside the set of core HotSpot compiler nodes.
+     * Extension API for lowering a node outside the set of core HotSpot compiler nodes.
      */
     public interface Extension {
-        /**
-         * Gets the type of {@link Node} lowered by this extension.
-         */
         Class<? extends Node> getNodeType();
 
         /**
@@ -224,6 +221,20 @@ public abstract class DefaultHotSpotLoweringProvider extends DefaultJavaLowering
                         GraalHotSpotVMConfig config,
                         HotSpotHostForeignCallsProvider foreignCalls,
                         Iterable<DebugHandlersFactory> factories);
+    }
+
+    /**
+     * Service provider interface for discovering {@link Extension}s.
+     */
+    public interface Extensions {
+        /**
+         * Gets the extensions provided by this object.
+         *
+         * In the context of service caching done when building a libgraal image, implementations of
+         * this method must return a new value each time to avoid sharing extensions between
+         * different {@link DefaultHotSpotLoweringProvider}s.
+         */
+        List<Extension> createExtensions();
     }
 
     protected final HotSpotGraalRuntimeProvider runtime;
@@ -311,12 +322,15 @@ public abstract class DefaultHotSpotLoweringProvider extends DefaultJavaLowering
     }
 
     private void initializeExtensions(OptionValues options, Iterable<DebugHandlersFactory> factories, HotSpotProviders providers, GraalHotSpotVMConfig config) throws GraalError {
-        for (Extension ext : GraalServices.load(Extension.class)) {
-            Extension old = extensions.put(ext.getNodeType(), ext);
-            if (old != null) {
-                throw new GraalError("Two lowering extensions conflict on the handling of %s: %s and %s", ext.getNodeType().getName(), old, ext);
+        for (Extensions ep : GraalServices.load(Extensions.class)) {
+            for (Extension ext : ep.createExtensions()) {
+                Class<? extends Node> nodeType = ext.getNodeType();
+                Extension old = extensions.put(nodeType, ext);
+                if (old != null) {
+                    throw new GraalError("Two lowering extensions conflict on the handling of %s: %s and %s", nodeType.getName(), old, ext);
+                }
+                ext.initialize(providers, options, config, (HotSpotHostForeignCallsProvider) foreignCalls, factories);
             }
-            ext.initialize(providers, options, config, (HotSpotHostForeignCallsProvider) foreignCalls, factories);
         }
     }
 

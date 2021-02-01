@@ -54,7 +54,6 @@ import org.graalvm.compiler.replacements.SnippetTemplate.AbstractTemplates;
 import org.graalvm.compiler.replacements.SnippetTemplate.Arguments;
 import org.graalvm.compiler.replacements.SnippetTemplate.SnippetInfo;
 import org.graalvm.compiler.replacements.Snippets;
-import org.graalvm.compiler.serviceprovider.ServiceProvider;
 import org.graalvm.compiler.truffle.common.TruffleCompilerRuntime;
 import org.graalvm.compiler.truffle.common.hotspot.HotSpotTruffleCompilerRuntime;
 import org.graalvm.compiler.truffle.compiler.nodes.TruffleSafepointNode;
@@ -68,12 +67,9 @@ import jdk.vm.ci.meta.ResolvedJavaMethod;
 import jdk.vm.ci.meta.ResolvedJavaType;
 
 /**
- * Snippets that do the HotSpot lowering of {@link TruffleSafepointNode}.
+ * Snippet that lowers {@link TruffleSafepointNode}.
  */
-@ServiceProvider(DefaultHotSpotLoweringProvider.Extension.class)
-public final class HotSpotTruffleSafepointLoweringSnippets implements DefaultHotSpotLoweringProvider.Extension, Snippets {
-
-    @NativeImageReinitialize private Templates templates;
+public final class HotSpotTruffleSafepointLoweringSnippet implements Snippets {
 
     /**
      * Description for a call to
@@ -121,7 +117,7 @@ public final class HotSpotTruffleSafepointLoweringSnippets implements DefaultHot
 
     static class Templates extends AbstractTemplates {
 
-        private final SnippetInfo pollSnippet = snippet(HotSpotTruffleSafepointLoweringSnippets.class, "pollSnippet", PENDING_HANDSHAKE_LOCATION, DISABLED_HANDSHAKE_LOCATION);
+        private final SnippetInfo pollSnippet = snippet(HotSpotTruffleSafepointLoweringSnippet.class, "pollSnippet", PENDING_HANDSHAKE_LOCATION, DISABLED_HANDSHAKE_LOCATION);
 
         public Templates(OptionValues options,
                         Iterable<DebugHandlersFactory> factories,
@@ -138,34 +134,56 @@ public final class HotSpotTruffleSafepointLoweringSnippets implements DefaultHot
         }
     }
 
-    @Override
-    public Class<TruffleSafepointNode> getNodeType() {
-        return TruffleSafepointNode.class;
-    }
+    static class TruffleHotSpotSafepointLoweringExtension implements DefaultHotSpotLoweringProvider.Extension {
 
-    @Override
-    public void lower(Node n, LoweringTool tool) {
-        if (tool.getLoweringStage() == LoweringTool.StandardLoweringStage.LOW_TIER) {
-            if (templates == null) {
-                throw new GraalError("Cannot lower %s as JVMCIRuntime::invoke_java_method is missing", n);
-            }
-            templates.lower((TruffleSafepointNode) n, tool);
+        @NativeImageReinitialize private Templates templates;
+
+        /**
+         * Initialization deferred until a {@link TruffleCompilerRuntime} is guaranteed to exist.
+         */
+        @NativeImageReinitialize private volatile Runnable deferredInit;
+
+        @Override
+        public Class<TruffleSafepointNode> getNodeType() {
+            return TruffleSafepointNode.class;
         }
-    }
 
-    @Override
-    public void initialize(HotSpotProviders providers,
-                    OptionValues options,
-                    GraalHotSpotVMConfig config,
-                    HotSpotHostForeignCallsProvider foreignCalls,
-                    Iterable<DebugHandlersFactory> factories) {
-        long invokeJavaMethodAddress = config.invokeJavaMethodAddress;
-        if (invokeJavaMethodAddress != 0) {
+        @Override
+        public void lower(Node n, LoweringTool tool) {
+            if (tool.getLoweringStage() == LoweringTool.StandardLoweringStage.LOW_TIER) {
+                doDeferredInit();
+                templates.lower((TruffleSafepointNode) n, tool);
+            }
+        }
+
+        private void doDeferredInit() {
+            if (deferredInit != null) {
+                synchronized (this) {
+                    if (deferredInit != null) {
+                        deferredInit.run();
+                        deferredInit = null;
+                    }
+                }
+            }
+        }
+
+        @Override
+        public void initialize(HotSpotProviders providers,
+                        OptionValues options,
+                        GraalHotSpotVMConfig config,
+                        HotSpotHostForeignCallsProvider foreignCalls,
+                        Iterable<DebugHandlersFactory> factories) {
+            GraalError.guarantee(templates == null, "cannot re-initialize " + this);
+            GraalError.guarantee(config.invokeJavaMethodAddress != 0, "Cannot lower %ss as JVMCIRuntime::invoke_java_method is missing", TruffleSafepointNode.class);
             this.templates = new Templates(options, factories, providers, providers.getCodeCache().getTarget());
-            ResolvedJavaType handshakeType = TruffleCompilerRuntime.getRuntime().resolveType(providers.getMetaAccess(), "org.graalvm.compiler.truffle.runtime.hotspot.HotSpotThreadLocalHandshake");
-            HotSpotSignature noArgsVoidSig = new HotSpotSignature(foreignCalls.getJVMCIRuntime(), "()V");
-            ResolvedJavaMethod staticMethod = handshakeType.findMethod("doHandshake", noArgsVoidSig);
-            foreignCalls.invokeJavaMethodStub(options, providers, THREAD_LOCAL_HANDSHAKE, invokeJavaMethodAddress, staticMethod);
+            this.deferredInit = () -> {
+                long address = config.invokeJavaMethodAddress;
+                GraalError.guarantee(address != 0, "Cannot lower %s as JVMCIRuntime::invoke_java_method is missing", address);
+                ResolvedJavaType handshakeType = TruffleCompilerRuntime.getRuntime().resolveType(providers.getMetaAccess(), "org.graalvm.compiler.truffle.runtime.hotspot.HotSpotThreadLocalHandshake");
+                HotSpotSignature noArgsVoidSig = new HotSpotSignature(foreignCalls.getJVMCIRuntime(), "()V");
+                ResolvedJavaMethod staticMethod = handshakeType.findMethod("doHandshake", noArgsVoidSig);
+                foreignCalls.invokeJavaMethodStub(options, providers, THREAD_LOCAL_HANDSHAKE, address, staticMethod);
+            };
         }
     }
 }
