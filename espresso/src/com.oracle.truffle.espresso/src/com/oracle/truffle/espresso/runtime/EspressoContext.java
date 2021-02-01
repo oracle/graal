@@ -173,7 +173,7 @@ public final class EspressoContext {
     @CompilationFinal private JImageLibrary jimageLibrary;
     @CompilationFinal private EspressoProperties vmProperties;
     @CompilationFinal private JavaVersion javaVersion;
-    @CompilationFinal private AgentLibrairies agents;
+    @CompilationFinal private AgentLibraries agents;
     // endregion VM
 
     @CompilationFinal private EspressoException stackOverflow;
@@ -471,7 +471,7 @@ public final class EspressoContext {
     }
 
     private void initializeAgents() {
-        agents = new AgentLibrairies(this);
+        agents = new AgentLibraries(this);
         if (getEnv().getOptions().hasBeenSet(EspressoOptions.AgentLib)) {
             agents.registerAgents(getEnv().getOptions().get(EspressoOptions.AgentLib), false);
         }

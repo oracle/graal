@@ -44,17 +44,17 @@ import com.oracle.truffle.espresso.jni.NativeLibrary;
 import com.oracle.truffle.espresso.jni.RawBuffer;
 import com.oracle.truffle.espresso.meta.EspressoError;
 
-class AgentLibrairies {
+final class AgentLibraries {
 
     private static final String AGENT_ONLOAD = "Agent_OnLoad";
     private static final String ONLOAD_SIGNATURE = "(pointer, pointer, pointer): sint32";
 
     private final EspressoContext context;
 
-    private final List<AgentLibrary> agents = new ArrayList<>();
+    private final List<AgentLibrary> agents = new ArrayList<>(0);
     private final InteropLibrary interop = InteropLibrary.getUncached();
 
-    AgentLibrairies(EspressoContext context) {
+    AgentLibraries(EspressoContext context) {
         this.context = context;
     }
 
