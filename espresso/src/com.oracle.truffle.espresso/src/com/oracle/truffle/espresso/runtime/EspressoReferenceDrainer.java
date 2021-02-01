@@ -59,31 +59,31 @@ class EspressoReferenceDrainer implements ContextAccess {
         if (getContext().multiThreadingEnabled()) {
             if (getJavaVersion().java8OrEarlier()) {
                 // Initialize reference queue
-                    this.hostToGuestReferenceDrainThread = env.createThread(new ReferenceDrain() {
-                        @SuppressWarnings("rawtypes")
-                        @Override
-                        protected void updateReferencePendingList(EspressoReference head, EspressoReference prev, StaticObject lock) {
-                            StaticObject obj = meta.java_lang_ref_Reference_pending.getAndSetObject(meta.java_lang_ref_Reference.getStatics(), head.getGuestReference());
-                            meta.java_lang_ref_Reference_discovered.set(prev.getGuestReference(), obj);
-                            getVM().JVM_MonitorNotify(lock, profiler);
+                this.hostToGuestReferenceDrainThread = env.createThread(new ReferenceDrain() {
+                    @SuppressWarnings("rawtypes")
+                    @Override
+                    protected void updateReferencePendingList(EspressoReference head, EspressoReference prev, StaticObject lock) {
+                        StaticObject obj = meta.java_lang_ref_Reference_pending.getAndSetObject(meta.java_lang_ref_Reference.getStatics(), head.getGuestReference());
+                        meta.java_lang_ref_Reference_discovered.set(prev.getGuestReference(), obj);
+                        getVM().JVM_MonitorNotify(lock, profiler);
 
-                        }
-                    });
+                    }
+                });
             } else if (getJavaVersion().java9OrLater()) {
                 // Initialize reference queue
-                    this.hostToGuestReferenceDrainThread = env.createThread(new ReferenceDrain() {
-                        @SuppressWarnings("rawtypes")
-                        @Override
-                        protected void updateReferencePendingList(EspressoReference head, EspressoReference prev, StaticObject lock) {
-                            synchronized (pendingLock) {
-                                StaticObject obj = referencePendingList;
-                                referencePendingList = head.getGuestReference();
-                                meta.java_lang_ref_Reference_discovered.set(prev.getGuestReference(), obj);
-                                getVM().JVM_MonitorNotify(lock, profiler);
-                                pendingLock.notifyAll();
-                            }
+                this.hostToGuestReferenceDrainThread = env.createThread(new ReferenceDrain() {
+                    @SuppressWarnings("rawtypes")
+                    @Override
+                    protected void updateReferencePendingList(EspressoReference head, EspressoReference prev, StaticObject lock) {
+                        synchronized (pendingLock) {
+                            StaticObject obj = referencePendingList;
+                            referencePendingList = head.getGuestReference();
+                            meta.java_lang_ref_Reference_discovered.set(prev.getGuestReference(), obj);
+                            getVM().JVM_MonitorNotify(lock, profiler);
+                            pendingLock.notifyAll();
                         }
-                    });
+                    }
+                });
             } else {
                 throw EspressoError.shouldNotReachHere();
             }
