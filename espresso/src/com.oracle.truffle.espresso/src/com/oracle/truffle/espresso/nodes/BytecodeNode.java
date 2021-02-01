@@ -1549,8 +1549,8 @@ public final class BytecodeNode extends EspressoMethodNode {
     // region Bytecode quickening
 
     private char readCPI(int curBCI) {
-        assert (!Bytecodes.isQuickenable(bs.currentBC(curBCI)) || Thread.holdsLock(this)) :
-                "Reading the CPI for a quickenable bytecode must be done under the BytecodeNode lock. Please obtain the lock, or use readOriginalCPI.";
+        assert (!Bytecodes.isQuickenable(bs.currentBC(curBCI)) || Thread.holdsLock(this)) : //
+        "Reading the CPI for a quickenable bytecode must be done under the BytecodeNode lock. Please obtain the lock, or use readOriginalCPI.";
         return bs.readCPI(curBCI);
     }
 
@@ -2321,7 +2321,6 @@ public final class BytecodeNode extends EspressoMethodNode {
                 return quickenGetField(frame, primitives, refs, top, curBCI, opcode, statementIndex, field);
             }
         }
-
 
         if (instrumentation != null) {
             instrumentation.notifyFieldAccess(frame, statementIndex, field, receiver);

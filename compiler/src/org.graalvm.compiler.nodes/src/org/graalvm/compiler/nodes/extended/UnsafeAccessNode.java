@@ -112,7 +112,7 @@ public abstract class UnsafeAccessNode extends FixedWithNextNode implements Cano
                     boolean upgradeAsFieldAccess;
                     try {
                         upgradeAsFieldAccess = (field != null && field.getJavaKind() == this.accessKind() &&
-                                        !field.isInternal() /* Ensure this is a true java field. */ );
+                                        !field.isInternal() /* Ensure this is a true java field. */);
                     } catch (UnsupportedOperationException e) {
                         // Some implementations of ResolvedJavaField do not support
                         // field.isInternal(). Be conservative.
