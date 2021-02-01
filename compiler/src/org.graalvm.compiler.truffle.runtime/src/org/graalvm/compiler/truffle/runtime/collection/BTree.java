@@ -89,7 +89,7 @@ public class BTree<E extends Comparable<E>> implements Pool<E> {
     private Node<E> root;
 
     public BTree() {
-        this.root = new Leaf<E>(MAX_ELEMENT);
+        this.root = new Leaf<>(MAX_ELEMENT);
     }
 
     @SuppressWarnings("unchecked")
@@ -317,12 +317,21 @@ public class BTree<E extends Comparable<E>> implements Pool<E> {
 
     @Override
     public E peek() {
-        return null;
+        return lookupFirst(root);
+    }
+
+    @SuppressWarnings("unchecked")
+    private E lookupFirst(Node<E> node) {
+        if (node instanceof Leaf<?>) {
+            return (E) node.children[0];
+        } else {
+            return lookupFirst((Node<E>) node.children[0]);
+        }
     }
 
     @Override
     public void clear() {
-
+        root = new Leaf<>(MAX_ELEMENT);
     }
 
     @Override
@@ -361,12 +370,14 @@ public class BTree<E extends Comparable<E>> implements Pool<E> {
 
     @Override
     public <T> T[] toArray(T[] a) {
+        // TODO
         return null;
     }
 
     @Override
     public int internalCapacity() {
-        return 0;
+        // TODO
+        return -1;
     }
 
     public void checkInvariants() {

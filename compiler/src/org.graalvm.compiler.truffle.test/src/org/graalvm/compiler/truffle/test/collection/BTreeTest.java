@@ -80,12 +80,15 @@ public class BTreeTest {
     }
 
     private void test(int total, boolean alwaysCheckInvariants, int[] numbers) {
+        int smallest = Integer.MAX_VALUE;
         final BTree<Integer> tree = new BTree<>();
         for (int i = 0; i < total; i++) {
             tree.add(numbers[i]);
             if (alwaysCheckInvariants) {
                 tree.checkInvariants();
             }
+            smallest = Math.min(smallest, numbers[i]);
+            Assert.assertEquals((Integer) smallest, tree.peek());
         }
         tree.checkInvariants();
         Arrays.sort(numbers);
@@ -93,6 +96,7 @@ public class BTreeTest {
         for (int i = 0; i < total; i++) {
             Assert.assertEquals(numbers[i], elements[i]);
         }
+        Assert.assertEquals((Integer) numbers[0], tree.peek());
     }
 
     @Test
