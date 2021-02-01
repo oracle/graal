@@ -24,16 +24,19 @@
  */
 package com.oracle.svm.core.graal.amd64;
 
+import org.graalvm.compiler.api.replacements.SnippetReflectionProvider;
 import org.graalvm.compiler.core.amd64.AMD64LoweringProviderMixin;
 import org.graalvm.compiler.core.common.spi.ForeignCallsProvider;
 import org.graalvm.compiler.core.common.spi.MetaAccessExtensionProvider;
+import org.graalvm.compiler.debug.DebugHandlersFactory;
 import org.graalvm.compiler.graph.Node;
-import org.graalvm.compiler.nodes.StructuredGraph;
 import org.graalvm.compiler.nodes.calc.RemNode;
-import org.graalvm.compiler.nodes.extended.ForeignCallNode;
 import org.graalvm.compiler.nodes.spi.LoweringTool;
 import org.graalvm.compiler.nodes.spi.PlatformConfigurationProvider;
-import org.graalvm.compiler.replacements.amd64.AMD64ArrayIndexOfDispatchNode;
+import org.graalvm.compiler.options.OptionValues;
+import org.graalvm.compiler.phases.util.Providers;
+import org.graalvm.compiler.replacements.SnippetCounter;
+import org.graalvm.compiler.replacements.amd64.AMD64TruffleArrayUtilsWithMaskSnippets;
 
 import com.oracle.svm.core.graal.meta.SubstrateBasicLoweringProvider;
 import com.oracle.svm.core.graal.snippets.NodeLoweringProvider;
@@ -50,9 +53,18 @@ public class SubstrateAMD64LoweringProvider extends SubstrateBasicLoweringProvid
         super(metaAccess, foreignCalls, platformConfig, metaAccessExtensionProvider, target);
     }
 
+    @Override
+    public void initialize(OptionValues options, Iterable<DebugHandlersFactory> factories, SnippetCounter.Group.Factory factory, Providers providers, SnippetReflectionProvider snippetReflection) {
+        providers.getReplacements().registerSnippetTemplateCache(new AMD64TruffleArrayUtilsWithMaskSnippets.Templates(options, factories, providers, snippetReflection, target));
+        super.initialize(options, factories, factory, providers, snippetReflection);
+    }
+
     @SuppressWarnings("unchecked")
     @Override
     public void lower(Node n, LoweringTool tool) {
+        if (lowerAMD64(n, tool)) {
+            return;
+        }
         @SuppressWarnings("rawtypes")
         NodeLoweringProvider lowering = getLowerings().get(n.getClass());
         if (lowering != null) {
@@ -63,16 +75,8 @@ public class SubstrateAMD64LoweringProvider extends SubstrateBasicLoweringProvid
             /* Remove node */
             CodeSynchronizationNode syncNode = (CodeSynchronizationNode) n;
             syncNode.graph().removeFixed(syncNode);
-        } else if (n instanceof AMD64ArrayIndexOfDispatchNode) {
-            lowerArrayIndexOf((AMD64ArrayIndexOfDispatchNode) n);
         } else {
             super.lower(n, tool);
         }
-    }
-
-    private void lowerArrayIndexOf(AMD64ArrayIndexOfDispatchNode dispatchNode) {
-        StructuredGraph graph = dispatchNode.graph();
-        ForeignCallNode call = graph.add(new ForeignCallNode(foreignCalls, dispatchNode.getStubCallDescriptor(), dispatchNode.getStubCallArgs()));
-        graph.replaceFixed(dispatchNode, call);
     }
 }
