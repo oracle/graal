@@ -2289,14 +2289,10 @@ final class JDWP {
 
                 Object returnValue = readValue(input, controller.getContext());
                 CallFrame topFrame = suspendedInfo.getStackFrames().length > 0 ? suspendedInfo.getStackFrames()[0] : null;
-                if (!controller.forceEarlyReturn(thread, topFrame, returnValue, packet.id)) {
+                if (!controller.forceEarlyReturn(thread, topFrame, returnValue)) {
                     reply.errorCode(ErrorCodes.OPAQUE_FRAME);
-                    return new CommandResult(reply);
                 }
-                // don't send a reply before we have completed the pop frames
-                // the reply packet will be sent when thread is suspended after
-                // popping the requested frames
-                return null;
+                return new CommandResult(reply);
             }
         }
 

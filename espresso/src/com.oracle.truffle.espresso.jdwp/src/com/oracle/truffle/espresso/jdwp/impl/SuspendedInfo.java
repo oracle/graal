@@ -34,6 +34,7 @@ public class SuspendedInfo {
     private final Object thread;
     private DebuggerCommand.Kind stepKind;
     private final RootNode callerRootNode;
+    private boolean forceEarlyInProgress;
 
     SuspendedInfo(SuspendedEvent event, CallFrame[] stackFrames, Object thread, RootNode callerRootNode) {
         this.event = event;
@@ -76,5 +77,13 @@ public class SuspendedInfo {
 
     public void clearStepping() {
         stepKind = null;
+    }
+
+    public void setForceEarlyReturnInProgress() {
+        forceEarlyInProgress = true;
+    }
+
+    public boolean isForceEarlyReturnInProgress() {
+        return forceEarlyInProgress;
     }
 }
