@@ -5,10 +5,12 @@ on:
     paths-ignore:
       - '.travis.yml'
       - '.github/workflows/quarkus.yml'
+      - '**.md'
   pull_request:
     paths-ignore:
       - '.travis.yml'
       - '.github/workflows/quarkus.yml'
+      - '**.md'
   workflow_dispatch: []
 
 env:
