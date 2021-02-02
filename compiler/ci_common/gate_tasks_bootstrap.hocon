@@ -8,7 +8,4 @@ builds += [
   ${gateBootstrap}           ${oraclejdk8}     ${gateLinuxAMD64Bootstrap}   {name: "gate-compiler-bootstrap-8-linux-amd64"}
   ${gateBootstrapFullVerify} ${oraclejdk8}     ${gateLinuxAMD64Bootstrap}   {name: "gate-compiler-bootstrapfullverify-8-linux-amd64"}
   ${gateBootstrap}           ${labsjdk-ee-11}  ${gateLinuxAMD64Bootstrap}   {name: "gate-compiler-bootstrap-labsjdk-ee-11-linux-amd64"}
-
-  # Solaris SPARC
-  ${gateBootstrap}           ${oraclejdk8Only} ${gateSolarisSPARCBootstrap} ${graalDaily} {name: "gate-compiler-bootstrap-8-solaris-sparcv9",   timelimit: "1:00:00"} # Remove sparcv9 from gate GR-28885
 ]
