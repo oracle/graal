@@ -291,7 +291,6 @@ import com.oracle.truffle.espresso.impl.Field;
 import com.oracle.truffle.espresso.impl.Klass;
 import com.oracle.truffle.espresso.impl.Method;
 import com.oracle.truffle.espresso.impl.Method.MethodVersion;
-import com.oracle.truffle.espresso.jdwp.impl.StableBoolean;
 import com.oracle.truffle.espresso.meta.EspressoError;
 import com.oracle.truffle.espresso.meta.ExceptionHandler;
 import com.oracle.truffle.espresso.meta.JavaKind;
@@ -391,9 +390,6 @@ public final class BytecodeNode extends EspressoMethodNode {
     @CompilationFinal private EspressoRootNode rootNode;
 
     @Child private volatile InstrumentationSupport instrumentation;
-
-    private final StableBoolean earlyReturnsActive = new StableBoolean(false);
-    private final ThreadLocal<Object> earlyReturns = new ThreadLocal<>();
 
     private final Assumption noForeignObjects;
 
@@ -682,14 +678,6 @@ public final class BytecodeNode extends EspressoMethodNode {
                 if (instrument != null) {
                     instrument.notifyStatement(frame, statementIndex, nextStatementIndex);
                     statementIndex = nextStatementIndex;
-
-                    // check for early return
-                    if (earlyReturnsActive.get()) {
-                        Object earlyReturnValue = getEarlyReturnValue();
-                        if (earlyReturnValue != null) {
-                            return notifyReturn(frame, statementIndex, exitMethodEarlyAndReturn(earlyReturnValue));
-                        }
-                    }
                 }
 
                 // @formatter:off
@@ -1225,25 +1213,6 @@ public final class BytecodeNode extends EspressoMethodNode {
             edgeLocalAnalysis(primitives, refs, curBCI, targetBCI);
             curBCI = targetBCI;
         }
-    }
-
-    public void forceEarlyReturn(Object returnValue) {
-        earlyReturnsActive.set(true);
-        earlyReturns.set(returnValue);
-    }
-
-    @TruffleBoundary
-    private Object getEarlyReturnValue() {
-        // check for early return value
-        if (earlyReturnsActive.get()) {
-            Object earlyReturnValue = earlyReturns.get();
-            if (earlyReturnValue != null) {
-                earlyReturns.set(null);
-                earlyReturnsActive.set(false);
-                return earlyReturnValue;
-            }
-        }
-        return null;
     }
 
     @ExplodeLoop

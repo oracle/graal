@@ -676,6 +676,13 @@ public final class SuspendedEvent {
         setNextStrategy(SteppingStrategy.createUnwind(frame.getDepth()));
     }
 
+    public void prepareUnwindFrame(DebugStackFrame frame, Object returnValue) throws IllegalArgumentException {
+        if (frame.event != this) {
+            throw new IllegalArgumentException("The stack frame is not in the scope of this event.");
+        }
+        setNextStrategy(SteppingStrategy.createUnwind(frame.getDepth(), returnValue));
+    }
+
     /**
      * Prepare to terminate the suspended execution represented by this event. One use-case for this
      * method is to shield an execution of an unknown code with a timeout:

@@ -288,6 +288,17 @@ public final class DebuggerController implements ContextsListener {
         return false;
     }
 
+    public boolean forceEarlyReturn(Object guestThread, CallFrame frameToPop, Object returnValue, int packetId) {
+        SuspendedInfo susp = suspendedInfos.get(guestThread);
+        if (susp != null && !(susp instanceof UnknownSuspendedInfo)) {
+            susp.getEvent().prepareUnwindFrame(frameToPop.getDebugStackFrame(), returnValue);
+            setCommandRequestId(guestThread, packetId, SuspendStrategy.NONE, true);
+            resume(guestThread, false);
+            return true;
+        }
+        return false;
+    }
+
     public boolean resume(Object thread, boolean sessionClosed) {
         SimpleLock lock = getSuspendLock(thread);
         synchronized (lock) {

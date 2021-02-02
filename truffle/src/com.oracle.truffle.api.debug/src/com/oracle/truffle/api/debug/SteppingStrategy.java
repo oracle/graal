@@ -167,6 +167,10 @@ abstract class SteppingStrategy {
         return new Unwind(depth);
     }
 
+    static SteppingStrategy createUnwind(int depth, Object returnValue) {
+        return new Unwind(depth, returnValue);
+    }
+
     static SteppingStrategy createComposed(SteppingStrategy strategy1, SteppingStrategy strategy2) {
         return new ComposedStrategy(strategy1, strategy2);
     }
@@ -531,15 +535,21 @@ abstract class SteppingStrategy {
     static final class Unwind extends SteppingStrategy {
 
         private final int depth; // Negative depth
+        private final Object returnValue;
         private int stackCounter;
         ThreadDeath unwind;
 
         Unwind(int depth) {
+            this(depth, null);
+        }
+
+        Unwind(int depth, Object returnValue) {
             this.depth = -depth;
+            this.returnValue = returnValue;
         }
 
         @Override
-        void initialize(SuspendedContext contex, SuspendAnchor suspendAnchor) {
+        void initialize(SuspendedContext context, SuspendAnchor suspendAnchor) {
             // We're entered already, we'll be called on exit once before unwind.
             this.stackCounter = 1;
         }
@@ -557,7 +567,7 @@ abstract class SteppingStrategy {
         @Override
         Object notifyOnUnwind() {
             if (depth == stackCounter) {
-                return ProbeNode.UNWIND_ACTION_REENTER;
+                return returnValue != null ? returnValue : ProbeNode.UNWIND_ACTION_REENTER;
             } else {
                 return null;
             }

@@ -443,16 +443,6 @@ public interface JDWPContext {
     Object getCurrentContendedMonitor(Object guestThread);
 
     /**
-     * Forces an early return on the top-most frame with the given return value. All monitors held
-     * on the current top frame are released before the early return.
-     *
-     * @param returnValue the value to return
-     * @param topFrame the current top frame
-     * @return {@code true} if the early return can be performed or {@code false} otherwise
-     */
-    boolean forceEarlyReturn(Object returnValue, CallFrame topFrame);
-
-    /**
      * Returns the language class associated with the implementing class of this interface.
      *
      * @return the Truffle language class
