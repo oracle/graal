@@ -30,8 +30,8 @@ import java.util.ArrayList;
 import org.graalvm.compiler.phases.common.BoxNodeOptimizationPhase;
 
 /**
- * Independent test program to test if the {@link BoxNodeOptimizationPhase} respects the semantic of
- * the caching specified by {@link Integer#valueOf(int)} in a libgraal setting.
+ * Independent test program to test if the {@link BoxNodeOptimizationPhase} respects the caching
+ * specified by {@link Integer#valueOf(int)} in a libgraal setting.
  */
 public class TestAutoboxConf {
 
@@ -110,7 +110,7 @@ public class TestAutoboxConf {
                 }
             }
         }
-        System.out.println("Successfull execution!!");
+        System.out.println("Successful execution!!");
     }
 
 }
