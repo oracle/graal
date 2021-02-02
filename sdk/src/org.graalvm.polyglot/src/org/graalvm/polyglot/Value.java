@@ -1767,8 +1767,8 @@ public final class Value {
     }
 
     /**
-     * Returns <code>true</code> if this polyglot value provides an iterator. The iterator can be
-     * obtained using {@link #getIterator()}.
+     * Returns <code>true</code> if this polyglot value provides an iterator. In this case array the
+     * iterator can be obtained using {@link #getIterator()}.
      *
      * @throws IllegalStateException if the context is already closed.
      * @throws PolyglotException if a guest language error occurred during execution.
@@ -1796,7 +1796,7 @@ public final class Value {
     }
 
     /**
-     * Returns <code>true</code> if the value represents an iterator object. In such a case the
+     * Returns <code>true</code> if the value represents an iterator object. In this case the
      * iterator elements can be accessed using {@link #getIteratorNextElement()}.
      *
      * @throws IllegalStateException if the context is already closed.
@@ -1828,10 +1828,14 @@ public final class Value {
     }
 
     /**
-     * Returns the next element in the iteration.
+     * Returns the next element in the iteration. When the underlying iterable is modified the
+     * {@link #getIteratorNextElement()} may throw the {@link NoSuchElementException} despite the
+     * {@link #hasIteratorNextElement()} returned {@code true}, or it may throw a language error.
      *
      * @throws UnsupportedOperationException if the value is not an {@link #isIterator() iterator}
-     *             or when the underlying iterator element exists but is not readable.
+     *             or when the underlying iterable element exists but is not readable, in such a
+     *             case the iterator cursor is incremented before the
+     *             {@link UnsupportedOperationException} is thrown.
      * @throws NoSuchElementException if the iteration has no more elements. Even if the
      *             {@link NoSuchElementException} was thrown it might not be thrown again by a next
      *             call of the {@link #getIteratorNextElement()} due to a modification of an

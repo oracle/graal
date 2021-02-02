@@ -42,6 +42,7 @@ package org.graalvm.polyglot.proxy;
 
 import org.graalvm.polyglot.Value;
 
+import java.util.ConcurrentModificationException;
 import java.util.Iterator;
 import java.util.NoSuchElementException;
 import java.util.Objects;
@@ -56,7 +57,9 @@ import java.util.Objects;
 public interface ProxyIterator extends Proxy {
 
     /**
-     * Returns <code>true</code> if the iterator has more elements.
+     * Returns <code>true</code> if the iterator has more elements, else <code>false</code>. When
+     * the underlying iterable is modified the next call of the {@link #hasNext()} may return a
+     * different value.
      *
      * @see #getNext()
      * @since 21.1
@@ -64,7 +67,9 @@ public interface ProxyIterator extends Proxy {
     boolean hasNext();
 
     /**
-     * Returns the next element in the iteration.
+     * Returns the next element in the iteration. When the underlying iterable is modified the
+     * {@link #getNext()} may throw the {@link NoSuchElementException} even when the
+     * {@link #hasNext()} returned {@code true}.
      *
      * @throws NoSuchElementException if the iteration has no more elements, the {@link #hasNext()}
      *             returns <code>false</code>.
@@ -78,7 +83,9 @@ public interface ProxyIterator extends Proxy {
 
     /**
      * Creates a proxy iterator backed by a Java {@link Iterator}. If the set values are host values
-     * then they will be {@link Value#asHostObject() unboxed}.
+     * then they will be {@link Value#asHostObject() unboxed}. The
+     * {@link ConcurrentModificationException} possibly thrown by the Java {@link Iterator} when a
+     * concurrent modification is detected is translated into the host exception.
      *
      * @since 21.1
      */
