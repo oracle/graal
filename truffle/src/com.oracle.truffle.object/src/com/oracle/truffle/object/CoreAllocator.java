@@ -188,8 +188,12 @@ class CoreAllocator extends ShapeImpl.BaseAllocator {
         return locationForValue(value, useFinal, nonNull, 0);
     }
 
-    @SuppressWarnings("unused")
     Location locationForValue(Object value, boolean useFinal, boolean nonNull, long putFlags) {
+        if (Flags.isConstant(putFlags)) {
+            return constantLocation(value);
+        } else if (Flags.isDeclaration(putFlags)) {
+            return declaredLocation(value);
+        }
         if (value instanceof Integer) {
             return newIntLocation(useFinal);
         } else if (value instanceof Double) {

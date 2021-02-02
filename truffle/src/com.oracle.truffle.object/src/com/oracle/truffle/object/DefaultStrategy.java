@@ -44,8 +44,6 @@ import java.util.Objects;
 
 import com.oracle.truffle.api.object.DynamicObject;
 import com.oracle.truffle.api.object.Location;
-import com.oracle.truffle.api.object.LocationFactory;
-import com.oracle.truffle.api.object.Shape;
 import com.oracle.truffle.object.ShapeImpl.BaseAllocator;
 
 final class DefaultStrategy extends LayoutStrategy {
@@ -90,23 +88,9 @@ final class DefaultStrategy extends LayoutStrategy {
         return new CoreAllocator(layout);
     }
 
-    private static final LocationFactory DEFAULT_LOCATION_FACTORY = createDefaultLocationFactory(0);
-
     @Override
-    protected LocationFactory getDefaultLocationFactory(long putFlags) {
-        if (putFlags == 0) {
-            return DEFAULT_LOCATION_FACTORY;
-        }
-        return createDefaultLocationFactory(putFlags);
-    }
-
-    private static LocationFactory createDefaultLocationFactory(long putFlags) {
-        return new LocationFactory() {
-            @Override
-            public Location createLocation(Shape shape, Object value) {
-                return ((CoreAllocator) ((ShapeImpl) shape).allocator()).locationForValue(value, true, value != null, putFlags);
-            }
-        };
+    protected Location createLocationForValue(ShapeImpl shape, Object value, long putFlags) {
+        return ((CoreAllocator) shape.allocator()).locationForValue(value, true, value != null, putFlags);
     }
 
     @Override
