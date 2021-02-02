@@ -1985,14 +1985,6 @@ public final class BytecodeNode extends EspressoMethodNode {
         return exitMethodAndReturnObject(StaticObject.NULL);
     }
 
-    private Object exitMethodEarlyAndReturn(Object result) {
-        if (Signatures.returnKind(getMethod().getParsedSignature()) == JavaKind.Void) {
-            return exitMethodAndReturn();
-        } else {
-            return result;
-        }
-    }
-
     // endregion Method return
 
     // region Arithmetic/binary operations
