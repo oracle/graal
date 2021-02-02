@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2014, 2020, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2012, 2021, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -38,38 +38,22 @@
  * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
  * SOFTWARE.
  */
-package com.oracle.truffle.api.impl;
+package com.oracle.truffle.api;
 
-import com.oracle.truffle.api.TruffleSafepoint;
-import com.oracle.truffle.api.frame.VirtualFrame;
-import com.oracle.truffle.api.nodes.LoopNode;
-import com.oracle.truffle.api.nodes.RepeatingNode;
+import org.graalvm.polyglot.impl.AbstractPolyglotImpl;
 
-public final class DefaultLoopNode extends LoopNode {
+import com.oracle.truffle.api.nodes.Node;
 
-    @Child private RepeatingNode repeatNode;
+public abstract class ThreadLocalAccess {
 
-    public DefaultLoopNode(RepeatingNode repeatNode) {
-        this.repeatNode = repeatNode;
-    }
-
-    @Override
-    public RepeatingNode getRepeatingNode() {
-        return repeatNode;
-    }
-
-    @SuppressWarnings("deprecation")
-    @Override
-    public void executeLoop(VirtualFrame frame) {
-        execute(frame);
-    }
-
-    @Override
-    public Object execute(VirtualFrame frame) {
-        Object status;
-        while (repeatNode.shouldContinue((status = repeatNode.executeRepeatingWithValue(frame)))) {
-            TruffleSafepoint.poll(this);
+    protected ThreadLocalAccess(AbstractPolyglotImpl impl) {
+        if (impl == null) {
+            throw new AssertionError("No custom subclasses without poolygl.");
         }
-        return status;
     }
+
+    public abstract Node getLocation();
+
+    public abstract Thread getThread();
+
 }

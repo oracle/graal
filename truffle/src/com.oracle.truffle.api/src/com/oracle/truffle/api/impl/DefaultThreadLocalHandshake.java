@@ -40,24 +40,14 @@
  */
 package com.oracle.truffle.api.impl;
 
-import java.util.Collections;
-import java.util.Map;
-import java.util.WeakHashMap;
 import java.util.concurrent.atomic.AtomicInteger;
 
-import com.oracle.truffle.api.CompilerDirectives.Interruptable;
+import com.oracle.truffle.api.nodes.Node;
 
 final class DefaultThreadLocalHandshake extends ThreadLocalHandshake {
 
     static final DefaultThreadLocalHandshake INSTANCE = new DefaultThreadLocalHandshake();
-
-    /*
-     * This map contains all state objects for all threads accessible for other threads. Since the
-     * thread needs to be weak and synchronized is less efficient to access and is only used when
-     * accessing the state of other threads.
-     */
-    private static final Map<Thread, ThreadLocalState> STATE_OBJECTS = Collections.synchronizedMap(new WeakHashMap<>());
-    private static final ThreadLocal<ThreadLocalState> STATE = ThreadLocal.withInitial(() -> getThreadState(Thread.currentThread()));
+    private static final ThreadLocal<TruffleSafepointImpl> STATE = ThreadLocal.withInitial(() -> INSTANCE.getThreadState(Thread.currentThread()));
 
     /*
      * Number of active pending threads. Allows to check the active threads more efficiently.
@@ -68,99 +58,27 @@ final class DefaultThreadLocalHandshake extends ThreadLocalHandshake {
     }
 
     @Override
-    public void poll() {
+    public void poll(Node enclosingNode) {
         int count = PENDING_COUNT.get();
-        assert count >= 0 : "inconsistent pending state " + count;
+        assert count >= 0 : "inconsistent pending state";
         if (count > 0) {
-            pollSlowPath();
+            INSTANCE.processHandshake(enclosingNode);
         }
     }
 
-    private static void pollSlowPath() {
-        ThreadLocalState s = STATE.get();
-        if (s.pending && s.disabledCount == 0) {
-            INSTANCE.processHandshake();
-        }
-    }
-
-    private static ThreadLocalState getThreadState(Thread thread) {
-        return STATE_OBJECTS.computeIfAbsent(thread, (t) -> new ThreadLocalState());
+    @Override
+    public TruffleSafepointImpl getCurrent() {
+        return STATE.get();
     }
 
     @Override
     protected void setPending(Thread t) {
-        ThreadLocalState s = getThreadState(t);
-        if (!s.pending) {
-            Interruptable action = null;
-            synchronized (s) {
-                if (!s.pending) {
-                    s.pending = true;
-                    PENDING_COUNT.incrementAndGet();
-                    action = s.interruptableAction;
-                }
-            }
-            if (action != null) {
-                action.interrupt(t);
-            }
-        }
-
+        PENDING_COUNT.incrementAndGet();
     }
 
     @Override
     protected void clearPending() {
-        ThreadLocalState r = STATE.get();
-        if (r.pending) {
-            Interruptable action = null;
-            synchronized (r) {
-                if (r.pending) {
-                    r.pending = false;
-                    PENDING_COUNT.decrementAndGet();
-                    action = r.interruptableAction;
-                }
-            }
-            if (action != null) {
-                action.interrupted();
-            }
-        }
-    }
-
-    @Override
-    public void setBlocked(Interruptable interruptable) {
-        ThreadLocalState r = STATE.get();
-        poll();
-        assert r.interruptableAction == null : "Thread is already blocked. Call CompilerDirectives.clearSafepointsBlocked() first.";
-        r.interruptableAction = interruptable;
-    }
-
-    @Override
-    public Interruptable clearBlocked() {
-        ThreadLocalState r = STATE.get();
-        Interruptable interruptable = r.interruptableAction;
-        assert interruptable != null : "Thread is not blocked. Call CompilerDirectives.setSafepointsBlocked first.";
-        r.interruptableAction = null;
-        poll();
-        return interruptable;
-    }
-
-    @Override
-    public void disable() {
-        ThreadLocalState s = STATE.get();
-        s.disabledCount++;
-    }
-
-    @Override
-    public void enable() {
-        ThreadLocalState s = STATE.get();
-        s.disabledCount--;
-        assert s.disabledCount >= 0 : "cannot enable if not disabled";
-    }
-
-    static final class ThreadLocalState {
-
-        volatile boolean pending;
-        int disabledCount;
-        volatile Interruptable interruptableAction;
-
+        PENDING_COUNT.decrementAndGet();
     }
 
 }

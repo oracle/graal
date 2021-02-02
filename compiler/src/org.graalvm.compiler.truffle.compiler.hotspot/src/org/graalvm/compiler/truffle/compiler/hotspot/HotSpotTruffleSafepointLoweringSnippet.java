@@ -83,18 +83,11 @@ public final class HotSpotTruffleSafepointLoweringSnippet implements Snippets {
     // that the names of the actual fields are only known by HotSpotTruffleCompilerRuntime
     // implementations.
     static final LocationIdentity PENDING_HANDSHAKE_LOCATION = NamedLocationIdentity.mutable("JavaThread::<pending_handshake>");
-    static final LocationIdentity DISABLED_HANDSHAKE_LOCATION = NamedLocationIdentity.mutable("JavaThread::<disabled_handshake>");
 
     @Fold
     public static int pendingHandshakeOffset() {
         HotSpotTruffleCompilerRuntime runtime = (HotSpotTruffleCompilerRuntime) TruffleCompilerRuntime.getRuntime();
         return runtime.getThreadLocalPendingHandshakeOffset();
-    }
-
-    @Fold
-    public static int disabledHandshakeOffset() {
-        HotSpotTruffleCompilerRuntime runtime = (HotSpotTruffleCompilerRuntime) TruffleCompilerRuntime.getRuntime();
-        return runtime.getThreadLocalDisabledHandshakeOffset();
     }
 
     /**
@@ -104,11 +97,9 @@ public final class HotSpotTruffleSafepointLoweringSnippet implements Snippets {
     @Snippet
     private static void pollSnippet() {
         Word thread = CurrentJavaThreadNode.get();
-        if (BranchProbabilityNode.probability(BranchProbabilityNode.VERY_SLOW_PATH_PROBABILITY,//
+        if (BranchProbabilityNode.probability(BranchProbabilityNode.VERY_SLOW_PATH_PROBABILITY,
                         thread.readInt(pendingHandshakeOffset(), PENDING_HANDSHAKE_LOCATION) != 0)) {
-            if (thread.readInt(disabledHandshakeOffset(), DISABLED_HANDSHAKE_LOCATION) == 0) {
-                foreignPoll(THREAD_LOCAL_HANDSHAKE);
-            }
+            foreignPoll(THREAD_LOCAL_HANDSHAKE);
         }
     }
 
@@ -117,9 +108,9 @@ public final class HotSpotTruffleSafepointLoweringSnippet implements Snippets {
 
     static class Templates extends AbstractTemplates {
 
-        private final SnippetInfo pollSnippet = snippet(HotSpotTruffleSafepointLoweringSnippet.class, "pollSnippet", PENDING_HANDSHAKE_LOCATION, DISABLED_HANDSHAKE_LOCATION);
+        private final SnippetInfo pollSnippet = snippet(HotSpotTruffleSafepointLoweringSnippet.class, "pollSnippet", PENDING_HANDSHAKE_LOCATION);
 
-        public Templates(OptionValues options,
+        Templates(OptionValues options,
                         Iterable<DebugHandlersFactory> factories,
                         HotSpotProviders providers,
                         TargetDescription target) {

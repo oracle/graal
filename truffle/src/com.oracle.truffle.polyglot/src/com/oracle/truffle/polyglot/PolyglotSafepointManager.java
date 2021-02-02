@@ -52,7 +52,9 @@ import java.util.concurrent.TimeUnit;
 import java.util.concurrent.TimeoutException;
 import java.util.function.Consumer;
 
+import com.oracle.truffle.api.ThreadLocalAccess;
 import com.oracle.truffle.api.impl.ThreadLocalHandshake;
+import com.oracle.truffle.api.nodes.Node;
 
 final class PolyglotSafepointManager {
 
@@ -77,7 +79,7 @@ final class PolyglotSafepointManager {
     }
 
     static Future<Void> runThreadLocal(PolyglotContextImpl context,
-                    Thread[] threads, Consumer<Thread> action, boolean async) {
+                    Thread[] threads, Consumer<ThreadLocalAccess> action, boolean async) {
 
         // lock to stop new threads
         CountDownLatch doneLatch;
@@ -108,21 +110,41 @@ final class PolyglotSafepointManager {
             TL_HANDSHAKE.runThreadLocal(context.engine.getDummyCallTarget(context), activeThreads, handshake);
         }
 
-        TL_HANDSHAKE.poll();
+        TL_HANDSHAKE.poll(null);
         return new ThreadLocalFuture(doneLatch);
     }
 
-    /*
-     * We only allow carefully white-listed exceptions to be thrown from thread local handshakes.
-     * They might be dangerous as certain exception handles can be skipped. We therefore only allow
-     * cancellation exceptions to be thrown which guarantee that the context is immediately closed.
-     *
-     * This is different to the deprecated Thread.stop() as we can guarantee that no values from
-     * this context can be used from now on.
-     */
-    private static boolean isAllowedException(Throwable t) {
-        return true;
-// return t instanceof CancelExecution;
+    static final class PolyglotTLAccess extends ThreadLocalAccess {
+
+        final Thread thread;
+        final Node location;
+        volatile boolean invalid;
+
+        PolyglotTLAccess(Thread thread, Node location) {
+            super(PolyglotImpl.getInstance());
+            this.thread = thread;
+            this.location = location;
+        }
+
+        @Override
+        public Node getLocation() {
+            checkInvalid();
+            return location;
+        }
+
+        @Override
+        public Thread getThread() {
+            checkInvalid();
+            return Thread.currentThread();
+        }
+
+        private void checkInvalid() {
+            if (thread != Thread.currentThread()) {
+                throw new IllegalStateException("ThreadLocalAccess used on the wrong thread.");
+            } else if (invalid) {
+                throw new IllegalStateException("ThreadLocalAccess is no longer valid.");
+            }
+        }
     }
 
     private static class ThreadLocalFuture implements Future<Void> {
@@ -158,7 +180,7 @@ final class PolyglotSafepointManager {
         }
     }
 
-    private abstract static class AbstractTLHandshake implements Runnable {
+    private abstract static class AbstractTLHandshake implements Consumer<Node> {
 
         protected final PolyglotContextImpl context;
 
@@ -166,34 +188,55 @@ final class PolyglotSafepointManager {
             this.context = context;
         }
 
-        @Override
-        public void run() {
+        public final void accept(Node location) {
             Object prev = context.engine.enterIfNeeded(context);
             try {
-                runImpl();
+                PolyglotTLAccess access = new PolyglotTLAccess(Thread.currentThread(), location);
+                try {
+                    acceptImpl(access);
+                } finally {
+                    access.invalid = true;
+                }
             } finally {
                 context.engine.leaveIfNeeded(prev, context);
             }
         }
 
-        protected abstract void runImpl();
+        protected abstract void acceptImpl(PolyglotTLAccess access);
+    }
+
+    @SuppressWarnings("serial")
+    static class ExpectedException extends RuntimeException {
+
+        final Throwable inner;
+
+        ExpectedException(Throwable inner) {
+            this.inner = inner;
+        }
+
+        @SuppressWarnings("sync-override")
+        @Override
+        public Throwable fillInStackTrace() {
+            return this;
+        }
+
     }
 
     private static final class AsyncEvent extends AbstractTLHandshake {
 
-        private final Consumer<Thread> action;
+        private final Consumer<ThreadLocalAccess> action;
         private final CountDownLatch doneLatch;
 
-        AsyncEvent(PolyglotContextImpl context, Consumer<Thread> action, CountDownLatch doneLatch) {
+        AsyncEvent(PolyglotContextImpl context, Consumer<ThreadLocalAccess> action, CountDownLatch doneLatch) {
             super(context);
             this.action = action;
             this.doneLatch = doneLatch;
         }
 
         @Override
-        protected void runImpl() {
+        protected void acceptImpl(PolyglotTLAccess access) {
             try {
-                action.accept(Thread.currentThread());
+                action.accept(access);
             } finally {
                 doneLatch.countDown();
             }
@@ -202,11 +245,11 @@ final class PolyglotSafepointManager {
 
     private static final class SafepointEvent extends AbstractTLHandshake {
 
-        private final Consumer<Thread> action;
+        private final Consumer<ThreadLocalAccess> action;
         private final CountDownLatch awaitLatch;
         private final CountDownLatch doneLatch;
 
-        SafepointEvent(PolyglotContextImpl context, Thread[] threads, Consumer<Thread> action, CountDownLatch doneLatch) {
+        SafepointEvent(PolyglotContextImpl context, Thread[] threads, Consumer<ThreadLocalAccess> action, CountDownLatch doneLatch) {
             super(context);
             this.action = action;
             this.awaitLatch = new CountDownLatch(threads.length);
@@ -214,7 +257,7 @@ final class PolyglotSafepointManager {
         }
 
         @Override
-        protected void runImpl() {
+        protected void acceptImpl(PolyglotTLAccess access) {
             PolyglotThreadInfo thread;
             synchronized (context) {
                 thread = context.getCurrentThreadInfo();
@@ -232,7 +275,7 @@ final class PolyglotSafepointManager {
             thread.setSafepointActive(true);
             Throwable currentEx = null;
             try {
-                action.accept(Thread.currentThread());
+                action.accept(access);
             } catch (Throwable t) {
                 currentEx = t;
             } finally {

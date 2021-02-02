@@ -63,7 +63,6 @@ import static org.graalvm.compiler.truffle.common.hotspot.libgraal.TruffleFromLi
 import static org.graalvm.compiler.truffle.common.hotspot.libgraal.TruffleFromLibGraal.Id.GetOffsetStart;
 import static org.graalvm.compiler.truffle.common.hotspot.libgraal.TruffleFromLibGraal.Id.GetPosition;
 import static org.graalvm.compiler.truffle.common.hotspot.libgraal.TruffleFromLibGraal.Id.GetSuppliedString;
-import static org.graalvm.compiler.truffle.common.hotspot.libgraal.TruffleFromLibGraal.Id.GetThreadLocalDisabledHandshakeOffset;
 import static org.graalvm.compiler.truffle.common.hotspot.libgraal.TruffleFromLibGraal.Id.GetThreadLocalPendingHandshakeOffset;
 import static org.graalvm.compiler.truffle.common.hotspot.libgraal.TruffleFromLibGraal.Id.GetTruffleCallBoundaryMethods;
 import static org.graalvm.compiler.truffle.common.hotspot.libgraal.TruffleFromLibGraal.Id.GetURI;
@@ -504,11 +503,6 @@ final class TruffleFromLibGraalEntryPoints {
     @TruffleFromLibGraal(AddInlinedTarget)
     static void addInlinedTarget(Object inlining, Object target) {
         ((TruffleMetaAccessProvider) inlining).addInlinedTarget(((CompilableTruffleAST) target));
-    }
-
-    @TruffleFromLibGraal(GetThreadLocalDisabledHandshakeOffset)
-    static int getThreadLocalDisabledHandshakeOffset(Object truffleRuntime) {
-        return ((HotSpotTruffleCompilerRuntime) truffleRuntime).getThreadLocalDisabledHandshakeOffset();
     }
 
     @TruffleFromLibGraal(GetThreadLocalPendingHandshakeOffset)

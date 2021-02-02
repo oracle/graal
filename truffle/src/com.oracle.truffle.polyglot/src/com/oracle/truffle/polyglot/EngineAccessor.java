@@ -85,6 +85,7 @@ import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.ContextLocal;
 import com.oracle.truffle.api.ContextThreadLocal;
 import com.oracle.truffle.api.InstrumentInfo;
+import com.oracle.truffle.api.ThreadLocalAccess;
 import com.oracle.truffle.api.Truffle;
 import com.oracle.truffle.api.TruffleContext;
 import com.oracle.truffle.api.TruffleFile;
@@ -1391,7 +1392,7 @@ final class EngineAccessor extends Accessor {
         }
 
         @Override
-        public Future<Void> runThreadLocal(Object polyglotLanguageContext, Thread[] threads, Consumer<Thread> action, boolean async) {
+        public Future<Void> runThreadLocal(Object polyglotLanguageContext, Thread[] threads, Consumer<ThreadLocalAccess> action, boolean async) {
             PolyglotContextImpl context = ((PolyglotLanguageContext) polyglotLanguageContext).context;
             return PolyglotSafepointManager.runThreadLocal(context, threads, action, async);
         }

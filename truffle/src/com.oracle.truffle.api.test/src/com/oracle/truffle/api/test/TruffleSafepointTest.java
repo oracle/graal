@@ -53,19 +53,17 @@ import java.util.List;
 import java.util.Map;
 import java.util.Map.Entry;
 import java.util.Set;
-import java.util.concurrent.Callable;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.Future;
+import java.util.concurrent.Semaphore;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.TimeoutException;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.atomic.AtomicReference;
-import java.util.concurrent.locks.Lock;
-import java.util.concurrent.locks.ReentrantLock;
 import java.util.function.Consumer;
 
 import org.graalvm.polyglot.Context;
@@ -76,13 +74,16 @@ import org.junit.BeforeClass;
 import org.junit.Test;
 
 import com.oracle.truffle.api.CallTarget;
-import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
+import com.oracle.truffle.api.ThreadLocalAccess;
 import com.oracle.truffle.api.Truffle;
 import com.oracle.truffle.api.TruffleLanguage.Env;
+import com.oracle.truffle.api.TruffleSafepoint;
+import com.oracle.truffle.api.TruffleSafepoint.Interruptable;
 import com.oracle.truffle.api.TruffleStackTrace;
 import com.oracle.truffle.api.TruffleStackTraceElement;
 import com.oracle.truffle.api.frame.VirtualFrame;
+import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.api.nodes.RootNode;
 import com.oracle.truffle.api.test.polyglot.AbstractPolyglotTest;
 import com.oracle.truffle.api.test.polyglot.ProxyLanguage;
@@ -90,9 +91,11 @@ import com.oracle.truffle.api.test.polyglot.ProxyLanguage;
 public class TruffleSafepointTest extends AbstractPolyglotTest {
 
     private static final int[] THREAD_CONFIGS = new int[]{1, 4, 16};
-    private static final int[] ITERATION_CONFIGS = new int[]{1, 8, 64};
+    private static final int[] ITERATION_CONFIGS = new int[]{1, 8, 32};
     private static ExecutorService service;
     private static final AtomicBoolean CANCELLED = new AtomicBoolean();
+
+    private static final int TIMEOUT_SECONDS = 60;
 
     @BeforeClass
     public static void beforeClass() {
@@ -105,7 +108,7 @@ public class TruffleSafepointTest extends AbstractPolyglotTest {
         if (service != null) {
             CANCELLED.set(true);
             service.shutdown();
-            if (!service.awaitTermination(10, TimeUnit.SECONDS)) {
+            if (!service.awaitTermination(TIMEOUT_SECONDS, TimeUnit.SECONDS)) {
                 throw failTimeout(null);
             }
         }
@@ -141,35 +144,36 @@ public class TruffleSafepointTest extends AbstractPolyglotTest {
     }
 
     @Test
-    public void testSynchronousRecursiveError() throws InterruptedException, AssertionError {
-        TestSetup<Object> setup = setupSafepointLoop(1, () -> {
-            CompilerDirectives.safepoint();
-            return false;
+    public void testSynchronousRecursiveError() throws InterruptedException, AssertionError, ExecutionException {
+        AtomicBoolean stopped = new AtomicBoolean();
+        TestSetup<Object> setup = setupSafepointLoop(1, (node) -> {
+            TruffleSafepoint.poll(node);
+            return stopped.get();
         });
         Future<Object> future = setup.futures.get(0);
 
-        Consumer<Thread> sync = new Consumer<Thread>() {
+        AtomicBoolean error = new AtomicBoolean();
+        Consumer<ThreadLocalAccess> sync = new Consumer<ThreadLocalAccess>() {
             @Override
-            public void accept(Thread outerThread) {
+            public void accept(ThreadLocalAccess outer) {
                 /*
                  * Synchronous inner safe point scheduling is disallowed as this is prone for
                  * deadlocks.
                  */
-                setup.env.runThreadLocalSynchronous(null, (innerThread) -> {
-                });
+                try {
+                    setup.env.runThreadLocalSynchronous(null, (inner) -> {
+                    });
+                    fail();
+                } catch (AssertionError e) {
+                    assertEquals("Recursive synchronous safepoint detected.", e.getMessage());
+                    error.set(true);
+                }
             }
         };
         setup.env.runThreadLocalSynchronous(null, sync);
-
-        try {
-            future.get();
-            fail();
-        } catch (ExecutionException e) {
-            if (!(e.getCause() instanceof AssertionError)) {
-                throw new AssertionError(e);
-            }
-            assertEquals("Recursive synchronous safepoint detected.", e.getCause().getMessage());
-        }
+        stopped.set(true);
+        future.get();
+        assertTrue(error.get());
     }
 
     @Test
@@ -177,8 +181,8 @@ public class TruffleSafepointTest extends AbstractPolyglotTest {
         forEachConfig((threads, events) -> {
             AtomicBoolean stopped = new AtomicBoolean();
 
-            TestSetup<Object> setup = setupSafepointLoop(threads, () -> {
-                CompilerDirectives.safepoint();
+            TestSetup<Object> setup = setupSafepointLoop(threads, (node) -> {
+                TruffleSafepoint.poll(node);
                 return stopped.get();
             });
 
@@ -230,8 +234,8 @@ public class TruffleSafepointTest extends AbstractPolyglotTest {
         forEachConfig((threads, events) -> {
             AtomicBoolean stopped = new AtomicBoolean();
 
-            TestSetup<Object> setup = setupSafepointLoop(threads, () -> {
-                CompilerDirectives.safepoint();
+            TestSetup<Object> setup = setupSafepointLoop(threads, (node) -> {
+                TruffleSafepoint.poll(node);
                 return stopped.get();
             });
 
@@ -284,17 +288,18 @@ public class TruffleSafepointTest extends AbstractPolyglotTest {
             AtomicBoolean stopped = new AtomicBoolean(false);
             AtomicBoolean disabled = new AtomicBoolean(true);
 
-            TestSetup<Object> setup = setupSafepointLoop(threads, () -> {
-                CompilerDirectives.disableSafepoints();
+            TestSetup<Object> setup = setupSafepointLoop(threads, (node) -> {
+                TruffleSafepoint config = TruffleSafepoint.getCurrent();
+                boolean prev = config.setEnabled(false);
                 try {
                     while (true) {
-                        CompilerDirectives.safepoint();
+                        TruffleSafepoint.poll(node);
                         if (isStopped(stopped)) {
                             return true;
                         }
                     }
                 } finally {
-                    CompilerDirectives.enableSafepoints();
+                    config.setEnabled(prev);
                 }
             });
 
@@ -329,8 +334,8 @@ public class TruffleSafepointTest extends AbstractPolyglotTest {
         forEachConfig((threads, events) -> {
             AtomicBoolean stopped = new AtomicBoolean(false);
 
-            TestSetup<Object> setup = setupSafepointLoop(threads, () -> {
-                CompilerDirectives.safepoint();
+            TestSetup<Object> setup = setupSafepointLoop(threads, (node) -> {
+                TruffleSafepoint.poll(node);
                 return stopped.get();
             });
 
@@ -339,7 +344,7 @@ public class TruffleSafepointTest extends AbstractPolyglotTest {
             List<List<List<TruffleStackTraceElement>>> lists = new ArrayList<>();
             for (int i = 0; i < events; i++) {
                 List<List<TruffleStackTraceElement>> stackTraces = new ArrayList<>();
-                setup.env.runThreadLocalSynchronous(null, (t) -> {
+                setup.env.runThreadLocalSynchronous(null, (access) -> {
                     RuntimeException e = new RuntimeException();
                     TruffleStackTrace.fillIn(e);
                     synchronized (stackTraces) {
@@ -371,8 +376,8 @@ public class TruffleSafepointTest extends AbstractPolyglotTest {
 
             AtomicReference<CountDownLatch> latchRef = new AtomicReference<>(null);
             List<Throwable> exceptions = Collections.synchronizedList(new ArrayList<>());
-            TestSetup<Object> setup = setupSafepointLoop(threads, () -> {
-                CompilerDirectives.safepoint();
+            TestSetup<Object> setup = setupSafepointLoop(threads, (node) -> {
+                TruffleSafepoint.poll(node);
                 return stopped.get();
             }, (e) -> {
                 exceptions.add(e);
@@ -386,7 +391,7 @@ public class TruffleSafepointTest extends AbstractPolyglotTest {
 
                 String testId = "test " + i + " of " + events;
 
-                setup.env.runThreadLocalSynchronous(null, (t) -> {
+                setup.env.runThreadLocalSynchronous(null, (access) -> {
                     // the only exception that is allowed to be thrown and not just logged
                     throw new RuntimeException(testId);
                 });
@@ -414,48 +419,67 @@ public class TruffleSafepointTest extends AbstractPolyglotTest {
     public void testInterrupting() {
         forEachConfig((threads, events) -> {
             AtomicBoolean stopped = new AtomicBoolean(false);
-
-            Lock lock = new ReentrantLock();
-            TestSetup<Object> setup = setupSafepointLoop(threads, () -> {
-                CompilerDirectives.setSafepointsBlocked(CompilerDirectives.THREAD_INTERRUPTION);
+            Semaphore semaphore = new Semaphore(threads);
+            TestSetup<Object> setup = setupSafepointLoop(threads, (node) -> {
+                TruffleSafepoint config = TruffleSafepoint.getCurrent();
+                Interruptable prev = config.setBlocked(TruffleSafepoint.THREAD_INTERRUPTION);
                 try {
-                    lockCooperatively(lock);
+                    lockCooperatively(node, semaphore);
                 } finally {
-                    CompilerDirectives.clearSafepointsBlocked();
+                    config.setBlocked(prev);
                 }
-                assert !Thread.interrupted() : "not interrupted";
+                assert !Thread.interrupted() : "invalid trailing interrupted state";
                 return stopped.get();
             });
 
-            AtomicInteger eventCounter = new AtomicInteger();
-            ActionCollector runnable = new ActionCollector(eventCounter);
+            try {
+                AtomicInteger eventCounter = new AtomicInteger();
+                ActionCollector runnable = new ActionCollector(eventCounter);
+                List<Future<?>> threadLocals = new ArrayList<>();
 
-            for (int i = 0; i < events; i++) {
-                setup.env.runThreadLocalSynchronous(null, runnable);
+                for (int i = 0; i < events; i++) {
+                    threadLocals.add(setup.env.runThreadLocalAsynchronous(null, runnable));
+
+                    // after half of the events we let them run into the semaphore
+                    // this encourages race conditions between setting blocked and unlocking
+                    if (i == Math.floorDiv(events, 2)) {
+                        semaphore.acquireUninterruptibly(threads);
+                    }
+                }
+
+                // wait for all events to complete so we can reliably assert the events
+                for (Future<?> f : threadLocals) {
+                    try {
+                        f.get();
+                    } catch (InterruptedException | ExecutionException e) {
+                        throw new AssertionError(e);
+                    }
+                }
+
+                // events can happen in any order
+                assertActionsAnyOrder(threads, events, runnable);
+                semaphore.release(threads);
+
+            } finally {
+                // let the threads complete in an orderly fashing
+                stopped.set(true);
+                awaitFutures(setup.futures);
             }
-
-            stopped.set(true);
-            awaitFutures(setup.futures);
-            // events can happen in any order
-            assertActionsAnyOrder(threads, events, runnable);
         });
     }
 
     @TruffleBoundary
-    private static void lockCooperatively(Lock lock) {
-        try {
-            while (true) {
-                try {
-                    lock.lockInterruptibly();
-                    break;
-                } catch (InterruptedException e) {
-                    CompilerDirectives.safepoint();
-                    continue;
-                }
+    private static void lockCooperatively(Node node, Semaphore semaphore) {
+        while (true) {
+            try {
+                semaphore.acquire();
+                break;
+            } catch (InterruptedException e) {
+                TruffleSafepoint.poll(node);
+                continue;
             }
-        } finally {
-            lock.unlock();
         }
+        semaphore.release();
     }
 
     @FunctionalInterface
@@ -507,7 +531,7 @@ public class TruffleSafepointTest extends AbstractPolyglotTest {
 
     private static void waitOrFail(Future<?> future) throws AssertionError {
         try {
-            future.get(20000, TimeUnit.MILLISECONDS);
+            future.get(TIMEOUT_SECONDS, TimeUnit.SECONDS);
         } catch (InterruptedException e) {
             throw new AssertionError(e);
         } catch (ExecutionException e) {
@@ -527,12 +551,12 @@ public class TruffleSafepointTest extends AbstractPolyglotTest {
         throw new AssertionError("Timed out waiting for threads", e);
     }
 
-    private <T> TestSetup<T> setupSafepointLoop(int threads, Callable<Boolean> callable) {
+    private <T> TestSetup<T> setupSafepointLoop(int threads, NodeCallable callable) {
         return setupSafepointLoop(threads, callable, null);
     }
 
     @SuppressWarnings("unchecked")
-    private <T> TestSetup<T> setupSafepointLoop(int threads, Callable<Boolean> callable, Consumer<Throwable> exHandler) {
+    private <T> TestSetup<T> setupSafepointLoop(int threads, NodeCallable callable, Consumer<Throwable> exHandler) {
         Env env = createTestContext();
         CountDownLatch latch = new CountDownLatch(threads);
         CallTarget target = createSafepointLoopTarget(env, callable, latch);
@@ -558,7 +582,16 @@ public class TruffleSafepointTest extends AbstractPolyglotTest {
             }));
         }
         try {
-            if (!latch.await(20, TimeUnit.SECONDS)) {
+            if (!latch.await(TIMEOUT_SECONDS, TimeUnit.SECONDS)) {
+                for (Future<T> future : futures) {
+                    if (future.isDone()) {
+                        try {
+                            future.get();
+                        } catch (ExecutionException e) {
+                            throw new AssertionError(e.getCause());
+                        }
+                    }
+                }
                 throw new AssertionError();
             }
         } catch (InterruptedException e) {
@@ -567,7 +600,14 @@ public class TruffleSafepointTest extends AbstractPolyglotTest {
         return new TestSetup<>(env, futures, target);
     }
 
-    private static CallTarget createSafepointLoopTarget(Env env, Callable<Boolean> callable, CountDownLatch latch) {
+    @FunctionalInterface
+    interface NodeCallable {
+
+        boolean call(Node node);
+
+    }
+
+    private static CallTarget createSafepointLoopTarget(Env env, NodeCallable callable, CountDownLatch latch) {
         Object targetEnter = env.getContext().enter(null);
         CallTarget target = Truffle.getRuntime().createCallTarget(new RootNode(null) {
             @SuppressWarnings("unchecked")
@@ -580,7 +620,7 @@ public class TruffleSafepointTest extends AbstractPolyglotTest {
                     }
                     Boolean result;
                     try {
-                        result = callable.call();
+                        result = callable.call(this);
                     } catch (RuntimeException e) {
                         throw e;
                     } catch (Exception e) {
@@ -620,7 +660,6 @@ public class TruffleSafepointTest extends AbstractPolyglotTest {
         if (Truffle.getRuntime().getName().contains("Graal")) {
             b.option("engine.CompileImmediately", "true");
             b.option("engine.BackgroundCompilation", "false");
-// b.option("engine.TraceCompilation", "true");
         }
         Context c = b.build();
         c.enter();
@@ -643,7 +682,7 @@ public class TruffleSafepointTest extends AbstractPolyglotTest {
     private static void awaitFutures(List<Future<Object>> futures) {
         for (Future<?> future : futures) {
             try {
-                Object result = future.get(20, TimeUnit.SECONDS);
+                Object result = future.get(TIMEOUT_SECONDS, TimeUnit.SECONDS);
                 assertEquals(Boolean.TRUE, result);
             } catch (ExecutionException e) {
                 throw new AssertionError(e.getCause());
@@ -659,7 +698,7 @@ public class TruffleSafepointTest extends AbstractPolyglotTest {
     static class SafepointPerformed extends RuntimeException {
     }
 
-    static class ActionCollector implements Consumer<Thread> {
+    static class ActionCollector implements Consumer<ThreadLocalAccess> {
         final List<Thread> actions = Collections.synchronizedList(new ArrayList<>());
         final List<Integer> ids = Collections.synchronizedList(new ArrayList<>());
         final AtomicInteger counter;
@@ -672,9 +711,9 @@ public class TruffleSafepointTest extends AbstractPolyglotTest {
             this.counter = counter;
         }
 
-        public void accept(Thread t) {
-            assertEquals(t, Thread.currentThread());
-            actions.add(Thread.currentThread());
+        public void accept(ThreadLocalAccess t) {
+            assertSame(Thread.currentThread(), t.getThread());
+            actions.add(t.getThread());
             ids.add(counter.incrementAndGet());
         }
     }

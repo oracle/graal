@@ -3458,16 +3458,16 @@ public abstract class TruffleLanguage<C> {
         }
 
         @TruffleBoundary
-        public Future<Void> runThreadLocalAsynchronous(Thread[] threads, Consumer<Thread> action) {
+        public Future<Void> runThreadLocalAsynchronous(Thread[] threads, Consumer<ThreadLocalAccess> action) {
             return runThreadLocal(threads, action, true);
         }
 
         @TruffleBoundary
-        public Future<Void> runThreadLocalSynchronous(Thread[] threads, Consumer<Thread> action) {
+        public Future<Void> runThreadLocalSynchronous(Thread[] threads, Consumer<ThreadLocalAccess> action) {
             return runThreadLocal(threads, action, false);
         }
 
-        private Future<Void> runThreadLocal(Thread[] threads, Consumer<Thread> action, boolean async) {
+        private Future<Void> runThreadLocal(Thread[] threads, Consumer<ThreadLocalAccess> action, boolean async) {
             Objects.requireNonNull(action);
             if (threads != null) {
                 for (int i = 0; i < threads.length; i++) {

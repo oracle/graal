@@ -26,17 +26,18 @@ package org.graalvm.compiler.truffle.compiler.phases;
 
 import org.graalvm.compiler.phases.common.LoopSafepointInsertionPhase;
 import org.graalvm.compiler.phases.tiers.Suites;
+import org.graalvm.compiler.phases.util.Providers;
 
 public final class TruffleCompilerPhases {
 
     private TruffleCompilerPhases() {
     }
 
-    public static void register(Suites suites) {
+    public static void register(Providers providers, Suites suites) {
         if (suites.isImmutable()) {
             throw new IllegalStateException("Suites are already immutable.");
         }
-        suites.getMidTier().findPhase(LoopSafepointInsertionPhase.class).add(new TruffleSafepointInsertionPhase());
+        suites.getMidTier().findPhase(LoopSafepointInsertionPhase.class).add(new TruffleSafepointInsertionPhase(providers));
     }
 
 }
