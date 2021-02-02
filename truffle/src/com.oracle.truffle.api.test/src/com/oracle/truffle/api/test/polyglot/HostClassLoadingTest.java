@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2020, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2021, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -72,6 +72,7 @@ import org.junit.Test;
 import com.oracle.truffle.api.TruffleFile;
 import com.oracle.truffle.api.TruffleLanguage.Env;
 import com.oracle.truffle.api.interop.ArityException;
+import com.oracle.truffle.api.interop.InteropException;
 import com.oracle.truffle.api.interop.InteropLibrary;
 import com.oracle.truffle.api.interop.UnknownIdentifierException;
 import com.oracle.truffle.api.interop.UnsupportedMessageException;
@@ -294,6 +295,29 @@ public class HostClassLoadingTest extends AbstractPolyglotTest {
             Files.deleteIfExists(jar2);
             deleteDir(tempDir1);
             deleteDir(tempDir2);
+        }
+    }
+
+    @Test
+    public void testMultipleJarStreams() throws IOException, InteropException {
+        setupEnv();
+
+        final Class<?> hostClass = HostClassLoadingTestClass3.class;
+        Path tempDir = renameHostClass(hostClass, TEST_REPLACE_CLASS_NAME);
+        Path jar = createJar(tempDir);
+        try {
+            languageEnv.addToHostClassPath(languageEnv.getPublicTruffleFile(jar.toString()));
+
+            Object statics = languageEnv.lookupHostSymbol(hostClass.getPackage().getName() + "." + TEST_REPLACE_CLASS_NAME);
+            Object result = InteropLibrary.getUncached(statics).invokeMember(statics, "testMethod");
+
+            try (InputStream stream = hostClass.getResourceAsStream("/" + HostClassLoadingTestClass3.class.getName().replace('.', '/') + ".class")) {
+                assertNotNull(stream);
+                assertEquals(HostClassLoadingTestClass3.countBytes(stream), result);
+            }
+        } finally {
+            Files.deleteIfExists(jar);
+            deleteDir(tempDir);
         }
     }
 
