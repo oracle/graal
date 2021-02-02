@@ -28,10 +28,16 @@ import org.graalvm.compiler.core.common.type.StampPair;
 import org.graalvm.compiler.debug.DebugContext;
 import org.graalvm.compiler.java.GraphBuilderPhase.Instance;
 import org.graalvm.compiler.nodes.AbstractBeginNode;
+import org.graalvm.compiler.nodes.AbstractMergeNode;
 import org.graalvm.compiler.nodes.CallTargetNode.InvokeKind;
 import org.graalvm.compiler.nodes.ConstantNode;
+import org.graalvm.compiler.nodes.IfNode;
+import org.graalvm.compiler.nodes.LogicNode;
 import org.graalvm.compiler.nodes.UnwindNode;
 import org.graalvm.compiler.nodes.ValueNode;
+import org.graalvm.compiler.nodes.extended.BranchProbabilityNode;
+import org.graalvm.compiler.nodes.extended.BytecodeExceptionNode;
+import org.graalvm.compiler.nodes.extended.GuardingNode;
 import org.graalvm.compiler.nodes.graphbuilderconf.GraphBuilderConfiguration;
 import org.graalvm.compiler.nodes.graphbuilderconf.IntrinsicContext;
 import org.graalvm.compiler.nodes.java.ExceptionObjectNode;
@@ -125,5 +131,16 @@ public class HostedGraphKit extends SubstrateGraphKit {
         } catch (NoSuchFieldException e) {
             throw VMError.shouldNotReachHere(e);
         }
+    }
+
+    public GuardingNode createCheckThrowingBytecodeException(LogicNode condition, BytecodeExceptionNode.BytecodeExceptionKind exceptionKind, ValueNode... arguments) {
+        IfNode ifNode = startIf(condition, BranchProbabilityNode.FAST_PATH_PROBABILITY);
+        elsePart();
+        BytecodeExceptionNode exception = append(new BytecodeExceptionNode(getMetaAccess(), exceptionKind, arguments));
+        setStateAfterException(getFrameState(), bci(), exception);
+        append(new UnwindNode(exception));
+        AbstractMergeNode merge = endIf();
+        assert merge == null;
+        return ifNode.trueSuccessor();
     }
 }

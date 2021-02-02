@@ -45,8 +45,8 @@ public final class MergeNode extends AbstractMergeNode {
             node.setNext(null);
             EndNode forwardEnd = node.forwardEndAt(0);
             forwardEnd.replaceAtPredecessor(currentNext);
-            node.markDeleted();
-            forwardEnd.markDeleted();
+            node.safeDelete();
+            forwardEnd.safeDelete();
         }
     }
 

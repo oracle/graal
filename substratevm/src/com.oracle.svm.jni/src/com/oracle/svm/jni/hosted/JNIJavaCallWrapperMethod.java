@@ -39,12 +39,13 @@ import org.graalvm.compiler.core.common.type.TypeReference;
 import org.graalvm.compiler.debug.DebugContext;
 import org.graalvm.compiler.java.FrameStateBuilder;
 import org.graalvm.compiler.nodes.AbstractMergeNode;
+import org.graalvm.compiler.nodes.BeginNode;
 import org.graalvm.compiler.nodes.CallTargetNode.InvokeKind;
 import org.graalvm.compiler.nodes.ConstantNode;
-import org.graalvm.compiler.nodes.FixedGuardNode;
+import org.graalvm.compiler.nodes.EndNode;
 import org.graalvm.compiler.nodes.IfNode;
-import org.graalvm.compiler.nodes.LogicConstantNode;
 import org.graalvm.compiler.nodes.LogicNode;
+import org.graalvm.compiler.nodes.MergeNode;
 import org.graalvm.compiler.nodes.NodeView;
 import org.graalvm.compiler.nodes.PiNode;
 import org.graalvm.compiler.nodes.StructuredGraph;
@@ -56,6 +57,7 @@ import org.graalvm.compiler.nodes.calc.ObjectEqualsNode;
 import org.graalvm.compiler.nodes.calc.SignExtendNode;
 import org.graalvm.compiler.nodes.calc.ZeroExtendNode;
 import org.graalvm.compiler.nodes.extended.BranchProbabilityNode;
+import org.graalvm.compiler.nodes.extended.GuardingNode;
 import org.graalvm.compiler.nodes.java.InstanceOfNode;
 import org.graalvm.compiler.nodes.memory.OnHeapMemoryAccess.BarrierType;
 import org.graalvm.compiler.nodes.memory.address.OffsetAddressNode;
@@ -89,8 +91,6 @@ import com.oracle.svm.jni.nativeapi.JNIValue;
 
 import jdk.vm.ci.meta.Constant;
 import jdk.vm.ci.meta.ConstantPool;
-import jdk.vm.ci.meta.DeoptimizationAction;
-import jdk.vm.ci.meta.DeoptimizationReason;
 import jdk.vm.ci.meta.JavaConstant;
 import jdk.vm.ci.meta.JavaKind;
 import jdk.vm.ci.meta.JavaType;
@@ -193,8 +193,7 @@ public final class JNIJavaCallWrapperMethod extends JNIGeneratedMethod {
     public StructuredGraph buildGraph(DebugContext debug, ResolvedJavaMethod method, HostedProviders providers, Purpose purpose) {
         UniverseMetaAccess metaAccess = (UniverseMetaAccess) providers.getMetaAccess();
         JNIGraphKit kit = new JNIGraphKit(debug, providers, method);
-        StructuredGraph graph = kit.getGraph();
-        FrameStateBuilder state = new FrameStateBuilder(null, method, graph);
+        FrameStateBuilder state = new FrameStateBuilder(null, method, kit.getGraph());
         state.initializeForMethodStart(null, true, providers.getGraphBuilderPlugins());
 
         JavaKind vmThreadKind = metaAccess.lookupJavaType(JNIEnvironment.class).getJavaKind();
@@ -214,25 +213,21 @@ public final class JNIJavaCallWrapperMethod extends JNIGeneratedMethod {
             unboxedHandle = kit.unboxHandle(handle);
         }
 
-        /* Dynamically type-check the call arguments. */
-        IfNode ifNode = kit.startIf(null, BranchProbabilityNode.FAST_PATH_PROBABILITY);
-        kit.thenPart();
-        LogicNode typeChecks = LogicConstantNode.tautology(kit.getGraph());
+        /*
+         * Dynamically type-check the call arguments. Use a chain of IfNodes rather than a logic
+         * expression that can become too complex for the static analysis.
+         */
+        List<EndNode> illegalTypeEnds = new ArrayList<>();
         int argIndex = invokeMethod.hasReceiver() ? 1 : 0;
         ValueNode[] args = new ValueNode[argIndex + argsWithTypes.size()];
         for (Pair<ValueNode, ResolvedJavaType> argsWithType : argsWithTypes) {
             ValueNode value = argsWithType.getLeft();
             ResolvedJavaType type = argsWithType.getRight();
             if (!type.isPrimitive() && !type.isJavaLangObject()) {
-                TypeReference typeRef = TypeReference.createTrusted(kit.getAssumptions(), type);
-                LogicNode instanceOf = kit.unique(InstanceOfNode.createAllowNull(typeRef, value, null, null));
-                typeChecks = LogicNode.and(typeChecks, instanceOf, BranchProbabilityNode.FAST_PATH_PROBABILITY);
-                FixedGuardNode guard = kit.append(new FixedGuardNode(instanceOf, DeoptimizationReason.ClassCastException, DeoptimizationAction.None, false));
-                value = kit.append(PiNode.create(value, StampFactory.object(typeRef), guard));
+                value = typeChecked(kit, value, type, illegalTypeEnds);
             }
             args[argIndex++] = value;
         }
-        ifNode.setCondition(typeChecks); // safe because logic nodes are floating
 
         /* Dynamically type-check the receiver type, and invoke the method if it matches. */
         InvokeKind invokeKind = invokeMethod.isStatic() ? InvokeKind.Static : //
@@ -265,53 +260,73 @@ public final class JNIJavaCallWrapperMethod extends JNIGeneratedMethod {
             merge.setStateAfter(kit.getFrameState().create(kit.bci(), merge));
             returnValue = kit.unique(new ValuePhiNode(StampFactory.object(), merge, new ValueNode[]{createdReceiverOrException, unboxedReceiverOrException}));
         } else {
-            /*
-             * This is a JNI call to `Call<Type>Method` to a non-static method. The instanceof check
-             * on the receiver can be placed in the same `if` as the type check for the method
-             * arguments (as long as the handle was unboxed before the if, because all other nodes
-             * are floating).
-             */
-            TypeReference expectedReceiverType = TypeReference.createTrusted(kit.getAssumptions(), invokeMethod.getDeclaringClass());
-            LogicNode instanceOf = kit.getGraph().addOrUniqueWithInputs(InstanceOfNode.create(expectedReceiverType, unboxedHandle));
-            typeChecks = LogicConstantNode.and(typeChecks, instanceOf, BranchProbabilityNode.FAST_PATH_PROBABILITY);
-            ifNode.setCondition(typeChecks); // safe because logic nodes are floating
-            FixedGuardNode guard = kit.append(new FixedGuardNode(instanceOf, DeoptimizationReason.ClassCastException, DeoptimizationAction.None, false));
-            ValueNode piNode = PiNode.create(unboxedHandle, StampFactory.object(expectedReceiverType), guard);
-            if (piNode != unboxedHandle) {
-                kit.append(piNode);
-            }
-            args[0] = unboxedHandle;
+            // This is a JNI call via `Call<Type>Method` to a non-static method
+            args[0] = typeChecked(kit, unboxedHandle, invokeMethod.getDeclaringClass(), illegalTypeEnds);
             returnValue = support.createCallTypeMethodCall(kit, invokeMethod, invokeKind, state, args);
         }
+        JavaKind returnKind = (returnValue != null) ? returnValue.getStackKind() : JavaKind.Void;
 
-        /* If argument types are wrong, throw an exception. */
-        kit.elsePart();
-        ConstantNode exceptionObject = kit.createObject(cachedArgumentClassCastException);
-        kit.setPendingException(exceptionObject);
+        if (!illegalTypeEnds.isEmpty()) {
+            /*
+             * The following is awkward because we need to maintain a last fixed node in GraphKit
+             * while building non-sequential control flow, so we append nodes and rewire control
+             * flow later. Be careful when making any changes.
+             */
+            BeginNode afterSuccess = kit.append(new BeginNode());
 
-        AbstractMergeNode merge = kit.endIf();
-        JavaKind returnKind = returnValue != null ? returnValue.getStackKind() : JavaKind.Void;
-        if (returnValue != null) {
-            /* Create Phi for the return value, with placeholder value on the exception branch. */
-            ValueNode typeMismatchResult = kit.unique(ConstantNode.defaultForKind(returnValue.getStackKind()));
-            ValueNode[] inputs = {returnValue, typeMismatchResult};
-            returnValue = kit.getGraph().addWithoutUnique(new ValuePhiNode(returnValue.stamp(NodeView.DEFAULT), merge, inputs));
-            state.push(returnKind, returnValue);
-            merge.setStateAfter(state.create(kit.bci(), merge));
-            state.pop(returnKind);
-            if (returnKind.isObject()) {
-                returnValue = kit.boxObjectInLocalHandle(returnValue);
+            MergeNode illegalTypesMerge = kit.append(new MergeNode());
+            illegalTypesMerge.replaceAtPredecessor(null);
+            for (EndNode end : illegalTypeEnds) {
+                illegalTypesMerge.addForwardEnd(end);
             }
-        } else {
-            merge.setStateAfter(state.create(kit.bci(), merge));
+            illegalTypesMerge.setStateAfter(state.create(kit.bci(), illegalTypesMerge));
+            ConstantNode exception = kit.createObject(cachedArgumentClassCastException);
+            kit.setPendingException(exception);
+            BeginNode afterIllegalType = kit.append(new BeginNode());
+            MergeNode.removeMergeIfDegenerated(illegalTypesMerge);
+
+            MergeNode returnMerge = kit.append(new MergeNode());
+            EndNode afterSuccessEnd = kit.add(new EndNode());
+            afterSuccess.setNext(afterSuccessEnd);
+            returnMerge.addForwardEnd(afterSuccessEnd);
+            EndNode afterIllegalTypeEnd = kit.add(new EndNode());
+            afterIllegalType.setNext(afterIllegalTypeEnd);
+            returnMerge.addForwardEnd(afterIllegalTypeEnd);
+
+            if (returnValue != null) {
+                // Create Phi for the return value, with null/zero/false on the exception branch.
+                ValueNode typeMismatchResult = kit.unique(ConstantNode.defaultForKind(returnValue.getStackKind()));
+                ValueNode[] inputs = {returnValue, typeMismatchResult};
+                returnValue = kit.getGraph().addWithoutUnique(new ValuePhiNode(returnValue.stamp(NodeView.DEFAULT), returnMerge, inputs));
+                state.push(returnKind, returnValue);
+                returnMerge.setStateAfter(state.create(kit.bci(), returnMerge));
+                state.pop(returnKind);
+            } else {
+                returnMerge.setStateAfter(state.create(kit.bci(), returnMerge));
+            }
+            kit.appendStateSplitProxy(state);
         }
 
-        kit.appendStateSplitProxy(state);
+        if (returnKind.isObject()) {
+            returnValue = kit.boxObjectInLocalHandle(returnValue);
+        }
+
         CEntryPointLeaveNode leave = new CEntryPointLeaveNode(LeaveAction.Leave);
         kit.append(leave);
         kit.createReturn(returnValue, returnKind);
 
         return kit.finalizeGraph();
+    }
+
+    private static PiNode typeChecked(JNIGraphKit kit, ValueNode value, ResolvedJavaType type, List<EndNode> illegalTypeEnds) {
+        TypeReference typeRef = TypeReference.createTrusted(kit.getAssumptions(), type);
+        LogicNode instanceOf = kit.unique(InstanceOfNode.createAllowNull(typeRef, value, null, null));
+        IfNode ifNode = kit.startIf(instanceOf, BranchProbabilityNode.FAST_PATH_PROBABILITY);
+        kit.elsePart();
+        EndNode end = kit.append(new EndNode());
+        illegalTypeEnds.add(end);
+        kit.endIf();
+        return kit.unique(new PiNode(value, StampFactory.object(typeRef), ifNode.trueSuccessor()));
     }
 
     /**
@@ -429,27 +444,28 @@ public final class JNIJavaCallWrapperMethod extends JNIGeneratedMethod {
 
         ResolvedJavaType receiverClass = invokeMethod.getDeclaringClass();
         TypeReference expectedTypeRef = TypeReference.createTrusted(kit.getAssumptions(), receiverClass);
-        /* Receiver must not be null, so we use an instanceof test is false for null values */
+        /* Receiver must not be null, in which case the instanceof test is false */
         LogicNode instanceOf = kit.unique(InstanceOfNode.create(expectedTypeRef, receiver, null, null));
-        kit.startIf(instanceOf, BranchProbabilityNode.FAST_PATH_PROBABILITY);
+        IfNode ifNode = kit.startIf(instanceOf, BranchProbabilityNode.FAST_PATH_PROBABILITY);
+        GuardingNode guard = ifNode.trueSuccessor();
 
         kit.thenPart();
-        FixedGuardNode guard = kit.append(new FixedGuardNode(instanceOf, DeoptimizationReason.ClassCastException, DeoptimizationAction.None, false));
-        args[0] = kit.append(PiNode.create(receiver, StampFactory.object(expectedTypeRef), guard));
+        args[0] = kit.append(PiNode.create(receiver, StampFactory.object(expectedTypeRef), guard.asNode()));
         ValueNode invokeResult = ImageSingletons.lookup(JNIJavaCallWrapperMethodSupport.class).createCallTypeMethodCall(kit, invokeMethod, invokeKind, state, args);
 
         kit.elsePart();
         kit.startIf(kit.unique(IsNullNode.create(receiver)), 0.5);
         kit.thenPart();
         ConstantNode nullExceptionObject = kit.createObject(cachedReceiverNullPointerException);
-        kit.setPendingException(nullExceptionObject);
         kit.elsePart();
         ConstantNode castExceptionObject = kit.createObject(cachedArgumentClassCastException);
-        kit.setPendingException(castExceptionObject);
         AbstractMergeNode nullCheckMerge = kit.endIf();
-        nullCheckMerge.setStateAfter(state.create(kit.bci(), nullCheckMerge));
         Stamp stamp = nullExceptionObject.stamp(NodeView.DEFAULT).meet(castExceptionObject.stamp(NodeView.DEFAULT));
         ValuePhiNode exceptionResult = kit.unique(new ValuePhiNode(stamp, nullCheckMerge, new ValueNode[]{nullExceptionObject, castExceptionObject}));
+        state.push(stamp.getStackKind(), exceptionResult);
+        nullCheckMerge.setStateAfter(state.create(kit.bci(), nullCheckMerge));
+        kit.setPendingException(exceptionResult);
+        state.pop(stamp.getStackKind());
 
         AbstractMergeNode receiverCheckMerge = kit.endIf();
         receiverCheckMerge.setStateAfter(state.create(kit.bci(), receiverCheckMerge));
