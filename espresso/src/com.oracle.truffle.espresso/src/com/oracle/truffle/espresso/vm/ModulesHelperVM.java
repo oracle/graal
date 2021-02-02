@@ -31,7 +31,7 @@ import com.oracle.truffle.espresso.descriptors.Symbol;
 import com.oracle.truffle.espresso.impl.ModuleTable;
 import com.oracle.truffle.espresso.impl.PackageTable;
 import com.oracle.truffle.espresso.jni.NativeEnv;
-import com.oracle.truffle.espresso.jni.Pointer;
+import com.oracle.truffle.espresso._native.Pointer;
 import com.oracle.truffle.espresso.meta.Meta;
 import com.oracle.truffle.espresso.runtime.StaticObject;
 import com.oracle.truffle.espresso.substitutions.Host;

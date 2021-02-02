@@ -5,8 +5,6 @@ import java.util.List;
 
 import com.oracle.truffle.api.interop.InteropLibrary;
 import com.oracle.truffle.api.interop.TruffleObject;
-import com.oracle.truffle.espresso.jni.Buffer;
-import com.oracle.truffle.espresso.jni.Pointer;
 import com.oracle.truffle.espresso.meta.EspressoError;
 
 /**

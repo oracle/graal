@@ -1,4 +1,4 @@
-package com.oracle.truffle.espresso.jni;
+package com.oracle.truffle.espresso._native;
 
 import static java.lang.annotation.ElementType.TYPE_USE;
 

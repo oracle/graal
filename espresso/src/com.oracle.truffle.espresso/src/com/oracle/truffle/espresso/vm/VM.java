@@ -112,7 +112,7 @@ import com.oracle.truffle.espresso.jni.JniImpl;
 import com.oracle.truffle.espresso.jni.JniVersion;
 import com.oracle.truffle.espresso.jni.NativeEnv;
 import com.oracle.truffle.espresso.jni.NativeLibrary;
-import com.oracle.truffle.espresso.jni.Pointer;
+import com.oracle.truffle.espresso._native.Pointer;
 import com.oracle.truffle.espresso.meta.EspressoError;
 import com.oracle.truffle.espresso.meta.JavaKind;
 import com.oracle.truffle.espresso.meta.Meta;

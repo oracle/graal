@@ -27,6 +27,7 @@ import java.util.logging.Level;
 
 import com.oracle.truffle.api.TruffleLogger;
 import com.oracle.truffle.api.exception.AbstractTruffleException;
+import com.oracle.truffle.espresso._native.Pointer;
 import org.graalvm.options.OptionValues;
 
 import com.oracle.truffle.api.CallTarget;

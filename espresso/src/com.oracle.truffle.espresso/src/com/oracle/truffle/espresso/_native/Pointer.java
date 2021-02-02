@@ -20,7 +20,7 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.truffle.espresso.jni;
+package com.oracle.truffle.espresso._native;
 
 import java.lang.annotation.ElementType;
 import java.lang.annotation.Retention;
