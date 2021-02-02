@@ -1751,6 +1751,21 @@ suite = {
       "workingSets" : "Graal,Truffle",
     },
 
+    "org.graalvm.compiler.truffle.compiler.aarch64" : {
+      "subDir" : "src",
+      "sourceDirs" : ["src"],
+      "dependencies" : [
+        "org.graalvm.compiler.replacements.aarch64",
+        "org.graalvm.compiler.truffle.compiler",
+      ],
+      "checkstyle" : "org.graalvm.compiler.graph",
+      "annotationProcessors" : [
+        "GRAAL_PROCESSOR",
+      ],
+      "javaCompliance" : "8+",
+      "workingSets" : "Graal,Truffle",
+    },
+
     "org.graalvm.compiler.truffle.runtime.serviceprovider" : {
       "subDir" : "src",
       "sourceDirs" : ["src"],
@@ -1884,6 +1899,7 @@ suite = {
       "dependencies" : [
         "org.graalvm.compiler.truffle.compiler",
         "org.graalvm.compiler.truffle.compiler.amd64",
+        "org.graalvm.compiler.truffle.compiler.aarch64",
         "org.graalvm.compiler.truffle.runtime",
         "org.graalvm.compiler.core.test",
         "truffle:TRUFFLE_SL_TEST",
@@ -2360,6 +2376,7 @@ suite = {
         "org.graalvm.compiler.hotspot",
         "org.graalvm.compiler.lir.aarch64",
         "org.graalvm.compiler.truffle.compiler.amd64",
+        "org.graalvm.compiler.truffle.compiler.aarch64",
         "org.graalvm.compiler.truffle.runtime.serviceprovider",
         "org.graalvm.compiler.truffle.runtime.hotspot",
         "org.graalvm.compiler.truffle.runtime.hotspot.java",
