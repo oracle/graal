@@ -45,6 +45,7 @@ import static org.graalvm.component.installer.BundleConstants.META_INF_PATH;
 import static org.graalvm.component.installer.BundleConstants.META_INF_PERMISSIONS_PATH;
 import static org.graalvm.component.installer.BundleConstants.META_INF_SYMLINKS_PATH;
 import org.graalvm.component.installer.Feedback;
+import org.graalvm.component.installer.SystemUtils;
 import org.graalvm.component.installer.model.ComponentInfo;
 import org.graalvm.component.installer.persist.ComponentPackageLoader;
 
@@ -155,7 +156,7 @@ public class JarMetaLoader extends ComponentPackageLoader {
         if (licPath == null) {
             return null;
         }
-        if (licPath.contains("://")) {
+        if (SystemUtils.isRemotePath(licPath)) {
             return licPath;
         }
         JarEntry je = jarFile.getJarEntry(licPath);
