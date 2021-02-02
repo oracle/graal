@@ -1286,7 +1286,7 @@ public final class Method extends Member<Signature> implements TruffleObject, Co
         public Object invokeMethod(Object callee, Object[] args) {
             if (getMethod().isRemovedByRedefition()) {
                 throw Meta.throwExceptionWithMessage(getMeta().java_lang_NoSuchMethodError,
-                        getMeta().toGuestString(getMethod().getDeclaringKlass().getNameAsString() + "." + getMethod().getName() + getMethod().getRawSignature()));
+                                getMeta().toGuestString(getMethod().getDeclaringKlass().getNameAsString() + "." + getMethod().getName() + getMethod().getRawSignature()));
             }
             return getMethod().invokeMethod(callee, args);
         }

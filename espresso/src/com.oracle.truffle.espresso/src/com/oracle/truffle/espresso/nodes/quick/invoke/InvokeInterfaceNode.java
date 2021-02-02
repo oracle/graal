@@ -110,7 +110,7 @@ public abstract class InvokeInterfaceNode extends QuickNode {
             Meta meta = resolutionSeed.getMeta();
             if (method == null) {
                 throw Meta.throwExceptionWithMessage(meta.java_lang_NoSuchMethodError,
-                        meta.toGuestString(resolutionSeed.getDeclaringKlass().getNameAsString() + "." + resolutionSeed.getName() + resolutionSeed.getRawSignature()));
+                                meta.toGuestString(resolutionSeed.getDeclaringKlass().getNameAsString() + "." + resolutionSeed.getName() + resolutionSeed.getRawSignature()));
             } else if (method.isStatic()) {
                 throw Meta.throwExceptionWithMessage(meta.java_lang_IncompatibleClassChangeError, "expected non-static method: " + method.getName());
             } else if (!method.isPublic()) {
