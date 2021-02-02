@@ -46,14 +46,11 @@ bench-micros-graal-dist-hwloc: ${bench-micros-graal-dist}{
 }
 
 bench-awfy-hwloc: ${bench-awfy} ${hwloc.bench-common} {
-  setup: ${bench-awfy.setup} ${hwloc.bench-common.setup}
+  setup: ${bench-awfy.setup}
   run: [
     [export, "LOGDIR=${PWD}"]
     ${export.node0}
-    ${hwloc.node} ${bench-jvmci.mx-awfy} ${bench-arguments} ${hwloc.cmd.background}
-    ${export.node1}
-    ${hwloc.node} ${bench-jvmci.mx-awfy} ${bench-arguments} ${hwloc.cmd.background}
-    [wait]
+    ${hwloc.node} ${bench-jvmci.mx-awfy} ${bench-arguments}
   ]
 }
 
@@ -76,26 +73,20 @@ bench-dacapo-timing-hwloc: ${bench-dacapo-timing} {
 }
 
 bench-scala-dacapo-hwloc: ${bench-scala-dacapo} ${hwloc.bench-common} {
-  setup: ${bench-scala-dacapo.setup} ${hwloc.bench-common.setup}
+  setup: ${bench-scala-dacapo.setup}
   run: [
     [export, "LOGDIR=${PWD}"]
     ${export.node0}
-    ${hwloc.node} ${bench-jvmci.mx-scala-dacapo} ${bench-arguments} ${hwloc.cmd.background}
-    ${export.node1}
-    ${hwloc.node} ${bench-jvmci.mx-scala-dacapo} ${bench-arguments} ${hwloc.cmd.background}
-    [wait]
+    ${hwloc.node} ${bench-jvmci.mx-scala-dacapo} ${bench-arguments}
   ]
 }
 
 bench-scala-dacapo-timing-hwloc: ${bench-scala-dacapo-timing} ${hwloc.bench-common} {
-  setup: ${bench-scala-dacapo-timing.setup} ${hwloc.bench-common.setup}
+  setup: ${bench-scala-dacapo-timing.setup}
   run: [
     [export, "LOGDIR=${PWD}"]
     ${export.node0}
-    ${hwloc.node} ${bench-jvmci.mx-scala-dacapo-timing} ${bench-arguments} ${hwloc.cmd.background}
-    ${export.node1}
-    ${hwloc.node} ${bench-jvmci.mx-scala-dacapo-timing} ${bench-arguments} ${hwloc.cmd.background}
-    [wait]
+    ${hwloc.node} ${bench-jvmci.mx-scala-dacapo-timing} ${bench-arguments}
   ]
 }
 
