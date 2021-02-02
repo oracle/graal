@@ -457,9 +457,6 @@ def svm_gate_body(args, tasks):
 
 
 def native_unittests_task():
-    if not svm_java8():
-        # Currently not working on Java > 8
-        mx_unittest.add_global_ignore_glob('com.oracle.svm.test.ServiceLoaderTest')
     if mx.is_windows():
         # GR-24075
         mx_unittest.add_global_ignore_glob('com.oracle.svm.test.ProcessPropertiesTest')
