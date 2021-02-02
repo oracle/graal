@@ -170,7 +170,7 @@ mx_sdk_vm.register_graalvm_component(mx_sdk_vm.GraalVmLanguage(
     short_name='java',
     installable_id='espresso',
     installable=True,
-    license_files=[],
+    license_files=['LICENSE_ESPRESSO'],
     third_party_license_files=[],
     dependencies=['Truffle', 'Truffle NFI', 'ejvm'],
     truffle_jars=['espresso:ESPRESSO'],
