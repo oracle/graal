@@ -47,6 +47,7 @@ import java.util.NoSuchElementException;
 import java.util.ServiceLoader;
 
 import org.graalvm.home.impl.DefaultHomeFinder;
+import org.graalvm.nativeimage.ImageInfo;
 import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.nativeimage.hosted.Feature;
 
@@ -94,6 +95,9 @@ public abstract class HomeFinder {
      * @since 19.3
      */
     public static HomeFinder getInstance() {
+        if (ImageInfo.inImageCode() && ImageSingletons.contains(HomeFinder.class)) {
+            return ImageSingletons.lookup(HomeFinder.class);
+        }
         final ServiceLoader<HomeFinder> serviceLoader = ServiceLoader.load(HomeFinder.class);
         final Iterator<HomeFinder> iterator = serviceLoader.iterator();
         try {
