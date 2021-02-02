@@ -30,6 +30,7 @@ import java.lang.invoke.MethodHandle;
 import java.lang.invoke.MethodHandles;
 
 import com.oracle.svm.core.annotate.Alias;
+import com.oracle.svm.core.annotate.RecomputeFieldValue;
 import com.oracle.svm.core.annotate.Substitute;
 import com.oracle.svm.core.annotate.TargetClass;
 import com.oracle.svm.core.annotate.TargetElement;
@@ -66,5 +67,6 @@ final class Target_java_lang_invoke_MethodHandles_Lookup {
     }
 
     @Alias @TargetElement(onlyWith = JDK16OrLater.class)//
-    public static final int ORIGINAL = MethodHandles.Lookup.PACKAGE << 3;
+    @RecomputeFieldValue(kind = RecomputeFieldValue.Kind.FromAlias, isFinal = true)//
+    public static int ORIGINAL = MethodHandles.Lookup.PACKAGE << 3;
 }
