@@ -46,7 +46,11 @@ public class AnalysisReporter {
             }
 
             if (AnalysisReportsOptions.PrintAnalysisCallTree.getValue(options)) {
-                CallTreePrinter.print(bb, reportsPath, ReportUtils.extractImageName(imageName));
+                String filterMethods = "";
+                if (AnalysisReportsOptions.PrintAnalysisCallTreeFilter.hasBeenSet(options)) {
+                    filterMethods = AnalysisReportsOptions.PrintAnalysisCallTreeFilter.getValue(options);
+                }
+                CallTreePrinter.print(bb, filterMethods, reportsPath, ReportUtils.extractImageName(imageName));
             }
 
             if (AnalysisReportsOptions.PrintImageObjectTree.getValue(options)) {

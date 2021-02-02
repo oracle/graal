@@ -67,14 +67,20 @@ import jdk.vm.ci.meta.ResolvedJavaMethod;
 import jdk.vm.ci.meta.ResolvedJavaType;
 
 public final class CallTreePrinter {
+    private static Set<String> printMethods = new HashSet<>();
+    private static Set<Integer> printedID = new HashSet<>();
+    private static boolean printAll = false;
 
     public static final Pattern CAMEL_CASE_PATTERN = Pattern.compile(
                     "\\b[a-zA-Z]|[A-Z]|\\.");
 
-    public static void print(BigBang bb, String reportsPath, String reportName) {
+    public static void print(BigBang bb, String printCallTreeMethods, String reportsPath, String reportName) {
         CallTreePrinter printer = new CallTreePrinter(bb);
         printer.buildCallTree();
-
+        Arrays.stream(printCallTreeMethods.split(",")).forEach(printMethods::add);
+        if (printCallTreeMethods.length() == 0) {
+            printAll = true;
+        }
         ReportUtils.report("call tree", reportsPath, "call_tree_" + reportName, "txt",
                         printer::printMethods);
         ReportUtils.report("list of used methods", reportsPath, "used_methods_" + reportName, "txt",
@@ -241,13 +247,20 @@ public final class CallTreePrinter {
         while (iterator.hasNext()) {
             MethodNode node = iterator.next();
             boolean lastEntryPoint = !iterator.hasNext();
-            out.format("%s%s %s %n", lastEntryPoint ? LAST_CHILD : CHILD, "entry", node.format());
-            printCallTreeNode(out, lastEntryPoint ? EMPTY_INDENT : CONNECTING_INDENT, node);
+            printCallTreeNode(out, lastEntryPoint ? EMPTY_INDENT : CONNECTING_INDENT, node, false, lastEntryPoint ? LAST_CHILD : CHILD);
         }
         out.println();
     }
 
-    private static void printCallTreeNode(PrintWriter out, String prefix, MethodNode node) {
+    private static void printCallTreeNode(PrintWriter out, String prefix, MethodNode node, boolean shouldPrint, String beginning) {
+        boolean print = shouldPrint;
+        if (!shouldPrint) {
+            String methodName = node.method.getQualifiedName();
+            if (printAll || printMethods.remove(methodName)) {
+                print = true;
+                out.format("%s%s %s %n", beginning, printAll ? "entry" : "filtered start", node.format());
+            }
+        }
 
         for (int invokeIdx = 0; invokeIdx < node.invokes.size(); invokeIdx++) {
             InvokeNode invoke = node.invokes.get(invokeIdx);
@@ -255,26 +268,42 @@ public final class CallTreePrinter {
             if (invoke.isDirectInvoke) {
                 if (invoke.callees.size() > 0) {
                     Node calleeNode = invoke.callees.get(0);
-                    out.format("%s%s%s %s @bci=%s %n", prefix, (lastInvoke ? LAST_CHILD : CHILD),
-                                    "directly calls", calleeNode.format(), invoke.formatLocation());
-                    if (calleeNode instanceof MethodNode) {
-                        printCallTreeNode(out, prefix + (lastInvoke ? EMPTY_INDENT : CONNECTING_INDENT), (MethodNode) calleeNode);
+                    boolean isNative = invoke.targetMethod.wrapped.getClass().getName().equals("com.oracle.svm.jni.hosted.JNINativeCallWrapperMethod");
+                    if (print) {
+                        calleeNode = extendNodeReference(calleeNode);
+                        out.format("%s%s%s %s @bci=%s %s %n", prefix, (lastInvoke ? LAST_CHILD : CHILD),
+                                        "directly calls", calleeNode.format(), invoke.formatLocation(), isNative ? "(Native Method)" : "");
+                    }
+                    if (!isNative && calleeNode instanceof MethodNode) {
+                        printCallTreeNode(out, prefix + (lastInvoke ? EMPTY_INDENT : CONNECTING_INDENT), (MethodNode) calleeNode, print, beginning);
                     }
                 }
             } else {
-                out.format("%s%s%s %s @bci=%s%n", prefix, (lastInvoke ? LAST_CHILD : CHILD),
-                                "virtually calls", invoke.formatTarget(), invoke.formatLocation());
+                if (print) {
+                    out.format("%s%s%s %s @bci=%s%n", prefix, (lastInvoke ? LAST_CHILD : CHILD),
+                                    "virtually calls", invoke.formatTarget(), invoke.formatLocation());
+                }
                 for (int calleeIdx = 0; calleeIdx < invoke.callees.size(); calleeIdx++) {
                     boolean lastCallee = calleeIdx == invoke.callees.size() - 1;
                     Node calleeNode = invoke.callees.get(calleeIdx);
-                    out.format("%s%s%s %s %n", prefix + (lastInvoke ? EMPTY_INDENT : CONNECTING_INDENT), (lastCallee ? LAST_CHILD : CHILD),
-                                    "is overridden by", calleeNode.format());
+                    if (print) {
+                        calleeNode = extendNodeReference(calleeNode);
+                        out.format("%s%s%s %s %n", prefix + (lastInvoke ? EMPTY_INDENT : CONNECTING_INDENT), (lastCallee ? LAST_CHILD : CHILD),
+                                        "is overridden by", calleeNode.format());
+                    }
                     if (calleeNode instanceof MethodNode) {
-                        printCallTreeNode(out, prefix + (lastInvoke ? EMPTY_INDENT : CONNECTING_INDENT) + (lastCallee ? EMPTY_INDENT : CONNECTING_INDENT), (MethodNode) calleeNode);
+                        printCallTreeNode(out, prefix + (lastInvoke ? EMPTY_INDENT : CONNECTING_INDENT) + (lastCallee ? EMPTY_INDENT : CONNECTING_INDENT), (MethodNode) calleeNode, print, beginning);
                     }
                 }
             }
         }
+    }
+
+    private static Node extendNodeReference(Node calleeNode) {
+        if (calleeNode instanceof MethodNodeReference && printedID.add(((MethodNodeReference) calleeNode).methodNode.id)) {
+            return ((MethodNodeReference) calleeNode).methodNode;
+        }
+        return calleeNode;
     }
 
     private void printUsedMethods(PrintWriter out) {

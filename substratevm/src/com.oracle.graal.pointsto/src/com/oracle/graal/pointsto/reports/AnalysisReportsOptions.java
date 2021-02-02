@@ -24,6 +24,7 @@
  */
 package com.oracle.graal.pointsto.reports;
 
+import org.graalvm.collections.EconomicMap;
 import org.graalvm.compiler.options.Option;
 import org.graalvm.compiler.options.OptionKey;
 
@@ -37,6 +38,14 @@ public class AnalysisReportsOptions {
 
     @Option(help = "Print analysis call tree, a breadth-first tree reduction of the call graph.")//
     public static final OptionKey<Boolean> PrintAnalysisCallTree = new OptionKey<>(false);
+
+    @Option(help = "Print analysis call tree with method filters.")//
+    public static final OptionKey<String> PrintAnalysisCallTreeFilter = new OptionKey<String>(null) {
+        @Override
+        protected void onValueUpdate(EconomicMap<OptionKey<?>, Object> values, String oldValue, String newValue) {
+            PrintAnalysisCallTree.update(values, true);
+        }
+    };
 
     @Option(help = "Print image object hierarchy.")//
     public static final OptionKey<Boolean> PrintImageObjectTree = new OptionKey<>(false);
