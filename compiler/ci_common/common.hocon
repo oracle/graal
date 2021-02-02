@@ -4,3 +4,15 @@ compilerCommon : ${common} {
     [cd, ${compiler-suite-root}]
   ] ${download-hsdis.setup}
 }
+
+ProfilingCommon : {
+  environment : {
+    MX_PROFILER : "JFR,async"
+  }
+  logs: [
+    "*.jfr",
+    "*.svg"
+  ]
+  teardown : []
+  targets: [bench, weekly]
+}
