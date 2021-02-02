@@ -116,8 +116,6 @@ mx_benchmark.java_vm_registry.add_vm(EspressoVm('default', []), _suite)
 mx_benchmark.java_vm_registry.add_vm(EspressoVm('interpreter', ['--experimental-options', '--engine.Compilation=false']), _suite)
 mx_benchmark.java_vm_registry.add_vm(EspressoVm('interpreter-inline-accessors', ['--experimental-options', '--engine.Compilation=false', '--java.InlineFieldAccessors']), _suite)
 mx_benchmark.java_vm_registry.add_vm(EspressoVm('inline-accessors', ['--experimental-options', '--java.InlineFieldAccessors']), _suite)
-mx_benchmark.java_vm_registry.add_vm(EspressoVm('multi-tier', ['--experimental-options', '--engine.MultiTier']), _suite)
-mx_benchmark.java_vm_registry.add_vm(EspressoVm('multi-tier-inline-accessors', ['--experimental-options', '--engine.MultiTier', '--java.InlineFieldAccessors']), _suite)
 mx_benchmark.java_vm_registry.add_vm(EspressoVm('no-inlining', ['--experimental-options', '--engine.Inlining=false']), _suite)
 
 mx_benchmark.java_vm_registry.add_vm(EspressoMinHeapVm(0, 0, 64, 'infinite-overhead', []), _suite)
