@@ -145,6 +145,29 @@ public class SuspendedEventTest extends AbstractDebugTest {
     }
 
     @Test
+    public void testForceEarlyReturnValue() throws Throwable {
+        final Source source = testSource("ROOT(\n" +
+                        "  DEFINE(bar, STATEMENT(CONSTANT(42))), \n" +
+                        "  DEFINE(foo, CALL(bar)), \n" +
+                        "  STATEMENT(CALL(foo))\n" +
+                        ")\n");
+
+        try (DebuggerSession session = startSession()) {
+            session.suspendNextExecution();
+            startEval(source);
+
+            expectSuspended((SuspendedEvent event) -> {
+                checkState(event, 4, true, "STATEMENT(CALL(foo))").prepareStepInto(1);
+            });
+            expectSuspended((SuspendedEvent event) -> {
+                checkState(event, 2, true, "STATEMENT(CONSTANT(42))").
+                        prepareUnwindFrame(event.getStackFrames().iterator().next(), 41);
+            });
+            assertEquals("41", expectDone());
+        }
+    }
+
+    @Test
     public void testReturnValueChanged() throws Throwable {
         final Source source = testSource("ROOT(\n" +
                         "  DEFINE(bar, VARIABLE(a, 41), STATEMENT(CONSTANT(42))), \n" +
