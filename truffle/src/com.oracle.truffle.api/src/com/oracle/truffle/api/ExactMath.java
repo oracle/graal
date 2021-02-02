@@ -51,13 +51,17 @@ public final class ExactMath {
     private ExactMath() {
     }
 
-    /** @since 0.8 or earlier */
+    /**
+     * @since 0.8 or earlier
+     */
     public static int multiplyHigh(int x, int y) {
         long r = (long) x * (long) y;
         return (int) (r >> 32);
     }
 
-    /** @since 0.8 or earlier */
+    /**
+     * @since 0.8 or earlier
+     */
     public static int multiplyHighUnsigned(int x, int y) {
         long xl = x & 0xFFFFFFFFL;
         long yl = y & 0xFFFFFFFFL;
@@ -65,7 +69,9 @@ public final class ExactMath {
         return (int) (r >> 32);
     }
 
-    /** @since 0.8 or earlier */
+    /**
+     * @since 0.8 or earlier
+     */
     public static long multiplyHigh(long x, long y) {
         // Checkstyle: stop
         long x0, y0, z0;
@@ -87,7 +93,9 @@ public final class ExactMath {
         return x1 * y1 + z2 + (z1 >> 32);
     }
 
-    /** @since 0.8 or earlier */
+    /**
+     * @since 0.8 or earlier
+     */
     public static long multiplyHighUnsigned(long x, long y) {
         // Checkstyle: stop
         long x0, y0, z0;
@@ -108,4 +116,29 @@ public final class ExactMath {
 
         return x1 * y1 + z2 + (z1 >>> 32);
     }
+
+    /**
+     * Removes the decimal part (aka truncation or rounds towards zero) of the given float.
+     * <p>
+     * This corresponds to the IEEE 754 {@code roundToIntegralTowardZero} operation (IEEE Std
+     * 754-2008, section 5.9, page 41).
+     *
+     * @since 21.1
+     */
+    public static float truncate(float x) {
+        return (float) truncate((double) x);
+    }
+
+    /**
+     * Removes the decimal part (aka truncation or rounds towards zero) of the given double.
+     * <p>
+     * This corresponds to the IEEE 754 {@code roundToIntegralTowardZero} operation (IEEE Std
+     * 754-2008, section 5.9, page 41).
+     *
+     * @since 21.1
+     */
+    public static double truncate(double x) {
+        return x < 0.0 ? Math.ceil(x) : Math.floor(x);
+    }
+
 }
