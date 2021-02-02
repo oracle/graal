@@ -110,7 +110,6 @@ public final class NativeImageAgent extends JvmtiAgentBase<NativeImageAgentJNIHa
         boolean build = false;
         int configWritePeriod = -1; // in seconds
         int configWritePeriodInitialDelay = 1; // in seconds
-        boolean writeSerializationChecksums = false;
 
         if (options.length() == 0) {
             System.err.println(MESSAGE_PREFIX + "invalid option string. Please read BuildConfiguration.md.");
@@ -168,8 +167,6 @@ public final class NativeImageAgent extends JvmtiAgentBase<NativeImageAgentJNIHa
                     System.err.println(MESSAGE_PREFIX + "config-write-initial-delay-secs can only be an integer greater or equal to 0");
                     return 1;
                 }
-            } else if (token.startsWith("write-serialization-checksums=")) {
-                writeSerializationChecksums = Boolean.parseBoolean(getTokenValue(token));
             } else if (token.equals("build")) {
                 build = true;
             } else if (token.startsWith("build=")) {
@@ -252,7 +249,7 @@ public final class NativeImageAgent extends JvmtiAgentBase<NativeImageAgentJNIHa
 
         accessAdvisor = createAccessAdvisor(builtinHeuristicFilter, callerFilter, accessFilter);
         try {
-            BreakpointInterceptor.onLoad(jvmti, callbacks, traceWriter, this, experimentalClassLoaderSupport, writeSerializationChecksums);
+            BreakpointInterceptor.onLoad(jvmti, callbacks, traceWriter, this, experimentalClassLoaderSupport);
         } catch (Throwable t) {
             System.err.println(MESSAGE_PREFIX + t);
             return 3;
