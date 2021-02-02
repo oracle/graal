@@ -30,6 +30,7 @@ import java.util.ServiceLoader;
 
 import javax.tools.JavaCompiler;
 
+import org.graalvm.compiler.serviceprovider.JavaVersionUtil;
 import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;
 import org.graalvm.nativeimage.hosted.Feature;
@@ -160,6 +161,14 @@ public class ServiceLoaderTest {
 
     @Test
     public void test03JavaCompiler() {
+        if (JavaVersionUtil.JAVA_SPEC == 8) {
+            /*
+             * JavaCompiler is not registered in java 8, but putting the test in jdk11 package
+             * causes 'javax.tools is declared in module java.compiler, which is not in the module
+             * graph' compile error
+             */
+            return;
+        }
         ServiceLoader<JavaCompiler> loader = ServiceLoader.load(JavaCompiler.class, ClassLoader.getSystemClassLoader());
         boolean foundJavacTool = false;
         List<JavaCompiler> unexpected = new ArrayList<>();
