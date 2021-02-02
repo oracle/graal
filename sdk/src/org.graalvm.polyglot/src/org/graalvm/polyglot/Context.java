@@ -774,7 +774,7 @@ public final class Context implements AutoCloseable {
      * context is still usable after this method finishes. Please note that guest finally blocks are
      * executed during interrupt. A context thread may not be interruptiple if it uses
      * non-interruptible waiting or executes non-interruptible host code.
-     * 
+     *
      * This method may be used as a "soft exit", meaning that it can be used before
      * {@link #close(boolean) close(true)} is executed.
      *
@@ -791,6 +791,45 @@ public final class Context implements AutoCloseable {
         if (!impl.interrupt(this, timeout)) {
             throw new TimeoutException("Interrupt timed out.");
         }
+    }
+
+    /**
+     * Allows guest languages to run actions between long running host calls.
+     *
+     * For in this example we allow {@link Context#interrupt(Duration) interruption} cancellation
+     * {@link Context#close(boolean) cancellation} to stop the processing of e.g. events in a host
+     * calls.
+     *
+     * <pre>
+     * class EventProcessor {
+     *
+     *   List<Object> events = new ArrayDeque(); // list of arbitrary size
+     *
+     *   public void processEvents() {
+     *     Context context = Context.getCurrent();
+     *
+     *     while (Object event = events.pop()) {
+     *
+     *         // process event
+     *
+     *         // allow cancellation and interruptions
+     *         try {
+     *             context.safepoint();
+     *         } catch (PolyglotException e) {
+     *             if (e.isInterrupted() || e.isCancelled()) {
+     *                 // break event processing if interrupted or cancelled
+     *                 break;
+     *             }
+     *         }
+     *     }
+     *  }
+     * }
+     * </pre>
+     *
+     * @throws PolyglotException
+     */
+    public void safepoint() {
+        // TODO implement
     }
 
     /**

@@ -57,7 +57,7 @@ public final class SubstrateThreadLocalHandshakeSnippets extends SubstrateTempla
     @Snippet
     private static void pollSnippet() {
         if (BranchProbabilityNode.probability(BranchProbabilityNode.VERY_SLOW_PATH_PROBABILITY,
-                        SubstrateThreadLocalHandshake.PENDING.get() != 0) && SubstrateThreadLocalHandshake.DISABLED.get() == 0) {
+                        SubstrateThreadLocalHandshake.PENDING.get() != 0)) {
             foreignPoll(SubstrateThreadLocalHandshake.FOREIGN_POLL);
         }
     }
@@ -72,10 +72,9 @@ public final class SubstrateThreadLocalHandshakeSnippets extends SubstrateTempla
     }
 
     private static LocationIdentity[] getPollKilledLocations() {
-        int newLength = TLAB_LOCATIONS.length + 2;
+        int newLength = TLAB_LOCATIONS.length + 1;
         LocationIdentity[] locations = Arrays.copyOf(TLAB_LOCATIONS, newLength);
         locations[newLength - 1] = SubstrateThreadLocalHandshake.PENDING.getLocationIdentity();
-        locations[newLength - 2] = SubstrateThreadLocalHandshake.DISABLED.getLocationIdentity();
         return locations;
     }
 

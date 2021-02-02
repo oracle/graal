@@ -24,23 +24,17 @@
  */
 package org.graalvm.compiler.truffle.runtime.hotspot;
 
-import java.util.concurrent.ConcurrentHashMap;
-
 import com.oracle.truffle.api.CompilerDirectives;
-import com.oracle.truffle.api.CompilerDirectives.Interruptable;
-import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.impl.ThreadLocalHandshake;
+import com.oracle.truffle.api.nodes.Node;
 
 final class HotSpotThreadLocalHandshake extends ThreadLocalHandshake {
 
     private static final sun.misc.Unsafe UNSAFE = AbstractHotSpotTruffleRuntime.UNSAFE;
-
     static final HotSpotThreadLocalHandshake INSTANCE = new HotSpotThreadLocalHandshake();
+    private static final ThreadLocal<TruffleSafepointImpl> STATE = ThreadLocal.withInitial(() -> INSTANCE.getThreadState(Thread.currentThread()));
+
     private static final int PENDING_OFFSET = AbstractHotSpotTruffleRuntime.getRuntime().getThreadLocalPendingHandshakeOffset();
-    private static final int DISABLED_OFFSET = AbstractHotSpotTruffleRuntime.getRuntime().getThreadLocalDisabledHandshakeOffset();
-
-    private static final ConcurrentHashMap<Thread, Interruptable> INTERRUPTABLE = new ConcurrentHashMap<>();
-
     private static final long THREAD_EETOP_OFFSET;
     static {
         try {
@@ -51,44 +45,35 @@ final class HotSpotThreadLocalHandshake extends ThreadLocalHandshake {
     }
 
     @Override
-    public void poll() {
+    public void poll(Node enclosingNode) {
         long eetop = UNSAFE.getLong(Thread.currentThread(), THREAD_EETOP_OFFSET);
         if (CompilerDirectives.injectBranchProbability(CompilerDirectives.SLOWPATH_PROBABILITY,
                         UNSAFE.getInt(null, eetop + PENDING_OFFSET) != 0)) {
-            if (UNSAFE.getInt(null, eetop + DISABLED_OFFSET) == 0) {
-                processHandshake();
-            }
+            processHandshake(enclosingNode);
         }
     }
 
     static void doHandshake() {
-        INSTANCE.processHandshake();
+        INSTANCE.processHandshake(null);
     }
 
     static void doPoll() {
-        INSTANCE.poll();
+        INSTANCE.poll(null);
     }
 
     @Override
     protected void setPending(Thread t) {
-        int prev = setVolatile(t, PENDING_OFFSET, 1);
-        if (prev == 0) {
-            Interruptable action = INTERRUPTABLE.get(Thread.currentThread());
-            if (action != null) {
-                action.interrupt(null);
-            }
-        }
+        setVolatile(t, PENDING_OFFSET, 1);
+    }
+
+    @Override
+    public TruffleSafepointImpl getCurrent() {
+        return STATE.get();
     }
 
     @Override
     protected void clearPending() {
-        int prev = setVolatile(Thread.currentThread(), PENDING_OFFSET, 0);
-        if (prev != 0) {
-            Interruptable action = INTERRUPTABLE.get(Thread.currentThread());
-            if (action != null) {
-                action.interrupted();
-            }
-        }
+        setVolatile(Thread.currentThread(), PENDING_OFFSET, 0);
     }
 
     private static int setVolatile(Thread t, int offset, int value) {
@@ -98,33 +83,6 @@ final class HotSpotThreadLocalHandshake extends ThreadLocalHandshake {
             prev = UNSAFE.getIntVolatile(null, eetop + offset);
         } while (!UNSAFE.compareAndSwapInt(null, eetop + offset, prev, value));
         return prev;
-    }
-
-    @Override
-    public void disable() {
-        long eetop = UNSAFE.getLong(Thread.currentThread(), THREAD_EETOP_OFFSET);
-        int prev = UNSAFE.getInt(null, eetop + DISABLED_OFFSET);
-        UNSAFE.putInt(null, eetop + DISABLED_OFFSET, prev + 1);
-    }
-
-    @Override
-    public void enable() {
-        long eetop = UNSAFE.getLong(Thread.currentThread(), THREAD_EETOP_OFFSET);
-        int prev = UNSAFE.getInt(null, eetop + DISABLED_OFFSET);
-        UNSAFE.putInt(null, eetop + DISABLED_OFFSET, prev - 1);
-    }
-
-    // TODO a thread local lookup should be done here.
-    @Override
-    @TruffleBoundary
-    public Interruptable clearBlocked() {
-        return INTERRUPTABLE.remove(Thread.currentThread());
-    }
-
-    @Override
-    @TruffleBoundary
-    public void setBlocked(Interruptable unblockingAction) {
-        INTERRUPTABLE.put(Thread.currentThread(), unblockingAction);
     }
 
 }

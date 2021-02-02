@@ -50,10 +50,4 @@ public interface HotSpotTruffleCompilerRuntime extends TruffleCompilerRuntime {
      * safepoint has been requested for the thread (i.e. its value is non-zero).
      */
     int getThreadLocalPendingHandshakeOffset();
-
-    /**
-     * Gets the offset in a {@code JavaThread*} object of the int field used to denote that
-     * safepoints have been disabled for the thread (i.e. its value is non-zero).
-     */
-    int getThreadLocalDisabledHandshakeOffset();
 }

@@ -153,7 +153,6 @@ public abstract class AbstractHotSpotTruffleRuntime extends GraalTruffleRuntime 
 
     private final HotSpotVMConfigAccess vmConfigAccess;
     private final int threadLocalPendingHandshakeOffset;
-    private final int threadLocalDisabledHandshakeOffset;
 
     public AbstractHotSpotTruffleRuntime() {
         super(Arrays.asList(HotSpotOptimizedCallTarget.class, InstalledCode.class, HotSpotThreadLocalHandshake.class));
@@ -172,17 +171,11 @@ public abstract class AbstractHotSpotTruffleRuntime extends GraalTruffleRuntime 
 
         int counters = vmConfigAccess.getFieldOffset("JavaThread::_jvmci_counters", Integer.class, "jlong*");
         this.threadLocalPendingHandshakeOffset = counters;
-        this.threadLocalDisabledHandshakeOffset = counters + Integer.BYTES;
     }
 
     @Override
     public final int getThreadLocalPendingHandshakeOffset() {
         return threadLocalPendingHandshakeOffset;
-    }
-
-    @Override
-    public final int getThreadLocalDisabledHandshakeOffset() {
-        return threadLocalDisabledHandshakeOffset;
     }
 
     @Override

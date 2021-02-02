@@ -46,8 +46,9 @@ import com.oracle.svm.core.threadlocal.FastThreadLocal;
 import com.oracle.svm.core.threadlocal.FastThreadLocalFactory;
 import com.oracle.svm.core.threadlocal.FastThreadLocalInt;
 import com.oracle.svm.core.threadlocal.FastThreadLocalObject;
-import com.oracle.truffle.api.CompilerDirectives.Interruptable;
+import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.impl.ThreadLocalHandshake;
+import com.oracle.truffle.api.nodes.Node;
 
 import jdk.vm.ci.meta.DeoptimizationAction;
 import jdk.vm.ci.meta.SpeculationLog;
@@ -59,13 +60,12 @@ public final class SubstrateThreadLocalHandshake extends ThreadLocalHandshake {
     static final SubstrateThreadLocalHandshake INSTANCE = new SubstrateThreadLocalHandshake();
 
     static final FastThreadLocalInt PENDING = FastThreadLocalFactory.createInt().setMaxOffset(FastThreadLocal.FIRST_CACHE_LINE);
-    static final FastThreadLocalInt DISABLED = FastThreadLocalFactory.createInt().setMaxOffset(FastThreadLocal.FIRST_CACHE_LINE);
-    static final FastThreadLocalObject<Interruptable> INTERRUPTABLE = FastThreadLocalFactory.createObject(Interruptable.class).setMaxOffset(FastThreadLocal.FIRST_CACHE_LINE);
+    static final FastThreadLocalObject<TruffleSafepointImpl> STATE = FastThreadLocalFactory.createObject(TruffleSafepointImpl.class).setMaxOffset(FastThreadLocal.FIRST_CACHE_LINE);
 
     @Override
-    public void poll() {
-        if (PENDING.get() != 0 && DISABLED.get() == 0) {
-            invokeProcessHandshake();
+    public void poll(Node enclosingNode) {
+        if (PENDING.get() != 0) {
+            invokeProcessHandshake(enclosingNode);
         }
     }
 
@@ -75,7 +75,7 @@ public final class SubstrateThreadLocalHandshake extends ThreadLocalHandshake {
     @NeverInline("Reads stack pointer")
     private static void pollStub() throws Throwable {
         try {
-            invokeProcessHandshake();
+            invokeProcessHandshake(null);
         } catch (Throwable t) {
             try {
                 deoptimize(KnownIntrinsics.readCallerStackPointer(), KnownIntrinsics.readReturnAddress());
@@ -103,20 +103,19 @@ public final class SubstrateThreadLocalHandshake extends ThreadLocalHandshake {
 
     @Uninterruptible(reason = "Used both from uninterruptable stub.", calleeMustBe = false)
     @RestrictHeapAccess(reason = "Callee may allocate", access = RestrictHeapAccess.Access.UNRESTRICTED, overridesCallers = true)
-    private static void invokeProcessHandshake() {
-        INSTANCE.processHandshake();
+    private static void invokeProcessHandshake(Node enclosingNode) {
+        INSTANCE.processHandshake(enclosingNode);
     }
 
     @Override
-    public void setBlocked(Interruptable unblockingAction) {
-        INTERRUPTABLE.set(unblockingAction);
-    }
-
-    @Override
-    public Interruptable clearBlocked() {
-        Interruptable prev = INTERRUPTABLE.get();
-        INTERRUPTABLE.set(null);
-        return prev;
+    public TruffleSafepointImpl getCurrent() {
+        TruffleSafepointImpl state = STATE.get();
+        if (state == null) {
+            // TODO this should be initialized externally
+            CompilerDirectives.transferToInterpreterAndInvalidate();
+            STATE.set(state = getThreadState(Thread.currentThread()));
+        }
+        return state;
     }
 
     @Override
@@ -137,17 +136,4 @@ public final class SubstrateThreadLocalHandshake extends ThreadLocalHandshake {
         } while (!PENDING.compareAndSet(t, prev, value));
         return prev;
     }
-
-    @Override
-    public void enable() {
-        int newValue = DISABLED.get() - 1;
-        DISABLED.set(newValue);
-        assert newValue >= 0;
-    }
-
-    @Override
-    public void disable() {
-        DISABLED.set(DISABLED.get() + 1);
-    }
-
 }
