@@ -676,11 +676,21 @@ public final class SuspendedEvent {
         setNextStrategy(SteppingStrategy.createUnwind(frame.getDepth()));
     }
 
-    public void prepareUnwindFrame(DebugStackFrame frame, Object returnValue) throws IllegalArgumentException {
+    /**
+     * Prepare to unwind a frame. This frame and all frames above it are unwound off the execution
+     * stack and the frame will return with <code>forceEarlyReturnValue</code>. The frame needs to
+     * be on the {@link #getStackFrames() execution stack of this event}.
+     *
+     * @param frame the frame to unwind
+     * @param forceEarlyReturnValue an Interop value to return
+     * @throws IllegalArgumentException when the frame is not on the execution stack of this event
+     * @since 21.1.0
+     */
+    public void prepareUnwindFrame(DebugStackFrame frame, Object forceEarlyReturnValue) throws IllegalArgumentException {
         if (frame.event != this) {
             throw new IllegalArgumentException("The stack frame is not in the scope of this event.");
         }
-        setNextStrategy(SteppingStrategy.createUnwind(frame.getDepth(), returnValue));
+        setNextStrategy(SteppingStrategy.createUnwind(frame.getDepth(), forceEarlyReturnValue));
     }
 
     /**
