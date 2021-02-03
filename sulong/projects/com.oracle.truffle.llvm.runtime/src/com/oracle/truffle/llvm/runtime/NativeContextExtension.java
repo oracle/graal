@@ -86,7 +86,7 @@ public abstract class NativeContextExtension implements ContextExtension {
 
     public abstract NativePointerIntoLibrary getNativeHandle(String name);
 
-    public abstract Object createNativeWrapper(LLVMFunctionCode code);
+    public abstract CallTarget createNativeWrapperFactory(LLVMFunctionCode code);
 
     public abstract void addLibraryHandles(Object library);
 

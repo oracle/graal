@@ -43,14 +43,21 @@ import org.graalvm.collections.EconomicMap;
 import com.oracle.truffle.api.CallTarget;
 import com.oracle.truffle.api.CompilerAsserts;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
+import com.oracle.truffle.api.Truffle;
 import com.oracle.truffle.api.TruffleFile;
 import com.oracle.truffle.api.TruffleLanguage.Env;
+import com.oracle.truffle.api.dsl.CachedContext;
+import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.interop.InteropException;
 import com.oracle.truffle.api.interop.InteropLibrary;
 import com.oracle.truffle.api.interop.UnknownIdentifierException;
 import com.oracle.truffle.api.interop.UnsupportedMessageException;
+import com.oracle.truffle.api.library.CachedLibrary;
+import com.oracle.truffle.api.nodes.RootNode;
 import com.oracle.truffle.api.source.Source;
+import com.oracle.truffle.llvm.nativemode.runtime.NFIContextExtensionFactory.CreateClosureNodeGen;
 import com.oracle.truffle.llvm.runtime.ContextExtension;
+import com.oracle.truffle.llvm.runtime.LLVMLanguage;
 import com.oracle.truffle.llvm.runtime.except.LLVMLinkerException;
 import com.oracle.truffle.llvm.runtime.interop.nfi.LLVMNativeWrapper;
 import com.oracle.truffle.llvm.runtime.nodes.func.LLVMCallNode;
@@ -243,19 +250,49 @@ public final class NFIContextExtension extends NativeContextExtension {
         }
     }
 
-    @Override
-    @TruffleBoundary
-    public Object createNativeWrapper(LLVMFunctionCode code) {
-        Object wrapper = null;
+    abstract static class CreateClosureNode extends RootNode {
 
+        private final ContextExtension.Key<NativeContextExtension> ctxExtKey;
+
+        private final Source signatureSource;
+        private final LLVMNativeWrapper nativeWrapper;
+
+        CreateClosureNode(LLVMLanguage language, Source signatureSource, LLVMNativeWrapper nativeWrapper) {
+            super(language);
+            this.ctxExtKey = language.lookupContextExtension(NativeContextExtension.class);
+            this.signatureSource = signatureSource;
+            this.nativeWrapper = nativeWrapper;
+        }
+
+        @Specialization
+        Object doCreateClosure(
+                        @CachedContext(LLVMLanguage.class) LLVMContext ctx,
+                        @CachedLibrary(limit = "1") SignatureLibrary signatureLibrary) {
+            NFIContextExtension ctxExt = (NFIContextExtension) ctxExtKey.get(ctx);
+            Object signature = ctxExt.getCachedSignature(signatureSource);
+            return signatureLibrary.createClosure(signature, nativeWrapper);
+        }
+    }
+
+    @Override
+    public CallTarget createNativeWrapperFactory(LLVMFunctionCode code) {
+        CompilerAsserts.neverPartOfCompilation();
+        /*
+         * We create a CallTarget here instead of directly the native closure so the NFI has a place
+         * to put a cache for the NFI closure. The implementation in LLVMNativeWrapper expects
+         * successfully cached monomorphic calls. This CallTarget will be created only once per
+         * function and engine, and cached in the LLVMFunctionCode object. Caching this is fine
+         * because both the LLVMFunctionCode and the LLVMNativeWrapper are context independent
+         * objects.
+         */
         try {
             Source signatureSource = signatureSourceCache.getSignatureSource(code.getLLVMFunction().getType());
-            Object signature = getCachedSignature(signatureSource);
-            wrapper = SignatureLibrary.getUncached().createClosure(signature, new LLVMNativeWrapper(code));
+            RootNode root = CreateClosureNodeGen.create(LLVMLanguage.getLanguage(), signatureSource, new LLVMNativeWrapper(code));
+            return Truffle.getRuntime().createCallTarget(root);
         } catch (UnsupportedNativeTypeException ex) {
             // ignore, fall back to tagged id
+            return null;
         }
-        return wrapper;
     }
 
     @Override
@@ -517,7 +554,6 @@ public final class NFIContextExtension extends NativeContextExtension {
         return signatureSourceCache.getSignatureSourceSkipStackArg(type);
     }
 
-    @TruffleBoundary
     private Object createSignature(Source signatureSource) {
         synchronized (signatureCache) {
             Object ret = signatureCache.get(signatureSource);
@@ -530,6 +566,7 @@ public final class NFIContextExtension extends NativeContextExtension {
         }
     }
 
+    @TruffleBoundary
     private Object getCachedSignature(Source signatureSource) {
         Object ret = signatureCache.get(signatureSource);
         if (ret == null) {
