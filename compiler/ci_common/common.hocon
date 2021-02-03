@@ -11,7 +11,9 @@ ProfilingCommon : {
   }
   logs: [
     "*.jfr",
-    "*.svg"
+    "**/*.jfr",
+    "*.svg",
+    "**/*.svg",
   ]
   teardown : []
   targets: [bench, weekly]

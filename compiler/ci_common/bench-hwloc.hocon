@@ -45,7 +45,7 @@ bench-micros-graal-dist-hwloc: ${bench-micros-graal-dist}{
   ]
 }
 
-bench-awfy-hwloc: ${bench-awfy} ${hwloc.bench-common} {
+bench-awfy-hwloc: ${bench-awfy} {
   setup: ${bench-awfy.setup}
   run: [
     [export, "LOGDIR=${PWD}"]
@@ -72,7 +72,7 @@ bench-dacapo-timing-hwloc: ${bench-dacapo-timing} {
   ]
 }
 
-bench-scala-dacapo-hwloc: ${bench-scala-dacapo} ${hwloc.bench-common} {
+bench-scala-dacapo-hwloc: ${bench-scala-dacapo} {
   setup: ${bench-scala-dacapo.setup}
   run: [
     [export, "LOGDIR=${PWD}"]
@@ -81,7 +81,7 @@ bench-scala-dacapo-hwloc: ${bench-scala-dacapo} ${hwloc.bench-common} {
   ]
 }
 
-bench-scala-dacapo-timing-hwloc: ${bench-scala-dacapo-timing} ${hwloc.bench-common} {
+bench-scala-dacapo-timing-hwloc: ${bench-scala-dacapo-timing} {
   setup: ${bench-scala-dacapo-timing.setup}
   run: [
     [export, "LOGDIR=${PWD}"]
