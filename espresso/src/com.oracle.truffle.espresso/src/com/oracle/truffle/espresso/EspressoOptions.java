@@ -405,5 +405,23 @@ public final class EspressoOptions {
                     category = OptionCategory.EXPERT, stability = OptionStability.STABLE) //
     public static final OptionKey<Long> MaxDirectMemorySize = new OptionKey<>(-1L, SIZE_OPTION_TYPE);
 
+    @Option(help = "Load native agents from standard library paths. \\n" +
+                    "Keys represent the agent library name, values are the corresponding agent options.\\n" +
+                    "Agents are not fully implemented yet.", //
+                    category = OptionCategory.INTERNAL, stability = OptionStability.EXPERIMENTAL) //
+    public static final OptionKey<OptionMap<String>> AgentLib = OptionKey.mapOf(String.class);
+
+    @Option(help = "Load native agents from an absolute path. \\n" +
+                    "Keys represent the agent library full absolute path, values are the corresponding agent options.\\n" +
+                    "Agents are not fully implemented yet.", //
+                    category = OptionCategory.INTERNAL, stability = OptionStability.EXPERIMENTAL) //
+    public static final OptionKey<OptionMap<String>> AgentPath = OptionKey.mapOf(String.class);
+
+    @Option(help = "Load a Java programming language agent for the given jar file. \\n" +
+                    "Keys represent the jar path, values are the corresponding agent options.\\n" +
+                    "Agents are not fully implemented yet.", //
+                    category = OptionCategory.INTERNAL, stability = OptionStability.EXPERIMENTAL) //
+    public static final OptionKey<String> JavaAgent = new OptionKey<>("");
+
     public static final String INCEPTION_NAME = System.getProperty("espresso.inception.name", "#");
 }

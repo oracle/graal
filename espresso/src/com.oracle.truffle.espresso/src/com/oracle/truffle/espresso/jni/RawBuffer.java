@@ -23,9 +23,18 @@
 
 package com.oracle.truffle.espresso.jni;
 
-import java.nio.ByteBuffer;
+import static com.oracle.truffle.espresso.jni.NativeEnv.byteBufferPointer;
 
+import java.nio.ByteBuffer;
+import java.nio.ByteOrder;
+import java.nio.CharBuffer;
+import java.nio.charset.CharsetEncoder;
+import java.nio.charset.CoderResult;
+import java.nio.charset.StandardCharsets;
+
+import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.interop.TruffleObject;
+import com.oracle.truffle.espresso.meta.EspressoError;
 
 public final class RawBuffer implements AutoCloseable {
     private ByteBuffer buffer;
@@ -36,6 +45,39 @@ public final class RawBuffer implements AutoCloseable {
         this.pointer = pointer;
     }
 
+    public static RawBuffer getNativeString(String name) {
+        CharsetEncoder encoder = StandardCharsets.UTF_8.newEncoder();
+        int length = ((int) (name.length() * encoder.averageBytesPerChar())) + 1;
+        for (;;) {
+            if (length <= 0) {
+                throw EspressoError.shouldNotReachHere();
+            }
+            // Be super safe with the size of the buffer.
+            ByteBuffer bb = allocateDirect(length);
+            encoder.reset();
+            CoderResult result = encoder.encode(CharBuffer.wrap(name), bb, true);
+
+            if (result.isOverflow()) {
+                // Not enough space in the buffer
+                length <<= 1;
+            } else if (result.isUnderflow()) {
+                result = encoder.flush(bb);
+                if (result.isUnderflow() && (bb.position() < bb.capacity())) {
+                    // Encoder encoded entire string, and we have one byte of leeway.
+                    bb.put((byte) 0);
+                    return new RawBuffer(bb, byteBufferPointer(bb));
+                }
+                if (result.isOverflow() || result.isUnderflow()) {
+                    length += 1;
+                } else {
+                    throw EspressoError.shouldNotReachHere();
+                }
+            } else {
+                throw EspressoError.shouldNotReachHere();
+            }
+        }
+    }
+
     public TruffleObject pointer() {
         return pointer;
     }
@@ -44,5 +86,10 @@ public final class RawBuffer implements AutoCloseable {
     public void close() {
         buffer.clear();
         this.buffer = null;
+    }
+
+    @CompilerDirectives.TruffleBoundary
+    private static ByteBuffer allocateDirect(int capacity) {
+        return ByteBuffer.allocateDirect(capacity).order(ByteOrder.nativeOrder());
     }
 }

@@ -173,6 +173,7 @@ public final class EspressoContext {
     @CompilationFinal private JImageLibrary jimageLibrary;
     @CompilationFinal private EspressoProperties vmProperties;
     @CompilationFinal private JavaVersion javaVersion;
+    @CompilationFinal private AgentLibraries agents;
     // endregion VM
 
     @CompilationFinal private EspressoException stackOverflow;
@@ -401,6 +402,8 @@ public final class EspressoContext {
 
             this.interpreterToVM = new InterpreterToVM(this);
 
+            initializeAgents();
+
             try (DebugCloseable knownClassInit = KNOWN_CLASS_INIT.scope(timers)) {
                 initializeKnownClass(Type.java_lang_Object);
 
@@ -481,6 +484,20 @@ public final class EspressoContext {
             long elapsedNanos = initDoneTimeNanos - initStartTimeNanos;
             getLogger().log(Level.FINE, "VM booted in {0} ms", TimeUnit.NANOSECONDS.toMillis(elapsedNanos));
         }
+    }
+
+    private void initializeAgents() {
+        agents = new AgentLibraries(this);
+        if (getEnv().getOptions().hasBeenSet(EspressoOptions.AgentLib)) {
+            agents.registerAgents(getEnv().getOptions().get(EspressoOptions.AgentLib), false);
+        }
+        if (getEnv().getOptions().hasBeenSet(EspressoOptions.AgentPath)) {
+            agents.registerAgents(getEnv().getOptions().get(EspressoOptions.AgentPath), true);
+        }
+        if (getEnv().getOptions().hasBeenSet(EspressoOptions.JavaAgent)) {
+            agents.registerAgent("instrument", getEnv().getOptions().get(EspressoOptions.JavaAgent), false);
+        }
+        agents.initialize();
     }
 
     private void initVmProperties() {
@@ -588,6 +605,14 @@ public final class EspressoContext {
     public void prepareDispose() {
         jdwpContext.finalizeContext();
     }
+
+    // region Agents
+
+    public TruffleObject bindToAgent(Method method, String mangledName) {
+        return agents.bind(method, mangledName);
+    }
+
+    // endregion Agents
 
     // region Thread management
 
@@ -713,6 +738,15 @@ public final class EspressoContext {
 
     public int getExitStatus() {
         return shutdownManager.getExitStatus();
+    }
+
+    public EspressoError abort(String message) {
+        getLogger().severe(message);
+        if (ExitHost) {
+            System.exit(1);
+            throw EspressoError.shouldNotReachHere();
+        }
+        throw new EspressoExitException(1);
     }
 
     // endregion Shutdown

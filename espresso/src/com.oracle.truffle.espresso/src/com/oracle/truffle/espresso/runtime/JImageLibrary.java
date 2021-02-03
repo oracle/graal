@@ -28,10 +28,6 @@ import static com.oracle.truffle.espresso.runtime.Classpath.JAVA_BASE;
 
 import java.nio.ByteBuffer;
 import java.nio.ByteOrder;
-import java.nio.CharBuffer;
-import java.nio.charset.CharsetEncoder;
-import java.nio.charset.CoderResult;
-import java.nio.charset.StandardCharsets;
 
 import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.interop.ArityException;
@@ -127,9 +123,9 @@ class JImageLibrary extends NativeEnv implements ContextAccess {
             resourceIterator = lookupAndBind(jimageLibrary, RESOURCE_ITERATOR, RESOURCE_ITERATOR_SIGNATURE);
             resourcePath = lookupAndBind(jimageLibrary, RESOURCE_PATH, RESOURCE_PATH_SIGNATURE);
 
-            this.javaBaseBuffer = getNativeString(JAVA_BASE);
-            this.versionBuffer = getNativeString(VERSION_STRING);
-            this.emptyStringBuffer = getNativeString("");
+            this.javaBaseBuffer = RawBuffer.getNativeString(JAVA_BASE);
+            this.versionBuffer = RawBuffer.getNativeString(VERSION_STRING);
+            this.emptyStringBuffer = RawBuffer.getNativeString("");
 
             this.uncached = InteropLibrary.getFactory().getUncached();
         } catch (UnknownIdentifierException e) {
@@ -139,7 +135,7 @@ class JImageLibrary extends NativeEnv implements ContextAccess {
 
     public TruffleObject open(String name) {
         ByteBuffer error = allocateDirect(1, JavaKind.Int);
-        try (RawBuffer nameBuffer = getNativeString(name)) {
+        try (RawBuffer nameBuffer = RawBuffer.getNativeString(name)) {
             return (TruffleObject) execute(open, nameBuffer.pointer(), byteBufferPointer(error));
         }
     }
@@ -169,7 +165,7 @@ class JImageLibrary extends NativeEnv implements ContextAccess {
     }
 
     private long findLocation(TruffleObject jimage, TruffleObject sizePtr, String name) {
-        try (RawBuffer nameBuffer = getNativeString(name)) {
+        try (RawBuffer nameBuffer = RawBuffer.getNativeString(name)) {
             TruffleObject namePtr = nameBuffer.pointer();
             long location = (long) execute(findResource, jimage, emptyStringBuffer.pointer(), versionBuffer.pointer(), namePtr, sizePtr);
             if (location != 0) {
@@ -190,7 +186,7 @@ class JImageLibrary extends NativeEnv implements ContextAccess {
                     return location;
                 }
                 TruffleObject moduleName;
-                try (RawBuffer pkgBuffer = getNativeString(pkg)) {
+                try (RawBuffer pkgBuffer = RawBuffer.getNativeString(pkg)) {
                     moduleName = (TruffleObject) execute(packageToModule, jimage, pkgBuffer.pointer());
                 }
                 if (uncached.isNull(moduleName)) {
@@ -211,7 +207,7 @@ class JImageLibrary extends NativeEnv implements ContextAccess {
                     return (long) execute(findResource, jimage, javaBaseBuffer.pointer(), versionBuffer.pointer(), namePtr, sizePtr);
                 } else {
                     String nameAsString = moduleName == null ? "" : moduleName.toString();
-                    try (RawBuffer moduleNameBuffer = getNativeString(nameAsString)) {
+                    try (RawBuffer moduleNameBuffer = RawBuffer.getNativeString(nameAsString)) {
                         return (long) execute(findResource, jimage, moduleNameBuffer.pointer(), versionBuffer.pointer(), namePtr, sizePtr);
                     }
                 }
@@ -220,7 +216,7 @@ class JImageLibrary extends NativeEnv implements ContextAccess {
     }
 
     private String packageToModule(TruffleObject jimage, String pkg) {
-        try (RawBuffer pkgBuffer = getNativeString(pkg)) {
+        try (RawBuffer pkgBuffer = RawBuffer.getNativeString(pkg)) {
             return interopPointerToString((TruffleObject) execute(packageToModule, jimage, pkgBuffer.pointer()));
         }
     }
@@ -241,44 +237,6 @@ class JImageLibrary extends NativeEnv implements ContextAccess {
         }
     }
 
-    private static RawBuffer getNativeString(String name) {
-        CharsetEncoder encoder = StandardCharsets.UTF_8.newEncoder();
-        int length = ((int) (name.length() * encoder.averageBytesPerChar())) + 1;
-        for (;;) {
-            if (length <= 0) {
-                throw EspressoError.shouldNotReachHere();
-            }
-            // Be super safe with the size of the buffer.
-            ByteBuffer bb = allocateDirect(length);
-            encoder.reset();
-            CoderResult result = encoder.encode(CharBuffer.wrap(name), bb, true);
-
-            if (result.isOverflow()) {
-                // Not enough space in the buffer
-                length <<= 1;
-            } else if (result.isUnderflow()) {
-                result = encoder.flush(bb);
-                if (result.isUnderflow() && (bb.position() < bb.capacity())) {
-                    // Encoder encoded entire string, and we have one byte of leeway.
-                    bb.put((byte) 0);
-                    return new RawBuffer(bb, byteBufferPointer(bb));
-                }
-                if (result.isOverflow() || result.isUnderflow()) {
-                    length += 1;
-                } else {
-                    throw EspressoError.shouldNotReachHere();
-                }
-            } else {
-                throw EspressoError.shouldNotReachHere();
-            }
-        }
-    }
-
-    @Override
-    public EspressoContext getContext() {
-        return context;
-    }
-
     @CompilerDirectives.TruffleBoundary
     private static ByteBuffer allocateDirect(int capacity, JavaKind kind) {
         return allocateDirect(Math.multiplyExact(capacity, kind.getByteCount()));
@@ -287,5 +245,10 @@ class JImageLibrary extends NativeEnv implements ContextAccess {
     @CompilerDirectives.TruffleBoundary
     private static ByteBuffer allocateDirect(int capacity) {
         return ByteBuffer.allocateDirect(capacity).order(ByteOrder.nativeOrder());
+    }
+
+    @Override
+    public EspressoContext getContext() {
+        return context;
     }
 }
