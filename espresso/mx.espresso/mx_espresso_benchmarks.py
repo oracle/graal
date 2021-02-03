@@ -56,6 +56,13 @@ class EspressoVm(GuestVm, JavaVm):
 
     def run(self, cwd, args):
         if hasattr(self.host_vm(), 'run_launcher'):
+            if mx.suite('vm', fatalIfMissing=False):
+                import mx_vm_benchmark
+                if isinstance(self.host_vm(), mx_vm_benchmark.GraalVm) and '--native' in self.host_vm().extra_launcher_args:
+                    # The host-vm is a GraalVM in native mode. Do not pass `--native` and run `java -truffle`.
+                    self.host_vm().extra_launcher_args.remove('--native')
+                    return self.host_vm().run_launcher('java', ['-truffle'] + self._options + args, cwd)
+            # The host-vm is in JVM mode. Run the `espresso` launcher.
             return self.host_vm().run_launcher('espresso', self._options + args, cwd)
         else:
             return self.host_vm().run(cwd, mx_espresso._espresso_standalone_command(self._options + args))
