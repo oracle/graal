@@ -290,6 +290,12 @@ public final class FileDownloader {
     }
 
     public void download() throws IOException {
+        Path localCache = feedback.getLocalCache(sourceURL);
+        if (localCache != null) {
+            localFile = localCache.toFile();
+            return;
+        }
+
         simpleOutput = Boolean.TRUE.toString().equals(System.getProperty(CommonConstants.SYSPROP_SIMPLE_OUTPUT));
         boolean fromFile = sourceURL.getProtocol().equals("file");
         if (simpleOutput) {
@@ -304,12 +310,6 @@ public final class FileDownloader {
             } else {
                 feedback.output("MSG_DownloadingFrom", getSourceURL());
             }
-        }
-
-        Path localCache = feedback.getLocalCache(sourceURL);
-        if (localCache != null) {
-            localFile = localCache.toFile();
-            return;
         }
 
         if (fromFile) {
