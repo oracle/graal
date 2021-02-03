@@ -48,8 +48,6 @@ import com.oracle.truffle.nfi.spi.types.NativeSimpleType;
 
 public abstract class NativeEnv {
 
-    static final Map<Class<?>, NativeSimpleType> classToNative = buildClassToNative();
-
     public static NativeSimpleType word() {
         return NativeSimpleType.SINT64; // or SINT32
     }
@@ -69,24 +67,8 @@ public abstract class NativeEnv {
         return Collections.unmodifiableMap(map);
     }
 
-    public static long unwrapPointer(Object nativePointer) {
-        try {
-            return InteropLibrary.getFactory().getUncached().asPointer(nativePointer);
-        } catch (UnsupportedMessageException e) {
-            throw new RuntimeException(e);
-        }
-    }
-
-    public static NativeSimpleType classToType(Class<?> clazz, boolean javaToNative) {
-        return classToNative.getOrDefault(clazz, javaToNative ? NativeSimpleType.NULLABLE : NativeSimpleType.OBJECT);
-    }
-
     protected static ByteBuffer directByteBuffer(@Pointer TruffleObject addressPtr, long capacity, JavaKind kind) {
         return directByteBuffer(interopAsPointer(addressPtr), Math.multiplyExact(capacity, kind.getByteCount()));
-    }
-
-    protected static ByteBuffer directByteBuffer(long address, long capacity, JavaKind kind) {
-        return directByteBuffer(address, Math.multiplyExact(capacity, kind.getByteCount()));
     }
 
     private static final Constructor<? extends ByteBuffer> constructor;
