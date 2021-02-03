@@ -101,7 +101,7 @@ public final class ClassRedefinition {
 
     public static void begin() {
         synchronized (redefineLock) {
-            if (locked) {
+            while (locked) {
                 try {
                     redefineLock.wait();
                 } catch (InterruptedException e) {
