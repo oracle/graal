@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2017, 2020, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2017, 2021, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -66,10 +66,13 @@ import com.oracle.truffle.api.CallTarget;
 final class NativeClosure {
 
     private final CallTarget callTarget;
+    private final Object receiver;
+
     private final Target_com_oracle_truffle_nfi_impl_LibFFISignature signature;
 
-    private NativeClosure(CallTarget callTarget, Target_com_oracle_truffle_nfi_impl_LibFFISignature signature) {
+    private NativeClosure(CallTarget callTarget, Object receiver, Target_com_oracle_truffle_nfi_impl_LibFFISignature signature) {
         this.callTarget = callTarget;
+        this.receiver = receiver;
         this.signature = signature;
     }
 
@@ -83,8 +86,8 @@ final class NativeClosure {
     }
 
     static Target_com_oracle_truffle_nfi_impl_ClosureNativePointer prepareClosure(Target_com_oracle_truffle_nfi_impl_NFIContext ctx,
-                    Target_com_oracle_truffle_nfi_impl_LibFFISignature signature, CallTarget callTarget, ffi_closure_callback callback) {
-        NativeClosure closure = new NativeClosure(callTarget, signature);
+                    Target_com_oracle_truffle_nfi_impl_LibFFISignature signature, CallTarget callTarget, Object receiver, ffi_closure_callback callback) {
+        NativeClosure closure = new NativeClosure(callTarget, receiver, signature);
         NativeClosureHandle handle = ImageSingletons.lookup(TruffleNFISupport.class).createClosureHandle(closure);
 
         WordPointer codePtr = StackValue.get(WordPointer.class);
@@ -95,18 +98,22 @@ final class NativeClosure {
         PointerBase code = codePtr.read();
         LibFFI.ffi_prep_closure_loc(data.ffiClosure(), WordFactory.pointer(signature.cif), callback, data, code);
 
-        return ctx.createClosureNativePointer(data.rawValue(), code.rawValue(), callTarget, signature);
+        return ctx.createClosureNativePointer(data.rawValue(), code.rawValue(), callTarget, signature, receiver);
     }
 
     private Object call(WordPointer argPointers, ByteBuffer retBuffer) {
         Target_com_oracle_truffle_nfi_impl_LibFFIType_CachedTypeInfo[] argTypes = signature.signatureInfo.getArgTypes();
         int length = argTypes.length;
+        if (receiver != null) {
+            length++;
+        }
         if (retBuffer != null) {
             length++;
         }
 
         Object[] args = new Object[length];
-        for (int i = 0; i < argTypes.length; i++) {
+        int i;
+        for (i = 0; i < argTypes.length; i++) {
             Object type = argTypes[i];
             if (Target_com_oracle_truffle_nfi_impl_LibFFIType_StringType.class.isInstance(type)) {
                 CCharPointerPointer argPtr = argPointers.read(i);
@@ -125,8 +132,11 @@ final class NativeClosure {
             }
         }
 
+        if (receiver != null) {
+            args[i++] = receiver;
+        }
         if (retBuffer != null) {
-            args[argTypes.length] = retBuffer;
+            args[i++] = retBuffer;
         }
 
         return callTarget.call(args);
