@@ -48,12 +48,8 @@
 
     // Scala DaCapo warmup benchmarks
     #common.jdk8_weekly_bench_linux             + common.scala_dacapo_warmup_benchmark('jvm-ce')                                   + {name: 'weekly-bench-espresso-jvm-ce-scala_dacapo_warmup-jdk8-linux-amd64'},
-    #common.jdk8_weekly_bench_linux             + common.scala_dacapo_warmup_benchmark('native-ce')                                + {name: 'weekly-bench-espresso-native-ce-scala_dacapo_warmup-jdk8-linux-amd64'},
-
-    // Scala DaCapo warmup benchmarks --engine.MultiTier (post-merge)
-    #common.jdk8_weekly_bench_linux             + common.scala_dacapo_warmup_benchmark('jvm-ce', 'multi-tier')                     + {name: 'weekly-bench-espresso-jvm-ce-scala_dacapo_warmup_benchmark_multi_tier-jdk8-linux-amd64'},
     #common.jdk8_daily_bench_linux              + common.scala_dacapo_warmup_benchmark('jvm-ee')                                   + {name: 'daily-bench-espresso-jvm-ee-scala_dacapo_warmup-jdk8-linux-amd64'},
-    #common.jdk8_weekly_bench_linux             + common.scala_dacapo_warmup_benchmark('native-ce', 'multi-tier')                  + {name: 'weekly-bench-espresso-native-ce-scala_dacapo_warmup_benchmark_multi_tier-jdk8-linux-amd64'},
+    #common.jdk8_weekly_bench_linux             + common.scala_dacapo_warmup_benchmark('native-ce')                                + {name: 'weekly-bench-espresso-native-ce-scala_dacapo_warmup-jdk8-linux-amd64'},
     common.jdk8_daily_bench_linux               + common.scala_dacapo_warmup_benchmark('native-ee')                                + {name: 'daily-bench-espresso-native-ee-scala_dacapo_warmup-jdk8-linux-amd64'},
 
     // On-demand benchmarks
