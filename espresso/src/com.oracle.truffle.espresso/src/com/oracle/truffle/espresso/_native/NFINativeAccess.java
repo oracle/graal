@@ -5,6 +5,7 @@ import java.util.logging.Level;
 
 import com.oracle.truffle.api.CallTarget;
 import com.oracle.truffle.api.CompilerAsserts;
+import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.TruffleLogger;
 import com.oracle.truffle.api.exception.AbstractTruffleException;
 import com.oracle.truffle.api.interop.ArityException;
@@ -13,11 +14,16 @@ import com.oracle.truffle.api.interop.TruffleObject;
 import com.oracle.truffle.api.interop.UnknownIdentifierException;
 import com.oracle.truffle.api.interop.UnsupportedMessageException;
 import com.oracle.truffle.api.interop.UnsupportedTypeException;
+import com.oracle.truffle.api.library.CachedLibrary;
+import com.oracle.truffle.api.library.ExportLibrary;
+import com.oracle.truffle.api.library.ExportMessage;
+import com.oracle.truffle.api.nodes.ExplodeLoop;
 import com.oracle.truffle.api.source.Source;
 import com.oracle.truffle.espresso.EspressoLanguage;
 import com.oracle.truffle.espresso.jni.NativeLibrary;
 import com.oracle.truffle.espresso.meta.EspressoError;
 import com.oracle.truffle.espresso.runtime.EspressoContext;
+import com.oracle.truffle.espresso.runtime.StaticObject;
 import com.oracle.truffle.nfi.spi.types.NativeSimpleType;
 
 public class NFINativeAccess implements NativeAccess {
@@ -118,11 +124,73 @@ public class NFINativeAccess implements NativeAccess {
         }
     }
 
+    @ExportLibrary(InteropLibrary.class)
+    final static class NativeWrapper implements TruffleObject {
+
+        final TruffleObject delegate;
+        private final NativeType returnType;
+        private final NativeType[] parameterTypes;
+
+        public NativeWrapper(TruffleObject executable, NativeType returnType, NativeType... parameterTypes) {
+            this.delegate = executable;
+            this.returnType = returnType;
+            this.parameterTypes = parameterTypes;
+        }
+
+        @SuppressWarnings("static-method")
+        @ExportMessage
+        boolean isExecutable() {
+            return true;
+        }
+
+        @ExplodeLoop
+        @ExportMessage
+        Object execute(Object[] arguments, @CachedLibrary("this.delegate") InteropLibrary interop) throws ArityException {
+            if (arguments.length != parameterTypes.length) {
+                CompilerDirectives.transferToInterpreter();
+                throw ArityException.create(parameterTypes.length, arguments.length);
+            }
+            try {
+                Object[] convertedArgs = new Object[arguments.length];
+                for (int i = 0; i < parameterTypes.length; i++) {
+                    NativeType param = parameterTypes[i];
+                    switch (param) {
+                        case BOOLEAN:
+                            convertedArgs[i] = (boolean) arguments[i] ? (byte) 1 : (byte) 0;
+                            break;
+                        case CHAR:
+                            convertedArgs[i] = (short) (char) arguments[i];
+                            break;
+                        default:
+                            convertedArgs[i] = arguments[i];
+                    }
+                }
+                Object ret = interop.execute(delegate, convertedArgs);
+                switch (returnType) {
+                    case BOOLEAN:
+                        ret = (byte) ret != 0;
+                        break;
+                    case CHAR:
+                        ret = (char) (short) ret;
+                        break;
+                    case VOID:
+                        ret = StaticObject.NULL;
+                        break;
+                }
+                return ret;
+            } catch (UnsupportedTypeException | UnsupportedMessageException e) {
+                CompilerDirectives.transferToInterpreter();
+                throw EspressoError.shouldNotReachHere(e);
+            }
+        }
+    }
+
     @Override
     public @Pointer TruffleObject bindSymbol(@Pointer TruffleObject symbol, NativeType returnType, NativeType... parameterTypes) {
         String signature = nfiSignature(returnType, parameterTypes);
         try {
-            return (TruffleObject) UNCACHED.invokeMember(symbol, "bind", signature);
+            TruffleObject executable = (TruffleObject) UNCACHED.invokeMember(symbol, "bind", signature);
+            return new NativeWrapper(executable, returnType, parameterTypes);
         } catch (UnsupportedTypeException | ArityException | UnknownIdentifierException | UnsupportedMessageException e) {
             throw EspressoError.shouldNotReachHere("Cannot bind " + signature, e);
         }

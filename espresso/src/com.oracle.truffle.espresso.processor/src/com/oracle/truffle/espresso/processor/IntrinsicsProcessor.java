@@ -32,7 +32,7 @@ import javax.lang.model.type.ReferenceType;
 
 public abstract class IntrinsicsProcessor extends EspressoProcessor {
     static final String JNI_PACKAGE = "com.oracle.truffle.espresso.jni";
-    private static final String POINTER = JNI_PACKAGE + "." + "Pointer";
+    private static final String POINTER = "com.oracle.truffle.espresso._native" + "." + "Pointer";
     private static final String HANDLE = JNI_PACKAGE + "." + "Handle";
 
     // @Pointer
