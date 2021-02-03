@@ -251,7 +251,7 @@ public final class LLVMFunctionDescriptor extends LLVMInternalTruffleObject impl
 
     @ExportMessage
     public boolean hasExecutableName() {
-        return llvmFunction.getSourceLocation().getName() != null;
+        return llvmFunction.getSourceLocation() != null && llvmFunction.getSourceLocation().getName() != null;
     }
 
     @ExportMessage
