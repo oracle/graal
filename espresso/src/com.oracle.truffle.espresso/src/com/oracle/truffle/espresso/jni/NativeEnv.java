@@ -52,22 +52,7 @@ public abstract class NativeEnv {
         return NativeSimpleType.SINT64; // or SINT32
     }
 
-    static Map<Class<?>, NativeSimpleType> buildClassToNative() {
-        Map<Class<?>, NativeSimpleType> map = new HashMap<>();
-        map.put(boolean.class, NativeSimpleType.SINT8);
-        map.put(byte.class, NativeSimpleType.SINT8);
-        map.put(short.class, NativeSimpleType.SINT16);
-        map.put(char.class, NativeSimpleType.SINT16);
-        map.put(int.class, NativeSimpleType.SINT32);
-        map.put(float.class, NativeSimpleType.FLOAT);
-        map.put(long.class, NativeSimpleType.SINT64);
-        map.put(double.class, NativeSimpleType.DOUBLE);
-        map.put(void.class, NativeSimpleType.VOID);
-        map.put(String.class, NativeSimpleType.STRING);
-        return Collections.unmodifiableMap(map);
-    }
-
-    protected static ByteBuffer directByteBuffer(@Pointer TruffleObject addressPtr, long capacity, JavaKind kind) {
+     protected static ByteBuffer directByteBuffer(@Pointer TruffleObject addressPtr, long capacity, JavaKind kind) {
         return directByteBuffer(interopAsPointer(addressPtr), Math.multiplyExact(capacity, kind.getByteCount()));
     }
 
@@ -213,25 +198,6 @@ public abstract class NativeEnv {
             return 0L; // NULL handle
         }
         return StaticObject.NULL;
-    }
-
-    public static @Pointer TruffleObject loadLibraryInternal(List<Path> searchPaths, String name) {
-        return loadLibraryInternal(searchPaths, name, true);
-    }
-
-    public static @Pointer TruffleObject loadLibraryInternal(List<Path> searchPaths, String name, boolean notFoundIsFatal) {
-        for (Path path : searchPaths) {
-            Path libPath = path.resolve(System.mapLibraryName(name));
-            @Pointer
-            TruffleObject library = NativeLibrary.loadLibrary(libPath.toAbsolutePath());
-            if (library != null) {
-                return library;
-            }
-        }
-        if (notFoundIsFatal) {
-            throw EspressoError.shouldNotReachHere("Cannot load library: " + name + "\nSearch path: " + searchPaths);
-        }
-        return null;
     }
 
     public static String fromUTF8Ptr(@Pointer TruffleObject buffPtr) {
