@@ -348,7 +348,7 @@ public abstract class PartialEvaluator {
                             Indent indent = request.debug.logAndIndent("evaluate %s", request.graph);) {
                 inliningGraphPE(request);
                 assert GraphOrder.assertSchedulableGraph(request.graph) : "PE result must be schedulable in order to apply subsequent phases";
-                maybeTruffleTier(request);
+                truffleTier(request);
                 // recompute loop frequencies now that BranchProbabilities have been canonicalized
                 ComputeLoopFrequenciesClosure.compute(request.graph);
                 applyInstrumentationPhases(request);
@@ -366,12 +366,6 @@ public abstract class PartialEvaluator {
                 throw request.debug.handle(e);
             }
             return request.graph;
-        }
-    }
-
-    private void maybeTruffleTier(Request request) {
-        if (!request.options.get(InliningTruffleTierOnExpand) || request.inliningPlan.countInlinedCalls() > 0) {
-            truffleTier(request);
         }
     }
 
