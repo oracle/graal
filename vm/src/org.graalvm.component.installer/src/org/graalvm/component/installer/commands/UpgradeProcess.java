@@ -83,7 +83,6 @@ public class UpgradeProcess implements AutoCloseable {
     private boolean allowMissing;
     private ComponentRegistry newGraalRegistry;
     private Version minVersion = Version.NO_VERSION;
-    private String editionUpgrade;
     private Set<String> acceptedLicenseIDs = new HashSet<>();
 
     public UpgradeProcess(CommandInput input, Feedback feedback, ComponentCollection catalog) {
@@ -286,7 +285,7 @@ public class UpgradeProcess implements AutoCloseable {
      * {@link InstallCommand#createInstaller}.
      */
     GraalVMInstaller createGraalVMInstaller(ComponentInfo info) throws IOException {
-        ComponentParam p = input.existingFiles().createParam(info.getId(), info);
+        ComponentParam p = createGraalComponentParam(info);
         MetadataLoader ldr = p.createFileLoader();
         ldr.loadPaths();
         if (p.isComplete()) {
@@ -297,7 +296,6 @@ public class UpgradeProcess implements AutoCloseable {
         ComponentInfo completeInfo = ldr.getComponentInfo();
         targetInfo = completeInfo;
         metaLoader = ldr;
-
         GraalVMInstaller gvmInstaller = new GraalVMInstaller(feedback,
                         input.getFileOperations(),
                         input.getLocalRegistry(), completeInfo, catalog,
@@ -308,6 +306,19 @@ public class UpgradeProcess implements AutoCloseable {
         gvmInstaller.setSymlinks(ldr.loadSymlinks());
         newGraalHomePath = gvmInstaller.getInstalledPath();
         return gvmInstaller;
+    }
+
+    /**
+     * Cached parameter for the core. It will cache MetaLoader and FileLoader for subsequent
+     * operations.
+     */
+    private ComponentParam graalCoreParam;
+
+    ComponentParam createGraalComponentParam(ComponentInfo info) {
+        if (graalCoreParam == null) {
+            graalCoreParam = input.existingFiles().createParam(info.getId(), info);
+        }
+        return graalCoreParam;
     }
 
     public boolean installGraalCore(ComponentInfo info) throws IOException {
