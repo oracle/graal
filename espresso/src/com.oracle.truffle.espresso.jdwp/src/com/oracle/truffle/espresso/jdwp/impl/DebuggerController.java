@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2019, 2020, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2019, 2021, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -671,14 +671,13 @@ public final class DebuggerController implements ContextsListener {
         }
     }
 
-    public ThreadJob<?> postJobForThread(ThreadJob<?> job) {
-        threadJobs.put(job.getThread(), job);
+    public void postJobForThread(ThreadJob<?> job) {
         SimpleLock lock = getSuspendLock(job.getThread());
         synchronized (lock) {
+            threadJobs.put(job.getThread(), job);
             lock.release();
             lock.notifyAll();
         }
-        return job;
     }
 
     public CallFrame[] captureCallFramesBeforeBlocking(Object guestThread) {

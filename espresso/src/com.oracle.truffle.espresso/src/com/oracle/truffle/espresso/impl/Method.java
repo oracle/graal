@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2019, 2019, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2019, 2021, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -131,7 +131,7 @@ public final class Method extends Member<Signature> implements TruffleObject, Co
 
     // the parts of the method that can change when it's redefined
     // are encapsulated within the methodVersion
-    @CompilationFinal volatile MethodVersion methodVersion;
+    @CompilationFinal private volatile MethodVersion methodVersion;
 
     private final Assumption removedByRedefinition = Truffle.getRuntime().createAssumption();
 
@@ -680,11 +680,15 @@ public final class Method extends Member<Signature> implements TruffleObject, Co
     }
 
     public String getSourceFile() {
-        SourceFileAttribute sfa = (SourceFileAttribute) declaringKlass.getAttribute(Name.SourceFile);
+        // we have to do this atomically in regards to class redefinition
+        ObjectKlass.KlassVersion klassVersion = declaringKlass.getKlassVersion();
+
+        SourceFileAttribute sfa = (SourceFileAttribute) klassVersion.getAttribute(Name.SourceFile);
+
         if (sfa == null) {
             return "unknown source";
         }
-        return declaringKlass.getConstantPool().utf8At(sfa.getSourceFileIndex()).toString();
+        return klassVersion.getConstantPool().utf8At(sfa.getSourceFileIndex()).toString();
     }
 
     public boolean hasSourceFileAttribute() {
@@ -1286,6 +1290,10 @@ public final class Method extends Member<Signature> implements TruffleObject, Co
 
         @Override
         public Object invokeMethod(Object callee, Object[] args) {
+            if (getMethod().isRemovedByRedefition()) {
+                throw Meta.throwExceptionWithMessage(getMeta().java_lang_NoSuchMethodError,
+                                getMeta().toGuestString(getMethod().getDeclaringKlass().getNameAsString() + "." + getMethod().getName() + getMethod().getRawSignature()));
+            }
             return getMethod().invokeMethod(callee, args);
         }
 
