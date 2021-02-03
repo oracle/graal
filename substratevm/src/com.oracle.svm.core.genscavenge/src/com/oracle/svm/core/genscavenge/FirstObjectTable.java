@@ -33,7 +33,7 @@ import org.graalvm.word.Pointer;
 import org.graalvm.word.UnsignedWord;
 import org.graalvm.word.WordFactory;
 
-import com.oracle.svm.core.MemoryUtil;
+import com.oracle.svm.core.UnmanagedMemoryUtil;
 import com.oracle.svm.core.config.ConfigurationValues;
 import com.oracle.svm.core.hub.LayoutEncoding;
 import com.oracle.svm.core.log.Log;
@@ -422,7 +422,7 @@ public final class FirstObjectTable {
     }
 
     private static void doInitializeTableToLimitOffset(Pointer table, UnsignedWord tableLimitOffset) {
-        MemoryUtil.fill(table, tableLimitOffset, (byte) UNINITIALIZED_ENTRY);
+        UnmanagedMemoryUtil.fill(table, tableLimitOffset, (byte) UNINITIALIZED_ENTRY);
     }
 
     private static void doInitializeTableToIndex(Pointer table, UnsignedWord indexLimit) {

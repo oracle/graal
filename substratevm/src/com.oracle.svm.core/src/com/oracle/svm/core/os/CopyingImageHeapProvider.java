@@ -27,7 +27,7 @@ package com.oracle.svm.core.os;
 import org.graalvm.word.Pointer;
 import org.graalvm.word.UnsignedWord;
 
-import com.oracle.svm.core.MemoryUtil;
+import com.oracle.svm.core.UnmanagedMemoryUtil;
 import com.oracle.svm.core.annotate.Uninterruptible;
 import com.oracle.svm.core.c.function.CEntryPointErrors;
 
@@ -36,7 +36,7 @@ public class CopyingImageHeapProvider extends AbstractCopyingImageHeapProvider {
     @Override
     @Uninterruptible(reason = "Called during isolate initialization.")
     protected int copyMemory(Pointer loadedImageHeap, UnsignedWord imageHeapSize, Pointer newImageHeap) {
-        MemoryUtil.copy(loadedImageHeap, newImageHeap, imageHeapSize);
+        UnmanagedMemoryUtil.copy(loadedImageHeap, newImageHeap, imageHeapSize);
         return CEntryPointErrors.NO_ERROR;
     }
 }

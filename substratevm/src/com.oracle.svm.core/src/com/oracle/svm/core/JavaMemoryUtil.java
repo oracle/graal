@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2012, 2017, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2012, 2021, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -24,15 +24,68 @@
  */
 package com.oracle.svm.core;
 
+import org.graalvm.compiler.word.BarrieredAccess;
 import org.graalvm.compiler.word.Word;
 import org.graalvm.word.Pointer;
 import org.graalvm.word.UnsignedWord;
 import org.graalvm.word.WordFactory;
 
 import com.oracle.svm.core.annotate.Uninterruptible;
+import com.oracle.svm.core.hub.LayoutEncoding;
 import com.oracle.svm.core.util.VMError;
 
-public final class MemoryUtil {
+/**
+ * The methods in this class guarantee some level of atomicity. So, they may be used on Java heap
+ * memory. However, depending on the called method, a few precautions are still necessary. So,
+ * please read the JavaDoc of the methods.
+ */
+public final class JavaMemoryUtil {
+
+    /**
+     * Copy bytes from one Java object to another. The copied memory areas may overlap.
+     *
+     * The caller must take care that no GC barriers are required for the operation. Furthermore,
+     * the offsets must be aligned to object field boundaries or array element boundaries in order
+     * to ensure access atomicity according to the Java memory model (Java Language Specification,
+     * 17.6).
+     */
+    public static void copy(Object from, UnsignedWord fromOffset, Object to, UnsignedWord toOffset, UnsignedWord size) {
+        if (from != to || fromOffset.aboveThan(toOffset)) {
+            copyForward(from, fromOffset, to, toOffset, size);
+        } else if (fromOffset.notEqual(toOffset)) {
+            copyBackward(from, fromOffset, to, toOffset, size);
+        }
+    }
+
+    /**
+     * Copy bytes from one Java object to another.
+     *
+     * The caller must take care that no GC barriers are required for the operation. Furthermore,
+     * the offsets must be aligned to object field boundaries or array element boundaries in order
+     * to ensure access atomicity according to the Java memory model (Java Language Specification,
+     * 17.6).
+     */
+    @Uninterruptible(reason = "Objects must not move")
+    public static void copyForward(Object fromArray, UnsignedWord fromOffset, Object toArray, UnsignedWord toOffset, UnsignedWord size) {
+        Pointer from = Word.objectToUntrackedPointer(fromArray).add(fromOffset);
+        Pointer to = Word.objectToUntrackedPointer(toArray).add(toOffset);
+        copyForward(from, to, size);
+    }
+
+    /**
+     * Copy bytes from one Java object to another.
+     *
+     * The caller must take care that no GC barriers are required for the operation. Furthermore,
+     * the offsets must be aligned to object field boundaries or array element boundaries in order
+     * to ensure access atomicity according to the Java memory model (Java Language Specification,
+     * 17.6).
+     */
+    @Uninterruptible(reason = "Objects must not move")
+    public static void copyBackward(Object fromArray, UnsignedWord fromOffset, Object toArray, UnsignedWord toOffset, UnsignedWord size) {
+        Pointer from = Word.objectToUntrackedPointer(fromArray).add(fromOffset);
+        Pointer to = Word.objectToUntrackedPointer(toArray).add(toOffset);
+        copyBackward(from, to, size);
+    }
 
     /**
      * Copy bytes from one memory area to another. The memory areas may overlap.
@@ -41,7 +94,7 @@ public final class MemoryUtil {
      * required for the operation and the caller must be {@linkplain Uninterruptible
      * uninterruptible} or otherwise ensure that objects cannot move or be collected.
      *
-     * When using this method to copy memory of Java objects, the addresses and size must align to
+     * When using this method to copy memory of Java objects, the address and size must align to
      * object field boundaries or array element boundaries in order to ensure access atomicity
      * according to the Java memory model (Java Language Specification, 17.6).
      */
@@ -54,8 +107,19 @@ public final class MemoryUtil {
         }
     }
 
+    /**
+     * Copy bytes from one memory area to another.
+     *
+     * If either memory area is on the Java heap, the caller must take care that no GC barriers are
+     * required for the operation and the caller must be {@linkplain Uninterruptible
+     * uninterruptible} or otherwise ensure that objects cannot move or be collected.
+     *
+     * When using this method to copy memory of Java objects, the address and size must align to
+     * object field boundaries or array element boundaries in order to ensure access atomicity
+     * according to the Java memory model (Java Language Specification, 17.6).
+     */
     @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
-    private static void copyForward(Pointer from, Pointer to, UnsignedWord size) {
+    public static void copyForward(Pointer from, Pointer to, UnsignedWord size) {
         // Compute largest (up to 8) common alignment of from and to
         UnsignedWord diffBits = from.xor(to);
         UnsignedWord alignBits = diffBits.not().and(diffBits.subtract(1)).and(0x7);
@@ -174,8 +238,19 @@ public final class MemoryUtil {
         }
     }
 
+    /**
+     * Copy bytes from one memory area to another.
+     *
+     * If either memory area is on the Java heap, the caller must take care that no GC barriers are
+     * required for the operation and the caller must be {@linkplain Uninterruptible
+     * uninterruptible} or otherwise ensure that objects cannot move or be collected.
+     *
+     * When using this method to copy memory of Java objects, the address and size must align to
+     * object field boundaries or array element boundaries in order to ensure access atomicity
+     * according to the Java memory model (Java Language Specification, 17.6).
+     */
     @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
-    private static void copyBackward(Pointer from, Pointer to, UnsignedWord size) {
+    public static void copyBackward(Pointer from, Pointer to, UnsignedWord size) {
         // Compute largest (up to 8) common alignment of from and to
         UnsignedWord diffBits = from.xor(to);
         UnsignedWord alignBits = diffBits.not().and(diffBits.subtract(1)).and(0x7);
@@ -224,7 +299,6 @@ public final class MemoryUtil {
 
     /** Implementation of {@code Unsafe.copyMemory}. */
     public static void unsafeCopyMemory(Object srcBase, long srcOffset, Object destBase, long destOffset, long bytes) {
-        // Stricter about access atomicity than required by Unsafe.copyMemory Javadoc
         if (srcBase != null || destBase != null) {
             copyOnHeap(srcBase, srcOffset, destBase, destOffset, bytes);
         } else {
@@ -257,64 +331,70 @@ public final class MemoryUtil {
         v = (v << 16) | v;
         v = (v << 32) | v;
 
-        UnsignedWord offset = WordFactory.zero();
-        UnsignedWord alignMask = WordFactory.unsigned(0x7);
-
-        UnsignedWord lowerSize = to.add(alignMask).and(alignMask.not()).subtract(to);
-        if (size.belowThan(lowerSize)) {
-            lowerSize = size.and(lowerSize);
-        }
-        if (lowerSize.and(1).notEqual(0)) {
-            to.writeByte(offset, (byte) v);
-            offset = offset.add(1);
-        }
-        if (lowerSize.and(2).notEqual(0)) {
-            to.writeShort(offset, (short) v);
-            offset = offset.add(2);
-        }
-        if (lowerSize.and(4).notEqual(0)) {
-            to.writeInt(offset, (int) v);
-            offset = offset.add(4);
+        UnsignedWord lowerSize = WordFactory.unsigned(0x8).subtract(to).and(0x7);
+        if (lowerSize.aboveThan(0)) {
+            if (size.belowThan(lowerSize)) {
+                lowerSize = size.and(lowerSize);
+            }
+            fillUnalignedLower(to, v, lowerSize);
         }
 
-        UnsignedWord alignedSize = size.subtract(lowerSize).and(alignMask.not());
-        fillLongsAligned(to.add(lowerSize), alignedSize, v);
-        offset = lowerSize.add(alignedSize);
+        UnsignedWord offset = lowerSize;
+        for (UnsignedWord next = offset.add(32); next.belowOrEqual(size); next = offset.add(32)) {
+            Pointer p = to.add(offset);
+            p.writeLong(0, v);
+            p.writeLong(8, v);
+            p.writeLong(16, v);
+            p.writeLong(24, v);
+            offset = next;
+        }
+        for (UnsignedWord next = offset.add(8); next.belowOrEqual(size); next = offset.add(8)) {
+            to.writeLong(offset, v);
+            offset = next;
+        }
 
-        UnsignedWord upperSize = size.subtract(offset);
-        if (upperSize.and(4).notEqual(0)) {
-            to.writeInt(offset, (int) v);
-            offset = offset.add(4);
-        }
-        if (upperSize.and(2).notEqual(0)) {
-            to.writeShort(offset, (short) v);
-            offset = offset.add(2);
-        }
-        if (upperSize.and(1).notEqual(0)) {
-            to.writeByte(offset, (byte) v);
-            offset = offset.add(1);
+        if (offset.belowThan(size)) {
+            UnsignedWord upperSize = size.subtract(offset);
+            fillUnalignedUpper(to.add(offset), value, upperSize);
         }
     }
 
-    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
-    private static void fillLongsAligned(Pointer to, UnsignedWord size, long longValue) {
+    @Uninterruptible(reason = "Called from uninterruptible code, but may be inlined.", mayBeInlined = true)
+    private static void fillUnalignedLower(Pointer to, long value, UnsignedWord length) {
         UnsignedWord offset = WordFactory.zero();
-        for (UnsignedWord next = offset.add(32); next.belowOrEqual(size); next = offset.add(32)) {
-            Pointer p = to.add(offset);
-            p.writeLong(0, longValue);
-            p.writeLong(8, longValue);
-            p.writeLong(16, longValue);
-            p.writeLong(24, longValue);
-            offset = next;
+        if (length.and(1).notEqual(0)) {
+            to.writeByte(offset, (byte) value);
+            offset = offset.add(1);
         }
-        for (; offset.belowThan(size); offset = offset.add(8)) {
-            to.writeLong(offset, longValue);
+        if (length.and(2).notEqual(0)) {
+            to.writeShort(offset, (short) value);
+            offset = offset.add(2);
+        }
+        if (length.and(4).notEqual(0)) {
+            to.writeInt(offset, (int) value);
+            offset = offset.add(4);
+        }
+    }
+
+    @Uninterruptible(reason = "Called from uninterruptible code, but may be inlined.", mayBeInlined = true)
+    private static void fillUnalignedUpper(Pointer to, long value, UnsignedWord upperSize) {
+        UnsignedWord offset = WordFactory.zero();
+        if (upperSize.and(4).notEqual(0)) {
+            to.writeInt(offset, (int) value);
+            offset = offset.add(4);
+        }
+        if (upperSize.and(2).notEqual(0)) {
+            to.writeShort(offset, (short) value);
+            offset = offset.add(2);
+        }
+        if (upperSize.and(1).notEqual(0)) {
+            to.writeByte(offset, (byte) value);
+            offset = offset.add(1);
         }
     }
 
     /** Implementation of {@code Unsafe.setMemory}. */
     public static void unsafeSetMemory(Object destBase, long destOffset, long bytes, byte bvalue) {
-        // Stricter about access atomicity than required by Unsafe.setMemory Javadoc
         if (destBase != null) {
             fillOnHeap(destBase, destOffset, bytes, bvalue);
         } else {
@@ -324,15 +404,12 @@ public final class MemoryUtil {
 
     @Uninterruptible(reason = "Accessed memory is on the heap, code must not be interrupted.")
     private static void fillOnHeap(Object destBase, long destOffset, long bytes, byte bvalue) {
-        MemoryUtil.fill(Word.objectToUntrackedPointer(destBase).add(WordFactory.unsigned(destOffset)), WordFactory.unsigned(bytes), bvalue);
+        fill(Word.objectToUntrackedPointer(destBase).add(WordFactory.unsigned(destOffset)), WordFactory.unsigned(bytes), bvalue);
     }
 
     /**
      * Copy memory from one memory area to another, unconditionally reversing bytes of an element
      * according to the passed element size. The memory areas may overlap.
-     *
-     * This method does <b>NOT</b> guarantee access atomicity for fields and array elements
-     * according to the Java memory model (Java Language Specification 17.6).
      *
      * If either memory area is on the Java heap, the caller must take care that no GC barriers are
      * required for the operation and the caller must be {@linkplain Uninterruptible
@@ -410,6 +487,82 @@ public final class MemoryUtil {
         }
     }
 
-    private MemoryUtil() {
+    /**
+     * Copies between object arrays. Emits the necessary read/write barriers but does *NOT* perform
+     * any array store checks (i.e., it is up to the caller to ensure that the arrays are
+     * compatible).
+     */
+    public static void copyObjectArrayForward(Object fromArray, int fromIndex, Object toArray, int toIndex, int length, int layoutEncoding) {
+        UnsignedWord fromOffset = LayoutEncoding.getArrayElementOffset(layoutEncoding, fromIndex);
+        UnsignedWord toOffset = LayoutEncoding.getArrayElementOffset(layoutEncoding, toIndex);
+        UnsignedWord elementSize = WordFactory.unsigned(LayoutEncoding.getArrayIndexScale(layoutEncoding));
+        UnsignedWord size = elementSize.multiply(length);
+
+        UnsignedWord copied = WordFactory.zero();
+        while (copied.belowThan(size)) {
+            BarrieredAccess.writeObject(toArray, toOffset.add(copied), BarrieredAccess.readObject(fromArray, fromOffset.add(copied)));
+            copied = copied.add(elementSize);
+        }
+    }
+
+    /**
+     * Copies between object arrays. Emits the necessary read/write barriers but does *NOT* perform
+     * any array store checks (i.e., it is up to the caller to ensure that the arrays are
+     * compatible).
+     */
+    public static void copyObjectArrayBackward(Object fromArray, int fromIndex, Object toArray, int toIndex, int length, int layoutEncoding) {
+        UnsignedWord fromOffset = LayoutEncoding.getArrayElementOffset(layoutEncoding, fromIndex);
+        UnsignedWord toOffset = LayoutEncoding.getArrayElementOffset(layoutEncoding, toIndex);
+        UnsignedWord elementSize = WordFactory.unsigned(LayoutEncoding.getArrayIndexScale(layoutEncoding));
+        UnsignedWord size = elementSize.multiply(length);
+
+        UnsignedWord remaining = size;
+        while (remaining.aboveThan(0)) {
+            remaining = remaining.subtract(elementSize);
+            BarrieredAccess.writeObject(toArray, toOffset.add(remaining), BarrieredAccess.readObject(fromArray, fromOffset.add(remaining)));
+        }
+    }
+
+    /**
+     * Copies between object arrays. Emits the necessary read/write barriers and also performs array
+     * store checks.
+     */
+    public static void copyObjectArrayForwardWithStoreCheck(Object fromArray, int fromIndex, Object toArray, int toIndex, int length) {
+        /*
+         * This performs also an array bounds check in every loop iteration. However, since we do a
+         * store check in every loop iteration, we are slow anyways.
+         */
+        Object[] from = (Object[]) fromArray;
+        Object[] to = (Object[]) toArray;
+        for (int i = 0; i < length; i++) {
+            to[toIndex + i] = from[fromIndex + i];
+        }
+    }
+
+    /**
+     * Copies between primitive arrays.
+     */
+    public static void copyPrimitiveArrayForward(Object fromArray, int fromIndex, Object toArray, int toIndex, int length, int layoutEncoding) {
+        UnsignedWord fromOffset = LayoutEncoding.getArrayElementOffset(layoutEncoding, fromIndex);
+        UnsignedWord toOffset = LayoutEncoding.getArrayElementOffset(layoutEncoding, toIndex);
+        UnsignedWord elementSize = WordFactory.unsigned(LayoutEncoding.getArrayIndexScale(layoutEncoding));
+        UnsignedWord size = elementSize.multiply(length);
+
+        copyForward(fromArray, fromOffset, toArray, toOffset, size);
+    }
+
+    /**
+     * Copies between primitive arrays.
+     */
+    public static void copyPrimitiveArrayBackward(Object fromArray, int fromIndex, Object toArray, int toIndex, int length, int layoutEncoding) {
+        UnsignedWord fromOffset = LayoutEncoding.getArrayElementOffset(layoutEncoding, fromIndex);
+        UnsignedWord toOffset = LayoutEncoding.getArrayElementOffset(layoutEncoding, toIndex);
+        UnsignedWord elementSize = WordFactory.unsigned(LayoutEncoding.getArrayIndexScale(layoutEncoding));
+        UnsignedWord size = elementSize.multiply(length);
+
+        copyBackward(fromArray, fromOffset, toArray, toOffset, size);
+    }
+
+    private JavaMemoryUtil() {
     }
 }
