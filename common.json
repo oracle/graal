@@ -58,6 +58,29 @@
     }
 
   },
+  "downloads": {
+    "eclipse": {
+      "downloads": {
+        "ECLIPSE": {
+          "name": "eclipse",
+          "version": "4.14.0",
+          "platformspecific": true
+        }
+      },
+      "environment": {
+        "ECLIPSE_EXE": "$ECLIPSE/eclipse"
+      }
+    },
+    "jdt": {
+      "downloads": {
+        "JDT": {
+          "name": "ecj",
+          "version": "4.14.0",
+          "platformspecific": false
+        }
+      }
+    }
+  },
   "sulong": {
     "deps": {
       "linux": {

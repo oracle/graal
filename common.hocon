@@ -74,20 +74,9 @@ DEFAULT_HEAP_SIZE : "8G"
 LARGE_HEAP_SIZE : "31G"
 LARGE_YOUNG_GEN_SIZE : "27G"
 
-eclipse : {
-  downloads : {
-    ECLIPSE : {name: eclipse, version: "4.14.0", platformspecific: true}
-  }
-  environment : {
-    ECLIPSE_EXE : "$ECLIPSE/eclipse"
-  }
-}
+eclipse : ${downloads.eclipse}
 
-jdt : {
-  downloads : {
-    JDT : {name: ecj, version: "4.14.0", platformspecific: false}
-  }
-}
+jdt : ${downloads.jdt}
 
 # for cases where a maven package is not easily accessible
 maven-download-unix : {
