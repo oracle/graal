@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2020, Oracle and/or its affiliates.
+ * Copyright (c) 2018, 2021, Oracle and/or its affiliates.
  *
  * All rights reserved.
  *
@@ -60,17 +60,15 @@ import com.oracle.truffle.llvm.runtime.types.FunctionType;
 public final class LLVMNativeWrapper implements TruffleObject {
 
     private final LLVMFunctionCode code;
-    private final LLVMFunction function;
 
-    public LLVMNativeWrapper(LLVMFunction function, LLVMFunctionCode code) {
+    public LLVMNativeWrapper(LLVMFunctionCode code) {
         assert code.isLLVMIRFunction() || code.isIntrinsicFunctionSlowPath();
-        this.function = function;
         this.code = code;
     }
 
     @Override
     public String toString() {
-        return function.toString();
+        return code.getLLVMFunction().toString();
     }
 
     @ExportMessage
@@ -81,24 +79,23 @@ public final class LLVMNativeWrapper implements TruffleObject {
     @ExportMessage
     Object execute(Object[] args,
                     @Cached CallbackHelperNode callbackHelper) {
-        return callbackHelper.execute(function, code, args);
+        return callbackHelper.execute(code, args);
     }
 
     @GenerateUncached
     @ImportStatic(LLVMLanguage.class)
     abstract static class CallbackHelperNode extends LLVMNode {
 
-        abstract Object execute(LLVMFunction function, LLVMFunctionCode code, Object[] args);
+        abstract Object execute(LLVMFunctionCode code, Object[] args);
 
         @Specialization(guards = "code == cachedCode")
-        Object doCached(@SuppressWarnings("unused") LLVMFunction function, @SuppressWarnings("unused") LLVMFunctionCode code, Object[] args,
-                        @Cached("function") @SuppressWarnings("unused") LLVMFunction cachedFunction,
+        Object doCached(@SuppressWarnings("unused") LLVMFunctionCode code, Object[] args,
                         @Cached("code") @SuppressWarnings("unused") LLVMFunctionCode cachedCode,
                         @Cached LLVMGetStackFromThreadNode getStack,
                         @CachedContext(LLVMLanguage.class) LLVMContext ctx,
-                        @Cached("createCallNode(cachedFunction, cachedCode)") DirectCallNode call,
-                        @Cached("createFromNativeNodes(cachedFunction.getType())") LLVMNativeConvertNode[] convertArgs,
-                        @Cached("createToNative(cachedFunction.getType().getReturnType())") LLVMNativeConvertNode convertRet) {
+                        @Cached("createCallNode(cachedCode)") DirectCallNode call,
+                        @Cached("createFromNativeNodes(cachedCode.getLLVMFunction().getType())") LLVMNativeConvertNode[] convertArgs,
+                        @Cached("createToNative(cachedCode.getLLVMFunction().getType().getReturnType())") LLVMNativeConvertNode convertRet) {
             LLVMStack stack = getStack.executeWithTarget(ctx.getThreadingStack(), Thread.currentThread());
             Object[] preparedArgs = prepareCallbackArguments(stack, args, convertArgs);
             Object ret = call.call(preparedArgs);
@@ -106,13 +103,12 @@ public final class LLVMNativeWrapper implements TruffleObject {
         }
 
         /**
-         * @param function
          * @param code
          * @param args
          * @see #execute(LLVMFunction, LLVMFunctionCode, Object[])
          */
         @Specialization(replaces = "doCached")
-        Object doGeneric(LLVMFunction function, LLVMFunctionCode code, Object[] args) {
+        Object doGeneric(LLVMFunctionCode code, Object[] args) {
             /*
              * This should never happen. This node is only called from the NFI, and the NFI creates
              * a separate CallTarget for every distinct callback object, so we should never see more
@@ -122,15 +118,14 @@ public final class LLVMNativeWrapper implements TruffleObject {
             throw new IllegalStateException("unexpected generic case in LLVMNativeCallback");
         }
 
-        DirectCallNode createCallNode(LLVMFunction function, LLVMFunctionCode code) {
+        DirectCallNode createCallNode(LLVMFunctionCode functionCode) {
             CallTarget callTarget;
-            LLVMFunctionCode functionCode = code;
             if (functionCode.isLLVMIRFunction()) {
                 callTarget = functionCode.getLLVMIRFunctionSlowPath();
             } else if (functionCode.isIntrinsicFunctionSlowPath()) {
-                callTarget = functionCode.getIntrinsicSlowPath().cachedCallTarget(function.getType());
+                callTarget = functionCode.getIntrinsicSlowPath().cachedCallTarget(functionCode.getLLVMFunction().getType());
             } else {
-                throw new IllegalStateException("unexpected function: " + function.toString());
+                throw new IllegalStateException("unexpected function: " + functionCode.getLLVMFunction().toString());
             }
             return DirectCallNode.create(callTarget);
         }

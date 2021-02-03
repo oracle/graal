@@ -202,7 +202,7 @@ public final class LLVMFunctionCode {
             LLVMNativePointer pointer = null;
             NativeContextExtension nativeContextExtension = context.getContextExtensionOrNull(NativeContextExtension.class);
             if (nativeContextExtension != null) {
-                wrapper = nativeContextExtension.createNativeWrapper(descriptor.getLLVMFunction(), descriptor.getFunctionCode());
+                wrapper = nativeContextExtension.createNativeWrapper(descriptor.getFunctionCode());
                 if (wrapper != null) {
                     try {
                         pointer = LLVMNativePointer.create(InteropLibrary.getFactory().getUncached().asPointer(wrapper));

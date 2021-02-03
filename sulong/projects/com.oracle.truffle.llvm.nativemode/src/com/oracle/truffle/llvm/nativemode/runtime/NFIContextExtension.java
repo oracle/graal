@@ -35,7 +35,6 @@ import java.util.List;
 import java.util.WeakHashMap;
 
 import com.oracle.truffle.llvm.runtime.LLVMContext;
-import com.oracle.truffle.llvm.runtime.LLVMFunction;
 import com.oracle.truffle.llvm.runtime.LLVMFunctionCode;
 import com.oracle.truffle.llvm.runtime.LibraryLocator;
 import com.oracle.truffle.llvm.runtime.NativeContextExtension;
@@ -246,13 +245,13 @@ public final class NFIContextExtension extends NativeContextExtension {
 
     @Override
     @TruffleBoundary
-    public Object createNativeWrapper(LLVMFunction function, LLVMFunctionCode code) {
+    public Object createNativeWrapper(LLVMFunctionCode code) {
         Object wrapper = null;
 
         try {
-            Source signatureSource = signatureSourceCache.getSignatureSource(function.getType());
+            Source signatureSource = signatureSourceCache.getSignatureSource(code.getLLVMFunction().getType());
             Object signature = getCachedSignature(signatureSource);
-            wrapper = SignatureLibrary.getUncached().createClosure(signature, new LLVMNativeWrapper(function, code));
+            wrapper = SignatureLibrary.getUncached().createClosure(signature, new LLVMNativeWrapper(code));
         } catch (UnsupportedNativeTypeException ex) {
             // ignore, fall back to tagged id
         }

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2017, 2020, Oracle and/or its affiliates.
+ * Copyright (c) 2017, 2021, Oracle and/or its affiliates.
  *
  * All rights reserved.
  *
@@ -86,7 +86,7 @@ public abstract class NativeContextExtension implements ContextExtension {
 
     public abstract NativePointerIntoLibrary getNativeHandle(String name);
 
-    public abstract Object createNativeWrapper(LLVMFunction function, LLVMFunctionCode code);
+    public abstract Object createNativeWrapper(LLVMFunctionCode code);
 
     public abstract void addLibraryHandles(Object library);
 
