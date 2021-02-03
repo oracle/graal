@@ -535,7 +535,8 @@ public class UpgradeProcess implements AutoCloseable {
         }
         migrated.clear();
         // if the result GraalVM is identical to current, do not migrate anything.
-        if (result != null && !input.getLocalRegistry().getGraalVersion().equals(result.getVersion())) {
+        if (result != null && (!input.getLocalRegistry().getGraalVersion().equals(result.getVersion()) ||
+                        input.hasOption(Commands.OPTION_USE_EDITION))) {
             migrated.addAll(installables);
             targetInfo = result;
         }
