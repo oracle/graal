@@ -390,30 +390,28 @@ public final class JniEnv extends NativeEnv implements ContextAccess {
             if (context.IsolatedNamespace) {
                 // libeden.so must be the first library loaded in the isolated namespace.
                 TruffleObject edenLibrary = getNativeAccess().loadLibrary(Collections.singletonList(espressoLibraryPath), "eden", true);
-                ctypeInit = NativeLibrary.lookupAndBind(edenLibrary, "ctypeInit",
-                                "(): void");
+                ctypeInit = getNativeAccess().lookupAndBindSymbol(edenLibrary, "ctypeInit", NativeType.VOID);
             } else {
                 ctypeInit = null;
             }
 
             nespressoLibrary = getNativeAccess().loadLibrary(Collections.singletonList(espressoLibraryPath), "nespresso", true);
-            dupClosureRef = NativeLibrary.lookup(nespressoLibrary, "dupClosureRef");
+            dupClosureRef = getNativeAccess().lookupSymbol(nespressoLibrary, "dupClosureRef");
             initializeNativeContext = NativeLibrary.lookupAndBind(nespressoLibrary,
                             "initializeNativeContext", "(env, (pointer): pointer): pointer");
             disposeNativeContext = NativeLibrary.lookupAndBind(nespressoLibrary, "disposeNativeContext",
                             "(env, pointer): void");
 
-            getSizeMax = NativeLibrary.lookupAndBind(nespressoLibrary, "get_SIZE_MAX",
-                            "(): sint64");
+            getSizeMax = getNativeAccess().lookupAndBindSymbol(nespressoLibrary, "get_SIZE_MAX", NativeType.LONG);
 
             assert sizeMax() > Integer.MAX_VALUE : "size_t must be 64-bit wide";
 
-            malloc = NativeLibrary.lookupAndBind(nespressoLibrary, "allocateMemory",
-                            "(sint64): pointer"); // void*(size_t)
-            realloc = NativeLibrary.lookupAndBind(nespressoLibrary, "reallocateMemory",
-                            "(pointer, sint64): pointer"); // void*(void*,size_t)
-            free = NativeLibrary.lookupAndBind(nespressoLibrary, "freeMemory",
-                            "(pointer): void"); // void(void*)
+            malloc = getNativeAccess().lookupAndBindSymbol(nespressoLibrary, "allocateMemory",
+                            NativeType.POINTER, NativeType.LONG); // void*(size_t)
+            realloc = getNativeAccess().lookupAndBindSymbol(nespressoLibrary, "reallocateMemory",
+                            NativeType.POINTER, NativeType.POINTER, NativeType.LONG); // void*(void*,size_t)
+            free = getNativeAccess().lookupAndBindSymbol(nespressoLibrary, "freeMemory",
+                            NativeType.VOID, NativeType.POINTER); // void(void*)
 
             // Varargs native bindings.
             popBoolean = getNativeAccess().lookupAndBindSymbol(nespressoLibrary, "pop_boolean", NativeType.BOOLEAN, NativeType.POINTER);

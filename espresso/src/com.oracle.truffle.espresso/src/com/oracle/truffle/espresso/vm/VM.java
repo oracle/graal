@@ -60,6 +60,7 @@ import java.util.function.IntFunction;
 import java.util.function.Supplier;
 import java.util.logging.Level;
 
+import com.oracle.truffle.espresso._native.NativeType;
 import org.graalvm.options.OptionValues;
 
 import com.oracle.truffle.api.CompilerDirectives;
@@ -229,8 +230,8 @@ public final class VM extends NativeEnv implements ContextAccess {
         // Try to load verify dll first. In 1.3 java dll depends on it and is not
         // always able to find it when the loading executable is outside the JDK.
         // In order to keep working with 1.2 we ignore any loading errors.
-        /* verifyLibrary = */ loadLibraryInternal(bootLibraryPath, "verify", false);
-        TruffleObject libJava = loadLibraryInternal(bootLibraryPath, "java");
+        /* verifyLibrary = */ getNativeAccess().loadLibrary(bootLibraryPath, "verify", false);
+        TruffleObject libJava = getNativeAccess().loadLibrary(bootLibraryPath, "java", true);
 
         if (getJavaVersion().java9OrLater()) {
             return libJava;
@@ -240,14 +241,15 @@ public final class VM extends NativeEnv implements ContextAccess {
         // java.lang.ClassLoader$NativeLibrary, but the VM loads the base library
         // explicitly so we have to check for JNI_OnLoad as well
         // libjava is initialized after libjvm (Espresso VM native context).
-        try {
-            // TODO(peterssen): Use JVM_FindLibraryEntry.
-            TruffleObject jniOnLoad = NativeLibrary.lookupAndBind(libJava, "JNI_OnLoad", "(pointer, pointer): sint32");
-            getUncached().execute(jniOnLoad, mokapotEnvPtr, RawPointer.nullInstance());
-        } catch (UnknownIdentifierException e) {
-            // ignore
-        } catch (UnsupportedTypeException | UnsupportedMessageException | ArityException e) {
-            throw EspressoError.shouldNotReachHere(e);
+
+        // TODO(peterssen): Use JVM_FindLibraryEntry.
+        TruffleObject jniOnLoad = getNativeAccess().lookupAndBindSymbol(libJava, "JNI_OnLoad", NativeType.INT, NativeType.POINTER, NativeType.POINTER);
+        if (jniOnLoad != null) {
+            try {
+                getUncached().execute(jniOnLoad, mokapotEnvPtr, RawPointer.nullInstance());
+            } catch (UnsupportedTypeException | UnsupportedMessageException | ArityException e) {
+                throw EspressoError.shouldNotReachHere(e);
+            }
         }
 
         return libJava;
@@ -267,7 +269,7 @@ public final class VM extends NativeEnv implements ContextAccess {
              * is loaded and further system libraries, libzip, libnet, libnio ...
              */
             @Pointer
-            TruffleObject mokapotLibrary = loadLibraryInternal(props.jvmLibraryPath(), "jvm");
+            TruffleObject mokapotLibrary = getNativeAccess().loadLibrary(props.jvmLibraryPath(), "jvm", true);
             assert mokapotLibrary != null;
 
             @Pointer
@@ -290,22 +292,22 @@ public final class VM extends NativeEnv implements ContextAccess {
                 disposeManagementContext = null;
             }
 
-            getJavaVM = NativeLibrary.lookupAndBind(mokapotLibrary,
+            getJavaVM = getNativeAccess().lookupAndBindSymbol(mokapotLibrary,
                             "getJavaVM",
-                            "(pointer): pointer");
+                            NativeType.POINTER, NativeType.POINTER);
 
-            mokapotAttachThread = NativeLibrary.lookupAndBind(mokapotLibrary,
+            mokapotAttachThread = getNativeAccess().lookupAndBindSymbol(mokapotLibrary,
                             "mokapotAttachThread",
-                            "(pointer): void");
+                            NativeType.VOID, NativeType.POINTER);
 
             @Pointer
-            TruffleObject mokapotGetRTLDDefault = NativeLibrary.lookupAndBind(mokapotLibrary,
+            TruffleObject mokapotGetRTLDDefault = getNativeAccess().lookupAndBindSymbol(mokapotLibrary,
                             "mokapotGetRTLD_DEFAULT",
-                            "(): pointer");
+                            NativeType.POINTER);
 
-            getPackageAt = NativeLibrary.lookupAndBind(mokapotLibrary,
+            getPackageAt = getNativeAccess().lookupAndBindSymbol(mokapotLibrary,
                             "getPackageAt",
-                            "(pointer, sint32): pointer");
+                            NativeType.POINTER, NativeType.POINTER, NativeType.INT);
             OptionValues options = EspressoLanguage.getCurrentContext().getEnv().getOptions();
             this.safeRTLDDefaultLookup = !options.get(EspressoOptions.UseTruffleNFIIsolatedNamespace);
             this.mokapotEnvPtr = (TruffleObject) getUncached().execute(initializeMokapotContext, jniEnv.getNativePointer(), lookupVmImplCallback);
