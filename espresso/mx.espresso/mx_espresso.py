@@ -33,23 +33,24 @@ from mx_jackpot import jackpot
 _suite = mx.suite('espresso')
 
 
-def _espresso_launcher_command(args):
-    """Espresso launcher embedded in GraalVM + arguments"""
+def _espresso_command(launcher, args):
     import mx_sdk_vm_impl
     bin_dir = os.path.join(mx_sdk_vm_impl.graalvm_home(fatalIfMissing=True), 'bin')
-    exe = os.path.join(bin_dir, mx.exe_suffix('espresso'))
+    exe = os.path.join(bin_dir, mx.exe_suffix(launcher))
     if not os.path.exists(exe):
-        exe = os.path.join(bin_dir, mx.cmd_suffix('espresso'))
+        exe = os.path.join(bin_dir, mx.cmd_suffix(launcher))
     return [exe] + args
+
+
+def _espresso_launcher_command(args):
+    """Espresso launcher embedded in GraalVM + arguments"""
+    return _espresso_command('espresso', args)
+
 
 def _espresso_java_command(args):
     """Java launcher using libespresso in GraalVM + arguments"""
-    import mx_sdk_vm_impl
-    bin_dir = os.path.join(mx_sdk_vm_impl.graalvm_home(fatalIfMissing=True), 'bin')
-    exe = os.path.join(bin_dir, mx.exe_suffix('java'))
-    if not os.path.exists(exe):
-        exe = os.path.join(bin_dir, mx.cmd_suffix('java'))
-    return [exe, '-truffle'] + args
+    return _espresso_command('java', ['-truffle'] + args)
+
 
 def _espresso_standalone_command(args):
     """Espresso standalone command from distribution jars + arguments"""
