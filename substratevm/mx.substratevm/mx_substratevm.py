@@ -376,11 +376,19 @@ _native_unittest_features = '--features=com.oracle.svm.test.ImageInfoTest$TestFe
 
 IMAGE_ASSERTION_FLAGS = ['-H:+VerifyGraalGraphs', '-H:+VerifyPhases']
 
+
+_gate_needs_build = True
 def svm_gate_body(args, tasks):
-    build_native_image_image()
-    with native_image_context(IMAGE_ASSERTION_FLAGS) as native_image:
-        with Task('image demos', tasks, tags=[GraalTags.helloworld]) as t:
-            if t:
+    def build():
+        global _gate_needs_build
+        if _gate_needs_build:
+            build_native_image_image()
+            _gate_needs_build = False
+
+    with Task('image demos', tasks, tags=[GraalTags.helloworld]) as t:
+        if t:
+            build()
+            with native_image_context(IMAGE_ASSERTION_FLAGS) as native_image:
                 if svm_java8():
                     javac_image(['--output-path', svmbuild_dir()])
                     javac_command = ['--javac-command', ' '.join(javac_image_command(svmbuild_dir()))]
@@ -392,8 +400,10 @@ def svm_gate_body(args, tasks):
                 cinterfacetutorial([])
                 clinittest([])
 
-        with Task('image demos debuginfo', tasks, tags=[GraalTags.helloworld_debug]) as t:
-            if t:
+    with Task('image demos debuginfo', tasks, tags=[GraalTags.helloworld_debug]) as t:
+        if t:
+            build()
+            with native_image_context(IMAGE_ASSERTION_FLAGS) as native_image:
                 if svm_java8():
                     javac_image(['--output-path', svmbuild_dir(), '-H:GenerateDebugInfo=1'])
                     javac_command = ['--javac-command', ' '.join(javac_image_command(svmbuild_dir())), '-H:GenerateDebugInfo=1']
@@ -405,16 +415,22 @@ def svm_gate_body(args, tasks):
                 cinterfacetutorial(['-H:GenerateDebugInfo=1'])
                 clinittest([])
 
-        with Task('image debuginfotest', tasks, tags=[GraalTags.debuginfotest]) as t:
-            if t:
+    with Task('image debuginfotest', tasks, tags=[GraalTags.debuginfotest]) as t:
+        if t:
+            build()
+            with native_image_context(IMAGE_ASSERTION_FLAGS) as native_image:
                 debuginfotest(['--output-path', svmbuild_dir()])
 
-        with Task('native unittests', tasks, tags=[GraalTags.test]) as t:
-            if t:
+    with Task('native unittests', tasks, tags=[GraalTags.test]) as t:
+        if t:
+            build()
+            with native_image_context(IMAGE_ASSERTION_FLAGS) as native_image:
                 native_unittests_task()
 
-        with Task('Run Truffle NFI unittests with SVM image', tasks, tags=["svmjunit"]) as t:
-            if t:
+    with Task('Run Truffle NFI unittests with SVM image', tasks, tags=["svmjunit"]) as t:
+        if t:
+            build()
+            with native_image_context(IMAGE_ASSERTION_FLAGS) as native_image:
                 testlib = mx_subst.path_substitutions.substitute('-Dnative.test.lib=<path:truffle:TRUFFLE_TEST_NATIVE>/<lib:nativetest>')
                 native_unittest_args = ['com.oracle.truffle.nfi.test', '--build-args', '--language:nfi',
                                         '-H:MaxRuntimeCompileMethods=2000',
@@ -422,12 +438,15 @@ def svm_gate_body(args, tasks):
                                         '--run-args', testlib, '--very-verbose', '--enable-timing']
                 native_unittest(native_unittest_args)
 
-            with Task('Musl static hello world and JVMCI version check', tasks, tags=[GraalTags.muslcbuild]) as t:
-                if t:
-                    run_musl_basic_tests()
+    with Task('Musl static hello world and JVMCI version check', tasks, tags=[GraalTags.muslcbuild]) as t:
+        if t:
+            build()
+            with native_image_context(IMAGE_ASSERTION_FLAGS) as native_image:
+                run_musl_basic_tests()
 
     with Task('Check mx native-image --help', tasks, tags=[GraalTags.nativeimagehelp]) as t:
         if t:
+            build()
             mx.log('Running mx native-image --help output check.')
             # This check works by scanning stdout for the 'Usage' keyword. If that keyword does not appear, it means something broke mx native-image --help.
             def help_stdout_check(output):
@@ -452,6 +471,7 @@ def svm_gate_body(args, tasks):
 
     with Task('maven plugin checks', tasks, tags=[GraalTags.maven]) as t:
         if t:
+            build()
             maven_plugin_install([])
             maven_plugin_test([])
 
