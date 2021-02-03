@@ -65,14 +65,6 @@ linux : ${common} {
   }
 }
 
-solaris : ${common} {
-  packages : {
-    git : ">=1.8.3"
-    mercurial : ">=2.2"
-    "apache/ant": ">=1.9.4"
-  }
-}
-
 darwin : ${common} {
   environment : {
     # Required to keep pylint happy on Darwin
@@ -94,14 +86,6 @@ darwin-amd64 : ${darwin} {
 
 windows-amd64 : ${windows} {
   capabilities : [windows, amd64]
-}
-
-solaris-sparcv9 : ${solaris} {
-  capabilities : [solaris, sparcv9]
-}
-
-linux-sparcv9 : ${linux} {
-  capabilities : [linux, sparcv9]
 }
 
 linux-aarch64 : ${linux} {
@@ -142,8 +126,6 @@ linux-deploy : ${linux} {
     maven : ">=3.3.9"
   }
 }
-
-solaris-deploy : ${solaris} ${maven-download-unix}
 
 darwin-deploy : ${darwin} ${maven-download-unix} {
   environment : {
