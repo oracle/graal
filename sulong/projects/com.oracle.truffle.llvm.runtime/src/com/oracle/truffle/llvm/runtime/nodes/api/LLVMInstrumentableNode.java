@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2019, 2020, Oracle and/or its affiliates.
+ * Copyright (c) 2019, 2021, Oracle and/or its affiliates.
  *
  * All rights reserved.
  *
@@ -30,12 +30,28 @@
 package com.oracle.truffle.llvm.runtime.nodes.api;
 
 import com.oracle.truffle.api.CompilerAsserts;
+import com.oracle.truffle.api.CompilerDirectives;
+import com.oracle.truffle.api.dsl.Cached;
+import com.oracle.truffle.api.dsl.CachedContext;
+import com.oracle.truffle.api.frame.Frame;
 import com.oracle.truffle.api.instrumentation.InstrumentableNode;
 import com.oracle.truffle.api.instrumentation.StandardTags;
 import com.oracle.truffle.api.instrumentation.Tag;
+import com.oracle.truffle.api.interop.NodeLibrary;
+import com.oracle.truffle.api.interop.UnsupportedMessageException;
+import com.oracle.truffle.api.library.ExportLibrary;
+import com.oracle.truffle.api.library.ExportMessage;
 import com.oracle.truffle.api.source.SourceSection;
+import com.oracle.truffle.llvm.runtime.LLVMContext;
+import com.oracle.truffle.llvm.runtime.LLVMLanguage;
+import com.oracle.truffle.llvm.runtime.debug.scope.LLVMDebuggerScopeFactory;
 import com.oracle.truffle.llvm.runtime.debug.scope.LLVMSourceLocation;
+import com.oracle.truffle.llvm.runtime.interop.LLVMDataEscapeNode.LLVMPointerDataEscapeNode;
+import com.oracle.truffle.llvm.runtime.nodes.func.LLVMFunctionStartNode;
+import com.oracle.truffle.llvm.runtime.options.SulongEngineOption;
+import com.oracle.truffle.llvm.runtime.pointer.LLVMPointer;
 
+@ExportLibrary(NodeLibrary.class)
 public abstract class LLVMInstrumentableNode extends LLVMNode implements InstrumentableNode {
 
     private LLVMSourceLocation sourceLocation;
@@ -111,5 +127,41 @@ public abstract class LLVMInstrumentableNode extends LLVMNode implements Instrum
         } else {
             return false;
         }
+    }
+
+    @ExportMessage
+    boolean hasScope(@SuppressWarnings("unused") Frame frame) {
+        return sourceLocation != null;
+    }
+
+    @ExportMessage
+    public boolean hasRootInstance(@SuppressWarnings("unused") Frame frame) {
+        return this.getRootNode() instanceof LLVMFunctionStartNode;
+    }
+
+    @ExportMessage
+    public Object getScope(Frame frame, @SuppressWarnings("unused") boolean nodeEnter,
+                    @CachedContext(LLVMLanguage.class) LLVMContext ctx) {
+        if (isLLDebugEnabled(ctx)) {
+            return LLVMDebuggerScopeFactory.createIRLevelScope(this, frame, ctx);
+        } else {
+            return LLVMDebuggerScopeFactory.createSourceLevelScope(this, frame, ctx);
+        }
+    }
+
+    @CompilerDirectives.TruffleBoundary
+    private static boolean isLLDebugEnabled(LLVMContext ctx) {
+        return ctx.getEnv().getOptions().get(SulongEngineOption.LL_DEBUG);
+    }
+
+    @ExportMessage
+    public Object getRootInstance(Frame frame,
+                    @CachedContext(LLVMLanguage.class) LLVMContext ctx,
+                    @Cached LLVMPointerDataEscapeNode dataEscapeNode) throws UnsupportedMessageException {
+        if (hasRootInstance(frame)) {
+            LLVMPointer pointer = ctx.getSymbol(((LLVMFunctionStartNode) this.getRootNode()).getRootFunction());
+            return dataEscapeNode.executeWithTarget(pointer);
+        }
+        throw UnsupportedMessageException.create();
     }
 }

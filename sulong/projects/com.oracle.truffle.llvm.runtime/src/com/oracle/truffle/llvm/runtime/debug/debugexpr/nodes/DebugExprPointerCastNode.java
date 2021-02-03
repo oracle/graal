@@ -30,7 +30,6 @@
 
 package com.oracle.truffle.llvm.runtime.debug.debugexpr.nodes;
 
-import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.llvm.runtime.CommonNodeFactory;
@@ -55,32 +54,29 @@ public abstract class DebugExprPointerCastNode extends LLVMExpressionNode implem
     @Specialization
     Object doCast(VirtualFrame frame) {
         Object executedPointerNode = pointerNode.executeGeneric(frame);
-        return getMember(executedPointerNode);
+        return getMember(executedPointerNode, frame);
     }
 
     @Override
-    public DebugExprType getType() {
-        return typeNode.getType();
+    public DebugExprType getType(VirtualFrame frame) {
+        return typeNode.getType(frame);
     }
 
-    @TruffleBoundary
-    private Object getMember(Object executedPointerNode) {
+    private Object getMember(Object executedPointerNode, VirtualFrame frame) {
         if (executedPointerNode == null) {
             throw DebugExprException.create(this, "debugObject to dereference is null");
         }
-        if (!typeNode.getLLVMSourceType().isPointer()) {
+        if (!typeNode.getLLVMSourceType(frame).isPointer()) {
             throw DebugExprException.create(this, "%s is no pointer", executedPointerNode);
         }
         try {
-            LLVMSourcePointerType llvmSourcePointerType = (LLVMSourcePointerType) typeNode.getLLVMSourceType();
+            LLVMSourcePointerType llvmSourcePointerType = (LLVMSourcePointerType) typeNode.getLLVMSourceType(frame);
 
             LLVMDebugObject llvmPointerObject = (LLVMDebugObject) executedPointerNode;
             Object llvmPointerValue = llvmPointerObject.getValue();
             Builder builder = CommonNodeFactory.createDebugValueBuilder();
             LLVMDebugValue pointerValue = builder.build(llvmPointerValue);
-            LLVMDebugObject llvmDebugObject = LLVMDebugObject.create(llvmSourcePointerType, 0L,
-                            pointerValue, null);
-            return llvmDebugObject;
+            return LLVMDebugObject.create(llvmSourcePointerType, 0L, pointerValue, null);
 
         } catch (ClassCastException e) {
             throw DebugExprException.create(this, "%s cannot be casted to pointer ", executedPointerNode);
@@ -88,12 +84,11 @@ public abstract class DebugExprPointerCastNode extends LLVMExpressionNode implem
     }
 
     @Override
-    @TruffleBoundary
-    public Object getMember() {
+    public Object getMember(VirtualFrame frame) {
         if (pointerNode instanceof MemberAccessible) {
             MemberAccessible ma = (MemberAccessible) pointerNode;
-            Object member = ma.getMember();
-            return getMember(member);
+            Object member = ma.getMember(frame);
+            return getMember(member, frame);
         }
         throw DebugExprException.create(this, "member %s is not accessible", pointerNode);
     }
