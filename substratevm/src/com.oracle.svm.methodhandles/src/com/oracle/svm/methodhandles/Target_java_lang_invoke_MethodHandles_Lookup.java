@@ -29,11 +29,14 @@ import static com.oracle.svm.core.util.VMError.unimplemented;
 import java.lang.invoke.MethodHandle;
 import java.lang.invoke.MethodHandles;
 
+import com.oracle.svm.core.annotate.Alias;
+import com.oracle.svm.core.annotate.RecomputeFieldValue;
 import com.oracle.svm.core.annotate.Substitute;
 import com.oracle.svm.core.annotate.TargetClass;
 import com.oracle.svm.core.annotate.TargetElement;
 import com.oracle.svm.core.jdk.JDK11OrEarlier;
 import com.oracle.svm.core.jdk.JDK15OrLater;
+import com.oracle.svm.core.jdk.JDK16OrLater;
 
 @TargetClass(value = MethodHandles.class, innerClass = "Lookup", onlyWith = MethodHandlesSupported.class)
 final class Target_java_lang_invoke_MethodHandles_Lookup {
@@ -62,4 +65,8 @@ final class Target_java_lang_invoke_MethodHandles_Lookup {
         /* Binding the caller triggers the generation of an invoker */
         return mh;
     }
+
+    @Alias @TargetElement(onlyWith = JDK16OrLater.class)//
+    @RecomputeFieldValue(kind = RecomputeFieldValue.Kind.FromAlias, isFinal = true)//
+    public static int ORIGINAL = MethodHandles.Lookup.PACKAGE << 3;
 }

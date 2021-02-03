@@ -54,6 +54,7 @@ import com.oracle.truffle.espresso.jdwp.api.MethodRef;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.LinkedList;
 import java.util.List;
 import java.util.Map;
@@ -783,7 +784,11 @@ public final class DebuggerController implements ContextsListener {
             List<Callable<Void>> jobs = new ArrayList<>();
 
             boolean hit = false;
+            HashSet<Breakpoint> handled = new HashSet<>(event.getBreakpoints().size());
             for (Breakpoint bp : event.getBreakpoints()) {
+                if (handled.contains(bp)) {
+                    continue;
+                }
                 BreakpointInfo info = breakpointInfos.get(bp);
                 suspendPolicy = info.getSuspendPolicy();
 
@@ -852,6 +857,7 @@ public final class DebuggerController implements ContextsListener {
                         return;
                     }
                 }
+                handled.add(bp);
             }
 
             // check if suspended for a field breakpoint

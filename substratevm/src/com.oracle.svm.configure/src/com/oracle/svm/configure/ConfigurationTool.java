@@ -322,13 +322,21 @@ public class ConfigurationTool {
             switch (current) {
                 case "--include-packages-from-modules":
                 case "--exclude-packages-from-modules":
+                case "--exclude-unexported-packages-from-modules":
                     if (SubstrateUtil.HOSTED) {
                         if (rootNode != null) {
                             throw new UsageException(current + " must be specified before other rule-creating arguments");
                         }
-                        RuleNode.Inclusion inclusion = current.startsWith("--include") ? RuleNode.Inclusion.Include : RuleNode.Inclusion.Exclude;
                         String[] moduleNames = (value != null) ? value.split(",") : new String[0];
-                        rootNode = ModuleFilterTools.generateFromModules(moduleNames, inclusion, reduce);
+                        RuleNode.Inclusion exportedInclusion = current.startsWith("--include") ? RuleNode.Inclusion.Include : RuleNode.Inclusion.Exclude;
+                        RuleNode.Inclusion unexportedInclusion = exportedInclusion;
+                        RuleNode.Inclusion rootInclusion = exportedInclusion.invert();
+                        if (current.equals("--exclude-unexported-packages-from-modules")) {
+                            rootInclusion = RuleNode.Inclusion.Include;
+                            exportedInclusion = RuleNode.Inclusion.Include;
+                            unexportedInclusion = RuleNode.Inclusion.Exclude;
+                        }
+                        rootNode = ModuleFilterTools.generateFromModules(moduleNames, rootInclusion, exportedInclusion, unexportedInclusion, reduce);
                     } else {
                         throw new UsageException(current + " is currently not supported in the native-image build of this tool.");
                     }

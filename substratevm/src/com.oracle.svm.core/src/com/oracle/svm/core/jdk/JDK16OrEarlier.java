@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2019, 2019, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2020, 2020, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -22,12 +22,15 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.svm.configure.filters;
+package com.oracle.svm.core.jdk;
 
-@SuppressWarnings("unused")
-public class ModuleFilterTools {
-    /** This method is replaced via an overlay. */
-    public static RuleNode generateFromModules(String[] moduleNames, RuleNode.Inclusion rootInclusion, RuleNode.Inclusion exportedInclusion, RuleNode.Inclusion unexportedInclusion, boolean reduce) {
-        throw new RuntimeException("Module-based filter generation is not available in JDK 8 and below.");
+import java.util.function.BooleanSupplier;
+
+import org.graalvm.compiler.serviceprovider.JavaVersionUtil;
+
+public class JDK16OrEarlier implements BooleanSupplier {
+    @Override
+    public boolean getAsBoolean() {
+        return JavaVersionUtil.JAVA_SPEC <= 16;
     }
 }

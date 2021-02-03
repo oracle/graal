@@ -38,6 +38,7 @@ import java.util.NoSuchElementException;
 import java.util.Optional;
 import java.util.Scanner;
 import java.util.function.Consumer;
+import java.util.stream.Collectors;
 
 import org.graalvm.compiler.serviceprovider.JavaVersionUtil;
 import org.graalvm.nativeimage.ImageSingletons;
@@ -65,9 +66,6 @@ public abstract class CCompilerInvoker {
         this.tempDirectory = tempDirectory;
         try {
             this.compilerInfo = getCCompilerInfo();
-            if (this.compilerInfo == null) {
-                UserError.abort("Unable to detect supported %s native software development toolchain.", OS.getCurrent().name());
-            }
         } catch (UserError.UserException err) {
             throw addSkipCheckingInfo(err);
         }
@@ -349,7 +347,6 @@ public abstract class CCompilerInvoker {
             return new CompilerInfo(compilerPath, null, getClass().getSimpleName(), null, 0, 0, 0, null);
         }
         List<String> compilerCommand = createCompilerCommand(compilerPath, getVersionInfoOptions(), null);
-        CompilerInfo result = null;
         Process compilerProcess = null;
         try {
             ProcessBuilder processBuilder = FileUtils.prepareCommand(compilerCommand, tempDirectory);
@@ -359,24 +356,32 @@ public abstract class CCompilerInvoker {
             FileUtils.traceCommand(processBuilder);
 
             compilerProcess = processBuilder.start();
+            List<String> lines;
+            CompilerInfo result;
             try (InputStream inputStream = compilerProcess.getInputStream()) {
-                List<String> lines = FileUtils.readAllLines(inputStream);
+                lines = FileUtils.readAllLines(inputStream);
 
                 FileUtils.traceCommandOutput(lines);
 
                 result = createCompilerInfo(compilerPath, new Scanner(String.join(System.lineSeparator(), lines)));
             }
             compilerProcess.waitFor();
+            if (result == null) {
+                String errorMessage = "Unable to detect supported %s native software development toolchain.%n" +
+                                "Querying with command '%s' prints:%n%s";
+                throw UserError.abort(errorMessage, OS.getCurrent().name(), SubstrateUtil.getShellCommandString(compilerCommand, false),
+                                lines.stream().map(str -> "  " + str).collect(Collectors.joining(System.lineSeparator())));
+            }
+            return result;
         } catch (InterruptedException ex) {
             throw new InterruptImageBuilding("Interrupted during checking native-compiler " + compilerPath);
         } catch (IOException e) {
-            UserError.abort(e, "Collecting native-compiler info with '%s' failed", SubstrateUtil.getShellCommandString(compilerCommand, false));
+            throw UserError.abort(e, "Collecting native-compiler info with '%s' failed", SubstrateUtil.getShellCommandString(compilerCommand, false));
         } finally {
             if (compilerProcess != null) {
                 compilerProcess.destroy();
             }
         }
-        return result;
     }
 
     protected List<String> getVersionInfoOptions() {

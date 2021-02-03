@@ -56,5 +56,14 @@ public class TruffleAMD64InvocationPlugins implements GraphBuilderInvocationPlug
         r.registerMethodSubstitution(AMD64ArrayUtilsSubstitutions.class, "runRegionEquals", byte[].class, int.class, byte[].class, int.class, int.class);
         r.registerMethodSubstitution(AMD64ArrayUtilsSubstitutions.class, "runRegionEquals", char[].class, int.class, char[].class, int.class, int.class);
         r.registerMethodSubstitution(AMD64ArrayUtilsSubstitutions.class, "runRegionEquals", String.class, int.class, String.class, int.class, int.class);
+        r.registerMethodSubstitution(AMD64ArrayUtilsSubstitutions.class, "runIndexOfWithOrMask", byte[].class, int.class, int.class, byte.class, byte.class);
+        r.registerMethodSubstitution(AMD64ArrayUtilsSubstitutions.class, "runIndexOfWithOrMask", char[].class, int.class, int.class, char.class, char.class);
+        r.registerMethodSubstitution(AMD64ArrayUtilsSubstitutions.class, "runIndexOfWithOrMask", String.class, int.class, int.class, char.class, char.class);
+        r.registerMethodSubstitution(AMD64ArrayUtilsSubstitutions.class, "runIndexOf2ConsecutiveWithOrMask", byte[].class, int.class, int.class, byte.class, byte.class, byte.class, byte.class);
+        r.registerMethodSubstitution(AMD64ArrayUtilsSubstitutions.class, "runIndexOf2ConsecutiveWithOrMask", char[].class, int.class, int.class, char.class, char.class, char.class, char.class);
+        r.registerMethodSubstitution(AMD64ArrayUtilsSubstitutions.class, "runIndexOf2ConsecutiveWithOrMask", String.class, int.class, int.class, char.class, char.class, char.class, char.class);
+        r.registerMethodSubstitution(AMD64ArrayUtilsSubstitutions.class, "runRegionEqualsWithOrMask", byte[].class, int.class, byte[].class, int.class, byte[].class);
+        r.registerMethodSubstitution(AMD64ArrayUtilsSubstitutions.class, "runRegionEqualsWithOrMask", char[].class, int.class, char[].class, int.class, char[].class);
+        r.registerMethodSubstitution(AMD64ArrayUtilsSubstitutions.class, "runRegionEqualsWithOrMask", String.class, int.class, String.class, int.class, String.class);
     }
 }

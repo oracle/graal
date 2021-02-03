@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2014, 2020, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2021, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -38,63 +38,59 @@
  * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
  * SOFTWARE.
  */
-package com.oracle.truffle.object;
+package com.oracle.truffle.api.test.polyglot;
 
-import java.util.Objects;
+import java.io.IOException;
+import java.io.InputStream;
 
-import com.oracle.truffle.api.object.DynamicObject;
-import com.oracle.truffle.api.object.Location;
-import com.oracle.truffle.object.ShapeImpl.BaseAllocator;
+/**
+ * This class is used in {@link HostClassLoadingTest}. Renaming this class might be requiring
+ * changes.
+ */
+public final class HostClassLoadingTestClass3 {
 
-final class DefaultStrategy extends LayoutStrategy {
-    static final LayoutStrategy SINGLETON = new DefaultStrategy();
+    public static int staticField = 42;
 
-    private DefaultStrategy() {
+    public static long testMethod() throws IOException {
+        String path = "/" + HostClassLoadingTestClass3.class.getName().replace('.', '/') + ".class";
+
+        InputStream stream1 = HostClassLoadingTestClass3.class.getResourceAsStream(path);
+        long size = countBytes(stream1);
+
+        InputStream stream2 = HostClassLoadingTestClass3.class.getResourceAsStream(path);
+        InputStream stream3 = HostClassLoadingTestClass3.class.getResourceAsStream(path);
+
+        long skipped1 = checkedSkip(stream2, size / 2);
+        checkedSkip(stream3, size);
+        checkedSkip(stream2, size - skipped1);
+
+        assertAtEOF(stream1);
+        assertAtEOF(stream2);
+        assertAtEOF(stream3);
+
+        stream3.close();
+        stream2.close();
+        stream1.close();
+
+        return size;
     }
 
-    @Override
-    public boolean updateShape(DynamicObject object) {
-        assert object.getShape().isValid();
-        return false;
+    static long countBytes(InputStream stream) throws IOException {
+        return stream.skip(Integer.MAX_VALUE);
     }
 
-    @Override
-    public ShapeImpl ensureValid(ShapeImpl newShape) {
-        assert newShape.isValid();
-        return newShape;
+    private static long checkedSkip(InputStream stream, long skip) throws IOException {
+        long skipped = stream.skip(skip);
+        if (skipped != skip) {
+            throw new AssertionError("Unexpected number of bytes skipped");
+        }
+        return skipped;
     }
 
-    private static boolean assertLocationInRange(ShapeImpl shape, Location location) {
-        DefaultLayout layout = (DefaultLayout) shape.getLayout();
-        assert (shape.getPrimitiveFieldSize() + ((LocationImpl) location).primitiveFieldCount() <= layout.getPrimitiveFieldCount());
-        assert (shape.getObjectFieldSize() + ((LocationImpl) location).objectFieldCount() <= layout.getObjectFieldCount());
-        return true;
-    }
-
-    @Override
-    public ShapeImpl ensureSpace(ShapeImpl shape, Location location) {
-        Objects.requireNonNull(location);
-        assert assertLocationInRange(shape, location);
-        return shape;
-    }
-
-    @Override
-    public BaseAllocator createAllocator(ShapeImpl shape) {
-        return new CoreAllocator(shape);
-    }
-
-    @Override
-    public BaseAllocator createAllocator(LayoutImpl layout) {
-        return new CoreAllocator(layout);
-    }
-
-    @Override
-    protected Location createLocationForValue(ShapeImpl shape, Object value, long putFlags) {
-        return ((CoreAllocator) shape.allocator()).locationForValue(value, true, value != null, putFlags);
-    }
-
-    @Override
-    protected int getLocationOrdinal(Location location) {
-        return CoreLocations.getLocationOrdinal(((CoreLocation) location));
+    private static void assertAtEOF(InputStream stream) throws IOException, AssertionError {
+        int b = stream.read();
+        if (b != -1) {
+            throw new AssertionError("Expected end of stream");
+        }
     }
 }

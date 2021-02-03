@@ -283,7 +283,7 @@ public abstract class DynamicObjectImpl extends DynamicObject implements Cloneab
     @Override
     @TruffleBoundary
     public void define(Object key, Object value, int flags) {
-        define(key, value, flags, getShapeImpl().getLayout().getStrategy().getDefaultLocationFactory());
+        define(key, value, flags, null);
     }
 
     /** @since 0.17 or earlier */

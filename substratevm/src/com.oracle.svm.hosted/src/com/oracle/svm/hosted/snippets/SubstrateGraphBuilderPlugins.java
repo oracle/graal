@@ -101,9 +101,9 @@ import com.oracle.graal.pointsto.infrastructure.UniverseMetaAccess;
 import com.oracle.graal.pointsto.meta.AnalysisField;
 import com.oracle.graal.pointsto.meta.AnalysisType;
 import com.oracle.graal.pointsto.meta.AnalysisUniverse;
-import com.oracle.graal.pointsto.nodes.AnalysisUnsafePartitionLoadNode;
-import com.oracle.graal.pointsto.nodes.AnalysisUnsafePartitionStoreNode;
 import com.oracle.graal.pointsto.nodes.ConvertUnknownValueNode;
+import com.oracle.graal.pointsto.nodes.UnsafePartitionLoadNode;
+import com.oracle.graal.pointsto.nodes.UnsafePartitionStoreNode;
 import com.oracle.svm.core.FrameAccess;
 import com.oracle.svm.core.RuntimeAssertionsSupport;
 import com.oracle.svm.core.SubstrateOptions;
@@ -131,6 +131,7 @@ import com.oracle.svm.core.identityhashcode.SubstrateIdentityHashCodeNode;
 import com.oracle.svm.core.jdk.proxy.DynamicProxyRegistry;
 import com.oracle.svm.core.meta.SharedMethod;
 import com.oracle.svm.core.meta.SubstrateObjectConstant;
+import com.oracle.svm.core.OS;
 import com.oracle.svm.core.option.HostedOptionKey;
 import com.oracle.svm.core.snippets.KnownIntrinsics;
 import com.oracle.svm.core.util.UserError;
@@ -186,7 +187,7 @@ public class SubstrateGraphBuilderPlugins {
         registerArraysPlugins(plugins);
         registerArrayPlugins(plugins, snippetReflection, analysis);
         registerClassPlugins(plugins, snippetReflection);
-        registerEdgesPlugins(metaAccess, plugins, analysis);
+        registerEdgesPlugins(metaAccess, plugins);
         registerJFRThrowablePlugins(plugins, replacements);
         registerJFREventTokenPlugins(plugins, replacements);
         registerVMConfigurationPlugins(snippetReflection, plugins);
@@ -912,27 +913,24 @@ public class SubstrateGraphBuilderPlugins {
         });
     }
 
-    private static void registerEdgesPlugins(MetaAccessProvider metaAccess, InvocationPlugins plugins, boolean analysis) {
-        if (analysis) {
-            Registration r = new Registration(plugins, Edges.class).setAllowOverwrite(true);
-            for (Class<?> c : new Class<?>[]{Node.class, NodeList.class}) {
-                r.register2("get" + c.getSimpleName() + "Unsafe", Node.class, long.class, new InvocationPlugin() {
-                    @Override
-                    public boolean apply(GraphBuilderContext b, ResolvedJavaMethod targetMethod, Receiver receiver, ValueNode node, ValueNode offset) {
-                        b.addPush(JavaKind.Object, new AnalysisUnsafePartitionLoadNode(node, offset, JavaKind.Object, //
-                                        LocationIdentity.any(), GraalEdgeUnsafePartition.get(), metaAccess.lookupJavaType(c)));
-                        return true;
-                    }
-                });
+    private static void registerEdgesPlugins(MetaAccessProvider metaAccess, InvocationPlugins plugins) {
+        Registration r = new Registration(plugins, Edges.class).setAllowOverwrite(true);
+        for (Class<?> c : new Class<?>[]{Node.class, NodeList.class}) {
+            r.register2("get" + c.getSimpleName() + "Unsafe", Node.class, long.class, new InvocationPlugin() {
+                @Override
+                public boolean apply(GraphBuilderContext b, ResolvedJavaMethod targetMethod, Receiver receiver, ValueNode node, ValueNode offset) {
+                    b.addPush(JavaKind.Object, new UnsafePartitionLoadNode(node, offset, JavaKind.Object, LocationIdentity.any(), GraalEdgeUnsafePartition.get(), metaAccess.lookupJavaType(c)));
+                    return true;
+                }
+            });
 
-                r.register3("put" + c.getSimpleName() + "Unsafe", Node.class, long.class, c, new InvocationPlugin() {
-                    @Override
-                    public boolean apply(GraphBuilderContext b, ResolvedJavaMethod targetMethod, Receiver receiver, ValueNode node, ValueNode offset, ValueNode value) {
-                        b.add(new AnalysisUnsafePartitionStoreNode(node, offset, value, JavaKind.Object, LocationIdentity.any(), GraalEdgeUnsafePartition.get(), metaAccess.lookupJavaType(c)));
-                        return true;
-                    }
-                });
-            }
+            r.register3("put" + c.getSimpleName() + "Unsafe", Node.class, long.class, c, new InvocationPlugin() {
+                @Override
+                public boolean apply(GraphBuilderContext b, ResolvedJavaMethod targetMethod, Receiver receiver, ValueNode node, ValueNode offset, ValueNode value) {
+                    b.add(new UnsafePartitionStoreNode(node, offset, value, JavaKind.Object, LocationIdentity.any(), GraalEdgeUnsafePartition.get(), metaAccess.lookupJavaType(c)));
+                    return true;
+                }
+            });
         }
     }
 
@@ -1012,21 +1010,23 @@ public class SubstrateGraphBuilderPlugins {
         });
     }
 
-    /*
-     * To prevent AWT linkage error that happens with 'awt_headless' in headless mode, we eliminate
-     * native methods that depend on 'awt_xawt' library in the call-tree.
+    /**
+     * To prevent AWT linkage error on {@link OS#LINUX} that happens with 'awt_headless' in headless
+     * mode, we eliminate native methods that depend on 'awt_xawt' library in the call-tree.
      */
     private static void registerAWTPlugins(InvocationPlugins plugins) {
-        Registration r = new Registration(plugins, GraphicsEnvironment.class);
-        r.register0("isHeadless", new InvocationPlugin() {
-            @SuppressWarnings("unchecked")
-            @Override
-            public boolean apply(GraphBuilderContext b, ResolvedJavaMethod targetMethod, Receiver receiver) {
-                boolean isHeadless = GraphicsEnvironment.isHeadless();
-                b.addPush(JavaKind.Boolean, ConstantNode.forBoolean(isHeadless));
-                return true;
-            }
-        });
+        if (OS.getCurrent() == OS.LINUX) {
+            Registration r = new Registration(plugins, GraphicsEnvironment.class);
+            r.register0("isHeadless", new InvocationPlugin() {
+                @SuppressWarnings("unchecked")
+                @Override
+                public boolean apply(GraphBuilderContext b, ResolvedJavaMethod targetMethod, Receiver receiver) {
+                    boolean isHeadless = GraphicsEnvironment.isHeadless();
+                    b.addPush(JavaKind.Boolean, ConstantNode.forBoolean(isHeadless));
+                    return true;
+                }
+            });
+        }
     }
 
     private static void registerSizeOfPlugins(SnippetReflectionProvider snippetReflection, InvocationPlugins plugins) {
