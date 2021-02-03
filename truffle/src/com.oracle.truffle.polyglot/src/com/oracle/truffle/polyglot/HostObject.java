@@ -1705,12 +1705,14 @@ final class HostObject implements TruffleObject {
                         @Shared("isIterator") @Cached IsIteratorNode isIterator,
                         @Shared("toGuest") @Cached ToGuestValueNode toGuest,
                         @Exclusive @Cached BranchProfile stopIteration) throws StopIterationException {
+            Object next;
             try {
-                return toGuest.execute(receiver.languageContext, nextImpl((Iterator<?>) receiver.obj));
+                next = nextImpl((Iterator<?>) receiver.obj);
             } catch (NoSuchElementException e) {
                 stopIteration.enter();
                 throw StopIterationException.create();
             }
+            return toGuest.execute(receiver.languageContext, next);
         }
 
         @TruffleBoundary

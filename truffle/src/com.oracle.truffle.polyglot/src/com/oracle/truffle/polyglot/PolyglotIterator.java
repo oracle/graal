@@ -64,14 +64,31 @@ class PolyglotIterator<T> implements Iterator<T>, HostWrapper {
     final Object guestObject;
     final PolyglotLanguageContext languageContext;
     final Cache cache;
-    private TriState hasNext;
+    /**
+     * Caches value returned from the {@link #hasNext()}. The {@link PolyglotIterator} needs to
+     * preserve the Java {@link Iterator} contract requiring that when the
+     * {@link Iterator#hasNext()} returns {@code true} the {@link Iterator#next()} does not throw
+     * {@link NoSuchElementException}. The interop contract is weaker when the underlying data
+     * structure is modified. We emulate the Java iterator behaviour by throwing a
+     * {@link ConcurrentModificationException} when we detect an inconsistency among
+     * {@link InteropLibrary#hasIteratorNextElement(Object)} and
+     * {@link InteropLibrary#getIteratorNextElement(Object)} calls. The {@link #lastHasNext} field
+     * is used to detect such an inconsistency.
+     */
+    private TriState lastHasNext;
+
+    /**
+     * A flag marking the iterator as concurrently modified. When the {@link #next()} throws a
+     * {@link ConcurrentModificationException} any other call to the {@link #next()} has to throw
+     * {@link ConcurrentModificationException}.
+     */
     private boolean concurrentlyModified;
 
     PolyglotIterator(Class<T> elementClass, Type elementType, Object array, PolyglotLanguageContext languageContext) {
         this.guestObject = array;
         this.languageContext = languageContext;
         this.cache = Cache.lookup(languageContext, array.getClass(), elementClass, elementType);
-        hasNext = TriState.UNDEFINED;
+        lastHasNext = TriState.UNDEFINED;
     }
 
     @Override
@@ -91,10 +108,10 @@ class PolyglotIterator<T> implements Iterator<T>, HostWrapper {
 
     @Override
     public boolean hasNext() {
-        if (hasNext == TriState.UNDEFINED) {
-            hasNext = TriState.valueOf((Boolean) cache.hasNext.call(languageContext, guestObject));
+        if (lastHasNext == TriState.UNDEFINED) {
+            lastHasNext = TriState.valueOf((Boolean) cache.hasNext.call(languageContext, guestObject));
         }
-        return hasNext == TriState.TRUE ? true : false;
+        return lastHasNext == TriState.TRUE ? true : false;
     }
 
     @Override
@@ -104,13 +121,13 @@ class PolyglotIterator<T> implements Iterator<T>, HostWrapper {
             throw new ConcurrentModificationException();
         }
         try {
-            TriState prevHasNext = hasNext;
-            if (hasNext == TriState.TRUE) {
-                hasNext = TriState.UNDEFINED;
+            TriState prevHasNext = lastHasNext;
+            if (lastHasNext == TriState.TRUE) {
+                lastHasNext = TriState.UNDEFINED;
             }
             return (T) cache.next.call(languageContext, guestObject, prevHasNext);
         } catch (NoSuchElementException noSuchElementException) {
-            hasNext = TriState.FALSE;
+            lastHasNext = TriState.FALSE;
             throw noSuchElementException;
         } catch (ConcurrentModificationException concurrentModificationException) {
             concurrentlyModified = true;
@@ -267,18 +284,19 @@ class PolyglotIterator<T> implements Iterator<T>, HostWrapper {
             Object doCached(PolyglotLanguageContext languageContext, Object receiver, Object[] args,
                             @CachedLibrary("receiver") InteropLibrary iterators,
                             @Cached ToHostNode toHost,
-                            @Cached BranchProfile error) {
-                TriState hasNext = (TriState) args[ARGUMENT_OFFSET];
+                            @Cached BranchProfile error,
+                            @Cached BranchProfile stop) {
+                TriState lastHasNext = (TriState) args[ARGUMENT_OFFSET];
                 try {
                     Object next = iterators.getIteratorNextElement(receiver);
-                    if (hasNext == TriState.FALSE) {
+                    if (lastHasNext == TriState.FALSE) {
                         error.enter();
                         throw HostInteropErrors.iteratorConcurrentlyModified(languageContext, receiver, cache.valueType);
                     }
                     return toHost.execute(next, cache.valueClass, cache.valueType, languageContext, true);
                 } catch (StopIterationException e) {
-                    error.enter();
-                    if (hasNext == TriState.TRUE) {
+                    stop.enter();
+                    if (lastHasNext == TriState.TRUE) {
                         throw HostInteropErrors.iteratorConcurrentlyModified(languageContext, receiver, cache.valueType);
                     } else {
                         throw HostInteropErrors.stopIteration(languageContext, receiver, cache.valueType);

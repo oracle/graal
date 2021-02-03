@@ -11,17 +11,15 @@ This changelog summarizes major changes between GraalVM SDK versions. The main f
     * Added `Value.writeBufferByte(long, byte)`, `Value.writeBufferShort(ByteOrder, long, short)`, `Value.writeBufferInt(ByteOrder, long, int)`, `Value.writeBufferLong(ByteOrder, long, long)`, `Value.writeBufferFloat(ByteOrder, long, float)`  and `Value.writeBufferDouble(ByteOrder, long, double)` to write a primitive in this buffer at the given index (supported only if `Value.isBufferWritable()` returns `true`).
 * Added `Value` methods supporting iterables and iterators:
     * Added `hasIterator()` specifying that the `Value` is an iterable.
-    * Added `getIterator()` to return the iterator for an interable `Value`.
+    * Added `getIterator()` to return the iterator for an iterable `Value`.
     * Added `isIterator()`  specifying that the `Value` is an iterator.
     * Added `hasIteratorNextElement()`  to test that the iterator `Value` has more elements to return by calling the `getIteratorNextElement()` method.
     * Added `getIteratorNextElement()` to return the current iterator element.
-* Added `HostAccess.Builder.allowIterableAccess` to allow the guest application to access `Iterables` as values with array iterators (true by default for `HostAccess.ALL` and `HostAccess.Builder.allowListAccess(true)`, false otherwise).
-* Added `HostAccess.Builder.allowIteratorAccess` to allow the guest application to access `Iterators` (true by default for `HostAccess.ALL`, `HostAccess.Builder.allowListAccess(true)` and `HostAccess.Builder.allowIterableAccess(true)`,  false otherwise).
+* Added `HostAccess.Builder.allowIterableAccess()` to allow the guest application to access Java `Iterables` as values with iterators (true by default for `HostAccess.ALL` and `HostAccess.Builder.allowListAccess(true)`, false otherwise).
+* Added `HostAccess.Builder.allowIteratorAccess()` to allow the guest application to access Java `Iterators` (true by default for `HostAccess.ALL`, `HostAccess.Builder.allowListAccess(true)` and `HostAccess.Builder.allowIterableAccess(true)`,  false otherwise).
 * Added `ProxyIterable` and `ProxyIterator` to proxy iterable and iterator guest values.
 
 ## Version 21.0.0
-* Added support for explicitly selecting a host method overload using the signature in the form of comma-separated fully qualified parameter type names enclosed by parentheses (e.g. `methodName(f.q.TypeName,java.lang.String,int,int[])`).
-* Deprecated host method selection by JNI mangled signature, replaced by the aforementioned new form. Scheduled for removal in 21.2.
 * Added support for explicitly selecting a host method overload using the signature in the form of comma-separated fully qualified parameter type names enclosed by parentheses (e.g. `methodName(f.q.TypeName,java.lang.String,int,int[])`).
 * Deprecated host method selection by JNI mangled signature, replaced by the aforementioned new form. Scheduled for removal in 21.2.
 

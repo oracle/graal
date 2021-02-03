@@ -43,6 +43,7 @@ package org.graalvm.polyglot.proxy;
 import java.util.Iterator;
 import java.util.Objects;
 import org.graalvm.polyglot.Context;
+import org.graalvm.polyglot.HostAccess.Builder;
 import org.graalvm.polyglot.Value;
 
 /**
@@ -60,7 +61,8 @@ public interface ProxyIterable extends Proxy {
      * thrown. Examples for valid return values are:
      * <ul>
      * <li>{@link ProxyIterator}
-     * <li>{@link Iterator}
+     * <li>{@link Iterator}, requires {@link Builder#allowIteratorAccess(boolean) host iterable
+     * access}
      * <li>A guest language object representing an iterator
      * </ul>
      *

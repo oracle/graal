@@ -97,6 +97,8 @@ import java.util.function.Function;
  * <li>{@link #isMetaObject() Meta-Object}: This value represents a metaobject. Access metaobject
  * operations using {@link #getMetaSimpleName()}, {@link #getMetaQualifiedName()} and
  * {@link #isMetaInstance(Object)}.
+ * <li>{@link #isIterator() Iterator}: This value represents an iterator. The iterator can be
+ * iterated using {@link #hasIteratorNextElement()} and {@link #getIteratorNextElement()}.
  * </ul>
  * In addition any value may have one or more of the following traits:
  * <ul>
@@ -112,6 +114,9 @@ import java.util.function.Function;
  * instantiated}. For example, Java classes are instantiable.
  * <li>{@link #hasBufferElements() Buffer Elements}: This value may contain buffer elements. The
  * buffer indices always start with <code>0</code>, also if the language uses a different style.
+ * <li>{@link #hasIterator() Iterable}: This value {@link #getIterator() provides} an
+ * {@link #isIterator() iterator} which can be used to {@link #getIteratorNextElement() iterate}
+ * value elements. For example, Guest language arrays are iterable.
  * </ul>
  * <p>
  * In addition to the language agnostic types, the language specific type can be accessed using
@@ -1767,7 +1772,7 @@ public final class Value {
     }
 
     /**
-     * Returns <code>true</code> if this polyglot value provides an iterator. In this case array the
+     * Returns <code>true</code> if this polyglot value provides an iterator. In this case the
      * iterator can be obtained using {@link #getIterator()}.
      *
      * @throws IllegalStateException if the context is already closed.
@@ -1812,8 +1817,8 @@ public final class Value {
 
     /**
      * Returns <code>true</code> if the value represents an iterator which has more elements, else
-     * {@code false}. When the underlying iterable is modified the next call of the
-     * {@link #hasIteratorNextElement()} may return a different value.
+     * {@code false}. Multiple calls to the {@link #hasIteratorNextElement()} might lead to
+     * different results if the underlying data structure is modified.
      *
      * @throws UnsupportedOperationException if the value is not an {@link #isIterator() iterator}.
      * @throws IllegalStateException if the context is already closed.
@@ -1828,14 +1833,12 @@ public final class Value {
     }
 
     /**
-     * Returns the next element in the iteration. When the underlying iterable is modified the
+     * Returns the next element in the iteration. When the underlying data structure is modified the
      * {@link #getIteratorNextElement()} may throw the {@link NoSuchElementException} despite the
      * {@link #hasIteratorNextElement()} returned {@code true}, or it may throw a language error.
      *
      * @throws UnsupportedOperationException if the value is not an {@link #isIterator() iterator}
-     *             or when the underlying iterable element exists but is not readable, in such a
-     *             case the iterator cursor is incremented before the
-     *             {@link UnsupportedOperationException} is thrown.
+     *             or when the underlying iterable element exists but is not readable.
      * @throws NoSuchElementException if the iteration has no more elements. Even if the
      *             {@link NoSuchElementException} was thrown it might not be thrown again by a next
      *             call of the {@link #getIteratorNextElement()} due to a modification of an

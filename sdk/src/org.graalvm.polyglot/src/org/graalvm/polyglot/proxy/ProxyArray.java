@@ -41,6 +41,7 @@
 package org.graalvm.polyglot.proxy;
 
 import java.util.List;
+import java.util.NoSuchElementException;
 
 import org.graalvm.polyglot.Value;
 
@@ -187,5 +188,33 @@ public interface ProxyArray extends ProxyIterable {
             }
         };
     }
+}
 
+final class DefaultProxyArrayIterator implements ProxyIterator {
+
+    private final ProxyArray array;
+    private long index;
+
+    DefaultProxyArrayIterator(ProxyArray array) {
+        this.array = array;
+    }
+
+    @Override
+    public boolean hasNext() {
+        return index < array.getSize();
+    }
+
+    @Override
+    public Object getNext() {
+        if (index >= array.getSize()) {
+            throw new NoSuchElementException();
+        }
+        try {
+            Object res = array.get(index);
+            index++;
+            return res;
+        } catch (ArrayIndexOutOfBoundsException e) {
+            throw new NoSuchElementException();
+        }
+    }
 }

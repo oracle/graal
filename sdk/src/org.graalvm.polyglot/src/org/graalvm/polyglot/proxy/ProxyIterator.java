@@ -57,9 +57,9 @@ import java.util.Objects;
 public interface ProxyIterator extends Proxy {
 
     /**
-     * Returns <code>true</code> if the iterator has more elements, else <code>false</code>. When
-     * the underlying iterable is modified the next call of the {@link #hasNext()} may return a
-     * different value.
+     * Returns <code>true</code> if the iterator has more elements, else <code>false</code>.
+     * Multiple calls to the {@link #hasNext()} might lead to different results if the underlying
+     * data structure is modified.
      *
      * @see #getNext()
      * @since 21.1
@@ -67,7 +67,7 @@ public interface ProxyIterator extends Proxy {
     boolean hasNext();
 
     /**
-     * Returns the next element in the iteration. When the underlying iterable is modified the
+     * Returns the next element in the iteration. When the underlying data structure is modified the
      * {@link #getNext()} may throw the {@link NoSuchElementException} even when the
      * {@link #hasNext()} returned {@code true}.
      *
@@ -83,9 +83,9 @@ public interface ProxyIterator extends Proxy {
 
     /**
      * Creates a proxy iterator backed by a Java {@link Iterator}. If the set values are host values
-     * then they will be {@link Value#asHostObject() unboxed}. The
-     * {@link ConcurrentModificationException} possibly thrown by the Java {@link Iterator} when a
-     * concurrent modification is detected is translated into the host exception.
+     * then they will be {@link Value#asHostObject() unboxed}. If the Java {@link Iterator} throws
+     * the {@link ConcurrentModificationException} the exception is translated into the host
+     * exception.
      *
      * @since 21.1
      */
@@ -111,37 +111,5 @@ final class DefaultProxyIterator implements ProxyIterator {
     @Override
     public Object getNext() {
         return iterator.next();
-    }
-}
-
-final class DefaultProxyArrayIterator implements ProxyIterator {
-
-    private final ProxyArray array;
-    private long index;
-
-    DefaultProxyArrayIterator(ProxyArray array) {
-        this.array = array;
-    }
-
-    @Override
-    public boolean hasNext() {
-        return index < array.getSize();
-    }
-
-    @Override
-    public Object getNext() {
-        if (index >= array.getSize()) {
-            throw new NoSuchElementException();
-        }
-        try {
-            Object res = array.get(index);
-            index++;
-            return res;
-        } catch (UnsupportedOperationException e) {
-            index++;
-            throw e;
-        } catch (ArrayIndexOutOfBoundsException e) {
-            throw new NoSuchElementException();
-        }
     }
 }

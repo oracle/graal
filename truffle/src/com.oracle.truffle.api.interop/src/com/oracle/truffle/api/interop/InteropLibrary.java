@@ -126,6 +126,7 @@ import static com.oracle.truffle.api.interop.AssertUtils.violationPost;
  * <li>{@link #isDuration(Object) Duration}
  * <li>{@link #isException(Object) Exception}
  * <li>{@link #isMetaObject(Object) Meta-Object}
+ * <li>{@link #isIterator(Object) Iterator}
  * </ul>
  * All receiver values may have none, one or multiple of the following traits:
  * <ul>
@@ -145,6 +146,7 @@ import static com.oracle.truffle.api.interop.AssertUtils.violationPost;
  * <li>{@link #hasExceptionMessage(Object) exception message}
  * <li>{@link #hasExceptionCause(Object) exception cause}
  * <li>{@link #hasExceptionStackTrace(Object) exception stack trace}
+ * <li>{@link #hasIterator(Object) iterator}
  * </ul>
  * <h3>Naive and aware dates and times</h3>
  * <p>
@@ -1860,8 +1862,8 @@ public abstract class InteropLibrary extends Library {
     }
 
     /**
-     * Returns the iterator for the receiver. The return value is guaranteed to return {@code true}
-     * for {@link #isIterator(Object)}. Invoking this message does not cause any observable
+     * Returns the iterator for the receiver. The return value is always an
+     * {@link #isIterator(Object) iterator}. Invoking this message does not cause any observable
      * side-effects.
      *
      * @throws UnsupportedMessageException if and only if {@link #hasIterator(Object)} returns
@@ -1891,11 +1893,12 @@ public abstract class InteropLibrary extends Library {
 
     /**
      * Returns {@code true} if the receiver is an iterator which has more elements, else
-     * {@code false}. When the underlying iterable is modified the next
-     * {@link #hasIteratorNextElement(Object)} invocation may return a different value.
+     * {@code false}. Multiple calls to the {@link #hasIteratorNextElement(Object)} might lead to
+     * different results if the underlying data structure is modified.
      * <p>
-     * An example of an implementation of an iterator delegating to a guest language iterator which
-     * does not support {@code hasNext}.
+     * The following example shows how the {@link #hasIteratorNextElement(Object)
+     * hasIteratorNextElement} message can be emulated in languages where iterators only have a next
+     * method and throw an exception if there are no further elements.
      * 
      * <pre>
      * &#64;ExportLibrary(InteropLibrary.class)
@@ -1961,14 +1964,13 @@ public abstract class InteropLibrary extends Library {
     }
 
     /**
-     * Returns the next element in the iteration. When the underlying iterable is modified the
+     * Returns the next element in the iteration. When the underlying data structure is modified the
      * {@link #getIteratorNextElement(Object)} may throw the {@link StopIterationException} despite
      * the {@link #hasIteratorNextElement(Object)} returned {@code true}.
      *
      * @throws UnsupportedMessageException if {@link #isIterator(Object)} returns {@code false} for
      *             the same receiver or when the underlying iterator element exists but is not
-     *             readable, in such a case the iterator cursor is incremented before the
-     *             {@link UnsupportedMessageException} is thrown.
+     *             readable.
      * @throws StopIterationException if the iteration has no more elements. Even if the
      *             {@link StopIterationException} was thrown it might not be thrown again by a next
      *             {@link #getIteratorNextElement(Object)} invocation on the same receiver due to a
@@ -2643,7 +2645,8 @@ public abstract class InteropLibrary extends Library {
             STRING,
             NUMBER,
             POINTER,
-            META_OBJECT;
+            META_OBJECT,
+            ITERATOR;
         }
 
         Asserts(InteropLibrary delegate) {
@@ -2684,6 +2687,7 @@ public abstract class InteropLibrary extends Library {
             assert type == Type.DATE_TIME_ZONE || (!delegate.isDate(receiver) && !delegate.isTime(receiver) && !delegate.isTimeZone(receiver)) : violationInvariant(receiver);
             assert type == Type.DURATION || !delegate.isDuration(receiver) : violationInvariant(receiver);
             assert type == Type.META_OBJECT || !delegate.isMetaObject(receiver) : violationInvariant(receiver);
+            assert type == Type.ITERATOR || !delegate.isIterator(receiver) : violationInvariant(receiver);
             return true;
         }
 
@@ -4121,6 +4125,7 @@ public abstract class InteropLibrary extends Library {
         public boolean isIterator(Object receiver) {
             assert preCondition(receiver);
             boolean result = delegate.isIterator(receiver);
+            assert !result || notOtherType(receiver, Type.ITERATOR);
             return result;
         }
 
@@ -4150,17 +4155,10 @@ public abstract class InteropLibrary extends Library {
             assert preCondition(receiver);
             boolean wasIterator = delegate.isIterator(receiver);
             try {
-                boolean wasIteratorNextElement = delegate.hasIteratorNextElement(receiver);
-                try {
-                    Object result = delegate.getIteratorNextElement(receiver);
-                    assert wasIterator : violationInvariant(receiver);
-                    assert wasIteratorNextElement || isMultiThreaded(receiver) : violationInvariant(receiver);
-                    assert validReturn(receiver, result);
-                    return result;
-                } catch (StopIterationException e) {
-                    assert !wasIteratorNextElement || isMultiThreaded(receiver) : violationInvariant(receiver);
-                    throw e;
-                }
+                Object result = delegate.getIteratorNextElement(receiver);
+                assert wasIterator : violationInvariant(receiver);
+                assert validReturn(receiver, result);
+                return result;
             } catch (InteropException e) {
                 assert e instanceof UnsupportedMessageException || e instanceof StopIterationException : violationPost(receiver, e);
                 throw e;

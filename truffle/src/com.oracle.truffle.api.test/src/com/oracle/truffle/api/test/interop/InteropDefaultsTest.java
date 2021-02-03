@@ -56,7 +56,6 @@ import com.oracle.truffle.api.source.SourceSection;
 import com.oracle.truffle.api.test.polyglot.ProxyLanguage;
 import org.graalvm.polyglot.Context;
 import org.junit.Test;
-import java.util.BitSet;
 import java.util.concurrent.atomic.AtomicBoolean;
 
 import static org.junit.Assert.assertEquals;
@@ -655,18 +654,9 @@ public class InteropDefaultsTest extends InteropLibraryBaseTest {
     static final class Array implements TruffleObject {
 
         private final Object[] elements;
-        private final BitSet readable;
 
         Array(Object... elements) {
-            this(elements, null);
-        }
-
-        Array(Object[] elements, BitSet readable) {
-            if (readable != null && elements.length != readable.size()) {
-                throw new IllegalArgumentException();
-            }
             this.elements = elements;
-            this.readable = readable;
         }
 
         @ExportMessage
@@ -682,12 +672,12 @@ public class InteropDefaultsTest extends InteropLibraryBaseTest {
 
         @ExportMessage
         boolean isArrayElementReadable(long index) {
-            return readable == null || readable.get((int) index);
+            return index >= 0 && index < elements.length;
         }
 
         @ExportMessage
         Object readArrayElement(long index) throws InvalidArrayIndexException {
-            if (index < 0 || index > elements.length || !isArrayElementReadable(index)) {
+            if (!isArrayElementReadable(index)) {
                 throw InvalidArrayIndexException.create(index);
             }
             return elements[(int) index];

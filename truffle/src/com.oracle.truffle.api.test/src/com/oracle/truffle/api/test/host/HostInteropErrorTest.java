@@ -41,6 +41,7 @@
 package com.oracle.truffle.api.test.host;
 
 import static org.junit.Assert.assertTrue;
+import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.fail;
 
 import java.util.Collection;
@@ -205,6 +206,9 @@ public class HostInteropErrorTest extends ProxyLanguageEnvTest {
         Object iterator = env.asGuestValue(c.iterator());
         assertTrue(INTEROP.hasIteratorNextElement(iterator));
         INTEROP.getIteratorNextElement(iterator);
+        assertFalse(INTEROP.hasIteratorNextElement(iterator));
+        assertFails(() -> INTEROP.getIteratorNextElement(iterator), StopIterationException.class, null);
+
     }
 
     @ExportLibrary(InteropLibrary.class)

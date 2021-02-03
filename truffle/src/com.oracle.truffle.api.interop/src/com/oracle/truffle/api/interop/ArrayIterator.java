@@ -84,8 +84,6 @@ final class ArrayIterator implements TruffleObject {
         } catch (UnsupportedMessageException ume) {
             throw CompilerDirectives.shouldNotReachHere(ume);
         } catch (InvalidArrayIndexException iaie) {
-            // Non readable array element, increase cursor and throw an UnsupportedMessageException
-            currentItemIndex++;
             throw UnsupportedMessageException.create();
         }
     }
