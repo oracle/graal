@@ -36,6 +36,7 @@ import com.oracle.truffle.api.interop.TruffleObject;
 import com.oracle.truffle.api.interop.UnknownIdentifierException;
 import com.oracle.truffle.api.interop.UnsupportedMessageException;
 import com.oracle.truffle.api.interop.UnsupportedTypeException;
+import com.oracle.truffle.espresso._native.NativeType;
 import com.oracle.truffle.espresso.descriptors.Symbol;
 import com.oracle.truffle.espresso.descriptors.Symbol.Name;
 import com.oracle.truffle.espresso.impl.ContextAccess;
@@ -109,28 +110,24 @@ class JImageLibrary extends NativeEnv implements ContextAccess {
 
     JImageLibrary(EspressoContext context) {
         this.context = context;
-        try {
-            EspressoProperties props = getContext().getVmProperties();
+        EspressoProperties props = getContext().getVmProperties();
 
-            // Load guest's libjimage.
-            jimageLibrary = loadLibraryInternal(props.bootLibraryPath(), LIBJIMAGE_NAME);
+        // Load guest's libjimage.
+        jimageLibrary = getNativeAccess().loadLibrary(props.bootLibraryPath(), LIBJIMAGE_NAME, true);
 
-            open = lookupAndBind(jimageLibrary, OPEN, OPEN_SIGNATURE);
-            close = lookupAndBind(jimageLibrary, CLOSE, CLOSE_SIGNATURE);
-            packageToModule = lookupAndBind(jimageLibrary, PACKAGE_TO_MOODULE, PACKAGE_TO_MODULE_SIGNATURE);
-            findResource = lookupAndBind(jimageLibrary, FIND_RESOURCE, FIND_RESOURCE_SIGNATURE);
-            getResource = lookupAndBind(jimageLibrary, GET_RESOURCE, GET_RESOURCE_SIGNATURE);
-            resourceIterator = lookupAndBind(jimageLibrary, RESOURCE_ITERATOR, RESOURCE_ITERATOR_SIGNATURE);
-            resourcePath = lookupAndBind(jimageLibrary, RESOURCE_PATH, RESOURCE_PATH_SIGNATURE);
+        open = getNativeAccess().lookupAndBindSymbol(jimageLibrary, OPEN, NativeType.POINTER, NativeType.POINTER, NativeType.POINTER);
+        close = getNativeAccess().lookupAndBindSymbol(jimageLibrary, CLOSE, NativeType.VOID, NativeType.POINTER);
+        packageToModule = getNativeAccess().lookupAndBindSymbol(jimageLibrary, PACKAGE_TO_MOODULE, NativeType.POINTER, NativeType.POINTER, NativeType.POINTER);
+        findResource = getNativeAccess().lookupAndBindSymbol(jimageLibrary, FIND_RESOURCE, NativeType.LONG, NativeType.POINTER, NativeType.POINTER, NativeType.POINTER, NativeType.POINTER, NativeType.POINTER);
+        getResource = getNativeAccess().lookupAndBindSymbol(jimageLibrary, GET_RESOURCE, NativeType.LONG, NativeType.POINTER, NativeType.LONG, NativeType.POINTER, NativeType.LONG);
+        resourceIterator = getNativeAccess().lookupAndBindSymbol(jimageLibrary, RESOURCE_ITERATOR, NativeType.POINTER, NativeType.POINTER, NativeType.POINTER, NativeType.POINTER, NativeType.POINTER, NativeType.POINTER, NativeType.POINTER, NativeType.POINTER, NativeType.POINTER);
+        resourcePath = getNativeAccess().lookupAndBindSymbol(jimageLibrary, RESOURCE_PATH, NativeType.BOOLEAN, NativeType.POINTER, NativeType.LONG, NativeType.POINTER, NativeType.LONG);
 
-            this.javaBaseBuffer = RawBuffer.getNativeString(JAVA_BASE);
-            this.versionBuffer = RawBuffer.getNativeString(VERSION_STRING);
-            this.emptyStringBuffer = RawBuffer.getNativeString("");
+        this.javaBaseBuffer = RawBuffer.getNativeString(JAVA_BASE);
+        this.versionBuffer = RawBuffer.getNativeString(VERSION_STRING);
+        this.emptyStringBuffer = RawBuffer.getNativeString("");
 
-            this.uncached = InteropLibrary.getFactory().getUncached();
-        } catch (UnknownIdentifierException e) {
-            throw EspressoError.shouldNotReachHere(e);
-        }
+        this.uncached = InteropLibrary.getFactory().getUncached();
     }
 
     public TruffleObject open(String name) {
@@ -233,7 +230,7 @@ class JImageLibrary extends NativeEnv implements ContextAccess {
         try {
             return uncached.execute(target, args);
         } catch (UnsupportedTypeException | UnsupportedMessageException | ArityException e) {
-            throw EspressoError.shouldNotReachHere();
+            throw EspressoError.shouldNotReachHere(e);
         }
     }
 
