@@ -469,10 +469,10 @@ _scala_dacapo_resources = {
 }
 
 _scala_dacapo_iterations = {
-    'scalac'        : 20, # depends on awt
+    'scalac'        : 40,
     'scalariform'   : 30,
     'scalap'        : 120,
-    'scaladoc'      : -1, # depends on awt
+    'scaladoc'      : 40,
     'scalatest'     : 60, # GR-21548
     'scalaxb'       : 60,
     'kiama'         : 40,
