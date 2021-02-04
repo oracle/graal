@@ -863,7 +863,7 @@ public class ValueAssert {
         Iterator<Object> receivedIterator = receivedObjects.iterator();
         Iterator<Object> objectIterator1 = objectIterable.iterator();
         Iterator<Object> objectIterator2 = value.getIterator().as(OBJECT_ITERATOR);
-        while (objectIterator1.hasNext() && objectIterator1.hasNext() && receivedIterator.hasNext()) {
+        while (objectIterator1.hasNext() && objectIterator2.hasNext() && receivedIterator.hasNext()) {
             Object expected = receivedIterator.next();
             assertEqualValues(expected, objectIterator1.next());
             assertEqualValues(expected, objectIterator2.next());

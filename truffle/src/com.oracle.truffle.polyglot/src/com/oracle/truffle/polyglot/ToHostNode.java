@@ -586,6 +586,8 @@ abstract class ToHostNode extends Node {
                 boolean implementsFunction = shouldImplementFunction(value, interop);
                 TypeAndClass<?> elementType = getGenericParameterType(genericType, 0);
                 obj = PolyglotIterable.create(languageContext, value, implementsFunction, elementType.clazz, elementType.type);
+            } else if (allowsImplementation && interop.hasMembers(value)) {
+                obj = HostInteropReflect.newProxyInstance(targetType, value, languageContext);
             } else {
                 throw HostInteropErrors.cannotConvert(languageContext, value, targetType, "Value must have an iterator.");
             }
@@ -594,6 +596,8 @@ abstract class ToHostNode extends Node {
                 boolean implementsFunction = shouldImplementFunction(value, interop);
                 TypeAndClass<?> elementType = getGenericParameterType(genericType, 0);
                 obj = PolyglotIterator.create(languageContext, value, implementsFunction, elementType.clazz, elementType.type);
+            } else if (allowsImplementation && interop.hasMembers(value)) {
+                obj = HostInteropReflect.newProxyInstance(targetType, value, languageContext);
             } else {
                 throw HostInteropErrors.cannotConvert(languageContext, value, targetType, "Value must be an iterator.");
             }
