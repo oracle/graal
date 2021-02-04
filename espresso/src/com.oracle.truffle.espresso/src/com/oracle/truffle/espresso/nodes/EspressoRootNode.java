@@ -249,9 +249,7 @@ public abstract class EspressoRootNode extends RootNode implements ContextAccess
     }
 
     public void abortInternalMonitors(Frame frame) {
-        for (StaticObject monitor : getMonitorsOnFrame(frame)) {
-            InterpreterToVM.monitorExit(monitor, getMeta());
-        }
+        getMonitorStack(frame).exitInternalMonitors(getMeta());
     }
 
     static final class Synchronized extends EspressoRootNode {
@@ -291,19 +289,6 @@ public abstract class EspressoRootNode extends RootNode implements ContextAccess
             MonitorStack monitorStack = new MonitorStack();
             monitorStack.synchronizedMethodMonitor = monitor;
             initMonitorStack(frame, monitorStack);
-        }
-
-        @Override
-        public void abortInternalMonitors(Frame frame) {
-            // clear all but the method-level monitor
-            StaticObject methodLevelMonitor = getMethod().isStatic()
-                            ? /* class */ getMethod().getDeclaringKlass().mirror()
-                            : /* receiver */ (StaticObject) frame.getArguments()[0];
-            for (StaticObject monitor : getMonitorsOnFrame(frame)) {
-                if (monitor != methodLevelMonitor) {
-                    InterpreterToVM.monitorExit(monitor, getMeta());
-                }
-            }
         }
     }
 
@@ -372,6 +357,15 @@ public abstract class EspressoRootNode extends RootNode implements ContextAccess
                     InterpreterToVM.monitorExit(monitor, meta);
                 } catch (Throwable e) {
                     /* ignore */
+                }
+            }
+        }
+
+        public void exitInternalMonitors(Meta meta) {
+            for (int i = 0; i < top; i++) {
+                StaticObject monitor = monitors[i];
+                if (monitor != synchronizedMethodMonitor) {
+                    InterpreterToVM.monitorExit(monitor, meta);
                 }
             }
         }
