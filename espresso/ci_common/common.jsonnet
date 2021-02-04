@@ -50,10 +50,6 @@ local benchmark_suites = ['dacapo', 'renaissance', 'scala-dacapo'];
     capabilities+: ['no_frequency_scaling', 'tmpfs25g', 'x52'],
   },
 
-  sparc: self.common + {
-    capabilities: ['solaris', 'sparcv9'],
-  },
-
   darwin: self.common + {
     environment+: {
       // for compatibility with macOS El Capitan
