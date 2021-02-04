@@ -25,17 +25,12 @@
 
 package org.graalvm.compiler.core.aarch64;
 
-import static jdk.vm.ci.aarch64.AArch64Kind.DWORD;
-import static jdk.vm.ci.aarch64.AArch64Kind.QWORD;
-import static org.graalvm.compiler.core.target.Backend.ARITHMETIC_DREM;
-import static org.graalvm.compiler.core.target.Backend.ARITHMETIC_FREM;
-import static org.graalvm.compiler.lir.LIRValueUtil.asJavaConstant;
-import static org.graalvm.compiler.lir.LIRValueUtil.isJavaConstant;
-import static org.graalvm.compiler.lir.aarch64.AArch64BitManipulationOp.BitManipulationOpCode.BSR;
-import static org.graalvm.compiler.lir.aarch64.AArch64BitManipulationOp.BitManipulationOpCode.CLZ;
-import static org.graalvm.compiler.lir.aarch64.AArch64BitManipulationOp.BitManipulationOpCode.CTZ;
-import static org.graalvm.compiler.lir.aarch64.AArch64BitManipulationOp.BitManipulationOpCode.POPCNT;
-
+import jdk.vm.ci.aarch64.AArch64Kind;
+import jdk.vm.ci.meta.AllocatableValue;
+import jdk.vm.ci.meta.JavaConstant;
+import jdk.vm.ci.meta.PlatformKind;
+import jdk.vm.ci.meta.Value;
+import jdk.vm.ci.meta.ValueKind;
 import org.graalvm.compiler.asm.aarch64.AArch64MacroAssembler;
 import org.graalvm.compiler.core.common.LIRKind;
 import org.graalvm.compiler.core.common.NumUtil;
@@ -58,12 +53,16 @@ import org.graalvm.compiler.lir.aarch64.AArch64SignExtendOp;
 import org.graalvm.compiler.lir.aarch64.AArch64Unary;
 import org.graalvm.compiler.lir.gen.ArithmeticLIRGenerator;
 
-import jdk.vm.ci.aarch64.AArch64Kind;
-import jdk.vm.ci.meta.AllocatableValue;
-import jdk.vm.ci.meta.JavaConstant;
-import jdk.vm.ci.meta.PlatformKind;
-import jdk.vm.ci.meta.Value;
-import jdk.vm.ci.meta.ValueKind;
+import static jdk.vm.ci.aarch64.AArch64Kind.DWORD;
+import static jdk.vm.ci.aarch64.AArch64Kind.QWORD;
+import static org.graalvm.compiler.core.target.Backend.ARITHMETIC_DREM;
+import static org.graalvm.compiler.core.target.Backend.ARITHMETIC_FREM;
+import static org.graalvm.compiler.lir.LIRValueUtil.asJavaConstant;
+import static org.graalvm.compiler.lir.LIRValueUtil.isJavaConstant;
+import static org.graalvm.compiler.lir.aarch64.AArch64BitManipulationOp.BitManipulationOpCode.BSR;
+import static org.graalvm.compiler.lir.aarch64.AArch64BitManipulationOp.BitManipulationOpCode.CLZ;
+import static org.graalvm.compiler.lir.aarch64.AArch64BitManipulationOp.BitManipulationOpCode.CTZ;
+import static org.graalvm.compiler.lir.aarch64.AArch64BitManipulationOp.BitManipulationOpCode.POPCNT;
 
 public class AArch64ArithmeticLIRGenerator extends ArithmeticLIRGenerator implements AArch64ArithmeticLIRGeneratorTool {
 
@@ -584,6 +583,9 @@ public class AArch64ArithmeticLIRGenerator extends ArithmeticLIRGenerator implem
                 break;
             case DOWN:
                 op = AArch64ArithmeticOp.FRINTM;
+                break;
+            case TRUNCATE:
+                op = AArch64ArithmeticOp.FRINTZ;
                 break;
             default:
                 throw GraalError.shouldNotReachHere();
