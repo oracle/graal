@@ -24,8 +24,8 @@
  */
 package org.graalvm.compiler.replacements.amd64;
 
-import static org.graalvm.compiler.nodeinfo.NodeCycles.CYCLES_1;
-
+import jdk.vm.ci.meta.JavaConstant;
+import jdk.vm.ci.meta.JavaKind;
 import org.graalvm.compiler.core.common.type.FloatStamp;
 import org.graalvm.compiler.core.common.type.Stamp;
 import org.graalvm.compiler.debug.GraalError;
@@ -42,8 +42,7 @@ import org.graalvm.compiler.nodes.calc.UnaryNode;
 import org.graalvm.compiler.nodes.spi.ArithmeticLIRLowerable;
 import org.graalvm.compiler.nodes.spi.NodeLIRBuilderTool;
 
-import jdk.vm.ci.meta.JavaConstant;
-import jdk.vm.ci.meta.JavaKind;
+import static org.graalvm.compiler.nodeinfo.NodeCycles.CYCLES_1;
 
 /**
  * Round floating-point value.
@@ -68,7 +67,7 @@ public final class AMD64RoundNode extends UnaryNode implements ArithmeticLIRLowe
             case UP:
                 return Math.ceil(input);
             case TRUNCATE:
-                return (long) input;
+                return input < 0.0 ? Math.ceil(input) : Math.floor(input);
             default:
                 throw GraalError.unimplemented("unimplemented RoundingMode " + mode);
         }
