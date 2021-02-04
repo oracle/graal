@@ -28,6 +28,7 @@ import com.oracle.truffle.api.nodes.RootNode;
 
 import java.nio.file.Path;
 import java.util.List;
+import java.util.Set;
 
 /**
  * Interface that defines required methods for a guest language when implementing JDWP.
@@ -434,6 +435,14 @@ public interface JDWPContext {
     MonitorStackInfo[] getOwnedMonitors(CallFrame[] callFrames);
 
     /**
+     * Returns all owned guest-language monitor object of the input thread.
+     *
+     * @param guestThread the guest thread
+     * @return the owned monitor objects
+     */
+    Set<Object> getOwnedMonitors(Object guestThread);
+
+    /**
      * Returns the current contended monitor for the guest thread, or <code>null</code> if there are
      * no current contended monitor for this thread.
      *
@@ -458,4 +467,11 @@ public interface JDWPContext {
      * @return 0 on success or the appropriate {@link ErrorCodes} if an error occur
      */
     int redefineClasses(RedefineInfo[] redefineInfos);
+
+    /**
+     * Exit all monitors that was entered by the frame.
+     * @param frame
+     */
+    void clearFrameMonitors(CallFrame frame);
+
 }

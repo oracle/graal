@@ -27,6 +27,9 @@ import com.oracle.truffle.espresso.jdwp.api.MethodRef;
 import com.oracle.truffle.espresso.jdwp.api.VMListener;
 import com.oracle.truffle.espresso.jdwp.api.KlassRef;
 
+import java.util.Collections;
+import java.util.Set;
+
 public final class EmptyListener implements VMListener {
 
     @Override
@@ -97,5 +100,10 @@ public final class EmptyListener implements VMListener {
     @Override
     public void onMonitorExit(Object monitor) {
 
+    }
+
+    @Override
+    public Set<Object> getOwnedMonitors(Object guestThread) {
+        return Collections.emptySet();
     }
 }

@@ -248,6 +248,12 @@ public abstract class EspressoRootNode extends RootNode implements ContextAccess
         }
     }
 
+    public void abortInternalMonitors(Frame frame) {
+        for (StaticObject monitor : getMonitorsOnFrame(frame)) {
+            InterpreterToVM.monitorExit(monitor, getMeta());
+        }
+    }
+
     static final class Synchronized extends EspressoRootNode {
 
         Synchronized(FrameDescriptor frameDescriptor, EspressoMethodNode methodNode) {
@@ -275,7 +281,7 @@ public abstract class EspressoRootNode extends RootNode implements ContextAccess
             try {
                 result = methodNode.execute(frame);
             } finally {
-                exitSynchronized(frame, monitor);
+                InterpreterToVM.monitorExit(monitor, getMeta());
             }
             return result;
         }
@@ -287,11 +293,16 @@ public abstract class EspressoRootNode extends RootNode implements ContextAccess
             initMonitorStack(frame, monitorStack);
         }
 
-        private void exitSynchronized(@SuppressWarnings("unused") VirtualFrame frame, StaticObject monitor) {
-            // force early return has already released the monitor on the frame, so don't
-            // do an unbalanced monitor exit here
-            if (InterpreterToVM.holdsLock(monitor.getLock())) {
-                InterpreterToVM.monitorExit(monitor, getMeta());
+        @Override
+        public void abortInternalMonitors(Frame frame) {
+            // clear all but the method-level monitor
+            StaticObject methodLevelMonitor = getMethod().isStatic()
+                            ? /* class */ getMethod().getDeclaringKlass().mirror()
+                            : /* receiver */ (StaticObject) frame.getArguments()[0];
+            for (StaticObject monitor : getMonitorsOnFrame(frame)) {
+                if (monitor != methodLevelMonitor) {
+                    InterpreterToVM.monitorExit(monitor, getMeta());
+                }
             }
         }
     }

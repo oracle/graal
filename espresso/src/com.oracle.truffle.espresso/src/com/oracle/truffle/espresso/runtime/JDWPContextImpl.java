@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2020, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2019, 2021, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -29,6 +29,7 @@ import java.util.ArrayList;
 import java.util.Collections;
 import java.util.Comparator;
 import java.util.List;
+import java.util.Set;
 import java.util.regex.Matcher;
 
 import com.oracle.truffle.api.TruffleLanguage;
@@ -627,8 +628,22 @@ public final class JDWPContextImpl implements JDWPContext {
     }
 
     @Override
+    public Set<Object> getOwnedMonitors(Object guestThread) {
+        return eventListener.getOwnedMonitors(guestThread);
+    }
+
+    @Override
     public Object getCurrentContendedMonitor(Object guestThread) {
         return eventListener.getCurrentContendedMonitor(guestThread);
+    }
+
+    @Override
+    public void clearFrameMonitors(CallFrame frame) {
+        RootNode rootNode = frame.getRootNode();
+        if (rootNode instanceof EspressoRootNode) {
+            EspressoRootNode espressoRootNode = (EspressoRootNode) rootNode;
+            espressoRootNode.abortInternalMonitors(frame.getFrame());
+        }
     }
 
     @Override
