@@ -23,6 +23,7 @@
 package com.oracle.truffle.espresso.vm;
 
 import com.oracle.truffle.espresso.meta.EspressoError;
+import com.oracle.truffle.espresso.meta.Meta;
 import sun.misc.Unsafe;
 
 public final class UnsafeAccess {
@@ -44,5 +45,13 @@ public final class UnsafeAccess {
 
     public static Unsafe get() {
         return UNSAFE;
+    }
+
+    public static Unsafe getIfAllowed(Meta meta) {
+        if (meta.getContext().NativeAccessAllowed) {
+            return UNSAFE;
+        } else {
+            throw Meta.throwExceptionWithMessage(meta.java_lang_UnsupportedOperationException, "Cannot perform unsafe operations unless the Context allows native access");
+        }
     }
 }

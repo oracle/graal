@@ -309,6 +309,7 @@ suite = {
                     "file:mx.espresso/native-image.properties",
                     "file:mx.espresso/reflectconfig.json",
                 ],
+                "LICENSE_ESPRESSO": "file:LICENSE",
                 "lib/": [
                     "dependency:espresso:com.oracle.truffle.espresso.eden/<lib:eden>",
                     "dependency:espresso:com.oracle.truffle.espresso.native/<lib:nespresso>",
