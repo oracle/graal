@@ -435,14 +435,6 @@ public interface JDWPContext {
     MonitorStackInfo[] getOwnedMonitors(CallFrame[] callFrames);
 
     /**
-     * Returns all owned guest-language monitor object of the input thread.
-     *
-     * @param guestThread the guest thread
-     * @return the owned monitor objects
-     */
-    Set<Object> getOwnedMonitors(Object guestThread);
-
-    /**
      * Returns the current contended monitor for the guest thread, or <code>null</code> if there are
      * no current contended monitor for this thread.
      *

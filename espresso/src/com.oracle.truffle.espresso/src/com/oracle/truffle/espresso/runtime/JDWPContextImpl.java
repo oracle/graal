@@ -628,11 +628,6 @@ public final class JDWPContextImpl implements JDWPContext {
     }
 
     @Override
-    public Set<Object> getOwnedMonitors(Object guestThread) {
-        return eventListener.getOwnedMonitors(guestThread);
-    }
-
-    @Override
     public Object getCurrentContendedMonitor(Object guestThread) {
         return eventListener.getCurrentContendedMonitor(guestThread);
     }
