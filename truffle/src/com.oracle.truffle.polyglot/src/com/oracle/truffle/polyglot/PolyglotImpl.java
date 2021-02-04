@@ -537,10 +537,10 @@ public final class PolyglotImpl extends AbstractPolyglotImpl {
         PolyglotContextImpl context = languageContext.context;
         PolyglotExceptionImpl exceptionImpl;
         if (context.closed || context.invalid) {
-            exceptionImpl = new PolyglotExceptionImpl(context.engine, e);
+            exceptionImpl = new PolyglotExceptionImpl(context.engine, context.cancelling || context.cancelled, e);
         } else {
             try {
-                exceptionImpl = new PolyglotExceptionImpl(languageContext.getImpl(), languageContext.context.engine,
+                exceptionImpl = new PolyglotExceptionImpl(languageContext.getImpl(), languageContext.context.engine, context.cancelling || context.cancelled,
                                 languageContext, e, true, entered);
             } catch (Throwable t) {
                 /*
@@ -548,7 +548,7 @@ public final class PolyglotImpl extends AbstractPolyglotImpl {
                  * Report the exception as an internal error.
                  */
                 e.addSuppressed(t);
-                exceptionImpl = new PolyglotExceptionImpl(context.engine, e);
+                exceptionImpl = new PolyglotExceptionImpl(context.engine, context.cancelling || context.cancelled, e);
             }
         }
         APIAccess access = getInstance().getAPIAccess();
@@ -560,7 +560,7 @@ public final class PolyglotImpl extends AbstractPolyglotImpl {
         PolyglotEngineException.rethrow(e);
 
         APIAccess access = engine.getAPIAccess();
-        PolyglotExceptionImpl exceptionImpl = new PolyglotExceptionImpl(engine, e);
+        PolyglotExceptionImpl exceptionImpl = new PolyglotExceptionImpl(engine, false, e);
         return access.newLanguageException(exceptionImpl.getMessage(), exceptionImpl);
     }
 

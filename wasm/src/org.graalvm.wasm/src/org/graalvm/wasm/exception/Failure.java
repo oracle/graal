@@ -119,6 +119,8 @@ public enum Failure {
     TABLE_INSTANCE_SIZE_LIMIT_EXCEEDED(Type.TRAP, "table instance size exceeds limit"),
     MEMORY_INSTANCE_SIZE_LIMIT_EXCEEDED(Type.TRAP, "memory instance size exceeds limit"),
 
+    CALL_STACK_EXHAUSTED(Type.EXHAUSTION, "call stack exhausted"),
+
     // TODO(mbovel): replace UNSPECIFIED_INTERNAL usages with assertInternal/shouldNotReachHere.
     UNSPECIFIED_INTERNAL(Type.INTERNAL, "unspecified");
 

@@ -30,8 +30,6 @@
 
 package com.oracle.truffle.llvm.runtime.debug.debugexpr.nodes;
 
-import org.graalvm.collections.Pair;
-
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.frame.VirtualFrame;
@@ -45,6 +43,7 @@ import com.oracle.truffle.llvm.runtime.debug.value.LLVMDebugObject;
 import com.oracle.truffle.llvm.runtime.debug.value.LLVMDebugValue;
 import com.oracle.truffle.llvm.runtime.debug.value.LLVMDebugValue.Builder;
 import com.oracle.truffle.llvm.runtime.nodes.api.LLVMExpressionNode;
+import org.graalvm.collections.Pair;
 
 public abstract class DebugExprDereferenceNode extends LLVMExpressionNode implements MemberAccessible {
     @Child private LLVMExpressionNode pointerNode;
@@ -60,10 +59,10 @@ public abstract class DebugExprDereferenceNode extends LLVMExpressionNode implem
     }
 
     @Override
-    public DebugExprType getType() {
+    public DebugExprType getType(VirtualFrame frame) {
         if (pointerNode instanceof MemberAccessible) {
             MemberAccessible ma = (MemberAccessible) pointerNode;
-            Object member = ma.getMember();
+            Object member = ma.getMember(frame);
             return getMemberAndType(member).getRight();
         }
         throw DebugExprException.create(this, "member %s is not accessible", pointerNode);
@@ -100,11 +99,10 @@ public abstract class DebugExprDereferenceNode extends LLVMExpressionNode implem
     }
 
     @Override
-    @TruffleBoundary
-    public Object getMember() {
+    public Object getMember(VirtualFrame frame) {
         if (pointerNode instanceof MemberAccessible) {
             MemberAccessible ma = (MemberAccessible) pointerNode;
-            Object member = ma.getMember();
+            Object member = ma.getMember(frame);
             return getMemberAndType(member).getLeft();
         }
         throw DebugExprException.create(this, "member %s is not accessible", pointerNode);

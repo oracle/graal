@@ -15,6 +15,5 @@ examplesGate : ${examplesCommon} {
 builds += [
   ${linux-amd64}     ${oraclejdk8}     ${examplesGate} ${eclipse} ${jdt} { name: "gate-examples-linux-8"   },
   ${linux-amd64}     ${oraclejdk11}    ${examplesGate} ${eclipse}        { name: "gate-examples-linux-oraclejdk-11"  },
-  ${solaris-sparcv9} ${oraclejdk8Only} ${examplesGate}                   { name: "gate-examples-solaris-8", targets: [ daily ] }, # Remove sparcv9 from gate GR-28885
   ${darwin-amd64}    ${oraclejdk8}     ${examplesGate}                   { name: "gate-examples-darwin-8"  },
 ]

@@ -83,6 +83,27 @@ public final class ReferenceInternals {
         BarrieredAccess.writeObject(instance, WordFactory.signed(Target_java_lang_ref_Reference.referentFieldOffset), value);
     }
 
+    @Uninterruptible(reason = "Must be atomic with regard to garbage collection.")
+    public static boolean refersTo(Reference<?> instance, Object value) {
+        // JDK-8188055
+        return value == ObjectAccess.readObject(instance, WordFactory.signed(Target_java_lang_ref_Reference.referentFieldOffset));
+    }
+
+    public static void clear(Reference<?> instance) {
+        /*
+         * `Reference.clear0` was added to fix following issues:
+         *
+         * JDK-8256517: This issue only affects GCs that do the reference processing concurrently
+         * (i.e., Shenandoah and ZGC). G1 only processes references at safepoints, so this shouldn't
+         * be an issue for Native Image
+         *
+         * JDK-8240696: This issue affects G1.
+         *
+         * This barrier-less write is to resolve JDK-8240696.
+         */
+        ObjectAccess.writeObject(instance, WordFactory.signed(Target_java_lang_ref_Reference.referentFieldOffset), null);
+    }
+
     public static <T> Pointer getReferentFieldAddress(Reference<T> instance) {
         return Word.objectToUntrackedPointer(instance).add(WordFactory.unsigned(Target_java_lang_ref_Reference.referentFieldOffset));
     }

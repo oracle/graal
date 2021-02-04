@@ -326,9 +326,11 @@ final class Target_javax_crypto_JceSecurity {
      * Lazily recompute the RANDOM field at runtime. We cannot push the entire static initialization
      * of JceSecurity to run time because we want the JceSecurity.verificationResults initialized at
      * image build time.
+     *
+     * This is only used in {@link KeyAgreement}, it's safe to remove.
      */
-    @Alias @InjectAccessors(JceSecurityAccessor.class) //
-    @TargetElement(onlyWith = JDK15OrEarlier.class)//
+    @Alias @TargetElement(onlyWith = JDK15OrEarlier.class) //
+    @InjectAccessors(JceSecurityAccessor.class) //
     static SecureRandom RANDOM;
 
     /*

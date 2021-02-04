@@ -31,9 +31,11 @@ import java.io.Closeable;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.StringWriter;
+import java.net.URL;
 import java.nio.ByteBuffer;
 import java.nio.channels.Channels;
 import java.nio.channels.ReadableByteChannel;
+import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.attribute.PosixFilePermissions;
 import java.security.MessageDigest;
@@ -60,6 +62,7 @@ import org.graalvm.component.installer.Feedback;
 import org.graalvm.component.installer.SystemUtils;
 import org.graalvm.component.installer.model.ComponentInfo;
 import org.graalvm.component.installer.model.DistributionType;
+import org.graalvm.component.installer.remote.FileDownloader;
 
 /**
  * Loads information from the component's bundle.
@@ -219,7 +222,7 @@ public class ComponentPackageLoader implements Closeable, MetadataLoader {
         }
         try (StringWriter wr = new StringWriter()) {
             props.store(wr, ""); // NOI18N
-            info.setTag(SystemUtils.digestString(wr.toString().replaceAll("#.*\n", ""), false)); // NOI18N
+            info.setTag(SystemUtils.digestString(wr.toString().replaceAll("#.*\r?\n\r?", ""), false)); // NOI18N
         } catch (IOException ex) {
             throw new FailedOperationException(ex.getLocalizedMessage(), ex);
         }
@@ -300,6 +303,26 @@ public class ComponentPackageLoader implements Closeable, MetadataLoader {
         return licensePath;
     }
 
+    protected FileDownloader createFileDownloader(URL remote, String desc) {
+        return new FileDownloader(desc, remote, feedback);
+    }
+
+    public String downloadAndHashLicense(String remote) {
+        String desc = getLicenseType();
+        if (desc == null) {
+            desc = remote;
+        }
+        try {
+            URL u = new URL(remote);
+            FileDownloader dn = createFileDownloader(u, feedback.l10n("LICENSE_RemoteLicenseDescription", desc));
+            dn.download();
+            String s = String.join("\n", Files.readAllLines(dn.getLocalFile().toPath()));
+            return SystemUtils.digestString(s, false) /* + "_" + remote */;
+        } catch (IOException ex) {
+            throw feedback.failure("ERROR_DownloadLicense", ex, desc, ex.getLocalizedMessage());
+        }
+    }
+
     /**
      * License digest or URL.
      */
@@ -313,8 +336,8 @@ public class ComponentPackageLoader implements Closeable, MetadataLoader {
         String licPath = getLicensePath();
         if (licPath == null) {
             return null;
-        } else if (licPath.contains("://")) { // NOI18N
-            return licPath;
+        } else if (SystemUtils.isRemotePath(licPath)) { // NOI18N
+            return cachedLicenseID = downloadAndHashLicense(licPath);
         }
         Archive.FileEntry foundEntry = null;
 

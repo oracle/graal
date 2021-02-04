@@ -37,6 +37,7 @@ import java.util.Arrays;
 
 import com.oracle.svm.core.SubstrateUtil;
 import com.oracle.svm.core.annotate.Alias;
+import com.oracle.svm.core.annotate.RecomputeFieldValue;
 import com.oracle.svm.core.annotate.Substitute;
 import com.oracle.svm.core.annotate.TargetClass;
 import com.oracle.svm.core.util.VMError;
@@ -52,6 +53,13 @@ import sun.invoke.util.Wrapper;
 
 @TargetClass(className = "java.lang.invoke.MethodHandle", onlyWith = MethodHandlesSupported.class)
 final class Target_java_lang_invoke_MethodHandle {
+
+    /**
+     * A simple last-usage cache. Need to reset because it could cache a method handle for a random
+     * type, e.g., a HotSpot or hosted type.
+     */
+    @Alias @RecomputeFieldValue(kind = RecomputeFieldValue.Kind.Reset) //
+    private MethodHandle asTypeCache;
 
     @Alias private MethodType type;
 

@@ -118,9 +118,6 @@ builds += [
     targets : [gate],
     name: "gate-truffle-slow-path-unittests"
   }
-  ${solaris-sparcv9} ${oraclejdk8Only} ${gateLite} ${truffleWeekly} {
-    name: "gate-truffle-solaris-lite-8"
-  },
   ${darwin-amd64} ${oraclejdk8} ${gateLite} ${truffleWeekly} {
     name: "gate-truffle-mac-lite-8"
   },

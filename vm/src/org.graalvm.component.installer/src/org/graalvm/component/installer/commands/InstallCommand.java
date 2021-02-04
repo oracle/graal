@@ -253,7 +253,9 @@ public class InstallCommand implements InstallerCommand {
         if (ldr.getLicenseType() != null) {
             String path = ldr.getLicensePath();
             if (inst != null && path != null) {
-                inst.setLicenseRelativePath(SystemUtils.fromCommonRelative(ldr.getLicensePath()));
+                if (!SystemUtils.isRemotePath(path)) {
+                    inst.setLicenseRelativePath(SystemUtils.fromCommonRelative(ldr.getLicensePath()));
+                }
             }
             addLicenseToAccept(ldr);
         }
@@ -770,9 +772,19 @@ public class InstallCommand implements InstallerCommand {
         if (licensesToAccept.isEmpty()) {
             return;
         }
+        Set<String> processed = new HashSet<>(licensesToAccept.keySet());
         createLicensePresenter().run();
-        processedLicenses.addAll(licensesToAccept.keySet());
+        processed.removeAll(licensesToAccept.keySet());
+        markLicensesProcessed(processed);
         licensesToAccept.clear();
+    }
+
+    public Set<String> getProcessedLicenses() {
+        return new HashSet<>(processedLicenses);
+    }
+
+    public void markLicensesProcessed(Collection<String> licenseIDs) {
+        processedLicenses.addAll(licenseIDs);
     }
 
     public Set<String> getUnresolvedDependencies() {
