@@ -179,15 +179,8 @@ public class LicensePresenter {
     }
 
     void acceptAllLicenses() {
-        for (String s : licensesToAccept.keySet()) {
-            for (MetadataLoader ldr : licensesToAccept.get(s)) {
-                ComponentInfo ci = ldr.getComponentInfo();
-                try {
-                    localRegistry.acceptLicense(ci, s, loadLicenseText(s));
-                } catch (IOException ex) {
-                    throw feedback.failure("INSTALL_ErrorHandlingLicenses", ex, ex.getLocalizedMessage());
-                }
-            }
+        for (String s : new ArrayList<>(licensesToAccept.keySet())) {
+            acceptLicense(s);
         }
         licensesToAccept.clear();
     }
