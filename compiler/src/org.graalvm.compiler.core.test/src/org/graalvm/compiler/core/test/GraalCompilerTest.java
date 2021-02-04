@@ -24,33 +24,22 @@
  */
 package org.graalvm.compiler.core.test;
 
-import static java.lang.reflect.Modifier.isStatic;
-import static jdk.vm.ci.runtime.JVMCICompiler.INVOCATION_ENTRY_BCI;
-import static org.graalvm.compiler.nodes.ConstantNode.getConstantNodes;
-import static org.graalvm.compiler.nodes.graphbuilderconf.InlineInvokePlugin.InlineInfo.DO_NOT_INLINE_NO_EXCEPTION;
-import static org.graalvm.compiler.nodes.graphbuilderconf.InlineInvokePlugin.InlineInfo.DO_NOT_INLINE_WITH_EXCEPTION;
-
-import java.lang.annotation.ElementType;
-import java.lang.annotation.Retention;
-import java.lang.annotation.RetentionPolicy;
-import java.lang.annotation.Target;
-import java.lang.reflect.Constructor;
-import java.lang.reflect.Executable;
-import java.lang.reflect.InvocationTargetException;
-import java.lang.reflect.Method;
-import java.util.ArrayList;
-import java.util.Arrays;
-import java.util.Collection;
-import java.util.Collections;
-import java.util.EnumMap;
-import java.util.HashMap;
-import java.util.List;
-import java.util.ListIterator;
-import java.util.Map;
-import java.util.Set;
-import java.util.concurrent.ConcurrentHashMap;
-import java.util.function.Supplier;
-
+import jdk.vm.ci.code.Architecture;
+import jdk.vm.ci.code.BailoutException;
+import jdk.vm.ci.code.CodeCacheProvider;
+import jdk.vm.ci.code.InstalledCode;
+import jdk.vm.ci.code.TargetDescription;
+import jdk.vm.ci.meta.Assumptions.Assumption;
+import jdk.vm.ci.meta.ConstantReflectionProvider;
+import jdk.vm.ci.meta.DeoptimizationReason;
+import jdk.vm.ci.meta.JavaConstant;
+import jdk.vm.ci.meta.JavaKind;
+import jdk.vm.ci.meta.JavaType;
+import jdk.vm.ci.meta.MetaAccessProvider;
+import jdk.vm.ci.meta.ProfilingInfo;
+import jdk.vm.ci.meta.ResolvedJavaMethod;
+import jdk.vm.ci.meta.ResolvedJavaType;
+import jdk.vm.ci.meta.SpeculationLog;
 import org.graalvm.compiler.api.replacements.SnippetReflectionProvider;
 import org.graalvm.compiler.api.test.Graal;
 import org.graalvm.compiler.api.test.ModuleSupport;
@@ -132,22 +121,32 @@ import org.junit.BeforeClass;
 import org.junit.Test;
 import org.junit.internal.AssumptionViolatedException;
 
-import jdk.vm.ci.code.Architecture;
-import jdk.vm.ci.code.BailoutException;
-import jdk.vm.ci.code.CodeCacheProvider;
-import jdk.vm.ci.code.InstalledCode;
-import jdk.vm.ci.code.TargetDescription;
-import jdk.vm.ci.meta.Assumptions.Assumption;
-import jdk.vm.ci.meta.ConstantReflectionProvider;
-import jdk.vm.ci.meta.DeoptimizationReason;
-import jdk.vm.ci.meta.JavaConstant;
-import jdk.vm.ci.meta.JavaKind;
-import jdk.vm.ci.meta.JavaType;
-import jdk.vm.ci.meta.MetaAccessProvider;
-import jdk.vm.ci.meta.ProfilingInfo;
-import jdk.vm.ci.meta.ResolvedJavaMethod;
-import jdk.vm.ci.meta.ResolvedJavaType;
-import jdk.vm.ci.meta.SpeculationLog;
+import java.lang.annotation.ElementType;
+import java.lang.annotation.Retention;
+import java.lang.annotation.RetentionPolicy;
+import java.lang.annotation.Target;
+import java.lang.reflect.Constructor;
+import java.lang.reflect.Executable;
+import java.lang.reflect.InvocationTargetException;
+import java.lang.reflect.Method;
+import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.Collection;
+import java.util.Collections;
+import java.util.EnumMap;
+import java.util.HashMap;
+import java.util.List;
+import java.util.ListIterator;
+import java.util.Map;
+import java.util.Set;
+import java.util.concurrent.ConcurrentHashMap;
+import java.util.function.Supplier;
+
+import static java.lang.reflect.Modifier.isStatic;
+import static jdk.vm.ci.runtime.JVMCICompiler.INVOCATION_ENTRY_BCI;
+import static org.graalvm.compiler.nodes.ConstantNode.getConstantNodes;
+import static org.graalvm.compiler.nodes.graphbuilderconf.InlineInvokePlugin.InlineInfo.DO_NOT_INLINE_NO_EXCEPTION;
+import static org.graalvm.compiler.nodes.graphbuilderconf.InlineInvokePlugin.InlineInfo.DO_NOT_INLINE_WITH_EXCEPTION;
 
 /**
  * Base class for compiler unit tests.
@@ -1493,6 +1492,10 @@ public abstract class GraalCompilerTest extends GraalTest {
         return getProviders().getReplacements();
     }
 
+    protected Architecture getArchitecture() {
+        return backend.getTarget().arch;
+    }
+
     /**
      * Test if the current test runs on the given platform. The name must match the name given in
      * the {@link Architecture#getName()}.
@@ -1501,7 +1504,7 @@ public abstract class GraalCompilerTest extends GraalTest {
      * @return true if we run on the architecture given by name
      */
     protected boolean isArchitecture(String name) {
-        return name.equals(backend.getTarget().arch.getName());
+        return name.equals(getArchitecture().getName());
     }
 
     protected CanonicalizerPhase createCanonicalizerPhase() {
