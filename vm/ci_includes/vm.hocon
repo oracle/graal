@@ -12,18 +12,18 @@ vm_java_11: ${labsjdk-ce-11} {
     BASE_JDK_SHORT_VERSION: "11"
   }
 }
-vm_java_15: ${labsjdk-ce-15} {
+vm_java_16: ${labsjdk-ce-16} {
   environment: {
-    BASE_JDK_NAME: ${jdks.labsjdk-ce-15.name}
-    BASE_JDK_VERSION: ${jdks.labsjdk-ce-15.version}
-    BASE_JDK_SHORT_VERSION: "15"
+    BASE_JDK_NAME: ${jdks.labsjdk-ce-16.name}
+    BASE_JDK_VERSION: ${jdks.labsjdk-ce-16.version}
+    BASE_JDK_SHORT_VERSION: "16"
   }
 }
-vm_java_15Debug: ${labsjdk-ce-15Debug} {
+vm_java_16Debug: ${labsjdk-ce-16Debug} {
   environment: {
-    BASE_JDK_NAME: ${jdks.labsjdk-ce-15Debug.name}
-    BASE_JDK_VERSION: ${jdks.labsjdk-ce-15Debug.version}
-    BASE_JDK_SHORT_VERSION: "15"
+    BASE_JDK_NAME: ${jdks.labsjdk-ce-16Debug.name}
+    BASE_JDK_VERSION: ${jdks.labsjdk-ce-16Debug.version}
+    BASE_JDK_SHORT_VERSION: "16"
   }
 }
 vm_common_windows_jdk8: ${svm-common-windows-openjdk8}
