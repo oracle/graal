@@ -78,9 +78,9 @@ public class HostedOptionKey<T> extends OptionKey<T> {
             MultiOptionValue<?> value = (MultiOptionValue<?>) values.get(this);
             if (value == null) {
                 value = ((MultiOptionValue<?>) defaultValue).createCopy();
-                values.put(this, value);
             }
             value.valueUpdate(boxedValue);
+            super.update(values, value);
         } else {
             super.update(values, LocatableOption.rawValue(boxedValue));
         }
