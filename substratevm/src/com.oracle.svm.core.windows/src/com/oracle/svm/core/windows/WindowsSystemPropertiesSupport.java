@@ -69,20 +69,22 @@ public class WindowsSystemPropertiesSupport extends SystemPropertiesSupport {
     @Override
     protected String userNameValue() {
         WCharPointer userName = LibC._wgetenv(NonmovableArrays.addressOf(NonmovableArrays.fromImageHeap(USERNAME), 0));
-        UnsignedWord length = LibC.wcslen(userName);
-        if (userName.isNonNull() && length.aboveThan(0)) {
-            return toJavaString(userName, length);
+        if (userName.isNonNull()) {
+            UnsignedWord length = LibC.wcslen(userName);
+            if (length.aboveThan(0)) {
+                return toJavaString(userName, length);
+            }
         }
 
         int maxLength = WinBase.UNLEN + 1;
         userName = StackValue.get(maxLength, WCharPointer.class);
         CIntPointer lengthPointer = StackValue.get(CIntPointer.class);
         lengthPointer.write(maxLength);
-        if (WinBase.GetUserNameW(userName, lengthPointer) == 0) {
-            return "unknown"; /* matches openjdk */
+        if (WinBase.GetUserNameW(userName, lengthPointer) != 0) {
+            return toJavaString(userName, WordFactory.unsigned(lengthPointer.read() - 1));
         }
 
-        return toJavaString(userName, WordFactory.unsigned(lengthPointer.read() - 1));
+        return "unknown"; /* matches openjdk */
     }
 
     @Override
