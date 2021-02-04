@@ -87,6 +87,7 @@ public class UpgradeProcess implements AutoCloseable {
     private ComponentRegistry newGraalRegistry;
     private Version minVersion = Version.NO_VERSION;
     private String editionUpgrade;
+    private Set<String> acceptedLicenseIDs = new HashSet<>();
 
     public UpgradeProcess(CommandInput input, Feedback feedback, ComponentCollection catalog) {
         this.input = input;
@@ -269,6 +270,7 @@ public class UpgradeProcess implements AutoCloseable {
         MetadataLoader ldr = coreParam.createMetaLoader();
         cmd.addLicenseToAccept(ldr);
         cmd.acceptLicenses();
+        acceptedLicenseIDs = cmd.getProcessedLicenses();
 
         // force download
         ComponentParam param = input.existingFiles().createParam("core", info);
@@ -533,7 +535,8 @@ public class UpgradeProcess implements AutoCloseable {
         }
         migrated.clear();
         // if the result GraalVM is identical to current, do not migrate anything.
-        if (result != null && !input.getLocalRegistry().getGraalVersion().equals(result.getVersion())) {
+        if (result != null && (!input.getLocalRegistry().getGraalVersion().equals(result.getVersion()) ||
+                        input.hasOption(Commands.OPTION_USE_EDITION))) {
             migrated.addAll(installables);
             targetInfo = result;
         }
@@ -577,7 +580,7 @@ public class UpgradeProcess implements AutoCloseable {
                         CommonConstants.PATH_COMPONENT_STORAGE + "/gds");
         if (Files.isDirectory(gdsSettings)) {
             Path targetGdsSettings = SystemUtils.resolveRelative(
-                            newInstallPath,
+                            newInstallPath.resolve(SystemUtils.getGraalVMJDKRoot(newGraalRegistry)),
                             CommonConstants.PATH_COMPONENT_STORAGE + "/gds");
             try {
                 SystemUtils.copySubtree(gdsSettings, targetGdsSettings);
@@ -597,6 +600,7 @@ public class UpgradeProcess implements AutoCloseable {
         instCommand.init(new InputDelegate(params), feedback);
         instCommand.setAllowUpgrades(true);
         instCommand.setForce(true);
+        instCommand.markLicensesProcessed(acceptedLicenseIDs);
         return instCommand;
     }
 

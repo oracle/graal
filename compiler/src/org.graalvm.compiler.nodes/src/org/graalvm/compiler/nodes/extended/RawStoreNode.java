@@ -51,7 +51,7 @@ import jdk.vm.ci.meta.ResolvedJavaField;
  * performed before the store.
  */
 @NodeInfo(cycles = CYCLES_2, size = SIZE_1)
-public final class RawStoreNode extends UnsafeAccessNode implements StateSplit, Lowerable, Virtualizable, SingleMemoryKill {
+public class RawStoreNode extends UnsafeAccessNode implements StateSplit, Lowerable, Virtualizable, SingleMemoryKill {
 
     public static final NodeClass<RawStoreNode> TYPE = NodeClass.create(RawStoreNode.class);
     @Input ValueNode value;
@@ -78,7 +78,12 @@ public final class RawStoreNode extends UnsafeAccessNode implements StateSplit, 
 
     public RawStoreNode(ValueNode object, ValueNode offset, ValueNode value, JavaKind accessKind, LocationIdentity locationIdentity, boolean needsBarrier, boolean isVolatile, FrameState stateAfter,
                     boolean forceAnyLocation) {
-        super(TYPE, StampFactory.forVoid(), object, offset, accessKind, locationIdentity, forceAnyLocation);
+        this(TYPE, object, offset, value, accessKind, locationIdentity, needsBarrier, isVolatile, stateAfter, forceAnyLocation);
+    }
+
+    protected RawStoreNode(NodeClass<? extends RawStoreNode> c, ValueNode object, ValueNode offset, ValueNode value, JavaKind accessKind, LocationIdentity locationIdentity, boolean needsBarrier,
+                    boolean isVolatile, FrameState stateAfter, boolean forceAnyLocation) {
+        super(c, StampFactory.forVoid(), object, offset, accessKind, locationIdentity, forceAnyLocation);
         this.value = value;
         this.needsBarrier = needsBarrier;
         this.stateAfter = stateAfter;

@@ -49,6 +49,7 @@ import java.util.AbstractSet;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collection;
+import java.util.Collections;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.Iterator;
@@ -58,6 +59,7 @@ import java.util.Map;
 import java.util.Objects;
 import java.util.Set;
 import java.util.WeakHashMap;
+import java.util.concurrent.ConcurrentHashMap;
 
 import com.oracle.truffle.api.CallTarget;
 import com.oracle.truffle.api.CompilerDirectives;
@@ -1474,12 +1476,14 @@ public class InstrumentationTestLanguage extends TruffleLanguage<InstrumentConte
         @TruffleBoundary
         private void defineFunction() {
             InstrumentContext context = lookupContextReference(InstrumentationTestLanguage.class).get();
-            if (context.callFunctions.callTargets.containsKey(identifier)) {
-                if (context.callFunctions.callTargets.get(identifier) != target) {
-                    throw new IllegalArgumentException("Identifier redefinition not supported.");
+            synchronized (context.callFunctions.callTargets) {
+                if (context.callFunctions.callTargets.containsKey(identifier)) {
+                    if (context.callFunctions.callTargets.get(identifier) != target) {
+                        throw new IllegalArgumentException("Identifier redefinition not supported.");
+                    }
                 }
+                context.callFunctions.callTargets.put(this.identifier, target);
             }
-            context.callFunctions.callTargets.put(this.identifier, target);
         }
 
         @Override
@@ -2903,8 +2907,8 @@ public class InstrumentationTestLanguage extends TruffleLanguage<InstrumentConte
     @ExportLibrary(InteropLibrary.class)
     static class FunctionsObject implements TruffleObject {
 
-        final Map<String, CallTarget> callTargets = new LinkedHashMap<>();
-        final Map<String, TruffleObject> functions = new HashMap<>();
+        final Map<String, CallTarget> callTargets = Collections.synchronizedMap(new LinkedHashMap<>());
+        final Map<String, TruffleObject> functions = new ConcurrentHashMap<>();
 
         FunctionsObject() {
         }
@@ -2917,7 +2921,7 @@ public class InstrumentationTestLanguage extends TruffleLanguage<InstrumentConte
                     return null;
                 }
                 functionObject = new Function(ct);
-                functions.put(name, functionObject);
+                functions.putIfAbsent(name, functionObject);
             }
             return functionObject;
         }
@@ -2935,7 +2939,9 @@ public class InstrumentationTestLanguage extends TruffleLanguage<InstrumentConte
         @ExportMessage
         @TruffleBoundary
         final Object getMembers(@SuppressWarnings("unused") boolean includeInternal) {
-            return new KeysObject(callTargets.keySet().toArray(new String[0]));
+            synchronized (callTargets) {
+                return new KeysObject(callTargets.keySet().toArray(new String[0]));
+            }
         }
 
         @ExportMessage

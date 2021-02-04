@@ -150,10 +150,6 @@ gateDarwinAMD64 : ${darwin-amd64} ${gateCommon}
 
 gateWindowsAMD64 : ${windows-amd64} ${gateCommon}
 
-gateSolarisSPARC : ${solaris-sparcv9} ${gateCommon}
-
-gateLinuxSPARC : ${linux-sparcv9} ${gateCommon}
-
 gateLinuxAArch64 : ${linux-aarch64} ${gateCommon}
 
 gateJAOTC : {
@@ -208,5 +204,3 @@ gateLinuxAMD64AVX3 : ${gateLinuxAMD64} {
 
 gateLinuxAMD64Bootstrap : ${gateLinuxAMD64} { capabilities : ${gateLinuxAMD64.capabilities} [manycores] }
 gateDarwinAMD64Bootstrap : ${gateDarwinAMD64}
-gateSolarisSPARCBootstrap : ${gateSolarisSPARC} { capabilities : ${gateSolarisSPARC.capabilities} [manycores] }
-gateLinuxSPARCBootstrap : ${gateLinuxSPARC} # No manycore

@@ -122,9 +122,9 @@ import com.oracle.graal.pointsto.meta.AnalysisField;
 import com.oracle.graal.pointsto.meta.AnalysisMethod;
 import com.oracle.graal.pointsto.meta.AnalysisType;
 import com.oracle.graal.pointsto.nodes.AnalysisArraysCopyOfNode;
-import com.oracle.graal.pointsto.nodes.AnalysisUnsafePartitionLoadNode;
-import com.oracle.graal.pointsto.nodes.AnalysisUnsafePartitionStoreNode;
 import com.oracle.graal.pointsto.nodes.ConvertUnknownValueNode;
+import com.oracle.graal.pointsto.nodes.UnsafePartitionLoadNode;
+import com.oracle.graal.pointsto.nodes.UnsafePartitionStoreNode;
 import com.oracle.graal.pointsto.typestate.TypeState;
 
 import jdk.vm.ci.code.BytecodePosition;
@@ -905,8 +905,8 @@ public class MethodTypeFlowBuilder {
                     typeFlowGraphBuilder.registerSinkBuilder(storeIndexedBuilder);
                 }
 
-            } else if (n instanceof AnalysisUnsafePartitionLoadNode) {
-                AnalysisUnsafePartitionLoadNode node = (AnalysisUnsafePartitionLoadNode) n;
+            } else if (n instanceof UnsafePartitionLoadNode) {
+                UnsafePartitionLoadNode node = (UnsafePartitionLoadNode) n;
                 assert node.object().getStackKind() == JavaKind.Object;
 
                 checkUnsafeOffset(node.object(), node.offset());
@@ -929,8 +929,8 @@ public class MethodTypeFlowBuilder {
                 unsafeLoadBuilder.addObserverDependency(objectBuilder);
                 state.add(node, unsafeLoadBuilder);
 
-            } else if (n instanceof AnalysisUnsafePartitionStoreNode) {
-                AnalysisUnsafePartitionStoreNode node = (AnalysisUnsafePartitionStoreNode) n;
+            } else if (n instanceof UnsafePartitionStoreNode) {
+                UnsafePartitionStoreNode node = (UnsafePartitionStoreNode) n;
 
                 assert node.object().getStackKind() == JavaKind.Object;
                 assert node.value().getStackKind() == JavaKind.Object;

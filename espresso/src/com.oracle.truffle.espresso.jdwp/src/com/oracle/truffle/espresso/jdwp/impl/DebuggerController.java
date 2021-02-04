@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2019, 2020, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2019, 2021, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -54,6 +54,7 @@ import com.oracle.truffle.espresso.jdwp.api.MethodRef;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.LinkedList;
 import java.util.List;
 import java.util.Map;
@@ -688,14 +689,13 @@ public final class DebuggerController implements ContextsListener {
         }
     }
 
-    public ThreadJob<?> postJobForThread(ThreadJob<?> job) {
-        threadJobs.put(job.getThread(), job);
+    public void postJobForThread(ThreadJob<?> job) {
         SimpleLock lock = getSuspendLock(job.getThread());
         synchronized (lock) {
+            threadJobs.put(job.getThread(), job);
             lock.release();
             lock.notifyAll();
         }
-        return job;
     }
 
     public CallFrame[] captureCallFramesBeforeBlocking(Object guestThread) {
@@ -802,7 +802,11 @@ public final class DebuggerController implements ContextsListener {
             List<Callable<Void>> jobs = new ArrayList<>();
 
             boolean hit = false;
+            HashSet<Breakpoint> handled = new HashSet<>(event.getBreakpoints().size());
             for (Breakpoint bp : event.getBreakpoints()) {
+                if (handled.contains(bp)) {
+                    continue;
+                }
                 BreakpointInfo info = breakpointInfos.get(bp);
                 suspendPolicy = info.getSuspendPolicy();
 
@@ -871,6 +875,7 @@ public final class DebuggerController implements ContextsListener {
                         return;
                     }
                 }
+                handled.add(bp);
             }
 
             // check if suspended for a field breakpoint

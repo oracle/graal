@@ -56,10 +56,9 @@ class EspressoReferenceDrainer implements ContextAccess {
     void initReferenceDrain() {
         TruffleLanguage.Env env = getContext().getEnv();
         Meta meta = getMeta();
-        boolean multiThreaded = getContext().MultiThreaded;
-        if (getJavaVersion().java8OrEarlier()) {
-            // Initialize reference queue
-            if (multiThreaded) {
+        if (getContext().multiThreadingEnabled()) {
+            if (getJavaVersion().java8OrEarlier()) {
+                // Initialize reference queue
                 this.hostToGuestReferenceDrainThread = env.createThread(new ReferenceDrain() {
                     @SuppressWarnings("rawtypes")
                     @Override
@@ -70,10 +69,8 @@ class EspressoReferenceDrainer implements ContextAccess {
 
                     }
                 });
-            }
-        } else if (getJavaVersion().java9OrLater()) {
-            // Initialize reference queue
-            if (multiThreaded) {
+            } else if (getJavaVersion().java9OrLater()) {
+                // Initialize reference queue
                 this.hostToGuestReferenceDrainThread = env.createThread(new ReferenceDrain() {
                     @SuppressWarnings("rawtypes")
                     @Override
@@ -87,24 +84,24 @@ class EspressoReferenceDrainer implements ContextAccess {
                         }
                     }
                 });
+            } else {
+                throw EspressoError.shouldNotReachHere();
             }
         }
-
-        // Truffle considers a language to be multi-threaded if it creates at least one
-        // polyglot thread, even if the thread is never started.
-        EspressoError.guarantee(multiThreaded || hostToGuestReferenceDrainThread == null,
-                        "The reference drain thread cannot be created with --java.MultiThreaded=false");
     }
 
     void startReferenceDrain() {
-        if (getContext().MultiThreaded) {
+        if (hostToGuestReferenceDrainThread != null) {
             hostToGuestReferenceDrainThread.setDaemon(true);
             hostToGuestReferenceDrainThread.start();
         }
     }
 
-    Thread referenceDrain() {
-        return hostToGuestReferenceDrainThread;
+    void joinReferenceDrain() throws InterruptedException {
+        if (hostToGuestReferenceDrainThread != null) {
+            hostToGuestReferenceDrainThread.interrupt();
+            hostToGuestReferenceDrainThread.join();
+        }
     }
 
     ReferenceQueue<StaticObject> getReferenceQueue() {

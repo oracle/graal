@@ -88,9 +88,9 @@ import jdk.vm.ci.meta.ResolvedJavaType;
 
 /**
  * Represents the {@link java.lang.reflect.Member} of a type.
- * 
+ *
  * A {@link java.lang.reflect.Member} is one of the following reflection classes:
- * 
+ *
  * <ul>
  * <li>{@link java.lang.reflect.Constructor}</li>
  * <li>{@link java.lang.reflect.Method}</li>
@@ -109,7 +109,7 @@ public class ReflectionSubstitutionType extends CustomSubstitutionType<CustomSub
 
     /**
      * Build a substitution for a reflective call.
-     * 
+     *
      * @param original The {@link ResolvedJavaType} of the {@linkplain Member} class (i.e. a
      *            {@link ResolvedJavaType} representing {@link Field}, {@link Constructor} or
      *            {@link Method}).
@@ -212,6 +212,9 @@ public class ReflectionSubstitutionType extends CustomSubstitutionType<CustomSub
                 break;
             case "equals":
                 addSubstitutionMethod(method, new EqualsMethod(method));
+                break;
+            case "proxyClassLookup":
+                addSubstitutionMethod(method, new ProxyClassLookupMethod(method, member));
                 break;
             default:
                 throw VMError.shouldNotReachHere("unexpected method: " + method.getName());
@@ -793,6 +796,23 @@ public class ReflectionSubstitutionType extends CustomSubstitutionType<CustomSub
             graphKit.append(new UnwindNode(instance));
 
             return graphKit.finalizeGraph();
+        }
+    }
+
+    private static final class ProxyClassLookupMethod extends ReflectionSubstitutionMethod {
+
+        @SuppressWarnings("unused")//
+        private final Member member;
+
+        ProxyClassLookupMethod(ResolvedJavaMethod original, Member member) {
+            super(original);
+            this.member = member;
+        }
+
+        @Override
+        public StructuredGraph buildGraph(DebugContext ctx, ResolvedJavaMethod method, HostedProviders providers, Purpose purpose) {
+            // GR-28942: handle new proxyClassLookup method added to Proxy in JDK 16
+            throw VMError.unimplemented();
         }
     }
 

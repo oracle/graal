@@ -39,6 +39,7 @@ from argparse import ArgumentParser
 
 import mx
 import mx_gate
+import mx_sdk_vm_impl
 import mx_subst
 import mx_sdk_vm
 import re
@@ -775,6 +776,22 @@ def runLLVM(args=None, out=None, err=None, timeout=None, nonZeroIsFatal=True, ge
     return mx.run_java(getCommonOptions(False) + vmArgs + get_classpath_options(dists) + ["com.oracle.truffle.llvm.launcher.LLVMLauncher"] + sulongArgs, timeout=timeout, nonZeroIsFatal=nonZeroIsFatal, out=out, err=err)
 
 
+def _java_to_graalvm_arg(arg):
+    prefix = '-X'
+    if arg.startswith(prefix):
+        return '--vm.' + arg[1:]
+    return arg
+
+
+@mx.command(_suite.name, "lli")
+def lli(args=None, out=None):
+    """run lli via the current GraalVM"""
+    debug_args = mx.java_debug_args()
+    if debug_args and not mx.is_debug_disabled():
+        args = [_java_to_graalvm_arg(d) for d in debug_args] + args
+    mx.run([os.path.join(mx_sdk_vm_impl.graalvm_home(fatalIfMissing=True), 'bin', 'lli')] + args, out=out)
+
+
 def extract_bitcode(args=None, out=None):
     return mx.run_java(mx.get_runtime_jvm_args(["com.oracle.truffle.llvm.tools"]) + ["com.oracle.truffle.llvm.tools.ExtractBitcode"] + args, out=out)
 
@@ -1249,7 +1266,7 @@ if not mx.is_windows():
         dir_name='llvm',
         license_files=[],
         third_party_license_files=[],
-        dependencies=['LLVM Runtime Core'],
+        dependencies=['Truffle NFI', 'LLVM Runtime Core'],
         truffle_jars=['sulong:SULONG_NATIVE'],
         support_distributions=[
             'sulong:SULONG_NATIVE_HOME',
@@ -1469,7 +1486,7 @@ def llirtestgen(args=None, out=None):
     return mx.run_java(mx.get_runtime_jvm_args(["LLIR_TEST_GEN"]) + ["com.oracle.truffle.llvm.tests.llirtestgen.LLIRTestGen"] + args, out=out)
 
 mx.update_commands(_suite, {
-    'lli' : [runLLVM, ''],
+    'lli-legacy' : [runLLVM, 'run lli via the legacy mx java launcher (instead of via the current GraalVM)'],
     'test-llvm-image' : [_test_llvm_image, 'test a pre-built LLVM image'],
     'create-asm-parser' : [create_asm_parser, 'create the inline assembly parser using antlr'],
     'create-debugexpr-parser' : [create_debugexpr_parser, 'create the debug expression parser using antlr'],

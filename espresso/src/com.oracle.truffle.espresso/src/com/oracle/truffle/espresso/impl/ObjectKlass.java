@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2020, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2021, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -46,6 +46,7 @@ import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.Truffle;
 import com.oracle.truffle.api.nodes.ExplodeLoop;
+import com.oracle.truffle.espresso.classfile.ConstantPool;
 import com.oracle.truffle.espresso.classfile.RuntimeConstantPool;
 import com.oracle.truffle.espresso.classfile.attributes.ConstantValueAttribute;
 import com.oracle.truffle.espresso.classfile.attributes.EnclosingMethodAttribute;
@@ -120,7 +121,7 @@ public final class ObjectKlass extends Klass {
 
     @CompilationFinal private int computedModifiers = -1;
 
-    @CompilationFinal volatile RedefinitionCache redefineCache;
+    @CompilationFinal volatile KlassVersion klassVersion;
 
     // used for class redefintion when refreshing vtables etc.
     private ArrayList<WeakReference<ObjectKlass>> subTypes;
@@ -204,7 +205,7 @@ public final class ObjectKlass extends Klass {
         for (ObjectKlass superInterface : superInterfaces) {
             superInterface.addSubType(this);
         }
-        this.redefineCache = new RedefinitionCache(pool, linkedKlass, methods, mirandaMethods, vtable, itable, iKlassTable);
+        this.klassVersion = new KlassVersion(pool, linkedKlass, methods, mirandaMethods, vtable, itable, iKlassTable);
         this.initState = LINKED;
         assert verifyTables();
     }
@@ -217,7 +218,7 @@ public final class ObjectKlass extends Klass {
     }
 
     private boolean verifyTables() {
-        Method[] vtable = getRedefineCache().vtable;
+        Method[] vtable = getKlassVersion().vtable;
         if (vtable != null) {
             for (int i = 0; i < vtable.length; i++) {
                 if (isInterface()) {
@@ -436,7 +437,7 @@ public final class ObjectKlass extends Klass {
 
     @Override
     public RuntimeConstantPool getConstantPool() {
-        return getRedefineCache().pool;
+        return getKlassVersion().pool;
     }
 
     @Override
@@ -466,12 +467,12 @@ public final class ObjectKlass extends Klass {
     }
 
     Method[] getMirandaMethods() {
-        return getRedefineCache().mirandaMethods;
+        return getKlassVersion().mirandaMethods;
     }
 
     @Override
     public Method[] getDeclaredMethods() {
-        return getRedefineCache().declaredMethods;
+        return getKlassVersion().declaredMethods;
     }
 
     @Override
@@ -506,7 +507,7 @@ public final class ObjectKlass extends Klass {
     }
 
     public LinkedKlass getLinkedKlass() {
-        return getRedefineCache().linkedKlass;
+        return getKlassVersion().linkedKlass;
     }
 
     public Attribute getRuntimeVisibleAnnotations() {
@@ -596,12 +597,12 @@ public final class ObjectKlass extends Klass {
     // Exposed to LookupVirtualMethodNode
     public Method[] getVTable() {
         assert !isInterface();
-        return getRedefineCache().vtable;
+        return getKlassVersion().vtable;
     }
 
     Method[] getInterfaceMethodsTable() {
         assert isInterface();
-        return getRedefineCache().vtable;
+        return getKlassVersion().vtable;
     }
 
     Method vtableLookupImpl(int vtableIndex) {
@@ -619,11 +620,11 @@ public final class ObjectKlass extends Klass {
     }
 
     Method[][] getItable() {
-        return getRedefineCache().itable;
+        return getKlassVersion().itable;
     }
 
     ObjectKlass[] getiKlassTable() {
-        return getRedefineCache().iKlassTable;
+        return getKlassVersion().iKlassTable;
     }
 
     int findVirtualMethodIndex(Symbol<Name> methodName, Symbol<Signature> signature, Klass subClass) {
@@ -1061,15 +1062,15 @@ public final class ObjectKlass extends Klass {
         return attribute != null ? attribute.getDebugExtension() : null;
     }
 
-    public RedefinitionCache getRedefineCache() {
+    public KlassVersion getKlassVersion() {
         // block execution during class redefinition
         ClassRedefinition.check();
 
-        RedefinitionCache cache = redefineCache;
+        KlassVersion cache = klassVersion;
         if (!cache.assumption.isValid()) {
             CompilerDirectives.transferToInterpreterAndInvalidate();
             do {
-                cache = redefineCache;
+                cache = klassVersion;
             } while (!cache.assumption.isValid());
         }
         return cache;
@@ -1078,7 +1079,7 @@ public final class ObjectKlass extends Klass {
     public void redefineClass(ChangePacket packet, List<ObjectKlass> refreshSubClasses, Ids<Object> ids) {
         ParserKlass parserKlass = packet.parserKlass;
         DetectedChange change = packet.detectedChange;
-        RedefinitionCache oldVersion = redefineCache;
+        KlassVersion oldVersion = klassVersion;
         RuntimeConstantPool pool = new RuntimeConstantPool(getContext(), parserKlass.getConstantPool(), oldVersion.pool.getClassLoader());
         ObjectKlass[] superInterfaces = getSuperInterfaces();
         LinkedKlass[] interfaces = new LinkedKlass[superInterfaces.length];
@@ -1175,7 +1176,7 @@ public final class ObjectKlass extends Klass {
             refreshSubClasses.addAll(getSubTypes());
         }
 
-        redefineCache = new RedefinitionCache(pool, linkedKlass, newDeclaredMethods, mirandaMethods, vtable, itable, iKlassTable);
+        klassVersion = new KlassVersion(pool, linkedKlass, newDeclaredMethods, mirandaMethods, vtable, itable, iKlassTable);
 
         // flush caches before invalidating to avoid races
         // a potential thread fetching new reflection data
@@ -1224,7 +1225,7 @@ public final class ObjectKlass extends Klass {
     }
 
     public void onSuperKlassUpdate() {
-        RedefinitionCache oldVersion = redefineCache;
+        KlassVersion oldVersion = klassVersion;
 
         Method[][] itable = oldVersion.itable;
         Method[] vtable;
@@ -1244,7 +1245,7 @@ public final class ObjectKlass extends Klass {
             itable = InterfaceTables.fixTables(vtable, mirandaMethods, newDeclaredMethods, methodCR.tables, iKlassTable);
         }
 
-        redefineCache = new RedefinitionCache(oldVersion.pool, oldVersion.linkedKlass, newDeclaredMethods, mirandaMethods, vtable, itable, iKlassTable);
+        klassVersion = new KlassVersion(oldVersion.pool, oldVersion.linkedKlass, newDeclaredMethods, mirandaMethods, vtable, itable, iKlassTable);
 
         // flush caches before invalidating to avoid races
         // a potential thread fetching new reflection data
@@ -1285,7 +1286,7 @@ public final class ObjectKlass extends Klass {
         }
     }
 
-    private static final class RedefinitionCache {
+    static final class KlassVersion {
         final Assumption assumption;
         final RuntimeConstantPool pool;
         final LinkedKlass linkedKlass;
@@ -1297,7 +1298,7 @@ public final class ObjectKlass extends Klass {
         private final Method[] declaredMethods;
         private final Method[] mirandaMethods;
 
-        RedefinitionCache(RuntimeConstantPool pool, LinkedKlass linkedKlass, Method[] declaredMethods, Method[] mirandaMethods, Method[] vtable, Method[][] itable, ObjectKlass[] iKlassTable) {
+        KlassVersion(RuntimeConstantPool pool, LinkedKlass linkedKlass, Method[] declaredMethods, Method[] mirandaMethods, Method[] vtable, Method[][] itable, ObjectKlass[] iKlassTable) {
             this.assumption = Truffle.getRuntime().createAssumption();
             this.pool = pool;
             this.linkedKlass = linkedKlass;
@@ -1307,5 +1308,14 @@ public final class ObjectKlass extends Klass {
             this.vtable = vtable;
             this.iKlassTable = iKlassTable;
         }
+
+        Object getAttribute(Symbol<Name> name) {
+            return linkedKlass.getAttribute(name);
+        }
+
+        ConstantPool getConstantPool() {
+            return pool;
+        }
+
     }
 }
