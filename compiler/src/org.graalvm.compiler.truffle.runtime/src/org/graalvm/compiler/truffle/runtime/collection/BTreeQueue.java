@@ -27,7 +27,7 @@ package org.graalvm.compiler.truffle.runtime.collection;
 import java.util.ArrayList;
 import java.util.Arrays;
 
-public class BTree<E extends Comparable<E>> implements Pool<E> {
+public class BTreeQueue<E extends Comparable<E>> implements Pool<E> {
     private static final Object FAILURE_DUPLICATE = new Object();
     private static final Object SUCCESS = new Object();
     private static final Object MAX_ELEMENT = new Object() {
@@ -98,7 +98,7 @@ public class BTree<E extends Comparable<E>> implements Pool<E> {
 
     private Node<E> root;
 
-    public BTree() {
+    public BTreeQueue() {
         this.root = new Leaf<>(MAX_ELEMENT);
     }
 
@@ -323,7 +323,43 @@ public class BTree<E extends Comparable<E>> implements Pool<E> {
     @Override
     public int addIndexOf(E x) {
         add(x);
-        return indexBefore(x);
+        return indexOf(x);
+    }
+
+    @SuppressWarnings("unchecked")
+    @Override
+    public int indexOf(E x) {
+        int count = 0;
+        Node<E> node = root;
+        while (!node.isLeaf()) {
+            int pos = 0;
+            while (pos < BRANCHING_FACTOR) {
+                final Node<E> child = (Node<E>) node.children[pos];
+                if (compare(x, child.pivot) <= 0) {
+                    node = child;
+                    break;
+                }
+                count += child.count;
+                pos++;
+            }
+            if (pos == BRANCHING_FACTOR) {
+                throw new IllegalStateException("Key " + x + " cannot be found in node: " + node);
+            }
+        }
+        int pos = 0;
+        while (pos < BRANCHING_FACTOR) {
+            final E cur = (E) node.children[pos];
+            if (cur == null) {
+                return -1;
+            }
+            final int comparison = compare(x, cur);
+            if (comparison == 0) {
+                return count;
+            }
+            count++;
+            pos++;
+        }
+        return -1;
     }
 
     @SuppressWarnings("unchecked")
@@ -369,7 +405,7 @@ public class BTree<E extends Comparable<E>> implements Pool<E> {
     @SuppressWarnings("unchecked")
     private E removeFirstRoot() {
         final Object result = removeFirst(root);
-        if (result instanceof BTree<?>.Compress) {
+        if (result instanceof BTreeQueue<?>.Compress) {
             Compress compress = (Compress) result;
             if (compress.target == root) {
                 root = new Leaf<E>(MAX_ELEMENT);
@@ -425,7 +461,7 @@ public class BTree<E extends Comparable<E>> implements Pool<E> {
             final Node<E> child = (Node<E>) node.children[0];
             final Object result = removeFirst(child);
             node.count--;
-            if (result instanceof BTree<?>.Compress) {
+            if (result instanceof BTreeQueue<?>.Compress) {
                 final Inner<E> inner = (Inner<E>) node;
                 final Compress compress = (Compress) result;
                 if (compress.target == child) {

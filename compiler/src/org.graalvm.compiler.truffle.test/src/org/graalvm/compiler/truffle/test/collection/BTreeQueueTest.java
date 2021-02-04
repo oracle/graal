@@ -24,7 +24,7 @@
  */
 package org.graalvm.compiler.truffle.test.collection;
 
-import org.graalvm.compiler.truffle.runtime.collection.BTree;
+import org.graalvm.compiler.truffle.runtime.collection.BTreeQueue;
 import org.junit.Assert;
 import org.junit.Test;
 
@@ -33,10 +33,10 @@ import java.util.Arrays;
 import java.util.Collections;
 import java.util.Random;
 
-public class BTreeTest {
+public class BTreeQueueTest {
     @Test
     public void addSeveral() {
-        final BTree<Integer> tree = new BTree<>();
+        final BTreeQueue<Integer> tree = new BTreeQueue<>();
         tree.add(1);
         tree.add(6);
         tree.add(5);
@@ -52,7 +52,7 @@ public class BTreeTest {
 
     @Test
     public void addMoreThanSingleNode() {
-        final BTree<Integer> tree = new BTree<>();
+        final BTreeQueue<Integer> tree = new BTreeQueue<>();
         final int total = 20;
         for (int i = 0; i < total; i++) {
             tree.add(i);
@@ -63,27 +63,27 @@ public class BTreeTest {
         }
     }
 
-    private BTree<Integer> testAddRandom(int total, boolean alwaysCheckInvariants) {
+    private BTreeQueue<Integer> testAddRandom(int total, boolean alwaysCheckInvariants) {
         Random rand = new Random(total * 141);
         int[] numbers = rand.ints().map(x -> x % (4 * total)).distinct().limit(total).toArray();
         return testAdd(total, alwaysCheckInvariants, numbers);
     }
 
-    private BTree<Integer> testAddSorted(int total, boolean alwaysCheckInvariants) {
+    private BTreeQueue<Integer> testAddSorted(int total, boolean alwaysCheckInvariants) {
         Random rand = new Random(total * 141);
         int[] numbers = rand.ints().map(x -> x % (4 * total)).distinct().limit(total).sorted().toArray();
         return testAdd(total, alwaysCheckInvariants, numbers);
     }
 
-    private BTree<Integer> testAddReverseSorted(int total, boolean alwaysCheckInvariants) {
+    private BTreeQueue<Integer> testAddReverseSorted(int total, boolean alwaysCheckInvariants) {
         Random rand = new Random(total * 141);
         int[] numbers = rand.ints().map(x -> x % (4 * total)).distinct().limit(total).sorted().map(x -> x * -1).toArray();
         return testAdd(total, alwaysCheckInvariants, numbers);
     }
 
-    private BTree<Integer> testAdd(int total, boolean alwaysCheckInvariants, int[] numbers) {
+    private BTreeQueue<Integer> testAdd(int total, boolean alwaysCheckInvariants, int[] numbers) {
         int smallest = Integer.MAX_VALUE;
-        final BTree<Integer> tree = new BTree<>();
+        final BTreeQueue<Integer> tree = new BTreeQueue<>();
         for (int i = 0; i < total; i++) {
             tree.add(numbers[i]);
             if (alwaysCheckInvariants) {
@@ -156,7 +156,7 @@ public class BTreeTest {
         }
     }
 
-    private void testPoll(BTree<Integer> tree, boolean alwaysCheckInvariants) {
+    private void testPoll(BTreeQueue<Integer> tree, boolean alwaysCheckInvariants) {
         final Object[] elements = tree.toArray();
         int i = 0;
         tree.checkInvariants();
@@ -219,7 +219,7 @@ public class BTreeTest {
     private void testAddAndPoll(int until, int batchSize) {
         final ArrayList<Integer> observed = new ArrayList<>();
         final ArrayList<Integer> inserted = new ArrayList<>();
-        final BTree<Integer> tree = new BTree<>();
+        final BTreeQueue<Integer> tree = new BTreeQueue<>();
         Random rand = new Random(until * batchSize);
         for (int i = 0; i < until; i += batchSize - 1) {
             for (int j = 0; j < i % (batchSize / 2); j++) {
@@ -249,7 +249,7 @@ public class BTreeTest {
 
     @Test
     public void addIndexOf() {
-        final BTree<Integer> tree = new BTree<>();
+        final BTreeQueue<Integer> tree = new BTreeQueue<>();
         for (int i = 0; i < 1024; i++) {
             Assert.assertEquals(i, tree.addIndexOf(i));
         }
@@ -257,11 +257,17 @@ public class BTreeTest {
 
     @Test
     public void indexBefore() {
-        final BTree<Integer> tree = new BTree<>();
+        final BTreeQueue<Integer> tree = new BTreeQueue<>();
+        Assert.assertEquals(0, tree.indexBefore(0));
+        Assert.assertEquals(-1, tree.indexOf(0));
         for (int i = 0; i < 1411; i++) {
             Assert.assertEquals(i, tree.addIndexOf(i * 2));
             Assert.assertEquals(i, tree.indexBefore(i * 2 - 1));
+            Assert.assertEquals(i, tree.indexBefore(i * 2));
             Assert.assertEquals(i + 1, tree.indexBefore(i * 2 + 1));
+            Assert.assertEquals(-1, tree.indexOf(i * 2 - 1));
+            Assert.assertEquals(i, tree.indexOf(i * 2));
+            Assert.assertEquals(-1, tree.indexOf(i * 2 + 1));
         }
     }
 }

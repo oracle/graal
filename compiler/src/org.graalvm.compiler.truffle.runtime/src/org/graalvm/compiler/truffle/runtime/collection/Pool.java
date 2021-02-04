@@ -7,6 +7,13 @@ public interface Pool<E> {
         throw new UnsupportedOperationException();
     }
 
+    /**
+     * Returns the position in the pool, or -1 if the element is not present.
+     */
+    default int indexOf(E x) {
+        throw new UnsupportedOperationException();
+    }
+
     @SuppressWarnings("unchecked")
     E poll();
 

@@ -75,6 +75,15 @@ public class CustomBlockingQueue<E> implements BlockingQueue<E> {
         }
     }
 
+    public int indexOf(E x) {
+        lock.lock();
+        try {
+            return pool.indexOf(x);
+        } finally {
+            lock.unlock();
+        }
+    }
+
     @Override
     public boolean offer(E x) {
         return add(x);
