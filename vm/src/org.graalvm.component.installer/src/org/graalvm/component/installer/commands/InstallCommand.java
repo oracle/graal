@@ -246,33 +246,38 @@ public class InstallCommand implements InstallerCommand {
                         allowUpgrades ? Version.Match.Type.INSTALLABLE : Version.Match.Type.COMPATIBLE);
     }
 
-    private void addLicenseToAccept(Installer inst, MetadataLoader ldr) {
+    public void addLicenseToAccept(Installer inst, MetadataLoader ldr) {
         if (ldr.getLicenseType() != null) {
             String path = ldr.getLicensePath();
             if (inst != null && path != null) {
-                if (!SystemUtils.isRemotePath(path)) {
-                    inst.setLicenseRelativePath(SystemUtils.fromCommonRelative(ldr.getLicensePath()));
-                }
+                inst.setLicenseRelativePath(SystemUtils.fromCommonRelative(ldr.getLicensePath()));
             }
-            String licId = ldr.getLicenseID();
-            if (licId == null) {
-                String tp = ldr.getLicenseType();
-                if (Pattern.matches("[-_., 0-9A-Za-z]+", tp)) { // NOI18N
-                    licId = tp;
-                } else {
-                    // better make a digest
-                    try {
-                        MessageDigest dg = MessageDigest.getInstance("SHA-256"); // NOI18N
-                        byte[] result = dg.digest(tp.getBytes("UTF-8"));
-                        licId = SystemUtils.fingerPrint(result, false);
-                    } catch (NoSuchAlgorithmException | UnsupportedEncodingException ex) {
-                        feedback.error("INSTALL_CannotDigestLicense", ex, ex.getLocalizedMessage());
-                        licId = Integer.toHexString(tp.hashCode());
-                    }
-                }
-            }
-            addLicenseToAccept(licId, ldr);
+            addLicenseToAccept(ldr);
         }
+    }
+
+    public void addLicenseToAccept(MetadataLoader ldr) {
+        String licId = ldr.getLicenseID();
+        if (licId == null) {
+            String tp = ldr.getLicenseType();
+            if (tp == null) {
+                return;
+            }
+            if (Pattern.matches("[-_., 0-9A-Za-z]+", tp)) { // NOI18N
+                licId = tp;
+            } else {
+                // better make a digest
+                try {
+                    MessageDigest dg = MessageDigest.getInstance("SHA-256"); // NOI18N
+                    byte[] result = dg.digest(tp.getBytes("UTF-8"));
+                    licId = SystemUtils.fingerPrint(result, false);
+                } catch (NoSuchAlgorithmException | UnsupportedEncodingException ex) {
+                    feedback.error("INSTALL_CannotDigestLicense", ex, ex.getLocalizedMessage());
+                    licId = Integer.toHexString(tp.hashCode());
+                }
+            }
+        }
+        addLicenseToAccept(licId, ldr);
     }
 
     /**
@@ -762,9 +767,19 @@ public class InstallCommand implements InstallerCommand {
         if (licensesToAccept.isEmpty()) {
             return;
         }
+        Set<String> processed = new HashSet<>(licensesToAccept.keySet());
         createLicensePresenter().run();
-        processedLicenses.addAll(licensesToAccept.keySet());
+        processed.removeAll(licensesToAccept.keySet());
+        markLicensesProcessed(processed);
         licensesToAccept.clear();
+    }
+
+    public Set<String> getProcessedLicenses() {
+        return new HashSet<>(processedLicenses);
+    }
+
+    public void markLicensesProcessed(Collection<String> licenseIDs) {
+        processedLicenses.addAll(licenseIDs);
     }
 
     public Set<String> getUnresolvedDependencies() {

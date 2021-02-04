@@ -83,6 +83,7 @@ public class UpgradeProcess implements AutoCloseable {
     private boolean allowMissing;
     private ComponentRegistry newGraalRegistry;
     private Version minVersion = Version.NO_VERSION;
+    private Set<String> acceptedLicenseIDs = new HashSet<>();
 
     public UpgradeProcess(CommandInput input, Feedback feedback, ComponentCollection catalog) {
         this.input = input;
@@ -225,6 +226,17 @@ public class UpgradeProcess implements AutoCloseable {
         feedback.output("UPGRADE_PreparingInstall", info.getVersion().displayString(), reported);
         failIfDirectotyExistsNotEmpty(reported);
 
+        ComponentParam coreParam = createGraalComponentParam(info);
+        // reuse License logic from the installer command:
+        InstallCommand cmd = new InstallCommand();
+        cmd.init(input, feedback);
+
+        // ask the InstallCommand to process/accept the licenses, if there are any.
+        MetadataLoader ldr = coreParam.createMetaLoader();
+        cmd.addLicenseToAccept(ldr);
+        cmd.acceptLicenses();
+        acceptedLicenseIDs = cmd.getProcessedLicenses();
+
         // force download
         ComponentParam param = input.existingFiles().createParam("core", info);
         metaLoader = param.createFileLoader();
@@ -273,7 +285,7 @@ public class UpgradeProcess implements AutoCloseable {
      * {@link InstallCommand#createInstaller}.
      */
     GraalVMInstaller createGraalVMInstaller(ComponentInfo info) throws IOException {
-        ComponentParam p = input.existingFiles().createParam(info.getId(), info);
+        ComponentParam p = createGraalComponentParam(info);
         MetadataLoader ldr = p.createFileLoader();
         ldr.loadPaths();
         if (p.isComplete()) {
@@ -284,7 +296,6 @@ public class UpgradeProcess implements AutoCloseable {
         ComponentInfo completeInfo = ldr.getComponentInfo();
         targetInfo = completeInfo;
         metaLoader = ldr;
-
         GraalVMInstaller gvmInstaller = new GraalVMInstaller(feedback,
                         input.getFileOperations(),
                         input.getLocalRegistry(), completeInfo, catalog,
@@ -295,6 +306,19 @@ public class UpgradeProcess implements AutoCloseable {
         gvmInstaller.setSymlinks(ldr.loadSymlinks());
         newGraalHomePath = gvmInstaller.getInstalledPath();
         return gvmInstaller;
+    }
+
+    /**
+     * Cached parameter for the core. It will cache MetaLoader and FileLoader for subsequent
+     * operations.
+     */
+    private ComponentParam graalCoreParam;
+
+    ComponentParam createGraalComponentParam(ComponentInfo info) {
+        if (graalCoreParam == null) {
+            graalCoreParam = input.existingFiles().createParam(info.getId(), info);
+        }
+        return graalCoreParam;
     }
 
     public boolean installGraalCore(ComponentInfo info) throws IOException {
@@ -483,6 +507,7 @@ public class UpgradeProcess implements AutoCloseable {
         instCommand.init(new InputDelegate(params), feedback);
         instCommand.setAllowUpgrades(true);
         instCommand.setForce(true);
+        instCommand.markLicensesProcessed(acceptedLicenseIDs);
         return instCommand;
     }
 
