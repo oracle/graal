@@ -1,6 +1,6 @@
 {
 local common = import '../common.jsonnet',
-local composable = (import "../utils.libsonnet").makeComposable,
+local composable = (import "../common-utils.libsonnet").composable,
 local sulong_deps = composable((import "../common.json").sulong.deps),
 
 local linux_amd64 = common["linux-amd64"],
@@ -163,7 +163,7 @@ sulong_coverage_linux: $.sulong_gateTestLLVMorg_linux + $.requireGCC + $.sulong_
         ["test", "-z", "$SONAR_HOST_URL", "||", "mx", "--jacoco-whitelist-package", "com.oracle.truffle.llvm", "--jacoco-exclude-annotation", "@GeneratedBy", "sonarqube-upload", "-Dsonar.host.url=$SONAR_HOST_URL", "-Dsonar.projectKey=com.oracle.graalvm.sulong", "-Dsonar.projectName=GraalVM - Sulong", "--exclude-generated"],
         ["mx", "--jacoco-whitelist-package", "com.oracle.truffle.llvm", "--jacoco-exclude-annotation", "@GeneratedBy", "coverage-upload"],
     ],
-    targets+: ["weekly"],
+    targets: ["weekly"],
     timelimit: "1:45:00"
 },
 
