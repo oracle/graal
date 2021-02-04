@@ -28,6 +28,7 @@ package com.oracle.objectfile.debugentry;
 
 import com.oracle.objectfile.debuginfo.DebugInfoProvider;
 import com.oracle.objectfile.debuginfo.DebugInfoProvider.DebugTypeInfo.DebugTypeKind;
+import com.oracle.objectfile.elf.dwarf.DwarfDebugInfo;
 import org.graalvm.compiler.debug.DebugContext;
 
 import java.nio.ByteOrder;
@@ -113,16 +114,35 @@ public abstract class DebugInfoBase {
      * otherwise false.
      */
     private boolean useHeapBase;
-    private int oopShiftBitCount;
-    private int oopFlagBitsMask;
-    private int oopReferenceByteCount;
+    /**
+     * number of bits oops are left shifted by when using compressed oops
+     */
+    private int oopCompressShift;
+    /**
+     * number of low order bits used for tagging oops
+     */
+    private int oopTagsCount;
+    /**
+     * number of bytes used to store an oop reference
+     */
+    private int oopReferenceSize;
+    /**
+     * alignment of object memory area (and, therefore, of any oop) in bytes
+     */
+    private int oopAlignment;
+    /**
+     * number of bits in oop which are guaranteed 0 by virtue of alignment
+     */
+    private int oopAlignShift;
 
     public DebugInfoBase(ByteOrder byteOrder) {
         this.byteOrder = byteOrder;
         this.useHeapBase = true;
-        this.oopFlagBitsMask = 0;
-        this.oopShiftBitCount = 0;
-        this.oopReferenceByteCount = 0;
+        this.oopTagsCount = 0;
+        this.oopCompressShift = 0;
+        this.oopReferenceSize = 0;
+        this.oopAlignment = 0;
+        this.oopAlignShift = 0;
     }
 
     /**
@@ -145,19 +165,34 @@ public abstract class DebugInfoBase {
         useHeapBase = debugInfoProvider.useHeapBase();
 
         /*
-         * save mask for low order flag bits
+         * save count of low order tag bits that may appear in references
          */
-        oopFlagBitsMask = debugInfoProvider.oopFlagBitsMask();
-        /* flag bits be bewteen 1 and 32 for us to emit as DW_OP_lit<n> */
-        assert oopFlagBitsMask > 0 && oopFlagBitsMask < 32;
+        int oopTagsMask = debugInfoProvider.oopTagsMask();
+
+        /* tag bits must be between 1 and 32 for us to emit as DW_OP_lit<n> */
+        assert oopTagsMask > 0 && oopTagsMask < 32;
         /* mask must be contiguous from bit 0 */
-        assert ((oopFlagBitsMask + 1) & oopFlagBitsMask) == 0;
+        assert ((oopTagsMask + 1) & oopTagsMask) == 0;
+
+        oopTagsCount = Integer.bitCount(oopTagsMask);
 
         /* Save amount we need to shift references by when loading from an object field. */
-        oopShiftBitCount = debugInfoProvider.oopShiftBitCount();
+        oopCompressShift = debugInfoProvider.oopCompressShift();
+
+        /* shift bit count must be either 0 or 3 */
+        assert (oopCompressShift == 0 || oopCompressShift == 3);
 
         /* Save number of bytes in a reference field. */
-        oopReferenceByteCount = debugInfoProvider.oopReferenceByteCount();
+        oopReferenceSize = debugInfoProvider.oopReferenceSize();
+
+        /* Save alignment of a reference */
+        oopAlignment = debugInfoProvider.oopAlignment();
+
+        /* Save alignment of a reference */
+        oopAlignShift = Integer.bitCount(oopAlignment - 1);
+
+        /* reference alignment must be 8 bytes */
+        assert oopAlignment == 8;
 
         /* Ensure we have a null string in the string section. */
         stringTable.uniqueDebugString("");
@@ -433,15 +468,41 @@ public abstract class DebugInfoBase {
         return useHeapBase;
     }
 
-    public byte oopFlagBitsMask() {
-        return (byte) oopFlagBitsMask;
+    public byte oopTagsMask() {
+        return (byte) ((1 << oopTagsCount) - 1);
     }
 
-    public int oopShiftBitCount() {
-        return oopShiftBitCount;
+    public byte oopTagsShift() {
+        return (byte) oopTagsCount;
     }
 
-    public int oopReferenceByteCount() {
-        return oopReferenceByteCount;
+    public int oopCompressShift() {
+        return oopCompressShift;
+    }
+
+    public int oopReferenceSize() {
+        return oopReferenceSize;
+    }
+
+    public int oopAlignment() {
+        return oopAlignment;
+    }
+
+    public int oopAlignShift() {
+        return oopAlignShift;
+    }
+
+    public boolean isHubClassEntry(ClassEntry classEntry) {
+        return classEntry.getTypeName().equals(DwarfDebugInfo.HUB_TYPE_NAME);
+    }
+
+    public int classLayoutAbbrevCode(ClassEntry classEntry) {
+        if (useHeapBase & isHubClassEntry(classEntry)) {
+            /*
+             * this layout adds special logic to remove tag bits from indirect pointers to this type
+             */
+            return DwarfDebugInfo.DW_ABBREV_CODE_class_layout2;
+        }
+        return DwarfDebugInfo.DW_ABBREV_CODE_class_layout1;
     }
 }

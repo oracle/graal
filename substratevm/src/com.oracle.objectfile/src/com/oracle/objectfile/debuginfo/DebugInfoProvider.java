@@ -40,11 +40,25 @@ import org.graalvm.compiler.debug.DebugContext;
 public interface DebugInfoProvider {
     boolean useHeapBase();
 
-    int oopShiftBitCount();
+    /**
+     * number of bits oops are left shifted by when using compressed oops
+     */
+    int oopCompressShift();
 
-    int oopFlagBitsMask();
+    /**
+     * mask delecting low order bits used for tagging oops
+     */
+    int oopTagsMask();
 
-    int oopReferenceByteCount();
+    /**
+     * number of bytes used to store an oop reference
+     */
+    int oopReferenceSize();
+
+    /**
+     * alignment of object memory area (and, therefore, of any oop) in bytes
+     */
+    int oopAlignment();
 
     /**
      * An interface implemented by items that can be located in a file.

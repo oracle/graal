@@ -139,6 +139,17 @@ public class DwarfAbbrevSectionImpl extends DwarfSectionImpl {
          * <li><code>code = interface_pointer, tag = pointer_type, parent = class_unit<code> - Java
          * interface ref type
          *
+         * <li><code>code = indirect_layout, tag = class_type, parent = class_unit, array_unit,
+         * interface_unit<code> - wrapper layout attaches address rewriting logic to the layout
+         * types that it wraps using a data_location attribute
+         *
+         * <li><code>code = indirect_pointer, tag = pointer_type, parent = class_unit, array_unit,
+         * interface_unit<code> - indirect ref type used to type indirect oops that encode the
+         * address of an object, whether by adding tag bits or representing the address as an offset
+         * from some base address. these are used to type object references stored in static and
+         * instance fields. They are not needed when typing local vars and parameters held in
+         * registers or on the stack as they appear as raw addresses.
+         *
          * </ul>
          *
          * <ul>
@@ -154,9 +165,9 @@ public class DwarfAbbrevSectionImpl extends DwarfSectionImpl {
          * object_header/class_layout<code> - object header or instance field declaration (i.e.
          * specification of properties)
          *
-         * <li><code>code == super_reference, tag == inheritance, parent =
-         * class_layout/array_layout</code> - reference to super class layout or to appropriate
-         * header struct for {code java.lang.Object} or arrays.
+         * <li><code>code == super_reference, tag == inheritance, parent = class_layout,
+         * array_layout</code> - reference to super class layout or to appropriate header struct for
+         * {code java.lang.Object} or arrays.
          *
          * <li><code>code == interface_implementor, tag == member, parent = interface_layout</code>
          * - union member typed using class layout of a given implementing class
@@ -213,8 +224,6 @@ public class DwarfAbbrevSectionImpl extends DwarfSectionImpl {
          *
          * <li><code>DW_AT_byte_size : ... DW_FORM_data1</code> "oop"
          *
-         * <li><code>DW_AT_location : ........ DW_FORM_expr_loc</code>
-         *
          * </ul>
          *
          * Header Data: A level 1 DIE of type member is used to describe the fields of both object
@@ -249,11 +258,9 @@ public class DwarfAbbrevSectionImpl extends DwarfSectionImpl {
          *
          * <li><code>DW_AT_comp_dir : ... DW_FORM_strp</code>
          *
-         * <li><code>DW_AT_low_pc : ..... DW_FORM_address</code> ??? omit this so method entries do
-         * not need to occupy full range
+         * <li><code>DW_AT_low_pc : ..... DW_FORM_address</code>
          *
-         * <li><code>DW_AT_hi_pc : ...... DW_FORM_address</code> ??? omit this so method entries do
-         * not need to occupy full range
+         * <li><code>DW_AT_hi_pc : ...... DW_FORM_address</code>
          *
          * <li><code>DW_AT_stmt_list : .. DW_FORM_data4</code> n.b only for <code>abbrev-code ==
          * class_unit1</code>
@@ -261,31 +268,35 @@ public class DwarfAbbrevSectionImpl extends DwarfSectionImpl {
          * </ul>
          *
          * Instance Class Structure: Each class_unit DIE contains a series of level 1 DIEs. The
-         * first one describes the class layout:
+         * first one describes the class layout. The normal layout does not include a data_location
+         * attribute. However, an alternative layout, including that extra attribute, is provided to
+         * ensure that tag bits can be removed from pointers to instances of java.lang.Class. This
+         * alternative layout is only needed when a heapbase register is not in use and fields hold
+         * raw oops. If a heapbase register is in use and fields hold indirect oops then the masking
+         * logic for* class pointer tags is included in the data_location attribute attached to the
+         * indirect layout record (see below)
          *
          * <ul>
          *
-         * <li><code>abbrev_code == class_layout, tag == DW_TAG_class_type, has_children</code>
+         * <li><code>abbrev_code == class_layout1/class_layout2, tag == DW_TAG_class_type,
+         * has_children</code>
          *
          * <li><code>Dw_AT_name : ........ DW_FORM_strp</code>
          *
-         * <li><code>Dw_AT_byte_size : ... DW_FORM_data1/2</code> ??? how many bytes do we really
-         * need?
+         * <li><code>Dw_AT_byte_size : ... DW_FORM_data1/2</code>
          *
-         * <li><code>Dw_AT_decl_file : ... DW_FORM_data1/2</code> ??? how many bytes do we really
-         * need?
+         * <li><code>Dw_AT_decl_file : ... DW_FORM_data1/2</code>
          *
-         * <li><code>Dw_AT_decl_line : ... DW_FORM_data1/2</code> ??? how many bytes do we really
-         * need?
+         * <li><code>Dw_AT_decl_line : ... DW_FORM_data1/2</code>
          *
-         * <li><code>Dw_AT_data_location : ... DW_FORM_expr_loc</code>
+         * <li><code>Dw_AT_data_location : ... DW_FORM_expr_loc</code> n.b. only for class_layout2
          *
          * </ul>
          *
-         * Instance Class members: The level 1 class_layout DIE includes a level 2 child for each of
+         * Instance Class members: A level 1 class_layout DIE includes a level 2 child for each of
          * the class's methods and fields. The first type declares a method but omits details of the
          * location of the code that implements the method. The second type declares an instance or
-         * static field. The class_layout DIE also contains an level 2 DIE specifying the type from
+         * static field. A class_layout DIE also contains an level 2 DIE specifying the type from
          * which it inherits superclass structure. In the case of class Object structure is
          * inherited from the object header structure type.
          *
@@ -300,13 +311,13 @@ public class DwarfAbbrevSectionImpl extends DwarfSectionImpl {
          * <li><code>abbrev_code == method_declaration1/2, tag == DW_TAG_subprogram,
          * has_children</code>
          *
-         * <li><code>DW_AT_external : .......... DW_FORM_flag</code> ??? for all?
+         * <li><code>DW_AT_external : .......... DW_FORM_flag</code>
          *
          * <li><code>Dw_AT_name : .............. DW_FORM_strp</code>
          *
-         * <li><code>DW_AT_decl_file : ......... DW_FORM_data1/2</code> ??? how many bytes
+         * <li><code>DW_AT_decl_file : ......... DW_FORM_data1/2</code>
          *
-         * <li><code>DW_AT_decl_line : ......... DW_FORM_data1/2<code> ??? how many bytes
+         * <li><code>DW_AT_decl_line : ......... DW_FORM_data1/2<code>
          *
          * <li><code>Dw_AT_linkage_name : ...... DW_FORM_strp</code>
          *
@@ -318,8 +329,8 @@ public class DwarfAbbrevSectionImpl extends DwarfSectionImpl {
          *
          * <li><code>DW_AT_declaration : ....... DW_FORM_flag</code>
          *
-         * <li><code>Dw_AT_object_pointer : .... DW_FORM_ref_addr<code> (only for
-         * method_declaration1 points to param 0 DIE)
+         * <li><code>Dw_AT_object_pointer : .... DW_FORM_ref_addr<code> n.b. only for
+         * method_declaration1, points to param 0 DIE
          *
          * <li><code>DW_AT_virtuality : ........ DW_FORM_data1<code> (for override methods)
          *
@@ -334,26 +345,26 @@ public class DwarfAbbrevSectionImpl extends DwarfSectionImpl {
          *
          * <li><code>Dw_AT_name : ................... DW_FORM_strp</code>
          *
-         * <li><code>DW_AT_decl_file : .............. DW_FORM_data1/2</code> (only for
-         * field_declaration2/4)
+         * <li><code>DW_AT_decl_file : .............. DW_FORM_data1/2</code> n.b. only for
+         * field_declaration2/4
          *
-         * <li><code>DW_AT_decl_line : .............. DW_FORM_data1/2</code> (only for
-         * field_declaration2/4)
+         * <li><code>DW_AT_decl_line : .............. DW_FORM_data1/2</code> n.b. only for
+         * field_declaration2/4
          *
          * <li><code>Dw_AT_type : ................... DW_FORM_ref_addr</code>
          *
-         * <li><code>Dw_AT_data_member_location : ... DW_FORM_data1/2</code> (only for
-         * field_declaration1/2 instance) ??? how many bytes?
+         * <li><code>Dw_AT_data_member_location : ... DW_FORM_data1/2</code> (n.b. nly for
+         * field_declaration1/2 instance
          *
-         * <li><code>Dw_AT_artificial : ............. DW_FORM_flag</code> ?? do we need this?
+         * <li><code>Dw_AT_artificial : ............. DW_FORM_flag</code>
          *
          * <li><code>Dw_AT_accessibility : .......... DW_FORM_data1</code>
          *
-         * <li><code>Dw_AT_external : ............... DW_FORM_flag</code> (only for
-         * field_declaration3/4 static)
+         * <li><code>Dw_AT_external : ............... DW_FORM_flag</code> (n.b. only for
+         * field_declaration3/4 static
          *
-         * <li><code>Dw_AT_declaration : ............ DW_FORM_flag</code> (only for
-         * field_declaration3/4 static)
+         * <li><code>Dw_AT_declaration : ............ DW_FORM_flag</code> n.b. only for
+         * field_declaration3/4 static
          *
          * </ul>
          *
@@ -379,26 +390,64 @@ public class DwarfAbbrevSectionImpl extends DwarfSectionImpl {
          *
          * <li><code>Dw_AT_name : ... DW_FORM_strp</code> (may be empty string)
          *
-         * <li><code>Dw_AT_file : ... DW_FORM_data1/2</code> (optional only for
-         * method_parameter_declaration2)
+         * <li><code>Dw_AT_file : ... DW_FORM_data1/2</code> n.b. only for
+         * method_parameter_declaration2
          *
-         * <li><code>Dw_AT_line : ... DW_FORM_data1/2</code> (optional only for
-         * method_parameter_declaration2)
+         * <li><code>Dw_AT_line : ... DW_FORM_data1/2</code> n.b. only for
+         * method_parameter_declaration2
          *
          * <li><code>Dw_AT_type : ... DW_FORM_ref_addr</code>
          *
-         * <li><code>Dw_AT_artificial : ... DW_FORM_flag</code> (optional only for
-         * method_parameter_declaration1 $this, $access)
+         * <li><code>Dw_AT_artificial : ... DW_FORM_flag</code> n.b. only for
+         * method_parameter_declaration1 used for this and access vars
          *
          * </ul>
          *
-         * Instance Class Reference Types: A level 1 class_layout DIE is followed by a DIE defining
-         * a pointer to the class. This reflects the fact that a Java object reference is actually
-         * implemented as a pointer.
+         * Indirect Instance Class Structure: The level 1 class layout DIE may be followed by a
+         * level 1 indirect_layout DIE that wraps the class layout as a super class. The wrapper
+         * type supplies a data_location attribute, allowing indirect pointers to the class (see
+         * next item) to be translated to raw addresses. The name of the indirect type is
+         * constructed by prefixing the class name with DwarfDebufInfo.INDIRECT_PREFIX. This DIE has
+         * only one child DIE with type super_reference (see above). The latter references the class
+         * layout DIE as a super, effectively embedding the standard layout type in the indirect
+         * layout. The size of the indirect layout is the same as the size of the class layout.
+         *
+         * <ul>
+         *
+         * <li><code>abbrev_code == indirect_layout, tag == DW_TAG_class_type, has_children</code>
+         *
+         * <li><code>Dw_AT_name : ........ DW_FORM_strp</code>
+         *
+         * <li><code>Dw_AT_byte_size : ... DW_FORM_data1/2</code>
+         *
+         * <li><code>Dw_AT_data_location : ... DW_FORM_expr_loc</code>
+         *
+         * </ul>
+         *
+         * Instance Class Reference Types: The level 1 class_layout and indirect_layout DIEs are
+         * followed by DIEs defining pointers to the respective class layouts. A class_pointer DIE
+         * defines a pointer type for the class_layout type and is used to type pointers which
+         * directly address an instance. It is used to type local and parameter var references
+         * whether located in a register or on the stack. It is followed by an indirect_pointer DIE
+         * which defines a pointer type for the class's indirect_layout type. This is used to type
+         * references to instances of the class located in a static or instance field. These
+         * references require address translation by masking off tag bits and rebasing from an
+         * offset to a raw address. The logic for this translation is encoded in a data_location
+         * attribute of the indirect_layout DIE.
          *
          * <ul>
          *
          * <li><code>abbrev_code == class_pointer, tag == DW_TAG_pointer_type, no_children</code>
+         *
+         * <li><code>Dw_AT_byte_size : ... DW_FORM_data1</code>
+         *
+         * <li><code>Dw_AT_type : ........ DW_FORM_ref_addr</code>
+         *
+         * </ul>
+         *
+         * <ul>
+         *
+         * <li><code>abbrev_code == indirect_pointer, tag == DW_TAG_pointer_type, no_children</code>
          *
          * <li><code>Dw_AT_byte_size : ... DW_FORM_data1</code>
          *
@@ -446,7 +495,7 @@ public class DwarfAbbrevSectionImpl extends DwarfSectionImpl {
          *
          * <li><code>DW_AT_low_pc : .......... DW_FORM_addr</code>
          *
-         * <li><code>DW_AT_hi_pc : ........... DW_FORM_addr</code> (or data8???)
+         * <li><code>DW_AT_hi_pc : ........... DW_FORM_addr</code>
          *
          * <li><code>DW_AT_external : ........ DW_FORM_flag</code>
          *
@@ -478,12 +527,15 @@ public class DwarfAbbrevSectionImpl extends DwarfSectionImpl {
          *
          * <li><code>DW_AT_language : ... DW_FORM_data1</code>
          *
-         * <li><code>DW_AT_name : ....... DW_FORM_strp</code> ??? what name???
+         * <li><code>DW_AT_name : ....... DW_FORM_strp</code>
          *
          * </ul>
          *
-         * Array Structure: Each array_unit DIE contains two level 1 DIEs. The first one describes
-         * the array layout:
+         * Array Structure: Each array_unit DIE contains four level 1 DIEs. The first one describes
+         * the array layout. It has only one child, a super_reference DIE (see above) that
+         * references the appropriate array header type for an obnject aray or primitive array of
+         * the relevant primitive type). The size of the array layout is the same as the size of the
+         * array header.
          *
          * <ul>
          *
@@ -491,15 +543,23 @@ public class DwarfAbbrevSectionImpl extends DwarfSectionImpl {
          *
          * <li><code>Dw_AT_name : ........ DW_FORM_strp</code>
          *
-         * <li><code>Dw_AT_byte_size : ... DW_FORM_data1/2</code> size up to base of embedded array
-         * elements?
-         *
-         * <li><code>DW_AT_location : .... DW_FORM_expr_loc</code>
+         * <li><code>Dw_AT_byte_size : ... DW_FORM_data1/2</code>
          *
          * </ul>
          *
-         * The second DIE defines the array reference type as a pointer to the underlying structure
-         * type
+         * The immediately following DIE is an indirect_layout (see above) that wraps the array
+         * layout as its super type (just as with class layouts). The wrapper type supplies a
+         * data_location attribute, allowing indirect pointers to the array to be translated to raw
+         * addresses. The name of the indirect array type is constructed by prefixing the array name
+         * with INDIRECT_PREFIX. This DIE has only one child DIE with type super_reference (see
+         * above). The latter references the array layout DIE, effectively embedding the standard
+         * array layout type in the indirect layout. The size of the indirect layout is the same as
+         * the size of the array layout.
+         *
+         * The third and fourth DIEs define array reference types as a pointers to the underlying
+         * structure layout types. As with classes, there is an array_pointer type for raw address
+         * references used to type local and param vars and an indirect_pointer type (see above) for
+         * array references stored in static and instance fields.
          *
          * <ul>
          *
@@ -509,6 +569,8 @@ public class DwarfAbbrevSectionImpl extends DwarfSectionImpl {
          *
          * <li><code>Dw_AT_type : ........ DW_FORM_ref_addr</code>
          *
+         * </ul>
+         *
          * n.b. the name used in the array_layout DIE is the Java array name. This is deliberately
          * inconsistent with the Java naming where the name refers to the pointer type. As with
          * normal objects an array reference in a Java signature appears as a pointer to an array
@@ -516,7 +578,7 @@ public class DwarfAbbrevSectionImpl extends DwarfSectionImpl {
          *
          * Array members: The level 1 array_layout DIE includes level 2 child DIEs with tag member
          * that describe the layout of the array. header_field DIEs are used to declare members of
-         * the array header, including the zero length array data member tat dfollows other header
+         * the array header, including the zero length array data member that follows other header
          * fields. An auxiliary array_data_type DIE with tag array_type also occurs as a child DIE
          * defining the type for the array data member.
          *
@@ -535,13 +597,8 @@ public class DwarfAbbrevSectionImpl extends DwarfSectionImpl {
          *
          * Interface Layout and Reference Types: The level 0 class_unit DIE for an interface is
          * followed by a level 1 DIE defining the interface layout as a union of all the layouts for
-         * the classes which implement the interface. A second level 1 DIEs defines a pointer to
-         * this layout type.
-         *
-         * n.b. the name used in the interface_layout DIE is the Java array name. This is
-         * deliberately inconsistent with the Java naming where the name refers to the pointer type.
-         * As with normal objects an interface reference in a Java signature appears as a pointer to
-         * an interface layout when printed by gdb.
+         * the classes which implement the interface. The size of the interface layout is the
+         * maximum of the sizes for the implementing classes.
          *
          * <ul>
          *
@@ -552,6 +609,27 @@ public class DwarfAbbrevSectionImpl extends DwarfSectionImpl {
          * <li><code>DW_AT_location : ... DW_FORM_expr_loc</code>
          *
          * </ul>
+         *
+         * A second level 1 DIE provides an indirect_layout that wraps the interface layout as its
+         * super type (just as with class layouts). The wrapper type supplies a data_location
+         * attribute, allowing indirect pointers to the interface to be translated to raw addresses.
+         * The name of the indirect interface type is constructed by prefixing the interface name
+         * with INDIRECT_PREFIX. This DIE has only one child DIE with type super_reference (see
+         * above). The latter references the interface layout DIE, effectively embedding the
+         * standard interface layout type in the indirect layout. The size of the indirect layout is
+         * the same as the size of the interface layout.
+         *
+         * The third and fourth DIEs define interface reference types as a pointers to the
+         * underlying structure layout types. As with classes, there is an interface_pointer type
+         * for raw address references used to type local and param vars and an indirect_pointer type
+         * (see above) for interface references stored in static and instance fields.
+         *
+         * A second level 1 defines a pointer to this layout type.
+         *
+         * n.b. the name used in the interface_layout DIE is the Java array name. This is
+         * deliberately inconsistent with the Java naming where the name refers to the pointer type.
+         * As with normal objects an interface reference in a Java signature appears as a pointer to
+         * an interface layout when printed by gdb.
          *
          * <ul>
          *
@@ -619,7 +697,7 @@ public class DwarfAbbrevSectionImpl extends DwarfSectionImpl {
         pos = writeVoidTypeAbbrev(context, buffer, pos);
         pos = writeObjectHeaderAbbrev(context, buffer, pos);
 
-        pos = writeClassLayoutAbbrev(context, buffer, pos);
+        pos = writeClassLayoutAbbrevs(context, buffer, pos);
         pos = writeClassReferenceAbbrev(context, buffer, pos);
         pos = writeMethodDeclarationAbbrevs(context, buffer, pos);
         pos = writeFieldDeclarationAbbrevs(context, buffer, pos);
@@ -634,6 +712,20 @@ public class DwarfAbbrevSectionImpl extends DwarfSectionImpl {
         pos = writeStaticFieldLocationAbbrev(context, buffer, pos);
         pos = writeSuperReferenceAbbrev(context, buffer, pos);
         pos = writeInterfaceImplementorAbbrev(context, buffer, pos);
+
+        /*
+         * if we address rebasing is required then then we need to use indirect layout types
+         * supplied with a suitable data_location attribute and indirect pointer types to ensure
+         * that gdb converts offsets embedded in static or instance fields to raw pointers.
+         * Transformed addresses are typed using pointers to the underlying layout.
+         *
+         * if address rebasing is not required then we a data_location attribute on the layout type
+         * will ensure that address tag bits are removed.
+         */
+        if (dwarfSections.useHeapBase()) {
+            pos = writeIndirectLayoutAbbrev(context, buffer, pos);
+            pos = writeIndirectReferenceAbbrev(context, buffer, pos);
+        }
 
         pos = writeParameterDeclarationAbbrevs(context, buffer, pos);
         return pos;
@@ -769,8 +861,6 @@ public class DwarfAbbrevSectionImpl extends DwarfSectionImpl {
         pos = writeAttrForm(DwarfDebugInfo.DW_FORM_strp, buffer, pos);
         pos = writeAttrType(DwarfDebugInfo.DW_AT_byte_size, buffer, pos);
         pos = writeAttrForm(DwarfDebugInfo.DW_FORM_data1, buffer, pos);
-        pos = writeAttrType(DwarfDebugInfo.DW_AT_data_location, buffer, pos);
-        pos = writeAttrForm(DwarfDebugInfo.DW_FORM_expr_loc, buffer, pos);
         /*
          * Now terminate.
          */
@@ -779,10 +869,19 @@ public class DwarfAbbrevSectionImpl extends DwarfSectionImpl {
         return pos;
     }
 
-    private int writeClassLayoutAbbrev(@SuppressWarnings("unused") DebugContext context, byte[] buffer, int p) {
+    private int writeClassLayoutAbbrevs(@SuppressWarnings("unused") DebugContext context, byte[] buffer, int p) {
+        int pos = p;
+        pos = writeClassLayoutAbbrev(context, DwarfDebugInfo.DW_ABBREV_CODE_class_layout1, buffer, pos);
+        if (!dwarfSections.useHeapBase()) {
+            pos = writeClassLayoutAbbrev(context, DwarfDebugInfo.DW_ABBREV_CODE_class_layout2, buffer, pos);
+        }
+        return pos;
+    }
+
+    private int writeClassLayoutAbbrev(@SuppressWarnings("unused") DebugContext context, int abbrevCode, byte[] buffer, int p) {
         int pos = p;
 
-        pos = writeAbbrevCode(DwarfDebugInfo.DW_ABBREV_CODE_class_layout, buffer, pos);
+        pos = writeAbbrevCode(abbrevCode, buffer, pos);
         pos = writeTag(DwarfDebugInfo.DW_TAG_class_type, buffer, pos);
         pos = writeFlag(DwarfDebugInfo.DW_CHILDREN_yes, buffer, pos);
         pos = writeAttrType(DwarfDebugInfo.DW_AT_name, buffer, pos);
@@ -796,14 +895,16 @@ public class DwarfAbbrevSectionImpl extends DwarfSectionImpl {
            pos = writeAttrType(DwarfDebugInfo.DW_AT_decl_line, buffer, pos);
            pos = writeAttrForm(DwarfDebugInfo.DW_FORM_data2, buffer, pos);
          */
-        /* Add a data location expression to mask and/or rebase oop pointers. */
-        pos = writeAttrType(DwarfDebugInfo.DW_AT_data_location, buffer, pos);
-        pos = writeAttrForm(DwarfDebugInfo.DW_FORM_expr_loc, buffer, pos);
+        if (abbrevCode == DwarfDebugInfo.DW_ABBREV_CODE_class_layout2) {
+            pos = writeAttrType(DwarfDebugInfo.DW_AT_data_location, buffer, pos);
+            pos = writeAttrForm(DwarfDebugInfo.DW_FORM_expr_loc, buffer, pos);
+        }
         /*
          * Now terminate.
          */
         pos = writeAttrType(DwarfDebugInfo.DW_AT_null, buffer, pos);
         pos = writeAttrForm(DwarfDebugInfo.DW_FORM_null, buffer, pos);
+
         return pos;
     }
 
@@ -937,9 +1038,6 @@ public class DwarfAbbrevSectionImpl extends DwarfSectionImpl {
         pos = writeAttrForm(DwarfDebugInfo.DW_FORM_strp, buffer, pos);
         pos = writeAttrType(DwarfDebugInfo.DW_AT_byte_size, buffer, pos);
         pos = writeAttrForm(DwarfDebugInfo.DW_FORM_data2, buffer, pos);
-        /* Add a data location expression to mask and/or rebase oop pointers. */
-        pos = writeAttrType(DwarfDebugInfo.DW_AT_data_location, buffer, pos);
-        pos = writeAttrForm(DwarfDebugInfo.DW_FORM_expr_loc, buffer, pos);
         /*
          * Now terminate.
          */
@@ -974,9 +1072,6 @@ public class DwarfAbbrevSectionImpl extends DwarfSectionImpl {
         pos = writeFlag(DwarfDebugInfo.DW_CHILDREN_yes, buffer, pos);
         pos = writeAttrType(DwarfDebugInfo.DW_AT_name, buffer, pos);
         pos = writeAttrForm(DwarfDebugInfo.DW_FORM_strp, buffer, pos);
-        /* Add a data location expression to mask and/or rebase oop pointers. */
-        pos = writeAttrType(DwarfDebugInfo.DW_AT_data_location, buffer, pos);
-        pos = writeAttrForm(DwarfDebugInfo.DW_FORM_expr_loc, buffer, pos);
         /*
          * Now terminate.
          */
@@ -1119,6 +1214,55 @@ public class DwarfAbbrevSectionImpl extends DwarfSectionImpl {
         pos = writeAttrType(DwarfDebugInfo.DW_AT_accessibility, buffer, pos);
         pos = writeAttrForm(DwarfDebugInfo.DW_FORM_data1, buffer, pos); // = offset? in which
                                                                         // segment though?
+        /*
+         * Now terminate.
+         */
+        pos = writeAttrType(DwarfDebugInfo.DW_AT_null, buffer, pos);
+        pos = writeAttrForm(DwarfDebugInfo.DW_FORM_null, buffer, pos);
+        return pos;
+    }
+
+    private int writeIndirectLayoutAbbrev(@SuppressWarnings("unused") DebugContext context, byte[] buffer, int p) {
+        int pos = p;
+
+        /*
+         * oops are not necessarily raw addresses. they may contains pointer bits or be offsets from
+         * a base register. An indirect layout wraps a standard layout adding a data_location that
+         * translates indirect an oop to a raw address. It is used as the base for an indirect
+         * pointer type that is used to type values that need translation to a raw address i.e.
+         * values stored in static and instance fields.
+         */
+        /* the type ofr an indirect layout that includes address translation info */
+        pos = writeAbbrevCode(DwarfDebugInfo.DW_ABBREV_CODE_indirect_layout, buffer, pos);
+        pos = writeTag(DwarfDebugInfo.DW_TAG_class_type, buffer, pos);
+        pos = writeFlag(DwarfDebugInfo.DW_CHILDREN_yes, buffer, pos);
+        pos = writeAttrType(DwarfDebugInfo.DW_AT_name, buffer, pos);
+        pos = writeAttrForm(DwarfDebugInfo.DW_FORM_strp, buffer, pos);
+        pos = writeAttrType(DwarfDebugInfo.DW_AT_byte_size, buffer, pos);
+        pos = writeAttrForm(DwarfDebugInfo.DW_FORM_data2, buffer, pos);
+        /* Add a data location expression to rebase oop pointers stored as offsets. */
+        pos = writeAttrType(DwarfDebugInfo.DW_AT_data_location, buffer, pos);
+        pos = writeAttrForm(DwarfDebugInfo.DW_FORM_expr_loc, buffer, pos);
+        /*
+         * Now terminate.
+         */
+        pos = writeAttrType(DwarfDebugInfo.DW_AT_null, buffer, pos);
+        pos = writeAttrForm(DwarfDebugInfo.DW_FORM_null, buffer, pos);
+
+        return pos;
+    }
+
+    private int writeIndirectReferenceAbbrev(@SuppressWarnings("unused") DebugContext context, byte[] buffer, int p) {
+        int pos = p;
+
+        /* The type for a pointer to the indirect layout type. */
+        pos = writeAbbrevCode(DwarfDebugInfo.DW_ABBREV_CODE_indirect_pointer, buffer, pos);
+        pos = writeTag(DwarfDebugInfo.DW_TAG_pointer_type, buffer, pos);
+        pos = writeFlag(DwarfDebugInfo.DW_CHILDREN_no, buffer, pos);
+        pos = writeAttrType(DwarfDebugInfo.DW_AT_byte_size, buffer, pos);
+        pos = writeAttrForm(DwarfDebugInfo.DW_FORM_data1, buffer, pos);
+        pos = writeAttrType(DwarfDebugInfo.DW_AT_type, buffer, pos);
+        pos = writeAttrForm(DwarfDebugInfo.DW_FORM_ref_addr, buffer, pos);
         /*
          * Now terminate.
          */

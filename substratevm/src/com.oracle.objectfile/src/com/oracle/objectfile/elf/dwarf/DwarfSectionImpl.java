@@ -482,6 +482,17 @@ public abstract class DwarfSectionImpl extends BasicProgbitsSectionImpl {
         dwarfSections.setTypeIndex(typeEntry, pos);
     }
 
+    protected int getIndirectTypeIndex(String typeName) {
+        if (!contentByteArrayCreated()) {
+            return 0;
+        }
+        return dwarfSections.getIndirectTypeIndex(typeName);
+    }
+
+    protected void setIndirectTypeIndex(TypeEntry typeEntry, int pos) {
+        dwarfSections.setIndirectTypeIndex(typeEntry, pos);
+    }
+
     protected int getCUIndex(ClassEntry classEntry) {
         if (!contentByteArrayCreated()) {
             return 0;
@@ -542,6 +553,17 @@ public abstract class DwarfSectionImpl extends BasicProgbitsSectionImpl {
             return 0;
         }
         return dwarfSections.getLayoutIndex(classEntry);
+    }
+
+    protected void setIndirectLayoutIndex(ClassEntry classEntry, int pos) {
+        dwarfSections.setIndirectLayoutIndex(classEntry, pos);
+    }
+
+    protected int getIndirectLayoutIndex(ClassEntry classEntry) {
+        if (!contentByteArrayCreated()) {
+            return 0;
+        }
+        return dwarfSections.getIndirectLayoutIndex(classEntry);
     }
 
     protected void setLayoutIndex(ClassEntry classEntry, int pos) {

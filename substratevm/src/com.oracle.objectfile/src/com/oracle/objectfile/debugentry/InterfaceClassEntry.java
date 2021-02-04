@@ -62,4 +62,24 @@ public class InterfaceClassEntry extends ClassEntry {
     public Stream<ClassEntry> implementors() {
         return implementors.stream();
     }
+
+    @Override
+    public int getSize() {
+        /*
+         * An interface is nominally sized to the class header size when it is first created. This
+         * override computes the size of the union layout that models the interface as the maximum
+         * size of all the type class types that are embedded in that union. This result is used to
+         * size of the wrapper class that handles address translation for values embedded in object
+         * fields.
+         */
+        int maxSize = super.size;
+        for (ClassEntry implementor : implementors) {
+            int size = implementor.getSize();
+
+            if (size > maxSize) {
+                maxSize = size;
+            }
+        }
+        return maxSize;
+    }
 }

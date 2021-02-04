@@ -92,9 +92,10 @@ class NativeImageDebugInfoProvider implements DebugInfoProvider {
     private final NativeImageCodeCache codeCache;
     @SuppressWarnings("unused") private final NativeImageHeap heap;
     boolean useHeapBase;
-    int heapShift;
-    int flagBitsMask;
-    int referenceByteCount;
+    int compressShift;
+    int tagsMask;
+    int referenceSize;
+    int referenceAlignment;
     int primitiveStartOffset;
     int referenceStartOffset;
 
@@ -106,17 +107,17 @@ class NativeImageDebugInfoProvider implements DebugInfoProvider {
         ObjectHeader objectHeader = Heap.getHeap().getObjectHeader();
         ObjectInfo primitiveFields = heap.getObjectInfo(StaticFieldsSupport.getStaticPrimitiveFields());
         ObjectInfo objectFields = heap.getObjectInfo(StaticFieldsSupport.getStaticObjectFields());
-        this.flagBitsMask = objectHeader.getReservedBitsMask();
+        this.tagsMask = objectHeader.getReservedBitsMask();
         if (SubstrateOptions.SpawnIsolates.getValue()) {
             CompressEncoding compressEncoding = ImageSingletons.lookup(CompressEncoding.class);
             this.useHeapBase = compressEncoding.hasBase();
-            this.heapShift = (compressEncoding.hasShift() ? compressEncoding.getShift() : 0);
-            this.referenceByteCount = OBJECTLAYOUT.getReferenceSize();
+            this.compressShift = (compressEncoding.hasShift() ? compressEncoding.getShift() : 0);
         } else {
             this.useHeapBase = false;
-            this.heapShift = 0;
-            this.referenceByteCount = 8;
+            this.compressShift = 0;
         }
+        this.referenceSize = OBJECTLAYOUT.getReferenceSize();
+        this.referenceAlignment = OBJECTLAYOUT.getAlignment();
         /* Offsets need to be adjusted relative to the heap base plus partition-specific offset. */
         primitiveStartOffset = (int) primitiveFields.getOffset();
         referenceStartOffset = (int) objectFields.getOffset();
@@ -128,18 +129,23 @@ class NativeImageDebugInfoProvider implements DebugInfoProvider {
     }
 
     @Override
-    public int oopShiftBitCount() {
-        return heapShift;
+    public int oopCompressShift() {
+        return compressShift;
     }
 
     @Override
-    public int oopReferenceByteCount() {
-        return referenceByteCount;
+    public int oopReferenceSize() {
+        return referenceSize;
     }
 
     @Override
-    public int oopFlagBitsMask() {
-        return flagBitsMask;
+    public int oopAlignment() {
+        return referenceAlignment;
+    }
+
+    @Override
+    public int oopTagsMask() {
+        return tagsMask;
     }
 
     @Override
