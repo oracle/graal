@@ -258,7 +258,7 @@ public final class PolyglotCompilerOptions {
 
     @Option(help = "Minimum number of invocations or loop iterations needed to compile a guest language root.",
                     category = OptionCategory.EXPERT)
-    public static final OptionKey<Integer> CompilationThreshold = new OptionKey<>(1000);
+    public static final OptionKey<Integer> CompilationThreshold = new OptionKey<>(10000);
 
     @Option(help = "Minimum number of calls before a call target is compiled", category = OptionCategory.EXPERT)
     public static final OptionKey<Integer> MinInvokeThreshold = new OptionKey<>(3);
@@ -288,7 +288,7 @@ public final class PolyglotCompilerOptions {
 
     @Option(help = "Minimum number of invocations or loop iterations needed to compile a guest language root in low tier mode.",
             category = OptionCategory.EXPERT)
-    public static final OptionKey<Integer> FirstTierCompilationThreshold = new OptionKey<>(100);
+    public static final OptionKey<Integer> FirstTierCompilationThreshold = new OptionKey<>(400);
 
     @Option(help = "Minimum number of calls before a call target is compiled in the first tier.", category = OptionCategory.EXPERT)
     public static final OptionKey<Integer> FirstTierMinInvokeThreshold = new OptionKey<>(1);
