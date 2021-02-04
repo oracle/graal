@@ -48,13 +48,14 @@ import com.oracle.svm.core.JavaMainWrapper;
 import com.oracle.svm.core.jdk.RuntimeSupport;
 import com.oracle.svm.core.util.VMError;
 
+import sun.management.ManagementFactoryHelper;
 import sun.management.Util;
+import sun.management.VMManagement;
 //Checkstyle: resume
 
 final class SubstrateRuntimeMXBean implements RuntimeMXBean {
 
-    private static final String MSG = "RuntimeMXBean methods";
-
+    private VMManagement jvm;
     private long startMillis = 0;
 
     @Platforms(Platform.HOSTED_ONLY.class)
@@ -65,6 +66,7 @@ final class SubstrateRuntimeMXBean implements RuntimeMXBean {
     void initialize() {
         /* Set the start time of the VM. */
         startMillis = System.currentTimeMillis();
+        jvm = ManagementFactoryHelper.getVMManagement();
     }
 
     @Override
@@ -98,61 +100,59 @@ final class SubstrateRuntimeMXBean implements RuntimeMXBean {
         return id + "@" + hostName;
     }
 
-    /* All remaining methods are unsupported on Substrate VM. */
-
     @Override
     public String getVmName() {
-        throw VMError.unsupportedFeature(MSG);
+        return jvm.getVmName();
     }
 
     @Override
     public String getVmVendor() {
-        throw VMError.unsupportedFeature(MSG);
+        return jvm.getVmVendor();
     }
 
     @Override
     public String getVmVersion() {
-        throw VMError.unsupportedFeature(MSG);
+        return jvm.getVmVersion();
     }
 
     @Override
     public String getSpecName() {
-        throw VMError.unsupportedFeature(MSG);
+        return jvm.getVmSpecName();
     }
 
     @Override
     public String getSpecVendor() {
-        throw VMError.unsupportedFeature(MSG);
+        return jvm.getVmSpecVendor();
     }
 
     @Override
     public String getSpecVersion() {
-        throw VMError.unsupportedFeature(MSG);
+        return jvm.getVmSpecVersion();
     }
 
     @Override
     public String getManagementSpecVersion() {
-        throw VMError.unsupportedFeature(MSG);
+        return jvm.getManagementVersion();
     }
 
     @Override
     public String getClassPath() {
-        return System.getProperty("java.class.path");
+        return jvm.getClassPath();
     }
 
     @Override
     public String getLibraryPath() {
-        throw VMError.unsupportedFeature(MSG);
+        return jvm.getLibraryPath();
     }
 
     @Override
     public boolean isBootClassPathSupported() {
-        throw VMError.unsupportedFeature(MSG);
+        return jvm.isBootClassPathSupported();
     }
 
     @Override
     public String getBootClassPath() {
-        throw VMError.unsupportedFeature(MSG);
+        return jvm.getBootClassPath();
     }
 
     @Override
