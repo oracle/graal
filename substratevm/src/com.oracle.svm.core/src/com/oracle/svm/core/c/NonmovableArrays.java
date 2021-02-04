@@ -286,7 +286,8 @@ public final class NonmovableArrays {
         assert srcPos >= 0 && destPos >= 0 && length >= 0 && srcPos + length <= lengthOf(src) && destPos + length <= ArrayLengthNode.arrayLength(dest);
         Pointer destAddressAtPos = Word.objectToUntrackedPointer(dest).add(LayoutEncoding.getArrayElementOffset(destHub.getLayoutEncoding(), destPos));
         if (LayoutEncoding.isPrimitiveArray(destHub.getLayoutEncoding())) {
-            JavaMemoryUtil.copy(addressOf(src, srcPos), destAddressAtPos, WordFactory.unsigned(length << readElementShift(src)));
+            Pointer srcAddressAtPos = addressOf(src, srcPos);
+            JavaMemoryUtil.copyForward(srcAddressAtPos, destAddressAtPos, WordFactory.unsigned(length << readElementShift(src)));
         } else { // needs barriers
             Object[] destArr = (Object[]) dest;
             for (int i = 0; i < length; i++) {

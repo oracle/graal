@@ -73,7 +73,8 @@ public final class SubstrateArraysCopyOfSnippets extends SubstrateTemplates impl
     }
 
     @SubstrateForeignCallTarget(stubCallingConvention = false)
-    public static Object doArraysCopyOf(DynamicHub hub, Object original, int originalLength, int newLength) {
+    private static Object doArraysCopyOf(DynamicHub hub, Object original, int originalLength, int newLength) {
+        // The allocation will throw a NegativeArraySizeException if necessary.
         Object newArray = java.lang.reflect.Array.newInstance(DynamicHub.toClass(hub.getComponentHub()), newLength);
 
         int layoutEncoding = hub.getLayoutEncoding();
@@ -88,6 +89,7 @@ public final class SubstrateArraysCopyOfSnippets extends SubstrateTemplates impl
         } else {
             JavaMemoryUtil.copyPrimitiveArrayForward(original, 0, newArray, 0, copiedLength, layoutEncoding);
         }
+
         // All elements beyond copiedLength were already zeroed by the allocation.
         return newArray;
     }

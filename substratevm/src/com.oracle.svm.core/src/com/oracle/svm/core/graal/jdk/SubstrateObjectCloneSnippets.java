@@ -47,7 +47,6 @@ import org.graalvm.compiler.phases.util.Providers;
 import org.graalvm.compiler.replacements.SnippetTemplate;
 import org.graalvm.compiler.replacements.SnippetTemplate.Arguments;
 import org.graalvm.compiler.replacements.SnippetTemplate.SnippetInfo;
-import org.graalvm.compiler.replacements.arraycopy.ArrayCopyCallNode;
 import org.graalvm.compiler.replacements.Snippets;
 import org.graalvm.compiler.serviceprovider.GraalUnsafeAccess;
 import org.graalvm.compiler.word.BarrieredAccess;
@@ -70,8 +69,6 @@ import com.oracle.svm.core.snippets.SnippetRuntime.SubstrateForeignCallDescripto
 import com.oracle.svm.core.snippets.SubstrateForeignCallTarget;
 import com.oracle.svm.core.util.NonmovableByteArrayReader;
 
-import jdk.vm.ci.meta.JavaKind;
-
 public final class SubstrateObjectCloneSnippets extends SubstrateTemplates implements Snippets {
     private static final SubstrateForeignCallDescriptor CLONE = SnippetRuntime.findForeignCall(SubstrateObjectCloneSnippets.class, "doClone", true, LocationIdentity.any());
     private static final SubstrateForeignCallDescriptor[] FOREIGN_CALLS = new SubstrateForeignCallDescriptor[]{CLONE};
@@ -82,18 +79,24 @@ public final class SubstrateObjectCloneSnippets extends SubstrateTemplates imple
     }
 
     @SubstrateForeignCallTarget(stubCallingConvention = false)
-    private static Object doClone(Object thisObj) throws CloneNotSupportedException, InstantiationException {
-        if (thisObj == null) {
+    private static Object doClone(Object original) throws CloneNotSupportedException, InstantiationException {
+        if (original == null) {
             throw new NullPointerException();
-        } else if (!(thisObj instanceof Cloneable)) {
+        } else if (!(original instanceof Cloneable)) {
             throw CLONE_NOT_SUPPORTED_EXCEPTION;
         }
 
-        DynamicHub hub = KnownIntrinsics.readHub(thisObj);
+        DynamicHub hub = KnownIntrinsics.readHub(original);
         int layoutEncoding = hub.getLayoutEncoding();
         if (LayoutEncoding.isArray(layoutEncoding)) {
-            int length = ArrayLengthNode.arrayLength(thisObj);
-            return SubstrateArraysCopyOfSnippets.doArraysCopyOf(hub, thisObj, length, length);
+            int length = ArrayLengthNode.arrayLength(original);
+            Object newArray = java.lang.reflect.Array.newInstance(DynamicHub.toClass(hub.getComponentHub()), length);
+            if (LayoutEncoding.isObjectArray(layoutEncoding)) {
+                JavaMemoryUtil.copyObjectArrayForward(original, 0, newArray, 0, length, layoutEncoding);
+            } else {
+                JavaMemoryUtil.copyPrimitiveArrayForward(original, 0, newArray, 0, length, layoutEncoding);
+            }
+            return newArray;
         } else {
             sun.misc.Unsafe unsafe = GraalUnsafeAccess.getUnsafe();
             Object result = unsafe.allocateInstance(DynamicHub.toClass(hub));
@@ -101,11 +104,12 @@ public final class SubstrateObjectCloneSnippets extends SubstrateTemplates imple
             int curOffset = firstFieldOffset;
 
             NonmovableArray<Byte> referenceMapEncoding = DynamicHubSupport.getReferenceMapEncoding();
-            int referenceSize = ConfigurationValues.getObjectLayout().getReferenceSize();
             int referenceMapIndex = hub.getReferenceMapIndex();
             int entryCount = NonmovableByteArrayReader.getS4(referenceMapEncoding, referenceMapIndex);
             assert entryCount >= 0;
 
+            // As the UniverseBuilder actively groups object references together, this loop will
+            // typically be only executed for 1 iteration.
             long entryStart = referenceMapIndex + InstanceReferenceMapEncoder.MAP_HEADER_SIZE;
             for (long idx = entryStart; idx < entryStart + entryCount * InstanceReferenceMapEncoder.MAP_ENTRY_SIZE; idx += InstanceReferenceMapEncoder.MAP_ENTRY_SIZE) {
                 int objectOffset = NonmovableByteArrayReader.getS4(referenceMapEncoding, idx);
@@ -115,22 +119,24 @@ public final class SubstrateObjectCloneSnippets extends SubstrateTemplates imple
                 // copy non-object data
                 int primitiveDataSize = objectOffset - curOffset;
                 assert primitiveDataSize >= 0;
-                JavaMemoryUtil.copyForward(thisObj, WordFactory.unsigned(curOffset), result, WordFactory.unsigned(curOffset), WordFactory.unsigned(primitiveDataSize));
+                assert curOffset >= 0;
+                JavaMemoryUtil.copyForward(original, WordFactory.unsigned(curOffset), result, WordFactory.unsigned(curOffset), WordFactory.unsigned(primitiveDataSize));
                 curOffset += primitiveDataSize;
 
                 // copy object data
-                for (int c = 0; c < count; c++) {
-                    BarrieredAccess.writeObject(result, curOffset, BarrieredAccess.readObject(thisObj, curOffset));
-                    curOffset += referenceSize;
-                }
+                assert curOffset >= 0;
+                assert count >= 0;
+                JavaMemoryUtil.copyObjectsForward(original, WordFactory.unsigned(curOffset), result, WordFactory.unsigned(curOffset), WordFactory.unsigned(count));
             }
 
             // copy remaining non-object data
             int objectSize = NumUtil.safeToInt(LayoutEncoding.getInstanceSize(layoutEncoding).rawValue());
             int primitiveDataSize = objectSize - curOffset;
             assert primitiveDataSize >= 0;
-            JavaMemoryUtil.copyForward(thisObj, WordFactory.unsigned(curOffset), result, WordFactory.unsigned(curOffset), WordFactory.unsigned(primitiveDataSize));
+            assert curOffset >= 0;
+            JavaMemoryUtil.copyForward(original, WordFactory.unsigned(curOffset), result, WordFactory.unsigned(curOffset), WordFactory.unsigned(primitiveDataSize));
             curOffset += primitiveDataSize;
+            assert curOffset == objectSize;
 
             // reset monitor to uninitialized values
             int monitorOffset = hub.getMonitorOffset();
@@ -138,7 +144,6 @@ public final class SubstrateObjectCloneSnippets extends SubstrateTemplates imple
                 BarrieredAccess.writeObject(result, monitorOffset, null);
             }
 
-            assert curOffset == objectSize;
             return result;
         }
     }

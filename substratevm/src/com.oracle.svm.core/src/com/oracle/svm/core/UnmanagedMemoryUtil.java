@@ -31,17 +31,22 @@ import org.graalvm.word.WordFactory;
 import com.oracle.svm.core.annotate.Uninterruptible;
 
 /**
- * Used to fill or copy native memory (i.e., *non*-Java heap memory). None of the methods in this
- * class care about Java semantics like GC barriers or the Java memory model. They don't even
- * guarantee the rather relaxed atomicity requirements of {@code Unsafe}.
- *
- * If atomicity is needed, use {@link JavaMemoryUtil} but please read the Javadoc on
- * {@link JavaMemoryUtil} first as there are still a few pitfalls.
+ * The methods in this class are mainly used to fill or copy unmanaged (i.e., <b>non</b>-Java heap)
+ * memory. None of the methods cares about Java semantics like GC barriers or the Java memory model.
+ * They don't even guarantee the rather relaxed atomicity requirements of {@code Unsafe}.
+ * <p>
+ * The valid use cases are listed below. For all other use cases, use {@link JavaMemoryUtil}
+ * instead.
+ * <ul>
+ * <li>Copying between unmanaged memory.</li>
+ * <li>Filling unmanaged memory.</li>
+ * </ul>
  */
 public final class UnmanagedMemoryUtil {
     /**
      * Copy bytes from one memory area to another. The memory areas may overlap.
      */
+    @IntrinsicCandidate
     @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
     public static void copy(Pointer from, Pointer to, UnsignedWord size) {
         if (from.aboveThan(to)) {
@@ -62,7 +67,6 @@ public final class UnmanagedMemoryUtil {
             copyUnalignedLower(from, to, lowerSize);
         }
 
-        // TEMP (chaeubl): test performance - not sure if the unrolling is worth it
         UnsignedWord offset = lowerSize;
         for (UnsignedWord next = offset.add(32); next.belowOrEqual(size); next = offset.add(32)) {
             Pointer src = from.add(offset);
@@ -163,6 +167,7 @@ public final class UnmanagedMemoryUtil {
     /**
      * Set the bytes of a memory area to a given value.
      */
+    @IntrinsicCandidate
     @Uninterruptible(reason = "Called from uninterruptible code, but may be inlined.", mayBeInlined = true)
     public static void fill(Pointer to, UnsignedWord size, byte value) {
         // Even though this calls the atomic implementation, this still doesn't guarantee atomicity

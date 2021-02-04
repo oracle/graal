@@ -83,25 +83,26 @@ public final class ArraycopySnippets extends SubstrateTemplates implements Snipp
         }
         DynamicHub fromHub = KnownIntrinsics.readHub(fromArray);
         DynamicHub toHub = KnownIntrinsics.readHub(toArray);
+        int fromLayoutEncoding = fromHub.getLayoutEncoding();
 
-        if (LayoutEncoding.isPrimitiveArray(fromHub.getLayoutEncoding())) {
+        if (LayoutEncoding.isPrimitiveArray(fromLayoutEncoding)) {
             if (fromArray == toArray && fromIndex < toIndex) {
                 boundsCheck(fromArray, fromIndex, toArray, toIndex, length);
-                JavaMemoryUtil.copyPrimitiveArrayBackward(fromArray, fromIndex, fromArray, toIndex, length, fromHub.getLayoutEncoding());
+                JavaMemoryUtil.copyPrimitiveArrayBackward(fromArray, fromIndex, fromArray, toIndex, length, fromLayoutEncoding);
                 return;
             } else if (fromHub == toHub) {
                 boundsCheck(fromArray, fromIndex, toArray, toIndex, length);
-                JavaMemoryUtil.copyPrimitiveArrayForward(fromArray, fromIndex, toArray, toIndex, length, fromHub.getLayoutEncoding());
+                JavaMemoryUtil.copyPrimitiveArrayForward(fromArray, fromIndex, toArray, toIndex, length, fromLayoutEncoding);
                 return;
             }
-        } else if (LayoutEncoding.isObjectArray(fromHub.getLayoutEncoding())) {
+        } else if (LayoutEncoding.isObjectArray(fromLayoutEncoding)) {
             if (fromArray == toArray && fromIndex < toIndex) {
                 boundsCheck(fromArray, fromIndex, toArray, toIndex, length);
-                JavaMemoryUtil.copyObjectArrayBackward(fromArray, fromIndex, fromArray, toIndex, length, fromHub.getLayoutEncoding());
+                JavaMemoryUtil.copyObjectArrayBackward(fromArray, fromIndex, fromArray, toIndex, length, fromLayoutEncoding);
                 return;
             } else if (fromHub == toHub || DynamicHub.toClass(toHub).isAssignableFrom(DynamicHub.toClass(fromHub))) {
                 boundsCheck(fromArray, fromIndex, toArray, toIndex, length);
-                JavaMemoryUtil.copyObjectArrayForward(fromArray, fromIndex, toArray, toIndex, length, fromHub.getLayoutEncoding());
+                JavaMemoryUtil.copyObjectArrayForward(fromArray, fromIndex, toArray, toIndex, length, fromLayoutEncoding);
                 return;
             } else if (LayoutEncoding.isObjectArray(toHub.getLayoutEncoding())) {
                 boundsCheck(fromArray, fromIndex, toArray, toIndex, length);

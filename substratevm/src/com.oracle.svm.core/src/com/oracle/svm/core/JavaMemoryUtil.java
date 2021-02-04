@@ -31,13 +31,26 @@ import org.graalvm.word.UnsignedWord;
 import org.graalvm.word.WordFactory;
 
 import com.oracle.svm.core.annotate.Uninterruptible;
+import com.oracle.svm.core.config.ConfigurationValues;
 import com.oracle.svm.core.hub.LayoutEncoding;
 import com.oracle.svm.core.util.VMError;
 
 /**
- * The methods in this class guarantee some level of atomicity. So, they may be used on Java heap
- * memory. However, depending on the called method, a few precautions are still necessary. So,
- * please read the JavaDoc of the methods.
+ * The methods in this class are mainly used to fill or copy Java heap memory. All methods guarantee
+ * at least some level of atomicity and honor the Java memory model if they are used as documented.
+ * For more information, please read the JavaDoc of the individual methods.
+ * <p>
+ * The valid use cases are listed below. For all other use cases, use {@link UnmanagedMemoryUtil}
+ * instead.
+ * <ul>
+ * <li>Copying between Java arrays.</li>
+ * <li>Copying between Java instance objects.</li>
+ * <li>Copying between a Java object and a Java array.</li>
+ * <li>Copying from native memory to the Java heap.</li>
+ * <li>Copying from the Java heap to unmanaged memory.</li>
+ * <li>Filling Java arrays.</li>
+ * <li>Filling Java objects.</li>
+ * </ul>
  */
 public final class JavaMemoryUtil {
 
@@ -192,6 +205,7 @@ public final class JavaMemoryUtil {
         }
     }
 
+    @IntrinsicCandidate
     @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
     private static void copyAlignedLongsForward(Pointer from, Pointer to, UnsignedWord size) {
         assert from.aboveOrEqual(to);
@@ -215,6 +229,7 @@ public final class JavaMemoryUtil {
         }
     }
 
+    @IntrinsicCandidate
     @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
     private static void copyAlignedLongsBackward(Pointer from, Pointer to, UnsignedWord size) {
         assert from.belowOrEqual(to);
@@ -331,7 +346,8 @@ public final class JavaMemoryUtil {
         v = (v << 16) | v;
         v = (v << 32) | v;
 
-        UnsignedWord lowerSize = WordFactory.unsigned(0x8).subtract(to).and(0x7);
+        UnsignedWord alignMask = WordFactory.unsigned(0x7);
+        UnsignedWord lowerSize = WordFactory.unsigned(0x8).subtract(to).and(alignMask);
         if (lowerSize.aboveThan(0)) {
             if (size.belowThan(lowerSize)) {
                 lowerSize = size.and(lowerSize);
@@ -340,22 +356,30 @@ public final class JavaMemoryUtil {
         }
 
         UnsignedWord offset = lowerSize;
+        UnsignedWord alignedSize = size.subtract(offset).and(alignMask.not());
+        fillLongsAligned(to.add(offset), alignedSize, v);
+        offset = offset.add(alignedSize);
+
+        UnsignedWord upperSize = size.subtract(offset);
+        if (upperSize.aboveThan(0)) {
+            fillUnalignedUpper(to.add(offset), v, upperSize);
+        }
+    }
+
+    @IntrinsicCandidate
+    @Uninterruptible(reason = "Called from uninterruptible code, but may be inlined.", mayBeInlined = true)
+    private static void fillLongsAligned(Pointer to, UnsignedWord size, long longValue) {
+        UnsignedWord offset = WordFactory.zero();
         for (UnsignedWord next = offset.add(32); next.belowOrEqual(size); next = offset.add(32)) {
             Pointer p = to.add(offset);
-            p.writeLong(0, v);
-            p.writeLong(8, v);
-            p.writeLong(16, v);
-            p.writeLong(24, v);
+            p.writeLong(0, longValue);
+            p.writeLong(8, longValue);
+            p.writeLong(16, longValue);
+            p.writeLong(24, longValue);
             offset = next;
         }
-        for (UnsignedWord next = offset.add(8); next.belowOrEqual(size); next = offset.add(8)) {
-            to.writeLong(offset, v);
-            offset = next;
-        }
-
-        if (offset.belowThan(size)) {
-            UnsignedWord upperSize = size.subtract(offset);
-            fillUnalignedUpper(to.add(offset), value, upperSize);
+        for (; offset.belowThan(size); offset = offset.add(8)) {
+            to.writeLong(offset, longValue);
         }
     }
 
@@ -488,44 +512,67 @@ public final class JavaMemoryUtil {
     }
 
     /**
-     * Copies between object arrays. Emits the necessary read/write barriers but does *NOT* perform
-     * any array store checks (i.e., it is up to the caller to ensure that the arrays are
+     * Copies between Java object arrays. Emits the necessary read/write barriers but does *NOT*
+     * perform any array store checks (i.e., it is up to the caller to ensure that the arrays are
      * compatible).
      */
     public static void copyObjectArrayForward(Object fromArray, int fromIndex, Object toArray, int toIndex, int length, int layoutEncoding) {
+        assert length >= 0;
+
         UnsignedWord fromOffset = LayoutEncoding.getArrayElementOffset(layoutEncoding, fromIndex);
         UnsignedWord toOffset = LayoutEncoding.getArrayElementOffset(layoutEncoding, toIndex);
-        UnsignedWord elementSize = WordFactory.unsigned(LayoutEncoding.getArrayIndexScale(layoutEncoding));
-        UnsignedWord size = elementSize.multiply(length);
+        UnsignedWord count = WordFactory.unsigned(length);
 
+        copyObjectsForward(fromArray, fromOffset, toArray, toOffset, count);
+    }
+
+    /**
+     * Copies between Java object arrays. Emits the necessary read/write barriers but does *NOT*
+     * perform any array store checks (i.e., it is up to the caller to ensure that the arrays are
+     * compatible).
+     */
+    public static void copyObjectArrayBackward(Object fromArray, int fromIndex, Object toArray, int toIndex, int length, int layoutEncoding) {
+        assert length >= 0;
+
+        UnsignedWord fromOffset = LayoutEncoding.getArrayElementOffset(layoutEncoding, fromIndex);
+        UnsignedWord toOffset = LayoutEncoding.getArrayElementOffset(layoutEncoding, toIndex);
+        UnsignedWord count = WordFactory.unsigned(length);
+
+        copyObjectsBackward(fromArray, fromOffset, toArray, toOffset, count);
+    }
+
+    /**
+     * Copies object references from one Java object to another Java object. Emits the necessary
+     * read/write barriers but does *NOT* perform any array store checks (i.e., if this is used for
+     * copying between arrays, it is up to the caller to ensure that the arrays are compatible).
+     */
+    public static void copyObjectsForward(Object from, UnsignedWord fromOffset, Object to, UnsignedWord toOffset, UnsignedWord length) {
+        int elementSize = ConfigurationValues.getObjectLayout().getReferenceSize();
+        UnsignedWord size = length.multiply(elementSize);
         UnsignedWord copied = WordFactory.zero();
         while (copied.belowThan(size)) {
-            BarrieredAccess.writeObject(toArray, toOffset.add(copied), BarrieredAccess.readObject(fromArray, fromOffset.add(copied)));
+            BarrieredAccess.writeObject(to, toOffset.add(copied), BarrieredAccess.readObject(from, fromOffset.add(copied)));
             copied = copied.add(elementSize);
         }
     }
 
     /**
-     * Copies between object arrays. Emits the necessary read/write barriers but does *NOT* perform
-     * any array store checks (i.e., it is up to the caller to ensure that the arrays are
-     * compatible).
+     * Copies object references from one Java object to another Java object. Emits the necessary
+     * read/write barriers but does *NOT* perform any array store checks (i.e., if this is used for
+     * copying between arrays, it is up to the caller to ensure that the arrays are compatible).
      */
-    public static void copyObjectArrayBackward(Object fromArray, int fromIndex, Object toArray, int toIndex, int length, int layoutEncoding) {
-        UnsignedWord fromOffset = LayoutEncoding.getArrayElementOffset(layoutEncoding, fromIndex);
-        UnsignedWord toOffset = LayoutEncoding.getArrayElementOffset(layoutEncoding, toIndex);
-        UnsignedWord elementSize = WordFactory.unsigned(LayoutEncoding.getArrayIndexScale(layoutEncoding));
-        UnsignedWord size = elementSize.multiply(length);
-
-        UnsignedWord remaining = size;
+    public static void copyObjectsBackward(Object from, UnsignedWord fromOffset, Object to, UnsignedWord toOffset, UnsignedWord length) {
+        int elementSize = ConfigurationValues.getObjectLayout().getReferenceSize();
+        UnsignedWord remaining = length.multiply(elementSize);
         while (remaining.aboveThan(0)) {
             remaining = remaining.subtract(elementSize);
-            BarrieredAccess.writeObject(toArray, toOffset.add(remaining), BarrieredAccess.readObject(fromArray, fromOffset.add(remaining)));
+            BarrieredAccess.writeObject(to, toOffset.add(remaining), BarrieredAccess.readObject(from, fromOffset.add(remaining)));
         }
     }
 
     /**
-     * Copies between object arrays. Emits the necessary read/write barriers and also performs array
-     * store checks.
+     * Copies between Java object arrays. Emits the necessary read/write barriers and also performs
+     * array store checks.
      */
     public static void copyObjectArrayForwardWithStoreCheck(Object fromArray, int fromIndex, Object toArray, int toIndex, int length) {
         /*
@@ -540,9 +587,11 @@ public final class JavaMemoryUtil {
     }
 
     /**
-     * Copies between primitive arrays.
+     * Copies between Java primitive arrays.
      */
     public static void copyPrimitiveArrayForward(Object fromArray, int fromIndex, Object toArray, int toIndex, int length, int layoutEncoding) {
+        assert length >= 0;
+
         UnsignedWord fromOffset = LayoutEncoding.getArrayElementOffset(layoutEncoding, fromIndex);
         UnsignedWord toOffset = LayoutEncoding.getArrayElementOffset(layoutEncoding, toIndex);
         UnsignedWord elementSize = WordFactory.unsigned(LayoutEncoding.getArrayIndexScale(layoutEncoding));
@@ -552,9 +601,11 @@ public final class JavaMemoryUtil {
     }
 
     /**
-     * Copies between primitive arrays.
+     * Copies between Java primitive arrays.
      */
     public static void copyPrimitiveArrayBackward(Object fromArray, int fromIndex, Object toArray, int toIndex, int length, int layoutEncoding) {
+        assert length >= 0;
+
         UnsignedWord fromOffset = LayoutEncoding.getArrayElementOffset(layoutEncoding, fromIndex);
         UnsignedWord toOffset = LayoutEncoding.getArrayElementOffset(layoutEncoding, toIndex);
         UnsignedWord elementSize = WordFactory.unsigned(LayoutEncoding.getArrayIndexScale(layoutEncoding));
