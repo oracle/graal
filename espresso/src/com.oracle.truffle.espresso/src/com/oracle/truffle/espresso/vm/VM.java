@@ -60,6 +60,10 @@ import java.util.function.IntFunction;
 import java.util.function.Supplier;
 import java.util.logging.Level;
 
+import com.oracle.truffle.api.library.CachedLibrary;
+import com.oracle.truffle.api.library.ExportLibrary;
+import com.oracle.truffle.api.library.ExportMessage;
+import com.oracle.truffle.api.nodes.ExplodeLoop;
 import com.oracle.truffle.espresso._native.NativeType;
 import org.graalvm.options.OptionValues;
 
@@ -274,19 +278,19 @@ public final class VM extends NativeEnv implements ContextAccess {
 
             @Pointer
             TruffleObject initializeMokapotContext = NativeLibrary.lookupAndBind(mokapotLibrary,
-                            "initializeMokapotContext", "(env, pointer, (pointer): pointer): pointer");
+                            "initializeMokapotContext", "(pointer, (pointer): pointer): pointer");
 
             disposeMokapotContext = NativeLibrary.lookupAndBind(mokapotLibrary,
                             "disposeMokapotContext",
-                            "(env, pointer): void");
+                            "(pointer, pointer): void");
 
             if (jniEnv.getContext().EnableManagement) {
                 initializeManagementContext = NativeLibrary.lookupAndBind(mokapotLibrary,
-                                "initializeManagementContext", "(env, (pointer): pointer, sint32): pointer");
+                                "initializeManagementContext", "((pointer): pointer, sint32): pointer");
 
                 disposeManagementContext = NativeLibrary.lookupAndBind(mokapotLibrary,
                                 "disposeManagementContext",
-                                "(env, pointer, sint32): void");
+                                "(pointer, sint32, pointer): void");
             } else {
                 initializeManagementContext = null;
                 disposeManagementContext = null;
@@ -1117,7 +1121,7 @@ public final class VM extends NativeEnv implements ContextAccess {
         getLogger().fine(String.format("JVM_LoadLibrary: '%s'", name));
         try {
             @Pointer
-            TruffleObject lib = NativeLibrary.loadLibrary(Paths.get(name));
+            TruffleObject lib = getNativeAccess().loadLibrary(Paths.get(name));
             if (lib == null) {
                 throw Meta.throwExceptionWithMessage(getMeta().java_lang_UnsatisfiedLinkError, name);
             }
@@ -1192,7 +1196,7 @@ public final class VM extends NativeEnv implements ContextAccess {
 
             if (getContext().EnableManagement) {
                 if (managementPtr != null) {
-                    getUncached().execute(disposeManagementContext, managementPtr, managementVersion);
+                    getUncached().execute(disposeManagementContext, managementPtr, managementVersion, RawPointer.nullInstance());
                     this.managementPtr = null;
                     this.managementVersion = 0;
                 }
@@ -1200,7 +1204,7 @@ public final class VM extends NativeEnv implements ContextAccess {
                 assert managementPtr == null;
             }
 
-            getUncached().execute(disposeMokapotContext, mokapotEnvPtr);
+            getUncached().execute(disposeMokapotContext, mokapotEnvPtr, RawPointer.nullInstance());
             this.mokapotEnvPtr = RawPointer.nullInstance();
         } catch (UnsupportedTypeException | ArityException | UnsupportedMessageException e) {
             throw EspressoError.shouldNotReachHere("Cannot dispose Espresso libjvm (mokapot).");

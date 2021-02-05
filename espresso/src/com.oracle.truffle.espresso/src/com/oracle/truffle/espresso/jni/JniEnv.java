@@ -398,9 +398,9 @@ public final class JniEnv extends NativeEnv implements ContextAccess {
             nespressoLibrary = getNativeAccess().loadLibrary(Collections.singletonList(espressoLibraryPath), "nespresso", true);
             dupClosureRef = getNativeAccess().lookupSymbol(nespressoLibrary, "dupClosureRef");
             initializeNativeContext = NativeLibrary.lookupAndBind(nespressoLibrary,
-                            "initializeNativeContext", "(env, (pointer): pointer): pointer");
+                            "initializeNativeContext", "((pointer): pointer): pointer");
             disposeNativeContext = NativeLibrary.lookupAndBind(nespressoLibrary, "disposeNativeContext",
-                            "(env, pointer): void");
+                            "(pointer, pointer): void");
 
             getSizeMax = getNativeAccess().lookupAndBindSymbol(nespressoLibrary, "get_SIZE_MAX", NativeType.LONG);
 
@@ -524,7 +524,7 @@ public final class JniEnv extends NativeEnv implements ContextAccess {
     public void dispose() {
         assert jniEnvPtr != null : "JNIEnv already disposed";
         try {
-            InteropLibrary.getFactory().getUncached().execute(disposeNativeContext, jniEnvPtr);
+            getUncached().execute(disposeNativeContext, jniEnvPtr, RawPointer.nullInstance());
             threadLocalPendingException.dispose();
             this.jniEnvPtr = null;
         } catch (UnsupportedTypeException | ArityException | UnsupportedMessageException e) {
