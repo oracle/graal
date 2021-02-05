@@ -2300,6 +2300,8 @@ final class JDWP {
                     }
                 });
                 controller.postJobForThread(job);
+                // don't return here before job completed
+                job.getResult();
 
                 return new CommandResult(reply);
             }
