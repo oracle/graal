@@ -118,9 +118,11 @@ class JImageLibrary extends NativeEnv implements ContextAccess {
         open = getNativeAccess().lookupAndBindSymbol(jimageLibrary, OPEN, NativeType.POINTER, NativeType.POINTER, NativeType.POINTER);
         close = getNativeAccess().lookupAndBindSymbol(jimageLibrary, CLOSE, NativeType.VOID, NativeType.POINTER);
         packageToModule = getNativeAccess().lookupAndBindSymbol(jimageLibrary, PACKAGE_TO_MOODULE, NativeType.POINTER, NativeType.POINTER, NativeType.POINTER);
-        findResource = getNativeAccess().lookupAndBindSymbol(jimageLibrary, FIND_RESOURCE, NativeType.LONG, NativeType.POINTER, NativeType.POINTER, NativeType.POINTER, NativeType.POINTER, NativeType.POINTER);
+        findResource = getNativeAccess().lookupAndBindSymbol(jimageLibrary, FIND_RESOURCE, NativeType.LONG, NativeType.POINTER, NativeType.POINTER, NativeType.POINTER, NativeType.POINTER,
+                        NativeType.POINTER);
         getResource = getNativeAccess().lookupAndBindSymbol(jimageLibrary, GET_RESOURCE, NativeType.LONG, NativeType.POINTER, NativeType.LONG, NativeType.POINTER, NativeType.LONG);
-        resourceIterator = getNativeAccess().lookupAndBindSymbol(jimageLibrary, RESOURCE_ITERATOR, NativeType.POINTER, NativeType.POINTER, NativeType.POINTER, NativeType.POINTER, NativeType.POINTER, NativeType.POINTER, NativeType.POINTER, NativeType.POINTER, NativeType.POINTER);
+        resourceIterator = getNativeAccess().lookupAndBindSymbol(jimageLibrary, RESOURCE_ITERATOR, NativeType.POINTER, NativeType.POINTER, NativeType.POINTER, NativeType.POINTER, NativeType.POINTER,
+                        NativeType.POINTER, NativeType.POINTER, NativeType.POINTER, NativeType.POINTER);
         resourcePath = getNativeAccess().lookupAndBindSymbol(jimageLibrary, RESOURCE_PATH, NativeType.BOOLEAN, NativeType.POINTER, NativeType.LONG, NativeType.POINTER, NativeType.LONG);
 
         this.javaBaseBuffer = RawBuffer.getNativeString(JAVA_BASE);

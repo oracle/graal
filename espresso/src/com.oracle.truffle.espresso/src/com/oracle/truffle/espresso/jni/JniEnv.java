@@ -415,13 +415,13 @@ public final class JniEnv extends NativeEnv implements ContextAccess {
 
             // Varargs native bindings.
             popBoolean = getNativeAccess().lookupAndBindSymbol(nespressoLibrary, "pop_boolean", NativeType.BOOLEAN, NativeType.POINTER);
-            popByte = getNativeAccess().lookupAndBindSymbol(nespressoLibrary, "pop_byte", NativeType.BYTE , NativeType.POINTER);
-            popChar = getNativeAccess().lookupAndBindSymbol(nespressoLibrary, "pop_char", NativeType.CHAR , NativeType.POINTER);
-            popShort = getNativeAccess().lookupAndBindSymbol(nespressoLibrary, "pop_short", NativeType.SHORT , NativeType.POINTER);
-            popInt = getNativeAccess().lookupAndBindSymbol(nespressoLibrary, "pop_int", NativeType.INT , NativeType.POINTER);
-            popFloat = getNativeAccess().lookupAndBindSymbol(nespressoLibrary, "pop_float", NativeType.FLOAT , NativeType.POINTER);
-            popDouble = getNativeAccess().lookupAndBindSymbol(nespressoLibrary, "pop_double", NativeType.DOUBLE , NativeType.POINTER);
-            popLong = getNativeAccess().lookupAndBindSymbol(nespressoLibrary, "pop_long", NativeType.LONG , NativeType.POINTER);
+            popByte = getNativeAccess().lookupAndBindSymbol(nespressoLibrary, "pop_byte", NativeType.BYTE, NativeType.POINTER);
+            popChar = getNativeAccess().lookupAndBindSymbol(nespressoLibrary, "pop_char", NativeType.CHAR, NativeType.POINTER);
+            popShort = getNativeAccess().lookupAndBindSymbol(nespressoLibrary, "pop_short", NativeType.SHORT, NativeType.POINTER);
+            popInt = getNativeAccess().lookupAndBindSymbol(nespressoLibrary, "pop_int", NativeType.INT, NativeType.POINTER);
+            popFloat = getNativeAccess().lookupAndBindSymbol(nespressoLibrary, "pop_float", NativeType.FLOAT, NativeType.POINTER);
+            popDouble = getNativeAccess().lookupAndBindSymbol(nespressoLibrary, "pop_double", NativeType.DOUBLE, NativeType.POINTER);
+            popLong = getNativeAccess().lookupAndBindSymbol(nespressoLibrary, "pop_long", NativeType.LONG, NativeType.POINTER);
             popObject = getNativeAccess().lookupAndBindSymbol(nespressoLibrary, "pop_object", NativeType.OBJECT, NativeType.POINTER);
 
             Callback lookupJniImplCallback = new Callback(LOOKUP_JNI_IMPL_PARAMETER_COUNT, new Callback.Function() {
