@@ -432,7 +432,7 @@ public class DwarfLineSectionImpl extends DwarfSectionImpl {
         /*
          * The primary file entry should always be first in the local files list.
          */
-        assert classEntry.localFilesIdx(fileEntry) == 1;
+        assert classEntry.localFilesIdx() == 1;
         String primaryClassName = classEntry.getTypeName();
         String primaryFileName = classEntry.getFileName();
         String file = primaryFileName;
@@ -516,6 +516,7 @@ public class DwarfLineSectionImpl extends DwarfSectionImpl {
                 }
                 String subfile = subFileEntry.getFileName();
                 int subFileIdx = classEntry.localFilesIdx(subFileEntry);
+                assert subFileIdx > 0;
                 long subLine = subrange.getLine();
                 long subAddressLo = subrange.getLo();
                 long subAddressHi = subrange.getHi();

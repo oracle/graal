@@ -31,9 +31,9 @@ import com.oracle.objectfile.debuginfo.DebugInfoProvider.DebugTypeInfo;
 import com.oracle.objectfile.debuginfo.DebugInfoProvider.DebugTypeInfo.DebugTypeKind;
 import org.graalvm.compiler.debug.DebugContext;
 
-public class ArrayTypeEntry extends TypeEntry {
+public class ArrayTypeEntry extends StructureTypeEntry {
     private TypeEntry elementType;
-    private int headerSize;
+    private int baseSize;
     private int lengthOffset;
 
     public ArrayTypeEntry(String typeName, int size) {
@@ -50,9 +50,11 @@ public class ArrayTypeEntry extends TypeEntry {
         DebugArrayTypeInfo debugArrayTypeInfo = (DebugArrayTypeInfo) debugTypeInfo;
         String elementTypeName = TypeEntry.canonicalize(debugArrayTypeInfo.elementType());
         this.elementType = debugInfoBase.lookupTypeEntry(elementTypeName);
-        this.headerSize = debugArrayTypeInfo.headerSize();
+        this.baseSize = debugArrayTypeInfo.baseSize();
         this.lengthOffset = debugArrayTypeInfo.lengthOffset();
-        debugContext.log("typename %s element type %s header size %d length offset %d\n", typeName, elementTypeName, headerSize, lengthOffset);
+        /* Add details of fields and field types */
+        debugArrayTypeInfo.fieldInfoProvider().forEach(debugFieldInfo -> this.processField(debugFieldInfo, debugInfoBase, debugContext));
+        debugContext.log("typename %s element type %s base size %d length offset %d\n", typeName, elementTypeName, baseSize, lengthOffset);
     }
 
     public TypeEntry getElementType() {

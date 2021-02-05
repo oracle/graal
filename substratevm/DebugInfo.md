@@ -187,6 +187,7 @@ the hub field:
 (gdb) ptype _objhdr
 type = struct _objhdr {
     java.lang.Class *hub;
+    int idHash;
 }
 
 (gdb) ptype 'java.lang.Object'
@@ -208,13 +209,14 @@ to the `byte[]` value array located in the name String.
 $2 = 0x7ffff7c01028
 (gdb) print *$2->hub->name->value
 $3 = {
-  <_arrhdrB> = {
-    hub = 0x90e4b8,
-    len = 19,
-    idHash = 3759493
-  }, 
+  <java.lang.Object> = {
+    <_objhdr> = {
+      hub = 0x942d40,
+      idHash = 1806863149
+    }, <No data fields>},
   members of byte []:
-  data = 0x904798 "[Ljava.lang.String;"
+  len = 19,
+  data = 0x923a90 "[Ljava.lang.String;"
 }
 ```
 
@@ -224,12 +226,13 @@ Casting it to this type shows it has length 1.
 ```
 (gdb) print *('java.lang.String[]' *)$rdi
 $4 = {
-  <_arrhdrA> = {
-    hub = 0x906a78,
-    len = 1,
-    idHash = 0
-  }, 
+  <java.lang.Object> = {
+    <_objhdr> = {
+      hub = 0x925be8,
+      idHash = 0
+    }, <No data fields>},
   members of java.lang.String[]:
+  len = 1,
   data = 0x7ffff7c01038
 }
 ```
@@ -246,11 +249,11 @@ Indeed it is useful to define a gdb command `hubname_raw` to execute this
 operation on an arbitrary raw memory address
 
 ```
-command hubname_raw
-  x/s ((_objhdr *)($arg0))->hub->name->value->data
+define hubname_raw
+  x/s (('java.lang.Object' *)($arg0))->hub->name->value->data
 end
 
-(gdb) hubname_raw $2
+(gdb) hubname_raw $rdi
 0x904798:	"[Ljava.lang.String;"
 ```
 
@@ -264,37 +267,42 @@ $5 = 0x2
 Cannot access memory at address 0x2
 ```
 
-Array type layouts are also modelled with a class. The class inherits
-fields from an array header struct specific to the array element type,
-one of _arrhdrZ _arrhdrB, _arrhdrS, ... _arrhdrA (the last one is for
-object arrays). Inherited fields include the hub, array length, idHash
-to round up the header size to a boundary suitable for the array
-element type. The array class (layout) type includes only one field, a
-C++ array of length zero whose element type is a primtiive type or
-Java referece type.
+Array type layouts are modelled as a C++ class type. It inherits
+from class Object so it includes the hub and idHash header fields
+defined by _objhdr. It adds a length field and an embedded (C++) data
+array whose elements are typed from the Java array's element type,
+either primitive values or object references.
 
 ```
 (gdb) ptype 'java.lang.String[]'
-type = struct java.lang.String[] : public _arrhdrA {
+type = class java.lang.String[] : public java.lang.Object {
+    int len;
     java.lang.String *data[0];
 }
 ```
 
-Notice that the type of the values stored in the data array is
-`java.lang.String *` i.e. the C++ array stores Java references
-i.e. addresses as far as the C++ model is concerned.
+The embedded array is nominally sized with length 0. However, when a
+Java array instance is allocated it includes enough space to ensure
+the data array can store the number of items defined in the length
+field.
 
-When gdb knows the Java type for a reference it can be printed without
-casting using a simpler version of the hubname command. For example,
-the String array retrieved above as $4 has a known type.
+Notice that in this case the type of the values stored in the data
+array is `java.lang.String *`. The the C++ array stores Java
+object references i.e. addresses as far as the C++ model is
+concerned.
+
+If gdb already knows the Java type for a reference it can be printed
+without casting using a simpler version of the hubname command. For
+example, the String array retrieved above as $4 has a known type.
 
 ```
 (gdb) ptype $4
-type = struct java.lang.String[] : public _arrhdrA {
+type = class java.lang.String[] : public java.lang.Object {
+    int len;
     java.lang.String *data[0];
 }
 
-command hubname
+define hubname
   x/s (($arg0))->hub->name->value->data
 end
 
@@ -302,31 +310,18 @@ end
 0x923b68:	"[Ljava.lang.String;"
 ```
 
-(notice that gdb automatically uses the address of the printed object)
-
-The array header structs are all extensions of the basic _objhdr type
-which means that arrays and objects can both be safely cast to oops.
-
-```
-(gdb) ptype _arrhdrA
-type = struct _arrhdrA {
-    java.lang.Class *hub;
-    int len;
-    int idHash;
-}
-```
-
-Interfaces layouts are modelled as union types whose members are the
-layouts for all the classes which implement the interfacse.
+Interface layouts are modelled as C++ union types. The members of the
+union include the C++ layout types for all Java classes which implement
+the interface.
 
 ```
 (gdb) ptype 'java.lang.CharSequence'
-type = union _java.lang.CharSequence {
-    _java.lang.AbstractStringBuilder _java.lang.AbstractStringBuilder;
-    _java.lang.StringBuffer _java.lang.StringBuffer;
-    _java.lang.StringBuilder _java.lang.StringBuilder;
-    _java.lang.String _java.lang.String;
-    _java.nio.CharBuffer _java.nio.CharBuffer;
+type = union java.lang.CharSequence {
+    java.nio.CharBuffer _java.nio.CharBuffer;
+    java.lang.AbstractStringBuilder _java.lang.AbstractStringBuilder;
+    java.lang.String _java.lang.String;
+    java.lang.StringBuilder _java.lang.StringBuilder;
+    java.lang.StringBuffer _java.lang.StringBuffer;
 }
 ```
 
@@ -337,16 +332,16 @@ If we take the first String in the args array we can ask gdb to cast
 it to interface CharSequence
 ```
 (gdb) print (('java.lang.String[]' *)$rdi)->data[0]
-$6 = (java.lang.String *) 0x7ffff7c01060
-(gdb) print ('java.lang.CharSequence' *)$6
-$7 = (java.lang.CharSequence *) 0x7ffff7c01060
+$5 = (java.lang.String *) 0x7ffff7c01060
+(gdb) print ('java.lang.CharSequence' *)$5
+$6 = (java.lang.CharSequence *) 0x7ffff7c01060
 ```
 
 The hubname command won't work with this union type because it is
 only objects of the elements of the union that include the hub field:
 
 ```
-(gdb) hubname $7
+(gdb) hubname $6
 There is no member named hub.
 ```
 
@@ -355,9 +350,9 @@ can be passed to hubname in order to identify the actual type. This
 allows the correct union element to be selected:
 
 ```
-(gdb) hubname $7->'_java.nio.CharBuffer'
+(gdb) hubname $6->'_java.nio.CharBuffer'
 0x7d96d8:	"java.lang.String\270", <incomplete sequence \344\220>
-(gdb) print $7->'_java.lang.String'
+(gdb) print $6->'_java.lang.String'
 $18 = {
   <java.lang.Object> = {
     <_objhdr> = {
@@ -370,8 +365,9 @@ $18 = {
 }
 ```
 
-Notice that the printed class name includes some trailing characters.
-That's because Java strings are not guaranteed to be zero-terminated.
+Notice that the printed class name for the hub includes some trailing
+characters. That's because a data array storing Java String text
+is not guaranteed to be zero-terminated.
 
 The current debug info model does not include the location info needed
 to allow symbolic names for local vars and parameter vars to be
@@ -430,9 +426,9 @@ the location (address) of the field in the heap.
 
 ```
 (gdb) p 'java.math.BigInteger'::powerCache
-$9 = (java.math.BigInteger[][] *) 0xa6fd98
+$8 = (java.math.BigInteger[][] *) 0xa6fd98
 (gdb) p &'java.math.BigInteger'::powerCache
-$10 = (java.math.BigInteger[][] **) 0xa6fbd8
+$9 = (java.math.BigInteger[][] **) 0xa6fbd8
 ```
 
 gdb dereferences through symbolic names for static fields to access
@@ -440,25 +436,27 @@ the primitive value or object stored in the field
 
 ```
 (gdb) p *'java.math.BigInteger'::powerCache
-$11 = {
-  <_arrhdrA> = {
+$10 = {
+  <java.lang.Object> = {
+    <_objhdr> = {
     hub = 0x9ab3d0,
-    len = 37,
     idHash = 489620191
-  },
+    }, <No data fields>},
   members of _java.math.BigInteger[][]:
+  len = 37,
   data = 0xa6fda8
 }
 (gdb) p 'java.math.BigInteger'::powerCache->data[0]@4
-$12 = {0x0, 0x0, 0xc09378, 0xc09360}
+$11 = {0x0, 0x0, 0xc09378, 0xc09360}
 (gdb) p *'java.math.BigInteger'::powerCache->data[2]
-$13 = {
-  <_arrhdrA> = {
+$12 = {
+  <java.lang.Object> = {
+    <_objhdr> = {
     hub = 0x919898,
-    len = 1,
     idHash = 1796421813
-  },
+    }, <No data fields>},
   members of java.math.BigInteger[]:
+  len = 1,
   data = 0xc09388
 }
 (gdb) p *'java.math.BigInteger'::powerCache->data[2]->data[0]
@@ -699,10 +697,10 @@ type = class _z_.java.math.BigInteger[][] : public java.math.BigInteger[][] {
 The field is typed as '_z_.java.math.BigInteger[][]' which is an empty
 wrapper class that inherits from the expected type
 'java.math.BigInteger[][]'. This wrapper type is essentially the same
-as the original but the DWARFINFO that defines it includes information
-that tells gdb how to convert pointers to this type.
+as the original but the DWARF info record that defines it includes
+information that tells gdb how to convert pointers to this type.
 
-If gdb is asked to print the oop stored in this field it is clear that
+When gdb is asked to print the oop stored in this field it is clear that
 it is an offset rather than a raw address.
 
 ```
@@ -720,12 +718,13 @@ data.
 (gdb) p/x *'java.math.BigInteger'::powerCache
 $2 = {
   <java.math.BigInteger[][]> = {
-    <_arrhdrA> = {
-      hub = 0x1ec0e2,
-      idHash = 0x76381891,
-      len = 0x25
-    },
+    <java.lang.Object> = {
+      <_objhdr> = {
+        hub = 0x1ec0e2,
+        idHash = 0x2f462321
+      }, <No data fields>},
     members of java.math.BigInteger[][]:
+    len = 0x25,
     data = 0x7ffff7a86c18
   }, <No data fields>}
 ```
@@ -755,7 +754,7 @@ $4 = {
     <java.lang.Object> = {
       <_objhdr> = {
         hub = 0x1dc860,
-        idHash = 550750288
+        idHash = 1530752816
       }, <No data fields>},
     members of java.lang.Class:
     name = 0x171af8,
@@ -769,3 +768,23 @@ possible to use an expression that identifies an indirect type pointer
 in almost all cases where an expression identifying a raw type pointer
 would work. The only case case where care might be needed is when
 casting a displayed numeric field value or displayed register value.
+
+For example, if the indirect hub oop printed above is passed to
+hubname_raw the cast to type Object internal to that command fails to
+force the required indirect oop translation and the resulting memory
+access fails:
+
+```
+(gdb) hubname_raw 0x1dc860
+Cannot access memory at address 0x1dc860
+```
+
+In this case it is necessary to use a slightly different command that
+casts its argument to an indirect pointer type:
+```
+(gdb) define hubname_indirect
+ x/s (('_z_.java.lang.Object' *)($arg0))->hub->name->value->data
+end
+(gdb) hubname_indirect 0x1dc860
+0x7ffff78a52f0:	"java.lang.Class"
+```

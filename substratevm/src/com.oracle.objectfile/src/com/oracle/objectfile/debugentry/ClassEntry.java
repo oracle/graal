@@ -26,6 +26,7 @@
 
 package com.oracle.objectfile.debugentry;
 
+import com.oracle.objectfile.debuginfo.DebugInfoProvider;
 import com.oracle.objectfile.debuginfo.DebugInfoProvider.DebugFrameSizeChange;
 import com.oracle.objectfile.debuginfo.DebugInfoProvider.DebugMethodInfo;
 import com.oracle.objectfile.debuginfo.DebugInfoProvider.DebugTypeInfo;
@@ -188,6 +189,10 @@ public class ClassEntry extends StructureTypeEntry {
         }
     }
 
+    public int localFilesIdx() {
+        return localFilesIndex.get(fileEntry);
+    }
+
     public int localFilesIdx(@SuppressWarnings("hiding") FileEntry fileEntry) {
         return localFilesIndex.get(fileEntry);
     }
@@ -288,6 +293,16 @@ public class ClassEntry extends StructureTypeEntry {
         // substitution
         FileEntry methodFileEntry = debugInfoBase.ensureFileEntry(fileName, filePath, cachePath);
         methods.add(new MethodEntry(methodFileEntry, methodName, this, resultType, paramTypeArray, paramNameArray, modifiers));
+    }
+
+    @Override
+    protected FieldEntry addField(DebugInfoProvider.DebugFieldInfo debugFieldInfo, DebugInfoBase debugInfoBase, DebugContext debugContext) {
+        FieldEntry fieldEntry = super.addField(debugFieldInfo, debugInfoBase, debugContext);
+        FileEntry fileEntry = fieldEntry.getFileEntry();
+        if (fileEntry != null) {
+            indexLocalFileEntry(fileEntry);
+        }
+        return fieldEntry;
     }
 
     private static String formatParams(List<String> paramTypes, List<String> paramNames) {

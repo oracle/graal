@@ -115,23 +115,23 @@ public abstract class DebugInfoBase {
      */
     private boolean useHeapBase;
     /**
-     * number of bits oops are left shifted by when using compressed oops
+     * Number of bits oops are left shifted by when using compressed oops.
      */
     private int oopCompressShift;
     /**
-     * number of low order bits used for tagging oops
+     * Number of low order bits used for tagging oops.
      */
     private int oopTagsCount;
     /**
-     * number of bytes used to store an oop reference
+     * Number of bytes used to store an oop reference.
      */
     private int oopReferenceSize;
     /**
-     * alignment of object memory area (and, therefore, of any oop) in bytes
+     * Alignment of object memory area (and, therefore, of any oop) in bytes.
      */
     private int oopAlignment;
     /**
-     * number of bits in oop which are guaranteed 0 by virtue of alignment
+     * Number of bits in oop which are guaranteed 0 by virtue of alignment.
      */
     private int oopAlignShift;
 

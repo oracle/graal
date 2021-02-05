@@ -143,11 +143,13 @@ public interface DebugInfoProvider {
     }
 
     interface DebugArrayTypeInfo extends DebugTypeInfo {
-        int headerSize();
+        int baseSize();
 
         int lengthOffset();
 
         String elementType();
+
+        Stream<DebugFieldInfo> fieldInfoProvider();
     }
 
     interface DebugPrimitiveTypeInfo extends DebugTypeInfo {

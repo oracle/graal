@@ -37,7 +37,7 @@ import java.util.stream.Stream;
 
 /**
  * An intermediate type that provides behaviour for managing fields. This unifies code for handling
- * header structures and Java instance classes that both support data members.
+ * header structures and Java instance and array classes that both support data members.
  */
 public abstract class StructureTypeEntry extends TypeEntry {
     /**
@@ -55,6 +55,11 @@ public abstract class StructureTypeEntry extends TypeEntry {
     }
 
     protected void processField(DebugFieldInfo debugFieldInfo, DebugInfoBase debugInfoBase, DebugContext debugContext) {
+        /* Delegate this so superclasses can override this and inspect the computed FieldEntry. */
+        addField(debugFieldInfo, debugInfoBase, debugContext);
+    }
+
+    protected FieldEntry addField(DebugFieldInfo debugFieldInfo, DebugInfoBase debugInfoBase, DebugContext debugContext) {
         String fieldName = debugInfoBase.uniqueDebugString(debugFieldInfo.name());
         String valueTypeName = TypeEntry.canonicalize(debugFieldInfo.valueType());
         int fieldSize = debugFieldInfo.size();
@@ -69,7 +74,9 @@ public abstract class StructureTypeEntry extends TypeEntry {
         // n.b. the field file may differ from the owning class file when the field is a
         // substitution
         FileEntry fileEntry = debugInfoBase.ensureFileEntry(fileName, filePath, cachePath);
-        fields.add(new FieldEntry(fileEntry, fieldName, this, valueType, fieldSize, fieldoffset, fieldModifiers));
+        FieldEntry fieldEntry = new FieldEntry(fileEntry, fieldName, this, valueType, fieldSize, fieldoffset, fieldModifiers);
+        fields.add(fieldEntry);
+        return fieldEntry;
     }
 
     String memberModifiers(int modifiers) {

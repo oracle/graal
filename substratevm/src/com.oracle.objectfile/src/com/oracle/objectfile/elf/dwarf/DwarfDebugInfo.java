@@ -32,6 +32,7 @@ import java.util.HashMap;
 import com.oracle.objectfile.debugentry.ClassEntry;
 import com.oracle.objectfile.debugentry.DebugInfoBase;
 
+import com.oracle.objectfile.debugentry.StructureTypeEntry;
 import com.oracle.objectfile.debugentry.TypeEntry;
 import com.oracle.objectfile.elf.ELFMachine;
 
@@ -432,8 +433,8 @@ public class DwarfDebugInfo extends DebugInfoBase {
          */
         private HashMap<String, Integer> methodDeclarationIndex;
 
-        DwarfClassProperties(ClassEntry classEntry) {
-            super(classEntry);
+        DwarfClassProperties(StructureTypeEntry entry) {
+            super(entry);
             this.cuIndex = -1;
             this.deoptCUIndex = -1;
             this.layoutIndex = -1;
@@ -456,10 +457,10 @@ public class DwarfDebugInfo extends DebugInfoBase {
         return typeProperties;
     }
 
-    private DwarfClassProperties addClassProperties(ClassEntry classEntry) {
-        String typeName = classEntry.getTypeName();
+    private DwarfClassProperties addClassProperties(StructureTypeEntry entry) {
+        String typeName = entry.getTypeName();
         assert propertiesIndex.get(typeName) == null;
-        DwarfClassProperties classProperties = new DwarfClassProperties(classEntry);
+        DwarfClassProperties classProperties = new DwarfClassProperties(entry);
         this.propertiesIndex.put(typeName, classProperties);
         return classProperties;
     }
@@ -477,13 +478,13 @@ public class DwarfDebugInfo extends DebugInfoBase {
         }
     }
 
-    private DwarfClassProperties lookupClassProperties(ClassEntry classEntry) {
-        String typeName = classEntry.getTypeName();
+    private DwarfClassProperties lookupClassProperties(StructureTypeEntry entry) {
+        String typeName = entry.getTypeName();
         DwarfTypeProperties typeProperties = propertiesIndex.get(typeName);
         assert typeProperties == null || typeProperties instanceof DwarfClassProperties;
         DwarfClassProperties classProperties = (DwarfClassProperties) typeProperties;
         if (classProperties == null) {
-            classProperties = addClassProperties(classEntry);
+            classProperties = addClassProperties(entry);
         }
         return classProperties;
     }
@@ -646,10 +647,10 @@ public class DwarfDebugInfo extends DebugInfoBase {
         return classProperties.lineSectionSize;
     }
 
-    public void setFieldDeclarationIndex(ClassEntry classEntry, String fieldName, int pos) {
+    public void setFieldDeclarationIndex(StructureTypeEntry entry, String fieldName, int pos) {
         DwarfClassProperties classProperties;
-        classProperties = lookupClassProperties(classEntry);
-        assert classProperties.getTypeEntry() == classEntry;
+        classProperties = lookupClassProperties(entry);
+        assert classProperties.getTypeEntry() == entry;
         HashMap<String, Integer> fieldDeclarationIndex = classProperties.fieldDeclarationIndex;
         if (fieldDeclarationIndex == null) {
             classProperties.fieldDeclarationIndex = fieldDeclarationIndex = new HashMap<>();
@@ -661,10 +662,10 @@ public class DwarfDebugInfo extends DebugInfoBase {
         }
     }
 
-    public int getFieldDeclarationIndex(ClassEntry classEntry, String fieldName) {
+    public int getFieldDeclarationIndex(StructureTypeEntry entry, String fieldName) {
         DwarfClassProperties classProperties;
-        classProperties = lookupClassProperties(classEntry);
-        assert classProperties.getTypeEntry() == classEntry;
+        classProperties = lookupClassProperties(entry);
+        assert classProperties.getTypeEntry() == entry;
         HashMap<String, Integer> fieldDeclarationIndex = classProperties.fieldDeclarationIndex;
         assert fieldDeclarationIndex != null;
         assert fieldDeclarationIndex.get(fieldName) != null;

@@ -32,6 +32,7 @@ import com.oracle.objectfile.LayoutDecision;
 import com.oracle.objectfile.LayoutDecisionMap;
 import com.oracle.objectfile.ObjectFile;
 import com.oracle.objectfile.debugentry.ClassEntry;
+import com.oracle.objectfile.debugentry.StructureTypeEntry;
 import com.oracle.objectfile.debugentry.TypeEntry;
 import com.oracle.objectfile.elf.ELFMachine;
 import com.oracle.objectfile.elf.ELFObjectFile;
@@ -570,15 +571,15 @@ public abstract class DwarfSectionImpl extends BasicProgbitsSectionImpl {
         dwarfSections.setLayoutIndex(classEntry, pos);
     }
 
-    protected void setFieldDeclarationIndex(ClassEntry classEntry, String fieldName, int pos) {
-        dwarfSections.setFieldDeclarationIndex(classEntry, fieldName, pos);
+    protected void setFieldDeclarationIndex(StructureTypeEntry entry, String fieldName, int pos) {
+        dwarfSections.setFieldDeclarationIndex(entry, fieldName, pos);
     }
 
-    protected int getFieldDeclarationIndex(ClassEntry classEntry, String fieldName) {
+    protected int getFieldDeclarationIndex(StructureTypeEntry entry, String fieldName) {
         if (!contentByteArrayCreated()) {
             return 0;
         }
-        return dwarfSections.getFieldDeclarationIndex(classEntry, fieldName);
+        return dwarfSections.getFieldDeclarationIndex(entry, fieldName);
     }
 
     protected void setMethodDeclarationIndex(ClassEntry classEntry, String methodName, int pos) {

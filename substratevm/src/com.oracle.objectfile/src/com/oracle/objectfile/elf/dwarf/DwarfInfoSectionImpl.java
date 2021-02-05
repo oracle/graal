@@ -61,11 +61,6 @@ public class DwarfInfoSectionImpl extends DwarfSectionImpl {
     public static final String OBJECT_HEADER_STRUCT_NAME = "_objhdr";
 
     /**
-     * The name of a special DWARF struct type used to model an array header.
-     */
-    public static final String ARRAY_HEADER_STRUCT_NAME = "_arrhdr";
-
-    /**
      * An info header section always contains a fixed number of bytes.
      */
     private static final int DW_DIE_HEADER_SIZE = 11;
@@ -512,7 +507,7 @@ public class DwarfInfoSectionImpl extends DwarfSectionImpl {
         int size = classEntry.getSize();
         log(context, "  [0x%08x]     byte_size 0x%x", pos, size);
         pos = writeAttrData2((short) size, buffer, pos);
-        int fileIdx = classEntry.localFilesIdx(classEntry.getFileEntry());
+        int fileIdx = classEntry.localFilesIdx();
         log(context, "  [0x%08x]     file  0x%x (%s)", pos, fileIdx, classEntry.getFileName());
         pos = writeAttrData2((short) fileIdx, buffer, pos);
         if (abbrevCode == DwarfDebugInfo.DW_ABBREV_CODE_class_layout2) {
@@ -598,10 +593,10 @@ public class DwarfInfoSectionImpl extends DwarfSectionImpl {
         return fieldEntry.getOffset() >= 0;
     }
 
-    private int writeField(DebugContext context, ClassEntry classEntry, FieldEntry fieldEntry, byte[] buffer, int p) {
+    private int writeField(DebugContext context, StructureTypeEntry entry, FieldEntry fieldEntry, byte[] buffer, int p) {
         int pos = p;
         int modifiers = fieldEntry.getModifiers();
-        boolean hasFile = classEntry.getFileName().length() > 0;
+        boolean hasFile = fieldEntry.getFileName().length() > 0;
         log(context, "  [0x%08x] field definition", pos);
         int abbrevCode;
         boolean isStatic = Modifier.isStatic(modifiers);
@@ -618,7 +613,7 @@ public class DwarfInfoSectionImpl extends DwarfSectionImpl {
                 abbrevCode = DwarfDebugInfo.DW_ABBREV_CODE_field_declaration4;
             }
             /* Record the position of the declaration to use when we write the definition. */
-            setFieldDeclarationIndex(classEntry, fieldEntry.fieldName(), pos);
+            setFieldDeclarationIndex(entry, fieldEntry.fieldName(), pos);
         }
         log(context, "  [0x%08x] <2> Abbrev Number %d", pos, abbrevCode);
         pos = writeAbbrevCode(abbrevCode, buffer, pos);
@@ -628,8 +623,10 @@ public class DwarfInfoSectionImpl extends DwarfSectionImpl {
         pos = writeAttrStrp(name, buffer, pos);
         /* We may not have a file and line for a field. */
         if (hasFile) {
-            int fileIdx = classEntry.localFilesIdx(classEntry.getFileEntry());
-            log(context, "  [0x%08x]     filename  0x%x (%s)", pos, fileIdx, classEntry.getFileName());
+            assert entry instanceof ClassEntry;
+            int fileIdx = ((ClassEntry) entry).localFilesIdx(fieldEntry.getFileEntry());
+            assert fileIdx > 0;
+            log(context, "  [0x%08x]     filename  0x%x (%s)", pos, fileIdx, fieldEntry.getFileName());
             pos = writeAttrData2((short) fileIdx, buffer, pos);
             /* At present we definitely don't have line numbers. */
         }
@@ -685,7 +682,7 @@ public class DwarfInfoSectionImpl extends DwarfSectionImpl {
         String name = uniqueDebugString(range.getMethodName());
         log(context, "  [0x%08x]     name 0x%x (%s)", pos, debugStringIndex(name), name);
         pos = writeAttrStrp(name, buffer, pos);
-        int fileIdx = classEntry.localFilesIdx(range.getFileEntry());
+        int fileIdx = classEntry.localFilesIdx();
         log(context, "  [0x%08x]     file 0x%x (%s)", pos, fileIdx, range.getFileEntry().getFullName());
         pos = writeAttrData2((short) fileIdx, buffer, pos);
         String returnTypeName = range.getMethodReturnTypeName();
@@ -1020,14 +1017,7 @@ public class DwarfInfoSectionImpl extends DwarfSectionImpl {
         pos = writeAttrStrp(name, buffer, pos);
         /* Write the array layout and array reference DIEs. */
         TypeEntry elementType = arrayTypeEntry.getElementType();
-        StructureTypeEntry headerType;
-        if (elementType.isPrimitive()) {
-            PrimitiveTypeEntry primitiveTypeEntry = (PrimitiveTypeEntry) elementType;
-            headerType = (StructureTypeEntry) lookupType(ARRAY_HEADER_STRUCT_NAME + primitiveTypeEntry.getTypeChar());
-        } else {
-            headerType = (StructureTypeEntry) lookupType(ARRAY_HEADER_STRUCT_NAME + "A");
-        }
-        int size = headerType.getSize();
+        int size = arrayTypeEntry.getSize();
         int layoutIdx = pos;
         pos = writeArrayLayout(context, arrayTypeEntry, elementType, size, buffer, pos);
         int indirectLayoutIdx = pos;
@@ -1063,6 +1053,7 @@ public class DwarfInfoSectionImpl extends DwarfSectionImpl {
         /* write a type definition for the element array field. */
         int arrayDataTypeIdx = pos;
         pos = writeArrayDataType(context, elementType, buffer, pos);
+        pos = writeFields(context, arrayTypeEntry, buffer, pos);
         /* Write a zero length element array field. */
         pos = writeArrayElementField(context, size, arrayDataTypeIdx, buffer, pos);
         pos = writeArraySuperReference(context, arrayTypeEntry, buffer, pos);
@@ -1072,6 +1063,11 @@ public class DwarfInfoSectionImpl extends DwarfSectionImpl {
         return writeAttrNull(buffer, pos);
     }
 
+    private int writeFields(DebugContext context, ArrayTypeEntry arrayTypeEntry, byte[] buffer, int p) {
+        return arrayTypeEntry.fields().filter(DwarfInfoSectionImpl::isManifestedField).reduce(p,
+                        (pos, fieldEntry) -> writeField(context, arrayTypeEntry, fieldEntry, buffer, pos),
+                        (oldPos, newPos) -> newPos);
+    }
     private int writeIndirectArrayLayout(DebugContext context, ArrayTypeEntry arrayTypeEntry, int size, int layoutOffset, byte[] buffer, int p) {
         int pos = p;
 
@@ -1139,20 +1135,17 @@ public class DwarfInfoSectionImpl extends DwarfSectionImpl {
 
     private int writeArraySuperReference(DebugContext context, ArrayTypeEntry arrayTypeEntry, byte[] buffer, int p) {
         int pos = p;
-        String headerName;
-        TypeEntry elementType = arrayTypeEntry.getElementType();
-        if (elementType.isPrimitive()) {
-            headerName = ARRAY_HEADER_STRUCT_NAME + ((PrimitiveTypeEntry) elementType).getTypeChar();
-        } else {
-            headerName = ARRAY_HEADER_STRUCT_NAME + "A";
-        }
-        int headerTypeOffset = getTypeIndex(headerName);
+        /* Arrays all inherit from java.lang.Object */
+        String superName = "java.lang.Object";
+        TypeEntry objectType = lookupType(superName);
+        assert objectType instanceof ClassEntry;
+        int superOffset = getLayoutIndex((ClassEntry) objectType);
         log(context, "  [0x%08x] super reference", pos);
         int abbrevCode = DwarfDebugInfo.DW_ABBREV_CODE_super_reference;
         log(context, "  [0x%08x] <2> Abbrev Number %d", pos, abbrevCode);
         pos = writeAbbrevCode(abbrevCode, buffer, pos);
-        log(context, "  [0x%08x]     type 0x%x (%s)", pos, headerTypeOffset, headerName);
-        pos = writeAttrRefAddr(headerTypeOffset, buffer, pos);
+        log(context, "  [0x%08x]     type 0x%x (%s)", pos, superOffset, superName);
+        pos = writeAttrRefAddr(superOffset, buffer, pos);
         /* Parent layout is embedded at start of object. */
         log(context, "  [0x%08x]     data_member_location (super) 0x%x", pos, 0);
         pos = writeAttrData1((byte) 0, buffer, pos);
