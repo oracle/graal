@@ -1260,7 +1260,7 @@ public final class Method extends Member<Signature> implements TruffleObject, Co
 
         @Override
         public byte[] getOriginalCode() {
-            return getMethod().getOriginalCode();
+            return getCodeAttribute().getOriginalCode();
         }
 
         @Override

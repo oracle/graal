@@ -139,7 +139,7 @@ public class RawLoadNode extends UnsafeAccessNode implements Lowerable, Virtuali
 
     @Override
     public Node canonical(CanonicalizerTool tool) {
-        if (!isAnyLocationForced() && getLocationIdentity().isAny()) {
+        if (!isAnyLocationForced()) {
             ValueNode targetObject = object();
             if (offset().isConstant() && targetObject.isConstant() && !targetObject.isNullConstant()) {
                 ConstantNode objectConstant = (ConstantNode) targetObject;
@@ -154,6 +154,17 @@ public class RawLoadNode extends UnsafeAccessNode implements Lowerable, Virtuali
                             Constant constant = stamp(view).readConstant(tool.getConstantReflection().getMemoryAccessProvider(), arrayConstant, constantOffset);
                             boolean isDefaultStable = objectConstant.isDefaultStable();
                             if (constant != null && (isDefaultStable || !constant.isDefaultForKind())) {
+                                /*
+                                 * Of note here: This might be able to fold a volatile access for
+                                 * Truffle interpreters, as the framework allow "final volatile"
+                                 * field through the use of the compilation final annotation.
+                                 *
+                                 * Even though the access might be volatile, we do not need to
+                                 * insert a memory barrier here, as the memory considerations for
+                                 * truffle final volatile accesses are to be taken as ordering the
+                                 * accesses for building the AST during PE, and should not enforce
+                                 * ordering on language side accesses.
+                                 */
                                 return ConstantNode.forConstant(stamp(view), constant, stableDimension - 1, isDefaultStable, tool.getMetaAccess());
                             }
                         }
