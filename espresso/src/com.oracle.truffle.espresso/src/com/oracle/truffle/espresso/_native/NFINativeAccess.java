@@ -1,6 +1,14 @@
 package com.oracle.truffle.espresso._native;
 
+import static com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
+import static com.oracle.truffle.api.CompilerDirectives.transferToInterpreter;
+
 import java.nio.file.Path;
+import java.util.Arrays;
+import java.util.Map;
+import java.util.Objects;
+import java.util.concurrent.ConcurrentHashMap;
+import java.util.function.Function;
 import java.util.logging.Level;
 
 import com.oracle.truffle.api.CallTarget;
@@ -24,11 +32,51 @@ import com.oracle.truffle.espresso.jni.NativeLibrary;
 import com.oracle.truffle.espresso.meta.EspressoError;
 import com.oracle.truffle.espresso.runtime.EspressoContext;
 import com.oracle.truffle.espresso.runtime.StaticObject;
+import com.oracle.truffle.nfi.api.SignatureLibrary;
 import com.oracle.truffle.nfi.spi.types.NativeSimpleType;
 
 public class NFINativeAccess implements NativeAccess {
 
-    protected final InteropLibrary UNCACHED = InteropLibrary.getFactory().getUncached();
+    private static final boolean CACHE_SIGNATURES = "true".equals(System.getProperty("espresso.nfi.cache_signatures", "true"));
+
+    private final Map<NativeSignature, Object> signatureCache;
+
+    static final class NativeSignature {
+        private final NativeType returnType;
+        @CompilationFinal(dimensions = 1) private final NativeType[] parameterTypes;
+
+        NativeSignature(NativeType returnType, NativeType[] parameterTypes) {
+            this.returnType = returnType;
+            this.parameterTypes = parameterTypes;
+        }
+
+        @Override
+        public boolean equals(Object other) {
+            if (this == other) {
+                return true;
+            }
+            if (other == null || getClass() != other.getClass()) {
+                return false;
+            }
+            NativeSignature that = (NativeSignature) other;
+            return returnType == that.returnType && Arrays.equals(parameterTypes, that.parameterTypes);
+        }
+
+        @Override
+        public int hashCode() {
+            int result = Objects.hash(returnType);
+            result = 31 * result + Arrays.hashCode(parameterTypes);
+            return result;
+        }
+
+        @Override
+        public String toString() {
+            return nfiStringSignature(returnType, parameterTypes);
+        }
+    }
+
+    protected final InteropLibrary INTEROP = InteropLibrary.getFactory().getUncached();
+    protected final SignatureLibrary SIGNATURE = SignatureLibrary.getUncached();
 
     private final EspressoContext context;
 
@@ -63,7 +111,7 @@ public class NFINativeAccess implements NativeAccess {
         }
     }
 
-    protected static String nfiSignature(NativeType returnType, NativeType... parameterTypes) {
+    protected static String nfiStringSignature(NativeType returnType, NativeType... parameterTypes) {
         StringBuilder sb = new StringBuilder(64);
         sb.append('(');
         boolean isFirst = true;
@@ -80,8 +128,23 @@ public class NFINativeAccess implements NativeAccess {
         return sb.toString();
     }
 
+    protected Object nfiCachedSignature(NativeType returnType, NativeType... parameterTypes) {
+        NativeSignature ns = new NativeSignature(returnType, parameterTypes);
+        return signatureCache.computeIfAbsent(ns, new Function<NativeSignature, Object>() {
+            @Override
+            public Object apply(NativeSignature nativeSignature) {
+                Source source = Source.newBuilder("nfi", nativeSignature.toString(), "signature").build();
+                CallTarget target = getContext().getEnv().parseInternal(source);
+                return target.call();
+            }
+        });
+    }
+
     public NFINativeAccess(EspressoContext context) {
         this.context = context;
+        signatureCache = CACHE_SIGNATURES
+                        ? new ConcurrentHashMap<>()
+                        : null;
     }
 
     @Override
@@ -116,7 +179,7 @@ public class NFINativeAccess implements NativeAccess {
     @Override
     public @Pointer TruffleObject lookupSymbol(@Pointer TruffleObject library, String symbolName) {
         try {
-            return (TruffleObject) UNCACHED.readMember(library, symbolName);
+            return (TruffleObject) INTEROP.readMember(library, symbolName);
         } catch (UnsupportedMessageException e) {
             throw EspressoError.shouldNotReachHere(e);
         } catch (UnknownIdentifierException e) {
@@ -147,7 +210,7 @@ public class NFINativeAccess implements NativeAccess {
         @ExportMessage
         Object execute(Object[] arguments, @CachedLibrary("this.delegate") InteropLibrary interop) throws ArityException {
             if (arguments.length != parameterTypes.length) {
-                CompilerDirectives.transferToInterpreter();
+                transferToInterpreter();
                 throw ArityException.create(parameterTypes.length, arguments.length);
             }
             try {
@@ -187,12 +250,17 @@ public class NFINativeAccess implements NativeAccess {
 
     @Override
     public @Pointer TruffleObject bindSymbol(@Pointer TruffleObject symbol, NativeType returnType, NativeType... parameterTypes) {
-        String signature = nfiSignature(returnType, parameterTypes);
-        try {
-            TruffleObject executable = (TruffleObject) UNCACHED.invokeMember(symbol, "bind", signature);
+        if (CACHE_SIGNATURES) {
+            TruffleObject executable = (TruffleObject) SIGNATURE.bind(nfiCachedSignature(returnType, parameterTypes), symbol);
             return new NativeWrapper(executable, returnType, parameterTypes);
-        } catch (UnsupportedTypeException | ArityException | UnknownIdentifierException | UnsupportedMessageException e) {
-            throw EspressoError.shouldNotReachHere("Cannot bind " + signature, e);
+        } else {
+            String signature = nfiStringSignature(returnType, parameterTypes);
+            try {
+                TruffleObject executable = (TruffleObject) INTEROP.invokeMember(symbol, "bind", signature);
+                return new NativeWrapper(executable, returnType, parameterTypes);
+            } catch (UnsupportedTypeException | ArityException | UnknownIdentifierException | UnsupportedMessageException e) {
+                throw EspressoError.shouldNotReachHere("Cannot bind " + signature, e);
+            }
         }
     }
 

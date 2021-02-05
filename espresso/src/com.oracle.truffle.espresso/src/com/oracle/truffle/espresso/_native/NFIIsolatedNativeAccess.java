@@ -50,7 +50,7 @@ public final class NFIIsolatedNativeAccess extends NFINativeAccess {
             throw new IllegalArgumentException("negative buffer length: " + size);
         }
         try {
-            return (TruffleObject) UNCACHED.execute(malloc, size);
+            return (TruffleObject) INTEROP.execute(malloc, size);
         } catch (UnsupportedTypeException | ArityException | UnsupportedMessageException e) {
             CompilerDirectives.transferToInterpreterAndInvalidate();
             throw EspressoError.shouldNotReachHere(e);
@@ -60,7 +60,7 @@ public final class NFIIsolatedNativeAccess extends NFINativeAccess {
     @Override
     public void freeMemory(@Buffer TruffleObject buffer) {
         try {
-            UNCACHED.execute(free, buffer);
+            INTEROP.execute(free, buffer);
         } catch (UnsupportedTypeException | ArityException | UnsupportedMessageException e) {
             CompilerDirectives.transferToInterpreterAndInvalidate();
             throw EspressoError.shouldNotReachHere(e);
@@ -73,7 +73,7 @@ public final class NFIIsolatedNativeAccess extends NFINativeAccess {
             throw new IllegalArgumentException("negative buffer length: " + newSize);
         }
         try {
-            return (TruffleObject) UNCACHED.execute(realloc, buffer, newSize);
+            return (TruffleObject) INTEROP.execute(realloc, buffer, newSize);
         } catch (UnsupportedTypeException | ArityException | UnsupportedMessageException e) {
             CompilerDirectives.transferToInterpreterAndInvalidate();
             throw EspressoError.shouldNotReachHere(e);
