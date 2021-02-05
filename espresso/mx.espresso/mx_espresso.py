@@ -47,7 +47,7 @@ def _espresso_launcher_command(args):
     return _espresso_command('espresso', args)
 
 
-def _espresso_java_command(args):
+def _java_truffle_command(args):
     """Java launcher using libespresso in GraalVM + arguments"""
     return _espresso_command('java', ['-truffle'] + args)
 
@@ -72,9 +72,9 @@ def _run_espresso_standalone(args=None, cwd=None, nonZeroIsFatal=True):
     return mx.run_java(_espresso_standalone_command(args), cwd=cwd, nonZeroIsFatal=nonZeroIsFatal)
 
 
-def _run_espresso_java(args=None, cwd=None, nonZeroIsFatal=True):
+def _run_java_truffle(args=None, cwd=None, nonZeroIsFatal=True):
     """Run espresso through the standard java launcher within a GraalVM"""
-    return mx.run(_espresso_java_command(args), cwd=cwd, nonZeroIsFatal=nonZeroIsFatal)
+    return mx.run(_java_truffle_command(args), cwd=cwd, nonZeroIsFatal=nonZeroIsFatal)
 
 
 def _run_espresso_meta(args, nonZeroIsFatal=True):
@@ -231,7 +231,7 @@ mx_sdk_vm.register_graalvm_component(mx_sdk_vm.GraalVmLanguage(
 mx.update_commands(_suite, {
     'espresso': [_run_espresso_launcher, '[args]'],
     'espresso-standalone': [_run_espresso_standalone, '[args]'],
-    'espresso-java': [_run_espresso_java, '[args]'],
+    'java-truffle': [_run_java_truffle, '[args]'],
     'espresso-meta': [_run_espresso_meta, '[args]'],
 })
 
