@@ -40,9 +40,9 @@ import java.lang.reflect.Modifier;
 // Checkstyle: resume
 
 import org.graalvm.compiler.debug.GraalError;
-import org.graalvm.compiler.serviceprovider.GraalUnsafeAccess;
 import org.graalvm.compiler.serviceprovider.JavaVersionUtil;
 
+import com.oracle.svm.core.StaticFieldsSupport;
 import com.oracle.svm.core.SubstrateUtil;
 import com.oracle.svm.core.annotate.Alias;
 import com.oracle.svm.core.annotate.AnnotateOriginal;
@@ -139,15 +139,30 @@ final class Target_java_lang_invoke_MethodHandleNatives {
         if (self.intrinsic != null) {
             return -1L;
         }
-        return GraalUnsafeAccess.getUnsafe().objectFieldOffset((Field) self.reflectAccess);
+        int offset = SubstrateUtil.cast(self.reflectAccess, Target_java_lang_reflect_Field.class).offset;
+        if (offset == -1) {
+            throw new GraalError("Trying to access field " + self.reflectAccess + " without registering it as unsafe accessed.");
+        }
+        return offset;
     }
 
     @Substitute
     private static long staticFieldOffset(Target_java_lang_invoke_MemberName self) {
+        if (self.reflectAccess == null && self.intrinsic == null) {
+            throw new InternalError("unresolved field");
+        }
         if (!self.isField() || !self.isStatic()) {
             throw new InternalError("static field required");
         }
-        return 0L; /* Static fields are accessed through their base */
+        /* Intrinsic arguments are not accessed through their offset. */
+        if (self.intrinsic != null) {
+            return -1L;
+        }
+        int offset = SubstrateUtil.cast(self.reflectAccess, Target_java_lang_reflect_Field.class).offset;
+        if (offset == -1) {
+            throw new GraalError("Trying to access field " + self.reflectAccess + " without registering it as unsafe accessed.");
+        }
+        return offset;
     }
 
     @Substitute
@@ -158,7 +173,7 @@ final class Target_java_lang_invoke_MethodHandleNatives {
         if (!self.isField() || !self.isStatic()) {
             throw new InternalError("static field required");
         }
-        return SubstrateUtil.cast(self.reflectAccess, Target_java_lang_reflect_Field.class).acquireFieldAccessor(false);
+        return ((Field) self.reflectAccess).getType().isPrimitive() ? StaticFieldsSupport.getStaticPrimitiveFields() : StaticFieldsSupport.getStaticObjectFields();
     }
 
     @Substitute

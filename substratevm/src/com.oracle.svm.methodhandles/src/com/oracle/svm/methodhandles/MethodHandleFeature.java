@@ -116,6 +116,9 @@ public class MethodHandleFeature implements Feature {
 
         access.registerReachabilityHandler(MethodHandleFeature::registerUninitializedCallSiteForReflection,
                         ReflectionUtil.lookupMethod(CallSite.class, "uninitializedCallSiteHandle"));
+
+        access.registerSubtypeReachabilityHandler(MethodHandleFeature::registerVarHandleMethodsForReflection,
+                        access.findClassByName("java.lang.invoke.VarHandle"));
     }
 
     private static void registerMHImplFunctionsForReflection(DuringAnalysisAccess access) {
@@ -209,6 +212,12 @@ public class MethodHandleFeature implements Feature {
 
     private static void registerUninitializedCallSiteForReflection(DuringAnalysisAccess access) {
         RuntimeReflection.register(ReflectionUtil.lookupMethod(CallSite.class, "uninitializedCallSite", Object[].class));
+    }
+
+    private static void registerVarHandleMethodsForReflection(DuringAnalysisAccess access, Class<?> subtype) {
+        if (subtype.getPackage().getName().equals("java.lang.invoke") && subtype != access.findClassByName("java.lang.invoke.VarHandle")) {
+            RuntimeReflection.register(subtype.getDeclaredMethods());
+        }
     }
 }
 

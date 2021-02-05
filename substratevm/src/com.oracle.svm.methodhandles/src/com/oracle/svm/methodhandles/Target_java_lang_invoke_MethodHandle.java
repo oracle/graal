@@ -61,7 +61,7 @@ final class Target_java_lang_invoke_MethodHandle {
     @Alias @RecomputeFieldValue(kind = RecomputeFieldValue.Kind.Reset) //
     private MethodHandle asTypeCache;
 
-    @Alias private MethodType type;
+    @Alias MethodType type;
 
     @Alias
     native Target_java_lang_invoke_MemberName internalMemberName();
