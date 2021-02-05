@@ -1555,7 +1555,7 @@ public final class BytecodeNode extends EspressoMethodNode {
     }
 
     private char readOriginalCPI(int curBCI) {
-        return BytecodeStream.readCPI(getMethod().getOriginalCode(), curBCI);
+        return BytecodeStream.readCPI(getMethodVersion().getOriginalCode(), curBCI);
     }
 
     private char addQuickNode(QuickNode node) {
