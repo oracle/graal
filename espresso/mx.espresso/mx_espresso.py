@@ -237,8 +237,9 @@ mx.update_commands(_suite, {
 
 # Build configs
 # pylint: disable=bad-whitespace
-mx_sdk_vm.register_vm_config('espresso-jvm',       ['java', 'ejvm', 'elau', 'nfi', 'sdk', 'tfl'                                        ], _suite, env_file='jvm')
-mx_sdk_vm.register_vm_config('espresso-jvm-ce',    ['java', 'ejvm', 'elau', 'nfi', 'sdk', 'tfl', 'cmp'                                 ], _suite, env_file='jvm-ce')
-mx_sdk_vm.register_vm_config('espresso-jvm-ee',    ['java', 'ejvm', 'elau', 'nfi', 'sdk', 'tfl', 'cmp', 'cmpee'                        ], _suite, env_file='jvm-ee')
-mx_sdk_vm.register_vm_config('espresso-native-ce', ['java', 'ejvm', 'elau', 'nfi', 'sdk', 'tfl', 'cmp'         , 'svm'         , 'tflm'], _suite, env_file='native-ce')
-mx_sdk_vm.register_vm_config('espresso-native-ee', ['java', 'ejvm', 'elau', 'nfi', 'sdk', 'tfl', 'cmp', 'cmpee', 'svm', 'svmee', 'tflm'], _suite, env_file='native-ee')
+tools = ['cov', 'dap', 'ins', 'insight', 'lsp', 'pro', 'vvm']
+mx_sdk_vm.register_vm_config('espresso-jvm',       ['java', 'ejvm', 'libpoly', 'nfi', 'sdk', 'tfl'                                        , 'elau'                                             ] + tools, _suite, env_file='jvm')
+mx_sdk_vm.register_vm_config('espresso-jvm-ce',    ['java', 'ejvm', 'libpoly', 'nfi', 'sdk', 'tfl', 'cmp'         , 'svm'         , 'tflm', 'elau', 'lg', 'bespresso', 'sespresso', 'spolyglot'] + tools, _suite, env_file='jvm-ce')
+mx_sdk_vm.register_vm_config('espresso-jvm-ee',    ['java', 'ejvm', 'libpoly', 'nfi', 'sdk', 'tfl', 'cmp', 'cmpee', 'svm', 'svmee', 'tflm', 'elau', 'lg', 'bespresso', 'sespresso', 'spolyglot'] + tools, _suite, env_file='jvm-ee')
+mx_sdk_vm.register_vm_config('espresso-native-ce', ['java', 'ejvm', 'libpoly', 'nfi', 'sdk', 'tfl', 'cmp'         , 'svm'         , 'tflm'                                        , 'spolyglot'] + tools, _suite, env_file='native-ce')
+mx_sdk_vm.register_vm_config('espresso-native-ee', ['java', 'ejvm', 'libpoly', 'nfi', 'sdk', 'tfl', 'cmp', 'cmpee', 'svm', 'svmee', 'tflm'                                        , 'spolyglot'] + tools, _suite, env_file='native-ee')

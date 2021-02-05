@@ -1,6 +1,6 @@
-# mx --dy /vm-enteprise,/graal-enterprise --components="Espresso Launcher,GraalVM enterprise compiler" --disable-polyglot --disable-libpolyglot graalvm-show
+# mx --dynamicimports=/vm-enterprise,/substratevm-enterprise,/tools-enterprise --components="Espresso Launcher,LibGraal,SubstrateVM Enterprise,suite:tools,suite:tools-enterprise" --native-images=lib:jvmcicompiler --disable-installables=true graalvm-show
 
-DYNAMIC_IMPORTS=/vm-enterprise,/graal-enterprise
-COMPONENTS=Espresso Launcher,GraalVM enterprise compiler
-DISABLE_POLYGLOT=true
-DISABLE_LIBPOLYGLOT=true
+DYNAMIC_IMPORTS=/vm-enterprise,/substratevm-enterprise,/tools-enterprise
+COMPONENTS=Espresso Launcher,LibGraal,SubstrateVM Enterprise,suite:tools,suite:tools-enterprise
+NATIVE_IMAGES=lib:jvmcicompiler
+DISABLE_INSTALLABLES=true
