@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2014, 2020, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2014, 2021, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -1769,7 +1769,26 @@ public class FlatNodeGenFactory {
             renameOriginalParameters(forType, method, frameState);
         }
 
-        boolean isExecutableInUncached = forType.getEvaluatedCount() != node.getExecutionCount() && !node.getChildren().isEmpty();
+        CodeTreeBuilder builder = method.createBuilder();
+
+        int effectiveEvaluatedCount = forType.getEvaluatedCount();
+        while (effectiveEvaluatedCount < node.getExecutionCount()) {
+            NodeExecutionData childExecution = node.getChildExecutions().get(effectiveEvaluatedCount);
+            if (childExecution.getChild() == null || !childExecution.getChild().isAllowUncached()) {
+                break;
+            }
+
+            ExecutableTypeData type = childExecution.getChild().findAnyGenericExecutableType(context);
+            LocalVariable local = frameState.createValue(childExecution, type.getReturnType());
+
+            CodeTree init = callUncachedChildExecuteMethod(childExecution, type, frameState);
+            builder.declaration(type.getReturnType(), local.getName(), init);
+
+            frameState.set(childExecution, local);
+            effectiveEvaluatedCount++;
+        }
+
+        boolean isExecutableInUncached = effectiveEvaluatedCount != node.getExecutionCount() && !node.getChildren().isEmpty();
         if (!isExecutableInUncached) {
             method.getAnnotationMirrors().add(new CodeAnnotationMirror(types.CompilerDirectives_TruffleBoundary));
         }
@@ -1779,7 +1798,6 @@ public class FlatNodeGenFactory {
             method.getModifiers().remove(Modifier.ABSTRACT);
         }
 
-        CodeTreeBuilder builder = method.createBuilder();
         if (isExecutableInUncached) {
             builder.tree(GeneratorUtils.createShouldNotReachHere("This execute method cannot be used for uncached node versions as it requires child nodes to be present. " +
                             "Use an execute method that takes all arguments as parameters."));
@@ -2792,8 +2810,13 @@ public class FlatNodeGenFactory {
 
             CodeTreeBuilder builder = method.createBuilder();
             if (uncached) {
-                method.getAnnotationMirrors().add(new CodeAnnotationMirror(types.CompilerDirectives_TruffleBoundary));
-                builder.tree(GeneratorUtils.createShouldNotReachHere("This getter method cannot be used for uncached node versions as it requires child nodes to be present."));
+                if (child.isAllowUncached()) {
+                    CodeTree uncachedNode = DSLExpressionGenerator.write(child.getUncachedExpression(), null, null);
+                    builder.startReturn().tree(uncachedNode).end();
+                } else {
+                    method.getAnnotationMirrors().add(new CodeAnnotationMirror(types.CompilerDirectives_TruffleBoundary));
+                    builder.tree(GeneratorUtils.createShouldNotReachHere("This getter method cannot be used for uncached node versions as it requires child nodes to be present."));
+                }
             } else {
                 if (child.getCardinality().isMany()) {
                     builder.startReturn().startNewArray((ArrayType) child.getOriginalType(), null);
@@ -2923,6 +2946,12 @@ public class FlatNodeGenFactory {
 
     private CodeTree callChildExecuteMethod(NodeExecutionData execution, ExecutableTypeData method, FrameState frameState) {
         return callMethod(frameState, CodeTreeBuilder.singleString(accessNodeField(execution)), method.getMethod(), bindExecuteMethodParameters(execution, method, frameState));
+    }
+
+    private CodeTree callUncachedChildExecuteMethod(NodeExecutionData execution, ExecutableTypeData method, FrameState frameState) {
+        assert execution.getChild().isAllowUncached();
+        CodeTree uncachedNode = DSLExpressionGenerator.write(execution.getChild().getUncachedExpression(), null, null);
+        return callMethod(frameState, uncachedNode, method.getMethod(), bindExecuteMethodParameters(execution, method, frameState));
     }
 
     private CodeTree createParameterReference(LocalVariable sourceVariable, ExecutableElement targetMethod, int targetIndex) {
