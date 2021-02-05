@@ -77,7 +77,7 @@ public abstract class NativeEnv {
     }
 
     @TruffleBoundary
-    protected static ByteBuffer directByteBuffer(long address, long capacity) {
+    public static ByteBuffer directByteBuffer(long address, long capacity) {
         ByteBuffer buffer = null;
         try {
             buffer = constructor.newInstance(address, Math.toIntExact(capacity));
