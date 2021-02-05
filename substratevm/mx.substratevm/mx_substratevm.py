@@ -814,6 +814,7 @@ mx_sdk_vm.register_graalvm_component(mx_sdk_vm.GraalVmJreComponent(
         'substratevm:POINTSTO',
     ],
     support_distributions=['substratevm:SVM_GRAALVM_SUPPORT'],
+    stability="earlyadopter",
 ))
 
 def _native_image_launcher_main_class():
@@ -880,6 +881,7 @@ mx_sdk_vm.register_graalvm_component(mx_sdk_vm.GraalVmJreComponent(
     ],
     provided_executables=['bin/<cmd:rebuild-images>'],
     installable=True,
+    stability="earlyadopter",
 ))
 
 mx_sdk_vm.register_graalvm_component(mx_sdk_vm.GraalVmJreComponent(
@@ -894,6 +896,7 @@ mx_sdk_vm.register_graalvm_component(mx_sdk_vm.GraalVmJreComponent(
     support_distributions=['substratevm:NATIVE_IMAGE_LICENSE_GRAALVM_SUPPORT'],
     installable=True,
     priority=1,
+    stability="earlyadopter",
 ))
 
 if not mx.is_windows():
@@ -911,6 +914,7 @@ if not mx.is_windows():
             'substratevm:JAVACPP_SHADOWED',
             'substratevm:LLVM_PLATFORM_SPECIFIC_SHADOWED',
         ],
+        stability="earlyadopter",
     ))
 
 
@@ -937,6 +941,7 @@ mx_sdk_vm.register_graalvm_component(mx_sdk_vm.GraalVmJreComponent(
         "substratevm:POLYGLOT_NATIVE_API",
     ],
     has_polyglot_lib_entrypoints=True,
+    stability="earlyadopter",
 ))
 
 mx_sdk_vm.register_graalvm_component(mx_sdk_vm.GraalVMSvmMacro(
@@ -987,6 +992,7 @@ mx_sdk_vm.register_graalvm_component(mx_sdk_vm.GraalVmJreComponent(
             ],
         ),
     ],
+    stability="supported",
 ))
 
 def _native_image_configure_extra_jvm_args():
@@ -1018,6 +1024,7 @@ mx_sdk_vm.register_graalvm_component(mx_sdk_vm.GraalVmJreComponent(
             extra_jvm_args=_native_image_configure_extra_jvm_args(),
         )
     ],
+    stability="earlyadopter",
 ))
 
 
