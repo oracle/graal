@@ -28,7 +28,6 @@ import com.oracle.truffle.api.nodes.RootNode;
 
 import java.nio.file.Path;
 import java.util.List;
-import java.util.Set;
 
 /**
  * Interface that defines required methods for a guest language when implementing JDWP.
