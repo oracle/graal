@@ -280,17 +280,17 @@ public final class VM extends NativeEnv implements ContextAccess {
             TruffleObject initializeMokapotContext = NativeLibrary.lookupAndBind(mokapotLibrary,
                             "initializeMokapotContext", "(pointer, (pointer): pointer): pointer");
 
-            disposeMokapotContext = NativeLibrary.lookupAndBind(mokapotLibrary,
+            disposeMokapotContext = getNativeAccess().lookupAndBindSymbol(mokapotLibrary,
                             "disposeMokapotContext",
-                            "(pointer, pointer): void");
+                            NativeType.VOID, NativeType.POINTER, NativeType.POINTER);
 
             if (jniEnv.getContext().EnableManagement) {
                 initializeManagementContext = NativeLibrary.lookupAndBind(mokapotLibrary,
                                 "initializeManagementContext", "((pointer): pointer, sint32): pointer");
 
-                disposeManagementContext = NativeLibrary.lookupAndBind(mokapotLibrary,
+                disposeManagementContext = getNativeAccess().lookupAndBindSymbol(mokapotLibrary,
                                 "disposeManagementContext",
-                                "(pointer, sint32, pointer): void");
+                                NativeType.VOID, NativeType.POINTER, NativeType.INT, NativeType.POINTER);
             } else {
                 initializeManagementContext = null;
                 disposeManagementContext = null;

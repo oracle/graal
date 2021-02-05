@@ -399,8 +399,8 @@ public final class JniEnv extends NativeEnv implements ContextAccess {
             dupClosureRef = getNativeAccess().lookupSymbol(nespressoLibrary, "dupClosureRef");
             initializeNativeContext = NativeLibrary.lookupAndBind(nespressoLibrary,
                             "initializeNativeContext", "((pointer): pointer): pointer");
-            disposeNativeContext = NativeLibrary.lookupAndBind(nespressoLibrary, "disposeNativeContext",
-                            "(pointer, pointer): void");
+            disposeNativeContext = getNativeAccess().lookupAndBindSymbol(nespressoLibrary, "disposeNativeContext",
+                            NativeType.VOID, NativeType.POINTER, NativeType.POINTER);
 
             getSizeMax = getNativeAccess().lookupAndBindSymbol(nespressoLibrary, "get_SIZE_MAX", NativeType.LONG);
 
