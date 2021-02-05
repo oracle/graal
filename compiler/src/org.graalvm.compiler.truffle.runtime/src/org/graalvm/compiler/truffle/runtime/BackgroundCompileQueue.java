@@ -132,8 +132,11 @@ public class BackgroundCompileQueue {
             long compilerIdleDelay = runtime.getCompilerIdleDelay(callTarget);
             long keepAliveTime = compilerIdleDelay >= 0 ? compilerIdleDelay : 0;
 
-            // this.compilationQueue = new IdlingPriorityBlockingQueue<>();
-            this.compilationQueue = new CustomBlockingQueue<>(new ArrayQueue<>());
+            if (callTarget.getOptionValue(PolyglotCompilerOptions.CustomQueue)) {
+                this.compilationQueue = new CustomBlockingQueue<>(new ArrayQueue<>());
+            } else {
+                this.compilationQueue = new IdlingPriorityBlockingQueue<>();
+            }
             ThreadPoolExecutor threadPoolExecutor = new ThreadPoolExecutor(threads, threads,
                             keepAliveTime, TimeUnit.MILLISECONDS,
                             compilationQueue, factory) {
