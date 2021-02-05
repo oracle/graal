@@ -1744,7 +1744,7 @@ final class JDWP {
                 PacketStream reply = new PacketStream().replyPacket().id(packet.id);
                 Object object = controller.getContext().getIds().fromId((int) objectId);
 
-                if (object == controller.getContext().getNullObject()) {
+                if (object == null || object == controller.getContext().getNullObject()) {
                     reply.errorCode(ErrorCodes.INVALID_OBJECT);
                     return new CommandResult(reply);
                 }
