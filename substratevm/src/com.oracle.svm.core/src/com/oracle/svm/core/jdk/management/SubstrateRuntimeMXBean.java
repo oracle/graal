@@ -29,6 +29,7 @@ import java.lang.management.ManagementFactory;
 import java.lang.management.RuntimeMXBean;
 import java.net.InetAddress;
 import java.net.UnknownHostException;
+import java.util.Arrays;
 import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
@@ -48,25 +49,23 @@ import com.oracle.svm.core.JavaMainWrapper;
 import com.oracle.svm.core.jdk.RuntimeSupport;
 import com.oracle.svm.core.util.VMError;
 
-import sun.management.ManagementFactoryHelper;
 import sun.management.Util;
-import sun.management.VMManagement;
 //Checkstyle: resume
 
 final class SubstrateRuntimeMXBean implements RuntimeMXBean {
 
-    private VMManagement jvm;
     private long startMillis = 0;
+    private String managementSpecVersion;
 
     @Platforms(Platform.HOSTED_ONLY.class)
     SubstrateRuntimeMXBean() {
+        managementSpecVersion = ManagementFactory.getRuntimeMXBean().getManagementSpecVersion();
         RuntimeSupport.getRuntimeSupport().addInitializationHook(this::initialize);
     }
 
     void initialize() {
         /* Set the start time of the VM. */
         startMillis = System.currentTimeMillis();
-        jvm = ManagementFactoryHelper.getVMManagement();
     }
 
     @Override
@@ -102,57 +101,57 @@ final class SubstrateRuntimeMXBean implements RuntimeMXBean {
 
     @Override
     public String getVmName() {
-        return jvm.getVmName();
+        return System.getProperty("java.vm.name");
     }
 
     @Override
     public String getVmVendor() {
-        return jvm.getVmVendor();
+        return System.getProperty("java.vm.vendor");
     }
 
     @Override
     public String getVmVersion() {
-        return jvm.getVmVersion();
+        return System.getProperty("java.vm.version");
     }
 
     @Override
     public String getSpecName() {
-        return jvm.getVmSpecName();
+        return System.getProperty("java.vm.specification.name");
     }
 
     @Override
     public String getSpecVendor() {
-        return jvm.getVmSpecVendor();
+        return System.getProperty("java.vm.specification.vendor");
     }
 
     @Override
     public String getSpecVersion() {
-        return jvm.getVmSpecVersion();
+        return System.getProperty("java.vm.specification.version");
     }
 
     @Override
     public String getManagementSpecVersion() {
-        return jvm.getManagementVersion();
+        return managementSpecVersion;
     }
 
     @Override
     public String getClassPath() {
-        return jvm.getClassPath();
+        return System.getProperty("java.class.path");
     }
 
     @Override
     public String getLibraryPath() {
-        return jvm.getLibraryPath();
+        return System.getProperty("java.vm.library.path");
     }
 
     @Override
     public boolean isBootClassPathSupported() {
-        return jvm.isBootClassPathSupported();
+        return true;
     }
 
     @Override
     public String getBootClassPath() {
-        return jvm.getBootClassPath();
+        return "";
     }
 
     @Override
