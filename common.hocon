@@ -42,39 +42,17 @@ labsjdk-ee-15 :      { downloads : { JAVA_HOME : ${jdks.labsjdk-ee-15} }}
 labsjdk-ce-15Debug : { downloads : { JAVA_HOME : ${jdks.labsjdk-ce-15Debug} }}
 labsjdk-ee-15Debug : { downloads : { JAVA_HOME : ${jdks.labsjdk-ee-15Debug} }}
 
-common : ${mx} {
-  timelimit : "30:00"
-  environment : {
-    MX_PYTHON: "python3"
-  }
+common : ${mx} ${deps.common} {
   catch_files : [
     "Graal diagnostic output saved in (?P<filename>.+\.zip)"
   ]
-  packages : {
-    "pip:logilab-common ": "==1.4.4"
-    "pip:pylint" : "==1.9.3"
-    "pip:ninja_syntax" : "==1.7.2"
-  }
 }
 
-linux : ${common} {
-  packages : {
-    git : ">=1.8.3"
-    mercurial : ">=2.2"
-    "apache/ant": ">=1.9.4"
-  }
-}
+linux : ${common} ${deps.linux}
 
-darwin : ${common} {
-  environment : {
-    # Required to keep pylint happy on Darwin
-    # https://coderwall.com/p/-k_93g/mac-os-x-valueerror-unknown-locale-utf-8-in-python
-    LC_ALL : "en_US.UTF-8"
-  }
-}
+darwin : ${common} ${deps.darwin}
 
-windows : ${common} {
-}
+windows : ${common} ${deps.windows}
 
 linux-amd64 : ${linux} {
   capabilities : [linux, amd64]
@@ -96,20 +74,9 @@ DEFAULT_HEAP_SIZE : "8G"
 LARGE_HEAP_SIZE : "31G"
 LARGE_YOUNG_GEN_SIZE : "27G"
 
-eclipse : {
-  downloads : {
-    ECLIPSE : {name: eclipse, version: "4.14.0", platformspecific: true}
-  }
-  environment : {
-    ECLIPSE_EXE : "$ECLIPSE/eclipse"
-  }
-}
+eclipse : ${downloads.eclipse}
 
-jdt : {
-  downloads : {
-    JDT : {name: ecj, version: "4.14.0", platformspecific: false}
-  }
-}
+jdt : ${downloads.jdt}
 
 # for cases where a maven package is not easily accessible
 maven-download-unix : {

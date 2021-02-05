@@ -25,7 +25,62 @@
       "windows-jdk11":      { "packages" : { "devkit:VS2017-15.9.24+1" : "==0" }},
       "windows-jdk15":      { "packages" : { "devkit:VS2019-16.5.3+1"  : "==0" }}
   },
+  "deps": {
+    "common": {
+      "timelimit": "30:00",
+      "environment": {
+        "MX_PYTHON": "python3"
+      },
+      "packages": {
+        "pip:logilab-common ": "==1.4.4",
+        "pip:pylint": "==1.9.3",
+        "pip:ninja_syntax": "==1.7.2"
+      }
+    },
 
+    "linux": {
+      "packages": {
+        "git": ">=1.8.3",
+        "mercurial": ">=2.2",
+        "apache/ant": ">=1.9.4"
+      }
+    },
+    "COMMENT.darwin": [
+      "Required to keep pylint happy on Darwin",
+      "https://coderwall.com/p/-k_93g/mac-os-x-valueerror-unknown-locale-utf-8-in-python"
+    ],
+    "darwin": {
+      "environment": {
+        "LC_ALL": "en_US.UTF-8"
+      }
+    },
+    "windows": {
+    }
+
+  },
+  "downloads": {
+    "eclipse": {
+      "downloads": {
+        "ECLIPSE": {
+          "name": "eclipse",
+          "version": "4.14.0",
+          "platformspecific": true
+        }
+      },
+      "environment": {
+        "ECLIPSE_EXE": "$ECLIPSE/eclipse"
+      }
+    },
+    "jdt": {
+      "downloads": {
+        "JDT": {
+          "name": "ecj",
+          "version": "4.14.0",
+          "platformspecific": false
+        }
+      }
+    }
+  },
   "sulong": {
     "deps": {
       "linux": {
