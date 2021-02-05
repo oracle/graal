@@ -17,7 +17,7 @@ import com.oracle.truffle.espresso.meta.EspressoError;
  * Memory management: malloc and free.
  * 
  * Lifting and sinking: A native method can be "lifted" to Java. A Java method can be "sunk" to the
- * native world e.g. as pointer that can be called.
+ * native world e.g. as native pointer that can be called.
  */
 public interface NativeAccess {
     /**
@@ -64,11 +64,13 @@ public interface NativeAccess {
     /**
      * Native closure to Java (lifting). Returns an {@link InteropLibrary#isExecutable(Object)
      * executable} {@link TruffleObject object}.
+     *
+     * <p>
+     * The returned object is managed by the Java GC, to keep it alive, including its native
+     * component, keep a strong reference to it.
      */
     @Pointer
     TruffleObject bindSymbol(@Pointer TruffleObject symbol, NativeType returnType, NativeType... parameterTypes);
-
-    void unbindSymbol(@Pointer TruffleObject symbol);
 
     default @Pointer TruffleObject lookupAndBindSymbol(@Pointer TruffleObject library, String symbolName, NativeType returnType, NativeType... parameterTypes) {
         @Pointer
@@ -82,6 +84,8 @@ public interface NativeAccess {
 
     /**
      * Similar to malloc. The result of allocating a 0-sized buffer is an implementation detail.
+     *
+     * <h3>Lifetime
      *
      * @throws IllegalArgumentException if the size is negative
      *
@@ -103,7 +107,7 @@ public interface NativeAccess {
     TruffleObject reallocateMemory(@Buffer TruffleObject buffer, long newSize);
 
     /**
-     * Similar to free. Accessing the buffer after free causes undefined behavior.
+     * Similar to free. Accessing the buffer after free may cause explosive undefined behavior.
      */
     void freeMemory(@Buffer TruffleObject buffer);
 
@@ -111,14 +115,11 @@ public interface NativeAccess {
      * Sinking, make a Java method accessible to the native world. Returns an
      * {@link InteropLibrary#isPointer(Object) pointer} {@link TruffleObject object}, callable from
      * native code.
+     * 
+     * <p>
+     * The returned object is managed by the Java GC, to keep it alive, including its native
+     * component, keep a strong reference to it.
      */
     @Pointer
     TruffleObject createNativeClosure(TruffleObject executable, NativeType returnType, NativeType... parameterTypes);
-
-    /**
-     * Releases a native closure allocated with
-     * {@link #createNativeClosure(TruffleObject, NativeType, NativeType...)}. Using the native
-     * closure after release causes undefined behavior.
-     */
-    void releaseClosure(@Pointer TruffleObject closure);
 }

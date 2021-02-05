@@ -197,11 +197,6 @@ public class NFINativeAccess implements NativeAccess {
     }
 
     @Override
-    public void unbindSymbol(@Pointer TruffleObject symbol) {
-        throw new UnsupportedOperationException("unbindSymbol");
-    }
-
-    @Override
     public @Buffer TruffleObject allocateMemory(long size) {
         throw new UnsupportedOperationException("allocateMemory");
     }
@@ -219,10 +214,5 @@ public class NFINativeAccess implements NativeAccess {
     @Override
     public @Pointer TruffleObject createNativeClosure(TruffleObject executable, NativeType returnType, NativeType... parameterTypes) {
         throw new UnsupportedOperationException("createNativeClosure");
-    }
-
-    @Override
-    public void releaseClosure(@Pointer TruffleObject closure) {
-        throw new UnsupportedOperationException("releaseClosure");
     }
 }
