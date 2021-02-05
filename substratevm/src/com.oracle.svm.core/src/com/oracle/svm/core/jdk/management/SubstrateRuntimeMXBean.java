@@ -29,7 +29,6 @@ import java.lang.management.ManagementFactory;
 import java.lang.management.RuntimeMXBean;
 import java.net.InetAddress;
 import java.net.UnknownHostException;
-import java.util.Arrays;
 import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
@@ -47,15 +46,14 @@ import org.graalvm.nativeimage.ProcessProperties;
 
 import com.oracle.svm.core.JavaMainWrapper;
 import com.oracle.svm.core.jdk.RuntimeSupport;
-import com.oracle.svm.core.util.VMError;
 
 import sun.management.Util;
 //Checkstyle: resume
 
 final class SubstrateRuntimeMXBean implements RuntimeMXBean {
 
+    private final String managementSpecVersion;
     private long startMillis = 0;
-    private String managementSpecVersion;
 
     @Platforms(Platform.HOSTED_ONLY.class)
     SubstrateRuntimeMXBean() {
