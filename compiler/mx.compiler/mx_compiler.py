@@ -1421,6 +1421,7 @@ cmp_ce_components = [
         ],
         jvmci_jars=_jvmci_jars(),
         graal_compiler='graal',
+        stability="supported",
     ),
     mx_sdk_vm.GraalVmComponent(
         suite=_suite,

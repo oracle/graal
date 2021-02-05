@@ -2015,8 +2015,10 @@ x-GraalVM-Polyglot-Part: {polyglot}
             arch=mx.get_arch(),
             java_version=_src_jdk_version,
             polyglot=isinstance(main_component, mx_sdk.GraalVmTruffleComponent) and main_component.include_in_polyglot
-                     and (not isinstance(main_component, mx_sdk.GraalVmTool) or main_component.include_by_default)
+                     and (not isinstance(main_component, mx_sdk.GraalVmTool) or main_component.include_by_default),
         )
+        if main_component.stability:
+            _manifest_str += "x-GraalVM-Stability: {}\n".format(main_component.stability)
         dependencies = set()
         for comp in self.components:
             for c in comp.direct_dependencies():

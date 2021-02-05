@@ -494,6 +494,7 @@ mx_sdk_vm.register_graalvm_component(mx_sdk_vm.GraalVmLanguage(
         ),
     ],
     installable=True,
+    stability="experimental",
 ))
 
 
