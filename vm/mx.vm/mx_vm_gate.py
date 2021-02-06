@@ -260,7 +260,6 @@ def _svm_truffle_tck(native_image, svm_suite, language_suite, language_id):
             '-cp',
             cp,
             '--no-server',
-            '-H:+TruffleCheckBlackListedMethods',
             '-H:-FoldSecurityManagerGetter',
             '-H:TruffleTCKPermissionsReportFile={}'.format(report_file),
             '-H:Path={}'.format(svmbuild),
@@ -312,7 +311,6 @@ def gate_svm_sl_tck(tasks):
                         '--macro:truffle',
                         '--tool:all',
                         '-H:Path={}'.format(svmbuild),
-                        '-H:+TruffleCheckBlackListedMethods',
                         '-H:Class=org.junit.runner.JUnitCore',
                     ]
                     tests_image = native_image(vm_image_args + options)

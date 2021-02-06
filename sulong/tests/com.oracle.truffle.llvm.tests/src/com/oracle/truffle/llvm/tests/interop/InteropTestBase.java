@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2017, 2020, Oracle and/or its affiliates.
+ * Copyright (c) 2017, 2021, Oracle and/or its affiliates.
  *
  * All rights reserved.
  *
@@ -34,6 +34,7 @@ import java.io.IOException;
 import java.nio.file.Path;
 import java.nio.file.Paths;
 
+import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.llvm.runtime.NativeContextExtension;
 import com.oracle.truffle.llvm.runtime.options.SulongEngineOption;
 import com.oracle.truffle.llvm.tests.BaseSuiteHarness;
@@ -110,7 +111,7 @@ public class InteropTestBase {
             try {
                 return interop.execute(function, frame.getArguments());
             } catch (InteropException ex) {
-                throw new AssertionError(ex);
+                throw CompilerDirectives.shouldNotReachHere(ex);
             }
         }
     }
