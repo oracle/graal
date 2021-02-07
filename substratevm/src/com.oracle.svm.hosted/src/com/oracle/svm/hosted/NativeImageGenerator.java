@@ -63,6 +63,7 @@ import org.graalvm.compiler.bytecode.BytecodeProvider;
 import org.graalvm.compiler.bytecode.ResolvedJavaMethodBytecodeProvider;
 import org.graalvm.compiler.core.common.GraalOptions;
 import org.graalvm.compiler.core.common.spi.ForeignCallsProvider;
+import org.graalvm.compiler.debug.DebugCloseable;
 import org.graalvm.compiler.debug.DebugContext;
 import org.graalvm.compiler.debug.DebugContext.Builder;
 import org.graalvm.compiler.debug.DebugDumpScope;
@@ -304,7 +305,6 @@ public class NativeImageGenerator {
     private AtomicBoolean buildStarted = new AtomicBoolean();
 
     private Pair<Method, CEntryPointData> mainEntryPoint;
-    private TemporaryBuildDirectoryProviderImpl buildDirectoryProvider;
 
     public NativeImageGenerator(ImageClassLoader loader, HostedOptionProvider optionProvider, Pair<Method, CEntryPointData> mainEntryPoint) {
         this.loader = loader;
@@ -467,27 +467,17 @@ public class NativeImageGenerator {
             int maxConcurrentThreads = NativeImageOptions.getMaximumNumberOfConcurrentThreads(new OptionValues(optionProvider.getHostedValues()));
             this.buildExecutor = createForkJoinPool(maxConcurrentThreads);
             buildExecutor.submit(() -> {
-
                 ImageSingletons.add(ClassLoaderQuery.class, new ClassLoaderQueryImpl(loader.getClassLoader()));
                 ImageSingletons.add(HostedOptionValues.class, new HostedOptionValues(optionProvider.getHostedValues()));
                 ImageSingletons.add(HostedOptionOverrideValues.class, new HostedOptionOverrideValues());
                 ImageSingletons.add(RuntimeOptionValues.class, new RuntimeOptionValues(optionProvider.getRuntimeValues(), allOptionNames));
                 watchdog = new DeadlockWatchdog();
-                try {
-                    buildDirectoryProvider = new TemporaryBuildDirectoryProviderImpl();
-                    ImageSingletons.add(TemporaryBuildDirectoryProvider.class, buildDirectoryProvider);
+                try (TemporaryBuildDirectoryProviderImpl tempDirectoryProvider = new TemporaryBuildDirectoryProviderImpl()) {
+                    ImageSingletons.add(TemporaryBuildDirectoryProvider.class, tempDirectoryProvider);
                     doRun(entryPoints, javaMainSupport, imageName, k, harnessSubstitutions, compilationExecutor, analysisExecutor);
-                } catch (Throwable t) {
-                    try {
-                        cleanup();
-                    } catch (Throwable ecleanup) {
-                        t.addSuppressed(ecleanup);
-                    }
-                    throw t;
                 } finally {
                     watchdog.close();
                 }
-                cleanup();
             }).get();
         } catch (InterruptedException | CancellationException e) {
             System.out.println("Interrupted!");
@@ -501,13 +491,6 @@ public class NativeImageGenerator {
         } finally {
             shutdownBuildExecutor();
         }
-    }
-
-    private void cleanup() {
-        if (buildDirectoryProvider != null) {
-            buildDirectoryProvider.clean();
-        }
-        featureHandler.forEachFeature(Feature::cleanup);
     }
 
     protected static void setSystemPropertiesForImageEarly() {
@@ -560,7 +543,8 @@ public class NativeImageGenerator {
 
         OptionValues options = HostedOptionValues.singleton();
         SnippetReflectionProvider originalSnippetReflection = GraalAccess.getOriginalSnippetReflection();
-        try (DebugContext debug = new Builder(options, new GraalDebugHandlersFactory(originalSnippetReflection)).build()) {
+        try (DebugContext debug = new Builder(options, new GraalDebugHandlersFactory(originalSnippetReflection)).build();
+                        DebugCloseable featureCleanup = () -> featureHandler.forEachFeature(Feature::cleanup)) {
             setupNativeImage(imageName, options, entryPoints, javaMainSupport, harnessSubstitutions, analysisExecutor, originalSnippetReflection, debug);
 
             boolean returnAfterAnalysis = runPointsToAnalysis(imageName, options, debug);
