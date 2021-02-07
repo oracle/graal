@@ -369,6 +369,7 @@ public final class TRegexBacktrackingNFAExecutorNode extends TRegexExecutorNode 
             final int bitSetWords = ((successors.length - 1) >> 6) + 1;
             CompilerDirectives.isPartialEvaluationConstant(bitSetWords);
             int lastMatch = 0;
+            int lastFinal = 0;
             // Fill the bit set.
             // We check the transitions in reverse order, so the last match will be the highest
             // priority one.
@@ -392,6 +393,7 @@ public final class TRegexBacktrackingNFAExecutorNode extends TRegexExecutorNode 
                          */
                         if (transition.getTarget(isForward()).isFinalState(isForward())) {
                             locals.setResult();
+                            lastFinal = i;
                             nMatched--;
                         }
                     }
@@ -419,7 +421,9 @@ public final class TRegexBacktrackingNFAExecutorNode extends TRegexExecutorNode 
                     CompilerDirectives.isPartialEvaluationConstant(target);
                     if ((bs & 1) != 0) {
                         if (target.isFinalState(isForward())) {
-                            locals.pushResult(transition, index);
+                            if (i == lastFinal) {
+                                locals.pushResult(transition, index);
+                            }
                             if (i == lastMatch) {
                                 return IP_END;
                             }
