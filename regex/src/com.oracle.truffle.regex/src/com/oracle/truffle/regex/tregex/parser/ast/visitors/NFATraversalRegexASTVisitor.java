@@ -336,6 +336,17 @@ public abstract class NFATraversalRegexASTVisitor {
                             }
                         }
                     }
+                    if (group.isCapturing()) {
+                        if (pathIsGroupEnter(element)) {
+                            quantifierGuards.add(QuantifierGuard.createUpdateCG(group.getBoundaryIndexStart()));
+                        } else if (pathIsGroupPassThrough(element)) {
+                            quantifierGuards.add(QuantifierGuard.createUpdateCG(group.getBoundaryIndexStart()));
+                            quantifierGuards.add(QuantifierGuard.createUpdateCG(group.getBoundaryIndexEnd()));
+                        } else {
+                            assert pathIsGroupExit(element) || pathIsGroupRubyEscape(element);
+                            quantifierGuards.add(QuantifierGuard.createUpdateCG(group.getBoundaryIndexEnd()));
+                        }
+                    }
                 }
             }
             if (root.isGroup() && !root.getParent().isSubtreeRoot()) {

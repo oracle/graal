@@ -505,11 +505,18 @@ public final class TRegexBacktrackingNFAExecutorNode extends TRegexExecutorNode 
                         return false;
                     }
                     break;
+                case updateCG:
+                    if (locals.getCaptureGroupBoundary(guard.getIndex()) != locals.getIndex()) {
+                        enteredZeroWidthQuantifier.clear();
+                    }
+                    break;
                 case enterZeroWidth:
                     enteredZeroWidthQuantifier.set(q.getZeroWidthIndex());
                     break;
                 case exitZeroWidth:
-                    if (enteredZeroWidthQuantifier.get(q.getZeroWidthIndex()) || (locals.getZeroWidthQuantifierGuardIndex(q) == index && locals.isResultUnmodifiedByZeroWidthQuantifier(q, transition, index) && (!q.hasIndex() || locals.getQuantifierCount(q) + extraQuantifierPasses[q.getIndex()] > q.getMin()))) {
+                    if (enteredZeroWidthQuantifier.get(q.getZeroWidthIndex()) ||
+                                    (locals.getZeroWidthQuantifierGuardIndex(q) == index && locals.isResultUnmodifiedByZeroWidthQuantifier(q, transition, index) &&
+                                                    (!q.hasIndex() || locals.getQuantifierCount(q) + extraQuantifierPasses[q.getIndex()] > q.getMin()))) {
                         return false;
                     }
                     break;
