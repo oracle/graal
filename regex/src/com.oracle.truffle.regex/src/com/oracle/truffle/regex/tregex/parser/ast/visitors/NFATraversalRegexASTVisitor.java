@@ -549,7 +549,7 @@ public abstract class NFATraversalRegexASTVisitor {
                 pushGroupExit(parentGroup);
                 if (parentGroup.isLoop()) {
                     boolean shouldContinuePastLoop = false;
-                    if (isGroupEnterOnPath(parentGroup)) {
+                    if (ast.getOptions().getFlavor() == RubyFlavor.INSTANCE && isGroupEnterOnPath(parentGroup)) {
                         List<GroupBoundaries> capturedGroups = insideLoops.get(parentGroup);
                         if (getGroupBoundaries().equals(capturedGroups.get(capturedGroups.size() - 1))) {
                             shouldContinuePastLoop = true;
