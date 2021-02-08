@@ -227,24 +227,22 @@ public class CalcASTPropsVisitor extends DepthFirstTraversalRegexASTVisitor {
                     maxPath = group.getMaxPath() + ((maxPath - group.getMaxPath()) * group.getQuantifier().getMax());
                 }
             }
-            if ((flags & (RegexASTNode.FLAG_HAS_BACK_REFERENCES | RegexASTNode.FLAG_HAS_LOOK_AHEADS | RegexASTNode.FLAG_HAS_LOOK_BEHINDS)) != 0) {
-                /*
-                 * If a quantifier can produce a zero-width match, we have to check this in
-                 * back-tracking mode.
-                 */
-                if (group.getFirstAlternative().isExpandedQuantifier()) {
-                    assert group.size() == 2;
-                    if (group.getLastAlternative().getMinPath() - group.getMinPath() == 0) {
-                        setZeroWidthQuantifierIndex(group);
-                    }
-                } else if (group.getLastAlternative().isExpandedQuantifier()) {
-                    assert group.size() == 2;
-                    if (group.getFirstAlternative().getMinPath() - group.getMinPath() == 0) {
-                        setZeroWidthQuantifierIndex(group);
-                    }
-                } else if (minPath - group.getMinPath() == 0) {
+            /*
+             * If a quantifier can produce a zero-width match, we have to check this in
+             * back-tracking mode.
+             */
+            if (group.getFirstAlternative().isExpandedQuantifier()) {
+                assert group.size() == 2;
+                if (group.getLastAlternative().getMinPath() - group.getMinPath() == 0) {
                     setZeroWidthQuantifierIndex(group);
                 }
+            } else if (group.getLastAlternative().isExpandedQuantifier()) {
+                assert group.size() == 2;
+                if (group.getFirstAlternative().getMinPath() - group.getMinPath() == 0) {
+                    setZeroWidthQuantifierIndex(group);
+                }
+            } else if (minPath - group.getMinPath() == 0) {
+                setZeroWidthQuantifierIndex(group);
             }
         }
         if (group.isCapturing()) {
