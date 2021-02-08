@@ -696,13 +696,13 @@ public class InliningUtil extends ValueMergeUtil {
             } else {
                 NodeSourcePosition oldPos = cursor.getKey().getNodeSourcePosition();
                 if (oldPos != null) {
-                    if (inlineeRoot == null) {
-                        assert (inlineeRoot = oldPos.getRootMethod()) != null;
-                    } else {
-                        assert oldPos.verifyRootMethod(inlineeRoot);
-                    }
                     NodeSourcePosition updatedPos = posMap.get(oldPos);
                     if (updatedPos == null) {
+                        if (inlineeRoot == null) {
+                            assert (inlineeRoot = oldPos.getRootMethod()) != null;
+                        } else {
+                            assert oldPos.verifyRootMethod(inlineeRoot);
+                        }
                         updatedPos = oldPos.addCaller(oldPos.getSourceLanguage(), invokePos, isSubstitution);
                         posMap.put(oldPos, updatedPos);
                     }
