@@ -328,7 +328,8 @@ public final class Method extends Member<Signature> implements TruffleObject, Co
         NativeType returnType = NativeAccess.kindToNativeType(Signatures.returnKind(signature));
         int argCount = Signatures.parameterCount(signature, false);
 
-        NativeType[] parameterTypes = new NativeType[argCount + 2]; // + JNIEnv* + (jclass or receiver)
+        // Prepend JNIEnv* and class|receiver.
+        NativeType[] parameterTypes = new NativeType[argCount + 2];
 
         // Prepend JNIEnv*.
         parameterTypes[0] = NativeType.POINTER;

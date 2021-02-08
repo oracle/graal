@@ -87,6 +87,7 @@ public class NFINativeAccess implements NativeAccess {
         return sb.toString();
     }
 
+    @FunctionalInterface
     private interface SignatureProvider extends Function<NativeSignature, Object> {
     }
 

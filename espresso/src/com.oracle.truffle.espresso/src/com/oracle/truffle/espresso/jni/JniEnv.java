@@ -43,10 +43,12 @@ import java.util.function.Supplier;
 import java.util.logging.Level;
 
 import com.oracle.truffle.api.CompilerDirectives;
+import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.TruffleLogger;
 import com.oracle.truffle.api.interop.ArityException;
 import com.oracle.truffle.api.interop.InteropLibrary;
+import com.oracle.truffle.api.interop.InvalidBufferOffsetException;
 import com.oracle.truffle.api.interop.TruffleObject;
 import com.oracle.truffle.api.interop.UnknownIdentifierException;
 import com.oracle.truffle.api.interop.UnsupportedMessageException;
@@ -191,7 +193,7 @@ public final class JniEnv extends NativeEnv implements ContextAccess {
 
     public Callback jniMethodWrapper(JniSubstitutor.Factory factory) {
         return new Callback(factory.getParameterCount() + 1, new Callback.Function() {
-            @CompilerDirectives.CompilationFinal private JniSubstitutor subst = null;
+            @CompilationFinal private JniSubstitutor subst = null;
 
             @Override
             public Object call(Object... args) {
@@ -348,9 +350,7 @@ public final class JniEnv extends NativeEnv implements ContextAccess {
                         throw EspressoError.unimplemented("non null native pointer in JniEnv");
                     }
                 }
-            } catch (UnsupportedTypeException | ArityException | UnsupportedMessageException e) {
-                throw EspressoError.shouldNotReachHere(e);
-            } catch (ClassCastException e) {
+            } catch (UnsupportedTypeException | ArityException | UnsupportedMessageException | ClassCastException e) {
                 throw EspressoError.shouldNotReachHere(e);
             }
         }
@@ -450,6 +450,7 @@ public final class JniEnv extends NativeEnv implements ContextAccess {
         }
     }
 
+    @TruffleBoundary
     public JNIHandles getHandles() {
         return handles;
     }

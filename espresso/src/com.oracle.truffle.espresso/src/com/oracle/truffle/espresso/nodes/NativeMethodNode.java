@@ -32,7 +32,6 @@ import com.oracle.truffle.api.interop.TruffleObject;
 import com.oracle.truffle.api.interop.UnsupportedMessageException;
 import com.oracle.truffle.api.interop.UnsupportedTypeException;
 import com.oracle.truffle.api.nodes.ExplodeLoop;
-import com.oracle.truffle.api.profiles.BranchProfile;
 import com.oracle.truffle.espresso.descriptors.Signatures;
 import com.oracle.truffle.espresso.descriptors.Symbol;
 import com.oracle.truffle.espresso.descriptors.Symbol.Type;
@@ -40,7 +39,6 @@ import com.oracle.truffle.espresso.descriptors.Types;
 import com.oracle.truffle.espresso.impl.Method.MethodVersion;
 import com.oracle.truffle.espresso.jni.JniEnv;
 import com.oracle.truffle.espresso.meta.EspressoError;
-import com.oracle.truffle.espresso.meta.JavaKind;
 import com.oracle.truffle.espresso.meta.Meta;
 import com.oracle.truffle.espresso.runtime.StaticObject;
 import com.oracle.truffle.object.DebugCounter;
@@ -62,6 +60,7 @@ public final class NativeMethodNode extends EspressoMethodNode {
         this.executeNative = InteropLibrary.getFactory().create(boundNative);
     }
 
+    @TruffleBoundary
     private static Object toObjectHandle(JniEnv env, Object arg) {
         assert arg instanceof StaticObject;
         return (long) env.getHandles().createLocal((StaticObject) arg);
@@ -71,27 +70,27 @@ public final class NativeMethodNode extends EspressoMethodNode {
     private Object[] preprocessArgs(JniEnv env, Object[] args) {
         Symbol<Type>[] parsedSignature = getMethod().getParsedSignature();
         int paramCount = Signatures.parameterCount(parsedSignature, false);
-        Object[] unpacked = new Object[2 /* JNIEnv* + class or receiver */ + paramCount];
+        Object[] nativeArgs = new Object[2 /* JNIEnv* + class or receiver */ + paramCount];
 
         assert !InteropLibrary.getUncached().isNull(env.getNativePointer());
-        unpacked[0] = env.getNativePointer(); // JNIEnv*
+        nativeArgs[0] = env.getNativePointer(); // JNIEnv*
 
         if (getMethod().isStatic()) {
-            unpacked[1] = toObjectHandle(env, getMethod().getDeclaringKlass().mirror()); // declaring class
+            nativeArgs[1] = toObjectHandle(env, getMethod().getDeclaringKlass().mirror()); // class
         } else {
-            unpacked[1] = toObjectHandle(env, args[0]); // receiver
+            nativeArgs[1] = toObjectHandle(env, args[0]); // receiver
         }
 
         int skipReceiver = getMethod().isStatic() ? 0 : 1;
         for (int i = 0; i < paramCount; ++i) {
             Symbol<Type> paramType = Signatures.parameterType(parsedSignature, i);
             if (Types.isReference(paramType)) {
-                unpacked[i + 2] = toObjectHandle(env, args[i + skipReceiver]);
+                nativeArgs[i + 2] = toObjectHandle(env, args[i + skipReceiver]);
             } else {
-                unpacked[i + 2] = args[i + skipReceiver];
+                nativeArgs[i + 2] = args[i + skipReceiver];
             }
         }
-        return unpacked;
+        return nativeArgs;
     }
 
     @Override
@@ -105,8 +104,8 @@ public final class NativeMethodNode extends EspressoMethodNode {
         int nativeFrame = env.getHandles().pushFrame();
         NATIVE_METHOD_CALLS.inc();
         try {
-            Object[] unpackedArgs = preprocessArgs(env, frame.getArguments());
-            Object result = executeNative.execute(boundNative, unpackedArgs);
+            Object[] nativeArgs = preprocessArgs(env, frame.getArguments());
+            Object result = executeNative.execute(boundNative, nativeArgs);
             return processResult(env, result);
         } catch (UnsupportedTypeException | ArityException | UnsupportedMessageException e) {
             CompilerDirectives.transferToInterpreter();
