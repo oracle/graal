@@ -27,7 +27,7 @@ package org.graalvm.compiler.truffle.runtime.collection;
 import java.util.ArrayList;
 import java.util.Arrays;
 
-public class BTreeQueue<E extends Comparable<E>> implements Pool<E> {
+public class BTreeQueue<E> implements Pool<E> {
     private static final Object FAILURE_DUPLICATE = new Object();
     private static final Object SUCCESS = new Object();
     private static final Object MAX_ELEMENT = new Object() {
@@ -38,7 +38,7 @@ public class BTreeQueue<E extends Comparable<E>> implements Pool<E> {
     };
     private static final int BRANCHING_FACTOR = 16;
 
-    private static abstract class Node<E extends Comparable<E>> {
+    private static abstract class Node<E> {
         Object pivot;
         int count;
         final Object[] children;
@@ -54,7 +54,7 @@ public class BTreeQueue<E extends Comparable<E>> implements Pool<E> {
         }
     }
 
-    private static final class Leaf<E extends Comparable<E>> extends Node<E> {
+    private static final class Leaf<E> extends Node<E> {
         public Leaf(Object pivot) {
             super(pivot);
         }
@@ -65,7 +65,7 @@ public class BTreeQueue<E extends Comparable<E>> implements Pool<E> {
         }
     }
 
-    private static final class Inner<E extends Comparable<E>> extends Node<E> {
+    private static final class Inner<E> extends Node<E> {
         int childCount;
 
         public Inner(Object pivot) {

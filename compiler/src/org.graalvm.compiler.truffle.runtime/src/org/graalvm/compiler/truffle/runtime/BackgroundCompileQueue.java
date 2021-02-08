@@ -43,6 +43,7 @@ import java.util.function.Consumer;
 
 import org.graalvm.compiler.truffle.options.PolyglotCompilerOptions;
 import org.graalvm.compiler.truffle.runtime.collection.ArrayQueue;
+import org.graalvm.compiler.truffle.runtime.collection.BTreeQueue;
 import org.graalvm.compiler.truffle.runtime.collection.CustomBlockingQueue;
 
 /**
@@ -133,7 +134,7 @@ public class BackgroundCompileQueue {
             long keepAliveTime = compilerIdleDelay >= 0 ? compilerIdleDelay : 0;
 
             if (callTarget.getOptionValue(PolyglotCompilerOptions.CustomQueue)) {
-                this.compilationQueue = new CustomBlockingQueue<>(new ArrayQueue<>());
+                this.compilationQueue = new CustomBlockingQueue<>(new BTreeQueue<>());
             } else {
                 this.compilationQueue = new IdlingPriorityBlockingQueue<>();
             }
