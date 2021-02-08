@@ -39,6 +39,7 @@ import java.util.logging.Level;
 import java.util.stream.Collectors;
 
 import com.oracle.truffle.espresso._native.NFIIsolatedNativeAccess;
+import com.oracle.truffle.espresso._native.NFINativeAccess;
 import com.oracle.truffle.espresso._native.NativeAccess;
 import org.graalvm.polyglot.Engine;
 
@@ -399,7 +400,10 @@ public final class EspressoContext {
             // Spawn JNI first, then the VM.
             try (DebugCloseable vmInit = VM_INIT.scope(timers)) {
                 // TODO(peterssen): Use ServiceLoader.
-                this.nativeAccess = new NFIIsolatedNativeAccess(this);
+                boolean dlmopen = getEnv().getOptions().get(EspressoOptions.UseTruffleNFIIsolatedNamespace);
+                this.nativeAccess = dlmopen
+                        ? new NFIIsolatedNativeAccess(this)
+                        : new NFINativeAccess(this);
                 this.vm = VM.create(getJNI()); // Mokapot is loaded
                 vm.attachThread(Thread.currentThread());
             }
