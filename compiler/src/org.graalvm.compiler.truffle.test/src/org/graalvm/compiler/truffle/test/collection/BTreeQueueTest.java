@@ -270,4 +270,32 @@ public class BTreeQueueTest {
             Assert.assertEquals(-1, tree.indexOf(i * 2 + 1));
         }
     }
+
+    @Test
+    public void removeEmpty() {
+        final BTreeQueue<Integer> tree = new BTreeQueue<>();
+        Assert.assertEquals(0, tree.size());
+        Assert.assertEquals(null, tree.poll());
+        tree.add(11);
+        Assert.assertEquals(1, tree.size());
+        Assert.assertEquals((Integer) 11, tree.poll());
+        Assert.assertEquals(null, tree.poll());
+        Assert.assertEquals(null, tree.poll());
+    }
+
+    @Test
+    public void removeManyEmpty() {
+        final BTreeQueue<Integer> tree = new BTreeQueue<>();
+        for (int count = 1; count < 16000; count *= 2) {
+            for (int i = 0; i < count; i++) {
+                tree.add(i);
+            }
+            for (int i = 0; i < count; i++) {
+                Assert.assertEquals((Integer) i, tree.poll());
+            }
+            for (int i = 0; i < 5; i++) {
+                Assert.assertEquals(null, tree.poll());
+            }
+        }
+    }
 }

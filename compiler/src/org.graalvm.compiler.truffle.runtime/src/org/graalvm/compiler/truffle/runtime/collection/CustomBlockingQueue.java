@@ -174,8 +174,9 @@ public class CustomBlockingQueue<E> implements BlockingQueue<E> {
         lock.lockInterruptibly();
         E result;
         try {
-            while ((result = lockedPoll()) == null)
+            while ((result = lockedPoll()) == null) {
                 notEmpty.await();
+            }
         } finally {
             lock.unlock();
         }
