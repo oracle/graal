@@ -8,7 +8,8 @@ The project website at [https://www.graalvm.org](https://www.graalvm.org) descri
 
 ## Repository Structure
 
-The GraalVM main source repository includes the following components:
+The GraalVM main source repository includes the components listed below. The documentation for each component includes
+developer instructions for the component.
 
 * [GraalVM SDK](sdk/README.md) contains long term supported APIs of GraalVM.
 
