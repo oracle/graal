@@ -117,11 +117,14 @@ import com.oracle.truffle.regex.tregex.parser.ast.visitors.NFATraversalRegexASTV
  * <li>conditional backreferences (?(group)then|else): There is no counterpart to this in ECMAScript
  * regular expressions.</li>
  * </ul>
+ *
  * <p>
  * However, there are subtle differences in how some fundamental constructs behave in ECMAScript
  * regular expressions and Ruby regular expressions. This concerns core concepts like loops and
  * capture groups and their interactions. These issues cannot be handled by transpiling alone and
  * they require extra care on the side of TRegex. The issues and the solutions are listed below.
+ * </p>
+ *
  * <ul>
  * <li>backreferences to unmatched capture groups should fail: In ECMAScript, when a backreference
  * is made to a capture group which hasn't been matched, such a backreference is ignored and
@@ -129,7 +132,7 @@ import com.oracle.truffle.regex.tregex.parser.ast.visitors.NFATraversalRegexASTV
  * will stop and backtrack.
  * 
  * <pre>
- * Node (ECMAScript):
+ * Node.js (ECMAScript):
  * > /(?:(a)|(b))\1/.exec("b")
  * [ 'b', undefined, 'b', index: 0, input: 'b', groups: undefined ]
  *
@@ -143,6 +146,7 @@ import com.oracle.truffle.regex.tregex.parser.ast.visitors.NFATraversalRegexASTV
  * capture groups are resolved. Also, in {@link RegexParser}, an optimization that drops forward
  * references and nested references from ECMAScript regular expressions is turned off for Ruby
  * regular expressions.</li>
+ *
  * <li>re-entering a loop should not reset enclosed capture groups: In ECMAScript, when a group is
  * re-entered while looping, all of the capture groups contained within the looping group are reset.
  * On the other hand, in Ruby, their contents are preserved from one iteration of the loop to the
@@ -150,7 +154,7 @@ import com.oracle.truffle.regex.tregex.parser.ast.visitors.NFATraversalRegexASTV
  * group, while Ruby keeps it.
  * 
  * <pre>
- * Node (ECMAScript):
+ * Node.js (ECMAScript):
  * > /((a)|(b))+/.exec("ab")
  * [ 'ab', 'b', undefined, 'b', index: 0, input: 'ab', groups: undefined ]
  *
@@ -162,19 +166,20 @@ import com.oracle.truffle.regex.tregex.parser.ast.visitors.NFATraversalRegexASTV
  * This is solved in {@link NFATraversalRegexASTVisitor}. The method {@code getGroupBoundaries} is
  * modified so that the instructions for clearing enclosed capture groups are omitted from generated
  * NFA transitions when processing Ruby regular expressions.</li>
+ *
  * <li>loops should be repeated as long as the state of capture groups evolves: In ECMAScript, when
  * a loop matches the minimum required number of iterations, any further iterations are only matched
  * provided they consume some characters from the input. This is a measure intended to stop infinite
  * loops once they no longer consume any input. Ruby has a similar guard, but it admits extra
  * iterations if they either consume characters or change the state of capture groups. Thus it is
- * possible to have extra iterations that don't consume any characters but they store empty strings
+ * possible to have extra iterations that don't consume any characters but that store empty strings
  * as matches of capture groups. In the example below, ECMAScript executes the outer {@code ?} loop
  * zero times, since executing it once would consume no characters. As a result, the contents of
  * capture group 1 are null. On the other hand, Ruby executes the loop once, because the execution
  * modifies the contents of capture group 1 so that it contains the empty string.
  * 
  * <pre>
- * Node (ECMAScript):
+ * Node.js (ECMAScript):
  * > /(a*)? /.exec("")
  * [ '', undefined, index: 0, input: '', groups: undefined ]
  *
@@ -187,9 +192,33 @@ import com.oracle.truffle.regex.tregex.parser.ast.visitors.NFATraversalRegexASTV
  * expressions. In {@link NFATraversalRegexASTVisitor}, we let NFA transitions pass through one
  * empty iteration of a loop. In {@link RegexParser}, we remove emptiness guards from the first
  * optional iteration of unrolled loops. Finally, we also disable an optimization that drops
- * zero-width groups and lookaround assertions with optional quantifiers.</li>
+ * zero-width groups and lookaround assertions with optional quantifiers. TODO: Update this, since
+ * this solution was not sufficient.</li>
+ *
+ * <li>failing the empty check should lead to matching the sequel of the quantified expression
+ * instead of backtracking: In ECMAScript, when a loop fails the empty check (an iteration matches
+ * only the empty string), the engine terminates the loop by rejecting this branch and backtracking
+ * to another alternative (eventually backtracking to the point where it chooses not to re-enter the
+ * loop and consider it finished). On the other hand, in Ruby, when a loop fails the empty check (an
+ * iteration matches only the empty string and it does not modify the state of the capture groups),
+ * the engine continues with the current branch by proceeding to the continuation of the loop. Most
+ * notably, it doesn't try to backtrack and alter decisions made inside the loop until some future
+ * failure forces it to. This can be illustrated on the following example, where ECMAScript will
+ * backtrack into the loop and choose the second alternative, whereas Ruby will proceed with the
+ * empty match.
+ *
+ * <pre>
+ * Node.js (ECMAScript)
+ * > /(?:|a)* /.exec('a')
+ * [ 'a', index: 0, input: 'a', groups: undefined ]
+ *
+ * MRI (Ruby):
+ * irb(main):001:0> /(?:|a)* /.match('a')
+ * => #&lt;MatchData ""&gt;
+ * </pre>
+ *
+ * TODO: Write up how we implement this.</li>
  * </ul>
- * </p>
  */
 public final class RubyFlavor implements RegexFlavor {
 
