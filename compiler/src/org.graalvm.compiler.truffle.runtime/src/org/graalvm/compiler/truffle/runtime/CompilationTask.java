@@ -149,8 +149,7 @@ public final class CompilationTask implements TruffleCompilationTask, Callable<V
 
     @Override
     public String toString() {
-// return "CompilationTask[" + future + "]";
-        return "CT[" + priority.tier + " " + priority.value + " " + id + "]";
+        return "CompilationTask[" + future + "]";
     }
 
     /**
