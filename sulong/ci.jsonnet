@@ -7,7 +7,9 @@ local linux_amd64 = common["linux-amd64"],
 local linux_aarch64 = common["linux-aarch64"],
 local darwin_amd64 = common["darwin-amd64"],
 
-sulong_weekly_notifications:: {},
+sulong_weekly_notifications:: {
+    notify_groups:: ["sulong"],
+},
 
 sulong_common:: common.oraclejdk8 + {
     environment+: {
