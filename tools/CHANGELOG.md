@@ -2,6 +2,10 @@
 
 This changelog summarizes major changes between Truffle Tools versions.
 
+## Version 21.1.0
+
+* Use `--heap.dump=/path/to/file/to/generate.hprof` to enable [Heap Dumping via Insight](docs/Insight-Manual.md#Heap-Dumping)
+
 ## Version 21.0.0
 
 * `--insight` option is no longer considered experimental

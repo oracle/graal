@@ -786,6 +786,51 @@ Accessing whole stack is flexible, but unlike [access to locals in the current
 execution frame](Insight-Manual.md#modifying-local-variables), it is not fast
 operation. Use rarely, if you want your program to continue running at full speed!
 
+### Heap Dumping
+
+[Insight](Insight.md) can be used to snapshot a region of your program heap during
+the execution. Use `--heap.dump=/path/to/output.hprof` option together with
+`--insight` one and the Insight script is going to have access to `heap` object
+with `record` member. Place your hook whenever needed and at the right moment
+dump the heap. 
+
+```js
+insight.on('return', (ctx, frame) => {
+    heap.record([
+        {
+            stack : [
+                {
+                    at : ctx, // location of dump sieve.js:73
+                    frame : {
+                        primes : frame.primes // capture primes object
+                    }
+                }
+                // there can be more stack elements than a single one
+            ]
+        }
+        // there can be multiple records like this
+    ], 1000); // follow object references up to thousand
+    throw 'Heap dump written!';
+}, {
+    roots: true,
+    rootNameFilter: 'measure'
+});
+```
+
+if you get the [sieve.js](../../vm/benchmarks/agentscript/sieve.js) file and
+launch it as:
+
+```bash
+$ graalvm/bin/js --insight=dump.js --heap.dump=dump.hprof --file sieve.js
+```
+
+![Heap Stack](Insight-HeapStack.png)
+
+A `dump.hprof` file is created at the end of `measure` function with can be 
+inspected by regular tools like VisualVM or NetBeans:
+
+![Heap Inspect](Insight-HeapInspect.png)
+
 <!--
 
 ### TODO:
