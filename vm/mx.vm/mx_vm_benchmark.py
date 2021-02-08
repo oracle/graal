@@ -110,7 +110,6 @@ class NativeImageVM(GraalVm):
             self.extra_agent_run_args = []
             self.extra_profile_run_args = []
             self.extra_agent_profile_run_args = []
-            self.extra_optimization_image_args = []
             self.benchmark_name = None
             self.benchmark_suite_name = None
             self.benchmark_output_dir = None

@@ -60,16 +60,16 @@ public class CompletionExecutor {
 
     private final AtomicReference<State> state;
     private final LongAdder postedOperations;
-    public final LongAdder completedOperations;
+    private final LongAdder completedOperations;
     private final List<DebugContextRunnable> postedBeforeStart;
-    public volatile CopyOnWriteArrayList<Throwable> exceptions = new CopyOnWriteArrayList<>();
+    private volatile CopyOnWriteArrayList<Throwable> exceptions = new CopyOnWriteArrayList<>();
 
     public ExecutorService executorService;
-    public final Runnable heartbeatCallback;
+    private final Runnable heartbeatCallback;
 
-    public BigBang bb;
-    public Timing timing;
-    public Object vmConfig;
+    private BigBang bb;
+    private Timing timing;
+    private Object vmConfig;
 
     public interface Timing {
         long getPrintIntervalNanos();

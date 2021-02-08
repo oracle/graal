@@ -520,12 +520,12 @@ _SCALA_DACAPO_EXTRA_VM_ARGS = {
 
 _scala_daCapo_exclude_lib = {
     'scalariform' : ['scala-library-2.8.0.jar'],
-    'scalac' :      ['scala-library-2.8.0.jar'],
     'scalap'      : ['scala-library-2.8.0.jar'],
     'scaladoc'    : ['scala-library-2.8.0.jar'],
     'scalatest'   : ['scala-library-2.8.0.jar'],
     'scalaxb'     : ['scala-library-2.8.0.jar', 'crimson-1.1.3.jar', 'xercesImpl.jar', 'xerces_2_5_0.jar', 'xalan-2.6.0.jar', 'xalan.jar'],
     'tmt'         : ['scala-library-2.8.0.jar'],
+    'scalac'      : ['scala-library-2.8.0.jar'],
 }
 
 _scala_daCapo_additional_lib = {
