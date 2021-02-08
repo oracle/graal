@@ -31,7 +31,6 @@ import java.lang.invoke.MethodHandles;
 
 import com.oracle.svm.core.SubstrateUtil;
 import com.oracle.svm.core.annotate.Alias;
-import com.oracle.svm.core.annotate.RecomputeFieldValue;
 import com.oracle.svm.core.annotate.Substitute;
 import com.oracle.svm.core.annotate.TargetClass;
 import com.oracle.svm.core.annotate.TargetElement;
@@ -39,7 +38,6 @@ import com.oracle.svm.core.hub.DynamicHub;
 import com.oracle.svm.core.jdk.JDK11_0_10OrEarlier;
 import com.oracle.svm.core.jdk.JDK11_0_11OrLater;
 import com.oracle.svm.core.jdk.JDK15OrLater;
-import com.oracle.svm.core.jdk.JDK16OrLater;
 import com.oracle.svm.core.jdk.Target_java_lang_Module;
 
 @TargetClass(value = MethodHandles.class, innerClass = "Lookup", onlyWith = MethodHandlesSupported.class)
@@ -105,8 +103,4 @@ final class Target_java_lang_invoke_MethodHandles_Lookup {
     @TargetElement(onlyWith = JDK15OrLater.class)
     void checkSecurityManager(Class<?> refc) {
     }
-
-    @Alias @TargetElement(onlyWith = JDK16OrLater.class)//
-    @RecomputeFieldValue(kind = RecomputeFieldValue.Kind.FromAlias, isFinal = true)//
-    public static int ORIGINAL = MethodHandles.Lookup.PACKAGE << 3;
 }
