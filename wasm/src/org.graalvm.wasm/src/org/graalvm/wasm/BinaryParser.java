@@ -240,7 +240,73 @@ public class BinaryParser extends BinaryStreamParser {
         Assert.assertUnsignedIntLessOrEqual(offset, sectionEndOffset, Failure.UNEXPECTED_END);
         Assert.assertUnsignedIntLessOrEqual(sectionEndOffset, data.length, Failure.UNEXPECTED_END);
         module.allocateCustomSection(name, offset, sectionEndOffset - offset);
-        offset = sectionEndOffset;
+        if ("name".equals(name)) {
+            readNameSection();
+        } else {
+            offset = sectionEndOffset;
+        }
+    }
+
+    /**
+     * @see <a href=
+     *      "https://webassembly.github.io/spec/core/appendix/custom.html#binary-namesubsection"><code>namedata</code>
+     *      binary specification</a>
+     */
+    private void readNameSection() {
+        if (!isEOF() && peek1() == 0) {
+            readModuleName();
+        }
+        if (!isEOF() && peek1() == 1) {
+            readFunctionNames();
+        }
+        if (!isEOF() && peek1() == 2) {
+            readLocalNames();
+        }
+    }
+
+    /**
+     * @see <a href=
+     *      "https://webassembly.github.io/spec/core/appendix/custom.html#binary-modulenamesec"><code>modulenamesubsec</code>
+     *      binary specification</a>
+     */
+    private void readModuleName() {
+        final int subsectionId = read1();
+        assert subsectionId == 2;
+        final int size = readLength();
+        // We don't currently use debug module name.
+        offset += size;
+    }
+
+    /**
+     * @see <a href=
+     *      "https://webassembly.github.io/spec/core/appendix/custom.html#binary-funcnamesec"><code>funcnamesubsec</code>
+     *      binary specification</a>
+     */
+    private void readFunctionNames() {
+        final int subsectionId = read1();
+        assert subsectionId == 1;
+        final int size = readLength();
+        final int startOffset = offset;
+        final int length = readLength();
+        for (int i = 0; i < length; ++i) {
+            final int functionIndex = readFunctionIndex();
+            final String functionName = readName();
+            module.function(functionIndex).setDebugName(functionName);
+        }
+        assertIntEqual(offset - startOffset, size, Failure.SECTION_SIZE_MISMATCH);
+    }
+
+    /**
+     * @see <a href=
+     *      "https://webassembly.github.io/spec/core/appendix/custom.html#local-names"><code>localnamesubsec</code>
+     *      binary specification</a>
+     */
+    private void readLocalNames() {
+        final int subsectionId = read1();
+        assert subsectionId == 2;
+        final int size = readLength();
+        // We don't currently use debug local names.
+        offset += size;
     }
 
     private void readTypeSection() {
