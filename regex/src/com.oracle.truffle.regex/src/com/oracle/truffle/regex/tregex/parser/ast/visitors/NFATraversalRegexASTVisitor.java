@@ -40,9 +40,7 @@
  */
 package com.oracle.truffle.regex.tregex.parser.ast.visitors;
 
-import java.util.ArrayList;
 import java.util.Arrays;
-import java.util.List;
 import java.util.Set;
 
 import org.graalvm.collections.EconomicMap;
@@ -143,8 +141,7 @@ public abstract class NFATraversalRegexASTVisitor {
      * loop, but still disallow any further iterations to prevent infinite loops. The value stored
      * in this map tells us how many times we have entered the current search.
      */
-    private final EconomicMap<RegexASTNode, List<GroupBoundaries>> insideLoops;
-    private static final List<GroupBoundaries> EMPTY_LIST = new ArrayList<>();
+    private final EconomicMap<RegexASTNode, Integer> insideLoops;
     /**
      * This set is needed to make sure that a quantified term cannot match the empty string, as is
      * specified in step 2a of RepeatMatcher from ECMAScript draft 2018, chapter 21.2.2.5.1.
@@ -323,20 +320,24 @@ public abstract class NFATraversalRegexASTVisitor {
                                 } else {
                                     quantifierGuards.add(QuantifierGuard.createClear(quantifier));
                                 }
-                            } else {
-                                assert pathIsGroupExit(element) || pathIsGroupRubyEscape(element);
+                            } else if (pathIsGroupExit(element)) {
                                 quantifierGuardsLoop.set(quantifier.getIndex());
+                            } else {
+                                assert pathIsGroupRubyEscape(element);
+                                quantifierGuardsExited.set(quantifier.getIndex());
                             }
                         }
                         if (quantifier.hasZeroWidthIndex()) {
                             if (pathIsGroupEnter(element)) {
                                 quantifierGuards.add(QuantifierGuard.createEnterZeroWidth(quantifier));
-                            } else if (pathIsGroupExit(element) && !root.isCharacterClass()) {
+                            } else if (pathIsGroupExit(element)) {
                                 quantifierGuards.add(QuantifierGuard.createExitZeroWidth(quantifier));
+                            } else if (pathIsGroupRubyEscape(element)) {
+                                quantifierGuards.add(QuantifierGuard.createEscapeZeroWidth(quantifier));
                             }
                         }
                     }
-                    if (group.isCapturing()) {
+                    if (ast.getOptions().getFlavor() == RubyFlavor.INSTANCE && group.isCapturing()) {
                         if (pathIsGroupEnter(element)) {
                             quantifierGuards.add(QuantifierGuard.createUpdateCG(group.getBoundaryIndexStart()));
                         } else if (pathIsGroupPassThrough(element)) {
@@ -402,7 +403,7 @@ public abstract class NFATraversalRegexASTVisitor {
         // In Ruby, we admit 1, while in other dialects, we admit 0. This extra iteration
         // will not match any characters, but it might store an empty string in a capture group.
         int extraEmptyLoopIterations = ast.getOptions().getFlavor() == RubyFlavor.INSTANCE ? 1 : 0;
-        if (cur.isDead() || insideLoops.get(cur, EMPTY_LIST).size() > extraEmptyLoopIterations) {
+        if (cur.isDead() || insideLoops.get(cur, 0) > extraEmptyLoopIterations) {
             return retreat();
         }
         if (cur.isSequence()) {
@@ -490,33 +491,16 @@ public abstract class NFATraversalRegexASTVisitor {
         return !curPath.isEmpty() && pathIsGroupExit(curPath.peek()) && pathGetNode(curPath.peek()) == group;
     }
 
-    private boolean isGroupEnterOnPath(Group group) {
-        for (int i = 0; i < curPath.length(); i++) {
-            if (pathIsGroupEnter(curPath.get(i)) && pathGetNode(curPath.get(i)) == group) {
-                return true;
-            }
-        }
-        return false;
-    }
-
     private void registerInsideLoop(Group group) {
-        List<GroupBoundaries> capturedGroups = insideLoops.get(group);
-        if (capturedGroups == null) {
-            capturedGroups = new ArrayList<>();
-            insideLoops.put(group, capturedGroups);
-        }
-        capturedGroups.add(getGroupBoundaries());
+        insideLoops.put(group, insideLoops.get(group, 0) + 1);
     }
 
     private void unregisterInsideLoop(Group group) {
-        if (insideLoops.containsKey(group)) {
-            List<GroupBoundaries> capturedGroups = insideLoops.get(group);
-            if (capturedGroups.size() > 0) {
-                capturedGroups.remove(capturedGroups.size() - 1);
-            }
-            if (capturedGroups.size() == 0) {
-                insideLoops.removeKey(group);
-            }
+        int depth = insideLoops.get(group, 0);
+        if (depth == 1) {
+            insideLoops.removeKey(group);
+        } else if (depth > 1) {
+            insideLoops.put(group, depth - 1);
         }
     }
 
@@ -548,19 +532,8 @@ public abstract class NFATraversalRegexASTVisitor {
                 final Group parentGroup = parentSeq.getParent();
                 pushGroupExit(parentGroup);
                 if (parentGroup.isLoop()) {
-                    boolean shouldContinuePastLoop = false;
-                    if (ast.getOptions().getFlavor() == RubyFlavor.INSTANCE && isGroupEnterOnPath(parentGroup)) {
-                        List<GroupBoundaries> capturedGroups = insideLoops.get(parentGroup);
-                        if (getGroupBoundaries().equals(capturedGroups.get(capturedGroups.size() - 1))) {
-                            shouldContinuePastLoop = true;
-                            long lastElement = curPath.pop();
-                            curPath.add(pathSwitchExitAndRubyEscape(lastElement));
-                        }
-                    }
-                    if (!shouldContinuePastLoop) {
-                        cur = parentGroup;
-                        return true;
-                    }
+                    cur = parentGroup;
+                    return true;
                 }
                 curTerm = parentGroup;
             } else {
@@ -600,7 +573,7 @@ public abstract class NFATraversalRegexASTVisitor {
             RegexASTNode node = pathGetNode(lastVisited);
             if (pathIsGroup(lastVisited)) {
                 Group group = (Group) node;
-                if (!pathIsGroupExit(lastVisited) && !pathIsGroupRubyEscape(lastVisited)) {
+                if (pathIsGroupEnter(lastVisited) || pathIsGroupPassThrough(lastVisited)) {
                     if (pathGroupHasNext(lastVisited)) {
                         cur = pathGroupGetNext(lastVisited);
                         curPath.add(pathToGroupEnter(pathIncGroupAltIndex(lastVisited)));
@@ -609,6 +582,13 @@ public abstract class NFATraversalRegexASTVisitor {
                         assert noEmptyGuardGroupEnterOnPath(group);
                         unregisterInsideLoop(group);
                         insideEmptyGuardGroup.remove(group);
+                    }
+                } else if (ast.getOptions().getFlavor() == RubyFlavor.INSTANCE && pathIsGroupExit(lastVisited) && group.hasQuantifier() && group.getQuantifier().hasZeroWidthIndex()) {
+                    curPath.add(pathToGroupRubyEscape(lastVisited));
+                    if (advanceTerm(group)) {
+                        return true;
+                    } else {
+                        curPath.pop();
                     }
                 }
             } else {
@@ -692,7 +672,6 @@ public abstract class NFATraversalRegexASTVisitor {
     private static final long PATH_GROUP_ACTION_PASS_THROUGH = 1L << PATH_GROUP_ACTION_OFFSET + 2;
     private static final long PATH_GROUP_ACTION_RUBY_ESCAPE = 1L << PATH_GROUP_ACTION_OFFSET + 3;
     private static final long PATH_GROUP_ACTION_ENTER_OR_PASS_THROUGH = PATH_GROUP_ACTION_ENTER | PATH_GROUP_ACTION_PASS_THROUGH;
-    private static final long PATH_GROUP_ACTION_EXIT_OR_RUBY_ESCAPE = PATH_GROUP_ACTION_EXIT | PATH_GROUP_ACTION_RUBY_ESCAPE;
     private static final long PATH_GROUP_ACTION_ANY = PATH_GROUP_ACTION_ENTER | PATH_GROUP_ACTION_EXIT | PATH_GROUP_ACTION_PASS_THROUGH | PATH_GROUP_ACTION_RUBY_ESCAPE;
 
     /**
@@ -736,6 +715,13 @@ public abstract class NFATraversalRegexASTVisitor {
     }
 
     /**
+     * Convert the given path element to a group-Ruby-escape.
+     */
+    private static long pathToGroupRubyEscape(long pathElement) {
+        return (pathElement & PATH_GROUP_ACTION_CLEAR_MASK) | PATH_GROUP_ACTION_RUBY_ESCAPE;
+    }
+
+    /**
      * Returns {@code true} if the given path element has any group action set. Every path element
      * containing a group must have one group action.
      */
@@ -765,11 +751,6 @@ public abstract class NFATraversalRegexASTVisitor {
     private static long pathSwitchEnterAndPassThrough(long pathElement) {
         assert (pathIsGroupEnter(pathElement) != pathIsGroupPassThrough(pathElement));
         return pathElement ^ PATH_GROUP_ACTION_ENTER_OR_PASS_THROUGH;
-    }
-
-    private static long pathSwitchExitAndRubyEscape(long pathElement) {
-        assert (pathIsGroupExit(pathElement) != pathIsGroupRubyEscape(pathElement));
-        return pathElement ^ PATH_GROUP_ACTION_EXIT_OR_RUBY_ESCAPE;
     }
 
     /**
