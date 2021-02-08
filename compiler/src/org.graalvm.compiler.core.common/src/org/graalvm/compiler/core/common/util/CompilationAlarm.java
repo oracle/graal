@@ -38,7 +38,8 @@ public final class CompilationAlarm implements AutoCloseable {
     public static class Options {
         // @formatter:off
         @Option(help = "Time limit in seconds before a compilation expires (0 to disable the limit). " +
-                       "The compilation alarm will be implicitly disabled if assertions are enabled.", type = OptionType.Debug)
+                       "A non-zero value for this option is doubled if assertions are enabled and quadrupled if DetailedAsserts is true.",
+                type = OptionType.Debug)
         public static final OptionKey<Integer> CompilationExpirationPeriod = new OptionKey<>(300);
         // @formatter:on
     }
@@ -89,16 +90,21 @@ public final class CompilationAlarm implements AutoCloseable {
 
     /**
      * Starts an alarm for setting a time limit on a compilation if there isn't already an active
-     * alarm, if assertions are disabled and
-     * {@link CompilationAlarm.Options#CompilationExpirationPeriod}{@code > 0}. The returned value
-     * can be used in a try-with-resource statement to disable the alarm once the compilation is
-     * finished.
+     * alarm and {@link CompilationAlarm.Options#CompilationExpirationPeriod}{@code > 0}. The
+     * returned value can be used in a try-with-resource statement to disable the alarm once the
+     * compilation is finished.
      *
      * @return a {@link CompilationAlarm} if there was no current alarm for the calling thread
      *         before this call otherwise {@code null}
      */
     public static CompilationAlarm trackCompilationPeriod(OptionValues options) {
-        int period = Assertions.assertionsEnabled() ? 0 : Options.CompilationExpirationPeriod.getValue(options);
+        int period = Options.CompilationExpirationPeriod.getValue(options);
+        if (Assertions.assertionsEnabled()) {
+            period *= 2;
+        }
+        if (Assertions.detailedAssertionsEnabled(options)) {
+            period *= 2;
+        }
         if (period > 0) {
             CompilationAlarm current = currentAlarm.get();
             if (current == null) {
