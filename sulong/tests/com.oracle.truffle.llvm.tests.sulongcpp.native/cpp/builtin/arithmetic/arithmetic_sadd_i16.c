@@ -32,7 +32,7 @@
 bool __builtin_add_overflow(signed short, signed short, signed short *);
 #endif
 
-int main(int argc, const char **argv) {
+int main() {
     signed short res;
 
     if (__builtin_add_overflow((signed short) 0x0, (signed short) 0x0, &res)) {

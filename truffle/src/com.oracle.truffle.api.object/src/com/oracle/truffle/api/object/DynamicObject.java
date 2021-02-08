@@ -155,7 +155,6 @@ public abstract class DynamicObject implements TruffleObject {
      */
     protected DynamicObject(Shape shape) {
         verifyShape(shape, this.getClass());
-        verifyNoInstanceProperties(shape);
         this.shape = shape;
     }
 
@@ -176,12 +175,24 @@ public abstract class DynamicObject implements TruffleObject {
             CompilerDirectives.transferToInterpreterAndInvalidate();
             throw new IllegalAccessError();
         }
-        verifyShape(shape, this.getClass());
+        verifyShapeLegacy(shape, this.getClass());
         this.shape = shape;
     }
 
     private static void verifyShape(Shape shape, Class<? extends DynamicObject> subclass) {
-        Class<? extends DynamicObject> shapeType = shape.getLayout().getType();
+        Class<? extends DynamicObject> shapeType = shape.getLayoutClass();
+        if (!(shapeType == subclass || (shapeType.isAssignableFrom(subclass) && DynamicObject.class.isAssignableFrom(shapeType)))) {
+            CompilerDirectives.transferToInterpreterAndInvalidate();
+            throw illegalShapeType(shapeType, subclass);
+        }
+        if (shape.hasInstanceProperties()) {
+            CompilerDirectives.transferToInterpreterAndInvalidate();
+            throw illegalShapeProperties();
+        }
+    }
+
+    private static void verifyShapeLegacy(Shape shape, Class<? extends DynamicObject> subclass) {
+        Class<? extends DynamicObject> shapeType = shape.getLayoutClass();
         if (!(shapeType == subclass || (shapeType.isAssignableFrom(subclass) && DynamicObject.class.isAssignableFrom(shapeType)))) {
             CompilerDirectives.transferToInterpreterAndInvalidate();
             throw illegalShapeType(shapeType, subclass);
@@ -193,11 +204,9 @@ public abstract class DynamicObject implements TruffleObject {
         throw new IllegalArgumentException(String.format("Incompatible shape: layout class (%s) not assignable from this class (%s)", shapeClass.getName(), thisClass.getName()));
     }
 
-    private static void verifyNoInstanceProperties(Shape shape) {
-        if (shape.hasInstanceProperties()) {
-            CompilerDirectives.transferToInterpreterAndInvalidate();
-            throw new IllegalArgumentException("Shape must not have instance properties");
-        }
+    @TruffleBoundary(transferToInterpreterOnException = false)
+    private static IllegalArgumentException illegalShapeProperties() {
+        throw new IllegalArgumentException("Shape must not have instance properties");
     }
 
     /**
@@ -226,7 +235,7 @@ public abstract class DynamicObject implements TruffleObject {
     }
 
     private boolean assertSetShape(Shape s) {
-        Class<? extends DynamicObject> layoutType = s.getLayout().getType();
+        Class<? extends DynamicObject> layoutType = s.getLayoutClass();
         assert layoutType.isInstance(this) : illegalShapeType(layoutType, this.getClass());
         return true;
     }

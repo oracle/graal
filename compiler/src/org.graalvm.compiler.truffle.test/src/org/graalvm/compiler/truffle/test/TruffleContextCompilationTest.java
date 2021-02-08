@@ -59,7 +59,7 @@ public class TruffleContextCompilationTest extends PartialEvaluationTest {
         OptimizedCallTarget target = assertCompiling(new RootNode(null) {
             @Override
             public Object execute(VirtualFrame frame) {
-                Object prev = context.enter();
+                Object prev = context.enter(this);
                 try {
                     // barrier ensures that the deopt does not move up or downwards
                     barrier();
@@ -69,7 +69,7 @@ public class TruffleContextCompilationTest extends PartialEvaluationTest {
                     }
                     barrier();
                 } finally {
-                    context.leave(prev);
+                    context.leave(this, prev);
                 }
                 return null;
             }

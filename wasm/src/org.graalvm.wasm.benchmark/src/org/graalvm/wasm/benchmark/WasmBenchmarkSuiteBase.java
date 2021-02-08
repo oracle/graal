@@ -87,13 +87,18 @@ public abstract class WasmBenchmarkSuiteBase {
             }
             context = contextBuilder.build();
             benchmarkCase = WasmCase.loadBenchmarkCase(benchmarkResource());
+            System.out.println("...::: Benchmark " + benchmarkCase.name() + " :::...");
             benchmarkCase.getSources().forEach(context::eval);
 
-            Value wasmBindings = context.getBindings("wasm");
-            Value benchmarkSetupOnce = wasmBindings.getMember("benchmarkSetupOnce");
-            benchmarkSetupEach = wasmBindings.getMember("benchmarkSetupEach");
-            benchmarkTeardownEach = wasmBindings.getMember("benchmarkTeardownEach");
-            benchmarkRun = wasmBindings.getMember("benchmarkRun");
+            // TODO: This should call benchmarkCase.name(), and not main (GR-26734),
+            // but we currently have a hack because the WASI module imports
+            // a memory from a module called main.
+            // We should fix that in the future.
+            Value benchmarkModule = context.getBindings("wasm").getMember("main");
+            Value benchmarkSetupOnce = benchmarkModule.getMember("benchmarkSetupOnce");
+            benchmarkSetupEach = benchmarkModule.getMember("benchmarkSetupEach");
+            benchmarkTeardownEach = benchmarkModule.getMember("benchmarkTeardownEach");
+            benchmarkRun = benchmarkModule.getMember("benchmarkRun");
             Assert.assertNotNull(String.format("No benchmarkRun method in %s.", benchmarkCase.name()), benchmarkRun);
 
             if (benchmarkSetupOnce != null) {

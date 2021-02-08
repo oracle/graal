@@ -26,11 +26,13 @@ package com.oracle.svm.truffle.api;
 
 import org.graalvm.compiler.truffle.compiler.substitutions.KnownTruffleTypes;
 
+import com.oracle.graal.pointsto.meta.AnalysisType;
 import com.oracle.svm.core.heap.ReferenceInternals;
 import com.oracle.svm.core.heap.Target_java_lang_ref_Reference;
 
 import jdk.vm.ci.meta.MetaAccessProvider;
 import jdk.vm.ci.meta.ResolvedJavaField;
+import jdk.vm.ci.meta.ResolvedJavaType;
 
 public final class SubstrateKnownTruffleTypes extends KnownTruffleTypes {
 
@@ -38,5 +40,19 @@ public final class SubstrateKnownTruffleTypes extends KnownTruffleTypes {
 
     public SubstrateKnownTruffleTypes(MetaAccessProvider metaAccess) {
         super(metaAccess);
+    }
+
+    @Override
+    protected ResolvedJavaType lookupType(String className) {
+        AnalysisType type = (AnalysisType) super.lookupType(className);
+        type.registerAsReachable();
+        return type;
+    }
+
+    @Override
+    protected ResolvedJavaType lookupType(Class<?> c) {
+        AnalysisType type = (AnalysisType) super.lookupType(c);
+        type.registerAsReachable();
+        return type;
     }
 }

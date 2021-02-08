@@ -101,6 +101,7 @@ import javax.tools.Diagnostic.Kind;
 import com.oracle.truffle.dsl.processor.CompileErrorException;
 import com.oracle.truffle.dsl.processor.Log;
 import com.oracle.truffle.dsl.processor.ProcessorContext;
+import com.oracle.truffle.dsl.processor.TruffleProcessorOptions;
 import com.oracle.truffle.dsl.processor.TruffleTypes;
 import com.oracle.truffle.dsl.processor.expression.DSLExpression;
 import com.oracle.truffle.dsl.processor.expression.DSLExpression.Binary;
@@ -181,7 +182,10 @@ public final class NodeParser extends AbstractParser<NodeData> {
     }
 
     public static NodeParser createExportParser(TypeMirror exportLibraryType, TypeElement exportDeclarationType, boolean substituteThisToParent) {
-        return new NodeParser(ParseMode.EXPORTED_MESSAGE, exportLibraryType, exportDeclarationType, substituteThisToParent);
+        NodeParser parser = new NodeParser(ParseMode.EXPORTED_MESSAGE, exportLibraryType, exportDeclarationType, substituteThisToParent);
+        // the ExportsParse will take care of removing the specializations if the option is set
+        parser.setGenerateSlowPathOnly(false);
+        return parser;
     }
 
     public static NodeParser createDefaultParser() {
@@ -301,12 +305,17 @@ public final class NodeParser extends AbstractParser<NodeData> {
         if (introspectable != null) {
             node.setGenerateIntrospection(true);
         }
-        String generateProperty = ProcessorContext.getInstance().getEnvironment().getOptions().get("truffle.dsl.GenerateSpecializationStatistics");
+        Boolean generateProperty = TruffleProcessorOptions.generateSpecializationStatistics(ProcessorContext.getInstance().getEnvironment());
         if (generateProperty != null) {
-            node.setGenerateStatistics(Boolean.parseBoolean(generateProperty));
+            node.setGenerateStatistics(generateProperty);
         }
         if (findFirstAnnotation(lookupTypes, types.SpecializationStatistics_AlwaysEnabled) != null) {
             node.setGenerateStatistics(true);
+        }
+
+        AnnotationMirror generateAOT = findFirstAnnotation(lookupTypes, types.GenerateAOT);
+        if (generateAOT != null) {
+            node.setGenerateAOT(true);
         }
 
         AnnotationMirror reportPolymorphism = findFirstAnnotation(lookupTypes, types.ReportPolymorphism);
@@ -316,7 +325,7 @@ public final class NodeParser extends AbstractParser<NodeData> {
         }
         node.getFields().addAll(parseFields(lookupTypes, members));
         node.getChildren().addAll(parseChildren(node, lookupTypes, members));
-        node.getChildExecutions().addAll(parseExecutions(node.getFields(), node.getChildren(), members));
+        node.getChildExecutions().addAll(parseExecutions(node, node.getFields(), node.getChildren(), members));
         node.getExecutableTypes().addAll(parseExecutableTypeData(node, members, node.getSignatureSize(), context.getFrameTypes(), false));
 
         initializeExecutableTypes(node);
@@ -337,13 +346,17 @@ public final class NodeParser extends AbstractParser<NodeData> {
         initializeSpecializations(members, node);
         initializeExecutableTypeHierarchy(node);
         initializeReceiverBound(node);
+
         if (node.hasErrors()) {
             return node;  // error sync point
         }
+
         initializeUncachable(node);
+        initializeAOT(node);
 
         if (mode == ParseMode.DEFAULT) {
-            boolean emitWarnings = Boolean.parseBoolean(System.getProperty("truffle.dsl.cacheSharingWarningsEnabled", "false"));
+            boolean emitWarnings = TruffleProcessorOptions.cacheSharingWarningsEnabled(processingEnv) && //
+                            !TruffleProcessorOptions.generateSlowPathOnly(processingEnv);
             node.setSharedCaches(computeSharing(node.getTemplateType(), Arrays.asList(node), emitWarnings));
         } else {
             // sharing is computed by the ExportsParser
@@ -355,7 +368,120 @@ public final class NodeParser extends AbstractParser<NodeData> {
         verifyConstructors(node);
         verifySpecializationThrows(node);
         verifyFrame(node);
+        if (isGenerateSlowPathOnly(node)) {
+            removeFastPathSpecializations(node);
+        }
         return node;
+    }
+
+    private void initializeAOT(NodeData node) {
+        if (!node.isGenerateAOT()) {
+            return;
+        }
+
+        // apply exclude rules
+        for (SpecializationData specialization : node.getSpecializations()) {
+            if (!specialization.isReachable() || specialization.getMethod() == null) {
+                continue;
+            }
+            AnnotationMirror mirror = ElementUtils.findAnnotationMirror(specialization.getMethod(), types.GenerateAOT_Exclude);
+            if (mirror != null) {
+                // explicitly excluded
+                continue;
+            }
+
+            specialization.setPrepareForAOT(true);
+        }
+
+        // exclude uncached specializations
+        for (SpecializationData specialization : node.getSpecializations()) {
+            if (specialization.getUncachedSpecialization() != null) {
+                specialization.getUncachedSpecialization().setPrepareForAOT(false);
+            }
+        }
+
+        // second pass to remove replaced specializations
+        outer: for (SpecializationData specialization : node.getSpecializations()) {
+            if (!specialization.isPrepareForAOT()) {
+                continue;
+            }
+
+            // not reachable during AOT
+            for (SpecializationData otherSpecialization : node.getSpecializations()) {
+                if (otherSpecialization.getReplaces().contains(specialization) && otherSpecialization.isPrepareForAOT()) {
+                    specialization.setPrepareForAOT(false);
+                    continue outer;
+                }
+            }
+        }
+
+        // third pass validate included specializations
+        outer: for (SpecializationData specialization : node.getSpecializations()) {
+            if (!specialization.isPrepareForAOT()) {
+                continue;
+            }
+
+            for (CacheExpression cache : specialization.getCaches()) {
+
+                TypeMirror type = cache.getParameter().getType();
+                if (NodeCodeGenerator.isSpecializedNode(type)) {
+                    List<TypeElement> lookupTypes = collectSuperClasses(new ArrayList<TypeElement>(), ElementUtils.castTypeElement(type));
+                    AnnotationMirror generateAOT = findFirstAnnotation(lookupTypes, types.GenerateAOT);
+                    if (generateAOT == null) {
+                        cache.addError("Failed to generate code for @%s: " + //
+                                        "Referenced node type cannot be initialized for AOT." + //
+                                        "Resolve this problem by either: %n" + //
+                                        " - Exclude this specialization from AOT with @%s.%s if it is acceptable to deoptimize for this specialization in AOT compiled code. %n" + //
+                                        " - Configure the specialization to be replaced with a more generic specialization. %n" + //
+                                        " - Remove the cached parameter value. %n" + //
+                                        " - Add the @%s annotation to node type '%s' or one of its super types.",
+                                        getSimpleName(types.GenerateAOT),
+                                        getSimpleName(types.GenerateAOT), getSimpleName(types.GenerateAOT_Exclude),
+                                        getSimpleName(types.GenerateAOT),
+                                        getSimpleName(type));
+                        continue;
+                    }
+                }
+
+                if (cache.isCachedLibrary() && cache.getCachedLibraryLimit() != null && !cache.getCachedLibraryLimit().equals("")) {
+                    cache.addError("Failed to generate code for @%s: " + //
+                                    "@%s with automatic dispatch cannot be prepared for AOT." + //
+                                    "Resolve this problem by either: %n" + //
+                                    " - Exclude this specialization from AOT with @%s.%s if it is acceptable to deoptimize for this specialization in AOT compiled code. %n" + //
+                                    " - Configure the specialization to be replaced with a more generic specialization. %n" + //
+                                    " - Remove the cached parameter value. %n" + //
+                                    " - Define a cached library initializer expression for manual dispatch.",
+                                    getSimpleName(types.GenerateAOT),
+                                    getSimpleName(types.CachedLibrary),
+                                    getSimpleName(types.GenerateAOT), getSimpleName(types.GenerateAOT_Exclude));
+                    continue;
+                }
+
+                if (specialization.isDynamicParameterBound(cache.getDefaultExpression(), true)) {
+                    /*
+                     * We explicitly support cached language references and lookups thereof in AOT.
+                     * But the generated code introduces a check to ensure that only the language of
+                     * the root node is used.
+                     */
+                    if (specialization.isOnlyLanguageReferencesBound(cache.getDefaultExpression())) {
+                        continue;
+                    }
+
+                    cache.addError("Failed to generate code for @%s: " + //
+                                    "Cached values in specializations included for AOT must not bind dynamic values. " + //
+                                    "Such caches are only allowed to bind static values, values read from the node or values from the current language instance using a language reference. " + //
+                                    "Resolve this problem by either: %n" + //
+                                    " - Exclude this specialization from AOT with @%s.%s if it is acceptable to deoptimize for this specialization in AOT compiled code. %n" + //
+                                    " - Configure the specialization to be replaced with a more generic specialization. %n" + //
+                                    " - Remove the cached parameter value. %n" + //
+                                    " - Avoid binding dynamic parameters in the cache initializer expression.",
+                                    getSimpleName(types.GenerateAOT),
+                                    getSimpleName(types.GenerateAOT), getSimpleName(types.GenerateAOT_Exclude));
+                    continue outer;
+                }
+            }
+        }
+
     }
 
     public static Map<CacheExpression, String> computeSharing(Element templateType, Collection<NodeData> nodes, boolean emitSharingWarnings) {
@@ -723,7 +849,7 @@ public final class NodeParser extends AbstractParser<NodeData> {
                 }
 
                 for (CacheExpression cache : specialization.getCaches()) {
-                    if (cache.isGuardForNull()) {
+                    if (cache.isWeakReferenceGet()) {
                         failed = true;
                         break;
                     }
@@ -1227,7 +1353,7 @@ public final class NodeParser extends AbstractParser<NodeData> {
 
     }
 
-    private List<NodeExecutionData> parseExecutions(List<NodeFieldData> fields, List<NodeChildData> children, List<? extends Element> elements) {
+    private List<NodeExecutionData> parseExecutions(@SuppressWarnings("unused") NodeData node, List<NodeFieldData> fields, List<NodeChildData> children, List<? extends Element> elements) {
         List<ExecutableElement> methods = ElementFilter.methodsIn(elements);
         boolean hasVarArgs = false;
         int maxSignatureSize = 0;
@@ -1591,16 +1717,7 @@ public final class NodeParser extends AbstractParser<NodeData> {
         initializeReachability(node);
         initializeFallbackReachability(node);
         initializeCheckedExceptions(node);
-
-        List<SpecializationData> specializations = node.getSpecializations();
-        for (SpecializationData cur : specializations) {
-            for (SpecializationData contained : cur.getReplaces()) {
-                if (contained != cur) {
-                    contained.getExcludedBy().add(cur);
-                }
-            }
-        }
-
+        initializeExcludeBy(node);
         initializeSpecializationIdsWithMethodNames(node.getSpecializations());
     }
 
@@ -1799,6 +1916,30 @@ public final class NodeParser extends AbstractParser<NodeData> {
             }
             current.setReachable(shadowedBy == null);
         }
+    }
+
+    private static void initializeExcludeBy(NodeData node) {
+        List<SpecializationData> specializations = node.getSpecializations();
+        for (SpecializationData cur : specializations) {
+            for (SpecializationData contained : cur.getReplaces()) {
+                if (contained != cur) {
+                    contained.getExcludedBy().add(cur);
+                }
+            }
+        }
+    }
+
+    public static void removeFastPathSpecializations(NodeData node) {
+        List<SpecializationData> specializations = node.getSpecializations();
+        List<SpecializationData> toRemove = new ArrayList<>();
+        for (SpecializationData cur : specializations) {
+            for (SpecializationData contained : cur.getReplaces()) {
+                if (contained != cur && contained.getUncachedSpecialization() != cur) {
+                    toRemove.add(contained);
+                }
+            }
+        }
+        specializations.removeAll(toRemove);
     }
 
     private static void initializeSpecializationIdsWithMethodNames(List<SpecializationData> specializations) {
@@ -2049,7 +2190,7 @@ public final class NodeParser extends AbstractParser<NodeData> {
                     cache.setDefaultExpression(parsedDefaultExpression);
                     cache.setUncachedExpression(sourceExpression);
                     cache.setAlwaysInitialized(true);
-                    cache.setGuardForNull(true);
+                    cache.setWeakReferenceGet(true);
                 } else {
                     parseCached(cache, specialization, resolver, parameter);
                 }
@@ -2302,12 +2443,19 @@ public final class NodeParser extends AbstractParser<NodeData> {
                 continue;
             }
 
-            LibraryParser parser = new LibraryParser();
-            LibraryData parsedLibrary = parser.parse(type);
+            Map<TypeElement, LibraryData> libraryCache = ProcessorContext.getInstance().getCacheMap(LibraryParser.class);
+            LibraryData parsedLibrary = libraryCache.computeIfAbsent(type, (t) -> new LibraryParser().parse(t));
+
             if (parsedLibrary == null || parsedLibrary.hasErrors()) {
                 cachedLibrary.addError("Library '%s' has errors. Please resolve them first.", getSimpleName(parameterType));
                 continue;
             }
+
+            cachedLibrary.setCachedLibrary(parsedLibrary);
+            if (uncachedLibrary != null) {
+                uncachedLibrary.setCachedLibrary(parsedLibrary);
+            }
+
             String expression = cachedLibrary.getCachedLibraryExpression();
             DSLExpression receiverExpression = parseCachedExpression(resolver, cachedLibrary, parsedLibrary.getSignatureReceiverType(), expression);
             if (receiverExpression == null) {
@@ -2357,7 +2505,7 @@ public final class NodeParser extends AbstractParser<NodeData> {
                 cachedLibrary.setAlwaysInitialized(true);
                 continue;
             } else {
-                seenDynamicParameterBound |= specialization.isDynamicParameterBound(receiverExpression, false);
+                seenDynamicParameterBound |= specialization.isDynamicParameterBound(receiverExpression, true);
                 cachedLibrary.setDefaultExpression(receiverExpression);
 
                 String receiverName = cachedLibrary.getParameter().getVariableElement().getSimpleName().toString();
@@ -2485,19 +2633,9 @@ public final class NodeParser extends AbstractParser<NodeData> {
         } else if (NodeCodeGenerator.isSpecializedNode(parameter.getType())) {
             // if it is a node try to parse with the node parser to find out whether we
             // should may use the generated create and getUncached methods.
-            NodeParser parser = NodeParser.createDefaultParser();
-            parser.nodeOnly = true; // make sure we cannot have cycles
-            TypeElement element = ElementUtils.castTypeElement(parameter.getType());
-            if (!nodeOnly) {
-                NodeData parsedNode = parser.parse(element);
-                if (parsedNode != null) {
-                    List<CodeExecutableElement> executables = NodeFactoryFactory.createFactoryMethods(parsedNode, ElementFilter.constructorsIn(element.getEnclosedElements()));
-                    TypeElement type = ElementUtils.castTypeElement(NodeCodeGenerator.factoryOrNodeType(parsedNode));
-                    for (CodeExecutableElement executableElement : executables) {
-                        executableElement.setEnclosingElement(type);
-                    }
-                    resolver = resolver.copy(executables);
-                }
+            List<CodeExecutableElement> executables = parseNodeFactoryMethods(parameter.getType());
+            if (executables != null) {
+                resolver = resolver.copy(executables);
             }
         }
 
@@ -2547,6 +2685,34 @@ public final class NodeParser extends AbstractParser<NodeData> {
         cache.setAdopt(getAnnotationValue(Boolean.class, cachedAnnotation, "adopt", true));
     }
 
+    private static class FactoryMethodCacheKey {
+    }
+
+    private List<CodeExecutableElement> parseNodeFactoryMethods(TypeMirror nodeType) {
+        if (nodeOnly) {
+            return null;
+        }
+        Map<TypeMirror, List<CodeExecutableElement>> cache = ProcessorContext.getInstance().getCacheMap(FactoryMethodCacheKey.class);
+        if (cache.containsKey(nodeType)) {
+            return cache.get(nodeType);
+        }
+
+        NodeParser parser = NodeParser.createDefaultParser();
+        parser.nodeOnly = true; // make sure we cannot have cycles
+        TypeElement element = ElementUtils.castTypeElement(nodeType);
+        NodeData parsedNode = parser.parse(element);
+        List<CodeExecutableElement> executables = null;
+        if (parsedNode != null) {
+            executables = NodeFactoryFactory.createFactoryMethods(parsedNode, ElementFilter.constructorsIn(element.getEnclosedElements()));
+            TypeElement type = ElementUtils.castTypeElement(NodeCodeGenerator.factoryOrNodeType(parsedNode));
+            for (CodeExecutableElement executableElement : executables) {
+                executableElement.setEnclosingElement(type);
+            }
+        }
+        cache.put(nodeType, executables);
+        return executables;
+    }
+
     private DSLExpression resolveCachedExpression(DSLExpressionResolver resolver, CacheExpression cache, TypeMirror targetType, DSLExpression expression, String originalString) {
         DSLExpressionResolver localResolver = targetType == null ? resolver : importStatics(resolver, targetType);
         try {
@@ -2587,35 +2753,39 @@ public final class NodeParser extends AbstractParser<NodeData> {
         List<String> guardDefinitions = getAnnotationValueList(String.class, specialization.getMarkerAnnotation(), "guards");
 
         Set<CacheExpression> handledCaches = new HashSet<>();
-        List<GuardExpression> guards = new ArrayList<>();
-        for (String guardExpression : guardDefinitions) {
-            GuardExpression guard = parseGuard(resolver, specialization, guardExpression);
 
+        List<GuardExpression> existingGuards = new ArrayList<>(specialization.getGuards());
+        for (String guardExpression : guardDefinitions) {
+            existingGuards.add(parseGuard(resolver, specialization, guardExpression));
+        }
+
+        List<GuardExpression> newGuards = new ArrayList<>();
+        for (GuardExpression guard : existingGuards) {
             if (guard.getExpression() != null) {
                 Set<CacheExpression> caches = specialization.getBoundCaches(guard.getExpression(), false);
                 for (CacheExpression cache : caches) {
                     if (handledCaches.contains(cache)) {
                         continue;
                     }
-                    if (cache.isGuardForNull()) {
-                        guards.add(createWeakReferenceGuard(resolver, specialization, cache));
+                    handledCaches.add(cache);
+                    if (cache.isWeakReferenceGet()) {
+                        newGuards.add(createWeakReferenceGuard(resolver, specialization, cache));
                     }
                 }
-                handledCaches.addAll(caches);
             }
 
-            guards.add(guard);
+            newGuards.add(guard);
         }
         for (CacheExpression cache : specialization.getCaches()) {
-            if (cache.isGuardForNull()) {
+            if (cache.isWeakReferenceGet()) {
                 if (handledCaches.contains(cache)) {
                     continue;
                 }
-                guards.add(createWeakReferenceGuard(resolver, specialization, cache));
+                newGuards.add(createWeakReferenceGuard(resolver, specialization, cache));
             }
         }
-
-        specialization.getGuards().addAll(guards);
+        specialization.getGuards().clear();
+        specialization.getGuards().addAll(newGuards);
     }
 
     private GuardExpression createWeakReferenceGuard(DSLExpressionResolver resolver, SpecializationData specialization, CacheExpression cache) {

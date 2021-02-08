@@ -73,12 +73,17 @@ public class CompiledMethodTest extends GraalCompilerTest {
         InstalledCode compiledMethod = getCode(javaMethod, graph, true);
         try {
             Object result = compiledMethod.executeVarargs("1", "2", "3");
-            if (!"1-2-3".equals(result)) {
-                // Deoptimization probably occurred
-                Assert.assertEquals("interpreter", result);
-            }
+            String expected = "1-2-3";
+            checkResult(result, expected);
         } catch (InvalidInstalledCodeException t) {
             Assert.fail("method invalidated");
+        }
+    }
+
+    private static void checkResult(Object result, String expected) {
+        if (!expected.equals(result)) {
+            // Deoptimization probably occurred
+            Assert.assertEquals("interpreter", result);
         }
     }
 
@@ -88,7 +93,7 @@ public class CompiledMethodTest extends GraalCompilerTest {
         InstalledCode compiledMethod = getCode(javaMethod);
         try {
             Object result = compiledMethod.executeVarargs("1", "2", "3");
-            Assert.assertEquals("1 2 3", result);
+            checkResult(result, "1 2 3");
         } catch (InvalidInstalledCodeException t) {
             Assert.fail("method invalidated");
         }
@@ -101,7 +106,7 @@ public class CompiledMethodTest extends GraalCompilerTest {
         try {
             f1 = "0";
             Object result = compiledMethod.executeVarargs(this, "1", "2", "3");
-            Assert.assertEquals("0 1 2 3", result);
+            checkResult(result, "0 1 2 3");
         } catch (InvalidInstalledCodeException t) {
             Assert.fail("method invalidated");
         }

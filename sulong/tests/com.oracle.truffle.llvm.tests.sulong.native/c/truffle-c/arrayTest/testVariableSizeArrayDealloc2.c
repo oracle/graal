@@ -30,7 +30,10 @@
 int func(n) {
     int i;
     for (i = 0; i < 10000; i++) {
+#pragma clang diagnostic push
+#pragma clang diagnostic ignored "-Wunused-variable"
         long arr[n];
+#pragma clang diagnostic pop
     }
     return 0;
 }

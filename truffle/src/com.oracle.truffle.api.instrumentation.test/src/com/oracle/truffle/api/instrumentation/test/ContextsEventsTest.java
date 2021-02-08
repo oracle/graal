@@ -51,46 +51,131 @@ import static org.junit.Assert.fail;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
+import java.util.concurrent.CancellationException;
 
 import org.graalvm.polyglot.Context;
 import org.graalvm.polyglot.Engine;
 import org.graalvm.polyglot.Instrument;
+import org.graalvm.polyglot.PolyglotException;
 import org.graalvm.polyglot.Source;
 import org.junit.Test;
 
+import com.oracle.truffle.api.CallTarget;
+import com.oracle.truffle.api.Truffle;
 import com.oracle.truffle.api.TruffleContext;
+import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.instrumentation.ContextsListener;
 import com.oracle.truffle.api.instrumentation.TruffleInstrument;
 import com.oracle.truffle.api.instrumentation.TruffleInstrument.Registration;
 import com.oracle.truffle.api.nodes.LanguageInfo;
+import com.oracle.truffle.api.nodes.RootNode;
+import com.oracle.truffle.api.test.polyglot.AbstractPolyglotTest;
+import com.oracle.truffle.api.test.polyglot.ProxyLanguage;
 
-public class ContextsEventsTest {
+public class ContextsEventsTest extends AbstractPolyglotTest {
+
+    private static final String CANCELLING_LANGUAGE_CONTEXT_CREATION = "Cancelling language context creation";
+    private static final String CANCELLING_LANGUAGE_CONTEXT_INITIALIZATION = "Cancelling language context initialization";
+
+    public ContextsEventsTest() {
+        enterContext = false;
+    }
 
     @Test
     public void testSingleContext() {
         final List<ContextEvent> events;
-        try (Context context = Context.create()) {
-            Instrument testContexsInstrument = context.getEngine().getInstruments().get("testContexsInstrument");
+        try (Context ctx = Context.create()) {
+            Instrument testContexsInstrument = ctx.getEngine().getInstruments().get("testContexsInstrument");
+            /*
+             * The context listener is attached as a part of the lookup method, so the
+             * onContextCreated event is not fired, because the context is already created and
+             * TestContextsInstrument#includeActiveContexts is false.
+             */
             TestContextsInstrument test = testContexsInstrument.lookup(TestContextsInstrument.class);
             events = test.events;
 
-            context.eval(Source.create(InstrumentationTestLanguage.ID, "STATEMENT()"));
-            assertEquals(2, events.size());
-            assertTrue(events.get(1).languageInitialized);
-            assertEquals(InstrumentationTestLanguage.ID, events.get(0).language.getId());
-            assertNotNull(events.get(0).context);
-            assertTrue(events.get(1).languageInitialized);
+            ctx.eval(Source.create(InstrumentationTestLanguage.ID, "STATEMENT()"));
+            assertEquals(4, events.size());
+            assertEquals(InstrumentationTestLanguage.ID, events.get(1).language.getId());
+            assertLanguageContextEventType(events, ContextEvent.LanguageContextEventType.CREATING, 0);
+            assertLanguageContextEventType(events, ContextEvent.LanguageContextEventType.CREATED, 1);
+            assertNotNull(events.get(1).context);
+            assertLanguageContextEventType(events, ContextEvent.LanguageContextEventType.INITIALIZING, 2);
+            assertLanguageContextEventType(events, ContextEvent.LanguageContextEventType.INITIALIZED, 3);
         }
-        assertEquals(5, events.size());
-        assertTrue(events.get(2).languageFinalized);
-        assertEquals(InstrumentationTestLanguage.ID, events.get(2).language.getId());
-        assertEquals(events.get(0).context, events.get(2).context);
-        assertFalse(events.get(3).created);
-        assertEquals(InstrumentationTestLanguage.ID, events.get(3).language.getId());
-        assertEquals(events.get(0).context, events.get(3).context);
-        assertFalse(events.get(4).created);
-        assertNull(events.get(4).language);
-        assertEquals(events.get(0).context, events.get(4).context);
+        assertEquals(7, events.size());
+        assertLanguageContextEventType(events, ContextEvent.LanguageContextEventType.FINALIZED, 4);
+        assertEquals(InstrumentationTestLanguage.ID, events.get(4).language.getId());
+        assertEquals(events.get(1).context, events.get(4).context);
+        assertLanguageContextEventType(events, ContextEvent.LanguageContextEventType.DISPOSED, 5);
+        assertEquals(InstrumentationTestLanguage.ID, events.get(5).language.getId());
+        assertEquals(events.get(1).context, events.get(5).context);
+        assertContextEventType(events, ContextEvent.ContextEventType.CLOSED, 6);
+        assertNull(events.get(6).language);
+        assertEquals(events.get(1).context, events.get(6).context);
+    }
+
+    private static void assertContextEventType(List<ContextEvent> events, ContextEvent.ContextEventType contextEventType, int i) {
+        assertEquals(contextEventType, events.get(i).contextEventType);
+    }
+
+    private static void assertLanguageContextEventType(List<ContextEvent> events, ContextEvent.LanguageContextEventType languageContextEventType, int i) {
+        assertEquals(languageContextEventType, events.get(i).languageContextEventType);
+    }
+
+    @Test
+    public void testSingleContextFailInitialize() {
+        List<ContextEvent> events = null;
+        try (Context ctx = Context.create()) {
+            Instrument testContexsInstrument = ctx.getEngine().getInstruments().get("testContexsInstrument");
+            /*
+             * The context listener is attached as a part of the lookup method, so the
+             * onContextCreated event is not fired, because the context is already created and
+             * TestContextsInstrument#includeActiveContexts is false.
+             */
+            TestContextsInstrument test = testContexsInstrument.lookup(TestContextsInstrument.class);
+            events = test.events;
+            setupEnv(ctx, new LanguageContextFailureLanguage(false, true));
+            fail();
+        } catch (PolyglotException pe) {
+            assertEquals(CancellationException.class.getName() + ": " + CANCELLING_LANGUAGE_CONTEXT_INITIALIZATION, pe.getMessage());
+        } finally {
+            assertNotNull(events);
+            assertEquals(6, events.size());
+            assertLanguageContextEventType(events, ContextEvent.LanguageContextEventType.CREATING, 0);
+            assertLanguageContextEventType(events, ContextEvent.LanguageContextEventType.CREATED, 1);
+            assertLanguageContextEventType(events, ContextEvent.LanguageContextEventType.INITIALIZING, 2);
+            assertLanguageContextEventType(events, ContextEvent.LanguageContextEventType.INITIALIZEFAILED, 3);
+            assertLanguageContextEventType(events, ContextEvent.LanguageContextEventType.DISPOSED, 4);
+            assertNotNull(events.get(4).language);
+            assertContextEventType(events, ContextEvent.ContextEventType.CLOSED, 5);
+            assertNull(events.get(5).language);
+        }
+    }
+
+    @Test
+    public void testSingleContextFailCreate() {
+        List<ContextEvent> events = null;
+        try (Context ctx = Context.create()) {
+            Instrument testContexsInstrument = ctx.getEngine().getInstruments().get("testContexsInstrument");
+            /*
+             * The context listener is attached as a part of the lookup method, so the
+             * onContextCreated event is not fired, because the context is already created and
+             * TestContextsInstrument#includeActiveContexts is false.
+             */
+            TestContextsInstrument test = testContexsInstrument.lookup(TestContextsInstrument.class);
+            events = test.events;
+            setupEnv(ctx, new LanguageContextFailureLanguage(true, false));
+            fail();
+        } catch (PolyglotException pe) {
+            assertEquals(CancellationException.class.getName() + ": " + CANCELLING_LANGUAGE_CONTEXT_CREATION, pe.getMessage());
+        } finally {
+            assertNotNull(events);
+            assertEquals(3, events.size());
+            assertLanguageContextEventType(events, ContextEvent.LanguageContextEventType.CREATING, 0);
+            assertLanguageContextEventType(events, ContextEvent.LanguageContextEventType.CREATEFAILED, 1);
+            assertContextEventType(events, ContextEvent.ContextEventType.CLOSED, 2);
+        }
     }
 
     @Test
@@ -100,70 +185,80 @@ public class ContextsEventsTest {
         TestContextsInstrument test = testContexsInstrument.lookup(TestContextsInstrument.class);
         final List<ContextEvent> events = test.events;
 
-        try (Context context = Context.newBuilder().engine(engine).build()) {
+        try (Context ctx = Context.newBuilder().engine(engine).build()) {
             assertEquals(1, events.size());
-            assertTrue(events.get(0).created);
+            assertContextEventType(events, ContextEvent.ContextEventType.CREATED, 0);
             assertNotNull(events.get(0).context);
             assertNull(events.get(0).language);
 
-            context.eval(Source.create(InstrumentationTestLanguage.ID, "STATEMENT()"));
-            assertEquals(3, events.size());
-            assertTrue(events.get(1).created);
-            assertNotNull(events.get(1).language);
-            assertEquals(events.get(0).context, events.get(1).context);
-            assertTrue(events.get(2).languageInitialized);
-            assertEquals(InstrumentationTestLanguage.ID, events.get(2).language.getId());
+            ctx.eval(Source.create(InstrumentationTestLanguage.ID, "STATEMENT()"));
+            assertEquals(5, events.size());
+            assertLanguageContextEventType(events, ContextEvent.LanguageContextEventType.CREATING, 1);
+            assertLanguageContextEventType(events, ContextEvent.LanguageContextEventType.CREATED, 2);
+            assertNotNull(events.get(2).language);
             assertEquals(events.get(0).context, events.get(2).context);
+            assertLanguageContextEventType(events, ContextEvent.LanguageContextEventType.INITIALIZING, 3);
+            assertLanguageContextEventType(events, ContextEvent.LanguageContextEventType.INITIALIZED, 4);
+            assertEquals(InstrumentationTestLanguage.ID, events.get(4).language.getId());
+            assertEquals(events.get(0).context, events.get(4).context);
         }
-        assertEquals(6, events.size());
-        assertTrue(events.get(3).languageFinalized);
-        assertFalse(events.get(4).created);
-        assertNotNull(events.get(4).language);
-        assertFalse(events.get(5).created);
-        assertNull(events.get(5).language);
+        assertEquals(8, events.size());
+        assertLanguageContextEventType(events, ContextEvent.LanguageContextEventType.FINALIZED, 5);
+        assertLanguageContextEventType(events, ContextEvent.LanguageContextEventType.DISPOSED, 6);
+        assertNotNull(events.get(6).language);
+        assertContextEventType(events, ContextEvent.ContextEventType.CLOSED, 7);
+        assertNull(events.get(7).language);
     }
 
     @Test
     public void testInnerContext() {
         final List<ContextEvent> events;
-        try (Context context = Context.create()) {
-            Instrument testContexsInstrument = context.getEngine().getInstruments().get("testContexsInstrument");
+        try (Context ctx = Context.create()) {
+            Instrument testContexsInstrument = ctx.getEngine().getInstruments().get("testContexsInstrument");
             TestContextsInstrument test = testContexsInstrument.lookup(TestContextsInstrument.class);
             events = test.events;
 
-            context.eval(Source.create(InstrumentationTestLanguage.ID, "ROOT(STATEMENT(), CONTEXT(STATEMENT()))"));
+            ctx.eval(Source.create(InstrumentationTestLanguage.ID, "ROOT(STATEMENT(), CONTEXT(STATEMENT()))"));
             assertTrue(events.get(0).entered);
-            assertTrue(events.get(0).created);
+            assertLanguageContextEventType(events, ContextEvent.LanguageContextEventType.CREATING, 0);
             assertTrue(events.get(1).entered);
-            assertTrue(events.get(1).languageInitialized);
-            assertTrue(events.get(2).created);
-            assertFalse(events.get(2).entered);
-            assertNotEquals(events.get(0).context, events.get(2).context);
-            assertEquals(events.get(0).context, events.get(2).context.getParent());
-            assertNull(events.get(2).language);
-            assertTrue(events.get(3).created);
+            assertLanguageContextEventType(events, ContextEvent.LanguageContextEventType.CREATED, 1);
+            assertTrue(events.get(2).entered);
+            assertLanguageContextEventType(events, ContextEvent.LanguageContextEventType.INITIALIZING, 2);
             assertTrue(events.get(3).entered);
-            assertEquals(events.get(2).context, events.get(3).context);
-            assertNotNull(events.get(3).language);
-            assertTrue(events.get(4).languageInitialized);
-            assertTrue(events.get(4).entered);
-            assertTrue(events.get(5).languageFinalized);
+            assertLanguageContextEventType(events, ContextEvent.LanguageContextEventType.INITIALIZED, 3);
+
+            assertContextEventType(events, ContextEvent.ContextEventType.CREATED, 4);
+            assertFalse(events.get(4).entered);
+            assertNotEquals(events.get(1).context, events.get(4).context);
+            assertEquals(events.get(1).context, events.get(4).context.getParent());
+            assertNull(events.get(4).language);
+            assertLanguageContextEventType(events, ContextEvent.LanguageContextEventType.CREATING, 5);
             assertTrue(events.get(5).entered);
-            assertFalse(events.get(6).created);
-            assertFalse(events.get(6).entered);
-            assertEquals(InstrumentationTestLanguage.ID, events.get(6).language.getId());
-            assertFalse(events.get(7).created);
-            assertFalse(events.get(7).entered);
-            assertNull(events.get(7).language);
+            assertLanguageContextEventType(events, ContextEvent.LanguageContextEventType.CREATED, 6);
+            assertTrue(events.get(6).entered);
+            assertEquals(events.get(4).context, events.get(6).context);
+            assertNotNull(events.get(6).language);
+            assertLanguageContextEventType(events, ContextEvent.LanguageContextEventType.INITIALIZING, 7);
+            assertLanguageContextEventType(events, ContextEvent.LanguageContextEventType.INITIALIZED, 8);
+            assertTrue(events.get(8).entered);
+            assertLanguageContextEventType(events, ContextEvent.LanguageContextEventType.FINALIZED, 9);
+            assertTrue(events.get(9).entered);
+            assertLanguageContextEventType(events, ContextEvent.LanguageContextEventType.DISPOSED, 10);
+            assertFalse(events.get(10).entered);
+            assertEquals(InstrumentationTestLanguage.ID, events.get(10).language.getId());
+            assertContextEventType(events, ContextEvent.ContextEventType.CLOSED, 11);
+            assertFalse(events.get(11).entered);
+            assertNull(events.get(11).language);
         }
-        assertEquals(11, events.size());
-        assertTrue(events.get(8).languageFinalized);
-        assertEquals(events.get(0).context, events.get(8).context);
-        assertFalse(events.get(9).created);
-        assertEquals(InstrumentationTestLanguage.ID, events.get(9).language.getId());
-        assertFalse(events.get(10).created);
-        assertNull(events.get(10).language);
-        assertEquals(events.get(0).context, events.get(10).context);
+        assertEquals(15, events.size());
+        assertLanguageContextEventType(events, ContextEvent.LanguageContextEventType.FINALIZED, 12);
+        assertEquals(events.get(1).context, events.get(12).context);
+        assertLanguageContextEventType(events, ContextEvent.LanguageContextEventType.DISPOSED, 13);
+        assertEquals(InstrumentationTestLanguage.ID, events.get(13).language.getId());
+        assertContextEventType(events, ContextEvent.ContextEventType.CLOSED, 14);
+        assertNull(events.get(14).language);
+        assertEquals(events.get(1).context, events.get(14).context);
     }
 
     @Test
@@ -177,31 +272,35 @@ public class ContextsEventsTest {
 
             Source source = Source.create(InstrumentationTestLanguage.ID, "STATEMENT()");
             for (int i = 0; i < numContexts; i++) {
-                try (Context context = Context.newBuilder().engine(engine).build()) {
-                    assertEquals(6 * i + 1, events.size());
-                    context.eval(source);
+                try (Context ctx = Context.newBuilder().engine(engine).build()) {
+                    assertEquals(8 * i + 1, events.size());
+                    ctx.eval(source);
                 }
-                assertEquals(6 * i + 6, events.size());
+                assertEquals(8 * i + 8, events.size());
             }
-            assertEquals(6 * numContexts, events.size());
+            assertEquals(8 * numContexts, events.size());
             TruffleContext lastContext = null;
             for (int i = 0; i < numContexts; i++) {
-                int ci = 6 * i;
-                assertTrue(events.get(ci).created);
+                int ci = 8 * i;
+                assertContextEventType(events, ContextEvent.ContextEventType.CREATED, ci);
                 assertNull(events.get(ci).language);
                 assertNotEquals(lastContext, events.get(ci).context);
                 lastContext = events.get(ci).context;
-                assertTrue(events.get(ci + 1).created);
-                assertNotNull(events.get(ci + 1).language);
-                assertEquals(lastContext, events.get(ci + 1).context);
-                assertTrue(events.get(ci + 2).languageInitialized);
-                assertTrue(events.get(ci + 3).languageFinalized);
-                assertNotNull(events.get(ci + 4).language);
-                assertNull(events.get(ci + 5).language);
+                assertLanguageContextEventType(events, ContextEvent.LanguageContextEventType.CREATING, ci + 1);
+                assertLanguageContextEventType(events, ContextEvent.LanguageContextEventType.CREATED, ci + 2);
+                assertNotNull(events.get(ci + 2).language);
+                assertEquals(lastContext, events.get(ci + 2).context);
+                assertLanguageContextEventType(events, ContextEvent.LanguageContextEventType.INITIALIZING, ci + 3);
+                assertLanguageContextEventType(events, ContextEvent.LanguageContextEventType.INITIALIZED, ci + 4);
+                assertLanguageContextEventType(events, ContextEvent.LanguageContextEventType.FINALIZED, ci + 5);
+                assertLanguageContextEventType(events, ContextEvent.LanguageContextEventType.DISPOSED, ci + 6);
+                assertNotNull(events.get(ci + 6).language);
+                assertContextEventType(events, ContextEvent.ContextEventType.CLOSED, ci + 7);
+                assertNull(events.get(ci + 7).language);
             }
         }
         // No more events
-        assertEquals(6 * numContexts, events.size());
+        assertEquals(8 * numContexts, events.size());
     }
 
     @Test
@@ -209,27 +308,29 @@ public class ContextsEventsTest {
         try {
             TestContextsInstrument.includeActiveContexts = true;
             final List<ContextEvent> events;
-            try (Context context = Context.create()) {
-                Instrument testContexsInstrument = context.getEngine().getInstruments().get("testContexsInstrument");
+            try (Context ctx = Context.create()) {
+                Instrument testContexsInstrument = ctx.getEngine().getInstruments().get("testContexsInstrument");
                 TestContextsInstrument test = testContexsInstrument.lookup(TestContextsInstrument.class);
                 events = test.events;
-                context.eval(Source.create(InstrumentationTestLanguage.ID, "STATEMENT()"));
+                ctx.eval(Source.create(InstrumentationTestLanguage.ID, "STATEMENT()"));
                 assertTrue(Integer.toString(events.size()), events.size() > 1);
                 // Have creation of polyglot context and a language
-                assertEquals(3, events.size());
-                assertTrue(events.get(0).created);
+                assertEquals(5, events.size());
+                assertContextEventType(events, ContextEvent.ContextEventType.CREATED, 0);
                 assertNotNull(events.get(0).context);
                 assertNull(events.get(0).language);
-                assertTrue(events.get(1).created);
-                assertEquals(InstrumentationTestLanguage.ID, events.get(1).language.getId());
-                assertTrue(events.get(2).languageInitialized);
+                assertLanguageContextEventType(events, ContextEvent.LanguageContextEventType.CREATING, 1);
+                assertLanguageContextEventType(events, ContextEvent.LanguageContextEventType.CREATED, 2);
+                assertEquals(InstrumentationTestLanguage.ID, events.get(2).language.getId());
+                assertLanguageContextEventType(events, ContextEvent.LanguageContextEventType.INITIALIZING, 3);
+                assertLanguageContextEventType(events, ContextEvent.LanguageContextEventType.INITIALIZED, 4);
             }
-            assertEquals(6, events.size());
+            assertEquals(8, events.size());
             Engine engine = Engine.create();
             // Contexts created and closed:
-            try (Context context = Context.newBuilder().engine(engine).build()) {
-                context.eval(Source.create(InstrumentationTestLanguage.ID, "STATEMENT()"));
-                context.eval(Source.create(InstrumentationTestLanguage.ID, "CONTEXT(STATEMENT())"));
+            try (Context ctx = Context.newBuilder().engine(engine).build()) {
+                ctx.eval(Source.create(InstrumentationTestLanguage.ID, "STATEMENT()"));
+                ctx.eval(Source.create(InstrumentationTestLanguage.ID, "CONTEXT(STATEMENT())"));
             }
             Instrument testBlockOnStatementsInstrument = engine.getInstruments().get("testBlockOnStatementsInstrument");
             ThreadsEventsTest.TestBlockOnStatementsInstrument testBlock = testBlockOnStatementsInstrument.lookup(ThreadsEventsTest.TestBlockOnStatementsInstrument.class);
@@ -241,17 +342,19 @@ public class ContextsEventsTest {
                     Instrument testContexsInstrument = engine.getInstruments().get("testContexsInstrument");
                     TestContextsInstrument test = testContexsInstrument.lookup(TestContextsInstrument.class);
                     final List<ContextEvent> events = test.events;
-                    assertEquals(3, events.size());
-                    assertTrue(events.get(0).created);
+                    assertEquals(5, events.size());
+                    assertContextEventType(events, ContextEvent.ContextEventType.CREATED, 0);
                     assertNull(events.get(0).language);
-                    assertTrue(events.get(1).created);
-                    assertEquals(InstrumentationTestLanguage.ID, events.get(1).language.getId());
-                    assertTrue(events.get(2).languageInitialized);
+                    assertLanguageContextEventType(events, ContextEvent.LanguageContextEventType.CREATING, 1);
+                    assertLanguageContextEventType(events, ContextEvent.LanguageContextEventType.CREATED, 2);
+                    assertEquals(InstrumentationTestLanguage.ID, events.get(2).language.getId());
+                    assertLanguageContextEventType(events, ContextEvent.LanguageContextEventType.INITIALIZING, 3);
+                    assertLanguageContextEventType(events, ContextEvent.LanguageContextEventType.INITIALIZED, 4);
                     testBlock.blockOnStatements.set(false);
                 }
             };
-            Context context = Context.newBuilder().engine(engine).build();
-            context.eval(Source.create(InstrumentationTestLanguage.ID, "ROOT(CONTEXT(EXPRESSION()), CONTEXT(STATEMENT))"));
+            Context ctx = Context.newBuilder().engine(engine).build();
+            ctx.eval(Source.create(InstrumentationTestLanguage.ID, "ROOT(CONTEXT(EXPRESSION()), CONTEXT(STATEMENT))"));
         } finally {
             TestContextsInstrument.includeActiveContexts = false;
         }
@@ -263,15 +366,12 @@ public class ContextsEventsTest {
             Instrument testContexsInstrument = engine.getInstruments().get("testContexsInstrument");
             TestContextsInstrument test = testContexsInstrument.lookup(TestContextsInstrument.class);
             final List<ContextEvent> events = test.events;
-            try (Context context = Context.newBuilder().engine(engine).build()) {
-                context.eval(Source.create(InstrumentationTestLanguage.ID, "CONTEXT(STATEMENT())"));
+            try (Context ctx = Context.newBuilder().engine(engine).build()) {
+                ctx.eval(Source.create(InstrumentationTestLanguage.ID, "CONTEXT(STATEMENT())"));
                 for (ContextEvent event : events) {
-                    try {
-                        event.context.close();
-                        fail("Context close should fail.");
-                    } catch (UnsupportedOperationException ex) {
-                        // O.K.
-                    }
+                    // supported as long as not entered
+                    event.context.close();
+                    break;
                 }
             }
         }
@@ -291,56 +391,130 @@ public class ContextsEventsTest {
 
         @Override
         public void onContextCreated(TruffleContext context) {
-            events.add(new ContextEvent(context.isEntered(), true, context, null));
+            events.add(new ContextEvent(context.isEntered(), context, null, ContextEvent.ContextEventType.CREATED));
+        }
+
+        @Override
+        public void onLanguageContextCreate(TruffleContext context, LanguageInfo language) {
+            events.add(new ContextEvent(context.isEntered(), context, language, ContextEvent.LanguageContextEventType.CREATING));
         }
 
         @Override
         public void onLanguageContextCreated(TruffleContext context, LanguageInfo language) {
-            events.add(new ContextEvent(context.isEntered(), true, context, language));
+            events.add(new ContextEvent(context.isEntered(), context, language, ContextEvent.LanguageContextEventType.CREATED));
+        }
+
+        @Override
+        public void onLanguageContextCreateFailed(TruffleContext context, LanguageInfo language) {
+            events.add(new ContextEvent(context.isEntered(), context, language, ContextEvent.LanguageContextEventType.CREATEFAILED));
+        }
+
+        @Override
+        public void onLanguageContextInitialize(TruffleContext context, LanguageInfo language) {
+            events.add(new ContextEvent(context.isEntered(), context, language, ContextEvent.LanguageContextEventType.INITIALIZING));
         }
 
         @Override
         public void onLanguageContextInitialized(TruffleContext context, LanguageInfo language) {
-            events.add(new ContextEvent(context.isEntered(), false, context, language, true, false));
+            events.add(new ContextEvent(context.isEntered(), context, language, ContextEvent.LanguageContextEventType.INITIALIZED));
+        }
+
+        @Override
+        public void onLanguageContextInitializeFailed(TruffleContext context, LanguageInfo language) {
+            events.add(new ContextEvent(context.isEntered(), context, language, ContextEvent.LanguageContextEventType.INITIALIZEFAILED));
         }
 
         @Override
         public void onLanguageContextFinalized(TruffleContext context, LanguageInfo language) {
-            events.add(new ContextEvent(context.isEntered(), false, context, language, false, true));
+            events.add(new ContextEvent(context.isEntered(), context, language, ContextEvent.LanguageContextEventType.FINALIZED));
         }
 
         @Override
         public void onLanguageContextDisposed(TruffleContext context, LanguageInfo language) {
-            events.add(new ContextEvent(context.isEntered(), false, context, language));
+            events.add(new ContextEvent(context.isEntered(), context, language, ContextEvent.LanguageContextEventType.DISPOSED));
         }
 
         @Override
         public void onContextClosed(TruffleContext context) {
-            events.add(new ContextEvent(context.isEntered(), false, context, null));
+            events.add(new ContextEvent(context.isEntered(), context, null, ContextEvent.ContextEventType.CLOSED));
         }
 
     }
 
     private static class ContextEvent {
-        final boolean entered;
-        final boolean created;
-        final TruffleContext context;
-        final LanguageInfo language;
-        final boolean languageInitialized;
-        final boolean languageFinalized;
-
-        ContextEvent(boolean entered, boolean created, TruffleContext context, LanguageInfo language) {
-            this(entered, created, context, language, false, false);
+        enum ContextEventType {
+            CREATED,
+            CLOSED
         }
 
-        ContextEvent(boolean entered, boolean created, TruffleContext context, LanguageInfo language, boolean languageInitialized, boolean languageFinalized) {
+        enum LanguageContextEventType {
+            CREATING,
+            CREATED,
+            CREATEFAILED,
+            INITIALIZING,
+            INITIALIZED,
+            INITIALIZEFAILED,
+            FINALIZED,
+            DISPOSED
+        }
+
+        final boolean entered;
+        final TruffleContext context;
+        final LanguageInfo language;
+        final ContextEventType contextEventType;
+        final LanguageContextEventType languageContextEventType;
+
+        ContextEvent(boolean entered, TruffleContext context, LanguageInfo language, ContextEventType contextEventType) {
+            this(entered, context, language, contextEventType, null);
+        }
+
+        ContextEvent(boolean entered, TruffleContext context, LanguageInfo language, LanguageContextEventType languageContextEventType) {
+            this(entered, context, language, null, languageContextEventType);
+        }
+
+        ContextEvent(boolean entered, TruffleContext context, LanguageInfo language, ContextEventType contextEventType, LanguageContextEventType languageContextEventType) {
+            assert contextEventType == null || languageContextEventType == null;
             this.entered = entered;
-            this.created = created;
             this.context = context;
             this.language = language;
-            this.languageInitialized = languageInitialized;
-            this.languageFinalized = languageFinalized;
+            this.contextEventType = contextEventType;
+            this.languageContextEventType = languageContextEventType;
         }
     }
 
+    static class LanguageContextFailureLanguage extends ProxyLanguage {
+        private final boolean failCreate;
+        private final boolean failInitialize;
+
+        LanguageContextFailureLanguage(boolean failCreate, boolean failInitialize) {
+            this.failCreate = failCreate;
+            this.failInitialize = failInitialize;
+        }
+
+        @Override
+        protected CallTarget parse(ParsingRequest request) throws Exception {
+            return Truffle.getRuntime().createCallTarget(new RootNode(languageInstance) {
+                @Override
+                public Object execute(VirtualFrame frame) {
+                    return null;
+                }
+            });
+        }
+
+        @Override
+        protected LanguageContext createContext(Env env) {
+            if (failCreate) {
+                throw new CancellationException(CANCELLING_LANGUAGE_CONTEXT_CREATION);
+            }
+            return super.createContext(env);
+        }
+
+        @Override
+        protected void initializeContext(LanguageContext context) throws Exception {
+            if (failInitialize) {
+                throw new CancellationException(CANCELLING_LANGUAGE_CONTEXT_INITIALIZATION);
+            }
+            super.initializeContext(context);
+        }
+    }
 }

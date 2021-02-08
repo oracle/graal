@@ -38,7 +38,7 @@ import com.oracle.truffle.api.nodes.ExplodeLoop;
 import com.oracle.truffle.llvm.runtime.nodes.api.LLVMExpressionNode;
 import com.oracle.truffle.llvm.runtime.types.FunctionType;
 
-@NodeChild(value = "dispatchTarget", type = LLVMLookupDispatchTargetNode.class)
+@NodeChild(value = "dispatchTarget", type = LLVMExpressionNode.class)
 public abstract class LLVMCallNode extends LLVMExpressionNode {
 
     public static final int USER_ARGUMENT_OFFSET = 1;
@@ -52,7 +52,7 @@ public abstract class LLVMCallNode extends LLVMExpressionNode {
     private final boolean isSourceCall;
 
     public static LLVMCallNode create(FunctionType functionType, LLVMExpressionNode functionNode, LLVMExpressionNode[] argumentNodes, boolean isSourceCall) {
-        return LLVMCallNodeGen.create(functionType, argumentNodes, isSourceCall, LLVMLookupDispatchTargetNodeGen.create(functionNode));
+        return LLVMCallNodeGen.create(functionType, argumentNodes, isSourceCall, LLVMLookupDispatchTargetNode.createOptimized(functionNode));
     }
 
     LLVMCallNode(FunctionType functionType, LLVMExpressionNode[] argumentNodes, boolean isSourceCall) {

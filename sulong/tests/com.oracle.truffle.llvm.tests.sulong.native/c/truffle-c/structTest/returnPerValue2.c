@@ -40,6 +40,5 @@ struct test function() {
 }
 
 int main() {
-    struct test t;
     return function().a;
 }

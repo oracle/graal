@@ -41,24 +41,23 @@
 package org.graalvm.wasm.nodes;
 
 import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
+import com.oracle.truffle.api.HostCompilerDirectives.BytecodeInterpreterSwitchBoundary;
 import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.profiles.ConditionProfile;
 import org.graalvm.wasm.WasmCodeEntry;
 import org.graalvm.wasm.WasmContext;
 import org.graalvm.wasm.WasmInstance;
 
-import static org.graalvm.wasm.WasmTracing.trace;
-
 public final class WasmIfNode extends WasmNode {
 
     @CompilationFinal private final byte returnTypeId;
     @CompilationFinal private final int initialStackPointer;
-    @Child private WasmNode trueBranch;
-    @Child private WasmNode falseBranch;
+    @Child private WasmBlockNode trueBranch;
+    @Child private WasmBlockNode falseBranch;
 
     private final ConditionProfile condition = ConditionProfile.createCountingProfile();
 
-    public WasmIfNode(WasmInstance wasmInstance, WasmCodeEntry codeEntry, WasmNode trueBranch, WasmNode falseBranch, int byteLength, byte returnTypeId, int initialStackPointer) {
+    public WasmIfNode(WasmInstance wasmInstance, WasmCodeEntry codeEntry, WasmBlockNode trueBranch, WasmBlockNode falseBranch, int byteLength, byte returnTypeId, int initialStackPointer) {
         super(wasmInstance, codeEntry, byteLength);
         this.returnTypeId = returnTypeId;
         this.initialStackPointer = initialStackPointer;
@@ -66,15 +65,14 @@ public final class WasmIfNode extends WasmNode {
         this.falseBranch = falseBranch;
     }
 
+    @BytecodeInterpreterSwitchBoundary
     @Override
-    public int execute(WasmContext context, VirtualFrame frame) {
+    public int execute(WasmContext context, VirtualFrame frame, long[] stacklocals) {
         int stackPointer = initialStackPointer - 1;
-        if (condition.profile(popInt(frame, stackPointer) != 0)) {
-            trace("taking if branch");
-            return trueBranch.execute(context, frame);
+        if (condition.profile(popInt(stacklocals, codeEntry().numLocals() + stackPointer) != 0)) {
+            return trueBranch.execute(context, frame, stacklocals);
         } else if (falseBranch != null) {
-            trace("taking else branch");
-            return falseBranch.execute(context, frame);
+            return falseBranch.execute(context, frame, stacklocals);
         } else {
             return -1;
         }
@@ -86,18 +84,8 @@ public final class WasmIfNode extends WasmNode {
     }
 
     @Override
-    int byteConstantLength() {
-        return trueBranch.byteConstantLength() + (falseBranch != null ? falseBranch.byteConstantLength() : 0);
-    }
-
-    @Override
     int intConstantLength() {
         return trueBranch.intConstantLength() + (falseBranch != null ? falseBranch.intConstantLength() : 0);
-    }
-
-    @Override
-    int longConstantLength() {
-        return trueBranch.longConstantLength() + (falseBranch != null ? falseBranch.longConstantLength() : 0);
     }
 
     @Override

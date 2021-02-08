@@ -42,7 +42,6 @@ import java.util.EnumSet;
 import java.util.function.Function;
 
 import org.graalvm.compiler.asm.Label;
-import org.graalvm.compiler.asm.aarch64.AArch64Address.AddressingMode;
 import org.graalvm.compiler.asm.aarch64.AArch64Assembler.ConditionFlag;
 import org.graalvm.compiler.asm.aarch64.AArch64Assembler.PrefetchMode;
 import org.graalvm.compiler.core.aarch64.AArch64ArithmeticLIRGenerator;
@@ -71,20 +70,20 @@ import org.graalvm.compiler.hotspot.stubs.Stub;
 import org.graalvm.compiler.lir.LIRFrameState;
 import org.graalvm.compiler.lir.LIRInstruction;
 import org.graalvm.compiler.lir.LabelRef;
-import org.graalvm.compiler.lir.StandardOp.ZapRegistersOp;
 import org.graalvm.compiler.lir.SwitchStrategy;
 import org.graalvm.compiler.lir.Variable;
 import org.graalvm.compiler.lir.VirtualStackSlot;
+import org.graalvm.compiler.lir.StandardOp.ZapRegistersOp;
 import org.graalvm.compiler.lir.aarch64.AArch64AddressValue;
 import org.graalvm.compiler.lir.aarch64.AArch64CCall;
 import org.graalvm.compiler.lir.aarch64.AArch64Call;
-import org.graalvm.compiler.lir.aarch64.AArch64ControlFlow.StrategySwitchOp;
 import org.graalvm.compiler.lir.aarch64.AArch64FrameMapBuilder;
 import org.graalvm.compiler.lir.aarch64.AArch64Move;
-import org.graalvm.compiler.lir.aarch64.AArch64Move.StoreOp;
 import org.graalvm.compiler.lir.aarch64.AArch64PrefetchOp;
 import org.graalvm.compiler.lir.aarch64.AArch64RestoreRegistersOp;
 import org.graalvm.compiler.lir.aarch64.AArch64SaveRegistersOp;
+import org.graalvm.compiler.lir.aarch64.AArch64ControlFlow.StrategySwitchOp;
+import org.graalvm.compiler.lir.aarch64.AArch64Move.StoreOp;
 import org.graalvm.compiler.lir.gen.LIRGenerationResult;
 import org.graalvm.compiler.options.OptionValues;
 
@@ -139,7 +138,7 @@ public class AArch64HotSpotLIRGenerator extends AArch64LIRGenerator implements H
     private LIRFrameState currentRuntimeCallInfo;
 
     @Override
-    protected void emitForeignCallOp(ForeignCallLinkage linkage, Value result, Value[] arguments, Value[] temps, LIRFrameState info) {
+    protected void emitForeignCallOp(ForeignCallLinkage linkage, Value targetAddress, Value result, Value[] arguments, Value[] temps, LIRFrameState info) {
         currentRuntimeCallInfo = info;
         if (AArch64Call.isNearCall(linkage)) {
             append(new AArch64Call.DirectNearForeignCallOp(linkage, result, arguments, temps, info, label));
@@ -382,7 +381,7 @@ public class AArch64HotSpotLIRGenerator extends AArch64LIRGenerator implements H
             HotSpotLIRGenerationResult generationResult = getResult();
             LIRFrameState key = currentRuntimeCallInfo;
             if (key == null) {
-                key = LIRFrameState.NO_STATE;
+                key = LIRFrameState.NO_CALLEE_SAVE_INFO;
             }
             assert !generationResult.getCalleeSaveInfo().containsKey(key);
             generationResult.getCalleeSaveInfo().put(key, save);
@@ -419,9 +418,9 @@ public class AArch64HotSpotLIRGenerator extends AArch64LIRGenerator implements H
 
     private void moveValueToThread(Value value, int offset) {
         LIRKind wordKind = LIRKind.value(target().arch.getWordKind());
+        int size = value.getValueKind().getPlatformKind().getSizeInBytes() * Byte.SIZE;
         RegisterValue thread = getProviders().getRegisters().getThreadRegister().asValue(wordKind);
-        final int transferSize = value.getValueKind().getPlatformKind().getSizeInBytes();
-        AArch64AddressValue address = new AArch64AddressValue(value.getValueKind(), thread, Value.ILLEGAL, offset, transferSize, AddressingMode.IMMEDIATE_UNSIGNED_SCALED);
+        AArch64AddressValue address = AArch64AddressValue.makeAddress(wordKind, size, thread, offset);
         append(new StoreOp((AArch64Kind) value.getPlatformKind(), address, loadReg(value), null));
     }
 
@@ -551,14 +550,22 @@ public class AArch64HotSpotLIRGenerator extends AArch64LIRGenerator implements H
 
     @Override
     public void emitZeroMemory(Value address, Value length, boolean isAligned) {
-        int dczidValue = config.psrInfoDczidValue;
-        EnumSet<AArch64.Flag> flags = ((AArch64) target().arch).getFlags();
+        final EnumSet<AArch64.Flag> flags = ((AArch64) target().arch).getFlags();
 
-        // ARMv8-A architecture reference manual D12.2.35 Data Cache Zero ID register says:
-        // * BS, bits [3:0] indicate log2 of the DC ZVA block size in (4-byte) words.
-        // * DZP, bit [4] of indicates whether use of DC ZVA instruction is prohibited.
-        int zvaLength = 4 << (dczidValue & 0xF);
-        boolean isDcZvaProhibited = ((dczidValue & 0x10) != 0);
+        boolean isDcZvaProhibited = true;
+        int zvaLength = 0;
+        if (GraalHotSpotVMConfig.JDK >= 16) {
+            zvaLength = config.zvaLength;
+            isDcZvaProhibited = 0 == config.zvaLength;
+        } else {
+            int dczidValue = config.psrInfoDczidValue;
+
+            // ARMv8-A architecture reference manual D12.2.35 Data Cache Zero ID register says:
+            // * BS, bits [3:0] indicate log2 of the DC ZVA block size in (4-byte) words.
+            // * DZP, bit [4] of indicates whether use of DC ZVA instruction is prohibited.
+            zvaLength = 4 << (dczidValue & 0xF);
+            isDcZvaProhibited = ((dczidValue & 0x10) != 0);
+        }
 
         // Use DC ZVA if it's not prohibited and AArch64 HotSpot flag UseBlockZeroing is on.
         boolean useDcZva = !isDcZvaProhibited && flags.contains(AArch64.Flag.UseBlockZeroing);

@@ -74,6 +74,11 @@ final class SourceImpl extends Source {
     }
 
     @Override
+    protected Object getSourceKey() {
+        return key;
+    }
+
+    @Override
     public CharSequence getCharacters() {
         if (hasCharacters()) {
             return (CharSequence) key.content;

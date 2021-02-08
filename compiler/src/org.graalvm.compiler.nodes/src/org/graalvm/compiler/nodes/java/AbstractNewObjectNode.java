@@ -44,7 +44,7 @@ import jdk.vm.ci.code.MemoryBarriers;
 public abstract class AbstractNewObjectNode extends DeoptimizingFixedWithNextNode implements Lowerable {
 
     public static final NodeClass<AbstractNewObjectNode> TYPE = NodeClass.create(AbstractNewObjectNode.class);
-    protected final boolean fillContents;
+    protected boolean fillContents;
 
     /**
      * Controls whether this allocation emits a {@link MembarNode} with
@@ -62,6 +62,10 @@ public abstract class AbstractNewObjectNode extends DeoptimizingFixedWithNextNod
      */
     public boolean fillContents() {
         return fillContents;
+    }
+
+    public void setFillContents(boolean fillContents) {
+        this.fillContents = fillContents;
     }
 
     @Override

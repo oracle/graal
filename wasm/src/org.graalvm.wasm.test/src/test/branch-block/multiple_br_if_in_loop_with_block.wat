@@ -53,7 +53,7 @@
                     local.get $i
                     i32.const 1
                     i32.add
-                    local.tee $i
+                    local.set $i
 
                     local.get $i
                     i32.const 3

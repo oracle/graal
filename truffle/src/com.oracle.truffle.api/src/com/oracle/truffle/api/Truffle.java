@@ -46,6 +46,7 @@ import java.util.Iterator;
 import java.util.List;
 import java.util.ServiceConfigurationError;
 
+import com.oracle.truffle.api.impl.Accessor;
 import com.oracle.truffle.api.impl.DefaultTruffleRuntime;
 
 /**
@@ -117,15 +118,30 @@ public final class Truffle {
                     }
                 }
 
-                List<Iterable<TruffleRuntimeAccess>> loaders = LanguageAccessor.jdkServicesAccessor().getTruffleRuntimeLoaders(TruffleRuntimeAccess.class);
+                List<Iterable<TruffleRuntimeAccess>> loaders = TruffleAccessor.jdkServicesAccessor().getTruffleRuntimeLoaders(TruffleRuntimeAccess.class);
                 TruffleRuntimeAccess access = selectTruffleRuntimeAccess(loaders);
 
                 if (access != null) {
-                    LanguageAccessor.jdkServicesAccessor().exportTo(access.getClass());
+                    TruffleAccessor.jdkServicesAccessor().exportTo(access.getClass());
                     return access.getRuntime();
                 }
                 return new DefaultTruffleRuntime();
             }
         });
+    }
+}
+
+/*
+ * Truffle accessor for use during truffle initialization to avoid cyclic dependencies.
+ */
+final class TruffleAccessor extends Accessor {
+
+    static final TruffleAccessor ACCESSOR = new TruffleAccessor();
+
+    private TruffleAccessor() {
+    }
+
+    static JDKSupport jdkServicesAccessor() {
+        return ACCESSOR.jdkSupport();
     }
 }

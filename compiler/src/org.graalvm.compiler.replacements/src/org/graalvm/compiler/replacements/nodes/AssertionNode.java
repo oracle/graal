@@ -85,6 +85,10 @@ public final class AssertionNode extends FixedWithNextNode implements Lowerable,
         return message;
     }
 
+    public boolean isCompileTimeAssertion() {
+        return compileTimeAssertion;
+    }
+
     @Override
     public Node canonical(CanonicalizerTool tool) {
         if (condition.isConstant() && condition.asJavaConstant().asInt() != 0) {

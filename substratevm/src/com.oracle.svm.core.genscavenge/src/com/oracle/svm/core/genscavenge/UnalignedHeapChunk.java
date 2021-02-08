@@ -242,10 +242,12 @@ public final class UnalignedHeapChunk {
         return UnsignedUtils.roundUp(cardTableLimitOffset, alignment);
     }
 
-    private static UnsignedWord getObjectIndex() {
+    @Fold
+    static UnsignedWord getObjectIndex() {
         return WordFactory.zero();
     }
 
+    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
     public static UnsignedWord getCommittedObjectMemory(UnalignedHeader that) {
         return HeapChunk.getEndOffset(that).subtract(getObjectStartOffset());
     }

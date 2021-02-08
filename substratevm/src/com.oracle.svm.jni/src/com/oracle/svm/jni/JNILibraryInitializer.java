@@ -82,7 +82,9 @@ public class JNILibraryInitializer implements NativeLibrarySupport.LibraryInitia
     }
 
     public boolean fillCGlobalDataMap(Collection<String> staticLibNames) {
-        List<String> libsWithOnLoad = Arrays.asList("net", "java", "nio", "zip", "sunec", "jaas", "sctp", "extnet", "j2gss", "j2pkcs11", "j2pcsc", "prefs", "verify");
+        List<String> libsWithOnLoad = Arrays.asList("net", "java", "nio", "zip", "sunec", "jaas", "sctp", "extnet",
+                        "j2gss", "j2pkcs11", "j2pcsc", "prefs", "verify", "awt", "awt_xawt", "awt_headless", "lcms",
+                        "fontmanager", "javajpeg", "mlib_image");
         // TODO: This check should be removed when all static libs will have JNI_OnLoad function
         ArrayList<String> localStaticLibNames = new ArrayList<>(staticLibNames);
         localStaticLibNames.retainAll(libsWithOnLoad);

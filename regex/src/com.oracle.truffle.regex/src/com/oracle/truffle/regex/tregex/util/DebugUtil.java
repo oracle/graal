@@ -47,12 +47,11 @@ import java.util.regex.Pattern;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.regex.charset.Constants;
 import com.oracle.truffle.regex.charset.SortedListOfRanges;
-import com.oracle.truffle.regex.util.CompilationFinalBitSet;
+import com.oracle.truffle.regex.util.TBitSet;
 
 public class DebugUtil {
 
-    private static final CompilationFinalBitSet validSpecialCharsForFileNames = CompilationFinalBitSet.valueOf(
-                    '^', '$', '.', '*', '+', '-', '?', '(', ')', '[', ']', '{', '}', '|');
+    private static final TBitSet validSpecialCharsForFileNames = TBitSet.valueOf('$', '(', ')', '*', '+', '-', '.', '?', '[', ']', '^', '{', '|', '}');
 
     @TruffleBoundary
     public static String charToString(int c) {

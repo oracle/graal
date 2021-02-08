@@ -32,12 +32,14 @@ import org.graalvm.compiler.core.common.alloc.RegisterAllocationConfig;
 import org.graalvm.compiler.core.target.Backend;
 import org.graalvm.compiler.nodes.CallTargetNode;
 import org.graalvm.compiler.nodes.ValueNode;
-import org.graalvm.compiler.phases.Phase;
+import org.graalvm.compiler.nodes.spi.CoreProviders;
+import org.graalvm.compiler.phases.BasePhase;
 import org.graalvm.compiler.phases.tiers.SuitesProvider;
 import org.graalvm.compiler.phases.util.Providers;
 import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;
 
+import com.oracle.svm.core.SubstrateUtil;
 import com.oracle.svm.core.graal.meta.RuntimeConfiguration;
 import com.oracle.svm.core.graal.snippets.CFunctionSnippets;
 import com.oracle.svm.core.nodes.CFunctionPrologueDataNode;
@@ -124,6 +126,11 @@ public abstract class SubstrateBackend extends Backend {
         return frameAnchor;
     }
 
+    public static boolean shouldEmitOnlyIndirectCalls() {
+        // For runtime compilations, emit indirect foreign calls to avoid additional patching
+        return !SubstrateUtil.HOSTED;
+    }
+
     /**
      * We are re-using the field {InvokeNode#classInit()} to store the prologue data, see
      * {@link CFunctionSnippets#matchCallStructure}.
@@ -140,7 +147,7 @@ public abstract class SubstrateBackend extends Backend {
         return StatusSupport.STATUS_ILLEGAL;
     }
 
-    public abstract Phase newAddressLoweringPhase(CodeCacheProvider codeCache);
+    public abstract BasePhase<CoreProviders> newAddressLoweringPhase(CodeCacheProvider codeCache);
 
     public abstract CompilationResult createJNITrampolineMethod(ResolvedJavaMethod method, CompilationIdentifier identifier,
                     RegisterValue threadArg, int threadIsolateOffset, RegisterValue methodIdArg, int methodObjEntryPointOffset);

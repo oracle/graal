@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2017, 2019, Oracle and/or its affiliates.
+ * Copyright (c) 2017, 2020, Oracle and/or its affiliates.
  *
  * All rights reserved.
  *
@@ -39,6 +39,7 @@ import com.oracle.truffle.llvm.parser.metadata.DwarfOpcode;
 import com.oracle.truffle.llvm.parser.metadata.MDBaseNode;
 import com.oracle.truffle.llvm.parser.metadata.MDCompileUnit;
 import com.oracle.truffle.llvm.parser.metadata.MDExpression;
+import com.oracle.truffle.llvm.parser.metadata.MDFile;
 import com.oracle.truffle.llvm.parser.metadata.MDGlobalVariable;
 import com.oracle.truffle.llvm.parser.metadata.MDGlobalVariableExpression;
 import com.oracle.truffle.llvm.parser.metadata.MDLocalVariable;
@@ -51,7 +52,7 @@ import com.oracle.truffle.llvm.parser.model.ModelModule;
 import com.oracle.truffle.llvm.parser.model.SymbolImpl;
 import com.oracle.truffle.llvm.parser.model.symbols.constants.integer.BigIntegerConstant;
 import com.oracle.truffle.llvm.parser.model.symbols.globals.GlobalValueSymbol;
-import com.oracle.truffle.llvm.runtime.LLVMContext;
+import com.oracle.truffle.llvm.runtime.debug.scope.LLVMSourceFileReference;
 import com.oracle.truffle.llvm.runtime.debug.scope.LLVMSourceSymbol;
 import com.oracle.truffle.llvm.runtime.debug.type.LLVMSourceStaticMemberType;
 import com.oracle.truffle.llvm.runtime.debug.type.LLVMSourceType;
@@ -62,12 +63,12 @@ public final class DebugInfoModuleProcessor {
     private DebugInfoModuleProcessor() {
     }
 
-    public static void processModule(ModelModule irModel, MetadataValueList metadata, LLVMContext context) {
+    public static void processModule(ModelModule irModel, MetadataValueList metadata) {
         MDUpgrade.perform(metadata);
 
-        final DebugInfoCache cache = new DebugInfoCache(metadata, irModel.getSourceStaticMembers(), context);
+        final DebugInfoCache cache = new DebugInfoCache(metadata, irModel.getSourceStaticMembers());
 
-        ImportsProcessor.process(metadata, context, cache);
+        ImportsProcessor.process(metadata, cache);
 
         // in LLVM 3.9+ function debug information is available only in the corresponding
         // function block in the *.bc file, we process the function metadata only after it is
@@ -82,6 +83,9 @@ public final class DebugInfoModuleProcessor {
         }
 
         irModel.setFunctionProcessor(new DebugInfoFunctionProcessor(cache));
+
+        FileProcessor fileProcessor = new FileProcessor(irModel);
+        metadata.accept(fileProcessor);
     }
 
     private static void processSymbols(List<? extends GlobalValueSymbol> list, DebugInfoCache cache, ModelModule irModel) {
@@ -192,6 +196,25 @@ public final class DebugInfoModuleProcessor {
             }
             return null;
         }
+
     }
 
+    /**
+     * Extracts all {@link MDFile} from the metadata and stores it as
+     * {@link LLVMSourceFileReference} in the {@link ModelModule}.
+     */
+    private static final class FileProcessor implements MetadataVisitor {
+
+        private final ModelModule module;
+
+        FileProcessor(ModelModule module) {
+            this.module = module;
+        }
+
+        @Override
+        public void visit(MDFile md) {
+            module.addSourceFileReference(md.toSourceFileReference());
+        }
+
+    }
 }

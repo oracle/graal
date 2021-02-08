@@ -934,6 +934,9 @@ public abstract class Word implements SignedWord, UnsignedWord, Pointer {
     @Operation(opcode = Opcode.READ_HEAP)
     public native Object readObject(WordBase offset, BarrierType barrierType);
 
+    @Operation(opcode = Opcode.READ_HEAP)
+    public native Object readObject(WordBase offset, BarrierType barrierType, LocationIdentity locationIdentity);
+
     @Override
     @Operation(opcode = Opcode.READ_POINTER)
     public byte readByte(int offset) {
@@ -991,6 +994,11 @@ public abstract class Word implements SignedWord, UnsignedWord, Pointer {
     @Operation(opcode = Opcode.READ_HEAP)
     public Object readObject(int offset, BarrierType barrierType) {
         return readObject(WordFactory.signed(offset), barrierType);
+    }
+
+    @Operation(opcode = Opcode.READ_HEAP)
+    public Object readObject(int offset, BarrierType barrierType, LocationIdentity locationIdentity) {
+        return readObject(WordFactory.signed(offset), barrierType, locationIdentity);
     }
 
     @Override

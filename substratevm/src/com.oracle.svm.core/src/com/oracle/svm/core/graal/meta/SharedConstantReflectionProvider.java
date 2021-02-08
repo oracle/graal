@@ -31,16 +31,15 @@ import static com.oracle.svm.core.util.VMError.shouldNotReachHere;
 import java.lang.reflect.Array;
 
 import com.oracle.svm.core.meta.ObjectConstantEquality;
-import com.oracle.svm.core.meta.ReadableJavaField;
 import com.oracle.svm.core.meta.SubstrateObjectConstant;
 import com.oracle.svm.core.snippets.KnownIntrinsics;
+import com.oracle.svm.core.util.VMError;
 
 import jdk.vm.ci.meta.Constant;
 import jdk.vm.ci.meta.ConstantReflectionProvider;
 import jdk.vm.ci.meta.JavaConstant;
 import jdk.vm.ci.meta.JavaKind;
 import jdk.vm.ci.meta.MethodHandleAccessProvider;
-import jdk.vm.ci.meta.ResolvedJavaField;
 import jdk.vm.ci.meta.ResolvedJavaType;
 
 public abstract class SharedConstantReflectionProvider implements ConstantReflectionProvider {
@@ -106,11 +105,6 @@ public abstract class SharedConstantReflectionProvider implements ConstantReflec
     }
 
     @Override
-    public JavaConstant readFieldValue(ResolvedJavaField field, JavaConstant receiver) {
-        return ((ReadableJavaField) field).readValue(receiver);
-    }
-
-    @Override
     public final MethodHandleAccessProvider getMethodHandleAccess() {
         throw shouldNotReachHere();
     }
@@ -122,5 +116,9 @@ public abstract class SharedConstantReflectionProvider implements ConstantReflec
          * represented by the DynamicHub.
          */
         return asJavaClass(type);
+    }
+
+    public int getImageHeapOffset(@SuppressWarnings("unused") JavaConstant constant) {
+        throw VMError.shouldNotReachHere("Can only be used during JIT compilation at run time: " + getClass().getName());
     }
 }

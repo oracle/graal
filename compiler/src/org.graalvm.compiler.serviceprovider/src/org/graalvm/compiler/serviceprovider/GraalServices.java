@@ -28,7 +28,9 @@ import java.io.IOException;
 import java.io.InputStream;
 import java.util.List;
 
+import jdk.vm.ci.code.DebugInfo;
 import jdk.vm.ci.code.VirtualObject;
+import jdk.vm.ci.code.site.Infopoint;
 import jdk.vm.ci.meta.ConstantPool;
 import jdk.vm.ci.meta.JavaType;
 import jdk.vm.ci.meta.ResolvedJavaType;
@@ -273,6 +275,27 @@ public final class GraalServices {
      * Returns true if JVMCI supports {@code ConstantPool.lookupReferencedType} API.
      */
     public static boolean hasLookupReferencedType() {
+        throw shouldNotReachHere();
+    }
+
+    /**
+     * Returns true if JVMCI supports arbitrary implicit exception dispatch.
+     */
+    public static boolean supportsArbitraryImplicitException() {
+        throw shouldNotReachHere();
+    }
+
+    /**
+     * Construct an implicit exception dispatch. If this JVMCI does not support arbitrary implicit
+     * exception dispatch, then throws an exception when {@code pcOffset} is not the same as
+     * {@code dispatchOffset}.
+     *
+     * @param pcOffset the exceptional PC offset
+     * @param dispatchOffset the continuation PC offset
+     * @param debugInfo debugging information at the exceptional PC
+     */
+    @SuppressWarnings("unused")
+    public static Infopoint genImplicitException(int pcOffset, int dispatchOffset, DebugInfo debugInfo) {
         throw shouldNotReachHere();
     }
 }

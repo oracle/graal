@@ -25,12 +25,13 @@
 
 package com.oracle.svm.hosted.image;
 
-import java.io.ByteArrayOutputStream;
 import java.io.IOException;
+import java.io.InputStream;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.Collection;
 import java.util.Collections;
 import java.util.Formatter;
 import java.util.HashSet;
@@ -43,6 +44,7 @@ import java.util.stream.Collectors;
 
 import org.graalvm.compiler.debug.DebugContext;
 import org.graalvm.compiler.debug.Indent;
+import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.nativeimage.Platform;
 
 import com.oracle.objectfile.ObjectFile;
@@ -51,7 +53,9 @@ import com.oracle.svm.core.LinkerInvocation;
 import com.oracle.svm.core.OS;
 import com.oracle.svm.core.SubstrateOptions;
 import com.oracle.svm.core.SubstrateUtil;
+import com.oracle.svm.core.c.libc.LibCBase;
 import com.oracle.svm.core.option.OptionUtils;
+import com.oracle.svm.core.util.InterruptImageBuilding;
 import com.oracle.svm.core.util.UserError;
 import com.oracle.svm.core.util.VMError;
 import com.oracle.svm.hosted.FeatureImpl.BeforeImageWriteAccessImpl;
@@ -87,7 +91,7 @@ public abstract class NativeBootImageViaCC extends NativeBootImage {
     class BinutilsCCLinkerInvocation extends CCLinkerInvocation {
 
         private final boolean staticExecWithDynamicallyLinkLibC = SubstrateOptions.StaticExecutableWithDynamicLibC.getValue();
-        private final Set<String> libCLibaries = new HashSet<>(Arrays.asList("pthread", "dl", "rt"));
+        private final Set<String> libCLibaries = new HashSet<>(Arrays.asList("pthread", "dl", "rt", "m"));
 
         BinutilsCCLinkerInvocation() {
             additionalPreOptions.add("-z");
@@ -227,7 +231,7 @@ public abstract class NativeBootImageViaCC extends NativeBootImage {
         protected void setOutputKind(List<String> cmd) {
             switch (kind) {
                 case STATIC_EXECUTABLE:
-                    throw UserError.abort(OS.getCurrent().name() + " does not support building static executable images.");
+                    throw UserError.abort("%s does not support building static executable images.", OS.getCurrent().name());
                 case SHARED_LIBRARY:
                     cmd.add("-shared");
                     if (Platform.includedIn(Platform.DARWIN.class)) {
@@ -311,7 +315,7 @@ public abstract class NativeBootImageViaCC extends NativeBootImage {
             cmd.add("iphlpapi.lib");
             cmd.add("userenv.lib");
 
-            Collections.addAll(cmd, Options.NativeLinkerOption.getValue());
+            cmd.addAll(Options.NativeLinkerOption.getValue().values());
             return cmd;
         }
     }
@@ -332,10 +336,15 @@ public abstract class NativeBootImageViaCC extends NativeBootImage {
                 break;
         }
 
+        if (SubstrateOptions.AdditionalLinkerOptions.hasBeenSet()) {
+            inv.additionalPreOptions.add(SubstrateOptions.AdditionalLinkerOptions.getValue());
+        }
+
         Path outputFile = outputDirectory.resolve(imageName + getBootImageKind().getFilenameSuffix());
         UserError.guarantee(!Files.isDirectory(outputFile), "Cannot write image to %s. Path exists as directory. (Use -H:Name=<image name>)", outputFile);
         inv.setOutputFile(outputFile);
         inv.setOutputKind(getOutputKind());
+        inv.setTempDirectory(tempDirectory);
 
         inv.addLibPath(tempDirectory.toString());
         for (String libraryPath : nativeLibs.getLibraryPaths()) {
@@ -346,9 +355,13 @@ public abstract class NativeBootImageViaCC extends NativeBootImage {
             inv.addRPath(rPath);
         }
 
-        for (String library : nativeLibs.getLibraries()) {
-            inv.addLinkedLibrary(library);
+        Collection<String> libraries = nativeLibs.getLibraries();
+        if (Platform.includedIn(Platform.LINUX.class) && ImageSingletons.lookup(LibCBase.class).getName().equals("bionic")) {
+            // on Bionic LibC pthread.h and rt.h are included in standard library and adding them in
+            // linker call produces error
+            libraries = libraries.stream().filter(library -> !Arrays.asList("pthread", "rt").contains(library)).collect(Collectors.toList());
         }
+        libraries.forEach(inv::addLinkedLibrary);
 
         for (Path filename : codeCache.getCCInputFiles(tempDirectory, imageName)) {
             inv.addInputFile(filename);
@@ -404,37 +417,39 @@ public abstract class NativeBootImageViaCC extends NativeBootImage {
             for (Function<LinkerInvocation, LinkerInvocation> fn : config.getLinkerInvocationTransformers()) {
                 inv = fn.apply(inv);
             }
-            try (DebugContext.Scope s = debug.scope("InvokeCC")) {
-                List<String> cmd = inv.getCommand();
-                String commandLine = SubstrateUtil.getShellCommandString(cmd, false);
-                debug.log("Using CompilerCommand: %s", commandLine);
+            List<String> cmd = inv.getCommand();
+            String commandLine = SubstrateUtil.getShellCommandString(cmd, false);
 
-                if (NativeImageOptions.MachODebugInfoTesting.getValue()) {
-                    System.out.printf("Testing Mach-O debuginfo generation - SKIP %s%n", commandLine);
-                    return inv;
-                } else {
-                    ProcessBuilder pb = new ProcessBuilder().command(cmd);
-                    pb.directory(tempDirectory.toFile());
-                    pb.redirectErrorStream(true);
-                    int status;
-                    ByteArrayOutputStream output;
-                    try {
-                        Process p = pb.start();
+            Process linkerProcess = null;
+            try {
+                ProcessBuilder linkerCommand = FileUtils.prepareCommand(cmd, inv.getTempDirectory());
+                linkerCommand.redirectErrorStream(true);
 
-                        output = new ByteArrayOutputStream();
-                        FileUtils.drainInputStream(p.getInputStream(), output);
-                        status = p.waitFor();
-                    } catch (IOException | InterruptedException e) {
-                        throw handleLinkerFailure(e.toString(), commandLine, null);
-                    }
+                FileUtils.traceCommand(linkerCommand);
 
-                    debug.log(DebugContext.VERBOSE_LEVEL, "%s", output);
+                linkerProcess = linkerCommand.start();
 
-                    if (status != 0) {
-                        throw handleLinkerFailure("Linker command exited with " + status, commandLine, output.toString());
-                    }
+                List<String> lines;
+                try (InputStream inputStream = linkerProcess.getInputStream()) {
+                    lines = FileUtils.readAllLines(inputStream);
+                    FileUtils.traceCommandOutput(lines);
+                }
+
+                int status = linkerProcess.waitFor();
+                if (status != 0) {
+                    String output = String.join(System.lineSeparator(), lines);
+                    throw handleLinkerFailure("Linker command exited with " + status, commandLine, output);
+                }
+            } catch (IOException e) {
+                throw handleLinkerFailure(e.toString(), commandLine, null);
+            } catch (InterruptedException e) {
+                throw new InterruptImageBuilding("Interrupted during native-image linking step for " + imageName);
+            } finally {
+                if (linkerProcess != null) {
+                    linkerProcess.destroy();
                 }
             }
+
             return inv;
         }
     }

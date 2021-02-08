@@ -34,7 +34,7 @@
 
 #define SWAP(n) (((n) << 24) | (((n) &0xff00) << 8) | (((n) >> 8) & 0xff00) | ((n) >> 24))
 
-int main(int argc, char **argv) {
+int main(void) {
     // Avoid LLVM pre-calculating everything at compile time.
     srand(time(0));
     unsigned int x[16];
@@ -45,6 +45,11 @@ int main(int argc, char **argv) {
         *buf = SWAP(*buf);
         buf++;
     }
+
+#pragma clang diagnostic push
+#pragma clang diagnostic ignored "-Wunused-variable"
     volatile unsigned int y = x[0];
+#pragma clang diagnostic pop
+
     exit(0);
 }

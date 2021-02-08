@@ -34,7 +34,6 @@ int main(void) {
     int fd;
     ssize_t size;
     off_t offset;
-    int i;
 
     fd = open("LICENSE", O_RDONLY, 0);
     if (fd < 0) {

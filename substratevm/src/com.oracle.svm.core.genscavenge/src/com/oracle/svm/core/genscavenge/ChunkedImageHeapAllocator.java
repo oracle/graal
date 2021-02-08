@@ -28,20 +28,16 @@ import java.util.ArrayList;
 import java.util.List;
 
 import org.graalvm.compiler.core.common.NumUtil;
-import org.graalvm.nativeimage.Platform;
-import org.graalvm.nativeimage.Platforms;
 import org.graalvm.word.UnsignedWord;
 import org.graalvm.word.WordFactory;
 
 import com.oracle.svm.core.config.ConfigurationValues;
-import com.oracle.svm.core.config.ObjectLayout;
 import com.oracle.svm.core.image.ImageHeap;
 import com.oracle.svm.core.image.ImageHeapObject;
 import com.oracle.svm.core.image.ImageHeapPartition;
 import com.oracle.svm.core.util.UnsignedUtils;
 import com.oracle.svm.core.util.VMError;
 
-@Platforms(Platform.HOSTED_ONLY.class)
 class ChunkedImageHeapAllocator {
     /** A pseudo-partition for filler objects, see {@link FillerObjectDummyPartition}. */
     private static final ImageHeapPartition FILLERS_DUMMY_PARTITION = new FillerObjectDummyPartition();
@@ -114,6 +110,13 @@ class ChunkedImageHeapAllocator {
 
         public boolean tryAlignTop(int multiple) {
             long padding = computePadding(getTop(), multiple);
+            if (padding != 0 && padding < minimumObjectSize) {
+                /*
+                 * Cannot fit a filler object into the remaining padding space, so need to go up to
+                 * the next alignment multiple.
+                 */
+                padding = padding + multiple;
+            }
             if (padding > getUnallocatedBytes()) {
                 return false;
             }
@@ -122,18 +125,12 @@ class ChunkedImageHeapAllocator {
             return true;
         }
 
-        public void finish() {
-            allocateFiller(getUnallocatedBytes());
-            assert isFinished();
-        }
-
-        public boolean isFinished() {
-            return topOffset == getEndOffset();
-        }
-
         private void allocateFiller(long size) {
             if (size != 0) {
                 ImageHeapObject filler = imageHeap.addFillerObject(NumUtil.safeToInt(size));
+                if (filler == null) {
+                    throw VMError.shouldNotReachHere("Failed to leave enough space for a filler object: " + size + " byte remaining");
+                }
                 filler.setHeapPartition(FILLERS_DUMMY_PARTITION);
                 long location = allocate(filler, false);
                 filler.setOffsetInPartition(location);
@@ -170,10 +167,9 @@ class ChunkedImageHeapAllocator {
     private final ArrayList<AlignedChunk> alignedChunks = new ArrayList<>();
     private AlignedChunk currentAlignedChunk;
 
-    ChunkedImageHeapAllocator(ImageHeap imageHeap, long position) {
-        ObjectLayout layout = ConfigurationValues.getObjectLayout();
-        assert layout.getMinimumObjectSize() == layout.getAlignment() : "Must be able to fill any gap";
+    final int minimumObjectSize;
 
+    ChunkedImageHeapAllocator(ImageHeap imageHeap, long position) {
         this.imageHeap = imageHeap;
         this.alignedChunkSize = UnsignedUtils.safeToInt(HeapPolicy.getAlignedHeapChunkSize());
         this.alignedChunkAlignment = UnsignedUtils.safeToInt(HeapPolicy.getAlignedHeapChunkAlignment());
@@ -181,6 +177,9 @@ class ChunkedImageHeapAllocator {
         this.unalignedChunkObjectsOffset = UnsignedUtils.safeToInt(UnalignedHeapChunk.getObjectStartOffset());
 
         this.position = position;
+
+        /* Cache to prevent frequent lookups of the object layout from ImageSingletons. */
+        minimumObjectSize = ConfigurationValues.getObjectLayout().getMinimumObjectSize();
     }
 
     public long getPosition() {
@@ -208,7 +207,7 @@ class ChunkedImageHeapAllocator {
     }
 
     public void startNewAlignedChunk() {
-        maybeFinishAlignedChunk();
+        finishAlignedChunk();
         alignBetweenChunks(alignedChunkAlignment);
         long chunkBegin = allocateRaw(alignedChunkSize);
         currentAlignedChunk = new AlignedChunk(chunkBegin);
@@ -231,11 +230,8 @@ class ChunkedImageHeapAllocator {
         }
     }
 
-    public void maybeFinishAlignedChunk() {
-        if (currentAlignedChunk != null) {
-            currentAlignedChunk.finish();
-            currentAlignedChunk = null;
-        }
+    public void finishAlignedChunk() {
+        currentAlignedChunk = null;
     }
 
     public List<AlignedChunk> getAlignedChunks() {
@@ -272,8 +268,8 @@ class ChunkedImageHeapAllocator {
  */
 final class FillerObjectDummyPartition implements ImageHeapPartition {
     /**
-     * Zero so that the {@linkplain ImageHeapObject#getOffsetInPartition() partition-relative
-     * offsets} of filler objects are always their absolute locations.
+     * Zero so that the partition-relative offsets of filler objects are always their absolute
+     * locations.
      */
     @Override
     public long getStartOffset() {
@@ -282,11 +278,6 @@ final class FillerObjectDummyPartition implements ImageHeapPartition {
 
     @Override
     public String getName() {
-        throw VMError.shouldNotReachHere();
-    }
-
-    @Override
-    public boolean isWritable() {
         throw VMError.shouldNotReachHere();
     }
 

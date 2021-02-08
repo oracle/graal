@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2016, 2018, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2016, 2020, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -40,24 +40,28 @@
  */
 package com.oracle.truffle.api.debug;
 
-import com.oracle.truffle.api.TruffleException;
+import com.oracle.truffle.api.TruffleContext;
+import com.oracle.truffle.api.exception.AbstractTruffleException;
+import com.oracle.truffle.api.interop.ExceptionType;
+import com.oracle.truffle.api.interop.InteropLibrary;
+import com.oracle.truffle.api.library.ExportLibrary;
+import com.oracle.truffle.api.library.ExportMessage;
 import com.oracle.truffle.api.nodes.Node;
 
 /**
- * Controls breaking out of an execution context, such as a shell or eval. This exception now
- * extends {@link ThreadDeath} as that is the error that is supposed to not be ever caught. As its
- * Javadoc puts it: <em> An application should catch instances of this class only if it must clean
- * up after being terminated asynchronously. If {@code ThreadDeath} is caught by a method, it is
- * important that it be re-thrown so that the thread actually dies. </em> The re-throwing is
- * important aspect of <code>KillException</code> and as such it piggy-backs on this aspect of
- * {@link ThreadDeath}. For code that can distinguish between classical {@link ThreadDeath} and
- * {@link KillException}, is still OK to catch the exception and not propagate it any further.
+ * Represents a soft cancel exception used by {@link DebuggerSession#evalInContext}. The
+ * {@link SuspendedEvent#prepareKill()} now uses
+ * {@link TruffleContext#closeCancelled(Node, String)}.
  *
  * @since 0.12
  */
-final class KillException extends ThreadDeath implements TruffleException {
+
+@SuppressWarnings("deprecation")
+@ExportLibrary(InteropLibrary.class)
+final class KillException extends AbstractTruffleException {
+
     private static final long serialVersionUID = -8638020836970813894L;
-    private final Node node;
+    static final String MESSAGE = "Execution cancelled by a debugging session.";
 
     /**
      * Default constructor.
@@ -65,19 +69,12 @@ final class KillException extends ThreadDeath implements TruffleException {
      * @since 0.12
      */
     KillException(Node node) {
-        this.node = node;
+        super(MESSAGE, node);
     }
 
-    @Override
-    public String getMessage() {
-        return "Execution cancelled by a debugging session.";
-    }
-
-    public Node getLocation() {
-        return node;
-    }
-
-    public boolean isCancelled() {
-        return true;
+    @ExportMessage
+    @SuppressWarnings("static-method")
+    ExceptionType getExceptionType() {
+        return ExceptionType.INTERRUPT;
     }
 }

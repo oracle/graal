@@ -40,6 +40,7 @@ import org.graalvm.word.UnsignedWord;
 import org.graalvm.word.WordFactory;
 
 import com.oracle.svm.core.CalleeSavedRegisters;
+import com.oracle.svm.core.ReservedRegisters;
 import com.oracle.svm.core.c.NonmovableArray;
 import com.oracle.svm.core.c.NonmovableArrays;
 import com.oracle.svm.core.code.FrameInfoQueryResult.ValueInfo;
@@ -405,7 +406,7 @@ class CodeInfoVerifier {
             assert queryResult.hasCalleeSavedRegisters() == method.hasCalleeSavedRegisters();
             assert queryResult.getTotalFrameSize() == compilation.getTotalFrameSize();
 
-            assert CodeInfoAccess.lookupReferenceMapIndex(info, totalIP) == queryResult.getReferenceMapIndex();
+            assert CodeInfoAccess.lookupStackReferenceMapIndex(info, totalIP) == queryResult.getReferenceMapIndex();
         }
 
         for (Infopoint infopoint : compilation.getInfopoints()) {
@@ -417,7 +418,7 @@ class CodeInfoVerifier {
                     CodeInfoAccess.lookupCodeInfo(info, offset + compilationOffset, queryResult);
 
                     CollectingObjectReferenceVisitor visitor = new CollectingObjectReferenceVisitor();
-                    CodeReferenceMapDecoder.walkOffsetsFromPointer(WordFactory.zero(), CodeInfoAccess.getReferenceMapEncoding(info), queryResult.getReferenceMapIndex(), visitor);
+                    CodeReferenceMapDecoder.walkOffsetsFromPointer(WordFactory.zero(), CodeInfoAccess.getStackReferenceMapEncoding(info), queryResult.getReferenceMapIndex(), visitor);
                     ReferenceMapEncoder.Input expected = (ReferenceMapEncoder.Input) infopoint.debugInfo.getReferenceMap();
                     visitor.result.verify();
                     assert expected.equals(visitor.result);
@@ -490,6 +491,12 @@ class CodeInfoVerifier {
             int expectedOffset = ((StackSlot) expectedValue).getOffset(compilation.getTotalFrameSize());
             long actualOffset = actualValue.getData();
             assert expectedOffset == actualOffset;
+
+        } else if (ReservedRegisters.singleton().isAllowedInFrameState(expectedValue)) {
+            assert actualValue.getType() == ValueType.ReservedRegister;
+            int expectedNumber = ValueUtil.asRegister((RegisterValue) expectedValue).number;
+            long actualNumber = actualValue.getData();
+            assert expectedNumber == actualNumber;
 
         } else if (CalleeSavedRegisters.supportedByPlatform() && expectedValue instanceof RegisterValue) {
             assert actualValue.getType() == ValueType.Register;
@@ -595,13 +602,21 @@ class CodeInfoVerifier {
     private static ValueInfo findActualValue(ValueInfo[] actualObject, UnsignedWord expectedOffset, ObjectLayout objectLayout, UnsignedWord startOffset, int startIdx) {
         UnsignedWord curOffset = startOffset;
         int curIdx = startIdx;
-        while (curOffset.notEqual(expectedOffset)) {
+        while (curOffset.belowThan(expectedOffset)) {
             ValueInfo value = actualObject[curIdx];
             curOffset = curOffset.add(objectLayout.sizeInBytes(value.getKind()));
             curIdx++;
         }
-        assert curOffset.equal(expectedOffset);
-        return actualObject[curIdx];
+        if (curOffset.equal(expectedOffset)) {
+            return actualObject[curIdx];
+        }
+        /*
+         * If we go after the expected offset, return an illegal. Takes care of large byte array
+         * accesses, and should raise flags for other cases.
+         */
+        ValueInfo illegal = new ValueInfo();
+        illegal.type = ValueType.Illegal;
+        return illegal;
     }
 }
 

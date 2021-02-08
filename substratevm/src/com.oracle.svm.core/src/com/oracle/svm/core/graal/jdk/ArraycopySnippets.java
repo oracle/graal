@@ -36,6 +36,7 @@ import org.graalvm.compiler.graph.Node.NodeIntrinsic;
 import org.graalvm.compiler.nodes.StructuredGraph;
 import org.graalvm.compiler.nodes.extended.ForeignCallNode;
 import org.graalvm.compiler.nodes.extended.ForeignCallWithExceptionNode;
+import org.graalvm.compiler.nodes.java.ArrayLengthNode;
 import org.graalvm.compiler.nodes.spi.LoweringTool;
 import org.graalvm.compiler.options.OptionValues;
 import org.graalvm.compiler.phases.util.Providers;
@@ -60,7 +61,7 @@ import com.oracle.svm.core.snippets.SnippetRuntime.SubstrateForeignCallDescripto
 import com.oracle.svm.core.snippets.SubstrateForeignCallTarget;
 
 public final class ArraycopySnippets extends SubstrateTemplates implements Snippets {
-    private static final SubstrateForeignCallDescriptor ARRAYCOPY = SnippetRuntime.findForeignCall(ArraycopySnippets.class, "doArraycopy", false, LocationIdentity.ANY_LOCATION);
+    private static final SubstrateForeignCallDescriptor ARRAYCOPY = SnippetRuntime.findForeignCall(ArraycopySnippets.class, "doArraycopy", false, LocationIdentity.any());
     private static final SubstrateForeignCallDescriptor[] FOREIGN_CALLS = new SubstrateForeignCallDescriptor[]{ARRAYCOPY};
 
     public static void registerForeignCalls(Providers providers, SubstrateForeignCallsProvider foreignCalls) {
@@ -101,7 +102,7 @@ public final class ArraycopySnippets extends SubstrateTemplates implements Snipp
                 boundsCheck(fromArray, fromIndex, toArray, toIndex, length);
                 objectCopyBackward(fromArray, fromIndex, fromArray, toIndex, length, fromHub.getLayoutEncoding());
                 return;
-            } else if (fromHub == toHub || toHub.isAssignableFromHub(fromHub)) {
+            } else if (fromHub == toHub || DynamicHub.toClass(toHub).isAssignableFrom(DynamicHub.toClass(fromHub))) {
                 boundsCheck(fromArray, fromIndex, toArray, toIndex, length);
                 objectCopyForward(fromArray, fromIndex, toArray, toIndex, length, fromHub.getLayoutEncoding());
                 return;
@@ -115,7 +116,7 @@ public final class ArraycopySnippets extends SubstrateTemplates implements Snipp
     }
 
     private static void boundsCheck(Object fromArray, int fromIndex, Object toArray, int toIndex, int length) {
-        if (fromIndex < 0 || toIndex < 0 || length < 0 || fromIndex > KnownIntrinsics.readArrayLength(fromArray) - length || toIndex > KnownIntrinsics.readArrayLength(toArray) - length) {
+        if (fromIndex < 0 || toIndex < 0 || length < 0 || fromIndex > ArrayLengthNode.arrayLength(fromArray) - length || toIndex > ArrayLengthNode.arrayLength(toArray) - length) {
             throw new ArrayIndexOutOfBoundsException();
         }
     }

@@ -31,6 +31,7 @@ import org.graalvm.compiler.core.common.spi.MetaAccessExtensionProvider;
 import org.graalvm.compiler.hotspot.GraalHotSpotVMConfig;
 import org.graalvm.compiler.hotspot.word.HotSpotWordTypes;
 import org.graalvm.compiler.nodes.graphbuilderconf.GraphBuilderConfiguration.Plugins;
+import org.graalvm.compiler.nodes.spi.LoopsDataProvider;
 import org.graalvm.compiler.nodes.spi.LoweringProvider;
 import org.graalvm.compiler.nodes.spi.PlatformConfigurationProvider;
 import org.graalvm.compiler.nodes.spi.Replacements;
@@ -68,9 +69,10 @@ public class HotSpotProviders extends Providers {
                     Plugins graphBuilderPlugins,
                     PlatformConfigurationProvider platformConfigurationProvider,
                     MetaAccessExtensionProvider metaAccessExtensionProvider,
+                    LoopsDataProvider loopsDataProvider,
                     GraalHotSpotVMConfig config) {
         super(metaAccess, codeCache, constantReflection, constantField, foreignCalls, lowerer, replacements, new HotSpotStampProvider(), platformConfigurationProvider, metaAccessExtensionProvider,
-                        snippetReflection, wordTypes);
+                        snippetReflection, wordTypes, loopsDataProvider);
         this.suites = suites;
         this.registers = registers;
         this.graphBuilderPlugins = graphBuilderPlugins;
@@ -79,8 +81,9 @@ public class HotSpotProviders extends Providers {
 
     public HotSpotProviders(MetaAccessProvider metaAccess, CodeCacheProvider codeCache, ConstantReflectionProvider constantReflection, ConstantFieldProvider constantField,
                     ForeignCallsProvider foreignCalls, LoweringProvider lowerer, Replacements replacements, StampProvider stampProvider, PlatformConfigurationProvider platformConfigurationProvider,
-                    MetaAccessExtensionProvider metaAccessExtensionProvider) {
-        super(metaAccess, codeCache, constantReflection, constantField, foreignCalls, lowerer, replacements, stampProvider, platformConfigurationProvider, metaAccessExtensionProvider, null, null);
+                    MetaAccessExtensionProvider metaAccessExtensionProvider, LoopsDataProvider loopsDataProvider) {
+        super(metaAccess, codeCache, constantReflection, constantField, foreignCalls, lowerer, replacements, stampProvider, platformConfigurationProvider, metaAccessExtensionProvider, null, null,
+                        loopsDataProvider);
         this.suites = null;
         this.registers = null;
         this.graphBuilderPlugins = null;
@@ -126,25 +129,29 @@ public class HotSpotProviders extends Providers {
     @Override
     public HotSpotProviders copyWith(ConstantReflectionProvider substitution) {
         return new HotSpotProviders(getMetaAccess(), getCodeCache(), substitution, getConstantFieldProvider(), getForeignCalls(), getLowerer(), getReplacements(), getSuites(),
-                        getRegisters(), getSnippetReflection(), getWordTypes(), getGraphBuilderPlugins(), getPlatformConfigurationProvider(), getMetaAccessExtensionProvider(), config);
+                        getRegisters(), getSnippetReflection(), getWordTypes(), getGraphBuilderPlugins(), getPlatformConfigurationProvider(), getMetaAccessExtensionProvider(), getLoopsDataProvider(),
+                        config);
     }
 
     @Override
     public HotSpotProviders copyWith(ConstantFieldProvider substitution) {
         return new HotSpotProviders(getMetaAccess(), getCodeCache(), getConstantReflection(), substitution, getForeignCalls(), getLowerer(), getReplacements(),
                         getSuites(),
-                        getRegisters(), getSnippetReflection(), getWordTypes(), getGraphBuilderPlugins(), getPlatformConfigurationProvider(), getMetaAccessExtensionProvider(), config);
+                        getRegisters(), getSnippetReflection(), getWordTypes(), getGraphBuilderPlugins(), getPlatformConfigurationProvider(), getMetaAccessExtensionProvider(), getLoopsDataProvider(),
+                        config);
     }
 
     @Override
     public HotSpotProviders copyWith(Replacements substitution) {
         return new HotSpotProviders(getMetaAccess(), getCodeCache(), getConstantReflection(), getConstantFieldProvider(), getForeignCalls(), getLowerer(), substitution,
-                        getSuites(), getRegisters(), getSnippetReflection(), getWordTypes(), getGraphBuilderPlugins(), getPlatformConfigurationProvider(), getMetaAccessExtensionProvider(), config);
+                        getSuites(), getRegisters(), getSnippetReflection(), getWordTypes(), getGraphBuilderPlugins(), getPlatformConfigurationProvider(), getMetaAccessExtensionProvider(),
+                        getLoopsDataProvider(), config);
     }
 
     public HotSpotProviders copyWith(Plugins substitution) {
         return new HotSpotProviders(getMetaAccess(), getCodeCache(), getConstantReflection(), getConstantFieldProvider(), getForeignCalls(), getLowerer(), getReplacements(),
-                        getSuites(), getRegisters(), getSnippetReflection(), getWordTypes(), substitution, getPlatformConfigurationProvider(), getMetaAccessExtensionProvider(), config);
+                        getSuites(), getRegisters(), getSnippetReflection(), getWordTypes(), substitution, getPlatformConfigurationProvider(), getMetaAccessExtensionProvider(), getLoopsDataProvider(),
+                        config);
     }
 
 }

@@ -33,7 +33,7 @@ struct A {
     A() {
         printf("CONSTRUCT\n");
     }
-    A(const A &a) {
+    A(__attribute__((unused)) const A &a) {
         printf("COPY CONSTRUCT\n");
     }
     ~A() {

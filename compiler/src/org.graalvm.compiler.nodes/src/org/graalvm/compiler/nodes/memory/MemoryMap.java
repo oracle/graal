@@ -33,7 +33,7 @@ import org.graalvm.word.LocationIdentity;
 public interface MemoryMap {
 
     /**
-     * Gets the last node that that (potentially) wrote to {@code locationIdentity}.
+     * Gets the last node that (potentially) wrote to {@code locationIdentity}.
      */
     MemoryKill getLastLocationAccess(LocationIdentity locationIdentity);
 

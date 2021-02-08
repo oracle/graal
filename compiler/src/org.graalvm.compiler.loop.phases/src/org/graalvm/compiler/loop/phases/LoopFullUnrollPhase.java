@@ -32,10 +32,10 @@ import java.util.function.ToIntFunction;
 import org.graalvm.compiler.core.common.GraalOptions;
 import org.graalvm.compiler.debug.CounterKey;
 import org.graalvm.compiler.debug.DebugContext;
-import org.graalvm.compiler.loop.LoopEx;
-import org.graalvm.compiler.loop.LoopPolicies;
-import org.graalvm.compiler.loop.LoopsData;
 import org.graalvm.compiler.nodes.StructuredGraph;
+import org.graalvm.compiler.nodes.loop.LoopEx;
+import org.graalvm.compiler.nodes.loop.LoopPolicies;
+import org.graalvm.compiler.nodes.loop.LoopsData;
 import org.graalvm.compiler.nodes.spi.CoreProviders;
 import org.graalvm.compiler.options.Option;
 import org.graalvm.compiler.options.OptionKey;
@@ -71,7 +71,7 @@ public class LoopFullUnrollPhase extends LoopPhase<LoopPolicies> {
                 int applications = 0;
                 do {
                     peeled = false;
-                    final LoopsData dataCounted = new LoopsData(graph);
+                    final LoopsData dataCounted = context.getLoopsDataProvider().getLoopsData(graph);
                     dataCounted.detectedCountedLoops();
                     List<LoopEx> countedLoops = dataCounted.countedLoops();
                     countedLoops.sort(LOOP_COMPARATOR);

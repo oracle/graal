@@ -47,6 +47,7 @@ import static org.junit.Assert.assertNull;
 import static org.junit.Assert.assertTrue;
 
 import java.util.HashMap;
+import java.util.Iterator;
 import java.util.Map;
 
 import com.oracle.truffle.api.test.polyglot.ProxyLanguage;
@@ -55,12 +56,22 @@ import org.graalvm.polyglot.Source;
 import org.graalvm.polyglot.Value;
 import org.junit.Test;
 
+import com.oracle.truffle.api.CallTarget;
+import com.oracle.truffle.api.Truffle;
+import com.oracle.truffle.api.TruffleLanguage;
 import com.oracle.truffle.api.debug.Breakpoint;
 import com.oracle.truffle.api.debug.DebugStackFrame;
 import com.oracle.truffle.api.debug.DebugValue;
 import com.oracle.truffle.api.debug.Debugger;
 import com.oracle.truffle.api.debug.DebuggerSession;
+import com.oracle.truffle.api.debug.SourceElement;
 import com.oracle.truffle.api.debug.SuspendedEvent;
+import com.oracle.truffle.api.frame.VirtualFrame;
+import com.oracle.truffle.api.instrumentation.GenerateWrapper;
+import com.oracle.truffle.api.instrumentation.InstrumentableNode;
+import com.oracle.truffle.api.instrumentation.ProbeNode;
+import com.oracle.truffle.api.instrumentation.StandardTags;
+import com.oracle.truffle.api.instrumentation.Tag;
 import com.oracle.truffle.api.instrumentation.test.InstrumentationTestLanguage;
 import com.oracle.truffle.api.interop.InteropLibrary;
 import com.oracle.truffle.api.interop.InvalidArrayIndexException;
@@ -68,6 +79,8 @@ import com.oracle.truffle.api.interop.TruffleObject;
 import com.oracle.truffle.api.interop.UnsupportedMessageException;
 import com.oracle.truffle.api.library.ExportLibrary;
 import com.oracle.truffle.api.library.ExportMessage;
+import com.oracle.truffle.api.nodes.Node;
+import com.oracle.truffle.api.nodes.RootNode;
 import com.oracle.truffle.api.source.SourceSection;
 
 @SuppressWarnings({"static-method", "unused"})
@@ -342,6 +355,97 @@ public class DebugValueTest extends AbstractDebugTest {
             functionValue.execute(ma);
         }
         assertTrue(suspended[0]);
+    }
+
+    @Test
+    public void testNull() {
+        ProxyLanguage.setDelegate(new ProxyLanguage() {
+            @Override
+            protected CallTarget parse(TruffleLanguage.ParsingRequest request) throws Exception {
+                return Truffle.getRuntime().createCallTarget(new TestRootNode(languageInstance));
+            }
+
+            final class TestRootNode extends RootNode {
+                @Node.Child TestBody body = new TestBody();
+
+                TestRootNode(TruffleLanguage<?> language) {
+                    super(language);
+                }
+
+                @Override
+                public Object execute(VirtualFrame frame) {
+                    if (frame.getArguments().length == 0) {
+                        return getCallTarget().call(null, 11, new Object());
+                    }
+                    return body.execute(frame);
+                }
+            }
+        });
+        try (DebuggerSession session = tester.startSession(SourceElement.ROOT)) {
+            session.suspendNextExecution();
+            Source source = Source.create(ProxyLanguage.ID, "");
+            tester.startEval(source);
+            expectSuspended((SuspendedEvent event) -> {
+                Iterator<DebugValue> declaredValues = event.getTopStackFrame().getScope().getDeclaredValues().iterator();
+                DebugValue arg0 = declaredValues.next();
+                DebugValue arg1 = declaredValues.next();
+                DebugValue arg2 = declaredValues.next();
+                assertFalse(declaredValues.hasNext());
+
+                assertFalse(arg0.isReadable());
+                assertTrue(arg1.isReadable());
+                assertFalse(arg2.isReadable());
+
+                assertEquals("<not readable>", arg0.toDisplayString());
+                assertNull(arg0.getProperties());
+                assertNull(arg0.getMetaObject());
+                assertFalse(arg0.isArray());
+                assertFalse(arg0.isBoolean());
+                assertFalse(arg0.isDate());
+                assertFalse(arg0.isDuration());
+                assertFalse(arg0.isInstant());
+                assertFalse(arg0.isInternal());
+                assertFalse(arg0.isMetaObject());
+                assertFalse(arg0.isNull());
+                assertFalse(arg0.isNumber());
+                assertFalse(arg0.isReadable());
+                assertFalse(arg0.isString());
+                assertFalse(arg0.isTime());
+                assertFalse(arg0.isTimeZone());
+
+                assertEquals("11", arg1.toDisplayString());
+                assertEquals("<not readable>", arg2.toDisplayString());
+            });
+        }
+        expectDone();
+    }
+
+    @GenerateWrapper
+    static class TestBody extends Node implements InstrumentableNode {
+
+        @Override
+        public boolean isInstrumentable() {
+            return true;
+        }
+
+        @Override
+        public boolean hasTag(Class<? extends Tag> tag) {
+            return StandardTags.RootTag.class.equals(tag);
+        }
+
+        @Override
+        public InstrumentableNode.WrapperNode createWrapper(ProbeNode probe) {
+            return new TestBodyWrapper(this, probe);
+        }
+
+        @Override
+        public SourceSection getSourceSection() {
+            return com.oracle.truffle.api.source.Source.newBuilder(ProxyLanguage.ID, "", "").build().createUnavailableSection();
+        }
+
+        public Object execute(VirtualFrame frame) {
+            return 42;
+        }
     }
 
     @ExportLibrary(InteropLibrary.class)

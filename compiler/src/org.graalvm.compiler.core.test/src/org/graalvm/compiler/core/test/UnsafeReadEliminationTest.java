@@ -24,6 +24,8 @@
  */
 package org.graalvm.compiler.core.test;
 
+import static org.graalvm.compiler.api.directives.GraalDirectives.opaque;
+
 import org.graalvm.compiler.api.directives.GraalDirectives;
 import org.graalvm.compiler.nodes.StructuredGraph;
 import org.graalvm.compiler.nodes.StructuredGraph.AllowAssumptions;
@@ -35,7 +37,7 @@ import org.graalvm.compiler.nodes.spi.LoweringTool;
 import org.graalvm.compiler.options.OptionValues;
 import org.graalvm.compiler.phases.common.CanonicalizerPhase;
 import org.graalvm.compiler.phases.common.LoweringPhase;
-import org.graalvm.compiler.virtual.phases.ea.EarlyReadEliminationPhase;
+import org.graalvm.compiler.virtual.phases.ea.ReadEliminationPhase;
 import org.graalvm.compiler.virtual.phases.ea.PartialEscapePhase;
 import org.junit.Assert;
 import org.junit.Test;
@@ -121,12 +123,12 @@ public class UnsafeReadEliminationTest extends GraalCompilerTest {
         CoreProviders context = getDefaultHighTierContext();
         CanonicalizerPhase canonicalizer = createCanonicalizerPhase();
         canonicalizer.apply(graph, context);
-        new EarlyReadEliminationPhase(canonicalizer).apply(graph, context);
+        new ReadEliminationPhase(canonicalizer).apply(graph, context);
         Assert.assertEquals(3, graph.getNodes().filter(UnsafeAccessNode.class).count());
         // after lowering the same applies for reads and writes
         new LoweringPhase(canonicalizer, LoweringTool.StandardLoweringStage.HIGH_TIER).apply(graph, context);
         canonicalizer.apply(graph, context);
-        new EarlyReadEliminationPhase(canonicalizer).apply(graph, context);
+        new ReadEliminationPhase(canonicalizer).apply(graph, context);
         Assert.assertEquals(reads, graph.getNodes().filter(ReadNode.class).count());
         Assert.assertEquals(writes, graph.getNodes().filter(WriteNode.class).count());
     }
@@ -289,6 +291,109 @@ public class UnsafeReadEliminationTest extends GraalCompilerTest {
     @Test
     public void testUnsafeWriteToBooleanArray() {
         test("unsafeWriteToBooleanArray");
+    }
+
+    public static boolean unsafeKills() {
+        byte beforeKill = FINAL_BYTE_ARRAY[0];
+        UNSAFE.putByte(opaque(FINAL_BYTE_ARRAY), byteArrayBaseOffset, (byte) 2);
+        byte afterKill = FINAL_BYTE_ARRAY[0];
+
+        FINAL_BYTE_ARRAY[0] = 0; // reset
+        return beforeKill != afterKill;
+    }
+
+    @Test
+    public void testUnsafeKills() {
+        test("unsafeKills");
+    }
+
+    public static boolean aliasingSafeUnsafe0() {
+        int intVal = 0x0102_0304;
+        UNSAFE.putInt(FINAL_BYTE_ARRAY, byteArrayBaseOffset, intVal);
+        FINAL_BYTE_ARRAY[1] = (byte) 0xff;
+        int after = UNSAFE.getInt(opaque(FINAL_BYTE_ARRAY), byteArrayBaseOffset);
+
+        FINAL_BYTE_ARRAY[0] = 0; // reset
+        FINAL_BYTE_ARRAY[1] = 0; // reset
+        FINAL_BYTE_ARRAY[2] = 0; // reset
+        FINAL_BYTE_ARRAY[3] = 0; // reset
+        return intVal != after;
+    }
+
+    @Test
+    public void testAliasingSafeUnsafe0() {
+        test("aliasingSafeUnsafe0");
+    }
+
+    public static boolean aliasingSafeUnsafe1() {
+        int intVal = 0x0102_0304;
+        UNSAFE.putInt(opaque(FINAL_BYTE_ARRAY), byteArrayBaseOffset, intVal);
+        FINAL_BYTE_ARRAY[1] = (byte) 0xff;
+        int after = UNSAFE.getInt(opaque(FINAL_BYTE_ARRAY), byteArrayBaseOffset);
+
+        FINAL_BYTE_ARRAY[0] = 0; // reset
+        FINAL_BYTE_ARRAY[1] = 0; // reset
+        FINAL_BYTE_ARRAY[2] = 0; // reset
+        FINAL_BYTE_ARRAY[3] = 0; // reset
+        return intVal != after;
+    }
+
+    @Test
+    public void testAliasingSafeUnsafe1() {
+        test("aliasingSafeUnsafe1");
+    }
+
+    public static boolean aliasingSafeUnsafe2() {
+        int intVal = 0x0102_0304;
+        UNSAFE.putInt(FINAL_BYTE_ARRAY, byteArrayBaseOffset, intVal);
+        FINAL_BYTE_ARRAY[1] = (byte) 0xff;
+        int after = UNSAFE.getInt(FINAL_BYTE_ARRAY, byteArrayBaseOffset);
+
+        FINAL_BYTE_ARRAY[0] = 0; // reset
+        FINAL_BYTE_ARRAY[1] = 0; // reset
+        FINAL_BYTE_ARRAY[2] = 0; // reset
+        FINAL_BYTE_ARRAY[3] = 0; // reset
+        return intVal != after;
+    }
+
+    @Test
+    public void testAliasingSafeUnsafe2() {
+        test("aliasingSafeUnsafe2");
+    }
+
+    public static boolean aliasingSafeUnsafe3() {
+        int intVal = 0x0102_0304;
+        UNSAFE.putInt(opaque(FINAL_BYTE_ARRAY), byteArrayBaseOffset, intVal);
+        FINAL_BYTE_ARRAY[1] = (byte) 0xff;
+        int after = UNSAFE.getInt(FINAL_BYTE_ARRAY, byteArrayBaseOffset);
+
+        FINAL_BYTE_ARRAY[0] = 0; // reset
+        FINAL_BYTE_ARRAY[1] = 0; // reset
+        FINAL_BYTE_ARRAY[2] = 0; // reset
+        FINAL_BYTE_ARRAY[3] = 0; // reset
+        return intVal != after;
+    }
+
+    @Test
+    public void testAliasingSafeUnsafe3() {
+        test("aliasingSafeUnsafe3");
+    }
+
+    public static boolean aliasingUnsafe() {
+        UNSAFE.putByte(FINAL_BYTE_ARRAY, byteArrayBaseOffset + 1, (byte) 0x44);
+        UNSAFE.putByte(FINAL_BYTE_ARRAY, byteArrayBaseOffset, (byte) 0x55);
+        int after = UNSAFE.getInt(FINAL_BYTE_ARRAY, byteArrayBaseOffset);
+
+        FINAL_BYTE_ARRAY[0] = 0; // reset
+        FINAL_BYTE_ARRAY[1] = 0; // reset
+        FINAL_BYTE_ARRAY[2] = 0; // reset
+        FINAL_BYTE_ARRAY[3] = 0; // reset
+        return 0x55 != after;
+    }
+
+    @Test
+    public void testAliasingUnsafe() {
+        test("aliasingUnsafe");
     }
 
 }

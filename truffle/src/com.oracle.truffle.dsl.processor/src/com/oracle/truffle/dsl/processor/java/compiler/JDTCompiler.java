@@ -53,6 +53,7 @@ import javax.annotation.processing.ProcessingEnvironment;
 import javax.lang.model.element.Element;
 import javax.lang.model.element.TypeElement;
 
+import com.oracle.truffle.dsl.processor.ProcessorContext;
 import com.oracle.truffle.dsl.processor.java.ElementUtils;
 import java.lang.reflect.Field;
 import javax.lang.model.element.AnnotationMirror;
@@ -80,14 +81,22 @@ public class JDTCompiler extends AbstractCompiler {
         return workaround;
     }
 
+    private static final class AllMembersDeclarationOrder {
+    }
+
     @Override
     public List<? extends Element> getAllMembersInDeclarationOrder(ProcessingEnvironment environment, TypeElement type) {
-        return sortBySourceOrder(newElementList(environment.getElementUtils().getAllMembers(type)));
+        Map<TypeElement, List<? extends Element>> cache = ProcessorContext.getInstance().getCacheMap(AllMembersDeclarationOrder.class);
+        return cache.computeIfAbsent(type, (t) -> sortBySourceOrder(newElementList(environment.getElementUtils().getAllMembers(type))));
+    }
+
+    private static final class EnclosedDeclarationOrder {
     }
 
     @Override
     public List<? extends Element> getEnclosedElementsInDeclarationOrder(TypeElement type) {
-        return sortBySourceOrder(newElementList(type.getEnclosedElements()));
+        Map<TypeElement, List<? extends Element>> cache = ProcessorContext.getInstance().getCacheMap(EnclosedDeclarationOrder.class);
+        return cache.computeIfAbsent(type, (t) -> sortBySourceOrder(newElementList(t.getEnclosedElements())));
     }
 
     private static List<? extends Element> sortBySourceOrder(List<Element> elements) {

@@ -167,11 +167,11 @@ public class ReplacementsImpl implements Replacements, InlineInvokePlugin {
     public Stamp getInjectedStamp(Class<?> type, boolean nonNull) {
         JavaKind kind = JavaKind.fromJavaClass(type);
         if (kind == JavaKind.Object) {
-            ResolvedJavaType returnType = providers.getMetaAccess().lookupJavaType(type);
             WordTypes wordTypes = getProviders().getWordTypes();
-            if (wordTypes.isWord(returnType)) {
-                return wordTypes.getWordStamp(returnType);
+            if (wordTypes.isWord(type)) {
+                return wordTypes.getWordStamp(type);
             } else {
+                ResolvedJavaType returnType = providers.getMetaAccess().lookupJavaType(type);
                 return StampFactory.object(TypeReference.createWithoutAssumptions(returnType), nonNull);
             }
         } else {
@@ -358,9 +358,12 @@ public class ReplacementsImpl implements Replacements, InlineInvokePlugin {
     }
 
     @Override
-    public StructuredGraph getSubstitution(ResolvedJavaMethod method, int invokeBci, boolean trackNodeSourcePosition, NodeSourcePosition replaceePosition,
+    public StructuredGraph getInlineSubstitution(ResolvedJavaMethod method, int invokeBci, Invoke.InlineControl inlineControl, boolean trackNodeSourcePosition, NodeSourcePosition replaceePosition,
                     AllowAssumptions allowAssumptions, OptionValues options) {
         assert invokeBci >= 0 : method;
+        if (!inlineControl.allowSubstitution()) {
+            return null;
+        }
         StructuredGraph result;
         InvocationPlugin plugin = graphBuilderPlugins.getInvocationPlugins().lookupInvocation(method);
         if (plugin != null) {
@@ -581,8 +584,11 @@ public class ReplacementsImpl implements Replacements, InlineInvokePlugin {
                 if (stateSplit instanceof Invoke) {
                     Invoke invoke = (Invoke) stateSplit;
                     ResolvedJavaMethod method = invoke.callTarget().targetMethod();
+                    if (method == null) {
+                        return false;
+                    }
                     if (method.getAnnotation(Fold.class) != null) {
-                        return true;
+                        throw new GraalError("Fold invokes should no longer exist: " + method + " in " + stateSplit.asNode().graph());
                     }
                     Node.NodeIntrinsic annotation = method.getAnnotation(Node.NodeIntrinsic.class);
                     if (annotation != null && !annotation.hasSideEffect()) {
@@ -615,7 +621,7 @@ public class ReplacementsImpl implements Replacements, InlineInvokePlugin {
             graph.disableUnsafeAccessTracking();
 
             try (DebugContext.Scope s = debug.scope("buildInitialGraph", graph)) {
-                MetaAccessProvider metaAccess = replacements.providers.getMetaAccess();
+                MetaAccessProvider metaAccess = replacements.getProviders().getMetaAccess();
 
                 Plugins plugins = new Plugins(replacements.graphBuilderPlugins);
                 GraphBuilderConfiguration config = GraphBuilderConfiguration.getSnippetDefault(plugins);

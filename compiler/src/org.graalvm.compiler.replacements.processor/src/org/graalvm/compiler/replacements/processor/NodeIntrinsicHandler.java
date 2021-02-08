@@ -332,15 +332,20 @@ public final class NodeIntrinsicHandler extends AnnotationHandler {
             }
 
             if (cIdx == method.getParameters().size() && paramType.getKind() == TypeKind.ARRAY) {
-                // last argument of constructor is varargs, match remaining intrinsic arguments
                 TypeMirror varargsType = ((ArrayType) paramType).getComponentType();
-                while (sIdx < signature.length) {
-                    if (!isTypeCompatible(varargsType, signature[sIdx++])) {
-                        nonMatches.put(method, String.format("the types of argument %d are incompatible: %s != %s", sIdx, varargsType, signature[sIdx - 1]));
-                        return false;
+                if (!varargsType.getKind().isPrimitive()) {
+                    // last argument of constructor is varargs, match remaining intrinsic arguments
+                    while (sIdx < signature.length) {
+                        if (!isTypeCompatible(varargsType, signature[sIdx++])) {
+                            nonMatches.put(method, String.format("the types of argument %d are incompatible: %s != %s", sIdx, varargsType, signature[sIdx - 1]));
+                            return false;
+                        }
                     }
+                    continue;
                 }
-            } else if (sIdx >= signature.length) {
+                // fall through to other cases
+            }
+            if (sIdx >= signature.length) {
                 // too many arguments in intrinsic method
                 nonMatches.put(method, "too many arguments");
                 return false;

@@ -64,6 +64,7 @@ public abstract class Property {
      * @return new instance of the property
      * @since 0.8 or earlier
      */
+    @SuppressWarnings("deprecation")
     public static Property create(Object key, Location location, int flags) {
         return Layout.getFactory().createProperty(key, location, flags);
     }

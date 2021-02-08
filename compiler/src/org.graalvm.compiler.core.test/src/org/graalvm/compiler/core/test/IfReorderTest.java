@@ -24,6 +24,8 @@
  */
 package org.graalvm.compiler.core.test;
 
+import static org.graalvm.compiler.api.directives.GraalDirectives.injectBranchProbability;
+
 import java.io.Serializable;
 import java.util.ArrayList;
 import java.util.List;
@@ -45,10 +47,10 @@ public class IfReorderTest extends GraalCompilerTest {
          * Serializable and List are not mutually exclusive, so these two IFs should never be
          * reordered.
          */
-        if (branchProbability(0.1, o instanceof Serializable)) {
+        if (injectBranchProbability(0.1, o instanceof Serializable)) {
             return fieldA;
         }
-        if (branchProbability(0.9, o instanceof List)) {
+        if (injectBranchProbability(0.9, o instanceof List)) {
             return fieldB;
         }
         return null;

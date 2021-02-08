@@ -30,10 +30,13 @@ import java.util.Map;
 import java.util.Properties;
 import java.util.function.Supplier;
 
+import org.graalvm.compiler.serviceprovider.JavaVersionUtil;
 import org.graalvm.nativeimage.ImageInfo;
+import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;
 
+import com.oracle.svm.core.OS;
 import com.oracle.svm.core.VM;
 import com.oracle.svm.core.config.ConfigurationValues;
 
@@ -74,6 +77,8 @@ public abstract class SystemPropertiesSupport {
     private Properties properties;
     private final Map<String, String> savedProperties;
     private final Map<String, String> readOnlySavedProperties;
+    private final String hostOS = System.getProperty("os.name");
+    // needed as fallback for platforms that don't implement osNameValue
 
     private volatile boolean fullyInitialized;
 
@@ -100,12 +105,14 @@ public abstract class SystemPropertiesSupport {
         initializeProperty("java.library.path", "");
         initializeProperty("sun.arch.data.model", Integer.toString(ConfigurationValues.getTarget().wordJavaKind.getBitCount()));
 
-        String targetName = System.getProperty("svm.targetName");
-        String targetArch = System.getProperty("svm.targetArch");
-        initializeProperty("os.name", targetName != null ? targetName : System.getProperty("os.name"));
-        initializeProperty("os.arch", targetArch != null ? targetArch : System.getProperty("os.arch"));
-
         initializeProperty(ImageInfo.PROPERTY_IMAGE_CODE_KEY, ImageInfo.PROPERTY_IMAGE_CODE_VALUE_RUNTIME);
+
+        if (OS.getCurrent() == OS.LINUX && JavaVersionUtil.JAVA_SPEC == 11) {
+            /* AWT system properties are no longer used after JDK 11. */
+            initializeProperty("awt.toolkit", System.getProperty("awt.toolkit"));
+            initializeProperty("java.awt.graphicsenv", System.getProperty("java.awt.graphicsenv"));
+            initializeProperty("java.awt.printerjob", System.getProperty("java.awt.printerjob"));
+        }
 
         lazyRuntimeValues = new HashMap<>();
         lazyRuntimeValues.put("user.name", this::userName);
@@ -114,6 +121,20 @@ public abstract class SystemPropertiesSupport {
         lazyRuntimeValues.put("java.io.tmpdir", this::tmpdirValue);
         lazyRuntimeValues.put("os.version", this::osVersionValue);
         lazyRuntimeValues.put("java.vm.version", VM::getVersion);
+
+        String targetName = System.getProperty("svm.targetName");
+        if (targetName != null) {
+            initializeProperty("os.name", targetName);
+        } else {
+            lazyRuntimeValues.put("os.name", this::osNameValue);
+        }
+
+        String targetArch = System.getProperty("svm.targetArch");
+        if (targetArch != null) {
+            initializeProperty("os.arch", targetArch);
+        } else {
+            initializeProperty("os.arch", ImageSingletons.lookup(Platform.class).getArchitecture());
+        }
     }
 
     private void ensureFullyInitialized() {
@@ -234,6 +255,14 @@ public abstract class SystemPropertiesSupport {
     protected abstract String userDirValue();
 
     protected abstract String tmpdirValue();
+
+    protected String osNameValue() {
+        /*
+         * Fallback for systems that don't implement osNameValue in their SystemPropertiesSupport
+         * implementation.
+         */
+        return hostOS;
+    }
 
     protected abstract String osVersionValue();
 }

@@ -31,7 +31,7 @@
 unsigned char __builtin_subcb(unsigned char, unsigned char, unsigned char, unsigned char *);
 #endif
 
-int main(int argc, const char **argv) {
+int main() {
     unsigned char carryout, res;
 
     res = __builtin_subcb((unsigned char) 0x0, (unsigned char) 0x0, 0, &carryout);

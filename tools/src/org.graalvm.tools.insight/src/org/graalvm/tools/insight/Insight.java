@@ -24,6 +24,9 @@
  */
 package org.graalvm.tools.insight;
 
+import com.oracle.truffle.api.instrumentation.TruffleInstrument;
+import com.oracle.truffle.api.interop.TruffleObject;
+import java.util.Map;
 import java.util.function.Function;
 import org.graalvm.polyglot.Engine;
 
@@ -31,13 +34,13 @@ import org.graalvm.polyglot.Engine;
  * Programatic access to the Insight instrument. Obtain an instrument instance via its {@link #ID}:
  * <p>
  * {@codesnippet Embedding#apply}
- * 
+ *
  * and then {@link Function#apply(java.lang.Object) evaluate} {@link org.graalvm.polyglot.Source}
  * scripts written in any language accessing the {@code agent} variable exposed to them. Use
  * {@link #VERSION following API} when dealing with the {@code insight} variable:
  * <p>
  * {@codesnippet InsightAPI}
- * 
+ *
  * @since 20.1
  */
 public final class Insight {
@@ -49,7 +52,7 @@ public final class Insight {
      * {@link Insight} instruments inside of your {@link Engine}:
      * <p>
      * {@codesnippet Embedding#apply}
-     * 
+     *
      * @since 20.1
      */
     public static final String ID = "insight";
@@ -60,9 +63,43 @@ public final class Insight {
      * reference:
      * <p>
      * {@codesnippet InsightAPI}
-     * 
+     *
      * @since 20.1
      */
-    public static final String VERSION = "0.6";
+    public static final String VERSION = "1.0";
 
+    /**
+     * Additional provider of symbols for {@link #ID Insight scripts}. All available instruments are
+     * queried for implementation of this interface. If provided, they can contribute symbols with
+     * their values to be available as globals when executing the {@link #ID Insight scripts}.
+     * <p>
+     * {@codesnippet org.graalvm.tools.insight.test.MeaningOfWorldInstrument}
+     * <p>
+     * The previous instrument makes variable {@code meanining} with value {@code 42} available to
+     * every {@link #ID Insight script} when properly registered into the virtual machine. A typical
+     * way is to register your custom instrument is to use property
+     * {@code truffle.class.path.append} when launching the virtual machine:
+     * 
+     * <pre>
+     * graalvm/bin/java -Dtruffle.class.path.append=meaningOfWorld.jar -jar app.jar
+     * </pre>
+     * 
+     * Take care when writing your {@link TruffleInstrument instruments} as they can alter many
+     * aspects of program execution and aren't subject to any security sandbox. See
+     * {@link TruffleInstrument} for more information about developing, using and registering
+     * instruments.
+     * 
+     * @since 21.0
+     */
+    public interface SymbolProvider {
+        /**
+         * Map with symbol names and their interop values.
+         *
+         * @return map mapping names to their primitive, {@link String} or {@link TruffleObject}
+         *         values
+         * @throws Exception any exception is propagated as an internal error
+         * @since 21.0
+         */
+        Map<String, ? extends Object> symbolsWithValues() throws Exception;
+    }
 }

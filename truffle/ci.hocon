@@ -107,25 +107,30 @@ builds += [
     targets : [gate],
     name: "gate-truffle-javadoc"
   },
-  ${solaris-sparcv9} ${oraclejdk8Only} ${gateLite} ${truffleWeekly} {
-    name: "gate-truffle-solaris-lite-8"
-  },
+  ${linux-amd64} ${oraclejdk8}    ${truffleCommon} {
+    run : [
+        ["mx", "build", "-n", "-c", "-A-Atruffle.dsl.GenerateSlowPathOnly=true"],
+        # only those tests excercise meaningfully implemented nodes
+        # e.g. com.oracle.truffle.api.dsl.test uses nodes that intentionally produce
+        # different results from fast/slow path specializations to test their activation
+        ["mx", "unittest", "com.oracle.truffle.api.test.polyglot", "com.oracle.truffle.nfi.test"],
+    ],
+    targets : [gate],
+    name: "gate-truffle-slow-path-unittests"
+  }
   ${darwin-amd64} ${oraclejdk8} ${gateLite} ${truffleWeekly} {
     name: "gate-truffle-mac-lite-8"
   },
   ${darwin-amd64} ${oraclejdk11} ${gateLite} ${truffleWeekly} {
     name: "gate-truffle-mac-lite-oraclejdk-11"
   },
-  ${windows-amd64} ${oraclejdk8} ${truffleCommon} {
+  ${windows-amd64} ${oraclejdk8} ${truffleCommon} ${devkits.windows-oraclejdk8} {
     # TODO make that a full gate run
     # currently, some truffle unittests fail on windows
     run : [
       ["mx", "build" ],
       ["mx", "unittest", "--verbose" ]
     ]
-    packages : {
-      msvc : "==10.0"
-    }
     targets : [gate],
     name: "gate-truffle-nfi-windows-8",
   },
@@ -143,4 +148,8 @@ builds += [
     targets: [gate],
     name: "gate-truffle-test-benchmarks-8"
   }
+  ${linux-amd64} ${oraclejdk8}    ${truffleCommon} ${eclipse} ${jdt} {run : [
+        ["mx", "--strict-compliance", "gate", "--strict-mode", "--jacocout", "html"],
+        [mx, coverage-upload]
+    ], targets : [weekly], name: "weekly-truffle-coverage-8-linux-amd64"},
 ]

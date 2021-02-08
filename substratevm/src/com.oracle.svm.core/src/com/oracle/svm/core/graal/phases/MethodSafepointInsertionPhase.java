@@ -50,12 +50,17 @@ public class MethodSafepointInsertionPhase extends Phase {
     protected void run(StructuredGraph graph) {
 
         SharedMethod method = (SharedMethod) graph.method();
-        if (!SharedMethod.isGuaranteedSafepoint(method)) {
-            // don't need to insert a safepoint into this method, since it is not guaranteed.
+        if (method.isUninterruptible()) {
+            /* Uninterruptible methods must not have a safepoint inserted. */
             return;
         }
         if (DirectAnnotationAccess.isAnnotationPresent(method, CFunction.class) || DirectAnnotationAccess.isAnnotationPresent(method, InvokeCFunctionPointer.class)) {
-            // methods transferring from Java to C do not need to insert safepoints.
+            /*
+             * Methods transferring from Java to C have an implicit safepoint check as part of the
+             * transition from C back to Java. So no explicit end-of-method safepoint check needs to
+             * be inserted. This is a performance optimization, the annotated methods are not
+             * uninterruptible unless the C function is marked as NO_TRANSITION.
+             */
             return;
         }
 

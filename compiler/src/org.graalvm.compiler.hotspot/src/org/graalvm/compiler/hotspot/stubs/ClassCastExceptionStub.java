@@ -52,6 +52,16 @@ public class ClassCastExceptionStub extends CreateExceptionStub {
     @Snippet
     private static Object createClassCastException(@Snippet.NonNullParameter Object object, KlassPointer targetKlass, @ConstantParameter Register threadRegister) {
         KlassPointer objKlass = HotSpotReplacementsUtil.loadHub(object);
-        return createException(threadRegister, ClassCastException.class, objKlass, targetKlass);
+        if (targetKlass.isNull()) {
+            /*
+             * If Class.cast() is invoked on a primitive type, there is no C++ Klass available for
+             * that type. Until JVMCI provides a way to throw a ClassCastException with a
+             * java.lang.Class as the argument, using a less descriptive exception message is the
+             * only option.
+             */
+            return createException(threadRegister, ClassCastException.class, objKlass);
+        } else {
+            return createException(threadRegister, ClassCastException.class, objKlass, targetKlass);
+        }
     }
 }

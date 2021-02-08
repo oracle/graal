@@ -102,6 +102,7 @@ public abstract class ToStringNode extends Node {
         return new StringBuilder(inputLength);
     }
 
+    @TruffleBoundary
     private static void stringBuilderAppend(StringBuilder stringBuilder, char c) {
         stringBuilder.append(c);
     }

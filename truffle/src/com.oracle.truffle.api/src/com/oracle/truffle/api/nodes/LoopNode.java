@@ -41,6 +41,7 @@
 package com.oracle.truffle.api.nodes;
 
 import com.oracle.truffle.api.CompilerDirectives;
+import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.TruffleRuntime;
 import com.oracle.truffle.api.frame.VirtualFrame;
 
@@ -198,13 +199,23 @@ public abstract class LoopNode extends Node {
      * </p>
      *
      * @param source the Node which invoked the loop.
-     * @param iterations the number iterations to report to the runtime system
+     * @param iterations the number iterations to report to the runtime system, must be >= 0
      * @since 0.12
      */
     public static void reportLoopCount(Node source, int iterations) {
-        if (CompilerDirectives.inInterpreter()) {
-            NodeAccessor.RUNTIME.onLoopCount(source, iterations);
+        assert iterations >= 0;
+        if (CompilerDirectives.inInterpreter() || NodeAccessor.RUNTIME.inFirstTier()) {
+            if (CompilerDirectives.isPartialEvaluationConstant(source)) {
+                NodeAccessor.RUNTIME.onLoopCount(source, iterations);
+            } else {
+                onLoopCountBoundary(source, iterations);
+            }
         }
+    }
+
+    @TruffleBoundary
+    private static void onLoopCountBoundary(Node source, int iterations) {
+        NodeAccessor.RUNTIME.onLoopCount(source, iterations);
     }
 
 }

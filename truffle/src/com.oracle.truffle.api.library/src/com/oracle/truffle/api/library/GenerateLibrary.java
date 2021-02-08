@@ -46,6 +46,8 @@ import java.lang.annotation.Retention;
 import java.lang.annotation.RetentionPolicy;
 import java.lang.annotation.Target;
 
+import com.oracle.truffle.api.nodes.EncapsulatingNodeReference;
+
 /**
  * Libraries are specified with <code>public</code> and <code>abstract</code> Java classes that
  * extend the {@linkplain Library} class and are annotated by <code>@GenerateLibrary</code>. A
@@ -282,5 +284,18 @@ public @interface GenerateLibrary {
      * @since 20.1
      */
     boolean dynamicDispatchEnabled() default true;
+
+    /**
+     * Enables push and pop of the encapsulating node when a library transitions from cached to
+     * uncached. The current encapsulating node is needed for correct stack trace location when
+     * library exports perform guest language calls. If a library is known to never need correct
+     * stack trace information, e.g. if all exports are known to not perform guest language calls,
+     * then pushing and popping of encapsulating nodes can be disabled. By default pushing and
+     * popping of encapsulating nodes is enabled.
+     *
+     * @see EncapsulatingNodeReference
+     * @since 20.3
+     */
+    boolean pushEncapsulatingNode() default true;
 
 }

@@ -28,10 +28,11 @@
  * OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 #include <stdio.h>
+#include <stdlib.h>
 
-void printArray(int **a);
+void printPointerToArray(int **a);
 
-int main(int argc, char **argv) {
+int main() {
     int *a = malloc(sizeof(int) * 3);
     a[0] = 42;
     a[1] = 43;

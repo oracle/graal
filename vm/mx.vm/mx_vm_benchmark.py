@@ -38,6 +38,11 @@ import mx_sdk_vm_impl
 _suite = mx.suite('vm')
 _native_image_vm_registry = mx_benchmark.VmRegistry('NativeImage', 'ni-vm')
 _gu_vm_registry = mx_benchmark.VmRegistry('GraalUpdater', 'gu-vm')
+_polybench_vm_registry = mx_benchmark.VmRegistry('PolyBench', 'polybench-vm')
+_polybench_modes = [
+    ('standard', ['--mode=standard']),
+    ('interpreter', ['--mode=interpreter']),
+]
 
 class GraalVm(mx_benchmark.OutputCapturingJavaVm):
     def __init__(self, name, config_name, extra_java_args, extra_launcher_args):
@@ -107,6 +112,7 @@ class NativeImageVM(GraalVm):
             self.extra_agent_profile_run_args = []
             self.extra_optimization_image_args = []
             self.benchmark_name = None
+            self.benchmark_suite_name = None
             self.benchmark_output_dir = None
             self.config_dir = None
             self.profile_dir = None
@@ -154,6 +160,9 @@ class NativeImageVM(GraalVm):
                     # not for end-users
                     if trimmed_arg.startswith('benchmark-name='):
                         self.benchmark_name = trimmed_arg[len('benchmark-name='):]
+                        found = True
+                    if trimmed_arg.startswith('benchmark-suite-name='):
+                        self.benchmark_suite_name = trimmed_arg[len('benchmark-suite-name='):]
                         found = True
                     if not found:
                         mx.abort("Invalid benchmark argument: " + arg)
@@ -308,14 +317,15 @@ class NativeImageVM(GraalVm):
                     mx.log(mx.current_mx_command())
 
                     if len(self.stages_till_now[:-1]) > 0:
-                        mx.log(mx.colorize('--------- To only prepare the benchmark add the following to the previous command: ', 'green'))
+                        mx.log(mx.colorize('--------- To only prepare the benchmark add the following to the end of the previous command: ', 'green'))
                         mx.log('-Dnative-image.benchmark.stages=' + ','.join(self.stages_till_now[:-1]))
 
-                    mx.log(mx.colorize('--------- To only run the failed stage add the following to the previous command: ', 'green'))
+                    mx.log(mx.colorize('--------- To only run the failed stage add the following to the end of the previous command: ', 'green'))
                     mx.log('-Dnative-image.benchmark.stages=' + self.current_stage)
 
-                    mx.log(mx.colorize('--------- Additional params that can be used for the benchmark are with -Dnative-image.benchmark.<param>: ', 'green'))
-                    mx.log(', '.join(self.config.params))
+                    mx.log(mx.colorize('--------- Additional arguments that can be used for debugging the benchmark go after the final --: ', 'green'))
+                    for param in self.config.params:
+                        mx.log('-Dnative-image.benchmark.' + param + '=')
 
                 self.separator_line()
                 if self.non_zero_is_fatal:
@@ -366,6 +376,24 @@ class NativeImageVM(GraalVm):
         def execute_command(self, final_command=False):
             write_output = final_command or self.is_gate
             self.exit_code = mx.run(self.command, out=self.stdout(write_output), err=self.stderr(write_output), cwd=self.cwd, nonZeroIsFatal=False)
+
+    def rules(self, output, benchmarks, bmSuiteArgs):
+        return [
+            mx_benchmark.StdOutRule(
+                r"The executed image size for benchmark (?P<bench_suite>[a-zA-Z0-9_\-]+):(?P<benchmark>[a-zA-Z0-9_\-]+) is (?P<value>[0-9]+) B",
+                {
+                    "bench-suite": ("<bench_suite>", str),
+                    "benchmark": ("<benchmark>", str),
+                    "vm": "svm",
+                    "metric.name": "binary-size",
+                    "metric.value": ("<value>", int),
+                    "metric.unit": "B",
+                    "metric.type": "numeric",
+                    "metric.score-function": "id",
+                    "metric.better": "lower",
+                    "metric.iteration": 0,
+                })
+        ]
 
     def run_java(self, args, out=None, err=None, cwd=None, nonZeroIsFatal=False):
 
@@ -422,7 +450,7 @@ class NativeImageVM(GraalVm):
 
             base_image_build_args = [os.path.join(mx_sdk_vm_impl.graalvm_home(fatalIfMissing=True), 'bin', 'native-image')]
             base_image_build_args += ['--no-fallback', '--no-server', '-g', '--allow-incomplete-classpath']
-            base_image_build_args += ['-J-ea', '-J-esa', '-H:+VerifyGraalGraphs', '-H:+VerifyPhases', '-H:+TraceClassInitialization'] if self.is_gate else []
+            base_image_build_args += ['-J-ea', '-J-esa', '-H:+VerifyGraalGraphs', '-H:+VerifyPhases'] if self.is_gate else []
             base_image_build_args += system_properties
             base_image_build_args += classpath_arguments
             base_image_build_args += executable
@@ -432,7 +460,6 @@ class NativeImageVM(GraalVm):
             if self.is_llvm:
                 base_image_build_args += ['-H:CompilerBackend=llvm', '-H:Features=org.graalvm.home.HomeFinderFeature', '-H:DeadlockWatchdogInterval=0']
             base_image_build_args += config.extra_image_build_arguments
-
             if not self.hotspot_pgo:
                 # Native Image profile collection
                 i = 0
@@ -484,9 +511,6 @@ class NativeImageVM(GraalVm):
                 final_image_command = base_image_build_args + executable_name_args + pgo_args
                 with stages.set_command(final_image_command) as s:
                     s.execute_command()
-                    if s.exit_code == 0:
-                        image_size = os.stat(image_path).st_size
-                        out('Final image size: ' + str(image_size) + ' B')
 
             # Execute the benchmark
             if stages.change_stage('run'):
@@ -495,6 +519,10 @@ class NativeImageVM(GraalVm):
                 image_run_cmd = [image_path] + image_run_args + config.extra_run_args
                 with stages.set_command(image_run_cmd) as s:
                     s.execute_command(True)
+                    if s.exit_code == 0:
+                        # The image size for benchmarks is tracked by printing on stdout and matching the rule.
+                        image_size = os.stat(image_path).st_size
+                        out('The executed image size for benchmark ' + config.benchmark_suite_name + ':' + config.benchmark_name + ' is ' + str(image_size) + ' B')
 
     def create_log_files(self, config, executable_name, stage):
         stdout_path = os.path.abspath(
@@ -584,6 +612,9 @@ class AgentScriptJsBenchmarkSuite(mx_benchmark.VmBenchmarkSuite):
     def name(self):
         return 'agentscript'
 
+    def version(self):
+        return '0.1.0'
+
     def benchmarkList(self, bmSuiteArgs):
         return self._benchmarks.keys()
 
@@ -635,10 +666,93 @@ class AgentScriptJsBenchmarkSuite(mx_benchmark.VmBenchmarkSuite):
         return mx_benchmark.js_vm_registry
 
 
+class PolyBenchBenchmarkSuite(mx_benchmark.VmBenchmarkSuite):
+    def __init__(self):
+        super(PolyBenchBenchmarkSuite, self).__init__()
+        self._extensions = [".js", ".rb", ".wasm", ".bc"]
+
+    def _get_benchmark_root(self):
+        if not hasattr(self, '_benchmark_root'):
+            dist_name = "POLYBENCH_BENCHMARKS"
+            distribution = mx.distribution(dist_name)
+            _root = distribution.get_output()
+            if not os.path.exists(_root):
+                msg = "The distribution {} does not exist: {}{}".format(dist_name, _root, os.linesep)
+                msg += "This might be solved by running: mx build --dependencies={}".format(dist_name)
+                mx.abort(msg)
+            self._benchmark_root = _root
+        return self._benchmark_root
+
+    def group(self):
+        return "Graal"
+
+    def subgroup(self):
+        return "truffle"
+
+    def name(self):
+        return "polybench"
+
+    def version(self):
+        return "0.1.0"
+
+    def benchmarkList(self, bmSuiteArgs):
+        if not hasattr(self, "_benchmarks"):
+            self._benchmarks = []
+            for group in ["interpreter", "compiler"]:
+                dir_path = os.path.join(self._get_benchmark_root(), group)
+                for f in os.listdir(dir_path):
+                    f_path = os.path.join(dir_path, f)
+                    if os.path.isfile(f_path) and os.path.splitext(f_path)[1] in self._extensions:
+                        self._benchmarks.append(os.path.join(group, f))
+        return self._benchmarks
+
+    def createCommandLineArgs(self, benchmarks, bmSuiteArgs):
+        if benchmarks is None or len(benchmarks) != 1:
+            mx.abort("Must specify one benchmark at a time.")
+        vmArgs = self.vmArgs(bmSuiteArgs)
+        benchmark_path = os.path.join(self._get_benchmark_root(), benchmarks[0])
+        return ["--path=" + benchmark_path] + vmArgs
+
+    def get_vm_registry(self):
+        return _polybench_vm_registry
+
+    def rules(self, output, benchmarks, bmSuiteArgs):
+        metric_name = self._get_metric_name(bmSuiteArgs)
+        return [
+            mx_benchmark.StdOutRule(r"\[(?P<name>.*)\] after run: (?P<value>.*) (?P<unit>.*)", {
+                "benchmark": ("<name>", str),
+                "metric.better": "lower",
+                "metric.name": metric_name,
+                "metric.unit": ("<unit>", str),
+                "metric.value": ("<value>", float),
+                "metric.type": "numeric",
+                "metric.score-function": "id",
+                "metric.iteration": 0,
+            })
+        ]
+
+    def _get_metric_name(self, bmSuiteArgs):
+        metric = None
+        for arg in bmSuiteArgs:
+            if arg.startswith("--metric="):
+                metric = arg[len("--metric="):]
+                break
+        if metric == "compilation-time":
+            return "compile-time"
+        elif metric == "partial-evaluation-time":
+            return "pe-time"
+        else:
+            return "time"
+
+class PolyBenchVm(GraalVm):
+    def run(self, cwd, args):
+        return self.run_launcher('polybench', args, cwd)
+
+
 mx_benchmark.add_bm_suite(NativeImageBuildBenchmarkSuite(name='native-image', benchmarks={'js': ['--language:js']}, registry=_native_image_vm_registry))
 mx_benchmark.add_bm_suite(NativeImageBuildBenchmarkSuite(name='gu', benchmarks={'js': ['js'], 'libpolyglot': ['libpolyglot']}, registry=_gu_vm_registry))
 mx_benchmark.add_bm_suite(AgentScriptJsBenchmarkSuite())
-
+mx_benchmark.add_bm_suite(PolyBenchBenchmarkSuite())
 
 def register_graalvm_vms():
     default_host_vm_name = mx_sdk_vm_impl.graalvm_dist_name().lower().replace('_', '-')
@@ -646,6 +760,8 @@ def register_graalvm_vms():
     for host_vm_name in host_vm_names:
         for config_name, java_args, launcher_args, priority in mx_sdk_vm.get_graalvm_hostvm_configs():
             mx_benchmark.java_vm_registry.add_vm(GraalVm(host_vm_name, config_name, java_args, launcher_args), _suite, priority)
+            for mode, mode_options in _polybench_modes:
+                _polybench_vm_registry.add_vm(PolyBenchVm(host_vm_name, config_name + "-" + mode, [], mode_options + launcher_args))
         if mx_sdk_vm_impl.has_component('svm'):
             _native_image_vm_registry.add_vm(NativeImageBuildVm(host_vm_name, 'default', [], []), _suite, 10)
             _gu_vm_registry.add_vm(GuVm(host_vm_name, 'default', [], []), _suite, 10)
@@ -654,6 +770,7 @@ def register_graalvm_vms():
     for short_name, config_suffix in [('niee', 'ee'), ('ni', 'ce')]:
         if any(component.short_name == short_name for component in mx_sdk_vm_impl.registered_graalvm_components(stage1=False)):
             mx_benchmark.add_java_vm(NativeImageVM('native-image', 'default-' + config_suffix, None, None, False, 0, False, False, False), _suite, 10)
+            mx_benchmark.add_java_vm(NativeImageVM('native-image', 'gate-' + config_suffix, None, None, False, 0, False, False, True), _suite, 10)
             mx_benchmark.add_java_vm(NativeImageVM('native-image', 'llvm-' + config_suffix, None, None, False, 0, False, False, False, True), _suite, 10)
             break
 

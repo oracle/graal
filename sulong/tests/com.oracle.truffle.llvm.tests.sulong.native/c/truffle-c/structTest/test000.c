@@ -31,7 +31,7 @@ struct tiny {
     int c;
 };
 
-main() {
+int main() {
     struct tiny x[3];
     x[0].c = 10;
     x[1].c = 11;

@@ -26,6 +26,10 @@ package com.oracle.svm.core;
 
 import java.util.EnumSet;
 
+import org.graalvm.nativeimage.Platform;
+import org.graalvm.nativeimage.Platforms;
+
+import com.oracle.svm.core.code.RuntimeCodeCache;
 import com.oracle.svm.core.deopt.DeoptimizedFrame;
 
 import jdk.vm.ci.amd64.AMD64;
@@ -33,10 +37,20 @@ import jdk.vm.ci.code.Architecture;
 import jdk.vm.ci.code.TargetDescription;
 
 public class SubstrateTargetDescription extends TargetDescription {
+    @Platforms(Platform.HOSTED_ONLY.class)
+    public static boolean shouldInlineObjectsInImageCode() {
+        return SubstrateOptions.SpawnIsolates.getValue();
+    }
+
+    public static boolean shouldInlineObjectsInRuntimeCode() {
+        return SubstrateOptions.SpawnIsolates.getValue() && RuntimeCodeCache.Options.WriteableCodeCache.getValue();
+    }
+
     private final int deoptScratchSpace;
 
-    public SubstrateTargetDescription(Architecture arch, boolean isMP, int stackAlignment, int implicitNullCheckLimit, boolean inlineObjects, int deoptScratchSpace) {
-        super(arch, isMP, stackAlignment, implicitNullCheckLimit, inlineObjects);
+    @Platforms(Platform.HOSTED_ONLY.class)
+    public SubstrateTargetDescription(Architecture arch, boolean isMP, int stackAlignment, int implicitNullCheckLimit, int deoptScratchSpace) {
+        super(arch, isMP, stackAlignment, implicitNullCheckLimit, shouldInlineObjectsInImageCode());
         this.deoptScratchSpace = deoptScratchSpace;
     }
 

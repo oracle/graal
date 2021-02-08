@@ -1,5 +1,5 @@
 #
-# Copyright (c) 2018, Oracle and/or its affiliates.
+# Copyright (c) 2018, 2020, Oracle and/or its affiliates.
 #
 # All rights reserved.
 #
@@ -62,6 +62,7 @@ BREAK 57 CONTINUE "MyClass"
                     MEMBER int "int" "lastId" "72"
                 END_MEMBERS
                 MEMBER int "int" "id" "72"
+                MEMBER any "MyClass*" "getID"
             END_MEMBERS
         END_MEMBERS
     OPEN_SCOPE "<static>"
@@ -76,6 +77,7 @@ BREAK 80 CONTINUE "start"
                 MEMBER int "int" "lastId" "72"
             END_MEMBERS
             MEMBER int "int" "id" "72"
+            MEMBER any "MyClass*" "getID"
         END_MEMBERS
         MEMBER int "int" "x" "72"
     OPEN_SCOPE "<static>"

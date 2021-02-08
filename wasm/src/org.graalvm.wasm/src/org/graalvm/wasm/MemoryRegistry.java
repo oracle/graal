@@ -41,7 +41,6 @@
 package org.graalvm.wasm;
 
 import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
-import org.graalvm.wasm.memory.UnsafeWasmMemory;
 import org.graalvm.wasm.memory.WasmMemory;
 
 public class MemoryRegistry {
@@ -67,13 +66,16 @@ public class MemoryRegistry {
         return numMemories;
     }
 
-    public int allocateMemory(SymbolTable.MemoryInfo info) {
+    public int register(WasmMemory memory) {
         ensureCapacity();
-        WasmMemory memory = new UnsafeWasmMemory(info.initialSize, info.maximumSize);
-        memories[numMemories] = memory;
-        int idx = numMemories;
+        final int index = numMemories;
+        memories[index] = memory;
         numMemories++;
-        return idx;
+        return index;
+    }
+
+    public int registerExternal(WasmMemory externalMemory) {
+        return register(externalMemory);
     }
 
     public WasmMemory memory(int index) {

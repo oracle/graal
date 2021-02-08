@@ -40,8 +40,13 @@
  */
 package org.graalvm.polyglot;
 
+import org.graalvm.polyglot.HostAccess.TargetMappingPrecedence;
+import org.graalvm.polyglot.impl.AbstractPolyglotImpl.AbstractValueImpl;
+import org.graalvm.polyglot.proxy.Proxy;
+
 import java.math.BigDecimal;
 import java.math.BigInteger;
+import java.nio.ByteOrder;
 import java.time.Duration;
 import java.time.Instant;
 import java.time.LocalDate;
@@ -55,9 +60,6 @@ import java.util.Map;
 import java.util.Objects;
 import java.util.Set;
 import java.util.function.Function;
-
-import org.graalvm.polyglot.impl.AbstractPolyglotImpl.AbstractValueImpl;
-import org.graalvm.polyglot.proxy.Proxy;
 
 /**
  * Represents a polyglot value that can be accessed using a set of language agnostic operations.
@@ -105,6 +107,8 @@ import org.graalvm.polyglot.proxy.Proxy;
  * for executable elements are functions, methods, closures or promises.
  * <li>{@link #canInstantiate() Instantiable}: This value can be {@link #newInstance(Object...)
  * instantiated}. For example, Java classes are instantiable.
+ * <li>{@link #hasBufferElements() Buffer Elements}: This value may contain buffer elements. The
+ * buffer indices always start with <code>0</code>, also if the language uses a different style.
  * </ul>
  * <p>
  * In addition to the language agnostic types, the language specific type can be accessed using
@@ -320,6 +324,369 @@ public final class Value {
     public long getArraySize() {
         return impl.getArraySize(receiver);
     }
+
+    // region Buffer Methods
+
+    /**
+     * Returns {@code true} if the receiver may have buffer elements. In this case, the buffer size
+     * can be queried using {@link #getBufferSize()} and elements can be read using
+     * {@link #readBufferByte(long)}, {@link #readBufferShort(ByteOrder, long)},
+     * {@link #readBufferInt(ByteOrder, long)}, {@link #readBufferLong(ByteOrder, long)},
+     * {@link #readBufferFloat(ByteOrder, long)} and {@link #readBufferDouble(ByteOrder, long)}. If
+     * {@link #isBufferWritable()} returns {@code true}, then buffer elements can also be written
+     * using {@link #writeBufferByte(long, byte)},
+     * {@link #writeBufferShort(ByteOrder, long, short)},
+     * {@link #writeBufferInt(ByteOrder, long, int)},
+     * {@link #writeBufferLong(ByteOrder, long, long)},
+     * {@link #writeBufferFloat(ByteOrder, long, float)} and
+     * {@link #writeBufferDouble(ByteOrder, long, double)}.
+     * <p>
+     * Invoking this method does not cause any observable side-effects.
+     *
+     * @throws IllegalStateException if the context is already closed.
+     * @throws PolyglotException if a guest language error occurred during execution.
+     * @see #hasBufferElements()
+     * @since 21.1
+     */
+    public boolean hasBufferElements() {
+        return impl.hasBufferElements(receiver);
+    }
+
+    /**
+     * Returns true if the receiver object is a modifiable buffer. In this case, elements can be
+     * written using {@link #writeBufferByte(long, byte)},
+     * {@link #writeBufferShort(ByteOrder, long, short)},
+     * {@link #writeBufferInt(ByteOrder, long, int)},
+     * {@link #writeBufferLong(ByteOrder, long, long)},
+     * {@link #writeBufferFloat(ByteOrder, long, float)} and
+     * {@link #writeBufferDouble(ByteOrder, long, double)}.
+     * <p>
+     * Invoking this method does not cause any observable side-effects.
+     *
+     * @throws UnsupportedOperationException if the value does not have {@link #hasBufferElements
+     *             buffer elements}.
+     * @since 21.1
+     */
+    public boolean isBufferWritable() throws UnsupportedOperationException {
+        return impl.isBufferWritable(receiver);
+    }
+
+    /**
+     * Returns the buffer size in bytes for values with buffer elements.
+     * <p>
+     * Invoking this method does not cause any observable side-effects.
+     *
+     * @throws UnsupportedOperationException if the value does not have {@link #hasBufferElements
+     *             buffer elements}.
+     * @since 21.1
+     */
+    public long getBufferSize() throws UnsupportedOperationException {
+        return impl.getBufferSize(receiver);
+    }
+
+    /**
+     * Reads the byte at the given byte offset from the start of the buffer.
+     * <p>
+     * The access is <em>not</em> guaranteed to be atomic. Therefore, this method is <em>not</em>
+     * thread-safe.
+     * <p>
+     * Invoking this method does not cause any observable side-effects.
+     *
+     * @param byteOffset the offset, in bytes, from the start of the buffer at which the byte will
+     *            be read.
+     * @return the byte at the given byte offset from the start of the buffer.
+     * @throws IndexOutOfBoundsException if and only if
+     *             <code>byteOffset < 0 || byteOffset >= </code>{@link #getBufferSize()}.
+     * @throws UnsupportedOperationException if the value does not have {@link #hasBufferElements
+     *             buffer elements}.
+     * @throws IllegalStateException if the context is already closed.
+     * @throws PolyglotException if a guest language error occurred during execution.
+     * @since 21.1
+     */
+    public byte readBufferByte(long byteOffset) throws UnsupportedOperationException, IndexOutOfBoundsException {
+        return impl.readBufferByte(receiver, byteOffset);
+    }
+
+    /**
+     * Writes the given byte at the given byte offset from the start of the buffer.
+     * <p>
+     * The access is <em>not</em> guaranteed to be atomic. Therefore, this method is <em>not</em>
+     * thread-safe.
+     *
+     * @param byteOffset the offset, in bytes, from the start of the buffer at which the byte will
+     *            be written.
+     * @param value the byte value to be written.
+     * @throws IndexOutOfBoundsException if and only if
+     *             <code>byteOffset < 0 || byteOffset >= </code>{@link #getBufferSize()}.
+     * @throws UnsupportedOperationException if the value does not have {@link #hasBufferElements
+     *             buffer elements} or is not {@link #isBufferWritable() modifiable}.
+     * @throws IllegalStateException if the context is already closed.
+     * @throws PolyglotException if a guest language error occurred during execution.
+     * @since 21.1
+     */
+    public void writeBufferByte(long byteOffset, byte value) throws UnsupportedOperationException, IndexOutOfBoundsException {
+        impl.writeBufferByte(receiver, byteOffset, value);
+    }
+
+    /**
+     * Reads the short at the given byte offset from the start of the buffer in the given byte
+     * order.
+     * <p>
+     * Unaligned accesses are supported.
+     * <p>
+     * The access is <em>not</em> guaranteed to be atomic. Therefore, this method is <em>not</em>
+     * thread-safe.
+     * <p>
+     * Invoking this method does not cause any observable side-effects.
+     *
+     * @param order the order in which to read the individual bytes of the short.
+     * @param byteOffset the offset, in bytes, from the start of the buffer from which the short
+     *            will be read.
+     * @return the short at the given byte offset from the start of the buffer.
+     * @throws IndexOutOfBoundsException if and only if
+     *             <code>byteOffset < 0 || byteOffset >= {@link #getBufferSize()} - 1</code>.
+     * @throws UnsupportedOperationException if the value does not have {@link #hasBufferElements
+     *             buffer elements}.
+     * @throws IllegalStateException if the context is already closed.
+     * @throws PolyglotException if a guest language error occurred during execution.
+     * @since 21.1
+     */
+    public short readBufferShort(ByteOrder order, long byteOffset) throws UnsupportedOperationException, IndexOutOfBoundsException {
+        return impl.readBufferShort(receiver, order, byteOffset);
+    }
+
+    /**
+     * Writes the given short in the given byte order at the given byte offset from the start of the
+     * buffer.
+     * <p>
+     * Unaligned accesses are supported.
+     * <p>
+     * The access is <em>not</em> guaranteed to be atomic. Therefore, this method is <em>not</em>
+     * thread-safe.
+     *
+     * @param order the order in which to write the individual bytes of the short.
+     * @param byteOffset the offset, in bytes, from the start of the buffer from which the short
+     *            will be written.
+     * @param value the short value to be written.
+     * @throws IndexOutOfBoundsException if and only if
+     *             <code>byteOffset < 0 || byteOffset >= {@link #getBufferSize()} - 1</code>.
+     * @throws UnsupportedOperationException if the value does not have {@link #hasBufferElements
+     *             buffer elements} or is not {@link #isBufferWritable() modifiable}.
+     * @throws IllegalStateException if the context is already closed.
+     * @throws PolyglotException if a guest language error occurred during execution.
+     * @since 21.1
+     */
+    public void writeBufferShort(ByteOrder order, long byteOffset, short value) throws UnsupportedOperationException, IndexOutOfBoundsException {
+        impl.writeBufferShort(receiver, order, byteOffset, value);
+    }
+
+    /**
+     * Reads the int at the given byte offset from the start of the buffer in the given byte order.
+     * <p>
+     * Unaligned accesses are supported.
+     * <p>
+     * The access is <em>not</em> guaranteed to be atomic. Therefore, this method is <em>not</em>
+     * thread-safe.
+     * <p>
+     * Invoking this method does not cause any observable side-effects.
+     *
+     * @param order the order in which to read the individual bytes of the int.
+     * @param byteOffset the offset, in bytes, from the start of the buffer from which the int will
+     *            be read.
+     * @return the int at the given byte offset from the start of the buffer.
+     * @throws IndexOutOfBoundsException if and only if
+     *             <code>byteOffset < 0 || byteOffset >= {@link #getBufferSize()} - 3</code>.
+     * @throws UnsupportedOperationException if the value does not have {@link #hasBufferElements
+     *             buffer elements}.
+     * @throws IllegalStateException if the context is already closed.
+     * @throws PolyglotException if a guest language error occurred during execution.
+     * @since 21.1
+     */
+    public int readBufferInt(ByteOrder order, long byteOffset) throws UnsupportedOperationException, IndexOutOfBoundsException {
+        return impl.readBufferInt(receiver, order, byteOffset);
+    }
+
+    /**
+     * Writes the given int in the given byte order at the given byte offset from the start of the
+     * buffer.
+     * <p>
+     * Unaligned accesses are supported.
+     * <p>
+     * The access is <em>not</em> guaranteed to be atomic. Therefore, this method is <em>not</em>
+     * thread-safe.
+     *
+     * @param order the order in which to write the individual bytes of the int.
+     * @param byteOffset the offset, in bytes, from the start of the buffer from which the int will
+     *            be written.
+     * @param value the int value to be written.
+     * @throws IndexOutOfBoundsException if and only if
+     *             <code>byteOffset < 0 || byteOffset >= {@link #getBufferSize()} - 3</code>.
+     * @throws UnsupportedOperationException if the value does not have {@link #hasBufferElements
+     *             buffer elements} or is not {@link #isBufferWritable() modifiable}.
+     * @throws IllegalStateException if the context is already closed.
+     * @throws PolyglotException if a guest language error occurred during execution.
+     * @since 21.1
+     */
+    public void writeBufferInt(ByteOrder order, long byteOffset, int value) throws UnsupportedOperationException, IndexOutOfBoundsException {
+        impl.writeBufferInt(receiver, order, byteOffset, value);
+    }
+
+    /**
+     * Reads the long at the given byte offset from the start of the buffer in the given byte order.
+     * <p>
+     * Unaligned accesses are supported.
+     * <p>
+     * The access is <em>not</em> guaranteed to be atomic. Therefore, this method is <em>not</em>
+     * thread-safe.
+     * <p>
+     * Invoking this method does not cause any observable side-effects.
+     *
+     * @param order the order in which to read the individual bytes of the long.
+     * @param byteOffset the offset, in bytes, from the start of the buffer from which the int will
+     *            be read.
+     * @return the int at the given byte offset from the start of the buffer.
+     * @throws IndexOutOfBoundsException if and only if
+     *             <code>byteOffset < 0 || byteOffset >= {@link #getBufferSize()} - 7</code>.
+     * @throws UnsupportedOperationException if the value does not have {@link #hasBufferElements
+     *             buffer elements}.
+     * @throws IllegalStateException if the context is already closed.
+     * @throws PolyglotException if a guest language error occurred during execution.
+     * @since 21.1
+     */
+    public long readBufferLong(ByteOrder order, long byteOffset) throws UnsupportedOperationException, IndexOutOfBoundsException {
+        return impl.readBufferLong(receiver, order, byteOffset);
+    }
+
+    /**
+     * Writes the given long in the given byte order at the given byte offset from the start of the
+     * buffer.
+     * <p>
+     * Unaligned accesses are supported.
+     * <p>
+     * The access is <em>not</em> guaranteed to be atomic. Therefore, this method is <em>not</em>
+     * thread-safe.
+     *
+     * @param order the order in which to write the individual bytes of the long.
+     * @param byteOffset the offset, in bytes, from the start of the buffer from which the int will
+     *            be written.
+     * @param value the int value to be written.
+     * @throws IndexOutOfBoundsException if and only if
+     *             <code>byteOffset < 0 || byteOffset >= {@link #getBufferSize()} - 7</code>.
+     * @throws UnsupportedOperationException if the value does not have {@link #hasBufferElements
+     *             buffer elements} or is not {@link #isBufferWritable() modifiable}.
+     * @throws IllegalStateException if the context is already closed.
+     * @throws PolyglotException if a guest language error occurred during execution.
+     * @since 21.1
+     */
+    public void writeBufferLong(ByteOrder order, long byteOffset, long value) throws UnsupportedOperationException, IndexOutOfBoundsException {
+        impl.writeBufferLong(receiver, order, byteOffset, value);
+    }
+
+    /**
+     * Reads the float at the given byte offset from the start of the buffer in the given byte
+     * order.
+     * <p>
+     * Unaligned accesses are supported.
+     * <p>
+     * The access is <em>not</em> guaranteed to be atomic. Therefore, this method is <em>not</em>
+     * thread-safe.
+     * <p>
+     * Invoking this method does not cause any observable side-effects.
+     *
+     * @param order the order in which to read the individual bytes of the float.
+     * @param byteOffset the offset, in bytes, from the start of the buffer from which the float
+     *            will be read.
+     * @return the float at the given byte offset from the start of the buffer.
+     * @throws IndexOutOfBoundsException if and only if
+     *             <code>byteOffset < 0 || byteOffset >= {@link #getBufferSize()} - 3</code>.
+     * @throws UnsupportedOperationException if the value does not have {@link #hasBufferElements
+     *             buffer elements}.
+     * @throws IllegalStateException if the context is already closed.
+     * @throws PolyglotException if a guest language error occurred during execution.
+     * @since 21.1
+     */
+    public float readBufferFloat(ByteOrder order, long byteOffset) throws UnsupportedOperationException, IndexOutOfBoundsException {
+        return impl.readBufferFloat(receiver, order, byteOffset);
+    }
+
+    /**
+     * Writes the given float in the given byte order at the given byte offset from the start of the
+     * buffer.
+     * <p>
+     * Unaligned accesses are supported.
+     * <p>
+     * The access is <em>not</em> guaranteed to be atomic. Therefore, this method is <em>not</em>
+     * thread-safe.
+     *
+     * @param order the order in which to read the individual bytes of the float.
+     * @param byteOffset the offset, in bytes, from the start of the buffer from which the float
+     *            will be written.
+     * @param value the float value to be written.
+     * @throws IndexOutOfBoundsException if and only if
+     *             <code>byteOffset < 0 || byteOffset >= {@link #getBufferSize()} - 3</code>.
+     * @throws UnsupportedOperationException if the value does not have {@link #hasBufferElements
+     *             buffer elements} or is not {@link #isBufferWritable() modifiable}.
+     * @throws IllegalStateException if the context is already closed.
+     * @throws PolyglotException if a guest language error occurred during execution.
+     * @since 21.1
+     */
+    public void writeBufferFloat(ByteOrder order, long byteOffset, float value) throws UnsupportedOperationException, IndexOutOfBoundsException {
+        impl.writeBufferFloat(receiver, order, byteOffset, value);
+    }
+
+    /**
+     * Reads the double at the given byte offset from the start of the buffer in the given byte
+     * order.
+     * <p>
+     * Unaligned accesses are supported.
+     * <p>
+     * The access is <em>not</em> guaranteed to be atomic. Therefore, this method is <em>not</em>
+     * thread-safe.
+     * <p>
+     * Invoking this method does not cause any observable side-effects.
+     *
+     * @param order the order in which to write the individual bytes of the double.
+     * @param byteOffset the offset, in bytes, from the start of the buffer from which the double
+     *            will be read.
+     * @return the double at the given byte offset from the start of the buffer.
+     * @throws IndexOutOfBoundsException if and only if
+     *             <code>byteOffset < 0 || byteOffset >= {@link #getBufferSize()} - 7</code>.
+     * @throws UnsupportedOperationException if the value does not have {@link #hasBufferElements
+     *             buffer elements}.
+     * @throws IllegalStateException if the context is already closed.
+     * @throws PolyglotException if a guest language error occurred during execution.
+     * @since 21.1
+     */
+    public double readBufferDouble(ByteOrder order, long byteOffset) throws UnsupportedOperationException, IndexOutOfBoundsException {
+        return impl.readBufferDouble(receiver, order, byteOffset);
+    }
+
+    /**
+     * Writes the given double in the given byte order at the given byte offset from the start of
+     * the buffer.
+     * <p>
+     * Unaligned accesses are supported.
+     * <p>
+     * The access is <em>not</em> guaranteed to be atomic. Therefore, this method is <em>not</em>
+     * thread-safe.
+     *
+     * @param order the order in which to write the individual bytes of the double.
+     * @param byteOffset the offset, in bytes, from the start of the buffer from which the double
+     *            will be written.
+     * @param value the double value to be written.
+     * @throws IndexOutOfBoundsException if and only if
+     *             <code>byteOffset < 0 || byteOffset >= {@link #getBufferSize()} - 7</code>.
+     * @throws UnsupportedOperationException if the value does not have {@link #hasBufferElements
+     *             buffer elements} or is not {@link #isBufferWritable() modifiable}.
+     * @throws IllegalStateException if the context is already closed.
+     * @throws PolyglotException if a guest language error occurred during execution.
+     * @since 21.1
+     */
+    public void writeBufferDouble(ByteOrder order, long byteOffset, double value) throws UnsupportedOperationException, IndexOutOfBoundsException {
+        impl.writeBufferDouble(receiver, order, byteOffset, value);
+    }
+
+    // endregion
 
     /**
      * Returns <code>true</code> if this value generally supports containing members. To check
@@ -871,9 +1238,10 @@ public final class Value {
      * <ul>
      * <li>Custom
      * {@link HostAccess.Builder#targetTypeMapping(Class, Class, java.util.function.Predicate, Function)
-     * target type mappings} specified in the {@link HostAccess} configuration when the context is
-     * constructed. Custom target type mappings may override all the type mappings below. This
-     * allows for customization if one of the below type mappings is not suitable.
+     * target type mappings} specified in the {@link HostAccess} configuration with precedence
+     * {@link TargetMappingPrecedence#HIGHEST} or {@link TargetMappingPrecedence#HIGH}. These custom
+     * target type mappings may override all the type mappings below. This allows for customization
+     * if one of the below type mappings is not suitable.
      * <li><code>{@link Value}.class</code> is always supported and returns this instance.
      * <li>If the value represents a {@link #isHostObject() host object} then all classes
      * implemented or extended by the host object can be used as target type.
@@ -907,6 +1275,10 @@ public final class Value {
      * <li><code>{@link PolyglotException}.class</code> is supported if the value is an
      * {@link #isException() exception object}.</li>
      * <li>Any Java type in the type hierarchy of a {@link #isHostObject() host object}.
+     * <li>Custom
+     * {@link HostAccess.Builder#targetTypeMapping(Class, Class, java.util.function.Predicate, Function)
+     * target type mappings} specified in the {@link HostAccess} configuration with precedence
+     * {@link TargetMappingPrecedence#LOW}.
      * <li><code>{@link Object}.class</code> is always supported. See section Object mapping rules.
      * <li><code>{@link Map}.class</code> is supported if the value has {@link #hasMembers()
      * members} or {@link #hasArrayElements() array elements}. The returned map can be safely cast
@@ -942,10 +1314,21 @@ public final class Value {
      * <li>Any interface if the value {@link #hasMembers() has members} and the interface type is
      * {@link HostAccess.Implementable implementable}. Each interface method maps to one
      * {@link #getMember(String) member} of the value. Whenever a method of the interface is
-     * executed a member with the method or field name must exist otherwise a
-     * {@link UnsupportedOperationException} is thrown when the method is executed. A member If one
-     * of the parameters cannot be mapped to the target type a {@link ClassCastException} or a
-     * {@link NullPointerException} is thrown.
+     * executed a member with the method or field name must exist otherwise an
+     * {@link UnsupportedOperationException} is thrown when the method is executed. If one of the
+     * parameters or the return value cannot be mapped to the target type a
+     * {@link ClassCastException} or a {@link NullPointerException} is thrown.
+     * <li>JVM only: Any abstract class with an accessible default constructor if the value
+     * {@link #hasMembers() has members} and the class is {@link HostAccess.Implementable
+     * implementable}. Each interface method maps to one {@link #getMember(String) member} of the
+     * value. Whenever an abstract method of the class is executed a member with the method or field
+     * name must exist otherwise an {@link UnsupportedOperationException} is thrown when the method
+     * is executed. If one of the parameters or the return value cannot be mapped to the target type
+     * a {@link ClassCastException} or a {@link NullPointerException} is thrown.
+     * <li>Custom
+     * {@link HostAccess.Builder#targetTypeMapping(Class, Class, java.util.function.Predicate, Function)
+     * target type mappings} specified in the {@link HostAccess} configuration with precedence
+     * {@link TargetMappingPrecedence#LOWEST}.
      * </ul>
      * A {@link ClassCastException} is thrown for other unsupported target types.
      * <p>
@@ -956,16 +1339,20 @@ public final class Value {
      * assert context.eval("js", "undefined").as(Object.class) == null;
      * assert context.eval("js", "'foobar'").as(String.class).equals("foobar");
      * assert context.eval("js", "42").as(Integer.class) == 42;
-     * assert context.eval("js", "{foo:'bar'}").as(Map.class).get("foo").equals("bar");
+     * assert context.eval("js", "({foo:'bar'})").as(Map.class).get("foo").equals("bar");
      * assert context.eval("js", "[42]").as(List.class).get(0).equals(42);
      * assert ((Map&lt;String, Object>)context.eval("js", "[{foo:'bar'}]").as(List.class).get(0)).get("foo").equals("bar");
      *
      * &#64;FunctionalInterface interface IntFunction { int foo(int value); }
-     * assert context.eval("js", "(function(a){a})").as(IntFunction.class).foo(42) == 42;
+     * assert context.eval("js", "(function(a){return a})").as(IntFunction.class).foo(42).asInt() == 42;
      *
      * &#64;FunctionalInterface interface StringListFunction { int foo(List&lt;String&gt; value); }
-     * assert context.eval("js", "(function(a){a.length})").as(StringListFunction.class)
-     *                                                     .foo(new String[]{"42"}) == 1;
+     * assert context.eval("js", "(function(a){return a.length})")
+     *               .as(StringListFunction.class).foo(new String[]{"42"}).asInt() == 1;
+     *
+     * public abstract class AbstractClass { public AbstractClass() {} int foo(int value); }
+     * assert context.eval("js", "({foo: function(a){return a}})")
+     *               .as(AbstractClass.class).foo(42).asInt() == 42;
      * </pre>
      *
      * <h3>Object target type mapping</h3>

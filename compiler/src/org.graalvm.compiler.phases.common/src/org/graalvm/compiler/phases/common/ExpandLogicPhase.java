@@ -61,6 +61,7 @@ public class ExpandLogicPhase extends Phase {
                 processNormalizeCompareNode(logic);
             }
         }
+
         graph.setAfterExpandLogic();
     }
 

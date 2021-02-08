@@ -2,26 +2,26 @@
 
 You can list options from the command line with any language launcher:
 
-```
-$ my-language --help:expert
-```
-
-or for options only relevant for Truffle language implementers:
-
-```
-$ my-language --help:internal
+```shell
+language-launcher --help:expert
 ```
 
-In addition the GraalVM compiler options can be listed with:
+Or, for options only relevant for Truffle language implementers:
 
+```shell
+language-launcher --help:internal
 ```
-$ my-language --jvm --vm.XX:+JVMCIPrintProperties
+
+In addition, the GraalVM compiler options can be listed with:
+
+```shell
+language-launcher --jvm --vm.XX:+JVMCIPrintProperties
 ```
-See https://chriswhocodes.com/graalvm_ce_jdk8_options.html for a list of Graal compiler options.
+See [graalvm_ce_jdk8_options](https://chriswhocodes.com/graalvm_ce_jdk8_options.html) for a list of GraalVM compiler options.
 
 ## Default Language Launcher Options
 
-```
+```shell
   --polyglot                                   Run with all other guest languages accessible.
   --native                                     Run using the native launcher with limited Java access (default).
   --jvm                                        Run on the Java Virtual Machine with Java access.
@@ -40,22 +40,23 @@ See https://chriswhocodes.com/graalvm_ce_jdk8_options.html for a list of Graal c
 
 ## Expert Engine Options
 
-Advanced engine options for controlling the engine. Useful for users and language and tool implementers.
+These are advanced options for controlling the engine.
+They are useful to users and language and tool implementers.
 
-```
+```shell
 Expert engine options:
   --engine.BackgroundCompilation=<Boolean>     Enable asynchronous truffle compilation in background threads
   --engine.Compilation=<Boolean>               Enable or disable Truffle compilation.
   --engine.CompilationThreshold=<Integer>      Minimum number of invocations or loop iterations needed to compile a guest language root.
   --engine.CompilerIdleDelay=<Long>            Set the time in milliseconds an idle Truffle compiler thread will wait for new tasks before terminating. New compiler
                                                threads will be started once new compilation tasks are submitted. Select '0' to never terminate the Truffle compiler
-                                               thread. The option is not supported by all Truffle runtimes. On the runtime which doesn't support it the option has no
+                                               thread. The option is not supported by all Truffle runtimes. On the runtime which does not support it the option has no
                                                effect.
   --engine.CompilerThreads=<Integer>           Manually set the number of compiler threads
   --engine.EncodedGraphCacheCapacity=<Integer> Maximum number of entries in the encoded graph cache (< 0 unbounded, 0 disabled).
   --engine.EncodedGraphCachePurgeDelay=<Integer>
                                                Delay, in milliseconds, after which the encoded graph cache is dropped when the compile queue becomes idle.The option is
-                                               only supported on the HotSpot (non-libgraal) Truffle runtime.On runtimes which doesn't support it the option has no
+                                               only supported on the HotSpot (non-libgraal) Truffle runtime.On runtimes which does not support it the option has no
                                                effect.
   --engine.FirstTierCompilationThreshold=<Integer>
                                                Minimum number of invocations or loop iterations needed to compile a guest language root in low tier mode.
@@ -82,9 +83,9 @@ Expert engine options:
 
 ## Internal Engine Options
 
-Internal options for debugging language implementations and tools.
+These are internal options for debugging language implementations and tools.
 
-```
+```shell
   --engine.ArgumentTypeSpeculation=<Boolean>   Speculate on arguments types at call sites
   --engine.CompilationFailureAction=<ExceptionAction>
                                                Specifies the action to take when Truffle compilation fails.%nThe accepted values are:%n    Silent - Print nothing to

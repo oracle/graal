@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2020, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2021, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -69,10 +69,10 @@ import org.graalvm.polyglot.Context;
 import org.graalvm.polyglot.HostAccess;
 import org.junit.Test;
 
-import com.oracle.truffle.api.TruffleException;
 import com.oracle.truffle.api.TruffleFile;
 import com.oracle.truffle.api.TruffleLanguage.Env;
 import com.oracle.truffle.api.interop.ArityException;
+import com.oracle.truffle.api.interop.InteropException;
 import com.oracle.truffle.api.interop.InteropLibrary;
 import com.oracle.truffle.api.interop.UnknownIdentifierException;
 import com.oracle.truffle.api.interop.UnsupportedMessageException;
@@ -109,8 +109,7 @@ public class HostClassLoadingTest extends AbstractPolyglotTest {
             languageEnv.addToHostClassPath(file);
             fail();
         } catch (Exception e) {
-            assertTrue(e instanceof TruffleException);
-            assertFalse(((TruffleException) e).isInternalError());
+            assertNonInternalException(e);
         }
 
         // test with only host access rights
@@ -120,8 +119,7 @@ public class HostClassLoadingTest extends AbstractPolyglotTest {
             languageEnv.addToHostClassPath(file);
             fail();
         } catch (Exception e) {
-            assertTrue(e instanceof TruffleException);
-            assertFalse(((TruffleException) e).isInternalError());
+            assertNonInternalException(e);
         }
 
         // test with only class path add rights
@@ -132,16 +130,14 @@ public class HostClassLoadingTest extends AbstractPolyglotTest {
             languageEnv.addToHostClassPath(file);
             fail();
         } catch (Exception e) {
-            assertTrue(e instanceof TruffleException);
-            assertFalse(((TruffleException) e).isInternalError());
+            assertNonInternalException(e);
         }
         try {
             // we should fail early
             languageEnv.lookupHostSymbol(TEST_REPLACE_QUALIFIED_CLASS_NAME);
             fail();
         } catch (Exception e) {
-            assertTrue(e instanceof TruffleException);
-            assertFalse(((TruffleException) e).isInternalError());
+            assertNonInternalException(e);
         }
 
         setupEnv(Context.newBuilder().allowIO(true).allowHostClassLoading(true).allowHostAccess(HostAccess.ALL).allowHostClassLookup((String s) -> true).build());
@@ -184,11 +180,15 @@ public class HostClassLoadingTest extends AbstractPolyglotTest {
             languageEnv.lookupHostSymbol(TEST_REPLACE_QUALIFIED_CLASS_NAME);
             fail();
         } catch (Exception e) {
-            assertTrue(e instanceof TruffleException);
-            assertFalse(((TruffleException) e).isInternalError());
+            assertNonInternalException(e);
         }
 
         deleteDir(tempDir);
+    }
+
+    private static void assertNonInternalException(Throwable t) {
+        InteropLibrary interop = InteropLibrary.getUncached();
+        assertTrue(interop.isException(t));
     }
 
     private static Path setupSimpleClassPath() throws IOException {
@@ -298,6 +298,29 @@ public class HostClassLoadingTest extends AbstractPolyglotTest {
         }
     }
 
+    @Test
+    public void testMultipleJarStreams() throws IOException, InteropException {
+        setupEnv();
+
+        final Class<?> hostClass = HostClassLoadingTestClass3.class;
+        Path tempDir = renameHostClass(hostClass, TEST_REPLACE_CLASS_NAME);
+        Path jar = createJar(tempDir);
+        try {
+            languageEnv.addToHostClassPath(languageEnv.getPublicTruffleFile(jar.toString()));
+
+            Object statics = languageEnv.lookupHostSymbol(hostClass.getPackage().getName() + "." + TEST_REPLACE_CLASS_NAME);
+            Object result = InteropLibrary.getUncached(statics).invokeMember(statics, "testMethod");
+
+            try (InputStream stream = hostClass.getResourceAsStream("/" + HostClassLoadingTestClass3.class.getName().replace('.', '/') + ".class")) {
+                assertNotNull(stream);
+                assertEquals(HostClassLoadingTestClass3.countBytes(stream), result);
+            }
+        } finally {
+            Files.deleteIfExists(jar);
+            deleteDir(tempDir);
+        }
+    }
+
     private static void assertHostClassPath(Env env, final Class<?> hostClass, String newName, TruffleFile classPathEntry) {
         String newClassName = hostClass.getPackage().getName() + "." + newName;
 
@@ -305,8 +328,7 @@ public class HostClassLoadingTest extends AbstractPolyglotTest {
             env.lookupHostSymbol(newClassName);
             fail();
         } catch (Exception e) {
-            assertTrue(e instanceof TruffleException);
-            assertFalse(((TruffleException) e).isInternalError());
+            assertNonInternalException(e);
         }
 
         env.addToHostClassPath(classPathEntry);

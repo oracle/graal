@@ -35,7 +35,7 @@ int main(void) {
     long double x, y;
     uint8_t *p = (uint8_t *) &x;
     uint8_t *q = (uint8_t *) &y;
-    int i;
+    size_t i;
     memset(p, 0, sizeof(x));
     printf("raw bytes:");
     for (i = 0; i < sizeof(x); i++) {

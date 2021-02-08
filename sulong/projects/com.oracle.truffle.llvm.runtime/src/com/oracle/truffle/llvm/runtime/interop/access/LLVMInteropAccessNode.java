@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2020, Oracle and/or its affiliates.
+ * Copyright (c) 2018, 2021, Oracle and/or its affiliates.
  *
  * All rights reserved.
  *
@@ -66,7 +66,16 @@ abstract class LLVMInteropAccessNode extends LLVMNode {
         return LLVMInteropAccessNodeGen.create();
     }
 
-    @Specialization
+    @Specialization(guards = {"cachedElementSize == type.elementSize"}, limit = "3")
+    AccessLocation doArrayCachedTypeSize(LLVMInteropType.Array type, Object foreign, long offset,
+                    @Cached MakeAccessLocation makeAccessLocation,
+                    @Cached("type.elementSize") long cachedElementSize) {
+        long index = Long.divideUnsigned(offset, cachedElementSize);
+        long restOffset = Long.remainderUnsigned(offset, cachedElementSize);
+        return makeAccessLocation.execute(foreign, index, type.elementType, restOffset);
+    }
+
+    @Specialization(replaces = {"doArrayCachedTypeSize"})
     AccessLocation doArray(LLVMInteropType.Array type, Object foreign, long offset,
                     @Cached MakeAccessLocation makeAccessLocation) {
         long index = Long.divideUnsigned(offset, type.elementSize);
@@ -99,7 +108,7 @@ abstract class LLVMInteropAccessNode extends LLVMNode {
             }
         }
 
-        CompilerDirectives.transferToInterpreter();
+        CompilerDirectives.transferToInterpreterAndInvalidate();
         throw new IllegalStateException("invalid struct access");
     }
 
@@ -111,7 +120,7 @@ abstract class LLVMInteropAccessNode extends LLVMNode {
         @Specialization
         AccessLocation doValue(Object foreign, Object identifier, LLVMInteropType.Value type, long restOffset) {
             if (restOffset != 0) {
-                CompilerDirectives.transferToInterpreter();
+                CompilerDirectives.transferToInterpreterAndInvalidate();
                 throw new IllegalStateException("cannot read from non-structured type with offset " + restOffset);
             }
             return new AccessLocation(foreign, identifier, type);
@@ -129,7 +138,7 @@ abstract class LLVMInteropAccessNode extends LLVMNode {
                 throw new LLVMPolyglotException(this, "Member '%s' not found", identifier);
             } catch (UnsupportedMessageException ex) {
                 CompilerDirectives.transferToInterpreter();
-                throw new LLVMPolyglotException(this, "Can not read member '%s'", identifier);
+                throw new LLVMPolyglotException(this, "Cannot read member '%s'", identifier);
             }
 
             return recursive.execute(type, inner, restOffset);

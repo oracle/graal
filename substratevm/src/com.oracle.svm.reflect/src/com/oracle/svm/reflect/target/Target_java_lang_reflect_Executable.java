@@ -27,7 +27,6 @@ package com.oracle.svm.reflect.target;
 // Checkstyle: allow reflection
 
 import java.lang.annotation.Annotation;
-import java.lang.reflect.AccessibleObject;
 import java.lang.reflect.AnnotatedType;
 import java.lang.reflect.Executable;
 import java.lang.reflect.Parameter;
@@ -42,8 +41,8 @@ import com.oracle.svm.core.annotate.RecomputeFieldValue.Kind;
 import com.oracle.svm.core.annotate.Substitute;
 import com.oracle.svm.core.annotate.TargetClass;
 import com.oracle.svm.core.annotate.TargetElement;
-import com.oracle.svm.core.jdk.JDK11OrLater;
 import com.oracle.svm.core.jdk.JDK8OrEarlier;
+import com.oracle.svm.core.util.VMError;
 
 import jdk.vm.ci.meta.MetaAccessProvider;
 import jdk.vm.ci.meta.ResolvedJavaField;
@@ -101,6 +100,12 @@ public final class Target_java_lang_reflect_Executable {
     Annotation[][] sharedGetParameterAnnotations(Class<?>[] parameterTypes, byte[] annotations) {
         Target_java_lang_reflect_Executable holder = ReflectionHelper.getHolder(this);
         return ReflectionHelper.requireNonNull(holder.parameterAnnotations, "Parameter annotations must be computed during native image generation");
+    }
+
+    @Substitute
+    @SuppressWarnings({"unused", "hiding", "static-method"})
+    Annotation[][] parseParameterAnnotations(byte[] parameterAnnotations) {
+        throw VMError.unsupportedFeature("Parameter annotations parsing is not available at run time.");
     }
 
     @Substitute
@@ -172,11 +177,4 @@ public final class Target_java_lang_reflect_Executable {
             return executable.getAnnotatedExceptionTypes();
         }
     }
-}
-
-@TargetClass(value = AccessibleObject.class)
-final class Target_java_lang_reflect_AccessibleObject {
-    @Alias //
-    @TargetElement(onlyWith = JDK11OrLater.class)
-    native Target_java_lang_reflect_AccessibleObject getRoot();
 }

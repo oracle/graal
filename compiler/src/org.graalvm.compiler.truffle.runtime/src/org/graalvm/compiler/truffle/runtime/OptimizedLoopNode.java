@@ -60,9 +60,7 @@ public final class OptimizedLoopNode extends LoopNode {
             }
             return status;
         } finally {
-            if (CompilerDirectives.inInterpreter()) {
-                reportLoopCount(this, loopCount);
-            }
+            reportLoopCount(this, loopCount);
         }
     }
 

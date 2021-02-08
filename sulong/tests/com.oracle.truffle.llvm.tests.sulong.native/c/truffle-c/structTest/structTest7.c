@@ -27,9 +27,7 @@
  * NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED
  * OF THE POSSIBILITY OF SUCH DAMAGE.
  */
-#ifdef REF_COMPILER
 #include <stdlib.h>
-#endif
 
 struct test {
     int a;
@@ -46,5 +44,8 @@ int main() {
     t2->a = 4;
     t2->b = 5;
     t2->c = 6;
-    return t1->a + t1->b + t1->c + t2->a + t2->b + t2->c;
+    int res = t1->a + t1->b + t1->c + t2->a + t2->b + t2->c;
+    free(t1);
+    free(t2);
+    return res;
 }

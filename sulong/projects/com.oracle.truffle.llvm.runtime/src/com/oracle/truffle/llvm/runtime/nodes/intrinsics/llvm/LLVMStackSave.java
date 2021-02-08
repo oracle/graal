@@ -29,34 +29,14 @@
  */
 package com.oracle.truffle.llvm.runtime.nodes.intrinsics.llvm;
 
-import com.oracle.truffle.api.CompilerDirectives;
-import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
-import com.oracle.truffle.api.dsl.CachedLanguage;
 import com.oracle.truffle.api.dsl.Specialization;
-import com.oracle.truffle.api.frame.FrameSlot;
-import com.oracle.truffle.api.frame.FrameUtil;
 import com.oracle.truffle.api.frame.VirtualFrame;
-import com.oracle.truffle.llvm.runtime.LLVMLanguage;
-import com.oracle.truffle.llvm.runtime.memory.LLVMStack;
-import com.oracle.truffle.llvm.runtime.memory.LLVMStack.StackPointer;
-import com.oracle.truffle.llvm.runtime.pointer.LLVMNativePointer;
+import com.oracle.truffle.llvm.runtime.pointer.LLVMPointer;
 
-public abstract class LLVMStackSave extends LLVMBuiltin {
-
-    @CompilationFinal private FrameSlot stackPointer;
-
-    private FrameSlot getStackPointerSlot() {
-        if (stackPointer == null) {
-            CompilerDirectives.transferToInterpreterAndInvalidate();
-            stackPointer = getRootNode().getFrameDescriptor().findFrameSlot(LLVMStack.FRAME_ID);
-        }
-        return stackPointer;
-    }
+public abstract class LLVMStackSave extends LLVMStackBuiltin {
 
     @Specialization
-    protected LLVMNativePointer doPointee(VirtualFrame frame,
-                    @CachedLanguage LLVMLanguage language) {
-        StackPointer pointer = (StackPointer) FrameUtil.getObjectSafe(frame, getStackPointerSlot());
-        return LLVMNativePointer.create(pointer.get(this, language.getLLVMMemory()));
+    protected LLVMPointer doPointee(VirtualFrame frame) {
+        return ensureStackAccess().executeGet(frame);
     }
 }

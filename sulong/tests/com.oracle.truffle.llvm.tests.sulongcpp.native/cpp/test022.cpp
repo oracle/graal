@@ -80,7 +80,7 @@ int bar(int a) {
     }
 }
 
-int main(int argc, char *argv[]) {
+int main() {
     try {
         return bar(0);
     } catch (A *value) {

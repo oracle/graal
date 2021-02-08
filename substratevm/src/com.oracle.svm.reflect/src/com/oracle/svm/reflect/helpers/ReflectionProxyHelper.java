@@ -32,6 +32,7 @@ import java.lang.reflect.Method;
 import java.lang.reflect.Proxy;
 
 import com.oracle.svm.core.util.VMError;
+import com.oracle.svm.reflect.hosted.ReflectionSubstitutionType;
 import com.oracle.svm.util.ReflectionUtil;
 
 public class ReflectionProxyHelper {
@@ -50,11 +51,11 @@ public class ReflectionProxyHelper {
     }
 
     /**
-     * Set a default invocation handler for a ReflectionProxy proxy instance. At runtime the "h"
-     * field is not used as the methods (invoke, toString, hashCode, equals) that would use the
-     * handler are substituted (see ReflectionSubstitutionType). However the handler is needed when
-     * the proxy instance is used during image building, e.g., toString() is called on it for error
-     * reporting (see NativeImageHeap.addObjectToBootImageHeap()).
+     * Set a default invocation handler for a {@link ReflectionProxy} proxy instance. At runtime the
+     * "h" field is not used as the methods (invoke, toString, hashCode, equals) that would use the
+     * handler are substituted (see {@link ReflectionSubstitutionType}). However the handler is
+     * needed when the proxy instance is used during image building, e.g., toString() is called on
+     * it for error reporting (see NativeImageHeap.addObjectToBootImageHeap()).
      */
     public static void setDefaultInvocationHandler(Proxy proxyInstance) {
         VMError.guarantee(ReflectionProxy.class.isAssignableFrom(proxyInstance.getClass()));

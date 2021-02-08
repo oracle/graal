@@ -25,6 +25,7 @@
 package com.oracle.svm.core.genscavenge;
 
 import org.graalvm.compiler.api.replacements.Fold;
+import org.graalvm.compiler.nodes.java.ArrayLengthNode;
 import org.graalvm.compiler.replacements.nodes.AssertionNode;
 import org.graalvm.compiler.word.Word;
 import org.graalvm.nativeimage.ImageSingletons;
@@ -42,11 +43,11 @@ import com.oracle.svm.core.SubstrateOptions;
 import com.oracle.svm.core.annotate.AlwaysInline;
 import com.oracle.svm.core.annotate.AutomaticFeature;
 import com.oracle.svm.core.annotate.RestrictHeapAccess;
+import com.oracle.svm.core.annotate.Uninterruptible;
 import com.oracle.svm.core.config.ConfigurationValues;
 import com.oracle.svm.core.heap.ObjectVisitor;
 import com.oracle.svm.core.hub.LayoutEncoding;
 import com.oracle.svm.core.log.Log;
-import com.oracle.svm.core.snippets.KnownIntrinsics;
 import com.oracle.svm.core.thread.VMOperation;
 import com.oracle.svm.core.util.PointerUtils;
 import com.oracle.svm.core.util.UnsignedUtils;
@@ -125,6 +126,7 @@ public final class AlignedHeapChunk {
         return result;
     }
 
+    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
     static UnsignedWord getCommittedObjectMemory(AlignedHeader that) {
         return HeapChunk.getEndOffset(that).subtract(getObjectsStartOffset());
     }
@@ -369,7 +371,7 @@ public final class AlignedHeapChunk {
                     trace.string("  crossingOntoObject: ").object(crossingOntoObject);
                     trace.string("  end: ").hex(LayoutEncoding.getObjectEnd(crossingOntoObject));
                     if (LayoutEncoding.isArray(crossingOntoObject)) {
-                        trace.string("  array length: ").signed(KnownIntrinsics.readArrayLength(crossingOntoObject));
+                        trace.string("  array length: ").signed(ArrayLengthNode.arrayLength(crossingOntoObject));
                     }
                 }
                 trace.newline();

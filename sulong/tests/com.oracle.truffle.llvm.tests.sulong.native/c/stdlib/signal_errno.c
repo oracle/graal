@@ -41,7 +41,7 @@
 #include <stdio.h>
 #include <errno.h>
 
-void handler(int signo) {
+void handler(__attribute__((unused)) int signo) {
 }
 
 /* because mac */

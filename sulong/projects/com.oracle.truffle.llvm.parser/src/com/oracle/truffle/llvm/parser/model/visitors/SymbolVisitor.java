@@ -88,6 +88,7 @@ import com.oracle.truffle.llvm.parser.model.symbols.instructions.SwitchInstructi
 import com.oracle.truffle.llvm.parser.model.symbols.instructions.SwitchOldInstruction;
 import com.oracle.truffle.llvm.parser.model.symbols.instructions.UnaryOperationInstruction;
 import com.oracle.truffle.llvm.parser.model.symbols.instructions.UnreachableInstruction;
+import com.oracle.truffle.llvm.parser.model.symbols.instructions.VaArgInstruction;
 import com.oracle.truffle.llvm.parser.model.symbols.instructions.VoidCallInstruction;
 import com.oracle.truffle.llvm.parser.model.symbols.instructions.VoidInvokeInstruction;
 
@@ -327,5 +328,9 @@ public interface SymbolVisitor extends ValueList.ValueVisitor<SymbolImpl> {
 
     default void visit(SelectConstant constant) {
         defaultAction(constant);
+    }
+
+    default void visit(VaArgInstruction inst) {
+        defaultAction(inst);
     }
 }

@@ -41,6 +41,7 @@ import org.graalvm.compiler.options.OptionType;
 import org.graalvm.compiler.options.OptionValues;
 
 import jdk.vm.ci.code.CompilationRequest;
+import jdk.vm.ci.hotspot.HotSpotJVMCIRuntime;
 import jdk.vm.ci.meta.ResolvedJavaMethod;
 
 class CompilationCounters {
@@ -87,7 +88,7 @@ class CompilationCounters {
                 }
             }
             TTY.flush();
-            HotSpotGraalServices.exit(-1);
+            HotSpotGraalServices.exit(-1, HotSpotJVMCIRuntime.runtime());
         }
     }
 

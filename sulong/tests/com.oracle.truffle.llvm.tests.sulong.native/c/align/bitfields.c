@@ -29,6 +29,8 @@
  */
 #include "stdio.h"
 
+; /* A declaration needs to be put before the pragma, otherwise the pragma stays unterminated (i.e. unpopped) */
+
 #pragma pack(push)
 #pragma pack(1)
 struct Struct {
@@ -42,7 +44,7 @@ struct Struct {
 };
 #pragma pack(pop)
 
-static struct Struct value[2] = { { -87, 27, 202, 441 }, { -87, 27, 202, 441 } };
+static struct Struct value[2] = { { -87, 27, 202, 441, 0, 0 }, { -87, 27, 202, 441, 0, 0 } };
 
 void dump_ptr(unsigned char *ptr, int len) {
     for (int i = 0; i < len; i++, ptr++) {
@@ -56,9 +58,9 @@ void dump_ptr(unsigned char *ptr, int len) {
     printf("\n");
 }
 
-int main(int argc, char *argv[]) {
-    dump_ptr(value, 2 * sizeof(*value));
-    dump_ptr(&value[argc], sizeof(struct Struct));
+int main(int argc, __attribute__((unused)) char *argv[]) {
+    dump_ptr((unsigned char *) value, 2 * sizeof(*value));
+    dump_ptr((unsigned char *) &value[argc], sizeof(struct Struct));
 
     printf("%d\n", value[argc].f0);
     return 0;

@@ -70,7 +70,9 @@ public final class PolyglotCompilerOptions {
     public enum PerformanceWarningKind {
         VIRTUAL_RUNTIME_CALL("call", "Enables virtual call warnings"),
         VIRTUAL_INSTANCEOF("instanceof", "Enables virtual instanceof warnings"),
-        VIRTUAL_STORE("store", "Enables virtual store warnings");
+        VIRTUAL_STORE("store", "Enables virtual store warnings"),
+        FRAME_CLEAR_PHI("clear", "Enables frame clears introducing phi nodes warnings"),
+        TRIVIAL_FAIL("trivial", "Enables trivial fail warnings");
 
         private static final EconomicMap<String, PerformanceWarningKind> kindByName;
         static {
@@ -238,11 +240,14 @@ public final class PolyglotCompilerOptions {
     @Option(help = "Compile immediately to test Truffle compilation", category = OptionCategory.INTERNAL)
     public static final OptionKey<Boolean> CompileImmediately = new OptionKey<>(false);
 
+    @Option(help = "Compiles created call targets immediately with last tier. Disables background compilation if enabled.", category = OptionCategory.INTERNAL)
+    public static final OptionKey<Boolean> CompileAOTOnCreate = new OptionKey<>(false);
+
     @Option(help = "Enable asynchronous truffle compilation in background threads", category = OptionCategory.EXPERT)
     public static final OptionKey<Boolean> BackgroundCompilation = new OptionKey<>(true);
 
     @Option(help = "Manually set the number of compiler threads", category = OptionCategory.EXPERT)
-    public static final OptionKey<Integer> CompilerThreads = new OptionKey<>(0);
+    public static final OptionKey<Integer> CompilerThreads = new OptionKey<>(-1);
 
     @Option(help = "Set the time in milliseconds an idle Truffle compiler thread will wait for new tasks before terminating. " +
             "New compiler threads will be started once new compilation tasks are submitted. " +
@@ -276,10 +281,10 @@ public final class PolyglotCompilerOptions {
     // MultiTier
 
     @Option(help = "Whether to use multiple Truffle compilation tiers by default.", category = OptionCategory.EXPERT)
-    public static final OptionKey<Boolean> MultiTier = new OptionKey<>(false);
+    public static final OptionKey<Boolean> MultiTier = new OptionKey<>(true);
 
-    @Option(help = "Whether to use inlining for the first tier compilations.", category = OptionCategory.EXPERT)
-    public static final OptionKey<Boolean> FirstTierInlining = new OptionKey<>(false);
+    @Option(help = "Explicitly pick a first tier inlining policy by name (None, TrivialOnly). If empty (default) the lowest priority policy (TrivialOnly) is chosen.", category = OptionCategory.INTERNAL)
+    public static final OptionKey<String> FirstTierInliningPolicy = new OptionKey<>("");
 
     @Option(help = "Minimum number of invocations or loop iterations needed to compile a guest language root in low tier mode.",
             category = OptionCategory.EXPERT)
@@ -327,9 +332,6 @@ public final class PolyglotCompilerOptions {
 
     @Option(help = "Print the entire AST after each compilation", category = OptionCategory.INTERNAL)
     public static final OptionKey<Boolean> TraceCompilationAST = new OptionKey<>(false);
-
-    @Option(help = "Print the inlined call tree for each compiled method", category = OptionCategory.INTERNAL)
-    public static final OptionKey<Boolean> TraceCompilationCallTree = new OptionKey<>(false);
 
     @Option(help = "Print information for inlining decisions.", category = OptionCategory.INTERNAL)
     public static final OptionKey<Boolean> TraceInlining = new OptionKey<>(false);
@@ -381,14 +383,8 @@ public final class PolyglotCompilerOptions {
     @Option(help = "Enable automatic inlining of guest language call targets.", category = OptionCategory.EXPERT)
     public static final OptionKey<Boolean> Inlining = new OptionKey<>(true);
 
-    @Option(help = "Maximum number of inlined non-trivial AST nodes per compilation unit.", category = OptionCategory.EXPERT)
-    public static final OptionKey<Integer> InliningNodeBudget = new OptionKey<>(2250);
-
     @Option(help = "Maximum depth for recursive inlining.", category = OptionCategory.EXPERT)
     public static final OptionKey<Integer> InliningRecursionDepth = new OptionKey<>(2);
-
-    @Option(help = "Use language-agnostic inlining (overrides the TruffleFunctionInlining setting, option is experimental).", category = OptionCategory.EXPERT)
-    public static final OptionKey<Boolean> LanguageAgnosticInlining = new OptionKey<>(true);
 
     // Splitting
 
@@ -401,9 +397,6 @@ public final class PolyglotCompilerOptions {
 
     @Option(help = "Disable call target splitting if the number of nodes created by splitting exceeds this factor times node count", category = OptionCategory.INTERNAL)
     public static final OptionKey<Double> SplittingGrowthLimit = new OptionKey<>(1.5);
-
-    @Option(help = "Disable call target splitting if number of nodes created by splitting exceeds this limit", category = OptionCategory.INTERNAL)
-    public static final OptionKey<Integer> SplittingMaxNumberOfSplitNodes = new OptionKey<>(500_000);
 
     @Option(help = "Propagate info about a polymorphic specialize through maximum this many call targets", category = OptionCategory.INTERNAL)
     public static final OptionKey<Integer> SplittingMaxPropagationDepth = new OptionKey<>(5);
@@ -433,6 +426,9 @@ public final class PolyglotCompilerOptions {
 
     @Option(help = "Sets the target non-trivial Truffle node size for partial compilation of BlockNode nodes.", category = OptionCategory.EXPERT)
     public static final OptionKey<Integer> PartialBlockCompilationSize = new OptionKey<>(3000);
+
+    @Option(help = "Sets the maximum non-trivial Truffle node size for partial compilation of BlockNode nodes.", category = OptionCategory.EXPERT)
+    public static final OptionKey<Integer> PartialBlockMaximumSize = new OptionKey<>(10000);
 
     /*
      * TODO planned options (GR-13444):
@@ -490,13 +486,21 @@ public final class PolyglotCompilerOptions {
             "On runtimes which doesn't support it the option has no effect.",
             category = OptionCategory.EXPERT)
     public static final OptionKey<Integer> EncodedGraphCachePurgeDelay = new OptionKey<>(10_000);
+    
+    @Option(help = "Forces the frame clearing mechanism to be executed, even if Frame.clear() is not used.",
+            category = OptionCategory.EXPERT)
+    public static final OptionKey<Boolean> ForceFrameLivenessAnalysis = new OptionKey<>(false);
+
+    // Compilation queue
+    @Option(help = "Use the priority of compilation jobs in the compilation queue.", category = OptionCategory.INTERNAL)
+    public static final OptionKey<Boolean> PriorityQueue = new OptionKey<>(true);
 
     // Language agnostic inlining
 
     @Option(help = "Print detailed information for inlining (i.e. the entire explored call tree).", category = OptionCategory.INTERNAL)
     public static final OptionKey<Boolean> TraceInliningDetails = new OptionKey<>(false);
 
-    @Option(help = "Explicitly pick a inlining policy by name. Highest priority chosen by default.", category = OptionCategory.EXPERT)
+    @Option(help = "Explicitly pick a inlining policy by name. If empty (default) the highest priority chosen by default.", category = OptionCategory.INTERNAL)
     public static final OptionKey<String> InliningPolicy = new OptionKey<>("");
 
     @Option(help = "The base expansion budget for language-agnostic inlining.", category = OptionCategory.EXPERT)

@@ -49,6 +49,7 @@ import com.oracle.svm.core.c.function.CEntryPointOptions.NoEpilogue;
 import com.oracle.svm.core.c.function.CEntryPointOptions.NoPrologue;
 import com.oracle.svm.core.c.function.CEntryPointOptions.Publish;
 import com.oracle.svm.core.graal.snippets.CEntryPointSnippets.IsolateCreationWatcher;
+import com.oracle.svm.core.os.MemoryProtectionKeyProvider;
 import com.oracle.svm.core.posix.headers.LibC;
 import com.oracle.svm.core.posix.headers.Signal;
 import com.oracle.svm.core.posix.headers.Signal.AdvancedSignalDispatcher;
@@ -73,6 +74,11 @@ class PosixSubstrateSegfaultHandler extends SubstrateSegfaultHandler {
     @RestrictHeapAccess(access = RestrictHeapAccess.Access.NO_ALLOCATION, reason = "Must not allocate in segfault signal handler.")
     @Uninterruptible(reason = "Must be uninterruptible until it gets immune to safepoints")
     private static void dispatch(@SuppressWarnings("unused") int signalNumber, @SuppressWarnings("unused") siginfo_t sigInfo, ucontext_t uContext) {
+
+        if (MemoryProtectionKeyProvider.isAvailable()) {
+            MemoryProtectionKeyProvider.singleton().handleSegfault(sigInfo);
+        }
+
         if (SubstrateOptions.useLLVMBackend()) {
             Isolate isolate = ((SingleIsolateSegfaultIsolateSetup) ImageSingletons.lookup(IsolateCreationWatcher.class)).getIsolate();
             if (isolate.rawValue() == -1) {
@@ -84,6 +90,11 @@ class PosixSubstrateSegfaultHandler extends SubstrateSegfaultHandler {
             /* This means the segfault happened in native code, so we don't even try to dump. */
             return;
         }
+
+        if (MemoryProtectionKeyProvider.isAvailable()) {
+            MemoryProtectionKeyProvider.singleton().printSignalInfo(sigInfo);
+        }
+
         dump(uContext);
     }
 
@@ -100,6 +111,7 @@ class PosixSubstrateSegfaultHandler extends SubstrateSegfaultHandler {
         structSigAction.sa_flags(Signal.SA_SIGINFO());
         structSigAction.sa_sigaction(advancedSignalDispatcher.getFunctionPointer());
         Signal.sigaction(Signal.SignalEnum.SIGSEGV, structSigAction, WordFactory.nullPointer());
+        Signal.sigaction(Signal.SignalEnum.SIGBUS, structSigAction, WordFactory.nullPointer());
     }
 
     static class SingleIsolateSegfaultIsolateSetup implements IsolateCreationWatcher {

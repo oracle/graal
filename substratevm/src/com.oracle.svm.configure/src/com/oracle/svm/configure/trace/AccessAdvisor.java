@@ -37,7 +37,13 @@ public final class AccessAdvisor {
     /** Filter to ignore accesses that <em>originate in</em> methods of these internal classes. */
     private static final RuleNode internalCallerFilter;
 
-    /** Filter to ignore <em>accesses of</em> these classes and their members without a caller. */
+    /** Filter to unconditionally ignore <em>accesses of</em> these classes and their members. */
+    private static final RuleNode internalAccessFilter;
+
+    /**
+     * Filter to ignore <em>accesses of</em> these classes and their members when the caller
+     * (accessing class) is unknown. Used in addition to {@link #accessFilter}, not instead.
+     */
     private static final RuleNode accessWithoutCallerFilter;
 
     static {
@@ -76,18 +82,33 @@ public final class AccessAdvisor {
         internalCallerFilter.addOrGetChildren("sun.text.**", RuleNode.Inclusion.Exclude);
         internalCallerFilter.addOrGetChildren("sun.util.**", RuleNode.Inclusion.Exclude);
 
-        internalCallerFilter.addOrGetChildren("org.graalvm.compiler.**", RuleNode.Inclusion.Exclude);
-        internalCallerFilter.addOrGetChildren("org.graalvm.libgraal.**", RuleNode.Inclusion.Exclude);
+        excludeInaccessiblePackages(internalCallerFilter);
+
         internalCallerFilter.removeRedundantNodes();
 
-        accessWithoutCallerFilter = RuleNode.createRoot();
+        internalAccessFilter = RuleNode.createRoot();
+        internalAccessFilter.addOrGetChildren("**", RuleNode.Inclusion.Include);
+        excludeInaccessiblePackages(internalAccessFilter);
+        internalAccessFilter.removeRedundantNodes();
+
+        accessWithoutCallerFilter = RuleNode.createRoot(); // in addition to accessFilter
         accessWithoutCallerFilter.addOrGetChildren("**", RuleNode.Inclusion.Include);
         accessWithoutCallerFilter.addOrGetChildren("jdk.vm.ci.**", RuleNode.Inclusion.Exclude);
-        accessWithoutCallerFilter.addOrGetChildren("org.graalvm.compiler.**", RuleNode.Inclusion.Exclude);
-        accessWithoutCallerFilter.addOrGetChildren("org.graalvm.libgraal.**", RuleNode.Inclusion.Exclude);
         accessWithoutCallerFilter.addOrGetChildren("[Ljava.lang.String;", RuleNode.Inclusion.Exclude);
         // ^ String[]: for command-line argument arrays created before Java main method is called
         accessWithoutCallerFilter.removeRedundantNodes();
+    }
+
+    /*
+     * Exclude selection of packages distributed with GraalVM which are not unconditionally exported
+     * by their module and should not be accessible from application code. Generate all with:
+     * native-image-configure generate-filters --exclude-unexported-packages-from-modules [--reduce]
+     */
+    private static void excludeInaccessiblePackages(RuleNode rootNode) {
+        rootNode.addOrGetChildren("com.oracle.graal.**", RuleNode.Inclusion.Exclude);
+        rootNode.addOrGetChildren("com.oracle.truffle.**", RuleNode.Inclusion.Exclude);
+        rootNode.addOrGetChildren("org.graalvm.compiler.**", RuleNode.Inclusion.Exclude);
+        rootNode.addOrGetChildren("org.graalvm.libgraal.**", RuleNode.Inclusion.Exclude);
     }
 
     public static RuleNode copyBuiltinCallerFilterTree() {
@@ -95,13 +116,11 @@ public final class AccessAdvisor {
     }
 
     public static RuleNode copyBuiltinAccessFilterTree() {
-        RuleNode root = RuleNode.createRoot();
-        root.addOrGetChildren("**", RuleNode.Inclusion.Include);
-        return root;
+        return internalAccessFilter.copy();
     }
 
     private RuleNode callerFilter = internalCallerFilter;
-    private RuleNode accessFilter = null;
+    private RuleNode accessFilter = internalAccessFilter;
     private boolean heuristicsEnabled = true;
     private boolean isInLivePhase = false;
     private int launchPhase = 0;

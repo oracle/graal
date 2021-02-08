@@ -39,7 +39,7 @@ uint64_t bitscan(uint64_t val) {
 }
 
 void test_bitscan(uint64_t val) {
-    printf("0x%016" PRIx64 ":0x%02x\n", val, bitscan(val));
+    printf("0x%016" PRIx64 ":0x%02lx\n", val, bitscan(val));
 }
 
 int main() {

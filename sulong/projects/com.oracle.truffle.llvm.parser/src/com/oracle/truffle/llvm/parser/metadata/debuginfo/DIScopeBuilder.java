@@ -29,10 +29,6 @@
  */
 package com.oracle.truffle.llvm.parser.metadata.debuginfo;
 
-import java.io.IOException;
-import java.util.HashMap;
-import java.util.Map;
-
 import com.oracle.truffle.api.TruffleFile;
 import com.oracle.truffle.api.TruffleLanguage.Env;
 import com.oracle.truffle.api.source.Source;
@@ -60,9 +56,13 @@ import com.oracle.truffle.llvm.parser.metadata.MDSubprogram;
 import com.oracle.truffle.llvm.parser.metadata.MDVoidNode;
 import com.oracle.truffle.llvm.parser.metadata.MetadataValueList;
 import com.oracle.truffle.llvm.parser.metadata.MetadataVisitor;
-import com.oracle.truffle.llvm.runtime.LLVMContext;
+import com.oracle.truffle.llvm.runtime.LLVMLanguage;
 import com.oracle.truffle.llvm.runtime.debug.scope.LLVMSourceLocation;
 import com.oracle.truffle.llvm.runtime.debug.scope.LLVMSourceLocation.LazySourceSection;
+
+import java.io.IOException;
+import java.util.HashMap;
+import java.util.Map;
 
 final class DIScopeBuilder {
 
@@ -107,7 +107,8 @@ final class DIScopeBuilder {
             return sourceFileCache.get(file);
         }
 
-        String name = MDString.getIfInstance(file.getFile());
+        final Env env = LLVMLanguage.getContext().getEnv();
+        String name = MDString.getIfInstance(file.getMDFile());
         TruffleFile[] sourceFiles;
 
         if (STDIN_FILENAME.equals(name)) {
@@ -118,7 +119,7 @@ final class DIScopeBuilder {
             if (simple.isAbsolute()) {
                 sourceFiles = new TruffleFile[]{simple};
             } else {
-                String directoryName = MDString.getIfInstance(file.getDirectory());
+                String directoryName = MDString.getIfInstance(file.getMDDirectory());
                 if (directoryName != null) {
                     TruffleFile qualifiedFile = env.getInternalTruffleFile(directoryName + env.getFileNameSeparator() + name);
                     // provide two options if we have a directory in the debug info
@@ -141,16 +142,14 @@ final class DIScopeBuilder {
     private final HashMap<String, Source> sources;
     private final MetadataValueList metadata;
     private final FileExtractor fileExtractor;
-    private final Env env;
 
-    DIScopeBuilder(MetadataValueList metadata, LLVMContext context) {
+    DIScopeBuilder(MetadataValueList metadata) {
         this.metadata = metadata;
         this.fileExtractor = new FileExtractor();
         this.globalCache = new HashMap<>();
         this.localCache = new HashMap<>();
         this.sourceFileCache = new HashMap<>();
         this.sources = new HashMap<>();
-        this.env = context.getEnv();
     }
 
     private static boolean isLocalScope(LLVMSourceLocation location) {
@@ -456,7 +455,7 @@ final class DIScopeBuilder {
             return null;
         }
 
-        final String relPath = MDString.getIfInstance(file.getFile());
+        final String relPath = MDString.getIfInstance(file.getMDFile());
         if (relPath == null || relPath.isEmpty()) {
             return null;
         }

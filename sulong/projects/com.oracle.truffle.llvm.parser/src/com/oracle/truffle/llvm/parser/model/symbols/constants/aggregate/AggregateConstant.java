@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2016, 2019, Oracle and/or its affiliates.
+ * Copyright (c) 2016, 2020, Oracle and/or its affiliates.
  *
  * All rights reserved.
  *
@@ -29,30 +29,29 @@
  */
 package com.oracle.truffle.llvm.parser.model.symbols.constants.aggregate;
 
+import com.oracle.truffle.llvm.parser.model.SymbolImpl;
 import com.oracle.truffle.llvm.parser.model.SymbolTable;
-import com.oracle.truffle.llvm.parser.model.symbols.globals.GlobalValueSymbol;
-import com.oracle.truffle.llvm.parser.scanner.RecordBuffer;
 import com.oracle.truffle.llvm.parser.model.symbols.constants.AbstractConstant;
 import com.oracle.truffle.llvm.parser.model.symbols.constants.Constant;
 import com.oracle.truffle.llvm.parser.model.symbols.constants.floatingpoint.FloatingPointConstant;
 import com.oracle.truffle.llvm.parser.model.symbols.constants.integer.IntegerConstant;
+import com.oracle.truffle.llvm.parser.scanner.RecordBuffer;
 import com.oracle.truffle.llvm.runtime.except.LLVMParserException;
 import com.oracle.truffle.llvm.runtime.types.ArrayType;
 import com.oracle.truffle.llvm.runtime.types.StructureType;
 import com.oracle.truffle.llvm.runtime.types.Type;
 import com.oracle.truffle.llvm.runtime.types.VectorType;
-import com.oracle.truffle.llvm.parser.model.SymbolImpl;
 
 public abstract class AggregateConstant extends AbstractConstant {
 
-    private final SymbolImpl[] elements;
+    private final Constant[] elements;
 
     AggregateConstant(Type type, int size) {
         super(type);
-        this.elements = new SymbolImpl[size];
+        this.elements = new Constant[size];
     }
 
-    public SymbolImpl getElement(int idx) {
+    public Constant getElement(int idx) {
         return elements[idx];
     }
 
@@ -62,12 +61,12 @@ public abstract class AggregateConstant extends AbstractConstant {
 
     @Override
     public void replace(SymbolImpl oldValue, SymbolImpl newValue) {
-        if (!(newValue instanceof Constant || newValue instanceof GlobalValueSymbol)) {
+        if (!(newValue instanceof Constant)) {
             throw new LLVMParserException("Values can only be replaced by Constants or Globals!");
         }
         for (int i = 0; i < elements.length; i++) {
             if (elements[i] == oldValue) {
-                elements[i] = newValue;
+                elements[i] = (Constant) newValue;
             }
         }
     }
@@ -129,7 +128,7 @@ public abstract class AggregateConstant extends AbstractConstant {
         }
 
         for (int elementIndex = 0; elementIndex < length; elementIndex++) {
-            aggregateConstant.elements[elementIndex] = symbols.getForwardReferenced(buffer.readInt(), aggregateConstant);
+            aggregateConstant.elements[elementIndex] = (Constant) symbols.getForwardReferenced(buffer.readInt(), aggregateConstant);
         }
 
         return aggregateConstant;

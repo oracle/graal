@@ -283,17 +283,7 @@ public final class NativeImageHeap implements ImageHeap {
             throw reportIllegalType(original, reason);
         }
 
-        int identityHashCode;
-        if (original instanceof DynamicHub) {
-            /*
-             * We need to use the identity hash code of the original java.lang.Class object and not
-             * of the DynamicHub, so that hash maps that are filled during image generation and use
-             * Class keys still work at run time.
-             */
-            identityHashCode = System.identityHashCode(universe.hostVM().lookupType((DynamicHub) original).getJavaClass());
-        } else {
-            identityHashCode = System.identityHashCode(original);
-        }
+        int identityHashCode = SubstrateObjectConstant.computeIdentityHashCode(original);
         VMError.guarantee(identityHashCode != 0, "0 is used as a marker value for 'hash code not yet computed'");
 
         if (original instanceof String) {
@@ -304,6 +294,17 @@ public final class NativeImageHeap implements ImageHeap {
         if (existing == null) {
             addObjectToBootImageHeap(original, immutableFromParent, identityHashCode, reason);
         }
+    }
+
+    @Override
+    public int countDynamicHubs() {
+        int count = 0;
+        for (ObjectInfo o : getObjects()) {
+            if (o.getObject() instanceof DynamicHub) {
+                count++;
+            }
+        }
+        return count;
     }
 
     /**
@@ -383,7 +384,7 @@ public final class NativeImageHeap implements ImageHeap {
             }
 
             final JavaConstant con = SubstrateObjectConstant.forObject(object);
-            HostedField hybridBitsetField = null;
+            HostedField hybridTypeIDSlotsField = null;
             HostedField hybridArrayField = null;
             Object hybridArray = null;
             final long size;
@@ -396,20 +397,23 @@ public final class NativeImageHeap implements ImageHeap {
                 }
 
                 /*
-                 * The hybrid array and bit set are written within the hybrid object. So they may
-                 * not be written as separate objects. We use the blacklist to check that.
+                 * The hybrid array, bit set, and typeID array are written within the hybrid object.
+                 * If the hybrid object declares that they can never be duplicated, i.e. written as
+                 * a separate object, we ensure that they never are duplicated. We use the blacklist
+                 * to check that.
                  */
-                hybridBitsetField = hybridLayout.getBitsetField();
-                if (hybridBitsetField != null) {
-                    Object bitSet = readObjectField(hybridBitsetField, con);
-                    if (bitSet != null) {
-                        blacklist.add(bitSet);
+                boolean shouldBlacklist = !HybridLayout.canHybridFieldsBeDuplicated(clazz);
+                hybridTypeIDSlotsField = hybridLayout.getTypeIDSlotsField();
+                if (hybridTypeIDSlotsField != null && shouldBlacklist) {
+                    Object typeIDSlots = readObjectField(hybridTypeIDSlotsField, con);
+                    if (typeIDSlots != null) {
+                        blacklist.add(typeIDSlots);
                     }
                 }
 
                 hybridArrayField = hybridLayout.getArrayField();
                 hybridArray = readObjectField(hybridArrayField, con);
-                if (hybridArray != null) {
+                if (hybridArray != null && shouldBlacklist) {
                     blacklist.add(hybridArray);
                     written = true;
                 }
@@ -425,7 +429,9 @@ public final class NativeImageHeap implements ImageHeap {
                 // Recursively add all the fields of the object.
                 final boolean fieldsAreImmutable = object instanceof String;
                 for (HostedField field : clazz.getInstanceFields(true)) {
-                    if (field.isAccessed() && !field.equals(hybridArrayField) && !field.equals(hybridBitsetField)) {
+                    if (field.isInImageHeap() &&
+                                    !field.equals(hybridArrayField) &&
+                                    !field.equals(hybridTypeIDSlotsField)) {
                         boolean fieldRelocatable = false;
                         if (field.getJavaKind() == JavaKind.Object) {
                             assert field.hasLocation();
@@ -505,7 +511,7 @@ public final class NativeImageHeap implements ImageHeap {
         }
         msg.append(System.lineSeparator()).append("  reachable through:").append(System.lineSeparator());
         fillReasonStack(msg, reason);
-        throw UserError.abort(msg.toString());
+        throw UserError.abort("%s", msg);
     }
 
     private static StringBuilder fillReasonStack(StringBuilder msg, Object reason) {
@@ -641,14 +647,11 @@ public final class NativeImageHeap implements ImageHeap {
             return clazz;
         }
 
-        /**
-         * The offset of an object within a partition. <em>Probably you want
-         * {@link #getAddress()}</em>.
-         */
         @Override
-        public long getOffsetInPartition() {
+        public long getOffset() {
             assert offsetInPartition >= 0;
-            return offsetInPartition;
+            assert partition != null;
+            return partition.getStartOffset() + offsetInPartition;
         }
 
         @Override
@@ -657,11 +660,22 @@ public final class NativeImageHeap implements ImageHeap {
             this.offsetInPartition = value;
         }
 
+        @Override
+        public ImageHeapPartition getPartition() {
+            return partition;
+        }
+
+        @Override
+        public void setHeapPartition(ImageHeapPartition value) {
+            assert this.partition == null;
+            this.partition = value;
+        }
+
         /**
          * Returns the index into the {@link RelocatableBuffer} to which this object is written.
          */
         public int getIndexInBuffer(long index) {
-            long result = getPartition().getStartOffset() + getOffsetInPartition() + index;
+            long result = getOffset() + index;
             return NumUtil.safeToInt(result);
         }
 
@@ -676,16 +690,16 @@ public final class NativeImageHeap implements ImageHeap {
              * the beginning of the heap. So, all heap-base-relative addresses must be adjusted by
              * that offset.
              */
-            return Heap.getHeap().getImageHeapOffsetInAddressSpace() + getPartition().getStartOffset() + getOffsetInPartition();
+            return Heap.getHeap().getImageHeapOffsetInAddressSpace() + getOffset();
         }
 
         /**
          * Similar to {@link #getAddress()} but this method is typically used to get the address of
          * a field within an object.
          */
-        public long getAddress(long offset) {
-            assert offset >= 0 && offset < getSize() : "Index: " + offset + " out of bounds: [0 .. " + getSize() + ").";
-            return getAddress() + offset;
+        public long getAddress(long delta) {
+            assert delta >= 0 && delta < getSize() : "Index: " + delta + " out of bounds: [0 .. " + getSize() + ").";
+            return getAddress() + delta;
         }
 
         @Override
@@ -693,19 +707,8 @@ public final class NativeImageHeap implements ImageHeap {
             return size;
         }
 
-        @Override
-        public ImageHeapPartition getPartition() {
-            return partition;
-        }
-
         int getIdentityHashCode() {
             return identityHashCode;
-        }
-
-        @Override
-        public void setHeapPartition(ImageHeapPartition value) {
-            assert this.partition == null;
-            this.partition = value;
         }
 
         @Override

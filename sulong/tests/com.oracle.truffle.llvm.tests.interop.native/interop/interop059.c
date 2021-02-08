@@ -27,7 +27,7 @@
  * NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED
  * OF THE POSSIBILITY OF SUCH DAMAGE.
  */
-#include <polyglot.h>
+#include <graalvm/llvm/polyglot.h>
 
 typedef void *VALUE;
 
@@ -42,8 +42,8 @@ int main() {
         return 200 + (int) foreign[1];
     }
 
-    foreign[0] = 101;
-    foreign[1] = 102;
+    foreign[0] = (void *) 101;
+    foreign[1] = (void *) 102;
 
     return 0;
 }

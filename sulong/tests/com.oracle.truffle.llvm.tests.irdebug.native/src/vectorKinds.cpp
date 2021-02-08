@@ -35,7 +35,7 @@ typedef long v6sl __attribute__((vector_size(48)));
 typedef float v5flt __attribute__((vector_size(20)));
 typedef double v4dbl __attribute__((vector_size(32)));
 
-template <typename T> void foo(T bar) {
+template <typename T> void foo(__attribute__((unused)) T bar) {
 }
 
 template <typename T> void doReceive(T toInspect) {

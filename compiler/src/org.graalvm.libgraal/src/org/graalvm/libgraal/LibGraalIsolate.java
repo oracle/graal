@@ -53,6 +53,10 @@ public final class LibGraalIsolate {
         this.address = address;
     }
 
+    public long getId() {
+        return id;
+    }
+
     /**
      * Gets the isolate associated with the current thread. The current thread must be in an
      * {@linkplain LibGraalScope opened} scope.
@@ -73,7 +77,7 @@ public final class LibGraalIsolate {
      */
     @SuppressWarnings("unchecked")
     public synchronized <T> T getSingleton(Class<T> key, Supplier<T> supplier) {
-        // Cannot use HahsMap.computeIfAbsent as it will throw a ConcurrentModificationException
+        // Cannot use HashMap.computeIfAbsent as it will throw a ConcurrentModificationException
         // if supplier recurses here to compute another singleton.
         if (!singletons.containsKey(key)) {
             singletons.put(key, supplier.get());
@@ -130,7 +134,7 @@ public final class LibGraalIsolate {
     /**
      * Notifies that the {@code JavaVM} associated with {@code isolate} has been destroyed. All
      * subsequent accesses to objects in the isolate will throw an {@link IllegalArgumentException}.
-     * Called by {@code HotSpotGraalRuntime#shutdownLibGraal} using JNI.
+     * Called by {@code LibGraalFeature#shutdownLibGraal} using JNI.
      */
     static synchronized void unregister(long isolateId) {
         LibGraalIsolate isolate = isolates.remove(isolateId);
@@ -151,5 +155,4 @@ public final class LibGraalIsolate {
     public boolean isValid() {
         return !destroyed;
     }
-
 }

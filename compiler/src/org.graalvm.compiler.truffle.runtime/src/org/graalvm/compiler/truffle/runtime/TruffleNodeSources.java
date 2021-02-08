@@ -24,9 +24,8 @@
  */
 package org.graalvm.compiler.truffle.runtime;
 
-import java.util.HashMap;
-import java.util.Map;
-
+import org.graalvm.collections.EconomicMap;
+import org.graalvm.collections.Equivalence;
 import org.graalvm.compiler.truffle.runtime.TruffleInlining.TruffleSourceLanguagePosition;
 
 import com.oracle.truffle.api.nodes.DirectCallNode;
@@ -38,7 +37,7 @@ import com.oracle.truffle.api.source.SourceSection;
  */
 final class TruffleNodeSources {
 
-    private final Map<Node, TruffleSourceLanguagePosition> sourcePositionCache = new HashMap<>();
+    private final EconomicMap<Node, TruffleSourceLanguagePosition> sourcePositionCache = EconomicMap.create(Equivalence.IDENTITY_WITH_SYSTEM_HASHCODE);
     private int nodeIdCounter;
 
     TruffleSourceLanguagePosition getSourceLocation(Node truffleNode) {

@@ -98,6 +98,8 @@ public class BenchmarkCounters {
         public static final OptionKey<Boolean> BenchmarkCountersDumpStatic = new OptionKey<>(false);
         @Option(help = "file:doc-files/AbortOnBenchmarkCounterOverflowHelp.txt", type = OptionType.Debug)
         public static final OptionKey<Boolean> AbortOnBenchmarkCounterOverflow = new OptionKey<>(false);
+        @Option(help = "Use a cutoff to print only most significant counters.", type = OptionType.Debug)
+        public static final OptionKey<Boolean> BenchmarkCounterPrintingCutoff = new OptionKey<>(true);
         //@formatter:on
     }
 
@@ -259,23 +261,37 @@ public class BenchmarkCounters {
                 int index = counter.index;
                 if (counter.group.equals(group)) {
                     sum += array[index];
+                    // remark: array[index] * array.length + index yields unique keys for treeset
+                    // despite possibly equal counter values and when integer-dividing by
+                    // array.length the index is removed and the counter restored
                     sorted.put(array[index] * array.length + index, getName(entry.getKey(), group));
                 }
             }
 
             if (sum > 0) {
-                long cutoff = sorted.size() < 10 ? 1 : Math.max(1, sum / 100);
-                int cnt = sorted.size();
+                if (Options.BenchmarkCounterPrintingCutoff.getValue(options)) {
+                    long cutoff = sorted.size() < 10 ? 1 : Math.max(1, sum / 100);
+                    int cnt = sorted.size();
 
-                // remove everything below cutoff and keep at most maxRows
-                Iterator<Map.Entry<Long, String>> iter = sorted.entrySet().iterator();
-                while (iter.hasNext()) {
-                    Map.Entry<Long, String> entry = iter.next();
-                    long counter = entry.getKey() / array.length;
-                    if (counter < cutoff || cnt > maxRows) {
-                        iter.remove();
+                    // remove everything below cutoff and keep at most maxRows
+                    Iterator<Map.Entry<Long, String>> iter = sorted.entrySet().iterator();
+                    while (iter.hasNext()) {
+                        Map.Entry<Long, String> entry = iter.next();
+                        long counter = entry.getKey() / array.length;
+                        if (counter < cutoff || cnt > maxRows) {
+                            iter.remove();
+                        }
+                        cnt--;
                     }
-                    cnt--;
+                } else {
+                    Iterator<Map.Entry<Long, String>> iter = sorted.entrySet().iterator();
+                    while (iter.hasNext()) {
+                        Map.Entry<Long, String> entry = iter.next();
+                        long counter = entry.getKey() / array.length;
+                        if (counter == 0) {
+                            iter.remove();
+                        }
+                    }
                 }
 
                 String numFmt = Options.DynamicCountersPrintGroupSeparator.getValue(options) ? "%,19d" : "%19d";
@@ -446,7 +462,7 @@ public class BenchmarkCounters {
             enabled = true;
         }
         if (Options.TimedDynamicCounters.getValue(options) > 0) {
-            Thread thread = new GraalServiceThread(new Runnable() {
+            Thread thread = new GraalServiceThread(BenchmarkCounters.class.getSimpleName(), new Runnable() {
                 long lastTime = System.nanoTime();
 
                 @Override

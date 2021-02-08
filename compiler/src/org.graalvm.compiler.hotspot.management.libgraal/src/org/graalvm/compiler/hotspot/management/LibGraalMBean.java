@@ -24,37 +24,27 @@
  */
 package org.graalvm.compiler.hotspot.management;
 
-import java.lang.management.ManagementFactory;
+import java.lang.reflect.Array;
 import java.util.ArrayList;
 import java.util.HashMap;
-import java.util.Hashtable;
 import java.util.Iterator;
 import java.util.LinkedHashMap;
-import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
-import java.util.Set;
 
 import javax.management.Attribute;
 import javax.management.AttributeList;
 import javax.management.AttributeNotFoundException;
 import javax.management.DynamicMBean;
-import javax.management.InstanceAlreadyExistsException;
-import javax.management.InstanceNotFoundException;
 import javax.management.InvalidAttributeValueException;
 import javax.management.MBeanAttributeInfo;
 import javax.management.MBeanException;
 import javax.management.MBeanInfo;
 import javax.management.MBeanOperationInfo;
 import javax.management.MBeanParameterInfo;
-import javax.management.MBeanRegistrationException;
-import javax.management.MBeanServer;
-import javax.management.MBeanServerFactory;
-import javax.management.MalformedObjectNameException;
-import javax.management.NotCompliantMBeanException;
-import javax.management.ObjectName;
 import javax.management.ReflectionException;
+import javax.management.openmbean.ArrayType;
 import javax.management.openmbean.CompositeData;
 import javax.management.openmbean.CompositeDataSupport;
 import javax.management.openmbean.CompositeType;
@@ -63,7 +53,6 @@ import javax.management.openmbean.OpenType;
 import javax.management.openmbean.SimpleType;
 
 import org.graalvm.compiler.debug.TTY;
-import org.graalvm.libgraal.LibGraal;
 import org.graalvm.libgraal.LibGraalScope;
 import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;
@@ -77,6 +66,7 @@ import org.graalvm.util.OptionsEncoder;
 public class LibGraalMBean implements DynamicMBean {
 
     private static final String COMPOSITE_TAG = ".composite";
+    private static final String ARRAY_TAG = ".array";
     private static final Map<Class<?>, OpenType<?>> PRIMITIVE_TO_OPENTYPE;
     static {
         PRIMITIVE_TO_OPENTYPE = new HashMap<>();
@@ -91,8 +81,6 @@ public class LibGraalMBean implements DynamicMBean {
         PRIMITIVE_TO_OPENTYPE.put(Double.class, SimpleType.DOUBLE);
         PRIMITIVE_TO_OPENTYPE.put(String.class, SimpleType.STRING);
     }
-
-    private static volatile Factory factory;
 
     private final long isolate;
     private final long handle;
@@ -175,14 +163,17 @@ public class LibGraalMBean implements DynamicMBean {
             Map.Entry<String, Object> e = it.next();
             String attrName = e.getKey();
             Object attrValue = e.getValue();
-            if (isComposite(attrName)) {
-                try {
+            try {
+                if (isComposite(attrName)) {
                     attrValue = readComposite(attrName, (String) attrValue, it);
-                } catch (OpenDataException ex) {
-                    attrValue = null;
-                    TTY.printf("WARNING: Cannot read composite attribute %s due to %s", attrName, ex.getMessage());
+                    attrName = attrName(attrName, COMPOSITE_TAG);
+                } else if (isArray(attrName)) {
+                    attrValue = readArray(attrName, (String) attrValue, it);
+                    attrName = attrName(attrName, ARRAY_TAG);
                 }
-                attrName = compositeAttrName(attrName);
+            } catch (OpenDataException ex) {
+                attrValue = null;
+                TTY.printf("WARNING: Cannot read attribute %s due to %s", attrName, ex.getMessage());
             }
             res.add(new Attribute(attrName, attrValue));
         }
@@ -197,10 +188,17 @@ public class LibGraalMBean implements DynamicMBean {
     }
 
     /**
-     * Removes the composite tag from attribute name.
+     * Removes the tag from attribute name.
      */
-    private static String compositeAttrName(String name) {
-        return name.substring(0, name.length() - COMPOSITE_TAG.length());
+    private static String attrName(String name, String tag) {
+        return name.substring(0, name.length() - tag.length());
+    }
+
+    /**
+     * Check if the serialized attribute is an array.
+     */
+    private static boolean isArray(String name) {
+        return name.endsWith(ARRAY_TAG);
     }
 
     /**
@@ -221,7 +219,10 @@ public class LibGraalMBean implements DynamicMBean {
             Object attrValue = e.getValue();
             if (isComposite(attrName)) {
                 attrValue = readComposite(attrName, (String) attrValue, it);
-                attrName = compositeAttrName(attrName);
+                attrName = attrName(attrName, COMPOSITE_TAG);
+            } else if (isArray(attrName)) {
+                attrValue = readArray(attrName, (String) attrValue, it);
+                attrName = attrName(attrName, ARRAY_TAG);
             }
             attrName = attrName.substring(prefix.length());
             attrNames.add(attrName);
@@ -233,12 +234,41 @@ public class LibGraalMBean implements DynamicMBean {
         return new CompositeDataSupport(type, attrNamesArray, attrValues.toArray(new Object[attrValues.size()]));
     }
 
+    private static Object[] readArray(String scope, String typeName, PushBackIterator<Map.Entry<String, Object>> it) throws OpenDataException {
+        String prefix = scope + '.';
+        List<Object> elements = new ArrayList<>();
+        while (it.hasNext()) {
+            Map.Entry<String, Object> e = it.next();
+            String attrName = e.getKey();
+            if (!attrName.startsWith(prefix)) {
+                it.pushBack(e);
+                break;
+            }
+            Object attrValue = e.getValue();
+            elements.add(attrValue);
+        }
+        Class<?> componentType = null;
+        for (Map.Entry<Class<?>, OpenType<?>> e : PRIMITIVE_TO_OPENTYPE.entrySet()) {
+            if (e.getValue().getTypeName().equals(typeName)) {
+                componentType = e.getKey();
+                break;
+            }
+        }
+        if (componentType == null) {
+            throw new OpenDataException("Only arrays of simple open types are suppored.");
+        }
+        return elements.toArray((Object[]) Array.newInstance(componentType, elements.size()));
+    }
+
     /**
      * Returns an {@link OpenType} representing given value.
      */
-    private static OpenType<?> getOpenType(Object value) {
+    private static OpenType<?> getOpenType(Object value) throws OpenDataException {
         if (value instanceof CompositeData) {
             return ((CompositeData) value).getCompositeType();
+        }
+        if (value != null && value.getClass().isArray()) {
+            return ArrayType.getArrayType(PRIMITIVE_TO_OPENTYPE.get(value.getClass().getComponentType()));
         }
         Class<?> clz = value == null ? String.class : value.getClass();
         OpenType<?> openType = PRIMITIVE_TO_OPENTYPE.get(clz);
@@ -324,44 +354,6 @@ public class LibGraalMBean implements DynamicMBean {
                             attributes.toArray(new MBeanAttributeInfo[attributes.size()]), null,
                             operations.toArray(new MBeanOperationInfo[operations.size()]), null);
         }
-    }
-
-    /**
-     * Returns a factory for registering the {@link LibGraalMBean} instances into
-     * {@link MBeanServer}. If the factory does not exist it is created and its registration thread
-     * is started.
-     */
-    static Factory getFactory() {
-        Factory res = factory;
-        if (res == null) {
-            synchronized (LibGraalMBean.class) {
-                res = factory;
-                if (res == null) {
-                    try {
-                        res = new Factory();
-                        res.start();
-                        factory = res;
-                    } catch (LinkageError e) {
-                        Throwable cause = findCause(e);
-                        throw sthrow(RuntimeException.class, cause);
-                    }
-                }
-            }
-        }
-        return res;
-    }
-
-    private static Throwable findCause(Throwable e) {
-        Throwable current = e;
-        while (current.getCause() != null) {
-            current = current.getCause();
-        }
-        return current;
-    }
-
-    @SuppressWarnings({"unchecked", "unused"})
-    private static <T extends Throwable> T sthrow(Class<T> exceptionClass, Throwable exception) throws T {
-        throw (T) exception;
     }
 
     /**
@@ -544,196 +536,6 @@ public class LibGraalMBean implements DynamicMBean {
                 throw new IllegalStateException("Push back element already exists.");
             }
             pushBack = e;
-        }
-    }
-
-    /**
-     * A factory thread creating the {@link LibGraalMBean} instances for {@link DynamicMBean}s in
-     * libgraal heap and registering them to {@link MBeanServer}.
-     */
-    @Platforms(Platform.HOSTED_ONLY.class)
-    public static final class Factory extends Thread {
-
-        private static final String DOMAIN_JAVA_LANG = Object.class.getPackage().getName();
-        private static final String TYPE_MEMORY_POOL = "MemoryPool";
-        private static final String ATTR_TYPE = "type";
-        private static final int POLL_INTERVAL_MS = 2000;
-
-        private MBeanServer platformMBeanServer;
-        private volatile AggregatedMemoryPoolBean aggregatedMemoryPoolBean;
-
-        /**
-         * Set of isolates yet to be processed for MBean registrations.
-         */
-        private final Set<Long> pendingIsolates;
-
-        private Factory() {
-            super("Libgraal MBean Registration");
-            this.pendingIsolates = new LinkedHashSet<>();
-            this.setPriority(Thread.MIN_PRIORITY);
-            this.setDaemon(true);
-            LibGraal.registerNativeMethods(JMXToLibGraalCalls.class);
-        }
-
-        /**
-         * Main loop waiting for {@link DynamicMBean} creation in libgraal heap. When a new
-         * {@link DynamicMBean} is created in the libgraal heap this thread creates a new
-         * {@link LibGraalMBean} encapsulating the {@link DynamicMBean} and registers it to
-         * {@link MBeanServer}.
-         */
-        @Override
-        public void run() {
-            while (true) {
-                try {
-                    synchronized (this) {
-                        // Wait until there are deferred registrations to process
-                        while (pendingIsolates.isEmpty()) {
-                            wait();
-                        }
-                        try {
-                            poll();
-                        } catch (SecurityException | UnsatisfiedLinkError | NoClassDefFoundError | UnsupportedOperationException e) {
-                            // Without permission to find or create the MBeanServer,
-                            // we cannot process any Graal mbeans.
-                            // Various other errors can occur in the ManagementFactory (JDK-8076557)
-                            break;
-                        }
-                    }
-                    Thread.sleep(POLL_INTERVAL_MS);
-                } catch (InterruptedException e) {
-                    // Be verbose about unexpected interruption and then continue
-                    e.printStackTrace(TTY.out);
-                }
-            }
-        }
-
-        /**
-         * Called by {@code MBeanProxy} in libgraal heap to notify this factory of an isolate with
-         * {@link DynamicMBean}s that needs registration.
-         */
-        synchronized void signalRegistrationRequest(long isolate) {
-            pendingIsolates.add(isolate);
-            notify();
-        }
-
-        /**
-         * Called by {@code MBeanProxy} in libgraal heap when the isolate is closing to unregister
-         * its {@link DynamicMBean}s.
-         */
-        synchronized void unregister(long isolate, String[] objectIds) {
-            // Remove pending registration requests
-            pendingIsolates.remove(isolate);
-            MBeanServer mBeanServer = findMBeanServer();
-            if (mBeanServer == null) {
-                // Nothing registered yet.
-                return;
-            }
-            for (String objectId : objectIds) {
-                try {
-                    ObjectName objectName = new ObjectName(objectId);
-                    if (aggregatedMemoryPoolBean != null && parseMemoryPoolObjectName(objectName) != null) {
-                        aggregatedMemoryPoolBean.removeDelegate(objectName);
-                    }
-                    if (mBeanServer.isRegistered(objectName)) {
-                        mBeanServer.unregisterMBean(objectName);
-                    }
-                } catch (MalformedObjectNameException | MBeanRegistrationException | InstanceNotFoundException e) {
-                    e.printStackTrace(TTY.out);
-                }
-            }
-        }
-
-        /**
-         * In case of successful {@link MBeanServer} initialization creates {@link LibGraalMBean}s
-         * for pending libgraal {@link DynamicMBean}s and registers them.
-         *
-         * @return {@code true} if {@link LibGraalMBean}s were successfuly registered, {@code false}
-         *         when {@link MBeanServer} is not yet available and {@code poll} should be retried.
-         * @throws SecurityException can be thrown by {@link MBeanServer}
-         * @throws UnsatisfiedLinkError can be thrown by {@link MBeanServer}
-         * @throws NoClassDefFoundError can be thrown by {@link MBeanServer}
-         * @throws UnsupportedOperationException can be thrown by {@link MBeanServer}
-         */
-        private boolean poll() {
-            assert Thread.holdsLock(this);
-            MBeanServer mBeanServer = findMBeanServer();
-            if (mBeanServer != null) {
-                return process();
-            } else {
-                return false;
-            }
-        }
-
-        /**
-         * Returns a {@link MBeanServer} if it already exists.
-         */
-        private MBeanServer findMBeanServer() {
-            assert Thread.holdsLock(this);
-            if (platformMBeanServer == null) {
-                ArrayList<MBeanServer> servers = MBeanServerFactory.findMBeanServer(null);
-                if (!servers.isEmpty()) {
-                    platformMBeanServer = ManagementFactory.getPlatformMBeanServer();
-                }
-            }
-            return platformMBeanServer;
-        }
-
-        /**
-         * Creates {@link LibGraalMBean}s for pending libgraal {@link DynamicMBean}s and registers
-         * them {@link MBeanServer}.
-         *
-         * @return {@code true}
-         * @throws SecurityException can be thrown by {@link MBeanServer}
-         * @throws UnsatisfiedLinkError can be thrown by {@link MBeanServer}
-         * @throws NoClassDefFoundError can be thrown by {@link MBeanServer}
-         * @throws UnsupportedOperationException can be thrown by {@link MBeanServer}
-         */
-        private boolean process() {
-            for (Iterator<Long> iter = pendingIsolates.iterator(); iter.hasNext();) {
-                long isolate = iter.next();
-                iter.remove();
-                try (LibGraalScope scope = new LibGraalScope(isolate)) {
-                    long isolateThread = scope.getIsolateThreadAddress();
-                    long[] handles = JMXToLibGraalCalls.pollRegistrations(isolateThread);
-                    if (handles.length > 0) {
-                        for (long handle : handles) {
-                            LibGraalMBean bean = new LibGraalMBean(isolate, handle);
-                            String name = JMXToLibGraalCalls.getObjectName(isolateThread, handle);
-                            try {
-                                ObjectName objectName = new ObjectName(name);
-                                Hashtable<String, String> props = parseMemoryPoolObjectName(objectName);
-                                if (props != null) {
-                                    if (aggregatedMemoryPoolBean == null) {
-                                        props.remove("isolate");
-                                        ObjectName aggregatedMemoryPoolObjectName = new ObjectName(DOMAIN_JAVA_LANG, props);
-                                        aggregatedMemoryPoolBean = new AggregatedMemoryPoolBean(aggregatedMemoryPoolObjectName, bean, objectName);
-                                        platformMBeanServer.registerMBean(aggregatedMemoryPoolBean, aggregatedMemoryPoolObjectName);
-                                    } else {
-                                        aggregatedMemoryPoolBean.addDelegate(bean, objectName);
-                                    }
-                                }
-                                platformMBeanServer.registerMBean(bean, objectName);
-                            } catch (MalformedObjectNameException | InstanceAlreadyExistsException | MBeanRegistrationException | NotCompliantMBeanException e) {
-                                e.printStackTrace(TTY.out);
-                            }
-                        }
-                    }
-                }
-            }
-            return true;
-        }
-
-        /**
-         * Parses MemoryPool {@link ObjectName} to a properties map. If the given {@link ObjectName}
-         * does not represent a MemoryPool Bean it returns {@code null}.
-         */
-        private static Hashtable<String, String> parseMemoryPoolObjectName(ObjectName objectName) {
-            Hashtable<String, String> props = objectName.getKeyPropertyList();
-            if (DOMAIN_JAVA_LANG.equals(objectName.getDomain()) && TYPE_MEMORY_POOL.equals(props.get(ATTR_TYPE))) {
-                return props;
-            } else {
-                return null;
-            }
         }
     }
 }

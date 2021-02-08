@@ -133,29 +133,31 @@ public abstract class LibraryFactory<T extends Library> {
      * Resets the state for native image generation.
      *
      * NOTE: this method is called reflectively by downstream projects.
+     *
+     * @param imageClassLoader class loader passed by the image builder.
      */
     @SuppressWarnings("unused")
-    private static void resetNativeImageState() {
+    private static void resetNativeImageState(ClassLoader imageClassLoader) {
         assert TruffleOptions.AOT : "Only supported during image generation";
         for (Map.Entry<Class<?>, LibraryFactory<?>> entry : LIBRARIES.entrySet()) {
             LibraryFactory<?> libraryFactory = entry.getValue();
-            clearNonTruffleClasses(libraryFactory.exportCache);
-            clearNonTruffleClasses(libraryFactory.uncachedCache);
-            clearNonTruffleClasses(libraryFactory.cachedCache);
+            removeClassesLoadedDuringImageBuild(libraryFactory.exportCache, imageClassLoader);
+            removeClassesLoadedDuringImageBuild(libraryFactory.uncachedCache, imageClassLoader);
+            removeClassesLoadedDuringImageBuild(libraryFactory.cachedCache, imageClassLoader);
             /* Reset the default exports. */
             LibraryFactory.externalDefaultProviders = null;
             libraryFactory.afterBuiltinDefaultExports = null;
             libraryFactory.beforeBuiltinDefaultExports = null;
         }
-        clearNonTruffleClasses(LIBRARIES);
-        clearNonTruffleClasses(ResolvedDispatch.CACHE);
-        clearNonTruffleClasses(ResolvedDispatch.REGISTRY);
+        removeClassesLoadedDuringImageBuild(LIBRARIES, imageClassLoader);
+        removeClassesLoadedDuringImageBuild(ResolvedDispatch.CACHE, imageClassLoader);
+        removeClassesLoadedDuringImageBuild(ResolvedDispatch.REGISTRY, imageClassLoader);
     }
 
-    private static void clearNonTruffleClasses(Map<Class<?>, ?> map) {
+    private static void removeClassesLoadedDuringImageBuild(Map<Class<?>, ?> map, ClassLoader imageClassLoader) {
         Class<?>[] classes = map.keySet().toArray(new Class<?>[0]);
         for (Class<?> clazz : classes) {
-            if (LibraryAccessor.jdkServicesAccessor().isNonTruffleClass(clazz)) {
+            if (clazz.getClassLoader() == imageClassLoader) {
                 map.remove(clazz);
             }
         }
@@ -352,9 +354,16 @@ public abstract class LibraryFactory<T extends Library> {
             assert validateExport(receiver, dispatchClass, uncached);
             return uncached;
         }
+        return getUncachedSlowPath(receiver, dispatchClass);
+    }
+
+    /**
+     * Handles {@link #getUncached(Object)} cache miss.
+     */
+    private T getUncachedSlowPath(Object receiver, Class<?> dispatchClass) {
         ensureLibraryInitialized();
         LibraryExport<T> export = lookupExport(receiver, dispatchClass);
-        uncached = export.createUncached(receiver);
+        T uncached = export.createUncached(receiver);
         assert validateExport(receiver, dispatchClass, uncached);
         assert uncached.accepts(receiver);
         assert (uncached = createAssertionsImpl(export, uncached)) != null;
@@ -761,6 +770,7 @@ public abstract class LibraryFactory<T extends Library> {
             return (LibraryExport<T>) lib;
         }
 
+        /** NOTE: this method is called reflectively by downstream projects. */
         @TruffleBoundary
         static ResolvedDispatch lookup(Class<?> receiverClass) {
             ResolvedDispatch type = CACHE.get(receiverClass);

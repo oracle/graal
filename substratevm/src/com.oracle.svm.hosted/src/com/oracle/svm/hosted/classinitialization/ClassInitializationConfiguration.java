@@ -96,8 +96,8 @@ public class ClassInitializationConfiguration {
                 }
             } else {
                 if (node.strict) {
-                    throw UserError.abort("Incompatible change of initialization policy for " + qualifiedName(node) + ": trying to change " + node.kind + " " + String.join(" and ", node.reasons) +
-                                    " to " + kind + " " + reason);
+                    throw UserError.abort("Incompatible change of initialization policy for %s: trying to change %s %s to %s %s",
+                                    qualifiedName(node), node.kind, String.join(" and ", node.reasons), kind, reason);
                 } else {
                     node.kind = node.kind.max(kind);
                 }

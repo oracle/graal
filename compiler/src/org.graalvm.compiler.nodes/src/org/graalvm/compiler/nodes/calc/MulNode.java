@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2011, 2019, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2011, 2020, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -102,17 +102,19 @@ public class MulNode extends BinaryArithmeticNode<Mul> implements NarrowableArit
                 return forX;
             }
 
+            if (op.isAssociative()) {
+                // Canonicalize expressions like "(a * 2) * 4" => "(a * 8)"
+                ValueNode reassociated = reassociateMatchedValues(self != null ? self : (MulNode) new MulNode(forX, forY).maybeCommuteInputs(), ValueNode.isConstantPredicate(), forX, forY, view);
+                if (reassociated != self) {
+                    return reassociated;
+                }
+            }
             if (c instanceof PrimitiveConstant && ((PrimitiveConstant) c).getJavaKind().isNumericInteger()) {
                 long i = ((PrimitiveConstant) c).asLong();
                 ValueNode result = canonical(stamp, forX, i, view);
                 if (result != null) {
                     return result;
                 }
-            }
-
-            if (op.isAssociative()) {
-                // canonicalize expressions like "(a * 1) * 2"
-                return reassociate(self != null ? self : (MulNode) new MulNode(forX, forY).maybeCommuteInputs(), ValueNode.isConstantPredicate(), forX, forY, view);
             }
         }
         return self != null ? self : new MulNode(forX, forY).maybeCommuteInputs();
@@ -172,5 +174,9 @@ public class MulNode extends BinaryArithmeticNode<Mul> implements NarrowableArit
             op2 = tmp;
         }
         nodeValueMap.setResult(this, gen.emitMul(op1, op2, false));
+    }
+
+    protected boolean isExact() {
+        return false;
     }
 }

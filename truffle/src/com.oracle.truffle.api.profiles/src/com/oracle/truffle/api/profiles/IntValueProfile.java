@@ -114,7 +114,7 @@ public abstract class IntValueProfile extends Profile {
         private static final byte GENERIC = 2;
 
         @CompilationFinal private int cachedValue;
-        @CompilationFinal private byte state = 0;
+        @CompilationFinal private byte state = UNINITIALIZED;
 
         @Override
         public int profile(int value) {
@@ -147,6 +147,16 @@ public abstract class IntValueProfile extends Profile {
 
         int getCachedValue() {
             return cachedValue;
+        }
+
+        @Override
+        public void disable() {
+            this.state = GENERIC;
+        }
+
+        @Override
+        public void reset() {
+            this.state = UNINITIALIZED;
         }
 
         @Override

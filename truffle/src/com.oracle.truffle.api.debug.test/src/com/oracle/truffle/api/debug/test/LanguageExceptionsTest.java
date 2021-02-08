@@ -42,13 +42,12 @@ package com.oracle.truffle.api.debug.test;
 
 import java.io.PrintWriter;
 import java.io.StringWriter;
-import java.util.Collections;
 import java.util.Objects;
+import java.util.function.BiFunction;
 
 import org.junit.Assert;
 import org.junit.Test;
 
-import com.oracle.truffle.api.Scope;
 import com.oracle.truffle.api.debug.DebugException;
 import com.oracle.truffle.api.debug.DebugValue;
 import com.oracle.truffle.api.debug.DebuggerSession;
@@ -112,10 +111,12 @@ public class LanguageExceptionsTest extends AbstractDebugTest {
     public void testBuggyScope() {
         testBuggyLanguageCalls(new TestDebugBuggyLanguage() {
             @Override
-            protected Iterable<Scope> findLocalScopes(ProxyLanguage.LanguageContext context, Node node, Frame frame) {
-                String text = node.getSourceSection().getCharacters().toString();
-                throwBug(Integer.parseInt(text));
-                return Collections.emptyList();
+            protected BiFunction<Node, Frame, Object> scopeProvider() {
+                return (node, frame) -> {
+                    String text = node.getSourceSection().getCharacters().toString();
+                    throwBug(Integer.parseInt(text));
+                    return null;
+                };
             }
         }, (SuspendedEvent event) -> {
             event.getTopStackFrame().getScope();

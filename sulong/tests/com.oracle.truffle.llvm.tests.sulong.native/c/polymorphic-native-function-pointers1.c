@@ -50,9 +50,7 @@ test_type getFunction(int i) {
 }
 
 int callFunction() {
-    double val;
     int i;
-    test_type func;
     double currentVal = 2342;
     for (i = 0; i < 1000; i++) {
         currentVal = getFunction(i)(currentVal) > 4353423;

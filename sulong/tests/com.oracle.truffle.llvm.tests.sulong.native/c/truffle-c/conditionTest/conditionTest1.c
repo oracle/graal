@@ -31,6 +31,9 @@ int main() {
     int sum = 0;
     sum += !0 ? 1 : 2;
     sum += sum ? 4 : 8;
+#pragma clang diagnostic push
+#pragma clang diagnostic ignored "-Wconstant-logical-operand"
     sum += (5 && 3) ? 16 : 32;
+#pragma clang diagnostic pop
     return sum;
 }

@@ -44,7 +44,6 @@ import java.lang.ref.WeakReference;
 
 import com.oracle.truffle.api.CallTarget;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
-import com.oracle.truffle.api.TruffleException;
 
 /**
  * Thread local reference class to remember the current encapsulating node of an interpreter on the
@@ -69,25 +68,22 @@ import com.oracle.truffle.api.TruffleException;
  * </pre>
  * <p>
  * The current encapsulating node can also be useful when constructing guest exceptions in
- * slow-paths and the {@link TruffleException#getLocation() location} of the error needs to be found
- * out reliably. Usage example:
+ * slow-paths and the location of the error needs to be found out reliably. Usage example:
  *
  * <pre>
- * final class LanguageException extends RuntimeException implements TruffleException {
+ * final class LanguageException extends AbstractTruffleException {
  *
- *     private final Node locationNode;
- *
- *     LanguageException(Node locationNode) {
- *         CompilerAsserts.partialEvaluationConstant(locationNode);
- *         if (locationNode == null || !locationNode.isAdoptable()) {
- *             this.locationNode = EncapsulatingNodeReference.getCurrent().get();
- *         } else {
- *             this.locationNode = locationNode;
- *         }
+ *     private LanguageException(Node locationNode) {
+ *         super(locationNode);
  *     }
  *
- *     public Node getLocation() {
- *         return locationNode;
+ *     static LanguageException create(Node locationNode) {
+ *         CompilerAsserts.partialEvaluationConstant(locationNode);
+ *         if (locationNode == null || !locationNode.isAdoptable()) {
+ *             return new LanguageException(EncapsulatingNodeReference.getCurrent().get());
+ *         } else {
+ *             return new LanguageException(locationNode);
+ *         }
  *     }
  *
  *     // ...

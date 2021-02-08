@@ -34,6 +34,9 @@ int main() {
     unsigned int ui = 1;
     char c = (char) 1;
     int sum = 0;
+#pragma clang diagnostic push
+#pragma clang diagnostic ignored "-Wsign-compare"
+#pragma clang diagnostic ignored "-Wtautological-compare"
     sum += f <= f;
     sum += l <= l;
     sum += si <= si;
@@ -92,5 +95,6 @@ int main() {
     sum += c <= si;
     sum += c <= ui;
     sum += c <= c;
+#pragma clang diagnostic pop
     return sum;
 }

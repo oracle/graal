@@ -37,7 +37,7 @@ struct container {
 int (*get_callback_function())(int, int);
 int call_callback(void *container, int p2);
 
-int main(int argc, char **argv) {
+int main() {
     struct container c;
     c.callback = get_callback_function();
     c.p1 = 37;

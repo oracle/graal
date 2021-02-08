@@ -27,6 +27,7 @@ package com.oracle.svm.core.stack;
 import org.graalvm.nativeimage.IsolateThread;
 
 import com.oracle.svm.core.annotate.Uninterruptible;
+import com.oracle.svm.core.threadlocal.FastThreadLocal;
 import com.oracle.svm.core.threadlocal.FastThreadLocalFactory;
 import com.oracle.svm.core.threadlocal.FastThreadLocalWord;
 
@@ -35,7 +36,7 @@ import com.oracle.svm.core.threadlocal.FastThreadLocalWord;
  */
 public class JavaFrameAnchors {
 
-    private static final FastThreadLocalWord<JavaFrameAnchor> lastAnchor = FastThreadLocalFactory.createWord();
+    private static final FastThreadLocalWord<JavaFrameAnchor> lastAnchor = FastThreadLocalFactory.createWord().setMaxOffset(FastThreadLocal.BYTE_OFFSET);
 
     public static void pushFrameAnchor(JavaFrameAnchor anchor) {
         anchor.setPreviousAnchor(lastAnchor.get());

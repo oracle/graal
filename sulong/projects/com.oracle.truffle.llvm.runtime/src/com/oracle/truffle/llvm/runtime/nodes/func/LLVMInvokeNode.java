@@ -41,7 +41,6 @@ import com.oracle.truffle.llvm.runtime.nodes.api.LLVMControlFlowNode;
 import com.oracle.truffle.llvm.runtime.nodes.api.LLVMExpressionNode;
 import com.oracle.truffle.llvm.runtime.nodes.api.LLVMStatementNode;
 import com.oracle.truffle.llvm.runtime.nodes.func.LLVMInvokeNodeFactory.LLVMInvokeNodeImplNodeGen;
-import com.oracle.truffle.llvm.runtime.nodes.others.LLVMValueProfilingNode;
 import com.oracle.truffle.llvm.runtime.nodes.vars.LLVMWriteNode;
 import com.oracle.truffle.llvm.runtime.types.FunctionType;
 
@@ -51,16 +50,15 @@ public abstract class LLVMInvokeNode extends LLVMControlFlowNode {
     public static LLVMInvokeNode create(FunctionType type, LLVMWriteNode writeResult, LLVMExpressionNode functionNode, LLVMExpressionNode[] argumentNodes,
                     int normalSuccessor, int unwindSuccessor,
                     LLVMStatementNode normalPhiNode, LLVMStatementNode unwindPhiNode) {
-        LLVMLookupDispatchTargetNode dispatchTargetNode = LLVMLookupDispatchTargetNodeGen.create(functionNode);
+        LLVMExpressionNode dispatchTargetNode = LLVMLookupDispatchTargetNode.createOptimized(functionNode);
         return LLVMInvokeNodeImplNodeGen.create(type, writeResult, argumentNodes, normalSuccessor, unwindSuccessor, normalPhiNode, unwindPhiNode, dispatchTargetNode);
     }
 
-    @NodeChild(value = "dispatchTarget", type = LLVMLookupDispatchTargetNode.class)
+    @NodeChild(value = "dispatchTarget", type = LLVMExpressionNode.class)
     abstract static class LLVMInvokeNodeImpl extends LLVMInvokeNode {
 
         @Child protected LLVMStatementNode normalPhiNode;
         @Child protected LLVMStatementNode unwindPhiNode;
-        @Child protected LLVMValueProfilingNode returnValueProfile;
 
         @Children private final LLVMExpressionNode[] argumentNodes;
         @Child private LLVMDispatchNode dispatchNode;
@@ -80,7 +78,6 @@ public abstract class LLVMInvokeNode extends LLVMControlFlowNode {
             this.type = type;
             this.normalPhiNode = normalPhiNode;
             this.unwindPhiNode = unwindPhiNode;
-            this.returnValueProfile = (LLVMValueProfilingNode) LLVMValueProfilingNode.create(null, type.getReturnType());
 
             this.argumentNodes = argumentNodes;
             this.dispatchNode = LLVMDispatchNodeGen.create(type);
@@ -153,12 +150,6 @@ public abstract class LLVMInvokeNode extends LLVMControlFlowNode {
     public abstract void execute(VirtualFrame frame);
 
     @Override
-    public boolean needsBranchProfiling() {
-        // we can't use branch profiling because the control flow happens via exception handling
-        return false;
-    }
-
-    @Override
     public boolean hasTag(Class<? extends Tag> tag) {
         if (tag == StandardTags.CallTag.class) {
             return getSourceLocation() != null;
@@ -166,16 +157,4 @@ public abstract class LLVMInvokeNode extends LLVMControlFlowNode {
             return super.hasTag(tag);
         }
     }
-
-    /**
-     * Override to allow access from generated wrapper.
-     */
-    @Override
-    protected abstract boolean isStatement();
-
-    /**
-     * Override to allow access from generated wrapper.
-     */
-    @Override
-    protected abstract void setStatement(boolean statementTag);
 }

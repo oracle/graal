@@ -28,8 +28,13 @@
  * OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 
+#include <alloca.h>
+
 static void store_a(volatile int *p, int x) {
+#pragma clang diagnostic push
+#pragma clang diagnostic ignored "-Wasm-operand-widths"
     __asm__ __volatile__("mov %1, %0" : "=m"(*p) : "r"(x) : "memory");
+#pragma clang diagnostic pop
 }
 
 int run(int b) {

@@ -61,12 +61,13 @@ public final class CEntryPointBuiltins {
     @CEntryPointOptions(prologue = NoPrologue.class, epilogue = NoEpilogue.class, publishAs = Publish.NotPublished)
     @CEntryPointBuiltinImplementation(builtin = Builtin.CREATE_ISOLATE)
     public static IsolateThread createIsolate() {
-        IsolateThread result = WordFactory.nullPointer();
         int status = CEntryPointActions.enterCreateIsolate(WordFactory.nullPointer());
-        if (status == 0) {
-            result = CurrentIsolate.getCurrentThread();
-            CEntryPointActions.leave();
+        if (status != 0) {
+            return WordFactory.nullPointer();
         }
+
+        IsolateThread result = CurrentIsolate.getCurrentThread();
+        CEntryPointActions.leave();
         return result;
     }
 
@@ -75,12 +76,13 @@ public final class CEntryPointBuiltins {
     @CEntryPointOptions(prologue = NoPrologue.class, epilogue = NoEpilogue.class, publishAs = Publish.NotPublished)
     @CEntryPointBuiltinImplementation(builtin = Builtin.ATTACH_THREAD)
     public static IsolateThread attachThread(Isolate isolate) {
-        IsolateThread result = WordFactory.nullPointer();
         int status = CEntryPointActions.enterAttachThread(isolate, true);
-        if (status == 0) {
-            result = CurrentIsolate.getCurrentThread();
-            status = CEntryPointActions.leave();
+        if (status != 0) {
+            return WordFactory.nullPointer();
         }
+
+        IsolateThread result = CurrentIsolate.getCurrentThread();
+        CEntryPointActions.leave();
         return result;
     }
 
@@ -93,10 +95,9 @@ public final class CEntryPointBuiltins {
         if (status != 0) {
             return WordFactory.nullPointer();
         }
+
         IsolateThread thread = CurrentIsolate.getCurrentThread();
-        if (CEntryPointActions.leave() != 0) {
-            thread = WordFactory.nullPointer();
-        }
+        CEntryPointActions.leave();
         return thread;
     }
 
@@ -109,10 +110,9 @@ public final class CEntryPointBuiltins {
         if (status != 0) {
             return WordFactory.nullPointer();
         }
+
         Isolate isolate = CurrentIsolate.getIsolate();
-        if (CEntryPointActions.leave() != 0) {
-            isolate = WordFactory.nullPointer();
-        }
+        CEntryPointActions.leave();
         return isolate;
     }
 
@@ -123,11 +123,10 @@ public final class CEntryPointBuiltins {
     public static int detachThread(IsolateThread thread) {
         int status = CEntryPointActions.enter(thread);
         if (status != 0) {
-            CEntryPointActions.leave();
             return status;
         }
-        status = CEntryPointActions.leaveDetachThread();
-        return status;
+
+        return CEntryPointActions.leaveDetachThread();
     }
 
     @Uninterruptible(reason = UNINTERRUPTIBLE_REASON)
@@ -137,11 +136,10 @@ public final class CEntryPointBuiltins {
     public static int tearDownIsolate(IsolateThread isolateThread) {
         int result = CEntryPointActions.enter(isolateThread);
         if (result != 0) {
-            CEntryPointActions.leave();
             return result;
         }
-        result = CEntryPointActions.leaveTearDownIsolate();
-        return result;
+
+        return CEntryPointActions.leaveTearDownIsolate();
     }
 
     private CEntryPointBuiltins() {

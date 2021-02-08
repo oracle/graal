@@ -30,6 +30,6 @@
 int main() {
     __asm__(".p2align 4");
     __asm__(".p2align 4, 0");
-    __asm__(".p2align 4, 0, 99");
+    __asm__(".p2align 4, 0, 15");
     return 0;
 }

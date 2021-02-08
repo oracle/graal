@@ -60,21 +60,93 @@ import jdk.vm.ci.meta.MetaAccessProvider;
 public final class BytecodeExceptionNode extends AbstractMemoryCheckpoint implements Lowerable, SingleMemoryKill, Canonicalizable {
 
     public enum BytecodeExceptionKind {
+        /**
+         * Represents a {@link NullPointerException}. No arguments are allowed.
+         */
         NULL_POINTER(0, NullPointerException.class),
+
+        /**
+         * Represents a {@link ArrayIndexOutOfBoundsException}. Two arguments are required:
+         * <ol>
+         * <li>The array index that could not be accessed (type: int)</li>
+         * <li>The length of the array that was accessed (type: int)</li>
+         * </ol>
+         */
         OUT_OF_BOUNDS(2, ArrayIndexOutOfBoundsException.class),
+
+        /**
+         * Represents a {@link ClassCastException}. Two arguments are required:
+         * <ol>
+         * <li>The object that could not be cast (type: java.lang.Object, non-null)</li>
+         * <li>The class that the object should have been casted to (type: java.lang.Class,
+         * non-null)</li>
+         * </ol>
+         */
         CLASS_CAST(2, ClassCastException.class),
+
+        /**
+         * Represents a {@link ArrayStoreException}. One arguments is required:
+         * <ol>
+         * <li>The value that could not be stored (type: java.lang.Object, non-null)</li>
+         * </ol>
+         */
         ARRAY_STORE(1, ArrayStoreException.class),
-        ILLEGAL_ARGUMENT_EXCEPTION(1, IllegalArgumentException.class),
+
+        /** Represents a {@link AssertionError} without arguments. */
+        ASSERTION_ERROR_NULLARY(0, AssertionError.class),
+
+        /**
+         * Represents a {@link AssertionError} with one required Object argument for the error
+         * message.
+         */
+        ASSERTION_ERROR_OBJECT(1, AssertionError.class),
+
+        /**
+         * Represents a {@link IllegalArgumentException} with a fixed message. No additional
+         * arguments are allowed.
+         */
+        ILLEGAL_ARGUMENT_EXCEPTION_NEGATIVE_LENGTH(0, IllegalArgumentException.class, "Negative length"),
+
+        /**
+         * Represents a {@link IllegalArgumentException} with a fixed message. No additional
+         * arguments are allowed.
+         */
+        ILLEGAL_ARGUMENT_EXCEPTION_ARGUMENT_IS_NOT_AN_ARRAY(0, IllegalArgumentException.class, "Argument is not an array"),
+
+        /**
+         * Represents a {@link ArithmeticException}, with the exception message indicating a
+         * division by zero. No arguments are allowed.
+         */
         DIVISION_BY_ZERO(0, ArithmeticException.class),
+
+        /**
+         * Represents a {@link ArithmeticException}, with the exception message indicating an
+         * integer overflow. No arguments are allowed.
+         */
         INTEGER_EXACT_OVERFLOW(0, ArithmeticException.class),
+
+        /**
+         * Represents a {@link ArithmeticException}, with the exception message indicating a long
+         * overflow. No arguments are allowed.
+         */
         LONG_EXACT_OVERFLOW(0, ArithmeticException.class);
 
         final int numArguments;
         final Class<? extends Throwable> exceptionClass;
+        final String exceptionMessage;
 
         BytecodeExceptionKind(int numArguments, Class<? extends Throwable> exceptionClass) {
+            this(numArguments, exceptionClass, null);
+        }
+
+        BytecodeExceptionKind(int numArguments, Class<? extends Throwable> exceptionClass, String exceptionMessage) {
             this.numArguments = numArguments;
             this.exceptionClass = exceptionClass;
+            this.exceptionMessage = exceptionMessage;
+        }
+
+        public String getExceptionMessage() {
+            return exceptionMessage;
         }
     }
 

@@ -82,16 +82,16 @@ _graalvm_components_by_name = dict()
 _vm_configs = []
 _graalvm_hostvm_configs = [
     ('jvm', [], ['--jvm'], 50),
-    ('jvm-la-inline', [], ['--jvm', '--experimental-options', '--engine.LanguageAgnosticInlining'], 30),
     ('jvm-no-truffle-compilation', [], ['--jvm', '--experimental-options', '--engine.Compilation=false'], 29),
     ('native', [], ['--native'], 100),
-    ('native-la-inline', [], ['--native', '--experimental-options', '--engine.LanguageAgnosticInlining'], 40),
     ('native-no-truffle-compilation', [], ['--native', '--experimental-options', '--engine.Compilation=false'], 39)
 ]
+_known_vms = set()
+_base_jdk = None
 
 
 class AbstractNativeImageConfig(_with_metaclass(ABCMeta, object)):
-    def __init__(self, destination, jar_distributions, build_args, links=None, is_polyglot=False, dir_jars=False):  # pylint: disable=super-init-not-called
+    def __init__(self, destination, jar_distributions, build_args, links=None, is_polyglot=False, dir_jars=False, home_finder=False):  # pylint: disable=super-init-not-called
         """
         :type destination: str
         :type jar_distributions: list[str]
@@ -105,6 +105,7 @@ class AbstractNativeImageConfig(_with_metaclass(ABCMeta, object)):
         self.links = [mx_subst.path_substitutions.substitute(link) for link in links] if links else []
         self.is_polyglot = is_polyglot
         self.dir_jars = dir_jars
+        self.home_finder = home_finder
 
         assert isinstance(self.jar_distributions, list)
         assert isinstance(self.build_args, list)
@@ -135,7 +136,7 @@ class AbstractNativeImageConfig(_with_metaclass(ABCMeta, object)):
 class LauncherConfig(AbstractNativeImageConfig):
     def __init__(self, destination, jar_distributions, main_class, build_args, is_main_launcher=True,
                  default_symlinks=True, is_sdk_launcher=False, custom_launcher_script=None, extra_jvm_args=None,
-                 option_vars=None, **kwargs):
+                 option_vars=None, home_finder=True, **kwargs):
         """
         :param str main_class
         :param bool is_main_launcher
@@ -143,7 +144,7 @@ class LauncherConfig(AbstractNativeImageConfig):
         :param bool is_sdk_launcher: Whether it uses org.graalvm.launcher.Launcher
         :param str custom_launcher_script: Custom launcher script, to be used when not compiled as a native image
         """
-        super(LauncherConfig, self).__init__(destination, jar_distributions, build_args, **kwargs)
+        super(LauncherConfig, self).__init__(destination, jar_distributions, build_args, home_finder=home_finder, **kwargs)
         self.main_class = main_class
         self.is_main_launcher = is_main_launcher
         self.default_symlinks = default_symlinks
@@ -293,7 +294,10 @@ class GraalVmComponent(object):
         return "{} ({})".format(self.name, self.dir_name)
 
     def direct_dependencies(self):
-        return [graalvm_component_by_name(name) for name in self.dependency_names]
+        try:
+            return [graalvm_component_by_name(name) for name in self.dependency_names]
+        except Exception as e:
+            raise Exception("{} (required by {})".format(e, self.name))
 
 
 class GraalVmTruffleComponent(GraalVmComponent):
@@ -437,7 +441,10 @@ def get_graalvm_hostvm_configs():
     return _graalvm_hostvm_configs
 
 
-_base_jdk = None
+def register_known_vm(name):
+    if name in _known_vms:
+        raise mx.abort("VM '{}' already registered".format(name))
+    _known_vms.add(name)
 
 
 def base_jdk():
@@ -623,12 +630,34 @@ def jlink_new_jdk(jdk, dst_jdk_dir, module_dists,
                         continue
                     src_member = src_zip.read(i)
                     if i.filename == 'lib/security/default.policy':
-                        if 'grant codeBase "jrt:/com.oracle.graal.graal_enterprise"'.encode('utf-8') in src_member:
-                            policy_result = 'unmodified'
-                        else:
+                        policy_result = 'unmodified'
+                        if 'grant codeBase "jrt:/com.oracle.graal.graal_enterprise"'.encode('utf-8') not in src_member:
                             policy_result = 'modified'
                             src_member += """
 grant codeBase "jrt:/com.oracle.graal.graal_enterprise" {
+    permission java.security.AllPermission;
+};
+""".encode('utf-8')
+                        if 'grant codeBase "jrt:/org.graalvm.truffle"'.encode('utf-8') not in src_member:
+                            policy_result = 'modified'
+                            src_member += """
+grant codeBase "jrt:/org.graalvm.truffle" {
+    permission java.security.AllPermission;
+};
+
+grant codeBase "jrt:/org.graalvm.sdk" {
+    permission java.security.AllPermission;
+};
+
+grant codeBase "jrt:/org.graalvm.locator" {
+  permission java.io.FilePermission "<<ALL FILES>>", "read";
+  permission java.util.PropertyPermission "*", "read,write";
+  permission java.lang.RuntimePermission "createClassLoader";
+  permission java.lang.RuntimePermission "getClassLoader";
+  permission java.lang.RuntimePermission "getenv.*";
+};
+
+grant codeBase "file:${java.home}/languages/-" {
     permission java.security.AllPermission;
 };
 """.encode('utf-8')
@@ -704,8 +733,11 @@ grant codeBase "jrt:/com.oracle.graal.graal_enterprise" {
                 for name, value in vendor_info.items():
                     jlink.append('--' + name + '=' + value)
 
+        release_file = join(jdk.home, 'release')
+        if isfile(release_file):
+            jlink.append('--release-info=' + release_file)
+
         # TODO: investigate the options below used by OpenJDK to see if they should be used:
-        # --release-info: this allow extra properties to be written to the <jdk>/release file
         # --order-resources: specifies order of resources in generated lib/modules file.
         #       This is apparently not so important if a CDS archive is available.
         # --generate-jli-classes: pre-generates a set of java.lang.invoke classes.
@@ -748,7 +780,7 @@ grant codeBase "jrt:/com.oracle.graal.graal_enterprise" {
         # Allow older JDK versions to work
         else:
             lib_prefix = mx.add_lib_prefix('')
-            lib_suffix = '.lib' if mx.is_windows() else '.a'
+            lib_suffix = mx.add_static_lib_suffix('')
             lib_directory = join(jdk.home, 'lib')
             dst_lib_directory = join(dst_jdk_dir, 'lib')
             for f in os.listdir(lib_directory):
@@ -768,3 +800,6 @@ grant codeBase "jrt:/com.oracle.graal.graal_enterprise" {
     if mx.run([mx.exe_suffix(join(dst_jdk_dir, 'bin', 'java')), '-Xshare:dump', '-Xmx128M', '-Xms128M'], out=out, err=out, nonZeroIsFatal=False) != 0:
         mx.log(out.data)
         mx.abort('Error generating CDS shared archive')
+
+
+register_known_vm('truffle')

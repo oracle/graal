@@ -31,17 +31,14 @@ import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.atomic.AtomicReference;
 
 import org.graalvm.collections.EconomicMap;
-import org.graalvm.compiler.api.replacements.SnippetReflectionProvider;
 import org.graalvm.compiler.nodes.EncodedGraph;
 import org.graalvm.compiler.nodes.graphbuilderconf.GraphBuilderConfiguration;
 import org.graalvm.compiler.nodes.graphbuilderconf.InvocationPlugins;
-import org.graalvm.compiler.phases.util.Providers;
 import org.graalvm.compiler.truffle.compiler.PartialEvaluator;
-import org.graalvm.compiler.truffle.compiler.TruffleCompilerOptions;
+import org.graalvm.compiler.truffle.compiler.TruffleCompilerConfiguration;
 import org.graalvm.compiler.truffle.options.PolyglotCompilerOptions;
 import org.graalvm.options.OptionValues;
 
-import jdk.vm.ci.code.Architecture;
 import jdk.vm.ci.meta.ResolvedJavaMethod;
 
 public final class HotSpotPartialEvaluator extends PartialEvaluator {
@@ -54,20 +51,20 @@ public final class HotSpotPartialEvaluator extends PartialEvaluator {
 
     private int encodedGraphCacheCapacity;
 
-    public HotSpotPartialEvaluator(Providers providers, GraphBuilderConfiguration configForRoot, SnippetReflectionProvider snippetReflection, Architecture architecture) {
-        super(providers, configForRoot, snippetReflection, architecture, new HotSpotKnownTruffleTypes(providers.getMetaAccess()));
+    public HotSpotPartialEvaluator(TruffleCompilerConfiguration config, GraphBuilderConfiguration configForRoot) {
+        super(config, configForRoot, new HotSpotKnownTruffleTypes(config.lastTier().providers().getMetaAccess()));
         this.graphCacheRef = new AtomicReference<>();
     }
 
     @Override
     protected void initialize(OptionValues options) {
         super.initialize(options);
-        encodedGraphCacheCapacity = TruffleCompilerOptions.getPolyglotOptionValue(options, PolyglotCompilerOptions.EncodedGraphCacheCapacity);
+        encodedGraphCacheCapacity = options.get(PolyglotCompilerOptions.EncodedGraphCacheCapacity);
     }
 
     @Override
-    protected void registerTruffleInvocationPlugins(InvocationPlugins invocationPlugins, boolean canDelayIntrinsification) {
-        super.registerTruffleInvocationPlugins(invocationPlugins, canDelayIntrinsification);
+    protected void registerGraphBuilderInvocationPlugins(InvocationPlugins invocationPlugins, boolean canDelayIntrinsification) {
+        super.registerGraphBuilderInvocationPlugins(invocationPlugins, canDelayIntrinsification);
         HotSpotTruffleGraphBuilderPlugins.registerCompilationFinalReferencePlugins(invocationPlugins, canDelayIntrinsification, (HotSpotKnownTruffleTypes) getKnownTruffleTypes());
     }
 

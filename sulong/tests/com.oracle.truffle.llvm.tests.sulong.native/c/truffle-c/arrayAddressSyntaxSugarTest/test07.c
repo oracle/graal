@@ -29,7 +29,7 @@
  */
 int foo(char a[], char b[]) {
     int s = 0;
-    if (a == &a)
+    if (a == (char *) &a)
         s += 1;
     if (a == &a[0])
         s += 2;
@@ -41,7 +41,7 @@ int foo(char a[], char b[]) {
 int main() {
     char str[] = "abc";
     int s = foo(str, "abc");
-    if (str == &str)
+    if (str == (char *) &str)
         s += 8;
     if (str == &str[0])
         s += 16;

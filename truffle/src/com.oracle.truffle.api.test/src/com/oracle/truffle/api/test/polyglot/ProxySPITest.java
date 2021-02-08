@@ -71,7 +71,6 @@ import org.junit.Assert;
 import org.junit.Before;
 import org.junit.Test;
 
-import com.oracle.truffle.api.TruffleException;
 import com.oracle.truffle.api.interop.InteropException;
 import com.oracle.truffle.api.interop.InteropLibrary;
 import com.oracle.truffle.api.interop.InvalidArrayIndexException;
@@ -852,11 +851,8 @@ public class ProxySPITest extends AbstractPolyglotTest {
         } catch (InteropException e) {
             Assert.fail();
         } catch (RuntimeException e) {
-            if (!(e instanceof TruffleException)) {
-                Assert.fail();
-            }
-            TruffleException te = (TruffleException) e;
-            Assert.assertFalse(te.isInternalError());
+            InteropLibrary interop = InteropLibrary.getUncached();
+            Assert.assertTrue(interop.isException(e));
             Assert.assertEquals("Host Error", ((Exception) e).getMessage());
             Assert.assertTrue(languageEnv.asHostException(e) instanceof TestError);
         }

@@ -52,7 +52,7 @@ public class FileEntry {
     }
 
     public String getFullName() {
-        return getDirEntry().getPath().resolve(getFileName()).toString();
+        return getDirEntry() != null ? getDirEntry().getPath().resolve(getFileName()).toString() : getFileName();
     }
 
     /**
@@ -67,5 +67,15 @@ public class FileEntry {
      */
     public String getCachePath() {
         return cachePath;
+    }
+
+    @Override
+    public String toString() {
+        if (getDirEntry() == null) {
+            return getFileName() == null ? "-" : getFileName();
+        } else if (getFileName() == null) {
+            return "--";
+        }
+        return String.format("FileEntry(%s)", getFullName());
     }
 }

@@ -39,10 +39,14 @@ import com.oracle.objectfile.LayoutDecision;
 import com.oracle.objectfile.LayoutDecisionMap;
 import com.oracle.objectfile.ObjectFile;
 import com.oracle.objectfile.SymbolTable;
+import com.oracle.objectfile.debuginfo.DebugInfoProvider;
 import com.oracle.objectfile.io.AssemblyBuffer;
 import com.oracle.objectfile.io.OutputAssembler;
 import com.oracle.objectfile.pecoff.PECoff.IMAGE_FILE_HEADER;
 import com.oracle.objectfile.pecoff.PECoff.IMAGE_SECTION_HEADER;
+import com.oracle.objectfile.pecoff.cv.CVDebugInfo;
+import com.oracle.objectfile.pecoff.cv.CVSymbolSectionImpl;
+import com.oracle.objectfile.pecoff.cv.CVTypeSectionImpl;
 
 /**
  * Represents a PECoff object file.
@@ -379,6 +383,7 @@ public class PECoffObjectFile extends ObjectFile {
         READ(IMAGE_SECTION_HEADER.IMAGE_SCN_MEM_READ),
         WRITE(IMAGE_SECTION_HEADER.IMAGE_SCN_MEM_WRITE),
         EXECUTE(IMAGE_SECTION_HEADER.IMAGE_SCN_MEM_EXECUTE),
+        DISCARDABLE(IMAGE_SECTION_HEADER.IMAGE_SCN_MEM_DISCARDABLE),
         LINKER(IMAGE_SECTION_HEADER.IMAGE_SCN_LNK_INFO | IMAGE_SECTION_HEADER.IMAGE_SCN_LNK_REMOVE);
 
         private final int value;
@@ -682,5 +687,42 @@ public class PECoffObjectFile extends ObjectFile {
     @Override
     protected int getMinimumFileSize() {
         return 0;
+    }
+
+    @Override
+    public Section newDebugSection(String name, ElementImpl impl) {
+        PECoffSection coffSection = (PECoffSection) super.newDebugSection(name, impl);
+        coffSection.getFlags().add(PECoffSectionFlag.DISCARDABLE);
+        coffSection.getFlags().add(PECoffSectionFlag.READ);
+        coffSection.getFlags().add(PECoffSectionFlag.INITIALIZED_DATA);
+        return coffSection;
+    }
+
+    @Override
+    public void installDebugInfo(DebugInfoProvider debugInfoProvider) {
+        CVDebugInfo cvDebugInfo = new CVDebugInfo(getByteOrder());
+
+        // we need an implementation for each section
+        CVSymbolSectionImpl cvSymbolSectionImpl = cvDebugInfo.getCVSymbolSection();
+        CVTypeSectionImpl cvTypeSectionImpl = cvDebugInfo.getCVTypeSection();
+
+        // now we can create the section elements with empty content
+        newDebugSection(cvSymbolSectionImpl.getSectionName(), cvSymbolSectionImpl);
+        newDebugSection(cvTypeSectionImpl.getSectionName(), cvTypeSectionImpl);
+
+        // the byte[] for each implementation's content are created and
+        // written under getOrDecideContent. doing that ensures that all
+        // dependent sections are filled in and then sized according to the
+        // declared dependencies. however, if we leave it at that then
+        // associated reloc sections only get created when the first reloc
+        // is inserted during content write that's too late for them to have
+        // layout constraints included in the layout decision set and causes
+        // an NPE during reloc section write. so we need to create the relevant
+        // reloc sections here in advance
+        cvSymbolSectionImpl.getOrCreateRelocationElement(false);
+        cvTypeSectionImpl.getOrCreateRelocationElement(false);
+
+        // ok now we can populate the implementations
+        cvDebugInfo.installDebugInfo(debugInfoProvider);
     }
 }

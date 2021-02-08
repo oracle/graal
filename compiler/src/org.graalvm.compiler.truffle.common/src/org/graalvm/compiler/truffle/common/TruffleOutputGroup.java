@@ -26,6 +26,7 @@ package org.graalvm.compiler.truffle.common;
 
 import java.io.Closeable;
 import java.io.IOException;
+import java.util.Collections;
 import java.util.HashMap;
 import java.util.Map;
 import org.graalvm.graphio.GraphOutput;
@@ -43,8 +44,7 @@ public final class TruffleOutputGroup implements Closeable {
 
     private final GraphOutput<Void, ?> output;
 
-    private TruffleOutputGroup(TruffleDebugContext debug, CompilableTruffleAST compilable, Map<Object, Object> properties) throws IOException {
-        String name = "Truffle::" + compilable.getName();
+    private TruffleOutputGroup(TruffleDebugContext debug, Map<Object, Object> properties, String name) throws IOException {
         GraphOutput<Void, ?> out = null;
         try {
             out = debug.buildOutput(GraphOutput.newBuilder(VoidGraphStructure.INSTANCE));
@@ -87,9 +87,23 @@ public final class TruffleOutputGroup implements Closeable {
      * @return the opened {@link TruffleOutputGroup}
      * @throws IOException in case of IO error
      */
-    public static TruffleOutputGroup open(TruffleDebugContext debug, CompilableTruffleAST compilable, Map<Object, Object> properties) throws IOException {
+    public static TruffleOutputGroup openCallTarget(TruffleDebugContext debug, CompilableTruffleAST compilable, Map<Object, Object> properties) throws IOException {
         if (debug != null && debug.isDumpEnabled()) {
-            return new TruffleOutputGroup(debug, compilable, properties);
+            return new TruffleOutputGroup(debug, properties, "Truffle::" + compilable.getName());
+        }
+        return null;
+    }
+
+    /**
+     * Opens a new "Truffle::method_name" group.
+     *
+     * @param debug the {@link TruffleDebugContext} used for dumping
+     * @return the opened {@link TruffleOutputGroup}
+     * @throws IOException in case of IO error
+     */
+    public static TruffleOutputGroup openGraalGraphs(TruffleDebugContext debug) throws IOException {
+        if (debug != null && debug.isDumpEnabled()) {
+            return new TruffleOutputGroup(debug, Collections.emptyMap(), "Graal Graphs");
         }
         return null;
     }

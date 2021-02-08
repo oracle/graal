@@ -506,6 +506,20 @@ public abstract class Node implements NodeInterface, Cloneable {
      * @since 0.8 or earlier
      */
     public final RootNode getRootNode() {
+        if (CompilerDirectives.isPartialEvaluationConstant(this)) {
+            return getRootNodeImpl();
+        } else {
+            return getRootBoundary();
+        }
+    }
+
+    @TruffleBoundary
+    private RootNode getRootBoundary() {
+        return getRootNodeImpl();
+    }
+
+    @ExplodeLoop
+    private RootNode getRootNodeImpl() {
         Node node = this;
         Node prev;
         do {

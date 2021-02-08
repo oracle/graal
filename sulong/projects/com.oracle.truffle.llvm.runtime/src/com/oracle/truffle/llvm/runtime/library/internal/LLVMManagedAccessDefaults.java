@@ -126,8 +126,8 @@ abstract class LLVMManagedAccessDefaults {
 
         /**
          * Annotation helper for guards to check whether {@code obj} is an auto-deref handle (e.g. a
-         * wrapped pointer). This helper assumes that an isPointer call returns true for
-         * {@code obj}.
+         * wrapped pointer). This helper assumes that an isPointer call returns true for {@code obj}
+         * .
          */
         static boolean isWrappedAutoDerefHandle(LLVMLanguage language, LLVMNativeLibrary nativeLibrary, Object obj) {
             try {
@@ -354,7 +354,7 @@ abstract class LLVMManagedAccessDefaults {
 
         @Specialization(guards = {"!natives.isPointer(receiver)"})
         static void doValue(Object receiver, long offset, Object value, ForeignToLLVMType type,
-                        @SuppressWarnings("unused") @CachedLibrary(limit = "3") NativeTypeLibrary nativeTypes,
+                        @CachedLibrary(limit = "3") NativeTypeLibrary nativeTypes,
                         @Shared("interopWrite") @Cached LLVMInteropWriteNode interopWrite,
                         @SuppressWarnings("unused") @CachedLibrary(limit = "3") LLVMNativeLibrary natives,
                         @Shared("fallbackWrite") @Cached FallbackWriteNode fallbackWrite,

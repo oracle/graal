@@ -24,6 +24,7 @@
  */
 package com.oracle.svm.core.code;
 
+import com.oracle.svm.core.SubstrateUtil;
 import com.oracle.svm.core.annotate.Uninterruptible;
 import com.oracle.svm.core.jdk.UninterruptibleUtils;
 import com.oracle.svm.core.thread.VMOperation;
@@ -44,7 +45,7 @@ public class CodeInfoTether {
     private final UninterruptibleUtils.AtomicInteger count;
 
     public CodeInfoTether(boolean acquired) {
-        this.count = CodeInfoAccess.haveAssertions() ? new UninterruptibleUtils.AtomicInteger(acquired ? 1 : 0) : null;
+        this.count = (SubstrateUtil.HOSTED || CodeInfoAccess.haveAssertions()) ? new UninterruptibleUtils.AtomicInteger(acquired ? 1 : 0) : null;
     }
 
     @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)

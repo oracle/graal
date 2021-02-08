@@ -27,15 +27,15 @@
  * NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED
  * OF THE POSSIBILITY OF SUCH DAMAGE.
  */
-long f1() {
+const char *f1() {
     return "asdf";
 }
 
-long f2() {
+const char *f2() {
     return "asdfg";
 }
 
-long f3() {
+const char *f3() {
     return "asdfg";
 }
 

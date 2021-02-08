@@ -37,7 +37,7 @@ import com.oracle.graal.pointsto.meta.AnalysisField;
 import com.oracle.graal.pointsto.meta.AnalysisType;
 import com.oracle.graal.pointsto.meta.AnalysisUniverse;
 import com.oracle.graal.pointsto.util.AnalysisError;
-import com.oracle.svm.core.SubstrateOptions;
+import com.oracle.svm.core.RuntimeAssertionsSupport;
 import com.oracle.svm.core.annotate.InjectAccessors;
 import com.oracle.svm.core.graal.meta.SharedConstantReflectionProvider;
 import com.oracle.svm.core.hub.DynamicHub;
@@ -74,11 +74,7 @@ public class AnalysisConstantReflectionProvider extends SharedConstantReflection
 
     @Override
     public final JavaConstant readFieldValue(ResolvedJavaField field, JavaConstant receiver) {
-        if (field instanceof AnalysisField) {
-            return readValue((AnalysisField) field, receiver);
-        } else {
-            return super.readFieldValue(field, receiver);
-        }
+        return readValue((AnalysisField) field, receiver);
     }
 
     public JavaConstant readValue(AnalysisField field, JavaConstant receiver) {
@@ -138,7 +134,7 @@ public class AnalysisConstantReflectionProvider extends SharedConstantReflection
 
         /* On HotSpot the base of a static field is the Class object. */
         Object base = field.getDeclaringClass().getJavaClass();
-        long offset = field.getOffset();
+        long offset = field.wrapped.getOffset();
 
         /*
          * We cannot rely on the reflectionField because it can be null if there is some incomplete
@@ -231,7 +227,8 @@ public class AnalysisConstantReflectionProvider extends SharedConstantReflection
      */
     private static JavaConstant interceptAssertionStatus(AnalysisField field, JavaConstant value) {
         if (field.isStatic() && field.isSynthetic() && field.getName().startsWith("$assertionsDisabled")) {
-            boolean assertionsEnabled = SubstrateOptions.getRuntimeAssertionsForClass(field.getDeclaringClass().toJavaName());
+            Class<?> clazz = field.getDeclaringClass().getJavaClass();
+            boolean assertionsEnabled = RuntimeAssertionsSupport.singleton().desiredAssertionStatus(clazz);
             return JavaConstant.forBoolean(!assertionsEnabled);
         }
         return value;
@@ -277,21 +274,19 @@ public class AnalysisConstantReflectionProvider extends SharedConstantReflection
     @Override
     public JavaConstant asJavaClass(ResolvedJavaType type) {
         DynamicHub dynamicHub = getHostVM().dynamicHub(type);
+        registerAsReachable(getHostVM(), dynamicHub);
         assert dynamicHub != null : type.toClassName() + " has a null dynamicHub.";
-        registerHub(getHostVM(), dynamicHub);
         return SubstrateObjectConstant.forObject(dynamicHub);
+    }
+
+    protected static void registerAsReachable(SVMHost hostVM, DynamicHub dynamicHub) {
+        assert dynamicHub != null;
+        /* Make sure that the DynamicHub of this type ends up in the native image. */
+        AnalysisType valueType = hostVM.lookupType(dynamicHub);
+        valueType.registerAsReachable();
     }
 
     private SVMHost getHostVM() {
         return (SVMHost) universe.hostVM();
-    }
-
-    protected static void registerHub(SVMHost hostVM, DynamicHub dynamicHub) {
-        assert dynamicHub != null;
-        /* Make sure that the DynamicHub of this type ends up in the native image. */
-        AnalysisType valueType = hostVM.lookupType(dynamicHub);
-        if (!valueType.isInTypeCheck()) {
-            valueType.registerAsInTypeCheck();
-        }
     }
 }

@@ -29,7 +29,6 @@ import static jdk.vm.ci.common.JVMCIError.guarantee;
 import java.util.Collection;
 import java.util.Collections;
 
-import org.graalvm.compiler.nodes.Invoke;
 import org.graalvm.compiler.nodes.ParameterNode;
 
 import com.oracle.graal.pointsto.BigBang;
@@ -62,19 +61,6 @@ public abstract class InvokeTypeFlow extends TypeFlow<BytecodePosition> {
 
     protected final AnalysisType receiverType;
     protected final AnalysisMethod targetMethod;
-
-    /**
-     * The {@link #source} is used for all sorts of call stack printing (for error messages and
-     * diagnostics), so we must have a non-null {@link BytecodePosition}.
-     */
-    public static BytecodePosition findBytecodePosition(Invoke invoke) {
-        assert invoke != null;
-        BytecodePosition result = invoke.asFixedNode().getNodeSourcePosition();
-        if (result == null) {
-            result = new BytecodePosition(null, invoke.asFixedNode().graph().method(), invoke.bci());
-        }
-        return result;
-    }
 
     protected InvokeTypeFlow(BytecodePosition invokeLocation, AnalysisType receiverType, AnalysisMethod targetMethod,
                     TypeFlow<?>[] actualParameters, ActualReturnTypeFlow actualReturn, BytecodeLocation location) {
@@ -289,7 +275,7 @@ public abstract class InvokeTypeFlow extends TypeFlow<BytecodePosition> {
         boolean triviallyStaticallyBound = targetMethod.canBeStaticallyBound();
         if (triviallyStaticallyBound) {
             /*
-             * The check bellow is "size <= 1" and not "size == 1" because a method can be reported
+             * The check below is "size <= 1" and not "size == 1" because a method can be reported
              * as trivially statically bound by the host VM but unreachable in the analysis.
              */
             assert getCallees().size() <= 1 : "Statically bound result mismatch between analysis and host VM.";

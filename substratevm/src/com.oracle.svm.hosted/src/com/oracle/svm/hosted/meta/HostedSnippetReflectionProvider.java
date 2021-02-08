@@ -27,24 +27,17 @@ package com.oracle.svm.hosted.meta;
 import org.graalvm.compiler.word.WordTypes;
 import org.graalvm.word.WordBase;
 
-import com.oracle.graal.pointsto.meta.AnalysisType;
 import com.oracle.svm.core.FrameAccess;
 import com.oracle.svm.core.graal.meta.SubstrateSnippetReflectionProvider;
 import com.oracle.svm.core.hub.DynamicHub;
 import com.oracle.svm.core.meta.SubstrateObjectConstant;
-import com.oracle.svm.core.util.VMError;
-import com.oracle.svm.hosted.SVMHost;
-import com.oracle.svm.hosted.c.GraalAccess;
 
 import jdk.vm.ci.meta.JavaConstant;
 
 public class HostedSnippetReflectionProvider extends SubstrateSnippetReflectionProvider {
 
-    private final SVMHost hostVM;
-
-    public HostedSnippetReflectionProvider(SVMHost hostVM, WordTypes wordTypes) {
+    public HostedSnippetReflectionProvider(WordTypes wordTypes) {
         super(wordTypes);
-        this.hostVM = hostVM;
     }
 
     @Override
@@ -60,18 +53,9 @@ public class HostedSnippetReflectionProvider extends SubstrateSnippetReflectionP
         if ((type == Class.class || type == Object.class) && constant instanceof SubstrateObjectConstant) {
             Object objectValue = SubstrateObjectConstant.asObject(constant);
             if (objectValue instanceof DynamicHub) {
-                return type.cast(interceptClass((DynamicHub) objectValue));
+                return type.cast(((DynamicHub) objectValue).getHostedJavaClass());
             }
         }
         return super.asObject(type, constant);
-    }
-
-    protected Class<?> interceptClass(DynamicHub dynamicHub) {
-        AnalysisType type = hostVM.lookupType(dynamicHub);
-        try {
-            return GraalAccess.getOriginalSnippetReflection().asObject(Class.class, GraalAccess.getOriginalProviders().getConstantReflection().asJavaClass(type.getWrapped()));
-        } catch (Throwable ex) {
-            throw VMError.shouldNotReachHere("Cannot look up Java class for a DynamicHub: " + dynamicHub.getName() + " - is it a substitution type?");
-        }
     }
 }

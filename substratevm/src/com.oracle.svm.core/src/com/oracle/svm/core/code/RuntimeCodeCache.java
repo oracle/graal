@@ -216,13 +216,14 @@ public class RuntimeCodeCache {
          */
         Deoptimizer.deoptimizeInRange(CodeInfoAccess.getCodeStart(info), CodeInfoAccess.getCodeEnd(info), false);
 
-        finishInvalidation(info);
+        finishInvalidation(info, true);
     }
 
     protected void invalidateNonStackMethod(CodeInfo info) {
+        assert VMOperation.isGCInProgress() : "must only be called by the GC";
         prepareInvalidation(info);
         assert codeNotOnStackVerifier.verify(info);
-        finishInvalidation(info);
+        finishInvalidation(info, false);
     }
 
     private void prepareInvalidation(CodeInfo info) {
@@ -230,25 +231,24 @@ public class RuntimeCodeCache {
         invalidateMethodCount.inc();
         assert verifyTable();
         if (Options.TraceCodeCache.getValue()) {
-            Log.log().string("[" + INFO_INVALIDATE + " method: ");
+            Log.log().string("[").string(INFO_INVALIDATE).string(" method: ");
             logCodeInfo(Log.log(), info);
             Log.log().string("]").newline();
         }
 
         SubstrateInstalledCode installedCode = RuntimeCodeInfoAccess.getInstalledCode(info);
         if (installedCode != null) {
-            assert !installedCode.isValid() || CodeInfoAccess.getCodeStart(info).rawValue() == installedCode.getAddress();
+            assert !installedCode.isAlive() || CodeInfoAccess.getCodeStart(info).rawValue() == installedCode.getAddress();
             /*
-             * Until this point, the InstalledCode is valid. It can be invoked, and frames can be on
-             * the stack. All the metadata must be valid until this point. Make it non-entrant,
-             * i.e., ensure it cannot be invoked any more.
+             * Until here, the InstalledCode may be valid (can be invoked) or alive (frames can be
+             * on the stack). All the metadata must be valid until this point. Ensure it is
+             * non-entrant, that is, it cannot be invoked any more.
              */
             installedCode.clearAddress();
         }
-
     }
 
-    private void finishInvalidation(CodeInfo info) {
+    private void finishInvalidation(CodeInfo info, boolean notifyGC) {
         /*
          * Now it is guaranteed that the InstalledCode is not on the stack and cannot be invoked
          * anymore, so we can free the code and all metadata.
@@ -261,7 +261,7 @@ public class RuntimeCodeCache {
         numCodeInfos--;
         NonmovableArrays.setWord(codeInfos, numCodeInfos, WordFactory.nullPointer());
 
-        RuntimeCodeInfoAccess.partialReleaseAfterInvalidate(info);
+        RuntimeCodeInfoAccess.partialReleaseAfterInvalidate(info, notifyGC);
 
         if (Options.TraceCodeCache.getValue()) {
             logTable();

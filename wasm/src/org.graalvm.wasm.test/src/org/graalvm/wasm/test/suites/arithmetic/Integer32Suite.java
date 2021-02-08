@@ -48,9 +48,9 @@ import org.graalvm.wasm.utils.cases.WasmCase;
 import org.graalvm.wasm.utils.cases.WasmStringCase;
 import org.junit.Test;
 
-import org.graalvm.wasm.test.WasmSuiteBase;
+import org.graalvm.wasm.test.WasmFileSuite;
 
-public class Integer32Suite extends WasmSuiteBase {
+public class Integer32Suite extends WasmFileSuite {
     private WasmStringCase[] testCases = {
                     WasmCase.create("CONST_SMALL", WasmCase.expected(42),
                                     "(module (func (export \"_main\") (result i32) i32.const 42))"),

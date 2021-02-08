@@ -45,6 +45,7 @@ package com.oracle.truffle.api.object;
  *
  * @since 0.8 or earlier
  */
+@SuppressWarnings("deprecation")
 public interface LayoutFactory {
     /** @since 0.8 or earlier */
     Layout createLayout(Layout.Builder layoutBuilder);

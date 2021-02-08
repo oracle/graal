@@ -129,6 +129,7 @@ class JNIRegistrationJava extends JNIRegistrationUtil implements GraalFeature {
         JNIRuntimeAccess.register(method(a, "java.nio.charset.Charset", "isSupported", String.class));
         JNIRuntimeAccess.register(constructor(a, "java.lang.String", byte[].class, String.class));
         JNIRuntimeAccess.register(method(a, "java.lang.String", "getBytes", String.class));
+        JNIRuntimeAccess.register(method(a, "java.lang.String", "getBytes"));
         JNIRuntimeAccess.register(method(a, "java.lang.String", "concat", String.class));
         if (JavaVersionUtil.JAVA_SPEC >= 11) {
             JNIRuntimeAccess.register(fields(a, "java.lang.String", "coder", "value"));

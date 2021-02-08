@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2019, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2019, 2020, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -65,7 +65,9 @@ public class BuiltinTest extends InteropLibraryBaseTest {
         Object function = builtinLib.readMember(testObject, EXISTING);
         InteropLibrary functionLib = createLibrary(InteropLibrary.class, function);
 
+        Assert.assertEquals("test", builtinLib.invokeMember(testObject, "testArg0"));
         Assert.assertEquals("test42", builtinLib.invokeMember(testObject, EXISTING, "42"));
+        Assert.assertEquals("test42", builtinLib.invokeMember(testObject, "testArg2", "4", "2"));
         Assert.assertEquals("test42", functionLib.execute(function, "42"));
     }
 

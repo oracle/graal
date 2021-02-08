@@ -38,6 +38,7 @@ public class BundleConstants {
     public static final String BUNDLE_POLYGLOT_PART = "x-GraalVM-Polyglot-Part"; // NOI18N
     public static final String BUNDLE_LICENSE_TYPE = "x-GraalVM-License-Type"; // NOI18N
     public static final String BUNDLE_LICENSE_PATH = "x-GraalVM-License-Path"; // NOI18N
+    public static final String BUNDLE_STABILITY = "x-GraalVM-Stability"; // NOI18N
 
     /**
      * In manifests, can specify the serial/hashtag for a component. Used mainly in installed

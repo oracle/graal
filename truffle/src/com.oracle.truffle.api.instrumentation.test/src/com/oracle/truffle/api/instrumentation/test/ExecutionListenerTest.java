@@ -487,7 +487,6 @@ public class ExecutionListenerTest extends AbstractPolyglotTest {
         assertEquals(event.getException(), thrownError);
         assertNull(event.getException().getCause());
         assertTrue(event.getException().isInternalError());
-        assertEquals("internal: msg", event.getException().getGuestObject().asString());
     }
 
     @Test

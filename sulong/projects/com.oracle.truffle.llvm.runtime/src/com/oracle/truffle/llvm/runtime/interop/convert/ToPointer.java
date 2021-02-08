@@ -125,14 +125,14 @@ public abstract class ToPointer extends ForeignToLLVM {
         return pointer;
     }
 
-    @Specialization(guards = {"foreigns.isForeign(obj)", "nativeTypes.hasNativeType(obj)"})
+    @Specialization(guards = {"foreigns.isForeign(obj)", "nativeTypes.hasNativeType(obj) || typeFromMethodSignature == null"})
     protected LLVMManagedPointer fromTypedTruffleObjectNoAttachedType(Object obj, @SuppressWarnings("unused") LLVMInteropType.Structured typeFromMethodSignature,
                     @SuppressWarnings("unused") @CachedLibrary(limit = "3") NativeTypeLibrary nativeTypes,
                     @SuppressWarnings("unused") @CachedLibrary(limit = "3") LLVMAsForeignLibrary foreigns) {
         return LLVMManagedPointer.create(obj);
     }
 
-    @Specialization(guards = {"foreigns.isForeign(obj)", "!nativeTypes.hasNativeType(obj)"})
+    @Specialization(guards = {"foreigns.isForeign(obj)", "!nativeTypes.hasNativeType(obj)", "typeFromMethodSignature != null"})
     protected LLVMManagedPointer fromNonTypedTruffleObject(Object obj, LLVMInteropType.Structured typeFromMethodSignature,
                     @SuppressWarnings("unused") @CachedLibrary(limit = "3") NativeTypeLibrary nativeTypes,
                     @SuppressWarnings("unused") @CachedLibrary(limit = "3") LLVMAsForeignLibrary foreigns) {
@@ -142,6 +142,11 @@ public abstract class ToPointer extends ForeignToLLVM {
     @Specialization
     protected LLVMManagedPointer fromInternal(LLVMInternalTruffleObject object, @SuppressWarnings("unused") LLVMInteropType.Structured typeFromMethodSignature) {
         return LLVMManagedPointer.create(object);
+    }
+
+    @Specialization
+    protected LLVMInteropType fromInteropType(LLVMInteropType object, @SuppressWarnings("unused") LLVMInteropType.Structured typeFromMethodSignature) {
+        return object;
     }
 
     @TruffleBoundary
@@ -159,7 +164,13 @@ public abstract class ToPointer extends ForeignToLLVM {
         } else if (value instanceof LLVMInternalTruffleObject) {
             return LLVMManagedPointer.create(value);
         } else if (LLVMAsForeignLibrary.getFactory().getUncached().isForeign(value)) {
-            return LLVMManagedPointer.create(LLVMTypedForeignObject.create(value, typeFromMethodSignature));
+            if (typeFromMethodSignature == null || NativeTypeLibrary.getFactory().getUncached().hasNativeType(value)) {
+                return LLVMManagedPointer.create(value);
+            } else {
+                return LLVMManagedPointer.create(LLVMTypedForeignObject.create(value, typeFromMethodSignature));
+            }
+        } else if (value instanceof LLVMInteropType) {
+            return value;
         } else {
             throw UnsupportedTypeException.create(new Object[]{value});
         }

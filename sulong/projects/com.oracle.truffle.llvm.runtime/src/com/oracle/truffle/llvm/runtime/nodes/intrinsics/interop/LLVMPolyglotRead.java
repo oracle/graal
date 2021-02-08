@@ -72,7 +72,7 @@ public abstract class LLVMPolyglotRead extends LLVMIntrinsic {
                 return toLLVM.executeWithTarget(rawValue);
             } catch (UnsupportedMessageException e) {
                 exception.enter();
-                throw new LLVMPolyglotException(foreignRead, "Can not read member '%s' of polyglot value.", name);
+                throw new LLVMPolyglotException(foreignRead, "Cannot read member '%s' of polyglot value.", name);
             } catch (UnknownIdentifierException e) {
                 exception.enter();
                 throw new LLVMPolyglotException(foreignRead, "Member '%s' does not exist.", e.getUnknownIdentifier());
@@ -111,7 +111,7 @@ public abstract class LLVMPolyglotRead extends LLVMIntrinsic {
                 return toLLVM.executeWithTarget(rawValue);
             } catch (UnsupportedMessageException e) {
                 exception.enter();
-                throw new LLVMPolyglotException(foreignRead, "Can not read from index %d of polyglot value.", id);
+                throw new LLVMPolyglotException(foreignRead, "Cannot read from index %d of polyglot value.", id);
             } catch (InvalidArrayIndexException e) {
                 exception.enter();
                 throw new LLVMPolyglotException(foreignRead, "Index %d does not exist.", id);

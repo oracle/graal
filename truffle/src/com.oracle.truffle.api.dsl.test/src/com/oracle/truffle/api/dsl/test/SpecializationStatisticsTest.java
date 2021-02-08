@@ -156,6 +156,11 @@ public class SpecializationStatisticsTest {
     }
 
     private static void createAndExecuteNodes() {
+        createAndExecuteNodesPart1();
+        createAndExecuteNodesPart2();
+    }
+
+    private static void createAndExecuteNodesPart1() {
         SpecializationStatisticTestNode node = SpecializationStatisticTestNodeGen.create(0);
         node.execute(42);
         node.execute(43);
@@ -164,8 +169,10 @@ public class SpecializationStatisticsTest {
         node.execute("");
         node.execute(new StringBuilder());
         node.execute("");
+    }
 
-        node = SpecializationStatisticTestNodeGen.create(1);
+    private static void createAndExecuteNodesPart2() {
+        SpecializationStatisticTestNode node = SpecializationStatisticTestNodeGen.create(1);
         node.execute("");
         node.execute("");
         node.execute("");
@@ -180,6 +187,20 @@ public class SpecializationStatisticsTest {
         try (Context context = Context.newBuilder().allowExperimentalOptions(true).option("engine.SpecializationStatistics", "true").logHandler(out).build()) {
             context.enter();
             createAndExecuteNodes();
+            context.leave();
+        }
+        Assert.assertEquals(createLogEntry(readExpectedOutput()), new String(out.toByteArray()));
+    }
+
+    @Test
+    public void testWithContextEnabledNestedEnter() {
+        ByteArrayOutputStream out = new ByteArrayOutputStream();
+        try (Context context = Context.newBuilder().allowExperimentalOptions(true).option("engine.SpecializationStatistics", "true").logHandler(out).build()) {
+            context.enter();
+            context.enter();
+            createAndExecuteNodesPart1();
+            context.leave();
+            createAndExecuteNodesPart2();
             context.leave();
         }
         Assert.assertEquals(createLogEntry(readExpectedOutput()), new String(out.toByteArray()));

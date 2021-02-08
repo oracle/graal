@@ -41,6 +41,7 @@ import org.graalvm.collections.EconomicSet;
 import org.graalvm.collections.Equivalence;
 import org.graalvm.compiler.core.common.CompilationIdentifier;
 import org.graalvm.compiler.graph.NodeSourcePosition;
+import org.graalvm.compiler.serviceprovider.GraalServices;
 
 import jdk.vm.ci.code.DebugInfo;
 import jdk.vm.ci.code.StackSlot;
@@ -581,6 +582,19 @@ public class CompilationResult {
      */
     public void recordInfopoint(int codePos, DebugInfo debugInfo, InfopointReason reason) {
         addInfopoint(new Infopoint(codePos, debugInfo, reason));
+    }
+
+    /**
+     * Records an implicit exception in the code array.
+     *
+     * @param codePos the position of the implicit exception in the code array
+     * @param dispatchPos the position to resume execution when an implicit exception occurs.
+     *            Setting it to the same value of {@code codePos} forces a deoptimization, and will
+     *            resume execution at the default deoptimization blob.
+     * @param debugInfo the debug info for the infopoint
+     */
+    public void recordImplicitException(int codePos, int dispatchPos, DebugInfo debugInfo) {
+        addInfopoint(GraalServices.genImplicitException(codePos, dispatchPos, debugInfo));
     }
 
     /**

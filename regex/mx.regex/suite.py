@@ -43,7 +43,7 @@ suite = {
 
   "name" : "regex",
 
-  "version" : "20.3.0",
+  "version" : "21.1.0",
   "release" : False,
   "groupId" : "org.graalvm.regex",
   "url" : "http://www.graalvm.org/",
@@ -71,7 +71,14 @@ suite = {
     ]
   },
 
-  "defaultLicense" : "GPLv2-CPE",
+  "licenses" : {
+    "upl" : {
+      "name" : "Universal Permissive License, Version 1.0",
+      "url" : "http://opensource.org/licenses/upl",
+    },
+  },
+
+  "defaultLicense" : "UPL",
 
   "javac.lint.overrides" : "none",
 

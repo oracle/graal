@@ -37,7 +37,7 @@ import org.graalvm.compiler.nodes.spi.NodeLIRBuilderTool;
 import org.graalvm.nativeimage.IsolateThread;
 
 import com.oracle.svm.core.FrameAccess;
-import com.oracle.svm.core.graal.meta.SubstrateRegisterConfig;
+import com.oracle.svm.core.ReservedRegisters;
 
 @NodeInfo(cycles = NodeCycles.CYCLES_1, size = NodeSize.SIZE_1)
 public class WriteCurrentVMThreadNode extends FixedWithNextNode implements LIRLowerable {
@@ -53,8 +53,7 @@ public class WriteCurrentVMThreadNode extends FixedWithNextNode implements LIRLo
     @Override
     public void generate(NodeLIRBuilderTool gen) {
         LIRGeneratorTool tool = gen.getLIRGeneratorTool();
-        SubstrateRegisterConfig registerConfig = (SubstrateRegisterConfig) tool.getRegisterConfig();
-        gen.getLIRGeneratorTool().emitWriteRegister(registerConfig.getThreadRegister(), gen.operand(value), tool.getLIRKind(FrameAccess.getWordStamp()));
+        gen.getLIRGeneratorTool().emitWriteRegister(ReservedRegisters.singleton().getThreadRegister(), gen.operand(value), tool.getLIRKind(FrameAccess.getWordStamp()));
     }
 
     @NodeIntrinsic

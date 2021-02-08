@@ -32,7 +32,7 @@
 bool __builtin_mul_overflow(unsigned char, unsigned char, unsigned char *);
 #endif
 
-int main(int argc, const char **argv) {
+int main() {
     unsigned char res;
 
     if (__builtin_mul_overflow((unsigned char) 0x0, (unsigned char) 0x0, &res)) {

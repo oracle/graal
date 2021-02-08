@@ -25,26 +25,19 @@
 package org.graalvm.compiler.truffle.runtime.hotspot.libgraal;
 
 import static jdk.vm.ci.hotspot.HotSpotJVMCIRuntime.runtime;
-import static org.graalvm.compiler.truffle.options.PolyglotCompilerOptions.CompilerIdleDelay;
 import static org.graalvm.libgraal.LibGraalScope.getIsolateThread;
 
-import java.util.Map;
-
 import org.graalvm.compiler.truffle.common.hotspot.HotSpotTruffleCompiler;
-import org.graalvm.compiler.truffle.options.PolyglotCompilerOptions;
 import org.graalvm.compiler.truffle.runtime.hotspot.AbstractHotSpotTruffleRuntime;
 import org.graalvm.libgraal.LibGraal;
 import org.graalvm.libgraal.LibGraalObject;
 import org.graalvm.libgraal.LibGraalScope;
 import org.graalvm.libgraal.LibGraalScope.DetachAction;
-import org.graalvm.options.OptionValues;
-import org.graalvm.util.OptionsEncoder;
 
 import com.oracle.truffle.api.TruffleRuntime;
 
 import jdk.vm.ci.hotspot.HotSpotResolvedJavaType;
 import jdk.vm.ci.meta.MetaAccessProvider;
-import org.graalvm.compiler.truffle.runtime.OptimizedCallTarget;
 
 /**
  * A {@link TruffleRuntime} that uses libgraal for compilation.
@@ -62,7 +55,9 @@ final class LibGraalTruffleRuntime extends AbstractHotSpotTruffleRuntime {
 
     @SuppressWarnings("try")
     LibGraalTruffleRuntime() {
-        runtime().registerNativeMethods(TruffleToLibGraalCalls.class);
+        try (LibGraalScope scope = new LibGraalScope(DetachAction.DETACH_RUNTIME_AND_RELEASE)) {
+            runtime().registerNativeMethods(TruffleToLibGraalCalls.class);
+        }
     }
 
     long handle() {
@@ -95,26 +90,11 @@ final class LibGraalTruffleRuntime extends AbstractHotSpotTruffleRuntime {
         return new LibGraalScope(DetachAction.DETACH_RUNTIME_AND_RELEASE);
     }
 
-    @Override
-    protected long getCompilerIdleDelay(OptimizedCallTarget callTarget) {
-        OptionValues options = callTarget.engine.getEngineOptions();
-        /*
-         * Libgraal compiler idle time is set to 0 to avoid that the libgraal isolate is shut down.
-         * We are collecting statistics if any of the flags are used.
-         */
-        if (!options.get(PolyglotCompilerOptions.MethodExpansionStatistics).isEmpty() || !options.get(PolyglotCompilerOptions.NodeExpansionStatistics).isEmpty() ||
-                        options.get(PolyglotCompilerOptions.InstrumentBranches) || options.get(PolyglotCompilerOptions.InstrumentBoundaries)) {
-            return 0L;
-        }
-        return callTarget.getOptionValue(CompilerIdleDelay);
-    }
-
     @SuppressWarnings("try")
     @Override
-    protected Map<String, Object> createInitialOptions() {
+    protected boolean isPrintGraphEnabled() {
         try (LibGraalScope scope = new LibGraalScope(DetachAction.DETACH_RUNTIME_AND_RELEASE)) {
-            byte[] serializedOptions = TruffleToLibGraalCalls.getInitialOptions(getIsolateThread(), handle());
-            return OptionsEncoder.decode(serializedOptions);
+            return TruffleToLibGraalCalls.isPrintGraphEnabled(getIsolateThread(), handle());
         }
     }
 }

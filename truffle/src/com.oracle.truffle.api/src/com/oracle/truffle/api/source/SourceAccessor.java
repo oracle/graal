@@ -42,10 +42,12 @@ package com.oracle.truffle.api.source;
 
 import java.io.File;
 import java.io.IOException;
+import java.lang.ref.WeakReference;
 import java.net.URI;
 import java.net.URL;
 import java.nio.charset.Charset;
 import java.util.Set;
+import java.util.function.Function;
 
 import com.oracle.truffle.api.TruffleFile;
 import com.oracle.truffle.api.impl.Accessor;
@@ -99,7 +101,9 @@ final class SourceAccessor extends Accessor {
 
         @Override
         public Source copySource(Source source) {
-            return source.copy();
+            Source copy = source.copy();
+            copy.cachedPolyglotSource = source.cachedPolyglotSource;
+            return copy;
         }
 
         @Override
@@ -108,13 +112,21 @@ final class SourceAccessor extends Accessor {
         }
 
         @Override
-        public org.graalvm.polyglot.Source getPolyglotSource(Source source) {
-            return source.polyglotSource;
-        }
-
-        @Override
-        public void setPolyglotSource(Source source, org.graalvm.polyglot.Source polyglotSource) {
-            source.polyglotSource = polyglotSource;
+        public org.graalvm.polyglot.Source getOrCreatePolyglotSource(Source source,
+                        Function<Source, org.graalvm.polyglot.Source> createSource) {
+            WeakReference<org.graalvm.polyglot.Source> ref = source.cachedPolyglotSource;
+            org.graalvm.polyglot.Source polyglotSource;
+            if (ref == null) {
+                polyglotSource = null;
+            } else {
+                polyglotSource = ref.get();
+            }
+            if (polyglotSource == null) {
+                polyglotSource = createSource.apply(source);
+                source.cachedPolyglotSource = new WeakReference<>(polyglotSource);
+            }
+            assert polyglotSource != null;
+            return polyglotSource;
         }
 
         @Override
@@ -135,6 +147,15 @@ final class SourceAccessor extends Accessor {
         @Override
         public void invalidateAfterPreinitialiation(Source source) {
             ((SourceImpl) source).key.invalidateAfterPreinitialiation();
+        }
+
+        @Override
+        public void mergeLoadedSources(Source[] sources) {
+            for (Source s : sources) {
+                if (s instanceof SourceImpl) {
+                    Source.SOURCES.add(((SourceImpl) s));
+                }
+            }
         }
     }
 }

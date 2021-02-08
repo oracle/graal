@@ -55,6 +55,7 @@ import org.graalvm.options.OptionDescriptors;
 import org.graalvm.options.OptionKey;
 import org.graalvm.options.OptionMap;
 import org.graalvm.options.OptionStability;
+import org.graalvm.options.OptionType;
 import org.graalvm.options.OptionValues;
 import org.graalvm.polyglot.Engine;
 import org.junit.Test;
@@ -65,6 +66,7 @@ import com.oracle.truffle.api.TruffleLanguage.Env;
 import com.oracle.truffle.api.TruffleLanguage.Registration;
 import com.oracle.truffle.api.instrumentation.TruffleInstrument;
 import com.oracle.truffle.api.test.ExpectError;
+import com.oracle.truffle.api.test.polyglot.AbstractPolyglotTest;
 
 public class OptionProcessorTest {
 
@@ -79,6 +81,7 @@ public class OptionProcessorTest {
         OptionDescriptor descriptor3;
         OptionDescriptor descriptor4;
         OptionDescriptor descriptor5;
+        OptionDescriptor descriptor6;
 
         descriptor1 = descriptor = descriptors.get("optiontestlang1.StringOption1");
         assertNotNull(descriptor);
@@ -120,6 +123,15 @@ public class OptionProcessorTest {
         assertTrue(descriptor.isOptionMap());
         assertSame(OptionTestLang1.Properties, descriptor.getKey());
 
+        descriptor6 = descriptor = descriptors.get("optiontestlang1.ZEnumTest");
+        OptionType<?> type = descriptor.getKey().getType();
+        assertSame(EnumValue.defaultValue, type.convert(EnumValue.defaultValue.toString()));
+        assertSame(EnumValue.otherValue, type.convert(EnumValue.otherValue.toString()));
+        AbstractPolyglotTest.assertFails(() -> type.convert("invalid"), IllegalArgumentException.class, (e) -> {
+            assertEquals("Invalid option value 'invalid'. Valid options values are: 'defaultValue', 'otherValue'", e.getMessage());
+        });
+        AbstractPolyglotTest.assertFails(() -> type.convert(null), IllegalArgumentException.class);
+
         // The options are sorted alphabetically
         Iterator<OptionDescriptor> iterator = descriptors.iterator();
         assertTrue(iterator.hasNext());
@@ -130,6 +142,8 @@ public class OptionProcessorTest {
         assertEquals(descriptor1, iterator.next());
         assertTrue(iterator.hasNext());
         assertEquals(descriptor2, iterator.next());
+        assertTrue(iterator.hasNext());
+        assertEquals(descriptor6, iterator.next());
         assertTrue(iterator.hasNext());
         assertEquals(descriptor3, iterator.next());
         assertFalse(iterator.hasNext());
@@ -335,6 +349,11 @@ public class OptionProcessorTest {
 
     }
 
+    public enum EnumValue {
+        defaultValue,
+        otherValue;
+    }
+
     @Registration(id = "optiontestlang1", version = "1.0", name = "optiontestlang1")
     public static class OptionTestLang1 extends TruffleLanguage<Env> {
 
@@ -353,6 +372,9 @@ public class OptionProcessorTest {
 
         @Option(help = "User-defined properties", category = OptionCategory.USER) //
         static final OptionKey<OptionMap<String>> Properties = OptionKey.mapOf(String.class);
+
+        @Option(help = "User-defined enum.", category = OptionCategory.USER) //
+        static final OptionKey<EnumValue> ZEnumTest = new OptionKey<>(EnumValue.defaultValue);
 
         @Override
         protected OptionDescriptors getOptionDescriptors() {

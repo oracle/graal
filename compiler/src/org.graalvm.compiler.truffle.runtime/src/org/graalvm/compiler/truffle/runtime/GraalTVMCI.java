@@ -24,11 +24,12 @@
  */
 package org.graalvm.compiler.truffle.runtime;
 
+import com.oracle.truffle.api.impl.Accessor.EngineSupport;
 import com.oracle.truffle.api.impl.Accessor.RuntimeSupport;
 import com.oracle.truffle.api.impl.TVMCI;
 import com.oracle.truffle.api.nodes.RootNode;
 
-final class GraalTVMCI extends TVMCI {
+public final class GraalTVMCI extends TVMCI {
 
     @Override
     protected RuntimeSupport createRuntimeSupport(Object permission) {
@@ -36,10 +37,14 @@ final class GraalTVMCI extends TVMCI {
     }
 
     static EngineData getEngineData(RootNode rootNode) {
-        return getOrCreateRuntimeData(rootNode, EngineData.ENGINE_DATA_SUPPLIER);
+        final EngineSupport engineAccess = GraalRuntimeAccessor.ENGINE;
+        final Object polyglotEngine;
+        if (rootNode == null) {
+            polyglotEngine = engineAccess.getCurrentPolyglotEngine();
+        } else {
+            polyglotEngine = GraalRuntimeAccessor.NODES.getPolyglotEngine(rootNode);
+        }
+        return engineAccess.getOrCreateRuntimeData(polyglotEngine);
     }
 
-    static void resetEngineData() {
-        TVMCI.resetFallbackEngineData();
-    }
 }

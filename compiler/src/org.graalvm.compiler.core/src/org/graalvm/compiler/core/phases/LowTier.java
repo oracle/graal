@@ -68,11 +68,12 @@ public class LowTier extends BaseTier<LowTierContext> {
         appendPhase(new ExpandLogicPhase());
 
         appendPhase(new FixReadsPhase(true,
-                        new SchedulePhase(GraalOptions.StressTestEarlyReads.getValue(options) ? SchedulingStrategy.EARLIEST : SchedulingStrategy.LATEST_OUT_OF_LOOPS_IMPLICIT_NULL_CHECKS)));
-
-        appendPhase(canonicalizerWithoutGVN);
+                        new SchedulePhase(GraalOptions.StressTestEarlyReads.getValue(options) ? SchedulingStrategy.EARLIEST : SchedulingStrategy.LATEST_OUT_OF_LOOPS_IMPLICIT_NULL_CHECKS),
+                        canonicalizerWithoutGVN));
 
         appendPhase(new UseTrappingNullChecksPhase());
+
+        appendPhase(canonicalizerWithoutGVN.copyWithoutFurtherCanonicalizations());
 
         appendPhase(new DeadCodeEliminationPhase(Required));
 

@@ -41,14 +41,14 @@
 package org.graalvm.wasm.predefined.wasi;
 
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
+import com.oracle.truffle.api.frame.VirtualFrame;
 import org.graalvm.wasm.WasmContext;
-import org.graalvm.wasm.WasmLanguage;
 import org.graalvm.wasm.WasmInstance;
-import org.graalvm.wasm.exception.WasmExecutionException;
+import org.graalvm.wasm.WasmLanguage;
+import org.graalvm.wasm.exception.Failure;
+import org.graalvm.wasm.exception.WasmException;
 import org.graalvm.wasm.memory.WasmMemory;
 import org.graalvm.wasm.predefined.WasmBuiltinRootNode;
-
-import com.oracle.truffle.api.frame.VirtualFrame;
 
 import java.nio.charset.StandardCharsets;
 
@@ -84,9 +84,9 @@ public class WasiArgsGetNode extends WasmBuiltinRootNode {
     }
 
     @TruffleBoundary
-    private void checkEncodable(String argument) {
+    private static void checkEncodable(String argument) {
         if (!StandardCharsets.US_ASCII.newEncoder().canEncode(argument)) {
-            throw new WasmExecutionException(this, "Argument '" + argument + "' contains non-ASCII characters.");
+            throw WasmException.create(Failure.UNSPECIFIED_INTERNAL, "Argument '" + argument + "' contains non-ASCII characters.");
         }
     }
 

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2017, 2019, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2017, 2020, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -44,13 +44,14 @@ import com.oracle.truffle.api.interop.UnsupportedTypeException;
 import com.oracle.truffle.api.library.GenerateLibrary;
 import com.oracle.truffle.api.library.Library;
 import com.oracle.truffle.api.library.LibraryFactory;
+import com.oracle.truffle.nfi.impl.LibFFIType.CachedTypeInfo;
 
 @GenerateLibrary
 abstract class NativeArgumentLibrary extends Library {
 
-    public abstract void serialize(LibFFIType type, NativeArgumentBuffer buffer, Object value) throws UnsupportedTypeException;
+    public abstract void serialize(CachedTypeInfo type, NativeArgumentBuffer buffer, Object value) throws UnsupportedTypeException;
 
-    public abstract Object deserialize(LibFFIType type, NativeArgumentBuffer buffer);
+    public abstract Object deserialize(CachedTypeInfo type, NativeArgumentBuffer buffer);
 
     public static LibraryFactory<NativeArgumentLibrary> getFactory() {
         return FACTORY;

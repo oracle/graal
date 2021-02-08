@@ -90,7 +90,7 @@ public class AssumptionPartialEvaluationTest extends PartialEvaluationTest {
         boolean valid = true;
 
         @Override
-        public void invalidate() {
+        public void onAssumptionInvalidated(Object source, CharSequence reason) {
             valid = false;
         }
 
@@ -119,7 +119,7 @@ public class AssumptionPartialEvaluationTest extends PartialEvaluationTest {
         int invalidated = 0;
         for (int i = 0; i < deps.length; i++) {
             if (i % 2 == 0) {
-                deps[i].invalidate();
+                deps[i].onAssumptionInvalidated(assumption, null);
                 invalidated++;
             }
         }
@@ -127,7 +127,7 @@ public class AssumptionPartialEvaluationTest extends PartialEvaluationTest {
         Assert.assertEquals(invalidated, assumption.countDependencies());
 
         for (int i = 0; i < deps.length; i++) {
-            deps[i].invalidate();
+            deps[i].onAssumptionInvalidated(assumption, null);
         }
         assumption.removeInvalidDependencies();
         Assert.assertEquals(0, assumption.countDependencies());

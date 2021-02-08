@@ -236,7 +236,7 @@ public class SPARCHotSpotBackend extends HotSpotHostBackend implements LIRGenera
         DataBuilder dataBuilder = new HotSpotDataBuilder(getCodeCache().getTarget());
         OptionValues options = lir.getOptions();
         DebugContext debug = lir.getDebug();
-        CompilationResultBuilder crb = factory.createBuilder(getProviders().getCodeCache(), getProviders().getForeignCalls(), frameMap, masm, dataBuilder, frameContext, options, debug,
+        CompilationResultBuilder crb = factory.createBuilder(getProviders(), frameMap, masm, dataBuilder, frameContext, options, debug,
                         compilationResult, Register.None);
         crb.setTotalFrameSize(frameMap.totalFrameSize());
         crb.setMaxInterpreterFrameSize(gen.getMaxInterpreterFrameSize());

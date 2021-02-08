@@ -165,7 +165,7 @@ public class ValueHostInteropTest extends AbstractPolyglotTest {
 
     @Test
     public void conversionToClassNull() {
-        assertSame(Void.class, context.asValue(null).getMetaObject().asHostObject());
+        assertNull(context.asValue(null).getMetaObject());
     }
 
     @Test

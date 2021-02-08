@@ -27,17 +27,17 @@
  * NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED
  * OF THE POSSIBILITY OF SUCH DAMAGE.
  */
-long function(char test[]) {
-    return (long) test;
+const char *function(char test[]) {
+    return test;
 }
 
-long func() {
-    long a = function("asdf");
+const char *func() {
+    const char *a = function("asdf");
     return a;
 }
 
 int main() {
-    long a = func();
-    long b = "asdf";
+    const char *a = func();
+    const char *b = "asdf";
     return a == b;
 }

@@ -39,12 +39,6 @@ import org.graalvm.compiler.hotspot.GraalHotSpotVMConfig;
 import org.graalvm.compiler.hotspot.HotSpotMarkId;
 import org.graalvm.compiler.hotspot.nodes.GraalHotSpotVMConfigNode;
 import org.graalvm.compiler.hotspot.nodes.type.KlassPointerStamp;
-import org.graalvm.compiler.loop.BasicInductionVariable;
-import org.graalvm.compiler.loop.CountedLoopInfo;
-import org.graalvm.compiler.loop.DerivedInductionVariable;
-import org.graalvm.compiler.loop.InductionVariable;
-import org.graalvm.compiler.loop.LoopEx;
-import org.graalvm.compiler.loop.LoopsData;
 import org.graalvm.compiler.nodes.CompressionNode;
 import org.graalvm.compiler.nodes.ConstantNode;
 import org.graalvm.compiler.nodes.NodeView;
@@ -54,8 +48,15 @@ import org.graalvm.compiler.nodes.ValueNode;
 import org.graalvm.compiler.nodes.calc.AddNode;
 import org.graalvm.compiler.nodes.calc.SignExtendNode;
 import org.graalvm.compiler.nodes.calc.ZeroExtendNode;
+import org.graalvm.compiler.nodes.loop.BasicInductionVariable;
+import org.graalvm.compiler.nodes.loop.CountedLoopInfo;
+import org.graalvm.compiler.nodes.loop.DerivedInductionVariable;
+import org.graalvm.compiler.nodes.loop.InductionVariable;
+import org.graalvm.compiler.nodes.loop.LoopEx;
+import org.graalvm.compiler.nodes.loop.LoopsData;
 import org.graalvm.compiler.nodes.memory.address.AddressNode;
 import org.graalvm.compiler.nodes.memory.address.OffsetAddressNode;
+import org.graalvm.compiler.nodes.spi.LoopsDataProvider;
 import org.graalvm.compiler.options.OptionValues;
 
 import jdk.vm.ci.code.Register;
@@ -119,15 +120,14 @@ public class AMD64HotSpotAddressLowering extends AMD64CompressAddressLowering {
 
         Scale scale = Scale.fromShift(encoding.getShift());
         addr.setScale(scale);
-        addr.setUncompressionScale(scale);
         addr.setIndex(compression.getValue());
         return true;
     }
 
     @Override
-    public void preProcess(StructuredGraph graph) {
+    public void preProcess(StructuredGraph graph, LoopsDataProvider loopsDataProvider) {
         if (graph.hasLoops()) {
-            LoopsData loopsData = new LoopsData(graph);
+            LoopsData loopsData = loopsDataProvider.getLoopsData(graph);
             loopsData.detectedCountedLoops();
             for (LoopEx loop : loopsData.countedLoops()) {
                 for (OffsetAddressNode offsetAdressNode : loop.whole().nodes().filter(OffsetAddressNode.class)) {

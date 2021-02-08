@@ -37,6 +37,6 @@ int foo(int x) {
 }
 
 int main(void) {
-    printf("%d\n", call_typecast(foo));
+    printf("%d\n", call_typecast((int (*)(void)) foo));
     return 0;
 }

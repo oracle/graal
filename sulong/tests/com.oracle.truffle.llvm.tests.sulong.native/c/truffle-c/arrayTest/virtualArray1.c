@@ -27,6 +27,12 @@
  * NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED
  * OF THE POSSIBILITY OF SUCH DAMAGE.
  */
+
+int foo() {
+    int a[3] = { 1, 2, 3 };
+    return a[0] + a[1] + a[2];
+}
+
 int main() {
     int i = 0;
     int sum = 0;
@@ -34,9 +40,4 @@ int main() {
         sum += foo();
     }
     return sum / 10;
-}
-
-int foo() {
-    int a[3] = { 1, 2, 3 };
-    return a[0] + a[1] + a[2];
 }

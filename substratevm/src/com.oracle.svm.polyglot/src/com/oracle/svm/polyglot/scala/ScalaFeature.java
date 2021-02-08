@@ -85,11 +85,11 @@ public class ScalaFeature implements GraalFeature {
         BeforeAnalysisAccessImpl access = (BeforeAnalysisAccessImpl) beforeAnalysisAccess;
 
         Class<?> scalaEnum = access.findClassByName("scala.Enumeration");
-        UserError.guarantee(scalaEnum != null, UNSUPPORTED_SCALA_VERSION);
+        UserError.guarantee(scalaEnum != null, "%s", UNSUPPORTED_SCALA_VERSION);
         Class<?> scalaEnumVal = access.findClassByName("scala.Enumeration$Val");
-        UserError.guarantee(scalaEnumVal != null, UNSUPPORTED_SCALA_VERSION);
+        UserError.guarantee(scalaEnumVal != null, "%s", UNSUPPORTED_SCALA_VERSION);
         Class<?> valueClass = access.findClassByName("scala.Enumeration$Value");
-        UserError.guarantee(valueClass != null, UNSUPPORTED_SCALA_VERSION);
+        UserError.guarantee(valueClass != null, "%s", UNSUPPORTED_SCALA_VERSION);
 
         access.findSubclasses(scalaEnum).forEach(enumClass -> {
             /* this is based on implementation of scala.Enumeration.populateNamesMap */
@@ -105,7 +105,7 @@ public class ScalaFeature implements GraalFeature {
             try {
                 RuntimeReflection.register(scalaEnumVal.getDeclaredMethod("id"));
             } catch (NoSuchMethodException e) {
-                throw UserError.abort(UNSUPPORTED_SCALA_VERSION);
+                throw UserError.abort("%s", UNSUPPORTED_SCALA_VERSION);
             }
         });
     }

@@ -420,13 +420,13 @@ public class LoggingTest {
             @Override
             public boolean test(final LoggingContext context, final TruffleLogger[] loggers) {
                 TruffleContext tc = context.getEnv().newContextBuilder().build();
-                final Object prev = tc.enter();
+                final Object prev = tc.enter(null);
                 try {
                     for (TruffleLogger logger : loggers) {
                         logger.log(Level.FINEST, "INNER: " + logger.getName());
                     }
                 } finally {
-                    tc.leave(prev);
+                    tc.leave(null, prev);
                     tc.close();
                 }
                 return true;
@@ -1165,7 +1165,7 @@ public class LoggingTest {
             // Expected
         }
         try {
-            r.setThreadID(10);
+            setLoggerRecordThreadID(r);
             Assert.fail("Should not reach here.");
         } catch (UnsupportedOperationException e) {
             // Expected
@@ -1176,6 +1176,11 @@ public class LoggingTest {
         } catch (UnsupportedOperationException e) {
             // Expected
         }
+    }
+
+    @SuppressWarnings("deprecation")
+    private static void setLoggerRecordThreadID(final LogRecord r) {
+        r.setThreadID(10);
     }
 
     @SuppressWarnings("deprecation")

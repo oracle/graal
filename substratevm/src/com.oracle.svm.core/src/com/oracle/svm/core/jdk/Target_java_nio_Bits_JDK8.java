@@ -26,9 +26,6 @@ package com.oracle.svm.core.jdk;
 
 import java.util.concurrent.atomic.AtomicLong;
 
-import org.graalvm.compiler.word.Word;
-import org.graalvm.word.WordFactory;
-
 import com.oracle.svm.core.MemoryUtil;
 import com.oracle.svm.core.annotate.Alias;
 import com.oracle.svm.core.annotate.RecomputeFieldValue;
@@ -47,17 +44,14 @@ final class Target_java_nio_Bits_JDK8 {
      */
     @Substitute
     private static void copySwapMemory0(Object srcBase, long srcOffset, Object destBase, long destOffset, long bytes, long elemSize) {
-        MemoryUtil.copyConjointSwap(
-                        Word.objectToUntrackedPointer(srcBase).add(WordFactory.unsigned(srcOffset)),
-                        Word.objectToUntrackedPointer(destBase).add(WordFactory.unsigned(destOffset)),
-                        WordFactory.unsigned(bytes), WordFactory.unsigned(elemSize));
+        MemoryUtil.unsafeCopySwapMemory(srcBase, srcOffset, destBase, destOffset, bytes, elemSize);
     }
 
-    /* Ensure lazy initialization of page size happens at image run time. */
+    /* Ensure lazy initialization of page size happens at image runtime. */
     @Alias @RecomputeFieldValue(kind = Kind.FromAlias) //
     private static int pageSize = -1;
 
-    /* Ensure lazy initialization of maximum direct memory size happens at image run time. */
+    /* Ensure lazy initialization of maximum direct memory size happens at image runtime. */
     @Alias @RecomputeFieldValue(kind = Kind.FromAlias) //
     private static boolean memoryLimitSet = false;
     @Alias @RecomputeFieldValue(kind = Kind.FromAlias) //

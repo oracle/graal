@@ -33,10 +33,10 @@ import java.util.List;
 
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.CompilerAsserts;
-import com.oracle.truffle.api.TruffleException;
 import com.oracle.truffle.api.TruffleStackTrace;
 import com.oracle.truffle.api.TruffleStackTraceElement;
 import com.oracle.truffle.api.dsl.Specialization;
+import com.oracle.truffle.api.exception.AbstractTruffleException;
 import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.api.nodes.NodeUtil;
 import com.oracle.truffle.api.source.SourceSection;
@@ -130,17 +130,10 @@ public abstract class LLVMPrintStackTrace extends LLVMIntrinsic {
     }
 
     @SuppressWarnings("serial")
-    private static class CThrowable extends Throwable implements TruffleException {
-        private Node node;
+    private static class CThrowable extends AbstractTruffleException {
 
         CThrowable(Node node, String message) {
-            super(message);
-            this.node = node;
-        }
-
-        @Override
-        public Node getLocation() {
-            return node;
+            super(message, node);
         }
     }
 }

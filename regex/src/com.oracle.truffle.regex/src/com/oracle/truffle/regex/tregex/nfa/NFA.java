@@ -54,7 +54,7 @@ import com.oracle.truffle.regex.tregex.util.json.Json;
 import com.oracle.truffle.regex.tregex.util.json.JsonArray;
 import com.oracle.truffle.regex.tregex.util.json.JsonConvertible;
 import com.oracle.truffle.regex.tregex.util.json.JsonValue;
-import com.oracle.truffle.regex.util.CompilationFinalBitSet;
+import com.oracle.truffle.regex.util.TBitSet;
 
 public final class NFA implements StateIndex<NFAState>, JsonConvertible {
 
@@ -97,7 +97,7 @@ public final class NFA implements StateIndex<NFAState>, JsonConvertible {
                             getUnAnchoredInitialState(),
                             getUnAnchoredInitialState(),
                             ast.getEncoding().getFullSet(),
-                            GroupBoundaries.getEmptyInstance());
+                            GroupBoundaries.getEmptyInstance(ast.getLanguage()));
             this.transitions[initialLoopBack.getId()] = initialLoopBack;
         }
         for (NFAState s : states) {
@@ -269,7 +269,7 @@ public final class NFA implements StateIndex<NFAState>, JsonConvertible {
     @TruffleBoundary
     public JsonValue toJson(boolean forward) {
         boolean anchoredFinalStateReachable = false;
-        CompilationFinalBitSet reachable = new CompilationFinalBitSet(transitions.length);
+        TBitSet reachable = new TBitSet(transitions.length);
         for (NFAState s : states) {
             if (s == null || s == dummyInitialState) {
                 continue;

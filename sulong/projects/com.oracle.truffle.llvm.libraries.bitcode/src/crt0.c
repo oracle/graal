@@ -32,7 +32,7 @@
 #include <stdlib.h>
 #include <stdio.h>
 #include <locale.h>
-#include <polyglot.h>
+#include <graalvm/llvm/polyglot.h>
 #ifdef __linux__
 #include <elf.h>
 #else

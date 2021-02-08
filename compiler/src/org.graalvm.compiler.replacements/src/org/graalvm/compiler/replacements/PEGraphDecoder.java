@@ -1041,7 +1041,9 @@ public abstract class PEGraphDecoder extends SimplifyingGraphDecoder {
     }
 
     protected LoopScope doInline(PEMethodScope methodScope, LoopScope loopScope, InvokeData invokeData, InlineInfo inlineInfo, ValueNode[] arguments) {
-        if (!invokeData.invoke.useForInlining()) {
+        if (invokeData.invoke.getInlineControl() != Invoke.InlineControl.Normal) {
+            // The graph decoder only has one version of the method so treat the BytecodesOnly case
+            // as don't inline.
             return null;
         }
         ResolvedJavaMethod inlineMethod = inlineInfo.getMethodToInline();

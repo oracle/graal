@@ -395,11 +395,11 @@ public class MultiThreadedLanguageTest {
                 List<Future<LanguageContext>> innerContextFutures = new ArrayList<>();
                 for (int i = 0; i < 100; i++) {
                     innerContextFutures.add(service.submit(() -> {
-                        Object prev = innerContext.enter();
+                        Object prev = innerContext.enter(null);
                         try {
                             return MultiThreadedLanguage.getContext();
                         } finally {
-                            innerContext.leave(prev);
+                            innerContext.leave(null, prev);
                         }
                     }));
                 }
@@ -414,9 +414,9 @@ public class MultiThreadedLanguageTest {
                         assertSame(MultiThreadedLanguage.getContext(), future.get());
                     }
                     LanguageContext innerLanguageContext;
-                    Object prev = innerContext.enter();
+                    Object prev = innerContext.enter(null);
                     innerLanguageContext = MultiThreadedLanguage.getContext();
-                    innerContext.leave(prev);
+                    innerContext.leave(null, prev);
                     for (Future<LanguageContext> future : innerContextFutures) {
                         assertSame(innerLanguageContext, future.get());
                     }

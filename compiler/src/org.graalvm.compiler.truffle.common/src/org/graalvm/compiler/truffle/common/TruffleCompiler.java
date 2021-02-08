@@ -83,7 +83,7 @@ public interface TruffleCompiler {
      *            compilation is cancelled
      * @param listener a listener receiving events about compilation success or failure
      */
-    void doCompile(TruffleDebugContext debug, TruffleCompilation compilation, Map<String, Object> options, TruffleInliningPlan inlining, TruffleCompilationTask task,
+    void doCompile(TruffleDebugContext debug, TruffleCompilation compilation, Map<String, Object> options, TruffleMetaAccessProvider inlining, TruffleCompilationTask task,
                     TruffleCompilerListener listener);
 
     /**
@@ -93,7 +93,7 @@ public interface TruffleCompiler {
 
     /**
      * Notifies this object that it will no longer being used and should thus perform all relevant
-     * finalization tasks.
+     * finalization tasks. This is typically performed when the process exits.
      */
     void shutdown();
 }

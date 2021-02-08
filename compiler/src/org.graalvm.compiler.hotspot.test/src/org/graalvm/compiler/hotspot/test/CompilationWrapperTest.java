@@ -162,13 +162,14 @@ public class CompilationWrapperTest extends GraalCompilerTest {
                         Arrays.asList(
                                         SubprocessUtil.PACKAGE_OPENING_OPTIONS,
                                         "-Dgraal.CompilationFailureAction=ExitVM",
-                                        "-Dgraal.TrufflePerformanceWarningsAreFatal=true",
+                                        "-Dpolyglot.engine.CompilationFailureAction=ExitVM",
+                                        "-Dpolyhlot.engine.TreatPerformanceWarningsAsErrors=all",
                                         "-Dgraal.CrashAt=root test1"),
                         "org.graalvm.compiler.truffle.test.SLTruffleGraalTestSuite", "test");
     }
 
     /**
-     * Tests that TruffleCompilationExceptionsAreFatal works as expected.
+     * Tests that --engine.CompilationExceptionsAreFatal works as expected.
      */
     @Test
     public void testTruffleCompilation2() throws IOException, InterruptedException {
@@ -179,25 +180,26 @@ public class CompilationWrapperTest extends GraalCompilerTest {
                         Arrays.asList(
                                         SubprocessUtil.PACKAGE_OPENING_OPTIONS,
                                         "-Dgraal.CompilationFailureAction=Silent",
-                                        "-Dgraal.TruffleCompilationExceptionsAreFatal=true",
+                                        "-Dpolyglot.engine.CompilationExceptionsAreFatal=true",
                                         "-Dgraal.CrashAt=root test1"),
                         "org.graalvm.compiler.truffle.test.SLTruffleGraalTestSuite", "test");
     }
 
     /**
-     * Tests that TrufflePerformanceWarningsAreFatal generates diagnostic output.
+     * Tests that --engine.CompilationFailureAction=ExitVM generates diagnostic output.
      */
     @Test
     public void testTruffleCompilation3() throws IOException, InterruptedException {
         assumeManagementLibraryIsLoadable();
         Probe[] probes = {
-                        new Probe("Exiting VM due to engine.PerformanceWarningsAreFatal=true", 1),
+                        new Probe("Exiting VM due to engine.CompilationFailureAction=ExitVM", 1),
         };
         testHelper(Arrays.asList(probes),
                         Arrays.asList(
                                         SubprocessUtil.PACKAGE_OPENING_OPTIONS,
                                         "-Dgraal.CompilationFailureAction=Silent",
-                                        "-Dgraal.TrufflePerformanceWarningsAreFatal=true",
+                                        "-Dpolyglot.engine.CompilationFailureAction=ExitVM",
+                                        "-Dpolyhlot.engine.TreatPerformanceWarningsAsErrors=all",
                                         "-Dgraal.CrashAt=root test1:PermanentBailout"),
                         "org.graalvm.compiler.truffle.test.SLTruffleGraalTestSuite", "test");
     }

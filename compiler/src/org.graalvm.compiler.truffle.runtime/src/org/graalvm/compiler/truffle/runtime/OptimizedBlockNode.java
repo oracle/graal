@@ -24,13 +24,15 @@
  */
 package org.graalvm.compiler.truffle.runtime;
 
-import org.graalvm.compiler.truffle.options.PolyglotCompilerOptions;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
 import java.util.List;
 
+import org.graalvm.compiler.truffle.options.PolyglotCompilerOptions;
+
 import com.oracle.truffle.api.Assumption;
+import com.oracle.truffle.api.CallTarget;
 import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
@@ -405,6 +407,26 @@ public final class OptimizedBlockNode<T extends Node> extends BlockNode<T> imple
         return false;
     }
 
+    private void reportBlocksInstalled(CharSequence reason) {
+        // no need to report for current node.
+        Node node = getParent();
+        while (node != null) {
+            boolean consumed = false;
+            if (node instanceof ReplaceObserver) {
+                consumed = ((ReplaceObserver) node).nodeReplaced(this, this, reason);
+            } else if (node instanceof RootNode) {
+                CallTarget target = ((RootNode) node).getCallTarget();
+                if (target instanceof ReplaceObserver) {
+                    consumed = ((ReplaceObserver) target).nodeReplaced(this, this, reason);
+                }
+            }
+            if (consumed) {
+                break;
+            }
+            node = node.getParent();
+        }
+    }
+
     static final class BlockVisitor implements NodeVisitor {
 
         final List<OptimizedCallTarget> blockTargets = new ArrayList<>();
@@ -447,6 +469,7 @@ public final class OptimizedBlockNode<T extends Node> extends BlockNode<T> imple
                         PartialBlocks<T> otherOldBlocks = blockNode.getPartialBlocks();
                         if (otherOldBlocks == null) {
                             blockNode.partialBlocks = newBlocks;
+                            blockNode.reportBlocksInstalled("Partial blocks installed");
                         }
                     }
                 });
@@ -610,7 +633,7 @@ public final class OptimizedBlockNode<T extends Node> extends BlockNode<T> imple
                 targets[i].setNonTrivialNodeCount(blockSizes[i]);
                 // we know the parameter types for block compilations. No need to check, lets cast
                 // them unsafely.
-                targets[i].initializeArgumentTypes(new Class<?>[]{materializedFrameClass, Integer.class});
+                targets[i].initializeUnsafeArgumentTypes(new Class<?>[]{materializedFrameClass, Integer.class});
                 // All block compilations share the speculation log of the root compilation.
                 targets[i].setSpeculationLog(rootCompilation.getSpeculationLog());
                 startIndex = endIndex;

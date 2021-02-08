@@ -28,9 +28,8 @@
  * OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 long function(int test[]) {
-
     if (test == &test[0]) {
-        if (test == &test) {
+        if (test == (int *) &test) {
             return 0;
         }
         return 1;

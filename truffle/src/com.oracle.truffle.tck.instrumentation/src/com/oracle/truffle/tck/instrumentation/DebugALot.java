@@ -260,22 +260,10 @@ public class DebugALot extends TruffleInstrument implements SuspendedCallback {
         } else {
             logger.println();
         }
-        Iterable<DebugValue> arguments = scope.getArguments();
-        List<DebugValue> values;
-        if (arguments != null) {
-            logger.print(prefix);
-            logger.print("Arguments: ");
-            values = new ArrayList<>();
-            for (DebugValue v : arguments) {
-                values.add(v);
-            }
-            logger.println(values.size());
-            logValues(prefix, values);
-        }
         Iterable<DebugValue> variables = scope.getDeclaredValues();
         logger.print(prefix);
         logger.print("Variables: ");
-        values = new ArrayList<>();
+        List<DebugValue> values = new ArrayList<>();
         for (DebugValue v : variables) {
             values.add(v);
         }

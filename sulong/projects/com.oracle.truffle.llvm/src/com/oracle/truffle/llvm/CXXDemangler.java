@@ -37,7 +37,7 @@ import java.util.Base64;
 final class CXXDemangler {
     private static final String NAMESPACE_PREFIX = "_ZN";
     private static final int NAMESPACE_PREFIX_LEN = NAMESPACE_PREFIX.length();
-    private static final String SULONG_NAMESPACE_PREFIX = Runner.SULONG_RENAME_MARKER;
+    private static final String SULONG_NAMESPACE_PREFIX = ParserDriver.SULONG_RENAME_MARKER;
     private static final String SULONG_BASE64_NAMESPACE_SUFFIX = "base64";
     private static final String SULONG_BASE64_NAMESPACE = SULONG_NAMESPACE_PREFIX + SULONG_BASE64_NAMESPACE_SUFFIX;
 

@@ -75,6 +75,7 @@ public class LayoutGenerator {
         generateImports(stream);
 
         stream.println();
+        stream.println("@SuppressWarnings(\"deprecation\")");
         stream.printf("@GeneratedBy(%s.class)%n", layout.getInterfaceFullName());
         stream.printf("public class %sLayoutImpl", layout.getName());
 
@@ -191,10 +192,6 @@ public class LayoutGenerator {
 
         if (needsIncompatibleLocationException) {
             stream.println("import com.oracle.truffle.api.object.IncompatibleLocationException;");
-        }
-
-        if (layout.getSuperLayout() == null) {
-            stream.println("import com.oracle.truffle.api.object.Layout;");
         }
 
         if (layout.hasFinalInstanceProperties() || layout.hasNonNullableInstanceProperties()) {
@@ -338,10 +335,10 @@ public class LayoutGenerator {
 
     private void generateAllocator(final PrintStream stream) {
         if (layout.getSuperLayout() == null) {
-            stream.print("    protected static final Layout LAYOUT = Layout.newLayout()");
+            stream.print("    protected static final com.oracle.truffle.api.object.Layout LAYOUT = com.oracle.truffle.api.object.Layout.newLayout()");
 
             for (VariableElement implicitCast : layout.getImplicitCasts()) {
-                stream.print(".addAllowedImplicitCast(Layout.ImplicitCast.");
+                stream.print(".addAllowedImplicitCast(com.oracle.truffle.api.object.Layout.ImplicitCast.");
                 stream.print(implicitCast.getSimpleName().toString());
                 stream.print(")");
             }
@@ -776,7 +773,6 @@ public class LayoutGenerator {
             }
 
             if (property.hasShapeSetter()) {
-                addSuppressWarnings(stream, Collections.singleton("deprecation"));
                 stream.println("    @TruffleBoundary");
                 stream.println("    @Override");
                 stream.printf("    public DynamicObjectFactory %s(DynamicObjectFactory factory, %s value) {%n", NameUtils.asSetter(property.getName()), property.getType());
@@ -943,9 +939,6 @@ public class LayoutGenerator {
         Collection<String> warnings = new ArrayList<>(2);
         if (needsUncheckedCast(property)) {
             warnings.add("unchecked");
-        }
-        if (property.hasUnsafeSetter() || property.isShapeProperty()) {
-            warnings.add("deprecation");
         }
         addSuppressWarnings(stream, warnings);
     }

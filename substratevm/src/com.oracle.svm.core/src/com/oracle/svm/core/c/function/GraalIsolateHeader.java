@@ -25,6 +25,7 @@
 package com.oracle.svm.core.c.function;
 
 import java.io.PrintWriter;
+import java.util.List;
 
 import com.oracle.svm.core.c.CHeader;
 import com.oracle.svm.core.c.NativeImageHeaderPreamble;
@@ -37,7 +38,10 @@ public class GraalIsolateHeader implements CHeader.Header {
 
     @Override
     public void writePreamble(PrintWriter writer) {
-        NativeImageHeaderPreamble.read(NativeImageHeaderPreamble.class.getClassLoader(), "graal_isolate.preamble")
-                        .forEach(writer::println);
+        getGraalIsolatePreamble().forEach(writer::println);
+    }
+
+    public static List<String> getGraalIsolatePreamble() {
+        return NativeImageHeaderPreamble.read(NativeImageHeaderPreamble.class.getClassLoader(), "graal_isolate.preamble");
     }
 }

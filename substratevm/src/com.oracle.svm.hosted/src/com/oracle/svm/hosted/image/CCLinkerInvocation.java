@@ -34,13 +34,14 @@ import org.graalvm.nativeimage.ImageSingletons;
 
 import com.oracle.svm.core.LinkerInvocation;
 import com.oracle.svm.core.option.HostedOptionKey;
+import com.oracle.svm.core.option.LocatableMultiOptionValue;
 import com.oracle.svm.hosted.c.codegen.CCompilerInvoker;
 
 public abstract class CCLinkerInvocation implements LinkerInvocation {
 
     public static class Options {
         @Option(help = "Pass the provided raw option that will be appended to the linker command to produce the final binary. The possible options are platform specific and passed through without any validation.")//
-        public static final HostedOptionKey<String[]> NativeLinkerOption = new HostedOptionKey<>(new String[0]);
+        public static final HostedOptionKey<LocatableMultiOptionValue.Strings> NativeLinkerOption = new HostedOptionKey<>(new LocatableMultiOptionValue.Strings());
     }
 
     protected final List<String> additionalPreOptions = new ArrayList<>();
@@ -48,6 +49,7 @@ public abstract class CCLinkerInvocation implements LinkerInvocation {
     protected final List<String> rpaths = new ArrayList<>();
     protected final List<String> libpaths = new ArrayList<>();
     protected final List<String> libs = new ArrayList<>();
+    protected Path tempDirectory;
     protected Path outputFile;
     protected AbstractBootImage.NativeImageKind outputKind;
 
@@ -118,6 +120,15 @@ public abstract class CCLinkerInvocation implements LinkerInvocation {
         outputFile = out;
     }
 
+    public void setTempDirectory(Path tempDirectory) {
+        this.tempDirectory = tempDirectory;
+    }
+
+    @Override
+    public Path getTempDirectory() {
+        return tempDirectory;
+    }
+
     @Override
     public List<String> getLinkedLibraries() {
         return Collections.unmodifiableList(libs);
@@ -134,7 +145,11 @@ public abstract class CCLinkerInvocation implements LinkerInvocation {
     }
 
     protected List<String> getCompilerCommand(List<String> options) {
-        return ImageSingletons.lookup(CCompilerInvoker.class).createCompilerCommand(options, outputFile, inputFilenames.toArray(new Path[0]));
+        /* Relativize input files where applicable to avoid unintentional leaking of host paths. */
+        Path[] inputPaths = inputFilenames.stream()
+                        .map(path -> path.startsWith(tempDirectory) ? tempDirectory.relativize(path) : path)
+                        .toArray(Path[]::new);
+        return ImageSingletons.lookup(CCompilerInvoker.class).createCompilerCommand(options, outputFile, inputPaths);
     }
 
     protected abstract void setOutputKind(List<String> cmd);
@@ -156,7 +171,7 @@ public abstract class CCLinkerInvocation implements LinkerInvocation {
         }
 
         cmd.addAll(getLibrariesCommand());
-        Collections.addAll(cmd, Options.NativeLinkerOption.getValue());
+        cmd.addAll(Options.NativeLinkerOption.getValue().values());
         return cmd;
     }
 

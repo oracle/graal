@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2017, 2018, Oracle and/or its affiliates.
+ * Copyright (c) 2017, 2020, Oracle and/or its affiliates.
  *
  * All rights reserved.
  *
@@ -37,11 +37,11 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.function.Supplier;
 
-public final class LLVMSourceStructLikeType extends LLVMSourceType {
+public class LLVMSourceStructLikeType extends LLVMSourceType {
 
-    private final List<LLVMSourceMemberType> dynamicMembers;
+    protected final List<LLVMSourceMemberType> dynamicMembers;
 
-    private final LLVMSourceStaticMemberType.CollectionType staticMembers;
+    protected final LLVMSourceStaticMemberType.CollectionType staticMembers;
 
     @TruffleBoundary
     public LLVMSourceStructLikeType(String name, long size, long align, long offset, LLVMSourceLocation location) {
@@ -50,7 +50,7 @@ public final class LLVMSourceStructLikeType extends LLVMSourceType {
         this.staticMembers = new LLVMSourceStaticMemberType.CollectionType();
     }
 
-    private LLVMSourceStructLikeType(Supplier<String> name, long size, long align, long offset, List<LLVMSourceMemberType> dynamicMembers, LLVMSourceStaticMemberType.CollectionType staticMembers,
+    protected LLVMSourceStructLikeType(Supplier<String> name, long size, long align, long offset, List<LLVMSourceMemberType> dynamicMembers, LLVMSourceStaticMemberType.CollectionType staticMembers,
                     LLVMSourceLocation location) {
         super(name, size, align, offset, location);
         this.dynamicMembers = dynamicMembers;

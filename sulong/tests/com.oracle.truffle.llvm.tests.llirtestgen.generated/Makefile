@@ -46,7 +46,7 @@ prelude.ll: prelude.bc
 	$(QUIETLY) $(LLVM_DIS) $<
 
 prelude.bc: prelude.c
-	$(QUIETLY) $(CLANG) -Wall -Wextra $(CFLAGS) -c -emit-llvm $<
+	$(QUIETLY) $(CLANG) -Wall -Wextra -Wno-unused-command-line-argument $(CFLAGS) -c -emit-llvm $<
 
 $(TIMESTAMP): prelude.ll $(LLIR_TEST_GEN_JAR)
 	@mkdir -p $(OUTPUT_DIR)

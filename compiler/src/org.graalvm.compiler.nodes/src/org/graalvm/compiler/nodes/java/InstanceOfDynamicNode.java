@@ -77,14 +77,6 @@ public class InstanceOfDynamicNode extends BinaryOpLogicNode implements Canonica
         assert mirror.getStackKind() == JavaKind.Object || mirror.getStackKind() == JavaKind.Illegal : mirror.getStackKind();
     }
 
-    public boolean isMirror() {
-        return getMirrorOrHub().getStackKind() == JavaKind.Object;
-    }
-
-    public boolean isHub() {
-        return !isMirror();
-    }
-
     private static LogicNode findSynonym(Assumptions assumptions, ConstantReflectionProvider constantReflection, ValueNode forMirror, ValueNode forObject, boolean allowNull, boolean exact) {
         if (forMirror.isConstant()) {
             ResolvedJavaType t = constantReflection.asJavaType(forMirror.asConstant());

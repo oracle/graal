@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2011, 2018, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2011, 2020, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -24,7 +24,6 @@
  */
 package org.graalvm.compiler.nodes.java;
 
-import static org.graalvm.compiler.nodeinfo.InputType.State;
 import static org.graalvm.compiler.nodeinfo.NodeCycles.CYCLES_UNKNOWN;
 import static org.graalvm.compiler.nodeinfo.NodeSize.SIZE_8;
 import static org.graalvm.compiler.nodes.java.ForeignCallDescriptors.REGISTER_FINALIZER;
@@ -38,10 +37,10 @@ import org.graalvm.compiler.graph.spi.CanonicalizerTool;
 import org.graalvm.compiler.nodeinfo.NodeInfo;
 import org.graalvm.compiler.nodes.AbstractStateSplit;
 import org.graalvm.compiler.nodes.DeoptimizingNode;
-import org.graalvm.compiler.nodes.FrameState;
 import org.graalvm.compiler.nodes.NodeView;
 import org.graalvm.compiler.nodes.ValueNode;
 import org.graalvm.compiler.nodes.spi.LIRLowerable;
+import org.graalvm.compiler.nodes.spi.Lowerable;
 import org.graalvm.compiler.nodes.spi.NodeLIRBuilderTool;
 import org.graalvm.compiler.nodes.spi.Virtualizable;
 import org.graalvm.compiler.nodes.spi.VirtualizerTool;
@@ -53,6 +52,10 @@ import jdk.vm.ci.meta.Assumptions.AssumptionResult;
 /**
  * This node is used to perform the finalizer registration at the end of the java.lang.Object
  * constructor.
+ *
+ * Can be optimized away if the class may not have a finalizer (if we know the exact type or can
+ * record an assumption that it does not have a finalizable subclass). On HotSpot, it is lowered to
+ * a conditional runtime call (see {@code RegisterFinalizerSnippets.registerFinalizerSnippet}).
  */
 // @formatter:off
 @NodeInfo(cycles = CYCLES_UNKNOWN,
@@ -60,14 +63,17 @@ import jdk.vm.ci.meta.Assumptions.AssumptionResult;
           size = SIZE_8,
           sizeRationale = "Rough estimation for register handling & calling")
 // @formatter:on
-public final class RegisterFinalizerNode extends AbstractStateSplit implements Canonicalizable.Unary<ValueNode>, LIRLowerable, Virtualizable, DeoptimizingNode.DeoptAfter {
+public class RegisterFinalizerNode extends AbstractStateSplit implements Canonicalizable.Unary<ValueNode>, LIRLowerable, Lowerable, Virtualizable, DeoptimizingNode.DeoptAfter {
 
     public static final NodeClass<RegisterFinalizerNode> TYPE = NodeClass.create(RegisterFinalizerNode.class);
-    @OptionalInput(State) FrameState deoptState;
     @Input ValueNode value;
 
     public RegisterFinalizerNode(ValueNode value) {
-        super(TYPE, StampFactory.forVoid());
+        this(TYPE, value);
+    }
+
+    protected RegisterFinalizerNode(NodeClass<? extends RegisterFinalizerNode> c, ValueNode value) {
+        super(c, StampFactory.forVoid());
         this.value = value;
     }
 

@@ -42,12 +42,6 @@ public class KnownIntrinsics {
     public static native Pointer heapBase();
 
     /**
-     * Returns the length of the given array. It does not check if the provided object is an array,
-     * so the caller has to check that beforehand.
-     */
-    public static native int readArrayLength(Object array);
-
-    /**
      * Returns the hub of the given object.
      */
     public static native DynamicHub readHub(Object obj);

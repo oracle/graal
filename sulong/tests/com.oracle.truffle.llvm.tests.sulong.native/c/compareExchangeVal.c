@@ -40,13 +40,13 @@ void testLong() {
     cmp = 2L;
     repl = 3L;
     replaced = __sync_val_compare_and_swap(ptr, cmp, repl);
-    printf("%d\n", replaced);
+    printf("%ld\n", replaced);
 
     l = 1L;
     cmp = 1L;
     repl = 3L;
     replaced = __sync_val_compare_and_swap(ptr, cmp, repl);
-    printf("%d\n", replaced);
+    printf("%ld\n", replaced);
 }
 
 void testInt() {

@@ -63,11 +63,15 @@ import org.graalvm.compiler.printer.NoDeadCodeVerifyHandler;
 import org.graalvm.nativeimage.CurrentIsolate;
 import org.graalvm.nativeimage.ImageSingletons;
 
+import com.oracle.svm.core.SubstrateTargetDescription;
 import com.oracle.svm.core.annotate.Alias;
+import com.oracle.svm.core.annotate.Inject;
+import com.oracle.svm.core.annotate.InjectAccessors;
 import com.oracle.svm.core.annotate.RecomputeFieldValue;
 import com.oracle.svm.core.annotate.RecomputeFieldValue.Kind;
 import com.oracle.svm.core.annotate.Substitute;
 import com.oracle.svm.core.annotate.TargetClass;
+import com.oracle.svm.core.config.ConfigurationValues;
 import com.oracle.svm.core.hub.DynamicHub;
 import com.oracle.svm.core.log.Log;
 import com.oracle.svm.core.option.HostedOptionValues;
@@ -77,6 +81,7 @@ import com.oracle.svm.graal.hosted.GraalFeature;
 import com.oracle.svm.graal.meta.SubstrateMethod;
 import com.oracle.svm.util.ReflectionUtil;
 
+import jdk.vm.ci.code.TargetDescription;
 import jdk.vm.ci.meta.MetaAccessProvider;
 import jdk.vm.ci.meta.ResolvedJavaField;
 import jdk.vm.ci.meta.ResolvedJavaMethod;
@@ -368,6 +373,36 @@ final class Target_org_graalvm_compiler_nodes_NamedLocationIdentity_DB {
     @Alias//
     @RecomputeFieldValue(kind = FromAlias, declClass = EconomicMap.class)//
     private static EconomicSet<String> map = EconomicSet.create(Equivalence.DEFAULT);
+}
+
+/**
+ * Workaround so that {@link TargetDescription} can distinguish between AOT compilation and runtime
+ * compilation. Ideally, each case would have its own {@link TargetDescription}, but currently it is
+ * created just once during the image build and accessed via {@link ConfigurationValues} and
+ * {@link ImageSingletons} from many locations.
+ */
+@TargetClass(value = TargetDescription.class, onlyWith = GraalFeature.IsEnabled.class)
+final class Target_jdk_vm_ci_code_TargetDescription {
+    @Alias @InjectAccessors(value = InlineObjectsAccessor.class) //
+    boolean inlineObjects;
+
+    @Inject @RecomputeFieldValue(kind = RecomputeFieldValue.Kind.Reset) //
+    Boolean inlineObjectsValue;
+
+    @SuppressWarnings("unused")
+    static class InlineObjectsAccessor {
+        static boolean get(Target_jdk_vm_ci_code_TargetDescription receiver) {
+            if (receiver.inlineObjectsValue == null) {
+                receiver.inlineObjectsValue = SubstrateTargetDescription.shouldInlineObjectsInRuntimeCode();
+            }
+            return receiver.inlineObjectsValue;
+        }
+
+        /** For TargetDescription constructor at runtime (e.g. Libgraal). */
+        static void set(Target_jdk_vm_ci_code_TargetDescription receiver, boolean value) {
+            receiver.inlineObjectsValue = value;
+        }
+    }
 }
 
 /** Dummy class to have a class with the file's name. Do not remove. */

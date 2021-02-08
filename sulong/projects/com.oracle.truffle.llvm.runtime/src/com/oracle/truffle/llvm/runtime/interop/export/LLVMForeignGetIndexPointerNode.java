@@ -46,12 +46,12 @@ public abstract class LLVMForeignGetIndexPointerNode extends LLVMNode {
 
     public abstract LLVMPointer execute(LLVMInteropType type, LLVMPointer pointer, long index) throws UnsupportedMessageException, InvalidArrayIndexException;
 
-    @Specialization(guards = "array.getElementType() == elementType")
+    @Specialization(guards = "array.elementType == elementType")
     static LLVMPointer doCached(LLVMInteropType.Array array, LLVMPointer pointer, long idx,
-                    @Cached("array.getElementSize()") long elementSize,
-                    @Cached("array.getElementType()") LLVMInteropType elementType,
+                    @Cached("array.elementSize") long elementSize,
+                    @Cached("array.elementType") LLVMInteropType elementType,
                     @Cached BranchProfile exception) throws InvalidArrayIndexException {
-        if (Long.compareUnsigned(idx, array.getLength()) >= 0) {
+        if (Long.compareUnsigned(idx, array.length) >= 0) {
             exception.enter();
             throw InvalidArrayIndexException.create(idx);
         }
@@ -61,7 +61,7 @@ public abstract class LLVMForeignGetIndexPointerNode extends LLVMNode {
     @Specialization(replaces = "doCached")
     static LLVMPointer doGeneric(LLVMInteropType.Array array, LLVMPointer pointer, long idx,
                     @Cached BranchProfile exception) throws InvalidArrayIndexException {
-        return doCached(array, pointer, idx, array.getElementSize(), array.getElementType(), exception);
+        return doCached(array, pointer, idx, array.elementSize, array.elementType, exception);
     }
 
     /**

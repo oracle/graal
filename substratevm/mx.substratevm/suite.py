@@ -1,7 +1,7 @@
 suite = {
     "mxversion": "5.270.0",
     "name": "substratevm",
-    "version" : "20.3.0",
+    "version" : "21.1.0",
     "release" : False,
     "url" : "https://github.com/oracle/graal/tree/master/substratevm",
 
@@ -166,6 +166,16 @@ suite = {
                 "compiler:GRAAL_PROCESSOR",
             ],
             "workingSets": "SVM",
+        },
+
+        "com.oracle.svm.core.containers": {
+            "subDir": "src",
+            "sourceDirs": ["src"],
+            "dependencies": ["com.oracle.svm.core"],
+            "overlayTarget": "com.oracle.svm.core",
+            "javaCompliance": "8+",
+            "workingSets": "SVM",
+            "spotbugs": "false",
         },
 
         "com.oracle.svm.core.jdk8": {
@@ -588,11 +598,44 @@ suite = {
             "testProject": True,
         },
 
+        "com.oracle.svm.configure.test": {
+            "subDir": "src",
+            "sourceDirs": ["src"],
+            "dependencies": [
+                "mx:JUNIT_TOOL",
+                "sdk:GRAAL_SDK",
+                "com.oracle.svm.configure",
+            ],
+            "checkstyle": "com.oracle.svm.core",
+            "workingSets": "SVM",
+            "annotationProcessors": [
+                "compiler:GRAAL_PROCESSOR",
+            ],
+            "javaCompliance": "8+",
+            "spotbugs": "false",
+            "testProject": True,
+        },
+
         "com.oracle.svm.reflect": {
             "subDir": "src",
             "sourceDirs": ["src"],
             "dependencies": [
                 "com.oracle.svm.hosted",
+            ],
+            "checkstyle": "com.oracle.svm.core",
+            "workingSets": "SVM",
+            "annotationProcessors": [
+                "compiler:GRAAL_PROCESSOR",
+            ],
+            "javaCompliance": "8+",
+            "spotbugs": "false",
+        },
+
+        "com.oracle.svm.methodhandles": {
+            "subDir": "src",
+            "sourceDirs": ["src"],
+            "dependencies": [
+                "com.oracle.svm.reflect",
             ],
             "checkstyle": "com.oracle.svm.core",
             "workingSets": "SVM",
@@ -641,6 +684,27 @@ suite = {
             "annotationProcessors": [
                 "compiler:GRAAL_PROCESSOR",
             ],
+        },
+
+        "com.oracle.svm.graal.test": {
+            "subDir": "src",
+            "sourceDirs": ["src"],
+            "dependencies": [
+                "mx:JUNIT_TOOL",
+                "sdk:GRAAL_SDK",
+                "com.oracle.svm.graal",
+            ],
+            "requiresConcealed" : {
+                "jdk.internal.vm.ci": ["jdk.vm.ci.meta"],
+            },
+            "checkstyle": "com.oracle.svm.core",
+            "workingSets": "SVM",
+            "annotationProcessors": [
+                "compiler:GRAAL_PROCESSOR",
+            ],
+            "javaCompliance": "8+",
+            "spotbugs": "false",
+            "testProject": True,
         },
 
         "com.oracle.svm.thirdparty": {
@@ -854,6 +918,24 @@ suite = {
             "spotbugs": "false",
         },
 
+        "com.oracle.svm.diagnosticsagent": {
+            "subDir": "src",
+            "sourceDirs": [
+                "src",
+                "resources"
+            ],
+            "dependencies": [
+                "JVMTI_AGENT_BASE",
+            ],
+            "checkstyle": "com.oracle.svm.driver",
+            "workingSets": "SVM",
+            "annotationProcessors": [
+                "compiler:GRAAL_PROCESSOR",
+            ],
+            "javaCompliance": "8+",
+            "spotbugs": "false",
+        },
+
         "com.oracle.svm.truffle.tck" : {
             "subDir": "src",
             "sourceDirs": ["src"],
@@ -891,6 +973,7 @@ suite = {
                 "com.oracle.svm.core.genscavenge",
                 "com.oracle.svm.jni",
                 "com.oracle.svm.reflect",
+                "com.oracle.svm.methodhandles"
             ],
             "overlaps" : [
                 "SVM_CORE", "SVM_HOSTED",
@@ -1063,6 +1146,18 @@ suite = {
             # vm: included as binary, tool descriptor intentionally not copied
         },
 
+        "SVM_DIAGNOSTICS_AGENT": {
+            "subDir": "src",
+            "description" : "Native-image diagnostics agent",
+            "dependencies": [
+                "com.oracle.svm.diagnosticsagent",
+            ],
+            "distDependencies": [
+                "JVMTI_AGENT_BASE",
+                "LIBRARY_SUPPORT",
+            ],
+        },
+
         "SVM_CONFIGURE": {
             "subDir": "src",
             "description" : "SubstrateVM native-image configuration tool",
@@ -1096,10 +1191,13 @@ suite = {
           "dependencies" : [
             "com.oracle.svm.test",
             "com.oracle.svm.test.jdk11",
+            "com.oracle.svm.configure.test",
+            "com.oracle.svm.graal.test",
           ],
           "distDependencies": [
             "mx:JUNIT_TOOL",
             "sdk:GRAAL_SDK",
+            "SVM_CONFIGURE",
           ],
           "testDistribution" : True,
         },

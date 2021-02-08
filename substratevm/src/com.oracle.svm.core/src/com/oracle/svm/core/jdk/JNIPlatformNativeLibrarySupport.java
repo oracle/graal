@@ -54,36 +54,49 @@ public abstract class JNIPlatformNativeLibrarySupport extends PlatformNativeLibr
     }
 
     /**
-     * The JDK C code has a field `fastEncoding` to speed up conversions between C string and Java
-     * strings. We need to ensure that the initialization code runs early:
+     * Initializes the encoding used to convert from C strings to Java strings.
+     * 
+     * The JDK C code has a {@code fastEncoding} field that determines which algorithm to use to
+     * convert between C strings and Java strings; the conversion is implemented in the JDK C code,
+     * instead of going through a regular JNI conversion (hence the "fast encoding" name). The
+     * {@code fastEncoding} field must be initialized before the encoding can be used. We need to
+     * ensure that the initialization code runs early, for the following reasons:
      *
-     * On JDK 8, the C method initializeEncoding() is called lazily from various places. But
-     * unfortunately the implementation is not thread safe: a second thread can use unititialized
-     * state while the first thread is still in the initialization. So we need to force
-     * initialization here where we are still single threaded.
+     * <ul>
+     * <li>On JDK 8, the C method {@code initializeEncoding()} is called lazily from various places.
+     * But unfortunately the implementation is not thread safe: a second thread can use
+     * uninitialized state while the first thread is still in the initialization. So we need to
+     * force initialization here where we are still single threaded.</li>
      *
-     * On JDK 11, the initialization is performed from Java during `System.initPhase1` by
-     * `System.initProperties`. We do invoke that part of the system initialization because we
-     * already have many system properties pre-initialized in the image heap.
-     *
-     * On both JDK 8 and 11, the system property `sun.jnu.encoding` decides which encoding to use.
-     * Currently, we inherit this system property from image build time (see
+     * <li>On JDK 11, the initialization is performed from Java during `System.initPhase1` by
+     * `System.initProperties`. However, we do not invoke that part of the system initialization
+     * because we already have many system properties pre-initialized in the image heap. So we need
+     * to force initialization here.</li>
+     * </ul>
+     * 
+     * The choice of {@code fastEncoding} depends on the value of the {@code sun.jnu.encoding}
+     * system property. This encoding is also known as the <em>platform encoding</em> or <em>JNU
+     * encoding</em>. It is platform-dependent, and is mainly used for platform-dependent tasks,
+     * (e.g. for file paths, or in our case, converting from C to Java Strings).
+     * 
+     * Currently, we inherit the {@code sun.jnu.encoding} system property from image build time (see
      * {@link SystemPropertiesSupport}), i.e., we do not allow it to be specified at run time and
      * (more importantly) also do not look at environment variables to determine the encoding.
      */
     private static void initializeEncoding() {
         if (JavaVersionUtil.JAVA_SPEC >= 11) {
             /*
-             * On JDK 11 and later, the method InitializeEncoding is an exported JNI function and we
-             * can call it directly.
+             * On JDK 11 and later, the method `InitializeEncoding` is an exported JNI function and
+             * we can call it directly.
              */
             try (CTypeConversion.CCharPointerHolder name = CTypeConversion.toCString(System.getProperty("sun.jnu.encoding"))) {
                 nativeInitializeEncoding(CurrentIsolate.getCurrentThread(), name.get());
             }
         } else {
             /*
-             * On JDK 8, the method initializeEncoding is not an exported JNI function. We call an
-             * exported function that unconditionally triggers the initialization.
+             * On JDK 8, the method `initializeEncoding` is not an exported JNI function. We call an
+             * exported function that unconditionally calls `initializeEncoding` to trigger the
+             * initialization of `fastEncoding`.
              */
             nativeNewStringPlatform(CurrentIsolate.getCurrentThread(), EMPTY_C_STRING.get());
         }
@@ -94,6 +107,10 @@ public abstract class JNIPlatformNativeLibrarySupport extends PlatformNativeLibr
 
     private static final CGlobalData<CCharPointer> EMPTY_C_STRING = CGlobalDataFactory.createCString("");
 
+    /**
+     * Converts a C string to a Java String using the platform encoding. On JDK 8, initializes the
+     * platform encoding first by reading the {@code sun.jnu.encoding} system property.
+     */
     @CFunction("JNU_NewStringPlatform")
     private static native void nativeNewStringPlatform(PointerBase env, CCharPointer str);
 

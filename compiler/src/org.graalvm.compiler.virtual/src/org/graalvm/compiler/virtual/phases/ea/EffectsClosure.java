@@ -42,6 +42,7 @@ import org.graalvm.compiler.graph.NodeBitMap;
 import org.graalvm.compiler.graph.NodeMap;
 import org.graalvm.compiler.graph.iterators.NodeIterable;
 import org.graalvm.compiler.nodes.AbstractMergeNode;
+import org.graalvm.compiler.nodes.FixedNode;
 import org.graalvm.compiler.nodes.FixedWithNextNode;
 import org.graalvm.compiler.nodes.IfNode;
 import org.graalvm.compiler.nodes.LogicConstantNode;
@@ -288,7 +289,12 @@ public abstract class EffectsClosure<BlockT extends EffectsBlockState<BlockT>> e
         /**
          * Stop trying to virtualize allocations since the maximum loop nesting level is reached.
          */
-        STOP_NEW_VIRTUALIZATIONS_LOOP_NEST
+        STOP_NEW_VIRTUALIZATIONS_LOOP_NEST,
+        /**
+         * Immediately materialize all virtual allocations after virtualization to avoid
+         * re-iterating loops during PEA.
+         */
+        MATERIALIZE_ALL
     }
 
     /**
@@ -419,7 +425,7 @@ public abstract class EffectsClosure<BlockT extends EffectsBlockState<BlockT>> e
 
                             processKilledLoopLocations(loop, initialStateRemovedKilledLocations, mergeProcessor.newState);
 
-                            if (currentMode == EffectsClosureMode.STOP_NEW_VIRTUALIZATIONS_LOOP_NEST && loop.getDepth() == 1) {
+                            if (currentMode != EffectsClosureMode.REGULAR_VIRTUALIZATION && loop.getDepth() == 1) {
                                 /*
                                  * We are done processing the loop nest with limited EA for nested
                                  * objects deeper > level, switch back to normal mode.
@@ -453,17 +459,21 @@ public abstract class EffectsClosure<BlockT extends EffectsBlockState<BlockT>> e
                 /*
                  * We reached the outermost loop after having seen a loop nest operation that would
                  * cause exponential processing. Thus, we reset everything to before the loop and
-                 * process the loop without future virtualizations (we only look at ensure
-                 * virtualized nodes).
+                 * process the loop in a mode where we immediately materialize every virtualizable
+                 * node in order to avoid any repetitive loop processing.
                  */
+                assert aliases != aliasesCopy;
                 aliases = aliasesCopy;
                 hasScalarReplacedInputs = hasScalarReplacedInputsCopy;
+                assert blockEffects != blockEffectsCopy;
                 blockEffects = blockEffectsCopy;
                 loopMergeEffects = loopMergeEffectsCopy;
                 loopEntryStates = loopEntryStatesCopy;
                 loopLocationKillCache = loopLocationKillCacheCopy;
                 initialStateRemovedKilledLocations = initialStateRemovedKilledLocationsBackup;
-                currentMode = EffectsClosureMode.STOP_NEW_VIRTUALIZATIONS_LOOP_NEST;
+                processStateBeforeLoopOnOverflow(initialStateRemovedKilledLocations, ((LoopBeginNode) loop.getHeader().getBeginNode()).forwardEnd(),
+                                blockEffects.get(loop.getHeader().getPredecessors()[0]));
+                currentMode = EffectsClosureMode.MATERIALIZE_ALL;
                 continue;
             }
             throw new GraalError("too many iterations at %s", loop);
@@ -473,6 +483,11 @@ public abstract class EffectsClosure<BlockT extends EffectsBlockState<BlockT>> e
     static class EffecsClosureOverflowException extends RuntimeException {
 
         private static final long serialVersionUID = 1;
+    }
+
+    @SuppressWarnings("unused")
+    protected void processStateBeforeLoopOnOverflow(BlockT initialState, FixedNode materializeBefore, GraphEffectList effects) {
+
     }
 
     @SuppressWarnings("unused")
@@ -538,7 +553,7 @@ public abstract class EffectsClosure<BlockT extends EffectsBlockState<BlockT>> e
      */
     protected abstract class MergeProcessor {
 
-        private final Block mergeBlock;
+        protected final Block mergeBlock;
         protected final AbstractMergeNode merge;
 
         protected final GraphEffectList mergeEffects;

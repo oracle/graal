@@ -758,11 +758,20 @@ public class LLIRTestGen {
                         "fadd_x86_fp80", // Fails with managed sulong
                         "frem_x86_fp80", // Fails with managed sulong
                         "fsub_x86_fp80", // Fails with managed sulong
-                        "fdiv_x86_fp80"  // Fails with managed sulong
+                        "fdiv_x86_fp80", // Fails with managed sulong
+                        "shl_2xi8", // Works with LLVM9 but not 10, depends on undefined behavior
+                        "shl_3xi8", // Works with LLVM9 but not 10, depends on undefined behavior
+                        "lshr_3xi8", // Works with LLVM9 but not 10, depends on undefined behavior
+                        "lshr_2xi8", // Works with LLVM9 but not 10, depends on undefined behavior
+                        "ashr_4xi8", // Works with LLVM9 but not 10, depends on undefined behavior
+                        "shl_4xi8", // Works with LLVM9 but not 10, depends on undefined behavior
+                        "lshr_4xi8", // Works with LLVM9 but not 10, depends on undefined behavior
+                        "ashr_3xi8" // Works with LLVM9 but not 10, depends on undefined behavior
         ));
         if (Platform.isAArch64()) {
             filenameBlacklist.addAll(Arrays.asList(
-                            "ashr_3xi8", "ashr_4xi8", "bitcast_x86_fp80", "lshr_2xi8", "lshr_3xi8", "lshr_4xi8", "shl_2xi8", "shl_3xi8", "shl_4xi8"));
+                            "ashr_3xi8", "ashr_4xi8", "bitcast_x86_fp80", "lshr_2xi8", "lshr_3xi8", "lshr_4xi8", "shl_2xi8", "shl_3xi8", "shl_4xi8", "add_4xi64", "and_4xi64", "or_4xi64",
+                            "xor_4xi64"));
         }
 
         filenameBlacklist = filenameBlacklist.stream().map(s -> makeBlacklistFilename(outputDir, s)).collect(Collectors.toSet());

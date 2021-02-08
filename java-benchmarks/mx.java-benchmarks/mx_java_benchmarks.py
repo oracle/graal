@@ -85,6 +85,10 @@ mx.update_commands(_suite, {
         lambda args: createBenchmarkShortcut("renaissance", args),
         '[<benchmarks>|*] [-- [VM options] [-- [Renaissance options]]]'
     ],
+    'shopcart': [
+        lambda args: createBenchmarkShortcut("shopcart", args),
+        '[-- [VM options] [-- [ShopCart options]]]'
+    ],
     'awfy': [
         lambda args: createBenchmarkShortcut("awfy", args),
         '[<benchmarks>|*] [-- [VM options] ] [-- [AWFY options] ]]'
@@ -164,6 +168,38 @@ class TemporaryWorkdirMixin(mx_benchmark.VmBenchmarkSuite):
 
     def parserNames(self):
         return super(TemporaryWorkdirMixin, self).parserNames() + ["temporary_workdir_parser"]
+
+
+class ShopCartBenchmarkSuite(mx_benchmark.JMeterBenchmarkSuite):
+    """Benchmark suite for the ShopCart benchmark."""
+
+    def name(self):
+        return "shopcart"
+
+    def group(self):
+        return "Graal"
+
+    def subgroup(self):
+        return "graal-compiler"
+
+    def version(self):
+        return "0.1"
+
+    def benchmarkList(self, bmSuiteArgs):
+        return ["tiny", "small", "large"]
+
+    def applicationDist(self):
+        shopcartCache = mx.library("SHOPCART_" + self.version(), True).get_path(True)
+        return os.path.join(shopcartCache, "shopcart-" + self.version())
+
+    def applicationPath(self):
+        return os.path.join(self.applicationDist(), "shopcart-" + self.version() + "-all.jar")
+
+    def workloadPath(self, benchmark):
+        return os.path.join(self.applicationDist(), "workloads", benchmark + ".jmx")
+
+
+mx_benchmark.add_bm_suite(ShopCartBenchmarkSuite())
 
 
 class BaseDaCapoBenchmarkSuite(mx_benchmark.JavaBenchmarkSuite, mx_benchmark.AveragingBenchmarkMixin, TemporaryWorkdirMixin):
@@ -400,6 +436,9 @@ class DaCapoBenchmarkSuite(BaseDaCapoBenchmarkSuite): #pylint: disable=too-many-
     def name(self):
         return "dacapo"
 
+    def version(self):
+        return '9.12-bach'
+
     def daCapoSuiteTitle(self):
         return "DaCapo 9.12"
 
@@ -609,6 +648,9 @@ class ScalaDaCapoBenchmarkSuite(BaseDaCapoBenchmarkSuite): #pylint: disable=too-
 
     def name(self):
         return "scala-dacapo"
+
+    def version(self):
+        return "0.1.0"
 
     def daCapoSuiteTitle(self):
         return "DaCapo 0.1.0-SNAPSHOT"
@@ -1591,8 +1633,11 @@ class AWFYBenchmarkSuite(mx_benchmark.JavaBenchmarkSuite, mx_benchmark.Averaging
     def benchSuiteName(self):
         return self.name()
 
+    def version(self):
+        return "1.1"
+
     def awfyLibraryName(self):
-        return "AWFY"
+        return "AWFY_{}".format(self.version())
 
     def awfyBenchmarkParam(self):
         return _awfyConfig.copy()

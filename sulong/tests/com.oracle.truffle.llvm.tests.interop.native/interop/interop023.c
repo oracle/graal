@@ -27,14 +27,14 @@
  * NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED
  * OF THE POSSIBILITY OF SUCH DAMAGE.
  */
-#include <polyglot.h>
-
-int main() {
-    foo("foreign");
-    return foo("foreign");
-}
+#include <graalvm/llvm/polyglot.h>
 
 int foo(const char *name) {
     void *obj = polyglot_import(name);
     return polyglot_as_i32(polyglot_get_member(obj, "valueI"));
+}
+
+int main() {
+    foo("foreign");
+    return foo("foreign");
 }

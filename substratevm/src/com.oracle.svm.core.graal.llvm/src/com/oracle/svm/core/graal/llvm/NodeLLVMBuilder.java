@@ -711,7 +711,7 @@ public class NodeLLVMBuilder implements NodeLIRBuilderTool, SubstrateNodeLIRBuil
             state = ((DeoptimizingNode.DeoptAfter) deopt).stateAfter();
         }
         assert state != null;
-        return debugInfoBuilder.build(deopt, state, null);
+        return debugInfoBuilder.build(deopt, state, null, null, null);
     }
 
     /* Unsupported */

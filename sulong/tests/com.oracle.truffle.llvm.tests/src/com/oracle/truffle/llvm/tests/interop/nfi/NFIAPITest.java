@@ -33,7 +33,7 @@ import java.io.File;
 import java.nio.file.Path;
 import java.nio.file.Paths;
 
-import com.oracle.truffle.llvm.runtime.NFIContextExtension;
+import com.oracle.truffle.llvm.runtime.NativeContextExtension;
 import com.oracle.truffle.llvm.tests.interop.InteropTestBase;
 import org.junit.Assert;
 import org.junit.BeforeClass;
@@ -56,7 +56,7 @@ public class NFIAPITest {
     @ClassRule public static TruffleRunner.RunWithPolyglotRule runWithPolyglot = new TruffleRunner.RunWithPolyglotRule(InteropTestBase.getContextBuilder());
 
     private static final Path TEST_DIR = Paths.get(TestOptions.TEST_SUITE_PATH, "nfi");
-    private static final String SULONG_FILENAME = "O1." + NFIContextExtension.getNativeLibrarySuffix();
+    private static final String SULONG_FILENAME = "O1." + NativeContextExtension.getNativeLibrarySuffix();
 
     public static Object sulongObject;
     public static CallTarget lookupAndBind;

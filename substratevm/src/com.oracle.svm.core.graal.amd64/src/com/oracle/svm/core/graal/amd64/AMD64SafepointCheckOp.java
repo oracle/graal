@@ -32,8 +32,8 @@ import org.graalvm.compiler.lir.Opcode;
 import org.graalvm.compiler.lir.amd64.AMD64LIRInstruction;
 import org.graalvm.compiler.lir.asm.CompilationResultBuilder;
 
+import com.oracle.svm.core.ReservedRegisters;
 import com.oracle.svm.core.SubstrateOptions;
-import com.oracle.svm.core.graal.meta.SubstrateRegisterConfig;
 import com.oracle.svm.core.nodes.SafepointCheckNode;
 import com.oracle.svm.core.thread.Safepoint;
 import com.oracle.svm.core.thread.ThreadingSupportImpl;
@@ -53,9 +53,8 @@ public class AMD64SafepointCheckOp extends AMD64LIRInstruction {
     @Override
     public void emitCode(CompilationResultBuilder crb, AMD64MacroAssembler masm) {
         assert SubstrateOptions.MultiThreaded.getValue();
-        SubstrateRegisterConfig threadRegister = (SubstrateRegisterConfig) crb.codeCache.getRegisterConfig();
         int safepointRequestedOffset = Math.toIntExact(Safepoint.getThreadLocalSafepointRequestedOffset());
-        AMD64Address safepointRequested = new AMD64Address(threadRegister.getThreadRegister(), safepointRequestedOffset);
+        AMD64Address safepointRequested = new AMD64Address(ReservedRegisters.singleton().getThreadRegister(), safepointRequestedOffset);
         if (ThreadingSupportImpl.isRecurringCallbackSupported()) {
             masm.subl(safepointRequested, 1);
         } else {

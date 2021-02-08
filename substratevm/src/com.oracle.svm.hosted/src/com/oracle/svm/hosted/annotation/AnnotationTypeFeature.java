@@ -68,7 +68,7 @@ public class AnnotationTypeFeature implements Feature {
          */
         universe.getTypes().stream()
                         .filter(AnalysisType::isAnnotation)
-                        .filter(AnalysisType::isInTypeCheck)
+                        .filter(AnalysisType::isReachable)
                         .map(type -> universe.lookup(type.getWrapped()).getArrayClass())
                         .filter(annotationArray -> !annotationArray.isInstantiated())
                         .forEach(annotationArray -> {

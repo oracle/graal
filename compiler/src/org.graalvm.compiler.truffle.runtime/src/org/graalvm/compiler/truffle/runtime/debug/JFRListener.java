@@ -25,25 +25,31 @@
 package org.graalvm.compiler.truffle.runtime.debug;
 
 import java.util.Iterator;
+import java.util.concurrent.atomic.AtomicLong;
 
 import org.graalvm.compiler.truffle.common.TruffleCompilerListener.CompilationResultInfo;
 import org.graalvm.compiler.truffle.common.TruffleCompilerListener.GraphInfo;
+import org.graalvm.compiler.truffle.jfr.CompilationEvent;
+import org.graalvm.compiler.truffle.jfr.CompilationStatisticsEvent;
+import org.graalvm.compiler.truffle.jfr.DeoptimizationEvent;
+import org.graalvm.compiler.truffle.jfr.EventFactory;
+import org.graalvm.compiler.truffle.jfr.InvalidationEvent;
 import org.graalvm.compiler.truffle.runtime.AbstractGraalTruffleRuntimeListener;
 import org.graalvm.compiler.truffle.runtime.GraalTruffleRuntime;
 import org.graalvm.compiler.truffle.runtime.OptimizedCallTarget;
 import org.graalvm.compiler.truffle.runtime.TruffleInlining;
 import org.graalvm.compiler.truffle.runtime.serviceprovider.TruffleRuntimeServices;
-import org.graalvm.compiler.truffle.jfr.CompilationEvent;
-import org.graalvm.compiler.truffle.jfr.EventFactory;
+import org.graalvm.nativeimage.ImageInfo;
 
 import com.oracle.truffle.api.frame.Frame;
-import com.oracle.truffle.api.nodes.Node;
-import java.util.concurrent.atomic.AtomicLong;
-import org.graalvm.compiler.truffle.jfr.CompilationStatisticsEvent;
-import org.graalvm.compiler.truffle.jfr.DeoptimizationEvent;
-import org.graalvm.compiler.truffle.jfr.InvalidationEvent;
-import org.graalvm.compiler.truffle.runtime.OptimizedDirectCallNode;
-import org.graalvm.nativeimage.ImageInfo;
+import java.lang.annotation.Annotation;
+import java.lang.reflect.AnnotatedElement;
+import java.util.HashSet;
+import java.util.Set;
+import java.util.concurrent.atomic.AtomicReference;
+import jdk.vm.ci.meta.ResolvedJavaMethod;
+import jdk.vm.ci.meta.ResolvedJavaType;
+import jdk.vm.ci.meta.UnresolvedJavaType;
 
 /**
  * Traces Truffle Compilations using Java Flight Recorder events.
@@ -67,6 +73,12 @@ public final class JFRListener extends AbstractGraalTruffleRuntimeListener {
         }
     }
 
+    // Support for JFRListener#isInstrumented
+    private static final Set<InstrumentedMethodPattern> instrumentedMethodPatterns = createInstrumentedPatterns();
+    private static final AtomicReference<InstrumentedFilterState> instrumentedFilterState = new AtomicReference<>(InstrumentedFilterState.NEW);
+    private static volatile Class<? extends Annotation> requiredAnnotation;
+    private static volatile ResolvedJavaType resolvedJfrEventClass;
+
     private final ThreadLocal<CompilationData> currentCompilation = new ThreadLocal<>();
     private final Statistics statistics;
 
@@ -82,8 +94,17 @@ public final class JFRListener extends AbstractGraalTruffleRuntimeListener {
         }
     }
 
+    public static boolean isInstrumented(ResolvedJavaMethod method) {
+        // Initialization must be deferred into the image executtion time
+        InstrumentedFilterState currentState = instrumentedFilterState.get();
+        if (currentState == InstrumentedFilterState.INACTIVE) {
+            return false;
+        }
+        return isInstrumentedImpl(method, currentState);
+    }
+
     @Override
-    public void onCompilationStarted(OptimizedCallTarget target) {
+    public void onCompilationStarted(OptimizedCallTarget target, int tier) {
         CompilationEvent event = null;
         if (factory != null) {
             event = factory.createCompilationEvent();
@@ -113,11 +134,12 @@ public final class JFRListener extends AbstractGraalTruffleRuntimeListener {
         CompilationData data = getCurrentData();
         if (data.event != null) {
             data.partialEvalNodeCount = graph.getNodeCount();
+            data.timePartialEvaluationFinished = System.nanoTime();
         }
     }
 
     @Override
-    public void onCompilationFailed(OptimizedCallTarget target, String reason, boolean bailout, boolean permanentBailout) {
+    public void onCompilationFailed(OptimizedCallTarget target, String reason, boolean bailout, boolean permanentBailout, int tier) {
         CompilationData data = getCurrentData();
         statistics.finishCompilation(data.finish(), bailout, 0);
         if (data.event != null) {
@@ -128,7 +150,7 @@ public final class JFRListener extends AbstractGraalTruffleRuntimeListener {
     }
 
     @Override
-    public void onCompilationSuccess(OptimizedCallTarget target, TruffleInlining inliningDecision, GraphInfo graph, CompilationResultInfo result) {
+    public void onCompilationSuccess(OptimizedCallTarget target, TruffleInlining inliningDecision, GraphInfo graph, CompilationResultInfo result, int tier) {
         CompilationData data = getCurrentData();
         int compiledCodeSize = result.getTargetCodeSize();
         statistics.finishCompilation(data.finish(), false, compiledCodeSize);
@@ -143,11 +165,9 @@ public final class JFRListener extends AbstractGraalTruffleRuntimeListener {
             int calls = 0;
             int inlinedCalls;
             if (inliningDecision == null) {
-                for (Node node : target.nodeIterable(null)) {
-                    if (node instanceof OptimizedDirectCallNode) {
-                        calls++;
-                    }
-                }
+                TraceCompilationListener.CallCountVisitor visitor = new TraceCompilationListener.CallCountVisitor();
+                target.accept(visitor);
+                calls = visitor.calls;
                 inlinedCalls = 0;
             } else {
                 calls = inliningDecision.countCalls();
@@ -158,6 +178,7 @@ public final class JFRListener extends AbstractGraalTruffleRuntimeListener {
             event.setDispatchedCalls(dispatchedCalls);
             event.setGraalNodeCount(graph.getNodeCount());
             event.setPartialEvaluationNodeCount(data.partialEvalNodeCount);
+            event.setPartialEvaluationTime((data.timePartialEvaluationFinished - data.timeCompilationStarted) / 1_000_000);
             event.publish();
             currentCompilation.remove();
         }
@@ -182,16 +203,17 @@ public final class JFRListener extends AbstractGraalTruffleRuntimeListener {
 
     private static final class CompilationData {
         final CompilationEvent event;
-        final long startTime;
+        final long timeCompilationStarted;
         int partialEvalNodeCount;
+        long timePartialEvaluationFinished;
 
         CompilationData(CompilationEvent event) {
             this.event = event;
-            this.startTime = System.nanoTime();
+            this.timeCompilationStarted = System.nanoTime();
         }
 
         int finish() {
-            return (int) (System.nanoTime() - startTime) / 1_000_000;
+            return (int) (System.nanoTime() - timeCompilationStarted) / 1_000_000;
         }
     }
 
@@ -239,5 +261,120 @@ public final class JFRListener extends AbstractGraalTruffleRuntimeListener {
      */
     private static boolean isPermanentFailure(boolean bailout, boolean permanentBailout) {
         return !bailout || permanentBailout;
+    }
+
+    // Support for JFRListener#isInstrumented
+    private static boolean isInstrumentedImpl(ResolvedJavaMethod method, InstrumentedFilterState state) {
+
+        InstrumentedFilterState currentState = state;
+        if (currentState == InstrumentedFilterState.NEW) {
+            currentState = initializeInstrumentedFilter();
+        }
+
+        // If JFR is not active or we are in the image build time return false
+        if (currentState == InstrumentedFilterState.NEW || currentState == InstrumentedFilterState.INACTIVE) {
+            return false;
+        }
+
+        // Fast check, the JFR instrumented methods are marked as synthetic.
+        if (!method.isSynthetic() || method.isBridge() || method.isStatic()) {
+            return false;
+        }
+
+        ResolvedJavaType methodOwner = method.getDeclaringClass();
+        if (getAnnotation(requiredAnnotation, methodOwner) == null) {
+            return false;
+        }
+
+        if (!instrumentedMethodPatterns.contains(new InstrumentedMethodPattern(method))) {
+            return false;
+        }
+        ResolvedJavaType patternOwner = getJFREventClass(methodOwner);
+        return patternOwner != null && patternOwner.isAssignableFrom(methodOwner);
+    }
+
+    private static InstrumentedFilterState initializeInstrumentedFilter() {
+        // Do not initialize during image building.
+        if (!ImageInfo.inImageBuildtimeCode()) {
+            if (factory != null) {
+                requiredAnnotation = factory.getRequiredAnnotation();
+                factory.addInitializationListener(() -> {
+                    instrumentedFilterState.set(InstrumentedFilterState.ACTIVE);
+                });
+                InstrumentedFilterState currentState = factory.isInitialized() ? InstrumentedFilterState.ACTIVE : InstrumentedFilterState.INACTIVE;
+                instrumentedFilterState.compareAndSet(InstrumentedFilterState.NEW, currentState);
+            } else {
+                instrumentedFilterState.set(InstrumentedFilterState.INACTIVE);
+            }
+        }
+        return instrumentedFilterState.get();
+    }
+
+    private static ResolvedJavaType getJFREventClass(ResolvedJavaType accessingClass) {
+        if (resolvedJfrEventClass == null) {
+            try {
+                resolvedJfrEventClass = UnresolvedJavaType.create("Ljdk/jfr/Event;").resolve(accessingClass);
+            } catch (LinkageError e) {
+                // May happen when declaringClass is not accessible from accessingClass
+            }
+        }
+        return resolvedJfrEventClass;
+    }
+
+    private static <T extends Annotation> T getAnnotation(Class<T> annotationClass, AnnotatedElement element) {
+        try {
+            return annotationClass.cast(element.getAnnotation(annotationClass));
+        } catch (NoClassDefFoundError e) {
+            return null;
+        }
+    }
+
+    private static Set<InstrumentedMethodPattern> createInstrumentedPatterns() {
+        Set<InstrumentedMethodPattern> patterns = new HashSet<>();
+        patterns.add(new InstrumentedMethodPattern("begin", "()V"));
+        patterns.add(new InstrumentedMethodPattern("commit", "()V"));
+        patterns.add(new InstrumentedMethodPattern("end", "()V"));
+        patterns.add(new InstrumentedMethodPattern("isEnabled", "()Z"));
+        patterns.add(new InstrumentedMethodPattern("set", "(ILjava/lang/Object;)V"));
+        patterns.add(new InstrumentedMethodPattern("shouldCommit", "()Z"));
+        return patterns;
+    }
+
+    private enum InstrumentedFilterState {
+        NEW,
+        ACTIVE,
+        INACTIVE
+    }
+
+    private static final class InstrumentedMethodPattern {
+
+        private final String name;
+        private final String signature;
+
+        private InstrumentedMethodPattern(ResolvedJavaMethod method) {
+            this(method.getName(), method.getSignature().toMethodDescriptor());
+        }
+
+        private InstrumentedMethodPattern(String name, String signature) {
+            this.name = name;
+            this.signature = signature;
+        }
+
+        @Override
+        public int hashCode() {
+            return name.hashCode();
+        }
+
+        @Override
+        public boolean equals(Object other) {
+            if (this == other) {
+                return true;
+            }
+            if (other == null || getClass() != other.getClass()) {
+                return false;
+            }
+            final InstrumentedMethodPattern otherPattern = (InstrumentedMethodPattern) other;
+            return name.equals(otherPattern.name) && signature.equals(otherPattern.signature);
+        }
     }
 }

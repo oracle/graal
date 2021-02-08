@@ -70,6 +70,7 @@ import com.oracle.svm.core.nodes.CFunctionEpilogueNode;
 import com.oracle.svm.core.nodes.CFunctionPrologueNode;
 import com.oracle.svm.core.snippets.KnownIntrinsics;
 import com.oracle.svm.core.thread.VMThreads.StatusSupport;
+import com.oracle.svm.core.threadlocal.FastThreadLocal;
 import com.oracle.svm.core.threadlocal.FastThreadLocalFactory;
 import com.oracle.svm.core.threadlocal.FastThreadLocalObject;
 import com.oracle.svm.core.util.TimeUtils;
@@ -83,7 +84,7 @@ public abstract class JavaThreads {
     }
 
     /** The {@link java.lang.Thread} for the {@link IsolateThread}. */
-    static final FastThreadLocalObject<Thread> currentThread = FastThreadLocalFactory.createObject(Thread.class);
+    static final FastThreadLocalObject<Thread> currentThread = FastThreadLocalFactory.createObject(Thread.class).setMaxOffset(FastThreadLocal.BYTE_OFFSET);
 
     /**
      * The number of running non-daemon threads. The initial value accounts for the main thread,
@@ -778,10 +779,10 @@ public abstract class JavaThreads {
         }
 
         @Override
-        @SuppressWarnings("try")
         public void operate() {
             list.clear();
-            try (VMMutex lock = VMThreads.THREAD_MUTEX.lock()) {
+            VMMutex lock = VMThreads.THREAD_MUTEX.lock();
+            try {
                 for (IsolateThread isolateThread = VMThreads.firstThread(); isolateThread.isNonNull(); isolateThread = VMThreads.nextThread(isolateThread)) {
                     if (isApplicationThread(isolateThread)) {
                         final Thread thread = JavaThreads.fromVMThread(isolateThread);
@@ -790,6 +791,8 @@ public abstract class JavaThreads {
                         }
                     }
                 }
+            } finally {
+                lock.unlock();
             }
         }
     }
@@ -816,11 +819,11 @@ public abstract class JavaThreads {
         }
 
         @Override
-        @SuppressWarnings("try")
         public void operate() {
             int attachedCount = 0;
             int unattachedStartedCount;
-            try (VMMutex lock = VMThreads.THREAD_MUTEX.lock()) {
+            VMMutex lock = VMThreads.THREAD_MUTEX.lock();
+            try {
                 for (IsolateThread isolateThread = VMThreads.firstThread(); isolateThread.isNonNull(); isolateThread = VMThreads.nextThread(isolateThread)) {
                     if (isApplicationThread(isolateThread)) {
                         attachedCount++;
@@ -849,6 +852,8 @@ public abstract class JavaThreads {
                  * thread from attaching, so we will never consider being ready for tear-down.
                  */
                 unattachedStartedCount = singleton().unattachedStartedThreads.get();
+            } finally {
+                lock.unlock();
             }
             readyForTearDown = (attachedCount == 1 && unattachedStartedCount == 0);
         }

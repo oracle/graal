@@ -113,7 +113,7 @@ public class DisallowedImageHeapObjectFeature implements Feature {
             for (String disallowedSubstring : disallowedSubstrings) {
                 if (string.contains(disallowedSubstring)) {
                     throw new UnsupportedFeatureException("Detected a string in the image heap that contains a user directory. " +
-                                    "This means that file system information from the native image build is persisted and available at image run time, which is most likely an error." +
+                                    "This means that file system information from the native image build is persisted and available at image runtime, which is most likely an error." +
                                     System.lineSeparator() + "String that is problematic: " + string + System.lineSeparator() +
                                     "Disallowed substring with user directory: " + disallowedSubstring + System.lineSeparator() +
                                     "This check can be disabled using the option " + SubstrateOptionsParser.commandArgument(SubstrateOptions.DetectUserDirectoriesInImageHeap, "-"));
@@ -128,7 +128,7 @@ public class DisallowedImageHeapObjectFeature implements Feature {
                 if (search(bytes, disallowedSubstring)) {
                     Charset charset = entry.getValue();
                     throw new UnsupportedFeatureException("Detected a byte[] in the image heap that contains a user directory. " +
-                                    "This means that file system information from the native image build is persisted and available at image run time, which is most likely an error." +
+                                    "This means that file system information from the native image build is persisted and available at image runtime, which is most likely an error." +
                                     System.lineSeparator() + "byte[] that is problematic: " + new String(bytes, charset) + System.lineSeparator() +
                                     "Disallowed substring with user directory: " + new String(disallowedSubstring, charset) + System.lineSeparator() +
                                     "This check can be disabled using the option " + SubstrateOptionsParser.commandArgument(SubstrateOptions.DetectUserDirectoriesInImageHeap, "-"));
@@ -150,7 +150,7 @@ public class DisallowedImageHeapObjectFeature implements Feature {
 
         } else if (original instanceof PlatformManagedObject && !ManagementSupport.getSingleton().isAllowedPlatformManagedObject((PlatformManagedObject) original)) {
             throw error("Detected a PlatformManagedObject (a MXBean defined by the virtual machine) in the image heap. " +
-                            "This bean is introspecting the VM that runs the image builder, i.e., a VM instance that is no longer available at image run time. " +
+                            "This bean is introspecting the VM that runs the image builder, i.e., a VM instance that is no longer available at image runtime. " +
                             "Class of disallowed object: " + original.getClass().getTypeName(),
                             original, "Try to avoid initializing the class that stores the object in a static field");
         }
@@ -159,7 +159,7 @@ public class DisallowedImageHeapObjectFeature implements Feature {
     private RuntimeException error(String msg, Object obj, String initializerAction) {
         throw new UnsupportedFeatureException(msg + " " + classInitialization.objectInstantiationTraceMessage(obj, initializerAction) + " " +
                         "The object was probably created by a class initializer and is reachable from a static field. " +
-                        "You can request class initialization at image run time by using the option " +
+                        "You can request class initialization at image runtime by using the option " +
                         SubstrateOptionsParser.commandArgument(ClassInitializationFeature.Options.ClassInitialization, "<class-name>", "initialize-at-run-time") + ". " +
                         "Or you can write your own initialization methods and call them explicitly from your main entry point.");
     }

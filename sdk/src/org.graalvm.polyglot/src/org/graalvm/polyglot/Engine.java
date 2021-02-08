@@ -40,40 +40,12 @@
  */
 package org.graalvm.polyglot;
 
-import java.io.File;
-import java.io.IOException;
-import java.io.InputStream;
-import java.io.OutputStream;
-import java.io.Reader;
-import java.lang.reflect.AnnotatedElement;
-import java.lang.reflect.Method;
-import java.net.URI;
-import java.net.URL;
-import java.nio.charset.Charset;
-import java.nio.file.Path;
-import java.security.AccessController;
-import java.security.PrivilegedAction;
-import java.time.Duration;
-import java.util.Collection;
-import java.util.Collections;
-import java.util.HashMap;
-import java.util.Iterator;
-import java.util.List;
-import java.util.Map;
-import java.util.Objects;
-import java.util.ServiceLoader;
-import java.util.concurrent.TimeUnit;
-import java.util.function.Consumer;
-import java.util.function.Function;
-import java.util.function.Predicate;
-import java.util.logging.Handler;
-import java.util.logging.Level;
-
 import org.graalvm.collections.UnmodifiableEconomicSet;
 import org.graalvm.home.HomeFinder;
 import org.graalvm.nativeimage.ImageInfo;
 import org.graalvm.options.OptionDescriptor;
 import org.graalvm.options.OptionDescriptors;
+import org.graalvm.polyglot.HostAccess.TargetMappingPrecedence;
 import org.graalvm.polyglot.PolyglotException.StackFrame;
 import org.graalvm.polyglot.impl.AbstractPolyglotImpl;
 import org.graalvm.polyglot.impl.AbstractPolyglotImpl.AbstractContextImpl;
@@ -87,6 +59,34 @@ import org.graalvm.polyglot.io.ByteSequence;
 import org.graalvm.polyglot.io.FileSystem;
 import org.graalvm.polyglot.io.MessageTransport;
 import org.graalvm.polyglot.management.ExecutionEvent;
+
+import java.io.File;
+import java.io.IOException;
+import java.io.InputStream;
+import java.io.OutputStream;
+import java.io.Reader;
+import java.lang.reflect.AnnotatedElement;
+import java.lang.reflect.Method;
+import java.net.URI;
+import java.net.URL;
+import java.nio.charset.Charset;
+import java.nio.file.Path;
+import java.security.AccessController;
+import java.security.PrivilegedAction;
+import java.util.Collection;
+import java.util.Collections;
+import java.util.HashMap;
+import java.util.Iterator;
+import java.util.List;
+import java.util.Map;
+import java.util.Objects;
+import java.util.ServiceLoader;
+import java.util.Set;
+import java.util.function.Consumer;
+import java.util.function.Function;
+import java.util.function.Predicate;
+import java.util.logging.Handler;
+import java.util.logging.Level;
 
 /**
  * An execution engine for Graal {@linkplain Language guest languages} that allows to inspect the
@@ -282,6 +282,22 @@ public final class Engine implements AutoCloseable {
      */
     public static Path findHome() {
         return HomeFinder.getInstance().getHomeFolder();
+    }
+
+    /**
+     * Returns the sources previously cached by this engine. Only sources may be returned that allow
+     * {@link Source.Builder#cached(boolean) caching} (default on). The source cache of the engine
+     * is using weak references to refer to the source objects. Calling this method will result in a
+     * strong reference to all cached sources of this engine until the returned set is no longer
+     * referenced. This method is useful to find out which sources very already evaluated by this
+     * engine. This method only returns sources that were evaluated using
+     * {@link Context#eval(Source)}. Sources evaluated by the guest application will not be
+     * returned. The return set is never <code>null</code> and not modifiable.
+     *
+     * @since 20.3
+     */
+    public Set<Source> getCachedSources() {
+        return impl.getCachedSources();
     }
 
     static AbstractPolyglotImpl getImpl() {
@@ -527,9 +543,8 @@ public final class Engine implements AutoCloseable {
             if (loadedImpl == null) {
                 throw new IllegalStateException("The Polyglot API implementation failed to load.");
             }
-            return loadedImpl.buildEngine(out, err, in, options, 0, null,
-                            false, 0, useSystemProperties, allowExperimentalOptions, boundEngine, messageTransport, customLogHandler,
-                            null);
+            return loadedImpl.buildEngine(out, err, in, options, useSystemProperties, allowExperimentalOptions,
+                            boundEngine, messageTransport, customLogHandler, null);
         }
 
     }
@@ -580,8 +595,8 @@ public final class Engine implements AutoCloseable {
         }
 
         @Override
-        public Source newSource(String language, Object impl) {
-            return new Source(language, impl);
+        public Source newSource(Object impl) {
+            return new Source(impl);
         }
 
         @Override
@@ -657,6 +672,11 @@ public final class Engine implements AutoCloseable {
         @Override
         public boolean isListAccessible(HostAccess access) {
             return access.allowListAccess;
+        }
+
+        @Override
+        public boolean isBufferAccessible(HostAccess access) {
+            return access.allowBufferAccess;
         }
 
         @Override
@@ -774,15 +794,13 @@ public final class Engine implements AutoCloseable {
         }
 
         @Override
-        public Engine buildEngine(OutputStream out, OutputStream err, InputStream in, Map<String, String> arguments, long timeout, TimeUnit timeoutUnit, boolean sandbox,
-                        long maximumAllowedAllocationBytes, boolean useSystemProperties, boolean allowExperimentalOptions, boolean boundEngine, MessageTransport messageInterceptor,
-                        Object logHandlerOrStream,
-                        HostAccess conf) {
+        public Engine buildEngine(OutputStream out, OutputStream err, InputStream in, Map<String, String> arguments, boolean useSystemProperties, boolean allowExperimentalOptions, boolean boundEngine,
+                        MessageTransport messageInterceptor, Object logHandlerOrStream, HostAccess conf) {
             throw noPolyglotImplementationFound();
         }
 
         @Override
-        public Object buildLimits(long statementLimit, Predicate<Source> statementLimitSourceFilter, Duration timeLimit, Duration timeLimitAccuracy, Consumer<ResourceLimitEvent> onLimit) {
+        public Object buildLimits(long statementLimit, Predicate<Source> statementLimitSourceFilter, Consumer<ResourceLimitEvent> onLimit) {
             throw noPolyglotImplementationFound();
         }
 
@@ -908,6 +926,11 @@ public final class Engine implements AutoCloseable {
             public Source build(String language, Object origin, URI uri, String name, String mimeType, Object content, boolean interactive, boolean internal, boolean cached, Charset encoding)
                             throws IOException {
                 throw noPolyglotImplementationFound();
+            }
+
+            @Override
+            public String getLanguage(Object impl) {
+                throw new UnsupportedOperationException();
             }
 
             @Override
@@ -1053,7 +1076,7 @@ public final class Engine implements AutoCloseable {
         }
 
         @Override
-        public <S, T> Object newTargetTypeMapping(Class<S> sourceType, Class<T> targetType, Predicate<S> acceptsValue, Function<S, T> convertValue) {
+        public <S, T> Object newTargetTypeMapping(Class<S> sourceType, Class<T> targetType, Predicate<S> acceptsValue, Function<S, T> convertValue, TargetMappingPrecedence precedence) {
             return new Object();
         }
 

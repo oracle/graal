@@ -28,11 +28,9 @@ import java.nio.BufferOverflowException;
 import java.nio.BufferUnderflowException;
 import java.nio.ByteBuffer;
 
-import org.graalvm.compiler.serviceprovider.JavaVersionUtil;
 import org.graalvm.compiler.truffle.test.nodes.AbstractTestNode;
 import org.graalvm.compiler.truffle.test.nodes.RootTestNode;
 import org.junit.Assert;
-import org.junit.Assume;
 import org.junit.Before;
 import org.junit.Test;
 
@@ -90,9 +88,14 @@ public class CastExactPartialEvaluationTest extends PartialEvaluationTest {
      */
     @Test
     public void byteBufferAccess() {
-        Assume.assumeTrue("GR-23778", JavaVersionUtil.JAVA_SPEC <= 11);
         AbstractTestNode result = new BufferGetPutTestNode(newBuffer().getClass());
         testCommon(result, "byteBufferAccess");
+    }
+
+    @Test
+    public void byteBufferAccessIndex() {
+        AbstractTestNode result = new BufferGetPutIndexTestNode(newBuffer().getClass());
+        testCommon(result, "byteBufferAccessIndex");
     }
 
     private void testCommon(AbstractTestNode testNode, String testName) {
@@ -152,6 +155,23 @@ public class CastExactPartialEvaluationTest extends PartialEvaluationTest {
             int pos = dup.position();
             dup.putInt(value);
             return dup.getInt(pos);
+        }
+    }
+
+    static class BufferGetPutIndexTestNode extends AbstractTestNode {
+        private final Class<? extends ByteBuffer> bufferClass;
+
+        BufferGetPutIndexTestNode(Class<? extends ByteBuffer> exactClass) {
+            this.bufferClass = exactClass;
+        }
+
+        @Override
+        public int execute(VirtualFrame frame) {
+            Object arg = frame.getArguments()[0];
+            ByteBuffer buffer = CompilerDirectives.castExact(arg, bufferClass);
+            int value = buffer.getInt(0);
+            buffer.putInt(0, value);
+            return buffer.getInt(0);
         }
     }
 }

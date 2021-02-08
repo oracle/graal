@@ -32,7 +32,6 @@ import org.graalvm.nativeimage.hosted.Feature;
 
 import com.oracle.svm.core.jni.JNIRuntimeAccess;
 import com.oracle.svm.hosted.FeatureImpl.DuringSetupAccessImpl;
-import com.oracle.svm.jni.JNIThreadLocalEnvironmentFeature;
 import com.oracle.svm.jni.access.JNIAccessFeature;
 import com.oracle.svm.jni.access.JNIAccessibleMethod;
 
@@ -69,7 +68,7 @@ import com.oracle.svm.jni.access.JNIAccessibleMethod;
 class JNICallWrapperFeature implements Feature {
     @Override
     public List<Class<? extends Feature>> getRequiredFeatures() {
-        return Arrays.asList(JNIAccessFeature.class, JNIThreadLocalEnvironmentFeature.class);
+        return Arrays.asList(JNIAccessFeature.class);
     }
 
     @Override

@@ -161,6 +161,11 @@ class NativeImageDebugInfoProvider implements DebugInfoProvider {
         }
 
         @Override
+        public String symbolNameForMethod() {
+            return NativeBootImage.localSymbolNameForMethod(method);
+        }
+
+        @Override
         public String paramNames() {
             return method.format("%P");
         }
@@ -287,6 +292,11 @@ class NativeImageDebugInfoProvider implements DebugInfoProvider {
         @Override
         public String methodName() {
             return method.format("%n");
+        }
+
+        @Override
+        public String symbolNameForMethod() {
+            return NativeBootImage.localSymbolNameForMethod(method);
         }
 
         @Override

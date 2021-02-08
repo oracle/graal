@@ -44,12 +44,12 @@ import java.io.IOException;
 import java.util.Arrays;
 import java.util.Collection;
 
-import org.graalvm.wasm.test.WasmSuiteBase;
+import org.graalvm.wasm.test.WasmFileSuite;
 import org.graalvm.wasm.utils.cases.WasmCase;
 import org.graalvm.wasm.utils.cases.WasmStringCase;
 import org.junit.Test;
 
-public class Float32Suite extends WasmSuiteBase {
+public class Float32Suite extends WasmFileSuite {
     private WasmStringCase[] testCases = {
                     WasmCase.create("CONST", WasmCase.expectedFloat(340.75f, 0.0001f),
                                     "(module (func (export \"_main\") (result f32) f32.const 340.75))"),

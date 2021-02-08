@@ -48,6 +48,7 @@ import java.util.function.Consumer;
 import java.util.function.Supplier;
 
 import org.graalvm.polyglot.Context;
+import org.graalvm.polyglot.Instrument;
 import org.junit.After;
 
 import com.oracle.truffle.api.CallTarget;
@@ -79,6 +80,18 @@ public abstract class AbstractPolyglotTest {
     protected boolean cleanupOnSetup = true;
     protected boolean enterContext = true;
 
+    protected final void setupEnv(Context.Builder contextBuilder, ProxyInstrument instrument) {
+        setupEnv(null, contextBuilder, null, instrument);
+    }
+
+    protected final void setupEnv(Context.Builder contextBuilder, ProxyLanguage language) {
+        setupEnv(null, contextBuilder, language, null);
+    }
+
+    protected final void setupEnv(Context.Builder contextBuilder, ProxyLanguage language, ProxyInstrument instrument) {
+        setupEnv(null, contextBuilder, language, instrument);
+    }
+
     protected final void setupEnv(Context newContext, ProxyInstrument instrument) {
         setupEnv(newContext, null, instrument);
     }
@@ -88,9 +101,15 @@ public abstract class AbstractPolyglotTest {
     }
 
     protected final void setupEnv(Context newContext, ProxyLanguage language, ProxyInstrument instrument) {
+        setupEnv(newContext, null, language, instrument);
+    }
+
+    private void setupEnv(Context originalContext, Context.Builder builder, ProxyLanguage language, ProxyInstrument instrument) {
         if (cleanupOnSetup) {
             cleanup();
         }
+        Context localContext = originalContext;
+
         final ProxyLanguage usedLanguage;
         if (language == null) {
             usedLanguage = new ProxyLanguage();
@@ -107,10 +126,13 @@ public abstract class AbstractPolyglotTest {
             this.languageEnv = c.env;
             this.language = usedLanguage.languageInstance;
         });
-        usedInstrument.setOnCreate((env) -> instrumentEnv = env);
 
         ProxyLanguage.setDelegate(usedLanguage);
         ProxyInstrument.setDelegate(usedInstrument);
+
+        if (localContext == null) {
+            localContext = builder.build();
+        }
 
         Class<?> currentInstrumentClass = usedInstrument.getClass();
         String instrumentId = null;
@@ -120,9 +142,13 @@ public abstract class AbstractPolyglotTest {
             currentInstrumentClass = currentInstrumentClass.getSuperclass();
         }
 
-        // forces initialization of instrument
-        newContext.getEngine().getInstruments().get(instrumentId).lookup(ProxyInstrument.Initialize.class);
-        // force initialization of proxy language
+        Instrument embedderInstrument = localContext.getEngine().getInstruments().get(instrumentId);
+        if (embedderInstrument == null) {
+            throw new IllegalStateException("Test proxy instrument not installed. Inconsistent build?");
+        } else {
+            // forces initialization of instrument
+            this.instrumentEnv = embedderInstrument.lookup(ProxyInstrument.Initialize.class).getEnv();
+        }
 
         Class<?> currentLanguageClass = usedLanguage.getClass();
         String languageId = null;
@@ -132,17 +158,20 @@ public abstract class AbstractPolyglotTest {
             currentLanguageClass = currentLanguageClass.getSuperclass();
         }
 
-        newContext.initialize(languageId);
+        localContext.initialize(languageId);
         // enter current context
         if (enterContext) {
-            newContext.enter();
+            localContext.enter();
         }
 
         assertNotNull(this.languageEnv);
         assertNotNull(this.language);
         assertNotNull(this.instrumentEnv);
 
-        this.context = newContext;
+        usedLanguage.setOnCreate(null);
+
+        this.context = localContext;
+        usedInstrument.setOnCreate(null);
     }
 
     protected final void setupEnv(Context context) {
@@ -181,16 +210,19 @@ public abstract class AbstractPolyglotTest {
             context.close();
             context = null;
         }
+        // restore static state
+        ProxyLanguage.setDelegate(new ProxyLanguage());
+        ProxyInstrument.setDelegate(new ProxyInstrument());
     }
 
-    public static void assertFails(Runnable callable, Class<? extends Throwable> exceptionType) {
+    public static void assertFails(Runnable callable, Class<?> exceptionType) {
         assertFails((Callable<?>) () -> {
             callable.run();
             return null;
         }, exceptionType);
     }
 
-    public static void assertFails(Callable<?> callable, Class<? extends Throwable> exceptionType) {
+    public static void assertFails(Callable<?> callable, Class<?> exceptionType) {
         try {
             callable.call();
         } catch (Throwable t) {
@@ -202,7 +234,7 @@ public abstract class AbstractPolyglotTest {
         fail("expected " + exceptionType.getName() + " but no exception was thrown");
     }
 
-    public static <T extends Throwable> void assertFails(Runnable run, Class<T> exceptionType, Consumer<T> verifier) {
+    public static <T> void assertFails(Runnable run, Class<T> exceptionType, Consumer<T> verifier) {
         try {
             run.run();
         } catch (Throwable t) {
@@ -215,7 +247,7 @@ public abstract class AbstractPolyglotTest {
         fail("expected " + exceptionType.getName() + " but no exception was thrown");
     }
 
-    public static <T extends Throwable> void assertFails(Callable<?> callable, Class<T> exceptionType, Consumer<T> verifier) {
+    public static <T> void assertFails(Callable<?> callable, Class<T> exceptionType, Consumer<T> verifier) {
         try {
             callable.call();
         } catch (Throwable t) {

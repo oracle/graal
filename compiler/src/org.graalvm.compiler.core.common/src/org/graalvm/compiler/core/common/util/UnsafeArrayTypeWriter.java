@@ -261,12 +261,14 @@ final class AlignedUnsafeArrayTypeWriter extends UnsafeArrayTypeWriter {
 
     @Override
     protected void putS2(long value, Chunk chunk, long offset) {
+        assert TypeConversion.isS2(value);
         UNSAFE.putByte(chunk.data, offset + 0, (byte) (value >> 0));
         UNSAFE.putByte(chunk.data, offset + 1, (byte) (value >> 8));
     }
 
     @Override
     protected void putS4(long value, Chunk chunk, long offset) {
+        assert TypeConversion.isS4(value);
         UNSAFE.putByte(chunk.data, offset + 0, (byte) (value >> 0));
         UNSAFE.putByte(chunk.data, offset + 1, (byte) (value >> 8));
         UNSAFE.putByte(chunk.data, offset + 2, (byte) (value >> 16));

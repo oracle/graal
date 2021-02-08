@@ -2,9 +2,33 @@
 
 This changelog summarizes major changes between GraalVM SDK versions. The main focus is on APIs exported by GraalVM SDK.
 
+## Version 21.1.0
+* Added new methods  in `Value` for interacting with buffer-like objects:
+    * Added `Value.hasBufferElements()` that returns  `true` if this object supports buffer messages.
+    * Added `Value.isBufferWritable()` that returns `true` if this object supports writing buffer elements.
+    * Added `Value.getBufferSize()` to return the size of this buffer.
+    * Added `Value.readBufferByte(long)`, `Value.readBufferShort(ByteOrder, long)`, `Value.readBufferInt(ByteOrder, long)`, `Value.readBufferLong(ByteOrder, long)`, `Value.readBufferFloat(ByteOrder, long)`  and `Value.readBufferDouble(ByteOrder, long)` to read a primitive from this buffer at the given index.
+    * Added `Value.writeBufferByte(long, byte)`, `Value.writeBufferShort(ByteOrder, long, short)`, `Value.writeBufferInt(ByteOrder, long, int)`, `Value.writeBufferLong(ByteOrder, long, long)`, `Value.writeBufferFloat(ByteOrder, long, float)`  and `Value.writeBufferDouble(ByteOrder, long, double)` to write a primitive in this buffer at the given index (supported only if `Value.isBufferWritable()` returns `true`).
+
+## Version 21.0.0
+* Added support for explicitly selecting a host method overload using the signature in the form of comma-separated fully qualified parameter type names enclosed by parentheses (e.g. `methodName(f.q.TypeName,java.lang.String,int,int[])`).
+* Deprecated host method selection by JNI mangled signature, replaced by the aforementioned new form. Scheduled for removal in 21.2.
+
 ## Version 20.3.0
 * Added a `log.file` option that allows redirection of all language, instrument or engine logging to a file. The handler configured with the `Context.Builder.logHandler` method has precedence over the new option.
 * The option `-Dgraal.LogFile` is no longer inherited by the polyglot engine. Use the `log.file` option or configure a log handler instead.
+* In host interop, `null` now adheres to Java semantics:
+	* (Host interop's) `null` has no meta-object (e.g. `Value.getMetaObject()` returns `null`)
+	* `Value.isMetaInstance(Object)` behaves like `instanceof` with respect to `null` (e.g. `null` is **NOT** an instance of any meta-object)
+* Removed handling of `--jvm.*` and `--native.*` launcher options, which were deprecated since 1.0.0 RC14.
+* Added the ability to specify a `TargetMappingPrecedence` of target type mappings for `HostAccess`  configurations that influence conversion order and precedence in relation to default  mappings and other target type mappings.
+* Added `PolyglotException.isInterrupted()` to determine if an error was caused by an interruption of an application thread. The interrupted exceptions are no longer `PolyglotException.isCancelled()` but `PolyglotException.isInterrupted()`.
+* All Truffle Graal runtime options (-Dgraal.) which were deprecated in GraalVM 20.1 are removed. The Truffle runtime options are no longer specified as Graal options (-Dgraal.). The Graal options must be replaced by corresponding engine options specified using [polyglot API](https://www.graalvm.org/sdk/javadoc/org/graalvm/polyglot/Engine.Builder.html#option-java.lang.String-java.lang.String-).
+* Added `Engine.getCachedSources()` to return the sources that were previously cached by the engine.
+* Added support a default `OptionType` for Java enums. `OptionType.defaultType(Class<?>)` is now always supported for `enum` classes.
+* Added `Context.interrupt(Duration)` to interrupt a polyglot Context execution. The interrupt is non-destructive meaning that the polyglot Context can still be used for further execution.
+* Added `Value.as(Class)` support for converting values to abstract host classes with a default constructor.
+* Added `HostAccess.Builder.allowAllClassImplementations` to allow converting values to abstract host classes using `Value.as` and host interop (true by default for `HostAccess.ALL`, false otherwise).
 
 ## Version 20.2.0
 * Added `-Dpolyglot.engine.AllowExperimentalOptions=true` to allow experimental options for all polyglot engines of a host VM. This system property is intended to be used for testing only and should not be enabled in production environments.
@@ -22,9 +46,8 @@ This changelog summarizes major changes between GraalVM SDK versions. The main f
 * Added `bailout` into performance warning kinds used by `TracePerformanceWarnings`, `PerformanceWarningsAreFatal` and `CompilationExceptionsAreFatal` options.
 * Added [OptionDescriptor.getDeprecationMessage](https://www.graalvm.org/sdk/javadoc/org/graalvm/options/OptionDescriptor.html#getDeprecationMessage--) returning the option deprecation reason. Added [OptionDescriptor.Builder.deprecationMessage()](https://www.graalvm.org/sdk/javadoc/org/graalvm/options/OptionDescriptor.Builder.html#deprecationMessage-java.lang.String-) to set the option deprecation reason.
 * Added `Value.isMetaObject()`, `Value.getMetaQualifiedName()`, `Value.getMetaSimpleName()` and `Value.isMetaInstance(Object)` to allow language agnostic access to meta-objects like classes or types.  
-* The result of `Value.getMetaObject()` will now return always [meta-objects](Value.isMetaObject). It is recommended but not required to change uses of meta-objects to use `Value.getMetaQualifiedName()` instead of `Value.toString()` to return a type name. 
+* The result of `Value.getMetaObject()` will now return always [meta-objects](Value.isMetaObject). It is recommended but not required to change uses of meta-objects to use `Value.getMetaQualifiedName()` instead of `Value.toString()` to return a type name.
 * Added [Context.Builder.hostClassLoader](https://www.graalvm.org/sdk/javadoc/org/graalvm/polyglot/Context.Builder.html#hostClassLoader-java.lang.ClassLoader-) to allow an embedder to specify a context ClassLoader for code execution.
-
 
 ## Version 20.0.0
 * The deprecated `graalvm.home` and `graalvm.version` system properties have been removed, use the [HomeFinder](https://www.graalvm.org/sdk/javadoc/org/graalvm/home/HomeFinder.html) instead.
@@ -33,7 +56,6 @@ This changelog summarizes major changes between GraalVM SDK versions. The main f
 * Added [Context.Builder.currentWorkingDirectory](https://www.graalvm.org/sdk/javadoc/org/graalvm/polyglot/Context.Builder.html#currentWorkingDirectory-java.nio.file.Path-) to set the current working directory used by the guest application to resolve relative paths.
 * The algorithm used to generate a unique [URI](https://www.graalvm.org/sdk/javadoc/org/graalvm/polyglot/Source.html#getURI--) for a `Source` built without an `URI` was changed to SHA-256.
 * All Truffle Graal runtime options (-Dgraal.) will be deprecated with 20.1. The Truffle runtime options are no longer specified as Graal options (-Dgraal.). The Graal options must be replaced by corresponding engine options specified using [polyglot API](https://www.graalvm.org/sdk/javadoc/org/graalvm/polyglot/Engine.Builder.html#option-java.lang.String-java.lang.String-). The `TRUFFLE_STRICT_OPTION_DEPRECATION` environment variable can be used to detect usages of deprecated Graal options. When the `TRUFFLE_STRICT_OPTION_DEPRECATION` is set to `true` and the deprecated Graal option is used the engine throws a `PolyglotException` listing the used deprecated options and corresponding replacements.
-
 
 ## Version 19.3.0
 * The default temporary directory can be configured by [FileSystem](http://www.graalvm.org/sdk/javadoc/org/graalvm/polyglot/io/FileSystem.html#getTempDirectory--).
@@ -47,7 +69,7 @@ This changelog summarizes major changes between GraalVM SDK versions. The main f
 
 ## Version 19.2.0
 * Added support for date, time, timezone and duration values in polyglot
-	* Added methods to identify polyglot date, time, timezone and duration values in `Value`. See `Value.isDate`, `Value.isTime`, `Value.isTimeZone`, `Value.isDuration`. 
+	* Added methods to identify polyglot date, time, timezone and duration values in `Value`. See `Value.isDate`, `Value.isTime`, `Value.isTimeZone`, `Value.isDuration`.
 	* Polyglot languages now interpret the `java.time` host values of type `LocalDate`, `LocalTime`, `LocalDateTime`, `ZonedDateTime`, `Instant`, `ZoneId` and `Duration`. They are mapped to the appropriate guest language types.
 	* Added `ProxyDate`, `ProxyTime`, `ProxyTimeZone`, `ProxyInstant` and `ProxyDuration` to proxy date time and duration related guest values.
 * Added `Context.Builder.timeZone(ZoneId)` to configure the default timezone of polyglot contexts.

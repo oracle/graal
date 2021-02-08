@@ -24,14 +24,14 @@
  */
 package org.graalvm.compiler.loop.phases;
 
-import org.graalvm.compiler.loop.LoopEx;
-import org.graalvm.compiler.loop.LoopsData;
 import org.graalvm.compiler.nodes.FixedNode;
 import org.graalvm.compiler.nodes.Invoke;
 import org.graalvm.compiler.nodes.LoopEndNode;
 import org.graalvm.compiler.nodes.StructuredGraph;
 import org.graalvm.compiler.nodes.cfg.Block;
-import org.graalvm.compiler.nodes.extended.ForeignCallNode;
+import org.graalvm.compiler.nodes.extended.ForeignCall;
+import org.graalvm.compiler.nodes.loop.LoopEx;
+import org.graalvm.compiler.nodes.loop.LoopsData;
 import org.graalvm.compiler.phases.BasePhase;
 import org.graalvm.compiler.phases.tiers.MidTierContext;
 
@@ -41,7 +41,7 @@ public class LoopSafepointEliminationPhase extends BasePhase<MidTierContext> {
 
     @Override
     protected void run(StructuredGraph graph, MidTierContext context) {
-        LoopsData loops = new LoopsData(graph);
+        LoopsData loops = context.getLoopsDataProvider().getLoopsData(graph);
         loops.detectedCountedLoops();
         for (LoopEx loop : loops.countedLoops()) {
             if (loop.loop().getChildren().isEmpty() && (loop.counted().getStamp().getBits() <= 32 || loop.loopBegin().isPreLoop() || loop.loopBegin().isPostLoop())) {
@@ -74,8 +74,8 @@ public class LoopSafepointEliminationPhase extends BasePhase<MidTierContext> {
                             Invoke invoke = (Invoke) node;
                             ResolvedJavaMethod method = invoke.getTargetMethod();
                             canDisableSafepoint = context.getMetaAccessExtensionProvider().isGuaranteedSafepoint(method, invoke.getInvokeKind().isDirect());
-                        } else if (node instanceof ForeignCallNode) {
-                            canDisableSafepoint = ((ForeignCallNode) node).isGuaranteedSafepoint();
+                        } else if (node instanceof ForeignCall) {
+                            canDisableSafepoint = ((ForeignCall) node).isGuaranteedSafepoint();
                         }
                         if (canDisableSafepoint) {
                             loopEnd.disableSafepoint();

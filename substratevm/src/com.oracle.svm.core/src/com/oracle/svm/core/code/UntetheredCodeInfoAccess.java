@@ -48,6 +48,7 @@ public final class UntetheredCodeInfoAccess {
         return getObjectFieldUnsafe(info, CodeInfoImpl.TETHER_OBJFIELD);
     }
 
+    /** @see CodeInfoImpl#getCodeStart */
     @Uninterruptible(reason = "Must prevent the GC from freeing the CodeInfo object.", callerMustBe = true)
     public static CodePointer getCodeStart(UntetheredCodeInfo info) {
         return cast(info).getCodeStart();
@@ -59,6 +60,7 @@ public final class UntetheredCodeInfoAccess {
         return (CodePointer) ((UnsignedWord) codeInfo.getCodeStart()).add(codeInfo.getCodeSize());
     }
 
+    /** @see CodeInfoImpl#getCodeSize */
     @Uninterruptible(reason = "Must prevent the GC from freeing the CodeInfo object.", callerMustBe = true)
     public static UnsignedWord getCodeSize(UntetheredCodeInfo info) {
         return cast(info).getCodeSize();
@@ -73,6 +75,22 @@ public final class UntetheredCodeInfoAccess {
     @Uninterruptible(reason = "Must prevent the GC from freeing the CodeInfo object.", callerMustBe = true)
     public static <T> T getObjectFieldUnsafe(UntetheredCodeInfo info, int index) {
         return (T) NonmovableArrays.getObject(cast(info).getObjectFields(), index);
+    }
+
+    @Uninterruptible(reason = "Must prevent the GC from freeing the CodeInfo object.", callerMustBe = true)
+    public static int getState(UntetheredCodeInfo info) {
+        return cast(info).getState();
+    }
+
+    /** @see com.oracle.svm.core.code.CodeInfoAccess#isAliveState */
+    @Uninterruptible(reason = "Must prevent the GC from freeing the CodeInfo object.", callerMustBe = true)
+    public static boolean isAlive(UntetheredCodeInfo info) {
+        return CodeInfoAccess.isAliveState(cast(info).getState());
+    }
+
+    @Uninterruptible(reason = "Must prevent the GC from freeing the CodeInfo object.", callerMustBe = true)
+    public static String getName(UntetheredCodeInfo info) {
+        return getObjectFieldUnsafe(info, CodeInfoImpl.NAME_OBJFIELD);
     }
 
     @Uninterruptible(reason = "Must prevent the GC from freeing the CodeInfo object.", callerMustBe = true)

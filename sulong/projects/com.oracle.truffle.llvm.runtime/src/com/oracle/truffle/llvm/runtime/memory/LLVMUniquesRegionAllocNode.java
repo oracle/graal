@@ -29,47 +29,27 @@
  */
 package com.oracle.truffle.llvm.runtime.memory;
 
-import com.oracle.truffle.api.CompilerDirectives;
-import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
-import com.oracle.truffle.api.dsl.CachedLanguage;
 import com.oracle.truffle.api.dsl.Specialization;
+import com.oracle.truffle.api.frame.FrameDescriptor;
 import com.oracle.truffle.api.frame.FrameSlot;
 import com.oracle.truffle.api.frame.VirtualFrame;
-import com.oracle.truffle.llvm.runtime.LLVMLanguage;
-import com.oracle.truffle.llvm.runtime.except.LLVMAllocationFailureException;
-import com.oracle.truffle.llvm.runtime.except.LLVMStackOverflowError;
-import com.oracle.truffle.llvm.runtime.memory.LLVMStack.UniquesRegion.UniquesRegionAllocator;
+import com.oracle.truffle.llvm.runtime.nodes.api.LLVMExpressionNode;
 import com.oracle.truffle.llvm.runtime.nodes.api.LLVMNode;
 
 public abstract class LLVMUniquesRegionAllocNode extends LLVMNode {
 
-    private final UniquesRegionAllocator allocator;
+    private final FrameSlot uniquesRegionSlot;
+    @Child private LLVMExpressionNode allocation;
 
-    @CompilationFinal private FrameSlot stackPointer;
-
-    public LLVMUniquesRegionAllocNode(UniquesRegionAllocator allocator) {
-        this.allocator = allocator;
+    public LLVMUniquesRegionAllocNode(LLVMExpressionNode allocation, FrameDescriptor desc) {
+        this.allocation = allocation;
+        this.uniquesRegionSlot = LLVMStack.getUniquesRegionSlot(desc);
     }
 
     public abstract void execute(VirtualFrame frame);
 
-    protected FrameSlot getStackPointerSlot() {
-        if (stackPointer == null) {
-            CompilerDirectives.transferToInterpreterAndInvalidate();
-            stackPointer = getRootNode().getFrameDescriptor().findFrameSlot(LLVMStack.FRAME_ID);
-        }
-        return stackPointer;
-    }
-
     @Specialization
-    protected void doOp(VirtualFrame frame,
-                    @CachedLanguage LLVMLanguage language) {
-        try {
-            allocator.allocate(this, frame, language.getLLVMMemory(), getStackPointerSlot());
-        } catch (LLVMStackOverflowError soe) {
-            CompilerDirectives.transferToInterpreter();
-            throw new LLVMAllocationFailureException(this, soe);
-        }
+    protected void doOp(VirtualFrame frame) {
+        frame.setObject(uniquesRegionSlot, allocation.executeGeneric(frame));
     }
-
 }

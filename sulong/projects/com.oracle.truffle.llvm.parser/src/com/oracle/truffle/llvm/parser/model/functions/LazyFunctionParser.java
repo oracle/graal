@@ -40,6 +40,7 @@ import com.oracle.truffle.llvm.parser.metadata.debuginfo.DebugInfoFunctionProces
 import com.oracle.truffle.llvm.parser.model.IRScope;
 import com.oracle.truffle.llvm.parser.scanner.LLVMScanner;
 import com.oracle.truffle.llvm.parser.text.LLSourceBuilder;
+import com.oracle.truffle.llvm.runtime.LLVMContext;
 import com.oracle.truffle.llvm.runtime.options.SulongEngineOption;
 
 public final class LazyFunctionParser {
@@ -65,15 +66,15 @@ public final class LazyFunctionParser {
         this.isParsed = false;
     }
 
-    public void parse(DebugInfoFunctionProcessor diProcessor, Source bitcodeSource, LLVMParserRuntime runtime) {
+    public void parse(DebugInfoFunctionProcessor diProcessor, Source bitcodeSource, LLVMParserRuntime runtime, LLVMContext context) {
         if (!isParsed) {
             synchronized (scope) {
                 Function parser = new Function(scope, types, function, mode, paramAttributes);
                 parser.setupScope();
                 scanner.scanBlock(parser);
-                diProcessor.process(parser.getFunction(), parser.getScope(), bitcodeSource, runtime.getContext());
-                if (runtime.getContext().getEnv().getOptions().get(SulongEngineOption.LL_DEBUG)) {
-                    llSource.applySourceLocations(parser.getFunction(), runtime);
+                diProcessor.process(parser.getFunction(), parser.getScope(), bitcodeSource);
+                if (context.getEnv().getOptions().get(SulongEngineOption.LL_DEBUG)) {
+                    llSource.applySourceLocations(parser.getFunction(), runtime, context);
                 }
                 isParsed = true;
             }

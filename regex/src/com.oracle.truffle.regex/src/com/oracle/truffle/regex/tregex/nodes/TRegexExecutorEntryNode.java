@@ -52,7 +52,7 @@ import sun.misc.Unsafe;
 
 /**
  * This class wraps {@link TRegexExecutorNode} and specializes on the type of the input strings
- * provided to {@link TRegexExecRootNode}.
+ * provided to {@link TRegexExecNode}.
  */
 public abstract class TRegexExecutorEntryNode extends Node {
 

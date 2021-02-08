@@ -81,7 +81,7 @@ public class HostedConfiguration {
     }
 
     public static ObjectLayout createObjectLayout() {
-        return createObjectLayout(0, JavaKind.Object);
+        return createObjectLayout(JavaKind.Object);
     }
 
     /**
@@ -106,20 +106,18 @@ public class HostedConfiguration {
      * The hashcode is always present in arrays. Note that on 64-bit targets it does not impose any
      * size overhead for arrays with 64-bit aligned elements (e.g. arrays of objects).
      */
-    public static ObjectLayout createObjectLayout(int hubOffset, JavaKind referenceKind) {
+    public static ObjectLayout createObjectLayout(JavaKind referenceKind) {
         SubstrateTargetDescription target = ConfigurationValues.getTarget();
         int referenceSize = target.arch.getPlatformKind(referenceKind).getSizeInBytes();
-        int objectAlignment = target.wordSize;
-        int firstFieldOffset = hubOffset + referenceSize;
-        int arrayLengthOffset = hubOffset + referenceSize;
-        int arrayIdentityHashCodeOffset = arrayLengthOffset + target.arch.getPlatformKind(JavaKind.Int).getSizeInBytes();
-        int arrayBaseOffset = arrayIdentityHashCodeOffset + target.arch.getPlatformKind(JavaKind.Int).getSizeInBytes();
-        boolean useExplicitIdentityHashCodeField = true;
-        int instanceIdentityHashCodeOffset = -1; // depends on the hub
+        int objectAlignment = 8;
 
-        ObjectLayout objectLayout = new ObjectLayout(target, referenceSize, objectAlignment, hubOffset, firstFieldOffset, arrayLengthOffset, arrayBaseOffset,
-                        useExplicitIdentityHashCodeField, instanceIdentityHashCodeOffset, arrayIdentityHashCodeOffset);
-        return objectLayout;
+        int hubOffset = 0;
+        int identityHashCodeOffset = hubOffset + referenceSize;
+        int firstFieldOffset = identityHashCodeOffset + target.arch.getPlatformKind(JavaKind.Int).getSizeInBytes();
+        int arrayLengthOffset = firstFieldOffset;
+        int arrayBaseOffset = arrayLengthOffset + target.arch.getPlatformKind(JavaKind.Int).getSizeInBytes();
+
+        return new ObjectLayout(target, referenceSize, objectAlignment, hubOffset, firstFieldOffset, arrayLengthOffset, arrayBaseOffset, identityHashCodeOffset);
     }
 
     public CompileQueue createCompileQueue(DebugContext debug, FeatureHandler featureHandler, HostedUniverse hostedUniverse,

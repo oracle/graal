@@ -31,7 +31,6 @@
 #include <string.h>
 
 int main() {
-    char src[50];
     char dest[50];
 
     strcpy(dest, "asdfsdf");

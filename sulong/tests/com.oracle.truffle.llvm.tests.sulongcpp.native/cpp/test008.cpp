@@ -36,7 +36,7 @@ int foo(int a) {
     return a;
 }
 
-int main(int argc, char *argv[]) {
+int main() {
     try {
         foo(1);
         return 0;

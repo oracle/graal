@@ -224,16 +224,6 @@
     "allDeclaredMethods" : true,
     "justification" : "Internal SVM implementation of JNI object handles"
   },
-
-  {
-    "name" : "com.oracle.svm.core.posix.linux.LinuxPhysicalMemory$PhysicalMemorySupportImpl",
-    "methods" : [
-        { "name" : "sizeFromCGroup",
-          "justification" : "Native application on Linux determines heap size by reading /sys/fs/cgroup/memory/memory.limit_in_bytes at start.",
-          "parameterTypes" : [
-        ]}
-    ]
-  },
   {
     "name" : "com.oracle.svm.core.thread.JavaVMOperation",
     "methods" : [

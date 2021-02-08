@@ -27,7 +27,7 @@
  * NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED
  * OF THE POSSIBILITY OF SUCH DAMAGE.
  */
-#include <polyglot.h>
+#include <graalvm/llvm/polyglot.h>
 #include <stdlib.h>
 
 typedef struct complex {
@@ -90,13 +90,13 @@ void complexAddWithMethod(COMPLEX *a, COMPLEX *b) {
 
 double complexSumReal(COMPLEX *array) {
     double result = 0;
-    for (int i = 0; i < polyglot_get_array_size(array); i++)
+    for (uint64_t i = 0; i < polyglot_get_array_size(array); i++)
         result += array[i].real;
     return result;
 }
 
 void complexCopy(COMPLEX *dst, COMPLEX *src) {
-    for (int i = 0; i < polyglot_get_array_size(dst); i++)
+    for (uint64_t i = 0; i < polyglot_get_array_size(dst); i++)
         dst[i] = src[i];
 }
 

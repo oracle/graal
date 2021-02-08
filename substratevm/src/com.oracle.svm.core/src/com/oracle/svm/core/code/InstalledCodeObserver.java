@@ -40,7 +40,7 @@ public interface InstalledCodeObserver {
 
     interface Factory {
         /** Creates an observer for the specified code. */
-        InstalledCodeObserver create(DebugContext debug, SharedMethod method, CompilationResult compilation, Pointer code);
+        InstalledCodeObserver create(DebugContext debug, SharedMethod method, CompilationResult compilation, Pointer code, int codeSize);
     }
 
     /**

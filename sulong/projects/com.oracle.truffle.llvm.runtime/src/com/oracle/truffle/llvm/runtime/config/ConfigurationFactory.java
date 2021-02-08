@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2016, 2019, Oracle and/or its affiliates.
+ * Copyright (c) 2016, 2021, Oracle and/or its affiliates.
  *
  * All rights reserved.
  *
@@ -29,6 +29,7 @@
  */
 package com.oracle.truffle.llvm.runtime.config;
 
+import com.oracle.truffle.llvm.runtime.ContextExtension;
 import com.oracle.truffle.llvm.runtime.LLVMLanguage;
 import java.util.List;
 
@@ -58,7 +59,17 @@ public interface ConfigurationFactory<KEY> {
      * same KEY value. In that case, there is a single shared {@link LLVMLanguage} instance, and
      * {@link #createConfiguration} is only called once, for the first context.
      */
-    Configuration createConfiguration(LLVMLanguage language, KEY key);
+    Configuration createConfiguration(LLVMLanguage language, ContextExtension.Registry ctxExtRegistry, KEY key);
 
     List<OptionDescriptor> getOptionDescriptors();
+
+    /**
+     * Returns the name of the configuration.
+     */
+    String getName();
+
+    /**
+     * Returns a hint for the user on {@link #parseOptions required options} for this configuration.
+     */
+    String getHint();
 }

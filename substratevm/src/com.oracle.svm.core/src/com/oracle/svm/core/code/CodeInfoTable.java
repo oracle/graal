@@ -36,6 +36,8 @@ import org.graalvm.word.Pointer;
 import org.graalvm.word.WordFactory;
 
 import com.oracle.svm.core.annotate.AutomaticFeature;
+import com.oracle.svm.core.annotate.RestrictHeapAccess;
+import com.oracle.svm.core.annotate.RestrictHeapAccess.Access;
 import com.oracle.svm.core.annotate.Uninterruptible;
 import com.oracle.svm.core.c.NonmovableArray;
 import com.oracle.svm.core.c.NonmovableArrays;
@@ -138,8 +140,8 @@ public class CodeInfoTable {
         NonmovableArray<Byte> referenceMapEncoding = NonmovableArrays.nullArray();
         long referenceMapIndex = CodeInfoQueryResult.NO_REFERENCE_MAP;
         if (info.isNonNull()) {
-            referenceMapEncoding = CodeInfoAccess.getReferenceMapEncoding(info);
-            referenceMapIndex = CodeInfoAccess.lookupReferenceMapIndex(info, CodeInfoAccess.relativeIP(info, ip));
+            referenceMapEncoding = CodeInfoAccess.getStackReferenceMapEncoding(info);
+            referenceMapIndex = CodeInfoAccess.lookupStackReferenceMapIndex(info, CodeInfoAccess.relativeIP(info, ip));
         }
         if (referenceMapIndex == CodeInfoQueryResult.NO_REFERENCE_MAP) {
             throw reportNoReferenceMap(sp, ip, info);
@@ -183,7 +185,7 @@ public class CodeInfoTable {
         /* Captures "installedCode" for the VMOperation. */
         JavaVMOperation.enqueueBlockingSafepoint("CodeInfoTable.invalidateInstalledCode", () -> {
             counters().invalidateInstalledCodeCount.inc();
-            if (installedCode.isValid()) {
+            if (installedCode.isAlive()) { // could be invalid (non-entrant), but executing
                 invalidateInstalledCodeAtSafepoint(WordFactory.pointer(installedCode.getAddress()));
             }
         });
@@ -202,7 +204,7 @@ public class CodeInfoTable {
             assert tether != null : "Invalidation can't be triggered before the code was fully installed.";
             CodeInfo info = CodeInfoAccess.convert(untetheredInfo, tether);
             // Multiple threads could trigger this method - only the first one must do something.
-            if (CodeInfoAccess.getState(info) == CodeInfo.STATE_CODE_CONSTANTS_LIVE) {
+            if (CodeInfoAccess.isAlive(info)) {
                 invalidateCodeAtSafepoint0(info);
             }
             assert CodeInfoAccess.getState(info) == CodeInfo.STATE_PARTIALLY_FREED;
@@ -224,6 +226,7 @@ public class CodeInfoTable {
         codeCache.logMethodOperationEnd(num);
     }
 
+    @RestrictHeapAccess(access = Access.NO_ALLOCATION, reason = "Called by the GC")
     public static void invalidateNonStackCodeAtSafepoint(CodeInfo info) {
         VMOperation.guaranteeGCInProgress("Must only be called during a GC.");
         RuntimeCodeCache codeCache = getRuntimeCodeCache();
@@ -253,7 +256,7 @@ public class CodeInfoTable {
     }
 }
 
-class CodeInfoTableCounters {
+final class CodeInfoTableCounters {
     private final Counter.Group counters = new Counter.Group(CodeInfoTable.Options.CodeCacheCounters, "CodeInfoTable");
     final Counter lookupCodeInfoCount = new Counter(counters, "lookupCodeInfo", "");
     final Counter lookupDeoptimizationEntrypointCount = new Counter(counters, "lookupDeoptimizationEntrypoint", "");

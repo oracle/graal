@@ -52,6 +52,7 @@ import com.oracle.truffle.api.nodes.NodeInfo;
 import com.oracle.truffle.api.nodes.RootNode;
 import com.oracle.truffle.api.source.Source;
 import com.oracle.truffle.api.source.SourceSection;
+import com.oracle.truffle.sl.nodes.local.SLScopedNode;
 
 /**
  * The base class of all Truffle nodes for SL. All nodes (even expressions) can be used as
@@ -60,7 +61,7 @@ import com.oracle.truffle.api.source.SourceSection;
  */
 @NodeInfo(language = "SL", description = "The abstract base node for all SL statements")
 @GenerateWrapper
-public abstract class SLStatementNode extends Node implements InstrumentableNode {
+public abstract class SLStatementNode extends SLScopedNode implements InstrumentableNode {
 
     private static final int NO_SOURCE = -1;
     private static final int UNAVAILABLE_SOURCE = -2;

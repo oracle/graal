@@ -36,6 +36,7 @@ import java.util.concurrent.ConcurrentHashMap;
 import org.graalvm.compiler.debug.Assertions;
 import org.graalvm.libgraal.jni.JNI.JNIEnv;
 import org.graalvm.libgraal.jni.JNI.JObject;
+import org.graalvm.word.WordFactory;
 
 /**
  * Encapsulates a JNI handle to an object in the HotSpot heap. Depending on which constructor is
@@ -69,13 +70,17 @@ public abstract class HSObject {
      */
     protected HSObject(JNIEnv env, JObject handle) {
         cleanHandles(env);
-        if (Assertions.assertionsEnabled() || JNIUtil.tracingAt(1)) {
+        if (checkingGlobalDuplicates()) {
             checkNonExistingGlobalReference(env, handle);
         }
         this.handle = NewGlobalRef(env, handle, this.getClass().getSimpleName());
         cleaner = new Cleaner(this, this.handle);
         CLEANERS.add(cleaner);
         next = null;
+    }
+
+    private static boolean checkingGlobalDuplicates() {
+        return Assertions.assertionsEnabled() || JNIUtil.tracingAt(1);
     }
 
     /**
@@ -141,8 +146,10 @@ public abstract class HSObject {
 
     private static void checkNonExistingGlobalReference(JNIEnv env, JObject handle) {
         for (Cleaner cleaner : CLEANERS) {
-            if (JNIUtil.IsSameObject(env, handle, cleaner.handle)) {
-                throw new IllegalArgumentException("Global JNI handle already exists for object referenced by " + handle.rawValue());
+            synchronized (cleaner) {
+                if (cleaner.handle.isNonNull() && JNIUtil.IsSameObject(env, handle, cleaner.handle)) {
+                    throw new IllegalArgumentException("Global JNI handle already exists for object referenced by " + handle.rawValue());
+                }
             }
         }
     }
@@ -159,7 +166,7 @@ public abstract class HSObject {
     private static final ReferenceQueue<HSObject> CLEANERS_QUEUE = new ReferenceQueue<>();
 
     private static final class Cleaner extends PhantomReference<HSObject> {
-        private final JObject handle;
+        private JObject handle;
 
         Cleaner(HSObject referent, JObject handle) {
             super(referent, CLEANERS_QUEUE);
@@ -168,7 +175,14 @@ public abstract class HSObject {
 
         void clean(JNIEnv env) {
             if (CLEANERS.remove(this)) {
-                DeleteGlobalRef(env, handle);
+                if (checkingGlobalDuplicates()) {
+                    synchronized (this) {
+                        DeleteGlobalRef(env, handle);
+                        handle = WordFactory.nullPointer();
+                    }
+                } else {
+                    DeleteGlobalRef(env, handle);
+                }
             }
         }
     }

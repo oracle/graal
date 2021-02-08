@@ -26,7 +26,7 @@ package org.graalvm.compiler.nodes;
 
 import static org.graalvm.compiler.nodeinfo.InputType.Extension;
 import static org.graalvm.compiler.nodeinfo.NodeCycles.CYCLES_2;
-import static org.graalvm.compiler.nodeinfo.NodeSize.SIZE_2;
+import static org.graalvm.compiler.nodeinfo.NodeSize.SIZE_4;
 
 import org.graalvm.compiler.core.common.type.StampFactory;
 import org.graalvm.compiler.graph.IterableNodeType;
@@ -39,7 +39,7 @@ import org.graalvm.compiler.nodes.spi.NodeLIRBuilderTool;
 import jdk.vm.ci.code.TargetDescription;
 import jdk.vm.ci.meta.JavaKind;
 
-@NodeInfo(cycles = CYCLES_2, size = SIZE_2, cyclesRationale = "Restore frame + ret", sizeRationale = "Restore frame + ret")
+@NodeInfo(cycles = CYCLES_2, size = SIZE_4, cyclesRationale = "Restore frame + ret", sizeRationale = "Restore frame + ret")
 public final class ReturnNode extends ControlSinkNode implements LIRLowerable, IterableNodeType {
 
     public static final NodeClass<ReturnNode> TYPE = NodeClass.create(ReturnNode.class);

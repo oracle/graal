@@ -1745,7 +1745,7 @@ public class SLInspectDebugTest {
                         "{\"method\":\"Debugger.scriptParsed\",\"params\":{\"endLine\":0,\"scriptId\":\"0\",\"endColumn\":0,\"startColumn\":0,\"startLine\":0,\"length\":0,\"executionContextId\":" + id + ",\"url\":\"" + SL_BUILTIN_URI + "\",\"hash\":\"ffffffffffffffffffffffffffffffffffffffff\"}}\n" +
                         "{\"method\":\"Debugger.scriptParsed\",\"params\":{\"endLine\":7,\"scriptId\":\"1\",\"endColumn\":1,\"startColumn\":0,\"startLine\":0,\"length\":100,\"executionContextId\":" + id + ",\"url\":\"" + srcURL + "\",\"hash\":\"da38785af1cf0829f047f02ffe94b4d3ff485978\"}}\n"));
         assertTrue(tester.compareReceivedMessages(
-                        "{\"method\":\"Debugger.paused\",\"params\":{\"reason\":\"exception\",\"data\":{\"uncaught\":true},\"hitBreakpoints\":[]," +
+                        "{\"method\":\"Debugger.paused\",\"params\":{\"reason\":\"exception\",\"data\":{\"uncaught\":true,\"description\":\"Unsupported\",\"type\":\"object\",\"value\":\"Unsupported\"},\"hitBreakpoints\":[]," +
                                 "\"callFrames\":[{\"callFrameId\":\"0\",\"functionName\":\"invert\"," +
                                                  "\"scopeChain\":[{\"name\":\"invert\",\"type\":\"local\",\"object\":{\"description\":\"invert\",\"type\":\"object\",\"objectId\":\"1\"}}," +
                                                                  "{\"name\":\"global\",\"type\":\"global\",\"object\":{\"description\":\"global\",\"type\":\"object\",\"objectId\":\"2\"}}]," +

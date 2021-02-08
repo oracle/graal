@@ -415,9 +415,9 @@ public class AArch64ArithmeticLIRGenerator extends ArithmeticLIRGenerator implem
     private static boolean isLogicalConstant(JavaConstant constValue) {
         switch (constValue.getJavaKind()) {
             case Int:
-                return AArch64MacroAssembler.isLogicalImmediate(constValue.asInt());
+                return AArch64MacroAssembler.isLogicalImmediate(32, constValue.asInt());
             case Long:
-                return AArch64MacroAssembler.isLogicalImmediate(constValue.asLong());
+                return AArch64MacroAssembler.isLogicalImmediate(64, constValue.asLong());
             default:
                 return false;
         }
@@ -449,6 +449,22 @@ public class AArch64ArithmeticLIRGenerator extends ArithmeticLIRGenerator implem
     @Override
     public Value emitMathAbs(Value input) {
         return emitUnary(getOpCode(input, AArch64ArithmeticOp.ABS, AArch64ArithmeticOp.FABS), input);
+    }
+
+    @Override
+    public Value emitMathMax(Value a, Value b) {
+        assert a.getPlatformKind() == b.getPlatformKind();
+        assert a.getPlatformKind() == AArch64Kind.DOUBLE ||
+                        a.getPlatformKind() == AArch64Kind.SINGLE;
+        return emitBinary(LIRKind.combine(a, b), AArch64ArithmeticOp.FMAX, true, a, b);
+    }
+
+    @Override
+    public Value emitMathMin(Value a, Value b) {
+        assert a.getPlatformKind() == b.getPlatformKind();
+        assert a.getPlatformKind() == AArch64Kind.DOUBLE ||
+                        a.getPlatformKind() == AArch64Kind.SINGLE;
+        return emitBinary(LIRKind.combine(a, b), AArch64ArithmeticOp.FMIN, true, a, b);
     }
 
     @Override

@@ -24,11 +24,22 @@
  */
 package com.oracle.svm.hosted;
 
+import java.util.Collections;
+import java.util.List;
+import java.util.Map;
+
+import org.graalvm.nativeimage.hosted.Feature;
+
 import com.oracle.svm.core.hub.DynamicHub;
 
 class ModuleAccess {
     @SuppressWarnings("unused")
     public static void extractAndSetModule(DynamicHub hub, Class<?> clazz) {
         // Noop
+    }
+
+    @SuppressWarnings("unused")
+    public static Map<String, List<String>> lookupServiceProviders(Feature.BeforeAnalysisAccess access) {
+        return Collections.emptyMap();
     }
 }

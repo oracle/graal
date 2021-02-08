@@ -101,7 +101,7 @@ class EarlyClassInitializerAnalysis {
         Plugins plugins = new Plugins(invocationPlugins);
         plugins.appendInlineInvokePlugin(new AbortOnRecursiveInliningPlugin());
         plugins.setClassInitializationPlugin(new AbortOnUnitializedClassPlugin());
-        plugins.appendNodePlugin(new EarlyConstantFoldLoadFieldPlugin(originalProviders.getMetaAccess()));
+        plugins.appendNodePlugin(new EarlyConstantFoldLoadFieldPlugin(originalProviders.getMetaAccess(), originalProviders.getSnippetReflection()));
 
         graphBuilderConfig = GraphBuilderConfiguration.getDefault(plugins).withEagerResolving(true);
         context = new HighTierContext(originalProviders, null, OptimisticOptimizations.NONE);

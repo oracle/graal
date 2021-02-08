@@ -54,4 +54,41 @@ public abstract class FastThreadLocal {
     public LocationIdentity getLocationIdentity() {
         return locationIdentity;
     }
+
+    @Platforms(Platform.HOSTED_ONLY.class) //
+    private int maxOffset = Integer.MAX_VALUE;
+
+    /**
+     * Useful value for {@link #setMaxOffset}: The thread local variable is in the first cache line
+     * of the memory block. This allows grouping of the most frequently accessed variables.
+     * 
+     * We are not using a real cache line size, but instead assume that 64 bytes is the common
+     * minimum size on all platforms.
+     */
+    public static final int FIRST_CACHE_LINE = 63;
+
+    /**
+     * Useful value for {@link #setMaxOffset}: The thread local variable has an offset that can be
+     * expressed as a signed 8-bit value. Some architectures, e.g. AMD64, need fewer bytes to encode
+     * such offsets.
+     */
+    public static final int BYTE_OFFSET = 127;
+
+    /**
+     * Sets the maximum offset of this thread local variable in the memory block reserved for each
+     * thread. This can be used for performance and footprint optimization, to group frequently
+     * accessed values closely together with low offsets that can be encoded more efficiently in
+     * machine code.
+     */
+    @SuppressWarnings("unchecked")
+    @Platforms(Platform.HOSTED_ONLY.class)
+    public <T extends FastThreadLocal> T setMaxOffset(int maxOffset) {
+        this.maxOffset = maxOffset;
+        return (T) this;
+    }
+
+    @Platforms(Platform.HOSTED_ONLY.class)
+    public int getMaxOffset() {
+        return maxOffset;
+    }
 }

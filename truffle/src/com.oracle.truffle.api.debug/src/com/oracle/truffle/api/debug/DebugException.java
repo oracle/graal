@@ -44,15 +44,19 @@ import java.io.PrintStream;
 import java.io.PrintWriter;
 import java.util.ArrayList;
 import java.util.Collections;
+import java.util.Iterator;
 import java.util.List;
 import java.util.Objects;
+import java.util.function.Function;
 
-import com.oracle.truffle.api.TruffleException;
+import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.TruffleLanguage;
 import com.oracle.truffle.api.TruffleStackTrace;
 import com.oracle.truffle.api.TruffleStackTraceElement;
 import com.oracle.truffle.api.debug.SuspendedEvent.DebugAsyncStackFrameLists;
 import com.oracle.truffle.api.frame.FrameInstance;
+import com.oracle.truffle.api.interop.InteropLibrary;
+import com.oracle.truffle.api.interop.UnsupportedMessageException;
 import com.oracle.truffle.api.nodes.LanguageInfo;
 import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.api.nodes.RootNode;
@@ -75,6 +79,7 @@ public final class DebugException extends RuntimeException {
     private final Throwable exception; // the exception, or null when only a message is given
     private final LanguageInfo preferredLanguage; // the preferred language, or null
     private final Node throwLocation;         // node which intercepted the exception, or null
+    private final StackTraceElement[] rawStackTrace;
     private volatile boolean isCatchNodeComputed; // the catch node is computed lazily, can be given
     private volatile CatchLocation catchLocation; // the catch location, or null
     private SuspendedEvent suspendedEvent;    // the SuspendedEvent when from breakpoint, or null
@@ -82,20 +87,35 @@ public final class DebugException extends RuntimeException {
     private List<List<DebugStackTraceElement>> debugAsyncStacks;
     private StackTraceElement[] javaLikeStackTrace;
 
-    DebugException(DebuggerSession session, String message, Node throwLocation, boolean isCatchNodeComputed, CatchLocation catchLocation) {
-        super(message);
-        this.session = session;
-        this.exception = null;
-        this.preferredLanguage = null;
-        this.throwLocation = throwLocation;
-        this.isCatchNodeComputed = isCatchNodeComputed;
-        this.catchLocation = catchLocation != null ? catchLocation.cloneFor(session) : null;
-        // we need to materialize the stack for the case that this exception is printed
-        super.setStackTrace(getStackTrace());
+    static DebugException create(DebuggerSession session, String message) {
+        return new DebugException(session, message, null, null, null, true, null);
     }
 
-    DebugException(DebuggerSession session, Throwable exception, LanguageInfo preferredLanguage, Node throwLocation, boolean isCatchNodeComputed, CatchLocation catchLocation) {
-        super(exception.getLocalizedMessage());
+    static DebugException create(DebuggerSession session, Throwable exception, LanguageInfo preferredLanguage) {
+        return create(session, exception, preferredLanguage, null, true, null);
+    }
+
+    static DebugException create(DebuggerSession session, Throwable exception, LanguageInfo preferredLanguage, Node throwLocation, boolean isCatchNodeComputed, CatchLocation catchLocation) {
+        return new DebugException(session, exception.getLocalizedMessage(), exception, preferredLanguage, throwLocation, isCatchNodeComputed, catchLocation);
+    }
+
+    private DebugException(DebuggerSession session, String message, Throwable exception, LanguageInfo preferredLanguage, Node throwLocation, boolean isCatchNodeComputed, CatchLocation catchLocation) {
+        super(message);
+        StackTraceElement[] exceptionStackTrace = null;
+        if (session.isShowHostStackFrames()) {
+            if (exception != null) {
+                StackTraceElement[] stackTrace = exception.getStackTrace();
+                if (stackTrace.length > 0) {
+                    exceptionStackTrace = stackTrace;
+                }
+            }
+            if (exceptionStackTrace == null) {
+                // We take the stack trace ourselves
+                Throwable t = super.fillInStackTrace();
+                assert this == t;
+            }
+        }
+        this.rawStackTrace = exceptionStackTrace;
         this.session = session;
         this.exception = exception;
         this.preferredLanguage = preferredLanguage;
@@ -146,6 +166,14 @@ public final class DebugException extends RuntimeException {
         }
     }
 
+    private StackTraceElement[] getRawStackTrace() {
+        if (rawStackTrace != null) {
+            return rawStackTrace;
+        } else {
+            return super.getStackTrace();
+        }
+    }
+
     /**
      * Gets stack trace elements of guest languages. It is recommended to use
      * {@link #getDebugStackTrace()} as the guest language stack elements do not always fit the Java
@@ -157,7 +185,7 @@ public final class DebugException extends RuntimeException {
     public StackTraceElement[] getStackTrace() {
         if (javaLikeStackTrace == null) {
             if (isInternalError()) {
-                return super.getStackTrace();
+                return getRawStackTrace();
             } else {
                 List<DebugStackTraceElement> debugStack = getDebugStackTrace();
                 int size = debugStack.size();
@@ -181,14 +209,33 @@ public final class DebugException extends RuntimeException {
                 List<TruffleStackTraceElement> stackTrace = TruffleStackTrace.getStackTrace(exception);
                 int n = stackTrace.size();
                 List<DebugStackTraceElement> debugStack = new ArrayList<>(n);
+                boolean hostInfo = session.isShowHostStackFrames();
                 for (int i = 0; i < n; i++) {
                     TruffleStackTraceElement tframe = stackTrace.get(i);
                     RootNode root = tframe.getTarget().getRootNode();
                     if (root.getLanguageInfo() != null) {
                         debugStack.add(new DebugStackTraceElement(session, tframe));
+                    } else if (hostInfo) {
+                        debugStack.add(null);
                     }
                 }
-                debugStackTrace = Collections.unmodifiableList(debugStack);
+                if (hostInfo) {
+                    StackTraceElement[] stack = SuspendedEvent.cutToHostDepth(getRawStackTrace());
+                    Iterator<DebugStackTraceElement> mergedElements = Debugger.ACCESSOR.engineSupport().mergeHostGuestFrames(stack, debugStack.iterator(), true,
+                                    new Function<StackTraceElement, DebugStackTraceElement>() {
+                                        @Override
+                                        public DebugStackTraceElement apply(StackTraceElement element) {
+                                            return new DebugStackTraceElement(session, element);
+                                        }
+                                    }, Function.identity());
+                    List<DebugStackTraceElement> elementsList = new ArrayList<>();
+                    while (mergedElements.hasNext()) {
+                        elementsList.add(mergedElements.next());
+                    }
+                    debugStackTrace = Collections.unmodifiableList(elementsList);
+                } else {
+                    debugStackTrace = Collections.unmodifiableList(debugStack);
+                }
             } else {
                 debugStackTrace = Collections.emptyList();
             }
@@ -239,7 +286,7 @@ public final class DebugException extends RuntimeException {
     @Override
     public void printStackTrace(PrintStream s) {
         super.printStackTrace(s);
-        if (!(exception instanceof TruffleException)) {
+        if (!isTruffleException(exception)) {
             s.print(CAUSE_CAPTION);
             exception.printStackTrace(s);
         }
@@ -253,7 +300,7 @@ public final class DebugException extends RuntimeException {
     @Override
     public void printStackTrace(PrintWriter s) {
         super.printStackTrace(s);
-        if (!(exception instanceof TruffleException)) {
+        if (!isTruffleException(exception)) {
             s.print(CAUSE_CAPTION);
             exception.printStackTrace(s);
         }
@@ -264,8 +311,9 @@ public final class DebugException extends RuntimeException {
      *
      * @since 19.0
      */
+    @SuppressWarnings("deprecation")
     public boolean isInternalError() {
-        if (exception != null && (!(exception instanceof TruffleException) || ((TruffleException) exception).isInternalError())) {
+        if (!isTruffleException(exception)) {
             if (exception instanceof DebugException) {
                 return ((DebugException) exception).isInternalError();
             }
@@ -280,11 +328,12 @@ public final class DebugException extends RuntimeException {
      * @return an exception object, or <code>null</code>
      * @since 19.0
      */
+    @SuppressWarnings("deprecation")
     public DebugValue getExceptionObject() {
-        if (!(exception instanceof TruffleException)) {
+        if (!isTruffleException(exception)) {
             return null;
         }
-        Object obj = ((TruffleException) exception).getExceptionObject();
+        Object obj = ((com.oracle.truffle.api.TruffleException) exception).getExceptionObject();
         if (obj == null) {
             return null;
         }
@@ -305,10 +354,12 @@ public final class DebugException extends RuntimeException {
      * @since 19.0
      */
     public SourceSection getThrowLocation() {
-        if (exception instanceof TruffleException) {
-            SourceSection location = ((TruffleException) exception).getSourceLocation();
-            if (location != null) {
-                return location;
+        InteropLibrary interop = InteropLibrary.getUncached();
+        if (interop.isException(exception) && interop.hasSourceLocation(exception)) {
+            try {
+                return interop.getSourceLocation(exception);
+            } catch (UnsupportedMessageException ume) {
+                CompilerDirectives.shouldNotReachHere(ume);
             }
         }
         if (throwLocation != null) {
@@ -329,7 +380,7 @@ public final class DebugException extends RuntimeException {
         if (!isCatchNodeComputed) {
             synchronized (this) {
                 if (!isCatchNodeComputed) {
-                    if (exception instanceof TruffleException) {
+                    if (isTruffleException(exception)) {
                         catchLocation = BreakpointExceptionFilter.getCatchNode(throwLocation, exception);
                         if (catchLocation != null) {
                             catchLocation.setSuspendedEvent(suspendedEvent);
@@ -426,5 +477,9 @@ public final class DebugException extends RuntimeException {
             }
             return clon;
         }
+    }
+
+    private static boolean isTruffleException(Throwable t) {
+        return t != null && InteropLibrary.getUncached().isException(t);
     }
 }

@@ -32,7 +32,7 @@
 bool __builtin_mul_overflow(signed long, signed long, signed long *);
 #endif
 
-int main(int argc, const char **argv) {
+int main() {
     signed long res;
 
     if (__builtin_mul_overflow((signed long) 0x0, (signed long) 0x0, &res)) {

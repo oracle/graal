@@ -27,6 +27,7 @@ package org.graalvm.tools.insight.test;
 // @formatter:off
 import java.util.Map;
 import java.util.function.Predicate;
+import org.graalvm.polyglot.Source;
 import org.graalvm.tools.insight.Insight;
 
 
@@ -85,6 +86,80 @@ public interface InsightAPI {
         String uri();
     }
 
+    interface SourceSectionInfo {
+        /**
+         * Name of the enclosing function.
+         *
+         * @return the name of the enclosing function
+         * @since 0.1
+         */
+        String name();
+
+        /**
+         * Information about surrounding source.
+         *
+         * @return information about the surrounding source
+         * @since 0.4
+         */
+        SourceInfo source();
+
+        /**
+         * Characters of the location.
+         *
+         * @return the characters of this {@link OnEventHandler.Context}
+         * @since 0.4
+         */
+        String characters();
+
+        /**
+         * Line of this location. The same as {@link #startLine()}.
+         *
+         * @return line number counting from one
+         * @since 0.4
+         */
+        int line();
+
+        /**
+         * Staring line of this location.
+         *
+         * @return line number counting from one
+         * @since 0.4
+         */
+        int startLine();
+
+        /**
+         * Final line of this location.
+         *
+         * @return line number counting from one
+         * @since 0.4
+         */
+        int endLine();
+
+        /**
+         * Column of this location. The same as {@link #startColumn()}.
+         *
+         * @return column number counting from one
+         * @since 0.4
+         */
+        int column();
+
+        /**
+         * Starting column of this location.
+         *
+         * @return column number counting from one
+         * @since 0.4
+         */
+        int startColumn();
+
+        /**
+         * Final column of this location.
+         *
+         * @return column number counting from one
+         * @since 0.4
+         */
+        int endColumn();
+    }
+
     @FunctionalInterface
     interface OnSourceLoadedHandler extends Handler {
         /** Called when a new source is loaded into the system.
@@ -103,69 +178,65 @@ public interface InsightAPI {
 
     @FunctionalInterface
     interface OnEventHandler extends Handler {
-        interface Context {
-            /** Name of the enclosing function.
-             * @return the name of the enclosing function
-             * @since 0.1
-             */
-            String name();
-
-            /** Information about surrounding source.
-             * @return information about the surrounding source
-             * @since 0.4
-             */
-            SourceInfo source();
-
-            /** Characters of the location.
-             * @return the characters of this {@link Context}
-             * @since 0.4
-             */
-            String characters();
-
-            /** Line of this location. The same as {@link #startLine()}.
+        interface Context extends SourceSectionInfo {
+            /** The current return value to be returned unless
+             * {@link #returnNow} is called. The only meaningful
+             * values can be expected inside of {@link #on on("return", ...)}
+             * handlers.
              *
-             * @return line number counting from one
-             * @since 0.4
+             * @param frame object with variables provided
+             *    as a second parameter to {@link OnEventHandler#event event}
+             *    method
+             * @return the current return value or {@code null},
+             *    if not applicable
+             * @since 0.7
              */
-            int line();
+            Object returnValue(Map<String, Object> frame);
 
-            /** Staring line of this location.
+            /** Immediatelly exits the current handler and returns to the
+             * caller. Calling this method aborts execution of the current
+             * handler. It bypasses language sematics and immediatelly
+             * returns the provided value to the caller. If there are multiple
+             * calls to {@code returnNow} (from different handlers) the
+             * first call defines the return value.
              *
-             * @return line number counting from one
-             * @since 0.4
+             * @param value the value to return to the caller
+             * @since 0.7
+             * @see #returnValue(java.util.Map)
              */
-            int startLine();
+            void returnNow(Object value);
 
-            /** Final line of this location.
+            /** Walks the stack at current execution point and iterates through
+             * invocation frames and their local values.
              *
-             * @return line number counting from one
-             * @since 0.4
+             * @param <T> type to return from the iterator
+             * @param it iterator to call for each frame
+             *    (that is not {@link Source#isInternal() internal})
+             * @return first non-{@code null} value returned
+             *    from the {@code it} iterator or {@code null}
+             * @since 1.0
              */
-            int endLine();
-
-            /** Column of this location. The same as {@link #startColumn()}.
-             *
-             * @return column number counting from one
-             * @since 0.4
-             */
-            int column();
-
-            /** Starting column of this location.
-             *
-             * @return column number counting from one
-             * @since 0.4
-             */
-            int startColumn();
-
-            /** Final column of this location.
-             *
-             * @return column number counting from one
-             * @since 0.4
-             */
-            int endColumn();
+            <T> T iterateFrames(FramesIterator<T> it);
         }
         void event(Context ctx, Map<String, Object> frame);
     }
+
+    /** Iterator for the {@link OnEventHandler.Context#iterateFrames}.
+     * @since 1.0
+     */
+    @FunctionalInterface
+    interface FramesIterator<T> {
+        /** Called for each frame found on the stack.
+         *
+         * @param at location in the source code
+         * @param frame access to local variables
+         * @return {@code null} to continue iteration, non-{@code null} to
+         *   return immediatelly from the
+         *   {@link OnEventHandler.Context#iterateFrames} method.
+         */
+        T onFrame(SourceSectionInfo at, Map<String, Object> frame);
+    }
+
     class OnConfig {
         public boolean expressions;
         public boolean statements;

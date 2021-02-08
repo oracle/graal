@@ -229,7 +229,7 @@ public final class InspectorInstrument extends TruffleInstrument {
             }
         }
 
-        env.registerService(new Inspector(server != null ? server.getConnection() : null, new InspectorServerConnection.Open() {
+        env.registerService(new Inspector(env, server != null ? server.getConnection() : null, new InspectorServerConnection.Open() {
             @Override
             @SuppressWarnings("all") // The parameters port and host should not be assigned
             public synchronized InspectorServerConnection open(int port, String host, boolean wait) {
@@ -424,7 +424,7 @@ public final class InspectorInstrument extends TruffleInstrument {
                     }
                     if (serverEndpoint == null) {
                         InspectorServer server;
-                        interceptor.close(token);
+                        interceptor.resetSessionEndpoint(); // A new endpoint is going to be opened
                         server = InspectorServer.get(socketAddress, token, pathContainingToken, executionContext, debugBreak, secure, keyStoreOptions, connectionWatcher, iss);
                         String wsAddress = server.getWSAddress(token);
                         wss = server;

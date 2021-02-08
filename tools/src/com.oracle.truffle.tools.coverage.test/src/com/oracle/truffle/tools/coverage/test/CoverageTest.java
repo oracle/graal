@@ -163,7 +163,7 @@ public final class CoverageTest {
 
     @Test
     public void testRootAndStatementInDifferentSources() {
-        try (Context c = Context.newBuilder(RootAndStatementInDifferentSources.ID).in(System.in).out(out).err(err).build();
+        try (Context c = Context.newBuilder().in(System.in).out(out).err(err).build();
                         CoverageTracker tracker = CoverageInstrument.getTracker(c.getEngine())) {
             tracker.start(new CoverageTracker.Config(SourceSectionFilter.ANY, false));
             c.eval(RootAndStatementInDifferentSources.ID, "");
@@ -183,6 +183,52 @@ public final class CoverageTest {
                     Assert.assertEquals(1, rootCoverage.getSectionCoverage().length);
                     final SectionCoverage sectionCoverage = rootCoverage.getSectionCoverage()[0];
                     Assert.assertTrue(sectionCoverage.isCovered());
+                }
+            }
+        }
+    }
+
+    @Test
+    public void testResetCoverage() {
+        try (Context context = Context.newBuilder().in(System.in).out(out).err(err).option(CoverageInstrument.ID, "true").build();
+                        CoverageTracker tracker = CoverageInstrument.getTracker(context.getEngine())) {
+            for (int i = 0; i < 10; i++) {
+                context.eval(defaultSource);
+                final SourceCoverage[] coverage = tracker.resetCoverage();
+                Assert.assertEquals("Unexpected number of sources in coverage", 1, coverage.length);
+                Assert.assertEquals("Unexpected number of roots in coverage", 4, coverage[0].getRoots().length);
+                for (RootCoverage root : coverage[0].getRoots()) {
+                    switch (root.getName()) {
+                        case "foo":
+                            assertCoverage(root, 0, 0, "foo", true);
+                            break;
+                        case "bar":
+                            assertCoverage(root, 1, 1, "bar", true);
+                            break;
+                        case "neverCalled":
+                            assertCoverage(root, 1, 0, "neverCalled", false);
+                            break;
+                        case "":
+                            assertCoverage(root, 0, 0, "", true);
+                            break;
+                    }
+                }
+                SourceCoverage[] resetCoverage = tracker.getCoverage();
+                for (RootCoverage root : resetCoverage[0].getRoots()) {
+                    switch (root.getName()) {
+                        case "foo":
+                            assertCoverage(root, 0, 0, "foo", false);
+                            break;
+                        case "bar":
+                            assertCoverage(root, 1, 0, "bar", false);
+                            break;
+                        case "neverCalled":
+                            assertCoverage(root, 1, 0, "neverCalled", false);
+                            break;
+                        case "":
+                            assertCoverage(root, 0, 0, "", false);
+                            break;
+                    }
                 }
             }
         }

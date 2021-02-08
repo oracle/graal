@@ -34,4 +34,9 @@ public interface SubstrateTruffleCompiler extends TruffleCompilerBase {
     @Override
     @Platforms(Platform.HOSTED_ONLY.class)
     PartialEvaluator getPartialEvaluator();
+
+    /**
+     * Called on tear-down of the current isolate.
+     */
+    void teardown();
 }

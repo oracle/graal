@@ -93,8 +93,8 @@ public final class GraalOptions {
     @Option(help = "", type = OptionType.Debug)
     public static final OptionKey<Boolean> LoopPeeling = new OptionKey<>(true);
 
-    @Option(help = "", type = OptionType.Debug)
-    public static final OptionKey<Boolean> ReassociateInvariants = new OptionKey<>(true);
+    @Option(help = "Re-associate loop invariants and constants.", type = OptionType.Debug)
+    public static final OptionKey<Boolean> ReassociateExpressions = new OptionKey<>(true);
 
     @Option(help = "", type = OptionType.Debug)
     public static final OptionKey<Boolean> FullUnroll = new OptionKey<>(true);
@@ -113,6 +113,12 @@ public final class GraalOptions {
 
     @Option(help = "", type = OptionType.Debug)
     public static final OptionKey<Boolean> UseLoopLimitChecks = new OptionKey<>(true);
+
+    @Option(help = "", type = OptionType.Debug)
+    public static final OptionKey<Boolean> LoopPredication = new OptionKey<>(true);
+
+    @Option(help = "", type = OptionType.Debug)
+    public static final OptionKey<Boolean> LoopPredicationMainPath = new OptionKey<>(true);
 
     // debugging settings
     @Option(help = "", type = OptionType.Debug)
@@ -198,6 +204,9 @@ public final class GraalOptions {
     @Option(help = "Generate position independent code", type = OptionType.Expert)
     public static final OptionKey<Boolean> GeneratePIC = new OptionKey<>(false);
 
+    @Option(help = "Generate verify oop checks in AOT code", type = OptionType.Expert)
+    public static final OptionKey<Boolean> AOTVerifyOops = new OptionKey<>(false);
+
     // Runtime settings
     @Option(help = "", type = OptionType.Expert)
     public static final OptionKey<Boolean> SupportJsrBytecodes = new OptionKey<>(true);
@@ -273,4 +282,7 @@ public final class GraalOptions {
 
     @Option(help = "String.indexOf invocations will be evaluated at compile time if the receiver is a constant and its length is lower than this value.", type = OptionType.Expert)
     public static final OptionKey<Integer> StringIndexOfLimit = new OptionKey<>(4096);
+    
+    @Option(help = "Emit substitutions for String methods", type = OptionType.Debug)//
+    public static final OptionKey<Boolean> EmitStringSubstitutions = new OptionKey<>(true);
 }

@@ -83,4 +83,25 @@ public @interface ReportPolymorphism {
     @interface Exclude {
 
     }
+
+    /**
+     * Specializations annotated with this annotation are considered megamorphic. This means that on
+     * the first activation of such a specialization the node will
+     * {@link Node#reportPolymorphicSpecialize() report a polymorphic specialization}.
+     *
+     * This annotation can be used independently of {@link ReportPolymorphism}. This means that a
+     * node need not report every polymorphic specialization as with {@link ReportPolymorphism} but
+     * only ones that produce generic and expensive cases. For example, if a node has several fast
+     * specializations and a very slow generic specialization it does not make sense to report
+     * activations of these fast specializations as polymorphic specializations as they perform well
+     * even without runtime intervention (e.g. Splitting). On the other hand, the activation of the
+     * generic case is slow and something that the runtime might be able to remove.
+     *
+     * @since 20.3
+     */
+    @Retention(RetentionPolicy.CLASS)
+    @Target(ElementType.METHOD)
+    @interface Megamorphic {
+
+    }
 }

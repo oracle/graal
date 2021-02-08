@@ -28,8 +28,11 @@
  * OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 int main() {
+#pragma clang diagnostic push
+#pragma clang diagnostic ignored "-Wconstant-logical-operand"
     int sum = 1 || 2;
     sum = !(!!1 && 1 || 2 && 3);
-    sum += sum || !sum && 0;
+    sum += sum || (!sum && 0);
+#pragma clang diagnostic pop
     return sum;
 }

@@ -79,8 +79,8 @@ public class HostedOptionParser implements HostedOptionProvider {
                 String name = descriptor.getName();
 
                 if (descriptor.getDeclaringClass().getAnnotation(Platforms.class) != null) {
-                    throw UserError.abort("Options must not be declared in a class that has a @" + Platforms.class.getSimpleName() + " annotation: option " + name + " declared in " +
-                                    descriptor.getDeclaringClass().getTypeName());
+                    throw UserError.abort("Options must not be declared in a class that has a @%s annotation: option %s declared in %s",
+                                    Platforms.class.getSimpleName(), name, descriptor.getDeclaringClass().getTypeName());
                 }
 
                 if (!(descriptor.getOptionKey() instanceof RuntimeOptionKey)) {

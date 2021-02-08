@@ -37,7 +37,6 @@ import static jdk.vm.ci.amd64.AMD64.rcx;
 import static jdk.vm.ci.amd64.AMD64.rdi;
 import static jdk.vm.ci.amd64.AMD64.rdx;
 import static jdk.vm.ci.amd64.AMD64.rsi;
-import static jdk.vm.ci.amd64.AMD64.rsp;
 import static jdk.vm.ci.amd64.AMD64.valueRegistersSSE;
 import static jdk.vm.ci.amd64.AMD64.xmm0;
 import static jdk.vm.ci.amd64.AMD64.xmm1;
@@ -59,7 +58,7 @@ import static jdk.vm.ci.amd64.AMD64.xmm9;
 import java.util.ArrayList;
 
 import com.oracle.svm.core.OS;
-import com.oracle.svm.core.SubstrateOptions;
+import com.oracle.svm.core.ReservedRegisters;
 import com.oracle.svm.core.config.ObjectLayout;
 import com.oracle.svm.core.graal.code.SubstrateCallingConvention;
 import com.oracle.svm.core.graal.code.SubstrateCallingConventionType;
@@ -86,9 +85,6 @@ import jdk.vm.ci.meta.ValueKind;
 
 public class SubstrateAMD64RegisterConfig implements SubstrateRegisterConfig {
 
-    public static final Register HEAP_BASE_REGISTER_CANDIDATE = r14;
-    public static final Register THREAD_REGISTER_CANDIDATE = r15;
-
     private final TargetDescription target;
     private final int nativeParamsStackOffset;
     private final RegisterArray javaGeneralParameterRegs;
@@ -98,8 +94,6 @@ public class SubstrateAMD64RegisterConfig implements SubstrateRegisterConfig {
     private final RegisterArray calleeSaveRegisters;
     private final RegisterAttributes[] attributesMap;
     private final MetaAccessProvider metaAccess;
-    private final Register threadRegister;
-    private final Register heapBaseRegister;
     private final boolean useBasePointer;
 
     public SubstrateAMD64RegisterConfig(ConfigKind config, MetaAccessProvider metaAccess, TargetDescription target, boolean useBasePointer) {
@@ -118,14 +112,11 @@ public class SubstrateAMD64RegisterConfig implements SubstrateRegisterConfig {
             // even though they are passed in registers.
             nativeParamsStackOffset = 4 * target.wordSize;
 
-            heapBaseRegister = SubstrateOptions.SpawnIsolates.getValue() ? HEAP_BASE_REGISTER_CANDIDATE : null;
-            threadRegister = SubstrateOptions.MultiThreaded.getValue() ? THREAD_REGISTER_CANDIDATE : null;
-
             ArrayList<Register> regs = new ArrayList<>(valueRegistersSSE.asList());
-            regs.remove(rsp);
+            regs.remove(ReservedRegisters.singleton().getFrameRegister());
             regs.remove(rbp);
-            regs.remove(heapBaseRegister);
-            regs.remove(threadRegister);
+            regs.remove(ReservedRegisters.singleton().getHeapBaseRegister());
+            regs.remove(ReservedRegisters.singleton().getThreadRegister());
             allocatableRegs = new RegisterArray(regs);
         } else {
             // This is the Linux 64-bit ABI for parameters.
@@ -135,16 +126,13 @@ public class SubstrateAMD64RegisterConfig implements SubstrateRegisterConfig {
 
             nativeParamsStackOffset = 0;
 
-            heapBaseRegister = SubstrateOptions.SpawnIsolates.getValue() ? HEAP_BASE_REGISTER_CANDIDATE : null;
-            threadRegister = SubstrateOptions.MultiThreaded.getValue() ? THREAD_REGISTER_CANDIDATE : null;
-
             ArrayList<Register> regs = new ArrayList<>(valueRegistersSSE.asList());
-            regs.remove(rsp);
+            regs.remove(ReservedRegisters.singleton().getFrameRegister());
             if (useBasePointer) {
                 regs.remove(rbp);
             }
-            regs.remove(heapBaseRegister);
-            regs.remove(threadRegister);
+            regs.remove(ReservedRegisters.singleton().getHeapBaseRegister());
+            regs.remove(ReservedRegisters.singleton().getThreadRegister());
             allocatableRegs = new RegisterArray(regs);
         }
 
@@ -192,21 +180,6 @@ public class SubstrateAMD64RegisterConfig implements SubstrateRegisterConfig {
             default:
                 throw VMError.shouldNotReachHere();
         }
-    }
-
-    @Override
-    public Register getFrameRegister() {
-        return rsp;
-    }
-
-    @Override
-    public Register getThreadRegister() {
-        return threadRegister;
-    }
-
-    @Override
-    public Register getHeapBaseRegister() {
-        return heapBaseRegister;
     }
 
     @Override

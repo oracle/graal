@@ -150,12 +150,12 @@ public:
 class SimpleSquare : public SimpleClass, public Square {
 
 public:
-    SimpleSquare(Point center, int length, int a) : Square(center, length), SimpleClass(a) {
+    SimpleSquare(Point center, int length, int a) : SimpleClass(a), Square(center, length) {
         printf("SimpleSquare Constructor\n");
     }
 };
 
-int start() __attribute__((constructor)) {
+__attribute__((constructor)) int start() {
     SimpleClass a(7, 28L, 302.4);
     a.print();
 

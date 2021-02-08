@@ -29,35 +29,39 @@
  */
 package com.oracle.truffle.llvm.parser;
 
-import com.oracle.truffle.llvm.runtime.ExternalLibrary;
-import com.oracle.truffle.llvm.runtime.LLVMContext;
+import java.util.List;
+
+import com.oracle.truffle.api.TruffleFile;
 import com.oracle.truffle.llvm.runtime.LLVMFunction;
 import com.oracle.truffle.llvm.runtime.LLVMScope;
 import com.oracle.truffle.llvm.runtime.LLVMSymbol;
 import com.oracle.truffle.llvm.runtime.NodeFactory;
+import com.oracle.truffle.llvm.runtime.debug.scope.LLVMSourceFileReference;
 import com.oracle.truffle.llvm.runtime.global.LLVMGlobal;
 
 public final class LLVMParserRuntime {
-    private final LLVMContext context;
-    private final ExternalLibrary library;
     private final LLVMScope fileScope;
     private final NodeFactory nodeFactory;
     private final int bitcodeID;
+    private final TruffleFile file;
+    private final String libName;
+    private final List<LLVMSourceFileReference> sourceFileReferences;
 
-    public LLVMParserRuntime(LLVMContext context, ExternalLibrary library, LLVMScope fileScope, NodeFactory nodeFactory, int bitcodeID) {
-        this.context = context;
-        this.library = library;
+    public LLVMParserRuntime(LLVMScope fileScope, NodeFactory nodeFactory, int bitcodeID, TruffleFile file, String libName, List<LLVMSourceFileReference> sourceFileReferences) {
         this.fileScope = fileScope;
         this.nodeFactory = nodeFactory;
         this.bitcodeID = bitcodeID;
+        this.file = file;
+        this.libName = libName;
+        this.sourceFileReferences = sourceFileReferences;
     }
 
-    public ExternalLibrary getLibrary() {
-        return library;
+    public TruffleFile getFile() {
+        return file;
     }
 
-    public LLVMContext getContext() {
-        return context;
+    public String getLibraryName() {
+        return libName;
     }
 
     public LLVMScope getFileScope() {
@@ -70,6 +74,10 @@ public final class LLVMParserRuntime {
 
     public int getBitcodeID() {
         return bitcodeID;
+    }
+
+    public List<LLVMSourceFileReference> getSourceFileReferences() {
+        return sourceFileReferences;
     }
 
     public LLVMFunction lookupFunction(String name) {

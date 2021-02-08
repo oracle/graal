@@ -41,10 +41,10 @@
 #include <stdio.h>
 #include <errno.h>
 
-void old_handler(int signo) {
+void old_handler(__attribute__((unused)) int signo) {
 }
 
-void new_handler(int signo) {
+void new_handler(__attribute__((unused)) int signo) {
 }
 
 int main(void) {

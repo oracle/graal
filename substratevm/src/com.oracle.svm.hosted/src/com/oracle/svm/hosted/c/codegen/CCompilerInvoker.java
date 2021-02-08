@@ -38,9 +38,8 @@ import java.util.NoSuchElementException;
 import java.util.Optional;
 import java.util.Scanner;
 import java.util.function.Consumer;
+import java.util.stream.Collectors;
 
-import com.oracle.svm.core.c.libc.LibCBase;
-import org.graalvm.compiler.debug.DebugContext;
 import org.graalvm.compiler.serviceprovider.JavaVersionUtil;
 import org.graalvm.nativeimage.ImageSingletons;
 
@@ -48,10 +47,10 @@ import com.oracle.svm.core.OS;
 import com.oracle.svm.core.SubstrateOptions;
 import com.oracle.svm.core.SubstrateTargetDescription;
 import com.oracle.svm.core.SubstrateUtil;
+import com.oracle.svm.core.c.libc.LibCBase;
 import com.oracle.svm.core.option.SubstrateOptionsParser;
 import com.oracle.svm.core.util.InterruptImageBuilding;
 import com.oracle.svm.core.util.UserError;
-import com.oracle.svm.core.util.VMError;
 import com.oracle.svm.hosted.c.util.FileUtils;
 
 import jdk.vm.ci.aarch64.AArch64;
@@ -67,9 +66,6 @@ public abstract class CCompilerInvoker {
         this.tempDirectory = tempDirectory;
         try {
             this.compilerInfo = getCCompilerInfo();
-            if (this.compilerInfo == null) {
-                UserError.abort(String.format("Unable to detect supported %s native software development toolchain.", OS.getCurrent().name()));
-            }
         } catch (UserError.UserException err) {
             throw addSkipCheckingInfo(err);
         }
@@ -85,7 +81,7 @@ public abstract class CCompilerInvoker {
             case WINDOWS:
                 return new WindowsCCompilerInvoker(tempDirectory);
             default:
-                throw UserError.abort("No CCompilerInvoker for operating system " + hostOS.name());
+                throw UserError.abort("No CCompilerInvoker for operating system %s", hostOS.name());
         }
     }
 
@@ -176,23 +172,29 @@ public abstract class CCompilerInvoker {
 
         @Override
         protected void verify() {
-            if (JavaVersionUtil.JAVA_SPEC >= 11) {
-                if (compilerInfo.versionMajor < 19) {
-                    UserError.abort("Java " + JavaVersionUtil.JAVA_SPEC +
-                                    " native-image building on Windows requires Visual Studio 2015 version 14.0 or later (C/C++ Optimizing Compiler Version 19.* or later)");
-                }
-            } else {
-                VMError.guarantee(JavaVersionUtil.JAVA_SPEC == 8, "Native-image building is only supported for Java 8 and Java 11 or later");
-                if (compilerInfo.versionMajor != 16 || compilerInfo.versionMinor0 != 0) {
-                    UserError.abort("Java 8 native-image building on Windows requires Microsoft Windows SDK 7.1");
-                }
+            // See details on _MSC_VER at https://en.wikipedia.org/wiki/Microsoft_Visual_C%2B%2B
+            // The constraint of `_MSC_VER >= 1912` reflects the version used for building OpenJDK8.
+            if (compilerInfo.versionMajor < 19 || compilerInfo.versionMinor0 < 12) {
+                UserError.abort("Java %d native-image building on Windows requires Visual Studio 2017 version 15.5 or later (C/C++ Optimizing Compiler Version 19.12 or later).%nCompiler info detected: %s",
+                                JavaVersionUtil.JAVA_SPEC, compilerInfo);
             }
             if (guessArchitecture(compilerInfo.targetArch) != AMD64.class) {
-                UserError.abort(String.format("Native-image building on Windows currently only supports target architecture: %s (%s unsupported)",
-                                AMD64.class.getSimpleName(), compilerInfo.targetArch));
+                UserError.abort("Native-image building on Windows currently only supports target architecture: %s (%s unsupported)",
+                                AMD64.class.getSimpleName(), compilerInfo.targetArch);
             }
         }
 
+        @Override
+        protected List<String> compileStrictOptions() {
+            /*
+             * On Windows `/Wall` corresponds to `-Wall -Wextra`. Therefore we use /W4 instead.
+             * Options `/wd4244` and `/wd4245` are needed because our query code makes use of
+             * implicit unsigned/signed conversions to detect signedness of types. `/wd4800`,
+             * `/wd4804` are needed to silence warnings when querying bool types. `/wd4214` is
+             * needed to make older versions of cl.exe accept bitfields larger than int-size.
+             */
+            return Arrays.asList("/WX", "/W4", "/wd4244", "/wd4245", "/wd4800", "/wd4804", "/wd4214");
+        }
     }
 
     private static class LinuxCCompilerInvoker extends CCompilerInvoker {
@@ -209,6 +211,23 @@ public abstract class CCompilerInvoker {
         @Override
         protected CompilerInfo createCompilerInfo(Path compilerPath, Scanner scanner) {
             try {
+                if (scanner.findInLine("icc version ") != null) {
+                    scanner.useDelimiter("[. ]");
+                    int major = scanner.nextInt();
+                    int minor0 = scanner.nextInt();
+                    int minor1 = scanner.nextInt();
+                    return new CompilerInfo(compilerPath, "intel", "Intel(R) C++ Compiler", "icc", major, minor0, minor1, "x86_64");
+                }
+
+                if (scanner.findInLine("clang version ") != null) {
+                    scanner.useDelimiter("[. ]");
+                    int major = scanner.nextInt();
+                    int minor0 = scanner.nextInt();
+                    int minor1 = scanner.nextInt();
+                    String[] triplet = guessTargetTriplet(scanner);
+                    return new CompilerInfo(compilerPath, "llvm", "Clang C++ Compiler", "clang", major, minor0, minor1, triplet[0]);
+                }
+
                 String[] triplet = guessTargetTriplet(scanner);
                 while (scanner.findInLine("gcc version ") == null) {
                     scanner.nextLine();
@@ -228,11 +247,11 @@ public abstract class CCompilerInvoker {
             Class<? extends Architecture> substrateTargetArch = ImageSingletons.lookup(SubstrateTargetDescription.class).arch.getClass();
             Class<? extends Architecture> guessed = guessArchitecture(compilerInfo.targetArch);
             if (guessed == null) {
-                UserError.abort(String.format("Native toolchain (%s) has no matching native-image target architecture.", compilerInfo.targetArch));
+                UserError.abort("Native toolchain (%s) has no matching native-image target architecture.", compilerInfo.targetArch);
             }
             if (guessed != substrateTargetArch) {
-                UserError.abort(String.format("Native toolchain (%s) implies native-image target architecture %s but configured native-image target architecture is %s.",
-                                compilerInfo.targetArch, guessed, substrateTargetArch));
+                UserError.abort("Native toolchain (%s) implies native-image target architecture %s but configured native-image target architecture is %s.",
+                                compilerInfo.targetArch, guessed, substrateTargetArch);
             }
         }
 
@@ -273,8 +292,8 @@ public abstract class CCompilerInvoker {
         @Override
         protected void verify() {
             if (guessArchitecture(compilerInfo.targetArch) != AMD64.class) {
-                UserError.abort(String.format("Native-image building on Darwin currently only supports target architecture: %s (%s unsupported)",
-                                AMD64.class.getSimpleName(), compilerInfo.targetArch));
+                UserError.abort("Native-image building on Darwin currently only supports target architecture: %s (%s unsupported)",
+                                AMD64.class.getSimpleName(), compilerInfo.targetArch);
             }
         }
 
@@ -328,29 +347,41 @@ public abstract class CCompilerInvoker {
             return new CompilerInfo(compilerPath, null, getClass().getSimpleName(), null, 0, 0, 0, null);
         }
         List<String> compilerCommand = createCompilerCommand(compilerPath, getVersionInfoOptions(), null);
-        ProcessBuilder pb = new ProcessBuilder()
-                        .command(compilerCommand)
-                        .directory(tempDirectory.toFile())
-                        .redirectErrorStream(true);
-        pb.environment().put("LC_ALL", "C");
-        CompilerInfo result = null;
-        Process process = null;
+        Process compilerProcess = null;
         try {
-            process = pb.start();
-            try (Scanner scanner = new Scanner(process.getInputStream())) {
-                result = createCompilerInfo(compilerPath, scanner);
+            ProcessBuilder processBuilder = FileUtils.prepareCommand(compilerCommand, tempDirectory);
+            processBuilder.redirectErrorStream(true);
+            processBuilder.environment().put("LC_ALL", "C");
+
+            FileUtils.traceCommand(processBuilder);
+
+            compilerProcess = processBuilder.start();
+            List<String> lines;
+            CompilerInfo result;
+            try (InputStream inputStream = compilerProcess.getInputStream()) {
+                lines = FileUtils.readAllLines(inputStream);
+
+                FileUtils.traceCommandOutput(lines);
+
+                result = createCompilerInfo(compilerPath, new Scanner(String.join(System.lineSeparator(), lines)));
             }
-            process.waitFor();
+            compilerProcess.waitFor();
+            if (result == null) {
+                String errorMessage = "Unable to detect supported %s native software development toolchain.%n" +
+                                "Querying with command '%s' prints:%n%s";
+                throw UserError.abort(errorMessage, OS.getCurrent().name(), SubstrateUtil.getShellCommandString(compilerCommand, false),
+                                lines.stream().map(str -> "  " + str).collect(Collectors.joining(System.lineSeparator())));
+            }
+            return result;
         } catch (InterruptedException ex) {
-            throw new InterruptImageBuilding();
+            throw new InterruptImageBuilding("Interrupted during checking native-compiler " + compilerPath);
         } catch (IOException e) {
-            UserError.abort(e, "Collecting native-compiler info with '" + SubstrateUtil.getShellCommandString(pb.command(), false) + "' failed");
+            throw UserError.abort(e, "Collecting native-compiler info with '%s' failed", SubstrateUtil.getShellCommandString(compilerCommand, false));
         } finally {
-            if (process != null) {
-                process.destroy();
+            if (compilerProcess != null) {
+                compilerProcess.destroy();
             }
         }
-        return result;
     }
 
     protected List<String> getVersionInfoOptions() {
@@ -393,26 +424,26 @@ public abstract class CCompilerInvoker {
     }
 
     @SuppressWarnings("try")
-    public void compileAndParseError(List<String> options, Path source, Path target, CompilerErrorHandler handler, DebugContext debug) {
-        ProcessBuilder pb = new ProcessBuilder()
-                        .command(createCompilerCommand(options, target.normalize(), source.normalize()))
-                        .directory(tempDirectory.toFile());
+    public void compileAndParseError(boolean strict, List<String> compileOptions, Path source, Path target, CompilerErrorHandler handler) {
+        List<String> options = strict ? createStrictOptions(compileOptions) : compileOptions;
         Process compilingProcess = null;
         try {
-            try (DebugContext.Scope s = debug.scope("InvokeCC")) {
-                debug.log("Using CompilerCommand: %s", SubstrateUtil.getShellCommandString(pb.command(), false));
-            }
-            compilingProcess = pb.start();
+            ProcessBuilder compileCommand = FileUtils.prepareCommand(createCompilerCommand(options, target.normalize(), source.normalize()), tempDirectory);
+
+            FileUtils.traceCommand(compileCommand);
+
+            compilingProcess = compileCommand.start();
 
             List<String> lines;
             try (InputStream compilerErrors = getCompilerErrorStream(compilingProcess)) {
                 lines = FileUtils.readAllLines(compilerErrors);
+                FileUtils.traceCommandOutput(lines);
             }
             boolean errorReported = false;
             for (String line : lines) {
                 if (detectError(line)) {
                     if (handler != null) {
-                        handler.handle(pb, source, line);
+                        handler.handle(compileCommand, source, line);
                     }
                     errorReported = true;
                 }
@@ -421,18 +452,28 @@ public abstract class CCompilerInvoker {
             int status = compilingProcess.waitFor();
             if (status != 0 && !errorReported) {
                 if (handler != null) {
-                    handler.handle(pb, source, lines.toString());
+                    handler.handle(compileCommand, source, lines.toString());
                 }
             }
         } catch (InterruptedException ex) {
-            throw new InterruptImageBuilding();
+            throw new InterruptImageBuilding("Interrupted during C-ABI query code compilation of " + source);
         } catch (IOException ex) {
-            throw UserError.abort(ex, "Unable to compile C-ABI query code. Make sure native software development toolchain is installed on your system.");
+            throw UserError.abort(ex, "Unable to compile C-ABI query code %s. Make sure native software development toolchain is installed on your system.", source);
         } finally {
             if (compilingProcess != null) {
                 compilingProcess.destroy();
             }
         }
+    }
+
+    private List<String> createStrictOptions(List<String> compileOptions) {
+        ArrayList<String> strictCompileOptions = new ArrayList<>(compileStrictOptions());
+        strictCompileOptions.addAll(compileOptions);
+        return strictCompileOptions;
+    }
+
+    protected List<String> compileStrictOptions() {
+        return Arrays.asList("-Wall", "-Werror");
     }
 
     protected boolean detectError(String line) {
@@ -457,7 +498,7 @@ public abstract class CCompilerInvoker {
             if (optCompilerPath.isPresent()) {
                 compilerPath = optCompilerPath.get();
             } else {
-                throw UserError.abort("Default native-compiler executable '" + executableName + "' not found via environment variable PATH");
+                throw UserError.abort("Default native-compiler executable '%s' not found via environment variable PATH", executableName);
             }
         }
         if (Files.isDirectory(compilerPath) || !Files.isExecutable(compilerPath)) {
@@ -467,7 +508,7 @@ public abstract class CCompilerInvoker {
             } else {
                 msgSubject = "Default native-compiler '" + compilerPath + "'";
             }
-            throw UserError.abort(msgSubject + " does not specify a path to an executable.");
+            throw UserError.abort("%s does not specify a path to an executable.", msgSubject);
         }
         return compilerPath;
     }
@@ -485,7 +526,7 @@ public abstract class CCompilerInvoker {
     private List<String> createCompilerCommand(Path compilerPath, List<String> options, Path target, Path... input) {
         List<String> command = new ArrayList<>();
         command.add(compilerPath.toString());
-        command.addAll(Arrays.asList(SubstrateOptions.CCompilerOption.getValue()));
+        command.addAll(SubstrateOptions.CCompilerOption.getValue().values());
         command.addAll(options);
 
         if (target != null) {

@@ -105,9 +105,9 @@ public class HostInteropErrorTest extends ProxyLanguageEnvTest {
         Object foo = INTEROP.readMember(hostObj, "foo");
 
         assertFails(() -> INTEROP.invokeMember(hostObj, "foo", env.asGuestValue(Collections.emptyMap())), UnsupportedTypeException.class,
-                        "Cannot convert '{}'(language: Java, type: java.util.Collections$EmptyMap) to Java type 'int': Unsupported target type.");
+                        "Cannot convert '{}'(language: Java, type: java.util.Collections$EmptyMap) to Java type 'int': Invalid or lossy primitive coercion.");
         assertFails(() -> INTEROP.execute(foo, env.asGuestValue(Collections.emptyMap())), UnsupportedTypeException.class,
-                        "Cannot convert '{}'(language: Java, type: java.util.Collections$EmptyMap) to Java type 'int': Unsupported target type.");
+                        "Cannot convert '{}'(language: Java, type: java.util.Collections$EmptyMap) to Java type 'int': Invalid or lossy primitive coercion.");
 
         assertFails(() -> INTEROP.invokeMember(hostObj, "foo", env.asGuestValue(null)), UnsupportedTypeException.class,
                         "Cannot convert null value 'null'(language: Java) to Java type 'int'.");
@@ -115,9 +115,9 @@ public class HostInteropErrorTest extends ProxyLanguageEnvTest {
                         "Cannot convert null value 'null'(language: Java) to Java type 'int'.");
 
         assertFails(() -> INTEROP.invokeMember(hostObj, "foo", new OtherObject()), UnsupportedTypeException.class,
-                        "Cannot convert 'Other'(language: proxyLanguage, type: OtherType) to Java type 'int': Unsupported target type.");
+                        "Cannot convert 'Other'(language: proxyLanguage, type: OtherType) to Java type 'int': Invalid or lossy primitive coercion.");
         assertFails(() -> INTEROP.execute(foo, new OtherObject()), UnsupportedTypeException.class,
-                        "Cannot convert 'Other'(language: proxyLanguage, type: OtherType) to Java type 'int': Unsupported target type.");
+                        "Cannot convert 'Other'(language: proxyLanguage, type: OtherType) to Java type 'int': Invalid or lossy primitive coercion.");
 
         assertFails(() -> INTEROP.invokeMember(hostObj, "foo", new OtherNull()), UnsupportedTypeException.class,
                         "Cannot convert null value 'null'(language: proxyLanguage, type: Unknown) to Java type 'int'.");
@@ -130,12 +130,12 @@ public class HostInteropErrorTest extends ProxyLanguageEnvTest {
         Object hostClass = env.asHostSymbol(MyHostObj.class);
 
         assertFails(() -> INTEROP.instantiate(hostClass, env.asGuestValue(Collections.emptyMap())), UnsupportedTypeException.class,
-                        "Cannot convert '{}'(language: Java, type: java.util.Collections$EmptyMap) to Java type 'int': Unsupported target type.");
+                        "Cannot convert '{}'(language: Java, type: java.util.Collections$EmptyMap) to Java type 'int': Invalid or lossy primitive coercion.");
         assertFails(() -> INTEROP.instantiate(hostClass, env.asGuestValue(null)), UnsupportedTypeException.class,
                         "Cannot convert null value 'null'(language: Java) to Java type 'int'.");
 
         assertFails(() -> INTEROP.instantiate(hostClass, new OtherObject()), UnsupportedTypeException.class,
-                        "Cannot convert 'Other'(language: proxyLanguage, type: OtherType) to Java type 'int': Unsupported target type.");
+                        "Cannot convert 'Other'(language: proxyLanguage, type: OtherType) to Java type 'int': Invalid or lossy primitive coercion.");
         assertFails(() -> INTEROP.instantiate(hostClass, new OtherNull()), UnsupportedTypeException.class,
                         "Cannot convert null value 'null'(language: proxyLanguage, type: Unknown) to Java type 'int'.");
     }
@@ -145,12 +145,12 @@ public class HostInteropErrorTest extends ProxyLanguageEnvTest {
         Object hostArray = env.asGuestValue(new int[]{0, 0, 0, 0});
 
         assertFails(() -> INTEROP.writeArrayElement(hostArray, 0, env.asGuestValue(Collections.emptyMap())), UnsupportedTypeException.class,
-                        "Cannot convert '{}'(language: Java, type: java.util.Collections$EmptyMap) to Java type 'int': Unsupported target type.");
+                        "Cannot convert '{}'(language: Java, type: java.util.Collections$EmptyMap) to Java type 'int': Invalid or lossy primitive coercion.");
         assertFails(() -> INTEROP.writeArrayElement(hostArray, 0, env.asGuestValue(null)), UnsupportedTypeException.class,
                         "Cannot convert null value 'null'(language: Java) to Java type 'int'.");
 
         assertFails(() -> INTEROP.writeArrayElement(hostArray, 0, new OtherObject()), UnsupportedTypeException.class,
-                        "Cannot convert 'Other'(language: proxyLanguage, type: OtherType) to Java type 'int': Unsupported target type.");
+                        "Cannot convert 'Other'(language: proxyLanguage, type: OtherType) to Java type 'int': Invalid or lossy primitive coercion.");
         assertFails(() -> INTEROP.writeArrayElement(hostArray, 0, new OtherNull()), UnsupportedTypeException.class,
                         "Cannot convert null value 'null'(language: proxyLanguage, type: Unknown) to Java type 'int'.");
     }
@@ -160,12 +160,12 @@ public class HostInteropErrorTest extends ProxyLanguageEnvTest {
         Object hostObj = env.asGuestValue(new MyHostObj(42));
 
         assertFails(() -> INTEROP.writeMember(hostObj, "field", env.asGuestValue(Collections.emptyMap())), UnsupportedTypeException.class,
-                        "Cannot convert '{}'(language: Java, type: java.util.Collections$EmptyMap) to Java type 'int': Unsupported target type.");
+                        "Cannot convert '{}'(language: Java, type: java.util.Collections$EmptyMap) to Java type 'int': Invalid or lossy primitive coercion.");
         assertFails(() -> INTEROP.writeMember(hostObj, "field", env.asGuestValue(null)), UnsupportedTypeException.class,
                         "Cannot convert null value 'null'(language: Java) to Java type 'int'.");
 
         assertFails(() -> INTEROP.writeMember(hostObj, "field", new OtherObject()), UnsupportedTypeException.class,
-                        "Cannot convert 'Other'(language: proxyLanguage, type: OtherType) to Java type 'int': Unsupported target type.");
+                        "Cannot convert 'Other'(language: proxyLanguage, type: OtherType) to Java type 'int': Invalid or lossy primitive coercion.");
         assertFails(() -> INTEROP.writeMember(hostObj, "field", new OtherNull()), UnsupportedTypeException.class,
                         "Cannot convert null value 'null'(language: proxyLanguage, type: Unknown) to Java type 'int'.");
     }

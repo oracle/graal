@@ -52,7 +52,6 @@ import com.oracle.truffle.regex.tregex.nodes.dfa.DFAStateNode.LoopOptIndexOfStri
 import com.oracle.truffle.regex.tregex.nodes.dfa.DFAStateNode.LoopOptimizationNode;
 import com.oracle.truffle.regex.tregex.nodes.dfa.Matchers;
 import com.oracle.truffle.regex.tregex.nodes.dfa.Matchers.Builder;
-import com.oracle.truffle.regex.tregex.util.Exceptions;
 
 public final class Encodings {
 
@@ -63,6 +62,8 @@ public final class Encodings {
     public static final Encoding UTF_32 = new Encoding.UTF32();
     public static final Encoding UTF_16_RAW = new Encoding.UTF16Raw();
     public static final Encoding LATIN_1 = new Encoding.Latin1();
+
+    public static final String[] ALL_NAMES = {UTF_8.getName(), UTF_16.getName(), UTF_16_RAW.getName(), UTF_32.getName(), LATIN_1.getName(), "BYTES"};
 
     public static Encoding getEncoding(String name) {
         switch (name) {
@@ -80,7 +81,7 @@ public final class Encodings {
                 return LATIN_1;
             default:
                 CompilerDirectives.transferToInterpreterAndInvalidate();
-                throw Exceptions.shouldNotReachHere("Unknown Encoding \"" + name + "\"");
+                throw CompilerDirectives.shouldNotReachHere("Unknown Encoding \"" + name + "\"");
         }
     }
 
@@ -465,13 +466,13 @@ public final class Encodings {
             }
 
             @Override
-            public StringBufferUTF16 createStringBuffer(int capacity) {
-                return new StringBufferUTF16(capacity);
+            public StringBufferLATIN1 createStringBuffer(int capacity) {
+                return new StringBufferLATIN1(capacity);
             }
 
             @Override
             public LoopOptimizationNode extractLoopOptNode(CodePointSet cps) {
-                return new LoopOptIndexOfAnyCharNode(cps.inverseToCharArray(this));
+                return new LoopOptIndexOfAnyByteNode(cps.inverseToByteArray(this));
             }
 
             @Override

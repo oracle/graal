@@ -35,12 +35,15 @@ import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
 import java.util.concurrent.Callable;
+import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.Future;
 import java.util.concurrent.FutureTask;
 import java.util.concurrent.ThreadFactory;
+import java.util.concurrent.TimeUnit;
+import java.util.concurrent.TimeoutException;
 import java.util.function.Consumer;
 
 import org.graalvm.collections.Pair;
@@ -52,10 +55,10 @@ import org.graalvm.options.OptionValues;
 import org.graalvm.polyglot.Context;
 import org.graalvm.polyglot.Engine;
 import org.graalvm.polyglot.Instrument;
-import org.graalvm.tools.lsp.server.ContextAwareExecutor;
 import org.graalvm.tools.lsp.exceptions.LSPIOException;
-import org.graalvm.tools.lsp.server.LanguageServerImpl;
+import org.graalvm.tools.lsp.server.ContextAwareExecutor;
 import org.graalvm.tools.lsp.server.LSPFileSystem;
+import org.graalvm.tools.lsp.server.LanguageServerImpl;
 import org.graalvm.tools.lsp.server.TruffleAdapter;
 import org.graalvm.tools.lsp.server.utils.CoverageEventNode;
 
@@ -289,6 +292,31 @@ public final class LSPInstrument extends TruffleInstrument implements Environmen
         @Override
         public <T> Future<T> executeWithNestedContext(Callable<T> taskWithResult, boolean cached) {
             return execute(wrapWithNewContext(taskWithResult, cached));
+        }
+
+        @Override
+        public <T> Future<T> executeWithNestedContext(Callable<T> taskWithResult, int timeoutMillis, Callable<T> onTimeoutTask) {
+            if (timeoutMillis <= 0) {
+                return executeWithNestedContext(taskWithResult);
+            } else {
+                Future<T> future = execute(wrapWithNewContext(taskWithResult, false));
+                try {
+                    return CompletableFuture.completedFuture(future.get(timeoutMillis, TimeUnit.MILLISECONDS));
+                } catch (TimeoutException e) {
+                    future.cancel(true);
+                    try {
+                        return CompletableFuture.completedFuture(onTimeoutTask.call());
+                    } catch (Exception timeoutTaskException) {
+                        CompletableFuture<T> cf = new CompletableFuture<>();
+                        cf.completeExceptionally(timeoutTaskException);
+                        return cf;
+                    }
+                } catch (InterruptedException | ExecutionException e) {
+                    CompletableFuture<T> cf = new CompletableFuture<>();
+                    cf.completeExceptionally(e);
+                    return cf;
+                }
+            }
         }
 
         private <T> Future<T> execute(Callable<T> taskWithResult) {

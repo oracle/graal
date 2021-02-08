@@ -118,7 +118,7 @@ def jaotc_test(args):
     if tests == args.tests:
         for test in tests:
             if not test in group_tests:
-                mx.abort('Test {} not on list: {}'.format(test, [name for name in group_tests]))
+                mx.abort('Test {} not on list: {}'.format(test, list(group_tests)))
 
     jaotc_run(tests, group)
 

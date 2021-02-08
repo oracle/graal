@@ -42,6 +42,7 @@ package org.graalvm.launcher;
 
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -83,6 +84,8 @@ public abstract class AbstractLanguageLauncher extends LanguageLauncherBase {
     protected static final boolean IS_LIBPOLYGLOT = Boolean.getBoolean("graalvm.libpolyglot");
 
     final void launch(List<String> args, Map<String, String> defaultOptions, boolean doNativeSetup) {
+        List<String> originalArgs = Collections.unmodifiableList(new ArrayList<>(args));
+
         Map<String, String> polyglotOptions = defaultOptions;
         if (polyglotOptions == null) {
             polyglotOptions = new HashMap<>();
@@ -96,7 +99,7 @@ public abstract class AbstractLanguageLauncher extends LanguageLauncherBase {
 
         if (isAOT() && doNativeSetup && !IS_LIBPOLYGLOT) {
             assert nativeAccess != null;
-            maybeNativeExec(args, false, polyglotOptions);
+            maybeNativeExec(originalArgs, unrecognizedArgs, false);
         }
 
         parseUnrecognizedOptions(getLanguageId(), polyglotOptions, unrecognizedArgs);
@@ -124,10 +127,14 @@ public abstract class AbstractLanguageLauncher extends LanguageLauncherBase {
     /**
      * Process command line arguments by either saving the necessary state or adding it to the
      * {@code polyglotOptions}. Any unrecognized arguments should be accumulated and returned as a
-     * list.
+     * list. VM (--jvm/--native/--polyglot/--vm.*) and polyglot options (--language.option or
+     * --option) should be returned as unrecognized arguments to be automatically parsed and
+     * validated by {@link Launcher#parsePolyglotOption(String, Map, boolean, String)}.
      *
-     * Arguments that are translated to polyglot options should be removed from the list. Other
-     * arguments should not be removed.
+     * The {@code arguments} should not be modified, but doing so also has no effect.
+     *
+     * {@code polyglotOptions.put()} can be used to set launcher-specific default values when they
+     * do not match the OptionKey's default.
      *
      * The {@code preprocessArguments} implementations can use {@link Engine} to inspect the the
      * installed {@link Engine#getLanguages() guest languages} and {@link Engine#getInstruments()
@@ -135,7 +142,7 @@ public abstract class AbstractLanguageLauncher extends LanguageLauncherBase {
      * options} is forbidden.
      *
      * @param arguments the command line arguments that were passed to the launcher.
-     * @param polyglotOptions a map where polyglot options can be set. These will be uses when
+     * @param polyglotOptions a map where polyglot options can be set. These will be used when
      *            creating the {@link org.graalvm.polyglot.Engine Engine}.
      * @return the list of arguments that were not recognized.
      */

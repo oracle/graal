@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2019, Oracle and/or its affiliates.
+ * Copyright (c) 2019, 2021, Oracle and/or its affiliates.
  *
  * All rights reserved.
  *
@@ -29,11 +29,16 @@
  */
 package com.oracle.truffle.llvm.runtime.config;
 
+import com.oracle.truffle.llvm.runtime.ContextExtension;
 import com.oracle.truffle.llvm.runtime.LLVMLanguage;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.List;
 import java.util.Objects;
 import java.util.ServiceLoader;
+
+import com.oracle.truffle.llvm.runtime.except.LLVMPolyglotException;
+import com.oracle.truffle.llvm.runtime.options.SulongEngineOption;
 import org.graalvm.options.OptionDescriptor;
 import org.graalvm.options.OptionDescriptors;
 import org.graalvm.options.OptionValues;
@@ -58,10 +63,10 @@ public final class Configurations {
         factories = cfgs.toArray(new ConfigurationFactory<?>[cfgs.size()]);
     }
 
-    private static <KEY> Configuration tryCreate(ConfigurationFactory<KEY> factory, LLVMLanguage language, OptionValues options) {
+    private static <KEY> Configuration tryCreate(ConfigurationFactory<KEY> factory, LLVMLanguage language, ContextExtension.Registry ctxExtRegistry, OptionValues options) {
         KEY key = factory.parseOptions(options);
         if (key != null) {
-            return factory.createConfiguration(language, key);
+            return factory.createConfiguration(language, ctxExtRegistry, key);
         } else {
             return null;
         }
@@ -71,14 +76,28 @@ public final class Configurations {
      * Create a configuration object for given options. This will use the highest priority
      * {@link ConfigurationFactory} that matches the given options.
      */
-    public static Configuration createConfiguration(LLVMLanguage language, OptionValues options) {
+    public static Configuration createConfiguration(LLVMLanguage language, ContextExtension.Registry ctxExtRegistry, OptionValues options) {
+        if (factories.length == 0) {
+            throw new IllegalStateException("should not reach here: no configuration found");
+        }
         for (ConfigurationFactory<?> factory : factories) {
-            Configuration ret = tryCreate(factory, language, options);
+            Configuration ret = tryCreate(factory, language, ctxExtRegistry, options);
             if (ret != null) {
                 return ret;
             }
         }
-        throw new IllegalStateException("should not reach here: no configuration found");
+        throw new LLVMPolyglotException(null, "No viable configuration found. " + formatHint());
+    }
+
+    private static String formatHint() {
+        int maxNameSize = Arrays.stream(factories).mapToInt(c -> c.getName().length()).max().orElse(30);
+        String format = "  %" + maxNameSize + "s:   %s (priority %d)";
+        StringBuilder sb = new StringBuilder();
+        sb.append("Known configurations:").append(System.lineSeparator());
+        Arrays.stream(factories).//
+                        map(c -> String.format(format, c.getName(), c.getHint(), c.getPriority())).//
+                        forEach((String s) -> sb.append(s).append(System.lineSeparator()));
+        return sb.toString();
     }
 
     /**
@@ -101,6 +120,9 @@ public final class Configurations {
      */
     public static OptionDescriptors getOptionDescriptors() {
         List<OptionDescriptor> optionDescriptors = new ArrayList<>();
+        // add core options
+        optionDescriptors.addAll(SulongEngineOption.describeOptions());
+        // add configuration specific options
         for (ConfigurationFactory<?> f : factories) {
             optionDescriptors.addAll(f.getOptionDescriptors());
         }

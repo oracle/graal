@@ -426,6 +426,11 @@ public class LanguageServer {
                 public void publishDiagnostics(PublishDiagnosticsParams params) {
                     sendNotification("textDocument/publishDiagnostics", params);
                 }
+
+                @Override
+                public void sendCustomNotification(String method, Object params) {
+                    sendNotification(method, params);
+                }
             });
         }
 
@@ -517,7 +522,7 @@ public class LanguageServer {
         private void processRequest(RequestMessage req, byte[] buffer) {
             final Object id = req.getId();
             try {
-                JSONObject params = req.getParams() instanceof JSONObject ? (JSONObject) req.getParams() : null;
+                JSONObject params = req.getParams() instanceof JSONObject ? (JSONObject) req.getParams() : new JSONObject();
                 CompletableFuture<?> future = null;
                 String method = req.getMethod();
                 delegateServers.sendMessageToDelegates(buffer, id, method, params);
@@ -702,7 +707,7 @@ public class LanguageServer {
 
         private void processNotification(NotificationMessage msg, byte[] buffer) {
             try {
-                JSONObject params = (JSONObject) msg.getParams();
+                JSONObject params = msg.getParams() instanceof JSONObject ? (JSONObject) msg.getParams() : new JSONObject();
                 String method = msg.getMethod();
                 delegateServers.sendMessageToDelegates(buffer, null, method, params);
                 switch (method) {

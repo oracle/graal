@@ -27,6 +27,9 @@
  * NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED
  * OF THE POSSIBILITY OF SUCH DAMAGE.
  */
+
+#pragma clang diagnostic push
+#pragma clang diagnostic ignored "-Wmain-return-type"
 short main(void) {
     return 42;
 }

@@ -52,9 +52,9 @@ public class FileDownloaderTest extends NetworkTestBase {
         @Override
         public String l10n(String key, Object... params) {
             switch (key) {
-                case "MSG_DownloadProgress":
+                case "MSG_DownloadProgress@":
                     return "[                    ]";
-                case "MSG_DownloadProgressSignChar":
+                case "MSG_DownloadProgressSignChar@":
                     return "#";
             }
             return key;

@@ -32,6 +32,6 @@
 int main() {
     volatile int val[] = { 1, 2, 3, 4, 5 };
     volatile int **ptr = malloc(sizeof(int *));
-    *ptr = &val;
+    *ptr = (volatile int *) &val;
     return (*ptr)[2];
 }

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2019, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2019, 2020, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -67,10 +67,10 @@ public class ClassInitializationTracking {
      * This method is called from the instrumented class initialization methods.
      */
     @SuppressWarnings({"unused", "ConstantConditions"})
-    public static void reportClassInitialized(Class<?> c) {
+    public static void reportClassInitialized(Class<?> c, StackTraceElement[] stackTrace) {
         if (ImageSingletonsSupport.isInstalled() && ImageSingletons.contains(RuntimeClassInitializationSupport.class)) {
             RuntimeClassInitializationSupport runtimeClassInitialization = ImageSingletons.lookup(RuntimeClassInitializationSupport.class);
-            runtimeClassInitialization.reportClassInitialized(c);
+            runtimeClassInitialization.reportClassInitialized(c, stackTrace);
         }
     }
 
@@ -78,10 +78,10 @@ public class ClassInitializationTracking {
      * This method is called from the instrumented class initialization methods.
      */
     @SuppressWarnings({"unused"})
-    public static void reportObjectInstantiated(Object o) {
+    public static void reportObjectInstantiated(Object o, StackTraceElement[] stackTrace) {
         if (ImageSingletonsSupport.isInstalled() && ImageSingletons.contains(RuntimeClassInitializationSupport.class)) {
             RuntimeClassInitializationSupport runtimeClassInitialization = ImageSingletons.lookup(RuntimeClassInitializationSupport.class);
-            runtimeClassInitialization.reportObjectInstantiated(o);
+            runtimeClassInitialization.reportObjectInstantiated(o, stackTrace);
         }
     }
 

@@ -38,6 +38,10 @@ public class RootTestNode extends RootNode {
 
     @Child private AbstractTestNode node;
 
+    public RootTestNode(String name, AbstractTestNode node) {
+        this(new FrameDescriptor(), name, node, false, false);
+    }
+
     public RootTestNode(FrameDescriptor descriptor, String name, AbstractTestNode node) {
         this(descriptor, name, node, false, false);
     }

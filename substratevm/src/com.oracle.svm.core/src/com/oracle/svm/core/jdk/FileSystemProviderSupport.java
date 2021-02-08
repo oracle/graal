@@ -135,8 +135,10 @@ final class FileSystemProviderFeature implements Feature {
         }
         ImageSingletons.add(FileSystemProviderSupport.class, new FileSystemProviderSupport(installedProviders));
 
-        /* Currently we do not support access to Java modules (jimage/jrtfs access) in images */
-        FileSystemProviderSupport.remove("jrt");
+        /* Access to Java modules (jimage/jrtfs access) in images is experimental. */
+        if (!JRTSupport.Options.AllowJRTFileSystem.getValue()) {
+            FileSystemProviderSupport.remove("jrt");
+        }
     }
 }
 
@@ -146,11 +148,6 @@ final class Target_java_nio_file_spi_FileSystemProvider {
     public static List<FileSystemProvider> installedProviders() {
         return ImageSingletons.lookup(FileSystemProviderSupport.class).installedProvidersImmutable;
     }
-}
-
-@TargetClass(className = "jdk.internal.jrtfs.JrtFileSystemProvider", onlyWith = JDK11OrLater.class)
-@Delete
-final class Target_jdk_internal_jrtfs_JrtFileSystemProvider {
 }
 
 /**
@@ -411,7 +408,7 @@ final class Target_java_io_UnixFileSystem {
 
     /*
      * The prefix cache on Linux/MacOS only caches elements in the Java home directory, which does
-     * not exist at image run time. So we disable that cache completely, which is done by
+     * not exist at image runtime. So we disable that cache completely, which is done by
      * substituting the value of FileSystem.useCanonPrefixCache to false in the substitution below.
      */
     @Delete //

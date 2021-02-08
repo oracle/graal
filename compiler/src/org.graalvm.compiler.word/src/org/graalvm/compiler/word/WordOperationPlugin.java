@@ -36,6 +36,7 @@ import org.graalvm.compiler.bytecode.BridgeMethodUtils;
 import org.graalvm.compiler.core.common.calc.CanonicalCondition;
 import org.graalvm.compiler.core.common.calc.Condition;
 import org.graalvm.compiler.core.common.calc.Condition.CanonicalizedCondition;
+import org.graalvm.compiler.core.common.memory.MemoryOrderMode;
 import org.graalvm.compiler.core.common.type.Stamp;
 import org.graalvm.compiler.core.common.type.StampFactory;
 import org.graalvm.compiler.core.common.type.StampPair;
@@ -325,11 +326,18 @@ public class WordOperationPlugin implements NodePlugin, TypePlugin, InlineInvoke
                 break;
             }
             case READ_HEAP: {
-                assert args.length == 3;
+                assert args.length == 3 || args.length == 4;
                 JavaKind readKind = wordTypes.asKind(wordMethod.getSignature().getReturnType(wordMethod.getDeclaringClass()));
                 AddressNode address = makeAddress(b, args[0], args[1]);
                 BarrierType barrierType = snippetReflection.asObject(BarrierType.class, args[2].asJavaConstant());
-                b.push(returnKind, readOp(b, readKind, address, any(), barrierType, true));
+                LocationIdentity location;
+                if (args.length == 3) {
+                    location = any();
+                } else {
+                    assert args[3].isConstant();
+                    location = snippetReflection.asObject(LocationIdentity.class, args[3].asJavaConstant());
+                }
+                b.push(returnKind, readOp(b, readKind, address, location, barrierType, true));
                 break;
             }
             case WRITE_POINTER:
@@ -478,9 +486,9 @@ public class WordOperationPlugin implements NodePlugin, TypePlugin, InlineInvoke
         assert isLogic || writeKind == returnKind : writeKind + " != " + returnKind;
         AbstractCompareAndSwapNode cas;
         if (isLogic) {
-            cas = new LogicCompareAndSwapNode(address, expectedValue, newValue, location);
+            cas = new LogicCompareAndSwapNode(address, expectedValue, newValue, location, BarrierType.NONE, MemoryOrderMode.VOLATILE);
         } else {
-            cas = new ValueCompareAndSwapNode(address, expectedValue, newValue, location);
+            cas = new ValueCompareAndSwapNode(address, expectedValue, newValue, location, BarrierType.NONE, MemoryOrderMode.VOLATILE);
         }
         return cas;
     }

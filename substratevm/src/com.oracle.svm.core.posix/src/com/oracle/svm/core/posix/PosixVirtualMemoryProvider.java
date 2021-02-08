@@ -61,7 +61,9 @@ import com.oracle.svm.core.util.UnsignedUtils;
 class PosixVirtualMemoryProviderFeature implements Feature {
     @Override
     public void beforeAnalysis(BeforeAnalysisAccess access) {
-        ImageSingletons.add(VirtualMemoryProvider.class, new PosixVirtualMemoryProvider());
+        if (!ImageSingletons.contains(VirtualMemoryProvider.class)) {
+            ImageSingletons.add(VirtualMemoryProvider.class, new PosixVirtualMemoryProvider());
+        }
     }
 }
 

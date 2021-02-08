@@ -40,6 +40,30 @@
  */
 package org.graalvm.polyglot.impl;
 
+import org.graalvm.collections.UnmodifiableEconomicSet;
+import org.graalvm.options.OptionDescriptors;
+import org.graalvm.polyglot.Context;
+import org.graalvm.polyglot.Engine;
+import org.graalvm.polyglot.EnvironmentAccess;
+import org.graalvm.polyglot.HostAccess;
+import org.graalvm.polyglot.HostAccess.TargetMappingPrecedence;
+import org.graalvm.polyglot.Instrument;
+import org.graalvm.polyglot.Language;
+import org.graalvm.polyglot.PolyglotAccess;
+import org.graalvm.polyglot.PolyglotException;
+import org.graalvm.polyglot.PolyglotException.StackFrame;
+import org.graalvm.polyglot.ResourceLimitEvent;
+import org.graalvm.polyglot.ResourceLimits;
+import org.graalvm.polyglot.Source;
+import org.graalvm.polyglot.SourceSection;
+import org.graalvm.polyglot.TypeLiteral;
+import org.graalvm.polyglot.Value;
+import org.graalvm.polyglot.io.ByteSequence;
+import org.graalvm.polyglot.io.FileSystem;
+import org.graalvm.polyglot.io.MessageTransport;
+import org.graalvm.polyglot.io.ProcessHandler;
+import org.graalvm.polyglot.management.ExecutionEvent;
+
 import java.io.File;
 import java.io.IOException;
 import java.io.InputStream;
@@ -50,6 +74,7 @@ import java.io.Reader;
 import java.lang.reflect.AnnotatedElement;
 import java.net.URI;
 import java.net.URL;
+import java.nio.ByteOrder;
 import java.nio.charset.Charset;
 import java.time.Duration;
 import java.time.Instant;
@@ -62,33 +87,9 @@ import java.util.List;
 import java.util.Map;
 import java.util.Objects;
 import java.util.Set;
-import java.util.concurrent.TimeUnit;
 import java.util.function.Consumer;
 import java.util.function.Function;
 import java.util.function.Predicate;
-
-import org.graalvm.collections.UnmodifiableEconomicSet;
-import org.graalvm.options.OptionDescriptors;
-import org.graalvm.polyglot.Context;
-import org.graalvm.polyglot.Engine;
-import org.graalvm.polyglot.EnvironmentAccess;
-import org.graalvm.polyglot.HostAccess;
-import org.graalvm.polyglot.Instrument;
-import org.graalvm.polyglot.Language;
-import org.graalvm.polyglot.PolyglotAccess;
-import org.graalvm.polyglot.PolyglotException;
-import org.graalvm.polyglot.ResourceLimitEvent;
-import org.graalvm.polyglot.ResourceLimits;
-import org.graalvm.polyglot.PolyglotException.StackFrame;
-import org.graalvm.polyglot.Source;
-import org.graalvm.polyglot.SourceSection;
-import org.graalvm.polyglot.TypeLiteral;
-import org.graalvm.polyglot.Value;
-import org.graalvm.polyglot.io.ByteSequence;
-import org.graalvm.polyglot.io.FileSystem;
-import org.graalvm.polyglot.io.MessageTransport;
-import org.graalvm.polyglot.io.ProcessHandler;
-import org.graalvm.polyglot.management.ExecutionEvent;
 
 @SuppressWarnings("unused")
 public abstract class AbstractPolyglotImpl {
@@ -145,7 +146,7 @@ public abstract class AbstractPolyglotImpl {
 
         public abstract Value newValue(Object value, AbstractValueImpl impl);
 
-        public abstract Source newSource(String language, Object impl);
+        public abstract Source newSource(Object impl);
 
         public abstract SourceSection newSourceSection(Source source, Object impl);
 
@@ -178,6 +179,8 @@ public abstract class AbstractPolyglotImpl {
         public abstract boolean isArrayAccessible(HostAccess access);
 
         public abstract boolean isListAccessible(HostAccess access);
+
+        public abstract boolean isBufferAccessible(HostAccess access);
 
         public abstract Object getHostAccessImpl(HostAccess conf);
 
@@ -235,10 +238,9 @@ public abstract class AbstractPolyglotImpl {
     protected void initialize() {
     }
 
-    public abstract Engine buildEngine(OutputStream out, OutputStream err, InputStream in, Map<String, String> arguments, long timeout, TimeUnit timeoutUnit, boolean sandbox,
-                    long maximumAllowedAllocationBytes, boolean useSystemProperties, boolean allowExperimentalOptions, boolean boundEngine, MessageTransport messageInterceptor,
-                    Object logHandlerOrStream,
-                    HostAccess conf);
+    public abstract Engine buildEngine(OutputStream out, OutputStream err, InputStream in, Map<String, String> arguments, boolean useSystemProperties, boolean allowExperimentalOptions,
+                    boolean boundEngine,
+                    MessageTransport messageInterceptor, Object logHandlerOrStream, HostAccess conf);
 
     public abstract void preInitializeEngine();
 
@@ -351,6 +353,8 @@ public abstract class AbstractPolyglotImpl {
 
         public abstract String getMimeType(Object impl);
 
+        public abstract String getLanguage(Object impl);
+
     }
 
     public abstract static class AbstractSourceSectionImpl {
@@ -409,6 +413,8 @@ public abstract class AbstractPolyglotImpl {
 
         public abstract void close(Context sourceContext, boolean interuptExecution);
 
+        public abstract boolean interrupt(Context sourceContext, Duration timeout);
+
         public abstract Value asValue(Object hostValue);
 
         public abstract void explicitEnter(Context sourceContext);
@@ -453,6 +459,8 @@ public abstract class AbstractPolyglotImpl {
 
         public abstract String getImplementationName();
 
+        public abstract Set<Source> getCachedSources();
+
     }
 
     public abstract static class AbstractExceptionImpl {
@@ -494,6 +502,8 @@ public abstract class AbstractPolyglotImpl {
         public abstract SourceSection getSourceLocation();
 
         public abstract boolean isResourceExhausted();
+
+        public abstract boolean isInterrupted();
 
     }
 
@@ -575,6 +585,42 @@ public abstract class AbstractPolyglotImpl {
         public abstract boolean removeArrayElement(Object receiver, long index);
 
         public abstract long getArraySize(Object receiver);
+
+        // region Buffer Methods
+
+        public boolean hasBufferElements(Object receiver) {
+            return false;
+        }
+
+        public abstract boolean isBufferWritable(Object receiver);
+
+        public abstract long getBufferSize(Object receiver);
+
+        public abstract byte readBufferByte(Object receiver, long byteOffset);
+
+        public abstract void writeBufferByte(Object receiver, long byteOffset, byte value);
+
+        public abstract short readBufferShort(Object receiver, ByteOrder order, long byteOffset);
+
+        public abstract void writeBufferShort(Object receiver, ByteOrder order, long byteOffset, short value);
+
+        public abstract int readBufferInt(Object receiver, ByteOrder order, long byteOffset);
+
+        public abstract void writeBufferInt(Object receiver, ByteOrder order, long byteOffset, int value);
+
+        public abstract long readBufferLong(Object receiver, ByteOrder order, long byteOffset);
+
+        public abstract void writeBufferLong(Object receiver, ByteOrder order, long byteOffset, long value);
+
+        public abstract float readBufferFloat(Object receiver, ByteOrder order, long byteOffset);
+
+        public abstract void writeBufferFloat(Object receiver, ByteOrder order, long byteOffset, float value);
+
+        public abstract double readBufferDouble(Object receiver, ByteOrder order, long byteOffset);
+
+        public abstract void writeBufferDouble(Object receiver, ByteOrder order, long byteOffset, double value);
+
+        // endregion
 
         public boolean hasMembers(Object receiver) {
             return false;
@@ -763,9 +809,9 @@ public abstract class AbstractPolyglotImpl {
 
     public abstract Value asValue(Object o);
 
-    public abstract <S, T> Object newTargetTypeMapping(Class<S> sourceType, Class<T> targetType, Predicate<S> acceptsValue, Function<S, T> convertValue);
+    public abstract <S, T> Object newTargetTypeMapping(Class<S> sourceType, Class<T> targetType, Predicate<S> acceptsValue, Function<S, T> convertValue, TargetMappingPrecedence precedence);
 
-    public abstract Object buildLimits(long statementLimit, Predicate<Source> statementLimitSourceFilter, Duration timeLimit, Duration timeLimitAccuracy, Consumer<ResourceLimitEvent> onLimit);
+    public abstract Object buildLimits(long statementLimit, Predicate<Source> statementLimitSourceFilter, Consumer<ResourceLimitEvent> onLimit);
 
     public abstract Context getLimitEventContext(Object impl);
 

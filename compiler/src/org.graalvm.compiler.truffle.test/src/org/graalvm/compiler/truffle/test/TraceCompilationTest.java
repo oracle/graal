@@ -24,8 +24,10 @@
  */
 package org.graalvm.compiler.truffle.test;
 
+import com.oracle.truffle.api.Assumption;
 import com.oracle.truffle.api.Truffle;
 import com.oracle.truffle.api.frame.FrameDescriptor;
+import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.nodes.RootNode;
 import java.io.ByteArrayOutputStream;
 import java.io.IOException;
@@ -47,6 +49,7 @@ import java.util.regex.Pattern;
 import java.util.stream.Collectors;
 import org.graalvm.compiler.test.SubprocessUtil;
 import org.graalvm.compiler.truffle.runtime.OptimizedCallTarget;
+import org.graalvm.compiler.truffle.test.nodes.AbstractTestNode;
 import org.graalvm.compiler.truffle.test.nodes.RootTestNode;
 import org.graalvm.polyglot.Context;
 import org.junit.Assert;
@@ -136,6 +139,30 @@ public class TraceCompilationTest extends TestWithPolyglotOptions {
         }, "-Dpolyglot.engine.BackgroundCompilation=false", "-Dpolyglot.engine.CompileImmediately=true", "-Dpolyglot.engine.TraceCompilation=true");
     }
 
+    @Test
+    public void testAssumptionInvalidation() throws Exception {
+        testHelper(() -> createAssumptionNode("test assumption node", "becomes invalid"),
+                        Collections.singletonMap("engine.TraceCompilation", "true"),
+                        new Pattern[]{Pattern.compile(".*opt inv.*Reason test assumption node becomes invalid.*")},
+                        new Pattern[0],
+                        null);
+        testHelper(() -> createAssumptionNode(null, "becomes invalid"),
+                        Collections.singletonMap("engine.TraceCompilation", "true"),
+                        new Pattern[]{Pattern.compile(".*opt inv.*Reason becomes invalid.*")},
+                        new Pattern[0],
+                        null);
+        testHelper(() -> createAssumptionNode("test assumption node", null),
+                        Collections.singletonMap("engine.TraceCompilation", "true"),
+                        new Pattern[]{Pattern.compile(".*opt inv.*Reason test assumption node.*")},
+                        new Pattern[0],
+                        null);
+        testHelper(() -> createAssumptionNode(null, null),
+                        Collections.singletonMap("engine.TraceCompilation", "true"),
+                        new Pattern[]{Pattern.compile(".*opt inv.*Reason assumption invalidated.*")},
+                        new Pattern[0],
+                        null);
+    }
+
     private static void executeForked(Callable<Void> r, String... additionalVmOptions) throws Exception {
         if (!isConfigured()) {
             String testName = getTestName();
@@ -205,12 +232,19 @@ public class TraceCompilationTest extends TestWithPolyglotOptions {
 
     private void testHelper(Supplier<RootNode> rootProvider, Map<String, String> additionalOptions, List<String> expected, List<String> unexpected, Consumer<LogRecord> onPublishAction)
                     throws Exception {
+        Pattern[] expectedPatterns = expected.stream().map(TraceCompilationTest::toPattern).toArray((len) -> new Pattern[len]);
+        Pattern[] unexpectedPatterns = unexpected.stream().map(TraceCompilationTest::toPattern).toArray((len) -> new Pattern[len]);
+        testHelper(rootProvider, additionalOptions, expectedPatterns, unexpectedPatterns, onPublishAction);
+    }
+
+    private void testHelper(Supplier<RootNode> rootProvider, Map<String, String> additionalOptions, Pattern[] expected, Pattern[] unexpected, Consumer<LogRecord> onPublishAction)
+                    throws Exception {
         executeForked(() -> {
             TestHandler.Builder builder = TestHandler.newBuilder().onPublish(onPublishAction);
-            for (String s : expected) {
+            for (Pattern s : expected) {
                 builder.expect(s);
             }
-            for (String s : unexpected) {
+            for (Pattern s : unexpected) {
                 builder.ban(s);
             }
             TestHandler handler = builder.build();
@@ -232,6 +266,10 @@ public class TraceCompilationTest extends TestWithPolyglotOptions {
             builder.option(e.getKey(), e.getValue());
         }
         return builder;
+    }
+
+    private static Pattern toPattern(String substring) {
+        return Pattern.compile(".*" + Pattern.quote(substring) + ".*");
     }
 
     private static final class TestHandler extends Handler {
@@ -342,17 +380,9 @@ public class TraceCompilationTest extends TestWithPolyglotOptions {
                 unexpected = new LinkedList<>();
             }
 
-            Builder expect(String substring) {
-                return expect(toPattern(substring));
-            }
-
             Builder expect(Pattern pattern) {
                 expected.add(pattern);
                 return this;
-            }
-
-            Builder ban(String substring) {
-                return ban(toPattern(substring));
             }
 
             Builder ban(Pattern pattern) {
@@ -367,10 +397,6 @@ public class TraceCompilationTest extends TestWithPolyglotOptions {
 
             TestHandler build() {
                 return new TestHandler(expected, unexpected, onPublishAction);
-            }
-
-            private static Pattern toPattern(String substring) {
-                return Pattern.compile(".*" + Pattern.quote(substring) + ".*");
             }
         }
 
@@ -395,5 +421,25 @@ public class TraceCompilationTest extends TestWithPolyglotOptions {
     private static RootNode createFailureNode() {
         CompilerAssertsTest.NeverPartOfCompilationTestNode result = new CompilerAssertsTest.NeverPartOfCompilationTestNode();
         return new RootTestNode(new FrameDescriptor(), "neverPartOfCompilation", result);
+    }
+
+    private static RootNode createAssumptionNode(String assumptionName, String invalidateMessage) {
+
+        AbstractTestNode node = new AbstractTestNode() {
+
+            private final Assumption assumption = Truffle.getRuntime().createAssumption(assumptionName);
+
+            @Override
+            public int execute(VirtualFrame frame) {
+                int res = assumption.isValid() ? 1 : 0;
+                if (invalidateMessage == null) {
+                    assumption.invalidate();
+                } else {
+                    assumption.invalidate(invalidateMessage);
+                }
+                return res;
+            }
+        };
+        return new RootTestNode(new FrameDescriptor(), "assumptionInvalidate", node);
     }
 }

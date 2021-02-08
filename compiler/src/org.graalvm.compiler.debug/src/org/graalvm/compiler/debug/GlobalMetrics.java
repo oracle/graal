@@ -54,7 +54,7 @@ public class GlobalMetrics {
     /**
      * Clears all values in this object.
      */
-    public void clear() {
+    public synchronized void clear() {
         values = null;
     }
 
@@ -77,7 +77,7 @@ public class GlobalMetrics {
         return res;
     }
 
-    private static PrintStream openPrintStream(String metricsFile) throws IOException {
+    private static PrintStream openPrintStream(String metricsFile, Path[] outPath) throws IOException {
         if (metricsFile == null) {
             return DebugContext.getDefaultLogStream();
         } else {
@@ -93,24 +93,38 @@ public class GlobalMetrics {
             } else {
                 path = Paths.get(metricsFile);
             }
+            outPath[0] = path;
             return new PrintStream(Files.newOutputStream(path));
         }
     }
 
     /**
-     * Prints the values in the object to the file specified by
+     * Prints the values in this object to the file specified by
      * {@link DebugOptions#AggregatedMetricsFile} if present otherwise to
      * {@link DebugContext#getDefaultLogStream()}.
+     *
+     * @return the path to which the metrics,if any, were printed
      */
-    public void print(OptionValues options) {
-        long[] vals = values;
-        if (vals != null) {
+    public Path print(OptionValues options) {
+        return print(options, DebugOptions.AggregatedMetricsFile.getValue(options));
+    }
+
+    /**
+     * Prints the values in this object to the file specified by {@code metricsFile} if it is
+     * non-null otherwise to {@link DebugContext#getDefaultLogStream()}.
+     *
+     * @return the path to which the metrics,if any, were printed
+     */
+    public synchronized Path print(OptionValues options, String metricsFile) {
+        Path pathWritten = null;
+        if (values != null) {
             EconomicMap<MetricKey, Long> map = asKeyValueMap();
-            String metricsFile = DebugOptions.AggregatedMetricsFile.getValue(options);
             boolean csv = metricsFile != null && (metricsFile.endsWith(".csv") || metricsFile.endsWith(".CSV"));
             PrintStream p = null;
             try {
-                p = openPrintStream(metricsFile);
+                Path[] outPath = {null};
+                p = openPrintStream(metricsFile, outPath);
+                pathWritten = outPath[0];
                 String isolateID = IsolateUtil.getIsolateID(false);
                 if (!csv) {
                     if (!map.isEmpty()) {
@@ -161,5 +175,6 @@ public class GlobalMetrics {
             }
             p.println("-- Metric Keys --");
         }
+        return pathWritten;
     }
 }

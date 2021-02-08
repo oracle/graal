@@ -73,16 +73,4 @@ public abstract class LLVMUnreachableNode extends LLVMControlFlowNode {
     public InstrumentableNode.WrapperNode createWrapper(ProbeNode probe) {
         return new LLVMUnreachableNodeWrapper(this, probe);
     }
-
-    /**
-     * Override to allow access from generated wrapper.
-     */
-    @Override
-    protected abstract boolean isStatement();
-
-    /**
-     * Override to allow access from generated wrapper.
-     */
-    @Override
-    protected abstract void setStatement(boolean statementTag);
 }

@@ -29,6 +29,9 @@
  */
 int main() {
     int array[] = { 1, 2, 3 };
+#pragma clang diagnostic push
+#pragma clang diagnostic ignored "-Wunused-variable"
     int *ptr = array;
+#pragma clang diagnostic pop
     return array[2];
 }

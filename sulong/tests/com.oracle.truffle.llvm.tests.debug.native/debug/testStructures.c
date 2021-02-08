@@ -102,11 +102,11 @@ __attribute__((noinline)) int testCombinedStructArg(struct combinableStruct str)
 
 // opt -mem2reg will reduce the struct arg to two separate i64 values
 __attribute__((noinline)) int testSplittedStructArg(struct splittableStruct str) {
-    printf("str.a = %d\nstr.b = %d\n", str.a, str.b);
+    printf("str.a = %ld\nstr.b = %ld\n", str.a, str.b);
     return 0;
 }
 
-int start() __attribute__((constructor)) {
+__attribute__((constructor)) int start() {
     myGlobalStruct.a = 123;
     myGlobalStruct.b = 124.5f;
 

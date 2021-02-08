@@ -26,15 +26,13 @@ package com.oracle.truffle.tools.chromeinspector.test;
 
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertTrue;
+import org.junit.Test;
 
-import java.util.Collections;
 import java.util.concurrent.atomic.AtomicInteger;
 
 import org.graalvm.polyglot.Source;
-import org.junit.Test;
 
 import com.oracle.truffle.api.CallTarget;
-import com.oracle.truffle.api.Scope;
 import com.oracle.truffle.api.Truffle;
 import com.oracle.truffle.api.TruffleLanguage;
 import com.oracle.truffle.api.frame.FrameSlot;
@@ -190,24 +188,8 @@ public class LazyAccessInspectDebugTest {
         }
 
         @Override
-        protected String toString(LanguageContext context, Object value) {
-            if (value instanceof LazyReadObject) {
-                return LazyReadObject.class.getSimpleName();
-            }
-            return super.toString(context, value);
-        }
-
-        @Override
-        protected Object findMetaObject(LanguageContext context, Object value) {
-            if (value instanceof TruffleObject) {
-                return "Object";
-            }
-            return super.findMetaObject(context, value);
-        }
-
-        @Override
-        protected Iterable<Scope> findTopScopes(LanguageContext context) {
-            return Collections.singletonList(Scope.newBuilder("top", new LazyReadObject()).build());
+        protected Object getScope(LanguageContext context) {
+            return new LazyReadObject(true);
         }
 
         final class TestRootNode extends RootNode {
@@ -234,7 +216,7 @@ public class LazyAccessInspectDebugTest {
 
             @Override
             public Object execute(VirtualFrame frame) {
-                TruffleObject obj = new LazyReadObject();
+                TruffleObject obj = new LazyReadObject(false);
                 FrameSlot slot = frame.getFrameDescriptor().findOrAddFrameSlot("o", FrameSlotKind.Object);
                 frame.setObject(slot, obj);
                 return statement.execute(frame);
@@ -285,7 +267,21 @@ public class LazyAccessInspectDebugTest {
 
         private class LazyReadObject extends ProxyInteropObject {
 
-            LazyReadObject() {
+            private final boolean isScope;
+
+            LazyReadObject(boolean isScope) {
+                this.isScope = isScope;
+            }
+
+            @Override
+            protected boolean hasLanguage() {
+                // Provides the ProxyLanguage by default.
+                return true;
+            }
+
+            @Override
+            protected boolean isScope() {
+                return isScope;
             }
 
             @Override
@@ -319,6 +315,49 @@ public class LazyAccessInspectDebugTest {
                     throw UnknownIdentifierException.create(member);
                 }
             }
+
+            @Override
+            protected boolean hasMetaObject() {
+                return true;
+            }
+
+            @Override
+            protected Object getMetaObject() throws UnsupportedMessageException {
+                return new MetaObject();
+            }
+
+            @Override
+            protected Object toDisplayString(boolean allowSideEffects) {
+                if (isScope) {
+                    return "top";
+                } else {
+                    return LazyReadObject.class.getSimpleName();
+                }
+            }
+        }
+
+        private static class MetaObject extends ProxyInteropObject {
+
+            @Override
+            protected boolean isMetaObject() {
+                return true;
+            }
+
+            @Override
+            protected boolean isMetaInstance(Object instance) {
+                return instance instanceof LazyReadObject;
+            }
+
+            @Override
+            protected String getMetaSimpleName() throws UnsupportedMessageException {
+                return "Object";
+            }
+
+            @Override
+            protected String getMetaQualifiedName() throws UnsupportedMessageException {
+                return "Object";
+            }
+
         }
 
         private static class Keys extends ProxyInteropObject {

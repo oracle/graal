@@ -56,6 +56,7 @@ import com.oracle.truffle.dsl.processor.expression.DSLExpression.Negate;
 import com.oracle.truffle.dsl.processor.expression.DSLExpression.Variable;
 import com.oracle.truffle.dsl.processor.java.ElementUtils;
 import com.oracle.truffle.dsl.processor.java.model.CodeVariableElement;
+import com.oracle.truffle.dsl.processor.library.LibraryData;
 
 public final class CacheExpression extends MessageContainer {
 
@@ -68,14 +69,15 @@ public final class CacheExpression extends MessageContainer {
     private boolean eagerInitialize;
     private Message uncachedExpressionError;
     private boolean requiresBoundary;
-    private String sharedGroup;
     private boolean mergedLibrary;
-    private boolean guardForNull;
+    private boolean isWeakReferenceGet;
     private boolean isWeakReference;
     private boolean adopt = true;
 
     private TypeMirror languageType;
     private TypeMirror referenceType;
+
+    private LibraryData cachedlibrary;
 
     public CacheExpression(Parameter sourceParameter, AnnotationMirror sourceAnnotationMirror) {
         this.sourceParameter = sourceParameter;
@@ -88,7 +90,6 @@ public final class CacheExpression extends MessageContainer {
         copy.defaultExpression = this.defaultExpression;
         copy.uncachedExpression = this.uncachedExpression;
         copy.alwaysInitialized = this.alwaysInitialized;
-        copy.sharedGroup = this.sharedGroup;
         return copy;
     }
 
@@ -122,10 +123,6 @@ public final class CacheExpression extends MessageContainer {
 
     public TypeMirror getLanguageType() {
         return languageType;
-    }
-
-    public void setSharedGroup(String sharedGroup) {
-        this.sharedGroup = sharedGroup;
     }
 
     public AnnotationMirror getSharedGroupMirror() {
@@ -310,12 +307,12 @@ public final class CacheExpression extends MessageContainer {
         return b.toString() + libraryName + "_";
     }
 
-    public void setGuardForNull(boolean b) {
-        this.guardForNull = b;
+    public void setWeakReferenceGet(boolean b) {
+        this.isWeakReferenceGet = b;
     }
 
-    public boolean isGuardForNull() {
-        return guardForNull;
+    public boolean isWeakReferenceGet() {
+        return isWeakReferenceGet;
     }
 
     public void setWeakReference(boolean ignoreInUncached) {
@@ -332,6 +329,14 @@ public final class CacheExpression extends MessageContainer {
 
     public void setAdopt(boolean adopt) {
         this.adopt = adopt;
+    }
+
+    public LibraryData getCachedLibrary() {
+        return cachedlibrary;
+    }
+
+    public void setCachedLibrary(LibraryData cachedlibrary) {
+        this.cachedlibrary = cachedlibrary;
     }
 
 }

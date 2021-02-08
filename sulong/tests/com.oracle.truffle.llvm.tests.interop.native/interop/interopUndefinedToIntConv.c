@@ -29,7 +29,7 @@
  */
 #include <stdlib.h>
 #include <stdio.h>
-#include <polyglot.h>
+#include <graalvm/llvm/polyglot.h>
 
 struct Order {
     int price;

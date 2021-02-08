@@ -25,56 +25,51 @@
 package com.oracle.truffle.tools.agentscript.impl;
 
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
-import com.oracle.truffle.api.TruffleException;
 import com.oracle.truffle.api.TruffleFile;
 import com.oracle.truffle.api.TruffleStackTrace;
+import com.oracle.truffle.api.exception.AbstractTruffleException;
 import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.instrumentation.EventBinding;
 import com.oracle.truffle.api.instrumentation.EventContext;
 import com.oracle.truffle.api.instrumentation.ExecutionEventListener;
 import com.oracle.truffle.api.instrumentation.Instrumenter;
 import com.oracle.truffle.api.instrumentation.SourceSectionFilter;
+import com.oracle.truffle.api.interop.ExceptionType;
+import com.oracle.truffle.api.interop.InteropLibrary;
+import com.oracle.truffle.api.interop.UnsupportedMessageException;
+import com.oracle.truffle.api.library.ExportLibrary;
+import com.oracle.truffle.api.library.ExportMessage;
 import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.api.source.Source;
 import java.util.Locale;
 
-final class InsightException extends RuntimeException implements TruffleException {
+@ExportLibrary(InteropLibrary.class)
+final class InsightException extends AbstractTruffleException {
     static final long serialVersionUID = 1L;
     private final int exitCode;
-    private final Node node;
 
     @TruffleBoundary
     private InsightException(String msg, Throwable cause, int exitCode) {
-        super("insight: " + msg, cause);
+        super("insight: " + msg, cause, UNLIMITED_STACK_TRACE, null);
         this.exitCode = exitCode;
-        this.node = null;
     }
 
     @TruffleBoundary
     private InsightException(Throwable cause, Node node) {
-        super(cause.getMessage());
+        super(cause.getMessage(), node);
         this.exitCode = -1;
-        this.node = node;
     }
 
-    @SuppressWarnings("all")
-    @Override
-    public Throwable fillInStackTrace() {
-        return this;
+    @ExportMessage
+    ExceptionType getExceptionType() {
+        return exitCode < 0 ? ExceptionType.RUNTIME_ERROR : ExceptionType.EXIT;
     }
 
-    @Override
-    public Node getLocation() {
-        return node;
-    }
-
-    @Override
-    public boolean isExit() {
-        return exitCode >= 0;
-    }
-
-    @Override
-    public int getExitStatus() {
+    @ExportMessage
+    int getExceptionExitStatus() throws UnsupportedMessageException {
+        if (exitCode < 0) {
+            throw UnsupportedMessageException.create();
+        }
         return exitCode;
     }
 
@@ -127,11 +122,12 @@ final class InsightException extends RuntimeException implements TruffleExceptio
             public void onEnter(EventContext context, VirtualFrame frame) {
                 waitForSourceBeingExecuted[0].dispose();
                 EventContextObject obj = new EventContextObject(context);
-                if (ex instanceof TruffleException && ex instanceof RuntimeException) {
-                    throw obj.rethrow((RuntimeException) ex);
+                InteropLibrary interopLib = InteropLibrary.getUncached();
+                if (interopLib.isException(ex)) {
+                    throw obj.rethrow((RuntimeException) ex, interopLib);
                 }
                 InsightException wrapper = new InsightException(ex, context.getInstrumentedNode());
-                throw obj.rethrow(wrapper);
+                throw obj.rethrow(wrapper, interopLib);
             }
 
             @Override

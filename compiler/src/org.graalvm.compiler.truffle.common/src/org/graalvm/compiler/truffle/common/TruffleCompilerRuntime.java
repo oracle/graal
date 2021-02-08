@@ -28,6 +28,7 @@ import static org.graalvm.compiler.truffle.common.TruffleCompilerRuntimeInstance
 
 import java.util.Map;
 import java.util.function.Consumer;
+import java.util.function.Supplier;
 
 import jdk.vm.ci.meta.JavaConstant;
 import jdk.vm.ci.meta.JavaKind;
@@ -248,7 +249,7 @@ public interface TruffleCompilerRuntime {
      *
      * @return the requested plan or {@code null} a plan cannot be created in the calling context
      */
-    TruffleInliningPlan createInliningPlan(CompilableTruffleAST compilable, TruffleCompilationTask task);
+    TruffleMetaAccessProvider createInliningPlan();
 
     /**
      * Gets the {@link CompilableTruffleAST} represented by {@code constant}.
@@ -305,7 +306,7 @@ public interface TruffleCompilerRuntime {
      * @since 20.1.0
      */
     default void logEvent(CompilableTruffleAST compilable, int depth, String event, String subject, Map<String, Object> properties, String message) {
-        String formattedMessage = formatEvent(depth, event, 16, subject, 60, properties, 20);
+        String formattedMessage = formatEvent(depth, event, 12, subject, 60, properties, 0);
         if (message != null) {
             formattedMessage = String.format("%s%n%s", formattedMessage, message);
         }
@@ -318,7 +319,11 @@ public interface TruffleCompilerRuntime {
      * @param compilable the currently compiled AST
      * @param message message to log
      */
-    void log(CompilableTruffleAST compilable, String message);
+    default void log(CompilableTruffleAST compilable, String message) {
+        log("engine", compilable, message);
+    }
+
+    void log(String loggerId, CompilableTruffleAST compilable, String message);
 
     /**
      * Formats a message describing a Truffle event as a single line of text. A representative event
@@ -359,7 +364,7 @@ public interface TruffleCompilerRuntime {
                 if (value == null) {
                     continue;
                 }
-                sb.append('|');
+                sb.append("|");
                 sb.append(property);
 
                 String valueString;
@@ -372,7 +377,7 @@ public interface TruffleCompilerRuntime {
                 }
 
                 int length = Math.max(1, propertyWidth - property.length());
-                sb.append(String.format(" %" + length + "s ", valueString));
+                sb.append(String.format(" %" + length + "s", valueString));
             }
         }
         return sb.toString();
@@ -401,26 +406,11 @@ public interface TruffleCompilerRuntime {
     ResolvedJavaType resolveType(MetaAccessProvider metaAccess, String className, boolean required);
 
     /**
-     * Gets the option values for this runtime as a map from option name to option value.
-     */
-    Map<String, Object> getOptions();
-
-    /**
-     * Gets the option values for this runtime in an instance of {@code type}.
+     * Gets the Graal option values for this runtime in an instance of {@code type}.
      *
      * @throws IllegalArgumentException if this runtime does not support {@code type}
      */
-    default <T> T getOptions(Class<T> type) {
-        throw new IllegalArgumentException(getClass().getName() + " can not return option values of type " + type.getName());
-    }
-
-    /**
-     * Convert option values in name/value pairs to an instance of {@code type}.
-     *
-     * @param map input option values as {@link String} names to values
-     * @throws IllegalArgumentException if this runtime does not support {@code type}
-     */
-    default <T> T convertOptions(Class<T> type, Map<String, Object> map) {
+    default <T> T getGraalOptions(Class<T> type) {
         throw new IllegalArgumentException(getClass().getName() + " can not return option values of type " + type.getName());
     }
 
@@ -461,7 +451,24 @@ public interface TruffleCompilerRuntime {
     boolean isTruffleBoundary(ResolvedJavaMethod method);
 
     /**
-     * Determines if {@code method} is annotated by {@code TruffleBoundary}.
+     * Determines if {@code method} is annotated by {@code Specialization}.
      */
     boolean isSpecializationMethod(ResolvedJavaMethod method);
+
+    /**
+     * Determines if {@code method} is annotated by {@code BytecodeInterpreterSwitch}.
+     */
+    boolean isBytecodeInterpreterSwitch(ResolvedJavaMethod method);
+
+    /**
+     * Determines if {@code method} is annotated by {@code BytecodeInterpreterSwitchBoundary}.
+     */
+    boolean isBytecodeInterpreterSwitchBoundary(ResolvedJavaMethod method);
+
+    /**
+     * Determines if the exception which happened during the compilation is suppressed and should be
+     * silent.
+     */
+    boolean isSuppressedFailure(CompilableTruffleAST compilable, Supplier<String> serializedException);
+
 }

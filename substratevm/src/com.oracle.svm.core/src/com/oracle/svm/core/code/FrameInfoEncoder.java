@@ -38,6 +38,7 @@ import org.graalvm.compiler.core.common.util.UnsafeArrayTypeWriter;
 import org.graalvm.nativeimage.ImageSingletons;
 
 import com.oracle.svm.core.CalleeSavedRegisters;
+import com.oracle.svm.core.ReservedRegisters;
 import com.oracle.svm.core.annotate.Uninterruptible;
 import com.oracle.svm.core.c.NonmovableArray;
 import com.oracle.svm.core.c.NonmovableArrays;
@@ -351,6 +352,13 @@ public class FrameInfoEncoder {
             result.isCompressedReference = isCompressedReference(stackSlot);
             ImageSingletons.lookup(Counters.class).stackValueCount.inc();
 
+        } else if (ReservedRegisters.singleton().isAllowedInFrameState(value)) {
+            RegisterValue register = (RegisterValue) value;
+            result.type = ValueType.ReservedRegister;
+            result.data = ValueUtil.asRegister(register).number;
+            result.isCompressedReference = isCompressedReference(register);
+            ImageSingletons.lookup(Counters.class).registerValueCount.inc();
+
         } else if (CalleeSavedRegisters.supportedByPlatform() && value instanceof RegisterValue) {
             if (isDeoptEntry) {
                 throw VMError.shouldNotReachHere("Cannot encode registers in deoptimization entry point: value " + value + " in method " +
@@ -406,7 +414,7 @@ public class FrameInfoEncoder {
         /* Install a non-null value to support recursive VirtualObjects. */
         data.virtualObjects[id] = MARKER;
 
-        List<ValueInfo> valueList = new ArrayList<>(virtualObject.getValues().length + 4);
+        ArrayList<ValueInfo> valueList = new ArrayList<>(virtualObject.getValues().length + 4);
         SharedType type = (SharedType) virtualObject.getType();
         /* The first element is the hub of the virtual object. */
         valueList.add(makeValueInfo(data, JavaKind.Object, SubstrateObjectConstant.forObject(type.getHub()), isDeoptEntry));
@@ -419,7 +427,8 @@ public class FrameInfoEncoder {
             int length = 0;
 
             JavaKind kind = ((SharedType) type.getComponentType()).getStorageKind();
-            for (int i = 0; i < virtualObject.getValues().length; i++) {
+            int i = 0;
+            while (i < virtualObject.getValues().length) {
                 JavaValue value = virtualObject.getValues()[i];
                 JavaKind valueKind = virtualObject.getSlotKind(i);
                 if (objectLayout.sizeInBytes(kind) == 4 && objectLayout.sizeInBytes(valueKind) == 8) {
@@ -433,12 +442,22 @@ public class FrameInfoEncoder {
                     length += 2;
 
                 } else {
-                    assert objectLayout.sizeInBytes(valueKind.getStackKind()) <= objectLayout.sizeInBytes(kind.getStackKind());
-                    valueList.add(makeValueInfo(data, kind, value, isDeoptEntry));
-                    length++;
+                    if (kind == JavaKind.Byte) {
+                        /* Escape analysis of byte arrays needs special care. */
+                        int byteCount = restoreByteArrayEntryByteCount(virtualObject, i);
+                        valueKind = restoreByteArrayEntryValueKind(valueKind, byteCount);
+                        valueList.add(makeValueInfo(data, valueKind, value, isDeoptEntry));
+                        length += byteCount;
+                        i += byteCount - /* loop increment */ 1;
+                    } else {
+                        assert objectLayout.sizeInBytes(valueKind.getStackKind()) <= objectLayout.sizeInBytes(kind.getStackKind());
+                        valueList.add(makeValueInfo(data, kind, value, isDeoptEntry));
+                        length++;
+                    }
                 }
 
-                assert objectLayout.getArrayElementOffset(kind, length) == objectLayout.getArrayBaseOffset(kind) + computeOffset(valueList.subList(2, valueList.size()));
+                i++;
+                assert objectLayout.getArrayElementOffset(kind, length) == objectLayout.getArrayBaseOffset(kind) + computeOffset(valueList, 2);
             }
 
             assert valueList.get(1) == null;
@@ -492,7 +511,7 @@ public class FrameInfoEncoder {
                         curOffset += 1;
                     }
                     assert curOffset == field.getLocation();
-                    assert curOffset == computeOffset(valueList);
+                    assert curOffset - objectLayout.getFirstFieldOffset() == computeOffset(valueList, 1);
 
                     valueList.add(makeValueInfo(data, kind, value, isDeoptEntry));
                     curOffset += objectLayout.sizeInBytes(kind);
@@ -504,10 +523,55 @@ public class FrameInfoEncoder {
         ImageSingletons.lookup(Counters.class).virtualObjectsCount.inc();
     }
 
-    private static int computeOffset(List<ValueInfo> valueInfos) {
+    /**
+     * Virtualized byte arrays might look like:
+     * <p>
+     * [b1, b2, INT, ILLEGAL, ILLEGAL, ILLEGAL, b7, b8]
+     * <p>
+     * This indicates that an int was written over 4 slots of a byte array, and this write was
+     * escape analysed.
+     *
+     * The written int should write over the 3 illegals, and we can then simply ignore them
+     * afterwards.
+     */
+    private static int restoreByteArrayEntryByteCount(VirtualObject vObject, int curIdx) {
+        int pos = curIdx + 1;
+        while (pos < vObject.getValues().length &&
+                        vObject.getSlotKind(pos) == JavaKind.Illegal) {
+            pos++;
+        }
+        return pos - curIdx;
+    }
+
+    /**
+     * Returns a correctly-sized kind to write at once in the array. Uses the declared kind to
+     * decide on whether the kind should be a numeric float (This should not matter).
+     */
+    private static JavaKind restoreByteArrayEntryValueKind(JavaKind kind, int byteCount) {
+        switch (byteCount) {
+            case 1:
+                return JavaKind.Byte;
+            case 2:
+                return JavaKind.Short;
+            case 4:
+                if (kind.isNumericFloat()) {
+                    return JavaKind.Float;
+                }
+                return JavaKind.Int;
+            case 8:
+                if (kind.isNumericFloat()) {
+                    return JavaKind.Double;
+                }
+                return JavaKind.Long;
+            default:
+                throw VMError.shouldNotReachHere();
+        }
+    }
+
+    private static int computeOffset(ArrayList<ValueInfo> valueInfos, int startIndex) {
         int result = 0;
-        for (ValueInfo valueInfo : valueInfos) {
-            result += ConfigurationValues.getObjectLayout().sizeInBytes(valueInfo.kind);
+        for (int i = startIndex; i < valueInfos.size(); i++) {
+            result += ConfigurationValues.getObjectLayout().sizeInBytes(valueInfos.get(i).kind);
         }
         return result;
     }

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2017, 2019, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2017, 2020, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -97,8 +97,15 @@ public interface ProxyArray extends Proxy {
     long getSize();
 
     /**
-     * Creates a proxy array backed by a Java array. If the set values of the array are host values
-     * then the they will be {@link Value#asHostObject() unboxed}.
+     * Creates a proxy array backed by a Java Object array. If the set values of the array are host
+     * values then they will be {@link Value#asHostObject() unboxed}.
+     *
+     * Note this function expects a variable number of arguments of type Object, thus might not work
+     * as expected on non-Object array types. For instance, an int array will be stored as the first
+     * element of the resulting proxy array. To flatten it out, convert it to an Object array first
+     * (e.g. with {@code Arrays.stream( myIntArray ).boxed().toArray();}).
+     *
+     * @param values the Object[] array or the vararg arguments to be proxied.
      *
      * @since 19.0
      */

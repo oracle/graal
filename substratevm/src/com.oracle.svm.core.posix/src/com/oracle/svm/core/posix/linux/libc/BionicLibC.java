@@ -45,7 +45,7 @@ public class BionicLibC implements LibCBase {
 
     @Override
     public String getTargetCompiler() {
-        return "gcc";
+        return "clang";
     }
 
     @Override
@@ -55,6 +55,6 @@ public class BionicLibC implements LibCBase {
 
     @Override
     public boolean requiresLibCSpecificStaticJDKLibraries() {
-        return false;
+        return true;
     }
 }

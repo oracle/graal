@@ -45,8 +45,8 @@ public class SPARCSuitesCreator extends DefaultSuitesCreator {
     @Override
     public Suites createSuites(OptionValues options) {
         Suites s = super.createSuites(options);
-        ListIterator<BasePhase<? super LowTierContext>> l = s.getLowTier().findPhase(ExpandLogicPhase.class);
-        while (PhaseSuite.findNextPhase(l, ExpandLogicPhase.class)) {
+        ListIterator<BasePhase<? super LowTierContext>> l = s.getLowTier().findPhase(ExpandLogicPhase.class, true);
+        while (PhaseSuite.findNextPhase(l, ExpandLogicPhase.class, true)) {
             // Search for last occurrence of ExpandLogicPhase
         }
         l.previous();

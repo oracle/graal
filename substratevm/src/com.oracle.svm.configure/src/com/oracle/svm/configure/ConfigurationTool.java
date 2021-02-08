@@ -189,6 +189,12 @@ public class ConfigurationTool {
                     set.getResourceConfigPaths().add(requirePathUri(current, value));
                     break;
 
+                case "--serialization-input":
+                    set = inputSet; // fall through
+                case "--serialization-output":
+                    set.getSerializationConfigPaths().add(requirePathUri(current, value));
+                    break;
+
                 case "--trace-input":
                     traceInputs.add(requirePathUri(current, value));
                     break;
@@ -249,7 +255,8 @@ public class ConfigurationTool {
         TraceProcessor p;
         try {
             p = new TraceProcessor(advisor, inputSet.loadJniConfig(ConfigurationSet.FAIL_ON_EXCEPTION), inputSet.loadReflectConfig(ConfigurationSet.FAIL_ON_EXCEPTION),
-                            inputSet.loadProxyConfig(ConfigurationSet.FAIL_ON_EXCEPTION), inputSet.loadResourceConfig(ConfigurationSet.FAIL_ON_EXCEPTION));
+                            inputSet.loadProxyConfig(ConfigurationSet.FAIL_ON_EXCEPTION), inputSet.loadResourceConfig(ConfigurationSet.FAIL_ON_EXCEPTION),
+                            inputSet.loadSerializationConfig(ConfigurationSet.FAIL_ON_EXCEPTION));
         } catch (IOException e) {
             throw e;
         } catch (Throwable t) {
@@ -287,6 +294,11 @@ public class ConfigurationTool {
                 p.getResourceConfiguration().printJson(writer);
             }
         }
+        for (URI uri : outputSet.getSerializationConfigPaths()) {
+            try (JsonWriter writer = new JsonWriter(Paths.get(uri))) {
+                p.getSerializationConfiguration().printJson(writer);
+            }
+        }
     }
 
     private static void generateFilterRules(Iterator<String> argsIter) throws IOException {
@@ -310,13 +322,21 @@ public class ConfigurationTool {
             switch (current) {
                 case "--include-packages-from-modules":
                 case "--exclude-packages-from-modules":
+                case "--exclude-unexported-packages-from-modules":
                     if (SubstrateUtil.HOSTED) {
                         if (rootNode != null) {
                             throw new UsageException(current + " must be specified before other rule-creating arguments");
                         }
-                        RuleNode.Inclusion inclusion = current.startsWith("--include") ? RuleNode.Inclusion.Include : RuleNode.Inclusion.Exclude;
                         String[] moduleNames = (value != null) ? value.split(",") : new String[0];
-                        rootNode = ModuleFilterTools.generateFromModules(moduleNames, inclusion, reduce);
+                        RuleNode.Inclusion exportedInclusion = current.startsWith("--include") ? RuleNode.Inclusion.Include : RuleNode.Inclusion.Exclude;
+                        RuleNode.Inclusion unexportedInclusion = exportedInclusion;
+                        RuleNode.Inclusion rootInclusion = exportedInclusion.invert();
+                        if (current.equals("--exclude-unexported-packages-from-modules")) {
+                            rootInclusion = RuleNode.Inclusion.Include;
+                            exportedInclusion = RuleNode.Inclusion.Include;
+                            unexportedInclusion = RuleNode.Inclusion.Exclude;
+                        }
+                        rootNode = ModuleFilterTools.generateFromModules(moduleNames, rootInclusion, exportedInclusion, unexportedInclusion, reduce);
                     } else {
                         throw new UsageException(current + " is currently not supported in the native-image build of this tool.");
                     }

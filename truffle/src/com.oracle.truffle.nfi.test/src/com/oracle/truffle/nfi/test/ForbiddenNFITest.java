@@ -40,7 +40,10 @@
  */
 package com.oracle.truffle.nfi.test;
 
+import static com.oracle.truffle.nfi.test.LoadNFILibraryTest.loadNFIUnsatisfiedLinkError;
+
 import com.oracle.truffle.api.source.Source;
+import com.oracle.truffle.api.test.polyglot.AbstractPolyglotTest;
 import com.oracle.truffle.tck.TruffleRunner;
 import org.graalvm.polyglot.Context;
 import org.junit.Rule;
@@ -57,13 +60,13 @@ public class ForbiddenNFITest {
         return runWithPolyglot.getTruffleTestEnv().parseInternal(source).call();
     }
 
-    @Test(expected = UnsatisfiedLinkError.class)
+    @Test
     public void loadDefault() {
-        eval("default");
+        AbstractPolyglotTest.assertFails(() -> eval("default"), loadNFIUnsatisfiedLinkError());
     }
 
-    @Test(expected = UnsatisfiedLinkError.class)
+    @Test
     public void loadTestLib() {
-        eval("load '%s'", nativeTestLib);
+        AbstractPolyglotTest.assertFails(() -> eval("load '%s'", nativeTestLib), loadNFIUnsatisfiedLinkError());
     }
 }

@@ -32,7 +32,7 @@ and language implementers who want to use the GraalVM LLVM runtime.
 
 To be compatible with existing build systems, by default, the toolchain will
 produce native executables with embedded bitcode (ELF files on Linux, Mach-O
-files on MacOS). See [COMPILING.md](../user/COMPILING.md) for more information.
+files on MacOS). See [Compiling.md](../user/Compiling.md) for more information.
 
 ## Toolchain Identifier
 
@@ -76,7 +76,7 @@ for a full example.
 
 ## C API
 There is also a C level API for accessing the Toolchain defined in
-[`llvm/api/toolchain.h`](../../projects/com.oracle.truffle.llvm.libraries.bitcode/include/llvm/api/toolchain.h).
+[`graalvm/llvm/toolchain-api.h`](../../projects/com.oracle.truffle.llvm.libraries.graalvm.llvm/include/graalvm/llvm/toolchain-api.h).
 It provides the following function which correspond to the Java API methods:
 
 ```C
@@ -93,8 +93,8 @@ need to be accessed via the `polyglot_*` API function:
 
 ```C
 #include <stdio.h>
-#include <polyglot.h>
-#include <llvm/api/toolchain.h>
+#include <graalvm/llvm/polyglot.h>
+#include <graalvm/llvm/toolchain-api.h>
 
 #define BUFFER_SIZE 1024
 
@@ -146,9 +146,7 @@ Note that they expect a toolchain name as the first argument. See for example th
 
 On the implementation side, _the toolchain_ consists of multiple ingredients:
 
-* The **LLVM.org component** is similar to a regular [LLVM release](https://llvm.org) (clang, lld, llvm-* tools)
-  but includes [a few patches](../../patches) that are not yet [upstream](https://github.com/llvm/llvm-project).
-  Those patches are general feature improvements that are not specific to GraalVM.
+* The **LLVM.org component** is similar to a regular [LLVM release](https://llvm.org) (clang, lld, llvm-* tools).
   In GraalVM, the LLVM.org component is located in `$GRAALVM/lib/llvm/` (or `$GRAALVM/jre/lib/llvm/` in the Java 8 version).
   This component is considered as internal and should not be directly used.
   The LLVM.org component might not be installed by default. If that is the case, it can be installed via `gu install llvm-toolchain`.

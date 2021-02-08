@@ -31,7 +31,7 @@ void function(char t[4]) {
     t[3] = 0;
 }
 
-int sum(char t[4]) {
+int sum(char t[5]) {
     int i;
     int sum = 0;
     // + '\0'

@@ -24,80 +24,105 @@
  */
 package com.oracle.svm.core.snippets;
 
-// Checkstyle: allow reflection
+import static com.oracle.svm.core.graal.snippets.SubstrateAllocationSnippets.TLAB_LOCATIONS;
 
-import java.lang.reflect.Field;
+//Checkstyle: allow reflection
+
 import java.lang.reflect.Method;
-import java.lang.reflect.Modifier;
-import java.util.ArrayList;
-import java.util.List;
 
 import org.graalvm.compiler.core.common.spi.ForeignCallDescriptor;
+import org.graalvm.compiler.phases.util.Providers;
 import org.graalvm.compiler.replacements.nodes.BinaryMathIntrinsicNode.BinaryOperation;
 import org.graalvm.compiler.replacements.nodes.UnaryMathIntrinsicNode.UnaryOperation;
 import org.graalvm.util.DirectAnnotationAccess;
 import org.graalvm.word.LocationIdentity;
 
 import com.oracle.svm.core.annotate.Uninterruptible;
+import com.oracle.svm.core.graal.meta.SubstrateForeignCallsProvider;
+import com.oracle.svm.core.graal.snippets.SubstrateAllocationSnippets;
 import com.oracle.svm.core.util.VMError;
 
 import jdk.vm.ci.meta.MetaAccessProvider;
 import jdk.vm.ci.meta.ResolvedJavaMethod;
 
 public class SnippetRuntime {
-
     public static final SubstrateForeignCallDescriptor UNSUPPORTED_FEATURE = findForeignCall(SnippetRuntime.class, "unsupportedFeature", true, LocationIdentity.any());
 
     /* Implementation of runtime calls defined in a VM-independent way by Graal. */
-    public static final SubstrateForeignCallDescriptor REGISTER_FINALIZER = findForeignCall(SnippetRuntime.class, "registerFinalizer", true);
+    private static final SubstrateForeignCallDescriptor REGISTER_FINALIZER = findForeignCall(SnippetRuntime.class, "registerFinalizer", true);
 
     /*
      * Graal-defined math functions where we have optimized machine code sequences: We just register
      * the original Math function as the foreign call. The backend will emit the machine code
      * sequence.
      */
-    public static final SubstrateForeignCallDescriptor ARITHMETIC_SIN = findForeignCall(UnaryOperation.SIN.foreignCallSignature.getName(), Math.class, "sin", true);
-    public static final SubstrateForeignCallDescriptor ARITHMETIC_COS = findForeignCall(UnaryOperation.COS.foreignCallSignature.getName(), Math.class, "cos", true);
-    public static final SubstrateForeignCallDescriptor ARITHMETIC_TAN = findForeignCall(UnaryOperation.TAN.foreignCallSignature.getName(), Math.class, "tan", true);
-    public static final SubstrateForeignCallDescriptor ARITHMETIC_LOG = findForeignCall(UnaryOperation.LOG.foreignCallSignature.getName(), Math.class, "log", true);
-    public static final SubstrateForeignCallDescriptor ARITHMETIC_LOG10 = findForeignCall(UnaryOperation.LOG10.foreignCallSignature.getName(), Math.class, "log10", true);
-    public static final SubstrateForeignCallDescriptor ARITHMETIC_EXP = findForeignCall(UnaryOperation.EXP.foreignCallSignature.getName(), Math.class, "exp", true);
-    public static final SubstrateForeignCallDescriptor ARITHMETIC_POW = findForeignCall(BinaryOperation.POW.foreignCallSignature.getName(), Math.class, "pow", true);
+    private static final SubstrateForeignCallDescriptor ARITHMETIC_SIN = findForeignJdkCall(UnaryOperation.SIN.foreignCallSignature.getName(), Math.class, "sin", true, true, true);
+    private static final SubstrateForeignCallDescriptor ARITHMETIC_COS = findForeignJdkCall(UnaryOperation.COS.foreignCallSignature.getName(), Math.class, "cos", true, true, true);
+    private static final SubstrateForeignCallDescriptor ARITHMETIC_TAN = findForeignJdkCall(UnaryOperation.TAN.foreignCallSignature.getName(), Math.class, "tan", true, true, true);
+    private static final SubstrateForeignCallDescriptor ARITHMETIC_LOG = findForeignJdkCall(UnaryOperation.LOG.foreignCallSignature.getName(), Math.class, "log", true, true, true);
+    private static final SubstrateForeignCallDescriptor ARITHMETIC_LOG10 = findForeignJdkCall(UnaryOperation.LOG10.foreignCallSignature.getName(), Math.class, "log10", true, true, true);
+    private static final SubstrateForeignCallDescriptor ARITHMETIC_EXP = findForeignJdkCall(UnaryOperation.EXP.foreignCallSignature.getName(), Math.class, "exp", true, true, true);
+    private static final SubstrateForeignCallDescriptor ARITHMETIC_POW = findForeignJdkCall(BinaryOperation.POW.foreignCallSignature.getName(), Math.class, "pow", true, true, true);
 
-    /*
-     * These methods are intrinsified as nodes at first, but can then lowered back to a call. Ensure
-     * they are seen as reachable.
-     */
-    public static final SubstrateForeignCallDescriptor OBJECT_CLONE = findForeignCall(Object.class, "clone", false, LocationIdentity.any());
+    private static final SubstrateForeignCallDescriptor[] FOREIGN_CALLS = new SubstrateForeignCallDescriptor[]{UNSUPPORTED_FEATURE, REGISTER_FINALIZER, ARITHMETIC_SIN, ARITHMETIC_COS, ARITHMETIC_TAN,
+                    ARITHMETIC_LOG, ARITHMETIC_LOG10, ARITHMETIC_EXP, ARITHMETIC_POW};
 
-    public static List<SubstrateForeignCallDescriptor> getRuntimeCalls() {
-        List<SubstrateForeignCallDescriptor> result = new ArrayList<>();
-        try {
-            for (Field field : SnippetRuntime.class.getDeclaredFields()) {
-                if (Modifier.isStatic(field.getModifiers()) && field.getType() == SubstrateForeignCallDescriptor.class) {
-                    result.add(((SubstrateForeignCallDescriptor) field.get(null)));
-                }
-            }
-        } catch (IllegalAccessException ex) {
-            throw new Error(ex);
+    public static void registerForeignCalls(Providers providers, SubstrateForeignCallsProvider foreignCalls) {
+        SubstrateAllocationSnippets.registerForeignCalls(providers, foreignCalls);
+        foreignCalls.register(providers, FOREIGN_CALLS);
+    }
+
+    public static SubstrateForeignCallDescriptor findForeignCall(Class<?> declaringClass, String methodName, boolean isReexecutable, LocationIdentity... additionalKilledLocations) {
+        return findForeignCall(methodName, declaringClass, methodName, isReexecutable, additionalKilledLocations);
+    }
+
+    private static SubstrateForeignCallDescriptor findForeignCall(String descriptorName, Class<?> declaringClass, String methodName, boolean isReexecutable,
+                    LocationIdentity... additionalKilledLocations) {
+        Method method = findMethod(declaringClass, methodName);
+        SubstrateForeignCallTarget foreignCallTargetAnnotation = DirectAnnotationAccess.getAnnotation(method, SubstrateForeignCallTarget.class);
+        VMError.guarantee(foreignCallTargetAnnotation != null, "Add missing @SubstrateForeignCallTarget to " + declaringClass.getName() + "." + methodName);
+
+        boolean isUninterruptible = DirectAnnotationAccess.isAnnotationPresent(method, Uninterruptible.class);
+        boolean isFullyUninterruptible = foreignCallTargetAnnotation.fullyUninterruptible();
+        return findForeignCall(descriptorName, method, isReexecutable, isUninterruptible, isFullyUninterruptible, additionalKilledLocations);
+    }
+
+    private static SubstrateForeignCallDescriptor findForeignJdkCall(String descriptorName, Class<?> declaringClass, String methodName, boolean isReexecutable, boolean isUninterruptible,
+                    boolean isFullyUninterruptible, LocationIdentity... additionalKilledLocations) {
+        Method method = findMethod(declaringClass, methodName);
+        SubstrateForeignCallTarget foreignCallTargetAnnotation = DirectAnnotationAccess.getAnnotation(method, SubstrateForeignCallTarget.class);
+        VMError.guarantee(foreignCallTargetAnnotation == null, declaringClass.getName() + "." + methodName + " must not be annotated with @SubstrateForeignCallTarget.");
+
+        return findForeignCall(descriptorName, method, isReexecutable, isUninterruptible, isFullyUninterruptible, additionalKilledLocations);
+    }
+
+    private static SubstrateForeignCallDescriptor findForeignCall(String descriptorName, Method method, boolean isReexecutable, boolean isUninterruptible, boolean isFullyUninterruptible,
+                    LocationIdentity... additionalKilledLocations) {
+        /*
+         * The safepoint slowpath needs to kill the TLAB locations (see note in Safepoint.java). We
+         * therefore assume that the TLAB locations must be killed by every foreign call that is not
+         * fully uninterruptible.
+         */
+        LocationIdentity[] killedLocations;
+        if (isFullyUninterruptible) {
+            VMError.guarantee(isUninterruptible, method.toString() + " is fully uninterruptible but not annotated with @Uninterruptible.");
+            killedLocations = additionalKilledLocations;
+        } else if (additionalKilledLocations.length == 0 || additionalKilledLocations == TLAB_LOCATIONS) {
+            killedLocations = TLAB_LOCATIONS;
+        } else if (containsAny(additionalKilledLocations)) {
+            killedLocations = additionalKilledLocations;
+        } else {
+            killedLocations = new LocationIdentity[TLAB_LOCATIONS.length + additionalKilledLocations.length];
+            System.arraycopy(TLAB_LOCATIONS, 0, killedLocations, 0, TLAB_LOCATIONS.length);
+            System.arraycopy(additionalKilledLocations, 0, killedLocations, TLAB_LOCATIONS.length, additionalKilledLocations.length);
         }
-        return result;
+
+        boolean needsDebugInfo = !isFullyUninterruptible;
+        boolean isGuaranteedSafepoint = !isUninterruptible;
+        return new SubstrateForeignCallDescriptor(descriptorName, method, isReexecutable, killedLocations, needsDebugInfo, isGuaranteedSafepoint);
     }
 
-    public static SubstrateForeignCallDescriptor findForeignCall(Class<?> declaringClass, String methodName, boolean isReexecutable, LocationIdentity... killedLocations) {
-        return findForeignCall(methodName, declaringClass, methodName, isReexecutable, killedLocations);
-    }
-
-    public static SubstrateForeignCallDescriptor findForeignCall(Class<?> declaringClass, String methodName, boolean isReexecutable, boolean needsDebugInfo, LocationIdentity... killedLocations) {
-        return findForeignCall(methodName, declaringClass, methodName, isReexecutable, needsDebugInfo, killedLocations);
-    }
-
-    private static SubstrateForeignCallDescriptor findForeignCall(String descriptorName, Class<?> declaringClass, String methodName, boolean isReexecutable, LocationIdentity... killedLocations) {
-        return findForeignCall(descriptorName, declaringClass, methodName, isReexecutable, true, killedLocations);
-    }
-
-    private static SubstrateForeignCallDescriptor findForeignCall(String descriptorName, Class<?> declaringClass, String methodName, boolean isReexecutable, boolean needsDebugInfo,
-                    LocationIdentity... killedLocations) {
+    private static Method findMethod(Class<?> declaringClass, String methodName) {
         Method foundMethod = null;
         for (Method method : declaringClass.getDeclaredMethods()) {
             if (method.getName().equals(methodName)) {
@@ -106,16 +131,16 @@ public class SnippetRuntime {
             }
         }
         assert foundMethod != null : "did not find method " + declaringClass.getName() + "." + methodName;
+        return foundMethod;
+    }
 
-        /*
-         * We cannot annotate methods from the JDK, but all other foreign call targets we want to be
-         * annotated for documentation, and to avoid stripping.
-         */
-        VMError.guarantee(declaringClass.getName().startsWith("java.lang") || DirectAnnotationAccess.isAnnotationPresent(foundMethod, SubstrateForeignCallTarget.class),
-                        "Add missing @SubstrateForeignCallTarget to " + declaringClass.getName() + "." + methodName);
-
-        boolean isGuaranteedSafepoint = needsDebugInfo && !DirectAnnotationAccess.isAnnotationPresent(foundMethod, Uninterruptible.class);
-        return new SubstrateForeignCallDescriptor(descriptorName, foundMethod, isReexecutable, killedLocations, needsDebugInfo, isGuaranteedSafepoint);
+    private static boolean containsAny(LocationIdentity[] locations) {
+        for (LocationIdentity location : locations) {
+            if (location.isAny()) {
+                return true;
+            }
+        }
+        return false;
     }
 
     public static class SubstrateForeignCallDescriptor extends ForeignCallDescriptor {

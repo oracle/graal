@@ -65,12 +65,16 @@ public class TableRegistry {
         return numTables;
     }
 
-    public WasmTable allocateTable(int initSize, int maxSize) {
+    public int register(WasmTable table) {
         ensureCapacity();
-        int index = numTables;
-        tables[numTables] = new WasmTable(index, initSize, maxSize);
+        final int index = numTables;
+        tables[index] = table;
         numTables++;
-        return tables[index];
+        return index;
+    }
+
+    public int registerExternal(WasmTable table) {
+        return register(table);
     }
 
     public WasmTable table(int index) {

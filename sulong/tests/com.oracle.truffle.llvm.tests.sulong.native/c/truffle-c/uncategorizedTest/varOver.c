@@ -32,7 +32,10 @@ int main() {
     int j;
     i = 5;
     for (j = 0; j < 5; j++) {
+#pragma clang diagnostic push
+#pragma clang diagnostic ignored "-Wunused-variable"
         int i = 0;
+#pragma clang diagnostic pop
     }
     return i;
 }

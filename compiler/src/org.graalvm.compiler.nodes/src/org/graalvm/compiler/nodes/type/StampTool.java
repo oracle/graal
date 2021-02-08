@@ -264,4 +264,16 @@ public class StampTool {
         }
         return false;
     }
+
+    public static boolean isAlwaysArray(ValueNode node) {
+        return isAlwaysArray(node.stamp(NodeView.DEFAULT));
+    }
+
+    public static boolean isAlwaysArray(Stamp stamp) {
+        if (stamp instanceof AbstractObjectStamp) {
+            return ((AbstractObjectStamp) stamp).isAlwaysArray();
+        }
+        return false;
+    }
+
 }

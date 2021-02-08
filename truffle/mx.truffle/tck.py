@@ -86,6 +86,8 @@ class Mode:
         if not Mode._compile:
             Mode._compile = Mode('compile', [
                 '-Dpolyglot.engine.AllowExperimentalOptions=true',
+                '-Dpolyglot.engine.Mode=latency',
+                # '-Dpolyglot.engine.CompilationFailureAction=Throw', GR-29208
                 '-Dpolyglot.engine.CompileImmediately=true',
                 '-Dpolyglot.engine.BackgroundCompilation=false',
                 '-Dtck.inlineVerifierInstrument=false'])

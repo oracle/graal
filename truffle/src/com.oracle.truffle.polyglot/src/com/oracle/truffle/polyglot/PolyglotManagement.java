@@ -121,7 +121,7 @@ final class PolyglotManagement extends AbstractManagementImpl {
                     return false;
                 } else if (sourceFilter != null) {
                     try {
-                        return sourceFilter.test(engineImpl.getPolyglotSource(s));
+                        return sourceFilter.test(engineImpl.getOrCreatePolyglotSource(s));
                     } catch (Throwable e) {
                         if (config.closing) {
                             // configuration is closing ignore errors.
@@ -479,7 +479,7 @@ final class PolyglotManagement extends AbstractManagementImpl {
 
         @TruffleBoundary(allowInlining = true)
         protected final void invokeExceptionAllocate(List<Value> inputValues, Throwable e) {
-            PolyglotException ex = e != null ? PolyglotImpl.guestToHostException(language.getCurrentLanguageContext(), e) : null;
+            PolyglotException ex = e != null ? PolyglotImpl.guestToHostException(language.getCurrentLanguageContext(), e, true) : null;
             config.onReturn.accept(config.management.newExecutionEvent(new DynamicEvent(this, inputValues, null, ex)));
         }
 

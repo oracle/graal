@@ -58,6 +58,11 @@ public final class AgentScriptInstrument extends InsightInstrument implements co
     }
 
     @Override
+    boolean onlyInsight() {
+        return false;
+    }
+
+    @Override
     protected void onCreate(TruffleInstrument.Env env) {
         super.onCreate(env);
         try {

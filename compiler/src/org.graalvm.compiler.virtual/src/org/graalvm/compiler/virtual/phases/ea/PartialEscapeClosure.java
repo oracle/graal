@@ -206,12 +206,21 @@ public abstract class PartialEscapeClosure<BlockT extends PartialEscapeBlockStat
         return processNodeInternal(node, state, effects, lastFixedNode);
     }
 
+    @Override
+    protected void processStateBeforeLoopOnOverflow(BlockT initialState, FixedNode materializeBefore, GraphEffectList effects) {
+        for (int i = 0; i < initialState.getStateCount(); i++) {
+            if (initialState.hasObjectState(i) && initialState.getObjectState(i).isVirtual()) {
+                VirtualObjectNode virtual = virtualObjects.get(i);
+                initialState.materializeBefore(materializeBefore, virtual, effects);
+            }
+        }
+    }
+
     private boolean processNodeInternal(Node node, BlockT state, GraphEffectList effects, FixedWithNextNode lastFixedNode) {
         FixedNode nextFixedNode = lastFixedNode == null ? null : lastFixedNode.next();
         VirtualUtil.trace(node.getOptions(), debug, "%s", node);
-
         if (requiresProcessing(node)) {
-            if (processVirtualizable((ValueNode) node, nextFixedNode, state, effects) == false) {
+            if (!processVirtualizable((ValueNode) node, nextFixedNode, state, effects)) {
                 return false;
             }
             if (tool.isDeleted()) {
@@ -221,7 +230,7 @@ public abstract class PartialEscapeClosure<BlockT extends PartialEscapeBlockStat
         }
         if (hasVirtualInputs.isMarked(node) && node instanceof ValueNode) {
             if (node instanceof Virtualizable) {
-                if (processVirtualizable((ValueNode) node, nextFixedNode, state, effects) == false) {
+                if (!processVirtualizable((ValueNode) node, nextFixedNode, state, effects)) {
                     return false;
                 }
                 if (tool.isDeleted()) {
@@ -267,6 +276,23 @@ public abstract class PartialEscapeClosure<BlockT extends PartialEscapeBlockStat
                     }
                 }
                 break;
+            case MATERIALIZE_ALL:
+                boolean virtualizationResult = virtualize(node, tool);
+                for (VirtualObjectNode virtualObject : virtualObjects) {
+                    ValueNode alias = getAlias(virtualObject);
+                    if (alias instanceof VirtualObjectNode) {
+                        int id = ((VirtualObjectNode) alias).getObjectId();
+                        if (state.hasObjectState(id)) {
+                            FixedNode materializeBefore = insertBefore;
+                            if (insertBefore == node && tool.isDeleted()) {
+                                materializeBefore = ((FixedWithNextNode) insertBefore).next();
+                            }
+                            ensureMaterialized(state, id, materializeBefore, effects, COUNTER_MATERIALIZATIONS);
+                        }
+                    }
+                }
+                return virtualizationResult;
+
             default:
                 throw GraalError.shouldNotReachHere("Unknown effects closure mode " + currentMode);
         }
@@ -542,7 +568,9 @@ public abstract class PartialEscapeClosure<BlockT extends PartialEscapeBlockStat
                     }
                 }
             } while (change);
-            currentMode = EffectsClosureMode.STOP_NEW_VIRTUALIZATIONS_LOOP_NEST;
+            if (currentMode == EffectsClosureMode.REGULAR_VIRTUALIZATION) {
+                currentMode = EffectsClosureMode.STOP_NEW_VIRTUALIZATIONS_LOOP_NEST;
+            }
         }
         return initialState;
     }

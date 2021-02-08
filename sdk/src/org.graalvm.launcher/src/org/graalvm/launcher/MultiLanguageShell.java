@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2017, 2019, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2017, 2021, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -40,13 +40,8 @@
  */
 package org.graalvm.launcher;
 
-import java.awt.event.ActionEvent;
-import java.awt.event.ActionListener;
-import java.io.EOFException;
+import java.io.Closeable;
 import java.io.IOException;
-import java.io.InputStream;
-import java.io.OutputStream;
-import java.io.PrintWriter;
 import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.HashMap;
@@ -58,230 +53,250 @@ import java.util.Set;
 import org.graalvm.polyglot.Context;
 import org.graalvm.polyglot.Language;
 import org.graalvm.polyglot.PolyglotException;
-import org.graalvm.polyglot.Source;
 import org.graalvm.polyglot.PolyglotException.StackFrame;
+import org.graalvm.polyglot.Source;
+import org.graalvm.shadowed.org.jline.keymap.KeyMap;
+import org.graalvm.shadowed.org.jline.reader.EndOfFileException;
+import org.graalvm.shadowed.org.jline.reader.History;
+import org.graalvm.shadowed.org.jline.reader.LineReader;
+import org.graalvm.shadowed.org.jline.reader.LineReaderBuilder;
+import org.graalvm.shadowed.org.jline.reader.Reference;
+import org.graalvm.shadowed.org.jline.reader.UserInterruptException;
+import org.graalvm.shadowed.org.jline.reader.impl.history.DefaultHistory;
+import org.graalvm.shadowed.org.jline.terminal.Terminal;
+import org.graalvm.shadowed.org.jline.terminal.TerminalBuilder;
 
-import jline.console.ConsoleReader;
-import jline.console.UserInterruptException;
-import jline.console.history.History;
-import jline.console.history.MemoryHistory;
-import jline.internal.NonBlockingInputStream;
-
-class MultiLanguageShell {
+class MultiLanguageShell implements Closeable {
+    private static final String WIDGET_NAME = "CHANGE_LANGUAGE_WIDGET";
     private final Map<Language, History> histories = new HashMap<>();
     private final Context context;
-    private final InputStream in;
-    private final OutputStream out;
-    private final String defaultStartLanguage;
+    private final String startLanguage;
+    private final List<Language> languages;
+    private final Map<String, Language> prompts;
+    private final StringBuilder promptsString = new StringBuilder();
+    private final Terminal terminal;
+    private LineReader reader;
+    private Language currentLanguage;
+    private boolean verboseErrors = false;
+    private String input = "";
 
-    MultiLanguageShell(Context context, InputStream in, OutputStream out, String defaultStartLanguage) {
+    MultiLanguageShell(Context context, String defaultStartLanguage) throws IOException {
         this.context = context;
-        this.in = in;
-        this.out = out;
-        this.defaultStartLanguage = defaultStartLanguage;
-    }
-
-    public int readEvalPrint() throws IOException {
-        ConsoleReader console = new ConsoleReader(in, out);
-        console.setHandleUserInterrupt(true);
-        console.setExpandEvents(false);
-        console.setCopyPasteDetection(true);
-
-        console.println("GraalVM MultiLanguage Shell " + context.getEngine().getVersion());
-        console.println("Copyright (c) 2013-2019, Oracle and/or its affiliates");
-
-        List<Language> languages = new ArrayList<>();
-        Set<Language> uniqueValues = new HashSet<>();
-        for (Language language : context.getEngine().getLanguages().values()) {
-            if (language.isInteractive()) {
-                if (uniqueValues.add(language)) {
-                    languages.add(language);
-                }
-            }
-        }
-        languages.sort(Comparator.comparing(Language::getName));
-
-        Map<String, Language> prompts = new HashMap<>();
-
-        StringBuilder promptsString = new StringBuilder();
-        for (Language language : languages) {
-            String prompt = createPrompt(language).trim();
-            promptsString.append(prompt).append(" ");
-            prompts.put(prompt, language);
-            console.println("  " + language.getName() + " version " + language.getVersion());
-        }
-
-        if (languages.isEmpty()) {
-            throw new Launcher.AbortException("Error: No Graal languages installed. Exiting shell.", 1);
-        }
-
-        printUsage(console, promptsString, false);
-
-        int maxNameLength = 0;
-        for (Language language : languages) {
-            maxNameLength = Math.max(maxNameLength, language.getName().length());
-        }
-
-        String startLanguage = defaultStartLanguage;
-        if (startLanguage == null) {
-            startLanguage = languages.get(0).getId();
-        }
-
-        Language currentLanguage = context.getEngine().getLanguages().get(startLanguage);
+        this.languages = languages();
+        this.prompts = prompts();
+        this.terminal = terminal();
+        this.startLanguage = defaultStartLanguage == null ? languages.get(0).getId() : defaultStartLanguage;
+        currentLanguage = context.getEngine().getLanguages().get(startLanguage);
         if (currentLanguage == null) {
             throw new Launcher.AbortException("Error: could not find language '" + startLanguage + "'", 1);
         }
-        assert languages.indexOf(currentLanguage) >= 0;
-        Source bufferSource = null;
-        String id = currentLanguage.getId();
-        // console.println("initialize time: " + (System.currentTimeMillis() - start));
-        String prompt = createPrompt(currentLanguage);
+        resetLineReader();
+    }
 
-        console.getKeys().bind(String.valueOf((char) 12), new ActionListener() {
-            public void actionPerformed(ActionEvent e) {
-                throw new ChangeLanguageException(null);
-            }
-        });
+    private static String createBufferPrompt(String prompt) {
+        StringBuilder b = new StringBuilder();
+        for (int i = 0; i < prompt.length() - 2; i++) {
+            b.append(" ");
+        }
+        return b.append("+ ").toString();
+    }
 
-        // initializes the language
-        context.initialize(currentLanguage.getId());
+    private static String createPrompt(Language currentLanguage) {
+        return String.format("%s> ", currentLanguage.getId());
+    }
 
-        boolean verboseErrors = false;
-
+    public int runRepl() {
+        printHeader();
         for (;;) {
-            String input = null;
-            Source source = null;
             try {
-                input = console.readLine(bufferSource == null ? prompt : createBufferPrompt(prompt));
-
-                if (input == null) {
-                    break;
-                } else if (bufferSource == null && input.trim().equals("")) {
-                    continue;
-                }
-
-                Language switchedLanguage = null;
-
-                String trimmedInput = input.trim();
-                if (trimmedInput.equals("-usage")) {
-                    printUsage(console, promptsString, true);
+                input += reader.readLine(prompt());
+                if (handleBuiltins() || eval()) {
+                    reader.getHistory().add(input);
                     input = "";
-                } else if (trimmedInput.equals("-verboseErrors")) {
-                    verboseErrors = !verboseErrors;
-                    if (verboseErrors) {
-                        console.println("Verbose errors is now on.");
-                    } else {
-                        console.println("Verbose errors is now off.");
-                    }
-                    input = "";
-                } else if (prompts.containsKey(trimmedInput)) {
-                    switchedLanguage = prompts.get(input);
-                    input = "";
-                } else if (bufferSource != null) {
-                    input = bufferSource.getCharacters() + "\n" + input;
                 }
-
-                NonBlockingInputStream nonBlockIn = ((NonBlockingInputStream) console.getInput());
-                while (nonBlockIn.isNonBlockingEnabled() && nonBlockIn.peek(10) >= 0 && switchedLanguage == null) {
-                    String line = console.readLine(createBufferPrompt(prompt));
-                    String trimmedLine = line.trim();
-                    if (prompts.containsKey(trimmedLine)) {
-                        switchedLanguage = prompts.get(trimmedLine);
-                        break;
-                    } else {
-                        input += "\n" + line;
-                    }
-                }
-                if (!input.trim().equals("")) {
-                    source = Source.newBuilder(currentLanguage.getId(), input, "<shell>").interactive(true).build();
-                    context.eval(source);
-                    bufferSource = null;
-                    console.getHistory().replace(source.getCharacters());
-                }
-
-                if (switchedLanguage != null) {
-                    throw new ChangeLanguageException(switchedLanguage);
-                }
-
-            } catch (UserInterruptException | EOFException e) {
-                // interrupted by ctrl-c
-                break;
             } catch (ChangeLanguageException e) {
-                bufferSource = null;
-                histories.put(currentLanguage, console.getHistory());
-                currentLanguage = e.getLanguage() == null ? languages.get((languages.indexOf(currentLanguage) + 1) % languages.size()) : e.getLanguage();
-                History history = histories.computeIfAbsent(currentLanguage, k -> new MemoryHistory());
-                console.setHistory(history);
-                id = currentLanguage.getId();
-                prompt = createPrompt(currentLanguage);
-                console.resetPromptLine("", "", 0);
-                context.initialize(id);
+                handle(e);
             } catch (PolyglotException e) {
-                bufferSource = null;
-                if (e.isInternalError()) {
-                    console.println("Internal error occurred: " + e.toString());
-                    if (verboseErrors) {
-                        e.printStackTrace(new PrintWriter(console.getOutput()));
-                    } else {
-                        console.println("Run with --verbose to see the full stack trace.");
-                    }
-                } else if (e.isExit()) {
+                handle(e);
+                if (e.isExit()) {
                     return e.getExitStatus();
-                } else if (e.isCancelled()) {
-                    console.println("Execution got cancelled.");
-                } else if (e.isIncompleteSource()) {
-                    bufferSource = source;
-                } else if (e.isSyntaxError()) {
-                    console.println(e.getMessage());
-                } else {
-                    List<StackFrame> trace = new ArrayList<>();
-                    for (StackFrame stackFrame : e.getPolyglotStackTrace()) {
-                        trace.add(stackFrame);
-                    }
-                    // remove trailing host frames
-                    for (int i = trace.size() - 1; i >= 0; i--) {
-                        if (trace.get(i).isHostFrame()) {
-                            trace.remove(i);
-                        } else {
-                            break;
-                        }
-                    }
-                    if (e.isHostException()) {
-                        console.println(e.asHostException().toString());
-                    } else {
-                        console.println(e.getMessage());
-                    }
-                    // no need to print stack traces with single entry
-                    if (trace.size() > 1) {
-                        for (StackFrame stackFrame : trace) {
-                            console.print("        at ");
-                            console.println(stackFrame.toString());
-                        }
-                    }
                 }
+            } catch (UserInterruptException | EndOfFileException e) {
+                // interrupted by ctrl-c or ctrl-d
+                break;
             } catch (Throwable e) {
-                console.println("Internal error occurred: " + e.toString());
-                if (verboseErrors) {
-                    e.printStackTrace(new PrintWriter(console.getOutput()));
-                } else {
-                    console.println("Run with --verbose to see the full stack trace.");
-                }
+                handleInternal(e);
             }
         }
         return 0;
     }
 
-    private static void printUsage(ConsoleReader console, StringBuilder promptsString, boolean showCommands) throws IOException {
-        if (showCommands) {
-            console.println("Commands:");
-            console.println("  -usage           to show this list.");
-            console.println("  -verboseErrors   to toggle verbose error messages (default off).");
-            console.println("  " + promptsString + "    to switch to a language.");
+    private String prompt() {
+        final String prompt = createPrompt(currentLanguage);
+        return input.equals("") ? prompt : createBufferPrompt(prompt);
+    }
+
+    private boolean eval() throws IOException {
+        Source source = Source.newBuilder(currentLanguage.getId(), input, "<shell>").interactive(true).build();
+        context.eval(source);
+        return true;
+    }
+
+    private void handle(ChangeLanguageException e) {
+        histories.put(currentLanguage, reader.getHistory());
+        currentLanguage = e.getLanguage() == null ? languages.get((languages.indexOf(currentLanguage) + 1) % languages.size()) : e.getLanguage();
+        resetLineReader();
+        input = "";
+    }
+
+    private void handleInternal(Throwable e) {
+        println("Internal error occurred: " + e.toString());
+        if (verboseErrors) {
+            e.printStackTrace(terminal.writer());
         } else {
-            console.println("Usage: ");
-            console.println("  Use Ctrl+L to switch language and Ctrl+D to exit.");
-            console.println("  Enter -usage to get a list of available commands.");
+            println("Run with --verbose to see the full stack trace.");
         }
+    }
+
+    private void handle(PolyglotException e) {
+        if (e.isIncompleteSource()) {
+            return;
+        }
+        input = "";
+        if (e.isInternalError()) {
+            handleInternal(e);
+        } else if (e.isCancelled()) {
+            println("Execution got cancelled.");
+        } else if (e.isSyntaxError()) {
+            println(e.getMessage());
+        } else {
+            List<StackFrame> trace = new ArrayList<>();
+            for (StackFrame stackFrame : e.getPolyglotStackTrace()) {
+                trace.add(stackFrame);
+            }
+            // remove trailing host frames
+            for (int i = trace.size() - 1; i >= 0; i--) {
+                if (trace.get(i).isHostFrame()) {
+                    trace.remove(i);
+                } else {
+                    break;
+                }
+            }
+            if (e.isHostException()) {
+                println(e.asHostException().toString());
+            } else {
+                println(String.valueOf(e.getMessage()));
+            }
+            // no need to print stack traces with single entry
+            if (trace.size() > 1) {
+                for (StackFrame stackFrame : trace) {
+                    print("        at ");
+                    println(stackFrame.toString());
+                }
+            }
+        }
+    }
+
+    private boolean handleBuiltins() {
+        final String trimmedInput = input.trim();
+        if (trimmedInput.equals("")) {
+            return true;
+        }
+        if (trimmedInput.equals("-usage")) {
+            printUsage(true);
+            return true;
+        }
+        if (trimmedInput.equals("-verboseErrors")) {
+            verboseErrors = !verboseErrors;
+            if (verboseErrors) {
+                println("Verbose errors is now on.");
+            } else {
+                println("Verbose errors is now off.");
+            }
+            return true;
+        }
+        if (prompts.containsKey(trimmedInput)) {
+            throw new ChangeLanguageException(prompts.get(trimmedInput));
+        }
+        return false;
+    }
+
+    private void printHeader() {
+        println("GraalVM MultiLanguage Shell " + context.getEngine().getVersion());
+        println("Copyright (c) 2013-2020, Oracle and/or its affiliates");
+        for (Language language : languages) {
+            println("  " + language.getName() + " version " + language.getVersion());
+        }
+        printUsage(false);
+    }
+
+    private void println(String s) {
+        terminal.writer().println(s);
+    }
+
+    private void print(String s) {
+        terminal.writer().print(s);
+    }
+
+    private void resetLineReader() {
+        reader = LineReaderBuilder.builder().terminal(terminal).appName("GraalVM MultiLanguage Shell " + context.getEngine().getVersion()).history(
+                        histories.computeIfAbsent(currentLanguage, language -> new DefaultHistory())).build();
+        for (String s : reader.getKeyMaps().keySet()) {
+            reader.getKeyMaps().get(s).bind(new Reference(WIDGET_NAME), KeyMap.ctrl('n'));
+            reader.getWidgets().put(WIDGET_NAME, () -> {
+                throw new ChangeLanguageException(null);
+            });
+        }
+    }
+
+    private static Terminal terminal() throws IOException {
+        // Create a system Terminal. JANSI and JNA are not shipped in the SDK JLINE3 jar.
+        return TerminalBuilder.builder().jansi(false).jna(false).system(true).signalHandler(Terminal.SignalHandler.SIG_IGN).build();
+    }
+
+    private Map<String, Language> prompts() {
+        Map<String, Language> p = new HashMap<>();
+        for (Language language : languages) {
+            String prompt = createPrompt(language).trim();
+            promptsString.append(prompt).append(" ");
+            p.put(prompt, language);
+        }
+        return p;
+    }
+
+    private List<Language> languages() {
+        List<Language> langs = new ArrayList<>();
+        Set<Language> uniqueValues = new HashSet<>();
+        for (Language language : context.getEngine().getLanguages().values()) {
+            if (language.isInteractive()) {
+                if (uniqueValues.add(language)) {
+                    langs.add(language);
+                }
+            }
+        }
+        if (langs.isEmpty()) {
+            throw new Launcher.AbortException("Error: No Graal languages installed. Exiting shell.", 1);
+        }
+        langs.sort(Comparator.comparing(Language::getName));
+        return langs;
+    }
+
+    private void printUsage(boolean showCommands) {
+        if (showCommands) {
+            println("Commands:");
+            println("  -usage           to show this list.");
+            println("  -verboseErrors   to toggle verbose error messages (default off).");
+            println("  " + promptsString + "    to switch to a language.");
+        } else {
+            println("Usage: ");
+            println("  Use Ctrl+n to switch language and Ctrl+d to exit.");
+            println("  Enter -usage to get a list of available commands.");
+        }
+    }
+
+    @Override
+    public void close() throws IOException {
+        terminal.close();
     }
 
     @SuppressWarnings("serial")
@@ -302,18 +317,6 @@ class MultiLanguageShell {
         public final Throwable fillInStackTrace() {
             return this;
         }
-    }
-
-    private static String createBufferPrompt(String prompt) {
-        StringBuilder b = new StringBuilder();
-        for (int i = 0; i < prompt.length() - 2; i++) {
-            b.append(" ");
-        }
-        return b.append("+ ").toString();
-    }
-
-    private static String createPrompt(Language currentLanguage) {
-        return String.format("%s> ", currentLanguage.getId());
     }
 
 }

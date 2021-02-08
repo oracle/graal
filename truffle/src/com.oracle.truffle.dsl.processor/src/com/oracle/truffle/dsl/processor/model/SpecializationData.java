@@ -89,9 +89,12 @@ public final class SpecializationData extends TemplateMethod {
     private DSLExpression limitExpression;
     private SpecializationData uncachedSpecialization;
     private final boolean reportPolymorphism;
+    private final boolean reportMegamorphism;
+
+    private boolean aotReachable;
 
     public SpecializationData(NodeData node, TemplateMethod template, SpecializationKind kind, List<SpecializationThrowsData> exceptions, boolean hasUnexpectedResultRewrite,
-                    boolean reportPolymorphism) {
+                    boolean reportPolymorphism, boolean reportMegamorphism) {
         super(template);
         this.node = node;
         this.kind = kind;
@@ -99,10 +102,11 @@ public final class SpecializationData extends TemplateMethod {
         this.hasUnexpectedResultRewrite = hasUnexpectedResultRewrite;
         this.index = template.getNaturalOrder();
         this.reportPolymorphism = reportPolymorphism;
+        this.reportMegamorphism = reportMegamorphism;
     }
 
     public SpecializationData copy() {
-        SpecializationData copy = new SpecializationData(node, this, kind, new ArrayList<>(exceptions), hasUnexpectedResultRewrite, reportPolymorphism);
+        SpecializationData copy = new SpecializationData(node, this, kind, new ArrayList<>(exceptions), hasUnexpectedResultRewrite, reportPolymorphism, reportMegamorphism);
         copy.guards.addAll(guards);
         copy.caches = new ArrayList<>(caches);
         copy.assumptionExpressions = new ArrayList<>(assumptionExpressions);
@@ -115,7 +119,16 @@ public final class SpecializationData extends TemplateMethod {
         copy.reachesFallback = reachesFallback;
         copy.index = index;
         copy.limitExpression = limitExpression;
+        copy.aotReachable = aotReachable;
         return copy;
+    }
+
+    public boolean isPrepareForAOT() {
+        return aotReachable;
+    }
+
+    public void setPrepareForAOT(boolean prepareForAOT) {
+        this.aotReachable = prepareForAOT;
     }
 
     public void setUncachedSpecialization(SpecializationData removeCompanion) {
@@ -124,6 +137,63 @@ public final class SpecializationData extends TemplateMethod {
 
     public SpecializationData getUncachedSpecialization() {
         return uncachedSpecialization;
+    }
+
+    public boolean needsVirtualFrame() {
+        if (getFrame() != null && ElementUtils.typeEquals(getFrame().getType(), types.VirtualFrame)) {
+            // not supported for frames
+            return true;
+        }
+        return false;
+    }
+
+    public boolean needsTruffleBoundary() {
+        for (CacheExpression cache : caches) {
+            if (cache.isAlwaysInitialized() && cache.isRequiresBoundary()) {
+                return true;
+            }
+        }
+        return false;
+    }
+
+    public boolean needsPushEncapsulatingNode() {
+        for (CacheExpression cache : caches) {
+            if (cache.isAlwaysInitialized() && cache.isRequiresBoundary() && cache.isCachedLibrary()) {
+                if (cache.getCachedLibrary().isPushEncapsulatingNode()) {
+                    return true;
+                }
+            }
+        }
+        return false;
+    }
+
+    public boolean isAnyLibraryBoundInGuard() {
+        for (CacheExpression cache : getCaches()) {
+            if (!cache.isCachedLibrary()) {
+                continue;
+            }
+            if (isLibraryBoundInGuard(cache)) {
+                return true;
+            }
+        }
+        return false;
+    }
+
+    public boolean isLibraryBoundInGuard(CacheExpression cachedLibrary) {
+        if (!cachedLibrary.isCachedLibrary()) {
+            return false;
+        }
+        for (GuardExpression guard : getGuards()) {
+            if (guard.isLibraryAcceptsGuard()) {
+                continue;
+            }
+            for (CacheExpression cacheExpression : getBoundCaches(guard.getExpression(), true)) {
+                if (cacheExpression.getParameter().equals(cachedLibrary.getParameter())) {
+                    return true;
+                }
+            }
+        }
+        return false;
     }
 
     public boolean isTrivialExpression(DSLExpression expression) {
@@ -159,6 +229,10 @@ public final class SpecializationData extends TemplateMethod {
 
     public boolean isReportPolymorphism() {
         return reportPolymorphism;
+    }
+
+    public boolean isReportMegamorphism() {
+        return reportMegamorphism;
     }
 
     public boolean isReachesFallback() {
@@ -236,6 +310,18 @@ public final class SpecializationData extends TemplateMethod {
         }
     }
 
+    public boolean isOnlyLanguageReferencesBound(DSLExpression expression) {
+        boolean onlyLanguageReferences = true;
+        Set<CacheExpression> boundCaches = getBoundCaches(expression, false);
+        for (CacheExpression bound : boundCaches) {
+            if (!bound.isCachedLanguage()) {
+                onlyLanguageReferences = false;
+                break;
+            }
+        }
+        return onlyLanguageReferences && expression.findBoundVariableElements().size() == boundCaches.size();
+    }
+
     public boolean isDynamicParameterBound(DSLExpression expression, boolean transitive) {
         Set<VariableElement> boundVariables = expression.findBoundVariableElements();
         for (Parameter parameter : getDynamicParameters()) {
@@ -252,6 +338,11 @@ public final class SpecializationData extends TemplateMethod {
         if (transitive) {
             for (CacheExpression cache : getBoundCaches(expression, false)) {
                 if (cache.isAlwaysInitialized()) {
+                    if (cache.isWeakReferenceGet()) {
+                        // only cached values come from weak reference gets although
+                        // they are initialized every time
+                        continue;
+                    }
                     if (isDynamicParameterBound(cache.getDefaultExpression(), true)) {
                         return true;
                     }
@@ -303,7 +394,7 @@ public final class SpecializationData extends TemplateMethod {
     }
 
     public SpecializationData(NodeData node, TemplateMethod template, SpecializationKind kind) {
-        this(node, template, kind, new ArrayList<SpecializationThrowsData>(), false, true);
+        this(node, template, kind, new ArrayList<SpecializationThrowsData>(), false, true, false);
     }
 
     public Set<SpecializationData> getReplaces() {
@@ -524,6 +615,15 @@ public final class SpecializationData extends TemplateMethod {
 
     public boolean hasMultipleInstances() {
         return getMaximumNumberOfInstances() > 1;
+    }
+
+    public boolean isExpressionBindsCache(DSLExpression expression, CacheExpression cache) {
+        for (CacheExpression otherCache : getBoundCaches(expression, true)) {
+            if (otherCache == cache) {
+                return true;
+            }
+        }
+        return false;
     }
 
     public boolean isGuardBindsCache() {

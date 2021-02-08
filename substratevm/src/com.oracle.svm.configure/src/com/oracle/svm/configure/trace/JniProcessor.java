@@ -93,6 +93,9 @@ class JniProcessor extends AbstractProcessor {
                 String signature = (String) args.get(1);
                 if (!advisor.shouldIgnoreJniMethodLookup(lazyValue(clazz), lazyValue(name), lazyValue(signature), callerClassLazyValue)) {
                     config.getOrCreateType(declaringClassOrClazz).addMethod(name, signature, memberKind);
+                    if (!declaringClassOrClazz.equals(clazz)) {
+                        config.getOrCreateType(clazz);
+                    }
                 }
                 break;
             }
@@ -101,6 +104,9 @@ class JniProcessor extends AbstractProcessor {
                 expectSize(args, 2);
                 String name = (String) args.get(0);
                 config.getOrCreateType(declaringClassOrClazz).addField(name, memberKind, false, false);
+                if (!declaringClassOrClazz.equals(clazz)) {
+                    config.getOrCreateType(clazz);
+                }
                 break;
             }
             case "ThrowNew": {
@@ -109,6 +115,7 @@ class JniProcessor extends AbstractProcessor {
                 String signature = "(Ljava/lang/String;)V";
                 if (!advisor.shouldIgnoreJniMethodLookup(lazyValue(clazz), lazyValue(name), lazyValue(signature), callerClassLazyValue)) {
                     config.getOrCreateType(declaringClassOrClazz).addMethod(name, signature, memberKind);
+                    assert declaringClassOrClazz.equals(clazz) : "Constructor can only be accessed via declaring class";
                 }
                 break;
             }

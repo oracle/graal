@@ -27,6 +27,8 @@
 :: ----------------------------------------------------------------------------------------------------
 @echo off
 
+:: Please read file `windows.md` before making changes.
+
 setlocal enabledelayedexpansion
 
 call :getScriptLocation location
@@ -76,43 +78,9 @@ if "%VERBOSE_GRAALVM_LAUNCHERS%"=="true" echo on
 
 "%location%<jre_bin>\java" <extra_jvm_args> %jvm_args% -cp "%absolute_cp%" <main_class> %launcher_args%
 
+exit /b %errorlevel%
 :: Function are defined via labels, so have to be defined at the end of the file and skipped
-:: in order not to be executed. :eof is implicitly defined.
-goto :eof
-
-:: A digression on quotes and escapes.
-:: ----
-:: By default, batch splits arguments (for scripts, subroutine calls, and optionless `for`) on
-:: delimiter characters: spaces, commas, semicolon and equals (excepted when they appear within
-:: double quotes).
-::
-:: Graal expects `=` in its arguments, and we want to preserve language arguments as much as
-:: possible. To achieve this, we escape all such delimiter characters, except spaces, by replacing
-:: them by markers. This lets us "correctly" split the arguments.
-::
-:: Quoting is also peculiar in batch. It has the splitting-prevention effect said above, but double
-:: quotes are regular characters that are passed along with arguments. This means we can't blindly
-:: requote arguments, as we risk getting the quotes mismatched (e.g. ""a""). In practice such things
-:: can be made to work, but it's much worse when only part of the argument is quoted (e.g.
-:: --vm.cp="my path").
-::
-:: We can avoid issues in comparisons by always using quotes + delayed expansions variables (e.g.
-:: !myvar!). When matching the start of arguments, we need to strip the outer quotes beforehand.
-::
-:: Things are harder when passing arguments to subroutines. By stripping away quotes and taking
-:: substring of arguments, we risk unforeseen splitting. If we allow only part of an argument to be
-:: quoted (--vm.cp="my path";path2), there is no easy way to ensure quotation in all cases. Instead,
-:: we let splitting occur and simply coalesce all arguments in one (set "arg=%*") in most function.
-:: Because we escaped our arguments beforehand, splitting occur only on spaces and we avoid losing
-:: meaningful symbols.
-::
-:: We use %arg_quoted% to track whether non-classpath jvm arguments appear nested inside quotes in
-:: order to know if we need to requote the translated argument. This enables both
-:: [--vm.obscure="with spaces"] and ["--vm.obscure=with spaces"] to work.
-::
-:: Also, cmd.exe will blow up with weird errors (can't find label, unexpected else) when you put
-:: some characters in *some* :: comments. Test every time you change a comment It is particularly
-:: finicky around labels.
+:: in order not to be executed.
 
 :escape_args
     set "args=%*"
@@ -132,11 +100,12 @@ goto :eof
 
 :replace_equals
     setlocal
+    :: The argument passed to this function was split on =, because all other
+    :: delimiters were replaced in escape_args.
     set "arg=%1"
     if "!arg!"=="" goto :end_replace_equals
     set "args=%1"
     shift
-    :: Items in %* are all separated by =, because we replaced all other delimiters in :escape_args.
     :loop_replace_equals
         set "arg=%1"
         if "!arg!"=="" goto :end_replace_equals
@@ -156,13 +125,13 @@ goto :eof
 
 :is_quoted
     setlocal
+    set "args=%*"
     set /a argslen=0
-    for %%a in (%*) do set /a argslen+=1
+    for %%a in (%args%) do set /a argslen+=1
     if %argslen% gtr 1 (
         set "quoted=false"
     ) else (
-        set "arg=%1"
-        if "!arg:~0,1!!arg:~-1!"=="""" ( set "quoted=true" ) else ( set "quoted=false" )
+        if "!args:~0,1!!args:~-1!"=="""" ( set "quoted=true" ) else ( set "quoted=false" )
     )
     endlocal & ( set "quoted=%quoted%" )
     exit /b 0
@@ -170,10 +139,13 @@ goto :eof
 :unquote_arg
     :: Sets %arg% to a version of the argument with outer quotes stripped, if present.
     call :is_quoted %*
-    if %quoted%==true ( set "arg=%~1" ) else ( set "arg=%*" )
+    setlocal
+    set "maybe_quoted=%*"
+    if %quoted%==true ( set "arg=%~1" ) else ( set "arg=!maybe_quoted!" )
+    endlocal & ( set "arg=%arg%" )
     exit /b 0
 
-:: Unfortunately, parsing of `--jvm.*` and `--vm.*` arguments has to be done blind:
+:: Unfortunately, parsing of `--vm.*` arguments has to be done blind:
 :: Maybe some of those arguments where not really intended for the launcher but were application
 :: arguments.
 
@@ -209,29 +181,18 @@ goto :eof
     exit /b 0
 
 :process_arg
-    call :is_quoted %*
+    set "original_arg=%*"
+    call :unquote_arg !original_arg!
     set "arg_quoted=%quoted%"
-    call :unquote_arg %*
 
-    if "!arg:~0,6!"=="--jvm." (
-        >&2 echo '--jvm.*' options are deprecated, use '--vm.*' instead.
-        set prefix=jvm
-        call :unquote_arg %arg:~6%
-        call :process_vm_arg !arg!
-        if errorlevel 1 exit /b 1
-    ) else if "!arg:~0,5!"=="--vm." (
+    if "!arg:~0,5!"=="--vm." (
         set prefix=vm
-        call :unquote_arg %arg:~5%
+        call :unquote_arg !arg:~5!
         call :process_vm_arg !arg!
         if errorlevel 1 exit /b 1
     ) else (
-        set cond=false
-        if "!arg!"=="--native" set cond=true
-        if "!arg:~0,9!"=="--native." set cond=true
-
-        if !cond!==true (
-            >&2 echo The native version of %basename% does not exist: cannot use '%arg%'.
-
+        if "!arg!"=="--native" (
+            >&2 echo The native version of %basename% does not exist: cannot use '!arg!'.
             set "extra="
             if "!basename!"=="polyglot" set "extra= --language:all"
             set "part1=If native-image is installed, you may build it with"
@@ -239,8 +200,8 @@ goto :eof
             >&2 echo !part1! !part2!
             exit /b 1
         ) else (
-            :: Use %* instead of %arg% to preserve surrounding quotes if present.
-            set "launcher_args=%launcher_args% %*"
+            :: Use !original_arg! instead of !arg! to preserve surrounding quotes if present.
+            set "launcher_args=%launcher_args% !original_arg!"
         )
     )
     exit /b 0

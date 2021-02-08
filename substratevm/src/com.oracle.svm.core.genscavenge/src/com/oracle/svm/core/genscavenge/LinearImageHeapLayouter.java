@@ -25,16 +25,17 @@
 package com.oracle.svm.core.genscavenge;
 
 import com.oracle.svm.core.config.ConfigurationValues;
-import com.oracle.svm.core.image.AbstractImageHeapLayouter;
 import com.oracle.svm.core.image.ImageHeap;
 import com.oracle.svm.core.image.ImageHeapLayoutInfo;
 
 public class LinearImageHeapLayouter extends AbstractImageHeapLayouter<LinearImageHeapPartition> {
     private final ImageHeapInfo heapInfo;
+    private final long startOffset;
     private final boolean compressedNullPadding;
 
-    public LinearImageHeapLayouter(ImageHeapInfo heapInfo, boolean compressedNullPadding) {
+    public LinearImageHeapLayouter(ImageHeapInfo heapInfo, long startOffset, boolean compressedNullPadding) {
         this.heapInfo = heapInfo;
+        this.startOffset = startOffset;
         this.compressedNullPadding = compressedNullPadding;
     }
 
@@ -50,30 +51,30 @@ public class LinearImageHeapLayouter extends AbstractImageHeapLayouter<LinearIma
 
     @Override
     protected ImageHeapLayoutInfo doLayout(ImageHeap imageHeap) {
-        long startOffset = 0;
+        long beginOffset = startOffset;
         if (compressedNullPadding) {
             /*
              * Zero designates null, so adding some explicit padding at the beginning of the native
              * image heap is the easiest approach to make object offsets strictly greater than 0.
              */
-            startOffset += ConfigurationValues.getObjectLayout().getAlignment();
+            beginOffset += ConfigurationValues.getObjectLayout().getAlignment();
         }
-        LinearImageHeapAllocator allocator = new LinearImageHeapAllocator(startOffset);
+        LinearImageHeapAllocator allocator = new LinearImageHeapAllocator(beginOffset);
         for (LinearImageHeapPartition partition : getPartitions()) {
             partition.allocateObjects(allocator);
         }
-        initializeHeapInfo();
-        return createDefaultLayoutInfo();
+        initializeHeapInfo(imageHeap.countDynamicHubs());
+        return createLayoutInfo(startOffset, getWritablePrimitive().getStartOffset());
     }
 
     /**
      * Store which objects are at the boundaries of the image heap partitions. Here, we also merge
      * the read-only reference partition with the read-only relocatable partition.
      */
-    private void initializeHeapInfo() {
+    private void initializeHeapInfo(int dynamicHubCount) {
         heapInfo.initialize(getReadOnlyPrimitive().firstObject, getReadOnlyPrimitive().lastObject, getReadOnlyReference().firstObject, getReadOnlyReference().lastObject,
                         getReadOnlyRelocatable().firstObject, getReadOnlyRelocatable().lastObject, getWritablePrimitive().firstObject, getWritablePrimitive().lastObject,
                         getWritableReference().firstObject, getWritableReference().lastObject, getWritableHuge().firstObject, getWritableHuge().lastObject,
-                        getReadOnlyHuge().firstObject, getReadOnlyHuge().lastObject, ImageHeapInfo.NO_CHUNK, ImageHeapInfo.NO_CHUNK);
+                        getReadOnlyHuge().firstObject, getReadOnlyHuge().lastObject, ImageHeapInfo.NO_CHUNK, ImageHeapInfo.NO_CHUNK, dynamicHubCount);
     }
 }

@@ -28,7 +28,7 @@
  * OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 int main() {
-    long a = "asdf";
-    long b = "asdf";
+    const char *a = "asdf";
+    const char *b = "asdf";
     return a == b;
 }

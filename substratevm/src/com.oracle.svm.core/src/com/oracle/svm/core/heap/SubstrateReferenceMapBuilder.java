@@ -50,23 +50,28 @@ public class SubstrateReferenceMapBuilder extends ReferenceMapBuilder {
 
     @Override
     public void addLiveValue(Value value) {
-        int offset;
+        int offset = 0;
+        boolean offsetValid = false;
         if (ValueUtil.isStackSlot(value)) {
             StackSlot stackSlot = ValueUtil.asStackSlot(value);
             offset = stackSlot.getOffset(totalFrameSize);
+            offsetValid = true;
             assert referenceMap.debugMarkStackSlot(offset, stackSlot);
 
-        } else if (CalleeSavedRegisters.supportedByPlatform() && ValueUtil.isRegister(value)) {
+        } else if (ValueUtil.isRegister(value)) {
             Register register = ValueUtil.asRegister(value);
-            offset = CalleeSavedRegisters.singleton().getOffsetInFrame(register);
             assert referenceMap.debugMarkRegister(ValueUtil.asRegister(value).number, value);
+            if (CalleeSavedRegisters.supportedByPlatform()) {
+                offset = CalleeSavedRegisters.singleton().getOffsetInFrame(register);
+                offsetValid = true;
+            }
 
         } else {
             throw VMError.shouldNotReachHere(value.toString());
         }
 
         LIRKind kind = (LIRKind) value.getValueKind();
-        if (!kind.isValue()) {
+        if (offsetValid && !kind.isValue()) {
 
             if (kind.isUnknownReference()) {
                 throw JVMCIError.shouldNotReachHere("unknown reference alive across safepoint");

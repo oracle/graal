@@ -31,7 +31,7 @@
 unsigned char __builtin_addcb(unsigned char, unsigned char, unsigned char, unsigned char *);
 #endif
 
-int main(int argc, const char **argv) {
+int main() {
     unsigned char carryout;
 
     __builtin_addcb((unsigned char) 0x0, (unsigned char) 0x0, 0, &carryout);

@@ -41,15 +41,15 @@ public class AnalysisReportsOptions {
     @Option(help = "Print boot image object hierarchy.")//
     public static final OptionKey<Boolean> PrintImageObjectTree = new OptionKey<>(false);
 
-    @Option(help = "Override the default suppression of specified roots. See: REPORTS.md.")//
+    @Option(help = "Override the default suppression of specified roots. See: Reports.md.")//
     public static final OptionKey<String> ImageObjectTreeExpandRoots = new OptionKey<>("");
 
-    @Option(help = "Suppress the expansion of specified roots. See: REPORTS.md.")//
+    @Option(help = "Suppress the expansion of specified roots. See: Reports.md.")//
     public static final OptionKey<String> ImageObjectTreeSuppressRoots = new OptionKey<>("");
 
-    @Option(help = "Override the default suppression of specified types. See: REPORTS.md.")//
+    @Option(help = "Override the default suppression of specified types. See: Reports.md.")//
     public static final OptionKey<String> ImageObjectTreeExpandTypes = new OptionKey<>("");
 
-    @Option(help = "Suppress the expansion of specified types. See: REPORTS.md.")//
+    @Option(help = "Suppress the expansion of specified types. See: Reports.md.")//
     public static final OptionKey<String> ImageObjectTreeSuppressTypes = new OptionKey<>("");
 }

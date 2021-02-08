@@ -44,12 +44,17 @@ import java.util.Collections;
 
 import javax.lang.model.element.ElementKind;
 import javax.lang.model.element.Modifier;
+import javax.lang.model.type.TypeMirror;
 
 import com.oracle.truffle.dsl.processor.java.model.CodeTypeMirror.DeclaredCodeTypeMirror;
 
 public final class GeneratedTypeMirror extends DeclaredCodeTypeMirror {
 
     public GeneratedTypeMirror(String packageName, String name) {
-        super(new GeneratedTypeElement(Collections.<Modifier> emptySet(), ElementKind.CLASS, new GeneratedPackageElement(packageName), name));
+        super(new GeneratedTypeElement(Collections.<Modifier> emptySet(), ElementKind.CLASS, new GeneratedPackageElement(packageName), name, null));
+    }
+
+    public GeneratedTypeMirror(String packageName, String name, TypeMirror superType) {
+        super(new GeneratedTypeElement(Collections.<Modifier> emptySet(), ElementKind.CLASS, new GeneratedPackageElement(packageName), name, superType));
     }
 }

@@ -26,7 +26,7 @@ launch your GraalVM's `bin/node` launcher with the `--insight` instrument and
 observe what scripts are being loaded and evaluated:
 
 ```bash
-$ graalvm/bin/node --experimental-options --js.print --insight=source-tracing.js -e "print('The result: ' + 6 * 7)" | tail -n 10
+$ graalvm/bin/node --js.print --insight=source-tracing.js -e "print('The result: ' + 6 * 7)" | tail -n 10
 Loading 29938 characters from url.js
 Loading 345 characters from internal/idna.js
 Loading 12642 characters from punycode.js
@@ -91,7 +91,7 @@ function. The latter is executed when the `node` process execution is over (regi
 `insight.on('close', dumpHotness)`. Invoke as:
 
 ```bash
-$ graalvm/bin/node --experimental-options --js.print --insight=function-hotness-tracing.js -e "print('The result: ' + 6 * 7)"
+$ graalvm/bin/node --js.print --insight=function-hotness-tracing.js -e "print('The result: ' + 6 * 7)"
 The result: 42
 ==== Hotness Top 10 ====
 543 calls to isPosixPathSeparator
@@ -143,7 +143,7 @@ a sample script which uses a variant of the Sieve of Erathostenes to compute one
 thousand of prime numbers:
 
 ```bash
-$ graalvm/bin/js --experimental-options --insight=function-tracing.js sieve.js | grep -v Computed
+$ graalvm/bin/js --insight=function-tracing.js sieve.js | grep -v Computed
 Just called :program as 1 function invocation
 Just called Natural.next as 17 function invocation
 Just called Natural.next as 33 function invocation
@@ -161,7 +161,7 @@ default `node` implementation, the lightweight `js` command line tool -
 or your own application that decides to [embedd GraalVM scripting](Insight-Embedding.md)
 capabilities!
 
-### Trully Polyglot - Insight any Language
+### Truly Polyglot - Insight any Language
 
 The previous examples were written in JavaScript, but due to the polyglot
 nature of GraalVM, we can take the same instrument and use it 
@@ -188,7 +188,7 @@ when you apply the JavaScript instrument to the Ruby program, here is what
 you get:
 
 ```bash
-$ graalvm/bin/ruby --polyglot --experimental-options --insight=source-trace.js helloworld.rb
+$ graalvm/bin/ruby --polyglot --insight=source-trace.js helloworld.rb
 JavaScript instrument observed load of helloworld.rb
 Hello from GraalVM Ruby!
 ```
@@ -219,7 +219,7 @@ class Roots:
 
 insight.on("enter", onEnter, Roots())
 ```
-Apply such script with `js --polyglot --insight=agent.py --experimental-options agent-fib.js`.
+Apply such script with `js --polyglot --insight=agent.py agent-fib.js`.
 Of course, make sure Python is installed in your GraalVM via the `gu` tool.
 
 
@@ -262,7 +262,7 @@ Hundred thousand prime numbers in 73 ms
 and now let's compare it to execution time when running with the **Insight** script enabled:
 
 ```bash
-$ graalvm/bin/js --experimental-options --insight=function-count.js sieve.js  | grep -v Computed
+$ graalvm/bin/js --insight=function-count.js sieve.js  | grep -v Computed
 Hundred thousand prime numbers in 74 ms
 Hundred thousand prime numbers in 74 ms
 Hundred thousand prime numbers in 75 ms
@@ -276,7 +276,7 @@ making all the code work as one! The `count++` invocation becomes natural part o
 the application at all the places representing `ROOT` of application functions.
 **Insight** system gives you unlimited instrumentation power at no cost!
 
-### Trully Polyglot - Insight with Ruby
+### Truly Polyglot - Insight with Ruby
 
 Not only one can instrument any GraalVM language, but also the **Insight**
 scripts can be written in any GraalVM supported language. Take for example
@@ -284,10 +284,10 @@ Ruby and create `source-tracing.rb` (make sure GraalVM Ruby is installed via
 `gu install ruby`) file:
 
 ```ruby
-puts("Ruby: Insight version " + insight[:version] + " is launching")
+puts("Ruby: Insight version #{insight.version} is launching")
 
-insight.on("source", -> (env) { 
-  puts "Ruby: observed loading of " + env[:name]
+insight.on("source", -> (env) {
+  puts "Ruby: observed loading of #{env.name}"
 })
 puts("Ruby: Hooks are ready!")
 
@@ -295,12 +295,12 @@ config = Truffle::Interop.hash_keys_as_members({
   roots: true,
   rootNameFilter: "minusOne",
   sourceFilter: -> (src) {
-    return src[:name] == "agent-fib.js"
+    return src.name == "agent-fib.js"
   }
 })
 
 insight.on("enter", -> (ctx, frame) {
-    puts("minusOne " + frame[:n].to_s)
+    puts("minusOne #{frame.n}")
 }, config)
 ```
 
@@ -309,7 +309,7 @@ when a function `minusOne` in a `agent-fib.js` file is called. Launch your
 `node` application and instrument it with such a Ruby written script:
 
 ```bash
-$ graalvm/bin/node --js.print --polyglot --insight=agent-ruby.rb --experimental-options agent-fib.js
+$ graalvm/bin/node --js.print --polyglot --insight=agent-ruby.rb agent-fib.js
 Ruby: Initializing GraalVM Insight script
 Ruby: Hooks are ready!
 Ruby: observed loading of internal/per_context/primordials.js
@@ -328,7 +328,7 @@ Three is the result 3
 Write your **Insight** scripts in any language you wish! They'll be
 ultimatelly useful accross the whole GraalVM ecosystem.
 
-### Trully Polyglot - Insights with R
+### Truly Polyglot - Insights with R
 
 The same instrument can be written in the R language opening tracing and
 aspect based programing to our friendly statistical community. Just create
@@ -347,7 +347,7 @@ cat("R: Hooks are ready!\n")
 and use it to trace your `test.R` program:
 
 ```bash
-$ graalvm/bin/Rscript --insight=agent-r.R --experimental-options test.R
+$ graalvm/bin/Rscript --insight=agent-r.R test.R
 R: Initializing GraalVM Insight script
 R: Hooks are ready!
 R: observed loading of test.R
@@ -393,7 +393,7 @@ in `fib.js`, then invoking following command yields detailed information about
 the program execution and parameters passed between function invocations:
 
 ```bash
-$ graalvm/bin/node --experimental-options --js.print --insight=fib-trace.js fib.js
+$ graalvm/bin/node --js.print --insight=fib-trace.js fib.js
 fib for 3
 fib for 2
 fib for 1
@@ -434,7 +434,7 @@ insight.on('enter', function zeroNonEvenNumbers(ctx, frame) {
 });
 ```
 
-When launched with `js --experimental-options --insight=erase.js sumarray.js`
+When launched with `js --insight=erase.js sumarray.js`
 only value `20` gets printed.
 
 **Insight** `enter` and `return` hooks can only modify existing variables.
@@ -442,11 +442,11 @@ They cannot introduce new ones. Attempts to do so yield an exception.
 
 ### API of **Insight**
 
-The **Insight** functionality is offered as a technology preview and 
-requires one to use `--experimental-options` to enable the `--insight`
-instrument. Never the less, the compatibility of the **Insight** API 
-exposed via the `insight` object
-is treated seriously.
+The **Insight** functionality is an integral part of GraalVM since version
+19.3. The compatibility of the **Insight** API exposed via the `insight` object
+is treated seriously. New functionality is added in a compatible way. Old
+functionality is deprecated, kept working while offering new alternatives and
+only later removed.
 
 The [documentation](https://www.graalvm.org/tools/javadoc/org/graalvm/tools/insight/Insight.html)
 of the `insight` object properties and functions is available as part of its
@@ -497,7 +497,7 @@ function. Then it removes the probes using `insight.off` and invokes the actual
 access to all the node modules. The script can be used as
 
 ```js
-$ graalvm/bin/node --experimental-options --js.print --insight=agent-require.js yourScript.js
+$ graalvm/bin/node --js.print --insight=agent-require.js yourScript.js
 ```
 
 This initialization sequence is known to work on GraalVM's node `v12.10.0`
@@ -539,7 +539,7 @@ and at that moment it emits its own exception effectively interrupting the user
 program execution. As a result one gets:
 
 ```bash
-$ graalvm/bin/js --polyglot --experimental-options --insight=term.js seq.js
+$ graalvm/bin/js --polyglot --insight=term.js seq.js
 Hello GraalVM Insight!
 How
 great you are!
@@ -552,6 +552,59 @@ The exceptions emitted by Insight instruments are treated as regular language
 exceptions. The `seq.js` program could use regular `try { ... } catch (e) { ... }`
 block to catch them and deal with them as if they were emitted by the regular
 user code.
+
+### Intercepting & Altering Execution
+
+GraalVM Insight is capable to alter the execution of a program. It can
+skip certain computations and replace them with own alternatives. Imagine
+simple `plus` function:
+
+```js
+function plus(a, b) {
+    return a + b;
+}
+```
+
+it is quite easy to change the behavior of the `plus` method. Following
+Insight script replaces the `+` operation with multiplication by using
+the `ctx.returnNow` functionality.
+
+```js
+insight.on('enter', function(ctx, frame) {
+    ctx.returnNow(frame.a * frame.b);
+}, {
+    roots: true,
+    rootNameFilter: 'plus'
+});
+```
+
+The `returnNow` method immediatelly stops execution and returns to the
+caller of the `plus` function. The body of the `plus` method isn't executed
+at all because we applied the insight `on('enter', ...)` - e.g. before the
+actual body of the function was executed. 
+Multiplying instead of adding two numbers may not sound very tempting, but
+the same approach is useful in providing add-on caching (e.g. memoization) 
+of repeating function invocations.
+
+It is also possible to let the original function code run and just alter
+its result. Let's alter the result of `plus` function to be always non-negative:
+
+```js
+insight.on('return', function(ctx, frame) {
+    let result = ctx.returnValue(frame);
+    ctx.returnNow(Math.abs(result));
+}, {
+    roots: true,
+    rootNameFilter: 'plus'
+});
+```
+
+The Insight hook is executed *on return* of the `plus` function and is
+using `returnValue` helper function to obtain the computed return value
+from the current `frame` object. Then it can alter the value and
+`returnNow` the new result instead. The `returnValue` function is always
+available on the provided `ctx` object, but it only returns meaningful
+value when used in `on('return', ...)` hooks.
 
 ### Hack into the C Code!
 
@@ -602,7 +655,7 @@ and when the function gets invoked a thousand times, it emits an error
 to terminate the `sieve` execution. Just run the program as:
 
 ```bash
-$ graalvm/bin/lli --polyglot --insight=agent-limit.js --experimental-options sieve
+$ graalvm/bin/lli --polyglot --insight=agent-limit.js sieve
 Computed 97 primes in 181 ms. Last one is 509
 GraalVM Insight: nextNatural method called 1000 times. enough!
         at <js> :anonymous(<eval>:7:117-185)
@@ -627,7 +680,7 @@ insight.on('enter', function(ctx, frame) {
 and print out a message everytime a new prime is added into the filter list:
 
 ```bash
-$ graalvm/bin/lli --polyglot --experimental-options --insight=agent-limit.js sieve | head -n 3
+$ graalvm/bin/lli --polyglot --insight=agent-limit.js sieve | head -n 3
 found new prime number 2
 found new prime number 3
 found new prime number 5
@@ -639,11 +692,11 @@ C, C++, Fortran, Rust and inspect with JavaScript, Ruby & co.!
 
 ### Minimal Overhead when Accessing Locals
 
-GraalVM [Insight](Insight.md) is capable to access local variables. Is that for free
-or is there an inherent slowdown associated with each variable access? The answer
-is: **it depends**!
+GraalVM [Insight](Insight.md) is capable to access local variables. Moreover it
+is almost for free. Insight code accessing local variables blends with the 
+actual function code defining them and there is no visible slowdown.
 
-Let's demonstrate the issue on [sieve.js](../../vm/benchmarks/agentscript/sieve.js) -
+Let's demonstrate the this on [sieve.js](../../vm/benchmarks/agentscript/sieve.js) -
 an algorithm to compute hundred thousand of prime numbers. It keeps the
 so far found prime numbers in a linked list constructed via following
 function:
@@ -697,53 +750,41 @@ numbers found so far. When the main loop in `measure` is over - e.g. we have
 all hundred thousand prime numbers, we print the result. Let's try it:
 
 ```bash
-$ graalvm/bin/js --experimental-options  -e "var count=50" --insight=sieve-filter1.js --file sieve.js | grep Hundred | tail -n 2
+$ graalvm/bin/js  -e "var count=50" --insight=sieve-filter1.js --file sieve.js | grep Hundred | tail -n 2
 Hundred thousand prime numbers from 2 to 1299709 has sum 62260698721
-Hundred thousand prime numbers in 288 ms
+Hundred thousand prime numbers in 74 ms
 ```
 
-Well, there is a significant slowdown. What is it's reason? The primary reason
-for the slowdown is the ability of GraalVM to inline the Insight frame access
-to the local variable `frame.number`. Let's demonstrate it. Right now there are three
-accesses - let's replace them with a single one:
+No slowdown at all. [Insight](Insight.md) gives us great instrumentation capabilities - when combined with
+the great inlining algorithms of [GraalVM](http://graalvm.org/downloads)
+we can even access local variables with almost no performance penalty!
+
+### Accessing whole Stack
+
+There is a way for [Insight](Insight.md) to access the whole execution stack.
+Following code snippet shows how to do that:
+
 ```js
-insight.on('enter', (ctx, frame) => {
-    let n = frame.number;
-    sum += n;
-    if (n > max) {
-        max = n;
-    }
+insight.on("return", function(ctx, frame) {
+  print("dumping locals");
+  ctx.iterateFrames((at, vars) => {
+      for (let p in vars) {
+          print(`    at ${at.name} (${at.source.name}:${at.line}:${at.column}) ${p} has value ${vars[p]}`);
+      }
+  });
+  print("end of locals");
 }, {
-  roots: true,
-  rootNameFilter: 'Filter'
+  roots: true
 });
 ```
 
-after storing the `frame.number` into the temporary variable `n` we get following
-performance results:
-
-```bash
-$ graalvm/bin/js --experimental-options  -e "var count=50" --insight=sieve-filter2.js --file sieve.js | grep Hundred | tail -n 2
-Hundred thousand prime numbers from 2 to 1299709 has sum 62260698721
-Hundred thousand prime numbers in 151 ms
-```
-
-Faster. That confirms our expectations - the access to `frame.number` isn't
-inlined - e.g. it is not optimized enough right now. If we just could get
-better inlining!
-
-Luckily we can. [GraalVM EE](https://www.graalvm.org/downloads/) is known for having better inlining characteristics
-than GraalVM CE. Let's try to use it:
-
-```bash
-$ graalvm-ee/bin/js --experimental-options  -e "var count=50" --insight=sieve-filter1.js --file sieve.js | grep Hundred | tail -n 2
-Hundred thousand prime numbers from 2 to 1299709 has sum 62260698721
-Hundred thousand prime numbers in 76 ms
-```
-
-Voilà! [Insight](Insight.md) gives us great instrumentation capabilities - when combined with
-the great inlining algorithms of [GraalVM Enterprise Edition](http://graalvm.org/downloads)
-we can even access local variables with almost no performance penalty!
+Whenever the [Insight](Insight.md) hook is triggered it prints the current execution
+stack with `name` of the function, `source.name`, `line` and `column`. Moreover
+it also prints values of all local `vars` at each frame. It is also possible to
+modify values of existing variables by assigning new values to them: `vars.n = 42`.
+Accessing whole stack is flexible, but unlike [access to locals in the current
+execution frame](Insight-Manual.md#modifying-local-variables), it is not fast
+operation. Use rarely, if you want your program to continue running at full speed!
 
 <!--
 
@@ -752,14 +793,9 @@ we can even access local variables with almost no performance penalty!
 GraalVM comes with a unified set of prepackaged high performance **Insight** 
 insights at your convenience. 
 
-**Insight** insights scripts are primarily targeted
-towards ease of use in microservices area - e.g. logging
-
-
 **Insight** is an ideal tool for practicing *aspects oriented programming*
 in a completely language agnostic way.
-- inspect values, types at invocation or allocation sites, gathering useful information
-- modify computed values, interrupt execution 
+- types at invocation or allocation sites, gathering useful information
 
 - powerful tools to help you write, debug, manage, and organize
 your **Insight** insights scripts. It is a matter of pressing a single button

@@ -40,66 +40,147 @@
  */
 package org.graalvm.wasm;
 
-import com.oracle.truffle.api.CompilerDirectives;
-import org.graalvm.wasm.exception.WasmExecutionException;
-import org.graalvm.wasm.exception.WasmValidationException;
+import org.graalvm.wasm.constants.Sizes;
+import org.graalvm.wasm.exception.Failure;
+
+import java.util.Arrays;
+
+import static java.lang.Integer.compareUnsigned;
+import static org.graalvm.wasm.Assert.assertUnsignedIntLessOrEqual;
+import static org.graalvm.wasm.constants.Sizes.MAX_TABLE_DECLARATION_SIZE;
+import static org.graalvm.wasm.constants.Sizes.MAX_TABLE_INSTANCE_SIZE;
 
 public final class WasmTable {
-    private final int tableIndex;
-    private final int maxSize;
-    @CompilerDirectives.CompilationFinal(dimensions = 1) private Object[] elements;
+    /**
+     * @see #declaredMinSize()
+     */
+    private final int declaredMinSize;
 
-    public WasmTable(int tableIndex, int initSize, int maxSize) {
-        this.tableIndex = tableIndex;
-        this.elements = new Object[initSize];
-        this.maxSize = maxSize;
+    /**
+     * @see #declaredMaxSize()
+     */
+    private final int declaredMaxSize;
+
+    /**
+     * The maximum practical size of this table instance.
+     * <p>
+     * It is the minimum between {@link #declaredMaxSize the limit defined in the module binary},
+     * {@link Sizes#MAX_TABLE_INSTANCE_SIZE the GraalWasm limit} and any additional limit (the JS
+     * API for example has lower limits).
+     * <p>
+     * This is different from {@link #declaredMaxSize()}, which can be higher.
+     */
+    private final int maxAllowedSize;
+
+    private Object[] elements;
+
+    private WasmTable(int declaredMinSize, int declaredMaxSize, int initialSize, int maxAllowedSize) {
+        assert compareUnsigned(declaredMinSize, initialSize) <= 0;
+        assert compareUnsigned(initialSize, maxAllowedSize) <= 0;
+        assert compareUnsigned(maxAllowedSize, declaredMaxSize) <= 0;
+        assert compareUnsigned(maxAllowedSize, MAX_TABLE_INSTANCE_SIZE) <= 0;
+        assert compareUnsigned(declaredMaxSize, MAX_TABLE_DECLARATION_SIZE) <= 0;
+
+        this.declaredMinSize = declaredMinSize;
+        this.declaredMaxSize = declaredMaxSize;
+        this.maxAllowedSize = maxAllowedSize;
+        this.elements = new Object[declaredMinSize];
+    }
+
+    public WasmTable(int declaredMinSize, int declaredMaxSize, int maxAllowedSize) {
+        this(declaredMinSize, declaredMaxSize, declaredMinSize, maxAllowedSize);
     }
 
     public void ensureSizeAtLeast(int targetSize) {
-        if (maxSize >= 0 && targetSize > maxSize) {
-            throw new WasmValidationException("Table " + tableIndex + " cannot be resized to " + targetSize + ", " +
-                            "declared maximum size is " + maxSize);
-        }
-        if (elements.length < targetSize) {
-            Object[] newElements = new Object[targetSize];
-            System.arraycopy(elements, 0, newElements, 0, elements.length);
-            elements = newElements;
+        assertUnsignedIntLessOrEqual(targetSize, maxAllowedSize, Failure.TABLE_INSTANCE_SIZE_LIMIT_EXCEEDED);
+        if (size() < targetSize) {
+            elements = Arrays.copyOf(elements, targetSize);
         }
     }
 
-    public int tableIndex() {
-        return tableIndex;
+    /**
+     * Shrinks this table's size to its {@link #declaredMinSize()} initial size}, and sets all
+     * elements to {@code null}.
+     * <p>
+     * Note: this does not restore content from elements section. For this, use
+     * {@link org.graalvm.wasm.BinaryParser#resetTableState}.
+     */
+    public void reset() {
+        elements = new Object[declaredMinSize];
     }
 
+    /**
+     * The current size of this table instance.
+     */
     public int size() {
         return elements.length;
     }
 
-    public int maxSize() {
-        return maxSize;
+    /**
+     * The minimum size of this table as declared in the binary.
+     * <p>
+     * This is a lower bound on this table's size. This memory can only be imported with a lower or
+     * equal minimum size.
+     */
+    public int declaredMinSize() {
+        return declaredMinSize;
+    }
+
+    /**
+     * The maximum size of this table as declared in the binary.
+     * <p>
+     * This is an upper bound on this table's size. This table can only be imported with a greater
+     * or equal maximum size.
+     * <p>
+     * This is different from internal max allowed size, which can be lower.
+     */
+    public int declaredMaxSize() {
+        return declaredMaxSize;
     }
 
     public Object[] elements() {
         return elements;
     }
 
+    /**
+     * Gets element at {@code index}.
+     *
+     * @throws IndexOutOfBoundsException if the index is negative or greater or equal to table size
+     */
     public Object get(int index) {
         return elements[index];
     }
 
-    public void set(int index, Object function) {
-        elements[index] = function;
+    /**
+     * Gets element at {@code index}.
+     *
+     * @throws IndexOutOfBoundsException if the index is negative or greater or equal to table size
+     */
+    public void set(int index, Object element) {
+        elements[index] = element;
     }
 
+    /**
+     * Gets element at {@code index}.
+     *
+     * @throws IndexOutOfBoundsException if the index is negative or greater or equal to table size
+     */
     public void initialize(int i, WasmFunctionInstance function) {
-        if (elements[i] != null) {
-            throw new WasmValidationException("Table " + tableIndex + " already has an element at index " + i + ".");
-        }
         elements[i] = function;
     }
 
-    @SuppressWarnings({"unused", "static-method"})
-    public boolean grow(long delta) {
-        throw new WasmExecutionException(null, "Tables cannot be grown.");
+    /**
+     * Grows the table so that it can contain {@code delta} more elements.
+     *
+     * @throws IllegalArgumentException if growing the table of {@code delta} would make its size
+     *             larger than the internal limit
+     */
+    public void grow(int delta) {
+        final int targetSize = size() + delta;
+        if (compareUnsigned(delta, maxAllowedSize) <= 0 && compareUnsigned(targetSize, maxAllowedSize) <= 0) {
+            ensureSizeAtLeast(size() + delta);
+        } else {
+            throw new IllegalArgumentException("Cannot grow table above max limit " + maxAllowedSize);
+        }
     }
 }

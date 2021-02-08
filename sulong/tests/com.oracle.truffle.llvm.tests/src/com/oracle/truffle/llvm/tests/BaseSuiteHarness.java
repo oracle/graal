@@ -45,6 +45,7 @@ import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
 import org.graalvm.polyglot.Context;
+import org.graalvm.polyglot.Engine;
 import org.junit.AfterClass;
 import org.junit.Assert;
 import org.junit.BeforeClass;
@@ -61,6 +62,7 @@ public abstract class BaseSuiteHarness extends BaseTestHarness {
 
     private static final List<Path> passingTests = new ArrayList<>();
     private static final List<Path> failingTests = new ArrayList<>();
+    private static Engine engine;
 
     /**
      * Maximum retries on timeout of the reference executable.
@@ -103,6 +105,16 @@ public abstract class BaseSuiteHarness extends BaseTestHarness {
         }
     }
 
+    @BeforeClass
+    public static void createEngine() {
+        engine = Engine.newBuilder().allowExperimentalOptions(true).build();
+    }
+
+    @AfterClass
+    public static void disposeEngine() {
+        engine.close();
+    }
+
     private void runCandidate(Path referenceBinary, ProcessResult referenceResult, Path candidateBinary) {
         if (!filterFileName().test(candidateBinary.getFileName().toString())) {
             return;
@@ -114,7 +126,8 @@ public abstract class BaseSuiteHarness extends BaseTestHarness {
         String[] inputArgs = getInputArgs(candidateBinary);
         ProcessResult result;
         try {
-            result = ProcessUtil.executeSulongTestMain(candidateBinary.toAbsolutePath().toFile(), inputArgs, getContextOptions(), getCaptureOutput());
+            assert engine != null;
+            result = ProcessUtil.executeSulongTestMainSameEngine(candidateBinary.toAbsolutePath().toFile(), inputArgs, getContextOptions(), getCaptureOutput(), engine);
         } catch (Exception e) {
             throw fail(getTestName(), new Exception("Candidate binary that failed: " + candidateBinary, e));
         }
@@ -153,7 +166,7 @@ public abstract class BaseSuiteHarness extends BaseTestHarness {
         Path referenceBinary;
         ProcessResult referenceResult;
         try (Stream<Path> walk = Files.list(getTestDirectory())) {
-            List<Path> files = walk.filter(isExecutable).collect(Collectors.toList());
+            List<Path> files = walk.filter(getIsExecutableFilter()).collect(Collectors.toList());
 
             // some tests do not compile with certain versions of clang
             Assume.assumeFalse("reference binary missing", files.isEmpty());
@@ -174,6 +187,10 @@ public abstract class BaseSuiteHarness extends BaseTestHarness {
 
     protected Predicate<? super Path> getIsSulongFilter() {
         return isSulong;
+    }
+
+    protected Predicate<? super Path> getIsExecutableFilter() {
+        return isExecutable;
     }
 
     protected static AssertionError fail(String testName, AssertionError error) {

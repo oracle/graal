@@ -27,10 +27,10 @@ package org.graalvm.compiler.core.gen;
 import static jdk.vm.ci.code.ValueUtil.asRegister;
 import static jdk.vm.ci.code.ValueUtil.isLegal;
 import static jdk.vm.ci.code.ValueUtil.isRegister;
-import static org.graalvm.compiler.core.match.ComplexMatchValue.INTERIOR_MATCH;
+import static org.graalvm.compiler.core.common.GraalOptions.MatchExpressions;
 import static org.graalvm.compiler.core.common.SpectrePHTMitigations.AllTargets;
 import static org.graalvm.compiler.core.common.SpectrePHTMitigations.Options.SpectrePHTBarriers;
-import static org.graalvm.compiler.core.common.GraalOptions.MatchExpressions;
+import static org.graalvm.compiler.core.match.ComplexMatchValue.INTERIOR_MATCH;
 import static org.graalvm.compiler.debug.DebugOptions.LogVerbose;
 import static org.graalvm.compiler.lir.LIR.verifyBlock;
 
@@ -82,6 +82,7 @@ import org.graalvm.compiler.nodes.FixedNode;
 import org.graalvm.compiler.nodes.FrameState;
 import org.graalvm.compiler.nodes.FullInfopointNode;
 import org.graalvm.compiler.nodes.IfNode;
+import org.graalvm.compiler.nodes.ImplicitNullCheckNode;
 import org.graalvm.compiler.nodes.IndirectCallTargetNode;
 import org.graalvm.compiler.nodes.Invoke;
 import org.graalvm.compiler.nodes.InvokeWithExceptionNode;
@@ -111,15 +112,18 @@ import org.graalvm.compiler.nodes.spi.NodeValueMap;
 import org.graalvm.compiler.nodes.spi.NodeWithState;
 import org.graalvm.compiler.nodes.virtual.VirtualObjectNode;
 import org.graalvm.compiler.options.OptionValues;
+import org.graalvm.compiler.serviceprovider.GraalServices;
 
 import jdk.vm.ci.code.CallingConvention;
 import jdk.vm.ci.code.StackSlot;
 import jdk.vm.ci.code.ValueUtil;
 import jdk.vm.ci.meta.AllocatableValue;
 import jdk.vm.ci.meta.Constant;
+import jdk.vm.ci.meta.DeoptimizationReason;
 import jdk.vm.ci.meta.JavaConstant;
 import jdk.vm.ci.meta.JavaKind;
 import jdk.vm.ci.meta.PlatformKind;
+import jdk.vm.ci.meta.SpeculationLog;
 import jdk.vm.ci.meta.Value;
 
 /**
@@ -781,7 +785,27 @@ public abstract class NodeLIRBuilder implements NodeLIRBuilderTool, LIRGeneratio
             return new LIRFrameState(null, null, null);
         }
         assert state != null : "Deopt node=" + deopt + " needs a state ";
-        return getDebugInfoBuilder().build(deopt, state, exceptionEdge);
+        if (deopt instanceof ImplicitNullCheckNode) {
+            ImplicitNullCheckNode implicitNullCheck = (ImplicitNullCheckNode) deopt;
+            JavaConstant deoptReasonAndAction = implicitNullCheck.getDeoptReasonAndAction();
+            JavaConstant deoptSpeculation = implicitNullCheck.getDeoptSpeculation();
+            if (deoptSpeculation != null) {
+                assert deoptReasonAndAction != null;
+                assert isValidImplicitLIRFrameState(implicitNullCheck) : "Unsupported implicit exception";
+                return getDebugInfoBuilder().build(deopt, state, exceptionEdge, deoptReasonAndAction, deoptSpeculation);
+            }
+        }
+        return getDebugInfoBuilder().build(deopt, state, exceptionEdge, null, null);
+    }
+
+    private boolean isValidImplicitLIRFrameState(ImplicitNullCheckNode implicitNullCheck) {
+        if (GraalServices.supportsArbitraryImplicitException()) {
+            return true;
+        }
+        DeoptimizationReason deoptimizationReason = getLIRGeneratorTool().getMetaAccess().decodeDeoptReason(implicitNullCheck.getDeoptReasonAndAction());
+        SpeculationLog.Speculation speculation = getLIRGeneratorTool().getMetaAccess().decodeSpeculation(implicitNullCheck.getDeoptSpeculation(), implicitNullCheck.graph().getSpeculationLog());
+        return (deoptimizationReason == DeoptimizationReason.NullCheckException || deoptimizationReason == DeoptimizationReason.UnreachedCode ||
+                        deoptimizationReason == DeoptimizationReason.TypeCheckedInliningViolated) && speculation == SpeculationLog.NO_SPECULATION;
     }
 
     @Override

@@ -24,29 +24,30 @@
  */
 package org.graalvm.tools.lsp.exceptions;
 
-import com.oracle.truffle.api.TruffleException;
-import com.oracle.truffle.api.nodes.Node;
+import com.oracle.truffle.api.exception.AbstractTruffleException;
+import com.oracle.truffle.api.interop.ExceptionType;
+import com.oracle.truffle.api.interop.InteropLibrary;
+import com.oracle.truffle.api.library.ExportLibrary;
+import com.oracle.truffle.api.library.ExportMessage;
 
-public final class LSPIOException extends RuntimeException implements TruffleException {
+@ExportLibrary(InteropLibrary.class)
+public final class LSPIOException extends AbstractTruffleException {
 
     private static final long serialVersionUID = 310418381621312260L;
 
     public LSPIOException(String message, Throwable e) {
-        super(message, e);
+        super(message, e, UNLIMITED_STACK_TRACE, null);
     }
 
-    @Override
-    public synchronized Throwable fillInStackTrace() {
-        return this;
+    @ExportMessage
+    @SuppressWarnings("static-method")
+    ExceptionType getExceptionType() {
+        return ExceptionType.EXIT;
     }
 
-    @Override
-    public Node getLocation() {
-        return null;
-    }
-
-    @Override
-    public boolean isExit() {
-        return true;
+    @ExportMessage
+    @SuppressWarnings("static-method")
+    int getExceptionExitStatus() {
+        return 0;
     }
 }

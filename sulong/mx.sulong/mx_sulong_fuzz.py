@@ -1,5 +1,5 @@
 #
-# Copyright (c) 2020, Oracle and/or its affiliates.
+# Copyright (c) 2020, 2021, Oracle and/or its affiliates.
 #
 # All rights reserved.
 #
@@ -143,6 +143,7 @@ def ll_reduce(args=None, out=None):
     parser.add_argument('--timeout', help='Time in seconds until no new reduction operations are permitted to start.', metavar='<timeout>', type=int, default=None)
     parser.add_argument('--timeout-stabilized', help='Time in seconds that should pass since no successful minimal reduction operation has been performed until no new reduction operations are permitted to start.', metavar='<timeout-stabilized>', type=int, default=10)
     parser.add_argument('--clang-input', help='Additional input files that should be forwarded to clang. No reductions will be performed on these files. Mx path substitutions are enabled.', metavar='<clanginputs>', nargs='*')
+    parser.add_argument('--lli-arg', help='Additional arguments passed to lli.', metavar='<lli arg>', nargs='*')
     parser.add_argument('--output', help='The output file. If omitted, <input>.reduced.ll is used.', metavar='<output>', default=None)
     parser.add_argument('input', help='The input file.', metavar='<input>')
     parsed_args = parser.parse_args(args)
@@ -180,7 +181,7 @@ def ll_reduce(args=None, out=None):
             toolchain_clang = mx_sulong._get_toolchain_tool("native,CC")
             mx_sulong.llvm_tool([toolchain_clang, "-O0", "-Wno-everything", "-o", tmp_out, input_f] + additional_clang_input)
             with open(out_f, 'w') as o, open(err_f, 'w') as e:
-                mx_sulong.runLLVM([tmp_out], timeout=lli_timeout, nonZeroIsFatal=False, out=o, err=e)
+                mx.command_function('lli')(parsed_args.lli_arg + [tmp_out], timeout=lli_timeout, nonZeroIsFatal=False, out=o, err=e)
 
         def run_interestingness_test(interestingness_test, input_file):
             return mx.run(shlex.split(interestingness_test) + [input_file], nonZeroIsFatal=False)

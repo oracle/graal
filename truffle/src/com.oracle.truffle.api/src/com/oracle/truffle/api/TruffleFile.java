@@ -1756,7 +1756,7 @@ public final class TruffleFile {
     }
 
     private static TruffleFile createUniquePath(TruffleFile targetDirectory, String prefix, String suffix) {
-        long n = TempFileRandomHolder.RANDOM.nextLong();
+        long n = TempFileRandomHolder.getRandom().nextLong();
         n = n == Long.MIN_VALUE ? Long.MAX_VALUE : Math.abs(n);
         String name = prefix + Long.toString(n) + suffix;
         TruffleFile result = targetDirectory.resolve(name);
@@ -1784,7 +1784,16 @@ public final class TruffleFile {
     }
 
     private static final class TempFileRandomHolder {
-        static final Random RANDOM = new Random();
+        private static Random RANDOM;
+
+        static Random getRandom() {
+            if (RANDOM == null) {
+                /* We don't want RANDOM seeds in the image heap. */
+                RANDOM = new Random();
+            }
+            return RANDOM;
+        }
+
     }
 
     private static final class AttributeGroup {

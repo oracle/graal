@@ -27,6 +27,7 @@ package org.graalvm.component.installer.commands;
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Collection;
+import java.util.Collections;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
@@ -34,6 +35,7 @@ import java.util.Map;
 import java.util.Set;
 import org.graalvm.component.installer.CommandInput;
 import org.graalvm.component.installer.Commands;
+import org.graalvm.component.installer.CommonConstants;
 import org.graalvm.component.installer.ComponentCollection;
 import org.graalvm.component.installer.Feedback;
 import org.graalvm.component.installer.Version;
@@ -58,23 +60,40 @@ public class AvailableCommand extends ListInstalledCommand {
         opts.put(Commands.OPTION_CATALOG, "X");
         opts.put(Commands.OPTION_FOREIGN_CATALOG, "s");
         opts.put(Commands.LONG_OPTION_FOREIGN_CATALOG, Commands.OPTION_FOREIGN_CATALOG);
+
+        opts.put(Commands.OPTION_USE_EDITION, "s");
+        opts.put(Commands.LONG_OPTION_USE_EDITION, Commands.OPTION_USE_EDITION);
+
+        opts.put(Commands.OPTION_SHOW_CORE, "");
+        opts.put(Commands.LONG_OPTION_SHOW_CORE, Commands.OPTION_SHOW_CORE);
+
+        opts.put(Commands.OPTION_SHOW_UPDATES, "");
+        opts.put(Commands.LONG_OPTION_SHOW_UPDATES, Commands.OPTION_SHOW_UPDATES);
         return opts;
     }
 
     @Override
     protected ComponentCollection initRegistry() {
         super.initRegistry();
+        if (showUpdates) {
+            input.getRegistry().setAllowDistUpdate(true);
+        }
         return input.getRegistry();
     }
 
     @Override
     public void init(CommandInput commandInput, Feedback feedBack) {
-        super.init(commandInput, feedBack);
         String v = commandInput.optValue(Commands.OPTION_VERSION);
         if (v != null) {
             vmatch = Version.versionFilter(v);
         }
+        showUpdates = commandInput.hasOption(Commands.OPTION_SHOW_UPDATES) || commandInput.hasOption(Commands.OPTION_ALL);
+        showCore = commandInput.hasOption(Commands.OPTION_SHOW_CORE) | showUpdates | commandInput.hasOption(Commands.OPTION_USE_EDITION);
+        super.init(commandInput, feedBack);
     }
+
+    private boolean showUpdates;
+    private boolean showCore;
 
     @Override
     public int execute() throws IOException {
@@ -85,6 +104,8 @@ public class AvailableCommand extends ListInstalledCommand {
         return super.execute();
     }
 
+    private boolean defaultFilter = true;
+
     @Override
     protected List<ComponentInfo> filterDisplayedVersions(String id, Collection<ComponentInfo> infos) {
         if (input.optValue(Commands.OPTION_ALL) != null) {
@@ -92,9 +113,29 @@ public class AvailableCommand extends ListInstalledCommand {
         }
         Set<Version> seen = new HashSet<>();
         Collection<ComponentInfo> filtered = new ArrayList<>();
-        for (ComponentInfo ci : infos) {
-            if (seen.add(ci.getVersion().installVersion())) {
+        Version.Match compatibleFilter = getRegistry().getGraalVersion().match(Version.Match.Type.COMPATIBLE);
+
+        if (defaultFilter) {
+            List<ComponentInfo> sorted = new ArrayList<>(infos);
+            Collections.sort(sorted, ComponentInfo.versionComparator().reversed());
+            for (ComponentInfo ci : sorted) {
+                // for non-core components, only display those compatible with the current release.
+                if (!showUpdates && !compatibleFilter.test(ci.getVersion())) {
+                    continue;
+                }
+                if (CommonConstants.GRAALVM_CORE_PREFIX.equals(ci.getId()) && !showCore) {
+                    // filter out graalvm core by default
+                    continue;
+                }
+                // select just the most recent version
                 filtered.add(ci);
+                break;
+            }
+        } else {
+            for (ComponentInfo ci : infos) {
+                if (seen.add(ci.getVersion().installVersion())) {
+                    filtered.add(ci);
+                }
             }
         }
         return super.filterDisplayedVersions(id, filtered);
@@ -108,8 +149,10 @@ public class AvailableCommand extends ListInstalledCommand {
         Version.Match vm = Version.versionFilter(expr);
         if (vm == null) {
             vmatch = getRegistry().getGraalVersion().match(Version.Match.Type.INSTALLABLE);
+            defaultFilter = true;
             return expr;
         } else {
+            defaultFilter = false;
             vmatch = vm;
             // consume
             return null;

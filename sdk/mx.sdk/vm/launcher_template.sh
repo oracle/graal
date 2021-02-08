@@ -48,7 +48,7 @@ done
 jvm_args=("-Dorg.graalvm.launcher.shell=true" "-Dorg.graalvm.launcher.executablename=$0")
 launcher_args=()
 
-# Unfortunately, parsing of `--jvm.*` and `--vm.*` arguments has to be done blind:
+# Unfortunately, parsing of `--vm.*` arguments has to be done blind:
 # Maybe some of those arguments where not really intended for the launcher but were application arguments
 
 process_vm_arg() {
@@ -69,12 +69,9 @@ process_vm_arg() {
 }
 
 process_arg() {
-    if [[ "$1" == --jvm.* ]]; then
-        >&2 echo "'--jvm.*' options are deprecated, use '--vm.*' instead."
-        process_vm_arg "${1#--jvm.}"
-    elif [[ "$1" == --vm.* ]]; then
+    if [[ "$1" == --vm.* ]]; then
         process_vm_arg "${1#--vm.}"
-    elif [[ "$1" == --native || "$1" == --native.* ]]; then
+    elif [[ "$1" == --native ]]; then
         >&2 echo "The native version of '$(basename "$source")' does not exist: cannot use '$1'."
         if [[ $(basename "$source") == polyglot ]]; then
             local extra=' --language:all'
@@ -94,7 +91,6 @@ for var in <option_vars>; do
     read -ra opts <<< "${!var}"
     for opt in "${opts[@]}"; do
         [[ "$opt" == --vm.* ]] && process_vm_arg "${opt#--vm.}"
-        [[ "$opt" == --jvm.* ]] && process_vm_arg "${opt#--jvm.}"
     done
 done
 

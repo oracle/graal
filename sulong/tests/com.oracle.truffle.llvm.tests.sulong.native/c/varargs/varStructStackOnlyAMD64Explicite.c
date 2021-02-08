@@ -49,7 +49,10 @@ int foo(int x, ...) {
 }
 
 int main() {
+#pragma clang diagnostic push
+#pragma clang diagnostic ignored "-Wunused-variable"
     struct _point p = { 19L, 13L, 9L };
+#pragma clang diagnostic pop
 
     /*
    * push the elements on the stack as if we would call it with:

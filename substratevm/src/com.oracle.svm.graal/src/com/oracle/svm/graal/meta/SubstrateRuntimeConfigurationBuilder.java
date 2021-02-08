@@ -30,15 +30,18 @@ import org.graalvm.compiler.api.replacements.SnippetReflectionProvider;
 import org.graalvm.compiler.bytecode.BytecodeProvider;
 import org.graalvm.compiler.bytecode.ResolvedJavaMethodBytecodeProvider;
 import org.graalvm.compiler.core.common.spi.ConstantFieldProvider;
+import org.graalvm.compiler.nodes.spi.LoopsDataProvider;
 import org.graalvm.compiler.nodes.spi.Replacements;
 import org.graalvm.compiler.options.OptionValues;
 import org.graalvm.compiler.phases.util.Providers;
 
 import com.oracle.graal.pointsto.meta.AnalysisUniverse;
+import com.oracle.svm.core.SubstrateOptions;
 import com.oracle.svm.core.config.ConfigurationValues;
 import com.oracle.svm.core.graal.code.SubstrateBackend;
 import com.oracle.svm.core.graal.meta.SharedCodeCacheProvider;
 import com.oracle.svm.core.graal.meta.SubstrateReplacements;
+import com.oracle.svm.graal.isolated.IsolateAwareCodeCacheProvider;
 import com.oracle.svm.hosted.SVMHost;
 import com.oracle.svm.hosted.ameta.AnalysisConstantFieldProvider;
 import com.oracle.svm.hosted.ameta.AnalysisConstantReflectionProvider;
@@ -55,15 +58,13 @@ public class SubstrateRuntimeConfigurationBuilder extends SharedRuntimeConfigura
 
     private final AnalysisUniverse aUniverse;
     private final ConstantReflectionProvider originalReflectionProvider;
-    private final ClassInitializationSupport classInitializationSupport;
 
     public SubstrateRuntimeConfigurationBuilder(OptionValues options, SVMHost hostVM, AnalysisUniverse aUniverse, MetaAccessProvider metaAccess,
                     ConstantReflectionProvider originalReflectionProvider, Function<Providers, SubstrateBackend> backendProvider, NativeLibraries nativeLibraries,
-                    ClassInitializationSupport classInitializationSupport) {
-        super(options, hostVM, metaAccess, backendProvider, nativeLibraries);
+                    ClassInitializationSupport classInitializationSupport, LoopsDataProvider loopsDataProvider) {
+        super(options, hostVM, metaAccess, backendProvider, nativeLibraries, classInitializationSupport, loopsDataProvider);
         this.aUniverse = aUniverse;
         this.originalReflectionProvider = originalReflectionProvider;
-        this.classInitializationSupport = classInitializationSupport;
     }
 
     @Override
@@ -84,6 +85,10 @@ public class SubstrateRuntimeConfigurationBuilder extends SharedRuntimeConfigura
 
     @Override
     protected SharedCodeCacheProvider createCodeCacheProvider(RegisterConfig registerConfig) {
+        if (SubstrateOptions.supportCompileInIsolates()) {
+            return new IsolateAwareCodeCacheProvider(ConfigurationValues.getTarget(), registerConfig);
+        }
         return new SubstrateCodeCacheProvider(ConfigurationValues.getTarget(), registerConfig);
     }
+
 }

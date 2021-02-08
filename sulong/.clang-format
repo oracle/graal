@@ -17,9 +17,8 @@ BinPackParameters: true
 ColumnLimit:     150
 ConstructorInitializerAllOnOneLineOrOnePerLine: false
 DerivePointerBinding: false
-# added in LLVM 10
-# DeriveLineEnding: false
-# UseCRLF: false
+DeriveLineEnding: false
+UseCRLF: false
 ExperimentalAutoDetectBinPacking: false
 IndentCaseLabels: true
 MaxEmptyLinesToKeep: 1

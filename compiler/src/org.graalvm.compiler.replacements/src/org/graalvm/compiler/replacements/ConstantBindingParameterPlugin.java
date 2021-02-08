@@ -25,13 +25,17 @@
 package org.graalvm.compiler.replacements;
 
 import org.graalvm.compiler.api.replacements.SnippetReflectionProvider;
+import org.graalvm.compiler.core.common.type.DataPointerConstant;
+import org.graalvm.compiler.core.common.type.StampFactory;
 import org.graalvm.compiler.core.common.type.StampPair;
 import org.graalvm.compiler.nodes.ConstantNode;
+import org.graalvm.compiler.nodes.NodeView;
 import org.graalvm.compiler.nodes.calc.FloatingNode;
 import org.graalvm.compiler.nodes.graphbuilderconf.GraphBuilderTool;
 import org.graalvm.compiler.nodes.graphbuilderconf.ParameterPlugin;
 
 import jdk.vm.ci.meta.Constant;
+import jdk.vm.ci.meta.JavaKind;
 import jdk.vm.ci.meta.MetaAccessProvider;
 
 /**
@@ -66,14 +70,17 @@ public class ConstantBindingParameterPlugin implements ParameterPlugin {
                          * This is a node from another graph, so copy over extra state into a new
                          * ConstantNode.
                          */
-                        constantNode = ConstantNode.forConstant(stamp.getTrustedStamp(), otherCon.getValue(), otherCon.getStableDimension(), otherCon.isDefaultStable(), metaAccess);
+                        constantNode = ConstantNode.forConstant(otherCon.stamp(NodeView.DEFAULT), otherCon.getValue(), otherCon.getStableDimension(), otherCon.isDefaultStable(), metaAccess);
                     } else {
                         constantNode = otherCon;
                     }
+                } else if (arg instanceof DataPointerConstant) {
+                    constantNode = ConstantNode.forConstant(StampFactory.pointer(), (Constant) arg, metaAccess);
                 } else if (arg instanceof Constant) {
                     constantNode = ConstantNode.forConstant(stamp.getTrustedStamp(), (Constant) arg, metaAccess);
                 } else {
-                    constantNode = ConstantNode.forConstant(snippetReflection.forBoxed(stamp.getTrustedStamp().getStackKind(), arg), metaAccess);
+                    JavaKind kind = stamp.getTrustedStamp().getStackKind();
+                    constantNode = ConstantNode.forConstant(snippetReflection.forBoxed(kind, arg), metaAccess);
                 }
                 return constantNode;
             }

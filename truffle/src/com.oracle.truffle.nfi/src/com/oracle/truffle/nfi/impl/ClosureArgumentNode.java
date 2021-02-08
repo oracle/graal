@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2017, 2019, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2017, 2020, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -44,6 +44,7 @@ import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
 import com.oracle.truffle.api.TruffleLanguage.LanguageReference;
 import com.oracle.truffle.api.nodes.Node;
+import com.oracle.truffle.nfi.impl.LibFFIType.CachedTypeInfo;
 import java.nio.ByteBuffer;
 
 abstract class ClosureArgumentNode extends Node {
@@ -52,10 +53,10 @@ abstract class ClosureArgumentNode extends Node {
 
     static class BufferClosureArgumentNode extends ClosureArgumentNode {
 
-        private final LibFFIType type;
+        private final CachedTypeInfo type;
         @Child NativeArgumentLibrary nativeArguments;
 
-        BufferClosureArgumentNode(LibFFIType type) {
+        BufferClosureArgumentNode(CachedTypeInfo type) {
             this.type = type;
             this.nativeArguments = NativeArgumentLibrary.getFactory().create(type);
         }
@@ -94,6 +95,14 @@ abstract class ClosureArgumentNode extends Node {
             } else {
                 return arg;
             }
+        }
+    }
+
+    static class InjectedClosureArgumentNode extends ClosureArgumentNode {
+
+        @Override
+        public Object execute(Object arg) {
+            return new NativePointer(0);
         }
     }
 }

@@ -127,14 +127,13 @@ public class SecurityServicesFeature extends JNIRegistrationUtil implements Feat
         rci.rerunInitialization(clazz(access, "java.util.UUID$Holder"), "for substitutions");
 
         /*
-         * The classes bellow have a static final SecureRandom field. Note that if the classes are
-         * not found as reachable by the analysis registering them form class initialization rerun
+         * The classes below have a static final SecureRandom field. Note that if the classes are
+         * not found as reachable by the analysis registering them for class initialization rerun
          * doesn't have any effect.
          */
         rci.rerunInitialization(clazz(access, "sun.security.jca.JCAUtil$CachedSecureRandomHolder"), "for substitutions");
         rci.rerunInitialization(clazz(access, "com.sun.crypto.provider.SunJCE$SecureRandomHolder"), "for substitutions");
         rci.rerunInitialization(clazz(access, "sun.security.krb5.Confounder"), "for substitutions");
-        rci.rerunInitialization(javax.net.ssl.SSLContext.class, "for substitutions");
 
         /*
          * When SSLContextImpl$DefaultManagersHolder sets-up the TrustManager in its initializer it
@@ -195,9 +194,12 @@ public class SecurityServicesFeature extends JNIRegistrationUtil implements Feat
 
         access.registerReachabilityHandler(SecurityServicesFeature::registerServicesForReflection, method(access, "java.security.Provider$Service", "newInstance", Object.class));
 
-        access.registerReachabilityHandler(SecurityServicesFeature::linkSunEC,
-                        method(access, "sun.security.ec.ECDSASignature", "signDigest", byte[].class, byte[].class, byte[].class, byte[].class, int.class),
-                        method(access, "sun.security.ec.ECDSASignature", "verifySignedDigest", byte[].class, byte[].class, byte[].class, byte[].class));
+        if (JavaVersionUtil.JAVA_SPEC < 16) {
+            // https://bugs.openjdk.java.net/browse/JDK-8235710
+            access.registerReachabilityHandler(SecurityServicesFeature::linkSunEC,
+                            method(access, "sun.security.ec.ECDSASignature", "signDigest", byte[].class, byte[].class, byte[].class, byte[].class, int.class),
+                            method(access, "sun.security.ec.ECDSASignature", "verifySignedDigest", byte[].class, byte[].class, byte[].class, byte[].class));
+        }
 
         if (isPosix()) {
             access.registerReachabilityHandler(SecurityServicesFeature::linkJaas, method(access, "com.sun.security.auth.module.UnixSystem", "getUnixInfo"));

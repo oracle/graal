@@ -60,10 +60,11 @@ public class InstallerCommandlineTest extends CommandTestBase {
     class MockInstallerMain extends ComponentInstaller {
         MockInstallerMain(String[] args) {
             super(args);
+            initGlobalOptions();
         }
 
         @Override
-        Environment setupEnvironment(SimpleGetopt go) {
+        protected Environment setupEnvironment(SimpleGetopt go) {
 
             Environment env = new Environment(getCommand(), getParameters(), go.getOptValues()) {
                 @Override
@@ -80,8 +81,7 @@ public class InstallerCommandlineTest extends CommandTestBase {
 
             setInput(env);
             setFeedback(InstallerCommandlineTest.this);
-
-            env.setGraalHome(getGraalHomePath());
+            env.setGraalHome(exposeGraalHomePath());
             env.setLocalRegistry(getLocalRegistry());
             env.setFileOperations(getFileOperations());
             environment = env;
@@ -108,6 +108,10 @@ public class InstallerCommandlineTest extends CommandTestBase {
         protected void printUsage(Feedback output) {
             super.printUsage(InstallerCommandlineTest.this);
         }
+    }
+
+    Path exposeGraalHomePath() {
+        return getGraalHomePath();
     }
 
     MockInstallerMain main = new MockInstallerMain(new String[0]);
@@ -177,6 +181,7 @@ public class InstallerCommandlineTest extends CommandTestBase {
     public void setUp() throws Exception {
         super.setUp();
         ComponentInstaller.initCommands();
+        ComponentInstaller.initGlobalOptions();
         delegateFeedback(capture);
     }
 
@@ -514,6 +519,7 @@ public class InstallerCommandlineTest extends CommandTestBase {
         args.add("-C");
         args.add(dir.toAbsolutePath().toString());
         args.add("avail");
+        args.add("--show-updates");
 
         URL u = getClass().getResource("remote/catalog");
         Handler.bind(releaseURL, u);
@@ -565,6 +571,7 @@ public class InstallerCommandlineTest extends CommandTestBase {
         args.add("-C");
         args.add(dir.toAbsolutePath().toString());
         args.add("avail");
+        args.add("--show-updates");
 
         URL u = getClass().getResource("remote/catalog");
         Handler.bind(releaseURL, u);
@@ -671,5 +678,62 @@ public class InstallerCommandlineTest extends CommandTestBase {
         assertFalse(Handler.isVisited(url2));
 
         assertTrue(Handler.isVisited(url1));
+    }
+
+    /**
+     * By default, the default edition must be used to determine the catalogs.
+     * 
+     * @throws Exception
+     */
+    @Test
+    public void testUseDefaultEditionCatalogsSingle() throws Exception {
+        String url0 = "test://graalvm.org/relase/catalog2";
+        String url1 = "test://graalv.org/test/explicit.properties";
+        String url2 = "test://graalv.org/test/envcatalog.properties";
+
+        releaseURL = url0 + "|{ee=GraalVM EE}" + url1; // NOI18N
+        storage.graalInfo.put(CommonConstants.RELEASE_CATALOG_KEY, releaseURL);
+        storage.graalInfo.put(CommonConstants.CAP_GRAALVM_VERSION, "1.0.1.0");
+
+        URL u = getClass().getResource("remote/catalog");
+        Handler.bind(url0, u);
+        Handler.bind(url1, u);
+        Handler.bind(url2, u);
+
+        args.add("avail");
+
+        main.processOptions(args);
+        main.doProcessCommand();
+
+        assertTrue(Handler.isVisited(url0));
+        assertFalse(Handler.isVisited(url1));
+        assertFalse(Handler.isVisited(url2));
+    }
+
+    @Test
+    public void testUseExplicitEditionOnParams() throws Exception {
+        String url0 = "test://graalvm.org/relase/catalog2";
+        String url1 = "test://graalv.org/test/explicit.properties";
+        String url2 = "test://graalv.org/test/envcatalog.properties";
+
+        releaseURL = url0 + "|{ee=GraalVM EE}" + url1; // NOI18N
+        storage.graalInfo.put(CommonConstants.RELEASE_CATALOG_KEY, releaseURL);
+        storage.graalInfo.put(CommonConstants.CAP_GRAALVM_VERSION, "1.0.1.0");
+
+        URL u = getClass().getResource("remote/catalog");
+        Handler.bind(url0, u);
+        Handler.bind(url1, u);
+        Handler.bind(url2, u);
+
+        args.add("avail");
+        args.add("--edition");
+        args.add("ee");
+
+        main.processOptions(args);
+        main.doProcessCommand();
+
+        assertFalse(Handler.isVisited(url0));
+        assertTrue(Handler.isVisited(url1));
+        assertFalse(Handler.isVisited(url2));
     }
 }

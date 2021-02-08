@@ -25,7 +25,6 @@
 package com.oracle.truffle.tools.agentscript.impl;
 
 import com.oracle.truffle.api.CompilerDirectives;
-import com.oracle.truffle.api.TruffleException;
 import com.oracle.truffle.api.instrumentation.EventBinding;
 import com.oracle.truffle.api.instrumentation.ExecutionEventNodeFactory;
 import com.oracle.truffle.api.instrumentation.Instrumenter;
@@ -115,7 +114,7 @@ final class AgentObject implements TruffleObject {
                                 try {
                                     interop.execute(args[1], new SourceEventObject(source));
                                 } catch (RuntimeException ex) {
-                                    if (ex instanceof TruffleException) {
+                                    if (interop.isException(ex)) {
                                         InsightException.throwWhenExecuted(instrumenter, source, ex);
                                     } else {
                                         throw ex;
@@ -131,14 +130,14 @@ final class AgentObject implements TruffleObject {
                     case ENTER: {
                         CompilerDirectives.transferToInterpreter();
                         SourceSectionFilter filter = createFilter(obj, args);
-                        EventBinding<ExecutionEventNodeFactory> handle = instrumenter.attachExecutionEventFactory(filter, AgentExecutionNode.factory(obj.env, args[1], null));
+                        EventBinding<ExecutionEventNodeFactory> handle = instrumenter.attachExecutionEventFactory(filter, AgentExecutionNode.factory(args[1], null));
                         obj.data.registerHandle(type, handle, args[1]);
                         break;
                     }
                     case RETURN: {
                         CompilerDirectives.transferToInterpreter();
                         SourceSectionFilter filter = createFilter(obj, args);
-                        EventBinding<ExecutionEventNodeFactory> handle = instrumenter.attachExecutionEventFactory(filter, AgentExecutionNode.factory(obj.env, null, args[1]));
+                        EventBinding<ExecutionEventNodeFactory> handle = instrumenter.attachExecutionEventFactory(filter, AgentExecutionNode.factory(null, args[1]));
                         obj.data.registerHandle(type, handle, args[1]);
                         break;
                     }

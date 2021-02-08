@@ -30,6 +30,7 @@ import static com.oracle.svm.jni.JNIObjectHandles.nullHandle;
 import java.util.Arrays;
 import java.util.concurrent.locks.ReentrantLock;
 
+import com.oracle.svm.jni.nativeapi.JNIFieldId;
 import org.graalvm.nativeimage.c.type.CTypeConversion;
 
 import com.oracle.svm.jni.JNIObjectHandles;
@@ -140,6 +141,24 @@ public abstract class JNIHandleSet {
                 return Support.jniFunctions().getGetStaticMethodID().invoke(env, clazz, cname.get(), csignature.get());
             } else {
                 return Support.jniFunctions().getGetMethodID().invoke(env, clazz, cname.get(), csignature.get());
+            }
+        }
+    }
+
+    public JNIFieldId getFieldId(JNIEnvironment env, JNIObjectHandle clazz, String name, String signature, boolean isStatic) {
+        assert !destroyed;
+        JNIFieldId id = getFieldIdOptional(env, clazz, name, signature, isStatic);
+        guarantee(id.isNonNull());
+        return id;
+    }
+
+    public JNIFieldId getFieldIdOptional(JNIEnvironment env, JNIObjectHandle clazz, String name, String signature, boolean isStatic) {
+        assert !destroyed;
+        try (CTypeConversion.CCharPointerHolder cname = Support.toCString(name); CTypeConversion.CCharPointerHolder csignature = Support.toCString(signature)) {
+            if (isStatic) {
+                return Support.jniFunctions().getGetStaticFieldID().invoke(env, clazz, cname.get(), csignature.get());
+            } else {
+                return Support.jniFunctions().getGetFieldID().invoke(env, clazz, cname.get(), csignature.get());
             }
         }
     }

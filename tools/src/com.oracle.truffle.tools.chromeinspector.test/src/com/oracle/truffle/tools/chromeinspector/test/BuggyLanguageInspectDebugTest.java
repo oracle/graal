@@ -24,19 +24,20 @@
  */
 package com.oracle.truffle.tools.chromeinspector.test;
 
-import java.io.ByteArrayOutputStream;
 import static org.junit.Assert.assertTrue;
 
-import java.util.Iterator;
+import java.io.ByteArrayOutputStream;
 import java.util.Objects;
 import java.util.concurrent.atomic.AtomicReference;
+import java.util.function.Consumer;
+import java.util.function.BiFunction;
 
 import org.graalvm.polyglot.Source;
 import org.junit.After;
 import org.junit.Ignore;
 import org.junit.Test;
 
-import com.oracle.truffle.api.Scope;
+import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.debug.test.TestDebugBuggyLanguage;
 import com.oracle.truffle.api.frame.Frame;
 import com.oracle.truffle.api.interop.InteropLibrary;
@@ -83,7 +84,7 @@ public class BuggyLanguageInspectDebugTest {
             @Override
             protected Object findMetaObject(ProxyLanguage.LanguageContext context, Object value) {
                 throwBug(value);
-                return Objects.toString(value);
+                return super.findMetaObject(context, value);
             }
         }), new LanguageCallsVerifier());
     }
@@ -92,10 +93,18 @@ public class BuggyLanguageInspectDebugTest {
     public void testBuggyMetaToString() throws Exception {
         class MetaObj extends ProxyInteropObject {
 
-            final int id;
+            private final int id;
+            private final Consumer<Integer> throwBugCallback;
 
-            MetaObj(int id) {
+            MetaObj(int id, Consumer<Integer> throwBugCallback) {
                 this.id = id;
+                this.throwBugCallback = throwBugCallback;
+            }
+
+            @Override
+            protected Object toDisplayString(boolean allowSideEffects) {
+                throwBugCallback.accept(id);
+                throw CompilerDirectives.shouldNotReachHere();
             }
         }
         testBuggyCalls(langRef(new TestDebugBuggyLanguage() {
@@ -108,19 +117,11 @@ public class BuggyLanguageInspectDebugTest {
             @Override
             protected Object findMetaObject(ProxyLanguage.LanguageContext context, Object value) {
                 if (value instanceof Integer) {
-                    return new MetaObj((Integer) value);
+                    return new MetaObj((Integer) value, id -> throwBug(id));
                 }
-                return Objects.toString(value);
+                return super.findMetaObject(context, value);
             }
 
-            @Override
-            protected String toString(ProxyLanguage.LanguageContext c, Object value) {
-                if (value instanceof MetaObj) {
-                    int id = ((MetaObj) value).id;
-                    throwBug(id);
-                }
-                return Objects.toString(value);
-            }
         }), new LanguageCallsVerifier());
     }
 
@@ -128,10 +129,12 @@ public class BuggyLanguageInspectDebugTest {
     public void testBuggyScope() throws Exception {
         testBuggyCalls(langRef(new TestDebugBuggyLanguage() {
             @Override
-            protected Iterable<Scope> findLocalScopes(ProxyLanguage.LanguageContext context, Node node, Frame frame) {
-                String text = node.getSourceSection().getCharacters().toString();
-                throwBug(Integer.parseInt(text));
-                return super.findLocalScopes(context, node, frame);
+            protected BiFunction<Node, Frame, Object> scopeProvider() {
+                return (node, frame) -> {
+                    String text = node.getSourceSection().getCharacters().toString();
+                    throwBug(Integer.parseInt(text));
+                    throw CompilerDirectives.shouldNotReachHere();
+                };
             }
         }), "", false, new BugVerifier() {
             @Override
@@ -158,9 +161,12 @@ public class BuggyLanguageInspectDebugTest {
     public void testBuggyReadVar() throws Exception {
         testBuggyCalls(langRef(new TestDebugBuggyLanguage() {
             @Override
-            protected Iterable<Scope> findLocalScopes(ProxyLanguage.LanguageContext context, Node node, Frame frame) {
-                int errNum = Integer.parseInt(node.getSourceSection().getCharacters().toString());
-                return buggyProxyScopes(super.findLocalScopes(context, node, frame), () -> throwBug(errNum), "READ");
+            protected BiFunction<Node, Frame, Object> scopeProvider() {
+                return (node, frame) -> {
+                    Object scope = getDefaultScope(node, frame, true);
+                    int errNum = Integer.parseInt(node.getSourceSection().getCharacters().toString());
+                    return buggyProxyScope(scope, () -> throwBug(errNum), "READ");
+                };
             }
         }), new ReadVarErrorVerifier());
     }
@@ -169,9 +175,12 @@ public class BuggyLanguageInspectDebugTest {
     public void testBuggyWriteVar() throws Exception {
         testBuggyCalls(langRef(new TestDebugBuggyLanguage() {
             @Override
-            protected Iterable<Scope> findLocalScopes(ProxyLanguage.LanguageContext context, Node node, Frame frame) {
-                int errNum = Integer.parseInt(node.getSourceSection().getCharacters().toString());
-                return buggyProxyScopes(super.findLocalScopes(context, node, frame), () -> throwBug(errNum), "WRITE");
+            protected BiFunction<Node, Frame, Object> scopeProvider() {
+                return (node, frame) -> {
+                    Object scope = getDefaultScope(node, frame, true);
+                    int errNum = Integer.parseInt(node.getSourceSection().getCharacters().toString());
+                    return buggyProxyScope(scope, () -> throwBug(errNum), "WRITE");
+                };
             }
         }), new WriteVarErrorVerifier());
     }
@@ -305,14 +314,19 @@ public class BuggyLanguageInspectDebugTest {
         @Override
         public void verifyMessages(InspectorTester tester, int errNum) throws InterruptedException {
             int objectId = 3 * errNum - 2;
-            String description = (errNum == 2) ? "A TruffleException" : Integer.toString(errNum);
+            String exception;
+            if (errNum == 2) {
+                exception = "\"description\":\"TestTruffleException A TruffleException\",\"className\":\"TestTruffleException\",\"type\":\"object\",\"value\":\"A TruffleException\"";
+            } else {
+                exception = "\"description\":\"" + Integer.toString(errNum) + "\",\"type\":\"string\",\"value\":\"" + Integer.toString(errNum) + "\"";
+            }
             String errObject = "ErrorObject " + errNum;
             tester.sendMessage("{\"id\":7,\"method\":\"Runtime.getProperties\",\"params\":{\"objectId\":\"" + objectId + "\"}}");
             skipConsoleMessages(tester);
             assertTrue(tester.compareReceivedMessages(
                             "{\"result\":{\"result\":[{\"isOwn\":true,\"enumerable\":true,\"name\":\"o\",\"value\":{\"description\":\"" + errObject + "\",\"className\":\"" + errObject + "\",\"type\":\"function\",\"objectId\":\"" + (3 * errNum) + "\"},\"configurable\":true,\"writable\":true}]," +
                                          "\"internalProperties\":[]," +
-                                         "\"exceptionDetails\":{\"exception\":{\"description\":\"" + description + "\",\"type\":\"string\",\"value\":\"" + description + "\"}," +
+                                         "\"exceptionDetails\":{\"exception\":{" + exception + "}," +
                                                                "\"exceptionId\":" + errNum + ",\"executionContextId\":1,\"text\":\"Uncaught\"," +
                                                                "\"stackTrace\":{\"callFrames\":[]}}},\"id\":7}\n"));
         }
@@ -329,7 +343,12 @@ public class BuggyLanguageInspectDebugTest {
         @Override
         public void verifyMessages(InspectorTester tester, int errNum) throws InterruptedException {
             int objectId = 3 * errNum - 2;
-            String description = (errNum == 2) ? "A TruffleException" : Integer.toString(errNum);
+            String exception;
+            if (errNum == 2) {
+                exception = "\"description\":\"TestTruffleException A TruffleException\",\"className\":\"TestTruffleException\",\"type\":\"object\",\"value\":\"A TruffleException\"";
+            } else {
+                exception = "\"description\":\"" + Integer.toString(errNum) + "\",\"type\":\"string\",\"value\":\"" + Integer.toString(errNum) + "\"";
+            }
             String errObject = "ErrorObject " + errNum + " " + errMessage;
             tester.sendMessage("{\"id\":7,\"method\":\"Runtime.getProperties\",\"params\":{\"objectId\":\"" + objectId + "\"}}");
             assertTrue(tester.compareReceivedMessages(
@@ -341,7 +360,7 @@ public class BuggyLanguageInspectDebugTest {
             assertTrue(tester.compareReceivedMessages(
                             "{\"result\":{\"result\":[{\"isOwn\":true,\"enumerable\":true,\"name\":\"B\",\"value\":{\"description\":\"42\",\"type\":\"number\",\"value\":42},\"configurable\":true,\"writable\":true}]," +
                                          "\"internalProperties\":[]," +
-                                         "\"exceptionDetails\":{\"exception\":{\"description\":\"" + description + "\",\"type\":\"string\",\"value\":\"" + description + "\"}," +
+                                         "\"exceptionDetails\":{\"exception\":{" + exception + "}," +
                                                                "\"exceptionId\":" + errNum + ",\"executionContextId\":1,\"text\":\"Uncaught\"," +
                                                                "\"stackTrace\":{\"callFrames\":[]}}},\"id\":8}\n"));
         }
@@ -352,14 +371,19 @@ public class BuggyLanguageInspectDebugTest {
         @Override
         public void verifyMessages(InspectorTester tester, int errNum) throws InterruptedException {
             int objectId = 3 * errNum - 2;
-            String description = (errNum == 2) ? "A TruffleException" : Integer.toString(errNum);
+            String exception;
+            if (errNum == 2) {
+                exception = "\"description\":\"TestTruffleException A TruffleException\",\"className\":\"TestTruffleException\",\"type\":\"object\",\"value\":\"A TruffleException\"";
+            } else {
+                exception = "\"description\":\"" + Integer.toString(errNum) + "\",\"type\":\"string\",\"value\":\"" + Integer.toString(errNum) + "\"";
+            }
             String errObject = "ErrorObject " + errNum;
             tester.sendMessage("{\"id\":7,\"method\":\"Runtime.getProperties\",\"params\":{\"objectId\":\"" + objectId + "\"}}");
             skipConsoleMessages(tester);
             assertTrue(tester.compareReceivedMessages(
                             "{\"result\":{\"result\":[{\"isOwn\":true,\"enumerable\":true,\"name\":\"o\",\"value\":{\"description\":\"" + errObject + "\",\"className\":\"" + errObject + "\",\"type\":\"function\",\"objectId\":\"" + (3 * errNum) + "\"},\"configurable\":true,\"writable\":true}]," +
                                          "\"internalProperties\":[]," +
-                                         "\"exceptionDetails\":{\"exception\":{\"description\":\"" + description + "\",\"type\":\"string\",\"value\":\"" + description + "\"}," +
+                                         "\"exceptionDetails\":{\"exception\":{" + exception + "}," +
                                                                "\"exceptionId\":" + errNum + ",\"executionContextId\":1,\"text\":\"Uncaught\"," +
                                                                "\"stackTrace\":{\"callFrames\":[]}}},\"id\":7}\n"));
         }
@@ -389,7 +413,12 @@ public class BuggyLanguageInspectDebugTest {
         @Override
         public void verifyMessages(InspectorTester tester, int errNum) throws InterruptedException {
             int objectId = 3 * errNum - 2;
-            String description = (errNum == 2) ? "A TruffleException" : Integer.toString(errNum);
+            String exception;
+            if (errNum == 2) {
+                exception = "\"description\":\"TestTruffleException A TruffleException\",\"className\":\"TestTruffleException\",\"type\":\"object\",\"value\":\"A TruffleException\"";
+            } else {
+                exception = "\"description\":\"" + Integer.toString(errNum) + "\",\"type\":\"string\",\"value\":\"" + Integer.toString(errNum) + "\"";
+            }
             String errObject = "ErrorObject " + errNum;
             tester.sendMessage("{\"id\":7,\"method\":\"Runtime.getProperties\",\"params\":{\"objectId\":\"" + objectId + "\"}}");
             assertTrue(tester.compareReceivedMessages(
@@ -402,7 +431,7 @@ public class BuggyLanguageInspectDebugTest {
                             "{\"result\":{\"result\":[{\"isOwn\":true,\"enumerable\":true,\"name\":\"A\",\"value\":{\"description\":\"" + errNum + "\",\"type\":\"number\",\"value\":" + errNum + "},\"configurable\":true,\"writable\":true}," +
                                                      "{\"isOwn\":true,\"enumerable\":true,\"name\":\"B\",\"value\":{\"description\":\"42\",\"type\":\"number\",\"value\":42},\"configurable\":true,\"writable\":true}]," +
                                          "\"internalProperties\":[]," +
-                                         "\"exceptionDetails\":{\"exception\":{\"description\":\"" + description + "\",\"type\":\"string\",\"value\":\"" + description + "\"}," +
+                                         "\"exceptionDetails\":{\"exception\":{" + exception + "}," +
                                                                "\"exceptionId\":" + errNum + ",\"executionContextId\":1,\"text\":\"Uncaught\"," +
                                                                "\"stackTrace\":{\"callFrames\":[]}}},\"id\":8}\n"));
         }
@@ -423,31 +452,8 @@ public class BuggyLanguageInspectDebugTest {
     // @formatter:on
     // CheckStyle: resume line length check
 
-    Iterable<Scope> buggyProxyScopes(Iterable<Scope> scopes, Runnable throwErr, String errMessage) {
-        return new Iterable<Scope>() {
-            @Override
-            public Iterator<Scope> iterator() {
-                Iterator<Scope> iterator = scopes.iterator();
-                return new Iterator<Scope>() {
-                    @Override
-                    public boolean hasNext() {
-                        return iterator.hasNext();
-                    }
-
-                    @Override
-                    public Scope next() {
-                        return buggyProxyScope(iterator.next(), throwErr, errMessage);
-                    }
-                };
-            }
-        };
-    }
-
-    Scope buggyProxyScope(Scope scope, Runnable throwErr, String errMessage) {
-        Scope.Builder builder = Scope.newBuilder(scope.getName(), new BuggyProxyVars(scope.getVariables(), throwErr, errMessage));
-        builder.arguments(new BuggyProxyVars(scope.getArguments(), throwErr, errMessage));
-        builder.node(scope.getNode());
-        return builder.build();
+    Object buggyProxyScope(Object scope, Runnable throwErr, String errMessage) {
+        return new BuggyProxyVars(scope, throwErr, errMessage);
     }
 
     private class BuggyProxyVars extends ProxyInteropObject.InteropWrapper {

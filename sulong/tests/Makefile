@@ -58,7 +58,7 @@ ifeq ($(OS), darwin)
 # NOTE: the darwin linker refuses bundle bitcode if any of the dependencies do not have a bundle section.
 #   However, it does include the bundle if linked with -flto, although the warning still says otherwise.
 %$(SO_EXT): %.bc
-	$(QUIETLY) $(CLANG) -flto -Wl,-bitcode_bundle -dynamiclib -Wno-everything $(LDFLAGS) -g -o $@ $<
+	$(QUIETLY) $(CLANG) -flto -Wl,-bitcode_bundle -dynamiclib -Wall -Wextra -Werror -Wno-unused-command-line-argument $(LDFLAGS) -g -o $@ $<
 else
 
 # Rules for shared objects
@@ -68,8 +68,8 @@ else
 #   Since there is only one bitcode file there is no need for llvm-link.
 # NOTE2: -fembed-bitcode will not work with clang before version 4
 %_BC_EMBED_PIC.o: %.bc
-	$(QUIETLY) $(CLANG) -c -fembed-bitcode -O0 ${SULONG_MAKE_CLANG_IMPLICIT_ARGS} -Wno-everything -fPIC $(CPPFLAGS) $(CFLAGS) -g -o $@ $<
+	$(QUIETLY) $(CLANG) -c -fembed-bitcode -O0 ${SULONG_MAKE_CLANG_IMPLICIT_ARGS} -Wall -Wextra -Werror -Wno-unused-command-line-argument -fPIC $(CPPFLAGS) $(CFLAGS) -g -o $@ $<
 
 %$(SO_EXT): %_BC_EMBED_PIC.o
-	$(QUIETLY) $(CLANG) -shared -Wno-everything $(LDFLAGS) -g -o $@ $<
+	$(QUIETLY) $(CLANG) -shared -Wall -Wextra -Werror -Wno-unused-command-line-argument $(LDFLAGS) -g -o $@ $<
 endif

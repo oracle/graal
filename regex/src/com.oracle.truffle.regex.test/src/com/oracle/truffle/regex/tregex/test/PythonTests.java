@@ -40,6 +40,9 @@
  */
 package com.oracle.truffle.regex.tregex.test;
 
+import com.oracle.truffle.regex.errors.PyErrorMessages;
+import org.graalvm.polyglot.PolyglotException;
+import org.junit.Assert;
 import org.junit.Test;
 
 public class PythonTests extends RegexTestBase {
@@ -68,5 +71,21 @@ public class PythonTests extends RegexTestBase {
     @Test
     public void gr23871() {
         test("[^ ]+?(?:-(?:(?<=[a-z]{2}-)|(?<=[a-z]-[a-z]-)))", "su", "this-is-a-useful-feature", 8, true, 8, 10);
+    }
+
+    @Test
+    public void gr26246() {
+        try {
+            test(".*", "", "abc", 4, false);
+        } catch (PolyglotException e) {
+            Assert.assertTrue(e.getMessage().contains("illegal fromIndex"));
+            return;
+        }
+        Assert.fail();
+    }
+
+    @Test
+    public void gr28787() {
+        expectSyntaxError("\\", "", PyErrorMessages.BAD_ESCAPE_END_OF_PATTERN);
     }
 }

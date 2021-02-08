@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2019, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2020, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -44,7 +44,8 @@ import java.io.IOException;
 import java.nio.ByteBuffer;
 
 /**
- * An endpoint representing one side of {@link MessageTransport message transport}.
+ * An endpoint representing one side of {@link MessageTransport message transport}. The methods
+ * throw {@link IOException} when an I/O issue occurs or when the endpoint is closed.
  *
  * @see MessageTransport
  * @since 19.0

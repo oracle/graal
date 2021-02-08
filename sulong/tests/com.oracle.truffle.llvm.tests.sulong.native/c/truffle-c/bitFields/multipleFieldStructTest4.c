@@ -34,8 +34,11 @@ struct test {
 
 int main() {
     struct test t;
-    t.val2 = 8;
-    t.val1 = 0; // -1
+#pragma clang diagnostic push
+#pragma clang diagnostic ignored "-Wbitfield-constant-conversion"
+    t.val2 = 8; // -1
+#pragma clang diagnostic pop
+    t.val1 = 0;
     int val = t.val1 + t.val2;
     return val;
 }

@@ -59,6 +59,7 @@ import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.instrumentation.InstrumentableNode;
 import com.oracle.truffle.api.instrumentation.ProbeNode;
 import com.oracle.truffle.api.interop.InteropLibrary;
+import com.oracle.truffle.api.interop.NodeLibrary;
 import com.oracle.truffle.api.interop.TruffleObject;
 import com.oracle.truffle.api.interop.UnsupportedMessageException;
 import com.oracle.truffle.api.library.ExportLibrary;
@@ -172,7 +173,8 @@ public class ScopedViewTest extends AbstractParametrizedLibraryTest {
         TestRootNode root = createRoot(language);
         root.setChild(location);
         Frame frame = Truffle.getRuntime().createVirtualFrame(new Object[0], root.getRootNode().getFrameDescriptor());
-        Object scopedView = instrumentEnv.getScopedView(l, location, frame, "");
+        Object scopedView = instrumentEnv.getLanguageView(l, "");
+        scopedView = NodeLibrary.getUncached().getView(location, frame, scopedView);
         assertSame(ProxyLanguage.class, createLibrary(InteropLibrary.class, scopedView).getLanguage(scopedView));
         assertEquals(1, count.get());
     }
@@ -180,73 +182,61 @@ public class ScopedViewTest extends AbstractParametrizedLibraryTest {
     @Test
     public void testWrongRootLanguage() {
         setupEnv();
-        LanguageInfo l = instrumentEnv.getLanguages().get(ProxyLanguage.ID);
-
         Node location = new TestInstrumentableNode();
         TestRootNode root = createRoot(null);
         root.setChild(location);
         Frame frame = Truffle.getRuntime().createVirtualFrame(new Object[0], root.getRootNode().getFrameDescriptor());
-        assertFails(() -> instrumentEnv.getScopedView(l, location, frame, ""), IllegalArgumentException.class);
+        assertFails(() -> NodeLibrary.getUncached().getView(location, frame, ""), AssertionError.class);
     }
 
     @Test
     public void testUnadoptedNode() {
         setupEnv();
-        LanguageInfo l = instrumentEnv.getLanguages().get(ProxyLanguage.ID);
-
         Node location = new TestInstrumentableNode();
         TestRootNode root = createRoot(language);
         Frame frame = Truffle.getRuntime().createVirtualFrame(new Object[0], root.getRootNode().getFrameDescriptor());
-        assertFails(() -> instrumentEnv.getScopedView(l, location, frame, ""), IllegalArgumentException.class);
+        assertFails(() -> NodeLibrary.getUncached().getView(location, frame, ""), AssertionError.class);
     }
 
     @Test
     public void testNotInstrumentable() {
         setupEnv();
-        LanguageInfo l = instrumentEnv.getLanguages().get(ProxyLanguage.ID);
-
         Node location = new TestNotInstrumentableNode();
         TestRootNode root = createRoot(language);
         root.setChild(location);
         Frame frame = Truffle.getRuntime().createVirtualFrame(new Object[0], root.getRootNode().getFrameDescriptor());
-        assertFails(() -> instrumentEnv.getScopedView(l, location, frame, ""), IllegalArgumentException.class);
+        assertFails(() -> NodeLibrary.getUncached().getView(location, frame, ""), AssertionError.class);
     }
 
     @Test
     public void testOtherNode() {
         setupEnv();
-        LanguageInfo l = instrumentEnv.getLanguages().get(ProxyLanguage.ID);
-
         Node location = new TestOtherNode();
         TestRootNode root = createRoot(language);
         root.setChild(location);
         Frame frame = Truffle.getRuntime().createVirtualFrame(new Object[0], root.getRootNode().getFrameDescriptor());
-        assertFails(() -> instrumentEnv.getScopedView(l, location, frame, ""), IllegalArgumentException.class);
+        assertFails(() -> NodeLibrary.getUncached().getView(location, frame, ""), AssertionError.class);
     }
 
     @Test
     public void testInvalidFrame() {
         setupEnv();
-        LanguageInfo l = instrumentEnv.getLanguages().get(ProxyLanguage.ID);
-
         Node location = new TestInstrumentableNode();
         TestRootNode root = createRoot(language);
         root.setChild(location);
         Frame frame = Truffle.getRuntime().createVirtualFrame(new Object[0], createRoot(language).getRootNode().getFrameDescriptor());
-        assertFails(() -> instrumentEnv.getScopedView(l, location, frame, ""), IllegalArgumentException.class);
+        assertFails(() -> NodeLibrary.getUncached().getView(location, frame, ""), AssertionError.class);
     }
 
     @Test
     public void testWrongLanguage() {
         setupEnv();
         context.initialize(OtherTestLanguage.ID);
-        LanguageInfo l = instrumentEnv.getLanguages().get(ProxyLanguage.ID);
-
         Node location = new TestInstrumentableNode();
         TestRootNode root = createRoot(OtherTestLanguage.getInstance());
         root.setChild(location);
         Frame frame = Truffle.getRuntime().createVirtualFrame(new Object[0], createRoot(language).getRootNode().getFrameDescriptor());
-        assertFails(() -> instrumentEnv.getScopedView(l, location, frame, ""), IllegalArgumentException.class);
+        assertFails(() -> NodeLibrary.getUncached().getView(location, frame, ""), AssertionError.class);
     }
 
     @Test
@@ -265,7 +255,8 @@ public class ScopedViewTest extends AbstractParametrizedLibraryTest {
         TestRootNode root = createRoot(language);
         root.setChild(location);
         Frame frame = Truffle.getRuntime().createVirtualFrame(new Object[0], root.getRootNode().getFrameDescriptor());
-        assertFails(() -> instrumentEnv.getScopedView(l, location, frame, ""), AssertionError.class);
+        Object scopedView = instrumentEnv.getLanguageView(l, "");
+        assertFails(() -> NodeLibrary.getUncached().getView(location, frame, scopedView), AssertionError.class);
     }
 
     @Test
@@ -284,7 +275,8 @@ public class ScopedViewTest extends AbstractParametrizedLibraryTest {
         TestRootNode root = createRoot(language);
         root.setChild(location);
         Frame frame = Truffle.getRuntime().createVirtualFrame(new Object[0], root.getRootNode().getFrameDescriptor());
-        assertFails(() -> instrumentEnv.getScopedView(l, location, frame, ""), NullPointerException.class);
+        Object scopedView = instrumentEnv.getLanguageView(l, "");
+        assertFails(() -> NodeLibrary.getUncached().getView(location, frame, scopedView), AssertionError.class);
     }
 
 }

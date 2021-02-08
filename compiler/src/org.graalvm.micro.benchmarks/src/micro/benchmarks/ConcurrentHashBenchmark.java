@@ -76,7 +76,7 @@ public class ConcurrentHashBenchmark extends BenchmarkBase {
         return sum;
     }
 
-    private int inParallel(Supplier<Integer> action) {
+    private static int inParallel(Supplier<Integer> action) {
         final int[] results = new int[PARALLELISM];
         Thread[] threads = new Thread[PARALLELISM];
         for (int i = 0; i < PARALLELISM; i++) {

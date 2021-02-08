@@ -49,103 +49,117 @@ import com.oracle.truffle.api.library.CachedLibrary;
 import com.oracle.truffle.api.library.ExportLibrary;
 import com.oracle.truffle.api.library.ExportMessage;
 import com.oracle.truffle.api.nodes.Node;
+import org.graalvm.wasm.constants.Sizes;
 
 import static com.oracle.truffle.api.CompilerDirectives.transferToInterpreter;
+import static java.lang.Math.toIntExact;
 
 @ExportLibrary(InteropLibrary.class)
 public abstract class WasmMemory implements TruffleObject {
-    static final int PAGE_SIZE = 1 << 16;
-    static final int LONG_SIZE = 8;
 
-    public abstract void validateAddress(Node node, long address, long offset);
-
-    public abstract void copy(Node node, long src, long dst, long n);
+    public abstract void copy(Node node, int src, int dst, int n);
 
     /**
-     * The size of the memory, measured in number of pages.
+     * The current size of this memory instance (measured in number of {@link Sizes#MEMORY_PAGE_SIZE
+     * pages}).
      */
-    public abstract long pageSize();
+    public abstract int size();
 
     /**
-     * The size of the memory, measured in bytes.
+     * The current size of this memory instance (measured in bytes).
      */
-    public abstract long byteSize();
+    public abstract int byteSize();
 
-    public abstract boolean grow(long extraPageSize);
+    /**
+     * The minimum size of this memory as declared in the binary (measured in number of
+     * {@link Sizes#MEMORY_PAGE_SIZE pages}).
+     * <p>
+     * This is a lower bound on this memory's size. This memory can only be imported with a lower or
+     * equal minimum size.
+     */
+    public abstract int declaredMinSize();
 
-    public boolean growToAddress(long address) {
-        final long requiredPageCount = address / PAGE_SIZE + 1;
-        final long extraPageCount = Math.max(0, requiredPageCount - pageSize());
-        return grow(extraPageCount);
-    }
+    /**
+     * The maximum size of this memory as declared in the binary (measured in number of
+     * {@link Sizes#MEMORY_PAGE_SIZE pages}).
+     * <p>
+     * This is an upper bound on this memory's size. This memory can only be imported with a greater
+     * or equal maximum size.
+     * <p>
+     * This is different from the internal maximum allowed size, which can be lower.
+     */
+    public abstract int declaredMaxSize();
 
-    public abstract long maxPageSize();
+    public abstract boolean grow(int extraPageSize);
 
-    public Long maxByteSize() {
-        return maxPageSize() * PAGE_SIZE;
-    }
+    /**
+     * Shrinks this memory's size to its {@link #declaredMinSize()} initial size}, and sets all
+     * bytes to 0.
+     * <p>
+     * Note: this does not restore content from data section. For this, use
+     * {@link org.graalvm.wasm.BinaryParser#resetMemoryState}.
+     */
+    public abstract void reset();
 
     // Checkstyle: stop
-    public abstract int load_i32(Node node, long address);
+    public abstract int load_i32(Node node, int address);
 
-    public abstract long load_i64(Node node, long address);
+    public abstract long load_i64(Node node, int address);
 
-    public abstract float load_f32(Node node, long address);
+    public abstract float load_f32(Node node, int address);
 
-    public abstract double load_f64(Node node, long address);
+    public abstract double load_f64(Node node, int address);
 
-    public abstract int load_i32_8s(Node node, long address);
+    public abstract int load_i32_8s(Node node, int address);
 
-    public abstract int load_i32_8u(Node node, long address);
+    public abstract int load_i32_8u(Node node, int address);
 
-    public abstract int load_i32_16s(Node node, long address);
+    public abstract int load_i32_16s(Node node, int address);
 
-    public abstract int load_i32_16u(Node node, long address);
+    public abstract int load_i32_16u(Node node, int address);
 
-    public abstract long load_i64_8s(Node node, long address);
+    public abstract long load_i64_8s(Node node, int address);
 
-    public abstract long load_i64_8u(Node node, long address);
+    public abstract long load_i64_8u(Node node, int address);
 
-    public abstract long load_i64_16s(Node node, long address);
+    public abstract long load_i64_16s(Node node, int address);
 
-    public abstract long load_i64_16u(Node node, long address);
+    public abstract long load_i64_16u(Node node, int address);
 
-    public abstract long load_i64_32s(Node node, long address);
+    public abstract long load_i64_32s(Node node, int address);
 
-    public abstract long load_i64_32u(Node node, long address);
+    public abstract long load_i64_32u(Node node, int address);
 
-    public abstract void store_i32(Node node, long address, int value);
+    public abstract void store_i32(Node node, int address, int value);
 
-    public abstract void store_i64(Node node, long address, long value);
+    public abstract void store_i64(Node node, int address, long value);
 
-    public abstract void store_f32(Node node, long address, float value);
+    public abstract void store_f32(Node node, int address, float value);
 
-    public abstract void store_f64(Node node, long address, double value);
+    public abstract void store_f64(Node node, int address, double value);
 
-    public abstract void store_i32_8(Node node, long address, byte value);
+    public abstract void store_i32_8(Node node, int address, byte value);
 
-    public abstract void store_i32_16(Node node, long address, short value);
+    public abstract void store_i32_16(Node node, int address, short value);
 
-    public abstract void store_i64_8(Node node, long address, byte value);
+    public abstract void store_i64_8(Node node, int address, byte value);
 
-    public abstract void store_i64_16(Node node, long address, short value);
+    public abstract void store_i64_16(Node node, int address, short value);
 
-    public abstract void store_i64_32(Node node, long address, int value);
+    public abstract void store_i64_32(Node node, int address, int value);
     // Checkstyle: resume
-
-    public abstract void clear();
 
     public abstract WasmMemory duplicate();
 
-    long[] view(long address, int length) {
+    long[] view(int address, int length) {
         long[] chunk = new long[length / 8];
-        for (long p = address; p < address + length; p += 8) {
-            chunk[(int) (p - address) / 8] = load_i64(null, p);
+        for (int p = address; p < address + length; p += 8) {
+            chunk[(p - address) / 8] = load_i64(null, p);
         }
         return chunk;
     }
 
-    String viewByte(long address) {
+    String viewByte(int address) {
         final int value = load_i32_8u(null, address);
         String result = Integer.toHexString(value);
         if (result.length() == 1) {
@@ -154,7 +168,7 @@ public abstract class WasmMemory implements TruffleObject {
         return result;
     }
 
-    public String hexView(long address, int length) {
+    public String hexView(int address, int length) {
         long[] chunk = view(address, length);
         StringBuilder sb = new StringBuilder();
         for (int i = 0; i < chunk.length; i++) {
@@ -219,17 +233,17 @@ public abstract class WasmMemory implements TruffleObject {
 
     @ExportMessage
     public Object readArrayElement(long address) throws InvalidArrayIndexException {
-        if (!isArrayElementReadable(address)) {
+        if (!isArrayElementReadable(toIntExact(address))) {
             transferToInterpreter();
             throw InvalidArrayIndexException.create(address);
         }
-        return load_i32_8u(null, address);
+        return load_i32_8u(null, toIntExact(address));
     }
 
     @ExportMessage(limit = "3")
     public void writeArrayElement(long address, Object value, @CachedLibrary("value") InteropLibrary valueLib)
                     throws InvalidArrayIndexException, UnsupportedMessageException, UnsupportedTypeException {
-        if (!isArrayElementReadable(address)) {
+        if (!isArrayElementReadable(toIntExact(address))) {
             transferToInterpreter();
             throw InvalidArrayIndexException.create(address);
         }
@@ -239,6 +253,6 @@ public abstract class WasmMemory implements TruffleObject {
         } else {
             throw UnsupportedTypeException.create(new Object[]{value}, "Only bytes can be stored into WebAssembly memory.");
         }
-        store_i32_8(null, address, rawValue);
+        store_i32_8(null, toIntExact(address), rawValue);
     }
 }

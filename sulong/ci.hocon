@@ -50,6 +50,7 @@ sulong-gateTest38-linux: ${sulong-gateTest-linux} ${sulong-gateTest-default-tool
         CLANG_CXX: "clang-3.8 --driver-mode=g++"
         CLANG_LLVM_OBJCOPY: "objcopy"
         CLANG_NO_OPTNONE: "1"
+        CFLAGS: "-Wno-error"
     }
 }
 
@@ -62,6 +63,7 @@ sulong-gateTest40-linux: ${sulong-gateTest-linux} ${sulong-gateTest-default-tool
         CLANG_CXX: "clang-4.0 --driver-mode=g++"
         CLANG_LLVM_OBJCOPY: "objcopy"
         CLANG_NO_OPTNONE: "1"
+        CFLAGS: "-Wno-error"
     }
 }
 
@@ -72,6 +74,7 @@ sulong-gateTest60-linux: ${sulong-gateTest-linux} ${sulong-gateTest-default-tool
     environment: {
         CLANG_CC: "clang-6.0"
         CLANG_CXX: "clang-6.0 --driver-mode=g++"
+        CFLAGS: "-Wno-error"
     }
 }
 
@@ -82,6 +85,7 @@ sulong-gateTest80-linux: ${sulong-gateTest-linux} ${sulong-gateTest-default-tool
     environment: {
         CLANG_CC: "clang-8"
         CLANG_CXX: "clang-8 --driver-mode=g++"
+        CFLAGS: "-Wno-error"
     }
 }
 
@@ -142,7 +146,8 @@ sulong-gate-generated-sources: ${sulong-gateCommon} ${linux-amd64} {
 sulong-coverage-linux: ${sulong-gateTestLLVMorg-linux} ${requireGCC} ${sulong-weekly-notifications} {
     run: [
         [mx, --jacoco-whitelist-package, com.oracle.truffle.llvm, --jacoco-exclude-annotation, "@GeneratedBy", gate, --tags, "build,sulongCoverage", --jacocout, html]
-        [mx, --jacoco-whitelist-package, com.oracle.truffle.llvm, --jacoco-exclude-annotation, "@GeneratedBy", sonarqube-upload, "-Dsonar.host.url=$SONAR_HOST_URL", "-Dsonar.projectKey=com.oracle.graalvm.sulong", "-Dsonar.projectName=GraalVM - Sulong", --exclude-generated]
+        # $SONAR_HOST_URL might not be set [GR-28642]
+        [test, -z, "$SONAR_HOST_URL", "||", mx, --jacoco-whitelist-package, com.oracle.truffle.llvm, --jacoco-exclude-annotation, "@GeneratedBy", sonarqube-upload, "-Dsonar.host.url=$SONAR_HOST_URL", "-Dsonar.projectKey=com.oracle.graalvm.sulong", "-Dsonar.projectName=GraalVM - Sulong", --exclude-generated]
         [mx, --jacoco-whitelist-package, com.oracle.truffle.llvm, --jacoco-exclude-annotation, "@GeneratedBy", coverage-upload]
     ]
     targets: [weekly]
@@ -191,7 +196,7 @@ builds += [
   ] ${sulong-test-toolchain} }
 
   ${sulong-gateTestLLVMorg-linux} { name: gate-sulong-strict-native-image, run: [
-    [mx, --dynamicimports, "/substratevm,/tools", "--native-images=lli", "--extra-image-builder-argument=-H:+TruffleCheckBlackListedMethods", "--extra-image-builder-argument=-H:+RemoveSaturatedTypeFlows", gate, --tags, "build"]
+    [mx, --dynamicimports, "/substratevm,/tools", "--native-images=lli", "--extra-image-builder-argument=-H:+TruffleCheckBlackListedMethods", gate, --tags, "build"]
   ] }
 
   ${sulong-coverage-linux} { name: weekly-sulong-coverage }

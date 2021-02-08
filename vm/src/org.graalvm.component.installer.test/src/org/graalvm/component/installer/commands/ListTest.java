@@ -37,6 +37,7 @@ import java.util.Properties;
 import java.util.Set;
 import org.graalvm.component.installer.BundleConstants;
 import org.graalvm.component.installer.CommandTestBase;
+import org.graalvm.component.installer.Commands;
 import org.graalvm.component.installer.Version;
 import org.graalvm.component.installer.model.CatalogContents;
 import org.graalvm.component.installer.model.ComponentInfo;
@@ -76,13 +77,14 @@ public class ListTest extends CommandTestBase {
         }
         initRemoteStorage();
 
+        options.put(Commands.OPTION_SHOW_UPDATES, "");
         AvailableCommand avC = new AvailableCommand();
         avC.init(this, this.withBundle(AvailableCommand.class));
 
         delegateFeedback(new FeedbackAdapter() {
             @Override
             public String l10n(String key, Object... params) {
-                if ("LIST_ComponentShortList".equals(key)) {
+                if ("LIST_ComponentShortList".equals(key) || (key != null && key.startsWith("ComponentStability"))) {
                     return reallyl10n(key, params);
                 }
                 return null;

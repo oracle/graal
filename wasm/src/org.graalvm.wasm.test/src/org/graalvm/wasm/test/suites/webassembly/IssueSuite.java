@@ -42,10 +42,10 @@ package org.graalvm.wasm.test.suites.webassembly;
 
 import java.io.IOException;
 
-import org.graalvm.wasm.test.WasmSuiteBase;
+import org.graalvm.wasm.test.WasmFileSuite;
 import org.junit.Test;
 
-public class IssueSuite extends WasmSuiteBase {
+public class IssueSuite extends WasmFileSuite {
     @Override
     protected String testResource() {
         return "issue";

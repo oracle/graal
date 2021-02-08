@@ -47,7 +47,6 @@ import com.oracle.truffle.api.object.DynamicObjectLibrary;
 import com.oracle.truffle.api.object.FinalLocationException;
 import com.oracle.truffle.api.object.IncompatibleLocationException;
 import com.oracle.truffle.api.object.Shape;
-import com.oracle.truffle.api.object.dsl.Layout;
 
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertTrue;
@@ -55,7 +54,8 @@ import static org.junit.Assert.assertTrue;
 public class ImplicitCastTest {
     private static final DynamicObjectLibrary LIBRARY = DynamicObjectLibrary.getUncached();
 
-    @Layout
+    @SuppressWarnings("deprecation")
+    @com.oracle.truffle.api.object.dsl.Layout
     public interface NoCastLayout {
 
         String LONG_VALUE_IDENTIFIER = "long-value";
@@ -73,7 +73,8 @@ public class ImplicitCastTest {
 
     }
 
-    @Layout(implicitCastIntToLong = true, implicitCastIntToDouble = true)
+    @SuppressWarnings("deprecation")
+    @com.oracle.truffle.api.object.dsl.Layout(implicitCastIntToLong = true, implicitCastIntToDouble = true)
     public interface CastLayout {
 
         String LONG_VALUE_IDENTIFIER = "long-value";

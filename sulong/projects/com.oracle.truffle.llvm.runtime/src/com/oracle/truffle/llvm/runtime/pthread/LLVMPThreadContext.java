@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2019, Oracle and/or its affiliates.
+ * Copyright (c) 2019, 2021, Oracle and/or its affiliates.
  *
  * All rights reserved.
  *
@@ -31,8 +31,9 @@ package com.oracle.truffle.llvm.runtime.pthread;
 
 import com.oracle.truffle.api.CallTarget;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
-import com.oracle.truffle.api.Truffle;
-import com.oracle.truffle.llvm.runtime.LLVMContext;
+import com.oracle.truffle.api.TruffleLanguage;
+import com.oracle.truffle.llvm.runtime.LLVMLanguage;
+import com.oracle.truffle.llvm.runtime.datalayout.DataLayout;
 import com.oracle.truffle.llvm.runtime.nodes.intrinsics.multithreading.LLVMPThreadStart;
 import com.oracle.truffle.llvm.runtime.pointer.LLVMPointer;
 
@@ -43,7 +44,7 @@ import java.util.concurrent.ConcurrentMap;
 public final class LLVMPThreadContext {
 
     // associated context for creating threads
-    private final LLVMContext context;
+    private final TruffleLanguage.Env env;
 
     // the long-key is the thread-id
     private final Object threadLock;
@@ -58,8 +59,8 @@ public final class LLVMPThreadContext {
 
     private final CallTarget pthreadCallTarget;
 
-    public LLVMPThreadContext(LLVMContext context) {
-        this.context = context;
+    public LLVMPThreadContext(TruffleLanguage.Env env, LLVMLanguage language, DataLayout dataLayout) {
+        this.env = env;
 
         // pthread storages
         this.threadLock = new Object();
@@ -69,7 +70,9 @@ public final class LLVMPThreadContext {
         this.pThreadKeyLock = new Object();
         this.pThreadKeyStorage = new ConcurrentHashMap<>();
         this.pThreadDestructorStorage = new ConcurrentHashMap<>();
-        this.pthreadCallTarget = Truffle.getRuntime().createCallTarget(new LLVMPThreadStart.LLVMPThreadFunctionRootNode(context.getLanguage()));
+
+        this.pthreadCallTarget = language.createCachedCallTarget(LLVMPThreadStart.LLVMPThreadFunctionRootNode.class,
+                        l -> LLVMPThreadStart.LLVMPThreadFunctionRootNode.create(l, l.getActiveConfiguration().createNodeFactory(l, dataLayout)));
         this.isCreateThreadAllowed = true;
     }
 
@@ -166,7 +169,7 @@ public final class LLVMPThreadContext {
     public Thread createThread(Runnable runnable) {
         synchronized (threadLock) {
             if (isCreateThreadAllowed) {
-                final Thread thread = context.getEnv().createThread(runnable);
+                final Thread thread = env.createThread(runnable);
                 threadStorage.put(thread.getId(), thread);
                 return thread;
             } else {

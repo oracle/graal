@@ -96,6 +96,7 @@ public class LibraryParser extends AbstractParser<LibraryData> {
 
         model.setDefaultExportLookupEnabled(ElementUtils.getAnnotationValue(Boolean.class, mirror, "defaultExportLookupEnabled"));
         model.setDynamicDispatchEnabled(ElementUtils.getAnnotationValue(Boolean.class, mirror, "dynamicDispatchEnabled"));
+        model.setPushEncapsulatingNode(ElementUtils.getAnnotationValue(Boolean.class, mirror, "pushEncapsulatingNode"));
 
         boolean defaultExportReachable = true;
         List<AnnotationMirror> defaultExports = ElementUtils.getRepeatedAnnotation(element.getAnnotationMirrors(), types.GenerateLibrary_DefaultExport);

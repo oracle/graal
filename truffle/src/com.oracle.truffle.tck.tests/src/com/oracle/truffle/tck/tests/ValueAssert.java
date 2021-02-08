@@ -40,8 +40,40 @@
  */
 package com.oracle.truffle.tck.tests;
 
+import org.graalvm.polyglot.HostAccess.Implementable;
+import org.graalvm.polyglot.PolyglotException;
+import org.graalvm.polyglot.TypeLiteral;
+import org.graalvm.polyglot.Value;
+import org.graalvm.polyglot.proxy.Proxy;
+
+import java.lang.reflect.Modifier;
+import java.nio.ByteBuffer;
+import java.nio.ByteOrder;
+import java.time.Duration;
+import java.time.Instant;
+import java.time.LocalDate;
+import java.time.LocalDateTime;
+import java.time.LocalTime;
+import java.time.ZoneId;
+import java.time.ZoneOffset;
+import java.time.ZonedDateTime;
+import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.Collection;
+import java.util.Date;
+import java.util.HashMap;
+import java.util.HashSet;
+import java.util.Iterator;
+import java.util.LinkedHashSet;
+import java.util.List;
+import java.util.Map;
+import java.util.Set;
+import java.util.concurrent.Callable;
+import java.util.function.Function;
+
 import static com.oracle.truffle.tck.tests.ValueAssert.Trait.ARRAY_ELEMENTS;
 import static com.oracle.truffle.tck.tests.ValueAssert.Trait.BOOLEAN;
+import static com.oracle.truffle.tck.tests.ValueAssert.Trait.BUFFER_ELEMENTS;
 import static com.oracle.truffle.tck.tests.ValueAssert.Trait.DATE;
 import static com.oracle.truffle.tck.tests.ValueAssert.Trait.DURATION;
 import static com.oracle.truffle.tck.tests.ValueAssert.Trait.EXCEPTION;
@@ -65,35 +97,6 @@ import static org.junit.Assert.assertNull;
 import static org.junit.Assert.assertSame;
 import static org.junit.Assert.assertTrue;
 import static org.junit.Assert.fail;
-
-import java.lang.reflect.Modifier;
-import java.time.Duration;
-import java.time.Instant;
-import java.time.LocalDate;
-import java.time.LocalDateTime;
-import java.time.LocalTime;
-import java.time.ZoneId;
-import java.time.ZoneOffset;
-import java.time.ZonedDateTime;
-import java.util.ArrayList;
-import java.util.Arrays;
-import java.util.Collection;
-import java.util.Date;
-import java.util.HashMap;
-import java.util.HashSet;
-import java.util.Iterator;
-import java.util.LinkedHashSet;
-import java.util.List;
-import java.util.Map;
-import java.util.Set;
-import java.util.concurrent.Callable;
-import java.util.function.Function;
-
-import org.graalvm.polyglot.HostAccess.Implementable;
-import org.graalvm.polyglot.PolyglotException;
-import org.graalvm.polyglot.TypeLiteral;
-import org.graalvm.polyglot.Value;
-import org.graalvm.polyglot.proxy.Proxy;
 
 public class ValueAssert {
 
@@ -332,6 +335,31 @@ public class ValueAssert {
                         assertNull(value.as(Object[].class));
                     }
                     break;
+                case BUFFER_ELEMENTS:
+                    assertFalse(value.hasBufferElements());
+                    assertFails(() -> value.isBufferWritable(), UnsupportedOperationException.class);
+                    assertFails(() -> value.getBufferSize(), UnsupportedOperationException.class);
+                    assertFails(() -> value.readBufferByte(0), UnsupportedOperationException.class);
+                    assertFails(() -> value.writeBufferByte(0, (byte) 0), UnsupportedOperationException.class);
+                    assertFails(() -> value.readBufferShort(ByteOrder.LITTLE_ENDIAN, 0), UnsupportedOperationException.class);
+                    assertFails(() -> value.writeBufferShort(ByteOrder.LITTLE_ENDIAN, 0, (short) 0), UnsupportedOperationException.class);
+                    assertFails(() -> value.readBufferInt(ByteOrder.LITTLE_ENDIAN, 0), UnsupportedOperationException.class);
+                    assertFails(() -> value.writeBufferInt(ByteOrder.LITTLE_ENDIAN, 0, 0), UnsupportedOperationException.class);
+                    assertFails(() -> value.readBufferLong(ByteOrder.LITTLE_ENDIAN, 0), UnsupportedOperationException.class);
+                    assertFails(() -> value.writeBufferLong(ByteOrder.LITTLE_ENDIAN, 0, 0L), UnsupportedOperationException.class);
+                    assertFails(() -> value.readBufferFloat(ByteOrder.LITTLE_ENDIAN, 0), UnsupportedOperationException.class);
+                    assertFails(() -> value.writeBufferFloat(ByteOrder.LITTLE_ENDIAN, 0, 0f), UnsupportedOperationException.class);
+                    assertFails(() -> value.readBufferDouble(ByteOrder.LITTLE_ENDIAN, 0), UnsupportedOperationException.class);
+                    assertFails(() -> value.writeBufferDouble(ByteOrder.LITTLE_ENDIAN, 0, 0.0), UnsupportedOperationException.class);
+
+                    if (!value.isNull()) {
+                        if ((!value.isHostObject() || (!(value.asHostObject() instanceof ByteBuffer)))) {
+                            assertFails(() -> value.as(ByteBuffer.class), ClassCastException.class);
+                        }
+                    } else {
+                        assertNull(value.as(ByteBuffer.class));
+                    }
+                    break;
                 case HOST_OBJECT:
                     assertFalse(value.isHostObject());
                     assertFails(() -> value.asHostObject(), ClassCastException.class);
@@ -471,6 +499,10 @@ public class ValueAssert {
                     assertTrue(msg, value.hasArrayElements());
                     assertValueArrayElements(value, depth, hasHostAccess);
                     break;
+                case BUFFER_ELEMENTS:
+                    assertTrue(msg, value.hasBufferElements());
+                    assertValueBufferElements(value);
+                    break;
                 case EXECUTABLE:
                     assertTrue(msg, value.canExecute());
                     assertFunctionalInterfaceMapping(value);
@@ -493,13 +525,18 @@ public class ValueAssert {
                             if (isStaticClass) {
                                 assertClassMembers(value, (Class<?>) hostObject, true);
                             } else {
-                                if (hasHostAccess) {
-                                    assertClassMembers(value, Class.class, false);
-                                    assertTrue(value.hasMember("static"));
-                                }
+                                assertClassMembers(value, Class.class, false);
+                                assertTrue(value.hasMember("static"));
                             }
                         } else {
-                            assertClassMembers(value, hostObject.getClass(), false);
+                            // Asserts that value exposes the same members as the host object's
+                            // class first public inclusive ancestor.
+                            for (Class<?> clazz = hostObject.getClass(); clazz != null; clazz = clazz.getSuperclass()) {
+                                if (Modifier.isPublic(clazz.getModifiers())) {
+                                    assertClassMembers(value, clazz, false);
+                                    break;
+                                }
+                            }
                         }
                     }
                     assertEquals(Value.asValue(hostObject), value);
@@ -518,35 +555,39 @@ public class ValueAssert {
                 case MEMBERS:
                     assertTrue(msg, value.hasMembers());
 
-                    Map<Object, Object> expectedValues = new HashMap<>();
                     for (String key : value.getMemberKeys()) {
                         Value child = value.getMember(key);
-                        expectedValues.put(key, child.as(Object.class));
                         if (!isSameHostObject(value, child)) {
                             assertValueImpl(child, depth + 1, hasHostAccess, detectSupportedTypes(child));
                         }
                     }
 
-                    if (value.isHostObject() && value.asHostObject() instanceof Map) {
-                        expectedValues = value.asHostObject();
+                    if (value.isNull()) {
+                        assertNull(value.as(STRING_OBJECT_MAP));
+                    } else if (value.isHostObject() && value.asHostObject() instanceof Map) {
+                        Map<Object, Object> expectedValues = value.asHostObject();
+                        assertEquals(value.as(OBJECT_OBJECT_MAP), expectedValues);
                     } else {
-                        if (value.isNull()) {
-                            assertNull(value.as(STRING_OBJECT_MAP));
-                        } else {
-                            Map<String, Object> stringMap = value.as(STRING_OBJECT_MAP);
-                            assertTrue(expectedValues.equals(expectedValues));
-                            assertTrue(stringMap.equals(stringMap));
-                            assertFalse(value.as(STRING_OBJECT_MAP).equals(expectedValues));
-                            assertTrue(value.as(STRING_OBJECT_MAP).equals(value.as(STRING_OBJECT_MAP)));
-                            Set<String> keySet = value.as(Map.class).keySet();
-                            assertEquals(value.getMemberKeys(), keySet);
-                            for (String key : keySet) {
-                                assertTrue(value.hasMember(key));
-                            }
-                            assertNotNull(value.as(STRING_OBJECT_MAP).hashCode());
-                            assertNotNull(value.as(STRING_OBJECT_MAP).toString());
-                            assertEquals(value.toString(), value.as(Map.class).toString());
+                        Map<String, Object> expectedValues = new HashMap<>();
+                        for (String key : value.getMemberKeys()) {
+                            Value child = value.getMember(key);
+                            expectedValues.put(key, child.as(Object.class));
                         }
+
+                        Map<String, Object> stringMap = value.as(STRING_OBJECT_MAP);
+                        assertEquals("PolyglotMap should be equal with itself", stringMap, stringMap);
+                        assertEquals("Two PolyglotMaps wrapping the same host object should be equal", value.as(STRING_OBJECT_MAP), value.as(STRING_OBJECT_MAP));
+                        assertNotEquals("A PolyglotMap should not be equal with a Map", value.as(STRING_OBJECT_MAP), expectedValues);
+
+                        Set<String> keySet = value.as(Map.class).keySet();
+                        assertEquals(value.getMemberKeys(), keySet);
+
+                        for (String key : keySet) {
+                            assertTrue(value.hasMember(key));
+                        }
+
+                        assertNotNull(value.as(STRING_OBJECT_MAP).toString());
+                        assertEquals(value.toString(), value.as(Map.class).toString());
                     }
                     break;
                 case NATIVE:
@@ -673,6 +714,54 @@ public class ValueAssert {
         assertCollectionEqualValues(receivedObjectsLongMap.values(), objectMap2.values());
         assertCollectionEqualValues(receivedObjectsIntMap.values(), objectMap3.values());
         assertCollectionEqualValues(receivedObjectsLongMap.values(), objectMap4.values());
+    }
+
+    private static void assertValueBufferElements(Value value) {
+        assertTrue(value.hasBufferElements());
+        final boolean isWritable = value.isBufferWritable();
+
+        for (long i = 0L; i < value.getBufferSize(); i++) {
+            final byte result = value.readBufferByte(i);
+            if (isWritable) {
+                // Write the same value in order not to change buffer's content.
+                value.writeBufferByte(i, result);
+            }
+        }
+
+        for (long i = 0L; i < value.getBufferSize() - 1; i += 2) {
+            final short result = value.readBufferShort(ByteOrder.LITTLE_ENDIAN, i);
+            if (isWritable) {
+                value.writeBufferShort(ByteOrder.LITTLE_ENDIAN, i, result);
+            }
+        }
+
+        for (long i = 0L; i < value.getBufferSize() - 3; i += 4) {
+            final int result = value.readBufferInt(ByteOrder.LITTLE_ENDIAN, i);
+            if (isWritable) {
+                value.writeBufferInt(ByteOrder.LITTLE_ENDIAN, i, result);
+            }
+        }
+
+        for (long i = 0L; i < value.getBufferSize() - 7; i += 8) {
+            final long result = value.readBufferLong(ByteOrder.LITTLE_ENDIAN, i);
+            if (isWritable) {
+                value.writeBufferLong(ByteOrder.LITTLE_ENDIAN, i, result);
+            }
+        }
+
+        for (long i = 0L; i < value.getBufferSize() - 3; i += 4) {
+            final float result = value.readBufferFloat(ByteOrder.LITTLE_ENDIAN, i);
+            if (isWritable) {
+                value.writeBufferFloat(ByteOrder.LITTLE_ENDIAN, i, result);
+            }
+        }
+
+        for (long i = 0L; i < value.getBufferSize() - 7; i += 8) {
+            final double result = value.readBufferDouble(ByteOrder.LITTLE_ENDIAN, i);
+            if (isWritable) {
+                value.writeBufferDouble(ByteOrder.LITTLE_ENDIAN, i, result);
+            }
+        }
     }
 
     private static void assertCollectionEqualValues(Collection<? extends Object> expected, Collection<? extends Object> actual) {
@@ -903,6 +992,9 @@ public class ValueAssert {
         if (value.hasArrayElements()) {
             valueTypes.add(ARRAY_ELEMENTS);
         }
+        if (value.hasBufferElements()) {
+            valueTypes.add(BUFFER_ELEMENTS);
+        }
         if (value.canInstantiate()) {
             valueTypes.add(INSTANTIABLE);
         }
@@ -949,6 +1041,7 @@ public class ValueAssert {
         INSTANTIABLE,
         MEMBERS,
         ARRAY_ELEMENTS,
+        BUFFER_ELEMENTS,
         DATE,
         TIME,
         TIMEZONE,

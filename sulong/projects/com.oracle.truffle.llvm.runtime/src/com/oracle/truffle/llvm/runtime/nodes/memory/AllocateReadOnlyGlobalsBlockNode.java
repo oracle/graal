@@ -29,10 +29,14 @@
  */
 package com.oracle.truffle.llvm.runtime.nodes.memory;
 
+import com.oracle.truffle.api.dsl.Bind;
+import com.oracle.truffle.api.dsl.CachedContext;
+import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.interop.InteropException;
 import com.oracle.truffle.api.interop.InteropLibrary;
+import com.oracle.truffle.api.library.CachedLibrary;
 import com.oracle.truffle.llvm.runtime.LLVMContext;
-import com.oracle.truffle.llvm.runtime.NFIContextExtension;
+import com.oracle.truffle.llvm.runtime.LLVMLanguage;
 import com.oracle.truffle.llvm.runtime.datalayout.DataLayout;
 import com.oracle.truffle.llvm.runtime.memory.LLVMAllocateNode;
 import com.oracle.truffle.llvm.runtime.nodes.api.LLVMNode;
@@ -41,26 +45,24 @@ import com.oracle.truffle.llvm.runtime.pointer.LLVMPointer;
 import com.oracle.truffle.llvm.runtime.types.StructureType;
 import com.oracle.truffle.llvm.runtime.types.Type.TypeOverflowException;
 
-public final class AllocateReadOnlyGlobalsBlockNode extends LLVMNode implements LLVMAllocateNode {
+public abstract class AllocateReadOnlyGlobalsBlockNode extends LLVMNode implements LLVMAllocateNode {
 
     private final long size;
-
-    @Child InteropLibrary interop;
     @Child LLVMToNativeNode toNative;
 
-    private final Object allocateGlobalsBlock;
-
-    public AllocateReadOnlyGlobalsBlockNode(LLVMContext context, StructureType type, DataLayout dataLayout) throws TypeOverflowException {
-        this.size = type.getSize(dataLayout);
+    public AllocateReadOnlyGlobalsBlockNode(long size) {
+        this.size = size;
         this.toNative = LLVMToNativeNode.createToNativeWithTarget();
-
-        NFIContextExtension nfiContextExtension = context.getContextExtensionOrNull(NFIContextExtension.class);
-        this.allocateGlobalsBlock = nfiContextExtension.getNativeFunction(context, "__sulong_allocate_globals_block", "(UINT64):POINTER");
-        this.interop = InteropLibrary.getFactory().create(allocateGlobalsBlock);
     }
 
-    @Override
-    public LLVMPointer executeWithTarget() {
+    public static AllocateReadOnlyGlobalsBlockNode create(StructureType type, DataLayout dataLayout) throws TypeOverflowException {
+        return AllocateReadOnlyGlobalsBlockNodeGen.create(type.getSize(dataLayout));
+    }
+
+    @Specialization(limit = "1")
+    public LLVMPointer executeWithTarget(@SuppressWarnings("unused") @CachedContext(LLVMLanguage.class) LLVMContext ctx,
+                    @Bind("ctx.getAllocateGlobalsBlockFunction()") Object allocateGlobalsBlock,
+                    @CachedLibrary("allocateGlobalsBlock") InteropLibrary interop) {
         try {
             Object ret = interop.execute(allocateGlobalsBlock, size);
             return toNative.executeWithTarget(ret);

@@ -29,14 +29,20 @@
  */
 package com.oracle.truffle.llvm.runtime;
 
+import java.nio.file.Path;
+import java.nio.file.Paths;
+import java.util.Objects;
+
 import com.oracle.truffle.api.CallTarget;
 import com.oracle.truffle.api.CompilerDirectives;
-import com.oracle.truffle.api.TruffleLanguage;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
+import com.oracle.truffle.api.RootCallTarget;
+import com.oracle.truffle.api.TruffleLanguage;
 import com.oracle.truffle.api.dsl.Cached;
 import com.oracle.truffle.api.dsl.Cached.Shared;
 import com.oracle.truffle.api.dsl.GenerateUncached;
 import com.oracle.truffle.api.dsl.Specialization;
+import com.oracle.truffle.api.frame.FrameDescriptor;
 import com.oracle.truffle.api.interop.ArityException;
 import com.oracle.truffle.api.interop.InteropLibrary;
 import com.oracle.truffle.api.interop.TruffleObject;
@@ -48,10 +54,12 @@ import com.oracle.truffle.api.library.ExportLibrary;
 import com.oracle.truffle.api.library.ExportMessage;
 import com.oracle.truffle.api.nodes.DirectCallNode;
 import com.oracle.truffle.api.nodes.IndirectCallNode;
-import com.oracle.truffle.api.utilities.AssumedValue;
+import com.oracle.truffle.api.nodes.RootNode;
+import com.oracle.truffle.llvm.runtime.except.LLVMIllegalSymbolIndexException;
+import com.oracle.truffle.llvm.runtime.except.LLVMLinkerException;
 import com.oracle.truffle.llvm.runtime.nodes.api.LLVMNode;
+import com.oracle.truffle.llvm.runtime.nodes.func.LLVMGlobalRootNode;
 import com.oracle.truffle.llvm.runtime.pointer.LLVMManagedPointer;
-import com.oracle.truffle.llvm.runtime.pointer.LLVMPointer;
 
 /**
  * Object that is returned when a bitcode library is parsed.
@@ -62,14 +70,39 @@ public final class SulongLibrary implements TruffleObject {
 
     private final String name;
     private final LLVMScope scope;
-    private final CallTarget main;
     private final LLVMContext context;
+    final CachedMainFunction main;
 
-    public SulongLibrary(String name, LLVMScope scope, CallTarget main, LLVMContext context) {
+    public SulongLibrary(String name, LLVMScope scope, CachedMainFunction main, LLVMContext context) {
         this.name = name;
         this.scope = scope;
         this.main = main;
         this.context = context;
+    }
+
+    public static final class CachedMainFunction {
+        private final LLVMFunction mainFunction;
+        private CallTarget mainCallTarget;
+
+        public CachedMainFunction(LLVMFunction mainFunction) {
+            this.mainFunction = mainFunction;
+        }
+
+        public CallTarget getMainCallTarget() {
+            if (mainCallTarget == null) {
+                mainCallTarget = createCallTarget();
+            }
+            return mainCallTarget;
+        }
+
+        @TruffleBoundary
+        private CallTarget createCallTarget() {
+            LLVMLanguage language = LLVMLanguage.getLanguage();
+            RootCallTarget startCallTarget = language.getStartFunctionCode().getLLVMIRFunctionSlowPath();
+            Path applicationPath = Paths.get(mainFunction.getStringPath());
+            RootNode rootNode = new LLVMGlobalRootNode(language, new FrameDescriptor(), mainFunction, startCallTarget, Objects.toString(applicationPath, ""));
+            return LLVMLanguage.createCallTarget(rootNode);
+        }
     }
 
     /**
@@ -77,18 +110,21 @@ public final class SulongLibrary implements TruffleObject {
      *
      * @param symbolName Function name.
      * @return Function descriptor for the function called {@code symbolName} and {@code null} if
-     *         the function name cannot be found.
+     *         the function cannot be found.
      */
     private LLVMFunctionDescriptor lookupFunctionDescriptor(String symbolName) {
-        LLVMFunction function = scope.getFunction(symbolName);
-        if (function == null) {
-            return null;
+        try {
+            LLVMFunction function = scope.getFunction(symbolName);
+            if (function != null) {
+                Object value = context.getSymbol(function);
+                if (value != null) {
+                    return (LLVMFunctionDescriptor) LLVMManagedPointer.cast(value).getObject();
+                }
+            }
+        } catch (LLVMLinkerException | LLVMIllegalSymbolIndexException e) {
+            // fallthrough
         }
-        int index = function.getSymbolIndex(false);
-        AssumedValue<LLVMPointer>[] symbols = context.findSymbolTable(function.getBitcodeID(false));
-        LLVMPointer pointer = symbols[index].get();
-        LLVMFunctionDescriptor functionDescriptor = (LLVMFunctionDescriptor) LLVMManagedPointer.cast(pointer).getObject();
-        return functionDescriptor;
+        return null;
     }
 
     public String getName() {
@@ -105,7 +141,7 @@ public final class SulongLibrary implements TruffleObject {
          * @param name
          * @see #execute(SulongLibrary, String)
          */
-        @Specialization(guards = {"library == cachedLibrary", "name.equals(cachedName)"})
+        @Specialization(guards = {"library == cachedLibrary", "name.equals(cachedName)"}, assumptions = "singleContextAssumption()")
         LLVMFunctionDescriptor doCached(SulongLibrary library, String name,
                         @Cached("library") @SuppressWarnings("unused") SulongLibrary cachedLibrary,
                         @Cached("name") @SuppressWarnings("unused") String cachedName,
@@ -178,21 +214,22 @@ public final class SulongLibrary implements TruffleObject {
          * @param args
          * @see InteropLibrary#execute(Object, Object...)
          */
-        @Specialization(guards = "library == cachedLibrary")
+        @Specialization(guards = {"library.main == cachedMain", "cachedMain != null"})
         static Object doCached(SulongLibrary library, Object[] args,
-                        @Cached("library") @SuppressWarnings("unused") SulongLibrary cachedLibrary,
-                        @Cached("createMainCall(cachedLibrary)") DirectCallNode call) {
+                        @Cached("library.main") @SuppressWarnings("unused") CachedMainFunction cachedMain,
+                        @Cached("create(cachedMain.getMainCallTarget())") DirectCallNode call) {
             return call.call(args);
         }
 
-        static DirectCallNode createMainCall(SulongLibrary library) {
-            return DirectCallNode.create(library.main);
-        }
-
-        @Specialization(replaces = "doCached")
+        @Specialization(replaces = "doCached", guards = "library.main != null")
         static Object doGeneric(SulongLibrary library, Object[] args,
                         @Cached("create()") IndirectCallNode call) {
-            return call.call(library.main, args);
+            return call.call(library.main.getMainCallTarget(), args);
+        }
+
+        @Specialization(replaces = "doGeneric")
+        static Object doUnsupported(@SuppressWarnings("unused") SulongLibrary library, @SuppressWarnings("unused") Object[] args) throws UnsupportedMessageException {
+            throw UnsupportedMessageException.create();
         }
     }
 

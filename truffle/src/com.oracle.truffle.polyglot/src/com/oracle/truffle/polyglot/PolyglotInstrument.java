@@ -42,13 +42,16 @@ package com.oracle.truffle.polyglot;
 
 import static com.oracle.truffle.polyglot.EngineAccessor.INSTRUMENT;
 
+import java.util.function.Supplier;
+
+import org.graalvm.options.OptionDescriptor;
 import org.graalvm.options.OptionDescriptors;
 import org.graalvm.polyglot.Instrument;
 import org.graalvm.polyglot.impl.AbstractPolyglotImpl.AbstractInstrumentImpl;
 
 import com.oracle.truffle.api.InstrumentInfo;
 import com.oracle.truffle.api.instrumentation.TruffleInstrument;
-import java.util.function.Supplier;
+import com.oracle.truffle.polyglot.PolyglotLocals.LocalLocation;
 
 class PolyglotInstrument extends AbstractInstrumentImpl implements com.oracle.truffle.polyglot.PolyglotImpl.VMObject {
 
@@ -56,13 +59,18 @@ class PolyglotInstrument extends AbstractInstrumentImpl implements com.oracle.tr
     InstrumentInfo info;
     final InstrumentCache cache;
     final PolyglotEngineImpl engine;
-    private final Object instrumentLock = new Object();
 
-    private volatile OptionDescriptors options;
+    private final Object instrumentLock = new Object();
+    private volatile OptionDescriptors engineOptions;
+    private volatile OptionDescriptors contextOptions;
+    private volatile OptionDescriptors allOptions;
     private volatile OptionValuesImpl optionValues;
     private volatile boolean initialized;
     private volatile boolean created;
+    private volatile boolean closed;
     int requestedAsyncStackDepth = 0;
+    LocalLocation[] contextLocalLocations;
+    LocalLocation[] contextThreadLocalLocations;
 
     PolyglotInstrument(PolyglotEngineImpl engine, InstrumentCache cache) {
         super(engine.impl);
@@ -74,22 +82,32 @@ class PolyglotInstrument extends AbstractInstrumentImpl implements com.oracle.tr
     public OptionDescriptors getOptions() {
         try {
             engine.checkState();
-            return getOptionsInternal();
+            return getAllOptionsInternal();
         } catch (Throwable t) {
             throw PolyglotImpl.guestToHostException(engine, t);
         }
     }
 
-    OptionDescriptors getOptionsInternal() {
+    OptionDescriptors getAllOptionsInternal() {
         ensureInitialized();
-        return options;
+        return allOptions;
     }
 
-    OptionValuesImpl getOptionValues() {
+    OptionDescriptors getEngineOptionsInternal() {
+        ensureInitialized();
+        return engineOptions;
+    }
+
+    OptionDescriptors getContextOptionsInternal() {
+        ensureInitialized();
+        return contextOptions;
+    }
+
+    OptionValuesImpl getEngineOptionValues() {
         if (optionValues == null) {
             synchronized (instrumentLock) {
                 if (optionValues == null) {
-                    optionValues = new OptionValuesImpl(engine, getOptionsInternal(), false);
+                    optionValues = new OptionValuesImpl(engine, getAllOptionsInternal(), false);
                 }
             }
         }
@@ -116,34 +134,82 @@ class PolyglotInstrument extends AbstractInstrumentImpl implements com.oracle.tr
                                 return cache.loadInstrument();
                             }
                         });
-                        this.options = INSTRUMENT.describeOptions(engine.instrumentationHandler, this, cache.getId());
+                        OptionDescriptors eOptions = INSTRUMENT.describeEngineOptions(engine.instrumentationHandler, this, cache.getId());
+                        OptionDescriptors cOptions = INSTRUMENT.describeContextOptions(engine.instrumentationHandler, this, cache.getId());
+                        assert verifyNoOverlap(eOptions, cOptions);
+                        this.engineOptions = eOptions;
+                        this.contextOptions = cOptions;
+                        this.allOptions = OptionDescriptors.createUnion(eOptions, cOptions);
                     } catch (Exception e) {
-                        throw new IllegalStateException(String.format("Error initializing instrument '%s' using class '%s'.", cache.getId(), cache.getClassName()), e);
+                        throw new IllegalStateException(String.format("Error initializing instrument '%s' using class '%s'. Message: %s.", cache.getId(), cache.getClassName(), e.getMessage()), e);
                     }
+                    assert contextLocalLocations != null : "context local locations not initialized";
                     initialized = true;
                 }
             }
         }
     }
 
+    private static boolean verifyNoOverlap(OptionDescriptors engineOptions, OptionDescriptors contextOptions) {
+        for (OptionDescriptor engineDescriptor : engineOptions) {
+            if (contextOptions.get(engineDescriptor.getName()) != null) {
+                throw new AssertionError("Overlapping descriptor name " + engineDescriptor.getName() + " between context and engine options detected.");
+            }
+        }
+        return true;
+    }
+
+    public boolean isInitialized() {
+        return initialized;
+    }
+
+    public boolean isCreated() {
+        return created;
+    }
+
     void ensureCreated() {
         if (!created) {
+            PolyglotContextImpl[] contexts = null;
             synchronized (instrumentLock) {
                 if (!created) {
                     if (!initialized) {
                         ensureInitialized();
                     }
-                    INSTRUMENT.createInstrument(engine.instrumentationHandler, this, cache.services(), getOptionValues());
+                    if (contextLocalLocations.length > 0) {
+                        // trigger initialization of locals under context lock.
+                        synchronized (engine.lock) {
+                            contexts = engine.collectAliveContexts().toArray(new PolyglotContextImpl[0]);
+                        }
+                    }
+                    INSTRUMENT.createInstrument(engine.instrumentationHandler, this, cache.services(), getEngineOptionValues());
                     created = true;
+                }
+            }
+            if (contexts != null) {
+                for (PolyglotContextImpl context : contexts) {
+                    synchronized (context) {
+                        if (context.localsCleared) {
+                            continue;
+                        }
+                        /*
+                         * contextLocals might not be initialized yet, in which case the context
+                         * local factory for this instrument will be invoked during contextLocals
+                         * initialization.
+                         */
+                        if (context.contextLocals != null) {
+                            context.invokeContextLocalsFactory(context.contextLocals, contextLocalLocations);
+                            context.invokeContextThreadLocalFactory(contextThreadLocalLocations);
+                        }
+                    }
                 }
             }
         }
     }
 
     void notifyClosing() {
-        if (created) {
+        if (created && !closed) {
             synchronized (instrumentLock) {
-                if (created) {
+                if (created && !closed) {
                     INSTRUMENT.finalizeInstrument(engine.instrumentationHandler, this);
                 }
             }
@@ -151,15 +217,14 @@ class PolyglotInstrument extends AbstractInstrumentImpl implements com.oracle.tr
     }
 
     void ensureClosed() {
-        assert Thread.holdsLock(engine);
-        if (created) {
+        assert Thread.holdsLock(engine.lock);
+        if (created && !closed) {
             synchronized (instrumentLock) {
-                if (created) {
+                if (created && !closed) {
                     INSTRUMENT.disposeInstrument(engine.instrumentationHandler, this, false);
                 }
-                created = false;
-                initialized = false;
-                options = null;
+                closed = true;
+                engineOptions = null;
                 optionValues = null;
             }
         }

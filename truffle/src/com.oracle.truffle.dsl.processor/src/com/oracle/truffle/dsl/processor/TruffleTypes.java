@@ -49,8 +49,11 @@ public class TruffleTypes {
     // Checkstyle: stop
 
     // Testing API
+    public static final String ALWAYS_SLOW_PATH_MODE_NAME = "com.oracle.truffle.api.dsl.test.AlwaysGenerateOnlySlowPath";
     public static final String EXPECT_ERROR_CLASS_NAME1 = "com.oracle.truffle.api.dsl.test.ExpectError";
     public static final String EXPECT_ERROR_CLASS_NAME2 = "com.oracle.truffle.api.test.ExpectError";
+
+    public final DeclaredType AlwaysSlowPath = c.getDeclaredTypeOptional(ALWAYS_SLOW_PATH_MODE_NAME);
 
     // Graal SDK
     public static final String OptionCategory_Name = "org.graalvm.options.OptionCategory";
@@ -90,6 +93,7 @@ public class TruffleTypes {
     public static final String NodeUtil_Name = "com.oracle.truffle.api.nodes.NodeUtil";
     public static final String Option_Group_Name = "com.oracle.truffle.api.Option.Group";
     public static final String Option_Name = "com.oracle.truffle.api.Option";
+    public static final String Profile_Name = "com.oracle.truffle.api.profiles.Profile";
     public static final String SlowPathException_Name = "com.oracle.truffle.api.nodes.SlowPathException";
     public static final String SourceSection_Name = "com.oracle.truffle.api.source.SourceSection";
     public static final String TruffleLanguage_ContextReference_Name = "com.oracle.truffle.api.TruffleLanguage.ContextReference";
@@ -120,6 +124,7 @@ public class TruffleTypes {
     public final DeclaredType NodeInfo = c.getDeclaredType(NodeInfo_Name);
     public final DeclaredType NodeInterface = c.getDeclaredType(NodeInterface_Name);
     public final DeclaredType NodeUtil = c.getDeclaredType(NodeUtil_Name);
+    public final DeclaredType Profile = c.getDeclaredTypeOptional(Profile_Name);
     public final DeclaredType SlowPathException = c.getDeclaredType(SlowPathException_Name);
     public final DeclaredType SourceSection = c.getDeclaredType(SourceSection_Name);
     public final DeclaredType TruffleLanguage = c.getDeclaredType(TruffleLanguage_Name);
@@ -142,6 +147,9 @@ public class TruffleTypes {
     public static final String CreateCast_Name = "com.oracle.truffle.api.dsl.CreateCast";
     public static final String Executed_Name = "com.oracle.truffle.api.dsl.Executed";
     public static final String Fallback_Name = "com.oracle.truffle.api.dsl.Fallback";
+    public static final String GenerateAOT_Name = "com.oracle.truffle.api.dsl.GenerateAOT";
+    public static final String GenerateAOT_Exclude_Name = "com.oracle.truffle.api.dsl.GenerateAOT.Exclude";
+    public static final String GenerateAOT_Provider_Name = "com.oracle.truffle.api.dsl.GenerateAOT.Provider";
     public static final String GeneratedBy_Name = "com.oracle.truffle.api.dsl.GeneratedBy";
     public static final String GenerateNodeFactory_Name = "com.oracle.truffle.api.dsl.GenerateNodeFactory";
     public static final String GenerateUncached_Name = "com.oracle.truffle.api.dsl.GenerateUncached";
@@ -156,6 +164,7 @@ public class TruffleTypes {
     public static final String NodeField_Name = "com.oracle.truffle.api.dsl.NodeField";
     public static final String NodeFields_Name = "com.oracle.truffle.api.dsl.NodeFields";
     public static final String ReportPolymorphism_Exclude_Name = "com.oracle.truffle.api.dsl.ReportPolymorphism.Exclude";
+    public static final String ReportPolymorphism_Megamorphic_Name = "com.oracle.truffle.api.dsl.ReportPolymorphism.Megamorphic";
     public static final String ReportPolymorphism_Name = "com.oracle.truffle.api.dsl.ReportPolymorphism";
     public static final String Specialization_Name = "com.oracle.truffle.api.dsl.Specialization";
     public static final String SpecializationStatistics_Name = "com.oracle.truffle.api.dsl.SpecializationStatistics";
@@ -176,6 +185,9 @@ public class TruffleTypes {
     public final DeclaredType CreateCast = c.getDeclaredType(CreateCast_Name);
     public final DeclaredType Executed = c.getDeclaredType(Executed_Name);
     public final DeclaredType Fallback = c.getDeclaredType(Fallback_Name);
+    public final DeclaredType GenerateAOT = c.getDeclaredType(GenerateAOT_Name);
+    public final DeclaredType GenerateAOT_Exclude = c.getDeclaredType(GenerateAOT_Exclude_Name);
+    public final DeclaredType GenerateAOT_Provider = c.getDeclaredType(GenerateAOT_Provider_Name);
     public final DeclaredType GeneratedBy = c.getDeclaredType(GeneratedBy_Name);
     public final DeclaredType GenerateNodeFactory = c.getDeclaredType(GenerateNodeFactory_Name);
     public final DeclaredType GenerateUncached = c.getDeclaredType(GenerateUncached_Name);
@@ -191,6 +203,7 @@ public class TruffleTypes {
     public final DeclaredType NodeFields = c.getDeclaredType(NodeFields_Name);
     public final DeclaredType ReportPolymorphism = c.getDeclaredType(ReportPolymorphism_Name);
     public final DeclaredType ReportPolymorphism_Exclude = c.getDeclaredType(ReportPolymorphism_Exclude_Name);
+    public final DeclaredType ReportPolymorphism_Megamorphic = c.getDeclaredType(ReportPolymorphism_Megamorphic_Name);
     public final DeclaredType Specialization = c.getDeclaredType(Specialization_Name);
     public final DeclaredType SpecializationStatistics = c.getDeclaredType(SpecializationStatistics_Name);
     public final DeclaredType SpecializationStatistics_NodeStatistics = c.getDeclaredType(SpecializationStatistics_NodeStatistics_Name);

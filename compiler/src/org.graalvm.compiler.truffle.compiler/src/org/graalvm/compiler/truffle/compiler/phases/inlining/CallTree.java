@@ -24,8 +24,6 @@
  */
 package org.graalvm.compiler.truffle.compiler.phases.inlining;
 
-import static org.graalvm.compiler.truffle.compiler.TruffleCompilerOptions.getPolyglotOptionValue;
-
 import org.graalvm.compiler.debug.DebugContext;
 import org.graalvm.compiler.graph.Graph;
 import org.graalvm.compiler.truffle.common.TruffleCompilerRuntime;
@@ -78,8 +76,8 @@ public final class CallTree extends Graph {
     }
 
     void trace() {
-        Boolean details = getPolyglotOptionValue(request.options, PolyglotCompilerOptions.TraceInliningDetails);
-        if (getPolyglotOptionValue(request.options, PolyglotCompilerOptions.TraceInlining) || details) {
+        Boolean details = request.options.get(PolyglotCompilerOptions.TraceInliningDetails);
+        if (request.options.get(PolyglotCompilerOptions.TraceInlining) || details) {
             TruffleCompilerRuntime runtime = TruffleCompilerRuntime.getRuntime();
             runtime.logEvent(root.getTruffleAST(), 0, "Inline start", root.getName(), root.getStringProperties(), null);
             traceRecursive(runtime, root, details, 0);
@@ -120,8 +118,25 @@ public final class CallTree extends Graph {
     }
 
     public void updateTracingInfo(TruffleMetaAccessProvider inliningPlan) {
-        final int inlinedWithoutRoot = inlined - 1;
-        inliningPlan.setCallCount(inlinedWithoutRoot + frontierSize);
-        inliningPlan.setInlinedCallCount(inlinedWithoutRoot);
+        if (tracingCallCounts()) {
+            final int inlinedWithoutRoot = inlined - 1;
+            inliningPlan.setCallCount(inlinedWithoutRoot + frontierSize);
+            inliningPlan.setInlinedCallCount(inlinedWithoutRoot);
+        }
+        if (loggingInlinedTargets()) {
+            root.collectInlinedTargets(inliningPlan);
+        }
+    }
+
+    private boolean loggingInlinedTargets() {
+        return request.debug.isDumpEnabled(DebugContext.BASIC_LEVEL) || request.options.get(PolyglotCompilerOptions.CompilationStatistics) ||
+                        request.options.get(PolyglotCompilerOptions.CompilationStatisticDetails);
+    }
+
+    private boolean tracingCallCounts() {
+        return request.options.get(PolyglotCompilerOptions.TraceCompilation) ||
+                        request.options.get(PolyglotCompilerOptions.TraceCompilationDetails) ||
+                        request.options.get(PolyglotCompilerOptions.CompilationStatistics) ||
+                        request.options.get(PolyglotCompilerOptions.CompilationStatisticDetails);
     }
 }

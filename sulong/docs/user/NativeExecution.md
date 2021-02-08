@@ -1,24 +1,20 @@
 # Limitations and Differences to Native Execution
 
-LLVM code interpreted or compiled with the default configuration of GraalVM
-Community or Enterprise editions will not have the same characteristics as the
-same code interpreted or compiled in a managed environment, enabled
-with the `--llvm.managed` option on top of GraalVM Enterprise. The
-behaviour of the `lli` interpreter tool used to directly execute programs
-in LLVM bitcode format differs between native and managed modes. The
-difference lies in safety guarantees and cross-language interoperability.
+LLVM code interpreted or compiled with the default configuration of GraalVM Community or Enterprise editions will not have the same characteristics as the same code interpreted or compiled in a managed environment, enabled with the `--llvm.managed` option on top of GraalVM Enterprise.
+The behaviour of the `lli` interpreter used to directly execute programs in LLVM bitcode format differs between native and managed modes.
+The difference lies in safety guarantees and cross-language interoperability.
 
-Note: Managed execution mode for LLVM IR code is possible with GraalVM Enterprise only.
+Note: Managed execution mode for LLVM bitcode is possible with GraalVM Enterprise only.
 
 In the default configuration, cross-language interoperability requires bitcode
 to be compiled with the debug information enabled (`-g`), and the `-mem2reg`
-optimization is performed on the bitcode (compiled with at least `-O1`, or
+optimization performed on LLVM bitcode (compiled with at least `-O1`, or
 explicitly using the `opt` tool). These requirements can be overcome in a
 managed environment of GraalVM Enterprise that allows native code to participate in the
 polyglot programs, passing and receiving the data from any other supported
 language. In terms of security, the execution of native code in a managed
 environment passes with additional safety features: catching illegal pointer
-accesses, accessing arrays outside of the bounds, etc..
+accesses, accessing arrays outside of the bounds, etc.
 
 There are certain limitations and differences to the native execution depending on the GraalVM edition.
 Consider them respectively.
@@ -98,39 +94,35 @@ The following restrictions and differences to native execution (i.e., bitcode co
 
 ### Limitations and Differences to Managed Execution on Top of GraalVM Enterprise
 
-A managed execution for LLVM intermediate representation code is GraalVM
-Enterprise Edition feature  and can be enabled with `--llvm.managed` command
-line option. In the managed mode, GraalVM LLVM prevents access to unmanaged
-memory and uncontrolled calls to native code and operating system functionality.
-The allocations are performed in the managed Java heap, and accesses to the
-surrounding system are routed through proper Truffle API and Java API calls.
+The managed execution for LLVM bitcode is a GraalVM Enterprise Edition feature and can be enabled with the `--llvm.managed` command line option.
+In managed mode, the GraalVM LLVM runtime prevents access to unmanaged memory and uncontrolled calls to native code and operating system functionality.
+The allocations are performed in the managed Java heap, and accesses to the surrounding system are routed through proper Language API and Java API calls.
 
- All the restrictions from the default native LLVM execution on GraalVM apply
- to the managed execution, but with the following differences/changes:
+All the restrictions from the default native LLVM execution on GraalVM apply to the managed execution, but with the following differences/changes:
 
-  * Platform independent
-    * Bitcode must be compiled for the a generic `linux_x86_64` target, using the provided musl libc library, on all platforms, regardless of the actual underlying operating system.
-  * C++
-    * C++ on managed mode requires GraalVM 20.1 or newer
-  * Native memory and code
-    * Calls to native functions are not possible, thus only the functionality provided in the supplied musl libc and by the GraalVM LLVM interface is available.
-    * Loading native libraries is not possible.
-    * Native memory access is not possible.
-  * System calls
-    * System calls with only limited support are read, readv, write, writev, open, close, dup, dup2, lseek, stat, fstat, lstat, chmod, fchmod, ioctl, fcntl, unlink, rmdir, utimensat, uname, set_tid_address, gettid, getppid, getpid, getcwd, exit, exit_group, clock_gettime, arch_prctl.
-    * The functionality is limited to common terminal IO, process control and file system operations.
-    * Some syscalls are implemented as a noop and/or return errors warning that they are not available, e.g., chown, lchown, fchown, brk, rt_sigaction, sigprocmask, futex.
-  * Musl libc
-    * The musl libc library behaves differently than the more common glibc [in some cases](https://wiki.musl-libc.org/functional-differences-from-glibc.html).
-  * The stack
-    * Accessing the stack pointer directly is not possible.
-    * The stack is not contiguous, and accessing memory that is out of the bounds of a stack allocation (e.g., accessing neighboring stack value using pointer arithmetics) is not possible.
-  * Pointers into the managed heap  
-    * Reading parts of a managed pointer is not possible.
-    * Overwriting parts of a managed pointer (e.g., using bits for pointer tagging) and subsequently dereferencing the destroyed managed pointer is not possible.
-    * Undefined behavior in C pointer arithmetics applies.
-    * Complex pointer arithmetics (e.g., multiplying pointers) can convert a managed pointer to an i64 value -- the i64 value can be used in pointer comparisons but cannot be dereferenced.
-  * Floating point arithmetics
-    * 80-bit floating points only use 64-bit floating point precision.
-  * Dynamic linking
-    * The interaction with the LLVM bitcode dynamic linker is not supported, e.g., dlsym/dlopen cannot be used. This does not allow to load native code.
+* Platform independent
+   * Bitcode must be compiled for the generic `linux_x86_64` target using the provided musl libc library on all platforms, regardless of the actual underlying operating system.
+ * C++
+   * C++ on managed mode requires GraalVM 20.1 or newer.
+ * Native memory and code
+   * Calls to native functions are not possible. Thus only the functionality provided in the supplied musl libc and by the GraalVM LLVM interface is available.
+   * Loading native libraries is not possible.
+   * Native memory access is not possible.
+ * System calls
+   * System calls with only limited support are read, readv, write, writev, open, close, dup, dup2, lseek, stat, fstat, lstat, chmod, fchmod, ioctl, fcntl, unlink, rmdir, utimensat, uname, set_tid_address, gettid, getppid, getpid, getcwd, exit, exit_group, clock_gettime, and arch_prctl.
+   * The functionality is limited to common terminal IO, process control, and file system operations.
+   * Some syscalls are implemented as a noop and/or return error warning that they are not available, e.g., chown, lchown, fchown, brk, rt_sigaction, sigprocmask, and futex.
+ * Musl libc
+   * The musl libc library behaves differently than the more common glibc [in some cases](https://wiki.musl-libc.org/functional-differences-from-glibc.html).
+ * The stack
+   * Accessing the stack pointer directly is not possible.
+   * The stack is not contiguous, and accessing memory that is out of the bounds of a stack allocation (e.g., accessing neighboring stack value using pointer arithmetics) is not possible.
+ * Pointers into the managed heap
+   * Reading parts of a managed pointer is not possible.
+   * Overwriting parts of a managed pointer (e.g., using bits for pointer tagging) and subsequently dereferencing the destroyed managed pointer is not possible.
+   * Undefined behavior in C pointer arithmetics applies.
+   * Complex pointer arithmetics (e.g., multiplying pointers) can convert a managed pointer to an i64 value. The i64 value can be used in pointer comparisons but cannot be dereferenced.
+ * Floating point arithmetics
+   * 80-bit floating points only use 64-bit floating point precision.
+ * Dynamic linking
+   * The interaction with the LLVM bitcode dynamic linker is not supported, e.g., dlsym/dlopen cannot be used. This does not allow to load native code.

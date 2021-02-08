@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2017, 2019, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2017, 2020, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -51,7 +51,10 @@ import com.oracle.truffle.api.nodes.RootNode;
  * valid variables. The scopes can be both lexical and dynamic.
  *
  * @since 0.30
+ * @deprecated in 20.3, use {@link com.oracle.truffle.api.interop.NodeLibrary} and
+ *             {@link com.oracle.truffle.api.interop.InteropLibrary#isScope(Object)} instead.
  */
+@Deprecated
 public final class Scope {
 
     private static final Scope EMPTY = new Scope();
@@ -222,7 +225,10 @@ public final class Scope {
      * Builder to create a new {@link Scope} object.
      *
      * @since 0.30
+     * @deprecated in 20.3, use {@link com.oracle.truffle.api.interop.NodeLibrary} and
+     *             {@link com.oracle.truffle.api.interop.InteropLibrary#isScope(Object)} instead.
      */
+    @Deprecated
     public final class Builder {
 
         private final String name;

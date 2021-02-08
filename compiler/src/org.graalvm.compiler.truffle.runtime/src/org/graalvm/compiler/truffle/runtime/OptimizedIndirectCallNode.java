@@ -27,6 +27,7 @@ package org.graalvm.compiler.truffle.runtime;
 import com.oracle.truffle.api.CallTarget;
 import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
+import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.nodes.IndirectCallNode;
 import com.oracle.truffle.api.nodes.NodeInfo;
 import com.oracle.truffle.api.profiles.ValueProfile;
@@ -38,6 +39,7 @@ import com.oracle.truffle.api.profiles.ValueProfile;
 public final class OptimizedIndirectCallNode extends IndirectCallNode {
 
     @CompilationFinal private ValueProfile exceptionProfile;
+    @CompilationFinal private boolean seenInInterpreter;
 
     /*
      * Should be instantiated with the runtime.
@@ -48,7 +50,27 @@ public final class OptimizedIndirectCallNode extends IndirectCallNode {
     @Override
     public Object call(CallTarget target, Object... arguments) {
         try {
-            return ((OptimizedCallTarget) target).callIndirect(this, arguments);
+            OptimizedCallTarget optimizedTarget = ((OptimizedCallTarget) target);
+
+            if (CompilerDirectives.inInterpreter() && !seenInInterpreter) {
+                /*
+                 * No need to deoptimize to modify compilation final state as we only execute this
+                 * in the interpreter.
+                 */
+                this.seenInInterpreter = true;
+            }
+
+            /*
+             * Indirect calls should not cause invalidations if they were compiled prior to
+             * execution. We rather produce a truffle boundary call to the interpreter profile and
+             * escape the arguments.
+             */
+            if (this.seenInInterpreter) {
+                optimizedTarget.stopProfilingArguments();
+            } else {
+                profileIndirectArguments(optimizedTarget, arguments);
+            }
+            return optimizedTarget.callIndirect(this, arguments);
         } catch (Throwable t) {
             if (exceptionProfile == null) {
                 CompilerDirectives.transferToInterpreterAndInvalidate();
@@ -58,6 +80,11 @@ public final class OptimizedIndirectCallNode extends IndirectCallNode {
             GraalRuntimeAccessor.LANGUAGE.onThrowable(this, null, profiledT, null);
             throw OptimizedCallTarget.rethrow(profiledT);
         }
+    }
+
+    @TruffleBoundary
+    private static void profileIndirectArguments(OptimizedCallTarget optimizedTarget, Object... arguments) {
+        optimizedTarget.profileArguments(arguments);
     }
 
 }

@@ -33,6 +33,7 @@ import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.nio.file.attribute.BasicFileAttributes;
 import java.util.ArrayList;
+import java.util.Collection;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -41,16 +42,9 @@ import java.util.concurrent.Future;
 import java.util.function.Function;
 import java.util.logging.Level;
 
-import org.graalvm.tools.lsp.server.types.CompletionContext;
-import org.graalvm.tools.lsp.server.types.CompletionList;
-import org.graalvm.tools.lsp.server.types.CompletionOptions;
-import org.graalvm.tools.lsp.server.types.Coverage;
-import org.graalvm.tools.lsp.server.types.DocumentHighlight;
-import org.graalvm.tools.lsp.server.types.Hover;
-import org.graalvm.tools.lsp.server.types.ServerCapabilities;
-import org.graalvm.tools.lsp.server.types.SignatureHelp;
-import org.graalvm.tools.lsp.server.types.SignatureHelpOptions;
-import org.graalvm.tools.lsp.server.types.TextDocumentContentChangeEvent;
+import org.graalvm.tools.api.lsp.LSPCommand;
+import org.graalvm.tools.api.lsp.LSPExtension;
+import org.graalvm.tools.api.lsp.LSPServerAccessor;
 import org.graalvm.tools.lsp.exceptions.DiagnosticsNotification;
 import org.graalvm.tools.lsp.exceptions.UnknownLanguageException;
 import org.graalvm.tools.lsp.server.request.AbstractRequestHandler;
@@ -60,11 +54,23 @@ import org.graalvm.tools.lsp.server.request.HighlightRequestHandler;
 import org.graalvm.tools.lsp.server.request.HoverRequestHandler;
 import org.graalvm.tools.lsp.server.request.SignatureHelpRequestHandler;
 import org.graalvm.tools.lsp.server.request.SourceCodeEvaluator;
+import org.graalvm.tools.lsp.server.types.CompletionContext;
+import org.graalvm.tools.lsp.server.types.CompletionList;
+import org.graalvm.tools.lsp.server.types.CompletionOptions;
+import org.graalvm.tools.lsp.server.types.Coverage;
+import org.graalvm.tools.lsp.server.types.DocumentHighlight;
+import org.graalvm.tools.lsp.server.types.ExecuteCommandParams;
+import org.graalvm.tools.lsp.server.types.Hover;
+import org.graalvm.tools.lsp.server.types.ServerCapabilities;
+import org.graalvm.tools.lsp.server.types.SignatureHelp;
+import org.graalvm.tools.lsp.server.types.SignatureHelpOptions;
+import org.graalvm.tools.lsp.server.types.TextDocumentContentChangeEvent;
 import org.graalvm.tools.lsp.server.utils.SourceUtils;
 import org.graalvm.tools.lsp.server.utils.TextDocumentSurrogate;
 import org.graalvm.tools.lsp.server.utils.TextDocumentSurrogateMap;
 
 import com.oracle.truffle.api.CallTarget;
+import com.oracle.truffle.api.InstrumentInfo;
 import com.oracle.truffle.api.Truffle;
 import com.oracle.truffle.api.TruffleFile;
 import com.oracle.truffle.api.TruffleLogger;
@@ -93,6 +99,8 @@ public final class TruffleAdapter implements VirtualLanguageServerFileProvider {
     private SignatureHelpRequestHandler signatureHelpHandler;
     private CoverageRequestHandler coverageHandler;
     private HighlightRequestHandler highlightHandler;
+    private List<LSPCommand> extensionCommands;
+    private LSPServerAccessor lspServer;
     private TextDocumentSurrogateMap surrogateMap;
     private final LanguageTriggerCharacters completionTriggerCharacters = new LanguageTriggerCharacters();
     private final LanguageTriggerCharacters signatureTriggerCharacters = new LanguageTriggerCharacters();
@@ -408,6 +416,15 @@ public final class TruffleAdapter implements VirtualLanguageServerFileProvider {
         return surrogate != null ? surrogate.getEditorText() : null;
     }
 
+    public Source getSource(URI uri) {
+        if (surrogateMap == null) {
+            return null;
+        }
+
+        TextDocumentSurrogate surrogate = surrogateMap.get(uri);
+        return surrogate != null ? surrogate.getSource() : null;
+    }
+
     @Override
     public boolean isVirtualFile(Path path) {
         return surrogateMap.containsSurrogate(path.toUri());
@@ -417,5 +434,46 @@ public final class TruffleAdapter implements VirtualLanguageServerFileProvider {
         return (sourceUri) -> {
             return surrogateMap.getOrCreateSurrogate(sourceUri, () -> languageInfo);
         };
+    }
+
+    public void initializeLSPServer(LSPServerAccessor server) {
+        this.lspServer = server;
+    }
+
+    private List<LSPCommand> getExternalCommands() {
+        if (extensionCommands == null) {
+            extensionCommands = new ArrayList<>();
+            for (InstrumentInfo instrument : envMain.getInstruments().values()) {
+                if ("lsp".equals(instrument.getId())) {
+                    continue;
+                }
+                LSPExtension extension = envMain.lookup(instrument, LSPExtension.class);
+                if (extension != null) {
+                    for (LSPCommand command : extension.getCommands()) {
+                        extensionCommands.add(command);
+                    }
+                }
+            }
+        }
+        return extensionCommands;
+    }
+
+    public Collection<String> getExtensionCommandNames() {
+        ArrayList<String> result = new ArrayList<>();
+        for (LSPCommand command : getExternalCommands()) {
+            result.add(command.getName());
+        }
+        return result;
+    }
+
+    public Future<?> createExtensionCommand(ExecuteCommandParams params) {
+        String commandName = params.getCommand();
+        for (LSPCommand command : getExternalCommands()) {
+            if (commandName.equals(command.getName())) {
+                List<Object> args = params.getArguments();
+                return contextAwareExecutor.executeWithNestedContext(() -> command.execute(lspServer, envInternal, args), command.getTimeoutMillis(), () -> command.onTimeout(args));
+            }
+        }
+        return null;
     }
 }

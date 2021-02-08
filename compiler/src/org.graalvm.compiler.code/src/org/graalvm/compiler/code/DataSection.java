@@ -28,6 +28,7 @@ import static jdk.vm.ci.meta.MetaUtil.identityHashCodeString;
 
 import java.nio.ByteBuffer;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.Iterator;
 import java.util.Objects;
 import java.util.function.BiConsumer;
@@ -139,6 +140,20 @@ public final class DataSection implements Iterable<Data> {
             constant.serialize(buffer);
             assert buffer.position() - position == constant.getSerializedSize() : "wrong number of bytes written";
         }
+
+        @Override
+        public String toString() {
+            return "SerializableData{" +
+                            "alignment=" + getAlignment() +
+                            ", size=" + getSize() +
+                            ", constant=" + constant +
+                            '}';
+        }
+
+        @Override
+        public int hashCode() {
+            return Objects.hash(super.hashCode(), constant);
+        }
     }
 
     public static class ZeroData extends Data {
@@ -225,6 +240,22 @@ public final class DataSection implements Iterable<Data> {
             for (Data data : nested) {
                 data.emit(buffer, patches);
             }
+        }
+
+        @Override
+        public int hashCode() {
+            int result = super.hashCode();
+            result = 31 * result + Arrays.hashCode(nested);
+            return result;
+        }
+
+        @Override
+        public String toString() {
+            return "PackedData{" +
+                            "alignment=" + getAlignment() +
+                            ", size=" + getSize() +
+                            ", nested=" + Arrays.toString(nested) +
+                            '}';
         }
     }
 

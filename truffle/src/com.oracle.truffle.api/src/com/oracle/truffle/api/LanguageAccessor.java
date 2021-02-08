@@ -47,6 +47,7 @@ import java.nio.charset.Charset;
 import java.nio.file.FileSystemNotFoundException;
 import java.nio.file.Path;
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Map;
@@ -58,6 +59,8 @@ import org.graalvm.options.OptionDescriptors;
 import org.graalvm.options.OptionValues;
 import org.graalvm.polyglot.io.FileSystem;
 
+import com.oracle.truffle.api.TruffleLanguage.ContextLocalFactory;
+import com.oracle.truffle.api.TruffleLanguage.ContextThreadLocalFactory;
 import com.oracle.truffle.api.TruffleLanguage.Env;
 import com.oracle.truffle.api.frame.Frame;
 import com.oracle.truffle.api.frame.MaterializedFrame;
@@ -72,6 +75,13 @@ import com.oracle.truffle.api.source.SourceSection;
 final class LanguageAccessor extends Accessor {
 
     static final LanguageAccessor ACCESSOR = new LanguageAccessor();
+
+    static final NodeSupport NODES = ACCESSOR.nodeSupport();
+    static final SourceSupport SOURCE = ACCESSOR.sourceSupport();
+    static final InstrumentSupport INSTRUMENT = ACCESSOR.instrumentSupport();
+    static final JDKSupport JDK = ACCESSOR.jdkSupport();
+    static final EngineSupport ENGINE = ACCESSOR.engineSupport();
+    static final InteropSupport INTEROP = ACCESSOR.interopSupport();
 
     private LanguageAccessor() {
     }
@@ -90,6 +100,10 @@ final class LanguageAccessor extends Accessor {
 
     static InteropSupport interopAccess() {
         return ACCESSOR.interopSupport();
+    }
+
+    static ExceptionSupport exceptionAccess() {
+        return ACCESSOR.exceptionSupport();
     }
 
     static IOSupport ioAccess() {
@@ -137,6 +151,18 @@ final class LanguageAccessor extends Accessor {
             impl.languageInfo = language;
             impl.reference = engineAccess().getCurrentContextReference(polyglotLanguage);
             impl.polyglotLanguageInstance = polyglotLanguageInstance;
+            if (impl.contextLocals == null) {
+                impl.contextLocals = Collections.emptyList();
+            } else {
+                ENGINE.initializeLanguageContextLocal(impl.contextLocals, polyglotLanguageInstance);
+                impl.contextLocals = Collections.unmodifiableList(impl.contextLocals);
+            }
+            if (impl.contextThreadLocals == null) {
+                impl.contextThreadLocals = Collections.emptyList();
+            } else {
+                ENGINE.initializeLanguageContextThreadLocal(impl.contextThreadLocals, polyglotLanguageInstance);
+                impl.contextThreadLocals = Collections.unmodifiableList(impl.contextThreadLocals);
+            }
         }
 
         @SuppressWarnings("deprecation")
@@ -154,6 +180,11 @@ final class LanguageAccessor extends Accessor {
             } else {
                 return null;
             }
+        }
+
+        @Override
+        public Object getPolyglotLanguageContext(Env env) {
+            return env.getPolyglotLanguageContext();
         }
 
         @Override
@@ -178,7 +209,8 @@ final class LanguageAccessor extends Accessor {
         }
 
         @Override
-        public Object getScopedView(Env env, Node location, Frame frame, Object value) {
+        @SuppressWarnings("deprecation")
+        public Object getLegacyScopedView(Env env, Node location, Frame frame, Object value) {
             Object c = env.getLanguageContext();
             if (c == TruffleLanguage.Env.UNSET_CONTEXT) {
                 CompilerDirectives.transferToInterpreter();
@@ -186,6 +218,44 @@ final class LanguageAccessor extends Accessor {
             } else {
                 return env.getSpi().getScopedView(c, location, frame, value);
             }
+        }
+
+        @Override
+        public Object getScope(Env env) {
+            Object c = env.getLanguageContext();
+            if (c == TruffleLanguage.Env.UNSET_CONTEXT) {
+                CompilerDirectives.transferToInterpreter();
+                return null;
+            } else {
+                Object result = env.getSpi().getScope(c);
+                assert ACCESSOR.interopSupport().isScopeObject(result) : String.format("%s is not a scope", result);
+                return result;
+            }
+        }
+
+        @Override
+        public Object getPolyglotContext(TruffleContext context) {
+            return context.polyglotContext;
+        }
+
+        @SuppressWarnings("unchecked")
+        @Override
+        public Object invokeContextLocalFactory(Object factory, Object contextImpl) {
+            Object result = ((ContextLocalFactory<Object, Object>) factory).create(contextImpl);
+            if (result == null) {
+                throw new IllegalStateException(String.format("%s.create is not allowed to return null.", ContextLocalFactory.class.getSimpleName()));
+            }
+            return result;
+        }
+
+        @SuppressWarnings("unchecked")
+        @Override
+        public Object invokeContextThreadLocalFactory(Object factory, Object contextImpl, Thread thread) {
+            Object result = ((ContextThreadLocalFactory<Object, Object>) factory).create(contextImpl, thread);
+            if (result == null) {
+                throw new IllegalStateException(String.format("%s.create is not allowed to return null.", ContextThreadLocalFactory.class.getSimpleName()));
+            }
+            return result;
         }
 
         @Override
@@ -221,8 +291,8 @@ final class LanguageAccessor extends Accessor {
         }
 
         @Override
-        public TruffleContext createTruffleContext(Object impl) {
-            return new TruffleContext(impl);
+        public TruffleContext createTruffleContext(Object impl, boolean creator) {
+            return new TruffleContext(impl, creator);
         }
 
         @Override
@@ -366,11 +436,13 @@ final class LanguageAccessor extends Accessor {
         }
 
         @Override
-        public Iterable<Scope> findLocalScopes(TruffleLanguage.Env env, Node node, Frame frame) {
+        @SuppressWarnings("deprecation")
+        public Iterable<Scope> findLegacyLocalScopes(TruffleLanguage.Env env, Node node, Frame frame) {
             return env.findLocalScopes(node, frame);
         }
 
         @Override
+        @SuppressWarnings("deprecation")
         public Iterable<Scope> findTopScopes(TruffleLanguage.Env env) {
             return env.findTopScopes();
         }
@@ -439,8 +511,10 @@ final class LanguageAccessor extends Accessor {
 
         @Override
         public Charset detectEncoding(TruffleFile file, String mimeType) {
-            String useMimeType = mimeType == null ? file.detectMimeType() : mimeType;
-            return useMimeType == null ? null : file.detectEncoding(useMimeType);
+            if (mimeType == null) {
+                throw new IllegalArgumentException("MimeType must be non null.");
+            }
+            return file.detectEncoding(mimeType);
         }
 
         @Override
@@ -509,11 +583,6 @@ final class LanguageAccessor extends Accessor {
         @Override
         public TruffleLogger getLogger(String id, String loggerName, Object loggers) {
             return TruffleLogger.getLogger(id, loggerName, (TruffleLogger.LoggerCache) loggers);
-        }
-
-        @Override
-        public SecurityException throwSecurityException(String message) {
-            throw new TruffleSecurityException(message);
         }
 
         @Override

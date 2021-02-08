@@ -1,7 +1,7 @@
-# Substrate VM C API
+#  Native Image C API
 
-Substrate VM provides an API for the C language for initializing isolates and attaching threads for use with the entry point feature that is demonstrated in the [README](README.md).
-The C API is available when Substrate VM is built as a shared library and its declarations are included in the header file that is generated during the build:
+Native Image provides an API for the C language for initializing isolates and attaching threads for use with the entry point feature that is demonstrated [here](README.md#images-and-entry-points).
+The C API is available when Native Image is built as a shared library and its declarations are included in the header file that is generated during the build.
 
 ```c
 /*
@@ -74,5 +74,5 @@ int graal_detach_thread(graal_isolatethread_t* thread);
 int graal_tear_down_isolate(graal_isolatethread_t* thread);
 ```
 In addition to the C level API, there is also a way to initialize an isolate
-from Java and thus use Java and Substrate VM to
+from Java and thus use Java and Native Image to
 [implement native methods in Java](ImplementingNativeMethodsInJavaWithSVM.md).

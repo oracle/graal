@@ -1,4 +1,4 @@
 DYNAMIC_IMPORTS=/substratevm
 FORCE_BASH_LAUNCHERS=true
 DISABLE_LIBPOLYGLOT=true
-EXCLUDE_COMPONENTS=svmag,nju,nic,ni,nil,llp
+EXCLUDE_COMPONENTS=svmag,nju,nic,ni,nil,llp,pbm

@@ -42,13 +42,16 @@ package com.oracle.truffle.api.instrumentation;
 
 import java.util.HashSet;
 import java.util.Set;
+import java.util.concurrent.atomic.AtomicReference;
 
 import com.oracle.truffle.api.CompilerAsserts;
+import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.instrumentation.InstrumentationHandler.AbstractInstrumenter;
 import com.oracle.truffle.api.instrumentation.InstrumentationHandler.LanguageClientInstrumenter;
 import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.api.nodes.RootNode;
 import com.oracle.truffle.api.source.SourceSection;
+import java.util.concurrent.Semaphore;
 
 /**
  * An {@linkplain Instrumenter instrumentation} handle for a subscription to a
@@ -73,16 +76,30 @@ public class EventBinding<T> {
     private final AbstractInstrumenter instrumenter;
     private final T element;
 
+    private final AtomicReference<Boolean> attached;
+    final Semaphore attachedSemaphore = new Semaphore(0);
     volatile boolean disposing;
     /* language bindings needs special treatment. */
     private volatile boolean disposed;
 
     EventBinding(AbstractInstrumenter instrumenter, T element) {
+        this(instrumenter, element, true);
+    }
+
+    EventBinding(AbstractInstrumenter instrumenter, T element, boolean attached) {
         if (element == null) {
             throw new NullPointerException();
         }
         this.instrumenter = instrumenter;
         this.element = element;
+        this.attached = new AtomicReference<>(attached);
+        if (attached) {
+            attachedSemaphore.release();
+        }
+    }
+
+    final AbstractInstrumenter getInstrumenter() {
+        return instrumenter;
     }
 
     /**
@@ -96,7 +113,44 @@ public class EventBinding<T> {
     }
 
     /**
-     * @return whether the subscription has been permanently cancelled.
+     * Test if this binding is attached.
+     *
+     * @since 21.1
+     */
+    public final boolean isAttached() {
+        return Boolean.TRUE == attached.get();
+    }
+
+    /**
+     * Attach this binding to receive the associated notifications by the {@link #getElement()
+     * subscriber}. When notification about existing sources were requested in binding creation,
+     * notifications will be performed in this call.
+     * <p>
+     * The binding is attached automatically, when one of the {@link Instrumenter} attach methods
+     * were used. Use this for bindings created by {@link Instrumenter} create methods only.
+     *
+     * @throws IllegalStateException when the binding is {@link #isAttached() attached} already, or
+     *             when it was {@link #dispose() disposed}.
+     * @since 21.1
+     */
+    public final void attach() {
+        Boolean wasAttached = attached.getAndSet(true);
+        if (null == wasAttached) {
+            throw new IllegalStateException("The binding is disposed. Create a new binding to attach.");
+        }
+        if (Boolean.TRUE == wasAttached) {
+            throw new IllegalStateException("The binding is attached already.");
+        }
+        doAttach();
+        attachedSemaphore.release();
+    }
+
+    void doAttach() {
+        throw CompilerDirectives.shouldNotReachHere(this.toString() + ".doAttach()");
+    }
+
+    /**
+     * @return whether the subscription has been permanently canceled.
      *
      * @since 0.12
      */
@@ -113,6 +167,14 @@ public class EventBinding<T> {
         CompilerAsserts.neverPartOfCompilation();
         if (!disposed) {
             disposing = true;
+            Boolean wasSet = attached.getAndSet(null);
+            if (Boolean.TRUE == wasSet) {
+                // We must wait for attach to finish before we dispose the binding:
+                try {
+                    attachedSemaphore.acquire();
+                } catch (InterruptedException ex) {
+                }
+            }
             instrumenter.disposeBinding(this);
             disposed = true;
         }
@@ -126,19 +188,86 @@ public class EventBinding<T> {
         disposed = true;
     }
 
-    static final class Source<T> extends EventBinding<T> {
+    static final class SourceLoaded<T> extends LoadSource<T> {
 
-        private final AbstractInstrumenter instrumenter;
+        SourceLoaded(AbstractInstrumenter instrumenter, SourceSectionFilter filterSourceSection, SourceSectionFilter inputFilter, T element, boolean attached, boolean notifyLoaded) {
+            super(instrumenter, filterSourceSection, inputFilter, element, attached, notifyLoaded);
+        }
+
+        @Override
+        void doAttach() {
+            getInstrumenter().attachSourceLoadedBinding(this);
+        }
+    }
+
+    static final class SourceExecuted<T> extends LoadSource<T> {
+
+        SourceExecuted(AbstractInstrumenter instrumenter, SourceSectionFilter filterSourceSection, SourceSectionFilter inputFilter, T element, boolean attached, boolean notifyLoaded) {
+            super(instrumenter, filterSourceSection, inputFilter, element, attached, notifyLoaded);
+        }
+
+        @Override
+        void doAttach() {
+            getInstrumenter().attachSourceExecutedBinding(this);
+        }
+    }
+
+    static final class SourceSectionLoaded<T> extends LoadSource<T> {
+
+        SourceSectionLoaded(AbstractInstrumenter instrumenter, SourceSectionFilter filterSourceSection, SourceSectionFilter inputFilter, T element, boolean attached, boolean notifyLoaded) {
+            super(instrumenter, filterSourceSection, inputFilter, element, attached, notifyLoaded);
+        }
+
+        @Override
+        void doAttach() {
+            getInstrumenter().attachSourceSectionBinding(this);
+        }
+    }
+
+    abstract static class LoadSource<T> extends Source<T> {
+
+        private final boolean notifyLoaded;
+
+        LoadSource(AbstractInstrumenter instrumenter, SourceSectionFilter filterSourceSection, SourceSectionFilter inputFilter, T element, boolean attached, boolean notifyLoaded) {
+            super(instrumenter, filterSourceSection, inputFilter, element, attached);
+            this.notifyLoaded = notifyLoaded;
+        }
+
+        final boolean isNotifyLoaded() {
+            return notifyLoaded;
+        }
+
+        @Override
+        final boolean isExecutionEvent() {
+            return false;
+        }
+    }
+
+    static final class Execution<T> extends Source<T> {
+
+        Execution(AbstractInstrumenter instrumenter, SourceSectionFilter filterSourceSection, SourceSectionFilter inputFilter, T element) {
+            super(instrumenter, filterSourceSection, inputFilter, element);
+        }
+
+        @Override
+        boolean isExecutionEvent() {
+            return true;
+        }
+    }
+
+    abstract static class Source<T> extends EventBinding<T> {
+
         private final SourceSectionFilter filterSourceSection;
         private final SourceSectionFilter inputFilter;
-        private final boolean isExecutionEvent;
 
-        Source(AbstractInstrumenter instrumenter, SourceSectionFilter filterSourceSection, SourceSectionFilter inputFilter, T element, boolean isExecutionEvent) {
-            super(instrumenter, element);
-            this.instrumenter = instrumenter;
+        Source(AbstractInstrumenter instrumenter, SourceSectionFilter filterSourceSection, SourceSectionFilter inputFilter, T element) {
+            this(instrumenter, filterSourceSection, inputFilter, element, true);
+        }
+
+        Source(AbstractInstrumenter instrumenter, SourceSectionFilter filterSourceSection, SourceSectionFilter inputFilter, T element, boolean attached) {
+            super(instrumenter, element, attached);
             this.inputFilter = inputFilter;
             this.filterSourceSection = filterSourceSection;
-            this.isExecutionEvent = isExecutionEvent;
         }
 
         SourceSectionFilter getInputFilter() {
@@ -281,16 +410,10 @@ public class EventBinding<T> {
             }
         }
 
-        boolean isExecutionEvent() {
-            return isExecutionEvent;
-        }
+        abstract boolean isExecutionEvent();
 
         boolean isLanguageBinding() {
-            return instrumenter instanceof LanguageClientInstrumenter;
-        }
-
-        AbstractInstrumenter getInstrumenter() {
-            return instrumenter;
+            return getInstrumenter() instanceof LanguageClientInstrumenter;
         }
 
     }

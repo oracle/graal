@@ -29,15 +29,17 @@ import org.graalvm.compiler.nodes.StructuredGraph;
 import org.graalvm.compiler.nodes.ValueNode;
 import org.graalvm.compiler.nodes.memory.address.AddressNode;
 import org.graalvm.compiler.nodes.memory.address.OffsetAddressNode;
+import org.graalvm.compiler.nodes.spi.CoreProviders;
+import org.graalvm.compiler.nodes.spi.LoopsDataProvider;
 import org.graalvm.compiler.nodes.util.GraphUtil;
-import org.graalvm.compiler.phases.Phase;
+import org.graalvm.compiler.phases.BasePhase;
 
-public class AddressLoweringPhase extends Phase {
+public class AddressLoweringPhase extends BasePhase<CoreProviders> {
 
     public abstract static class AddressLowering {
 
         @SuppressWarnings("unused")
-        public void preProcess(StructuredGraph graph) {
+        public void preProcess(StructuredGraph graph, LoopsDataProvider loopsDataProvider) {
         }
 
         @SuppressWarnings("unused")
@@ -55,8 +57,8 @@ public class AddressLoweringPhase extends Phase {
     }
 
     @Override
-    protected void run(StructuredGraph graph) {
-        lowering.preProcess(graph);
+    protected void run(StructuredGraph graph, CoreProviders providers) {
+        lowering.preProcess(graph, providers.getLoopsDataProvider());
         for (Node node : graph.getNodes()) {
             AddressNode lowered;
             if (node instanceof OffsetAddressNode) {

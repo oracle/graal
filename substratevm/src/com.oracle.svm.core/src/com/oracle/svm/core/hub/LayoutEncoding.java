@@ -26,6 +26,7 @@ package com.oracle.svm.core.hub;
 
 import org.graalvm.compiler.api.replacements.Fold;
 import org.graalvm.compiler.core.common.calc.UnsignedMath;
+import org.graalvm.compiler.nodes.java.ArrayLengthNode;
 import org.graalvm.compiler.word.Word;
 import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.nativeimage.Platform;
@@ -139,6 +140,7 @@ public class LayoutEncoding {
         return encoding > LAST_SPECIAL_VALUE;
     }
 
+    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
     public static UnsignedWord getInstanceSize(int encoding) {
         return WordFactory.unsigned(encoding);
     }
@@ -154,6 +156,7 @@ public class LayoutEncoding {
         return UnsignedMath.aboveOrEqual(encoding, ARRAY_TAG_PRIMITIVE_VALUE << ARRAY_TAG_SHIFT);
     }
 
+    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
     public static boolean isObjectArray(int encoding) {
         return encoding < (ARRAY_TAG_PRIMITIVE_VALUE << ARRAY_TAG_SHIFT);
     }
@@ -187,7 +190,7 @@ public class LayoutEncoding {
     public static UnsignedWord getSizeFromObject(Object obj) {
         int encoding = KnownIntrinsics.readHub(obj).getLayoutEncoding();
         if (isArray(encoding)) {
-            return getArraySize(encoding, KnownIntrinsics.readArrayLength(obj));
+            return getArraySize(encoding, ArrayLengthNode.arrayLength(obj));
         } else {
             return getInstanceSize(encoding);
         }

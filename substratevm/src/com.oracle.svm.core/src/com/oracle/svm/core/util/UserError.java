@@ -73,10 +73,14 @@ public class UserError {
      * Stop compilation immediately and report the message to the user.
      *
      * @param cause the exception that caused the abort.
-     * @param message the error message to be reported to the user.
+     * @param format format string
+     * @param args arguments for the format string that are {@link #formatArguments(Object...)
+     *            preprocessed} before being sent to {@link String#format(String, Object...)}
      */
-    public static UserException abort(Throwable cause, String message) {
-        throw ((UserException) new UserException(message).initCause(cause));
+    public static UserException abort(Throwable cause, String format, Object... args) {
+        // Checkstyle: stop
+        throw ((UserException) new UserException(String.format(format, formatArguments(args))).initCause(cause));
+        // Checkstyle: resume
     }
 
     /**
@@ -89,7 +93,7 @@ public class UserError {
     public static void guarantee(boolean condition, String format, Object... args) {
         if (!condition) {
             // Checkstyle: stop
-            throw UserError.abort(String.format(format, formatArguments(args)));
+            throw UserError.abort(format, args);
             // Checkstyle: resume
         }
     }

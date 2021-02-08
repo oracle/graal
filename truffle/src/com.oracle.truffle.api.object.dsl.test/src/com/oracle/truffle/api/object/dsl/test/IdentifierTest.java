@@ -44,14 +44,14 @@ import org.junit.Test;
 
 import com.oracle.truffle.api.object.DynamicObject;
 import com.oracle.truffle.api.object.DynamicObjectLibrary;
-import com.oracle.truffle.api.object.dsl.Layout;
 
 import org.junit.Assert;
 
 public class IdentifierTest {
     private static final DynamicObjectLibrary LIBRARY = DynamicObjectLibrary.getUncached();
 
-    @Layout
+    @SuppressWarnings("deprecation")
+    @com.oracle.truffle.api.object.dsl.Layout
     public interface IdentifierTestLayout {
 
         String A_IDENTIFIER = "a_identifier";

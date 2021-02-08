@@ -268,7 +268,8 @@ final class ExpansionStatistics {
 
     private static void printHistogramStats(PrintWriter w, String indent, int maxLabelLength, String label, Stats stats) {
         String sourceString = formatSourceAndCompilation(stats.maxCompilation, stats.maxSourcePosition);
-        w.printf("%s%-" + (maxLabelLength - indent.length()) + "s %8d %8d %-16s %8d %-16s %8d %-16s %6d %6d %7d %6d | %10s %7s %s%n",
+        int useWidth = Math.max(maxLabelLength - indent.length(), 10);
+        w.printf("%s%-" + (useWidth) + "s %8d %8d %-16s %8d %-16s %8d %-16s %6d %6d %7d %6d | %10s %7s %s%n",
                         indent,
                         label,
                         stats.count.getCount(),
@@ -299,7 +300,6 @@ final class ExpansionStatistics {
         for (Node node : graph.getNodes()) {
             NodeSourcePosition nodeSourcePosition = node.getNodeSourcePosition();
             TreeNode tree = resolveMethodTree(root, nodeSourcePosition);
-            assert tree != root;
             Block block = cfg.blockFor(node);
             double frequency;
             if (block != null) {
@@ -913,7 +913,9 @@ final class ExpansionStatistics {
         private void printRec(PrintWriter writer, int width, String sep) {
             Sums shallowStats = createSums();
             Sums deepStats = createRecursiveSum();
-            writer.printf("%s%-" + (width - sep.length()) + "s %8.2f | %5d %7d %7d %5d %5d %7d %6d | %10d %5d %6d %5d %5d %7d %6d | %s %n", sep,
+            // useWidth must not become 0 or smaller.
+            int useWidth = Math.max(width - sep.length(), 10);
+            writer.printf("%s%-" + (useWidth) + "s %8.2f | %5d %7d %7d %5d %5d %7d %6d | %10d %5d %6d %5d %5d %7d %6d | %s %n", sep,
                             getLabel(),
                             getFrequency(),
                             deepStats.count, deepStats.size, deepStats.cycles,

@@ -28,10 +28,10 @@
  * OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-//! [toolchain.h usage example]
+//! [toolchain-api.h usage example]
 #include <stdio.h>
-#include <polyglot.h>
-#include <llvm/api/toolchain.h>
+#include <graalvm/llvm/polyglot.h>
+#include <graalvm/llvm/toolchain-api.h>
 
 #define BUFFER_SIZE 1024
 
@@ -76,4 +76,4 @@ int main() {
     print_id();
     return 0;
 }
-//! [toolchain.h usage example]
+//! [toolchain-api.h usage example]

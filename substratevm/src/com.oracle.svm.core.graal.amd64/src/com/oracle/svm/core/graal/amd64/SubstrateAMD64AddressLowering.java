@@ -31,8 +31,8 @@ import org.graalvm.compiler.core.common.CompressEncoding;
 import org.graalvm.compiler.nodes.CompressionNode;
 import org.graalvm.compiler.nodes.ValueNode;
 
+import com.oracle.svm.core.ReservedRegisters;
 import com.oracle.svm.core.SubstrateOptions;
-import com.oracle.svm.core.graal.meta.SubstrateRegisterConfig;
 
 import jdk.vm.ci.code.Register;
 
@@ -40,9 +40,9 @@ public class SubstrateAMD64AddressLowering extends AMD64CompressAddressLowering 
     private final long heapBase;
     private final Register heapBaseRegister;
 
-    public SubstrateAMD64AddressLowering(CompressEncoding encoding, SubstrateRegisterConfig registerConfig) {
+    public SubstrateAMD64AddressLowering(CompressEncoding encoding) {
         heapBase = encoding.getBase();
-        heapBaseRegister = registerConfig.getHeapBaseRegister();
+        heapBaseRegister = ReservedRegisters.singleton().getHeapBaseRegister();
     }
 
     @Override
@@ -70,7 +70,6 @@ public class SubstrateAMD64AddressLowering extends AMD64CompressAddressLowering 
         Scale scale = Scale.fromShift(encoding.getShift());
         addr.setBase(base);
         addr.setScale(scale);
-        addr.setUncompressionScale(scale);
         addr.setIndex(compression.getValue());
         return true;
     }

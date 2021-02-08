@@ -59,7 +59,7 @@ public final class InvokeWithExceptionNode extends WithExceptionNode implements 
     @OptionalInput(State) FrameState stateAfter;
     protected int bci;
     protected boolean polymorphic;
-    protected boolean useForInlining;
+    protected InlineControl inlineControl;
 
     public InvokeWithExceptionNode(CallTargetNode callTarget, AbstractBeginNode exceptionEdge, int bci) {
         super(TYPE, callTarget.returnStamp().getTrustedStamp());
@@ -67,7 +67,7 @@ public final class InvokeWithExceptionNode extends WithExceptionNode implements 
         this.bci = bci;
         this.callTarget = callTarget;
         this.polymorphic = false;
-        this.useForInlining = true;
+        this.inlineControl = InlineControl.Normal;
     }
 
     @Override
@@ -105,13 +105,13 @@ public final class InvokeWithExceptionNode extends WithExceptionNode implements 
     }
 
     @Override
-    public boolean useForInlining() {
-        return useForInlining;
+    public void setInlineControl(InlineControl control) {
+        this.inlineControl = control;
     }
 
     @Override
-    public void setUseForInlining(boolean value) {
-        this.useForInlining = value;
+    public InlineControl getInlineControl() {
+        return inlineControl;
     }
 
     @Override
@@ -235,6 +235,7 @@ public final class InvokeWithExceptionNode extends WithExceptionNode implements 
         InvokeNode newInvoke = graph().add(new InvokeNode(callTarget, bci, stamp, this.getKilledLocationIdentity()));
         newInvoke.setStateAfter(stateAfter);
         newInvoke.setStateDuring(stateDuring);
+        newInvoke.setInlineControl(inlineControl);
         AbstractBeginNode oldException = this.exceptionEdge;
         graph().replaceSplitWithFixed(this, newInvoke, this.next());
         GraphUtil.killCFG(oldException);

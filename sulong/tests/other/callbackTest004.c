@@ -40,7 +40,7 @@ int add(int a, int b) {
     return a + b;
 }
 
-int main(int argc, char **argv) {
+int main() {
     struct container c;
     c.callback = add;
     return call_callback2(&c);

@@ -41,7 +41,7 @@ import org.graalvm.compiler.nodes.DeoptimizeNode;
 import org.graalvm.compiler.nodes.FrameState;
 import org.graalvm.compiler.nodes.FullInfopointNode;
 import org.graalvm.compiler.nodes.ValueNode;
-import org.graalvm.compiler.nodes.extended.ForeignCallNode;
+import org.graalvm.compiler.nodes.extended.ForeignCall;
 import org.graalvm.compiler.nodes.spi.NodeValueMap;
 import org.graalvm.compiler.nodes.spi.NodeWithState;
 
@@ -49,6 +49,7 @@ import jdk.vm.ci.code.BytecodeFrame;
 import jdk.vm.ci.code.StackLockValue;
 import jdk.vm.ci.code.VirtualObject;
 import jdk.vm.ci.hotspot.HotSpotCodeCacheProvider;
+import jdk.vm.ci.hotspot.HotSpotResolvedJavaMethod;
 import jdk.vm.ci.meta.JavaValue;
 import jdk.vm.ci.meta.MetaUtil;
 import jdk.vm.ci.meta.ResolvedJavaMethod;
@@ -97,12 +98,17 @@ public class HotSpotDebugInfoBuilder extends DebugInfoBuilder {
         if (node instanceof FullInfopointNode) {
             return true;
         }
-        if (node instanceof ForeignCallNode) {
-            ForeignCallNode call = (ForeignCallNode) node;
+        if (node instanceof ForeignCall) {
+            ForeignCall call = (ForeignCall) node;
             ForeignCallDescriptor descriptor = call.getDescriptor();
             if (DefaultHotSpotLoweringProvider.RuntimeCalls.runtimeCalls.containsValue(descriptor.getSignature())) {
                 return true;
             }
+        }
+        FrameState current = topState;
+        while (current != null) {
+            assert current.getMethod() instanceof HotSpotResolvedJavaMethod : current;
+            current = current.outerFrameState();
         }
         // There are many properties of FrameStates which could be validated though it's complicated
         // by some of the idiomatic ways that they are used. This check specifically tries to catch

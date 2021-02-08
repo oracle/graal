@@ -24,17 +24,22 @@
  */
 package org.graalvm.compiler.truffle.runtime;
 
-import org.graalvm.compiler.truffle.options.PolyglotCompilerOptions;
+import java.util.function.Function;
+
 import org.graalvm.options.OptionDescriptors;
 import org.graalvm.options.OptionValues;
 
 import com.oracle.truffle.api.CallTarget;
+import com.oracle.truffle.api.CompilerAsserts;
+import com.oracle.truffle.api.TruffleLogger;
 import com.oracle.truffle.api.impl.Accessor.RuntimeSupport;
 import com.oracle.truffle.api.nodes.BlockNode;
 import com.oracle.truffle.api.nodes.BlockNode.ElementExecutor;
+import com.oracle.truffle.api.nodes.ExplodeLoop;
 import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.api.nodes.RootNode;
 
+import jdk.vm.ci.meta.ResolvedJavaField;
 import jdk.vm.ci.services.Services;
 
 final class GraalRuntimeSupport extends RuntimeSupport {
@@ -43,8 +48,11 @@ final class GraalRuntimeSupport extends RuntimeSupport {
         super(permission);
     }
 
+    @ExplodeLoop
     @Override
     public void onLoopCount(Node source, int count) {
+        CompilerAsserts.partialEvaluationConstant(source);
+
         Node node = source;
         Node parentNode = source != null ? source.getParent() : null;
         while (node != null) {
@@ -54,7 +62,7 @@ final class GraalRuntimeSupport extends RuntimeSupport {
             parentNode = node;
             node = node.getParent();
         }
-        if (parentNode != null && parentNode instanceof RootNode) {
+        if (parentNode instanceof RootNode) {
             CallTarget target = ((RootNode) parentNode).getCallTarget();
             if (target instanceof OptimizedCallTarget) {
                 ((OptimizedCallTarget) target).onLoopCount(count);
@@ -63,15 +71,13 @@ final class GraalRuntimeSupport extends RuntimeSupport {
     }
 
     @Override
-    public OptionDescriptors getCompilerOptionDescriptors() {
-        return PolyglotCompilerOptions.getDescriptors();
+    public OptionDescriptors getEngineOptionDescriptors() {
+        return GraalTruffleRuntime.getRuntime().getEngineOptionDescriptors();
     }
 
     @Override
     public boolean isGuestCallStackFrame(StackTraceElement e) {
-        return (e.getMethodName().equals(OptimizedCallTarget.EXECUTE_ROOT_NODE_METHOD_NAME) && e.getClassName().equals(OptimizedCallTarget.class.getName())) ||
-                        (e.getMethodName().equals(CALL_INLINED_METHOD_NAME) &&
-                                        e.getClassName().equals(GraalRuntimeSupport.class.getName()));
+        return e.getMethodName().equals(OptimizedCallTarget.EXECUTE_ROOT_NODE_METHOD_NAME) && e.getClassName().equals(OptimizedCallTarget.class.getName());
 
     }
 
@@ -82,22 +88,12 @@ final class GraalRuntimeSupport extends RuntimeSupport {
      */
     @Override
     public void initializeProfile(CallTarget target, Class<?>[] argumentTypes) {
-        ((OptimizedCallTarget) target).initializeArgumentTypes(argumentTypes);
+        ((OptimizedCallTarget) target).initializeUnsafeArgumentTypes(argumentTypes);
     }
 
     @Override
     public <T extends Node> BlockNode<T> createBlockNode(T[] elements, ElementExecutor<T> executor) {
         return new OptimizedBlockNode<>(elements, executor);
-    }
-
-    @Override
-    public void reloadEngineOptions(Object runtimeData, OptionValues optionValues) {
-        ((EngineData) runtimeData).loadOptions(optionValues);
-    }
-
-    @Override
-    public void onEngineClosed(Object runtimeData) {
-        GraalTruffleRuntime.getRuntime().onEngineClosed((EngineData) runtimeData);
     }
 
     @Override
@@ -167,7 +163,75 @@ final class GraalRuntimeSupport extends RuntimeSupport {
                 target.cancelCompilation("Polyglot engine was closed.");
             }
         }
-
     }
 
+    @Override
+    public Object tryLoadCachedEngine(OptionValues options, Function<String, TruffleLogger> loggerFactory) {
+        return GraalTruffleRuntime.getRuntime().getEngineCacheSupport().tryLoadingCachedEngine(options, loggerFactory);
+    }
+
+    @Override
+    public boolean isStoreEnabled(OptionValues options) {
+        return EngineCacheSupport.get().isStoreEnabled(options);
+    }
+
+    @Override
+    public Object createRuntimeData(OptionValues options, Function<String, TruffleLogger> loggerFactory) {
+        return new EngineData(options, loggerFactory);
+    }
+
+    @Override
+    public void onEngineCreate(Object engine, Object runtimeData) {
+        ((EngineData) runtimeData).onEngineCreated(engine);
+    }
+
+    @Override
+    public void onEnginePatch(Object runtimeData, OptionValues options, Function<String, TruffleLogger> loggerFactory) {
+        ((EngineData) runtimeData).onEnginePatch(options, loggerFactory);
+    }
+
+    @Override
+    public boolean onEngineClosing(Object runtimeData) {
+        return ((EngineData) runtimeData).onEngineClosing();
+    }
+
+    @Override
+    public void onEngineClosed(Object runtimeData) {
+        ((EngineData) runtimeData).onEngineClosed();
+    }
+
+    @Override
+    public boolean isOSRRootNode(RootNode rootNode) {
+        return rootNode instanceof OptimizedOSRLoopNode.OSRRootNode;
+    }
+
+    @Override
+    public int getObjectAlignment() {
+        return GraalTruffleRuntime.getRuntime().getObjectAlignment();
+    }
+
+    @Override
+    public int getArrayBaseOffset(Class<?> componentType) {
+        return GraalTruffleRuntime.getRuntime().getArrayBaseOffset(componentType);
+    }
+
+    @Override
+    public int getArrayIndexScale(Class<?> componentType) {
+        return GraalTruffleRuntime.getRuntime().getArrayIndexScale(componentType);
+    }
+
+    @Override
+    public int getBaseInstanceSize(Class<?> type) {
+        return GraalTruffleRuntime.getRuntime().getBaseInstanceSize(type);
+    }
+
+    @Override
+    public Object[] getNonPrimitiveResolvedFields(Class<?> type) {
+        return GraalTruffleRuntime.getRuntime().getNonPrimitiveResolvedFields(type);
+    }
+
+    @Override
+    public Object getFieldValue(Object resolvedJavaField, Object obj) {
+        return GraalTruffleRuntime.getRuntime().getFieldValue((ResolvedJavaField) resolvedJavaField, obj);
+    }
 }

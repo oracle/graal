@@ -50,7 +50,7 @@ public class WrappedSignature implements Signature {
         ResolvedJavaType parameterType;
         try {
             parameterType = wrapped.getParameterType(index, defaultAccessingClass).resolve(defaultAccessingClass);
-        } catch (NoClassDefFoundError e) {
+        } catch (LinkageError e) {
             /*
              * Type resolution fails if the parameter type is missing. Just erase the type by
              * returning the Object type.
@@ -65,7 +65,7 @@ public class WrappedSignature implements Signature {
         ResolvedJavaType returnType;
         try {
             returnType = wrapped.getReturnType(defaultAccessingClass).resolve(defaultAccessingClass);
-        } catch (NoClassDefFoundError e) {
+        } catch (LinkageError e) {
             /*
              * Type resolution fails if the return type is missing. Just erase the type by returning
              * the Object type.

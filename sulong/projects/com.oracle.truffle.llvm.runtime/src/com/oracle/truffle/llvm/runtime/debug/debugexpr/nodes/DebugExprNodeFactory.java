@@ -29,10 +29,8 @@
  */
 package com.oracle.truffle.llvm.runtime.debug.debugexpr.nodes;
 
-import java.util.Collection;
-import java.util.List;
-
-import com.oracle.truffle.api.Scope;
+import com.oracle.truffle.api.frame.MaterializedFrame;
+import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.llvm.runtime.ArithmeticOperation;
 import com.oracle.truffle.llvm.runtime.CommonNodeFactory;
 import com.oracle.truffle.llvm.runtime.CompareOperator;
@@ -43,20 +41,23 @@ import com.oracle.truffle.llvm.runtime.types.PrimitiveType;
 import com.oracle.truffle.llvm.runtime.types.Type;
 import com.oracle.truffle.llvm.runtime.types.Type.TypeOverflowException;
 
-@SuppressWarnings("static-method")
+import java.util.List;
+
+@SuppressWarnings({"static-method"})
 public final class DebugExprNodeFactory {
 
-    private Collection<Scope> scopes;
-    private Collection<Scope> globalScopes;
+    private Object globalScope;
+    private MaterializedFrame frame;
+    private Node location;
 
-    private DebugExprNodeFactory(Collection<Scope> scopes, Collection<Scope> globalScopes) {
-        // this.nodeFactory = nodeFactory;
-        this.scopes = scopes;
-        this.globalScopes = globalScopes;
+    private DebugExprNodeFactory(Object globalScope, MaterializedFrame frame, Node location) {
+        this.globalScope = globalScope;
+        this.frame = frame;
+        this.location = location;
     }
 
-    public static DebugExprNodeFactory create(Collection<Scope> scopes, Collection<Scope> globalScopes) {
-        return new DebugExprNodeFactory(scopes, globalScopes);
+    public static DebugExprNodeFactory create(Object globalScope, MaterializedFrame frame, Node location) {
+        return new DebugExprNodeFactory(globalScope, frame, location);
     }
 
     private static void checkError(DebugExpressionPair p, String operationDescription) {
@@ -148,8 +149,8 @@ public final class DebugExprNodeFactory {
     }
 
     public DebugExpressionPair createVarNode(String name) {
-        DebugExprVarNode node = DebugExprVarNodeGen.create(name, scopes);
-        return DebugExpressionPair.create(node, node.getType());
+        DebugExprVarNode node = DebugExprVarNodeGen.create(name, location);
+        return DebugExpressionPair.create(node, node.getType(frame));
     }
 
     public DebugExpressionPair createSizeofNode(DebugExprType type) {
@@ -264,7 +265,7 @@ public final class DebugExprNodeFactory {
     public DebugExpressionPair createObjectMember(DebugExpressionPair receiver, String fieldName) {
         LLVMExpressionNode baseNode = receiver.getNode();
         DebugExprObjectMemberNode node = DebugExprObjectMemberNodeGen.create(baseNode, fieldName);
-        DebugExprType type = node.getType();
+        DebugExprType type = node.getType(frame);
         return DebugExpressionPair.create(node, type);
     }
 
@@ -284,7 +285,7 @@ public final class DebugExprNodeFactory {
         checkError(functionPair, "call(...)");
         if (functionPair.getNode() instanceof DebugExprVarNode) {
             DebugExprVarNode varNode = (DebugExprVarNode) functionPair.getNode();
-            DebugExprFunctionCallNode node = varNode.createFunctionCall(arguments, globalScopes);
+            DebugExprFunctionCallNode node = varNode.createFunctionCall(arguments, globalScope);
             DebugExprType type = node.getType();
             return DebugExpressionPair.create(node, type);
         }
@@ -300,13 +301,13 @@ public final class DebugExprNodeFactory {
     }
 
     public DebugExprTypeofNode createTypeofNode(String ident) {
-        return DebugExprTypeofNodeGen.create(ident, scopes);
+        return DebugExprTypeofNodeGen.create(ident, location);
     }
 
     public DebugExpressionPair createPointerCastNode(DebugExpressionPair pair, DebugExprTypeofNode typeNode) {
         checkError(pair, "pointer cast");
         DebugExprPointerCastNode node = DebugExprPointerCastNodeGen.create(pair.getNode(), typeNode);
-        return DebugExpressionPair.create(node, node.getType());
+        return DebugExpressionPair.create(node, node.getType(frame));
     }
 
     public enum CompareKind {

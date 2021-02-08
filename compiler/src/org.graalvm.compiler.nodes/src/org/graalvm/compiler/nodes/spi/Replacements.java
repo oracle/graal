@@ -31,6 +31,7 @@ import org.graalvm.compiler.core.common.CompilationIdentifier;
 import org.graalvm.compiler.debug.DebugContext;
 import org.graalvm.compiler.graph.NodeSourcePosition;
 import org.graalvm.compiler.nodes.Cancellable;
+import org.graalvm.compiler.nodes.Invoke;
 import org.graalvm.compiler.nodes.StructuredGraph;
 import org.graalvm.compiler.nodes.StructuredGraph.AllowAssumptions;
 import org.graalvm.compiler.nodes.graphbuilderconf.GeneratedPluginInjectionProvider;
@@ -130,14 +131,15 @@ public interface Replacements extends GeneratedPluginInjectionProvider {
      * Gets a graph that is a substitution for a given method.
      *
      * @param invokeBci the call site BCI for the substitution
+     * @param inlineControl
      * @param trackNodeSourcePosition
      * @param replaceePosition
      * @param allowAssumptions
      * @param options
      * @return the graph, if any, that is a substitution for {@code method}
      */
-    StructuredGraph getSubstitution(ResolvedJavaMethod method, int invokeBci, boolean trackNodeSourcePosition, NodeSourcePosition replaceePosition, AllowAssumptions allowAssumptions,
-                    OptionValues options);
+    StructuredGraph getInlineSubstitution(ResolvedJavaMethod method, int invokeBci, Invoke.InlineControl inlineControl, boolean trackNodeSourcePosition, NodeSourcePosition replaceePosition,
+                    AllowAssumptions allowAssumptions, OptionValues options);
 
     /**
      * Gets a graph produced from the intrinsic for a given method that can be compiled and
@@ -154,10 +156,10 @@ public interface Replacements extends GeneratedPluginInjectionProvider {
 
     /**
      * Determines if there may be a
-     * {@linkplain #getSubstitution(ResolvedJavaMethod, int, boolean, NodeSourcePosition, AllowAssumptions, OptionValues)
+     * {@linkplain #getInlineSubstitution(ResolvedJavaMethod, int, Invoke.InlineControl, boolean, NodeSourcePosition, AllowAssumptions, OptionValues)
      * substitution graph} for a given method.
      *
-     * A call to {@link #getSubstitution} may still return {@code null} for {@code method}. A
+     * A call to {@link #getInlineSubstitution} may still return {@code null} for {@code method} and
      * substitution may be based on an {@link InvocationPlugin} that returns {@code false} for
      * {@link InvocationPlugin#execute} making it impossible to create a substitute graph.
      *

@@ -274,9 +274,13 @@ class NativeMethodMustBeDelayed {
     static int i = compute();
 
     static int compute() {
-        Object obj = new Object();
-        return System.identityHashCode(obj);
+        if (i < 0) {
+            nativeMethod();
+        }
+        return 42;
     }
+
+    static native void nativeMethod();
 
     static void foo() {
         /*

@@ -127,9 +127,16 @@ def gate_body(args, tasks):
             with Task('LibGraal Compiler:CTW', tasks, tags=[VmGateTasks.libgraal]) as t:
                 if t:
                     mx_compiler.ctw([
-                            '-DCompileTheWorld.Config=Inline=false CompilationFailureAction=ExitVM', '-esa', '-XX:+EnableJVMCI',
-                            '-DCompileTheWorld.MultiThreaded=true', '-Dgraal.InlineDuringParsing=false', '-Dgraal.TrackNodeSourcePosition=true',
-                            '-DCompileTheWorld.Verbose=false', '-XX:ReservedCodeCacheSize=300m',
+                            '-DCompileTheWorld.Config=Inline=false CompilationFailureAction=ExitVM',
+                            '-esa',
+                            '-XX:+EnableJVMCI',
+                            '-DCompileTheWorld.MultiThreaded=true',
+                            '-Dgraal.InlineDuringParsing=false',
+                            '-Dgraal.TrackNodeSourcePosition=true',
+                            '-DCompileTheWorld.Verbose=false',
+                            '-DCompileTheWorld.HugeMethodLimit=4000',
+                            '-DCompileTheWorld.MaxCompiles=150000',
+                            '-XX:ReservedCodeCacheSize=300m',
                         ], extra_vm_arguments)
 
             mx_compiler.compiler_gate_benchmark_runner(tasks, extra_vm_arguments, prefix='LibGraal Compiler:')
@@ -253,7 +260,6 @@ def _svm_truffle_tck(native_image, svm_suite, language_suite, language_id):
             '-cp',
             cp,
             '--no-server',
-            '-H:+TruffleCheckBlackListedMethods',
             '-H:-FoldSecurityManagerGetter',
             '-H:TruffleTCKPermissionsReportFile={}'.format(report_file),
             '-H:Path={}'.format(svmbuild),
@@ -305,7 +311,6 @@ def gate_svm_sl_tck(tasks):
                         '--macro:truffle',
                         '--tool:all',
                         '-H:Path={}'.format(svmbuild),
-                        '-H:+TruffleCheckBlackListedMethods',
                         '-H:Class=org.junit.runner.JUnitCore',
                     ]
                     tests_image = native_image(vm_image_args + options)

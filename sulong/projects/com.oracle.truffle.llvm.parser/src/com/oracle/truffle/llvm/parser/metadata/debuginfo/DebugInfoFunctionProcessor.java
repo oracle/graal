@@ -29,10 +29,6 @@
  */
 package com.oracle.truffle.llvm.parser.metadata.debuginfo;
 
-import static com.oracle.truffle.llvm.parser.metadata.debuginfo.DebugInfoCache.getDebugInfo;
-
-import java.util.List;
-
 import com.oracle.truffle.api.source.Source;
 import com.oracle.truffle.api.source.SourceSection;
 import com.oracle.truffle.llvm.parser.metadata.MDBaseNode;
@@ -55,12 +51,15 @@ import com.oracle.truffle.llvm.parser.model.symbols.instructions.DebugTrapInstru
 import com.oracle.truffle.llvm.parser.model.symbols.instructions.Instruction;
 import com.oracle.truffle.llvm.parser.model.symbols.instructions.VoidCallInstruction;
 import com.oracle.truffle.llvm.parser.nodes.LLVMSymbolReadResolver;
-import com.oracle.truffle.llvm.runtime.LLVMContext;
 import com.oracle.truffle.llvm.runtime.debug.scope.LLVMSourceLocation;
 import com.oracle.truffle.llvm.runtime.debug.scope.LLVMSourceSymbol;
 import com.oracle.truffle.llvm.runtime.debug.type.LLVMSourceFunctionType;
 import com.oracle.truffle.llvm.runtime.debug.type.LLVMSourceType;
 import com.oracle.truffle.llvm.runtime.types.MetaType;
+
+import java.util.List;
+
+import static com.oracle.truffle.llvm.parser.metadata.debuginfo.DebugInfoCache.getDebugInfo;
 
 public final class DebugInfoFunctionProcessor {
 
@@ -91,8 +90,8 @@ public final class DebugInfoFunctionProcessor {
         this.cache = cache;
     }
 
-    public void process(FunctionDefinition function, IRScope scope, Source bitcodeSource, LLVMContext context) {
-        ImportsProcessor.process(scope.getMetadata(), context, cache);
+    public void process(FunctionDefinition function, IRScope scope, Source bitcodeSource) {
+        ImportsProcessor.process(scope.getMetadata(), cache);
         initSourceFunction(function, bitcodeSource);
 
         for (InstructionBlock block : function.getBlocks()) {

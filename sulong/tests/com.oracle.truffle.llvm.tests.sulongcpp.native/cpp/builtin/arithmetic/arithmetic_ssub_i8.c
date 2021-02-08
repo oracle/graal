@@ -32,7 +32,7 @@
 bool __builtin_sub_overflow(signed char, signed char, signed char *);
 #endif
 
-int main(int argc, const char **argv) {
+int main() {
     signed char res;
 
     if (__builtin_sub_overflow((signed char) 0x0, (signed char) 0x0, &res)) {

@@ -24,7 +24,13 @@
  */
 package com.oracle.svm.hosted.c;
 
-import org.graalvm.nativeimage.c.CContext;
+import java.util.List;
 
-public class BuiltinDirectives implements CContext.Directives {
+import com.oracle.svm.core.c.function.GraalIsolateHeader;
+
+public class BuiltinDirectives implements DirectivesExtension {
+    @Override
+    public List<String> getHeaderSnippet() {
+        return GraalIsolateHeader.getGraalIsolatePreamble();
+    }
 }

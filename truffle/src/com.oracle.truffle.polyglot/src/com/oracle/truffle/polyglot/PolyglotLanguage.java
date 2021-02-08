@@ -44,8 +44,11 @@ import static com.oracle.truffle.api.CompilerDirectives.shouldNotReachHere;
 import static com.oracle.truffle.polyglot.EngineAccessor.LANGUAGE;
 import static com.oracle.truffle.polyglot.EngineAccessor.NODES;
 
+import java.lang.ref.WeakReference;
+import java.util.ArrayList;
 import java.util.Iterator;
 import java.util.LinkedList;
+import java.util.List;
 import java.util.Set;
 
 import org.graalvm.options.OptionDescriptors;
@@ -58,12 +61,12 @@ import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
 import com.oracle.truffle.api.Truffle;
 import com.oracle.truffle.api.TruffleLanguage;
 import com.oracle.truffle.api.TruffleLanguage.ContextPolicy;
-import com.oracle.truffle.api.TruffleLanguage.ContextReference;
 import com.oracle.truffle.api.TruffleLanguage.Env;
 import com.oracle.truffle.api.TruffleLanguage.LanguageReference;
 import com.oracle.truffle.api.nodes.LanguageInfo;
 import com.oracle.truffle.api.utilities.NeverValidAssumption;
-import java.lang.ref.WeakReference;
+import com.oracle.truffle.polyglot.PolyglotLocals.LocalLocation;
+import com.oracle.truffle.polyglot.PolyglotReferences.AbstractContextReference;
 
 final class PolyglotLanguage extends AbstractLanguageImpl implements com.oracle.truffle.polyglot.PolyglotImpl.VMObject {
 
@@ -86,12 +89,14 @@ final class PolyglotLanguage extends AbstractLanguageImpl implements com.oracle.
     final ContextProfile profile;
     private final LanguageReference<TruffleLanguage<Object>> multiLanguageReference;
     private final LanguageReference<TruffleLanguage<Object>> singleOrMultiLanguageReference;
-    private final ContextReference<Object> multiContextReference;
-    private final ContextReference<Object> singleOrMultiContextReference;
+    private final AbstractContextReference multiContextReference;
+    private final AbstractContextReference singleOrMultiContextReference;
     final Assumption singleInstance = Truffle.getRuntime().createAssumption("Single language instance per engine.");
     private boolean firstInstance = true;
 
     @CompilationFinal volatile Class<?> contextClass;
+    volatile LocalLocation[] previousContextLocalLocations;
+    volatile LocalLocation[] previousContextThreadLocalLocations;
 
     PolyglotLanguage(PolyglotEngineImpl engine, LanguageCache cache, int index, boolean host, RuntimeException initError) {
         super(engine.impl);
@@ -110,9 +115,15 @@ final class PolyglotLanguage extends AbstractLanguageImpl implements com.oracle.
         this.singleOrMultiLanguageReference = PolyglotReferences.createAssumeSingleLanguage(this, null, singleInstance, multiLanguageReference);
     }
 
+    List<PolyglotLanguageInstance> getInstancePool() {
+        synchronized (engine.lock) {
+            return new ArrayList<>(instancePool);
+        }
+    }
+
     ContextPolicy getEffectiveContextPolicy(PolyglotLanguage inLanguage) {
         ContextPolicy sourcePolicy;
-        if (engine.boundEngine) {
+        if (engine.singleContext.isValid()) {
             // with a bound engine context policy is effectively always exclusive
             sourcePolicy = ContextPolicy.EXCLUSIVE;
         } else {
@@ -128,6 +139,10 @@ final class PolyglotLanguage extends AbstractLanguageImpl implements com.oracle.
 
     PolyglotLanguageContext getCurrentLanguageContext() {
         return PolyglotContextImpl.requireContext().contexts[index];
+    }
+
+    boolean isFirstInstance() {
+        return firstInstance;
     }
 
     void initializeContextClass(Object contextImpl) {
@@ -171,7 +186,7 @@ final class PolyglotLanguage extends AbstractLanguageImpl implements com.oracle.
 
     OptionDescriptors getOptionsInternal() {
         if (!this.initialized) {
-            synchronized (engine) {
+            synchronized (engine.lock) {
                 if (!this.initialized) {
                     this.initLanguage = ensureInitialized(new PolyglotLanguageInstance(this));
                     this.initialized = true;
@@ -182,7 +197,7 @@ final class PolyglotLanguage extends AbstractLanguageImpl implements com.oracle.
     }
 
     private PolyglotLanguageInstance createInstance() {
-        assert Thread.holdsLock(engine);
+        assert Thread.holdsLock(engine.lock);
         if (firstInstance) {
             firstInstance = false;
         } else if (singleInstance.isValid()) {
@@ -207,7 +222,7 @@ final class PolyglotLanguage extends AbstractLanguageImpl implements com.oracle.
 
     private PolyglotLanguageInstance ensureInitialized(PolyglotLanguageInstance instance) {
         if (!initialized) {
-            synchronized (engine) {
+            synchronized (engine.lock) {
                 if (!initialized) {
                     try {
                         this.options = LANGUAGE.describeOptions(instance.spi, cache.getId());
@@ -223,7 +238,7 @@ final class PolyglotLanguage extends AbstractLanguageImpl implements com.oracle.
 
     PolyglotLanguageInstance allocateInstance(OptionValuesImpl newOptions) {
         PolyglotLanguageInstance instance;
-        synchronized (engine) {
+        synchronized (engine.lock) {
             switch (cache.getPolicy()) {
                 case EXCLUSIVE:
                     instance = createInstance();
@@ -243,7 +258,7 @@ final class PolyglotLanguage extends AbstractLanguageImpl implements com.oracle.
     }
 
     private PolyglotLanguageInstance fetchFromPool(OptionValuesImpl newOptions, boolean shared) {
-        synchronized (engine) {
+        synchronized (engine.lock) {
             PolyglotLanguageInstance foundInstance = null;
             for (Iterator<PolyglotLanguageInstance> iterator = instancePool.iterator(); iterator.hasNext();) {
                 PolyglotLanguageInstance instance = iterator.next();
@@ -267,7 +282,7 @@ final class PolyglotLanguage extends AbstractLanguageImpl implements com.oracle.
     }
 
     void freeInstance(PolyglotLanguageInstance instance) {
-        synchronized (engine) {
+        synchronized (engine.lock) {
             switch (cache.getPolicy()) {
                 case EXCLUSIVE:
                     // nothing to do
@@ -285,14 +300,14 @@ final class PolyglotLanguage extends AbstractLanguageImpl implements com.oracle.
     }
 
     void close() {
-        assert Thread.holdsLock(engine);
+        assert Thread.holdsLock(engine.lock);
         instancePool.clear();
     }
 
     /**
      * Returns a context reference sharable within this engine.
      */
-    ContextReference<Object> getContextReference() {
+    AbstractContextReference getContextReference() {
         if (singleInstance.isValid() && !engine.conservativeContextReferences) {
             return singleOrMultiContextReference;
         } else {
@@ -314,7 +329,7 @@ final class PolyglotLanguage extends AbstractLanguageImpl implements com.oracle.
     /**
      * Returns a context reference that always looks up the current context.
      */
-    ContextReference<Object> getConservativeContextReference() {
+    AbstractContextReference getConservativeContextReference() {
         return multiContextReference;
     }
 
@@ -327,7 +342,7 @@ final class PolyglotLanguage extends AbstractLanguageImpl implements com.oracle.
 
     OptionValuesImpl getOptionValues() {
         if (optionValues == null) {
-            synchronized (engine) {
+            synchronized (engine.lock) {
                 if (optionValues == null) {
                     optionValues = new OptionValuesImpl(engine, getOptionsInternal(), false);
                 }
@@ -396,7 +411,7 @@ final class PolyglotLanguage extends AbstractLanguageImpl implements com.oracle.
         @CompilationFinal private volatile WeakReference<PolyglotLanguageContext> cachedSingleLanguageContext;
 
         ContextProfile(PolyglotLanguage language) {
-            this.singleContext = language.engine.boundEngine ? Truffle.getRuntime().createAssumption("Language single context.") : NeverValidAssumption.INSTANCE;
+            this.singleContext = language.engine.singleContext.isValid() ? Truffle.getRuntime().createAssumption("Language single context.") : NeverValidAssumption.INSTANCE;
         }
 
         public Assumption getSingleContext() {
@@ -430,11 +445,15 @@ final class PolyglotLanguage extends AbstractLanguageImpl implements com.oracle.
                         this.cachedSingleLanguageContext = new WeakReference<>(context);
                     }
                 } else {
-                    singleContext.invalidate();
-                    cachedSingleContext = null;
-                    cachedSingleLanguageContext = null;
+                    prepareForMultiContext();
                 }
             }
+        }
+
+        public void prepareForMultiContext() {
+            singleContext.invalidate();
+            cachedSingleContext = null;
+            cachedSingleLanguageContext = null;
         }
     }
 

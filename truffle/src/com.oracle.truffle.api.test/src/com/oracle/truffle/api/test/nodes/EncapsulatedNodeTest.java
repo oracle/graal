@@ -53,7 +53,6 @@ import java.util.concurrent.Executors;
 import java.util.concurrent.TimeUnit;
 import java.util.function.Supplier;
 
-import com.oracle.truffle.api.TruffleException;
 import com.oracle.truffle.api.nodes.IndirectCallNode;
 import org.junit.Test;
 
@@ -63,6 +62,7 @@ import com.oracle.truffle.api.Truffle;
 import com.oracle.truffle.api.TruffleStackTrace;
 import com.oracle.truffle.api.TruffleStackTraceElement;
 import com.oracle.truffle.api.frame.VirtualFrame;
+import com.oracle.truffle.api.exception.AbstractTruffleException;
 import com.oracle.truffle.api.nodes.EncapsulatingNodeReference;
 import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.api.nodes.RootNode;
@@ -289,11 +289,7 @@ public class EncapsulatedNodeTest {
     }
 
     @SuppressWarnings("serial")
-    private static class GetStackTraceException extends RuntimeException implements TruffleException {
-        @Override
-        public Node getLocation() {
-            return null;
-        }
+    private static class GetStackTraceException extends AbstractTruffleException {
     }
 
     @TruffleBoundary

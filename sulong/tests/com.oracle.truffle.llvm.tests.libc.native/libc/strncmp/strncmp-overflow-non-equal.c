@@ -31,11 +31,16 @@
 #include <stdio.h>
 
 int main() {
-
     char str1[] = "aaXaa";
     char str2[] = "aaYaa";
 
-    printf("%d\n", strncmp(str1, str2, 3));
+    if (strncmp(str1, str2, 3) >= 0) {
+        return 1;
+    }
 
-    printf("%d\n", strncmp(str2, str1, 3));
+    if (strncmp(str2, str1, 3) <= 0) {
+        return 2;
+    }
+
+    return 0;
 }

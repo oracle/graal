@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2019, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2020, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -25,26 +25,26 @@
 package com.oracle.truffle.tools.agentscript.impl;
 
 import com.oracle.truffle.api.CompilerDirectives;
-import com.oracle.truffle.api.TruffleException;
+import com.oracle.truffle.api.Truffle;
+import com.oracle.truffle.api.frame.Frame;
+import com.oracle.truffle.api.frame.FrameInstance;
 import com.oracle.truffle.api.instrumentation.EventContext;
+import com.oracle.truffle.api.interop.ArityException;
 import com.oracle.truffle.api.interop.InteropException;
 import com.oracle.truffle.api.interop.InteropLibrary;
-import com.oracle.truffle.api.interop.TruffleObject;
+import com.oracle.truffle.api.interop.NodeLibrary;
 import com.oracle.truffle.api.interop.UnknownIdentifierException;
+import com.oracle.truffle.api.interop.UnsupportedMessageException;
+import com.oracle.truffle.api.interop.UnsupportedTypeException;
 import com.oracle.truffle.api.library.ExportLibrary;
 import com.oracle.truffle.api.library.ExportMessage;
+import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.api.source.SourceSection;
 
 @SuppressWarnings("unused")
 @ExportLibrary(InteropLibrary.class)
-final class EventContextObject implements TruffleObject {
-    private static final ArrayObject MEMBERS = ArrayObject.array(
-                    "name", "source", "characters",
-                    "line", "startLine", "endLine",
-                    "column", "startColumn", "endColumn");
+final class EventContextObject extends AbstractContextObject {
     private final EventContext context;
-    @CompilerDirectives.CompilationFinal private String name;
-    @CompilerDirectives.CompilationFinal(dimensions = 1) private int[] values;
 
     EventContextObject(EventContext context) {
         this.context = context;
@@ -57,11 +57,9 @@ final class EventContextObject implements TruffleObject {
         return context.createError(ill);
     }
 
-    RuntimeException rethrow(RuntimeException ex) {
-        if (ex instanceof TruffleException) {
-            if (!((TruffleException) ex).isInternalError()) {
-                return context.createError(ex);
-            }
+    RuntimeException rethrow(RuntimeException ex, InteropLibrary interopLib) {
+        if (interopLib.isException(ex)) {
+            throw context.createError(ex);
         }
         throw ex;
     }
@@ -77,53 +75,9 @@ final class EventContextObject implements TruffleObject {
     }
 
     @ExportMessage
+    @Override
     Object readMember(String member) throws UnknownIdentifierException {
-        int index;
-        switch (member) {
-            case "name":
-                if (name == null) {
-                    CompilerDirectives.transferToInterpreterAndInvalidate();
-                    name = context.getInstrumentedNode().getRootNode().getName();
-                }
-                return name;
-            case "characters":
-                CompilerDirectives.transferToInterpreter();
-                return context.getInstrumentedSourceSection().getCharacters().toString();
-            case "source":
-                return new SourceEventObject(context.getInstrumentedSourceSection().getSource());
-            case "line":
-            case "startLine":
-                index = 0;
-                break;
-            case "endLine":
-                index = 1;
-                break;
-            case "column":
-            case "startColumn":
-                index = 2;
-                break;
-            case "endColumn":
-                index = 3;
-                break;
-            default:
-                throw UnknownIdentifierException.create(member);
-        }
-        if (values == null) {
-            CompilerDirectives.transferToInterpreterAndInvalidate();
-            values = valuesForContext();
-        }
-        return values[index];
-    }
-
-    @CompilerDirectives.TruffleBoundary
-    private int[] valuesForContext() {
-        final SourceSection section = context.getInstrumentedSourceSection();
-        return new int[]{
-                        section.getStartLine(),
-                        section.getEndLine(),
-                        section.getStartColumn(),
-                        section.getEndColumn()
-        };
+        return super.readMember(member);
     }
 
     @ExportMessage
@@ -131,4 +85,97 @@ final class EventContextObject implements TruffleObject {
         return MEMBERS.contains(member);
     }
 
+    @ExportMessage
+    static Object invokeMember(EventContextObject obj, String member, Object[] args) throws ArityException, UnknownIdentifierException, UnsupportedTypeException {
+        if ("returnNow".equals(member)) {
+            throw AgentExecutionNode.returnNow(obj.context, args);
+        }
+        if ("returnValue".equals(member)) {
+            if (args.length == 0 || !(args[0] instanceof VariablesObject)) {
+                return NullObject.nullCheck(null);
+            }
+            VariablesObject vars = (VariablesObject) args[0];
+            return vars.getReturnValue();
+        }
+        if ("iterateFrames".equals(member)) {
+            return iterateFrames(args, obj);
+        }
+        throw UnknownIdentifierException.create(member);
+    }
+
+    @CompilerDirectives.TruffleBoundary
+    private static Object iterateFrames(Object[] args, EventContextObject obj) throws ArityException, UnsupportedTypeException {
+        if (args.length == 0) {
+            throw ArityException.create(1, 0);
+        }
+        final NodeLibrary lib = NodeLibrary.getUncached();
+        final InteropLibrary iop = InteropLibrary.getUncached();
+        final Object callback = args[0];
+        if (!iop.isExecutable(callback)) {
+            Object displayCallback = iop.toDisplayString(callback, false);
+            throw UnsupportedTypeException.create(new Object[]{callback}, "Cannot execute " + displayCallback);
+        }
+        Object retValue = Truffle.getRuntime().iterateFrames((frameInstance) -> {
+            final Node n = frameInstance.getCallNode();
+            if (n == null) {
+                // skip top most record about the instrument
+                return null;
+            }
+            LocationObject location = new LocationObject(n);
+            final SourceSection ss = location.getInstrumentedSourceSection();
+            if (ss == null || ss.getSource().isInternal()) {
+                // skip internal frames
+                return null;
+            }
+            final Frame frame = frameInstance.getFrame(FrameInstance.FrameAccess.READ_WRITE);
+            if (lib.hasScope(n, frame)) {
+                try {
+                    Object frameVars = lib.getScope(n, frame, false);
+                    Object ret = iop.execute(callback, location, frameVars);
+                    return iop.isNull(ret) ? null : ret;
+                } catch (UnsupportedMessageException | UnsupportedTypeException | ArityException ex) {
+                    throw InsightException.raise(ex);
+                }
+            }
+            return null;
+        });
+        return NullObject.nullCheck(retValue);
+    }
+
+    @ExportMessage
+    static boolean isMemberInvocable(EventContextObject obj, String member) {
+        return "returnNow".equals(member) || "returnValue".equals(member) || "iterateFrames".equals(member);
+    }
+
+    @Override
+    Node getInstrumentedNode() {
+        return context.getInstrumentedNode();
+    }
+
+    @Override
+    SourceSection getInstrumentedSourceSection() {
+        return context.getInstrumentedSourceSection();
+    }
+
+    @ExportMessage
+    public Object toDisplayString(boolean allowSideEffects) {
+        return toStringImpl();
+    }
+
+    @Override
+    public String toString() {
+        return toStringImpl();
+    }
+
+    @CompilerDirectives.TruffleBoundary
+    private String toStringImpl() {
+        SourceSection ss = getInstrumentedSourceSection();
+        final Node n = getInstrumentedNode();
+        if (ss == null || n == null) {
+            return super.toString();
+        }
+        return n.getRootNode().getName() + " (" +
+                        ss.getSource().getName() + ":" +
+                        ss.getStartLine() + ":" + ss.getStartColumn() + ")";
+    }
 }

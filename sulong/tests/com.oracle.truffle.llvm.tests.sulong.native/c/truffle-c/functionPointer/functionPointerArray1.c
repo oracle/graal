@@ -31,7 +31,7 @@ int func(int t) {
     return t;
 }
 
-int other(int t) {
+int other(__attribute__((unused)) int t) {
     return 2;
 }
 

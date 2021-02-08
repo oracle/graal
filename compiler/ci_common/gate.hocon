@@ -1,8 +1,13 @@
-gateCmdSuffix : ["--kill-with-sigquit", "gate", "--strict-mode", "--extra-vm-argument=-Dgraal.DumpOnError=true -Dgraal.PrintGraphFile=true -Dgraal.PrintBackendCFG=true", "--extra-vm-argument=${EXTRA_VM_ARGS}", "--tags"]
+gateCmdSuffix : ["--kill-with-sigquit", "gate", "--strict-mode", "--extra-vm-argument=-Dgraal.DumpOnError=true -Dgraal.PrintGraphFile=true -Dgraal.PrintBackendCFG=true", "--extra-vm-argument=${EXTRA_VM_ARGS}", "--extra-unittest-argument=${EXTRA_UNITTEST_ARGS}", "--tags"]
 gateCmd : ["mx", "--strict-compliance"] ${gateCmdSuffix}
 
 graalWeekly: ${graal-weekly-notifications} {
   targets: ["weekly"]
+  timelimit: "45:00"
+}
+graalDaily: ${graal-weekly-notifications} {
+  targets: ["daily"]
+  timelimit: "45:00"
 }
 gateTest : {
   environment : {
@@ -54,12 +59,7 @@ gateTestAVX1 : ${gateTest} {
 gateTestCompileImmediately : ${gateTest} {
   environment : {
     EXTRA_VM_ARGS : "-Dpolyglot.engine.AllowExperimentalOptions=true -Dpolyglot.engine.CompileImmediately=true -Dpolyglot.engine.BackgroundCompilation=false -Dtck.inlineVerifierInstrument=false"
-  }
-}
-
-gateLanguageAgnoistcInlining : ${gateTest} {
-  environment : {
-    EXTRA_VM_ARGS : "-Dpolyglot.engine.AllowExperimentalOptions=true -Dpolyglot.engine.LanguageAgnosticInlining=true"
+    EXTRA_UNITTEST_ARGS : "truffle"
   }
 }
 
@@ -150,10 +150,6 @@ gateDarwinAMD64 : ${darwin-amd64} ${gateCommon}
 
 gateWindowsAMD64 : ${windows-amd64} ${gateCommon}
 
-gateSolarisSPARC : ${solaris-sparcv9} ${gateCommon}
-
-gateLinuxSPARC : ${linux-sparcv9} ${gateCommon}
-
 gateLinuxAArch64 : ${linux-aarch64} ${gateCommon}
 
 gateJAOTC : {
@@ -190,6 +186,15 @@ gateMathStubsListener: ${linux-amd64} {
   ]
 }
 
+dailyJDK16Debug: ${labsjdk-ee-16Debug} {
+    targets: [daily]
+    notify_emails: [
+      "doug.simon@oracle.com"
+      "tom.rodriguez@oracle.com"
+    ]
+    timelimit: "2:00:00"
+}
+
 gateLinuxAMD64AVX3 : ${gateLinuxAMD64} {
   capabilities : ["linux", "amd64", "x82"]
   notify_emails: [
@@ -199,5 +204,3 @@ gateLinuxAMD64AVX3 : ${gateLinuxAMD64} {
 
 gateLinuxAMD64Bootstrap : ${gateLinuxAMD64} { capabilities : ${gateLinuxAMD64.capabilities} [manycores] }
 gateDarwinAMD64Bootstrap : ${gateDarwinAMD64}
-gateSolarisSPARCBootstrap : ${gateSolarisSPARC} { capabilities : ${gateSolarisSPARC.capabilities} [manycores] }
-gateLinuxSPARCBootstrap : ${gateLinuxSPARC} # No manycore

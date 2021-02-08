@@ -31,7 +31,7 @@
 unsigned long __builtin_addcl(unsigned long, unsigned long, unsigned long, unsigned long *);
 #endif
 
-int main(int argc, const char **argv) {
+int main() {
     unsigned long carryout;
 
     __builtin_addcl((unsigned long) 0x0, (unsigned long) 0x0, 0, &carryout);

@@ -28,6 +28,8 @@ import java.util.concurrent.locks.ReentrantLock;
 
 import org.graalvm.compiler.api.replacements.Fold;
 import org.graalvm.nativeimage.ImageSingletons;
+import org.graalvm.nativeimage.Platform;
+import org.graalvm.nativeimage.Platforms;
 import org.graalvm.nativeimage.hosted.Feature;
 import org.graalvm.word.WordFactory;
 
@@ -58,9 +60,18 @@ public class RuntimeCodeInfoMemory {
         return ImageSingletons.lookup(RuntimeCodeInfoMemory.class);
     }
 
-    private final ReentrantLock lock = new ReentrantLock();
+    private final ReentrantLock lock;
     private NonmovableArray<UntetheredCodeInfo> table;
-    private int count = 0;
+    private int count;
+
+    @Platforms(Platform.HOSTED_ONLY.class)
+    RuntimeCodeInfoMemory() {
+        lock = new ReentrantLock();
+    }
+
+    public int getCount() {
+        return count;
+    }
 
     public void add(CodeInfo info) {
         // It is fine that this method is interruptible as all the relevant work is done in the
@@ -114,6 +125,7 @@ public class RuntimeCodeInfoMemory {
         } while (resized);
         NonmovableArrays.setWord(table, index, info);
         count++;
+        assert count > 0 : "invalid counter value";
     }
 
     @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
@@ -154,6 +166,7 @@ public class RuntimeCodeInfoMemory {
             if (entry.equal(info)) {
                 NonmovableArrays.setWord(table, index, WordFactory.zero());
                 count--;
+                assert count >= 0 : "invalid counter value";
                 rehashAfterUnregisterAt(index);
                 return true;
             }
@@ -182,7 +195,7 @@ public class RuntimeCodeInfoMemory {
         }
     }
 
-    public boolean walkRuntimeMethods(CodeInfoVisitor visitor) {
+    public boolean walkRuntimeMethodsDuringGC(CodeInfoVisitor visitor) {
         assert VMOperation.isGCInProgress() : "otherwise, we would need to make sure that the CodeInfo is not freeded by the GC";
         if (table.isNonNull()) {
             int length = NonmovableArrays.lengthOf(table);
@@ -197,6 +210,21 @@ public class RuntimeCodeInfoMemory {
                 if (info == NonmovableArrays.getWord(table, i)) {
                     i++;
                 }
+            }
+        }
+        return true;
+    }
+
+    @Uninterruptible(reason = "Must prevent the GC from freeing the CodeInfo object.")
+    public boolean walkRuntimeMethodsUninterruptibly(CodeInfoVisitor visitor) {
+        if (table.isNonNull()) {
+            int length = NonmovableArrays.lengthOf(table);
+            for (int i = 0; i < length;) {
+                UntetheredCodeInfo info = NonmovableArrays.getWord(table, i);
+                if (info.isNonNull()) {
+                    visitor.visitCode(CodeInfoAccess.convert(info));
+                }
+                assert info == NonmovableArrays.getWord(table, i);
             }
         }
         return true;

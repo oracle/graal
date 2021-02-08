@@ -31,8 +31,9 @@ import java.lang.annotation.Target;
 
 /**
  * In an annotated method, all statically bindable callee methods are inlined (unless the callee is
- * annoted with {@link NeverInline}). The inlining is performed recursively. Be careful, it can get
- * out of control easily.
+ * annotated with {@link NeverInline}). The inlining is performed recursively. Be careful, it can
+ * get out of control easily. If you need more fine-grained control over inlining, consider using
+ * {@link AlwaysInlineSelectCallees}.
  *
  * This annotation exists primarily for testing purposes.
  */

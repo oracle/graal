@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2020, Oracle and/or its affiliates.
+ * Copyright (c) 2020, 2021, Oracle and/or its affiliates.
  * Copyright (c) 2020, Arm Limited.
  *
  * All rights reserved.
@@ -30,10 +30,15 @@
  */
 package com.oracle.truffle.llvm.parser.factories;
 
+import com.oracle.truffle.api.nodes.RootNode;
 import com.oracle.truffle.llvm.runtime.memory.LLVMSyscallOperationNode;
-import com.oracle.truffle.llvm.runtime.nodes.asm.syscall.LLVMSyscallExitNode;
 import com.oracle.truffle.llvm.runtime.nodes.asm.syscall.LLVMNativeSyscallNode;
+import com.oracle.truffle.llvm.runtime.nodes.asm.syscall.LLVMSyscallExitNode;
 import com.oracle.truffle.llvm.runtime.nodes.asm.syscall.linux.aarch64.LinuxAArch64Syscall;
+import com.oracle.truffle.llvm.runtime.nodes.intrinsics.llvm.aarch64.LLVMAarch64VaListStorage;
+import com.oracle.truffle.llvm.runtime.nodes.intrinsics.llvm.aarch64.LLVMAarch64VaListStorageFactory.Aarch64VAListPointerWrapperFactoryNodeGen;
+import com.oracle.truffle.llvm.runtime.nodes.intrinsics.llvm.va.LLVMVaListStorage.VAListPointerWrapperFactory;
+import com.oracle.truffle.llvm.runtime.types.Type;
 
 final class LinuxAArch64PlatformCapability extends BasicPlatformCapability<LinuxAArch64Syscall> {
 
@@ -51,4 +56,23 @@ final class LinuxAArch64PlatformCapability extends BasicPlatformCapability<Linux
                 return new LLVMNativeSyscallNode(syscall);
         }
     }
+
+    // TODO: The following methods temporarily return X86 va_list objects until the AArch64 managed
+    // va_list is implemented.
+
+    @Override
+    public Object createVAListStorage(RootNode rootNode) {
+        return new LLVMAarch64VaListStorage(rootNode);
+    }
+
+    @Override
+    public Type getVAListType() {
+        return LLVMAarch64VaListStorage.VA_LIST_TYPE;
+    }
+
+    @Override
+    public VAListPointerWrapperFactory createNativeVAListWrapper(boolean cached) {
+        return cached ? Aarch64VAListPointerWrapperFactoryNodeGen.create() : Aarch64VAListPointerWrapperFactoryNodeGen.getUncached();
+    }
+
 }

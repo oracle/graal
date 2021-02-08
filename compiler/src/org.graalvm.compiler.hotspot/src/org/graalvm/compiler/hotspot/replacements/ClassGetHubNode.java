@@ -37,7 +37,6 @@ import org.graalvm.compiler.graph.spi.CanonicalizerTool;
 import org.graalvm.compiler.hotspot.nodes.type.KlassPointerStamp;
 import org.graalvm.compiler.hotspot.word.KlassPointer;
 import org.graalvm.compiler.nodeinfo.NodeInfo;
-import org.graalvm.compiler.nodeinfo.Verbosity;
 import org.graalvm.compiler.nodes.ConstantNode;
 import org.graalvm.compiler.nodes.NodeView;
 import org.graalvm.compiler.nodes.PiNode;
@@ -65,6 +64,9 @@ import jdk.vm.ci.meta.ResolvedJavaType;
  * to replace {@code _klass._java_mirror._klass} with {@code _klass}. The constant folding could be
  * handled by
  * {@link ReadNode#canonicalizeRead(ValueNode, AddressNode, LocationIdentity, CanonicalizerTool)}.
+ *
+ * Note that there is no {@code Klass} for primitive types in the Java HotSpot VM. If the input
+ * {@link Class} is a primitive type, the returned value is null.
  */
 @NodeInfo(cycles = CYCLES_1, size = SIZE_1)
 @NodeIntrinsicFactory
@@ -77,12 +79,12 @@ public final class ClassGetHubNode extends FloatingNode implements Lowerable, Ca
         this.clazz = clazz;
     }
 
-    public static ValueNode create(ValueNode clazz, MetaAccessProvider metaAccess, ConstantReflectionProvider constantReflection, boolean allUsagesAvailable) {
-        return canonical(null, metaAccess, constantReflection, allUsagesAvailable, KlassPointerStamp.klass(), clazz);
+    public static ValueNode create(ValueNode clazz, MetaAccessProvider metaAccess, ConstantReflectionProvider constantReflection) {
+        return canonical(null, metaAccess, constantReflection, false, KlassPointerStamp.klass(), clazz);
     }
 
     public static boolean intrinsify(GraphBuilderContext b, ValueNode clazz) {
-        ValueNode clazzValue = create(clazz, b.getMetaAccess(), b.getConstantReflection(), false);
+        ValueNode clazzValue = create(clazz, b.getMetaAccess(), b.getConstantReflection());
         b.push(JavaKind.Object, b.append(clazzValue));
         return true;
     }
@@ -94,9 +96,8 @@ public final class ClassGetHubNode extends FloatingNode implements Lowerable, Ca
             return null;
         } else {
             if (clazz.isConstant() && !clazz.isNullConstant()) {
-                if (metaAccess != null) {
-                    ResolvedJavaType exactType = constantReflection.asJavaType(clazz.asConstant());
-                    assert exactType != null : classGetHubNode.toString(Verbosity.Debugger);
+                ResolvedJavaType exactType = constantReflection.asJavaType(clazz.asConstant());
+                if (exactType != null && metaAccess != null) {
                     if (exactType.isPrimitive()) {
                         return ConstantNode.forConstant(stamp, JavaConstant.NULL_POINTER, metaAccess);
                     } else {

@@ -26,14 +26,20 @@ package com.oracle.svm.core.thread;
 
 import static com.oracle.svm.core.SubstrateOptions.UseDedicatedVMOperationThread;
 
+import org.graalvm.compiler.api.directives.GraalDirectives;
 import org.graalvm.compiler.api.replacements.Fold;
+import org.graalvm.compiler.replacements.ReplacementsUtil;
+import org.graalvm.compiler.replacements.nodes.AssertionNode;
 import org.graalvm.nativeimage.CurrentIsolate;
 import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.nativeimage.Isolate;
 import org.graalvm.nativeimage.IsolateThread;
 import org.graalvm.nativeimage.c.function.CFunction;
 import org.graalvm.nativeimage.c.type.CCharPointer;
+import org.graalvm.nativeimage.impl.UnmanagedMemorySupport;
+import org.graalvm.word.Pointer;
 import org.graalvm.word.PointerBase;
+import org.graalvm.word.UnsignedWord;
 import org.graalvm.word.WordFactory;
 
 import com.oracle.svm.core.annotate.NeverInline;
@@ -46,9 +52,11 @@ import com.oracle.svm.core.jdk.UninterruptibleUtils;
 import com.oracle.svm.core.jdk.UninterruptibleUtils.AtomicWord;
 import com.oracle.svm.core.locks.VMCondition;
 import com.oracle.svm.core.locks.VMMutex;
+import com.oracle.svm.core.threadlocal.FastThreadLocal;
 import com.oracle.svm.core.threadlocal.FastThreadLocalFactory;
 import com.oracle.svm.core.threadlocal.FastThreadLocalInt;
 import com.oracle.svm.core.threadlocal.FastThreadLocalWord;
+import com.oracle.svm.core.util.UnsignedUtils;
 import com.oracle.svm.core.util.VMError;
 
 /**
@@ -122,7 +130,10 @@ public abstract class VMThreads {
      */
     private static AtomicWord<OSThreadHandle> detachedOsThreadToCleanup = new AtomicWord<>();
 
-    /** The next element in the linked list of {@link IsolateThread}s. */
+    /**
+     * The next element in the linked list of {@link IsolateThread}s. A thread points to itself with
+     * this field after being removed from the linked list.
+     */
     public static final FastThreadLocalWord<IsolateThread> nextTL = FastThreadLocalFactory.createWord();
     private static final FastThreadLocalWord<OSThreadId> OSThreadIdTL = FastThreadLocalFactory.createWord();
     protected static final FastThreadLocalWord<OSThreadHandle> OSThreadHandleTL = FastThreadLocalFactory.createWord();
@@ -180,18 +191,45 @@ public abstract class VMThreads {
     @Uninterruptible(reason = "Called from uninterruptible code. Too early for safepoints.")
     protected abstract boolean initializeOnce();
 
+    /*
+     * Stores the unaligned memory address returned by calloc, so that we can properly free the
+     * memory again.
+     */
+    private static final FastThreadLocalWord<Pointer> unalignedIsolateThreadMemoryTL = FastThreadLocalFactory.createWord();
+
     /**
      * Allocate native memory for a {@link IsolateThread}. The returned memory must be initialized
      * to 0.
      */
     @Uninterruptible(reason = "Thread state not set up.")
-    public abstract IsolateThread allocateIsolateThread(int isolateThreadSize);
+    public IsolateThread allocateIsolateThread(int isolateThreadSize) {
+        /*
+         * We prefer to have the IsolateThread aligned on cache-line boundary, to avoid false
+         * sharing with native memory allocated before it. But until we have the real cache line
+         * size from the OS, we just use a hard-coded best guess. Using an inaccurate value does not
+         * lead to correctness problems.
+         */
+        UnsignedWord alignment = WordFactory.unsigned(64);
+
+        UnsignedWord memorySize = WordFactory.unsigned(isolateThreadSize).add(alignment);
+        Pointer memory = ImageSingletons.lookup(UnmanagedMemorySupport.class).calloc(memorySize);
+        if (memory.isNull()) {
+            return WordFactory.nullPointer();
+        }
+
+        IsolateThread isolateThread = (IsolateThread) UnsignedUtils.roundUp(memory, alignment);
+        unalignedIsolateThreadMemoryTL.set(isolateThread, memory);
+        return isolateThread;
+    }
 
     /**
      * Free the native memory allocated by {@link #allocateIsolateThread}.
      */
     @Uninterruptible(reason = "Thread state not set up.")
-    public abstract void freeIsolateThread(IsolateThread thread);
+    public void freeIsolateThread(IsolateThread thread) {
+        Pointer memory = unalignedIsolateThreadMemoryTL.get(thread);
+        ImageSingletons.lookup(UnmanagedMemorySupport.class).free(memory);
+    }
 
     /**
      * Report a fatal error to the user and exit. This method must not return.
@@ -249,10 +287,6 @@ public abstract class VMThreads {
         assert !ThreadingSupportImpl.isRecurringCallbackRegistered(thread);
         Safepoint.setSafepointRequested(thread, Safepoint.THREAD_REQUEST_RESET);
 
-        /*
-         * Not using try-with-resources to avoid implicitly calling addSuppressed(), which is not
-         * uninterruptible.
-         */
         VMThreads.THREAD_MUTEX.lockNoTransition();
         try {
             nextTL.set(thread, head);
@@ -375,6 +409,8 @@ public abstract class VMThreads {
                 } else {
                     nextTL.set(previous, next);
                 }
+                // Set to the sentinel value denoting the thread is detached
+                nextTL.set(thread, thread);
                 break;
             } else {
                 previous = current;
@@ -468,6 +504,17 @@ public abstract class VMThreads {
     @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
     protected abstract OSThreadId getCurrentOSThreadId();
 
+    @Uninterruptible(reason = "Called from uninterruptible verification code.", mayBeInlined = true)
+    public boolean verifyThreadIsAttached(IsolateThread thread) {
+        return nextThread(thread) != thread;
+    }
+
+    @Uninterruptible(reason = "Called from uninterruptible verification code.", mayBeInlined = true)
+    public boolean verifyIsCurrentThread(IsolateThread thread) {
+        OSThreadId osThreadId = getCurrentOSThreadId();
+        return OSThreadIdTL.get(thread).equal(osThreadId);
+    }
+
     @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
     public IsolateThread findIsolateThreadForCurrentOSThread(boolean inCrashHandler) {
         OSThreadId osThreadId = getCurrentOSThreadId();
@@ -514,7 +561,7 @@ public abstract class VMThreads {
     public static class StatusSupport {
 
         /** The status of a {@link IsolateThread}. */
-        public static final FastThreadLocalInt statusTL = FastThreadLocalFactory.createInt();
+        public static final FastThreadLocalInt statusTL = FastThreadLocalFactory.createInt().setMaxOffset(FastThreadLocal.FIRST_CACHE_LINE);
 
         /**
          * Boolean flag whether safepoints are disabled. This is a separate thread local in addition
@@ -635,13 +682,59 @@ public abstract class VMThreads {
         }
 
         @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
+        public static boolean isStatusVM() {
+            return statusTL.getVolatile() == STATUS_IN_VM;
+        }
+
+        @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
         public static boolean isStatusJava() {
             return (statusTL.getVolatile() == STATUS_IN_JAVA);
         }
 
         @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
+        public static boolean isStatusIgnoreSafepoints() {
+            return safepointsDisabledTL.getVolatile() == 1;
+        }
+
+        @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
         public static boolean isStatusIgnoreSafepoints(IsolateThread vmThread) {
             return safepointsDisabledTL.getVolatile(vmThread) == 1;
+        }
+
+        @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
+        public static void assertStatusJava() {
+            String msg = "Thread status must be 'Java'.";
+            if (GraalDirectives.inIntrinsic()) {
+                if (ReplacementsUtil.REPLACEMENTS_ASSERTIONS_ENABLED) {
+                    AssertionNode.dynamicAssert(isStatusJava(), msg);
+                }
+            } else {
+                assert isStatusJava() : msg;
+            }
+        }
+
+        @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
+        public static void assertStatusNativeOrSafepoint() {
+            String msg = "Thread status must be 'native' or 'safepoint'.";
+            if (GraalDirectives.inIntrinsic()) {
+                if (ReplacementsUtil.REPLACEMENTS_ASSERTIONS_ENABLED) {
+                    AssertionNode.dynamicAssert(isStatusNativeOrSafepoint(), msg);
+                }
+            } else {
+                assert isStatusNativeOrSafepoint() : msg;
+            }
+        }
+
+        @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
+        public static void assertStatusVM() {
+            String msg = "Thread status must be 'VM'.";
+            if (GraalDirectives.inIntrinsic()) {
+                if (ReplacementsUtil.REPLACEMENTS_ASSERTIONS_ENABLED) {
+                    AssertionNode.dynamicAssert(isStatusVM(), msg);
+                }
+            } else {
+                assert isStatusVM() : msg;
+            }
         }
 
         /**

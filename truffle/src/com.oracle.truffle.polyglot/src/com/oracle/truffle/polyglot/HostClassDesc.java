@@ -56,8 +56,14 @@ import java.util.Map;
 import java.util.Set;
 import java.util.function.BiFunction;
 
+import org.graalvm.collections.EconomicMap;
+import org.graalvm.collections.UnmodifiableEconomicMap;
+
+import com.oracle.truffle.api.CompilerAsserts;
 import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
+import com.oracle.truffle.polyglot.HostAdapterFactory.AdapterResult;
+import com.oracle.truffle.polyglot.HostLanguage.HostContext;
 import com.oracle.truffle.polyglot.HostMethodDesc.OverloadedMethod;
 import com.oracle.truffle.polyglot.HostMethodDesc.SingleMethod;
 
@@ -68,26 +74,45 @@ final class HostClassDesc {
     }
 
     private final Class<?> type;
-    private volatile Object members;
+    private final HostClassCache cache;
+    private volatile Members members;
     private volatile JNIMembers jniMembers;
+    private volatile MethodsBySignature methodsBySignature;
+    private volatile AdapterResult adapter;
     private final boolean allowsImplementation;
+    private final boolean allowedTargetType;
 
     HostClassDesc(HostClassCache cache, Class<?> type) {
-        this.members = cache;
         this.type = type;
-        if (type.isInterface()) {
-            this.allowsImplementation = cache.allowsImplementation(type);
-        } else {
-            this.allowsImplementation = false;
-        }
+        this.cache = cache;
+        this.allowsImplementation = HostInteropReflect.isExtensibleType(type) && cache.allowsImplementation(type);
+        this.allowedTargetType = allowsImplementation && HostInteropReflect.isAbstractType(type) && hasDefaultConstructor(type);
     }
 
     public boolean isAllowsImplementation() {
         return allowsImplementation;
     }
 
+    public boolean isAllowedTargetType() {
+        return allowedTargetType;
+    }
+
     public Class<?> getType() {
         return type;
+    }
+
+    private static boolean hasDefaultConstructor(Class<?> type) {
+        assert !type.isPrimitive();
+        if (type.isInterface()) {
+            return true;
+        } else {
+            for (Constructor<?> ctor : type.getConstructors()) {
+                if (ctor.getParameterCount() == 0) {
+                    return true;
+                }
+            }
+            return false;
+        }
     }
 
     private static class Members {
@@ -362,42 +387,66 @@ final class HostClassDesc {
                         (m.getParameterCount() == 1 && m.getName().equals("equals") && m.getParameterTypes()[0] == Object.class));
     }
 
-    private static class JNIMembers {
-        final Map<String, HostMethodDesc> methods;
-        final Map<String, HostMethodDesc> staticMethods;
+    private static final class JNIMembers {
+        final UnmodifiableEconomicMap<String, HostMethodDesc> methods;
+        final UnmodifiableEconomicMap<String, HostMethodDesc> staticMethods;
 
         JNIMembers(Members members) {
             this.methods = collectJNINamedMethods(members.methods);
             this.staticMethods = collectJNINamedMethods(members.staticMethods);
         }
 
-        private static Map<String, HostMethodDesc> collectJNINamedMethods(Map<String, HostMethodDesc> methods) {
-            Map<String, HostMethodDesc> jniMethods = new LinkedHashMap<>();
+        private static UnmodifiableEconomicMap<String, HostMethodDesc> collectJNINamedMethods(Map<String, HostMethodDesc> methods) {
+            EconomicMap<String, HostMethodDesc> jniMethods = EconomicMap.create();
             for (HostMethodDesc method : methods.values()) {
                 if (method.isConstructor()) {
                     continue;
                 }
-                for (HostMethodDesc m : method.getOverloads()) {
+                for (SingleMethod m : method.getOverloads()) {
                     assert m.isMethod();
-                    jniMethods.put(HostInteropReflect.jniName((Method) ((SingleMethod) m).getReflectionMethod()), m);
+                    jniMethods.put(HostInteropReflect.jniName((Method) m.getReflectionMethod()), m);
                 }
             }
             return jniMethods;
         }
     }
 
+    private static final class MethodsBySignature {
+        final UnmodifiableEconomicMap<String, HostMethodDesc> methods;
+        final UnmodifiableEconomicMap<String, HostMethodDesc> staticMethods;
+
+        MethodsBySignature(Members members) {
+            this.methods = collectMethodsBySignature(members.methods);
+            this.staticMethods = collectMethodsBySignature(members.staticMethods);
+        }
+
+        private static UnmodifiableEconomicMap<String, HostMethodDesc> collectMethodsBySignature(Map<String, HostMethodDesc> methods) {
+            EconomicMap<String, HostMethodDesc> methodMap = EconomicMap.create();
+            for (HostMethodDesc method : methods.values()) {
+                if (method.isConstructor()) {
+                    continue;
+                }
+                for (SingleMethod m : method.getOverloads()) {
+                    assert m.isMethod();
+                    methodMap.put(HostInteropReflect.toNameAndSignature((Method) m.getReflectionMethod()), m);
+                }
+            }
+            return methodMap;
+        }
+    }
+
     private Members getMembers() {
-        Object m = members;
-        if (!(m instanceof Members)) {
+        Members m = members;
+        if (m == null) {
             CompilerDirectives.transferToInterpreterAndInvalidate();
             synchronized (this) {
                 m = members;
-                if (!(m instanceof Members)) {
-                    members = m = new Members((HostClassCache) m, type);
+                if (m == null) {
+                    members = m = new Members(cache, type);
                 }
             }
         }
-        return (Members) m;
+        return m;
     }
 
     private JNIMembers getJNIMembers() {
@@ -408,6 +457,20 @@ final class HostClassDesc {
                 m = jniMembers;
                 if (m == null) {
                     jniMembers = m = new JNIMembers(getMembers());
+                }
+            }
+        }
+        return m;
+    }
+
+    private MethodsBySignature getMethodsBySignature() {
+        MethodsBySignature m = methodsBySignature;
+        if (m == null) {
+            CompilerDirectives.transferToInterpreterAndInvalidate();
+            synchronized (this) {
+                m = methodsBySignature;
+                if (m == null) {
+                    methodsBySignature = m = new MethodsBySignature(getMembers());
                 }
             }
         }
@@ -438,8 +501,14 @@ final class HostClassDesc {
         return onlyStatic ? lookupStaticMethod(name) : lookupMethod(name);
     }
 
+    public HostMethodDesc lookupMethodBySignature(String nameAndSignature, boolean onlyStatic) {
+        MethodsBySignature m = getMethodsBySignature();
+        return onlyStatic ? m.staticMethods.get(nameAndSignature) : m.methods.get(nameAndSignature);
+    }
+
     public HostMethodDesc lookupMethodByJNIName(String jniName, boolean onlyStatic) {
-        return onlyStatic ? getJNIMembers().staticMethods.get(jniName) : getJNIMembers().methods.get(jniName);
+        JNIMembers m = getJNIMembers();
+        return onlyStatic ? m.staticMethods.get(jniName) : m.methods.get(jniName);
     }
 
     public Collection<String> getMethodNames(boolean onlyStatic, boolean includeInternal) {
@@ -496,6 +565,25 @@ final class HostClassDesc {
 
     public HostMethodDesc getFunctionalMethod() {
         return getMembers().functionalMethod;
+    }
+
+    public AdapterResult getAdapter(HostContext hostContext) {
+        AdapterResult result = adapter;
+        if (result == null) {
+            result = getOrSetAdapter(hostContext);
+        }
+        return result;
+    }
+
+    private AdapterResult getOrSetAdapter(HostContext hostContext) {
+        CompilerAsserts.neverPartOfCompilation();
+        synchronized (this) {
+            AdapterResult result = adapter;
+            if (result == null) {
+                adapter = result = HostAdapterFactory.makeAdapterClassFor(cache, type, hostContext.getClassloader());
+            }
+            return result;
+        }
     }
 
     @Override

@@ -45,8 +45,8 @@ import java.util.Map;
 import java.util.Objects;
 
 import com.oracle.truffle.api.Assumption;
+import com.oracle.truffle.api.TruffleOptions;
 import com.oracle.truffle.api.object.DynamicObject;
-import com.oracle.truffle.api.object.Layout;
 import com.oracle.truffle.api.object.Location;
 import com.oracle.truffle.api.object.ObjectType;
 import com.oracle.truffle.api.object.Shape;
@@ -54,7 +54,7 @@ import com.oracle.truffle.api.object.Shape.Allocator;
 
 /** @since 0.17 or earlier */
 @SuppressWarnings("deprecation")
-public abstract class LayoutImpl extends Layout {
+public abstract class LayoutImpl extends com.oracle.truffle.api.object.Layout {
     private static final int INT_TO_DOUBLE_FLAG = 1;
     private static final int INT_TO_LONG_FLAG = 2;
 
@@ -156,6 +156,16 @@ public abstract class LayoutImpl extends Layout {
         return "Layout[" + clazz.getName() + "]";
     }
 
+    /**
+     * Resets the state for native image generation.
+     *
+     * NOTE: this method is called reflectively by downstream projects.
+     */
+    static void resetNativeImageState() {
+        assert TruffleOptions.AOT : "Only supported during image generation";
+        ((CoreLayoutFactory) getFactory()).resetNativeImageState();
+    }
+
     @SuppressWarnings("static-method")
     protected abstract static class Support extends Access {
         protected Support() {
@@ -177,8 +187,8 @@ public abstract class LayoutImpl extends Layout {
             DynamicObjectSupport.invalidateAllPropertyAssumptions(shape);
         }
 
-        public final void trimToSize(DynamicObject object, Shape thisShape) {
-            DynamicObjectSupport.trimToSize(object, thisShape);
+        public final void trimToSize(DynamicObject object, Shape thisShape, Shape otherShape) {
+            DynamicObjectSupport.trimToSize(object, thisShape, otherShape);
         }
 
         public final Map<Object, Object> archive(DynamicObject object) {

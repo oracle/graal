@@ -75,6 +75,7 @@ public class RequireContextTest extends AbstractPolyglotTest {
     }
 
     @Test
+    @SuppressWarnings("deprecation")
     public void testInstrument() throws Exception {
         setupEnv(Context.create(), new ProxyLanguage() {
             @Override

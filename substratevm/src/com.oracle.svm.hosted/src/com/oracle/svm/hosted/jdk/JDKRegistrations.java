@@ -47,6 +47,5 @@ class JDKRegistrations extends JNIRegistrationUtil implements GraalFeature {
         } else {
             rerunClassInit(a, "java.lang.ProcessImpl", "java.lang.ProcessHandleImpl", "java.lang.ProcessHandleImpl$Info", "java.io.FilePermission");
         }
-
     }
 }

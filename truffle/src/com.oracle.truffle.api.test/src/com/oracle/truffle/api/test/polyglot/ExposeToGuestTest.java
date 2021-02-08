@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2017, 2019, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2017, 2020, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -40,9 +40,12 @@
  */
 package com.oracle.truffle.api.test.polyglot;
 
+import static org.hamcrest.CoreMatchers.containsString;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertNotNull;
+import static org.junit.Assert.assertSame;
+import static org.junit.Assert.assertThat;
 import static org.junit.Assert.assertTrue;
 import static org.junit.Assert.fail;
 
@@ -469,6 +472,23 @@ public class ExposeToGuestTest {
         }
     }
 
+    @Implementable
+    public abstract static class MarkedClass {
+
+        public abstract String exported(String arg);
+
+    }
+
+    @Implementable
+    public abstract static class NoDefaultConstructor {
+
+        public NoDefaultConstructor(@SuppressWarnings("unused") String dummy) {
+        }
+
+        public abstract String exported(String arg);
+
+    }
+
     @SuppressWarnings("unchecked")
     @Test
     public void testProxyOverloads() {
@@ -655,6 +675,51 @@ public class ExposeToGuestTest {
             assertEquals(42, f.as(MarkedFunctional.class).f());
             assertEquals(42, f.as(UnmarkedFunctional.class).f());
             assertEquals(42, f.as(Function.class).apply(null));
+        }
+    }
+
+    @SuppressWarnings("unchecked")
+    @Test
+    public void testAdapterClass() {
+        HostAccess access = HostAccess.newBuilder().allowAccessAnnotatedBy(Export.class).allowImplementations(MarkedClass.class).build();
+        try (Context c = Context.newBuilder().allowHostAccess(access).build()) {
+            c.initialize(ProxyLanguage.ID);
+            Value v = c.asValue(new Impl());
+            Value f = v.getMember("noArg");
+            MarkedClass markedClass = v.as(MarkedClass.class);
+            assertEquals("42", markedClass.exported("42"));
+            assertSame("adapter class should be cached", markedClass.getClass(), v.as(MarkedClass.class).getClass());
+            assertEquals(42, f.as(Function.class).apply(null));
+        }
+    }
+
+    @Test
+    public void testAdapterNoDefaultConstructor() {
+        HostAccess access = HostAccess.newBuilder().allowAccessAnnotatedBy(Export.class).allowImplementations(NoDefaultConstructor.class).build();
+        try (Context c = Context.newBuilder().allowHostAccess(access).build()) {
+            c.initialize(ProxyLanguage.ID);
+            Value v = c.asValue(new Impl());
+            try {
+                v.as(NoDefaultConstructor.class);
+                fail();
+            } catch (ClassCastException e) {
+                assertThat(e.getMessage(), containsString("Unsupported target type"));
+            }
+        }
+    }
+
+    @Test
+    public void testAdapterClassImplementationsNotAllowed() {
+        HostAccess access = HostAccess.newBuilder().allowAccessAnnotatedBy(Export.class).build();
+        try (Context c = Context.newBuilder().allowHostAccess(access).build()) {
+            c.initialize(ProxyLanguage.ID);
+            Value v = c.asValue(new Impl());
+            try {
+                v.as(MarkedClass.class);
+                fail();
+            } catch (ClassCastException e) {
+                assertThat(e.getMessage(), containsString("Unsupported target type"));
+            }
         }
     }
 

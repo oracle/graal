@@ -277,6 +277,60 @@ public class RelativeSourceInspectDebugTest {
         }
     }
 
+    @Test
+    public void testBreakpoints() throws Exception {
+        Path testSourcePath = Files.createTempDirectory("testPath").toRealPath();
+        String relativePath = "relative/test1.file";
+        String sourceContent = "relative source1\nVarA";
+        URI sourcePathURI = testSourcePath.toUri();
+        Files.createDirectory(testSourcePath.resolve("relative"));
+        Path filePath = testSourcePath.resolve(relativePath);
+        Files.write(filePath, sourceContent.getBytes());
+        String fileURI = filePath.toUri().toString();
+
+        TestDebugNoContentLanguage language = new TestDebugNoContentLanguage(relativePath, true, true);
+        ProxyLanguage.setDelegate(language);
+        Source source = Source.create(ProxyLanguage.ID, "relative source1\nVarA");
+
+        InspectorTester tester = InspectorTester.start(false, false, false, Collections.singletonList(sourcePathURI));
+        tester.sendMessage("{\"id\":1,\"method\":\"Runtime.enable\"}");
+        assertEquals("{\"result\":{},\"id\":1}", tester.getMessages(true).trim());
+        tester.sendMessage("{\"id\":2,\"method\":\"Debugger.enable\"}");
+        assertEquals("{\"result\":{},\"id\":2}", tester.getMessages(true).trim());
+        tester.sendMessage("{\"id\":3,\"method\":\"Runtime.runIfWaitingForDebugger\"}");
+
+        // @formatter:off   The default formatting makes unnecessarily big indents and illogical line breaks
+        // CheckStyle: stop line length check
+        assertTrue(tester.compareReceivedMessages(
+                        "{\"result\":{},\"id\":3}\n" +
+                        "{\"method\":\"Runtime.executionContextCreated\",\"params\":{\"context\":{\"origin\":\"\",\"name\":\"test\",\"id\":1}}}\n"));
+
+        tester.sendMessage("{\"id\":4,\"method\":\"Debugger.setBreakpointByUrl\",\"params\":{\"lineNumber\":0,\"url\":\"" + fileURI + "\",\"columnNumber\":0,\"condition\":\"\"}}");
+
+        assertEquals("{\"result\":{\"breakpointId\":\"1\",\"locations\":[]},\"id\":4}", tester.getMessages(true).trim());
+        tester.eval(source);
+        assertTrue(tester.compareReceivedMessages("{\"method\":\"Debugger.scriptParsed\",\"params\":{\"endLine\":1,\"scriptId\":\"0\",\"endColumn\":4,\"startColumn\":0,\"startLine\":0,\"length\":" + sourceContent.length() + ",\"executionContextId\":1,\"url\":\"" + fileURI + "\",\"hash\":\"fdfc3c86f176a91df464039fffffffffffffffff\"}}\n"));
+        // Suspend at the beginning of the script:
+        assertTrue(tester.compareReceivedMessages(
+                        "{\"method\":\"Debugger.paused\",\"params\":{\"reason\":\"other\",\"hitBreakpoints\":[\"1\"]," +
+                                "\"callFrames\":[{\"callFrameId\":\"0\",\"functionName\":\"relative\"," +
+                                                 "\"scopeChain\":[{\"name\":\"relative\",\"type\":\"local\",\"object\":{\"description\":\"relative\",\"type\":\"object\",\"objectId\":\"1\"}}]," +
+                                                 "\"this\":{\"subtype\":\"null\",\"description\":\"null\",\"type\":\"object\",\"objectId\":\"2\"}," +
+                                                 "\"functionLocation\":{\"scriptId\":\"0\",\"columnNumber\":0,\"lineNumber\":0}," +
+                                                 "\"location\":{\"scriptId\":\"0\",\"columnNumber\":0,\"lineNumber\":0}," +
+                                                 "\"url\":\"" + fileURI + "\"}]}}\n"));
+        tester.sendMessage("{\"id\":5,\"method\":\"Debugger.resume\"}");
+        assertTrue(tester.compareReceivedMessages(
+                        "{\"result\":{},\"id\":5}\n" +
+                        "{\"method\":\"Debugger.resumed\"}\n"));
+        // @formatter:on
+        // CheckStyle: resume line length check
+        language = null;
+        // Reset the delegate so that we can GC the tested Engine
+        ProxyLanguage.setDelegate(new ProxyLanguage());
+        tester.finish();
+    }
+
     private static void checkSourcePathToURI(String sourcePath, String uriArray) {
         checkSourcePathToURI(sourcePath, uriArray, null);
     }

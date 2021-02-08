@@ -52,9 +52,9 @@ public class AArch64NativeImagePatcher implements Feature {
                     @Override
                     public void accept(Assembler.CodeAnnotation annotation) {
                         if (annotation instanceof SingleInstructionAnnotation) {
-                            compilationResult.addAnnotation(new SingleInstructionNativeImagePatcher(annotation.instructionPosition, (SingleInstructionAnnotation) annotation));
+                            compilationResult.addAnnotation(new SingleInstructionNativeImagePatcher((SingleInstructionAnnotation) annotation));
                         } else if (annotation instanceof AArch64MacroAssembler.MovSequenceAnnotation) {
-                            compilationResult.addAnnotation(new MovSequenceNativeImagePatcher(annotation.instructionPosition, (AArch64MacroAssembler.MovSequenceAnnotation) annotation));
+                            compilationResult.addAnnotation(new MovSequenceNativeImagePatcher((AArch64MacroAssembler.MovSequenceAnnotation) annotation));
                         } else if (annotation instanceof AArch64MacroAssembler.AdrpLdrMacroInstruction) {
                             compilationResult.addAnnotation(new AdrpLdrMacroInstructionNativeImagePatcher((AArch64MacroAssembler.AdrpLdrMacroInstruction) annotation));
                         } else if (annotation instanceof AArch64MacroAssembler.AdrpAddMacroInstruction) {
@@ -70,8 +70,8 @@ public class AArch64NativeImagePatcher implements Feature {
 class SingleInstructionNativeImagePatcher extends CompilationResult.CodeAnnotation implements NativeImagePatcher {
     private final SingleInstructionAnnotation annotation;
 
-    SingleInstructionNativeImagePatcher(int instructionStartPosition, SingleInstructionAnnotation annotation) {
-        super(instructionStartPosition);
+    SingleInstructionNativeImagePatcher(SingleInstructionAnnotation annotation) {
+        super(annotation.instructionPosition);
         this.annotation = annotation;
     }
 
@@ -179,8 +179,8 @@ class AdrpAddMacroInstructionNativeImagePatcher extends CompilationResult.CodeAn
 class MovSequenceNativeImagePatcher extends CompilationResult.CodeAnnotation implements NativeImagePatcher {
     private final AArch64MacroAssembler.MovSequenceAnnotation annotation;
 
-    MovSequenceNativeImagePatcher(int instructionStartPosition, AArch64MacroAssembler.MovSequenceAnnotation annotation) {
-        super(instructionStartPosition);
+    MovSequenceNativeImagePatcher(AArch64MacroAssembler.MovSequenceAnnotation annotation) {
+        super(annotation.instructionPosition);
         this.annotation = annotation;
     }
 

@@ -51,6 +51,7 @@ import java.util.Set;
 import java.util.stream.Collectors;
 
 import org.graalvm.collections.Pair;
+import org.graalvm.compiler.asm.aarch64.AArch64Assembler;
 import org.graalvm.compiler.code.CompilationResult;
 import org.graalvm.compiler.core.common.CompressEncoding;
 import org.graalvm.compiler.core.common.NumUtil;
@@ -72,7 +73,6 @@ import com.oracle.objectfile.ObjectFile.RelocationKind;
 import com.oracle.objectfile.ObjectFile.Section;
 import com.oracle.objectfile.SectionName;
 import com.oracle.objectfile.debuginfo.DebugInfoProvider;
-import com.oracle.objectfile.macho.MachOObjectFile;
 import com.oracle.svm.core.FrameAccess;
 import com.oracle.svm.core.Isolates;
 import com.oracle.svm.core.SubstrateOptions;
@@ -95,10 +95,8 @@ import com.oracle.svm.core.option.HostedOptionValues;
 import com.oracle.svm.core.util.UserError;
 import com.oracle.svm.hosted.NativeImageOptions;
 import com.oracle.svm.hosted.c.CGlobalDataFeature;
-import com.oracle.svm.hosted.c.GraalAccess;
 import com.oracle.svm.hosted.c.NativeLibraries;
 import com.oracle.svm.hosted.c.codegen.CSourceCodeWriter;
-import com.oracle.svm.hosted.c.codegen.QueryCodeWriter;
 import com.oracle.svm.hosted.code.CEntryPointCallStubMethod;
 import com.oracle.svm.hosted.code.CEntryPointCallStubSupport;
 import com.oracle.svm.hosted.code.CEntryPointData;
@@ -141,12 +139,7 @@ public abstract class NativeBootImage extends AbstractBootImage {
         uniqueEntryPoints.addAll(entryPoints);
 
         int pageSize = NativeImageOptions.getPageSize();
-        if (NativeImageOptions.MachODebugInfoTesting.getValue()) {
-            objectFile = new MachOObjectFile(pageSize);
-        } else {
-            objectFile = ObjectFile.getNativeObjectFile(pageSize);
-        }
-
+        objectFile = ObjectFile.getNativeObjectFile(pageSize);
         objectFile.setByteOrder(ConfigurationValues.getTarget().arch.getByteOrder());
         wordSize = FrameAccess.wordSize();
         assert objectFile.getWordSizeInBytes() == wordSize;
@@ -207,7 +200,7 @@ public abstract class NativeBootImage extends AbstractBootImage {
 
         writer.appendln();
 
-        QueryCodeWriter.writeCStandardHeaders(writer);
+        writer.writeCStandardHeaders();
 
         List<String> dependencies = header.dependsOn().stream()
                         .map(NativeBootImage::instantiateCHeader)
@@ -242,7 +235,7 @@ public abstract class NativeBootImage extends AbstractBootImage {
             throw UserError.abort("Cannot determine header file name for directory %s", outDir);
         } else {
             String fileName = fileNamePath.resolve(header.name() + dynamicSuffix).toString();
-            writer.writeFile(fileName, false);
+            writer.writeFile(fileName);
         }
     }
 
@@ -275,7 +268,7 @@ public abstract class NativeBootImage extends AbstractBootImage {
         try {
             return ReflectionUtil.newInstance(header);
         } catch (ReflectionUtilError ex) {
-            throw UserError.abort(ex.getCause(), "CHeader " + header.getName() + " cannot be instantiated. Please make sure that it has a nullary constructor and is not abstract.");
+            throw UserError.abort(ex.getCause(), "CHeader %s cannot be instantiated. Please make sure that it has a nullary constructor and is not abstract.", header.getName());
         }
     }
 
@@ -532,7 +525,7 @@ public abstract class NativeBootImage extends AbstractBootImage {
             final int offset = entry.getKey();
             final RelocatableBuffer.Info info = entry.getValue();
 
-            assert GraalAccess.getOriginalTarget().arch instanceof AArch64 || checkEmbeddedOffset(sectionImpl, offset, info);
+            assert ConfigurationValues.getTarget().arch instanceof AArch64 || checkEmbeddedOffset(sectionImpl, offset, info);
 
             // Figure out what kind of relocation site it is.
             if (info.getTargetObject() instanceof CFunctionPointer) {
@@ -579,6 +572,23 @@ public abstract class NativeBootImage extends AbstractBootImage {
         sectionImpl.markRelocationSite(offset, RelocationKind.getDirect(functionPointerRelocationSize), localSymbolNameForMethod(method), false, 0L);
     }
 
+    private static boolean isAddendAligned(Architecture arch, long addend, RelocationKind kind) {
+        if (arch instanceof AMD64) {
+            return true; // AMD64 addends do not have to be aligned
+        }
+
+        // for scaled str/ldr, must confirm addend will not be truncated
+        switch (kind) {
+            case AARCH64_R_AARCH64_LDST16_ABS_LO12_NC:
+                return (addend & 0x1) == 0;
+            case AARCH64_R_AARCH64_LDST32_ABS_LO12_NC:
+                return (addend & 0x3) == 0;
+            case AARCH64_R_AARCH64_LDST64_ABS_LO12_NC:
+                return (addend & 0x7) == 0;
+        }
+        return true;
+    }
+
     // TODO: These two methods for marking data relocations might have to be merged if text sections
     // TODO: ever have relocations to some where other than constants at the beginning of the
     // TODO: read-only data section.
@@ -586,7 +596,7 @@ public abstract class NativeBootImage extends AbstractBootImage {
     // A reference to data. Mark the relocation using the section and addend in the relocation info.
     private void markDataRelocationSite(ProgbitsSectionImpl sectionImpl, int offset, RelocatableBuffer.Info info, ObjectInfo targetObjectInfo) {
         // References to objects are via relocations to offsets in the heap section.
-        assert info.getRelocationSize() == 4 || info.getRelocationSize() == 8 : "Data relocation size should be 4 or 8 bytes.";
+        assert ConfigurationValues.getTarget().arch instanceof AArch64 || info.getRelocationSize() == 4 || info.getRelocationSize() == 8 : "AMD64 Data relocation size should be 4 or 8 bytes.";
         assert targetObjectInfo != null;
         String targetSectionName = heapSection.getName();
         long address = targetObjectInfo.getAddress();
@@ -596,17 +606,20 @@ public abstract class NativeBootImage extends AbstractBootImage {
     }
 
     private void markDataRelocationSiteFromText(RelocatableBuffer buffer, final ProgbitsSectionImpl sectionImpl, final int offset, final Info info) {
-        assert ConfigurationValues.getTarget().arch instanceof AArch64 ||
-                        ((info.getRelocationSize() == 4) || (info.getRelocationSize() == 8)) : "Data relocation size should be 4 or 8 bytes. Got size: " + info.getRelocationSize();
+        Architecture arch = ConfigurationValues.getTarget().arch;
+        assert arch instanceof AArch64 || ((info.getRelocationSize() == 4) || (info.getRelocationSize() == 8)) : "AMD64 Data relocation size should be 4 or 8 bytes. Got size: " +
+                        info.getRelocationSize();
         Object target = info.getTargetObject();
         if (target instanceof DataSectionReference) {
             long addend = ((DataSectionReference) target).getOffset() - info.getExplicitAddend();
+            assert isAddendAligned(arch, addend, info.getRelocationKind()) : "improper addend alignment";
             sectionImpl.markRelocationSite(offset, info.getRelocationKind(), roDataSection.getName(), false, addend);
         } else if (target instanceof CGlobalDataReference) {
             CGlobalDataReference ref = (CGlobalDataReference) target;
             CGlobalDataInfo dataInfo = ref.getDataInfo();
             CGlobalDataImpl<?> data = dataInfo.getData();
             long addend = RWDATA_CGLOBALS_PARTITION_OFFSET + dataInfo.getOffset() - info.getExplicitAddend();
+            assert isAddendAligned(arch, addend, info.getRelocationKind()) : "improper addend alignment";
             sectionImpl.markRelocationSite(offset, info.getRelocationKind(), rwDataSection.getName(), false, addend);
             if (dataInfo.isSymbolReference()) { // create relocation for referenced symbol
                 if (objectFile.getSymbolTable().getSymbol(data.symbolName) == null) {
@@ -618,15 +631,14 @@ public abstract class NativeBootImage extends AbstractBootImage {
             }
         } else if (target instanceof ConstantReference) {
             // Direct object reference in code that must be patched (not a linker relocation)
-            assert (info.getRelocationKind() == RelocationKind.DIRECT_4) || (info.getRelocationKind() == RelocationKind.DIRECT_8);
             Object object = SubstrateObjectConstant.asObject(((ConstantReference) target).getConstant());
             long address = heap.getObjectInfo(object).getAddress();
             int encShift = ImageSingletons.lookup(CompressEncoding.class).getShift();
             long targetValue = address >>> encShift;
             assert (targetValue << encShift) == address : "Reference compression shift discards non-zero bits: " + Long.toHexString(address);
-            Architecture arch = GraalAccess.getOriginalTarget().arch;
             ByteBuffer bufferBytes = buffer.getByteBuffer();
             if (arch instanceof AMD64) {
+                assert (info.getRelocationKind() == RelocationKind.DIRECT_4) || (info.getRelocationKind() == RelocationKind.DIRECT_8);
                 if (info.getRelocationSize() == Long.BYTES) {
                     bufferBytes.putLong(offset, targetValue);
                 } else if (info.getRelocationSize() == Integer.BYTES) {
@@ -636,17 +648,36 @@ public abstract class NativeBootImage extends AbstractBootImage {
                     shouldNotReachHere("Unsupported object reference size: " + info.getRelocationSize());
                 }
             } else if (arch instanceof AArch64) {
-                int numInstrs = info.getRelocationSize() / 2;
-                long curValue = targetValue;
-
-                for (int i = 0; i < numInstrs; ++i) {
-                    int instrValue = (int) (curValue & 0xFFFF);
-                    instrValue = instrValue << 5;
-                    int prevValue = bufferBytes.getInt(offset + (4 * i));
-                    int newValue = (prevValue & (~(0xFFFF << 5))) | instrValue;
-                    bufferBytes.putInt(offset + (4 * i), 0xFFFFFFFF & newValue);
-                    curValue = curValue >> 16;
+                int patchValue = 0;
+                switch (info.getRelocationKind()) {
+                    case AARCH64_R_MOVW_UABS_G0:
+                    case AARCH64_R_MOVW_UABS_G0_NC:
+                        patchValue = (int) targetValue & 0xFFFF;
+                        break;
+                    case AARCH64_R_MOVW_UABS_G1:
+                    case AARCH64_R_MOVW_UABS_G1_NC:
+                        patchValue = (int) (targetValue >> 16) & 0xFFFF;
+                        break;
+                    case AARCH64_R_MOVW_UABS_G2:
+                    case AARCH64_R_MOVW_UABS_G2_NC:
+                        patchValue = (int) (targetValue >> 32) & 0xFFFF;
+                        break;
+                    case AARCH64_R_MOVW_UABS_G3:
+                        patchValue = (int) (targetValue >> 48) & 0xFFFF;
+                        break;
+                    default:
+                        throw shouldNotReachHere("Unsupported AArch64 relocation kind: " + info.getRelocationKind());
                 }
+                // validating patched value does not overflow operand
+                switch (info.getRelocationKind()) {
+                    case AARCH64_R_MOVW_UABS_G0:
+                    case AARCH64_R_MOVW_UABS_G1:
+                    case AARCH64_R_MOVW_UABS_G2:
+                        assert (patchValue & 0xFFFF) == patchValue : "value to patch does not fit";
+                }
+                int originalInst = bufferBytes.getInt(offset);
+                int newInst = AArch64Assembler.PatcherUtil.patchMov(originalInst, patchValue);
+                bufferBytes.putInt(offset, newInst);
             }
         } else {
             throw shouldNotReachHere("Unsupported target object for relocation in text section");
@@ -680,7 +711,7 @@ public abstract class NativeBootImage extends AbstractBootImage {
      */
     public static String localSymbolNameForMethod(ResolvedJavaMethod sm) {
         /* We don't mangle local symbols, because they never need be referenced by an assembler. */
-        return SubstrateUtil.uniqueShortName(sm);
+        return SubstrateOptions.ImageSymbolsPrefix.getValue() + SubstrateUtil.uniqueShortName(sm);
     }
 
     /**

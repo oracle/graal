@@ -30,6 +30,7 @@ import java.lang.annotation.RetentionPolicy;
 import java.lang.annotation.Target;
 
 import com.oracle.svm.core.annotate.StubCallingConvention;
+import com.oracle.svm.core.annotate.Uninterruptible;
 
 /**
  * Used for methods that are targets for foreign calls.
@@ -43,4 +44,10 @@ public @interface SubstrateForeignCallTarget {
 
     /** When true, use {@link StubCallingConvention}. */
     boolean stubCallingConvention();
+
+    /**
+     * Can be set to true if this foreign call target is {@link Uninterruptible} and only calls
+     * other uninterruptible code.
+     */
+    boolean fullyUninterruptible() default false;
 }

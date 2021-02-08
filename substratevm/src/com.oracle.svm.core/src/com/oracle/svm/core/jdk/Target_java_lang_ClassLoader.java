@@ -26,6 +26,7 @@ package com.oracle.svm.core.jdk;
 
 import java.io.ByteArrayInputStream;
 import java.io.Closeable;
+import java.io.File;
 import java.io.IOException;
 import java.io.InputStream;
 import java.net.URL;
@@ -50,6 +51,9 @@ import com.oracle.svm.core.annotate.TargetElement;
 import com.oracle.svm.core.hub.ClassForNameSupport;
 import com.oracle.svm.core.hub.DynamicHub;
 import com.oracle.svm.core.util.VMError;
+
+import jdk.vm.ci.meta.MetaAccessProvider;
+import jdk.vm.ci.meta.ResolvedJavaField;
 
 @TargetClass(classNameProvider = Package_jdk_internal_loader.class, className = "URLClassPath")
 @SuppressWarnings("static-method")
@@ -141,6 +145,45 @@ final class Target_jdk_internal_loader_BuiltinClassLoader {
     }
 }
 
+@TargetClass(className = "jdk.internal.loader.Loader", onlyWith = JDK11OrLater.class)
+@SuppressWarnings({"unused", "static-method"})
+final class Target_jdk_internal_loader_Loader {
+
+    @Substitute
+    private URL findResource(String mn, String name) {
+        return findResource(name);
+    }
+
+    @Substitute
+    private URL findResource(String name) {
+        List<byte[]> arr = Resources.get(name);
+        return arr == null ? null : Resources.createURL(name, arr.get(0));
+    }
+
+    @Substitute
+    private Enumeration<URL> findResources(String name) {
+        List<byte[]> arr = Resources.get(name);
+        if (arr == null) {
+            return Collections.emptyEnumeration();
+        }
+        List<URL> res = new ArrayList<>(arr.size());
+        for (byte[] data : arr) {
+            res.add(Resources.createURL(name, data));
+        }
+        return Collections.enumeration(res);
+    }
+
+    @Substitute
+    private URL getResource(String name) {
+        return findResource(name);
+    }
+
+    @Substitute
+    private Enumeration<URL> getResources(String name) {
+        return findResources(name);
+    }
+}
+
 @TargetClass(ClassLoader.class)
 @SuppressWarnings("static-method")
 final class Target_java_lang_ClassLoader {
@@ -159,13 +202,13 @@ final class Target_java_lang_ClassLoader {
     private ConcurrentHashMap<String, Object> parallelLockMap;
 
     /**
-     * Reset ClassLoader.packages; accessing packages via ClassLoader is currently not supported and
-     * the SystemClassLoader may capture some hosted packages.
+     * Recompute ClassLoader.packages; See {@link ClassLoaderSupport} for explanation on why this
+     * information must be reset.
      */
-    @Alias @RecomputeFieldValue(kind = Kind.NewInstance, declClass = HashMap.class)//
+    @Alias @RecomputeFieldValue(kind = Kind.Custom, declClass = PackageFieldTransformer.class)//
     @TargetElement(name = "packages", onlyWith = JDK8OrEarlier.class)//
     private HashMap<String, Package> packagesJDK8;
-    @Alias @RecomputeFieldValue(kind = Kind.NewInstance, declClass = ConcurrentHashMap.class)//
+    @Alias @RecomputeFieldValue(kind = Kind.Custom, declClass = PackageFieldTransformer.class)//
     @TargetElement(name = "packages", onlyWith = JDK11OrLater.class)//
     private ConcurrentHashMap<String, Package> packagesJDK11;
 
@@ -224,14 +267,31 @@ final class Target_java_lang_ClassLoader {
     @Substitute
     @SuppressWarnings("unused")
     @TargetElement(onlyWith = JDK14OrEarlier.class) //
+    /* Substitution for JDK 15 and later is in Target_java_lang_ClassLoader_JDK15OrLater. */
     static void loadLibrary(Class<?> fromClass, String name, boolean isAbsolute) {
-        NativeLibrarySupport.singleton().loadLibrary(name, isAbsolute);
+        if (isAbsolute) {
+            NativeLibrarySupport.singleton().loadLibraryAbsolute(new File(name));
+        } else {
+            NativeLibrarySupport.singleton().loadLibraryRelative(name);
+        }
     }
 
     @Substitute
     private Class<?> loadClass(String name) throws ClassNotFoundException {
+        if (!checkName(name)) {
+            /*
+             * Names that contain `/` or start with '[' are invalid. Calling `ClassLoader.loadClass`
+             * to create a `Class` object of an array class is invalid and a
+             * `ClassNotFoundException` will be thrown. Instead, `Class.forName` should be used
+             * directly to load array classes.
+             */
+            throw new ClassNotFoundException(name);
+        }
         return ClassForNameSupport.forName(name, false);
     }
+
+    @Alias
+    private native boolean checkName(String name);
 
     @Delete
     native Class<?> loadClass(String name, boolean resolve);
@@ -351,6 +411,15 @@ final class Target_java_lang_ClassLoader {
     private static native void registerNatives();
 
     @Delete
+    private native Class<?> defineClass(String name, byte[] b, int off, int len);
+
+    @Delete
+    private native Class<?> defineClass(String name, byte[] b, int off, int len, ProtectionDomain protectionDomain);
+
+    @Delete
+    private native Class<?> defineClass(String name, java.nio.ByteBuffer b, ProtectionDomain protectionDomain);
+
+    @Delete
     @TargetElement(onlyWith = JDK8OrEarlier.class)
     private native Class<?> defineClass0(String name, byte[] b, int off, int len, ProtectionDomain pd);
 
@@ -425,4 +494,23 @@ final class Target_java_lang_AssertionStatusDirectives {
 
 @TargetClass(className = "java.lang.NamedPackage", onlyWith = JDK11OrLater.class) //
 final class Target_java_lang_NamedPackage {
+}
+
+class PackageFieldTransformer implements RecomputeFieldValue.CustomFieldValueTransformer {
+    @Override
+    public Object transform(MetaAccessProvider metaAccess, ResolvedJavaField original, ResolvedJavaField annotated, Object receiver, Object originalValue) {
+        assert receiver instanceof ClassLoader;
+
+        /* JDK9+ stores packages in a ConcurrentHashMap, while 8 and before use a HashMap. */
+        boolean useConcurrentHashMap = originalValue instanceof ConcurrentHashMap;
+
+        /* Retrieving initial package state for this class loader. */
+        ConcurrentHashMap<String, Package> packages = ClassLoaderSupport.getRegisteredPackages((ClassLoader) receiver);
+        if (packages == null) {
+            /* No package state available - have to create clean state. */
+            return useConcurrentHashMap ? new ConcurrentHashMap<String, Package>() : new HashMap<String, Package>();
+        } else {
+            return useConcurrentHashMap ? packages : new HashMap<>(packages);
+        }
+    }
 }

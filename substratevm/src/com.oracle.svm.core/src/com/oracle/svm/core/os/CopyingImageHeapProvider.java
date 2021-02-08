@@ -36,7 +36,7 @@ public class CopyingImageHeapProvider extends AbstractCopyingImageHeapProvider {
     @Override
     @Uninterruptible(reason = "Called during isolate initialization.")
     protected int copyMemory(Pointer loadedImageHeap, UnsignedWord imageHeapSize, Pointer newImageHeap) {
-        MemoryUtil.copyConjointMemoryAtomic(loadedImageHeap, newImageHeap, imageHeapSize);
+        MemoryUtil.copy(loadedImageHeap, newImageHeap, imageHeapSize);
         return CEntryPointErrors.NO_ERROR;
     }
 }

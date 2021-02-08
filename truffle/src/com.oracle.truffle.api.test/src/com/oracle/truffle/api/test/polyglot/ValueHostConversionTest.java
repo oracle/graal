@@ -40,35 +40,16 @@
  */
 package com.oracle.truffle.api.test.polyglot;
 
-import static com.oracle.truffle.tck.tests.ValueAssert.assertUnsupported;
-import static com.oracle.truffle.tck.tests.ValueAssert.assertValue;
-import static com.oracle.truffle.tck.tests.ValueAssert.Trait.BOOLEAN;
-import static com.oracle.truffle.tck.tests.ValueAssert.Trait.HOST_OBJECT;
-import static com.oracle.truffle.tck.tests.ValueAssert.Trait.MEMBERS;
-import static com.oracle.truffle.tck.tests.ValueAssert.Trait.NULL;
-import static com.oracle.truffle.tck.tests.ValueAssert.Trait.NUMBER;
-import static com.oracle.truffle.tck.tests.ValueAssert.Trait.PROXY_OBJECT;
-import static com.oracle.truffle.tck.tests.ValueAssert.Trait.STRING;
-import static org.junit.Assert.assertArrayEquals;
-import static org.junit.Assert.assertEquals;
-import static org.junit.Assert.assertFalse;
-import static org.junit.Assert.assertSame;
-import static org.junit.Assert.assertTrue;
-
-import java.lang.reflect.Field;
-import java.lang.reflect.InvocationTargetException;
-import java.lang.reflect.Method;
-import java.math.BigDecimal;
-import java.math.BigInteger;
-import java.util.ArrayList;
-import java.util.Arrays;
-import java.util.HashSet;
-import java.util.Iterator;
-import java.util.function.Function;
-import java.util.function.Supplier;
-
+import com.oracle.truffle.api.CallTarget;
+import com.oracle.truffle.api.Truffle;
+import com.oracle.truffle.api.TruffleOptions;
+import com.oracle.truffle.api.frame.VirtualFrame;
+import com.oracle.truffle.api.nodes.RootNode;
+import com.oracle.truffle.api.test.examples.TargetMappings;
+import com.oracle.truffle.tck.tests.ValueAssert.Trait;
 import org.graalvm.polyglot.Context;
 import org.graalvm.polyglot.HostAccess;
+import org.graalvm.polyglot.HostAccess.TargetMappingPrecedence;
 import org.graalvm.polyglot.PolyglotException;
 import org.graalvm.polyglot.PolyglotException.StackFrame;
 import org.graalvm.polyglot.Value;
@@ -78,13 +59,33 @@ import org.junit.Assume;
 import org.junit.Before;
 import org.junit.Test;
 
-import com.oracle.truffle.api.CallTarget;
-import com.oracle.truffle.api.Truffle;
-import com.oracle.truffle.api.TruffleOptions;
-import com.oracle.truffle.api.frame.VirtualFrame;
-import com.oracle.truffle.api.nodes.RootNode;
-import com.oracle.truffle.api.test.examples.TargetMappings;
-import com.oracle.truffle.tck.tests.ValueAssert.Trait;
+import java.lang.reflect.Field;
+import java.lang.reflect.InvocationTargetException;
+import java.lang.reflect.Method;
+import java.math.BigDecimal;
+import java.math.BigInteger;
+import java.nio.ByteBuffer;
+import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.HashSet;
+import java.util.Iterator;
+import java.util.function.Function;
+import java.util.function.Supplier;
+
+import static com.oracle.truffle.tck.tests.ValueAssert.Trait.BOOLEAN;
+import static com.oracle.truffle.tck.tests.ValueAssert.Trait.HOST_OBJECT;
+import static com.oracle.truffle.tck.tests.ValueAssert.Trait.MEMBERS;
+import static com.oracle.truffle.tck.tests.ValueAssert.Trait.NULL;
+import static com.oracle.truffle.tck.tests.ValueAssert.Trait.NUMBER;
+import static com.oracle.truffle.tck.tests.ValueAssert.Trait.PROXY_OBJECT;
+import static com.oracle.truffle.tck.tests.ValueAssert.Trait.STRING;
+import static com.oracle.truffle.tck.tests.ValueAssert.assertUnsupported;
+import static com.oracle.truffle.tck.tests.ValueAssert.assertValue;
+import static org.junit.Assert.assertArrayEquals;
+import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertFalse;
+import static org.junit.Assert.assertSame;
+import static org.junit.Assert.assertTrue;
 
 /**
  * Tests class for {@link Context#asValue(Object)}.
@@ -181,6 +182,8 @@ public class ValueHostConversionTest extends AbstractPolyglotTest {
         assertTrue(context.asValue(new String[0]).hasArrayElements());
         assertTrue(context.asValue(new ArrayList<>()).isHostObject());
         assertTrue(context.asValue(new ArrayList<>()).hasArrayElements());
+        assertTrue(context.asValue(ByteBuffer.allocate(4)).isHostObject());
+        assertTrue(context.asValue(ByteBuffer.allocate(4)).hasBufferElements());
     }
 
     @Test
@@ -1274,6 +1277,72 @@ public class ValueHostConversionTest extends AbstractPolyglotTest {
                         IllegalArgumentException.class);
         assertFails(() -> value.getMember("foo").execute(Double.NaN),
                         IllegalArgumentException.class);
+    }
+
+    @Test
+    public void testHostObjectTargetTypeMappingLowest() {
+        HostAccess.Builder b = HostAccess.newBuilder();
+        b.allowPublicAccess(true);
+        b.targetTypeMapping(Number.class, String.class, null, Number::toString, TargetMappingPrecedence.LOWEST);
+        b.targetTypeMapping(Number.class, Boolean.class, null, n -> n.doubleValue() != 0.0, TargetMappingPrecedence.LOWEST);
+        b.targetTypeMapping(Number.class, Integer.class, null, n -> n.intValue(), TargetMappingPrecedence.LOWEST);
+        b.targetTypeMapping(Number.class, Long.class, null, n -> n.longValue(), TargetMappingPrecedence.LOWEST);
+        b.targetTypeMapping(Number.class, Double.class, null, n -> n.doubleValue(), TargetMappingPrecedence.LOWEST);
+        HostAccess hostAccess = b.build();
+        setupEnv(Context.newBuilder().allowHostAccess(hostAccess).build());
+
+        assertEquals("42", context.asValue(new BigDecimal(42)).as(String.class));
+
+        assertEquals(false, context.asValue(new BigDecimal(0)).as(Boolean.class));
+        assertEquals(true, context.asValue(new BigDecimal(1)).as(Boolean.class));
+
+        assertEquals(Integer.valueOf(42), context.asValue(new BigDecimal(42)).as(Integer.class));
+        assertEquals(Integer.valueOf(42), context.asValue(new BigDecimal(42.5)).as(Integer.class));
+
+        assertEquals(Long.valueOf(42), context.asValue(new BigDecimal(42)).as(Long.class));
+        assertEquals(Long.valueOf(42), context.asValue(new BigDecimal(42.5)).as(Long.class));
+
+        assertEquals(Double.valueOf(42.5), context.asValue(new BigDecimal(42.5)).as(Double.class));
+        assertEquals(Double.valueOf(Double.POSITIVE_INFINITY), context.asValue(new BigDecimal(2).pow(9001)).as(Double.class));
+
+        // sanity check: default mappings take precedence over lowest in overload selection.
+        assertEquals("object", context.asValue(new StringHierarchy()).invokeMember("hierarchy", new BigDecimal(42)).asString());
+
+        // the only applicable method is one that requires the lowest precedence target mapping.
+        Value onlyString = context.asValue(new OnlyString());
+        assertEquals("42", onlyString.invokeMember("accept", new BigDecimal(42)).asString());
+        Value onlyInt = context.asValue(new OnlyInt());
+        assertEquals("42", onlyInt.invokeMember("accept", new BigDecimal(42)).asString());
+    }
+
+    @SuppressWarnings("unused")
+    public static class OnlyString {
+        public String accept() {
+            return "()";
+        }
+
+        public String accept(String a) {
+            return a;
+        }
+
+        public String accept(CharSequence a) {
+            return "(CharSequence)";
+        }
+    }
+
+    @SuppressWarnings("unused")
+    public static class OnlyInt {
+        public String accept() {
+            return "()";
+        }
+
+        public String accept(int a) {
+            return String.valueOf(a);
+        }
+
+        public String accept(int a, int b) {
+            return "(int,int)";
+        }
     }
 
 }

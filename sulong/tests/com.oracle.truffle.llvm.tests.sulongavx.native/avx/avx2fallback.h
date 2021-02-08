@@ -36,6 +36,7 @@
  */
 
 #include <signal.h>
+#include <stdlib.h>
 
 int avx2_fallback();
 

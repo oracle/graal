@@ -29,5 +29,8 @@
  */
 int main() {
     unsigned long t1 = -1;
-    return (t1 | t1 == t1) + 1 | 2 | 4;
+#pragma clang diagnostic push
+#pragma clang diagnostic ignored "-Wtautological-compare"
+    return (t1 | (t1 == t1)) + 1 | 2 | 4;
+#pragma clang diagnostic pop
 }

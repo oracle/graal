@@ -29,16 +29,14 @@ import static org.junit.Assert.assertArrayEquals;
 
 import java.util.EnumSet;
 
-import org.junit.Assert;
-import org.junit.Before;
-import org.junit.Test;
-
-import org.graalvm.compiler.core.common.NumUtil;
 import org.graalvm.compiler.asm.aarch64.AArch64Address;
 import org.graalvm.compiler.asm.aarch64.AArch64Assembler;
 import org.graalvm.compiler.asm.aarch64.AArch64MacroAssembler;
-import org.graalvm.compiler.asm.aarch64.AArch64MacroAssembler.AddressGenerationPlan;
+import org.graalvm.compiler.core.common.NumUtil;
 import org.graalvm.compiler.test.GraalTest;
+import org.junit.Assert;
+import org.junit.Before;
+import org.junit.Test;
 
 import jdk.vm.ci.aarch64.AArch64;
 import jdk.vm.ci.aarch64.AArch64.CPUFeature;
@@ -84,115 +82,32 @@ public class AArch64AddressingModeTest extends GraalTest {
     }
 
     @Test
-    public void testGenerateAddressPlan() {
-        AddressGenerationPlan plan = AArch64MacroAssembler.generateAddressPlan(NumUtil.getNbitNumberInt(8), false, 0);
-        Assert.assertTrue(plan.workPlan == AddressGenerationPlan.WorkPlan.NO_WORK && !plan.needsScratch &&
-                        (plan.addressingMode == AArch64Address.AddressingMode.IMMEDIATE_UNSIGNED_SCALED || plan.addressingMode == AArch64Address.AddressingMode.IMMEDIATE_SIGNED_UNSCALED));
-
-        plan = AArch64MacroAssembler.generateAddressPlan(NumUtil.getNbitNumberInt(8), false, 1);
-        Assert.assertTrue(plan.workPlan == AddressGenerationPlan.WorkPlan.NO_WORK && !plan.needsScratch &&
-                        (plan.addressingMode == AArch64Address.AddressingMode.IMMEDIATE_UNSIGNED_SCALED || plan.addressingMode == AArch64Address.AddressingMode.IMMEDIATE_SIGNED_UNSCALED));
-
-        plan = AArch64MacroAssembler.generateAddressPlan(-NumUtil.getNbitNumberInt(8) - 1, false, 0);
-        Assert.assertTrue(plan.workPlan == AddressGenerationPlan.WorkPlan.NO_WORK && !plan.needsScratch && plan.addressingMode == AArch64Address.AddressingMode.IMMEDIATE_SIGNED_UNSCALED);
-
-        plan = AArch64MacroAssembler.generateAddressPlan(NumUtil.getNbitNumberInt(12), false, 1);
-        Assert.assertTrue(plan.workPlan == AddressGenerationPlan.WorkPlan.NO_WORK && !plan.needsScratch && plan.addressingMode == AArch64Address.AddressingMode.IMMEDIATE_UNSIGNED_SCALED);
-
-        plan = AArch64MacroAssembler.generateAddressPlan(NumUtil.getNbitNumberInt(12) << 2, false, 4);
-        Assert.assertTrue(plan.workPlan == AddressGenerationPlan.WorkPlan.NO_WORK && !plan.needsScratch && plan.addressingMode == AArch64Address.AddressingMode.IMMEDIATE_UNSIGNED_SCALED);
-
-        plan = AArch64MacroAssembler.generateAddressPlan(0, false, 8);
-        Assert.assertTrue(plan.workPlan == AddressGenerationPlan.WorkPlan.NO_WORK && !plan.needsScratch && plan.addressingMode == AArch64Address.AddressingMode.REGISTER_OFFSET);
-
-        plan = AArch64MacroAssembler.generateAddressPlan(0, false, 0);
-        Assert.assertTrue(plan.workPlan == AddressGenerationPlan.WorkPlan.NO_WORK && !plan.needsScratch && plan.addressingMode == AArch64Address.AddressingMode.REGISTER_OFFSET);
-
-        plan = AArch64MacroAssembler.generateAddressPlan(NumUtil.getNbitNumberInt(9), false, 0);
-        Assert.assertTrue(plan.workPlan == AddressGenerationPlan.WorkPlan.ADD_TO_BASE && !plan.needsScratch && plan.addressingMode == AArch64Address.AddressingMode.REGISTER_OFFSET);
-
-        plan = AArch64MacroAssembler.generateAddressPlan(NumUtil.getNbitNumberInt(12), false, 8);
-        Assert.assertTrue(plan.workPlan == AddressGenerationPlan.WorkPlan.ADD_TO_BASE && !plan.needsScratch && plan.addressingMode == AArch64Address.AddressingMode.REGISTER_OFFSET);
-
-        plan = AArch64MacroAssembler.generateAddressPlan(NumUtil.getNbitNumberInt(13), false, 8);
-        Assert.assertTrue(plan.workPlan == AddressGenerationPlan.WorkPlan.ADD_TO_BASE && plan.needsScratch && plan.addressingMode == AArch64Address.AddressingMode.REGISTER_OFFSET);
-
-        plan = AArch64MacroAssembler.generateAddressPlan(-NumUtil.getNbitNumberInt(12), false, 8);
-        Assert.assertTrue(plan.workPlan == AddressGenerationPlan.WorkPlan.ADD_TO_BASE && !plan.needsScratch && plan.addressingMode == AArch64Address.AddressingMode.REGISTER_OFFSET);
-
-        plan = AArch64MacroAssembler.generateAddressPlan(-(NumUtil.getNbitNumberInt(12) << 12), false, 8);
-        Assert.assertTrue(plan.workPlan == AddressGenerationPlan.WorkPlan.ADD_TO_BASE && !plan.needsScratch && plan.addressingMode == AArch64Address.AddressingMode.REGISTER_OFFSET);
-
-        plan = AArch64MacroAssembler.generateAddressPlan(NumUtil.getNbitNumberInt(12), true, 8);
-        Assert.assertTrue(plan.workPlan == AddressGenerationPlan.WorkPlan.ADD_TO_BASE && !plan.needsScratch && plan.addressingMode == AArch64Address.AddressingMode.REGISTER_OFFSET);
-
-        plan = AArch64MacroAssembler.generateAddressPlan(NumUtil.getNbitNumberInt(12) << 3, true, 8);
-        Assert.assertTrue(plan.workPlan == AddressGenerationPlan.WorkPlan.ADD_TO_INDEX && !plan.needsScratch && plan.addressingMode == AArch64Address.AddressingMode.REGISTER_OFFSET);
-
-        plan = AArch64MacroAssembler.generateAddressPlan(NumUtil.getNbitNumberInt(13) << 3, true, 8);
-        Assert.assertTrue(plan.workPlan == AddressGenerationPlan.WorkPlan.ADD_TO_INDEX && plan.needsScratch && plan.addressingMode == AArch64Address.AddressingMode.REGISTER_OFFSET);
-    }
-
-    @Test
-    public void testMakeAddressNoAction() {
-        AArch64Address address = masm.makeAddress(base, NumUtil.getNbitNumberInt(12) << 3, AArch64.zr, false, 8, null, false);
+    public void testMakeAddressNoActionScaled() {
+        int displacement = NumUtil.getNbitNumberInt(12) << 3;
+        AArch64Address address = masm.makeAddress(64, base, displacement);
         Assert.assertTrue(address.getAddressingMode() == AArch64Address.AddressingMode.IMMEDIATE_UNSIGNED_SCALED && address.getBase().equals(base) &&
-                        address.getOffset().equals(AArch64.zr) && address.getImmediateRaw() == NumUtil.getNbitNumberInt(12));
+                        address.getOffset().equals(AArch64.zr) && address.getImmediateRaw() == displacement >> 3);
         // No code generated.
         compareAssembly();
     }
 
     @Test
-    public void testMakeAddressAddIndex() {
-        AArch64Address address = masm.makeAddress(base, NumUtil.getNbitNumberInt(8) << 5, index, false, 8, null, true);
-        Assert.assertTrue(address.isRegisterOffsetScaled() && address.getAddressingMode() == AArch64Address.AddressingMode.REGISTER_OFFSET && address.getBase().equals(base) &&
-                        address.getOffset().equals(index));
-        asm.add(64, index, index, NumUtil.getNbitNumberInt(8) << 2);
+    public void testMakeAddressNoActionUnscaled() {
+        int displacement = -1;
+        AArch64Address address = masm.makeAddress(64, base, displacement);
+        Assert.assertTrue(address.getAddressingMode() == AArch64Address.AddressingMode.IMMEDIATE_SIGNED_UNSCALED && address.getBase().equals(base) &&
+                        address.getOffset().equals(AArch64.zr) && address.getImmediateRaw() == displacement);
+        // No code generated.
         compareAssembly();
     }
 
     @Test
-    public void testMakeAddressAddIndexNoOverwrite() {
-        AArch64Address address = masm.makeAddress(base, NumUtil.getNbitNumberInt(8) << 5, index, false, 8, scratch, false);
-        Assert.assertTrue(address.isRegisterOffsetScaled() && address.getAddressingMode() == AArch64Address.AddressingMode.REGISTER_OFFSET && address.getBase().equals(base) &&
+    public void testMakeAddressScratch() {
+        int displacement = 0xDEAD;
+        AArch64Address address = masm.makeAddress(64, base, displacement, scratch);
+        Assert.assertTrue(address.getAddressingMode() == AArch64Address.AddressingMode.REGISTER_OFFSET && address.getBase().equals(base) &&
                         address.getOffset().equals(scratch));
-        asm.add(64, scratch, index, NumUtil.getNbitNumberInt(8) << 2);
-        compareAssembly();
-    }
-
-    @Test
-    public void testMakeAddressAddBaseNoOverwrite() {
-        AArch64Address address = masm.makeAddress(base, NumUtil.getNbitNumberInt(12), index, false, 8, scratch, false);
-        Assert.assertTrue(address.isRegisterOffsetScaled() && address.getAddressingMode() == AArch64Address.AddressingMode.REGISTER_OFFSET && address.getBase().equals(scratch) &&
-                        address.getOffset().equals(index));
-        asm.add(64, scratch, base, NumUtil.getNbitNumberInt(12));
-        compareAssembly();
-    }
-
-    @Test
-    public void testMakeAddressAddBase() {
-        AArch64Address address = masm.makeAddress(base, NumUtil.getNbitNumberInt(12), index, false, 8, null, true);
-        Assert.assertTrue(address.isRegisterOffsetScaled() && address.getAddressingMode() == AArch64Address.AddressingMode.REGISTER_OFFSET && address.getBase().equals(base) &&
-                        address.getOffset().equals(index));
-        asm.add(64, base, base, NumUtil.getNbitNumberInt(12));
-        compareAssembly();
-    }
-
-    @Test
-    public void testMakeAddressAddIndexNoOverwriteExtend() {
-        AArch64Address address = masm.makeAddress(base, NumUtil.getNbitNumberInt(8) << 5, index, true, 8, scratch, false);
-        Assert.assertTrue(address.isRegisterOffsetScaled() && address.getAddressingMode() == AArch64Address.AddressingMode.EXTENDED_REGISTER_OFFSET && address.getBase().equals(base) &&
-                        address.getOffset().equals(scratch) && address.getExtendType() == AArch64Assembler.ExtendType.SXTW);
-        asm.add(32, scratch, index, NumUtil.getNbitNumberInt(8) << 2);
-        compareAssembly();
-    }
-
-    @Test
-    public void testMakeAddressAddIndexExtend() {
-        AArch64Address address = masm.makeAddress(base, NumUtil.getNbitNumberInt(8) << 5, index, true, 8, scratch, true);
-        Assert.assertTrue(address.isRegisterOffsetScaled() && address.getAddressingMode() == AArch64Address.AddressingMode.EXTENDED_REGISTER_OFFSET && address.getBase().equals(base) &&
-                        address.getOffset().equals(index) && address.getExtendType() == AArch64Assembler.ExtendType.SXTW);
-        asm.add(32, index, index, NumUtil.getNbitNumberInt(8) << 2);
+        asm.movz(64, scratch, displacement, 0);
         compareAssembly();
     }
 
@@ -219,8 +134,8 @@ public class AArch64AddressingModeTest extends GraalTest {
         Register dst = AArch64.r26;
         AArch64Address address = AArch64Address.createImmediateAddress(64, AArch64Address.AddressingMode.IMMEDIATE_UNSIGNED_SCALED, base, NumUtil.getNbitNumberInt(12) << 3);
         masm.loadAddress(dst, address, 8);
-        asm.add(64, dst, base, NumUtil.getNbitNumberInt(9) << 3);
-        asm.add(64, dst, dst, NumUtil.getNbitNumberInt(3) << 12);
+        asm.add(64, dst, base, NumUtil.getNbitNumberInt(3) << 12);
+        asm.add(64, dst, dst, NumUtil.getNbitNumberInt(9) << 3);
         compareAssembly();
     }
 

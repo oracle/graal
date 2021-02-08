@@ -47,6 +47,6 @@ static int varfunc(int n, ...) {
     return fp(0xdeadbeef);
 }
 
-int main(int argc, char **argv) {
-    return varfunc(1, func) != 0xdeadbeef;
+int main(void) {
+    return varfunc(1, func) != (int) 0xdeadbeef;
 }

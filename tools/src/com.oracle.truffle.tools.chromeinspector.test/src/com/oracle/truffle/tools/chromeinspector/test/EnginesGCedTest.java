@@ -32,6 +32,7 @@ import org.junit.After;
 import org.junit.Assert;
 import org.junit.Before;
 
+import org.graalvm.polyglot.Context;
 import org.graalvm.polyglot.Engine;
 
 import com.oracle.truffle.api.test.GCUtils;
@@ -51,12 +52,16 @@ public abstract class EnginesGCedTest {
     }
 
     protected final void addEngineReference(Engine engine) {
-        gcCheck.addEngineReference(engine);
+        gcCheck.addReference(engine);
+    }
+
+    protected final void addContextReference(Context context) {
+        gcCheck.addReference(context);
     }
 
     static final class GCCheck {
 
-        private final Set<WeakReference<Engine>> engineRefs = new HashSet<>();
+        private final Set<WeakReference<Object>> collectibleRefs = new HashSet<>();
         private final Set<Long> threadIDs = new HashSet<>();
 
         GCCheck() {
@@ -69,8 +74,8 @@ public abstract class EnginesGCedTest {
         }
 
         void checkCollected() {
-            for (WeakReference<Engine> engineRef : engineRefs) {
-                GCUtils.assertGc("Engine not collected", engineRef);
+            for (WeakReference<?> ref : collectibleRefs) {
+                GCUtils.assertGc("Not collected", ref);
             }
             Thread[] threads = findAllThreads();
             for (Thread t : threads) {
@@ -80,6 +85,10 @@ public abstract class EnginesGCedTest {
                             // A compiler thread
                             continue;
                         }
+                        if (t.getName().toLowerCase().contains("libgraal")) {
+                            // A libgraal thread
+                            continue;
+                        }
                         Assert.fail("An extra thread " + t + " is found after test finished.");
                     }
                 }
@@ -87,8 +96,8 @@ public abstract class EnginesGCedTest {
             threadIDs.clear();
         }
 
-        void addEngineReference(Engine engine) {
-            engineRefs.add(new WeakReference<>(engine));
+        void addReference(Object engine) {
+            collectibleRefs.add(new WeakReference<>(engine));
         }
 
         private static Thread[] findAllThreads() {

@@ -31,6 +31,7 @@ import static jdk.vm.ci.aarch64.AArch64.sp;
 import static jdk.vm.ci.aarch64.AArch64.zr;
 import static jdk.vm.ci.code.ValueUtil.asRegister;
 import static jdk.vm.ci.hotspot.aarch64.AArch64HotSpotRegisterConfig.fp;
+import static org.graalvm.compiler.asm.aarch64.AArch64Address.AddressingMode.IMMEDIATE_UNSIGNED_SCALED;
 import static org.graalvm.compiler.core.common.GraalOptions.GeneratePIC;
 import static org.graalvm.compiler.core.common.GraalOptions.ZapStackOnMethodEntry;
 
@@ -85,6 +86,7 @@ import jdk.vm.ci.code.StackSlot;
 import jdk.vm.ci.hotspot.HotSpotCallingConventionType;
 import jdk.vm.ci.hotspot.HotSpotSentinelConstant;
 import jdk.vm.ci.hotspot.aarch64.AArch64HotSpotRegisterConfig;
+import jdk.vm.ci.meta.JavaConstant;
 import jdk.vm.ci.meta.JavaKind;
 import jdk.vm.ci.meta.JavaType;
 import jdk.vm.ci.meta.ResolvedJavaMethod;
@@ -119,10 +121,9 @@ public class AArch64HotSpotBackend extends HotSpotHostBackend implements LIRGene
     @Override
     protected void bangStackWithOffset(CompilationResultBuilder crb, int bangOffset) {
         AArch64MacroAssembler masm = (AArch64MacroAssembler) crb.asm;
-        boolean allowOverwrite = false;
         try (ScratchRegister sc = masm.getScratchRegister()) {
             Register scratch = sc.getRegister();
-            AArch64Address address = masm.makeAddress(sp, -bangOffset, scratch, 8, allowOverwrite);
+            AArch64Address address = masm.makeAddress(64, sp, -bangOffset, scratch);
             masm.str(64, zr, address);
         }
     }
@@ -187,19 +188,16 @@ public class AArch64HotSpotBackend extends HotSpotHostBackend implements LIRGene
 
             try (ScratchRegister sc = masm.getScratchRegister()) {
                 int wordSize = 8;
-                Register rscratch1 = sc.getRegister();
+                Register scratch = sc.getRegister();
                 assert totalFrameSize > 0;
-                if (frameSize < 1 << 9) {
+                AArch64Address.AddressingMode addressingMode = AArch64Address.AddressingMode.IMMEDIATE_PAIR_SIGNED_SCALED;
+                if (AArch64Address.isValidImmediateAddress(64, addressingMode, frameSize)) {
                     masm.sub(64, sp, sp, totalFrameSize);
-                    masm.stp(64, fp, lr, AArch64Address.createImmediateAddress(64, AArch64Address.AddressingMode.IMMEDIATE_PAIR_SIGNED_SCALED, sp, frameSize));
+                    masm.stp(64, fp, lr, AArch64Address.createImmediateAddress(64, addressingMode, sp, frameSize));
                 } else {
-                    masm.stp(64, fp, lr, AArch64Address.createImmediateAddress(64, AArch64Address.AddressingMode.IMMEDIATE_PAIR_PRE_INDEXED, sp, -2 * wordSize));
-                    if (frameSize < 1 << 12) {
-                        masm.sub(64, sp, sp, totalFrameSize - 2 * wordSize);
-                    } else {
-                        masm.mov(rscratch1, totalFrameSize - 2 * wordSize);
-                        masm.sub(64, sp, sp, rscratch1);
-                    }
+                    int frameRecordSize = 2 * wordSize;
+                    masm.stp(64, fp, lr, AArch64Address.createImmediateAddress(64, AArch64Address.AddressingMode.IMMEDIATE_PAIR_PRE_INDEXED, sp, -frameRecordSize));
+                    masm.sub(64, sp, sp, totalFrameSize - frameRecordSize, scratch);
                 }
             }
             if (HotSpotMarkId.FRAME_COMPLETE.isAvailable()) {
@@ -233,20 +231,17 @@ public class AArch64HotSpotBackend extends HotSpotHostBackend implements LIRGene
             crb.blockComment("[method epilogue]");
             try (ScratchRegister sc = masm.getScratchRegister()) {
                 int wordSize = 8;
-                Register rscratch1 = sc.getRegister();
+                Register scratch = sc.getRegister();
                 final int frameSize = frameMap.frameSize();
                 assert totalFrameSize > 0;
-                if (frameSize < 1 << 9) {
-                    masm.ldp(64, fp, lr, AArch64Address.createImmediateAddress(64, AArch64Address.AddressingMode.IMMEDIATE_PAIR_SIGNED_SCALED, sp, frameSize));
+                AArch64Address.AddressingMode addressingMode = AArch64Address.AddressingMode.IMMEDIATE_PAIR_SIGNED_SCALED;
+                if (AArch64Address.isValidImmediateAddress(64, addressingMode, frameSize)) {
+                    masm.ldp(64, fp, lr, AArch64Address.createImmediateAddress(64, addressingMode, sp, frameSize));
                     masm.add(64, sp, sp, totalFrameSize);
                 } else {
-                    if (frameSize < 1 << 12) {
-                        masm.add(64, sp, sp, totalFrameSize - 2 * wordSize);
-                    } else {
-                        masm.mov(rscratch1, totalFrameSize - 2 * wordSize);
-                        masm.add(64, sp, sp, rscratch1);
-                    }
-                    masm.ldp(64, fp, lr, AArch64Address.createImmediateAddress(64, AArch64Address.AddressingMode.IMMEDIATE_PAIR_POST_INDEXED, sp, 2 * wordSize));
+                    int frameRecordSize = 2 * wordSize;
+                    masm.add(64, sp, sp, totalFrameSize - frameRecordSize, scratch);
+                    masm.ldp(64, fp, lr, AArch64Address.createImmediateAddress(64, AArch64Address.AddressingMode.IMMEDIATE_PAIR_POST_INDEXED, sp, frameRecordSize));
                 }
             }
 
@@ -275,7 +270,7 @@ public class AArch64HotSpotBackend extends HotSpotHostBackend implements LIRGene
         HotSpotFrameContext frameContext = new HotSpotFrameContext(stub != null);
 
         DataBuilder dataBuilder = new HotSpotDataBuilder(getCodeCache().getTarget());
-        CompilationResultBuilder crb = factory.createBuilder(getCodeCache(), getForeignCalls(), frameMap, masm, dataBuilder, frameContext, lir.getOptions(), lir.getDebug(), compilationResult,
+        CompilationResultBuilder crb = factory.createBuilder(getProviders(), frameMap, masm, dataBuilder, frameContext, lir.getOptions(), lir.getDebug(), compilationResult,
                         Register.None);
         crb.setTotalFrameSize(frameMap.totalFrameSize());
         crb.setMaxInterpreterFrameSize(gen.getMaxInterpreterFrameSize());
@@ -325,8 +320,8 @@ public class AArch64HotSpotBackend extends HotSpotHostBackend implements LIRGene
             // equal to scratch(1) careful!
             Register inlineCacheKlass = AArch64HotSpotRegisterConfig.inlineCacheRegister;
             Register receiver = asRegister(cc.getArgument(0));
-            int transferSize = config.useCompressedClassPointers ? 4 : 8;
-            AArch64Address klassAddress = masm.makeAddress(receiver, config.hubOffset, transferSize);
+            int size = config.useCompressedClassPointers ? 32 : 64;
+            AArch64Address klassAddress = masm.makeAddress(size, receiver, config.hubOffset);
 
             // Are r10 and r11 available scratch registers here? One would hope so.
             Register klass = r10;
@@ -389,6 +384,45 @@ public class AArch64HotSpotBackend extends HotSpotHostBackend implements LIRGene
         HotSpotFrameContext frameContext = (HotSpotFrameContext) crb.frameContext;
         if (!frameContext.isStub) {
             HotSpotForeignCallsProvider foreignCalls = providers.getForeignCalls();
+            if (crb.getPendingImplicitExceptionList() != null) {
+                try (ScratchRegister sc = masm.getScratchRegister()) {
+                    Register scratch = sc.getRegister();
+                    for (CompilationResultBuilder.PendingImplicitException pendingImplicitException : crb.getPendingImplicitExceptionList()) {
+                        // Insert stub code that stores the corresponding deoptimization action &
+                        // reason, as well as the failed speculation, and calls into
+                        // DEOPT_BLOB_UNCOMMON_TRAP. Note that we use the debugging info at the
+                        // exceptional PC that triggers this implicit exception, we cannot touch
+                        // any register/stack slot in this stub, so as to preserve a valid mapping
+                        // for constructing the interpreter frame.
+                        int pos = masm.position();
+                        Register thread = getProviders().getRegisters().getThreadRegister();
+                        // Store deoptimization reason and action into thread local storage.
+                        int dwordSizeInBits = AArch64Kind.DWORD.getSizeInBytes() * Byte.SIZE;
+                        AArch64Address pendingDeoptimization = AArch64Address.createImmediateAddress(dwordSizeInBits, IMMEDIATE_UNSIGNED_SCALED, thread, config.pendingDeoptimizationOffset);
+                        masm.mov(scratch, pendingImplicitException.state.deoptReasonAndAction.asInt());
+                        masm.str(dwordSizeInBits, scratch, pendingDeoptimization);
+
+                        // Store speculation into thread local storage
+                        JavaConstant deoptSpeculation = pendingImplicitException.state.deoptSpeculation;
+                        if (deoptSpeculation.getJavaKind() == JavaKind.Long) {
+                            int qwordSizeInBits = AArch64Kind.QWORD.getSizeInBytes() * Byte.SIZE;
+                            AArch64Address pendingSpeculation = AArch64Address.createImmediateAddress(qwordSizeInBits, IMMEDIATE_UNSIGNED_SCALED, thread, config.pendingFailedSpeculationOffset);
+                            masm.mov(scratch, pendingImplicitException.state.deoptSpeculation.asLong());
+                            masm.str(qwordSizeInBits, scratch, pendingSpeculation);
+                        } else {
+                            assert deoptSpeculation.getJavaKind() == JavaKind.Int;
+                            AArch64Address pendingSpeculation = AArch64Address.createImmediateAddress(dwordSizeInBits, IMMEDIATE_UNSIGNED_SCALED, thread, config.pendingFailedSpeculationOffset);
+                            masm.mov(scratch, pendingImplicitException.state.deoptSpeculation.asInt());
+                            masm.str(dwordSizeInBits, scratch, pendingSpeculation);
+                        }
+
+                        ForeignCallLinkage uncommonTrapBlob = foreignCalls.lookupForeignCall(DEOPT_BLOB_UNCOMMON_TRAP);
+                        Register helper = AArch64Call.isNearCall(uncommonTrapBlob) ? null : scratch;
+                        AArch64Call.directCall(crb, masm, uncommonTrapBlob, helper, pendingImplicitException.state);
+                        crb.recordImplicitException(pendingImplicitException.codeOffset, pos, pendingImplicitException.state);
+                    }
+                }
+            }
             try (ScratchRegister sc = masm.getScratchRegister()) {
                 Register scratch = sc.getRegister();
                 crb.recordMark(HotSpotMarkId.EXCEPTION_HANDLER_ENTRY);

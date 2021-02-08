@@ -41,72 +41,75 @@
 package com.oracle.truffle.regex;
 
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
-import com.oracle.truffle.api.TruffleException;
-import com.oracle.truffle.api.nodes.Node;
+import com.oracle.truffle.api.exception.AbstractTruffleException;
+import com.oracle.truffle.api.interop.ExceptionType;
+import com.oracle.truffle.api.interop.InteropLibrary;
+import com.oracle.truffle.api.library.ExportLibrary;
+import com.oracle.truffle.api.library.ExportMessage;
+import com.oracle.truffle.api.source.Source;
+import com.oracle.truffle.api.source.SourceSection;
 
-public class RegexSyntaxException extends RuntimeException implements TruffleException {
+@ExportLibrary(InteropLibrary.class)
+public final class RegexSyntaxException extends AbstractTruffleException {
 
-    private static final String template = "Invalid regular expression: /%s/%s: %s";
-    private static final String templateNoFlags = "Invalid regular expression: %s: %s";
-    private static final String templatePosition = "Invalid regular expression: /%s/%s:%d: %s";
+    private final SourceSection sourceSection;
 
-    private final String reason;
-    private final RegexSource regexSrc;
-    private final int position;
+    public static RegexSyntaxException createOptions(Source source, String msg, int position) {
+        return new RegexSyntaxException(msg, source, position);
+    }
 
-    public RegexSyntaxException(String msg) {
-        super(msg);
-        reason = msg;
-        regexSrc = null;
-        position = -1;
+    public static RegexSyntaxException createPattern(RegexSource source, String msg, int position) {
+        return new RegexSyntaxException(msg, patternSource(source), position);
+    }
+
+    public static RegexSyntaxException createFlags(RegexSource source, String msg) {
+        return new RegexSyntaxException(msg, flagsSource(source), 0);
+    }
+
+    public static RegexSyntaxException createFlags(RegexSource source, String msg, int position) {
+        return new RegexSyntaxException(msg, flagsSource(source), position);
     }
 
     @TruffleBoundary
-    public RegexSyntaxException(String pattern, String msg) {
-        this(String.format(templateNoFlags, pattern, msg), msg, null);
+    private static Source patternSource(RegexSource regexSource) {
+        String src = regexSource.getSource().getCharacters().toString();
+        int firstPos = src.indexOf('/') + 1;
+        int lastPos = src.lastIndexOf('/');
+        assert firstPos > 0;
+        assert lastPos > firstPos;
+        return regexSource.getSource().subSource(firstPos, lastPos - firstPos);
     }
 
     @TruffleBoundary
-    public RegexSyntaxException(RegexSource source, String msg) {
-        this(String.format(template, source.getPattern(), source.getFlags(), msg), msg, source);
+    private static Source flagsSource(RegexSource regexSource) {
+        String src = regexSource.getSource().getCharacters().toString();
+        int lastPos = src.lastIndexOf('/') + 1;
+        assert lastPos > 0;
+        return regexSource.getSource().subSource(lastPos, src.length() - lastPos);
     }
 
     @TruffleBoundary
-    public RegexSyntaxException(RegexSource source, String msg, int position) {
-        this(String.format(templatePosition, source.getPattern(), source.getFlags(), position, msg), msg, source, position);
+    private RegexSyntaxException(String reason, Source src, int position) {
+        super(reason);
+        assert position < src.getLength();
+        this.sourceSection = src.createSection(position, src.getLength() - position);
     }
 
-    private RegexSyntaxException(String exceptionMsg, String reason, RegexSource regexSrc) {
-        this(exceptionMsg, reason, regexSrc, -1);
+    @ExportMessage
+    @SuppressWarnings("static-method")
+    ExceptionType getExceptionType() {
+        return ExceptionType.PARSE_ERROR;
     }
 
-    private RegexSyntaxException(String exceptionMsg, String reason, RegexSource regexSrc, int position) {
-        super(exceptionMsg);
-        this.reason = reason;
-        this.regexSrc = regexSrc;
-        this.position = position;
-    }
-
-    @Override
-    public boolean isSyntaxError() {
+    @ExportMessage
+    @SuppressWarnings("static-method")
+    boolean hasSourceLocation() {
         return true;
     }
 
-    @Override
-    public Node getLocation() {
-        return null;
-    }
-
-    public String getReason() {
-        return reason;
-    }
-
-    public RegexSource getRegex() {
-        return regexSrc;
-    }
-
-    public Integer getPosition() {
-        return position;
+    @ExportMessage(name = "getSourceLocation")
+    SourceSection getSourceSection() {
+        return sourceSection;
     }
 
     private static final long serialVersionUID = 1L;

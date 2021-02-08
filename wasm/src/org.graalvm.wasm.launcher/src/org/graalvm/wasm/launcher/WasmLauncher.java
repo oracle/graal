@@ -58,7 +58,11 @@ import java.util.Set;
 public class WasmLauncher extends AbstractLanguageLauncher {
     private File file = null;
     private VersionAction versionAction = VersionAction.None;
+    private String customEntryPoint = null;
     private String[] programArguments = null;
+    private ArrayList<String> argumentErrors = null;
+
+    private static final String USAGE = "Usage: wasm [OPTION...] [FILE] [ARG...]";
 
     public static void main(String[] args) {
         new WasmLauncher().launch(args);
@@ -69,29 +73,47 @@ public class WasmLauncher extends AbstractLanguageLauncher {
         final ListIterator<String> argIterator = arguments.listIterator();
         final ArrayList<String> unrecognizedArguments = new ArrayList<>();
         final List<String> programArgumentsList = new ArrayList<>();
+        argumentErrors = new ArrayList<>();
+
+        // Add the default arguments.
+        polyglotOptions.put("wasm.Builtins", "wasi_snapshot_preview1");
 
         while (argIterator.hasNext()) {
             final String argument = argIterator.next();
-            if (argument.startsWith("-")) {
-                switch (argument) {
-                    case "--show-version":
-                        versionAction = VersionAction.PrintAndContinue;
-                        break;
-                    case "--version":
-                        versionAction = VersionAction.PrintAndExit;
-                        break;
-                    default:
-                        unrecognizedArguments.add(argument);
-                        break;
+            if (file == null) {
+                if (argument.startsWith("-")) {
+                    switch (argument) {
+                        case "--show-version":
+                            versionAction = VersionAction.PrintAndContinue;
+                            break;
+                        case "--version":
+                            versionAction = VersionAction.PrintAndExit;
+                            break;
+                        default:
+                            if (argument.startsWith("--entry-point=")) {
+                                String[] parts = argument.split("=", 2);
+                                if (parts[1].isEmpty()) {
+                                    argumentErrors.add("Must specify function name after --entry-point.");
+                                } else {
+                                    customEntryPoint = parts[1];
+                                }
+                            } else {
+                                unrecognizedArguments.add(argument);
+                            }
+                            break;
+                    }
+                } else {
+                    file = new File(argument);
+                    programArgumentsList.add(argument);
+                    break;
                 }
             } else {
-                file = new File(argument);
-                programArgumentsList.add(file.getAbsolutePath());
+                programArgumentsList.add(argument);
                 break;
             }
         }
 
-        // collect the program args:
+        // Collect the program arguments.
         while (argIterator.hasNext()) {
             programArgumentsList.add(argIterator.next());
         }
@@ -102,11 +124,13 @@ public class WasmLauncher extends AbstractLanguageLauncher {
 
     @Override
     protected void validateArguments(Map<String, String> polyglotOptions) {
+        for (String error : argumentErrors) {
+            System.err.println(error);
+        }
         if (versionAction != VersionAction.PrintAndExit) {
             if (file == null) {
-                throw abort("Must specify the binary name.");
-            }
-            if (!file.exists()) {
+                throw abort("The binary path is missing.\n" + USAGE);
+            } else if (!file.exists()) {
                 throw abort(String.format("WebAssembly binary '%s' does not exist.", file));
             }
         }
@@ -124,9 +148,9 @@ public class WasmLauncher extends AbstractLanguageLauncher {
             runVersionAction(versionAction, context.getEngine());
             context.eval(Source.newBuilder(getLanguageId(), file).build());
 
-            Value entryPoint = context.getBindings(getLanguageId()).getMember("_start");
+            Value entryPoint = detectEntryPoint(context);
             if (entryPoint == null) {
-                throw abort("No start function found, cannot start program.");
+                throw abort("No entry-point function found, cannot start program.");
             }
 
             entryPoint.execute();
@@ -141,6 +165,17 @@ public class WasmLauncher extends AbstractLanguageLauncher {
         }
     }
 
+    private Value detectEntryPoint(Context context) {
+        if (customEntryPoint != null) {
+            return context.getBindings(getLanguageId()).getMember("main").getMember(customEntryPoint);
+        }
+        Value candidate = context.getBindings(getLanguageId()).getMember("main").getMember("_start");
+        if (candidate == null) {
+            candidate = context.getBindings(getLanguageId()).getMember("main").getMember("_main");
+        }
+        return candidate;
+    }
+
     @Override
     protected String getLanguageId() {
         return "wasm";
@@ -149,7 +184,7 @@ public class WasmLauncher extends AbstractLanguageLauncher {
     @Override
     protected void printHelp(OptionCategory maxCategory) {
         System.out.println();
-        System.out.println("Usage: wasm [OPTION]... [FILE]");
+        System.out.println("Usage: wasm [OPTION...] [FILE] [ARG...]");
         System.out.println("Run WebAssembly binary files on GraalVM's wasm engine.");
     }
 

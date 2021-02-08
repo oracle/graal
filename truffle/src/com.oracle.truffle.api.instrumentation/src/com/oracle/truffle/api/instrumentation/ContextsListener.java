@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2017, 2018, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2017, 2020, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -40,6 +40,8 @@
  */
 package com.oracle.truffle.api.instrumentation;
 
+import org.graalvm.polyglot.Context;
+
 import com.oracle.truffle.api.TruffleContext;
 import com.oracle.truffle.api.nodes.LanguageInfo;
 
@@ -67,6 +69,16 @@ public interface ContextsListener {
     void onContextCreated(TruffleContext context);
 
     /**
+     * Notifies before creation of a language-specific context in an existing polyglot context.
+     *
+     * @param context the polyglot context
+     * @param language the language for which a language-specific context is being created
+     * @since 21.1
+     */
+    default void onLanguageContextCreate(TruffleContext context, LanguageInfo language) {
+    }
+
+    /**
      * Notifies about creation of a language-specific context in an existing polyglot context.
      *
      * @param context the polyglot context
@@ -76,6 +88,28 @@ public interface ContextsListener {
     void onLanguageContextCreated(TruffleContext context, LanguageInfo language);
 
     /**
+     * Notifies after failed creation of a language-specific context in an existing polyglot
+     * context.
+     *
+     * @param context the polyglot context
+     * @param language the language for which a language-specific context creation failed
+     * @since 21.1
+     */
+    default void onLanguageContextCreateFailed(TruffleContext context, LanguageInfo language) {
+    }
+
+    /**
+     * Notifies before initialization of a language-specific context in an existing polyglot
+     * context.
+     *
+     * @param context the polyglot context
+     * @param language the language for which a language-specific context is being initialized
+     * @since 21.1
+     */
+    default void onLanguageContextInitialize(TruffleContext context, LanguageInfo language) {
+    }
+
+    /**
      * Notifies about initialization of a language-specific context in an existing polyglot context.
      *
      * @param context the polyglot context
@@ -83,6 +117,17 @@ public interface ContextsListener {
      * @since 0.30
      */
     void onLanguageContextInitialized(TruffleContext context, LanguageInfo language);
+
+    /**
+     * Notifies after failed initialization of a language-specific context in an existing polyglot
+     * context.
+     *
+     * @param context the polyglot context
+     * @param language the language for which a language-specific context initialization failed
+     * @since 21.1
+     */
+    default void onLanguageContextInitializeFailed(TruffleContext context, LanguageInfo language) {
+    }
 
     /**
      * Notifies about finalization of a language-specific context in an existing polyglot context.
@@ -108,4 +153,14 @@ public interface ContextsListener {
      * @since 0.30
      */
     void onContextClosed(TruffleContext context);
+
+    /**
+     * Invoked when the resource consumption limits were reset for a particular context. For example
+     * this is method each time the {@link Context#resetLimits()} method is called.
+     *
+     * @since 20.3
+     */
+    default void onContextResetLimits(@SuppressWarnings("unused") TruffleContext context) {
+    }
+
 }

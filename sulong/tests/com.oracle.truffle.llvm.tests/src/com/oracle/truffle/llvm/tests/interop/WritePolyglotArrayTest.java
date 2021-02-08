@@ -297,7 +297,7 @@ public class WritePolyglotArrayTest extends WritePolyglotArrayTestBase {
          */
         private static void untyped(ArrayList<Object[]> c) {
             /* A short does not fit into a byte. */
-            addUnsupported(c, "write_i16", PRIMITIVE_BYTE_ARRAY_8, 0, hex((short) 0xCAFE), expectPolyglotException("Can not write array element"));
+            addUnsupported(c, "write_i16", PRIMITIVE_BYTE_ARRAY_8, 0, hex((short) 0xCAFE), expectPolyglotException("Wrong type writing to array element"));
             addSupported(c, "write_i16", PRIMITIVE_INT_ARRAY_8, 0, hex((short) 0xCAFE), assertResult((newArray, idx, value) -> newArray.set(idx, value)));
             addSupported(c, "write_i16", PRIMITIVE_DOUBLE_ARRAY_8, 0, hex((short) 0xCAFE), assertResult((newArray, idx, value) -> newArray.set(idx, value)));
             addSupported(c, "write_i16", PRIMITIVE_FLOAT_ARRAY_8, 0, hex((short) 0xCAFE), assertResult((newArray, idx, value) -> newArray.set(idx, value)));
@@ -389,7 +389,7 @@ public class WritePolyglotArrayTest extends WritePolyglotArrayTestBase {
             /* No explicit type cast. Write one element to polyglot array. */
             addSupported(c, "write_i32", PRIMITIVE_INT_ARRAY_8, 0, hex(0xCAFEFEED), assertResult((newArray, idx, value) -> newArray.set(idx, value)));
             /* The i32 cannot be converted to a float. */
-            addUnsupported(c, "write_i32", PRIMITIVE_FLOAT_ARRAY_8, 0, hex(0xCAFEFEED), expectPolyglotException("Can not write array element"));
+            addUnsupported(c, "write_i32", PRIMITIVE_FLOAT_ARRAY_8, 0, hex(0xCAFEFEED), expectPolyglotException("Wrong type writing to array element"));
             /* The i32 can be converted to a double. */
             addSupported(c, "write_i32", PRIMITIVE_DOUBLE_ARRAY_8, 0, hex(0xCAFEFEED), assertResult((newArray, idx, value) -> newArray.set(idx, value)));
         }
@@ -493,9 +493,9 @@ public class WritePolyglotArrayTest extends WritePolyglotArrayTestBase {
          * Write an i64 to an untyped polyglot array without cast.
          */
         private static void untyped(ArrayList<Object[]> c) {
-            addUnsupported(c, "write_i64", PRIMITIVE_INT_ARRAY_8, 0, hex(0xCAFEFEED_12345678L), expectPolyglotException("Can not write array element"));
-            addUnsupported(c, "write_i64", PRIMITIVE_DOUBLE_ARRAY_8, 0, hex(0xCAFEFEED_12345678L), expectPolyglotException("Can not write array element"));
-            addUnsupported(c, "write_i64", PRIMITIVE_FLOAT_ARRAY_8, 0, hex(0xCAFEFEED_12345678L), expectPolyglotException("Can not write array element"));
+            addUnsupported(c, "write_i64", PRIMITIVE_INT_ARRAY_8, 0, hex(0xCAFEFEED_12345678L), expectPolyglotException("Wrong type writing to array element"));
+            addUnsupported(c, "write_i64", PRIMITIVE_DOUBLE_ARRAY_8, 0, hex(0xCAFEFEED_12345678L), expectPolyglotException("Wrong type writing to array element"));
+            addUnsupported(c, "write_i64", PRIMITIVE_FLOAT_ARRAY_8, 0, hex(0xCAFEFEED_12345678L), expectPolyglotException("Wrong type writing to array element"));
             addSupported(c, "write_i64", PRIMITIVE_LONG_ARRAY_1, 0, hex(0xCAFEFEED_12345678L), assertResult((newArray, idx, value) -> newArray.set(idx, value)));
         }
 
@@ -604,7 +604,7 @@ public class WritePolyglotArrayTest extends WritePolyglotArrayTestBase {
          * Write a float to an untyped polyglot array without cast.
          */
         private static void untyped(ArrayList<Object[]> c) {
-            addUnsupported(c, "write_float", PRIMITIVE_INT_ARRAY_8, 0, (float) Math.PI, expectPolyglotException("Can not write array element"));
+            addUnsupported(c, "write_float", PRIMITIVE_INT_ARRAY_8, 0, (float) Math.PI, expectPolyglotException("Wrong type writing to array element"));
             addSupported(c, "write_float", PRIMITIVE_DOUBLE_ARRAY_8, 0, (float) Math.PI, assertResult((newArray, idx, value) -> newArray.set(idx, value)));
             addSupported(c, "write_float", PRIMITIVE_FLOAT_ARRAY_8, 0, (float) Math.PI, assertResult((newArray, idx, value) -> newArray.set(idx, value)));
         }
@@ -671,12 +671,16 @@ public class WritePolyglotArrayTest extends WritePolyglotArrayTestBase {
              * No type info, assume writing to a float array. The float cannot be converted to an
              * int.
              */
-            addUnsupported(c, "write_float", PRIMITIVE_INT_ARRAY_1, 0, (float) Math.PI, expectPolyglotException("Can not write array element"));
+            addUnsupported(c, "write_float", PRIMITIVE_INT_ARRAY_1, 0, (float) Math.PI, expectPolyglotException("Wrong type writing to array element"));
             /* Explicitly typed as float array. The float cannot be converted to an int. */
-            addUnsupported(c, "write_float_to_float_array", PRIMITIVE_INT_ARRAY_1, 0, (float) Math.PI, expectPolyglotException("Can not write array element"));
+            addUnsupported(c, "write_float_to_float_array", PRIMITIVE_INT_ARRAY_1, 0, (float) Math.PI, expectPolyglotException("Wrong type writing to array element"));
             /* Typed as i32 array. Reinterpret float bits as int. */
             addSupported(c, "write_float", TYPED_I32_INT_ARRAY_1, 0, (float) Math.PI, assertResult((newArray, idx, value) -> newArray.set(idx, Float.floatToIntBits((Float) value))));
-            addSupported(c, "write_float_to_float_array", TYPED_I32_INT_ARRAY_1, 0, (float) Math.PI, assertResult((newArray, idx, value) -> newArray.set(idx, Float.floatToIntBits((Float) value))));
+            /*
+             * Typed as i32 array, but explicitly overwritten to float array. The float cannot be
+             * converted to an int.
+             */
+            addUnsupported(c, "write_float_to_float_array", TYPED_I32_INT_ARRAY_1, 0, (float) Math.PI, expectPolyglotException("Wrong type writing to array element"));
         }
 
         /**
@@ -717,9 +721,9 @@ public class WritePolyglotArrayTest extends WritePolyglotArrayTestBase {
          * Write a double to an untyped polyglot array without cast.
          */
         private static void untyped(ArrayList<Object[]> c) {
-            addUnsupported(c, "write_double", PRIMITIVE_INT_ARRAY_8, 0, Math.PI, expectPolyglotException("Can not write array element"));
+            addUnsupported(c, "write_double", PRIMITIVE_INT_ARRAY_8, 0, Math.PI, expectPolyglotException("Wrong type writing to array element"));
             addSupported(c, "write_double", PRIMITIVE_DOUBLE_ARRAY_8, 0, Math.PI, assertResult((newArray, idx, value) -> newArray.set(idx, value)));
-            addUnsupported(c, "write_double", PRIMITIVE_FLOAT_ARRAY_8, 0, Math.PI, expectPolyglotException("Can not write array element"));
+            addUnsupported(c, "write_double", PRIMITIVE_FLOAT_ARRAY_8, 0, Math.PI, expectPolyglotException("Wrong type writing to array element"));
         }
 
         /**
@@ -778,10 +782,10 @@ public class WritePolyglotArrayTest extends WritePolyglotArrayTestBase {
          * Writing double to double should always work.
          */
         private static void toI32(ArrayList<Object[]> c) {
-            addUnsupported(c, "write_double", PRIMITIVE_INT_ARRAY_1, 0, Math.PI, expectPolyglotException("Can not write array element"));
+            addUnsupported(c, "write_double", PRIMITIVE_INT_ARRAY_1, 0, Math.PI, expectPolyglotException("Wrong type writing to array element"));
             addUnsupported(c, "write_double", TYPED_I32_INT_ARRAY_1, 0, Math.PI, expectPolyglotException("to foreign object"));
-            addUnsupported(c, "write_double_to_double_array", PRIMITIVE_INT_ARRAY_1, 0, Math.PI, expectPolyglotException("Can not write array element"));
-            addUnsupported(c, "write_double_to_double_array", TYPED_I32_INT_ARRAY_1, 0, Math.PI, expectPolyglotException("to foreign object"));
+            addUnsupported(c, "write_double_to_double_array", PRIMITIVE_INT_ARRAY_1, 0, Math.PI, expectPolyglotException("Wrong type writing to array element"));
+            addUnsupported(c, "write_double_to_double_array", TYPED_I32_INT_ARRAY_1, 0, Math.PI, expectPolyglotException("Wrong type writing to array element"));
         }
 
         /**
@@ -796,7 +800,7 @@ public class WritePolyglotArrayTest extends WritePolyglotArrayTestBase {
                             assertResult((newArray, idx, value) -> newArray.set(idx, Double.doubleToLongBits((Double) value))));
             addSupported(c, "write_double_to_i64_array", PRIMITIVE_LONG_ARRAY_8, 0, Math.PI, assertResult((newArray, idx, value) -> newArray.set(idx, Double.doubleToLongBits((Double) value))));
             /* Casting to i64 array, but an i64 does not fit into a byte. */
-            addUnsupported(c, "write_double_to_i64_array", PRIMITIVE_BYTE_ARRAY_8, 0, Math.PI, expectPolyglotException("Can not write array element"));
+            addUnsupported(c, "write_double_to_i64_array", PRIMITIVE_BYTE_ARRAY_8, 0, Math.PI, expectPolyglotException("Wrong type writing to array element"));
         }
 
         /**
@@ -808,11 +812,11 @@ public class WritePolyglotArrayTest extends WritePolyglotArrayTestBase {
             addSupported(c, "write_double", TYPED_DOUBLE_ARRAY_8, 0, Math.PI,
                             assertResult((newArray, idx, value) -> newArray.set(idx, value)));
             addUnsupported(c, "write_double_to_double_array", PRIMITIVE_FLOAT_ARRAY_8, 0, Math.PI,
-                            expectPolyglotException("Can not write array element"));
+                            expectPolyglotException("Wrong type writing to array element"));
             addSupported(c, "write_double_to_double_array", PRIMITIVE_DOUBLE_ARRAY_8, 0, Math.PI,
                             assertResult((newArray, idx, value) -> newArray.set(idx, value)));
-            addUnsupported(c, "write_double_to_double_array", TYPED_FLOAT_ARRAY_8, 0, Math.PI,
-                            expectPolyglotException("to foreign object"));
+            addSupported(c, "write_double_to_double_array", TYPED_FLOAT_ARRAY_8, 0, Math.PI,
+                            assertResult((newArray, idx, value) -> newArray.set(idx, value)));
             addSupported(c, "write_double_to_double_array", TYPED_DOUBLE_ARRAY_8, 0, Math.PI,
                             assertResult((newArray, idx, value) -> newArray.set(idx, value)));
         }
@@ -833,9 +837,9 @@ public class WritePolyglotArrayTest extends WritePolyglotArrayTestBase {
          * Write a pointer to an untyped polyglot array without cast.
          */
         private static void untyped(ArrayList<Object[]> c) {
-            addUnsupported(c, "write_pointer", PRIMITIVE_INT_ARRAY_8, 0, LLVMNativePointer.create(0xCAFEFEED_12345678L), expectPolyglotException("Can not write array element"));
-            addUnsupported(c, "write_pointer", PRIMITIVE_DOUBLE_ARRAY_8, 0, LLVMNativePointer.create(0xCAFEFEED_12345678L), expectPolyglotException("Can not write array element"));
-            addUnsupported(c, "write_pointer", PRIMITIVE_FLOAT_ARRAY_8, 0, LLVMNativePointer.create(0xCAFEFEED_12345678L), expectPolyglotException("Can not write array element"));
+            addUnsupported(c, "write_pointer", PRIMITIVE_INT_ARRAY_8, 0, LLVMNativePointer.create(0xCAFEFEED_12345678L), expectPolyglotException("Wrong type writing to array element"));
+            addUnsupported(c, "write_pointer", PRIMITIVE_DOUBLE_ARRAY_8, 0, LLVMNativePointer.create(0xCAFEFEED_12345678L), expectPolyglotException("Wrong type writing to array element"));
+            addUnsupported(c, "write_pointer", PRIMITIVE_FLOAT_ARRAY_8, 0, LLVMNativePointer.create(0xCAFEFEED_12345678L), expectPolyglotException("Wrong type writing to array element"));
             addSupported(c, "write_pointer", OBJECT_ARRAY_8, 0, LLVMNativePointer.create(0xCAFEFEED_12345678L), assertResult((newArray, idx, value) -> newArray.set(idx, value)));
 
         }
@@ -907,7 +911,7 @@ public class WritePolyglotArrayTest extends WritePolyglotArrayTestBase {
                             assertResult((newArray, idx, value) -> newArray.set(idx, value)));
             /* Untyped array. Assume that the pointer can be written as is, but it can't. */
             addUnsupported(c, "write_pointer", PRIMITIVE_LONG_ARRAY_1, 0, LLVMNativePointer.create(0xCAFEFEED_12345678L),
-                            expectPolyglotException("Can not write array element"));
+                            expectPolyglotException("Wrong type writing to array element"));
             /*
              * However, if we know the array is an i64 array, the pointer is converted to a long
              * (asNative).

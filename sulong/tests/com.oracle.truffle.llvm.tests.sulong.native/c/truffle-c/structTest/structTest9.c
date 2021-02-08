@@ -34,7 +34,7 @@ struct test {
     int c;
 };
 
-int init(struct test *t, int a, int b, int c) {
+void init(struct test *t, int a, int b, int c) {
     t->a = a;
     t->b = b;
     t->c = c;

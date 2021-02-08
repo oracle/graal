@@ -24,11 +24,7 @@
  */
 package org.graalvm.compiler.hotspot.amd64;
 
-import static org.graalvm.compiler.hotspot.amd64.AMD64HotSpotMathIntrinsicOp.IntrinsicOpcode.COS;
-import static org.graalvm.compiler.hotspot.amd64.AMD64HotSpotMathIntrinsicOp.IntrinsicOpcode.LOG;
-import static org.graalvm.compiler.hotspot.amd64.AMD64HotSpotMathIntrinsicOp.IntrinsicOpcode.LOG10;
-import static org.graalvm.compiler.hotspot.amd64.AMD64HotSpotMathIntrinsicOp.IntrinsicOpcode.SIN;
-import static org.graalvm.compiler.hotspot.amd64.AMD64HotSpotMathIntrinsicOp.IntrinsicOpcode.TAN;
+import static org.graalvm.compiler.core.common.NumUtil.roundUp;
 import static org.graalvm.compiler.nodeinfo.NodeCycles.CYCLES_64;
 import static org.graalvm.compiler.nodeinfo.NodeSize.SIZE_1;
 
@@ -40,6 +36,7 @@ import org.graalvm.compiler.debug.GraalError;
 import org.graalvm.compiler.graph.NodeClass;
 import org.graalvm.compiler.graph.spi.CanonicalizerTool;
 import org.graalvm.compiler.lir.Variable;
+import org.graalvm.compiler.lir.VirtualStackSlot;
 import org.graalvm.compiler.lir.gen.LIRGeneratorTool;
 import org.graalvm.compiler.nodeinfo.NodeInfo;
 import org.graalvm.compiler.nodes.ConstantNode;
@@ -50,6 +47,7 @@ import org.graalvm.compiler.nodes.spi.LIRLowerable;
 import org.graalvm.compiler.nodes.spi.NodeLIRBuilderTool;
 import org.graalvm.compiler.replacements.nodes.UnaryMathIntrinsicNode.UnaryOperation;
 
+import jdk.vm.ci.amd64.AMD64Kind;
 import jdk.vm.ci.meta.Value;
 
 @NodeInfo(nameTemplate = "X87MathIntrinsic#{p#operation/s}", cycles = CYCLES_64, size = SIZE_1)
@@ -75,21 +73,17 @@ public final class AMD64X87MathIntrinsicNode extends UnaryNode implements LIRLow
         Value input = generator.operand(getValue());
         Variable result = gen.newVariable(LIRKind.combine(input));
 
+        int wordSize = gen.target().wordSize;
+        int slots = roundUp(AMD64Kind.DOUBLE.getSizeInBytes(), wordSize) / wordSize;
+        VirtualStackSlot stack = gen.allocateStackSlots(slots);
+
         switch (operation) {
             case SIN:
-                gen.append(new AMD64HotSpotMathIntrinsicOp(SIN, result, gen.asAllocatable(input)));
-                break;
             case COS:
-                gen.append(new AMD64HotSpotMathIntrinsicOp(COS, result, gen.asAllocatable(input)));
-                break;
             case TAN:
-                gen.append(new AMD64HotSpotMathIntrinsicOp(TAN, result, gen.asAllocatable(input)));
-                break;
             case LOG:
-                gen.append(new AMD64HotSpotMathIntrinsicOp(LOG, result, gen.asAllocatable(input)));
-                break;
             case LOG10:
-                gen.append(new AMD64HotSpotMathIntrinsicOp(LOG10, result, gen.asAllocatable(input)));
+                gen.append(new AMD64HotSpotMathIntrinsicOp(operation, result, gen.asAllocatable(input), stack));
                 break;
             default:
                 throw GraalError.shouldNotReachHere();

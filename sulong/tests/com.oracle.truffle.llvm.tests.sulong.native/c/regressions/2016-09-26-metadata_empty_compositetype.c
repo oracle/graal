@@ -28,6 +28,9 @@
  * OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 int main() {
+#pragma clang diagnostic push
+#pragma clang diagnostic ignored "-Wunused-variable"
     int a = 1;
+#pragma clang diagnostic pop
     return 0;
 }

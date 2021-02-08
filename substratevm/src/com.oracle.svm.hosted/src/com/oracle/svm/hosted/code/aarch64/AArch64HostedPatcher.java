@@ -61,9 +61,9 @@ public class AArch64HostedPatcher implements Feature {
                     @Override
                     public void accept(CodeAnnotation annotation) {
                         if (annotation instanceof SingleInstructionAnnotation) {
-                            compilationResult.addAnnotation(new SingleInstructionHostedPatcher(annotation.instructionPosition, (SingleInstructionAnnotation) annotation));
+                            compilationResult.addAnnotation(new SingleInstructionHostedPatcher((SingleInstructionAnnotation) annotation));
                         } else if (annotation instanceof AArch64MacroAssembler.MovSequenceAnnotation) {
-                            compilationResult.addAnnotation(new MovSequenceHostedPatcher(annotation.instructionPosition, (AArch64MacroAssembler.MovSequenceAnnotation) annotation));
+                            compilationResult.addAnnotation(new MovSequenceHostedPatcher((AArch64MacroAssembler.MovSequenceAnnotation) annotation));
                         } else if (annotation instanceof AArch64MacroAssembler.AdrpLdrMacroInstruction) {
                             compilationResult.addAnnotation(new AdrpLdrMacroInstructionHostedPatcher((AArch64MacroAssembler.AdrpLdrMacroInstruction) annotation));
                         } else if (annotation instanceof AArch64MacroAssembler.AdrpAddMacroInstruction) {
@@ -79,8 +79,8 @@ public class AArch64HostedPatcher implements Feature {
 class SingleInstructionHostedPatcher extends CompilationResult.CodeAnnotation implements HostedPatcher {
     private final SingleInstructionAnnotation annotation;
 
-    SingleInstructionHostedPatcher(int instructionStartPosition, SingleInstructionAnnotation annotation) {
-        super(instructionStartPosition);
+    SingleInstructionHostedPatcher(SingleInstructionAnnotation annotation) {
+        super(annotation.instructionPosition);
         this.annotation = annotation;
     }
 
@@ -185,8 +185,8 @@ class AdrpAddMacroInstructionHostedPatcher extends CompilationResult.CodeAnnotat
 class MovSequenceHostedPatcher extends CompilationResult.CodeAnnotation implements HostedPatcher {
     private final AArch64MacroAssembler.MovSequenceAnnotation annotation;
 
-    MovSequenceHostedPatcher(int instructionStartPosition, AArch64MacroAssembler.MovSequenceAnnotation annotation) {
-        super(instructionStartPosition);
+    MovSequenceHostedPatcher(AArch64MacroAssembler.MovSequenceAnnotation annotation) {
+        super(annotation.instructionPosition);
         this.annotation = annotation;
     }
 
@@ -199,7 +199,7 @@ class MovSequenceHostedPatcher extends CompilationResult.CodeAnnotation implemen
          * method. We add the method start to get the section-relative offset.
          */
         int siteOffset = compStart + annotation.instructionPosition;
-        if (ref instanceof DataSectionReference || ref instanceof CGlobalDataReference) {
+        if (ref instanceof DataSectionReference || ref instanceof CGlobalDataReference || ref instanceof ConstantReference) {
             /*
              * calculating the last mov index. This is necessary ensure the proper overflow checks
              * occur.
@@ -231,15 +231,6 @@ class MovSequenceHostedPatcher extends CompilationResult.CodeAnnotation implemen
                 }
                 siteOffset = siteOffset + 4;
             }
-        } else if (ref instanceof ConstantReference) {
-            for (MovAction include : annotation.includeSet) {
-                if (include != MovAction.USED) {
-                    throw VMError.shouldNotReachHere("This mov action isn't handled by relocation currently.");
-                }
-            }
-            assert annotation.includeSet.length == 2 || annotation.includeSet.length == 4;
-            // FIXME this will be changed soon
-            relocs.addRelocationWithoutAddend(siteOffset, annotation.includeSet.length == 4 ? RelocationKind.DIRECT_8 : RelocationKind.DIRECT_4, ref);
         } else {
             throw VMError.shouldNotReachHere("Unknown type of reference in code");
         }

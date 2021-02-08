@@ -163,7 +163,7 @@ public class SubstrateUtil {
                 sb.append(' ');
             }
         }
-        return sb.toString();
+        return sb.toString().trim();
     }
 
     @TargetClass(com.oracle.svm.core.SubstrateUtil.class)
@@ -258,6 +258,12 @@ public class SubstrateUtil {
         return assertionsEnabled;
     }
 
+    /**
+     * Emits a node that triggers a breakpoint in debuggers.
+     * 
+     * @param arg0 value to inspect when the breakpoint hits
+     * @see BreakpointNode how to use breakpoints and inspect breakpoint values in the debugger
+     */
     @NodeIntrinsic(BreakpointNode.class)
     public static native void breakpoint(Object arg0);
 
@@ -626,19 +632,32 @@ public class SubstrateUtil {
     }
 
     /**
-     * Similar to {@link String#split} but with a fixed separator string instead of a regular
-     * expression. This avoids making regular expression code reachable.
+     * Similar to {@link String#split(String)} but with a fixed separator string instead of a
+     * regular expression. This avoids making regular expression code reachable.
      */
     public static String[] split(String value, String separator) {
+        return split(value, separator, 0);
+    }
+
+    /**
+     * Similar to {@link String#split(String, int)} but with a fixed separator string instead of a
+     * regular expression. This avoids making regular expression code reachable.
+     */
+    public static String[] split(String value, String separator, int limit) {
         int offset = 0;
-        int next = 0;
+        int next;
         ArrayList<String> list = null;
         while ((next = value.indexOf(separator, offset)) != -1) {
             if (list == null) {
                 list = new ArrayList<>();
             }
-            list.add(value.substring(offset, next));
-            offset = next + separator.length();
+            boolean limited = limit > 0;
+            if (!limited || list.size() < limit - 1) {
+                list.add(value.substring(offset, next));
+                offset = next + separator.length();
+            } else {
+                break;
+            }
         }
 
         if (offset == 0) {
@@ -647,7 +666,7 @@ public class SubstrateUtil {
         }
 
         /* Add remaining segment. */
-        list.add(value.substring(offset, value.length()));
+        list.add(value.substring(offset));
 
         return list.toArray(new String[list.size()]);
     }
@@ -764,10 +783,10 @@ public class SubstrateUtil {
     public static class NativeImageLoadingShield {
         @Platforms(Platform.HOSTED_ONLY.class)
         public static boolean isNeverInline(ResolvedJavaMethod method) {
-            String[] neverInline = SubstrateOptions.NeverInline.getValue();
+            List<String> neverInline = SubstrateOptions.NeverInline.getValue().values();
 
             return GuardedAnnotationAccess.isAnnotationPresent(method, com.oracle.svm.core.annotate.NeverInline.class) ||
-                            (neverInline != null && Arrays.stream(neverInline).anyMatch(re -> MethodFilter.parse(re).matches(method)));
+                            (neverInline != null && neverInline.stream().anyMatch(re -> MethodFilter.parse(re).matches(method)));
         }
     }
 }

@@ -32,7 +32,6 @@ import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.api.nodes.RepeatingNode;
 import org.graalvm.compiler.truffle.runtime.GraalCompilerDirectives;
 import org.graalvm.compiler.truffle.runtime.OptimizedCallTarget;
-import org.graalvm.compiler.truffle.runtime.TruffleRuntimeOptions;
 import org.junit.Assert;
 import org.junit.Test;
 
@@ -185,13 +184,13 @@ public class MultiTierCompilationTest extends PartialEvaluationTest {
     @Test
     public void testDefault() {
         setupContext(Context.newBuilder().allowExperimentalOptions(true).option("engine.CompileImmediately", "false").option("engine.BackgroundCompilation", "false").option("engine.MultiTier",
-                        "true").option("engine.FirstTierInlining", "false").option("engine.Splitting", "false").option("engine.FirstTierCompilationThreshold", "100").option(
+                        "true").option("engine.FirstTierInliningPolicy", "None").option("engine.Splitting", "false").option("engine.FirstTierCompilationThreshold", "100").option(
                                         "engine.CompilationThreshold", "1000").build());
 
         OptimizedCallTarget calleeTarget = (OptimizedCallTarget) Truffle.getRuntime().createCallTarget(new MultiTierCalleeNode());
         OptimizedCallTarget multiTierTarget = (OptimizedCallTarget) Truffle.getRuntime().createCallTarget(new MultiTierRootNode(calleeTarget));
-        final int firstTierCompilationThreshold = TruffleRuntimeOptions.getPolyglotOptionValue(calleeTarget.getOptionValues(), FirstTierCompilationThreshold);
-        final int compilationThreshold = TruffleRuntimeOptions.getPolyglotOptionValue(calleeTarget.getOptionValues(), CompilationThreshold);
+        final int firstTierCompilationThreshold = calleeTarget.getOptionValue(FirstTierCompilationThreshold);
+        final int compilationThreshold = calleeTarget.getOptionValue(CompilationThreshold);
 
         Assert.assertEquals("root:interpreter", multiTierTarget.call());
         for (int i = 0; i < firstTierCompilationThreshold; i++) {
@@ -212,13 +211,13 @@ public class MultiTierCompilationTest extends PartialEvaluationTest {
     @Test
     public void testFirstTierInlining() {
         setupContext(Context.newBuilder().allowExperimentalOptions(true).option("engine.CompileImmediately", "false").option("engine.BackgroundCompilation", "false").option("engine.MultiTier",
-                        "true").option("engine.FirstTierInlining", "true").option("engine.Splitting", "false").option("engine.FirstTierCompilationThreshold", "100").option(
+                        "true").option("engine.FirstTierInliningPolicy", "Default").option("engine.Splitting", "false").option("engine.FirstTierCompilationThreshold", "100").option(
                                         "engine.CompilationThreshold", "1000").build());
 
         OptimizedCallTarget calleeTarget = (OptimizedCallTarget) Truffle.getRuntime().createCallTarget(new MultiTierCalleeNode());
         OptimizedCallTarget multiTierTarget = (OptimizedCallTarget) Truffle.getRuntime().createCallTarget(new MultiTierRootNode(calleeTarget));
-        final int firstTierCompilationThreshold = TruffleRuntimeOptions.getPolyglotOptionValue(calleeTarget.getOptionValues(), FirstTierCompilationThreshold);
-        final int compilationThreshold = TruffleRuntimeOptions.getPolyglotOptionValue(calleeTarget.getOptionValues(), CompilationThreshold);
+        final int firstTierCompilationThreshold = calleeTarget.getOptionValue(FirstTierCompilationThreshold);
+        final int compilationThreshold = calleeTarget.getOptionValue(CompilationThreshold);
 
         Assert.assertEquals("root:interpreter", multiTierTarget.call());
         for (int i = 0; i < firstTierCompilationThreshold; i++) {
@@ -235,12 +234,12 @@ public class MultiTierCompilationTest extends PartialEvaluationTest {
     @Test
     public void testWhenCalleeCompiledFirst() {
         setupContext(Context.newBuilder().allowExperimentalOptions(true).option("engine.CompileImmediately", "false").option("engine.BackgroundCompilation", "false").option("engine.MultiTier",
-                        "true").option("engine.FirstTierInlining", "false").option("engine.Splitting", "false").option("engine.FirstTierCompilationThreshold", "100").option(
+                        "true").option("engine.FirstTierInliningPolicy", "None").option("engine.Splitting", "false").option("engine.FirstTierCompilationThreshold", "100").option(
                                         "engine.CompilationThreshold", "1000").build());
 
         OptimizedCallTarget calleeTarget = (OptimizedCallTarget) Truffle.getRuntime().createCallTarget(new MultiTierCalleeNode());
-        final int firstTierCompilationThreshold = TruffleRuntimeOptions.getPolyglotOptionValue(calleeTarget.getOptionValues(), FirstTierCompilationThreshold);
-        final int compilationThreshold = TruffleRuntimeOptions.getPolyglotOptionValue(calleeTarget.getOptionValues(), CompilationThreshold);
+        final int firstTierCompilationThreshold = calleeTarget.getOptionValue(FirstTierCompilationThreshold);
+        final int compilationThreshold = calleeTarget.getOptionValue(CompilationThreshold);
         OptimizedCallTarget multiTierTarget = (OptimizedCallTarget) Truffle.getRuntime().createCallTarget(new MultiTierWithFrequentCalleeRootNode(calleeTarget, firstTierCompilationThreshold));
 
         Assert.assertEquals("root:interpreter", multiTierTarget.call());
@@ -271,8 +270,8 @@ public class MultiTierCompilationTest extends PartialEvaluationTest {
         int firstThreshold = 100;
         int secondThreshold = 1000;
         setupContext(Context.newBuilder().allowExperimentalOptions(true).option("engine.CompileImmediately", "false").option("engine.BackgroundCompilation", "false").option("engine.MultiTier",
-                        "true").option("engine.FirstTierInlining", "false").option("engine.Splitting", "false").option("engine.FirstTierCompilationThreshold", String.valueOf(firstThreshold)).option(
-                                        "engine.CompilationThreshold", String.valueOf(secondThreshold)).build());
+                        "true").option("engine.FirstTierInliningPolicy", "None").option("engine.Splitting", "false").option("engine.FirstTierCompilationThreshold",
+                                        String.valueOf(firstThreshold)).option("engine.CompilationThreshold", String.valueOf(secondThreshold)).build());
 
         MultiTierLoopBodyNode body = new MultiTierLoopBodyNode(firstThreshold);
         final MultiTierWithLoopRootNode rootNode = new MultiTierWithLoopRootNode(body);

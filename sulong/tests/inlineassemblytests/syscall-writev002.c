@@ -42,7 +42,7 @@ int main(void) {
 
     result = writev(STDOUT_FILENO, iov, -1);
 
-    printf("written: %d\n", result);
+    printf("written: %zd\n", result);
     if (result < 0) {
 #if 0
     printf("errno: %d\n", errno);

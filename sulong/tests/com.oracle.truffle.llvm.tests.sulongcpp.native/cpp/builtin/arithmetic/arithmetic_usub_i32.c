@@ -31,7 +31,7 @@
 unsigned int __builtin_subc(unsigned int, unsigned int, unsigned int, unsigned int *);
 #endif
 
-int main(int argc, const char **argv) {
+int main() {
     unsigned int carryout, res;
 
     res = __builtin_subc((unsigned int) 0x0, (unsigned int) 0x0, 0, &carryout);

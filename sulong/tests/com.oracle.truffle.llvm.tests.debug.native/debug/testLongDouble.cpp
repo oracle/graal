@@ -51,7 +51,7 @@ typedef struct {
     long double h;
 } __attribute__((packed)) PackedStruct;
 
-int start() __attribute__((constructor)) {
+__attribute__((constructor)) int start() {
     long double a = 1.23L;
     long double b = -4.56L;
     long double c = a - b;

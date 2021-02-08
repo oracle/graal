@@ -55,7 +55,7 @@ import com.oracle.truffle.regex.tregex.nfa.PureNFAMap;
 import com.oracle.truffle.regex.tregex.nfa.PureNFAState;
 import com.oracle.truffle.regex.tregex.nfa.PureNFATransition;
 import com.oracle.truffle.regex.tregex.nfa.QuantifierGuard;
-import com.oracle.truffle.regex.tregex.nodes.TRegexExecRootNode;
+import com.oracle.truffle.regex.tregex.nodes.TRegexExecNode;
 import com.oracle.truffle.regex.tregex.nodes.TRegexExecutorLocals;
 import com.oracle.truffle.regex.tregex.nodes.TRegexExecutorNode;
 import com.oracle.truffle.regex.tregex.nodes.input.InputIndexOfStringNode;
@@ -65,7 +65,6 @@ import com.oracle.truffle.regex.tregex.parser.Token.Quantifier;
 import com.oracle.truffle.regex.tregex.parser.ast.InnerLiteral;
 import com.oracle.truffle.regex.tregex.parser.ast.LookBehindAssertion;
 import com.oracle.truffle.regex.tregex.parser.ast.RegexASTSubtreeRootNode;
-import com.oracle.truffle.regex.tregex.util.Exceptions;
 
 /**
  * This regex executor uses a backtracking algorithm on the NFA. It is used for all expressions that
@@ -128,7 +127,7 @@ public final class TRegexBacktrackingNFAExecutorNode extends TRegexExecutorNode 
         this.maxNTransitions = maxTransitions;
     }
 
-    public void initialize(TRegexExecRootNode rootNode) {
+    public void initialize(TRegexExecNode rootNode) {
         for (TRegexExecutorNode executor : lookAroundExecutors) {
             executor.setRoot(rootNode);
             insert(executor);
@@ -540,7 +539,7 @@ public final class TRegexBacktrackingNFAExecutorNode extends TRegexExecutorNode 
             case PureNFAState.KIND_EMPTY_MATCH:
                 return true;
             default:
-                throw Exceptions.shouldNotReachHere();
+                throw CompilerDirectives.shouldNotReachHere();
         }
     }
 
@@ -610,7 +609,7 @@ public final class TRegexBacktrackingNFAExecutorNode extends TRegexExecutorNode 
             case PureNFAState.KIND_EMPTY_MATCH:
                 return index;
             default:
-                throw Exceptions.shouldNotReachHere();
+                throw CompilerDirectives.shouldNotReachHere();
         }
     }
 

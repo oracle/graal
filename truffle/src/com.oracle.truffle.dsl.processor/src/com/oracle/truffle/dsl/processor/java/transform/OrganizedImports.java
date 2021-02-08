@@ -45,6 +45,7 @@ import static com.oracle.truffle.dsl.processor.java.ElementUtils.getDeclaredType
 import static com.oracle.truffle.dsl.processor.java.ElementUtils.getPackageName;
 import static com.oracle.truffle.dsl.processor.java.ElementUtils.getQualifiedName;
 import static com.oracle.truffle.dsl.processor.java.ElementUtils.getSuperTypes;
+import static com.oracle.truffle.dsl.processor.java.ElementUtils.elementEquals;
 
 import java.util.ArrayList;
 import java.util.HashMap;
@@ -210,9 +211,10 @@ public final class OrganizedImports {
         } else if (importPackagName.equals("java.lang")) {
             return false;
         } else if (importPackagName.equals(getPackageName(topLevelClass)) &&
-                        anyEqualEnclosingTypes(enclosed, ElementUtils.castTypeElement(importType))) {
+                        (anyEqualEnclosingTypes(enclosed, ElementUtils.castTypeElement(importType)) ||
+                                        importFromEnclosingScope(enclosedType, ElementUtils.castTypeElement(importType)))) {
             return false; // same enclosing element -> no import
-        } else if (importType instanceof GeneratedTypeMirror && ElementUtils.getPackageName(importType).isEmpty()) {
+        } else if (importType instanceof GeneratedTypeMirror && importPackagName.isEmpty()) {
             return false;
         } else if (ElementUtils.isDeprecated(importType)) {
             return false;
@@ -263,13 +265,30 @@ public final class OrganizedImports {
         return anyEqualEnclosingTypes(enclosingElement, importElement) || anyEqualEnclosingTypes(importElement, enclosingElement);
     }
 
+    private static boolean importFromEnclosingScope(TypeElement enclosed, TypeElement importElement) {
+        Element importEnclosingElement = importElement.getEnclosingElement();
+        Element current = enclosed;
+        while (current != null) {
+            if (elementEquals(importElement, current) || elementEquals(importEnclosingElement, current)) {
+                return true;
+            }
+            current = current.getEnclosingElement();
+        }
+        return false;
+    }
+
     private Set<CodeImport> generateImports(Map<String, String> symbols) {
         TreeSet<CodeImport> importObjects = new TreeSet<>();
         for (String symbol : symbols.keySet()) {
             String importQualifiedName = symbols.get(symbol);
             Boolean needsImport = this.noImportSymbols.get(symbol);
             if (importQualifiedName != null && needsImport) {
-                importObjects.add(new CodeImport(importQualifiedName, symbol, false));
+                String useSymbol = symbol;
+                int firstClassIndex = useSymbol.indexOf('.');
+                if (firstClassIndex != -1) {
+                    useSymbol = useSymbol.substring(0, firstClassIndex);
+                }
+                importObjects.add(new CodeImport(importQualifiedName, useSymbol, false));
             }
         }
         return importObjects;

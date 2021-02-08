@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2016, 2020, Oracle and/or its affiliates.
+ * Copyright (c) 2016, 2021, Oracle and/or its affiliates.
  *
  * All rights reserved.
  *
@@ -79,11 +79,6 @@ public final class SulongEngineOption {
             help = "Enables using C++ code and features via interop.")
     public static final OptionKey<Boolean> CXX_INTEROP = new OptionKey<>(false);
 
-    @Option(name = "llvm.enableExternalNativeAccess",
-            category = OptionCategory.USER,
-            help = "Enable Sulongs native interface.")
-    public static final OptionKey<Boolean> ENABLE_NFI = new OptionKey<>(true);
-
     @Option(name = "llvm.debugSysCalls",
             category = OptionCategory.INTERNAL,
             help = "Turns syscall debugging on/off. " +
@@ -146,11 +141,12 @@ public final class SulongEngineOption {
             help = "Enable IR-level debugging of LLVM bitcode files.")
     public static final OptionKey<Boolean> LL_DEBUG = new OptionKey<>(false);
 
-    @Option(name = "llvm.llDebug.verbose",
+    public static final String LL_DEBUG_VERBOSE_NAME = "llvm.llDebug.verbose";
+    @Option(name = LL_DEBUG_VERBOSE_NAME,
             category = OptionCategory.EXPERT,
             help = "Enables diagnostics for IR-level debugging (e.g., report missing .ll files). Requires \'--llvm.llDebug=true\'. " +
                    "Set value to \'stdout\', \'stderr\' or \'file://<path to writable file>\' to enable.")
-    public static final OptionKey<String> LL_DEBUG_VERBOSE = new OptionKey<>("");
+    public static final OptionKey<String> LL_DEBUG_VERBOSE = new OptionKey<>("stderr");
 
     @Option(name = "llvm.llDebug.sources",
             category = OptionCategory.EXPERT,
@@ -206,5 +202,9 @@ public final class SulongEngineOption {
         String librariesOption = env.getOptions().get(LIBRARIES);
         String[] userLibraries = "".equals(librariesOption) ? new String[0] : librariesOption.split(OPTION_ARRAY_SEPARATOR);
         return Arrays.asList(userLibraries);
+    }
+
+    public static boolean shouldVerifyCompileUnitChecksums(TruffleLanguage.Env env) {
+        return env.getOptions().get(LL_DEBUG) && optionEnabled(env.getOptions().get(LL_DEBUG_VERBOSE));
     }
 }
