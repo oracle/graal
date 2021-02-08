@@ -5,13 +5,16 @@ import static com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
 import java.util.Arrays;
 import java.util.Objects;
 
+/**
+ * Represents a valid signature.
+ */
 public final class NativeSignature {
 
     private final NativeType returnType;
     @CompilationFinal(dimensions = 1) //
     private final NativeType[] parameterTypes;
 
-    public NativeSignature(NativeType returnType, NativeType[] parameterTypes) {
+    private NativeSignature(NativeType returnType, NativeType[] parameterTypes) {
         this.returnType = Objects.requireNonNull(returnType);
         this.parameterTypes = Objects.requireNonNull(parameterTypes);
         for (int i = 0; i < parameterTypes.length; i++) {
@@ -20,6 +23,10 @@ public final class NativeSignature {
                 throw new IllegalArgumentException("Invalid VOID parameter");
             }
         }
+    }
+
+    public static NativeSignature create(NativeType returnType, NativeType... parameterTypes) {
+        return new NativeSignature(returnType, parameterTypes);
     }
 
     public NativeType getReturnType() {

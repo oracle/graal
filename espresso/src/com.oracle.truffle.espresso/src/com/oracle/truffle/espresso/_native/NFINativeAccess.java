@@ -34,46 +34,14 @@ import com.oracle.truffle.espresso.runtime.EspressoContext;
 import com.oracle.truffle.espresso.runtime.StaticObject;
 import com.oracle.truffle.nfi.api.SignatureLibrary;
 import com.oracle.truffle.nfi.spi.types.NativeSimpleType;
+import com.oracle.truffle.object.DebugCounter;
 
 public class NFINativeAccess implements NativeAccess {
 
-    private static final boolean CACHE_SIGNATURES = "true".equals(System.getProperty("espresso.nfi.cache_signatures", "true"));
+    private static final boolean CACHE_SIGNATURES = "true".equals(System.getProperty("espresso.nfi.cache_signatures", "false"));
+    private final DebugCounter NFI_SIGNATURES_CREATED = DebugCounter.create("NFI signatures created");
 
     private final Map<NativeSignature, Object> signatureCache;
-
-    static final class NativeSignature {
-        private final NativeType returnType;
-        @CompilationFinal(dimensions = 1) private final NativeType[] parameterTypes;
-
-        NativeSignature(NativeType returnType, NativeType[] parameterTypes) {
-            this.returnType = returnType;
-            this.parameterTypes = parameterTypes;
-        }
-
-        @Override
-        public boolean equals(Object other) {
-            if (this == other) {
-                return true;
-            }
-            if (other == null || getClass() != other.getClass()) {
-                return false;
-            }
-            NativeSignature that = (NativeSignature) other;
-            return returnType == that.returnType && Arrays.equals(parameterTypes, that.parameterTypes);
-        }
-
-        @Override
-        public int hashCode() {
-            int result = Objects.hash(returnType);
-            result = 31 * result + Arrays.hashCode(parameterTypes);
-            return result;
-        }
-
-        @Override
-        public String toString() {
-            return nfiStringSignature(returnType, parameterTypes);
-        }
-    }
 
     protected final InteropLibrary INTEROP = InteropLibrary.getFactory().getUncached();
     protected final SignatureLibrary SIGNATURE = SignatureLibrary.getUncached();
@@ -128,16 +96,25 @@ public class NFINativeAccess implements NativeAccess {
         return sb.toString();
     }
 
-    protected Object nfiCachedSignature(NativeType returnType, NativeType... parameterTypes) {
-        NativeSignature ns = new NativeSignature(returnType, parameterTypes);
-        return signatureCache.computeIfAbsent(ns, new Function<NativeSignature, Object>() {
-            @Override
-            public Object apply(NativeSignature nativeSignature) {
-                Source source = Source.newBuilder("nfi", nativeSignature.toString(), "signature").build();
-                CallTarget target = getContext().getEnv().parseInternal(source);
-                return target.call();
-            }
-        });
+    private interface SignatureProvider extends Function<NativeSignature, Object> {
+    }
+
+    final SignatureProvider SIGNATURE_PROVIDER = new SignatureProvider() {
+        @Override
+        public Object apply(NativeSignature nativeSignature) {
+            NFI_SIGNATURES_CREATED.inc();
+            Source source = Source.newBuilder("nfi",
+                            nfiStringSignature(nativeSignature.getReturnType(), nativeSignature.getParameterTypes()), "signature").build();
+            CallTarget target = getContext().getEnv().parseInternal(source);
+            return target.call();
+        }
+    };
+
+    protected Object createNFISignature(NativeType returnType, NativeType... parameterTypes) {
+        NativeSignature nativeSignature = NativeSignature.create(returnType, parameterTypes);
+        return CACHE_SIGNATURES
+                        ? signatureCache.computeIfAbsent(nativeSignature, SIGNATURE_PROVIDER)
+                        : SIGNATURE_PROVIDER.apply(nativeSignature);
     }
 
     public NFINativeAccess(EspressoContext context) {
@@ -250,18 +227,11 @@ public class NFINativeAccess implements NativeAccess {
 
     @Override
     public @Pointer TruffleObject bindSymbol(@Pointer TruffleObject symbol, NativeType returnType, NativeType... parameterTypes) {
-        if (CACHE_SIGNATURES) {
-            TruffleObject executable = (TruffleObject) SIGNATURE.bind(nfiCachedSignature(returnType, parameterTypes), symbol);
-            return new NativeWrapper(executable, returnType, parameterTypes);
-        } else {
-            String signature = nfiStringSignature(returnType, parameterTypes);
-            try {
-                TruffleObject executable = (TruffleObject) INTEROP.invokeMember(symbol, "bind", signature);
-                return new NativeWrapper(executable, returnType, parameterTypes);
-            } catch (UnsupportedTypeException | ArityException | UnknownIdentifierException | UnsupportedMessageException e) {
-                throw EspressoError.shouldNotReachHere("Cannot bind " + signature, e);
-            }
+        if (InteropLibrary.getUncached().isNull(symbol)) {
+            return null; // LD_DEBUG=unused makes non-existing symbols to be NULL.
         }
+        TruffleObject executable = (TruffleObject) SIGNATURE.bind(createNFISignature(returnType, parameterTypes), symbol);
+        return new NativeWrapper(executable, returnType, parameterTypes);
     }
 
     @Override
