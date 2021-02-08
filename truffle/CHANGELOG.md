@@ -20,8 +20,8 @@ This changelog summarizes major changes between Truffle versions relevant to lan
     * Added `writeBufferByte(Object, long, byte)`, `writeBufferShort(Object, ByteOrder, long, short)`, `writeBufferInt(Object, ByteOrder, long, int)`, `writeBufferLong(Object, ByteOrder, long, long)`, `writeBufferFloat(Object, ByteOrder, long, float)`  and `writeBufferDouble(Object, ByteOrder, long, double)` to write a primitive in this buffer at the given index (supported only if `isBufferWritable(Object)` returns `true`).
 * Added `Shape.getLayoutClass()` as a replacement for `Shape.getLayout().getType()`. Returns the DynamicObject subclass provided to `Shape.Builder.layout`.
 * Changed the default value of `--engine.MultiTier` from `false` to `true`. This should significantly improve the warmup time of Truffle interpreters.
-* Added `SuspendedEvent.prepareUnwindFrame(DebugStackFrame frame, Object forceEarlyReturnValue)` to support forced early return values from a debugger.
-* Added `DebugScope.convertRawValue()` to enable wrapping a raw guest language object into a DebugValue.
+* Added `SuspendedEvent.prepareUnwindFrame(DebugStackFrame, Object)` to support forced early return values from a debugger.
+* Added `DebugScope.convertRawValue(Class<? extends TruffleLanguage<?>>, Object)` to enable wrapping a raw guest language object into a DebugValue.
 
 ## Version 21.0.0
 * If an `AbstractTruffleException` is thrown from the `ContextLocalFactory`, `ContextThreadLocalFactory` or event listener, which is called during the context enter, the excepion interop messages are executed without a context being entered. The event listeners called during the context enter are:

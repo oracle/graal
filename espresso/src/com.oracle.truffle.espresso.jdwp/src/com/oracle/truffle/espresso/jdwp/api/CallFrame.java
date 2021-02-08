@@ -155,6 +155,6 @@ public final class CallFrame {
 
     public DebugValue asDebugValue(Object returnValue) {
         assert debugScope != null;
-        return debugScope.convertRawValue(languageClass, "returnValue", returnValue);
+        return debugScope.convertRawValue(languageClass, returnValue);
     }
 }

@@ -417,9 +417,10 @@ public final class DebugScope {
      * @param languageClass the Truffle language class for a given guest language
      * @param rawValue the raw value
      * @return the wrapped DebugValue
+     * @throws IllegalArgumentException when <code>rawValue</code> is not an Interop value
      * @since 21.1
      */
-    public DebugValue convertRawValue(Class<? extends TruffleLanguage<?>> languageClass, String name, Object rawValue) {
+    public DebugValue convertRawValue(Class<? extends TruffleLanguage<?>> languageClass, Object rawValue) {
         Objects.requireNonNull(languageClass);
         RootNode rootNode = getRoot();
         if (rootNode == null) {
@@ -427,11 +428,11 @@ public final class DebugScope {
         }
         // make sure rawValue is a valid Interop value
         if (!Debugger.ACCESSOR.interopSupport().isInteropType(rawValue)) {
-            return null;
+            throw new IllegalArgumentException("raw value is not an Interop value");
         }
         // check if language class of the root node corresponds to the input language
         TruffleLanguage<?> language = Debugger.ACCESSOR.nodeSupport().getLanguage(rootNode);
-        return language != null && language.getClass() == languageClass ? new DebugValue.HeapValue(session, name, rawValue) : null;
+        return language != null && language.getClass() == languageClass ? new DebugValue.HeapValue(session, null, rawValue) : null;
     }
 
     LanguageInfo getLanguage() {
