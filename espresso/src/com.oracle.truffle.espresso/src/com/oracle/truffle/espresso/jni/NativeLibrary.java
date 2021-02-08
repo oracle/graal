@@ -22,16 +22,11 @@
  */
 package com.oracle.truffle.espresso.jni;
 
-import java.nio.file.Path;
 import java.util.logging.Level;
 
+import com.oracle.truffle.api.CallTarget;
 import com.oracle.truffle.api.TruffleLogger;
 import com.oracle.truffle.api.exception.AbstractTruffleException;
-import com.oracle.truffle.espresso._native.Pointer;
-import org.graalvm.options.OptionValues;
-
-import com.oracle.truffle.api.CallTarget;
-import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.interop.ArityException;
 import com.oracle.truffle.api.interop.InteropLibrary;
 import com.oracle.truffle.api.interop.TruffleObject;
@@ -40,7 +35,7 @@ import com.oracle.truffle.api.interop.UnsupportedMessageException;
 import com.oracle.truffle.api.interop.UnsupportedTypeException;
 import com.oracle.truffle.api.source.Source;
 import com.oracle.truffle.espresso.EspressoLanguage;
-import com.oracle.truffle.espresso.EspressoOptions;
+import com.oracle.truffle.espresso._native.Pointer;
 import com.oracle.truffle.espresso.meta.EspressoError;
 
 public final class NativeLibrary {

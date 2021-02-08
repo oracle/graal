@@ -54,7 +54,8 @@ import com.oracle.truffle.api.interop.UnsupportedTypeException;
 import com.oracle.truffle.api.nodes.DirectCallNode;
 import com.oracle.truffle.espresso.EspressoLanguage;
 import com.oracle.truffle.espresso.EspressoOptions.SpecCompliancyMode;
-import com.oracle.truffle.espresso.Utils;
+import com.oracle.truffle.espresso._native.Buffer;
+import com.oracle.truffle.espresso._native.NativeSignature;
 import com.oracle.truffle.espresso._native.NativeType;
 import com.oracle.truffle.espresso._native.Pointer;
 import com.oracle.truffle.espresso.descriptors.ByteSequence;
@@ -87,7 +88,6 @@ import com.oracle.truffle.espresso.substitutions.SubstitutionProfiler;
 import com.oracle.truffle.espresso.substitutions.Substitutions;
 import com.oracle.truffle.espresso.substitutions.Target_java_lang_Class;
 import com.oracle.truffle.espresso.vm.InterpreterToVM;
-import com.oracle.truffle.nfi.spi.types.NativeSimpleType;
 
 public final class JniEnv extends NativeEnv implements ContextAccess {
 

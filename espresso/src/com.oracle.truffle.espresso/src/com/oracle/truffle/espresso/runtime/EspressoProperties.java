@@ -38,7 +38,6 @@ import org.graalvm.options.OptionValues;
 import com.oracle.truffle.api.TruffleLogger;
 import com.oracle.truffle.espresso.EspressoLanguage;
 import com.oracle.truffle.espresso.EspressoOptions;
-import com.oracle.truffle.espresso.Utils;
 import com.oracle.truffle.espresso.meta.EspressoError;
 
 /**
@@ -234,10 +233,10 @@ public interface EspressoProperties {
     static Builder inheritFromHostVM() {
         return newPlatformBuilder() //
                         .javaHome(Paths.get(System.getProperty("java.home"))) //
-                        .bootClasspath(Utils.parsePaths(System.getProperty("sun.boot.class.path"))) //
-                        .javaLibraryPath(Utils.parsePaths(System.getProperty("java.library.path"))) //
-                        .bootLibraryPath(Utils.parsePaths(System.getProperty("sun.boot.library.path"))) //
-                        .extDirs(Utils.parsePaths(System.getProperty("java.ext.dirs")));
+                        .bootClasspath(EspressoOptions.parsePaths(System.getProperty("sun.boot.class.path"))) //
+                        .javaLibraryPath(EspressoOptions.parsePaths(System.getProperty("java.library.path"))) //
+                        .bootLibraryPath(EspressoOptions.parsePaths(System.getProperty("sun.boot.library.path"))) //
+                        .extDirs(EspressoOptions.parsePaths(System.getProperty("java.ext.dirs")));
     }
 
     static Builder processOptions(EspressoLanguage language, Builder builder, OptionValues options) {

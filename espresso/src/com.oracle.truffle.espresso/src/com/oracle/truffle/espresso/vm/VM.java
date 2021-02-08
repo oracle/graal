@@ -35,6 +35,7 @@ import static com.oracle.truffle.espresso.meta.EspressoError.cat;
 import static com.oracle.truffle.espresso.runtime.Classpath.JAVA_BASE;
 import static com.oracle.truffle.espresso.runtime.EspressoContext.DEFAULT_STACK_SIZE;
 
+import java.io.File;
 import java.lang.management.ThreadInfo;
 import java.lang.reflect.Array;
 import java.lang.reflect.Parameter;
@@ -53,6 +54,7 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Properties;
+import java.util.StringJoiner;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicLong;
@@ -81,7 +83,6 @@ import com.oracle.truffle.api.nodes.DirectCallNode;
 import com.oracle.truffle.api.nodes.RootNode;
 import com.oracle.truffle.espresso.EspressoLanguage;
 import com.oracle.truffle.espresso.EspressoOptions;
-import com.oracle.truffle.espresso.Utils;
 import com.oracle.truffle.espresso._native.NativeType;
 import com.oracle.truffle.espresso._native.Pointer;
 import com.oracle.truffle.espresso.classfile.ConstantPool;
@@ -175,6 +176,14 @@ public final class VM extends NativeEnv implements ContextAccess {
 
     // libjava must be loaded after mokapot.
     private final @Pointer TruffleObject javaLibrary;
+
+    private static String stringify(List<Path> paths) {
+        StringJoiner joiner = new StringJoiner(File.pathSeparator);
+        for (Path p : paths) {
+            joiner.add(p.toString());
+        }
+        return joiner.toString();
+    }
 
     protected TruffleLogger getLogger() {
         return logger;
@@ -1257,17 +1266,17 @@ public final class VM extends NativeEnv implements ContextAccess {
 
         // Espresso uses VM properties, to ensure consistency the user-defined properties (that may
         // differ in some cases) are overwritten.
-        setProperty.invokeWithConversions(properties, "java.class.path", Utils.stringify(props.classpath()));
+        setProperty.invokeWithConversions(properties, "java.class.path", stringify(props.classpath()));
         setProperty.invokeWithConversions(properties, "java.home", props.javaHome().toString());
-        setProperty.invokeWithConversions(properties, "sun.boot.class.path", Utils.stringify(props.bootClasspath()));
-        setProperty.invokeWithConversions(properties, "java.library.path", Utils.stringify(props.javaLibraryPath()));
-        setProperty.invokeWithConversions(properties, "sun.boot.library.path", Utils.stringify(props.bootLibraryPath()));
-        setProperty.invokeWithConversions(properties, "java.ext.dirs", Utils.stringify(props.extDirs()));
+        setProperty.invokeWithConversions(properties, "sun.boot.class.path", stringify(props.bootClasspath()));
+        setProperty.invokeWithConversions(properties, "java.library.path", stringify(props.javaLibraryPath()));
+        setProperty.invokeWithConversions(properties, "sun.boot.library.path", stringify(props.bootLibraryPath()));
+        setProperty.invokeWithConversions(properties, "java.ext.dirs", stringify(props.extDirs()));
 
         // Modules properties.
         if (getJavaVersion().modulesEnabled()) {
             setPropertyIfExists(properties, setProperty, "jdk.module.main", getModuleMain(options));
-            setPropertyIfExists(properties, setProperty, "jdk.module.path", Utils.stringify(options.get(EspressoOptions.ModulePath)));
+            setPropertyIfExists(properties, setProperty, "jdk.module.path", stringify(options.get(EspressoOptions.ModulePath)));
             setNumberedProperty(setProperty, properties, "jdk.module.addreads", options.get(EspressoOptions.AddReads));
             setNumberedProperty(setProperty, properties, "jdk.module.addexports", options.get(EspressoOptions.AddExports));
             setNumberedProperty(setProperty, properties, "jdk.module.addopens", options.get(EspressoOptions.AddOpens));
