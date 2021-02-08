@@ -318,6 +318,9 @@ public class BTreeQueue<E extends Comparable<E>> implements Pool<E> {
     @Override
     public void add(E x) {
         insertRoot(x);
+        if (size() % 100 == 0) {
+            System.out.println(prettyString());
+        }
     }
 
     @Override
