@@ -293,7 +293,7 @@ public final class DebuggerController implements ContextsListener {
         SuspendedInfo susp = suspendedInfos.get(guestThread);
         if (susp != null && !(susp instanceof UnknownSuspendedInfo)) {
             // Truffle unwind will take us to exactly the right location in the caller method
-            susp.getEvent().prepareUnwindFrame(frameToPop.getDebugStackFrame(), returnValue);
+            susp.getEvent().prepareUnwindFrame(frameToPop.getDebugStackFrame(), frameToPop.asDebugValue(returnValue));
             susp.setForceEarlyReturnInProgress();
             return true;
         }
@@ -739,7 +739,7 @@ public final class DebuggerController implements ContextsListener {
                 if (codeIndex > lastLineBCI) {
                     codeIndex = lastLineBCI;
                 }
-                callFrames.add(new CallFrame(context.getIds().getIdAsLong(guestThread), typeTag, klassId, method, methodId, codeIndex, frame, root, instrument.getEnv(), null));
+                callFrames.add(new CallFrame(context.getIds().getIdAsLong(guestThread), typeTag, klassId, method, methodId, codeIndex, frame, root, instrument.getEnv(), null, context.getLanguageClass()));
                 return null;
             }
         });
@@ -1036,7 +1036,7 @@ public final class DebuggerController implements ContextsListener {
                     }
                 }
 
-                list.addLast(new CallFrame(threadId, typeTag, klassId, method, methodId, codeIndex, rawFrame, root, instrument.getEnv(), frame));
+                list.addLast(new CallFrame(threadId, typeTag, klassId, method, methodId, codeIndex, rawFrame, root, instrument.getEnv(), frame, context.getLanguageClass()));
                 frameCount++;
                 if (frameLimit != -1 && frameCount >= frameLimit) {
                     return list.toArray(new CallFrame[list.size()]);

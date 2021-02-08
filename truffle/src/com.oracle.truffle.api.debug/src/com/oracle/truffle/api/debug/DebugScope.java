@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2017, 2020, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2017, 2021, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -40,8 +40,11 @@
  */
 package com.oracle.truffle.api.debug;
 
+import java.util.Objects;
+
 import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
+import com.oracle.truffle.api.TruffleLanguage;
 import com.oracle.truffle.api.frame.Frame;
 import com.oracle.truffle.api.instrumentation.InstrumentableNode;
 import com.oracle.truffle.api.instrumentation.StandardTags;
@@ -395,6 +398,40 @@ public final class DebugScope {
             throw DebugException.create(session, ex, language);
         }
         return variables;
+    }
+
+    /**
+     * Converts the value to a DebugValue, or returns <code>null</code> if the requesting language
+     * class does not match the root node guest language.
+     *
+     * This method is permitted only if the guest language class is available. This is the case if
+     * you want to utilize the Debugger API directly from within a guest language, or if you are an
+     * instrument bound/dependent on a specific language.
+     *
+     * This method is opposite to {@link DebugValue#getRawValue(Class)} where the raw guest language
+     * value is obtained from the DebugValue.
+     *
+     * Note that the <code>rawValue</code> must be a valid Interop value. If not, the method returns
+     * <code>null</code>.
+     *
+     * @param languageClass the Truffle language class for a given guest language
+     * @param rawValue the raw value
+     * @return the wrapped DebugValue
+     * @since 21.1
+     */
+    public DebugValue convertRawValue(Class<? extends TruffleLanguage<?>> languageClass, String name, Object rawValue) {
+        Objects.requireNonNull(languageClass);
+        RootNode rootNode = getRoot();
+        if (rootNode == null) {
+            return null;
+        }
+        // make sure rawValue is a valid Interop value
+        if (!Debugger.ACCESSOR.interopSupport().isInteropType(rawValue)) {
+            return null;
+        }
+        // check if language class of the root node corresponds to the input language
+        TruffleLanguage<?> language = Debugger.ACCESSOR.nodeSupport().getLanguage(rootNode);
+        return language != null && language.getClass() == languageClass ? new DebugValue.HeapValue(session, name, rawValue) : null;
     }
 
     LanguageInfo getLanguage() {

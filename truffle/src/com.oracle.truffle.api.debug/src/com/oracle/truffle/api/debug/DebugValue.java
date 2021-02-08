@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2016, 2020, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2016, 2021, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -1080,10 +1080,12 @@ public abstract class DebugValue {
      * you want to utilize the Debugger API directly from within a guest language, or if you are an
      * instrument bound/dependent on a specific language.
      *
+     * This method is opposite to {@link DebugScope#convertRawValue(Class, String, Object)} where a
+     * raw guest language value is wrapped in a DebugValue.
+     *
      * @param languageClass the Truffle language class for a given guest language
      * @return the guest language object or null if the language differs from the language that
      *         created the underlying {@link DebugValue}
-     *
      * @since 20.1
      */
     public Object getRawValue(Class<? extends TruffleLanguage<?>> languageClass) {

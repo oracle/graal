@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2019, 2020, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2019, 2021, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -22,7 +22,10 @@
  */
 package com.oracle.truffle.espresso.jdwp.api;
 
+import com.oracle.truffle.api.TruffleLanguage;
+import com.oracle.truffle.api.debug.DebugScope;
 import com.oracle.truffle.api.debug.DebugStackFrame;
+import com.oracle.truffle.api.debug.DebugValue;
 import com.oracle.truffle.api.frame.Frame;
 import com.oracle.truffle.api.instrumentation.TruffleInstrument;
 import com.oracle.truffle.api.interop.InteropException;
@@ -51,10 +54,12 @@ public final class CallFrame {
     private final RootNode rootNode;
     private final TruffleInstrument.Env env;
     private final DebugStackFrame debugStackFrame;
+    private final DebugScope debugScope;
+    private final Class<? extends TruffleLanguage<?>> languageClass;
     private com.oracle.truffle.api.Scope scope;
 
     public CallFrame(long threadId, byte typeTag, long classId, MethodRef method, long methodId, long codeIndex, Frame frame, RootNode rootNode,
-                    TruffleInstrument.Env env, DebugStackFrame debugStackFrame) {
+                     TruffleInstrument.Env env, DebugStackFrame debugStackFrame, Class<? extends TruffleLanguage<?>> languageClass) {
         this.threadId = threadId;
         this.typeTag = typeTag;
         this.classId = classId;
@@ -65,10 +70,12 @@ public final class CallFrame {
         this.rootNode = rootNode;
         this.env = env;
         this.debugStackFrame = debugStackFrame;
+        this.debugScope = debugStackFrame != null ? debugStackFrame.getScope() : null;
+        this.languageClass = languageClass;
     }
 
     public CallFrame(long threadId, byte typeTag, long classId, long methodId, long codeIndex) {
-        this(threadId, typeTag, classId, null, methodId, codeIndex, null, null, null, null);
+        this(threadId, typeTag, classId, null, methodId, codeIndex, null, null, null, null, null);
     }
 
     public byte getTypeTag() {
@@ -144,5 +151,10 @@ public final class CallFrame {
         Iterator<com.oracle.truffle.api.Scope> it = env.findLocalScopes(rootNode, getFrame()).iterator();
         scope = it.hasNext() ? it.next() : null;
         return scope;
+    }
+
+    public DebugValue asDebugValue(Object returnValue) {
+        assert debugScope != null;
+        return debugScope.convertRawValue(languageClass, "returnValue", returnValue);
     }
 }

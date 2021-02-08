@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2016, 2020, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2016, 2021, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -160,8 +160,9 @@ public class SuspendedEventTest extends AbstractDebugTest {
                 checkState(event, 4, true, "STATEMENT(CALL(foo))").prepareStepInto(1);
             });
             expectSuspended((SuspendedEvent event) -> {
+                DebugStackFrame frame = event.getStackFrames().iterator().next();
                 checkState(event, 2, true, "STATEMENT(CONSTANT(42))").
-                        prepareUnwindFrame(event.getStackFrames().iterator().next(), 41);
+                        prepareUnwindFrame(frame, frame.getScope().convertRawValue(InstrumentationTestLanguage.class, "returnValue", 41));
             });
             assertEquals("41", expectDone());
         }
