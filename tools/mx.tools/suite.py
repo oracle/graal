@@ -5,7 +5,7 @@ suite = {
 
     "groupId" : "org.graalvm.tools",
     "version" : "20.3.1.2",
-    "release" : False,
+    "release" : True,
     "url" : "http://openjdk.java.net/projects/graal",
     "developer" : {
         "name" : "GraalVM Development",
