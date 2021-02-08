@@ -45,19 +45,6 @@ import com.oracle.truffle.espresso.meta.EspressoError;
 
 public final class NativeLibrary {
 
-    @TruffleBoundary
-    public static @Pointer TruffleObject loadLibrary(Path lib) {
-        StringBuilder sb = new StringBuilder();
-        sb.append("load(RTLD_LAZY");
-        OptionValues options = EspressoLanguage.getCurrentContext().getEnv().getOptions();
-        if (options.get(EspressoOptions.UseTruffleNFIIsolatedNamespace)) {
-            sb.append("|ISOLATED_NAMESPACE");
-        }
-        sb.append(")");
-        sb.append(" '").append(lib).append("'");
-        return loadLibraryHelper(sb.toString());
-    }
-
     private static TruffleObject loadLibraryHelper(String src) {
         Source source = Source.newBuilder("nfi", src, "loadLibrary").build();
         CallTarget target = EspressoLanguage.getCurrentContext().getEnv().parseInternal(source);
@@ -77,14 +64,6 @@ public final class NativeLibrary {
 
     public static @Pointer TruffleObject loadDefaultLibrary() {
         return loadLibraryHelper("default");
-    }
-
-    public static @Pointer TruffleObject lookup(TruffleObject library, String method) throws UnknownIdentifierException {
-        try {
-            return (TruffleObject) InteropLibrary.getFactory().getUncached().readMember(library, method);
-        } catch (UnsupportedMessageException e) {
-            throw EspressoError.shouldNotReachHere("Cannot find " + method);
-        }
     }
 
     public static @Pointer TruffleObject bind(@Pointer TruffleObject symbol, String signature) {

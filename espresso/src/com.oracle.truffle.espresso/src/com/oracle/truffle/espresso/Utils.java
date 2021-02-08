@@ -37,35 +37,6 @@ import com.oracle.truffle.nfi.spi.types.NativeSimpleType;
 
 public final class Utils {
 
-    public static NativeSimpleType kindToType(JavaKind kind) {
-        switch (kind) {
-            case Boolean:
-                return NativeSimpleType.SINT8; // ?
-            case Short:
-                return NativeSimpleType.SINT16;
-            case Char:
-                return NativeSimpleType.SINT16;
-            case Long:
-                return NativeSimpleType.SINT64;
-            case Float:
-                return NativeSimpleType.FLOAT;
-            case Double:
-                return NativeSimpleType.DOUBLE;
-            case Int:
-                return NativeSimpleType.SINT32;
-            case Byte:
-                return NativeSimpleType.SINT8;
-            case Void:
-                return NativeSimpleType.VOID;
-            case Object:
-                // TODO(peterssen): We don't want Interop null passed verbatim to native, but native
-                // NULL instead.
-                return NativeEnv.word();
-            default:
-                throw EspressoError.shouldNotReachHere();
-        }
-    }
-
     public static List<Path> parsePaths(String paths) {
         List<Path> list = new ArrayList<>();
         for (String p : paths.split(File.pathSeparator)) {

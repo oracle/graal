@@ -1160,14 +1160,15 @@ public final class VM extends NativeEnv implements ContextAccess {
             }
         }
         try {
-            TruffleObject function = NativeLibrary.lookup(library, name);
+            TruffleObject function = getNativeAccess().lookupSymbol(library, name);
+            if (function == null) {
+                return RawPointer.nullInstance(); // not found
+            }
             long handle = getUncached().asPointer(function);
             handle2Sym.put(handle, function);
             return function;
         } catch (UnsupportedMessageException e) {
             throw EspressoError.shouldNotReachHere(e);
-        } catch (UnknownIdentifierException e) {
-            return RawPointer.nullInstance(); // not found
         }
     }
 
