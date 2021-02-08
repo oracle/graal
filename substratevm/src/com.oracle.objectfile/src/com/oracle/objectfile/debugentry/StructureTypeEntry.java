@@ -71,8 +71,10 @@ public abstract class StructureTypeEntry extends TypeEntry {
         String fileName = debugFieldInfo.fileName();
         Path filePath = debugFieldInfo.filePath();
         Path cachePath = debugFieldInfo.cachePath();
-        // n.b. the field file may differ from the owning class file when the field is a
-        // substitution
+        /*
+         * n.b. the field file may differ from the owning class file when the field is a
+         * substitution
+         */
         FileEntry fileEntry = debugInfoBase.ensureFileEntry(fileName, filePath, cachePath);
         FieldEntry fieldEntry = new FieldEntry(fileEntry, fieldName, this, valueType, fieldSize, fieldoffset, fieldModifiers);
         fields.add(fieldEntry);

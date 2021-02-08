@@ -41,22 +41,22 @@ public interface DebugInfoProvider {
     boolean useHeapBase();
 
     /**
-     * number of bits oops are left shifted by when using compressed oops
+     * Number of bits oops are left shifted by when using compressed oops.
      */
     int oopCompressShift();
 
     /**
-     * mask delecting low order bits used for tagging oops
+     * Mask delecting low order bits used for tagging oops.
      */
     int oopTagsMask();
 
     /**
-     * number of bytes used to store an oop reference
+     * Number of bytes used to store an oop reference.
      */
     int oopReferenceSize();
 
     /**
-     * alignment of object memory area (and, therefore, of any oop) in bytes
+     * Alignment of object memory area (and, therefore, of any oop) in bytes.
      */
     int oopAlignment();
 

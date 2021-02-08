@@ -948,7 +948,7 @@ public class DwarfAbbrevSectionImpl extends DwarfSectionImpl {
         /* We don't (yet?) have a proper start line for the method itself */
         // pos = writeAttrType(DwarfDebugInfo.DW_AT_decl_line, buffer, pos);
         // pos = writeAttrForm(DwarfDebugInfo.DW_FORM_data2, buffer, pos);
-        /* This probably needs to use the symbol name -- n.b. it is not in DWARF2 */
+        /* This probably needs to use the symbol name */
         // pos = writeAttrType(DwarfDebugInfo.DW_AT_linkage_name, buffer, pos);
         // pos = writeAttrForm(DwarfDebugInfo.DW_FORM_strp, buffer, pos);
         pos = writeAttrType(DwarfDebugInfo.DW_AT_type, buffer, pos);
@@ -1187,7 +1187,7 @@ public class DwarfAbbrevSectionImpl extends DwarfSectionImpl {
         pos = writeFlag(DwarfDebugInfo.DW_CHILDREN_no, buffer, pos);
         pos = writeAttrType(DwarfDebugInfo.DW_AT_specification, buffer, pos);
         pos = writeAttrForm(DwarfDebugInfo.DW_FORM_ref_addr, buffer, pos);
-        /* Do we have a symbol name to use here? n.b. this is not in DWARF2. */
+        /* Do we have a symbol name to use here? */
         // pos = writeAttrType(DwarfDebugInfo.DW_AT_linkage_name, buffer, pos);
         // pos = writeAttrForm(DwarfDebugInfo.DW_FORM_strp, buffer, pos);
         pos = writeAttrType(DwarfDebugInfo.DW_AT_location, buffer, pos);
@@ -1209,11 +1209,9 @@ public class DwarfAbbrevSectionImpl extends DwarfSectionImpl {
         pos = writeAttrType(DwarfDebugInfo.DW_AT_type, buffer, pos);
         pos = writeAttrForm(DwarfDebugInfo.DW_FORM_ref_addr, buffer, pos);
         pos = writeAttrType(DwarfDebugInfo.DW_AT_data_member_location, buffer, pos);
-        pos = writeAttrForm(DwarfDebugInfo.DW_FORM_data1, buffer, pos); // = offset? in which
-                                                                        // segment though?
+        pos = writeAttrForm(DwarfDebugInfo.DW_FORM_data1, buffer, pos);
         pos = writeAttrType(DwarfDebugInfo.DW_AT_accessibility, buffer, pos);
-        pos = writeAttrForm(DwarfDebugInfo.DW_FORM_data1, buffer, pos); // = offset? in which
-                                                                        // segment though?
+        pos = writeAttrForm(DwarfDebugInfo.DW_FORM_data1, buffer, pos);
         /*
          * Now terminate.
          */

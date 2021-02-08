@@ -74,7 +74,7 @@ public class ClassEntry extends StructureTypeEntry {
      */
     private Map<FileEntry, Integer> localFilesIndex;
     /**
-     * a list of the same files.
+     * A list of the same files.
      */
     private LinkedList<FileEntry> localFiles;
     /**
@@ -86,7 +86,7 @@ public class ClassEntry extends StructureTypeEntry {
      */
     private LinkedList<DirEntry> localDirs;
     /**
-     * true iff the entry includes methods that are deopt targets.
+     * This flag is true iff the entry includes methods that are deopt targets.
      */
     private boolean includesDeoptTarget;
 
@@ -289,8 +289,10 @@ public class ClassEntry extends StructureTypeEntry {
         String fileName = debugMethodInfo.fileName();
         Path filePath = debugMethodInfo.filePath();
         Path cachePath = debugMethodInfo.cachePath();
-        // n.b. the method file may differ from the owning class file when the method is a
-        // substitution
+        /*
+         * n.b. the method file may differ from the owning class file when the method is a
+         * substitution
+         */
         FileEntry methodFileEntry = debugInfoBase.ensureFileEntry(fileName, filePath, cachePath);
         methods.add(new MethodEntry(methodFileEntry, methodName, this, resultType, paramTypeArray, paramNameArray, modifiers));
     }
@@ -298,9 +300,9 @@ public class ClassEntry extends StructureTypeEntry {
     @Override
     protected FieldEntry addField(DebugInfoProvider.DebugFieldInfo debugFieldInfo, DebugInfoBase debugInfoBase, DebugContext debugContext) {
         FieldEntry fieldEntry = super.addField(debugFieldInfo, debugInfoBase, debugContext);
-        FileEntry fileEntry = fieldEntry.getFileEntry();
-        if (fileEntry != null) {
-            indexLocalFileEntry(fileEntry);
+        FileEntry fieldFileEntry = fieldEntry.getFileEntry();
+        if (fieldFileEntry != null) {
+            indexLocalFileEntry(fieldFileEntry);
         }
         return fieldEntry;
     }
@@ -344,13 +346,13 @@ public class ClassEntry extends StructureTypeEntry {
              */
             for (MethodEntry methodEntry : methods) {
                 if (methodEntry.match(methodName, paramSignature, returnTypeName)) {
-                    // maybe the method's file entry
+                    /* maybe the method's file entry */
                     fileEntryToUse = methodEntry.getFileEntry();
                     break;
                 }
             }
             if (fileEntryToUse == null) {
-                /* last chance is the class's file entry */
+                /* Last chance is the class's file entry. */
                 fileEntryToUse = this.fileEntry;
             }
         }

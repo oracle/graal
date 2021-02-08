@@ -160,18 +160,18 @@ public abstract class DebugInfoBase {
          */
 
         /*
-         * track whether we need to use a heap base regsiter
+         * Track whether we need to use a heap base register.
          */
         useHeapBase = debugInfoProvider.useHeapBase();
 
         /*
-         * save count of low order tag bits that may appear in references
+         * Save count of low order tag bits that may appear in references.
          */
         int oopTagsMask = debugInfoProvider.oopTagsMask();
 
-        /* tag bits must be between 1 and 32 for us to emit as DW_OP_lit<n> */
+        /* Tag bits must be between 1 and 32 for us to emit as DW_OP_lit<n>. */
         assert oopTagsMask > 0 && oopTagsMask < 32;
-        /* mask must be contiguous from bit 0 */
+        /* Mask must be contiguous from bit 0. */
         assert ((oopTagsMask + 1) & oopTagsMask) == 0;
 
         oopTagsCount = Integer.bitCount(oopTagsMask);
@@ -185,13 +185,13 @@ public abstract class DebugInfoBase {
         /* Save number of bytes in a reference field. */
         oopReferenceSize = debugInfoProvider.oopReferenceSize();
 
-        /* Save alignment of a reference */
+        /* Save alignment of a reference. */
         oopAlignment = debugInfoProvider.oopAlignment();
 
-        /* Save alignment of a reference */
+        /* Save alignment of a reference. */
         oopAlignShift = Integer.bitCount(oopAlignment - 1);
 
-        /* reference alignment must be 8 bytes */
+        /* Reference alignment must be 8 bytes. */
         assert oopAlignment == 8;
 
         /* Ensure we have a null string in the string section. */
@@ -499,7 +499,8 @@ public abstract class DebugInfoBase {
     public int classLayoutAbbrevCode(ClassEntry classEntry) {
         if (useHeapBase & isHubClassEntry(classEntry)) {
             /*
-             * this layout adds special logic to remove tag bits from indirect pointers to this type
+             * This layout adds special logic to remove tag bits from indirect pointers to this
+             * type.
              */
             return DwarfDebugInfo.DW_ABBREV_CODE_class_layout2;
         }

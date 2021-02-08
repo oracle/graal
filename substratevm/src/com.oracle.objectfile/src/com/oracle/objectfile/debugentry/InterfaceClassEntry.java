@@ -74,10 +74,10 @@ public class InterfaceClassEntry extends ClassEntry {
          */
         int maxSize = super.size;
         for (ClassEntry implementor : implementors) {
-            int size = implementor.getSize();
+            int nextSize = implementor.getSize();
 
-            if (size > maxSize) {
-                maxSize = size;
+            if (nextSize > maxSize) {
+                maxSize = nextSize;
             }
         }
         return maxSize;

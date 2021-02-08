@@ -106,7 +106,7 @@ compiled method.
 
 ### Currently Missing Features
 
-  - reference by name to values boudn to parameter and local vars
+  - reference by name to values bound to parameter and local vars
 
 This feature is scheduled for inclusion in a later release.
 

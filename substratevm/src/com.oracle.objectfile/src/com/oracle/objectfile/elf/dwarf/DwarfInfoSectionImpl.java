@@ -1056,7 +1056,7 @@ public class DwarfInfoSectionImpl extends DwarfSectionImpl {
         pos = writeFields(context, arrayTypeEntry, buffer, pos);
         /* Write a zero length element array field. */
         pos = writeArrayElementField(context, size, arrayDataTypeIdx, buffer, pos);
-        pos = writeArraySuperReference(context, arrayTypeEntry, buffer, pos);
+        pos = writeArraySuperReference(context, buffer, pos);
         /*
          * Write a terminating null attribute.
          */
@@ -1068,6 +1068,7 @@ public class DwarfInfoSectionImpl extends DwarfSectionImpl {
                         (pos, fieldEntry) -> writeField(context, arrayTypeEntry, fieldEntry, buffer, pos),
                         (oldPos, newPos) -> newPos);
     }
+
     private int writeIndirectArrayLayout(DebugContext context, ArrayTypeEntry arrayTypeEntry, int size, int layoutOffset, byte[] buffer, int p) {
         int pos = p;
 
@@ -1133,26 +1134,14 @@ public class DwarfInfoSectionImpl extends DwarfSectionImpl {
 
     }
 
-    private int writeArraySuperReference(DebugContext context, ArrayTypeEntry arrayTypeEntry, byte[] buffer, int p) {
+    private int writeArraySuperReference(DebugContext context, byte[] buffer, int p) {
         int pos = p;
         /* Arrays all inherit from java.lang.Object */
         String superName = "java.lang.Object";
         TypeEntry objectType = lookupType(superName);
         assert objectType instanceof ClassEntry;
         int superOffset = getLayoutIndex((ClassEntry) objectType);
-        log(context, "  [0x%08x] super reference", pos);
-        int abbrevCode = DwarfDebugInfo.DW_ABBREV_CODE_super_reference;
-        log(context, "  [0x%08x] <2> Abbrev Number %d", pos, abbrevCode);
-        pos = writeAbbrevCode(abbrevCode, buffer, pos);
-        log(context, "  [0x%08x]     type 0x%x (%s)", pos, superOffset, superName);
-        pos = writeAttrRefAddr(superOffset, buffer, pos);
-        /* Parent layout is embedded at start of object. */
-        log(context, "  [0x%08x]     data_member_location (super) 0x%x", pos, 0);
-        pos = writeAttrData1((byte) 0, buffer, pos);
-        log(context, "  [0x%08x]     modifiers public", pos);
-        int modifiers = Modifier.PUBLIC;
-        pos = writeAttrAccessibility(modifiers, buffer, pos);
-        return pos;
+        return writeSuperReference(context, superOffset, superName, buffer, pos);
     }
 
     private int writeArrayTypes(DebugContext context, ArrayTypeEntry arrayTypeEntry, int layoutOffset, int indirectLayoutOffset, byte[] buffer, int p) {
@@ -1355,43 +1344,7 @@ public class DwarfInfoSectionImpl extends DwarfSectionImpl {
     public int writeIndirectOopConversionExpression(boolean isHub, byte[] buffer, int p) {
         int pos = p;
         /*
-         * The conversion rules are different depending on whether they apply to the hub class or
-         * any other class.
-         *
-         * They also vary according to whether isolates are in use and, if so, whether it is
-         * combined with compression.
-         *
-         * Finally, they depend on the choice of GC, specifically it's influence on the number of GC
-         * tag bits.
-         *
-         * The rules are as follows:
-         *
-         * H:-SpawnIsolates (explicitly disabled isolates support)
-         *
-         * <ul> <li>Regular oops: address64 = val64 <li> Oops pointing to hubs: address64 = val64 &
-         * "GC-bits bitmask" </ul>
-         *
-         * -H:+SpawnIsolates -H:-UseCompressedReferences (CE default)
-         *
-         * <ul> <li> Regular oops: address64 = val64 + r14 <li> Oops pointing to hubs: address64 =
-         * ((val64 >> "num GC bits") << "objectAlignmentBits") + r14 </ul>
-         *
-         * objectAlignmentBits should always be 3
-         *
-         * -H:+SpawnIsolates+ -H:+UseCompressedReferences (EE default)
-         *
-         * <ul> <li> Regular oops: address64 = (val32 << "compressShift") + r14 <li> Oops pointing
-         * to hubs: address64 = ((val32 >> "num GC bits") << "compressShift") + r14 </ul>
-         *
-         * compressShift should always be 3.
-         *
-         * For Serial garbage collector (CE)
-         *
-         * <ul> <li>"num GC bits": 3 <li> "GC-bits bitmask": ~0b111 </ul>
-         *
-         * For G1 garbage collector (EE only)
-         *
-         * <ul> <li>"num GC bits": 5 <li> "GC-bits bitmask": ~0b11111 </ul>
+         * For an explanation of the conversion rules @see com.oracle.svm.core.heap.ReferenceAccess
          *
          * n.b.
          *

@@ -42,6 +42,7 @@
 
 import re
 import sys
+import os
 
 # A helper class which checks that a sequence of lines of output
 # from a gdb command matches a sequence of per-line regular
@@ -139,10 +140,16 @@ def test():
     # n.b. can only get back here with one match
     match = matches[0]
     major = int(match.group(1))
-    # may need this if 8.x and 9.x get patched
-    # minor = int(match.group(2))
-    # printing object data requires gdb 10+
-    can_print_data = major > 9
+    minor = int(match.group(2))
+    # printing object data requires a patched gdb
+    # once the patch is in we can check for a suitable
+    # range of major.minor versions
+    # for now we use an env setting
+    print("Found gdb version %s.%s"%(major, minor))
+    # can_print_data = major > 10 or (major == 10 and minor > 1)
+    can_print_data = False
+    if os.environ.get('GDB_CAN_PRINT', '') == 'True':
+        can_print_data = True
 
     if not can_print_data:
         print("Warning: cannot test printing of objects!")
@@ -182,12 +189,13 @@ def test():
         exec_string = execute("print /x *(('java.lang.String[]' *)$rdi)")
         checker = Checker("print String[] args",
                           [r"%s = {"%(wildcard_pattern),
-                           r"%s<_arrhdrA> = {"%(spaces_pattern),
+                           r"%s<java.lang.Object> = {"%(spaces_pattern),
+                           r"%s<_objhdr> = {"%(spaces_pattern),
                            r"%shub = %s,"%(spaces_pattern, address_pattern),
-                           r"%sidHash = %s,"%(spaces_pattern, address_pattern),
-                           r"%slen = 0x0"%(spaces_pattern),
-                           r"%s},"%(spaces_pattern),
+                           r"%sidHash = %s"%(spaces_pattern, address_pattern),
+                           r"%s}, <No data fields>}, "%(spaces_pattern),
                            r"%smembers of java\.lang\.String\[\]:"%(spaces_pattern),
+                           r"%slen = 0x0,"%(spaces_pattern),
                            r"%sdata = %s"%(spaces_pattern, address_pattern),
                            "}"])
 
@@ -225,7 +233,7 @@ def test():
         # ensure we can dereference static fields
         exec_string = execute("print 'java.math.BigDecimal'::BIG_TEN_POWERS_TABLE->data[3]->mag->data[0]")
         checker = Checker("print static field value contents",
-                          r"%s = 1000\$"%(wildcard_pattern))
+                          r"%s = 1000"%(wildcard_pattern))
         checker.check(exec_string, skip_fails=False)
 
     # look up PrintStream.println methods
@@ -308,13 +316,12 @@ def test():
     checker = Checker('ptype _objhdr', rexp)
     checker.check(exec_string, skip_fails=True)
 
-    exec_string = execute("ptype _arrhdrA")
-    rexp = [r"type = struct _arrhdrA {",
-            r"%sjava\.lang\.Class \*hub;"%(spaces_pattern),
-            r"%sint idHash;"%(spaces_pattern),
+    exec_string = execute("ptype 'java.lang.String[]'")
+    rexp = [r"type = class java.lang.String\[\] : public java.lang.Object {",
             r"%sint len;"%(spaces_pattern),
+            r"%sjava\.lang\.String \*data\[0\];"%(spaces_pattern),
             r"}"]
-    checker = Checker('ptype _objhdr', rexp)
+    checker = Checker('ptype String[]', rexp)
     checker.check(exec_string, skip_fails=True)
 
     # run a backtrace

@@ -255,11 +255,14 @@ public class DwarfDebugInfo extends DebugInfoBase {
     public static final byte rthread_x86 = (byte) 15;
 
     /*
-     * prefix used to label indirect types used to ensure gdb performs oop reference --> raw address
-     * translation
+     * A prefix used to label indirect types used to ensure gdb performs oop reference --> raw
+     * address translation
      */
     public static final String INDIRECT_PREFIX = "_z_.";
-    /* name of type for hub field which needs special case processing to remove tag bits */
+    /*
+     * The name of the type for header field hub which needs special case processing to remove tag
+     * bits
+     */
     public static final String HUB_TYPE_NAME = "java.lang.Class";
 
     private DwarfStrSectionImpl dwarfStrSection;
@@ -343,11 +346,11 @@ public class DwarfDebugInfo extends DebugInfoBase {
      */
     static class DwarfTypeProperties {
         /**
-         * index in debug_info section of type declaration for this class.
+         * Index in debug_info section of type declaration for this class.
          */
         private int typeInfoIndex;
         /**
-         * index in debug_info section of indirect type declaration for this class.
+         * Index in debug_info section of indirect type declaration for this class.
          *
          * this is normally just the same as the index of the normal type declaration, however, when
          * oops are stored in static and instance fields as offsets from the heapbase register gdb
