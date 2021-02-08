@@ -236,12 +236,19 @@ final class FileSystems {
         }
 
         void onPreInitializeContextEnd() {
+            if (factory == null) {
+                throw new IllegalStateException("Context pre-initialization already finished.");
+            }
             ((ImageBuildTimeFactory) factory).onPreInitializeContextEnd();
+            factory = null;
             delegate = INVALID_FILESYSTEM;
         }
 
         void onLoadPreinitializedContext(FileSystem newDelegate) {
             Objects.requireNonNull(newDelegate, "NewDelegate must be non null.");
+            if (factory != null) {
+                throw new IllegalStateException("Pre-initialized context already loaded.");
+            }
             this.delegate = newDelegate;
             this.factory = new ImageExecutionTimeFactory();
         }
