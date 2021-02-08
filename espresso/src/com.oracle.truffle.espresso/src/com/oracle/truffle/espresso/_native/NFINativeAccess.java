@@ -1,12 +1,9 @@
 package com.oracle.truffle.espresso._native;
 
-import static com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
 import static com.oracle.truffle.api.CompilerDirectives.transferToInterpreter;
 
 import java.nio.file.Path;
-import java.util.Arrays;
 import java.util.Map;
-import java.util.Objects;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.function.Function;
 import java.util.logging.Level;
@@ -52,31 +49,25 @@ public class NFINativeAccess implements NativeAccess {
         return context;
     }
 
-    protected static NativeSimpleType nfiType(NativeType ntype) {
-        switch (ntype) {
-            case VOID:
-                return NativeSimpleType.VOID;
+    protected static NativeSimpleType nfiType(NativeType nativeType) {
+        // @formatter:off
+        switch (nativeType) {
+            case VOID:    return NativeSimpleType.VOID;
             case BOOLEAN: // fall-through
-            case BYTE:
-                return NativeSimpleType.SINT8;
-            case CHAR: // fall-through
-            case SHORT:
-                return NativeSimpleType.SINT16;
-            case INT:
-                return NativeSimpleType.SINT32;
-            case LONG:
-                return NativeSimpleType.SINT64;
-            case FLOAT:
-                return NativeSimpleType.FLOAT;
-            case DOUBLE:
-                return NativeSimpleType.DOUBLE;
-            case OBJECT:
-                return NativeSimpleType.SINT64; // word-sized handle
-            case POINTER:
-                return NativeSimpleType.POINTER;
+            case BYTE:    return NativeSimpleType.SINT8;
+            case CHAR:    // fall-through
+            case SHORT:   return NativeSimpleType.SINT16;
+            case INT:     return NativeSimpleType.SINT32;
+            case LONG:    return NativeSimpleType.SINT64;
+            case FLOAT:   return NativeSimpleType.FLOAT;
+            case DOUBLE:  return NativeSimpleType.DOUBLE;
+            case OBJECT:  return NativeSimpleType.SINT64; // word-sized handle
+            case POINTER: return NativeSimpleType.POINTER;
             default:
-                throw EspressoError.shouldNotReachHere("Unexpected: " + ntype);
+                CompilerDirectives.transferToInterpreterAndInvalidate();
+                throw EspressoError.shouldNotReachHere("Unexpected: " + nativeType);
         }
+        // @formatter:on
     }
 
     protected static String nfiStringSignature(NativeType returnType, NativeType... parameterTypes) {

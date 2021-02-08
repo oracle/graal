@@ -3,9 +3,11 @@ package com.oracle.truffle.espresso._native;
 import java.nio.file.Path;
 import java.util.List;
 
+import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.interop.InteropLibrary;
 import com.oracle.truffle.api.interop.TruffleObject;
 import com.oracle.truffle.espresso.meta.EspressoError;
+import com.oracle.truffle.espresso.meta.JavaKind;
 
 /**
  * Encapsulates minimal functionality required to interface with the native world in the JVM.
@@ -122,4 +124,24 @@ public interface NativeAccess {
      */
     @Pointer
     TruffleObject createNativeClosure(TruffleObject executable, NativeType returnType, NativeType... parameterTypes);
+
+    static NativeType kindToNativeType(JavaKind kind) {
+        // @formatter:off
+        switch (kind) {
+            case Boolean: return NativeType.BOOLEAN;
+            case Byte:    return NativeType.BYTE;
+            case Short:   return NativeType.SHORT;
+            case Char:    return NativeType.CHAR;
+            case Int:     return NativeType.INT;
+            case Long:    return NativeType.LONG;
+            case Float:   return NativeType.FLOAT;
+            case Double:  return NativeType.DOUBLE;
+            case Void:    return NativeType.VOID;
+            case Object:  return NativeType.OBJECT;
+            default:
+                CompilerDirectives.transferToInterpreterAndInvalidate();
+                throw EspressoError.shouldNotReachHere("unexpected kind: " + kind);
+        }
+        // @formatter:on
+    }
 }

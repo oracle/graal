@@ -201,6 +201,10 @@ public final class Types {
         return index;
     }
 
+    public static boolean isReference(Symbol<Type> type) {
+        return type.length() > 1;
+    }
+
     public static boolean isPrimitive(ByteSequence type) {
         if (type.length() != 1) {
             return false;

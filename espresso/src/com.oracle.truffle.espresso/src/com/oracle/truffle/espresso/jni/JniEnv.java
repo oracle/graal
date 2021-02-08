@@ -92,7 +92,7 @@ import com.oracle.truffle.nfi.spi.types.NativeSimpleType;
 public final class JniEnv extends NativeEnv implements ContextAccess {
 
     private final TruffleLogger logger = TruffleLogger.getLogger(EspressoLanguage.ID, JniEnv.class);
-    private final InteropLibrary uncached = InteropLibrary.getFactory().getUncached();
+    private final InteropLibrary uncached = InteropLibrary.getUncached();
 
     protected InteropLibrary getUncached() {
         return uncached;
@@ -465,33 +465,6 @@ public final class JniEnv extends NativeEnv implements ContextAccess {
         long address = byteBufferAddress(bb);
         nativeBuffers.put(address, bb);
         return bb;
-    }
-
-    private static String nfiSignature(final Symbol<Type>[] signature, boolean isJni) {
-
-        int argCount = Signatures.parameterCount(signature, false);
-        StringBuilder sb = new StringBuilder("(");
-
-        boolean first = true;
-        if (isJni) {
-            sb.append(NativeSimpleType.POINTER); // JNIEnv*
-            sb.append(",");
-            sb.append(Utils.kindToType(JavaKind.Object)); // Receiver or class (for static
-            // methods).
-            first = false;
-        }
-        for (int i = 0; i < argCount; ++i) {
-            JavaKind kind = Signatures.parameterKind(signature, i);
-            if (!first) {
-                sb.append(", ");
-            } else {
-                first = false;
-            }
-            sb.append(Utils.kindToType(kind));
-        }
-
-        sb.append("): ").append(Utils.kindToType(Signatures.returnKind(signature)));
-        return sb.toString();
     }
 
     private static Map<String, JniSubstitutor.Factory> buildJniMethods() {
@@ -2451,13 +2424,14 @@ public final class JniEnv extends NativeEnv implements ContextAccess {
             return JNI_ERR;
         }
 
-        final TruffleObject boundNative = NativeLibrary.bind(closure, nfiSignature(getSignatures().parsed(signature), true));
+        NativeSignature ns = Method.buildJniNativeSignature(targetMethod.getParsedSignature());
+        final TruffleObject boundNative = getNativeAccess().bindSymbol(closure, ns.getReturnType(), ns.getParameterTypes());
         Substitutions.EspressoRootNodeFactory factory = new Substitutions.EspressoRootNodeFactory() {
             @Override
             public EspressoRootNode createNodeIfValid(Method methodToSubstitute, boolean forceValid) {
                 if (forceValid || methodToSubstitute == targetMethod) {
                     // Runtime substitutions apply only to the given method.
-                    return EspressoRootNode.create(null, new NativeMethodNode(boundNative, methodToSubstitute.getMethodVersion(), true));
+                    return EspressoRootNode.create(null, new NativeMethodNode(boundNative, methodToSubstitute.getMethodVersion()));
                 }
 
                 Substitutions.getLogger().warning(new Supplier<String>() {

@@ -35,7 +35,9 @@ import com.oracle.truffle.api.interop.TruffleObject;
 import com.oracle.truffle.api.interop.UnsupportedMessageException;
 import com.oracle.truffle.api.library.ExportLibrary;
 import com.oracle.truffle.api.library.ExportMessage;
+import com.oracle.truffle.espresso._native.Buffer;
 import com.oracle.truffle.espresso._native.Pointer;
+import com.oracle.truffle.espresso._native.TruffleByteBuffer;
 import com.oracle.truffle.espresso.meta.EspressoError;
 import com.oracle.truffle.espresso.meta.JavaKind;
 import com.oracle.truffle.espresso.runtime.StaticObject;
@@ -47,8 +49,12 @@ public abstract class NativeEnv {
         return NativeSimpleType.SINT64; // or SINT32
     }
 
-    protected static ByteBuffer directByteBuffer(@Pointer TruffleObject addressPtr, long capacity, JavaKind kind) {
-        return directByteBuffer(interopAsPointer(addressPtr), Math.multiplyExact(capacity, kind.getByteCount()));
+    protected static ByteBuffer directByteBuffer(@Pointer TruffleObject addressPtr, long size, JavaKind kind) {
+        return directByteBuffer(interopAsPointer(addressPtr), Math.multiplyExact(size, kind.getByteCount()));
+    }
+
+    protected static @Buffer TruffleObject asTruffleBuffer(@Pointer TruffleObject addressPtr, long size, JavaKind kind) {
+        return TruffleByteBuffer.create(directByteBuffer(addressPtr, size, kind));
     }
 
     private static final Constructor<? extends ByteBuffer> constructor;
