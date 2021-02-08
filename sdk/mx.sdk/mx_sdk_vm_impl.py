@@ -742,19 +742,9 @@ class BaseGraalVmLayoutDistribution(_with_metaclass(ABCMeta, mx.LayoutDistributi
             # Register pre-installed components
             components_dir = _get_component_type_base(installer) + installer.dir_name + '/components/'
             for installable_components in installables.values():
+                manifest_str = _gen_gu_manifest(installable_components, bundled=True)
                 main_component = _get_main_component(installable_components)
-                _add(layout, components_dir + main_component.installable_id + '.component', """string:Bundle-Name={name}
-Bundle-Symbolic-Name={id}
-Bundle-Version={version}
-
-x-GraalVM-Polyglot-Part={polyglot}
-x-GraalVM-Component-Distribution=bundled
-""".format(
-                    name=main_component.name,
-                    id=main_component.installable_id,
-                    version=_suite.release_version(),
-                    polyglot=isinstance(main_component, mx_sdk.GraalVmTruffleComponent) and main_component.include_in_polyglot
-                             and (not isinstance(main_component, mx_sdk.GraalVmTool) or main_component.include_by_default)))
+                _add(layout, components_dir + main_component.installable_id + '.component', "string:" + manifest_str)
 
         for _base, _suites in component_suites.items():
             _metadata = self._get_metadata(_suites)
@@ -1953,8 +1943,8 @@ class GraalVmLibraryBuildTask(GraalVmSVMNativeImageBuildTask):
     pass
 
 
-def _gen_gu_manifest(components):
-    main_component = components[0]
+def _gen_gu_manifest(components, bundled=False):
+    main_component = _get_main_component(components)
     manifest_str = """Bundle-Name: {name}
 Bundle-Symbolic-Name: org.graalvm.{id}
 Bundle-Version: {version}
@@ -1982,8 +1972,7 @@ x-GraalVM-Polyglot-Part: {polyglot}
         manifest_str += "Require-Bundle: {}\n".format(','.join(("org.graalvm." + d for d in dependencies)))
     if isinstance(main_component, mx_sdk.GraalVmLanguage):
         _wd_base = join('jre', 'languages') if _src_jdk_version < 9 else 'languages'
-        manifest_str += """x-GraalVM-Working-Directories: {workdir}
-""".format(workdir=join(_wd_base, main_component.dir_name))
+        manifest_str += "x-GraalVM-Working-Directories: {workdir}\n".format(workdir=join(_wd_base, main_component.dir_name))
 
     post_install_msg = None
     for component in components:
@@ -1993,8 +1982,9 @@ x-GraalVM-Polyglot-Part: {polyglot}
             else:
                 post_install_msg = component.post_install_msg
     if post_install_msg:
-        manifest_str += """x-GraalVM-Message-PostInst: {msg}
-""".format(msg=post_install_msg.replace("\\", "\\\\").replace("\n", "\\n"))
+        manifest_str += "x-GraalVM-Message-PostInst: {msg}\n".format(msg=post_install_msg.replace("\\", "\\\\").replace("\n", "\\n"))
+    if bundled:
+        manifest_str += "x-GraalVM-Component-Distribution=bundled\n"
 
     manifest_lines = []
     for l in manifest_str.split('\n'):
@@ -2057,6 +2047,7 @@ class InstallableComponentArchiver(mx.Archiver):
         # do not add symlinks, use the metadata to create them
 
     def __exit__(self, exc_type, exc_value, traceback):
+        assert self.components[0] == _get_main_component(self.components)
         _manifest_str_wrapped = _gen_gu_manifest(self.components)
         _manifest_arc_name = 'META-INF/MANIFEST.MF'
 
