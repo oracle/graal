@@ -50,6 +50,10 @@ public class LLVMManagedExceptionObject extends LLVMInternalTruffleObject {
         this.exceptionObject = exceptionObject;
     }
 
+    public Object getExceptionObject() {
+        return exceptionObject;
+    }
+
     @ExportMessage
     public LLVMPointer readPointer(long offset) {
         if (offset == 8) {

@@ -99,9 +99,7 @@ void* __cxa_begin_catch(void* unwind) {
 		 * See com.oracle.truffle.llvm.runtime.interop.LLVMManagedExceptionObject[.java]
 		 */
 		return v->foreign_object;
-	} else {
-		std::cout << v->exception_class << std::endl;
-	}
+	} 
 	return __extern_C::___sulong_import_base64::bGliYysrYWJp::__cxa_begin_catch(unwind);
 }
 

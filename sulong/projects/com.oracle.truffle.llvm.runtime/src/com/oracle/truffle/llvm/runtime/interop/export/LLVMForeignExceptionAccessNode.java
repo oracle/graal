@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2016, 2020, Oracle and/or its affiliates.
+ * Copyright (c) 2021, Oracle and/or its affiliates.
  *
  * All rights reserved.
  *
@@ -27,21 +27,40 @@
  * NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED
  * OF THE POSSIBILITY OF SUCH DAMAGE.
  */
-package com.oracle.truffle.llvm.runtime.nodes.func;
+
+package com.oracle.truffle.llvm.runtime.interop.export;
 
 import com.oracle.truffle.api.dsl.Cached;
-import com.oracle.truffle.api.dsl.NodeChild;
+import com.oracle.truffle.api.dsl.CachedContext;
+import com.oracle.truffle.api.dsl.GenerateUncached;
 import com.oracle.truffle.api.dsl.Specialization;
-import com.oracle.truffle.llvm.runtime.except.LLVMUserException;
-import com.oracle.truffle.llvm.runtime.interop.export.LLVMForeignExceptionAccessNode;
-import com.oracle.truffle.llvm.runtime.nodes.api.LLVMExpressionNode;
+import com.oracle.truffle.llvm.runtime.LLVMContext;
+import com.oracle.truffle.llvm.runtime.LLVMLanguage;
+import com.oracle.truffle.llvm.runtime.global.LLVMGlobal;
+import com.oracle.truffle.llvm.runtime.interop.access.LLVMInteropType;
+import com.oracle.truffle.llvm.runtime.nodes.api.LLVMNode;
 import com.oracle.truffle.llvm.runtime.pointer.LLVMPointer;
 
-@NodeChild(value = "unwindHeader", type = LLVMExpressionNode.class)
-public abstract class LLVMRaiseExceptionNode extends LLVMExpressionNode {
+@GenerateUncached
+public abstract class LLVMForeignExceptionAccessNode extends LLVMNode {
+
+    public abstract LLVMPointer execute(LLVMPointer unwindHeader);
 
     @Specialization
-    public Object doRaise(LLVMPointer unwindHeader, @Cached LLVMForeignExceptionAccessNode exceptionAccessNode) {
-        throw new LLVMUserException(this, unwindHeader, exceptionAccessNode.execute(unwindHeader));
+    public LLVMPointer doResolve(LLVMPointer unwindHeader,
+                    @Cached LLVMForeignReadNode read,
+                    @CachedContext(value = LLVMLanguage.class) LLVMContext context) {
+        final LLVMPointer typeInfo = LLVMPointer.cast(read.execute(unwindHeader.increment(-0x50), LLVMInteropType.ValueKind.POINTER.type));
+
+        LLVMGlobal typeInfoSymbol = context.findGlobal(typeInfo);
+        LLVMInteropType interopType = typeInfoSymbol.getInteropType(context);
+        interopType = context.getLanguage().getInteropType(LLVMInteropType.Clazz.interopTIMap.get(typeInfoSymbol.getName()));
+        /*
+         * LLVMSourceType is missing in typeInfoSymbol, TODO (pichristoph) correct
+         */
+        final LLVMPointer untypedObjectPtr = LLVMPointer.cast(read.execute(unwindHeader.increment(0x20), LLVMInteropType.ValueKind.POINTER.type));
+
+        return untypedObjectPtr.export(interopType);
     }
+
 }

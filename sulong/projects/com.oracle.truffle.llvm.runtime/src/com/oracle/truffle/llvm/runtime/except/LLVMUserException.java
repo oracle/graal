@@ -35,12 +35,13 @@ import com.oracle.truffle.api.interop.InteropLibrary;
 import com.oracle.truffle.api.library.ExportLibrary;
 import com.oracle.truffle.api.library.ExportMessage;
 import com.oracle.truffle.api.nodes.Node;
+import com.oracle.truffle.llvm.runtime.interop.export.LLVMForeignExceptionAccessNodeGen;
 import com.oracle.truffle.llvm.runtime.pointer.LLVMPointer;
 
 /**
  * Used for implementing try catch blocks within LLVM bitcode (e.g., when executing __cxa_throw).
  */
-@ExportLibrary(value = InteropLibrary.class, delegateTo = "unwindHeader")
+@ExportLibrary(value = InteropLibrary.class, delegateTo = "exceptionObjPtr")
 public final class LLVMUserException extends LLVMException {
 
     public static final String FRAME_SLOT_ID = "<function exception value>";
@@ -48,10 +49,17 @@ public final class LLVMUserException extends LLVMException {
     private static final long serialVersionUID = 1L;
 
     final LLVMPointer unwindHeader;
+    final LLVMPointer exceptionObjPtr;
 
     public LLVMUserException(Node location, LLVMPointer unwindHeader) {
+        this(location, unwindHeader, LLVMForeignExceptionAccessNodeGen.create().execute(unwindHeader));
+        // TODO pichristoph make resolving of exceptionObjPtr more efficient
+    }
+
+    public LLVMUserException(Node location, LLVMPointer unwindHeader, LLVMPointer exceptionObjPtr) {
         super(location);
         this.unwindHeader = unwindHeader;
+        this.exceptionObjPtr = exceptionObjPtr;
     }
 
     public LLVMPointer getUnwindHeader() {
