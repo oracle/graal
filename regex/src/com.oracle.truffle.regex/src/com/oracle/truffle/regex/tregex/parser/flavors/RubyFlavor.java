@@ -44,7 +44,6 @@ import com.oracle.truffle.regex.RegexSource;
 import com.oracle.truffle.regex.tregex.nfa.QuantifierGuard;
 import com.oracle.truffle.regex.tregex.nodes.nfa.TRegexBacktrackingNFAExecutorNode;
 import com.oracle.truffle.regex.tregex.parser.RegexParser;
-import com.oracle.truffle.regex.tregex.parser.Token;
 import com.oracle.truffle.regex.tregex.parser.ast.visitors.NFATraversalRegexASTVisitor;
 
 /**
