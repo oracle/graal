@@ -128,6 +128,7 @@ import org.graalvm.compiler.hotspot.stubs.VerifyOopStub;
 import org.graalvm.compiler.nodes.NamedLocationIdentity;
 import org.graalvm.compiler.nodes.extended.BytecodeExceptionNode.BytecodeExceptionKind;
 import org.graalvm.compiler.options.OptionValues;
+import org.graalvm.compiler.replacements.SnippetTemplate;
 import org.graalvm.compiler.replacements.arraycopy.ArrayCopyForeignCalls;
 import org.graalvm.compiler.serviceprovider.JavaVersionUtil;
 import org.graalvm.compiler.word.Word;
@@ -150,6 +151,21 @@ public abstract class HotSpotHostForeignCallsProvider extends HotSpotForeignCall
 
     public static final HotSpotForeignCallDescriptor NOTIFY = new HotSpotForeignCallDescriptor(LEAF_NO_VZERO, NOT_REEXECUTABLE, any(), "object_notify", boolean.class, Object.class);
     public static final HotSpotForeignCallDescriptor NOTIFY_ALL = new HotSpotForeignCallDescriptor(LEAF_NO_VZERO, NOT_REEXECUTABLE, any(), "object_notifyAll", boolean.class, Object.class);
+
+    public static class TestForeignCalls {
+        public static final HotSpotForeignCallDescriptor BYTE_RETURNS_BYTE = new HotSpotForeignCallDescriptor(SAFEPOINT, REEXECUTABLE, NO_LOCATIONS, "byte returns byte",
+                        Byte.TYPE, Byte.TYPE);
+        public static final HotSpotForeignCallDescriptor INT_RETURNS_INT = new HotSpotForeignCallDescriptor(SAFEPOINT, REEXECUTABLE, NO_LOCATIONS, "int returns int",
+                        Integer.TYPE, Integer.TYPE);
+
+        static byte byteReturnsByte(byte arg) {
+            return arg;
+        }
+
+        static int intReturnsInt(int arg) {
+            return arg;
+        }
+    }
 
     public HotSpotHostForeignCallsProvider(HotSpotJVMCIRuntime jvmciRuntime, HotSpotGraalRuntimeProvider runtime, MetaAccessProvider metaAccess, CodeCacheProvider codeCache,
                     WordTypes wordTypes) {
@@ -205,14 +221,12 @@ public abstract class HotSpotHostForeignCallsProvider extends HotSpotForeignCall
         }
     }
 
-    static ResolvedJavaMethod doPollMethod;
-    static ResolvedJavaMethod doHandshakeMethod;
-
-    public static void setHandshakeFunctions(ResolvedJavaMethod doPoll, ResolvedJavaMethod doHandshake) {
-        assert doPoll.isStatic() && doPoll.getSignature().getParameterCount(false) == 0;
-        doPollMethod = doPoll;
-        assert doHandshake.isStatic() && doHandshake.getSignature().getParameterCount(false) == 0;
-        doHandshakeMethod = doHandshake;
+    private boolean registerStubCallFunctions(OptionValues options, HotSpotProviders providers, GraalHotSpotVMConfig config) {
+        ResolvedJavaMethod byteReturnsByte = SnippetTemplate.AbstractTemplates.findMethod(providers.getMetaAccess(), TestForeignCalls.class, "byteReturnsByte");
+        invokeJavaMethodStub(options, providers, TestForeignCalls.BYTE_RETURNS_BYTE, config.invokeJavaMethodAddress, byteReturnsByte);
+        ResolvedJavaMethod intReturnsInt = SnippetTemplate.AbstractTemplates.findMethod(providers.getMetaAccess(), TestForeignCalls.class, "intReturnsInt");
+        invokeJavaMethodStub(options, providers, TestForeignCalls.INT_RETURNS_INT, config.invokeJavaMethodAddress, intReturnsInt);
+        return true;
     }
 
     private void registerArraycopyDescriptor(EconomicMap<Long, ForeignCallDescriptor> descMap, JavaKind kind, boolean aligned, boolean disjoint, boolean uninit, LocationIdentity killedLocation,
@@ -495,6 +509,8 @@ public abstract class HotSpotHostForeignCallsProvider extends HotSpotForeignCall
             assert (c.vectorizedMismatch != 0L);
             registerForeignCall(VECTORIZED_MISMATCH, c.vectorizedMismatch, NativeCall);
         }
+
+        assert registerStubCallFunctions(options, providers, runtime.getVMConfig());
     }
 
     @SuppressWarnings("unused")
