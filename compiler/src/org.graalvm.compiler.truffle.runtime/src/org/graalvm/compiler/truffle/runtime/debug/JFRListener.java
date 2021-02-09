@@ -257,13 +257,6 @@ public final class JFRListener extends AbstractGraalTruffleRuntimeListener {
         }
     }
 
-    /**
-     * Determines if a failure is permanent.
-     */
-    private static boolean isPermanentFailure(boolean bailout, boolean permanentBailout) {
-        return !bailout || permanentBailout;
-    }
-
     // Support for JFRListener#isInstrumented
     private static boolean isInstrumentedImpl(ResolvedJavaMethod method, InstrumentedFilterState state) {
 

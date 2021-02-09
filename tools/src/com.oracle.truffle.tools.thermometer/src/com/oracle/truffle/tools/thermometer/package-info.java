@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2019, 2021, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -22,23 +22,8 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package org.graalvm.compiler.truffle.runtime;
 
-public abstract class AbstractGraalTruffleRuntimeListener implements GraalTruffleRuntimeListener {
-
-    protected final GraalTruffleRuntime runtime;
-
-    protected AbstractGraalTruffleRuntimeListener(GraalTruffleRuntime runtime) {
-        this.runtime = runtime;
-    }
-
-    /**
-     * Determines if a failure is permanent.
-     *
-     * @see GraalTruffleRuntimeListener#onCompilationFailed(OptimizedCallTarget, String, boolean,
-     *      boolean, int)
-     */
-    protected static boolean isPermanentFailure(boolean bailout, boolean permanentBailout) {
-        return !bailout || permanentBailout;
-    }
-}
+/**
+ * Package containing classes implementing the Truffle Thermometer.
+ */
+package com.oracle.truffle.tools.thermometer;

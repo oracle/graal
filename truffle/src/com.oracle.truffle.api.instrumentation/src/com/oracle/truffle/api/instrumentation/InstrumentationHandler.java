@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2016, 2020, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2016, 2021, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -962,6 +962,25 @@ final class InstrumentationHandler {
 
     boolean hasThreadBindings() {
         return !threadsBindings.isEmpty();
+    }
+
+    // Thermometer TODO: I'd rather not have to add a new API here.
+    private CompilationState sampleCompilationState(AbstractInstrumenter instrumenter) {
+        if (TRACE) {
+            trace("BEGIN: Sampling compilation state%n");
+        }
+
+        try {
+            if (CompilationStateBackdoor.ACCESSOR == null) {
+                return CompilationState.ZERO;
+            } else {
+                return CompilationStateBackdoor.ACCESSOR.get();
+            }
+        } finally {
+            if (TRACE) {
+                trace("END: Sampling compilation state%n");
+            }
+        }
     }
 
     void notifyContextCreated(TruffleContext context) {
@@ -2434,6 +2453,12 @@ final class InstrumentationHandler {
         @Override
         public <T extends OutputStream> EventBinding<T> attachErrConsumer(T stream) {
             return InstrumentationHandler.this.attachOutputConsumer(this, stream, true);
+        }
+
+        // XXXXXXXXXX
+        @Override
+        public CompilationState sampleCompilationState() {
+            return InstrumentationHandler.this.sampleCompilationState(this);
         }
 
         private void verifySourceOnly(SourceSectionFilter filter) {

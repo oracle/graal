@@ -201,6 +201,15 @@ public class BackgroundCompileQueue {
         }
     }
 
+    public int getRunning() {
+        final ExecutorService threadPool = compilationExecutorService;
+        if (threadPool instanceof ThreadPoolExecutor) {
+            return ((ThreadPoolExecutor) threadPool).getActiveCount();
+        } else {
+            return 0;
+        }
+    }
+
     /**
      * Return call targets waiting in queue. This does not include call targets currently being
      * compiled.

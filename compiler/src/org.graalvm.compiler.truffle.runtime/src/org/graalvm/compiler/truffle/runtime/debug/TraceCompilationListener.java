@@ -249,16 +249,6 @@ public final class TraceCompilationListener extends AbstractGraalTruffleRuntimeL
         }
     }
 
-    /**
-     * Determines if a failure is permanent.
-     *
-     * @see GraalTruffleRuntimeListener#onCompilationFailed(OptimizedCallTarget, String, boolean,
-     *      boolean, int)
-     */
-    private static boolean isPermanentFailure(boolean bailout, boolean permanentBailout) {
-        return !bailout || permanentBailout;
-    }
-
     private static final class Times {
         final long timeCompilationStarted = System.nanoTime();
         long timePartialEvaluationFinished;

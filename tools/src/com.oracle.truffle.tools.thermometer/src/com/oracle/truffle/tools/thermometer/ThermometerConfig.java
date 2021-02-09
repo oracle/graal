@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2019, 2021, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -22,23 +22,41 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package org.graalvm.compiler.truffle.runtime;
+package com.oracle.truffle.tools.thermometer;
 
-public abstract class AbstractGraalTruffleRuntimeListener implements GraalTruffleRuntimeListener {
+public class ThermometerConfig {
 
-    protected final GraalTruffleRuntime runtime;
+    private final int samplingPeriod;
+    private final int reportingPeriod;
+    private final int interruptAfterStable;
+    private final String iterationLocation;
+    private final String logFile;
 
-    protected AbstractGraalTruffleRuntimeListener(GraalTruffleRuntime runtime) {
-        this.runtime = runtime;
+    public ThermometerConfig(int samplingPeriod, int reportingPeriod, int interruptAfterStable, String iterationLocation, String logFile) {
+        this.samplingPeriod = samplingPeriod;
+        this.reportingPeriod = reportingPeriod;
+        this.interruptAfterStable = interruptAfterStable;
+        this.iterationLocation = iterationLocation;
+        this.logFile = logFile;
     }
 
-    /**
-     * Determines if a failure is permanent.
-     *
-     * @see GraalTruffleRuntimeListener#onCompilationFailed(OptimizedCallTarget, String, boolean,
-     *      boolean, int)
-     */
-    protected static boolean isPermanentFailure(boolean bailout, boolean permanentBailout) {
-        return !bailout || permanentBailout;
+    public int getSamplingPeriod() {
+        return samplingPeriod;
+    }
+
+    public int getReportingPeriod() {
+        return reportingPeriod;
+    }
+
+    public int getInterruptAfterStable() {
+        return interruptAfterStable;
+    }
+
+    public String getIterationLocation() {
+        return iterationLocation;
+    }
+
+    public String getLogFile() {
+        return logFile;
     }
 }
