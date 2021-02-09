@@ -78,7 +78,7 @@ public class LoopSafepointEliminationPhase extends BasePhase<MidTierContext> {
                             canDisableSafepoint = ((ForeignCall) node).isGuaranteedSafepoint();
                         }
                         if (canDisableSafepoint) {
-                            loopEnd.disableSafepoint();
+                            loopEnd.garanteeSafepoint();
                             break blocks;
                         }
                     }
@@ -88,4 +88,9 @@ public class LoopSafepointEliminationPhase extends BasePhase<MidTierContext> {
         }
         loops.deleteUnusedNodes();
     }
+
+    protected boolean canElideSafepointForCalls() {
+        return true;
+    }
+
 }

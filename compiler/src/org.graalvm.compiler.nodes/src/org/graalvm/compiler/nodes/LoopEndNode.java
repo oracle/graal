@@ -74,6 +74,8 @@ public final class LoopEndNode extends AbstractEndNode {
      */
     boolean canSafepoint;
 
+    boolean guaranteedSafepoint;
+
     public LoopEndNode(LoopBeginNode begin) {
         super(TYPE);
         int idx = begin.nextEndIndex();
@@ -103,6 +105,23 @@ public final class LoopEndNode extends AbstractEndNode {
      */
     public void disableSafepoint() {
         this.canSafepoint = false;
+    }
+
+    /**
+     * Disables the safepoint and marks the loop and as guaranteed by an inner method call.
+     */
+    public void garanteeSafepoint() {
+        disableSafepoint();
+        guaranteedSafepoint = true;
+    }
+
+    /**
+     * Returns true if the safepoint was disabled due to a method invocation or a node that implied
+     * a guaranteed safepoint.
+     */
+    public boolean guaranteedSafepoint() {
+        assert !guaranteedSafepoint || !canSafepoint;
+        return guaranteedSafepoint;
     }
 
     public boolean canSafepoint() {
