@@ -45,21 +45,6 @@
     },
   },
 
-  requireGMP:: {
-    downloads+: {
-      LIBGMP: { name: "libgmp", version: "6.1.0", platformspecific: true },
-    },
-    environment+: {
-      CPPFLAGS: "-g -I$LIBGMP/include",
-      LD_LIBRARY_PATH: "$LIBGMP/lib:$LD_LIBRARY_PATH",
-      LDFLAGS: "-L$LIBGMP/lib",
-    },
-  },
-
-  sulong_gateTest_linux:: $.gate + $.sulong_common + $.jdk8 + $.sulong_linux_amd64 + $.requireGMP,
-
-  sulong_gateTest_darwin:: $.gate + $.sulong_common + $.jdk8 + $.sulong_darwin_amd64,
-
   sulong_gateTest_default_tools:: {
     environment+: {
       CLANG_LLVM_AS: "llvm-as",
@@ -140,7 +125,6 @@
     timelimit: "0:45:00",
   },
 
-
   requireGCC: {
     packages+: {
       gcc: "==6.1.0",
@@ -148,6 +132,17 @@
     downloads+: {
       DRAGONEGG_GCC: { name: "gcc+dragonegg", version: "4.6.4-1", platformspecific: true },
       DRAGONEGG_LLVM: { name: "clang+llvm", version: "3.2", platformspecific: true },
+    },
+  },
+
+  requireGMP:: {
+    downloads+: {
+      LIBGMP: { name: "libgmp", version: "6.1.0", platformspecific: true },
+    },
+    environment+: {
+      CPPFLAGS: "-g -I$LIBGMP/include",
+      LD_LIBRARY_PATH: "$LIBGMP/lib:$LD_LIBRARY_PATH",
+      LDFLAGS: "-L$LIBGMP/lib",
     },
   },
 
