@@ -36,6 +36,7 @@ import org.graalvm.compiler.nodes.AbstractMergeNode;
 import org.graalvm.compiler.nodes.ControlSplitNode;
 import org.graalvm.compiler.nodes.FixedNode;
 import org.graalvm.compiler.nodes.StructuredGraph;
+import org.graalvm.compiler.nodes.ControlSplitNode.ProfileSource;
 import org.graalvm.compiler.nodes.spi.CoreProviders;
 import org.graalvm.compiler.phases.BasePhase;
 
@@ -100,7 +101,7 @@ public class PropagateDeoptimizeProbabilityPhase extends BasePhase<CoreProviders
                 for (AbstractBeginNode begin : value) {
                     double probability = controlSplitNode.probability(begin);
                     if (probability != 0.0) {
-                        controlSplitNode.setProbability(begin, 0.0);
+                        controlSplitNode.setProbability(begin, 0.0, ProfileSource.INJECTED);
                     }
                 }
             }

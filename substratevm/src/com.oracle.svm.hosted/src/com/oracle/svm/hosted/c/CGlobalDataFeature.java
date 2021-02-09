@@ -53,6 +53,7 @@ import org.graalvm.compiler.nodes.NamedLocationIdentity;
 import org.graalvm.compiler.nodes.NodeView;
 import org.graalvm.compiler.nodes.ValueNode;
 import org.graalvm.compiler.nodes.ValuePhiNode;
+import org.graalvm.compiler.nodes.ControlSplitNode.ProfileSource;
 import org.graalvm.compiler.nodes.calc.AddNode;
 import org.graalvm.compiler.nodes.calc.IntegerEqualsNode;
 import org.graalvm.compiler.nodes.calc.SignExtendNode;
@@ -163,7 +164,7 @@ public class CGlobalDataFeature implements GraalFeature {
                     predecessor.setNext(null);
                     AbstractBeginNode falseBegin = b.add(new BeginNode());
                     trueBegin.setNext(null);
-                    IfNode ifNode = b.add(new IfNode(condition, trueBegin, falseBegin, NOT_LIKELY_PROBABILITY));
+                    IfNode ifNode = b.add(new IfNode(condition, trueBegin, falseBegin, NOT_LIKELY_PROBABILITY, ProfileSource.INJECTED));
                     falseBegin.setNext(null);
                     predecessor.setNext(ifNode);
 

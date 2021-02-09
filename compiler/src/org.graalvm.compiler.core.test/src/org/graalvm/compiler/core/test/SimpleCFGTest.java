@@ -34,6 +34,7 @@ import org.graalvm.compiler.nodes.IfNode;
 import org.graalvm.compiler.nodes.MergeNode;
 import org.graalvm.compiler.nodes.ReturnNode;
 import org.graalvm.compiler.nodes.StructuredGraph;
+import org.graalvm.compiler.nodes.ControlSplitNode.ProfileSource;
 import org.graalvm.compiler.nodes.StructuredGraph.AllowAssumptions;
 import org.graalvm.compiler.nodes.cfg.Block;
 import org.graalvm.compiler.nodes.cfg.ControlFlowGraph;
@@ -63,7 +64,7 @@ public class SimpleCFGTest extends GraalCompilerTest {
         AbstractBeginNode falseBegin = graph.add(new BeginNode());
         falseBegin.setNext(falseEnd);
 
-        IfNode ifNode = graph.add(new IfNode(null, trueBegin, falseBegin, 0.5));
+        IfNode ifNode = graph.add(new IfNode(null, trueBegin, falseBegin, 0.5, ProfileSource.UNKNOWN));
         graph.start().setNext(ifNode);
 
         AbstractMergeNode merge = graph.add(new MergeNode());

@@ -39,6 +39,7 @@ import org.graalvm.compiler.graph.Node;
 import org.graalvm.compiler.graph.spi.SimplifierTool;
 import org.graalvm.compiler.nodes.AbstractBeginNode;
 import org.graalvm.compiler.nodes.BeginNode;
+import org.graalvm.compiler.nodes.ControlSplitNode.ProfileSource;
 import org.graalvm.compiler.nodes.FixedNode;
 import org.graalvm.compiler.nodes.LogicNode;
 import org.graalvm.compiler.nodes.NodeView;
@@ -113,6 +114,11 @@ public interface SwitchFoldable extends ValueNodeInterface {
      * Returns the probability of going to the default branch.
      */
     double defaultProbability();
+
+    /**
+     * Returns the source of the information about branch probabilities of this node.
+     */
+    ProfileSource profileSource();
 
     /**
      * @return The number of keys the SwitchFoldable node will try to add.
@@ -396,6 +402,7 @@ public interface SwitchFoldable extends ValueNodeInterface {
 
         iteratingNode = topMostSwitchNode;
         SwitchFoldable lowestSwitchNode = topMostSwitchNode;
+        ProfileSource profileSource = topMostSwitchNode.profileSource();
 
         // If this stays true, we will need to spawn an uniform distribution.
         boolean uninitializedProfiles = true;
@@ -407,6 +414,7 @@ public interface SwitchFoldable extends ValueNodeInterface {
             if (!iteratingNode.isNonInitializedProfile()) {
                 uninitializedProfiles = false;
             }
+            profileSource.combine(iteratingNode.profileSource());
             iteratingNode = Helper.getChildSwitchNode(iteratingNode, switchValue);
         }
 
@@ -462,7 +470,7 @@ public interface SwitchFoldable extends ValueNodeInterface {
         }
 
         // Spawn the switch node
-        IntegerSwitchNode toInsert = new IntegerSwitchNode(adapter, successors.size(), keys, keyProbabilities, keySuccessors);
+        IntegerSwitchNode toInsert = new IntegerSwitchNode(adapter, successors.size(), keys, keyProbabilities, keySuccessors, profileSource);
         graph.add(toInsert);
 
         // Detach the cascade from the graph

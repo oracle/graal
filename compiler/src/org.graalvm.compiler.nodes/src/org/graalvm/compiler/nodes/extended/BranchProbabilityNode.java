@@ -40,6 +40,7 @@ import org.graalvm.compiler.graph.spi.CanonicalizerTool;
 import org.graalvm.compiler.graph.spi.Simplifiable;
 import org.graalvm.compiler.graph.spi.SimplifierTool;
 import org.graalvm.compiler.nodeinfo.NodeInfo;
+import org.graalvm.compiler.nodes.ControlSplitNode.ProfileSource;
 import org.graalvm.compiler.nodes.FixedGuardNode;
 import org.graalvm.compiler.nodes.IfNode;
 import org.graalvm.compiler.nodes.NodeView;
@@ -143,7 +144,7 @@ public final class BranchProbabilityNode extends FloatingNode implements Simplif
                     }
                     for (IfNode ifNodeUsages : node.usages().filter(IfNode.class)) {
                         usageFound = true;
-                        ifNodeUsages.setTrueSuccessorProbability(probabilityToSet);
+                        ifNodeUsages.setTrueSuccessorProbability(probabilityToSet, ProfileSource.INJECTED);
                     }
                     if (!usageFound) {
                         usageFound = node.usages().filter(NodePredicates.isA(FixedGuardNode.class).or(ConditionalNode.class)).isNotEmpty();

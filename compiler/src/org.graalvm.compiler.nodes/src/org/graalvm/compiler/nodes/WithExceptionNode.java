@@ -42,7 +42,7 @@ public abstract class WithExceptionNode extends ControlSplitNode {
     public static final NodeClass<WithExceptionNode> TYPE = NodeClass.create(WithExceptionNode.class);
 
     protected WithExceptionNode(NodeClass<? extends WithExceptionNode> c, Stamp stamp) {
-        super(c, stamp);
+        super(c, stamp, ProfileSource.INJECTED);
     }
 
     private static final double EXCEPTION_PROBABILITY = 1e-5;
@@ -85,7 +85,7 @@ public abstract class WithExceptionNode extends ControlSplitNode {
     }
 
     @Override
-    public boolean setProbability(AbstractBeginNode successor, double value) {
+    public boolean setProbability(AbstractBeginNode successor, double value, ProfileSource profileSource) {
         // Cannot set probability for nodes with exceptions.
         return false;
     }

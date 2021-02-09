@@ -146,11 +146,11 @@ public class ExpandLogicPhase extends Phase {
         if (xNegated) {
             firstIfTrueProbability = 1.0 - firstIfTrueProbability;
         }
-        IfNode secondIf = new IfNode(y, yNegated ? falseTarget : secondTrueTarget, yNegated ? secondTrueTarget : falseTarget, secondIfTrueProbability);
+        IfNode secondIf = new IfNode(y, yNegated ? falseTarget : secondTrueTarget, yNegated ? secondTrueTarget : falseTarget, secondIfTrueProbability, ifNode.getProfileSource());
         secondIf.setNodeSourcePosition(ifNode.getNodeSourcePosition());
         AbstractBeginNode secondIfBegin = BeginNode.begin(graph.add(secondIf));
         secondIfBegin.setNodeSourcePosition(falseTarget.getNodeSourcePosition());
-        IfNode firstIf = graph.add(new IfNode(x, xNegated ? secondIfBegin : firstTrueTarget, xNegated ? firstTrueTarget : secondIfBegin, firstIfTrueProbability));
+        IfNode firstIf = graph.add(new IfNode(x, xNegated ? secondIfBegin : firstTrueTarget, xNegated ? firstTrueTarget : secondIfBegin, firstIfTrueProbability, ifNode.getProfileSource()));
         firstIf.setNodeSourcePosition(ifNode.getNodeSourcePosition());
         ifNode.replaceAtPredecessor(firstIf);
         ifNode.safeDelete();
