@@ -32,12 +32,11 @@
     ],
   },
 
-  sulong_gateStyle:: $.gate + $.sulong_common + $.jdk8 + $.sulong_linux_amd64 + common.eclipse + {
+  style:: {
     packages+: {
       ruby: "==2.1.0",  # for mdl
     },
   },
-
 
   sulong_gateTest_linux:: $.gate + $.sulong_common + $.jdk8 + $.sulong_linux_amd64 {
     downloads+: {
@@ -198,8 +197,8 @@
   ],
 
   builds: [
-    $.sulong_gateStyle { name: "gate-sulong-style", run: [["mx", "gate", "--tags", "style"]] },
-    $.sulong_gateStyle + common.jdt + { name: "gate-sulong-fullbuild", run: [["mx", "gate", "--tags", "fullbuild"]] },
+    $.gate + $.sulong_common + $.style + $.jdk8 + $.sulong_linux_amd64 + common.eclipse { name: "gate-sulong-style", run: [["mx", "gate", "--tags", "style"]] },
+    $.gate + $.sulong_common + $.style + $.jdk8 + $.sulong_linux_amd64 + common.eclipse + common.jdt + { name: "gate-sulong-fullbuild", run: [["mx", "gate", "--tags", "fullbuild"]] },
     $.sulong_gate_generated_sources { name: "gate-sulong-generated-sources" },
     $.sulong_gateTestLLVMorg_linux + $.requireGCC + {
       name: "gate-sulong-misc",
