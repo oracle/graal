@@ -11,6 +11,10 @@
 
   jdk8:: common.oraclejdk8,
 
+  sulong_linux_amd64:: linux_amd64 + sulong_deps.linux,
+  sulong_linux_aarch64:: linux_aarch64 + sulong_deps.linux,
+  sulong_darwin_amd64:: darwin_amd64 + sulong_deps.darwin,
+
   gate:: {
     targets+: ["gate"],
   },
@@ -28,14 +32,14 @@
     ],
   },
 
-  sulong_gateStyle:: sulong_deps.linux + $.gate + $.sulong_common + $.jdk8 + linux_amd64 + common.eclipse + {
+  sulong_gateStyle:: $.gate + $.sulong_common + $.jdk8 + $.sulong_linux_amd64 + common.eclipse + {
     packages+: {
       ruby: "==2.1.0",  # for mdl
     },
   },
 
 
-  sulong_gateTest_linux:: $.gate + $.sulong_common + $.jdk8 + linux_amd64 + sulong_deps.linux {
+  sulong_gateTest_linux:: $.gate + $.sulong_common + $.jdk8 + $.sulong_linux_amd64 {
     downloads+: {
       LIBGMP: { name: "libgmp", version: "6.1.0", platformspecific: true },
     },
@@ -46,7 +50,7 @@
     },
   },
 
-  sulong_gateTest_darwin:: $.gate + $.sulong_common + $.jdk8 + darwin_amd64 + sulong_deps.darwin,
+  sulong_gateTest_darwin:: $.gate + $.sulong_common + $.jdk8 + $.sulong_darwin_amd64,
 
   sulong_gateTest_default_tools:: {
     environment+: {
