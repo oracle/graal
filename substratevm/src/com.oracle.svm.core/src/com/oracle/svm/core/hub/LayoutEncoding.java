@@ -89,11 +89,13 @@ public class LayoutEncoding {
 
     @Platforms(Platform.HOSTED_ONLY.class)
     private static void guaranteeEncoding(ResolvedJavaType type, boolean condition, String description) {
-        VMError.guarantee(condition, description + ". This error is caused by an incorrect compact encoding of a type " +
-                        "(a class, array or a primitive). The error occurred with the following type, but also could be caused " +
-                        "by characteristics of the overall type hierarchy: " + type + ". Please report this problem and the " +
-                        "conditions in which it occurs and include any noteworthy characteristics of the type hierarchy and " +
-                        "architecture of the application and the libraries and frameworks it uses.");
+        if (!condition) {
+            VMError.shouldNotReachHere(description + ". This error is caused by an incorrect compact encoding of a type " +
+                            "(a class, array or a primitive). The error occurred with the following type, but also could be caused " +
+                            "by characteristics of the overall type hierarchy: " + type + ". Please report this problem and the " +
+                            "conditions in which it occurs and include any noteworthy characteristics of the type hierarchy and " +
+                            "architecture of the application and the libraries and frameworks it uses.");
+        }
     }
 
     @Platforms(Platform.HOSTED_ONLY.class)
