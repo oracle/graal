@@ -68,6 +68,7 @@ import com.oracle.truffle.api.library.ExportMessage;
 import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.api.nodes.RootNode;
 import com.oracle.truffle.api.source.SourceSection;
+import com.oracle.truffle.api.test.polyglot.ProxyInteropObject;
 import com.oracle.truffle.api.test.polyglot.ProxyLanguage;
 import java.util.Objects;
 
@@ -134,7 +135,105 @@ public class TestDebugBuggyLanguage extends ProxyLanguage {
         return Objects.toString(value);
     }
 
-    private static void throwBug(int v) {
+    @Override
+    protected Object getLanguageView(LanguageContext context, Object value) {
+        return new ProxyInteropObject.InteropWrapper(value) {
+            @Override
+            protected boolean hasLanguage() {
+                return true;
+            }
+
+            @Override
+            protected Class<? extends TruffleLanguage<?>> getLanguage() throws UnsupportedMessageException {
+                return ProxyLanguage.getCurrentLanguage().getClass();
+            }
+
+            @Override
+            protected boolean hasMetaObject() {
+                return findMetaObject(context, value) != null || super.hasMetaObject();
+            }
+
+            @Override
+            protected Object getMetaObject() throws UnsupportedMessageException {
+                Object metaObject = findMetaObject(context, value);
+                if (!InteropLibrary.getUncached().isMetaObject(metaObject)) {
+                    metaObject = new MetaObject(metaObject);
+                }
+                return metaObject;
+            }
+
+            @Override
+            protected Object toDisplayString(boolean allowSideEffects) {
+                return TestDebugBuggyLanguage.this.toString(context, value);
+            }
+
+            @Override
+            protected boolean hasSourceLocation() {
+                return findSourceLocation(context, value) != null || InteropLibrary.getUncached().hasSourceLocation(value);
+            }
+
+            @Override
+            protected SourceSection getSourceLocation() throws UnsupportedMessageException {
+                SourceSection location = findSourceLocation(context, value);
+                if (location == null) {
+                    location = InteropLibrary.getUncached().getSourceLocation(value);
+                }
+                return location;
+            }
+
+            class MetaObject extends ProxyInteropObject.InteropWrapper {
+
+                MetaObject(Object v) {
+                    super(v);
+                }
+
+                @Override
+                protected boolean isMetaObject() {
+                    return true;
+                }
+
+                @Override
+                protected String getMetaSimpleName() throws UnsupportedMessageException {
+                    String metaSimpleName;
+                    try {
+                        metaSimpleName = super.getMetaSimpleName();
+                    } catch (UnsupportedMessageException ex) {
+                        metaSimpleName = null;
+                    }
+                    if (metaSimpleName == null) {
+                        metaSimpleName = delegate.toString();
+                    }
+                    return metaSimpleName;
+                }
+
+                @Override
+                protected String getMetaQualifiedName() throws UnsupportedMessageException {
+                    String metaQualifiedName;
+                    try {
+                        metaQualifiedName = super.getMetaQualifiedName();
+                    } catch (UnsupportedMessageException ex) {
+                        metaQualifiedName = null;
+                    }
+                    if (metaQualifiedName == null) {
+                        metaQualifiedName = delegate.toString();
+                    }
+                    return metaQualifiedName;
+                }
+
+                @Override
+                protected Object toDisplayString(boolean allowSideEffects) {
+                    Object toString = TestDebugBuggyLanguage.this.toString(context, delegate);
+                    if (value.toString().equals(toString)) {
+                        return super.toDisplayString(allowSideEffects);
+                    } else {
+                        return toString;
+                    }
+                }
+            }
+        };
+    }
+
+    static void throwBug(int v) {
         if (v == 1) {
             throw new IllegalStateException(Integer.toString(v));
         } else if (v == 2) {

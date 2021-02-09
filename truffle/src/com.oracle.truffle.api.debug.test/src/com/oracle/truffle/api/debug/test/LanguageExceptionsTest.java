@@ -49,13 +49,16 @@ import org.junit.Assert;
 import org.junit.Test;
 
 import com.oracle.truffle.api.debug.DebugException;
+import com.oracle.truffle.api.debug.DebugScope;
 import com.oracle.truffle.api.debug.DebugValue;
 import com.oracle.truffle.api.debug.DebuggerSession;
 import com.oracle.truffle.api.debug.SuspendedCallback;
 import com.oracle.truffle.api.debug.SuspendedEvent;
 import com.oracle.truffle.api.frame.Frame;
+import com.oracle.truffle.api.interop.TruffleObject;
 import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.api.source.SourceSection;
+import com.oracle.truffle.api.test.polyglot.ProxyInteropObject;
 import com.oracle.truffle.api.test.polyglot.ProxyLanguage;
 
 import org.graalvm.polyglot.Source;
@@ -184,6 +187,22 @@ public class LanguageExceptionsTest extends AbstractDebugTest {
                         }, "CAN_EXECUTE");
     }
 
+    @Test
+    public void testBuggyScopeName() {
+        testBuggyLanguageCalls(new TestDebugBuggyLanguage() {
+            @Override
+            protected BiFunction<Node, Frame, Object> scopeProvider() {
+                return (node, frame) -> {
+                    return new BuggyProxyScope(node);
+                };
+            }
+        },
+                        (SuspendedEvent event) -> {
+                            DebugScope scope = event.getStackFrames().iterator().next().getScope();
+                            scope.getName();
+                        }, "SCOPE_DISPLAY_STRING");
+    }
+
     private void testBuggyLanguageCalls(ProxyLanguage language, SuspendedCallback callback) {
         testBuggyLanguageCalls(language, callback, "");
     }
@@ -247,4 +266,39 @@ public class LanguageExceptionsTest extends AbstractDebugTest {
         Assert.assertTrue(trace, trace.indexOf(TestDebugBuggyLanguage.class.getName() + ".throwBug") > 0);
     }
 
+    private class BuggyProxyScope extends ProxyInteropObject.InteropWrapper {
+
+        protected final String error;
+        private final int errNum;
+
+        BuggyProxyScope(Node node) {
+            super(new TruffleObject() {
+            });
+            String text = node.getSourceSection().getCharacters().toString();
+            int index = 0;
+            while (!Character.isDigit(text.charAt(index))) {
+                index++;
+            }
+            error = text.substring(0, index).trim();
+            errNum = Integer.parseInt(text.substring(index));
+        }
+
+        @Override
+        protected boolean isScope() {
+            return true;
+        }
+
+        @Override
+        protected boolean hasMembers() {
+            return true;
+        }
+
+        @Override
+        public Object toDisplayString(boolean allowSideEffects) {
+            if ("SCOPE_DISPLAY_STRING".equals(error)) {
+                TestDebugBuggyLanguage.throwBug(errNum);
+            }
+            return "toDisplayString";
+        }
+    }
 }
