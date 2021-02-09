@@ -512,6 +512,11 @@ def compiler_gate_benchmark_runner(tasks, extraVMarguments=None, prefix=''):
         mx.warn('Removing scaladacapo:actors from benchmarks because corba has been removed since JDK11 (http://openjdk.java.net/jeps/320)')
         del scala_dacapos['actors']
 
+    if jdk.javaCompliance >= "16":
+        # See GR-29222 for details.
+        mx.warn('Removing scaladacapo:specs from benchmarks because it uses a library that violates module permissions which is no longer allowed in JDK 16 (JDK-8255363)')
+        del scala_dacapos['specs']
+
     for name, iterations in sorted(scala_dacapos.items()):
         with Task(prefix + 'ScalaDaCapo:' + name, tasks, tags=GraalTags.benchmarktest) as t:
             if t: _gate_scala_dacapo(name, iterations, _remove_empty_entries(extraVMarguments) +
