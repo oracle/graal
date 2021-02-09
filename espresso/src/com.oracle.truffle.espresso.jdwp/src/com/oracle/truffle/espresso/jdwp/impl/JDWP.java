@@ -2320,6 +2320,12 @@ final class JDWP {
                 final SuspendedInfo suspendedInfo = info;
 
                 Object returnValue = readValue(input, controller.getContext());
+                if (returnValue == Void.TYPE) {
+                    // we have to use an Interop value, so simply use
+                    // the NULL object, since it will be popped for void
+                    // return type methods anyway
+                    returnValue = controller.getContext().getNullObject();
+                }
                 CallFrame topFrame = suspendedInfo.getStackFrames().length > 0 ? suspendedInfo.getStackFrames()[0] : null;
                 if (!controller.forceEarlyReturn(thread, topFrame, returnValue)) {
                     reply.errorCode(ErrorCodes.OPAQUE_FRAME);
@@ -2839,7 +2845,7 @@ final class JDWP {
         byte valueKind = input.readByte();
         switch (valueKind) {
             case VOID:
-                return Void.class;
+                return Void.TYPE;
             case BOOLEAN:
                 return input.readBoolean();
             case TagConstants.BYTE:
