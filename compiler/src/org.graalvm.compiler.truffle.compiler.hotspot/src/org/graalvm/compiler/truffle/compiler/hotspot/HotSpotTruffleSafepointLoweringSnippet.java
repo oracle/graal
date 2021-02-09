@@ -77,7 +77,7 @@ public final class HotSpotTruffleSafepointLoweringSnippet implements Snippets {
      * via a stub.
      */
     static final HotSpotForeignCallDescriptor THREAD_LOCAL_HANDSHAKE = new HotSpotForeignCallDescriptor(SAFEPOINT, REEXECUTABLE, NO_LOCATIONS, "HotSpotThreadLocalHandshake.doHandshake",
-                    void.class);
+                    void.class, Object.class);
 
     // The names of these location identifies are invalid C++ identifies to represent
     // that the names of the actual fields are only known by HotSpotTruffleCompilerRuntime
@@ -95,16 +95,16 @@ public final class HotSpotTruffleSafepointLoweringSnippet implements Snippets {
      * {@code org.graalvm.compiler.truffle.runtime.hotspot.HotSpotThreadLocalHandshake.poll()}.
      */
     @Snippet
-    private static void pollSnippet() {
+    private static void pollSnippet(Object node) {
         Word thread = CurrentJavaThreadNode.get();
         if (BranchProbabilityNode.probability(BranchProbabilityNode.VERY_SLOW_PATH_PROBABILITY,
                         thread.readInt(pendingHandshakeOffset(), PENDING_HANDSHAKE_LOCATION) != 0)) {
-            foreignPoll(THREAD_LOCAL_HANDSHAKE);
+            foreignPoll(THREAD_LOCAL_HANDSHAKE, node);
         }
     }
 
     @NodeIntrinsic(value = ForeignCallNode.class)
-    private static native void foreignPoll(@ConstantNodeParameter ForeignCallDescriptor descriptor);
+    private static native void foreignPoll(@ConstantNodeParameter ForeignCallDescriptor descriptor, Object node);
 
     static class Templates extends AbstractTemplates {
 
@@ -120,6 +120,7 @@ public final class HotSpotTruffleSafepointLoweringSnippet implements Snippets {
         public void lower(TruffleSafepointNode node, LoweringTool tool) {
             StructuredGraph graph = node.graph();
             Arguments args = new Arguments(pollSnippet, graph.getGuardsStage(), tool.getLoweringStage());
+            args.add("node", node.location());
             SnippetTemplate template = template(node, args);
             template.instantiate(providers.getMetaAccess(), node, DEFAULT_REPLACER, args);
         }
@@ -165,14 +166,15 @@ public final class HotSpotTruffleSafepointLoweringSnippet implements Snippets {
                         HotSpotHostForeignCallsProvider foreignCalls,
                         Iterable<DebugHandlersFactory> factories) {
             GraalError.guarantee(templates == null, "cannot re-initialize " + this);
-            GraalError.guarantee(config.invokeJavaMethodAddress != 0, "Cannot lower %ss as JVMCIRuntime::invoke_java_method is missing", TruffleSafepointNode.class);
+            GraalError.guarantee(config.invokeJavaMethodAddress != 0, "Cannot lower %ss as JVMCIRuntime::invoke_static_method_one_arg is missing", TruffleSafepointNode.class);
             this.templates = new Templates(options, factories, providers, providers.getCodeCache().getTarget());
             this.deferredInit = () -> {
                 long address = config.invokeJavaMethodAddress;
-                GraalError.guarantee(address != 0, "Cannot lower %s as JVMCIRuntime::invoke_java_method is missing", address);
+                GraalError.guarantee(address != 0, "Cannot lower %s as JVMCIRuntime::invoke_static_method_one_arg is missing", address);
                 ResolvedJavaType handshakeType = TruffleCompilerRuntime.getRuntime().resolveType(providers.getMetaAccess(), "org.graalvm.compiler.truffle.runtime.hotspot.HotSpotThreadLocalHandshake");
-                HotSpotSignature noArgsVoidSig = new HotSpotSignature(foreignCalls.getJVMCIRuntime(), "()V");
-                ResolvedJavaMethod staticMethod = handshakeType.findMethod("doHandshake", noArgsVoidSig);
+                HotSpotSignature sig = new HotSpotSignature(foreignCalls.getJVMCIRuntime(), "(Lcom/oracle/truffle/api/nodes/Node;)V");
+                ResolvedJavaMethod staticMethod = handshakeType.findMethod("doHandshake", sig);
+                assert staticMethod != null;
                 foreignCalls.invokeJavaMethodStub(options, providers, THREAD_LOCAL_HANDSHAKE, address, staticMethod);
             };
         }

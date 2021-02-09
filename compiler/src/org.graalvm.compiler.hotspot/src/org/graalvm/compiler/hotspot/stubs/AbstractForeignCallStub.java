@@ -34,6 +34,8 @@ import static org.graalvm.compiler.nodes.ConstantNode.forBoolean;
 
 import org.graalvm.compiler.core.common.CompilationIdentifier;
 import org.graalvm.compiler.core.common.spi.ForeignCallDescriptor;
+import org.graalvm.compiler.core.common.type.StampFactory;
+import org.graalvm.compiler.core.common.type.StampPair;
 import org.graalvm.compiler.debug.DebugContext;
 import org.graalvm.compiler.debug.GraalError;
 import org.graalvm.compiler.debug.JavaMethodContext;
@@ -47,6 +49,7 @@ import org.graalvm.compiler.hotspot.meta.HotSpotProviders;
 import org.graalvm.compiler.hotspot.nodes.StubForeignCallNode;
 import org.graalvm.compiler.hotspot.stubs.ForeignCallSnippets.Templates;
 import org.graalvm.compiler.nodes.InvokeNode;
+import org.graalvm.compiler.nodes.ParameterNode;
 import org.graalvm.compiler.nodes.ReturnNode;
 import org.graalvm.compiler.nodes.StructuredGraph;
 import org.graalvm.compiler.nodes.ValueNode;
@@ -267,6 +270,20 @@ public abstract class AbstractForeignCallStub extends Stub {
             replacements.findSnippetMethod(thisMethod);
         }
         return thisMethod;
+    }
+
+    protected ParameterNode[] createParameters(GraphKit kit) {
+        Class<?>[] args = linkage.getDescriptor().getArgumentTypes();
+        ParameterNode[] params = new ParameterNode[args.length];
+        MetaAccessProvider metaAccess = HotSpotReplacementsImpl.noticeTypes(providers.getMetaAccess());
+        ResolvedJavaType accessingClass = metaAccess.lookupJavaType(getClass());
+        for (int i = 0; i < args.length; i++) {
+            ResolvedJavaType type = metaAccess.lookupJavaType(args[i]).resolve(accessingClass);
+            StampPair stamp = StampFactory.forDeclaredType(kit.getGraph().getAssumptions(), type, false);
+            ParameterNode param = kit.unique(new ParameterNode(i, stamp));
+            params[i] = param;
+        }
+        return params;
     }
 
     protected abstract StubForeignCallNode createTargetCall(GraphKit kit, ReadRegisterNode thread);

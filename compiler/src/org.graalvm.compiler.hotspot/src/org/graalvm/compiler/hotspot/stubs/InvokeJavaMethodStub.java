@@ -31,6 +31,7 @@ import org.graalvm.compiler.hotspot.meta.HotSpotForeignCallDescriptor;
 import org.graalvm.compiler.hotspot.meta.HotSpotProviders;
 import org.graalvm.compiler.hotspot.nodes.StubForeignCallNode;
 import org.graalvm.compiler.nodes.ConstantNode;
+import org.graalvm.compiler.nodes.ParameterNode;
 import org.graalvm.compiler.nodes.ValueNode;
 import org.graalvm.compiler.options.OptionValues;
 import org.graalvm.compiler.replacements.GraphKit;
@@ -63,7 +64,7 @@ public class InvokeJavaMethodStub extends AbstractForeignCallStub {
 
     @Override
     protected Class<?>[] createTargetParameters(ForeignCallDescriptor descriptor) {
-        return new Class<?>[]{Word.class, Word.class, Word.class};
+        return new Class<?>[]{Word.class, Word.class, Long.TYPE};
     }
 
     @Override
@@ -79,10 +80,16 @@ public class InvokeJavaMethodStub extends AbstractForeignCallStub {
     @Override
     protected StubForeignCallNode createTargetCall(GraphKit kit, ReadRegisterNode thread) {
         Stamp stamp = StampFactory.forKind(javaMethod.getSignature().getReturnKind());
-        ValueNode[] targetArguments = new ValueNode[3];
+        ParameterNode[] params = createParameters(kit);
+        ValueNode[] targetArguments = new ValueNode[2 + params.length];
         targetArguments[0] = thread;
         targetArguments[1] = ConstantNode.forConstant(providers.getStampProvider().createMethodStamp(), javaMethod.getEncoding(), providers.getMetaAccess(), kit.getGraph());
-        targetArguments[2] = ConstantNode.defaultForKind(JavaKind.Long, kit.getGraph());
+        if (params.length == 0) {
+            targetArguments[2] = ConstantNode.defaultForKind(JavaKind.Long, kit.getGraph());
+        } else {
+            targetArguments[2] = params[0];
+        }
+
         return kit.append(new StubForeignCallNode(providers.getForeignCalls(), stamp, target.getDescriptor(), targetArguments));
     }
 }
