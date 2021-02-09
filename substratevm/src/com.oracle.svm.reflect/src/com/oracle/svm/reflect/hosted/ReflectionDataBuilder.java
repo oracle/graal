@@ -358,10 +358,12 @@ public class ReflectionDataBuilder implements RuntimeReflectionSupport {
              */
             return null;
         } catch (InternalError ex) {
-            // Checkstyle: stop
-            System.err.println("GR-7731: Could not find the enclosing method of class " + clazz.getTypeName() +
-                            ". This is a known transient error and most likely does not cause any problems, unless your code relies on the enclosing method of exactly this class. If you can reliably reproduce this problem, please send us a test case.");
-            // Checkstyle: resume
+            /*
+             * Could not find the enclosing method of the class. This is a host VM error which can
+             * happen due to invalid bytecode. For example if the eclosing method index points to a
+             * synthetic method for a anonymous class declared inside a lambda. We skip registering
+             * the enclosing method for such classes.
+             */
             return null;
         }
 
