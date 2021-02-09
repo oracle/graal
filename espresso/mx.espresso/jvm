@@ -1,5 +1,5 @@
-# mx --dynamicimports=/vm --components="Espresso Launcher,suite:tools" --disable-installables=true graalvm-show
+# mx --dynamicimports=/vm,/compiler --components="Espresso Launcher,GraalVM compiler,suite:tools" --disable-installables=true graalvm-show
 
-DYNAMIC_IMPORTS=/vm
-COMPONENTS=Espresso Launcher,suite:tools
+DYNAMIC_IMPORTS=/vm,/compiler
+COMPONENTS=Espresso Launcher,GraalVM compiler,suite:tools
 DISABLE_INSTALLABLES=true
