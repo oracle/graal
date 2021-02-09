@@ -63,7 +63,7 @@
   },
 
 
-  sulong_gateTest38_linux: $.sulong_gateTest_linux + $.sulong_gateTest_default_tools + {
+  llvm38:: $.sulong_gateTest_default_tools + {
     packages+: {
       llvm: "==3.8",
     },
@@ -77,7 +77,7 @@
     },
   },
 
-  sulong_gateTest40_linux: $.sulong_gateTest_linux + $.sulong_gateTest_default_tools + {
+  llvm4:: $.sulong_gateTest_default_tools + {
     packages+: {
       llvm: "==4.0.1",
     },
@@ -90,7 +90,7 @@
     },
   },
 
-  sulong_gateTest60_linux: $.sulong_gateTest_linux + $.sulong_gateTest_default_tools + {
+  llvm6:: $.sulong_gateTest_default_tools + {
     packages+: {
       llvm: "==6.0.1",
     },
@@ -101,7 +101,7 @@
     },
   },
 
-  sulong_gateTest80_linux: $.sulong_gateTest_linux + $.sulong_gateTest_default_tools + {
+  llvm8: $.sulong_gateTest_default_tools + {
     packages+: {
       llvm: "==8.0.0",
     },
@@ -112,20 +112,22 @@
     },
   },
 
+  sulong_gateTest38_linux: $.sulong_gateTest_linux + $.llvm38,
+  sulong_gateTest40_linux: $.sulong_gateTest_linux + $.llvm4,
+  sulong_gateTest60_linux: $.sulong_gateTest_linux + $.llvm6,
+  sulong_gateTest80_linux: $.sulong_gateTest_linux + $.llvm8,
   sulong_gateTestLLVMorg_linux: $.sulong_gateTest_linux + {
     # nothing to do
   },
 
-  sulong_gateTest40_darwin: $.sulong_gateTest_darwin + $.sulong_gateTest_default_tools + {
-    packages+: {
-      llvm: "==4.0.1",
-    },
-    environment+: {
+  sulong_gateTest40_darwin: $.sulong_gateTest_darwin + $.llvm4 + {
+    # FIXME: We prune `null` entries to produce the original result.
+    # Eventually, we should canonicalize this.
+    environment: std.prune(super.environment + {
       CPPFLAGS: "-g",
-      CLANG_CC: "clang-4.0",
-      CLANG_CXX: "clang-4.0 --driver-mode=g++",
-      CLANG_NO_OPTNONE: "1",
-    },
+      CFLAGS: null,
+      CLANG_LLVM_OBJCOPY: null,
+    }),
     timelimit: "0:45:00",
   },
 
