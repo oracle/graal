@@ -9,11 +9,13 @@
   local linux_aarch64 = common["linux-aarch64"],
   local darwin_amd64 = common["darwin-amd64"],
 
+  jdk8:: common.oraclejdk8,
+
   sulong_weekly_notifications:: {
     notify_groups:: ["sulong"],
   },
 
-  sulong_common:: common.oraclejdk8 {
+  sulong_common:: {
     environment+: {
       TRUFFLE_STRICT_OPTION_DEPRECATION: "true",
     },
@@ -22,7 +24,7 @@
     ],
   },
 
-  sulong_gateCommon:: $.sulong_common {
+  sulong_gateCommon:: $.sulong_common + $.jdk8 + {
     targets+: ["gate"],
   },
 
