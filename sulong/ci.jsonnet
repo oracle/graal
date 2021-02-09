@@ -38,7 +38,7 @@
     },
   },
 
-  sulong_gateTest_linux:: $.gate + $.sulong_common + $.jdk8 + $.sulong_linux_amd64 {
+  requireGMP:: {
     downloads+: {
       LIBGMP: { name: "libgmp", version: "6.1.0", platformspecific: true },
     },
@@ -48,6 +48,8 @@
       LDFLAGS: "-L$LIBGMP/lib",
     },
   },
+
+  sulong_gateTest_linux:: $.gate + $.sulong_common + $.jdk8 + $.sulong_linux_amd64 + $.requireGMP,
 
   sulong_gateTest_darwin:: $.gate + $.sulong_common + $.jdk8 + $.sulong_darwin_amd64,
 
