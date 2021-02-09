@@ -58,11 +58,13 @@ import org.graalvm.wasm.utils.cases.WasmCaseData;
 import org.junit.Assert;
 
 import java.io.BufferedReader;
+import java.io.ByteArrayInputStream;
 import java.io.ByteArrayOutputStream;
 import java.io.File;
 import java.io.IOException;
 import java.io.InputStreamReader;
 import java.io.PrintStream;
+import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.ArrayList;
@@ -296,12 +298,22 @@ public abstract class WasmFileSuite extends AbstractWasmSuite {
                 }
             }
 
-            final boolean enableIO = Boolean.parseBoolean(testCase.options().getProperty("enableIO"));
+            final boolean enableIO = Boolean.parseBoolean(testCase.options().getProperty("enable-io"));
             if (enableIO) {
                 contextBuilder.allowIO(true);
                 tempWorkingDirectory = Files.createTempDirectory("graalwasm-io-test");
                 contextBuilder.currentWorkingDirectory(tempWorkingDirectory);
                 contextBuilder.option("wasm.WasiMapDirs", "test:" + tempWorkingDirectory);
+
+                // Create a file "file.txt" containing "Hello Graal! [rocket emoji]" in the
+                // temporary test directory
+                final Path testFile = tempWorkingDirectory.resolve("file.txt");
+                Files.write(testFile, "Hello Graal! \uD83D\uDE80".getBytes(StandardCharsets.UTF_8));
+            }
+
+            final String stdin = testCase.options().getProperty("stdin");
+            if (stdin != null) {
+                contextBuilder.in(new ByteArrayInputStream(stdin.getBytes(StandardCharsets.UTF_8)));
             }
 
             Context context;
@@ -482,7 +494,7 @@ public abstract class WasmFileSuite extends AbstractWasmSuite {
         Assert.assertTrue("Currently, only 0 or 1 memories can be saved.", context.memories().count() <= 1);
         final WasmMemory currentMemory = context.memories().count() == 1 ? context.memories().memory(0).duplicate() : null;
         final GlobalRegistry globals = context.globals().duplicate();
-        return new ContextState(currentMemory, globals);
+        return new ContextState(currentMemory, globals, context.fdManager().size());
     }
 
     private static void assertContextEqual(ContextState expectedState, ContextState actualState) {
@@ -497,7 +509,7 @@ public abstract class WasmFileSuite extends AbstractWasmSuite {
             for (int ptr = 0; ptr < expectedMemory.byteSize(); ptr++) {
                 byte expectedByte = (byte) expectedMemory.load_i32_8s(null, ptr);
                 byte actualByte = (byte) actualMemory.load_i32_8s(null, ptr);
-                Assert.assertEquals("Memory mismatch", expectedByte, actualByte);
+                Assert.assertEquals("Memory mismatch at offset " + ptr + ",", expectedByte, actualByte);
             }
         }
 
@@ -510,15 +522,20 @@ public abstract class WasmFileSuite extends AbstractWasmSuite {
             long last = lastGlobals.loadAsLong(address);
             Assert.assertEquals("Mismatch in global at " + address + ". ", first, last);
         }
+
+        // Check number of opened file descriptors
+        Assert.assertEquals("Mismatch in file descriptor counts.", expectedState.openedFdCount, actualState.openedFdCount);
     }
 
     private static final class ContextState {
         private final WasmMemory memory;
         private final GlobalRegistry globals;
+        private final int openedFdCount;
 
-        private ContextState(WasmMemory memory, GlobalRegistry globals) {
+        private ContextState(WasmMemory memory, GlobalRegistry globals, int openedFdCount) {
             this.memory = memory;
             this.globals = globals;
+            this.openedFdCount = openedFdCount;
         }
 
         public WasmMemory memory() {

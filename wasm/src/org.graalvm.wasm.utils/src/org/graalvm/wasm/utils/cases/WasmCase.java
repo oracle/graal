@@ -41,10 +41,11 @@
 package org.graalvm.wasm.utils.cases;
 
 import java.io.BufferedReader;
+import java.io.ByteArrayOutputStream;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.InputStreamReader;
-import java.io.OutputStream;
+import java.io.UnsupportedEncodingException;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.LinkedHashMap;
@@ -234,9 +235,13 @@ public abstract class WasmCase {
         return result;
     }
 
-    public static void validateResult(BiConsumer<Value, String> validator, Value result, OutputStream capturedStdout) {
+    public static void validateResult(BiConsumer<Value, String> validator, Value result, ByteArrayOutputStream capturedStdout) {
         if (validator != null) {
-            validator.accept(result, capturedStdout.toString());
+            try {
+                validator.accept(result, capturedStdout.toString("UTF-8"));
+            } catch (UnsupportedEncodingException e) {
+                Assert.fail("Should not reach here: unsupported encoding");
+            }
         } else {
             Assert.fail("Test was not expected to return a value.");
         }
