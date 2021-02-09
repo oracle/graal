@@ -254,6 +254,12 @@ public final class Meta implements ContextAccess {
         java_io_InputStream = knownKlass(Type.java_io_InputStream);
         java_io_InputStream_read = java_io_InputStream.lookupMethod(Name.read, Signature._int_byte_array_int_int);
         java_io_InputStream_close = java_io_InputStream.lookupMethod(Name.close, Signature._void);
+        java_io_PrintStream = knownKlass(Type.java_io_PrintStream);
+        java_io_PrintStream_println = java_io_PrintStream.lookupDeclaredMethod(Name.println, Signature._void_String);
+
+        sun_launcher_LauncherHelper = knownKlass(Type.sun_launcher_LauncherHelper);
+        sun_launcher_LauncherHelper_printHelpMessage = sun_launcher_LauncherHelper.lookupDeclaredMethod(Name.printHelpMessage, Signature._void_boolean);
+        sun_launcher_LauncherHelper_ostream = sun_launcher_LauncherHelper.lookupDeclaredField(Name.ostream, Type.java_io_PrintStream);
 
         // Guest reflection.
         java_lang_reflect_Executable = knownKlass(Type.java_lang_reflect_Executable);
@@ -705,6 +711,10 @@ public final class Meta implements ContextAccess {
     public final Method java_lang_ClassLoader_getResourceAsStream;
     public final Method java_lang_ClassLoader_loadClass;
 
+    public final ObjectKlass sun_launcher_LauncherHelper;
+    public final Method sun_launcher_LauncherHelper_printHelpMessage;
+    public final Field sun_launcher_LauncherHelper_ostream;
+
     public final ObjectKlass jdk_internal_loader_ClassLoaders$PlatformClassLoader;
 
     public final ObjectKlass java_lang_Module;
@@ -824,6 +834,9 @@ public final class Meta implements ContextAccess {
     public final ObjectKlass java_io_InputStream;
     public final Method java_io_InputStream_read;
     public final Method java_io_InputStream_close;
+
+    public final ObjectKlass java_io_PrintStream;
+    public final Method java_io_PrintStream_println;
 
     // Array support.
     public final ObjectKlass java_lang_Cloneable;

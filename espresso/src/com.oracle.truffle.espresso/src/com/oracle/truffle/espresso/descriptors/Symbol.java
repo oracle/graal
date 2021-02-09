@@ -24,6 +24,7 @@ package com.oracle.truffle.espresso.descriptors;
 
 import java.io.IOException;
 import java.io.InputStream;
+import java.io.PrintStream;
 import java.time.Duration;
 import java.time.Instant;
 import java.time.LocalDate;
@@ -313,6 +314,9 @@ public final class Symbol<T> extends ByteSequence {
         public static final Symbol<Name> read = StaticSymbols.putName("read");
         public static final Symbol<Name> close = StaticSymbols.putName("close");
 
+        // java.io.PrintStream
+        public static final Symbol<Name> println = StaticSymbols.putName("println");
+
         // java.lang.invoke.*
         // CallSite
         public static final Symbol<Name> target = StaticSymbols.putName("target");
@@ -382,6 +386,10 @@ public final class Symbol<T> extends ByteSequence {
         public static final Symbol<Name> isPrivileged = StaticSymbols.putName("isPrivileged");
         public static final Symbol<Name> privilegedContext = StaticSymbols.putName("privilegedContext");
         public static final Symbol<Name> doPrivileged = StaticSymbols.putName("doPrivileged");
+
+        // sun.launcher.LauncherHelper
+        public static final Symbol<Name> printHelpMessage = StaticSymbols.putName("printHelpMessage");
+        public static final Symbol<Name> ostream = StaticSymbols.putName("ostream");
 
         // sun.reflect.ConstantPool
         public static final Symbol<Name> constantPoolOop = StaticSymbols.putName("constantPoolOop");
@@ -527,6 +535,7 @@ public final class Symbol<T> extends ByteSequence {
         public static final Symbol<Type> sun_misc_Launcher$ExtClassLoader = StaticSymbols.putType("Lsun/misc/Launcher$ExtClassLoader;");
 
         public static final Symbol<Type> java_io_InputStream = StaticSymbols.putType(InputStream.class);
+        public static final Symbol<Type> java_io_PrintStream = StaticSymbols.putType(PrintStream.class);
 
         public static final Symbol<Type> jdk_internal_loader_ClassLoaders$PlatformClassLoader = StaticSymbols.putType("Ljdk/internal/loader/ClassLoaders$PlatformClassLoader;");
 
@@ -796,6 +805,7 @@ public final class Symbol<T> extends ByteSequence {
         public static final Symbol<Signature> _void_Exception = StaticSymbols.putSignature(Type._void, Type.java_lang_Exception);
         public static final Symbol<Signature> _void_String_String_String_int = StaticSymbols.putSignature(Type._void, Type.java_lang_String, Type.java_lang_String, Type.java_lang_String, Type._int);
         public static final Symbol<Signature> _void_int = StaticSymbols.putSignature(Type._void, Type._int);
+        public static final Symbol<Signature> _void_boolean = StaticSymbols.putSignature(Type._void, Type._boolean);
         public static final Symbol<Signature> _void_long = StaticSymbols.putSignature(Type._void, Type._long);
         public static final Symbol<Signature> _void_long_int = StaticSymbols.putSignature(Type._void, Type._long, Type._int);
         public static final Symbol<Signature> _int_int_int = StaticSymbols.putSignature(Type._int, Type._int, Type._int);
