@@ -112,15 +112,9 @@
     },
   },
 
-  sulong_gateTest38_linux: $.sulong_gateTest_linux + $.llvm38,
-  sulong_gateTest40_linux: $.sulong_gateTest_linux + $.llvm4,
-  sulong_gateTest60_linux: $.sulong_gateTest_linux + $.llvm6,
-  sulong_gateTest80_linux: $.sulong_gateTest_linux + $.llvm8,
-  sulong_gateTestLLVMorg_linux: $.sulong_gateTest_linux + {
-    # nothing to do
-  },
+  llvmBundled:: {},
 
-  sulong_gateTest40_darwin: $.sulong_gateTest_darwin + $.llvm4 + {
+  llvm4_darwin_fix:: {
     # FIXME: We prune `null` entries to produce the original result.
     # Eventually, we should canonicalize this.
     environment: std.prune(super.environment + {
@@ -131,7 +125,7 @@
     timelimit: "0:45:00",
   },
 
-  sulong_gateTestLLVMorg_darwin: $.sulong_gateTest_darwin {
+  llvmBundled_darwin_fix: {
     # nothing to do
     environment+: {
       LD_LIBRARY_PATH: "$BUILD_DIR/main/sulong/mxbuild/darwin-amd64/SULONG_LLVM_ORG/lib:$LD_LIBRARY_PATH",
@@ -175,7 +169,7 @@
     ],
   },
 
-  sulong_coverage_linux: $.sulong_gateTestLLVMorg_linux + $.requireGCC + $.sulong_weekly_notifications + {
+  sulong_coverage_linux: $.gate + $.sulong_common + $.jdk8 + $.sulong_linux_amd64 + $.llvmBundled + $.requireGMP + $.requireGCC + $.sulong_weekly_notifications + {
     run: [
       ["mx", "--jacoco-whitelist-package", "com.oracle.truffle.llvm", "--jacoco-exclude-annotation", "@GeneratedBy", "gate", "--tags", "build,sulongCoverage", "--jacocout", "html"],
       # $SONAR_HOST_URL might not be set [GR-28642],
@@ -204,37 +198,36 @@
     $.gate + $.sulong_common + $.style + $.jdk8 + $.sulong_linux_amd64 + common.eclipse { name: "gate-sulong-style", run: [["mx", "gate", "--tags", "style"]] },
     $.gate + $.sulong_common + $.style + $.jdk8 + $.sulong_linux_amd64 + common.eclipse + common.jdt + { name: "gate-sulong-fullbuild", run: [["mx", "gate", "--tags", "fullbuild"]] },
     $.sulong_gate_generated_sources { name: "gate-sulong-generated-sources" },
-    $.sulong_gateTestLLVMorg_linux + $.requireGCC + {
+    $.gate + $.sulong_common + $.jdk8 + $.sulong_linux_amd64 + $.llvmBundled + $.requireGMP + $.requireGCC + {
       name: "gate-sulong-misc",
       run: [
         ["mx", "gate", "--tags", "build,sulongMisc"],
       ] + sulong_test_toolchain,
     },
-    $.sulong_gateTestLLVMorg_linux + $.requireGCC + { name: "gate-sulong-parser", run: [["mx", "gate", "--tags", "build,parser"]] },
-    $.sulong_gateTestLLVMorg_linux { name: "gate-sulong-gcc_c", run: [["mx", "gate", "--tags", "build,gcc_c"]], timelimit: "45:00" },
-    $.sulong_gateTestLLVMorg_linux { name: "gate-sulong-gcc_cpp", run: [["mx", "gate", "--tags", "build,gcc_cpp"]], timelimit: "45:00" },
-    $.sulong_gateTestLLVMorg_linux + $.requireGCC + { name: "gate-sulong-gcc_fortran", run: [["mx", "gate", "--tags", "build,gcc_fortran"]] },
+    $.gate + $.sulong_common + $.jdk8 + $.sulong_linux_amd64 + $.llvmBundled + $.requireGMP + $.requireGCC + { name: "gate-sulong-parser", run: [["mx", "gate", "--tags", "build,parser"]] },
+    $.gate + $.sulong_common + $.jdk8 + $.sulong_linux_amd64 + $.llvmBundled + $.requireGMP { name: "gate-sulong-gcc_c", run: [["mx", "gate", "--tags", "build,gcc_c"]], timelimit: "45:00" },
+    $.gate + $.sulong_common + $.jdk8 + $.sulong_linux_amd64 + $.llvmBundled + $.requireGMP { name: "gate-sulong-gcc_cpp", run: [["mx", "gate", "--tags", "build,gcc_cpp"]], timelimit: "45:00" },
+    $.gate + $.sulong_common + $.jdk8 + $.sulong_linux_amd64 + $.llvmBundled + $.requireGMP + $.requireGCC + { name: "gate-sulong-gcc_fortran", run: [["mx", "gate", "--tags", "build,gcc_fortran"]] },
     # No more testing on llvm 3.8 [GR-21735]
-    # $.sulong_gateTest38_linux + $.requireGCC + { name: "gate-sulong-basic_v38", run: [["mx", "gate", "--tags", "build,sulongBasic,nwcc,llvm"]] },
-    $.sulong_gateTest40_linux + $.requireGCC + { name: "gate-sulong-basic_v40", run: [["mx", "gate", "--tags", "build,sulongBasic,nwcc,llvm"]] },
-    $.sulong_gateTest60_linux + $.requireGCC + { name: "gate-sulong-basic_v60", run: [["mx", "gate", "--tags", "build,sulongBasic,nwcc,llvm"]] },
-    $.sulong_gateTest80_linux + $.requireGCC + { name: "gate-sulong-basic_v80", run: [["mx", "gate", "--tags", "build,sulongBasic,nwcc,llvm"]] },
-    $.sulong_gateTestLLVMorg_linux + $.requireGCC + { name: "gate-sulong-basic_bundled-llvm", run: [["mx", "gate", "--tags", "build,sulongBasic,sulongLL,nwcc,llvm,toolchain"]] },
-    $.sulong_gateTest40_darwin { name: "gate-sulong-basic_mac", run: [["mx", "gate", "--tags", "build,sulongBasic,nwcc,llvm,toolchain"]] },
-    $.sulong_gateTestLLVMorg_darwin { name: "gate-sulong-basic_bundled-llvm_mac", run: [["mx", "gate", "--tags", "build,sulongBasic,sulongLL,nwcc,llvm,toolchain"]] },
+    # $.gate + $.sulong_common + $.jdk8 + $.sulong_linux_amd64 + $.llvm38 + $.requireGMP + $.requireGCC + { name: "gate-sulong-basic_v38", run: [["mx", "gate", "--tags", "build,sulongBasic,nwcc,llvm"]] },
+    $.gate + $.sulong_common + $.jdk8 + $.sulong_linux_amd64 + $.llvm4 + $.requireGMP + $.requireGCC + { name: "gate-sulong-basic_v40", run: [["mx", "gate", "--tags", "build,sulongBasic,nwcc,llvm"]] },
+    $.gate + $.sulong_common + $.jdk8 + $.sulong_linux_amd64 + $.llvm6 + $.requireGMP + $.requireGCC + { name: "gate-sulong-basic_v60", run: [["mx", "gate", "--tags", "build,sulongBasic,nwcc,llvm"]] },
+    $.gate + $.sulong_common + $.jdk8 + $.sulong_linux_amd64 + $.llvm8 + $.requireGMP + $.requireGCC + { name: "gate-sulong-basic_v80", run: [["mx", "gate", "--tags", "build,sulongBasic,nwcc,llvm"]] },
+    $.gate + $.sulong_common + $.jdk8 + $.sulong_linux_amd64 + $.llvmBundled + $.requireGMP + $.requireGCC + { name: "gate-sulong-basic_bundled-llvm", run: [["mx", "gate", "--tags", "build,sulongBasic,sulongLL,nwcc,llvm,toolchain"]] },
+    $.gate + $.sulong_common + $.jdk8 + $.sulong_darwin_amd64 + $.llvm4 + $.llvm4_darwin_fix + { name: "gate-sulong-basic_mac", run: [["mx", "gate", "--tags", "build,sulongBasic,nwcc,llvm,toolchain"]] },
+    $.gate + $.sulong_common + $.jdk8 + $.sulong_darwin_amd64 + $.llvmBundled + $.llvmBundled_darwin_fix + { name: "gate-sulong-basic_bundled-llvm_mac", run: [["mx", "gate", "--tags", "build,sulongBasic,sulongLL,nwcc,llvm,toolchain"]] },
 
-    $.sulong_gateTestLLVMorg_linux + $.sulong_ruby_downstream_test + { name: "gate-sulong-ruby-downstream" },
+    $.gate + $.sulong_common + $.jdk8 + $.sulong_linux_amd64 + $.llvmBundled + $.requireGMP + $.sulong_ruby_downstream_test + { name: "gate-sulong-ruby-downstream" },
 
-    # reset capablities/catch_files otherwise we would inherite from sulong_gateTestLLVMorg_linux
-    $.sulong_gateTestLLVMorg_linux + $.sulong_labsjdk_ce_11_only + { capabilities: [], catch_files: [] } + linux_aarch64 + { name: "gate-sulong_bundled-llvm-linux-aarch64", run: [["mx", "gate", "--tags", "build,sulong,sulongLL,interop,linker,debug,irdebug,bitcodeFormat,otherTests,llvm"]], timelimit: "30:00" },
-    $.sulong_gateTestLLVMorg_linux + $.sulong_labsjdk_ce_11_only + {
+    $.gate + $.sulong_common + $.sulong_labsjdk_ce_11_only + $.sulong_linux_aarch64 + $.llvmBundled + $.requireGMP + { name: "gate-sulong_bundled-llvm-linux-aarch64", run: [["mx", "gate", "--tags", "build,sulong,sulongLL,interop,linker,debug,irdebug,bitcodeFormat,otherTests,llvm"]], timelimit: "30:00" },
+    $.gate + $.sulong_common + $.sulong_labsjdk_ce_11_only + $.sulong_linux_amd64 + $.llvmBundled + $.requireGMP + {
       name: "gate-sulong-build_bundled-llvm-linux-amd64-labsjdk-ce-11",
       run: [
         ["mx", "gate", "--tags", "build"],
       ] + sulong_test_toolchain,
     },
 
-    $.sulong_gateTestLLVMorg_linux { name: "gate-sulong-strict-native-image", run: [
+    $.gate + $.sulong_common + $.jdk8 + $.sulong_linux_amd64 + $.llvmBundled + $.requireGMP { name: "gate-sulong-strict-native-image", run: [
       ["mx", "--dynamicimports", "/substratevm,/tools", "--native-images=lli", "--extra-image-builder-argument=-H:+TruffleCheckBlackListedMethods", "gate", "--tags", "build"],
     ] },
 
