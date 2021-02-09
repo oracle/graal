@@ -11,6 +11,13 @@
 
   jdk8:: common.oraclejdk8,
 
+  labsjdk_ce_11: common["labsjdk-ce-11"] {
+    downloads+: {
+      # FIXME: do we really need to set EXTRA_JAVA_HOMES to an empty list?
+      EXTRA_JAVA_HOMES: { pathlist: [] },
+    },
+  },
+
   sulong_linux_amd64:: linux_amd64 + sulong_deps.linux,
   sulong_linux_aarch64:: linux_aarch64 + sulong_deps.linux,
   sulong_darwin_amd64:: darwin_amd64 + sulong_deps.darwin,
@@ -180,12 +187,6 @@
     timelimit: "1:45:00",
   },
 
-  sulong_labsjdk_ce_11_only: common["labsjdk-ce-11"] {
-    downloads+: {
-      EXTRA_JAVA_HOMES: { pathlist: [] },
-    },
-  },
-
   local sulong_test_toolchain = [
     ["mx", "build", "--dependencies", "SULONG_TEST"],
     ["mx", "unittest", "--verbose", "-Dsulongtest.toolchainPathPattern=SULONG_BOOTSTRAP_TOOLCHAIN", "ToolchainAPITest"],
@@ -219,8 +220,8 @@
 
     $.gate + $.sulong_common + $.jdk8 + $.sulong_linux_amd64 + $.llvmBundled + $.requireGMP + $.sulong_ruby_downstream_test + { name: "gate-sulong-ruby-downstream" },
 
-    $.gate + $.sulong_common + $.sulong_labsjdk_ce_11_only + $.sulong_linux_aarch64 + $.llvmBundled + $.requireGMP + { name: "gate-sulong_bundled-llvm-linux-aarch64", run: [["mx", "gate", "--tags", "build,sulong,sulongLL,interop,linker,debug,irdebug,bitcodeFormat,otherTests,llvm"]], timelimit: "30:00" },
-    $.gate + $.sulong_common + $.sulong_labsjdk_ce_11_only + $.sulong_linux_amd64 + $.llvmBundled + $.requireGMP + {
+    $.gate + $.sulong_common + $.labsjdk_ce_11 + $.sulong_linux_aarch64 + $.llvmBundled + $.requireGMP + { name: "gate-sulong_bundled-llvm-linux-aarch64", run: [["mx", "gate", "--tags", "build,sulong,sulongLL,interop,linker,debug,irdebug,bitcodeFormat,otherTests,llvm"]], timelimit: "30:00" },
+    $.gate + $.sulong_common + $.labsjdk_ce_11 + $.sulong_linux_amd64 + $.llvmBundled + $.requireGMP + {
       name: "gate-sulong-build_bundled-llvm-linux-amd64-labsjdk-ce-11",
       run: [
         ["mx", "gate", "--tags", "build"],
