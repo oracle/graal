@@ -28,8 +28,6 @@ import org.graalvm.compiler.core.common.LIRKind;
 import org.graalvm.compiler.core.common.spi.ForeignCallDescriptor;
 import org.graalvm.compiler.core.common.type.Stamp;
 import org.graalvm.compiler.core.common.type.StampFactory;
-import org.graalvm.compiler.core.common.type.StampPair;
-import org.graalvm.compiler.hotspot.HotSpotReplacementsImpl;
 import org.graalvm.compiler.hotspot.meta.HotSpotForeignCallDescriptor;
 import org.graalvm.compiler.hotspot.meta.HotSpotForeignCallDescriptor.Transition;
 import org.graalvm.compiler.hotspot.meta.HotSpotProviders;
@@ -43,8 +41,6 @@ import org.graalvm.compiler.word.Word;
 
 import jdk.vm.ci.hotspot.HotSpotJVMCIRuntime;
 import jdk.vm.ci.meta.JavaKind;
-import jdk.vm.ci.meta.MetaAccessProvider;
-import jdk.vm.ci.meta.ResolvedJavaType;
 
 /**
  * A {@linkplain #getGraph generated} stub for a {@link Transition non-leaf} foreign call from
@@ -91,23 +87,9 @@ public class ForeignCallStub extends AbstractForeignCallStub {
         return linkage.getDescriptor().isReexecutable();
     }
 
-    private ParameterNode[] createParameters(GraphKit kit, Class<?>[] args) {
-        ParameterNode[] params = new ParameterNode[args.length];
-        MetaAccessProvider metaAccess = HotSpotReplacementsImpl.noticeTypes(providers.getMetaAccess());
-        ResolvedJavaType accessingClass = metaAccess.lookupJavaType(getClass());
-        for (int i = 0; i < args.length; i++) {
-            ResolvedJavaType type = metaAccess.lookupJavaType(args[i]).resolve(accessingClass);
-            StampPair stamp = StampFactory.forDeclaredType(kit.getGraph().getAssumptions(), type, false);
-            ParameterNode param = kit.unique(new ParameterNode(i, stamp));
-            params[i] = param;
-        }
-        return params;
-    }
-
     @Override
     protected StubForeignCallNode createTargetCall(GraphKit kit, ReadRegisterNode thread) {
-        Class<?>[] args = linkage.getDescriptor().getArgumentTypes();
-        ParameterNode[] params = createParameters(kit, args);
+        ParameterNode[] params = createParameters(kit);
         Stamp stamp = StampFactory.forKind(JavaKind.fromJavaClass(target.getDescriptor().getResultType()));
         if (prependThread) {
             ValueNode[] targetArguments = new ValueNode[1 + params.length];
