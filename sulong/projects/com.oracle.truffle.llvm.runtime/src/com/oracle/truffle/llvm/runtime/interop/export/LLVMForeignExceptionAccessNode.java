@@ -36,6 +36,7 @@ import com.oracle.truffle.api.dsl.GenerateUncached;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.llvm.runtime.LLVMContext;
 import com.oracle.truffle.llvm.runtime.LLVMLanguage;
+import com.oracle.truffle.llvm.runtime.debug.type.LLVMSourceStructLikeType;
 import com.oracle.truffle.llvm.runtime.global.LLVMGlobal;
 import com.oracle.truffle.llvm.runtime.interop.access.LLVMInteropType;
 import com.oracle.truffle.llvm.runtime.nodes.api.LLVMNode;
@@ -46,6 +47,10 @@ public abstract class LLVMForeignExceptionAccessNode extends LLVMNode {
 
     public abstract LLVMPointer execute(LLVMPointer unwindHeader);
 
+    public static LLVMForeignExceptionAccessNode create() {
+        return LLVMForeignExceptionAccessNodeGen.create();
+    }
+
     @Specialization
     public LLVMPointer doResolve(LLVMPointer unwindHeader,
                     @Cached LLVMForeignReadNode read,
@@ -53,8 +58,8 @@ public abstract class LLVMForeignExceptionAccessNode extends LLVMNode {
         final LLVMPointer typeInfo = LLVMPointer.cast(read.execute(unwindHeader.increment(-0x50), LLVMInteropType.ValueKind.POINTER.type));
 
         LLVMGlobal typeInfoSymbol = context.findGlobal(typeInfo);
-        LLVMInteropType interopType = typeInfoSymbol.getInteropType(context);
-        interopType = context.getLanguage().getInteropType(LLVMInteropType.Clazz.interopTIMap.get(typeInfoSymbol.getName()));
+        LLVMInteropType interopType = typeInfoSymbol.getInteropType(context);// TODO does not work
+        interopType = context.getLanguage().getInteropType(LLVMSourceStructLikeType.sourceTIMap.get(typeInfoSymbol.getName()));
         /*
          * LLVMSourceType is missing in typeInfoSymbol, TODO (pichristoph) correct
          */

@@ -29,12 +29,10 @@
  */
 
 #include <cstdio>
-//#include "../../com.oracle.truffle.llvm.libraries.graalvm.llvm/include/graalvm/llvm/polyglot.h"
-//#include <graalvm/llvm/polyglot.h>
 
 #include "cxa_exception.h"
 #include "private_typeinfo.h"
-#include<iostream>
+
 namespace __extern_C {
 namespace ___sulong_import_base64 {
 
@@ -56,14 +54,12 @@ static __cxa_exception *cxa_exception_from_exception_unwind_exception(_Unwind_Ex
 
 static void *thrown_object_from_cxa_exception(__cxa_exception *exception_header);
 
-//static void* __cxa_begin_catch(void* unwind);
+static void* __cxa_begin_catch(void* unwind);
 
 } // namespace bGliYysrYWJp
 } // namespace ___sulong_import_base64
 
 extern "C" {
-
-//static void* _SULONG_IMPORT_SYMBOL();
 
 unsigned int sulong_eh_canCatch(_Unwind_Exception *unwindHeader, std::type_info *catchType) {
 

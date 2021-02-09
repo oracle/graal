@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2017, 2020, Oracle and/or its affiliates.
+ * Copyright (c) 2017, 2021, Oracle and/or its affiliates.
  *
  * All rights reserved.
  *
@@ -34,10 +34,14 @@ import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.llvm.runtime.debug.scope.LLVMSourceLocation;
 
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.List;
 import java.util.function.Supplier;
 
 public class LLVMSourceStructLikeType extends LLVMSourceType {
+
+    // TODO: remove map, since temporary solution
+    public static HashMap<String, LLVMSourceStructLikeType> sourceTIMap = new HashMap<>();
 
     protected final List<LLVMSourceMemberType> dynamicMembers;
 
@@ -48,6 +52,7 @@ public class LLVMSourceStructLikeType extends LLVMSourceType {
         super(() -> name, size, align, offset, location);
         this.dynamicMembers = new ArrayList<>();
         this.staticMembers = new LLVMSourceStaticMemberType.CollectionType();
+        sourceTIMap.put("_ZTIP" + name.length() + name, this);
     }
 
     protected LLVMSourceStructLikeType(Supplier<String> name, long size, long align, long offset, List<LLVMSourceMemberType> dynamicMembers, LLVMSourceStaticMemberType.CollectionType staticMembers,
@@ -55,6 +60,7 @@ public class LLVMSourceStructLikeType extends LLVMSourceType {
         super(name, size, align, offset, location);
         this.dynamicMembers = dynamicMembers;
         this.staticMembers = staticMembers;
+        sourceTIMap.put("_ZTIP" + name.get().length() + name.get(), this);
     }
 
     @TruffleBoundary

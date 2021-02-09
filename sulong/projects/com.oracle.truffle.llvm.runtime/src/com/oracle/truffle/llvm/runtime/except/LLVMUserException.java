@@ -35,7 +35,6 @@ import com.oracle.truffle.api.interop.InteropLibrary;
 import com.oracle.truffle.api.library.ExportLibrary;
 import com.oracle.truffle.api.library.ExportMessage;
 import com.oracle.truffle.api.nodes.Node;
-import com.oracle.truffle.llvm.runtime.interop.export.LLVMForeignExceptionAccessNodeGen;
 import com.oracle.truffle.llvm.runtime.pointer.LLVMPointer;
 
 /**
@@ -52,8 +51,7 @@ public final class LLVMUserException extends LLVMException {
     final LLVMPointer exceptionObjPtr;
 
     public LLVMUserException(Node location, LLVMPointer unwindHeader) {
-        this(location, unwindHeader, LLVMForeignExceptionAccessNodeGen.create().execute(unwindHeader));
-        // TODO pichristoph make resolving of exceptionObjPtr more efficient
+        this(location, unwindHeader, unwindHeader);
     }
 
     public LLVMUserException(Node location, LLVMPointer unwindHeader, LLVMPointer exceptionObjPtr) {

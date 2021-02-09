@@ -54,9 +54,7 @@ import org.graalvm.collections.EconomicSet;
 import org.graalvm.collections.Equivalence;
 
 import java.util.Arrays;
-import java.util.HashMap;
 import java.util.List;
-import java.util.Map;
 import java.util.stream.Collectors;
 
 /**
@@ -263,9 +261,6 @@ public abstract class LLVMInteropType implements TruffleObject {
 
         @CompilationFinal(dimensions = 1) final Method[] methods;
         private Clazz superclass;
-
-        // TODO pichristoph: remove (this is temporary solution)
-        public static Map<String, LLVMSourceType> interopTIMap = new HashMap<>();
 
         Clazz(String name, StructMember[] members, Method[] methods, long size) {
             super(name, members, size);
@@ -544,8 +539,6 @@ public abstract class LLVMInteropType implements TruffleObject {
         private Clazz convertClass(LLVMSourceClassLikeType type) {
             Clazz ret = new Clazz(type.getName(), new StructMember[type.getDynamicElementCount()], new Method[type.getMethodCount()], type.getSize() / 8);
             typeCache.put(type, ret);
-            String namee = type.getName();
-            Clazz.interopTIMap.put("_ZTIP" + namee.length() + namee, type);
             for (int i = 0; i < ret.members.length; i++) {
                 LLVMSourceMemberType member = type.getDynamicElement(i);
                 LLVMSourceType memberType = member.getElementType();
