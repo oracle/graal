@@ -84,7 +84,6 @@ public final class RegexAST implements StateIndex<RegexASTNode>, JsonConvertible
     private final Counter.ThresholdCounter nodeCount = new Counter.ThresholdCounter(TRegexOptions.TRegexParserTreeMaxSize, "parse tree explosion");
     private final Counter.ThresholdCounter groupCount = new Counter.ThresholdCounter(TRegexOptions.TRegexMaxNumberOfCaptureGroups, "too many capture groups");
     private final Counter quantifierCount = new Counter();
-    private final Counter zeroWidthQuantifierCount = new Counter();
     private final RegexProperties properties = new RegexProperties();
     private Map<String, Integer> namedCaputureGroups;
     private RegexASTNode[] nodes;
@@ -97,6 +96,7 @@ public final class RegexAST implements StateIndex<RegexASTNode>, JsonConvertible
      */
     private Group wrappedRoot;
     private Group[] captureGroups;
+    private final List<QuantifiableTerm> zeroWidthQuantifiables = new ArrayList<>();
     private final LookAroundIndex lookArounds = new LookAroundIndex();
     private final List<PositionAssertion> reachableCarets = new ArrayList<>();
     private final List<PositionAssertion> reachableDollars = new ArrayList<>();
@@ -180,8 +180,13 @@ public final class RegexAST implements StateIndex<RegexASTNode>, JsonConvertible
         return quantifierCount;
     }
 
-    public Counter getZeroWidthQuantifierCount() {
-        return zeroWidthQuantifierCount;
+    public void registerZeroWidthQuantifiable(QuantifiableTerm zeroWidthQuantifiable) {
+        zeroWidthQuantifiable.getQuantifier().setZeroWidthIndex(zeroWidthQuantifiables.size());
+        zeroWidthQuantifiables.add(zeroWidthQuantifiable);
+    }
+
+    public List<QuantifiableTerm> getZeroWidthQuantifiables() {
+        return zeroWidthQuantifiables;
     }
 
     public Group getGroupByBoundaryIndex(int index) {

@@ -62,10 +62,14 @@ import com.oracle.truffle.regex.tregex.nodes.input.InputIndexOfStringNode;
 import com.oracle.truffle.regex.tregex.nodes.input.InputRegionMatchesNode;
 import com.oracle.truffle.regex.tregex.parser.CaseFoldTable;
 import com.oracle.truffle.regex.tregex.parser.Token.Quantifier;
+import com.oracle.truffle.regex.tregex.parser.ast.Group;
 import com.oracle.truffle.regex.tregex.parser.ast.InnerLiteral;
 import com.oracle.truffle.regex.tregex.parser.ast.LookBehindAssertion;
+import com.oracle.truffle.regex.tregex.parser.ast.QuantifiableTerm;
 import com.oracle.truffle.regex.tregex.parser.ast.RegexASTSubtreeRootNode;
 import com.oracle.truffle.regex.tregex.parser.flavors.RubyFlavor;
+
+import java.util.List;
 
 /**
  * This regex executor uses a backtracking algorithm on the NFA. It is used for all expressions that
@@ -105,6 +109,8 @@ public final class TRegexBacktrackingNFAExecutorNode extends TRegexExecutorNode 
     private final InnerLiteral innerLiteral;
     @CompilationFinal(dimensions = 1) private final TRegexExecutorNode[] lookAroundExecutors;
     @Children private CharMatcher[] matchers;
+    private final int[] zeroWidthTermEnclosedCGLow;
+    private final int[] zeroWidthTermEnclosedCGHigh;
 
     @Child InputRegionMatchesNode regionMatchesNode;
     @Child InputIndexOfStringNode indexOfNode;
@@ -122,7 +128,18 @@ public final class TRegexBacktrackingNFAExecutorNode extends TRegexExecutorNode 
         this.transitionMatchesStepByStep = nfaMap.getAst().getOptions().getFlavor() == RubyFlavor.INSTANCE;
         this.loneSurrogates = nfaMap.getAst().getProperties().hasLoneSurrogates();
         this.nQuantifiers = nfaMap.getAst().getQuantifierCount().getCount();
-        this.nZeroWidthQuantifiers = nfaMap.getAst().getZeroWidthQuantifierCount().getCount();
+        this.nZeroWidthQuantifiers = nfaMap.getAst().getZeroWidthQuantifiables().size();
+        List<QuantifiableTerm> zeroWidthQuantifiables = nfaMap.getAst().getZeroWidthQuantifiables();
+        this.zeroWidthTermEnclosedCGLow = new int[nZeroWidthQuantifiers];
+        this.zeroWidthTermEnclosedCGHigh = new int[nZeroWidthQuantifiers];
+        for (int i = 0; i < nZeroWidthQuantifiers; i++) {
+            QuantifiableTerm quantifiable = zeroWidthQuantifiables.get(i);
+            if (quantifiable.isGroup()) {
+                Group group = quantifiable.asGroup();
+                this.zeroWidthTermEnclosedCGLow[i] = group.getEnclosedCaptureGroupsLow();
+                this.zeroWidthTermEnclosedCGHigh[i] = group.getEnclosedCaptureGroupsHigh();
+            }
+        }
         this.lookAroundExecutors = lookAroundExecutors;
         this.loopbackInitialState = nfa == nfaMap.getRoot() && !nfaMap.getAst().getFlags().isSticky() && !nfaMap.getAst().getRoot().startsWithCaret();
         if (nfa == nfaMap.getRoot() && nfaMap.getAst().getProperties().hasInnerLiteral()) {
@@ -171,7 +188,8 @@ public final class TRegexBacktrackingNFAExecutorNode extends TRegexExecutorNode 
 
     @Override
     public TRegexExecutorLocals createLocals(Object input, int fromIndex, int index, int maxIndex) {
-        return new TRegexBacktrackingNFAExecutorLocals(input, fromIndex, index, maxIndex, getNumberOfCaptureGroups(), nQuantifiers, nZeroWidthQuantifiers, maxNTransitions);
+        return new TRegexBacktrackingNFAExecutorLocals(input, fromIndex, index, maxIndex, getNumberOfCaptureGroups(), nQuantifiers, nZeroWidthQuantifiers, zeroWidthTermEnclosedCGLow,
+                        zeroWidthTermEnclosedCGHigh, maxNTransitions);
     }
 
     private static final int IP_BEGIN = -1;

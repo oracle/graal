@@ -394,7 +394,7 @@ public class CalcASTPropsVisitor extends DepthFirstTraversalRegexASTVisitor {
 
     private void setZeroWidthQuantifierIndex(QuantifiableTerm term) {
         if (isForward() && term.getQuantifier().getZeroWidthIndex() < 0) {
-            term.getQuantifier().setZeroWidthIndex(ast.getZeroWidthQuantifierCount().inc());
+            ast.registerZeroWidthQuantifiable(term);
         }
     }
 }
