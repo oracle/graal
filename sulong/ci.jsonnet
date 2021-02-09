@@ -161,7 +161,7 @@
     timelimit: "45:00",
   },
 
-  sulong_gate_generated_sources: $.gate + $.sulong_common + $.jdk8 + linux_amd64 + {
+  sulong_gate_generated_sources: {
     run: [
       ["mx", "build", "--dependencies", "LLVM_TOOLCHAIN"],
       ["mx", "create-generated-sources"],
@@ -169,7 +169,7 @@
     ],
   },
 
-  sulong_coverage_linux: $.gate + $.sulong_common + $.jdk8 + $.sulong_linux_amd64 + $.llvmBundled + $.requireGMP + $.requireGCC + $.sulong_weekly_notifications + {
+  sulong_coverage_linux: {
     run: [
       ["mx", "--jacoco-whitelist-package", "com.oracle.truffle.llvm", "--jacoco-exclude-annotation", "@GeneratedBy", "gate", "--tags", "build,sulongCoverage", "--jacocout", "html"],
       # $SONAR_HOST_URL might not be set [GR-28642],
@@ -197,7 +197,7 @@
   builds: [
     $.gate + $.sulong_common + $.style + $.jdk8 + $.sulong_linux_amd64 + common.eclipse { name: "gate-sulong-style", run: [["mx", "gate", "--tags", "style"]] },
     $.gate + $.sulong_common + $.style + $.jdk8 + $.sulong_linux_amd64 + common.eclipse + common.jdt + { name: "gate-sulong-fullbuild", run: [["mx", "gate", "--tags", "fullbuild"]] },
-    $.sulong_gate_generated_sources { name: "gate-sulong-generated-sources" },
+    $.gate + $.sulong_common + $.jdk8 + linux_amd64 + $.sulong_gate_generated_sources { name: "gate-sulong-generated-sources" },
     $.gate + $.sulong_common + $.jdk8 + $.sulong_linux_amd64 + $.llvmBundled + $.requireGMP + $.requireGCC + {
       name: "gate-sulong-misc",
       run: [
@@ -231,6 +231,6 @@
       ["mx", "--dynamicimports", "/substratevm,/tools", "--native-images=lli", "--extra-image-builder-argument=-H:+TruffleCheckBlackListedMethods", "gate", "--tags", "build"],
     ] },
 
-    $.sulong_coverage_linux { name: "weekly-sulong-coverage" },
+    $.gate + $.sulong_common + $.jdk8 + $.sulong_linux_amd64 + $.llvmBundled + $.requireGMP + $.requireGCC + $.sulong_weekly_notifications + $.sulong_coverage_linux { name: "weekly-sulong-coverage" },
   ],
 }
