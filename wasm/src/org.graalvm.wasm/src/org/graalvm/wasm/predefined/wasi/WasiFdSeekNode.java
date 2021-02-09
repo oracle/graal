@@ -40,28 +40,40 @@
  */
 package org.graalvm.wasm.predefined.wasi;
 
+import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.frame.VirtualFrame;
 import org.graalvm.wasm.WasmContext;
 import org.graalvm.wasm.WasmInstance;
 import org.graalvm.wasm.WasmLanguage;
-import org.graalvm.wasm.exception.WasmExit;
 import org.graalvm.wasm.predefined.WasmBuiltinRootNode;
+import org.graalvm.wasm.predefined.wasi.fd.Fd;
+import org.graalvm.wasm.predefined.wasi.types.Errno;
+import org.graalvm.wasm.predefined.wasi.types.Whence;
 
-public final class WasiProcExitNode extends WasmBuiltinRootNode {
+public final class WasiFdSeekNode extends WasmBuiltinRootNode {
 
-    public WasiProcExitNode(WasmLanguage language, WasmInstance module) {
+    public WasiFdSeekNode(WasmLanguage language, WasmInstance module) {
         super(language, module);
     }
 
     @Override
     public Object executeWithContext(VirtualFrame frame, WasmContext context) {
-        final int exitCode = (int) frame.getArguments()[0];
-        throw new WasmExit(this, exitCode);
+        final Object[] args = frame.getArguments();
+        return fdSeek(context, (int) args[0], (long) args[1], (int) args[2], (int) args[3]);
+    }
+
+    @TruffleBoundary
+    private int fdSeek(WasmContext context, int fd, long offset, int whence, int filesizeAddress) {
+        final Fd handle = context.fdManager().get(fd);
+        if (handle == null) {
+            return Errno.Badf.ordinal();
+        }
+        return handle.seek(this, memory(), offset, Whence.values()[whence], filesizeAddress).ordinal();
     }
 
     @Override
     public String builtinNodeName() {
-        return "__wasi_proc_exit";
+        return "___wasi_fd_seek";
     }
 
 }

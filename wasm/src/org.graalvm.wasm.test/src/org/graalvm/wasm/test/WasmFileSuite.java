@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2019, 2020, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2019, 2021, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -43,6 +43,7 @@ package org.graalvm.wasm.test;
 import com.oracle.truffle.api.Truffle;
 import junit.framework.AssertionFailedError;
 import org.graalvm.polyglot.Context;
+import org.graalvm.polyglot.EnvironmentAccess;
 import org.graalvm.polyglot.PolyglotException;
 import org.graalvm.polyglot.Source;
 import org.graalvm.polyglot.Value;
@@ -58,9 +59,12 @@ import org.junit.Assert;
 
 import java.io.BufferedReader;
 import java.io.ByteArrayOutputStream;
+import java.io.File;
 import java.io.IOException;
 import java.io.InputStreamReader;
 import java.io.PrintStream;
+import java.nio.file.Files;
+import java.nio.file.Path;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.LinkedHashMap;
@@ -91,6 +95,7 @@ public abstract class WasmFileSuite extends AbstractWasmSuite {
     private static final int DEFAULT_ASYNC_ITERATIONS = 100000;
     private static final int INITIAL_STATE_CHECK_ITERATIONS = 10;
     private static final int STATE_CHECK_PERIODICITY = 2000;
+    private static final ByteArrayOutputStream TEST_OUT = new ByteArrayOutputStream();
 
     private static Context getInterpretedNoInline(Context.Builder contextBuilder) {
         contextBuilder.option("engine.Compilation", "false");
@@ -147,18 +152,11 @@ public abstract class WasmFileSuite extends AbstractWasmSuite {
     }
 
     private static void runInContext(WasmCase testCase, Context context, List<Source> sources, int iterations, String phaseIcon, String phaseLabel) {
-        final PrintStream oldOut = System.out;
         try {
-            // TODO(mbovel): Make WASI functions use Env#out() instead of System#out so that we
-            // don't need that hack.
-            final ByteArrayOutputStream capturedStream = new ByteArrayOutputStream();
-            final PrintStream capturedStdout = new PrintStream(capturedStream);
-            System.setOut(capturedStdout);
-
             // Whereas the test needs memory to be reset between iterations.
             final boolean requiresZeroMemory = Boolean.parseBoolean(testCase.options().getProperty("zero-memory", "false"));
 
-            resetStatus(oldOut, PHASE_PARSE_ICON, "parsing");
+            resetStatus(System.out, PHASE_PARSE_ICON, "parsing");
 
             // This is needed so that we can call WasmContext.getCurrent().
             context.enter();
@@ -173,7 +171,7 @@ public abstract class WasmFileSuite extends AbstractWasmSuite {
             final WasmContext wasmContext = WasmContext.getCurrent();
             final Value mainFunction = findMain(wasmContext);
 
-            resetStatus(oldOut, phaseIcon, phaseLabel);
+            resetStatus(System.out, phaseIcon, phaseLabel);
 
             final String argString = testCase.options().getProperty("argument");
             final Integer arg = argString == null ? null : Integer.parseInt(argString);
@@ -181,15 +179,15 @@ public abstract class WasmFileSuite extends AbstractWasmSuite {
 
             for (int i = 0; i != iterations; ++i) {
                 try {
-                    capturedStream.reset();
+                    TEST_OUT.reset();
                     final Value result = arg == null ? mainFunction.execute() : mainFunction.execute(arg);
-                    WasmCase.validateResult(testCase.data().resultValidator(), result, capturedStream);
+                    WasmCase.validateResult(testCase.data().resultValidator(), result, TEST_OUT);
                 } catch (PolyglotException e) {
                     // If no exception is expected and the program returns with success exit status,
                     // then we check stdout.
                     if (e.isExit() && testCase.data().expectedErrorMessage() == null) {
                         Assert.assertEquals("Program exited with non-zero return code.", e.getExitStatus(), 0);
-                        WasmCase.validateResult(testCase.data().resultValidator(), null, capturedStream);
+                        WasmCase.validateResult(testCase.data().resultValidator(), null, TEST_OUT);
                     } else if (testCase.data().expectedErrorTime() == WasmCaseData.ErrorType.Validation) {
                         validateThrown(testCase.data(), WasmCaseData.ErrorType.Validation, e);
                         return;
@@ -229,8 +227,8 @@ public abstract class WasmFileSuite extends AbstractWasmSuite {
                 }
             }
         } finally {
+            System.setOut(System.out);
             context.close(true);
-            System.setOut(oldOut);
         }
     }
 
@@ -266,8 +264,11 @@ public abstract class WasmFileSuite extends AbstractWasmSuite {
     }
 
     private WasmTestStatus runTestCase(WasmCase testCase) {
+        Path tempWorkingDirectory = null;
         try {
             Context.Builder contextBuilder = Context.newBuilder("wasm");
+            contextBuilder.allowEnvironmentAccess(EnvironmentAccess.NONE);
+            contextBuilder.out(TEST_OUT);
             contextBuilder.allowExperimentalOptions(true);
             contextBuilder.option("engine.EncodedGraphCacheCapacity", "-1");
 
@@ -281,10 +282,26 @@ public abstract class WasmFileSuite extends AbstractWasmSuite {
             }
 
             contextBuilder.option("wasm.Builtins", includedExternalModules());
-            String commandLineArgs = testCase.options().getProperty("command-line-args");
+            final String commandLineArgs = testCase.options().getProperty("command-line-args");
             if (commandLineArgs != null) {
                 // The first argument is the program name. We set it to the empty string in tests.
                 contextBuilder.arguments("wasm", prepend(commandLineArgs.split(" "), ""));
+            }
+
+            final String envString = testCase.options().getProperty("env");
+            if (envString != null) {
+                for (String var : envString.split(" ")) {
+                    final String[] parts = var.split("=");
+                    contextBuilder.environment(parts[0], parts[1]);
+                }
+            }
+
+            final boolean enableIO = Boolean.parseBoolean(testCase.options().getProperty("enableIO"));
+            if (enableIO) {
+                contextBuilder.allowIO(true);
+                tempWorkingDirectory = Files.createTempDirectory("graalwasm-io-test");
+                contextBuilder.currentWorkingDirectory(tempWorkingDirectory);
+                contextBuilder.option("wasm.WasiMapDirs", "test:" + tempWorkingDirectory);
             }
 
             Context context;
@@ -315,6 +332,10 @@ public abstract class WasmFileSuite extends AbstractWasmSuite {
             runInContext(testCase, context, sources, asyncIterations, PHASE_ASYNC_ICON, "async,multi");
         } catch (InterruptedException | IOException e) {
             Assert.fail(String.format("Test %s failed: %s", testCase.name(), e.getMessage()));
+        } finally {
+            if (tempWorkingDirectory != null) {
+                deleteFolder(tempWorkingDirectory.toFile());
+            }
         }
         return WasmTestStatus.OK;
     }
@@ -328,6 +349,20 @@ public abstract class WasmFileSuite extends AbstractWasmSuite {
             throw e;
         }
         Assert.assertEquals("Unexpected error phase.", data.expectedErrorTime(), phase);
+    }
+
+    public static void deleteFolder(File folder) {
+        final File[] files = folder.listFiles();
+        if (files != null) {
+            for (final File f : files) {
+                if (f.isDirectory()) {
+                    deleteFolder(f);
+                } else {
+                    f.delete();
+                }
+            }
+        }
+        folder.delete();
     }
 
     @Override

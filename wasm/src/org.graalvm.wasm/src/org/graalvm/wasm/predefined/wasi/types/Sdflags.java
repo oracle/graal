@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2019, 2021, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2021, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -38,30 +38,20 @@
  * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
  * SOFTWARE.
  */
-package org.graalvm.wasm.predefined.wasi;
 
-import com.oracle.truffle.api.frame.VirtualFrame;
-import org.graalvm.wasm.WasmContext;
-import org.graalvm.wasm.WasmInstance;
-import org.graalvm.wasm.WasmLanguage;
-import org.graalvm.wasm.exception.WasmExit;
-import org.graalvm.wasm.predefined.WasmBuiltinRootNode;
+/*
+ * This file has been automatically generated from wasi_snapshot_preview1.witx.
+ */
 
-public final class WasiProcExitNode extends WasmBuiltinRootNode {
+package org.graalvm.wasm.predefined.wasi.types;
 
-    public WasiProcExitNode(WasmLanguage language, WasmInstance module) {
-        super(language, module);
-    }
+/** Which channels on a socket to shut down. */
+public enum Sdflags {
 
-    @Override
-    public Object executeWithContext(VirtualFrame frame, WasmContext context) {
-        final int exitCode = (int) frame.getArguments()[0];
-        throw new WasmExit(this, exitCode);
-    }
+    /** 0: Disables further receive operations. */
+    Rd,
 
-    @Override
-    public String builtinNodeName() {
-        return "__wasi_proc_exit";
-    }
+    /** 1: Disables further send operations. */
+    Wr
 
 }

@@ -38,17 +38,17 @@
 # OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 # SOFTWARE.
 #
-import mx
-import mx_benchmark
-import mx_sdk_vm
-import mx_wasm_benchmark  # pylint: disable=unused-import
-
 import os
 import shutil
 import stat
-
 from argparse import ArgumentParser
 from collections import defaultdict
+
+import mx
+import mx_benchmark
+import mx_sdk_vm
+# noinspection PyUnresolvedReferences
+import mx_wasm_benchmark  # pylint: disable=unused-import
 from mx_gate import Task, add_gate_runner
 from mx_unittest import unittest
 
@@ -370,6 +370,10 @@ class EmscriptenBuildTask(GraalWasmBuildTask):
             emcc_flags = emcc_flags + ["-s", "EXPORTED_FUNCTIONS=" + str(self.benchmark_methods()).replace("'", "\"") + ""]
         subdir_program_names = defaultdict(lambda: [])
         for root, filename in self.subject.getProgramSources():
+            if filename.startswith("_"):
+                # Ignore files starting with an underscore
+                continue
+
             subdir = os.path.relpath(root, self.subject.getSourceDir())
             mx.ensure_dir_exists(os.path.join(output_dir, subdir))
 
@@ -517,7 +521,7 @@ def emscripten_init(args):
 
 
 @mx.command(_suite.name, "wasm")
-def wasm(args):
+def wasm(args, **kwargs):
     """Run a WebAssembly program."""
     mx.get_opts().jdk = "jvmci"
     vmArgs, wasmArgs = mx.extract_VM_args(args, True)
@@ -526,4 +530,4 @@ def wasm(args):
         "org.graalvm.wasm",
         "org.graalvm.wasm.launcher",
     ] + (['tools:CHROMEINSPECTOR', 'tools:TRUFFLE_PROFILER', 'tools:AGENTSCRIPT'] if mx.suite('tools', fatalIfMissing=False) is not None else []))
-    mx.run_java(vmArgs + path_args + ["org.graalvm.wasm.launcher.WasmLauncher"] + wasmArgs)
+    return mx.run_java(vmArgs + path_args + ["org.graalvm.wasm.launcher.WasmLauncher"] + wasmArgs, **kwargs)

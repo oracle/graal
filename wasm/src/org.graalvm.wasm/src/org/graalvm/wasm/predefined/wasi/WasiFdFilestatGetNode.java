@@ -40,28 +40,39 @@
  */
 package org.graalvm.wasm.predefined.wasi;
 
+import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.frame.VirtualFrame;
 import org.graalvm.wasm.WasmContext;
 import org.graalvm.wasm.WasmInstance;
 import org.graalvm.wasm.WasmLanguage;
-import org.graalvm.wasm.exception.WasmExit;
 import org.graalvm.wasm.predefined.WasmBuiltinRootNode;
+import org.graalvm.wasm.predefined.wasi.fd.Fd;
+import org.graalvm.wasm.predefined.wasi.types.Errno;
 
-public final class WasiProcExitNode extends WasmBuiltinRootNode {
+public final class WasiFdFilestatGetNode extends WasmBuiltinRootNode {
 
-    public WasiProcExitNode(WasmLanguage language, WasmInstance module) {
+    public WasiFdFilestatGetNode(WasmLanguage language, WasmInstance module) {
         super(language, module);
     }
 
     @Override
     public Object executeWithContext(VirtualFrame frame, WasmContext context) {
-        final int exitCode = (int) frame.getArguments()[0];
-        throw new WasmExit(this, exitCode);
+        final Object[] args = frame.getArguments();
+        return fdFilestatGet(context, (int) args[0], (int) args[1]);
+    }
+
+    @TruffleBoundary
+    private int fdFilestatGet(WasmContext context, int fd, int bufferAddress) {
+        final Fd handle = context.fdManager().get(fd);
+        if (handle == null) {
+            return Errno.Badf.ordinal();
+        }
+        return handle.filestatGet(this, memory(), bufferAddress).ordinal();
     }
 
     @Override
     public String builtinNodeName() {
-        return "__wasi_proc_exit";
+        return "___wasi_fd_filestat_get";
     }
 
 }

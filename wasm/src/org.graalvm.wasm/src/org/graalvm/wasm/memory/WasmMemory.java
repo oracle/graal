@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2019, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2019, 2021, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -40,6 +40,7 @@
  */
 package org.graalvm.wasm.memory;
 
+import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.interop.InteropLibrary;
 import com.oracle.truffle.api.interop.InvalidArrayIndexException;
 import com.oracle.truffle.api.interop.TruffleObject;
@@ -49,7 +50,11 @@ import com.oracle.truffle.api.library.CachedLibrary;
 import com.oracle.truffle.api.library.ExportLibrary;
 import com.oracle.truffle.api.library.ExportMessage;
 import com.oracle.truffle.api.nodes.Node;
+import org.graalvm.wasm.collection.ByteArrayList;
 import org.graalvm.wasm.constants.Sizes;
+import org.graalvm.wasm.nodes.WasmNode;
+
+import java.nio.charset.StandardCharsets;
 
 import static com.oracle.truffle.api.CompilerDirectives.transferToInterpreter;
 import static java.lang.Math.toIntExact;
@@ -150,6 +155,87 @@ public abstract class WasmMemory implements TruffleObject {
     // Checkstyle: resume
 
     public abstract WasmMemory duplicate();
+
+    /**
+     * Reads the null-terminated UTF-8 string starting at {@code startOffset}.
+     *
+     * @param startOffset memory index of the first character
+     * @param node a node indicating the location where this read occurred in the Truffle AST. It
+     *            may be {@code null} to indicate that the location is not available.
+     * @return the read {@code String}
+     */
+    @CompilerDirectives.TruffleBoundary
+    public String readString(int startOffset, WasmNode node) {
+        ByteArrayList bytes = new ByteArrayList();
+        byte currentByte;
+        int offset = startOffset;
+
+        while ((currentByte = (byte) load_i32_8u(node, offset)) != 0) {
+            bytes.add(currentByte);
+            ++offset;
+        }
+
+        return new String(bytes.toArray(), StandardCharsets.UTF_8);
+    }
+
+    /**
+     * Reads the UTF-8 string of length {@code length} starting at {@code startOffset}.
+     *
+     * @param startOffset memory index of the first character
+     * @param length length of the UTF-8 string to read in bytes
+     * @param node a node indicating the location where this read occurred in the Truffle AST. It
+     *            may be {@code null} to indicate that the location is not available.
+     * @return the read {@code String}
+     */
+    @CompilerDirectives.TruffleBoundary
+    public final String readString(int startOffset, int length, Node node) {
+        ByteArrayList bytes = new ByteArrayList();
+
+        for (int i = 0; i < length; ++i) {
+            bytes.add((byte) load_i32_8u(node, startOffset + i));
+        }
+
+        return new String(bytes.toArray(), StandardCharsets.UTF_8);
+    }
+
+    /**
+     * Writes a Java String at offset {@code offset}. The string is encoded as UTF-8 and terminated
+     * with a null character.
+     *
+     * @param node a node indicating the location where this write occurred in the Truffle AST. It
+     *            may be {@code null} to indicate that the location is not available.
+     * @param string the string to write
+     * @param offset memory index where to write the string
+     * @param length the maximum number of bytes to write, including the trailing null character
+     * @return the number of bytes written, including the trailing null character
+     */
+    @CompilerDirectives.TruffleBoundary
+    public final int writeString(Node node, String string, int offset, int length) {
+        final byte[] bytes = string.getBytes(StandardCharsets.UTF_8);
+        int i = 0;
+        for (; i < bytes.length && i < length - 1; ++i) {
+            store_i32_8(node, offset + i, bytes[i]);
+        }
+        ++i;
+        store_i32_8(node, i, (byte) 0);
+        return i;
+    }
+
+    public final int writeString(Node node, String string, int offset) {
+        return writeString(node, string, offset, Integer.MAX_VALUE);
+    }
+
+    /**
+     * Returns the number of bytes needed to write {@code string} with {@link #writeString}.
+     *
+     * @param string the string to write
+     * @return the number of bytes needed to write {@code string}, including the trailing null
+     *         character
+     */
+    @CompilerDirectives.TruffleBoundary
+    public static int encodedStringLength(String string) {
+        return string.getBytes(StandardCharsets.UTF_8).length + 1;
+    }
 
     long[] view(int address, int length) {
         long[] chunk = new long[length / 8];

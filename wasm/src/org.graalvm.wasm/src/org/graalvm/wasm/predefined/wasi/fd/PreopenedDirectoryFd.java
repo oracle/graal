@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2019, 2021, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2021, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -38,30 +38,44 @@
  * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
  * SOFTWARE.
  */
-package org.graalvm.wasm.predefined.wasi;
 
-import com.oracle.truffle.api.frame.VirtualFrame;
-import org.graalvm.wasm.WasmContext;
-import org.graalvm.wasm.WasmInstance;
-import org.graalvm.wasm.WasmLanguage;
-import org.graalvm.wasm.exception.WasmExit;
-import org.graalvm.wasm.predefined.WasmBuiltinRootNode;
+package org.graalvm.wasm.predefined.wasi.fd;
 
-public final class WasiProcExitNode extends WasmBuiltinRootNode {
+import com.oracle.truffle.api.TruffleFile;
+import com.oracle.truffle.api.nodes.Node;
+import org.graalvm.wasm.memory.WasmMemory;
+import org.graalvm.wasm.predefined.wasi.types.Errno;
+import org.graalvm.wasm.predefined.wasi.types.Rights;
 
-    public WasiProcExitNode(WasmLanguage language, WasmInstance module) {
-        super(language, module);
+import static org.graalvm.wasm.predefined.wasi.FlagUtils.allFlagsSet;
+
+/**
+ * File descriptor representing a pre-opened directory.
+ */
+final class PreopenedDirectoryFd extends DirectoryFd {
+
+    private static final long FS_RIGHTS_BASE = allFlagsSet(Rights.class);
+    private static final long FS_RIGHTS_INHERITING = FS_RIGHTS_BASE;
+    private static final short FS_FLAGS = 0;
+
+    private final String virtualPath;
+
+    PreopenedDirectoryFd(FdManager fdManager, TruffleFile hostFile, TruffleFile virtualFile) {
+        super(fdManager, virtualFile, new PreopenedDirectory(hostFile, virtualFile), FS_RIGHTS_BASE, FS_RIGHTS_INHERITING, FS_FLAGS);
+        virtualPath = virtualFile.getPath();
     }
 
     @Override
-    public Object executeWithContext(VirtualFrame frame, WasmContext context) {
-        final int exitCode = (int) frame.getArguments()[0];
-        throw new WasmExit(this, exitCode);
+    public Errno prestatGet(Node node, WasmMemory memory, int resultAddress) {
+        memory.store_i32_8(node, resultAddress, (byte) 0);
+        memory.store_i32(node, resultAddress + 4, WasmMemory.encodedStringLength(virtualPath));
+        return Errno.Success;
     }
 
     @Override
-    public String builtinNodeName() {
-        return "__wasi_proc_exit";
+    public Errno prestatDirName(Node node, WasmMemory memory, int pathAddress, int pathLength) {
+        memory.writeString(node, virtualPath, pathAddress, pathLength);
+        return Errno.Success;
     }
 
 }

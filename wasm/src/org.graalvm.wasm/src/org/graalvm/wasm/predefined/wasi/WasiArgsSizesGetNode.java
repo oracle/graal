@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2019, 2020, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2019, 2021, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -40,40 +40,44 @@
  */
 package org.graalvm.wasm.predefined.wasi;
 
+import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
+import com.oracle.truffle.api.frame.VirtualFrame;
 import org.graalvm.wasm.WasmContext;
-import org.graalvm.wasm.WasmLanguage;
 import org.graalvm.wasm.WasmInstance;
+import org.graalvm.wasm.WasmLanguage;
 import org.graalvm.wasm.memory.WasmMemory;
 import org.graalvm.wasm.predefined.WasmBuiltinRootNode;
+import org.graalvm.wasm.predefined.wasi.types.Errno;
 
-import com.oracle.truffle.api.frame.VirtualFrame;
+public final class WasiArgsSizesGetNode extends WasmBuiltinRootNode {
 
-public class WasiArgsSizesGetNode extends WasmBuiltinRootNode {
     public WasiArgsSizesGetNode(WasmLanguage language, WasmInstance module) {
         super(language, module);
     }
 
     @Override
     public Object executeWithContext(VirtualFrame frame, WasmContext context) {
-        WasmMemory memory = instance.memory();
-        int argcAddress = (int) frame.getArguments()[0];
-        int argvBufSizeAddress = (int) frame.getArguments()[1];
+        final Object[] args = frame.getArguments();
+        return argsSizesGet((int) args[0], (int) args[1]);
+    }
 
+    @TruffleBoundary
+    private int argsSizesGet(int argcAddress, int argvBufSizeAddress) {
         final String[] arguments = contextReference().get().environment().getApplicationArguments();
         final int argc = arguments.length;
         int argvBufSize = 0;
-        for (String argument : arguments) {
-            argvBufSize += argument.length() + 1;
+        for (final String argument : arguments) {
+            argvBufSize += WasmMemory.encodedStringLength(argument);
         }
 
-        memory.store_i32(this, argcAddress, argc);
-        memory.store_i32(this, argvBufSizeAddress, argvBufSize);
-
-        return 0;
+        memory().store_i32(this, argcAddress, argc);
+        memory().store_i32(this, argvBufSizeAddress, argvBufSize);
+        return Errno.Success.ordinal();
     }
 
     @Override
     public String builtinNodeName() {
         return "__wasi_args_sizes_get";
     }
+
 }

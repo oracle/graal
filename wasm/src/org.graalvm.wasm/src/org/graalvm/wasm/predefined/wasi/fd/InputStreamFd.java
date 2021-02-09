@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2019, 2021, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2021, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -38,30 +38,44 @@
  * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
  * SOFTWARE.
  */
-package org.graalvm.wasm.predefined.wasi;
 
-import com.oracle.truffle.api.frame.VirtualFrame;
-import org.graalvm.wasm.WasmContext;
-import org.graalvm.wasm.WasmInstance;
-import org.graalvm.wasm.WasmLanguage;
-import org.graalvm.wasm.exception.WasmExit;
-import org.graalvm.wasm.predefined.WasmBuiltinRootNode;
+package org.graalvm.wasm.predefined.wasi.fd;
 
-public final class WasiProcExitNode extends WasmBuiltinRootNode {
+import com.oracle.truffle.api.nodes.Node;
+import org.graalvm.wasm.memory.WasmMemory;
+import org.graalvm.wasm.predefined.wasi.types.Errno;
+import org.graalvm.wasm.predefined.wasi.types.Fdflags;
+import org.graalvm.wasm.predefined.wasi.types.Filetype;
+import org.graalvm.wasm.predefined.wasi.types.Rights;
 
-    public WasiProcExitNode(WasmLanguage language, WasmInstance module) {
-        super(language, module);
+import java.io.InputStream;
+
+import static org.graalvm.wasm.predefined.wasi.FlagUtils.flags;
+import static org.graalvm.wasm.predefined.wasi.FlagUtils.flagsShort;
+import static org.graalvm.wasm.predefined.wasi.FlagUtils.isSet;
+
+/**
+ * File descriptor wrapping an {@link InputStream}.
+ */
+final class InputStreamFd extends Fd {
+
+    private static final long FS_RIGHTS_BASE = flags(Rights.FdRead);
+    private static final long FS_RIGHTS_INHERITING = 0;
+    private static final short FS_FLAGS = flagsShort(Fdflags.Append);
+
+    private final InputStream inputStream;
+
+    InputStreamFd(InputStream inputStream) {
+        super(Filetype.CharacterDevice, FS_RIGHTS_BASE, FS_RIGHTS_INHERITING, FS_FLAGS);
+        this.inputStream = inputStream;
     }
 
     @Override
-    public Object executeWithContext(VirtualFrame frame, WasmContext context) {
-        final int exitCode = (int) frame.getArguments()[0];
-        throw new WasmExit(this, exitCode);
-    }
-
-    @Override
-    public String builtinNodeName() {
-        return "__wasi_proc_exit";
+    public Errno read(Node node, WasmMemory memory, int iovecArrayAddress, int iovecCount, int sizeAddress) {
+        if (!isSet(fsRightsBase, Rights.FdRead)) {
+            return Errno.Notcapable;
+        }
+        return FdUtils.readFromStream(node, memory, inputStream, iovecArrayAddress, iovecCount, sizeAddress);
     }
 
 }

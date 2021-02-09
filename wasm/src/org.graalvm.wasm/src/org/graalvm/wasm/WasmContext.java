@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2019, 2020, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2019, 2021, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -44,6 +44,7 @@ import com.oracle.truffle.api.TruffleLanguage.Env;
 import org.graalvm.wasm.exception.Failure;
 import org.graalvm.wasm.exception.WasmException;
 import org.graalvm.wasm.predefined.BuiltinModule;
+import org.graalvm.wasm.predefined.wasi.fd.FdManager;
 
 import java.util.LinkedHashMap;
 import java.util.Map;
@@ -57,6 +58,7 @@ public final class WasmContext {
     private final Linker linker;
     private final Map<String, WasmInstance> moduleInstances;
     private int moduleNameCount;
+    private final FdManager filesManager;
 
     public static WasmContext getCurrent() {
         return WasmLanguage.getCurrentContext();
@@ -71,6 +73,7 @@ public final class WasmContext {
         this.moduleInstances = new LinkedHashMap<>();
         this.linker = new Linker();
         this.moduleNameCount = 0;
+        filesManager = new FdManager(env);
         instantiateBuiltinInstances();
     }
 
@@ -101,6 +104,10 @@ public final class WasmContext {
     @SuppressWarnings("unused")
     public Object getScope() {
         return new WasmScope(moduleInstances);
+    }
+
+    public FdManager fdManager() {
+        return filesManager;
     }
 
     /**

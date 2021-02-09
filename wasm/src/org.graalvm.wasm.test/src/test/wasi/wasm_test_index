@@ -1,3 +1,5 @@
 args-get
 args-sizes-get
 proc-exit
+environ-get
+environ-sizes-get

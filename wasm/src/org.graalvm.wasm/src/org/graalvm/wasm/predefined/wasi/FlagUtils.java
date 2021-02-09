@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2019, 2021, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2021, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -38,30 +38,59 @@
  * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
  * SOFTWARE.
  */
+
 package org.graalvm.wasm.predefined.wasi;
 
-import com.oracle.truffle.api.frame.VirtualFrame;
-import org.graalvm.wasm.WasmContext;
-import org.graalvm.wasm.WasmInstance;
-import org.graalvm.wasm.WasmLanguage;
-import org.graalvm.wasm.exception.WasmExit;
-import org.graalvm.wasm.predefined.WasmBuiltinRootNode;
+public final class FlagUtils {
 
-public final class WasiProcExitNode extends WasmBuiltinRootNode {
-
-    public WasiProcExitNode(WasmLanguage language, WasmInstance module) {
-        super(language, module);
+    public static short set(short value, Enum<?> e) {
+        assert e.getClass().getEnumConstants().length < Short.SIZE;
+        return (short) set((long) value, e);
     }
 
-    @Override
-    public Object executeWithContext(VirtualFrame frame, WasmContext context) {
-        final int exitCode = (int) frame.getArguments()[0];
-        throw new WasmExit(this, exitCode);
+    public static long set(long value, Enum<?> e) {
+        return value | (1L << e.ordinal());
     }
 
-    @Override
-    public String builtinNodeName() {
-        return "__wasi_proc_exit";
+    public static boolean isSet(short value, Enum<?> e) {
+        return isSet((long) value, e);
+    }
+
+    public static boolean isSet(long value, Enum<?> e) {
+        return (value & (1L << e.ordinal())) != 0;
+    }
+
+    public static short remove(short value, Enum<?> e) {
+        assert e.getClass().getEnumConstants().length < Short.SIZE;
+        return (short) remove((long) value, e);
+    }
+
+    public static long remove(long value, Enum<?> e) {
+        return value & ~(1L << e.ordinal());
+    }
+
+    public static boolean isSubsetOf(long a, long b) {
+        return (a & b) == a;
+    }
+
+    @SafeVarargs
+    @SuppressWarnings("varargs")
+    public static <E extends Enum<E>> short flagsShort(Enum<E>... flagsSet) {
+        assert flagsSet.length == 0 || flagsSet[0].getClass().getEnumConstants().length < Short.SIZE;
+        return (short) flags(flagsSet);
+    }
+
+    @SafeVarargs
+    public static <E extends Enum<E>> long flags(Enum<E>... flagsSet) {
+        long result = 0;
+        for (final Enum<?> flag : flagsSet) {
+            result = set(result, flag);
+        }
+        return result;
+    }
+
+    public static <E extends Enum<E>> long allFlagsSet(Class<E> flagsEnum) {
+        return (1L << flagsEnum.getEnumConstants().length) - 1;
     }
 
 }

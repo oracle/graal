@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2019, 2021, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2021, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -38,30 +38,41 @@
  * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
  * SOFTWARE.
  */
-package org.graalvm.wasm.predefined.wasi;
 
-import com.oracle.truffle.api.frame.VirtualFrame;
-import org.graalvm.wasm.WasmContext;
-import org.graalvm.wasm.WasmInstance;
-import org.graalvm.wasm.WasmLanguage;
-import org.graalvm.wasm.exception.WasmExit;
-import org.graalvm.wasm.predefined.WasmBuiltinRootNode;
+/*
+ * This file has been automatically generated from wasi_snapshot_preview1.witx.
+ */
 
-public final class WasiProcExitNode extends WasmBuiltinRootNode {
+package org.graalvm.wasm.predefined.wasi.types;
 
-    public WasiProcExitNode(WasmLanguage language, WasmInstance module) {
-        super(language, module);
-    }
+/** The type of a file descriptor or file. */
+public enum Filetype {
 
-    @Override
-    public Object executeWithContext(VirtualFrame frame, WasmContext context) {
-        final int exitCode = (int) frame.getArguments()[0];
-        throw new WasmExit(this, exitCode);
-    }
+    /**
+     * 0: The type of the file descriptor or file is unknown or is different from any of the other
+     * types specified.
+     */
+    Unknown,
 
-    @Override
-    public String builtinNodeName() {
-        return "__wasi_proc_exit";
-    }
+    /** 1: The file descriptor or file refers to a block device inode. */
+    BlockDevice,
+
+    /** 2: The file descriptor or file refers to a character device inode. */
+    CharacterDevice,
+
+    /** 3: The file descriptor or file refers to a directory inode. */
+    Directory,
+
+    /** 4: The file descriptor or file refers to a regular file inode. */
+    RegularFile,
+
+    /** 5: The file descriptor or file refers to a datagram socket. */
+    SocketDgram,
+
+    /** 6: The file descriptor or file refers to a byte-stream socket. */
+    SocketStream,
+
+    /** 7: The file refers to a symbolic link inode. */
+    SymbolicLink
 
 }

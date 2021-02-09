@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2019, 2021, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2021, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -38,30 +38,30 @@
  * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
  * SOFTWARE.
  */
-package org.graalvm.wasm.predefined.wasi;
 
-import com.oracle.truffle.api.frame.VirtualFrame;
-import org.graalvm.wasm.WasmContext;
-import org.graalvm.wasm.WasmInstance;
-import org.graalvm.wasm.WasmLanguage;
-import org.graalvm.wasm.exception.WasmExit;
-import org.graalvm.wasm.predefined.WasmBuiltinRootNode;
+/*
+ * This file has been automatically generated from wasi_snapshot_preview1.witx.
+ */
 
-public final class WasiProcExitNode extends WasmBuiltinRootNode {
+package org.graalvm.wasm.predefined.wasi.types;
 
-    public WasiProcExitNode(WasmLanguage language, WasmInstance module) {
-        super(language, module);
-    }
+/** Identifiers for clocks. */
+public enum Clockid {
 
-    @Override
-    public Object executeWithContext(VirtualFrame frame, WasmContext context) {
-        final int exitCode = (int) frame.getArguments()[0];
-        throw new WasmExit(this, exitCode);
-    }
+    /** 0: The clock measuring real time. Time value zero corresponds with 1970-01-01T00:00:00Z. */
+    Realtime,
 
-    @Override
-    public String builtinNodeName() {
-        return "__wasi_proc_exit";
-    }
+    /**
+     * 1: The store-wide monotonic clock, which is defined as a clock measuring real time, whose
+     * value cannot be adjusted and which cannot have negative clock jumps. The epoch of this clock
+     * is undefined. The absolute time value of this clock therefore has no meaning.
+     */
+    Monotonic,
+
+    /** 2: The CPU-time clock associated with the current process. */
+    ProcessCputimeId,
+
+    /** 3: The CPU-time clock associated with the current thread. */
+    ThreadCputimeId
 
 }
