@@ -363,6 +363,10 @@ public final class Method extends Member<Signature> implements TruffleObject, Co
         return getMethodVersion().getCallTargetNoInit();
     }
 
+    public CallTarget getCallTargetNoSubstitution() {
+        return getMethodVersion().getCallTargetNoSubstitution();
+    }
+
     public boolean usesMonitors() {
         if (usesMonitors != -1) {
             return usesMonitors != 0;
@@ -1071,14 +1075,18 @@ public final class Method extends Member<Signature> implements TruffleObject, Co
         }
 
         public CallTarget getCallTarget() {
-            return getCallTarget(true);
+            return getCallTarget(true, false);
         }
 
         public CallTarget getCallTargetNoInit() {
-            return getCallTarget(false);
+            return getCallTarget(false, false);
         }
 
-        public CallTarget getCallTarget(boolean initKlass) {
+        public CallTarget getCallTargetNoSubstitution() {
+            return getCallTarget(true, true);
+        }
+
+        private CallTarget getCallTarget(boolean initKlass, boolean noSubstitution) {
             if (callTarget == null) {
                 CompilerDirectives.transferToInterpreterAndInvalidate();
                 Meta meta = getMeta();
@@ -1118,9 +1126,11 @@ public final class Method extends Member<Signature> implements TruffleObject, Co
                      * apply for classes/methods in the boot or platform class loaders. A warning is
                      * logged is the validation fails.
                      */
-                    EspressoRootNode redirectedMethod = getSubstitutions().get(getMethod());
-                    if (redirectedMethod != null) {
-                        callTarget = Truffle.getRuntime().createCallTarget(redirectedMethod);
+                    if (!noSubstitution) {
+                        EspressoRootNode redirectedMethod = getSubstitutions().get(getMethod());
+                        if (redirectedMethod != null) {
+                            callTarget = Truffle.getRuntime().createCallTarget(redirectedMethod);
+                        }
                     }
 
                     if (callTarget == null) {

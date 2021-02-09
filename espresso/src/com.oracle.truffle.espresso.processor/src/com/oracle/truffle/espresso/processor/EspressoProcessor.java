@@ -684,7 +684,7 @@ public abstract class EspressoProcessor extends AbstractProcessor {
         StringBuilder str = new StringBuilder();
         for (String call : guestCalls) {
             str.append("\n").append(TAB_2).append(call).append(" = ").append(DIRECT_CALL_NODE).append(".").append(CREATE).append("(");
-            str.append(META_VAR).append(".").append(call).append(".").append("getCallTarget").append("());");
+            str.append(META_VAR).append(".").append(call).append(".").append("getCallTargetNoSubstitution").append("());");
         }
         return str.toString();
     }
