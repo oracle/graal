@@ -43,6 +43,7 @@ package org.graalvm.wasm.predefined.wasi.fd;
 
 import com.oracle.truffle.api.TruffleFile;
 import com.oracle.truffle.api.nodes.Node;
+import org.graalvm.polyglot.io.FileSystem;
 import org.graalvm.wasm.memory.WasmMemory;
 import org.graalvm.wasm.predefined.wasi.types.Errno;
 import org.graalvm.wasm.predefined.wasi.types.Fdflags;
@@ -51,8 +52,10 @@ import org.graalvm.wasm.predefined.wasi.types.Oflags;
 import org.graalvm.wasm.predefined.wasi.types.Rights;
 
 import java.io.IOException;
+import java.nio.file.FileAlreadyExistsException;
 import java.nio.file.OpenOption;
 import java.nio.file.StandardOpenOption;
+import java.nio.file.attribute.FileAttribute;
 import java.util.LinkedHashSet;
 import java.util.Set;
 
@@ -66,6 +69,16 @@ class FileFd extends SeekableByteChannelFd {
     private final TruffleFile file;
     private final short oflags;
 
+    /**
+     * @throws FileAlreadyExistsException if {@link StandardOpenOption#CREATE_NEW} option is set and
+     *             a file already exists on given path
+     * @throws IOException in case of IO error
+     * @throws UnsupportedOperationException if the attributes contain an attribute which cannot be
+     *             set atomically
+     * @throws IllegalArgumentException in case of invalid options combination
+     * @throws SecurityException if the {@link FileSystem} denied the operation
+     * @see TruffleFile#newByteChannel(Set, FileAttribute[])
+     */
     FileFd(TruffleFile file, short oflags, long fsRightsBase, long fsRightsInheriting, short fdFlags) throws IOException {
         super(file.newByteChannel(parseOptions(oflags, fdFlags)), Filetype.RegularFile, fsRightsBase, fsRightsInheriting, fdFlags);
         this.file = file;
@@ -75,6 +88,9 @@ class FileFd extends SeekableByteChannelFd {
     private static Set<? extends OpenOption> parseOptions(short oflags, short fdFlags) {
         final Set<OpenOption> openOptions = new LinkedHashSet<>();
 
+        // In WASI, the file access mode (read vs. write) is not specified when opening a file.
+        // Therefore, we set both READ and WRITE so that the opened file can be used for both
+        // reading and writing.
         openOptions.add(StandardOpenOption.READ);
         openOptions.add(StandardOpenOption.WRITE);
         if (isSet(oflags, Oflags.Creat)) {
@@ -90,6 +106,17 @@ class FileFd extends SeekableByteChannelFd {
 
         if (isSet(fdFlags, Fdflags.Append)) {
             openOptions.add(StandardOpenOption.APPEND);
+            // If TRUNCATE_EXISTING is already set, the creation of the ByteChannel will throw an
+            // IllegalArgumentException, which will be caught in DirectoryFd#pathOpen and converted
+            // to the IO error number.
+
+            // GR-29268: Java NIO does not allow setting both APPEND and READ flags. Therefore, we
+            // remove the READ flag if APPEND is set. The effect is that reading will result in an
+            // error if the APPEND flag is set. It seems however that there is nothing in WASI or
+            // POSIX preventing from reading from a file descriptor opened with the APPEND flag, so
+            // this might be a bug.
+            // TODO: check what is the behavior in other Wasm engines and POSIX, and fix if needed.
+            openOptions.remove(StandardOpenOption.READ);
         }
         if (isSet(fdFlags, Fdflags.Dsync)) {
             openOptions.add(StandardOpenOption.DSYNC);
