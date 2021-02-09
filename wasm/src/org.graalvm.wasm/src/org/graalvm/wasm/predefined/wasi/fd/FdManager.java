@@ -71,9 +71,10 @@ public final class FdManager implements Closeable {
 
         int fd = 3;
         for (final String dir : preopenedDirs.split(",")) {
-            final String[] parts = dir.split(":");
+            final String[] parts = dir.split("::", 2);
             if (parts.length > 2) {
-                throw WasmException.create(Failure.INVALID_WASI_DIRECTORIES_MAPPING, String.format("Wasi directory map '%s' is not valid.", dir));
+                throw WasmException.create(Failure.INVALID_WASI_DIRECTORIES_MAPPING,
+                                String.format("Wasi directory map '%s' is not valid. Syntax: --WasiMapDirs <virtual_path>::<host_path>, or --WasiMapDirs <host_path>", dir));
             }
             final String virtualDirPath = parts[0];
             final String hostDirPath = parts.length == 2 ? parts[1] : parts[0];

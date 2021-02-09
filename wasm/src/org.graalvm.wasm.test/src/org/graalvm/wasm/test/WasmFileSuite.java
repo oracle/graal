@@ -303,7 +303,7 @@ public abstract class WasmFileSuite extends AbstractWasmSuite {
                 contextBuilder.allowIO(true);
                 tempWorkingDirectory = Files.createTempDirectory("graalwasm-io-test");
                 contextBuilder.currentWorkingDirectory(tempWorkingDirectory);
-                contextBuilder.option("wasm.WasiMapDirs", "test:" + tempWorkingDirectory);
+                contextBuilder.option("wasm.WasiMapDirs", "test::" + tempWorkingDirectory);
 
                 // Create a file "file.txt" containing "Hello Graal! [rocket emoji]" in the
                 // temporary test directory
