@@ -405,13 +405,13 @@ public final class Meta implements ContextAccess {
         // References
         java_lang_ref_Reference = knownKlass(Type.java_lang_ref_Reference);
         java_lang_ref_Reference_referent = java_lang_ref_Reference.lookupDeclaredField(Name.referent, Type.java_lang_Object);
+        java_lang_ref_Reference_enqueue = java_lang_ref_Reference.lookupDeclaredMethod(Name.enqueue, Signature._boolean);
 
         java_lang_ref_Reference_discovered = java_lang_ref_Reference.lookupDeclaredField(Name.discovered, Type.java_lang_ref_Reference);
         java_lang_ref_Reference_next = java_lang_ref_Reference.lookupDeclaredField(Name.next, Type.java_lang_ref_Reference);
         java_lang_ref_Reference_queue = java_lang_ref_Reference.lookupDeclaredField(Name.queue, Type.java_lang_ref_ReferenceQueue);
         java_lang_ref_ReferenceQueue = knownKlass(Type.java_lang_ref_ReferenceQueue);
         java_lang_ref_ReferenceQueue_NULL = java_lang_ref_ReferenceQueue.lookupDeclaredField(Name.NULL, Type.java_lang_ref_ReferenceQueue);
-        java_lang_ref_ReferenceQueue_enqueue = java_lang_ref_ReferenceQueue.lookupDeclaredMethod(Name.enqueue, Signature._boolean_Reference);
 
         java_lang_ref_WeakReference = knownKlass(Type.java_lang_ref_WeakReference);
         java_lang_ref_SoftReference = knownKlass(Type.java_lang_ref_SoftReference);
@@ -954,6 +954,7 @@ public final class Meta implements ContextAccess {
     public final Field java_lang_ref_Reference_next;
     public final Field java_lang_ref_Reference_queue;
     public final Field java_lang_ref_Reference_lock;
+    public final Method java_lang_ref_Reference_enqueue;
     public final ObjectKlass java_lang_ref_WeakReference;
     public final ObjectKlass java_lang_ref_SoftReference;
     public final ObjectKlass java_lang_ref_PhantomReference;
@@ -963,7 +964,6 @@ public final class Meta implements ContextAccess {
     public final Field HIDDEN_HOST_REFERENCE;
 
     public final ObjectKlass java_lang_ref_ReferenceQueue;
-    public final Method java_lang_ref_ReferenceQueue_enqueue;
     public final Field java_lang_ref_ReferenceQueue_NULL;
     public final Method sun_reflect_Reflection_getCallerClass;
 
