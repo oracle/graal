@@ -92,7 +92,6 @@ public final class TRegexBacktrackingNFAExecutorLocals extends TRegexExecutorLoc
                         BitSets.createBitSetArray(maxNTransitions));
         setIndex(fromIndex);
         clearCaptureGroups();
-        clearZeroWidthQuantifierCG();
     }
 
     private TRegexBacktrackingNFAExecutorLocals(Object input, int fromIndex, int index, int maxIndex, int nCaptureGroups, int nQuantifiers, int nZeroWidthQuantifiers, Stack stack, int stackBase,
@@ -184,10 +183,6 @@ public final class TRegexBacktrackingNFAExecutorLocals extends TRegexExecutorLoc
 
     protected void clearQuantifierCounts() {
         Arrays.fill(stack(), offsetQuantifierCounts(), offsetQuantifierCounts() + nQuantifierCounts, 0);
-    }
-
-    protected void clearZeroWidthQuantifierCG() {
-        Arrays.fill(stack(), offsetZeroWidthQuantifierCG(), offsetZeroWidthQuantifierCG() + result.length * nZeroWidthQuantifiers, -1);
     }
 
     public void push() {

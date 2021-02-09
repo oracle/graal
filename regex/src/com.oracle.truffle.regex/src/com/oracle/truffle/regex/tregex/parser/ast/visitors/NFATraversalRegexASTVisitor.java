@@ -597,6 +597,17 @@ public abstract class NFATraversalRegexASTVisitor {
                         insideEmptyGuardGroup.remove(group);
                     }
                 } else if (ast.getOptions().getFlavor() == RubyFlavor.INSTANCE && pathIsGroupExit(lastVisited) && group.hasQuantifier() && group.getQuantifier().hasZeroWidthIndex()) {
+                    // In Ruby, when we finish an iteration of a loop, there is an empty check.
+                    // If we pass the empty check, we return to the beginning of the loop where we
+                    // get to make a non-deterministic choice as to whether we want to start another
+                    // iteration of the loop (so far the same as ECMAScript). However, if we fail
+                    // the empty check, we continue to the expression that follows the loop. We
+                    // implement this by introducing two transitions, one leading to the start of
+                    // the loop (empty check passes) and one escaping past the loop (empty check
+                    // fails). The two transitions are then annotated with complementary guards
+                    // (exitZeroWidth and escapeZeroWidth, respectively), so that at runtime, only
+                    // one of the two transitions will be admissible. The clause below lets us
+                    // generate the second transition by replacing the loop exit with a loop escape.
                     curPath.add(pathToGroupRubyEscape(lastVisited));
                     if (advanceTerm(group)) {
                         return true;

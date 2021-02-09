@@ -518,9 +518,9 @@ public final class RegexParser {
             toExpand.getParent().asSequence().replace(toExpand.getSeqIndex(), createGroup(null, false, false, false, null));
         }
         // unroll optional part ( x{0,3} -> (x(x(x|)|)|) )
-        // In Ruby, the first optional expansion of the term does not have an empty guard. The
-        // expansion might capture an empty string inside a capture group and we need to
-        // preserve that capture in Ruby.
+        // In Ruby, loops are repeated until a fixed point in the observable state is reached.
+        // We can simulate this by dropping empty guards in small bounded loops, such as is the
+        // case for unrolled loops.
         createOptional(toExpand, quantifier, unroll && quantifier.getMin() > 0, unroll, !unroll || quantifier.isInfiniteLoop() ? 0 : (quantifier.getMax() - quantifier.getMin()) - 1,
                         source.getOptions().getFlavor() != RubyFlavor.INSTANCE);
         if (!unroll || quantifier.isInfiniteLoop()) {

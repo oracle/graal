@@ -41,8 +41,10 @@
 package com.oracle.truffle.regex.tregex.parser.flavors;
 
 import com.oracle.truffle.regex.RegexSource;
+import com.oracle.truffle.regex.tregex.nfa.QuantifierGuard;
 import com.oracle.truffle.regex.tregex.nodes.nfa.TRegexBacktrackingNFAExecutorNode;
 import com.oracle.truffle.regex.tregex.parser.RegexParser;
+import com.oracle.truffle.regex.tregex.parser.Token;
 import com.oracle.truffle.regex.tregex.parser.ast.visitors.NFATraversalRegexASTVisitor;
 
 /**
@@ -188,12 +190,37 @@ import com.oracle.truffle.regex.tregex.parser.ast.visitors.NFATraversalRegexASTV
  * => #&lt;MatchData "" 1:""&gt;
  * </pre>
  * 
- * This is solved by permitting one extra iteration, even if it is empty, in Ruby regular
- * expressions. In {@link NFATraversalRegexASTVisitor}, we let NFA transitions pass through one
- * empty iteration of a loop. In {@link RegexParser}, we remove emptiness guards from the first
- * optional iteration of unrolled loops. Finally, we also disable an optimization that drops
- * zero-width groups and lookaround assertions with optional quantifiers. TODO: Update this, since
- * this solution was not sufficient.</li>
+ * This is solved by permitting one extra empty iteration of a loop when traversing the AST and
+ * generating the NFA. In the absence of backreferences, an extra empty iteration is sufficient,
+ * because any other iteration on top of that will retread the same path and have no further
+ * effects. With backreferences (or more specifically, forward references), it is possible to create
+ * situations where several empty iterations are required, sometimes even in the middle of a loop,
+ * as in the example below.
+ *
+ * <pre>
+ * irb(main):001:0> / (a|\2b|\3()|())* /x.match("aaabbb")
+ * => #&lt;MatchData "aaabbb" 1:"" 2:"" 3:""&gt;
+ * </pre>
+ *
+ * In {@link NFATraversalRegexASTVisitor}, we let NFA transitions pass through one empty iteration
+ * of a loop ({@code extraEmptyLoopIterations} in {@code NFATraversalRegexASTVisitor#doAdvance}).
+ * This generates an extra empty iteration at the end of loops and it also gives correct behavior on
+ * constructions such as the one given above, as it lets us generate transitions that use an extra
+ * empty iteration though the loop to populate some new capture group and then arrive at a new
+ * backreference node. Since a single NFA transition can now correspond to more complex paths
+ * through the AST, we also need to change the way we check the guards that the transitions are
+ * annotated with by interleaving the state changes and assertions (see the use of
+ * {@code TRegexBacktrackingNFAExecutorNode#transitionMatchesStepByStep}). We also need to implement
+ * the empty check, by verifying the state of the capture groups on top of verifying the current
+ * index (see {@code TRegexBacktrackingNFAExecutorNode#monitorCaptureGroupsInEmptyCheck}). For that,
+ * we need fine-grained information about capture group updates and so we include this information
+ * in the transition guards by {@link QuantifierGuard#createUpdateCG}.
+ *
+ * In unrolled loops, we disable empty checks altogether (in {@link RegexParser}, in the calls to
+ * {@code RegexParser#createOptional}). This is correct since Ruby's empty checks terminate a loop
+ * only when it reaches a fixed point w.r.t. to any observable state. Finally, also in
+ * {@link RegexParser}. we also disable an optimization that drops zero-width groups and lookaround
+ * assertions with optional quantifiers.</li>
  *
  * <li>failing the empty check should lead to matching the sequel of the quantified expression
  * instead of backtracking: In ECMAScript, when a loop fails the empty check (an iteration matches
@@ -209,15 +236,19 @@ import com.oracle.truffle.regex.tregex.parser.ast.visitors.NFATraversalRegexASTV
  *
  * <pre>
  * Node.js (ECMAScript)
- * > /(?:|a)* /.exec('a')
+ * > /(?:|a)?/.exec('a')
  * [ 'a', index: 0, input: 'a', groups: undefined ]
  *
  * MRI (Ruby):
- * irb(main):001:0> /(?:|a)* /.match('a')
+ * irb(main):001:0> /(?:|a)?/.match('a')
  * => #&lt;MatchData ""&gt;
  * </pre>
  *
- * TODO: Write up how we implement this.</li>
+ * We implement this in {@code NFATraversalRegexASTVisitor} by introducing two transitions whenever
+ * we leave a loop, one leading to the start of the loop (empty check passes) and one escaping past
+ * the loop (empty check fails). The two transitions are then annotated with complementary guards
+ * ({@link QuantifierGuard#createEscapeZeroWidth} and {@link QuantifierGuard#createEscapeZeroWidth},
+ * respectively), so that at runtime, only one of the two transitions will be admissible.</li>
  * </ul>
  */
 public final class RubyFlavor implements RegexFlavor {

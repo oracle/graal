@@ -83,8 +83,22 @@ public final class TRegexBacktrackingNFAExecutorNode extends TRegexExecutorNode 
     private final boolean forward;
     private final boolean ignoreCase;
     private final boolean unicode;
+    /**
+     * Should a backreference to an unmatched capture group succeed?
+     */
     private final boolean backrefWithNullTargetSucceeds;
+    /**
+     * Should the empty check in {@code exitZeroWidth} quantifier guards also check the contents of
+     * capture groups? If the capture groups were modified, the empty check passes, even if only the
+     * empty string was matched.
+     */
     private final boolean monitorCaptureGroupsInEmptyCheck;
+    /**
+     * When generating NFAs for Ruby regular expressions, the sequence of quantifier guards on a
+     * single transition can become quite complex. This necessitates evaluating the effects of each
+     * guard one by one in order to arrive at the correct answer. This flag controls whether such
+     * detailed handling of the quantifiers is to be used or not.
+     */
     private final boolean transitionMatchesStepByStep;
     private final boolean loneSurrogates;
     private final boolean loopbackInitialState;
@@ -482,6 +496,9 @@ public final class TRegexBacktrackingNFAExecutorNode extends TRegexExecutorNode 
 
     @ExplodeLoop
     protected boolean transitionMatches(TRegexBacktrackingNFAExecutorLocals locals, boolean compactString, PureNFATransition transition, int index, boolean atEnd, int c) {
+        // If transitionMatchesStepByStep is true, we will make a copy of the current stack frame
+        // and simulate the effects of the QuantifierGuards, which are usually delayed until the
+        // call to updateState.
         TRegexBacktrackingNFAExecutorLocals localsForMatching = transitionMatchesStepByStep ? locals.createSubNFALocals() : locals;
         PureNFAState target = transition.getTarget(isForward());
         CompilerDirectives.isPartialEvaluationConstant(target);
@@ -500,6 +517,8 @@ public final class TRegexBacktrackingNFAExecutorNode extends TRegexExecutorNode 
             switch (isForward() ? guard.getKind() : guard.getKindReverse()) {
                 case enter:
                 case loopInc:
+                    // If transitionMatchesStepByStep is true, we invoke the same logic that is
+                    // later executed in updateState.
                     if (transitionMatchesStepByStep) {
                         localsForMatching.incQuantifierCount(q);
                     }
