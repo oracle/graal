@@ -377,7 +377,6 @@ public final class InterpreterToVM implements ContextAccess {
             }
             Target_java_lang_Thread.toRunnable(thread, meta, Target_java_lang_Thread.State.RUNNABLE);
         }
-        context.getJDWPListener().onMonitorEnter(obj);
     }
 
     public static void monitorExit(@Host(Object.class) StaticObject obj, Meta meta) {
@@ -388,7 +387,6 @@ public final class InterpreterToVM implements ContextAccess {
             throw Meta.throwException(meta.java_lang_IllegalMonitorStateException);
         }
         monitorUnsafeExit(lock);
-        meta.getContext().getJDWPListener().onMonitorExit(obj);
     }
 
     // endregion

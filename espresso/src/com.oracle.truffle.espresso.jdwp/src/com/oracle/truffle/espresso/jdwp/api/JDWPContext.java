@@ -22,12 +22,12 @@
  */
 package com.oracle.truffle.espresso.jdwp.api;
 
+import java.nio.file.Path;
+import java.util.List;
+
 import com.oracle.truffle.api.TruffleLanguage;
 import com.oracle.truffle.api.frame.Frame;
 import com.oracle.truffle.api.nodes.RootNode;
-
-import java.nio.file.Path;
-import java.util.List;
 
 /**
  * Interface that defines required methods for a guest language when implementing JDWP.
@@ -426,6 +426,14 @@ public interface JDWPContext {
     Object getMonitorOwnerThread(Object monitor);
 
     /**
+     * Returns the entry count for the monitor on the current thread.
+     *
+     * @param monitor the monitor
+     * @return entry count of monitor
+     */
+    int getMonitorEntryCount(Object monitor);
+
+    /**
      * Returns all owned guest-language monitor object of the input call frames.
      *
      * @param callFrames the current call frames
@@ -461,6 +469,7 @@ public interface JDWPContext {
 
     /**
      * Exit all monitors that was entered by the frame.
+     * 
      * @param frame
      */
     void clearFrameMonitors(CallFrame frame);

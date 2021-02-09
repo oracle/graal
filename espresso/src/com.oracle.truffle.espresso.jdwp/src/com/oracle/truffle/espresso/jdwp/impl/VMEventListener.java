@@ -88,8 +88,4 @@ public interface VMEventListener extends VMListener {
     void holdEvents();
 
     void releaseEvents();
-
-    MonitorInfo getMonitorInfo(Object guestThread, Object monitor);
-
-    void sendInitialThreadStartedEvents();
 }

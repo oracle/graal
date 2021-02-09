@@ -22,6 +22,16 @@
  */
 package com.oracle.truffle.espresso.jdwp.impl;
 
+import java.util.ArrayList;
+import java.util.Collections;
+import java.util.HashMap;
+import java.util.HashSet;
+import java.util.LinkedList;
+import java.util.List;
+import java.util.Map;
+import java.util.concurrent.Callable;
+import java.util.regex.Pattern;
+
 import com.oracle.truffle.api.CallTarget;
 import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.RootCallTarget;
@@ -50,16 +60,7 @@ import com.oracle.truffle.espresso.jdwp.api.JDWPContext;
 import com.oracle.truffle.espresso.jdwp.api.JDWPOptions;
 import com.oracle.truffle.espresso.jdwp.api.KlassRef;
 import com.oracle.truffle.espresso.jdwp.api.MethodRef;
-
-import java.util.ArrayList;
-import java.util.Collections;
-import java.util.HashMap;
-import java.util.HashSet;
-import java.util.LinkedList;
-import java.util.List;
-import java.util.Map;
-import java.util.concurrent.Callable;
-import java.util.regex.Pattern;
+import com.oracle.truffle.espresso.jdwp.api.MonitorStackInfo;
 
 public final class DebuggerController implements ContextsListener {
 
@@ -739,12 +740,22 @@ public final class DebuggerController implements ContextsListener {
                 if (codeIndex > lastLineBCI) {
                     codeIndex = lastLineBCI;
                 }
-                callFrames.add(new CallFrame(context.getIds().getIdAsLong(guestThread), typeTag, klassId, method, methodId, codeIndex, frame, root, instrument.getEnv(), null, context.getLanguageClass()));
+                callFrames.add(new CallFrame(context.getIds().getIdAsLong(guestThread), typeTag, klassId, method, methodId, codeIndex, frame, root, instrument.getEnv(), null,
+                                context.getLanguageClass()));
                 return null;
             }
         });
         CallFrame[] result = callFrames.toArray(new CallFrame[callFrames.size()]);
-        suspendedInfos.put(guestThread, new SuspendedInfo(result, guestThread));
+
+        // collect monitor info
+        MonitorStackInfo[] ownedMonitorInfos = context.getOwnedMonitors(result);
+        HashMap<Object, Integer> entryCounts = new HashMap<>(ownedMonitorInfos.length);
+        for (MonitorStackInfo ownedMonitorInfo : ownedMonitorInfos) {
+            Object monitor = ownedMonitorInfo.getMonitor();
+            entryCounts.put(monitor, context.getMonitorEntryCount(monitor));
+        }
+
+        suspendedInfos.put(guestThread, new SuspendedInfo(context, result, guestThread, entryCounts));
         return result;
     }
 
@@ -793,7 +804,7 @@ public final class DebuggerController implements ContextsListener {
             CallFrame[] callFrames = createCallFrames(ids.getIdAsLong(currentThread), event.getStackFrames(), -1, steppingInfo);
             RootNode callerRootNode = callFrames.length > 1 ? callFrames[1].getRootNode() : null;
 
-            SuspendedInfo suspendedInfo = new SuspendedInfo(event, callFrames, currentThread, callerRootNode);
+            SuspendedInfo suspendedInfo = new SuspendedInfo(DebuggerController.this, event, callFrames, currentThread, callerRootNode);
             suspendedInfos.put(currentThread, suspendedInfo);
 
             byte suspendPolicy = SuspendStrategy.EVENT_THREAD;

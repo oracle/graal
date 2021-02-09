@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2019, 2019, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2019, 2021, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -26,9 +26,6 @@ import com.oracle.truffle.espresso.jdwp.api.FieldRef;
 import com.oracle.truffle.espresso.jdwp.api.MethodRef;
 import com.oracle.truffle.espresso.jdwp.api.VMListener;
 import com.oracle.truffle.espresso.jdwp.api.KlassRef;
-
-import java.util.Collections;
-import java.util.Set;
 
 public final class EmptyListener implements VMListener {
 
@@ -90,20 +87,5 @@ public final class EmptyListener implements VMListener {
     @Override
     public Object getCurrentContendedMonitor(Object guestThread) {
         return null;
-    }
-
-    @Override
-    public void onMonitorEnter(Object monitor) {
-
-    }
-
-    @Override
-    public void onMonitorExit(Object monitor) {
-
-    }
-
-    @Override
-    public Set<Object> getOwnedMonitors(Object guestThread) {
-        return Collections.emptySet();
     }
 }

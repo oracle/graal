@@ -25,11 +25,9 @@ package com.oracle.truffle.espresso.jdwp.impl;
 import java.lang.reflect.Modifier;
 import java.util.ArrayList;
 import java.util.Collection;
-import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
-import java.util.Set;
 import java.util.concurrent.Callable;
 import java.util.regex.Pattern;
 
@@ -69,7 +67,6 @@ public final class VMEventListenerImpl implements VMEventListener {
     private int vmStartRequestId;
     private final List<PacketStream> heldEvents = new ArrayList<>();
     private final Map<Object, Object> currentContendedMonitor = new HashMap<>();
-    private final Map<Object, Map<Object, MonitorInfo>> monitorInfos = new HashMap<>();
     private final Object initialThread;
 
     public VMEventListenerImpl(DebuggerController controller, Object initialThread) {
@@ -753,69 +750,6 @@ public final class VMEventListenerImpl implements VMEventListener {
     @Override
     public Object getCurrentContendedMonitor(Object guestThread) {
         return currentContendedMonitor.get(guestThread);
-    }
-
-    @Override
-    @TruffleBoundary
-    public void onMonitorEnter(Object monitor) {
-        Object thread = context.asGuestThread(Thread.currentThread());
-        Map<Object, MonitorInfo> monitorInfoMap = monitorInfos.get(thread);
-        if (monitorInfoMap == null) {
-            monitorInfoMap = new HashMap<>();
-            monitorInfos.put(thread, monitorInfoMap);
-        }
-        MonitorInfo monitorInfo = monitorInfoMap.get(monitor);
-        if (monitorInfo == null) {
-            monitorInfoMap.put(monitor, new MonitorInfo(1));
-        } else {
-            monitorInfo.incrementEntryCount();
-        }
-    }
-
-    @Override
-    @TruffleBoundary
-    public void onMonitorExit(Object monitor) {
-        Object thread = context.asGuestThread(Thread.currentThread());
-        Map<Object, MonitorInfo> monitorInfoMap = monitorInfos.get(thread);
-        if (monitorInfoMap == null) {
-            JDWPLogger.log("Unbalanced monitor exit detected in JDWP event listener", JDWPLogger.LogLevel.ALL);
-            return;
-        }
-        MonitorInfo monitorInfo = monitorInfoMap.get(monitor);
-        if (monitorInfo == null) {
-            JDWPLogger.log("Unbalanced monitor exit detected in JDWP", JDWPLogger.LogLevel.ALL);
-        } else {
-            if (monitorInfo.decrementEntryCount() == 0) {
-                monitorInfoMap.remove(monitor);
-                if (monitorInfoMap.isEmpty()) {
-                    monitorInfos.remove(thread);
-                }
-            }
-        }
-    }
-
-    @Override
-    public Set<Object> getOwnedMonitors(Object guestThread) {
-        if (!monitorInfos.containsKey(guestThread)) {
-            return Collections.emptySet();
-        }
-        return monitorInfos.get(guestThread).keySet();
-    }
-
-    @Override
-    public void sendInitialThreadStartedEvents() {
-        for (Object allGuestThread : context.getAllGuestThreads()) {
-            threadStarted(allGuestThread);
-        }
-    }
-
-    @Override
-    public MonitorInfo getMonitorInfo(Object guestThread, Object monitor) {
-        Map<Object, MonitorInfo> monitorInfoMap = monitorInfos.get(guestThread);
-        if (monitorInfoMap != null) {
-            return monitorInfoMap.get(monitor);
-        }
-        return null;
     }
 
     @Override

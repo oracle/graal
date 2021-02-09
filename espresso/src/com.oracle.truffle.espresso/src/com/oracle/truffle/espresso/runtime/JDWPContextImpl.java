@@ -605,6 +605,15 @@ public final class JDWPContextImpl implements JDWPContext {
     }
 
     @Override
+    public int getMonitorEntryCount(Object monitor) {
+        if (monitor instanceof StaticObject) {
+            EspressoLock lock = ((StaticObject) monitor).getLock();
+            return lock.getEntryCount();
+        }
+        return -1;
+    }
+
+    @Override
     public MonitorStackInfo[] getOwnedMonitors(CallFrame[] callFrames) {
         List<MonitorStackInfo> result = new ArrayList<>();
         int stackDepth = 0;
