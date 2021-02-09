@@ -1628,10 +1628,6 @@ public final class StaticObject implements TruffleObject {
 
     // Start non primitive field handling.
 
-    private static long getObjectFieldIndex(int index) {
-        return Unsafe.ARRAY_OBJECT_BASE_OFFSET + Unsafe.ARRAY_OBJECT_INDEX_SCALE * (long) index;
-    }
-
     @TruffleBoundary(allowInlining = true)
     public StaticObject getFieldVolatile(Field field) {
         checkNotForeign();
@@ -2133,6 +2129,10 @@ public final class StaticObject implements TruffleObject {
         return this.<T[]> unwrap()[index];
     }
 
+    public void putObjectUnsafe(StaticObject value, int index) {
+        UNSAFE.putObject(fields, getObjectFieldIndex(index), value);
+    }
+
     public void putObject(StaticObject value, int index, Meta meta) {
         putObject(value, index, meta, null);
     }
@@ -2155,10 +2155,6 @@ public final class StaticObject implements TruffleObject {
         }
     }
 
-    public void putObjectUnsafe(StaticObject value, int index) {
-        UNSAFE.putObject(fields, getObjectFieldIndex(index), value);
-    }
-
     private static StaticObject arrayStoreExCheck(StaticObject value, Klass componentType, Meta meta, BytecodeNode bytecodeNode) {
         if (StaticObject.isNull(value) || instanceOf(value, componentType)) {
             return value;
@@ -2167,6 +2163,48 @@ public final class StaticObject implements TruffleObject {
                 bytecodeNode.enterImplicitExceptionProfile();
             }
             throw Meta.throwException(meta.java_lang_ArrayStoreException);
+        }
+    }
+
+    public static long getObjectFieldIndex(int index) {
+        return Unsafe.ARRAY_OBJECT_BASE_OFFSET + Unsafe.ARRAY_OBJECT_INDEX_SCALE * (long) index;
+    }
+
+    public static long getByteArrayOffset(int index) {
+        return Unsafe.ARRAY_BYTE_BASE_OFFSET + Unsafe.ARRAY_BYTE_INDEX_SCALE * (long) index;
+    }
+
+    public void setArrayByte(byte value, int index, Meta meta) {
+        setArrayByte(value, index, meta, null);
+    }
+
+    public void setArrayByte(byte value, int index, Meta meta, BytecodeNode bytecodeNode) {
+        checkNotForeign();
+        assert isArray() && (fields instanceof byte[] || fields instanceof boolean[]);
+        if (index >= 0 && index < length()) {
+            UNSAFE.putByte(fields, getByteArrayOffset(index), value);
+        } else {
+            if (bytecodeNode != null) {
+                bytecodeNode.enterImplicitExceptionProfile();
+            }
+            throw Meta.throwException(meta.java_lang_ArrayIndexOutOfBoundsException);
+        }
+    }
+
+    public byte getArrayByte(int index, Meta meta) {
+        return getArrayByte(index, meta, null);
+    }
+
+    public byte getArrayByte(int index, Meta meta, BytecodeNode bytecodeNode) {
+        checkNotForeign();
+        assert isArray() && (fields instanceof byte[] || fields instanceof boolean[]);
+        if (index >= 0 && index < length()) {
+            return UNSAFE.getByte(fields, getByteArrayOffset(index));
+        } else {
+            if (bytecodeNode != null) {
+                bytecodeNode.enterImplicitExceptionProfile();
+            }
+            throw Meta.throwException(meta.java_lang_ArrayIndexOutOfBoundsException);
         }
     }
 
@@ -2278,44 +2316,6 @@ public final class StaticObject implements TruffleObject {
 
     public boolean isArray() {
         return !isNull(this) && getKlass().isArray();
-    }
-
-    public static long getArrayByteOffset(int index) {
-        return Unsafe.ARRAY_BYTE_BASE_OFFSET + Unsafe.ARRAY_BYTE_INDEX_SCALE * (long) index;
-    }
-
-    public void setArrayByte(byte value, int index, Meta meta) {
-        setArrayByte(value, index, meta, null);
-    }
-
-    public void setArrayByte(byte value, int index, Meta meta, BytecodeNode bytecodeNode) {
-        checkNotForeign();
-        assert isArray() && (fields instanceof byte[] || fields instanceof boolean[]);
-        if (index >= 0 && index < length()) {
-            UNSAFE.putByte(fields, getArrayByteOffset(index), value);
-        } else {
-            if (bytecodeNode != null) {
-                bytecodeNode.enterImplicitExceptionProfile();
-            }
-            throw Meta.throwException(meta.java_lang_ArrayIndexOutOfBoundsException);
-        }
-    }
-
-    public byte getArrayByte(int index, Meta meta) {
-        return getArrayByte(index, meta, null);
-    }
-
-    public byte getArrayByte(int index, Meta meta, BytecodeNode bytecodeNode) {
-        checkNotForeign();
-        assert isArray() && (fields instanceof byte[] || fields instanceof boolean[]);
-        if (index >= 0 && index < length()) {
-            return UNSAFE.getByte(fields, getArrayByteOffset(index));
-        } else {
-            if (bytecodeNode != null) {
-                bytecodeNode.enterImplicitExceptionProfile();
-            }
-            throw Meta.throwException(meta.java_lang_ArrayIndexOutOfBoundsException);
-        }
     }
 
     public StaticObject getAndSetObject(Field field, StaticObject value) {
