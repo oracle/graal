@@ -43,6 +43,7 @@ import org.graalvm.compiler.nodes.AbstractMergeNode;
 import org.graalvm.compiler.nodes.BeginNode;
 import org.graalvm.compiler.nodes.CallTargetNode;
 import org.graalvm.compiler.nodes.CallTargetNode.InvokeKind;
+import org.graalvm.compiler.nodes.ControlSplitNode.ProfileSource;
 import org.graalvm.compiler.nodes.DynamicPiNode;
 import org.graalvm.compiler.nodes.FixedGuardNode;
 import org.graalvm.compiler.nodes.FixedWithNextNode;
@@ -329,7 +330,7 @@ public interface GraphBuilderContext extends GraphBuilderTool {
         AbstractBeginNode trueSuccessor = passingOnTrue ? null : exceptionPath;
         AbstractBeginNode falseSuccessor = passingOnTrue ? exceptionPath : null;
         double probability = passingOnTrue ? BranchProbabilityNode.LUDICROUSLY_FAST_PATH_PROBABILITY : BranchProbabilityNode.LUDICROUSLY_SLOW_PATH_PROBABILITY;
-        IfNode ifNode = append(new IfNode(condition, trueSuccessor, falseSuccessor, probability));
+        IfNode ifNode = append(new IfNode(condition, trueSuccessor, falseSuccessor, probability, ProfileSource.INJECTED));
 
         BeginNode passingSuccessor = append(new BeginNode());
         if (passingOnTrue) {

@@ -86,8 +86,8 @@ public final class IntegerSwitchNode extends SwitchNode implements LIRLowerable,
      */
     protected final boolean areKeysContiguous;
 
-    public IntegerSwitchNode(ValueNode value, AbstractBeginNode[] successors, int[] keys, double[] keyProbabilities, int[] keySuccessors) {
-        super(TYPE, value, successors, keySuccessors, keyProbabilities);
+    public IntegerSwitchNode(ValueNode value, AbstractBeginNode[] successors, int[] keys, double[] keyProbabilities, int[] keySuccessors, ProfileSource profileSource) {
+        super(TYPE, value, successors, keySuccessors, keyProbabilities, profileSource);
         assert keySuccessors.length == keys.length + 1;
         assert keySuccessors.length == keyProbabilities.length;
         this.keys = keys;
@@ -116,8 +116,8 @@ public final class IntegerSwitchNode extends SwitchNode implements LIRLowerable,
         return true;
     }
 
-    public IntegerSwitchNode(ValueNode value, int successorCount, int[] keys, double[] keyProbabilities, int[] keySuccessors) {
-        this(value, new AbstractBeginNode[successorCount], keys, keyProbabilities, keySuccessors);
+    public IntegerSwitchNode(ValueNode value, int successorCount, int[] keys, double[] keyProbabilities, int[] keySuccessors, ProfileSource profileSource) {
+        this(value, new AbstractBeginNode[successorCount], keys, keyProbabilities, keySuccessors, profileSource);
     }
 
     @Override
@@ -235,18 +235,12 @@ public final class IntegerSwitchNode extends SwitchNode implements LIRLowerable,
 
     @Override
     public boolean isNonInitializedProfile() {
-        int nbSuccessors = getSuccessorCount();
-        double prob = 0.0d;
-        for (int i = 0; i < nbSuccessors; i++) {
-            if (keyProbabilities[i] > 0.0d) {
-                if (prob == 0.0d) {
-                    prob = keyProbabilities[i];
-                } else if (keyProbabilities[i] != prob) {
-                    return false;
-                }
-            }
-        }
-        return true;
+        return !ProfileSource.isTrusted(profileSource);
+    }
+
+    @Override
+    public ProfileSource profileSource() {
+        return profileSource;
     }
 
     private static final class MergeCoalesceBuilder {
@@ -689,7 +683,7 @@ public final class IntegerSwitchNode extends SwitchNode implements LIRLowerable,
          * while removing successors).
          */
         AbstractBeginNode[] successorsArray = newSuccessors.toArray(new AbstractBeginNode[newSuccessors.size()]);
-        SwitchNode newSwitch = graph().add(new IntegerSwitchNode(newValue, successorsArray, newKeys, newKeyProbabilities, newKeySuccessors));
+        SwitchNode newSwitch = graph().add(new IntegerSwitchNode(newValue, successorsArray, newKeys, newKeyProbabilities, newKeySuccessors, profileSource));
 
         /* Replace ourselves with the new switch */
         ((FixedWithNextNode) predecessor()).setNext(newSwitch);

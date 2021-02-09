@@ -27,6 +27,7 @@ package com.oracle.svm.core.graal.phases;
 import org.graalvm.compiler.graph.Node;
 import org.graalvm.compiler.nodes.BeginNode;
 import org.graalvm.compiler.nodes.ControlSplitNode;
+import org.graalvm.compiler.nodes.ControlSplitNode.ProfileSource;
 import org.graalvm.compiler.nodes.IfNode;
 import org.graalvm.compiler.nodes.MergeNode;
 import org.graalvm.compiler.nodes.StructuredGraph;
@@ -64,7 +65,7 @@ public class OptimizeExceptionCallsPhase extends Phase {
             if (predecessor instanceof IfNode && node instanceof BeginNode) {
                 // We found an IfNode which branches to our runtime exception call
                 IfNode ifNode = (IfNode) predecessor;
-                ifNode.setTrueSuccessorProbability(node == ifNode.trueSuccessor() ? 0.00001 : 0.99999);
+                ifNode.setTrueSuccessorProbability(node == ifNode.trueSuccessor() ? 0.00001 : 0.99999, ProfileSource.INJECTED);
                 return;
             }
             if (predecessor instanceof MergeNode || predecessor instanceof ControlSplitNode) {

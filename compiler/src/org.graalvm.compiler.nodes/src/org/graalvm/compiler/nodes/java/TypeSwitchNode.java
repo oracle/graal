@@ -62,8 +62,9 @@ public final class TypeSwitchNode extends SwitchNode implements LIRLowerable, Si
     protected final ResolvedJavaType[] keys;
     protected final Constant[] hubs;
 
-    public TypeSwitchNode(ValueNode value, AbstractBeginNode[] successors, ResolvedJavaType[] keys, double[] keyProbabilities, int[] keySuccessors, ConstantReflectionProvider constantReflection) {
-        super(TYPE, value, successors, keySuccessors, keyProbabilities);
+    public TypeSwitchNode(ValueNode value, AbstractBeginNode[] successors, ResolvedJavaType[] keys, double[] keyProbabilities, int[] keySuccessors, ConstantReflectionProvider constantReflection,
+                    ProfileSource profileSource) {
+        super(TYPE, value, successors, keySuccessors, keyProbabilities, profileSource);
         assert successors.length <= keys.length + 1;
         assert keySuccessors.length == keyProbabilities.length;
         this.keys = keys;
@@ -196,7 +197,8 @@ public final class TypeSwitchNode extends SwitchNode implements LIRLowerable, Si
                     }
 
                     AbstractBeginNode[] successorsArray = newSuccessors.toArray(new AbstractBeginNode[newSuccessors.size()]);
-                    TypeSwitchNode newSwitch = graph().add(new TypeSwitchNode(value(), successorsArray, newKeys, newKeyProbabilities, newKeySuccessors, tool.getConstantReflection()));
+                    TypeSwitchNode newSwitch = graph().add(
+                                    new TypeSwitchNode(value(), successorsArray, newKeys, newKeyProbabilities, newKeySuccessors, tool.getConstantReflection(), profileSource));
                     ((FixedWithNextNode) predecessor()).setNext(newSwitch);
                     GraphUtil.killWithUnusedFloatingInputs(this);
 

@@ -30,6 +30,7 @@ import org.graalvm.compiler.nodes.AbstractBeginNode;
 import org.graalvm.compiler.nodes.ConstantNode;
 import org.graalvm.compiler.nodes.IfNode;
 import org.graalvm.compiler.nodes.ValueNode;
+import org.graalvm.compiler.nodes.ControlSplitNode.ProfileSource;
 import org.graalvm.compiler.nodes.calc.AddNode;
 import org.graalvm.compiler.nodes.extended.BranchProbabilityNode;
 import org.graalvm.compiler.nodes.extended.StateSplitProxyNode;
@@ -171,7 +172,7 @@ public class CEntryPointSupport implements GraalFeature {
                 DeadEndNode deadEndNode = b.add(new DeadEndNode());
                 AbstractBeginNode prevBegin = AbstractBeginNode.prevBegin(deadEndNode);
                 if (prevBegin != null && prevBegin.predecessor() instanceof IfNode) {
-                    ((IfNode) prevBegin.predecessor()).setProbability(prevBegin, BranchProbabilityNode.LUDICROUSLY_SLOW_PATH_PROBABILITY);
+                    ((IfNode) prevBegin.predecessor()).setProbability(prevBegin, BranchProbabilityNode.LUDICROUSLY_SLOW_PATH_PROBABILITY, ProfileSource.INJECTED);
                 }
                 return true;
             }

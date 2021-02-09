@@ -50,7 +50,7 @@ public abstract class IntegerExactArithmeticSplitNode extends ControlSplitNode i
 
     protected IntegerExactArithmeticSplitNode(NodeClass<? extends IntegerExactArithmeticSplitNode> c, Stamp stamp, ValueNode x, ValueNode y, AbstractBeginNode next,
                     AbstractBeginNode overflowSuccessor) {
-        super(c, stamp);
+        super(c, stamp, ProfileSource.INJECTED);
         this.x = x;
         this.y = y;
         this.overflowSuccessor = overflowSuccessor;
@@ -68,7 +68,7 @@ public abstract class IntegerExactArithmeticSplitNode extends ControlSplitNode i
     }
 
     @Override
-    public boolean setProbability(AbstractBeginNode successor, double value) {
+    public boolean setProbability(AbstractBeginNode successor, double value, ProfileSource profileSource) {
         // Successor probabilities for arithmetic split nodes are fixed.
         return false;
     }
