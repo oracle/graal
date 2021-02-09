@@ -59,7 +59,7 @@ public class Target_com_oracle_truffle_espresso_InternalUtils {
             while (true) {
                 Field f = k.lookupFieldTable(i);
                 if (!f.isStatic() && f.getKind().isPrimitive()) {
-                    for (int j = f.getIndex(); j < f.getIndex() + f.getKind().getByteCount(); j++) {
+                    for (int j = f.getOffset(); j < f.getOffset() + f.getKind().getByteCount(); j++) {
                         result[j] = meta.toGuestString(f.getName());
                     }
                 }

@@ -66,7 +66,7 @@ public abstract class MHLinkToNode extends MethodHandleIntrinsicNode {
     MHLinkToNode(Method method, MethodHandleIntrinsics.PolySigIntrinsics id) {
         super(method);
         this.argCount = Signatures.parameterCount(method.getParsedSignature(), false);
-        this.hiddenVmtarget = method.getMeta().HIDDEN_VMTARGET.getIndex();
+        this.hiddenVmtarget = method.getMeta().HIDDEN_VMTARGET.getOffset();
         this.hasReceiver = id != MethodHandleIntrinsics.PolySigIntrinsics.LinkToStatic;
         this.linker = findLinker(id);
         assert method.isStatic();

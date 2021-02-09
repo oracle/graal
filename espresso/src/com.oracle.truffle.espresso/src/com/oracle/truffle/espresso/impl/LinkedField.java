@@ -30,17 +30,17 @@ import com.oracle.truffle.espresso.runtime.Attribute;
 
 final class LinkedField {
     private final ParserField parserField;
-    private final int index;
+    private final int offset;
     private final int slot;
 
-    LinkedField(ParserField parserField, int slot, int index) {
+    LinkedField(ParserField parserField, int slot, int offset) {
         this.parserField = parserField;
         this.slot = slot;
-        this.index = index;
+        this.offset = offset;
     }
 
-    public static LinkedField createHidden(Symbol<Name> name, int slot, int index) {
-        return new LinkedField(new ParserField(ParserField.HIDDEN, name, Type.java_lang_Object, null), slot, index);
+    public static LinkedField createHidden(Symbol<Name> name, int slot, int offset) {
+        return new LinkedField(new ParserField(ParserField.HIDDEN, name, Type.java_lang_Object, null), slot, offset);
     }
 
     /**
@@ -51,10 +51,10 @@ final class LinkedField {
     }
 
     /**
-     * The index is the actual position in the field array of an actual instance.
+     * The offset is the actual position in the field array of an actual instance.
      */
-    public int getIndex() {
-        return index;
+    public int getOffset() {
+        return offset;
     }
 
     public Symbol<Type> getType() {
