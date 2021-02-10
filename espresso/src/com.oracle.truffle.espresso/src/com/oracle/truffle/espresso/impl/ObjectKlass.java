@@ -124,7 +124,7 @@ public final class ObjectKlass extends Klass {
     @CompilationFinal volatile KlassVersion klassVersion;
 
     // used for class redefintion when refreshing vtables etc.
-    private ArrayList<WeakReference<ObjectKlass>> subTypes = new ArrayList<>(1);
+    private ArrayList<WeakReference<ObjectKlass>> subTypes;
 
     public static final int LOADED = 0;
     public static final int LINKED = 1;
@@ -211,9 +211,19 @@ public final class ObjectKlass extends Klass {
     }
 
     private void addSubType(ObjectKlass objectKlass) {
-        synchronized (subTypes) {
-            subTypes.add(new WeakReference<>(objectKlass));
+        // We only build subtypes model iff jdwp is enabled
+        if (getContext().JDWPOptions != null) {
+            if (subTypes == null) {
+                subTypes = initSubTypes();
+            }
+            synchronized (subTypes) {
+                subTypes.add(new WeakReference<>(objectKlass));
+            }
         }
+    }
+
+    private synchronized ArrayList<WeakReference<ObjectKlass>> initSubTypes() {
+        return new ArrayList<>(1);
     }
 
     private boolean verifyTables() {
