@@ -49,6 +49,7 @@ import java.util.concurrent.ExecutionException;
 import java.util.concurrent.Executors;
 import java.util.concurrent.Future;
 
+import org.graalvm.polyglot.Source;
 import org.junit.Assert;
 import org.junit.Test;
 
@@ -60,7 +61,6 @@ import com.oracle.truffle.api.debug.SuspendAnchor;
 import com.oracle.truffle.api.debug.SuspendedEvent;
 import com.oracle.truffle.api.debug.SuspensionFilter;
 import com.oracle.truffle.api.instrumentation.test.InstrumentationTestLanguage;
-import org.graalvm.polyglot.Source;
 import com.oracle.truffle.api.test.polyglot.ProxyLanguage;
 
 public class SuspendedEventTest extends AbstractDebugTest {
@@ -222,10 +222,10 @@ public class SuspendedEventTest extends AbstractDebugTest {
     @Test
     public void testConvertRawValueNullLanguage() throws Throwable {
         final Source source = testSource("ROOT(\n" +
-                "  DEFINE(bar, STATEMENT(CONSTANT(42))), \n" +
-                "  DEFINE(foo, CALL(bar)), \n" +
-                "  STATEMENT(CALL(foo))\n" +
-                ")\n");
+                        "  DEFINE(bar, STATEMENT(CONSTANT(42))), \n" +
+                        "  DEFINE(foo, CALL(bar)), \n" +
+                        "  STATEMENT(CALL(foo))\n" +
+                        ")\n");
 
         try (DebuggerSession session = startSession()) {
             session.suspendNextExecution();
@@ -235,7 +235,7 @@ public class SuspendedEventTest extends AbstractDebugTest {
                 DebugStackFrame frame = event.getStackFrames().iterator().next();
                 boolean expectedException = false;
                 try {
-                   frame.getScope().convertRawValue(null, 41);
+                    frame.getScope().convertRawValue(null, 41);
                 } catch (NullPointerException ex) {
                     expectedException = true;
                 }
@@ -249,10 +249,10 @@ public class SuspendedEventTest extends AbstractDebugTest {
     @Test
     public void testConvertRawValueNullArgument() throws Throwable {
         final Source source = testSource("ROOT(\n" +
-                "  DEFINE(bar, STATEMENT(CONSTANT(42))), \n" +
-                "  DEFINE(foo, CALL(bar)), \n" +
-                "  STATEMENT(CALL(foo))\n" +
-                ")\n");
+                        "  DEFINE(bar, STATEMENT(CONSTANT(42))), \n" +
+                        "  DEFINE(foo, CALL(bar)), \n" +
+                        "  STATEMENT(CALL(foo))\n" +
+                        ")\n");
 
         try (DebuggerSession session = startSession()) {
             session.suspendNextExecution();

@@ -675,8 +675,8 @@ public final class SuspendedEvent {
 
     /**
      * Prepare to unwind a frame. This frame and all frames above it are unwound off the execution
-     * stack and the frame will return immediately with <code>immediateReturnValue</code>. If the return
-     * value is <code>null</code>, the unwound frame will instead be reentered upon thread
+     * stack and the frame will return immediately with <code>immediateReturnValue</code>. If the
+     * return value is <code>null</code>, the unwound frame will instead be reentered upon thread
      * resumption. The frame needs to be on the {@link #getStackFrames() execution stack of this
      * event}.
      *

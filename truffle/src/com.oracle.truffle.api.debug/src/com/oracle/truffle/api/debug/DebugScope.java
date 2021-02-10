@@ -411,8 +411,8 @@ public final class DebugScope {
      * This method is opposite to {@link DebugValue#getRawValue(Class)} where the raw guest language
      * value is obtained from the DebugValue.
      *
-     * Note that the <code>rawValue</code> must be a valid Interop value. If not,
-     * the method throws IllegalArgumentException.
+     * Note that the <code>rawValue</code> must be a valid Interop value. If not, the method throws
+     * IllegalArgumentException.
      *
      * @param languageClass the Truffle language class for a given guest language
      * @param rawValue the raw value
