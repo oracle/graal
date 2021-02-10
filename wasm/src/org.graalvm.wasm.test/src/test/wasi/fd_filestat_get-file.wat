@@ -72,13 +72,15 @@
         ;; Check that filetype is regular_file
         (if (i32.ne (i32.load8_u (i32.const 28)) (i32.const 4)) (then (return (i32.const -1))))
         ;; Check that nlink equal 1
-        (if (i64.ne (i64.load (i32.const 36)) (i64.const 1)) (then (return (i32.const -2))))
+        ;; GR-29297: this attribute is currently not supported on non-Unix platforms
+        ;; (if (i64.ne (i64.load (i32.const 36)) (i64.const 1)) (then (return (i32.const -2))))
         ;; Check that size equal 17
         (if (i64.ne (i64.load (i32.const 44)) (i64.const 17)) (then (return (i32.const -3))))
         ;; Check that timestamp fields (atim, mtime, ctime) are > 1612883662 (2021-02-09T15:14:22Z)
         (if (i64.le_u (i64.load (i32.const 52)) (i64.const 1612883662)) (then (return (i32.const -4))))
         (if (i64.le_u (i64.load (i32.const 60)) (i64.const 1612883662)) (then (return (i32.const -5))))
-        (if (i64.le_u (i64.load (i32.const 68)) (i64.const 1612883662)) (then (return (i32.const -6))))
+        ;; GR-29297: this attribute is currently not supported on non-Unix platforms
+        ;; (if (i64.le_u (i64.load (i32.const 68)) (i64.const 1612883662)) (then (return (i32.const -6))))
 
         ;; Free opened file
         (local.set $ret (call $fd_close (i32.load (i32.const 8))))

@@ -131,14 +131,19 @@ final class FdUtils {
         // Write filestat structure
         // https://github.com/WebAssembly/WASI/blob/main/phases/snapshot/docs.md#-filestat-struct
         try {
-            memory.store_i64(node, resultAddress, file.getAttribute(TruffleFile.UNIX_DEV));
-            memory.store_i64(node, resultAddress + 8, file.getAttribute(TruffleFile.UNIX_INODE));
             memory.store_i32_8(node, resultAddress + 16, (byte) getType(file).ordinal());
-            memory.store_i64(node, resultAddress + 24, file.getAttribute(TruffleFile.UNIX_NLINK));
             memory.store_i64(node, resultAddress + 32, file.getAttribute(TruffleFile.SIZE));
             memory.store_i64(node, resultAddress + 40, file.getAttribute(TruffleFile.LAST_ACCESS_TIME).to(TimeUnit.SECONDS));
             memory.store_i64(node, resultAddress + 48, file.getAttribute(TruffleFile.LAST_MODIFIED_TIME).to(TimeUnit.SECONDS));
-            memory.store_i64(node, resultAddress + 56, file.getAttribute(TruffleFile.UNIX_CTIME).to(TimeUnit.SECONDS));
+
+            try {
+                memory.store_i64(node, resultAddress, file.getAttribute(TruffleFile.UNIX_DEV));
+                memory.store_i64(node, resultAddress + 8, file.getAttribute(TruffleFile.UNIX_INODE));
+                memory.store_i64(node, resultAddress + 24, file.getAttribute(TruffleFile.UNIX_NLINK));
+                memory.store_i64(node, resultAddress + 56, file.getAttribute(TruffleFile.UNIX_CTIME).to(TimeUnit.SECONDS));
+            } catch (UnsupportedOperationException e) {
+                // GR-29297: these attributes are currently not supported on non-Unix platforms.
+            }
         } catch (IOException e) {
             return Errno.Io;
         }
