@@ -1080,8 +1080,8 @@ public abstract class DebugValue {
      * you want to utilize the Debugger API directly from within a guest language, or if you are an
      * instrument bound/dependent on a specific language.
      *
-     * This method is opposite to {@link DebugScope#convertRawValue(Class, String, Object)} where a
-     * raw guest language value is wrapped in a DebugValue.
+     * This method is opposite to {@link DebugScope#convertRawValue(Class, Object)} where a raw
+     * guest language value is wrapped in a DebugValue.
      *
      * @param languageClass the Truffle language class for a given guest language
      * @return the guest language object or null if the language differs from the language that
