@@ -313,26 +313,25 @@ public abstract class EspressoProcessor extends AbstractProcessor {
     static final String TAB_3 = TAB_2 + TAB_1;
     static final String TAB_4 = TAB_3 + TAB_1;
 
-    private static final Map<String, NativeSimpleType> classToNative = buildClassToNative();
+    private static final Map<String, NativeType> classToNative = buildClassToNative();
 
-    static Map<String, NativeSimpleType> buildClassToNative() {
-        Map<String, NativeSimpleType> map = new HashMap<>();
-        map.put("boolean", NativeSimpleType.SINT8);
-        map.put("byte", NativeSimpleType.SINT8);
-        map.put("short", NativeSimpleType.SINT16);
-        map.put("char", NativeSimpleType.SINT16);
-        map.put("int", NativeSimpleType.SINT32);
-        map.put("float", NativeSimpleType.FLOAT);
-        map.put("long", NativeSimpleType.SINT64);
-        map.put("double", NativeSimpleType.DOUBLE);
-        map.put("void", NativeSimpleType.VOID);
-        map.put("java.lang.String", NativeSimpleType.STRING);
+    static Map<String, NativeType> buildClassToNative() {
+        Map<String, NativeType> map = new HashMap<>();
+        map.put("boolean", NativeType.BOOLEAN);
+        map.put("byte", NativeType.BYTE);
+        map.put("short", NativeType.SHORT);
+        map.put("char", NativeType.CHAR);
+        map.put("int", NativeType.INT);
+        map.put("float", NativeType.FLOAT);
+        map.put("long", NativeType.LONG);
+        map.put("double", NativeType.DOUBLE);
+        map.put("void", NativeType.VOID);
         return Collections.unmodifiableMap(map);
     }
 
-    public static NativeSimpleType classToType(String clazz) {
+    public static NativeType classToType(String clazz) {
         // TODO(peterssen): Allow native-sized words.
-        return classToNative.getOrDefault(clazz, NativeSimpleType.SINT64);
+        return classToNative.getOrDefault(clazz, NativeType.LONG);
     }
 
     @Override
@@ -599,6 +598,16 @@ public abstract class EspressoProcessor extends AbstractProcessor {
 
     static String generateString(String str) {
         return "\"" + str + "\"";
+    }
+
+    static String generateNativeSignature(NativeType[] signature) {
+        StringBuilder sb = new StringBuilder();
+        sb.append("NativeSignature.create(NativeType.").append(signature[0]);
+        for (int i = 1; i < signature.length; ++i) {
+            sb.append(", NativeType.").append(signature[i]);
+        }
+        sb.append(")");
+        return sb.toString();
     }
 
     // @formatter:off

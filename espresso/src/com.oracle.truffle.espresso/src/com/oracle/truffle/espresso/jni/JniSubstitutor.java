@@ -22,6 +22,7 @@
  */
 package com.oracle.truffle.espresso.jni;
 
+import com.oracle.truffle.espresso._native.NativeSignature;
 import com.oracle.truffle.espresso.meta.Meta;
 import com.oracle.truffle.espresso.substitutions.SubstitutionProfiler;
 
@@ -31,13 +32,13 @@ public abstract class JniSubstitutor extends SubstitutionProfiler {
         public abstract JniSubstitutor create(Meta meta);
 
         private final String methodName;
-        private final String jniNativeSignature;
+        private final NativeSignature nativeSignature;
         private final int parameterCount;
         private final String returnType;
 
-        public Factory(String methodName, String jniNativeSignature, int parameterCount, String returnType) {
+        public Factory(String methodName, NativeSignature nativeSignature, int parameterCount, String returnType) {
             this.methodName = methodName;
-            this.jniNativeSignature = jniNativeSignature;
+            this.nativeSignature = nativeSignature;
             this.parameterCount = parameterCount;
             this.returnType = returnType;
         }
@@ -46,8 +47,8 @@ public abstract class JniSubstitutor extends SubstitutionProfiler {
             return methodName;
         }
 
-        public final String jniNativeSignature() {
-            return jniNativeSignature;
+        public final NativeSignature jniNativeSignature() {
+            return nativeSignature;
         }
 
         public final int getParameterCount() {

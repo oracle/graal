@@ -58,12 +58,12 @@ public class JniImplProcessor extends IntrinsicsProcessor {
     }
 
     static class JniHelper extends SubstitutionHelper {
-        final String jniNativeSignature;
+        final NativeType[] jniNativeSignature;
         final List<Boolean> referenceTypes;
         final String returnType;
         final boolean isStatic;
 
-        public JniHelper(EspressoProcessor processor, ExecutableElement method, String jniNativeSignature, List<Boolean> referenceTypes, String returnType, boolean isStatic) {
+        public JniHelper(EspressoProcessor processor, ExecutableElement method, NativeType[] jniNativeSignature, List<Boolean> referenceTypes, String returnType, boolean isStatic) {
             super(processor, method);
             this.jniNativeSignature = jniNativeSignature;
             this.referenceTypes = referenceTypes;
@@ -92,7 +92,7 @@ public class JniImplProcessor extends IntrinsicsProcessor {
                 // Obtain the fully qualified guest return type of the method.
                 String returnType = extractReturnType(jniMethod);
                 // Obtain the jniNativeSignature
-                String jniNativeSignature = jniNativeSignature(jniMethod, returnType, true);
+                NativeType[] jniNativeSignature = jniNativeSignature(jniMethod, returnType, true);
                 // Check if we need to call an instance method
                 boolean isStatic = jniMethod.getModifiers().contains(Modifier.STATIC);
                 // Spawn helper
@@ -129,6 +129,8 @@ public class JniImplProcessor extends IntrinsicsProcessor {
         StringBuilder str = new StringBuilder();
         JniHelper h = (JniHelper) helper;
         str.append(IMPORT_JNI_ENV);
+        str.append(IMPORT_NATIVE_SIGNATURE);
+        str.append(IMPORT_NATIVE_TYPE);
         if (parameterTypeName.contains("String")) {
             str.append(IMPORT_INTEROP_LIBRARY);
         }
@@ -148,7 +150,7 @@ public class JniImplProcessor extends IntrinsicsProcessor {
         JniHelper h = (JniHelper) helper;
         str.append(TAB_3).append("super(\n");
         str.append(TAB_4).append(generateString(targetMethodName)).append(",\n");
-        str.append(TAB_4).append(generateString(h.jniNativeSignature)).append(",\n");
+        str.append(TAB_4).append(generateNativeSignature(h.jniNativeSignature)).append(",\n");
         str.append(TAB_4).append(parameterTypeName.size()).append(",\n");
         str.append(TAB_4).append(generateString(h.returnType)).append("\n");
         str.append(TAB_3).append(");\n");
@@ -167,13 +169,6 @@ public class JniImplProcessor extends IntrinsicsProcessor {
             str.append(extractArg(argIndex++, type, isNonPrimitive, 1, TAB_2));
         }
         switch (h.returnType) {
-            case "char":
-                str.append(TAB_2).append("return ").append("(short) ").append(extractInvocation(className, targetMethodName, argIndex, h.isStatic, helper)).append(";\n");
-                break;
-            case "boolean":
-                str.append(TAB_2).append("boolean b = ").append(extractInvocation(className, targetMethodName, argIndex, h.isStatic, helper)).append(";\n");
-                str.append(TAB_2).append("return b ? (byte) 1 : (byte) 0;\n");
-                break;
             case "void":
                 str.append(TAB_2).append(extractInvocation(className, targetMethodName, argIndex, h.isStatic, helper)).append(";\n");
                 str.append(TAB_2).append("return ").append(STATIC_OBJECT_NULL).append(";\n");
