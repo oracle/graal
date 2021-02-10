@@ -197,25 +197,28 @@
     timelimit: "1:45:00",
   },
 
-  local sulong_test_toolchain = [
-    ["mx", "build", "--dependencies", "SULONG_TEST"],
-    ["mx", "unittest", "--verbose", "-Dsulongtest.toolchainPathPattern=SULONG_BOOTSTRAP_TOOLCHAIN", "ToolchainAPITest"],
-    ["mx", "--env", "toolchain-only", "build"],
-    ["set-export", "SULONG_BOOTSTRAP_GRAALVM", ["mx", "--env", "toolchain-only", "graalvm-home"]],
-    ["mx", "unittest", "--verbose", "-Dsulongtest.toolchainPathPattern=GRAALVM_TOOLCHAIN_ONLY", "ToolchainAPITest"],
-  ],
+  sulong_test_toolchain:: {
+    run+: [
+      ["mx", "build", "--dependencies", "SULONG_TEST"],
+      ["mx", "unittest", "--verbose", "-Dsulongtest.toolchainPathPattern=SULONG_BOOTSTRAP_TOOLCHAIN", "ToolchainAPITest"],
+      ["mx", "--env", "toolchain-only", "build"],
+      ["set-export", "SULONG_BOOTSTRAP_GRAALVM", ["mx", "--env", "toolchain-only", "graalvm-home"]],
+      ["mx", "unittest", "--verbose", "-Dsulongtest.toolchainPathPattern=GRAALVM_TOOLCHAIN_ONLY", "ToolchainAPITest"],
+    ],
+  },
+
+  sulong_strict_native_image:: {
+    run: [
+      ["mx", "--dynamicimports", "/substratevm,/tools", "--native-images=lli", "--extra-image-builder-argument=-H:+TruffleCheckBlackListedMethods", "gate", "--tags", "build"],
+    ]
+  },
 
   builds: [
     $.gate + $.sulong + $.style + $.jdk8 + $.linux_amd64 + common.eclipse + $.gateTags("style") + { name: "gate-sulong-style"},
     $.gate + $.sulong + $.style + $.jdk8 + $.linux_amd64 + common.eclipse + common.jdt + $.gateTags("fullbuild") + { name: "gate-sulong-fullbuild"},
     # FIXME: switch to $.linux_amd64 (extra dependencies do not hurt)
     $.gate + $.sulong + $.jdk8 + linux_amd64 + $.sulong_gate_generated_sources { name: "gate-sulong-generated-sources" },
-    $.gate + $.sulong + $.jdk8 + $.linux_amd64 + $.llvmBundled + $.requireGMP + $.requireGCC + {
-      name: "gate-sulong-misc",
-      run: [
-        ["mx", "gate", "--tags", "build,sulongMisc"],
-      ] + sulong_test_toolchain,
-    },
+    $.gate + $.sulong + $.jdk8 + $.linux_amd64 + $.llvmBundled + $.requireGMP + $.requireGCC + $.gateTags("build,sulongMisc") + $.sulong_test_toolchain + { name: "gate-sulong-misc"},
     $.gate + $.sulong + $.jdk8 + $.linux_amd64 + $.llvmBundled + $.requireGMP + $.requireGCC + $.gateTags("build,parser") + { name: "gate-sulong-parser"},
     $.gate + $.sulong + $.jdk8 + $.linux_amd64 + $.llvmBundled + $.requireGMP + $.gateTags("build,gcc_c") + { name: "gate-sulong-gcc_c", timelimit: "45:00" },
     $.gate + $.sulong + $.jdk8 + $.linux_amd64 + $.llvmBundled + $.requireGMP + $.gateTags("build,gcc_cpp") + { name: "gate-sulong-gcc_cpp", timelimit: "45:00" },
@@ -232,16 +235,9 @@
     $.gate + $.sulong + $.jdk8 + $.linux_amd64 + $.llvmBundled + $.requireGMP + $.sulong_ruby_downstream_test + { name: "gate-sulong-ruby-downstream" },
 
     $.gate + $.sulong + $.labsjdk_ce_11 + $.linux_aarch64 + $.llvmBundled + $.requireGMP + $.gateTags(basicTagsNoNWCCNoDebugExpr) + { name: "gate-sulong_bundled-llvm-linux-aarch64", timelimit: "30:00" },
-    $.gate + $.sulong + $.labsjdk_ce_11 + $.linux_amd64 + $.llvmBundled + $.requireGMP + {
-      name: "gate-sulong-build_bundled-llvm-linux-amd64-labsjdk-ce-11",
-      run: [
-        ["mx", "gate", "--tags", "build"],
-      ] + sulong_test_toolchain,
-    },
+    $.gate + $.sulong + $.labsjdk_ce_11 + $.linux_amd64 + $.llvmBundled + $.requireGMP + $.gateTags("build") + $.sulong_test_toolchain + { name: "gate-sulong-build_bundled-llvm-linux-amd64-labsjdk-ce-11"},
 
-    $.gate + $.sulong + $.jdk8 + $.linux_amd64 + $.llvmBundled + $.requireGMP { name: "gate-sulong-strict-native-image", run: [
-      ["mx", "--dynamicimports", "/substratevm,/tools", "--native-images=lli", "--extra-image-builder-argument=-H:+TruffleCheckBlackListedMethods", "gate", "--tags", "build"],
-    ] },
+    $.gate + $.sulong + $.jdk8 + $.linux_amd64 + $.llvmBundled + $.requireGMP + $.sulong_strict_native_image + { name: "gate-sulong-strict-native-image"},
 
     $.gate + $.sulong + $.jdk8 + $.linux_amd64 + $.llvmBundled + $.requireGMP + $.requireGCC + $.sulong_weekly_notifications + $.sulong_coverage_linux { name: "weekly-sulong-coverage" },
   ],
