@@ -30,6 +30,10 @@
     targets+: ["gate"],
   },
 
+  weekly:: {
+    targets+: ["weekly"],
+  },
+
   local basicTags = "build,sulongBasic,nwcc,llvm",
   local basicTagsLLToolchain = "build,sulongBasic,sulongLL,nwcc,llvm,toolchain",
   local basicTagsNoNWCCNoDebugExpr = "build,sulong,sulongLL,interop,linker,debug,irdebug,bitcodeFormat,otherTests,llvm",
@@ -193,7 +197,6 @@
       ["test", "-z", "$SONAR_HOST_URL", "||", "mx", "--jacoco-whitelist-package", "com.oracle.truffle.llvm", "--jacoco-exclude-annotation", "@GeneratedBy", "sonarqube-upload", "-Dsonar.host.url=$SONAR_HOST_URL", "-Dsonar.projectKey=com.oracle.graalvm.sulong", "-Dsonar.projectName=GraalVM - Sulong", "--exclude-generated"],
       ["mx", "--jacoco-whitelist-package", "com.oracle.truffle.llvm", "--jacoco-exclude-annotation", "@GeneratedBy", "coverage-upload"],
     ],
-    targets: ["weekly"],
     timelimit: "1:45:00",
   },
 
@@ -240,6 +243,6 @@
 
     $.gate + $.sulong + $.jdk8 + $.linux_amd64 + $.llvmBundled + $.requireGMP + $.sulong_strict_native_image + { name: "gate-sulong-strict-native-image" },
 
-    $.gate + $.sulong + $.jdk8 + $.linux_amd64 + $.llvmBundled + $.requireGMP + $.requireGCC + $.sulong_weekly_notifications + $.sulong_coverage_linux { name: "weekly-sulong-coverage" },
+    $.weekly + $.sulong + $.jdk8 + $.linux_amd64 + $.llvmBundled + $.requireGMP + $.requireGCC + $.sulong_weekly_notifications + $.sulong_coverage_linux { name: "weekly-sulong-coverage" },
   ],
 }
