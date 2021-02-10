@@ -32,6 +32,7 @@
 
   local basicTags = "build,sulongBasic,nwcc,llvm",
   local basicTagsLLToolchain = "build,sulongBasic,sulongLL,nwcc,llvm,toolchain",
+  local basicTagsNoNWCCNoDebugExpr = "build,sulong,sulongLL,interop,linker,debug,irdebug,bitcodeFormat,otherTests,llvm",
 
   gateTags(tags):: {
     run+:
@@ -230,7 +231,7 @@
 
     $.gate + $.sulong + $.jdk8 + $.linux_amd64 + $.llvmBundled + $.requireGMP + $.sulong_ruby_downstream_test + { name: "gate-sulong-ruby-downstream" },
 
-    $.gate + $.sulong + $.labsjdk_ce_11 + $.linux_aarch64 + $.llvmBundled + $.requireGMP + $.gateTags("build,sulong,sulongLL,interop,linker,debug,irdebug,bitcodeFormat,otherTests,llvm") + { name: "gate-sulong_bundled-llvm-linux-aarch64", timelimit: "30:00" },
+    $.gate + $.sulong + $.labsjdk_ce_11 + $.linux_aarch64 + $.llvmBundled + $.requireGMP + $.gateTags(basicTagsNoNWCCNoDebugExpr) + { name: "gate-sulong_bundled-llvm-linux-aarch64", timelimit: "30:00" },
     $.gate + $.sulong + $.labsjdk_ce_11 + $.linux_amd64 + $.llvmBundled + $.requireGMP + {
       name: "gate-sulong-build_bundled-llvm-linux-amd64-labsjdk-ce-11",
       run: [
