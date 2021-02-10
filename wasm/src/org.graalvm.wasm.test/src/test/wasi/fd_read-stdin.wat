@@ -58,6 +58,9 @@
         )
         ;; Exit in case of error
         (if (i32.ne (local.get $ret) (i32.const 0)) (then (return (local.get $ret))))
+        ;; Number of bytes read should equal 17
+        (if (i32.ne (i32.load (i32.const 32)) (i32.const 17)) (then (return (i32.const -1))))
+
         ;; Write path to stdout
         (local.set $ret
             (call $fd_write
@@ -69,6 +72,7 @@
         )
         ;; Exit in case of error
         (if (i32.ne (local.get $ret) (i32.const 0)) (then (return (local.get $ret))))
+
         ;; Success
         (i32.const 0)
     )

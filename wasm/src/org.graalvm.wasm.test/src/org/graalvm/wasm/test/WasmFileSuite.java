@@ -153,7 +153,7 @@ public abstract class WasmFileSuite extends AbstractWasmSuite {
         throw new AssertionFailedError("No start function exported.");
     }
 
-    private static void runInContext(WasmCase testCase, Context context, List<Source> sources, int iterations, String phaseIcon, String phaseLabel) {
+    private static void runInContext(WasmCase testCase, Context context, List<Source> sources, int iterations, String phaseIcon, String phaseLabel) throws IOException {
         try {
             // Whereas the test needs memory to be reset between iterations.
             final boolean requiresZeroMemory = Boolean.parseBoolean(testCase.options().getProperty("zero-memory", "false"));
@@ -225,6 +225,11 @@ public abstract class WasmFileSuite extends AbstractWasmSuite {
                         if (!instance.isBuiltin()) {
                             wasmContext.reinitInstance(instance, reinitMemory);
                         }
+                    }
+
+                    // Reset stdin
+                    if (wasmContext.environment().in() instanceof ByteArrayInputStream) {
+                        wasmContext.environment().in().reset();
                     }
                 }
             }
@@ -311,9 +316,10 @@ public abstract class WasmFileSuite extends AbstractWasmSuite {
                 Files.write(testFile, "Hello Graal! \uD83D\uDE80".getBytes(StandardCharsets.UTF_8));
             }
 
-            final String stdin = testCase.options().getProperty("stdin");
-            if (stdin != null) {
-                contextBuilder.in(new ByteArrayInputStream(stdin.getBytes(StandardCharsets.UTF_8)));
+            final String stdinString = testCase.options().getProperty("stdin");
+            if (stdinString != null) {
+                final ByteArrayInputStream stdin = new ByteArrayInputStream(stdinString.getBytes(StandardCharsets.UTF_8));
+                contextBuilder.in(stdin);
             }
 
             Context context;

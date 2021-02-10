@@ -199,8 +199,9 @@ public abstract class WasmMemory implements TruffleObject {
     }
 
     /**
-     * Writes a Java String at offset {@code offset}. The string is encoded as UTF-8 and terminated
-     * with a null character.
+     * Writes a Java String at offset {@code offset}.
+     * <p>
+     * The written string is encoded as UTF-8 and <em>not</em> terminated with a null character.
      *
      * @param node a node indicating the location where this write occurred in the Truffle AST. It
      *            may be {@code null} to indicate that the location is not available.
@@ -213,11 +214,9 @@ public abstract class WasmMemory implements TruffleObject {
     public final int writeString(Node node, String string, int offset, int length) {
         final byte[] bytes = string.getBytes(StandardCharsets.UTF_8);
         int i = 0;
-        for (; i < bytes.length && i < length - 1; ++i) {
+        for (; i < bytes.length && i < length; ++i) {
             store_i32_8(node, offset + i, bytes[i]);
         }
-        ++i;
-        store_i32_8(node, i, (byte) 0);
         return i;
     }
 
@@ -229,12 +228,11 @@ public abstract class WasmMemory implements TruffleObject {
      * Returns the number of bytes needed to write {@code string} with {@link #writeString}.
      *
      * @param string the string to write
-     * @return the number of bytes needed to write {@code string}, including the trailing null
-     *         character
+     * @return the number of bytes needed to write {@code string}
      */
     @CompilerDirectives.TruffleBoundary
     public static int encodedStringLength(String string) {
-        return string.getBytes(StandardCharsets.UTF_8).length + 1;
+        return string.getBytes(StandardCharsets.UTF_8).length;
     }
 
     long[] view(int address, int length) {

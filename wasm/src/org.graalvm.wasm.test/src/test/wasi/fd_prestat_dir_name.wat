@@ -51,12 +51,13 @@
         (local.set $ret
             (call $fd_prestat_dir_name
                 (i32.const 3) ;; pre-opened "test" directory fd
-                (i32.const 9) ;; address at which to load the path
-                (i32.const 5) ;; number of bytes to load
+                (i32.const 8) ;; address at which to load the path
+                (i32.const 4) ;; number of bytes to load
             )
         )
         ;; Exit in case of error
         (if (i32.ne (local.get $ret) (i32.const 0)) (then (return (local.get $ret))))
+
         ;; Write path to stdout
         (local.set $ret
             (call $fd_write
@@ -70,6 +71,7 @@
         (if (i32.ne (local.get $ret) (i32.const 0)) (then (return (local.get $ret))))
         ;; Number of bytes written should equal 4
         (if (i32.ne (i32.load (i32.const 12)) (i32.const 4)) (then (return (i32.const -1))))
+
         ;; Success
         (i32.const 0)
     )

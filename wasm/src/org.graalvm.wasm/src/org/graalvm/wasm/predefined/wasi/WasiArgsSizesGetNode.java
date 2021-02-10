@@ -68,6 +68,7 @@ public final class WasiArgsSizesGetNode extends WasmBuiltinRootNode {
         int argvBufSize = 0;
         for (final String argument : arguments) {
             argvBufSize += WasmMemory.encodedStringLength(argument);
+            argvBufSize += 1; // extra byte needed for the trailing null character
         }
 
         memory().store_i32(this, argcAddress, argc);

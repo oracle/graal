@@ -71,6 +71,8 @@ public final class WasiEnvironGetNode extends WasmBuiltinRootNode {
             memory().store_i32(this, envPointer, bufPointer);
             envPointer += 4;
             bufPointer += memory().writeString(this, entry.getKey() + "=" + entry.getValue(), bufPointer);
+            memory().store_i32_8(this, bufPointer, (byte) 0);
+            ++bufPointer;
         }
 
         return Errno.Success.ordinal();

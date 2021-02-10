@@ -69,6 +69,7 @@ public final class WasiEnvironSizesGetNode extends WasmBuiltinRootNode {
         int size = 0;
         for (final Map.Entry<String, String> entry : env.entrySet()) {
             size += WasmMemory.encodedStringLength(entry.getKey() + "=" + entry.getValue());
+            size += 1; // extra byte needed for the trailing null character
         }
 
         memory().store_i32(this, environCountAddress, env.size());

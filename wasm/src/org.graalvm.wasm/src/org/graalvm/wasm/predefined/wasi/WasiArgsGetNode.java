@@ -69,6 +69,9 @@ public final class WasiArgsGetNode extends WasmBuiltinRootNode {
             memory().store_i32(this, argvPointer, argvBuffPointer);
             argvPointer += 4;
             argvBuffPointer += memory().writeString(this, argument, argvBuffPointer);
+            memory().store_i32_8(this, argvBuffPointer, (byte) 0);
+            ++argvBuffPointer;
+
         }
 
         return Errno.Success.ordinal();

@@ -55,8 +55,8 @@
         (if (i32.ne (local.get $ret) (i32.const 0)) (then (return (local.get $ret))))
         ;; Union tag should equal 0 (prestat_dir)
         (if (i32.ne (i32.load8_u (i32.const 0)) (i32.const 0)) (then (return (i32.const -1))))
-        ;; pr_name_len field should equal 5 (length of "test\0")
-        (if (i32.ne (i32.load (i32.const 4)) (i32.const 5)) (then (return (i32.const -2))))
+        ;; pr_name_len field should equal 4 (length of "test")
+        (if (i32.ne (i32.load (i32.const 4)) (i32.const 4)) (then (return (i32.const -2))))
         ;; Success
         (i32.const 0)
     )
