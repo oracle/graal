@@ -156,8 +156,9 @@ public class ConditionalEliminationPhase extends BasePhase<CoreProviders> {
 
     public static class Options {
         // @formatter:off
-        @Option(help = "", type = OptionType.Expert)
-        public static final OptionKey<Boolean> MoveGuards = new OptionKey<>(true);
+        @Option(help = "Move guard nodes to earlier places in the dominator tree if "
+                     + "all successors of basic block share a common guard condition.", type = OptionType.Expert)
+        public static final OptionKey<Boolean> MoveGuardsUpwards = new OptionKey<>(true);
         // @formatter:on
     }
 
@@ -184,7 +185,7 @@ public class ConditionalEliminationPhase extends BasePhase<CoreProviders> {
             NodeMap<Block> nodeToBlock = null;
             ControlFlowGraph cfg = ControlFlowGraph.compute(graph, true, true, true, true);
             if (fullSchedule) {
-                if (moveGuards && Options.MoveGuards.getValue(graph.getOptions())) {
+                if (moveGuards && Options.MoveGuardsUpwards.getValue(graph.getOptions())) {
                     cfg.visitDominatorTree(new MoveGuardsUpwards(), graph.hasValueProxies());
                 }
                 try (DebugContext.Scope scheduleScope = graph.getDebug().scope(SchedulePhase.class)) {
@@ -230,6 +231,7 @@ public class ConditionalEliminationPhase extends BasePhase<CoreProviders> {
             if (beginNode instanceof AbstractMergeNode && anchorBlock != b) {
                 AbstractMergeNode mergeNode = (AbstractMergeNode) beginNode;
                 mergeNode.replaceAtUsages(anchorBlock.getBeginNode(), InputType.Anchor, InputType.Guard);
+                mergeNode.graph().getDebug().dump(DebugContext.VERY_DETAILED_LEVEL, mergeNode.graph(), "After moving guard and anchored usages from %s to %s", mergeNode, anchorBlock.getBeginNode());
                 assert mergeNode.anchored().isEmpty();
             }
 
@@ -252,10 +254,10 @@ public class ConditionalEliminationPhase extends BasePhase<CoreProviders> {
                     /*
                      * Special case loop exits: We must only ever move guards over loop exits if we
                      * move them over all loop exits (i.e. if a successor is a loop exit it must be
-                     * the only loop exit or all other successors together are the entire set of
-                     * loop exits). Else we would risk moving a guard in the loop (might be loop
-                     * invariant) and then moving it before a loop which can be way earlier then
-                     * necessary, i.e., the generated code would deopt without the need to.
+                     * the only loop exit or a loop has two exits and both are successors of the
+                     * current if). Else we would risk moving a guard from after a particular exit
+                     * into the loop (might be loop invariant) which can be too early resulting in
+                     * the generated code deopting without the need to.
                      *
                      * Note: The code below is written with the possibility in mind that both
                      * successors are loop exits, even of potentially different loops. Thus, we need
@@ -263,16 +265,22 @@ public class ConditionalEliminationPhase extends BasePhase<CoreProviders> {
                      */
                     LoopExitNode trueSuccLex = trueSuccessor instanceof LoopExitNode ? (LoopExitNode) trueSuccessor : null;
                     LoopExitNode falseSuccLex = falseSuccessor instanceof LoopExitNode ? (LoopExitNode) falseSuccessor : null;
-                    EconomicSet<LoopExitNode> allLoopsAllExits = EconomicSet.create();
+                    EconomicSet<LoopExitNode> allLoopsAllExits = null;
                     if (trueSuccLex != null) {
+                        if (allLoopsAllExits == null) {
+                            allLoopsAllExits = EconomicSet.create();
+                        }
                         allLoopsAllExits.addAll(trueSuccLex.loopBegin().loopExits());
                         allLoopsAllExits.remove(trueSuccLex);
                     }
                     if (falseSuccLex != null) {
+                        if (allLoopsAllExits == null) {
+                            allLoopsAllExits = EconomicSet.create();
+                        }
                         allLoopsAllExits.addAll(falseSuccLex.loopBegin().loopExits());
                         allLoopsAllExits.remove(falseSuccLex);
                     }
-                    if (allLoopsAllExits.isEmpty()) {
+                    if (allLoopsAllExits == null || allLoopsAllExits.isEmpty()) {
                         for (GuardNode guard : falseSuccessor.guards().snapshot()) {
                             GuardNode otherGuard = trueGuards.get(guard.getCondition());
                             if (otherGuard != null && guard.isNegated() == otherGuard.isNegated()) {
@@ -284,6 +292,7 @@ public class ConditionalEliminationPhase extends BasePhase<CoreProviders> {
                                     continue;
                                 }
                                 try (DebugCloseable closeable = guard.withNodeSourcePosition()) {
+                                    StructuredGraph graph = guard.graph();
                                     GuardNode newlyCreatedGuard = new GuardNode(guard.getCondition(), anchorBlock.getBeginNode(), guard.getReason(), guard.getAction(), guard.isNegated(), speculation,
                                                     guard.getNoDeoptSuccessorPosition());
                                     GuardNode newGuard = node.graph().unique(newlyCreatedGuard);
@@ -299,6 +308,7 @@ public class ConditionalEliminationPhase extends BasePhase<CoreProviders> {
                                     } else {
                                         guard.replaceAndDelete(newGuard);
                                     }
+                                    graph.getDebug().dump(DebugContext.VERY_DETAILED_LEVEL, graph, "After combining %s and %s to new %s in the dominator", guard, otherGuard, newGuard);
                                 }
                             }
                         }

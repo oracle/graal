@@ -50,8 +50,8 @@ public class MoveGuardsLoopTest extends GraalCompilerTest {
             }
             if (GraalDirectives.sideEffect(i) > 42) {
                 if (GraalDirectives.sideEffect(i) >= 43) {
-                    A aNoneNull = GraalDirectives.guardingNonNull(a);
-                    res = aNoneNull.x;
+                    A aNonNull = GraalDirectives.guardingNonNull(a);
+                    res = aNonNull.x;
                     GraalDirectives.sideEffect(1);
                     break;
                 } else {
@@ -59,8 +59,8 @@ public class MoveGuardsLoopTest extends GraalCompilerTest {
                      * A lot of unnecessary, optimizable code to trick the byte code parser to not
                      * create the loop exit here and pull it out of the >=43 if
                      */
-                    A aNoneNull = GraalDirectives.guardingNonNull(a);
-                    res += aNoneNull.x;
+                    A aNonNull = GraalDirectives.guardingNonNull(a);
+                    res += aNonNull.x;
                     try {
                         for (int j = 0; j < 9; j++) {
                             if (j > 11) {
@@ -96,11 +96,11 @@ public class MoveGuardsLoopTest extends GraalCompilerTest {
         }
 
         ResolvedJavaMethod method = getResolvedJavaMethod("multiExitGuardTest");
-        executeActualCheckDeopt(new OptionValues(getInitialOptions(), ConditionalEliminationPhase.Options.MoveGuards, true), method, EnumSet.of(DeoptimizationReason.NullCheckException), null, 0, 41,
-                        null);
+        executeActualCheckDeopt(new OptionValues(getInitialOptions(), ConditionalEliminationPhase.Options.MoveGuardsUpwards, true), method, EnumSet.of(DeoptimizationReason.NullCheckException), null,
+                        0, 41, null);
         resetCache();
-        executeActualCheckDeopt(new OptionValues(getInitialOptions(), ConditionalEliminationPhase.Options.MoveGuards, false), method, EnumSet.of(DeoptimizationReason.NullCheckException), null, 0, 41,
-                        null);
+        executeActualCheckDeopt(new OptionValues(getInitialOptions(), ConditionalEliminationPhase.Options.MoveGuardsUpwards, false), method, EnumSet.of(DeoptimizationReason.NullCheckException), null,
+                        0, 41, null);
     }
 
     public static int multiExitGuardTest2(int low, A a) {
@@ -109,13 +109,13 @@ public class MoveGuardsLoopTest extends GraalCompilerTest {
         while (true) {
             if (GraalDirectives.sideEffect(i) > 42) {
                 if (GraalDirectives.sideEffect(i) >= 43) {
-                    A aNoneNull = GraalDirectives.guardingNonNull(a);
-                    res = aNoneNull.x;
+                    A aNonNull = GraalDirectives.guardingNonNull(a);
+                    res = aNonNull.x;
                     GraalDirectives.sideEffect(1);
                     break;
                 } else {
-                    A aNoneNull = GraalDirectives.guardingNonNull(a);
-                    res += aNoneNull.x;
+                    A aNonNull = GraalDirectives.guardingNonNull(a);
+                    res += aNonNull.x;
                     continue;
                 }
             }
@@ -130,9 +130,9 @@ public class MoveGuardsLoopTest extends GraalCompilerTest {
         // check that we deopt, in this case we should optimize the guard into and before the loop
         // since it will unconditionally deopt
         ResolvedJavaMethod method = getResolvedJavaMethod("multiExitGuardTest2");
-        executeActualCheckDeopt(new OptionValues(getInitialOptions(), ConditionalEliminationPhase.Options.MoveGuards, true), method, EnumSet.noneOf(DeoptimizationReason.class), null, 0, null);
+        executeActualCheckDeopt(new OptionValues(getInitialOptions(), ConditionalEliminationPhase.Options.MoveGuardsUpwards, true), method, EnumSet.noneOf(DeoptimizationReason.class), null, 0, null);
         resetCache();
-        executeActualCheckDeopt(new OptionValues(getInitialOptions(), ConditionalEliminationPhase.Options.MoveGuards, false), method, EnumSet.noneOf(DeoptimizationReason.class), null, 0, null);
+        executeActualCheckDeopt(new OptionValues(getInitialOptions(), ConditionalEliminationPhase.Options.MoveGuardsUpwards, false), method, EnumSet.noneOf(DeoptimizationReason.class), null, 0, null);
         resetCache();
     }
 
