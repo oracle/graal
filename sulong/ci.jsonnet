@@ -1,6 +1,6 @@
 # File is formatted with
 # `jsonnetfmt --indent 2 --max-blank-lines 2 --sort-imports --string-style d --comment-style h -i ci.jsonnet`
-local sulong_common = (import "sulong-common.jsonnet");
+local sulong_common = (import "ci_common/sulong-common.jsonnet");
 sulong_common + {
   local common = import "../common.jsonnet",
 
