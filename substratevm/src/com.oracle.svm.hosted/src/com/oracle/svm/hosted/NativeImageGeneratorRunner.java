@@ -560,6 +560,11 @@ public class NativeImageGeneratorRunner implements ImageBuildTask {
             }
             ModuleSupport.exportAndOpenPackageToUnnamed("java.base", "sun.text.spi", false);
             ModuleSupport.exportAndOpenPackageToUnnamed("java.base", "jdk.internal.org.objectweb.asm", false);
+            if (JavaVersionUtil.JAVA_SPEC >= 16) {
+                ModuleSupport.exportAndOpenPackageToUnnamed("java.base", "sun.reflect.annotation", false);
+                ModuleSupport.exportAndOpenPackageToUnnamed("java.base", "sun.security.jca", false);
+                ModuleSupport.exportAndOpenPackageToUnnamed("jdk.jdeps", "com.sun.tools.classfile", false);
+            }
             NativeImageGeneratorRunner.main(args);
         }
     }

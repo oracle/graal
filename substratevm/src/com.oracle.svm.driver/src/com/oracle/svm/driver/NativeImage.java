@@ -1921,6 +1921,11 @@ public class NativeImage {
                 ModuleSupport.exportAndOpenAllPackagesToUnnamed("jdk.internal.vm.compiler.management", true);
                 ModuleSupport.exportAndOpenAllPackagesToUnnamed("com.oracle.graal.graal_enterprise", true);
                 ModuleSupport.exportAndOpenAllPackagesToUnnamed("java.xml", false);
+                if (JavaVersionUtil.JAVA_SPEC >= 16) {
+                    ModuleSupport.exportAndOpenPackageToUnnamed("java.base", "sun.reflect.annotation", false);
+                    ModuleSupport.exportAndOpenPackageToUnnamed("java.base", "sun.security.jca", false);
+                    ModuleSupport.exportAndOpenPackageToUnnamed("jdk.jdeps", "com.sun.tools.classfile", false);
+                }
             }
             NativeImage.main(args);
         }
