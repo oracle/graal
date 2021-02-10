@@ -220,7 +220,7 @@ public final class StaticObject implements TruffleObject {
             assert !f.isStatic();
             if (!f.isHidden()) {
                 if (f.getKind() == JavaKind.Object) {
-                    setUnsafeField(f.getOffset(), StaticObject.NULL);
+                    setObjectField(f, StaticObject.NULL);
                 }
             }
         }
@@ -233,7 +233,7 @@ public final class StaticObject implements TruffleObject {
         for (Field f : thisKlass.getStaticFieldTable()) {
             assert f.isStatic();
             if (f.getKind() == JavaKind.Object) {
-                setUnsafeField(f.getOffset(), StaticObject.NULL);
+                setObjectField(f, StaticObject.NULL);
             }
         }
     }
@@ -1688,31 +1688,6 @@ public final class StaticObject implements TruffleObject {
     @TruffleBoundary(allowInlining = true)
     public void setObjectFieldVolatile(Field field, Object value) {
         setObjectFieldVolatileHelper(field, value);
-    }
-
-    // Use with caution. Can be used with hidden fields.
-    @Deprecated
-    public Object getUnsafeField(int fieldOffset) {
-        checkNotForeign();
-        return UNSAFE.getObject(castExact(fields, Object[].class), (long) fieldOffset);
-    }
-
-    @Deprecated
-    private Object getUnsafeFieldVolatile(int fieldOffset) {
-        checkNotForeign();
-        return UNSAFE.getObjectVolatile(castExact(fields, Object[].class), fieldOffset);
-    }
-
-    @Deprecated
-    private void setUnsafeField(int index, Object value) {
-        checkNotForeign();
-        UNSAFE.putObject(fields, (long) index, value);
-    }
-
-    @Deprecated
-    private void setUnsafeFieldVolatile(int index, Object value) {
-        checkNotForeign();
-        UNSAFE.putObjectVolatile(fields, index, value);
     }
 
     public boolean compareAndSwapObjectField(Field field, Object before, Object after) {
