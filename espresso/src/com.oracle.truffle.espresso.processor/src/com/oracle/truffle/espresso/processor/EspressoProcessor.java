@@ -43,6 +43,7 @@ import javax.lang.model.element.ElementKind;
 import javax.lang.model.element.ExecutableElement;
 import javax.lang.model.element.TypeElement;
 import javax.lang.model.element.VariableElement;
+import javax.lang.model.type.TypeKind;
 import javax.lang.model.type.TypeMirror;
 import javax.tools.JavaFileObject;
 
@@ -311,18 +312,18 @@ public abstract class EspressoProcessor extends AbstractProcessor {
     static final String TAB_3 = TAB_2 + TAB_1;
     static final String TAB_4 = TAB_3 + TAB_1;
 
-    public static NativeType classToType(String clazz) {
+    public static NativeType classToType(TypeKind typeKind) {
         // @formatter:off
-        switch (clazz) {
-            case "boolean": return NativeType.BOOLEAN;
-            case "byte":    return NativeType.BYTE;
-            case "short":   return NativeType.SHORT;
-            case "char":    return NativeType.CHAR;
-            case "int":     return NativeType.INT;
-            case "float":   return NativeType.FLOAT;
-            case "long":    return NativeType.LONG;
-            case "double":  return NativeType.DOUBLE;
-            case "void":    return NativeType.VOID;
+        switch (typeKind) {
+            case BOOLEAN : return NativeType.BOOLEAN;
+            case BYTE    : return NativeType.BYTE;
+            case SHORT   : return NativeType.SHORT;
+            case CHAR    : return NativeType.CHAR;
+            case INT     : return NativeType.INT;
+            case FLOAT   : return NativeType.FLOAT;
+            case LONG    : return NativeType.LONG;
+            case DOUBLE  : return NativeType.DOUBLE;
+            case VOID    : return NativeType.VOID;
             default:
                 return NativeType.OBJECT;
         }

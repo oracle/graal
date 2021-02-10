@@ -69,10 +69,10 @@ public abstract class IntrinsicsProcessor extends EspressoProcessor {
         }
     }
 
-    NativeType[] jniNativeSignature(ExecutableElement method, String returnType, boolean prependJniEnv) {
+    NativeType[] jniNativeSignature(ExecutableElement method, boolean prependJniEnv) {
         List<NativeType> signature = new ArrayList<>(16);
 
-        // Return type is alwasy first.
+        // Return type is always first.
         AnnotationMirror pointer = getAnnotation(method.getReturnType(), pointerAnnotation);
         AnnotationMirror handle = getAnnotation(method.getReturnType(), handleAnnotation);
         if (pointer != null) {
@@ -80,7 +80,7 @@ public abstract class IntrinsicsProcessor extends EspressoProcessor {
         } else if (handle != null) {
             signature.add(NativeType.LONG);
         } else {
-            signature.add(classToType(returnType));
+            signature.add(classToType(method.getReturnType().getKind()));
         }
 
         // Arguments...
@@ -100,7 +100,7 @@ public abstract class IntrinsicsProcessor extends EspressoProcessor {
                 } else if (handle != null) {
                     signature.add(NativeType.LONG); // word size
                 } else {
-                    signature.add(classToType(param.asType().toString()));
+                    signature.add(classToType(param.asType().getKind()));
                 }
             }
         }

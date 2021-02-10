@@ -23,6 +23,7 @@
 package com.oracle.truffle.espresso.vm;
 
 import com.oracle.truffle.espresso._native.NativeSignature;
+import com.oracle.truffle.espresso._native.NativeType;
 import com.oracle.truffle.espresso.meta.Meta;
 import com.oracle.truffle.espresso.substitutions.SubstitutionProfiler;
 
@@ -34,14 +35,12 @@ public abstract class VMSubstitutor extends SubstitutionProfiler {
         private final String methodName;
         private final NativeSignature nativeSignature;
         private final int parameterCount;
-        private final String returnType;
         private final boolean isJni;
 
-        Factory(String methodName, NativeSignature nativeSignature, int parameterCount, String returnType, boolean isJni) {
+        Factory(String methodName, NativeSignature nativeSignature, int parameterCount, boolean isJni) {
             this.methodName = methodName;
             this.nativeSignature = nativeSignature;
             this.parameterCount = parameterCount;
-            this.returnType = returnType;
             this.isJni = isJni;
         }
 
@@ -57,8 +56,8 @@ public abstract class VMSubstitutor extends SubstitutionProfiler {
             return parameterCount;
         }
 
-        public String returnType() {
-            return returnType;
+        public NativeType returnType() {
+            return nativeSignature.getReturnType();
         }
 
         public boolean isJni() {

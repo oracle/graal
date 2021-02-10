@@ -32,6 +32,7 @@ import java.util.Collections;
 import java.util.IdentityHashMap;
 import java.util.Set;
 
+import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.interop.InteropLibrary;
 import com.oracle.truffle.api.interop.TruffleObject;
@@ -50,35 +51,24 @@ public abstract class NativeEnv {
 
     protected final Set<@Pointer TruffleObject> nativeClosures = Collections.newSetFromMap(new IdentityHashMap<>());
 
-    protected static Object defaultValue(String returnType) {
-        if (returnType.equals("boolean")) {
-            return false;
+    protected static Object defaultValue(NativeType nativeType) {
+        // @formatter:off
+        switch (nativeType){
+            case BOOLEAN : return false;
+            case BYTE    : return (byte) 0;
+            case CHAR    : return (char) 0;
+            case SHORT   : return (short) 0;
+            case INT     : return 0;
+            case LONG    : return 0L;
+            case FLOAT   : return 0F;
+            case DOUBLE  : return 0D;
+            case POINTER : return RawPointer.nullInstance();
+            case VOID    : // fall-through
+            case OBJECT  : return StaticObject.NULL;
         }
-        if (returnType.equals("byte")) {
-            return (byte) 0;
-        }
-        if (returnType.equals("char")) {
-            return (char) 0;
-        }
-        if (returnType.equals("short")) {
-            return (short) 0;
-        }
-        if (returnType.equals("int")) {
-            return 0;
-        }
-        if (returnType.equals("float")) {
-            return 0.0F;
-        }
-        if (returnType.equals("double")) {
-            return 0.0;
-        }
-        if (returnType.equals("long")) {
-            return 0L;
-        }
-        if (returnType.equals("StaticObject")) {
-            return 0L; // NULL handle
-        }
-        return StaticObject.NULL;
+        // @formatter:on
+        CompilerDirectives.transferToInterpreterAndInvalidate();
+        throw EspressoError.shouldNotReachHere("Unexpected NativeType: " + nativeType);
     }
 
 }
