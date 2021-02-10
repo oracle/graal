@@ -34,12 +34,13 @@ import com.oracle.truffle.object.DebugCounter;
 public class NFINativeAccess implements NativeAccess {
 
     private static final boolean CACHE_SIGNATURES = "true".equals(System.getProperty("espresso.nfi.cache_signatures", "true"));
-    private final DebugCounter NFI_SIGNATURES_CREATED = DebugCounter.create("NFI signatures created");
+
+    private final DebugCounter nfiSignaturesCreated = DebugCounter.create("NFI signatures created");
 
     private final Map<NativeSignature, Object> signatureCache;
 
-    protected final InteropLibrary INTEROP = InteropLibrary.getUncached();
-    protected final SignatureLibrary SIGNATURE = SignatureLibrary.getUncached();
+    protected final InteropLibrary uncachedInterop = InteropLibrary.getUncached();
+    protected final SignatureLibrary uncachedSignature = SignatureLibrary.getUncached();
 
     private final EspressoContext context;
 
@@ -89,10 +90,10 @@ public class NFINativeAccess implements NativeAccess {
     private interface SignatureProvider extends Function<NativeSignature, Object> {
     }
 
-    final SignatureProvider SIGNATURE_PROVIDER = new SignatureProvider() {
+    final SignatureProvider signatureProvider = new SignatureProvider() {
         @Override
         public Object apply(NativeSignature nativeSignature) {
-            NFI_SIGNATURES_CREATED.inc();
+            nfiSignaturesCreated.inc();
             Source source = Source.newBuilder("nfi",
                             nfiStringSignature(nativeSignature.getReturnType(), nativeSignature.getParameterTypes()), "signature").build();
             CallTarget target = getContext().getEnv().parseInternal(source);
@@ -103,8 +104,8 @@ public class NFINativeAccess implements NativeAccess {
     protected Object createNFISignature(NativeType returnType, NativeType... parameterTypes) {
         NativeSignature nativeSignature = NativeSignature.create(returnType, parameterTypes);
         return CACHE_SIGNATURES
-                        ? signatureCache.computeIfAbsent(nativeSignature, SIGNATURE_PROVIDER)
-                        : SIGNATURE_PROVIDER.apply(nativeSignature);
+                        ? signatureCache.computeIfAbsent(nativeSignature, signatureProvider)
+                        : signatureProvider.apply(nativeSignature);
     }
 
     public NFINativeAccess(EspressoContext context) {
@@ -146,7 +147,7 @@ public class NFINativeAccess implements NativeAccess {
     @Override
     public @Pointer TruffleObject lookupSymbol(@Pointer TruffleObject library, String symbolName) {
         try {
-            return (TruffleObject) INTEROP.readMember(library, symbolName);
+            return (TruffleObject) uncachedInterop.readMember(library, symbolName);
         } catch (UnsupportedMessageException e) {
             throw EspressoError.shouldNotReachHere(e);
         } catch (UnknownIdentifierException e) {
@@ -155,13 +156,13 @@ public class NFINativeAccess implements NativeAccess {
     }
 
     @ExportLibrary(InteropLibrary.class)
-    final static class NativeToJavaWrapper implements TruffleObject {
+    static final class NativeToJavaWrapper implements TruffleObject {
 
         final TruffleObject delegate;
         private final NativeType returnType;
         private final NativeType[] parameterTypes;
 
-        public NativeToJavaWrapper(TruffleObject executable, NativeType returnType, NativeType... parameterTypes) {
+        NativeToJavaWrapper(TruffleObject executable, NativeType returnType, NativeType... parameterTypes) {
             this.delegate = executable;
             this.returnType = returnType;
             this.parameterTypes = parameterTypes;
@@ -217,11 +218,11 @@ public class NFINativeAccess implements NativeAccess {
 
     @Override
     public @Pointer TruffleObject bindSymbol(@Pointer TruffleObject symbol, NativeType returnType, NativeType... parameterTypes) {
-        if (INTEROP.isNull(symbol)) {
+        if (uncachedInterop.isNull(symbol)) {
             return null; // LD_DEBUG=unused makes non-existing symbols to be NULL.
         }
-        TruffleObject executable = (TruffleObject) SIGNATURE.bind(createNFISignature(returnType, parameterTypes), symbol);
-        assert INTEROP.isExecutable(executable);
+        TruffleObject executable = (TruffleObject) uncachedSignature.bind(createNFISignature(returnType, parameterTypes), symbol);
+        assert uncachedInterop.isExecutable(executable);
         return new NativeToJavaWrapper(executable, returnType, parameterTypes);
     }
 
@@ -242,21 +243,21 @@ public class NFINativeAccess implements NativeAccess {
 
     @Override
     public @Pointer TruffleObject createNativeClosure(TruffleObject executable, NativeType returnType, NativeType... parameterTypes) {
-        assert INTEROP.isExecutable(executable);
+        assert uncachedInterop.isExecutable(executable);
         TruffleObject wrappedExecutable = new JavaToNativeWrapper(executable, returnType, parameterTypes);
-        TruffleObject nativeFn = (TruffleObject) SIGNATURE.createClosure(createNFISignature(returnType, parameterTypes), wrappedExecutable);
-        assert INTEROP.isPointer(nativeFn);
+        TruffleObject nativeFn = (TruffleObject) uncachedSignature.createClosure(createNFISignature(returnType, parameterTypes), wrappedExecutable);
+        assert uncachedInterop.isPointer(nativeFn);
         return nativeFn;
     }
 
     @ExportLibrary(InteropLibrary.class)
-    final static class JavaToNativeWrapper implements TruffleObject {
+    static final class JavaToNativeWrapper implements TruffleObject {
 
         final TruffleObject delegate;
         private final NativeType returnType;
         private final NativeType[] parameterTypes;
 
-        public JavaToNativeWrapper(TruffleObject executable, NativeType returnType, NativeType... parameterTypes) {
+        JavaToNativeWrapper(TruffleObject executable, NativeType returnType, NativeType... parameterTypes) {
             this.delegate = executable;
             this.returnType = returnType;
             this.parameterTypes = parameterTypes;
