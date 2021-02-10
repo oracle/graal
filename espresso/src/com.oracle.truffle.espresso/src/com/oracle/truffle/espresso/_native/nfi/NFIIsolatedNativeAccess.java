@@ -25,9 +25,6 @@ package com.oracle.truffle.espresso._native.nfi;
 import java.nio.file.Path;
 import java.util.Collections;
 
-import com.oracle.truffle.espresso._native.Buffer;
-import com.oracle.truffle.espresso._native.NativeType;
-import com.oracle.truffle.espresso._native.Pointer;
 import org.graalvm.options.OptionValues;
 
 import com.oracle.truffle.api.CompilerAsserts;
@@ -37,6 +34,9 @@ import com.oracle.truffle.api.interop.TruffleObject;
 import com.oracle.truffle.api.interop.UnsupportedMessageException;
 import com.oracle.truffle.api.interop.UnsupportedTypeException;
 import com.oracle.truffle.espresso.EspressoOptions;
+import com.oracle.truffle.espresso._native.Buffer;
+import com.oracle.truffle.espresso._native.NativeType;
+import com.oracle.truffle.espresso._native.Pointer;
 import com.oracle.truffle.espresso.meta.EspressoError;
 import com.oracle.truffle.espresso.runtime.EspressoContext;
 

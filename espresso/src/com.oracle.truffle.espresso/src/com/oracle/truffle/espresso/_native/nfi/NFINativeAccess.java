@@ -50,7 +50,6 @@ import com.oracle.truffle.espresso._native.NativeAccess;
 import com.oracle.truffle.espresso._native.NativeSignature;
 import com.oracle.truffle.espresso._native.NativeType;
 import com.oracle.truffle.espresso._native.Pointer;
-import com.oracle.truffle.espresso._native.TruffleByteBuffer;
 import com.oracle.truffle.espresso.jni.NativeLibrary;
 import com.oracle.truffle.espresso.meta.EspressoError;
 import com.oracle.truffle.espresso.runtime.EspressoContext;
@@ -59,6 +58,7 @@ import com.oracle.truffle.espresso.vm.UnsafeAccess;
 import com.oracle.truffle.nfi.api.SignatureLibrary;
 import com.oracle.truffle.nfi.spi.types.NativeSimpleType;
 import com.oracle.truffle.object.DebugCounter;
+
 import sun.misc.Unsafe;
 
 public class NFINativeAccess implements NativeAccess {

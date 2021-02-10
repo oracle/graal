@@ -22,30 +22,17 @@
  */
 package com.oracle.truffle.espresso.jni;
 
-import java.io.IOException;
-import java.lang.reflect.Constructor;
-import java.lang.reflect.Field;
-import java.lang.reflect.InvocationTargetException;
-import java.nio.ByteBuffer;
-import java.nio.ByteOrder;
 import java.util.Collections;
 import java.util.IdentityHashMap;
 import java.util.Set;
 
 import com.oracle.truffle.api.CompilerDirectives;
-import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
-import com.oracle.truffle.api.interop.InteropLibrary;
 import com.oracle.truffle.api.interop.TruffleObject;
-import com.oracle.truffle.api.interop.UnsupportedMessageException;
-import com.oracle.truffle.espresso._native.Buffer;
 import com.oracle.truffle.espresso._native.NativeType;
 import com.oracle.truffle.espresso._native.Pointer;
 import com.oracle.truffle.espresso._native.RawPointer;
-import com.oracle.truffle.espresso._native.TruffleByteBuffer;
 import com.oracle.truffle.espresso.meta.EspressoError;
-import com.oracle.truffle.espresso.meta.JavaKind;
 import com.oracle.truffle.espresso.runtime.StaticObject;
-import com.oracle.truffle.nfi.spi.types.NativeSimpleType;
 
 public abstract class NativeEnv {
 
