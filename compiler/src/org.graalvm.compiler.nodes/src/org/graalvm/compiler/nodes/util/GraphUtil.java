@@ -24,15 +24,14 @@
  */
 package org.graalvm.compiler.nodes.util;
 
-import java.util.ArrayList;
-import java.util.Arrays;
-import java.util.Collection;
-import java.util.Collections;
-import java.util.Iterator;
-import java.util.List;
-import java.util.Objects;
-import java.util.function.BiFunction;
-
+import jdk.vm.ci.code.BailoutException;
+import jdk.vm.ci.code.BytecodePosition;
+import jdk.vm.ci.meta.Assumptions;
+import jdk.vm.ci.meta.Constant;
+import jdk.vm.ci.meta.ConstantReflectionProvider;
+import jdk.vm.ci.meta.JavaKind;
+import jdk.vm.ci.meta.ResolvedJavaMethod;
+import jdk.vm.ci.meta.ResolvedJavaType;
 import org.graalvm.collections.EconomicMap;
 import org.graalvm.collections.EconomicSet;
 import org.graalvm.collections.Equivalence;
@@ -96,14 +95,14 @@ import org.graalvm.compiler.options.OptionKey;
 import org.graalvm.compiler.options.OptionType;
 import org.graalvm.compiler.options.OptionValues;
 
-import jdk.vm.ci.code.BailoutException;
-import jdk.vm.ci.code.BytecodePosition;
-import jdk.vm.ci.meta.Assumptions;
-import jdk.vm.ci.meta.Constant;
-import jdk.vm.ci.meta.ConstantReflectionProvider;
-import jdk.vm.ci.meta.JavaKind;
-import jdk.vm.ci.meta.ResolvedJavaMethod;
-import jdk.vm.ci.meta.ResolvedJavaType;
+import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.Collection;
+import java.util.Collections;
+import java.util.Iterator;
+import java.util.List;
+import java.util.Objects;
+import java.util.function.BiFunction;
 
 public class GraphUtil {
 
@@ -1033,6 +1032,15 @@ public class GraphUtil {
                 return getLowerer().smallestCompareWidth();
             } else {
                 return null;
+            }
+        }
+
+        @Override
+        public boolean supportsRounding() {
+            if (getLowerer() != null) {
+                return getLowerer().supportsRounding();
+            } else {
+                return false;
             }
         }
     }

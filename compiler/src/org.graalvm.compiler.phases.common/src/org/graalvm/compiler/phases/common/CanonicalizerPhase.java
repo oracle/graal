@@ -24,13 +24,8 @@
  */
 package org.graalvm.compiler.phases.common;
 
-import static org.graalvm.compiler.phases.common.CanonicalizerPhase.CanonicalizerFeature.CFG_SIMPLIFICATION;
-import static org.graalvm.compiler.phases.common.CanonicalizerPhase.CanonicalizerFeature.FINAL_CANONICALIZATION;
-import static org.graalvm.compiler.phases.common.CanonicalizerPhase.CanonicalizerFeature.GVN;
-import static org.graalvm.compiler.phases.common.CanonicalizerPhase.CanonicalizerFeature.READ_CANONICALIZATION;
-
-import java.util.EnumSet;
-
+import jdk.vm.ci.meta.Assumptions;
+import jdk.vm.ci.meta.Constant;
 import org.graalvm.compiler.core.common.type.Stamp;
 import org.graalvm.compiler.debug.CounterKey;
 import org.graalvm.compiler.debug.DebugCloseable;
@@ -67,8 +62,12 @@ import org.graalvm.compiler.options.OptionValues;
 import org.graalvm.compiler.phases.BasePhase;
 import org.graalvm.compiler.phases.Phase;
 
-import jdk.vm.ci.meta.Assumptions;
-import jdk.vm.ci.meta.Constant;
+import java.util.EnumSet;
+
+import static org.graalvm.compiler.phases.common.CanonicalizerPhase.CanonicalizerFeature.CFG_SIMPLIFICATION;
+import static org.graalvm.compiler.phases.common.CanonicalizerPhase.CanonicalizerFeature.FINAL_CANONICALIZATION;
+import static org.graalvm.compiler.phases.common.CanonicalizerPhase.CanonicalizerFeature.GVN;
+import static org.graalvm.compiler.phases.common.CanonicalizerPhase.CanonicalizerFeature.READ_CANONICALIZATION;
 
 public class CanonicalizerPhase extends BasePhase<CoreProviders> {
 
@@ -585,6 +584,11 @@ public class CanonicalizerPhase extends BasePhase<CoreProviders> {
             @Override
             public Integer smallestCompareWidth() {
                 return context.getLowerer().smallestCompareWidth();
+            }
+
+            @Override
+            public boolean supportsRounding() {
+                return context.getLowerer().supportsRounding();
             }
 
             @Override

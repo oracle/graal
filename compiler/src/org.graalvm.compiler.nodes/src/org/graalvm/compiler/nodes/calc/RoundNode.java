@@ -39,6 +39,7 @@ import org.graalvm.compiler.nodes.ConstantNode;
 import org.graalvm.compiler.nodes.NodeView;
 import org.graalvm.compiler.nodes.ValueNode;
 import org.graalvm.compiler.nodes.spi.ArithmeticLIRLowerable;
+import org.graalvm.compiler.nodes.spi.LoweringProvider;
 import org.graalvm.compiler.nodes.spi.NodeLIRBuilderTool;
 
 import static org.graalvm.compiler.nodeinfo.NodeCycles.CYCLES_1;
@@ -59,6 +60,10 @@ public final class RoundNode extends UnaryNode implements ArithmeticLIRLowerable
     public RoundNode(ValueNode value, RoundingMode mode) {
         super(TYPE, roundStamp((FloatStamp) value.stamp(NodeView.DEFAULT), mode), value);
         this.mode = mode;
+    }
+
+    public RoundingMode mode() {
+        return mode;
     }
 
     private static double round(RoundingMode mode, double input) {
