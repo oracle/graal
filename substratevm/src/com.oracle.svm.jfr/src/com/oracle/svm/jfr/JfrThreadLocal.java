@@ -100,7 +100,7 @@ public class JfrThreadLocal implements ThreadListener {
 
                 JfrNativeEventWriter.beginEventWrite(data, false);
                 JfrNativeEventWriter.putLong(data, JfrEvents.ThreadStartEvent.getId());
-                JfrNativeEventWriter.putLong(data, JfrTicks.counterTime()); // start time
+                JfrNativeEventWriter.putLong(data, JfrTicks.elapsedTicks()); // start time
                 JfrNativeEventWriter.putThread(data, isolateThread); // thread triggering the event
                 JfrNativeEventWriter.putThread(data, isolateThread); // started thread
                 JfrNativeEventWriter.putThread(data, WordFactory.nullPointer()); // parent thread
@@ -121,7 +121,7 @@ public class JfrThreadLocal implements ThreadListener {
 
                 JfrNativeEventWriter.beginEventWrite(data, false);
                 JfrNativeEventWriter.putLong(data, JfrEvents.ThreadEndEvent.getId());
-                JfrNativeEventWriter.putLong(data, JfrTicks.counterTime()); // start time
+                JfrNativeEventWriter.putLong(data, JfrTicks.elapsedTicks()); // start time
                 JfrNativeEventWriter.putThread(data, isolateThread); // thread triggering the event
                 JfrNativeEventWriter.putThread(data, isolateThread); // thread that exits
                 JfrNativeEventWriter.endEventWrite(data, false);
@@ -242,7 +242,7 @@ public class JfrThreadLocal implements ThreadListener {
 
             JfrNativeEventWriter.beginEventWrite(data, false);
             JfrNativeEventWriter.putLong(data, JfrEvents.DataLossEvent.getId());
-            JfrNativeEventWriter.putLong(data, JfrTicks.counterTime());
+            JfrNativeEventWriter.putLong(data, JfrTicks.elapsedTicks());
             JfrNativeEventWriter.putLong(data, unflushedSize.rawValue());
             JfrNativeEventWriter.putLong(data, totalDataLoss.rawValue());
             JfrNativeEventWriter.endEventWrite(data, false);

@@ -47,9 +47,7 @@ public final class PredefinedJFCSubstitition {
         try {
             registerConf(DEFAULT_JFC);
             registerConf(PROFILE_JFC);
-        } catch (IOException ex) {
-            throw VMError.shouldNotReachHere(ex);
-        } catch (ParseException ex) {
+        } catch (IOException | ParseException ex) {
             throw VMError.shouldNotReachHere(ex);
         }
     }

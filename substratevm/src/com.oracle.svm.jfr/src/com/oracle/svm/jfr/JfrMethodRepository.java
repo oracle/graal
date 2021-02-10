@@ -98,8 +98,8 @@ public class JfrMethodRepository implements JfrRepository {
         return null;
     }
 
-    // TODO: just a dummy implementation - for each method, one info object must live in
-    // the image heap.
+    // TODO: just a dummy implementation - for each method, one info object must live in the image
+    // heap.
     public static class MethodInfo {
         public int getId() {
             return 0;

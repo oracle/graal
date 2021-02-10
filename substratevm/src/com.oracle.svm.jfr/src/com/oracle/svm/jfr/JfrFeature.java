@@ -108,8 +108,8 @@ public class JfrFeature implements Feature {
     public void beforeAnalysis(Feature.BeforeAnalysisAccess access) {
         RuntimeSupport runtime = RuntimeSupport.getRuntimeSupport();
         JfrManager manager = JfrManager.get();
-        runtime.addStartupHook(() -> manager.setup());
-        runtime.addShutdownHook(() -> manager.teardown());
+        runtime.addStartupHook(manager::setup);
+        runtime.addShutdownHook(manager::teardown);
     }
 
     @Override

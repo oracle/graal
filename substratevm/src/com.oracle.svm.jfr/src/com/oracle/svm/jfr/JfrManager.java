@@ -172,8 +172,8 @@ public class JfrManager {
                 int idx = indexOfFirstNonDigitCharacter(value);
                 long time;
                 try {
-                    time = Long.valueOf(value.substring(0, idx));
-                } catch (IllegalArgumentException e) {
+                    time = Long.parseLong(value.substring(0, idx));
+                } catch (NumberFormatException e) {
                     throw new IllegalArgumentException("Expected a number.");
                 }
 

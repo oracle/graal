@@ -36,7 +36,7 @@ public final class JfrTicks {
         initialTicks = System.nanoTime();
     }
 
-    public static long counterTime() {
+    public static long elapsedTicks() {
         assert initialTicks > 0;
         return System.nanoTime() - initialTicks;
     }

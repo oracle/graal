@@ -111,7 +111,7 @@ public final class JfrChunkWriter implements JfrUnlockedChunkWriter {
         assert lock.isHeldByCurrentThread();
         filename = outputFile;
         chunkStartNanos = JfrTicks.currentTimeNanos();
-        chunkStartTicks = JfrTicks.counterTime();
+        chunkStartTicks = JfrTicks.elapsedTicks();
         try {
             file = new RandomAccessFile(outputFile, "w");
             writeFileHeader();
@@ -212,7 +212,7 @@ public final class JfrChunkWriter implements JfrUnlockedChunkWriter {
 
         long start = beginEvent();
         writeCompressedLong(JfrEvents.CheckpointEvent.getId());
-        writeCompressedLong(JfrTicks.counterTime());
+        writeCompressedLong(JfrTicks.elapsedTicks());
         writeCompressedLong(0); // duration
         writeCompressedLong(0); // deltaToNext
         file.writeBoolean(true); // flush
@@ -239,7 +239,7 @@ public final class JfrChunkWriter implements JfrUnlockedChunkWriter {
     private long writeMetadataEvent(byte[] metadataDescriptor) throws IOException {
         long start = beginEvent();
         writeCompressedLong(JfrEvents.MetadataEvent.getId());
-        writeCompressedLong(JfrTicks.counterTime());
+        writeCompressedLong(JfrTicks.elapsedTicks());
         writeCompressedLong(0); // duration
         writeCompressedLong(0); // metadata id
         file.write(metadataDescriptor); // payload

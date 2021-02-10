@@ -126,10 +126,12 @@ class SubstrateJVM {
         return get().threadLocal;
     }
 
+    @Fold
     public static JfrTypeRepository getTypeRepository() {
         return get().typeRepo;
     }
 
+    @Fold
     public static JfrMethodRepository getMethodRepository() {
         return get().methodRepo;
     }

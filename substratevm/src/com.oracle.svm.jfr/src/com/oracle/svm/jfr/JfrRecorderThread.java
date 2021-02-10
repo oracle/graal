@@ -32,8 +32,9 @@ import com.oracle.svm.core.locks.VMMutex;
 import com.oracle.svm.core.util.VMError;
 
 /**
- * A daemon thread that is created during JFR startup and torn down by the JFR shutdown hook. It is
- * used for persisting the {@link JfrGlobalMemory} buffers to a file.
+ * A daemon thread that is created during JFR startup and torn down by
+ * {@link SubstrateJVM#destroyJFR}. It is used for persisting the {@link JfrGlobalMemory} buffers to
+ * a file.
  */
 public class JfrRecorderThread extends Thread {
     private static final int BUFFER_FULL_ENOUGH_PERCENTAGE = 50;

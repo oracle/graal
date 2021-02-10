@@ -30,15 +30,15 @@ import jdk.jfr.Event;
 import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;
 
-public class JfrAllEvents {
-    private static List<Class<? extends Event>> eventClasses = new ArrayList<>();
+public class JfrJavaEvents {
+    private static final List<Class<? extends Event>> EVENT_CLASSES = new ArrayList<>();
 
     @Platforms(Platform.HOSTED_ONLY.class)
     public static void registerEventClass(Class<? extends Event> eventClass) {
-        eventClasses.add(eventClass);
+        EVENT_CLASSES.add(eventClass);
     }
 
     public static List<Class<? extends Event>> getAllEventClasses() {
-        return eventClasses;
+        return EVENT_CLASSES;
     }
 }

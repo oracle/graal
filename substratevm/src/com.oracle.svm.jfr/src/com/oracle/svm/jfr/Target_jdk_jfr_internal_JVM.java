@@ -69,7 +69,7 @@ public final class Target_jdk_jfr_internal_JVM {
     /** See {@link JVM#counterTime}. */
     @Substitute
     public static long counterTime() {
-        return JfrTicks.counterTime();
+        return JfrTicks.elapsedTicks();
     }
 
     /** See {@link JVM#emitEvent}. */
@@ -87,7 +87,7 @@ public final class Target_jdk_jfr_internal_JVM {
     /** See {@link JVM#getAllEventClasses}. */
     @Substitute
     public List<Class<? extends Event>> getAllEventClasses() {
-        return JfrAllEvents.getAllEventClasses();
+        return JfrJavaEvents.getAllEventClasses();
     }
 
     /** See {@link JVM#getUnloadedEventClassCount}. */

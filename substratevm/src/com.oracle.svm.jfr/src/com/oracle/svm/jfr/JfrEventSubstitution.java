@@ -25,13 +25,15 @@
 package com.oracle.svm.jfr;
 
 //Checkstyle: allow reflection
+
 import java.lang.reflect.Field;
 import java.lang.reflect.Method;
 import java.lang.reflect.Modifier;
-import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
 
 import org.graalvm.compiler.serviceprovider.GraalUnsafeAccess;
+import org.graalvm.nativeimage.Platform;
+import org.graalvm.nativeimage.Platforms;
 import org.graalvm.nativeimage.hosted.RuntimeReflection;
 
 import com.oracle.graal.pointsto.infrastructure.OriginalClassProvider;
@@ -49,10 +51,15 @@ import jdk.vm.ci.meta.ResolvedJavaMethod;
 import jdk.vm.ci.meta.ResolvedJavaType;
 import sun.misc.Unsafe;
 
+/**
+ * I think that most of the code in this class is unnecessary and can be implemented in a different
+ * way (i.e., without a SubstitutionProcessor).
+ */
+@Platforms(Platform.HOSTED_ONLY.class)
 public class JfrEventSubstitution extends SubstitutionProcessor {
 
     private final ResolvedJavaType jdkJfrEvent;
-    private final Map<ResolvedJavaType, Boolean> typeSubstitution;
+    private final ConcurrentHashMap<ResolvedJavaType, Boolean> typeSubstitution;
 
     JfrEventSubstitution(MetaAccessProvider metaAccess) {
         jdkJfrEvent = metaAccess.lookupJavaType(Event.class);
@@ -62,12 +69,9 @@ public class JfrEventSubstitution extends SubstitutionProcessor {
     }
 
     @Override
-    @SuppressWarnings("unchecked")
     public ResolvedJavaType lookup(ResolvedJavaType type) {
         if (!jdkJfrEvent.equals(type) && jdkJfrEvent.isAssignableFrom(type) && !type.isAbstract()) {
-            typeSubstitution.computeIfAbsent(type, (t) -> {
-                return initEventClass(t);
-            });
+            typeSubstitution.computeIfAbsent(type, JfrEventSubstitution::initEventClass);
         }
         return type;
     }
@@ -77,7 +81,7 @@ public class JfrEventSubstitution extends SubstitutionProcessor {
             Class<? extends Event> newEventClass = OriginalClassProvider.getJavaClass(GraalAccess.getOriginalSnippetReflection(), eventType).asSubclass(Event.class);
             eventType.initialize();
             SecuritySupport.registerEvent(newEventClass);
-            JfrAllEvents.registerEventClass(newEventClass);
+            JfrJavaEvents.registerEventClass(newEventClass);
             JVM.getJVM().retransformClasses(new Class<?>[]{newEventClass});
             Field field = ReflectionUtil.lookupField(newEventClass, "eventHandler");   // EventInstrumentation.FIELD_EVENT_HANDLER
             RuntimeReflection.register(field);

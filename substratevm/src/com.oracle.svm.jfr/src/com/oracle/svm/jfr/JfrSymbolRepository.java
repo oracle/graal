@@ -45,7 +45,7 @@ import com.oracle.svm.core.heap.Heap;
 import com.oracle.svm.core.thread.VMOperation;
 
 /**
- * In Native Image, we use java.lang.String objects that live in the image heap as symbols.
+ * In Native Image, we use {@link java.lang.String} objects that live in the image heap as symbols.
  */
 public class JfrSymbolRepository implements JfrRepository {
     private final JfrSymbolHashtable table;

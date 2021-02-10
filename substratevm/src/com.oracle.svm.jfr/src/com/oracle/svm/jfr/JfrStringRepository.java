@@ -33,7 +33,11 @@ import com.oracle.svm.core.annotate.Uninterruptible;
 import com.oracle.svm.core.thread.VMOperation;
 
 /**
- * This class is only used for Java-level JFR events.
+ * This class is only used for Java-level JFR events. Therefore, we can use Java heap memory for the
+ * storage. This has the benefit that it automatically creates GC-visible references to the String
+ * objects, so we don't need any GC-specific handling. The actual operation that modifies the data
+ * structure and inserts the String value must be uninterruptible though (see
+ * {@link JfrRepository}).
  */
 public class JfrStringRepository implements JfrRepository {
     @Platforms(Platform.HOSTED_ONLY.class)
@@ -44,7 +48,7 @@ public class JfrStringRepository implements JfrRepository {
     public boolean add(boolean expectedEpoch, long id, String value) {
         boolean currentEpoch = SubstrateJVM.get().getEpoch();
         if (currentEpoch == expectedEpoch) {
-            // TODO: insert the string into an uninterruptible datastructure.
+            // TODO: uninterruptibly insert the string into a datastructure.
         }
         return currentEpoch;
     }

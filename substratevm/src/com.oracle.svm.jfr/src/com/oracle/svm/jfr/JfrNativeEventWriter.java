@@ -56,7 +56,7 @@ public final class JfrNativeEventWriter {
     private JfrNativeEventWriter() {
     }
 
-    @Uninterruptible(reason = "Accesses a native JFR buffer.", calleeMustBe = true)
+    @Uninterruptible(reason = "Accesses a native JFR buffer.", callerMustBe = true)
     public static void beginEventWrite(JfrNativeEventWriterData data, boolean large) {
         assert SubstrateJVM.isRecording();
         assert isValid(data);
@@ -68,7 +68,7 @@ public final class JfrNativeEventWriter {
         }
     }
 
-    @Uninterruptible(reason = "Accesses a native JFR buffer.", calleeMustBe = true)
+    @Uninterruptible(reason = "Accesses a native JFR buffer.", callerMustBe = true)
     public static UnsignedWord endEventWrite(JfrNativeEventWriterData data, boolean large) {
         if (!isValid(data)) {
             return WordFactory.unsigned(0);
@@ -105,48 +105,48 @@ public final class JfrNativeEventWriter {
         return written;
     }
 
-    @Uninterruptible(reason = "Accesses a native JFR buffer.", calleeMustBe = true)
+    @Uninterruptible(reason = "Accesses a native JFR buffer.", callerMustBe = true)
     public static void putBoolean(JfrNativeEventWriterData data, boolean i) {
         byte value = (byte) (i ? 1 : 0);
         putByte(data, value);
     }
 
-    @Uninterruptible(reason = "Accesses a native JFR buffer.", calleeMustBe = true)
+    @Uninterruptible(reason = "Accesses a native JFR buffer.", callerMustBe = true)
     public static void putByte(JfrNativeEventWriterData data, byte i) {
         if (ensureSize(data, Byte.BYTES)) {
             putUncheckedByte(data, i);
         }
     }
 
-    @Uninterruptible(reason = "Accesses a native JFR buffer.", calleeMustBe = true)
+    @Uninterruptible(reason = "Accesses a native JFR buffer.", callerMustBe = true)
     public static void putChar(JfrNativeEventWriterData data, char v) {
         if (ensureSize(data, Character.BYTES)) {
             putUncheckedLong(data, v);
         }
     }
 
-    @Uninterruptible(reason = "Accesses a native JFR buffer.", calleeMustBe = true)
+    @Uninterruptible(reason = "Accesses a native JFR buffer.", callerMustBe = true)
     public static void putShort(JfrNativeEventWriterData data, short v) {
         if (ensureSize(data, Short.BYTES)) {
             putUncheckedLong(data, v & 0xFFFF);
         }
     }
 
-    @Uninterruptible(reason = "Accesses a native JFR buffer.", calleeMustBe = true)
+    @Uninterruptible(reason = "Accesses a native JFR buffer.", callerMustBe = true)
     public static void putInt(JfrNativeEventWriterData data, int v) {
         if (ensureSize(data, Integer.BYTES)) {
             putUncheckedLong(data, v & 0x00000000ffffffffL);
         }
     }
 
-    @Uninterruptible(reason = "Accesses a native JFR buffer.", calleeMustBe = true)
+    @Uninterruptible(reason = "Accesses a native JFR buffer.", callerMustBe = true)
     public static void putLong(JfrNativeEventWriterData data, long v) {
         if (ensureSize(data, Long.BYTES)) {
             putUncheckedLong(data, v);
         }
     }
 
-    @Uninterruptible(reason = "Accesses a native JFR buffer.", calleeMustBe = true)
+    @Uninterruptible(reason = "Accesses a native JFR buffer.", callerMustBe = true)
     public static void putUtf8(JfrNativeEventWriterData data, String string) {
         int size = UninterruptibleUtils.String.modifiedUtf8Length(string, true);
         if (ensureSize(data, size)) {
@@ -154,12 +154,12 @@ public final class JfrNativeEventWriter {
         }
     }
 
-    @Uninterruptible(reason = "Accesses a native JFR buffer.", calleeMustBe = true)
+    @Uninterruptible(reason = "Accesses a native JFR buffer.", callerMustBe = true)
     public static void putEventThread(JfrNativeEventWriterData data) {
         putThread(data, CurrentIsolate.getCurrentThread());
     }
 
-    @Uninterruptible(reason = "Accesses a native JFR buffer.", calleeMustBe = true)
+    @Uninterruptible(reason = "Accesses a native JFR buffer.", callerMustBe = true)
     public static void putThread(JfrNativeEventWriterData data, IsolateThread isolateThread) {
         if (isolateThread.isNull()) {
             putLong(data, 0L);
@@ -169,7 +169,7 @@ public final class JfrNativeEventWriter {
         }
     }
 
-    @Uninterruptible(reason = "Accesses a native JFR buffer.", calleeMustBe = true)
+    @Uninterruptible(reason = "Accesses a native JFR buffer.", callerMustBe = true)
     public static void putClass(JfrNativeEventWriterData data, Class<?> aClass) {
         if (aClass == null) {
             putLong(data, 0L);
@@ -178,7 +178,7 @@ public final class JfrNativeEventWriter {
         }
     }
 
-    @Uninterruptible(reason = "Accesses a native JFR buffer.", calleeMustBe = true)
+    @Uninterruptible(reason = "Accesses a native JFR buffer.", callerMustBe = true)
     private static boolean ensureSize(JfrNativeEventWriterData data, int requested) {
         assert requested > 0;
         if (!isValid(data)) {
@@ -196,14 +196,14 @@ public final class JfrNativeEventWriter {
         return true;
     }
 
-    @Uninterruptible(reason = "Accesses a native JFR buffer.", calleeMustBe = true)
+    @Uninterruptible(reason = "Accesses a native JFR buffer.", callerMustBe = true)
     private static void reserve(JfrNativeEventWriterData data, int size) {
         if (ensureSize(data, size)) {
             increaseCurrentPos(data, size);
         }
     }
 
-    @Uninterruptible(reason = "Accesses a native JFR buffer.", calleeMustBe = true)
+    @Uninterruptible(reason = "Accesses a native JFR buffer.", callerMustBe = true)
     private static void hardReset(JfrNativeEventWriterData data) {
         JfrBuffer buffer = data.getJfrBuffer();
         data.setStartPos(buffer.getPos());
@@ -211,17 +211,17 @@ public final class JfrNativeEventWriter {
         data.setEndPos(buffer.getPos().add(buffer.getSize()));
     }
 
-    @Uninterruptible(reason = "Accesses a native JFR buffer.", calleeMustBe = true)
+    @Uninterruptible(reason = "Accesses a native JFR buffer.", callerMustBe = true)
     private static void reset(JfrNativeEventWriterData data) {
         data.setCurrentPos(data.getStartPos());
     }
 
-    @Uninterruptible(reason = "Accesses a native JFR buffer.", calleeMustBe = true)
+    @Uninterruptible(reason = "Accesses a native JFR buffer.", callerMustBe = true)
     private static void cancel(JfrNativeEventWriterData data) {
         data.setEndPos(WordFactory.nullPointer());
     }
 
-    @Uninterruptible(reason = "Accesses a native JFR buffer.", calleeMustBe = true)
+    @Uninterruptible(reason = "Accesses a native JFR buffer.", callerMustBe = true)
     private static boolean accommodate(JfrNativeEventWriterData data, UnsignedWord used, int requested) {
         // In case that the thread-local buffer is still not large enough to hold the data of the
         // event even though the buffer was flushed successfully, a larger buffer may be returned.
@@ -239,7 +239,7 @@ public final class JfrNativeEventWriter {
         return true;
     }
 
-    @Uninterruptible(reason = "Accesses a native JFR buffer.", calleeMustBe = true)
+    @Uninterruptible(reason = "Accesses a native JFR buffer.", callerMustBe = true)
     private static void commit(JfrNativeEventWriterData data) {
         JfrBuffer buffer = data.getJfrBuffer();
         assert isValid(data);
@@ -251,12 +251,12 @@ public final class JfrNativeEventWriter {
         data.setStartPos(newPosition);
     }
 
-    @Uninterruptible(reason = "Accesses a native JFR buffer.", calleeMustBe = true)
+    @Uninterruptible(reason = "Accesses a native JFR buffer.", callerMustBe = true)
     private static boolean isValid(JfrNativeEventWriterData data) {
         return data.getEndPos().isNonNull();
     }
 
-    @Uninterruptible(reason = "Accesses a native JFR buffer.", calleeMustBe = true)
+    @Uninterruptible(reason = "Accesses a native JFR buffer.", callerMustBe = true)
     public static int makePaddedInt(int v) {
         assert v <= MAX_PADDED_INT_VALUE;
         // bit 0-6 + pad => bit 24 - 31
@@ -274,7 +274,7 @@ public final class JfrNativeEventWriter {
         return (int) (b1 + b2 + b3 + b4);
     }
 
-    @Uninterruptible(reason = "Accesses a native JFR buffer.", calleeMustBe = true)
+    @Uninterruptible(reason = "Accesses a native JFR buffer.", callerMustBe = true)
     private static void putUncheckedLong(JfrNativeEventWriterData data, long value) {
         long v = value;
         if ((v & ~0x7FL) == 0L) {
@@ -328,28 +328,28 @@ public final class JfrNativeEventWriter {
         putUncheckedByte(data, (byte) (v >>> 7)); // 56-63, last byte as is.
     }
 
-    @Uninterruptible(reason = "Accesses a native JFR buffer.", calleeMustBe = true)
+    @Uninterruptible(reason = "Accesses a native JFR buffer.", callerMustBe = true)
     private static void putUncheckedByte(JfrNativeEventWriterData data, byte i) {
         data.getCurrentPos().writeByte(0, i);
         increaseCurrentPos(data, Byte.BYTES);
     }
 
-    @Uninterruptible(reason = "Accesses a native JFR buffer.", calleeMustBe = true)
+    @Uninterruptible(reason = "Accesses a native JFR buffer.", callerMustBe = true)
     private static UnsignedWord getAvailableSize(JfrNativeEventWriterData data) {
         return data.getEndPos().subtract(data.getCurrentPos());
     }
 
-    @Uninterruptible(reason = "Accesses a native JFR buffer.", calleeMustBe = true)
+    @Uninterruptible(reason = "Accesses a native JFR buffer.", callerMustBe = true)
     private static UnsignedWord getUsedSize(JfrNativeEventWriterData data) {
         return data.getCurrentPos().subtract(data.getStartPos());
     }
 
-    @Uninterruptible(reason = "Accesses a native JFR buffer.", calleeMustBe = true)
+    @Uninterruptible(reason = "Accesses a native JFR buffer.", callerMustBe = true)
     private static void increaseCurrentPos(JfrNativeEventWriterData data, int bytes) {
         data.setCurrentPos(data.getCurrentPos().add(bytes));
     }
 
-    @Uninterruptible(reason = "Accesses a native JFR buffer.", calleeMustBe = true)
+    @Uninterruptible(reason = "Accesses a native JFR buffer.", callerMustBe = true)
     private static void increaseCurrentPos(JfrNativeEventWriterData data, UnsignedWord bytes) {
         data.setCurrentPos(data.getCurrentPos().add(bytes));
     }
