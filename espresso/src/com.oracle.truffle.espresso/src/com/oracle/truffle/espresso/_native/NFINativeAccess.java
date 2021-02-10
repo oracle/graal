@@ -1,7 +1,5 @@
 package com.oracle.truffle.espresso._native;
 
-import static com.oracle.truffle.api.CompilerDirectives.transferToInterpreter;
-
 import java.nio.file.Path;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
@@ -35,12 +33,12 @@ import com.oracle.truffle.object.DebugCounter;
 
 public class NFINativeAccess implements NativeAccess {
 
-    private static final boolean CACHE_SIGNATURES = "true".equals(System.getProperty("espresso.nfi.cache_signatures", "false"));
+    private static final boolean CACHE_SIGNATURES = "true".equals(System.getProperty("espresso.nfi.cache_signatures", "true"));
     private final DebugCounter NFI_SIGNATURES_CREATED = DebugCounter.create("NFI signatures created");
 
     private final Map<NativeSignature, Object> signatureCache;
 
-    protected final InteropLibrary INTEROP = InteropLibrary.getFactory().getUncached();
+    protected final InteropLibrary INTEROP = InteropLibrary.getUncached();
     protected final SignatureLibrary SIGNATURE = SignatureLibrary.getUncached();
 
     private final EspressoContext context;
@@ -157,13 +155,13 @@ public class NFINativeAccess implements NativeAccess {
     }
 
     @ExportLibrary(InteropLibrary.class)
-    final static class NativeWrapper implements TruffleObject {
+    final static class NativeToJavaWrapper implements TruffleObject {
 
         final TruffleObject delegate;
         private final NativeType returnType;
         private final NativeType[] parameterTypes;
 
-        public NativeWrapper(TruffleObject executable, NativeType returnType, NativeType... parameterTypes) {
+        public NativeToJavaWrapper(TruffleObject executable, NativeType returnType, NativeType... parameterTypes) {
             this.delegate = executable;
             this.returnType = returnType;
             this.parameterTypes = parameterTypes;
@@ -179,7 +177,7 @@ public class NFINativeAccess implements NativeAccess {
         @ExportMessage
         Object execute(Object[] arguments, @CachedLibrary("this.delegate") InteropLibrary interop) throws ArityException {
             if (arguments.length != parameterTypes.length) {
-                transferToInterpreter();
+                CompilerDirectives.transferToInterpreter();
                 throw ArityException.create(parameterTypes.length, arguments.length);
             }
             try {
@@ -188,7 +186,7 @@ public class NFINativeAccess implements NativeAccess {
                     NativeType param = parameterTypes[i];
                     switch (param) {
                         case BOOLEAN:
-                            convertedArgs[i] = (boolean) arguments[i] ? (byte) 1 : (byte) 0;
+                            convertedArgs[i] = ((boolean) arguments[i]) ? (byte) 1 : (byte) 0;
                             break;
                         case CHAR:
                             convertedArgs[i] = (short) (char) arguments[i];
@@ -219,11 +217,12 @@ public class NFINativeAccess implements NativeAccess {
 
     @Override
     public @Pointer TruffleObject bindSymbol(@Pointer TruffleObject symbol, NativeType returnType, NativeType... parameterTypes) {
-        if (InteropLibrary.getUncached().isNull(symbol)) {
+        if (INTEROP.isNull(symbol)) {
             return null; // LD_DEBUG=unused makes non-existing symbols to be NULL.
         }
         TruffleObject executable = (TruffleObject) SIGNATURE.bind(createNFISignature(returnType, parameterTypes), symbol);
-        return new NativeWrapper(executable, returnType, parameterTypes);
+        assert INTEROP.isExecutable(executable);
+        return new NativeToJavaWrapper(executable, returnType, parameterTypes);
     }
 
     @Override
@@ -243,6 +242,71 @@ public class NFINativeAccess implements NativeAccess {
 
     @Override
     public @Pointer TruffleObject createNativeClosure(TruffleObject executable, NativeType returnType, NativeType... parameterTypes) {
-        throw new UnsupportedOperationException("createNativeClosure");
+        assert INTEROP.isExecutable(executable);
+        TruffleObject wrappedExecutable = new JavaToNativeWrapper(executable, returnType, parameterTypes);
+        TruffleObject nativeFn = (TruffleObject) SIGNATURE.createClosure(createNFISignature(returnType, parameterTypes), wrappedExecutable);
+        assert INTEROP.isPointer(nativeFn);
+        return nativeFn;
+    }
+
+    @ExportLibrary(InteropLibrary.class)
+    final static class JavaToNativeWrapper implements TruffleObject {
+
+        final TruffleObject delegate;
+        private final NativeType returnType;
+        private final NativeType[] parameterTypes;
+
+        public JavaToNativeWrapper(TruffleObject executable, NativeType returnType, NativeType... parameterTypes) {
+            this.delegate = executable;
+            this.returnType = returnType;
+            this.parameterTypes = parameterTypes;
+        }
+
+        @SuppressWarnings("static-method")
+        @ExportMessage
+        boolean isExecutable() {
+            return true;
+        }
+
+        @ExplodeLoop
+        @ExportMessage
+        Object execute(Object[] arguments, @CachedLibrary("this.delegate") InteropLibrary interop) throws ArityException {
+            if (arguments.length != parameterTypes.length) {
+                CompilerDirectives.transferToInterpreter();
+                throw ArityException.create(parameterTypes.length, arguments.length);
+            }
+            try {
+                Object[] convertedArgs = new Object[arguments.length];
+                for (int i = 0; i < parameterTypes.length; i++) {
+                    NativeType param = parameterTypes[i];
+                    switch (param) {
+                        case BOOLEAN:
+                            convertedArgs[i] = (byte) arguments[i] != 0;
+                            break;
+                        case CHAR:
+                            convertedArgs[i] = (char) (short) arguments[i];
+                            break;
+                        default:
+                            convertedArgs[i] = arguments[i];
+                    }
+                }
+                Object ret = interop.execute(delegate, convertedArgs);
+                switch (returnType) {
+                    case BOOLEAN:
+                        ret = ((boolean) ret) ? (byte) 1 : (byte) 0;
+                        break;
+                    case CHAR:
+                        ret = (short) (char) ret;
+                        break;
+                    case VOID:
+                        ret = StaticObject.NULL;
+                        break;
+                }
+                return ret;
+            } catch (UnsupportedTypeException | UnsupportedMessageException e) {
+                CompilerDirectives.transferToInterpreter();
+                throw EspressoError.shouldNotReachHere(e);
+            }
+        }
     }
 }
