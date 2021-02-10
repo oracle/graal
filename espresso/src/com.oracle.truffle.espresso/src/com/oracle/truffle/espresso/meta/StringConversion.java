@@ -104,11 +104,11 @@ public abstract class StringConversion {
     }
 
     private static char[] extractGuestChars8(Meta meta, StaticObject str) {
-        return str.getField(meta.java_lang_String_value).unwrap();
+        return str.getObjectField(meta.java_lang_String_value).unwrap();
     }
 
     private static byte[] extractGuestBytes11(Meta meta, StaticObject str) {
-        return str.getField(meta.java_lang_String_value).unwrap();
+        return str.getObjectField(meta.java_lang_String_value).unwrap();
     }
 
     private static int extractGuestHash(Meta meta, StaticObject str) {
@@ -138,7 +138,7 @@ public abstract class StringConversion {
     private static StaticObject produceGuestString8(Meta meta, char[] value, int hash) {
         StaticObject guestString = meta.java_lang_String.allocateInstance();
         meta.java_lang_String_hash.set(guestString, hash);
-        guestString.setFieldVolatile(meta.java_lang_String_value, StaticObject.wrap(value, meta));
+        guestString.setObjectFieldVolatile(meta.java_lang_String_value, StaticObject.wrap(value, meta));
         return guestString;
     }
 
@@ -146,7 +146,7 @@ public abstract class StringConversion {
         StaticObject guestString = meta.java_lang_String.allocateInstance();
         meta.java_lang_String_coder.set(guestString, coder);
         meta.java_lang_String_hash.set(guestString, hash);
-        guestString.setFieldVolatile(meta.java_lang_String_value, StaticObject.wrap(value, meta));
+        guestString.setObjectFieldVolatile(meta.java_lang_String_value, StaticObject.wrap(value, meta));
         return guestString;
     }
 

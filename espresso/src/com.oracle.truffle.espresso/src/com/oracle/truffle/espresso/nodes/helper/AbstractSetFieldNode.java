@@ -340,7 +340,7 @@ abstract class ObjectSetFieldNode extends AbstractSetFieldNode {
 
     @Specialization(guards = "receiver.isEspressoObject()")
     void doEspresso(StaticObject receiver, StaticObject value) {
-        receiver.setField(field, value);
+        receiver.setObjectField(field, value);
     }
 
     @Specialization(guards = {"receiver.isForeignObject()"}, limit = "CACHED_LIBRARY_LIMIT")

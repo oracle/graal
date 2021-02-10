@@ -716,7 +716,7 @@ public final class Target_java_lang_Class {
             return StaticObject.NULL;
         }
         StaticObject cp = InterpreterToVM.newObject(meta.sun_reflect_ConstantPool, false);
-        cp.setField(meta.sun_reflect_ConstantPool_constantPoolOop, self);
+        cp.setObjectField(meta.sun_reflect_ConstantPool_constantPoolOop, self);
         return cp;
     }
 

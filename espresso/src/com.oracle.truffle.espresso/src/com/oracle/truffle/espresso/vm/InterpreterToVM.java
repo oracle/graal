@@ -430,7 +430,7 @@ public final class InterpreterToVM implements ContextAccess {
 
     public static StaticObject getFieldObject(StaticObject obj, Field field) {
         assert field.getKind() == JavaKind.Object && field.getDeclaringKlass().isAssignableFrom(obj.getKlass());
-        return obj.getField(field);
+        return obj.getObjectField(field);
     }
 
     public static char getFieldChar(StaticObject obj, Field field) {
@@ -480,7 +480,7 @@ public final class InterpreterToVM implements ContextAccess {
 
     public static void setFieldObject(StaticObject value, StaticObject obj, Field field) {
         assert field.getKind() == JavaKind.Object && field.getDeclaringKlass().isAssignableFrom(obj.getKlass());
-        obj.setField(field, value);
+        obj.setObjectField(field, value);
     }
 
     public static StaticObject newReferenceArray(Klass componentType, int length) {
@@ -644,7 +644,7 @@ public final class InterpreterToVM implements ContextAccess {
         List<TruffleStackTraceElement> trace = TruffleStackTrace.getStackTrace(e);
         if (trace == null) {
             throwable.setHiddenField(meta.HIDDEN_FRAMES, VM.StackTrace.EMPTY_STACK_TRACE);
-            throwable.setField(meta.java_lang_Throwable_backtrace, throwable);
+            throwable.setObjectField(meta.java_lang_Throwable_backtrace, throwable);
             return throwable;
         }
         int bci = -1;
@@ -678,7 +678,7 @@ public final class InterpreterToVM implements ContextAccess {
             }
         }
         throwable.setHiddenField(meta.HIDDEN_FRAMES, frames);
-        throwable.setField(meta.java_lang_Throwable_backtrace, throwable);
+        throwable.setObjectField(meta.java_lang_Throwable_backtrace, throwable);
         return throwable;
     }
 
@@ -722,7 +722,7 @@ public final class InterpreterToVM implements ContextAccess {
             }
         });
         throwable.setHiddenField(meta.HIDDEN_FRAMES, frames);
-        throwable.setField(meta.java_lang_Throwable_backtrace, throwable);
+        throwable.setObjectField(meta.java_lang_Throwable_backtrace, throwable);
         if (meta.getJavaVersion().java9OrLater()) {
             throwable.setIntField(meta.java_lang_Throwable_depth, frames.size);
         }

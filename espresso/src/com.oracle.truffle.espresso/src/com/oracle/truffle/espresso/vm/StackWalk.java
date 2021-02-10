@@ -356,9 +356,9 @@ public class StackWalk {
          */
         private void fillFrame(FrameInstance frameInstance, Method m, int index) {
             StaticObject frame = frames.get(index);
-            StaticObject memberName = frame.getField(meta.java_lang_StackFrameInfo_memberName);
+            StaticObject memberName = frame.getObjectField(meta.java_lang_StackFrameInfo_memberName);
             Target_java_lang_invoke_MethodHandleNatives.plantResolvedMethod(memberName, m, m.getRefKind(), meta);
-            memberName.setField(meta.java_lang_invoke_MemberName_clazz, m.getDeclaringKlass().mirror());
+            memberName.setObjectField(meta.java_lang_invoke_MemberName_clazz, m.getDeclaringKlass().mirror());
             frame.setIntField(meta.java_lang_StackFrameInfo_bci, VM.getEspressoRootFromFrame(frameInstance).readBCI(frameInstance.getFrame(FrameInstance.FrameAccess.READ_ONLY)));
         }
     }

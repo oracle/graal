@@ -270,10 +270,10 @@ public final class ClassRegistries {
 
     public void processFixupList(StaticObject javaBase) {
         for (PrimitiveKlass k : context.getMeta().PRIMITIVE_KLASSES) {
-            k.mirror().setField(context.getMeta().java_lang_Class_module, javaBase);
+            k.mirror().setObjectField(context.getMeta().java_lang_Class_module, javaBase);
         }
         for (Klass k : fixupModuleList) {
-            k.mirror().setField(context.getMeta().java_lang_Class_module, javaBase);
+            k.mirror().setObjectField(context.getMeta().java_lang_Class_module, javaBase);
         }
         fixupModuleList = null;
     }

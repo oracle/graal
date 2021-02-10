@@ -531,7 +531,7 @@ abstract class ObjectGetFieldNode extends AbstractGetFieldNode {
 
     @Specialization(guards = "receiver.isEspressoObject()")
     StaticObject doEspresso(StaticObject receiver) {
-        return receiver.getField(field);
+        return receiver.getObjectField(field);
     }
 
     @Specialization(guards = "receiver.isForeignObject()", limit = "CACHED_LIBRARY_LIMIT")
