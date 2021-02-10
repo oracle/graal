@@ -224,27 +224,26 @@ public final class JniEnv extends NativeEnv implements ContextAccess {
     @TruffleBoundary
     public TruffleObject lookupJniImpl(String methodName) {
         JniSubstitutor.Factory m = jniMethods.get(methodName);
-        try {
-            // Dummy placeholder for unimplemented/unknown methods.
-            if (m == null) {
-                getLogger().log(Level.FINER, "Fetching unknown/unimplemented JNI method: {0}", methodName);
-                return (TruffleObject) InteropLibrary.getFactory().getUncached().execute(dupClosureRefAndCast("(pointer): void"),
-                                new Callback(1, new Callback.Function() {
-                                    @Override
-                                    public Object call(Object... args) {
-                                        CompilerDirectives.transferToInterpreter();
-                                        getLogger().log(Level.SEVERE, "Calling unimplemented JNI method: {0}", methodName);
-                                        throw EspressoError.unimplemented("JNI method: " + methodName);
-                                    }
-                                }));
-            }
-
-            String signature = m.jniNativeSignature();
-            Callback target = jniMethodWrapper(m);
-            return (TruffleObject) InteropLibrary.getFactory().getUncached().execute(dupClosureRefAndCast(signature), target);
-        } catch (UnsupportedTypeException | ArityException | UnsupportedMessageException e) {
-            throw EspressoError.shouldNotReachHere(e);
+        // Dummy placeholder for unimplemented/unknown methods.
+        if (m == null) {
+            getLogger().log(Level.FINER, "Fetching unknown/unimplemented JNI method: {0}", methodName);
+            @Pointer TruffleObject errorClosure = getNativeAccess().createNativeClosure(new Callback(1, new Callback.Function() {
+                                @Override
+                                public Object call(Object... args) {
+                                    CompilerDirectives.transferToInterpreter();
+                                    getLogger().log(Level.SEVERE, "Calling unimplemented JNI method: {0}", methodName);
+                                    throw EspressoError.unimplemented("JNI method: " + methodName);
+                                }
+                            }), NativeType.VOID);
+            nativeClosures.add(errorClosure);
+            return errorClosure;
         }
+
+        NativeSignature signature = m.jniNativeSignature();
+        Callback target = jniMethodWrapper(m);
+        @Pointer TruffleObject nativeClosure = getNativeAccess().createNativeClosure(target, signature.getReturnType(), signature.getParameterTypes());
+        nativeClosures.add(nativeClosure);
+        return nativeClosure;
     }
 
     public static boolean containsMethod(String methodName) {
@@ -397,8 +396,8 @@ public final class JniEnv extends NativeEnv implements ContextAccess {
 
             nespressoLibrary = getNativeAccess().loadLibrary(Collections.singletonList(espressoLibraryPath), "nespresso", true);
             dupClosureRef = getNativeAccess().lookupSymbol(nespressoLibrary, "dupClosureRef");
-            initializeNativeContext = NativeLibrary.lookupAndBind(nespressoLibrary,
-                            "initializeNativeContext", "((pointer): pointer): pointer");
+            initializeNativeContext = getNativeAccess().lookupAndBindSymbol(nespressoLibrary,
+                            "initializeNativeContext", NativeType.POINTER, NativeType.POINTER);
             disposeNativeContext = getNativeAccess().lookupAndBindSymbol(nespressoLibrary, "disposeNativeContext",
                             NativeType.VOID, NativeType.POINTER, NativeType.POINTER);
 
@@ -439,13 +438,14 @@ public final class JniEnv extends NativeEnv implements ContextAccess {
                     }
                 }
             });
-            this.jniEnvPtr = (TruffleObject) getUncached().execute(initializeNativeContext, lookupJniImplCallback);
+            @Pointer TruffleObject lookupJniImplNativeCallback = getNativeAccess().createNativeClosure(lookupJniImplCallback, NativeType.POINTER, NativeType.POINTER);
+            this.jniEnvPtr = (TruffleObject) getUncached().execute(initializeNativeContext, lookupJniImplNativeCallback);
             assert getUncached().isPointer(jniEnvPtr);
 
             this.handles = new JNIHandles();
 
             assert jniEnvPtr != null && !getUncached().isNull(jniEnvPtr);
-        } catch (UnsupportedMessageException | ArityException | UnknownIdentifierException | UnsupportedTypeException e) {
+        } catch (UnsupportedMessageException | ArityException | UnsupportedTypeException e) {
             throw EspressoError.shouldNotReachHere("Cannot initialize Espresso native interface");
         }
     }
@@ -475,11 +475,6 @@ public final class JniEnv extends NativeEnv implements ContextAccess {
             map.put(method.methodName(), method);
         }
         return Collections.unmodifiableMap(map);
-    }
-
-    public TruffleObject dupClosureRefAndCast(String signature) {
-        // TODO(peterssen): Cache binding per signature.
-        return NativeLibrary.bind(dupClosureRef, "(env, " + signature + ")" + ": pointer");
     }
 
     public static JniEnv create(EspressoContext context) {

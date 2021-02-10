@@ -28,6 +28,9 @@ import java.lang.reflect.Field;
 import java.lang.reflect.InvocationTargetException;
 import java.nio.ByteBuffer;
 import java.nio.ByteOrder;
+import java.util.Collections;
+import java.util.IdentityHashMap;
+import java.util.Set;
 
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.interop.InteropLibrary;
@@ -44,6 +47,8 @@ import com.oracle.truffle.espresso.runtime.StaticObject;
 import com.oracle.truffle.nfi.spi.types.NativeSimpleType;
 
 public abstract class NativeEnv {
+
+    protected final Set<@Pointer TruffleObject> nativeClosures = Collections.newSetFromMap(new IdentityHashMap<>());
 
     public static NativeSimpleType word() {
         return NativeSimpleType.SINT64; // or SINT32
