@@ -37,7 +37,7 @@ import com.oracle.truffle.api.interop.UnsupportedMessageException;
 import com.oracle.truffle.api.library.ExportLibrary;
 import com.oracle.truffle.api.library.ExportMessage;
 import com.oracle.truffle.api.profiles.BranchProfile;
-import com.oracle.truffle.espresso.jni.NativeEnv;
+import com.oracle.truffle.espresso._native.nfi.NativeUtils;
 import com.oracle.truffle.espresso.meta.JavaKind;
 
 @ExportLibrary(InteropLibrary.class)
@@ -49,7 +49,7 @@ public final class TruffleByteBuffer implements TruffleObject {
         if (byteCapacity < 0) {
             throw new IllegalArgumentException("negative requested capacity");
         }
-        this.byteBuffer = NativeEnv.directByteBuffer(NativeEnv.interopAsPointer(addressPtr), byteCapacity);
+        this.byteBuffer = NativeUtils.directByteBuffer(NativeUtils.interopAsPointer(addressPtr), byteCapacity);
     }
 
     private TruffleByteBuffer(ByteBuffer byteBuffer) {
@@ -60,9 +60,67 @@ public final class TruffleByteBuffer implements TruffleObject {
         return new TruffleByteBuffer(byteBuffer);
     }
 
-    public @Buffer TruffleObject create(@Pointer TruffleObject addressPtr, long size, JavaKind kind) {
+    public static @Buffer TruffleObject create(@Pointer TruffleObject addressPtr, long size, JavaKind kind) {
         long byteCapacity = Math.multiplyExact(size, kind.getByteCount());
         return new TruffleByteBuffer(addressPtr, byteCapacity);
+    }
+
+    /**
+     * Allocates a managed ByteBuffer, the returned TruffleBuffer is <b>not</b> an
+     * {@link InteropLibrary#isPointer(Object) interop pointer}.
+     *
+     * <p>
+     * The returned object is managed by the GC, along with its native resources and cannot be
+     * de-allocated explicitly.
+     * 
+     * @param byteCapacity buffer size in bytes
+     * @throws IllegalArgumentException if the supplied capacity is negative
+     * @throws OutOfMemoryError if the buffer cannot be allocated
+     */
+    public static @Buffer TruffleObject allocate(int byteCapacity) {
+        return create(ByteBuffer.allocate(byteCapacity));
+    }
+
+    /**
+     * Allocates a managed direct/native buffer, the returned TruffleBuffer is an
+     * {@link InteropLibrary#isPointer(Object) interop pointer}.
+     *
+     * <p>
+     * The returned object is managed by the GC, along with its native resources and cannot be
+     * de-allocated explicitly.
+     * 
+     * @param byteCapacity buffer size in bytes
+     * @throws IllegalArgumentException if the supplied capacity is negative
+     * @throws OutOfMemoryError if the buffer cannot be allocated
+     */
+    public static @Buffer TruffleObject allocateDirect(int byteCapacity) {
+        return create(ByteBuffer.allocateDirect(byteCapacity));
+    }
+
+    /**
+     * Creates an unmanaged, native TruffleBuffer wrapping a of native memory. The returned
+     * TruffleBuffer is an {@link InteropLibrary#isPointer(Object) interop pointer}.
+     */
+    public static @Buffer TruffleObject wrap(@Pointer TruffleObject address, int byteCapacity) {
+        assert InteropLibrary.getUncached().isPointer(address);
+        return create(NativeUtils.directByteBuffer(address, byteCapacity));
+    }
+
+    public static @Buffer TruffleObject wrap(@Pointer TruffleObject addressPtr, int elemCount, JavaKind kind) {
+        return wrap(addressPtr, Math.multiplyExact(elemCount, kind.getByteCount()));
+    }
+
+    @ExportMessage
+    boolean isPointer() {
+        return this.byteBuffer.isDirect();
+    }
+
+    @ExportMessage
+    long asPointer() throws UnsupportedMessageException {
+        if (!isPointer()) {
+            throw UnsupportedMessageException.create();
+        }
+        return NativeUtils.byteBufferAddress(this.byteBuffer);
     }
 
     @SuppressWarnings("static-method")
@@ -72,7 +130,7 @@ public final class TruffleByteBuffer implements TruffleObject {
     }
 
     @ExportMessage
-    long getBufferSize() throws UnsupportedMessageException {
+    long getBufferSize() {
         return byteBuffer.capacity();
     }
 
