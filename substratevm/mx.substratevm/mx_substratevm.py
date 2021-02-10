@@ -1485,8 +1485,10 @@ class SubstrateCompilerFlagsBuilder(mx.ArchivableProject):
                 'java.base/sun.util.locale.provider',
                 'java.base/sun.util.resources',
                 'java.base/sun.security.util',
+                'java.base/sun.util.calendar',
                 'java.base/sun.security.provider',
                 'java.base/sun.reflect.generics.repository',
+                'java.base/sun.reflect.annotation',
                 'java.base/sun.invoke.util',
                 'java.xml.crypto/org.jcp.xml.dsig.internal.dom'
             ]
