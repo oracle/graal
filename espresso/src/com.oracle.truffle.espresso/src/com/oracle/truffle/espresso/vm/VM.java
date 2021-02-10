@@ -390,7 +390,7 @@ public final class VM extends NativeEnv implements ContextAccess {
             getLogger().log(Level.FINER, "Fetching unknown/unimplemented VM method: {0}", methodName);
             @Pointer
             TruffleObject errorClosure = getNativeAccess().createNativeClosure(
-                            new Callback(1, new Callback.Function() {
+                            new Callback(0, new Callback.Function() {
                                 @Override
                                 public Object call(Object... args) {
                                     CompilerDirectives.transferToInterpreter();
