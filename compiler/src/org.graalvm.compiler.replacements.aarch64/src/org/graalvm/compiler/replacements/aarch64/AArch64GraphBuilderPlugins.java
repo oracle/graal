@@ -24,17 +24,10 @@
  */
 package org.graalvm.compiler.replacements.aarch64;
 
-import static org.graalvm.compiler.replacements.StandardGraphBuilderPlugins.registerPlatformSpecificUnsafePlugins;
-import static org.graalvm.compiler.replacements.StandardGraphBuilderPlugins.registerUnsafeAtomicsPlugins;
-import static org.graalvm.compiler.replacements.nodes.UnaryMathIntrinsicNode.UnaryOperation.COS;
-import static org.graalvm.compiler.replacements.nodes.UnaryMathIntrinsicNode.UnaryOperation.EXP;
-import static org.graalvm.compiler.replacements.nodes.UnaryMathIntrinsicNode.UnaryOperation.LOG;
-import static org.graalvm.compiler.replacements.nodes.UnaryMathIntrinsicNode.UnaryOperation.LOG10;
-import static org.graalvm.compiler.replacements.nodes.UnaryMathIntrinsicNode.UnaryOperation.SIN;
-import static org.graalvm.compiler.replacements.nodes.UnaryMathIntrinsicNode.UnaryOperation.TAN;
-
+import jdk.vm.ci.code.Architecture;
+import jdk.vm.ci.meta.JavaKind;
+import jdk.vm.ci.meta.ResolvedJavaMethod;
 import org.graalvm.compiler.core.common.GraalOptions;
-import org.graalvm.compiler.lir.aarch64.AArch64ArithmeticLIRGeneratorTool.RoundingMode;
 import org.graalvm.compiler.nodes.NodeView;
 import org.graalvm.compiler.nodes.ValueNode;
 import org.graalvm.compiler.nodes.calc.AbsNode;
@@ -62,11 +55,16 @@ import org.graalvm.compiler.replacements.nodes.FusedMultiplyAddNode;
 import org.graalvm.compiler.replacements.nodes.UnaryMathIntrinsicNode;
 import org.graalvm.compiler.replacements.nodes.UnaryMathIntrinsicNode.UnaryOperation;
 import org.graalvm.compiler.serviceprovider.JavaVersionUtil;
-
-import jdk.vm.ci.code.Architecture;
-import jdk.vm.ci.meta.JavaKind;
-import jdk.vm.ci.meta.ResolvedJavaMethod;
 import sun.misc.Unsafe;
+
+import static org.graalvm.compiler.replacements.StandardGraphBuilderPlugins.registerPlatformSpecificUnsafePlugins;
+import static org.graalvm.compiler.replacements.StandardGraphBuilderPlugins.registerUnsafeAtomicsPlugins;
+import static org.graalvm.compiler.replacements.nodes.UnaryMathIntrinsicNode.UnaryOperation.COS;
+import static org.graalvm.compiler.replacements.nodes.UnaryMathIntrinsicNode.UnaryOperation.EXP;
+import static org.graalvm.compiler.replacements.nodes.UnaryMathIntrinsicNode.UnaryOperation.LOG;
+import static org.graalvm.compiler.replacements.nodes.UnaryMathIntrinsicNode.UnaryOperation.LOG10;
+import static org.graalvm.compiler.replacements.nodes.UnaryMathIntrinsicNode.UnaryOperation.SIN;
+import static org.graalvm.compiler.replacements.nodes.UnaryMathIntrinsicNode.UnaryOperation.TAN;
 
 public class AArch64GraphBuilderPlugins implements TargetGraphBuilderPlugins {
     @Override
@@ -153,9 +151,6 @@ public class AArch64GraphBuilderPlugins implements TargetGraphBuilderPlugins {
                 }
             });
         }
-        registerRound(r, "rint", RoundingMode.NEAREST);
-        registerRound(r, "ceil", RoundingMode.UP);
-        registerRound(r, "floor", RoundingMode.DOWN);
         if (useFMAIntrinsics && JavaVersionUtil.JAVA_SPEC > 8) {
             registerFMA(r);
         }
@@ -250,16 +245,6 @@ public class AArch64GraphBuilderPlugins implements TargetGraphBuilderPlugins {
             @Override
             public boolean apply(GraphBuilderContext b, ResolvedJavaMethod targetMethod, Receiver receiver, ValueNode value) {
                 b.push(JavaKind.Double, b.append(UnaryMathIntrinsicNode.create(value, operation)));
-                return true;
-            }
-        });
-    }
-
-    private static void registerRound(Registration r, String name, RoundingMode mode) {
-        r.register1(name, Double.TYPE, new InvocationPlugin() {
-            @Override
-            public boolean apply(GraphBuilderContext b, ResolvedJavaMethod targetMethod, Receiver receiver, ValueNode arg) {
-                b.push(JavaKind.Double, b.append(new AArch64RoundNode(arg, mode)));
                 return true;
             }
         });

@@ -24,17 +24,15 @@
  */
 package org.graalvm.compiler.truffle.compiler.substitutions;
 
-import static java.lang.Character.toUpperCase;
-import static org.graalvm.compiler.truffle.common.TruffleCompilerRuntime.getRuntime;
-
-import java.util.ArrayList;
-import java.util.Collections;
-import java.util.LinkedHashMap;
-import java.util.List;
-import java.util.Map;
-import java.util.concurrent.Callable;
-import java.util.function.Supplier;
-
+import jdk.vm.ci.meta.ConstantReflectionProvider;
+import jdk.vm.ci.meta.DeoptimizationAction;
+import jdk.vm.ci.meta.DeoptimizationReason;
+import jdk.vm.ci.meta.JavaConstant;
+import jdk.vm.ci.meta.JavaKind;
+import jdk.vm.ci.meta.MetaAccessProvider;
+import jdk.vm.ci.meta.ResolvedJavaMethod;
+import jdk.vm.ci.meta.ResolvedJavaType;
+import jdk.vm.ci.meta.SpeculationLog.Speculation;
 import org.graalvm.compiler.core.common.calc.CanonicalCondition;
 import org.graalvm.compiler.core.common.type.Stamp;
 import org.graalvm.compiler.core.common.type.StampFactory;
@@ -42,6 +40,7 @@ import org.graalvm.compiler.core.common.type.StampPair;
 import org.graalvm.compiler.core.common.type.TypeReference;
 import org.graalvm.compiler.debug.DebugContext;
 import org.graalvm.compiler.graph.Node;
+import org.graalvm.compiler.lir.gen.ArithmeticLIRGeneratorTool.RoundingMode;
 import org.graalvm.compiler.nodes.CallTargetNode;
 import org.graalvm.compiler.nodes.CallTargetNode.InvokeKind;
 import org.graalvm.compiler.nodes.ConditionAnchorNode;
@@ -62,6 +61,7 @@ import org.graalvm.compiler.nodes.ValuePhiNode;
 import org.graalvm.compiler.nodes.calc.CompareNode;
 import org.graalvm.compiler.nodes.calc.ConditionalNode;
 import org.graalvm.compiler.nodes.calc.IntegerMulHighNode;
+import org.graalvm.compiler.nodes.calc.RoundNode;
 import org.graalvm.compiler.nodes.extended.BoxNode;
 import org.graalvm.compiler.nodes.extended.BranchProbabilityNode;
 import org.graalvm.compiler.nodes.extended.GuardedUnsafeLoadNode;
@@ -76,6 +76,8 @@ import org.graalvm.compiler.nodes.graphbuilderconf.InvocationPlugins.Registratio
 import org.graalvm.compiler.nodes.graphbuilderconf.InvocationPlugins.ResolvedJavaSymbol;
 import org.graalvm.compiler.nodes.java.InstanceOfDynamicNode;
 import org.graalvm.compiler.nodes.java.MethodCallTargetNode;
+import org.graalvm.compiler.nodes.spi.LoweringProvider;
+import org.graalvm.compiler.nodes.spi.Replacements;
 import org.graalvm.compiler.nodes.type.StampTool;
 import org.graalvm.compiler.nodes.virtual.EnsureVirtualizedNode;
 import org.graalvm.compiler.phases.util.Providers;
@@ -97,15 +99,16 @@ import org.graalvm.compiler.truffle.compiler.nodes.frame.VirtualFrameSetNode;
 import org.graalvm.compiler.truffle.options.PolyglotCompilerOptions.PerformanceWarningKind;
 import org.graalvm.word.LocationIdentity;
 
-import jdk.vm.ci.meta.ConstantReflectionProvider;
-import jdk.vm.ci.meta.DeoptimizationAction;
-import jdk.vm.ci.meta.DeoptimizationReason;
-import jdk.vm.ci.meta.JavaConstant;
-import jdk.vm.ci.meta.JavaKind;
-import jdk.vm.ci.meta.MetaAccessProvider;
-import jdk.vm.ci.meta.ResolvedJavaMethod;
-import jdk.vm.ci.meta.ResolvedJavaType;
-import jdk.vm.ci.meta.SpeculationLog.Speculation;
+import java.util.ArrayList;
+import java.util.Collections;
+import java.util.LinkedHashMap;
+import java.util.List;
+import java.util.Map;
+import java.util.concurrent.Callable;
+import java.util.function.Supplier;
+
+import static java.lang.Character.toUpperCase;
+import static org.graalvm.compiler.truffle.common.TruffleCompilerRuntime.getRuntime;
 
 /**
  * Provides {@link InvocationPlugin}s for Truffle classes.
@@ -116,7 +119,7 @@ public class TruffleGraphBuilderPlugins {
         MetaAccessProvider metaAccess = providers.getMetaAccess();
         registerObjectsPlugins(plugins, metaAccess);
         registerOptimizedAssumptionPlugins(plugins, metaAccess, types);
-        registerExactMathPlugins(plugins, metaAccess);
+        registerExactMathPlugins(plugins, providers.getReplacements(), providers.getLowerer(), metaAccess);
         registerGraalCompilerDirectivesPlugins(plugins, metaAccess);
         registerCompilerDirectivesPlugins(plugins, metaAccess, canDelayIntrinsification);
         registerCompilerAssertsPlugins(plugins, metaAccess, canDelayIntrinsification);
@@ -179,9 +182,9 @@ public class TruffleGraphBuilderPlugins {
         r.register1("check", Receiver.class, plugin);
     }
 
-    public static void registerExactMathPlugins(InvocationPlugins plugins, MetaAccessProvider metaAccess) {
+    public static void registerExactMathPlugins(InvocationPlugins plugins, Replacements replacements, LoweringProvider lowerer, MetaAccessProvider metaAccess) {
         final ResolvedJavaType exactMathType = getRuntime().resolveType(metaAccess, "com.oracle.truffle.api.ExactMath");
-        Registration r = new Registration(plugins, new ResolvedJavaSymbol(exactMathType));
+        Registration r = new Registration(plugins, new ResolvedJavaSymbol(exactMathType), replacements);
         for (JavaKind kind : new JavaKind[]{JavaKind.Int, JavaKind.Long}) {
             Class<?> type = kind.toJavaClass();
             r.register2("multiplyHigh", type, type, new InvocationPlugin() {
@@ -195,6 +198,15 @@ public class TruffleGraphBuilderPlugins {
                 @Override
                 public boolean apply(GraphBuilderContext b, ResolvedJavaMethod targetMethod, Receiver receiver, ValueNode x, ValueNode y) {
                     b.addPush(kind, new UnsignedMulHighNode(x, y));
+                    return true;
+                }
+            });
+        }
+        for (JavaKind kind : new JavaKind[]{JavaKind.Float, JavaKind.Double}) {
+            r.registerConditional1(lowerer.supportsRounding(), "truncate", kind.toJavaClass(), new InvocationPlugin() {
+                @Override
+                public boolean apply(GraphBuilderContext b, ResolvedJavaMethod targetMethod, Receiver receiver, ValueNode x) {
+                    b.addPush(kind, new RoundNode(x, RoundingMode.TRUNCATE));
                     return true;
                 }
             });

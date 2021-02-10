@@ -24,6 +24,12 @@
  */
 package com.oracle.svm.core.graal.amd64;
 
+import com.oracle.svm.core.graal.meta.SubstrateBasicLoweringProvider;
+import com.oracle.svm.core.graal.snippets.NodeLoweringProvider;
+import com.oracle.svm.core.nodes.CodeSynchronizationNode;
+import jdk.vm.ci.amd64.AMD64;
+import jdk.vm.ci.code.TargetDescription;
+import jdk.vm.ci.meta.MetaAccessProvider;
 import org.graalvm.compiler.api.replacements.SnippetReflectionProvider;
 import org.graalvm.compiler.core.amd64.AMD64LoweringProviderMixin;
 import org.graalvm.compiler.core.common.spi.ForeignCallsProvider;
@@ -37,13 +43,6 @@ import org.graalvm.compiler.options.OptionValues;
 import org.graalvm.compiler.phases.util.Providers;
 import org.graalvm.compiler.replacements.SnippetCounter;
 import org.graalvm.compiler.replacements.amd64.AMD64TruffleArrayUtilsWithMaskSnippets;
-
-import com.oracle.svm.core.graal.meta.SubstrateBasicLoweringProvider;
-import com.oracle.svm.core.graal.snippets.NodeLoweringProvider;
-import com.oracle.svm.core.nodes.CodeSynchronizationNode;
-
-import jdk.vm.ci.code.TargetDescription;
-import jdk.vm.ci.meta.MetaAccessProvider;
 
 public class SubstrateAMD64LoweringProvider extends SubstrateBasicLoweringProvider implements AMD64LoweringProviderMixin {
 
@@ -79,4 +78,10 @@ public class SubstrateAMD64LoweringProvider extends SubstrateBasicLoweringProvid
             super.lower(n, tool);
         }
     }
+
+    @Override
+    public boolean supportsRounding() {
+        return ((AMD64) getTarget().arch).getFeatures().contains(AMD64.CPUFeature.SSE4_1);
+    }
+
 }

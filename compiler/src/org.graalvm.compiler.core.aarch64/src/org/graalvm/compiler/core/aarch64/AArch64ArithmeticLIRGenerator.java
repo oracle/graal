@@ -52,6 +52,7 @@ import org.graalvm.compiler.lir.aarch64.AArch64ReinterpretOp;
 import org.graalvm.compiler.lir.aarch64.AArch64SignExtendOp;
 import org.graalvm.compiler.lir.aarch64.AArch64Unary;
 import org.graalvm.compiler.lir.gen.ArithmeticLIRGenerator;
+import org.graalvm.compiler.lir.gen.ArithmeticLIRGeneratorTool;
 
 import static jdk.vm.ci.aarch64.AArch64Kind.DWORD;
 import static jdk.vm.ci.aarch64.AArch64Kind.QWORD;
@@ -572,7 +573,7 @@ public class AArch64ArithmeticLIRGenerator extends ArithmeticLIRGenerator implem
     }
 
     @Override
-    public Value emitRound(Value value, RoundingMode mode) {
+    public Value emitRound(Value value, ArithmeticLIRGeneratorTool.RoundingMode mode) {
         AArch64ArithmeticOp op;
         switch (mode) {
             case NEAREST:

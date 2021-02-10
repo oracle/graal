@@ -24,9 +24,11 @@
  */
 package org.graalvm.compiler.hotspot.amd64;
 
-import static org.graalvm.compiler.core.common.GraalOptions.GeneratePIC;
-import static org.graalvm.compiler.hotspot.HotSpotBackend.Options.GraalArithmeticStubs;
-
+import jdk.vm.ci.amd64.AMD64;
+import jdk.vm.ci.code.TargetDescription;
+import jdk.vm.ci.hotspot.HotSpotConstantReflectionProvider;
+import jdk.vm.ci.meta.MetaAccessProvider;
+import jdk.vm.ci.meta.ResolvedJavaMethod;
 import org.graalvm.compiler.core.amd64.AMD64LoweringProviderMixin;
 import org.graalvm.compiler.core.common.spi.ForeignCallsProvider;
 import org.graalvm.compiler.core.common.spi.MetaAccessExtensionProvider;
@@ -52,10 +54,8 @@ import org.graalvm.compiler.replacements.nodes.UnaryMathIntrinsicNode;
 import org.graalvm.compiler.replacements.nodes.UnaryMathIntrinsicNode.UnaryOperation;
 import org.graalvm.compiler.serviceprovider.JavaVersionUtil;
 
-import jdk.vm.ci.code.TargetDescription;
-import jdk.vm.ci.hotspot.HotSpotConstantReflectionProvider;
-import jdk.vm.ci.meta.MetaAccessProvider;
-import jdk.vm.ci.meta.ResolvedJavaMethod;
+import static org.graalvm.compiler.core.common.GraalOptions.GeneratePIC;
+import static org.graalvm.compiler.hotspot.HotSpotBackend.Options.GraalArithmeticStubs;
 
 public class AMD64HotSpotLoweringProvider extends DefaultHotSpotLoweringProvider implements AMD64LoweringProviderMixin {
 
@@ -134,4 +134,10 @@ public class AMD64HotSpotLoweringProvider extends DefaultHotSpotLoweringProvider
         graph.addAfterFixed(tool.lastFixedNode(), call);
         math.replaceAtUsages(call);
     }
+
+    @Override
+    public boolean supportsRounding() {
+        return ((AMD64) getTarget().arch).getFeatures().contains(AMD64.CPUFeature.SSE4_1);
+    }
+
 }

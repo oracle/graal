@@ -24,19 +24,12 @@
  */
 package org.graalvm.compiler.replacements.amd64;
 
-import static org.graalvm.compiler.replacements.StandardGraphBuilderPlugins.registerPlatformSpecificUnsafePlugins;
-import static org.graalvm.compiler.replacements.nodes.BinaryMathIntrinsicNode.BinaryOperation.POW;
-import static org.graalvm.compiler.replacements.nodes.UnaryMathIntrinsicNode.UnaryOperation.COS;
-import static org.graalvm.compiler.replacements.nodes.UnaryMathIntrinsicNode.UnaryOperation.EXP;
-import static org.graalvm.compiler.replacements.nodes.UnaryMathIntrinsicNode.UnaryOperation.LOG;
-import static org.graalvm.compiler.replacements.nodes.UnaryMathIntrinsicNode.UnaryOperation.LOG10;
-import static org.graalvm.compiler.replacements.nodes.UnaryMathIntrinsicNode.UnaryOperation.SIN;
-import static org.graalvm.compiler.replacements.nodes.UnaryMathIntrinsicNode.UnaryOperation.TAN;
-
-import java.util.Arrays;
-
+import jdk.vm.ci.amd64.AMD64;
+import jdk.vm.ci.amd64.AMD64.CPUFeature;
+import jdk.vm.ci.code.Architecture;
+import jdk.vm.ci.meta.JavaKind;
+import jdk.vm.ci.meta.ResolvedJavaMethod;
 import org.graalvm.compiler.core.common.GraalOptions;
-import org.graalvm.compiler.lir.amd64.AMD64ArithmeticLIRGeneratorTool.RoundingMode;
 import org.graalvm.compiler.nodes.ConstantNode;
 import org.graalvm.compiler.nodes.NamedLocationIdentity;
 import org.graalvm.compiler.nodes.PauseNode;
@@ -69,13 +62,18 @@ import org.graalvm.compiler.replacements.nodes.FusedMultiplyAddNode;
 import org.graalvm.compiler.replacements.nodes.UnaryMathIntrinsicNode;
 import org.graalvm.compiler.replacements.nodes.UnaryMathIntrinsicNode.UnaryOperation;
 import org.graalvm.compiler.serviceprovider.JavaVersionUtil;
-
-import jdk.vm.ci.amd64.AMD64;
-import jdk.vm.ci.amd64.AMD64.CPUFeature;
-import jdk.vm.ci.code.Architecture;
-import jdk.vm.ci.meta.JavaKind;
-import jdk.vm.ci.meta.ResolvedJavaMethod;
 import sun.misc.Unsafe;
+
+import java.util.Arrays;
+
+import static org.graalvm.compiler.replacements.StandardGraphBuilderPlugins.registerPlatformSpecificUnsafePlugins;
+import static org.graalvm.compiler.replacements.nodes.BinaryMathIntrinsicNode.BinaryOperation.POW;
+import static org.graalvm.compiler.replacements.nodes.UnaryMathIntrinsicNode.UnaryOperation.COS;
+import static org.graalvm.compiler.replacements.nodes.UnaryMathIntrinsicNode.UnaryOperation.EXP;
+import static org.graalvm.compiler.replacements.nodes.UnaryMathIntrinsicNode.UnaryOperation.LOG;
+import static org.graalvm.compiler.replacements.nodes.UnaryMathIntrinsicNode.UnaryOperation.LOG10;
+import static org.graalvm.compiler.replacements.nodes.UnaryMathIntrinsicNode.UnaryOperation.SIN;
+import static org.graalvm.compiler.replacements.nodes.UnaryMathIntrinsicNode.UnaryOperation.TAN;
 
 public class AMD64GraphBuilderPlugins implements TargetGraphBuilderPlugins {
     @Override
@@ -151,11 +149,6 @@ public class AMD64GraphBuilderPlugins implements TargetGraphBuilderPlugins {
         registerUnaryMath(r, "cos", COS);
         registerUnaryMath(r, "tan", TAN);
 
-        boolean roundEnabled = arch.getFeatures().contains(CPUFeature.SSE4_1);
-        registerRound(roundEnabled, r, "rint", RoundingMode.NEAREST);
-        registerRound(roundEnabled, r, "ceil", RoundingMode.UP);
-        registerRound(roundEnabled, r, "floor", RoundingMode.DOWN);
-
         if (JavaVersionUtil.JAVA_SPEC > 8) {
             registerFMA(r, useFMAIntrinsics && arch.getFeatures().contains(CPUFeature.FMA));
         }
@@ -211,16 +204,6 @@ public class AMD64GraphBuilderPlugins implements TargetGraphBuilderPlugins {
             @Override
             public boolean apply(GraphBuilderContext b, ResolvedJavaMethod targetMethod, Receiver receiver, ValueNode x, ValueNode y) {
                 b.push(JavaKind.Double, b.append(BinaryMathIntrinsicNode.create(x, y, operation)));
-                return true;
-            }
-        });
-    }
-
-    private static void registerRound(boolean isEnabled, Registration r, String name, RoundingMode mode) {
-        r.registerConditional1(isEnabled, name, Double.TYPE, new InvocationPlugin() {
-            @Override
-            public boolean apply(GraphBuilderContext b, ResolvedJavaMethod targetMethod, Receiver receiver, ValueNode arg) {
-                b.push(JavaKind.Double, b.append(new AMD64RoundNode(arg, mode)));
                 return true;
             }
         });

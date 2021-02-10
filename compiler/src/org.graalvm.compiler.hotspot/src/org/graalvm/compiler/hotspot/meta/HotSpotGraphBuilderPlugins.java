@@ -24,28 +24,15 @@
  */
 package org.graalvm.compiler.hotspot.meta;
 
-import static jdk.vm.ci.services.Services.IS_IN_NATIVE_IMAGE;
-import static org.graalvm.compiler.core.common.GraalOptions.GeneratePIC;
-import static org.graalvm.compiler.hotspot.GraalHotSpotVMConfigAccess.JDK;
-import static org.graalvm.compiler.hotspot.HotSpotBackend.BASE64_ENCODE_BLOCK;
-import static org.graalvm.compiler.hotspot.HotSpotBackend.CRC_TABLE_LOCATION;
-import static org.graalvm.compiler.hotspot.HotSpotBackend.GHASH_PROCESS_BLOCKS;
-import static org.graalvm.compiler.hotspot.HotSpotBackend.UPDATE_BYTES_CRC32;
-import static org.graalvm.compiler.hotspot.HotSpotBackend.UPDATE_BYTES_CRC32C;
-import static org.graalvm.compiler.hotspot.meta.HotSpotAOTProfilingPlugin.Options.TieredAOT;
-import static org.graalvm.compiler.hotspot.replacements.HotSpotReplacementsUtil.HOTSPOT_OOP_HANDLE_LOCATION;
-import static org.graalvm.compiler.hotspot.replacements.HotSpotReplacementsUtil.JAVA_THREAD_THREAD_OBJECT_LOCATION;
-import static org.graalvm.compiler.java.BytecodeParserOptions.InlineDuringParsing;
-import static org.graalvm.compiler.nodes.ConstantNode.forBoolean;
-
-import java.lang.invoke.ConstantCallSite;
-import java.lang.invoke.MutableCallSite;
-import java.lang.invoke.VolatileCallSite;
-import java.lang.reflect.Array;
-import java.lang.reflect.Type;
-import java.math.BigInteger;
-import java.util.zip.CRC32;
-
+import jdk.vm.ci.code.TargetDescription;
+import jdk.vm.ci.hotspot.VMIntrinsicMethod;
+import jdk.vm.ci.meta.ConstantReflectionProvider;
+import jdk.vm.ci.meta.DeoptimizationAction;
+import jdk.vm.ci.meta.DeoptimizationReason;
+import jdk.vm.ci.meta.JavaKind;
+import jdk.vm.ci.meta.MetaAccessProvider;
+import jdk.vm.ci.meta.ResolvedJavaMethod;
+import jdk.vm.ci.services.Services;
 import org.graalvm.collections.Pair;
 import org.graalvm.compiler.api.replacements.SnippetReflectionProvider;
 import org.graalvm.compiler.core.common.calc.CanonicalCondition;
@@ -135,17 +122,29 @@ import org.graalvm.compiler.serviceprovider.GraalServices;
 import org.graalvm.compiler.serviceprovider.JavaVersionUtil;
 import org.graalvm.compiler.word.WordTypes;
 import org.graalvm.word.LocationIdentity;
-
-import jdk.vm.ci.code.TargetDescription;
-import jdk.vm.ci.hotspot.VMIntrinsicMethod;
-import jdk.vm.ci.meta.ConstantReflectionProvider;
-import jdk.vm.ci.meta.DeoptimizationAction;
-import jdk.vm.ci.meta.DeoptimizationReason;
-import jdk.vm.ci.meta.JavaKind;
-import jdk.vm.ci.meta.MetaAccessProvider;
-import jdk.vm.ci.meta.ResolvedJavaMethod;
-import jdk.vm.ci.services.Services;
 import sun.misc.Unsafe;
+
+import java.lang.invoke.ConstantCallSite;
+import java.lang.invoke.MutableCallSite;
+import java.lang.invoke.VolatileCallSite;
+import java.lang.reflect.Array;
+import java.lang.reflect.Type;
+import java.math.BigInteger;
+import java.util.zip.CRC32;
+
+import static jdk.vm.ci.services.Services.IS_IN_NATIVE_IMAGE;
+import static org.graalvm.compiler.core.common.GraalOptions.GeneratePIC;
+import static org.graalvm.compiler.hotspot.GraalHotSpotVMConfigAccess.JDK;
+import static org.graalvm.compiler.hotspot.HotSpotBackend.BASE64_ENCODE_BLOCK;
+import static org.graalvm.compiler.hotspot.HotSpotBackend.CRC_TABLE_LOCATION;
+import static org.graalvm.compiler.hotspot.HotSpotBackend.GHASH_PROCESS_BLOCKS;
+import static org.graalvm.compiler.hotspot.HotSpotBackend.UPDATE_BYTES_CRC32;
+import static org.graalvm.compiler.hotspot.HotSpotBackend.UPDATE_BYTES_CRC32C;
+import static org.graalvm.compiler.hotspot.meta.HotSpotAOTProfilingPlugin.Options.TieredAOT;
+import static org.graalvm.compiler.hotspot.replacements.HotSpotReplacementsUtil.HOTSPOT_OOP_HANDLE_LOCATION;
+import static org.graalvm.compiler.hotspot.replacements.HotSpotReplacementsUtil.JAVA_THREAD_THREAD_OBJECT_LOCATION;
+import static org.graalvm.compiler.java.BytecodeParserOptions.InlineDuringParsing;
+import static org.graalvm.compiler.nodes.ConstantNode.forBoolean;
 
 /**
  * Defines the {@link Plugins} used when running on HotSpot.
@@ -224,7 +223,7 @@ public class HotSpotGraphBuilderPlugins {
                 registerCounterModePlugins(invocationPlugins, config, replacements);
                 registerBase64Plugins(invocationPlugins, config, metaAccess);
                 registerUnsafePlugins(invocationPlugins, config, replacements);
-                StandardGraphBuilderPlugins.registerInvocationPlugins(metaAccess, snippetReflection, invocationPlugins, replacements, true, false, true);
+                StandardGraphBuilderPlugins.registerInvocationPlugins(metaAccess, snippetReflection, invocationPlugins, replacements, true, false, true, graalRuntime.getHostProviders().getLowerer());
                 registerArrayPlugins(invocationPlugins, replacements);
                 registerStringPlugins(invocationPlugins, replacements, wordTypes, foreignCalls, config);
                 registerArraysSupportPlugins(invocationPlugins, config, replacements);

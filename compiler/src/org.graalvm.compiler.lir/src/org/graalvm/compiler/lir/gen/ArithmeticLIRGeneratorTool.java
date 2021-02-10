@@ -24,14 +24,13 @@
  */
 package org.graalvm.compiler.lir.gen;
 
+import jdk.vm.ci.meta.Value;
+import jdk.vm.ci.meta.ValueKind;
 import org.graalvm.compiler.core.common.LIRKind;
 import org.graalvm.compiler.core.common.calc.FloatConvert;
 import org.graalvm.compiler.debug.GraalError;
 import org.graalvm.compiler.lir.LIRFrameState;
 import org.graalvm.compiler.lir.Variable;
-
-import jdk.vm.ci.meta.Value;
-import jdk.vm.ci.meta.ValueKind;
 
 /**
  * This interface can be used to generate LIR for arithmetic and simple memory access operations.
@@ -150,4 +149,23 @@ public interface ArithmeticLIRGeneratorTool {
     default Value emitMathMin(Value x, Value y) {
         throw GraalError.unimplemented("No specialized implementation available");
     }
+
+    @SuppressWarnings("unused")
+    default Value emitRound(Value operand, RoundingMode mode) {
+        throw GraalError.unimplemented("No specialized implementation available");
+    }
+
+    enum RoundingMode {
+        NEAREST(0),
+        DOWN(1),
+        UP(2),
+        TRUNCATE(3);
+
+        public final int encoding;
+
+        RoundingMode(int encoding) {
+            this.encoding = encoding;
+        }
+    }
+
 }

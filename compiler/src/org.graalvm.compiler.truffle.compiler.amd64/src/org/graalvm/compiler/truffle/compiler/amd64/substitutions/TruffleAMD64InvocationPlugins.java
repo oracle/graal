@@ -26,20 +26,11 @@ package org.graalvm.compiler.truffle.compiler.amd64.substitutions;
 
 import jdk.vm.ci.amd64.AMD64;
 import jdk.vm.ci.code.Architecture;
-import jdk.vm.ci.meta.JavaKind;
 import jdk.vm.ci.meta.MetaAccessProvider;
-import jdk.vm.ci.meta.ResolvedJavaMethod;
 import jdk.vm.ci.meta.ResolvedJavaType;
-import org.graalvm.compiler.lir.amd64.AMD64ArithmeticLIRGeneratorTool.RoundingMode;
-import org.graalvm.compiler.nodes.ValueNode;
-import org.graalvm.compiler.nodes.graphbuilderconf.GraphBuilderContext;
-import org.graalvm.compiler.nodes.graphbuilderconf.InvocationPlugin;
 import org.graalvm.compiler.nodes.graphbuilderconf.InvocationPlugins;
-import org.graalvm.compiler.nodes.graphbuilderconf.InvocationPlugins.Registration;
-import org.graalvm.compiler.nodes.graphbuilderconf.InvocationPlugins.ResolvedJavaSymbol;
 import org.graalvm.compiler.nodes.spi.Replacements;
 import org.graalvm.compiler.phases.util.Providers;
-import org.graalvm.compiler.replacements.amd64.AMD64RoundNode;
 import org.graalvm.compiler.serviceprovider.ServiceProvider;
 import org.graalvm.compiler.truffle.compiler.substitutions.GraphBuilderInvocationPluginProvider;
 
@@ -53,7 +44,6 @@ public class TruffleAMD64InvocationPlugins implements GraphBuilderInvocationPlug
         if (architecture instanceof AMD64) {
             MetaAccessProvider metaAccess = providers.getMetaAccess();
             registerArrayUtilsPlugins(plugins, metaAccess, providers.getReplacements());
-            registerExactMathPlugins(plugins, metaAccess);
         }
     }
 
@@ -75,25 +65,6 @@ public class TruffleAMD64InvocationPlugins implements GraphBuilderInvocationPlug
         r.registerMethodSubstitution(AMD64ArrayUtilsSubstitutions.class, "runRegionEqualsWithOrMask", byte[].class, int.class, byte[].class, int.class, byte[].class);
         r.registerMethodSubstitution(AMD64ArrayUtilsSubstitutions.class, "runRegionEqualsWithOrMask", char[].class, int.class, char[].class, int.class, char[].class);
         r.registerMethodSubstitution(AMD64ArrayUtilsSubstitutions.class, "runRegionEqualsWithOrMask", String.class, int.class, String.class, int.class, String.class);
-    }
-
-    private static void registerExactMathPlugins(InvocationPlugins plugins, MetaAccessProvider metaAccess) {
-        final ResolvedJavaType exactMathType = getRuntime().resolveType(metaAccess, "com.oracle.truffle.api.ExactMath");
-        Registration r = new Registration(plugins, new ResolvedJavaSymbol(exactMathType));
-        r.register1("truncate", float.class, new InvocationPlugin() {
-            @Override
-            public boolean apply(GraphBuilderContext b, ResolvedJavaMethod targetMethod, Receiver receiver, ValueNode x) {
-                b.addPush(JavaKind.Float, new AMD64RoundNode(x, RoundingMode.TRUNCATE));
-                return true;
-            }
-        });
-        r.register1("truncate", double.class, new InvocationPlugin() {
-            @Override
-            public boolean apply(GraphBuilderContext b, ResolvedJavaMethod targetMethod, Receiver receiver, ValueNode x) {
-                b.addPush(JavaKind.Double, new AMD64RoundNode(x, RoundingMode.TRUNCATE));
-                return true;
-            }
-        });
     }
 
 }

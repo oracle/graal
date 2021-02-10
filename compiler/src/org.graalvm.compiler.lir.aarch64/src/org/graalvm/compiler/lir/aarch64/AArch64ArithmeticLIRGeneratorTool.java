@@ -24,9 +24,8 @@
  */
 package org.graalvm.compiler.lir.aarch64;
 
-import org.graalvm.compiler.lir.gen.ArithmeticLIRGeneratorTool;
-
 import jdk.vm.ci.meta.Value;
+import org.graalvm.compiler.lir.gen.ArithmeticLIRGeneratorTool;
 
 /**
  * This interface can be used to generate AArch64 LIR for arithmetic operations.
@@ -37,18 +36,4 @@ public interface AArch64ArithmeticLIRGeneratorTool extends ArithmeticLIRGenerato
 
     Value emitCountTrailingZeros(Value value);
 
-    enum RoundingMode {
-        NEAREST(0),
-        DOWN(1),
-        UP(2),
-        TRUNCATE(3);
-
-        public final int encoding;
-
-        RoundingMode(int encoding) {
-            this.encoding = encoding;
-        }
-    }
-
-    Value emitRound(Value value, RoundingMode mode);
 }

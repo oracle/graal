@@ -25,12 +25,10 @@
 package org.graalvm.compiler.truffle.test;
 
 import com.oracle.truffle.api.ExactMath;
+import jdk.vm.ci.amd64.AMD64;
 import org.graalvm.compiler.core.test.GraalCompilerTest;
+import org.graalvm.compiler.nodes.calc.RoundNode;
 import org.graalvm.compiler.nodes.graphbuilderconf.InvocationPlugins;
-import org.graalvm.compiler.replacements.aarch64.AArch64RoundNode;
-import org.graalvm.compiler.replacements.amd64.AMD64RoundNode;
-import org.graalvm.compiler.truffle.compiler.aarch64.substitutions.TruffleAArch64InvocationPlugins;
-import org.graalvm.compiler.truffle.compiler.amd64.substitutions.TruffleAMD64InvocationPlugins;
 import org.graalvm.compiler.truffle.compiler.substitutions.TruffleGraphBuilderPlugins;
 import org.junit.Assert;
 import org.junit.Assume;
@@ -40,9 +38,7 @@ public class ExactMathTest extends GraalCompilerTest {
 
     @Override
     protected void registerInvocationPlugins(InvocationPlugins invocationPlugins) {
-        TruffleGraphBuilderPlugins.registerExactMathPlugins(invocationPlugins, getMetaAccess());
-        new TruffleAMD64InvocationPlugins().registerInvocationPlugins(getProviders(), getArchitecture(), invocationPlugins, true);
-        new TruffleAArch64InvocationPlugins().registerInvocationPlugins(getProviders(), getArchitecture(), invocationPlugins, true);
+        TruffleGraphBuilderPlugins.registerExactMathPlugins(invocationPlugins, getReplacements(), getLowerer(), getMetaAccess());
         super.registerInvocationPlugins(invocationPlugins);
     }
 
@@ -150,15 +146,9 @@ public class ExactMathTest extends GraalCompilerTest {
     }
 
     @Test
-    public void testTruncateFloatAMD64() {
-        Assume.assumeTrue(isArchitecture("AMD64"));
-        Assert.assertEquals(1, getFinalGraph("truncateFloat").getNodes().filter(AMD64RoundNode.class).count());
-    }
-
-    @Test
-    public void testTruncateFloatAarch64() {
-        Assume.assumeTrue(isArchitecture("aarch64"));
-        Assert.assertEquals(1, getFinalGraph("truncateFloat").getNodes().filter(AArch64RoundNode.class).count());
+    public void testTruncateFloatIntrinsified() {
+        Assume.assumeTrue(isArchitecture("aarch64") || (isArchitecture("AMD64") && ((AMD64) getArchitecture()).getFeatures().contains(AMD64.CPUFeature.SSE4_1)));
+        Assert.assertEquals(1, getFinalGraph("truncateFloat").getNodes().filter(RoundNode.class).count());
     }
 
     @Test
@@ -180,15 +170,9 @@ public class ExactMathTest extends GraalCompilerTest {
     }
 
     @Test
-    public void testTruncateDoubleAMD64() {
-        Assume.assumeTrue(isArchitecture("AMD64"));
-        Assert.assertEquals(1, getFinalGraph("truncateDouble").getNodes().filter(AMD64RoundNode.class).count());
-    }
-
-    @Test
-    public void testTruncateDoubleAarch64() {
-        Assume.assumeTrue(isArchitecture("aarch64"));
-        Assert.assertEquals(1, getFinalGraph("truncateDouble").getNodes().filter(AArch64RoundNode.class).count());
+    public void testTruncateDoubleIntrinsified() {
+        Assume.assumeTrue(isArchitecture("aarch64") || (isArchitecture("AMD64") && ((AMD64) getArchitecture()).getFeatures().contains(AMD64.CPUFeature.SSE4_1)));
+        Assert.assertEquals(1, getFinalGraph("truncateFloat").getNodes().filter(RoundNode.class).count());
     }
 
     public static int add(int a, int b) {

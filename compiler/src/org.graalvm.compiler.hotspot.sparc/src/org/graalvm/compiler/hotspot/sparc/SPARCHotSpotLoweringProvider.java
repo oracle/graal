@@ -24,6 +24,9 @@
  */
 package org.graalvm.compiler.hotspot.sparc;
 
+import jdk.vm.ci.code.TargetDescription;
+import jdk.vm.ci.hotspot.HotSpotConstantReflectionProvider;
+import jdk.vm.ci.meta.MetaAccessProvider;
 import org.graalvm.compiler.core.common.spi.ForeignCallsProvider;
 import org.graalvm.compiler.core.common.spi.MetaAccessExtensionProvider;
 import org.graalvm.compiler.core.sparc.SparcLoweringProviderMixin;
@@ -34,10 +37,6 @@ import org.graalvm.compiler.hotspot.meta.HotSpotRegistersProvider;
 import org.graalvm.compiler.nodes.calc.FloatConvertNode;
 import org.graalvm.compiler.nodes.spi.LoweringTool;
 import org.graalvm.compiler.nodes.spi.PlatformConfigurationProvider;
-
-import jdk.vm.ci.code.TargetDescription;
-import jdk.vm.ci.hotspot.HotSpotConstantReflectionProvider;
-import jdk.vm.ci.meta.MetaAccessProvider;
 
 public class SPARCHotSpotLoweringProvider extends DefaultHotSpotLoweringProvider implements SparcLoweringProviderMixin {
 
@@ -55,4 +54,10 @@ public class SPARCHotSpotLoweringProvider extends DefaultHotSpotLoweringProvider
             super.lower(n, tool);
         }
     }
+
+    @Override
+    public boolean supportsRounding() {
+        return false;
+    }
+
 }
