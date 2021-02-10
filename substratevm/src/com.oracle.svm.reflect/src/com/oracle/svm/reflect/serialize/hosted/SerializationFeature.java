@@ -156,7 +156,6 @@ public class SerializationFeature implements Feature {
             boolean allowUnsafeAccess = false;
             int staticFinalMask = Modifier.STATIC | Modifier.FINAL;
             if ((modifiers & staticFinalMask) != staticFinalMask) {
-                allowWrite = Modifier.isFinal(f.getModifiers());
                 allowUnsafeAccess = !Modifier.isStatic(f.getModifiers());
             }
             RuntimeReflection.register(allowWrite, allowUnsafeAccess, f);
