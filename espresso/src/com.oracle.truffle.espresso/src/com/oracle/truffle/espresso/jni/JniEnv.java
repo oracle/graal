@@ -58,6 +58,7 @@ import com.oracle.truffle.espresso._native.NativeSignature;
 import com.oracle.truffle.espresso._native.NativeType;
 import com.oracle.truffle.espresso._native.Pointer;
 import com.oracle.truffle.espresso._native.RawPointer;
+import com.oracle.truffle.espresso._native.nfi.NativeUtils;
 import com.oracle.truffle.espresso.descriptors.ByteSequence;
 import com.oracle.truffle.espresso.descriptors.Signatures;
 import com.oracle.truffle.espresso.descriptors.Symbol;
@@ -195,7 +196,7 @@ public final class JniEnv extends NativeEnv implements ContextAccess {
 
             @Override
             public Object call(Object... args) {
-                assert interopAsPointer((TruffleObject) args[0]) == interopAsPointer(JniEnv.this.getNativePointer()) : "Calling " + factory + " from alien JniEnv";
+                assert NativeUtils.interopAsPointer((TruffleObject) args[0]) == NativeUtils.interopAsPointer(JniEnv.this.getNativePointer()) : "Calling " + factory + " from alien JniEnv";
                 try {
                     if (subst == null) {
                         CompilerDirectives.transferToInterpreterAndInvalidate();
@@ -226,7 +227,7 @@ public final class JniEnv extends NativeEnv implements ContextAccess {
         if (m == null) {
             getLogger().log(Level.FINER, "Fetching unknown/unimplemented JNI method: {0}", methodName);
             @Pointer
-            TruffleObject errorClosure = getNativeAccess().createNativeClosure(new Callback(1, new Callback.Function() {
+            TruffleObject errorClosure = getNativeAccess().createNativeClosure(new Callback(0, new Callback.Function() {
                 @Override
                 public Object call(Object... args) {
                     CompilerDirectives.transferToInterpreter();
@@ -427,7 +428,7 @@ public final class JniEnv extends NativeEnv implements ContextAccess {
                 @Override
                 public Object call(Object... args) {
                     try {
-                        String name = interopPointerToString((TruffleObject) args[0]);
+                        String name = NativeUtils.interopPointerToString((TruffleObject) args[0]);
                         return JniEnv.this.lookupJniImpl(name);
                     } catch (ClassCastException e) {
                         throw EspressoError.shouldNotReachHere(e);
@@ -464,7 +465,7 @@ public final class JniEnv extends NativeEnv implements ContextAccess {
     @TruffleBoundary
     private ByteBuffer allocateDirect(int capacity) {
         ByteBuffer bb = ByteBuffer.allocateDirect(capacity).order(ByteOrder.nativeOrder());
-        long address = byteBufferAddress(bb);
+        long address = NativeUtils.byteBufferAddress(bb);
         nativeBuffers.put(address, bb);
         return bb;
     }
@@ -588,8 +589,8 @@ public final class JniEnv extends NativeEnv implements ContextAccess {
      */
     @JniImpl
     public @Handle(Field.class) long GetFieldID(@Host(Class.class) StaticObject clazz, @Pointer TruffleObject namePtr, @Pointer TruffleObject typePtr) {
-        String name = interopPointerToString(namePtr);
-        String type = interopPointerToString(typePtr);
+        String name = NativeUtils.interopPointerToString(namePtr);
+        String type = NativeUtils.interopPointerToString(typePtr);
         assert name != null && type != null;
         Klass klass = clazz.getMirrorKlass();
 
@@ -631,8 +632,8 @@ public final class JniEnv extends NativeEnv implements ContextAccess {
      */
     @JniImpl
     public @Handle(Field.class) long GetStaticFieldID(@Host(Class.class) StaticObject clazz, @Pointer TruffleObject namePtr, @Pointer TruffleObject typePtr) {
-        String name = interopPointerToString(namePtr);
-        String type = interopPointerToString(typePtr);
+        String name = NativeUtils.interopPointerToString(namePtr);
+        String type = NativeUtils.interopPointerToString(typePtr);
         assert name != null && type != null;
         Field field = null;
         Symbol<Name> fieldName = getNames().lookup(name);
@@ -674,8 +675,8 @@ public final class JniEnv extends NativeEnv implements ContextAccess {
      */
     @JniImpl
     public @Handle(Method.class) long GetMethodID(@Host(Class.class) StaticObject clazz, @Pointer TruffleObject namePtr, @Pointer TruffleObject signaturePtr) {
-        String name = interopPointerToString(namePtr);
-        String signature = interopPointerToString(signaturePtr);
+        String name = NativeUtils.interopPointerToString(namePtr);
+        String signature = NativeUtils.interopPointerToString(signaturePtr);
         assert name != null && signature != null;
         Method method = null;
         Symbol<Name> methodName = getNames().lookup(name);
@@ -713,8 +714,8 @@ public final class JniEnv extends NativeEnv implements ContextAccess {
      */
     @JniImpl
     public @Handle(Method.class) long GetStaticMethodID(@Host(Class.class) StaticObject clazz, @Pointer TruffleObject namePtr, @Pointer TruffleObject signaturePtr) {
-        String name = interopPointerToString(namePtr);
-        String signature = interopPointerToString(signaturePtr);
+        String name = NativeUtils.interopPointerToString(namePtr);
+        String signature = NativeUtils.interopPointerToString(signaturePtr);
         assert name != null && signature != null;
         Method method = null;
         Symbol<Name> methodName = getNames().lookup(name);
@@ -1559,7 +1560,7 @@ public final class JniEnv extends NativeEnv implements ContextAccess {
     public void GetBooleanArrayRegion(@Host(boolean[].class) StaticObject array, int start, int len, @Pointer TruffleObject bufPtr) {
         boolean[] contents = array.unwrap();
         boundsCheck(start, len, contents.length);
-        ByteBuffer buf = directByteBuffer(bufPtr, len, JavaKind.Byte);
+        ByteBuffer buf = NativeUtils.directByteBuffer(bufPtr, len, JavaKind.Byte);
         for (int i = 0; i < len; ++i) {
             buf.put(contents[start + i] ? (byte) 1 : (byte) 0);
         }
@@ -1577,7 +1578,7 @@ public final class JniEnv extends NativeEnv implements ContextAccess {
     public void GetCharArrayRegion(@Host(char[].class /* or byte[].class */) StaticObject array, int start, int len, @Pointer TruffleObject bufPtr) {
         char[] contents = array.unwrap();
         boundsCheck(start, len, contents.length);
-        CharBuffer buf = directByteBuffer(bufPtr, len, JavaKind.Char).asCharBuffer();
+        CharBuffer buf = NativeUtils.directByteBuffer(bufPtr, len, JavaKind.Char).asCharBuffer();
         buf.put(contents, start, len);
     }
 
@@ -1586,7 +1587,7 @@ public final class JniEnv extends NativeEnv implements ContextAccess {
     public void GetByteArrayRegion(@Host(byte[].class) StaticObject array, int start, int len, @Pointer TruffleObject bufPtr) {
         byte[] contents = array.unwrap();
         boundsCheck(start, len, contents.length);
-        ByteBuffer buf = directByteBuffer(bufPtr, len, JavaKind.Byte);
+        ByteBuffer buf = NativeUtils.directByteBuffer(bufPtr, len, JavaKind.Byte);
         buf.put(contents, start, len);
     }
 
@@ -1595,7 +1596,7 @@ public final class JniEnv extends NativeEnv implements ContextAccess {
     public void GetShortArrayRegion(@Host(short[].class) StaticObject array, int start, int len, @Pointer TruffleObject bufPtr) {
         short[] contents = array.unwrap();
         boundsCheck(start, len, contents.length);
-        ShortBuffer buf = directByteBuffer(bufPtr, len, JavaKind.Short).asShortBuffer();
+        ShortBuffer buf = NativeUtils.directByteBuffer(bufPtr, len, JavaKind.Short).asShortBuffer();
         buf.put(contents, start, len);
     }
 
@@ -1604,7 +1605,7 @@ public final class JniEnv extends NativeEnv implements ContextAccess {
     public void GetIntArrayRegion(@Host(int[].class) StaticObject array, int start, int len, @Pointer TruffleObject bufPtr) {
         int[] contents = array.unwrap();
         boundsCheck(start, len, contents.length);
-        IntBuffer buf = directByteBuffer(bufPtr, len, JavaKind.Int).asIntBuffer();
+        IntBuffer buf = NativeUtils.directByteBuffer(bufPtr, len, JavaKind.Int).asIntBuffer();
         buf.put(contents, start, len);
     }
 
@@ -1613,7 +1614,7 @@ public final class JniEnv extends NativeEnv implements ContextAccess {
     public void GetFloatArrayRegion(@Host(float[].class) StaticObject array, int start, int len, @Pointer TruffleObject bufPtr) {
         float[] contents = array.unwrap();
         boundsCheck(start, len, contents.length);
-        FloatBuffer buf = directByteBuffer(bufPtr, len, JavaKind.Float).asFloatBuffer();
+        FloatBuffer buf = NativeUtils.directByteBuffer(bufPtr, len, JavaKind.Float).asFloatBuffer();
         buf.put(contents, start, len);
     }
 
@@ -1622,7 +1623,7 @@ public final class JniEnv extends NativeEnv implements ContextAccess {
     public void GetDoubleArrayRegion(@Host(double[].class) StaticObject array, int start, int len, @Pointer TruffleObject bufPtr) {
         double[] contents = array.unwrap();
         boundsCheck(start, len, contents.length);
-        DoubleBuffer buf = directByteBuffer(bufPtr, len, JavaKind.Double).asDoubleBuffer();
+        DoubleBuffer buf = NativeUtils.directByteBuffer(bufPtr, len, JavaKind.Double).asDoubleBuffer();
         buf.put(contents, start, len);
     }
 
@@ -1631,7 +1632,7 @@ public final class JniEnv extends NativeEnv implements ContextAccess {
     public void GetLongArrayRegion(@Host(long[].class) StaticObject array, int start, int len, @Pointer TruffleObject bufPtr) {
         long[] contents = array.unwrap();
         boundsCheck(start, len, contents.length);
-        LongBuffer buf = directByteBuffer(bufPtr, len, JavaKind.Long).asLongBuffer();
+        LongBuffer buf = NativeUtils.directByteBuffer(bufPtr, len, JavaKind.Long).asLongBuffer();
         buf.put(contents, start, len);
     }
 
@@ -1644,7 +1645,7 @@ public final class JniEnv extends NativeEnv implements ContextAccess {
     public void SetBooleanArrayRegion(@Host(boolean[].class) StaticObject array, int start, int len, @Pointer TruffleObject bufPtr) {
         boolean[] contents = array.unwrap();
         boundsCheck(start, len, contents.length);
-        ByteBuffer buf = directByteBuffer(bufPtr, len, JavaKind.Byte);
+        ByteBuffer buf = NativeUtils.directByteBuffer(bufPtr, len, JavaKind.Byte);
         for (int i = 0; i < len; ++i) {
             contents[start + i] = buf.get() != 0;
         }
@@ -1655,7 +1656,7 @@ public final class JniEnv extends NativeEnv implements ContextAccess {
     public void SetCharArrayRegion(@Host(char[].class) StaticObject array, int start, int len, @Pointer TruffleObject bufPtr) {
         char[] contents = array.unwrap();
         boundsCheck(start, len, contents.length);
-        CharBuffer buf = directByteBuffer(bufPtr, len, JavaKind.Char).asCharBuffer();
+        CharBuffer buf = NativeUtils.directByteBuffer(bufPtr, len, JavaKind.Char).asCharBuffer();
         buf.get(contents, start, len);
     }
 
@@ -1664,7 +1665,7 @@ public final class JniEnv extends NativeEnv implements ContextAccess {
     public void SetByteArrayRegion(@Host(byte[].class) StaticObject array, int start, int len, @Pointer TruffleObject bufPtr) {
         byte[] contents = array.unwrap();
         boundsCheck(start, len, contents.length);
-        ByteBuffer buf = directByteBuffer(bufPtr, len, JavaKind.Byte);
+        ByteBuffer buf = NativeUtils.directByteBuffer(bufPtr, len, JavaKind.Byte);
         buf.get(contents, start, len);
     }
 
@@ -1673,7 +1674,7 @@ public final class JniEnv extends NativeEnv implements ContextAccess {
     public void SetShortArrayRegion(@Host(short[].class) StaticObject array, int start, int len, @Pointer TruffleObject bufPtr) {
         short[] contents = array.unwrap();
         boundsCheck(start, len, contents.length);
-        ShortBuffer buf = directByteBuffer(bufPtr, len, JavaKind.Short).asShortBuffer();
+        ShortBuffer buf = NativeUtils.directByteBuffer(bufPtr, len, JavaKind.Short).asShortBuffer();
         buf.get(contents, start, len);
     }
 
@@ -1682,7 +1683,7 @@ public final class JniEnv extends NativeEnv implements ContextAccess {
     public void SetIntArrayRegion(@Host(int[].class) StaticObject array, int start, int len, @Pointer TruffleObject bufPtr) {
         int[] contents = array.unwrap();
         boundsCheck(start, len, contents.length);
-        IntBuffer buf = directByteBuffer(bufPtr, len, JavaKind.Int).asIntBuffer();
+        IntBuffer buf = NativeUtils.directByteBuffer(bufPtr, len, JavaKind.Int).asIntBuffer();
         buf.get(contents, start, len);
     }
 
@@ -1691,7 +1692,7 @@ public final class JniEnv extends NativeEnv implements ContextAccess {
     public void SetFloatArrayRegion(@Host(float[].class) StaticObject array, int start, int len, @Pointer TruffleObject bufPtr) {
         float[] contents = array.unwrap();
         boundsCheck(start, len, contents.length);
-        FloatBuffer buf = directByteBuffer(bufPtr, len, JavaKind.Float).asFloatBuffer();
+        FloatBuffer buf = NativeUtils.directByteBuffer(bufPtr, len, JavaKind.Float).asFloatBuffer();
         buf.get(contents, start, len);
     }
 
@@ -1700,7 +1701,7 @@ public final class JniEnv extends NativeEnv implements ContextAccess {
     public void SetDoubleArrayRegion(@Host(double[].class) StaticObject array, int start, int len, @Pointer TruffleObject bufPtr) {
         double[] contents = array.unwrap();
         boundsCheck(start, len, contents.length);
-        DoubleBuffer buf = directByteBuffer(bufPtr, len, JavaKind.Double).asDoubleBuffer();
+        DoubleBuffer buf = NativeUtils.directByteBuffer(bufPtr, len, JavaKind.Double).asDoubleBuffer();
         buf.get(contents, start, len);
     }
 
@@ -1709,7 +1710,7 @@ public final class JniEnv extends NativeEnv implements ContextAccess {
     public void SetLongArrayRegion(@Host(long[].class) StaticObject array, int start, int len, @Pointer TruffleObject bufPtr) {
         long[] contents = array.unwrap();
         boundsCheck(start, len, contents.length);
-        LongBuffer buf = directByteBuffer(bufPtr, len, JavaKind.Long).asLongBuffer();
+        LongBuffer buf = NativeUtils.directByteBuffer(bufPtr, len, JavaKind.Long).asLongBuffer();
         buf.get(contents, start, len);
     }
 
@@ -1748,7 +1749,7 @@ public final class JniEnv extends NativeEnv implements ContextAccess {
      */
     @JniImpl
     public @Host(String.class) StaticObject NewStringUTF(@Pointer TruffleObject bytesPtr) {
-        String hostString = fromUTF8Ptr(bytesPtr);
+        String hostString = NativeUtils.fromUTF8Ptr(bytesPtr);
         return getMeta().toGuestString(hostString);
     }
 
@@ -1772,7 +1773,7 @@ public final class JniEnv extends NativeEnv implements ContextAccess {
     @TruffleBoundary
     public @Pointer TruffleObject GetStringCritical(@Host(String.class) StaticObject str, @Pointer TruffleObject isCopyPtr) {
         if (!getUncached().isNull(isCopyPtr)) {
-            ByteBuffer isCopyBuf = directByteBuffer(isCopyPtr, 1);
+            ByteBuffer isCopyBuf = NativeUtils.directByteBuffer(isCopyPtr, 1);
             isCopyBuf.put((byte) 1); // always copy since pinning is not supported
         }
         StaticObject stringChars;
@@ -1785,7 +1786,7 @@ public final class JniEnv extends NativeEnv implements ContextAccess {
         ByteBuffer criticalRegion = allocateDirect(len, JavaKind.Char); // direct byte buffer
         // (non-relocatable)
         @Pointer
-        TruffleObject address = byteBufferPointer(criticalRegion);
+        TruffleObject address = NativeUtils.byteBufferPointer(criticalRegion);
         GetCharArrayRegion(stringChars, 0, len, address);
         return address;
     }
@@ -1794,13 +1795,13 @@ public final class JniEnv extends NativeEnv implements ContextAccess {
     @TruffleBoundary
     public @Pointer TruffleObject GetStringUTFChars(@Host(String.class) StaticObject str, @Pointer TruffleObject isCopyPtr) {
         if (!getUncached().isNull(isCopyPtr)) {
-            ByteBuffer isCopyBuf = directByteBuffer(isCopyPtr, 1);
+            ByteBuffer isCopyBuf = NativeUtils.directByteBuffer(isCopyPtr, 1);
             isCopyBuf.put((byte) 1); // always copy since pinning is not supported
         }
         byte[] bytes = ModifiedUtf8.asUtf(getMeta().toHostString(str), true);
         ByteBuffer region = allocateDirect(bytes.length);
         region.put(bytes);
-        return byteBufferPointer(region);
+        return NativeUtils.byteBufferPointer(region);
     }
 
     /**
@@ -1820,7 +1821,7 @@ public final class JniEnv extends NativeEnv implements ContextAccess {
     @TruffleBoundary
     public @Pointer TruffleObject GetStringChars(@Host(String.class) StaticObject string, @Pointer TruffleObject isCopyPtr) {
         if (!getUncached().isNull(isCopyPtr)) {
-            ByteBuffer isCopyBuf = directByteBuffer(isCopyPtr, 1);
+            ByteBuffer isCopyBuf = NativeUtils.directByteBuffer(isCopyPtr, 1);
             isCopyBuf.put((byte) 1); // always copy since pinning is not supported
         }
         char[] chars;
@@ -1835,12 +1836,12 @@ public final class JniEnv extends NativeEnv implements ContextAccess {
         CharBuffer region = bb.asCharBuffer();
         region.put(chars);
         region.put((char) 0);
-        return byteBufferPointer(bb);
+        return NativeUtils.byteBufferPointer(bb);
     }
 
     @TruffleBoundary
     public void releasePtr(@Pointer TruffleObject ptr) {
-        long nativePtr = interopAsPointer(ptr);
+        long nativePtr = NativeUtils.interopAsPointer(ptr);
         assert nativeBuffers.containsKey(nativePtr);
         nativeBuffers.remove(nativePtr);
     }
@@ -1897,7 +1898,7 @@ public final class JniEnv extends NativeEnv implements ContextAccess {
         if (start < 0 || start + (long) len > chars.length) {
             throw Meta.throwException(getMeta().java_lang_StringIndexOutOfBoundsException);
         }
-        CharBuffer buf = directByteBuffer(bufPtr, len, JavaKind.Char).asCharBuffer();
+        CharBuffer buf = NativeUtils.directByteBuffer(bufPtr, len, JavaKind.Char).asCharBuffer();
         buf.put(chars, start, len);
     }
 
@@ -1916,7 +1917,7 @@ public final class JniEnv extends NativeEnv implements ContextAccess {
         byte[] bytes = ModifiedUtf8.asUtf(getMeta().toHostString(str), start, len, true); // always
         // 0
         // terminated.
-        ByteBuffer buf = directByteBuffer(bufPtr, bytes.length, JavaKind.Byte);
+        ByteBuffer buf = NativeUtils.directByteBuffer(bufPtr, bytes.length, JavaKind.Byte);
         buf.put(bytes);
     }
 
@@ -1980,7 +1981,7 @@ public final class JniEnv extends NativeEnv implements ContextAccess {
      */
     @JniImpl
     public static int ThrowNew(@Host(Class.class) StaticObject clazz, @Pointer TruffleObject messagePtr) {
-        String message = interopPointerToString(messagePtr);
+        String message = NativeUtils.interopPointerToString(messagePtr);
         // The TLS exception slot will be set by the JNI wrapper.
         // Throwing methods always return the default value, in this case 0 (success).
         throw Meta.throwExceptionWithMessage((ObjectKlass) clazz.getMirrorKlass(), message);
@@ -2033,7 +2034,7 @@ public final class JniEnv extends NativeEnv implements ContextAccess {
     @JniImpl
     @TruffleBoundary
     public void FatalError(@Pointer TruffleObject msgPtr) {
-        String msg = interopPointerToString(msgPtr);
+        String msg = NativeUtils.interopPointerToString(msgPtr);
         PrintWriter writer = new PrintWriter(context.getEnv().err(), true);
         writer.println("FATAL ERROR in native method: " + msg);
         // TODO print stack trace
@@ -2113,7 +2114,7 @@ public final class JniEnv extends NativeEnv implements ContextAccess {
     @TruffleBoundary
     public @Pointer TruffleObject GetBooleanArrayElements(@Host(boolean[].class) StaticObject array, @Pointer TruffleObject isCopyPtr) {
         if (!getUncached().isNull(isCopyPtr)) {
-            ByteBuffer isCopyBuf = directByteBuffer(isCopyPtr, 1);
+            ByteBuffer isCopyBuf = NativeUtils.directByteBuffer(isCopyPtr, 1);
             isCopyBuf.put((byte) 1); // Always copy since pinning is not supported.
         }
         boolean[] data = array.unwrap();
@@ -2121,105 +2122,105 @@ public final class JniEnv extends NativeEnv implements ContextAccess {
         for (int i = 0; i < data.length; ++i) {
             bytes.put(data[i] ? (byte) 1 : (byte) 0);
         }
-        return byteBufferPointer(bytes);
+        return NativeUtils.byteBufferPointer(bytes);
     }
 
     @JniImpl
     @TruffleBoundary
     public @Pointer TruffleObject GetCharArrayElements(@Host(char[].class) StaticObject array, @Pointer TruffleObject isCopyPtr) {
         if (!getUncached().isNull(isCopyPtr)) {
-            ByteBuffer isCopyBuf = directByteBuffer(isCopyPtr, 1);
+            ByteBuffer isCopyBuf = NativeUtils.directByteBuffer(isCopyPtr, 1);
             isCopyBuf.put((byte) 1); // Always copy since pinning is not supported.
         }
         char[] data = array.unwrap();
         ByteBuffer bytes = allocateDirect(data.length, JavaKind.Char);
         CharBuffer elements = bytes.asCharBuffer();
         elements.put(data);
-        return byteBufferPointer(bytes);
+        return NativeUtils.byteBufferPointer(bytes);
     }
 
     @JniImpl
     @TruffleBoundary
     public @Pointer TruffleObject GetByteArrayElements(@Host(byte[].class) StaticObject array, @Pointer TruffleObject isCopyPtr) {
         if (!getUncached().isNull(isCopyPtr)) {
-            ByteBuffer isCopyBuf = directByteBuffer(isCopyPtr, 1);
+            ByteBuffer isCopyBuf = NativeUtils.directByteBuffer(isCopyPtr, 1);
             isCopyBuf.put((byte) 1); // Always copy since pinning is not supported.
         }
         byte[] data = array.unwrap();
         ByteBuffer bytes = allocateDirect(data.length, JavaKind.Byte);
         ByteBuffer elements = bytes;
         elements.put(data);
-        return byteBufferPointer(bytes);
+        return NativeUtils.byteBufferPointer(bytes);
     }
 
     @JniImpl
     @TruffleBoundary
     public @Pointer TruffleObject GetShortArrayElements(@Host(short[].class) StaticObject array, @Pointer TruffleObject isCopyPtr) {
         if (!getUncached().isNull(isCopyPtr)) {
-            ByteBuffer isCopyBuf = directByteBuffer(isCopyPtr, 1);
+            ByteBuffer isCopyBuf = NativeUtils.directByteBuffer(isCopyPtr, 1);
             isCopyBuf.put((byte) 1); // Always copy since pinning is not supported.
         }
         short[] data = array.unwrap();
         ByteBuffer bytes = allocateDirect(data.length, JavaKind.Short);
         ShortBuffer elements = bytes.asShortBuffer();
         elements.put(data);
-        return byteBufferPointer(bytes);
+        return NativeUtils.byteBufferPointer(bytes);
     }
 
     @JniImpl
     @TruffleBoundary
     public @Pointer TruffleObject GetIntArrayElements(@Host(int[].class) StaticObject array, @Pointer TruffleObject isCopyPtr) {
         if (!getUncached().isNull(isCopyPtr)) {
-            ByteBuffer isCopyBuf = directByteBuffer(isCopyPtr, 1);
+            ByteBuffer isCopyBuf = NativeUtils.directByteBuffer(isCopyPtr, 1);
             isCopyBuf.put((byte) 1); // Always copy since pinning is not supported.
         }
         int[] data = array.unwrap();
         ByteBuffer bytes = allocateDirect(data.length, JavaKind.Int);
         IntBuffer elements = bytes.asIntBuffer();
         elements.put(data);
-        return byteBufferPointer(bytes);
+        return NativeUtils.byteBufferPointer(bytes);
     }
 
     @JniImpl
     @TruffleBoundary
     public @Pointer TruffleObject GetFloatArrayElements(@Host(float[].class) StaticObject array, @Pointer TruffleObject isCopyPtr) {
         if (!getUncached().isNull(isCopyPtr)) {
-            ByteBuffer isCopyBuf = directByteBuffer(isCopyPtr, 1);
+            ByteBuffer isCopyBuf = NativeUtils.directByteBuffer(isCopyPtr, 1);
             isCopyBuf.put((byte) 1); // Always copy since pinning is not supported.
         }
         float[] data = array.unwrap();
         ByteBuffer bytes = allocateDirect(data.length, JavaKind.Float);
         FloatBuffer elements = bytes.asFloatBuffer();
         elements.put(data);
-        return byteBufferPointer(bytes);
+        return NativeUtils.byteBufferPointer(bytes);
     }
 
     @JniImpl
     @TruffleBoundary
     public @Pointer TruffleObject GetDoubleArrayElements(@Host(double[].class) StaticObject array, @Pointer TruffleObject isCopyPtr) {
         if (!getUncached().isNull(isCopyPtr)) {
-            ByteBuffer isCopyBuf = directByteBuffer(isCopyPtr, 1);
+            ByteBuffer isCopyBuf = NativeUtils.directByteBuffer(isCopyPtr, 1);
             isCopyBuf.put((byte) 1); // Always copy since pinning is not supported.
         }
         double[] data = array.unwrap();
         ByteBuffer bytes = allocateDirect(data.length, JavaKind.Double);
         DoubleBuffer elements = bytes.asDoubleBuffer();
         elements.put(data);
-        return byteBufferPointer(bytes);
+        return NativeUtils.byteBufferPointer(bytes);
     }
 
     @JniImpl
     @TruffleBoundary
     public @Pointer TruffleObject GetLongArrayElements(@Host(long[].class) StaticObject array, @Pointer TruffleObject isCopyPtr) {
         if (!getUncached().isNull(isCopyPtr)) {
-            ByteBuffer isCopyBuf = directByteBuffer(isCopyPtr, 1);
+            ByteBuffer isCopyBuf = NativeUtils.directByteBuffer(isCopyPtr, 1);
             isCopyBuf.put((byte) 1); // Always copy since pinning is not supported.
         }
         long[] data = array.unwrap();
         ByteBuffer bytes = allocateDirect(data.length, JavaKind.Long);
         LongBuffer elements = bytes.asLongBuffer();
         elements.put(data);
-        return byteBufferPointer(bytes);
+        return NativeUtils.byteBufferPointer(bytes);
     }
 
     // endregion Get*ArrayElements
@@ -2329,7 +2330,7 @@ public final class JniEnv extends NativeEnv implements ContextAccess {
     public @Host(typeName = "Ljava/nio/DirectByteBuffer;") StaticObject NewDirectByteBuffer(@Pointer TruffleObject addressPtr, long capacity) {
         Meta meta = getMeta();
         StaticObject instance = meta.java_nio_DirectByteBuffer.allocateInstance();
-        long address = interopAsPointer(addressPtr);
+        long address = NativeUtils.interopAsPointer(addressPtr);
         meta.java_nio_DirectByteBuffer_init_long_int.invokeDirect(instance, address, (int) capacity);
         return instance;
     }
@@ -2399,8 +2400,8 @@ public final class JniEnv extends NativeEnv implements ContextAccess {
     @JniImpl
     @TruffleBoundary
     public int RegisterNative(@Host(Class.class) StaticObject clazz, @Pointer TruffleObject methodNamePtr, @Pointer TruffleObject methodSignaturePtr, @Pointer TruffleObject closure) {
-        String methodName = interopPointerToString(methodNamePtr);
-        String methodSignature = interopPointerToString(methodSignaturePtr);
+        String methodName = NativeUtils.interopPointerToString(methodNamePtr);
+        String methodSignature = NativeUtils.interopPointerToString(methodSignaturePtr);
         assert methodName != null && methodSignature != null;
 
         Symbol<Name> name = getNames().lookup(methodName);
@@ -2830,7 +2831,7 @@ public final class JniEnv extends NativeEnv implements ContextAccess {
     @JniImpl
     public @Pointer TruffleObject GetPrimitiveArrayCritical(StaticObject object, @Pointer TruffleObject isCopyPtr) {
         if (!getUncached().isNull(isCopyPtr)) {
-            ByteBuffer isCopyBuf = directByteBuffer(isCopyPtr, 1);
+            ByteBuffer isCopyBuf = NativeUtils.directByteBuffer(isCopyPtr, 1);
             isCopyBuf.put((byte) 1); // Always copy since pinning is not supported.
         }
         StaticObject array = object;
@@ -2841,7 +2842,7 @@ public final class JniEnv extends NativeEnv implements ContextAccess {
 
         ByteBuffer region = allocateDirect(length, componentKind);
         @Pointer
-        TruffleObject addressPtr = byteBufferPointer(region);
+        TruffleObject addressPtr = NativeUtils.byteBufferPointer(region);
         // @formatter:off
         switch (componentKind) {
             case Boolean : GetBooleanArrayRegion(array, 0, length, addressPtr);  break;
@@ -2989,7 +2990,7 @@ public final class JniEnv extends NativeEnv implements ContextAccess {
                     @GuestCall(target = "java_lang_ClassLoader$NativeLibrary_getFromClass") DirectCallNode nativeLibraryGetFromClass,
                     @GuestCall(target = "java_lang_Class_forName_String_boolean_ClassLoader") DirectCallNode classForName,
                     @InjectProfile SubstitutionProfiler profiler) {
-        String name = interopPointerToString(namePtr);
+        String name = NativeUtils.interopPointerToString(namePtr);
         Meta meta = getMeta();
         if (name == null || (name.indexOf('.') > -1)) {
             profiler.profile(7);
@@ -3065,8 +3066,8 @@ public final class JniEnv extends NativeEnv implements ContextAccess {
 
     @JniImpl
     public int GetJavaVM(@Pointer TruffleObject vmPtr) {
-        ByteBuffer buf = directByteBuffer(vmPtr, 1, JavaKind.Long); // 64 bits pointer
-        buf.putLong(interopAsPointer(getVM().getJavaVM()));
+        ByteBuffer buf = NativeUtils.directByteBuffer(vmPtr, 1, JavaKind.Long); // 64 bits pointer
+        buf.putLong(NativeUtils.interopAsPointer(getVM().getJavaVM()));
         return JNI_OK;
     }
 

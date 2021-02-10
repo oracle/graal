@@ -29,12 +29,14 @@ import java.nio.ByteBuffer;
 import java.nio.ByteOrder;
 
 import com.oracle.truffle.api.CompilerDirectives;
+import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.interop.ArityException;
 import com.oracle.truffle.api.interop.InteropLibrary;
 import com.oracle.truffle.api.interop.TruffleObject;
 import com.oracle.truffle.api.interop.UnsupportedMessageException;
 import com.oracle.truffle.api.interop.UnsupportedTypeException;
 import com.oracle.truffle.espresso._native.NativeType;
+import com.oracle.truffle.espresso._native.nfi.NativeUtils;
 import com.oracle.truffle.espresso.descriptors.Symbol;
 import com.oracle.truffle.espresso.descriptors.Symbol.Name;
 import com.oracle.truffle.espresso.impl.ContextAccess;
@@ -144,7 +146,7 @@ class JImageLibrary extends NativeEnv implements ContextAccess {
     public byte[] getClassBytes(TruffleObject jimage, String name) {
         // Prepare calls
         ByteBuffer sizeBuffer = allocateDirect(1, JavaKind.Long);
-        TruffleObject sizePtr = byteBufferPointer(sizeBuffer);
+        TruffleObject sizePtr = NativeUtils.byteBufferPointer(sizeBuffer);
 
         long location = findLocation(jimage, sizePtr, name);
         if (location == 0) {
@@ -154,7 +156,7 @@ class JImageLibrary extends NativeEnv implements ContextAccess {
         // Extract the result
         long capacity = sizeBuffer.getLong(0);
         ByteBuffer bytes = allocateDirect((int) capacity);
-        TruffleObject bytesPtr = byteBufferPointer(bytes);
+        TruffleObject bytesPtr = NativeUtils.byteBufferPointer(bytes);
         execute(getResource, jimage, location, bytesPtr, capacity);
         byte[] result = new byte[(int) capacity];
         bytes.get(result);
@@ -213,8 +215,8 @@ class JImageLibrary extends NativeEnv implements ContextAccess {
     }
 
     private String packageToModule(TruffleObject jimage, String pkg) {
-        try (RawBuffer pkgBuffer = RawBuffer.getNativeString(pkg)) {
-            return interopPointerToString((TruffleObject) execute(packageToModule, jimage, pkgBuffer.pointer()));
+        try (RawBuffer pkgBuffer = getNativeString(pkg)) {
+            return NativeUtils.interopPointerToString((TruffleObject) execute(packageToModule, jimage, pkgBuffer.pointer()));
         }
     }
 
@@ -235,13 +237,37 @@ class JImageLibrary extends NativeEnv implements ContextAccess {
     }
 
     @CompilerDirectives.TruffleBoundary
-    private static ByteBuffer allocateDirect(int capacity, JavaKind kind) {
-        return allocateDirect(Math.multiplyExact(capacity, kind.getByteCount()));
-    }
+    private static RawBuffer getNativeString(String name) {
+        CharsetEncoder encoder = StandardCharsets.UTF_8.newEncoder();
+        int length = ((int) (name.length() * encoder.averageBytesPerChar())) + 1;
+        for (;;) {
+            if (length <= 0) {
+                throw EspressoError.shouldNotReachHere();
+            }
+            // Be super safe with the size of the buffer.
+            ByteBuffer bb = allocateDirect(length);
+            encoder.reset();
+            CoderResult result = encoder.encode(CharBuffer.wrap(name), bb, true);
 
-    @CompilerDirectives.TruffleBoundary
-    private static ByteBuffer allocateDirect(int capacity) {
-        return ByteBuffer.allocateDirect(capacity).order(ByteOrder.nativeOrder());
+            if (result.isOverflow()) {
+                // Not enough space in the buffer
+                length <<= 1;
+            } else if (result.isUnderflow()) {
+                result = encoder.flush(bb);
+                if (result.isUnderflow() && (bb.position() < bb.capacity())) {
+                    // Encoder encoded entire string, and we have one byte of leeway.
+                    bb.put((byte) 0);
+                    return new RawBuffer(bb, NativeUtils.byteBufferPointer(bb));
+                }
+                if (result.isOverflow() || result.isUnderflow()) {
+                    length += 1;
+                } else {
+                    throw EspressoError.shouldNotReachHere();
+                }
+            } else {
+                throw EspressoError.shouldNotReachHere();
+            }
+        }
     }
 
     @Override

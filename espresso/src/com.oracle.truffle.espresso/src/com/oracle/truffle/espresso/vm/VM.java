@@ -63,6 +63,7 @@ import java.util.function.Supplier;
 import java.util.logging.Level;
 
 import com.oracle.truffle.espresso._native.RawPointer;
+import com.oracle.truffle.espresso._native.nfi.NativeUtils;
 import org.graalvm.options.OptionValues;
 
 import com.oracle.truffle.api.CompilerDirectives;
@@ -215,7 +216,7 @@ public final class VM extends NativeEnv implements ContextAccess {
         @Override
         public Object call(Object... args) {
             try {
-                String name = interopPointerToString((TruffleObject) args[0]);
+                String name = NativeUtils.interopPointerToString((TruffleObject) args[0]);
                 return VM.this.lookupVmImpl(name);
             } catch (ClassCastException e) {
                 throw EspressoError.shouldNotReachHere(e);
@@ -382,7 +383,7 @@ public final class VM extends NativeEnv implements ContextAccess {
     public static final int LOOKUP_VM_IMPL_PARAMETER_COUNT = 1;
 
     @TruffleBoundary
-    public TruffleObject lookupVmImpl(String methodName) throws UnsupportedMessageException {
+    public TruffleObject lookupVmImpl(String methodName) {
         VMSubstitutor.Factory m = vmMethods.get(methodName);
         // Dummy placeholder for unimplemented/unknown methods.
         if (m == null) {
@@ -772,12 +773,12 @@ public final class VM extends NativeEnv implements ContextAccess {
     @VmImpl
     @TruffleBoundary
     public int AttachCurrentThread(@Pointer TruffleObject vmPtr_, @Pointer TruffleObject penvPtr, @Pointer TruffleObject argsPtr) {
-        assert interopAsPointer(getJavaVM()) == interopAsPointer(vmPtr_);
+        assert NativeUtils.interopAsPointer(getJavaVM()) == NativeUtils.interopAsPointer(vmPtr_);
         return attachCurrentThread(penvPtr, argsPtr, false);
     }
 
     private int attachCurrentThread(@SuppressWarnings("unused") @Pointer TruffleObject penvPtr, @Pointer TruffleObject argsPtr, boolean daemon) {
-        LongBuffer buf = directByteBuffer(argsPtr, 8, JavaKind.Long).asLongBuffer();
+        LongBuffer buf = NativeUtils.directByteBuffer(argsPtr, 8, JavaKind.Long).asLongBuffer();
         int version = (int) buf.get(0);
         @SuppressWarnings("unused")
         long namePtr = buf.get(1);
@@ -786,7 +787,7 @@ public final class VM extends NativeEnv implements ContextAccess {
         String name = null;
         if (JniVersion.isSupported(version, getContext().getJavaVersion())) {
             group = getHandles().get(Math.toIntExact(groupHandle));
-            name = fromUTF8Ptr(namePtr);
+            name = NativeUtils.fromUTF8Ptr(namePtr);
         } else {
             getLogger().warning(String.format("AttachCurrentThread with unsupported JavaVMAttachArgs version: 0x%08x", version));
         }
@@ -869,14 +870,14 @@ public final class VM extends NativeEnv implements ContextAccess {
     @VmImpl
     @TruffleBoundary
     public int GetEnv(@Pointer TruffleObject vmPtr_, @Pointer TruffleObject envPtr, int version) {
-        assert interopAsPointer(getJavaVM()) == interopAsPointer(vmPtr_);
+        assert NativeUtils.interopAsPointer(getJavaVM()) == NativeUtils.interopAsPointer(vmPtr_);
         StaticObject currentThread = getContext().getGuestThreadFromHost(Thread.currentThread());
         if (currentThread == null) {
             return JNI_EDETACHED;
         }
         if (JniVersion.isSupported(version, getContext().getJavaVersion())) {
-            LongBuffer buf = directByteBuffer(envPtr, 1, JavaKind.Long).asLongBuffer();
-            buf.put(interopAsPointer(jniEnv.getNativePointer()));
+            LongBuffer buf = NativeUtils.directByteBuffer(envPtr, 1, JavaKind.Long).asLongBuffer();
+            buf.put(NativeUtils.interopAsPointer(jniEnv.getNativePointer()));
             return JNI_OK;
         }
         return JNI_EVERSION;
@@ -885,7 +886,7 @@ public final class VM extends NativeEnv implements ContextAccess {
     @VmImpl
     @TruffleBoundary
     public int AttachCurrentThreadAsDaemon(@Pointer TruffleObject vmPtr_, @Pointer TruffleObject penvPtr, @Pointer TruffleObject argsPtr) {
-        assert interopAsPointer(getJavaVM()) == interopAsPointer(vmPtr_);
+        assert NativeUtils.interopAsPointer(getJavaVM()) == NativeUtils.interopAsPointer(vmPtr_);
         return attachCurrentThread(penvPtr, argsPtr, true);
     }
 
@@ -1074,8 +1075,8 @@ public final class VM extends NativeEnv implements ContextAccess {
     @TruffleBoundary
     public @Host(Class.class) StaticObject JVM_DefineClass(@Pointer TruffleObject namePtr, @Host(ClassLoader.class) StaticObject loader, @Pointer TruffleObject bufPtr, int len,
                     @Host(ProtectionDomain.class) StaticObject pd, @InjectProfile SubstitutionProfiler profiler) {
-        String name = interopPointerToString(namePtr);
-        ByteBuffer buf = JniEnv.directByteBuffer(bufPtr, len, JavaKind.Byte);
+        String name = NativeUtils.interopPointerToString(namePtr);
+        ByteBuffer buf = NativeUtils.directByteBuffer(bufPtr, len, JavaKind.Byte);
         final byte[] bytes = new byte[len];
         buf.get(bytes);
 
@@ -1128,7 +1129,7 @@ public final class VM extends NativeEnv implements ContextAccess {
     @VmImpl
     @TruffleBoundary
     public @Pointer TruffleObject JVM_LoadLibrary(@Pointer TruffleObject namePtr) {
-        String name = interopPointerToString(namePtr);
+        String name = NativeUtils.interopPointerToString(namePtr);
         getLogger().fine(String.format("JVM_LoadLibrary: '%s'", name));
         try {
             @Pointer
@@ -1151,15 +1152,15 @@ public final class VM extends NativeEnv implements ContextAccess {
     @TruffleBoundary
     public void JVM_UnloadLibrary(@SuppressWarnings("unused") @Pointer TruffleObject handle) {
         // TODO(peterssen): Do unload the library.
-        getLogger().severe(String.format("JVM_UnloadLibrary: %x was not unloaded!", interopAsPointer(handle)));
+        getLogger().severe(String.format("JVM_UnloadLibrary: %x was not unloaded!", NativeUtils.interopAsPointer(handle)));
     }
 
     @VmImpl
     @TruffleBoundary
     @SuppressFBWarnings(value = "AT_OPERATION_SEQUENCE_ON_CONCURRENT_ABSTRACTION", justification = "benign race")
     public @Pointer TruffleObject JVM_FindLibraryEntry(@Pointer TruffleObject libraryPtr, @Pointer TruffleObject namePtr) {
-        String name = interopPointerToString(namePtr);
-        long nativePtr = interopAsPointer(libraryPtr);
+        String name = NativeUtils.interopPointerToString(namePtr);
+        long nativePtr = NativeUtils.interopAsPointer(libraryPtr);
         TruffleObject library = handle2Lib.get(nativePtr);
         if (library == null) {
             if (nativePtr == rtldDefaultValue) {
@@ -1802,7 +1803,7 @@ public final class VM extends NativeEnv implements ContextAccess {
     @VmImpl
     @JniImpl
     public @Host(Class.class) StaticObject JVM_FindClassFromBootLoader(@Pointer TruffleObject namePtr) {
-        String name = interopPointerToString(namePtr);
+        String name = NativeUtils.interopPointerToString(namePtr);
         if (name == null) {
             return StaticObject.NULL;
         }
@@ -2193,7 +2194,7 @@ public final class VM extends NativeEnv implements ContextAccess {
         if (bufLen > 0) {
             getContext().getJNI().GetJavaVM(vmBufPtr);
             if (!getUncached().isNull(numVMsPtr)) {
-                IntBuffer numVMsBuf = directByteBuffer(numVMsPtr, 1, JavaKind.Int).asIntBuffer();
+                IntBuffer numVMsBuf = NativeUtils.directByteBuffer(numVMsPtr, 1, JavaKind.Int).asIntBuffer();
                 numVMsBuf.put(1);
             }
         }
@@ -2341,6 +2342,7 @@ public final class VM extends NativeEnv implements ContextAccess {
     }
 
     @VmImpl
+    @TruffleBoundary
     public synchronized @Pointer TruffleObject JVM_GetManagement(int version) {
         if (!isSupportedManagementVersion(version)) {
             return RawPointer.nullInstance();
@@ -2386,7 +2388,7 @@ public final class VM extends NativeEnv implements ContextAccess {
     @VmImpl
     public int GetOptionalSupport(@Pointer TruffleObject /* jmmOptionalSupport **/ supportPtr) {
         if (!getUncached().isNull(supportPtr)) {
-            ByteBuffer supportBuf = directByteBuffer(supportPtr, 8);
+            ByteBuffer supportBuf = NativeUtils.directByteBuffer(supportPtr, 8);
             supportBuf.putInt(0); // nothing optional is supported
             return 0;
         }
@@ -2961,7 +2963,7 @@ public final class VM extends NativeEnv implements ContextAccess {
         String[] packages = new String[numPackages];
         try {
             for (int i = 0; i < numPackages; i++) {
-                String pkg = interopPointerToString((TruffleObject) getUncached().execute(getPackageAt, pkgs, i));
+                String pkg = NativeUtils.interopPointerToString((TruffleObject) getUncached().execute(getPackageAt, pkgs, i));
                 if (!Validation.validBinaryName(pkg)) {
                     profiler.profile(7);
                     throw Meta.throwExceptionWithMessage(getMeta().java_lang_IllegalArgumentException,

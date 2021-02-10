@@ -27,6 +27,7 @@ import static com.oracle.truffle.espresso.meta.EspressoError.cat;
 
 import com.oracle.truffle.api.interop.InteropLibrary;
 import com.oracle.truffle.api.interop.TruffleObject;
+import com.oracle.truffle.espresso._native.nfi.NativeUtils;
 import com.oracle.truffle.espresso.descriptors.Symbol;
 import com.oracle.truffle.espresso.impl.ModuleTable;
 import com.oracle.truffle.espresso.impl.PackageTable;
@@ -80,7 +81,7 @@ public final class ModulesHelperVM {
     }
 
     static PackageTable.PackageEntry extractPackageEntry(@Pointer TruffleObject pkgName, ModuleTable.ModuleEntry fromModuleEntry, Meta meta, SubstitutionProfiler profiler) {
-        String pkg = NativeEnv.interopPointerToString(pkgName);
+        String pkg = NativeUtils.interopPointerToString(pkgName);
         PackageTable.PackageEntry packageEntry = null;
         Symbol<Symbol.Name> nameSymbol = meta.getContext().getNames().lookup(pkg);
         if (nameSymbol != null) {

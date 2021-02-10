@@ -72,7 +72,7 @@ public abstract class IntrinsicsProcessor extends EspressoProcessor {
     NativeType[] jniNativeSignature(ExecutableElement method, String returnType, boolean prependJniEnv) {
         List<NativeType> signature = new ArrayList<>(16);
 
-        // Return type is always first.
+        // Return type is alwasy first.
         AnnotationMirror pointer = getAnnotation(method.getReturnType(), pointerAnnotation);
         AnnotationMirror handle = getAnnotation(method.getReturnType(), handleAnnotation);
         if (pointer != null) {
