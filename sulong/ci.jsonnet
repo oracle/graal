@@ -140,7 +140,7 @@
     timelimit: "0:45:00",
   },
 
-  requireGCC: {
+  requireGCC:: {
     packages+: {
       gcc: "==6.1.0",
     },
@@ -161,7 +161,7 @@
     },
   },
 
-  sulong_ruby_downstream_test: {
+  sulong_ruby_downstream_test:: {
     packages+: {
       ruby: "==2.6.3",
     },
@@ -178,7 +178,7 @@
     timelimit: "45:00",
   },
 
-  sulong_gate_generated_sources: {
+  sulong_gate_generated_sources:: {
     run: [
       ["mx", "build", "--dependencies", "LLVM_TOOLCHAIN"],
       ["mx", "create-generated-sources"],
@@ -186,7 +186,7 @@
     ],
   },
 
-  sulong_coverage_linux: {
+  sulong_coverage_linux:: {
     run: [
       ["mx", "--jacoco-whitelist-package", "com.oracle.truffle.llvm", "--jacoco-exclude-annotation", "@GeneratedBy", "gate", "--tags", "build,sulongCoverage", "--jacocout", "html"],
       # $SONAR_HOST_URL might not be set [GR-28642],
@@ -229,6 +229,7 @@
     $.gate + $.sulong + $.jdk8 + $.linux_amd64 + $.llvm6 + $.requireGMP + $.requireGCC + $.gateTags(basicTags) + { name: "gate-sulong-basic_v60" },
     $.gate + $.sulong + $.jdk8 + $.linux_amd64 + $.llvm8 + $.requireGMP + $.requireGCC + $.gateTags(basicTags) + { name: "gate-sulong-basic_v80" },
     $.gate + $.sulong + $.jdk8 + $.linux_amd64 + $.llvmBundled + $.requireGMP + $.requireGCC + $.gateTags(basicTagsLLToolchain) + { name: "gate-sulong-basic_bundled-llvm" },
+    # FIXME: it is sufficient to only run basicTags
     $.gate + $.sulong + $.jdk8 + $.darwin_amd64 + $.llvm4 + $.llvm4_darwin_fix + $.gateTags(basicTags + ",toolchain") + { name: "gate-sulong-basic_mac" },
     $.gate + $.sulong + $.jdk8 + $.darwin_amd64 + $.llvmBundled + $.llvmBundled_darwin_fix + $.gateTags(basicTagsLLToolchain) + { name: "gate-sulong-basic_bundled-llvm_mac" },
 
