@@ -402,8 +402,8 @@ public final class EspressoContext {
                 // TODO(peterssen): Use ServiceLoader.
                 boolean dlmopen = getEnv().getOptions().get(EspressoOptions.UseTruffleNFIIsolatedNamespace);
                 this.nativeAccess = dlmopen
-                        ? new NFIIsolatedNativeAccess(this)
-                        : new NFINativeAccess(this);
+                                ? new NFIIsolatedNativeAccess(this)
+                                : new NFINativeAccess(this);
                 this.vm = VM.create(getJNI()); // Mokapot is loaded
                 vm.attachThread(Thread.currentThread());
             }

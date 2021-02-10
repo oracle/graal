@@ -227,21 +227,23 @@ public final class JniEnv extends NativeEnv implements ContextAccess {
         // Dummy placeholder for unimplemented/unknown methods.
         if (m == null) {
             getLogger().log(Level.FINER, "Fetching unknown/unimplemented JNI method: {0}", methodName);
-            @Pointer TruffleObject errorClosure = getNativeAccess().createNativeClosure(new Callback(1, new Callback.Function() {
-                                @Override
-                                public Object call(Object... args) {
-                                    CompilerDirectives.transferToInterpreter();
-                                    getLogger().log(Level.SEVERE, "Calling unimplemented JNI method: {0}", methodName);
-                                    throw EspressoError.unimplemented("JNI method: " + methodName);
-                                }
-                            }), NativeType.VOID);
+            @Pointer
+            TruffleObject errorClosure = getNativeAccess().createNativeClosure(new Callback(1, new Callback.Function() {
+                @Override
+                public Object call(Object... args) {
+                    CompilerDirectives.transferToInterpreter();
+                    getLogger().log(Level.SEVERE, "Calling unimplemented JNI method: {0}", methodName);
+                    throw EspressoError.unimplemented("JNI method: " + methodName);
+                }
+            }), NativeType.VOID);
             nativeClosures.add(errorClosure);
             return errorClosure;
         }
 
         NativeSignature signature = m.jniNativeSignature();
         Callback target = jniMethodWrapper(m);
-        @Pointer TruffleObject nativeClosure = getNativeAccess().createNativeClosure(target, signature.getReturnType(), signature.getParameterTypes());
+        @Pointer
+        TruffleObject nativeClosure = getNativeAccess().createNativeClosure(target, signature.getReturnType(), signature.getParameterTypes());
         nativeClosures.add(nativeClosure);
         return nativeClosure;
     }
@@ -438,7 +440,8 @@ public final class JniEnv extends NativeEnv implements ContextAccess {
                     }
                 }
             });
-            @Pointer TruffleObject lookupJniImplNativeCallback = getNativeAccess().createNativeClosure(lookupJniImplCallback, NativeType.POINTER, NativeType.POINTER);
+            @Pointer
+            TruffleObject lookupJniImplNativeCallback = getNativeAccess().createNativeClosure(lookupJniImplCallback, NativeType.POINTER, NativeType.POINTER);
             this.jniEnvPtr = (TruffleObject) getUncached().execute(initializeNativeContext, lookupJniImplNativeCallback);
             assert getUncached().isPointer(jniEnvPtr);
 

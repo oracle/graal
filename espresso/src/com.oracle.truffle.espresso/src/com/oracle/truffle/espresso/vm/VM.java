@@ -286,7 +286,7 @@ public final class VM extends NativeEnv implements ContextAccess {
 
             @Pointer
             TruffleObject initializeMokapotContext = getNativeAccess().lookupAndBindSymbol(mokapotLibrary,
-                            "initializeMokapotContext", NativeType.POINTER,NativeType.POINTER, NativeType.POINTER);
+                            "initializeMokapotContext", NativeType.POINTER, NativeType.POINTER, NativeType.POINTER);
 
             disposeMokapotContext = getNativeAccess().lookupAndBindSymbol(mokapotLibrary,
                             "disposeMokapotContext",
@@ -324,7 +324,8 @@ public final class VM extends NativeEnv implements ContextAccess {
             this.safeRTLDDefaultLookup = !options.get(EspressoOptions.UseTruffleNFIIsolatedNamespace);
 
             // void* fetch_by_name(char* function_name)
-            @Pointer TruffleObject lookupVmImplNativeCallback = getNativeAccess().createNativeClosure(lookupVmImplCallback, NativeType.POINTER, NativeType.POINTER);
+            @Pointer
+            TruffleObject lookupVmImplNativeCallback = getNativeAccess().createNativeClosure(lookupVmImplCallback, NativeType.POINTER, NativeType.POINTER);
 
             this.mokapotEnvPtr = (TruffleObject) getUncached().execute(initializeMokapotContext, jniEnv.getNativePointer(), lookupVmImplNativeCallback);
             this.rtldDefaultValue = getUncached().asPointer(getUncached().execute(mokapotGetRTLDDefault));
@@ -388,7 +389,8 @@ public final class VM extends NativeEnv implements ContextAccess {
         // Dummy placeholder for unimplemented/unknown methods.
         if (m == null) {
             getLogger().log(Level.FINER, "Fetching unknown/unimplemented VM method: {0}", methodName);
-            @Pointer TruffleObject errorClosure = getNativeAccess().createNativeClosure(
+            @Pointer
+            TruffleObject errorClosure = getNativeAccess().createNativeClosure(
                             new Callback(1, new Callback.Function() {
                                 @Override
                                 public Object call(Object... args) {
@@ -2354,7 +2356,8 @@ public final class VM extends NativeEnv implements ContextAccess {
         if (managementPtr == null) {
             try {
                 // void* fetch_by_name(char* function_name)
-                @Pointer TruffleObject lookupVmImplNativeCallback = getNativeAccess().createNativeClosure(lookupVmImplCallback, NativeType.POINTER, NativeType.POINTER);
+                @Pointer
+                TruffleObject lookupVmImplNativeCallback = getNativeAccess().createNativeClosure(lookupVmImplCallback, NativeType.POINTER, NativeType.POINTER);
                 managementPtr = (TruffleObject) getUncached().execute(initializeManagementContext, lookupVmImplNativeCallback, version);
                 managementVersion = version;
                 assert getUncached().isPointer(managementPtr);
