@@ -22,6 +22,8 @@
  */
 package com.oracle.truffle.espresso.jdwp.api;
 
+import java.util.Iterator;
+
 import com.oracle.truffle.api.TruffleLanguage;
 import com.oracle.truffle.api.debug.DebugScope;
 import com.oracle.truffle.api.debug.DebugStackFrame;
@@ -34,8 +36,6 @@ import com.oracle.truffle.api.interop.UnknownIdentifierException;
 import com.oracle.truffle.api.interop.UnsupportedMessageException;
 import com.oracle.truffle.api.nodes.RootNode;
 import com.oracle.truffle.espresso.jdwp.impl.JDWPLogger;
-
-import java.util.Iterator;
 
 // Remove in GR-26337
 @SuppressWarnings("deprecation")
@@ -59,7 +59,7 @@ public final class CallFrame {
     private com.oracle.truffle.api.Scope scope;
 
     public CallFrame(long threadId, byte typeTag, long classId, MethodRef method, long methodId, long codeIndex, Frame frame, RootNode rootNode,
-                     TruffleInstrument.Env env, DebugStackFrame debugStackFrame, Class<? extends TruffleLanguage<?>> languageClass) {
+                    TruffleInstrument.Env env, DebugStackFrame debugStackFrame, Class<? extends TruffleLanguage<?>> languageClass) {
         this.threadId = threadId;
         this.typeTag = typeTag;
         this.classId = classId;
