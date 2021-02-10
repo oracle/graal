@@ -26,8 +26,6 @@ import java.io.IOException;
 import java.io.Writer;
 import java.time.Year;
 import java.util.ArrayList;
-import java.util.Collections;
-import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
@@ -313,25 +311,22 @@ public abstract class EspressoProcessor extends AbstractProcessor {
     static final String TAB_3 = TAB_2 + TAB_1;
     static final String TAB_4 = TAB_3 + TAB_1;
 
-    private static final Map<String, NativeType> classToNative = buildClassToNative();
-
-    static Map<String, NativeType> buildClassToNative() {
-        Map<String, NativeType> map = new HashMap<>();
-        map.put("boolean", NativeType.BOOLEAN);
-        map.put("byte", NativeType.BYTE);
-        map.put("short", NativeType.SHORT);
-        map.put("char", NativeType.CHAR);
-        map.put("int", NativeType.INT);
-        map.put("float", NativeType.FLOAT);
-        map.put("long", NativeType.LONG);
-        map.put("double", NativeType.DOUBLE);
-        map.put("void", NativeType.VOID);
-        return Collections.unmodifiableMap(map);
-    }
-
     public static NativeType classToType(String clazz) {
-        // TODO(peterssen): Allow native-sized words.
-        return classToNative.getOrDefault(clazz, NativeType.LONG);
+        // @formatter:off
+        switch (clazz) {
+            case "boolean": return NativeType.BOOLEAN;
+            case "byte":    return NativeType.BYTE;
+            case "short":   return NativeType.SHORT;
+            case "char":    return NativeType.CHAR;
+            case "int":     return NativeType.INT;
+            case "float":   return NativeType.FLOAT;
+            case "long":    return NativeType.LONG;
+            case "double":  return NativeType.DOUBLE;
+            case "void":    return NativeType.VOID;
+            default:
+                return NativeType.OBJECT;
+        }
+        // @formatter:on
     }
 
     @Override
