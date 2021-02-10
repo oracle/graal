@@ -60,9 +60,9 @@ import com.oracle.truffle.espresso.descriptors.Symbol;
 import com.oracle.truffle.espresso.descriptors.Symbol.Name;
 import com.oracle.truffle.espresso.descriptors.Symbol.Signature;
 import com.oracle.truffle.espresso.descriptors.Symbol.Type;
-import com.oracle.truffle.espresso.jdwp.api.Ids;
 import com.oracle.truffle.espresso.impl.ModuleTable.ModuleEntry;
 import com.oracle.truffle.espresso.impl.PackageTable.PackageEntry;
+import com.oracle.truffle.espresso.jdwp.api.Ids;
 import com.oracle.truffle.espresso.jdwp.api.MethodRef;
 import com.oracle.truffle.espresso.jdwp.impl.JDWPLogger;
 import com.oracle.truffle.espresso.meta.EspressoError;
@@ -124,7 +124,7 @@ public final class ObjectKlass extends Klass {
     @CompilationFinal volatile KlassVersion klassVersion;
 
     // used for class redefintion when refreshing vtables etc.
-    private ArrayList<WeakReference<ObjectKlass>> subTypes;
+    private ArrayList<WeakReference<ObjectKlass>> subTypes = new ArrayList<>(1);
 
     public static final int LOADED = 0;
     public static final int LINKED = 1;
@@ -199,11 +199,13 @@ public final class ObjectKlass extends Klass {
             vtable = VirtualTable.create(superKlass, methods, this, mirandaMethods, false);
             itable = InterfaceTables.fixTables(vtable, mirandaMethods, methods, methodCR.tables, iKlassTable);
         }
-        if (superKlass != null) {
-            superKlass.addSubType(this);
-        }
-        for (ObjectKlass superInterface : superInterfaces) {
-            superInterface.addSubType(this);
+        synchronized (subTypes) {
+            if (superKlass != null) {
+                superKlass.addSubType(this);
+            }
+            for (ObjectKlass superInterface : superInterfaces) {
+                superInterface.addSubType(this);
+            }
         }
         this.klassVersion = new KlassVersion(pool, linkedKlass, methods, mirandaMethods, vtable, itable, iKlassTable);
         this.initState = LINKED;
@@ -211,9 +213,6 @@ public final class ObjectKlass extends Klass {
     }
 
     private void addSubType(ObjectKlass objectKlass) {
-        if (subTypes == null) {
-            subTypes = new ArrayList<>(1);
-        }
         subTypes.add(new WeakReference<>(objectKlass));
     }
 
@@ -1256,17 +1255,19 @@ public final class ObjectKlass extends Klass {
     }
 
     private List<ObjectKlass> getSubTypes() {
-        List<ObjectKlass> result = new ArrayList<>();
-        if (subTypes != null) {
-            for (WeakReference<ObjectKlass> subType : subTypes) {
-                ObjectKlass sub = subType.get();
-                if (sub != null) {
-                    result.add(sub);
-                    result.addAll(sub.getSubTypes());
+        synchronized (subTypes) {
+            List<ObjectKlass> result = new ArrayList<>();
+            if (subTypes != null) {
+                for (WeakReference<ObjectKlass> subType : subTypes) {
+                    ObjectKlass sub = subType.get();
+                    if (sub != null) {
+                        result.add(sub);
+                        result.addAll(sub.getSubTypes());
+                    }
                 }
             }
+            return result;
         }
-        return result;
     }
 
     private static boolean isVirtual(ParserMethod m) {
