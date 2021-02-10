@@ -30,7 +30,7 @@
     notify_groups:: ["sulong"],
   },
 
-  sulong_common:: {
+  sulong:: {
     environment+: {
       TRUFFLE_STRICT_OPTION_DEPRECATION: "true",
     },
@@ -191,42 +191,42 @@
   ],
 
   builds: [
-    $.gate + $.sulong_common + $.style + $.jdk8 + $.sulong_linux_amd64 + common.eclipse { name: "gate-sulong-style", run: [["mx", "gate", "--tags", "style"]] },
-    $.gate + $.sulong_common + $.style + $.jdk8 + $.sulong_linux_amd64 + common.eclipse + common.jdt + { name: "gate-sulong-fullbuild", run: [["mx", "gate", "--tags", "fullbuild"]] },
-    $.gate + $.sulong_common + $.jdk8 + linux_amd64 + $.sulong_gate_generated_sources { name: "gate-sulong-generated-sources" },
-    $.gate + $.sulong_common + $.jdk8 + $.sulong_linux_amd64 + $.llvmBundled + $.requireGMP + $.requireGCC + {
+    $.gate + $.sulong + $.style + $.jdk8 + $.sulong_linux_amd64 + common.eclipse { name: "gate-sulong-style", run: [["mx", "gate", "--tags", "style"]] },
+    $.gate + $.sulong + $.style + $.jdk8 + $.sulong_linux_amd64 + common.eclipse + common.jdt + { name: "gate-sulong-fullbuild", run: [["mx", "gate", "--tags", "fullbuild"]] },
+    $.gate + $.sulong + $.jdk8 + linux_amd64 + $.sulong_gate_generated_sources { name: "gate-sulong-generated-sources" },
+    $.gate + $.sulong + $.jdk8 + $.sulong_linux_amd64 + $.llvmBundled + $.requireGMP + $.requireGCC + {
       name: "gate-sulong-misc",
       run: [
         ["mx", "gate", "--tags", "build,sulongMisc"],
       ] + sulong_test_toolchain,
     },
-    $.gate + $.sulong_common + $.jdk8 + $.sulong_linux_amd64 + $.llvmBundled + $.requireGMP + $.requireGCC + { name: "gate-sulong-parser", run: [["mx", "gate", "--tags", "build,parser"]] },
-    $.gate + $.sulong_common + $.jdk8 + $.sulong_linux_amd64 + $.llvmBundled + $.requireGMP { name: "gate-sulong-gcc_c", run: [["mx", "gate", "--tags", "build,gcc_c"]], timelimit: "45:00" },
-    $.gate + $.sulong_common + $.jdk8 + $.sulong_linux_amd64 + $.llvmBundled + $.requireGMP { name: "gate-sulong-gcc_cpp", run: [["mx", "gate", "--tags", "build,gcc_cpp"]], timelimit: "45:00" },
-    $.gate + $.sulong_common + $.jdk8 + $.sulong_linux_amd64 + $.llvmBundled + $.requireGMP + $.requireGCC + { name: "gate-sulong-gcc_fortran", run: [["mx", "gate", "--tags", "build,gcc_fortran"]] },
+    $.gate + $.sulong + $.jdk8 + $.sulong_linux_amd64 + $.llvmBundled + $.requireGMP + $.requireGCC + { name: "gate-sulong-parser", run: [["mx", "gate", "--tags", "build,parser"]] },
+    $.gate + $.sulong + $.jdk8 + $.sulong_linux_amd64 + $.llvmBundled + $.requireGMP { name: "gate-sulong-gcc_c", run: [["mx", "gate", "--tags", "build,gcc_c"]], timelimit: "45:00" },
+    $.gate + $.sulong + $.jdk8 + $.sulong_linux_amd64 + $.llvmBundled + $.requireGMP { name: "gate-sulong-gcc_cpp", run: [["mx", "gate", "--tags", "build,gcc_cpp"]], timelimit: "45:00" },
+    $.gate + $.sulong + $.jdk8 + $.sulong_linux_amd64 + $.llvmBundled + $.requireGMP + $.requireGCC + { name: "gate-sulong-gcc_fortran", run: [["mx", "gate", "--tags", "build,gcc_fortran"]] },
     # No more testing on llvm 3.8 [GR-21735]
-    # $.gate + $.sulong_common + $.jdk8 + $.sulong_linux_amd64 + $.llvm38 + $.requireGMP + $.requireGCC + { name: "gate-sulong-basic_v38", run: [["mx", "gate", "--tags", "build,sulongBasic,nwcc,llvm"]] },
-    $.gate + $.sulong_common + $.jdk8 + $.sulong_linux_amd64 + $.llvm4 + $.requireGMP + $.requireGCC + { name: "gate-sulong-basic_v40", run: [["mx", "gate", "--tags", "build,sulongBasic,nwcc,llvm"]] },
-    $.gate + $.sulong_common + $.jdk8 + $.sulong_linux_amd64 + $.llvm6 + $.requireGMP + $.requireGCC + { name: "gate-sulong-basic_v60", run: [["mx", "gate", "--tags", "build,sulongBasic,nwcc,llvm"]] },
-    $.gate + $.sulong_common + $.jdk8 + $.sulong_linux_amd64 + $.llvm8 + $.requireGMP + $.requireGCC + { name: "gate-sulong-basic_v80", run: [["mx", "gate", "--tags", "build,sulongBasic,nwcc,llvm"]] },
-    $.gate + $.sulong_common + $.jdk8 + $.sulong_linux_amd64 + $.llvmBundled + $.requireGMP + $.requireGCC + { name: "gate-sulong-basic_bundled-llvm", run: [["mx", "gate", "--tags", "build,sulongBasic,sulongLL,nwcc,llvm,toolchain"]] },
-    $.gate + $.sulong_common + $.jdk8 + $.sulong_darwin_amd64 + $.llvm4 + $.llvm4_darwin_fix + { name: "gate-sulong-basic_mac", run: [["mx", "gate", "--tags", "build,sulongBasic,nwcc,llvm,toolchain"]] },
-    $.gate + $.sulong_common + $.jdk8 + $.sulong_darwin_amd64 + $.llvmBundled + $.llvmBundled_darwin_fix + { name: "gate-sulong-basic_bundled-llvm_mac", run: [["mx", "gate", "--tags", "build,sulongBasic,sulongLL,nwcc,llvm,toolchain"]] },
+    # $.gate + $.sulong + $.jdk8 + $.sulong_linux_amd64 + $.llvm38 + $.requireGMP + $.requireGCC + { name: "gate-sulong-basic_v38", run: [["mx", "gate", "--tags", "build,sulongBasic,nwcc,llvm"]] },
+    $.gate + $.sulong + $.jdk8 + $.sulong_linux_amd64 + $.llvm4 + $.requireGMP + $.requireGCC + { name: "gate-sulong-basic_v40", run: [["mx", "gate", "--tags", "build,sulongBasic,nwcc,llvm"]] },
+    $.gate + $.sulong + $.jdk8 + $.sulong_linux_amd64 + $.llvm6 + $.requireGMP + $.requireGCC + { name: "gate-sulong-basic_v60", run: [["mx", "gate", "--tags", "build,sulongBasic,nwcc,llvm"]] },
+    $.gate + $.sulong + $.jdk8 + $.sulong_linux_amd64 + $.llvm8 + $.requireGMP + $.requireGCC + { name: "gate-sulong-basic_v80", run: [["mx", "gate", "--tags", "build,sulongBasic,nwcc,llvm"]] },
+    $.gate + $.sulong + $.jdk8 + $.sulong_linux_amd64 + $.llvmBundled + $.requireGMP + $.requireGCC + { name: "gate-sulong-basic_bundled-llvm", run: [["mx", "gate", "--tags", "build,sulongBasic,sulongLL,nwcc,llvm,toolchain"]] },
+    $.gate + $.sulong + $.jdk8 + $.sulong_darwin_amd64 + $.llvm4 + $.llvm4_darwin_fix + { name: "gate-sulong-basic_mac", run: [["mx", "gate", "--tags", "build,sulongBasic,nwcc,llvm,toolchain"]] },
+    $.gate + $.sulong + $.jdk8 + $.sulong_darwin_amd64 + $.llvmBundled + $.llvmBundled_darwin_fix + { name: "gate-sulong-basic_bundled-llvm_mac", run: [["mx", "gate", "--tags", "build,sulongBasic,sulongLL,nwcc,llvm,toolchain"]] },
 
-    $.gate + $.sulong_common + $.jdk8 + $.sulong_linux_amd64 + $.llvmBundled + $.requireGMP + $.sulong_ruby_downstream_test + { name: "gate-sulong-ruby-downstream" },
+    $.gate + $.sulong + $.jdk8 + $.sulong_linux_amd64 + $.llvmBundled + $.requireGMP + $.sulong_ruby_downstream_test + { name: "gate-sulong-ruby-downstream" },
 
-    $.gate + $.sulong_common + $.labsjdk_ce_11 + $.sulong_linux_aarch64 + $.llvmBundled + $.requireGMP + { name: "gate-sulong_bundled-llvm-linux-aarch64", run: [["mx", "gate", "--tags", "build,sulong,sulongLL,interop,linker,debug,irdebug,bitcodeFormat,otherTests,llvm"]], timelimit: "30:00" },
-    $.gate + $.sulong_common + $.labsjdk_ce_11 + $.sulong_linux_amd64 + $.llvmBundled + $.requireGMP + {
+    $.gate + $.sulong + $.labsjdk_ce_11 + $.sulong_linux_aarch64 + $.llvmBundled + $.requireGMP + { name: "gate-sulong_bundled-llvm-linux-aarch64", run: [["mx", "gate", "--tags", "build,sulong,sulongLL,interop,linker,debug,irdebug,bitcodeFormat,otherTests,llvm"]], timelimit: "30:00" },
+    $.gate + $.sulong + $.labsjdk_ce_11 + $.sulong_linux_amd64 + $.llvmBundled + $.requireGMP + {
       name: "gate-sulong-build_bundled-llvm-linux-amd64-labsjdk-ce-11",
       run: [
         ["mx", "gate", "--tags", "build"],
       ] + sulong_test_toolchain,
     },
 
-    $.gate + $.sulong_common + $.jdk8 + $.sulong_linux_amd64 + $.llvmBundled + $.requireGMP { name: "gate-sulong-strict-native-image", run: [
+    $.gate + $.sulong + $.jdk8 + $.sulong_linux_amd64 + $.llvmBundled + $.requireGMP { name: "gate-sulong-strict-native-image", run: [
       ["mx", "--dynamicimports", "/substratevm,/tools", "--native-images=lli", "--extra-image-builder-argument=-H:+TruffleCheckBlackListedMethods", "gate", "--tags", "build"],
     ] },
 
-    $.gate + $.sulong_common + $.jdk8 + $.sulong_linux_amd64 + $.llvmBundled + $.requireGMP + $.requireGCC + $.sulong_weekly_notifications + $.sulong_coverage_linux { name: "weekly-sulong-coverage" },
+    $.gate + $.sulong + $.jdk8 + $.sulong_linux_amd64 + $.llvmBundled + $.requireGMP + $.requireGCC + $.sulong_weekly_notifications + $.sulong_coverage_linux { name: "weekly-sulong-coverage" },
   ],
 }
