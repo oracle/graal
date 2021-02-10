@@ -54,10 +54,12 @@ import com.oracle.truffle.api.interop.UnsupportedTypeException;
 import com.oracle.truffle.api.nodes.DirectCallNode;
 import com.oracle.truffle.espresso.EspressoLanguage;
 import com.oracle.truffle.espresso.EspressoOptions.SpecCompliancyMode;
+import com.oracle.truffle.espresso._native.Buffer;
 import com.oracle.truffle.espresso._native.NativeSignature;
 import com.oracle.truffle.espresso._native.NativeType;
 import com.oracle.truffle.espresso._native.Pointer;
 import com.oracle.truffle.espresso._native.RawPointer;
+import com.oracle.truffle.espresso._native.TruffleByteBuffer;
 import com.oracle.truffle.espresso._native.nfi.NativeUtils;
 import com.oracle.truffle.espresso.descriptors.ByteSequence;
 import com.oracle.truffle.espresso.descriptors.Signatures;
@@ -136,7 +138,6 @@ public final class JniEnv extends NativeEnv implements ContextAccess {
     // Native methods in libenespresso.
     private final @Pointer TruffleObject initializeNativeContext;
     private final @Pointer TruffleObject disposeNativeContext;
-    private final @Pointer TruffleObject dupClosureRef;
     private final @Pointer TruffleObject popBoolean;
     private final @Pointer TruffleObject popByte;
     private final @Pointer TruffleObject popChar;
@@ -147,9 +148,6 @@ public final class JniEnv extends NativeEnv implements ContextAccess {
     private final @Pointer TruffleObject popLong;
     private final @Pointer TruffleObject popObject;
 
-    private final @Pointer TruffleObject malloc;
-    private final @Pointer TruffleObject realloc;
-    private final @Pointer TruffleObject free;
     private final @Pointer TruffleObject ctypeInit;
     private final @Pointer TruffleObject getSizeMax;
 
@@ -396,7 +394,6 @@ public final class JniEnv extends NativeEnv implements ContextAccess {
             }
 
             nespressoLibrary = getNativeAccess().loadLibrary(Collections.singletonList(espressoLibraryPath), "nespresso", true);
-            dupClosureRef = getNativeAccess().lookupSymbol(nespressoLibrary, "dupClosureRef");
             initializeNativeContext = getNativeAccess().lookupAndBindSymbol(nespressoLibrary,
                             "initializeNativeContext", NativeType.POINTER, NativeType.POINTER);
             disposeNativeContext = getNativeAccess().lookupAndBindSymbol(nespressoLibrary, "disposeNativeContext",
@@ -405,13 +402,6 @@ public final class JniEnv extends NativeEnv implements ContextAccess {
             getSizeMax = getNativeAccess().lookupAndBindSymbol(nespressoLibrary, "get_SIZE_MAX", NativeType.LONG);
 
             assert sizeMax() > Integer.MAX_VALUE : "size_t must be 64-bit wide";
-
-            malloc = getNativeAccess().lookupAndBindSymbol(nespressoLibrary, "allocateMemory",
-                            NativeType.POINTER, NativeType.LONG); // void*(size_t)
-            realloc = getNativeAccess().lookupAndBindSymbol(nespressoLibrary, "reallocateMemory",
-                            NativeType.POINTER, NativeType.POINTER, NativeType.LONG); // void*(void*,size_t)
-            free = getNativeAccess().lookupAndBindSymbol(nespressoLibrary, "freeMemory",
-                            NativeType.VOID, NativeType.POINTER); // void(void*)
 
             // Varargs native bindings.
             popBoolean = getNativeAccess().lookupAndBindSymbol(nespressoLibrary, "pop_boolean", NativeType.BOOLEAN, NativeType.POINTER);
@@ -502,39 +492,6 @@ public final class JniEnv extends NativeEnv implements ContextAccess {
             throw EspressoError.shouldNotReachHere("Cannot initialize Espresso native interface");
         }
         assert jniEnvPtr == null;
-    }
-
-    public @Pointer TruffleObject malloc(long size) {
-        try {
-            TruffleObject result = (TruffleObject) getUncached().execute(malloc, size);
-            assert getUncached().isPointer(result);
-            return result;
-        } catch (UnsupportedTypeException | ArityException | UnsupportedMessageException e) {
-            CompilerDirectives.transferToInterpreter();
-            throw EspressoError.shouldNotReachHere(e);
-        }
-    }
-
-    public @Pointer TruffleObject realloc(@Pointer TruffleObject ptr, long size) {
-        assert getUncached().isPointer(ptr);
-        try {
-            TruffleObject result = (TruffleObject) getUncached().execute(realloc, ptr, size);
-            assert getUncached().isPointer(result);
-            return result;
-        } catch (UnsupportedTypeException | ArityException | UnsupportedMessageException e) {
-            CompilerDirectives.transferToInterpreter();
-            throw EspressoError.shouldNotReachHere(e);
-        }
-    }
-
-    public void free(@Pointer TruffleObject ptr) {
-        assert getUncached().isPointer(ptr);
-        try {
-            getUncached().execute(free, ptr);
-        } catch (UnsupportedTypeException | ArityException | UnsupportedMessageException e) {
-            CompilerDirectives.transferToInterpreter();
-            throw EspressoError.shouldNotReachHere(e);
-        }
     }
 
     public void ctypeInit() {

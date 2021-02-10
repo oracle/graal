@@ -34,6 +34,7 @@ import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.interop.InteropLibrary;
 import com.oracle.truffle.api.interop.TruffleObject;
 import com.oracle.truffle.api.interop.UnsupportedMessageException;
+import com.oracle.truffle.espresso._native.Buffer;
 import com.oracle.truffle.espresso.classfile.ClassfileParser;
 import com.oracle.truffle.espresso.classfile.ClassfileStream;
 import com.oracle.truffle.espresso.descriptors.Symbol;
@@ -441,35 +442,23 @@ public final class Target_sun_misc_Unsafe {
     @TruffleBoundary
     @Substitution(hasReceiver = true, nameProvider = SharedUnsafeAppend0.class)
     public static long allocateMemory(@SuppressWarnings("unused") @Host(Unsafe.class) StaticObject self, long length, @InjectMeta Meta meta) {
-        if (meta.getContext().IsolatedNamespace) {
-            // alloc/free within the isolated native namespace.
-            JniEnv jni = meta.getContext().getJNI();
-            if (length < 0 || length > jni.sizeMax()) {
-                throw Meta.throwExceptionWithMessage(meta.java_lang_IllegalArgumentException, "requested size doesn't fit in the size_t native type");
-            }
-            TruffleObject result = jni.malloc(length);
-            long ptr = 0;
-            try {
-                ptr = InteropLibrary.getUncached().asPointer(result);
-            } catch (UnsupportedMessageException e) {
-                CompilerDirectives.transferToInterpreter();
-                throw EspressoError.shouldNotReachHere(e);
-            }
-            // malloc may return anything for 0-sized allocations.
-            if (ptr == 0L && length > 0) {
-                throw Meta.throwExceptionWithMessage(meta.java_lang_OutOfMemoryError, "malloc returned NULL");
-            }
-            return ptr;
-        } else {
-            // No isolated native namespace, just forward to the host.
-            try {
-                return UnsafeAccess.getIfAllowed(meta).allocateMemory(length);
-            } catch (IllegalArgumentException e) {
-                throw Meta.throwExceptionWithMessage(meta.java_lang_IllegalArgumentException, e.getMessage());
-            } catch (OutOfMemoryError e) {
-                throw Meta.throwExceptionWithMessage(meta.java_lang_OutOfMemoryError, e.getMessage());
-            }
+        JniEnv jni = meta.getContext().getJNI();
+        if (length < 0 || length > jni.sizeMax()) {
+            throw Meta.throwExceptionWithMessage(meta.java_lang_IllegalArgumentException, "requested size doesn't fit in the size_t native type");
         }
+        @Buffer TruffleObject buffer = meta.getNativeAccess().allocateMemory(length);
+        if (buffer == null && length > 0) {
+            // malloc may return anything for 0-sized allocations.
+            throw Meta.throwExceptionWithMessage(meta.java_lang_OutOfMemoryError, "malloc returned NULL");
+        }
+        long ptr = 0;
+        try {
+            ptr = InteropLibrary.getUncached().asPointer(buffer);
+        } catch (UnsupportedMessageException e) {
+            CompilerDirectives.transferToInterpreter();
+            throw EspressoError.shouldNotReachHere(e);
+        }
+        return ptr;
     }
 
     /**
@@ -489,36 +478,23 @@ public final class Target_sun_misc_Unsafe {
      */
     @TruffleBoundary
     @Substitution(hasReceiver = true, nameProvider = SharedUnsafeAppend0.class)
-    public static long reallocateMemory(@SuppressWarnings("unused") @Host(Unsafe.class) StaticObject self, long address, long bytes, @InjectMeta Meta meta) {
-        if (meta.getContext().IsolatedNamespace) {
-            // alloc/free within the isolated native namespace.
-            JniEnv jni = meta.getContext().getJNI();
-            if (bytes < 0 || bytes > jni.sizeMax()) {
-                throw Meta.throwExceptionWithMessage(meta.java_lang_IllegalArgumentException, "requested size doesn't fit in the size_t native type");
-            }
-            TruffleObject result = jni.realloc(RawPointer.create(address), bytes);
-            long ptr = 0;
-            try {
-                ptr = InteropLibrary.getUncached().asPointer(result);
-            } catch (UnsupportedMessageException e) {
-                CompilerDirectives.transferToInterpreter();
-                throw EspressoError.shouldNotReachHere(e);
-            }
-            // realloc may return anything for 0-sized allocations.
-            if (ptr == 0L && bytes > 0) {
-                throw Meta.throwExceptionWithMessage(meta.java_lang_OutOfMemoryError, "realloc returned NULL");
-            }
-            return ptr;
-        } else {
-            // No isolated native namespace, just forward to the host.
-            try {
-                return UnsafeAccess.getIfAllowed(meta).reallocateMemory(address, bytes);
-            } catch (IllegalArgumentException e) {
-                throw Meta.throwExceptionWithMessage(meta.java_lang_IllegalArgumentException, e.getMessage());
-            } catch (OutOfMemoryError e) {
-                throw Meta.throwExceptionWithMessage(meta.java_lang_OutOfMemoryError, e.getMessage());
-            }
+    public static long reallocateMemory(@SuppressWarnings("unused") @Host(Unsafe.class) StaticObject self, long address, long newSize, @InjectMeta Meta meta) {
+        JniEnv jni = meta.getContext().getJNI();
+        if (newSize < 0 || newSize > jni.sizeMax()) {
+            throw Meta.throwExceptionWithMessage(meta.java_lang_IllegalArgumentException, "requested size doesn't fit in the size_t native type");
         }
+        @Buffer TruffleObject result = meta.getNativeAccess().reallocateMemory(RawPointer.create(address), newSize);
+        if (result == null) {
+            throw Meta.throwExceptionWithMessage(meta.java_lang_OutOfMemoryError, "realloc couldn't reallocate " + newSize + " bytes");
+        }
+        long newAddress = 0L;
+        try {
+            newAddress = InteropLibrary.getUncached().asPointer(result);
+        } catch (UnsupportedMessageException e) {
+            CompilerDirectives.transferToInterpreter();
+            throw EspressoError.shouldNotReachHere(e);
+        }
+        return newAddress;
     }
 
     /**
@@ -531,13 +507,7 @@ public final class Target_sun_misc_Unsafe {
     @TruffleBoundary
     @Substitution(hasReceiver = true, nameProvider = SharedUnsafeAppend0.class)
     public static void freeMemory(@SuppressWarnings("unused") @Host(Unsafe.class) StaticObject self, long address, @InjectMeta Meta meta) {
-        if (meta.getContext().IsolatedNamespace) {
-            // alloc/free within the isolated native namespace.
-            meta.getContext().getJNI().free(RawPointer.create(address));
-        } else {
-            // No isolated native namespace, just forward to the host.
-            UnsafeAccess.getIfAllowed(meta).freeMemory(address);
-        }
+        meta.getNativeAccess().freeMemory(RawPointer.create(address));
     }
 
     // region get*(Object holder, long offset)
