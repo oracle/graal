@@ -431,8 +431,8 @@ public final class DebugScope {
             throw new IllegalArgumentException("raw value is not an Interop value");
         }
         // check if language class of the root node corresponds to the input language
-        TruffleLanguage<?> language = Debugger.ACCESSOR.nodeSupport().getLanguage(rootNode);
-        return language != null && language.getClass() == languageClass ? new DebugValue.HeapValue(session, null, rawValue) : null;
+        TruffleLanguage<?> truffleLanguage = Debugger.ACCESSOR.nodeSupport().getLanguage(rootNode);
+        return truffleLanguage != null && truffleLanguage.getClass() == languageClass ? new DebugValue.HeapValue(session, null, rawValue) : null;
     }
 
     LanguageInfo getLanguage() {
