@@ -165,7 +165,7 @@ class EspressoThreadManager implements ContextAccess {
             return String.format("unregisterThread([GUEST:%s, %d])", guestName, guestId);
         });
         activeThreads.remove(thread);
-        Thread hostThread = (Thread) thread.getHiddenField(thread.getKlass().getMeta().HIDDEN_HOST_THREAD);
+        Thread hostThread = (Thread) thread.getHiddenObjectField(thread.getKlass().getMeta().HIDDEN_HOST_THREAD);
         int id = Math.toIntExact(hostThread.getId());
         synchronized (activeThreadLock) {
             if (id == mainThreadId) {
@@ -268,8 +268,8 @@ class EspressoThreadManager implements ContextAccess {
             StaticObject guestThread = meta.java_lang_Thread.allocateInstance();
             // Allow guest Thread.currentThread() to work.
             guestThread.setIntField(meta.java_lang_Thread_priority, Thread.NORM_PRIORITY);
-            guestThread.setHiddenField(meta.HIDDEN_HOST_THREAD, Thread.currentThread());
-            guestThread.setHiddenField(meta.HIDDEN_DEATH, Target_java_lang_Thread.KillStatus.NORMAL);
+            guestThread.setHiddenObjectField(meta.HIDDEN_HOST_THREAD, Thread.currentThread());
+            guestThread.setHiddenObjectField(meta.HIDDEN_DEATH, Target_java_lang_Thread.KillStatus.NORMAL);
 
             // register the new guest thread
             registerThread(hostThread, guestThread);
@@ -307,8 +307,8 @@ class EspressoThreadManager implements ContextAccess {
         StaticObject mainThread = meta.java_lang_Thread.allocateInstance();
         // Allow guest Thread.currentThread() to work.
         mainThread.setIntField(meta.java_lang_Thread_priority, Thread.NORM_PRIORITY);
-        mainThread.setHiddenField(meta.HIDDEN_HOST_THREAD, hostThread);
-        mainThread.setHiddenField(meta.HIDDEN_DEATH, Target_java_lang_Thread.KillStatus.NORMAL);
+        mainThread.setHiddenObjectField(meta.HIDDEN_HOST_THREAD, hostThread);
+        mainThread.setHiddenObjectField(meta.HIDDEN_DEATH, Target_java_lang_Thread.KillStatus.NORMAL);
         mainThreadGroup = meta.java_lang_ThreadGroup.allocateInstance();
 
         registerMainThread(hostThread, mainThread);

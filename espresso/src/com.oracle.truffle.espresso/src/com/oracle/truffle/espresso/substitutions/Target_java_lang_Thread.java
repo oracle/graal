@@ -73,17 +73,17 @@ public final class Target_java_lang_Thread {
 
     public static void incrementThreadCounter(StaticObject thread, Field hiddenField) {
         assert hiddenField.isHidden();
-        Long counter = (Long) thread.getHiddenField(hiddenField);
+        Long counter = (Long) thread.getHiddenObjectField(hiddenField);
         if (counter == null) {
             counter = 0L;
         }
         ++counter;
-        thread.setHiddenField(hiddenField, counter);
+        thread.setHiddenObjectField(hiddenField, counter);
     }
 
     public static long getThreadCounter(StaticObject thread, Field hiddenField) {
         assert hiddenField.isHidden();
-        Long counter = (Long) thread.getHiddenField(hiddenField);
+        Long counter = (Long) thread.getHiddenObjectField(hiddenField);
         if (counter == null) {
             counter = 0L;
         }
@@ -240,7 +240,7 @@ public final class Target_java_lang_Thread {
                 }
             });
 
-            self.setHiddenField(meta.HIDDEN_HOST_THREAD, hostThread);
+            self.setHiddenObjectField(meta.HIDDEN_HOST_THREAD, hostThread);
             hostThread.setDaemon(self.getBooleanField(meta.java_lang_Thread_daemon));
             self.setIntField(meta.java_lang_Thread_threadStatus, State.RUNNABLE.value);
             hostThread.setPriority(self.getIntField(meta.java_lang_Thread_priority));
@@ -381,11 +381,11 @@ public final class Target_java_lang_Thread {
     }
 
     public static void setInterrupt(StaticObject self, boolean value) {
-        self.setHiddenField(self.getKlass().getMeta().HIDDEN_INTERRUPTED, value);
+        self.setHiddenObjectField(self.getKlass().getMeta().HIDDEN_INTERRUPTED, value);
     }
 
     static boolean checkInterrupt(StaticObject self) {
-        Boolean interrupt = (Boolean) self.getHiddenField(self.getKlass().getMeta().HIDDEN_INTERRUPTED);
+        Boolean interrupt = (Boolean) self.getHiddenObjectField(self.getKlass().getMeta().HIDDEN_INTERRUPTED);
         return interrupt != null && interrupt;
     }
 
@@ -474,16 +474,16 @@ public final class Target_java_lang_Thread {
     }
 
     public static Thread getHostFromGuestThread(@Host(Object.class) StaticObject self) {
-        return (Thread) self.getHiddenField(self.getKlass().getMeta().HIDDEN_HOST_THREAD);
+        return (Thread) self.getHiddenObjectField(self.getKlass().getMeta().HIDDEN_HOST_THREAD);
     }
 
     public static boolean checkThreadStatus(StaticObject thread, KillStatus status) {
-        KillStatus stop = (KillStatus) thread.getHiddenField(thread.getKlass().getMeta().HIDDEN_DEATH);
+        KillStatus stop = (KillStatus) thread.getHiddenObjectField(thread.getKlass().getMeta().HIDDEN_DEATH);
         return stop != null && stop == status;
     }
 
     public static void setThreadStop(StaticObject thread, KillStatus value) {
-        thread.setHiddenField(thread.getKlass().getMeta().HIDDEN_DEATH, value);
+        thread.setHiddenObjectField(thread.getKlass().getMeta().HIDDEN_DEATH, value);
     }
 
     /**
@@ -501,15 +501,15 @@ public final class Target_java_lang_Thread {
     }
 
     public static void setDeathThrowable(StaticObject self, Object deathThrowable) {
-        self.setHiddenField(self.getKlass().getMeta().HIDDEN_DEATH_THROWABLE, deathThrowable);
+        self.setHiddenObjectField(self.getKlass().getMeta().HIDDEN_DEATH_THROWABLE, deathThrowable);
     }
 
     public static Object getDeathThrowable(StaticObject self) {
-        return self.getHiddenField(self.getKlass().getMeta().HIDDEN_DEATH_THROWABLE);
+        return self.getHiddenObjectField(self.getKlass().getMeta().HIDDEN_DEATH_THROWABLE);
     }
 
     public static KillStatus getKillStatus(StaticObject thread) {
-        return (KillStatus) thread.getHiddenField(thread.getKlass().getMeta().HIDDEN_DEATH);
+        return (KillStatus) thread.getHiddenObjectField(thread.getKlass().getMeta().HIDDEN_DEATH);
     }
 
     public enum KillStatus {
@@ -553,7 +553,7 @@ public final class Target_java_lang_Thread {
     }
 
     private static SuspendLock getSuspendLock(@Host(Object.class) StaticObject self) {
-        return (SuspendLock) self.getHiddenField(self.getKlass().getMeta().HIDDEN_SUSPEND_LOCK);
+        return (SuspendLock) self.getHiddenObjectField(self.getKlass().getMeta().HIDDEN_SUSPEND_LOCK);
     }
 
     /**
@@ -563,7 +563,7 @@ public final class Target_java_lang_Thread {
         SuspendLock lock = getSuspendLock(self);
         if (lock == null) {
             lock = new SuspendLock();
-            self.setHiddenField(self.getKlass().getMeta().HIDDEN_SUSPEND_LOCK, lock);
+            self.setHiddenObjectField(self.getKlass().getMeta().HIDDEN_SUSPEND_LOCK, lock);
         }
         return lock;
     }

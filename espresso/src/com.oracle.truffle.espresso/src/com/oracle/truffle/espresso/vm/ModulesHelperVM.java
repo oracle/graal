@@ -45,7 +45,7 @@ public final class ModulesHelperVM {
     }
 
     private static ModuleTable.ModuleEntry getModuleEntry(@Host(typeName = "Ljava/lang/Module") StaticObject module, Meta meta) {
-        return (ModuleTable.ModuleEntry) module.getHiddenField(meta.HIDDEN_MODULE_ENTRY);
+        return (ModuleTable.ModuleEntry) module.getHiddenObjectField(meta.HIDDEN_MODULE_ENTRY);
     }
 
     private static PackageTable.PackageEntry getPackageEntry(ModuleTable.ModuleEntry fromModuleEntry, Symbol<Symbol.Name> nameSymbol) {

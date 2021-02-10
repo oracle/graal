@@ -104,11 +104,11 @@ public final class Target_sun_misc_Unsafe {
 
         // Inherit host class's protection domain.
         StaticObject clazz = defineAnonymousKlass(parserKlass, context, classLoader, hostKlass).mirror();
-        StaticObject pd = (StaticObject) hostClass.getHiddenField(meta.HIDDEN_PROTECTION_DOMAIN);
+        StaticObject pd = (StaticObject) hostClass.getHiddenObjectField(meta.HIDDEN_PROTECTION_DOMAIN);
         if (pd == null) {
             pd = StaticObject.NULL;
         }
-        clazz.setHiddenField(meta.HIDDEN_PROTECTION_DOMAIN, pd);
+        clazz.setHiddenObjectField(meta.HIDDEN_PROTECTION_DOMAIN, pd);
 
         return clazz;
     }
@@ -252,7 +252,7 @@ public final class Target_sun_misc_Unsafe {
         byte[] buf = guestBuf.unwrap();
         byte[] bytes = Arrays.copyOfRange(buf, offset, len);
         Klass klass = meta.getRegistries().defineKlass(meta.getTypes().fromClassGetName(meta.toHostString(name)), bytes, loader);
-        klass.mirror().setHiddenField(meta.HIDDEN_PROTECTION_DOMAIN, pd);
+        klass.mirror().setHiddenObjectField(meta.HIDDEN_PROTECTION_DOMAIN, pd);
         return klass.mirror();
     }
 
@@ -1325,7 +1325,7 @@ public final class Target_sun_misc_Unsafe {
     @Substitution(hasReceiver = true)
     public static void unpark(@SuppressWarnings("unused") @Host(Unsafe.class) StaticObject self, @Host(Object.class) StaticObject thread,
                     @InjectMeta Meta meta) {
-        Thread hostThread = (Thread) thread.getHiddenField(meta.HIDDEN_HOST_THREAD);
+        Thread hostThread = (Thread) thread.getHiddenObjectField(meta.HIDDEN_HOST_THREAD);
         UnsafeAccess.getIfAllowed(meta).unpark(hostThread);
     }
 

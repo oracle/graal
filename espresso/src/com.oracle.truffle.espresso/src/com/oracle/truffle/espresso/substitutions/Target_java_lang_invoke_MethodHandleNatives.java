@@ -105,7 +105,7 @@ public final class Target_java_lang_invoke_MethodHandleNatives {
         switch (flags & ALL_KINDS) {
             case MN_IS_METHOD:
             case MN_IS_CONSTRUCTOR: {
-                Method m = (Method) self.getHiddenField(meta.HIDDEN_VMTARGET);
+                Method m = (Method) self.getHiddenObjectField(meta.HIDDEN_VMTARGET);
                 if (m == null) {
                     profiler.profile(2);
                     throw Meta.throwExceptionWithMessage(meta.java_lang_InternalError, "Nothing to expand");
@@ -128,7 +128,7 @@ public final class Target_java_lang_invoke_MethodHandleNatives {
                     throw Meta.throwExceptionWithMessage(meta.java_lang_InternalError, "Nothing to expand");
                 }
                 Klass holder = clazz.getMirrorKlass();
-                int slot = (int) (((long) self.getHiddenField(meta.HIDDEN_VMINDEX)) - Target_sun_misc_Unsafe.SAFETY_FIELD_OFFSET);
+                int slot = (int) (((long) self.getHiddenObjectField(meta.HIDDEN_VMINDEX)) - Target_sun_misc_Unsafe.SAFETY_FIELD_OFFSET);
                 boolean isStatic = (flags & ACC_STATIC) != 0;
                 Field f;
                 try {
@@ -245,13 +245,13 @@ public final class Target_java_lang_invoke_MethodHandleNatives {
     @Substitution
     public static long objectFieldOffset(@Host(typeName = "Ljava/lang/invoke/MemberName;") StaticObject self,
                     @InjectMeta Meta meta) {
-        return (long) self.getHiddenField(meta.HIDDEN_VMINDEX);
+        return (long) self.getHiddenObjectField(meta.HIDDEN_VMINDEX);
     }
 
     @Substitution
     public static long staticFieldOffset(@Host(typeName = "Ljava/lang/invoke/MemberName;") StaticObject self,
                     @InjectMeta Meta meta) {
-        return (long) self.getHiddenField(meta.HIDDEN_VMINDEX);
+        return (long) self.getHiddenObjectField(meta.HIDDEN_VMINDEX);
     }
 
     @Substitution
@@ -263,8 +263,8 @@ public final class Target_java_lang_invoke_MethodHandleNatives {
     @Substitution
     public static @Host(Object.class) StaticObject getMemberVMInfo(@Host(typeName = "Ljava/lang/invoke/MemberName;") StaticObject self,
                     @InjectMeta Meta meta) {
-        Object vmtarget = self.getHiddenField(meta.HIDDEN_VMTARGET);
-        Object vmindex = self.getHiddenField(meta.HIDDEN_VMINDEX);
+        Object vmtarget = self.getHiddenObjectField(meta.HIDDEN_VMTARGET);
+        Object vmindex = self.getHiddenObjectField(meta.HIDDEN_VMINDEX);
         StaticObject[] result = new StaticObject[2];
         if (vmindex == null) {
             // vmindex is not used in espresso. Spoof it so java is still happy.
@@ -323,7 +323,7 @@ public final class Target_java_lang_invoke_MethodHandleNatives {
                     @InjectMeta Meta meta,
                     @InjectProfile SubstitutionProfiler profiler) {
         // TODO(Garcia) Perhaps perform access checks ?
-        if (memberName.getHiddenField(meta.HIDDEN_VMTARGET) != null) {
+        if (memberName.getHiddenObjectField(meta.HIDDEN_VMTARGET) != null) {
             return memberName; // Already planted
         }
         StaticObject clazz = memberName.getObjectField(meta.java_lang_invoke_MemberName_clazz);
@@ -381,7 +381,7 @@ public final class Target_java_lang_invoke_MethodHandleNatives {
                 profiler.profile(1);
                 Symbol<Signature> constructorSignature = meta.getEspressoLanguage().getSignatures().lookupValidSignature(desc);
                 plantMethodMemberName(memberName, constructorSignature, defKlass, callerKlass, methodName, refKind, meta);
-                memberName.setHiddenField(meta.HIDDEN_VMINDEX, -3_000_000L);
+                memberName.setHiddenObjectField(meta.HIDDEN_VMINDEX, -3_000_000L);
                 break;
             case MN_IS_METHOD:
                 profiler.profile(2);
@@ -405,7 +405,7 @@ public final class Target_java_lang_invoke_MethodHandleNatives {
                 }
                 flags = memberName.getIntField(flagField);
                 refKind = (flags >> MN_REFERENCE_KIND_SHIFT) & MN_REFERENCE_KIND_MASK;
-                memberName.setHiddenField(meta.HIDDEN_VMINDEX, (refKind == REF_invokeInterface || refKind == REF_invokeVirtual) ? 1_000_000L : -1_000_000L);
+                memberName.setHiddenObjectField(meta.HIDDEN_VMINDEX, (refKind == REF_invokeInterface || refKind == REF_invokeVirtual) ? 1_000_000L : -1_000_000L);
                 break;
             case MN_IS_FIELD:
                 profiler.profile(3);
@@ -424,7 +424,7 @@ public final class Target_java_lang_invoke_MethodHandleNatives {
     private static void plantInvokeBasic(StaticObject memberName, Symbol<Signature> sig, Klass defKlass, Klass callerKlass, Symbol<Name> name, int refKind, Meta meta) {
         assert (name == Name.invokeBasic);
         Method target = defKlass.lookupMethod(name, sig, callerKlass);
-        memberName.setHiddenField(meta.HIDDEN_VMTARGET, target);
+        memberName.setHiddenObjectField(meta.HIDDEN_VMTARGET, target);
         memberName.setIntField(meta.java_lang_invoke_MemberName_flags, getMethodFlags(target, refKind));
     }
 
@@ -438,7 +438,7 @@ public final class Target_java_lang_invoke_MethodHandleNatives {
 
     // Exposed to StackWalk
     public static void plantResolvedMethod(StaticObject memberName, Method target, int refKind, Meta meta) {
-        memberName.setHiddenField(meta.HIDDEN_VMTARGET, target);
+        memberName.setHiddenObjectField(meta.HIDDEN_VMTARGET, target);
         memberName.setIntField(meta.java_lang_invoke_MemberName_flags, getMethodFlags(target, refKind));
     }
 
@@ -451,8 +451,8 @@ public final class Target_java_lang_invoke_MethodHandleNatives {
     }
 
     private static void plantResolvedField(StaticObject memberName, Field field, int refKind, Meta meta) {
-        memberName.setHiddenField(meta.HIDDEN_VMTARGET, field.getDeclaringKlass());
-        memberName.setHiddenField(meta.HIDDEN_VMINDEX, (long) field.getSlot() + Target_sun_misc_Unsafe.SAFETY_FIELD_OFFSET);
+        memberName.setHiddenObjectField(meta.HIDDEN_VMTARGET, field.getDeclaringKlass());
+        memberName.setHiddenObjectField(meta.HIDDEN_VMINDEX, (long) field.getSlot() + Target_sun_misc_Unsafe.SAFETY_FIELD_OFFSET);
         memberName.setIntField(meta.java_lang_invoke_MemberName_flags, getFieldFlags(refKind, field));
     }
 

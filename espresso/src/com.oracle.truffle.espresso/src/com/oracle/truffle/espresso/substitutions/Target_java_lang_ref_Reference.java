@@ -120,7 +120,7 @@ public class Target_java_lang_ref_Reference {
         }
         if (ref != null) {
             // Weak/Soft/Final/Phantom reference.
-            self.setHiddenField(meta.HIDDEN_HOST_REFERENCE, ref);
+            self.setHiddenObjectField(meta.HIDDEN_HOST_REFERENCE, ref);
         } else {
             // Strong reference.
             meta.java_lang_ref_Reference_referent.set(self, referent);
@@ -143,7 +143,7 @@ public class Target_java_lang_ref_Reference {
                         || InterpreterToVM.instanceOf(self, meta.java_lang_ref_SoftReference) //
                         || InterpreterToVM.instanceOf(self, meta.java_lang_ref_FinalReference)) {
             // Ignore guest referent field.
-            EspressoReference ref = (EspressoReference) self.getHiddenField(meta.HIDDEN_HOST_REFERENCE);
+            EspressoReference ref = (EspressoReference) self.getHiddenObjectField(meta.HIDDEN_HOST_REFERENCE);
             if (ref == null) {
                 return StaticObject.NULL;
             }
@@ -163,12 +163,12 @@ public class Target_java_lang_ref_Reference {
                         || InterpreterToVM.instanceOf(self, meta.java_lang_ref_SoftReference) //
                         || InterpreterToVM.instanceOf(self, meta.java_lang_ref_PhantomReference) //
                         || InterpreterToVM.instanceOf(self, meta.java_lang_ref_FinalReference)) {
-            EspressoReference ref = (EspressoReference) self.getHiddenField(meta.HIDDEN_HOST_REFERENCE);
+            EspressoReference ref = (EspressoReference) self.getHiddenObjectField(meta.HIDDEN_HOST_REFERENCE);
             if (ref != null) {
                 assert ref instanceof Reference;
                 ref.clear();
                 // Also remove host reference.
-                self.setHiddenField(meta.HIDDEN_HOST_REFERENCE, null);
+                self.setHiddenObjectField(meta.HIDDEN_HOST_REFERENCE, null);
             }
         } else {
             meta.java_lang_ref_Reference_referent.set(self, StaticObject.NULL);
@@ -188,7 +188,7 @@ public class Target_java_lang_ref_Reference {
                             || InterpreterToVM.instanceOf(self, meta.java_lang_ref_SoftReference) //
                             || InterpreterToVM.instanceOf(self, meta.java_lang_ref_PhantomReference) //
                             || InterpreterToVM.instanceOf(self, meta.java_lang_ref_FinalReference)) {
-                EspressoReference ref = (EspressoReference) self.getHiddenField(meta.HIDDEN_HOST_REFERENCE);
+                EspressoReference ref = (EspressoReference) self.getHiddenObjectField(meta.HIDDEN_HOST_REFERENCE);
                 if (ref != null) {
                     ref.clear();
                 }

@@ -1369,7 +1369,7 @@ public abstract class Klass implements ModifiersProvider, ContextAccess, KlassRe
     }
 
     public StaticObject protectionDomain() {
-        return (StaticObject) mirror().getHiddenField(getMeta().HIDDEN_PROTECTION_DOMAIN);
+        return (StaticObject) mirror().getHiddenObjectField(getMeta().HIDDEN_PROTECTION_DOMAIN);
     }
 
     /**

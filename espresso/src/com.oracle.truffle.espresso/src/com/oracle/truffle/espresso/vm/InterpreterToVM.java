@@ -365,7 +365,7 @@ public final class InterpreterToVM implements ContextAccess {
             Target_java_lang_Thread.fromRunnable(thread, meta, Target_java_lang_Thread.State.BLOCKED);
             if (context.EnableManagement) {
                 // Locks bookkeeping.
-                thread.setHiddenField(meta.HIDDEN_THREAD_BLOCKED_OBJECT, obj);
+                thread.setHiddenObjectField(meta.HIDDEN_THREAD_BLOCKED_OBJECT, obj);
                 Field blockedCount = meta.HIDDEN_THREAD_BLOCKED_COUNT;
                 Target_java_lang_Thread.incrementThreadCounter(thread, blockedCount);
             }
@@ -373,7 +373,7 @@ public final class InterpreterToVM implements ContextAccess {
             monitorUnsafeEnter(lock);
             context.getJDWPListener().onContendedMonitorEntered(obj);
             if (context.EnableManagement) {
-                thread.setHiddenField(meta.HIDDEN_THREAD_BLOCKED_OBJECT, null);
+                thread.setHiddenObjectField(meta.HIDDEN_THREAD_BLOCKED_OBJECT, null);
             }
             Target_java_lang_Thread.toRunnable(thread, meta, Target_java_lang_Thread.State.RUNNABLE);
         }
@@ -643,7 +643,7 @@ public final class InterpreterToVM implements ContextAccess {
         EspressoException e = EspressoException.wrap(throwable);
         List<TruffleStackTraceElement> trace = TruffleStackTrace.getStackTrace(e);
         if (trace == null) {
-            throwable.setHiddenField(meta.HIDDEN_FRAMES, VM.StackTrace.EMPTY_STACK_TRACE);
+            throwable.setHiddenObjectField(meta.HIDDEN_FRAMES, VM.StackTrace.EMPTY_STACK_TRACE);
             throwable.setObjectField(meta.java_lang_Throwable_backtrace, throwable);
             return throwable;
         }
@@ -677,7 +677,7 @@ public final class InterpreterToVM implements ContextAccess {
                 }
             }
         }
-        throwable.setHiddenField(meta.HIDDEN_FRAMES, frames);
+        throwable.setHiddenObjectField(meta.HIDDEN_FRAMES, frames);
         throwable.setObjectField(meta.java_lang_Throwable_backtrace, throwable);
         return throwable;
     }
@@ -721,7 +721,7 @@ public final class InterpreterToVM implements ContextAccess {
                 return null;
             }
         });
-        throwable.setHiddenField(meta.HIDDEN_FRAMES, frames);
+        throwable.setHiddenObjectField(meta.HIDDEN_FRAMES, frames);
         throwable.setObjectField(meta.java_lang_Throwable_backtrace, throwable);
         if (meta.getJavaVersion().java9OrLater()) {
             throwable.setIntField(meta.java_lang_Throwable_depth, frames.size);

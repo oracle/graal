@@ -72,7 +72,7 @@ public final class GuestClassRegistry extends ClassRegistry {
         if (getJavaVersion().modulesEnabled()) {
             StaticObject unnamedModule = classLoader.getObjectField(getMeta().java_lang_ClassLoader_unnamedModule);
             initUnnamedModule(unnamedModule);
-            unnamedModule.setHiddenField(getMeta().HIDDEN_MODULE_ENTRY, getUnnamedModule());
+            unnamedModule.setHiddenObjectField(getMeta().HIDDEN_MODULE_ENTRY, getUnnamedModule());
         }
     }
 

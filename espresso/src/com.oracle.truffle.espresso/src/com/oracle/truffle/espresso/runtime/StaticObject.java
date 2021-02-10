@@ -167,9 +167,9 @@ public final class StaticObject implements TruffleObject {
             setObjectField(klass.getMeta().java_lang_Class_classLoader, klass.getDefiningClassLoader());
             setModule(klass);
         }
-        setHiddenField(klass.getMeta().HIDDEN_MIRROR_KLASS, klass);
+        setHiddenObjectField(klass.getMeta().HIDDEN_MIRROR_KLASS, klass);
         // Will be overriden by JVM_DefineKlass if necessary.
-        setHiddenField(klass.getMeta().HIDDEN_PROTECTION_DOMAIN, StaticObject.NULL);
+        setHiddenObjectField(klass.getMeta().HIDDEN_PROTECTION_DOMAIN, StaticObject.NULL);
     }
 
     // Constructor for static fields storage.
@@ -1627,78 +1627,122 @@ public final class StaticObject implements TruffleObject {
     }
 
     // Start non primitive field handling.
-
-    @TruffleBoundary(allowInlining = true)
-    public StaticObject getObjectFieldVolatile(Field field) {
-        checkNotForeign();
-        assert field.getDeclaringKlass().isAssignableFrom(getKlass());
-        return (StaticObject) UNSAFE.getObjectVolatile(CompilerDirectives.castExact(fields, Object[].class), field.getOffset());
-    }
-
-    // Not to be used to access hidden fields !
-    public StaticObject getObjectField(Field field) {
+    private Object getObjectFieldHelper(Field field) {
         checkNotForeign();
         assert field.getDeclaringKlass().isAssignableFrom(getKlass());
         assert !field.getKind().isSubWord();
         Object result;
         if (field.isVolatile()) {
-            result = getObjectFieldVolatile(field);
+            result = getObjectFieldVolatileHelper(field);
         } else {
             result = UNSAFE.getObject(castExact(fields, Object[].class), (long) field.getOffset());
         }
-        assert result != null;
-        return (StaticObject) result;
+        return result;
     }
 
-    // Use with caution. Can be used with hidden fields.
-    public Object getUnsafeField(int fieldOffset) {
+    private Object getObjectFieldVolatileHelper(Field field) {
         checkNotForeign();
-        return UNSAFE.getObject(castExact(fields, Object[].class), (long) fieldOffset);
+        assert field.getDeclaringKlass().isAssignableFrom(getKlass());
+        return UNSAFE.getObjectVolatile(CompilerDirectives.castExact(fields, Object[].class), field.getOffset());
     }
 
-    private void setUnsafeField(int index, Object value) {
+    private void setObjectFieldHelper(Field field, Object value) {
         checkNotForeign();
-        UNSAFE.putObject(fields, (long) index, value);
+        assert field.getDeclaringKlass().isAssignableFrom(getKlass());
+        assert !field.getKind().isSubWord();
+        assert !(value instanceof StaticObject) ||
+                (StaticObject.isNull((StaticObject) value)) ||
+                field.isHidden() ||
+                getKlass().getMeta().resolveSymbolOrFail(field.getType(),
+                        getKlass().getDefiningClassLoader(), getKlass().protectionDomain()) //
+                        .isAssignableFrom(((StaticObject) value).getKlass());
+        if (field.isVolatile()) {
+            setObjectFieldVolatileHelper(field, value);
+        } else {
+            UNSAFE.putObject(castExact(fields, Object[].class), (long) field.getOffset(), value);
+        }
     }
 
-    private Object getUnsafeFieldVolatile(int fieldOffset) {
-        checkNotForeign();
-        return UNSAFE.getObjectVolatile(castExact(fields, Object[].class), fieldOffset);
-    }
-
-    private void setUnsafeFieldVolatile(int index, Object value) {
-        checkNotForeign();
-        UNSAFE.putObjectVolatile(fields, index, value);
-    }
-
-    @TruffleBoundary(allowInlining = true)
-    public void setObjectFieldVolatile(Field field, Object value) {
+    private void setObjectFieldVolatileHelper(Field field, Object value) {
         checkNotForeign();
         assert field.getDeclaringKlass().isAssignableFrom(getKlass());
         UNSAFE.putObjectVolatile(castExact(fields, Object[].class), field.getOffset(), value);
     }
 
+    // Not to be used to access hidden fields !
+    public StaticObject getObjectField(Field field) {
+        assert !field.isHidden();
+        return (StaticObject) getObjectFieldHelper(field);
+    }
+
+    @TruffleBoundary(allowInlining = true)
+    public StaticObject getObjectFieldVolatile(Field field) {
+        return (StaticObject) getObjectFieldVolatileHelper(field);
+    }
+
     public void setObjectField(Field field, Object value) {
+        assert !field.isHidden();
+        setObjectFieldHelper(field, value);
+    }
+
+    @TruffleBoundary(allowInlining = true)
+    public void setObjectFieldVolatile(Field field, Object value) {
+        setObjectFieldVolatileHelper(field, value);
+    }
+
+    // Use with caution. Can be used with hidden fields.
+    @Deprecated
+    public Object getUnsafeField(int fieldOffset) {
         checkNotForeign();
-        assert field.getDeclaringKlass().isAssignableFrom(getKlass());
-        assert !field.getKind().isSubWord();
-        assert !(value instanceof StaticObject) ||
-                        (StaticObject.isNull((StaticObject) value)) ||
-                        field.isHidden() ||
-                        getKlass().getMeta().resolveSymbolOrFail(field.getType(),
-                                        getKlass().getDefiningClassLoader(), getKlass().protectionDomain()) //
-                                        .isAssignableFrom(((StaticObject) value).getKlass());
-        if (field.isVolatile()) {
-            setObjectFieldVolatile(field, value);
-        } else {
-            UNSAFE.putObject(castExact(fields, Object[].class), (long) field.getOffset(), value);
-        }
+        return UNSAFE.getObject(castExact(fields, Object[].class), (long) fieldOffset);
+    }
+
+    @Deprecated
+    private Object getUnsafeFieldVolatile(int fieldOffset) {
+        checkNotForeign();
+        return UNSAFE.getObjectVolatile(castExact(fields, Object[].class), fieldOffset);
+    }
+
+    @Deprecated
+    private void setUnsafeField(int index, Object value) {
+        checkNotForeign();
+        UNSAFE.putObject(fields, (long) index, value);
+    }
+
+    @Deprecated
+    private void setUnsafeFieldVolatile(int index, Object value) {
+        checkNotForeign();
+        UNSAFE.putObjectVolatile(fields, index, value);
     }
 
     public boolean compareAndSwapObjectField(Field field, Object before, Object after) {
         checkNotForeign();
         assert field.getDeclaringKlass().isAssignableFrom(getKlass());
         return UNSAFE.compareAndSwapObject(fields, field.getOffset(), before, after);
+    }
+
+    public Object getHiddenObjectField(Field hiddenField) {
+        checkNotForeign();
+        assert hiddenField.isHidden();
+        return getObjectFieldHelper(hiddenField);
+    }
+
+    public Object getHiddenObjectFieldVolatile(Field hiddenField) {
+        checkNotForeign();
+        assert hiddenField.isHidden();
+        return getObjectFieldVolatileHelper(hiddenField);
+    }
+
+    public void setHiddenObjectField(Field hiddenField, Object value) {
+        checkNotForeign();
+        assert hiddenField.isHidden();
+        setObjectFieldHelper(hiddenField, value);
+    }
+
+    public void setHiddenObjectFieldVolatile(Field hiddenField, Object value) {
+        checkNotForeign();
+        assert hiddenField.isHidden();
+        setObjectFieldVolatileHelper(hiddenField, value);
     }
 
     // End non-primitive field handling
@@ -2013,7 +2057,7 @@ public final class StaticObject implements TruffleObject {
     public Klass getMirrorKlass() {
         assert getKlass().getType() == Type.java_lang_Class;
         checkNotForeign();
-        Klass result = (Klass) getHiddenField(getKlass().getMeta().HIDDEN_MIRROR_KLASS);
+        Klass result = (Klass) getHiddenObjectField(getKlass().getMeta().HIDDEN_MIRROR_KLASS);
         if (result == null) {
             CompilerDirectives.transferToInterpreter();
             throw EspressoError.shouldNotReachHere("Uninitialized mirror class");
@@ -2077,34 +2121,10 @@ public final class StaticObject implements TruffleObject {
             if (!f.isHidden()) {
                 str.append("\n    ").append(f.getName()).append(": ").append(f.get(this).toString());
             } else {
-                str.append("\n    ").append(f.getName()).append(": ").append((this.getHiddenField(f)).toString());
+                str.append("\n    ").append(f.getName()).append(": ").append((this.getHiddenObjectField(f)).toString());
             }
         }
         return str.toString();
-    }
-
-    public void setHiddenField(Field hiddenField, Object value) {
-        checkNotForeign();
-        assert hiddenField.isHidden();
-        setUnsafeField(hiddenField.getOffset(), value);
-    }
-
-    public Object getHiddenField(Field hiddenField) {
-        checkNotForeign();
-        assert hiddenField.isHidden();
-        return getUnsafeField(hiddenField.getOffset());
-    }
-
-    public void setHiddenFieldVolatile(Field hiddenField, Object value) {
-        checkNotForeign();
-        assert hiddenField.isHidden();
-        setUnsafeFieldVolatile(hiddenField.getOffset(), value);
-    }
-
-    public Object getHiddenFieldVolatile(Field hiddenField) {
-        checkNotForeign();
-        assert hiddenField.isHidden();
-        return getUnsafeFieldVolatile(hiddenField.getOffset());
     }
 
     /**
