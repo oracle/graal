@@ -128,12 +128,12 @@ public interface NativeAccess {
      *         {@link InteropLibrary#hasBufferElements(Object) buffer}.
      */
     @Buffer
-    TruffleObject reallocateMemory(@Buffer TruffleObject buffer, long newSize);
+    TruffleObject reallocateMemory(@Pointer TruffleObject buffer, long newSize);
 
     /**
      * Similar to free. Accessing the buffer after free may cause explosive undefined behavior.
      */
-    void freeMemory(@Buffer TruffleObject buffer);
+    void freeMemory(@Pointer TruffleObject buffer);
 
     /**
      * Sinking, make a Java method accessible to the native world. Returns an

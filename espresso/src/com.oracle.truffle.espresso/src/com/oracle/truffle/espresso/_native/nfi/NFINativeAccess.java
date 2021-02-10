@@ -50,6 +50,8 @@ import com.oracle.truffle.espresso._native.NativeAccess;
 import com.oracle.truffle.espresso._native.NativeSignature;
 import com.oracle.truffle.espresso._native.NativeType;
 import com.oracle.truffle.espresso._native.Pointer;
+import com.oracle.truffle.espresso._native.RawPointer;
+import com.oracle.truffle.espresso._native.TruffleByteBuffer;
 import com.oracle.truffle.espresso.jni.NativeLibrary;
 import com.oracle.truffle.espresso.meta.EspressoError;
 import com.oracle.truffle.espresso.runtime.EspressoContext;
@@ -330,17 +332,42 @@ public class NFINativeAccess implements NativeAccess {
 
     @Override
     public @Buffer TruffleObject allocateMemory(long size) {
-        throw new UnsupportedOperationException("allocateMemory");
+        long address = 0L;
+        try {
+            address = UNSAFE.allocateMemory(size);
+        } catch (OutOfMemoryError e) {
+            return null;
+        }
+        return TruffleByteBuffer.wrap(RawPointer.create(address), Math.toIntExact(size));
     }
 
     @Override
-    public @Buffer TruffleObject reallocateMemory(@Buffer TruffleObject buffer, long newSize) {
-        throw new UnsupportedOperationException("reallocateMemory");
+    public @Buffer TruffleObject reallocateMemory(@Pointer TruffleObject buffer, long newSize) {
+        assert InteropLibrary.getUncached().isPointer(buffer);
+        long oldAddress = 0L;
+        try {
+            oldAddress = InteropLibrary.getUncached().asPointer(buffer);
+        } catch (UnsupportedMessageException e) {
+            throw EspressoError.shouldNotReachHere(e);
+        }
+        long newAddress = 0L;
+        try {
+            newAddress = UNSAFE.reallocateMemory(oldAddress, newSize);
+        } catch (OutOfMemoryError e) {
+            return null;
+        }
+        return TruffleByteBuffer.wrap(RawPointer.create(newAddress), Math.toIntExact(newSize));
     }
 
     @Override
-    public void freeMemory(@Buffer TruffleObject buffer) {
-
-        throw new UnsupportedOperationException("freeMemory");
+    public void freeMemory(@Pointer TruffleObject buffer) {
+        assert InteropLibrary.getUncached().isPointer(buffer);
+        long address = 0L;
+        try {
+            address = InteropLibrary.getUncached().asPointer(buffer);
+        } catch (UnsupportedMessageException e) {
+            throw EspressoError.shouldNotReachHere(e);
+        }
+        UNSAFE.freeMemory(address);
     }
 }

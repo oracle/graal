@@ -25,6 +25,9 @@ package com.oracle.truffle.espresso._native.nfi;
 import java.nio.file.Path;
 import java.util.Collections;
 
+import com.oracle.truffle.api.interop.InteropLibrary;
+import com.oracle.truffle.espresso._native.RawPointer;
+import com.oracle.truffle.espresso._native.TruffleByteBuffer;
 import org.graalvm.options.OptionValues;
 
 import com.oracle.truffle.api.CompilerAsserts;
@@ -46,7 +49,6 @@ public final class NFIIsolatedNativeAccess extends NFINativeAccess {
     final @Pointer TruffleObject malloc;
     final @Pointer TruffleObject free;
     final @Pointer TruffleObject realloc;
-    final @Pointer TruffleObject dlsym;
 
     public NFIIsolatedNativeAccess(EspressoContext context) {
         super(context);
@@ -59,7 +61,6 @@ public final class NFIIsolatedNativeAccess extends NFINativeAccess {
         this.malloc = lookupAndBindSymbol(edenLibrary, "malloc", NativeType.POINTER, NativeType.LONG);
         this.realloc = lookupAndBindSymbol(edenLibrary, "realloc", NativeType.POINTER, NativeType.POINTER, NativeType.LONG);
         this.free = lookupAndBindSymbol(edenLibrary, "free", NativeType.VOID, NativeType.POINTER);
-        this.dlsym = lookupAndBindSymbol(edenLibrary, "dlsym", NativeType.POINTER, NativeType.POINTER, NativeType.POINTER);
     }
 
     @Override
@@ -75,7 +76,12 @@ public final class NFIIsolatedNativeAccess extends NFINativeAccess {
             throw new IllegalArgumentException("negative buffer length: " + size);
         }
         try {
-            return (TruffleObject) uncachedInterop.execute(malloc, size);
+            @Pointer TruffleObject address = (TruffleObject) uncachedInterop.execute(malloc, size);
+            if (InteropLibrary.getUncached().isNull(address)) {
+                // malloc returned NULL
+                return null;
+            }
+            return TruffleByteBuffer.wrap(address, Math.toIntExact(size));
         } catch (UnsupportedTypeException | ArityException | UnsupportedMessageException e) {
             CompilerDirectives.transferToInterpreterAndInvalidate();
             throw EspressoError.shouldNotReachHere(e);
@@ -83,7 +89,8 @@ public final class NFIIsolatedNativeAccess extends NFINativeAccess {
     }
 
     @Override
-    public void freeMemory(@Buffer TruffleObject buffer) {
+    public void freeMemory(@Pointer TruffleObject buffer) {
+        assert InteropLibrary.getUncached().isPointer(buffer);
         try {
             uncachedInterop.execute(free, buffer);
         } catch (UnsupportedTypeException | ArityException | UnsupportedMessageException e) {
@@ -93,12 +100,18 @@ public final class NFIIsolatedNativeAccess extends NFINativeAccess {
     }
 
     @Override
-    public @Buffer TruffleObject reallocateMemory(@Buffer TruffleObject buffer, long newSize) {
+    public @Buffer TruffleObject reallocateMemory(@Pointer TruffleObject buffer, long newSize) {
         if (newSize < 0) {
             throw new IllegalArgumentException("negative buffer length: " + newSize);
         }
+        assert InteropLibrary.getUncached().isPointer(buffer);
         try {
-            return (TruffleObject) uncachedInterop.execute(realloc, buffer, newSize);
+            @Pointer TruffleObject address = (TruffleObject) uncachedInterop.execute(realloc, buffer, newSize);
+            if (InteropLibrary.getUncached().isNull(address)) {
+                // realloc returned NULL
+                return null;
+            }
+            return TruffleByteBuffer.wrap(address, Math.toIntExact(newSize));
         } catch (UnsupportedTypeException | ArityException | UnsupportedMessageException e) {
             CompilerDirectives.transferToInterpreterAndInvalidate();
             throw EspressoError.shouldNotReachHere(e);
