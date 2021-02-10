@@ -36,10 +36,9 @@ import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.interop.InteropLibrary;
 import com.oracle.truffle.api.interop.TruffleObject;
 import com.oracle.truffle.api.interop.UnsupportedMessageException;
-import com.oracle.truffle.api.library.ExportLibrary;
-import com.oracle.truffle.api.library.ExportMessage;
 import com.oracle.truffle.espresso._native.Buffer;
 import com.oracle.truffle.espresso._native.Pointer;
+import com.oracle.truffle.espresso._native.RawPointer;
 import com.oracle.truffle.espresso._native.TruffleByteBuffer;
 import com.oracle.truffle.espresso.meta.EspressoError;
 import com.oracle.truffle.espresso.meta.JavaKind;
@@ -101,7 +100,7 @@ public abstract class NativeEnv {
 
     public static long interopAsPointer(@Pointer TruffleObject interopPtr) {
         try {
-            return InteropLibrary.getFactory().getUncached().asPointer(interopPtr);
+            return InteropLibrary.getUncached().asPointer(interopPtr);
         } catch (UnsupportedMessageException e) {
             throw EspressoError.shouldNotReachHere(e);
         }
@@ -127,6 +126,7 @@ public abstract class NativeEnv {
     @TruffleBoundary
     protected static long byteBufferAddress(ByteBuffer byteBuffer) {
         try {
+            assert byteBuffer.isDirect();
             return (long) addressField.get(byteBuffer);
         } catch (IllegalAccessException e) {
             throw EspressoError.shouldNotReachHere(e);
@@ -135,44 +135,6 @@ public abstract class NativeEnv {
 
     protected static @Pointer TruffleObject byteBufferPointer(ByteBuffer byteBuffer) {
         return new RawPointer(byteBufferAddress(byteBuffer));
-    }
-
-    @ExportLibrary(InteropLibrary.class)
-    public static final class RawPointer implements TruffleObject {
-        private final long rawPtr;
-
-        private static final RawPointer NULL = new RawPointer(0L);
-
-        public static @Pointer TruffleObject nullInstance() {
-            return NULL;
-        }
-
-        private RawPointer(long rawPtr) {
-            this.rawPtr = rawPtr;
-        }
-
-        public static @Pointer TruffleObject create(long ptr) {
-            if (ptr == 0L) {
-                return NULL;
-            }
-            return new RawPointer(ptr);
-        }
-
-        @SuppressWarnings("static-method")
-        @ExportMessage
-        boolean isPointer() {
-            return true;
-        }
-
-        @ExportMessage
-        long asPointer() {
-            return rawPtr;
-        }
-
-        @ExportMessage
-        boolean isNull() {
-            return rawPtr == 0L;
-        }
     }
 
     protected static Object defaultValue(String returnType) {

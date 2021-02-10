@@ -20,11 +20,14 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.truffle.espresso._native;
+package com.oracle.truffle.espresso._native.nfi;
 
 import java.nio.file.Path;
 import java.util.Collections;
 
+import com.oracle.truffle.espresso._native.Buffer;
+import com.oracle.truffle.espresso._native.NativeType;
+import com.oracle.truffle.espresso._native.Pointer;
 import org.graalvm.options.OptionValues;
 
 import com.oracle.truffle.api.CompilerAsserts;

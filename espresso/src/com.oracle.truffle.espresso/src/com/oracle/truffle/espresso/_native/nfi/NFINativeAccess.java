@@ -20,7 +20,7 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.truffle.espresso._native;
+package com.oracle.truffle.espresso._native.nfi;
 
 import java.nio.file.Path;
 import java.util.Map;
@@ -45,15 +45,25 @@ import com.oracle.truffle.api.library.ExportMessage;
 import com.oracle.truffle.api.nodes.ExplodeLoop;
 import com.oracle.truffle.api.source.Source;
 import com.oracle.truffle.espresso.EspressoLanguage;
+import com.oracle.truffle.espresso._native.Buffer;
+import com.oracle.truffle.espresso._native.NativeAccess;
+import com.oracle.truffle.espresso._native.NativeSignature;
+import com.oracle.truffle.espresso._native.NativeType;
+import com.oracle.truffle.espresso._native.Pointer;
+import com.oracle.truffle.espresso._native.TruffleByteBuffer;
 import com.oracle.truffle.espresso.jni.NativeLibrary;
 import com.oracle.truffle.espresso.meta.EspressoError;
 import com.oracle.truffle.espresso.runtime.EspressoContext;
 import com.oracle.truffle.espresso.runtime.StaticObject;
+import com.oracle.truffle.espresso.vm.UnsafeAccess;
 import com.oracle.truffle.nfi.api.SignatureLibrary;
 import com.oracle.truffle.nfi.spi.types.NativeSimpleType;
 import com.oracle.truffle.object.DebugCounter;
+import sun.misc.Unsafe;
 
 public class NFINativeAccess implements NativeAccess {
+
+    private static final Unsafe UNSAFE = UnsafeAccess.get();
 
     private static final boolean CACHE_SIGNATURES = "true".equals(System.getProperty("espresso.nfi.cache_signatures", "true"));
 
@@ -249,21 +259,6 @@ public class NFINativeAccess implements NativeAccess {
     }
 
     @Override
-    public @Buffer TruffleObject allocateMemory(long size) {
-        throw new UnsupportedOperationException("allocateMemory");
-    }
-
-    @Override
-    public @Buffer TruffleObject reallocateMemory(@Buffer TruffleObject buffer, long newSize) {
-        throw new UnsupportedOperationException("reallocateMemory");
-    }
-
-    @Override
-    public void freeMemory(@Buffer TruffleObject buffer) {
-        throw new UnsupportedOperationException("freeMemory");
-    }
-
-    @Override
     public @Pointer TruffleObject createNativeClosure(TruffleObject executable, NativeType returnType, NativeType... parameterTypes) {
         assert uncachedInterop.isExecutable(executable);
         TruffleObject wrappedExecutable = new JavaToNativeWrapper(executable, returnType, parameterTypes);
@@ -331,5 +326,21 @@ public class NFINativeAccess implements NativeAccess {
                 throw EspressoError.shouldNotReachHere(e);
             }
         }
+    }
+
+    @Override
+    public @Buffer TruffleObject allocateMemory(long size) {
+        throw new UnsupportedOperationException("allocateMemory");
+    }
+
+    @Override
+    public @Buffer TruffleObject reallocateMemory(@Buffer TruffleObject buffer, long newSize) {
+        throw new UnsupportedOperationException("reallocateMemory");
+    }
+
+    @Override
+    public void freeMemory(@Buffer TruffleObject buffer) {
+
+        throw new UnsupportedOperationException("freeMemory");
     }
 }

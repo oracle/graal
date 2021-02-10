@@ -45,7 +45,7 @@ import com.oracle.truffle.espresso.impl.LinkedKlass;
 import com.oracle.truffle.espresso.impl.ObjectKlass;
 import com.oracle.truffle.espresso.impl.ParserKlass;
 import com.oracle.truffle.espresso.jni.JniEnv;
-import com.oracle.truffle.espresso.jni.NativeEnv.RawPointer;
+import com.oracle.truffle.espresso._native.RawPointer;
 import com.oracle.truffle.espresso.meta.EspressoError;
 import com.oracle.truffle.espresso.meta.Meta;
 import com.oracle.truffle.espresso.meta.MetaUtil;

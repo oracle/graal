@@ -38,8 +38,8 @@ import java.util.function.Function;
 import java.util.logging.Level;
 import java.util.stream.Collectors;
 
-import com.oracle.truffle.espresso._native.NFIIsolatedNativeAccess;
-import com.oracle.truffle.espresso._native.NFINativeAccess;
+import com.oracle.truffle.espresso._native.nfi.NFIIsolatedNativeAccess;
+import com.oracle.truffle.espresso._native.nfi.NFINativeAccess;
 import com.oracle.truffle.espresso._native.NativeAccess;
 import org.graalvm.polyglot.Engine;
 
