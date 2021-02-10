@@ -244,7 +244,7 @@ class NativeImageDebugInfoProvider implements DebugInfoProvider {
         return null;
     }
 
-    private static final Path cachePath = SubstrateOptions.getDebugInfoSourceCacheRoot();
+    private final Path cachePath = SubstrateOptions.getDebugInfoSourceCacheRoot();
 
     private abstract class NativeImageDebugFileInfo implements DebugFileInfo {
         private Path fullFilePath;
