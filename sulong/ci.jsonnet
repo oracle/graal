@@ -206,7 +206,7 @@
   ],
 
   builds: [
-    $.gate + $.sulong + $.style + $.jdk8 + $.linux_amd64 + common.eclipse { name: "gate-sulong-style"} + $.gateTags("style"),
+    $.gate + $.sulong + $.style + $.jdk8 + $.linux_amd64 + common.eclipse + $.gateTags("style") + { name: "gate-sulong-style"},
     $.gate + $.sulong + $.style + $.jdk8 + $.linux_amd64 + common.eclipse + common.jdt + $.gateTags("fullbuild") + { name: "gate-sulong-fullbuild"},
     # FIXME: switch to $.linux_amd64 (extra dependencies do not hurt)
     $.gate + $.sulong + $.jdk8 + linux_amd64 + $.sulong_gate_generated_sources { name: "gate-sulong-generated-sources" },
@@ -217,8 +217,8 @@
       ] + sulong_test_toolchain,
     },
     $.gate + $.sulong + $.jdk8 + $.linux_amd64 + $.llvmBundled + $.requireGMP + $.requireGCC + $.gateTags("build,parser") + { name: "gate-sulong-parser"},
-    $.gate + $.sulong + $.jdk8 + $.linux_amd64 + $.llvmBundled + $.requireGMP { name: "gate-sulong-gcc_c", run: [["mx", "gate", "--tags", "build,gcc_c"]], timelimit: "45:00" },
-    $.gate + $.sulong + $.jdk8 + $.linux_amd64 + $.llvmBundled + $.requireGMP { name: "gate-sulong-gcc_cpp", run: [["mx", "gate", "--tags", "build,gcc_cpp"]], timelimit: "45:00" },
+    $.gate + $.sulong + $.jdk8 + $.linux_amd64 + $.llvmBundled + $.requireGMP + $.gateTags("build,gcc_c") + { name: "gate-sulong-gcc_c", timelimit: "45:00" },
+    $.gate + $.sulong + $.jdk8 + $.linux_amd64 + $.llvmBundled + $.requireGMP + $.gateTags("build,gcc_cpp") + { name: "gate-sulong-gcc_cpp", timelimit: "45:00" },
     $.gate + $.sulong + $.jdk8 + $.linux_amd64 + $.llvmBundled + $.requireGMP + $.requireGCC + $.gateTags("build,gcc_fortran") + { name: "gate-sulong-gcc_fortran"},
     # No more testing on llvm 3.8 [GR-21735]
     # $.gate + $.sulong + $.jdk8 + $.linux_amd64 + $.llvm38 + $.requireGMP + $.requireGCC + $.gateTags("build,sulongBasic,nwcc,llvm") + { name: "gate-sulong-basic_v38"},
