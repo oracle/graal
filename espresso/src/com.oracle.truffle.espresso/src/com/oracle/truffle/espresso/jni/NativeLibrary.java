@@ -60,24 +60,4 @@ public final class NativeLibrary {
     public static @Pointer TruffleObject loadDefaultLibrary() {
         return loadLibraryHelper("default");
     }
-
-    public static @Pointer TruffleObject bind(@Pointer TruffleObject symbol, String signature) {
-        try {
-            return (TruffleObject) InteropLibrary.getFactory().getUncached().invokeMember(symbol, "bind", signature);
-        } catch (UnsupportedTypeException | ArityException | UnknownIdentifierException | UnsupportedMessageException e) {
-            throw EspressoError.shouldNotReachHere("Cannot bind " + signature);
-        }
-    }
-
-    public static @Pointer TruffleObject lookupAndBind(@Pointer TruffleObject library, String method, String signature) throws UnknownIdentifierException {
-        try {
-            TruffleObject symbol = (TruffleObject) InteropLibrary.getFactory().getUncached().readMember(library, method);
-            if (InteropLibrary.getFactory().getUncached().isNull(symbol)) {
-                throw UnknownIdentifierException.create(method);
-            }
-            return (TruffleObject) InteropLibrary.getFactory().getUncached().invokeMember(symbol, "bind", signature);
-        } catch (UnsupportedTypeException | ArityException | UnsupportedMessageException e) {
-            throw EspressoError.shouldNotReachHere("Cannot bind " + method);
-        }
-    }
 }
