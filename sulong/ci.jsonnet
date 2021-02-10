@@ -8,6 +8,7 @@
   local linux_amd64 = common["linux-amd64"],
   local linux_aarch64 = common["linux-aarch64"],
   local darwin_amd64 = common["darwin-amd64"],
+  local windows_amd64 = common["windows-amd64"],
 
   nameOrEmpty(b):: if std.objectHas(b, "name") then
     ' (build "%s")' % b.name
@@ -25,6 +26,7 @@
   linux_amd64:: linux_amd64 + sulong_deps.linux,
   linux_aarch64:: linux_aarch64 + sulong_deps.linux,
   darwin_amd64:: darwin_amd64 + sulong_deps.darwin,
+  windows_amd64:: windows_amd64 + sulong_deps.windows,
 
   gate:: {
     targets+: ["gate"],
