@@ -141,7 +141,7 @@ public final class TruffleByteBuffer implements TruffleObject {
     }
 
     @ExportMessage
-    byte readBufferByte(long byteOffset, @Shared("error") @Cached BranchProfile error) throws UnsupportedMessageException, InvalidBufferOffsetException {
+    byte readBufferByte(long byteOffset, @Shared("error") @Cached BranchProfile error) throws InvalidBufferOffsetException {
         try {
             int index = Math.toIntExact(byteOffset);
             return readByte(this.byteBuffer, index);
@@ -166,7 +166,7 @@ public final class TruffleByteBuffer implements TruffleObject {
     }
 
     @ExportMessage
-    short readBufferShort(ByteOrder order, long byteOffset, @Shared("error") @Cached BranchProfile error) throws UnsupportedMessageException, InvalidBufferOffsetException {
+    short readBufferShort(ByteOrder order, long byteOffset, @Shared("error") @Cached BranchProfile error) throws InvalidBufferOffsetException {
         try {
             int index = Math.toIntExact(byteOffset);
             return readShort(this.byteBuffer, order, index);
@@ -191,7 +191,7 @@ public final class TruffleByteBuffer implements TruffleObject {
     }
 
     @ExportMessage
-    int readBufferInt(ByteOrder order, long byteOffset, @Shared("error") @Cached BranchProfile error) throws UnsupportedMessageException, InvalidBufferOffsetException {
+    int readBufferInt(ByteOrder order, long byteOffset, @Shared("error") @Cached BranchProfile error) throws InvalidBufferOffsetException {
         try {
             int index = Math.toIntExact(byteOffset);
             return readInt(this.byteBuffer, order, index);
@@ -216,7 +216,7 @@ public final class TruffleByteBuffer implements TruffleObject {
     }
 
     @ExportMessage
-    long readBufferLong(ByteOrder order, long byteOffset, @Shared("error") @Cached BranchProfile error) throws UnsupportedMessageException, InvalidBufferOffsetException {
+    long readBufferLong(ByteOrder order, long byteOffset, @Shared("error") @Cached BranchProfile error) throws InvalidBufferOffsetException {
         try {
             int index = Math.toIntExact(byteOffset);
             return readLong(this.byteBuffer, order, index);
@@ -241,7 +241,7 @@ public final class TruffleByteBuffer implements TruffleObject {
     }
 
     @ExportMessage
-    float readBufferFloat(ByteOrder order, long byteOffset, @Shared("error") @Cached BranchProfile error) throws UnsupportedMessageException, InvalidBufferOffsetException {
+    float readBufferFloat(ByteOrder order, long byteOffset, @Shared("error") @Cached BranchProfile error) throws InvalidBufferOffsetException {
         try {
             int index = Math.toIntExact(byteOffset);
             return readFloat(this.byteBuffer, order, index);
@@ -266,7 +266,7 @@ public final class TruffleByteBuffer implements TruffleObject {
     }
 
     @ExportMessage
-    double readBufferDouble(ByteOrder order, long byteOffset, @Shared("error") @Cached BranchProfile error) throws UnsupportedMessageException, InvalidBufferOffsetException {
+    double readBufferDouble(ByteOrder order, long byteOffset, @Shared("error") @Cached BranchProfile error) throws InvalidBufferOffsetException {
         try {
             int index = Math.toIntExact(byteOffset);
             return readDouble(this.byteBuffer, order, index);
