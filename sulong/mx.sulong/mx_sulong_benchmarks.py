@@ -249,6 +249,7 @@ class CExecutionEnvironmentMixin(object):
 
 class GccLikeVm(CExecutionEnvironmentMixin, Vm):
     def __init__(self, config_name, options):
+        super(GccLikeVm, self).__init__()
         self._config_name = config_name
         self.options = options
 
