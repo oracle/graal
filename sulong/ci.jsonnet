@@ -9,7 +9,7 @@
   local linux_aarch64 = common["linux-aarch64"],
   local darwin_amd64 = common["darwin-amd64"],
 
-  local nameOrEmpty(b) = if std.objectHas(b, "name") then
+  nameOrEmpty(b):: if std.objectHas(b, "name") then
     ' (build "%s")' % b.name
   else "",
 
@@ -37,7 +37,7 @@
   gateTags(tags):: {
     run+:
       # enforcing `tags` to be a string makes it easier to copy and paste from the ci config file
-      assert std.isString(tags) : "gateTags(tags): the `tags` parameter must be a string" + nameOrEmpty(self);
+      assert std.isString(tags) : "gateTags(tags): the `tags` parameter must be a string" + $.nameOrEmpty(self);
       [["mx", "gate", "--tags", tags]],
   },
 
