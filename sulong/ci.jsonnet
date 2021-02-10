@@ -30,16 +30,14 @@
     targets+: ["gate"],
   },
 
-  gateTags(tags):: {
-    local checkGateTagsParamter(tags) =
-      assert std.isArray(tags) : "gateTags(tags): the `tags` parameter must be an array" + nameOrEmpty(self);
-      local entriesWithComma = std.filter(function(e) std.length(std.split(e, ",")) != 1, tags);
-      assert std.length(entriesWithComma) == 0 : "Comma found in tags: '" + std.join("', '", entriesWithComma) + "'" + nameOrEmpty(self);
-      true,
+  local basicTags = "build,sulongBasic,nwcc,llvm",
+  local basicTagsLLToolchain = "build,sulongBasic,sulongLL,nwcc,llvm,toolchain",
 
+  gateTags(tags):: {
     run+:
-      assert checkGateTagsParamter(tags);
-      [["mx", "gate", "--tags", std.join(",", tags)]]
+      # enforcing `tags` to be a string makes it easier to copy and paste from the ci config file
+      assert std.isString(tags) : "gateTags(tags): the `tags` parameter must be a string" + nameOrEmpty(self);
+      [["mx", "gate", "--tags", tags]]
   },
 
   sulong_weekly_notifications:: {
@@ -207,8 +205,8 @@
   ],
 
   builds: [
-    $.gate + $.sulong + $.style + $.jdk8 + $.linux_amd64 + common.eclipse { name: "gate-sulong-style"} + $.gateTags(["style"]),
-    $.gate + $.sulong + $.style + $.jdk8 + $.linux_amd64 + common.eclipse + common.jdt + { name: "gate-sulong-fullbuild"} + $.gateTags(["fullbuild"]),
+    $.gate + $.sulong + $.style + $.jdk8 + $.linux_amd64 + common.eclipse { name: "gate-sulong-style"} + $.gateTags("style"),
+    $.gate + $.sulong + $.style + $.jdk8 + $.linux_amd64 + common.eclipse + common.jdt + $.gateTags("fullbuild") + { name: "gate-sulong-fullbuild"},
     # FIXME: switch to $.linux_amd64 (extra dependencies do not hurt)
     $.gate + $.sulong + $.jdk8 + linux_amd64 + $.sulong_gate_generated_sources { name: "gate-sulong-generated-sources" },
     $.gate + $.sulong + $.jdk8 + $.linux_amd64 + $.llvmBundled + $.requireGMP + $.requireGCC + {
@@ -217,22 +215,22 @@
         ["mx", "gate", "--tags", "build,sulongMisc"],
       ] + sulong_test_toolchain,
     },
-    $.gate + $.sulong + $.jdk8 + $.linux_amd64 + $.llvmBundled + $.requireGMP + $.requireGCC + { name: "gate-sulong-parser"} + $.gateTags(["build", "parser"]),
+    $.gate + $.sulong + $.jdk8 + $.linux_amd64 + $.llvmBundled + $.requireGMP + $.requireGCC + $.gateTags("build,parser") + { name: "gate-sulong-parser"},
     $.gate + $.sulong + $.jdk8 + $.linux_amd64 + $.llvmBundled + $.requireGMP { name: "gate-sulong-gcc_c", run: [["mx", "gate", "--tags", "build,gcc_c"]], timelimit: "45:00" },
     $.gate + $.sulong + $.jdk8 + $.linux_amd64 + $.llvmBundled + $.requireGMP { name: "gate-sulong-gcc_cpp", run: [["mx", "gate", "--tags", "build,gcc_cpp"]], timelimit: "45:00" },
-    $.gate + $.sulong + $.jdk8 + $.linux_amd64 + $.llvmBundled + $.requireGMP + $.requireGCC + { name: "gate-sulong-gcc_fortran"} + $.gateTags(["build", "gcc_fortran"]),
+    $.gate + $.sulong + $.jdk8 + $.linux_amd64 + $.llvmBundled + $.requireGMP + $.requireGCC + $.gateTags("build,gcc_fortran") + { name: "gate-sulong-gcc_fortran"},
     # No more testing on llvm 3.8 [GR-21735]
-    # $.gate + $.sulong + $.jdk8 + $.linux_amd64 + $.llvm38 + $.requireGMP + $.requireGCC + { name: "gate-sulong-basic_v38"} + $.gateTags(["build", "sulongBasic,nwcc", "llvm"]),
-    $.gate + $.sulong + $.jdk8 + $.linux_amd64 + $.llvm4 + $.requireGMP + $.requireGCC + { name: "gate-sulong-basic_v40"} + $.gateTags(["build", "sulongBasic", "nwcc", "llvm"]),
-    $.gate + $.sulong + $.jdk8 + $.linux_amd64 + $.llvm6 + $.requireGMP + $.requireGCC + { name: "gate-sulong-basic_v60"} + $.gateTags(["build", "sulongBasic", "nwcc", "llvm"]),
-    $.gate + $.sulong + $.jdk8 + $.linux_amd64 + $.llvm8 + $.requireGMP + $.requireGCC + { name: "gate-sulong-basic_v80"} + $.gateTags(["build", "sulongBasic", "nwcc", "llvm"]),
-    $.gate + $.sulong + $.jdk8 + $.linux_amd64 + $.llvmBundled + $.requireGMP + $.requireGCC + { name: "gate-sulong-basic_bundled-llvm"} + $.gateTags(["build", "sulongBasic", "sulongLL", "nwcc", "llvm", "toolchain"]),
-    $.gate + $.sulong + $.jdk8 + $.darwin_amd64 + $.llvm4 + $.llvm4_darwin_fix + { name: "gate-sulong-basic_mac"} + $.gateTags(["build", "sulongBasic", "nwcc", "llvm", "toolchain"]),
-    $.gate + $.sulong + $.jdk8 + $.darwin_amd64 + $.llvmBundled + $.llvmBundled_darwin_fix + { name: "gate-sulong-basic_bundled-llvm_mac"} + $.gateTags(["build", "sulongBasic", "sulongLL", "nwcc", "llvm", "toolchain"]),
+    # $.gate + $.sulong + $.jdk8 + $.linux_amd64 + $.llvm38 + $.requireGMP + $.requireGCC + $.gateTags("build,sulongBasic,nwcc,llvm") + { name: "gate-sulong-basic_v38"},
+    $.gate + $.sulong + $.jdk8 + $.linux_amd64 + $.llvm4 + $.requireGMP + $.requireGCC + $.gateTags(basicTags) + { name: "gate-sulong-basic_v40"},
+    $.gate + $.sulong + $.jdk8 + $.linux_amd64 + $.llvm6 + $.requireGMP + $.requireGCC + $.gateTags(basicTags) + { name: "gate-sulong-basic_v60"},
+    $.gate + $.sulong + $.jdk8 + $.linux_amd64 + $.llvm8 + $.requireGMP + $.requireGCC + $.gateTags(basicTags) + { name: "gate-sulong-basic_v80"},
+    $.gate + $.sulong + $.jdk8 + $.linux_amd64 + $.llvmBundled + $.requireGMP + $.requireGCC + $.gateTags(basicTagsLLToolchain) + { name: "gate-sulong-basic_bundled-llvm"},
+    $.gate + $.sulong + $.jdk8 + $.darwin_amd64 + $.llvm4 + $.llvm4_darwin_fix + $.gateTags(basicTags + ",toolchain") + { name: "gate-sulong-basic_mac"},
+    $.gate + $.sulong + $.jdk8 + $.darwin_amd64 + $.llvmBundled + $.llvmBundled_darwin_fix + $.gateTags(basicTagsLLToolchain) + { name: "gate-sulong-basic_bundled-llvm_mac"},
 
     $.gate + $.sulong + $.jdk8 + $.linux_amd64 + $.llvmBundled + $.requireGMP + $.sulong_ruby_downstream_test + { name: "gate-sulong-ruby-downstream" },
 
-    $.gate + $.sulong + $.labsjdk_ce_11 + $.linux_aarch64 + $.llvmBundled + $.requireGMP + { name: "gate-sulong_bundled-llvm-linux-aarch64", timelimit: "30:00" } + $.gateTags(["build", "sulong", "sulongLL", "interop", "linker", "debug", "irdebug", "bitcodeFormat", "otherTests", "llvm"]),
+    $.gate + $.sulong + $.labsjdk_ce_11 + $.linux_aarch64 + $.llvmBundled + $.requireGMP + $.gateTags("build,sulong,sulongLL,interop,linker,debug,irdebug,bitcodeFormat,otherTests,llvm") + { name: "gate-sulong_bundled-llvm-linux-aarch64", timelimit: "30:00" },
     $.gate + $.sulong + $.labsjdk_ce_11 + $.linux_amd64 + $.llvmBundled + $.requireGMP + {
       name: "gate-sulong-build_bundled-llvm-linux-amd64-labsjdk-ce-11",
       run: [
