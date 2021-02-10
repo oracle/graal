@@ -24,7 +24,7 @@
  */
 package org.graalvm.compiler.truffle.runtime.collection;
 
-public interface Pool<E> {
+interface SerialQueue<E> {
     void add(E x);
 
     @SuppressWarnings("unused")

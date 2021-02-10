@@ -27,7 +27,7 @@ package org.graalvm.compiler.truffle.runtime.collection;
 import java.util.ArrayList;
 import java.util.Arrays;
 
-public class BTreeQueue<E> implements Pool<E> {
+public class BTreeQueue<E> implements SerialQueue<E> {
     private static final Object FAILURE_DUPLICATE = new Object();
     private static final Object SUCCESS = new Object();
     private static final Object MAX_ELEMENT = new Object() {

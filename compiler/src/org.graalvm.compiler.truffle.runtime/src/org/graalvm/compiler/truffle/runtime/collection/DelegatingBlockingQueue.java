@@ -33,17 +33,15 @@ import java.util.concurrent.TimeUnit;
 import java.util.concurrent.locks.Condition;
 import java.util.concurrent.locks.ReentrantLock;
 
-public class CustomBlockingQueue<E> implements BlockingQueue<E> {
+public class DelegatingBlockingQueue<E> implements BlockingQueue<E> {
     private ReentrantLock lock;
-
     private final Condition notEmpty;
+    private SerialQueue<E> delegate;
 
-    private Pool<E> pool;
-
-    public CustomBlockingQueue(Pool<E> pool) {
+    public DelegatingBlockingQueue(SerialQueue<E> delegate) {
         this.lock = new ReentrantLock();
         this.notEmpty = this.lock.newCondition();
-        this.pool = pool;
+        this.delegate = delegate;
     }
 
     @Override
@@ -51,7 +49,7 @@ public class CustomBlockingQueue<E> implements BlockingQueue<E> {
         lock.lock();
         try {
             final boolean wasEmpty = isEmpty();
-            pool.add(x);
+            delegate.add(x);
             if (wasEmpty) {
                 notEmpty.signalAll();
             }
@@ -65,7 +63,7 @@ public class CustomBlockingQueue<E> implements BlockingQueue<E> {
         lock.lock();
         try {
             final boolean wasEmpty = isEmpty();
-            final int index = pool.addIndexOf(x);
+            final int index = delegate.addIndexOf(x);
             if (wasEmpty) {
                 notEmpty.signalAll();
             }
@@ -78,7 +76,7 @@ public class CustomBlockingQueue<E> implements BlockingQueue<E> {
     public int indexOf(E x) {
         lock.lock();
         try {
-            return pool.indexOf(x);
+            return delegate.indexOf(x);
         } finally {
             lock.unlock();
         }
@@ -101,7 +99,7 @@ public class CustomBlockingQueue<E> implements BlockingQueue<E> {
 
     @SuppressWarnings("unchecked")
     private E lockedPoll() {
-        return pool.poll();
+        return delegate.poll();
     }
 
     @Override
@@ -154,7 +152,7 @@ public class CustomBlockingQueue<E> implements BlockingQueue<E> {
     public E peek() {
         lock.lock();
         try {
-            return pool.peek();
+            return delegate.peek();
         } finally {
             lock.unlock();
         }
@@ -212,7 +210,7 @@ public class CustomBlockingQueue<E> implements BlockingQueue<E> {
     public void clear() {
         lock.lock();
         try {
-            pool.clear();
+            delegate.clear();
             // Note: no need to awake waiting threads, because no item was added.
         } finally {
             lock.unlock();
@@ -223,7 +221,7 @@ public class CustomBlockingQueue<E> implements BlockingQueue<E> {
     public int size() {
         lock.lock();
         try {
-            return pool.size();
+            return delegate.size();
         } finally {
             lock.unlock();
         }
@@ -250,7 +248,7 @@ public class CustomBlockingQueue<E> implements BlockingQueue<E> {
     public Object[] toArray() {
         lock.lock();
         try {
-            return pool.toArray();
+            return delegate.toArray();
         } finally {
             lock.unlock();
         }
@@ -260,7 +258,7 @@ public class CustomBlockingQueue<E> implements BlockingQueue<E> {
     public <T> T[] toArray(T[] a) {
         lock.lock();
         try {
-            return pool.toArray(a);
+            return delegate.toArray(a);
         } finally {
             lock.unlock();
         }
@@ -285,7 +283,7 @@ public class CustomBlockingQueue<E> implements BlockingQueue<E> {
     public int internalCapacity() {
         lock.lock();
         try {
-            return pool.internalCapacity();
+            return delegate.internalCapacity();
         } finally {
             lock.unlock();
         }

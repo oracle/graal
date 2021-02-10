@@ -25,17 +25,17 @@
 package org.graalvm.compiler.truffle.test.collection;
 
 import org.graalvm.compiler.truffle.runtime.collection.ArrayQueue;
-import org.graalvm.compiler.truffle.runtime.collection.CustomBlockingQueue;
+import org.graalvm.compiler.truffle.runtime.collection.DelegatingBlockingQueue;
 import org.junit.Assert;
 import org.junit.Test;
 
 import java.util.ArrayList;
 
-public class CustomBlockingQueueTest {
+public class DelegatingBlockingQueueTest {
 
     @Test
     public void testAddItems() {
-        CustomBlockingQueue<Integer> queue = new CustomBlockingQueue<>(new ArrayQueue<>());
+        DelegatingBlockingQueue<Integer> queue = new DelegatingBlockingQueue<>(new ArrayQueue<>());
         for (int i = 100; i < 1000; i++) {
             Assert.assertEquals(i - 100, queue.size());
             Assert.assertTrue(queue.add(i));
@@ -49,7 +49,7 @@ public class CustomBlockingQueueTest {
 
     @Test
     public void testRemoveItems() {
-        CustomBlockingQueue<Integer> queue = new CustomBlockingQueue<>(new ArrayQueue<>());
+        DelegatingBlockingQueue<Integer> queue = new DelegatingBlockingQueue<>(new ArrayQueue<>());
         for (int i = 0; i < 1000; i++) {
             Assert.assertEquals(i, queue.size());
             Assert.assertTrue(queue.add(i));
@@ -66,7 +66,7 @@ public class CustomBlockingQueueTest {
 
     @Test
     public void testAddRemove() {
-        CustomBlockingQueue<Integer> queue = new CustomBlockingQueue<>(new ArrayQueue<>());
+        DelegatingBlockingQueue<Integer> queue = new DelegatingBlockingQueue<>(new ArrayQueue<>());
         for (int i = 0; i < 10000; i++) {
             queue.add(i);
             queue.add(i + 1);
