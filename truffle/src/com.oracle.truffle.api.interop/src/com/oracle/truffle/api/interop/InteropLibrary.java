@@ -102,9 +102,9 @@ import static com.oracle.truffle.api.interop.AssertUtils.violationPost;
  * The interop protocol only allows <i>interop values</i> to be used as receivers, return values or
  * parameters of messages. Allowed Java types of interop values are:
  * <ul>
- * <li>{@link TruffleObject}: Any subclass of {@link TruffleObject} is interpreted depending on the
- * interop messages it {@link ExportLibrary exports}. Truffle objects are expected but not required
- * to export interop library messages.
+ * <li>{@link TruffleObject}: Any Java object that implements the {@link TruffleObject} interface is
+ * interpreted according to the interop messages it {@link ExportLibrary exports}. Truffle objects
+ * are expected but not required to export interop library messages.
  * <li>{@link String} and {@link Character} are interpreted as {@link #isString(Object) string}
  * value.
  * <li>{@link Boolean} is interpreted as {@link #isBoolean(Object) boolean} value.
