@@ -1252,7 +1252,7 @@ public final class NodeParser extends AbstractParser<NodeData> {
                     cardinality = Cardinality.MANY;
                 }
                 AnnotationValue executedWith = getAnnotationValue(executed, "with");
-                NodeChildData child = new NodeChildData(field, executed, name, type, type, field, cardinality, executedWith, null);
+                NodeChildData child = new NodeChildData(field, executed, name, type, type, field, cardinality, executedWith, null, null);
                 executedFieldChildren.add(child);
 
                 if (field.getModifiers().contains(Modifier.PRIVATE)) {
@@ -1328,14 +1328,24 @@ public final class NodeParser extends AbstractParser<NodeData> {
                 Element getter = findGetter(elements, name, childNodeType);
                 AnnotationValue executeWith = getAnnotationValue(childMirror, "executeWith");
 
+                String create = null;
+                boolean implicit = (boolean) unboxAnnotationValue(getAnnotationValue(childMirror, "implicit"));
+                boolean implicitCreateSpecified = getAnnotationValue(childMirror, "implicitCreate", false) != null;
+                if (implicit || implicitCreateSpecified) {
+                    create = (String) unboxAnnotationValue(getAnnotationValue(childMirror, "implicitCreate"));
+                }
+
                 String uncached = null;
                 boolean allowUncached = (boolean) unboxAnnotationValue(getAnnotationValue(childMirror, "allowUncached"));
                 boolean uncachedSpecified = getAnnotationValue(childMirror, "uncached", false) != null;
                 if (allowUncached || uncachedSpecified) {
                     uncached = (String) unboxAnnotationValue(getAnnotationValue(childMirror, "uncached"));
                 }
-                NodeChildData nodeChild = new NodeChildData(type, childMirror, name, childNodeType, originalChildType, getter, cardinality, executeWith, uncached);
+                NodeChildData nodeChild = new NodeChildData(type, childMirror, name, childNodeType, originalChildType, getter, cardinality, executeWith, create, uncached);
 
+                if (implicitCreateSpecified && implicit) {
+                    nodeChild.addError("The attributes 'implicit' and 'implicitCreate' are mutually exclusive. Remove one of the attributes to resolve this.");
+                }
                 if (uncachedSpecified && allowUncached) {
                     nodeChild.addError("The attributes 'allowUncached' and 'uncached' are mutually exclusive. Remove one of the attributes to resolve this.");
                 }
@@ -1669,7 +1679,7 @@ public final class NodeParser extends AbstractParser<NodeData> {
             if (fieldNodeData == null || fieldNodeData.hasErrors()) {
                 child.addError("Node type '%s' is invalid or not a subclass of Node.", getQualifiedName(nodeType));
             } else {
-                if (child.isAllowUncached()) {
+                if (child.isImplicit() || child.isAllowUncached()) {
                     DSLExpressionResolver resolver = new DSLExpressionResolver(context, node.getTemplateType(), Collections.emptyList());
                     resolver = importStatics(resolver, node.getNodeType());
                     if (NodeCodeGenerator.isSpecializedNode(nodeType)) {
@@ -1679,8 +1689,14 @@ public final class NodeParser extends AbstractParser<NodeData> {
                         }
                     }
 
-                    DSLExpression expr = parseCachedExpression(resolver, child, nodeType, child.getUncached());
-                    child.setUncachedExpression(expr);
+                    if (child.isImplicit()) {
+                        DSLExpression expr = parseCachedExpression(resolver, child, nodeType, child.getImplicitCreate());
+                        child.setImplicitCreateExpression(expr);
+                    }
+                    if (child.isAllowUncached()) {
+                        DSLExpression expr = parseCachedExpression(resolver, child, nodeType, child.getUncached());
+                        child.setUncachedExpression(expr);
+                    }
                 }
 
                 List<ExecutableTypeData> foundTypes = child.findGenericExecutableTypes();

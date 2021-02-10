@@ -76,6 +76,9 @@ public class NodeChildData extends MessageContainer {
     private final Cardinality cardinality;
     private final AnnotationValue executeWithValue;
 
+    private final String implicitCreate;
+    private DSLExpression implicitCreateExpression;
+
     private final String uncached;
     private DSLExpression uncachedExpression;
 
@@ -84,7 +87,7 @@ public class NodeChildData extends MessageContainer {
     private NodeData childNode;
 
     public NodeChildData(Element sourceElement, AnnotationMirror sourceMirror, String name, TypeMirror nodeType, TypeMirror originalNodeType, Element accessElement, Cardinality cardinality,
-                    AnnotationValue executeWithValue, String uncached) {
+                    AnnotationValue executeWithValue, String implicitCreate, String uncached) {
         this.sourceElement = sourceElement;
         this.sourceAnnotationMirror = sourceMirror;
         this.name = name;
@@ -93,6 +96,7 @@ public class NodeChildData extends MessageContainer {
         this.accessElement = accessElement;
         this.cardinality = cardinality;
         this.executeWithValue = executeWithValue;
+        this.implicitCreate = implicitCreate;
         this.uncached = uncached;
     }
 
@@ -106,6 +110,24 @@ public class NodeChildData extends MessageContainer {
 
     public List<NodeExecutionData> getExecuteWith() {
         return executeWith;
+    }
+
+    public boolean isImplicit() {
+        return implicitCreate != null;
+    }
+
+    public String getImplicitCreate() {
+        return implicitCreate;
+    }
+
+    public DSLExpression getImplicitCreateExpression() {
+        assert isImplicit();
+        return implicitCreateExpression;
+    }
+
+    public void setImplicitCreateExpression(DSLExpression implicitCreateExpression) {
+        assert isImplicit();
+        this.implicitCreateExpression = implicitCreateExpression;
     }
 
     public boolean isAllowUncached() {

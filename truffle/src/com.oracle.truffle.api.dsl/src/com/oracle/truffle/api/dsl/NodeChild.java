@@ -78,6 +78,28 @@ public @interface NodeChild {
     String[] executeWith() default {};
 
     /**
+     * Allows implicit creation of this child node. If this property is {@code false} (the default),
+     * the factory method of the parent node needs to be called with an instance of the child node
+     * as argument. If {@link #implicit} is {@code true}, the child node will be implicitly created
+     * when calling the factory method of the parent node.
+     *
+     * @since 21.1
+     */
+    boolean implicit() default false;
+
+    /**
+     * Defines the initializer expression for implicit child node creation. Specifying this property
+     * will enable {@link #implicit()} mode on this child node automatically, this should not be
+     * specified together with {@link #implicit()}. If {@link #implicit()} is {@code true}, the
+     * initializer expression defaults to {@code "create()"}.
+     *
+     * @see #implicit()
+     * @see Cached
+     * @since 21.1
+     */
+    String implicitCreate() default "create()";
+
+    /**
      * Allow this child node to be used in uncached mode. If set to {@code false} (the default),
      * only execute methods that have an explicit argument for the child value can be used on the
      * uncached version of the parent node. If set to {@code true}, execute methods that do not have
