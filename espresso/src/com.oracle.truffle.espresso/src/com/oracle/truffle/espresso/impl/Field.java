@@ -305,17 +305,17 @@ public final class Field extends Member<Type> implements FieldRef {
         assert getDeclaringKlass().isAssignableFrom(obj.getKlass());
         assert getKind() == JavaKind.Boolean;
         if (isVolatile()) {
-            return getByteVolatile(obj) != 0;
+            return getBooleanVolatile(obj);
         } else {
             return UNSAFE.getByte(obj.getPrimitiveFieldStorage(), (long) getOffset()) != 0;
         }
     }
 
     @CompilerDirectives.TruffleBoundary(allowInlining = true)
-    public byte getByteVolatile(StaticObject obj) {
+    public boolean getBooleanVolatile(StaticObject obj) {
         obj.checkNotForeign();
         assert getDeclaringKlass().isAssignableFrom(obj.getKlass());
-        return UNSAFE.getByteVolatile(obj.getPrimitiveFieldStorage(), getOffset());
+        return UNSAFE.getBooleanVolatile(obj.getPrimitiveFieldStorage(), getOffset());
     }
 
     public byte getByte(StaticObject obj) {
@@ -327,6 +327,13 @@ public final class Field extends Member<Type> implements FieldRef {
         } else {
             return UNSAFE.getByte(obj.getPrimitiveFieldStorage(), (long) getOffset());
         }
+    }
+
+    @CompilerDirectives.TruffleBoundary(allowInlining = true)
+    public byte getByteVolatile(StaticObject obj) {
+        obj.checkNotForeign();
+        assert getDeclaringKlass().isAssignableFrom(obj.getKlass());
+        return UNSAFE.getByteVolatile(obj.getPrimitiveFieldStorage(), getOffset());
     }
 
     public char getChar(StaticObject obj) {
