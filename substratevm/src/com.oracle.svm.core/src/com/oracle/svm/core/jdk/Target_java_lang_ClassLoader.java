@@ -343,22 +343,10 @@ final class Target_java_lang_ClassLoader {
     @Substitute //
     @SuppressWarnings({"unused"}) //
     private Class<?> findLoadedClass0(String name) {
-        /* See open/src/hotspot/share/prims/jvm.cpp#958. */
-        throw VMError.unsupportedFeature("Target_java_lang_ClassLoader.findLoadedClass0(String)");
-    }
-
-    @Substitute //
-    @TargetElement(onlyWith = JDK11OrLater.class) //
-    @SuppressWarnings({"unused"})
-    protected Class<?> findClass(String moduleName, String name) {
-        throw VMError.unsupportedFeature("JDK11OrLater: Target_java_lang_ClassLoader.findClass(String moduleName, String name)");
-    }
-
-    @Substitute //
-    @TargetElement(onlyWith = JDK11OrLater.class) //
-    @SuppressWarnings({"unused"})
-    public Package getDefinedPackage(String name) {
-        throw VMError.unsupportedFeature("JDK11OrLater: Target_java_lang_ClassLoader.getDefinedPackage(String name)");
+        if (name == null) {
+            return null;
+        }
+        return ClassForNameSupport.forNameOrNull(name, false);
     }
 
     @Substitute
