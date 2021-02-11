@@ -2941,6 +2941,7 @@ public final class JniEnv extends NativeEnv implements ContextAccess {
      *             found.
      * @throws OutOfMemoryError if the system runs out of memory.
      */
+    @TruffleBoundary
     @JniImpl
     public @Host(Class.class) StaticObject FindClass(@Pointer TruffleObject namePtr,
                     @GuestCall(target = "java_lang_ClassLoader_getSystemClassLoader") DirectCallNode getSystemClassLoader,

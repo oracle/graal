@@ -1126,6 +1126,8 @@ public final class VM extends NativeEnv implements ContextAccess {
 
     // region Library support
 
+    private static final AtomicLong libraryHandles = new AtomicLong(1);
+
     @VmImpl
     @TruffleBoundary
     public @Pointer TruffleObject JVM_LoadLibrary(@Pointer TruffleObject namePtr) {
@@ -1137,13 +1139,18 @@ public final class VM extends NativeEnv implements ContextAccess {
             if (lib == null) {
                 throw Meta.throwExceptionWithMessage(getMeta().java_lang_UnsatisfiedLinkError, name);
             }
-            java.lang.reflect.Field f = lib.getClass().getDeclaredField("handle");
-            f.setAccessible(true);
-            long handle = (long) f.get(lib);
+            long handle = 0L;
+            try {
+                java.lang.reflect.Field f = lib.getClass().getDeclaredField("handle");
+                f.setAccessible(true);
+                handle = (long) f.get(lib);
+            } catch (NoSuchFieldException e) {
+                handle = libraryHandles.getAndIncrement();
+            }
             getLogger().fine(String.format("JVM_LoadLibrary: Successfully loaded '%s' with handle %x", name, handle));
             handle2Lib.put(handle, lib);
             return RawPointer.create(handle);
-        } catch (IllegalAccessException | NoSuchFieldException e) {
+        } catch (IllegalAccessException e) {
             throw EspressoError.shouldNotReachHere(e);
         }
     }
@@ -1179,6 +1186,9 @@ public final class VM extends NativeEnv implements ContextAccess {
             TruffleObject function = getNativeAccess().lookupSymbol(library, name);
             if (function == null) {
                 return RawPointer.nullInstance(); // not found
+            }
+            if (!getUncached().isPointer(function)) {
+                getUncached().toNative(function);
             }
             long handle = getUncached().asPointer(function);
             handle2Sym.put(handle, function);

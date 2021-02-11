@@ -587,4 +587,9 @@ public class EspressoLauncher extends AbstractLanguageLauncher {
             return toPrepend;
         }
     }
+
+    @Override
+    protected String[] getDefaultLanguages() {
+        return new String[]{"java", "llvm"};
+    }
 }
