@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2017, 2018, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2017, 2021, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -40,6 +40,23 @@
  */
 package org.graalvm.nativeimage.impl;
 
+import java.lang.reflect.Field;
+
 public interface RuntimeReflectionSupport extends ReflectionRegistry {
     // specific to java.lang.reflect reflection
+
+    /**
+     * Returns true if the final field is explicitly made writable using the reflection
+     * configuration, i.e., if the field needs to be treated like a non-final field.
+     * 
+     * After this method was called for a field and returned false, the field must not be added
+     * using new reflection configuration. So this method should be called as late as possible.
+     */
+    boolean inspectFinalFieldWritableForAnalysis(Field field);
+
+    /**
+     * Ensures that the field is going to be made writable once some other mechanism registers the
+     * field for reflection.
+     */
+    void preregisterAsWritableForAnalysis(Field field);
 }
