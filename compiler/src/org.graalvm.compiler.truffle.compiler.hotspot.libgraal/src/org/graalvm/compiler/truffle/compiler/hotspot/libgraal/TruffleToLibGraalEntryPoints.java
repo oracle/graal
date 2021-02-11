@@ -272,8 +272,12 @@ final class TruffleToLibGraalEntryPoints {
         try (JNILibGraalScope<TruffleToLibGraal.Id> scope = new JNILibGraalScope<>(CloseCompilation, env)) {
             TruffleCompilation compilation = LibGraalObjectHandles.resolve(compilationHandle, TruffleCompilation.class);
             HSCompilableTruffleAST compilable = (HSCompilableTruffleAST) compilation.getCompilable();
-            compilable.release(env);
-            HSObject.cleanHandles(env);
+            try {
+                compilation.close();
+            } finally {
+                compilable.release(env);
+                HSObject.cleanHandles(env);
+            }
         } catch (Throwable t) {
             JNIExceptionWrapper.throwInHotSpot(env, t);
         }
