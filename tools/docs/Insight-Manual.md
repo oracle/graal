@@ -790,9 +790,9 @@ operation. Use rarely, if you want your program to continue running at full spee
 
 [Insight](Insight.md) can be used to snapshot a region of your program heap during
 the execution. Use `--heap.dump=/path/to/output.hprof` option together with
-`--insight` one and the Insight script is going to have access to `heap` object
-with `record` member. Place your hook whenever needed and at the right moment
-dump the heap. 
+regular `--insight` one. The [Insight](Insight.md) 
+script is going to get access to `heap` object with `record` function. 
+Place your hook whenever needed and at the right moment dump the heap:
 
 ```js
 insight.on('return', (ctx, frame) => {
@@ -802,6 +802,7 @@ insight.on('return', (ctx, frame) => {
                 {
                     at : ctx, // location of dump sieve.js:73
                     frame : {
+                        // assemble frame content as you want
                         primes : frame.primes // capture primes object
                     }
                 }
@@ -809,7 +810,7 @@ insight.on('return', (ctx, frame) => {
             ]
         }
         // there can be multiple records like this
-    ], 1000); // follow object references up to thousand
+    ], 10); // follow ten object references at max, unlimited if omitted
     throw 'Heap dump written!';
 }, {
     roots: true,
@@ -817,7 +818,7 @@ insight.on('return', (ctx, frame) => {
 });
 ```
 
-if you get the [sieve.js](../../vm/benchmarks/agentscript/sieve.js) file and
+Get the [sieve.js](../../vm/benchmarks/agentscript/sieve.js) file and
 launch it as:
 
 ```bash
@@ -826,8 +827,10 @@ $ graalvm/bin/js --insight=dump.js --heap.dump=dump.hprof --file sieve.js
 
 ![Heap Stack](Insight-HeapStack.png)
 
-A `dump.hprof` file is created at the end of `measure` function with can be 
-inspected by regular tools like VisualVM or NetBeans:
+A `dump.hprof` file is going to be created at the end of `measure` function
+capturing the state of the memory of your progam. 
+Inspected the generated `.hprof` file with regular tools like
+VisualVM or NetBeans:
 
 ![Heap Inspect](Insight-HeapInspect.png)
 
