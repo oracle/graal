@@ -38,7 +38,7 @@ public class DwarfFrameSectionImplAArch64 extends DwarfFrameSectionImpl {
     public static final int DW_CFA_FP_IDX = 29;
     private static final int DW_CFA_LR_IDX = 30;
     private static final int DW_CFA_SP_IDX = 31;
-    // private static final int DW_CFA_PC_IDX = 32;
+    @SuppressWarnings("unused") private static final int DW_CFA_PC_IDX = 32;
 
     public DwarfFrameSectionImplAArch64(DwarfDebugInfo dwarfSections) {
         super(dwarfSections);

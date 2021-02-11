@@ -136,7 +136,7 @@ final class CVSymbolSubsectionBuilder {
         final String methodName;
         if (noMainFound && range.getMethodName().equals("main")) {
             noMainFound = false;
-            methodName = range.getClassAndMethodName();
+            methodName = range.getFullMethodName();
         } else {
             /* In the future, use a more user-friendly name instead of a hash function. */
             methodName = range.getSymbolName();
