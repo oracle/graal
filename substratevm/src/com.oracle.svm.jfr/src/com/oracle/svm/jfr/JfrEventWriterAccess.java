@@ -24,6 +24,7 @@
  */
 package com.oracle.svm.jfr;
 
+//Checkstyle: allow reflection
 import java.lang.reflect.Field;
 
 import org.graalvm.compiler.serviceprovider.GraalUnsafeAccess;
@@ -36,7 +37,7 @@ import com.oracle.svm.util.ReflectionUtil;
 import jdk.jfr.internal.EventWriter;
 import sun.misc.Unsafe;
 
-public class JfrEventWriterAccess implements Feature {
+public final class JfrEventWriterAccess implements Feature {
     private static final Unsafe UNSAFE = GraalUnsafeAccess.getUnsafe();
 
     private static final Field startPosition = ReflectionUtil.lookupField(EventWriter.class, "startPosition");
