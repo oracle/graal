@@ -2536,10 +2536,10 @@ public final class JniEnv extends NativeEnv implements ContextAccess {
             Method m = null;
             if (method.isConstructor()) {
                 assert InterpreterToVM.instanceOf(declMethod, getMeta().java_lang_reflect_Constructor);
-                m = (Method) declMethod.getHiddenObjectField(getMeta().HIDDEN_CONSTRUCTOR_KEY);
+                m = (Method) getMeta().HIDDEN_CONSTRUCTOR_KEY.getHiddenObjectField(declMethod);
             } else {
                 assert InterpreterToVM.instanceOf(declMethod, getMeta().java_lang_reflect_Method);
-                m = (Method) declMethod.getHiddenObjectField(getMeta().HIDDEN_METHOD_KEY);
+                m = (Method) getMeta().HIDDEN_METHOD_KEY.getHiddenObjectField(declMethod);
             }
             if (method == m) {
                 return declMethod;
@@ -2565,7 +2565,7 @@ public final class JniEnv extends NativeEnv implements ContextAccess {
         StaticObject fields = Target_java_lang_Class.getDeclaredFields0(field.getDeclaringKlass().mirror(), false, getMeta());
         for (StaticObject declField : fields.<StaticObject[]> unwrap()) {
             assert InterpreterToVM.instanceOf(declField, getMeta().java_lang_reflect_Field);
-            Field f = (Field) declField.getHiddenObjectField(getMeta().HIDDEN_FIELD_KEY);
+            Field f = (Field) getMeta().HIDDEN_FIELD_KEY.getHiddenObjectField(declField);
             if (field == f) {
                 return declField;
             }
@@ -3065,7 +3065,7 @@ public final class JniEnv extends NativeEnv implements ContextAccess {
             throw e;
         }
 
-        guestClass.setHiddenObjectField(meta.HIDDEN_PROTECTION_DOMAIN, protectionDomain);
+        meta.HIDDEN_PROTECTION_DOMAIN.setHiddenObjectField(guestClass, protectionDomain);
         guestClass.getMirrorKlass().safeInitialize();
 
         return guestClass;

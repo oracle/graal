@@ -73,17 +73,17 @@ public final class Target_java_lang_Thread {
 
     public static void incrementThreadCounter(StaticObject thread, Field hiddenField) {
         assert hiddenField.isHidden();
-        Long counter = (Long) thread.getHiddenObjectField(hiddenField);
+        Long counter = (Long) hiddenField.getHiddenObjectField(thread);
         if (counter == null) {
             counter = 0L;
         }
         ++counter;
-        thread.setHiddenObjectField(hiddenField, counter);
+        hiddenField.setHiddenObjectField(thread, counter);
     }
 
     public static long getThreadCounter(StaticObject thread, Field hiddenField) {
         assert hiddenField.isHidden();
-        Long counter = (Long) thread.getHiddenObjectField(hiddenField);
+        Long counter = (Long) hiddenField.getHiddenObjectField(thread);
         if (counter == null) {
             counter = 0L;
         }
@@ -107,7 +107,7 @@ public final class Target_java_lang_Thread {
     }
 
     public static void fromRunnable(StaticObject self, Meta meta, State state) {
-        assert self.getIntField(meta.java_lang_Thread_threadStatus) == State.RUNNABLE.value;
+        assert meta.java_lang_Thread_threadStatus.getIntField(self) == State.RUNNABLE.value;
         setState(self, meta, state);
         checkDeprecatedState(meta, self);
     }
@@ -122,7 +122,7 @@ public final class Target_java_lang_Thread {
     }
 
     private static void setState(StaticObject self, Meta meta, State state) {
-        self.setIntField(meta.java_lang_Thread_threadStatus, state.value);
+        meta.java_lang_Thread_threadStatus.setIntField(self, state.value);
     }
 
     @TruffleBoundary
@@ -198,7 +198,7 @@ public final class Target_java_lang_Thread {
 
                 self.getLock().lock();
                 try {
-                    self.setIntField(meta.java_lang_Thread_threadStatus, State.TERMINATED.value);
+                    meta.java_lang_Thread_threadStatus.setIntField(self, State.TERMINATED.value);
                     // Notify waiting threads you were terminated
                     self.getLock().signalAll();
                 } finally {
@@ -240,10 +240,10 @@ public final class Target_java_lang_Thread {
                 }
             });
 
-            self.setHiddenObjectField(meta.HIDDEN_HOST_THREAD, hostThread);
-            hostThread.setDaemon(self.getBooleanField(meta.java_lang_Thread_daemon));
-            self.setIntField(meta.java_lang_Thread_threadStatus, State.RUNNABLE.value);
-            hostThread.setPriority(self.getIntField(meta.java_lang_Thread_priority));
+            meta.HIDDEN_HOST_THREAD.setHiddenObjectField(self, hostThread);
+            hostThread.setDaemon(meta.java_lang_Thread_daemon.getBooleanField(self));
+            meta.java_lang_Thread_threadStatus.setIntField(self, State.RUNNABLE.value);
+            hostThread.setPriority(meta.java_lang_Thread_priority.getIntField(self));
             if (isInterrupted(self, false)) {
                 hostThread.interrupt();
             }
@@ -288,7 +288,7 @@ public final class Target_java_lang_Thread {
         }
         self.getLock().lock();
         try {
-            self.setIntField(meta.java_lang_Thread_threadStatus, State.TERMINATED.value);
+            meta.java_lang_Thread_threadStatus.setIntField(self, State.TERMINATED.value);
             // Notify waiting threads you are done working
             self.getLock().signalAll();
         } finally {
@@ -335,7 +335,7 @@ public final class Target_java_lang_Thread {
 
     @Substitution(hasReceiver = true)
     public static boolean isAlive(@Host(Thread.class) StaticObject self) {
-        int state = self.getIntField(self.getKlass().getMeta().java_lang_Thread_threadStatus);
+        int state = self.getKlass().getMeta().java_lang_Thread_threadStatus.getIntField(self);
         return state != State.NEW.value && state != State.TERMINATED.value;
     }
 
@@ -345,7 +345,7 @@ public final class Target_java_lang_Thread {
                     @GuestCall(target = "sun_misc_VM_toThreadState") DirectCallNode toThreadState,
                     // Checkstyle: resume
                     @InjectMeta Meta meta) {
-        return (StaticObject) toThreadState.call(self.getIntField(meta.java_lang_Thread_threadStatus));
+        return (StaticObject) toThreadState.call(meta.java_lang_Thread_threadStatus.getIntField(self));
     }
 
     @SuppressWarnings("unused")
@@ -381,11 +381,11 @@ public final class Target_java_lang_Thread {
     }
 
     public static void setInterrupt(StaticObject self, boolean value) {
-        self.setHiddenObjectField(self.getKlass().getMeta().HIDDEN_INTERRUPTED, value);
+        self.getKlass().getMeta().HIDDEN_INTERRUPTED.setHiddenObjectField(self, value);
     }
 
     static boolean checkInterrupt(StaticObject self) {
-        Boolean interrupt = (Boolean) self.getHiddenObjectField(self.getKlass().getMeta().HIDDEN_INTERRUPTED);
+        Boolean interrupt = (Boolean) self.getKlass().getMeta().HIDDEN_INTERRUPTED.getHiddenObjectField(self);
         return interrupt != null && interrupt;
     }
 
@@ -474,16 +474,16 @@ public final class Target_java_lang_Thread {
     }
 
     public static Thread getHostFromGuestThread(@Host(Object.class) StaticObject self) {
-        return (Thread) self.getHiddenObjectField(self.getKlass().getMeta().HIDDEN_HOST_THREAD);
+        return (Thread) self.getKlass().getMeta().HIDDEN_HOST_THREAD.getHiddenObjectField(self);
     }
 
     public static boolean checkThreadStatus(StaticObject thread, KillStatus status) {
-        KillStatus stop = (KillStatus) thread.getHiddenObjectField(thread.getKlass().getMeta().HIDDEN_DEATH);
+        KillStatus stop = (KillStatus) thread.getKlass().getMeta().HIDDEN_DEATH.getHiddenObjectField(thread);
         return stop != null && stop == status;
     }
 
     public static void setThreadStop(StaticObject thread, KillStatus value) {
-        thread.setHiddenObjectField(thread.getKlass().getMeta().HIDDEN_DEATH, value);
+        thread.getKlass().getMeta().HIDDEN_DEATH.setHiddenObjectField(thread, value);
     }
 
     /**
@@ -501,15 +501,15 @@ public final class Target_java_lang_Thread {
     }
 
     public static void setDeathThrowable(StaticObject self, Object deathThrowable) {
-        self.setHiddenObjectField(self.getKlass().getMeta().HIDDEN_DEATH_THROWABLE, deathThrowable);
+        self.getKlass().getMeta().HIDDEN_DEATH_THROWABLE.setHiddenObjectField(self, deathThrowable);
     }
 
     public static Object getDeathThrowable(StaticObject self) {
-        return self.getHiddenObjectField(self.getKlass().getMeta().HIDDEN_DEATH_THROWABLE);
+        return self.getKlass().getMeta().HIDDEN_DEATH_THROWABLE.getHiddenObjectField(self);
     }
 
     public static KillStatus getKillStatus(StaticObject thread) {
-        return (KillStatus) thread.getHiddenObjectField(thread.getKlass().getMeta().HIDDEN_DEATH);
+        return (KillStatus) thread.getKlass().getMeta().HIDDEN_DEATH.getHiddenObjectField(thread);
     }
 
     public enum KillStatus {
@@ -553,7 +553,7 @@ public final class Target_java_lang_Thread {
     }
 
     private static SuspendLock getSuspendLock(@Host(Object.class) StaticObject self) {
-        return (SuspendLock) self.getHiddenObjectField(self.getKlass().getMeta().HIDDEN_SUSPEND_LOCK);
+        return (SuspendLock) self.getKlass().getMeta().HIDDEN_SUSPEND_LOCK.getHiddenObjectField(self);
     }
 
     /**
@@ -563,7 +563,7 @@ public final class Target_java_lang_Thread {
         SuspendLock lock = getSuspendLock(self);
         if (lock == null) {
             lock = new SuspendLock();
-            self.setHiddenObjectField(self.getKlass().getMeta().HIDDEN_SUSPEND_LOCK, lock);
+            self.getKlass().getMeta().HIDDEN_SUSPEND_LOCK.setHiddenObjectField(self, lock);
         }
         return lock;
     }
@@ -605,7 +605,7 @@ public final class Target_java_lang_Thread {
             lock.shouldSuspend = true;
             try {
                 synchronized (notifier) {
-                    if (toSuspend.getIntField(meta.java_lang_Thread_threadStatus) == State.RUNNABLE.value) {
+                    if (meta.java_lang_Thread_threadStatus.getIntField(toSuspend) == State.RUNNABLE.value) {
                         notifier.wait();
                     } else {
                         break;

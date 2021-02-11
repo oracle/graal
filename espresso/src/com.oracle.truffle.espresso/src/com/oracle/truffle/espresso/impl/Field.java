@@ -182,7 +182,7 @@ public final class Field extends Member<Type> implements FieldRef {
         StaticObject curField = seed;
         Field target = null;
         while (target == null) {
-            target = (Field) curField.getHiddenObjectField(meta.HIDDEN_FIELD_KEY);
+            target = (Field) meta.HIDDEN_FIELD_KEY.getHiddenObjectField(curField);
             if (target == null) {
                 curField = (StaticObject) meta.java_lang_reflect_Field_root.get(curField);
             }

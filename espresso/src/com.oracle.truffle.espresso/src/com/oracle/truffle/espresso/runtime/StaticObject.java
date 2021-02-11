@@ -164,12 +164,12 @@ public final class StaticObject implements TruffleObject {
         this.primitiveFields = primitiveFieldCount > 0 ? new byte[primitiveFieldCount] : null;
         initInstanceFields(guestClass);
         if (klass.getContext().getJavaVersion().modulesEnabled()) {
-            setObjectField(klass.getMeta().java_lang_Class_classLoader, klass.getDefiningClassLoader());
+            klass.getMeta().java_lang_Class_classLoader.setObjectField(this, klass.getDefiningClassLoader());
             setModule(klass);
         }
-        setHiddenObjectField(klass.getMeta().HIDDEN_MIRROR_KLASS, klass);
+        klass.getMeta().HIDDEN_MIRROR_KLASS.setHiddenObjectField(this, klass);
         // Will be overriden by JVM_DefineKlass if necessary.
-        setHiddenObjectField(klass.getMeta().HIDDEN_PROTECTION_DOMAIN, StaticObject.NULL);
+        klass.getMeta().HIDDEN_PROTECTION_DOMAIN.setHiddenObjectField(this, StaticObject.NULL);
     }
 
     // Constructor for static fields storage.
@@ -220,7 +220,7 @@ public final class StaticObject implements TruffleObject {
             assert !f.isStatic();
             if (!f.isHidden()) {
                 if (f.getKind() == JavaKind.Object) {
-                    setObjectField(f, StaticObject.NULL);
+                    f.setObjectField(this, StaticObject.NULL);
                 }
             }
         }
@@ -233,7 +233,7 @@ public final class StaticObject implements TruffleObject {
         for (Field f : thisKlass.getStaticFieldTable()) {
             assert f.isStatic();
             if (f.getKind() == JavaKind.Object) {
-                setObjectField(f, StaticObject.NULL);
+                f.setObjectField(this, StaticObject.NULL);
             }
         }
     }
@@ -395,23 +395,23 @@ public final class StaticObject implements TruffleObject {
 
         Meta meta = klass.getMeta();
         if (klass == meta.java_lang_Short) {
-            short content = getShortField(meta.java_lang_Short_value);
+            short content = meta.java_lang_Short_value.getShortField(this);
             return (byte) content == content;
         }
         if (klass == meta.java_lang_Integer) {
-            int content = getIntField(meta.java_lang_Integer_value);
+            int content = meta.java_lang_Integer_value.getIntField(this);
             return (byte) content == content;
         }
         if (klass == meta.java_lang_Long) {
-            long content = getLongField(meta.java_lang_Long_value);
+            long content = meta.java_lang_Long_value.getLongField(this);
             return (byte) content == content;
         }
         if (klass == meta.java_lang_Float) {
-            float content = getFloatField(meta.java_lang_Float_value);
+            float content = meta.java_lang_Float_value.getFloatField(this);
             return (byte) content == content && !isNegativeZero(content);
         }
         if (klass == meta.java_lang_Double) {
-            double content = getDoubleField(meta.java_lang_Double_value);
+            double content = meta.java_lang_Double_value.getDoubleField(this);
             return (byte) content == content && !isNegativeZero(content);
         }
         return false;
@@ -429,19 +429,19 @@ public final class StaticObject implements TruffleObject {
 
         Meta meta = klass.getMeta();
         if (klass == meta.java_lang_Integer) {
-            int content = getIntField(meta.java_lang_Integer_value);
+            int content = meta.java_lang_Integer_value.getIntField(this);
             return (short) content == content;
         }
         if (klass == meta.java_lang_Long) {
-            long content = getLongField(meta.java_lang_Long_value);
+            long content = meta.java_lang_Long_value.getLongField(this);
             return (short) content == content;
         }
         if (klass == meta.java_lang_Float) {
-            float content = getFloatField(meta.java_lang_Float_value);
+            float content = meta.java_lang_Float_value.getFloatField(this);
             return (short) content == content && !isNegativeZero(content);
         }
         if (klass == meta.java_lang_Double) {
-            double content = getDoubleField(meta.java_lang_Double_value);
+            double content = meta.java_lang_Double_value.getDoubleField(this);
             return (short) content == content && !isNegativeZero(content);
         }
         return false;
@@ -459,15 +459,15 @@ public final class StaticObject implements TruffleObject {
 
         Meta meta = klass.getMeta();
         if (klass == meta.java_lang_Long) {
-            long content = getLongField(meta.java_lang_Long_value);
+            long content = meta.java_lang_Long_value.getLongField(this);
             return (int) content == content;
         }
         if (klass == meta.java_lang_Float) {
-            float content = getFloatField(meta.java_lang_Float_value);
+            float content = meta.java_lang_Float_value.getFloatField(this);
             return inSafeIntegerRange(content) && !isNegativeZero(content) && (int) content == content;
         }
         if (klass == meta.java_lang_Double) {
-            double content = getDoubleField(meta.java_lang_Double_value);
+            double content = meta.java_lang_Double_value.getDoubleField(this);
             return (int) content == content && !isNegativeZero(content);
         }
         return false;
@@ -485,11 +485,11 @@ public final class StaticObject implements TruffleObject {
 
         Meta meta = klass.getMeta();
         if (klass == meta.java_lang_Float) {
-            float content = getFloatField(meta.java_lang_Float_value);
+            float content = meta.java_lang_Float_value.getFloatField(this);
             return inSafeIntegerRange(content) && !isNegativeZero(content) && (long) content == content;
         }
         if (klass == meta.java_lang_Double) {
-            double content = getDoubleField(meta.java_lang_Double_value);
+            double content = meta.java_lang_Double_value.getDoubleField(this);
             return inSafeIntegerRange(content) && !isNegativeZero(content) && (long) content == content;
         }
         return false;
@@ -512,17 +512,17 @@ public final class StaticObject implements TruffleObject {
          * details.
          */
         if (klass == meta.java_lang_Integer) {
-            int content = getIntField(meta.java_lang_Integer_value);
+            int content = meta.java_lang_Integer_value.getIntField(this);
             float floatContent = content;
             return (int) floatContent == content;
         }
         if (klass == meta.java_lang_Long) {
-            long content = getLongField(meta.java_lang_Long_value);
+            long content = meta.java_lang_Long_value.getLongField(this);
             float floatContent = content;
             return (long) floatContent == content;
         }
         if (klass == meta.java_lang_Double) {
-            double content = getDoubleField(meta.java_lang_Double_value);
+            double content = meta.java_lang_Double_value.getDoubleField(this);
             return !Double.isFinite(content) || (float) content == content;
         }
         return false;
@@ -540,12 +540,12 @@ public final class StaticObject implements TruffleObject {
             return true;
         }
         if (klass == meta.java_lang_Long) {
-            long content = getLongField(meta.java_lang_Long_value);
+            long content = meta.java_lang_Long_value.getLongField(this);
             double doubleContent = content;
             return (long) doubleContent == content;
         }
         if (klass == meta.java_lang_Float) {
-            float content = getFloatField(meta.java_lang_Float_value);
+            float content = meta.java_lang_Float_value.getFloatField(this);
             return !Float.isFinite(content) || (double) content == content;
         }
         return false;
@@ -1576,12 +1576,12 @@ public final class StaticObject implements TruffleObject {
         StaticObject module = klass.module().module();
         if (StaticObject.isNull(module)) {
             if (klass.getRegistries().javaBaseDefined()) {
-                setObjectField(klass.getMeta().java_lang_Class_module, klass.getRegistries().getJavaBaseModule().module());
+                klass.getMeta().java_lang_Class_module.setObjectField(this, klass.getRegistries().getJavaBaseModule().module());
             } else {
                 klass.getRegistries().addToFixupList(klass);
             }
         } else {
-            setObjectField(klass.getMeta().java_lang_Class_module, module);
+            klass.getMeta().java_lang_Class_module.setObjectField(this, module);
         }
     }
 
@@ -1651,7 +1651,7 @@ public final class StaticObject implements TruffleObject {
     public Klass getMirrorKlass() {
         assert getKlass().getType() == Type.java_lang_Class;
         checkNotForeign();
-        Klass result = (Klass) getHiddenObjectField(getKlass().getMeta().HIDDEN_MIRROR_KLASS);
+        Klass result = (Klass) getKlass().getMeta().HIDDEN_MIRROR_KLASS.getHiddenObjectField(this);
         if (result == null) {
             CompilerDirectives.transferToInterpreter();
             throw EspressoError.shouldNotReachHere("Uninitialized mirror class");
@@ -1670,7 +1670,7 @@ public final class StaticObject implements TruffleObject {
         }
         if (getKlass() == getKlass().getMeta().java_lang_String) {
             Meta meta = getKlass().getMeta();
-            StaticObject value = getObjectField(meta.java_lang_String_value);
+            StaticObject value = meta.java_lang_String_value.getObjectField(this);
             if (value == null || isNull(value)) {
                 // Prevents debugger crashes when trying to inspect a string in construction.
                 return "<UNINITIALIZED>";
@@ -1696,7 +1696,7 @@ public final class StaticObject implements TruffleObject {
         }
         if (getKlass() == getKlass().getMeta().java_lang_String) {
             Meta meta = getKlass().getMeta();
-            StaticObject value = getObjectField(meta.java_lang_String_value);
+            StaticObject value = meta.java_lang_String_value.getObjectField(this);
             if (value == null || isNull(value)) {
                 // Prevents debugger crashes when trying to inspect a string in construction.
                 return "<UNINITIALIZED>";
@@ -1715,7 +1715,7 @@ public final class StaticObject implements TruffleObject {
             if (!f.isHidden()) {
                 str.append("\n    ").append(f.getName()).append(": ").append(f.get(this).toString());
             } else {
-                str.append("\n    ").append(f.getName()).append(": ").append((this.getHiddenObjectField(f)).toString());
+                str.append("\n    ").append(f.getName()).append(": ").append((f.getHiddenObjectField(this)).toString());
             }
         }
         return str.toString();

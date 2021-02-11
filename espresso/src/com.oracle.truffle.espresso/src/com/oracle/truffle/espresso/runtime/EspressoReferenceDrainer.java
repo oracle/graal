@@ -155,7 +155,7 @@ class EspressoReferenceDrainer implements ContextAccess {
         if (InterpreterToVM.instanceOf(ref, ref.getKlass().getMeta().sun_misc_Cleaner)) {
             wrapper.clear();
         }
-        ref.compareAndSwapObjectField(getMeta().java_lang_ref_Reference_next, StaticObject.NULL, ref);
+        getMeta().java_lang_ref_Reference_next.compareAndSwapObjectField(ref, StaticObject.NULL, ref);
     }
 
     private abstract class ReferenceDrain implements Runnable {
