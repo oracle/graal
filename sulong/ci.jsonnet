@@ -73,8 +73,7 @@ local sc = (import "ci_common/sulong-common.jsonnet");
   builds: [
     sc.gate + $.sulong + sc.style + sc.jdk8 + sc.linux_amd64 + common.eclipse + sc.gateTags("style") + { name: "gate-sulong-style" },
     sc.gate + $.sulong + sc.style + sc.jdk8 + sc.linux_amd64 + common.eclipse + common.jdt + sc.gateTags("fullbuild") + { name: "gate-sulong-fullbuild" },
-    # FIXME: switch to sc.linux_amd64 (extra dependencies do not hurt)
-    sc.gate + $.sulong + sc.jdk8 + linux_amd64 + $.sulong_gate_generated_sources { name: "gate-sulong-generated-sources" },
+    sc.gate + $.sulong + sc.jdk8 + sc.linux_amd64 + $.sulong_gate_generated_sources { name: "gate-sulong-generated-sources" },
     sc.gate + $.sulong + sc.jdk8 + sc.linux_amd64 + sc.llvmBundled + sc.requireGMP + sc.requireGCC + sc.gateTags("build,sulongMisc") + $.sulong_test_toolchain + { name: "gate-sulong-misc" },
     sc.gate + $.sulong + sc.jdk8 + sc.linux_amd64 + sc.llvmBundled + sc.requireGMP + sc.requireGCC + sc.gateTags("build,parser") + { name: "gate-sulong-parser" },
     sc.gate + $.sulong + sc.jdk8 + sc.linux_amd64 + sc.llvmBundled + sc.requireGMP + sc.gateTags("build,gcc_c") + { name: "gate-sulong-gcc_c", timelimit: "45:00" },
