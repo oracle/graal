@@ -43,6 +43,7 @@ import com.oracle.svm.hosted.c.info.EnumConstantInfo;
 import com.oracle.svm.hosted.c.info.NativeCodeInfo;
 import com.oracle.svm.hosted.c.info.PointerToInfo;
 import com.oracle.svm.hosted.c.info.PropertyInfo;
+import com.oracle.svm.hosted.c.info.RawPointerToInfo;
 import com.oracle.svm.hosted.c.info.RawStructureInfo;
 import com.oracle.svm.hosted.c.info.SizableInfo;
 import com.oracle.svm.hosted.c.info.StructBitfieldInfo;
@@ -164,6 +165,11 @@ public final class QueryResultParser extends NativeInfoTreeVisitor {
         if (pointerToInfo.getKind() == ElementKind.INTEGER) {
             parseSignedness(pointerToInfo.getSignednessInfo());
         }
+    }
+
+    @Override
+    public void visitRawPointerToInfo(RawPointerToInfo pointerToInfo) {
+        /* Nothing to do, do not visit children. */
     }
 
     @Override
