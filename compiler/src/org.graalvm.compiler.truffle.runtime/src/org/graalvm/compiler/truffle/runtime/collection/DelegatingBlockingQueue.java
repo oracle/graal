@@ -33,10 +33,10 @@ import java.util.concurrent.TimeUnit;
 import java.util.concurrent.locks.Condition;
 import java.util.concurrent.locks.ReentrantLock;
 
-public class DelegatingBlockingQueue<E> implements BlockingQueue<E> {
-    private ReentrantLock lock;
+public final class DelegatingBlockingQueue<E> implements BlockingQueue<E> {
+    private final ReentrantLock lock;
     private final Condition notEmpty;
-    private SerialQueue<E> delegate;
+    private final SerialQueue<E> delegate;
 
     public DelegatingBlockingQueue(SerialQueue<E> delegate) {
         this.lock = new ReentrantLock();

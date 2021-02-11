@@ -37,7 +37,7 @@ import java.util.Arrays;
  * Nodes whose entry-count drops below a particular value are compressed
  * to avoid wasting space.
  */
-public class BTreeQueue<E> implements SerialQueue<E> {
+public final class BTreeQueue<E> implements SerialQueue<E> {
     private static final Object FAILURE_DUPLICATE = new Object();
     private static final Object SUCCESS = new Object();
     private static final Object MAX_ELEMENT = new Object() {

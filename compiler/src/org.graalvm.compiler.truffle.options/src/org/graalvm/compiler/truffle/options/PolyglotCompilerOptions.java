@@ -495,8 +495,8 @@ public final class PolyglotCompilerOptions {
     @Option(help = "Use the priority of compilation jobs in the compilation queue.", category = OptionCategory.INTERNAL)
     public static final OptionKey<Boolean> PriorityQueue = new OptionKey<>(true);
 
-    @Option(help = "TODO", category = OptionCategory.INTERNAL)
-    public static final OptionKey<Boolean> CustomQueue = new OptionKey<>(false);
+    @Option(help = "Use a configurable compilation queue.", category = OptionCategory.INTERNAL)
+    public static final OptionKey<Boolean> ConfigurableCompilationQueue = new OptionKey<>(false);
 
     // Language agnostic inlining
 

@@ -131,7 +131,7 @@ public class BackgroundCompileQueue {
             long compilerIdleDelay = runtime.getCompilerIdleDelay(callTarget);
             long keepAliveTime = compilerIdleDelay >= 0 ? compilerIdleDelay : 0;
 
-            if (callTarget.getOptionValue(PolyglotCompilerOptions.CustomQueue)) {
+            if (callTarget.getOptionValue(PolyglotCompilerOptions.ConfigurableCompilationQueue)) {
                 this.compilationQueue = new DelegatingBlockingQueue<>(new BTreeQueue<>());
             } else {
                 this.compilationQueue = new IdlingPriorityBlockingQueue<>();
