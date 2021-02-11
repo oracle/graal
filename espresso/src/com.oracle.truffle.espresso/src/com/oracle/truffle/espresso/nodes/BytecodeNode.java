@@ -680,12 +680,6 @@ public final class BytecodeNode extends EspressoMethodNode {
                 if (instrument != null) {
                     instrument.notifyStatement(frame, statementIndex, nextStatementIndex);
                     statementIndex = nextStatementIndex;
-
-                    // check for early return
-                    Object earlyReturnValue = getContext().getJDWPListener().getEarlyReturnValue();
-                    if (earlyReturnValue != null) {
-                        return notifyReturn(frame, statementIndex, exitMethodEarlyAndReturn(earlyReturnValue));
-                    }
                 }
 
                 // @formatter:off
@@ -1989,14 +1983,6 @@ public final class BytecodeNode extends EspressoMethodNode {
         return exitMethodAndReturnObject(StaticObject.NULL);
     }
 
-    private Object exitMethodEarlyAndReturn(Object result) {
-        if (Signatures.returnKind(getMethod().getParsedSignature()) == JavaKind.Void) {
-            return exitMethodAndReturn();
-        } else {
-            return result;
-        }
-    }
-
     // endregion Method return
 
     // region Arithmetic/binary operations
@@ -2538,8 +2524,10 @@ public final class BytecodeNode extends EspressoMethodNode {
         }
 
         public void notifyReturn(VirtualFrame frame, int statementIndex, Object returnValue) {
-            if (context.getJDWPListener().hasMethodBreakpoint(method, returnValue)) {
-                enterAt(frame, statementIndex);
+            if (method.hasActiveBreakpoint()) {
+                if (context.getJDWPListener().onMethodReturn(method, returnValue)) {
+                    enterAt(frame, statementIndex);
+                }
             }
         }
 
@@ -2553,14 +2541,18 @@ public final class BytecodeNode extends EspressoMethodNode {
         }
 
         public void notifyFieldModification(VirtualFrame frame, int index, Field field, StaticObject receiver, Object value) {
-            if (context.getJDWPListener().hasFieldModificationBreakpoint(field, receiver, value)) {
-                enterAt(frame, index);
+            if (field.hasActiveBreakpoint()) {
+                if (context.getJDWPListener().onFieldModification(field, receiver, value)) {
+                    enterAt(frame, index);
+                }
             }
         }
 
         public void notifyFieldAccess(VirtualFrame frame, int index, Field field, StaticObject receiver) {
-            if (context.getJDWPListener().hasFieldAccessBreakpoint(field, receiver)) {
-                enterAt(frame, index);
+            if (field.hasActiveBreakpoint()) {
+                if (context.getJDWPListener().onFieldAccess(field, receiver)) {
+                    enterAt(frame, index);
+                }
             }
         }
 

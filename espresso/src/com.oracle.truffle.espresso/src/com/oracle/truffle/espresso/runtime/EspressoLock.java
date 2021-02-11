@@ -107,6 +107,13 @@ public interface EspressoLock extends Lock {
     static EspressoLock create() {
         return new EspressoLockImpl();
     }
+
+    /**
+     * Exposes the underlying lock heldCount.
+     *
+     * @return the entry count
+     */
+    int getEntryCount();
 }
 
 final class EspressoLockImpl extends ReentrantLock implements EspressoLock {
@@ -163,5 +170,10 @@ final class EspressoLockImpl extends ReentrantLock implements EspressoLock {
     public Condition newCondition() {
         // Disable arbitrary conditions.
         throw new UnsupportedOperationException();
+    }
+
+    @Override
+    public int getEntryCount() {
+        return getHoldCount();
     }
 }

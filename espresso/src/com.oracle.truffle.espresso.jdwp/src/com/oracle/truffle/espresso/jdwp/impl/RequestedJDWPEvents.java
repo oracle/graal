@@ -109,7 +109,6 @@ public final class RequestedJDWPEvents {
                 MethodBreakpointInfo methodInfo = new MethodBreakpointInfo(filter);
                 methodInfo.addSuspendPolicy(suspendPolicy);
                 eventListener.addBreakpointRequest(filter.getRequestId(), methodInfo);
-                eventListener.increaseMethodBreakpointCount();
                 for (KlassRef klass : filter.getKlassRefPatterns()) {
                     for (MethodRef method : klass.getDeclaredMethodRefs()) {
                         method.addMethodBreakpointInfo(methodInfo);
@@ -155,7 +154,6 @@ public final class RequestedJDWPEvents {
                 fieldBreakpointInfo.getField().addFieldBreakpointInfo(fieldBreakpointInfo);
                 String location = fieldBreakpointInfo.getKlass().getNameAsString() + "." + fieldBreakpointInfo.getField().getNameAsString();
                 JDWPLogger.log("Submitting field access breakpoint: %s", JDWPLogger.LogLevel.STEPPING, location);
-                eventListener.increaseFieldBreakpointCount();
                 break;
             case FIELD_MODIFICATION:
                 fieldBreakpointInfo = (FieldBreakpointInfo) filter.getBreakpointInfo();
@@ -164,7 +162,6 @@ public final class RequestedJDWPEvents {
                 fieldBreakpointInfo.getField().addFieldBreakpointInfo(fieldBreakpointInfo);
                 location = fieldBreakpointInfo.getKlass().getNameAsString() + "." + fieldBreakpointInfo.getField().getNameAsString();
                 JDWPLogger.log("Submitting field modification breakpoint: %s", JDWPLogger.LogLevel.STEPPING, location);
-                eventListener.increaseFieldBreakpointCount();
                 break;
             case THREAD_START:
                 eventListener.addThreadStartedRequestId(packet.id, suspendPolicy);
@@ -339,7 +336,6 @@ public final class RequestedJDWPEvents {
                         for (MethodRef method : methodInfo.getMethods()) {
                             method.removeMethodBreakpointInfo(requestFilter.getRequestId());
                         }
-                        eventListener.decreaseMethodBreakpointCount();
                         break;
                     case BREAKPOINT:
                     case METHOD_ENTRY:
@@ -350,7 +346,6 @@ public final class RequestedJDWPEvents {
                     case FIELD_MODIFICATION:
                         FieldBreakpointInfo info = (FieldBreakpointInfo) requestFilter.getBreakpointInfo();
                         info.getField().removeFieldBreakpointInfo(requestFilter.getRequestId());
-                        eventListener.decreaseFieldBreakpointCount();
                         break;
                     case CLASS_PREPARE:
                         eventListener.removeClassPrepareRequest(requestFilter.getRequestId());
