@@ -85,8 +85,7 @@ local sc = (import "ci_common/sulong-common.jsonnet");
     sc.gate + $.sulong + sc.jdk8 + sc.linux_amd64 + sc.llvm6 + sc.requireGMP + sc.requireGCC + sc.gateTags(basicTags) + { name: "gate-sulong-basic_v60" },
     sc.gate + $.sulong + sc.jdk8 + sc.linux_amd64 + sc.llvm8 + sc.requireGMP + sc.requireGCC + sc.gateTags(basicTags) + { name: "gate-sulong-basic_v80" },
     sc.gate + $.sulong + sc.jdk8 + sc.linux_amd64 + sc.llvmBundled + sc.requireGMP + sc.requireGCC + sc.gateTags(basicTagsLLToolchain) + { name: "gate-sulong-basic_bundled-llvm" },
-    # FIXME: it is sufficient to only run basicTags
-    sc.gate + $.sulong + sc.jdk8 + sc.darwin_amd64 + sc.llvm4 + sc.llvm4_darwin_fix + sc.gateTags(basicTags + ",toolchain") + { name: "gate-sulong-basic_mac" },
+    sc.gate + $.sulong + sc.jdk8 + sc.darwin_amd64 + sc.llvm4 + sc.llvm4_darwin_fix + sc.gateTags(basicTags) + { name: "gate-sulong-basic_mac" },
     sc.gate + $.sulong + sc.jdk8 + sc.darwin_amd64 + sc.llvmBundled + sc.llvmBundled_darwin_fix + sc.gateTags(basicTagsLLToolchain) + { name: "gate-sulong-basic_bundled-llvm_mac" },
 
     sc.gate + $.sulong + sc.jdk8 + sc.linux_amd64 + sc.llvmBundled + sc.requireGMP + $.sulong_ruby_downstream_test + { name: "gate-sulong-ruby-downstream" },
