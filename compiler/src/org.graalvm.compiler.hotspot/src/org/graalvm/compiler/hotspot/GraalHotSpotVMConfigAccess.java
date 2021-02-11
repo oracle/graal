@@ -90,9 +90,6 @@ public class GraalHotSpotVMConfigAccess {
             case "x86_64":
                 arch = "amd64";
                 break;
-            case "sparcv9":
-                arch = "sparc";
-                break;
         }
         osArch = arch;
         assert KNOWN_ARCHITECTURES.contains(arch) : arch;
@@ -114,8 +111,8 @@ public class GraalHotSpotVMConfigAccess {
         return getProperty(name, null);
     }
 
-    public static final Set<String> KNOWN_ARCHITECTURES = new HashSet<>(Arrays.asList("amd64", "sparc", "aarch64"));
-    public static final Set<String> KNOWN_OS_NAMES = new HashSet<>(Arrays.asList("windows", "linux", "darwin", "solaris"));
+    public static final Set<String> KNOWN_ARCHITECTURES = new HashSet<>(Arrays.asList("amd64", "aarch64"));
+    public static final Set<String> KNOWN_OS_NAMES = new HashSet<>(Arrays.asList("windows", "linux", "darwin"));
 
     /**
      * Name for current OS. Will be a value in {@value #KNOWN_OS_NAMES}.

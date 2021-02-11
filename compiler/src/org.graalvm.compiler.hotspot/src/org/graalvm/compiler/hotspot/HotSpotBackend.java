@@ -416,7 +416,7 @@ public abstract class HotSpotBackend extends Backend implements FrameMap.Referen
      * @param gen the result to examine
      * @return the registers that are defined by or used as temps for any instruction in {@code lir}
      */
-    private EconomicSet<Register> gatherDestroyedCallerRegisters(HotSpotLIRGenerationResult gen) {
+    private static EconomicSet<Register> gatherDestroyedCallerRegisters(HotSpotLIRGenerationResult gen) {
         LIR lir = gen.getLIR();
         final EconomicSet<Register> preservedRegisters = EconomicSet.create(Equivalence.IDENTITY);
         final EconomicSet<Register> destroyedRegisters = EconomicSet.create(Equivalence.IDENTITY);
@@ -467,15 +467,8 @@ public abstract class HotSpotBackend extends Backend implements FrameMap.Referen
                 }
             }
         }
-        return translateToCallerRegisters(destroyedRegisters);
+        return destroyedRegisters;
     }
-
-    /**
-     * Translates a set of registers from the callee's perspective to the caller's perspective. This
-     * is needed for architectures where input/output registers are renamed during a call (e.g.
-     * register windows on SPARC). Registers which are not visible by the caller are removed.
-     */
-    protected abstract EconomicSet<Register> translateToCallerRegisters(EconomicSet<Register> calleeRegisters);
 
     /**
      * Updates a given stub with respect to the registers it destroys by
