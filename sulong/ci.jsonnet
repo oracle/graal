@@ -44,7 +44,7 @@ local sc = (import "ci_common/sulong-common.jsonnet");
     ],
   },
 
-  sulong_coverage_linux:: {
+  sulong_coverage:: {
     run: [
       ["mx", "--jacoco-whitelist-package", "com.oracle.truffle.llvm", "--jacoco-exclude-annotation", "@GeneratedBy", "gate", "--tags", "build,sulongCoverage", "--jacocout", "html"],
       # $SONAR_HOST_URL might not be set [GR-28642],
@@ -95,6 +95,6 @@ local sc = (import "ci_common/sulong-common.jsonnet");
 
     sc.gate + $.sulong + sc.jdk8 + sc.linux_amd64 + sc.llvmBundled + sc.requireGMP + $.sulong_strict_native_image + { name: "gate-sulong-strict-native-image" },
 
-    sc.weekly + $.sulong + sc.jdk8 + sc.linux_amd64 + sc.llvmBundled + sc.requireGMP + sc.requireGCC + sc.sulong_weekly_notifications + $.sulong_coverage_linux { name: "weekly-sulong-coverage" },
+    sc.weekly + $.sulong + sc.jdk8 + sc.linux_amd64 + sc.llvmBundled + sc.requireGMP + sc.requireGCC + sc.sulong_weekly_notifications + $.sulong_coverage { name: "weekly-sulong-coverage" },
   ],
 }
