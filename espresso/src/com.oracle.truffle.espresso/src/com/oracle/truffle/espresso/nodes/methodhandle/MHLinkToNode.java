@@ -153,6 +153,6 @@ public abstract class MHLinkToNode extends MethodHandleIntrinsicNode {
         assert args.length >= 1;
         StaticObject memberName = (StaticObject) args[args.length - 1];
         assert (memberName.getKlass().getType() == Symbol.Type.java_lang_invoke_MemberName);
-        return (Method) hiddenVmtarget.getHiddenObjectField(memberName);
+        return (Method) hiddenVmtarget.getHiddenObject(memberName);
     }
 }

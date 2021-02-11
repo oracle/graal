@@ -77,7 +77,7 @@ public final class ClassRegistries {
         }
 
         // Double-checked locking to attach class registry to guest instance.
-        ClassRegistry classRegistry = (ClassRegistry) context.getMeta().HIDDEN_CLASS_LOADER_REGISTRY.getHiddenObjectFieldVolatile(classLoader);
+        ClassRegistry classRegistry = (ClassRegistry) context.getMeta().HIDDEN_CLASS_LOADER_REGISTRY.getHiddenObjectVolatile(classLoader);
         if (classRegistry == null) {
             // Synchronizing on the classLoader instance would be the natural choice here, but:
             // On SubstrateVM, synchronizing on a StaticObject instance will add an extra slot/field
@@ -86,7 +86,7 @@ public final class ClassRegistries {
             // Setting the class registry happens only once, for such rare operations, no contention
             // is expected.
             synchronized (weakClassLoaderSet) {
-                classRegistry = (ClassRegistry) context.getMeta().HIDDEN_CLASS_LOADER_REGISTRY.getHiddenObjectFieldVolatile(classLoader);
+                classRegistry = (ClassRegistry) context.getMeta().HIDDEN_CLASS_LOADER_REGISTRY.getHiddenObjectVolatile(classLoader);
                 if (classRegistry == null) {
                     classRegistry = registerRegistry(classLoader);
                 }
@@ -102,7 +102,7 @@ public final class ClassRegistries {
         assert Thread.holdsLock(weakClassLoaderSet);
         ClassRegistry classRegistry;
         classRegistry = new GuestClassRegistry(context, classLoader);
-        context.getMeta().HIDDEN_CLASS_LOADER_REGISTRY.setHiddenObjectFieldVolatile(classLoader, classRegistry);
+        context.getMeta().HIDDEN_CLASS_LOADER_REGISTRY.setHiddenObjectVolatile(classLoader, classRegistry);
         // Register the class loader in the weak set.
         weakClassLoaderSet.add(classLoader);
         totalClassLoadersSet++;
@@ -270,10 +270,10 @@ public final class ClassRegistries {
 
     public void processFixupList(StaticObject javaBase) {
         for (PrimitiveKlass k : context.getMeta().PRIMITIVE_KLASSES) {
-            context.getMeta().java_lang_Class_module.setObjectField(k.mirror(), javaBase);
+            context.getMeta().java_lang_Class_module.setObject(k.mirror(), javaBase);
         }
         for (Klass k : fixupModuleList) {
-            context.getMeta().java_lang_Class_module.setObjectField(k.mirror(), javaBase);
+            context.getMeta().java_lang_Class_module.setObject(k.mirror(), javaBase);
         }
         fixupModuleList = null;
     }

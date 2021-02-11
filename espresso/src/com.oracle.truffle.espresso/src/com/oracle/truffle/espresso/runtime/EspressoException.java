@@ -48,7 +48,7 @@ public final class EspressoException extends RuntimeException implements com.ora
     }
 
     public static VM.StackTrace getFrames(StaticObject exception, Meta meta) {
-        return (VM.StackTrace) meta.HIDDEN_FRAMES.getHiddenObjectField(exception);
+        return (VM.StackTrace) meta.HIDDEN_FRAMES.getHiddenObject(exception);
     }
 
     @Override

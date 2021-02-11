@@ -108,7 +108,7 @@ abstract class IntSetFieldNode extends AbstractSetFieldNode {
 
     @Specialization(guards = "receiver.isEspressoObject()")
     void doEspresso(StaticObject receiver, int value) {
-        field.setIntField(receiver, value);
+        field.setInt(receiver, value);
     }
 
     @Specialization(guards = {"receiver.isForeignObject()"}, limit = "CACHED_LIBRARY_LIMIT")
@@ -137,7 +137,7 @@ abstract class BooleanSetFieldNode extends AbstractSetFieldNode {
 
     @Specialization(guards = "receiver.isEspressoObject()")
     void doEspresso(StaticObject receiver, boolean value) {
-        field.setBooleanField(receiver, value);
+        field.setBoolean(receiver, value);
     }
 
     @Specialization(guards = {"receiver.isForeignObject()"}, limit = "CACHED_LIBRARY_LIMIT")
@@ -166,7 +166,7 @@ abstract class CharSetFieldNode extends AbstractSetFieldNode {
 
     @Specialization(guards = "receiver.isEspressoObject()")
     void doEspresso(StaticObject receiver, char value) {
-        field.setCharField(receiver, value);
+        field.setChar(receiver, value);
     }
 
     @Specialization(guards = {"receiver.isForeignObject()"}, limit = "CACHED_LIBRARY_LIMIT")
@@ -195,7 +195,7 @@ abstract class ShortSetFieldNode extends AbstractSetFieldNode {
 
     @Specialization(guards = "receiver.isEspressoObject()")
     void doEspresso(StaticObject receiver, short value) {
-        field.setShortField(receiver, value);
+        field.setShort(receiver, value);
     }
 
     @Specialization(guards = {"receiver.isForeignObject()"}, limit = "CACHED_LIBRARY_LIMIT")
@@ -224,7 +224,7 @@ abstract class ByteSetFieldNode extends AbstractSetFieldNode {
 
     @Specialization(guards = "receiver.isEspressoObject()")
     void doEspresso(StaticObject receiver, byte value) {
-        field.setByteField(receiver, value);
+        field.setByte(receiver, value);
     }
 
     @Specialization(guards = {"receiver.isForeignObject()"}, limit = "CACHED_LIBRARY_LIMIT")
@@ -253,7 +253,7 @@ abstract class LongSetFieldNode extends AbstractSetFieldNode {
 
     @Specialization(guards = "receiver.isEspressoObject()")
     void doEspresso(StaticObject receiver, long value) {
-        field.setLongField(receiver, value);
+        field.setLong(receiver, value);
     }
 
     @Specialization(guards = {"receiver.isForeignObject()"}, limit = "CACHED_LIBRARY_LIMIT")
@@ -282,7 +282,7 @@ abstract class FloatSetFieldNode extends AbstractSetFieldNode {
 
     @Specialization(guards = "receiver.isEspressoObject()")
     void doEspresso(StaticObject receiver, float value) {
-        field.setFloatField(receiver, value);
+        field.setFloat(receiver, value);
     }
 
     @Specialization(guards = {"receiver.isForeignObject()"}, limit = "CACHED_LIBRARY_LIMIT")
@@ -311,7 +311,7 @@ abstract class DoubleSetFieldNode extends AbstractSetFieldNode {
 
     @Specialization(guards = "receiver.isEspressoObject()")
     void doEspresso(StaticObject receiver, double value) {
-        field.setDoubleField(receiver, value);
+        field.setDouble(receiver, value);
     }
 
     @Specialization(guards = {"receiver.isForeignObject()"}, limit = "CACHED_LIBRARY_LIMIT")
@@ -340,7 +340,7 @@ abstract class ObjectSetFieldNode extends AbstractSetFieldNode {
 
     @Specialization(guards = "receiver.isEspressoObject()")
     void doEspresso(StaticObject receiver, StaticObject value) {
-        field.setObjectField(receiver, value);
+        field.setObject(receiver, value);
     }
 
     @Specialization(guards = {"receiver.isForeignObject()"}, limit = "CACHED_LIBRARY_LIMIT")

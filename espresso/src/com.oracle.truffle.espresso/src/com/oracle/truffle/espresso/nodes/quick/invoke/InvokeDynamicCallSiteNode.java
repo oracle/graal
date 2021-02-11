@@ -48,7 +48,7 @@ public final class InvokeDynamicCallSiteNode extends QuickNode {
 
     public InvokeDynamicCallSiteNode(StaticObject memberName, StaticObject appendix, Symbol<Type>[] parsedSignature, Meta meta, int top, int curBCI) {
         super(top, curBCI);
-        Method target = (Method) meta.HIDDEN_VMTARGET.getHiddenObjectField(memberName);
+        Method target = (Method) meta.HIDDEN_VMTARGET.getHiddenObject(memberName);
         this.appendix = appendix;
         this.parsedSignature = parsedSignature;
         this.returnType = Signatures.returnType(parsedSignature);

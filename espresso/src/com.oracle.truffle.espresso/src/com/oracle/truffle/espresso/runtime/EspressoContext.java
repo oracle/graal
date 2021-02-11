@@ -465,10 +465,10 @@ public final class EspressoContext {
             StaticObject outOfMemoryErrorInstance = meta.java_lang_OutOfMemoryError.allocateInstance();
 
             // Preemptively set stack trace.
-            meta.HIDDEN_FRAMES.setHiddenObjectField(stackOverflowErrorInstance, VM.StackTrace.EMPTY_STACK_TRACE);
-            meta.java_lang_Throwable_backtrace.setObjectField(stackOverflowErrorInstance, stackOverflowErrorInstance);
-            meta.HIDDEN_FRAMES.setHiddenObjectField(outOfMemoryErrorInstance, VM.StackTrace.EMPTY_STACK_TRACE);
-            meta.java_lang_Throwable_backtrace.setObjectField(outOfMemoryErrorInstance, outOfMemoryErrorInstance);
+            meta.HIDDEN_FRAMES.setHiddenObject(stackOverflowErrorInstance, VM.StackTrace.EMPTY_STACK_TRACE);
+            meta.java_lang_Throwable_backtrace.setObject(stackOverflowErrorInstance, stackOverflowErrorInstance);
+            meta.HIDDEN_FRAMES.setHiddenObject(outOfMemoryErrorInstance, VM.StackTrace.EMPTY_STACK_TRACE);
+            meta.java_lang_Throwable_backtrace.setObject(outOfMemoryErrorInstance, outOfMemoryErrorInstance);
 
             this.stackOverflow = EspressoException.wrap(stackOverflowErrorInstance);
             this.outOfMemory = EspressoException.wrap(outOfMemoryErrorInstance);

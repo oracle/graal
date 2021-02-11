@@ -365,7 +365,7 @@ public final class InterpreterToVM implements ContextAccess {
             Target_java_lang_Thread.fromRunnable(thread, meta, Target_java_lang_Thread.State.BLOCKED);
             if (context.EnableManagement) {
                 // Locks bookkeeping.
-                meta.HIDDEN_THREAD_BLOCKED_OBJECT.setHiddenObjectField(thread, obj);
+                meta.HIDDEN_THREAD_BLOCKED_OBJECT.setHiddenObject(thread, obj);
                 Field blockedCount = meta.HIDDEN_THREAD_BLOCKED_COUNT;
                 Target_java_lang_Thread.incrementThreadCounter(thread, blockedCount);
             }
@@ -373,7 +373,7 @@ public final class InterpreterToVM implements ContextAccess {
             monitorUnsafeEnter(lock);
             context.getJDWPListener().onContendedMonitorEntered(obj);
             if (context.EnableManagement) {
-                meta.HIDDEN_THREAD_BLOCKED_OBJECT.setHiddenObjectField(thread, null);
+                meta.HIDDEN_THREAD_BLOCKED_OBJECT.setHiddenObject(thread, null);
             }
             Target_java_lang_Thread.toRunnable(thread, meta, Target_java_lang_Thread.State.RUNNABLE);
         }
@@ -395,92 +395,92 @@ public final class InterpreterToVM implements ContextAccess {
 
     public static boolean getFieldBoolean(StaticObject obj, Field field) {
         assert field.getKind() == JavaKind.Boolean && field.getDeclaringKlass().isAssignableFrom(obj.getKlass());
-        return field.getBooleanField(obj);
+        return field.getBoolean(obj);
     }
 
     public static int getFieldInt(StaticObject obj, Field field) {
         assert field.getKind() == JavaKind.Int && field.getDeclaringKlass().isAssignableFrom(obj.getKlass());
-        return field.getIntField(obj);
+        return field.getInt(obj);
     }
 
     public static long getFieldLong(StaticObject obj, Field field) {
         assert field.getKind() == JavaKind.Long && field.getDeclaringKlass().isAssignableFrom(obj.getKlass());
-        return field.getLongField(obj);
+        return field.getLong(obj);
     }
 
     public static byte getFieldByte(StaticObject obj, Field field) {
         assert field.getKind() == JavaKind.Byte && field.getDeclaringKlass().isAssignableFrom(obj.getKlass());
-        return field.getByteField(obj);
+        return field.getByte(obj);
     }
 
     public static short getFieldShort(StaticObject obj, Field field) {
         assert field.getKind() == JavaKind.Short && field.getDeclaringKlass().isAssignableFrom(obj.getKlass());
-        return field.getShortField(obj);
+        return field.getShort(obj);
     }
 
     public static float getFieldFloat(StaticObject obj, Field field) {
         assert field.getKind() == JavaKind.Float && field.getDeclaringKlass().isAssignableFrom(obj.getKlass());
-        return field.getFloatField(obj);
+        return field.getFloat(obj);
     }
 
     public static double getFieldDouble(StaticObject obj, Field field) {
         assert field.getKind() == JavaKind.Double && field.getDeclaringKlass().isAssignableFrom(obj.getKlass());
-        return field.getDoubleField(obj);
+        return field.getDouble(obj);
     }
 
     public static StaticObject getFieldObject(StaticObject obj, Field field) {
         assert field.getKind() == JavaKind.Object && field.getDeclaringKlass().isAssignableFrom(obj.getKlass());
-        return field.getObjectField(obj);
+        return field.getObject(obj);
     }
 
     public static char getFieldChar(StaticObject obj, Field field) {
         assert field.getKind() == JavaKind.Char && field.getDeclaringKlass().isAssignableFrom(obj.getKlass());
-        return field.getCharField(obj);
+        return field.getChar(obj);
     }
 
     public static void setFieldBoolean(boolean value, StaticObject obj, Field field) {
         assert field.getKind() == JavaKind.Boolean && field.getDeclaringKlass().isAssignableFrom(obj.getKlass());
-        field.setBooleanField(obj, value);
+        field.setBoolean(obj, value);
     }
 
     public static void setFieldByte(byte value, StaticObject obj, Field field) {
         assert field.getKind() == JavaKind.Byte && field.getDeclaringKlass().isAssignableFrom(obj.getKlass());
-        field.setByteField(obj, value);
+        field.setByte(obj, value);
     }
 
     public static void setFieldChar(char value, StaticObject obj, Field field) {
         assert field.getKind() == JavaKind.Char && field.getDeclaringKlass().isAssignableFrom(obj.getKlass());
-        field.setCharField(obj, value);
+        field.setChar(obj, value);
     }
 
     public static void setFieldShort(short value, StaticObject obj, Field field) {
         assert field.getKind() == JavaKind.Short && field.getDeclaringKlass().isAssignableFrom(obj.getKlass());
-        field.setShortField(obj, value);
+        field.setShort(obj, value);
     }
 
     public static void setFieldInt(int value, StaticObject obj, Field field) {
         assert field.getKind() == JavaKind.Int && field.getDeclaringKlass().isAssignableFrom(obj.getKlass());
-        field.setIntField(obj, value);
+        field.setInt(obj, value);
     }
 
     public static void setFieldLong(long value, StaticObject obj, Field field) {
         assert field.getKind() == JavaKind.Long && field.getDeclaringKlass().isAssignableFrom(obj.getKlass());
-        field.setLongField(obj, value);
+        field.setLong(obj, value);
     }
 
     public static void setFieldFloat(float value, StaticObject obj, Field field) {
         assert field.getKind() == JavaKind.Float && field.getDeclaringKlass().isAssignableFrom(obj.getKlass());
-        field.setFloatField(obj, value);
+        field.setFloat(obj, value);
     }
 
     public static void setFieldDouble(double value, StaticObject obj, Field field) {
         assert field.getKind() == JavaKind.Double && field.getDeclaringKlass().isAssignableFrom(obj.getKlass());
-        field.setDoubleField(obj, value);
+        field.setDouble(obj, value);
     }
 
     public static void setFieldObject(StaticObject value, StaticObject obj, Field field) {
         assert field.getKind() == JavaKind.Object && field.getDeclaringKlass().isAssignableFrom(obj.getKlass());
-        field.setObjectField(obj, value);
+        field.setObject(obj, value);
     }
 
     public static StaticObject newReferenceArray(Klass componentType, int length) {
@@ -636,15 +636,15 @@ public final class InterpreterToVM implements ContextAccess {
     @SuppressWarnings("unused")
     public static StaticObject fillInStackTrace(@Host(Throwable.class) StaticObject throwable, Meta meta) {
         // Inlined calls to help StackOverflows.
-        VM.StackTrace frames = (VM.StackTrace) meta.HIDDEN_FRAMES.getHiddenObjectField(throwable);
+        VM.StackTrace frames = (VM.StackTrace) meta.HIDDEN_FRAMES.getHiddenObject(throwable);
         if (frames != null) {
             return throwable;
         }
         EspressoException e = EspressoException.wrap(throwable);
         List<TruffleStackTraceElement> trace = TruffleStackTrace.getStackTrace(e);
         if (trace == null) {
-            meta.HIDDEN_FRAMES.setHiddenObjectField(throwable, VM.StackTrace.EMPTY_STACK_TRACE);
-            meta.java_lang_Throwable_backtrace.setObjectField(throwable, throwable);
+            meta.HIDDEN_FRAMES.setHiddenObject(throwable, VM.StackTrace.EMPTY_STACK_TRACE);
+            meta.java_lang_Throwable_backtrace.setObject(throwable, throwable);
             return throwable;
         }
         int bci = -1;
@@ -677,8 +677,8 @@ public final class InterpreterToVM implements ContextAccess {
                 }
             }
         }
-        meta.HIDDEN_FRAMES.setHiddenObjectField(throwable, frames);
-        meta.java_lang_Throwable_backtrace.setObjectField(throwable, throwable);
+        meta.HIDDEN_FRAMES.setHiddenObject(throwable, frames);
+        meta.java_lang_Throwable_backtrace.setObject(throwable, throwable);
         return throwable;
     }
 
@@ -721,10 +721,10 @@ public final class InterpreterToVM implements ContextAccess {
                 return null;
             }
         });
-        meta.HIDDEN_FRAMES.setHiddenObjectField(throwable, frames);
-        meta.java_lang_Throwable_backtrace.setObjectField(throwable, throwable);
+        meta.HIDDEN_FRAMES.setHiddenObject(throwable, frames);
+        meta.java_lang_Throwable_backtrace.setObject(throwable, throwable);
         if (meta.getJavaVersion().java9OrLater()) {
-            meta.java_lang_Throwable_depth.setIntField(throwable, frames.size);
+            meta.java_lang_Throwable_depth.setInt(throwable, frames.size);
         }
         return throwable;
     }

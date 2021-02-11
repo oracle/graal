@@ -104,19 +104,19 @@ public abstract class StringConversion {
     }
 
     private static char[] extractGuestChars8(Meta meta, StaticObject str) {
-        return meta.java_lang_String_value.getObjectField(str).unwrap();
+        return meta.java_lang_String_value.getObject(str).unwrap();
     }
 
     private static byte[] extractGuestBytes11(Meta meta, StaticObject str) {
-        return meta.java_lang_String_value.getObjectField(str).unwrap();
+        return meta.java_lang_String_value.getObject(str).unwrap();
     }
 
     private static int extractGuestHash(Meta meta, StaticObject str) {
-        return meta.java_lang_String_hash.getIntField(str);
+        return meta.java_lang_String_hash.getInt(str);
     }
 
     private static byte extractGuestCoder(Meta meta, StaticObject str) {
-        return meta.java_lang_String_coder.getByteField(str);
+        return meta.java_lang_String_coder.getByte(str);
     }
 
     private static char[] extractHostChars8(String str) {
@@ -138,7 +138,7 @@ public abstract class StringConversion {
     private static StaticObject produceGuestString8(Meta meta, char[] value, int hash) {
         StaticObject guestString = meta.java_lang_String.allocateInstance();
         meta.java_lang_String_hash.set(guestString, hash);
-        meta.java_lang_String_value.setObjectFieldVolatile(guestString, StaticObject.wrap(value, meta));
+        meta.java_lang_String_value.setObjectVolatile(guestString, StaticObject.wrap(value, meta));
         return guestString;
     }
 
@@ -146,7 +146,7 @@ public abstract class StringConversion {
         StaticObject guestString = meta.java_lang_String.allocateInstance();
         meta.java_lang_String_coder.set(guestString, coder);
         meta.java_lang_String_hash.set(guestString, hash);
-        meta.java_lang_String_value.setObjectFieldVolatile(guestString, StaticObject.wrap(value, meta));
+        meta.java_lang_String_value.setObjectVolatile(guestString, StaticObject.wrap(value, meta));
         return guestString;
     }
 
@@ -246,7 +246,7 @@ public abstract class StringConversion {
             char[] chars = str.toCharArray();
             byte[] bytes = null;
             byte coder = StringUtil.LATIN1;
-            if (meta.java_lang_String_COMPACT_STRINGS.getBooleanField(meta.java_lang_String.getStatics())) {
+            if (meta.java_lang_String_COMPACT_STRINGS.getBoolean(meta.java_lang_String.getStatics())) {
                 bytes = StringUtil.compress(chars);
             }
             if (bytes == null) {

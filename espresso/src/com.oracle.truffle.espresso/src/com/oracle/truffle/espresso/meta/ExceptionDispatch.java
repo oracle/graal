@@ -73,10 +73,10 @@ public final class ExceptionDispatch implements ContextAccess {
         InterpreterToVM.fillInStackTrace(ex, false, meta);
 
         if (message != null) {
-            meta.java_lang_Throwable_detailMessage.setObjectField(ex, message);
+            meta.java_lang_Throwable_detailMessage.setObject(ex, message);
         }
         if (cause != null) {
-            meta.java_lang_Throwable_cause.setObjectField(ex, cause);
+            meta.java_lang_Throwable_cause.setObject(ex, cause);
         }
         return ex;
     }

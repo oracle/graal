@@ -74,9 +74,9 @@ public abstract class MHInvokeBasicNode extends MethodHandleIntrinsicNode {
     @Override
     public Object call(Object[] args) {
         StaticObject mh = (StaticObject) args[0];
-        StaticObject lform = form.getObjectField(mh);
-        StaticObject mname = vmentry.getObjectField(lform);
-        Method target = (Method) hiddenVmtarget.getHiddenObjectField(mname);
+        StaticObject lform = form.getObject(mh);
+        StaticObject mname = vmentry.getObject(lform);
+        Method target = (Method) hiddenVmtarget.getHiddenObject(mname);
         return executeCall(args, target);
     }
 }

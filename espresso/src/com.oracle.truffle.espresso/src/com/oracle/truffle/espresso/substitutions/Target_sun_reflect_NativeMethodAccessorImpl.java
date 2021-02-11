@@ -225,7 +225,7 @@ public final class Target_sun_reflect_NativeMethodAccessorImpl {
 
         Method reflectedMethod = null;
         while (reflectedMethod == null) {
-            reflectedMethod = (Method) meta.HIDDEN_METHOD_KEY.getHiddenObjectField(curMethod);
+            reflectedMethod = (Method) meta.HIDDEN_METHOD_KEY.getHiddenObject(curMethod);
             if (reflectedMethod == null) {
                 curMethod = (StaticObject) meta.java_lang_reflect_Method_root.get(curMethod);
             }
