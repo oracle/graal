@@ -245,22 +245,22 @@ public final class Field extends Member<Type> implements FieldRef {
 
     public void setObject(StaticObject obj, Object value) {
         assert !(value instanceof StaticObject) ||
-                (StaticObject.isNull((StaticObject) value)) ||
-                !isHidden() ||
-                obj.getKlass().getMeta().resolveSymbolOrFail(getType(),
-                        obj.getKlass().getDefiningClassLoader(), obj.getKlass().protectionDomain()) //
-                        .isAssignableFrom(((StaticObject) value).getKlass());
+                        (StaticObject.isNull((StaticObject) value)) ||
+                        !isHidden() ||
+                        obj.getKlass().getMeta().resolveSymbolOrFail(getType(),
+                                        obj.getKlass().getDefiningClassLoader(), obj.getKlass().protectionDomain()) //
+                                        .isAssignableFrom(((StaticObject) value).getKlass());
         setObjectHelper(obj, value);
     }
 
     @CompilerDirectives.TruffleBoundary(allowInlining = true)
     public void setObjectVolatile(StaticObject obj, Object value) {
         assert !(value instanceof StaticObject) ||
-                (StaticObject.isNull((StaticObject) value)) ||
-                !isHidden() ||
-                obj.getKlass().getMeta().resolveSymbolOrFail(getType(),
-                        obj.getKlass().getDefiningClassLoader(), obj.getKlass().protectionDomain()) //
-                        .isAssignableFrom(((StaticObject) value).getKlass());
+                        (StaticObject.isNull((StaticObject) value)) ||
+                        !isHidden() ||
+                        obj.getKlass().getMeta().resolveSymbolOrFail(getType(),
+                                        obj.getKlass().getDefiningClassLoader(), obj.getKlass().protectionDomain()) //
+                                        .isAssignableFrom(((StaticObject) value).getKlass());
         setObjectVolatileHelper(obj, value);
     }
 
