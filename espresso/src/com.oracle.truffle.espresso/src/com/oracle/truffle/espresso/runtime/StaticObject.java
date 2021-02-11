@@ -1925,9 +1925,4 @@ public final class StaticObject implements TruffleObject {
     public boolean isArray() {
         return !isNull(this) && getKlass().isArray();
     }
-
-    public StaticObject getAndSetObject(Field field, StaticObject value) {
-        checkNotForeign();
-        return (StaticObject) UNSAFE.getAndSetObject(fields, field.getOffset(), value);
-    }
 }

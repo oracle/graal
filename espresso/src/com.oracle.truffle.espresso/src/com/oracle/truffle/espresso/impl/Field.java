@@ -190,10 +190,6 @@ public final class Field extends Member<Type> implements FieldRef {
         return target;
     }
 
-    public StaticObject getAndSetObject(StaticObject self, StaticObject value) {
-        return self.getAndSetObject(this, value);
-    }
-
     public void checkLoadingConstraints(StaticObject loader1, StaticObject loader2) {
         getDeclaringKlass().getContext().getRegistries().checkLoadingConstraint(getType(), loader1, loader2);
     }
@@ -261,6 +257,11 @@ public final class Field extends Member<Type> implements FieldRef {
     @CompilerDirectives.TruffleBoundary(allowInlining = true)
     public void setObjectVolatile(StaticObject obj, Object value) {
         setObjectVolatileHelper(obj, value);
+    }
+
+    public StaticObject getAndSetObject(StaticObject obj, StaticObject value) {
+        obj.checkNotForeign();
+        return (StaticObject) UNSAFE.getAndSetObject(obj.getObjectFieldStorage(), getOffset(), value);
     }
 
     public boolean compareAndSwapObject(StaticObject obj, Object before, Object after) {
