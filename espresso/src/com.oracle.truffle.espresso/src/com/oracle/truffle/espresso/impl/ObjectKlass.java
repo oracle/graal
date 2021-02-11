@@ -33,6 +33,7 @@ import java.lang.ref.WeakReference;
 import java.lang.reflect.Modifier;
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.Collections;
 import java.util.LinkedList;
 import java.util.List;
 import java.util.Map;
@@ -214,16 +215,17 @@ public final class ObjectKlass extends Klass {
         // We only build subtypes model iff jdwp is enabled
         if (getContext().JDWPOptions != null) {
             if (subTypes == null) {
-                subTypes = initSubTypes();
+                synchronized (this) {
+                    // double-checked locking
+                    if (subTypes == null) {
+                        subTypes = new ArrayList<>(1);
+                    }
+                }
             }
             synchronized (subTypes) {
                 subTypes.add(new WeakReference<>(objectKlass));
             }
         }
-    }
-
-    private synchronized ArrayList<WeakReference<ObjectKlass>> initSubTypes() {
-        return new ArrayList<>(1);
     }
 
     private boolean verifyTables() {
@@ -1265,9 +1267,9 @@ public final class ObjectKlass extends Klass {
     }
 
     private List<ObjectKlass> getSubTypes() {
-        synchronized (subTypes) {
+        if (subTypes != null) {
             List<ObjectKlass> result = new ArrayList<>();
-            if (subTypes != null) {
+            synchronized (subTypes) {
                 for (WeakReference<ObjectKlass> subType : subTypes) {
                     ObjectKlass sub = subType.get();
                     if (sub != null) {
@@ -1278,6 +1280,7 @@ public final class ObjectKlass extends Klass {
             }
             return result;
         }
+        return Collections.emptyList();
     }
 
     private static boolean isVirtual(ParserMethod m) {
