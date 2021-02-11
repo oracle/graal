@@ -30,7 +30,19 @@ import com.oracle.truffle.espresso.runtime.StaticObject;
 @EspressoSubstitutions
 public class Target_sun_launcher_LauncherHelper {
     private static final String helpMessage = "Additional Java-on-Truffle commands:\n" +
-                    "";
+                    "  --polyglot                                   Run with all other guest languages accessible.\n" +
+                    "  --native                                     Run using the native launcher with limited access to Java libraries (default).\n" +
+                    "  --jvm                                        Run on the Java Virtual Machine with access to Java libraries (Unsupported).\n" +
+                    "  --vm.[option]                                Pass options to the host VM. To see available options, use '--help:vm'.\n" +
+                    "  --log.file=<String>                          Redirect guest languages logging into a given file.\n" +
+                    "  --log.[logger].level=<String>                Set language log level to OFF, SEVERE, WARNING, INFO, CONFIG, FINE, FINER, FINEST or ALL.\n" +
+                    "  --version:graalvm                            Print GraalVM version information and exit.\n" +
+                    "  --show-version:graalvm                       Print GraalVM version information and continue execution.\n" +
+                    "  --help:vm                                    Print options for the host VM.\n" +
+                    "  --help:languages                             Print options for all installed languages.\n" +
+                    "  --help:tools                                 Print options for all installed tools.\n" +
+                    "  --help:expert                                Print additional options for experts.\n" +
+                    "  --help:internal                              Print internal options for debugging language implementations and tools.";
 
     @Substitution
     public static void printHelpMessage(boolean printToStderr,
