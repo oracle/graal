@@ -507,7 +507,7 @@ public final class LibGraalFeature implements com.oracle.svm.core.graal.GraalFea
         for (List<?> list : services.values()) {
             list.removeIf(o -> {
                 String name = o.getClass().getName();
-                if (name.contains(".aarch64.") || name.contains(".sparc.") || name.contains(".amd64.")) {
+                if (name.contains(".aarch64.") || name.contains(".amd64.")) {
                     return !name.contains(archPackage);
                 }
                 return false;

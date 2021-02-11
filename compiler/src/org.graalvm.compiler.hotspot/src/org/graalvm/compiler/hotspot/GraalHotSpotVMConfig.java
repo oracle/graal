@@ -490,11 +490,6 @@ public class GraalHotSpotVMConfig extends GraalHotSpotVMConfigAccess {
         return javaThreadAnchorOffset + getFieldOffset("JavaFrameAnchor::_last_Java_fp", Integer.class, "intptr_t*");
     }
 
-    public int threadJavaFrameAnchorFlagsOffset() {
-        assert osArch.equals("sparc");
-        return javaThreadAnchorOffset + getFieldOffset("JavaFrameAnchor::_flags", Integer.class, "int");
-    }
-
     public final int runtimeCallStackSize = getConstant("frame::arg_reg_save_area_bytes", Integer.class, 0, osArch.equals("amd64"));
     public final int frameInterpreterFrameSenderSpOffset = getConstant("frame::interpreter_frame_sender_sp_offset", Integer.class, 0, osArch.equals("amd64"));
     public final int frameInterpreterFrameLastSpOffset = getConstant("frame::interpreter_frame_last_sp_offset", Integer.class, 0, osArch.equals("amd64"));
