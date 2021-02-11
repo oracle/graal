@@ -243,7 +243,7 @@ public final class NativeImageHeap implements ImageHeap {
          * fields manually.
          */
         for (HostedField field : getUniverse().getFields()) {
-            if (Modifier.isStatic(field.getModifiers()) && field.hasLocation() && field.getType().getStorageKind() == JavaKind.Object) {
+            if (Modifier.isStatic(field.getModifiers()) && field.hasLocation() && field.getType().getStorageKind() == JavaKind.Object && field.isInImageHeap()) {
                 assert field.isWritten() || MaterializedConstantFields.singleton().contains(field.wrapped);
                 addObject(readObjectField(field, null), false, field);
             }
