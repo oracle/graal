@@ -295,9 +295,12 @@ final class Target_Unsafe_Core {
     @TargetElement(onlyWith = {JDK11OrLater.class, JDK11OrEarlier.class})
     private native int addressSize0();
 
-    @Delete
+    @Substitute
+    @SuppressWarnings("unused")
     @TargetElement(onlyWith = JDK11OrLater.class)
-    private native Class<?> defineClass0(String name, byte[] b, int off, int len, ClassLoader loader, ProtectionDomain protectionDomain);
+    private Class<?> defineClass0(String name, byte[] b, int off, int len, ClassLoader loader, ProtectionDomain protectionDomain) {
+        throw VMError.unsupportedFeature("Target_Unsafe_Core.defineClass0(String, byte[], int, int, ClassLoader, ProtectionDomain)");
+    }
 
     @Delete
     @TargetElement(onlyWith = JDK11OrLater.class)
@@ -381,17 +384,29 @@ final class Target_jdk_internal_perf_Perf {
     @Delete
     private native void detach(ByteBuffer bb);
 
-    @Delete
-    private native ByteBuffer createLong(String name, int variability, int units, long value);
+    @Substitute
+    @SuppressWarnings({"unused", "static-method"})
+    private ByteBuffer createLong(String name, int variability, int units, long value) {
+        throw VMError.unsupportedFeature("Target_jdk_internal_perf_Perf.createLong(String, int, int, long)");
+    }
 
-    @Delete
-    private native ByteBuffer createByteArray(String name, int variability, int units, byte[] value, int maxLength);
+    @Substitute
+    @SuppressWarnings({"unused", "static-method"})
+    private ByteBuffer createByteArray(String name, int variability, int units, byte[] value, int maxLength) {
+        throw VMError.unsupportedFeature("Target_jdk_internal_perf_Perf.createByteArray(String, int, int, byte[], int)");
+    }
 
-    @Delete
-    private native long highResCounter();
+    @Substitute
+    @SuppressWarnings({"unused", "static-method"})
+    private long highResCounter() {
+        throw VMError.unsupportedFeature("Target_jdk_internal_perf_Perf.highResCounter()");
+    }
 
-    @Delete
-    private native long highResFrequency();
+    @Substitute
+    @SuppressWarnings({"unused", "static-method"})
+    private long highResFrequency() {
+        throw VMError.unsupportedFeature("Target_jdk_internal_perf_Perf.highResFrequency()");
+    }
 
     @Delete
     private static native void registerNatives();
