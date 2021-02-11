@@ -85,6 +85,11 @@ public final class FunctionDeclaration extends FunctionSymbol implements Constan
     }
 
     @Override
+    public boolean isExternalWeak() {
+        return getLinkage() == Linkage.EXTERN_WEAK;
+    }
+
+    @Override
     public LLVMExpressionNode createNode(LLVMParserRuntime runtime, DataLayout dataLayout, GetStackSpaceFactory stackFactory) {
         LLVMFunction value = runtime.lookupFunction(getName());
         return CommonNodeFactory.createLiteral(value, getType());

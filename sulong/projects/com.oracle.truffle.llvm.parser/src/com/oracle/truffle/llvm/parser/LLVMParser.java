@@ -110,7 +110,8 @@ public final class LLVMParser {
     private void defineGlobal(GlobalVariable global) {
         assert !global.isExternal();
         // handle the file scope
-        LLVMGlobal globalSymbol = LLVMGlobal.create(global.getName(), global.getType(), global.getSourceSymbol(), global.isReadOnly(), global.getIndex(), runtime.getBitcodeID(), global.isExported());
+        LLVMGlobal globalSymbol = LLVMGlobal.create(global.getName(), global.getType(), global.getSourceSymbol(), global.isReadOnly(), global.getIndex(), runtime.getBitcodeID(), global.isExported(),
+                        global.isExternalWeak());
         runtime.getFileScope().register(globalSymbol);
     }
 
@@ -122,7 +123,7 @@ public final class LLVMParser {
                         model.getFunctionProcessor(), dataLayout);
         Function function = new LazyLLVMIRFunction(lazyConverter);
         LLVMFunction llvmFunction = LLVMFunction.create(functionSymbol.getName(), function, functionSymbol.getType(), runtime.getBitcodeID(), functionSymbol.getIndex(),
-                        functionDefinition.isExported(), runtime.getFile().getPath());
+                        functionDefinition.isExported(), runtime.getFile().getPath(), functionDefinition.isExternalWeak());
         lazyConverter.setRootFunction(llvmFunction);
         runtime.getFileScope().register(llvmFunction);
         final boolean cxxInterop = LLVMLanguage.getContext().getEnv().getOptions().get(SulongEngineOption.CXX_INTEROP);

@@ -94,4 +94,6 @@ public abstract class GlobalSymbol implements ValueSymbol {
 
     public abstract boolean isExternal();
 
+    public abstract boolean isExternalWeak();
+
 }

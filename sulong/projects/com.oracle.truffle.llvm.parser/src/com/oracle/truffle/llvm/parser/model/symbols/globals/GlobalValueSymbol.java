@@ -133,4 +133,9 @@ public abstract class GlobalValueSymbol extends GlobalSymbol implements Constant
     public boolean isExternal() {
         return getInitialiser() == 0 && isExported();
     }
+
+    @Override
+    public boolean isExternalWeak() {
+        return getLinkage() == Linkage.EXTERN_WEAK;
+    }
 }

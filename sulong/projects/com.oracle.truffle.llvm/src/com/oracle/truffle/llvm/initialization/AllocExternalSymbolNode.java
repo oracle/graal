@@ -197,6 +197,16 @@ public abstract class AllocExternalSymbolNode extends LLVMNode {
                     super(symbol);
                 }
 
+                @Specialization(guards = {"localScope.get(symbol.getName()) == null", "globalScope.get(symbol.getName()) == null",
+                                "symbol.isGlobalVariable()", "symbol.isExternalWeak()"})
+                LLVMPointer allocateExternalWeakGlobal(@SuppressWarnings("unused") LLVMLocalScope localScope,
+                                @SuppressWarnings("unused") LLVMScope globalScope,
+                                @SuppressWarnings("unused") LLVMIntrinsicProvider intrinsicProvider,
+                                @SuppressWarnings("unused") NativeContextExtension nativeContextExtension,
+                                @SuppressWarnings("unused") LLVMContext context) {
+                    return LLVMNativePointer.createNull();
+                }
+
                 @TruffleBoundary
                 @Specialization(guards = {"localScope.get(symbol.getName()) == null", "globalScope.get(symbol.getName()) == null",
                                 "!intrinsicProvider.isIntrinsified(symbol.getName())", "nativeContextExtension != null",
@@ -227,6 +237,16 @@ public abstract class AllocExternalSymbolNode extends LLVMNode {
                     super(symbol);
                     this.functionCode = functionCode;
                     this.nodeFactory = nodeFactory;
+                }
+
+                @Specialization(guards = {"localScope.get(symbol.getName()) == null", "globalScope.get(symbol.getName()) == null",
+                                "symbol.isFunction()", "symbol.isExternalWeak()"})
+                LLVMPointer allocateExternalWeakFunction(@SuppressWarnings("unused") LLVMLocalScope localScope,
+                                @SuppressWarnings("unused") LLVMScope globalScope,
+                                @SuppressWarnings("unused") LLVMIntrinsicProvider intrinsicProvider,
+                                @SuppressWarnings("unused") NativeContextExtension nativeContextExtension,
+                                @SuppressWarnings("unused") LLVMContext context) {
+                    return LLVMNativePointer.createNull();
                 }
 
                 @TruffleBoundary

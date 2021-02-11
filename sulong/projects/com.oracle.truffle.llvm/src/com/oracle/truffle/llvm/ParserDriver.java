@@ -312,7 +312,7 @@ final class ParserDriver {
                             String.format("The symbol %s could not be imported because the symbol %s was not found in library %s", external.getName(), originalName, lib));
         }
         LLVMFunction newFunction = LLVMFunction.create(name, originalSymbol.getFunction(), originalSymbol.getType(),
-                        parserResult.getRuntime().getBitcodeID(), external.getIndex(), external.isExported(), parserResult.getRuntime().getFile().getPath());
+                        parserResult.getRuntime().getBitcodeID(), external.getIndex(), external.isExported(), parserResult.getRuntime().getFile().getPath(), external.isExternalWeak());
         LLVMScope fileScope = parserResult.getRuntime().getFileScope();
         fileScope.register(newFunction);
         it.remove();
@@ -485,14 +485,14 @@ final class ParserDriver {
         for (FunctionSymbol function : parserResult.getExternalFunctions()) {
             if (!fileScope.contains(function.getName())) {
                 fileScope.register(LLVMFunction.create(function.getName(), new LLVMFunctionCode.UnresolvedFunction(), function.getType(), parserResult.getRuntime().getBitcodeID(),
-                                function.getIndex(), false, parserResult.getRuntime().getFile().getPath()));
+                                function.getIndex(), false, parserResult.getRuntime().getFile().getPath(), function.isExternalWeak()));
             }
         }
         for (GlobalVariable global : parserResult.getExternalGlobals()) {
             if (!fileScope.contains(global.getName())) {
                 fileScope.register(
                                 LLVMGlobal.create(global.getName(), global.getType(), global.getSourceSymbol(), global.isReadOnly(), global.getIndex(), parserResult.getRuntime().getBitcodeID(),
-                                                false));
+                                                false, global.isExternalWeak()));
             }
         }
     }
