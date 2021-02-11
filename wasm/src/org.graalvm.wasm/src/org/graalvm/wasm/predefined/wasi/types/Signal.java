@@ -142,6 +142,16 @@ public enum Signal {
     Pwr,
 
     /** 30: Bad system call. Action: Terminates the process. */
-    Sys
+    Sys;
+
+    /** Converts enum item to primitive. */
+    public byte toValue() {
+        return (byte) this.ordinal();
+    }
+
+    /** Converts primitive to enum item. */
+    public static Signal fromValue(byte value) {
+        return Signal.values()[value];
+    }
 
 }

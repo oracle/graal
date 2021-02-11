@@ -76,6 +76,8 @@ class DirectoryFd extends Fd {
     @Override
     public Errno pathOpen(Node node, WasmMemory memory, int dirFlags, int pathAddress, int pathLength, short childOflags, long childFsRightsBase, long childFsRightsInheriting, short childFdFlags,
                     int fdAddress) {
+        // Check that the rights of the newly created fd are both a subset of fsRightsBase and
+        // fsRightsInheriting.
         if (!isSet(fsRightsBase, Rights.PathOpen) || !isSubsetOf(childFsRightsBase, fsRightsBase) || !isSubsetOf(childFsRightsBase, fsRightsInheriting)) {
             return Errno.Notcapable;
         }

@@ -62,6 +62,16 @@ public enum Clockid {
     ProcessCputimeId,
 
     /** 3: The CPU-time clock associated with the current thread. */
-    ThreadCputimeId
+    ThreadCputimeId;
+
+    /** Converts enum item to primitive. */
+    public int toValue() {
+        return this.ordinal();
+    }
+
+    /** Converts primitive to enum item. */
+    public static Clockid fromValue(int value) {
+        return Clockid.values()[value];
+    }
 
 }

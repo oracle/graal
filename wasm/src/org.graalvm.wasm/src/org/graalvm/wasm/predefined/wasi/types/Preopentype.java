@@ -49,6 +49,16 @@ package org.graalvm.wasm.predefined.wasi.types;
 public enum Preopentype {
 
     /** 0: A pre-opened directory. */
-    Dir
+    Dir;
+
+    /** Converts enum item to primitive. */
+    public byte toValue() {
+        return (byte) this.ordinal();
+    }
+
+    /** Converts primitive to enum item. */
+    public static Preopentype fromValue(byte value) {
+        return Preopentype.values()[value];
+    }
 
 }

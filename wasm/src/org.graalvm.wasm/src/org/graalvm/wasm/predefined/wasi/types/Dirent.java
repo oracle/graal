@@ -45,19 +45,57 @@
 
 package org.graalvm.wasm.predefined.wasi.types;
 
-/** Open flags used by {@code path_open}. */
-public enum Oflags {
+import com.oracle.truffle.api.nodes.Node;
+import org.graalvm.wasm.memory.WasmMemory;
 
-    /** 0: Create file if it does not exist. */
-    Creat,
+/** A directory entry. */
+public final class Dirent {
 
-    /** 1: Fail if not a directory. */
-    Directory,
+    /** Static methods only; don't let anyone instantiate this class. */
+    private Dirent() {
+    }
 
-    /** 2: Fail if file already exists. */
-    Excl,
+    /** Size of this structure, in bytes. */
+    public static int BYTES = 24;
 
-    /** 3: Truncate file to size 0. */
-    Trunc;
+    /** Reads the offset of the next directory entry stored in this directory. */
+    public static long readDNext(Node node, WasmMemory memory, int address) {
+        return memory.load_i64(node, address + 0);
+    }
+
+    /** Writes the offset of the next directory entry stored in this directory. */
+    public static void writeDNext(Node node, WasmMemory memory, int address, long value) {
+        memory.store_i64(node, address + 0, value);
+    }
+
+    /** Reads the serial number of the file referred to by this directory entry. */
+    public static long readDIno(Node node, WasmMemory memory, int address) {
+        return memory.load_i64(node, address + 8);
+    }
+
+    /** Writes the serial number of the file referred to by this directory entry. */
+    public static void writeDIno(Node node, WasmMemory memory, int address, long value) {
+        memory.store_i64(node, address + 8, value);
+    }
+
+    /** Reads the length of the name of the directory entry. */
+    public static int readDNamlen(Node node, WasmMemory memory, int address) {
+        return memory.load_i32(node, address + 16);
+    }
+
+    /** Writes the length of the name of the directory entry. */
+    public static void writeDNamlen(Node node, WasmMemory memory, int address, int value) {
+        memory.store_i32(node, address + 16, value);
+    }
+
+    /** Reads the type of the file referred to by this directory entry. */
+    public static Filetype readDType(Node node, WasmMemory memory, int address) {
+        return Filetype.fromValue((byte) memory.load_i32_8u(node, address + 20));
+    }
+
+    /** Writes the type of the file referred to by this directory entry. */
+    public static void writeDType(Node node, WasmMemory memory, int address, Filetype value) {
+        memory.store_i32_8(node, address + 20, value.toValue());
+    }
 
 }

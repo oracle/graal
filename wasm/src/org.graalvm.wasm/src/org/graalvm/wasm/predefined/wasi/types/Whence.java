@@ -55,6 +55,16 @@ public enum Whence {
     Cur,
 
     /** 2: Seek relative to end-of-file. */
-    End
+    End;
+
+    /** Converts enum item to primitive. */
+    public byte toValue() {
+        return (byte) this.ordinal();
+    }
+
+    /** Converts primitive to enum item. */
+    public static Whence fromValue(byte value) {
+        return Whence.values()[value];
+    }
 
 }

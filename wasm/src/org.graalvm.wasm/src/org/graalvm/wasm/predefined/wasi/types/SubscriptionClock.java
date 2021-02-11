@@ -45,35 +45,63 @@
 
 package org.graalvm.wasm.predefined.wasi.types;
 
-/** Type of a subscription to an event or its occurrence. */
-public enum Eventtype {
+import com.oracle.truffle.api.nodes.Node;
+import org.graalvm.wasm.memory.WasmMemory;
 
-    /**
-     * 0: The time value of clock {@code subscription_clock::id} has reached timestamp
-     * {@code subscription_clock::timeout}.
-     */
-    Clock,
+/** The contents of a {@code subscription} when type is {@code eventtype::clock}. */
+public final class SubscriptionClock {
 
-    /**
-     * 1: File descriptor {@code subscription_fd_readwrite::file_descriptor} has data available for
-     * reading. This event always triggers for regular files.
-     */
-    FdRead,
-
-    /**
-     * 2: File descriptor {@code subscription_fd_readwrite::file_descriptor} has capacity available
-     * for writing. This event always triggers for regular files.
-     */
-    FdWrite;
-
-    /** Converts enum item to primitive. */
-    public byte toValue() {
-        return (byte) this.ordinal();
+    /** Static methods only; don't let anyone instantiate this class. */
+    private SubscriptionClock() {
     }
 
-    /** Converts primitive to enum item. */
-    public static Eventtype fromValue(byte value) {
-        return Eventtype.values()[value];
+    /** Size of this structure, in bytes. */
+    public static int BYTES = 32;
+
+    /** Reads the clock against which to compare the timestamp. */
+    public static Clockid readId(Node node, WasmMemory memory, int address) {
+        return Clockid.fromValue(memory.load_i32(node, address + 0));
+    }
+
+    /** Writes the clock against which to compare the timestamp. */
+    public static void writeId(Node node, WasmMemory memory, int address, Clockid value) {
+        memory.store_i32(node, address + 0, value.toValue());
+    }
+
+    /** Reads the absolute or relative timestamp. */
+    public static long readTimeout(Node node, WasmMemory memory, int address) {
+        return memory.load_i64(node, address + 8);
+    }
+
+    /** Writes the absolute or relative timestamp. */
+    public static void writeTimeout(Node node, WasmMemory memory, int address, long value) {
+        memory.store_i64(node, address + 8, value);
+    }
+
+    /**
+     * Reads the amount of time that the implementation may wait additionally to coalesce with other
+     * events.
+     */
+    public static long readPrecision(Node node, WasmMemory memory, int address) {
+        return memory.load_i64(node, address + 16);
+    }
+
+    /**
+     * Writes the amount of time that the implementation may wait additionally to coalesce with
+     * other events.
+     */
+    public static void writePrecision(Node node, WasmMemory memory, int address, long value) {
+        memory.store_i64(node, address + 16, value);
+    }
+
+    /** Reads flags specifying whether the timeout is absolute or relative. */
+    public static short readFlags(Node node, WasmMemory memory, int address) {
+        return (short) memory.load_i32_16u(node, address + 24);
+    }
+
+    /** Writes flags specifying whether the timeout is absolute or relative. */
+    public static void writeFlags(Node node, WasmMemory memory, int address, short value) {
+        memory.store_i32_16(node, address + 24, value);
     }
 
 }

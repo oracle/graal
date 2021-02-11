@@ -49,6 +49,6 @@ package org.graalvm.wasm.predefined.wasi.types;
 public enum Lookupflags {
 
     /** 0: As long as the resolved path corresponds to a symbolic link, it is expanded. */
-    SymlinkFollow
+    SymlinkFollow;
 
 }

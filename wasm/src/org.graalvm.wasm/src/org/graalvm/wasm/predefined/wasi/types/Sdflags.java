@@ -52,6 +52,6 @@ public enum Sdflags {
     Rd,
 
     /** 1: Disables further send operations. */
-    Wr
+    Wr;
 
 }

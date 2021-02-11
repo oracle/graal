@@ -56,6 +56,6 @@ public enum Subclockflags {
      * {@code subscription_clock::timeout} relative to the current time value of clock
      * {@code subscription_clock::id}.
      */
-    SubscriptionClockAbstime
+    SubscriptionClockAbstime;
 
 }

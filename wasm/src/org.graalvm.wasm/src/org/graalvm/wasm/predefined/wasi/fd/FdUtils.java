@@ -45,7 +45,10 @@ import com.oracle.truffle.api.TruffleFile;
 import com.oracle.truffle.api.nodes.Node;
 import org.graalvm.wasm.memory.WasmMemory;
 import org.graalvm.wasm.predefined.wasi.types.Errno;
+import org.graalvm.wasm.predefined.wasi.types.Fdstat;
+import org.graalvm.wasm.predefined.wasi.types.Filestat;
 import org.graalvm.wasm.predefined.wasi.types.Filetype;
+import org.graalvm.wasm.predefined.wasi.types.Iovec;
 
 import java.io.IOException;
 import java.io.InputStream;
@@ -58,16 +61,17 @@ final class FdUtils {
 
     }
 
-    static Errno writeToStream(Node node, WasmMemory memory, OutputStream stream, int iov, int iovcnt, int sizeAddress) {
+    static Errno writeToStream(Node node, WasmMemory memory, OutputStream stream, int iovecArrayAddress, int iovecCount, int sizeAddress) {
         if (stream == null) {
             return Errno.Acces;
         }
 
         int totalBytesWritten = 0;
         try {
-            for (int i = 0; i < iovcnt; i++) {
-                final int start = memory.load_i32(node, iov + (i * 8 + 0));
-                final int len = memory.load_i32(node, iov + (i * 8 + 4));
+            for (int i = 0; i < iovecCount; i++) {
+                final int iovecAddress = iovecArrayAddress + i * Iovec.BYTES;
+                final int start = Iovec.readBuf(node, memory, iovecAddress);
+                final int len = Iovec.readBufLen(node, memory, iovecAddress);
                 for (int j = 0; j < len; j++) {
                     stream.write(memory.load_i32_8u(node, start + j));
                     ++totalBytesWritten;
@@ -81,7 +85,7 @@ final class FdUtils {
         return Errno.Success;
     }
 
-    static Errno readFromStream(Node node, WasmMemory memory, InputStream stream, int iov, int iovcnt, int sizeAddress) {
+    static Errno readFromStream(Node node, WasmMemory memory, InputStream stream, int iovecArrayAddress, int iovecCount, int sizeAddress) {
         if (stream == null) {
             return Errno.Acces;
         }
@@ -89,9 +93,10 @@ final class FdUtils {
         int totalBytesRead = 0;
         int byteRead = 0;
         try {
-            for (int i = 0; i < iovcnt && byteRead != -1; i++) {
-                final int start = memory.load_i32(node, iov + (i * 8 + 0));
-                final int len = memory.load_i32(node, iov + (i * 8 + 4));
+            for (int i = 0; i < iovecCount; i++) {
+                final int iovecAddress = iovecArrayAddress + i * Iovec.BYTES;
+                final int start = Iovec.readBuf(node, memory, iovecAddress);
+                final int len = Iovec.readBufLen(node, memory, iovecAddress);
                 for (int j = 0; j < len; j++) {
                     byteRead = stream.read();
                     if (byteRead == -1) {
@@ -114,11 +119,11 @@ final class FdUtils {
      * "https://github.com/WebAssembly/WASI/blob/a206794fea66118945a520f6e0af3754cc51860b/phases/snapshot/docs.md#-fdstat-struct"><code>fdstat</code></a>
      * structure to memory.
      */
-    static Errno writeFdstat(Node node, WasmMemory memory, int resultAddress, Filetype type, short fdflags, long fsRightsBase, long fsRightsInherting) {
-        memory.store_i32_8(node, resultAddress, (byte) type.ordinal());
-        memory.store_i32_16(node, resultAddress + 2, fdflags);
-        memory.store_i64(node, resultAddress + 8, fsRightsBase);
-        memory.store_i64(node, resultAddress + 16, fsRightsInherting);
+    static Errno writeFdstat(Node node, WasmMemory memory, int address, Filetype type, short fsFlags, long fsRightsBase, long fsRightsInherting) {
+        Fdstat.writeFsFiletype(node, memory, address, type);
+        Fdstat.writeFsFlags(node, memory, address, fsFlags);
+        Fdstat.writeFsRightsBase(node, memory, address, fsRightsBase);
+        Fdstat.writeFsRightsInheriting(node, memory, address, fsRightsInherting);
         return Errno.Success;
     }
 
@@ -127,20 +132,20 @@ final class FdUtils {
      * "https://github.com/WebAssembly/WASI/blob/a206794fea66118945a520f6e0af3754cc51860b/phases/snapshot/docs.md#-filestat-struct"><code>filestat</code></a>
      * structure to memory.
      */
-    static Errno writeFilestat(Node node, WasmMemory memory, int resultAddress, TruffleFile file) {
+    static Errno writeFilestat(Node node, WasmMemory memory, int address, TruffleFile file) {
         // Write filestat structure
         // https://github.com/WebAssembly/WASI/blob/main/phases/snapshot/docs.md#-filestat-struct
         try {
-            memory.store_i32_8(node, resultAddress + 16, (byte) getType(file).ordinal());
-            memory.store_i64(node, resultAddress + 32, file.getAttribute(TruffleFile.SIZE));
-            memory.store_i64(node, resultAddress + 40, file.getAttribute(TruffleFile.LAST_ACCESS_TIME).to(TimeUnit.SECONDS));
-            memory.store_i64(node, resultAddress + 48, file.getAttribute(TruffleFile.LAST_MODIFIED_TIME).to(TimeUnit.SECONDS));
+            Filestat.writeFiletype(node, memory, address, getType(file));
+            Filestat.writeSize(node, memory, address, file.getAttribute(TruffleFile.SIZE));
+            Filestat.writeAtim(node, memory, address, file.getAttribute(TruffleFile.LAST_ACCESS_TIME).to(TimeUnit.SECONDS));
+            Filestat.writeMtim(node, memory, address, file.getAttribute(TruffleFile.LAST_MODIFIED_TIME).to(TimeUnit.SECONDS));
 
             try {
-                memory.store_i64(node, resultAddress, file.getAttribute(TruffleFile.UNIX_DEV));
-                memory.store_i64(node, resultAddress + 8, file.getAttribute(TruffleFile.UNIX_INODE));
-                memory.store_i64(node, resultAddress + 24, file.getAttribute(TruffleFile.UNIX_NLINK));
-                memory.store_i64(node, resultAddress + 56, file.getAttribute(TruffleFile.UNIX_CTIME).to(TimeUnit.SECONDS));
+                Filestat.writeDev(node, memory, address, file.getAttribute(TruffleFile.UNIX_DEV));
+                Filestat.writeIno(node, memory, address, file.getAttribute(TruffleFile.UNIX_INODE));
+                Filestat.writeNlink(node, memory, address, file.getAttribute(TruffleFile.UNIX_NLINK));
+                Filestat.writeCtim(node, memory, address, file.getAttribute(TruffleFile.UNIX_CTIME).to(TimeUnit.SECONDS));
             } catch (UnsupportedOperationException e) {
                 // GR-29297: these attributes are currently not supported on non-Unix platforms.
             }

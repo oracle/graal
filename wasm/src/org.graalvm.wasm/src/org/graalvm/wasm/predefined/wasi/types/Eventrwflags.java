@@ -52,6 +52,6 @@ package org.graalvm.wasm.predefined.wasi.types;
 public enum Eventrwflags {
 
     /** 0: The peer of this socket has closed or disconnected. */
-    FdReadwriteHangup
+    FdReadwriteHangup;
 
 }

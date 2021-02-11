@@ -281,6 +281,16 @@ public enum Errno {
     Xdev,
 
     /** 76: Extension: Capabilities insufficient. */
-    Notcapable
+    Notcapable;
+
+    /** Converts enum item to primitive. */
+    public short toValue() {
+        return (short) this.ordinal();
+    }
+
+    /** Converts primitive to enum item. */
+    public static Errno fromValue(short value) {
+        return Errno.values()[value];
+    }
 
 }

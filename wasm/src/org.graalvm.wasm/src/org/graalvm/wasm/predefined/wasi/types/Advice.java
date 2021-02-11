@@ -72,6 +72,16 @@ public enum Advice {
      * 5: The application expects to access the specified data once and then not reuse it
      * thereafter.
      */
-    Noreuse
+    Noreuse;
+
+    /** Converts enum item to primitive. */
+    public byte toValue() {
+        return (byte) this.ordinal();
+    }
+
+    /** Converts primitive to enum item. */
+    public static Advice fromValue(byte value) {
+        return Advice.values()[value];
+    }
 
 }

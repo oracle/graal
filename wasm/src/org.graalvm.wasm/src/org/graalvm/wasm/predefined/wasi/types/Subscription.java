@@ -39,47 +39,49 @@
  * SOFTWARE.
  */
 
-package org.graalvm.wasm.predefined.wasi.fd;
+/*
+ * This file has been automatically generated from wasi_snapshot_preview1.witx.
+ */
 
-import com.oracle.truffle.api.TruffleFile;
+package org.graalvm.wasm.predefined.wasi.types;
+
 import com.oracle.truffle.api.nodes.Node;
 import org.graalvm.wasm.memory.WasmMemory;
-import org.graalvm.wasm.predefined.wasi.types.Errno;
-import org.graalvm.wasm.predefined.wasi.types.Preopentype;
-import org.graalvm.wasm.predefined.wasi.types.Prestat;
-import org.graalvm.wasm.predefined.wasi.types.PrestatDir;
-import org.graalvm.wasm.predefined.wasi.types.Rights;
 
-import static org.graalvm.wasm.predefined.wasi.FlagUtils.allFlagsSet;
+/** Subscription to an event. */
+public final class Subscription {
 
-/**
- * File descriptor representing a pre-opened directory.
- */
-final class PreopenedDirectoryFd extends DirectoryFd {
-
-    private static final long FS_RIGHTS_BASE = allFlagsSet(Rights.class);
-    private static final long FS_RIGHTS_INHERITING = FS_RIGHTS_BASE;
-    private static final short FS_FLAGS = 0;
-
-    private final String virtualPath;
-
-    PreopenedDirectoryFd(FdManager fdManager, TruffleFile hostFile, TruffleFile virtualFile) {
-        super(fdManager, virtualFile, new PreopenedDirectory(hostFile, virtualFile), FS_RIGHTS_BASE, FS_RIGHTS_INHERITING, FS_FLAGS);
-        virtualPath = virtualFile.getPath();
+    /** Static methods only; don't let anyone instantiate this class. */
+    private Subscription() {
     }
 
-    @Override
-    public Errno prestatGet(Node node, WasmMemory memory, int prestatAddress) {
-        Prestat.writeTag(node, memory, prestatAddress, Preopentype.Dir);
-        final int prestatDirAddress = prestatAddress + Prestat.CONTENTSOFFSET;
-        PrestatDir.writePrNameLen(node, memory, prestatDirAddress, WasmMemory.encodedStringLength(virtualPath));
-        return Errno.Success;
+    /** Size of this structure, in bytes. */
+    public static int BYTES = 48;
+
+    /**
+     * Reads user-provided value that is attached to the subscription in the implementation and
+     * returned through {@code event::userdata}.
+     */
+    public static long readUserdata(Node node, WasmMemory memory, int address) {
+        return memory.load_i64(node, address + 0);
     }
 
-    @Override
-    public Errno prestatDirName(Node node, WasmMemory memory, int pathAddress, int pathLength) {
-        memory.writeString(node, virtualPath, pathAddress, pathLength);
-        return Errno.Success;
+    /**
+     * Writes user-provided value that is attached to the subscription in the implementation and
+     * returned through {@code event::userdata}.
+     */
+    public static void writeUserdata(Node node, WasmMemory memory, int address, long value) {
+        memory.store_i64(node, address + 0, value);
+    }
+
+    /** Reads the type of the event to which to subscribe, and its contents. */
+    public static int readU(Node node, WasmMemory memory, int address) {
+        return memory.load_i32(node, address + 8);
+    }
+
+    /** Writes the type of the event to which to subscribe, and its contents. */
+    public static void writeU(Node node, WasmMemory memory, int address, int value) {
+        memory.store_i32(node, address + 8, value);
     }
 
 }

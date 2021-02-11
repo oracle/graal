@@ -52,6 +52,6 @@ public enum Riflags {
     RecvPeek,
 
     /** 1: On byte-stream sockets, block until the full amount of data can be returned. */
-    RecvWaitall
+    RecvWaitall;
 
 }

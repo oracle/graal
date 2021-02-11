@@ -45,35 +45,63 @@
 
 package org.graalvm.wasm.predefined.wasi.types;
 
-/** Type of a subscription to an event or its occurrence. */
-public enum Eventtype {
+import com.oracle.truffle.api.nodes.Node;
+import org.graalvm.wasm.memory.WasmMemory;
 
-    /**
-     * 0: The time value of clock {@code subscription_clock::id} has reached timestamp
-     * {@code subscription_clock::timeout}.
-     */
-    Clock,
+/** File descriptor attributes. */
+public final class Fdstat {
 
-    /**
-     * 1: File descriptor {@code subscription_fd_readwrite::file_descriptor} has data available for
-     * reading. This event always triggers for regular files.
-     */
-    FdRead,
-
-    /**
-     * 2: File descriptor {@code subscription_fd_readwrite::file_descriptor} has capacity available
-     * for writing. This event always triggers for regular files.
-     */
-    FdWrite;
-
-    /** Converts enum item to primitive. */
-    public byte toValue() {
-        return (byte) this.ordinal();
+    /** Static methods only; don't let anyone instantiate this class. */
+    private Fdstat() {
     }
 
-    /** Converts primitive to enum item. */
-    public static Eventtype fromValue(byte value) {
-        return Eventtype.values()[value];
+    /** Size of this structure, in bytes. */
+    public static int BYTES = 24;
+
+    /** Reads file type. */
+    public static Filetype readFsFiletype(Node node, WasmMemory memory, int address) {
+        return Filetype.fromValue((byte) memory.load_i32_8u(node, address + 0));
+    }
+
+    /** Writes file type. */
+    public static void writeFsFiletype(Node node, WasmMemory memory, int address, Filetype value) {
+        memory.store_i32_8(node, address + 0, value.toValue());
+    }
+
+    /** Reads file descriptor flags. */
+    public static short readFsFlags(Node node, WasmMemory memory, int address) {
+        return (short) memory.load_i32_16u(node, address + 2);
+    }
+
+    /** Writes file descriptor flags. */
+    public static void writeFsFlags(Node node, WasmMemory memory, int address, short value) {
+        memory.store_i32_16(node, address + 2, value);
+    }
+
+    /** Reads rights that apply to this file descriptor. */
+    public static long readFsRightsBase(Node node, WasmMemory memory, int address) {
+        return memory.load_i64(node, address + 8);
+    }
+
+    /** Writes rights that apply to this file descriptor. */
+    public static void writeFsRightsBase(Node node, WasmMemory memory, int address, long value) {
+        memory.store_i64(node, address + 8, value);
+    }
+
+    /**
+     * Reads maximum set of rights that may be installed on new file descriptors that are created
+     * through this file descriptor, e.g., through {@code path_open}.
+     */
+    public static long readFsRightsInheriting(Node node, WasmMemory memory, int address) {
+        return memory.load_i64(node, address + 16);
+    }
+
+    /**
+     * Writes maximum set of rights that may be installed on new file descriptors that are created
+     * through this file descriptor, e.g., through {@code path_open}.
+     */
+    public static void writeFsRightsInheriting(Node node, WasmMemory memory, int address, long value) {
+        memory.store_i64(node, address + 16, value);
     }
 
 }

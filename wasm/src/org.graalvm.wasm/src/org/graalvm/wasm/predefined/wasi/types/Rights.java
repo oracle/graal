@@ -167,6 +167,6 @@ public enum Rights {
     PollFdReadwrite,
 
     /** 28: The right to invoke {@code sock_shutdown}. */
-    SockShutdown
+    SockShutdown;
 
 }

@@ -73,6 +73,16 @@ public enum Filetype {
     SocketStream,
 
     /** 7: The file refers to a symbolic link inode. */
-    SymbolicLink
+    SymbolicLink;
+
+    /** Converts enum item to primitive. */
+    public byte toValue() {
+        return (byte) this.ordinal();
+    }
+
+    /** Converts primitive to enum item. */
+    public static Filetype fromValue(byte value) {
+        return Filetype.values()[value];
+    }
 
 }

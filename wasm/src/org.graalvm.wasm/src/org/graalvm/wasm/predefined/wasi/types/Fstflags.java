@@ -63,6 +63,6 @@ public enum Fstflags {
      * 3: Adjust the last data modification timestamp to the time of clock
      * {@code clockid::realtime}.
      */
-    MtimNow
+    MtimNow;
 
 }

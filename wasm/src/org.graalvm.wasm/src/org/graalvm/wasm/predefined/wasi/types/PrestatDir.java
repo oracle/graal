@@ -39,47 +39,33 @@
  * SOFTWARE.
  */
 
-package org.graalvm.wasm.predefined.wasi.fd;
+/*
+ * This file has been automatically generated from wasi_snapshot_preview1.witx.
+ */
 
-import com.oracle.truffle.api.TruffleFile;
+package org.graalvm.wasm.predefined.wasi.types;
+
 import com.oracle.truffle.api.nodes.Node;
 import org.graalvm.wasm.memory.WasmMemory;
-import org.graalvm.wasm.predefined.wasi.types.Errno;
-import org.graalvm.wasm.predefined.wasi.types.Preopentype;
-import org.graalvm.wasm.predefined.wasi.types.Prestat;
-import org.graalvm.wasm.predefined.wasi.types.PrestatDir;
-import org.graalvm.wasm.predefined.wasi.types.Rights;
 
-import static org.graalvm.wasm.predefined.wasi.FlagUtils.allFlagsSet;
+/** The contents of a $prestat when type is {@code preopentype::dir}. */
+public final class PrestatDir {
 
-/**
- * File descriptor representing a pre-opened directory.
- */
-final class PreopenedDirectoryFd extends DirectoryFd {
-
-    private static final long FS_RIGHTS_BASE = allFlagsSet(Rights.class);
-    private static final long FS_RIGHTS_INHERITING = FS_RIGHTS_BASE;
-    private static final short FS_FLAGS = 0;
-
-    private final String virtualPath;
-
-    PreopenedDirectoryFd(FdManager fdManager, TruffleFile hostFile, TruffleFile virtualFile) {
-        super(fdManager, virtualFile, new PreopenedDirectory(hostFile, virtualFile), FS_RIGHTS_BASE, FS_RIGHTS_INHERITING, FS_FLAGS);
-        virtualPath = virtualFile.getPath();
+    /** Static methods only; don't let anyone instantiate this class. */
+    private PrestatDir() {
     }
 
-    @Override
-    public Errno prestatGet(Node node, WasmMemory memory, int prestatAddress) {
-        Prestat.writeTag(node, memory, prestatAddress, Preopentype.Dir);
-        final int prestatDirAddress = prestatAddress + Prestat.CONTENTSOFFSET;
-        PrestatDir.writePrNameLen(node, memory, prestatDirAddress, WasmMemory.encodedStringLength(virtualPath));
-        return Errno.Success;
+    /** Size of this structure, in bytes. */
+    public static int BYTES = 4;
+
+    /** Reads the length of the directory name for use with {@code fd_prestat_dir_name}. */
+    public static int readPrNameLen(Node node, WasmMemory memory, int address) {
+        return memory.load_i32(node, address + 0);
     }
 
-    @Override
-    public Errno prestatDirName(Node node, WasmMemory memory, int pathAddress, int pathLength) {
-        memory.writeString(node, virtualPath, pathAddress, pathLength);
-        return Errno.Success;
+    /** Writes the length of the directory name for use with {@code fd_prestat_dir_name}. */
+    public static void writePrNameLen(Node node, WasmMemory memory, int address, int value) {
+        memory.store_i32(node, address + 0, value);
     }
 
 }

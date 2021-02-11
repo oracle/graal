@@ -68,6 +68,6 @@ public enum Fdflags {
      * synchronizing the data stored in the file, the implementation may also synchronously update
      * the file's metadata.
      */
-    Sync
+    Sync;
 
 }

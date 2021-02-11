@@ -49,6 +49,6 @@ package org.graalvm.wasm.predefined.wasi.types;
 public enum Roflags {
 
     /** 0: Returned by {@code sock_recv}: Message data has been truncated. */
-    RecvDataTruncated
+    RecvDataTruncated;
 
 }
