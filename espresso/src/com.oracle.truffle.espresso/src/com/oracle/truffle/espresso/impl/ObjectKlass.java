@@ -125,7 +125,7 @@ public final class ObjectKlass extends Klass {
     @CompilationFinal volatile KlassVersion klassVersion;
 
     // used for class redefintion when refreshing vtables etc.
-    private ArrayList<WeakReference<ObjectKlass>> subTypes;
+    private volatile ArrayList<WeakReference<ObjectKlass>> subTypes;
 
     public static final int LOADED = 0;
     public static final int LINKED = 1;
