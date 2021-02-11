@@ -27,7 +27,6 @@ package org.graalvm.compiler.truffle.compiler;
 import static org.graalvm.compiler.truffle.options.PolyglotCompilerOptions.ExcludeAssertions;
 import static org.graalvm.compiler.truffle.options.PolyglotCompilerOptions.ForceFrameLivenessAnalysis;
 import static org.graalvm.compiler.truffle.options.PolyglotCompilerOptions.InlineAcrossTruffleBoundary;
-import static org.graalvm.compiler.truffle.options.PolyglotCompilerOptions.InliningTruffleTierOnExpand;
 import static org.graalvm.compiler.truffle.options.PolyglotCompilerOptions.IterativePartialEscape;
 import static org.graalvm.compiler.truffle.options.PolyglotCompilerOptions.MaximumGraalNodeCount;
 import static org.graalvm.compiler.truffle.options.PolyglotCompilerOptions.NodeSourcePositions;

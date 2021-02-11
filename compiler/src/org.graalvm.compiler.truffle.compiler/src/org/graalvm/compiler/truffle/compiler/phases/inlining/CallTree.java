@@ -24,14 +24,14 @@
  */
 package org.graalvm.compiler.truffle.compiler.phases.inlining;
 
+import static org.graalvm.compiler.truffle.options.PolyglotCompilerOptions.InliningTruffleTierOnExpand;
+
 import org.graalvm.compiler.debug.DebugContext;
 import org.graalvm.compiler.graph.Graph;
 import org.graalvm.compiler.truffle.common.TruffleCompilerRuntime;
 import org.graalvm.compiler.truffle.common.TruffleMetaAccessProvider;
 import org.graalvm.compiler.truffle.compiler.PartialEvaluator;
 import org.graalvm.compiler.truffle.options.PolyglotCompilerOptions;
-
-import static org.graalvm.compiler.truffle.options.PolyglotCompilerOptions.InliningTruffleTierOnExpand;
 
 public final class CallTree extends Graph {
 
@@ -139,8 +139,8 @@ public final class CallTree extends Graph {
 
     private boolean tracingCallCounts() {
         return request.options.get(PolyglotCompilerOptions.TraceCompilation) ||
-                request.options.get(PolyglotCompilerOptions.TraceCompilationDetails) ||
-                request.options.get(PolyglotCompilerOptions.CompilationStatistics) ||
-                request.options.get(PolyglotCompilerOptions.CompilationStatisticDetails);
+                        request.options.get(PolyglotCompilerOptions.TraceCompilationDetails) ||
+                        request.options.get(PolyglotCompilerOptions.CompilationStatistics) ||
+                        request.options.get(PolyglotCompilerOptions.CompilationStatisticDetails);
     }
 }

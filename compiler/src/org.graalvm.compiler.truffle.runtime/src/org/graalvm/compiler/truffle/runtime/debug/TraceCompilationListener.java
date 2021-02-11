@@ -27,7 +27,6 @@ package org.graalvm.compiler.truffle.runtime.debug;
 import java.util.LinkedHashMap;
 import java.util.Map;
 
-import org.graalvm.compiler.truffle.common.TruffleCompilerListener;
 import org.graalvm.compiler.truffle.common.TruffleCompilerListener.CompilationResultInfo;
 import org.graalvm.compiler.truffle.common.TruffleCompilerListener.GraphInfo;
 import org.graalvm.compiler.truffle.runtime.AbstractGraalTruffleRuntimeListener;
