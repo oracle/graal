@@ -30,12 +30,10 @@ import java.util.Arrays;
 /**
  * Queue implementation based on the B-tree data structure.
  * <p>
- * The elements in the queue are ordered, and placed into leaf nodes.
- * Each leaf node has at most {@code BRANCHING_FACTOR} elements, and each inner node
- * has at most {@code BRANCHING_FACTOR} elements.
- * The tree is kept balanced so that all the leaves are at the same depth.
- * Nodes whose entry-count drops below a particular value are compressed
- * to avoid wasting space.
+ * The elements in the queue are ordered, and placed into leaf nodes. Each leaf node has at most
+ * {@code BRANCHING_FACTOR} elements, and each inner node has at most {@code BRANCHING_FACTOR}
+ * elements. The tree is kept balanced so that all the leaves are at the same depth. Nodes whose
+ * entry-count drops below a particular value are compressed to avoid wasting space.
  */
 public final class BTreeQueue<E> implements SerialQueue<E> {
     private static final Object FAILURE_DUPLICATE = new Object();
