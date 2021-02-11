@@ -127,7 +127,7 @@ suite = {
         "linux-musl" : {
           "amd64" : {
             "urls" : ["https://download.bell-sw.com/graalvm/llvm-llvmorg-{version}-linux-musl-amd64.tar.gz"],
-            "sha1" : "a59af06ea5b5d189421dd77444895ea1ac9f68f5",
+            "sha1" : "da41da0002fde587c9513b8adb15ca36e79fdbdb",
           },
         },
         "darwin" : {

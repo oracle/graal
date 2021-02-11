@@ -626,17 +626,22 @@ public class SystemUtils {
         }
     }
 
-    public static String patternOsName(String os) {
+    public static String patternOsName(String os, String variant) {
         if (os == null) {
             return null;
         }
         String lc = os.toLowerCase(Locale.ENGLISH);
+        String suffix = "";
+        if (variant != null && !variant.isEmpty()) {
+            suffix = "_" + variant.toLowerCase(Locale.ENGLISH);
+        }
         switch (lc) {
             case CommonConstants.OS_MACOS_DARWIN:
             case CommonConstants.OS_TOKEN_MACOS:
-                return "(:?" + CommonConstants.OS_MACOS_DARWIN + "|" + CommonConstants.OS_TOKEN_MACOS + ")";
+                return String.format("(:?%s%s|%s%s)",
+                        CommonConstants.OS_MACOS_DARWIN, suffix, CommonConstants.OS_TOKEN_MACOS, suffix);
             default:
-                return lc;
+                return lc + suffix;
         }
     }
 

@@ -1551,6 +1551,10 @@ class SubstrateCompilerFlagsBuilder(mx.ArchivableProject):
             '-Dgraalvm.ForcePolyglotInvalid=true', # use PolyglotInvalid PolyglotImpl fallback (when --tool:truffle is not used)
             '-Dgraalvm.locatorDisabled=true',
         ]
+        if mx.get_os() == 'linux':
+            libc = mx.get_os_variant() if mx.get_os_variant() else 'glibc'
+            graal_compiler_flags_base.append('-Dsubstratevm.HostLibC=' + libc)
+
         for key in graal_compiler_flags_map:
             graal_compiler_flags_map[key] = graal_compiler_flags_base + graal_compiler_flags_map[key]
 

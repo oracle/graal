@@ -160,7 +160,11 @@ public class WebCatalog implements SoftwareChannel {
         Map<String, String> graalCaps = local.getGraalCapabilities();
 
         StringBuilder sb = new StringBuilder();
-        sb.append(SystemUtils.patternOsName(graalCaps.get(CommonConstants.CAP_OS_NAME)).toLowerCase());
+        sb.append(
+                SystemUtils.patternOsName(
+                        graalCaps.get(CommonConstants.CAP_OS_NAME),
+                        graalCaps.get(CommonConstants.CAP_OS_VARIANT)
+                ).toLowerCase());
         sb.append("_");
         sb.append(SystemUtils.patternOsArch(graalCaps.get(CommonConstants.CAP_OS_ARCH).toLowerCase()));
 

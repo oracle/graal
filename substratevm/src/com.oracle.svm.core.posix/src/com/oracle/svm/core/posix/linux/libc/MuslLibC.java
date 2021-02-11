@@ -28,7 +28,6 @@ import java.util.Collections;
 import java.util.List;
 
 import com.oracle.svm.core.SubstrateOptions;
-import com.oracle.svm.core.c.libc.HostLibC;
 import com.oracle.svm.core.c.libc.LibCBase;
 import com.oracle.svm.core.util.UserError;
 import org.graalvm.compiler.serviceprovider.JavaVersionUtil;
@@ -76,6 +75,6 @@ public class MuslLibC implements LibCBase {
     }
 
     private static boolean isCrossCompiling() {
-        return !HostLibC.is(MuslLibC.class);
+        return !"musl".equals(System.getProperty("substratevm.HostLibC"));
     }
 }

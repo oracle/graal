@@ -26,7 +26,6 @@ package com.oracle.svm.core.posix.linux.libc;
 
 import java.util.ServiceLoader;
 
-import com.oracle.svm.core.c.libc.HostLibC;
 import org.graalvm.collections.UnmodifiableEconomicMap;
 import org.graalvm.compiler.options.Option;
 import org.graalvm.compiler.options.OptionKey;
@@ -42,7 +41,6 @@ import com.oracle.svm.core.option.HostedOptionKey;
 import com.oracle.svm.core.util.UserError;
 
 @AutomaticFeature
-@GenerateHostLibC
 public class LibCFeature implements Feature {
 
     @Override
@@ -59,7 +57,7 @@ public class LibCFeature implements Feature {
                 if (!values.containsKey(this)) {
                     return Platform.includedIn(Platform.ANDROID.class)
                                     ? "bionic"
-                                    : HostLibC.getName();
+                                    : System.getProperty("substratevm.HostLibC", "glibc");
                 }
                 return (String) values.get(this);
             }

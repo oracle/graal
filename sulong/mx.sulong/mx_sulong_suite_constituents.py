@@ -572,7 +572,12 @@ class CMakeProject(AbstractSulongNativeProject):  # pylint: disable=too-many-anc
     def __init__(self, suite, name, deps, workingSets, subDir, results=None, output=None, **args):
         super(CMakeProject, self).__init__(suite, name, deps, workingSets, subDir, results=results, output=output, **args)
         cmake_config = args.pop('cmakeConfig', {})
-        self.cmake_config = lambda: ['-D{}={}'.format(k, mx_subst.path_substitutions.substitute(v).replace('{{}}', '$')) for k, v in sorted(cmake_config.items())]
+        self.cmake_config = lambda: [
+            '-D{}={}'.format(k,
+                             mx_subst.path_substitutions.substitute(v)
+                                .replace('{{dollarsign}}', '$')
+                                .replace('{{musl}}', 'YES' if mx.get_os_variant() == 'musl' else 'NO')
+                             ) for k, v in sorted(cmake_config.items())]
         self.dir = self.getOutput()
 
     def getBuildTask(self, args):

@@ -56,7 +56,6 @@ import com.oracle.svm.core.LinkerInvocation;
 import com.oracle.svm.core.OS;
 import com.oracle.svm.core.SubstrateOptions;
 import com.oracle.svm.core.SubstrateUtil;
-import com.oracle.svm.core.c.libc.HostLibC;
 import com.oracle.svm.core.c.libc.LibCBase;
 import com.oracle.svm.core.option.OptionUtils;
 import com.oracle.svm.core.util.InterruptImageBuilding;
@@ -96,7 +95,7 @@ public abstract class NativeImageViaCC extends NativeImage {
         BinutilsCCLinkerInvocation() {
             additionalPreOptions.add("-z");
             additionalPreOptions.add("noexecstack");
-            if ("musl".equals(HostLibC.getName())) {
+            if ("musl".equals(System.getProperty("substratevm.HostLibC"))) {
                 // musl linkers expect PIE by default
                 additionalPreOptions.add("-no-pie");
             }
