@@ -40,20 +40,20 @@ import org.graalvm.compiler.lir.CompositeValueClass;
 import org.graalvm.compiler.lir.LIRInstruction;
 import org.graalvm.compiler.lir.LIRInstructionClass;
 import org.graalvm.compiler.serviceprovider.GraalUnsafeAccess;
-import org.graalvm.nativeimage.hosted.Feature;
 import org.graalvm.nativeimage.ImageSingletons;
+import org.graalvm.nativeimage.hosted.Feature;
 
 import com.oracle.graal.pointsto.api.DefaultUnsafePartition;
-import com.oracle.graal.pointsto.api.UnsafePartitionKind;
 import com.oracle.svm.core.annotate.RecomputeFieldValue;
+import com.oracle.svm.core.graal.GraalEdgeUnsafePartition;
 import com.oracle.svm.core.util.VMError;
 import com.oracle.svm.graal.GraalSupport;
 import com.oracle.svm.hosted.FeatureImpl.BeforeAnalysisAccessImpl;
 import com.oracle.svm.hosted.FeatureImpl.CompilationAccessImpl;
 import com.oracle.svm.hosted.FeatureImpl.DuringAnalysisAccessImpl;
 import com.oracle.svm.hosted.FeatureImpl.DuringSetupAccessImpl;
-import com.oracle.svm.hosted.GraalEdgeUnsafePartition;
 import com.oracle.svm.hosted.meta.HostedMetaAccess;
+import com.oracle.svm.util.UnsafePartitionKind;
 
 import jdk.vm.ci.meta.MetaAccessProvider;
 import jdk.vm.ci.meta.ResolvedJavaField;
