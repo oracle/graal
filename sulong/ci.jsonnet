@@ -8,7 +8,7 @@ local sc = (import "ci_common/sulong-common.jsonnet");
 
   local basicTags = "build,sulongBasic,nwcc,llvm",
   local basicTagsLLToolchain = "build,sulongBasic,sulongLL,nwcc,llvm,toolchain",
-  local basicTagsNoNWCCNoDebugExpr = "build,sulong,sulongLL,interop,linker,debug,irdebug,bitcodeFormat,otherTests,llvm",
+  local basicTagsNoNWCCNoDebugExpr = "build,sulong,interop,linker,debug,irdebug,bitcodeFormat,otherTests,sulongLL,llvm",
 
   sulong:: {
     environment+: {
