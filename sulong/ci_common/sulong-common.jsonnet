@@ -36,11 +36,25 @@
     targets+: ["weekly"],
   },
 
-  gateTags(tags):: {
+  mxCommand:: {
+    extra_mx_args+:: [],
+    mx:: ["mx"] + self.extra_mx_args
+  },
+
+  mxStripJarsMixin:: {
+    extra_mx_args+: ["--strip-jars"],
+  },
+
+  mxStrictMixin:: {
+    extra_mx_args+: ["--strict-compliance"],
+  },
+
+  gateTags(tags):: $.mxCommand + {
+    extra_gate_args:: [],
     run+:
       # enforcing `tags` to be a string makes it easier to copy and paste from the ci config file
       assert std.isString(tags) : "gateTags(tags): the `tags` parameter must be a string" + $.nameOrEmpty(self);
-      [["mx", "gate", "--tags", tags]],
+      [self.mx + ["gate"] + self.extra_gate_args + ["--tags", tags]],
   },
 
   sulong_weekly_notifications:: {
