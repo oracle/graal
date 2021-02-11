@@ -44,12 +44,13 @@ local sc = (import "ci_common/sulong-common.jsonnet");
     ],
   },
 
-  sulong_coverage:: {
-    run: [
-      ["mx", "--jacoco-whitelist-package", "com.oracle.truffle.llvm", "--jacoco-exclude-annotation", "@GeneratedBy", "gate", "--tags", "build,sulongCoverage", "--jacocout", "html"],
+  sulong_coverage:: sc.gateTags("build,sulongCoverage") + {
+    extra_mx_args +: ["--jacoco-whitelist-package", "com.oracle.truffle.llvm", "--jacoco-exclude-annotation", "@GeneratedBy"],
+    extra_gate_args+: ["--jacocout", "html"],
+    run+: [
       # $SONAR_HOST_URL might not be set [GR-28642],
-      ["test", "-z", "$SONAR_HOST_URL", "||", "mx", "--jacoco-whitelist-package", "com.oracle.truffle.llvm", "--jacoco-exclude-annotation", "@GeneratedBy", "sonarqube-upload", "-Dsonar.host.url=$SONAR_HOST_URL", "-Dsonar.projectKey=com.oracle.graalvm.sulong", "-Dsonar.projectName=GraalVM - Sulong", "--exclude-generated"],
-      ["mx", "--jacoco-whitelist-package", "com.oracle.truffle.llvm", "--jacoco-exclude-annotation", "@GeneratedBy", "coverage-upload"],
+      ["test", "-z", "$SONAR_HOST_URL", "||"] + self.mx + ["sonarqube-upload", "-Dsonar.host.url=$SONAR_HOST_URL", "-Dsonar.projectKey=com.oracle.graalvm.sulong", "-Dsonar.projectName=GraalVM - Sulong", "--exclude-generated"],
+      self.mx + ["coverage-upload"],
     ],
     timelimit: "1:45:00",
   },
