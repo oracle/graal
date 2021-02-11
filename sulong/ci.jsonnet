@@ -8,7 +8,7 @@ local sc = (import "ci_common/sulong-common.jsonnet");
 
   local basicTags = "build,sulongBasic,nwcc,llvm",
   local basicTagsLLToolchain = "build,sulongBasic,sulongLL,nwcc,llvm,toolchain",
-  local basicTagsNoNWCCNoDebugExpr = "build,sulong,interop,linker,debug,irdebug,bitcodeFormat,otherTests,sulongLL,llvm",
+  local basicTagsNoNWCC= "build,sulongBasic,sulongLL,llvm",
 
   sulong:: {
     environment+: {
@@ -91,7 +91,7 @@ local sc = (import "ci_common/sulong-common.jsonnet");
 
     sc.gate + $.sulong + sc.jdk8 + sc.linux_amd64 + sc.llvmBundled + sc.requireGMP + $.sulong_ruby_downstream_test + { name: "gate-sulong-ruby-downstream" },
 
-    sc.gate + $.sulong + sc.labsjdk_ce_11 + sc.linux_aarch64 + sc.llvmBundled + sc.requireGMP + sc.gateTags(basicTagsNoNWCCNoDebugExpr) + { name: "gate-sulong_bundled-llvm-linux-aarch64", timelimit: "30:00" },
+    sc.gate + $.sulong + sc.labsjdk_ce_11 + sc.linux_aarch64 + sc.llvmBundled + sc.requireGMP + sc.gateTags(basicTagsNoNWCC) + { name: "gate-sulong_bundled-llvm-linux-aarch64", timelimit: "30:00" },
     sc.gate + $.sulong + sc.labsjdk_ce_11 + sc.linux_amd64 + sc.llvmBundled + sc.requireGMP + sc.gateTags("build") + $.sulong_test_toolchain + { name: "gate-sulong-build_bundled-llvm-linux-amd64-labsjdk-ce-11" },
 
     sc.gate + $.sulong + sc.jdk8 + sc.linux_amd64 + sc.llvmBundled + sc.requireGMP + $.sulong_strict_native_image + { name: "gate-sulong-strict-native-image" },
