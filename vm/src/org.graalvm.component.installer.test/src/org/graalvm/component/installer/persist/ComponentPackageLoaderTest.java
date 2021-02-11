@@ -49,6 +49,7 @@ import org.graalvm.component.installer.TestBase;
 import org.graalvm.component.installer.jar.JarMetaLoader;
 import org.graalvm.component.installer.model.ComponentInfo;
 import org.graalvm.component.installer.model.DistributionType;
+import org.graalvm.component.installer.model.StabilityLevel;
 import org.junit.After;
 import org.junit.Assert;
 import static org.junit.Assert.assertEquals;
@@ -326,7 +327,41 @@ public class ComponentPackageLoaderTest extends TestBase {
 
     @Test
     public void testDistributionTypeInvalid() throws Exception {
-        exception.expect(MetadataException.class);
         info = info();
+        assertEquals(DistributionType.OPTIONAL, info.getDistributionType());
+    }
+
+    @Test
+    public void testStabilityOld() throws Exception {
+        info = info();
+        assertEquals(StabilityLevel.Experimental, info.getStability());
+    }
+
+    @Test
+    public void testStabilityLevelNone() throws Exception {
+        info = info();
+        assertEquals(StabilityLevel.Undefined, info.getStability());
+        assertNotNull(info.getStability().displayName(this));
+    }
+
+    @Test
+    public void testStabilityLevelUnknown() throws Exception {
+        info = info();
+        assertEquals(StabilityLevel.Undefined, info.getStability());
+        assertNotNull(info.getStability().displayName(this));
+    }
+
+    @Test
+    public void testStabilityLevelExperimental() throws Exception {
+        info = info();
+        assertEquals(StabilityLevel.Experimental, info.getStability());
+        assertNotNull(info.getStability().displayName(this));
+    }
+
+    @Test
+    public void testStabilityLevelExperimental2() throws Exception {
+        info = info();
+        assertEquals(StabilityLevel.Experimental_Earlyadopter, info.getStability());
+        assertNotNull(info.getStability().displayName(this));
     }
 }

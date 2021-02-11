@@ -36,7 +36,8 @@ public enum StabilityLevel {
     Undefined,
     Supported,
     EarlyAdopter,
-    Experimental;
+    Experimental,
+    Experimental_Earlyadopter;
 
     public String displayName(Feedback fb) {
         return fb.withBundle(StabilityLevel.class).l10n("ComponentStabilityLevel_" + name().toLowerCase());
@@ -55,11 +56,12 @@ public enum StabilityLevel {
         if (mcs.isEmpty()) {
             return Undefined;
         }
+        String s = mcs.replaceAll("[^\\p{Alnum}]", "_").toLowerCase(Locale.ENGLISH);
         for (StabilityLevel l : StabilityLevel.values()) {
-            if (l.name().toLowerCase(Locale.ENGLISH).equalsIgnoreCase(mcs)) {
+            if (l.name().toLowerCase(Locale.ENGLISH).equalsIgnoreCase(s)) {
                 return l;
             }
         }
-        throw new IllegalArgumentException(mcs);
+        return Undefined;
     }
 }
