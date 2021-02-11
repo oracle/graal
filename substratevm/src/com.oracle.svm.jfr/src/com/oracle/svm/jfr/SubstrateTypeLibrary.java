@@ -93,7 +93,7 @@ final class SubstrateTypeLibrary {
         DefaultHandler t = (DefaultHandler) c.newInstance();
         // TODO: at the moment, we ship our own metadata.xml file. However, it probably makes more
         // sense to just use the JDK version-specific metadata.xml file that ships with GraalVM.
-        try (InputStream is = new BufferedInputStream(SubstrateTypeLibrary.class.getResourceAsStream("/com/oracle/svm/jfr/jdk11/types/metadata.xml"))) {
+        try (InputStream is = new BufferedInputStream(SubstrateTypeLibrary.class.getResourceAsStream("/com/oracle/svm/jfr/types/metadata.xml"))) {
             Logger.log(LogTag.JFR_SYSTEM, LogLevel.DEBUG, "Parsing metadata.xml");
             try {
                 parser.parse(is, t);

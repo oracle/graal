@@ -24,13 +24,13 @@
  */
 package com.oracle.svm.jfr;
 
-import org.graalvm.nativeimage.c.struct.CPointerTo;
+import org.graalvm.nativeimage.c.struct.RawPointerTo;
 import org.graalvm.word.PointerBase;
 
 /**
  * Pointer to an array of {@link JfrBuffer}s.
  */
-@CPointerTo(JfrBuffer.class)
+@RawPointerTo(JfrBuffer.class)
 public interface JfrBuffers extends PointerBase {
     JfrBuffers addressOf(long index);
 

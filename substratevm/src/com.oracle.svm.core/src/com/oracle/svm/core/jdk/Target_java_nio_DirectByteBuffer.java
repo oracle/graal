@@ -29,7 +29,7 @@ import com.oracle.svm.core.annotate.TargetClass;
 import com.oracle.svm.core.util.VMError;
 
 @TargetClass(className = "java.nio.DirectByteBuffer")
-public class Target_java_nio_DirectByteBuffer {
+public final class Target_java_nio_DirectByteBuffer {
     @Alias
     @SuppressWarnings("unused")
     public Target_java_nio_DirectByteBuffer(long addr, int cap) {

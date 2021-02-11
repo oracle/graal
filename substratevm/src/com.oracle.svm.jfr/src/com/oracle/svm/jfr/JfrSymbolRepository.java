@@ -32,6 +32,7 @@ import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;
 import org.graalvm.nativeimage.StackValue;
 import org.graalvm.nativeimage.c.struct.RawField;
+import org.graalvm.nativeimage.c.struct.RawStructure;
 import org.graalvm.nativeimage.c.struct.SizeOf;
 import org.graalvm.nativeimage.impl.UnmanagedMemorySupport;
 import org.graalvm.word.Pointer;
@@ -94,6 +95,7 @@ public class JfrSymbolRepository implements JfrRepository {
         // symbol.getReplaceDotWithSlash() when writing the data.
     }
 
+    @RawStructure
     private interface JfrSymbol extends UninterruptibleEntry<JfrSymbol> {
         @PinnedObjectField
         @RawField

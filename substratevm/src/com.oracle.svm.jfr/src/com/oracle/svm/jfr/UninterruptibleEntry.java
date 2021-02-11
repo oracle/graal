@@ -25,11 +25,13 @@
 package com.oracle.svm.jfr;
 
 import org.graalvm.nativeimage.c.struct.RawField;
+import org.graalvm.nativeimage.c.struct.RawStructure;
 import org.graalvm.word.PointerBase;
 
 /**
  * The common interface for the entries that can be used in an {@link UninterruptibleHashtable}.
  */
+@RawStructure
 public interface UninterruptibleEntry<T extends UninterruptibleEntry<T>> extends PointerBase {
     @RawField
     T getNext();

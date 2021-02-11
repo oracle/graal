@@ -177,6 +177,12 @@ public final class Target_java_lang_Thread {
 
     @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
     @Substitute
+    public boolean isDaemon() {
+        return daemon;
+    }
+
+    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
+    @Substitute
     static Thread currentThread() {
         return JavaThreads.currentThread.get();
     }

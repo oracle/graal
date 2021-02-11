@@ -28,12 +28,11 @@ import com.oracle.svm.core.annotate.Alias;
 import com.oracle.svm.core.annotate.TargetClass;
 
 @TargetClass(className = "jdk.jfr.internal.dcmd.DCmdStart", onlyWith = JfrEnabled.class)
-public class Target_jdk_jfr_internal_dcmd_DCmdStart {
+public final class Target_jdk_jfr_internal_dcmd_DCmdStart {
     @Alias
     public Target_jdk_jfr_internal_dcmd_DCmdStart() {
     }
 
     @Alias
-    public native String execute(String name, String[] settings, Long delay, Long duration, Boolean disk, String path, Long maxAge, Long maxSize, Boolean dumpOnExit, Boolean pathToGcRoots)
-                    throws Target_jdk_jfr_internal_dcmd_DCmdException;
+    public native String execute(String name, String[] settings, Long delay, Long duration, Boolean disk, String path, Long maxAge, Long maxSize, Boolean dumpOnExit, Boolean pathToGcRoots);
 }

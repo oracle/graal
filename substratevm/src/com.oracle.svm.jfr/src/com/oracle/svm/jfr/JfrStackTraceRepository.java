@@ -33,6 +33,7 @@ import org.graalvm.nativeimage.StackValue;
 import org.graalvm.nativeimage.UnmanagedMemory;
 import org.graalvm.nativeimage.c.struct.CPointerTo;
 import org.graalvm.nativeimage.c.struct.RawField;
+import org.graalvm.nativeimage.c.struct.RawPointerTo;
 import org.graalvm.nativeimage.c.struct.RawStructure;
 import org.graalvm.nativeimage.c.struct.SizeOf;
 import org.graalvm.nativeimage.impl.UnmanagedMemorySupport;
@@ -84,7 +85,7 @@ public class JfrStackTraceRepository implements JfrRepository {
 
         int maxFrames = this.maxFrameCount;
         JfrStackFrames frames = ImageSingletons.lookup(UnmanagedMemorySupport.class).malloc(SizeOf.unsigned(JfrStackFrame.class).multiply(maxFrames));
-        if (frames != null) {
+        if (frames.isNonNull()) {
             stackTrace.setStackFrames(frames);
             try {
                 fillInStackTrace(stackTrace, maxFrames, skipCount);
@@ -252,7 +253,7 @@ public class JfrStackTraceRepository implements JfrRepository {
         void setTruncated(boolean value);
     }
 
-    @CPointerTo(JfrStackFrame.class)
+    @RawPointerTo(JfrStackFrame.class)
     public interface JfrStackFrames extends PointerBase {
         JfrStackFrame addressOf(long index);
 

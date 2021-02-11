@@ -353,17 +353,17 @@ class SubstrateJVM {
         if (newBuffer.isNull()) {
             // The flush failed for some reason, so mark the EventWriter as invalid for this write
             // attempt.
-            UNSAFE.putLong(writer, Target_jdk_jfr_internal_EventWriter.startPositionOffset, oldBuffer.getPos().rawValue());
-            UNSAFE.putLong(writer, Target_jdk_jfr_internal_EventWriter.currentPositionOffset, oldBuffer.getPos().rawValue());
-            UNSAFE.putBooleanVolatile(writer, Target_jdk_jfr_internal_EventWriter.validOffset, false);
+            JfrEventWriterAccess.setStartPosition(writer, oldBuffer.getPos().rawValue());
+            JfrEventWriterAccess.setCurrentPosition(writer, oldBuffer.getPos().rawValue());
+            JfrEventWriterAccess.setValid(writer, false);
         } else {
             // Update the EventWriter so that it uses the correct buffer and positions.
             Pointer newCurrentPos = newBuffer.getPos().add(uncommittedSize);
-            UNSAFE.putLong(writer, Target_jdk_jfr_internal_EventWriter.startPositionOffset, newBuffer.getPos().rawValue());
-            UNSAFE.putLong(writer, Target_jdk_jfr_internal_EventWriter.currentPositionOffset, newCurrentPos.rawValue());
+            JfrEventWriterAccess.setStartPosition(writer, newBuffer.getPos().rawValue());
+            JfrEventWriterAccess.setCurrentPosition(writer, newCurrentPos.rawValue());
             if (newBuffer.notEqual(oldBuffer)) {
-                UNSAFE.putLong(writer, Target_jdk_jfr_internal_EventWriter.startPositionAddressOffset, JfrBufferAccess.getAddressOfPos(newBuffer).rawValue());
-                UNSAFE.putLong(writer, Target_jdk_jfr_internal_EventWriter.maxPositionOffset, JfrBufferAccess.getDataEnd(newBuffer).rawValue());
+                JfrEventWriterAccess.setStartPositionAddress(writer, JfrBufferAccess.getAddressOfPos(newBuffer).rawValue());
+                JfrEventWriterAccess.setMaxPosition(writer, JfrBufferAccess.getDataEnd(newBuffer).rawValue());
             }
         }
 

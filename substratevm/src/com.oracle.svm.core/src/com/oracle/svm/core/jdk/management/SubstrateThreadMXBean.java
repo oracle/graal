@@ -25,10 +25,9 @@
 package com.oracle.svm.core.jdk.management;
 
 //Checkstyle: stop
+
 import java.lang.management.ManagementFactory;
 import java.lang.management.ThreadInfo;
-import java.util.concurrent.atomic.AtomicInteger;
-import java.util.concurrent.atomic.AtomicLong;
 
 import javax.management.ObjectName;
 
@@ -36,6 +35,8 @@ import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;
 
 import com.oracle.svm.core.annotate.Uninterruptible;
+import com.oracle.svm.core.jdk.UninterruptibleUtils.AtomicInteger;
+import com.oracle.svm.core.jdk.UninterruptibleUtils.AtomicLong;
 import com.oracle.svm.core.util.VMError;
 
 import sun.management.Util;
@@ -62,10 +63,19 @@ final class SubstrateThreadMXBean implements com.sun.management.ThreadMXBean {
     void noteThreadStart(Thread thread) {
         totalStartedThreadCount.incrementAndGet();
         int curThreadCount = threadCount.incrementAndGet();
-        peakThreadCount.getAndUpdate(previousPeakThreadCount -> Integer.max(previousPeakThreadCount, curThreadCount));
+        updatePeakThreadCount(curThreadCount);
+
         if (thread.isDaemon()) {
             daemonThreadCount.incrementAndGet();
         }
+    }
+
+    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
+    private void updatePeakThreadCount(int curThreadCount) {
+        int oldPeak;
+        do {
+            oldPeak = peakThreadCount.get();
+        } while (curThreadCount > oldPeak && !peakThreadCount.compareAndSet(oldPeak, curThreadCount));
     }
 
     @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
