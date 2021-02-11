@@ -26,7 +26,7 @@ package org.graalvm.compiler.truffle.runtime.collection;
 
 import java.util.Arrays;
 
-public class ArrayQueue<E> implements Pool<E> {
+public class ArrayQueue<E> implements SerialQueue<E> {
     private static final int INITIAL_SIZE = 128;
 
     private Object[] items;

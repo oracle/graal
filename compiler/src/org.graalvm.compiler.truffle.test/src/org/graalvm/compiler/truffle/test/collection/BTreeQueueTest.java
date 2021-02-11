@@ -63,25 +63,25 @@ public class BTreeQueueTest {
         }
     }
 
-    private BTreeQueue<Integer> testAddRandom(int total, boolean alwaysCheckInvariants) {
+    private static BTreeQueue<Integer> testAddRandom(int total, boolean alwaysCheckInvariants) {
         Random rand = new Random(total * 141);
         int[] numbers = rand.ints().map(x -> x % (4 * total)).distinct().limit(total).toArray();
         return testAdd(total, alwaysCheckInvariants, numbers);
     }
 
-    private BTreeQueue<Integer> testAddSorted(int total, boolean alwaysCheckInvariants) {
+    private static BTreeQueue<Integer> testAddSorted(int total, boolean alwaysCheckInvariants) {
         Random rand = new Random(total * 141);
         int[] numbers = rand.ints().map(x -> x % (4 * total)).distinct().limit(total).sorted().toArray();
         return testAdd(total, alwaysCheckInvariants, numbers);
     }
 
-    private BTreeQueue<Integer> testAddReverseSorted(int total, boolean alwaysCheckInvariants) {
+    private static BTreeQueue<Integer> testAddReverseSorted(int total, boolean alwaysCheckInvariants) {
         Random rand = new Random(total * 141);
         int[] numbers = rand.ints().map(x -> x % (4 * total)).distinct().limit(total).sorted().map(x -> x * -1).toArray();
         return testAdd(total, alwaysCheckInvariants, numbers);
     }
 
-    private BTreeQueue<Integer> testAdd(int total, boolean alwaysCheckInvariants, int[] numbers) {
+    private static BTreeQueue<Integer> testAdd(int total, boolean alwaysCheckInvariants, int[] numbers) {
         int smallest = Integer.MAX_VALUE;
         final BTreeQueue<Integer> tree = new BTreeQueue<>();
         for (int i = 0; i < total; i++) {
@@ -156,7 +156,7 @@ public class BTreeQueueTest {
         }
     }
 
-    private void testPoll(BTreeQueue<Integer> tree, boolean alwaysCheckInvariants) {
+    private static void testPoll(BTreeQueue<Integer> tree, boolean alwaysCheckInvariants) {
         final Object[] elements = tree.toArray();
         int i = 0;
         tree.checkInvariants();
@@ -216,7 +216,7 @@ public class BTreeQueueTest {
         testAddAndPoll(44500, 128);
     }
 
-    private void testAddAndPoll(int until, int batchSize) {
+    private static void testAddAndPoll(int until, int batchSize) {
         final ArrayList<Integer> observed = new ArrayList<>();
         final ArrayList<Integer> inserted = new ArrayList<>();
         final BTreeQueue<Integer> tree = new BTreeQueue<>();
