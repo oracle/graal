@@ -191,9 +191,9 @@ public final class Field extends Member<Type> implements FieldRef {
 
     // region Field accesses
 
-    // Start non primitive field handling.
+    // region Object
 
-    // To access hidden fields, use the dedicated `(g|s)etHiddenObjectField` methods
+    // region helper methods
     private Object getObjectHelper(StaticObject obj) {
         obj.checkNotForeign();
         assert getDeclaringKlass().isAssignableFrom(obj.getKlass());
@@ -229,7 +229,9 @@ public final class Field extends Member<Type> implements FieldRef {
         assert !getKind().isSubWord();
         linkedField.setObjectVolatile(obj, value);
     }
+    // endregion helper methods
 
+    // To access hidden fields, use the dedicated `(g|s)etHiddenObjectField` methods
     public StaticObject getObject(StaticObject obj) {
         assert !isHidden();
         return (StaticObject) getObjectHelper(obj);
@@ -276,6 +278,7 @@ public final class Field extends Member<Type> implements FieldRef {
         return linkedField.compareAndSwapObject(obj, before, after);
     }
 
+    // region hidden Object
     public Object getHiddenObject(StaticObject obj) {
         obj.checkNotForeign();
         assert isHidden();
@@ -301,13 +304,10 @@ public final class Field extends Member<Type> implements FieldRef {
         assert isHidden();
         setObjectVolatileHelper(obj, value);
     }
+    // endregion Hidden Object
+    // endregion Object
 
-    // End non-primitive field handling
-    // Start subword field handling
-
-    // Have a getter/Setter pair for each kind of primitive. Though a bit ugly, it avoids a switch
-    // when kind is known beforehand.
-
+    // region boolean
     public boolean getBoolean(StaticObject obj) {
         obj.checkNotForeign();
         assert getDeclaringKlass().isAssignableFrom(obj.getKlass());
@@ -327,122 +327,6 @@ public final class Field extends Member<Type> implements FieldRef {
         return linkedField.getBooleanVolatile(obj);
     }
 
-    public byte getByte(StaticObject obj) {
-        obj.checkNotForeign();
-        assert getDeclaringKlass().isAssignableFrom(obj.getKlass());
-        assert getKind() == JavaKind.Byte;
-        if (isVolatile()) {
-            return getByteVolatile(obj);
-        } else {
-            return linkedField.getByte(obj);
-        }
-    }
-
-    @CompilerDirectives.TruffleBoundary(allowInlining = true)
-    public byte getByteVolatile(StaticObject obj) {
-        obj.checkNotForeign();
-        assert getDeclaringKlass().isAssignableFrom(obj.getKlass());
-        assert getKind() == JavaKind.Byte;
-        return linkedField.getByteVolatile(obj);
-    }
-
-    public char getChar(StaticObject obj) {
-        obj.checkNotForeign();
-        assert getDeclaringKlass().isAssignableFrom(obj.getKlass());
-        assert getKind() == JavaKind.Char;
-        if (isVolatile()) {
-            return getCharVolatile(obj);
-        } else {
-            return linkedField.getChar(obj);
-        }
-    }
-
-    @CompilerDirectives.TruffleBoundary(allowInlining = true)
-    public char getCharVolatile(StaticObject obj) {
-        obj.checkNotForeign();
-        assert getDeclaringKlass().isAssignableFrom(obj.getKlass());
-        assert getKind() == JavaKind.Char;
-        return linkedField.getCharVolatile(obj);
-    }
-
-    public short getShort(StaticObject obj) {
-        obj.checkNotForeign();
-        assert getDeclaringKlass().isAssignableFrom(obj.getKlass());
-        assert getKind() == JavaKind.Short;
-        if (isVolatile()) {
-            return getShortVolatile(obj);
-        } else {
-            return linkedField.getShort(obj);
-        }
-    }
-
-    @CompilerDirectives.TruffleBoundary(allowInlining = true)
-    public short getShortVolatile(StaticObject obj) {
-        obj.checkNotForeign();
-        assert getDeclaringKlass().isAssignableFrom(obj.getKlass());
-        assert getKind() == JavaKind.Short;
-        return linkedField.getShortVolatile(obj);
-    }
-
-    public int getInt(StaticObject obj) {
-        obj.checkNotForeign();
-        assert getDeclaringKlass().isAssignableFrom(obj.getKlass());
-        assert getKind() == JavaKind.Int;
-        if (isVolatile()) {
-            return getIntVolatile(obj);
-        } else {
-            return linkedField.getInt(obj);
-        }
-    }
-
-    @CompilerDirectives.TruffleBoundary(allowInlining = true)
-    public int getIntVolatile(StaticObject obj) {
-        obj.checkNotForeign();
-        assert getDeclaringKlass().isAssignableFrom(obj.getKlass());
-        assert getKind() == JavaKind.Int;
-        return linkedField.getIntVolatile(obj);
-    }
-
-    public float getFloat(StaticObject obj) {
-        obj.checkNotForeign();
-        assert getDeclaringKlass().isAssignableFrom(obj.getKlass());
-        assert getKind() == JavaKind.Float;
-        if (isVolatile()) {
-            return getFloatVolatile(obj);
-        } else {
-            return linkedField.getFloat(obj);
-        }
-    }
-
-    @CompilerDirectives.TruffleBoundary(allowInlining = true)
-    public float getFloatVolatile(StaticObject obj) {
-        obj.checkNotForeign();
-        assert getDeclaringKlass().isAssignableFrom(obj.getKlass());
-        assert getKind() == JavaKind.Float;
-        return linkedField.getFloatVolatile(obj);
-    }
-
-    public double getDouble(StaticObject obj) {
-        obj.checkNotForeign();
-        assert getDeclaringKlass().isAssignableFrom(obj.getKlass());
-        assert getKind() == JavaKind.Double;
-        if (isVolatile()) {
-            return getDoubleVolatile(obj);
-        } else {
-            return linkedField.getDouble(obj);
-        }
-    }
-
-    @CompilerDirectives.TruffleBoundary(allowInlining = true)
-    public double getDoubleVolatile(StaticObject obj) {
-        obj.checkNotForeign();
-        assert getDeclaringKlass().isAssignableFrom(obj.getKlass());
-        assert getKind() == JavaKind.Double;
-        return linkedField.getDoubleVolatile(obj);
-    }
-
-    // Field setters
-
     public void setBoolean(StaticObject obj, boolean value) {
         obj.checkNotForeign();
         assert getDeclaringKlass().isAssignableFrom(obj.getKlass());
@@ -460,6 +344,27 @@ public final class Field extends Member<Type> implements FieldRef {
         assert getDeclaringKlass().isAssignableFrom(obj.getKlass());
         assert getKind() == JavaKind.Boolean;
         linkedField.setBooleanVolatile(obj, value);
+    }
+    // endregion boolean
+
+    // region byte
+    public byte getByte(StaticObject obj) {
+        obj.checkNotForeign();
+        assert getDeclaringKlass().isAssignableFrom(obj.getKlass());
+        assert getKind() == JavaKind.Byte;
+        if (isVolatile()) {
+            return getByteVolatile(obj);
+        } else {
+            return linkedField.getByte(obj);
+        }
+    }
+
+    @CompilerDirectives.TruffleBoundary(allowInlining = true)
+    public byte getByteVolatile(StaticObject obj) {
+        obj.checkNotForeign();
+        assert getDeclaringKlass().isAssignableFrom(obj.getKlass());
+        assert getKind() == JavaKind.Byte;
+        return linkedField.getByteVolatile(obj);
     }
 
     public void setByte(StaticObject obj, byte value) {
@@ -480,6 +385,27 @@ public final class Field extends Member<Type> implements FieldRef {
         assert getKind() == JavaKind.Byte;
         linkedField.setByteVolatile(obj, value);
     }
+    // endregion byte
+
+    // region char
+    public char getChar(StaticObject obj) {
+        obj.checkNotForeign();
+        assert getDeclaringKlass().isAssignableFrom(obj.getKlass());
+        assert getKind() == JavaKind.Char;
+        if (isVolatile()) {
+            return getCharVolatile(obj);
+        } else {
+            return linkedField.getChar(obj);
+        }
+    }
+
+    @CompilerDirectives.TruffleBoundary(allowInlining = true)
+    public char getCharVolatile(StaticObject obj) {
+        obj.checkNotForeign();
+        assert getDeclaringKlass().isAssignableFrom(obj.getKlass());
+        assert getKind() == JavaKind.Char;
+        return linkedField.getCharVolatile(obj);
+    }
 
     public void setChar(StaticObject obj, char value) {
         obj.checkNotForeign();
@@ -499,24 +425,106 @@ public final class Field extends Member<Type> implements FieldRef {
         assert getKind() == JavaKind.Char;
         linkedField.setCharVolatile(obj, value);
     }
+    // endregion char
 
-    public void setShort(StaticObject obj, short value) {
+    // region double
+    public double getDouble(StaticObject obj) {
         obj.checkNotForeign();
         assert getDeclaringKlass().isAssignableFrom(obj.getKlass());
-        assert getKind() == JavaKind.Short;
+        assert getKind() == JavaKind.Double;
         if (isVolatile()) {
-            setShortVolatile(obj, value);
+            return getDoubleVolatile(obj);
         } else {
-            linkedField.setShort(obj, value);
+            return linkedField.getDouble(obj);
         }
     }
 
     @CompilerDirectives.TruffleBoundary(allowInlining = true)
-    public void setShortVolatile(StaticObject obj, short value) {
+    public double getDoubleVolatile(StaticObject obj) {
         obj.checkNotForeign();
         assert getDeclaringKlass().isAssignableFrom(obj.getKlass());
-        assert getKind() == JavaKind.Short;
-        linkedField.setShortVolatile(obj, value);
+        assert getKind() == JavaKind.Double;
+        return linkedField.getDoubleVolatile(obj);
+    }
+
+    public void setDouble(StaticObject obj, double value) {
+        obj.checkNotForeign();
+        assert getDeclaringKlass().isAssignableFrom(obj.getKlass());
+        assert getKind() == JavaKind.Double;
+        if (isVolatile()) {
+            setDoubleVolatile(obj, value);
+        } else {
+            linkedField.setDouble(obj, value);
+        }
+    }
+
+    @CompilerDirectives.TruffleBoundary(allowInlining = true)
+    public void setDoubleVolatile(StaticObject obj, double value) {
+        obj.checkNotForeign();
+        assert getDeclaringKlass().isAssignableFrom(obj.getKlass());
+        assert getKind() == JavaKind.Double;
+        linkedField.setDoubleVolatile(obj, value);
+    }
+    // endregion double
+
+    // region float
+    public float getFloat(StaticObject obj) {
+        obj.checkNotForeign();
+        assert getDeclaringKlass().isAssignableFrom(obj.getKlass());
+        assert getKind() == JavaKind.Float;
+        if (isVolatile()) {
+            return getFloatVolatile(obj);
+        } else {
+            return linkedField.getFloat(obj);
+        }
+    }
+
+    @CompilerDirectives.TruffleBoundary(allowInlining = true)
+    public float getFloatVolatile(StaticObject obj) {
+        obj.checkNotForeign();
+        assert getDeclaringKlass().isAssignableFrom(obj.getKlass());
+        assert getKind() == JavaKind.Float;
+        return linkedField.getFloatVolatile(obj);
+    }
+
+    public void setFloat(StaticObject obj, float value) {
+        obj.checkNotForeign();
+        assert getDeclaringKlass().isAssignableFrom(obj.getKlass());
+        assert getKind() == JavaKind.Float;
+        if (isVolatile()) {
+            setFloatVolatile(obj, value);
+        } else {
+            linkedField.setFloat(obj, value);
+        }
+    }
+
+    @CompilerDirectives.TruffleBoundary(allowInlining = true)
+    public void setFloatVolatile(StaticObject obj, float value) {
+        obj.checkNotForeign();
+        assert getDeclaringKlass().isAssignableFrom(obj.getKlass());
+        assert getKind() == JavaKind.Float;
+        linkedField.setFloatVolatile(obj, value);
+    }
+    // endregion float
+
+    // region int
+    public int getInt(StaticObject obj) {
+        obj.checkNotForeign();
+        assert getDeclaringKlass().isAssignableFrom(obj.getKlass());
+        assert getKind() == JavaKind.Int;
+        if (isVolatile()) {
+            return getIntVolatile(obj);
+        } else {
+            return linkedField.getInt(obj);
+        }
+    }
+
+    @CompilerDirectives.TruffleBoundary(allowInlining = true)
+    public int getIntVolatile(StaticObject obj) {
+        obj.checkNotForeign();
+        assert getDeclaringKlass().isAssignableFrom(obj.getKlass());
+        assert getKind() == JavaKind.Int;
+        return linkedField.getIntVolatile(obj);
     }
 
     public void setInt(StaticObject obj, int value) {
@@ -544,48 +552,9 @@ public final class Field extends Member<Type> implements FieldRef {
         assert getKind() == JavaKind.Int || getKind() == JavaKind.Float;
         return linkedField.compareAndSwapInt(obj, before, after);
     }
+    // endregion int
 
-    public void setFloat(StaticObject obj, float value) {
-        obj.checkNotForeign();
-        assert getDeclaringKlass().isAssignableFrom(obj.getKlass());
-        assert getKind() == JavaKind.Float;
-        if (isVolatile()) {
-            setFloatVolatile(obj, value);
-        } else {
-            linkedField.setFloat(obj, value);
-        }
-    }
-
-    @CompilerDirectives.TruffleBoundary(allowInlining = true)
-    public void setFloatVolatile(StaticObject obj, float value) {
-        obj.checkNotForeign();
-        assert getDeclaringKlass().isAssignableFrom(obj.getKlass());
-        assert getKind() == JavaKind.Float;
-        linkedField.setFloatVolatile(obj, value);
-    }
-
-    public void setDouble(StaticObject obj, double value) {
-        obj.checkNotForeign();
-        assert getDeclaringKlass().isAssignableFrom(obj.getKlass());
-        assert getKind() == JavaKind.Double;
-        if (isVolatile()) {
-            setDoubleVolatile(obj, value);
-        } else {
-            linkedField.setDouble(obj, value);
-        }
-    }
-
-    @CompilerDirectives.TruffleBoundary(allowInlining = true)
-    public void setDoubleVolatile(StaticObject obj, double value) {
-        obj.checkNotForeign();
-        assert getDeclaringKlass().isAssignableFrom(obj.getKlass());
-        assert getKind() == JavaKind.Double;
-        linkedField.setDoubleVolatile(obj, value);
-    }
-
-    // End subword field handling
-    // start big words field handling
-
+    // region long
     public long getLong(StaticObject obj) {
         obj.checkNotForeign();
         assert getDeclaringKlass().isAssignableFrom(obj.getKlass());
@@ -635,7 +604,47 @@ public final class Field extends Member<Type> implements FieldRef {
         assert getKind().needsTwoSlots();
         return linkedField.compareAndSwapLong(obj, before, after);
     }
-    // End big words field handling.
+    // endregion long
+
+    // region short
+    public short getShort(StaticObject obj) {
+        obj.checkNotForeign();
+        assert getDeclaringKlass().isAssignableFrom(obj.getKlass());
+        assert getKind() == JavaKind.Short;
+        if (isVolatile()) {
+            return getShortVolatile(obj);
+        } else {
+            return linkedField.getShort(obj);
+        }
+    }
+
+    @CompilerDirectives.TruffleBoundary(allowInlining = true)
+    public short getShortVolatile(StaticObject obj) {
+        obj.checkNotForeign();
+        assert getDeclaringKlass().isAssignableFrom(obj.getKlass());
+        assert getKind() == JavaKind.Short;
+        return linkedField.getShortVolatile(obj);
+    }
+
+    public void setShort(StaticObject obj, short value) {
+        obj.checkNotForeign();
+        assert getDeclaringKlass().isAssignableFrom(obj.getKlass());
+        assert getKind() == JavaKind.Short;
+        if (isVolatile()) {
+            setShortVolatile(obj, value);
+        } else {
+            linkedField.setShort(obj, value);
+        }
+    }
+
+    @CompilerDirectives.TruffleBoundary(allowInlining = true)
+    public void setShortVolatile(StaticObject obj, short value) {
+        obj.checkNotForeign();
+        assert getDeclaringKlass().isAssignableFrom(obj.getKlass());
+        assert getKind() == JavaKind.Short;
+        linkedField.setShortVolatile(obj, value);
+    }
+    // endregion short
 
     // endregion Field accesses
 
