@@ -6,9 +6,9 @@ local sc = (import "ci_common/sulong-common.jsonnet");
 
   local linux_amd64 = common["linux-amd64"],
 
-  local basicTags =                   "build,sulong,interop,linker,debug,irdebug,bitcodeFormat,debugexpr,otherTests,nwcc,llvm",
-  local basicTagsLLToolchain =        "build,sulong,interop,linker,debug,irdebug,bitcodeFormat,debugexpr,otherTests,sulongLL,nwcc,llvm,toolchain",
-  local basicTagsNoNWCCNoDebugExpr =  "build,sulong,interop,linker,debug,irdebug,bitcodeFormat,otherTests,sulongLL,llvm",
+  local basicTags = "build,sulongBasic,nwcc,llvm",
+  local basicTagsLLToolchain = "build,sulongBasic,sulongLL,nwcc,llvm,toolchain",
+  local basicTagsNoNWCCNoDebugExpr = "build,sulong,sulongLL,interop,linker,debug,irdebug,bitcodeFormat,otherTests,llvm",
 
   sulong:: {
     environment+: {
@@ -80,7 +80,7 @@ local sc = (import "ci_common/sulong-common.jsonnet");
     sc.gate + $.sulong + sc.jdk8 + sc.linux_amd64 + sc.llvmBundled + sc.requireGMP + sc.gateTags("build,gcc_cpp") + { name: "gate-sulong-gcc_cpp", timelimit: "45:00" },
     sc.gate + $.sulong + sc.jdk8 + sc.linux_amd64 + sc.llvmBundled + sc.requireGMP + sc.requireGCC + sc.gateTags("build,gcc_fortran") + { name: "gate-sulong-gcc_fortran" },
     # No more testing on llvm 3.8 [GR-21735]
-    # sc.gate + $.sulong + sc.jdk8 + sc.linux_amd64 + sc.llvm38 + sc.requireGMP + sc.requireGCC + sc.gateTags(basicTags) + { name: "gate-sulong-basic_v38"},
+    # sc.gate + $.sulong + sc.jdk8 + sc.linux_amd64 + sc.llvm38 + sc.requireGMP + sc.requireGCC + sc.gateTags("build,sulongBasic,nwcc,llvm") + { name: "gate-sulong-basic_v38"},
     sc.gate + $.sulong + sc.jdk8 + sc.linux_amd64 + sc.llvm4 + sc.requireGMP + sc.requireGCC + sc.gateTags(basicTags) + { name: "gate-sulong-basic_v40" },
     sc.gate + $.sulong + sc.jdk8 + sc.linux_amd64 + sc.llvm6 + sc.requireGMP + sc.requireGCC + sc.gateTags(basicTags) + { name: "gate-sulong-basic_v60" },
     sc.gate + $.sulong + sc.jdk8 + sc.linux_amd64 + sc.llvm8 + sc.requireGMP + sc.requireGCC + sc.gateTags(basicTags) + { name: "gate-sulong-basic_v80" },
