@@ -22,9 +22,9 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.svm.hosted;
+package com.oracle.svm.core.graal;
 
-import com.oracle.graal.pointsto.api.UnsafePartitionKind;
+import com.oracle.svm.util.UnsafePartitionKind;
 
 /**
  * Marker for unsafe accesses to Graal edges.
