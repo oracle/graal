@@ -82,6 +82,8 @@ import com.oracle.truffle.espresso.substitutions.GuestCall;
 import com.oracle.truffle.espresso.substitutions.Host;
 import com.oracle.truffle.espresso.substitutions.InjectMeta;
 import com.oracle.truffle.espresso.substitutions.InjectProfile;
+import com.oracle.truffle.espresso.substitutions.IntrinsicSubstitutor;
+import com.oracle.truffle.espresso.substitutions.JniCollector;
 import com.oracle.truffle.espresso.substitutions.SubstitutionProfiler;
 import com.oracle.truffle.espresso.substitutions.Substitutions;
 import com.oracle.truffle.espresso.substitutions.Target_java_lang_Class;
@@ -145,7 +147,7 @@ public final class JniEnv extends NativeEnv implements ContextAccess {
 
     private final @Pointer TruffleObject getSizeMax;
 
-    private static final Map<String, JniSubstitutor.Factory> jniMethods = buildJniMethods();
+    private static final Map<String, IntrinsicSubstitutor.Factory> jniMethods = buildJniMethods();
 
     private final WeakHandles<Field> fieldIds = new WeakHandles<>();
     private final WeakHandles<Method> methodIds = new WeakHandles<>();
@@ -182,9 +184,9 @@ public final class JniEnv extends NativeEnv implements ContextAccess {
         threadLocalPendingException.set(ex);
     }
 
-    public Callback jniMethodWrapper(JniSubstitutor.Factory factory) {
-        return new Callback(factory.getParameterCount() + 1, new Callback.Function() {
-            @CompilationFinal private JniSubstitutor subst = null;
+    public Callback jniMethodWrapper(IntrinsicSubstitutor.Factory factory) {
+        return new Callback(factory.parameterCount() + 1, new Callback.Function() {
+            @CompilationFinal private IntrinsicSubstitutor subst = null;
 
             @Override
             public Object call(Object... args) {
@@ -214,7 +216,7 @@ public final class JniEnv extends NativeEnv implements ContextAccess {
 
     @TruffleBoundary
     public TruffleObject lookupJniImpl(String methodName) {
-        JniSubstitutor.Factory m = jniMethods.get(methodName);
+        IntrinsicSubstitutor.Factory m = jniMethods.get(methodName);
         // Dummy placeholder for unimplemented/unknown methods.
         if (m == null) {
             getLogger().log(Level.FINER, "Fetching unknown/unimplemented JNI method: {0}", methodName);
@@ -445,9 +447,9 @@ public final class JniEnv extends NativeEnv implements ContextAccess {
         return bb;
     }
 
-    private static Map<String, JniSubstitutor.Factory> buildJniMethods() {
-        Map<String, JniSubstitutor.Factory> map = new HashMap<>();
-        for (JniSubstitutor.Factory method : JniCollector.getCollector()) {
+    private static Map<String, IntrinsicSubstitutor.Factory> buildJniMethods() {
+        Map<String, IntrinsicSubstitutor.Factory> map = new HashMap<>();
+        for (IntrinsicSubstitutor.Factory method : JniCollector.getCollector()) {
             assert !map.containsKey(method.methodName()) : "JniImpl for " + method.methodName() + " already exists";
             map.put(method.methodName(), method);
         }

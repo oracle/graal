@@ -23,174 +23,20 @@
 
 package com.oracle.truffle.espresso.processor;
 
-import java.util.ArrayList;
-import java.util.HashSet;
-import java.util.List;
-import java.util.Set;
-
-import javax.annotation.processing.RoundEnvironment;
-import javax.lang.model.element.Element;
-import javax.lang.model.element.ElementKind;
-import javax.lang.model.element.ExecutableElement;
-import javax.lang.model.element.Modifier;
-import javax.lang.model.element.TypeElement;
-
 public class VMImplProcessor extends IntrinsicsProcessor {
-    // Annotations
-
-    // @VmImpl
-    private TypeElement vmImpl;
-    // @JniImpl
-    private TypeElement jniImpl;
-
     // Processor-specific constants
 
-    private static final String SUBSTITUTION_PACKAGE = "com.oracle.truffle.espresso.vm";
+    private static final String ENV_PACKAGE = "com.oracle.truffle.espresso.vm";
 
-    private static final String VM_IMPL = SUBSTITUTION_PACKAGE + "." + "VmImpl";
-    private static final String JNI_IMPL = JNI_PACKAGE + "." + "JniImpl";
+    private static final String VM_IMPL = ENV_PACKAGE + "." + "VmImpl";
 
     private static final String VM = "VM";
-    private static final String VM_NAME = "env";
-    private static final String IMPORT_VM = "import " + SUBSTITUTION_PACKAGE + "." + VM + ";\n";
+    private static final String VM_NAME = "vm";
 
-    private static final String SUBSTITUTOR = "VMSubstitutor";
     private static final String COLLECTOR = "VMCollector";
     private static final String COLLECTOR_INSTANCE_NAME = "vmCollector";
 
-    private static final String INVOKE = "invoke(" + VM + " " + VM_NAME + ", Object[] " + ARGS_NAME + ") {\n";
-
     public VMImplProcessor() {
-        super(VM_NAME, SUBSTITUTION_PACKAGE, SUBSTITUTOR, COLLECTOR, COLLECTOR_INSTANCE_NAME);
-    }
-
-    static class VMHelper extends SubstitutionHelper {
-        final NativeType[] jniNativeSignature;
-        final List<Boolean> referenceTypes;
-        final boolean isStatic;
-        final boolean isJni;
-
-        public VMHelper(EspressoProcessor processor, ExecutableElement method, NativeType[] jniNativeSignature, List<Boolean> referenceTypes, boolean isStatic, boolean isJni) {
-            super(processor, method);
-            this.jniNativeSignature = jniNativeSignature;
-            this.referenceTypes = referenceTypes;
-            this.isStatic = isStatic;
-            this.isJni = isJni;
-        }
-    }
-
-    private void processElement(Element method) {
-        assert method.getKind() == ElementKind.METHOD;
-        ExecutableElement VMmethod = (ExecutableElement) method;
-        assert VMmethod.getEnclosingElement().getKind() == ElementKind.CLASS;
-        TypeElement declaringClass = (TypeElement) VMmethod.getEnclosingElement();
-        if (declaringClass.getQualifiedName().toString().equals(SUBSTITUTION_PACKAGE + "." + VM)) {
-            String className = VM;
-            // Extract the class name.
-            // Obtain the name of the method to be substituted in.
-            String targetMethodName = VMmethod.getSimpleName().toString();
-            // Obtain the host types of the parameters
-            List<String> espressoTypes = new ArrayList<>();
-            List<Boolean> referenceTypes = new ArrayList<>();
-            getEspressoTypes(VMmethod, espressoTypes, referenceTypes);
-            // Spawn the name of the Substitutor we will create.
-            String substitutorName = getSubstitutorClassName(className, targetMethodName, espressoTypes);
-            if (!classes.contains(substitutorName)) {
-                // Check if this VM method has the @JniImpl annotation
-                boolean isJni = getAnnotation(VMmethod, jniImpl) != null;
-                // Obtain the jniNativeSignature
-                NativeType[] jniNativeSignature = jniNativeSignature(VMmethod, isJni);
-                // Check if we need to call an instance method
-                boolean isStatic = VMmethod.getModifiers().contains(Modifier.STATIC);
-                // Spawn helper
-                VMHelper h = new VMHelper(this, (ExecutableElement) method, jniNativeSignature, referenceTypes, isStatic, isJni);
-                // Create the contents of the source file
-                String classFile = spawnSubstitutor(
-                                className,
-                                targetMethodName,
-                                espressoTypes, h);
-                commitSubstitution(VMmethod, substitutorName, classFile);
-            }
-        }
-    }
-
-    @Override
-    void processImpl(RoundEnvironment env) {
-        // Set up the different annotations, along with their values, that we will need.
-        this.vmImpl = processingEnv.getElementUtils().getTypeElement(VM_IMPL);
-        this.jniImpl = processingEnv.getElementUtils().getTypeElement(JNI_IMPL);
-        initNfiType();
-        // Actual work
-        for (Element e : env.getElementsAnnotatedWith(vmImpl)) {
-            processElement(e);
-        }
-    }
-
-    @Override
-    public Set<String> getSupportedAnnotationTypes() {
-        Set<String> annotations = new HashSet<>();
-        annotations.add(VM_IMPL);
-        return annotations;
-    }
-
-    @Override
-    String generateImports(String className, String targetMethodName, List<String> parameterTypeName, SubstitutionHelper helper) {
-        StringBuilder str = new StringBuilder();
-        VMHelper h = (VMHelper) helper;
-        str.append(IMPORT_VM);
-        str.append(IMPORT_NATIVE_SIGNATURE);
-        str.append(IMPORT_NATIVE_TYPE);
-        if (parameterTypeName.contains("String")) {
-            str.append(IMPORT_INTEROP_LIBRARY);
-        }
-        if (parameterTypeName.contains("StaticObject") || h.jniNativeSignature[0].equals(NativeType.VOID)) {
-            str.append(IMPORT_STATIC_OBJECT);
-        }
-        if (parameterTypeName.contains("TruffleObject")) {
-            str.append(IMPORT_TRUFFLE_OBJECT);
-        }
-        str.append("\n");
-        return str.toString();
-    }
-
-    @Override
-    String generateFactoryConstructorAndBody(String className, String targetMethodName, List<String> parameterTypeName, SubstitutionHelper helper) {
-        StringBuilder str = new StringBuilder();
-        VMHelper h = (VMHelper) helper;
-        str.append(TAB_3).append("super(\n");
-        str.append(TAB_4).append(generateString(targetMethodName)).append(",\n");
-        str.append(TAB_4).append(generateNativeSignature(h.jniNativeSignature)).append(",\n");
-        str.append(TAB_4).append(parameterTypeName.size()).append(",\n");
-        str.append(TAB_4).append(h.isJni).append("\n");
-        str.append(TAB_3).append(");\n");
-        str.append(TAB_2).append("}\n");
-        return str.toString();
-    }
-
-    @Override
-    String generateInvoke(String className, String targetMethodName, List<String> parameterTypeName, SubstitutionHelper helper) {
-        StringBuilder str = new StringBuilder();
-        VMHelper h = (VMHelper) helper;
-        str.append(TAB_1).append(PUBLIC_FINAL_OBJECT).append(INVOKE);
-        int argIndex = 0;
-        for (String type : parameterTypeName) {
-            boolean isNonPrimitive = h.referenceTypes.get(argIndex);
-            str.append(extractArg(argIndex++, type, isNonPrimitive, h.isJni ? 1 : 0, TAB_2));
-        }
-        switch (h.jniNativeSignature[0]) {
-            case VOID:
-                str.append(TAB_2).append(extractInvocation(className, targetMethodName, argIndex, h.isStatic, helper)).append(";\n");
-                str.append(TAB_2).append("return ").append(STATIC_OBJECT_NULL).append(";\n");
-                break;
-            case OBJECT:
-                str.append(TAB_2).append("return ").append(
-                                "(long) env.getHandles().createLocal(" + extractInvocation(className, targetMethodName, argIndex, h.isStatic, helper) + ")").append(";\n");
-                break;
-            default:
-                str.append(TAB_2).append("return " + extractInvocation(className, targetMethodName, argIndex, h.isStatic, helper)).append(";\n");
-        }
-        str.append(TAB_1).append("}\n");
-        str.append("}");
-        return str.toString();
+        super(VM_NAME, VM, VM_IMPL, ENV_PACKAGE, COLLECTOR, COLLECTOR_INSTANCE_NAME);
     }
 }

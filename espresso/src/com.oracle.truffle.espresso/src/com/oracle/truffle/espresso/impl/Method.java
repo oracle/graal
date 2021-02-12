@@ -1406,6 +1406,11 @@ public final class Method extends Member<Signature> implements TruffleObject, Co
             }
             return bci;
         }
+
+        @Override
+        public String toString() {
+            return getMethod().toString();
+        }
     }
 
     class SharedRedefinitionContent {

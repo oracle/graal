@@ -200,7 +200,7 @@ public abstract class EspressoProcessor extends AbstractProcessor {
     abstract String generateInvoke(String className, String targetMethodName, List<String> parameterTypeName, SubstitutionHelper helper);
 
     EspressoProcessor(String SUBSTITUTION_PACKAGE, String SUBSTITUTOR, String COLLECTOR, String COLLECTOR_INSTANCE_NAME) {
-        this.SUBSTITUTION_PACKAGE = SUBSTITUTION_PACKAGE;
+        this.SUBSTITUTOR_PACKAGE = SUBSTITUTION_PACKAGE;
         this.SUBSTITUTOR = SUBSTITUTOR;
         this.COLLECTOR = COLLECTOR;
         this.COLLECTOR_INSTANCE_NAME = COLLECTOR_INSTANCE_NAME;
@@ -213,7 +213,7 @@ public abstract class EspressoProcessor extends AbstractProcessor {
     }
 
     // Instance specific constants
-    private final String SUBSTITUTION_PACKAGE;
+    private final String SUBSTITUTOR_PACKAGE;
     private final String SUBSTITUTOR;
     private final String COLLECTOR;
     private final String COLLECTOR_INSTANCE_NAME;
@@ -427,7 +427,7 @@ public abstract class EspressoProcessor extends AbstractProcessor {
     }
 
     private String getSubstitutorQualifiedName(String substitutorName) {
-        return SUBSTITUTION_PACKAGE + "." + substitutorName;
+        return SUBSTITUTOR_PACKAGE + "." + substitutorName;
     }
 
     private static StringBuilder signatureSuffixBuilder(List<String> parameterTypes) {
@@ -813,9 +813,6 @@ public abstract class EspressoProcessor extends AbstractProcessor {
         classFile.append(IMPORT_META);
         if (!helper.guestCalls.isEmpty()) {
             classFile.append(IMPORT_DIRECT_CALL_NODE);
-        }
-        if (helper.hasProfileInjection) {
-            classFile.append(IMPORT_PROFILE);
         }
         classFile.append(generateImports(substitutorName, targetMethodName, parameterTypeName, helper));
 

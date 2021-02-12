@@ -134,12 +134,14 @@ import com.oracle.truffle.espresso.substitutions.GuestCall;
 import com.oracle.truffle.espresso.substitutions.Host;
 import com.oracle.truffle.espresso.substitutions.InjectMeta;
 import com.oracle.truffle.espresso.substitutions.InjectProfile;
+import com.oracle.truffle.espresso.substitutions.IntrinsicSubstitutor;
 import com.oracle.truffle.espresso.substitutions.SubstitutionProfiler;
 import com.oracle.truffle.espresso.substitutions.SuppressFBWarnings;
 import com.oracle.truffle.espresso.substitutions.Target_java_lang_Class;
 import com.oracle.truffle.espresso.substitutions.Target_java_lang_System;
 import com.oracle.truffle.espresso.substitutions.Target_java_lang_Thread;
 import com.oracle.truffle.espresso.substitutions.Target_java_lang_Thread.State;
+import com.oracle.truffle.espresso.substitutions.VMCollector;
 
 /**
  * Espresso implementation of the VM interface (libjvm).
@@ -353,16 +355,16 @@ public final class VM extends NativeEnv implements ContextAccess {
         }
     }
 
-    private static Map<String, VMSubstitutor.Factory> buildVmMethods() {
-        Map<String, VMSubstitutor.Factory> map = new HashMap<>();
-        for (VMSubstitutor.Factory method : VMCollector.getCollector()) {
+    private static Map<String, IntrinsicSubstitutor.Factory> buildVmMethods() {
+        Map<String, IntrinsicSubstitutor.Factory> map = new HashMap<>();
+        for (IntrinsicSubstitutor.Factory method : VMCollector.getCollector()) {
             assert !map.containsKey(method.methodName()) : "VmImpl for " + method + " already exists";
             map.put(method.methodName(), method);
         }
         return Collections.unmodifiableMap(map);
     }
 
-    private static final Map<String, VMSubstitutor.Factory> vmMethods = buildVmMethods();
+    private static final Map<String, IntrinsicSubstitutor.Factory> vmMethods = buildVmMethods();
 
     public static VM create(JniEnv jniEnv) {
         return new VM(jniEnv);
@@ -378,7 +380,7 @@ public final class VM extends NativeEnv implements ContextAccess {
 
     @TruffleBoundary
     public TruffleObject lookupVmImpl(String methodName) {
-        VMSubstitutor.Factory m = vmMethods.get(methodName);
+        IntrinsicSubstitutor.Factory m = vmMethods.get(methodName);
         // Dummy placeholder for unimplemented/unknown methods.
         if (m == null) {
             getLogger().log(Level.FINER, "Fetching unknown/unimplemented VM method: {0}", methodName);
@@ -619,10 +621,10 @@ public final class VM extends NativeEnv implements ContextAccess {
         return clone;
     }
 
-    public Callback vmMethodWrapper(VMSubstitutor.Factory m) {
+    public Callback vmMethodWrapper(IntrinsicSubstitutor.Factory m) {
         int extraArg = (m.isJni()) ? 1 : 0;
         return new Callback(m.parameterCount() + extraArg, new Callback.Function() {
-            @CompilerDirectives.CompilationFinal private VMSubstitutor subst = null;
+            @CompilerDirectives.CompilationFinal private IntrinsicSubstitutor subst = null;
 
             @Override
             public Object call(Object... args) {
