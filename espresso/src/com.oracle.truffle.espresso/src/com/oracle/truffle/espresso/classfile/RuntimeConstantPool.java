@@ -63,6 +63,11 @@ public final class RuntimeConstantPool extends ConstantPool {
     }
 
     @Override
+    public byte[] getRawBytes() {
+        return pool.getRawBytes();
+    }
+
+    @Override
     public PoolConstant at(int index, String description) {
         return pool.at(index, description);
     }
