@@ -151,6 +151,15 @@ def test():
     if os.environ.get('GDB_CAN_PRINT', '') == 'True':
         can_print_data = True
 
+    isolates = False
+    if os.environ.get('debuginfotest.isolates', 'no') == 'yes':
+        isolates = True
+        
+    if isolates:
+        print("Testing with isolates enabled!")
+    else:
+        print("Testing with isolates disabled!")
+
     if not can_print_data:
         print("Warning: cannot test printing of objects!")
 
@@ -187,32 +196,46 @@ def test():
     if can_print_data:
         # print the contents of the arguments array which will be in rdi
         exec_string = execute("print /x *(('java.lang.String[]' *)$rdi)")
-        checker = Checker("print String[] args",
-                          [r"%s = {"%(wildcard_pattern),
-                           r"%s<java.lang.Object> = {"%(spaces_pattern),
-                           r"%s<_objhdr> = {"%(spaces_pattern),
-                           r"%shub = %s,"%(spaces_pattern, address_pattern),
-                           r"%sidHash = %s"%(spaces_pattern, address_pattern),
-                           r"%s}, <No data fields>}, "%(spaces_pattern),
-                           r"%smembers of java\.lang\.String\[\]:"%(spaces_pattern),
-                           r"%slen = 0x0,"%(spaces_pattern),
-                           r"%sdata = %s"%(spaces_pattern, address_pattern),
-                           "}"])
+        rexp = [r"%s = {"%(wildcard_pattern),
+                r"%s<java.lang.Object> = {"%(spaces_pattern),
+                r"%s<_objhdr> = {"%(spaces_pattern),
+                r"%shub = %s,"%(spaces_pattern, address_pattern),
+                r"%sidHash = %s"%(spaces_pattern, address_pattern),
+                r"%s}, <No data fields>}, "%(spaces_pattern),
+                r"%smembers of java\.lang\.String\[\]:"%(spaces_pattern),
+                r"%slen = 0x0,"%(spaces_pattern),
+                r"%sdata = %s"%(spaces_pattern, address_pattern),
+                "}"]
+
+        checker = Checker("print String[] args", rexp)
 
         checker.check(exec_string, skip_fails=False)
 
         # print the hub of the array and check it has a name field
         exec_string = execute("print /x *(('java.lang.String[]' *)$rdi)->hub")
-        checker = Checker("print String[] hub",
-                          [r"%s = {"%(wildcard_pattern),
-                           r"%s<java.lang.Object> = {"%(spaces_pattern),
-                           r"%s<_objhdr> = {"%(spaces_pattern),
-                           r"%shub = %s,"%(spaces_pattern, address_pattern),
-                           r"%sidHash = %s"%(spaces_pattern, address_pattern),
-                           r"%s}, <No data fields>},"%(spaces_pattern),
-                           r"%smembers of java\.lang\.Class:"%(spaces_pattern),
-                           r"%sname = %s,"%(spaces_pattern, address_pattern),
-                           "}"])
+        if isolates:
+            rexp = [r"%s = {"%(wildcard_pattern),
+                    r"%s<java.lang.Class> = {"%(spaces_pattern),
+                    r"%s<java.lang.Object> = {"%(spaces_pattern),
+                    r"%s<_objhdr> = {"%(spaces_pattern),
+                    r"%shub = %s,"%(spaces_pattern, address_pattern),
+                    r"%sidHash = %s"%(spaces_pattern, address_pattern),
+                    r"%s}, <No data fields>},"%(spaces_pattern),
+                    r"%smembers of java\.lang\.Class:"%(spaces_pattern),
+                    r"%sname = %s,"%(spaces_pattern, address_pattern),
+                    r"%s}, <No data fields>}"%spaces_pattern]
+        else:
+            rexp = [r"%s = {"%(wildcard_pattern),
+                    r"%s<java.lang.Object> = {"%(spaces_pattern),
+                    r"%s<_objhdr> = {"%(spaces_pattern),
+                    r"%shub = %s,"%(spaces_pattern, address_pattern),
+                    r"%sidHash = %s"%(spaces_pattern, address_pattern),
+                    r"%s}, <No data fields>},"%(spaces_pattern),
+                    r"%smembers of java\.lang\.Class:"%(spaces_pattern),
+                    r"%sname = %s,"%(spaces_pattern, address_pattern),
+                    "}"]
+
+        checker = Checker("print String[] hub", rexp)
 
         checker.check(exec_string, skip_fails=True)
 
@@ -226,8 +249,12 @@ def test():
 
         # ensure we can reference static fields
         exec_string = execute("print 'java.math.BigDecimal'::BIG_TEN_POWERS_TABLE")
-        checker = Checker("print static field value",
-                          r"%s = \(java.math.BigInteger\[\] \*\) %s"%(wildcard_pattern, address_pattern))
+        if isolates:
+            rexp = r"%s = \(_z_\.java.math.BigInteger\[\] \*\) %s"%(wildcard_pattern, address_pattern)
+        else:
+            rexp = r"%s = \(java.math.BigInteger\[\] \*\) %s"%(wildcard_pattern, address_pattern)
+
+        checker = Checker("print static field value",rexp)
         checker.check(exec_string, skip_fails=False)
 
         # ensure we can dereference static fields
@@ -250,8 +277,8 @@ def test():
     #                       "[ \t]*void java.io.PrintStream::println\\(java\\.lang\\.Object \\*\\);",
     #                       "[ \t]*void java.io.PrintStream::println\\(java\\.lang\\.String \\*\\);",
     #                      ])
-    checker = Checker("info func java.io.PrintStream::println",
-                      r"%svoid java.io.PrintStream::println\(java\.lang\.String \*\)"%maybe_spaces_pattern)
+    rexp = r"%svoid java.io.PrintStream::println\(java\.lang\.String \*\)"%maybe_spaces_pattern
+    checker = Checker("info func java.io.PrintStream::println", rexp)
     checker.check(exec_string)
 
     # set a break point at PrintStream.println(String)
@@ -273,13 +300,23 @@ def test():
 
     # print details of greeter types
     exec_string = execute("ptype 'hello.Hello$NamedGreeter'")
-    rexp = [r"type = class hello\.Hello\$NamedGreeter : public hello\.Hello\$Greeter {",
-            r"%sprivate:"%(spaces_pattern),
-            r"%sjava\.lang\.String \*name;"%(spaces_pattern),
-            r"",
-            r"%spublic:"%(spaces_pattern),
-            r"%svoid greet\(void\);"%(spaces_pattern),
-            r"}"]
+    if isolates:
+        rexp = [r"type = class hello\.Hello\$NamedGreeter : public hello\.Hello\$Greeter {",
+                r"%sprivate:"%(spaces_pattern),
+                r"%s_z_\.java\.lang\.String \*name;"%(spaces_pattern),
+                r"",
+                r"%spublic:"%(spaces_pattern),
+                r"%svoid greet\(void\);"%(spaces_pattern),
+                r"}"]
+    else:
+        rexp = [r"type = class hello\.Hello\$NamedGreeter : public hello\.Hello\$Greeter {",
+                r"%sprivate:"%(spaces_pattern),
+                r"%sjava\.lang\.String \*name;"%(spaces_pattern),
+                r"",
+                r"%spublic:"%(spaces_pattern),
+                r"%svoid greet\(void\);"%(spaces_pattern),
+                r"}"]
+
     checker = Checker('ptype NamedGreeter', rexp)
     checker.check(exec_string, skip_fails=False)
 
@@ -306,21 +343,32 @@ def test():
     checker.check(exec_string, skip_fails=True)
 
     exec_string = execute("ptype _objhdr")
-    rexp = [r"type = struct _objhdr {",
-            r"%sjava\.lang\.Class \*hub;"%(spaces_pattern),
-            r"%sint idHash;"%(spaces_pattern),
-            r"}"]
-    checker = Checker('ptype _objhdr', rexp)
-    checker.check(exec_string, skip_fails=True)
+    if isolates:
+        rexp = [r"type = struct _objhdr {",
+                r"%s_z_\.java\.lang\.Class \*hub;"%(spaces_pattern),
+                r"%sint idHash;"%(spaces_pattern),
+                r"}"]
+    else:
+        rexp = [r"type = struct _objhdr {",
+                r"%sjava\.lang\.Class \*hub;"%(spaces_pattern),
+                r"%sint idHash;"%(spaces_pattern),
+                r"}"]
 
     checker = Checker('ptype _objhdr', rexp)
     checker.check(exec_string, skip_fails=True)
 
     exec_string = execute("ptype 'java.lang.String[]'")
-    rexp = [r"type = class java.lang.String\[\] : public java.lang.Object {",
-            r"%sint len;"%(spaces_pattern),
-            r"%sjava\.lang\.String \*data\[0\];"%(spaces_pattern),
-            r"}"]
+    if isolates:
+        rexp = [r"type = class java.lang.String\[\] : public java.lang.Object {",
+                r"%sint len;"%(spaces_pattern),
+                r"%s_z_\.java\.lang\.String \*data\[0\];"%(spaces_pattern),
+                r"}"]
+    else:
+        rexp = [r"type = class java.lang.String\[\] : public java.lang.Object {",
+                r"%sint len;"%(spaces_pattern),
+                r"%sjava\.lang\.String \*data\[0\];"%(spaces_pattern),
+                r"}"]
+
     checker = Checker('ptype String[]', rexp)
     checker.check(exec_string, skip_fails=True)
 
@@ -384,26 +432,27 @@ def test():
     if can_print_data:
         # print the java.io.PrintStream instance and check its type
         exec_string = execute("print /x *(('java.io.PrintStream' *)$rdi)")
-        checker = Checker("print DefaultGreeterSystem.out",
-                          [r"%s = {"%(wildcard_pattern),
-                           r"%s<java.io.FilterOutputStream> = {"%(spaces_pattern),
-                           r"%s<java.io.OutputStream> = {"%(spaces_pattern),
-                           r"%s<java.lang.Object> = {"%(spaces_pattern),
-                           r"%s<_objhdr> = {"%(spaces_pattern),
-                           r"%shub = %s,"%(spaces_pattern, address_pattern),
-                           r"%sidHash = %s"%(spaces_pattern, address_pattern),
-                           r"%s}, <No data fields>}, <No data fields>},"%(spaces_pattern),
-                           r"%smembers of java.io.FilterOutputStream:"%(spaces_pattern),
-                           r"%sclosed = 0x0,"%(spaces_pattern),
-                           r"%sout = %s,"%(spaces_pattern, address_pattern),
-                           r"%scloseLock = %s"%(spaces_pattern, address_pattern),
-                           r"%s},"%(spaces_pattern),
-                           r"%smembers of java.io.PrintStream:"%(spaces_pattern),
-                           r"%stextOut = %s,"%(spaces_pattern, address_pattern),
-                           r"%scharOut = %s,"%(spaces_pattern, address_pattern),
-                           r"%sautoFlush = 0x1,"%(spaces_pattern),
-                           r"%sclosing = 0x0"%(spaces_pattern),
-                           r"}"])
+        rexp = [r"%s = {"%(wildcard_pattern),
+                r"%s<java.io.FilterOutputStream> = {"%(spaces_pattern),
+                r"%s<java.io.OutputStream> = {"%(spaces_pattern),
+                r"%s<java.lang.Object> = {"%(spaces_pattern),
+                r"%s<_objhdr> = {"%(spaces_pattern),
+                r"%shub = %s,"%(spaces_pattern, address_pattern),
+                r"%sidHash = %s"%(spaces_pattern, address_pattern),
+                r"%s}, <No data fields>}, <No data fields>},"%(spaces_pattern),
+                r"%smembers of java.io.FilterOutputStream:"%(spaces_pattern),
+                r"%sclosed = 0x0,"%(spaces_pattern),
+                r"%sout = %s,"%(spaces_pattern, address_pattern),
+                r"%scloseLock = %s"%(spaces_pattern, address_pattern),
+                r"%s},"%(spaces_pattern),
+                r"%smembers of java.io.PrintStream:"%(spaces_pattern),
+                r"%stextOut = %s,"%(spaces_pattern, address_pattern),
+                r"%scharOut = %s,"%(spaces_pattern, address_pattern),
+                r"%sautoFlush = 0x1,"%(spaces_pattern),
+                r"%sclosing = 0x0"%(spaces_pattern),
+                r"}"]
+
+        checker = Checker("print DefaultGreeterSystem.out", rexp)
 
         checker.check(exec_string, skip_fails=True)
 
