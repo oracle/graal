@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2017, 2020, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2017, 2021, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -45,7 +45,6 @@ import com.oracle.truffle.api.CompilerAsserts;
 import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.Truffle;
-import com.oracle.truffle.api.TruffleLanguage.ContextReference;
 import com.oracle.truffle.api.dsl.Cached;
 import com.oracle.truffle.api.dsl.CachedContext;
 import com.oracle.truffle.api.dsl.ImportStatic;
@@ -59,6 +58,8 @@ import com.oracle.truffle.api.library.ExportLibrary;
 import com.oracle.truffle.api.library.ExportMessage;
 import com.oracle.truffle.api.profiles.BranchProfile;
 import com.oracle.truffle.nfi.impl.FunctionExecuteNode.SignatureExecuteNode;
+import com.oracle.truffle.nfi.impl.LibFFIClosure.MonomorphicClosureInfo;
+import com.oracle.truffle.nfi.impl.LibFFIClosure.PolymorphicClosureInfo;
 import static com.oracle.truffle.nfi.impl.LibFFISignature.SignatureBuilder.NOT_VARARGS;
 import com.oracle.truffle.nfi.impl.LibFFIType.ArrayType;
 import com.oracle.truffle.nfi.impl.LibFFIType.CachedTypeInfo;
@@ -125,10 +126,40 @@ final class LibFFISignature {
     }
 
     @ExportMessage
-    @TruffleBoundary
-    static Object createClosure(LibFFISignature signature, Object executable,
-                    @CachedContext(NFILanguageImpl.class) ContextReference<NFIContext> ctxRef) {
-        return LibFFIClosure.create(signature, executable, ctxRef);
+    @ImportStatic(NFILanguageImpl.class)
+    static class CreateClosure {
+
+        @Specialization(guards = {"signature.signatureInfo == cachedSignatureInfo", "executable == cachedExecutable"}, assumptions = "getSingleContextAssumption()")
+        static LibFFIClosure doCachedExecutable(LibFFISignature signature, Object executable,
+                        @Cached("signature.signatureInfo") CachedSignatureInfo cachedSignatureInfo,
+                        @Cached("executable") Object cachedExecutable,
+                        @CachedContext(NFILanguageImpl.class) NFIContext ctx,
+                        @Cached("create(ctx.language, cachedSignatureInfo, cachedExecutable)") MonomorphicClosureInfo cachedClosureInfo) {
+            assert signature.signatureInfo == cachedSignatureInfo && executable == cachedExecutable;
+            // no need to cache duplicated allocation in the single-context case
+            // the NFI frontend is taking care of that already
+            ClosureNativePointer nativePointer = cachedClosureInfo.allocateClosure(ctx, signature);
+            return LibFFIClosure.newClosureWrapper(nativePointer);
+        }
+
+        @Specialization(replaces = "doCachedExecutable", guards = "signature.signatureInfo == cachedSignatureInfo")
+        static LibFFIClosure doCachedSignature(LibFFISignature signature, Object executable,
+                        @Cached("signature.signatureInfo") CachedSignatureInfo cachedSignatureInfo,
+                        @CachedContext(NFILanguageImpl.class) NFIContext ctx,
+                        @Cached("create(ctx.language, cachedSignatureInfo)") PolymorphicClosureInfo cachedClosureInfo) {
+            assert signature.signatureInfo == cachedSignatureInfo;
+            ClosureNativePointer nativePointer = cachedClosureInfo.allocateClosure(ctx, signature, executable);
+            return LibFFIClosure.newClosureWrapper(nativePointer);
+        }
+
+        @TruffleBoundary
+        @Specialization(replaces = "doCachedSignature")
+        static LibFFIClosure createClosure(LibFFISignature signature, Object executable,
+                        @CachedContext(NFILanguageImpl.class) NFIContext ctx) {
+            PolymorphicClosureInfo cachedClosureInfo = signature.signatureInfo.getCachedClosureInfo();
+            ClosureNativePointer nativePointer = cachedClosureInfo.allocateClosure(ctx, signature, executable);
+            return LibFFIClosure.newClosureWrapper(nativePointer);
+        }
     }
 
     @TruffleBoundary
@@ -203,6 +234,8 @@ final class LibFFISignature {
 
         final CallTarget callTarget;
 
+        PolymorphicClosureInfo cachedClosureInfo;
+
         CachedSignatureInfo(NFILanguageImpl language, CachedTypeInfo retType, CachedTypeInfo[] argTypes, int primitiveSize, int objectCount, Direction allowedCallDirection) {
             this.retType = retType;
             this.argTypes = argTypes;
@@ -248,6 +281,21 @@ final class LibFFISignature {
                 ctx.executeNative(signature.cif, functionPointer, argBuffer.prim, argBuffer.getPatchCount(), argBuffer.patches, argBuffer.objects, retBuffer.prim);
                 return retType.deserializeRet(retBuffer, ctx.language);
             }
+        }
+
+        @TruffleBoundary
+        private synchronized void initCachedClosureInfo() {
+            if (cachedClosureInfo == null) {
+                cachedClosureInfo = PolymorphicClosureInfo.create(NFILanguageImpl.getCurrentLanguage(), this);
+            }
+        }
+
+        PolymorphicClosureInfo getCachedClosureInfo() {
+            if (cachedClosureInfo == null) {
+                initCachedClosureInfo();
+            }
+            assert cachedClosureInfo != null;
+            return cachedClosureInfo;
         }
     }
 
