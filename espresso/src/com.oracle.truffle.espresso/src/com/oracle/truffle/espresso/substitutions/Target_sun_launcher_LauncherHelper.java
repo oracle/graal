@@ -28,7 +28,7 @@ import com.oracle.truffle.espresso.meta.Meta;
 import com.oracle.truffle.espresso.runtime.StaticObject;
 
 @EspressoSubstitutions
-public class Target_sun_launcher_LauncherHelper {
+public final class Target_sun_launcher_LauncherHelper {
     private static final String helpMessage = "Additional Java-on-Truffle commands:\n" +
                     "    --polyglot    Run with all other guest languages accessible.\n" +
                     "    --native      Run using the native launcher with limited access to Java libraries (default).\n" +
