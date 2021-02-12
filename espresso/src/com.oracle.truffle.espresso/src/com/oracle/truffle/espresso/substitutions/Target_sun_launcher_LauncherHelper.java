@@ -46,6 +46,7 @@ public class Target_sun_launcher_LauncherHelper {
                     "    --help:languages\n" +
                     "                  Print options for all installed languages.\n" +
                     "    --help:tools  Print options for all installed tools.\n" +
+                    "    --help:engine Print options for the Truffle engine.\n" +
                     "    --help:expert Print additional options for experts.\n" +
                     "    --help:internal\n" +
                     "                  Print internal options for debugging language implementations and tools.";

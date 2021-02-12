@@ -176,6 +176,13 @@ class PolyglotArgs {
         }
     }
 
+    void printEngineHelp(OptionCategory optionCategory) {
+        List<PrintableOption> engineOptions = filterOptions(getTempEngine().getOptions(), optionCategory);
+        if (!engineOptions.isEmpty()) {
+            printOptions(engineOptions, optionsTitle("engine", optionCategory), 2);
+        }
+    }
+
     void printLanguageHelp(OptionCategory optionCategory) {
         Map<Language, List<PrintableOption>> languagesOptions = new HashMap<>();
         List<Language> languages = sortedLanguages(getTempEngine());
