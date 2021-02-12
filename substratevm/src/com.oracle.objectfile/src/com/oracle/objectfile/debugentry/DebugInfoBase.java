@@ -26,17 +26,18 @@
 
 package com.oracle.objectfile.debugentry;
 
-import com.oracle.objectfile.debuginfo.DebugInfoProvider;
-import com.oracle.objectfile.debuginfo.DebugInfoProvider.DebugTypeInfo.DebugTypeKind;
-import com.oracle.objectfile.elf.dwarf.DwarfDebugInfo;
-import org.graalvm.compiler.debug.DebugContext;
-
 import java.nio.ByteOrder;
 import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.util.HashMap;
 import java.util.LinkedList;
 import java.util.Map;
+
+import org.graalvm.compiler.debug.DebugContext;
+
+import com.oracle.objectfile.debuginfo.DebugInfoProvider;
+import com.oracle.objectfile.debuginfo.DebugInfoProvider.DebugTypeInfo.DebugTypeKind;
+import com.oracle.objectfile.elf.dwarf.DwarfDebugInfo;
 
 /**
  * An abstract class which indexes the information presented by the DebugInfoProvider in an
@@ -127,6 +128,10 @@ public abstract class DebugInfoBase {
      */
     private int oopReferenceSize;
     /**
+     * Number of bytes used to store a raw pointer.
+     */
+    private int pointerSize;
+    /**
      * Alignment of object memory area (and, therefore, of any oop) in bytes.
      */
     private int oopAlignment;
@@ -141,6 +146,7 @@ public abstract class DebugInfoBase {
         this.oopTagsCount = 0;
         this.oopCompressShift = 0;
         this.oopReferenceSize = 0;
+        this.pointerSize = 0;
         this.oopAlignment = 0;
         this.oopAlignShift = 0;
     }
@@ -184,6 +190,9 @@ public abstract class DebugInfoBase {
 
         /* Save number of bytes in a reference field. */
         oopReferenceSize = debugInfoProvider.oopReferenceSize();
+
+        /* Save pointer size of current target. */
+        pointerSize = debugInfoProvider.pointerSize();
 
         /* Save alignment of a reference. */
         oopAlignment = debugInfoProvider.oopAlignment();
@@ -482,6 +491,10 @@ public abstract class DebugInfoBase {
 
     public int oopReferenceSize() {
         return oopReferenceSize;
+    }
+
+    public int pointerSize() {
+        return pointerSize;
     }
 
     public int oopAlignment() {

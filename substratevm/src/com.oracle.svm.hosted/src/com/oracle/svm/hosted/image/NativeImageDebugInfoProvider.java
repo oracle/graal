@@ -36,11 +36,17 @@ import java.util.List;
 import java.util.function.Consumer;
 import java.util.stream.Stream;
 
+import org.graalvm.compiler.code.CompilationResult;
+import org.graalvm.compiler.code.SourceMapping;
+import org.graalvm.compiler.core.common.CompressEncoding;
+import org.graalvm.compiler.debug.DebugContext;
+import org.graalvm.compiler.graph.NodeSourcePosition;
+import org.graalvm.nativeimage.ImageSingletons;
+
 import com.oracle.graal.pointsto.infrastructure.OriginalClassProvider;
 import com.oracle.graal.pointsto.infrastructure.WrappedJavaMethod;
 import com.oracle.graal.pointsto.meta.AnalysisType;
 import com.oracle.objectfile.debuginfo.DebugInfoProvider;
-
 import com.oracle.svm.core.StaticFieldsSupport;
 import com.oracle.svm.core.SubstrateOptions;
 import com.oracle.svm.core.config.ConfigurationValues;
@@ -57,26 +63,19 @@ import com.oracle.svm.hosted.lambda.LambdaSubstitutionType;
 import com.oracle.svm.hosted.meta.HostedArrayClass;
 import com.oracle.svm.hosted.meta.HostedClass;
 import com.oracle.svm.hosted.meta.HostedField;
-import com.oracle.svm.hosted.meta.HostedMethod;
-import com.oracle.svm.hosted.meta.HostedType;
 import com.oracle.svm.hosted.meta.HostedInstanceClass;
 import com.oracle.svm.hosted.meta.HostedInterface;
+import com.oracle.svm.hosted.meta.HostedMethod;
 import com.oracle.svm.hosted.meta.HostedPrimitiveType;
-
+import com.oracle.svm.hosted.meta.HostedType;
 import com.oracle.svm.hosted.substitute.InjectedFieldsType;
 import com.oracle.svm.hosted.substitute.SubstitutionField;
 import com.oracle.svm.hosted.substitute.SubstitutionMethod;
 import com.oracle.svm.hosted.substitute.SubstitutionType;
-import jdk.vm.ci.meta.ResolvedJavaField;
-import org.graalvm.compiler.code.CompilationResult;
-import org.graalvm.compiler.code.SourceMapping;
-import org.graalvm.compiler.core.common.CompressEncoding;
-import org.graalvm.compiler.debug.DebugContext;
-import org.graalvm.compiler.graph.NodeSourcePosition;
-import org.graalvm.nativeimage.ImageSingletons;
 
 import jdk.vm.ci.meta.JavaKind;
 import jdk.vm.ci.meta.LineNumberTable;
+import jdk.vm.ci.meta.ResolvedJavaField;
 import jdk.vm.ci.meta.ResolvedJavaMethod;
 import jdk.vm.ci.meta.ResolvedJavaType;
 import jdk.vm.ci.meta.Signature;
@@ -93,6 +92,7 @@ class NativeImageDebugInfoProvider implements DebugInfoProvider {
     int compressShift;
     int tagsMask;
     int referenceSize;
+    int pointerSize;
     int referenceAlignment;
     int primitiveStartOffset;
     int referenceStartOffset;
@@ -115,6 +115,7 @@ class NativeImageDebugInfoProvider implements DebugInfoProvider {
             this.compressShift = 0;
         }
         this.referenceSize = getObjectLayout().getReferenceSize();
+        this.pointerSize = ConfigurationValues.getTarget().wordSize;
         this.referenceAlignment = getObjectLayout().getAlignment();
         /* Offsets need to be adjusted relative to the heap base plus partition-specific offset. */
         primitiveStartOffset = (int) primitiveFields.getOffset();
@@ -134,6 +135,11 @@ class NativeImageDebugInfoProvider implements DebugInfoProvider {
     @Override
     public int oopReferenceSize() {
         return referenceSize;
+    }
+
+    @Override
+    public int pointerSize() {
+        return pointerSize;
     }
 
     @Override
