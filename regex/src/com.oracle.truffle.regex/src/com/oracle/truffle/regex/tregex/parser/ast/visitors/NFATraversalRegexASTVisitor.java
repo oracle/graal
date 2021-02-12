@@ -332,7 +332,7 @@ public abstract class NFATraversalRegexASTVisitor {
                         if (quantifier.hasZeroWidthIndex()) {
                             if (pathIsGroupEnter(element)) {
                                 quantifierGuards.add(QuantifierGuard.createEnterZeroWidth(quantifier));
-                            } else if (pathIsGroupExit(element)) {
+                            } else if (pathIsGroupExit(element) && ((ast.getOptions().getFlavor() == RubyFlavor.INSTANCE) || !root.isCharacterClass())) {
                                 quantifierGuards.add(QuantifierGuard.createExitZeroWidth(quantifier));
                             } else if (pathIsGroupRubyEscape(element)) {
                                 quantifierGuards.add(QuantifierGuard.createEscapeZeroWidth(quantifier));
