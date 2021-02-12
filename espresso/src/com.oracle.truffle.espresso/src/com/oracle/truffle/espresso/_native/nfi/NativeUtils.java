@@ -126,4 +126,8 @@ public final class NativeUtils {
         }
     }
 
+    @TruffleBoundary
+    public static ByteBuffer allocateDirect(int capacity) {
+        return ByteBuffer.allocateDirect(capacity).order(ByteOrder.nativeOrder());
+    }
 }

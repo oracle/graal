@@ -25,14 +25,13 @@ package com.oracle.truffle.espresso._native.nfi;
 import java.nio.file.Path;
 import java.util.Collections;
 
-import com.oracle.truffle.api.interop.InteropLibrary;
-import com.oracle.truffle.espresso._native.RawPointer;
-import com.oracle.truffle.espresso._native.TruffleByteBuffer;
+import com.oracle.truffle.espresso._native.NativeSignature;
 import org.graalvm.options.OptionValues;
 
 import com.oracle.truffle.api.CompilerAsserts;
 import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.interop.ArityException;
+import com.oracle.truffle.api.interop.InteropLibrary;
 import com.oracle.truffle.api.interop.TruffleObject;
 import com.oracle.truffle.api.interop.UnsupportedMessageException;
 import com.oracle.truffle.api.interop.UnsupportedTypeException;
@@ -40,6 +39,7 @@ import com.oracle.truffle.espresso.EspressoOptions;
 import com.oracle.truffle.espresso._native.Buffer;
 import com.oracle.truffle.espresso._native.NativeType;
 import com.oracle.truffle.espresso._native.Pointer;
+import com.oracle.truffle.espresso._native.TruffleByteBuffer;
 import com.oracle.truffle.espresso.meta.EspressoError;
 import com.oracle.truffle.espresso.runtime.EspressoContext;
 
@@ -58,9 +58,9 @@ public final class NFIIsolatedNativeAccess extends NFINativeAccess {
         // libeden.so must be the first library loaded in the isolated namespace.
         Path espressoLibraryPath = context.getVmProperties().espressoHome().resolve("lib");
         this.edenLibrary = loadLibrary(Collections.singletonList(espressoLibraryPath), "eden", true);
-        this.malloc = lookupAndBindSymbol(edenLibrary, "malloc", NativeType.POINTER, NativeType.LONG);
-        this.realloc = lookupAndBindSymbol(edenLibrary, "realloc", NativeType.POINTER, NativeType.POINTER, NativeType.LONG);
-        this.free = lookupAndBindSymbol(edenLibrary, "free", NativeType.VOID, NativeType.POINTER);
+        this.malloc = lookupAndBindSymbol(edenLibrary, "malloc", NativeSignature.create(NativeType.POINTER, NativeType.LONG));
+        this.realloc = lookupAndBindSymbol(edenLibrary, "realloc", NativeSignature.create(NativeType.POINTER, NativeType.POINTER, NativeType.LONG));
+        this.free = lookupAndBindSymbol(edenLibrary, "free", NativeSignature.create(NativeType.VOID, NativeType.POINTER));
     }
 
     @Override

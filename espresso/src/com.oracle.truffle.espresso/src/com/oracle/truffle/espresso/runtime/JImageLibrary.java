@@ -26,15 +26,13 @@ package com.oracle.truffle.espresso.runtime;
 import static com.oracle.truffle.espresso.runtime.Classpath.JAVA_BASE;
 
 import java.nio.ByteBuffer;
-import java.nio.ByteOrder;
 
-import com.oracle.truffle.api.CompilerDirectives;
-import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.interop.ArityException;
 import com.oracle.truffle.api.interop.InteropLibrary;
 import com.oracle.truffle.api.interop.TruffleObject;
 import com.oracle.truffle.api.interop.UnsupportedMessageException;
 import com.oracle.truffle.api.interop.UnsupportedTypeException;
+import com.oracle.truffle.espresso._native.NativeSignature;
 import com.oracle.truffle.espresso._native.NativeType;
 import com.oracle.truffle.espresso._native.nfi.NativeUtils;
 import com.oracle.truffle.espresso.descriptors.Symbol;
@@ -59,13 +57,13 @@ class JImageLibrary extends NativeEnv implements ContextAccess {
     private static final String RESOURCE_ITERATOR = "JIMAGE_ResourceIterator";
     private static final String RESOURCE_PATH = "JIMAGE_ResourcePath";
 
-    private static final String OPEN_SIGNATURE = "(pointer, pointer): pointer";
-    private static final String CLOSE_SIGNATURE = "(pointer): void";
-    private static final String PACKAGE_TO_MODULE_SIGNATURE = "(pointer, pointer): pointer";
-    private static final String FIND_RESOURCE_SIGNATURE = "(pointer, pointer, pointer, pointer, pointer): sint64";
-    private static final String GET_RESOURCE_SIGNATURE = "(pointer, sint64, pointer, sint64): sint64";
-    private static final String RESOURCE_ITERATOR_SIGNATURE = "(pointer, pointer, pointer, pointer, pointer, pointer, pointer, pointer): pointer";
-    private static final String RESOURCE_PATH_SIGNATURE = "(pointer, sint64, pointer, sint64): sint8";
+    private static final NativeSignature OPEN_SIGNATURE = NativeSignature.create(NativeType.POINTER, NativeType.POINTER, NativeType.POINTER);
+    private static final NativeSignature CLOSE_SIGNATURE = NativeSignature.create(NativeType.VOID, NativeType.POINTER);
+    private static final NativeSignature PACKAGE_TO_MODULE_SIGNATURE = NativeSignature.create(NativeType.POINTER, NativeType.POINTER, NativeType.POINTER);
+    private static final NativeSignature FIND_RESOURCE_SIGNATURE = NativeSignature.create(NativeType.LONG, NativeType.POINTER, NativeType.POINTER, NativeType.POINTER, NativeType.POINTER, NativeType.POINTER);
+    private static final NativeSignature GET_RESOURCE_SIGNATURE = NativeSignature.create(NativeType.LONG, NativeType.POINTER, NativeType.LONG, NativeType.POINTER, NativeType.LONG);
+    private static final NativeSignature RESOURCE_ITERATOR_SIGNATURE = NativeSignature.create(NativeType.POINTER, NativeType.POINTER, NativeType.POINTER, NativeType.POINTER, NativeType.POINTER, NativeType.POINTER, NativeType.POINTER, NativeType.POINTER, NativeType.POINTER);
+    private static final NativeSignature RESOURCE_PATH_SIGNATURE = NativeSignature.create(NativeType.BOOLEAN, NativeType.POINTER, NativeType.LONG, NativeType.POINTER, NativeType.LONG);
 
     private final InteropLibrary uncached;
 
@@ -115,15 +113,13 @@ class JImageLibrary extends NativeEnv implements ContextAccess {
         // Load guest's libjimage.
         jimageLibrary = getNativeAccess().loadLibrary(props.bootLibraryPath(), LIBJIMAGE_NAME, true);
 
-        open = getNativeAccess().lookupAndBindSymbol(jimageLibrary, OPEN, NativeType.POINTER, NativeType.POINTER, NativeType.POINTER);
-        close = getNativeAccess().lookupAndBindSymbol(jimageLibrary, CLOSE, NativeType.VOID, NativeType.POINTER);
-        packageToModule = getNativeAccess().lookupAndBindSymbol(jimageLibrary, PACKAGE_TO_MOODULE, NativeType.POINTER, NativeType.POINTER, NativeType.POINTER);
-        findResource = getNativeAccess().lookupAndBindSymbol(jimageLibrary, FIND_RESOURCE, NativeType.LONG, NativeType.POINTER, NativeType.POINTER, NativeType.POINTER, NativeType.POINTER,
-                        NativeType.POINTER);
-        getResource = getNativeAccess().lookupAndBindSymbol(jimageLibrary, GET_RESOURCE, NativeType.LONG, NativeType.POINTER, NativeType.LONG, NativeType.POINTER, NativeType.LONG);
-        resourceIterator = getNativeAccess().lookupAndBindSymbol(jimageLibrary, RESOURCE_ITERATOR, NativeType.POINTER, NativeType.POINTER, NativeType.POINTER, NativeType.POINTER, NativeType.POINTER,
-                        NativeType.POINTER, NativeType.POINTER, NativeType.POINTER, NativeType.POINTER);
-        resourcePath = getNativeAccess().lookupAndBindSymbol(jimageLibrary, RESOURCE_PATH, NativeType.BOOLEAN, NativeType.POINTER, NativeType.LONG, NativeType.POINTER, NativeType.LONG);
+        open = getNativeAccess().lookupAndBindSymbol(jimageLibrary, OPEN, OPEN_SIGNATURE);
+        close = getNativeAccess().lookupAndBindSymbol(jimageLibrary, CLOSE, CLOSE_SIGNATURE);
+        packageToModule = getNativeAccess().lookupAndBindSymbol(jimageLibrary, PACKAGE_TO_MOODULE, PACKAGE_TO_MODULE_SIGNATURE);
+        findResource = getNativeAccess().lookupAndBindSymbol(jimageLibrary, FIND_RESOURCE, FIND_RESOURCE_SIGNATURE);
+        getResource = getNativeAccess().lookupAndBindSymbol(jimageLibrary, GET_RESOURCE, GET_RESOURCE_SIGNATURE);
+        resourceIterator = getNativeAccess().lookupAndBindSymbol(jimageLibrary, RESOURCE_ITERATOR, RESOURCE_ITERATOR_SIGNATURE);
+        resourcePath = getNativeAccess().lookupAndBindSymbol(jimageLibrary, RESOURCE_PATH, RESOURCE_PATH_SIGNATURE);
 
         this.javaBaseBuffer = RawBuffer.getNativeString(JAVA_BASE);
         this.versionBuffer = RawBuffer.getNativeString(VERSION_STRING);
@@ -133,9 +129,9 @@ class JImageLibrary extends NativeEnv implements ContextAccess {
     }
 
     public TruffleObject open(String name) {
-        ByteBuffer error = allocateDirect(1, JavaKind.Int);
+        ByteBuffer error = NativeUtils.allocateDirect(JavaKind.Int.getByteCount());
         try (RawBuffer nameBuffer = RawBuffer.getNativeString(name)) {
-            return (TruffleObject) execute(open, nameBuffer.pointer(), byteBufferPointer(error));
+            return (TruffleObject) execute(open, nameBuffer.pointer(), NativeUtils.byteBufferPointer(error));
         }
     }
 
@@ -145,7 +141,7 @@ class JImageLibrary extends NativeEnv implements ContextAccess {
 
     public byte[] getClassBytes(TruffleObject jimage, String name) {
         // Prepare calls
-        ByteBuffer sizeBuffer = allocateDirect(1, JavaKind.Long);
+        ByteBuffer sizeBuffer = NativeUtils.allocateDirect(JavaKind.Long.getByteCount());
         TruffleObject sizePtr = NativeUtils.byteBufferPointer(sizeBuffer);
 
         long location = findLocation(jimage, sizePtr, name);
@@ -155,7 +151,7 @@ class JImageLibrary extends NativeEnv implements ContextAccess {
 
         // Extract the result
         long capacity = sizeBuffer.getLong(0);
-        ByteBuffer bytes = allocateDirect((int) capacity);
+        ByteBuffer bytes = NativeUtils.allocateDirect((int) capacity);
         TruffleObject bytesPtr = NativeUtils.byteBufferPointer(bytes);
         execute(getResource, jimage, location, bytesPtr, capacity);
         byte[] result = new byte[(int) capacity];
@@ -215,7 +211,7 @@ class JImageLibrary extends NativeEnv implements ContextAccess {
     }
 
     private String packageToModule(TruffleObject jimage, String pkg) {
-        try (RawBuffer pkgBuffer = getNativeString(pkg)) {
+        try (RawBuffer pkgBuffer = RawBuffer.getNativeString(pkg)) {
             return NativeUtils.interopPointerToString((TruffleObject) execute(packageToModule, jimage, pkgBuffer.pointer()));
         }
     }
@@ -233,40 +229,6 @@ class JImageLibrary extends NativeEnv implements ContextAccess {
             return uncached.execute(target, args);
         } catch (UnsupportedTypeException | UnsupportedMessageException | ArityException e) {
             throw EspressoError.shouldNotReachHere(e);
-        }
-    }
-
-    @CompilerDirectives.TruffleBoundary
-    private static RawBuffer getNativeString(String name) {
-        CharsetEncoder encoder = StandardCharsets.UTF_8.newEncoder();
-        int length = ((int) (name.length() * encoder.averageBytesPerChar())) + 1;
-        for (;;) {
-            if (length <= 0) {
-                throw EspressoError.shouldNotReachHere();
-            }
-            // Be super safe with the size of the buffer.
-            ByteBuffer bb = allocateDirect(length);
-            encoder.reset();
-            CoderResult result = encoder.encode(CharBuffer.wrap(name), bb, true);
-
-            if (result.isOverflow()) {
-                // Not enough space in the buffer
-                length <<= 1;
-            } else if (result.isUnderflow()) {
-                result = encoder.flush(bb);
-                if (result.isUnderflow() && (bb.position() < bb.capacity())) {
-                    // Encoder encoded entire string, and we have one byte of leeway.
-                    bb.put((byte) 0);
-                    return new RawBuffer(bb, NativeUtils.byteBufferPointer(bb));
-                }
-                if (result.isOverflow() || result.isUnderflow()) {
-                    length += 1;
-                } else {
-                    throw EspressoError.shouldNotReachHere();
-                }
-            } else {
-                throw EspressoError.shouldNotReachHere();
-            }
         }
     }
 

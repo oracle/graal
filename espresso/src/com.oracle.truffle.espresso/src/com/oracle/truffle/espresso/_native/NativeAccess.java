@@ -79,7 +79,7 @@ public interface NativeAccess {
      * 
      * @return <code>null</code> if the symbol is not found, otherwise a pointer that can be called
      *         directly from native code or
-     *         {@link #bindSymbol(TruffleObject, NativeType, NativeType...) bound} to a specific
+     *         {@link #bindSymbol(TruffleObject, NativeSignature) bound} to a specific
      *         signature.
      */
     @Pointer
@@ -93,17 +93,16 @@ public interface NativeAccess {
      * The returned object is managed by the Java GC, to keep it alive, including its native
      * component, keep a strong reference to it.
      */
-    @Pointer
-    TruffleObject bindSymbol(@Pointer TruffleObject symbol, NativeType returnType, NativeType... parameterTypes);
+    @Pointer TruffleObject bindSymbol(@Pointer TruffleObject symbol, NativeSignature nativeSignature);
 
-    default @Pointer TruffleObject lookupAndBindSymbol(@Pointer TruffleObject library, String symbolName, NativeType returnType, NativeType... parameterTypes) {
+    default @Pointer TruffleObject lookupAndBindSymbol(@Pointer TruffleObject library, String symbolName, NativeSignature nativeSignature) {
         @Pointer
         TruffleObject symbol = lookupSymbol(library, symbolName);
         if (symbol == null) {
             // not found
             return null;
         }
-        return bindSymbol(symbol, returnType, parameterTypes);
+        return bindSymbol(symbol, nativeSignature);
     }
 
     /**
@@ -145,7 +144,7 @@ public interface NativeAccess {
      * component, keep a strong reference to it.
      */
     @Pointer
-    TruffleObject createNativeClosure(TruffleObject executable, NativeType returnType, NativeType... parameterTypes);
+    TruffleObject createNativeClosure(TruffleObject executable, NativeSignature nativeSignature);
 
     static NativeType kindToNativeType(JavaKind kind) {
         // @formatter:off

@@ -344,14 +344,14 @@ public final class Method extends Member<Signature> implements TruffleObject, Co
         return NativeSignature.create(returnType, parameterTypes);
     }
 
-    private TruffleObject lookupAndBind(@Pointer TruffleObject library, String mangledName) {
+    public TruffleObject lookupAndBind(@Pointer TruffleObject library, String mangledName) {
         NativeSignature signature = buildJniNativeSignature(getParsedSignature());
-        return getNativeAccess().lookupAndBindSymbol(library, mangledName, signature.getReturnType(), signature.getParameterTypes());
+        return getNativeAccess().lookupAndBindSymbol(library, mangledName, signature);
     }
 
     private TruffleObject bind(@Pointer TruffleObject symbol) {
         NativeSignature signature = buildJniNativeSignature(getParsedSignature());
-        return getNativeAccess().bindSymbol(symbol, signature.getReturnType(), signature.getParameterTypes());
+        return getNativeAccess().bindSymbol(symbol, signature);
     }
 
     /**

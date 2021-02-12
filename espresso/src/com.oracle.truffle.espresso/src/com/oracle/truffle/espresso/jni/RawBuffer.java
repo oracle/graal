@@ -23,17 +23,14 @@
 
 package com.oracle.truffle.espresso.jni;
 
-import static com.oracle.truffle.espresso.jni.NativeEnv.byteBufferPointer;
-
 import java.nio.ByteBuffer;
-import java.nio.ByteOrder;
 import java.nio.CharBuffer;
 import java.nio.charset.CharsetEncoder;
 import java.nio.charset.CoderResult;
 import java.nio.charset.StandardCharsets;
 
-import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.interop.TruffleObject;
+import com.oracle.truffle.espresso._native.nfi.NativeUtils;
 import com.oracle.truffle.espresso.meta.EspressoError;
 
 public final class RawBuffer implements AutoCloseable {
@@ -48,12 +45,12 @@ public final class RawBuffer implements AutoCloseable {
     public static RawBuffer getNativeString(String name) {
         CharsetEncoder encoder = StandardCharsets.UTF_8.newEncoder();
         int length = ((int) (name.length() * encoder.averageBytesPerChar())) + 1;
-        for (;;) {
+        for (; ; ) {
             if (length <= 0) {
                 throw EspressoError.shouldNotReachHere();
             }
             // Be super safe with the size of the buffer.
-            ByteBuffer bb = allocateDirect(length);
+            ByteBuffer bb = NativeUtils.allocateDirect(length);
             encoder.reset();
             CoderResult result = encoder.encode(CharBuffer.wrap(name), bb, true);
 
@@ -65,7 +62,7 @@ public final class RawBuffer implements AutoCloseable {
                 if (result.isUnderflow() && (bb.position() < bb.capacity())) {
                     // Encoder encoded entire string, and we have one byte of leeway.
                     bb.put((byte) 0);
-                    return new RawBuffer(bb, byteBufferPointer(bb));
+                    return new RawBuffer(bb, NativeUtils.byteBufferPointer(bb));
                 }
                 if (result.isOverflow() || result.isUnderflow()) {
                     length += 1;
@@ -86,10 +83,5 @@ public final class RawBuffer implements AutoCloseable {
     public void close() {
         buffer.clear();
         this.buffer = null;
-    }
-
-    @CompilerDirectives.TruffleBoundary
-    private static ByteBuffer allocateDirect(int capacity) {
-        return ByteBuffer.allocateDirect(capacity).order(ByteOrder.nativeOrder());
     }
 }

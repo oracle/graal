@@ -135,8 +135,7 @@ public class NFINativeAccess implements NativeAccess {
         }
     };
 
-    protected Object createNFISignature(NativeType returnType, NativeType... parameterTypes) {
-        NativeSignature nativeSignature = NativeSignature.create(returnType, parameterTypes);
+    protected Object createNFISignature(NativeSignature nativeSignature) {
         return CACHE_SIGNATURES
                         ? signatureCache.computeIfAbsent(nativeSignature, signatureProvider)
                         : signatureProvider.apply(nativeSignature);
@@ -193,13 +192,11 @@ public class NFINativeAccess implements NativeAccess {
     static final class NativeToJavaWrapper implements TruffleObject {
 
         final TruffleObject delegate;
-        private final NativeType returnType;
-        private final NativeType[] parameterTypes;
+        final NativeSignature nativeSignature;
 
-        NativeToJavaWrapper(TruffleObject executable, NativeType returnType, NativeType... parameterTypes) {
+        NativeToJavaWrapper(TruffleObject executable, NativeSignature nativeSignature) {
             this.delegate = executable;
-            this.returnType = returnType;
-            this.parameterTypes = parameterTypes;
+            this.nativeSignature = nativeSignature;
         }
 
         @SuppressWarnings("static-method")
@@ -211,6 +208,7 @@ public class NFINativeAccess implements NativeAccess {
         @ExplodeLoop
         @ExportMessage
         Object execute(Object[] arguments, @CachedLibrary("this.delegate") InteropLibrary interop) throws ArityException {
+            NativeType[] parameterTypes = nativeSignature.getParameterTypes();
             if (arguments.length != parameterTypes.length) {
                 CompilerDirectives.transferToInterpreter();
                 throw ArityException.create(parameterTypes.length, arguments.length);
@@ -231,7 +229,7 @@ public class NFINativeAccess implements NativeAccess {
                     }
                 }
                 Object ret = interop.execute(delegate, convertedArgs);
-                switch (returnType) {
+                switch (nativeSignature.getReturnType()) {
                     case BOOLEAN:
                         ret = (byte) ret != 0;
                         break;
@@ -251,20 +249,20 @@ public class NFINativeAccess implements NativeAccess {
     }
 
     @Override
-    public @Pointer TruffleObject bindSymbol(@Pointer TruffleObject symbol, NativeType returnType, NativeType... parameterTypes) {
+    public @Pointer TruffleObject bindSymbol(@Pointer TruffleObject symbol, NativeSignature nativeSignature) {
         if (uncachedInterop.isNull(symbol)) {
             return null; // LD_DEBUG=unused makes non-existing symbols to be NULL.
         }
-        TruffleObject executable = (TruffleObject) uncachedSignature.bind(createNFISignature(returnType, parameterTypes), symbol);
+        TruffleObject executable = (TruffleObject) uncachedSignature.bind(createNFISignature(nativeSignature), symbol);
         assert uncachedInterop.isExecutable(executable);
-        return new NativeToJavaWrapper(executable, returnType, parameterTypes);
+        return new NativeToJavaWrapper(executable, nativeSignature);
     }
 
     @Override
-    public @Pointer TruffleObject createNativeClosure(TruffleObject executable, NativeType returnType, NativeType... parameterTypes) {
+    public @Pointer TruffleObject createNativeClosure(TruffleObject executable, NativeSignature nativeSignature) {
         assert uncachedInterop.isExecutable(executable);
-        TruffleObject wrappedExecutable = new JavaToNativeWrapper(executable, returnType, parameterTypes);
-        TruffleObject nativeFn = (TruffleObject) uncachedSignature.createClosure(createNFISignature(returnType, parameterTypes), wrappedExecutable);
+        TruffleObject wrappedExecutable = new JavaToNativeWrapper(executable, nativeSignature);
+        TruffleObject nativeFn = (TruffleObject) uncachedSignature.createClosure(createNFISignature(nativeSignature), wrappedExecutable);
         assert uncachedInterop.isPointer(nativeFn);
         return nativeFn;
     }
@@ -273,13 +271,11 @@ public class NFINativeAccess implements NativeAccess {
     static final class JavaToNativeWrapper implements TruffleObject {
 
         final TruffleObject delegate;
-        private final NativeType returnType;
-        private final NativeType[] parameterTypes;
+        final NativeSignature nativeSignature;
 
-        JavaToNativeWrapper(TruffleObject executable, NativeType returnType, NativeType... parameterTypes) {
+        JavaToNativeWrapper(TruffleObject executable, NativeSignature nativeSignature) {
             this.delegate = executable;
-            this.returnType = returnType;
-            this.parameterTypes = parameterTypes;
+            this.nativeSignature = nativeSignature;
         }
 
         @SuppressWarnings("static-method")
@@ -291,6 +287,7 @@ public class NFINativeAccess implements NativeAccess {
         @ExplodeLoop
         @ExportMessage
         Object execute(Object[] arguments, @CachedLibrary("this.delegate") InteropLibrary interop) throws ArityException {
+            NativeType[] parameterTypes = nativeSignature.getParameterTypes();
             if (arguments.length != parameterTypes.length) {
                 CompilerDirectives.transferToInterpreter();
                 throw ArityException.create(parameterTypes.length, arguments.length);
@@ -311,7 +308,7 @@ public class NFINativeAccess implements NativeAccess {
                     }
                 }
                 Object ret = interop.execute(delegate, convertedArgs);
-                switch (returnType) {
+                switch (nativeSignature.getReturnType()) {
                     case BOOLEAN:
                         ret = ((boolean) ret) ? (byte) 1 : (byte) 0;
                         break;
