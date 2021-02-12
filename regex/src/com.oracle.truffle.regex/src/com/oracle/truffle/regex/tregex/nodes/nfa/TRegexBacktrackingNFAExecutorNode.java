@@ -636,7 +636,7 @@ public final class TRegexBacktrackingNFAExecutorNode extends TRegexExecutorNode 
         assert !(ignoreCase || loneSurrogates);
         if (regionMatchesNode == null) {
             CompilerDirectives.transferToInterpreterAndInvalidate();
-            regionMatchesNode = InputRegionMatchesNode.create();
+            regionMatchesNode = insert(InputRegionMatchesNode.create());
         }
         int inputLength = locals.getMaxIndex();
         int backrefLength = backrefEnd - backrefStart;
@@ -687,7 +687,7 @@ public final class TRegexBacktrackingNFAExecutorNode extends TRegexExecutorNode 
     private int findInnerLiteral(TRegexBacktrackingNFAExecutorLocals locals) {
         if (indexOfNode == null) {
             CompilerDirectives.transferToInterpreterAndInvalidate();
-            indexOfNode = InputIndexOfStringNode.create();
+            indexOfNode = insert(InputIndexOfStringNode.create());
         }
         return indexOfNode.execute(locals.getInput(), locals.getIndex(), locals.getMaxIndex(), innerLiteral.getLiteral().content(), innerLiteral.getMaskContent());
     }
