@@ -60,7 +60,6 @@ import java.nio.file.LinkOption;
 import java.nio.file.NoSuchFileException;
 import java.nio.file.Path;
 import java.nio.file.Paths;
-import java.util.AbstractMap;
 import java.util.ArrayList;
 import java.util.BitSet;
 import java.util.Collections;
@@ -76,6 +75,7 @@ import java.util.SortedMap;
 import java.util.TreeMap;
 import java.util.logging.Level;
 
+import org.graalvm.collections.Pair;
 import org.graalvm.home.HomeFinder;
 import org.graalvm.nativeimage.ProcessProperties;
 import org.graalvm.nativeimage.RuntimeOptions;
@@ -1605,21 +1605,21 @@ public abstract class Launcher {
      */
     protected static OutputStream newLogStream(Path path) throws IOException {
         Path usedPath = path;
+        String fileName = path.getFileName().toString();
         Path lockFile = null;
         FileChannel lockFileChannel = null;
         for (int unique = 0;; unique++) {
-            StringBuilder lockFileNameBuilder = new StringBuilder();
-            lockFileNameBuilder.append(path.toString());
+            StringBuilder lockFileNameBuilder = new StringBuilder(fileName);
             if (unique > 0) {
                 lockFileNameBuilder.append(unique);
-                usedPath = Paths.get(lockFileNameBuilder.toString());
+                usedPath = path.resolveSibling(lockFileNameBuilder.toString());
             }
             lockFileNameBuilder.append(".lck");
-            lockFile = Paths.get(lockFileNameBuilder.toString());
-            Map.Entry<FileChannel, Boolean> openResult = openChannel(lockFile);
+            lockFile = path.resolveSibling(lockFileNameBuilder.toString());
+            Pair<FileChannel, Boolean> openResult = openChannel(lockFile);
             if (openResult != null) {
-                lockFileChannel = openResult.getKey();
-                if (lock(lockFileChannel, openResult.getValue())) {
+                lockFileChannel = openResult.getLeft();
+                if (lock(lockFileChannel, openResult.getRight())) {
                     break;
                 } else {
                     // Close and try next name
@@ -1643,18 +1643,18 @@ public abstract class Launcher {
         }
     }
 
-    private static Map.Entry<FileChannel, Boolean> openChannel(Path path) throws IOException {
+    private static Pair<FileChannel, Boolean> openChannel(Path path) throws IOException {
         FileChannel channel = null;
         for (int retries = 0; channel == null && retries < 2; retries++) {
             try {
                 channel = FileChannel.open(path, CREATE_NEW, WRITE);
-                return new AbstractMap.SimpleImmutableEntry<>(channel, true);
+                return Pair.create(channel, true);
             } catch (FileAlreadyExistsException faee) {
                 // Maybe a FS race showing a zombie file, try to reuse it
                 if (Files.isRegularFile(path, LinkOption.NOFOLLOW_LINKS) && isParentWritable(path)) {
                     try {
                         channel = FileChannel.open(path, WRITE, APPEND);
-                        return new AbstractMap.SimpleImmutableEntry<>(channel, false);
+                        return Pair.create(channel, false);
                     } catch (NoSuchFileException x) {
                         // FS Race, next try we should be able to create with CREATE_NEW
                     } catch (IOException x) {
