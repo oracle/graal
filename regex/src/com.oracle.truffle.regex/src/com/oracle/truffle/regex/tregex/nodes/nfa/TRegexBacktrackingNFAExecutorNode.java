@@ -110,7 +110,7 @@ public final class TRegexBacktrackingNFAExecutorNode extends TRegexExecutorNode 
     @CompilationFinal(dimensions = 1) private final TRegexExecutorNode[] lookAroundExecutors;
     @Children private CharMatcher[] matchers;
     private final int[] zeroWidthTermEnclosedCGLow;
-    private final int[] zeroWidthTermEnclosedCGHigh;
+    private final int[] zeroWidthQuantifierCGOffsets;
 
     @Child InputRegionMatchesNode regionMatchesNode;
     @Child InputIndexOfStringNode indexOfNode;
@@ -131,14 +131,16 @@ public final class TRegexBacktrackingNFAExecutorNode extends TRegexExecutorNode 
         this.nZeroWidthQuantifiers = nfaMap.getAst().getZeroWidthQuantifiables().size();
         List<QuantifiableTerm> zeroWidthQuantifiables = nfaMap.getAst().getZeroWidthQuantifiables();
         this.zeroWidthTermEnclosedCGLow = new int[nZeroWidthQuantifiers];
-        this.zeroWidthTermEnclosedCGHigh = new int[nZeroWidthQuantifiers];
+        this.zeroWidthQuantifierCGOffsets = new int[zeroWidthTermEnclosedCGLow.length + 1];
+        int offset = 0;
         for (int i = 0; i < nZeroWidthQuantifiers; i++) {
             QuantifiableTerm quantifiable = zeroWidthQuantifiables.get(i);
             if (quantifiable.isGroup()) {
                 Group group = quantifiable.asGroup();
                 this.zeroWidthTermEnclosedCGLow[i] = group.getEnclosedCaptureGroupsLow();
-                this.zeroWidthTermEnclosedCGHigh[i] = group.getEnclosedCaptureGroupsHigh();
+                offset += 2 * (group.getEnclosedCaptureGroupsHigh() - group.getEnclosedCaptureGroupsLow());
             }
+            this.zeroWidthQuantifierCGOffsets[i + 1] = offset;
         }
         this.lookAroundExecutors = lookAroundExecutors;
         this.loopbackInitialState = nfa == nfaMap.getRoot() && !nfaMap.getAst().getFlags().isSticky() && !nfaMap.getAst().getRoot().startsWithCaret();
@@ -189,7 +191,7 @@ public final class TRegexBacktrackingNFAExecutorNode extends TRegexExecutorNode 
     @Override
     public TRegexExecutorLocals createLocals(Object input, int fromIndex, int index, int maxIndex) {
         return new TRegexBacktrackingNFAExecutorLocals(input, fromIndex, index, maxIndex, getNumberOfCaptureGroups(), nQuantifiers, nZeroWidthQuantifiers, zeroWidthTermEnclosedCGLow,
-                        zeroWidthTermEnclosedCGHigh, maxNTransitions);
+                        zeroWidthQuantifierCGOffsets, maxNTransitions);
     }
 
     private static final int IP_BEGIN = -1;

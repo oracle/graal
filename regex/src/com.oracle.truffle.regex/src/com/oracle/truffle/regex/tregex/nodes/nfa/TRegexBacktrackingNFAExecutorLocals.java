@@ -90,10 +90,10 @@ public final class TRegexBacktrackingNFAExecutorLocals extends TRegexExecutorLoc
     private int lastInitialStateIndex;
 
     public TRegexBacktrackingNFAExecutorLocals(Object input, int fromIndex, int index, int maxIndex, int nCaptureGroups, int nQuantifiers, int nZeroWidthQuantifiers, int[] zeroWidthTermEnclosedCGLow,
-                    int[] zeroWidthTermEnclosedCGHigh, int maxNTransitions) {
+                    int[] zeroWidthQuantifierCGOffsets, int maxNTransitions) {
         this(input, fromIndex, index, maxIndex, nCaptureGroups, nQuantifiers, nZeroWidthQuantifiers, zeroWidthTermEnclosedCGLow,
-                        computeZeroWidthQuantifierCGOffsets(zeroWidthTermEnclosedCGLow, zeroWidthTermEnclosedCGHigh),
-                        new Stack(new int[getStackFrameSizeEstimate(nCaptureGroups, nQuantifiers, nZeroWidthQuantifiers) * 4]), 0,
+                        zeroWidthQuantifierCGOffsets,
+                        new Stack(new int[getStackFrameSize(nCaptureGroups, nQuantifiers, nZeroWidthQuantifiers, zeroWidthQuantifierCGOffsets) * 4]), 0,
                         BitSets.createBitSetArray(maxNTransitions));
         setIndex(fromIndex);
         clearCaptureGroups();
@@ -121,20 +121,6 @@ public final class TRegexBacktrackingNFAExecutorLocals extends TRegexExecutorLoc
 
     private static int getStackFrameSize(int nCaptureGroups, int nQuantifiers, int nZeroWidthQuantifiers, int[] zeroWidthQuantifierCGOffsets) {
         return 2 + nCaptureGroups * 2 + nQuantifiers + nZeroWidthQuantifiers + zeroWidthQuantifierCGOffsets[zeroWidthQuantifierCGOffsets.length - 1];
-    }
-
-    private static int getStackFrameSizeEstimate(int nCaptureGroups, int nQuantifiers, int nZeroWidthQuantifiers) {
-        return 2 + nCaptureGroups * 2 + nQuantifiers + nZeroWidthQuantifiers + nZeroWidthQuantifiers * nCaptureGroups * 2;
-    }
-
-    private static int[] computeZeroWidthQuantifierCGOffsets(int[] zeroWidthTermEnclosedCGLow, int[] zeroWidthTermEnclosedCGHigh) {
-        int[] zeroWidthQuantifierCGOffsets = new int[zeroWidthTermEnclosedCGLow.length + 1];
-        int offset = 0;
-        for (int i = 0; i < zeroWidthTermEnclosedCGLow.length; i++) {
-            offset += 2 * (zeroWidthTermEnclosedCGHigh[i] - zeroWidthTermEnclosedCGLow[i]);
-            zeroWidthQuantifierCGOffsets[i + 1] = offset;
-        }
-        return zeroWidthQuantifierCGOffsets;
     }
 
     public TRegexBacktrackingNFAExecutorLocals createSubNFALocals() {
