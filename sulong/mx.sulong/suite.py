@@ -1533,19 +1533,6 @@ suite = {
           "dependency:com.oracle.truffle.llvm.tests.libc.native/*",
           "dependency:com.oracle.truffle.llvm.tests.linker.native/*",
           "dependency:com.oracle.truffle.llvm.tests.va.native/*",
-          "extracted-dependency:SULONG_LL_TEST_SUITES/*",
-        ],
-      },
-      "license" : "BSD-new",
-      "testDistribution" : True,
-      "defaultBuild" : False,
-    },
-    "SULONG_LL_TEST_SUITES" : {
-      "native" : True,
-      "relpath" : True,
-      "platformDependent" : True,
-      "layout" : {
-        "./" : [
           "dependency:com.oracle.truffle.llvm.tests.bitcode.native/*",
           "dependency:com.oracle.truffle.llvm.tests.bitcode.uncommon.native/*",
           "dependency:com.oracle.truffle.llvm.tests.bitcode.other.native/*",
