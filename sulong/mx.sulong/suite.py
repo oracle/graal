@@ -1529,6 +1529,7 @@ suite = {
           "dependency:com.oracle.truffle.llvm.tests.libc.native/*",
           "dependency:com.oracle.truffle.llvm.tests.linker.native/*",
           "dependency:com.oracle.truffle.llvm.tests.va.native/*",
+          "extracted-dependency:SULONG_LL_TEST_SUITES/*",
         ],
       },
       "license" : "BSD-new",
