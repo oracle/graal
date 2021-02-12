@@ -48,7 +48,9 @@ import java.time.Instant;
 import java.time.LocalDate;
 import java.time.LocalTime;
 import java.time.ZoneId;
+import java.util.NoSuchElementException;
 
+import com.oracle.truffle.api.interop.StopIterationException;
 import org.graalvm.polyglot.Value;
 import org.graalvm.polyglot.proxy.ProxyArray;
 import org.graalvm.polyglot.proxy.ProxyDate;
@@ -56,6 +58,8 @@ import org.graalvm.polyglot.proxy.ProxyDuration;
 import org.graalvm.polyglot.proxy.ProxyExecutable;
 import org.graalvm.polyglot.proxy.ProxyInstant;
 import org.graalvm.polyglot.proxy.ProxyInstantiable;
+import org.graalvm.polyglot.proxy.ProxyIterable;
+import org.graalvm.polyglot.proxy.ProxyIterator;
 import org.graalvm.polyglot.proxy.ProxyNativeObject;
 import org.graalvm.polyglot.proxy.ProxyObject;
 import org.graalvm.polyglot.proxy.ProxyTime;
@@ -345,4 +349,36 @@ final class HostToGuestCodeCache {
         }
     });
 
+    final CallTarget getIterator = createGuestToHost(new GuestToHostRootNode(ProxyIterable.class, "getIterator") {
+
+        @Override
+        @TruffleBoundary
+        protected Object executeImpl(Object proxy, Object[] arguments) {
+            return ((ProxyIterable) proxy).getIterator();
+        }
+    });
+
+    final CallTarget hasIteratorNextElement = createGuestToHost(new GuestToHostRootNode(ProxyIterator.class, "hasIteratorNextElement") {
+
+        @Override
+        @TruffleBoundary
+        protected Object executeImpl(Object proxy, Object[] arguments) {
+            return ((ProxyIterator) proxy).hasNext();
+        }
+    });
+
+    final CallTarget getIteratorNextElement = createGuestToHost(new GuestToHostRootNode(ProxyIterator.class, "getIteratorNextElement") {
+
+        @Override
+        @TruffleBoundary
+        protected Object executeImpl(Object proxy, Object[] arguments) throws StopIterationException, UnsupportedMessageException {
+            try {
+                return ((ProxyIterator) proxy).getNext();
+            } catch (NoSuchElementException e) {
+                throw StopIterationException.create();
+            } catch (UnsupportedOperationException e) {
+                throw UnsupportedMessageException.create();
+            }
+        }
+    });
 }

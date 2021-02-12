@@ -114,6 +114,7 @@ import static com.oracle.truffle.tck.tests.ValueAssert.Trait.EXCEPTION;
 import static com.oracle.truffle.tck.tests.ValueAssert.Trait.EXECUTABLE;
 import static com.oracle.truffle.tck.tests.ValueAssert.Trait.HOST_OBJECT;
 import static com.oracle.truffle.tck.tests.ValueAssert.Trait.INSTANTIABLE;
+import static com.oracle.truffle.tck.tests.ValueAssert.Trait.ITERABLE;
 import static com.oracle.truffle.tck.tests.ValueAssert.Trait.MEMBERS;
 import static com.oracle.truffle.tck.tests.ValueAssert.Trait.META;
 import static com.oracle.truffle.tck.tests.ValueAssert.Trait.NULL;
@@ -310,6 +311,7 @@ public class ValueAPITest {
 
             if (value instanceof List) {
                 expectedTraits.add(ARRAY_ELEMENTS);
+                expectedTraits.add(ITERABLE);
             }
 
             if (value instanceof ByteBuffer) {
@@ -356,7 +358,7 @@ public class ValueAPITest {
     @Test
     public void testArrays() {
         for (Object array : ARRAYS) {
-            assertValue(context.asValue(array), ARRAY_ELEMENTS, HOST_OBJECT, MEMBERS);
+            assertValue(context.asValue(array), ARRAY_ELEMENTS, ITERABLE, HOST_OBJECT, MEMBERS);
         }
     }
 
@@ -2291,7 +2293,7 @@ public class ValueAPITest {
     public void testPrimitiveAndObject() {
         BooleanAndDelegate o = new BooleanAndDelegate(new TestArray(new String[0]));
         Value v = context.asValue(o);
-        ValueAssert.assertValue(v, Trait.ARRAY_ELEMENTS, Trait.BOOLEAN);
+        ValueAssert.assertValue(v, ARRAY_ELEMENTS, ITERABLE, BOOLEAN);
     }
 
     @Test

@@ -126,6 +126,7 @@ import static com.oracle.truffle.api.interop.AssertUtils.violationPost;
  * <li>{@link #isDuration(Object) Duration}
  * <li>{@link #isException(Object) Exception}
  * <li>{@link #isMetaObject(Object) Meta-Object}
+ * <li>{@link #isIterator(Object) Iterator}
  * </ul>
  * All receiver values may have none, one or multiple of the following traits:
  * <ul>
@@ -145,6 +146,7 @@ import static com.oracle.truffle.api.interop.AssertUtils.violationPost;
  * <li>{@link #hasExceptionMessage(Object) exception message}
  * <li>{@link #hasExceptionCause(Object) exception cause}
  * <li>{@link #hasExceptionStackTrace(Object) exception stack trace}
+ * <li>{@link #hasIterator(Object) iterator}
  * </ul>
  * <h3>Naive and aware dates and times</h3>
  * <p>
@@ -1846,6 +1848,144 @@ public abstract class InteropLibrary extends Library {
     }
 
     /**
+     * Returns {@code true} if the receiver provides an iterator. For example, an array or a list
+     * provide an iterator over their content. Invoking this message does not cause any observable
+     * side-effects. By default returns {@code true} for receivers that have
+     * {@link #hasArrayElements(Object) array elements}.
+     *
+     * @see #getIterator(Object)
+     * @since 21.1
+     */
+    @Abstract(ifExported = {"getIterator"})
+    public boolean hasIterator(Object receiver) {
+        return hasArrayElements(receiver);
+    }
+
+    /**
+     * Returns the iterator for the receiver. The return value is always an
+     * {@link #isIterator(Object) iterator}. Invoking this message does not cause any observable
+     * side-effects.
+     *
+     * @throws UnsupportedMessageException if and only if {@link #hasIterator(Object)} returns
+     *             {@code false} for the same receiver.
+     * @since 21.1
+     */
+    @Abstract(ifExported = {"hasIterator"})
+    public Object getIterator(Object receiver) throws UnsupportedMessageException {
+        if (!hasIterator(receiver)) {
+            throw UnsupportedMessageException.create();
+        }
+        return new ArrayIterator(receiver);
+    }
+
+    /**
+     * Returns {@code true} if the receiver represents an iterator. Invoking this message does not
+     * cause any observable side-effects. Returns {@code false} by default.
+     *
+     * @see #hasIterator(Object)
+     * @see #getIterator(Object)
+     * @since 21.1
+     */
+    @Abstract(ifExported = {"hasIteratorNextElement", "getIteratorNextElement"})
+    public boolean isIterator(Object receiver) {
+        return false;
+    }
+
+    /**
+     * Returns {@code true} if the receiver is an iterator which has more elements, else
+     * {@code false}. Multiple calls to the {@link #hasIteratorNextElement(Object)} might lead to
+     * different results if the underlying data structure is modified.
+     * <p>
+     * The following example shows how the {@link #hasIteratorNextElement(Object)
+     * hasIteratorNextElement} message can be emulated in languages where iterators only have a next
+     * method and throw an exception if there are no further elements.
+     * 
+     * <pre>
+     * &#64;ExportLibrary(InteropLibrary.class)
+     * abstract class InteropIterator implements TruffleObject {
+     *
+     *     &#64;SuppressWarnings("serial")
+     *     public static final class Stop extends AbstractTruffleException {
+     *     }
+     *
+     *     private static final Object STOP = new Object();
+     *     private Object next;
+     *
+     *     protected InteropIterator() {
+     *     }
+     *
+     *     protected abstract Object next() throws Stop;
+     *
+     *     &#64;ExportMessage
+     *     &#64;SuppressWarnings("static-method")
+     *     boolean isIterator() {
+     *         return true;
+     *     }
+     *
+     *     &#64;ExportMessage
+     *     boolean hasIteratorNextElement() {
+     *         fetchNext();
+     *         return next != STOP;
+     *     }
+     *
+     *     &#64;ExportMessage
+     *     Object getIteratorNextElement() throws StopIterationException {
+     *         fetchNext();
+     *         Object res = next;
+     *         if (res == STOP) {
+     *             throw StopIterationException.create();
+     *         } else {
+     *             next = null;
+     *         }
+     *         return res;
+     *     }
+     *
+     *     private void fetchNext() {
+     *         if (next == null) {
+     *             try {
+     *                 next = next();
+     *             } catch (Stop stop) {
+     *                 next = STOP;
+     *             }
+     *         }
+     *     }
+     * }
+     * </pre>
+     *
+     * @throws UnsupportedMessageException if and only if {@link #isIterator(Object)} returns
+     *             {@code false} for the same receiver.
+     * @see #isIterator(Object)
+     * @see #getIteratorNextElement(Object)
+     * @since 21.1
+     */
+    @Abstract(ifExported = {"isIterator", "getIteratorNextElement"})
+    public boolean hasIteratorNextElement(Object receiver) throws UnsupportedMessageException {
+        throw UnsupportedMessageException.create();
+    }
+
+    /**
+     * Returns the next element in the iteration. When the underlying data structure is modified the
+     * {@link #getIteratorNextElement(Object)} may throw the {@link StopIterationException} despite
+     * the {@link #hasIteratorNextElement(Object)} returned {@code true}.
+     *
+     * @throws UnsupportedMessageException if {@link #isIterator(Object)} returns {@code false} for
+     *             the same receiver or when the underlying iterator element exists but is not
+     *             readable.
+     * @throws StopIterationException if the iteration has no more elements. Even if the
+     *             {@link StopIterationException} was thrown it might not be thrown again by a next
+     *             {@link #getIteratorNextElement(Object)} invocation on the same receiver due to a
+     *             modification of an underlying iterable.
+     *
+     * @see #isIterator(Object)
+     * @see #hasIteratorNextElement(Object)
+     * @since 21.1
+     */
+    @Abstract(ifExported = {"isIterator", "hasIteratorNextElement"})
+    public Object getIteratorNextElement(Object receiver) throws UnsupportedMessageException, StopIterationException {
+        throw UnsupportedMessageException.create();
+    }
+
+    /**
      * Returns <code>true</code> if the receiver value has a declared source location attached, else
      * <code>false</code>. Returning a source location for a value is optional and typically impacts
      * the capabilities of tools like debuggers to jump to the declaration of a value.
@@ -2505,7 +2645,8 @@ public abstract class InteropLibrary extends Library {
             STRING,
             NUMBER,
             POINTER,
-            META_OBJECT;
+            META_OBJECT,
+            ITERATOR;
         }
 
         Asserts(InteropLibrary delegate) {
@@ -2546,6 +2687,7 @@ public abstract class InteropLibrary extends Library {
             assert type == Type.DATE_TIME_ZONE || (!delegate.isDate(receiver) && !delegate.isTime(receiver) && !delegate.isTimeZone(receiver)) : violationInvariant(receiver);
             assert type == Type.DURATION || !delegate.isDuration(receiver) : violationInvariant(receiver);
             assert type == Type.META_OBJECT || !delegate.isMetaObject(receiver) : violationInvariant(receiver);
+            assert type == Type.ITERATOR || !delegate.isIterator(receiver) : violationInvariant(receiver);
             return true;
         }
 
@@ -3944,6 +4086,83 @@ public abstract class InteropLibrary extends Library {
             Object result = delegate.toDisplayString(receiver, allowSideEffects);
             assert assertString(receiver, result);
             return result;
+        }
+
+        @Override
+        public boolean hasIterator(Object receiver) {
+            assert preCondition(receiver);
+            boolean result = delegate.hasIterator(receiver);
+            return result;
+        }
+
+        @Override
+        public Object getIterator(Object receiver) throws UnsupportedMessageException {
+            if (CompilerDirectives.inCompiledCode()) {
+                return delegate.getIterator(receiver);
+            }
+            assert preCondition(receiver);
+            boolean wasHasIterator = delegate.hasIterator(receiver);
+            try {
+                Object result = delegate.getIterator(receiver);
+                assert wasHasIterator : violationInvariant(receiver);
+                assert assertIterator(receiver, result);
+                return result;
+            } catch (InteropException e) {
+                assert e instanceof UnsupportedMessageException : violationInvariant(receiver);
+                assert !wasHasIterator : violationInvariant(receiver);
+                throw e;
+            }
+        }
+
+        private static boolean assertIterator(Object receiver, Object iterator) {
+            assert iterator != null : violationPost(receiver, iterator);
+            InteropLibrary uncached = InteropLibrary.getUncached(iterator);
+            assert uncached.isIterator(iterator) : violationPost(receiver, iterator);
+            return true;
+        }
+
+        @Override
+        public boolean isIterator(Object receiver) {
+            assert preCondition(receiver);
+            boolean result = delegate.isIterator(receiver);
+            assert !result || notOtherType(receiver, Type.ITERATOR);
+            return result;
+        }
+
+        @Override
+        public boolean hasIteratorNextElement(Object receiver) throws UnsupportedMessageException {
+            if (CompilerDirectives.inCompiledCode()) {
+                return delegate.hasIteratorNextElement(receiver);
+            }
+            assert preCondition(receiver);
+            boolean wasIterator = delegate.isIterator(receiver);
+            try {
+                boolean result = delegate.hasIteratorNextElement(receiver);
+                assert wasIterator : violationInvariant(receiver);
+                return result;
+            } catch (InteropException e) {
+                assert e instanceof UnsupportedMessageException : violationInvariant(receiver);
+                assert !wasIterator : violationInvariant(receiver);
+                throw e;
+            }
+        }
+
+        @Override
+        public Object getIteratorNextElement(Object receiver) throws UnsupportedMessageException, StopIterationException {
+            if (CompilerDirectives.inCompiledCode()) {
+                return delegate.getIteratorNextElement(receiver);
+            }
+            assert preCondition(receiver);
+            boolean wasIterator = delegate.isIterator(receiver);
+            try {
+                Object result = delegate.getIteratorNextElement(receiver);
+                assert wasIterator : violationInvariant(receiver);
+                assert validReturn(receiver, result);
+                return result;
+            } catch (InteropException e) {
+                assert e instanceof UnsupportedMessageException || e instanceof StopIterationException : violationPost(receiver, e);
+                throw e;
+            }
         }
 
         @Override

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2017, 2020, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2017, 2021, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -55,8 +55,11 @@ import java.time.LocalTime;
 import java.time.ZoneId;
 import java.time.ZonedDateTime;
 import java.time.zone.ZoneRules;
+import java.util.ConcurrentModificationException;
+import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
+import java.util.NoSuchElementException;
 import java.util.Objects;
 import java.util.Set;
 import java.util.function.Function;
@@ -94,6 +97,8 @@ import java.util.function.Function;
  * <li>{@link #isMetaObject() Meta-Object}: This value represents a metaobject. Access metaobject
  * operations using {@link #getMetaSimpleName()}, {@link #getMetaQualifiedName()} and
  * {@link #isMetaInstance(Object)}.
+ * <li>{@link #isIterator() Iterator}: This value represents an iterator. The iterator can be
+ * iterated using {@link #hasIteratorNextElement()} and {@link #getIteratorNextElement()}.
  * </ul>
  * In addition any value may have one or more of the following traits:
  * <ul>
@@ -109,6 +114,9 @@ import java.util.function.Function;
  * instantiated}. For example, Java classes are instantiable.
  * <li>{@link #hasBufferElements() Buffer Elements}: This value may contain buffer elements. The
  * buffer indices always start with <code>0</code>, also if the language uses a different style.
+ * <li>{@link #hasIterator() Iterable}: This value {@link #getIterator() provides} an
+ * {@link #isIterator() iterator} which can be used to {@link #getIteratorNextElement() iterate}
+ * value elements. For example, Guest language arrays are iterable.
  * </ul>
  * <p>
  * In addition to the language agnostic types, the language specific type can be accessed using
@@ -1301,6 +1309,21 @@ public final class Value {
      * returned array will not be reflected in the original value. Since conversion to a Java array
      * might be an expensive operation it is recommended to use the `List` or `Collection` target
      * type if possible.
+     * <li><code>{@link Iterable}.class</code> is supported if the value has an
+     * {@link #hasIterator() iterator}. The returned iterable can be safely cast to
+     * <code>Iterable&lt;Object&gt;</code>. It is recommended to use {@link #as(TypeLiteral) type
+     * literals} to specify the expected component type. With type literals the value type can be
+     * restricted to any supported target type, for example to <code>Iterable&lt;Integer&gt;</code>.
+     * <li><code>{@link Iterator}.class</code> is supported if the value is an {@link #isIterator()
+     * iterator} The returned iterator can be safely cast to <code>Iterator&lt;Object&gt;</code>. It
+     * is recommended to use {@link #as(TypeLiteral) type literals} to specify the expected
+     * component type. With type literals the value type can be restricted to any supported target
+     * type, for example to <code>Iterator&lt;Integer&gt;</code>. If the raw
+     * <code>{@link Iterator}.class</code> or an Object component type is used, then the return
+     * types of the the iterator are recursively subject to Object target type mapping rules. The
+     * returned iterator's {@link Iterator#next() next} method may throw a
+     * {@link ConcurrentModificationException} when an underlying iterable has changed or
+     * {@link UnsupportedOperationException} when the iterator's current element is not readable.
      * <li>Any {@link FunctionalInterface functional} interface if the value can be
      * {@link #canExecute() executed} or {@link #canInstantiate() instantiated} and the interface
      * type is {@link HostAccess implementable}. Note that {@link FunctionalInterface} are
@@ -1385,6 +1408,12 @@ public final class Value {
      * element of the value maps to one list element. The size of the returned list maps to the
      * array size of the value. The returned value may also implement {@link Function} if the value
      * can be {@link #canExecute() executed} or {@link #canInstantiate() instantiated}.
+     * <li>If the value has an {@link #hasIterator()} iterator} then the result value will implement
+     * {@link Iterable}. The returned value may also implement {@link Function} if the value can be
+     * {@link #canExecute() executed} or {@link #canInstantiate() instantiated}.
+     * <li>If the value is an {@link #isIterator()} iterator} then the result value will implement
+     * {@link Iterator}. The returned value may also implement {@link Function} if the value can be
+     * {@link #canExecute() executed} or {@link #canInstantiate() instantiated}.
      * <li>If the value can be {@link #canExecute() executed} or {@link #canInstantiate()
      * instantiated} then the result value implements {@link Function Function}. By default the
      * argument of the function will be used as single argument to the function when executed. If a
@@ -1740,6 +1769,89 @@ public final class Value {
     @Override
     public int hashCode() {
         return impl.hashCodeImpl(receiver);
+    }
+
+    /**
+     * Returns <code>true</code> if this polyglot value provides an iterator. In this case the
+     * iterator can be obtained using {@link #getIterator()}.
+     *
+     * @throws IllegalStateException if the context is already closed.
+     * @throws PolyglotException if a guest language error occurred during execution.
+     *
+     * @see #getIterator()
+     * @since 21.1
+     */
+    public boolean hasIterator() {
+        return impl.hasIterator(receiver);
+    }
+
+    /**
+     * Creates a new iterator that allows read each element of a sequence.
+     *
+     * @throws UnsupportedOperationException if the value does not provide {@link #hasIterator()
+     *             iterator}.
+     * @throws IllegalStateException if the context is already closed.
+     * @throws PolyglotException if a guest language error occurred during execution.
+     *
+     * @see #hasIterator()
+     * @since 21.1
+     */
+    public Value getIterator() {
+        return impl.getIterator(receiver);
+    }
+
+    /**
+     * Returns <code>true</code> if the value represents an iterator object. In this case the
+     * iterator elements can be accessed using {@link #getIteratorNextElement()}.
+     *
+     * @throws IllegalStateException if the context is already closed.
+     * @throws PolyglotException if a guest language error occurred during execution.
+     *
+     * @see #hasIteratorNextElement()
+     * @see #getIteratorNextElement()
+     * @since 21.1
+     */
+    public boolean isIterator() {
+        return impl.isIterator(receiver);
+    }
+
+    /**
+     * Returns <code>true</code> if the value represents an iterator which has more elements, else
+     * {@code false}. Multiple calls to the {@link #hasIteratorNextElement()} might lead to
+     * different results if the underlying data structure is modified.
+     *
+     * @throws UnsupportedOperationException if the value is not an {@link #isIterator() iterator}.
+     * @throws IllegalStateException if the context is already closed.
+     * @throws PolyglotException if a guest language error occurred during execution.
+     *
+     * @see #isIterator()
+     * @see #getIteratorNextElement()
+     * @since 21.1
+     */
+    public boolean hasIteratorNextElement() {
+        return impl.hasIteratorNextElement(receiver);
+    }
+
+    /**
+     * Returns the next element in the iteration. When the underlying data structure is modified the
+     * {@link #getIteratorNextElement()} may throw the {@link NoSuchElementException} despite the
+     * {@link #hasIteratorNextElement()} returned {@code true}, or it may throw a language error.
+     *
+     * @throws UnsupportedOperationException if the value is not an {@link #isIterator() iterator}
+     *             or when the underlying iterable element exists but is not readable.
+     * @throws NoSuchElementException if the iteration has no more elements. Even if the
+     *             {@link NoSuchElementException} was thrown it might not be thrown again by a next
+     *             call of the {@link #getIteratorNextElement()} due to a modification of an
+     *             underlying iterable.
+     * @throws IllegalStateException if the context is already closed.
+     * @throws PolyglotException if a guest language error occurred during execution.
+     *
+     * @see #isIterator()
+     * @see #hasIteratorNextElement()
+     * @since 21.1
+     */
+    public Value getIteratorNextElement() {
+        return impl.getIteratorNextElement(receiver);
     }
 
     /**
