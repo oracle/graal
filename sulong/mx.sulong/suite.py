@@ -850,6 +850,7 @@ suite = {
     "com.oracle.truffle.llvm.tests.bitcode.native" : {
       "subDir" : "tests",
       "class" : "SulongTestSuite",
+      "bundledLLVMOnly" : True,
       "variants" : ["O0"],
       "fileExts" : [".ll"],
       "buildEnv" : {
@@ -865,6 +866,7 @@ suite = {
     "com.oracle.truffle.llvm.tests.bitcode.uncommon.native" : {
       "subDir" : "tests",
       "class" : "SulongTestSuite",
+      "bundledLLVMOnly" : True,
       # This should be the O1 variant (and the CFLAGS buildEnv entry
       # below should be changed to -O1) but it currently breaks the
       # tests in the project (difference in behavior between O0 and
@@ -887,6 +889,7 @@ suite = {
     "com.oracle.truffle.llvm.tests.bitcode.other.native" : {
       "subDir" : "tests",
       "class" : "SulongTestSuite",
+      "bundledLLVMOnly" : True,
       "variants" : ["O0"],
       "fileExts" : [".ll"],
       "buildRef" : False,
@@ -903,6 +906,7 @@ suite = {
     "com.oracle.truffle.llvm.tests.bitcode.amd64.native" : {
       "subDir" : "tests",
       "class" : "SulongTestSuite",
+      "bundledLLVMOnly" : True,
       "variants" : ["O0"],
       "fileExts" : [".ll"],
       "buildRef" : True,
