@@ -31,7 +31,7 @@ package com.oracle.truffle.espresso._native;
  * {@link #BOOLEAN} encodes a native 1-byte value, a boolean in Java.
  * 
  * {@link #SHORT} and {@link #CHAR} represents the same native 2-byte value, but a short and char
- * types and in Java.
+ * types in Java.
  */
 public enum NativeType {
 
