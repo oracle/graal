@@ -26,6 +26,7 @@ package com.oracle.truffle.espresso.libespresso.arghelper;
 import static com.oracle.truffle.espresso.libespresso.Arguments.abort;
 
 import java.io.PrintStream;
+import java.util.function.Consumer;
 
 import org.graalvm.nativeimage.c.struct.SizeOf;
 import org.graalvm.nativeimage.c.type.CCharPointer;
@@ -212,11 +213,17 @@ public class ArgumentsHandler {
             help = true;
         }
         if (helpTools) {
-            polyglotAccess.printToolsHelp(getHelpCategory());
+            printHelp(polyglotAccess::printToolsHelp);
             help = true;
         }
         if (helpLanguages) {
-            polyglotAccess.printLanguageHelp(getHelpCategory());
+            printHelp(polyglotAccess::printLanguageHelp);
+            help = true;
+        }
+        if ((helpExpert || helpInternal) && !help) {
+            // an expert or internal help was requested, but no category was specified. Default to
+            // language help.
+            printHelp(polyglotAccess::printLanguageHelp);
             help = true;
         }
         if (help) {
@@ -268,13 +275,18 @@ public class ArgumentsHandler {
         return sb.toString();
     }
 
-    private OptionCategory getHelpCategory() {
+    private void printHelp(Consumer<OptionCategory> printer) {
+        boolean user = true;
         if (helpInternal) {
-            return OptionCategory.INTERNAL;
-        } else if (helpExpert) {
-            return OptionCategory.EXPERT;
-        } else {
-            return OptionCategory.USER;
+            printer.accept(OptionCategory.INTERNAL);
+            user = false;
+        }
+        if (helpExpert) {
+            printer.accept(OptionCategory.EXPERT);
+            user = false;
+        }
+        if (user) {
+            printer.accept(OptionCategory.USER);
         }
     }
 }
