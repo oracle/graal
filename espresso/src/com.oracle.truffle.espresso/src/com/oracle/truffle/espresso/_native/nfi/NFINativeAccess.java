@@ -103,20 +103,20 @@ public class NFINativeAccess implements NativeAccess {
         // @formatter:on
     }
 
-    protected static String nfiStringSignature(NativeType returnType, NativeType... parameterTypes) {
+    protected static String nfiStringSignature(NativeSignature nativeSignature) {
         StringBuilder sb = new StringBuilder(64);
         sb.append('(');
         boolean isFirst = true;
-        for (NativeType param : parameterTypes) {
+        for (int i = 0; i < nativeSignature.getParameterCount(); ++i) {
             if (!isFirst) {
                 sb.append(',');
             }
-            sb.append(nfiType(param));
+            sb.append(nfiType(nativeSignature.parameterTypeAt(i)));
             isFirst = false;
         }
         sb.append(')');
         sb.append(':');
-        sb.append(nfiType(returnType));
+        sb.append(nfiType(nativeSignature.getReturnType()));
         return sb.toString();
     }
 
@@ -129,7 +129,7 @@ public class NFINativeAccess implements NativeAccess {
         public Object apply(NativeSignature nativeSignature) {
             nfiSignaturesCreated.inc();
             Source source = Source.newBuilder("nfi",
-                            nfiStringSignature(nativeSignature.getReturnType(), nativeSignature.getParameterTypes()), "signature").build();
+                            nfiStringSignature(nativeSignature), "signature").build();
             CallTarget target = getContext().getEnv().parseInternal(source);
             return target.call();
         }
@@ -208,15 +208,15 @@ public class NFINativeAccess implements NativeAccess {
         @ExplodeLoop
         @ExportMessage
         Object execute(Object[] arguments, @CachedLibrary("this.delegate") InteropLibrary interop) throws ArityException {
-            NativeType[] parameterTypes = nativeSignature.getParameterTypes();
-            if (arguments.length != parameterTypes.length) {
+            final int paramCount = nativeSignature.getParameterCount();
+            if (arguments.length != paramCount) {
                 CompilerDirectives.transferToInterpreter();
-                throw ArityException.create(parameterTypes.length, arguments.length);
+                throw ArityException.create(paramCount, arguments.length);
             }
             try {
                 Object[] convertedArgs = new Object[arguments.length];
-                for (int i = 0; i < parameterTypes.length; i++) {
-                    NativeType param = parameterTypes[i];
+                for (int i = 0; i < paramCount; i++) {
+                    NativeType param = nativeSignature.parameterTypeAt(i);
                     switch (param) {
                         case BOOLEAN:
                             convertedArgs[i] = ((boolean) arguments[i]) ? (byte) 1 : (byte) 0;
@@ -287,15 +287,15 @@ public class NFINativeAccess implements NativeAccess {
         @ExplodeLoop
         @ExportMessage
         Object execute(Object[] arguments, @CachedLibrary("this.delegate") InteropLibrary interop) throws ArityException {
-            NativeType[] parameterTypes = nativeSignature.getParameterTypes();
-            if (arguments.length != parameterTypes.length) {
+            final int paramCount = nativeSignature.getParameterCount();
+            if (arguments.length != paramCount) {
                 CompilerDirectives.transferToInterpreter();
-                throw ArityException.create(parameterTypes.length, arguments.length);
+                throw ArityException.create(paramCount, arguments.length);
             }
             try {
                 Object[] convertedArgs = new Object[arguments.length];
-                for (int i = 0; i < parameterTypes.length; i++) {
-                    NativeType param = parameterTypes[i];
+                for (int i = 0; i < paramCount; i++) {
+                    NativeType param = nativeSignature.parameterTypeAt(i);
                     switch (param) {
                         case BOOLEAN:
                             convertedArgs[i] = (byte) arguments[i] != 0;
