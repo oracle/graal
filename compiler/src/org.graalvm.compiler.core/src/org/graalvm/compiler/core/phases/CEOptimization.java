@@ -284,10 +284,9 @@ public enum CEOptimization {
      * phase tries to re-use dominating boxed/unboxed values to avoid repetitive boxing while it
      * respects the caching behavior specified by {@link Integer#valueOf(int)}.
      *
-     * This phase is enabled by default and can be disabled with
-     * {@link org.graalvm.compiler.phases.common.BoxNodeOptimizationPhase.Options#ReuseOutOfCacheBoxedValues}.
+     * This phase is enabled by default.
      */
-    BoxNodeOptimization(BoxNodeOptimizationPhase.Options.ReuseOutOfCacheBoxedValues, BoxNodeOptimizationPhase.class);
+    BoxNodeOptimization(null, BoxNodeOptimizationPhase.class);
 
     private final OptionKey<?> option;
     private final Class<? extends BasePhase<?>> optimization;

@@ -119,6 +119,9 @@ public abstract class JavaConstantFieldProvider implements ConstantFieldProvider
 
     @SuppressWarnings("unused")
     protected boolean isStableField(ResolvedJavaField field, ConstantFieldTool<?> tool) {
+        if (isPrimitiveBoxingCacheField(field)) {
+            return true;
+        }
         if (isSyntheticEnumSwitchMap(field)) {
             return true;
         }
@@ -127,6 +130,18 @@ public abstract class JavaConstantFieldProvider implements ConstantFieldProvider
         }
         if (field.equals(stringHashField)) {
             return true;
+        }
+        return false;
+    }
+
+    protected boolean isPrimitiveBoxingCacheField(ResolvedJavaField field) {
+        if (isArray(field) && field.isFinal() && field.getName().equals("cache")) {
+            ResolvedJavaType type = field.getDeclaringClass();
+            String typeName = type.getName();
+            if (typeName.equals("Ljava/lang/Character$CharacterCache;") || typeName.equals("Ljava/lang/Byte$ByteCache;") || typeName.equals("Ljava/lang/Short$ShortCache;") ||
+                            typeName.equals("Ljava/lang/Integer$IntegerCache;") || typeName.equals("Ljava/lang/Long$LongCache;")) {
+                return true;
+            }
         }
         return false;
     }
